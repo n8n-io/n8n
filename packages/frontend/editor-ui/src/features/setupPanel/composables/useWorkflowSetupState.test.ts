@@ -28,11 +28,21 @@ const mockUpdateNodeProperties = vi.fn();
 const mockUpdateNodeCredentialIssuesByName = vi.fn();
 const mockUpdateNodesCredentialsIssues = vi.fn();
 
-vi.mock('@/app/composables/useWorkflowState', () => ({
-	injectWorkflowState: vi.fn(() => ({
-		updateNodeProperties: mockUpdateNodeProperties,
-	})),
-}));
+const mockWorkflowDocumentStore = {
+	allNodes: [] as INodeUi[],
+	getNodeByName: vi.fn() as ReturnType<typeof vi.fn>,
+	getNodes: vi.fn() as ReturnType<typeof vi.fn>,
+	updateNodeProperties: mockUpdateNodeProperties,
+};
+
+vi.mock('@/app/stores/workflowDocument.store', async () => {
+	const actual = await vi.importActual('@/app/stores/workflowDocument.store');
+	return {
+		...actual,
+		useWorkflowDocumentStore: vi.fn(() => mockWorkflowDocumentStore),
+		createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
+	};
+});
 
 vi.mock('@/app/composables/useNodeHelpers', () => ({
 	useNodeHelpers: vi.fn(() => ({
@@ -42,11 +52,20 @@ vi.mock('@/app/composables/useNodeHelpers', () => ({
 }));
 
 const mockGetNodeTypeDisplayableCredentials = vi.fn().mockReturnValue([]);
+const mockGetNodeParametersIssues = vi.fn().mockReturnValue({});
 
 vi.mock('@/app/utils/nodes/nodeTransforms', () => ({
 	getNodeTypeDisplayableCredentials: (...args: unknown[]) =>
 		mockGetNodeTypeDisplayableCredentials(...args),
 }));
+
+vi.mock('@/features/setupPanel/setupPanel.utils', async () => {
+	const actual = await vi.importActual('@/features/setupPanel/setupPanel.utils');
+	return {
+		...actual,
+		getNodeParametersIssues: (...args: unknown[]) => mockGetNodeParametersIssues(...args),
+	};
+});
 
 // Sorting/filtering by execution order is tested in setupPanel.utils.test.ts.
 // Use a pass-through mock here so non-sorting tests are not affected.
@@ -78,8 +97,10 @@ describe('useWorkflowSetupState', () => {
 		credentialsStore = mockedStore(useCredentialsStore);
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 
+		workflowsStore.workflowId = 'test-workflow';
 		credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue(undefined);
 		credentialsStore.getCredentialById = vi.fn().mockReturnValue(undefined);
+		credentialsStore.getNodesWithAccess = vi.fn().mockReturnValue([]);
 		credentialsStore.isCredentialTestedOk = vi.fn().mockReturnValue(true);
 		credentialsStore.isCredentialTestPending = vi.fn().mockReturnValue(false);
 		credentialsStore.getCredentialData = vi.fn().mockResolvedValue(undefined);
@@ -87,15 +108,19 @@ describe('useWorkflowSetupState', () => {
 		workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue(null);
 
 		mockGetNodeTypeDisplayableCredentials.mockReturnValue([]);
+		mockWorkflowDocumentStore.allNodes = [];
+		mockWorkflowDocumentStore.getNodeByName = vi.fn();
+		mockWorkflowDocumentStore.getNodes = vi.fn();
 		mockUpdateNodeProperties.mockReset();
 		mockUpdateNodeCredentialIssuesByName.mockReset();
 		mockUpdateNodesCredentialsIssues.mockReset();
+		mockGetNodeParametersIssues.mockReset().mockReturnValue({});
 		mockOnCredentialDeleted = undefined;
 	});
 
 	describe('setupCards', () => {
 		it('should return empty array when no nodes', () => {
-			workflowsStore.allNodes = [];
+			mockWorkflowDocumentStore.allNodes = [];
 
 			const { setupCards } = useWorkflowSetupState();
 
@@ -107,13 +132,15 @@ describe('useWorkflowSetupState', () => {
 				name: 'WebhookTrigger',
 				type: 'n8n-nodes-base.webhook',
 			});
-			workflowsStore.allNodes = [triggerNode];
+			mockWorkflowDocumentStore.allNodes = [triggerNode];
 			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({ webhooks: [{}] });
 
 			const { setupCards } = useWorkflowSetupState();
 
 			expect(setupCards.value).toHaveLength(1);
-			expect(setupCards.value[0].type).toBe('trigger');
+			expect(setupCards.value[0].state.isTrigger).toBe(true);
+			expect(setupCards.value[0].state.credentialType).toBeUndefined();
 			expect(setupCards.value[0].state).toMatchObject({
 				node: expect.objectContaining({ name: 'WebhookTrigger' }),
 			});
@@ -121,32 +148,29 @@ describe('useWorkflowSetupState', () => {
 
 		it('should return credential cards for nodes with credentials', () => {
 			const node = createNode({ name: 'OpenAI' });
-			workflowsStore.allNodes = [node];
+			mockWorkflowDocumentStore.allNodes = [node];
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'openAiApi' }]);
 			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
 				displayName: 'OpenAI API',
 			});
-			workflowsStore.getNodeByName = vi.fn().mockReturnValue(node);
+			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(node);
 
 			const { setupCards } = useWorkflowSetupState();
 
 			expect(setupCards.value).toHaveLength(1);
-			expect(setupCards.value[0].type).toBe('credential');
-			if (setupCards.value[0].type === 'credential') {
-				expect(setupCards.value[0].state.credentialType).toBe('openAiApi');
-				expect(setupCards.value[0].state.credentialDisplayName).toBe('OpenAI API');
-			}
+			expect(setupCards.value[0].state.credentialType).toBe('openAiApi');
+			expect(setupCards.value[0].state.credentialDisplayName).toBe('OpenAI API');
 		});
 
 		it('should group multiple nodes needing same credential into one credential card', () => {
 			const node1 = createNode({ name: 'OpenAI1', position: [0, 0] });
 			const node2 = createNode({ name: 'OpenAI2', position: [100, 0] });
-			workflowsStore.allNodes = [node1, node2];
+			mockWorkflowDocumentStore.allNodes = [node1, node2];
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'openAiApi' }]);
 			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
 				displayName: 'OpenAI API',
 			});
-			workflowsStore.getNodeByName = vi.fn((name: string) => {
+			mockWorkflowDocumentStore.getNodeByName = vi.fn((name: string) => {
 				if (name === 'OpenAI1') return node1;
 				if (name === 'OpenAI2') return node2;
 				return null;
@@ -154,19 +178,16 @@ describe('useWorkflowSetupState', () => {
 
 			const { setupCards } = useWorkflowSetupState();
 
-			const credCards = setupCards.value.filter((c) => c.type === 'credential');
-			expect(credCards).toHaveLength(1);
-			if (credCards[0].type === 'credential') {
-				const nodeNames = credCards[0].state.nodes.map((n) => n.name);
-				expect(nodeNames).toContain('OpenAI1');
-				expect(nodeNames).toContain('OpenAI2');
-			}
+			expect(setupCards.value).toHaveLength(1);
+			const nodeNames = setupCards.value[0].state.allNodesUsingCredential?.map((n) => n.name) ?? [];
+			expect(nodeNames).toContain('OpenAI1');
+			expect(nodeNames).toContain('OpenAI2');
 		});
 
 		it('should create separate credential cards for different credential types', () => {
 			const node1 = createNode({ name: 'Node1', position: [0, 0] });
 			const node2 = createNode({ name: 'Node2', position: [100, 0] });
-			workflowsStore.allNodes = [node1, node2];
+			mockWorkflowDocumentStore.allNodes = [node1, node2];
 			mockGetNodeTypeDisplayableCredentials.mockImplementation((_store, node) => {
 				if ((node as INodeUi).name === 'Node1') return [{ name: 'slackApi' }];
 				if ((node as INodeUi).name === 'Node2') return [{ name: 'openAiApi' }];
@@ -175,7 +196,7 @@ describe('useWorkflowSetupState', () => {
 			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
 				displayName: 'Test',
 			});
-			workflowsStore.getNodeByName = vi.fn((name: string) => {
+			mockWorkflowDocumentStore.getNodeByName = vi.fn((name: string) => {
 				if (name === 'Node1') return node1;
 				if (name === 'Node2') return node2;
 				return null;
@@ -183,7 +204,7 @@ describe('useWorkflowSetupState', () => {
 
 			const { setupCards } = useWorkflowSetupState();
 
-			const credCards = setupCards.value.filter((c) => c.type === 'credential');
+			const credCards = setupCards.value.filter((c) => !!c.state.credentialType);
 			expect(credCards).toHaveLength(2);
 		});
 
@@ -192,27 +213,24 @@ describe('useWorkflowSetupState', () => {
 				name: 'SlackTrigger',
 				type: 'n8n-nodes-base.slackTrigger',
 			});
-			workflowsStore.allNodes = [triggerNode];
+			mockWorkflowDocumentStore.allNodes = [triggerNode];
 			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'slackApi' }]);
 			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
 				displayName: 'Slack API',
 			});
-			workflowsStore.getNodeByName = vi.fn().mockReturnValue(triggerNode);
+			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(triggerNode);
 
 			const { setupCards } = useWorkflowSetupState();
 
-			const triggerCards = setupCards.value.filter((c) => c.type === 'trigger');
-			const credCards = setupCards.value.filter((c) => c.type === 'credential');
-			expect(triggerCards).toHaveLength(0);
+			const triggerOnlyCards = setupCards.value.filter(
+				(c) => c.state.isTrigger && !c.state.credentialType,
+			);
+			const credCards = setupCards.value.filter((c) => !!c.state.credentialType);
+			expect(triggerOnlyCards).toHaveLength(0);
 			expect(credCards).toHaveLength(1);
-			if (credCards[0].type === 'credential') {
-				const triggerNodes = credCards[0].state.nodes.filter((n) =>
-					nodeTypesStore.isTriggerNode(n.type),
-				);
-				expect(triggerNodes).toHaveLength(1);
-				expect(triggerNodes[0].name).toBe('SlackTrigger');
-			}
+			expect(credCards[0].state.isTrigger).toBe(true);
+			expect(credCards[0].state.node.name).toBe('SlackTrigger');
 		});
 
 		it('should only allow executing first trigger; other triggers get no standalone cards', () => {
@@ -226,13 +244,13 @@ describe('useWorkflowSetupState', () => {
 				type: 'n8n-nodes-base.slackTrigger',
 				position: [100, 0],
 			});
-			workflowsStore.allNodes = [trigger1, trigger2];
+			mockWorkflowDocumentStore.allNodes = [trigger1, trigger2];
 			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'slackApi' }]);
 			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
 				displayName: 'Slack API',
 			});
-			workflowsStore.getNodeByName = vi.fn((name: string) => {
+			mockWorkflowDocumentStore.getNodeByName = vi.fn((name: string) => {
 				if (name === 'SlackTrigger1') return trigger1;
 				if (name === 'SlackTrigger2') return trigger2;
 				return null;
@@ -240,43 +258,44 @@ describe('useWorkflowSetupState', () => {
 
 			const { setupCards } = useWorkflowSetupState();
 
-			const credCards = setupCards.value.filter((c) => c.type === 'credential');
-			const triggerCards = setupCards.value.filter((c) => c.type === 'trigger');
+			const credCards = setupCards.value.filter((c) => !!c.state.credentialType);
+			const triggerOnlyCards = setupCards.value.filter(
+				(c) => c.state.isTrigger && !c.state.credentialType,
+			);
 
 			// One credential card with ALL nodes (both triggers included for display)
 			expect(credCards).toHaveLength(1);
-			if (credCards[0].type === 'credential') {
-				expect(credCards[0].state.nodes).toHaveLength(2);
-				expect(credCards[0].state.nodes.map((n) => n.name)).toEqual([
-					'SlackTrigger1',
-					'SlackTrigger2',
-				]);
-			}
+			const allNodes = credCards[0].state.allNodesUsingCredential ?? [];
+			expect(allNodes).toHaveLength(2);
+			expect(allNodes.map((n) => n.name)).toEqual(['SlackTrigger1', 'SlackTrigger2']);
 
 			// No standalone trigger cards — only the first trigger is executable,
 			// and it's already embedded in the credential card
-			expect(triggerCards).toHaveLength(0);
+			expect(triggerOnlyCards).toHaveLength(0);
 		});
 
 		it('should produce only trigger card for trigger without credentials', () => {
 			const triggerNode = createNode({
-				name: 'ManualTrigger',
-				type: 'n8n-nodes-base.manualTrigger',
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
 			});
-			workflowsStore.allNodes = [triggerNode];
+			mockWorkflowDocumentStore.allNodes = [triggerNode];
 			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({ webhooks: [{}] });
 
 			const { setupCards } = useWorkflowSetupState();
 
 			expect(setupCards.value).toHaveLength(1);
-			expect(setupCards.value[0].type).toBe('trigger');
+			expect(setupCards.value[0].state.isTrigger).toBe(true);
+			expect(setupCards.value[0].state.credentialType).toBeUndefined();
 		});
 
 		it('should sort cards by primary node execution order, interleaving credential and trigger cards', () => {
 			// Trigger comes before regular node in execution order
 			const triggerNode = createNode({
-				name: 'ManualTrigger',
-				type: 'n8n-nodes-base.manualTrigger',
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
+
 				position: [0, 0],
 			});
 			const regularNode = createNode({
@@ -284,10 +303,10 @@ describe('useWorkflowSetupState', () => {
 				type: 'n8n-nodes-base.regular',
 				position: [100, 0],
 			});
-			workflowsStore.allNodes = [triggerNode, regularNode];
-			nodeTypesStore.isTriggerNode = vi.fn(
-				(type: string) => type === 'n8n-nodes-base.manualTrigger',
-			);
+			mockWorkflowDocumentStore.allNodes = [triggerNode, regularNode];
+			nodeTypesStore.isTriggerNode = vi.fn((type: string) => type === 'n8n-nodes-base.webhook');
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({ webhooks: [{}] });
+
 			mockGetNodeTypeDisplayableCredentials.mockImplementation((_store, node) => {
 				if ((node as INodeUi).name === 'Regular') return [{ name: 'testApi' }];
 				return [];
@@ -295,24 +314,27 @@ describe('useWorkflowSetupState', () => {
 			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
 				displayName: 'Test',
 			});
-			workflowsStore.getNodeByName = vi.fn((name: string) => {
+			mockWorkflowDocumentStore.getNodeByName = vi.fn((name: string) => {
 				if (name === 'Regular') return regularNode;
-				if (name === 'ManualTrigger') return triggerNode;
+				if (name === 'Webhook') return triggerNode;
+
 				return null;
 			});
 
 			const { setupCards } = useWorkflowSetupState();
 
-			// Trigger card first (ManualTrigger at index 0 in execution order),
+			// Trigger card first (Webhook at index 0 in execution order),
+
 			// then credential card (Regular at index 1)
 			expect(setupCards.value).toHaveLength(2);
-			expect(setupCards.value[0].type).toBe('trigger');
-			expect(setupCards.value[1].type).toBe('credential');
+			expect(setupCards.value[0].state.isTrigger).toBe(true);
+			expect(setupCards.value[0].state.credentialType).toBeUndefined();
+			expect(setupCards.value[1].state.credentialType).toBeDefined();
 		});
 
 		it('should exclude disabled nodes', () => {
 			const node = createNode({ name: 'DisabledNode', disabled: true });
-			workflowsStore.allNodes = [node];
+			mockWorkflowDocumentStore.allNodes = [node];
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'testApi' }]);
 
 			const { setupCards } = useWorkflowSetupState();
@@ -322,7 +344,7 @@ describe('useWorkflowSetupState', () => {
 
 		it('should exclude nodes without credentials (non-trigger)', () => {
 			const node = createNode({ name: 'NoCredNode' });
-			workflowsStore.allNodes = [node];
+			mockWorkflowDocumentStore.allNodes = [node];
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([]);
 
 			const { setupCards } = useWorkflowSetupState();
@@ -335,12 +357,12 @@ describe('useWorkflowSetupState', () => {
 		it('should group by credential type', () => {
 			const node1 = createNode({ name: 'Node1', position: [0, 0] });
 			const node2 = createNode({ name: 'Node2', position: [100, 0] });
-			workflowsStore.allNodes = [node1, node2];
+			mockWorkflowDocumentStore.allNodes = [node1, node2];
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'openAiApi' }]);
 			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
 				displayName: 'OpenAI API',
 			});
-			workflowsStore.getNodeByName = vi.fn((name: string) => {
+			mockWorkflowDocumentStore.getNodeByName = vi.fn((name: string) => {
 				if (name === 'Node1') return node1;
 				if (name === 'Node2') return node2;
 				return null;
@@ -355,12 +377,12 @@ describe('useWorkflowSetupState', () => {
 		it('should include all nodes sharing the credential type', () => {
 			const node1 = createNode({ name: 'Node1', position: [0, 0] });
 			const node2 = createNode({ name: 'Node2', position: [100, 0] });
-			workflowsStore.allNodes = [node1, node2];
+			mockWorkflowDocumentStore.allNodes = [node1, node2];
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'openAiApi' }]);
 			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
 				displayName: 'OpenAI API',
 			});
-			workflowsStore.getNodeByName = vi.fn((name: string) => {
+			mockWorkflowDocumentStore.getNodeByName = vi.fn((name: string) => {
 				if (name === 'Node1') return node1;
 				if (name === 'Node2') return node2;
 				return null;
@@ -379,12 +401,12 @@ describe('useWorkflowSetupState', () => {
 					slackApi: { id: 'cred-1', name: 'My Slack' },
 				},
 			});
-			workflowsStore.allNodes = [node];
+			mockWorkflowDocumentStore.allNodes = [node];
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'slackApi' }]);
 			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
 				displayName: 'Slack API',
 			});
-			workflowsStore.getNodeByName = vi.fn().mockReturnValue(node);
+			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(node);
 
 			const { credentialTypeStates } = useWorkflowSetupState();
 
@@ -397,13 +419,13 @@ describe('useWorkflowSetupState', () => {
 				type: 'n8n-nodes-base.slackTrigger',
 				credentials: { slackApi: { id: 'cred-1', name: 'My Slack' } },
 			});
-			workflowsStore.allNodes = [triggerNode];
+			mockWorkflowDocumentStore.allNodes = [triggerNode];
 			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'slackApi' }]);
 			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
 				displayName: 'Slack API',
 			});
-			workflowsStore.getNodeByName = vi.fn().mockReturnValue(triggerNode);
+			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(triggerNode);
 			workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue(null);
 
 			const { credentialTypeStates } = useWorkflowSetupState();
@@ -421,13 +443,13 @@ describe('useWorkflowSetupState', () => {
 				type: 'n8n-nodes-base.slackTrigger',
 				credentials: { slackApi: { id: 'cred-1', name: 'My Slack' } },
 			});
-			workflowsStore.allNodes = [triggerNode];
+			mockWorkflowDocumentStore.allNodes = [triggerNode];
 			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'slackApi' }]);
 			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
 				displayName: 'Slack API',
 			});
-			workflowsStore.getNodeByName = vi.fn().mockReturnValue(triggerNode);
+			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(triggerNode);
 			workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue([{ data: {} }]);
 
 			const { credentialTypeStates } = useWorkflowSetupState();
@@ -441,9 +463,9 @@ describe('useWorkflowSetupState', () => {
 
 		it('should mark isComplete false when credential is missing', () => {
 			const node = createNode({ name: 'Slack' });
-			workflowsStore.allNodes = [node];
+			mockWorkflowDocumentStore.allNodes = [node];
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'slackApi' }]);
-			workflowsStore.getNodeByName = vi.fn().mockReturnValue(node);
+			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(node);
 
 			const { credentialTypeStates } = useWorkflowSetupState();
 
@@ -462,12 +484,12 @@ describe('useWorkflowSetupState', () => {
 					},
 				},
 			});
-			workflowsStore.allNodes = [node];
+			mockWorkflowDocumentStore.allNodes = [node];
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'slackApi' }]);
 			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
 				displayName: 'Slack API',
 			});
-			workflowsStore.getNodeByName = vi.fn().mockReturnValue(node);
+			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(node);
 
 			const { credentialTypeStates } = useWorkflowSetupState();
 
@@ -478,7 +500,7 @@ describe('useWorkflowSetupState', () => {
 			const nodeA = createNode({ name: 'NodeA', position: [300, 0] });
 			const nodeB = createNode({ name: 'NodeB', position: [100, 0] });
 			// sortNodesByExecutionOrder is mocked as pass-through, so order matches allNodes
-			workflowsStore.allNodes = [nodeA, nodeB];
+			mockWorkflowDocumentStore.allNodes = [nodeA, nodeB];
 			mockGetNodeTypeDisplayableCredentials.mockImplementation((_store, node) => {
 				if ((node as INodeUi).name === 'NodeA') return [{ name: 'apiA' }];
 				if ((node as INodeUi).name === 'NodeB') return [{ name: 'apiB' }];
@@ -487,7 +509,7 @@ describe('useWorkflowSetupState', () => {
 			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
 				displayName: 'Test',
 			});
-			workflowsStore.getNodeByName = vi.fn((name: string) => {
+			mockWorkflowDocumentStore.getNodeByName = vi.fn((name: string) => {
 				if (name === 'NodeA') return nodeA;
 				if (name === 'NodeB') return nodeB;
 				return null;
@@ -503,11 +525,12 @@ describe('useWorkflowSetupState', () => {
 	describe('triggerStates', () => {
 		it('should mark trigger without credentials as complete after execution', () => {
 			const triggerNode = createNode({
-				name: 'ManualTrigger',
-				type: 'n8n-nodes-base.manualTrigger',
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
 			});
-			workflowsStore.allNodes = [triggerNode];
+			mockWorkflowDocumentStore.allNodes = [triggerNode];
 			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({ webhooks: [{}] });
 			workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue([{ data: {} }]);
 
 			const { triggerStates } = useWorkflowSetupState();
@@ -521,13 +544,13 @@ describe('useWorkflowSetupState', () => {
 				name: 'SlackTrigger',
 				type: 'n8n-nodes-base.slackTrigger',
 			});
-			workflowsStore.allNodes = [triggerNode];
+			mockWorkflowDocumentStore.allNodes = [triggerNode];
 			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'slackApi' }]);
 			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
 				displayName: 'Slack API',
 			});
-			workflowsStore.getNodeByName = vi.fn().mockReturnValue(triggerNode);
+			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(triggerNode);
 			workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue(null);
 
 			const { triggerStates } = useWorkflowSetupState();
@@ -537,16 +560,64 @@ describe('useWorkflowSetupState', () => {
 
 		it('should mark trigger without credentials and no execution as incomplete', () => {
 			const triggerNode = createNode({
-				name: 'ManualTrigger',
-				type: 'n8n-nodes-base.manualTrigger',
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
 			});
-			workflowsStore.allNodes = [triggerNode];
+			mockWorkflowDocumentStore.allNodes = [triggerNode];
 			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({ webhooks: [{}] });
 			workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue(null);
 
 			const { triggerStates } = useWorkflowSetupState();
 
 			expect(triggerStates.value[0].isComplete).toBe(false);
+		});
+
+		it('should not create standalone card for trigger that does not wait for external input', () => {
+			const triggerNode = createNode({
+				name: 'ScheduleTrigger',
+				type: 'n8n-nodes-base.scheduleTrigger',
+			});
+			mockWorkflowDocumentStore.allNodes = [triggerNode];
+			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({});
+			workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue(null);
+
+			const { triggerStates } = useWorkflowSetupState();
+
+			expect(triggerStates.value).toHaveLength(0);
+		});
+
+		it('should create standalone card for polling trigger', () => {
+			const triggerNode = createNode({
+				name: 'RssFeedTrigger',
+				type: 'n8n-nodes-base.rssFeedReadTrigger',
+			});
+			mockWorkflowDocumentStore.allNodes = [triggerNode];
+			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({ polling: true });
+			workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue(null);
+
+			const { triggerStates } = useWorkflowSetupState();
+
+			expect(triggerStates.value).toHaveLength(1);
+		});
+
+		it('should create standalone card for trigger with triggerPanel', () => {
+			const triggerNode = createNode({
+				name: 'LocalFileTrigger',
+				type: 'n8n-nodes-base.localFileTrigger',
+			});
+			mockWorkflowDocumentStore.allNodes = [triggerNode];
+			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
+			nodeTypesStore.getNodeType = vi
+				.fn()
+				.mockReturnValue({ triggerPanel: { header: 'Listening' } });
+			workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue(null);
+
+			const { triggerStates } = useWorkflowSetupState();
+
+			expect(triggerStates.value).toHaveLength(1);
 		});
 	});
 
@@ -554,12 +625,12 @@ describe('useWorkflowSetupState', () => {
 		it('should update all nodes that need the credential type', () => {
 			const node1 = createNode({ name: 'OpenAI1', position: [0, 0] });
 			const node2 = createNode({ name: 'OpenAI2', position: [100, 0] });
-			workflowsStore.allNodes = [node1, node2];
+			mockWorkflowDocumentStore.allNodes = [node1, node2];
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'openAiApi' }]);
 			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
 				displayName: 'OpenAI API',
 			});
-			workflowsStore.getNodeByName = vi.fn((name: string) => {
+			mockWorkflowDocumentStore.getNodeByName = vi.fn((name: string) => {
 				if (name === 'OpenAI1') return node1;
 				if (name === 'OpenAI2') return node2;
 				return null;
@@ -593,12 +664,12 @@ describe('useWorkflowSetupState', () => {
 		it('should call updateNodesCredentialsIssues once', () => {
 			const node1 = createNode({ name: 'OpenAI1', position: [0, 0] });
 			const node2 = createNode({ name: 'OpenAI2', position: [100, 0] });
-			workflowsStore.allNodes = [node1, node2];
+			mockWorkflowDocumentStore.allNodes = [node1, node2];
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'openAiApi' }]);
 			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
 				displayName: 'OpenAI API',
 			});
-			workflowsStore.getNodeByName = vi.fn((name: string) => {
+			mockWorkflowDocumentStore.getNodeByName = vi.fn((name: string) => {
 				if (name === 'OpenAI1') return node1;
 				if (name === 'OpenAI2') return node2;
 				return null;
@@ -616,12 +687,12 @@ describe('useWorkflowSetupState', () => {
 
 		it('should not call updateNodeCredentialIssuesByName', () => {
 			const node = createNode({ name: 'OpenAI' });
-			workflowsStore.allNodes = [node];
+			mockWorkflowDocumentStore.allNodes = [node];
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'openAiApi' }]);
 			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
 				displayName: 'OpenAI API',
 			});
-			workflowsStore.getNodeByName = vi.fn().mockReturnValue(node);
+			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(node);
 			credentialsStore.getCredentialById = vi.fn().mockReturnValue({
 				id: 'cred-1',
 				name: 'My OpenAI Key',
@@ -636,12 +707,12 @@ describe('useWorkflowSetupState', () => {
 		it('should not show toast (no auto-assign toast)', () => {
 			const node1 = createNode({ name: 'OpenAI1', position: [0, 0] });
 			const node2 = createNode({ name: 'OpenAI2', position: [100, 0] });
-			workflowsStore.allNodes = [node1, node2];
+			mockWorkflowDocumentStore.allNodes = [node1, node2];
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'openAiApi' }]);
 			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
 				displayName: 'OpenAI API',
 			});
-			workflowsStore.getNodeByName = vi.fn((name: string) => {
+			mockWorkflowDocumentStore.getNodeByName = vi.fn((name: string) => {
 				if (name === 'OpenAI1') return node1;
 				if (name === 'OpenAI2') return node2;
 				return null;
@@ -660,7 +731,7 @@ describe('useWorkflowSetupState', () => {
 
 		it('should return early when credential not found', () => {
 			const node = createNode({ name: 'OpenAI' });
-			workflowsStore.allNodes = [node];
+			mockWorkflowDocumentStore.allNodes = [node];
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'openAiApi' }]);
 			credentialsStore.getCredentialById = vi.fn().mockReturnValue(undefined);
 
@@ -677,7 +748,7 @@ describe('useWorkflowSetupState', () => {
 					existingApi: { id: 'existing-1', name: 'Existing' },
 				},
 			});
-			workflowsStore.allNodes = [node];
+			mockWorkflowDocumentStore.allNodes = [node];
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([
 				{ name: 'existingApi' },
 				{ name: 'newApi' },
@@ -685,7 +756,7 @@ describe('useWorkflowSetupState', () => {
 			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
 				displayName: 'Test',
 			});
-			workflowsStore.getNodeByName = vi.fn().mockReturnValue(node);
+			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(node);
 			credentialsStore.getCredentialById = vi.fn().mockReturnValue({
 				id: 'cred-2',
 				name: 'New Cred',
@@ -706,6 +777,125 @@ describe('useWorkflowSetupState', () => {
 		});
 	});
 
+	describe('setCredential — HTTP Request auto-assign', () => {
+		it('should auto-assign to another HTTP Request node with the same URL and credential type', () => {
+			const httpNode1 = createNode({
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				position: [0, 0],
+				parameters: { url: 'https://api.example.com/data' },
+			});
+			const httpNode2 = createNode({
+				name: 'HTTP Request1',
+				type: 'n8n-nodes-base.httpRequest',
+				position: [100, 0],
+				parameters: { url: 'https://api.example.com/data' },
+			});
+			mockWorkflowDocumentStore.allNodes = [httpNode1, httpNode2];
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'httpHeaderAuth' }]);
+			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
+				displayName: 'Header Auth',
+			});
+			mockWorkflowDocumentStore.getNodeByName = vi.fn((name: string) => {
+				if (name === 'HTTP Request') return httpNode1;
+				if (name === 'HTTP Request1') return httpNode2;
+				return null;
+			});
+			credentialsStore.getCredentialById = vi.fn().mockReturnValue({
+				id: 'cred-1',
+				name: 'My Auth',
+			});
+
+			const { setCredential } = useWorkflowSetupState();
+			setCredential('httpHeaderAuth', 'cred-1', 'HTTP Request');
+
+			// Both nodes should get the credential because they share the same URL
+			expect(mockUpdateNodeProperties).toHaveBeenCalledWith({
+				name: 'HTTP Request',
+				properties: {
+					credentials: { httpHeaderAuth: { id: 'cred-1', name: 'My Auth' } },
+				},
+			});
+			expect(mockUpdateNodeProperties).toHaveBeenCalledWith({
+				name: 'HTTP Request1',
+				properties: {
+					credentials: { httpHeaderAuth: { id: 'cred-1', name: 'My Auth' } },
+				},
+			});
+		});
+
+		it('should NOT auto-assign to another HTTP Request node with a different URL', () => {
+			const httpNode1 = createNode({
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				position: [0, 0],
+				parameters: { url: 'https://api.example.com/data' },
+			});
+			const httpNode2 = createNode({
+				name: 'HTTP Request1',
+				type: 'n8n-nodes-base.httpRequest',
+				position: [100, 0],
+				parameters: { url: 'https://api.other.com/data' },
+			});
+			mockWorkflowDocumentStore.allNodes = [httpNode1, httpNode2];
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'httpHeaderAuth' }]);
+			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
+				displayName: 'Header Auth',
+			});
+			mockWorkflowDocumentStore.getNodeByName = vi.fn((name: string) => {
+				if (name === 'HTTP Request') return httpNode1;
+				if (name === 'HTTP Request1') return httpNode2;
+				return null;
+			});
+			credentialsStore.getCredentialById = vi.fn().mockReturnValue({
+				id: 'cred-1',
+				name: 'My Auth',
+			});
+
+			const { setCredential } = useWorkflowSetupState();
+			setCredential('httpHeaderAuth', 'cred-1', 'HTTP Request');
+
+			// Only the source node should get the credential
+			expect(mockUpdateNodeProperties).toHaveBeenCalledTimes(1);
+			expect(mockUpdateNodeProperties).toHaveBeenCalledWith({
+				name: 'HTTP Request',
+				properties: {
+					credentials: { httpHeaderAuth: { id: 'cred-1', name: 'My Auth' } },
+				},
+			});
+		});
+
+		it('should create separate cards for HTTP Request nodes with same credential type', () => {
+			const httpNode = createNode({
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				position: [0, 0],
+				parameters: { url: 'https://api.example.com' },
+			});
+			const regularNode = createNode({
+				name: 'Slack',
+				position: [100, 0],
+			});
+			mockWorkflowDocumentStore.allNodes = [httpNode, regularNode];
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'httpHeaderAuth' }]);
+			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
+				displayName: 'Header Auth',
+			});
+			mockWorkflowDocumentStore.getNodeByName = vi.fn((name: string) => {
+				if (name === 'HTTP Request') return httpNode;
+				if (name === 'Slack') return regularNode;
+				return null;
+			});
+
+			const { credentialTypeStates } = useWorkflowSetupState();
+
+			// HTTP Request gets its own card, regular node gets its own card
+			expect(credentialTypeStates.value).toHaveLength(2);
+			expect(credentialTypeStates.value[0].nodes[0].name).toBe('HTTP Request');
+			expect(credentialTypeStates.value[1].nodes[0].name).toBe('Slack');
+		});
+	});
+
 	describe('unsetCredential', () => {
 		it('should remove credential from all nodes that need the type', () => {
 			const node1 = createNode({
@@ -723,12 +913,12 @@ describe('useWorkflowSetupState', () => {
 					openAiApi: { id: 'cred-1', name: 'My OpenAI' },
 				},
 			});
-			workflowsStore.allNodes = [node1, node2];
+			mockWorkflowDocumentStore.allNodes = [node1, node2];
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'openAiApi' }]);
 			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
 				displayName: 'OpenAI API',
 			});
-			workflowsStore.getNodeByName = vi.fn((name: string) => {
+			mockWorkflowDocumentStore.getNodeByName = vi.fn((name: string) => {
 				if (name === 'OpenAI1') return node1;
 				if (name === 'OpenAI2') return node2;
 				return null;
@@ -760,12 +950,12 @@ describe('useWorkflowSetupState', () => {
 					slackApi: { id: 'cred-1', name: 'My Slack' },
 				},
 			});
-			workflowsStore.allNodes = [node];
+			mockWorkflowDocumentStore.allNodes = [node];
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'slackApi' }]);
 			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
 				displayName: 'Slack API',
 			});
-			workflowsStore.getNodeByName = vi.fn().mockReturnValue(node);
+			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(node);
 
 			const { unsetCredential } = useWorkflowSetupState();
 			unsetCredential('slackApi');
@@ -776,7 +966,7 @@ describe('useWorkflowSetupState', () => {
 
 	describe('isAllComplete', () => {
 		it('should return false when empty', () => {
-			workflowsStore.allNodes = [];
+			mockWorkflowDocumentStore.allNodes = [];
 
 			const { isAllComplete } = useWorkflowSetupState();
 
@@ -790,12 +980,12 @@ describe('useWorkflowSetupState', () => {
 					slackApi: { id: 'cred-1', name: 'My Slack' },
 				},
 			});
-			workflowsStore.allNodes = [node];
+			mockWorkflowDocumentStore.allNodes = [node];
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'slackApi' }]);
 			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
 				displayName: 'Slack API',
 			});
-			workflowsStore.getNodeByName = vi.fn().mockReturnValue(node);
+			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(node);
 
 			const { isAllComplete } = useWorkflowSetupState();
 
@@ -814,7 +1004,7 @@ describe('useWorkflowSetupState', () => {
 				name: 'Incomplete',
 				position: [100, 0],
 			});
-			workflowsStore.allNodes = [node1, node2];
+			mockWorkflowDocumentStore.allNodes = [node1, node2];
 			mockGetNodeTypeDisplayableCredentials.mockImplementation((_store, node) => {
 				if ((node as INodeUi).name === 'Complete') return [{ name: 'slackApi' }];
 				if ((node as INodeUi).name === 'Incomplete') return [{ name: 'openAiApi' }];
@@ -823,7 +1013,7 @@ describe('useWorkflowSetupState', () => {
 			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
 				displayName: 'Test',
 			});
-			workflowsStore.getNodeByName = vi.fn((name: string) => {
+			mockWorkflowDocumentStore.getNodeByName = vi.fn((name: string) => {
 				if (name === 'Complete') return node1;
 				if (name === 'Incomplete') return node2;
 				return null;
@@ -839,7 +1029,7 @@ describe('useWorkflowSetupState', () => {
 				name: 'Trigger',
 				type: 'n8n-nodes-base.trigger',
 			});
-			workflowsStore.allNodes = [triggerNode];
+			mockWorkflowDocumentStore.allNodes = [triggerNode];
 			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
 			workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue(null);
 
@@ -851,7 +1041,7 @@ describe('useWorkflowSetupState', () => {
 
 	describe('totalCredentialsMissing', () => {
 		it('should return 0 when no credential cards exist', () => {
-			workflowsStore.allNodes = [];
+			mockWorkflowDocumentStore.allNodes = [];
 
 			const { totalCredentialsMissing } = useWorkflowSetupState();
 
@@ -860,9 +1050,9 @@ describe('useWorkflowSetupState', () => {
 
 		it('should count incomplete credential type cards', () => {
 			const node = createNode({ name: 'TestNode' });
-			workflowsStore.allNodes = [node];
+			mockWorkflowDocumentStore.allNodes = [node];
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'credA' }, { name: 'credB' }]);
-			workflowsStore.getNodeByName = vi.fn().mockReturnValue(node);
+			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(node);
 
 			const { totalCredentialsMissing } = useWorkflowSetupState();
 
@@ -876,12 +1066,12 @@ describe('useWorkflowSetupState', () => {
 					testApi: { id: 'cred-1', name: 'Test' },
 				},
 			});
-			workflowsStore.allNodes = [node];
+			mockWorkflowDocumentStore.allNodes = [node];
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'testApi' }]);
 			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
 				displayName: 'Test',
 			});
-			workflowsStore.getNodeByName = vi.fn().mockReturnValue(node);
+			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(node);
 
 			const { totalCredentialsMissing } = useWorkflowSetupState();
 
@@ -900,12 +1090,12 @@ describe('useWorkflowSetupState', () => {
 					},
 				},
 			});
-			workflowsStore.allNodes = [node];
+			mockWorkflowDocumentStore.allNodes = [node];
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'testApi' }]);
 			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
 				displayName: 'Test',
 			});
-			workflowsStore.getNodeByName = vi.fn().mockReturnValue(node);
+			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(node);
 
 			const { totalCredentialsMissing } = useWorkflowSetupState();
 
@@ -915,12 +1105,12 @@ describe('useWorkflowSetupState', () => {
 		it('should count shared credential type only once even when multiple nodes need it', () => {
 			const node1 = createNode({ name: 'Node1', position: [0, 0] });
 			const node2 = createNode({ name: 'Node2', position: [100, 0] });
-			workflowsStore.allNodes = [node1, node2];
+			mockWorkflowDocumentStore.allNodes = [node1, node2];
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'openAiApi' }]);
 			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
 				displayName: 'OpenAI API',
 			});
-			workflowsStore.getNodeByName = vi.fn((name: string) => {
+			mockWorkflowDocumentStore.getNodeByName = vi.fn((name: string) => {
 				if (name === 'Node1') return node1;
 				if (name === 'Node2') return node2;
 				return null;
@@ -935,7 +1125,7 @@ describe('useWorkflowSetupState', () => {
 
 	describe('totalCardsRequiringSetup', () => {
 		it('should return 0 when no cards exist', () => {
-			workflowsStore.allNodes = [];
+			mockWorkflowDocumentStore.allNodes = [];
 
 			const { totalCardsRequiringSetup } = useWorkflowSetupState();
 
@@ -944,8 +1134,9 @@ describe('useWorkflowSetupState', () => {
 
 		it('should return total number of setup cards', () => {
 			const triggerNode = createNode({
-				name: 'ManualTrigger',
-				type: 'n8n-nodes-base.manualTrigger',
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
+
 				position: [0, 0],
 			});
 			const regularNode = createNode({
@@ -953,10 +1144,10 @@ describe('useWorkflowSetupState', () => {
 				type: 'n8n-nodes-base.regular',
 				position: [100, 0],
 			});
-			workflowsStore.allNodes = [triggerNode, regularNode];
-			nodeTypesStore.isTriggerNode = vi.fn(
-				(type: string) => type === 'n8n-nodes-base.manualTrigger',
-			);
+			mockWorkflowDocumentStore.allNodes = [triggerNode, regularNode];
+			nodeTypesStore.isTriggerNode = vi.fn((type: string) => type === 'n8n-nodes-base.webhook');
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({ webhooks: [{}] });
+
 			mockGetNodeTypeDisplayableCredentials.mockImplementation((_store, node) => {
 				if ((node as INodeUi).name === 'Regular') return [{ name: 'testApi' }];
 				return [];
@@ -964,15 +1155,15 @@ describe('useWorkflowSetupState', () => {
 			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
 				displayName: 'Test',
 			});
-			workflowsStore.getNodeByName = vi.fn((name: string) => {
-				if (name === 'ManualTrigger') return triggerNode;
+			mockWorkflowDocumentStore.getNodeByName = vi.fn((name: string) => {
+				if (name === 'Webhook') return triggerNode;
 				if (name === 'Regular') return regularNode;
 				return null;
 			});
 
 			const { totalCardsRequiringSetup } = useWorkflowSetupState();
 
-			// 1 standalone trigger card (no credentials) + 1 credential card
+			// 1 standalone trigger card (webhook, no credentials) + 1 credential card
 			expect(totalCardsRequiringSetup.value).toBe(2);
 		});
 
@@ -981,13 +1172,13 @@ describe('useWorkflowSetupState', () => {
 				name: 'SlackTrigger',
 				type: 'n8n-nodes-base.slackTrigger',
 			});
-			workflowsStore.allNodes = [triggerNode];
+			mockWorkflowDocumentStore.allNodes = [triggerNode];
 			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'slackApi' }]);
 			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
 				displayName: 'Slack API',
 			});
-			workflowsStore.getNodeByName = vi.fn().mockReturnValue(triggerNode);
+			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(triggerNode);
 
 			const { totalCardsRequiringSetup } = useWorkflowSetupState();
 
@@ -1006,13 +1197,13 @@ describe('useWorkflowSetupState', () => {
 				type: 'n8n-nodes-base.slackTrigger',
 				position: [100, 0],
 			});
-			workflowsStore.allNodes = [trigger1, trigger2];
+			mockWorkflowDocumentStore.allNodes = [trigger1, trigger2];
 			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'slackApi' }]);
 			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
 				displayName: 'Slack API',
 			});
-			workflowsStore.getNodeByName = vi.fn((name: string) => {
+			mockWorkflowDocumentStore.getNodeByName = vi.fn((name: string) => {
 				if (name === 'SlackTrigger1') return trigger1;
 				if (name === 'SlackTrigger2') return trigger2;
 				return null;
@@ -1029,24 +1220,22 @@ describe('useWorkflowSetupState', () => {
 		it('should use provided nodes ref instead of store nodes', () => {
 			const customNode = createNode({ name: 'CustomNode' });
 			const storeNode = createNode({ name: 'StoreNode' });
-			workflowsStore.allNodes = [storeNode];
+			mockWorkflowDocumentStore.allNodes = [storeNode];
 
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'testApi' }]);
 			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
 				displayName: 'Test',
 			});
-			workflowsStore.getNodeByName = vi.fn().mockReturnValue(customNode);
+			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(customNode);
 
 			const nodesRef = ref<INodeUi[]>([customNode]);
 			const { setupCards } = useWorkflowSetupState(nodesRef);
 
-			const credCards = setupCards.value.filter((c) => c.type === 'credential');
+			const credCards = setupCards.value.filter((c) => !!c.state.credentialType);
 			expect(credCards).toHaveLength(1);
-			if (credCards[0].type === 'credential') {
-				const nodeNames = credCards[0].state.nodes.map((n) => n.name);
-				expect(nodeNames).toContain('CustomNode');
-				expect(nodeNames).not.toContain('StoreNode');
-			}
+			const nodeNames = credCards[0].state.allNodesUsingCredential?.map((n) => n.name) ?? [];
+			expect(nodeNames).toContain('CustomNode');
+			expect(nodeNames).not.toContain('StoreNode');
 		});
 
 		it('should react to changes in the ref', async () => {
@@ -1057,7 +1246,7 @@ describe('useWorkflowSetupState', () => {
 			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
 				displayName: 'Test',
 			});
-			workflowsStore.getNodeByName = vi.fn((name: string) => {
+			mockWorkflowDocumentStore.getNodeByName = vi.fn((name: string) => {
 				if (name === 'Node1') return node1;
 				if (name === 'Node2') return node2;
 				return null;
@@ -1093,12 +1282,12 @@ describe('useWorkflowSetupState', () => {
 					openAiApi: { id: 'cred-1', name: 'My OpenAI' },
 				},
 			});
-			workflowsStore.allNodes = [node1, node2];
+			mockWorkflowDocumentStore.allNodes = [node1, node2];
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'openAiApi' }]);
 			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
 				displayName: 'OpenAI API',
 			});
-			workflowsStore.getNodeByName = vi.fn((name: string) => {
+			mockWorkflowDocumentStore.getNodeByName = vi.fn((name: string) => {
 				if (name === 'OpenAI1') return node1;
 				if (name === 'OpenAI2') return node2;
 				return null;
@@ -1126,12 +1315,12 @@ describe('useWorkflowSetupState', () => {
 					openAiApi: { id: 'cred-1', name: 'My OpenAI' },
 				},
 			});
-			workflowsStore.allNodes = [node];
+			mockWorkflowDocumentStore.allNodes = [node];
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'openAiApi' }]);
 			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
 				displayName: 'OpenAI API',
 			});
-			workflowsStore.getNodeByName = vi.fn().mockReturnValue(node);
+			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(node);
 
 			useWorkflowSetupState();
 
@@ -1148,7 +1337,7 @@ describe('useWorkflowSetupState', () => {
 					slackApi: { id: 'cred-2', name: 'My Slack' },
 				},
 			});
-			workflowsStore.allNodes = [node];
+			mockWorkflowDocumentStore.allNodes = [node];
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([
 				{ name: 'openAiApi' },
 				{ name: 'slackApi' },
@@ -1156,7 +1345,7 @@ describe('useWorkflowSetupState', () => {
 			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
 				displayName: 'Test',
 			});
-			workflowsStore.getNodeByName = vi.fn().mockReturnValue(node);
+			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(node);
 
 			useWorkflowSetupState();
 
@@ -1176,12 +1365,13 @@ describe('useWorkflowSetupState', () => {
 	describe('testCredentialInBackground', () => {
 		it('should trigger background test when setCredential is called', async () => {
 			const node = createNode({ name: 'OpenAI' });
-			workflowsStore.allNodes = [node];
+			mockWorkflowDocumentStore.allNodes = [node];
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'openAiApi' }]);
 			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
 				displayName: 'OpenAI API',
+				test: { request: {} },
 			});
-			workflowsStore.getNodeByName = vi.fn().mockReturnValue(node);
+			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(node);
 			credentialsStore.getCredentialById = vi.fn().mockReturnValue({
 				id: 'cred-1',
 				name: 'My OpenAI Key',
@@ -1208,12 +1398,13 @@ describe('useWorkflowSetupState', () => {
 
 		it('should skip test when credential is already tested OK', async () => {
 			const node = createNode({ name: 'OpenAI' });
-			workflowsStore.allNodes = [node];
+			mockWorkflowDocumentStore.allNodes = [node];
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'openAiApi' }]);
 			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
 				displayName: 'OpenAI API',
+				test: { request: {} },
 			});
-			workflowsStore.getNodeByName = vi.fn().mockReturnValue(node);
+			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(node);
 			credentialsStore.getCredentialById = vi.fn().mockReturnValue({
 				id: 'cred-1',
 				name: 'My OpenAI Key',
@@ -1230,12 +1421,13 @@ describe('useWorkflowSetupState', () => {
 
 		it('should skip test when a test is already pending', async () => {
 			const node = createNode({ name: 'OpenAI' });
-			workflowsStore.allNodes = [node];
+			mockWorkflowDocumentStore.allNodes = [node];
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'openAiApi' }]);
 			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
 				displayName: 'OpenAI API',
+				test: { request: {} },
 			});
-			workflowsStore.getNodeByName = vi.fn().mockReturnValue(node);
+			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(node);
 			credentialsStore.getCredentialById = vi.fn().mockReturnValue({
 				id: 'cred-1',
 				name: 'My OpenAI Key',
@@ -1253,12 +1445,13 @@ describe('useWorkflowSetupState', () => {
 
 		it('should mark OAuth credentials as success without calling testCredential', async () => {
 			const node = createNode({ name: 'Google' });
-			workflowsStore.allNodes = [node];
+			mockWorkflowDocumentStore.allNodes = [node];
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'googleApi' }]);
 			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
 				displayName: 'Google API',
+				test: { request: {} },
 			});
-			workflowsStore.getNodeByName = vi.fn().mockReturnValue(node);
+			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(node);
 			credentialsStore.getCredentialById = vi.fn().mockReturnValue({
 				id: 'cred-1',
 				name: 'My Google',
@@ -1279,6 +1472,32 @@ describe('useWorkflowSetupState', () => {
 			expect(credentialsStore.testCredential).not.toHaveBeenCalled();
 		});
 
+		it('should skip test for non-testable credential types', async () => {
+			const node = createNode({ name: 'HttpRequest' });
+			mockWorkflowDocumentStore.allNodes = [node];
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'httpHeaderAuth' }]);
+			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
+				displayName: 'Header Auth',
+			});
+			credentialsStore.getNodesWithAccess = vi.fn().mockReturnValue([]);
+			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(node);
+			credentialsStore.getCredentialById = vi.fn().mockReturnValue({
+				id: 'cred-1',
+				name: 'My Header Auth',
+			});
+			credentialsStore.isCredentialTestedOk = vi.fn().mockReturnValue(false);
+			credentialsStore.getCredentialData = vi.fn();
+			credentialsStore.testCredential = vi.fn();
+
+			const { setCredential } = useWorkflowSetupState();
+			setCredential('httpHeaderAuth', 'cred-1');
+
+			await nextTick();
+
+			expect(credentialsStore.getCredentialData).not.toHaveBeenCalled();
+			expect(credentialsStore.testCredential).not.toHaveBeenCalled();
+		});
+
 		it('should auto-test pre-existing credentials on initial load', async () => {
 			credentialsStore.isCredentialTestedOk = vi.fn().mockReturnValue(false);
 			credentialsStore.getCredentialData = vi.fn().mockResolvedValue({
@@ -1296,12 +1515,13 @@ describe('useWorkflowSetupState', () => {
 					openAiApi: { id: 'cred-1', name: 'My OpenAI Key' },
 				},
 			});
-			workflowsStore.allNodes = [node];
+			mockWorkflowDocumentStore.allNodes = [node];
 			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'openAiApi' }]);
 			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
 				displayName: 'OpenAI API',
+				test: { request: {} },
 			});
-			workflowsStore.getNodeByName = vi.fn().mockReturnValue(node);
+			mockWorkflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(node);
 
 			useWorkflowSetupState();
 
@@ -1313,6 +1533,330 @@ describe('useWorkflowSetupState', () => {
 					}),
 				);
 			});
+		});
+	});
+
+	describe('nodeStates (credential+parameter)', () => {
+		it('should create node credential cards when nodes have both credentials and parameters', () => {
+			const node1 = createNode({
+				name: 'HTTP Request 1',
+				type: 'n8n-nodes-base.httpRequest',
+				issues: { credentials: { httpHeaderAuth: ['Credential is required'] } },
+				parameters: { url: 'https://api.example.com' },
+			});
+
+			mockWorkflowDocumentStore.allNodes = [node1];
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'httpHeaderAuth' }]);
+			mockGetNodeParametersIssues.mockReturnValue({ url: ['URL is required'] });
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
+				properties: [{ name: 'url', required: true }],
+			});
+
+			const state = useWorkflowSetupState();
+
+			expect(state.nodeStates.value).toHaveLength(1);
+			expect(state.nodeStates.value[0]).toMatchObject({
+				node: node1,
+				credentialType: 'httpHeaderAuth',
+				showCredentialPicker: true,
+			});
+		});
+
+		it('should only show credential picker on first node with same credential type', () => {
+			const node1 = createNode({
+				name: 'HTTP Request 1',
+				type: 'n8n-nodes-base.httpRequest',
+				issues: { credentials: { httpHeaderAuth: ['Credential is required'] } },
+				parameters: { url: 'https://api.example.com' },
+			});
+			const node2 = createNode({
+				name: 'HTTP Request 2',
+				type: 'n8n-nodes-base.httpRequest',
+				issues: { credentials: { httpHeaderAuth: ['Credential is required'] } },
+				parameters: { url: 'https://api.example.com' },
+			});
+
+			mockWorkflowDocumentStore.allNodes = [node1, node2];
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'httpHeaderAuth' }]);
+			mockGetNodeParametersIssues.mockReturnValue({ url: ['URL is required'] });
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
+				properties: [{ name: 'url', required: true }],
+			});
+
+			const state = useWorkflowSetupState();
+
+			expect(state.nodeStates.value).toHaveLength(2);
+			expect(state.nodeStates.value[0].showCredentialPicker).toBe(true);
+			expect(state.nodeStates.value[1].showCredentialPicker).toBe(false);
+		});
+
+		it('should track all nodes using credential in allNodesUsingCredential', () => {
+			const node1 = createNode({
+				name: 'HTTP Request 1',
+				type: 'n8n-nodes-base.httpRequest',
+				issues: { credentials: { httpHeaderAuth: ['Credential is required'] } },
+				parameters: { url: 'https://api.example.com' },
+			});
+			const node2 = createNode({
+				name: 'HTTP Request 2',
+				type: 'n8n-nodes-base.httpRequest',
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'My Credential' } },
+				parameters: { url: 'https://api.example.com' },
+			});
+
+			mockWorkflowDocumentStore.allNodes = [node1, node2];
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'httpHeaderAuth' }]);
+			// Only node1 has parameter issues
+			mockGetNodeParametersIssues.mockImplementation((_, node) => {
+				if (node.name === 'HTTP Request 1') return { url: ['URL is required'] };
+				return {};
+			});
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
+				properties: [{ name: 'url', required: true }],
+			});
+
+			const state = useWorkflowSetupState();
+
+			expect(state.nodeStates.value).toHaveLength(1);
+			expect(state.nodeStates.value[0].allNodesUsingCredential).toHaveLength(2);
+			expect(state.nodeStates.value[0].allNodesUsingCredential).toContain(node1);
+			expect(state.nodeStates.value[0].allNodesUsingCredential).toContain(node2);
+		});
+
+		it('should persist cards even after parameters are filled', async () => {
+			const node1 = createNode({
+				name: 'HTTP Request 1',
+				type: 'n8n-nodes-base.httpRequest',
+				issues: { credentials: { httpHeaderAuth: ['Credential is required'] } },
+				parameters: { url: 'https://api.example.com' },
+			});
+
+			mockWorkflowDocumentStore.allNodes = [node1];
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'httpHeaderAuth' }]);
+			mockGetNodeParametersIssues.mockReturnValue({ url: ['URL is required'] });
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
+				properties: [{ name: 'url', required: true }],
+			});
+
+			const state = useWorkflowSetupState();
+
+			// Initial state - has parameter issues
+			expect(state.nodeStates.value).toHaveLength(1);
+
+			// Simulate parameter being filled (remove parameter issues)
+			node1.issues = { credentials: { httpHeaderAuth: ['Credential is required'] } };
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
+				properties: [{ name: 'url', required: true }],
+			});
+			await nextTick();
+
+			// Card should still exist due to persistence
+			expect(state.nodeStates.value).toHaveLength(1);
+		});
+
+		it('should not create duplicate cards with credentialTypeStates', () => {
+			const node1 = createNode({
+				name: 'HTTP Request 1',
+				type: 'n8n-nodes-base.httpRequest',
+				issues: { credentials: { httpHeaderAuth: ['Credential is required'] } },
+				parameters: { url: 'https://api.example.com' },
+			});
+
+			mockWorkflowDocumentStore.allNodes = [node1];
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'httpHeaderAuth' }]);
+			mockGetNodeParametersIssues.mockReturnValue({ url: ['URL is required'] });
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
+				properties: [{ name: 'url', required: true }],
+			});
+
+			const state = useWorkflowSetupState();
+
+			// Should only be in nodeStates, not credentialTypeStates
+			expect(state.nodeStates.value).toHaveLength(1);
+			expect(state.credentialTypeStates.value).toHaveLength(0);
+		});
+
+		it('should exclude nodes without parameters from card list', () => {
+			const node1 = createNode({
+				name: 'HTTP Request 1',
+				type: 'n8n-nodes-base.httpRequest',
+				issues: { credentials: { httpHeaderAuth: ['Credential is required'] } },
+				parameters: { url: 'https://api.example.com' },
+			});
+			const node2 = createNode({
+				name: 'HTTP Request 2',
+				type: 'n8n-nodes-base.httpRequest',
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'My Credential' } },
+				parameters: { url: 'https://api.example.com' },
+			});
+
+			mockWorkflowDocumentStore.allNodes = [node1, node2];
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'httpHeaderAuth' }]);
+			mockGetNodeParametersIssues.mockImplementation((_, node) => {
+				if (node.name === 'HTTP Request 1') return { url: ['URL is required'] };
+				return {};
+			});
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
+				properties: [{ name: 'url', required: true }],
+			});
+
+			const state = useWorkflowSetupState();
+
+			// Only node1 has parameter issues, so only it should get a card
+			expect(state.nodeStates.value).toHaveLength(1);
+			expect(state.nodeStates.value[0].node).toBe(node1);
+		});
+
+		it('should support node-specific credential assignment via setCredential', () => {
+			const node1 = createNode({
+				name: 'HTTP Request 1',
+				type: 'n8n-nodes-base.httpRequest',
+				issues: { credentials: { httpHeaderAuth: ['Credential is required'] } },
+				parameters: { url: 'https://api.example.com' },
+			});
+
+			mockWorkflowDocumentStore.allNodes = [node1];
+			mockWorkflowDocumentStore.getNodeByName = vi.fn((name: string) => {
+				if (name === 'HTTP Request 1') return node1;
+				return null;
+			});
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'httpHeaderAuth' }]);
+			mockGetNodeParametersIssues.mockReturnValue({ url: ['URL is required'] });
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
+				properties: [{ name: 'url', required: true }],
+			});
+			credentialsStore.getCredentialById = vi
+				.fn()
+				.mockReturnValue({ id: 'cred-1', name: 'My Credential', type: 'httpHeaderAuth' });
+
+			const state = useWorkflowSetupState();
+
+			// Set credential for specific node
+			state.setCredential('httpHeaderAuth', 'cred-1', 'HTTP Request 1');
+
+			expect(mockUpdateNodeProperties).toHaveBeenCalledWith({
+				name: 'HTTP Request 1',
+				properties: {
+					credentials: {
+						httpHeaderAuth: { id: 'cred-1', name: 'My Credential' },
+					},
+				},
+			});
+		});
+
+		it('should support node-specific credential removal via unsetCredential', () => {
+			const node1 = createNode({
+				name: 'HTTP Request 1',
+				type: 'n8n-nodes-base.httpRequest',
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'My Credential' } },
+				parameters: { url: 'https://api.example.com' },
+			});
+
+			mockWorkflowDocumentStore.allNodes = [node1];
+			mockWorkflowDocumentStore.getNodeByName = vi.fn((name: string) => {
+				if (name === 'HTTP Request 1') return node1;
+				return null;
+			});
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'httpHeaderAuth' }]);
+			mockGetNodeParametersIssues.mockReturnValue({ url: ['URL is required'] });
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
+				properties: [{ name: 'url', required: true }],
+			});
+
+			const state = useWorkflowSetupState();
+
+			// Unset credential for specific node
+			state.unsetCredential('httpHeaderAuth', 'HTTP Request 1');
+
+			expect(mockUpdateNodeProperties).toHaveBeenCalledWith({
+				name: 'HTTP Request 1',
+				properties: {
+					credentials: {},
+				},
+			});
+		});
+
+		it('should mark as complete when credential is set, tested, and all parameters are filled', () => {
+			const node1 = createNode({
+				name: 'HTTP Request 1',
+				type: 'n8n-nodes-base.httpRequest',
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'My Credential' } },
+				parameters: { url: 'https://api.example.com' },
+			});
+
+			mockWorkflowDocumentStore.allNodes = [node1];
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'httpHeaderAuth' }]);
+			// Node has parameter issues, so card is created
+			mockGetNodeParametersIssues.mockReturnValue({ url: ['URL is required'] });
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
+				properties: [{ name: 'url', required: true }],
+			});
+			credentialsStore.isCredentialTestedOk = vi.fn().mockReturnValue(true);
+
+			const state = useWorkflowSetupState();
+
+			// Card exists but is incomplete due to parameter issues
+			expect(state.nodeStates.value).toHaveLength(1);
+			expect(state.nodeStates.value[0].isComplete).toBe(false);
+		});
+
+		it('should mark as incomplete when credential is not tested', () => {
+			const node1 = createNode({
+				name: 'HTTP Request 1',
+				type: 'n8n-nodes-base.httpRequest',
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'My Credential' } },
+				parameters: { url: 'https://api.example.com' },
+			});
+
+			mockWorkflowDocumentStore.allNodes = [node1];
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'httpHeaderAuth' }]);
+			// Node has parameter issues, so card is created
+			mockGetNodeParametersIssues.mockReturnValue({ url: ['URL is required'] });
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
+				properties: [{ name: 'url', required: true }],
+			});
+			credentialsStore.isCredentialTestedOk = vi.fn().mockReturnValue(false);
+
+			const state = useWorkflowSetupState();
+
+			// Card exists but is incomplete due to credential not tested
+			expect(state.nodeStates.value).toHaveLength(1);
+			expect(state.nodeStates.value[0].isComplete).toBe(false);
+		});
+
+		it('should include in setupCards in execution order', () => {
+			const node1 = createNode({
+				name: 'HTTP Request 1',
+				type: 'n8n-nodes-base.httpRequest',
+				issues: { credentials: { httpHeaderAuth: ['Credential is required'] } },
+				parameters: { url: 'https://api.example.com' },
+			});
+			const trigger = createNode({
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
+			});
+
+			mockWorkflowDocumentStore.allNodes = [node1, trigger];
+			mockGetNodeTypeDisplayableCredentials.mockImplementation((_, node) => {
+				mockGetNodeParametersIssues.mockImplementation((_, node) => {
+					if (node.type === 'n8n-nodes-base.httpRequest') return { url: ['URL is required'] };
+					return {};
+				});
+				if (node.type === 'n8n-nodes-base.httpRequest') return [{ name: 'httpHeaderAuth' }];
+				return [];
+			});
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
+				properties: [{ name: 'url', required: true }],
+				webhooks: [{}],
+			});
+			nodeTypesStore.isTriggerNode = vi.fn((type: string) => type === 'n8n-nodes-base.webhook');
+
+			const state = useWorkflowSetupState();
+
+			expect(state.setupCards.value).toHaveLength(2);
+			const nodeCredCard = state.setupCards.value.find((c) => c.state.node === node1);
+			expect(nodeCredCard).toBeDefined();
+			expect(nodeCredCard?.state.credentialType).toBe('httpHeaderAuth');
 		});
 	});
 });

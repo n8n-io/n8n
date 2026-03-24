@@ -34,6 +34,7 @@ export * from './type-validation';
 export * from './result';
 export * from './schemas';
 export * from './run-execution-data/run-execution-data';
+export { WorkflowExpression } from './workflow-expression';
 export { LoggerProxy, NodeHelpers, ObservableObject, TelemetryHelpers };
 export {
 	isObjectEmpty,
@@ -56,6 +57,7 @@ export {
 	isCommunityPackageName,
 	dedupe,
 	sanitizeFilename,
+	generateSecureToken,
 } from './utils';
 export {
 	isINodeProperties,

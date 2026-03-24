@@ -8,6 +8,68 @@ import type { CloudPlanAndUsageData } from '@/Interface';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { N8nButton, N8nText, type IconName, type ButtonVariant } from '@n8n/design-system';
 
+const LEGACY_STYLE_TO_VARIANT: Record<string, ButtonVariant> = {
+	success: 'solid',
+	primary: 'solid',
+	secondary: 'subtle',
+	tertiary: 'ghost',
+	danger: 'destructive',
+};
+
+// CSS variable overrides to replicate the legacy button type colors.
+// These match the old V1 Button styles (success, warning, danger, primary)
+// and can be removed once the backend migrates from style to variant.
+const LEGACY_STYLE_TO_CSS_VARS: Record<string, Record<string, string>> = {
+	success: {
+		'--button--color--background': 'var(--color--success)',
+		'--button--color--background-hover': 'var(--color--success--shade-1)',
+		'--button--color--background-active': 'var(--color--success--shade-1)',
+		'--button--color': 'var(--color--neutral-white)',
+		'--button--shadow': '0 0 0 1px var(--color--success)',
+		'--button--shadow--hover': '0 0 0 1px var(--color--success--shade-1)',
+		'--button--shadow--active': '0 0 0 1px var(--color--success--shade-1)',
+		'--button--border-color': 'var(--color--success)',
+		'--button--border-color--hover': 'var(--color--success--shade-1)',
+		'--button--border-color--active': 'var(--color--success--shade-1)',
+	},
+	warning: {
+		'--button--color--background': 'var(--color--warning)',
+		'--button--color--background-hover': 'var(--color--warning--shade-1)',
+		'--button--color--background-active': 'var(--color--warning--shade-1)',
+		'--button--color': 'var(--color--neutral-white)',
+		'--button--shadow': '0 0 0 1px var(--color--warning)',
+		'--button--shadow--hover': '0 0 0 1px var(--color--warning--shade-1)',
+		'--button--shadow--active': '0 0 0 1px var(--color--warning--shade-1)',
+		'--button--border-color': 'var(--color--warning)',
+		'--button--border-color--hover': 'var(--color--warning--shade-1)',
+		'--button--border-color--active': 'var(--color--warning--shade-1)',
+	},
+	danger: {
+		'--button--color--background': 'var(--color--danger)',
+		'--button--color--background-hover': 'var(--color--danger--shade-1)',
+		'--button--color--background-active': 'var(--color--danger--shade-1)',
+		'--button--color': 'var(--color--neutral-white)',
+		'--button--shadow': '0 0 0 1px var(--color--danger)',
+		'--button--shadow--hover': '0 0 0 1px var(--color--danger--shade-1)',
+		'--button--shadow--active': '0 0 0 1px var(--color--danger--shade-1)',
+		'--button--border-color': 'var(--color--danger)',
+		'--button--border-color--hover': 'var(--color--danger--shade-1)',
+		'--button--border-color--active': 'var(--color--danger--shade-1)',
+	},
+	primary: {
+		'--button--color--background': 'var(--color--primary)',
+		'--button--color--background-hover': 'var(--color--primary--shade-1)',
+		'--button--color--background-active': 'var(--color--primary--shade-1)',
+		'--button--color': 'var(--color--neutral-white)',
+		'--button--shadow': '0 0 0 1px var(--color--primary)',
+		'--button--shadow--hover': '0 0 0 1px var(--color--primary--shade-1)',
+		'--button--shadow--active': '0 0 0 1px var(--color--primary--shade-1)',
+		'--button--border-color': 'var(--color--primary)',
+		'--button--border-color--hover': 'var(--color--primary--shade-1)',
+		'--button--border-color--active': 'var(--color--primary--shade-1)',
+	},
+};
+
 const PROGRESS_BAR_MINIMUM_THRESHOLD = 8;
 
 const cloudPlanStore = useCloudPlanStore();
@@ -21,10 +83,23 @@ const bannerCta = computed(() => ({
 	text: cloudPlanStore.bannerCta.text,
 	icon: cloudPlanStore.bannerCta.icon as IconName | undefined,
 	size: cloudPlanStore.bannerCta.size as 'small' | 'medium',
-	style: cloudPlanStore.bannerCta.style as ButtonVariant,
+	style: cloudPlanStore.bannerCta.style,
+	variant: cloudPlanStore.bannerCta.variant as ButtonVariant | undefined,
 	href: cloudPlanStore.bannerCta.href,
 }));
 const bannerIcon = computed(() => cloudPlanStore.bannerIcon as IconName | undefined);
+
+// If backend sends variant, use it directly. Otherwise, map legacy style to variant.
+const ctaVariant = computed((): ButtonVariant => {
+	if (bannerCta.value.variant) return bannerCta.value.variant;
+	return LEGACY_STYLE_TO_VARIANT[bannerCta.value.style] ?? 'solid';
+});
+
+// Only apply CSS variable overrides when using legacy style (no variant from backend)
+const ctaStyleOverrides = computed((): Record<string, string> | undefined => {
+	if (bannerCta.value.variant) return undefined;
+	return LEGACY_STYLE_TO_CSS_VARS[bannerCta.value.style];
+});
 
 const storeTrialTimeLeft = computed(() => cloudPlanStore.trialTimeLeft);
 
@@ -129,7 +204,8 @@ function onCtaClick() {
 		<template #trailingContent>
 			<div :class="$style.trailingContentWrapper">
 				<N8nButton
-					:variant="bannerCta.style"
+					:variant="ctaVariant"
+					:style="ctaStyleOverrides"
 					:icon="bannerCta.icon"
 					:size="bannerCta.size"
 					@click="onCtaClick"

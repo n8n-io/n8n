@@ -17,6 +17,9 @@ import { buildStrapiUpdateQuery } from './strapi-utils';
 const UPDATE_INTERVAL = 8 * 60 * 60 * 1000;
 const RETRY_INTERVAL = 5 * 60 * 1000;
 
+// Strapi's qs parser has an arrayLimit of 100, so we batch IDs
+const STRAPI_ARRAY_LIMIT = 100;
+
 @Service()
 export class CommunityNodeTypesService {
 	private communityNodeTypes: Map<string, StrapiCommunityNodeType> = new Map();
@@ -101,8 +104,16 @@ export class CommunityNodeTypesService {
 					return;
 				}
 
-				const qs = buildStrapiUpdateQuery(typesToUpdate);
-				data = await getCommunityNodeTypes(environment, qs, this.config.aiNodeSdkVersion);
+				for (let i = 0; i < typesToUpdate.length; i += STRAPI_ARRAY_LIMIT) {
+					const batch = typesToUpdate.slice(i, i + STRAPI_ARRAY_LIMIT);
+					const qs = buildStrapiUpdateQuery(batch);
+					const batchData = await getCommunityNodeTypes(
+						environment,
+						qs,
+						this.config.aiNodeSdkVersion,
+					);
+					data.push(...batchData);
+				}
 			}
 
 			this.updateCommunityNodeTypes(data);

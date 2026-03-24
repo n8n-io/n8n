@@ -521,8 +521,14 @@ function displayConfig(config: N8NConfig) {
 
 // Run if executed directly
 if (require.main === module) {
-	main().catch((error) => {
-		log.error(`Unexpected error: ${error}`);
-		process.exit(1);
-	});
+	// Keep the event loop alive while main() runs. Without this, the process
+	// can exit between async Docker API calls (e.g. after exposeHostPorts
+	// resolves but before Network.start() creates new I/O handles).
+	const keepAlive = setInterval(() => {}, 30_000);
+	main()
+		.catch((error) => {
+			log.error(`Unexpected error: ${error}`);
+			process.exit(1);
+		})
+		.finally(() => clearInterval(keepAlive));
 }

@@ -7,6 +7,8 @@ import type {
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
 	JsonValue,
+	WorkflowExecuteMode,
+	WorkflowSettings,
 } from 'n8n-workflow';
 
 import type { ConcurrencyQueueType } from '@/concurrency/concurrency-control.service';
@@ -123,6 +125,7 @@ export type RelayEventMap = {
 	'workflow-pre-execute': {
 		executionId: string;
 		data: IWorkflowExecutionDataProcess /* main process */ | IWorkflowBase /* worker */;
+		mode: WorkflowExecuteMode;
 	};
 
 	'workflow-post-execute': {
@@ -342,6 +345,7 @@ export type RelayEventMap = {
 		path: string;
 		method: string;
 		apiVersion: string;
+		userAgent?: string;
 	};
 
 	// #endregion
@@ -457,6 +461,25 @@ export type RelayEventMap = {
 		user: UserLike;
 		executionIds: string[];
 		deleteBefore?: Date;
+	};
+
+	'execution-data-revealed': {
+		user: UserLike;
+		executionId: string;
+		workflowId: string;
+		ipAddress: string;
+		userAgent: string;
+		redactionPolicy: WorkflowSettings.RedactionPolicy;
+	};
+
+	'execution-data-reveal-failure': {
+		user: UserLike;
+		executionId: string;
+		workflowId: string;
+		ipAddress: string;
+		userAgent: string;
+		redactionPolicy: WorkflowSettings.RedactionPolicy;
+		rejectionReason: string;
 	};
 
 	// #endregion

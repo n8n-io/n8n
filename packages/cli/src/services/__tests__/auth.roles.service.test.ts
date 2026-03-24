@@ -1,36 +1,49 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
-import {
-	AuthRolesService,
-	Role,
-	RoleRepository,
-	Scope,
-	ScopeRepository,
-	SettingsRepository,
-} from '@n8n/db';
+import { AuthRolesService, Role, Scope } from '@n8n/db';
+import type { DbLock, DbLockService } from '@n8n/db';
 import {
 	ALL_SCOPES,
 	ALL_ROLES,
 	scopeInformation,
 	PROJECT_OWNER_ROLE_SLUG,
+	PROJECT_ADMIN_ROLE_SLUG,
+	PROJECT_EDITOR_ROLE_SLUG,
 	PERSONAL_SPACE_PUBLISHING_SETTING,
 	PERSONAL_SPACE_SHARING_SETTING,
+	EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING,
 } from '@n8n/permissions';
+import type { EntityManager, Repository } from '@n8n/typeorm';
+import { mock } from 'jest-mock-extended';
 
 const SHARING_SCOPES = PERSONAL_SPACE_SHARING_SETTING.scopes;
 
 describe('AuthRolesService', () => {
 	const logger = mockInstance(Logger);
-	const scopeRepository = mockInstance(ScopeRepository);
-	const roleRepository = mockInstance(RoleRepository);
-	const settingsRepository = mockInstance(SettingsRepository);
 
-	const authRolesService = new AuthRolesService(
-		logger,
-		scopeRepository,
-		roleRepository,
-		settingsRepository,
+	// Mock repositories returned by EntityManager.getRepository()
+	const scopeRepository = mock<Repository<Scope>>();
+	const roleRepository = mock<Repository<Role>>();
+
+	// Mock EntityManager provided by DbLockService.withLock()
+	const mockEntityManager = mock<EntityManager>();
+	mockEntityManager.getRepository.mockImplementation((entity) => {
+		if (entity === Scope) return scopeRepository as never;
+		if (entity === Role) return roleRepository as never;
+		throw new Error(`Unexpected entity: ${String(entity)}`);
+	});
+	// Default: no settings rows (backward compat: undefined values => grant scopes)
+	mockEntityManager.findBy.mockResolvedValue([]);
+	mockEntityManager.findOneBy.mockResolvedValue(null);
+
+	// Mock DbLockService that executes the callback with our mock EntityManager
+	const dbLockService = mock<DbLockService>();
+	dbLockService.withLock.mockImplementation(
+		async (_lockId: DbLock, fn: (tx: EntityManager) => Promise<unknown>) =>
+			await fn(mockEntityManager),
 	);
+
+	const authRolesService = new AuthRolesService(logger, dbLockService);
 
 	// Helper functions for creating test data
 	function createScope(
@@ -90,19 +103,30 @@ describe('AuthRolesService', () => {
 		scopeRepository.find.mockResolvedValue(allScopes);
 		roleRepository.find.mockResolvedValue([]);
 		roleRepository.create.mockImplementation((data) => data as Role);
-		roleRepository.save.mockImplementation(async (entities) => entities as any);
+		roleRepository.save.mockImplementation(async (entities) => entities as never);
 	}
 
 	beforeEach(() => {
 		jest.restoreAllMocks();
-		// AuthRolesService uses findByKeys; default to [] so missing settings => undefined => backward compat (grant scopes)
-		settingsRepository.findByKeys.mockResolvedValue([]);
+		// Re-setup the EntityManager mocks after restoreAllMocks
+		mockEntityManager.getRepository.mockImplementation((entity) => {
+			if (entity === Scope) return scopeRepository as never;
+			if (entity === Role) return roleRepository as never;
+			throw new Error(`Unexpected entity: ${String(entity)}`);
+		});
+		// Default: no settings rows (backward compat: undefined values => grant scopes)
+		mockEntityManager.findBy.mockResolvedValue([]);
+		mockEntityManager.findOneBy.mockResolvedValue(null);
+		dbLockService.withLock.mockImplementation(
+			async (_lockId: DbLock, fn: (tx: EntityManager) => Promise<unknown>) =>
+				await fn(mockEntityManager),
+		);
 	});
 
 	describe('init - syncScopes', () => {
 		test('should create new scopes that do not exist in database', async () => {
 			scopeRepository.find.mockResolvedValue([]);
-			scopeRepository.save.mockImplementation(async (entities) => entities as any);
+			scopeRepository.save.mockImplementation(async (entities) => entities as never);
 			roleRepository.find.mockResolvedValue([]);
 
 			await authRolesService.init();
@@ -125,7 +149,7 @@ describe('AuthRolesService', () => {
 			});
 
 			scopeRepository.find.mockResolvedValueOnce([outdatedScope]);
-			scopeRepository.save.mockImplementation(async (entities) => entities as any);
+			scopeRepository.save.mockImplementation(async (entities) => entities as never);
 			scopeRepository.find.mockResolvedValueOnce([outdatedScope]);
 			roleRepository.find.mockResolvedValue([]);
 
@@ -163,7 +187,7 @@ describe('AuthRolesService', () => {
 			obsoleteScope.description = 'This scope should be deleted';
 
 			scopeRepository.find.mockResolvedValueOnce([obsoleteScope]);
-			scopeRepository.remove.mockImplementation(async (entities) => entities as any);
+			scopeRepository.remove.mockImplementation(async (entities) => entities as never);
 			roleRepository.find.mockResolvedValueOnce([]);
 			scopeRepository.find.mockResolvedValueOnce([]);
 			roleRepository.find.mockResolvedValueOnce([]);
@@ -187,8 +211,8 @@ describe('AuthRolesService', () => {
 
 			scopeRepository.find.mockResolvedValueOnce([obsoleteScope, validScope]);
 			roleRepository.find.mockResolvedValueOnce([roleWithObsoleteScope]);
-			roleRepository.save.mockImplementation(async (entities) => entities as any);
-			scopeRepository.remove.mockImplementation(async (entities) => entities as any);
+			roleRepository.save.mockImplementation(async (entities) => entities as never);
+			scopeRepository.remove.mockImplementation(async (entities) => entities as never);
 			scopeRepository.find.mockResolvedValueOnce([validScope]);
 			roleRepository.find.mockResolvedValueOnce([]);
 
@@ -217,8 +241,8 @@ describe('AuthRolesService', () => {
 
 			scopeRepository.find.mockResolvedValueOnce([obsoleteScope1, obsoleteScope2, validScope]);
 			roleRepository.find.mockResolvedValueOnce([role1, role2, role3]);
-			roleRepository.save.mockImplementation(async (entities) => entities as any);
-			scopeRepository.remove.mockImplementation(async (entities) => entities as any);
+			roleRepository.save.mockImplementation(async (entities) => entities as never);
+			scopeRepository.remove.mockImplementation(async (entities) => entities as never);
 			scopeRepository.find.mockResolvedValueOnce([validScope]);
 			roleRepository.find.mockResolvedValueOnce([]);
 
@@ -265,7 +289,7 @@ describe('AuthRolesService', () => {
 			const mixedScopes = [validScope1, obsoleteScope1, validScope2, obsoleteScope2];
 
 			scopeRepository.find.mockResolvedValueOnce(mixedScopes);
-			scopeRepository.remove.mockImplementation(async (entities) => entities as any);
+			scopeRepository.remove.mockImplementation(async (entities) => entities as never);
 			roleRepository.find.mockResolvedValueOnce([]);
 			scopeRepository.find.mockResolvedValueOnce([validScope1, validScope2]);
 			roleRepository.find.mockResolvedValueOnce([]);
@@ -310,7 +334,7 @@ describe('AuthRolesService', () => {
 			scopeRepository.find.mockResolvedValue(allScopes);
 			// syncScopes and syncRoles each call roleRepository.find() once
 			roleRepository.find.mockResolvedValue([outdatedRole]);
-			roleRepository.save.mockImplementation(async (entities) => entities as any);
+			roleRepository.save.mockImplementation(async (entities) => entities as never);
 
 			await authRolesService.init();
 
@@ -335,7 +359,7 @@ describe('AuthRolesService', () => {
 			scopeRepository.find.mockResolvedValue(allScopes);
 			// syncScopes and syncRoles each call roleRepository.find() once
 			roleRepository.find.mockResolvedValue([existingRole]);
-			roleRepository.save.mockImplementation(async (entities) => entities as any);
+			roleRepository.save.mockImplementation(async (entities) => entities as never);
 
 			await authRolesService.init();
 
@@ -365,7 +389,7 @@ describe('AuthRolesService', () => {
 
 			scopeRepository.find.mockResolvedValue(allScopes);
 			roleRepository.find.mockResolvedValue([existingRole]);
-			roleRepository.save.mockImplementation(async (entities) => entities as any);
+			roleRepository.save.mockImplementation(async (entities) => entities as never);
 
 			await authRolesService.init();
 
@@ -424,7 +448,7 @@ describe('AuthRolesService', () => {
 			roleRepository.find.mockImplementation(async (opts?: { relations?: string[] }) =>
 				opts?.relations?.includes('scopes') ? [] : correctRoles,
 			);
-			roleRepository.save.mockImplementation(async (entities) => entities as any);
+			roleRepository.save.mockImplementation(async (entities) => entities as never);
 
 			await authRolesService.init();
 
@@ -471,14 +495,14 @@ describe('AuthRolesService', () => {
 						loadOnStartup: true,
 					});
 				}
-				settingsRepository.findByKeys.mockResolvedValue(rows);
+				mockEntityManager.findBy.mockResolvedValue(rows);
 			}
 
 			describe('personal space publishing', () => {
 				test('should add workflow:publish to personalOwner role when setting is null (backward compatibility)', async () => {
 					const allScopes = createAllScopes();
 					setupDefaultMocks(allScopes);
-					// findByKeys default [] in beforeEach => both values undefined => backward compat => grant scopes
+					// findBy default [] in beforeEach => both values undefined => backward compat => grant scopes
 					await authRolesService.init();
 
 					const personalOwnerCall = roleRepository.create.mock.calls.find(
@@ -539,7 +563,7 @@ describe('AuthRolesService', () => {
 
 					scopeRepository.find.mockResolvedValue(allScopes);
 					roleRepository.find.mockResolvedValue([existingRole]);
-					roleRepository.save.mockImplementation(async (entities) => entities as any);
+					roleRepository.save.mockImplementation(async (entities) => entities as never);
 					mockPersonalSpaceSettings(true, null);
 
 					await authRolesService.init();
@@ -574,7 +598,7 @@ describe('AuthRolesService', () => {
 
 					scopeRepository.find.mockResolvedValue(allScopes);
 					roleRepository.find.mockResolvedValue([existingRole]);
-					roleRepository.save.mockImplementation(async (entities) => entities as any);
+					roleRepository.save.mockImplementation(async (entities) => entities as never);
 					mockPersonalSpaceSettings(false, null);
 
 					await authRolesService.init();
@@ -599,7 +623,7 @@ describe('AuthRolesService', () => {
 				test('should add sharing scopes to personalOwner role when setting is null (backward compatibility)', async () => {
 					const allScopes = createAllScopes();
 					setupDefaultMocks(allScopes);
-					// findByKeys default [] in beforeEach => both values undefined => backward compat => grant scopes
+					// findBy default [] in beforeEach => both values undefined => backward compat => grant scopes
 					await authRolesService.init();
 
 					const personalOwnerCall = roleRepository.create.mock.calls.find(
@@ -661,7 +685,7 @@ describe('AuthRolesService', () => {
 
 					scopeRepository.find.mockResolvedValue(allScopes);
 					roleRepository.find.mockResolvedValue([existingRole]);
-					roleRepository.save.mockImplementation(async (entities) => entities as any);
+					roleRepository.save.mockImplementation(async (entities) => entities as never);
 					mockPersonalSpaceSettings(false, true);
 
 					await authRolesService.init();
@@ -697,7 +721,7 @@ describe('AuthRolesService', () => {
 
 					scopeRepository.find.mockResolvedValue(allScopes);
 					roleRepository.find.mockResolvedValue([existingRole]);
-					roleRepository.save.mockImplementation(async (entities) => entities as any);
+					roleRepository.save.mockImplementation(async (entities) => entities as never);
 					mockPersonalSpaceSettings(false, false);
 
 					await authRolesService.init();
@@ -712,6 +736,131 @@ describe('AuthRolesService', () => {
 					expect(updatedRole).toBeDefined();
 					const scopeSlugs = updatedRole?.scopes.map((s) => s.slug) ?? [];
 					for (const scope of SHARING_SCOPES) {
+						expect(scopeSlugs).not.toContain(scope);
+					}
+				});
+			});
+
+			describe('external secrets system roles', () => {
+				function mockExternalSecretsEnabled(enabled: boolean | null): void {
+					if (enabled === null) {
+						mockEntityManager.findOneBy.mockResolvedValue(null);
+					} else {
+						mockEntityManager.findOneBy.mockResolvedValue({
+							key: EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING.key,
+							value: enabled ? 'true' : 'false',
+							loadOnStartup: true,
+						});
+					}
+				}
+
+				test('should add external secrets scopes to admin role when setting is true', async () => {
+					const allScopes = createAllScopes();
+					setupDefaultMocks(allScopes);
+					mockPersonalSpaceSettings(false, false);
+					mockExternalSecretsEnabled(true);
+
+					await authRolesService.init();
+
+					const adminCall = roleRepository.create.mock.calls.find(
+						(call) => (call[0] as Role).slug === PROJECT_ADMIN_ROLE_SLUG,
+					);
+					expect(adminCall).toBeDefined();
+					const scopeSlugs = (adminCall?.[0] as Role).scopes.map((s: Scope) => s.slug);
+					for (const scope of EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING.roleScopeMap[
+						PROJECT_ADMIN_ROLE_SLUG
+					]) {
+						expect(scopeSlugs).toContain(scope);
+					}
+				});
+
+				test('should add external secrets scopes to editor role when setting is true', async () => {
+					const allScopes = createAllScopes();
+					setupDefaultMocks(allScopes);
+					mockPersonalSpaceSettings(false, false);
+					mockExternalSecretsEnabled(true);
+
+					await authRolesService.init();
+
+					const editorCall = roleRepository.create.mock.calls.find(
+						(call) => (call[0] as Role).slug === PROJECT_EDITOR_ROLE_SLUG,
+					);
+					expect(editorCall).toBeDefined();
+					const scopeSlugs = (editorCall?.[0] as Role).scopes.map((s: Scope) => s.slug);
+					for (const scope of EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING.roleScopeMap[
+						PROJECT_EDITOR_ROLE_SLUG
+					]) {
+						expect(scopeSlugs).toContain(scope);
+					}
+				});
+
+				test('should NOT add external secrets scopes when setting is false', async () => {
+					const allScopes = createAllScopes();
+					setupDefaultMocks(allScopes);
+					mockPersonalSpaceSettings(false, false);
+					mockExternalSecretsEnabled(false);
+
+					await authRolesService.init();
+
+					const externalSecretsScopes = [
+						...new Set(
+							Object.values(EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING.roleScopeMap).flat(),
+						),
+					];
+
+					const adminCall = roleRepository.create.mock.calls.find(
+						(call) => (call[0] as Role).slug === PROJECT_ADMIN_ROLE_SLUG,
+					);
+					expect(adminCall).toBeDefined();
+					const adminScopeSlugs = (adminCall?.[0] as Role).scopes.map((s: Scope) => s.slug);
+					for (const scope of externalSecretsScopes) {
+						expect(adminScopeSlugs).not.toContain(scope);
+					}
+				});
+
+				test('should NOT add external secrets scopes when setting is missing (null)', async () => {
+					const allScopes = createAllScopes();
+					setupDefaultMocks(allScopes);
+					mockPersonalSpaceSettings(false, false);
+					mockExternalSecretsEnabled(null);
+
+					await authRolesService.init();
+
+					const externalSecretsScopes = [
+						...new Set(
+							Object.values(EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING.roleScopeMap).flat(),
+						),
+					];
+
+					const adminCall = roleRepository.create.mock.calls.find(
+						(call) => (call[0] as Role).slug === PROJECT_ADMIN_ROLE_SLUG,
+					);
+					expect(adminCall).toBeDefined();
+					const adminScopeSlugs = (adminCall?.[0] as Role).scopes.map((s: Scope) => s.slug);
+					for (const scope of externalSecretsScopes) {
+						expect(adminScopeSlugs).not.toContain(scope);
+					}
+				});
+
+				test('should return empty scopes for role not in roleScopeMap', async () => {
+					const allScopes = createAllScopes();
+					setupDefaultMocks(allScopes);
+					mockPersonalSpaceSettings(false, false);
+					mockExternalSecretsEnabled(true);
+
+					await authRolesService.init();
+
+					const personalOwnerCall = roleRepository.create.mock.calls.find(
+						(call) => (call[0] as Role).slug === PROJECT_OWNER_ROLE_SLUG,
+					);
+					expect(personalOwnerCall).toBeDefined();
+					const scopeSlugs = (personalOwnerCall?.[0] as Role).scopes.map((s: Scope) => s.slug);
+					const externalSecretsScopes = [
+						...new Set(
+							Object.values(EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING.roleScopeMap).flat(),
+						),
+					];
+					for (const scope of externalSecretsScopes) {
 						expect(scopeSlugs).not.toContain(scope);
 					}
 				});

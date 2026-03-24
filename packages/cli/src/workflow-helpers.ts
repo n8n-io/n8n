@@ -4,12 +4,14 @@ import { Container } from '@n8n/di';
 import type {
 	IDataObject,
 	INodeCredentialsDetails,
+	INodeTypes,
 	IRun,
 	ITaskData,
 	IWorkflowBase,
 	IWorkflowSettings,
 	RelatedExecution,
 } from 'n8n-workflow';
+import { resolveNodeWebhookId } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
@@ -69,6 +71,25 @@ export function addNodeIds(workflow: IWorkflowBase) {
 }
 
 /**
+ * Assign webhookId to any webhook node that is missing one.
+ * The UI does this on the frontend when adding nodes to the canvas,
+ * but workflows created via the API skip that step.
+ */
+export function resolveNodeWebhookIds(workflow: IWorkflowBase, nodeTypes: INodeTypes) {
+	const { nodes } = workflow;
+	if (!nodes) return;
+
+	for (const node of nodes) {
+		try {
+			const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+			resolveNodeWebhookId(node, nodeType.description);
+		} catch {
+			// node type not found, skip
+		}
+	}
+}
+
+/**
  * Removes default values from workflow settings to avoid storing them in the database.
  * Returns a new settings object without mutating the original.
  *
@@ -103,6 +124,11 @@ export function removeDefaultValues(
 		delete cleanedSettings.executionTimeout;
 	}
 
+	// Remove credentialResolverId if it was cleared (empty string from UI clear action)
+	if (!cleanedSettings.credentialResolverId) {
+		delete cleanedSettings.credentialResolverId;
+	}
+
 	return cleanedSettings;
 }
 
@@ -125,6 +151,10 @@ export async function replaceInvalidCredentials<T extends IWorkflowBase>(workflo
 		// extract credentials types
 		const allNodeCredentials = Object.entries(node.credentials);
 		for (const [nodeCredentialType, nodeCredentials] of allNodeCredentials) {
+			// Skip undefined/null credentials (e.g. from SDK's newCredential() which serializes to undefined)
+			if (nodeCredentials === null || nodeCredentials === undefined) {
+				continue;
+			}
 			// Check if Node applies old credentials style
 			if (typeof nodeCredentials === 'string' || nodeCredentials.id === null) {
 				const name = typeof nodeCredentials === 'string' ? nodeCredentials : nodeCredentials.name;
@@ -331,4 +361,24 @@ export function getActiveVersionUpdateValue(
 	}
 
 	return dbWorkflow.activeVersionId ? updatedVersion : null;
+}
+
+/**
+ * Removes the last run data entry so the node is not displayed as executed twice
+ * when resuming. If the entry had an inputOverride (e.g. for chat tool or HITL
+ * nodes), a placeholder entry is pushed back preserving only the inputOverride
+ * and source so the LLM's input stays visible in logs after the execution resumes.
+ */
+export function preserveInputOverride(runDataArray: ITaskData[]): void {
+	const entryToPop = runDataArray.pop()!;
+	const preservedInputOverride = entryToPop.inputOverride;
+	if (preservedInputOverride) {
+		runDataArray.push({
+			startTime: 0,
+			executionTime: 0,
+			executionIndex: 0,
+			source: entryToPop.source,
+			inputOverride: preservedInputOverride,
+		});
+	}
 }

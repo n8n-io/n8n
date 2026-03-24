@@ -14,11 +14,13 @@ import {
 	validateNodeParameters,
 } from 'n8n-workflow';
 
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
-
 import { makeErrorFromStatus } from './error-handling';
 import { getAdditionalOptions } from '../gemini-common/additional-options';
-import { makeN8nLlmFailedAttemptHandler, N8nLlmTracing } from '@n8n/ai-utilities';
+import {
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
 
 export class LmChatGoogleVertex implements INodeType {
 	description: INodeTypeDescription = {

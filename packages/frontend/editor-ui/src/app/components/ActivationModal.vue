@@ -132,10 +132,12 @@ const handleCheckboxChange = (checkboxValue: string | number | boolean) => {
 }
 
 .footer {
-	text-align: right;
+	display: flex;
+	justify-content: flex-end;
+	align-items: center;
 
-	> * {
-		margin-left: var(--spacing--sm);
+	> button {
+		margin-left: auto;
 	}
 }
 </style>

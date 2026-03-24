@@ -57,6 +57,8 @@ export function WorkflowExecuteAdditionalData(
 	return mock<IWorkflowExecuteAdditionalData>({
 		hooks,
 		currentNodeExecutionIndex: 0,
+		webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+		formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
 		// Not setting this to undefined would set it to a mock which would trigger
 		// conditions in the WorkflowExecute which only check if a property exists,
 		// e.g. `if (!this.additionalData.restartExecutionId)`. This would for

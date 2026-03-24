@@ -1,18 +1,17 @@
 import { computed, ref, watch, type Ref, type ComponentPublicInstance } from 'vue';
 import type { IUpdateInformation } from '@/Interface';
-import type { SecretProviderTypeResponse } from '@n8n/api-types';
+import type { SecretProviderTypeResponse, ConnectionProjectSummary } from '@n8n/api-types';
 import type { INodeProperties } from 'n8n-workflow';
 import { useSecretsProviderConnection } from './useSecretsProviderConnection.ee';
 import { useRBACStore } from '@/app/stores/rbac.store';
 import { useToast } from '@/app/composables/useToast';
 import { i18n } from '@n8n/i18n';
 import type { Scope } from '@n8n/permissions';
+import { getResourcePermissions } from '@n8n/permissions';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import { isComponentPublicInstance } from '@/app/utils/typeGuards';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
-
-export type ConnectionProjectSummary = { id: string; name: string };
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 const CONNECTION_NAME_REGEX = /^[a-zA-Z][a-zA-Z0-9]*$/;
 interface UseConnectionModalOptions {
@@ -39,7 +38,7 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 	const rbacStore = useRBACStore();
 	const toast = useToast();
 	const projectsStore = useProjectsStore();
-	const { check: checkDevFeatureFlag } = useEnvFeatureFlag();
+	const settingsStore = useSettingsStore();
 
 	// State
 	const providerKey = ref<string | undefined>(options.providerKey?.value);
@@ -55,7 +54,7 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 	const parameterValidationStates = ref<Record<string, boolean>>({});
 
 	// Connection composable (low-level API operations)
-	const connection = useSecretsProviderConnection();
+	const connection = useSecretsProviderConnection(options.projectId);
 
 	// Display logic - determines which properties should be shown
 	function shouldDisplayProperty(property: INodeProperties): boolean {
@@ -115,20 +114,25 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		return project?.scopes?.includes(scope) ?? false;
 	};
 
+	// Scoped mode and connection-level permissions
+	const isScopedMode = computed(() => !!options.projectId);
+	const connectionScopes = ref<Scope[]>([]);
+	const connectionPermissions = computed(() => {
+		return getResourcePermissions(connectionScopes.value).externalSecretsProvider;
+	});
+
+	// Whether the current project has the owner role on this connection.
+	// Only owner-role connections should be editable from the project settings page.
+	const isProjectOwned = computed(() => {
+		if (!options.projectId) return false;
+		const projectAccess = connectionProjects.value.find((p) => p.id === options.projectId);
+		return projectAccess?.role === 'secretsProviderConnection:owner';
+	});
+
 	// Permission checks
 	const canCreateProjectScoped = computed(() => {
 		if (!options.projectId) return false;
 		return hasProjectScope(options.projectId, 'externalSecretsProvider:create');
-	});
-
-	const canUpdateProjectScoped = computed(() => {
-		// Can update if user has update permission within the scope of the original project
-		// This allows removing project from scope
-		if (originalProjectIds.value.length === 0) return false;
-
-		return originalProjectIds.value.every((id) =>
-			hasProjectScope(id, 'externalSecretsProvider:update'),
-		);
 	});
 
 	const canCreate = computed(
@@ -136,10 +140,19 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 	);
 
 	const canUpdate = computed(() => {
-		return rbacStore.hasScope('externalSecretsProvider:update') || canUpdateProjectScoped.value;
+		// In project-scoped mode, only allow updates for connections the project owns
+		if (isScopedMode.value) {
+			return connectionPermissions.value.update && isProjectOwned.value;
+		}
+
+		return rbacStore.hasScope('externalSecretsProvider:update');
 	});
 
 	const canDelete = computed(() => {
+		// In project-scoped mode, only allow deletes for connections the project owns
+		if (isScopedMode.value) {
+			return connectionPermissions.value.delete && isProjectOwned.value;
+		}
 		return rbacStore.hasScope('externalSecretsProvider:delete');
 	});
 
@@ -148,7 +161,6 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		return rbacStore.hasScope('externalSecretsProvider:update');
 	});
 
-	// Computed - State
 	const isEditMode = computed(() => !!providerKey.value);
 
 	const providerTypeOptions = computed(() => {
@@ -157,7 +169,7 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 			value: type.type,
 		}));
 
-		if (checkDevFeatureFlag.value('EXTERNAL_SECRETS_MULTIPLE_CONNECTIONS')) {
+		if (settingsStore.moduleSettings['external-secrets']?.multipleConnections) {
 			// infisical has been deprecated for a long time.
 			// In order to be able to fully remove the code for it
 			// we are no longer showing users the option to create connections to infisical.
@@ -313,9 +325,8 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		if (!providerKey.value) return;
 
 		try {
-			const { name, type, settings, projects, secretsCount } = await connection.getConnection(
-				providerKey.value,
-			);
+			const { name, type, state, settings, projects, secretsCount, scopes } =
+				await connection.getConnection(providerKey.value);
 
 			connectionName.value = name;
 			originalConnectionName.value = name;
@@ -330,10 +341,19 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 			originalProjectIds.value = [...projectIds.value];
 			originalIsSharedGlobally.value = isSharedGlobally.value;
 
+			if (scopes) {
+				connectionScopes.value = scopes as Scope[];
+			}
+
 			selectedProviderType.value = providerTypes.value.find(
 				(providerType) => providerType.type === type,
 			);
-			await connection.testConnection(providerKey.value);
+
+			connection.setConnectionState(state);
+
+			if (canUpdate.value) {
+				await connection.testConnection(providerKey.value);
+			}
 		} catch (error) {
 			toast.showError(error, i18n.baseText('generic.error'), error?.response?.data?.data.error);
 		}
@@ -355,11 +375,19 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 			projectIds: scopeProjectIds,
 		};
 
-		const { secretsCount } = await connection.createConnection(connectionData);
+		const { secretsCount, scopes, projects } = await connection.createConnection(connectionData);
 
 		// Transition to edit mode after successful creation
 		providerKey.value = connectionName.value.trim();
 		providerSecretsCount.value = secretsCount;
+
+		if (scopes) {
+			connectionScopes.value = scopes as Scope[];
+		}
+
+		if (projects) {
+			connectionProjects.value = projects;
+		}
 
 		// Update saved state
 		originalSettings.value = { ...connectionSettings.value };
@@ -390,12 +418,19 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 
 		const hasSettingsChanges = settingsUpdated.value;
 
-		const { secretsCount, projects } = await connection.updateConnection(
+		const { secretsCount, projects, scopes, state } = await connection.updateConnection(
 			providerKey.value,
 			updateData,
 		);
 
 		providerSecretsCount.value = secretsCount;
+
+		if (scopes) {
+			connectionScopes.value = scopes as Scope[];
+		}
+		if (state) {
+			connection.setConnectionState(state);
+		}
 
 		// Update saved state
 		originalSettings.value = { ...connectionSettings.value };
@@ -484,6 +519,10 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		}
 	}
 
+	const isReadOnly = computed(() => {
+		return isScopedMode.value && isEditMode.value && !canUpdate.value;
+	});
+
 	return {
 		// State refs
 		providerSecretsCount,
@@ -505,6 +544,8 @@ export function useConnectionModal(options: UseConnectionModalOptions) {
 		canUpdate,
 		canDelete,
 		canShareGlobally,
+		isScopedMode,
+		isReadOnly,
 		setScopeState,
 
 		// Computed

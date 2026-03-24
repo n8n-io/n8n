@@ -4,13 +4,8 @@ import { vi } from 'vitest';
 import type { SecretProviderTypeResponse } from '@n8n/api-types';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 
-// Mock feature flag composable
-const { useEnvFeatureFlag } = vi.hoisted(() => ({
-	useEnvFeatureFlag: vi.fn(),
-}));
-vi.mock('@/features/shared/envFeatureFlag/useEnvFeatureFlag', () => ({
-	useEnvFeatureFlag,
-}));
+// Mock module settings
+const mockModuleSettings: Record<string, unknown> = {};
 
 // Mock dependencies
 const mockConnection = {
@@ -18,6 +13,7 @@ const mockConnection = {
 	createConnection: vi.fn(),
 	updateConnection: vi.fn(),
 	testConnection: vi.fn(),
+	setConnectionState: vi.fn(),
 	isLoading: ref(false),
 	connectionState: ref('initializing'),
 };
@@ -40,6 +36,12 @@ vi.mock('@/app/composables/useToast', () => ({
 	useToast: vi.fn(() => ({
 		showError: mockShowError,
 		showMessage: mockShowMessage,
+	})),
+}));
+
+vi.mock('@/app/stores/settings.store', () => ({
+	useSettingsStore: vi.fn(() => ({
+		moduleSettings: mockModuleSettings,
 	})),
 }));
 
@@ -87,10 +89,8 @@ describe('useConnectionModal', () => {
 		});
 		mockShowError.mockClear();
 		mockShowMessage.mockClear();
-		// Mock feature flag to return false by default
-		useEnvFeatureFlag.mockReturnValue({
-			check: ref(() => false),
-		});
+		// Reset module settings
+		delete mockModuleSettings['external-secrets'];
 	});
 
 	describe('initialization', () => {
@@ -185,6 +185,7 @@ describe('useConnectionModal', () => {
 				id: 'existing-id',
 				name: 'existingKey',
 				type: 'awsSecretsManager',
+				state: 'connected',
 				settings: { region: 'us-east-1' },
 			});
 
@@ -207,11 +208,13 @@ describe('useConnectionModal', () => {
 
 	describe('infisical deprecation', () => {
 		beforeEach(() => {
-			useEnvFeatureFlag.mockReturnValue({
-				check: ref((key: string) => key === 'EXTERNAL_SECRETS_MULTIPLE_CONNECTIONS'),
-			});
+			mockModuleSettings['external-secrets'] = {
+				multipleConnections: true,
+				forProjects: true,
+				roleBasedAccess: false,
+			};
 		});
-		it('should not provide option to create new infisical connection if new feature flag is enabled', () => {
+		it('should not provide option to create new infisical connection if multipleConnections is enabled', () => {
 			const providerTypesWithInfisical = ref([
 				...mockProviderTypes,
 				{
@@ -248,6 +251,7 @@ describe('useConnectionModal', () => {
 				id: 'infisical-id',
 				name: 'infisical-connection',
 				type: 'infisical',
+				state: 'connected',
 				settings: {},
 			});
 
@@ -272,6 +276,7 @@ describe('useConnectionModal', () => {
 				id: 'test-id',
 				name: 'testConnection',
 				type: 'awsSecretsManager',
+				state: 'connected',
 				settings: { region: 'us-east-1' },
 			});
 
@@ -303,6 +308,7 @@ describe('useConnectionModal', () => {
 				id: 'test-id',
 				name: 'testConnection',
 				type: 'awsSecretsManager',
+				state: 'connected',
 				settings: { region: 'us-east-1' },
 				projects: [],
 			});
@@ -342,6 +348,7 @@ describe('useConnectionModal', () => {
 				id: 'existing-id',
 				name: 'existingKey',
 				type: 'awsSecretsManager',
+				state: 'connected',
 				settings: { region: 'us-east-1' },
 			});
 
@@ -379,6 +386,7 @@ describe('useConnectionModal', () => {
 				id: 'existing-id',
 				name: 'existingKey',
 				type: 'awsSecretsManager',
+				state: 'connected',
 				settings: { region: 'us-east-1' },
 			});
 
@@ -389,7 +397,7 @@ describe('useConnectionModal', () => {
 			expect(modal.canSave.value).toBe(true);
 		});
 
-		it('should allow update with project-scoped permission', async () => {
+		it('should not allow update with only project-scoped permission in non-scoped mode', async () => {
 			mockHasScope.mockReturnValue(false);
 
 			mockProjectsStore.myProjects = [
@@ -410,6 +418,7 @@ describe('useConnectionModal', () => {
 				id: 'existing-id',
 				name: 'existingKey',
 				type: 'awsSecretsManager',
+				state: 'connected',
 				settings: { region: 'us-east-1' },
 				projects: [{ id: 'project-1', name: 'Project 1' }],
 			});
@@ -418,7 +427,9 @@ describe('useConnectionModal', () => {
 			await modal.loadConnection();
 			modal.updateSettings('region', 'us-west-2');
 
-			expect(modal.canSave.value).toBe(true);
+			// In non-scoped mode, only global scope grants update permission
+			// since the global API controller requires @GlobalScope
+			expect(modal.canSave.value).toBe(false);
 		});
 
 		it('should not allow update without any permission', async () => {
@@ -442,6 +453,7 @@ describe('useConnectionModal', () => {
 				id: 'existing-id',
 				name: 'existingKey',
 				type: 'awsSecretsManager',
+				state: 'connected',
 				settings: { region: 'us-east-1' },
 				projects: [{ id: 'project-1', name: 'Project 1' }],
 			});
@@ -484,6 +496,7 @@ describe('useConnectionModal', () => {
 				id: 'existing-id',
 				name: 'existingKey',
 				type: 'awsSecretsManager',
+				state: 'connected',
 				settings: { region: 'us-east-1' },
 				projects: [{ id: 'project-1', name: 'Project 1' }],
 			});
@@ -525,6 +538,7 @@ describe('useConnectionModal', () => {
 				id: 'existing-id',
 				name: 'existingKey',
 				type: 'awsSecretsManager',
+				state: 'connected',
 				settings: { region: 'us-east-1' },
 				projects: [
 					{ id: 'project-1', name: 'Project 1' },
@@ -538,6 +552,43 @@ describe('useConnectionModal', () => {
 
 			// Should fail because project-2 doesn't have update permission
 			expect(modal.canSave.value).toBe(false);
+		});
+	});
+
+	describe('connection test on load', () => {
+		it('should test connection on load when user has update permission', async () => {
+			const options = { ...defaultOptions, providerKey: ref('testKey') };
+			mockConnection.getConnection.mockResolvedValue({
+				id: 'test-id',
+				name: 'testConnection',
+				type: 'awsSecretsManager',
+				state: 'connected',
+				settings: { region: 'us-east-1' },
+			});
+
+			const modal = useConnectionModal(options);
+			await modal.loadConnection();
+
+			expect(mockConnection.testConnection).toHaveBeenCalledWith('testKey');
+		});
+
+		it('should skip test and use GET state when user lacks update permission', async () => {
+			mockHasScope.mockReturnValue(false);
+
+			const options = { ...defaultOptions, providerKey: ref('testKey') };
+			mockConnection.getConnection.mockResolvedValue({
+				id: 'test-id',
+				name: 'testConnection',
+				type: 'awsSecretsManager',
+				state: 'connected',
+				settings: { region: 'us-east-1' },
+			});
+
+			const modal = useConnectionModal(options);
+			await modal.loadConnection();
+
+			expect(mockConnection.testConnection).not.toHaveBeenCalled();
+			expect(mockConnection.setConnectionState).toHaveBeenCalledWith('connected');
 		});
 	});
 
@@ -653,6 +704,54 @@ describe('useConnectionModal', () => {
 		});
 	});
 
+	describe('project-scoped creation', () => {
+		it('should transition to editable edit mode after creating a connection', async () => {
+			mockHasScope.mockReturnValue(false);
+
+			const projectId = 'project-1';
+			mockProjectsStore.myProjects = [
+				{
+					id: projectId,
+					name: 'Project 1',
+					type: 'team',
+					createdAt: '',
+					updatedAt: '',
+					icon: null,
+					role: 'owner',
+					scopes: ['externalSecretsProvider:create', 'externalSecretsProvider:update'],
+				},
+			];
+
+			mockConnection.createConnection.mockResolvedValue({
+				id: 'new-id',
+				name: 'newVault',
+				type: 'awsSecretsManager',
+				settings: { region: 'us-east-1' },
+				secretsCount: 0,
+				scopes: [
+					'externalSecretsProvider:read',
+					'externalSecretsProvider:update',
+					'externalSecretsProvider:delete',
+				],
+				projects: [{ id: projectId, name: 'Project 1', role: 'secretsProviderConnection:owner' }],
+			});
+
+			const modal = useConnectionModal({
+				...defaultOptions,
+				projectId,
+			});
+
+			modal.selectProviderType('awsSecretsManager');
+			modal.connectionName.value = 'newVault';
+
+			await modal.saveConnection();
+
+			expect(modal.isEditMode.value).toBe(true);
+			expect(modal.isReadOnly.value).toBe(false);
+			expect(modal.canUpdate.value).toBe(true);
+		});
+	});
+
 	describe('scope management', () => {
 		it('should limit project IDs to one when setting scope', () => {
 			const { setScopeState, projectIds } = useConnectionModal(defaultOptions);
@@ -667,6 +766,7 @@ describe('useConnectionModal', () => {
 				id: 'test-id',
 				name: 'testConnection',
 				type: 'awsSecretsManager',
+				state: 'connected',
 				settings: { region: 'us-east-1' },
 				projects: [{ id: 'project-1', name: 'Project 1' }],
 			});
@@ -685,6 +785,7 @@ describe('useConnectionModal', () => {
 				id: 'existing-id',
 				name: 'existingKey',
 				type: 'awsSecretsManager',
+				state: 'connected',
 				settings: { region: 'us-east-1' },
 			});
 

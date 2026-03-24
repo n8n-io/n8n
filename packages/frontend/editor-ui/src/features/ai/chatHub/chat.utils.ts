@@ -8,7 +8,6 @@ import {
 	type ChatMessageId,
 	type ChatHubProvider,
 	type ChatHubLLMProvider,
-	type ChatHubInputModality,
 	type AgentIconOrEmoji,
 	type ChatProviderSettingsDto,
 } from '@n8n/api-types';
@@ -382,6 +381,7 @@ export function findOneFromModelsResponse(
 export function createSessionFromStreamingState(
 	streaming: ChatStreamingState,
 	toolIds: string[],
+	isManual = false,
 ): ChatHubSessionDto {
 	return {
 		id: streaming.sessionId,
@@ -391,34 +391,12 @@ export function createSessionFromStreamingState(
 		credentialId: null,
 		agentName: streaming.agent.name,
 		agentIcon: streaming.agent.icon,
+		type: isManual ? 'manual' : 'production',
 		createdAt: new Date().toISOString(),
 		updatedAt: new Date().toISOString(),
 		toolIds,
 		...flattenModel(streaming.agent.model),
 	};
-}
-
-export function createMimeTypes(modalities: ChatHubInputModality[]): string {
-	// If 'file' modality is present, accept all file types
-	if (modalities.includes('file')) {
-		return '*/*';
-	}
-
-	const mimeTypes: string[] = ['text/*'];
-
-	for (const modality of modalities) {
-		if (modality === 'image') {
-			mimeTypes.push('image/*');
-		}
-		if (modality === 'audio') {
-			mimeTypes.push('audio/*');
-		}
-		if (modality === 'video') {
-			mimeTypes.push('video/*');
-		}
-	}
-
-	return mimeTypes.join(',');
 }
 
 export const personalAgentDefaultIcon: AgentIconOrEmoji = {
@@ -442,17 +420,30 @@ export function createFakeAgent(
 		icon: fallback?.icon ?? null,
 		createdAt: null,
 		updatedAt: null,
-		// Assume file attachment and tools are supported
+		// Assume tools are supported (except n8n provider which never supports function calling)
 		metadata: {
-			inputModalities: ['text', 'file'],
+			allowFileUploads: false,
+			allowedFilesMimeTypes: '',
 			capabilities: {
-				functionCalling: true,
+				functionCalling: model.provider !== 'n8n',
 			},
 			available: true,
 		},
 		groupName: null,
 		groupIcon: null,
 	};
+}
+
+/**
+ * Enriches a MIME type accept string with the `.md` file extension.
+ * macOS file picker does not recognise `text/*` or `text/markdown` for
+ * Markdown files, so we add the explicit extension.
+ */
+export function enrichMimeTypesWithExtensions(mimeTypes: string): string {
+	if (mimeTypes && (mimeTypes.includes('text/*') || mimeTypes.includes('text/markdown'))) {
+		return `${mimeTypes},.md`;
+	}
+	return mimeTypes;
 }
 
 export const isEditable = (message: ChatMessage): boolean => {
@@ -582,4 +573,26 @@ export function isWaitingForApproval(message: ChatMessage | null | undefined): b
 	}
 
 	return message.content.some((c) => c.type === 'with-buttons' && c.blockUserInput);
+}
+
+export function chunkFilesBySize(files: File[], maxSizeBytes: number): File[][] {
+	const chunks: File[][] = [];
+	let currentChunk: File[] = [];
+	let currentSize = 0;
+
+	for (const file of files) {
+		if (currentSize + file.size > maxSizeBytes && currentChunk.length > 0) {
+			chunks.push(currentChunk);
+			currentChunk = [];
+			currentSize = 0;
+		}
+		currentChunk.push(file);
+		currentSize += file.size;
+	}
+
+	if (currentChunk.length > 0) {
+		chunks.push(currentChunk);
+	}
+
+	return chunks;
 }

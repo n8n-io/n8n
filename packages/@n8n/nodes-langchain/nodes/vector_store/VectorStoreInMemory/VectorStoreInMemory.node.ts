@@ -11,8 +11,7 @@ import {
 	ApplicationError,
 } from 'n8n-workflow';
 
-import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
-import { MemoryVectorStoreManager } from '../shared/MemoryManager/MemoryVectorStoreManager';
+import { createVectorStoreNode, MemoryVectorStoreManager } from '@n8n/ai-utilities';
 
 const warningBanner: INodeProperties = {
 	displayName:

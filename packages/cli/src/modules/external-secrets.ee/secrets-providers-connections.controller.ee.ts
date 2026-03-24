@@ -1,8 +1,10 @@
 import {
 	CreateSecretsProviderConnectionDto,
 	UpdateSecretsProviderConnectionDto,
-	ReloadSecretProviderConnectionResponse,
-	TestSecretProviderConnectionResponse,
+	type SecretProviderConnectionListItem,
+	type SecretProviderConnection,
+	type ReloadSecretProviderConnectionResponse,
+	type TestSecretProviderConnectionResponse,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { AuthenticatedRequest } from '@n8n/db';
@@ -19,12 +21,11 @@ import {
 } from '@n8n/decorators';
 import type { NextFunction, Request, Response } from 'express';
 
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { sendErrorResponse } from '@/response-helper';
+
 import { ExternalSecretsConfig } from './external-secrets.config';
 import { SecretsProvidersConnectionsService } from './secrets-providers-connections.service.ee';
-
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { SecretsProvidersResponses } from '@/modules/external-secrets.ee/secrets-providers.responses.ee';
-import { sendErrorResponse } from '@/response-helper';
 
 @RestController('/secret-providers/connections')
 export class SecretProvidersConnectionsController {
@@ -81,12 +82,19 @@ export class SecretProvidersConnectionsController {
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Body body: CreateSecretsProviderConnectionDto,
-	): Promise<SecretsProvidersResponses.PublicConnection> {
+	): Promise<SecretProviderConnection> {
 		this.logger.debug('Creating new connection', {
 			providerKey: body.providerKey,
 			type: body.type,
 		});
-		const savedConnection = await this.connectionsService.createConnection(body, req.user.id);
+		const savedConnection = await this.connectionsService.createConnection(
+			body,
+			req.user.id,
+			// For connections created at the instance level,
+			// shared with projects will be able to use the connection secrets
+			// but they do not own the connection and can't modify it
+			'secretsProviderConnection:user',
+		);
 		return this.connectionsService.toPublicConnection(savedConnection);
 	}
 
@@ -97,9 +105,9 @@ export class SecretProvidersConnectionsController {
 		_res: Response,
 		@Param('providerKey') providerKey: string,
 		@Body body: UpdateSecretsProviderConnectionDto,
-	): Promise<SecretsProvidersResponses.PublicConnection> {
+	): Promise<SecretProviderConnection> {
 		this.logger.debug('Updating connection', { providerKey });
-		const connection = await this.connectionsService.updateConnection(
+		const connection = await this.connectionsService.updateGlobalConnection(
 			providerKey,
 			body,
 			req.user.id,
@@ -111,17 +119,18 @@ export class SecretProvidersConnectionsController {
 	@GlobalScope('externalSecretsProvider:delete')
 	async deleteConnection(
 		req: AuthenticatedRequest,
-		_res: Response,
+		res: Response,
 		@Param('providerKey') providerKey: string,
-	): Promise<SecretsProvidersResponses.PublicConnection> {
+	) {
 		this.logger.debug('Deleting connection', { providerKey });
-		const connection = await this.connectionsService.deleteConnection(providerKey, req.user.id);
-		return this.connectionsService.toPublicConnection(connection);
+		await this.connectionsService.deleteConnection(providerKey, req.user.id);
+		res.status(204).send();
+		return;
 	}
 
 	@Get('/')
-	@GlobalScope('externalSecretsProvider:read')
-	async listConnections(): Promise<SecretsProvidersResponses.PublicConnectionList> {
+	@GlobalScope('externalSecretsProvider:list')
+	async listConnections(): Promise<SecretProviderConnectionListItem[]> {
 		this.logger.debug('Listing all connections');
 		const connections = await this.connectionsService.listConnections();
 		return connections.map((connection) =>
@@ -135,7 +144,7 @@ export class SecretProvidersConnectionsController {
 		_req: AuthenticatedRequest,
 		_res: Response,
 		@Param('providerKey') providerKey: string,
-	): Promise<SecretsProvidersResponses.PublicConnection> {
+	): Promise<SecretProviderConnection> {
 		this.logger.debug('Getting connection', { providerKey });
 		const connection = await this.connectionsService.getConnection(providerKey);
 		return this.connectionsService.toPublicConnection(connection);

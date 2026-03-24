@@ -41,6 +41,7 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { listQueryMiddleware } from '@/middlewares';
+import { userHasScopes } from '@/permissions.ee/check-access';
 import { CredentialRequest } from '@/requests';
 import { NamingService } from '@/services/naming.service';
 import { UserManagementMailer } from '@/user-management/email';
@@ -74,7 +75,9 @@ export class CredentialsController {
 			includeData: query.includeData,
 			onlySharedWithMe: query.onlySharedWithMe,
 			includeGlobal: query.includeGlobal,
-			externalSecretsStore: query.externalSecretsStore,
+			filters: {
+				externalSecretsStore: query.externalSecretsStore,
+			},
 		});
 		credentials.forEach((c) => {
 			// @ts-expect-error: This is to emulate the old behavior of removing the shared
@@ -262,7 +265,13 @@ export class CredentialsController {
 		}
 
 		newCredentialData.isResolvable = body.isResolvable ?? credential.isResolvable;
-		const responseData = await this.credentialsService.update(credentialId, newCredentialData);
+		const responseData = await this.credentialsService.update(
+			credentialId,
+			newCredentialData,
+			body.data
+				? (preparedCredentialData.data as unknown as ICredentialDataDecryptedObject)
+				: undefined,
+		);
 
 		if (responseData === null) {
 			throw new NotFoundError(`Credential ID "${credentialId}" could not be found to be updated.`);
@@ -319,7 +328,6 @@ export class CredentialsController {
 
 	@Licensed('feat:sharing')
 	@Put('/:credentialId/share')
-	@ProjectScope('credential:share')
 	async shareCredentials(req: CredentialRequest.Share) {
 		const { credentialId } = req.params;
 		const { shareWithIds } = req.body;
@@ -334,11 +342,37 @@ export class CredentialsController {
 		const credential = await this.credentialsFinderService.findCredentialForUser(
 			credentialId,
 			req.user,
-			['credential:share'],
+			['credential:read'],
 		);
 
 		if (!credential) {
 			throw new ForbiddenError();
+		}
+
+		const currentProjectIds = credential.shared
+			.filter((sc) => sc.role === 'credential:user')
+			.map((sc) => sc.projectId);
+		const newProjectIds = shareWithIds;
+
+		const toShare = utils.rightDiff([currentProjectIds, (id) => id], [newProjectIds, (id) => id]);
+		const toUnshare = utils.rightDiff([newProjectIds, (id) => id], [currentProjectIds, (id) => id]);
+
+		if (toShare.length > 0) {
+			const canShare = await userHasScopes(req.user, ['credential:share'], false, {
+				credentialId,
+			});
+			if (!canShare) {
+				throw new ForbiddenError();
+			}
+		}
+
+		if (toUnshare.length > 0) {
+			const canUnshare = await userHasScopes(req.user, ['credential:unshare'], false, {
+				credentialId,
+			});
+			if (!canUnshare) {
+				throw new ForbiddenError();
+			}
 		}
 
 		let amountRemoved: number | null = null;
@@ -346,17 +380,6 @@ export class CredentialsController {
 
 		const { manager: dbManager } = this.sharedCredentialsRepository;
 		await dbManager.transaction(async (trx) => {
-			const currentProjectIds = credential.shared
-				.filter((sc) => sc.role === 'credential:user')
-				.map((sc) => sc.projectId);
-			const newProjectIds = shareWithIds;
-
-			const toShare = utils.rightDiff([currentProjectIds, (id) => id], [newProjectIds, (id) => id]);
-			const toUnshare = utils.rightDiff(
-				[newProjectIds, (id) => id],
-				[currentProjectIds, (id) => id],
-			);
-
 			const deleteResult = await trx.delete(SharedCredentials, {
 				credentialsId: credentialId,
 				projectId: In(toUnshare),

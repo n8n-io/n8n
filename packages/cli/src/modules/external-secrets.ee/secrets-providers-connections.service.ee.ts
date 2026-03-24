@@ -1,29 +1,38 @@
-import type { SecretCompletionsResponse, SecretsProviderType } from '@n8n/api-types';
 import {
-	CreateSecretsProviderConnectionDto,
-	TestSecretProviderConnectionResponse,
-	testSecretProviderConnectionResponseSchema,
+	type CreateSecretsProviderConnectionDto,
+	type ReloadSecretProviderConnectionResponse,
 	reloadSecretProviderConnectionResponseSchema,
-	ReloadSecretProviderConnectionResponse,
+	type SecretCompletionsResponse,
+	type SecretProviderConnection,
+	type SecretProviderConnectionListItem,
+	type SecretsProviderType,
+	type TestSecretProviderConnectionResponse,
+	testSecretProviderConnectionResponseSchema,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import type { SecretsProviderConnection } from '@n8n/db';
+import type { SecretsProviderAccessRole, SecretsProviderConnection } from '@n8n/db';
 import {
 	ProjectSecretsProviderAccessRepository,
 	SecretsProviderConnectionRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { In } from '@n8n/typeorm';
 import { Cipher } from 'n8n-core';
 import type { IDataObject } from 'n8n-workflow';
-
 import { jsonParse } from 'n8n-workflow';
+
+import { ExternalSecretsProviderRegistry } from './provider-registry.service';
+
+import {
+	CredentialDependencyService,
+	EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
+} from '@/credentials/credential-dependency.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import type { ProjectSummary } from '@/events/maps/relay.event-map';
 import { ExternalSecretsManager } from '@/modules/external-secrets.ee/external-secrets-manager.ee';
 import { RedactionService } from '@/modules/external-secrets.ee/redaction.service.ee';
-import { SecretsProvidersResponses } from '@/modules/external-secrets.ee/secrets-providers.responses.ee';
 
 @Service()
 export class SecretsProvidersConnectionsService {
@@ -31,6 +40,8 @@ export class SecretsProvidersConnectionsService {
 		private readonly logger: Logger,
 		private readonly repository: SecretsProviderConnectionRepository,
 		private readonly projectAccessRepository: ProjectSecretsProviderAccessRepository,
+		private readonly credentialDependencyService: CredentialDependencyService,
+		private readonly providerRegistry: ExternalSecretsProviderRegistry,
 		private readonly cipher: Cipher,
 		private readonly externalSecretsManager: ExternalSecretsManager,
 		private readonly redactionService: RedactionService,
@@ -42,6 +53,7 @@ export class SecretsProvidersConnectionsService {
 	async createConnection(
 		proposedConnection: CreateSecretsProviderConnectionDto,
 		userId: string,
+		projectRole: SecretsProviderAccessRole,
 	): Promise<SecretsProviderConnection> {
 		const existing = await this.repository.findOne({
 			where: { providerKey: proposedConnection.providerKey },
@@ -67,6 +79,7 @@ export class SecretsProvidersConnectionsService {
 				this.projectAccessRepository.create({
 					secretsProviderConnectionId: savedConnection.id,
 					projectId,
+					role: projectRole,
 				}),
 			);
 			await this.projectAccessRepository.save(entries);
@@ -89,20 +102,69 @@ export class SecretsProvidersConnectionsService {
 		return result;
 	}
 
-	async updateConnection(
+	async updateProjectConnection(
+		providerKey: string,
+		updates: {
+			type?: string;
+			settings?: IDataObject;
+			isEnabled?: boolean;
+		},
+		userId: string,
+	): Promise<SecretsProviderConnection> {
+		const connection = await this.findConnectionOrFail(providerKey);
+		this.applyConnectionUpdates(connection, updates);
+		await this.repository.save(connection);
+
+		return await this.syncAndEmitUpdate(providerKey, userId);
+	}
+
+	async updateGlobalConnection(
 		providerKey: string,
 		updates: {
 			type?: string;
 			projectIds?: string[];
 			settings?: IDataObject;
+			isEnabled?: boolean;
 		},
 		userId: string,
 	): Promise<SecretsProviderConnection> {
-		const connection = await this.repository.findOne({ where: { providerKey } });
+		const connection = await this.findConnectionOrFail(providerKey);
+		this.applyConnectionUpdates(connection, updates);
+		await this.repository.save(connection);
 
-		if (!connection) {
-			throw new NotFoundError(`Connection with key "${providerKey}" not found`);
+		if (updates.projectIds !== undefined) {
+			const existing = await this.projectAccessRepository.findByConnectionId(connection.id);
+			const existingProjectIds = new Set(existing.map((e) => e.projectId));
+			const desiredProjectIds = new Set(updates.projectIds);
+
+			// Remove access for projects no longer in the list
+			const projectIdsToRemove = existing
+				.filter((e) => !desiredProjectIds.has(e.projectId))
+				.map((e) => e.projectId);
+
+			// Add access for newly added projects with user role
+			// Existing projects keep their current role (e.g. owner)
+			const entriesToAdd = updates.projectIds
+				.filter((id) => !existingProjectIds.has(id))
+				.map((projectId) => ({
+					projectId,
+					role: 'secretsProviderConnection:user' as const,
+				}));
+
+			await this.projectAccessRepository.updateProjectAccess(
+				connection.id,
+				projectIdsToRemove,
+				entriesToAdd,
+			);
 		}
+
+		return await this.syncAndEmitUpdate(providerKey, userId);
+	}
+
+	private applyConnectionUpdates(
+		connection: SecretsProviderConnection,
+		updates: { type?: string; settings?: IDataObject; isEnabled?: boolean },
+	): void {
 		if (updates.type !== undefined) {
 			connection.type = updates.type;
 			if (!updates.settings) {
@@ -112,18 +174,19 @@ export class SecretsProvidersConnectionsService {
 			}
 		}
 		if (updates.settings !== undefined) {
-			// Unredact incoming settings before encrypting
 			const savedSettings = this.decryptConnectionSettings(connection.encryptedSettings);
 			const unredactedSettings = this.redactionService.unredact(updates.settings, savedSettings);
 			connection.encryptedSettings = this.encryptConnectionSettings(unredactedSettings);
 		}
-
-		await this.repository.save(connection);
-
-		if (updates.projectIds !== undefined) {
-			await this.projectAccessRepository.setProjectAccess(connection.id, updates.projectIds);
+		if (updates.isEnabled !== undefined) {
+			connection.isEnabled = updates.isEnabled;
 		}
+	}
 
+	private async syncAndEmitUpdate(
+		providerKey: string,
+		userId: string,
+	): Promise<SecretsProviderConnection> {
 		await this.externalSecretsManager.syncProviderConnection(providerKey);
 
 		const result = (await this.repository.findOne({
@@ -141,16 +204,19 @@ export class SecretsProvidersConnectionsService {
 	}
 
 	async deleteConnection(providerKey: string, userId: string): Promise<SecretsProviderConnection> {
-		const connection = await this.repository.findOne({ where: { providerKey } });
-
-		if (!connection) {
-			throw new NotFoundError(`Connection with key "${providerKey}" not found`);
-		}
-
+		const connection = await this.findConnectionOrFail(providerKey);
 		const projectInfo = this.extractProjectInfo(connection);
+		const dependencyId = connection.id.toString();
 
-		await this.projectAccessRepository.deleteByConnectionId(connection.id);
-		await this.repository.remove(connection);
+		await this.repository.manager.transaction(async (entityManager) => {
+			await this.projectAccessRepository.deleteByConnectionId(connection.id, entityManager);
+			await this.credentialDependencyService.deleteDependencyById({
+				dependencyType: EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
+				dependencyId,
+				entityManager,
+			});
+			await entityManager.delete(this.repository.target, { id: connection.id });
+		});
 
 		await this.externalSecretsManager.syncProviderConnection(providerKey);
 
@@ -161,6 +227,14 @@ export class SecretsProvidersConnectionsService {
 			...projectInfo,
 		});
 
+		return connection;
+	}
+
+	private async findConnectionOrFail(providerKey: string): Promise<SecretsProviderConnection> {
+		const connection = await this.repository.findOne({ where: { providerKey } });
+		if (!connection) {
+			throw new NotFoundError(`Connection with key "${providerKey}" not found`);
+		}
 		return connection;
 	}
 
@@ -179,11 +253,19 @@ export class SecretsProvidersConnectionsService {
 	}
 
 	async getGlobalCompletions(): Promise<SecretsProviderConnection[]> {
-		return await this.repository.findGlobalConnections();
+		const connectedProviderKeys = this.providerRegistry.getConnectedNames();
+
+		return await this.repository.findEnabledGlobalConnections({
+			providerKeys: connectedProviderKeys,
+		});
 	}
 
 	async getProjectCompletions(projectId: string): Promise<SecretsProviderConnection[]> {
-		return await this.repository.findByProjectId(projectId);
+		const connectedProviderKeys = this.providerRegistry.getConnectedNames();
+
+		return await this.repository.findEnabledByProjectId(projectId, {
+			providerKeys: connectedProviderKeys,
+		});
 	}
 
 	async listConnectionsForProject(projectId: string): Promise<SecretsProviderConnection[]> {
@@ -201,7 +283,7 @@ export class SecretsProvidersConnectionsService {
 
 	toPublicConnectionListItem(
 		connection: SecretsProviderConnection,
-	): SecretsProvidersResponses.ConnectionListItem {
+	): SecretProviderConnectionListItem {
 		const secretNames = this.externalSecretsManager.getSecretNames(connection.providerKey);
 		const connectionInstance = this.externalSecretsManager.getProvider(connection.providerKey);
 
@@ -209,6 +291,7 @@ export class SecretsProvidersConnectionsService {
 			id: String(connection.id),
 			name: connection.providerKey,
 			type: connection.type as SecretsProviderType,
+			isEnabled: connection.isEnabled,
 			secretsCount: secretNames.length,
 			// Provider may not be registered yet in multi-main setups.
 			// When that's the case the default state is 'initializing'.
@@ -216,13 +299,14 @@ export class SecretsProvidersConnectionsService {
 			projects: connection.projectAccess.map((access) => ({
 				id: access.project.id,
 				name: access.project.name,
+				role: access.role,
 			})),
 			createdAt: connection.createdAt.toISOString(),
 			updatedAt: connection.updatedAt.toISOString(),
 		};
 	}
 
-	toPublicConnection(connection: SecretsProviderConnection): SecretsProvidersResponses.Connection {
+	toPublicConnection(connection: SecretsProviderConnection): SecretProviderConnection {
 		const decryptedSettings = this.decryptConnectionSettings(connection.encryptedSettings);
 		const properties = this.externalSecretsManager.getProviderProperties(connection.type);
 		const redactedSettings = this.redactionService.redact(decryptedSettings, properties);
@@ -233,6 +317,7 @@ export class SecretsProvidersConnectionsService {
 			id: String(connection.id),
 			name: connection.providerKey,
 			type: connection.type as SecretsProviderType,
+			isEnabled: connection.isEnabled,
 			secretsCount: secretNames.length,
 			// Provider may not be registered yet in multi-main setups.
 			// When that's the case the default state is 'initializing'.
@@ -241,6 +326,7 @@ export class SecretsProvidersConnectionsService {
 			projects: connection.projectAccess.map((access) => ({
 				id: access.project.id,
 				name: access.project.name,
+				role: access.role,
 			})),
 			settings: redactedSettings,
 			createdAt: connection.createdAt.toISOString(),
@@ -308,40 +394,58 @@ export class SecretsProvidersConnectionsService {
 		};
 	}
 
-	async reloadProjectConnectionSecrets(
-		projectId: string,
-		userId: string,
-	): Promise<ReloadSecretProviderConnectionResponse> {
-		const projectConnections = await this.repository.findByProjectId(projectId);
-		const providers: Record<string, { success: boolean }> = {};
+	/**
+	 * Cleans up external-secrets connections when a project is deleted.
+	 * - If this project owns the connection, delete it entirely (access rows cascade).
+	 * - Otherwise, remove this project's access and disable the shared connection.
+	 * - Sync each affected provider key once after cleanup.
+	 */
+	async cleanupConnectionsForProjectDeletion(projectId: string): Promise<void> {
+		const accessEntries = await this.projectAccessRepository.findByProjectId(projectId);
+		const providerKeysToSync = new Set<string>();
+		const ownerConnectionIds = new Set<number>();
+		const nonOwnerConnectionIds = new Set<number>();
 
-		await Promise.allSettled(
-			projectConnections.map(async (c) => {
-				try {
-					await this.externalSecretsManager.updateProvider(c.providerKey);
-					providers[c.providerKey] = { success: true };
+		for (const access of accessEntries) {
+			providerKeysToSync.add(access.secretsProviderConnection.providerKey);
 
-					this.eventService.emit('external-secrets-connection-reloaded', {
-						userId,
-						providerKey: c.providerKey,
-						vaultType: c.type,
-						...this.extractProjectInfo(c),
-					});
-				} catch (error) {
-					providers[c.providerKey] = { success: false };
-					this.logger.warn(`Failed to reload provider ${c.providerKey}`, {
-						projectId,
-						providerKey: c.providerKey,
-					});
-				}
-			}),
-		);
+			if (access.role === 'secretsProviderConnection:owner') {
+				ownerConnectionIds.add(access.secretsProviderConnectionId);
+			} else {
+				nonOwnerConnectionIds.add(access.secretsProviderConnectionId);
+			}
+		}
 
-		const allSucceeded = Object.values(providers).every((p) => p.success);
-		return reloadSecretProviderConnectionResponseSchema.parse({
-			success: allSucceeded,
-			providers,
+		// Wrap deletion + update ops in a transaction for consistency
+		await this.repository.manager.transaction(async (entityManager) => {
+			if (ownerConnectionIds.size > 0) {
+				await this.credentialDependencyService.deleteDependenciesByIds({
+					dependencyType: EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
+					dependencyIds: [...ownerConnectionIds].map((id) => id.toString()),
+					entityManager,
+				});
+
+				// Delete owned connections entirely; DB cascade removes access entries
+				await entityManager.delete(this.repository.target, { id: In([...ownerConnectionIds]) });
+			}
+
+			if (nonOwnerConnectionIds.size > 0) {
+				// Remove only this project's access and disable shared connections
+				await entityManager.delete(this.projectAccessRepository.target, {
+					projectId,
+					secretsProviderConnectionId: In([...nonOwnerConnectionIds]),
+				});
+				await entityManager.update(
+					this.repository.target,
+					{ id: In([...nonOwnerConnectionIds]) },
+					{ isEnabled: false },
+				);
+			}
 		});
+
+		for (const providerKey of providerKeysToSync) {
+			await this.externalSecretsManager.syncProviderConnection(providerKey);
+		}
 	}
 
 	private encryptConnectionSettings(settings: IDataObject): string {
@@ -361,11 +465,11 @@ export class SecretsProvidersConnectionsService {
 		return connection;
 	}
 
-	async deleteConnectionForProject(
+	async getConnectionAccessibleFromProject(
 		providerKey: string,
 		projectId: string,
 	): Promise<SecretsProviderConnection> {
-		const connection = await this.repository.removeByProviderKeyAndProjectId(
+		const connection = await this.repository.findAccessibleByProviderKeyAndProjectId(
 			providerKey,
 			projectId,
 		);
@@ -374,7 +478,26 @@ export class SecretsProvidersConnectionsService {
 			throw new NotFoundError(`Connection with key "${providerKey}" not found`);
 		}
 
-		await this.projectAccessRepository.deleteByConnectionId(connection.id);
+		return connection;
+	}
+
+	async deleteConnectionForProject(
+		providerKey: string,
+		projectId: string,
+	): Promise<SecretsProviderConnection> {
+		const connection = await this.repository.findByProviderKeyAndProjectId(providerKey, projectId);
+
+		if (!connection) {
+			throw new NotFoundError(`Connection with key "${providerKey}" not found`);
+		}
+
+		const connectionId = connection.id;
+		await this.credentialDependencyService.deleteDependencyById({
+			dependencyType: EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
+			dependencyId: connectionId.toString(),
+		});
+		await this.projectAccessRepository.deleteByConnectionId(connectionId);
+		await this.repository.delete({ id: connectionId });
 		await this.externalSecretsManager.syncProviderConnection(providerKey);
 
 		return connection;

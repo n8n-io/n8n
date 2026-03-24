@@ -1,11 +1,14 @@
-import { createTestNode } from '@/__tests__/mocks';
+import { createTestNode, createTestNodeProperties } from '@/__tests__/mocks';
 import type { INodeUi } from '@/Interface';
+import type { INodeTypeDescription } from 'n8n-workflow';
 
 import {
 	getNodeCredentialTypes,
+	getNodeParametersIssues,
 	groupCredentialsByType,
 	isCredentialCardComplete,
 	buildTriggerSetupState,
+	type CompletionContext,
 } from '@/features/setupPanel/setupPanel.utils';
 import type { CredentialTypeSetupState } from '@/features/setupPanel/setupPanel.types';
 
@@ -45,7 +48,22 @@ describe('setupPanel.utils', () => {
 			expect(result).toEqual(['openAiApi', 'slackApi']);
 		});
 
-		it('should include credential types from node issues', () => {
+		it('should include credential types from node issues when displayable', () => {
+			const node = createNode({
+				issues: {
+					credentials: {
+						httpHeaderAuth: ['Credentials not set'],
+					},
+				},
+			});
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'httpHeaderAuth' }]);
+
+			const result = getNodeCredentialTypes(mockNodeTypeProvider, node);
+
+			expect(result).toContain('httpHeaderAuth');
+		});
+
+		it('should include credential types from node issues even when not in displayable list', () => {
 			const node = createNode({
 				issues: {
 					credentials: {
@@ -59,7 +77,20 @@ describe('setupPanel.utils', () => {
 			expect(result).toContain('httpHeaderAuth');
 		});
 
-		it('should include credential types from assigned credentials', () => {
+		it('should include credential types from assigned credentials when displayable', () => {
+			const node = createNode({
+				credentials: {
+					slackApi: { id: 'cred-1', name: 'My Slack' },
+				},
+			});
+			mockGetNodeTypeDisplayableCredentials.mockReturnValue([{ name: 'slackApi' }]);
+
+			const result = getNodeCredentialTypes(mockNodeTypeProvider, node);
+
+			expect(result).toContain('slackApi');
+		});
+
+		it('should include credential types from assigned credentials even when not in displayable list', () => {
 			const node = createNode({
 				credentials: {
 					slackApi: { id: 'cred-1', name: 'My Slack' },
@@ -278,10 +309,296 @@ describe('setupPanel.utils', () => {
 			expect(result).toHaveLength(1);
 			expect(result[0].nodes.map((n) => n.name)).toEqual(['SlackNode', 'SlackTrigger']);
 		});
+
+		it('should group HTTP Request nodes with the same credential type and URL', () => {
+			const httpNode1 = createNode({
+				name: 'Google',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { url: 'https://www.google.com' },
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Auth' } },
+			});
+			const httpNode2 = createNode({
+				name: 'Google 2',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { url: 'https://www.google.com' },
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Auth' } },
+			});
+
+			const result = groupCredentialsByType(
+				[
+					{ node: httpNode1, credentialTypes: ['httpHeaderAuth'] },
+					{ node: httpNode2, credentialTypes: ['httpHeaderAuth'] },
+				],
+				displayNameLookup,
+			);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].credentialType).toBe('httpHeaderAuth');
+			expect(result[0].nodes.map((n) => n.name)).toEqual(['Google', 'Google 2']);
+		});
+
+		it('should create separate cards for HTTP Request nodes with different URLs', () => {
+			const httpNode1 = createNode({
+				name: 'Google',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { url: 'https://www.google.com' },
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Auth' } },
+			});
+			const httpNode2 = createNode({
+				name: 'Example',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { url: 'https://www.example.com' },
+				credentials: { httpHeaderAuth: { id: 'cred-2', name: 'Auth 2' } },
+			});
+
+			const result = groupCredentialsByType(
+				[
+					{ node: httpNode1, credentialTypes: ['httpHeaderAuth'] },
+					{ node: httpNode2, credentialTypes: ['httpHeaderAuth'] },
+				],
+				displayNameLookup,
+			);
+
+			expect(result).toHaveLength(2);
+			expect(result[0].nodes[0].name).toBe('Google');
+			expect(result[1].nodes[0].name).toBe('Example');
+		});
+
+		it('should still group non-HTTP-Request nodes normally alongside HTTP Request cards', () => {
+			const slackNode1 = createNode({
+				name: 'Slack1',
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Auth' } },
+			});
+			const slackNode2 = createNode({
+				name: 'Slack2',
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Auth' } },
+			});
+			const httpNode = createNode({
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { url: 'https://api.example.com' },
+				credentials: { httpHeaderAuth: { id: 'cred-2', name: 'Auth 2' } },
+			});
+
+			const result = groupCredentialsByType(
+				[
+					{ node: slackNode1, credentialTypes: ['httpHeaderAuth'] },
+					{ node: slackNode2, credentialTypes: ['httpHeaderAuth'] },
+					{ node: httpNode, credentialTypes: ['httpHeaderAuth'] },
+				],
+				displayNameLookup,
+			);
+
+			expect(result).toHaveLength(2);
+			// First entry: grouped non-HTTP nodes
+			expect(result[0].nodes.map((n) => n.name)).toEqual(['Slack1', 'Slack2']);
+			// Second entry: HTTP Request card
+			expect(result[1].nodes.map((n) => n.name)).toEqual(['HTTP Request']);
+		});
+
+		it('should apply URL-based grouping to HTTP Request Tool nodes', () => {
+			const toolNode1 = createNode({
+				name: 'Tool 1',
+				type: 'n8n-nodes-base.httpRequestTool',
+				parameters: { url: 'https://api.example.com/batch' },
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Auth' } },
+			});
+			const toolNode2 = createNode({
+				name: 'Tool 2',
+				type: 'n8n-nodes-base.httpRequestTool',
+				parameters: { url: 'https://api.example.com/batch' },
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Auth' } },
+			});
+			const toolNode3 = createNode({
+				name: 'Tool 3',
+				type: 'n8n-nodes-base.httpRequestTool',
+				parameters: { url: 'https://api.example.com/db' },
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Auth' } },
+			});
+
+			const result = groupCredentialsByType(
+				[
+					{ node: toolNode1, credentialTypes: ['httpHeaderAuth'] },
+					{ node: toolNode2, credentialTypes: ['httpHeaderAuth'] },
+					{ node: toolNode3, credentialTypes: ['httpHeaderAuth'] },
+				],
+				displayNameLookup,
+			);
+
+			expect(result).toHaveLength(2);
+			expect(result[0].nodes.map((n) => n.name)).toEqual(['Tool 1', 'Tool 2']);
+			expect(result[1].nodes.map((n) => n.name)).toEqual(['Tool 3']);
+		});
+
+		it('should create separate cards for HTTP Request nodes with unresolvable expression URLs', () => {
+			const httpNode1 = createNode({
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { url: '={{ $json.url }}' },
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Auth' } },
+			});
+			const httpNode2 = createNode({
+				name: 'HTTP Request1',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { url: '={{ $json.url }}' },
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Auth' } },
+			});
+
+			const result = groupCredentialsByType(
+				[
+					{ node: httpNode1, credentialTypes: ['httpHeaderAuth'] },
+					{ node: httpNode2, credentialTypes: ['httpHeaderAuth'] },
+				],
+				displayNameLookup,
+			);
+
+			// Same expression but can't be resolved — each gets its own card
+			expect(result).toHaveLength(2);
+			expect(result[0].nodes[0].name).toBe('HTTP Request');
+			expect(result[1].nodes[0].name).toBe('HTTP Request1');
+		});
+
+		it('should group HTTP Request nodes when expression URLs resolve to the same value', () => {
+			const httpNode1 = createNode({
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { url: '={{ "https://api.example.com" }}' },
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Auth' } },
+			});
+			const httpNode2 = createNode({
+				name: 'HTTP Request1',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { url: '={{ "https://api.example.com" }}' },
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Auth' } },
+			});
+
+			const resolveExpressionUrl = vi.fn().mockReturnValue('https://api.example.com');
+
+			const result = groupCredentialsByType(
+				[
+					{ node: httpNode1, credentialTypes: ['httpHeaderAuth'] },
+					{ node: httpNode2, credentialTypes: ['httpHeaderAuth'] },
+				],
+				displayNameLookup,
+				resolveExpressionUrl,
+			);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].nodes.map((n) => n.name)).toEqual(['HTTP Request', 'HTTP Request1']);
+		});
+
+		it('should create separate cards when expression URLs resolve to different values', () => {
+			const httpNode1 = createNode({
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { url: '={{ "https://api.google.com" }}' },
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Auth' } },
+			});
+			const httpNode2 = createNode({
+				name: 'HTTP Request1',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { url: '={{ "https://api.example.com" }}' },
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Auth' } },
+			});
+
+			const resolveExpressionUrl = vi.fn().mockImplementation((url: string) => {
+				if (url.includes('google')) return 'https://api.google.com';
+				return 'https://api.example.com';
+			});
+
+			const result = groupCredentialsByType(
+				[
+					{ node: httpNode1, credentialTypes: ['httpHeaderAuth'] },
+					{ node: httpNode2, credentialTypes: ['httpHeaderAuth'] },
+				],
+				displayNameLookup,
+				resolveExpressionUrl,
+			);
+
+			expect(result).toHaveLength(2);
+			expect(result[0].nodes[0].name).toBe('HTTP Request');
+			expect(result[1].nodes[0].name).toBe('HTTP Request1');
+		});
+
+		it('should group resolved expression URL with matching static URL', () => {
+			const httpNode1 = createNode({
+				name: 'HTTP Static',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { url: 'https://api.example.com' },
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Auth' } },
+			});
+			const httpNode2 = createNode({
+				name: 'HTTP Expression',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { url: '={{ "https://api.example.com" }}' },
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Auth' } },
+			});
+
+			const resolveExpressionUrl = vi.fn().mockReturnValue('https://api.example.com');
+
+			const result = groupCredentialsByType(
+				[
+					{ node: httpNode1, credentialTypes: ['httpHeaderAuth'] },
+					{ node: httpNode2, credentialTypes: ['httpHeaderAuth'] },
+				],
+				displayNameLookup,
+				resolveExpressionUrl,
+			);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].nodes.map((n) => n.name)).toEqual(['HTTP Static', 'HTTP Expression']);
+		});
+
+		it('should fall back to separate cards when resolveExpressionUrl returns null', () => {
+			const httpNode1 = createNode({
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { url: '={{ $json.url }}' },
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Auth' } },
+			});
+			const httpNode2 = createNode({
+				name: 'HTTP Request1',
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: { url: '={{ $json.url }}' },
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Auth' } },
+			});
+
+			const resolveExpressionUrl = vi.fn().mockReturnValue(null);
+
+			const result = groupCredentialsByType(
+				[
+					{ node: httpNode1, credentialTypes: ['httpHeaderAuth'] },
+					{ node: httpNode2, credentialTypes: ['httpHeaderAuth'] },
+				],
+				displayNameLookup,
+				resolveExpressionUrl,
+			);
+
+			expect(result).toHaveLength(2);
+			expect(result[0].nodes[0].name).toBe('HTTP Request');
+			expect(result[1].nodes[0].name).toBe('HTTP Request1');
+		});
 	});
 
 	describe('isCredentialCardComplete', () => {
-		const isTrigger = (type: string) => type.includes('Trigger');
+		const isTriggerNode = (type: string) => type.includes('Trigger');
+		const noUnfilledParams = () => false;
+
+		function makeCtx(
+			overrides: {
+				hasTriggerExecuted?: (name: string) => boolean;
+				isCredentialTestedOk?: (id: string) => boolean;
+				firstTriggerName?: string | null;
+			} = {},
+		): CompletionContext {
+			return {
+				firstTriggerName: overrides.firstTriggerName ?? null,
+				hasTriggerExecuted: overrides.hasTriggerExecuted ?? (() => false),
+				isTriggerNode,
+				isCredentialTestedOk: overrides.isCredentialTestedOk,
+				hasUnfilledTemplateParams: noUnfilledParams,
+			};
+		}
 
 		it('should return true when credential is set, no issues, and no triggers', () => {
 			const slackNode = createNode({ name: 'SlackNode', type: 'n8n-nodes-base.slack' });
@@ -294,7 +611,7 @@ describe('setupPanel.utils', () => {
 				isComplete: false,
 			};
 
-			expect(isCredentialCardComplete(state, () => false, isTrigger)).toBe(true);
+			expect(isCredentialCardComplete(state, makeCtx())).toBe(true);
 		});
 
 		it('should return false when credential is missing', () => {
@@ -308,7 +625,7 @@ describe('setupPanel.utils', () => {
 				isComplete: false,
 			};
 
-			expect(isCredentialCardComplete(state, () => true, isTrigger)).toBe(false);
+			expect(isCredentialCardComplete(state, makeCtx())).toBe(false);
 		});
 
 		it('should return false when there are issues', () => {
@@ -322,7 +639,7 @@ describe('setupPanel.utils', () => {
 				isComplete: false,
 			};
 
-			expect(isCredentialCardComplete(state, () => true, isTrigger)).toBe(false);
+			expect(isCredentialCardComplete(state, makeCtx())).toBe(false);
 		});
 
 		it('should return false when trigger has not executed', () => {
@@ -336,7 +653,15 @@ describe('setupPanel.utils', () => {
 				isComplete: false,
 			};
 
-			expect(isCredentialCardComplete(state, () => false, isTrigger)).toBe(false);
+			expect(
+				isCredentialCardComplete(
+					state,
+					makeCtx({
+						hasTriggerExecuted: () => false,
+						firstTriggerName: 'SlackTrigger',
+					}),
+				),
+			).toBe(false);
 		});
 
 		it('should return true when credential is set and all triggers have executed', () => {
@@ -350,7 +675,15 @@ describe('setupPanel.utils', () => {
 				isComplete: false,
 			};
 
-			expect(isCredentialCardComplete(state, () => true, isTrigger)).toBe(true);
+			expect(
+				isCredentialCardComplete(
+					state,
+					makeCtx({
+						hasTriggerExecuted: () => true,
+						firstTriggerName: 'SlackTrigger',
+					}),
+				),
+			).toBe(true);
 		});
 
 		it('should return true when single embedded trigger has executed', () => {
@@ -364,7 +697,15 @@ describe('setupPanel.utils', () => {
 				isComplete: false,
 			};
 
-			expect(isCredentialCardComplete(state, () => true, isTrigger)).toBe(true);
+			expect(
+				isCredentialCardComplete(
+					state,
+					makeCtx({
+						hasTriggerExecuted: () => true,
+						firstTriggerName: 'Trigger1',
+					}),
+				),
+			).toBe(true);
 		});
 
 		it('should return false when credential test has not passed', () => {
@@ -381,9 +722,9 @@ describe('setupPanel.utils', () => {
 			expect(
 				isCredentialCardComplete(
 					state,
-					() => false,
-					isTrigger,
-					() => false,
+					makeCtx({
+						isCredentialTestedOk: () => false,
+					}),
 				),
 			).toBe(false);
 		});
@@ -402,14 +743,14 @@ describe('setupPanel.utils', () => {
 			expect(
 				isCredentialCardComplete(
 					state,
-					() => false,
-					isTrigger,
-					() => true,
+					makeCtx({
+						isCredentialTestedOk: () => true,
+					}),
 				),
 			).toBe(true);
 		});
 
-		it('should be backward-compatible when isCredentialTestedOk is not provided', () => {
+		it('should complete when isCredentialTestedOk is not provided (non-testable type)', () => {
 			const slackNode = createNode({ name: 'SlackNode', type: 'n8n-nodes-base.slack' });
 			const state: CredentialTypeSetupState = {
 				credentialType: 'slackApi',
@@ -420,7 +761,104 @@ describe('setupPanel.utils', () => {
 				isComplete: false,
 			};
 
-			expect(isCredentialCardComplete(state, () => false, isTrigger)).toBe(true);
+			expect(isCredentialCardComplete(state, makeCtx())).toBe(true);
+		});
+	});
+
+	describe('getNodeParametersIssues', () => {
+		it('should detect issues for the active variant when a parameter name has multiple displayOptions', () => {
+			// Simulates node types like Google Drive Trigger that define multiple
+			// properties with the same name (e.g. "event") for different triggerOn values.
+			const nodeType = {
+				properties: [
+					createTestNodeProperties({
+						displayName: 'Trigger On',
+						name: 'triggerOn',
+						type: 'options',
+						required: true,
+						default: '',
+						options: [
+							{ name: 'Specific File', value: 'specificFile' },
+							{ name: 'Specific Folder', value: 'specificFolder' },
+							{ name: 'Any File/Folder', value: 'anyFileFolder' },
+						],
+					}),
+					createTestNodeProperties({
+						displayName: 'Watch For',
+						name: 'event',
+						type: 'options',
+						required: true,
+						default: 'fileUpdated',
+						displayOptions: { show: { triggerOn: ['specificFile'] } },
+					}),
+					createTestNodeProperties({
+						displayName: 'Watch For',
+						name: 'event',
+						type: 'options',
+						required: true,
+						default: '',
+						displayOptions: { show: { triggerOn: ['specificFolder'] } },
+					}),
+					createTestNodeProperties({
+						displayName: 'Watch For',
+						name: 'event',
+						type: 'options',
+						required: true,
+						default: 'fileCreated',
+						displayOptions: { show: { triggerOn: ['anyFileFolder'] } },
+					}),
+				],
+			} as unknown as INodeTypeDescription;
+
+			mockNodeTypeProvider.getNodeType.mockReturnValue(nodeType);
+
+			const node = createTestNode({
+				type: 'n8n-nodes-base.googleDriveTrigger',
+				parameters: {
+					triggerOn: 'specificFolder',
+					event: '',
+				},
+			});
+
+			const issues = getNodeParametersIssues(mockNodeTypeProvider, node);
+
+			expect(issues).toHaveProperty('event');
+		});
+
+		it('should not include issues for parameter variants that are not displayed', () => {
+			const nodeType = {
+				properties: [
+					createTestNodeProperties({
+						displayName: 'Trigger On',
+						name: 'triggerOn',
+						type: 'options',
+						required: true,
+						default: 'specificFolder',
+					}),
+					createTestNodeProperties({
+						displayName: 'Watch For',
+						name: 'event',
+						type: 'options',
+						required: true,
+						default: '',
+						displayOptions: { show: { triggerOn: ['specificFile'] } },
+					}),
+				],
+			} as unknown as INodeTypeDescription;
+
+			mockNodeTypeProvider.getNodeType.mockReturnValue(nodeType);
+
+			const node = createTestNode({
+				type: 'n8n-nodes-base.testTrigger',
+				parameters: {
+					triggerOn: 'specificFolder',
+					event: '',
+				},
+			});
+
+			const issues = getNodeParametersIssues(mockNodeTypeProvider, node);
+
+			expect(issues).not.toHaveProperty('event');
 		});
 	});
 

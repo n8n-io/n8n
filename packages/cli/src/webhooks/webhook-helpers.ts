@@ -10,7 +10,7 @@ import type { Project } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type express from 'express';
-import { BinaryDataService, ErrorReporter } from 'n8n-core';
+import { BinaryDataService, ErrorReporter, WAITING_TOKEN_QUERY_PARAM } from 'n8n-core';
 import type {
 	IBinaryData,
 	IDataObject,
@@ -50,14 +50,14 @@ import {
 import { finished } from 'stream/promises';
 
 import { WebhookService } from './webhook.service';
-import type {
-	IWebhookResponseCallbackData,
-	WebhookRequest,
-	WebhookNodeResponseHeaders,
+import {
 	WebhookResponseHeaders,
-} from './webhook.types';
+	type WebhookNodeResponseHeaders,
+} from './webhook-response-headers';
+import type { IWebhookResponseCallbackData, WebhookRequest } from './webhook.types';
 
 import { ActiveExecutions } from '@/active-executions';
+import { AuthService } from '@/auth/auth.service';
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
 import { EventService } from '@/events/event.service';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
@@ -309,13 +309,13 @@ export function setupResponseNodePromise(
 		.then(async (response: IN8nHttpFullResponse) => {
 			const binaryData = (response.body as IDataObject)?.binaryData as IBinaryData;
 			if (binaryData?.id) {
-				res.header(response.headers);
+				WebhookResponseHeaders.fromObject(response.headers).applyToResponse(res);
 				const stream = await Container.get(BinaryDataService).getAsStream(binaryData.id);
 				stream.pipe(res, { end: false });
 				await finished(stream);
 				responseCallback(null, { noWebhookResponse: true });
 			} else if (Buffer.isBuffer(response.body)) {
-				res.header(response.headers);
+				WebhookResponseHeaders.fromObject(response.headers).applyToResponse(res);
 				res.end(response.body);
 				responseCallback(null, { noWebhookResponse: true });
 			} else {
@@ -486,6 +486,11 @@ export async function executeWebhook(
 	additionalData.httpRequest = req;
 	additionalData.httpResponse = res;
 
+	const authService = Container.get(AuthService);
+	additionalData.validateCookieAuth = async (token: string) => {
+		await authService.validateCookieToken(token);
+	};
+
 	let didSendResponse = false;
 	let runExecutionDataMerge = {};
 	try {
@@ -574,9 +579,7 @@ export async function executeWebhook(
 
 		if (!res.headersSent && responseHeaders) {
 			// Only set given headers if they haven't been sent yet, e.g. for streaming
-			for (const [name, value] of responseHeaders.entries()) {
-				res.setHeader(name, value);
-			}
+			responseHeaders.applyToResponse(res);
 		}
 
 		if (webhookResultData.noWebhookResponse === true && !didSendResponse) {
@@ -638,6 +641,7 @@ export async function executeWebhook(
 			workflowData,
 			pinData,
 			projectId: project?.id,
+			projectName: project?.name,
 		};
 
 		// When resuming from a wait node, copy over the pushRef from the execution-data
@@ -763,7 +767,11 @@ export async function executeWebhook(
 		});
 
 		if (responseMode === 'formPage' && !didSendResponse) {
-			res.send({ formWaitingUrl: `${additionalData.formWaitingBaseUrl}/${executionId}` });
+			const formUrl = new URL(`${additionalData.formWaitingBaseUrl}/${executionId}`);
+			if (runExecutionData.resumeToken) {
+				formUrl.searchParams.set(WAITING_TOKEN_QUERY_PARAM, runExecutionData.resumeToken);
+			}
+			res.send({ formWaitingUrl: formUrl.toString() });
 			process.nextTick(() => res.end());
 			didSendResponse = true;
 		}
@@ -1026,7 +1034,7 @@ async function parseRequestBody(
  * Evaluates the `responseHeaders` parameter of a webhook node
  */
 function evaluateResponseHeaders(context: WebhookExecutionContext): WebhookResponseHeaders {
-	const headers = new Map<string, string>();
+	const headers = new WebhookResponseHeaders();
 
 	if (context.webhookData.webhookDescription.responseHeaders === undefined) {
 		return headers;
@@ -1036,12 +1044,8 @@ function evaluateResponseHeaders(context: WebhookExecutionContext): WebhookRespo
 		context.evaluateComplexWebhookDescriptionExpression<WebhookNodeResponseHeaders>(
 			'responseHeaders',
 		);
-	if (evaluatedHeaders?.entries === undefined) {
-		return headers;
-	}
-
-	for (const entry of evaluatedHeaders.entries) {
-		headers.set(entry.name.toLowerCase(), entry.value);
+	if (evaluatedHeaders) {
+		headers.addFromNodeHeaders(evaluatedHeaders);
 	}
 
 	return headers;

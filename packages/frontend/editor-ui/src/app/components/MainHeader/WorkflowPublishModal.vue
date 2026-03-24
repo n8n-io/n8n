@@ -1,5 +1,13 @@
 <script setup lang="ts">
-import { computed, ref, h, onMounted, onBeforeUnmount, useTemplateRef } from 'vue';
+import {
+	computed,
+	ref,
+	h,
+	onMounted,
+	onBeforeUnmount,
+	useTemplateRef,
+	type DeepReadonly,
+} from 'vue';
 import type { VNode } from 'vue';
 import Modal from '@/app/components/Modal.vue';
 import { WORKFLOW_PUBLISH_MODAL_KEY } from '@/app/constants';
@@ -17,12 +25,19 @@ import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import WorkflowActivationErrorMessage from '@/app/components/WorkflowActivationErrorMessage.vue';
-import { generateVersionName } from '@/features/workflows/workflowHistory/utils';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
+import { generateVersionLabelFromId } from '@/features/workflows/workflowHistory/utils';
 
 const modalBus = createEventBus();
 const i18n = useI18n();
 
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = computed(() =>
+	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflow.id)),
+);
 const credentialsStore = useCredentialsStore();
 const { showMessage } = useToast();
 const workflowActivate = useWorkflowActivate();
@@ -42,7 +57,9 @@ const containsTrigger = computed((): boolean => {
 });
 
 const wfHasAnyChanges = computed(() => {
-	return workflowsStore.workflow.versionId !== workflowsStore.workflow.activeVersion?.versionId;
+	return (
+		workflowsStore.workflow.versionId !== workflowDocumentStore.value?.activeVersion?.versionId
+	);
 });
 
 const hasNodeIssues = computed(() => workflowsStore.nodesIssuesExist);
@@ -86,7 +103,7 @@ onMounted(() => {
 		if (versionData?.name) {
 			versionName.value = versionData.name;
 		} else {
-			versionName.value = generateVersionName(workflowsStore.workflow.versionId);
+			versionName.value = generateVersionLabelFromId(workflowsStore.workflow.versionId);
 		}
 	}
 
@@ -102,7 +119,7 @@ onBeforeUnmount(() => {
 });
 
 function findManagedOpenAiCredentialId(
-	usedCredentials: Record<string, IUsedCredential>,
+	usedCredentials: DeepReadonly<Record<string, IUsedCredential>>,
 ): string | undefined {
 	return Object.keys(usedCredentials).find((credentialId) => {
 		const credential = credentialsStore.state.credentials[credentialId];
@@ -127,13 +144,16 @@ function hasActiveNodeUsingCredential(nodes: INodeUi[], credentialId: string): b
  *
  */
 const shouldShowFreeAiCreditsWarning = computed((): boolean => {
-	const usedCredentials = workflowsStore?.usedCredentials;
+	const usedCredentials = workflowDocumentStore.value?.usedCredentials;
 	if (!usedCredentials) return false;
 
 	const managedOpenAiCredentialId = findManagedOpenAiCredentialId(usedCredentials);
 	if (!managedOpenAiCredentialId) return false;
 
-	return hasActiveNodeUsingCredential(workflowsStore.allNodes, managedOpenAiCredentialId);
+	return hasActiveNodeUsingCredential(
+		workflowDocumentStore.value?.allNodes ?? [],
+		managedOpenAiCredentialId,
+	);
 });
 
 async function displayActivationError() {

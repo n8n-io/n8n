@@ -128,7 +128,8 @@ ruleTester.run('no-restricted-imports', NoRestrictedImportsRule, {
 			code: `
 import fs from "fs";
 import path from "path";
-import { WorkflowExecuteMode } from "n8n-workflow";`,
+import { WorkflowExecuteMode } from "n8n-workflow";
+import { supplyModel } from "@n8n/ai-node-sdk";`,
 			errors: [
 				{ messageId: 'restrictedImport', data: { modulePath: 'fs' } },
 				{ messageId: 'restrictedImport', data: { modulePath: 'path' } },

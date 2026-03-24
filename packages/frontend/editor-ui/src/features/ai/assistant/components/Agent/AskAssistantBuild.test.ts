@@ -8,6 +8,7 @@ interface VueComponentInstance {
 			onUserMessage?: (message: string) => Promise<void>;
 			showAskOwnerTooltip?: boolean;
 			showExecuteMessage?: boolean;
+			showReviewChanges?: boolean;
 			isInputDisabled?: boolean;
 			disabledTooltip?: string;
 			workflowSuggestions?: unknown[] | undefined;
@@ -143,6 +144,8 @@ import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { flushPromises } from '@vue/test-utils';
 import { fireEvent } from '@testing-library/vue';
+import { computed } from 'vue';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 import { faker } from '@faker-js/faker';
 
@@ -158,6 +161,7 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import { AutoSaveState } from '@/app/constants';
+import { usePostHog } from '@/app/stores/posthog.store';
 
 const nodeViewEventBusEmitMock = vi.hoisted(() => vi.fn());
 vi.mock('@/app/event-bus', () => ({
@@ -247,7 +251,13 @@ vi.mock('@/app/composables/useDocumentVisibility', () => ({
 const workflowPrompt = 'Create a workflow';
 describe('AskAssistantBuild', () => {
 	const sessionId = faker.string.uuid();
-	const renderComponent = createComponentRenderer(AskAssistantBuild);
+	const renderComponent = createComponentRenderer(AskAssistantBuild, {
+		global: {
+			provide: {
+				[WorkflowIdKey as unknown as string]: computed(() => 'abc123'),
+			},
+		},
+	});
 	let builderStore: ReturnType<typeof mockedStore<typeof useBuilderStore>>;
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 	let workflowsListStore: ReturnType<typeof mockedStore<typeof useWorkflowsListStore>>;
@@ -1670,7 +1680,7 @@ describe('AskAssistantBuild', () => {
 			expect(queryByTestId('notification-permission-banner')).not.toBeInTheDocument();
 		});
 
-		it('should keep notification banner visible after streaming ends', async () => {
+		it('should hide notification banner after streaming ends', async () => {
 			mockCanPrompt.value = true;
 
 			const { queryByTestId } = renderComponent();
@@ -1681,11 +1691,11 @@ describe('AskAssistantBuild', () => {
 
 			expect(queryByTestId('notification-permission-banner')).toBeInTheDocument();
 
-			// End streaming - banner should remain visible
+			// End streaming - banner should disappear
 			builderStore.$patch({ streaming: false });
 			await flushPromises();
 
-			expect(queryByTestId('notification-permission-banner')).toBeInTheDocument();
+			expect(queryByTestId('notification-permission-banner')).not.toBeInTheDocument();
 		});
 
 		it('should not show notification banner for existing chat sessions without streaming', async () => {
@@ -1711,6 +1721,81 @@ describe('AskAssistantBuild', () => {
 
 			// Banner should NOT be shown since streaming hasn't started in this session
 			expect(queryByTestId('notification-permission-banner')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('review changes button', () => {
+		it('showReviewChanges is false when feature flag is disabled', () => {
+			const posthogStore = mockedStore(usePostHog);
+			posthogStore.isFeatureEnabled = vi.fn().mockReturnValue(false);
+			builderStore.streaming = false;
+			builderStore.latestRevertVersion = { id: 'v1', createdAt: '2024-01-01' };
+
+			const { container } = renderComponent();
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			expect(vm?.setupState?.showReviewChanges).toBe(false);
+		});
+
+		it('showReviewChanges is false when streaming is true', () => {
+			const posthogStore = mockedStore(usePostHog);
+			posthogStore.isFeatureEnabled = vi.fn().mockReturnValue(true);
+			builderStore.streaming = true;
+			builderStore.latestRevertVersion = { id: 'v1', createdAt: '2024-01-01' };
+
+			const { container } = renderComponent();
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			expect(vm?.setupState?.showReviewChanges).toBe(false);
+		});
+
+		it('showReviewChanges is false when no latestRevertVersion exists', () => {
+			const posthogStore = mockedStore(usePostHog);
+			posthogStore.isFeatureEnabled = vi.fn().mockReturnValue(true);
+			builderStore.streaming = false;
+			builderStore.latestRevertVersion = null;
+
+			const { container } = renderComponent();
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			expect(vm?.setupState?.showReviewChanges).toBe(false);
+		});
+
+		it('showReviewChanges is false when editedNodesCount is 0', async () => {
+			const posthogStore = mockedStore(usePostHog);
+			posthogStore.isFeatureEnabled = vi.fn().mockReturnValue(true);
+			builderStore.streaming = false;
+			builderStore.latestRevertVersion = { id: 'v1', createdAt: '2024-01-01' };
+			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
+
+			const { container } = renderComponent();
+			await flushPromises();
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			expect(vm?.setupState?.showReviewChanges).toBe(false);
+		});
+
+		it('showReviewChanges is true when feature flag is enabled, not streaming, latestRevertVersion exists, and nodes were edited', async () => {
+			const posthogStore = mockedStore(usePostHog);
+			posthogStore.isFeatureEnabled = vi.fn().mockReturnValue(true);
+			builderStore.streaming = false;
+			builderStore.latestRevertVersion = { id: 'v1', createdAt: '2024-01-01' };
+			workflowsStore.$patch({
+				workflow: {
+					nodes: [
+						{
+							id: 'node1',
+							name: 'Start',
+							type: 'n8n-nodes-base.manualTrigger',
+							position: [0, 0],
+							typeVersion: 1,
+							parameters: {},
+						} as INodeUi,
+					],
+					connections: {},
+				},
+			});
+
+			const { container } = renderComponent();
+			await flushPromises();
+			const vm = (container.firstElementChild as VueComponentInstance)?.__vueParentComponent;
+			expect(vm?.setupState?.showReviewChanges).toBe(true);
 		});
 	});
 });
