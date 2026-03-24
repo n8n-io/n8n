@@ -7,7 +7,7 @@ import type {
 	InstanceAiCredentialFlow,
 	InstanceAiToolCallState,
 } from '@n8n/api-types';
-import { type INodeProperties, NodeHelpers } from 'n8n-workflow';
+import { type INodeProperties, NodeHelpers, isResourceLocatorValue } from 'n8n-workflow';
 import type {
 	INodeUi,
 	IUpdateInformation,
@@ -300,6 +300,15 @@ function initSelections() {
 }
 initSelections();
 
+/** Check if a parameter value is meaningfully set (not empty, null, or an empty resource locator). */
+function isParamValueSet(val: unknown): boolean {
+	if (val === undefined || val === null || val === '') return false;
+	if (isResourceLocatorValue(val)) {
+		return val.value !== '' && val.value !== null && val.value !== undefined;
+	}
+	return true;
+}
+
 /** Seed parameter values from existing node parameters for cards with param issues. */
 function initParamValues() {
 	for (const card of cards.value) {
@@ -313,7 +322,7 @@ function initParamValues() {
 		const seeded: Record<string, unknown> = {};
 		for (const paramName of issueParamNames) {
 			const existing = nodeParams[paramName];
-			if (existing !== undefined && existing !== null && existing !== '') {
+			if (isParamValueSet(existing)) {
 				seeded[paramName] = existing;
 			}
 		}
@@ -390,10 +399,9 @@ function isTriggerTestDisabled(card: SetupCard): boolean {
 	if (card.hasParamIssues) {
 		const params = getCardParameters(card);
 		const nodeName = card.nodes[0].node.name;
-		const storeNode = workflowsStore.getNodeByName(nodeName);
 		for (const param of params) {
-			const val = paramValues.value[nodeName]?.[param.name] ?? storeNode?.parameters?.[param.name];
-			if (val === undefined || val === null || val === '') return true;
+			const val = paramValues.value[nodeName]?.[param.name];
+			if (!isParamValueSet(val)) return true;
 		}
 	}
 	return false;
@@ -417,10 +425,9 @@ function isCardComplete(card: SetupCard): boolean {
 	if (card.hasParamIssues) {
 		const params = getCardParameters(card);
 		const nodeName = card.nodes[0].node.name;
-		const storeNode = workflowsStore.getNodeByName(nodeName);
 		for (const param of params) {
-			const val = paramValues.value[nodeName]?.[param.name] ?? storeNode?.parameters?.[param.name];
-			if (val === undefined || val === null || val === '') return false;
+			const val = paramValues.value[nodeName]?.[param.name];
+			if (!isParamValueSet(val)) return false;
 		}
 	}
 
@@ -650,7 +657,7 @@ function buildNodeParameters(): Record<string, Record<string, unknown>> | undefi
 			// Only include values that were pre-filled by AI (seeded via initParamValues)
 			// or explicitly edited by the user (set via onParameterValueChanged)
 			const val = paramValues.value[nodeName]?.[paramName];
-			if (val !== undefined && val !== null && val !== '') {
+			if (isParamValueSet(val)) {
 				merged[paramName] = val;
 				hasValues = true;
 			}
