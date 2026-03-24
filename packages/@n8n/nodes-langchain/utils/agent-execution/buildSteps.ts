@@ -154,7 +154,15 @@ function buildMessageContent(
 }
 
 function resolveToolName(tool: EngineResult<RequestResponseMetadata>): string {
-	return tool.action.metadata?.hitl?.toolName ?? nodeNameToToolName(tool.action.nodeName);
+	// For toolkit tools (e.g., MCP Client), the actual tool name is stored in input.tool
+	// by createEngineRequests. Using the node name (e.g., "MCP_Client") instead would
+	// cause the LLM to see a wrong tool name in history and attempt to re-call it,
+	// resulting in createEngineRequests returning an empty actions array and an infinite loop.
+	return (
+		tool.action.metadata?.hitl?.toolName ??
+		(typeof tool.action.input?.tool === 'string' ? tool.action.input.tool : undefined) ??
+		nodeNameToToolName(tool.action.nodeName)
+	);
 }
 
 /**

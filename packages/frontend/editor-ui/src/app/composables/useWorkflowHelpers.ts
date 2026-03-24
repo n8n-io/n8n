@@ -105,7 +105,7 @@ export async function resolveParameter<T = IDataObject>(
 	return await resolveParameterImpl(
 		parameter,
 		workflowsStore.workflowObject as Workflow,
-		workflowsStore.connectionsBySourceNode,
+		workflowDocumentStore?.connectionsBySourceNode ?? {},
 		useEnvironmentsStore().variablesAsObject,
 		useNDVStore().activeNode,
 		workflowsStore.workflowExecutionData,
@@ -587,8 +587,12 @@ export function useWorkflowHelpers() {
 	}
 
 	async function getWorkflowDataToSave() {
-		const workflowNodes = workflowDocumentStore.value?.allNodes ?? [];
-		const workflowConnections = workflowsStore.allConnections;
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
+
+		const workflowNodes = workflowDocumentStore.allNodes;
+		const workflowConnections = workflowDocumentStore.connectionsBySourceNode;
 
 		let nodeData;
 
@@ -608,13 +612,13 @@ export function useWorkflowHelpers() {
 		const data: WorkflowData = {
 			name: workflowsStore.workflowName,
 			nodes,
-			pinData: workflowDocumentStore.value?.getPinDataSnapshot(),
+			pinData: workflowDocumentStore.getPinDataSnapshot(),
 			connections,
-			active: workflowDocumentStore.value?.active,
-			settings: workflowDocumentStore.value?.settings,
-			tags: [...(workflowDocumentStore.value?.tags ?? [])],
+			active: workflowDocumentStore.active,
+			settings: workflowDocumentStore.settings,
+			tags: [...workflowDocumentStore.tags],
 			versionId: workflowsStore.workflow.versionId,
-			meta: workflowDocumentStore.value?.meta,
+			meta: workflowDocumentStore.meta,
 		};
 
 		const workflowId = workflowsStore.workflowId;

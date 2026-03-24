@@ -3,6 +3,10 @@ import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { useWorkflowUpdate } from './useWorkflowUpdate';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
@@ -30,6 +34,7 @@ vi.mock('@/features/workflows/canvas/canvas.utils', () => ({
 const mockDocumentStore = vi.hoisted(() => ({
 	allNodes: [] as INodeUi[],
 	setNodes: vi.fn(),
+	setConnections: vi.fn(),
 	resetParametersLastUpdatedAt: vi.fn(),
 	setPinData: vi.fn(),
 	getPinDataSnapshot: vi.fn().mockReturnValue({}),
@@ -71,6 +76,7 @@ vi.mock('@/app/utils/nodeTypesUtils', () => ({
 
 describe('useWorkflowUpdate', () => {
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
+	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
 	let builderStore: ReturnType<typeof mockedStore<typeof useBuilderStore>>;
 	let credentialsStore: ReturnType<typeof mockedStore<typeof useCredentialsStore>>;
 	let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
@@ -91,6 +97,7 @@ describe('useWorkflowUpdate', () => {
 		// Setup default mocks
 		(mockDocumentStore as { allNodes: INodeUi[] }).allNodes = [];
 		vi.mocked(mockDocumentStore.setNodes).mockClear();
+		vi.mocked(mockDocumentStore.setConnections).mockClear();
 		vi.mocked(mockDocumentStore.resetParametersLastUpdatedAt).mockClear();
 		vi.mocked(mockDocumentStore.setPinData).mockClear();
 		vi.mocked(mockDocumentStore.getPinDataSnapshot).mockReturnValue({});
@@ -104,13 +111,15 @@ describe('useWorkflowUpdate', () => {
 			nodes: [],
 			connections: {},
 		} as unknown as ReturnType<typeof useWorkflowsStore>['workflow'];
+		workflowsStore.workflowId = 'test-workflow';
 		workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue({
 			nodes: {},
 			connectionsBySourceNode: {},
 			renameNode: vi.fn(),
 		});
-		workflowsStore.setConnections = vi.fn();
 		workflowsStore.nodesByName = {};
+
+		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow'));
 
 		builderStore.setBuilderMadeEdits = vi.fn();
 
@@ -372,7 +381,7 @@ describe('useWorkflowUpdate', () => {
 
 				// Should sync state back to store
 				expect(mockDocumentStore.setNodes).toHaveBeenCalled();
-				expect(workflowsStore.setConnections).toHaveBeenCalled();
+				expect(mockDocumentStore.setConnections).toHaveBeenCalled();
 			});
 
 			it('should apply executeOnce when updated node has it set', async () => {

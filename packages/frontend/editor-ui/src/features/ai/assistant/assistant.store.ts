@@ -8,6 +8,10 @@ import type { ChatUI } from '@n8n/design-system/types/assistant';
 import { defineStore } from 'pinia';
 import type { PushPayload } from '@n8n/api-types';
 import { computed, ref, watch } from 'vue';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useRoute } from 'vue-router';
@@ -36,6 +40,11 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const usersStore = useUsersStore();
 	const uiStore = useUIStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
 	const route = useRoute();
 	const streaming = ref<boolean>();
 	const streamingAbortController = ref<AbortController | null>(null);
@@ -699,7 +708,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				task: 'credentials';
 		  }
 	)) {
-		const canvasStatus = workflowsStore.allNodes.length === 0 ? 'empty' : 'existing_workflow';
+		const canvasStatus =
+			(workflowDocumentStore.value?.allNodes ?? []).length === 0 ? 'empty' : 'existing_workflow';
 		telemetry.track('User opened assistant', {
 			source,
 			task,

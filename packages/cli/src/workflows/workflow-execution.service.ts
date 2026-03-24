@@ -31,6 +31,7 @@ import { FailedRunFactory } from '@/executions/failed-run-factory';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import type { IWorkflowErrorData } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
+import { OwnershipService } from '@/services/ownership.service';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -50,6 +51,7 @@ export class WorkflowExecutionService {
 		private readonly subworkflowPolicyChecker: SubworkflowPolicyChecker,
 		private readonly failedRunFactory: FailedRunFactory,
 		private readonly eventService: EventService,
+		private readonly ownershipService: OwnershipService,
 	) {}
 
 	async runWorkflow(
@@ -210,6 +212,10 @@ export class WorkflowExecutionService {
 		}
 
 		if (data) {
+			const project = await this.ownershipService.getWorkflowProjectCached(workflowData.id);
+			data.projectId = project.id;
+			data.projectName = project.name;
+
 			const offloadingManualExecutionsInQueueMode =
 				this.globalConfig.executions.mode === 'queue' &&
 				process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true';
@@ -262,6 +268,8 @@ export class WorkflowExecutionService {
 		executionMode: WorkflowExecuteMode = 'chat',
 		pushRef?: string,
 	) {
+		const project = await this.ownershipService.getWorkflowProjectCached(workflowData.id);
+
 		const data: IWorkflowExecutionDataProcess = {
 			userId: user.id,
 			executionMode,
@@ -270,6 +278,8 @@ export class WorkflowExecutionService {
 			streamingEnabled,
 			httpResponse,
 			pushRef,
+			projectId: project.id,
+			projectName: project.name,
 		};
 
 		const executionId = await this.workflowRunner.run(data, undefined, true);
@@ -437,6 +447,7 @@ export class WorkflowExecutionService {
 				executionData: runExecutionData,
 				workflowData,
 				projectId: runningProject.id,
+				projectName: runningProject.name,
 			};
 
 			const executionId = await this.workflowRunner.run(runData);
