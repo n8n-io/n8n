@@ -331,12 +331,14 @@ function handleStop() {
 
 			<!-- Floating input -->
 			<div ref="inputContainer" :class="$style.inputContainer">
-				<InstanceAiStatusBar />
-				<InstanceAiInput
-					:is-streaming="store.isStreaming"
-					@submit="handleSubmit"
-					@stop="handleStop"
-				/>
+				<div :class="$style.inputInner">
+					<InstanceAiStatusBar />
+					<InstanceAiInput
+						:is-streaming="store.isStreaming"
+						@submit="handleSubmit"
+						@stop="handleStop"
+					/>
+				</div>
 			</div>
 
 			<!-- Side panels -->
@@ -433,14 +435,16 @@ function handleStop() {
 	bottom: 0;
 	left: 0;
 	right: 0;
-	padding: 0 var(--spacing--lg) var(--spacing--sm);
 	background: linear-gradient(transparent 0%, var(--color--background--light-2) 30%);
 	pointer-events: none;
 	z-index: 2;
+}
 
-	& > * {
-		pointer-events: auto;
-	}
+.inputInner {
+	max-width: calc(750px + 2 * var(--spacing--lg));
+	margin: 0 auto;
+	padding: 0 var(--spacing--lg) var(--spacing--sm);
+	pointer-events: auto;
 }
 </style>
 

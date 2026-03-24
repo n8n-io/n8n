@@ -150,7 +150,7 @@ const runResults = computed(() => {
 	cursor: pointer;
 	font-family: var(--font-family);
 	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 
 	&:hover {
 		background: var(--color--foreground--tint-1);
@@ -181,7 +181,7 @@ const runResults = computed(() => {
 	background: var(--color--foreground);
 	border: var(--border);
 	border-radius: var(--radius--sm);
-	color: var(--color--text);
+	color: var(--text-color);
 }
 
 .content {
@@ -198,7 +198,7 @@ const runResults = computed(() => {
 	align-items: center;
 	gap: var(--spacing--4xs);
 	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 	background: none;
 	border: none;
 	cursor: pointer;
@@ -206,14 +206,14 @@ const runResults = computed(() => {
 	font-family: var(--font-family);
 
 	&:hover {
-		color: var(--color--text--tint-1);
+		color: var(--text-color--subtle);
 	}
 }
 
 .reasoningContent {
 	padding: var(--spacing--4xs) var(--spacing--xs);
 	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 	font-style: italic;
 	border-left: var(--border-width) var(--border-style) var(--color--foreground);
 	margin-left: var(--spacing--4xs);
@@ -222,7 +222,7 @@ const runResults = computed(() => {
 .textContent {
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
-	color: var(--color--text);
+	color: var(--text-color);
 	margin-top: var(--spacing--2xs);
 }
 
@@ -272,7 +272,7 @@ const runResults = computed(() => {
 }
 
 .cancelledIcon {
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 }
 
 .errorIcon {
