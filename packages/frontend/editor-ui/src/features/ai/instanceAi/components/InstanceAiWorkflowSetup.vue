@@ -706,9 +706,10 @@ async function handleApply() {
 		return;
 	}
 
-	store.resolveConfirmation(props.requestId, 'approved');
-
-	// Wait for the actual tool result via SSE before updating the canvas
+	// Wait for the actual tool result via SSE before updating the canvas.
+	// IMPORTANT: resolveConfirmation() must happen AFTER we consume the result,
+	// because resolving removes the item from pendingConfirmations, which unmounts
+	// this component and cancels the watcher.
 	const { promise, cancel } = waitForToolResult(props.requestId);
 	cancelApplyWait = cancel;
 	const toolResult = await promise;
@@ -725,11 +726,16 @@ async function handleApply() {
 		isSubmitted.value = true;
 		isPartial.value = false;
 	} else {
-		// Timeout — apply locally as fallback so the user isn't stuck
+		// Timeout — degraded fallback: apply local data so the user isn't stuck.
+		// This weakens the "backend-authoritative" guarantee under transport failure
+		// but prevents an indefinite spinner.
 		applyLocalFallback(nodeCredentials, nodeParameters);
 		isSubmitted.value = true;
 		isPartial.value = isPartialApply.value;
 	}
+
+	// Resolve AFTER canvas is updated — this unmounts the component
+	store.resolveConfirmation(props.requestId, 'approved');
 }
 
 /**
