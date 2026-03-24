@@ -9,12 +9,7 @@ import { RedisClientService } from '@/services/redis-client.service';
 
 import { REDIS_KEY_PATTERNS, REGISTRY_CONSTANTS } from '../instance-registry.types';
 import type { InstanceStorage } from './instance-storage.interface';
-import {
-	CLEANUP_SCRIPT,
-	READ_ALL_SCRIPT,
-	REGISTER_SCRIPT,
-	UNREGISTER_SCRIPT,
-} from './lua-scripts';
+import { CLEANUP_SCRIPT, READ_ALL_SCRIPT, REGISTER_SCRIPT, UNREGISTER_SCRIPT } from './lua-scripts';
 
 @Service()
 export class RedisInstanceStorage implements InstanceStorage {
@@ -26,11 +21,7 @@ export class RedisInstanceStorage implements InstanceStorage {
 
 	private readonly redisClient: Redis | Cluster;
 
-	constructor(
-		logger: Logger,
-		globalConfig: GlobalConfig,
-		redisClientService: RedisClientService,
-	) {
+	constructor(logger: Logger, globalConfig: GlobalConfig, redisClientService: RedisClientService) {
 		this.logger = logger.scoped(['instance-registry', 'redis']);
 		this.redisPrefix = globalConfig.redis.prefix;
 		this.redisClient = redisClientService.createClient({
