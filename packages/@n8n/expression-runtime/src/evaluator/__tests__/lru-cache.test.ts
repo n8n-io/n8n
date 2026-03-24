@@ -36,6 +36,17 @@ describe('LruCache', () => {
 		expect(cache.get('c')).toBe(3);
 	});
 
+	it('should refresh recency on get even when below capacity', () => {
+		const cache = new LruCache<string, number>(3);
+		cache.set('a', 1);
+		cache.set('b', 2);
+		cache.get('a'); // refreshes 'a' while cache is below capacity
+		cache.set('c', 3); // fills cache
+		cache.set('d', 4); // evicts 'b' (oldest), not 'a'
+		expect(cache.get('a')).toBe(1);
+		expect(cache.get('b')).toBeUndefined();
+	});
+
 	it('should refresh recency on set (update)', () => {
 		const cache = new LruCache<string, number>(2);
 		cache.set('a', 1);
