@@ -29,18 +29,17 @@ import {
 	resumeAgentRun,
 	RunStateRegistry,
 	streamAgentRun,
+	type ConfirmationData,
+	type DomainAccessTracker,
+	type ManagedBackgroundTask,
+	type McpServerConfig,
+	type ModelConfig,
+	type OrchestrationContext,
+	type SandboxConfig,
+	type SpawnBackgroundTaskOptions,
+	type StreamableAgent,
 	WorkflowTaskCoordinator,
 	WorkflowLoopStorage,
-} from '@n8n/instance-ai';
-import type {
-	ConfirmationData,
-	DomainAccessTracker,
-	McpServerConfig,
-	ModelConfig,
-	OrchestrationContext,
-	SandboxConfig,
-	SpawnBackgroundTaskOptions,
-	StreamableAgent,
 } from '@n8n/instance-ai';
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
@@ -50,7 +49,6 @@ import type { LocalGateway } from './filesystem';
 import { LocalGatewayRegistry, LocalFilesystemProvider } from './filesystem';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiAdapterService } from './instance-ai.adapter.service';
-import { AUTO_FOLLOW_UP_MESSAGE } from './internal-messages';
 import { TypeORMCompositeStore } from './storage/typeorm-composite-store';
 import { InstanceAiCompactionService } from './compaction.service';
 
@@ -229,15 +227,10 @@ export class InstanceAiService {
 		researchMode?: boolean,
 		attachments?: InstanceAiAttachment[],
 	): string {
-		if (message !== AUTO_FOLLOW_UP_MESSAGE) {
-			this.backgroundTasks.resetChainDepths(threadId);
-		}
-
 		const { runId, abortController, messageGroupId } = this.runState.startRun({
 			threadId,
 			user,
 			researchMode,
-			autoFollowUp: message === AUTO_FOLLOW_UP_MESSAGE,
 		});
 
 		void this.executeRun(
@@ -588,11 +581,7 @@ export class InstanceAiService {
 				payload: { message: '' },
 			});
 
-			const enrichedMessage = await this.buildMessageWithBackgroundTasks(
-				threadId,
-				message,
-				workflowTasks,
-			);
+			const enrichedMessage = await this.buildMessageWithRunningTasks(threadId, message);
 
 			// Compose runtime input: conversation summary → background tasks → user message
 			const fullMessage = conversationSummary
@@ -871,50 +860,19 @@ export class InstanceAiService {
 					true,
 					task.messageGroupId,
 				);
-				this.maybeFollowUpAfterBackgroundTask(opts.threadId);
 			},
 		});
 	}
 
-	private async buildMessageWithBackgroundTasks(
-		threadId: string,
-		message: string,
-		workflowTasks: WorkflowTaskCoordinator,
-	): Promise<string> {
+	private async buildMessageWithRunningTasks(threadId: string, message: string): Promise<string> {
 		return await enrichMessageWithBackgroundTasks(
 			message,
-			this.backgroundTasks.drainCompletedTasks(threadId),
 			this.backgroundTasks.getRunningTasks(threadId),
 			{
-				formatCompletedTask: async (task) => await workflowTasks.formatCompletedTaskMessage(task),
+				formatTask: async (task: ManagedBackgroundTask) =>
+					`[Running task — ${task.role}]: taskId=${task.taskId}`,
 			},
 		);
-	}
-
-	private maybeFollowUpAfterBackgroundTask(threadId: string): void {
-		const hasActiveRun = this.runState.hasActiveRun(threadId);
-		const hasSuspendedRun = this.runState.hasSuspendedRun(threadId);
-		const maxDepth = this.backgroundTasks.getMaxChainDepth(threadId);
-		const user = this.runState.getThreadUser(threadId);
-		if (!user) return;
-
-		if (!this.backgroundTasks.canAutoFollowUp(threadId, { hasActiveRun, hasSuspendedRun })) {
-			if (!hasActiveRun && !hasSuspendedRun) {
-				this.logger.debug(
-					'Circuit breaker: max auto-follow-up depth reached, waiting for user input',
-					{ threadId, maxDepth, limit: 3 },
-				);
-			}
-			return;
-		}
-
-		this.logger.debug('Auto-triggering follow-up run after background task completion', {
-			threadId,
-			chainDepth: maxDepth + 1,
-		});
-
-		const researchMode = this.runState.getThreadResearchMode(threadId);
-		this.startRun(user, threadId, AUTO_FOLLOW_UP_MESSAGE, researchMode);
 	}
 
 	private publishRunFinish(

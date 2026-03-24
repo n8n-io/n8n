@@ -4,6 +4,7 @@ import { createReportVerificationVerdictTool } from '../report-verification-verd
 
 function createWorkflowTaskService(reportVerificationVerdict = jest.fn()) {
 	return {
+		reportBuildOutcome: jest.fn(),
 		reportVerificationVerdict,
 		getBuildOutcome: jest.fn(),
 		updateBuildOutcome: jest.fn(),

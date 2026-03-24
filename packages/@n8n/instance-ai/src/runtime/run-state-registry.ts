@@ -45,7 +45,6 @@ export interface StartRunOptions<TUser> {
 	threadId: string;
 	user: TUser;
 	researchMode?: boolean;
-	autoFollowUp?: boolean;
 }
 
 export interface StartedRunState extends ActiveRunState {
@@ -77,17 +76,12 @@ export class RunStateRegistry<TUser = unknown> {
 			this.threadResearchMode.set(options.threadId, options.researchMode);
 		}
 
-		if (!options.autoFollowUp) {
-			const messageGroupId = `mg_${nanoid()}`;
-			this.threadMessageGroupId.set(options.threadId, messageGroupId);
-			this.runIdsByMessageGroup.set(messageGroupId, []);
-		}
+		const messageGroupId = `mg_${nanoid()}`;
+		this.threadMessageGroupId.set(options.threadId, messageGroupId);
+		this.runIdsByMessageGroup.set(messageGroupId, []);
 
-		const messageGroupId = this.threadMessageGroupId.get(options.threadId);
-		if (messageGroupId) {
-			const groupRunIds = this.runIdsByMessageGroup.get(messageGroupId);
-			if (groupRunIds) groupRunIds.push(runId);
-		}
+		const groupRunIds = this.runIdsByMessageGroup.get(messageGroupId);
+		if (groupRunIds) groupRunIds.push(runId);
 
 		return { runId, abortController, messageGroupId };
 	}

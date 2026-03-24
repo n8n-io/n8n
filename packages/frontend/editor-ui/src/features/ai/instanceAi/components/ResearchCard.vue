@@ -6,6 +6,7 @@ import { useI18n } from '@n8n/i18n';
 import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { useInstanceAiStore } from '../instanceAi.store';
 import AgentTimeline from './AgentTimeline.vue';
+import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 
 const props = defineProps<{
 	agentNode: InstanceAiAgentNode;
@@ -148,6 +149,10 @@ const headerTitle = computed(() => {
 			<span>{{ i18n.baseText('instanceAi.researchCard.complete') }}</span>
 		</div>
 
+		<div v-if="props.agentNode.result && !props.agentNode.error" :class="$style.resultBlock">
+			<InstanceAiMarkdown :content="props.agentNode.result" />
+		</div>
+
 		<!-- Error -->
 		<div v-if="props.agentNode.error" :class="$style.errorResult">
 			<N8nIcon icon="triangle-alert" size="small" :class="$style.errorIcon" />
@@ -269,6 +274,13 @@ const headerTitle = computed(() => {
 	background: color-mix(in srgb, var(--color--success) 10%, var(--color--background));
 	font-size: var(--font-size--2xs);
 	color: var(--color--success);
+}
+
+.resultBlock {
+	padding: var(--spacing--xs);
+	border-top: var(--border);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text);
 }
 
 .errorResult {

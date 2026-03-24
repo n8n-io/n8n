@@ -15,8 +15,10 @@ import { nanoid } from 'nanoid';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
+import { createBrowserCredentialSetupTool } from './browser-credential-setup.tool';
 import { BUILDER_AGENT_PROMPT, SANDBOX_BUILDER_AGENT_PROMPT } from './build-workflow-agent.prompt';
 import { truncateLabel } from './display-utils';
+import { createVerifyBuiltWorkflowTool } from './verify-built-workflow.tool';
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { createSubAgentMemory, subAgentResourceId } from '../../memory/sub-agent-memory';
 import { formatPreviousAttempts } from '../../storage/iteration-log';
@@ -27,6 +29,7 @@ import type { TriggerType, WorkflowBuildOutcome } from '../../workflow-loop';
 import type { BuilderWorkspace } from '../../workspace/builder-sandbox-factory';
 import { readFileViaSandbox } from '../../workspace/sandbox-fs';
 import { getWorkspaceRoot } from '../../workspace/sandbox-setup';
+import { createApplyWorkflowCredentialsTool } from '../workflows/apply-workflow-credentials.tool';
 import { buildCredentialMap, type CredentialMap } from '../workflows/resolve-credentials';
 import {
 	createSubmitWorkflowTool,
@@ -80,6 +83,31 @@ function buildOutcome(
 }
 
 const BUILDER_MAX_STEPS = 30;
+
+const DETACHED_BUILDER_REQUIREMENTS = `## Detached Task Contract
+
+You are running as a detached background task. Do not stop after a successful submit.
+
+Your job is only complete when one of these is true:
+- the main workflow in ~/workspace/src/workflow.ts is verified successfully
+- the workflow is trigger-only and cannot be runtime-tested
+- you are blocked on user input after exhausting one repair attempt per unique failure signature
+
+Rules:
+- Always keep working on the same main workflow file. For fixes, start from the latest submitted code.
+- After each fix, submit the main workflow again before doing anything else.
+- Verify the final workflow before finishing:
+  - if submit-workflow returned mocked credentials, use verify-built-workflow with the provided workItemId
+  - otherwise use run-workflow directly
+- If verification fails, use debug-execution, repair the workflow, re-submit, and retry.
+- Only do one automatic repair per unique failure signature. If the same failure repeats, stop and explain the block clearly.
+- If verification succeeds with mocked credentials, finalize the workflow before finishing:
+  - call setup-credentials with credentialFlow stage "finalize"
+  - if it returns needsBrowserSetup=true and browser-credential-setup is available, call browser-credential-setup and then setup-credentials again
+  - call apply-workflow-credentials with the provided workItemId and the selected credentials
+- Use ask-user if you truly need human input that tools cannot resolve.
+`;
+
 function hashContent(content: string | null): string {
 	return createHash('sha256')
 		.update(content ?? '', 'utf8')
@@ -108,10 +136,11 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 		}),
 		outputSchema: z.object({
 			result: z.string(),
+			taskId: z.string(),
 		}),
 		execute: async (input) => {
 			if (!context.spawnBackgroundTask) {
-				return { result: 'Error: background task support not available.' };
+				return { result: 'Error: background task support not available.', taskId: '' };
 			}
 
 			const factory = context.builderSandboxFactory;
@@ -139,6 +168,8 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 					'list-workflows',
 					'list-credentials',
 					'test-credential',
+					'setup-credentials',
+					'ask-user',
 					'run-workflow',
 					'get-execution',
 					'debug-execution',
@@ -158,6 +189,13 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 						builderTools[name] = context.domainTools[name];
 					}
 				}
+				if (context.workflowTaskService && context.domainContext) {
+					builderTools['verify-built-workflow'] = createVerifyBuiltWorkflowTool(context);
+					builderTools['apply-workflow-credentials'] = createApplyWorkflowCredentialsTool(context);
+				}
+				if (context.browserMcpConfig) {
+					builderTools['browser-credential-setup'] = createBrowserCredentialSetupTool(context);
+				}
 				prompt = SANDBOX_BUILDER_AGENT_PROMPT;
 			} else {
 				// Tool mode: original approach (no sandbox)
@@ -170,6 +208,7 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 					'list-workflows',
 					'search-nodes',
 					'get-suggested-nodes',
+					'ask-user',
 					'list-data-tables',
 					'create-data-table',
 					'get-data-table-schema',
@@ -185,7 +224,7 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 				}
 
 				if (!builderTools['build-workflow']) {
-					return { result: 'Error: build-workflow tool not available.' };
+					return { result: 'Error: build-workflow tool not available.', taskId: '' };
 				}
 
 				prompt = BUILDER_AGENT_PROMPT;
@@ -232,8 +271,14 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 			}
 
 			let briefing: string;
-			if (workflowId) {
-				briefing = `${input.task}\n\n[CONTEXT: Modifying existing workflow ${workflowId}. The current code is pre-loaded in ~/workspace/src/workflow.ts — read it first, then edit. Use workflowId "${workflowId}" when calling submit-workflow.]${iterationContext ? `\n\n${iterationContext}` : ''}`;
+			if (useSandbox) {
+				if (workflowId) {
+					briefing = `${input.task}\n\n[CONTEXT: Modifying existing workflow ${workflowId}. The current code is pre-loaded in ~/workspace/src/workflow.ts — read it first, then edit. Use workflowId "${workflowId}" when calling submit-workflow.]\n\n[WORK ITEM ID: ${workItemId}]\n\n${DETACHED_BUILDER_REQUIREMENTS}${iterationContext ? `\n\n${iterationContext}` : ''}`;
+				} else {
+					briefing = `${input.task}\n\n[WORK ITEM ID: ${workItemId}]\n\n${DETACHED_BUILDER_REQUIREMENTS}${iterationContext ? `\n\n${iterationContext}` : ''}`;
+				}
+			} else if (workflowId) {
+				briefing = `${input.task}\n\n[CONTEXT: Modifying existing workflow ${workflowId}. Use workflowId "${workflowId}" when calling build-workflow.]${iterationContext ? `\n\n${iterationContext}` : ''}`;
 			} else {
 				briefing = `${input.task}${iterationContext ? `\n\n${iterationContext}` : ''}`;
 			}
@@ -257,6 +302,7 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 								`[build-workflow-agent] factory.create took ${(performance.now() - tFactory).toFixed(0)}ms (${subAgentId})`,
 							);
 							const workspace = builderWs.workspace;
+							const root = await getWorkspaceRoot(workspace);
 
 							// Pre-load existing workflow code into this builder's workspace
 							if (workflowId && domainContext) {
@@ -271,7 +317,6 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 									);
 									// generateWorkflowCode omits imports — prepend the SDK import statement
 									const code = `${SDK_IMPORT_STATEMENT}\n\n${rawCode}`;
-									const root = await getWorkspaceRoot(workspace);
 									if (workspace.filesystem) {
 										await workspace.filesystem.writeFile(`${root}/src/workflow.ts`, code, {
 											recursive: true,
@@ -285,12 +330,27 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 								}
 							}
 
+							const mainWorkflowPath = `${root}/src/workflow.ts`;
 							builderTools['submit-workflow'] = createSubmitWorkflowTool(
 								domainContext,
 								workspace,
 								credMap,
-								(attempt) => {
+								async (attempt) => {
 									submitAttempts.set(attempt.filePath, attempt);
+									if (attempt.filePath !== mainWorkflowPath || !context.workflowTaskService) {
+										return;
+									}
+
+									await context.workflowTaskService.reportBuildOutcome(
+										buildOutcome(
+											workItemId,
+											taskId,
+											attempt,
+											attempt.success
+												? 'Workflow submitted and ready for verification.'
+												: (attempt.errors?.join(' ') ?? 'Workflow submission failed.'),
+										),
+									);
 								},
 							);
 
@@ -348,8 +408,6 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 
 							const finalText = await hitlResult.text;
 
-							const root = await getWorkspaceRoot(workspace);
-							const mainWorkflowPath = `${root}/src/workflow.ts`;
 							const mainWorkflowAttempt = submitAttempts.get(mainWorkflowPath);
 							const currentMainWorkflow = await readFileViaSandbox(workspace, mainWorkflowPath);
 							const currentMainWorkflowHash = hashContent(currentMainWorkflow);
@@ -451,6 +509,7 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 
 			return {
 				result: `Workflow build started (task: ${taskId}). Acknowledge briefly and move on.`,
+				taskId,
 			};
 		},
 	});

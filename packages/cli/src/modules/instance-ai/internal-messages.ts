@@ -1,19 +1,20 @@
 /**
  * Protocol for internal messages injected by the service layer.
  *
- * When background tasks complete, the service auto-triggers a follow-up run
- * with a `(continue)` sentinel and prepends a `<background-tasks>` block with
- * task results. These are LLM-facing only — they must never reach the UI.
+ * The service may prepend a transient task-status block to real user messages
+ * so the orchestrator can reference currently running detached tasks. These
+ * are LLM-facing only — they must never reach the UI.
  *
- * The service writes this format (enrichMessageWithBackgroundTasks),
+ * The service writes this format,
  * the parser reads it (cleanStoredUserMessage).
  */
 
-/** Sentinel used for auto-follow-up runs — never user-initiated. */
+/** Legacy sentinel used for old auto-follow-up runs — kept for parsing historical messages. */
 export const AUTO_FOLLOW_UP_MESSAGE = '(continue)';
 
-/** Matches the `<background-tasks>…</background-tasks>\n\n` prefix. */
-const BACKGROUND_TASKS_BLOCK = /^<background-tasks>\n[\s\S]*?\n<\/background-tasks>\n\n/;
+/** Matches the legacy `<background-tasks>` or current `<running-tasks>` prefix. */
+const TASK_CONTEXT_BLOCK =
+	/^(?:<background-tasks>\n[\s\S]*?\n<\/background-tasks>|<running-tasks>\n[\s\S]*?\n<\/running-tasks>)\n\n/;
 
 /**
  * Recover the original user text from a stored message that may contain
@@ -21,6 +22,6 @@ const BACKGROUND_TASKS_BLOCK = /^<background-tasks>\n[\s\S]*?\n<\/background-tas
  * should be hidden from the UI entirely.
  */
 export function cleanStoredUserMessage(stored: string): string | null {
-	const text = stored.replace(BACKGROUND_TASKS_BLOCK, '');
+	const text = stored.replace(TASK_CONTEXT_BLOCK, '');
 	return text === AUTO_FOLLOW_UP_MESSAGE ? null : text;
 }

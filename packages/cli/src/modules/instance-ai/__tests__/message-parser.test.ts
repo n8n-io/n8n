@@ -432,6 +432,23 @@ describe('parseStoredMessages', () => {
 			expect(result[0].content).toBe('Now add error handling');
 		});
 
+		it('should strip running-tasks enrichment from real user messages', () => {
+			const messages: MastraDBMessage[] = [
+				{
+					id: 'msg-u',
+					role: 'user',
+					content:
+						'<running-tasks>\n[Running task — workflow-builder]: taskId=build-1234\n</running-tasks>\n\nUse the Redis credential instead',
+					createdAt: makeDate(),
+				},
+			];
+
+			const result = parseStoredMessages(messages);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].content).toBe('Use the Redis credential instead');
+		});
+
 		it('should not strip background-tasks text that appears mid-message', () => {
 			const messages: MastraDBMessage[] = [
 				{

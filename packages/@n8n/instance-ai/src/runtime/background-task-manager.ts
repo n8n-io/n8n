@@ -14,7 +14,6 @@ export interface ManagedBackgroundTask {
 	startedAt: number;
 	abortController: AbortController;
 	corrections: string[];
-	chainDepth: number;
 	messageGroupId?: string;
 	outcome?: Record<string, unknown>;
 	workItemId?: string;
@@ -41,16 +40,13 @@ export interface SpawnManagedBackgroundTaskOptions {
 export interface BackgroundTaskMessageOptions<
 	TTask extends ManagedBackgroundTask = ManagedBackgroundTask,
 > {
-	formatCompletedTask?: (task: TTask) => Promise<string> | string;
+	formatTask?: (task: TTask) => Promise<string> | string;
 }
 
 export class BackgroundTaskManager {
 	private readonly tasks = new Map<string, ManagedBackgroundTask>();
 
-	constructor(
-		private readonly maxConcurrentPerThread = 5,
-		private readonly maxAutoFollowUpDepth = 3,
-	) {}
+	constructor(private readonly maxConcurrentPerThread = 5) {}
 
 	getTaskSnapshots(threadId: string): ManagedBackgroundTask[] {
 		return [...this.tasks.values()].filter((task) => task.threadId === threadId);
@@ -60,43 +56,6 @@ export class BackgroundTaskManager {
 		return [...this.tasks.values()].filter(
 			(task) => task.threadId === threadId && task.status === 'running',
 		);
-	}
-
-	drainCompletedTasks(threadId: string): ManagedBackgroundTask[] {
-		const completed: ManagedBackgroundTask[] = [];
-		for (const [taskId, task] of this.tasks) {
-			if (task.threadId === threadId && task.status !== 'running') {
-				completed.push(task);
-				this.tasks.delete(taskId);
-			}
-		}
-		return completed;
-	}
-
-	resetChainDepths(threadId: string): void {
-		for (const task of this.tasks.values()) {
-			if (task.threadId === threadId) {
-				task.chainDepth = 0;
-			}
-		}
-	}
-
-	getMaxChainDepth(threadId: string): number {
-		let max = 0;
-		for (const task of this.tasks.values()) {
-			if (task.threadId === threadId && task.status !== 'running') {
-				max = Math.max(max, task.chainDepth);
-			}
-		}
-		return max;
-	}
-
-	canAutoFollowUp(
-		threadId: string,
-		options: { hasActiveRun: boolean; hasSuspendedRun: boolean },
-	): boolean {
-		if (options.hasActiveRun || options.hasSuspendedRun) return false;
-		return this.getMaxChainDepth(threadId) < this.maxAutoFollowUpDepth;
 	}
 
 	queueCorrection(taskId: string, correction: string): void {
@@ -156,7 +115,6 @@ export class BackgroundTaskManager {
 			startedAt: Date.now(),
 			abortController: new AbortController(),
 			corrections: [],
-			chainDepth: this.getMaxChainDepth(options.threadId) + 1,
 			messageGroupId: options.messageGroupId,
 			workItemId: options.workItemId,
 		};
@@ -190,38 +148,29 @@ export class BackgroundTaskManager {
 		}
 
 		await options.onSettled?.(task);
+		this.tasks.delete(task.taskId);
 	}
 }
 
-export async function enrichMessageWithBackgroundTasks<
+export async function enrichMessageWithRunningTasks<
 	TTask extends ManagedBackgroundTask = ManagedBackgroundTask,
 >(
 	message: string,
-	completedTasks: TTask[],
 	runningTasks: TTask[],
 	options: BackgroundTaskMessageOptions<TTask> = {},
 ): Promise<string> {
-	if (completedTasks.length === 0 && runningTasks.length === 0) return message;
+	if (runningTasks.length === 0) return message;
 
 	const parts: string[] = [];
 
-	for (const task of completedTasks) {
-		if (task.status === 'completed') {
-			if (options.formatCompletedTask) {
-				parts.push(await options.formatCompletedTask(task));
-			} else {
-				parts.push(`[Background task completed — ${task.role}]: ${task.result ?? ''}`);
-			}
-		} else if (task.status === 'cancelled') {
-			parts.push(`[Background task stopped by user — ${task.role}, task: ${task.taskId}]`);
-		} else {
-			parts.push(`[Background task failed — ${task.role}]: ${task.error}`);
-		}
-	}
-
 	for (const task of runningTasks) {
-		parts.push(`[Background task in progress — ${task.role}, task: ${task.taskId}]`);
+		if (options.formatTask) {
+			parts.push(await options.formatTask(task));
+			continue;
+		}
+
+		parts.push(`[Running task — ${task.role}, task: ${task.taskId}]`);
 	}
 
-	return `<background-tasks>\n${parts.join('\n')}\n</background-tasks>\n\n${message}`;
+	return `<running-tasks>\n${parts.join('\n')}\n</running-tasks>\n\n${message}`;
 }

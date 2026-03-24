@@ -51,6 +51,7 @@ export function createDataTableAgentTool(context: OrchestrationContext) {
 		}),
 		outputSchema: z.object({
 			result: z.string(),
+			taskId: z.string(),
 		}),
 		// eslint-disable-next-line @typescript-eslint/require-await -- framework requires Promise return but body is sync
 		execute: async (input) => {
@@ -63,11 +64,11 @@ export function createDataTableAgentTool(context: OrchestrationContext) {
 			}
 
 			if (Object.keys(dataTableTools).length === 0) {
-				return { result: 'Error: no data table tools available.' };
+				return { result: 'Error: no data table tools available.', taskId: '' };
 			}
 
 			if (!context.spawnBackgroundTask) {
-				return { result: 'Error: background task support not available.' };
+				return { result: 'Error: background task support not available.', taskId: '' };
 			}
 
 			const subAgentId = `agent-datatable-${nanoid(6)}`;
@@ -156,6 +157,7 @@ export function createDataTableAgentTool(context: OrchestrationContext) {
 
 			return {
 				result: `Data table operation started (task: ${taskId}). Acknowledge briefly and move on.`,
+				taskId,
 			};
 		},
 	});

@@ -754,7 +754,7 @@ n8n normalizes column names to snake_case (e.g., \`dayName\` → \`day_name\`). 
 - **NEVER parallelize edit + submit.** Always: edit → wait → submit. Each step depends on the previous one completing.
 - **Complex workflows (5+ nodes, 2+ integrations) MUST use the Compositional Workflow Pattern.** Decompose into sub-workflows, test each independently, then compose. Do NOT write everything in a single workflow.
 - **If you edit code to fix a \`submit-workflow\` error, you must call \`submit-workflow\` again before doing anything else.** Do not stop after file edits. Edits without a clean re-submit do not count as a fix.
-- **Runtime verification is handled externally** — your job is to build and submit a valid workflow. The orchestrator handles post-build testing.
+- **Follow the runtime verification instructions in your briefing.** If the briefing says verification is required, do not stop after a successful submit.
 
 ## Mandatory Process
 

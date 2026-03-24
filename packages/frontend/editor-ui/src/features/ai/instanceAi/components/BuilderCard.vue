@@ -11,6 +11,7 @@ import ExecutionPreviewCard from './ExecutionPreviewCard.vue';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useInstanceAiStore } from '../instanceAi.store';
 import AgentTimeline from './AgentTimeline.vue';
+import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 
 const props = defineProps<{
 	agentNode: InstanceAiAgentNode;
@@ -339,6 +340,10 @@ watch(
 			<span>{{ props.agentNode.error }}</span>
 		</div>
 
+		<div v-if="props.agentNode.result && !props.agentNode.error" :class="$style.resultBlock">
+			<InstanceAiMarkdown :content="props.agentNode.result" />
+		</div>
+
 		<!-- Workflow detail modal (iframe-based, full NDV support) -->
 		<Teleport to="body">
 			<div
@@ -567,6 +572,13 @@ watch(
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--4xs);
+}
+
+.resultBlock {
+	padding: var(--spacing--xs);
+	border-top: var(--border);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text);
 }
 
 .errorList {

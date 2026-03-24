@@ -39,7 +39,8 @@ export { SnapshotManager } from './workspace/snapshot-manager';
 export type { InstanceAiEventBus, StoredEvent } from './event-bus';
 export {
 	BackgroundTaskManager,
-	enrichMessageWithBackgroundTasks,
+	enrichMessageWithRunningTasks as enrichMessageWithBackgroundTasks,
+	enrichMessageWithRunningTasks,
 } from './runtime/background-task-manager';
 export type {
 	BackgroundTaskStatus,

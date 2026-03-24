@@ -90,7 +90,7 @@ export const runStartPayloadSchema = z.object({
 		.string()
 		.optional()
 		.describe(
-			'Stable ID across auto-follow-up runs within one user turn. When present, follow-up runs share this ID so the frontend merges them into one assistant message.',
+			'Stable ID for the assistant message group that owns this run. Used to reconnect live activity back to the correct assistant bubble.',
 		),
 });
 
@@ -542,7 +542,7 @@ export interface InstanceAiRichMessagesResponse {
 }
 
 // ---------------------------------------------------------------------------
-// Thread status response (background task visibility)
+// Thread status response (detached task visibility)
 // ---------------------------------------------------------------------------
 
 export interface InstanceAiThreadStatusResponse {

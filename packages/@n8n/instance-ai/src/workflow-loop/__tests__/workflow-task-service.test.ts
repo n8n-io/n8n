@@ -1,5 +1,5 @@
-import type { ManagedBackgroundTask } from '../../runtime/background-task-manager';
 import type { WorkflowLoopStorage } from '../../storage/workflow-loop-storage';
+import type { WorkflowBuildOutcome } from '../workflow-loop-state';
 import { WorkflowTaskCoordinator } from '../workflow-task-service';
 
 function createStorage() {
@@ -33,41 +33,30 @@ function createStorage() {
 	return { records, storage };
 }
 
-function createBuilderTask(overrides: Partial<ManagedBackgroundTask> = {}): ManagedBackgroundTask {
+function createBuildOutcome(overrides: Partial<WorkflowBuildOutcome> = {}): WorkflowBuildOutcome {
 	return {
+		workItemId: 'wi_1',
 		taskId: 'build-1',
-		threadId: 'thread-1',
-		runId: 'run-1',
-		role: 'workflow-builder',
-		agentId: 'agent-builder-1',
-		status: 'completed',
-		result: 'Workflow submitted.',
-		startedAt: Date.now(),
-		abortController: new AbortController(),
-		corrections: [],
-		chainDepth: 1,
-		outcome: {
-			workItemId: 'wi_1',
-			taskId: 'build-1',
-			workflowId: 'wf-1',
-			submitted: true,
-			triggerType: 'manual_or_testable',
-			needsUserInput: false,
-			summary: 'Workflow submitted.',
-		},
+		workflowId: 'wf-1',
+		submitted: true,
+		triggerType: 'manual_or_testable',
+		needsUserInput: false,
+		summary: 'Workflow submitted.',
 		...overrides,
 	};
 }
 
 describe('WorkflowTaskCoordinator', () => {
-	it('formats builder completions with deterministic verification guidance', async () => {
+	it('persists build outcomes and returns the next action', async () => {
 		const { storage } = createStorage();
 		const coordinator = new WorkflowTaskCoordinator('thread-1', storage);
 
-		const message = await coordinator.formatCompletedTaskMessage(createBuilderTask());
+		const action = await coordinator.reportBuildOutcome(createBuildOutcome());
 
-		expect(message).toContain('[Background task completed');
-		expect(message).toContain('VERIFY: Run workflow wf-1.');
+		expect(action).toEqual({
+			type: 'verify',
+			workflowId: 'wf-1',
+		});
 		expect(await coordinator.getBuildOutcome('wi_1')).toEqual(
 			expect.objectContaining({
 				workItemId: 'wi_1',
@@ -80,7 +69,7 @@ describe('WorkflowTaskCoordinator', () => {
 		const { storage } = createStorage();
 		const coordinator = new WorkflowTaskCoordinator('thread-1', storage);
 
-		await coordinator.formatCompletedTaskMessage(createBuilderTask());
+		await coordinator.reportBuildOutcome(createBuildOutcome());
 		await coordinator.updateBuildOutcome('wi_1', {
 			mockedCredentialTypes: ['slackOAuth2Api'],
 		});

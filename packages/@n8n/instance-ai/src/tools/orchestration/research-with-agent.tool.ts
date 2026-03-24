@@ -41,6 +41,7 @@ export function createResearchWithAgentTool(context: OrchestrationContext) {
 		}),
 		outputSchema: z.object({
 			result: z.string(),
+			taskId: z.string(),
 		}),
 		// eslint-disable-next-line @typescript-eslint/require-await -- framework requires Promise return but body is sync
 		execute: async (input) => {
@@ -54,11 +55,11 @@ export function createResearchWithAgentTool(context: OrchestrationContext) {
 			}
 
 			if (!researchTools['web-search']) {
-				return { result: 'Error: web-search tool not available.' };
+				return { result: 'Error: web-search tool not available.', taskId: '' };
 			}
 
 			if (!context.spawnBackgroundTask) {
-				return { result: 'Error: background task support not available.' };
+				return { result: 'Error: background task support not available.', taskId: '' };
 			}
 
 			const subAgentId = `agent-researcher-${nanoid(6)}`;
@@ -136,6 +137,7 @@ export function createResearchWithAgentTool(context: OrchestrationContext) {
 
 			return {
 				result: `Research started (task: ${taskId}). Acknowledge briefly and move on.`,
+				taskId,
 			};
 		},
 	});
