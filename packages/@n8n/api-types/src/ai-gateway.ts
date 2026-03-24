@@ -67,6 +67,16 @@ export interface AiGatewaySettingsResponse {
 	enabled: boolean;
 	defaultCategory: string;
 	defaultModel?: string;
+	/** Default model for the AI Gateway Chat Model node (`lmChatN8nAiGateway`). */
+	defaultChatModel: string;
+	/** Default model for the AI Gateway app node when resource is Text. */
+	defaultTextModel: string;
+	/** Default model when resource is Image. */
+	defaultImageModel: string;
+	/** Default model when resource is File. */
+	defaultFileModel: string;
+	/** Default model when resource is Audio. */
+	defaultAudioModel: string;
 	creditsRemaining?: number;
 }
 

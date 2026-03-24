@@ -127,6 +127,7 @@ import {
 	applyAIGatewayDefaultsToLlmNode,
 	getGatewayLlmNodeData,
 } from '@/features/ai/gateway/useAIGatewayDefaults';
+import { applyInstanceAiGatewayModelDefaults } from '@/features/ai/gateway/applyInstanceAiGatewayModelDefaults';
 import cloneDeep from 'lodash/cloneDeep';
 import uniq from 'lodash/uniq';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
@@ -1224,6 +1225,7 @@ export function useCanvasOperations() {
 
 		if (nodeTypesStore.getIsNodeInstalled(nodeData.type)) {
 			resolveNodeParameters(nodeData, nodeTypeDescription);
+			applyInstanceAiGatewayModelDefaults(nodeData, nodeTypeDescription);
 			resolveNodeWebhook(nodeData, nodeTypeDescription);
 		}
 

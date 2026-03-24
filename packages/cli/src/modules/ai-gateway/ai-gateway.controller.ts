@@ -35,6 +35,11 @@ export class AiGatewayController {
 			enabled: this.config.enabled,
 			defaultCategory,
 			defaultModel: MODEL_CATEGORY_MAP[defaultCategory],
+			defaultChatModel: this.config.defaultChatModel,
+			defaultTextModel: this.config.defaultTextModel,
+			defaultImageModel: this.config.defaultImageModel,
+			defaultFileModel: this.config.defaultFileModel,
+			defaultAudioModel: this.config.defaultAudioModel,
 			creditsRemaining: this.config.creditsRemaining,
 		};
 	}
@@ -47,7 +52,33 @@ export class AiGatewayController {
 	): Promise<AiGatewaySettingsResponse> {
 		if (payload.defaultCategory !== undefined) {
 			this.config.defaultCategory = payload.defaultCategory;
+		}
+		if (payload.defaultChatModel !== undefined) {
+			this.config.defaultChatModel = payload.defaultChatModel;
+		}
+		if (payload.defaultTextModel !== undefined) {
+			this.config.defaultTextModel = payload.defaultTextModel;
+		}
+		if (payload.defaultImageModel !== undefined) {
+			this.config.defaultImageModel = payload.defaultImageModel;
+		}
+		if (payload.defaultFileModel !== undefined) {
+			this.config.defaultFileModel = payload.defaultFileModel;
+		}
+		if (payload.defaultAudioModel !== undefined) {
+			this.config.defaultAudioModel = payload.defaultAudioModel;
+		}
+
+		if (
+			payload.defaultCategory !== undefined ||
+			payload.defaultChatModel !== undefined ||
+			payload.defaultTextModel !== undefined ||
+			payload.defaultImageModel !== undefined ||
+			payload.defaultFileModel !== undefined ||
+			payload.defaultAudioModel !== undefined
+		) {
 			await this.gatewayService.provisionCredential();
+			this.gatewayService.invalidateModelCache();
 		}
 
 		const defaultCategory = MODEL_CATEGORIES.includes(this.config.defaultCategory as ModelCategory)
@@ -57,6 +88,11 @@ export class AiGatewayController {
 			enabled: this.config.enabled,
 			defaultCategory,
 			defaultModel: MODEL_CATEGORY_MAP[defaultCategory],
+			defaultChatModel: this.config.defaultChatModel,
+			defaultTextModel: this.config.defaultTextModel,
+			defaultImageModel: this.config.defaultImageModel,
+			defaultFileModel: this.config.defaultFileModel,
+			defaultAudioModel: this.config.defaultAudioModel,
 			creditsRemaining: this.config.creditsRemaining,
 		};
 	}

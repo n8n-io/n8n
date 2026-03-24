@@ -25,6 +25,8 @@ import { useRoute } from 'vue-router';
 import { useStyles } from '@/app/composables/useStyles';
 import { useExposeCssVar } from '@/app/composables/useExposeCssVar';
 import { useFloatingUiOffsets } from '@/app/composables/useFloatingUiOffsets';
+// eslint-disable-next-line import-x/extensions
+import { useAIGatewayStore } from '@/features/ai/gateway/aiGateway.store';
 
 const route = useRoute();
 const rootStore = useRootStore();
@@ -55,6 +57,7 @@ useTelemetryContext({ ndv_source: computed(() => ndvStore.lastSetActiveNodeSourc
 onMounted(async () => {
 	setAppZIndexes();
 	logHiringBanner();
+	void useAIGatewayStore().initialize();
 	loading.value = false;
 });
 

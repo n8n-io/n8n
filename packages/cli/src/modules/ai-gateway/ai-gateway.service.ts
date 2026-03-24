@@ -55,7 +55,7 @@ export class AiGatewayService {
 			apiKey: this.config.openRouterApiKey,
 			url: this.config.openRouterBaseUrl,
 			defaultCategory,
-			defaultModel: MODEL_CATEGORY_MAP[defaultCategory],
+			defaultModel: this.config.defaultChatModel,
 			categoryMap: JSON.stringify(MODEL_CATEGORY_MAP),
 		};
 
