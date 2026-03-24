@@ -5,6 +5,7 @@ import { N8nIcon, type IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { useInstanceAiStore } from '../instanceAi.store';
+import { useToolLabel } from '../toolLabels';
 import { getRenderableAgentResult } from '../agentResult';
 import ExecutionPreviewCard from './ExecutionPreviewCard.vue';
 import AgentTimeline from './AgentTimeline.vue';
@@ -15,13 +16,15 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const store = useInstanceAiStore();
+const { getToolLabel } = useToolLabel();
+const isGoalOpen = ref(false);
 
 function handleStop() {
 	store.amendAgent(props.agentNode.agentId, props.agentNode.role, props.agentNode.taskId);
 }
+
 const isOpen = ref(true);
 
-// Auto-collapse when sub-agent completes
 watch(
 	() => props.agentNode.status,
 	(newStatus) => {
@@ -31,12 +34,23 @@ watch(
 	},
 );
 
-const statusIconMap = {
-	active: { icon: 'spinner', className: 'activeIcon' },
-	completed: { icon: 'check', className: 'completedIcon' },
-	cancelled: { icon: 'status-canceled', className: 'cancelledIcon' },
-	error: { icon: 'triangle-alert', className: 'errorIcon' },
-} satisfies Record<InstanceAiAgentNode['status'], { icon: IconName; className: string }>;
+const statusConfig = {
+	active: { icon: 'spinner', className: 'activeIcon', spin: true },
+	completed: { icon: 'check', className: 'completedIcon', spin: false },
+	cancelled: { icon: 'x', className: 'cancelledIcon', spin: false },
+	error: { icon: 'triangle-alert', className: 'errorIcon', spin: false },
+} satisfies Record<
+	InstanceAiAgentNode['status'],
+	{ icon: IconName; className: string; spin: boolean }
+>;
+
+const displayTitle = computed(() => {
+	return props.agentNode.title ?? props.agentNode.role;
+});
+
+const displaySubtitle = computed(() => {
+	return props.agentNode.subtitle ?? '';
+});
 
 /** Extract execution info from completed run-workflow tool calls. */
 const runResults = computed(() => {
@@ -60,7 +74,10 @@ const runResults = computed(() => {
 	}
 	return map;
 });
+
 const displayResult = computed(() => getRenderableAgentResult(props.agentNode));
+const isActive = computed(() => props.agentNode.status === 'active');
+const statusEntry = computed(() => statusConfig[props.agentNode.status]);
 </script>
 
 <template>
@@ -68,33 +85,47 @@ const displayResult = computed(() => getRenderableAgentResult(props.agentNode));
 		<CollapsibleTrigger :class="$style.header">
 			<div :class="$style.headerLeft">
 				<N8nIcon
-					:icon="statusIconMap[props.agentNode.status].icon"
-					:class="$style[statusIconMap[props.agentNode.status].className]"
-					:spin="props.agentNode.status === 'active'"
+					:icon="statusEntry.icon"
+					:class="$style[statusEntry.className]"
+					:spin="statusEntry.spin"
 					size="small"
 				/>
-				<span :class="$style.role">
-					{{ i18n.baseText('instanceAi.agentTree.subAgent') }}:
-					{{ props.agentNode.role }}
-				</span>
+				<span :class="$style.title">{{ displayTitle }}</span>
+				<span v-if="displaySubtitle" :class="$style.subtitle">{{ displaySubtitle }}</span>
 			</div>
 			<div :class="$style.headerRight">
-				<span v-for="tool in props.agentNode.tools" :key="tool" :class="$style.toolBadge">
-					{{ tool }}
-				</span>
-				<button
-					v-if="props.agentNode.status === 'active'"
-					:class="$style.stopButton"
-					@click.stop="handleStop"
-				>
+				<button v-if="isActive" :class="$style.stopButton" @click.stop="handleStop">
 					<N8nIcon icon="square" size="small" />
 					{{ i18n.baseText('instanceAi.agent.stop') }}
 				</button>
 				<N8nIcon :icon="isOpen ? 'chevron-up' : 'chevron-down'" size="small" />
 			</div>
 		</CollapsibleTrigger>
+
+		<!-- Tools row -->
+		<div v-if="props.agentNode.tools?.length" :class="$style.toolsRow">
+			<span v-for="tool in props.agentNode.tools" :key="tool" :class="$style.toolBadge">
+				{{ getToolLabel(tool) }}
+			</span>
+		</div>
+
+		<!-- Goal / delegation prompt (collapsed by default) -->
+		<CollapsibleRoot
+			v-if="props.agentNode.goal"
+			v-model:open="isGoalOpen"
+			:class="$style.goalBlock"
+		>
+			<CollapsibleTrigger :class="$style.goalTrigger">
+				<span>Delegation briefing</span>
+				<N8nIcon :icon="isGoalOpen ? 'chevron-up' : 'chevron-down'" size="small" />
+			</CollapsibleTrigger>
+			<CollapsibleContent :class="$style.goalContent">
+				<p>{{ props.agentNode.goal }}</p>
+			</CollapsibleContent>
+		</CollapsibleRoot>
+
 		<CollapsibleContent :class="$style.content">
-			<!-- Reasoning (collapsible, if non-empty) -->
+			<!-- Reasoning -->
 			<CollapsibleRoot v-if="props.agentNode.reasoning" :class="$style.reasoningBlock">
 				<CollapsibleTrigger :class="$style.reasoningTrigger">
 					<N8nIcon icon="brain" size="small" />
@@ -105,7 +136,7 @@ const displayResult = computed(() => getRenderableAgentResult(props.agentNode));
 				</CollapsibleContent>
 			</CollapsibleRoot>
 
-			<!-- Unified timeline -->
+			<!-- Timeline -->
 			<AgentTimeline :agent-node="props.agentNode" :compact="true">
 				<template #after-tool-call="{ toolCall: tc }">
 					<ExecutionPreviewCard
@@ -117,19 +148,17 @@ const displayResult = computed(() => getRenderableAgentResult(props.agentNode));
 					/>
 				</template>
 			</AgentTimeline>
-
-			<!-- Error -->
-			<div v-if="props.agentNode.error" :class="$style.errorBlock">
-				<N8nIcon icon="triangle-alert" size="small" :class="$style.errorIcon" />
-				<span>{{ i18n.baseText('instanceAi.agentTree.error') }}: {{ props.agentNode.error }}</span>
-			</div>
-
-			<!-- Result summary -->
-			<div v-if="displayResult && !props.agentNode.error" :class="$style.resultBlock">
-				<N8nIcon icon="check" size="small" :class="$style.completedIcon" />
-				<span>{{ displayResult }}</span>
-			</div>
 		</CollapsibleContent>
+
+		<!-- Footer: error or result (always visible, outside collapsible) -->
+		<div v-if="props.agentNode.error" :class="$style.footer">
+			<N8nIcon icon="triangle-alert" size="small" :class="$style.errorIcon" />
+			<span>{{ props.agentNode.error }}</span>
+		</div>
+		<div v-else-if="displayResult && !isOpen" :class="[$style.footer, $style.footerSuccess]">
+			<N8nIcon icon="check" size="small" :class="$style.completedIcon" />
+			<span>{{ displayResult }}</span>
+		</div>
 	</CollapsibleRoot>
 </template>
 
@@ -139,6 +168,7 @@ const displayResult = computed(() => getRenderableAgentResult(props.agentNode));
 	border-radius: var(--radius--lg);
 	margin: var(--spacing--2xs) 0;
 	overflow: hidden;
+	background: var(--color--background);
 }
 
 .header {
@@ -146,13 +176,11 @@ const displayResult = computed(() => getRenderableAgentResult(props.agentNode));
 	align-items: center;
 	justify-content: space-between;
 	width: 100%;
-	padding: var(--spacing--2xs) var(--spacing--xs);
+	padding: var(--spacing--xs) var(--spacing--sm);
 	background: var(--color--foreground--tint-2);
 	border: none;
 	cursor: pointer;
 	font-family: var(--font-family);
-	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
 
 	&:hover {
 		background: var(--color--foreground--tint-1);
@@ -163,32 +191,107 @@ const displayResult = computed(() => getRenderableAgentResult(props.agentNode));
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
+	min-width: 0;
 }
 
 .headerRight {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--4xs);
+	gap: var(--spacing--2xs);
+	flex-shrink: 0;
 }
 
-.role {
+.title {
+	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--bold);
+	color: var(--color--text);
+	white-space: nowrap;
+}
+
+.subtitle {
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-1);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	max-width: 280px;
+}
+
+.toolsRow {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: var(--spacing--4xs);
+	padding: var(--spacing--3xs) var(--spacing--sm);
+	border-top: var(--border);
 }
 
 .toolBadge {
-	display: inline-block;
-	padding: 1px var(--spacing--4xs);
 	font-size: var(--font-size--3xs);
-	font-family: monospace;
+	color: var(--color--text--tint-1);
+	padding: var(--spacing--5xs) var(--spacing--4xs);
 	background: var(--color--foreground);
-	border: var(--border);
 	border-radius: var(--radius--sm);
-	color: var(--color--text);
+	white-space: nowrap;
+}
+
+.goalBlock {
+	border-top: var(--border);
+}
+
+.goalTrigger {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	width: 100%;
+	padding: var(--spacing--4xs) var(--spacing--sm);
+	background: none;
+	border: none;
+	cursor: pointer;
+	font-family: var(--font-family);
+	font-size: var(--font-size--3xs);
+	font-weight: var(--font-weight--bold);
+	color: var(--color--text--tint-1);
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+
+	&:hover {
+		background: var(--color--foreground--tint-2);
+	}
+}
+
+.goalContent {
+	padding: 0 var(--spacing--sm) var(--spacing--2xs);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-1);
+	line-height: var(--line-height--xl);
+
+	p {
+		margin: 0;
+		white-space: pre-wrap;
+		word-break: break-word;
+	}
 }
 
 .content {
-	padding: var(--spacing--2xs) var(--spacing--xs);
+	padding: var(--spacing--2xs) var(--spacing--sm);
 	border-top: var(--border);
+}
+
+.footer {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	padding: var(--spacing--2xs) var(--spacing--sm);
+	border-top: var(--border);
+	font-size: var(--font-size--2xs);
+	color: var(--color--danger);
+	background: color-mix(in srgb, var(--color--danger) 5%, var(--color--background));
+}
+
+.footerSuccess {
+	color: var(--color--success);
+	background: color-mix(in srgb, var(--color--success) 5%, var(--color--background));
 }
 
 .reasoningBlock {
@@ -208,7 +311,7 @@ const displayResult = computed(() => getRenderableAgentResult(props.agentNode));
 	font-family: var(--font-family);
 
 	&:hover {
-		color: var(--color--text--tint-1);
+		color: var(--color--text);
 	}
 }
 
@@ -217,33 +320,12 @@ const displayResult = computed(() => getRenderableAgentResult(props.agentNode));
 	font-size: var(--font-size--2xs);
 	color: var(--color--text--tint-1);
 	font-style: italic;
-	border-left: var(--border-width) var(--border-style) var(--color--foreground);
+	border-left: 2px solid var(--color--foreground);
 	margin-left: var(--spacing--4xs);
-}
 
-.textContent {
-	font-size: var(--font-size--sm);
-	line-height: var(--line-height--xl);
-	color: var(--color--text);
-	margin-top: var(--spacing--2xs);
-}
-
-.errorBlock {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	font-size: var(--font-size--2xs);
-	color: var(--color--danger);
-	margin-top: var(--spacing--2xs);
-}
-
-.resultBlock {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	font-size: var(--font-size--2xs);
-	color: var(--color--success);
-	margin-top: var(--spacing--2xs);
+	p {
+		margin: 0;
+	}
 }
 
 .stopButton {
