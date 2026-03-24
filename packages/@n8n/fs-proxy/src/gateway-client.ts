@@ -362,7 +362,7 @@ export class GatewayClient {
 			const rule = settingsStore.check(resource.toolGroup, resource.resource);
 
 			if (rule === 'deny') {
-				throw new Error(`Access denied to ${resource.toolGroup}: ${resource.resource}`);
+				throw new Error(`User denied access to ${resource.toolGroup}: ${resource.resource}`);
 			}
 
 			if (rule === 'allow') continue;
@@ -379,10 +379,10 @@ export class GatewayClient {
 					settingsStore.alwaysAllow(resource.toolGroup, resource.resource);
 					break;
 				case 'denyOnce':
-					throw new Error(`Access denied to ${resource.toolGroup}: ${resource.resource}`);
+					throw new Error(`User denied access to ${resource.toolGroup}: ${resource.resource}`);
 				case 'alwaysDeny':
 					settingsStore.alwaysDeny(resource.toolGroup, resource.resource);
-					throw new Error(`Access denied to ${resource.toolGroup}: ${resource.resource}`);
+					throw new Error(`User denied access to ${resource.toolGroup}: ${resource.resource}`);
 			}
 		}
 	}
