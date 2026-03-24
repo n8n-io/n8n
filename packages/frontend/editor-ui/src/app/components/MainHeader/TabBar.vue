@@ -50,7 +50,7 @@ function onUpdateModelValue(tab: string, event: MouseEvent): void {
 	background-color: var(--color--foreground);
 	border-radius: var(--radius);
 	transition: all 150ms ease-in-out;
-	z-index: 100; // Should float above other layout components in any page
+	z-index: var(--tab-bar--z); // Should float above other layout components in any page
 }
 
 @media screen and (max-width: 430px) {

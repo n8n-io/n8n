@@ -1,8 +1,9 @@
 const APP_Z_INDEXES = {
-	CONTEXT_MENU: 10, // should be still in front of the logs panel
 	APP_HEADER: 99,
+	TAB_BAR: 100,
 	SELECT_BOX: 100,
 	CANVAS_ADD_BUTTON: 101,
+	CONTEXT_MENU: 102, // should be still in front of the logs panel and tab bar
 	APP_SIDEBAR: 999,
 	CANVAS_SELECT_BOX: 100,
 	TOP_BANNERS: 999,
