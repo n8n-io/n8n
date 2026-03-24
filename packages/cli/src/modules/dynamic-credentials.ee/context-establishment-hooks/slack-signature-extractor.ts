@@ -6,10 +6,29 @@ import {
 	type HookDescription,
 	type IContextEstablishmentHook,
 } from '@n8n/decorators';
+import { z } from 'zod';
 
 function isHeaderObject(obj: unknown): obj is Record<string, unknown> {
 	return obj !== null && obj !== undefined && typeof obj === 'object' && !Array.isArray(obj);
 }
+
+const FlatPayloadSchema = z.object({
+	user_id: z.string(),
+	team_id: z.string().optional(),
+	enterprise_id: z.string().optional(),
+});
+
+const InteractivePayloadSchema = z.object({
+	user: z.object({ id: z.string().optional() }),
+	team: z.object({ id: z.string() }).optional(),
+	enterprise: z.object({ id: z.string() }).optional(),
+});
+
+const EventPayloadSchema = z.object({
+	event: z.object({ user: z.string().optional() }),
+	team_id: z.string().optional(),
+	enterprise_id: z.string().optional(),
+});
 
 /**
  * Extracts Slack identity from webhook requests.
@@ -143,48 +162,57 @@ export class SlackSignatureExtractor implements IContextEstablishmentHook {
 		teamId: string | undefined;
 		enterpriseId: string | undefined;
 	} {
-		if (!body || typeof body !== 'object') {
-			return { userId: undefined, teamId: undefined, enterpriseId: undefined };
-		}
+		return (
+			this.extractFlatFieldBody(body) ??
+			this.extractInteractivePayloadBody(body) ??
+			this.extractEventPayloadBody(body) ?? {
+				userId: undefined,
+				teamId: undefined,
+				enterpriseId: undefined,
+			}
+		);
+	}
 
-		const payload = body as Record<string, unknown>;
+	/** Slash commands and some interactions: flat fields */
+	private extractFlatFieldBody(
+		body: unknown,
+	): { userId: string; teamId: string | undefined; enterpriseId: string | undefined } | undefined {
+		const result = FlatPayloadSchema.safeParse(body);
+		if (!result.success) return undefined;
+		return {
+			userId: result.data.user_id,
+			teamId: result.data.team_id,
+			enterpriseId: result.data.enterprise_id,
+		};
+	}
 
-		// Slash commands and some interactions: flat fields
-		if (typeof payload['user_id'] === 'string') {
-			return {
-				userId: payload['user_id'],
-				teamId: typeof payload['team_id'] === 'string' ? payload['team_id'] : undefined,
-				enterpriseId:
-					typeof payload['enterprise_id'] === 'string' ? payload['enterprise_id'] : undefined,
-			};
-		}
+	/** Interactive payloads: nested user object */
+	private extractInteractivePayloadBody(
+		body: unknown,
+	):
+		| { userId: string | undefined; teamId: string | undefined; enterpriseId: string | undefined }
+		| undefined {
+		const result = InteractivePayloadSchema.safeParse(body);
+		if (!result.success) return undefined;
+		return {
+			userId: result.data.user.id,
+			teamId: result.data.team?.id,
+			enterpriseId: result.data.enterprise?.id,
+		};
+	}
 
-		// Interactive payloads: nested user object
-		const user = payload['user'];
-		if (user && typeof user === 'object' && 'id' in user) {
-			const userObj = user as Record<string, unknown>;
-			const team = payload['team'] as Record<string, unknown> | undefined;
-			const enterprise = payload['enterprise'] as Record<string, unknown> | undefined;
-			return {
-				userId: typeof userObj['id'] === 'string' ? userObj['id'] : undefined,
-				teamId: team && typeof team['id'] === 'string' ? team['id'] : undefined,
-				enterpriseId:
-					enterprise && typeof enterprise['id'] === 'string' ? enterprise['id'] : undefined,
-			};
-		}
-
-		// Event payloads: event.user at top level
-		const event = payload['event'];
-		if (event && typeof event === 'object') {
-			const eventObj = event as Record<string, unknown>;
-			return {
-				userId: typeof eventObj['user'] === 'string' ? eventObj['user'] : undefined,
-				teamId: typeof payload['team_id'] === 'string' ? payload['team_id'] : undefined,
-				enterpriseId:
-					typeof payload['enterprise_id'] === 'string' ? payload['enterprise_id'] : undefined,
-			};
-		}
-
-		return { userId: undefined, teamId: undefined, enterpriseId: undefined };
+	/** Event payloads: event.user at top level */
+	private extractEventPayloadBody(
+		body: unknown,
+	):
+		| { userId: string | undefined; teamId: string | undefined; enterpriseId: string | undefined }
+		| undefined {
+		const result = EventPayloadSchema.safeParse(body);
+		if (!result.success) return undefined;
+		return {
+			userId: result.data.event.user,
+			teamId: result.data.team_id,
+			enterpriseId: result.data.enterprise_id,
+		};
 	}
 }
