@@ -1,12 +1,11 @@
 <script lang="ts" setup>
-import { ref, computed, watch } from 'vue';
+import { ref, watch } from 'vue';
 import { CollapsibleRoot, CollapsibleTrigger, CollapsibleContent } from 'reka-ui';
 import { N8nIcon, type IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { useInstanceAiStore } from '../instanceAi.store';
-import ExecutionPreviewCard from './ExecutionPreviewCard.vue';
-import AgentTimeline from './AgentTimeline.vue';
+import SubagentStepTimeline from './SubagentStepTimeline.vue';
 
 const props = defineProps<{
 	agentNode: InstanceAiAgentNode;
@@ -18,7 +17,7 @@ const store = useInstanceAiStore();
 function handleStop() {
 	store.amendAgent(props.agentNode.agentId, props.agentNode.role, props.agentNode.taskId);
 }
-const isOpen = ref(true);
+const isOpen = ref(false);
 
 // Auto-collapse when sub-agent completes
 watch(
@@ -36,29 +35,6 @@ const statusIconMap = {
 	cancelled: { icon: 'status-canceled', className: 'cancelledIcon' },
 	error: { icon: 'triangle-alert', className: 'errorIcon' },
 } satisfies Record<InstanceAiAgentNode['status'], { icon: IconName; className: string }>;
-
-/** Extract execution info from completed run-workflow tool calls. */
-const runResults = computed(() => {
-	const map = new Map<
-		string,
-		{ executionId: string; workflowId: string; status: string; error?: string }
-	>();
-	for (const tc of props.agentNode.toolCalls) {
-		if (tc.toolName === 'run-workflow' && tc.result && typeof tc.result === 'object') {
-			const result = tc.result as Record<string, unknown>;
-			const args = tc.args as Record<string, unknown>;
-			if (typeof result.executionId === 'string' && typeof args.workflowId === 'string') {
-				map.set(tc.toolCallId, {
-					executionId: result.executionId,
-					workflowId: args.workflowId,
-					status: typeof result.status === 'string' ? result.status : 'unknown',
-					error: typeof result.error === 'string' ? result.error : undefined,
-				});
-			}
-		}
-	}
-	return map;
-});
 </script>
 
 <template>
@@ -77,9 +53,6 @@ const runResults = computed(() => {
 				</span>
 			</div>
 			<div :class="$style.headerRight">
-				<span v-for="tool in props.agentNode.tools" :key="tool" :class="$style.toolBadge">
-					{{ tool }}
-				</span>
 				<button
 					v-if="props.agentNode.status === 'active'"
 					:class="$style.stopButton"
@@ -92,40 +65,12 @@ const runResults = computed(() => {
 			</div>
 		</CollapsibleTrigger>
 		<CollapsibleContent :class="$style.content">
-			<!-- Reasoning (collapsible, if non-empty) -->
-			<CollapsibleRoot v-if="props.agentNode.reasoning" :class="$style.reasoningBlock">
-				<CollapsibleTrigger :class="$style.reasoningTrigger">
-					<N8nIcon icon="brain" size="small" />
-					<span>{{ i18n.baseText('instanceAi.message.reasoning') }}</span>
-				</CollapsibleTrigger>
-				<CollapsibleContent :class="$style.reasoningContent">
-					<p>{{ props.agentNode.reasoning }}</p>
-				</CollapsibleContent>
-			</CollapsibleRoot>
-
-			<!-- Unified timeline -->
-			<AgentTimeline :agent-node="props.agentNode" :compact="true">
-				<template #after-tool-call="{ toolCall: tc }">
-					<ExecutionPreviewCard
-						v-if="runResults.has(tc.toolCallId)"
-						:execution-id="runResults.get(tc.toolCallId)!.executionId"
-						:workflow-id="runResults.get(tc.toolCallId)!.workflowId"
-						:status="runResults.get(tc.toolCallId)!.status"
-						:error="runResults.get(tc.toolCallId)!.error"
-					/>
-				</template>
-			</AgentTimeline>
+			<SubagentStepTimeline :agent-node="props.agentNode" />
 
 			<!-- Error -->
 			<div v-if="props.agentNode.error" :class="$style.errorBlock">
 				<N8nIcon icon="triangle-alert" size="small" :class="$style.errorIcon" />
 				<span>{{ i18n.baseText('instanceAi.agentTree.error') }}: {{ props.agentNode.error }}</span>
-			</div>
-
-			<!-- Result summary -->
-			<div v-if="props.agentNode.result && !props.agentNode.error" :class="$style.resultBlock">
-				<N8nIcon icon="check" size="small" :class="$style.completedIcon" />
-				<span>{{ props.agentNode.result }}</span>
 			</div>
 		</CollapsibleContent>
 	</CollapsibleRoot>
@@ -173,57 +118,9 @@ const runResults = computed(() => {
 	font-weight: var(--font-weight--bold);
 }
 
-.toolBadge {
-	display: inline-block;
-	padding: 1px var(--spacing--4xs);
-	font-size: var(--font-size--3xs);
-	font-family: monospace;
-	background: var(--color--foreground);
-	border: var(--border);
-	border-radius: var(--radius--sm);
-	color: var(--color--text);
-}
-
 .content {
 	padding: var(--spacing--2xs) var(--spacing--xs);
 	border-top: var(--border);
-}
-
-.reasoningBlock {
-	margin-bottom: var(--spacing--2xs);
-}
-
-.reasoningTrigger {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
-	background: none;
-	border: none;
-	cursor: pointer;
-	padding: var(--spacing--4xs) 0;
-	font-family: var(--font-family);
-
-	&:hover {
-		color: var(--color--text--tint-1);
-	}
-}
-
-.reasoningContent {
-	padding: var(--spacing--4xs) var(--spacing--xs);
-	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
-	font-style: italic;
-	border-left: var(--border-width) var(--border-style) var(--color--foreground);
-	margin-left: var(--spacing--4xs);
-}
-
-.textContent {
-	font-size: var(--font-size--sm);
-	line-height: var(--line-height--xl);
-	color: var(--color--text);
-	margin-top: var(--spacing--2xs);
 }
 
 .errorBlock {
@@ -232,15 +129,6 @@ const runResults = computed(() => {
 	gap: var(--spacing--4xs);
 	font-size: var(--font-size--2xs);
 	color: var(--color--danger);
-	margin-top: var(--spacing--2xs);
-}
-
-.resultBlock {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	font-size: var(--font-size--2xs);
-	color: var(--color--success);
 	margin-top: var(--spacing--2xs);
 }
 

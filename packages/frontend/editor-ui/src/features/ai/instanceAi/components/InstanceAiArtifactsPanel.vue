@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
+import { computed, inject } from 'vue';
 import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useInstanceAiStore } from '../instanceAi.store';
@@ -9,6 +9,19 @@ import type { ResourceEntry } from '../useResourceRegistry';
 
 const i18n = useI18n();
 const store = useInstanceAiStore();
+const openPreview = inject<((id: string) => void) | undefined>('openWorkflowPreview', undefined);
+
+function handleArtifactClick(artifact: ResourceEntry, e: MouseEvent) {
+	if (artifact.type === 'workflow' && artifact.id) {
+		if (e.metaKey || e.ctrlKey) {
+			window.open(`/workflow/${artifact.id}`, '_blank');
+			return;
+		}
+		openPreview?.(artifact.id);
+	} else if (artifact.type === 'data-table') {
+		window.open('/data-tables', '_blank');
+	}
+}
 
 // --- Tasks ---
 const tasks = computed(() => store.currentTasks);
@@ -53,7 +66,12 @@ const artifactIconMap: Record<string, IconName> = {
 			</div>
 
 			<div v-if="artifacts.length > 0" :class="$style.artifactList">
-				<div v-for="artifact in artifacts" :key="artifact.id" :class="$style.artifactRow">
+				<div
+					v-for="artifact in artifacts"
+					:key="artifact.id"
+					:class="$style.artifactRow"
+					@click="handleArtifactClick(artifact, $event)"
+				>
 					<N8nIcon
 						:icon="artifactIconMap[artifact.type] ?? 'file'"
 						size="small"
@@ -147,6 +165,12 @@ const artifactIconMap: Record<string, IconName> = {
 	align-items: center;
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--3xs) 0;
+	cursor: pointer;
+	border-radius: var(--radius);
+
+	&:hover {
+		background: var(--color--background--shade-1);
+	}
 }
 
 .artifactIcon {
