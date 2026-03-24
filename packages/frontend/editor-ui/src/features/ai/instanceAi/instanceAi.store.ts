@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { ref, computed, triggerRef } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -229,6 +229,13 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			);
 			if (parsed.data.type === 'tasks-update') {
 				latestTasks.value = parsed.data.payload.tasks;
+			}
+			// Force Vue reactivity when streaming state changes (run-start can
+			// re-activate a completed message for auto-follow-up runs, run-finish
+			// marks it done). In-place mutation of message properties may not
+			// reliably trigger deep watchers in all scenarios (e.g. background tabs).
+			if (parsed.data.type === 'run-start' || parsed.data.type === 'run-finish') {
+				triggerRef(messages);
 			}
 			// When a run finishes, refresh thread list to pick up Mastra-generated titles
 			if (previousRunId && activeRunId.value === null) {

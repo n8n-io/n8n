@@ -1243,6 +1243,33 @@ export class InstanceAiService {
 					true,
 					task.messageGroupId,
 				);
+
+				// Auto-follow-up: when the last background task finishes and no
+				// orchestrator run is active, resume the orchestrator so it can
+				// synthesize results for the user. Planned tasks handle this via
+				// schedulePlannedTasks(); this covers direct build-workflow-with-agent calls.
+				if (!task.plannedTaskId) {
+					const remaining = this.backgroundTasks.getRunningTasks(opts.threadId);
+					const hasActiveRun = !!this.runState.getActiveRunId(opts.threadId);
+					const hasSuspendedRun = this.runState.hasSuspendedRun(opts.threadId);
+					if (remaining.length === 0 && !hasActiveRun && !hasSuspendedRun) {
+						const user = this.runState.getThreadUser(opts.threadId);
+						if (user) {
+							const summary = task.result
+								? `Background task "${opts.role}" completed: ${task.result}`
+								: task.error
+									? `Background task "${opts.role}" failed: ${task.error}`
+									: `Background task "${opts.role}" finished.`;
+							await this.startInternalFollowUpRun(
+								user,
+								opts.threadId,
+								`<background-task-completed>\n${summary}\n</background-task-completed>\n\n${AUTO_FOLLOW_UP_MESSAGE}`,
+								this.runState.getThreadResearchMode(opts.threadId),
+								task.messageGroupId,
+							);
+						}
+					}
+				}
 			},
 		});
 	}
