@@ -131,7 +131,8 @@ function getDisplayName(credentialType: string): string {
 function syntheticNodeUi(req: InstanceAiCredentialRequest): INodeUi {
 	const selectedId = selections.value[req.credentialType];
 	const selectedCred = selectedId
-		? req.existingCredentials?.find((c) => c.id === selectedId)
+		? (req.existingCredentials?.find((c) => c.id === selectedId) ??
+			credentialsStore.getCredentialById(selectedId))
 		: undefined;
 
 	return {
