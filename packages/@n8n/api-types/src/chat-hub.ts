@@ -9,7 +9,10 @@ import {
 } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { TimeZoneSchema } from './schemas/timezone.schema';
 import { Z } from './zod-class';
+
+export { isValidTimeZone, StrictTimeZoneSchema, TimeZoneSchema } from './schemas/timezone.schema';
 
 /**
  * Supported AI model providers
@@ -314,9 +317,6 @@ export const chatAttachmentSchema = z.object({
 	mimeType: z.string(),
 	fileName: z.string(),
 });
-
-import { TimeZoneSchema } from './schemas/timezone.schema';
-export { isValidTimeZone, StrictTimeZoneSchema, TimeZoneSchema } from './schemas/timezone.schema';
 
 export type ChatAttachment = z.infer<typeof chatAttachmentSchema>;
 
