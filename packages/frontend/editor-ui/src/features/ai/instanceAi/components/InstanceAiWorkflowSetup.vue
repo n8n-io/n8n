@@ -563,7 +563,9 @@ async function handleTestTrigger(nodeName: string) {
 	const nodeCredentials = buildNodeCredentials();
 	const nodeParameters = buildNodeParameters();
 
-	const success = await store.confirmAction(
+	applyError.value = null;
+
+	const postSuccess = await store.confirmAction(
 		props.requestId,
 		true,
 		undefined,
@@ -579,9 +581,33 @@ async function handleTestTrigger(nodeName: string) {
 		},
 	);
 
-	if (success) {
-		store.resolveConfirmation(props.requestId, 'approved');
+	if (!postSuccess) {
+		applyError.value = 'Failed to send trigger test request. Try again.';
+		return;
 	}
+
+	// Do NOT resolve the confirmation here. Two things can happen next:
+	// 1. Happy path: the backend re-suspends with a NEW confirmation-request
+	//    (new requestId). The new request appears in pendingConfirmations and
+	//    replaces this card naturally. The OLD request gets resolved when the
+	//    SSE confirmation-request event is processed (tool-call gets a new
+	//    confirmation, clearing the old one).
+	// 2. Failure path: the tool returns an error (e.g. credential apply failed
+	//    before execution). The tool-result arrives via SSE. We watch for it
+	//    and show the error inline so the user can fix and retry.
+	const { promise, cancel } = waitForToolResult(props.requestId);
+	cancelApplyWait = cancel;
+	const toolResult = await promise;
+	cancelApplyWait = null;
+
+	// If we got a tool result, it means the tool finished WITHOUT re-suspending
+	// (i.e. the failure path). Show the error.
+	if (toolResult) {
+		const error = toolResult.error as string | undefined;
+		applyError.value = error ?? 'Trigger test failed';
+	}
+	// If toolResult is null (timeout), the re-suspension likely already happened
+	// and a new confirmation-request replaced this component. Nothing to do.
 }
 
 /**
