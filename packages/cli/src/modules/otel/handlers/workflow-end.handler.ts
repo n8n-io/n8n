@@ -1,5 +1,5 @@
-import { SpanStatusCode } from '@opentelemetry/api';
 import type { WorkflowExecuteAfterContext } from '@n8n/decorators';
+import { SpanStatusCode } from '@opentelemetry/api';
 
 import { ATTR } from '../otel.constants';
 import type { SpanHandler } from './interfaces';
