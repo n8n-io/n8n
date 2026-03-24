@@ -78,7 +78,7 @@ export class SlackSignatureExtractor implements IContextEstablishmentHook {
 		headers['x-slack-request-timestamp'] = '**********';
 
 		this.logger.debug('Slack identity extracted', {
-			userId: '***',
+			userId,
 			teamId: teamId ?? 'unknown',
 		});
 

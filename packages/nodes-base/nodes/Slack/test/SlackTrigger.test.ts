@@ -413,14 +413,14 @@ describe('SlackTrigger Node', () => {
 			expect(result).toEqual({});
 		});
 
-		it('should not ignore event when event.user is undefined even if event.message.user matches an ignored user', async () => {
+		it('should ignore event when event.user is undefined but event.message.user matches an ignored user', async () => {
 			mockWebhookFunctions.getRequestObject.mockReturnValue(
 				getMessageEvent({ user: undefined, message: { user: 'U_IGNORED' } }) as any,
 			);
 
 			const result = await slackTrigger.webhook!.call(mockWebhookFunctions);
 
-			expect(result.workflowData).toBeDefined();
+			expect(result).toEqual({});
 		});
 
 		it('should not ignore event when event.user does not match any ignored user', async () => {

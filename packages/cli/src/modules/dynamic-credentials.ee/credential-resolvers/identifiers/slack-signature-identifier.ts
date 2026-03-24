@@ -94,7 +94,6 @@ export class SlackSignatureIdentifier implements ITokenIdentifier {
 			return subject;
 		}
 
-		this.logger.debug('Slack identity resolved', { subject: '***' });
 		return userId;
 	}
 
