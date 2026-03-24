@@ -1,0 +1,93 @@
+{
+	"name": "Agent with Webhook Wait Tool",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-id",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"promptType": "define",
+				"text": "Use the SubWorkflowTool to process some data"
+			},
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"typeVersion": 3.1,
+			"position": [220, 0],
+			"id": "main-agent-id",
+			"name": "Main Agent"
+		},
+		{
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "id",
+					"value": "gpt-4o-mini"
+				},
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"typeVersion": 1.2,
+			"position": [220, 200],
+			"id": "main-model-id",
+			"name": "Main Model",
+			"credentials": {
+				"openAiApi": {
+					"id": "123",
+					"name": "OpenAi account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"name": "SubWorkflowTool",
+				"description": "A tool that processes data through a workflow with a wait node",
+				"source": "parameter",
+				"workflowJson": "={{ JSON.stringify({ \"nodes\": [ { \"parameters\": {}, \"type\": \"n8n-nodes-base.executeWorkflowTrigger\", \"typeVersion\": 1, \"position\": [0, 0], \"id\": \"sub-trigger-id\", \"name\": \"Execute Workflow Trigger\" }, { \"parameters\": { \"resume\": \"webhook\", \"options\": {} }, \"type\": \"n8n-nodes-base.wait\", \"typeVersion\": 1.1, \"position\": [220, 0], \"id\": \"wait-node-id\", \"name\": \"Wait for Webhook\" }, { \"parameters\": { \"jsCode\": \"return [{ json: { result: 'Final result: processed' } }];\" }, \"type\": \"n8n-nodes-base.code\", \"typeVersion\": 2, \"position\": [440, 0], \"id\": \"code-node-id\", \"name\": \"Process Data\" } ], \"connections\": { \"Execute Workflow Trigger\": { \"main\": [[{ \"node\": \"Wait for Webhook\", \"type\": \"main\", \"index\": 0 }]] }, \"Wait for Webhook\": { \"main\": [[{ \"node\": \"Process Data\", \"type\": \"main\", \"index\": 0 }]] } } }) }}"
+			},
+			"type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+			"typeVersion": 2,
+			"position": [440, 0],
+			"id": "workflow-tool-id",
+			"name": "SubWorkflowTool"
+		}
+	],
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{
+						"node": "Main Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Main Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Main Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"SubWorkflowTool": {
+			"ai_tool": [
+				[
+					{
+						"node": "Main Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}
