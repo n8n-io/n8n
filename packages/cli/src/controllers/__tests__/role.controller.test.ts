@@ -16,54 +16,56 @@ describe('RoleController', () => {
 		jest.restoreAllMocks();
 	});
 
-	describe('createRole', () => {
-		it('should emit custom-role-created', async () => {
-			const request = mock<AuthenticatedRequest>({ user: { id: '123' } });
-			roleService.createCustomRole.mockResolvedValue({
-				slug: 'custom-editor',
-				scopes: ['workflow:read', 'workflow:update'],
-			} as Role);
+	describe('emits action events', () => {
+		describe('createRole', () => {
+			it('should emit custom-role-created', async () => {
+				const request = mock<AuthenticatedRequest>({ user: { id: '123' } });
+				roleService.createCustomRole.mockResolvedValue({
+					slug: 'custom-editor',
+					scopes: ['workflow:read', 'workflow:update'],
+				} as Role);
 
-			await controller.createRole(request, mock(), mock());
+				await controller.createRole(request, mock(), mock());
 
-			expect(eventService.emit).toHaveBeenCalledWith('custom-role-created', {
-				userId: '123',
-				roleSlug: 'custom-editor',
-				scopes: ['workflow:read', 'workflow:update'],
+				expect(eventService.emit).toHaveBeenCalledWith('custom-role-created', {
+					userId: '123',
+					roleSlug: 'custom-editor',
+					scopes: ['workflow:read', 'workflow:update'],
+				});
 			});
 		});
-	});
 
-	describe('updateRole', () => {
-		it('should emit custom-role-updated', async () => {
-			const request = mock<AuthenticatedRequest>({ user: { id: '123' } });
-			roleService.updateCustomRole.mockResolvedValue({
-				slug: 'custom-editor',
-				scopes: ['workflow:read', 'workflow:update', 'workflow:delete'],
-			} as Role);
+		describe('updateRole', () => {
+			it('should emit custom-role-updated', async () => {
+				const request = mock<AuthenticatedRequest>({ user: { id: '123' } });
+				roleService.updateCustomRole.mockResolvedValue({
+					slug: 'custom-editor',
+					scopes: ['workflow:read', 'workflow:update', 'workflow:delete'],
+				} as Role);
 
-			await controller.updateRole(request, mock(), 'custom-editor', mock());
+				await controller.updateRole(request, mock(), 'custom-editor', mock());
 
-			expect(eventService.emit).toHaveBeenCalledWith('custom-role-updated', {
-				userId: '123',
-				roleSlug: 'custom-editor',
-				scopes: ['workflow:read', 'workflow:update', 'workflow:delete'],
+				expect(eventService.emit).toHaveBeenCalledWith('custom-role-updated', {
+					userId: '123',
+					roleSlug: 'custom-editor',
+					scopes: ['workflow:read', 'workflow:update', 'workflow:delete'],
+				});
 			});
 		});
-	});
 
-	describe('deleteRole', () => {
-		it('should emit custom-role-deleted', async () => {
-			const request = mock<AuthenticatedRequest>({ user: { id: '123' } });
-			roleService.removeCustomRole.mockResolvedValue({
-				slug: 'custom-editor',
-			} as Role);
+		describe('deleteRole', () => {
+			it('should emit custom-role-deleted', async () => {
+				const request = mock<AuthenticatedRequest>({ user: { id: '123' } });
+				roleService.removeCustomRole.mockResolvedValue({
+					slug: 'custom-editor',
+				} as Role);
 
-			await controller.deleteRole(request, mock(), 'custom-editor');
+				await controller.deleteRole(request, mock(), 'custom-editor');
 
-			expect(eventService.emit).toHaveBeenCalledWith('custom-role-deleted', {
-				userId: '123',
-				roleSlug: 'custom-editor',
+				expect(eventService.emit).toHaveBeenCalledWith('custom-role-deleted', {
+					userId: '123',
+					roleSlug: 'custom-editor',
+				});
 			});
 		});
 	});
