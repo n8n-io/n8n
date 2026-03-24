@@ -46,14 +46,31 @@ function handleIframeMessage(event: MessageEvent) {
 }
 
 async function fetchWorkflow(id: string) {
-	fetchError.value = null;
-	isLoading.value = true;
+	const isRefresh = workflow.value?.id === id;
+	console.log('[WorkflowPreview] fetchWorkflow called', {
+		id,
+		isRefresh,
+		currentWorkflowId: workflow.value?.id,
+		currentNodeCount: workflow.value?.nodes?.length,
+	});
 
-	// Don't clear workflow.value — keep the iframe mounted so it doesn't
-	// lose its ready state and require a fresh n8nReady handshake.
+	fetchError.value = null;
+	if (!isRefresh) {
+		isLoading.value = true;
+		workflow.value = null;
+	}
+
 	try {
-		workflow.value = await workflowsListStore.fetchWorkflow(id);
-	} catch {
+		const fetched = await workflowsListStore.fetchWorkflow(id);
+		console.log('[WorkflowPreview] fetchWorkflow result', {
+			id: fetched.id,
+			name: fetched.name,
+			nodeCount: fetched.nodes?.length,
+			nodeNames: fetched.nodes?.map((n: { name: string }) => n.name),
+		});
+		workflow.value = fetched;
+	} catch (err) {
+		console.error('[WorkflowPreview] fetchWorkflow error', err);
 		workflow.value = null;
 		fetchError.value = i18n.baseText('instanceAi.workflowPreview.fetchError');
 	} finally {
@@ -64,7 +81,13 @@ async function fetchWorkflow(id: string) {
 // Re-fetch when workflowId changes OR when refreshKey increments (same workflow modified).
 watch(
 	() => [props.workflowId, props.refreshKey] as const,
-	async ([id]) => {
+	async ([id, refreshKey], oldVal) => {
+		console.log('[WorkflowPreview] watcher fired', {
+			id,
+			refreshKey,
+			oldId: oldVal?.[0],
+			oldRefreshKey: oldVal?.[1],
+		});
 		if (id) {
 			await fetchWorkflow(id);
 		} else {

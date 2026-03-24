@@ -32,6 +32,7 @@ documentTitle.set('Instance AI');
 
 // --- Canvas preview state ---
 const activeWorkflowId = ref<string | null>(null);
+const activeExecutionId = ref<string | null>(null);
 const isCanvasVisible = computed(() => activeWorkflowId.value !== null);
 const iframePushRef = ref<string | null>(null);
 
@@ -64,10 +65,22 @@ const latestBuildResult = computed(() => {
 // Watch the toolCallId — it changes even when the same workflow is rebuilt.
 watch(
 	() => latestBuildResult.value?.toolCallId,
-	(toolCallId) => {
+	(toolCallId, oldToolCallId) => {
+		console.log('[CanvasPreview] toolCallId watcher fired', {
+			toolCallId,
+			oldToolCallId,
+			workflowId: latestBuildResult.value?.workflowId,
+			currentActiveWorkflowId: activeWorkflowId.value,
+			currentRefreshKey: workflowRefreshKey.value,
+		});
 		if (!toolCallId || !latestBuildResult.value) return;
+		activeExecutionId.value = null;
 		activeWorkflowId.value = latestBuildResult.value.workflowId;
 		workflowRefreshKey.value++;
+		console.log('[CanvasPreview] Set activeWorkflowId + incremented refreshKey', {
+			activeWorkflowId: activeWorkflowId.value,
+			refreshKey: workflowRefreshKey.value,
+		});
 	},
 );
 
@@ -82,8 +95,6 @@ const latestExecutionId = computed(() => {
 	}
 	return null;
 });
-
-const activeExecutionId = ref<string | null>(null);
 
 watch(latestExecutionId, (execId) => {
 	if (execId) {
