@@ -263,6 +263,7 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 				filesystemAccess: !!(context.localMcpServer ?? context.filesystemService),
 				toolSearchEnabled: hasDeferrableTools,
 				licenseHints: context.licenseHints,
+				timeZone: options.timeZone,
 			}),
 			providerOptions: {
 				anthropic: { cacheControl: { type: 'ephemeral' } },

@@ -600,6 +600,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				message,
 				researchMode.value || undefined,
 				attachments,
+				Intl.DateTimeFormat().resolvedOptions().timeZone,
 			);
 		} catch (error: unknown) {
 			const status = error instanceof ResponseError ? error.httpStatusCode : undefined;

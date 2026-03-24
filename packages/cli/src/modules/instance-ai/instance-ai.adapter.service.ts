@@ -102,7 +102,6 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 import { WorkflowService } from '@/workflows/workflow.service';
 import { WorkflowRunner } from '@/workflow-runner';
 import { getBase } from '@/workflow-execute-additional-data';
-import { normalizeWorkflowForSave } from './normalize-workflow';
 
 @Service()
 export class InstanceAiAdapterService {
@@ -227,7 +226,6 @@ export class InstanceAiAdapterService {
 			workflowRepository,
 			sharedWorkflowRepository,
 			workflowHistoryService,
-			loadNodesAndCredentials,
 		} = this;
 		const { resolveProjectId } = this.createProjectScopeHelpers(user);
 
@@ -305,13 +303,6 @@ export class InstanceAiAdapterService {
 			async createFromWorkflowJSON(json: WorkflowJSON, options?: { projectId?: string }) {
 				const projectId = await resolveProjectId(['workflow:create'], options?.projectId);
 
-				// Normalize displayOptions-conditional parameters to expression format
-				// so they survive getNodeParameters() filtering during workflow init.
-				const { nodes: nodeTypes } = await loadNodesAndCredentials.collectTypes();
-				normalizeWorkflowForSave(json, (nodeType, _version) =>
-					nodeTypes.find((n) => n.name === nodeType),
-				);
-
 				// Create the workflow shell WITHOUT nodes — so that the subsequent
 				// update() detects a real change and creates a WorkflowHistory entry.
 				// Without a history entry, activateWorkflow() fails with "Version not found"
@@ -354,12 +345,6 @@ export class InstanceAiAdapterService {
 				json: WorkflowJSON,
 				_options?: { projectId?: string },
 			) {
-				// Normalize displayOptions-conditional parameters to expression format
-				const { nodes: nodeTypes } = await loadNodesAndCredentials.collectTypes();
-				normalizeWorkflowForSave(json, (nodeType, _version) =>
-					nodeTypes.find((n) => n.name === nodeType),
-				);
-
 				const updateData = workflowRepository.create({
 					name: json.name,
 					nodes: json.nodes as unknown as INode[],
@@ -1991,6 +1976,7 @@ function toWorkflowDetail(workflow: WorkflowEntity): WorkflowDetail {
 				type: n.type,
 				parameters: n.parameters,
 				position: n.position,
+				webhookId: n.webhookId,
 			}),
 		),
 		connections: workflow.connections as Record<string, unknown>,

@@ -83,9 +83,11 @@ export class CreateInstanceAiTables1773000000000 implements ReversibleMigration 
 				column('runId').varchar().primary.notNull,
 				column('workflowName').varchar().primary.notNull,
 				column('resourceId').varchar(),
+				column('status').varchar(),
 				column('snapshot').text.notNull,
 			)
-			.withIndexOn('workflowName').withTimestamps;
+			.withIndexOn('workflowName')
+			.withIndexOn(['workflowName', 'status']).withTimestamps;
 	}
 
 	async down({ schemaBuilder: { dropTable } }: MigrationContext) {

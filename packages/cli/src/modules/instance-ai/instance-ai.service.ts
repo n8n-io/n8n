@@ -8,9 +8,11 @@ import type {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
+// import { Time } from '@n8n/constants';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { UrlService } from '@/services/url.service';
 import {
 	createInstanceAgent,
 	createAllTools,
@@ -60,7 +62,9 @@ import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiAdapterService } from './instance-ai.adapter.service';
 import { AUTO_FOLLOW_UP_MESSAGE } from './internal-messages';
 import { TypeORMCompositeStore } from './storage/typeorm-composite-store';
+import type { TypeORMWorkflowsStorage } from './storage/typeorm-workflows-storage';
 import { InstanceAiCompactionService } from './compaction.service';
+
 
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
@@ -104,11 +108,15 @@ export class InstanceAiService {
 	/** Domain-access trackers per thread — persists approvals across runs within a conversation. */
 	private readonly domainAccessTrackersByThread = new Map<string, DomainAccessTracker>();
 
+
 	/** Pre-warmed image manager for builder sandboxes (Daytona only). */
 	private snapshotManager?: SnapshotManager;
 
 	/** Factory for creating per-builder ephemeral sandboxes. */
 	private builderSandboxFactory?: BuilderSandboxFactory;
+
+	/** Default IANA timezone for the instance (from GENERIC_TIMEZONE env var). */
+	private readonly defaultTimeZone: string;
 
 	constructor(
 		private readonly logger: Logger,
@@ -118,12 +126,14 @@ export class InstanceAiService {
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly compositeStore: TypeORMCompositeStore,
 		private readonly compactionService: InstanceAiCompactionService,
+		private readonly urlService: UrlService,
 	) {
 		this.instanceAiConfig = globalConfig.instanceAi;
+		this.defaultTimeZone = globalConfig.generic.timezone;
 		const editorBaseUrl = globalConfig.editorBaseUrl || `http://localhost:${globalConfig.port}`;
 		const restEndpoint = globalConfig.endpoints.rest;
 		this.oauth2CallbackUrl = `${editorBaseUrl.replace(/\/$/, '')}/${restEndpoint}/oauth2-credential/callback`;
-		this.webhookBaseUrl = `${editorBaseUrl.replace(/\/$/, '')}/${globalConfig.endpoints.webhook}`;
+		this.webhookBaseUrl = `${this.urlService.getWebhookBaseUrl()}${globalConfig.endpoints.webhook}`;
 
 		// Initialize per-builder sandbox factory from env vars (credential-based config resolves at runtime)
 		const sbxConfig = this.getSandboxConfigFromEnv();
@@ -133,6 +143,7 @@ export class InstanceAiService {
 		} else if (sbxConfig.enabled) {
 			this.builderSandboxFactory = new BuilderSandboxFactory(sbxConfig);
 		}
+
 	}
 
 	private getSandboxConfigFromEnv(): SandboxConfig {
@@ -243,12 +254,14 @@ export class InstanceAiService {
 		message: string,
 		researchMode?: boolean,
 		attachments?: InstanceAiAttachment[],
+		timeZone?: string,
 	): string {
 		const { runId, abortController, messageGroupId } = this.runState.startRun({
 			threadId,
 			user,
 			researchMode,
 		});
+
 
 		void this.executeRun(
 			user,
@@ -259,6 +272,7 @@ export class InstanceAiService {
 			researchMode,
 			attachments,
 			messageGroupId,
+			timeZone,
 		);
 
 		return runId;
@@ -305,6 +319,7 @@ export class InstanceAiService {
 			});
 			if (user) {
 				void this.handlePlannedTaskSettlement(user, task, 'cancelled');
+
 			}
 		}
 		const { active, suspended } = this.runState.cancelThread(threadId);
@@ -321,6 +336,9 @@ export class InstanceAiService {
 				agentId: ORCHESTRATOR_AGENT_ID,
 				payload: { status: 'cancelled', reason: 'user_cancelled' },
 			});
+			if (suspended.mastraRunId) {
+				void this.cleanupMastraSnapshots(suspended.mastraRunId);
+			}
 		}
 	}
 
@@ -419,6 +437,7 @@ export class InstanceAiService {
 		for (const run of activeRuns) run.abortController.abort();
 		for (const run of suspendedRuns) run.abortController.abort();
 		for (const task of this.backgroundTasks.cancelAll()) task.abortController.abort();
+
 
 		this.gatewayRegistry.disconnectAll();
 
@@ -815,8 +834,10 @@ export class InstanceAiService {
 		researchMode?: boolean,
 		attachments?: InstanceAiAttachment[],
 		messageGroupId?: string,
+		timeZone?: string,
 	): Promise<void> {
 		const signal = abortController.signal;
+		let mastraRunId = '';
 
 		try {
 			// Publish run-start (includes userId for audit trail attribution)
@@ -864,6 +885,7 @@ export class InstanceAiService {
 				});
 			}
 
+
 			const agent = await createInstanceAgent({
 				modelId,
 				context,
@@ -873,6 +895,7 @@ export class InstanceAiService {
 				memory,
 				workspace: orchestrationContext.workspace,
 				disableDeferredTools: true,
+				timeZone: timeZone ?? this.defaultTimeZone,
 			});
 
 			// Compact older conversation history into a summary (best-effort, non-blocking on failure)
@@ -955,6 +978,7 @@ export class InstanceAiService {
 						abortController,
 					});
 				}
+
 				return;
 			}
 
@@ -985,6 +1009,11 @@ export class InstanceAiService {
 		} finally {
 			this.runState.clearActiveRun(threadId);
 			this.domainAccessTrackersByThread.get(threadId)?.clearRun(runId);
+			// Clean up Mastra workflow snapshots unless the run is suspended (needed for resume).
+			// Mastra only persists snapshots on suspension and never deletes them on completion.
+			if (!this.runState.hasSuspendedRun(threadId) && mastraRunId) {
+				void this.cleanupMastraSnapshots(mastraRunId);
+			}
 		}
 	}
 
@@ -1090,6 +1119,7 @@ export class InstanceAiService {
 						abortController: opts.abortController,
 					});
 				}
+
 				return;
 			}
 
@@ -1119,6 +1149,7 @@ export class InstanceAiService {
 			});
 		} finally {
 			this.runState.clearActiveRun(opts.threadId);
+
 		}
 	}
 
@@ -1224,6 +1255,26 @@ export class InstanceAiService {
 		this.publishRunFinish(threadId, runId, status);
 		if (status === 'completed') {
 			await this.saveAgentTreeSnapshot(threadId, runId, snapshotStorage);
+		}
+	}
+
+	/**
+	 * Remove Mastra workflow snapshots left behind after a run completes.
+	 *
+	 * Mastra's `executionWorkflow` and `agentic-loop` workflows only persist
+	 * snapshots on suspension (`shouldPersistSnapshot` returns true only for
+	 * status "suspended") and never clean them up on completion. This leaves
+	 * orphaned "suspended" rows that accumulate over time.
+	 */
+	private async cleanupMastraSnapshots(mastraRunId: string): Promise<void> {
+		try {
+			const workflowsStorage = this.compositeStore.stores.workflows as TypeORMWorkflowsStorage;
+			await workflowsStorage.deleteAllByRunId(mastraRunId);
+		} catch (error) {
+			this.logger.warn('Failed to clean up Mastra workflow snapshots', {
+				mastraRunId,
+				error: getErrorMessage(error),
+			});
 		}
 	}
 
