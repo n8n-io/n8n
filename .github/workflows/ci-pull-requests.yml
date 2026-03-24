@@ -135,8 +135,6 @@ jobs:
 
       - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs
-        with:
-          build-command: ''
 
       - name: Check packaging
         shell: bash
