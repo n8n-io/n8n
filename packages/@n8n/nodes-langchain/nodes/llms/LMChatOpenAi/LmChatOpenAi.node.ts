@@ -106,12 +106,6 @@ export class LmChatOpenAi implements INodeType {
 			{
 				name: 'openAiApi',
 				required: true,
-				displayOptions: { hide: { useAiGateway: [true] } },
-			},
-			{
-				name: 'n8nAiGatewayApi',
-				required: true,
-				displayOptions: { show: { useAiGateway: [true] } },
 			},
 		],
 		requestDefaults: {
@@ -120,13 +114,6 @@ export class LmChatOpenAi implements INodeType {
 				'={{ $parameter.options?.baseURL?.split("/").slice(0,-1).join("/") || $credentials?.url?.split("/").slice(0,-1).join("/") || "https://api.openai.com" }}',
 		},
 		properties: [
-			{
-				displayName: 'Use AI Gateway',
-				name: 'useAiGateway',
-				type: 'boolean',
-				default: false,
-				noDataExpression: true,
-			},
 			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiAgent]),
 			{
 				...INCLUDE_JSON_WARNING,
@@ -748,20 +735,13 @@ export class LmChatOpenAi implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const isGateway = !!this.getNode().credentials?.n8nAiGatewayApi;
-		const credentials = await this.getCredentials(isGateway ? 'n8nAiGatewayApi' : 'openAiApi');
+		const credentials = await this.getCredentials('openAiApi');
 
 		const version = this.getNode().typeVersion;
 		const modelName =
 			version >= 1.2
 				? (this.getNodeParameter('model.value', itemIndex) as string)
 				: (this.getNodeParameter('model', itemIndex) as string);
-
-		if (isGateway) {
-			this.logger.info(
-				`[AI Gateway] node="${this.getNode().name}" using gateway credential | model=${modelName} baseURL=${credentials.url as string}`,
-			);
-		}
 
 		const responsesApiEnabled = this.getNodeParameter('responsesApiEnabled', itemIndex, false);
 

@@ -32,22 +32,9 @@ export class OpenAiV1 implements INodeType {
 				{
 					name: 'openAiApi',
 					required: true,
-					displayOptions: { hide: { useAiGateway: [true] } },
-				},
-				{
-					name: 'n8nAiGatewayApi',
-					required: true,
-					displayOptions: { show: { useAiGateway: [true] } },
 				},
 			],
 			properties: [
-				{
-					displayName: 'Use AI Gateway',
-					name: 'useAiGateway',
-					type: 'boolean',
-					default: false,
-					noDataExpression: true,
-				},
 				{
 					displayName: 'Resource',
 					name: 'resource',

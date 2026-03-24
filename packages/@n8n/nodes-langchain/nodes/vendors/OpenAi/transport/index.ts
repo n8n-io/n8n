@@ -20,15 +20,8 @@ export async function apiRequest(
 ) {
 	const { body, qs, option } = parameters ?? {};
 
-	const isGateway = !!this.getNode().credentials?.n8nAiGatewayApi;
-	const credentialType = isGateway ? 'n8nAiGatewayApi' : 'openAiApi';
+	const credentialType = 'openAiApi';
 	const credentials = await this.getCredentials(credentialType);
-
-	if (isGateway && 'logger' in this) {
-		(this as IExecuteFunctions).logger.info(
-			`[AI Gateway] node="${this.getNode().name}" using gateway credential | endpoint=${endpoint} baseURL=${credentials.url as string}`,
-		);
-	}
 
 	let uri = `https://api.openai.com/v1${endpoint}`;
 	let headers = parameters?.headers ?? {};
