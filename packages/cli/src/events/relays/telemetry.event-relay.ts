@@ -539,6 +539,7 @@ export class TelemetryEventRelay extends EventRelay {
 	}: RelayEventMap['credentials-created']) {
 		this.telemetry.track('User created credentials', {
 			user_id: user.id,
+			user_role: user.role?.slug,
 			credential_type: credentialType,
 			credential_id: credentialId,
 			project_id: projectId,
@@ -559,6 +560,7 @@ export class TelemetryEventRelay extends EventRelay {
 	}: RelayEventMap['credentials-shared']) {
 		this.telemetry.track('User updated cred sharing', {
 			user_id: user.id,
+			user_role: user.role?.slug,
 			credential_type: credentialType,
 			credential_id: credentialId,
 			user_id_sharer: userIdSharer,
@@ -576,6 +578,7 @@ export class TelemetryEventRelay extends EventRelay {
 	}: RelayEventMap['credentials-updated']) {
 		this.telemetry.track('User updated credentials', {
 			user_id: user.id,
+			user_role: user.role?.slug,
 			credential_type: credentialType,
 			credential_id: credentialId,
 			is_dynamic: isDynamic ?? false,
@@ -590,6 +593,7 @@ export class TelemetryEventRelay extends EventRelay {
 	}: RelayEventMap['credentials-deleted']) {
 		this.telemetry.track('User deleted credentials', {
 			user_id: user.id,
+			user_role: user.role?.slug,
 			credential_type: credentialType,
 			credential_id: credentialId,
 		});

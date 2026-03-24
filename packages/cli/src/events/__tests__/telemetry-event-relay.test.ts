@@ -899,6 +899,7 @@ describe('TelemetryEventRelay', () => {
 
 			expect(telemetry.track).toHaveBeenCalledWith('User created credentials', {
 				user_id: 'user123',
+				user_role: GLOBAL_OWNER_ROLE.slug,
 				credential_type: 'github',
 				credential_id: 'cred123',
 				project_id: 'project123',
@@ -928,6 +929,7 @@ describe('TelemetryEventRelay', () => {
 
 			expect(telemetry.track).toHaveBeenCalledWith('User updated cred sharing', {
 				user_id: 'user123',
+				user_role: GLOBAL_OWNER_ROLE.slug,
 				credential_type: 'github',
 				credential_id: 'cred123',
 				user_id_sharer: 'user123',
@@ -954,6 +956,7 @@ describe('TelemetryEventRelay', () => {
 
 			expect(telemetry.track).toHaveBeenCalledWith('User updated credentials', {
 				user_id: 'user123',
+				user_role: GLOBAL_OWNER_ROLE.slug,
 				credential_type: 'github',
 				credential_id: 'cred123',
 				is_dynamic: true,
@@ -978,6 +981,7 @@ describe('TelemetryEventRelay', () => {
 
 			expect(telemetry.track).toHaveBeenCalledWith('User deleted credentials', {
 				user_id: 'user123',
+				user_role: GLOBAL_OWNER_ROLE.slug,
 				credential_type: 'github',
 				credential_id: 'cred123',
 			});
