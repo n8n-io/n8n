@@ -22,6 +22,26 @@ import type { ConfirmResourceAccess } from './tools/types';
 // Shared helpers
 // ---------------------------------------------------------------------------
 
+async function cliConfirmConnect(url: string): Promise<boolean> {
+	const readline = await import('node:readline');
+	const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+	return await new Promise((resolve) => {
+		rl.question(`\nAllow connection to ${url}? [y/N] `, (answer) => {
+			rl.close();
+			resolve(answer.trim().toLowerCase() === 'y');
+		});
+	});
+}
+
+function makeConfirmConnect(
+	nonInteractive: boolean,
+	autoConfirm: boolean,
+): (url: string) => Promise<boolean> | boolean {
+	if (autoConfirm) return () => true;
+	if (nonInteractive) return () => false;
+	return cliConfirmConnect;
+}
+
 /**
  * Select the confirmResourceAccess callback based on the interactive/auto-confirm flags.
  *
@@ -57,6 +77,7 @@ async function tryServe(): Promise<boolean> {
 		: await runStartupConfigCli(parsed.config);
 
 	startDaemon(config, {
+		confirmConnect: makeConfirmConnect(parsed.nonInteractive, parsed.autoConfirm),
 		confirmResourceAccess: makeConfirmResourceAccess(parsed.nonInteractive, parsed.autoConfirm),
 	});
 	return true;
@@ -92,8 +113,8 @@ Global options:
   --log-level <level>       Log level: silent, error, warn, info, debug (default: info)
   --allow-origin <url>      Allow connections from this URL without confirmation (repeatable)
   -p, --port <port>         Daemon port (default: 7655, serve mode only)
-  --non-interactive         Skip all prompts; use defaults + env/cli overrides
-  --auto-confirm            Auto-allow all resource access prompts (no readline)
+  --non-interactive         Skip all prompts (deny per default); use defaults + env/cli overrides
+  --auto-confirm            Auto-confirm all prompts (no readline)
   -h, --help                Show this help message
 
 Filesystem:

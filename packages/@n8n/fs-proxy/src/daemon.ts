@@ -18,11 +18,8 @@ import type { ConfirmResourceAccess } from './tools/types';
 export type { ConfirmResourceAccess, ResourceDecision } from './tools/types';
 
 export interface DaemonOptions {
-	/**
-	 * Called before a new connection. Return false to reject with HTTP 403.
-	 * If omitted, falls back to a CLI readline prompt.
-	 */
-	confirmConnect?: (url: string) => Promise<boolean> | boolean;
+	/** Called before a new connection. Return false to reject with HTTP 403. */
+	confirmConnect: (url: string) => Promise<boolean> | boolean;
 	/** Called when a tool is about to access a resource that requires confirmation. */
 	confirmResourceAccess: ConfirmResourceAccess;
 	/** Called after connect/disconnect for status propagation (e.g. Electron tray). */
@@ -38,18 +35,6 @@ export interface DaemonOptions {
 let daemonOptions!: DaemonOptions;
 let settingsStore: SettingsStore | null = null;
 let settingsStorePromise: Promise<SettingsStore>;
-
-async function cliConfirmConnect(url: string): Promise<boolean> {
-	const readline = await import('node:readline');
-	const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-	return await new Promise((resolve) => {
-		rl.question(`\nIncoming connection request from: ${url}\nAllow? [Y/n]: `, (answer) => {
-			rl.close();
-			const normalized = answer.trim().toLowerCase();
-			resolve(normalized === '' || normalized === 'y' || normalized === 'yes');
-		});
-	});
-}
 
 interface DaemonState {
 	config: GatewayConfig;
@@ -137,8 +122,7 @@ async function handleConnect(req: http.IncomingMessage, res: http.ServerResponse
 	const isAllowed = state.config.allowedOrigins.some((origin) => url.startsWith(origin));
 
 	if (!isAllowed) {
-		const confirm = daemonOptions.confirmConnect ?? cliConfirmConnect;
-		const approved = await confirm(url);
+		const approved = await daemonOptions.confirmConnect(url);
 		if (!approved) {
 			jsonResponse(res, 403, { error: 'Connection rejected by user.' });
 			return;
