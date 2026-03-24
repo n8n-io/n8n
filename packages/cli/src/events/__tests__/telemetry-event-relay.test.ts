@@ -904,6 +904,7 @@ describe('TelemetryEventRelay', () => {
 				project_id: 'project123',
 				project_type: 'personal',
 				is_dynamic: false,
+				uses_external_secrets: false,
 			});
 		});
 
@@ -956,6 +957,7 @@ describe('TelemetryEventRelay', () => {
 				credential_type: 'github',
 				credential_id: 'cred123',
 				is_dynamic: true,
+				uses_external_secrets: false,
 			});
 		});
 

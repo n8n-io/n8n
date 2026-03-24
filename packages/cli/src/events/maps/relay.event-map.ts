@@ -378,6 +378,7 @@ export type RelayEventMap = {
 		projectType?: string;
 		uiContext?: string;
 		isDynamic?: boolean;
+		usesExternalSecrets?: boolean;
 	};
 
 	'credentials-shared': {
@@ -394,6 +395,7 @@ export type RelayEventMap = {
 		credentialType: string;
 		credentialId: string;
 		isDynamic?: boolean;
+		usesExternalSecrets?: boolean;
 	};
 
 	'credentials-deleted': {

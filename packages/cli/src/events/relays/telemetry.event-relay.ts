@@ -535,6 +535,7 @@ export class TelemetryEventRelay extends EventRelay {
 		projectType,
 		uiContext,
 		isDynamic,
+		usesExternalSecrets,
 	}: RelayEventMap['credentials-created']) {
 		this.telemetry.track('User created credentials', {
 			user_id: user.id,
@@ -544,6 +545,7 @@ export class TelemetryEventRelay extends EventRelay {
 			project_type: projectType,
 			uiContext,
 			is_dynamic: isDynamic ?? false,
+			uses_external_secrets: usesExternalSecrets ?? false,
 		});
 	}
 
@@ -570,12 +572,14 @@ export class TelemetryEventRelay extends EventRelay {
 		credentialId,
 		credentialType,
 		isDynamic,
+		usesExternalSecrets,
 	}: RelayEventMap['credentials-updated']) {
 		this.telemetry.track('User updated credentials', {
 			user_id: user.id,
 			credential_type: credentialType,
 			credential_id: credentialId,
 			is_dynamic: isDynamic ?? false,
+			uses_external_secrets: usesExternalSecrets ?? false,
 		});
 	}
 

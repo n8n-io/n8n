@@ -72,7 +72,7 @@ export function extractProviderKeys(expression: string): string[] {
 /**
  * Checks if credential data contains any external secret expressions ($secrets)
  */
-function containsExternalSecrets(data: ICredentialDataDecryptedObject): boolean {
+export function containsExternalSecrets(data: ICredentialDataDecryptedObject): boolean {
 	const secretPaths = getAllKeyPaths(data, '', [], containsExternalSecretExpression);
 	return secretPaths.length > 0;
 }
