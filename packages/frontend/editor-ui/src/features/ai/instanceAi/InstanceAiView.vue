@@ -381,19 +381,19 @@ function handleStop() {
 				</N8nText>
 				<div :class="$style.headerActions">
 					<N8nIconButton
-						v-if="!isCanvasVisible"
-						icon="layers"
-						variant="ghost"
-						size="small"
-						:class="{ [$style.activeButton]: showArtifactsPanel }"
-						@click="showArtifactsPanel = !showArtifactsPanel"
-					/>
-					<N8nIconButton
 						icon="brain"
 						variant="ghost"
 						size="small"
 						:class="{ [$style.activeButton]: showMemoryPanel }"
 						@click="showMemoryPanel = !showMemoryPanel"
+					/>
+					<N8nIconButton
+						v-if="!isCanvasVisible"
+						icon="panel-right"
+						variant="ghost"
+						size="small"
+						:class="{ [$style.activeButton]: showArtifactsPanel }"
+						@click="showArtifactsPanel = !showArtifactsPanel"
 					/>
 					<N8nIconButton
 						v-if="isDebugEnabled"
@@ -409,64 +409,71 @@ function handleStop() {
 				</div>
 			</div>
 
-			<!-- Messages -->
-			<N8nScrollArea :class="$style.scrollArea">
-				<div
-					ref="scrollable"
-					:class="$style.messageList"
-					:style="{ paddingBottom: `${inputAreaHeight}px` }"
-				>
-					<InstanceAiEmptyState v-if="!store.hasMessages" @select="handleSuggestionSelect" />
-					<TransitionGroup name="message-slide">
-						<InstanceAiMessage
-							v-for="message in store.messages"
-							:key="message.id"
-							:message="message"
+			<!-- Content area: chat + artifacts side by side below header -->
+			<div :class="$style.contentArea">
+				<div :class="$style.chatContent">
+					<!-- Messages -->
+					<N8nScrollArea :class="$style.scrollArea">
+						<div
+							ref="scrollable"
+							:class="$style.messageList"
+							:style="{ paddingBottom: `${inputAreaHeight}px` }"
+						>
+							<InstanceAiEmptyState v-if="!store.hasMessages" @select="handleSuggestionSelect" />
+							<TransitionGroup name="message-slide">
+								<InstanceAiMessage
+									v-for="message in store.messages"
+									:key="message.id"
+									:message="message"
+								/>
+							</TransitionGroup>
+							<InstanceAiConfirmationPanel />
+						</div>
+					</N8nScrollArea>
+
+					<!-- Scroll to bottom button -->
+					<div
+						:class="$style.scrollButtonContainer"
+						:style="{ bottom: `${inputAreaHeight + 8}px` }"
+					>
+						<Transition name="fade">
+							<N8nIconButton
+								v-if="userScrolledUp && store.hasMessages"
+								variant="outline"
+								icon="arrow-down"
+								:class="$style.scrollToBottomButton"
+								@click="
+									scrollToBottom(true);
+									userScrolledUp = false;
+								"
+							/>
+						</Transition>
+					</div>
+
+					<!-- Floating input -->
+					<div ref="inputContainer" :class="$style.inputContainer">
+						<InstanceAiStatusBar />
+						<InstanceAiInput
+							:is-streaming="store.isStreaming"
+							@submit="handleSubmit"
+							@stop="handleStop"
 						/>
-					</TransitionGroup>
-					<InstanceAiConfirmationPanel />
+					</div>
 				</div>
-			</N8nScrollArea>
 
-			<!-- Scroll to bottom button -->
-			<div :class="$style.scrollButtonContainer" :style="{ bottom: `${inputAreaHeight + 8}px` }">
-				<Transition name="fade">
-					<N8nIconButton
-						v-if="userScrolledUp && store.hasMessages"
-						variant="outline"
-						icon="arrow-down"
-						:class="$style.scrollToBottomButton"
-						@click="
-							scrollToBottom(true);
-							userScrolledUp = false;
-						"
-					/>
-				</Transition>
-			</div>
+				<!-- Artifacts panel (below header, beside chat) -->
+				<InstanceAiArtifactsPanel v-if="showArtifactsPanel && !isCanvasVisible" />
 
-			<!-- Floating input -->
-			<div ref="inputContainer" :class="$style.inputContainer">
-				<InstanceAiStatusBar />
-				<InstanceAiInput
-					:is-streaming="store.isStreaming"
-					@submit="handleSubmit"
-					@stop="handleStop"
+				<!-- Overlay panels -->
+				<InstanceAiMemoryPanel v-if="showMemoryPanel" @close="showMemoryPanel = false" />
+				<InstanceAiDebugPanel
+					v-if="showDebugPanel"
+					@close="
+						showDebugPanel = false;
+						store.debugMode = false;
+					"
 				/>
 			</div>
-
-			<!-- Side panels -->
-			<InstanceAiArtifactsPanel
-				v-if="showArtifactsPanel && !isCanvasVisible"
-				@close="showArtifactsPanel = false"
-			/>
-			<InstanceAiMemoryPanel v-if="showMemoryPanel" @close="showMemoryPanel = false" />
-			<InstanceAiDebugPanel
-				v-if="showDebugPanel"
-				@close="
-					showDebugPanel = false;
-					store.debugMode = false;
-				"
-			/>
 		</component>
 
 		<!-- Canvas preview panel (eager mount via v-show) -->
@@ -508,7 +515,7 @@ function handleStop() {
 	min-width: 0;
 	overflow: hidden;
 	position: relative;
-	background-color: var(--color--background--light-2);
+	background-color: var(--color--background--light-1);
 
 	// Widen the resize handle hit area for easier grabbing
 	:global([data-test-id='resize-handle']) {
@@ -544,7 +551,6 @@ function handleStop() {
 
 .header {
 	padding: var(--spacing--sm) var(--spacing--lg);
-	border-bottom: var(--border);
 	flex-shrink: 0;
 	display: flex;
 	align-items: center;
@@ -564,6 +570,21 @@ function handleStop() {
 
 .reconnecting {
 	font-style: italic;
+}
+
+.contentArea {
+	display: flex;
+	flex: 1;
+	min-height: 0;
+	position: relative;
+}
+
+.chatContent {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	position: relative;
 }
 
 .scrollArea {
@@ -598,7 +619,7 @@ function handleStop() {
 	left: 0;
 	right: 0;
 	padding: 0 var(--spacing--lg) var(--spacing--sm);
-	background: linear-gradient(transparent 0%, var(--color--background--light-2) 30%);
+	background: linear-gradient(transparent 0%, var(--color--background--light-1) 30%);
 	pointer-events: none;
 	z-index: 2;
 

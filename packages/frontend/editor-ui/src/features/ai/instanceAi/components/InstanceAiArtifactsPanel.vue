@@ -1,14 +1,12 @@
 <script lang="ts" setup>
-import { computed, ref, watch } from 'vue';
-import { N8nIcon, N8nIconButton } from '@n8n/design-system';
+import { computed } from 'vue';
+import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useInstanceAiStore } from '../instanceAi.store';
 import type { TaskItem } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
 import type { ResourceEntry } from '../useResourceRegistry';
-import TimeAgo from '@/app/components/TimeAgo.vue';
 
-const emit = defineEmits<{ close: [] }>();
 const i18n = useI18n();
 const store = useInstanceAiStore();
 
@@ -26,7 +24,7 @@ const statusIconMap: Record<
 > = {
 	todo: { icon: 'circle', spin: false, className: 'todoIcon' },
 	in_progress: { icon: 'spinner', spin: true, className: 'inProgressIcon' },
-	done: { icon: 'check', spin: false, className: 'doneIcon' },
+	done: { icon: 'circle-check', spin: false, className: 'doneIcon' },
 };
 
 // --- Artifacts ---
@@ -44,105 +42,56 @@ const artifactIconMap: Record<string, IconName> = {
 	workflow: 'workflow',
 	'data-table': 'table',
 };
-
-// --- Collapsible sections ---
-const expandedSections = ref<Set<string>>(new Set(['tasks', 'artifacts']));
-
-function toggleSection(key: string) {
-	if (expandedSections.value.has(key)) {
-		expandedSections.value.delete(key);
-	} else {
-		expandedSections.value.add(key);
-	}
-}
-
-// Auto-expand tasks section when it first appears
-watch(tasks, (newTasks, oldTasks) => {
-	if (newTasks && !oldTasks) {
-		expandedSections.value.add('tasks');
-	}
-});
 </script>
 
 <template>
 	<div :class="$style.panel">
-		<div :class="$style.header">
-			<N8nIconButton icon="x" variant="ghost" size="small" @click="emit('close')" />
-		</div>
+		<!-- Artifacts section -->
+		<div :class="[$style.section, $style.card]">
+			<div :class="$style.sectionTitle">
+				{{ i18n.baseText('instanceAi.artifactsPanel.title') }}
+			</div>
 
-		<div :class="$style.body">
-			<!-- Artifacts section -->
-			<div :class="$style.section">
-				<div :class="$style.sectionHeader" @click="toggleSection('artifacts')">
-					<span :class="$style.sectionTitle">
-						{{ i18n.baseText('instanceAi.artifactsPanel.title') }}
-					</span>
+			<div v-if="artifacts.length > 0" :class="$style.artifactList">
+				<div v-for="artifact in artifacts" :key="artifact.id" :class="$style.artifactRow">
 					<N8nIcon
-						:icon="expandedSections.has('artifacts') ? 'chevron-down' : 'chevron-right'"
+						:icon="artifactIconMap[artifact.type] ?? 'file'"
 						size="small"
-						:class="$style.chevron"
+						:class="$style.artifactIcon"
 					/>
-				</div>
-
-				<div v-if="expandedSections.has('artifacts')" :class="$style.sectionContent">
-					<div v-if="artifacts.length > 0" :class="$style.artifactList">
-						<div v-for="artifact in artifacts" :key="artifact.id" :class="$style.artifactRow">
-							<N8nIcon
-								:icon="artifactIconMap[artifact.type] ?? 'file'"
-								size="small"
-								:class="$style.artifactIcon"
-							/>
-							<div :class="$style.artifactInfo">
-								<span :class="$style.artifactName">{{ artifact.name }}</span>
-								<TimeAgo
-									v-if="artifact.updatedAt ?? artifact.createdAt"
-									:date="(artifact.updatedAt ?? artifact.createdAt)!"
-									:class="$style.artifactDate"
-								/>
-							</div>
-						</div>
-					</div>
-
-					<div v-else :class="$style.emptyState">
-						<div :class="$style.emptyIcons">
-							<N8nIcon icon="workflow" size="medium" :class="$style.emptyIcon" />
-							<N8nIcon icon="table" size="medium" :class="$style.emptyIcon" />
-						</div>
-						<span>{{ i18n.baseText('instanceAi.artifactsPanel.noArtifacts') }}</span>
-					</div>
+					<span :class="$style.artifactName">{{ artifact.name }}</span>
 				</div>
 			</div>
 
-			<!-- Tasks section -->
-			<div v-if="tasks" :class="$style.section">
-				<div :class="$style.sectionHeader" @click="toggleSection('tasks')">
-					<span :class="$style.sectionTitle">
-						{{ i18n.baseText('instanceAi.artifactsPanel.tasks') }}
-					</span>
-					<span :class="$style.progress">{{ doneCount }}/{{ tasks.tasks.length }}</span>
-					<N8nIcon
-						:icon="expandedSections.has('tasks') ? 'chevron-down' : 'chevron-right'"
-						size="small"
-						:class="$style.chevron"
-					/>
+			<div v-else :class="$style.emptyState">
+				<div :class="$style.emptyIcons">
+					<N8nIcon icon="workflow" size="medium" :class="$style.emptyIcon" />
+					<N8nIcon icon="table" size="medium" :class="$style.emptyIcon" />
 				</div>
+				<span>{{ i18n.baseText('instanceAi.artifactsPanel.noArtifacts') }}</span>
+			</div>
+		</div>
 
-				<div v-if="expandedSections.has('tasks')" :class="$style.sectionContent">
-					<div :class="$style.taskList">
-						<div
-							v-for="task in tasks.tasks"
-							:key="task.id"
-							:class="[$style.task, task.status === 'done' ? $style.doneTask : '']"
-						>
-							<N8nIcon
-								:icon="statusIconMap[task.status].icon as IconName"
-								:class="$style[statusIconMap[task.status].className]"
-								:spin="statusIconMap[task.status].spin"
-								size="small"
-							/>
-							<span :class="$style.taskDescription">{{ task.description }}</span>
-						</div>
-					</div>
+		<!-- Tasks section -->
+		<div v-if="tasks" :class="[$style.section, $style.card]">
+			<div :class="$style.sectionTitle">
+				{{ i18n.baseText('instanceAi.artifactsPanel.tasks') }}
+				<span :class="$style.progress">{{ doneCount }}/{{ tasks.tasks.length }}</span>
+			</div>
+
+			<div :class="$style.taskList">
+				<div
+					v-for="task in tasks.tasks"
+					:key="task.id"
+					:class="[$style.task, task.status === 'done' ? $style.doneTask : '']"
+				>
+					<N8nIcon
+						:icon="statusIconMap[task.status].icon as IconName"
+						:class="$style[statusIconMap[task.status].className]"
+						:spin="statusIconMap[task.status].spin"
+						size="small"
+					/>
+					<span :class="$style.taskDescription">{{ task.description }}</span>
 				</div>
 			</div>
 		</div>
@@ -151,76 +100,40 @@ watch(tasks, (newTasks, oldTasks) => {
 
 <style lang="scss" module>
 .panel {
-	position: absolute;
-	top: 0;
-	right: 0;
-	bottom: 0;
-	width: 360px;
-	background: var(--color--background);
-	border-left: var(--border);
-	display: flex;
-	flex-direction: column;
-	z-index: 10;
-	overflow: hidden;
-}
-
-.header {
-	display: flex;
-	align-items: center;
-	justify-content: flex-end;
-	padding: var(--spacing--2xs) var(--spacing--sm);
+	width: 280px;
 	flex-shrink: 0;
-}
-
-.body {
-	flex: 1;
-	min-height: 0;
-	overflow-y: auto;
-	padding: 0 var(--spacing--sm) var(--spacing--sm);
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
+	padding: var(--spacing--sm);
+	overflow-y: auto;
 }
 
 .section {
-	border: var(--border);
-	border-radius: var(--radius--lg);
-	overflow: hidden;
+	display: flex;
+	flex-direction: column;
 }
 
-.sectionHeader {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	padding: var(--spacing--2xs) var(--spacing--sm);
-	cursor: pointer;
-	user-select: none;
-
-	&:hover {
-		background: var(--color--background--shade-1);
-	}
+.card {
+	border: var(--border);
+	border-radius: var(--radius--lg);
+	padding: var(--spacing--sm);
+	background: var(--color--background--light-2);
 }
 
 .sectionTitle {
 	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--bold);
-	flex: 1;
-}
-
-.chevron {
-	color: var(--color--text--tint-1);
-	flex-shrink: 0;
+	margin-bottom: var(--spacing--2xs);
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
 }
 
 .progress {
 	font-size: var(--font-size--3xs);
 	color: var(--color--text--tint-1);
-	flex-shrink: 0;
-}
-
-.sectionContent {
-	border-top: var(--border);
-	padding: var(--spacing--2xs) var(--spacing--sm);
+	font-weight: var(--font-weight--regular);
 }
 
 /* Artifact list */
@@ -234,10 +147,6 @@ watch(tasks, (newTasks, oldTasks) => {
 	align-items: center;
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--3xs) 0;
-
-	& + & {
-		border-top: 1px solid var(--color--foreground--tint-2);
-	}
 }
 
 .artifactIcon {
@@ -245,24 +154,11 @@ watch(tasks, (newTasks, oldTasks) => {
 	flex-shrink: 0;
 }
 
-.artifactInfo {
-	display: flex;
-	flex-direction: column;
-	min-width: 0;
-	flex: 1;
-}
-
 .artifactName {
 	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-}
-
-.artifactDate {
-	font-size: var(--font-size--3xs);
-	color: var(--color--text--tint-2);
 }
 
 /* Empty state */
@@ -301,20 +197,20 @@ watch(tasks, (newTasks, oldTasks) => {
 	padding: var(--spacing--3xs) 0;
 	font-size: var(--font-size--2xs);
 	line-height: var(--line-height--lg);
-
-	& + & {
-		border-top: 1px solid var(--color--foreground--tint-2);
-	}
 }
 
 .doneTask {
 	opacity: 0.6;
+	text-decoration: line-through;
 }
 
 .taskDescription {
-	color: var(--color--text);
+	color: var(--color--text--shade-1);
 	flex: 1;
 	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .todoIcon {
