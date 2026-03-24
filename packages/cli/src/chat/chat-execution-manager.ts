@@ -20,6 +20,7 @@ import * as WorkflowExecuteAdditionalData from '../workflow-execute-additional-d
 import { preserveInputOverride } from '../workflow-helpers';
 import { WorkflowRunner } from '../workflow-runner';
 import type { ChatMessage } from './chat-service.types';
+import { redirectIfToolExecutor } from './utils';
 import { NodeTypes } from '../node-types';
 import { OwnershipService } from '../services/ownership.service';
 
@@ -96,11 +97,19 @@ export class ChatExecutionManager {
 	private async runNode(execution: IExecutionResponse, message: ChatMessage) {
 		const workflow = this.getWorkflow(execution);
 		const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
-		const node = workflow.getNode(lastNodeExecuted);
+		let node = workflow.getNode(lastNodeExecuted);
 		const additionalData = await WorkflowExecuteAdditionalData.getBase({ workflowId: workflow.id });
 		const executionData = execution.data.executionData?.nodeExecutionStack[0];
 
-		if (!node || !executionData) return null;
+		if (!executionData) return null;
+
+		// PartialExecutionToolExecutor is a virtual node not present in the workflow —
+		// redirect to the real tool and wraps so onMessage() if present runs on the right node.
+		if (!node) {
+			node = redirectIfToolExecutor(execution, executionData, workflow);
+		}
+
+		if (!node) return null;
 
 		const inputData = executionData.data;
 		const connectionInputData = executionData.data.main[0];

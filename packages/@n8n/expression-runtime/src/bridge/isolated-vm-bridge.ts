@@ -1,8 +1,22 @@
-import ivm from 'isolated-vm';
+import type ivm from 'isolated-vm';
 import { readFile } from 'node:fs/promises';
 import * as path from 'node:path';
 import type { RuntimeBridge, BridgeConfig, ExecuteOptions } from '../types';
 import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
+
+// Lazy-loaded isolated-vm — avoids loading the native binary when the barrel
+// file is statically imported (e.g. for error classes). The native module is
+// only loaded when IsolatedVmBridge is actually constructed.
+type IsolatedVm = typeof import('isolated-vm');
+let _ivm: IsolatedVm | null = null;
+
+function getIvm(): IsolatedVm {
+	if (!_ivm) {
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
+		_ivm = require('isolated-vm') as IsolatedVm;
+	}
+	return _ivm;
+}
 
 const BUNDLE_RELATIVE_PATH = path.join('dist', 'bundle', 'runtime.iife.js');
 
@@ -68,7 +82,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 
 		// Create isolate with memory limit
 		// Note: memoryLimit is in MB
-		this.isolate = new ivm.Isolate({ memoryLimit: this.config.memoryLimit });
+		this.isolate = new (getIvm().Isolate)({ memoryLimit: this.config.memoryLimit });
 	}
 
 	/**
@@ -300,11 +314,22 @@ export class IsolatedVmBridge implements RuntimeBridge {
 
 		// Callback 1: Get value/metadata at path
 		// Used by createDeepLazyProxy when accessing properties
-		const getValueAtPath = new ivm.Reference((path: string[]) => {
+		const getValueAtPath = new (getIvm().Reference)((path: string[]) => {
 			// Navigate to value
+			// Special-case: paths starting with ['$item', index] call data.$item(index)
+			// to get the sub-proxy for that item, then continue navigating the rest.
 			let value: unknown = data;
-			for (const key of path) {
-				value = (value as Record<string, unknown>)?.[key];
+			let startIndex = 0;
+			const itemFn = (data as Record<string, unknown>).$item;
+			if (path.length >= 2 && path[0] === '$item' && typeof itemFn === 'function') {
+				const itemIndex = parseInt(path[1], 10);
+				if (!isNaN(itemIndex)) {
+					value = (itemFn as (i: number) => unknown)(itemIndex);
+					startIndex = 2;
+				}
+			}
+			for (let i = startIndex; i < path.length; i++) {
+				value = (value as Record<string, unknown>)?.[path[i]];
 				if (value === undefined || value === null) {
 					return value;
 				}
@@ -343,11 +368,21 @@ export class IsolatedVmBridge implements RuntimeBridge {
 
 		// Callback 2: Get array element at index
 		// Used by array proxy when accessing numeric indices
-		const getArrayElement = new ivm.Reference((path: string[], index: number) => {
+		const getArrayElement = new (getIvm().Reference)((path: string[], index: number) => {
 			// Navigate to array
+			// Special-case: paths starting with ['$item', index] call data.$item(index)
 			let arr: unknown = data;
-			for (const key of path) {
-				arr = (arr as Record<string, unknown>)?.[key];
+			let startIndex = 0;
+			const itemFn = (data as Record<string, unknown>).$item;
+			if (path.length >= 2 && path[0] === '$item' && typeof itemFn === 'function') {
+				const itemIndex = parseInt(path[1], 10);
+				if (!isNaN(itemIndex)) {
+					arr = (itemFn as (i: number) => unknown)(itemIndex);
+					startIndex = 2;
+				}
+			}
+			for (let i = startIndex; i < path.length; i++) {
+				arr = (arr as Record<string, unknown>)?.[path[i]];
 				if (arr === undefined || arr === null) {
 					return undefined;
 				}
@@ -380,7 +415,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 
 		// Callback 3: Call function at path with arguments
 		// Used when expressions invoke functions from workflow data
-		const callFunctionAtPath = new ivm.Reference((path: string[], ...args: unknown[]) => {
+		const callFunctionAtPath = new (getIvm().Reference)((path: string[], ...args: unknown[]) => {
 			// Navigate to function, tracking parent to preserve `this` context
 			let fn: unknown = data;
 			let parent: unknown = undefined;
@@ -453,7 +488,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			// Step 3: Wrap transformed code so 'this' === __data in the isolate.
 			// Tournament generates: this.$json.email, this.$items(), etc.
 			// __data has $json, $items, etc. as lazy proxies (set in resetDataProxies).
-			const wrappedCode = `(function() {\n${code}\n}).call(__data)`;
+			const wrappedCode = `(function() { var __result = (function() {\n${code}\n}).call(__data); return __prepareForTransfer(__result); })()`;
 
 			let script = this.scriptCache.get(code);
 			if (!script) {

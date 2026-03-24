@@ -6,20 +6,35 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createTestNode, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { setActivePinia } from 'pinia';
-import { computed } from 'vue';
+import { computed, shallowRef } from 'vue';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
+import {
+	injectWorkflowDocumentStore,
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
+
+vi.mock('@/app/stores/workflowDocument.store', async () => {
+	const actual = await vi.importActual('@/app/stores/workflowDocument.store');
+	return { ...actual, injectWorkflowDocumentStore: vi.fn() };
+});
 
 let workflowsStore: MockedStore<typeof useWorkflowsStore>;
 let nodeTypesStore: MockedStore<typeof useNodeTypesStore>;
 
 describe('TriggerPanel.vue', () => {
 	beforeEach(async () => {
-		setActivePinia(createTestingPinia());
+		setActivePinia(createTestingPinia({ stubActions: false }));
 		workflowsStore = mockedStore(useWorkflowsStore);
 		workflowsStore.workflowName = 'Test Workflow';
 		workflowsStore.workflowId = '1';
 		const node = createTestNode({ id: '0', name: 'Webhook', type: 'n8n-nodes-base.webhook' });
-		workflowsStore.getNodeByName.mockReturnValue(node);
+		workflowsStore.workflow.nodes = [node];
+
+		vi.mocked(injectWorkflowDocumentStore).mockReturnValue(
+			shallowRef(useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))),
+		);
+
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 		const nodeTypeDescription = mockNodeTypeDescription({
 			name: 'n8n-nodes-base.webhook',

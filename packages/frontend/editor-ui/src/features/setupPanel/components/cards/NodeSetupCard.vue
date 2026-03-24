@@ -101,8 +101,8 @@ const parameters = computed<INodeProperties[]>(() => {
 	if (!nodeType.value?.properties) return [];
 
 	const issueParamNames = Object.keys(props.state.parameterIssues);
-	const templateParamNames = props.state.templateParameterNames ?? [];
-	const allParamNames = new Set([...issueParamNames, ...templateParamNames]);
+	const additionalParamNames = props.state.additionalParameterNames ?? [];
+	const allParamNames = new Set([...issueParamNames, ...additionalParamNames]);
 
 	for (const prop of nodeType.value.properties) {
 		if (allParamNames.has(prop.name) && !shownParameters.value.includes(prop)) {
@@ -201,7 +201,7 @@ const allParametersAddressed = computed(
 		allNodeIssuesResolved.value ||
 		// When template parameters exist but there are no current issues,
 		// the user already configured them in a previous session
-		((props.state.templateParameterNames?.length ?? 0) > 0 &&
+		((props.state.additionalParameterNames?.length ?? 0) > 0 &&
 			Object.keys(props.state.parameterIssues).length === 0),
 );
 
