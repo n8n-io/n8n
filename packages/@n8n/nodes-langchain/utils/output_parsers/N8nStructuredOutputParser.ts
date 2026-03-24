@@ -88,6 +88,10 @@ export class N8nStructuredOutputParser extends StructuredOutputParser<
 				},
 			);
 
+			if (e instanceof z.ZodError) {
+				nodeError.message = e.message;
+			}
+
 			// Add additional context to the error
 			if (e instanceof SyntaxError) {
 				nodeError.context.outputParserFailReason = 'Invalid JSON in model output';
@@ -108,7 +112,8 @@ export class N8nStructuredOutputParser extends StructuredOutputParser<
 
 			logAiEvent(this.context, 'ai-output-parsed', {
 				text,
-				response: e.message ?? e,
+				response:
+					e instanceof z.ZodError ? { message: e.message, stack: e.stack } : (e.message ?? e),
 			});
 
 			this.context.addOutputData(NodeConnectionTypes.AiOutputParser, index, nodeError);
