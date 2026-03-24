@@ -33,6 +33,10 @@ const usersStore = useUsersStore();
 const pushConnectionStore = usePushConnectionStore();
 const pushConnection = usePushConnection({ router: useRouter(), workflowState });
 
+// Set activeExecutionId to null (not undefined) eagerly so the iframe accepts
+// incoming execution push events. undefined means "no execution context, skip all".
+workflowState.setActiveExecutionId(null);
+
 onBeforeMount(() => {
 	setupPostMessages();
 });

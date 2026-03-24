@@ -65,22 +65,11 @@ const latestBuildResult = computed(() => {
 // Watch the toolCallId — it changes even when the same workflow is rebuilt.
 watch(
 	() => latestBuildResult.value?.toolCallId,
-	(toolCallId, oldToolCallId) => {
-		console.log('[CanvasPreview] toolCallId watcher fired', {
-			toolCallId,
-			oldToolCallId,
-			workflowId: latestBuildResult.value?.workflowId,
-			currentActiveWorkflowId: activeWorkflowId.value,
-			currentRefreshKey: workflowRefreshKey.value,
-		});
+	(toolCallId) => {
 		if (!toolCallId || !latestBuildResult.value) return;
 		activeExecutionId.value = null;
 		activeWorkflowId.value = latestBuildResult.value.workflowId;
 		workflowRefreshKey.value++;
-		console.log('[CanvasPreview] Set activeWorkflowId + incremented refreshKey', {
-			activeWorkflowId: activeWorkflowId.value,
-			refreshKey: workflowRefreshKey.value,
-		});
 	},
 );
 

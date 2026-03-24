@@ -79,13 +79,6 @@ const loadWorkflow = () => {
 		if (!props.workflow.nodes || !Array.isArray(props.workflow.nodes)) {
 			throw new Error(i18n.baseText('workflowPreview.showError.arrayEmpty'));
 		}
-		console.log('[WorkflowPreview:iframe] loadWorkflow → postMessage', {
-			nodeCount: props.workflow.nodes.length,
-			nodeNames: props.workflow.nodes.map((n) => n.name),
-			hasIframe: !!iframeRef.value?.contentWindow,
-			ready: ready.value,
-			showPreview: showPreview.value,
-		});
 		iframeRef.value?.contentWindow?.postMessage?.(
 			JSON.stringify({
 				command: 'openWorkflow',
@@ -171,9 +164,6 @@ const receiveMessage = ({ data }: MessageEvent) => {
 };
 
 const onReady = () => {
-	console.log('[WorkflowPreview:iframe] onReady (n8nReady received)', {
-		wasReady: ready.value,
-	});
 	ready.value = true;
 
 	if (props.focusOnLoad) {
@@ -215,9 +205,8 @@ onBeforeUnmount(() => {
 
 watch(
 	() => showPreview.value,
-	(val, oldVal) => {
-		console.log('[WorkflowPreview:iframe] showPreview watcher', { val, oldVal, mode: props.mode });
-		if (val) {
+	() => {
+		if (showPreview.value) {
 			if (props.mode === 'workflow') {
 				loadWorkflow();
 			} else if (props.mode === 'execution') {
@@ -238,15 +227,7 @@ watch(
 
 watch(
 	() => props.workflow,
-	(newWf, oldWf) => {
-		console.log('[WorkflowPreview:iframe] workflow prop watcher', {
-			changed: newWf !== oldWf,
-			newNodeCount: newWf?.nodes?.length,
-			oldNodeCount: oldWf?.nodes?.length,
-			mode: props.mode,
-			ready: ready.value,
-			showPreview: showPreview.value,
-		});
+	() => {
 		if (props.mode === 'workflow' && props.workflow) {
 			loadWorkflow();
 		}

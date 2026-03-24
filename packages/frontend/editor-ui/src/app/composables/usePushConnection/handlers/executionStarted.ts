@@ -19,6 +19,28 @@ export async function executionStarted(
 		options.workflowState.setActiveExecutionId(data.executionId);
 	}
 
+	// Initialize workflowExecutionData if not set (e.g. DemoLayout iframe receiving
+	// push events for an execution it didn't trigger).
+	if (!workflowsStore.workflowExecutionData?.data) {
+		options.workflowState.setWorkflowExecutionData({
+			id: data.executionId,
+			finished: false,
+			mode: 'manual',
+			status: 'running',
+			startedAt: new Date(),
+			workflowData: {
+				id: '',
+				name: '',
+				nodes: [],
+				connections: {},
+				createdAt: '',
+				updatedAt: '',
+				versionId: '',
+			},
+			data: { resultData: { runData: {}, lastNodeExecuted: '' } },
+		} as never);
+	}
+
 	if (workflowsStore.workflowExecutionData?.data && data.flattedRunData) {
 		workflowsStore.workflowExecutionData.data.resultData.runData = parse(data.flattedRunData);
 	}
