@@ -288,7 +288,7 @@ describe('NodeCredentials', () => {
 		await userEvent.click(credentialsSelect);
 		await userEvent.click(screen.getByTestId('node-credentials-select-item-new'));
 
-		expect(uiStore.openNewCredential).toHaveBeenCalledWith('openAiApi', true, false);
+		expect(uiStore.openNewCredential).toHaveBeenCalledWith('openAiApi', true, false, undefined);
 	});
 
 	describe('onCredentialSelected', () => {
@@ -608,12 +608,13 @@ describe('NodeCredentials', () => {
 
 			await userEvent.click(screen.getByTestId('setup-manually-link'));
 
-			// createNewCredential calls openNewCredential with (type, showAuthOptions, forceManualMode)
+			// createNewCredential calls openNewCredential with (type, showAuthOptions, forceManualMode, projectId)
 			// "setup manually" passes forceManualMode=true
 			expect(uiStore.openNewCredential).toHaveBeenCalledWith(
 				'slackOAuth2Api',
 				expect.any(Boolean),
 				true,
+				undefined,
 			);
 		});
 
