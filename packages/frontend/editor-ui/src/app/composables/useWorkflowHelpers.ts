@@ -1021,9 +1021,12 @@ export function useWorkflowHelpers() {
 			createWorkflowDocumentId(workflowData.id),
 		);
 
-		// Sync document store settings → workflowObject (runtime Workflow instance)
+		// Sync document store → workflowObject (runtime Workflow instance)
 		workflowDocumentStore.onSettingsChange(({ payload }) => {
 			workflowsStore.workflowObject.setSettings(payload.settings);
+		});
+		workflowDocumentStore.onNameChange(({ payload }) => {
+			workflowsStore.workflowObject.name = payload.name;
 		});
 
 		workflowDocumentStore.setName(workflowData.name);
