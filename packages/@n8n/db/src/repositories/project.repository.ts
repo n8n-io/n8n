@@ -33,17 +33,13 @@ export class ProjectRepository extends Repository<Project> {
 		});
 	}
 
-	// This returns personal projects of ALL users OR shared projects of the user
 	async getAccessibleProjects(userId: string) {
 		return await this.find({
-			where: [
-				{ type: 'personal' },
-				{
-					projectRelations: {
-						userId,
-					},
+			where: {
+				projectRelations: {
+					userId,
 				},
-			],
+			},
 		});
 	}
 
@@ -61,20 +57,10 @@ export class ProjectRepository extends Repository<Project> {
 		userId: string,
 		options: ProjectListOptions,
 	): Promise<[Project[], number]> {
-		// Build a subquery that finds the IDs of accessible projects, avoiding
-		// duplicate rows from the LEFT JOIN on projectRelations which would
-		// produce incorrect counts with getManyAndCount().
 		const idsQuery = this.createQueryBuilder('p')
-			.select('DISTINCT p.id', 'id')
-			.leftJoin('p.projectRelations', 'pr')
-			.where(
-				new Brackets((qb) => {
-					qb.where('p.type = :personalType', { personalType: 'personal' }).orWhere(
-						'pr.userId = :userId',
-						{ userId },
-					);
-				}),
-			);
+			.select('p.id', 'id')
+			.innerJoin('p.projectRelations', 'pr')
+			.where('pr.userId = :userId', { userId });
 
 		if (options.search) {
 			idsQuery.andWhere('LOWER(p.name) LIKE LOWER(:search)', {
