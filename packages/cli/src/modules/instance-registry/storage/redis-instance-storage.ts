@@ -84,11 +84,11 @@ export class RedisInstanceStorage implements InstanceStorage {
 
 	async getAllRegistrations(): Promise<InstanceRegistration[]> {
 		try {
-			const results = (await this.redisClient.eval(
-				READ_ALL_SCRIPT,
-				1,
-				this.membershipSetKey(),
-			)) as string[];
+			const raw: unknown = await this.redisClient.eval(READ_ALL_SCRIPT, 1, this.membershipSetKey());
+
+			if (!Array.isArray(raw)) return [];
+
+			const results = raw.filter((item): item is string => typeof item === 'string');
 
 			return results
 				.map((json) => {
@@ -180,13 +180,13 @@ export class RedisInstanceStorage implements InstanceStorage {
 
 	async cleanupStaleMembers(): Promise<number> {
 		try {
-			const removed = (await this.redisClient.eval(
+			const removed: unknown = await this.redisClient.eval(
 				CLEANUP_SCRIPT,
 				1,
 				this.membershipSetKey(),
-			)) as number;
+			);
 
-			return removed;
+			return typeof removed === 'number' ? removed : 0;
 		} catch (error) {
 			this.logger.warn('Failed to cleanup stale members', {
 				error: ensureError(error).message,
