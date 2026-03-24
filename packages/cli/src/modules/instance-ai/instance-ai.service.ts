@@ -11,7 +11,10 @@ import { Time } from '@n8n/constants';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { AiService } from '@/services/ai.service';
+import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
+import { InstanceSettings } from 'n8n-core';
+import { N8N_VERSION } from '@/constants';
+import { License } from '@/license';
 import { UrlService } from '@/services/url.service';
 import {
 	createInstanceAgent,
@@ -191,16 +194,20 @@ export class InstanceAiService {
 	/** Default IANA timezone for the instance (from GENERIC_TIMEZONE env var). */
 	private readonly defaultTimeZone: string;
 
+	/** Lazily-initialized AI assistant client for sandbox proxy integration. */
+	private aiAssistantClient: AiAssistantClient | undefined;
+
 	constructor(
 		private readonly logger: Logger,
-		globalConfig: GlobalConfig,
+		private readonly globalConfig: GlobalConfig,
 		private readonly adapterService: InstanceAiAdapterService,
 		private readonly eventBus: InProcessEventBus,
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly compositeStore: TypeORMCompositeStore,
 		private readonly compactionService: InstanceAiCompactionService,
 		private readonly urlService: UrlService,
-		private readonly aiService: AiService,
+		private readonly license: License,
+		private readonly instanceSettings: InstanceSettings,
 	) {
 		this.instanceAiConfig = globalConfig.instanceAi;
 		this.defaultTimeZone = globalConfig.generic.timezone;
@@ -271,12 +278,36 @@ export class InstanceAiService {
 		};
 	}
 
+	private async getAiAssistantClient(): Promise<AiAssistantClient | undefined> {
+		if (this.aiAssistantClient) return this.aiAssistantClient;
+
+		const baseUrl = this.globalConfig.aiAssistant.baseUrl;
+		if (!baseUrl) return undefined;
+
+		const licenseCert = await this.license.loadCertStr();
+		const consumerId = this.license.getConsumerId();
+
+		this.aiAssistantClient = new AiAssistantClient({
+			licenseCert,
+			consumerId,
+			baseUrl,
+			n8nVersion: N8N_VERSION,
+			instanceId: this.instanceSettings.instanceId,
+		});
+
+		this.license.onCertRefresh((cert) => {
+			this.aiAssistantClient?.updateLicenseCert(cert);
+		});
+
+		return this.aiAssistantClient;
+	}
+
 	private async resolveSandboxConfig(user: User): Promise<SandboxConfig> {
 		const base = this.getSandboxConfigFromEnv();
 		if (!base.enabled) return base;
 
 		// If AI assistant service is available, route Daytona calls through its sandbox proxy
-		const client = this.aiService.getClient();
+		const client = await this.getAiAssistantClient();
 		if (client) {
 			const proxyConfig = await client.getSandboxProxyConfig();
 			return {
@@ -288,7 +319,8 @@ export class InstanceAiService {
 						{ id: user.id },
 						{ userMessageId: nanoid() },
 					);
-					return `${token.tokenType} ${token.accessToken}`;
+
+					return token.accessToken;
 				},
 			};
 		}

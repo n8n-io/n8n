@@ -49,10 +49,6 @@ export class AiService {
 		});
 	}
 
-	getClient(): AiAssistantClient | undefined {
-		return this.client;
-	}
-
 	async chat(payload: AiChatRequestDto, user: IUser) {
 		if (!this.client) {
 			await this.init();
