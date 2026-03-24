@@ -1,0 +1,61 @@
+{
+	"name": "IF node with loose type validation",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "manual-trigger-1",
+			"name": "Manual Trigger"
+		},
+		{
+			"parameters": {
+				"jsCode": "return [{ json: { message: { text: 'Hello' } } }];"
+			},
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [220, 0],
+			"id": "code-node-1",
+			"name": "Code"
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"typeValidation": "loose",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"id": "test-condition-1",
+							"leftValue": "={{ $json.message }}",
+							"rightValue": "",
+							"operator": {
+								"type": "object",
+								"operation": "exists"
+							}
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.2,
+			"position": [440, 0],
+			"id": "if-node-1",
+			"name": "If"
+		}
+	],
+	"connections": {
+		"Manual Trigger": {
+			"main": [[{ "node": "Code", "type": "main", "index": 0 }]]
+		},
+		"Code": {
+			"main": [[{ "node": "If", "type": "main", "index": 0 }]]
+		}
+	},
+	"pinData": {}
+}
