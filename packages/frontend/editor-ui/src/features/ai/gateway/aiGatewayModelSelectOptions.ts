@@ -14,6 +14,33 @@ export interface OpenRouterModelLike {
 }
 
 /**
+ * Normalizes `/ai-gateway/models` payloads: OpenRouter SDK and API versions may return
+ * `{ data: Model[] }`, a bare `Model[]`, or (in theory) nested shapes. Prevents empty
+ * model dropdowns when `response.data` is undefined.
+ */
+export function normalizeOpenRouterModelsResponse(modelsResponse: unknown): OpenRouterModelLike[] {
+	if (Array.isArray(modelsResponse)) {
+		return modelsResponse as OpenRouterModelLike[];
+	}
+	if (!modelsResponse || typeof modelsResponse !== 'object') {
+		return [];
+	}
+	const mr = modelsResponse as Record<string, unknown>;
+	if (Array.isArray(mr.data)) {
+		return mr.data as OpenRouterModelLike[];
+	}
+	const inner = mr.data;
+	if (
+		inner &&
+		typeof inner === 'object' &&
+		Array.isArray((inner as Record<string, unknown>).data)
+	) {
+		return (inner as { data: OpenRouterModelLike[] }).data;
+	}
+	return [];
+}
+
+/**
  * Maps OpenRouter models to `INodePropertyOptions` for the shared ModelSelect component
  * (same metadata shape as LangChain node `mapOpenRouterModelsToLoadOptions`).
  */

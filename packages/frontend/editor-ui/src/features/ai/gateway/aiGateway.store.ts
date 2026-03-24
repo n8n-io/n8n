@@ -14,6 +14,7 @@ import { AI_GATEWAY_STORE } from './aiGateway.constants';
 import { AI_GATEWAY_INSTANCE_DEFAULT_MODELS } from './aiGatewayInstanceDefaults';
 import {
 	mapOpenRouterModelsToSelectOptions,
+	normalizeOpenRouterModelsResponse,
 	type OpenRouterModelLike,
 } from './aiGatewayModelSelectOptions';
 
@@ -49,6 +50,26 @@ function resolveProviderKey(modelId: string): string {
 	if (id.startsWith('mistral-')) return 'mistral';
 	if (id.startsWith('grok-')) return 'xai';
 	return 'openai';
+}
+
+const HARDCODED_CATEGORY_FALLBACK: CategoryDefinition[] = [
+	{ id: 'balanced', label: 'Balanced', defaultModelId: 'openai/gpt-4.1-nano' },
+	{ id: 'cheapest', label: 'Cheapest', defaultModelId: 'openai/gpt-4.1-nano' },
+	{ id: 'fastest', label: 'Fastest', defaultModelId: 'google/gemini-2.0-flash-001' },
+	{
+		id: 'best-quality',
+		label: 'Best Quality',
+		defaultModelId: 'anthropic/claude-sonnet-4',
+	},
+	{ id: 'reasoning', label: 'Reasoning', defaultModelId: 'openai/o4-mini' },
+	{ id: 'manual', label: 'Manual', defaultModelId: '' },
+];
+
+function rawModelsFromHardcodedCategories(): OpenRouterModelLike[] {
+	return HARDCODED_CATEGORY_FALLBACK.filter((c) => c.defaultModelId.length > 0).map((c) => ({
+		id: c.defaultModelId,
+		name: `${c.label} — ${c.defaultModelId}`,
+	}));
 }
 
 export const useAIGatewayStore = defineStore(AI_GATEWAY_STORE, () => {
@@ -127,12 +148,14 @@ export const useAIGatewayStore = defineStore(AI_GATEWAY_STORE, () => {
 
 			modelsLoading.value = true;
 			try {
-				const modelsResponse = await makeRestApiRequest<{ data: OpenRouterModelLike[] }>(
-					ctx,
-					'GET',
-					'/ai-gateway/models',
-				);
-				const rows = modelsResponse.data ?? [];
+				const modelsPayload = await makeRestApiRequest<unknown>(ctx, 'GET', '/ai-gateway/models');
+				let rows = normalizeOpenRouterModelsResponse(modelsPayload);
+				if (rows.length === 0) {
+					rows = backendCategories.map((c) => ({
+						id: c.model,
+						name: `${c.label} — ${c.model}`,
+					}));
+				}
 				rawModels.value = rows;
 				availableModels.value = rows.map((m) => ({
 					id: m.id,
@@ -152,22 +175,21 @@ export const useAIGatewayStore = defineStore(AI_GATEWAY_STORE, () => {
 			} finally {
 				modelsLoading.value = false;
 			}
-		} catch {
-			categories.value = [
-				{ id: 'balanced', label: 'Balanced', defaultModelId: 'openai/gpt-4.1-nano' },
-				{ id: 'cheapest', label: 'Cheapest', defaultModelId: 'openai/gpt-4.1-nano' },
-				{ id: 'fastest', label: 'Fastest', defaultModelId: 'google/gemini-2.0-flash-001' },
-				{
-					id: 'best-quality',
-					label: 'Best Quality',
-					defaultModelId: 'anthropic/claude-sonnet-4',
-				},
-				{ id: 'reasoning', label: 'Reasoning', defaultModelId: 'openai/o4-mini' },
-				{ id: 'manual', label: 'Manual', defaultModelId: '' },
-			];
-		}
 
-		initialized.value = true;
+			initialized.value = true;
+		} catch {
+			categories.value = [...HARDCODED_CATEGORY_FALLBACK];
+			const fallbackRaw = rawModelsFromHardcodedCategories();
+			rawModels.value = fallbackRaw;
+			availableModels.value = fallbackRaw.map((m) => ({
+				id: m.id,
+				name: m.name ?? m.id,
+				provider: resolveProviderKey(m.id),
+			}));
+			// Leave initialized false so a later initialize() can retry (e.g. auth ready on deploy).
+		} finally {
+			initPromise = null;
+		}
 	}
 
 	async function fetchUsage() {
