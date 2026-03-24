@@ -64,7 +64,7 @@ export async function apiRequest(
 		delete options.body;
 	}
 
-	return await this.helpers.requestWithAuthentication.call(this, authenticationMethod, options);
+	return await this.helpers.httpRequestWithAuthentication.call(this, authenticationMethod, options);
 }
 
 /**
