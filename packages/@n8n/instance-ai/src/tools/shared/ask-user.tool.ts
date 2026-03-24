@@ -27,7 +27,11 @@ export function createAskUserTool() {
 		description:
 			'Ask the user one or more structured questions. Each question can be ' +
 			'single-select (pick one), multi-select (pick many), or free-text. ' +
-			'The agent is suspended until the user responds.',
+			'The agent is suspended until the user responds. ' +
+			'IMPORTANT: Every question already has a built-in "Something else" free-text ' +
+			'input, so NEVER add a separate follow-up question asking the user to elaborate ' +
+			'on a previous "other" choice — it is redundant. Keep questions concise and ' +
+			'avoid questions that reference answers to previous questions.',
 		inputSchema: z.object({
 			questions: z
 				.array(questionSchema)

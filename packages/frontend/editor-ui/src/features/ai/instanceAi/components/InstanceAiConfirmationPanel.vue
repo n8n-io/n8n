@@ -7,7 +7,7 @@ import { useToolLabel } from '../toolLabels';
 import DomainAccessApproval from './DomainAccessApproval.vue';
 import InstanceAiCredentialSetup from './InstanceAiCredentialSetup.vue';
 import InstanceAiQuestions from './InstanceAiQuestions.vue';
-import PlanReviewPanel from './PlanReviewPanel.vue';
+import PlanReviewPanel, { type PlannedTaskArg } from './PlanReviewPanel.vue';
 import type { QuestionAnswer } from './InstanceAiQuestions.vue';
 
 const store = useInstanceAiStore();
@@ -192,7 +192,7 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 					<!-- Plan review (plan tool approval) -->
 					<PlanReviewPanel
 						v-else-if="item.toolCall.confirmation!.inputType === 'plan-review'"
-						:tasks="item.toolCall.confirmation!.tasks"
+						:planned-tasks="(item.toolCall.args?.tasks as PlannedTaskArg[] | undefined) ?? []"
 						:message="item.toolCall.confirmation!.message"
 						@approve="handlePlanApprove(item.toolCall.confirmation!.requestId)"
 						@request-changes="

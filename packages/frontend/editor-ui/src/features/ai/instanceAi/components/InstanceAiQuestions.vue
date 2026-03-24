@@ -383,10 +383,6 @@ function onOptionMouseEnter(idx: number) {
 
 <template>
 	<div :class="$style.wrapper" data-test-id="instance-ai-questions">
-		<N8nText v-if="introMessage" :class="$style.intro">
-			{{ introMessage }}
-		</N8nText>
-
 		<div
 			v-if="currentQuestion && currentAnswer"
 			ref="containerRef"
@@ -394,6 +390,10 @@ function onOptionMouseEnter(idx: number) {
 			tabindex="0"
 			@keydown="onKeydown"
 		>
+			<p v-if="introMessage" :class="$style.intro">
+				{{ introMessage }}
+			</p>
+
 			<Transition :name="$style.questionFade" mode="out-in">
 				<div :key="currentQuestion.id" :class="$style.question">
 					<N8nText tag="p" :bold="true" :class="$style.questionText">
@@ -579,7 +579,11 @@ function onOptionMouseEnter(idx: number) {
 }
 
 .intro {
+	margin: 0;
+	padding: var(--spacing--xs) var(--spacing--xs) 0;
+	font-size: var(--font-size--2xs);
 	line-height: var(--line-height--xl);
+	color: var(--color--text--tint-1);
 }
 
 .container {
