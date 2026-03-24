@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiCredentialRequest, InstanceAiCredentialFlow } from '@n8n/api-types';
@@ -61,6 +61,23 @@ function initSelections() {
 	}
 }
 initSelections();
+
+// Clear selection when a credential is deleted from the store
+const stopDeleteListener = credentialsStore.$onAction(({ name, after, args }) => {
+	if (name !== 'deleteCredential') return;
+	after(() => {
+		const deletedId = (args[0] as { id: string }).id;
+		for (const [credType, selectedId] of Object.entries(selections.value)) {
+			if (selectedId === deletedId) {
+				selections.value[credType] = null;
+			}
+		}
+	});
+});
+
+onBeforeUnmount(() => {
+	stopDeleteListener();
+});
 
 // ---------------------------------------------------------------------------
 // Completion
