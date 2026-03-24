@@ -1,7 +1,11 @@
+import { useI18n } from '@n8n/i18n';
 import type { FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
-import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW } from './constants';
+import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_SETTINGS_VIEW } from './constants';
+
+const i18n = useI18n();
 
 const InstanceAiView = async () => await import('./InstanceAiView.vue');
+const SettingsInstanceAiView = async () => await import('./views/SettingsInstanceAiView.vue');
 
 export const InstanceAiModule: FrontendModuleDescription = {
 	id: 'instance-ai',
@@ -27,6 +31,18 @@ export const InstanceAiModule: FrontendModuleDescription = {
 				middleware: ['authenticated', 'custom'],
 			},
 		},
+		{
+			path: 'instance-ai',
+			name: INSTANCE_AI_SETTINGS_VIEW,
+			component: SettingsInstanceAiView,
+			meta: {
+				layout: 'settings',
+				middleware: ['authenticated', 'custom'],
+				telemetry: {
+					pageCategory: 'settings',
+				},
+			},
+		},
 	],
 	projectTabs: {
 		overview: [],
@@ -34,5 +50,13 @@ export const InstanceAiModule: FrontendModuleDescription = {
 	},
 	resources: [],
 	modals: [],
-	settingsPages: [],
+	settingsPages: [
+		{
+			id: 'settings-instance-ai',
+			icon: 'sparkles',
+			label: i18n.baseText('settings.instanceAi'),
+			position: 'top',
+			route: { to: { name: INSTANCE_AI_SETTINGS_VIEW } },
+		},
+	],
 };

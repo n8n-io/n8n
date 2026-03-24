@@ -9,6 +9,8 @@ export interface ResourceEntry {
 	type: 'workflow' | 'credential' | 'data-table';
 	id: string;
 	name: string;
+	createdAt?: string;
+	updatedAt?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -21,7 +23,10 @@ function registerResource(
 	obj: Record<string, unknown>,
 ): void {
 	if (typeof obj.name === 'string' && typeof obj.id === 'string') {
-		map.set(obj.name.toLowerCase(), { type, id: obj.id, name: obj.name });
+		const entry: ResourceEntry = { type, id: obj.id, name: obj.name };
+		if (typeof obj.createdAt === 'string') entry.createdAt = obj.createdAt;
+		if (typeof obj.updatedAt === 'string') entry.updatedAt = obj.updatedAt;
+		map.set(obj.name.toLowerCase(), entry);
 	}
 }
 

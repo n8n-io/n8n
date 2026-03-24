@@ -4145,6 +4145,8 @@
 	"settings.ai.confirm.message.builderDisabled": "Disabling data sending will reduce the effectiveness of AI features. Are you sure you want to proceed?",
 	"settings.ai.confirm.message.builderEnabled": "Disabling data sending will turn off the AI Workflow Builder and reduce the effectiveness of AI features. Are you sure you want to proceed?",
 	"settings.ai.confirm.confirmButtonText": "Yes, disable",
+	"settings.instanceAi": "Instance AI",
+	"settings.instanceAi.description": "Configure the Instance AI agent, model, memory, and permissions.",
 	"dataTable.search.dateSearchInfo": "Date searches use UTC format, while the table displays dates in your local timezone",
 	"dataTable.cell.oversized": "Value too large to display",
 	"dataTable.cell.oversized.tooltip": "The value can be modified using the data table node",

@@ -3,17 +3,16 @@ import { computed, ref, watch } from 'vue';
 import { N8nIcon, N8nIconButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useInstanceAiStore } from '../instanceAi.store';
-import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import WorkflowMiniCanvas from './WorkflowMiniCanvas.vue';
 import type { TaskItem } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
-import type { IWorkflowDb } from '@/Interface';
+import type { ResourceEntry } from '../useResourceRegistry';
+import TimeAgo from '@/app/components/TimeAgo.vue';
 
 const emit = defineEmits<{ close: [] }>();
 const i18n = useI18n();
 const store = useInstanceAiStore();
-const workflowsListStore = useWorkflowsListStore();
 
+// --- Tasks ---
 const tasks = computed(() => store.currentTasks);
 
 const doneCount = computed(() => {
@@ -30,80 +29,105 @@ const statusIconMap: Record<
 	done: { icon: 'check', spin: false, className: 'doneIcon' },
 };
 
-const workflowArtifacts = computed(() => {
-	const result: Array<{ id: string; name: string }> = [];
+// --- Artifacts ---
+const artifacts = computed((): ResourceEntry[] => {
+	const result: ResourceEntry[] = [];
 	for (const entry of store.resourceRegistry.values()) {
-		if (entry.type === 'workflow') {
-			result.push({ id: entry.id, name: entry.name });
+		if (entry.type === 'workflow' || entry.type === 'data-table') {
+			result.push(entry);
 		}
 	}
 	return result;
 });
 
-const hasArtifacts = computed(() => tasks.value !== null || workflowArtifacts.value.length > 0);
+const artifactIconMap: Record<string, IconName> = {
+	workflow: 'workflow',
+	'data-table': 'table',
+};
 
-const expandedCards = ref<Set<string>>(new Set());
+// --- Collapsible sections ---
+const expandedSections = ref<Set<string>>(new Set(['tasks', 'artifacts']));
 
-function toggleCard(key: string) {
-	if (expandedCards.value.has(key)) {
-		expandedCards.value.delete(key);
+function toggleSection(key: string) {
+	if (expandedSections.value.has(key)) {
+		expandedSections.value.delete(key);
 	} else {
-		expandedCards.value.add(key);
+		expandedSections.value.add(key);
 	}
 }
 
-// Auto-expand tasks card when it first appears
+// Auto-expand tasks section when it first appears
 watch(tasks, (newTasks, oldTasks) => {
 	if (newTasks && !oldTasks) {
-		expandedCards.value.add('tasks');
+		expandedSections.value.add('tasks');
 	}
 });
-
-const previewWorkflows = ref<Map<string, IWorkflowDb>>(new Map());
-
-watch(
-	() => workflowArtifacts.value.length,
-	async () => {
-		for (const wf of workflowArtifacts.value) {
-			if (previewWorkflows.value.has(wf.id)) continue;
-			try {
-				const full = await workflowsListStore.fetchWorkflow(wf.id);
-				previewWorkflows.value.set(wf.id, full);
-			} catch {
-				/* non-critical */
-			}
-		}
-	},
-	{ immediate: true },
-);
 </script>
 
 <template>
 	<div :class="$style.panel">
 		<div :class="$style.header">
-			<div :class="$style.headerTitle">
-				<N8nIcon icon="layers" size="small" />
-				<span>{{ i18n.baseText('instanceAi.artifactsPanel.title') }}</span>
-			</div>
 			<N8nIconButton icon="x" variant="ghost" size="small" @click="emit('close')" />
 		</div>
 
-		<div v-if="hasArtifacts" :class="$style.cardList">
-			<!-- Tasks card -->
-			<div v-if="tasks" :class="$style.artifactCard" @click="toggleCard('tasks')">
-				<div :class="$style.cardHeader">
+		<div :class="$style.body">
+			<!-- Artifacts section -->
+			<div :class="$style.section">
+				<div :class="$style.sectionHeader" @click="toggleSection('artifacts')">
+					<span :class="$style.sectionTitle">
+						{{ i18n.baseText('instanceAi.artifactsPanel.title') }}
+					</span>
 					<N8nIcon
-						:icon="expandedCards.has('tasks') ? 'chevron-down' : 'chevron-right'"
-						:class="$style.chevron"
+						:icon="expandedSections.has('artifacts') ? 'chevron-down' : 'chevron-right'"
 						size="small"
+						:class="$style.chevron"
 					/>
-					<N8nIcon icon="list-checks" size="small" />
-					<span :class="$style.artifactName">{{
-						i18n.baseText('instanceAi.artifactsPanel.tasks')
-					}}</span>
-					<span :class="$style.progress"> {{ doneCount }}/{{ tasks.tasks.length }} </span>
 				</div>
-				<div v-if="expandedCards.has('tasks')" :class="$style.expandedContent">
+
+				<div v-if="expandedSections.has('artifacts')" :class="$style.sectionContent">
+					<div v-if="artifacts.length > 0" :class="$style.artifactList">
+						<div v-for="artifact in artifacts" :key="artifact.id" :class="$style.artifactRow">
+							<N8nIcon
+								:icon="artifactIconMap[artifact.type] ?? 'file'"
+								size="small"
+								:class="$style.artifactIcon"
+							/>
+							<div :class="$style.artifactInfo">
+								<span :class="$style.artifactName">{{ artifact.name }}</span>
+								<TimeAgo
+									v-if="artifact.updatedAt ?? artifact.createdAt"
+									:date="(artifact.updatedAt ?? artifact.createdAt)!"
+									:class="$style.artifactDate"
+								/>
+							</div>
+						</div>
+					</div>
+
+					<div v-else :class="$style.emptyState">
+						<div :class="$style.emptyIcons">
+							<N8nIcon icon="workflow" size="medium" :class="$style.emptyIcon" />
+							<N8nIcon icon="table" size="medium" :class="$style.emptyIcon" />
+						</div>
+						<span>{{ i18n.baseText('instanceAi.artifactsPanel.noArtifacts') }}</span>
+					</div>
+				</div>
+			</div>
+
+			<!-- Tasks section -->
+			<div v-if="tasks" :class="$style.section">
+				<div :class="$style.sectionHeader" @click="toggleSection('tasks')">
+					<span :class="$style.sectionTitle">
+						{{ i18n.baseText('instanceAi.artifactsPanel.tasks') }}
+					</span>
+					<span :class="$style.progress">{{ doneCount }}/{{ tasks.tasks.length }}</span>
+					<N8nIcon
+						:icon="expandedSections.has('tasks') ? 'chevron-down' : 'chevron-right'"
+						size="small"
+						:class="$style.chevron"
+					/>
+				</div>
+
+				<div v-if="expandedSections.has('tasks')" :class="$style.sectionContent">
 					<div :class="$style.taskList">
 						<div
 							v-for="task in tasks.tasks"
@@ -121,45 +145,6 @@ watch(
 					</div>
 				</div>
 			</div>
-
-			<!-- Workflow cards -->
-			<div
-				v-for="wf in workflowArtifacts"
-				:key="wf.id"
-				:class="$style.artifactCard"
-				@click="toggleCard(wf.id)"
-			>
-				<div :class="$style.cardHeader">
-					<N8nIcon
-						:icon="expandedCards.has(wf.id) ? 'chevron-down' : 'chevron-right'"
-						:class="$style.chevron"
-						size="small"
-					/>
-					<N8nIcon icon="workflow" size="small" />
-					<span :class="$style.artifactName">{{ wf.name }}</span>
-					<span :class="$style.typeBadge">Workflow</span>
-					<RouterLink
-						:to="`/workflow/${wf.id}`"
-						target="_blank"
-						:class="$style.openLink"
-						@click.stop
-					>
-						{{ i18n.baseText('instanceAi.artifactsPanel.openWorkflow') }}
-					</RouterLink>
-				</div>
-				<div v-if="expandedCards.has(wf.id)" :class="$style.expandedContent">
-					<div v-if="previewWorkflows.has(wf.id)" :class="$style.previewContainer">
-						<WorkflowMiniCanvas
-							:workflow="previewWorkflows.get(wf.id)!"
-							:canvas-id="`artifact-${wf.id}`"
-						/>
-					</div>
-				</div>
-			</div>
-		</div>
-
-		<div v-else :class="$style.emptyState">
-			{{ i18n.baseText('instanceAi.artifactsPanel.noArtifacts') }}
 		</div>
 	</div>
 </template>
@@ -182,101 +167,131 @@ watch(
 .header {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
+	justify-content: flex-end;
 	padding: var(--spacing--2xs) var(--spacing--sm);
-	border-bottom: var(--border);
 	flex-shrink: 0;
 }
 
-.headerTitle {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--bold);
-}
-
-.cardList {
-	padding: var(--spacing--sm);
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
+.body {
 	flex: 1;
 	min-height: 0;
 	overflow-y: auto;
+	padding: 0 var(--spacing--sm) var(--spacing--sm);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
 }
 
-.artifactCard {
+.section {
 	border: var(--border);
 	border-radius: var(--radius--lg);
 	overflow: hidden;
-	cursor: pointer;
-	flex-shrink: 0;
 }
 
-.cardHeader {
+.sectionHeader {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
 	padding: var(--spacing--2xs) var(--spacing--sm);
-	font-size: var(--font-size--2xs);
+	cursor: pointer;
+	user-select: none;
+
+	&:hover {
+		background: var(--color--background--shade-1);
+	}
+}
+
+.sectionTitle {
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--bold);
+	flex: 1;
 }
 
 .chevron {
 	color: var(--color--text--tint-1);
 	flex-shrink: 0;
-	transition: transform 0.15s ease;
-}
-
-.artifactName {
-	font-weight: var(--font-weight--bold);
-	flex: 1;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.typeBadge {
-	font-size: var(--font-size--3xs);
-	padding: 1px var(--spacing--3xs);
-	background: var(--color--foreground);
-	border-radius: var(--radius--sm);
-	text-transform: uppercase;
-	color: var(--color--text);
-	flex-shrink: 0;
 }
 
 .progress {
-	margin-left: auto;
 	font-size: var(--font-size--3xs);
 	color: var(--color--text--tint-1);
 	flex-shrink: 0;
 }
 
-.openLink {
-	font-size: var(--font-size--3xs);
-	color: var(--color--primary);
-	text-decoration: none;
+.sectionContent {
+	border-top: var(--border);
+	padding: var(--spacing--2xs) var(--spacing--sm);
+}
+
+/* Artifact list */
+.artifactList {
+	display: flex;
+	flex-direction: column;
+}
+
+.artifactRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--3xs) 0;
+
+	& + & {
+		border-top: 1px solid var(--color--foreground--tint-2);
+	}
+}
+
+.artifactIcon {
+	color: var(--color--text--tint-1);
 	flex-shrink: 0;
 }
 
-.expandedContent {
-	padding: 0 var(--spacing--sm) var(--spacing--2xs);
-	border-top: 1px solid var(--color--foreground--tint-2);
-	max-height: 300px;
-	overflow-y: auto;
+.artifactInfo {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	flex: 1;
 }
 
-.previewContainer {
-	height: 120px;
-	border-radius: var(--radius);
+.artifactName {
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--bold);
 	overflow: hidden;
-	margin-top: var(--spacing--4xs);
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
-/* Task list styles */
+.artifactDate {
+	font-size: var(--font-size--3xs);
+	color: var(--color--text--tint-2);
+}
+
+/* Empty state */
+.emptyState {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--sm) 0;
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-1);
+}
+
+.emptyIcons {
+	display: flex;
+	gap: var(--spacing--2xs);
+}
+
+.emptyIcon {
+	color: var(--color--text--tint-2);
+	padding: var(--spacing--4xs);
+	background: var(--color--foreground--tint-1);
+	border-radius: var(--radius);
+}
+
+/* Task list */
 .taskList {
-	padding: var(--spacing--2xs) 0;
+	display: flex;
+	flex-direction: column;
 }
 
 .task {
@@ -312,12 +327,5 @@ watch(
 
 .doneIcon {
 	color: var(--color--success);
-}
-
-.emptyState {
-	padding: var(--spacing--lg) var(--spacing--sm);
-	text-align: center;
-	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
 }
 </style>

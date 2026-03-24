@@ -16,7 +16,6 @@ import InstanceAiThreadList from './components/InstanceAiThreadList.vue';
 import InstanceAiMemoryPanel from './components/InstanceAiMemoryPanel.vue';
 import InstanceAiDebugPanel from './components/InstanceAiDebugPanel.vue';
 import InstanceAiArtifactsPanel from './components/InstanceAiArtifactsPanel.vue';
-import InstanceAiSettingsPanel from './components/settings/InstanceAiSettingsPanel.vue';
 import InstanceAiStatusBar from './components/InstanceAiStatusBar.vue';
 import InstanceAiConfirmationPanel from './components/InstanceAiConfirmationPanel.vue';
 import InstanceAiWorkflowPreview from './components/InstanceAiWorkflowPreview.vue';
@@ -152,10 +151,10 @@ watch(
 );
 
 // --- Side panels ---
-const showArtifactsPanel = ref(false);
+const showArtifactsPanel = ref(true);
 const showMemoryPanel = ref(false);
 const showDebugPanel = ref(false);
-const showSettingsPanel = ref(false);
+const isDebugEnabled = computed(() => localStorage.getItem('instanceAi.debugMode') === 'true');
 
 // --- Sidebar resize ---
 const sidebarWidth = ref(260);
@@ -382,18 +381,12 @@ function handleStop() {
 				</N8nText>
 				<div :class="$style.headerActions">
 					<N8nIconButton
+						v-if="!isCanvasVisible"
 						icon="layers"
 						variant="ghost"
 						size="small"
 						:class="{ [$style.activeButton]: showArtifactsPanel }"
 						@click="showArtifactsPanel = !showArtifactsPanel"
-					/>
-					<N8nIconButton
-						icon="cog"
-						variant="ghost"
-						size="small"
-						:class="{ [$style.activeButton]: showSettingsPanel }"
-						@click="showSettingsPanel = !showSettingsPanel"
 					/>
 					<N8nIconButton
 						icon="brain"
@@ -403,6 +396,7 @@ function handleStop() {
 						@click="showMemoryPanel = !showMemoryPanel"
 					/>
 					<N8nIconButton
+						v-if="isDebugEnabled"
 						icon="bug"
 						variant="ghost"
 						size="small"
@@ -461,8 +455,10 @@ function handleStop() {
 			</div>
 
 			<!-- Side panels -->
-			<InstanceAiArtifactsPanel v-if="showArtifactsPanel" @close="showArtifactsPanel = false" />
-			<InstanceAiSettingsPanel v-if="showSettingsPanel" @close="showSettingsPanel = false" />
+			<InstanceAiArtifactsPanel
+				v-if="showArtifactsPanel && !isCanvasVisible"
+				@close="showArtifactsPanel = false"
+			/>
 			<InstanceAiMemoryPanel v-if="showMemoryPanel" @close="showMemoryPanel = false" />
 			<InstanceAiDebugPanel
 				v-if="showDebugPanel"
