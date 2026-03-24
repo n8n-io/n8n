@@ -6,7 +6,6 @@ import { getDebounceTime } from '@/app/constants/durations';
 export interface DebounceOptions {
 	debounceTime: number;
 	trailing?: boolean;
-	leading?: boolean;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

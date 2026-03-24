@@ -737,8 +737,7 @@ function loadResourcesDebounced(debounceTime: number = DEBOUNCE_TIME.INPUT.SEARC
 
 	void callDebounced(loadResources, {
 		debounceTime,
-		leading: true,
-		trailing: false,
+		trailing: true,
 	});
 }
 
