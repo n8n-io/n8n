@@ -9,6 +9,12 @@ import { IdentifierValidationError, type ITokenIdentifier } from './identifier-i
 
 const MAX_TIMESTAMP_AGE_SECONDS = 300; // 5 minutes — Slack's recommended window
 
+const SlackMetadataSchema = z.object({
+	rawBody: z.string(),
+	signature: z.string(),
+	timestamp: z.string(),
+});
+
 export const SlackSignatureOptionsSchema = z.object({
 	signingSecret: z.string().min(1, 'Slack signing secret is required'),
 	subjectClaim: z.enum(['user_id', 'team_user']).default('user_id'),
@@ -47,18 +53,15 @@ export class SlackSignatureIdentifier implements ITokenIdentifier {
 	): Promise<string> {
 		const options = this.parseOptions(identifierOptions);
 
-		if (
-			!context.metadata?.rawBody ||
-			!context.metadata?.signature ||
-			!context.metadata?.timestamp
-		) {
+		const metadataResult = SlackMetadataSchema.safeParse(context.metadata);
+		if (!metadataResult.success) {
 			throw new IdentifierValidationError('Missing Slack signature verification data');
 		}
 		this.verifySlackSignature(
 			options.signingSecret,
-			context.metadata.timestamp as string,
-			context.metadata.rawBody as string,
-			context.metadata.signature as string,
+			metadataResult.data.timestamp,
+			metadataResult.data.rawBody,
+			metadataResult.data.signature,
 		);
 		this.logger.debug('Slack signature verified');
 
