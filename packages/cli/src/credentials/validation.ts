@@ -14,13 +14,6 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 // #region External Secrets
 
 /**
- * Checks if credential data contains any external secret expressions ($secrets)
- */
-export function containsExternalSecrets(data: ICredentialDataDecryptedObject): boolean {
-	return getExternalSecretExpressionPaths(data).length > 0;
-}
-
-/**
  * Checks if any changed field in a credential contains an external secret expression
  */
 export function isChangingExternalSecretExpression(
@@ -68,7 +61,7 @@ export async function validateExternalSecretsPermissions({
 	const isUpdatingExistingCredential = !!decryptedExistingData;
 	const needsCheck = isUpdatingExistingCredential
 		? isChangingExternalSecretExpression(dataToSave, decryptedExistingData)
-		: containsExternalSecrets(dataToSave);
+		: getExternalSecretExpressionPaths(dataToSave).length > 0;
 	if (needsCheck) {
 		const hasAccess = await userHasScopes(user, ['externalSecret:list'], false, { projectId });
 		if (!hasAccess) {
