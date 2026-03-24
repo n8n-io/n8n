@@ -23,7 +23,7 @@ export class AiConfig {
 
 	/** Whether to persist AI workflow builder sessions to the database. */
 	@Env('N8N_AI_PERSIST_BUILDER_SESSIONS')
-	persistBuilderSessions: boolean = false;
+	persistBuilderSessions: boolean = true;
 
 	get openAiDefaultHeaders(): Record<string, string> {
 		// eslint-disable-next-line @typescript-eslint/naming-convention
