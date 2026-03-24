@@ -32,7 +32,6 @@ import {
 import { getTriggerNodeServiceName } from '@/app/utils/nodeTypesUtils';
 import type { ExecutionFinished } from '@n8n/api-types/push/execution';
 import { useI18n } from '@n8n/i18n';
-import { parse } from 'flatted';
 import type {
 	ExecutionStatus,
 	ExpressionError,
@@ -217,7 +216,7 @@ export async function fetchExecutionData(
 			id: executionId,
 			workflowId: executionResponse.workflowId,
 			workflowData: workflowsStore.workflow,
-			data: parse(executionResponse.data as unknown as string),
+			data: executionResponse.data,
 			status: executionResponse.status,
 			startedAt: workflowsStore.workflowExecutionData?.startedAt as Date,
 			stoppedAt: new Date(),
@@ -416,11 +415,15 @@ export function handleExecutionFinishedWithSuccessOrOther(
 	const workflowObject = workflowsStore.workflowObject;
 	const workflowName = workflowObject.name ?? '';
 
+	const workflowDocumentStore = workflowsStore.workflowId
+		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+		: undefined;
+
 	useDocumentTitle().setDocumentTitle(workflowName, 'IDLE');
 
 	const workflowExecution = workflowsStore.getWorkflowExecution;
 	if (workflowExecution?.executedNode) {
-		const node = workflowsStore.getNodeByName(workflowExecution.executedNode);
+		const node = workflowDocumentStore?.getNodeByName(workflowExecution.executedNode) ?? null;
 		const nodeType = node && nodeTypesStore.getNodeType(node.type, node.typeVersion);
 		const nodeOutput =
 			workflowExecution.data?.resultData?.runData?.[workflowExecution.executedNode];
@@ -473,7 +476,7 @@ export function setRunExecutionData(
 	workflowState: WorkflowState,
 ) {
 	const workflowsStore = useWorkflowsStore();
-	const nodeHelpers = useNodeHelpers({ workflowState });
+	const nodeHelpers = useNodeHelpers();
 	const runDataExecutedErrorMessage = getRunDataExecutedErrorMessage(execution);
 	const workflowExecution = workflowsStore.getWorkflowExecution;
 

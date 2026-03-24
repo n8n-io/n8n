@@ -1,5 +1,7 @@
 import { Container } from '@n8n/di';
+import type { SelectQueryBuilder } from '@n8n/typeorm';
 import { In } from '@n8n/typeorm';
+import { mock } from 'jest-mock-extended';
 
 import { CredentialsEntity } from '../../entities';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
@@ -51,6 +53,37 @@ describe('CredentialsRepository', () => {
 			const callArg = entityManager.findAndCount.mock.calls[0]?.[1];
 			expect(callArg).toBeDefined();
 			expect(callArg!.where).toEqual(expect.objectContaining({ id: In(['id1', 'id2']) }));
+		});
+	});
+
+	describe('findAllGlobalCredentials', () => {
+		it('applies dependency filter through query builder when provided', async () => {
+			const andWhereSpy = jest.fn().mockReturnThis();
+			const getManySpy = jest.fn().mockResolvedValue([]);
+			const qb = mock<SelectQueryBuilder<CredentialsEntity>>({
+				andWhere: andWhereSpy,
+				getMany: getManySpy,
+			});
+			jest.spyOn(credentialsRepository, 'createQueryBuilder').mockReturnValue(qb);
+
+			await credentialsRepository.findAllGlobalCredentials({
+				filters: {
+					dependency: {
+						dependencyType: 'externalSecretProvider',
+						dependencyId: 'provider-1',
+					},
+				},
+			});
+
+			expect(andWhereSpy).toHaveBeenCalledWith(
+				expect.stringContaining('FROM credential_dependency cd'),
+				{
+					dependencyType: 'externalSecretProvider',
+					dependencyId: 'provider-1',
+				},
+			);
+			expect(getManySpy).toHaveBeenCalledTimes(1);
+			expect(entityManager.find).not.toHaveBeenCalled();
 		});
 	});
 });

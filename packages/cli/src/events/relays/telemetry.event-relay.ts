@@ -409,7 +409,7 @@ export class TelemetryEventRelay extends EventRelay {
 		apiVersion,
 		userAgent,
 	}: RelayEventMap['public-api-invoked']) {
-		this.telemetry.track('User invoked API', {
+		this.telemetry.trackApiInvocation({
 			user_id: userId,
 			path,
 			method,
