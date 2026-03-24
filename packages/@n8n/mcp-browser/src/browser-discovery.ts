@@ -233,6 +233,62 @@ export class BrowserDiscovery {
 	}
 }
 
+// ---------------------------------------------------------------------------
+// Platform-specific install instructions
+// ---------------------------------------------------------------------------
+
+const browserInstallInstructions: Record<string, Record<string, string>> = {
+	chrome: {
+		darwin:
+			'Install Google Chrome: brew install --cask google-chrome or download from https://google.com/chrome',
+		linux:
+			'Install Google Chrome: sudo apt install google-chrome-stable (Debian/Ubuntu) or sudo dnf install google-chrome-stable (Fedora)',
+		win32: 'Download Google Chrome from https://google.com/chrome',
+	},
+	brave: {
+		darwin:
+			'Install Brave: brew install --cask brave-browser or download from https://brave.com/download',
+		linux: 'Install Brave: see https://brave.com/linux/ for distribution-specific instructions',
+		win32: 'Download Brave from https://brave.com/download',
+	},
+	edge: {
+		darwin:
+			'Install Microsoft Edge: brew install --cask microsoft-edge or download from https://microsoft.com/edge',
+		linux: 'Install Microsoft Edge: see https://microsoft.com/edge for Linux packages',
+		win32:
+			'Microsoft Edge is usually pre-installed on Windows. Download from https://microsoft.com/edge if needed.',
+	},
+	chromium: {
+		darwin: 'Install Chromium: brew install --cask chromium or download from https://chromium.org',
+		linux:
+			'Install Chromium: sudo apt install chromium-browser (Debian/Ubuntu) or sudo dnf install chromium (Fedora)',
+		win32: 'Download Chromium from https://chromium.org',
+	},
+};
+
+/** Get platform-specific install instructions for a browser. */
+export function getInstallInstructions(
+	browser: string,
+	platform: string = process.platform,
+): string {
+	return (
+		browserInstallInstructions[browser]?.[platform] ??
+		`Install ${browser} from its official website.`
+	);
+}
+
+/** Get instructions for installing the n8n AI Browser Bridge extension. */
+export function getExtensionInstallInstructions(): string {
+	// TODO: Replace with actual Chrome Web Store URL once published
+	return (
+		'Install the n8n AI Browser Bridge extension:\n' +
+		'  1. Open chrome://extensions in your browser\n' +
+		'  2. Enable "Developer mode" (toggle in top-right)\n' +
+		'  3. Click "Load unpacked" and select the mcp-browser-extension directory\n' +
+		'Once the extension is published to the Chrome Web Store, you can install it directly from there.'
+	);
+}
+
 /** Singleton instance for convenience. */
 let defaultDiscovery: BrowserDiscovery | undefined;
 

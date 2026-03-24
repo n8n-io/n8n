@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { BrowserConnection } from '../connection';
 import { McpBrowserError } from '../errors';
 import type { ToolContext, ToolDefinition } from '../types';
+import { browserNameSchema } from '../types';
 import { formatErrorResponse, formatCallToolResult } from '../utils';
 
 export function createSessionTools(connection: BrowserConnection): ToolDefinition[] {
@@ -13,7 +14,14 @@ export function createSessionTools(connection: BrowserConnection): ToolDefinitio
 // browser_connect
 // ---------------------------------------------------------------------------
 
-const browserConnectSchema = z.object({});
+const browserConnectSchema = z.object({
+	browser: browserNameSchema
+		.optional()
+		.describe(
+			'Chromium-based browser to connect to. Options: chrome, brave, edge, chromium. ' +
+				'Defaults to chrome. Only Chromium-based browsers are supported (they provide the CDP protocol required by the browser bridge extension).',
+		),
+});
 
 const browserConnectOutputSchema = z.object({
 	browser: z.string(),
@@ -32,14 +40,15 @@ function browserConnect(
 	return {
 		name: 'browser_connect',
 		description:
-			"Connect to the user's browser. Controls all open tabs by default. " +
-			'Must be called before using any other browser tools. ' +
-			'Requires the n8n Browser Bridge Chrome extension to be installed.',
+			"Connect to the user's browser for web automation. " +
+			'Optionally specify a Chromium-based browser (chrome, brave, edge, chromium). ' +
+			'Requires the n8n AI Browser Bridge extension to be installed. ' +
+			'Must be called before using any other browser tools.',
 		inputSchema: browserConnectSchema,
 		outputSchema: browserConnectOutputSchema,
-		async execute(_args, _context: ToolContext) {
+		async execute(args, _context: ToolContext) {
 			try {
-				const result = await connection.connect();
+				const result = await connection.connect(args.browser);
 				return formatCallToolResult({
 					browser: result.browser,
 					pages: result.pages,

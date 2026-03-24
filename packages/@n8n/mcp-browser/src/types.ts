@@ -82,6 +82,18 @@ export interface ConnectResult {
 export type ElementTarget = { ref: string } | { selector: string };
 
 // ---------------------------------------------------------------------------
+// Modal state (dialog / file-chooser)
+// ---------------------------------------------------------------------------
+
+export interface ModalState {
+	type: 'dialog' | 'filechooser';
+	description: string;
+	clearedBy: string;
+	dialogType?: 'alert' | 'confirm' | 'prompt' | 'beforeunload';
+	message?: string;
+}
+
+// ---------------------------------------------------------------------------
 // Adapter result types
 // ---------------------------------------------------------------------------
 
@@ -209,4 +221,10 @@ export interface DiscoveredBrowsers {
 	brave?: BrowserInfo;
 	edge?: BrowserInfo;
 	chromium?: BrowserInfo;
+}
+
+export interface DiscoveryReport {
+	platform: string;
+	found: DiscoveredBrowsers;
+	searchedPaths: Partial<Record<BrowserName, string[]>>;
 }

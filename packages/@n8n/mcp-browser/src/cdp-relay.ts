@@ -17,6 +17,7 @@ import http from 'node:http';
 import type net from 'node:net';
 import { WebSocketServer, WebSocket } from 'ws';
 
+import { getExtensionInstallInstructions } from './browser-discovery';
 import type {
 	CDPCommand,
 	CDPResponse,
@@ -24,14 +25,23 @@ import type {
 	ExtensionEvents,
 	ExtensionResponse,
 } from './cdp-relay-protocol';
+import { ExtensionNotConnectedError, type ExtensionNotConnectedPhase } from './errors';
+import { createLogger } from './logger';
+
+const log = createLogger('relay');
 
 // ---------------------------------------------------------------------------
 // CDPRelayServer
 // ---------------------------------------------------------------------------
 
 export interface CDPRelayServerOptions {
-	/** Timeout in ms waiting for extension to connect. Default 30_000 */
+	/** Timeout in ms waiting for extension to connect. Default 15_000 */
 	connectionTimeoutMs?: number;
+}
+
+export interface WaitForExtensionOptions {
+	/** Whether the browser process was successfully launched via execFile. */
+	browserWasLaunched?: boolean;
 }
 
 interface ConnectedTab {
@@ -64,7 +74,7 @@ export class CDPRelayServer {
 	private readonly connectionTimeoutMs: number;
 
 	constructor(options?: CDPRelayServerOptions) {
-		this.connectionTimeoutMs = options?.connectionTimeoutMs ?? 30_000;
+		this.connectionTimeoutMs = options?.connectionTimeoutMs ?? 15_000;
 
 		const uuid = randomUUID();
 		this.cdpPath = `/cdp/${uuid}`;
@@ -91,6 +101,7 @@ export class CDPRelayServer {
 		return await new Promise((resolve, reject) => {
 			this.httpServer.listen(0, '127.0.0.1', () => {
 				const addr = this.httpServer.address() as net.AddressInfo;
+				log.debug('listening on port', addr.port);
 				resolve(addr.port);
 			});
 			this.httpServer.on('error', reject);
@@ -107,24 +118,29 @@ export class CDPRelayServer {
 		return `ws://127.0.0.1:${port}${this.extensionPath}`;
 	}
 
-	/** Wait for the extension to connect. Rejects after timeout. */
-	async waitForExtension(): Promise<void> {
+	/** Wait for the extension to connect. Rejects after timeout with phase-specific guidance. */
+	async waitForExtension(options?: WaitForExtensionOptions): Promise<void> {
 		if (this.extensionConn) return;
 
+		log.debug('waiting for extension to connect (timeout:', this.connectionTimeoutMs, 'ms)');
+
+		const phase: ExtensionNotConnectedPhase =
+			options?.browserWasLaunched === false ? 'browser_not_launched' : 'extension_missing';
+
 		const timer = setTimeout(() => {
+			log.error('extension connection timed out, phase:', phase);
 			this.extensionConnectedReject?.(
-				new Error(
-					`Extension connection timed out after ${this.connectionTimeoutMs}ms. ` +
-						'The n8n Browser Bridge extension must be installed in Chrome. ' +
-						'To set up: (1) Open chrome://extensions, (2) Enable Developer mode, ' +
-						'(3) Click "Load unpacked" and select the mcp-browser-extension directory. ' +
-						'Then retry browser_connect.',
+				new ExtensionNotConnectedError(
+					this.connectionTimeoutMs,
+					phase,
+					getExtensionInstallInstructions(),
 				),
 			);
 		}, this.connectionTimeoutMs);
 
 		try {
 			await this.extensionConnectedPromise;
+			log.debug('extension connected');
 		} finally {
 			clearTimeout(timer);
 		}
@@ -132,6 +148,7 @@ export class CDPRelayServer {
 
 	/** Shut down the relay, closing all connections. */
 	stop(): void {
+		log.info('stopping relay server');
 		this.closePlaywrightConnection('Server stopped');
 		this.closeExtensionConnection('Server stopped');
 		this.wss.close();
@@ -144,12 +161,14 @@ export class CDPRelayServer {
 
 	private onConnection(ws: WebSocket, req: http.IncomingMessage): void {
 		const url = new URL(`http://localhost${req.url ?? '/'}`);
+		log.debug('new WebSocket connection:', url.pathname);
 
 		if (url.pathname === this.cdpPath) {
 			this.handlePlaywrightConnection(ws);
 		} else if (url.pathname === this.extensionPath) {
 			this.handleExtensionConnection(ws);
 		} else {
+			log.debug('rejected connection to unknown path:', url.pathname);
 			ws.close(4004, 'Invalid path');
 		}
 	}
@@ -160,10 +179,12 @@ export class CDPRelayServer {
 
 	private handlePlaywrightConnection(ws: WebSocket): void {
 		if (this.playwrightWs) {
+			log.debug('rejected duplicate Playwright connection');
 			ws.close(1000, 'Another CDP client already connected');
 			return;
 		}
 
+		log.debug('Playwright connected');
 		this.playwrightWs = ws;
 
 		ws.on('message', (data) => {
@@ -180,6 +201,7 @@ export class CDPRelayServer {
 
 		ws.on('close', () => {
 			if (this.playwrightWs !== ws) return;
+			log.debug('Playwright disconnected');
 			this.playwrightWs = null;
 			this.closeExtensionConnection('Playwright client disconnected');
 		});
@@ -187,10 +209,12 @@ export class CDPRelayServer {
 
 	private async handlePlaywrightMessage(message: CDPCommand): Promise<void> {
 		const { id, sessionId, method, params } = message;
+		log.debug('← PW:', method, 'id=' + String(id), sessionId ? 'session=' + sessionId : '');
 		try {
 			const result = await this.handleCDPCommand(method, params, sessionId);
 			this.sendToPlaywright({ id, sessionId, result });
 		} catch (e) {
+			log.debug('CDP command error:', method, e instanceof Error ? e.message : e);
 			this.sendToPlaywright({
 				id,
 				sessionId,
@@ -220,37 +244,41 @@ export class CDPRelayServer {
 				// (chrome.debugger doesn't support Target.setAutoAttach)
 				if (sessionId) return {};
 
-				// Attach all eligible tabs via the extension
-				const { targetInfo } = (await this.extensionConn!.send('attachToAllTabs', {})) as {
-					targetInfo: unknown;
+				log.debug('Target.setAutoAttach: listing registered tabs from extension');
+				const { tabs } = (await this.extensionConn!.send('listRegisteredTabs', {})) as {
+					tabs: Array<{ tabId: number; title: string; url: string }>;
 				};
+				log.debug('listRegisteredTabs result:', tabs.length, 'tabs');
 
-				// Register the primary tab (first one returned by extension)
-				const primarySession = `pw-tab-${this.nextSessionId++}`;
-				this.primarySessionId = primarySession;
+				for (const tab of tabs) {
+					const tabSessionId = `pw-tab-${this.nextSessionId++}`;
+					// Synthetic targetInfo — no debugger attachment needed.
+					// Same pattern as handleTabOpened().
+					const targetInfo = {
+						targetId: tabSessionId,
+						type: 'page',
+						title: tab.title,
+						url: tab.url,
+						attached: true,
+					};
+					const connectedTab: ConnectedTab = {
+						tabId: tab.tabId,
+						targetInfo,
+						sessionId: tabSessionId,
+					};
+					this.connectedTabs.set(tabSessionId, connectedTab);
+					this.tabIdToSessionId.set(tab.tabId, tabSessionId);
+					this.primarySessionId ??= tabSessionId;
 
-				// We don't know individual tab IDs at this point — the extension
-				// attached all tabs and returned the primary's targetInfo.
-				// For now, register this as the primary tab entry.
-				const primaryTab: ConnectedTab = {
-					tabId: 0, // unknown until extension sends tabId in events
-					targetInfo,
-					sessionId: primarySession,
-				};
-				this.connectedTabs.set(primarySession, primaryTab);
-
-				// Send synthetic attachedToTarget event to Playwright
-				this.sendToPlaywright({
-					method: 'Target.attachedToTarget',
-					params: {
-						sessionId: primarySession,
-						targetInfo: {
-							...(targetInfo as Record<string, unknown>),
-							attached: true,
+					this.sendToPlaywright({
+						method: 'Target.attachedToTarget',
+						params: {
+							sessionId: tabSessionId,
+							targetInfo,
+							waitingForDebugger: false,
 						},
-						waitingForDebugger: false,
-					},
-				});
+					});
+				}
 				return {};
 			}
 
@@ -259,7 +287,10 @@ export class CDPRelayServer {
 				// createTab command since chrome.debugger can't create targets directly.
 				const createParams = (params ?? {}) as Record<string, unknown>;
 				const url = (createParams.url as string) ?? undefined;
+				log.debug('Target.createTarget: url =', url);
 				const tab = await this.createTab(url);
+				// Return the sessionId as targetId — Playwright uses this to match
+				// with the Target.attachedToTarget event's targetInfo.targetId.
 				return { targetId: tab.sessionId };
 			}
 
@@ -267,6 +298,7 @@ export class CDPRelayServer {
 				// Playwright calls this for page.close(). Route to extension's closeTab.
 				const closeParams = (params ?? {}) as Record<string, unknown>;
 				const targetId = closeParams.targetId as string;
+				log.debug('Target.closeTarget: targetId =', targetId);
 				if (targetId && this.connectedTabs.has(targetId)) {
 					const tab = this.connectedTabs.get(targetId)!;
 					if (tab.tabId) {
@@ -311,6 +343,7 @@ export class CDPRelayServer {
 			sessionId = undefined;
 		}
 
+		log.debug('→ EXT: forwardCDPCommand', method, tabId ? 'tabId=' + String(tabId) : '');
 		return await this.extensionConn.send('forwardCDPCommand', {
 			sessionId,
 			method,
@@ -331,13 +364,20 @@ export class CDPRelayServer {
 			tabId: number;
 			title: string;
 			url: string;
-			targetInfo: unknown;
 		};
+		log.debug('createTab result: tabId =', result.tabId);
 
 		const sessionId = `pw-tab-${this.nextSessionId++}`;
+		const targetInfo = {
+			targetId: sessionId,
+			type: 'page',
+			title: result.title,
+			url: result.url,
+			attached: true,
+		};
 		const tab: ConnectedTab = {
 			tabId: result.tabId,
-			targetInfo: result.targetInfo,
+			targetInfo,
 			sessionId,
 		};
 
@@ -349,10 +389,7 @@ export class CDPRelayServer {
 			method: 'Target.attachedToTarget',
 			params: {
 				sessionId,
-				targetInfo: {
-					...(result.targetInfo as Record<string, unknown>),
-					attached: true,
-				},
+				targetInfo,
 				waitingForDebugger: false,
 			},
 		});
@@ -400,6 +437,8 @@ export class CDPRelayServer {
 		// Skip if we already track this tab
 		if (this.tabIdToSessionId.has(tabId)) return;
 
+		log.debug('tabOpened:', tabId, url);
+
 		const sessionId = `pw-tab-${this.nextSessionId++}`;
 		const targetInfo = {
 			targetId: sessionId,
@@ -427,6 +466,8 @@ export class CDPRelayServer {
 		const sessionId = this.tabIdToSessionId.get(tabId);
 		if (!sessionId) return;
 
+		log.debug('tabClosed:', tabId, 'session:', sessionId);
+
 		this.connectedTabs.delete(sessionId);
 		this.tabIdToSessionId.delete(tabId);
 
@@ -443,7 +484,11 @@ export class CDPRelayServer {
 
 	private sendToPlaywright(message: CDPResponse): void {
 		if (this.playwrightWs?.readyState === WebSocket.OPEN) {
-			this.playwrightWs.send(JSON.stringify(message));
+			const json = JSON.stringify(message);
+			log.debug('→ PW:', json.length > 200 ? json.slice(0, 200) + '…' : json);
+			this.playwrightWs.send(json);
+		} else {
+			log.debug('sendToPlaywright: no Playwright connection');
 		}
 	}
 
@@ -453,13 +498,16 @@ export class CDPRelayServer {
 
 	private handleExtensionConnection(ws: WebSocket): void {
 		if (this.extensionConn) {
+			log.debug('rejected duplicate extension connection');
 			ws.close(1000, 'Another extension already connected');
 			return;
 		}
 
+		log.debug('extension connected');
 		this.extensionConn = new ExtensionConnection(ws);
 
 		this.extensionConn.onclose = () => {
+			log.debug('extension disconnected');
 			this.resetExtensionConnection();
 			this.closePlaywrightConnection('Extension disconnected');
 		};
@@ -468,6 +516,7 @@ export class CDPRelayServer {
 			method: M,
 			params: ExtensionEvents[M]['params'],
 		) => {
+			log.debug('← EXT event:', method);
 			if (method === 'forwardCDPEvent') {
 				const eventParams = params as ExtensionEvents['forwardCDPEvent']['params'];
 
@@ -497,6 +546,7 @@ export class CDPRelayServer {
 	}
 
 	private closeExtensionConnection(reason: string): void {
+		log.debug('closing extension connection:', reason);
 		this.extensionConn?.close(reason);
 		this.extensionConnectedReject?.(new Error(reason));
 		this.resetExtensionConnection();
@@ -516,6 +566,7 @@ export class CDPRelayServer {
 
 	private closePlaywrightConnection(reason: string): void {
 		if (this.playwrightWs?.readyState === WebSocket.OPEN) {
+			log.debug('closing Playwright connection:', reason);
 			this.playwrightWs.close(1000, reason);
 		}
 		this.playwrightWs = null;
@@ -543,8 +594,14 @@ class ExtensionConnection {
 	constructor(ws: WebSocket) {
 		this.ws = ws;
 		this.ws.on('message', (data) => this.handleMessage(data));
-		this.ws.on('close', () => this.handleClose());
-		this.ws.on('error', () => this.handleClose());
+		this.ws.on('close', () => {
+			log.debug('ExtensionConnection WebSocket closed');
+			this.handleClose();
+		});
+		this.ws.on('error', (error) => {
+			log.warn('ExtensionConnection WebSocket error:', error);
+			this.handleClose();
+		});
 	}
 
 	async send<M extends keyof ExtensionCommands>(
@@ -556,7 +613,9 @@ class ExtensionConnection {
 		}
 
 		const id = ++this.lastId;
-		this.ws.send(JSON.stringify({ id, method, params }));
+		const payload = JSON.stringify({ id, method, params });
+		log.debug('→ EXT:', method, 'id=' + String(id));
+		this.ws.send(payload);
 
 		return await new Promise((resolve, reject) => {
 			this.callbacks.set(id, { resolve, reject });
@@ -574,6 +633,7 @@ class ExtensionConnection {
 		try {
 			parsed = JSON.parse(String(data)) as ExtensionResponse;
 		} catch {
+			log.debug('failed to parse extension message:', String(data).slice(0, 200));
 			return;
 		}
 
@@ -581,8 +641,10 @@ class ExtensionConnection {
 			const pending = this.callbacks.get(parsed.id)!;
 			this.callbacks.delete(parsed.id);
 			if (parsed.error) {
+				log.debug('← EXT error for id=' + String(parsed.id) + ':', parsed.error);
 				pending.reject(new Error(parsed.error));
 			} else {
+				log.debug('← EXT response for id=' + String(parsed.id));
 				pending.resolve(parsed.result);
 			}
 		} else if (parsed.method) {
@@ -590,10 +652,16 @@ class ExtensionConnection {
 				parsed.method as keyof ExtensionEvents,
 				parsed.params as ExtensionEvents[keyof ExtensionEvents]['params'],
 			);
+		} else {
+			log.debug('← EXT unhandled message:', JSON.stringify(parsed).slice(0, 200));
 		}
 	}
 
 	private handleClose(): void {
+		const pendingCount = this.callbacks.size;
+		if (pendingCount > 0) {
+			log.debug('ExtensionConnection closed with', pendingCount, 'pending callbacks');
+		}
 		for (const pending of this.callbacks.values()) {
 			pending.reject(new Error('WebSocket closed'));
 		}

@@ -1,8 +1,9 @@
 # @n8n/mcp-browser
 
 MCP server that gives AI agents full control over Chrome. Connects to the
-user's real installed browser via the **n8n Browser Bridge** extension, using
-their actual profile, cookies, and sessions.
+user's real installed browser via the **n8n AI Browser Bridge** extension, using
+their actual profile, cookies, and sessions. Action tools return an
+accessibility snapshot with every response for single-roundtrip interaction.
 
 See [spec/browser-mcp.md](spec/browser-mcp.md) for the full feature spec and
 [spec/technical-spec.md](spec/technical-spec.md) for the technical design.
@@ -54,7 +55,7 @@ CLI flags take precedence over environment variables.
 ## Prerequisites
 
 1. **Chrome** (or Brave/Edge) installed
-2. **n8n Browser Bridge** extension loaded in Chrome:
+2. **n8n AI Browser Bridge** extension loaded in Chrome:
    - Open `chrome://extensions`
    - Enable Developer mode
    - Click "Load unpacked" and select the `mcp-browser-extension` directory

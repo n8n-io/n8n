@@ -97,14 +97,19 @@ describe('UnsupportedOperationError', () => {
 });
 
 describe('BrowserNotAvailableError', () => {
-	const error = new BrowserNotAvailableError('firefox');
-
 	it('should include browser name in message', () => {
+		const error = new BrowserNotAvailableError('firefox');
 		expect(error.message).toContain('firefox');
 	});
 
-	it('should hint about installation', () => {
-		expect(error.hint).toContain('firefox');
-		expect(error.hint).toContain('Install');
+	it('should list alternatives when available', () => {
+		const error = new BrowserNotAvailableError('firefox', ['chrome', 'brave']);
+		expect(error.hint).toContain('chrome');
+		expect(error.hint).toContain('browser_connect');
+	});
+
+	it('should describe no browsers found when none available', () => {
+		const error = new BrowserNotAvailableError('firefox');
+		expect(error.hint).toContain('No compatible Chromium-based browsers');
 	});
 });

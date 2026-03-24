@@ -1,9 +1,24 @@
 import { execFile } from 'node:child_process';
-import type { Browser, BrowserContext, Dialog, Locator, Page, Response } from 'playwright-core';
+import type {
+	Browser,
+	BrowserContext,
+	Dialog,
+	FileChooser,
+	Locator,
+	Page,
+	Request,
+	Response,
+} from 'playwright-core';
 import { chromium, devices } from 'playwright-core';
 
 import { CDPRelayServer } from '../cdp-relay';
-import { PageNotFoundError, StaleRefError, UnsupportedOperationError } from '../errors';
+import {
+	BrowserExecutableNotFoundError,
+	PageNotFoundError,
+	StaleRefError,
+	UnsupportedOperationError,
+} from '../errors';
+import { createLogger } from '../logger';
 import type {
 	ClickOptions,
 	ConnectConfig,
@@ -12,6 +27,7 @@ import type {
 	DeviceDescriptor,
 	ElementTarget,
 	ErrorEntry,
+	ModalState,
 	NavigateResult,
 	NetworkEntry,
 	PageInfo,
@@ -23,6 +39,8 @@ import type {
 	WaitOptions,
 } from '../types';
 import { generateId, toError } from '../utils';
+
+const log = createLogger('playwright');
 
 // ---------------------------------------------------------------------------
 // Type augmentation for Playwright's private _snapshotForAI API.
@@ -55,6 +73,7 @@ interface PageState {
 	errorBuffer: ErrorEntry[];
 	networkBuffer: NetworkEntry[];
 	pendingDialog?: Dialog;
+	pendingFileChooser?: FileChooser;
 }
 
 // ---------------------------------------------------------------------------
@@ -86,6 +105,7 @@ export class PlaywrightAdapter {
 	// =========================================================================
 
 	async launch(config: ConnectConfig): Promise<void> {
+		log.debug('launch: browser =', config.browser);
 		// Local mode — connect to the user's running Chrome via extension bridge.
 		// The CDPRelayServer bridges Playwright ↔ Chrome extension (chrome.debugger).
 		this.relay = new CDPRelayServer();
@@ -98,21 +118,39 @@ export class PlaywrightAdapter {
 			`?mcpRelayUrl=${encodeURIComponent(extensionEndpoint)}`;
 		const browserInfo = this.resolvedConfig.browsers.get(config.browser);
 		const chromePath = browserInfo?.executablePath;
-		if (chromePath) {
-			execFile(chromePath, [connectUrl]);
+		if (!chromePath) {
+			throw new BrowserExecutableNotFoundError(config.browser);
 		}
 
+		log.debug('launching browser:', chromePath);
+		log.debug('connect URL:', connectUrl);
+
+		// Launch the browser and detect early spawn failures (ENOENT, EACCES, etc.)
+		await new Promise<void>((resolve, reject) => {
+			const child = execFile(chromePath, [connectUrl]);
+			const earlyFailTimer = setTimeout(() => resolve(), 2_000);
+			child.on('error', (spawnError: Error) => {
+				clearTimeout(earlyFailTimer);
+				log.error('browser spawn error:', spawnError.message);
+				reject(new BrowserExecutableNotFoundError(`${config.browser} (${spawnError.message})`));
+			});
+		});
+
 		// Wait for the extension to connect and attach to tabs
-		await this.relay.waitForExtension();
+		log.debug('waiting for extension...');
+		await this.relay.waitForExtension({ browserWasLaunched: true });
 
 		// Connect Playwright over CDP through the relay
 		const cdpEndpoint = this.relay.cdpEndpoint(port);
+		log.debug('connecting Playwright over CDP:', cdpEndpoint);
 		this.browser = await chromium.connectOverCDP(cdpEndpoint);
 		const contexts = this.browser.contexts();
+		log.debug('browser contexts:', contexts.length);
 		this.context = contexts[0] ?? (await this.browser.newContext({ viewport: config.viewport }));
 
 		// Set up initial pages
 		const pages = this.context.pages();
+		log.debug('initial pages:', pages.length);
 		if (pages.length > 0) {
 			for (const page of pages) {
 				this.trackPage(page);
@@ -128,6 +166,8 @@ export class PlaywrightAdapter {
 				this.trackPage(page);
 			}
 		});
+
+		log.debug('launch complete, tracking', this.pageStates.size, 'pages');
 	}
 
 	async close(): Promise<void> {
@@ -171,6 +211,11 @@ export class PlaywrightAdapter {
 		await state.page.close();
 	}
 
+	async focusPage(pageId: string): Promise<void> {
+		const state = this.requirePage(pageId);
+		await state.page.bringToFront();
+	}
+
 	async listPages(): Promise<PageInfo[]> {
 		const result: PageInfo[] = [];
 		for (const state of this.pageStates.values()) {
@@ -184,6 +229,27 @@ export class PlaywrightAdapter {
 			result.push({ ...state.info });
 		}
 		return result;
+	}
+
+	/**
+	 * Two-tier model: listTabs() returns metadata from the relay (no debugger
+	 * attachment). Falls back to listPages() when no relay is available.
+	 */
+	async listTabs(): Promise<PageInfo[]> {
+		if (this.relay) {
+			const tabs = await this.relay.listTabs();
+			return tabs.map((t) => ({
+				id: String(t.tabId),
+				title: t.title,
+				url: t.url,
+			}));
+		}
+		return await this.listPages();
+	}
+
+	/** Return the session IDs of all currently tracked pages. */
+	listTabSessionIds(): string[] {
+		return Array.from(this.pageStates.keys());
 	}
 
 	// =========================================================================
@@ -295,7 +361,20 @@ export class PlaywrightAdapter {
 		}
 	}
 
-	async upload(pageId: string, target: ElementTarget, files: string[]): Promise<void> {
+	async upload(pageId: string, target: ElementTarget | undefined, files: string[]): Promise<void> {
+		const state = this.requirePage(pageId);
+
+		// If a file chooser dialog is pending, use it directly
+		if (state.pendingFileChooser) {
+			await state.pendingFileChooser.setFiles(files);
+			state.pendingFileChooser = undefined;
+			return;
+		}
+
+		// Otherwise, set files on the input element
+		if (!target) {
+			throw new Error('No file chooser pending and no element target provided');
+		}
 		const locator = await this.resolveLocator(pageId, target);
 		await locator.setInputFiles(files);
 	}
@@ -410,7 +489,19 @@ export class PlaywrightAdapter {
 	// eslint-disable-next-line @typescript-eslint/require-await
 	async getConsole(pageId: string, level?: string, clear?: boolean): Promise<ConsoleEntry[]> {
 		const state = this.requirePage(pageId);
-		let entries = [...state.consoleBuffer];
+
+		// Merge page errors into console entries as level: 'error'
+		let entries: ConsoleEntry[] = [
+			...state.consoleBuffer,
+			...state.errorBuffer.map((e) => ({
+				level: 'error',
+				text: e.stack ? `${e.message}\n${e.stack}` : e.message,
+				timestamp: e.timestamp,
+			})),
+		];
+
+		// Sort by timestamp so console messages and page errors are interleaved correctly
+		entries.sort((a, b) => a.timestamp - b.timestamp);
 
 		if (level) {
 			entries = entries.filter((e) => e.level === level);
@@ -418,21 +509,18 @@ export class PlaywrightAdapter {
 
 		if (clear) {
 			state.consoleBuffer = [];
+			state.errorBuffer = [];
 		}
 
 		return entries;
 	}
 
-	// eslint-disable-next-line @typescript-eslint/require-await
-	async getErrors(pageId: string, clear?: boolean): Promise<ErrorEntry[]> {
+	getConsoleSummary(pageId: string): { errors: number; warnings: number } {
 		const state = this.requirePage(pageId);
-		const entries = [...state.errorBuffer];
-
-		if (clear) {
-			state.errorBuffer = [];
-		}
-
-		return entries;
+		const consoleErrors = state.consoleBuffer.filter((e) => e.level === 'error').length;
+		const pageErrors = state.errorBuffer.length;
+		const warnings = state.consoleBuffer.filter((e) => e.level === 'warning').length;
+		return { errors: consoleErrors + pageErrors, warnings };
 	}
 
 	async pdf(
@@ -637,6 +725,103 @@ export class PlaywrightAdapter {
 	}
 
 	// =========================================================================
+	// Post-action settling — waits for network/navigation to complete
+	// Matches Playwright MCP's waitForCompletion() behavior.
+	// =========================================================================
+
+	async waitForCompletion<T>(pageId: string, action: () => Promise<T>): Promise<T> {
+		const { page } = this.requirePage(pageId);
+		const requests: Request[] = [];
+
+		const requestListener = (request: Request) => requests.push(request);
+		page.on('request', requestListener);
+
+		let result: T;
+		try {
+			result = await action();
+			await page.waitForTimeout(500);
+		} finally {
+			page.off('request', requestListener);
+		}
+
+		// If any navigation request was made, wait for load state
+		if (requests.some((r) => r.isNavigationRequest())) {
+			await page
+				.mainFrame()
+				.waitForLoadState('load', { timeout: 10_000 })
+				.catch(() => {});
+			return result;
+		}
+
+		// Wait for resource requests to finish
+		const resourceTypes = new Set(['document', 'stylesheet', 'script', 'xhr', 'fetch']);
+		const promises = requests.map(async (r) => {
+			if (resourceTypes.has(r.resourceType())) {
+				const resp = await r.response().catch(() => undefined);
+				await resp?.finished().catch(() => {});
+				return;
+			}
+			await r.response().catch(() => {});
+		});
+
+		await Promise.race([
+			Promise.all(promises),
+			new Promise((resolve) => setTimeout(resolve, 5_000)),
+		]);
+
+		if (requests.length > 0) {
+			await page.waitForTimeout(500);
+		}
+
+		return result;
+	}
+
+	// =========================================================================
+	// Modal state — surfaces pending dialogs and file choosers
+	// =========================================================================
+
+	getModalStates(pageId: string): ModalState[] {
+		const state = this.requirePage(pageId);
+		const modals: ModalState[] = [];
+
+		if (state.pendingDialog) {
+			modals.push({
+				type: 'dialog',
+				description: `JavaScript ${state.pendingDialog.type()} dialog: "${state.pendingDialog.message()}"`,
+				clearedBy: 'browser_dialog',
+				dialogType: state.pendingDialog.type() as ModalState['dialogType'],
+				message: state.pendingDialog.message(),
+			});
+		}
+
+		if (state.pendingFileChooser) {
+			modals.push({
+				type: 'filechooser',
+				description: 'File chooser is open, waiting for file selection.',
+				clearedBy: 'browser_upload',
+			});
+		}
+
+		return modals;
+	}
+
+	// =========================================================================
+	// Content extraction — raw HTML + URL for markdown conversion
+	// =========================================================================
+
+	async getContent(pageId: string, selector?: string): Promise<{ html: string; url: string }> {
+		const { page } = this.requirePage(pageId);
+
+		if (selector) {
+			const locator = page.locator(selector);
+			const html = await locator.evaluate((el) => el.outerHTML);
+			return { html, url: page.url() };
+		}
+
+		return { html: await page.content(), url: page.url() };
+	}
+
+	// =========================================================================
 	// Ref resolution — uses Playwright's built-in aria-ref selector engine
 	// =========================================================================
 
@@ -720,6 +905,11 @@ export class PlaywrightAdapter {
 		// Dialog listener — capture pending dialogs
 		page.on('dialog', (dlg: Dialog) => {
 			state.pendingDialog = dlg;
+		});
+
+		// File chooser listener — capture pending file choosers
+		page.on('filechooser', (chooser: FileChooser) => {
+			state.pendingFileChooser = chooser;
 		});
 
 		// Clean up on page close

@@ -65,12 +65,14 @@ src/
 │   └── playwright.ts        # PlaywrightAdapter — all browser operations
 ├── tools/
 │   ├── index.ts             # createBrowserTools() — tool factory
-│   ├── helpers.ts           # createConnectedTool() — tool wrapper with connection/page resolution
+│   ├── schemas.ts           # Composable Zod schemas and output envelope builders
+│   ├── response-envelope.ts # Response enrichment (snapshot, modals, console) and error formatting
+│   ├── helpers.ts           # createConnectedTool() — tool factory with auto-enrichment
 │   ├── session.ts           # browser_connect, browser_disconnect
 │   ├── tabs.ts              # browser_tab_open, browser_tab_list, browser_tab_focus, browser_tab_close
 │   ├── navigation.ts        # browser_navigate, browser_back, browser_forward, browser_reload
 │   ├── interaction.ts       # browser_click, browser_type, browser_select, browser_drag, ...
-│   ├── inspection.ts        # browser_snapshot, browser_screenshot, browser_text, browser_evaluate, ...
+│   ├── inspection.ts        # browser_snapshot, browser_screenshot, browser_content, browser_evaluate, ...
 │   ├── wait.ts              # browser_wait
 │   └── state.ts             # browser_cookies, browser_storage, browser_set_*, ...
 ├── __tests__/               # Unit tests
@@ -82,6 +84,7 @@ src/
 ├── index.ts                 # Public API exports
 ├── server-config.ts         # CLI flag + env var parsing
 ├── server.ts                # MCP server setup (http/stdio transport)
+├── vendor.d.ts              # Type declarations for untyped dependencies
 ├── types.ts                 # Shared TypeScript types
 └── utils.ts                 # Utilities (ID generation, error formatting)
 ```
@@ -219,14 +222,58 @@ All connected tools are created via `createConnectedTool()` in
 createConnectedTool(connection, name, description, inputSchema, async (state, input, pageId) => {
   // state.adapter.* — Playwright operations
   // pageId — resolved from input.pageId or state.activePageId
-  return { content: [{ type: 'text', text: '...' }] };
+  return formatCallToolResult({ clicked: true });
+}, outputSchema, { autoSnapshot: true, waitForCompletion: true });
+```
+
+The factory accepts `ConnectedToolOptions`:
+- `autoSnapshot` — append accessibility snapshot, modal state, and console
+  summary to the response after the action
+- `waitForCompletion` — wrap the action in a network/navigation settle wait
+
+### Schema Composition
+
+Output schemas use `withSnapshotEnvelope()` from `tools/schemas.ts` to
+merge tool-specific fields with the auto-injected envelope:
+
+```typescript
+import { withSnapshotEnvelope } from './schemas';
+
+const outputSchema = withSnapshotEnvelope({
+  clicked: z.boolean(),
+  ref: z.string().optional(),
 });
+// → z.object({ clicked, ref, snapshot?, modalStates?, consoleSummary? })
+```
+
+### Response Enrichment Pipeline
+
+The `createConnectedTool` wrapper delegates enrichment to
+`tools/response-envelope.ts`:
+
+```
+resolvePageContext(connection, args) → { state, pageId }
+         ↓
+fn(state, args, pageId) — optionally wrapped in waitForCompletion
+         ↓
+enrichResponse(result, state, pageId, options)
+  → inject snapshot (if autoSnapshot)
+  → inject modalStates (if any pending)
+  → inject consoleSummary (if errors/warnings)
+         ↓
+return result
+
+On error:
+buildErrorResponse(error, connection, args, options)
+  → structured { error, hint? } with best-effort snapshot + modals
+  → isError: true
 ```
 
 This wrapper handles:
 1. Getting the active `ConnectionState` from `BrowserConnection`
 2. Resolving `pageId` (explicit or default to `state.activePageId`)
-3. Catching and formatting errors as MCP error responses
+3. Post-action response enrichment (snapshot, modals, console summary)
+4. Non-exclusive error handling — errors still include page context
 
 ### Tool → Playwright → CDP → Extension flow
 
@@ -284,3 +331,19 @@ Defined in `errors.ts`. All errors extend `McpBrowserError`.
 | `StaleRefError` | Element ref from a previous snapshot is no longer valid |
 | `UnsupportedOperationError` | Operation not supported in the current mode |
 | `BrowserNotAvailableError` | Requested browser not found on the system |
+
+### Non-Exclusive Errors
+
+Errors are non-exclusive: when a tool action fails, `buildErrorResponse()`
+in `tools/response-envelope.ts` still attempts to include the accessibility
+snapshot and modal state in the error response. This gives the AI page
+context to understand and recover from failures.
+
+Error responses include structured JSON with an `error` field, optional
+`hint` (actionable guidance from `McpBrowserError`), and best-effort
+`snapshot` and `modalStates` fields. The `isError: true` flag is set for
+MCP SDK compatibility.
+
+Session tools (`browser_connect`, `browser_disconnect`) use a separate
+error path via `formatErrorResponse()` in `utils.ts`, since they don't
+go through `createConnectedTool`.

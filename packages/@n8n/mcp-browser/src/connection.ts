@@ -1,4 +1,4 @@
-import { getDefaultDiscovery } from './browser-discovery';
+import { getDefaultDiscovery, getInstallInstructions } from './browser-discovery';
 import { AlreadyConnectedError, BrowserNotAvailableError, NotConnectedError } from './errors';
 import type {
 	BrowserName,
@@ -57,12 +57,12 @@ export class BrowserConnection {
 	// Public API
 	// -------------------------------------------------------------------------
 
-	async connect(): Promise<ConnectResult> {
+	async connect(overrideBrowser?: BrowserName): Promise<ConnectResult> {
 		if (this.state) {
 			throw new AlreadyConnectedError();
 		}
 
-		const browser = this.config.defaultBrowser;
+		const browser = overrideBrowser ?? this.config.defaultBrowser;
 		this.requireBrowserAvailable(browser);
 
 		const connectConfig: ConnectConfig = {
@@ -73,7 +73,10 @@ export class BrowserConnection {
 		const adapter = await this.createAdapter();
 		await adapter.launch(connectConfig);
 
-		const pages = await adapter.listPages();
+		// Two-tier model: listTabs() returns metadata from the relay (no
+		// debugger attachment). Playwright page objects are created lazily
+		// when a tool first interacts with a specific tab.
+		const pages = await adapter.listTabs();
 		const pageMap = new Map(pages.map((p) => [p.id, p]));
 
 		this.state = {
@@ -119,9 +122,19 @@ export class BrowserConnection {
 	// Private
 	// -------------------------------------------------------------------------
 
+	getAvailableBrowsers(): BrowserName[] {
+		return [...this.config.browsers.entries()]
+			.filter(([_, v]) => v.available)
+			.map(([name]) => name);
+	}
+
 	private requireBrowserAvailable(browser: BrowserName): void {
 		const info = this.config.browsers.get(browser);
-		if (!info?.available) throw new BrowserNotAvailableError(browser);
+		if (!info?.available) {
+			const available = this.getAvailableBrowsers();
+			const instructions = getInstallInstructions(browser);
+			throw new BrowserNotAvailableError(browser, available, instructions);
+		}
 	}
 
 	private async createAdapter() {

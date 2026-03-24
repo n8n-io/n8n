@@ -13,8 +13,8 @@ export const PROTOCOL_VERSION = 3;
 // ---------------------------------------------------------------------------
 
 export interface ExtensionCommands {
-	/** Attach debugger to all eligible tabs. Returns first tab's targetInfo for compat. */
-	attachToAllTabs: {
+	/** List all registered (user-selected) tabs without attaching debugger. */
+	listRegisteredTabs: {
 		params: Record<string, never>;
 	};
 	/** Forward a CDP command to a specific tab (or the first attached tab). */
