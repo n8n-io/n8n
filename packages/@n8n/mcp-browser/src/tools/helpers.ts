@@ -1,9 +1,21 @@
-import { z } from 'zod';
+import type { z } from 'zod';
 
 import type { BrowserConnection } from '../connection';
-import { McpBrowserError } from '../errors';
-import type { ConnectionState, ToolContext, ToolDefinition, CallToolResult } from '../types';
-import { formatErrorResponse } from '../utils';
+import type { CallToolResult, ConnectionState, ToolContext, ToolDefinition } from '../types';
+import { buildErrorResponse, enrichResponse, resolvePageContext } from './response-envelope';
+
+// ---------------------------------------------------------------------------
+// Re-export schemas so existing tool files can keep importing from helpers
+// ---------------------------------------------------------------------------
+
+export {
+	consoleSummarySchema,
+	elementTargetSchema,
+	modalStateSchema,
+	pageIdField,
+	withSnapshotEnvelope,
+} from './schemas';
+export type { ElementTargetInput } from './schemas';
 
 // ---------------------------------------------------------------------------
 // Connected tool input constraint — every tool must have at least pageId
@@ -12,24 +24,15 @@ import { formatErrorResponse } from '../utils';
 type ConnectedToolInput = { pageId?: string };
 
 // ---------------------------------------------------------------------------
-// Common Zod field schemas reused across tools
+// Connected tool options
 // ---------------------------------------------------------------------------
 
-export const pageIdField = z
-	.string()
-	.optional()
-	.describe('Target page/tab ID. Defaults to active page');
-
-/** Element target: exactly one of ref or selector. Prefer ref from browser_snapshot. */
-const refTargetSchema = z.object({
-	ref: z.string().describe('Element ref from browser_snapshot (preferred)'),
-});
-const selectorTargetSchema = z.object({
-	selector: z.string().describe('CSS/text/role/XPath selector (fallback — prefer ref)'),
-});
-export const elementTargetSchema = z.union([refTargetSchema, selectorTargetSchema]);
-
-export type ElementTargetInput = z.infer<typeof elementTargetSchema>;
+export interface ConnectedToolOptions {
+	/** Append an accessibility snapshot to the response after the action. */
+	autoSnapshot?: boolean;
+	/** Wrap the action in waitForCompletion (network/navigation settle). */
+	waitForCompletion?: boolean;
+}
 
 // ---------------------------------------------------------------------------
 // Tool factory: connection-scoped tool with automatic page resolution
@@ -37,11 +40,8 @@ export type ElementTargetInput = z.infer<typeof elementTargetSchema>;
 
 /**
  * Create a tool that operates on the active browser connection.
- * Handles connection lookup, page resolution, and error formatting.
- *
- * Accepts either:
- *  - a ZodRawShape (auto-wrapped in z.object)
- *  - a pre-built ZodType (for unions, intersections, etc.)
+ * Handles connection lookup, page resolution, error formatting,
+ * and optional post-action response enrichment (snapshot, modals, console).
  */
 export function createConnectedTool<
 	TSchema extends z.ZodType<ConnectedToolInput & Record<string, unknown>>,
@@ -52,6 +52,7 @@ export function createConnectedTool<
 	inputSchema: TSchema,
 	fn: (state: ConnectionState, input: z.infer<TSchema>, pageId: string) => Promise<CallToolResult>,
 	outputSchema?: z.ZodObject<z.ZodRawShape>,
+	options?: ConnectedToolOptions,
 ): ToolDefinition<TSchema> {
 	return {
 		name,
@@ -60,17 +61,19 @@ export function createConnectedTool<
 		outputSchema,
 		async execute(args: z.infer<TSchema>, _context: ToolContext) {
 			try {
-				const state = connection.getConnection();
-				const pageId = args.pageId ?? state.activePageId;
+				const { state, pageId } = resolvePageContext(connection, args);
 
-				return await fn(state, args, pageId);
+				// Snapshot tab IDs before the action so we can detect new tabs
+				const tabsBefore = new Set(state.adapter.listTabSessionIds());
+
+				const result = options?.waitForCompletion
+					? await state.adapter.waitForCompletion(pageId, async () => await fn(state, args, pageId))
+					: await fn(state, args, pageId);
+
+				await enrichResponse(result, state, state.activePageId, options ?? {}, tabsBefore);
+				return result;
 			} catch (error) {
-				if (error instanceof McpBrowserError) {
-					return formatErrorResponse(error);
-				}
-				return formatErrorResponse(
-					new McpBrowserError(error instanceof Error ? error.message : String(error)),
-				);
+				return await buildErrorResponse(error, connection, args, options ?? {});
 			}
 		},
 	};
