@@ -15,6 +15,6 @@ export class InstanceVersionHistoryModule implements ModuleInterface {
 		const { InstanceVersionHistory } = await import(
 			'./database/entities/instance-version-history.entity'
 		);
-		return [InstanceVersionHistory] as never;
+		return [InstanceVersionHistory];
 	}
 }
