@@ -172,6 +172,9 @@ export class InstanceAiService {
 	/** Tracks the last client timezone per thread for follow-up runs. */
 	private readonly threadTimeZone = new Map<string, string>();
 
+	/** Tracks the iframe pushRef per thread for live execution push events. */
+	private readonly threadPushRef = new Map<string, string>();
+
 	/** Tracks the current messageGroupId per thread for auto-follow-up run merging. */
 	private readonly threadMessageGroupId = new Map<string, string>();
 
@@ -378,6 +381,7 @@ export class InstanceAiService {
 		researchMode?: boolean,
 		attachments?: InstanceAiAttachment[],
 		timeZone?: string,
+		pushRef?: string,
 	): string {
 		const runId = `run_${nanoid()}`;
 		const abortController = new AbortController();
@@ -389,6 +393,9 @@ export class InstanceAiService {
 		}
 		if (timeZone !== undefined) {
 			this.threadTimeZone.set(threadId, timeZone);
+		}
+		if (pushRef !== undefined) {
+			this.threadPushRef.set(threadId, pushRef);
 		}
 
 		// User-initiated runs get a fresh messageGroupId.
@@ -670,7 +677,12 @@ export class InstanceAiService {
 				!localGatewayDisabled && !userGateway?.isConnected && this.isLocalFilesystemAvailable()
 					? this.getLocalFsProvider()
 					: undefined;
-			const context = this.adapterService.createContext(user, localFilesystemService);
+			const executionPushRef = this.threadPushRef.get(threadId);
+			const context = this.adapterService.createContext(
+				user,
+				localFilesystemService,
+				executionPushRef,
+			);
 			if (!localGatewayDisabled && userGateway?.isConnected) {
 				context.localMcpServer = userGateway;
 			}

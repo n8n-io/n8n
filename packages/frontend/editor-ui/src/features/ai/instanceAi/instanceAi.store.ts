@@ -552,7 +552,11 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		}
 	}
 
-	async function sendMessage(message: string, attachments?: InstanceAiAttachment[]): Promise<void> {
+	async function sendMessage(
+		message: string,
+		attachments?: InstanceAiAttachment[],
+		pushRef?: string,
+	): Promise<void> {
 		// Clear amend context on new message
 		amendContext.value = null;
 
@@ -586,6 +590,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				researchMode.value || undefined,
 				attachments,
 				Intl.DateTimeFormat().resolvedOptions().timeZone,
+				pushRef,
 			);
 		} catch (error: unknown) {
 			const status = error instanceof ResponseError ? error.httpStatusCode : undefined;

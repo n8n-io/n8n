@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, onMounted, onUnmounted, provide, ref, useTemplateRef, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { N8nIconButton, N8nResizeWrapper, N8nScrollArea, N8nText } from '@n8n/design-system';
 import { useScroll } from '@vueuse/core';
@@ -19,6 +19,8 @@ import InstanceAiArtifactsPanel from './components/InstanceAiArtifactsPanel.vue'
 import InstanceAiSettingsPanel from './components/settings/InstanceAiSettingsPanel.vue';
 import InstanceAiStatusBar from './components/InstanceAiStatusBar.vue';
 import InstanceAiConfirmationPanel from './components/InstanceAiConfirmationPanel.vue';
+import InstanceAiWorkflowPreview from './components/InstanceAiWorkflowPreview.vue';
+import { getLatestBuildResult, getLatestExecutionId } from './canvasPreview.utils';
 
 const store = useInstanceAiStore();
 const settingsStore = useInstanceAiSettingsStore();
@@ -27,6 +29,72 @@ const route = useRoute();
 const documentTitle = useDocumentTitle();
 
 documentTitle.set('Instance AI');
+
+// --- Canvas preview state ---
+const activeWorkflowId = ref<string | null>(null);
+const isCanvasVisible = computed(() => activeWorkflowId.value !== null);
+const iframePushRef = ref<string | null>(null);
+
+provide('openWorkflowPreview', (workflowId: string) => {
+	activeWorkflowId.value = workflowId;
+});
+
+// Reset canvas when switching threads
+watch(
+	() => route.params.threadId,
+	() => {
+		activeWorkflowId.value = null;
+	},
+);
+
+// --- Auto-open canvas when AI creates/modifies a workflow ---
+const workflowRefreshKey = ref(0);
+
+const latestBuildResult = computed(() => {
+	for (let i = store.messages.length - 1; i >= 0; i--) {
+		const msg = store.messages[i];
+		if (msg.agentTree) {
+			const result = getLatestBuildResult(msg.agentTree);
+			if (result) return result;
+		}
+	}
+	return null;
+});
+
+// Watch the toolCallId — it changes even when the same workflow is rebuilt.
+watch(
+	() => latestBuildResult.value?.toolCallId,
+	(toolCallId) => {
+		if (!toolCallId || !latestBuildResult.value) return;
+		activeWorkflowId.value = latestBuildResult.value.workflowId;
+		workflowRefreshKey.value++;
+	},
+);
+
+// --- Auto-show execution after run-workflow completes ---
+const latestExecutionId = computed(() => {
+	for (let i = store.messages.length - 1; i >= 0; i--) {
+		const msg = store.messages[i];
+		if (msg.agentTree) {
+			const execId = getLatestExecutionId(msg.agentTree);
+			if (execId) return execId;
+		}
+	}
+	return null;
+});
+
+const activeExecutionId = ref<string | null>(null);
+
+watch(latestExecutionId, (execId) => {
+	if (execId) {
+		activeExecutionId.value = execId;
+	}
+});
+
+// Reset execution when a new workflow is loaded
+watch(activeWorkflowId, () => {
+	activeExecutionId.value = null;
+});
 
 // Load persisted threads from Mastra storage on mount
 onMounted(() => {
@@ -218,7 +286,7 @@ watch(
 async function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 	// Reset scroll on new user message
 	userScrolledUp.value = false;
-	await store.sendMessage(message, attachments);
+	await store.sendMessage(message, attachments, iframePushRef.value ?? undefined);
 }
 
 function handleSuggestionSelect(prompt: string) {
@@ -245,7 +313,7 @@ function handleStop() {
 		</N8nResizeWrapper>
 
 		<!-- Main chat area -->
-		<div :class="$style.chatArea">
+		<div :class="[$style.chatArea, { [$style.chatAreaNarrow]: isCanvasVisible }]">
 			<!-- Header -->
 			<div :class="$style.header">
 				<N8nText tag="h2" size="large" bold>
@@ -351,6 +419,17 @@ function handleStop() {
 				"
 			/>
 		</div>
+
+		<!-- Canvas preview panel (eager mount via v-show) -->
+		<div v-show="isCanvasVisible" :class="$style.canvasArea">
+			<InstanceAiWorkflowPreview
+				:workflow-id="activeWorkflowId"
+				:execution-id="activeExecutionId"
+				:refresh-key="workflowRefreshKey"
+				@close="activeWorkflowId = null"
+				@push-ref-ready="iframePushRef = $event"
+			/>
+		</div>
 	</div>
 </template>
 
@@ -359,6 +438,7 @@ function handleStop() {
 	display: flex;
 	height: 100%;
 	width: 100%;
+	min-width: 900px;
 	overflow: hidden;
 }
 
@@ -376,6 +456,18 @@ function handleStop() {
 	overflow: hidden;
 	position: relative;
 	background-color: var(--color--background--light-2);
+	transition: flex 0.2s ease;
+}
+
+.chatAreaNarrow {
+	flex: none;
+	width: 400px;
+}
+
+.canvasArea {
+	flex: 1;
+	min-width: 0;
+	border-left: var(--border);
 }
 
 .header {

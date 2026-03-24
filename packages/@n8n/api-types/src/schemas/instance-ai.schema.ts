@@ -382,6 +382,7 @@ export class InstanceAiSendMessageRequest extends Z.class({
 	researchMode: z.boolean().optional(),
 	attachments: z.array(instanceAiAttachmentSchema).optional(),
 	timeZone: TimeZoneSchema,
+	pushRef: z.string().optional(),
 }) {}
 
 export class InstanceAiCorrectTaskRequest extends Z.class({

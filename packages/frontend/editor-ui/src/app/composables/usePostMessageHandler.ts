@@ -44,7 +44,11 @@ export function usePostMessageHandler({
 	function emitPostMessageReady() {
 		if (window.parent) {
 			window.parent.postMessage(
-				JSON.stringify({ command: 'n8nReady', version: rootStore.versionCli }),
+				JSON.stringify({
+					command: 'n8nReady',
+					version: rootStore.versionCli,
+					pushRef: rootStore.pushRef,
+				}),
 				'*',
 			);
 		}

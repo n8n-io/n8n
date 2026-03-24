@@ -140,6 +140,25 @@ describe('usePostMessageHandler', () => {
 
 			cleanup();
 		});
+
+		it('should include pushRef in n8nReady postMessage', () => {
+			const postMessageSpy = vi.spyOn(window.parent, 'postMessage');
+			const { setup, cleanup } = usePostMessageHandler({
+				workflowState,
+				currentWorkflowDocumentStore: shallowRef(null),
+			});
+
+			setup();
+
+			const call = postMessageSpy.mock.calls.find(
+				([data]) => typeof data === 'string' && data.includes('"n8nReady"'),
+			);
+			expect(call).toBeDefined();
+			const parsed = JSON.parse(call![0] as string);
+			expect(parsed).toHaveProperty('pushRef');
+
+			cleanup();
+		});
 	});
 
 	describe('openWorkflow command', () => {

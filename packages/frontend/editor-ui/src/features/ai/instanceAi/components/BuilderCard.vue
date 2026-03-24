@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, inject } from 'vue';
 import { CollapsibleRoot, CollapsibleTrigger, CollapsibleContent } from 'reka-ui';
 import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -11,6 +11,18 @@ import ExecutionPreviewCard from './ExecutionPreviewCard.vue';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useInstanceAiStore } from '../instanceAi.store';
 import AgentTimeline from './AgentTimeline.vue';
+
+const openPreview = inject<((id: string) => void) | undefined>('openWorkflowPreview', undefined);
+
+function handleOpenWorkflow(e: MouseEvent, workflowId: string) {
+	// Cmd+click / Ctrl+click → open in new tab (standard browser behavior)
+	if (e.metaKey || e.ctrlKey) {
+		window.open(`/workflow/${workflowId}`, '_blank');
+		return;
+	}
+	// Normal click → open in inline preview
+	openPreview?.(workflowId);
+}
 
 const props = defineProps<{
 	agentNode: InstanceAiAgentNode;
@@ -274,14 +286,13 @@ watch(
 									Details
 									<N8nIcon icon="expand" size="small" />
 								</button>
-								<a
-									:href="`/workflow/${submitResults.get(tc.toolCallId)!.workflowId}`"
-									target="_blank"
+								<button
 									:class="$style.workflowLink"
+									@click="handleOpenWorkflow($event, submitResults.get(tc.toolCallId)!.workflowId)"
 								>
 									Open
 									<N8nIcon icon="external-link" size="small" />
-								</a>
+								</button>
 							</div>
 							<div :class="$style.previewCanvas">
 								<WorkflowMiniCanvas
@@ -310,14 +321,14 @@ watch(
 				<div :class="$style.successResult">
 					<N8nIcon icon="check" size="small" :class="$style.successIcon" />
 					<span>{{ build.workflowName ?? i18n.baseText('instanceAi.builderCard.success') }}</span>
-					<a
+					<button
 						v-if="build.workflowId"
-						:href="`/workflow/${build.workflowId}`"
 						:class="$style.workflowLink"
+						@click="handleOpenWorkflow($event, build.workflowId)"
 					>
 						{{ i18n.baseText('instanceAi.builderCard.openWorkflow') }}
 						<N8nIcon icon="external-link" size="small" />
-					</a>
+					</button>
 				</div>
 			</template>
 		</template>

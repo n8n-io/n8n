@@ -51,6 +51,33 @@ vi.mock('@/app/composables/usePostMessageHandler', () => ({
 	})),
 }));
 
+const mockPushConnect = vi.fn();
+const mockPushDisconnect = vi.fn();
+vi.mock('@/app/stores/pushConnection.store', () => ({
+	usePushConnectionStore: vi.fn(() => ({
+		pushConnect: mockPushConnect,
+		pushDisconnect: mockPushDisconnect,
+	})),
+}));
+
+const mockPushInitialize = vi.fn();
+const mockPushTerminate = vi.fn();
+vi.mock('@/app/composables/usePushConnection/usePushConnection', () => ({
+	usePushConnection: vi.fn(() => ({
+		initialize: mockPushInitialize,
+		terminate: mockPushTerminate,
+	})),
+}));
+
+const mockCurrentUser = vi.hoisted(() => ({ value: null as { id: string } | null }));
+vi.mock('@/features/settings/users/users.store', () => ({
+	useUsersStore: vi.fn(() => ({
+		get currentUser() {
+			return mockCurrentUser.value;
+		},
+	})),
+}));
+
 const renderComponent = createComponentRenderer(DemoLayout, {
 	global: {
 		stubs: {
@@ -172,5 +199,33 @@ describe('DemoLayout', () => {
 		expect(getByText('Second Content')).toBeInTheDocument();
 		expect(getByText('Third Content')).toBeInTheDocument();
 		expect(getByTestId('demo-footer')).toBeInTheDocument();
+	});
+
+	describe('push connection', () => {
+		it('should connect push when user is authenticated', async () => {
+			mockCurrentUser.value = { id: 'user-1' };
+			renderComponent();
+			await vi.waitFor(() => {
+				expect(mockPushConnect).toHaveBeenCalled();
+				expect(mockPushInitialize).toHaveBeenCalled();
+			});
+		});
+
+		it('should not connect push when no user (preview mode)', async () => {
+			mockCurrentUser.value = null;
+			renderComponent();
+			// Give onMounted time to run
+			await new Promise((r) => setTimeout(r, 10));
+			expect(mockPushConnect).not.toHaveBeenCalled();
+			expect(mockPushInitialize).not.toHaveBeenCalled();
+		});
+
+		it('should disconnect push on unmount', () => {
+			mockCurrentUser.value = { id: 'user-1' };
+			const { unmount } = renderComponent();
+			unmount();
+			expect(mockPushTerminate).toHaveBeenCalled();
+			expect(mockPushDisconnect).toHaveBeenCalled();
+		});
 	});
 });

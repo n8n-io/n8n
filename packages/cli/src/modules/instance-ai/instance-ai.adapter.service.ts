@@ -162,11 +162,15 @@ export class InstanceAiAdapterService {
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
 	}
 
-	createContext(user: User, filesystemService?: InstanceAiFilesystemService): InstanceAiContext {
+	createContext(
+		user: User,
+		filesystemService?: InstanceAiFilesystemService,
+		pushRef?: string,
+	): InstanceAiContext {
 		return {
 			userId: user.id,
 			workflowService: this.createWorkflowAdapter(user),
-			executionService: this.createExecutionAdapter(user),
+			executionService: this.createExecutionAdapter(user, pushRef),
 			credentialService: this.createCredentialAdapter(user),
 			nodeService: this.createNodeAdapter(user),
 			dataTableService: this.createDataTableAdapter(user),
@@ -439,7 +443,7 @@ export class InstanceAiAdapterService {
 		};
 	}
 
-	private createExecutionAdapter(user: User): InstanceAiExecutionService {
+	private createExecutionAdapter(user: User, pushRef?: string): InstanceAiExecutionService {
 		const {
 			workflowFinderService,
 			workflowSharingService,
@@ -543,6 +547,7 @@ export class InstanceAiAdapterService {
 						: ('manual' as WorkflowExecuteMode),
 					workflowData: workflow,
 					userId: user.id,
+					pushRef,
 				};
 
 				// Merge pin data from three sources:
