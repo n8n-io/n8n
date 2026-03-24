@@ -158,17 +158,32 @@
 			<a id='redirectUrl' href='{{redirectUrl}}' style='display: none;'></a>
 		{{/if}}
 	<script>
+		// Get signature from URL for fetch requests
+		const url = new URL(window.location.href);
+		const formSignature = url.searchParams.get('signature');
+
 		let interval = 1000;
 		let timeoutId;
 		const checkExecutionStatus = async () => {
 			if (!interval) return;
 
 			try {
-				const response = await fetch(`${ window.location.href }/n8n-execution-status`);
+				const statusUrl = new URL(window.location.href);
+				statusUrl.pathname = statusUrl.pathname + '/n8n-execution-status';
+				// Include signature in fetch request for validation
+				if (formSignature) {
+					statusUrl.searchParams.set('signature', formSignature);
+				}
+				const response = await fetch(statusUrl.toString());
 				const text = (await response.text()).trim();
 
 				if (text === "form-waiting") {
-					window.location.replace(window.location.href);
+					// Redirect with signature in URL (will be cleaned after load)
+					const redirectUrl = new URL(window.location.href);
+					if (formSignature) {
+						redirectUrl.searchParams.set('signature', formSignature);
+					}
+					window.location.replace(redirectUrl.toString());
 					return;
 				}
 
@@ -210,7 +225,13 @@
 			}
 		});
 
-			fetch('', {
+			// Include signature in POST URL for waiting forms
+			let postUrl = '';
+			if (window.location.href.includes('form-waiting') && formSignature) {
+				postUrl = '?signature=' + encodeURIComponent(formSignature);
+			}
+
+			fetch(postUrl, {
 					method: 'POST',
 					body: {}
 			})
