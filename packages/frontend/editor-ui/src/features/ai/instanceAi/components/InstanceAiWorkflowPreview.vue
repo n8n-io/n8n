@@ -121,7 +121,7 @@ onBeforeUnmount(() => {
 				:workflow="workflow"
 				:execution-id="props.executionId ?? undefined"
 				:can-open-ndv="true"
-				:hide-controls="true"
+				:hide-controls="false"
 				loader-type="spinner"
 			/>
 
