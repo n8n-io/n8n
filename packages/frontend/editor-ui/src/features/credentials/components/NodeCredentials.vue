@@ -647,7 +647,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 				</div>
 
 				<div
-					v-else-if="isQuickConnectEnabled && showStandardEmptyState(type)"
+					v-else-if="options.length === 0 && isQuickConnectEnabled && showStandardEmptyState(type)"
 					:class="$style.standardEmptyContainer"
 					data-test-id="standard-empty-state"
 				>

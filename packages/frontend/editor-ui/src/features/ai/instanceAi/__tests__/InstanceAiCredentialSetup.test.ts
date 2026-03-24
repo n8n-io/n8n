@@ -6,6 +6,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import type { InstanceAiCredentialRequest } from '@n8n/api-types';
 import InstanceAiCredentialSetup from '../components/InstanceAiCredentialSetup.vue';
 import { useInstanceAiStore } from '../instanceAi.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -56,6 +57,10 @@ describe('InstanceAiCredentialSetup', () => {
 		const pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
 		store = useInstanceAiStore();
+
+		const credentialsStore = useCredentialsStore();
+		vi.spyOn(credentialsStore, 'fetchAllCredentials').mockResolvedValue([]);
+		vi.spyOn(credentialsStore, 'fetchCredentialTypes').mockResolvedValue(undefined);
 	});
 
 	describe('wizard navigation', () => {

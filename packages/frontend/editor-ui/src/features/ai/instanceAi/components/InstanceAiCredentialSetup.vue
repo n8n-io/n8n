@@ -127,7 +127,20 @@ watch(
 	},
 );
 
-onMounted(() => {
+onMounted(async () => {
+	// Ensure the credentials store is populated so NodeCredentials can show
+	// existing credentials in the dropdown. The Instance AI page may not have
+	// fetched them yet.
+	try {
+		await Promise.all([
+			credentialsStore.fetchAllCredentials(),
+			credentialsStore.fetchCredentialTypes(false),
+		]);
+	} catch {
+		// Credentials will be unavailable in the dropdown but the user can
+		// still create new ones via the "Set up credential" button.
+	}
+
 	const firstIncomplete = props.credentialRequests.findIndex(
 		(r) => !isStepComplete(r.credentialType),
 	);
