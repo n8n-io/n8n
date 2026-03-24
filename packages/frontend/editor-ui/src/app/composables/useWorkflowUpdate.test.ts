@@ -3,10 +3,7 @@ import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { useWorkflowUpdate } from './useWorkflowUpdate';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import type { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
@@ -14,7 +11,6 @@ import { mockedStore } from '@/__tests__/utils';
 import { createTestNode } from '@/__tests__/mocks';
 import type { INodeUi } from '@/Interface';
 import { DEFAULT_NEW_WORKFLOW_NAME } from '@/app/constants';
-import type { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 // Mock canvas event bus - using hoisted to ensure proper initialization order
 const canvasEventBusEmitMock = vi.hoisted(() => vi.fn());
@@ -76,7 +72,6 @@ vi.mock('@/app/utils/nodeTypesUtils', () => ({
 
 describe('useWorkflowUpdate', () => {
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
-	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
 	let builderStore: ReturnType<typeof mockedStore<typeof useBuilderStore>>;
 	let credentialsStore: ReturnType<typeof mockedStore<typeof useCredentialsStore>>;
 	let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
@@ -118,8 +113,6 @@ describe('useWorkflowUpdate', () => {
 			renameNode: vi.fn(),
 		});
 		workflowsStore.nodesByName = {};
-
-		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow'));
 
 		builderStore.setBuilderMadeEdits = vi.fn();
 
