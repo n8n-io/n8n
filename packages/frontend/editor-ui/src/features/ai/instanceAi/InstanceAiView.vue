@@ -36,15 +36,21 @@ const activeExecutionId = ref<string | null>(null);
 const isCanvasVisible = computed(() => activeWorkflowId.value !== null);
 const iframePushRef = ref<string | null>(null);
 
+// Tracks whether the canvas was open before the most recent thread switch,
+// so we can restore it when the new thread has a build result.
+const wasCanvasOpenBeforeSwitch = ref(false);
+
 provide('openWorkflowPreview', (workflowId: string) => {
 	activeWorkflowId.value = workflowId;
 });
 
-// Reset canvas when switching threads
+// Preserve canvas intent when switching threads
 watch(
 	() => route.params.threadId,
 	() => {
+		wasCanvasOpenBeforeSwitch.value = isCanvasVisible.value;
 		activeWorkflowId.value = null;
+		activeExecutionId.value = null;
 	},
 );
 
@@ -63,10 +69,24 @@ const latestBuildResult = computed(() => {
 });
 
 // Watch the toolCallId — it changes even when the same workflow is rebuilt.
+// Auto-open logic:
+//   - Live build (isStreaming): always auto-open
+//   - Thread switch with canvas open: restore canvas with new thread's workflow
+//   - Thread switch with canvas closed: stay closed
 watch(
 	() => latestBuildResult.value?.toolCallId,
 	(toolCallId) => {
-		if (!toolCallId || !latestBuildResult.value) return;
+		if (!toolCallId || !latestBuildResult.value) {
+			wasCanvasOpenBeforeSwitch.value = false;
+			return;
+		}
+
+		if (!isCanvasVisible.value && !store.isStreaming && !wasCanvasOpenBeforeSwitch.value) {
+			wasCanvasOpenBeforeSwitch.value = false;
+			return;
+		}
+
+		wasCanvasOpenBeforeSwitch.value = false;
 		activeExecutionId.value = null;
 		activeWorkflowId.value = latestBuildResult.value.workflowId;
 		workflowRefreshKey.value++;
@@ -86,14 +106,9 @@ const latestExecutionId = computed(() => {
 });
 
 watch(latestExecutionId, (execId) => {
-	if (execId) {
+	if (execId && (isCanvasVisible.value || store.isStreaming)) {
 		activeExecutionId.value = execId;
 	}
-});
-
-// Reset execution when a new workflow is loaded
-watch(activeWorkflowId, () => {
-	activeExecutionId.value = null;
 });
 
 // Load persisted threads from Mastra storage on mount
