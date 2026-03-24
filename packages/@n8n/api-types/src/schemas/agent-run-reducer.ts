@@ -307,6 +307,9 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 					inputType: event.payload.inputType,
 					domainAccess: event.payload.domainAccess,
 					credentialFlow: event.payload.credentialFlow,
+					questions: event.payload.questions,
+					introMessage: event.payload.introMessage,
+					tasks: event.payload.tasks,
 				};
 			}
 			break;

@@ -10,4 +10,14 @@ export class InstanceAiConfirmRequestDto extends Z.class({
 	autoSetup: z.object({ credentialType: z.string() }).optional(),
 	userInput: z.string().optional(),
 	domainAccessAction: domainAccessActionSchema.optional(),
+	answers: z
+		.array(
+			z.object({
+				questionId: z.string(),
+				selectedOptions: z.array(z.string()),
+				customText: z.string().optional(),
+				skipped: z.boolean().optional(),
+			}),
+		)
+		.optional(),
 }) {}

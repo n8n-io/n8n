@@ -8,6 +8,7 @@ import DataTableCard from './DataTableCard.vue';
 import ResearchCard from './ResearchCard.vue';
 import AgentNodeSection from './AgentNodeSection.vue';
 import DelegateCard from './DelegateCard.vue';
+import TaskChecklist from './TaskChecklist.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -55,7 +56,10 @@ const childrenById = computed(() => {
 
 			<!-- Tool call -->
 			<template v-else-if="entry.type === 'tool-call' && toolCallsById[entry.toolCallId]">
-				<template v-if="toolCallsById[entry.toolCallId].renderHint === 'tasks'" />
+				<TaskChecklist
+					v-if="toolCallsById[entry.toolCallId].renderHint === 'tasks'"
+					:tasks="props.agentNode.tasks"
+				/>
 				<DelegateCard
 					v-else-if="toolCallsById[entry.toolCallId].renderHint === 'delegate'"
 					:args="toolCallsById[entry.toolCallId].args"

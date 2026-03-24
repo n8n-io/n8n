@@ -23,6 +23,12 @@ export interface ConfirmationData {
 	autoSetup?: { credentialType: string };
 	userInput?: string;
 	domainAccessAction?: string;
+	answers?: Array<{
+		questionId: string;
+		selectedOptions: string[];
+		customText?: string;
+		skipped?: boolean;
+	}>;
 }
 
 export interface PendingConfirmation {

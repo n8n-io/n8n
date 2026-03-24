@@ -6,7 +6,11 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { ResponseError } from '@n8n/rest-api-client';
-import { instanceAiEventSchema, isSafeObjectKey } from '@n8n/api-types';
+import {
+	instanceAiEventSchema,
+	isSafeObjectKey,
+	type InstanceAiConfirmResponse,
+} from '@n8n/api-types';
 import {
 	ensureThread,
 	postMessage,
@@ -659,6 +663,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		autoSetup?: { credentialType: string },
 		userInput?: string,
 		domainAccessAction?: string,
+		answers?: InstanceAiConfirmResponse['answers'],
 	): Promise<void> {
 		try {
 			await postConfirmation(
@@ -670,6 +675,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				autoSetup,
 				userInput,
 				domainAccessAction,
+				answers,
 			);
 		} catch {
 			toast.showError(new Error('Failed to send confirmation. Try again.'), 'Confirmation failed');

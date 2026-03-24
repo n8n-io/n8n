@@ -1,4 +1,6 @@
 import { createTool } from '@mastra/core/tools';
+import { taskListSchema } from '@n8n/api-types';
+import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import type { OrchestrationContext, PlannedTask } from '../../types';
@@ -36,10 +38,22 @@ export function createPlanTool(context: OrchestrationContext) {
 		description:
 			'Persist a dependency-aware task plan for detached multi-step execution. ' +
 			'Use this when the work has multiple tasks with explicit prerequisites. ' +
+			'The plan is shown to the user for approval before execution starts. ' +
 			'After calling plan, reply briefly and end your turn.',
 		inputSchema: planInputSchema,
 		outputSchema: planOutputSchema,
-		execute: async (input) => {
+		suspendSchema: z.object({
+			requestId: z.string(),
+			message: z.string(),
+			severity: z.literal('info'),
+			inputType: z.literal('plan-review'),
+			tasks: taskListSchema,
+		}),
+		resumeSchema: z.object({
+			approved: z.boolean(),
+			userInput: z.string().optional(),
+		}),
+		execute: async (input, ctx) => {
 			if (!context.plannedTaskService || !context.schedulePlannedTasks) {
 				return {
 					result: 'Planning failed: planned task scheduling is not available.',
@@ -47,15 +61,57 @@ export function createPlanTool(context: OrchestrationContext) {
 				};
 			}
 
-			await context.plannedTaskService.createPlan(context.threadId, input.tasks as PlannedTask[], {
-				planRunId: context.runId,
-				messageGroupId: context.messageGroupId,
-			});
-			await context.schedulePlannedTasks();
+			const { resumeData, suspend } = ctx?.agent ?? {};
 
+			// First call — persist plan, show to user, suspend for approval
+			if (resumeData === undefined || resumeData === null) {
+				await context.plannedTaskService.createPlan(
+					context.threadId,
+					input.tasks as PlannedTask[],
+					{
+						planRunId: context.runId,
+						messageGroupId: context.messageGroupId,
+					},
+				);
+
+				// Emit tasks-update so the checklist appears in the chat immediately
+				const taskItems = input.tasks.map((t) => ({
+					id: t.id,
+					description: t.title,
+					status: 'todo' as const,
+				}));
+				context.eventBus.publish(context.threadId, {
+					type: 'tasks-update',
+					runId: context.runId,
+					agentId: context.orchestratorAgentId,
+					payload: { tasks: { tasks: taskItems } },
+				});
+
+				// Suspend — frontend renders plan review UI
+				await suspend?.({
+					requestId: nanoid(),
+					message: `Review the plan (${input.tasks.length} task${input.tasks.length === 1 ? '' : 's'}) before execution starts.`,
+					severity: 'info' as const,
+					inputType: 'plan-review' as const,
+					tasks: { tasks: taskItems },
+				});
+				// suspend() never resolves
+				return { result: 'Awaiting approval', taskCount: input.tasks.length };
+			}
+
+			// User approved — start execution
+			if (resumeData.approved) {
+				await context.schedulePlannedTasks();
+				return {
+					result: `Plan approved. Started ${input.tasks.length} task${input.tasks.length === 1 ? '' : 's'}.`,
+					taskCount: input.tasks.length,
+				};
+			}
+
+			// User rejected or requested changes — return feedback to LLM
 			return {
-				result: `Planned ${input.tasks.length} task${input.tasks.length === 1 ? '' : 's'} and started execution.`,
-				taskCount: input.tasks.length,
+				result: `User requested changes: ${resumeData.userInput ?? 'No feedback provided'}. Revise the plan and call plan() again.`,
+				taskCount: 0,
 			};
 		},
 	});

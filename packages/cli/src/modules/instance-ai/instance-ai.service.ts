@@ -1074,6 +1074,7 @@ export class InstanceAiService {
 			...(data.autoSetup ? { autoSetup: data.autoSetup } : {}),
 			...(data.userInput !== undefined ? { userInput: data.userInput } : {}),
 			...(data.domainAccessAction ? { domainAccessAction: data.domainAccessAction } : {}),
+			...(data.answers ? { answers: data.answers } : {}),
 		};
 
 		// Create snapshot storage for saving agent tree after resumed run completes

@@ -705,6 +705,14 @@ export interface OrchestrationContext {
 		credentialId?: string;
 		credentials?: Record<string, string>;
 		autoSetup?: { credentialType: string };
+		userInput?: string;
+		domainAccessAction?: string;
+		answers?: Array<{
+			questionId: string;
+			selectedOptions: string[];
+			customText?: string;
+			skipped?: boolean;
+		}>;
 	}>;
 	/** Chrome DevTools MCP config — only present when browser automation is enabled */
 	browserMcpConfig?: McpServerConfig;
