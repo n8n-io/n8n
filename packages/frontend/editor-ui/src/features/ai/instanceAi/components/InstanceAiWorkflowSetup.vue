@@ -643,13 +643,13 @@ function buildNodeParameters(): Record<string, Record<string, unknown>> | undefi
 	for (const card of cards.value) {
 		if (!card.hasParamIssues) continue;
 		const nodeName = card.nodes[0].node.name;
-		const storeNode = workflowsStore.getNodeByName(nodeName);
 		const issueParamNames = Object.keys(card.nodes[0].parameterIssues ?? {});
 
 		const merged: Record<string, unknown> = {};
 		for (const paramName of issueParamNames) {
-			// Prefer paramValues (explicitly edited inline), fall back to store node
-			const val = paramValues.value[nodeName]?.[paramName] ?? storeNode?.parameters?.[paramName];
+			// Only include values that were pre-filled by AI (seeded via initParamValues)
+			// or explicitly edited by the user (set via onParameterValueChanged)
+			const val = paramValues.value[nodeName]?.[paramName];
 			if (val !== undefined && val !== null && val !== '') {
 				merged[paramName] = val;
 				hasValues = true;
