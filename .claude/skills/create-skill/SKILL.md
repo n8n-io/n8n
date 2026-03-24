@@ -31,7 +31,7 @@ Ask (or infer) briefly:
 4. **Outputs** — templates, checklists, or strict formats?
 5. **Examples** — follow an existing skill in `.claude/skills/` if one fits.
 
-Use AskQuestion when available; otherwise ask in plain language.
+Ask the user in plain language when you need more detail.
 
 ## File layout
 
