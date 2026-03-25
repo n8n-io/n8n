@@ -579,12 +579,14 @@ export class IsolatedVmBridge implements RuntimeBridge {
 
 			return result;
 		} catch (error) {
-			// Re-throw reconstructed errors as-is
+			// Re-throw reconstructed errors as-is.
+			// Note: TypeError is intentionally NOT included here — the isolate's
+			// E() handler swallows TypeErrors (failed attack attempts return undefined),
+			// so TypeErrors from host callbacks should also go through the generic
+			// wrapping for consistent behavior.
 			if (
 				error instanceof Error &&
-				(error.name === 'ExpressionError' ||
-					error.name === 'ExpressionExtensionError' ||
-					error.name === 'TypeError')
+				(error.name === 'ExpressionError' || error.name === 'ExpressionExtensionError')
 			) {
 				throw error;
 			}
