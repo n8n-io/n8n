@@ -16,6 +16,7 @@ COPY . .
 
 # 2. Install and Build
 RUN rm -rf node_modules && CI=true pnpm install --no-frozen-lockfile --ignore-scripts
+RUN pnpm add -Dw esbuild
 RUN pnpm build --filter n8n
 
 # 3. Create Tapis configuration
@@ -27,6 +28,7 @@ RUN mkdir -p /app/packages/cli/bin && \
 RUN mkdir -p /home/node/.n8n /home/node/.corepack && \
     chown -R node:node /home/node /app
 
+    
 # 5. COREPACK_ENABLE_DOWNLOAD_PROMPT=0 
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 
