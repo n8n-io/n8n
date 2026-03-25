@@ -1,6 +1,6 @@
 {
   "name": "@n8n/decorators",
-  "version": "0.33.11",
+  "version": "0.33.12",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
