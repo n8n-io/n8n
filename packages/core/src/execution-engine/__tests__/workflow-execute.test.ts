@@ -48,9 +48,11 @@ import {
 } from 'n8n-workflow';
 import assert from 'node:assert';
 
-import * as Helpers from '@test/helpers';
-import { legacyWorkflowExecuteTests, v1WorkflowExecuteTests } from '@test/helpers/constants';
-
+import * as Helpers from '../../../test/helpers';
+import {
+	legacyWorkflowExecuteTests,
+	v1WorkflowExecuteTests,
+} from '../../../test/helpers/constants';
 import type { ExecutionLifecycleHooks } from '../execution-lifecycle-hooks';
 import { DirectedGraph } from '../partial-execution-utils';
 import * as partialExecutionUtils from '../partial-execution-utils';
