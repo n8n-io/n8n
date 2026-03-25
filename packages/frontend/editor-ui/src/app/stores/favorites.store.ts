@@ -31,7 +31,11 @@ export const useFavoritesStore = defineStore(STORES.FAVORITES, () => {
 
 	async function fetchFavorites() {
 		if (initialized.value) return;
-		favorites.value = await favoritesApi.getFavorites(rootStore.restApiContext);
+		const currentPushRef = rootStore.restApiContext.pushRef;
+		const result = await favoritesApi.getFavorites(rootStore.restApiContext);
+		// Avoid theoretical session issues by asserting we still have the same pushRef
+		if (currentPushRef !== rootStore.restApiContext.pushRef) return;
+		favorites.value = result;
 		initialized.value = true;
 	}
 

@@ -120,6 +120,7 @@ export async function initializeAuthenticatedFeatures(
 	const bannersStore = useBannersStore();
 	const versionsStore = useVersionsStore();
 	const dataTableStore = useDataTableStore();
+	const favoritesStore = useFavoritesStore();
 
 	if (!settingsStore.isPreviewMode) {
 		usersStore.setUserQuota(settingsStore.userManagement.quota);
@@ -207,7 +208,7 @@ export async function initializeAuthenticatedFeatures(
 
 	await projectsStore.refreshCurrentProject();
 
-	void useFavoritesStore().fetchFavorites();
+	void favoritesStore.fetchFavorites();
 
 	// Initialize modules
 	registerModuleResources();
@@ -235,6 +236,7 @@ function registerAuthenticationHooks() {
 	const telemetry = useTelemetry();
 	const RBACStore = useRBACStore();
 	const settingsStore = useSettingsStore();
+	const favoritesStore = useFavoritesStore();
 
 	usersStore.registerLoginHook(async (user) => {
 		await settingsStore.getSettings();
@@ -254,6 +256,6 @@ function registerAuthenticationHooks() {
 		cloudPlanStore.reset();
 		telemetry.reset();
 		RBACStore.setGlobalScopes([]);
-		useFavoritesStore().reset();
+		favoritesStore.reset();
 	});
 }
