@@ -29,6 +29,26 @@ vi.mock('@/features/workflows/canvas/canvas.utils', () => ({
 	mapLegacyConnectionsToCanvasConnections: mockMapLegacyConnectionsToCanvasConnections,
 }));
 
+// Mock workflowDocumentStore - using hoisted for proper initialization
+const mockDocumentStore = vi.hoisted(() => ({
+	allNodes: [] as INodeUi[],
+	name: '',
+	setName: vi.fn(),
+	setNodes: vi.fn(),
+	setConnections: vi.fn(),
+	resetParametersLastUpdatedAt: vi.fn(),
+	setPinData: vi.fn(),
+	getPinDataSnapshot: vi.fn().mockReturnValue({}),
+	getNodeByName: vi.fn().mockReturnValue(null),
+	setNodeIssue: vi.fn(),
+	updateNodeProperties: vi.fn(),
+})) as unknown as ReturnType<typeof useWorkflowDocumentStore>;
+
+vi.mock('@/app/stores/workflowDocument.store', () => ({
+	useWorkflowDocumentStore: vi.fn().mockReturnValue(mockDocumentStore),
+	createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
+}));
+
 // Mock useWorkflowState - using hoisted for proper initialization
 const mockWorkflowState = vi.hoisted(() => ({
 	resetParametersLastUpdatedAt: vi.fn(),
@@ -57,7 +77,6 @@ vi.mock('@/app/utils/nodeTypesUtils', () => ({
 
 describe('useWorkflowUpdate', () => {
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
-	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
 	let builderStore: ReturnType<typeof mockedStore<typeof useBuilderStore>>;
 	let credentialsStore: ReturnType<typeof mockedStore<typeof useCredentialsStore>>;
 	let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
@@ -76,7 +95,18 @@ describe('useWorkflowUpdate', () => {
 		mockMapLegacyConnectionsToCanvasConnections.mockReturnValue([]);
 
 		// Setup default mocks
-		workflowsStore.allNodes = [];
+		(mockDocumentStore as { allNodes: INodeUi[] }).allNodes = [];
+		(mockDocumentStore as { name: string }).name = '';
+		vi.mocked(mockDocumentStore.setName).mockClear();
+		vi.mocked(mockDocumentStore.setNodes).mockClear();
+		vi.mocked(mockDocumentStore.setConnections).mockClear();
+		vi.mocked(mockDocumentStore.resetParametersLastUpdatedAt).mockClear();
+		vi.mocked(mockDocumentStore.setPinData).mockClear();
+		vi.mocked(mockDocumentStore.getPinDataSnapshot).mockReturnValue({});
+		vi.mocked(mockDocumentStore.getNodeByName).mockReturnValue(null);
+		vi.mocked(mockDocumentStore.setNodeIssue).mockClear();
+		vi.mocked(mockDocumentStore.updateNodeProperties).mockClear();
+		workflowsStore.workflowId = 'test-workflow';
 		workflowsStore.workflow = {
 			id: 'test-workflow',
 			name: DEFAULT_NEW_WORKFLOW_NAME,
@@ -89,10 +119,7 @@ describe('useWorkflowUpdate', () => {
 			connectionsBySourceNode: {},
 			renameNode: vi.fn(),
 		});
-		workflowsStore.setNodes = vi.fn();
 		workflowsStore.nodesByName = {};
-
-		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow'));
 
 		builderStore.setBuilderMadeEdits = vi.fn();
 
@@ -161,7 +188,7 @@ describe('useWorkflowUpdate', () => {
 					name: 'Existing Node',
 				}) as INodeUi;
 
-				workflowsStore.allNodes = [existingNode];
+				(mockDocumentStore as { allNodes: INodeUi[] }).allNodes = [existingNode];
 
 				const { updateWorkflow } = useWorkflowUpdate();
 
@@ -186,7 +213,7 @@ describe('useWorkflowUpdate', () => {
 					position: [100, 200],
 				}) as INodeUi;
 
-				workflowsStore.allNodes = [existingNode];
+				(mockDocumentStore as { allNodes: INodeUi[] }).allNodes = [existingNode];
 
 				const mockWorkflowObject = {
 					nodes: { 'Chat Trigger': { ...existingNode } },
@@ -216,7 +243,7 @@ describe('useWorkflowUpdate', () => {
 				// Should NOT remove the existing node
 				expect(mockCanvasOperations.deleteNode).not.toHaveBeenCalled();
 				// Should sync state back to store (update in place)
-				expect(workflowsStore.setNodes).toHaveBeenCalled();
+				expect(mockDocumentStore.setNodes).toHaveBeenCalled();
 			});
 
 			it('should preserve existing ID when reconciling by name+type', async () => {
@@ -228,7 +255,7 @@ describe('useWorkflowUpdate', () => {
 					parameters: { url: 'http://old.com' },
 				}) as INodeUi;
 
-				workflowsStore.allNodes = [existingNode];
+				(mockDocumentStore as { allNodes: INodeUi[] }).allNodes = [existingNode];
 
 				const mockWorkflowObject = {
 					nodes: { 'HTTP Request': { ...existingNode } },
@@ -254,8 +281,8 @@ describe('useWorkflowUpdate', () => {
 				});
 
 				// Should update the node with the existing ID preserved
-				expect(workflowsStore.setNodes).toHaveBeenCalled();
-				const setNodesCall = workflowsStore.setNodes.mock.calls[0][0];
+				expect(mockDocumentStore.setNodes).toHaveBeenCalled();
+				const setNodesCall = vi.mocked(mockDocumentStore.setNodes).mock.calls[0][0];
 				expect(setNodesCall[0].id).toBe('existing-id');
 				expect(setNodesCall[0].parameters.url).toBe('http://new.com');
 			});
@@ -267,7 +294,7 @@ describe('useWorkflowUpdate', () => {
 					type: 'n8n-nodes-base.httpRequest',
 				}) as INodeUi;
 
-				workflowsStore.allNodes = [existingNode];
+				(mockDocumentStore as { allNodes: INodeUi[] }).allNodes = [existingNode];
 
 				const mockWorkflowObject = {
 					nodes: { 'HTTP Request': { ...existingNode } },
@@ -323,7 +350,7 @@ describe('useWorkflowUpdate', () => {
 					position: [100, 200],
 				}) as INodeUi;
 
-				workflowsStore.allNodes = [existingNode];
+				(mockDocumentStore as { allNodes: INodeUi[] }).allNodes = [existingNode];
 
 				const mockWorkflowObject = {
 					nodes: { 'Old Name': { ...existingNode } },
@@ -353,8 +380,8 @@ describe('useWorkflowUpdate', () => {
 				expect(mockCanvasOperations.deleteNode).not.toHaveBeenCalled();
 
 				// Should sync state back to store
-				expect(workflowsStore.setNodes).toHaveBeenCalled();
-				expect(workflowDocumentStore.setConnections).toHaveBeenCalled();
+				expect(mockDocumentStore.setNodes).toHaveBeenCalled();
+				expect(mockDocumentStore.setConnections).toHaveBeenCalled();
 			});
 
 			it('should apply executeOnce when updated node has it set', async () => {
@@ -366,7 +393,7 @@ describe('useWorkflowUpdate', () => {
 					parameters: { url: 'http://example.com' },
 				}) as INodeUi;
 
-				workflowsStore.allNodes = [existingNode];
+				(mockDocumentStore as { allNodes: INodeUi[] }).allNodes = [existingNode];
 
 				const mockWorkflowObject = {
 					nodes: { 'HTTP Request': { ...existingNode } },
@@ -392,8 +419,8 @@ describe('useWorkflowUpdate', () => {
 					connections: {},
 				});
 
-				expect(workflowsStore.setNodes).toHaveBeenCalled();
-				const setNodesCall = workflowsStore.setNodes.mock.calls[0][0];
+				expect(mockDocumentStore.setNodes).toHaveBeenCalled();
+				const setNodesCall = vi.mocked(mockDocumentStore.setNodes).mock.calls[0][0];
 				expect(setNodesCall[0].executeOnce).toBe(true);
 			});
 
@@ -434,7 +461,7 @@ describe('useWorkflowUpdate', () => {
 					name: 'Old Name',
 				}) as INodeUi;
 
-				workflowsStore.allNodes = [existingNode];
+				(mockDocumentStore as { allNodes: INodeUi[] }).allNodes = [existingNode];
 
 				// After rename, cloneWorkflowObject returns node with new name
 				const mockWorkflowObject = {
@@ -473,7 +500,7 @@ describe('useWorkflowUpdate', () => {
 					name: 'Same Name',
 				}) as INodeUi;
 
-				workflowsStore.allNodes = [existingNode];
+				(mockDocumentStore as { allNodes: INodeUi[] }).allNodes = [existingNode];
 
 				const mockWorkflowObject = {
 					nodes: { 'Same Name': { ...existingNode } },
@@ -508,7 +535,7 @@ describe('useWorkflowUpdate', () => {
 					parameters: { url: 'http://example.com' },
 				}) as INodeUi;
 
-				workflowsStore.allNodes = [existingNode];
+				(mockDocumentStore as { allNodes: INodeUi[] }).allNodes = [existingNode];
 
 				// Rename fails
 				mockCanvasOperations.renameNode.mockResolvedValueOnce(false);
@@ -538,8 +565,8 @@ describe('useWorkflowUpdate', () => {
 				});
 
 				// Should still update node properties under old name
-				expect(workflowsStore.setNodes).toHaveBeenCalled();
-				const setNodesCall = workflowsStore.setNodes.mock.calls[0][0];
+				expect(mockDocumentStore.setNodes).toHaveBeenCalled();
+				const setNodesCall = vi.mocked(mockDocumentStore.setNodes).mock.calls[0][0];
 				expect(setNodesCall[0].name).toBe('Old Name');
 				expect(setNodesCall[0].parameters.url).toBe('http://updated.com');
 			});
@@ -553,7 +580,7 @@ describe('useWorkflowUpdate', () => {
 					parameters: { url: 'http://old.com' },
 				}) as INodeUi;
 
-				workflowsStore.allNodes = [existingNode];
+				(mockDocumentStore as { allNodes: INodeUi[] }).allNodes = [existingNode];
 
 				const mockWorkflowObject = {
 					nodes: { 'HTTP Request': { ...existingNode } },
@@ -578,7 +605,7 @@ describe('useWorkflowUpdate', () => {
 					connections: {},
 				});
 
-				expect(mockWorkflowState.resetParametersLastUpdatedAt).toHaveBeenCalledWith('HTTP Request');
+				expect(mockDocumentStore.resetParametersLastUpdatedAt).toHaveBeenCalledWith('HTTP Request');
 			});
 
 			it('should not mark node as dirty when parameters are unchanged', async () => {
@@ -588,7 +615,7 @@ describe('useWorkflowUpdate', () => {
 					parameters: { url: 'http://same.com' },
 				}) as INodeUi;
 
-				workflowsStore.allNodes = [existingNode];
+				(mockDocumentStore as { allNodes: INodeUi[] }).allNodes = [existingNode];
 
 				const mockWorkflowObject = {
 					nodes: { 'HTTP Request': { ...existingNode } },
@@ -613,7 +640,7 @@ describe('useWorkflowUpdate', () => {
 					connections: {},
 				});
 
-				expect(mockWorkflowState.resetParametersLastUpdatedAt).not.toHaveBeenCalled();
+				expect(mockDocumentStore.resetParametersLastUpdatedAt).not.toHaveBeenCalled();
 			});
 		});
 
@@ -716,7 +743,7 @@ describe('useWorkflowUpdate', () => {
 					name: 'Existing Node',
 				}) as INodeUi;
 
-				workflowsStore.allNodes = [existingNode];
+				(mockDocumentStore as { allNodes: INodeUi[] }).allNodes = [existingNode];
 
 				const { updateWorkflow } = useWorkflowUpdate();
 
@@ -742,7 +769,7 @@ describe('useWorkflowUpdate', () => {
 					parameters: { url: 'http://example.com' },
 				}) as INodeUi;
 
-				workflowsStore.allNodes = [existingNode];
+				(mockDocumentStore as { allNodes: INodeUi[] }).allNodes = [existingNode];
 
 				const mockWorkflowObject = {
 					nodes: { 'HTTP Request': { ...existingNode } },
@@ -906,7 +933,7 @@ describe('useWorkflowUpdate', () => {
 					name: 'Existing Node',
 				}) as INodeUi;
 
-				workflowsStore.allNodes = [existingNode];
+				(mockDocumentStore as { allNodes: INodeUi[] }).allNodes = [existingNode];
 
 				const testError = new Error('Failed to clone workflow');
 				workflowsStore.cloneWorkflowObject = vi.fn().mockImplementation(() => {
