@@ -156,18 +156,18 @@ describe('RoleMappingRuleService', () => {
 				projects: [],
 				createdAt: new Date('2025-01-01T00:00:00.000Z'),
 				updatedAt: new Date('2025-01-01T00:00:00.000Z'),
-			} as RoleMappingRule;
+			} as unknown as RoleMappingRule;
 
 			roleMappingRuleRepository.save.mockImplementation(async (r) => {
 				expect(r).toBeInstanceOf(Object);
-				return { ...savedRule };
+				return { ...savedRule } as unknown as RoleMappingRule;
 			});
 
 			const loadedRule = {
 				...savedRule,
 				role: globalRole,
 				projects: [],
-			} as RoleMappingRule;
+			} as unknown as RoleMappingRule;
 
 			roleMappingRuleRepository.findOneOrFail.mockResolvedValue(loadedRule);
 
@@ -209,9 +209,11 @@ describe('RoleMappingRuleService', () => {
 				projects: [projA, projB],
 				createdAt: new Date('2025-02-01T12:00:00.000Z'),
 				updatedAt: new Date('2025-02-01T12:00:00.000Z'),
-			} as RoleMappingRule;
+			} as unknown as RoleMappingRule;
 
-			roleMappingRuleRepository.save.mockResolvedValue({ ...savedRule });
+			roleMappingRuleRepository.save.mockResolvedValue({
+				...savedRule,
+			} as unknown as RoleMappingRule);
 			roleMappingRuleRepository.findOneOrFail.mockResolvedValue(savedRule);
 
 			const projectIds = [projA.id, projB.id];
