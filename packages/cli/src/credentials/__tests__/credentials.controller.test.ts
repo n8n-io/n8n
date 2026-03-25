@@ -5,26 +5,30 @@ jest.mock('@/generic-helpers', () => ({
 import type { LicenseState } from '@n8n/backend-common';
 import type {
 	AuthenticatedRequest,
+	ICredentialsDb,
+	Project,
+	SharedCredentials,
 	SharedCredentialsRepository,
 	CredentialsEntity,
 	CredentialsRepository,
 } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
+import type { Scope } from '@n8n/permissions';
 import { mock } from 'jest-mock-extended';
 
-import { createRawProjectData } from '@/__tests__/project.test-data';
-import type { EventService } from '@/events/event.service';
-import type { CredentialRequest } from '@/requests';
-
+import { createNewCredentialsPayload, createdCredentialsWithScopes } from './credentials.test-data';
+import type { CredentialDependencyService } from '../credential-dependency.service';
 import type { CredentialsFinderService } from '../credentials-finder.service';
 import { CredentialsController } from '../credentials.controller';
 import { CredentialsService } from '../credentials.service';
 import * as validation from '../validation';
+
 import * as checkAccess from '@/permissions.ee/check-access';
-import { createNewCredentialsPayload, createdCredentialsWithScopes } from './credentials.test-data';
+import type { CredentialRequest } from '@/requests';
 
 describe('CredentialsController', () => {
-	const eventService = mock<EventService>();
+	type ControllerEventService = ConstructorParameters<typeof CredentialsController>[9];
+	const eventService = mock<ControllerEventService>();
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
 	const credentialsFinderService = mock<CredentialsFinderService>();
 	const licenseState = mock<LicenseState>();
@@ -35,6 +39,7 @@ describe('CredentialsController', () => {
 	// real CredentialsService instance with mocked dependencies
 	const credentialsService = new CredentialsService(
 		credentialsRepository,
+		mock<CredentialDependencyService>(),
 		mock(), // sharedCredentialsRepository
 		mock(), // ownershipService
 		mock(), // logger
@@ -55,12 +60,16 @@ describe('CredentialsController', () => {
 	// Spy on methods that need to be mocked in tests
 	// This allows us to mock specific behavior while keeping real implementations
 	// for isChangingExternalSecretExpression and validateExternalSecretsPermissions
-	jest.spyOn(credentialsService, 'decrypt');
-	jest.spyOn(credentialsService, 'prepareUpdateData');
-	jest.spyOn(credentialsService, 'createEncryptedData');
-	jest.spyOn(credentialsService, 'getCredentialScopes');
-	jest.spyOn(credentialsService, 'update');
-	jest.spyOn(credentialsService, 'createUnmanagedCredential');
+	const decryptSpy = jest.spyOn(credentialsService, 'decrypt');
+	const createEncryptedDataSpy = jest.spyOn(credentialsService, 'createEncryptedData');
+	const getCredentialScopesSpy = jest.spyOn(credentialsService, 'getCredentialScopes');
+	const updateSpy = jest.spyOn(credentialsService, 'update');
+	const createUnmanagedCredentialSpy = jest.spyOn(credentialsService, 'createUnmanagedCredential');
+	const findCredentialOwningProjectSpy = jest.spyOn(
+		sharedCredentialsRepository,
+		'findCredentialOwningProject',
+	);
+	const emitSpy = jest.spyOn(eventService, 'emit');
 
 	const credentialsController = new CredentialsController(
 		mock(),
@@ -98,17 +107,14 @@ describe('CredentialsController', () => {
 
 			const createdCredentials = createdCredentialsWithScopes(payloadWithoutData);
 
-			const projectOwningCredentialData = createRawProjectData({
+			const projectOwningCredentialData = mock<Project>({
 				id: newCredentialsPayload.projectId,
+				type: 'team',
 			});
 
-			jest
-				.mocked(credentialsService.createUnmanagedCredential)
-				.mockResolvedValue(createdCredentials);
+			createUnmanagedCredentialSpy.mockResolvedValue(createdCredentials);
 
-			sharedCredentialsRepository.findCredentialOwningProject.mockResolvedValue(
-				projectOwningCredentialData,
-			);
+			findCredentialOwningProjectSpy.mockResolvedValue(projectOwningCredentialData);
 
 			// Act
 
@@ -120,15 +126,12 @@ describe('CredentialsController', () => {
 
 			// Assert
 
-			expect(credentialsService.createUnmanagedCredential).toHaveBeenCalledWith(
-				newCredentialsPayload,
-				req.user,
-			);
-			expect(sharedCredentialsRepository.findCredentialOwningProject).toHaveBeenCalledWith(
-				createdCredentials.id,
-			);
-			expect(eventService.emit).toHaveBeenCalledWith('credentials-created', {
-				user: expect.objectContaining({ id: req.user.id }),
+			expect(createUnmanagedCredentialSpy).toHaveBeenCalledWith(newCredentialsPayload, req.user);
+			expect(findCredentialOwningProjectSpy).toHaveBeenCalledWith(createdCredentials.id);
+			expect(emitSpy).toHaveBeenCalledTimes(1);
+			const [eventName, eventPayload] = emitSpy.mock.calls[0];
+			expect(eventName).toBe('credentials-created');
+			expect(eventPayload).toMatchObject({
 				credentialId: createdCredentials.id,
 				credentialType: createdCredentials.type,
 				projectId: projectOwningCredentialData.id,
@@ -137,6 +140,7 @@ describe('CredentialsController', () => {
 				uiContext: newCredentialsPayload.uiContext,
 				isDynamic: false,
 			});
+			expect((eventPayload as { user: { id: string } }).user.id).toBe('123');
 
 			expect(newApiKey).toEqual(createdCredentials);
 		});
@@ -156,24 +160,27 @@ describe('CredentialsController', () => {
 					role: 'credential:owner',
 					projectId: 'WHwt9vP3keCUvmB5',
 					credentialsId: credentialId,
-				} as any,
+				} as SharedCredentials,
 			],
 		});
 
+		const getEncryptedCredential = (isResolvable = false): ICredentialsDb => ({
+			name: 'Updated Credential',
+			type: 'apiKey',
+			data: 'encrypted-data',
+			id: credentialId,
+			createdAt: new Date(),
+			updatedAt: new Date(),
+			isResolvable,
+		});
+
 		beforeEach(() => {
-			jest.mocked(credentialsService.decrypt).mockReturnValue({ apiKey: 'test-key' });
-			jest.mocked(credentialsService.createEncryptedData).mockReturnValue({
-				name: 'Updated Credential',
-				type: 'apiKey',
-				data: 'encrypted-data',
-				id: 'cred-123',
-				createdAt: new Date(),
-				updatedAt: new Date(),
-				isResolvable: false,
-			} as any);
-			jest
-				.mocked(credentialsService.getCredentialScopes)
-				.mockResolvedValue(['credential:read', 'credential:update'] as any);
+			decryptSpy.mockReturnValue({ apiKey: 'test-key' });
+			createEncryptedDataSpy.mockReturnValue(getEncryptedCredential());
+			getCredentialScopesSpy.mockResolvedValue([
+				'credential:read' as Scope,
+				'credential:update' as Scope,
+			]);
 		});
 
 		it('should not allow owner to set isGlobal to true if not licensed', async () => {
@@ -199,7 +206,7 @@ describe('CredentialsController', () => {
 			);
 
 			// ASSERT
-			expect(credentialsService.update).not.toHaveBeenCalled();
+			expect(updateSpy).not.toHaveBeenCalled();
 		});
 
 		it('should allow owner to set isGlobal to true if licensed', async () => {
@@ -218,7 +225,7 @@ describe('CredentialsController', () => {
 			licenseState.isSharingLicensed.mockReturnValue(true);
 
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(existingCredential);
-			jest.mocked(credentialsService.update).mockResolvedValue({
+			updateSpy.mockResolvedValue({
 				...existingCredential,
 				name: 'Updated Credential',
 				isGlobal: true,
@@ -228,13 +235,14 @@ describe('CredentialsController', () => {
 			await credentialsController.updateCredentials(ownerReq);
 
 			// ASSERT
-			expect(credentialsService.update).toHaveBeenCalledWith(
+			expect(updateSpy).toHaveBeenCalledWith(
 				credentialId,
 				expect.objectContaining({
 					isGlobal: true,
 				}),
+				expect.any(Object),
 			);
-			expect(eventService.emit).toHaveBeenCalledWith('credentials-updated', {
+			expect(emitSpy).toHaveBeenCalledWith('credentials-updated', {
 				user: ownerReq.user,
 				credentialType: existingCredential.type,
 				credentialId: existingCredential.id,
@@ -262,7 +270,7 @@ describe('CredentialsController', () => {
 			licenseState.isSharingLicensed.mockReturnValue(true);
 
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(globalCredential);
-			jest.mocked(credentialsService.update).mockResolvedValue({
+			updateSpy.mockResolvedValue({
 				...globalCredential,
 				isGlobal: false,
 			});
@@ -271,11 +279,12 @@ describe('CredentialsController', () => {
 			await credentialsController.updateCredentials(ownerReq);
 
 			// ASSERT
-			expect(credentialsService.update).toHaveBeenCalledWith(
+			expect(updateSpy).toHaveBeenCalledWith(
 				credentialId,
 				expect.objectContaining({
 					isGlobal: false,
 				}),
+				expect.any(Object),
 			);
 		});
 
@@ -302,7 +311,7 @@ describe('CredentialsController', () => {
 			);
 
 			// ASSERT
-			expect(credentialsService.update).not.toHaveBeenCalled();
+			expect(updateSpy).not.toHaveBeenCalled();
 		});
 
 		it('should prevent non-owner from changing isGlobal to true', async () => {
@@ -331,7 +340,7 @@ describe('CredentialsController', () => {
 			);
 
 			// ASSERT
-			expect(credentialsService.update).not.toHaveBeenCalled();
+			expect(updateSpy).not.toHaveBeenCalled();
 		});
 
 		it('should update credential without changing isGlobal when not provided', async () => {
@@ -348,7 +357,7 @@ describe('CredentialsController', () => {
 			} as unknown as CredentialRequest.Update;
 
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(existingCredential);
-			jest.mocked(credentialsService.update).mockResolvedValue({
+			updateSpy.mockResolvedValue({
 				...existingCredential,
 				name: 'Updated Credential',
 			});
@@ -358,12 +367,9 @@ describe('CredentialsController', () => {
 
 			// ASSERT
 			// Should not include isGlobal in update when not provided
-			expect(credentialsService.update).toHaveBeenCalledWith(
-				credentialId,
-				expect.not.objectContaining({
-					isGlobal: expect.anything(),
-				}),
-			);
+			expect(updateSpy).toHaveBeenCalledWith(credentialId, expect.any(Object), expect.any(Object));
+			const updatePayload = updateSpy.mock.calls[0][1];
+			expect(updatePayload).not.toHaveProperty('isGlobal');
 		});
 
 		it('should update isResolvable when provided', async () => {
@@ -387,16 +393,8 @@ describe('CredentialsController', () => {
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(
 				existingCredentialWithResolvable,
 			);
-			jest.mocked(credentialsService.createEncryptedData).mockReturnValue({
-				name: 'Updated Credential',
-				type: 'apiKey',
-				data: 'encrypted-data',
-				id: 'cred-123',
-				createdAt: new Date(),
-				updatedAt: new Date(),
-				isResolvable: true,
-			} as any);
-			jest.mocked(credentialsService.update).mockResolvedValue({
+			createEncryptedDataSpy.mockReturnValue(getEncryptedCredential(true));
+			updateSpy.mockResolvedValue({
 				...existingCredentialWithResolvable,
 				name: 'Updated Credential',
 				isResolvable: true,
@@ -406,11 +404,12 @@ describe('CredentialsController', () => {
 			await credentialsController.updateCredentials(ownerReq);
 
 			// ASSERT
-			expect(credentialsService.update).toHaveBeenCalledWith(
+			expect(updateSpy).toHaveBeenCalledWith(
 				credentialId,
 				expect.objectContaining({
 					isResolvable: true,
 				}),
+				expect.any(Object),
 			);
 		});
 
@@ -435,16 +434,8 @@ describe('CredentialsController', () => {
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(
 				existingCredentialWithResolvable,
 			);
-			jest.mocked(credentialsService.createEncryptedData).mockReturnValue({
-				name: 'Updated Credential',
-				type: 'apiKey',
-				data: 'encrypted-data',
-				id: 'cred-123',
-				createdAt: new Date(),
-				updatedAt: new Date(),
-				isResolvable: true,
-			} as any);
-			jest.mocked(credentialsService.update).mockResolvedValue({
+			createEncryptedDataSpy.mockReturnValue(getEncryptedCredential(true));
+			updateSpy.mockResolvedValue({
 				...existingCredentialWithResolvable,
 				name: 'Updated Credential',
 			});
@@ -453,11 +444,12 @@ describe('CredentialsController', () => {
 			await credentialsController.updateCredentials(ownerReq);
 
 			// ASSERT
-			expect(credentialsService.update).toHaveBeenCalledWith(
+			expect(updateSpy).toHaveBeenCalledWith(
 				credentialId,
 				expect.objectContaining({
 					isResolvable: true, // Should keep the existing value
 				}),
+				expect.any(Object),
 			);
 		});
 
@@ -481,7 +473,7 @@ describe('CredentialsController', () => {
 				existingCredentialWithSecret,
 			);
 			// Mock setup: existing credential already has a secret expression
-			jest.mocked(credentialsService.decrypt).mockReturnValue({ apiKey: '$secrets.oldKey' });
+			decryptSpy.mockReturnValue({ apiKey: '$secrets.oldKey' });
 
 			await expect(credentialsController.updateCredentials(memberReq)).rejects.toThrow(
 				'Lacking permissions to reference external secrets in credentials',
@@ -492,7 +484,7 @@ describe('CredentialsController', () => {
 				dataToSave: memberReq.body.data,
 				decryptedExistingData: { apiKey: '$secrets.oldKey' },
 			});
-			expect(credentialsService.update).not.toHaveBeenCalled();
+			expect(updateSpy).not.toHaveBeenCalled();
 		});
 
 		it('should throw error when adding new external secret expression without permission', async () => {
@@ -511,7 +503,7 @@ describe('CredentialsController', () => {
 
 			// Mock setup: existing credential has no external secret yet
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(existingCredential);
-			jest.mocked(credentialsService.decrypt).mockReturnValue({ apiKey: 'regular-key' });
+			decryptSpy.mockReturnValue({ apiKey: 'regular-key' });
 
 			await expect(credentialsController.updateCredentials(memberReq)).rejects.toThrow(
 				'Lacking permissions to reference external secrets in credentials',
@@ -522,7 +514,7 @@ describe('CredentialsController', () => {
 				dataToSave: memberReq.body.data,
 				decryptedExistingData: { apiKey: 'regular-key' },
 			});
-			expect(credentialsService.update).not.toHaveBeenCalled();
+			expect(updateSpy).not.toHaveBeenCalled();
 		});
 	});
 });

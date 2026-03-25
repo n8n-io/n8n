@@ -49,7 +49,19 @@ const executions = computed(() =>
 );
 
 const execution = computed(() => {
-	return executions.value.find((e) => e.id === executionId.value) ?? currentExecution.value;
+	const fromList = executions.value.find((e) => e.id === executionId.value);
+	const current = currentExecution.value;
+
+	if (!fromList) {
+		return current;
+	}
+
+	// Keep workflowVersionId from execution details if available
+	if (current?.id === fromList.id && current.workflowVersionId) {
+		return { ...fromList, workflowVersionId: current.workflowVersionId };
+	}
+
+	return fromList;
 });
 
 const currentExecution = ref<ExecutionSummary | undefined>();
