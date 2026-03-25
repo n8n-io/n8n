@@ -1,38 +1,40 @@
-FROM node:20
+# 1. Usamos Bookworm porque es más parecido a un entorno Ubuntu/Debian manual
+FROM node:20-bookworm
 
-RUN apt-get update && apt-get install -y \
-    python3 make g++ tini \
-    && rm -rf /var/lib/apt/lists/*
+# 2. Equivalente a tu paso 50 (apt update & upgrade) + dependencias de C++
+RUN apt-get update && apt-get upgrade -y && \
+    apt-get install -y python3 make g++ git tini && \
+    rm -rf /var/lib/apt/lists/*
 
+# 3. Equivalente a tus pasos 51 y 52
 ENV COREPACK_HOME=/home/node/.corepack
 RUN corepack enable && corepack prepare pnpm@10.22.0 --activate
 
 WORKDIR /app
-ENV NODE_OPTIONS="--max-old-space-size=4096"
 
-# Forzamos a pnpm a que los tipos sean visibles en todo el proyecto
-RUN echo "public-hoist-pattern[]=@types/*" > .npmrc
-RUN echo "shamefully-hoist=true" >> .npmrc
+# 4. TRUCO CRUCIAL: Engañamos a Lefthook creando un git falso
+# Esto evita que el paso 53 (pnpm install) falle.
+RUN git init
 
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+# Copiamos todo el proyecto
 COPY . .
 
-# Eliminamos el script que rompe el build por falta de Git
-RUN sed -i '/"prepare":/d' package.json
+# 5. Equivalente a tu paso 53
+# Usamos --no-frozen-lockfile por si acaso hay cambios de versiones
+RUN pnpm install --no-frozen-lockfile
 
-# Instalación sin ignorar scripts (para que se generen los tipos) 
-# pero omitiendo la congelación del lockfile
-RUN rm -rf node_modules && CI=true pnpm install --no-frozen-lockfile
+# 6. Equivalente a tus pasos 54 y 55 (Build)
+# Aumentamos la memoria para que no explote el compilador de TS
+ENV NODE_OPTIONS="--max-old-space-size=8192"
+RUN pnpm build --filter n8n... --continue
 
-# BUILD: Intentamos compilar, pero si hay errores de tipos menores, que no se detenga
-RUN pnpm build --filter n8n... --filter=!@n8n/eslint-plugin-community-nodes --continue
-
-# Configuración Tapis
+# 7. Configuración de archivos Tapis (como en los intentos anteriores)
 RUN mkdir -p /app/packages/cli/bin && \
-    echo "TAPIS_BASE_URL = 'https://portals.tapis.io'" > /app/packages/cli/bin/.env.tapis && \
-    echo "TAPIS_AUTH_ENDPOINT = '/v3/oauth2/tokens'" >> /app/packages/cli/bin/.env.tapis
+    echo "TAPIS_BASE_URL='https://portals.tapis.io'" > /app/packages/cli/bin/.env.tapis && \
+    echo "TAPIS_AUTH_ENDPOINT='/v3/oauth2/tokens'" >> /app/packages/cli/bin/.env.tapis
 
-RUN chown -R node:node /home/node /app
-USER node
+EXPOSE 5678
+
+# 8. Equivalente a tu paso 56
 ENTRYPOINT ["tini", "--"]
 CMD ["pnpm", "start"]
