@@ -3,88 +3,109 @@ import { readFileSync } from 'fs';
 import type { IWorkflowBase } from 'n8n-workflow';
 
 import { test, expect } from '../../../../../fixtures/base';
+import type { ApiHelpers } from '../../../../../services/api-helper';
 import { resolveFromRoot } from '../../../../../utils/path-helper';
 import { retryUntil } from '../../../../../utils/retry-utils';
 
-test.describe('Parent that does not wait for sub-workflow', {
-	annotation: [
-		{ type: 'owner', description: 'Catalysts' },
-	],
-}, () => {
-	test('should not wait for the sub-workflow', async ({ api }) => {
-		const childWorkflowId = (
-			await api.workflows.importWorkflowFromFile('subworkflow-wait-child.json')
-		).workflowId;
+/**
+ * Extracts the resume URL from an execution's node output.
+ */
+async function getResumeUrl(
+	api: ApiHelpers,
+	executionId: string,
+	nodeName: string,
+	fieldName: string,
+): Promise<string> {
+	const fullExecution = await api.workflows.getExecution(executionId);
+	const executionData = flatted.parse(fullExecution.data);
+	const nodeOutput = executionData.resultData.runData[nodeName];
+	return nodeOutput[0].data.main[0][0].json[fieldName] as string;
+}
 
-		const filePath = resolveFromRoot('workflows', 'subworkflow-parent-no-wait.json');
-		const fileContent = readFileSync(filePath, 'utf8');
-		const workflowDefinition = JSON.parse(fileContent) as IWorkflowBase;
-		expect(workflowDefinition?.nodes[0]?.parameters).toBeDefined();
-		// Replace the placeholder workflow ID with the actual child workflow ID
-		workflowDefinition.nodes[0].parameters.workflowId = {
-			value: childWorkflowId,
-			mode: 'list',
-		};
-		const { webhookPath, workflowId } =
-			await api.workflows.importWorkflowFromDefinition(workflowDefinition);
+test.describe(
+	'Parent that does not wait for sub-workflow',
+	{
+		annotation: [{ type: 'owner', description: 'Catalysts' }],
+	},
+	() => {
+		test('should not wait for the sub-workflow', async ({ api }) => {
+			const childWorkflowId = (
+				await api.workflows.importWorkflowFromFile('subworkflow-wait-child.json')
+			).workflowId;
 
-		const response = await api.webhooks.trigger(`/webhook/${webhookPath}`);
-		expect(response.ok()).toBe(true);
-		const execution = await api.workflows.waitForExecution(workflowId, 5000);
-		expect(execution.status).toBe('success');
+			const filePath = resolveFromRoot('workflows', 'subworkflow-parent-no-wait.json');
+			const fileContent = readFileSync(filePath, 'utf8');
+			const workflowDefinition = JSON.parse(fileContent) as IWorkflowBase;
+			expect(workflowDefinition?.nodes[0]?.parameters).toBeDefined();
+			// Replace the placeholder workflow ID with the actual child workflow ID
+			workflowDefinition.nodes[0].parameters.workflowId = {
+				value: childWorkflowId,
+				mode: 'list',
+			};
+			const { webhookPath, workflowId } =
+				await api.workflows.importWorkflowFromDefinition(workflowDefinition);
 
-		// The child workflow should still be running or waiting, since it's configured to wait 120s.
-		const getExecutionsResponse = await api.workflows.getExecutions(childWorkflowId);
-		// TODO: figure out why the filtering in `getExecutions` isn't working.
-		const childExecutions = getExecutionsResponse.filter((e) => e.workflowId === childWorkflowId);
-		expect(childExecutions.length).toBe(1);
-		expect(childExecutions[0].status).toMatch(/running|waiting/);
-	});
+			const response = await api.webhooks.trigger(`/webhook/${webhookPath}`);
+			expect(response.ok()).toBe(true);
+			const execution = await api.workflows.waitForExecution(workflowId, 5000);
+			expect(execution.status).toBe('success');
 
-	test('CAT-1445 should not be restarted by the child workflow finishing', async ({ api }) => {
-		// The child is a no-op that returns immediately.
-		const childWorkflowId = (
-			await api.workflows.importWorkflowFromFile('subworkflow-noop-child.json')
-		).workflowId;
+			// The child workflow should still be running or waiting, since it's configured to wait 120s.
+			const getExecutionsResponse = await api.workflows.getExecutions(childWorkflowId);
+			// TODO: figure out why the filtering in `getExecutions` isn't working.
+			const childExecutions = getExecutionsResponse.filter((e) => e.workflowId === childWorkflowId);
+			expect(childExecutions.length).toBe(1);
+			expect(childExecutions[0].status).toMatch(/running|waiting/);
+		});
 
-		// This is a parent that does NOT wait for the child to finish, but it has its own separate Wait node.
-		// We want to verify that the parent is NOT restarted when the child finishes. This was fixed in CAT-1445.
-		const filePath = resolveFromRoot('workflows', 'subworkflow-waiting-parent-no-child-wait.json');
-		const fileContent = readFileSync(filePath, 'utf8');
-		const workflowDefinition = JSON.parse(fileContent) as IWorkflowBase;
-		expect(workflowDefinition?.nodes[1]?.parameters).toBeDefined();
-		// Replace the placeholder workflow ID with the actual child workflow ID
-		workflowDefinition.nodes[1].parameters.workflowId = {
-			value: childWorkflowId,
-			mode: 'list',
-		};
-		const { webhookPath, workflowId } =
-			await api.workflows.importWorkflowFromDefinition(workflowDefinition);
+		test('CAT-1445 should not be restarted by the child workflow finishing', async ({ api }) => {
+			// The child is a no-op that returns immediately.
+			const childWorkflowId = (
+				await api.workflows.importWorkflowFromFile('subworkflow-noop-child.json')
+			).workflowId;
 
-		const response = await api.webhooks.trigger(`/webhook/${webhookPath}`);
-		expect(response.ok()).toBe(true);
+			// This is a parent that does NOT wait for the child to finish, but it has its own separate Wait node.
+			// We want to verify that the parent is NOT restarted when the child finishes. This was fixed in CAT-1445.
+			const filePath = resolveFromRoot(
+				'workflows',
+				'subworkflow-waiting-parent-no-child-wait.json',
+			);
+			const fileContent = readFileSync(filePath, 'utf8');
+			const workflowDefinition = JSON.parse(fileContent) as IWorkflowBase;
+			expect(workflowDefinition?.nodes[1]?.parameters).toBeDefined();
+			// Replace the placeholder workflow ID with the actual child workflow ID
+			workflowDefinition.nodes[1].parameters.workflowId = {
+				value: childWorkflowId,
+				mode: 'list',
+			};
+			const { webhookPath, workflowId } =
+				await api.workflows.importWorkflowFromDefinition(workflowDefinition);
 
-		// First, wait for the child to finish (child runs in 'integrated' mode when called by Execute Workflow node)
-		const childExecution = await api.workflows.waitForExecution(
-			childWorkflowId,
-			10000,
-			'integrated',
-		);
-		expect(childExecution.status).toBe('success');
+			const response = await api.webhooks.trigger(`/webhook/${webhookPath}`);
+			expect(response.ok()).toBe(true);
 
-		// Verify that the parent didn't get resumed. We might need to give it a moment to reach the waiting state.
-		await retryUntil(
-			async () => {
-				const getExecutionsResponse = await api.workflows.getExecutions(workflowId);
-				// TODO: figure out why the filtering in `getExecutions` isn't working.
-				const parentExecutions = getExecutionsResponse.filter((e) => e.workflowId === workflowId);
-				expect(parentExecutions.length).toBe(1);
-				expect(parentExecutions[0].status).toBe('waiting');
-			},
-			{ timeoutMs: 2000, intervalMs: 100 },
-		);
-	});
-});
+			// First, wait for the child to finish (child runs in 'integrated' mode when called by Execute Workflow node)
+			const childExecution = await api.workflows.waitForExecution(
+				childWorkflowId,
+				10000,
+				'integrated',
+			);
+			expect(childExecution.status).toBe('success');
+
+			// Verify that the parent didn't get resumed. We might need to give it a moment to reach the waiting state.
+			await retryUntil(
+				async () => {
+					const getExecutionsResponse = await api.workflows.getExecutions(workflowId);
+					// TODO: figure out why the filtering in `getExecutions` isn't working.
+					const parentExecutions = getExecutionsResponse.filter((e) => e.workflowId === workflowId);
+					expect(parentExecutions.length).toBe(1);
+					expect(parentExecutions[0].status).toBe('waiting');
+				},
+				{ timeoutMs: 2000, intervalMs: 100 },
+			);
+		});
+	},
+);
 
 test.describe('CAT-1801: Parent receives correct data from child with wait node', () => {
 	test('should return child final output to parent after wait completes', async ({ api }) => {
@@ -127,10 +148,10 @@ test.describe('CAT-1801: Parent receives correct data from child with wait node'
 			{ timeoutMs: 10000, intervalMs: 200 },
 		);
 
-		// Trigger the wait webhook to resume child using child execution ID
-		const waitWebhookResponse = await api.webhooks.trigger(
-			`/webhook-waiting/${childExecution!.id}`,
-		);
+		// Trigger the wait webhook to resume child using the resume URL
+		// The child workflow captures $execution.resumeUrl in the "Edit Fields" node's "webhook" field
+		const resumeUrl = await getResumeUrl(api, childExecution!.id, 'Edit Fields', 'webhook');
+		const waitWebhookResponse = await api.webhooks.trigger(resumeUrl);
 		expect(waitWebhookResponse.ok()).toBe(true);
 
 		// Wait for parent to complete
@@ -188,8 +209,14 @@ test.describe('CAT-1929: Parent should not resume until child with multiple wait
 		// Verify parent is also waiting at this point
 		await api.workflows.waitForWorkflowStatus(parentWorkflowId, 'waiting');
 
-		// Resume first wait node
-		const firstWaitResponse = await api.webhooks.trigger(`/webhook-waiting/${childExecution.id}`);
+		// Resume first wait node using URL from "Edit Fields - Before First Wait" node
+		const firstResumeUrl = await getResumeUrl(
+			api,
+			childExecution.id,
+			'Edit Fields - Before First Wait',
+			'webhook1',
+		);
+		const firstWaitResponse = await api.webhooks.trigger(firstResumeUrl);
 		expect(firstWaitResponse.ok()).toBe(true);
 
 		// Wait for child to reach the second wait node
@@ -202,8 +229,14 @@ test.describe('CAT-1929: Parent should not resume until child with multiple wait
 		);
 		expect(parentExecAfterFirstWait.status).toBe('waiting');
 
-		// Resume second wait node
-		const secondWaitResponse = await api.webhooks.trigger(`/webhook-waiting/${childExecution.id}`);
+		// Resume second wait node using URL from "Edit Fields - After First Wait" node
+		const secondResumeUrl = await getResumeUrl(
+			api,
+			childExecution.id,
+			'Edit Fields - After First Wait',
+			'webhook2',
+		);
+		const secondWaitResponse = await api.webhooks.trigger(secondResumeUrl);
 		expect(secondWaitResponse.ok()).toBe(true);
 
 		// Now parent should complete

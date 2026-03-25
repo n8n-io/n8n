@@ -28,6 +28,7 @@ export async function createBuilderPayload(
 	text: string,
 	id: string,
 	options: {
+		workflowId: string;
 		quickReplyType?: string;
 		executionData?: IRunExecutionData['resultData'];
 		workflow?: IWorkflowDb;
@@ -35,7 +36,7 @@ export async function createBuilderPayload(
 		mode?: 'build' | 'plan';
 		isPlanModeEnabled?: boolean;
 		allowSendingParameterValues?: boolean;
-	} = {},
+	},
 ): Promise<ChatRequest.UserChatMessage> {
 	const assistantHelpers = useAIAssistantHelpers();
 	const posthogStore = usePostHog();
@@ -94,6 +95,7 @@ export async function createBuilderPayload(
 
 	if (options.nodesForSchema?.length) {
 		const { schemas, pinnedNodeNames } = assistantHelpers.getNodesSchemas(
+			options.workflowId,
 			options.nodesForSchema,
 			shouldExcludeParameterValues,
 		);

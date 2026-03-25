@@ -7,6 +7,8 @@ import { mockedStore, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import { STORES } from '@n8n/stores';
 import merge from 'lodash/merge';
 import { expect, it } from 'vitest';
+import { computed } from 'vue';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 vi.mock('vue-router', () => {
 	const location = {};
@@ -22,6 +24,11 @@ vi.mock('vue-router', () => {
 });
 
 const renderComponent = createComponentRenderer(WorkflowExecutionsSidebar, {
+	global: {
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+		},
+	},
 	pinia: createTestingPinia({
 		initialState: {
 			[STORES.EXECUTIONS]: {

@@ -4,6 +4,7 @@ import type {
 	ChatMessageId,
 	ChatSessionId,
 	ChatAttachment,
+	ChatHubLLMProvider,
 } from '@n8n/api-types';
 import type { INodeCredentials, IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
 import { IconOrEmojiSchema } from 'n8n-workflow';
@@ -52,6 +53,7 @@ export type ContentBlock =
 
 // From packages/@n8n/nodes-langchain/nodes/memory/MemoryManager/MemoryManager.node.ts
 export type MessageRole = 'ai' | 'system' | 'user';
+
 export interface MessageRecord {
 	type: MessageRole;
 	message: string | ContentBlock[];
@@ -103,3 +105,15 @@ export type PreparedChatWorkflow = {
 	executionData: IRunExecutionData;
 	responseMode: ChatTriggerResponseMode;
 };
+
+export interface SemanticSearchOptions {
+	embeddingModel: {
+		provider: ChatHubLLMProvider;
+		credentialId: string;
+	};
+	vectorStore: {
+		nodeType: string;
+		credentialType: string;
+		credentialId: string;
+	};
+}

@@ -125,6 +125,67 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		return count > 0;
 	}
 
+	async findByCredentialResolverId(
+		resolverId: string,
+	): Promise<Array<Pick<WorkflowEntity, 'id' | 'name'>>> {
+		const qb = this.createQueryBuilder('workflow').select(['workflow.id', 'workflow.name']);
+		this.addCredentialResolverFilter(qb, resolverId);
+		return await qb.getMany();
+	}
+
+	/**
+	 * Finds IDs of active workflows that reference a credential resolver.
+	 */
+	async findActiveByCredentialResolverId(resolverId: string): Promise<string[]> {
+		const qb = this.createQueryBuilder('workflow')
+			.select(['workflow.id'])
+			.where('workflow.activeVersionId IS NOT NULL');
+		this.addCredentialResolverFilter(qb, resolverId, 'andWhere');
+		const workflows = await qb.getMany();
+		return workflows.map((w) => w.id);
+	}
+
+	private addCredentialResolverFilter(
+		qb: SelectQueryBuilder<WorkflowEntity>,
+		resolverId: string,
+		method: 'where' | 'andWhere' = 'where',
+	): void {
+		const dbType = this.globalConfig.database.type;
+
+		if (dbType === 'postgresdb') {
+			qb[method]("workflow.settings ->> 'credentialResolverId' = :resolverId", { resolverId });
+		} else if (dbType === 'sqlite') {
+			qb[method]("JSON_EXTRACT(workflow.settings, '$.credentialResolverId') = :resolverId", {
+				resolverId,
+			});
+		}
+	}
+
+	async clearCredentialResolverId(resolverId: string, trx?: EntityManager): Promise<void> {
+		const dbType = this.globalConfig.database.type;
+		const qb = trx
+			? trx.createQueryBuilder().update(WorkflowEntity)
+			: this.createQueryBuilder('workflow').update();
+
+		if (dbType === 'postgresdb') {
+			await qb
+				.set({
+					settings: () => "settings::jsonb - 'credentialResolverId'",
+				})
+				.where("settings ->> 'credentialResolverId' = :resolverId", { resolverId })
+				.execute();
+		} else if (dbType === 'sqlite') {
+			await qb
+				.set({
+					settings: () => "json_remove(settings, '$.credentialResolverId')",
+				})
+				.where("JSON_EXTRACT(settings, '$.credentialResolverId') = :resolverId", {
+					resolverId,
+				})
+				.execute();
+		}
+	}
+
 	async findById(workflowId: string) {
 		return await this.findOne({
 			where: { id: workflowId },
@@ -1413,6 +1474,15 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		const maxVersionIdAlias = 'maxVersionId';
 		const depAlias = 'dep';
 
+		// Only select columns needed for indexing to avoid loading large unused
+		// JSON columns (connections, staticData, pinData) that can cause OOM.
+		qb.select([
+			'workflow.id',
+			'workflow.versionCounter',
+			'workflow.activeVersionId',
+			'workflow.nodes',
+		]);
+
 		qb.leftJoin(
 			(subQuery) => {
 				return (
@@ -1457,6 +1527,12 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		const depAlias = 'dep';
 		const publishedVersionIdAlias = 'publishedVersionId';
 
+		// Only select columns needed for indexing to avoid loading large unused
+		// JSON columns (connections, staticData, pinData) that can cause OOM.
+		// For published version indexing we need the published version's nodes
+		// (from activeVersion), not the draft nodes.
+		qb.select(['workflow.id', 'workflow.versionCounter', 'workflow.activeVersionId']);
+
 		// Left join to find matching published version dependencies
 		qb.leftJoin(
 			(subQuery) => {
@@ -1477,8 +1553,10 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			`${qb.escape(depAlias)}.${qb.escape(publishedVersionIdAlias)} IS NULL`,
 		);
 
-		// Include activeVersion relation for efficiency
-		qb.leftJoinAndSelect('workflow.activeVersion', 'activeVersion');
+		// Include the published version's nodes for indexing (skip connections to save memory).
+		// The primary key (versionId) must be selected for TypeORM to hydrate the relation.
+		qb.leftJoin('workflow.activeVersion', 'activeVersion');
+		qb.addSelect(['activeVersion.versionId', 'activeVersion.nodes']);
 
 		if (batchSize) {
 			qb.limit(batchSize);
