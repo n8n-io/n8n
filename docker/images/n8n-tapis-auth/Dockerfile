@@ -10,12 +10,13 @@ RUN corepack enable && corepack prepare pnpm@10.22.0 --activate
 
 WORKDIR /app
 
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json ./
+
 COPY . .
 
 # 2. Install and Build
 RUN rm -rf node_modules && CI=true pnpm install
-RUN pnpm build
+RUN pnpm build --filter n8n
 
 # 3. Create Tapis configuration
 RUN mkdir -p /app/packages/cli/bin && \

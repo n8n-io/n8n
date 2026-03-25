@@ -32,6 +32,7 @@
 !pnpm-workspace.yaml
 !turbo.json
 !turbo.jsonc
+!tsconfig.json
 !patches
 !patches/**
 !scripts
