@@ -93,6 +93,7 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 	async dispose(): Promise<void> {
 		this.disposed = true;
 		this.codeCache.clear();
+		this.config.observability?.metrics.gauge('expression.code_cache.size', 0);
 		await this.config.bridge.dispose();
 	}
 
