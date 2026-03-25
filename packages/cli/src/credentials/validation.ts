@@ -2,79 +2,22 @@ import type { User } from '@n8n/db';
 import get from 'lodash/get';
 import { type ICredentialDataDecryptedObject } from 'n8n-workflow';
 
+import {
+	extractProviderKeysFromExpression,
+	getExternalSecretExpressionPaths,
+} from './external-secrets.utils';
+
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { getAllKeyPaths } from '@/utils';
 
 // #region External Secrets
-
-/**
- * Regular expression pattern for valid provider keys.
- * Keep this in sync with the regex implemented in CreateSecretsProviderConnectionDto.
- */
-const PROVIDER_KEY_PATTERN = '[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*';
-
-/**
- * Checks if a string value contains an external secret expression.
- * Detects both dot notation ($secrets.vault.key) and bracket notation ($secrets['vault']['key']).
- */
-export function containsExternalSecretExpression(value: string): boolean {
-	const containsExpression = value.includes('{{') && value.includes('}}');
-	if (!containsExpression) {
-		return false;
-	}
-	return value.includes('$secrets.') || value.includes('$secrets[');
-}
-
-/**
- * Extracts the provider keys from an expression string.
- * Supports both dot notation ($secrets.vault.key) and bracket notation ($secrets['vault']['key']).
- * Only extracts provider keys from $secrets references inside {{ }} expression braces.
- *
- * @param expression - The expression string containing $secrets reference
- * @returns Array of unique provider keys, or empty array if none found
- *
- * @example
- * extractProviderKeys("={{ $secrets.vault.myKey }}") // returns ["vault"]
- * extractProviderKeys("={{ $secrets['aws']['secret'] }}") // returns ["aws"]
- * extractProviderKeys("={{ $secrets.vault.myKey + ':' + $secrets.aws.otherKey }}") // returns ["vault", "aws"]
- * extractProviderKeys("$secrets.vault.key") // returns [] (not inside braces)
- */
-export function extractProviderKeys(expression: string): string[] {
-	const providerKeys = new Set<string>();
-
-	const expressionBlocks = expression.matchAll(/\{\{(.*?)\}\}/gs);
-
-	for (const expression of expressionBlocks) {
-		const expressionContent = expression[1]; // Content inside {{ }}
-
-		// Match all dot notation occurrences: $secrets.providerKey
-		const dotMatches = expressionContent.matchAll(
-			new RegExp(`\\$secrets\\.(${PROVIDER_KEY_PATTERN})`, 'g'),
-		);
-		for (const match of dotMatches) {
-			providerKeys.add(match[1]);
-		}
-
-		// Match all bracket notation occurrences: $secrets['providerKey'] or $secrets["providerKey"]
-		const bracketMatches = expressionContent.matchAll(
-			new RegExp(`\\$secrets\\[['"](${PROVIDER_KEY_PATTERN})['"]\\]`, 'g'),
-		);
-		for (const match of bracketMatches) {
-			providerKeys.add(match[1]);
-		}
-	}
-
-	return Array.from(providerKeys);
-}
 
 /**
  * Checks if credential data contains any external secret expressions ($secrets)
  */
 function containsExternalSecrets(data: ICredentialDataDecryptedObject): boolean {
-	const secretPaths = getAllKeyPaths(data, '', [], containsExternalSecretExpression);
-	return secretPaths.length > 0;
+	return getExternalSecretExpressionPaths(data).length > 0;
 }
 
 /**
@@ -85,7 +28,7 @@ export function isChangingExternalSecretExpression(
 	existingData: ICredentialDataDecryptedObject,
 ): boolean {
 	// Find all paths in newData that contain external secret expressions
-	const newSecretPaths = getAllKeyPaths(newData, '', [], containsExternalSecretExpression);
+	const newSecretPaths = getExternalSecretExpressionPaths(newData);
 
 	// Check if any of these paths represent a change from existingData
 	for (const path of newSecretPaths) {
@@ -150,7 +93,7 @@ export async function validateAccessToReferencedSecretProviders(
 	externalSecretsProviderAccessCheckService: SecretsProviderAccessCheckService,
 	source: 'create' | 'update' | 'transfer',
 ) {
-	const secretPaths = getAllKeyPaths(data, '', [], containsExternalSecretExpression);
+	const secretPaths = getExternalSecretExpressionPaths(data);
 	if (secretPaths.length === 0) {
 		return; // No external secrets referenced, nothing to check
 	}
@@ -161,7 +104,7 @@ export async function validateAccessToReferencedSecretProviders(
 	for (const credentialProperty of secretPaths) {
 		const expressionString = get(data, credentialProperty);
 		if (typeof expressionString === 'string') {
-			const providerKeys = extractProviderKeys(expressionString);
+			const providerKeys = extractProviderKeysFromExpression(expressionString);
 			if (providerKeys.length === 0) {
 				throw new BadRequestError(
 					`Could not find a valid external secret vault name inside "${expressionString}" used in "${credentialProperty}"`,
