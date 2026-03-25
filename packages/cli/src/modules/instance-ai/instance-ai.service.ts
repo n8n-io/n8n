@@ -23,11 +23,9 @@ import {
 	BuilderSandboxFactory,
 	SnapshotManager,
 	createDomainAccessTracker,
-	AgentTreeSnapshotStorage,
 	BackgroundTaskManager,
 	buildAgentTreeFromEvents,
 	enrichMessageWithBackgroundTasks,
-	MastraIterationLogStorage,
 	MastraTaskStorage,
 	PlannedTaskCoordinator,
 	PlannedTaskStorage,
@@ -63,6 +61,8 @@ import { InstanceAiAdapterService } from './instance-ai.adapter.service';
 import { AUTO_FOLLOW_UP_MESSAGE } from './internal-messages';
 import { TypeORMCompositeStore } from './storage/typeorm-composite-store';
 import type { TypeORMWorkflowsStorage } from './storage/typeorm-workflows-storage';
+import { DbSnapshotStorage } from './storage/db-snapshot-storage';
+import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
 import { InstanceAiCompactionService } from './compaction.service';
 
 function getErrorMessage(error: unknown): string {
@@ -128,6 +128,8 @@ export class InstanceAiService {
 		private readonly compositeStore: TypeORMCompositeStore,
 		private readonly compactionService: InstanceAiCompactionService,
 		private readonly urlService: UrlService,
+		private readonly dbSnapshotStorage: DbSnapshotStorage,
+		private readonly dbIterationLogStorage: DbIterationLogStorage,
 	) {
 		this.instanceAiConfig = globalConfig.instanceAi;
 		this.defaultTimeZone = globalConfig.generic.timezone;
@@ -634,8 +636,8 @@ export class InstanceAiService {
 		await this.ensureThreadExists(memory, threadId, user.id);
 
 		const taskStorage = new MastraTaskStorage(memory);
-		const iterationLog = new MastraIterationLogStorage(memory);
-		const snapshotStorage = new AgentTreeSnapshotStorage(memory);
+		const iterationLog = this.dbIterationLogStorage;
+		const snapshotStorage = this.dbSnapshotStorage;
 		const workflowLoopStorage = new WorkflowLoopStorage(memory);
 		const workflowTasks = new WorkflowTaskCoordinator(threadId, workflowLoopStorage);
 		const plannedTaskStorage = new PlannedTaskStorage(memory);
@@ -1109,15 +1111,6 @@ export class InstanceAiService {
 			...(data.answers ? { answers: data.answers } : {}),
 		};
 
-		// Create snapshot storage for saving agent tree after resumed run completes
-		const memory = createMemory({
-			storage: this.compositeStore,
-			embedderModel: this.instanceAiConfig.embedderModel || undefined,
-			lastMessages: this.instanceAiConfig.lastMessages,
-			semanticRecallTopK: this.instanceAiConfig.semanticRecallTopK,
-		});
-		const snapshotStorage = new AgentTreeSnapshotStorage(memory);
-
 		void this.processResumedStream(agent, resumeData, {
 			runId,
 			mastraRunId,
@@ -1126,7 +1119,7 @@ export class InstanceAiService {
 			toolCallId,
 			signal: abortController.signal,
 			abortController,
-			snapshotStorage,
+			snapshotStorage: this.dbSnapshotStorage,
 		});
 		return true;
 	}
@@ -1142,7 +1135,7 @@ export class InstanceAiService {
 			toolCallId: string;
 			signal: AbortSignal;
 			abortController: AbortController;
-			snapshotStorage: AgentTreeSnapshotStorage;
+			snapshotStorage: DbSnapshotStorage;
 		},
 	): Promise<void> {
 		try {
@@ -1216,7 +1209,7 @@ export class InstanceAiService {
 	private spawnBackgroundTask(
 		runId: string,
 		opts: SpawnBackgroundTaskOptions,
-		snapshotStorage: AgentTreeSnapshotStorage,
+		snapshotStorage: DbSnapshotStorage,
 		messageGroupIdOverride?: string,
 	): void {
 		this.backgroundTasks.spawn({
@@ -1335,7 +1328,7 @@ export class InstanceAiService {
 		threadId: string,
 		runId: string,
 		status: 'completed' | 'cancelled',
-		snapshotStorage: AgentTreeSnapshotStorage,
+		snapshotStorage: DbSnapshotStorage,
 	): Promise<void> {
 		this.publishRunFinish(threadId, runId, status);
 		if (status === 'completed') {
@@ -1370,7 +1363,7 @@ export class InstanceAiService {
 	private async saveAgentTreeSnapshot(
 		threadId: string,
 		runId: string,
-		snapshotStorage: AgentTreeSnapshotStorage,
+		snapshotStorage: DbSnapshotStorage,
 		isUpdate = false,
 		overrideMessageGroupId?: string,
 	): Promise<void> {
