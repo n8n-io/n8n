@@ -761,6 +761,14 @@ function handleStop() {
 
 .scrollToBottomButton {
 	pointer-events: auto;
+	background: var(--color--background--light-2);
+	border: var(--border);
+	border-radius: var(--radius);
+	color: var(--color--text--tint-1);
+
+	&:hover {
+		background: var(--color--foreground--tint-2);
+	}
 }
 
 .inputContainer {
