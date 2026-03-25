@@ -1,31 +1,30 @@
 import {
-	BeforeInsert,
 	Column,
 	Entity,
 	Index,
+	JoinColumn,
 	JoinTable,
 	ManyToMany,
-	PrimaryColumn,
+	ManyToOne,
 	type Relation,
 } from '@n8n/typeorm';
-import { randomUUID } from 'node:crypto';
 
+import { WithTimestampsAndStringId } from './abstract-entity';
 import { Project } from './project';
+import { Role } from './role';
 
 @Entity()
 @Index(['role'])
 @Index(['type', 'order'])
-export class RoleMappingRule {
-	@PrimaryColumn('uuid')
-	id: string;
-
+export class RoleMappingRule extends WithTimestampsAndStringId {
 	@Column({ type: 'text' })
 	expression: string;
 
-	@Column({ type: String, length: 255 })
-	role: string;
+	@ManyToOne('Role', 'roleMappingRules')
+	@JoinColumn({ name: 'role', referencedColumnName: 'slug' })
+	role: Role;
 
-	@Column({ type: String, length: 255 })
+	@Column({ type: String, length: 64 })
 	type: string;
 
 	@Column({ type: 'integer', name: 'order' })
@@ -44,11 +43,4 @@ export class RoleMappingRule {
 		},
 	})
 	projects: Relation<Project[]>;
-
-	@BeforeInsert()
-	generateId() {
-		if (!this.id) {
-			this.id = randomUUID();
-		}
-	}
 }
