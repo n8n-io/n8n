@@ -140,19 +140,3 @@ pnpm build       # rimraf dist && tsc -p tsconfig.build.json → dist/
 pnpm typecheck   # tsc --noEmit
 pnpm test        # jest (unit)
 ```
-
-## Playground
-
-The `playground/` directory is a Nuxt 3 app (`@n8n/agents-playground`) for
-interactive SDK testing. It depends on the parent package via `file:..`. From
-the playground folder, `pnpm dev` builds `@n8n/agents` in the monorepo (via
-`pnpm --filter @n8n/agents build`) then starts Nuxt:
-
-```bash
-cd packages/@n8n/agents/playground
-pnpm install
-pnpm dev
-```
-
-Use **pnpm** (not npm) so the `dev` script and workspace filter resolve correctly
-from the repository root.
