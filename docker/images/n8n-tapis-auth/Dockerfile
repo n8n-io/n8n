@@ -20,6 +20,7 @@ RUN pnpm rebuild isolated-vm sqlite3
 
 # 4. BUILD DE N8N: Sin que nada nos detenga
 ENV NODE_OPTIONS="--max-old-space-size=8192"
+RUN pnpm add -Dw esbuild --ignore-scripts
 RUN pnpm build
 
 # --- ETAPA FINAL ---
