@@ -78,22 +78,31 @@ export function getProxyPath(obj: object): string[] | undefined {
  * @returns Proxy object with lazy loading behavior
  */
 export function createDeepLazyProxy(basePath: string[] = [], knownKeys?: string[]): any {
+	// Cache for keys fetched from the bridge (root proxies without knownKeys).
+	// Shared between ownKeys and getOwnPropertyDescriptor for consistency.
+	let fetchedKeys: string[] | undefined;
+
+	function resolveKeys(): string[] {
+		if (knownKeys) return knownKeys;
+		if (fetchedKeys) return fetchedKeys;
+		const value = globalThis.__getValueAtPath.applySync(null, [basePath], {
+			arguments: { copy: true },
+			result: { copy: true },
+		});
+		if (value && typeof value === 'object' && value.__isObject) {
+			fetchedKeys = value.__keys as string[];
+			return fetchedKeys;
+		}
+		return [];
+	}
+
 	const proxy = new Proxy({} as Record<string, unknown>, {
-		ownKeys(_target: any): string[] {
-			if (knownKeys) return knownKeys;
-			// If no known keys, fetch them from the bridge
-			const value = globalThis.__getValueAtPath.applySync(null, [basePath], {
-				arguments: { copy: true },
-				result: { copy: true },
-			});
-			if (value && typeof value === 'object' && value.__isObject) {
-				return value.__keys as string[];
-			}
-			return [];
+		ownKeys(): string[] {
+			return resolveKeys();
 		},
 		getOwnPropertyDescriptor(_target: any, prop: string | symbol): PropertyDescriptor | undefined {
 			if (typeof prop === 'symbol') return undefined;
-			if (knownKeys?.includes(prop as string)) {
+			if (resolveKeys().includes(prop as string)) {
 				return { configurable: true, enumerable: true, writable: false };
 			}
 			return undefined;
