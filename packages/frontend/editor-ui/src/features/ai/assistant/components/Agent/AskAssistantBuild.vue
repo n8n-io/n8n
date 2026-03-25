@@ -221,7 +221,14 @@ const isChatInputDisabled = computed(() => {
 	return isInputDisabled.value || builderStore.shouldDisableChatInput;
 });
 
-const { versionNodeChangesMap, showReviewChanges, nodeChanges, isExpanded, toggleExpanded, openDiffView } = useReviewChanges();
+const {
+	versionNodeChangesMap,
+	showReviewChanges,
+	nodeChanges,
+	isExpanded,
+	toggleExpanded,
+	openDiffView,
+} = useReviewChanges();
 
 function onSelectChangedNode(nodeId: string) {
 	canvasEventBus.emit('nodes:select', { ids: [nodeId], panIntoView: true });
