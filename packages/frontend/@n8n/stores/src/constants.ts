@@ -50,6 +50,7 @@ export const STORES = {
 	CHAT_HUB_PANEL: 'chatHubPanel',
 	EXPERIMENT_EMPTY_STATE_BUILDER_PROMPT: 'emptyStateBuilderPrompt',
 	EXPERIMENT_CREDENTIALS_APP_SELECTION: 'credentialsAppSelection',
+	EXPERIMENT_CREDENTIAL_SETUP_RECIPE: 'credentialSetupRecipe',
 	SETUP_PANEL: 'setupPanel',
 	FOCUSED_NODES: 'focusedNodes',
 } as const;

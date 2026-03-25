@@ -69,6 +69,8 @@ import get from 'lodash/get';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 import { useQuickConnect } from '../../quickConnect/composables/useQuickConnect';
 import type { CredentialModeOption } from './CredentialModeSelector.vue';
+import { useCredentialSetupRecipeStore } from '@/experiments/credentialsSetup/stores/credentialSetupRecipe.store';
+import RecipeCredentialSetup from '@/experiments/credentialsSetup/components/RecipeCredentialSetup.vue';
 
 type Props = {
 	modalName: string;
@@ -97,7 +99,9 @@ const router = useRouter();
 const rootStore = useRootStore();
 const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
 const { getQuickConnectOption, connect: quickConnect } = useQuickConnect();
+const recipeStore = useCredentialSetupRecipeStore();
 const isQuickConnectMode = ref(false);
+const recipeFallbackToManual = ref(false);
 const activeTab = ref('connection');
 const authError = ref('');
 const credentialId = ref('');
@@ -344,6 +348,7 @@ const defaultCredentialTypeName = computed(() => {
 });
 
 const showSaveButton = computed(() => {
+	if (recipeMode.value) return false;
 	if (isQuickConnectMode.value) return false;
 	const hasPermission = credentialPermissions.value.create ?? credentialPermissions.value.update;
 	if (!hasPermission) return false;
@@ -359,6 +364,15 @@ const homeProject = computed(() => {
 });
 
 const isNewCredential = computed(() => props.mode === 'new' && !credentialId.value);
+
+const recipeMode = computed(
+	() =>
+		props.mode === 'new' &&
+		!recipeFallbackToManual.value &&
+		credentialTypeName.value !== null &&
+		credentialTypeName.value !== '' &&
+		recipeStore.isRecipeActive(credentialTypeName.value, 'modal'),
+);
 
 function setCredentialPropertyDefaults() {
 	if (credentialType.value) {
@@ -1306,6 +1320,33 @@ function resetCredentialData(): void {
 	};
 }
 
+function onRecipeSuccess(credential: ICredentialsResponse) {
+	credentialsStore.upsertCredential(credential);
+	modalBus.value.emit('close');
+}
+
+function onRecipeFailure() {
+	// Error state is handled inside the recipe component.
+}
+
+function onRecipeCredentialDataUpdate(data: Record<string, unknown>) {
+	credentialData.value = {
+		...credentialData.value,
+		...(data as ICredentialDataDecryptedObject),
+	};
+}
+
+function onRecipeManualFallback(step: string) {
+	recipeFallbackToManual.value = true;
+	if (credentialTypeName.value) {
+		recipeStore.trackRecipeEvent(
+			'credential_setup_recipe_manual_fallback',
+			credentialTypeName.value,
+			{ step },
+		);
+	}
+}
+
 const credNameRef = useTemplateRef('credNameRef');
 const { width } = useElementSize(credNameRef);
 </script>
@@ -1393,7 +1434,16 @@ const { width } = useElementSize(credNameRef);
 					ref="contentRef"
 					:class="$style.mainContent"
 				>
+					<RecipeCredentialSetup
+						v-if="recipeMode"
+						:credential-type-name="credentialTypeName!"
+						@success="onRecipeSuccess"
+						@failure="onRecipeFailure"
+						@manual-fallback="onRecipeManualFallback"
+						@update:credential-data="onRecipeCredentialDataUpdate"
+					/>
 					<CredentialConfig
+						v-else
 						:credential-type="credentialType"
 						:credential-properties="credentialProperties"
 						:credential-data="credentialData"

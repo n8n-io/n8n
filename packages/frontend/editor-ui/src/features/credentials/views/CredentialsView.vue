@@ -31,6 +31,8 @@ import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router';
 import { useCredentialsStore } from '../credentials.store';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
 import { useDependencies } from '@/app/composables/useDependencies';
+import { useCredentialSetupRecipeStore } from '@/experiments/credentialsSetup/stores/credentialSetupRecipe.store';
+import { BADGE_LABELS } from '@/experiments/credentialsSetup/constants';
 
 import { N8nActionBox, N8nCheckbox, N8nInputLabel, N8nOption, N8nSelect } from '@n8n/design-system';
 const props = defineProps<{
@@ -38,6 +40,7 @@ const props = defineProps<{
 }>();
 
 const credentialsStore = useCredentialsStore();
+const recipeStore = useCredentialSetupRecipeStore();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const sourceControlStore = useSourceControlStore();
@@ -169,6 +172,12 @@ const onFilter = (resource: Resource, newFilters: BaseFilters, matches: boolean)
 	}
 
 	return matches;
+};
+
+const getRecipeBadge = (credentialTypeName: string): string | undefined => {
+	if (!recipeStore.isRecipeActive(credentialTypeName, 'badges')) return undefined;
+	const { recipe } = recipeStore.getRecipeActivation(credentialTypeName).resolved;
+	return recipe.badgeLabel ?? BADGE_LABELS[recipe.friction];
 };
 
 const maybeCreateCredential = () => {
@@ -340,7 +349,16 @@ onMounted(() => {
 						:key="credentialType.name"
 						:value="credentialType.name"
 						:label="credentialType.displayName"
-					/>
+					>
+						{{ credentialType.displayName }}
+						<span
+							v-if="getRecipeBadge(credentialType.name)"
+							:class="$style.frictionBadge"
+							data-test-id="credential-friction-badge"
+						>
+							{{ getRecipeBadge(credentialType.name) }}
+						</span>
+					</N8nOption>
 				</N8nSelect>
 			</div>
 			<div class="mb-s">
@@ -428,5 +446,16 @@ onMounted(() => {
 
 .sidebarContainer ul {
 	padding: 0 !important;
+}
+
+.frictionBadge {
+	display: inline-block;
+	margin-left: var(--spacing--4xs);
+	padding: var(--spacing--5xs) var(--spacing--3xs);
+	font-size: var(--font-size--3xs);
+	color: var(--color--success);
+	background-color: var(--color--success--tint-4);
+	border-radius: var(--radius--sm);
+	white-space: nowrap;
 }
 </style>

@@ -11,6 +11,9 @@ import Modal from '@/app/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
 
 import { N8nButton, N8nIcon, N8nOption, N8nSelect } from '@n8n/design-system';
+import { useCredentialSetupRecipeStore } from '@/experiments/credentialsSetup/stores/credentialSetupRecipe.store';
+import { BADGE_LABELS, FRICTION_SORT_ORDER } from '@/experiments/credentialsSetup/constants';
+
 const externalHooks = useExternalHooks();
 const telemetry = useTelemetry();
 const i18n = useI18n();
@@ -23,6 +26,7 @@ const selectRef = ref<HTMLSelectElement>();
 const credentialsStore = useCredentialsStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
+const recipeStore = useCredentialSetupRecipeStore();
 
 onMounted(async () => {
 	try {
@@ -39,9 +43,29 @@ onMounted(async () => {
 });
 
 // Exclude purpose built credentials for ChatHub
-const selectableCredentialTypes = computed(() =>
-	credentialsStore.allCredentialTypes.filter((c) => !c.name.startsWith('chatHub')),
-);
+const selectableCredentialTypes = computed(() => {
+	const types = credentialsStore.allCredentialTypes.filter((c) => !c.name.startsWith('chatHub'));
+
+	// When experiment is enabled, sort recipe-active types to top by friction level
+	if (recipeStore.isExperimentEnabled) {
+		return [...types].sort((a, b) => {
+			const aActive = recipeStore.isRecipeActive(a.name, 'badges');
+			const bActive = recipeStore.isRecipeActive(b.name, 'badges');
+			if (aActive && !bActive) return -1;
+			if (!aActive && bActive) return 1;
+			if (aActive && bActive) {
+				const aFriction = recipeStore.getRecipeActivation(a.name).resolved.recipe.friction;
+				const bFriction = recipeStore.getRecipeActivation(b.name).resolved.recipe.friction;
+				const aOrder = FRICTION_SORT_ORDER.indexOf(aFriction);
+				const bOrder = FRICTION_SORT_ORDER.indexOf(bFriction);
+				if (aOrder !== bOrder) return aOrder - bOrder;
+			}
+			return a.displayName.localeCompare(b.displayName);
+		});
+	}
+
+	return types;
+});
 
 function onSelect(type: string) {
 	selected.value = type;
@@ -60,6 +84,12 @@ function openCredentialType() {
 
 	telemetry.track('User opened Credential modal', telemetryPayload);
 	void externalHooks.run('credentialsSelectModal.openCredentialType', telemetryPayload);
+}
+
+function getRecipeBadge(credentialTypeName: string): string | undefined {
+	if (!recipeStore.isRecipeActive(credentialTypeName, 'badges')) return undefined;
+	const { recipe } = recipeStore.getRecipeActivation(credentialTypeName).resolved;
+	return recipe.badgeLabel ?? BADGE_LABELS[recipe.friction];
 }
 </script>
 
@@ -103,7 +133,16 @@ function openCredentialType() {
 						:label="credential.displayName"
 						filterable
 						data-test-id="new-credential-type-select-option"
-					/>
+					>
+						{{ credential.displayName }}
+						<span
+							v-if="getRecipeBadge(credential.name)"
+							:class="$style.frictionBadge"
+							data-test-id="credential-friction-badge"
+						>
+							{{ getRecipeBadge(credential.name) }}
+						</span>
+					</N8nOption>
 				</N8nSelect>
 			</div>
 		</template>
@@ -132,5 +171,16 @@ function openCredentialType() {
 	margin-bottom: var(--spacing--sm);
 	font-size: var(--font-size--md);
 	line-height: var(--line-height--xl);
+}
+
+.frictionBadge {
+	display: inline-block;
+	margin-left: var(--spacing--4xs);
+	padding: var(--spacing--5xs) var(--spacing--3xs);
+	font-size: var(--font-size--3xs);
+	color: var(--color--success);
+	background-color: var(--color--success--tint-4);
+	border-radius: var(--radius--sm);
+	white-space: nowrap;
 }
 </style>
