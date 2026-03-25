@@ -32,7 +32,10 @@ function handleClick(e: MouseEvent) {
 		openPreview?.(props.resourceId);
 	} else if (props.type === 'data-table') {
 		if (e.metaKey || e.ctrlKey) {
-			window.open('/data-tables', '_blank');
+			const url = props.projectId
+				? `/projects/${props.projectId}/datatables/${props.resourceId}`
+				: '/home/datatables';
+			window.open(url, '_blank');
 			return;
 		}
 		if (props.projectId) {

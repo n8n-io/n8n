@@ -103,6 +103,33 @@ function extractDataTableId(
  * Walks an agent tree depth-first (most recent last) and returns the dataTableId
  * and toolCallId from the latest successful data-table tool result.
  */
+/**
+ * Walks an agent tree depth-first (most recent last) and returns the dataTableId
+ * from the latest successful delete-data-table tool result.
+ */
+export function getLatestDeletedDataTableId(node: InstanceAiAgentNode): string | undefined {
+	for (let i = node.children.length - 1; i >= 0; i--) {
+		const childResult = getLatestDeletedDataTableId(node.children[i]);
+		if (childResult) return childResult;
+	}
+	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
+		const tc = node.toolCalls[i];
+		if (
+			tc.toolName === 'delete-data-table' &&
+			!tc.isLoading &&
+			tc.result &&
+			typeof tc.result === 'object'
+		) {
+			const result = tc.result as Record<string, unknown>;
+			const args = tc.args as Record<string, unknown> | undefined;
+			if (result.success === true && typeof args?.dataTableId === 'string') {
+				return args.dataTableId;
+			}
+		}
+	}
+	return undefined;
+}
+
 export function getLatestDataTableResult(node: InstanceAiAgentNode): DataTableResult | undefined {
 	for (let i = node.children.length - 1; i >= 0; i--) {
 		const childResult = getLatestDataTableResult(node.children[i]);

@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref, onMounted, onUpdated, useCssModule } from 'vue';
+import { computed, inject, ref, onMounted, onUpdated, useCssModule } from 'vue';
 import ChatMarkdownChunk from '@/features/ai/chatHub/components/ChatMarkdownChunk.vue';
 import { useInstanceAiStore } from '../instanceAi.store';
 
@@ -11,6 +11,15 @@ const store = useInstanceAiStore();
 const styles = useCssModule();
 const wrapperRef = ref<HTMLElement | null>(null);
 
+const openWorkflowPreview = inject<((id: string) => void) | undefined>(
+	'openWorkflowPreview',
+	undefined,
+);
+const openDataTablePreview = inject<((id: string, projectId: string) => void) | undefined>(
+	'openDataTablePreview',
+	undefined,
+);
+
 /** Icon SVG paths for each resource type — matches the n8n design system icons. */
 const ICON_SVGS: Record<string, string> = {
 	workflow:
@@ -21,12 +30,19 @@ const ICON_SVGS: Record<string, string> = {
 		'<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/></svg>',
 };
 
-/** URL builders for each resource type. */
-const URL_BUILDERS: Record<string, (id: string) => string> = {
-	workflow: (id) => `/workflow/${id}`,
-	credential: () => '/credentials',
-	'data-table': () => '/data-tables',
-};
+/** Build the app URL for a resource (used for Cmd+click / new tab). */
+function buildResourceUrl(type: string, id: string): string {
+	if (type === 'workflow') return `/workflow/${id}`;
+	if (type === 'credential') return '/credentials';
+	if (type === 'data-table') {
+		const entry = [...store.resourceRegistry.values()].find(
+			(r) => r.type === 'data-table' && r.id === id,
+		);
+		if (entry?.projectId) return `/projects/${entry.projectId}/datatables/${id}`;
+		return '/home/datatables';
+	}
+	return '#';
+}
 
 /**
  * Pre-process the raw markdown content: replace known resource names with
@@ -98,11 +114,29 @@ function enhanceResourceLinks(): void {
 
 		const [, type, id] = match;
 
-		// Swap href to the real app URL
-		link.href = URL_BUILDERS[type]?.(id) ?? '#';
+		// Swap href to the real app URL (used for Cmd+click / new tab)
+		link.href = buildResourceUrl(type, id);
 		link.target = '_blank';
 		link.dataset.resourceChip = type;
+		link.dataset.resourceId = id;
 		link.classList.add(styles.resourceChip);
+
+		// Regular click opens preview; Cmd/Ctrl+click falls through to default (new tab)
+		link.addEventListener('click', (e: MouseEvent) => {
+			if (e.metaKey || e.ctrlKey) return; // Let browser handle new-tab
+
+			e.preventDefault();
+			if (type === 'workflow') {
+				openWorkflowPreview?.(id);
+			} else if (type === 'data-table') {
+				const entry = [...store.resourceRegistry.values()].find(
+					(r) => r.type === 'data-table' && r.id === id,
+				);
+				if (entry?.projectId) {
+					openDataTablePreview?.(id, entry.projectId);
+				}
+			}
+		});
 
 		// Prepend icon SVG
 		const iconHtml = ICON_SVGS[type];

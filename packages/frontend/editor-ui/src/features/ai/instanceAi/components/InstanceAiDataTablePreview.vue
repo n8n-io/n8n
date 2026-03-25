@@ -39,7 +39,9 @@ async function fetchDataTable(id: string, projectId: string) {
 	}
 
 	try {
-		const result = await dataTableStore.fetchOrFindDataTable(id, projectId);
+		const result = isRefresh
+			? await dataTableStore.fetchDataTableDetails(id, projectId)
+			: await dataTableStore.fetchOrFindDataTable(id, projectId);
 		dataTable.value = result ?? null;
 		if (!result) {
 			fetchError.value = i18n.baseText('instanceAi.dataTablePreview.fetchError');
@@ -75,7 +77,12 @@ watch(
 				{{ tableName || i18n.baseText('instanceAi.dataTablePreview.title') }}
 			</N8nText>
 			<div :class="$style.headerActions">
-				<a v-if="dataTable" href="/data-tables" target="_blank" :class="$style.openLink">
+				<a
+				v-if="dataTable"
+				:href="props.projectId ? `/projects/${props.projectId}/datatables/${dataTable.id}` : '/home/datatables'"
+				target="_blank"
+				:class="$style.openLink"
+			>
 					{{ i18n.baseText('instanceAi.dataTablePreview.open') }}
 				</a>
 				<N8nIconButton icon="x" variant="ghost" size="small" @click="emit('close')" />
@@ -91,7 +98,12 @@ watch(
 			</div>
 
 			<!-- Data table grid -->
-			<DataTableTable v-if="dataTable" :data-table="dataTable" :read-only="true" />
+			<DataTableTable
+			v-if="dataTable"
+			:key="props.refreshKey"
+			:data-table="dataTable"
+			:read-only="true"
+		/>
 
 			<!-- Loading overlay (shown during initial load or when no data table yet) -->
 			<div v-if="isLoading && !dataTable" :class="$style.centerState">

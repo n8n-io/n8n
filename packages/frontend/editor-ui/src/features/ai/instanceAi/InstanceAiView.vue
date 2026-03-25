@@ -24,6 +24,7 @@ import {
 	getLatestBuildResult,
 	getLatestExecutionId,
 	getLatestDataTableResult,
+	getLatestDeletedDataTableId,
 } from './canvasPreview.utils';
 
 const store = useInstanceAiStore();
@@ -193,6 +194,25 @@ watch(
 		dataTableRefreshKey.value++;
 	},
 );
+
+// --- Close data table preview if the active table is deleted ---
+const latestDeletedDataTableId = computed(() => {
+	for (let i = store.messages.length - 1; i >= 0; i--) {
+		const msg = store.messages[i];
+		if (msg.agentTree) {
+			const id = getLatestDeletedDataTableId(msg.agentTree);
+			if (id) return id;
+		}
+	}
+	return null;
+});
+
+watch(latestDeletedDataTableId, (deletedId) => {
+	if (deletedId && deletedId === activeDataTableId.value) {
+		activeDataTableId.value = null;
+		activeDataTableProjectId.value = null;
+	}
+});
 
 // Load persisted threads from Mastra storage on mount
 onMounted(() => {
