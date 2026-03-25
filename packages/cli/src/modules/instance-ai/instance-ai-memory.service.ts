@@ -14,7 +14,8 @@ import { createMemory, patchThread, WORKING_MEMORY_TEMPLATE } from '@n8n/instanc
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import { AgentTreeSnapshotStorage } from './agent-tree-snapshot';
+import { AgentTreeSnapshotStorage } from '@n8n/instance-ai';
+
 import { parseStoredMessages } from './message-parser';
 import type { MastraDBMessage } from './message-parser';
 import { TypeORMCompositeStore } from './storage/typeorm-composite-store';

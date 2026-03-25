@@ -30,10 +30,9 @@ import {
 	Query,
 } from '@n8n/decorators';
 import type { StoredEvent } from '@n8n/instance-ai';
+import { buildAgentTreeFromEvents } from '@n8n/instance-ai';
 import type { Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
-
-import { buildAgentTreeFromEvents } from './agent-tree-builder';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
