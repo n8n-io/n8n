@@ -10,11 +10,14 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { InstanceAiConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { createMemory, patchThread, WORKING_MEMORY_TEMPLATE } from '@n8n/instance-ai';
+import {
+	AgentTreeSnapshotStorage,
+	createMemory,
+	patchThread,
+	WORKING_MEMORY_TEMPLATE,
+} from '@n8n/instance-ai';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-
-import { AgentTreeSnapshotStorage } from '@n8n/instance-ai';
 
 import { parseStoredMessages } from './message-parser';
 import type { MastraDBMessage } from './message-parser';

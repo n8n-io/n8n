@@ -862,7 +862,7 @@ export class InstanceAiService {
 		timeZone?: string,
 	): Promise<void> {
 		const signal = abortController.signal;
-		let mastraRunId = '';
+		const mastraRunId = '';
 
 		try {
 			// Publish run-start (includes userId for audit trail attribution)
