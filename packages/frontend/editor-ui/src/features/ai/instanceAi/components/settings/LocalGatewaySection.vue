@@ -78,7 +78,7 @@ const displayCategories = computed(() => {
 			sublabel,
 		});
 	}
-	return result;
+	return result.sort((a, b) => Number(b.enabled) - Number(a.enabled));
 });
 
 onMounted(() => {
@@ -261,7 +261,7 @@ onMounted(() => {
 }
 
 .categorySublabel {
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 }
 
 .dot {
