@@ -13,7 +13,7 @@ const props = defineProps<{
 const i18n = useI18n();
 const instanceAiStore = useInstanceAiStore();
 
-const isExpanded = ref(props.agentNode.status === 'active');
+const isExpanded = ref(false);
 const peekRef = useTemplateRef<HTMLElement>('peekContainer');
 
 const isActive = computed(() => props.agentNode.status === 'active');
@@ -31,13 +31,11 @@ function toggleExpanded() {
 	isExpanded.value = !isExpanded.value;
 }
 
-// Auto-expand when agent becomes active, collapse when completed
+// Auto-collapse when agent completes (keep collapsed by default for peek preview)
 watch(
 	() => props.agentNode.status,
 	(status) => {
-		if (status === 'active') {
-			isExpanded.value = true;
-		} else if (status === 'completed') {
+		if (status === 'completed') {
 			isExpanded.value = false;
 		}
 	},
@@ -93,9 +91,12 @@ watch(
 			<SubagentStepTimeline :agent-node="props.agentNode" />
 		</div>
 
-		<!-- Collapsed + active: peek preview with gradient -->
-		<div v-else-if="isActive" ref="peekContainer" :class="$style.peekContainer">
-			<SubagentStepTimeline :agent-node="props.agentNode" />
+		<!-- Collapsed + active: peek preview with gradient (click to expand) -->
+		<div v-else-if="isActive" :class="$style.peekWrapper" @click="toggleExpanded">
+			<div :class="$style.peekGradient" />
+			<div ref="peekContainer" :class="$style.peekContainer">
+				<SubagentStepTimeline :agent-node="props.agentNode" />
+			</div>
 		</div>
 
 		<!-- Error display -->
@@ -142,22 +143,25 @@ watch(
 	padding-top: var(--spacing--4xs);
 }
 
+.peekWrapper {
+	position: relative;
+	cursor: pointer;
+}
+
+.peekGradient {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 40px;
+	background: linear-gradient(to bottom, var(--color--background), transparent);
+	z-index: 1;
+	pointer-events: none;
+}
+
 .peekContainer {
 	max-height: 100px;
 	overflow: hidden;
-	position: relative;
-
-	&::before {
-		content: '';
-		position: absolute;
-		top: 0;
-		left: 0;
-		right: 0;
-		height: 40px;
-		background: linear-gradient(to bottom, var(--color--background--light-1), transparent);
-		z-index: 1;
-		pointer-events: none;
-	}
 }
 
 .errorResult {
