@@ -7,6 +7,7 @@ import type {
 	RuntimeBridge,
 } from '../types';
 import { IsolatePool } from '../pool/isolate-pool';
+import { LruCache } from './lru-cache';
 
 type ExecutionId = string;
 
@@ -20,7 +21,7 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 
 	// Cache: template expression → tournament-transformed JavaScript code
 	// Cache hit rate in production: ~99.9% (same expressions repeat within a workflow)
-	private codeCache = new Map<string, string>();
+	private codeCache: LruCache<string, string>;
 
 	private pool: IsolatePool;
 
@@ -28,6 +29,9 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 
 	constructor(config: EvaluatorConfig) {
 		this.config = config;
+		this.codeCache = new LruCache<string, string>(config.maxCodeCacheSize, () => {
+			this.config.observability?.metrics.counter('expression.code_cache.eviction', 1);
+		});
 		const createBridge = async () => {
 			const bridge = config.createBridge();
 			await bridge.initialize();
@@ -137,8 +141,11 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 	private getTransformedCode(expression: string): string {
 		const cached = this.codeCache.get(expression);
 		if (cached !== undefined) {
+			this.config.observability?.metrics.counter('expression.code_cache.hit', 1);
 			return cached;
 		}
+
+		this.config.observability?.metrics.counter('expression.code_cache.miss', 1);
 
 		if (!this.tournament) {
 			// Tournament requires an errorHandler but we only use getExpressionCode()
@@ -154,12 +161,14 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 
 		const [transformedCode] = this.tournament.getExpressionCode(expression);
 		this.codeCache.set(expression, transformedCode);
+		this.config.observability?.metrics.gauge('expression.code_cache.size', this.codeCache.size);
 		return transformedCode;
 	}
 
 	async dispose(): Promise<void> {
 		this.disposed = true;
 		this.codeCache.clear();
+		this.config.observability?.metrics.gauge('expression.code_cache.size', 0);
 
 		await Promise.all([...this.bridges.values()].map((b) => b.dispose()));
 		this.bridges.clear();

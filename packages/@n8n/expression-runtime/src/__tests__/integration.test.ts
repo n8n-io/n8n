@@ -12,6 +12,7 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 			createBridge: () => new IsolatedVmBridge({ timeout: 5000 }),
 			isolatePoolSize: 1,
 			acquireTimeoutMs: 5000,
+			maxCodeCacheSize: 1024,
 		});
 		await evaluator.initialize();
 	});
@@ -361,6 +362,7 @@ describe('Integration: Concurrent execution pooling', () => {
 			createBridge: () => new IsolatedVmBridge({ timeout: 5000 }),
 			isolatePoolSize: 2,
 			acquireTimeoutMs: 5000,
+			maxCodeCacheSize: 1024,
 		});
 		await evaluator.initialize();
 	});
