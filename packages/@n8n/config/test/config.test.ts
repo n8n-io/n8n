@@ -216,11 +216,8 @@ describe('GlobalConfig', () => {
 			formTest: 'form-test',
 			formWaiting: 'form-waiting',
 			mcp: 'mcp',
-<<<<<<< HEAD
-=======
 			mcpBuilderEnabled: true,
 			mcpMaxRegisteredClients: 200,
->>>>>>> 2d9a2ec76e (chore: Bundle 2026-W9 (#27532))
 			mcpTest: 'mcp-test',
 			payloadSizeMax: 16,
 			formDataFileSizeMax: 200,

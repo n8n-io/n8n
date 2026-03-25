@@ -297,7 +297,9 @@ export class WorkflowService {
 
 		// check credentials for old format - scope to the workflow's owner project
 		const ownerProject = await this.ownershipService.getWorkflowProjectCached(workflowId);
-		await WorkflowHelpers.replaceInvalidCredentials(workflowUpdateData, ownerProject.id);
+		if (ownerProject) {
+			await WorkflowHelpers.replaceInvalidCredentials(workflowUpdateData, ownerProject.id);
+		}
 
 		WorkflowHelpers.addNodeIds(workflowUpdateData);
 

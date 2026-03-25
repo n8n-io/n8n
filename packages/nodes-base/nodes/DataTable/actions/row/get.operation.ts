@@ -55,11 +55,7 @@ export async function execute(
 ): Promise<INodeExecutionData[]> {
 	const dataTableProxy = await getDataTableProxyExecute(this, index);
 
-<<<<<<< HEAD
-	return await executeSelectMany(this, index, dataTableProxy);
-=======
 	// Extract sort parameters
-	let sortBy: [string, 'ASC' | 'DESC'] | undefined;
 	const orderBy = this.getNodeParameter('orderBy', index, false) as boolean;
 
 	if (orderBy) {
@@ -69,12 +65,8 @@ export async function execute(
 			const isSystemColumn = DATA_TABLE_SYSTEM_COLUMNS.includes(column);
 			if (!isSystemColumn && !availableColumns.find((x) => x.name === column))
 				throw new NodeOperationError(this.getNode(), 'Specified column does not exist');
-
-			const direction = this.getNodeParameter('orderByDirection', index, 'ASC') as 'ASC' | 'DESC';
-			sortBy = [column, direction];
 		}
 	}
 
-	return await executeSelectMany(this, index, dataTableProxy, false, undefined, sortBy);
->>>>>>> 2d9a2ec76e (chore: Bundle 2026-W9 (#27532))
+	return await executeSelectMany(this, index, dataTableProxy);
 }

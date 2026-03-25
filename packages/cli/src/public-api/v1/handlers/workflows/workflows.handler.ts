@@ -44,7 +44,6 @@ export = {
 
 			addNodeIds(workflow);
 
-			addNodeIds(workflow);
 			const createdWorkflow = await createWorkflow(workflow, req.user, project, 'workflow:owner');
 
 			await Container.get(WorkflowHistoryService).saveVersion(

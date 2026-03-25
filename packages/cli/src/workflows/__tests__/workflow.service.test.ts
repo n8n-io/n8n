@@ -1,312 +1,280 @@
-import type { Project, User, WorkflowEntity } from '@n8n/db';
-import type { Scope } from '@n8n/permissions';
-import type { MockProxy } from 'jest-mock-extended';
+import {
+	createWorkflowWithHistory,
+	createActiveWorkflow,
+	testDb,
+	mockInstance,
+} from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
+import {
+	SharedWorkflowRepository,
+	type WorkflowEntity,
+	WorkflowPublishHistoryRepository,
+	WorkflowRepository,
+} from '@n8n/db';
+import { Container } from '@n8n/di';
+import { createOwner } from '@test-integration/db/users';
+import { createWorkflowHistoryItem } from '@test-integration/db/workflow-history';
 import { mock } from 'jest-mock-extended';
+import { v4 as uuid } from 'uuid';
 
-import { userHasScopes } from '@/permissions.ee/check-access';
-import type { OwnershipService } from '@/services/ownership.service';
-import type { RoleService } from '@/services/role.service';
-import type { WebhookService } from '@/webhooks/webhook.service';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { Telemetry } from '@/telemetry';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
-import * as WorkflowHelpers from '@/workflow-helpers';
 
-jest.mock('@/permissions.ee/check-access');
-jest.mock('@/workflow-helpers');
-jest.mock('@/generic-helpers');
+let globalConfig: GlobalConfig;
+let workflowService: WorkflowService;
+const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
+const workflowHistoryService = mockInstance(WorkflowHistoryService);
+const workflowPublishHistoryRepository = mockInstance(WorkflowPublishHistoryRepository);
+mockInstance(MessageEventBus);
+mockInstance(Telemetry);
 
-describe('WorkflowService', () => {
-	describe('getMany()', () => {
-		let workflowService: WorkflowService;
-		let workflowRepositoryMock: MockProxy<{
-			getManyAndCountWithSharingSubquery: jest.Mock;
-		}>;
-		let roleServiceMock: MockProxy<RoleService>;
-		let webhookServiceMock: MockProxy<WebhookService>;
+beforeAll(async () => {
+	await testDb.init();
 
-		beforeEach(() => {
-			workflowRepositoryMock = mock();
-			workflowRepositoryMock.getManyAndCountWithSharingSubquery.mockResolvedValue({
-				workflows: [],
-				count: 0,
-			});
+	globalConfig = Container.get(GlobalConfig);
+	workflowService = new WorkflowService(
+		mock(),
+		Container.get(SharedWorkflowRepository),
+		Container.get(WorkflowRepository),
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+		workflowHistoryService,
+		mock(),
+		activeWorkflowManager,
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+		globalConfig,
+		mock(),
+		Container.get(WorkflowFinderService),
+		workflowPublishHistoryRepository,
+	);
+});
 
-			roleServiceMock = mock<RoleService>();
-			roleServiceMock.rolesWithScope.mockResolvedValue(['project:viewer']);
+afterEach(async () => {
+	await testDb.truncate(['WorkflowEntity', 'WorkflowHistory']);
+	jest.restoreAllMocks();
 
-			webhookServiceMock = mock<WebhookService>();
+	globalConfig.workflows.draftPublishEnabled = false;
+});
 
-			workflowService = new WorkflowService(
-				mock(), // logger
-				mock(), // sharedWorkflowRepository
-				workflowRepositoryMock as never, // workflowRepository
-				mock(), // workflowTagMappingRepository
-				mock(), // binaryDataService
-				mock(), // ownershipService
-				mock(), // tagService
-				mock(), // workflowHistoryService
-				mock(), // externalHooks
-				mock(), // activeWorkflowManager
-				roleServiceMock, // roleService
-				mock(), // projectService
-				mock(), // executionRepository
-				mock(), // eventService
-				mock(), // globalConfig
-				mock(), // folderRepository
-				mock(), // workflowFinderService
-				mock(), // workflowPublishedVersionRepository
-				mock(), // workflowPublishHistoryRepository
-				mock(), // workflowValidationService
-				mock(), // nodeTypes
-				webhookServiceMock, // webhookService
-				mock(), // licenseState
-				mock(), // projectRepository
-			);
-		});
+describe('update()', () => {
+	test('should remove and re-add to active workflows on `active: true` payload', async () => {
+		const owner = await createOwner();
+		const workflow = await createActiveWorkflow({}, owner);
 
-		test('should use default "workflow:read" scope when requiredScopes is not provided', async () => {
-			const user = mock<User>();
+		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
+		const removeSpy = jest.spyOn(activeWorkflowManager, 'remove');
+		const addSpy = jest.spyOn(activeWorkflowManager, 'add');
 
-			await workflowService.getMany(user);
+		const updateData = {
+			active: true,
+			versionId: workflow.versionId,
+		};
 
-			expect(roleServiceMock.rolesWithScope).toHaveBeenCalledWith('project', ['workflow:read']);
-			expect(roleServiceMock.rolesWithScope).toHaveBeenCalledWith('workflow', ['workflow:read']);
-			expect(workflowRepositoryMock.getManyAndCountWithSharingSubquery).toHaveBeenCalledWith(
-				user,
-				expect.objectContaining({
-					scopes: ['workflow:read'],
-					projectRoles: expect.any(Array),
-					workflowRoles: expect.any(Array),
-				}),
-				undefined,
-			);
-		});
+		await workflowService.update(owner, updateData as WorkflowEntity, workflow.id);
 
-		test('should use provided requiredScopes when specified', async () => {
-			const user = mock<User>();
-			const customScopes: Scope[] = ['workflow:update'];
+		expect(removeSpy).toHaveBeenCalledTimes(1);
+		const [removedWorkflowId] = removeSpy.mock.calls[0];
+		expect(removedWorkflowId).toBe(workflow.id);
 
-			await workflowService.getMany(
-				user,
-				undefined, // options
-				undefined, // includeScopes
-				undefined, // includeFolders
-				undefined, // onlySharedWithMe
-				customScopes,
-			);
+		expect(addSpy).toHaveBeenCalledTimes(1);
+		const [addedWorkflowId, activationMode] = addSpy.mock.calls[0];
+		expect(addedWorkflowId).toBe(workflow.id);
+		expect(activationMode).toBe('update');
 
-			expect(roleServiceMock.rolesWithScope).toHaveBeenCalledWith('project', customScopes);
-			expect(roleServiceMock.rolesWithScope).toHaveBeenCalledWith('workflow', customScopes);
-			expect(workflowRepositoryMock.getManyAndCountWithSharingSubquery).toHaveBeenCalledWith(
-				user,
-				expect.objectContaining({
-					scopes: customScopes,
-					projectRoles: expect.any(Array),
-					workflowRoles: expect.any(Array),
-				}),
-				undefined,
-			);
-		});
-
-		test('should use provided requiredScopes with multiple scopes', async () => {
-			const user = mock<User>();
-			const customScopes: Scope[] = ['workflow:read', 'workflow:update'];
-
-			await workflowService.getMany(
-				user,
-				undefined, // options
-				undefined, // includeScopes
-				undefined, // includeFolders
-				undefined, // onlySharedWithMe
-				customScopes,
-			);
-
-			expect(roleServiceMock.rolesWithScope).toHaveBeenCalledWith('project', customScopes);
-			expect(roleServiceMock.rolesWithScope).toHaveBeenCalledWith('workflow', customScopes);
-			expect(workflowRepositoryMock.getManyAndCountWithSharingSubquery).toHaveBeenCalledWith(
-				user,
-				expect.objectContaining({
-					scopes: customScopes,
-					projectRoles: expect.any(Array),
-					workflowRoles: expect.any(Array),
-				}),
-				undefined,
-			);
-		});
-
-		test('should use "workflow:execute" scope when required', async () => {
-			const user = mock<User>();
-			const executeScope: Scope[] = ['workflow:execute'];
-
-			await workflowService.getMany(
-				user,
-				undefined, // options
-				undefined, // includeScopes
-				undefined, // includeFolders
-				undefined, // onlySharedWithMe
-				executeScope,
-			);
-
-			expect(roleServiceMock.rolesWithScope).toHaveBeenCalledWith('project', executeScope);
-			expect(roleServiceMock.rolesWithScope).toHaveBeenCalledWith('workflow', executeScope);
-			expect(workflowRepositoryMock.getManyAndCountWithSharingSubquery).toHaveBeenCalledWith(
-				user,
-				expect.objectContaining({
-					scopes: executeScope,
-					projectRoles: expect.any(Array),
-					workflowRoles: expect.any(Array),
-				}),
-				undefined,
-			);
+		expect(addRecordSpy).toBeCalledWith({
+			event: 'activated',
+			workflowId: workflow.id,
+			versionId: workflow.versionId,
+			userId: owner.id,
 		});
 	});
 
-	describe('update() redactionPolicy scope enforcement', () => {
-		const userHasScopesMock = jest.mocked(userHasScopes);
-		let workflowService: WorkflowService;
-		let workflowFinderServiceMock: MockProxy<WorkflowFinderService>;
-		let workflowRepositoryMock: MockProxy<{
-			update: jest.Mock;
-			findOne: jest.Mock;
-		}>;
+	test('should remove from active workflows on `active: false` payload', async () => {
+		const owner = await createOwner();
+		const workflow = await createActiveWorkflow({}, owner);
 
-		beforeEach(() => {
-			workflowFinderServiceMock = mock<WorkflowFinderService>();
-			workflowRepositoryMock = mock();
+		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
+		const removeSpy = jest.spyOn(activeWorkflowManager, 'remove');
+		const addSpy = jest.spyOn(activeWorkflowManager, 'add');
 
-			const ownershipServiceMock = mock<OwnershipService>();
-			ownershipServiceMock.getWorkflowProjectCached.mockResolvedValue(
-				mock<Project>({ id: 'project-1' }),
-			);
+		const updateData = {
+			active: false,
+			versionId: workflow.versionId,
+		};
 
-			workflowService = new WorkflowService(
-				mock(), // logger
-				mock(), // sharedWorkflowRepository
-				workflowRepositoryMock as never, // workflowRepository
-				mock(), // workflowTagMappingRepository
-				mock(), // binaryDataService
-				ownershipServiceMock, // ownershipService
-				mock(), // tagService
-				mock(), // workflowHistoryService
-				mock(), // externalHooks
-				mock(), // activeWorkflowManager
-				mock(), // roleService
-				mock(), // projectService
-				mock(), // executionRepository
-				mock(), // eventService
-				mock(), // globalConfig
-				mock(), // folderRepository
-				workflowFinderServiceMock, // workflowFinderService
-				mock(), // workflowPublishedVersionRepository
-				mock(), // workflowPublishHistoryRepository
-				mock(), // workflowValidationService
-				mock(), // nodeTypes
-				mock(), // webhookService
-				mock(), // licenseState
-				mock(), // projectRepository
-			);
+		await workflowService.update(owner, updateData as WorkflowEntity, workflow.id);
 
-			jest.clearAllMocks();
+		expect(removeSpy).toHaveBeenCalledTimes(1);
+		const [removedWorkflowId] = removeSpy.mock.calls[0];
+		expect(removedWorkflowId).toBe(workflow.id);
 
-			// Pass settings through removeDefaultValues unchanged
-			jest.mocked(WorkflowHelpers.removeDefaultValues).mockImplementation((settings) => settings);
+		expect(addSpy).not.toHaveBeenCalled();
+		expect(addRecordSpy).toBeCalledWith({
+			event: 'deactivated',
+			workflowId: workflow.id,
+			versionId: workflow.versionId,
+			userId: owner.id,
+		});
+	});
+
+	test('should fetch missing connections from DB when updating nodes', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const updateData = {
+			nodes: [
+				{
+					id: 'new-node',
+					name: 'New Node',
+					type: 'n8n-nodes-base.start',
+					typeVersion: 1,
+					position: [250, 300],
+					parameters: {},
+				},
+			],
+			versionId: workflow.versionId,
+		};
+
+		const updatedWorkflow = await workflowService.update(
+			owner,
+			updateData as WorkflowEntity,
+			workflow.id,
+		);
+
+		expect(updatedWorkflow.nodes).toHaveLength(1);
+		expect(updatedWorkflow.nodes[0].name).toBe('New Node');
+		expect(updatedWorkflow.versionId).not.toBe(workflow.versionId);
+	});
+
+	test('should not save workflow history version when updating only active status', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
+		const saveVersionSpy = jest.spyOn(workflowHistoryService, 'saveVersion');
+
+		const updateData = {
+			active: true,
+			versionId: workflow.versionId,
+		};
+
+		await workflowService.update(owner, updateData as WorkflowEntity, workflow.id);
+
+		expect(saveVersionSpy).not.toHaveBeenCalled();
+		expect(addRecordSpy).toBeCalledWith({
+			event: 'activated',
+			workflowId: workflow.id,
+			versionId: workflow.versionId,
+			userId: owner.id,
+		});
+	});
+
+	test('should save workflow history version with backfilled data when versionId changes', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
+		const saveVersionSpy = jest.spyOn(workflowHistoryService, 'saveVersion');
+
+		const newVersionId = 'new-version-id-123';
+		const updateData = {
+			versionId: newVersionId,
+		};
+
+		await workflowService.update(owner, updateData as WorkflowEntity, workflow.id, {
+			forceSave: true,
 		});
 
-		function setupExistingWorkflow(settings: Record<string, unknown> = {}) {
-			const existingWorkflow = mock<WorkflowEntity>({
-				id: 'workflow-1',
-				isArchived: false,
-				versionId: 'v1',
-				nodes: [],
-				connections: {},
-				settings,
-				activeVersionId: undefined as unknown as string,
-				tags: [],
-			});
-			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(existingWorkflow);
-			workflowRepositoryMock.findOne.mockResolvedValue(existingWorkflow);
-			return existingWorkflow;
-		}
+		expect(saveVersionSpy).toHaveBeenCalledTimes(1);
+		const [user, workflowData, workflowId] = saveVersionSpy.mock.calls[0];
+		expect(user).toBe(owner);
+		expect(workflowId).toBe(workflow.id);
+		// Verify that nodes and connections were backfilled from the DB
+		expect(workflowData.nodes).toEqual(workflow.nodes);
+		expect(workflowData.connections).toEqual(workflow.connections);
+		expect(workflowData.versionId).toBe(newVersionId);
+		expect(addRecordSpy).not.toBeCalled();
+	});
+});
 
-		function createUpdateData(settings: Record<string, unknown>) {
-			return { settings } as unknown as WorkflowEntity;
-		}
+describe('activateWorkflow()', () => {
+	test('should activate current workflow version', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({}, owner);
 
-		test('should strip redactionPolicy when user lacks scope and value is changing', async () => {
-			setupExistingWorkflow({ redactionPolicy: 'none' });
-			userHasScopesMock.mockResolvedValue(false);
+		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
 
-			const user = mock<User>();
-			await workflowService.update(
-				user,
-				createUpdateData({ redactionPolicy: 'all' }),
-				'workflow-1',
-				{ forceSave: true },
-			);
+		const updatedWorkflow = await workflowService.activateWorkflow(owner, workflow.id);
 
-			expect(userHasScopesMock).toHaveBeenCalledWith(
-				user,
-				['workflow:updateRedactionSetting'],
-				false,
-				{ workflowId: 'workflow-1' },
-			);
-			expect(workflowRepositoryMock.update).toHaveBeenCalledWith(
-				'workflow-1',
-				expect.objectContaining({
-					settings: expect.not.objectContaining({ redactionPolicy: 'all' }),
-				}),
-			);
+		expect(updatedWorkflow.active).toBe(true);
+		expect(updatedWorkflow.activeVersionId).toBe(workflow.versionId);
+		expect(addRecordSpy).toBeCalledWith({
+			event: 'activated',
+			workflowId: workflow.id,
+			versionId: workflow.versionId,
+			userId: owner.id,
+		});
+	});
+
+	test('should ignore provided workflow versionId', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
+
+		const newVersionId = uuid();
+		await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
+
+		const updatedWorkflow = await workflowService.activateWorkflow(owner, workflow.id, {
+			versionId: newVersionId,
 		});
 
-		test('should preserve redactionPolicy when user has scope and value is changing', async () => {
-			setupExistingWorkflow({ redactionPolicy: 'none' });
-			userHasScopesMock.mockResolvedValue(true);
+		expect(updatedWorkflow.active).toBe(true);
+		expect(updatedWorkflow.activeVersionId).toBe(workflow.versionId);
+		expect(updatedWorkflow.versionId).toBe(workflow.versionId);
 
-			const user = mock<User>();
-			await workflowService.update(
-				user,
-				createUpdateData({ redactionPolicy: 'all' }),
-				'workflow-1',
-				{ forceSave: true },
-			);
+		expect(addRecordSpy).toBeCalledWith({
+			event: 'activated',
+			workflowId: workflow.id,
+			versionId: workflow.versionId,
+			userId: owner.id,
+		});
+	});
 
-			expect(userHasScopesMock).toHaveBeenCalledWith(
-				user,
-				['workflow:updateRedactionSetting'],
-				false,
-				{ workflowId: 'workflow-1' },
-			);
-			expect(workflowRepositoryMock.update).toHaveBeenCalledWith(
-				'workflow-1',
-				expect.objectContaining({
-					settings: expect.objectContaining({ redactionPolicy: 'all' }),
-				}),
-			);
+	test('with draft/publish enabled: should activate the provided workflow version', async () => {
+		globalConfig.workflows.draftPublishEnabled = true;
+
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
+
+		const newVersionId = uuid();
+		await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
+
+		const updatedWorkflow = await workflowService.activateWorkflow(owner, workflow.id, {
+			versionId: newVersionId,
 		});
 
-		test('should not check scope when redactionPolicy value is unchanged', async () => {
-			setupExistingWorkflow({ redactionPolicy: 'all' });
+		expect(updatedWorkflow.active).toBe(true);
+		expect(updatedWorkflow.activeVersionId).toBe(newVersionId);
+		expect(updatedWorkflow.versionId).toBe(workflow.versionId);
 
-			const user = mock<User>();
-			await workflowService.update(
-				user,
-				createUpdateData({ redactionPolicy: 'all' }),
-				'workflow-1',
-				{ forceSave: true },
-			);
-
-			expect(userHasScopesMock).not.toHaveBeenCalled();
-		});
-
-		test('should not check scope when redactionPolicy is not in incoming settings', async () => {
-			setupExistingWorkflow({ redactionPolicy: 'all' });
-
-			const user = mock<User>();
-			await workflowService.update(user, createUpdateData({ executionOrder: 'v1' }), 'workflow-1', {
-				forceSave: true,
-			});
-
-			expect(userHasScopesMock).not.toHaveBeenCalled();
+		expect(addRecordSpy).toBeCalledWith({
+			event: 'activated',
+			workflowId: workflow.id,
+			versionId: newVersionId,
+			userId: owner.id,
 		});
 	});
 });

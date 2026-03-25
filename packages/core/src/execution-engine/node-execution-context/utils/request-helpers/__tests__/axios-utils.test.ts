@@ -11,7 +11,6 @@ import {
 	getBeforeRedirectFn,
 	getHostFromRequestObject,
 	getUrlFromProxyConfig,
-	isIgnoreStatusErrorConfig,
 	searchForHeader,
 	setAxiosAgents,
 	tryParseUrl,
@@ -21,24 +20,6 @@ jest.mock('@/http-proxy', () => ({
 	createHttpProxyAgent: jest.fn((_proxy, _url, opts) => ({ type: 'http', ...opts })),
 	createHttpsProxyAgent: jest.fn((_proxy, _url, opts) => ({ type: 'https', ...opts })),
 }));
-
-describe('isIgnoreStatusErrorConfig', () => {
-	test('should return true for valid IgnoreStatusErrorConfig', () => {
-		expect(isIgnoreStatusErrorConfig({ ignore: true, except: [401] })).toBe(true);
-		expect(isIgnoreStatusErrorConfig({ ignore: true })).toBe(true);
-	});
-
-	test('should return false when ignore is not true', () => {
-		expect(isIgnoreStatusErrorConfig({ ignore: false })).toBe(false);
-	});
-
-	test('should return false for non-object values', () => {
-		expect(isIgnoreStatusErrorConfig(true)).toBe(false);
-		expect(isIgnoreStatusErrorConfig(null)).toBe(false);
-		expect(isIgnoreStatusErrorConfig(undefined)).toBe(false);
-		expect(isIgnoreStatusErrorConfig('string')).toBe(false);
-	});
-});
 
 describe('searchForHeader', () => {
 	test('should find header case-insensitively', () => {
@@ -134,34 +115,6 @@ describe('getBeforeRedirectFn', () => {
 		expect((redirectedRequest.headers as Record<string, string>).Authorization).toBe(
 			'Bearer token',
 		);
-	});
-
-	test('should call ssrfBridge.validateRedirectSync when provided', () => {
-		const ssrfBridge = {
-			validateRedirectSync: jest.fn(),
-			createSecureLookup: jest.fn().mockReturnValue(jest.fn()),
-			validateIp: jest.fn(),
-			validateUrl: jest.fn(),
-		};
-
-		const beforeRedirect = getBeforeRedirectFn(
-			agentOptions,
-			axiosConfig,
-			undefined,
-			false,
-			undefined,
-			ssrfBridge,
-		);
-		const redirectedRequest: Record<string, unknown> = {
-			href: 'https://example.com/other',
-			hostname: 'example.com',
-			headers: {} as Record<string, string>,
-			agents: {},
-		};
-
-		beforeRedirect(redirectedRequest);
-
-		expect(ssrfBridge.validateRedirectSync).toHaveBeenCalledWith('https://example.com/other');
 	});
 
 	test('should resolve proxy URL from proxyConfig and pass it to agent factories', () => {
@@ -493,30 +446,6 @@ describe('setAxiosAgents', () => {
 			'http://proxy:8080',
 			'https://example.com',
 			undefined,
-		);
-	});
-
-	it('should inject secureLookup when no proxy is configured', () => {
-		const config: AxiosRequestConfig = { url: 'https://example.com' };
-		const secureLookup = jest.fn();
-
-		setAxiosAgents(config, {}, undefined, secureLookup as never);
-
-		expect(createHttpProxyAgent).toHaveBeenCalledWith(null, 'https://example.com', {
-			lookup: secureLookup,
-		});
-	});
-
-	it('should not inject secureLookup when proxy is configured', () => {
-		const config: AxiosRequestConfig = { url: 'https://example.com' };
-		const secureLookup = jest.fn();
-
-		setAxiosAgents(config, {}, 'http://proxy:8080', secureLookup as never);
-
-		expect(createHttpProxyAgent).toHaveBeenCalledWith(
-			'http://proxy:8080',
-			'https://example.com',
-			{},
 		);
 	});
 });

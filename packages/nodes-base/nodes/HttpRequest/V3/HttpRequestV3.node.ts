@@ -22,11 +22,6 @@ import {
 	jsonParse,
 	removeCircularRefs,
 	sleep,
-<<<<<<< HEAD
-	isDomainAllowed,
-=======
-	ensureError,
->>>>>>> 2d9a2ec76e (chore: Bundle 2026-W9 (#27532))
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
 
@@ -320,6 +315,8 @@ export class HttpRequestV3 implements INodeType {
 					}
 				}
 
+				const defaultSendCredentialsOnCrossOriginRedirect = nodeVersion < 4.4;
+
 				requestOptions = {
 					headers: {},
 					method: requestMethod,
@@ -328,12 +325,8 @@ export class HttpRequestV3 implements INodeType {
 					rejectUnauthorized: !allowUnauthorizedCerts || false,
 					followRedirect: false,
 					resolveWithFullResponse: true,
-<<<<<<< HEAD
-=======
-					sendCredentialsOnCrossOriginRedirect:
-						sendCredentialsOnCrossOriginRedirect ?? defaultSendCredentialsOnCrossOriginRedirect,
+					sendCredentialsOnCrossOriginRedirect: defaultSendCredentialsOnCrossOriginRedirect,
 					allowedDomains,
->>>>>>> 2d9a2ec76e (chore: Bundle 2026-W9 (#27532))
 				};
 
 				if (requestOptions.method !== 'GET' && nodeVersion >= 4.1) {

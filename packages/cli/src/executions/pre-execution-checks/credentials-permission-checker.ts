@@ -108,46 +108,4 @@ export class CredentialsPermissionChecker {
 			return map;
 		}, {});
 	}
-<<<<<<< HEAD
-=======
-
-	/**
-	 * Determines which credential types are actively used by a node based on its
-	 * current configuration. Returns null if the node type cannot be resolved,
-	 * in which case all credentials should be checked as a safe fallback.
-	 */
-	private getActiveCredentialTypes(node: INode): Set<string> | null {
-		try {
-			const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-			const activeTypes = new Set<string>();
-
-			// Check credentials defined in the node type description with display options
-			for (const credDef of nodeType.description.credentials ?? []) {
-				if (displayParameter(node.parameters, credDef, node, nodeType.description)) {
-					activeTypes.add(credDef.name);
-				}
-			}
-
-			// For nodes using predefined credential type (e.g., HTTP Request node),
-			// the active credential is specified by the nodeCredentialType parameter
-			const { nodeCredentialType } = node.parameters;
-			if (typeof nodeCredentialType === 'string' && nodeCredentialType) {
-				activeTypes.add(nodeCredentialType);
-			}
-
-			// For nodes using generic credential types (e.g., HTTP Request with
-			// authentication=genericCredentialType), the active credential type is
-			// specified by the genericAuthType parameter
-			const { genericAuthType } = node.parameters;
-			if (typeof genericAuthType === 'string' && genericAuthType) {
-				activeTypes.add(genericAuthType);
-			}
-
-			return activeTypes;
-		} catch {
-			// If we can't resolve the node type, fall back to checking all credentials
-			return null;
-		}
-	}
->>>>>>> 2d9a2ec76e (chore: Bundle 2026-W9 (#27532))
 }

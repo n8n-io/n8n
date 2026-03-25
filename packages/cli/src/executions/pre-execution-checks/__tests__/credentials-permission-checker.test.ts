@@ -8,7 +8,7 @@ import {
 } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { INode } from 'n8n-workflow';
-
+import type { NodeTypes } from '@/node-types';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { ProjectService } from '@/services/project.service.ee';
 
@@ -25,6 +25,7 @@ describe('CredentialsPermissionChecker', () => {
 		ownershipService,
 		projectService,
 	);
+	const nodeTypes = mock<NodeTypes>();
 
 	const workflowId = 'workflow123';
 	const credentialId = 'cred123';
@@ -169,8 +170,6 @@ describe('CredentialsPermissionChecker', () => {
 			},
 		});
 	});
-<<<<<<< HEAD
-=======
 
 	describe('credential type filtering', () => {
 		const teamProject = mock<Project>({
@@ -209,34 +208,6 @@ describe('CredentialsPermissionChecker', () => {
 			ownershipService.getWorkflowProjectCached.mockResolvedValue(teamProject);
 			ownershipService.getPersonalProjectOwnerCached.mockResolvedValue(null);
 			projectService.findProjectsWorkflowIsIn.mockResolvedValue([teamProject.id]);
-		});
-
-		it('should only check the active credential type for nodes with nodeCredentialType', async () => {
-			nodeTypes.getByNameAndVersion.mockReturnValue({
-				description: {
-					credentials: [
-						{
-							name: 'httpSslAuth',
-							required: true,
-							displayOptions: { show: { provideSslCertificates: [true] } },
-						},
-					],
-				},
-			} as never);
-
-			// The active credential is accessible, the stale one would not be
-			sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([
-				activeCredentialId,
-			]);
-			credentialsRepository.find.mockResolvedValue([]);
-
-			await expect(permissionChecker.check(workflowId, [httpRequestNode])).resolves.not.toThrow();
-
-			// Should only check the active credential, not the stale one
-			expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).toHaveBeenCalledWith(
-				[teamProject.id],
-				[activeCredentialId],
-			);
 		});
 
 		it('should check generic credential types specified by genericAuthType', async () => {
@@ -305,5 +276,4 @@ describe('CredentialsPermissionChecker', () => {
 			);
 		});
 	});
->>>>>>> 2d9a2ec76e (chore: Bundle 2026-W9 (#27532))
 });

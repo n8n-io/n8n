@@ -5,14 +5,8 @@ import axios from 'axios';
 import crypto from 'crypto';
 import FormData from 'form-data';
 import type { AgentOptions } from 'https';
-import {
-	ApplicationError,
-	isDomainAllowed,
-	type IHttpRequestOptions,
-	type IgnoreStatusErrorConfig,
-} from 'n8n-workflow';
+import { ApplicationError, isDomainAllowed, type IHttpRequestOptions } from 'n8n-workflow';
 
-import type { SsrfBridge } from '@/execution-engine';
 import { createHttpProxyAgent, createHttpsProxyAgent } from '@/http-proxy';
 
 export function throwIfDomainNotAllowed(
@@ -34,18 +28,6 @@ export function tryParseUrl(url: string): URL | null {
 	} catch {
 		return null;
 	}
-}
-
-/** Type guard for `IgnoreStatusErrorConfig` objects. */
-export function isIgnoreStatusErrorConfig(
-	ignoreHttpStatusErrors: unknown,
-): ignoreHttpStatusErrors is IgnoreStatusErrorConfig {
-	return (
-		typeof ignoreHttpStatusErrors === 'object' &&
-		ignoreHttpStatusErrors !== null &&
-		'ignore' in ignoreHttpStatusErrors &&
-		ignoreHttpStatusErrors.ignore === true
-	);
 }
 
 /** Case-insensitive lookup of a header name in an axios config. */
@@ -85,15 +67,9 @@ export const getBeforeRedirectFn =
 		proxyConfig: IHttpRequestOptions['proxy'] | string | undefined,
 		sendCredentialsOnCrossOriginRedirect: boolean,
 		allowedDomains?: string,
-		ssrfBridge?: SsrfBridge,
 	) =>
 	(redirectedRequest: Record<string, any>) => {
 		throwIfDomainNotAllowed(redirectedRequest.href, allowedDomains);
-		// SSRF: validate redirect target synchronously for direct-IP URIs.
-		// Hostname-based redirect targets are caught by secureLookup on the agent.
-		if (ssrfBridge) {
-			ssrfBridge.validateRedirectSync(redirectedRequest.href);
-		}
 
 		const redirectAgentOptions: AgentOptions = {
 			...agentOptions,
@@ -101,16 +77,10 @@ export const getBeforeRedirectFn =
 		};
 		const customProxyUrl = proxyConfig ? getUrlFromProxyConfig(proxyConfig) : null;
 
-		// Inject secureLookup into redirect agents for non-proxy paths
-		const effectiveRedirectOptions =
-			ssrfBridge && !customProxyUrl
-				? { ...redirectAgentOptions, lookup: ssrfBridge.createSecureLookup() }
-				: redirectAgentOptions;
-
 		// Create both agents and set them
 		const targetUrl = redirectedRequest.href;
-		const httpAgent = createHttpProxyAgent(customProxyUrl, targetUrl, effectiveRedirectOptions);
-		const httpsAgent = createHttpsProxyAgent(customProxyUrl, targetUrl, effectiveRedirectOptions);
+		const httpAgent = createHttpProxyAgent(customProxyUrl, targetUrl, redirectAgentOptions);
+		const httpsAgent = createHttpsProxyAgent(customProxyUrl, targetUrl, redirectAgentOptions);
 
 		redirectedRequest.agent = redirectedRequest.href.startsWith('https://')
 			? httpsAgent
@@ -278,7 +248,6 @@ export function setAxiosAgents(
 	config: AxiosRequestConfig,
 	agentOptions?: AgentOptions,
 	proxyConfig?: IHttpRequestOptions['proxy'] | string,
-	secureLookup?: ReturnType<SsrfBridge['createSecureLookup']>,
 ): void {
 	if (config.httpAgent || config.httpsAgent) return;
 
@@ -288,12 +257,6 @@ export function setAxiosAgents(
 
 	if (!targetUrl) return;
 
-	// Inject secureLookup only for non-proxy agents. When a proxy is used,
-	// the lookup option applies to resolving the proxy server hostname, not
-	// the target. Pre-request validateUrl covers the proxy path.
-	const effectiveOptions =
-		secureLookup && !customProxyUrl ? { ...agentOptions, lookup: secureLookup } : agentOptions;
-
-	config.httpAgent = createHttpProxyAgent(customProxyUrl, targetUrl, effectiveOptions);
-	config.httpsAgent = createHttpsProxyAgent(customProxyUrl, targetUrl, effectiveOptions);
+	config.httpAgent = createHttpProxyAgent(customProxyUrl, targetUrl, agentOptions);
+	config.httpsAgent = createHttpsProxyAgent(customProxyUrl, targetUrl, agentOptions);
 }

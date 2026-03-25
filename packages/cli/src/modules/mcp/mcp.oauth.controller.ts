@@ -45,41 +45,25 @@ export class McpOAuthController {
 			path: '/mcp-oauth/register',
 			router: clientRegistrationHandler({ clientsStore: mcpOAuthService.clientsStore }) as Router,
 			skipAuth: true,
-<<<<<<< HEAD
-=======
 			middlewares: [mcpEnabledGuard],
-			ipRateLimit: { limit: 10, windowMs: 5 * Time.minutes.toMilliseconds },
->>>>>>> 2d9a2ec76e (chore: Bundle 2026-W9 (#27532))
 		},
 		{
 			path: '/mcp-oauth/authorize',
 			router: authorizationHandler({ provider: mcpOAuthService }) as Router,
 			skipAuth: true,
-<<<<<<< HEAD
-=======
 			middlewares: [mcpEnabledGuard],
-			ipRateLimit: { limit: 50, windowMs: 5 * Time.minutes.toMilliseconds },
->>>>>>> 2d9a2ec76e (chore: Bundle 2026-W9 (#27532))
 		},
 		{
 			path: '/mcp-oauth/token',
 			router: tokenHandler({ provider: mcpOAuthService }) as Router,
 			skipAuth: true,
-<<<<<<< HEAD
-=======
 			middlewares: [mcpEnabledGuard],
-			ipRateLimit: { limit: 20, windowMs: 5 * Time.minutes.toMilliseconds },
->>>>>>> 2d9a2ec76e (chore: Bundle 2026-W9 (#27532))
 		},
 		{
 			path: '/mcp-oauth/revoke',
 			router: revocationHandler({ provider: mcpOAuthService }) as Router,
 			skipAuth: true,
-<<<<<<< HEAD
-=======
 			middlewares: [mcpEnabledGuard],
-			ipRateLimit: { limit: 30, windowMs: 5 * Time.minutes.toMilliseconds },
->>>>>>> 2d9a2ec76e (chore: Bundle 2026-W9 (#27532))
 		},
 	];
 
