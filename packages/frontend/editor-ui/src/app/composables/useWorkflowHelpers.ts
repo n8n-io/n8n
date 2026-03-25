@@ -21,6 +21,7 @@ import type {
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	createEmptyRunExecutionData,
+	deepCopy,
 	FORM_TRIGGER_NODE_TYPE,
 	isHitlToolType,
 	NodeConnectionTypes,
@@ -103,7 +104,7 @@ export async function resolveParameter<T = IDataObject>(
 	return await resolveParameterImpl(
 		parameter,
 		workflowsStore.workflowObject as Workflow,
-		workflowsStore.connectionsBySourceNode,
+		workflowDocumentStore?.connectionsBySourceNode ?? {},
 		useEnvironmentsStore().variablesAsObject,
 		useNDVStore().activeNode,
 		workflowsStore.workflowExecutionData,
@@ -579,8 +580,12 @@ export function useWorkflowHelpers() {
 	}
 
 	async function getWorkflowDataToSave() {
-		const workflowNodes = workflowsStore.allNodes;
-		const workflowConnections = workflowsStore.allConnections;
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
+
+		const workflowNodes = workflowDocumentStore.allNodes;
+		const workflowConnections = workflowDocumentStore.connectionsBySourceNode;
 
 		let nodeData;
 
@@ -591,15 +596,17 @@ export function useWorkflowHelpers() {
 			nodes.push(nodeData);
 		}
 
-		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
-		);
+		// Deep-copy connections to create an in-time snapshot consistent with nodes.
+		// Without this, connections is a reference to the reactive store object, so
+		// mutations between now and request serialization can include connections to
+		// nodes not present in the nodes snapshot, violating a BE invariant.
+		const connections = deepCopy(workflowConnections);
 
 		const data: WorkflowData = {
 			name: workflowsStore.workflowName,
 			nodes,
 			pinData: workflowDocumentStore.getPinDataSnapshot(),
-			connections: workflowConnections,
+			connections,
 			active: workflowDocumentStore.active,
 			settings: workflowDocumentStore.settings,
 			tags: [...workflowDocumentStore.tags],

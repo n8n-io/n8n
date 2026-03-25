@@ -179,6 +179,10 @@ export const setupTestServer = ({
 						await import('@/workflows/workflows.controller');
 						break;
 
+					case 'workflowDependencies':
+						await import('@/modules/workflow-index/workflow-dependency.controller');
+						break;
+
 					case 'executions':
 						await import('@/executions/executions.controller');
 						break;

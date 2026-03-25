@@ -23,6 +23,10 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 import { needsAgentInput } from '@/app/utils/nodes/nodeTransforms';
 import { generateCodeForAiTransform } from '@/features/ndv/parameters/utils/buttonParameter.utils';
@@ -99,6 +103,12 @@ export function useNodeExecution(
 	const ndvStore = useNDVStore();
 	const uiStore = useUIStore();
 	const workflowState = injectWorkflowState();
+
+	const workflowDocumentStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
 
 	const { runWorkflow, stopCurrentExecution } = useRunWorkflow({ router });
 
@@ -289,7 +299,7 @@ export function useNodeExecution(
 			}
 
 			// Update node with generated code
-			workflowState.updateNodeProperties({
+			workflowDocumentStore.value?.updateNodeProperties({
 				name: nodeRef.value.name,
 				properties: {
 					parameters: {

@@ -580,7 +580,7 @@ export const useLinter = (
 		 *
 		 * $("myNode").item -> $("myNode").first()
 		 */
-		if (toValue(mode) === 'runOnceForEachItem') {
+		if (toValue(mode) === 'runOnceForAllItems') {
 			type DollarItemNode = RangeNode & {
 				property: { name: string; type: string } & RangeNode;
 			};
