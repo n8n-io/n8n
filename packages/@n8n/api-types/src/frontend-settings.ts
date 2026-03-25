@@ -232,6 +232,7 @@ export interface FrontendSettings {
 
 	/** Backend modules that were initialized during startup. */
 	activeModules: string[];
+	canvasOnly: boolean;
 	envFeatureFlags: N8nEnvFeatFlags;
 }
 
