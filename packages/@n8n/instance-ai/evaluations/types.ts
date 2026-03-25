@@ -283,6 +283,43 @@ export interface WorkflowTestCase {
 }
 
 // ---------------------------------------------------------------------------
+// Pin data generation
+// ---------------------------------------------------------------------------
+
+/**
+ * Pin data format as expected by the n8n execution engine.
+ * Each item must be wrapped in { json: ... }.
+ * Note: WorkflowJSON['pinData'] types this as IDataObject[] but the runtime
+ * format uses INodeExecutionData[] ({ json: IDataObject }[]).
+ */
+export type PinData = Record<string, Array<Record<string, unknown>>>;
+
+export interface PinDataGenerationInstructions {
+	/** Describes what the generated data should contain and how it should look */
+	dataDescription: string;
+}
+
+// ---------------------------------------------------------------------------
+// Workflow test case results
+// ---------------------------------------------------------------------------
+
+export interface ScenarioResult {
+	scenario: TestScenario;
+	success: boolean;
+	executionSummary?: ExecutionSummary;
+	score: number;
+	reasoning: string;
+}
+
+export interface WorkflowTestCaseResult {
+	testCase: WorkflowTestCase;
+	workflowId?: string;
+	workflowBuildSuccess: boolean;
+	buildError?: string;
+	scenarioResults: ScenarioResult[];
+}
+
+// ---------------------------------------------------------------------------
 // Result types
 // ---------------------------------------------------------------------------
 

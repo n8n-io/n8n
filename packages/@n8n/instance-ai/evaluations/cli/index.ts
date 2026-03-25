@@ -1,10 +1,16 @@
 #!/usr/bin/env node
 import { parseCliArgs } from './args';
-import { runEvaluation } from '../harness/runner';
+import { runEvaluation, runWorkflowTestCase } from '../harness/runner';
 import { listRuns } from '../report/storage';
 import { writeReport as writeHtmlReport } from '../report/generator';
 import { PROMPTS } from '../data/prompts';
-import type { PromptConfig, DatasetExample } from '../types';
+import { loadWorkflowTestCases } from '../data/workflows';
+import { N8nClient } from '../clients/n8n-client';
+import { seedCredentials, cleanupCredentials } from '../credentials/seeder';
+import { snapshotWorkflowIds } from '../outcome/workflow-discovery';
+import { createLogger } from '../harness/logger';
+import { writeWorkflowReport } from '../report/workflow-report';
+import type { PromptConfig, DatasetExample, WorkflowTestCaseResult } from '../types';
 
 async function main(): Promise<void> {
 	const args = parseCliArgs(process.argv.slice(2));
@@ -40,7 +46,86 @@ async function main(): Promise<void> {
 		return;
 	}
 
-	// Build RunConfig from CLI args
+	// Workflow test case mode
+	if (args.command === 'workflows') {
+		const testCases = loadWorkflowTestCases();
+		if (testCases.length === 0) {
+			console.log('No workflow test cases found in evaluations/data/workflows/');
+			return;
+		}
+
+		const totalScenarios = testCases.reduce(
+			(sum, tc) => sum + tc.scenarios.filter((s) => s.requires !== 'mock-server').length,
+			0,
+		);
+		console.log(
+			`Running ${String(testCases.length)} workflow test case(s) with ${String(totalScenarios)} scenario(s)\n`,
+		);
+
+		const logger = createLogger(args.verbose);
+
+		// Setup: authenticate, seed credentials, snapshot workflows
+		const client = new N8nClient(args.baseUrl);
+		logger.info(`Authenticating with ${args.baseUrl}...`);
+		await client.login(args.email, args.password);
+		logger.success('Authenticated');
+
+		logger.info('Seeding credentials...');
+		const seedResult = await seedCredentials(client);
+		logger.info(`Seeded ${String(seedResult.credentialIds.length)} credential(s)`);
+
+		const preRunWorkflowIds = await snapshotWorkflowIds(client);
+		const claimedWorkflowIds = new Set<string>();
+
+		// Run each test case
+		const results: WorkflowTestCaseResult[] = [];
+
+		for (const testCase of testCases) {
+			const tcResult = await runWorkflowTestCase({
+				client,
+				testCase,
+				timeoutMs: args.timeoutMs,
+				seededCredentialTypes: seedResult.seededTypes,
+				preRunWorkflowIds,
+				claimedWorkflowIds,
+				logger,
+			});
+			results.push(tcResult);
+		}
+
+		// Cleanup credentials
+		await cleanupCredentials(client, seedResult.credentialIds).catch(() => {});
+
+		// Generate HTML report
+		writeWorkflowReport(results);
+		console.log('Report: evaluations/.data/workflow-eval-report.html');
+
+		// Print summary
+		console.log('\n=== Workflow Test Case Results ===\n');
+		for (const r of results) {
+			const buildStatus = r.workflowBuildSuccess ? 'BUILT' : 'BUILD FAILED';
+			console.log(`${r.testCase.prompt.slice(0, 70)}...`);
+			console.log(`  Workflow: ${buildStatus}${r.workflowId ? ` (${r.workflowId})` : ''}`);
+			if (r.buildError) {
+				console.log(`  Error: ${r.buildError.slice(0, 200)}`);
+			}
+
+			for (const sr of r.scenarioResults) {
+				const icon = sr.success ? '\u2713' : '\u2717';
+				console.log(
+					`  ${icon} ${sr.scenario.name}: ${sr.success ? 'PASS' : 'FAIL'} (${String(sr.score * 100)}%)`,
+				);
+				if (!sr.success) {
+					console.log(`    ${sr.reasoning.slice(0, 120)}`);
+				}
+			}
+			console.log('');
+		}
+
+		return;
+	}
+
+	// Build RunConfig from CLI args (existing prompt-based mode)
 	let prompts = PROMPTS;
 	// Apply filters
 	if (args.tags?.length)

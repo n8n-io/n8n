@@ -25,9 +25,11 @@ import {
 	extractChatMessages,
 } from '../outcome/artifact-builder';
 import { cleanupAll } from '../outcome/cleanup';
-import { runPostBuildExecutions } from '../execution/tester';
+import { runPostBuildExecutions, executeWithFullPinData } from '../execution/tester';
 import { saveRun } from '../report/storage';
 import { writeReport } from '../report/generator';
+import { generatePinData } from '../support/pin-data-generator';
+import { identifyServiceNodes } from '../support/service-node-classifier';
 import { createLogger, type EvalLogger } from './logger';
 import type {
 	PromptConfig,
@@ -36,8 +38,12 @@ import type {
 	InstanceAiResult,
 	CapturedEvent,
 	ExecutionChecklist,
+	PinData,
 	Run,
+	WorkflowTestCase,
+	WorkflowTestCaseResult,
 } from '../types';
+import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -342,7 +348,7 @@ async function runSingleExample(config: SingleExampleConfig): Promise<InstanceAi
 				`[${threadId}] Execution checklist: ${String(executionChecklist.items.length)} items, ${String(executionChecklist.testInputs.length)} test inputs`,
 			);
 
-			// 7b. Re-run execution with test inputs
+			// 8b. Re-run execution with test inputs + service pin data
 			if (executionChecklist.testInputs.length > 0) {
 				logger.verbose(`[${threadId}] Running execution eval with test data...`);
 				await runPostBuildExecutions(client, outcome, executionChecklist.testInputs);
@@ -433,6 +439,267 @@ async function runSingleExample(config: SingleExampleConfig): Promise<InstanceAi
 
 		return buildErrorResult(prompt, threadId, runId, events, startTime, checklist, errorMessage);
 	}
+}
+
+// ---------------------------------------------------------------------------
+// Workflow test case runner — build once, run scenarios against it
+// ---------------------------------------------------------------------------
+
+const SCENARIO_BG_TASK_TIMEOUT_MS = 60_000;
+
+interface WorkflowTestCaseConfig {
+	client: N8nClient;
+	testCase: WorkflowTestCase;
+	timeoutMs: number;
+	seededCredentialTypes: string[];
+	preRunWorkflowIds: Set<string>;
+	claimedWorkflowIds: Set<string>;
+	logger: EvalLogger;
+}
+
+export async function runWorkflowTestCase(
+	config: WorkflowTestCaseConfig,
+): Promise<WorkflowTestCaseResult> {
+	const { client, testCase, logger } = config;
+	const threadId = `eval-${crypto.randomUUID()}`;
+	const startTime = Date.now();
+	const timeoutMs = config.timeoutMs > 0 ? config.timeoutMs : DEFAULT_TIMEOUT_MS;
+
+	const result: WorkflowTestCaseResult = {
+		testCase,
+		workflowBuildSuccess: false,
+		scenarioResults: [],
+	};
+
+	const abortController = new AbortController();
+	const events: CapturedEvent[] = [];
+	const approvedRequests = new Set<string>();
+
+	try {
+		// 1. Send prompt to Instance AI and wait for workflow to be built (ONCE)
+		logger.info(`  Building workflow: "${truncate(testCase.prompt, 60)}"`);
+
+		const ssePromise = startSseConnection(client, threadId, events, abortController.signal).catch(
+			(err: unknown) => {
+				if (err instanceof Error) throw err;
+				throw new Error(String(err));
+			},
+		);
+
+		await delay(SSE_SETTLE_DELAY_MS);
+
+		await client.sendMessage(threadId, testCase.prompt);
+
+		// Wait with shorter timeout for scenario mode
+		await waitForAllActivity({
+			client,
+			threadId,
+			events,
+			approvedRequests,
+			startTime,
+			timeoutMs: Math.min(timeoutMs, SCENARIO_BG_TASK_TIMEOUT_MS),
+			logger,
+		});
+
+		abortController.abort();
+		await ssePromise.catch(() => {});
+
+		// 2. Capture the built workflow
+		const threadMessages = await client.getThreadMessages(threadId);
+		const messageWorkflowIds = extractWorkflowIdsFromMessages(threadMessages.messages);
+		const eventOutcome = extractOutcomeFromEvents(events);
+		const outcome = await buildAgentOutcome(
+			client,
+			eventOutcome,
+			config.preRunWorkflowIds,
+			config.claimedWorkflowIds,
+		);
+
+		if (messageWorkflowIds.length > 0) {
+			const messageWfSet = new Set(messageWorkflowIds);
+			outcome.workflowsCreated = outcome.workflowsCreated.filter((wf) => messageWfSet.has(wf.id));
+			outcome.workflowJsons = outcome.workflowJsons.filter(
+				(wf) => typeof wf.id === 'string' && messageWfSet.has(wf.id),
+			);
+		}
+
+		if (outcome.workflowsCreated.length === 0) {
+			// Extract error information from SSE events and thread messages
+			const toolErrors = events
+				.filter((e) => e.type === 'tool-error')
+				.map((e) => {
+					const payload =
+						typeof e.data.payload === 'object' && e.data.payload !== null
+							? (e.data.payload as Record<string, unknown>)
+							: e.data;
+					return String(payload.error ?? payload.message ?? 'unknown tool error');
+				});
+
+			const agentText = events
+				.filter((e) => e.type === 'text-delta')
+				.map((e) => {
+					const text =
+						typeof e.data.text === 'string'
+							? e.data.text
+							: typeof e.data.payload === 'object' &&
+									e.data.payload !== null &&
+									'text' in (e.data.payload as Record<string, unknown>)
+								? String((e.data.payload as Record<string, unknown>).text)
+								: '';
+					return text;
+				})
+				.join('');
+
+			const buildError =
+				toolErrors.length > 0
+					? `Tool errors: ${toolErrors.join('; ')}`
+					: agentText.length > 0
+						? `Agent response: ${agentText.slice(0, 500)}`
+						: 'No workflow produced — no error details captured';
+
+			result.buildError = buildError;
+			logger.warn(`  No workflow created for: "${truncate(testCase.prompt, 60)}"`);
+			logger.warn(`  ${buildError.slice(0, 200)}`);
+			return result;
+		}
+
+		result.workflowBuildSuccess = true;
+		result.workflowId = outcome.workflowsCreated[0].id;
+		const workflowJson = outcome.workflowJsons[0] as unknown as WorkflowJSON;
+
+		logger.info(
+			`  Workflow built: ${outcome.workflowsCreated[0].name} (${String(outcome.workflowsCreated[0].nodeCount)} nodes)`,
+		);
+
+		// 3. Identify service nodes that need pin data
+		const serviceNodes = identifyServiceNodes(workflowJson);
+		const nodeNames = serviceNodes.map((n) => n.name).filter(Boolean) as string[];
+		logger.verbose(`  Service nodes needing pin data: ${nodeNames.join(', ') || 'none'}`);
+
+		// 4. Run each scenario against the same workflow
+		const runnableScenarios = testCase.scenarios.filter((s) => s.requires !== 'mock-server');
+
+		for (const scenario of runnableScenarios) {
+			logger.info(`    Scenario: ${scenario.name}`);
+
+			try {
+				// Generate pin data for all nodes (trigger + service) in one call
+				let pinData: PinData = {};
+				if (nodeNames.length > 0) {
+					pinData = await generatePinData({
+						workflow: workflowJson,
+						nodeNames,
+						instructions: { dataDescription: scenario.dataSetup },
+					});
+					logger.verbose(
+						`    Pin data generated for ${String(Object.keys(pinData).length)} node(s)`,
+					);
+				}
+
+				// Execute with the generated pin data
+				const executionSummary = await executeWithFullPinData(
+					client,
+					outcome.workflowsCreated[0].id,
+					pinData,
+					outcome.workflowJsons,
+				);
+
+				// Evaluate using scenario.successCriteria via LLM
+				const baseArtifact = buildVerificationArtifactFromMessages(threadMessages.messages, {
+					...outcome,
+					executionsRun: [executionSummary],
+				});
+
+				// Enrich artifact with scenario context so the verifier understands
+				// which nodes had mock data vs which ran for real
+				const pinnedNodesList = Object.keys(pinData).join(', ') || 'none';
+				const scenarioContext = [
+					'### Evaluation Context',
+					'',
+					`**Scenario:** ${scenario.name} — ${scenario.description}`,
+					'',
+					`**Data setup:** ${scenario.dataSetup}`,
+					'',
+					`**Pinned nodes (mock data):** ${pinnedNodesList}`,
+					'These nodes had mock data injected and did not call real services.',
+					'All other nodes executed for real with the mock data flowing through them.',
+					'',
+					'**What to verify:** Given the mock data was injected as described above,',
+					'did the workflow logic (routing, transformations, merging) process it correctly?',
+					'Focus on whether the non-pinned nodes produced correct output based on their inputs.',
+				].join('\n');
+
+				const verificationArtifact = `${scenarioContext}\n\n---\n\n${baseArtifact}`;
+
+				const scenarioChecklist: ChecklistItem[] = [
+					{
+						id: 1,
+						description: scenario.successCriteria,
+						category: 'execution',
+						strategy: 'llm',
+					},
+				];
+
+				const verificationResults = await verifyChecklist(
+					scenarioChecklist,
+					verificationArtifact,
+					outcome.workflowJsons,
+				);
+
+				const passed = verificationResults.length > 0 && verificationResults[0].pass;
+				const reasoning =
+					verificationResults.length > 0
+						? verificationResults[0].reasoning
+						: 'No verification result';
+
+				result.scenarioResults.push({
+					scenario,
+					success: passed,
+					executionSummary,
+					score: passed ? 1 : 0,
+					reasoning,
+				});
+
+				logger.info(`    ${passed ? 'PASS' : 'FAIL'}: ${reasoning.slice(0, 100)}`);
+			} catch (err: unknown) {
+				const errorMessage = err instanceof Error ? err.message : String(err);
+				result.scenarioResults.push({
+					scenario,
+					success: false,
+					score: 0,
+					reasoning: `Error: ${errorMessage}`,
+				});
+				logger.error(`    ERROR: ${errorMessage}`);
+			}
+		}
+
+		// 5. Cleanup — workflows, credentials, and data tables
+		await cleanupAll(client, outcome, []).catch(() => {});
+
+		// Clean up data tables created during this run
+		if (outcome.dataTablesCreated.length > 0) {
+			try {
+				const projectId = await client.getPersonalProjectId();
+				for (const dtId of outcome.dataTablesCreated) {
+					try {
+						await client.deleteDataTable(projectId, dtId);
+					} catch {
+						// Best-effort cleanup
+					}
+				}
+				logger.verbose(`  Cleaned up ${String(outcome.dataTablesCreated.length)} data table(s)`);
+			} catch {
+				// Non-fatal — project ID lookup may fail
+			}
+		}
+	} catch (error: unknown) {
+		abortController.abort();
+		const errorMessage = error instanceof Error ? error.message : String(error);
+		result.buildError = errorMessage;
+		logger.error(`  Build failed: ${errorMessage}`);
+	}
+
+	return result;
 }
 
 // ---------------------------------------------------------------------------
@@ -592,7 +859,9 @@ async function processConfirmationRequests(config: WaitConfig): Promise<void> {
 		}
 
 		try {
-			await config.client.confirmAction(requestId, true);
+			// Always offer mock credentials — the eval runner doesn't have real
+			// credentials for most services, so tell Instance AI to use mock data
+			await config.client.confirmAction(requestId, true, { mockCredentials: true });
 			config.approvedRequests.add(requestId);
 			confirmationRetries.delete(requestId);
 		} catch (error: unknown) {

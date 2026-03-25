@@ -13,7 +13,13 @@
 import { parse as parseFlatted } from 'flatted';
 
 import type { N8nClient } from '../clients/n8n-client';
-import type { AgentOutcome, ExecutionSummary, ExecutionTestInput, NodeOutputData } from '../types';
+import type {
+	AgentOutcome,
+	ExecutionSummary,
+	ExecutionTestInput,
+	NodeOutputData,
+	PinData,
+} from '../types';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -38,12 +44,17 @@ const MAX_NODE_OUTPUT_CHARS = 5000;
  * - Webhook triggers: activates workflow and calls the live webhook URL
  * - Other triggers: uses pin data to inject test data
  *
+ * When `servicePinData` is provided, it is merged with trigger pin data
+ * so service nodes (Slack, Gmail, etc.) get realistic mock data while
+ * internal logic nodes (Merge, IF, Set) execute for real.
+ *
  * Mutates `outcome.executionsRun` in place.
  */
 export async function runPostBuildExecutions(
 	client: N8nClient,
 	outcome: AgentOutcome,
 	testInputs?: ExecutionTestInput[],
+	servicePinData?: PinData,
 ): Promise<void> {
 	// Exclude skipped executions so they can be re-executed with test inputs
 	const alreadyExecutedWorkflowIds = new Set(
@@ -113,6 +124,7 @@ export async function runPostBuildExecutions(
 							triggerNode.name,
 							triggerNode.type,
 							input,
+							servicePinData,
 						);
 						outcome.executionsRun.push(executionSummary);
 					}
@@ -233,7 +245,10 @@ function buildPinData(
 }
 
 /**
- * Execute a workflow using pin data on the trigger node.
+ * Execute a workflow using pin data on the trigger node and optionally
+ * on service nodes. Merges trigger pin data with service node pin data
+ * so the trigger gets test input while service nodes get realistic mock data.
+ *
  * Sets pin data -> executes -> polls -> captures output -> restores pin data.
  */
 async function executeWithPinData(
@@ -242,12 +257,14 @@ async function executeWithPinData(
 	triggerNodeName: string,
 	triggerNodeType: string,
 	testInput: ExecutionTestInput,
+	servicePinData?: PinData,
 ): Promise<ExecutionSummary> {
 	// Save original workflow to restore pin data later
 	const originalWorkflow = await client.getWorkflow(workflowId);
 	const originalPinData = originalWorkflow.pinData ?? null;
 
-	const pinData = buildPinData(triggerNodeName, triggerNodeType, testInput);
+	const triggerPinData = buildPinData(triggerNodeName, triggerNodeType, testInput);
+	const pinData = servicePinData ? { ...servicePinData, ...triggerPinData } : triggerPinData;
 
 	try {
 		// Set pin data on the workflow
@@ -260,6 +277,88 @@ async function executeWithPinData(
 		return await pollExecution(client, executionId, workflowId);
 	} finally {
 		// Restore original pin data (best-effort)
+		try {
+			await client.updateWorkflow(workflowId, {
+				pinData: originalPinData ?? {},
+			});
+		} catch {
+			// Non-fatal -- pin data restoration failure
+		}
+	}
+}
+
+/**
+ * Execute a workflow with pre-generated pin data covering all nodes
+ * (trigger + service). Used by the scenario-based evaluation flow where
+ * pin data is generated in a single LLM call for consistency.
+ *
+ * Sets pin data -> finds trigger -> executes -> polls -> restores pin data.
+ */
+export async function executeWithFullPinData(
+	client: N8nClient,
+	workflowId: string,
+	pinData: PinData,
+	workflowJsons: Record<string, unknown>[],
+): Promise<ExecutionSummary> {
+	const originalWorkflow = await client.getWorkflow(workflowId);
+	const originalPinData = originalWorkflow.pinData ?? null;
+
+	const triggerNode = findTriggerNode(workflowJsons, workflowId);
+	const pinnedNodeNames = Object.keys(pinData);
+
+	console.log(
+		`    [exec] Trigger: ${triggerNode?.name ?? '(none)'} (${triggerNode?.type ?? 'unknown'})`,
+	);
+
+	// Log existing pin data on the workflow BEFORE our update
+	const existingPinDataKeys = Object.keys(originalWorkflow.pinData ?? {});
+	console.log(
+		`    [exec] Existing pin data on workflow: ${existingPinDataKeys.length > 0 ? existingPinDataKeys.join(', ') : '(none)'}`,
+	);
+	for (const [name, data] of Object.entries(originalWorkflow.pinData ?? {})) {
+		const preview = JSON.stringify(data).slice(0, 120);
+		console.log(`    [exec]   EXISTING ${name}: ${preview}`);
+	}
+
+	// Log what we're applying
+	console.log(
+		`    [exec] Generated pin data for ${String(pinnedNodeNames.length)} node(s): ${pinnedNodeNames.join(', ')}`,
+	);
+	for (const [name, data] of Object.entries(pinData)) {
+		const preview = JSON.stringify(data).slice(0, 120);
+		console.log(`    [exec]   GENERATED ${name}: ${preview}`);
+	}
+
+	try {
+		await client.updateWorkflow(workflowId, { pinData });
+
+		// Verify what the workflow actually has after update
+		const updatedWorkflow = await client.getWorkflow(workflowId);
+		const updatedPinDataKeys = Object.keys(updatedWorkflow.pinData ?? {});
+		console.log(
+			`    [exec] Pin data AFTER update: ${updatedPinDataKeys.length > 0 ? updatedPinDataKeys.join(', ') : '(none)'}`,
+		);
+		for (const [name, data] of Object.entries(updatedWorkflow.pinData ?? {})) {
+			const preview = JSON.stringify(data).slice(0, 120);
+			console.log(`    [exec]   ACTUAL ${name}: ${preview}`);
+		}
+
+		const { executionId } = await client.executeWorkflow(workflowId, triggerNode?.name);
+		console.log(`    [exec] Execution started: ${executionId}`);
+
+		const result = await pollExecution(client, executionId, workflowId);
+		console.log(
+			`    [exec] Execution finished: ${result.status}${result.error ? ` (${result.error.slice(0, 100)})` : ''}`,
+		);
+		if (result.outputData && result.outputData.length > 0) {
+			for (const nodeOutput of result.outputData) {
+				const preview = JSON.stringify(nodeOutput.data).slice(0, 150);
+				console.log(`    [exec]   OUTPUT ${nodeOutput.nodeName}: ${preview}`);
+			}
+		}
+
+		return result;
+	} finally {
 		try {
 			await client.updateWorkflow(workflowId, {
 				pinData: originalPinData ?? {},
