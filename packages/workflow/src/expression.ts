@@ -210,9 +210,13 @@ export class Expression {
 		if (!this.vmEvaluator) {
 			// Dynamic import to avoid loading expression-runtime in browser environments
 			const { ExpressionEvaluator, IsolatedVmBridge } = await import('@n8n/expression-runtime');
-			const bridge = new IsolatedVmBridge({ timeout: 5000 });
+			const isolatePoolSize = parseInt(process.env.N8N_EXPRESSION_ISOLATE_POOL_SIZE ?? '', 10) || 1;
+			const acquireTimeoutMs =
+				parseInt(process.env.N8N_EXPRESSION_ISOLATE_ACQUIRE_TIMEOUT_MS ?? '', 10) || 5000;
 			this.vmEvaluator = new ExpressionEvaluator({
-				bridge,
+				createBridge: () => new IsolatedVmBridge({ timeout: 5000 }),
+				isolatePoolSize,
+				acquireTimeoutMs,
 				hooks: {
 					before: [ThisSanitizer],
 					after: [PrototypeSanitizer, DollarSignValidator],
@@ -220,6 +224,14 @@ export class Expression {
 			});
 			await this.vmEvaluator.initialize();
 		}
+	}
+
+	static async acquireIsolate(executionId: string): Promise<void> {
+		if (this.vmEvaluator) await this.vmEvaluator.acquireForExecution(executionId);
+	}
+
+	static async releaseIsolate(executionId: string): Promise<void> {
+		if (this.vmEvaluator) await this.vmEvaluator.releaseIsolate(executionId);
 	}
 
 	/**
@@ -531,8 +543,10 @@ export class Expression {
 			}
 
 			try {
+				const rawExecutionId = data.$execution?.id;
 				const result = Expression.vmEvaluator.evaluate(expression, data, {
 					timezone: this.timezone,
+					executionId: rawExecutionId === '__UNKNOWN__' ? undefined : rawExecutionId,
 				});
 				return result as string | null | (() => unknown);
 			} catch (error) {

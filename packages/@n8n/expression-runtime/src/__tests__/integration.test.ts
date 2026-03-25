@@ -8,8 +8,9 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 	let evaluator: ExpressionEvaluator;
 
 	beforeAll(async () => {
-		const bridge = new IsolatedVmBridge({ timeout: 5000 });
-		evaluator = new ExpressionEvaluator({ bridge });
+		evaluator = new ExpressionEvaluator({
+			createBridge: () => new IsolatedVmBridge({ timeout: 5000 }),
+		});
 		await evaluator.initialize();
 	});
 

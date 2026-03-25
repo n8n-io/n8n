@@ -47,6 +47,7 @@ import {
 	NodeHelpers,
 	NodeConnectionTypes,
 	ApplicationError,
+	Expression,
 	sleep,
 	Node,
 	UnexpectedError,
@@ -1440,6 +1441,10 @@ export class WorkflowExecute {
 			// eslint-disable-next-line complexity
 			const returnPromise = (async () => {
 				try {
+					if (this.additionalData.executionId) {
+						await Expression.acquireIsolate(this.additionalData.executionId);
+					}
+
 					// Establish the execution context
 					await establishExecutionContext(
 						workflow,
@@ -2310,6 +2315,10 @@ export class WorkflowExecute {
 					}
 
 					return fullRunData;
+				})
+				.finally(async () => {
+					const { executionId } = this.additionalData;
+					if (executionId) await Expression.releaseIsolate(executionId);
 				});
 
 			return await returnPromise.then(resolve);

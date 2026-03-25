@@ -14,10 +14,22 @@ import type { RuntimeBridge } from './bridge';
  * will be added in later slices.
  */
 export interface EvaluatorConfig {
+	/** Factory function to create a bridge instance. */
+	createBridge: () => RuntimeBridge;
+
 	/**
-	 * Runtime bridge implementation.
+	 * Number of isolates to keep in the pool.
+	 *
+	 * @default 1
 	 */
-	bridge: RuntimeBridge;
+	isolatePoolSize?: number;
+
+	/**
+	 * Max ms to wait for a bridge when pool is exhausted.
+	 *
+	 * @default 5000
+	 */
+	acquireTimeoutMs?: number;
 
 	/**
 	 * Observability provider for metrics, traces, and logs.
@@ -49,13 +61,23 @@ export interface IExpressionEvaluator {
 	 *
 	 * @param expression - Expression string (e.g., "{{ $json.email }}")
 	 * @param data - Workflow data context
-	 * @param options - Evaluation options
+	 * @param ctx - Evaluation context
 	 * @returns Result of the expression
 	 *
 	 * Note: Synchronous for Slice 1 (Node.js vm module).
 	 *       Will be async for Slice 2 (isolated-vm).
 	 */
-	evaluate(expression: string, data: WorkflowData, options?: EvaluateOptions): unknown;
+	evaluate(expression: string, data: WorkflowData, ctx?: EvaluateContext): unknown;
+
+	/**
+	 * Acquire a bridge for an execution. Waits if pool is exhausted.
+	 */
+	acquireForExecution(executionId: string): Promise<void>;
+
+	/**
+	 * Release the isolate held by an execution.
+	 */
+	releaseIsolate(executionId: string): Promise<void>;
 
 	/**
 	 * Dispose of the evaluator and free resources.
@@ -81,7 +103,7 @@ export type WorkflowData = Record<string, unknown>;
  *
  * Note: Slice 1 is minimal. Tournament options will be added later.
  */
-export interface EvaluateOptions {
+export interface EvaluateContext {
 	/**
 	 * Custom timeout for this evaluation (in milliseconds).
 	 * Overrides the bridge's default timeout.
@@ -93,6 +115,15 @@ export interface EvaluateOptions {
 	 * Sets luxon Settings.defaultZone inside the isolate before execution.
 	 */
 	timezone?: string;
+
+	/**
+	 * Execution ID for per-execution bridge holding.
+	 *
+	 * When present, the evaluator holds a bridge for this execution until
+	 * `release()` is called. When absent (e.g. expressions in credentials
+	 * parameters), the bridge is borrowed and returned per `evaluate()` call.
+	 */
+	executionId?: string;
 }
 
 // ============================================================================

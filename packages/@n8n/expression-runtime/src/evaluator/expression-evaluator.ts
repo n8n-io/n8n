@@ -3,8 +3,12 @@ import type {
 	IExpressionEvaluator,
 	EvaluatorConfig,
 	WorkflowData,
-	EvaluateOptions,
+	EvaluateContext,
+	RuntimeBridge,
 } from '../types';
+import { IsolatePool } from '../pool/isolate-pool';
+
+type ExecutionId = string;
 
 export class ExpressionEvaluator implements IExpressionEvaluator {
 	private config: EvaluatorConfig;
@@ -18,23 +22,45 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 	// Cache hit rate in production: ~99.9% (same expressions repeat within a workflow)
 	private codeCache = new Map<string, string>();
 
+	private pool: IsolatePool;
+
+	private bridges = new Map<ExecutionId, RuntimeBridge>();
+
 	constructor(config: EvaluatorConfig) {
 		this.config = config;
+		const createBridge = async () => {
+			const bridge = config.createBridge();
+			await bridge.initialize();
+			return bridge;
+		};
+		this.pool = new IsolatePool(
+			createBridge,
+			config.isolatePoolSize ?? 1,
+			config.acquireTimeoutMs ?? 5000,
+		);
 	}
 
 	async initialize(): Promise<void> {
-		await this.config.bridge.initialize();
+		await this.pool.initialize();
 	}
 
-	evaluate(expression: string, data: WorkflowData, options?: EvaluateOptions): unknown {
+	async acquireForExecution(executionId: string): Promise<void> {
+		const bridge = await this.pool.acquire();
+		this.bridges.set(executionId, bridge);
+	}
+
+	evaluate(expression: string, data: WorkflowData, ctx?: EvaluateContext): unknown {
 		if (this.disposed) throw new Error('Evaluator disposed');
+
+		const executionId = ctx?.executionId;
+		const bridge = this.getBridge(executionId);
 
 		// Transform template expression → sanitized JavaScript (cached)
 		const transformedCode = this.getTransformedCode(expression);
 
 		try {
-			const result = this.config.bridge.execute(transformedCode, data, {
-				timezone: options?.timezone,
+			const result = bridge.execute(transformedCode, data, {
+				timezone: ctx?.timezone,
 			});
 
 			if (this.config.observability) {
@@ -47,7 +73,31 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 				this.config.observability.metrics.counter('expression.evaluation.error', 1);
 			}
 			throw error;
+		} finally {
+			if (!executionId) this.pool.returnToPool(bridge);
 		}
+	}
+
+	private getBridge(executionId?: string): RuntimeBridge {
+		if (!executionId) {
+			const bridge = this.pool.tryAcquire();
+			if (!bridge) throw new Error('No isolate bridge available in pool');
+			return bridge;
+		}
+
+		const bridge = this.bridges.get(executionId);
+		if (!bridge)
+			throw new Error(
+				`No bridge acquired for execution ${executionId}. Call acquireForExecution() first.`,
+			);
+		return bridge;
+	}
+
+	async releaseIsolate(executionId: string): Promise<void> {
+		const bridge = this.bridges.get(executionId);
+		if (!bridge) return;
+		this.bridges.delete(executionId);
+		await this.pool.release(bridge);
 	}
 
 	/**
@@ -85,7 +135,11 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 	async dispose(): Promise<void> {
 		this.disposed = true;
 		this.codeCache.clear();
-		await this.config.bridge.dispose();
+
+		await Promise.all([...this.bridges.values()].map((b) => b.dispose()));
+		this.bridges.clear();
+
+		await this.pool.dispose();
 	}
 
 	isDisposed(): boolean {
