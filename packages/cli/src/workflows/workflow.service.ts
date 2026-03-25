@@ -343,10 +343,6 @@ export class WorkflowService {
 			hasConnectionsKey && !isEqual(workflowUpdateData.connections, workflow.connections);
 		const saveNewVersion = nodesChanged || connectionsChanged;
 
-		this.logger.debug(
-			`[WorkflowService.update] workflowId=${workflowId} autosaved=${options.autosaved} saveNewVersion=${saveNewVersion} nodesChanged=${nodesChanged} connectionsChanged=${connectionsChanged} incomingNodeCount=${Array.isArray(workflowUpdateData.nodes) ? workflowUpdateData.nodes.length : 'undefined'} existingNodeCount=${Array.isArray(workflow.nodes) ? workflow.nodes.length : 'undefined'} incomingConnectionKeys=${hasConnectionsKey ? JSON.stringify(Object.keys(workflowUpdateData.connections ?? {})) : 'undefined'} existingConnectionKeys=${JSON.stringify(Object.keys(workflow.connections ?? {}))}`,
-		);
-
 		if (saveNewVersion) {
 			workflowUpdateData.versionId = uuid();
 			this.logger.debug(

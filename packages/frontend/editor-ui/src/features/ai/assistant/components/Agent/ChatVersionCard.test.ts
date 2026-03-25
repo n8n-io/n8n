@@ -3,7 +3,7 @@ import { fireEvent } from '@testing-library/vue';
 import { NodeDiffStatus } from 'n8n-workflow';
 
 import { renderComponent } from '@/__tests__/render';
-import VersionCardV2 from './VersionCardV2.vue';
+import ChatVersionCard from './ChatVersionCard.vue';
 import type { NodeChangeEntry } from '@/features/ai/assistant/composables/useReviewChanges';
 import type { INode } from 'n8n-workflow';
 import type { SimplifiedNodeType } from '@/Interface';
@@ -52,7 +52,7 @@ function render(
 		versionExists: boolean;
 	}> = {},
 ) {
-	return renderComponent(VersionCardV2, {
+	return renderComponent(ChatVersionCard, {
 		props: {
 			versionId: overrides.versionId ?? 'version-1',
 			isCurrent: overrides.isCurrent ?? false,
@@ -89,7 +89,7 @@ function render(
 	});
 }
 
-describe('VersionCardV2', () => {
+describe('ChatVersionCard', () => {
 	describe('basic rendering', () => {
 		it('should render the version card container', () => {
 			const { getByTestId } = render();

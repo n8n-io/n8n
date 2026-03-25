@@ -1238,7 +1238,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 				// Pass 2: build final list, placing each version card after the AI
 				// response (just before the next user message, or at the end).
-				// Title is left undefined — VersionCardV2 computes a "Version #N" fallback.
+				// Title is left undefined — ChatVersionCard computes a "Version #N" fallback.
 				const convertedMessages: ChatUI.AssistantMessage[] = [];
 				let pendingVersionCard: ChatUI.AssistantMessage | null = null;
 

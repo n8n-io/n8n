@@ -196,25 +196,25 @@ describe('useReviewChanges', () => {
 		});
 
 		it('should compute diff correctly filtering out Eq nodes', async () => {
-			const oldNode = makeNode({ id: 'n1', name: 'Old' });
+			const modifiedNode = makeNode({ id: 'n1', name: 'Modified' });
 			const addedNode = makeNode({ id: 'n2', name: 'Added' });
-			const currentNode = makeNode({ id: 'n1', name: 'Modified' });
 
 			mockBuilderStore.latestRevertVersion = { id: 'v-1' };
 			mockBuilderStore.versionCardMessages = [{ data: { versionId: 'v-1' } }];
+			// Version cache stores the target version's nodes
 			mockWorkflowHistoryStore.getWorkflowVersion.mockResolvedValue({
-				nodes: [oldNode],
+				nodes: [modifiedNode, addedNode],
 				connections: {},
 			});
 			mockWorkflowsStore.workflow = {
 				id: 'wf-1',
-				nodes: [currentNode, addedNode],
+				nodes: [modifiedNode, addedNode],
 				connections: {},
 			};
 
 			compareWorkflowsNodesMock.mockReturnValue(
 				new Map([
-					['n1', { status: 'modified', node: oldNode }],
+					['n1', { status: 'modified', node: modifiedNode }],
 					['n2', { status: 'added', node: addedNode }],
 					['n3', { status: 'equal', node: makeNode({ id: 'n3' }) }],
 				]),
@@ -225,8 +225,8 @@ describe('useReviewChanges', () => {
 
 			expect(result.nodeChanges.value).toHaveLength(2);
 			expect(result.nodeChanges.value[0].status).toBe('modified');
-			// Modified nodes use current version from the store
-			expect(result.nodeChanges.value[0].node).toStrictEqual(currentNode);
+			// Modified nodes are resolved from the version cache (target nodes)
+			expect(result.nodeChanges.value[0].node).toStrictEqual(modifiedNode);
 			expect(result.nodeChanges.value[1].status).toBe('added');
 			expect(result.nodeChanges.value[1].node).toStrictEqual(addedNode);
 			unmount();
@@ -641,17 +641,22 @@ describe('useReviewChanges', () => {
 
 	describe('openDiffView', () => {
 		it('should open modal with correct data when version is loaded', async () => {
-			const cachedNodes = [makeNode({ id: 'cached-1' })];
-			const cachedConnections: IConnections = {
+			const prevNodes = [makeNode({ id: 'prev-1' })];
+			const prevConnections: IConnections = {
 				Node1: { main: [[{ node: 'Node2', type: 'main', index: 0 }]] },
 			};
+			const latestNodes = [makeNode({ id: 'latest-1' })];
+			const latestConnections: IConnections = {};
 
-			mockBuilderStore.latestRevertVersion = { id: 'v-1' };
-			mockBuilderStore.versionCardMessages = [{ data: { versionId: 'v-1' } }];
-			mockWorkflowHistoryStore.getWorkflowVersion.mockResolvedValue({
-				nodes: cachedNodes,
-				connections: cachedConnections,
-			});
+			mockBuilderStore.latestRevertVersion = { id: 'v-2' };
+			mockBuilderStore.versionCardMessages = [
+				{ data: { versionId: 'v-1' } },
+				{ data: { versionId: 'v-2' } },
+			];
+			// Return different data for each version
+			mockWorkflowHistoryStore.getWorkflowVersion
+				.mockResolvedValueOnce({ nodes: prevNodes, connections: prevConnections })
+				.mockResolvedValueOnce({ nodes: latestNodes, connections: latestConnections });
 			mockWorkflowsStore.workflow = {
 				id: 'wf-1',
 				nodes: [makeNode()],
@@ -667,9 +672,11 @@ describe('useReviewChanges', () => {
 			expect(mockUIStore.openModalWithData).toHaveBeenCalledTimes(1);
 			const callArg = mockUIStore.openModalWithData.mock.calls[0][0];
 			expect(callArg.name).toBe('aiBuilderDiff');
-			expect(callArg.data.sourceWorkflow.nodes).toEqual(cachedNodes);
-			expect(callArg.data.sourceWorkflow.connections).toEqual(cachedConnections);
-			expect(callArg.data.targetWorkflow).toBe(mockWorkflowsStore.workflow);
+			// Source is the previous version, target is the latest version
+			expect(callArg.data.sourceWorkflow.nodes).toEqual(prevNodes);
+			expect(callArg.data.sourceWorkflow.connections).toEqual(prevConnections);
+			expect(callArg.data.targetWorkflow.nodes).toEqual(latestNodes);
+			expect(callArg.data.targetWorkflow.connections).toEqual(latestConnections);
 			expect(callArg.data.sourceLabel).toBe('aiAssistant.builder.reviewChanges.previousVersion');
 			expect(callArg.data.targetLabel).toBe('aiAssistant.builder.reviewChanges.currentVersion');
 			unmount();
@@ -1074,19 +1081,18 @@ describe('useReviewChanges', () => {
 				nodes: [makeNode({ id: 'n1' })],
 				connections: {},
 			};
-			compareWorkflowsNodesMock.mockImplementation((base: INode[]) => {
-				// Verify the base nodes have resolved parameters
-				expect(base[0].parameters).toEqual(resolvedParams);
-				return new Map([['n1', { status: 'modified', node: base[0] }]]);
+			// First card has no predecessor, so source=[] and target=[node].
+			// Verify the target nodes have resolved parameters.
+			compareWorkflowsNodesMock.mockImplementation((_base: INode[], target: INode[]) => {
+				expect(target[0].parameters).toEqual(resolvedParams);
+				return new Map([['n1', { status: 'added', node: target[0] }]]);
 			});
 
 			const { result, unmount } = withSetup();
 			await flushPromises();
 
-			// Verify the computed ran and produced results
 			expect(result.nodeChanges.value).toHaveLength(1);
 			expect(compareWorkflowsNodesMock).toHaveBeenCalled();
-			// getNodeParameters should have been called during resolveNodeDefaults
 			expect(getNodeParametersMock).toHaveBeenCalled();
 			unmount();
 		});
@@ -1110,10 +1116,10 @@ describe('useReviewChanges', () => {
 				nodes: [makeNode({ id: 'n1' })],
 				connections: {},
 			};
-			compareWorkflowsNodesMock.mockImplementation((base: INode[]) => {
-				// Parameters should be unchanged
-				expect(base[0].parameters).toEqual({ original: true });
-				return new Map([['n1', { status: 'modified', node: base[0] }]]);
+			// First card: source=[], target=[node]. Parameters should be unchanged.
+			compareWorkflowsNodesMock.mockImplementation((_base: INode[], target: INode[]) => {
+				expect(target[0].parameters).toEqual({ original: true });
+				return new Map([['n1', { status: 'added', node: target[0] }]]);
 			});
 
 			const { result, unmount } = withSetup();

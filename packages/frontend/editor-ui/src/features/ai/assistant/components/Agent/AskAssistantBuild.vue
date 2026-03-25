@@ -22,7 +22,7 @@ import { nodeViewEventBus } from '@/app/event-bus';
 import { jsonParse } from 'n8n-workflow';
 import ExecuteMessage from './ExecuteMessage.vue';
 import NotificationPermissionBanner from './NotificationPermissionBanner.vue';
-import VersionCardV2 from './VersionCardV2.vue';
+import ChatVersionCard from './ChatVersionCard.vue';
 import ChatInputWithMention from '../FocusedNodes/ChatInputWithMention.vue';
 import MessageFocusedNodesChips from '../FocusedNodes/MessageFocusedNodesChips.vue';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
@@ -677,7 +677,7 @@ defineExpose({
 					@show-in-history="onShowVersion"
 					@select-node="onSelectChangedNode"
 				/>
-				<VersionCardV2
+				<ChatVersionCard
 					v-else-if="isVersionCardMessage(message) && isNonEmptyVersionCard(message)"
 					:version-id="message.data.versionId"
 					:is-current="isCurrentVersionCard(message)"

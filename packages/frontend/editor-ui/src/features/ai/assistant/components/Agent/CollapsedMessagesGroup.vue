@@ -6,7 +6,7 @@ import { isToolMessage, isThinkingGroupMessage } from '@n8n/design-system/types/
 import type { NodeChangeEntry } from '@/features/ai/assistant/composables/useReviewChanges';
 import { N8nIcon, MessageWrapper, ThinkingMessage } from '@n8n/design-system';
 import { isVersionCardMessage, type VersionCardMessage } from '../../assistant.types';
-import VersionCardV2 from './VersionCardV2.vue';
+import ChatVersionCard from './ChatVersionCard.vue';
 
 function asVersionCard(msg: ChatUI.AssistantMessage): VersionCardMessage {
 	return msg as VersionCardMessage;
@@ -140,7 +140,7 @@ function toggleExpanded() {
 		<div v-if="isExpanded" :class="$style.expandedMessages">
 			<template v-for="(msg, idx) in groupedMessages" :key="msg.id">
 				<!-- Version cards (custom messages) -->
-				<VersionCardV2
+				<ChatVersionCard
 					v-if="isNonEmptyVersionCard(msg)"
 					:version-id="asVersionCard(msg).data.versionId"
 					:is-current="false"

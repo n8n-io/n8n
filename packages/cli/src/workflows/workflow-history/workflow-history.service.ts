@@ -118,10 +118,6 @@ export class WorkflowHistoryService {
 			);
 		}
 
-		this.logger.debug(
-			`[WorkflowHistory.saveVersion] workflowId=${workflowId} versionId=${workflow.versionId} autosaved=${autosaved} nodeCount=${Array.isArray(workflow.nodes) ? workflow.nodes.length : 'N/A'} connectionKeys=${JSON.stringify(Object.keys(workflow.connections))}`,
-		);
-
 		const authors = typeof user === 'string' ? user : `${user.firstName} ${user.lastName}`;
 
 		const repository = transactionManager

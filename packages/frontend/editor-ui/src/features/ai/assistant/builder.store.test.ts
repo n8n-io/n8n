@@ -3240,10 +3240,15 @@ describe('AI Builder store', () => {
 			workflowDocumentStore.setUpdatedAt('2024-01-01T00:00:00Z');
 
 			// Mock the workflow history API to return the version as existing
+			// Called twice: once for saveWorkflowAndGetRevertVersion, once for savePostModificationVersion
 			const workflowHistoryModule = await import('@n8n/rest-api-client/api/workflowHistory');
-			vi.mocked(workflowHistoryModule.getWorkflowVersionsByIds).mockResolvedValueOnce({
-				versions: [{ versionId: 'version-1', createdAt: '2024-01-01T00:00:00Z' }],
-			});
+			vi.mocked(workflowHistoryModule.getWorkflowVersionsByIds)
+				.mockResolvedValueOnce({
+					versions: [{ versionId: 'version-1', createdAt: '2024-01-01T00:00:00Z' }],
+				})
+				.mockResolvedValueOnce({
+					versions: [{ versionId: 'version-1', createdAt: '2024-01-01T00:00:00Z' }],
+				});
 
 			await builderStore.sendChatMessage({ text: 'Build a workflow' });
 
@@ -3261,12 +3266,16 @@ describe('AI Builder store', () => {
 				});
 			}
 
-			// Complete streaming
+			// Complete streaming — stopStreaming is async (saves post-modification version)
 			if (capturedDoneCallback) {
 				capturedDoneCallback();
 			}
 
-			await vi.waitFor(() => expect(builderStore.streaming).toBe(false));
+			// Wait for the version card to be appended (async stopStreaming)
+			await vi.waitFor(() => {
+				const last = builderStore.chatMessages[builderStore.chatMessages.length - 1];
+				expect(last.type).toBe('custom');
+			});
 
 			// A version card message should be appended
 			const lastMessage = builderStore.chatMessages[builderStore.chatMessages.length - 1];
@@ -3525,6 +3534,12 @@ describe('AI Builder store', () => {
 			workflowsStore.isNewWorkflow = false;
 			workflowsStore.workflowVersionId = 'version-1';
 
+			// Mock version check for saveWorkflowAndGetRevertVersion + savePostModificationVersion
+			const workflowHistoryModule = await import('@n8n/rest-api-client/api/workflowHistory');
+			vi.mocked(workflowHistoryModule.getWorkflowVersionsByIds).mockResolvedValue({
+				versions: [{ versionId: 'version-1', createdAt: '2024-01-01T00:00:00Z' }],
+			});
+
 			// Trigger sendChatMessage to start streaming and capture callbacks
 			await builderStore.sendChatMessage({ text: 'test message' });
 
@@ -3542,10 +3557,18 @@ describe('AI Builder store', () => {
 				});
 			}
 
-			// Simulate successful completion by calling the done callback
+			// Simulate successful completion — stopStreaming is async
 			if (capturedDoneCallback) {
 				capturedDoneCallback();
 			}
+
+			// Wait for async stopStreaming to finish (saves post-mod version, shows notifications)
+			await vi.waitFor(() => expect(builderStore.streaming).toBe(false));
+			// Flush pending microtasks from the async stopStreaming chain
+			await vi.waitFor(() => {
+				const last = builderStore.chatMessages[builderStore.chatMessages.length - 1];
+				expect(last.type).toBe('custom');
+			});
 		};
 
 		it('should show browser notification when streaming completes successfully and tab is hidden', async () => {
