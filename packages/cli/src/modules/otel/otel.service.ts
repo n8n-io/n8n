@@ -10,10 +10,12 @@ import { N8N_VERSION } from '@/constants';
 
 import { OtelConfig } from './otel.config';
 import { ATTR } from './otel.constants';
+import { SafeTraceExporter } from './safe-trace-exporter';
 
 @Service()
 export class OtelService {
 	private sdk?: NodeSDK;
+	private hasLoggedStartupConnectivityFailure = false;
 
 	constructor(
 		private readonly config: OtelConfig,
@@ -24,6 +26,9 @@ export class OtelService {
 	init() {
 		if (!this.config.enabled) return;
 
+		const otlpTracesUrl = this.buildOtlpTracesUrl();
+		const otlpHeaders = this.parseOtlpHeaders();
+
 		this.sdk = new NodeSDK({
 			resource: resourceFromAttributes({
 				[ATTR.OTEL_SERVICE_NAME]: this.config.exporterServiceName,
@@ -31,21 +36,26 @@ export class OtelService {
 				[ATTR.INSTANCE_ID]: this.instanceSettings.instanceId,
 				[ATTR.INSTANCE_ROLE]: this.instanceSettings.instanceType,
 			}),
-			traceExporter: new OTLPTraceExporter({
-				url: `${this.config.exporterEndpoint}${this.config.exporterTracingPath}`,
-				headers: this.config.exporterHeaders ? this.parseHeaders(this.config.exporterHeaders) : {},
-			}),
+			traceExporter: new SafeTraceExporter(
+				new OTLPTraceExporter({
+					url: otlpTracesUrl,
+					headers: otlpHeaders,
+				}),
+				this.logger,
+			),
 			sampler: new TraceIdRatioBasedSampler(this.config.tracesSampleRate),
 		});
 
 		this.sdk.start();
+		void this.checkEndpointReachability(otlpTracesUrl);
 	}
 
 	async shutdown(): Promise<void> {
 		await this.sdk?.shutdown();
 	}
 
-	parseHeaders(exporterHeaders: string): Record<string, string> {
+	parseOtlpHeaders(): Record<string, string> {
+		const exporterHeaders = this.config.exporterHeaders;
 		const headers: Record<string, string> = {};
 		for (const pair of exporterHeaders.split(',')) {
 			const trimmedPair = pair.trim();
@@ -70,5 +80,29 @@ export class OtelService {
 			headers[trimmedKey] = rest.join('=').trim();
 		}
 		return headers;
+	}
+
+	private buildOtlpTracesUrl(): string {
+		const exporterEndpoint = this.config.exporterEndpoint;
+		const exporterTracingPath = this.config.exporterTracingPath;
+		const exporterEndpointWithoutTrailingSlash = exporterEndpoint.replace(/\/+$/, '');
+		return `${exporterEndpointWithoutTrailingSlash}${exporterTracingPath}`;
+	}
+
+	private async checkEndpointReachability(url: string): Promise<void> {
+		try {
+			await fetch(url, {
+				method: 'HEAD',
+				signal: AbortSignal.timeout(2_000),
+			});
+		} catch (error) {
+			if (this.hasLoggedStartupConnectivityFailure) return;
+			this.hasLoggedStartupConnectivityFailure = true;
+
+			this.logger.error('Failed to connect to OpenTelemetry OTLP endpoint during startup', {
+				endpoint: url,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
 	}
 }
