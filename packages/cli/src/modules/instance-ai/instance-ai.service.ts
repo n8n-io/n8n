@@ -595,6 +595,24 @@ export class InstanceAiService {
 		this.gatewayRegistry.clearDisconnectTimer(userId);
 	}
 
+	/**
+	 * Remove all in-memory state associated with a thread.
+	 * Must be called when a thread is deleted so the maps don't leak.
+	 */
+	async clearThreadState(threadId: string): Promise<void> {
+		this.threadUsers.delete(threadId);
+		this.threadResearchMode.delete(threadId);
+		this.threadTimeZone.delete(threadId);
+
+		const groupId = this.threadMessageGroupId.get(threadId);
+		if (groupId) this.runIdsByMessageGroup.delete(groupId);
+		this.threadMessageGroupId.delete(threadId);
+
+		this.domainAccessTrackersByThread.delete(threadId);
+		await this.destroySandbox(threadId);
+		this.eventBus.clearThread(threadId);
+	}
+
 	async shutdown(): Promise<void> {
 		if (this.confirmationTimeoutInterval) {
 			clearInterval(this.confirmationTimeoutInterval);
@@ -622,6 +640,13 @@ export class InstanceAiService {
 			async (threadId) => await this.destroySandbox(threadId),
 		);
 		await Promise.allSettled(sandboxCleanups);
+
+		this.threadUsers.clear();
+		this.threadResearchMode.clear();
+		this.threadTimeZone.clear();
+		this.threadMessageGroupId.clear();
+		this.runIdsByMessageGroup.clear();
+		this.domainAccessTrackersByThread.clear();
 
 		this.snapshotManager?.invalidate();
 		this.eventBus.clear();

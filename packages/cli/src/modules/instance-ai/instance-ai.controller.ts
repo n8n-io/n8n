@@ -366,6 +366,7 @@ export class InstanceAiController {
 		@Param('threadId') threadId: string,
 	) {
 		await this.assertThreadAccess(req.user.id, threadId);
+		await this.instanceAiService.clearThreadState(threadId);
 		await this.memoryService.deleteThread(req.user.id, threadId);
 		return { ok: true };
 	}

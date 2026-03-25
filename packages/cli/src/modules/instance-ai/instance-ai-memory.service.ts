@@ -262,7 +262,9 @@ export class InstanceAiMemoryService {
 	 * Delete conversation threads older than the configured TTL.
 	 * Safe to call on startup — no-op if threadTtlDays is 0 (disabled).
 	 */
-	async cleanupExpiredThreads(): Promise<number> {
+	async cleanupExpiredThreads(
+		onThreadDeleted?: (threadId: string) => Promise<void>,
+	): Promise<number> {
 		const ttlDays = this.instanceAiConfig.threadTtlDays;
 		if (!ttlDays || ttlDays <= 0) return 0;
 
@@ -282,6 +284,7 @@ export class InstanceAiMemoryService {
 			for (const thread of result.threads) {
 				if (thread.updatedAt < cutoff) {
 					try {
+						await onThreadDeleted?.(thread.id);
 						await memory.deleteThread(thread.id);
 						deletedCount++;
 						deletedInPage++;
