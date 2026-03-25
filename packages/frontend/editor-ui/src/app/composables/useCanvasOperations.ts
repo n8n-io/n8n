@@ -3008,7 +3008,11 @@ export function useCanvasOperations() {
 			workflowDocumentStore.value?.setConnections(workflow.connections);
 		}
 		await addNodes(convertedNodes ?? [], { keepPristine: true });
-		await workflowState.getNewWorkflowData(name, projectsStore.currentProjectId);
+		const workflowData = await workflowState.getNewWorkflowData(
+			name,
+			projectsStore.currentProjectId,
+		);
+		workflowDocumentStore.value?.setName(workflowData.name);
 	}
 
 	function tryToOpenSubworkflowInNewTab(nodeId: string): boolean {

@@ -195,8 +195,15 @@ export function useWorkflowState() {
 		setWorkflowExecutionData(null);
 		resetAllNodesIssues();
 
+		// Reset name via document store (triggers onNameChange → updates workflowObject.name)
+		if (ws.workflow.id) {
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(ws.workflow.id),
+			);
+			workflowDocumentStore.setName('');
+		}
+
 		setWorkflowId('');
-		ws.workflowObject.name = '';
 		// Settings are managed by workflowDocumentStore; reset the runtime Workflow instance directly
 		ws.workflowObject.setSettings({ ...DEFAULT_SETTINGS });
 		// Note: Tags are now managed by workflowDocumentStore, which is disposed during reset
