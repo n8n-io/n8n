@@ -120,10 +120,7 @@ const latestBuildResult = computed(() => {
 watch(
 	() => latestBuildResult.value?.toolCallId,
 	(toolCallId) => {
-		if (!toolCallId || !latestBuildResult.value) {
-			wasCanvasOpenBeforeSwitch.value = false;
-			return;
-		}
+		if (!toolCallId || !latestBuildResult.value) return;
 
 		if (
 			!isPreviewVisible.value &&
@@ -131,7 +128,6 @@ watch(
 			!userSentMessage.value &&
 			!wasCanvasOpenBeforeSwitch.value
 		) {
-			wasCanvasOpenBeforeSwitch.value = false;
 			return;
 		}
 
@@ -182,10 +178,7 @@ const latestDataTableResult = computed(() => {
 watch(
 	() => latestDataTableResult.value?.toolCallId,
 	(toolCallId) => {
-		if (!toolCallId || !latestDataTableResult.value) {
-			wasCanvasOpenBeforeSwitch.value = false;
-			return;
-		}
+		if (!toolCallId || !latestDataTableResult.value) return;
 
 		if (
 			!isPreviewVisible.value &&
@@ -193,7 +186,6 @@ watch(
 			!userSentMessage.value &&
 			!wasCanvasOpenBeforeSwitch.value
 		) {
-			wasCanvasOpenBeforeSwitch.value = false;
 			return;
 		}
 
