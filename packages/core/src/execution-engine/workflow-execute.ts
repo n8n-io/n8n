@@ -2317,8 +2317,12 @@ export class WorkflowExecute {
 					return fullRunData;
 				})
 				.finally(async () => {
-					const { executionId } = this.additionalData;
-					if (executionId) await Expression.releaseIsolate(executionId);
+					try {
+						const { executionId } = this.additionalData;
+						if (executionId) await Expression.releaseIsolate(executionId);
+					} catch (error) {
+						Logger.error('Failed to release isolate', { error });
+					}
 				});
 
 			return await returnPromise.then(resolve);

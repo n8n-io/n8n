@@ -53,6 +53,8 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 	}
 
 	async acquireForExecution(executionId: string): Promise<void> {
+		if (this.bridges.has(executionId)) return;
+
 		const metrics = this.config.observability?.metrics;
 
 		// Try synchronous acquire first

@@ -117,7 +117,7 @@ export interface EvaluateContext {
 	 * Execution ID for per-execution bridge holding.
 	 *
 	 * When present, the evaluator holds a bridge for this execution until
-	 * `release()` is called. When absent (e.g. expressions in credentials
+	 * `releaseIsolate()` is called. When absent (e.g. expressions in credentials
 	 * parameters), the bridge is borrowed and returned per `evaluate()` call.
 	 */
 	executionId?: string;
