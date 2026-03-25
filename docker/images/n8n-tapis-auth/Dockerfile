@@ -1,9 +1,10 @@
-# 1. Bajamos a Node 20 (LTS) - Mucho más estable para n8n
+
+# Usamos Node 20 LTS (Bookworm es clave para compatibilidad)
 FROM node:24-bookworm AS builder
 
 WORKDIR /app
 
-# 1. Dependencias de compilación básicas
+# 1. Herramientas de compilación para módulos nativos
 RUN apt-get update && apt-get install -y build-essential python3 && \
     rm -rf /var/lib/apt/lists/*
 
@@ -11,27 +12,31 @@ RUN corepack enable && corepack prepare pnpm@10.22.0 --activate
 
 COPY . .
 
-# 2. INSTALACIÓN: Ignoramos TODOS los scripts de los paquetes (adiós Lefthook/Git)
-RUN pnpm install --no-frozen-lockfile --ignore-scripts
+# 2. LA CLAVE: Usamos esta variable de entorno de pnpm para saltar 
+# los scripts de 'prepare' y 'postinstall' (donde vive Lefthook y Git),
+# pero permitiendo que se instalen TODAS las dependencias (incluyendo prettier).
+ENV PNPM_SKIP_PREPARE=1
 
-# 3. COMPILACIÓN SELECTIVA: Ahora sí, compilamos solo los módulos nativos
-# que n8n necesita para funcionar (el nodo Code y la base de datos)
+# Instalamos sin ignorar scripts de dependencias individuales, 
+# pero saltando los scripts del proyecto raíz.
+RUN pnpm install --no-frozen-lockfile
+
+# 3. Compilamos manualmente lo que n8n necesita para el nodo de Code
 RUN pnpm rebuild isolated-vm sqlite3
 
-# 4. BUILD DE N8N: Sin que nada nos detenga
+# 4. BUILD: Con memoria suficiente para el compilador de TS
 ENV NODE_OPTIONS="--max-old-space-size=8192"
 RUN pnpm add -Dw esbuild --ignore-scripts
 RUN pnpm build
 
-# --- ETAPA FINAL ---
+# --- ETAPA FINAL (Imagen ligera) ---
 FROM node:20-bookworm-slim
 WORKDIR /app
 
-# Copiamos solo lo necesario del builder
+# Copiamos el resultado del build
 COPY --from=builder /app .
 
-# Exponemos el puerto de n8n
 EXPOSE 5678
 
-# Ejecución directa sin pasar por pnpm si es posible, o usando el start
+# Ejecución
 CMD ["node", "packages/cli/bin/n8n"]
