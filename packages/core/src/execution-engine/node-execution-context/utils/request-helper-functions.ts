@@ -74,6 +74,7 @@ import type { IResponseError } from '@/interfaces';
 
 import { binaryToString } from './binary-helper-functions';
 import { parseIncomingMessage } from './parse-incoming-message';
+<<<<<<< HEAD
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
@@ -313,6 +314,23 @@ function digestAuthAxiosConfig(
 	}
 	return axiosConfig;
 }
+=======
+// Imported for side effects: sets axios defaults and registers the request interceptor
+import './request-helpers/axios-config';
+import {
+	buildTargetUrl,
+	createFormDataObject,
+	digestAuthAxiosConfig,
+	generateContentLengthHeader,
+	getBeforeRedirectFn,
+	getHostFromRequestObject,
+	isIgnoreStatusErrorConfig,
+	searchForHeader,
+	setAxiosAgents,
+	tryParseUrl,
+} from './request-helpers';
+import { throwIfDomainNotAllowed } from './request-helpers/axios-utils';
+>>>>>>> 2d9a2ec76e (chore: Bundle 2026-W9 (#27532))
 
 export async function invokeAxios(
 	axiosConfig: AxiosRequestConfig,
@@ -630,6 +648,7 @@ export async function parseRequestObject(requestObject: IRequestOptions, ssrfBri
 		axiosConfig,
 		requestObject.proxy,
 		requestObject.sendCredentialsOnCrossOriginRedirect ?? true,
+		requestObject.allowedDomains,
 		ssrfBridge,
 	);
 
@@ -704,6 +723,7 @@ export async function proxyRequestToAxios(
 	await validateUrlSsrf(url, ssrfBridge);
 
 	axiosConfig = Object.assign(axiosConfig, await parseRequestObject(configObject, ssrfBridge));
+	throwIfDomainNotAllowed(axiosConfig, configObject.allowedDomains);
 
 	try {
 		const response = await invokeAxios(axiosConfig, configObject.auth);
@@ -824,6 +844,7 @@ export function convertN8nRequestToAxios(
 		axiosRequest,
 		n8nRequest.proxy,
 		n8nRequest.sendCredentialsOnCrossOriginRedirect ?? true,
+		n8nRequest.allowedDomains,
 		ssrfBridge,
 	);
 
@@ -951,6 +972,8 @@ export async function httpRequest(
 	) {
 		delete axiosRequest.data;
 	}
+
+	throwIfDomainNotAllowed(axiosRequest, requestOptions.allowedDomains);
 
 	const result = await invokeAxios(axiosRequest, requestOptions.auth);
 
