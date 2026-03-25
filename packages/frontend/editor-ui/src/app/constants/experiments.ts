@@ -99,12 +99,7 @@ export const CODE_WORKFLOW_BUILDER_EXPERIMENT = createExperiment('071_coding_wor
 	codePinData: 'code-pin-data',
 });
 
-<<<<<<< HEAD
-export const QUICK_CONNECT_EXPERIMENT = createExperiment('073_quick_connect');
-
-=======
 export const AI_BUILDER_SETUP_WIZARD_EXPERIMENT = createExperiment('079_ai_builder_setup_wizard');
->>>>>>> cfe1409ede (fix(editor): Clean up quick connect feature flag and fix first load (#27286))
 export const AA_EXPERIMENT_CHECK = createExperiment('078_experiment_check_aa');
 
 export const CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT = createExperiment('077_chat_hub_semantic_search');
