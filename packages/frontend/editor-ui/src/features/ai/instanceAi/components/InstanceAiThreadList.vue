@@ -124,7 +124,7 @@ function handleThreadAction(action: string, threadId: string) {
 			@click="handleNewThread"
 		>
 			<div :class="$style.newChatIcon">
-				<N8nIcon icon="plus" size="xsmall" />
+				<N8nIcon icon="plus" size="medium" />
 			</div>
 			{{ i18n.baseText('instanceAi.thread.new') }}
 		</button>
@@ -162,7 +162,6 @@ function handleThreadAction(action: string, threadId: string) {
 								:title="thread.title"
 								@dblclick.prevent="startRename(thread.id, thread.title)"
 							>
-								<N8nIcon icon="message-square" size="small" :class="$style.threadIcon" />
 								<span :class="$style.threadTitle">{{ thread.title }}</span>
 							</RouterLink>
 							<N8nActionDropdown
@@ -213,9 +212,12 @@ function handleThreadAction(action: string, threadId: string) {
 	font-family: var(--font-family);
 	font-size: var(--font-size--sm);
 	color: var(--color--text);
+	outline: none;
 
-	&:hover {
-		color: var(--color--primary);
+	&:hover,
+	&:focus,
+	&:active {
+		color: var(--color--text) !important;
 	}
 }
 
@@ -239,7 +241,7 @@ function handleThreadAction(action: string, threadId: string) {
 	width: 100%;
 
 	&:hover {
-		background: var(--color--background--shade-1);
+		background: var(--color--background--light-1);
 	}
 }
 
@@ -283,14 +285,14 @@ function handleThreadAction(action: string, threadId: string) {
 	&:hover,
 	&:focus-within,
 	&:has([aria-expanded='true']) {
-		background-color: var(--color--background--shade-1);
+		background-color: var(--color--background--light-1);
 	}
 
 	&.active {
-		background-color: var(--color--background);
+		background-color: var(--color--background--light-1);
 
 		&:hover {
-			background-color: var(--color--background--shade-1);
+			background-color: var(--color--background--light-1);
 		}
 	}
 }
@@ -302,10 +304,18 @@ function handleThreadAction(action: string, threadId: string) {
 	flex: 1;
 	min-width: 0;
 	padding: var(--spacing--2xs) var(--spacing--xs);
-	color: var(--color--text);
-	text-decoration: none;
+	color: var(--color--text) !important;
+	text-decoration: none !important;
 	outline: none;
 	cursor: pointer;
+
+	&:hover,
+	&:focus,
+	&:active,
+	&:visited {
+		color: var(--color--text) !important;
+		text-decoration: none !important;
+	}
 }
 
 .threadIcon {
