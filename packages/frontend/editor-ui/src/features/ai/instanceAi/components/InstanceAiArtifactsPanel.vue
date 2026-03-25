@@ -115,7 +115,12 @@ const artifactIconMap: Record<string, IconName> = {
 				<div
 					v-for="task in tasks.tasks"
 					:key="task.id"
-					:class="[$style.task, task.status === 'done' ? $style.doneTask : '']"
+					:class="[
+						$style.task,
+						task.status === 'done' ? $style.doneTask : '',
+						task.status === 'failed' ? $style.failedTask : '',
+						task.status === 'cancelled' ? $style.cancelledTask : '',
+					]"
 				>
 					<N8nIcon
 						:icon="statusIconMap[task.status].icon as IconName"
@@ -123,7 +128,9 @@ const artifactIconMap: Record<string, IconName> = {
 						:spin="statusIconMap[task.status].spin"
 						size="medium"
 					/>
-					<span :class="$style.taskDescription" :title="task.description">{{ task.description }}</span>
+					<span :class="$style.taskDescription" :title="task.description">{{
+						task.description
+					}}</span>
 				</div>
 			</div>
 		</div>
