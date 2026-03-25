@@ -57,7 +57,29 @@ function getNodeConfig(
 		serverTransport = 'sse';
 		endpointUrl = ctx.getNodeParameter('sseEndpoint', itemIndex) as string;
 	} else {
-		serverTransport = ctx.getNodeParameter('serverTransport', itemIndex) as McpServerTransport;
+		// Get serverTransport parameter with proper fallback based on version
+		// For version 1.1, default is 'sse', for 1.2+ default is 'httpStreamable'
+		const defaultTransport: McpServerTransport =
+			node.typeVersion >= 1.2 ? 'httpStreamable' : 'sse';
+		
+		const transportParam = ctx.getNodeParameter('serverTransport', itemIndex, defaultTransport);
+		serverTransport = (transportParam as McpServerTransport) || defaultTransport;
+		
+		// Log when fallback is used to help debug persistence issues
+		if (!transportParam || transportParam === defaultTransport) {
+			ctx.logger?.debug(
+				`McpClientTool: Using ${serverTransport} transport (${!transportParam ? 'parameter missing, using default' : 'explicit value'}) for node version ${node.typeVersion}`,
+			);
+		}
+		
+		// Validate transport value
+		if (serverTransport !== 'sse' && serverTransport !== 'httpStreamable') {
+			ctx.logger?.warn(
+				`McpClientTool: Invalid serverTransport value "${serverTransport}", falling back to "${defaultTransport}"`,
+			);
+			serverTransport = defaultTransport;
+		}
+		
 		endpointUrl = ctx.getNodeParameter('endpointUrl', itemIndex) as string;
 	}
 

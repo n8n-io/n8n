@@ -314,5 +314,42 @@ describe('utils', () => {
 				expect(onUnauthorized).toHaveBeenCalledWith({ Authorization: 'Bearer old-token' });
 			});
 		});
+
+		it('should reject invalid serverTransport values', async () => {
+			const result = await connectMcpClient({
+				serverTransport: 'invalidTransport' as any,
+				endpointUrl: 'https://example.com',
+				name: 'test-client',
+				version: 1,
+			});
+
+			expect(result.ok).toBe(false);
+			if (!result.ok) {
+				expect(result.error.type).toBe('connection');
+				expect(result.error.error.message).toContain('Invalid serverTransport value');
+				expect(result.error.error.message).toContain('invalidTransport');
+			}
+			expect(MockedHTTPTransport).not.toHaveBeenCalled();
+			expect(MockedSSETransport).not.toHaveBeenCalled();
+			expect(mockClient.connect).not.toHaveBeenCalled();
+		});
+
+		it('should reject undefined serverTransport', async () => {
+			const result = await connectMcpClient({
+				serverTransport: undefined as any,
+				endpointUrl: 'https://example.com',
+				name: 'test-client',
+				version: 1,
+			});
+
+			expect(result.ok).toBe(false);
+			if (!result.ok) {
+				expect(result.error.type).toBe('connection');
+				expect(result.error.error.message).toContain('Invalid serverTransport value');
+			}
+			expect(MockedHTTPTransport).not.toHaveBeenCalled();
+			expect(MockedSSETransport).not.toHaveBeenCalled();
+			expect(mockClient.connect).not.toHaveBeenCalled();
+		});
 	});
 });

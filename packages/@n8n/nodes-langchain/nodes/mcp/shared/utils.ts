@@ -116,6 +116,16 @@ export async function connectMcpClient({
 		return createResultError({ type: 'invalid_url', error: endpoint.error });
 	}
 
+	// Validate serverTransport value
+	if (serverTransport !== 'sse' && serverTransport !== 'httpStreamable') {
+		return createResultError({
+			type: 'connection',
+			error: new Error(
+				`Invalid serverTransport value: "${serverTransport}". Must be either "sse" or "httpStreamable"`,
+			),
+		});
+	}
+
 	const client = new Client({ name, version: version.toString() }, { capabilities: {} });
 
 	if (serverTransport === 'httpStreamable') {
