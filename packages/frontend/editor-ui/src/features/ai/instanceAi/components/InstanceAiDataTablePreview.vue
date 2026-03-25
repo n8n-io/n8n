@@ -77,12 +77,7 @@ watch(
 				{{ tableName || i18n.baseText('instanceAi.dataTablePreview.title') }}
 			</N8nText>
 			<div :class="$style.headerActions">
-				<a
-				v-if="dataTable"
-				:href="props.projectId ? `/projects/${props.projectId}/datatables/${dataTable.id}` : '/home/datatables'"
-				target="_blank"
-				:class="$style.openLink"
-			>
+				<a v-if="dataTable" href="/data-tables" target="_blank" :class="$style.openLink">
 					{{ i18n.baseText('instanceAi.dataTablePreview.open') }}
 				</a>
 				<N8nIconButton icon="x" variant="ghost" size="small" @click="emit('close')" />

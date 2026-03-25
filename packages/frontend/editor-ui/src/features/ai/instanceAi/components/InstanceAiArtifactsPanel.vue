@@ -24,10 +24,7 @@ function handleArtifactClick(artifact: ResourceEntry, e: MouseEvent) {
 		openPreview?.(artifact.id);
 	} else if (artifact.type === 'data-table' && artifact.id) {
 		if (e.metaKey || e.ctrlKey) {
-			const url = artifact.projectId
-				? `/projects/${artifact.projectId}/datatables/${artifact.id}`
-				: '/home/datatables';
-			window.open(url, '_blank');
+			window.open('/data-tables', '_blank');
 			return;
 		}
 		if (artifact.projectId) {

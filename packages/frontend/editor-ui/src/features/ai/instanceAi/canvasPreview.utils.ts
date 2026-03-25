@@ -68,7 +68,11 @@ const DATA_TABLE_TOOL_NAMES = new Set([
 	'create-data-table',
 	'insert-data-table-rows',
 	'update-data-table-rows',
+	'delete-data-table-rows',
 	'add-data-table-column',
+	'delete-data-table-column',
+	'rename-data-table-column',
+	'move-data-table-column',
 ]);
 
 function extractDataTableId(
@@ -93,6 +97,22 @@ function extractDataTableId(
 	}
 
 	if (toolName === 'add-data-table-column' && result.column && typeof result.column === 'object') {
+		return typeof args?.dataTableId === 'string' ? args.dataTableId : undefined;
+	}
+
+	if (toolName === 'delete-data-table-rows' && result.success === true) {
+		return typeof args?.dataTableId === 'string' ? args.dataTableId : undefined;
+	}
+
+	if (toolName === 'delete-data-table-column' && result.success === true) {
+		return typeof args?.dataTableId === 'string' ? args.dataTableId : undefined;
+	}
+
+	if (toolName === 'rename-data-table-column' && result.success === true) {
+		return typeof args?.dataTableId === 'string' ? args.dataTableId : undefined;
+	}
+
+	if (toolName === 'move-data-table-column' && result.success === true) {
 		return typeof args?.dataTableId === 'string' ? args.dataTableId : undefined;
 	}
 
