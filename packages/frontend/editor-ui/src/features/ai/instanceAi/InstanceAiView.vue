@@ -490,14 +490,6 @@ function handleStop() {
 						@click="showMemoryPanel = !showMemoryPanel"
 					/>
 					<N8nIconButton
-						v-if="!isPreviewVisible"
-						icon="panel-right"
-						variant="ghost"
-						size="small"
-						:class="{ [$style.activeButton]: showArtifactsPanel }"
-						@click="showArtifactsPanel = !showArtifactsPanel"
-					/>
-					<N8nIconButton
 						v-if="isDebugEnabled"
 						icon="bug"
 						variant="ghost"
@@ -507,6 +499,14 @@ function handleStop() {
 							showDebugPanel = !showDebugPanel;
 							store.debugMode = showDebugPanel;
 						"
+					/>
+					<N8nIconButton
+						v-if="!isPreviewVisible"
+						icon="panel-right"
+						variant="ghost"
+						size="small"
+						:class="{ [$style.activeButton]: showArtifactsPanel }"
+						@click="showArtifactsPanel = !showArtifactsPanel"
 					/>
 				</div>
 			</div>
