@@ -80,6 +80,8 @@ jobs:
 
       - name: Test Integration
         run: pnpm test:ci:backend:integration --summarize
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
 
       - name: Send Test Stats
         if: ${{ !cancelled() }}
