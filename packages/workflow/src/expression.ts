@@ -215,8 +215,7 @@ export class Expression {
 			const maxCodeCacheSize =
 				parseInt(process.env.N8N_EXPRESSION_ENGINE_MAX_CODE_CACHE_SIZE ?? '', 10) ||
 				DEFAULT_MAX_CODE_CACHE_SIZE;
-			const isolatePoolSize =
-				parseInt(process.env.N8N_EXPRESSION_ISOLATE_POOL_SIZE ?? '', 10) || 1;
+			const isolatePoolSize = parseInt(process.env.N8N_EXPRESSION_ISOLATE_POOL_SIZE ?? '', 10) || 1;
 			const acquireTimeoutMs =
 				parseInt(process.env.N8N_EXPRESSION_ISOLATE_ACQUIRE_TIMEOUT_MS ?? '', 10) || 5000;
 			this.vmEvaluator = new ExpressionEvaluator({
@@ -550,7 +549,7 @@ export class Expression {
 			}
 
 			try {
-				const rawExecutionId = data.$execution?.id;
+				const rawExecutionId = (data as { $execution?: { id: string } }).$execution?.id;
 				const result = Expression.vmEvaluator.evaluate(expression, data, {
 					timezone: this.timezone,
 					executionId:

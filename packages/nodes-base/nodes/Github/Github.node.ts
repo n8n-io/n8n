@@ -2353,7 +2353,7 @@ export class Github implements INodeType {
 			};
 
 			// Generate a webhook URL for the GitHub workflow to call when done
-			const resumeUrl = this.getWorkflowDataProxy(0).$execution!.resumeUrl;
+			const resumeUrl = this.getWorkflowDataProxy(0).$execution.resumeUrl;
 
 			body.inputs = {
 				...inputs,

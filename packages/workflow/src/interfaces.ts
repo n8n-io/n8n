@@ -2562,18 +2562,6 @@ export interface IWorkflowDataProxyData {
 	$thisItemIndex: number;
 	$now: any;
 	$today: any;
-	$execution?: {
-		id: string;
-		mode: 'test' | 'production';
-		resumeUrl: string;
-		resumeFormUrl: string;
-		customData?: {
-			set(key: string, value: string): void;
-			setAll(obj: Record<string, string>): void;
-			get(key: string): string;
-			getAll(): Record<string, string>;
-		};
-	};
 	$getPairedItem: (
 		destinationNodeName: string,
 		incomingSourceData: ISourceData | null,

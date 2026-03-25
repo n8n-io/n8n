@@ -129,7 +129,7 @@ export class ExecutionData implements INodeType {
 						{} as { [key: string]: string },
 					);
 
-					dataProxy.$execution!.customData!.setAll(values);
+					dataProxy.$execution.customData.setAll(values);
 
 					returnData.push(items[i]);
 				} catch (error) {

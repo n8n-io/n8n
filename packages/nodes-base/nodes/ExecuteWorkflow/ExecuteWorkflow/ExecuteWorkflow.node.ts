@@ -315,7 +315,7 @@ export class ExecuteWorkflow implements INodeType {
 							undefined,
 							{
 								parentExecution: {
-									executionId: workflowProxy.$execution!.id,
+									executionId: workflowProxy.$execution.id,
 									workflowId: workflowProxy.$workflow.id,
 									shouldResume: waitForSubWorkflow,
 								},
@@ -349,7 +349,7 @@ export class ExecuteWorkflow implements INodeType {
 							{
 								doNotWaitToFinish: true,
 								parentExecution: {
-									executionId: workflowProxy.$execution!.id,
+									executionId: workflowProxy.$execution.id,
 									workflowId: workflowProxy.$workflow.id,
 									shouldResume: waitForSubWorkflow,
 								},
@@ -418,7 +418,7 @@ export class ExecuteWorkflow implements INodeType {
 					{
 						doNotWaitToFinish: !waitForSubWorkflow,
 						parentExecution: {
-							executionId: workflowProxy.$execution!.id,
+							executionId: workflowProxy.$execution.id,
 							workflowId: workflowProxy.$workflow.id,
 							shouldResume: waitForSubWorkflow,
 						},
