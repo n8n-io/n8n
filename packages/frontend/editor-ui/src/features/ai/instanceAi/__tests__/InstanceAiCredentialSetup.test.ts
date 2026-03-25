@@ -50,9 +50,9 @@ describe('InstanceAiCredentialSetup', () => {
 	});
 
 	describe('credential list', () => {
-		it('shows all credential types at once', () => {
+		it('shows the first credential type and can navigate to others', async () => {
 			const requests = makeCredentialRequests(3);
-			const { getByText } = renderComponent({
+			const { getByText, getByTestId, queryByText } = renderComponent({
 				props: {
 					requestId: 'req-1',
 					credentialRequests: requests,
@@ -60,12 +60,20 @@ describe('InstanceAiCredentialSetup', () => {
 				},
 			});
 
+			// First step visible by default
 			expect(getByText('Reason for type 1')).toBeTruthy();
+			expect(queryByText('Reason for type 2')).toBeNull();
+
+			// Navigate to second step
+			await userEvent.click(getByTestId('instance-ai-credential-next'));
 			expect(getByText('Reason for type 2')).toBeTruthy();
+
+			// Navigate to third step
+			await userEvent.click(getByTestId('instance-ai-credential-next'));
 			expect(getByText('Reason for type 3')).toBeTruthy();
 		});
 
-		it('renders a credential picker for each credential type', () => {
+		it('renders one credential picker at a time in wizard mode', () => {
 			const requests = makeCredentialRequests(3);
 			const { getAllByTestId } = renderComponent({
 				props: {
@@ -75,7 +83,8 @@ describe('InstanceAiCredentialSetup', () => {
 				},
 			});
 
-			expect(getAllByTestId('credential-picker')).toHaveLength(3);
+			// Wizard shows one credential picker per step
+			expect(getAllByTestId('credential-picker')).toHaveLength(1);
 		});
 
 		it('renders a single credential without extra pickers', () => {
