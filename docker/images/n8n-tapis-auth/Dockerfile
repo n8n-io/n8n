@@ -20,8 +20,11 @@ ENV PNPM_SKIP_PREPARE=1
 
 #RUN pnpm install --no-frozen-lockfile --ignore-scripts
 # Forzamos a pnpm a ignorar el script de preparación del monorepo
-RUN pnpm config set side-effects-cache false
-RUN pnpm install --no-frozen-lockfile --ignore-scripts=false --config.side-effects-cache=false
+
+RUN sed -i '/"prepare":/d' package.json
+
+# Ahora instalamos normalmente
+RUN pnpm install --no-frozen-lockfile --ignore-scripts
 
 # 5. Forzamos la descarga del binario de esbuild para Linux 64 bits
 # Esto soluciona el error 2 en los paquetes de codemirror
