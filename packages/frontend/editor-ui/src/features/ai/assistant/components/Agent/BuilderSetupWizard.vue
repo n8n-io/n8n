@@ -96,7 +96,6 @@ watch(currentCard, () => {
 	sectionHighlightOverride.value = null;
 });
 
-
 watch([isHovering, highlightedNodeIds, showWizard], ([hovering, nodeIds, visible]) => {
 	if (hovering && nodeIds.length > 0 && visible) {
 		setupPanelStore.setHighlightedNodes(nodeIds);
