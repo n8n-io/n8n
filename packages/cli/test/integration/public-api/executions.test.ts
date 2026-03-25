@@ -8,7 +8,7 @@ import {
 } from '@n8n/backend-test-utils';
 import type { ExecutionEntity, User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { UnexpectedError, type ExecutionStatus } from 'n8n-workflow';
+import { type ExecutionStatus } from 'n8n-workflow';
 
 import {
 	createAnnotationTags,
@@ -25,6 +25,7 @@ import * as utils from '../shared/utils/';
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { ExecutionService } from '@/executions/execution.service';
 import { Telemetry } from '@/telemetry';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 
@@ -322,7 +323,7 @@ describe('POST /executions/:id/retry', () => {
 	test('should return 400 when trying to retry a finished execution', async () => {
 		const executionServiceSpy = jest
 			.spyOn(Container.get(ExecutionService), 'retry')
-			.mockRejectedValue(new UnexpectedError('The execution succeeded, so it cannot be retried.'));
+			.mockRejectedValue(new BadRequestError('The execution succeeded, so it cannot be retried.'));
 
 		const workflow = await createWorkflow({}, user1);
 		const execution = await createExecution(
