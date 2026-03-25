@@ -47,32 +47,41 @@ function getFilesystemSection(
 		const where =
 			localGateway.approvalMethod === 'app'
 				? 'in the **Local Gateway app** on their desktop'
-				: 'in their **terminal** where fs-proxy is running';
+				: 'in their **terminal** where local-gateway is running';
 		return `
 ## Local Gateway (Pending Approval)
 
 A Local Gateway daemon is running on the user's machine but is **waiting for the user to approve the connection** ${where}.
 
-Tell the user they need to approve the pending connection request. Do NOT suggest installing or running fs-proxy — it is already running.
+Tell the user they need to approve the pending connection request. Do NOT suggest installing or running local-gateway — it is already running.
 
 Do NOT attempt to use filesystem or browser tools — they are not available until the connection is approved.`;
 	}
 
 	if (localGateway?.status === 'disconnected') {
+		const capabilityLines: string[] = [];
+		if (localGateway.capabilities.includes('filesystem')) {
+			capabilityLines.push('- **Filesystem access** — browse, read, and search project files');
+		}
+		if (localGateway.capabilities.includes('browser')) {
+			capabilityLines.push(
+				"- **Browser control** — automate browser interactions on the user's machine",
+			);
+		}
+		const capList =
+			capabilityLines.length > 0
+				? capabilityLines.join('\n')
+				: '- Local machine access capabilities';
 		return `
 ## Local Gateway (Not Connected)
 
 A **Local Gateway** can connect this n8n instance to the user's local machine, providing:
-- **Filesystem access** — browse, read, and search project files
-- **Browser control** — automate browser interactions on the user's machine
+${capList}
 
-The gateway is not currently connected. When the user asks for something that requires local machine access (reading files, browsing, etc.), let them know they can connect it by running:
+The gateway is not currently connected. When the user asks for something that requires local machine access (reading files, browsing, etc.), let them know they can connect by either:
 
-\`\`\`
-npx @n8n/fs-proxy
-\`\`\`
-
-Or from the AI settings page in n8n.
+1. **Download the Local Gateway app** — https://n8n.io/downloads/local-gateway
+2. **Or run via CLI:** \`npx @n8n/local-gateway\`
 
 Do NOT attempt to use filesystem or browser tools — they are not available until the gateway connects.`;
 	}
@@ -100,11 +109,20 @@ function getBrowserSection(browserAvailable: boolean | undefined): string {
 
 You can control the user's local browser via the local gateway. Since this is their real browser, you share it with them.
 
+### Prerequisites
+
+Browser automation requires the user's machine to be set up:
+1. **A Chrome/Chromium browser must be open** on the user's machine
+2. **The n8n AI Browser Bridge extension must be installed** in the browser
+
+If a browser tool fails because the extension is not connected, guide the user through these steps.
+
 ### Handing control to the user
 
 When the user needs to act in the browser, **end your turn** with a clear message explaining what they should do. Resume after they reply. Hand off when:
 - **Authentication** — login pages, OAuth, SSO, 2FA/MFA prompts
 - **CAPTCHAs or visual challenges** — you cannot solve these
+- **Accessing downloads** — you can click download buttons, but you cannot open or read downloaded files; ask the user to open the file and share the content you need
 - **Sensitive content on screen** — passwords, tokens, secrets visible in the browser
 - **User requests manual control** — they explicitly want to do something themselves
 
