@@ -37,10 +37,9 @@ import { createBrowserCredentialSetupTool } from './orchestration/browser-creden
 import { createBuildWorkflowAgentTool } from './orchestration/build-workflow-agent.tool';
 import { createCancelBackgroundTaskTool } from './orchestration/cancel-background-task.tool';
 import { createCorrectBackgroundTaskTool } from './orchestration/correct-background-task.tool';
-import { createDataTableAgentTool } from './orchestration/data-table-agent.tool';
 import { createDelegateTool } from './orchestration/delegate.tool';
+import { createPlanTool } from './orchestration/plan.tool';
 import { createReportVerificationVerdictTool } from './orchestration/report-verification-verdict.tool';
-import { createResearchWithAgentTool } from './orchestration/research-with-agent.tool';
 import { createUpdateTasksTool } from './orchestration/update-tasks.tool';
 import { createVerifyBuiltWorkflowTool } from './orchestration/verify-built-workflow.tool';
 import { createAskUserTool } from './shared/ask-user.tool';
@@ -156,20 +155,15 @@ export function createAllTools(context: InstanceAiContext) {
 }
 
 /**
- * Creates orchestration-only tools (plan + delegate).
+ * Creates orchestration-only tools (planner, delegation, and task-control helpers).
  * These tools are given to the orchestrator agent but never to sub-agents.
  */
 export function createOrchestrationTools(context: OrchestrationContext) {
 	return {
+		plan: createPlanTool(context),
 		'update-tasks': createUpdateTasksTool(context),
 		delegate: createDelegateTool(context),
 		'build-workflow-with-agent': createBuildWorkflowAgentTool(context),
-		'manage-data-tables-with-agent': createDataTableAgentTool(context),
-		...('web-search' in context.domainTools && context.researchMode
-			? {
-					'research-with-agent': createResearchWithAgentTool(context),
-				}
-			: {}),
 		...(context.cancelBackgroundTask
 			? { 'cancel-background-task': createCancelBackgroundTaskTool(context) }
 			: {}),
@@ -181,19 +175,17 @@ export function createOrchestrationTools(context: OrchestrationContext) {
 					'browser-credential-setup': createBrowserCredentialSetupTool(context),
 				}
 			: {}),
-		...(context.reportVerificationVerdict
+		...(context.workflowTaskService
 			? {
 					'report-verification-verdict': createReportVerificationVerdictTool(context),
 				}
 			: {}),
-		...(context.getWorkItemBuildOutcome && context.domainContext
+		...(context.workflowTaskService && context.domainContext
 			? {
 					'verify-built-workflow': createVerifyBuiltWorkflowTool(context),
 				}
 			: {}),
-		...(context.getWorkItemBuildOutcome &&
-		context.updateWorkItemBuildOutcome &&
-		context.domainContext
+		...(context.workflowTaskService && context.domainContext
 			? {
 					'apply-workflow-credentials': createApplyWorkflowCredentialsTool(context),
 				}

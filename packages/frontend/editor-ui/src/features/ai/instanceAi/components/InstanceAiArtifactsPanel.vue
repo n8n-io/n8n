@@ -28,6 +28,8 @@ const statusIconMap: Record<
 	todo: { icon: 'circle', spin: false, className: 'todoIcon' },
 	in_progress: { icon: 'spinner', spin: true, className: 'inProgressIcon' },
 	done: { icon: 'check', spin: false, className: 'doneIcon' },
+	failed: { icon: 'x-circle', spin: false, className: 'failedIcon' },
+	cancelled: { icon: 'ban', spin: false, className: 'cancelledIcon' },
 };
 
 const workflowArtifacts = computed(() => {
@@ -108,7 +110,12 @@ watch(
 						<div
 							v-for="task in tasks.tasks"
 							:key="task.id"
-							:class="[$style.task, task.status === 'done' ? $style.doneTask : '']"
+							:class="[
+								$style.task,
+								task.status === 'done' ? $style.doneTask : '',
+								task.status === 'failed' ? $style.failedTask : '',
+								task.status === 'cancelled' ? $style.cancelledTask : '',
+							]"
 						>
 							<N8nIcon
 								:icon="statusIconMap[task.status].icon as IconName"
@@ -296,6 +303,14 @@ watch(
 	opacity: 0.6;
 }
 
+.failedTask {
+	color: var(--color--danger);
+}
+
+.cancelledTask {
+	opacity: 0.7;
+}
+
 .taskDescription {
 	color: var(--text-color);
 	flex: 1;
@@ -312,6 +327,14 @@ watch(
 
 .doneIcon {
 	color: var(--color--success);
+}
+
+.failedIcon {
+	color: var(--color--danger);
+}
+
+.cancelledIcon {
+	color: var(--color--text--tint-1);
 }
 
 .emptyState {
