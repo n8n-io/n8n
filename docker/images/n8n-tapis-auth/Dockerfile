@@ -18,7 +18,7 @@ RUN rm -rf node_modules && CI=true pnpm install --no-frozen-lockfile --ignore-sc
 
 # 3. Selective Build 
 # Compile just with n8n direct dependencies, ignoring testing packages
-RUN pnpm  run build
+RUN pnpm build
 
 # 4. Create Tapis configuration
 RUN mkdir -p /app/packages/cli/bin && \
