@@ -13,25 +13,28 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
 COPY . .
 
-# 2. Install and Build
-RUN rm -rf node_modules && CI=true pnpm install
-RUN pnpm build
+# 2. Install ignoring conflictive scripts
+RUN rm -rf node_modules && CI=true pnpm install --no-frozen-lockfile --ignore-scripts
 
-# 3. Create Tapis configuration
+# 3. Selective Build 
+# Compile just with n8n direct dependencies, ignoring testing packages
+RUN pnpm build --filter n8n --filter @n8n/core --filter @n8n/cli
+
+# 4. Create Tapis configuration
 RUN mkdir -p /app/packages/cli/bin && \
     echo "TAPIS_BASE_URL = 'https://portals.tapis.io'" > /app/packages/cli/bin/.env.tapis && \
     echo "TAPIS_AUTH_ENDPOINT = '/v3/oauth2/tokens'" >> /app/packages/cli/bin/.env.tapis
 
-# 4. Make sure n8n directory exists to prevent for Encryption key
+# 5. Make sure n8n directory exists to prevent for Encryption key
 RUN mkdir -p /home/node/.n8n /home/node/.corepack && \
     chown -R node:node /home/node /app
 
-# 5. COREPACK_ENABLE_DOWNLOAD_PROMPT=0 
+# 6. COREPACK_ENABLE_DOWNLOAD_PROMPT=0 
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 
 EXPOSE 5678
 USER node
 
-# 5. Clean run command
+# 7. Clean run command
 ENTRYPOINT ["tini", "--"]
 CMD ["pnpm", "start"]
