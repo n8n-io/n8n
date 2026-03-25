@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y \
 
 # 1. Pre-Install pnpm to Corepack doesn't ask on run and block the process
 ENV COREPACK_HOME=/home/node/.corepack
+
 RUN corepack enable && corepack prepare pnpm@10.22.0 --activate
 
 WORKDIR /app
@@ -13,12 +14,14 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json* ./
 COPY . .
 
+RUN sed -i '/"prepare":/d' package.json
+
 # 2. Install ignoring conflictive scripts
 RUN rm -rf node_modules && CI=true pnpm install --no-frozen-lockfile --ignore-scripts
 
 # 3. Selective Build 
 # Compile just with n8n direct dependencies, ignoring testing packages
-RUN pnpm add -Dw esbuild
+RUN pnpm add -Dw esbuild --ignore-scripts
 RUN pnpm exec turbo run build --filter=n8n...
 
 # 4. Create Tapis configuration
