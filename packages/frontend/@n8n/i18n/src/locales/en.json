@@ -5178,6 +5178,7 @@
 	"instanceAi.stepTimeline.showData": "Show data",
 	"instanceAi.stepTimeline.showBrief": "Show brief",
 	"instanceAi.stepTimeline.done": "Done",
+	"instanceAi.stepTimeline.craftingWorkflow": "Crafting workflow",
 	"instanceAi.filesystem.label": "Local gateway",
 	"instanceAi.filesystem.connected": "Files connected",
 	"instanceAi.filesystem.connectWaiting": "Connecting...",

@@ -1,21 +1,21 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
+import { CollapsibleRoot, CollapsibleTrigger, CollapsibleContent } from 'reka-ui';
+import { N8nIcon } from '@n8n/design-system';
 import type { InstanceAiAgentNode, InstanceAiToolCallState } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
-import InstanceAiToolCall from './InstanceAiToolCall.vue';
+import { useToolLabel, getToolIcon } from '../toolLabels';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
-import BuilderCard from './BuilderCard.vue';
-import DataTableCard from './DataTableCard.vue';
-import ResearchCard from './ResearchCard.vue';
-import AgentNodeSection from './AgentNodeSection.vue';
-import DelegateCard from './DelegateCard.vue';
+import AgentSection from './AgentSection.vue';
 import ArtifactCard from './ArtifactCard.vue';
+import ToolResultRenderer from './ToolResultRenderer.vue';
+import ToolResultJson from './ToolResultJson.vue';
 
 const i18n = useI18n();
+const { getToolLabel, getToggleLabel } = useToolLabel();
 
 function extractResourceId(node: InstanceAiAgentNode): string | undefined {
 	if (node.targetResource?.id) return node.targetResource.id;
-	// Fallback: extract from tool call results
 	for (const tc of node.toolCalls) {
 		if (!tc.result || typeof tc.result !== 'object') continue;
 		const result = tc.result as Record<string, unknown>;
@@ -41,19 +41,16 @@ function shouldShowArtifact(node: InstanceAiAgentNode): boolean {
 function extractWorkflowName(node: InstanceAiAgentNode): string | undefined {
 	for (const tc of node.toolCalls) {
 		if (tc.toolName === 'build-workflow' || tc.toolName === 'submit-workflow') {
-			// Check result for workflowName
 			if (tc.result && typeof tc.result === 'object') {
 				const result = tc.result as Record<string, unknown>;
 				if (typeof result.workflowName === 'string') return result.workflowName;
 			}
-			// Check args for name (build-workflow args contain { name, code })
 			if (tc.args && typeof tc.args === 'object') {
 				const args = tc.args as Record<string, unknown>;
 				if (typeof args.name === 'string') return args.name;
 			}
 		}
 	}
-	// Fallback: check get-workflow-as-code result which has { name, workflowId }
 	for (const tc of node.toolCalls) {
 		if (tc.toolName === 'get-workflow-as-code' && tc.result && typeof tc.result === 'object') {
 			const result = tc.result as Record<string, unknown>;
@@ -87,12 +84,10 @@ function getArtifactName(node: InstanceAiAgentNode): string {
 		const name = extractWorkflowName(node);
 		if (name) return name;
 	}
-
 	if (node.targetResource?.type === 'data-table') {
 		const name = extractDataTableName(node);
 		if (name) return name;
 	}
-
 	return node.subtitle ?? node.targetResource?.name ?? 'Untitled';
 }
 
@@ -103,7 +98,6 @@ function extractColumnCount(node: InstanceAiAgentNode): number | undefined {
 		if (Array.isArray(result.columns)) return (result.columns as unknown[]).length;
 		if (typeof result.columnCount === 'number') return result.columnCount;
 	}
-	// Also check child agents' tool calls
 	for (const child of node.children) {
 		const count = extractColumnCount(child);
 		if (count !== undefined) return count;
@@ -113,7 +107,6 @@ function extractColumnCount(node: InstanceAiAgentNode): number | undefined {
 
 function formatArtifactMetadata(node: InstanceAiAgentNode): string {
 	const parts: string[] = [];
-
 	if (node.targetResource?.type === 'data-table') {
 		const columnCount = extractColumnCount(node);
 		if (columnCount !== undefined) {
@@ -124,15 +117,12 @@ function formatArtifactMetadata(node: InstanceAiAgentNode): string {
 			);
 		}
 	}
-
-	// Find latest completedAt from tool calls
 	let latestTime: string | undefined;
 	for (const tc of node.toolCalls) {
 		if (tc.completedAt && (!latestTime || tc.completedAt > latestTime)) {
 			latestTime = tc.completedAt;
 		}
 	}
-
 	if (latestTime) {
 		const diffMs = Date.now() - new Date(latestTime).getTime();
 		const diffMin = Math.floor(diffMs / 60_000);
@@ -148,8 +138,23 @@ function formatArtifactMetadata(node: InstanceAiAgentNode): string {
 	} else {
 		parts.push(i18n.baseText('instanceAi.artifactCard.updatedJustNow'));
 	}
-
 	return parts.join(' \u00B7 ');
+}
+
+/** Display label for a tool call, with contextual info for search/fetch. */
+function getToolDisplayName(tc: InstanceAiToolCallState): string {
+	const label = getToolLabel(tc.toolName) || tc.toolName;
+	if (tc.toolName === 'delegate') {
+		const role = typeof tc.args?.role === 'string' ? tc.args.role : '';
+		return role ? `${label} (${role})` : label;
+	}
+	if (tc.toolName === 'web-search' && typeof tc.args?.query === 'string') {
+		return `${label}: "${tc.args.query}"`;
+	}
+	if (tc.toolName === 'fetch-url' && typeof tc.args?.url === 'string') {
+		return `${label}: ${tc.args.url}`;
+	}
+	return label;
 }
 
 const props = withDefaults(
@@ -196,49 +201,81 @@ const childrenById = computed(() => {
 				<InstanceAiMarkdown :content="entry.content" />
 			</div>
 
-			<!-- Tool call -->
+			<!-- Tool call — flat timeline step -->
 			<template v-else-if="entry.type === 'tool-call' && toolCallsById[entry.toolCallId]">
-				<template v-if="toolCallsById[entry.toolCallId].renderHint === 'tasks'" />
-				<DelegateCard
-					v-else-if="toolCallsById[entry.toolCallId].renderHint === 'delegate'"
-					:args="toolCallsById[entry.toolCallId].args"
-					:result="toolCallsById[entry.toolCallId].result"
-					:is-loading="toolCallsById[entry.toolCallId].isLoading"
-					:tool-call-id="toolCallsById[entry.toolCallId].toolCallId"
+				<!-- Hidden tool calls (tasks, builder/data-table/researcher handled by child agent) -->
+				<template
+					v-if="
+						toolCallsById[entry.toolCallId].renderHint === 'tasks' ||
+						toolCallsById[entry.toolCallId].renderHint === 'builder' ||
+						toolCallsById[entry.toolCallId].renderHint === 'data-table' ||
+						toolCallsById[entry.toolCallId].renderHint === 'researcher'
+					"
 				/>
-				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'builder'" />
-				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'data-table'" />
-				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'researcher'" />
+
+				<!-- Visible tool call — rendered as flat timeline step -->
 				<template v-else>
-					<InstanceAiToolCall :tool-call="toolCallsById[entry.toolCallId]" />
-					<slot name="after-tool-call" :tool-call="toolCallsById[entry.toolCallId]" />
+					<div :class="$style.step">
+						<div :class="$style.iconColumn">
+							<N8nIcon
+								:icon="
+									toolCallsById[entry.toolCallId].isLoading
+										? 'spinner'
+										: getToolIcon(toolCallsById[entry.toolCallId].toolName)
+								"
+								size="small"
+								:spin="toolCallsById[entry.toolCallId].isLoading"
+								:class="[
+									$style.stepIcon,
+									toolCallsById[entry.toolCallId].isLoading && $style.loadingIcon,
+								]"
+							/>
+							<div :class="$style.connector" />
+						</div>
+						<div :class="$style.stepContent">
+							<span :class="$style.stepLabel">{{
+								getToolDisplayName(toolCallsById[entry.toolCallId])
+							}}</span>
+							<CollapsibleRoot
+								v-if="getToggleLabel(toolCallsById[entry.toolCallId])"
+								:class="$style.toggleBlock"
+							>
+								<CollapsibleTrigger :class="$style.toggleButton">
+									{{ getToggleLabel(toolCallsById[entry.toolCallId]) }}
+								</CollapsibleTrigger>
+								<CollapsibleContent :class="$style.toggleContent">
+									<div
+										v-if="toolCallsById[entry.toolCallId].args"
+										:class="$style.dataSection"
+									>
+										<ToolResultJson :value="toolCallsById[entry.toolCallId].args" />
+									</div>
+									<div
+										v-if="toolCallsById[entry.toolCallId].result !== undefined"
+										:class="$style.dataSection"
+									>
+										<ToolResultRenderer
+											:result="toolCallsById[entry.toolCallId].result"
+											:tool-name="toolCallsById[entry.toolCallId].toolName"
+										/>
+									</div>
+									<div
+										v-if="toolCallsById[entry.toolCallId].error !== undefined"
+										:class="[$style.dataSection, $style.errorText]"
+									>
+										{{ toolCallsById[entry.toolCallId].error }}
+									</div>
+								</CollapsibleContent>
+							</CollapsibleRoot>
+							<slot name="after-tool-call" :tool-call="toolCallsById[entry.toolCallId]" />
+						</div>
+					</div>
 				</template>
 			</template>
 
-			<!-- Child agent -->
+			<!-- Child agent — flat section -->
 			<template v-else-if="entry.type === 'child' && childrenById[entry.agentId]">
-				<BuilderCard
-					v-if="
-						childrenById[entry.agentId].kind === 'builder' ||
-						childrenById[entry.agentId].role === 'workflow-builder'
-					"
-					:agent-node="childrenById[entry.agentId]"
-				/>
-				<DataTableCard
-					v-else-if="
-						childrenById[entry.agentId].kind === 'data-table' ||
-						childrenById[entry.agentId].role === 'data-table-manager'
-					"
-					:agent-node="childrenById[entry.agentId]"
-				/>
-				<ResearchCard
-					v-else-if="
-						childrenById[entry.agentId].kind === 'researcher' ||
-						childrenById[entry.agentId].role === 'web-researcher'
-					"
-					:agent-node="childrenById[entry.agentId]"
-				/>
-				<AgentNodeSection v-else :agent-node="childrenById[entry.agentId]" />
+				<AgentSection :agent-node="childrenById[entry.agentId]" />
 
 				<!-- Artifact card for completed subagents with a target resource -->
 				<ArtifactCard
@@ -271,5 +308,95 @@ const childrenById = computed(() => {
 .compactText {
 	font-size: var(--font-size--2xs);
 	color: var(--text-color--subtle);
+}
+
+/* Flat timeline step styles (matching SubagentStepTimeline) */
+.step {
+	display: flex;
+	gap: var(--spacing--xs);
+}
+
+.iconColumn {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	width: 20px;
+	flex-shrink: 0;
+	padding-top: 2px;
+}
+
+.connector {
+	width: 1px;
+	flex: 1;
+	background: var(--color--foreground);
+	min-height: 12px;
+}
+
+.stepIcon {
+	color: var(--color--text--tint-2);
+	flex-shrink: 0;
+}
+
+.loadingIcon {
+	color: var(--color--primary);
+}
+
+.stepContent {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+	flex: 1;
+	padding-bottom: var(--spacing--2xs);
+}
+
+.stepLabel {
+	font-size: var(--font-size--sm);
+	color: var(--color--text);
+	line-height: var(--line-height--lg);
+}
+
+.toggleBlock {
+	margin-top: var(--spacing--4xs);
+}
+
+.toggleButton {
+	display: inline-flex;
+	align-items: center;
+	padding: var(--spacing--5xs) var(--spacing--2xs);
+	font-family: var(--font-family);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-1);
+	background: var(--color--background);
+	border: var(--border);
+	border-radius: var(--radius);
+	cursor: pointer;
+
+	&:hover {
+		background: var(--color--background--shade-1);
+	}
+}
+
+.toggleContent {
+	margin-top: var(--spacing--4xs);
+	max-height: 300px;
+	overflow-y: auto;
+}
+
+.dataSection {
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-1);
+
+	& + & {
+		margin-top: var(--spacing--4xs);
+		padding-top: var(--spacing--4xs);
+		border-top: 1px dashed var(--color--foreground);
+	}
+}
+
+.errorText {
+	color: var(--color--danger);
+	font-family: monospace;
+	white-space: pre-wrap;
+	word-break: break-word;
 }
 </style>

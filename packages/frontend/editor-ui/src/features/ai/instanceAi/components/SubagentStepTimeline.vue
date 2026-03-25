@@ -4,7 +4,7 @@ import { CollapsibleRoot, CollapsibleTrigger, CollapsibleContent } from 'reka-ui
 import { N8nIcon, type IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiAgentNode, InstanceAiToolCallState } from '@n8n/api-types';
-import { useToolLabel } from '../toolLabels';
+import { useToolLabel, getToolIcon } from '../toolLabels';
 import ToolResultRenderer from './ToolResultRenderer.vue';
 import ToolResultJson from './ToolResultJson.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
@@ -14,7 +14,7 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
-const { getToolLabel } = useToolLabel();
+const { getToolLabel, getToggleLabel } = useToolLabel();
 
 const CODE_BLOCK_PATTERN = /```/;
 
@@ -34,49 +34,15 @@ function extractShortLabel(content: string): string {
 	// Strip code blocks and return first meaningful line
 	const withoutCode = content.replace(/```[\s\S]*?```/g, '').trim();
 	const firstLine = withoutCode.split('\n').find((line) => line.trim().length > 0) ?? '';
-	return firstLine.length > 80 ? firstLine.slice(0, 80) + '…' : firstLine;
+	if (firstLine) {
+		return firstLine.length > 80 ? firstLine.slice(0, 80) + '…' : firstLine;
+	}
+	// Content is only code blocks (e.g. generated workflow code)
+	return i18n.baseText('instanceAi.stepTimeline.craftingWorkflow');
 }
 
 function isLongTextContent(content: string): boolean {
 	return CODE_BLOCK_PATTERN.test(content);
-}
-
-const NO_TOGGLE_TOOLS = new Set(['updateWorkingMemory', 'plan', 'cancel-background-task']);
-
-function getToolIcon(toolName: string): IconName {
-	if (toolName === 'delegate' || toolName.endsWith('-with-agent')) return 'share';
-	if (toolName.includes('data-table')) return 'table';
-	if (
-		toolName.includes('workflow') ||
-		toolName === 'search-nodes' ||
-		toolName.startsWith('get-node') ||
-		toolName === 'submit-workflow' ||
-		toolName === 'run-workflow' ||
-		toolName === 'activate-workflow' ||
-		toolName === 'list-nodes' ||
-		toolName === 'explore-node-resources' ||
-		toolName === 'get-suggested-nodes' ||
-		toolName === 'list-executions' ||
-		toolName === 'get-execution' ||
-		toolName === 'debug-execution' ||
-		toolName === 'stop-execution' ||
-		toolName === 'materialize-node-type'
-	) {
-		return 'workflow';
-	}
-	if (toolName === 'web-search' || toolName === 'fetch-url') return 'search';
-	if (toolName === 'updateWorkingMemory' || toolName === 'plan') return 'brain';
-	if (toolName.includes('credential') || toolName === 'browser-credential-setup')
-		return 'key-round';
-	return 'settings';
-}
-
-function getToggleLabel(toolCall: InstanceAiToolCallState): string | undefined {
-	if (NO_TOGGLE_TOOLS.has(toolCall.toolName)) return undefined;
-	if (toolCall.toolName === 'delegate') {
-		return i18n.baseText('instanceAi.stepTimeline.showBrief');
-	}
-	return i18n.baseText('instanceAi.stepTimeline.showData');
 }
 
 /** Index tool calls by ID for O(1) lookup. */
