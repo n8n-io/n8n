@@ -32,18 +32,42 @@ function isEnabled(level: LogLevel): boolean {
 	return LEVEL_RANK[level] <= LEVEL_RANK[currentLevel];
 }
 
-function formatMeta(meta: Record<string, unknown>): string {
-	if (Object.keys(meta).length === 0) return '';
-	return ' ' + JSON.stringify(meta);
+// ── Debug format (matches backend-common dev console) ────────────────────────
+
+function devTimestamp(): string {
+	const now = new Date();
+	const pad = (num: number, digits = 2) => num.toString().padStart(digits, '0');
+	return `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}.${pad(now.getMilliseconds(), 3)}`;
 }
 
-/** Append metadata to console output only in debug mode; file log always gets it. */
-function consoleMetaSuffix(meta: Record<string, unknown>): string {
-	return currentLevel === 'debug' ? formatMeta(meta) : '';
+function toPrintable(metadata: Record<string, unknown>): string {
+	if (Object.keys(metadata).length === 0) return '';
+	return JSON.stringify(metadata)
+		.replace(/{"/g, '{ "')
+		.replace(/,"/g, ', "')
+		.replace(/:/g, ': ')
+		.replace(/}/g, ' }');
 }
 
-function formatMessage(message: string): string {
-	return currentLevel === 'debug' ? stripAnsi(message) : message;
+const LEVEL_COLORS: Record<string, (s: string) => string> = {
+	error: pc.red,
+	warn: pc.yellow,
+	info: pc.green,
+	debug: pc.blue,
+};
+
+function colorFor(level: string): (s: string) => string {
+	return LEVEL_COLORS[level] ?? ((s: string) => s);
+}
+
+function devDebugLine(level: string, message: string, meta: Record<string, unknown>): string {
+	const separator = '   ';
+	const ts = devTimestamp();
+	const color = colorFor(level);
+	const lvl = color(level).padEnd(15); // 15 accounts for ANSI color codes
+	const metaStr = toPrintable(meta);
+	const suffix = metaStr ? ' ' + pc.dim(metaStr) : '';
+	return [ts, lvl, color(stripAnsi(message)) + suffix].join(separator);
 }
 
 // ── File logging ──────────────────────────────────────────────────────────────
@@ -80,25 +104,25 @@ function writeToFile(level: LogLevel, message: string, meta: Record<string, unkn
 export const logger = {
 	error(message: string, meta: Record<string, unknown> = {}) {
 		if (isEnabled('error')) {
-			console.error(formatMessage(message) + consoleMetaSuffix(meta));
+			console.error(currentLevel === 'debug' ? devDebugLine('error', message, meta) : message);
 			writeToFile('error', message, meta);
 		}
 	},
 	warn(message: string, meta: Record<string, unknown> = {}) {
 		if (isEnabled('warn')) {
-			console.warn(formatMessage(message) + consoleMetaSuffix(meta));
+			console.warn(currentLevel === 'debug' ? devDebugLine('warn', message, meta) : message);
 			writeToFile('warn', message, meta);
 		}
 	},
 	info(message: string, meta: Record<string, unknown> = {}) {
 		if (isEnabled('info')) {
-			console.log(formatMessage(message) + consoleMetaSuffix(meta));
+			console.log(currentLevel === 'debug' ? devDebugLine('info', message, meta) : message);
 			writeToFile('info', message, meta);
 		}
 	},
 	debug(message: string, meta: Record<string, unknown> = {}) {
 		if (isEnabled('debug')) {
-			console.log(formatMessage(message) + formatMeta(meta));
+			console.log(devDebugLine('debug', message, meta));
 			writeToFile('debug', message, meta);
 		}
 	},
@@ -182,12 +206,10 @@ export function printModuleStatus(config: ResolvedGatewayConfig): void {
 
 	// Browser
 	if (config.browser !== false) {
-		const { defaultBrowser, viewport } = config.browser;
-		const mode = config.browser.headless ? 'headless' : 'headed';
-		const detail = `${defaultBrowser}, ${mode}, ${viewport.width}x${viewport.height}`;
-		logger.info(`  ${pc.green('✓')} Browser       ${pc.dim(detail)}`, {
+		const { defaultBrowser } = config.browser;
+		logger.info(`  ${pc.green('✓')} Browser       ${pc.dim(defaultBrowser)}`, {
 			module: 'Browser',
-			detail,
+			detail: defaultBrowser,
 		});
 	} else {
 		logger.info(pc.dim('  ✗ Browser'), { module: 'Browser', enabled: false });
