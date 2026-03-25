@@ -127,7 +127,7 @@ describe('useResolvedExpression', () => {
 			createWorkflowDocumentId('test-workflow'),
 		);
 		const resolveExpressionSpy = mockResolveExpression();
-		resolveExpressionSpy.mockImplementation(async () => workflowsStore.workflowObject.name);
+		resolveExpressionSpy.mockImplementation(async () => workflowDocumentStore.name);
 
 		workflowDocumentStore.setName('Old Name');
 
