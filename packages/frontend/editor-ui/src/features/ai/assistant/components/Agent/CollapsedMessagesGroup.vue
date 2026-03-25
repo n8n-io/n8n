@@ -225,7 +225,7 @@ function toggleExpanded() {
 .expandedMessages {
 	margin-top: var(--spacing--xs);
 	padding-left: var(--spacing--xs);
-	border-left: 2px solid var(--color--foreground);
+	border-left: var(--spacing--5xs) var(--border-style) var(--color--foreground);
 	opacity: 0.65;
 }
 </style>

@@ -573,7 +573,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	}
 
 	async function stopStreaming(payload?: StopStreamingPayload) {
-		streaming.value = false;
 		isHelpStreaming.value = false;
 		if (streamingAbortController.value) {
 			streamingAbortController.value.abort();
@@ -594,7 +593,14 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		// Only show "Restore version" on user messages that triggered a workflow modification.
 		// During planning or question phases no workflow changes happen, so skip it.
-		if (userMessageId && revertVersion && hasWorkflowUpdateInCurrentBatch(userMessageId)) {
+		// Skip on error/abort paths — the caller handles chatMessages directly and a
+		// late-resolving savePostModificationVersion() would race with those writes.
+		if (
+			!payload &&
+			userMessageId &&
+			revertVersion &&
+			hasWorkflowUpdateInCurrentBatch(userMessageId)
+		) {
 			// Save the post-modification state to create a new version entry.
 			// Falls back to the pre-modification revertVersion if the save fails.
 			const postModVersion = await savePostModificationVersion();
@@ -614,6 +620,12 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				},
 			];
 		}
+
+		// Defer clearing the streaming flag until after the version card is appended.
+		// All callers use `void stopStreaming()` (fire-and-forget), so if we clear this
+		// flag before the async savePostModificationVersion() above, sendChatMessage can
+		// push a new user message before the version card, breaking message ordering.
+		streaming.value = false;
 
 		const wasAborted = payload && 'aborted' in payload && payload.aborted;
 

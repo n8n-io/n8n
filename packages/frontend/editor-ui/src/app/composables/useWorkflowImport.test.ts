@@ -22,7 +22,7 @@ vi.mock('@/app/composables/useCanvasOperations', () => ({
 
 const mockRoute = vi.hoisted(() => ({ name: 'workflow' as string }));
 vi.mock('vue-router', async (importOriginal) => {
-	const actual = await importOriginal();
+	const actual = (await importOriginal()) as object;
 	return {
 		...actual,
 		useRoute: vi.fn(() => mockRoute),

@@ -102,7 +102,7 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 }));
 
 vi.mock('@n8n/i18n', async (importOriginal) => {
-	const actual = await importOriginal();
+	const actual = (await importOriginal()) as object;
 	return {
 		...actual,
 		useI18n: () => ({

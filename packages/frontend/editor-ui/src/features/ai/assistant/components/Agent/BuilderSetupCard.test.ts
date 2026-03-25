@@ -205,7 +205,7 @@ describe('BuilderSetupCard', () => {
 				{ isComplete: false, credentialType: 'openAiApi', showCredentialPicker: true },
 				{ totalCards: 3, stepIndex: 0 },
 			);
-			const continueButton = getByTestId('builder-setup-card-continue');
+			const continueButton = getByTestId('builder-setup-card-continue') as HTMLButtonElement;
 			expect(continueButton.disabled).toBe(true);
 		});
 
@@ -219,7 +219,7 @@ describe('BuilderSetupCard', () => {
 				},
 				{ totalCards: 3, stepIndex: 0 },
 			);
-			const continueButton = getByTestId('builder-setup-card-continue');
+			const continueButton = getByTestId('builder-setup-card-continue') as HTMLButtonElement;
 			expect(continueButton.disabled).toBe(false);
 		});
 

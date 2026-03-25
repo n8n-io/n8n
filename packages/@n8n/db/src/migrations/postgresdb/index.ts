@@ -310,7 +310,7 @@ export const postgresMigrations: Migration[] = [
 	AddSuggestedPromptsToAgentTable1772000000000,
 	AddRoleColumnToProjectSecretsProviderAccess1772619247761,
 	ChangeWorkflowPublishedVersionFKsToRestrict1772619247762,
-	AddRestoreFieldsToWorkflowBuilderSession1774280963551,
 	AddTypeToChatHubSessions1772700000000,
 	CreateCredentialDependencyTable1773000000000,
+	AddRestoreFieldsToWorkflowBuilderSession1774280963551,
 ];

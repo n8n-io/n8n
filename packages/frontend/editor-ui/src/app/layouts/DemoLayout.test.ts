@@ -5,7 +5,7 @@ import { computed, ref, shallowRef } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 
 vi.mock('vue-router', async (importOriginal) => {
-	const actual = await importOriginal();
+	const actual = (await importOriginal()) as object;
 	return {
 		...actual,
 		useRoute: () => ({
@@ -22,7 +22,7 @@ vi.mock('vue-router', async (importOriginal) => {
 });
 
 vi.mock('@/app/composables/useWorkflowState', async (importOriginal) => {
-	const actual = await importOriginal();
+	const actual = (await importOriginal()) as object;
 	return {
 		...actual,
 		useWorkflowState: vi.fn(() => ({

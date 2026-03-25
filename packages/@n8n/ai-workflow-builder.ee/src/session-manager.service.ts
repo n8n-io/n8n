@@ -303,16 +303,29 @@ export class SessionManagerService {
 		const stored = await this.storage.getSession(threadId);
 		if (!stored || stored.messages.length === 0) return [];
 
+		let { messages } = stored;
+
+		// If a restore was active, truncate messages at the restore point
+		// so the LLM doesn't see collapsed messages from after the restore.
+		if (stored.activeVersionCardId) {
+			const restoreIdx = messages.findIndex(
+				(msg) => msg.additional_kwargs?.messageId === stored.activeVersionCardId,
+			);
+			if (restoreIdx !== -1) {
+				messages = messages.slice(0, restoreIdx);
+			}
+		}
+
 		// Strip cache_control markers from historical messages to prevent exceeding
 		// Anthropic's 4 cache_control block limit when combined with new system prompts
-		stripAllCacheControlMarkers(stored.messages);
+		stripAllCacheControlMarkers(messages);
 
 		this.logger?.debug('Loaded session messages from storage', {
 			threadId,
-			messageCount: stored.messages.length,
+			messageCount: messages.length,
 		});
 
-		return stored.messages;
+		return messages;
 	}
 
 	/**
@@ -552,8 +565,8 @@ export class SessionManagerService {
 		workflowId: string,
 		userId: string | undefined,
 		messageId: string,
-		versionCardId?: string,
 		agentType?: 'code-builder',
+		versionCardId?: string,
 	): Promise<boolean> {
 		const threadId = SessionManagerService.generateThreadId(workflowId, userId, agentType);
 

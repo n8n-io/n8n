@@ -452,8 +452,8 @@ export class AiWorkflowBuilderService {
 			workflowId,
 			user.id,
 			messageId,
-			versionCardId,
 			agentType,
+			versionCardId,
 		);
 	}
 
