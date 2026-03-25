@@ -170,6 +170,64 @@ export const credentialFlowSchema = z.object({
 });
 export type InstanceAiCredentialFlow = z.infer<typeof credentialFlowSchema>;
 
+export const workflowSetupNodeSchema = z.object({
+	node: z.object({
+		name: z.string(),
+		type: z.string(),
+		typeVersion: z.number(),
+		parameters: z.record(z.unknown()),
+		credentials: z.record(z.object({ id: z.string(), name: z.string() })).optional(),
+		position: z.tuple([z.number(), z.number()]),
+		id: z.string(),
+	}),
+	credentialType: z.string().optional(),
+	existingCredentials: z.array(z.object({ id: z.string(), name: z.string() })).optional(),
+	isTrigger: z.boolean(),
+	isFirstTrigger: z.boolean().optional(),
+	isTestable: z.boolean().optional(),
+	isAutoApplied: z.boolean().optional(),
+	credentialTestResult: z
+		.object({
+			success: z.boolean(),
+			message: z.string().optional(),
+		})
+		.optional(),
+	triggerTestResult: z
+		.object({
+			status: z.enum(['success', 'error', 'listening']),
+			error: z.string().optional(),
+		})
+		.optional(),
+	parameterIssues: z.record(z.array(z.string())).optional(),
+	editableParameters: z
+		.array(
+			z.object({
+				name: z.string(),
+				displayName: z.string(),
+				type: z.string(),
+				required: z.boolean().optional(),
+				default: z.unknown().optional(),
+				options: z
+					.array(
+						z.object({
+							name: z.string(),
+							value: z.union([z.string(), z.number(), z.boolean()]),
+						}),
+					)
+					.optional(),
+			}),
+		)
+		.optional(),
+	needsAction: z
+		.boolean()
+		.optional()
+		.describe(
+			'Whether this node still requires user intervention. ' +
+				'False when credentials are set and valid, parameters are resolved, etc.',
+		),
+});
+export type InstanceAiWorkflowSetupNode = z.infer<typeof workflowSetupNodeSchema>;
+
 // ---------------------------------------------------------------------------
 // Task list schemas (lightweight checklist for multi-step work)
 // ---------------------------------------------------------------------------
@@ -232,6 +290,11 @@ export const confirmationRequestPayloadSchema = z.object({
 		.describe(
 			'Credential flow stage — finalize renders post-verification credential picker with different copy',
 		),
+	setupRequests: z
+		.array(workflowSetupNodeSchema)
+		.optional()
+		.describe('Per-node setup cards for workflow credential/parameter configuration'),
+	workflowId: z.string().optional().describe('Workflow ID for setup-workflow tool'),
 });
 
 export const statusPayloadSchema = z.object({
@@ -438,9 +501,15 @@ export interface InstanceAiConfirmResponse {
 	approved: boolean;
 	credentialId?: string;
 	credentials?: Record<string, string>;
+	/** Per-node credential assignments: `{ nodeName: { credType: credId } }`.
+	 *  Preferred over `credentials` when present — enables card-scoped selection. */
+	nodeCredentials?: Record<string, Record<string, string>>;
 	autoSetup?: { credentialType: string };
 	userInput?: string;
 	domainAccessAction?: DomainAccessAction;
+	action?: 'apply' | 'test-trigger';
+	nodeParameters?: Record<string, Record<string, unknown>>;
+	testTriggerNode?: string;
 	answers?: Array<{
 		questionId: string;
 		selectedOptions: string[];
@@ -470,6 +539,8 @@ export interface InstanceAiToolCallState {
 		inputType?: 'approval' | 'text' | 'questions' | 'plan-review';
 		domainAccess?: DomainAccessMeta;
 		credentialFlow?: InstanceAiCredentialFlow;
+		setupRequests?: InstanceAiWorkflowSetupNode[];
+		workflowId?: string;
 		questions?: Array<{
 			id: string;
 			question: string;

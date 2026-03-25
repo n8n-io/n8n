@@ -20,9 +20,13 @@ export interface ConfirmationData {
 	approved: boolean;
 	credentialId?: string;
 	credentials?: Record<string, string>;
+	nodeCredentials?: Record<string, Record<string, string>>;
 	autoSetup?: { credentialType: string };
 	userInput?: string;
 	domainAccessAction?: string;
+	action?: 'apply' | 'test-trigger';
+	nodeParameters?: Record<string, Record<string, unknown>>;
+	testTriggerNode?: string;
 	answers?: Array<{
 		questionId: string;
 		selectedOptions: string[];

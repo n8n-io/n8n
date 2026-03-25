@@ -1090,13 +1090,19 @@ export class InstanceAiService {
 
 		this.runState.activateSuspendedRun(threadId);
 
+		// setup-workflow uses nodeCredentials (per-node) format for its credentials field;
+		// other tools use the flat credentials map. Prefer nodeCredentials when present.
+		const credentialsPayload = data.nodeCredentials ?? data.credentials;
 		const resumeData = {
 			approved: data.approved,
 			...(data.credentialId ? { credentialId: data.credentialId } : {}),
-			...(data.credentials ? { credentials: data.credentials } : {}),
+			...(credentialsPayload ? { credentials: credentialsPayload } : {}),
 			...(data.autoSetup ? { autoSetup: data.autoSetup } : {}),
 			...(data.userInput !== undefined ? { userInput: data.userInput } : {}),
 			...(data.domainAccessAction ? { domainAccessAction: data.domainAccessAction } : {}),
+			...(data.action ? { action: data.action } : {}),
+			...(data.nodeParameters ? { nodeParameters: data.nodeParameters } : {}),
+			...(data.testTriggerNode ? { testTriggerNode: data.testTriggerNode } : {}),
 			...(data.answers ? { answers: data.answers } : {}),
 		};
 

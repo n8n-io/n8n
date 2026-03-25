@@ -224,9 +224,13 @@ export class InstanceAiController {
 			approved: body.approved,
 			credentialId: body.credentialId,
 			credentials: body.credentials,
+			nodeCredentials: body.nodeCredentials,
 			autoSetup: body.autoSetup,
 			userInput: body.userInput,
 			domainAccessAction: body.domainAccessAction,
+			action: body.action,
+			nodeParameters: body.nodeParameters,
+			testTriggerNode: body.testTriggerNode,
 			answers: body.answers,
 		});
 		if (!resolved) {
