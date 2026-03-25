@@ -47,7 +47,7 @@ const statusIconMap: Record<
 > = {
 	todo: { icon: 'circle', spin: false, className: 'todoIcon' },
 	in_progress: { icon: 'spinner', spin: true, className: 'inProgressIcon' },
-	done: { icon: 'circle-check', spin: false, className: 'doneIcon' },
+	done: { icon: 'check', spin: false, className: 'doneIcon' },
 };
 
 // --- Artifacts ---
@@ -82,19 +82,21 @@ const artifactIconMap: Record<string, IconName> = {
 					:class="$style.artifactRow"
 					@click="handleArtifactClick(artifact, $event)"
 				>
-					<N8nIcon
-						:icon="artifactIconMap[artifact.type] ?? 'file'"
-						size="small"
-						:class="$style.artifactIcon"
-					/>
+					<span :class="$style.artifactIconWrap">
+						<N8nIcon
+							:icon="artifactIconMap[artifact.type] ?? 'file'"
+							size="large"
+							:class="$style.artifactIcon"
+						/>
+					</span>
 					<span :class="$style.artifactName">{{ artifact.name }}</span>
 				</div>
 			</div>
 
 			<div v-else :class="$style.emptyState">
 				<div :class="$style.emptyIcons">
-					<N8nIcon icon="workflow" size="medium" :class="$style.emptyIcon" />
-					<N8nIcon icon="table" size="medium" :class="$style.emptyIcon" />
+					<N8nIcon icon="workflow" :size="30" :class="$style.emptyIcon" />
+					<N8nIcon icon="table" :size="30" :class="$style.emptyIcon" />
 				</div>
 				<span>{{ i18n.baseText('instanceAi.artifactsPanel.noArtifacts') }}</span>
 			</div>
@@ -117,9 +119,9 @@ const artifactIconMap: Record<string, IconName> = {
 						:icon="statusIconMap[task.status].icon as IconName"
 						:class="$style[statusIconMap[task.status].className]"
 						:spin="statusIconMap[task.status].spin"
-						size="small"
+						size="medium"
 					/>
-					<span :class="$style.taskDescription">{{ task.description }}</span>
+					<span :class="$style.taskDescription" :title="task.description">{{ task.description }}</span>
 				</div>
 			</div>
 		</div>
@@ -173,23 +175,33 @@ const artifactIconMap: Record<string, IconName> = {
 .artifactRow {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--3xs) 0;
+	gap: var(--spacing--xs);
+	padding: var(--spacing--2xs) 0;
 	cursor: pointer;
 	border-radius: var(--radius);
 
-	&:hover {
-		background: var(--color--foreground--tint-1);
+	&:hover .artifactName {
+		color: var(--color--primary);
 	}
+}
+
+.artifactIconWrap {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: var(--spacing--4xs);
+	background: var(--color--foreground--tint-1);
+	border-radius: var(--radius);
+	flex-shrink: 0;
 }
 
 .artifactIcon {
 	color: var(--color--text--tint-1);
-	flex-shrink: 0;
 }
 
 .artifactName {
-	font-size: var(--font-size--2xs);
+	font-size: var(--font-size--sm);
+	color: var(--color--text);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -212,8 +224,8 @@ const artifactIconMap: Record<string, IconName> = {
 }
 
 .emptyIcon {
-	color: var(--color--text--tint-2);
-	padding: var(--spacing--2xs);
+	color: var(--color--text--tint-1);
+	padding: var(--spacing--4xs);
 	background: var(--color--foreground--tint-1);
 	border-radius: var(--radius--lg);
 }
@@ -227,9 +239,9 @@ const artifactIconMap: Record<string, IconName> = {
 .task {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--3xs);
-	padding: var(--spacing--3xs) 0;
-	font-size: var(--font-size--2xs);
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--2xs) 0;
+	font-size: var(--font-size--sm);
 	line-height: var(--line-height--lg);
 }
 
@@ -256,6 +268,9 @@ const artifactIconMap: Record<string, IconName> = {
 }
 
 .doneIcon {
-	color: var(--color--success);
+	color: white;
+	background: var(--color--success);
+	border-radius: 50%;
+	padding: 1px;
 }
 </style>
