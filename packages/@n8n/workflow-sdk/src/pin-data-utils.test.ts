@@ -14,9 +14,10 @@ const mockFindSchemaForOperation = jest.fn();
 const mockGenerateJsonSchemaFromData = jest.fn();
 
 jest.mock('./generate-types', () => ({
-	discoverSchemasForNode: (...args: unknown[]) => mockDiscoverSchemasForNode(...args),
-	findSchemaForOperation: (...args: unknown[]) => mockFindSchemaForOperation(...args),
-	generateJsonSchemaFromData: (...args: unknown[]) => mockGenerateJsonSchemaFromData(...args),
+	discoverSchemasForNode: (...args: unknown[]) => mockDiscoverSchemasForNode(...args) as unknown,
+	findSchemaForOperation: (...args: unknown[]) => mockFindSchemaForOperation(...args) as unknown,
+	generateJsonSchemaFromData: (...args: unknown[]) =>
+		mockGenerateJsonSchemaFromData(...args) as unknown,
 }));
 
 function createNode(overrides: Partial<INode> = {}): INode {
