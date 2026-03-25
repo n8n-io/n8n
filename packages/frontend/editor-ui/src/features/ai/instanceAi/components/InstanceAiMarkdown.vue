@@ -107,8 +107,17 @@ function enhanceResourceLinks(): void {
 
 		const [, type, id] = match;
 
+		// Look up registry entry (needed for projectId on data-table links)
+		const registryEntry =
+			type === 'data-table'
+				? [...store.resourceRegistry.values()].find((r) => r.type === 'data-table' && r.id === id)
+				: undefined;
+
 		// Swap href to the real app URL (used for Cmd+click / new tab)
-		link.href = URL_BUILDERS[type]?.(id) ?? '#';
+		link.href =
+			type === 'data-table' && registryEntry?.projectId
+				? `/projects/${registryEntry.projectId}/datatables/${id}`
+				: (URL_BUILDERS[type]?.(id) ?? '#');
 		link.target = '_blank';
 		link.dataset.resourceChip = type;
 		link.dataset.resourceId = id;
@@ -122,11 +131,8 @@ function enhanceResourceLinks(): void {
 			if (type === 'workflow') {
 				openWorkflowPreview?.(id);
 			} else if (type === 'data-table') {
-				const entry = [...store.resourceRegistry.values()].find(
-					(r) => r.type === 'data-table' && r.id === id,
-				);
-				if (entry?.projectId) {
-					openDataTablePreview?.(id, entry.projectId);
+				if (registryEntry?.projectId) {
+					openDataTablePreview?.(id, registryEntry.projectId);
 				}
 			}
 		});

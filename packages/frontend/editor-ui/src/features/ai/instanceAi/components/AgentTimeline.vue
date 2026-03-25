@@ -22,6 +22,15 @@ function extractResourceId(node: InstanceAiAgentNode): string | undefined {
 		if (typeof result.workflowId === 'string') return result.workflowId;
 		if (typeof result.tableId === 'string') return result.tableId;
 		if (typeof result.dataTableId === 'string') return result.dataTableId;
+		// create-data-table returns { table: { id, projectId, ... } }
+		const table = result.table;
+		if (
+			table &&
+			typeof table === 'object' &&
+			typeof (table as Record<string, unknown>).id === 'string'
+		) {
+			return (table as Record<string, unknown>).id as string;
+		}
 	}
 	for (const child of node.children) {
 		const id = extractResourceId(child);
@@ -30,10 +39,19 @@ function extractResourceId(node: InstanceAiAgentNode): string | undefined {
 	return undefined;
 }
 
+function getArtifactType(node: InstanceAiAgentNode): 'workflow' | 'data-table' | undefined {
+	if (node.targetResource?.type === 'workflow' || node.targetResource?.type === 'data-table') {
+		return node.targetResource.type;
+	}
+	if (node.kind === 'builder') return 'workflow';
+	if (node.kind === 'data-table') return 'data-table';
+	return undefined;
+}
+
 function shouldShowArtifact(node: InstanceAiAgentNode): boolean {
 	return (
 		node.status === 'completed' &&
-		(node.targetResource?.type === 'workflow' || node.targetResource?.type === 'data-table') &&
+		getArtifactType(node) !== undefined &&
 		extractResourceId(node) !== undefined
 	);
 }
@@ -70,6 +88,14 @@ function extractDataTableName(node: InstanceAiAgentNode): string | undefined {
 			const result = tc.result as Record<string, unknown>;
 			if (typeof result.name === 'string') return result.name;
 			if (typeof result.tableName === 'string') return result.tableName;
+			const table = result.table;
+			if (
+				table &&
+				typeof table === 'object' &&
+				typeof (table as Record<string, unknown>).name === 'string'
+			) {
+				return (table as Record<string, unknown>).name as string;
+			}
 		}
 	}
 	for (const child of node.children) {
@@ -80,27 +106,36 @@ function extractDataTableName(node: InstanceAiAgentNode): string | undefined {
 }
 
 function getArtifactName(node: InstanceAiAgentNode): string {
-	if (node.targetResource?.type === 'workflow') {
+	const type = getArtifactType(node);
+	if (type === 'workflow') {
 		const name = extractWorkflowName(node);
 		if (name) return name;
 	}
-	if (node.targetResource?.type === 'data-table') {
+	if (type === 'data-table') {
 		const name = extractDataTableName(node);
 		if (name) return name;
 	}
 	return node.subtitle ?? node.targetResource?.name ?? 'Untitled';
 }
 
-function extractColumnCount(node: InstanceAiAgentNode): number | undefined {
+function extractProjectId(node: InstanceAiAgentNode): string | undefined {
 	for (const tc of node.toolCalls) {
 		if (!tc.result || typeof tc.result !== 'object') continue;
 		const result = tc.result as Record<string, unknown>;
-		if (Array.isArray(result.columns)) return (result.columns as unknown[]).length;
-		if (typeof result.columnCount === 'number') return result.columnCount;
+		if (typeof result.projectId === 'string') return result.projectId;
+		// create-data-table returns { table: { projectId, ... } }
+		const table = result.table;
+		if (
+			table &&
+			typeof table === 'object' &&
+			typeof (table as Record<string, unknown>).projectId === 'string'
+		) {
+			return (table as Record<string, unknown>).projectId as string;
+		}
 	}
 	for (const child of node.children) {
-		const count = extractColumnCount(child);
-		if (count !== undefined) return count;
+		const pid = extractProjectId(child);
+		if (pid !== undefined) return pid;
 	}
 	return undefined;
 }
@@ -298,13 +333,10 @@ const childrenById = computed(() => {
 				<!-- Artifact card for completed subagents with a target resource -->
 				<ArtifactCard
 					v-if="shouldShowArtifact(childrenById[entry.agentId])"
-					:type="
-						(childrenById[entry.agentId].targetResource?.type ?? 'workflow') as
-							| 'workflow'
-							| 'data-table'
-					"
+					:type="getArtifactType(childrenById[entry.agentId])!"
 					:name="getArtifactName(childrenById[entry.agentId])"
 					:resource-id="extractResourceId(childrenById[entry.agentId]) ?? ''"
+					:project-id="extractProjectId(childrenById[entry.agentId])"
 					:metadata="formatArtifactMetadata(childrenById[entry.agentId])"
 				/>
 			</template>
