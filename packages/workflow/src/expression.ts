@@ -14,6 +14,7 @@ import {
 	sanitizer,
 	sanitizerName,
 } from './expression-sandboxing';
+import { PLACEHOLDER_EMPTY_EXECUTION_ID } from './constants';
 import { isExpression } from './expressions/expression-helpers';
 import { extend, extendOptional } from './extensions';
 import { extendSyntax } from './extensions/expression-extension';
@@ -546,7 +547,8 @@ export class Expression {
 				const rawExecutionId = data.$execution?.id;
 				const result = Expression.vmEvaluator.evaluate(expression, data, {
 					timezone: this.timezone,
-					executionId: rawExecutionId === '__UNKNOWN__' ? undefined : rawExecutionId,
+					executionId:
+						rawExecutionId === PLACEHOLDER_EMPTY_EXECUTION_ID ? undefined : rawExecutionId,
 				});
 				return result as string | null | (() => unknown);
 			} catch (error) {

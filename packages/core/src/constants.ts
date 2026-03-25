@@ -1,5 +1,5 @@
 export const CUSTOM_EXTENSION_ENV = 'N8N_CUSTOM_EXTENSIONS';
-export const PLACEHOLDER_EMPTY_EXECUTION_ID = '__UNKNOWN__';
+export { PLACEHOLDER_EMPTY_EXECUTION_ID } from 'n8n-workflow';
 export const PLACEHOLDER_EMPTY_WORKFLOW_ID = '__EMPTY__';
 export const HTTP_REQUEST_NODE_TYPE = 'n8n-nodes-base.httpRequest';
 export const HTTP_REQUEST_AS_TOOL_NODE_TYPE = 'n8n-nodes-base.httpRequestTool';
