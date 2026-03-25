@@ -254,11 +254,18 @@ export const mcpToolCallResultSchema = z.object({
 export type McpToolCallResult = z.infer<typeof mcpToolCallResultSchema>;
 
 // Sent by the daemon on connect — replaces the old file-tree upload
+export const toolCategorySchema = z.object({
+	name: z.string(),
+	enabled: z.boolean(),
+	writeAccess: z.boolean().optional(),
+});
+export type ToolCategory = z.infer<typeof toolCategorySchema>;
+
 export const instanceAiGatewayCapabilitiesSchema = z.object({
 	rootPath: z.string(),
 	tools: z.array(mcpToolSchema).default([]),
 	hostIdentifier: z.string().optional(),
-	toolCategories: z.array(z.string()).default([]),
+	toolCategories: z.array(toolCategorySchema).default([]),
 });
 export type InstanceAiGatewayCapabilities = z.infer<typeof instanceAiGatewayCapabilitiesSchema>;
 
@@ -666,6 +673,7 @@ export interface InstanceAiAdminSettingsResponse {
 	sandboxTimeout: number;
 	daytonaCredentialId: string | null;
 	searchCredentialId: string | null;
+	localGatewayDisabled: boolean;
 }
 
 export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
@@ -683,6 +691,7 @@ export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	sandboxTimeout: z.number().int().positive().optional(),
 	daytonaCredentialId: z.string().nullable().optional(),
 	searchCredentialId: z.string().nullable().optional(),
+	localGatewayDisabled: z.boolean().optional(),
 }) {}
 
 // ---------------------------------------------------------------------------

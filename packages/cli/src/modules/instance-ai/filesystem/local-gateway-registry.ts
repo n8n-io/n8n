@@ -1,6 +1,6 @@
 import { nanoid } from 'nanoid';
 
-import type { InstanceAiGatewayCapabilities, McpToolCallResult } from '@n8n/api-types';
+import type { InstanceAiGatewayCapabilities, McpToolCallResult, ToolCategory } from '@n8n/api-types';
 
 import { LocalGateway } from './local-gateway';
 
@@ -151,12 +151,16 @@ export class LocalGatewayRegistry {
 		connected: boolean;
 		connectedAt: string | null;
 		directory: string | null;
+		hostIdentifier: string | null;
+		toolCategories: ToolCategory[];
 	} {
 		return (
 			this.userGateways.get(userId)?.gateway.getStatus() ?? {
 				connected: false,
 				connectedAt: null,
 				directory: null,
+				hostIdentifier: null,
+				toolCategories: [],
 			}
 		);
 	}

@@ -340,6 +340,7 @@ export type {
 	DomainAccessAction,
 	DomainAccessMeta,
 	InstanceAiCredentialFlow,
+	ToolCategory,
 } from './schemas/instance-ai.schema';
 
 export {

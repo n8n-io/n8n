@@ -29,21 +29,54 @@ async function copyCommand() {
 const CATEGORY_META: Record<string, { icon: string; labelKey: string }> = {
 	filesystem: { icon: 'folder-open', labelKey: 'instanceAi.filesystem.category.filesystem' },
 	browser: { icon: 'globe', labelKey: 'instanceAi.filesystem.category.browser' },
-	screenshot: { icon: 'desktop', labelKey: 'instanceAi.filesystem.category.computerUse' },
-	'mouse-keyboard': { icon: 'desktop', labelKey: 'instanceAi.filesystem.category.computerUse' },
+	screenshot: { icon: 'mouse-pointer', labelKey: 'instanceAi.filesystem.category.computerUse' },
+	'mouse-keyboard': {
+		icon: 'mouse-pointer',
+		labelKey: 'instanceAi.filesystem.category.computerUse',
+	},
 	shell: { icon: 'terminal', labelKey: 'instanceAi.filesystem.category.shell' },
 };
 
 const displayCategories = computed(() => {
 	const seen = new Set<string>();
-	const result: Array<{ key: string; icon: string; label: string }> = [];
+	const result: Array<{
+		key: string;
+		icon: string;
+		label: string;
+		enabled: boolean;
+		sublabel?: string;
+	}> = [];
+
 	for (const cat of store.gatewayToolCategories) {
-		const meta = CATEGORY_META[cat];
+		const meta = CATEGORY_META[cat.name];
 		if (!meta) continue;
 		const labelKey = meta.labelKey;
-		if (seen.has(labelKey)) continue;
+
+		// Merge screenshot + mouse-keyboard into one "Computer use" pill
+		if (seen.has(labelKey)) {
+			// If this duplicate is enabled, upgrade the existing pill to enabled
+			if (cat.enabled) {
+				const existing = result.find((r) => r.label === i18n.baseText(labelKey));
+				if (existing) existing.enabled = true;
+			}
+			continue;
+		}
 		seen.add(labelKey);
-		result.push({ key: cat, icon: meta.icon, label: i18n.baseText(labelKey) });
+
+		let sublabel: string | undefined;
+		if (cat.name === 'filesystem' && cat.enabled) {
+			sublabel = cat.writeAccess
+				? i18n.baseText('instanceAi.filesystem.access.readWrite')
+				: i18n.baseText('instanceAi.filesystem.access.read');
+		}
+
+		result.push({
+			key: cat.name,
+			icon: meta.icon,
+			label: i18n.baseText(labelKey),
+			enabled: cat.enabled,
+			sublabel,
+		});
 	}
 	return result;
 });
@@ -79,10 +112,25 @@ onMounted(() => {
 						{{ store.gatewayHostIdentifier ?? store.gatewayDirectory }}
 					</N8nText>
 				</div>
+				<div
+					v-if="store.gatewayHostIdentifier && store.gatewayDirectory"
+					:class="$style.directoryRow"
+				>
+					<N8nText size="small" color="text-light">
+						{{ store.gatewayDirectory }}
+					</N8nText>
+				</div>
 				<div v-if="displayCategories.length" :class="$style.toolCategories">
-					<span v-for="cat in displayCategories" :key="cat.key" :class="$style.categoryPill">
+					<span
+						v-for="cat in displayCategories"
+						:key="cat.key"
+						:class="[$style.categoryPill, !cat.enabled && $style.categoryPillDisabled]"
+					>
 						<N8nIcon :icon="cat.icon" size="xsmall" />
 						{{ cat.label }}
+						<span v-if="cat.sublabel" :class="$style.categorySublabel">
+							({{ cat.sublabel }})
+						</span>
 					</span>
 				</div>
 			</div>
@@ -185,6 +233,10 @@ onMounted(() => {
 	gap: var(--spacing--3xs);
 }
 
+.directoryRow {
+	padding-left: calc(8px + var(--spacing--3xs));
+}
+
 .toolCategories {
 	display: flex;
 	flex-wrap: wrap;
@@ -202,6 +254,14 @@ onMounted(() => {
 	border-radius: var(--radius);
 	font-size: var(--font-size--3xs);
 	color: var(--color--text--tint-1);
+}
+
+.categoryPillDisabled {
+	opacity: 0.4;
+}
+
+.categorySublabel {
+	color: var(--color--text--tint-2);
 }
 
 .dot {

@@ -5,6 +5,7 @@ import type {
 	McpToolCallResult,
 	McpTool,
 	InstanceAiGatewayCapabilities,
+	ToolCategory,
 } from '@n8n/api-types';
 
 const REQUEST_TIMEOUT_MS = 30_000;
@@ -52,7 +53,7 @@ export class LocalGateway {
 
 	private _hostIdentifier: string | null = null;
 
-	private _toolCategories: string[] = [];
+	private _toolCategories: ToolCategory[] = [];
 
 	private _availableTools: McpTool[] = [];
 
@@ -155,7 +156,7 @@ export class LocalGateway {
 		connectedAt: string | null;
 		directory: string | null;
 		hostIdentifier: string | null;
-		toolCategories: string[];
+		toolCategories: ToolCategory[];
 	} {
 		return {
 			connected: this._connected,

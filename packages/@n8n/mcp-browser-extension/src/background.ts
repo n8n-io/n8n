@@ -193,6 +193,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
 			// Reuse existing tab: focus it and close the duplicate
 			log.debug('reusing existing connect.html tab:', existing.id);
 			await chrome.tabs.update(existing.id, { active: true });
+			await chrome.tabs.reload(existing.id);
 			if (existing.windowId !== undefined) {
 				await chrome.windows.update(existing.windowId, { focused: true });
 			}

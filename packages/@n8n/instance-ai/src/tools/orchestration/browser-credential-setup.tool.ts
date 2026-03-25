@@ -222,7 +222,7 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 		}),
 		execute: async (input) => {
 			// Determine tool source: prefer local gateway browser tools over chrome-devtools-mcp
-			let browserTools: ToolsInput = {};
+			const browserTools: ToolsInput = {};
 			let toolSource: BrowserToolSource;
 
 			const gatewayHasBrowser =

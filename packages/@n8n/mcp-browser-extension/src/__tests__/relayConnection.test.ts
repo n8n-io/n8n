@@ -16,13 +16,13 @@ function targetIdForTab(chromeTabId: number): string {
  * Mock sendCommand: returns Target.getTargetInfo result when called with
  * that method (used for agent-created tabs), otherwise returns a generic result.
  */
-const mockSendCommand = jest.fn((debuggee: { tabId: number }, method: string, _params?: object) => {
+const mockSendCommand = jest.fn(async (debuggee: { tabId: number }, method: string, _params?: object) => {
 	if (method === 'Target.getTargetInfo') {
-		return Promise.resolve({
+		return await Promise.resolve({
 			targetInfo: { targetId: targetIdForTab(debuggee.tabId) },
 		});
 	}
-	return Promise.resolve({});
+	return await Promise.resolve({});
 });
 
 /**
@@ -139,7 +139,7 @@ Object.assign(globalThis, { WebSocket: MockWebSocket });
 // Helpers
 // ---------------------------------------------------------------------------
 
-const tick = () => new Promise((resolve) => setTimeout(resolve, 10));
+const tick = async () => await new Promise((resolve) => setTimeout(resolve, 10));
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -156,13 +156,13 @@ describe('RelayConnection', () => {
 
 		// Reset mockSendCommand to the default implementation
 		mockSendCommand.mockImplementation(
-			(debuggee: { tabId: number }, method: string, _params?: object) => {
+			async (debuggee: { tabId: number }, method: string, _params?: object) => {
 				if (method === 'Target.getTargetInfo') {
-					return Promise.resolve({
+					return await Promise.resolve({
 						targetInfo: { targetId: targetIdForTab(debuggee.tabId) },
 					});
 				}
-				return Promise.resolve({});
+				return await Promise.resolve({});
 			},
 		);
 

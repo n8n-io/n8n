@@ -21,6 +21,7 @@ import type {
 	InstanceAiModelCredential,
 	InstanceAiPermissions,
 	InstanceAiPermissionMode,
+	ToolCategory,
 } from '@n8n/api-types';
 
 export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () => {
@@ -50,7 +51,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const gatewayConnected = ref(false);
 	const gatewayDirectory = ref<string | null>(null);
 	const gatewayHostIdentifier = ref<string | null>(null);
-	const gatewayToolCategories = ref<string[]>([]);
+	const gatewayToolCategories = ref<ToolCategory[]>([]);
 	const isGatewayConnected = computed(() => gatewayConnected.value);
 	const localGatewayFallbackDirectory = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.localGatewayFallbackDirectory ?? null,

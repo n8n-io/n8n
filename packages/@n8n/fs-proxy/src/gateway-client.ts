@@ -59,7 +59,8 @@ export class GatewayClient {
 
 	private allDefinitions: ToolDefinition[] | null = null;
 
-	private activeToolCategories: string[] = [];
+	private activeToolCategories: Array<{ name: string; enabled: boolean; writeAccess?: boolean }> =
+		[];
 
 	private definitionMap: Map<string, ToolDefinition> = new Map();
 
@@ -138,18 +139,21 @@ export class GatewayClient {
 
 		const { config } = this.options;
 		const defs: ToolDefinition[] = [];
-		const categories: string[] = [];
+		const categories: Array<{ name: string; enabled: boolean; writeAccess?: boolean }> = [];
 
-		// Filesystem
+		// Filesystem — always report
 		if (config.filesystem !== false) {
 			defs.push(...filesystemReadTools);
-			if (config.filesystem.writeAccess) {
+			const hasWrite = config.filesystem.writeAccess;
+			if (hasWrite) {
 				defs.push(...filesystemWriteTools);
 			}
-			categories.push('filesystem');
+			categories.push({ name: 'filesystem', enabled: true, writeAccess: hasWrite });
+		} else {
+			categories.push({ name: 'filesystem', enabled: false });
 		}
 
-		// Computer use modules — check both config and platform support
+		// Computer use modules — always report all
 		const computerModules: Array<{
 			name: string;
 			category: string;
@@ -177,16 +181,18 @@ export class GatewayClient {
 		];
 
 		for (const { name, category, enabled, module } of computerModules) {
-			if (!enabled) continue;
-			if (await module.isSupported()) {
+			if (enabled && (await module.isSupported())) {
 				defs.push(...module.definitions);
-				categories.push(category);
+				categories.push({ name: category, enabled: true });
 			} else {
-				logger.debug('Module not supported on this platform, skipping', { module: name });
+				if (enabled) {
+					logger.debug('Module not supported on this platform, skipping', { module: name });
+				}
+				categories.push({ name: category, enabled: false });
 			}
 		}
 
-		// Browser
+		// Browser — always report
 		if (config.browser !== false) {
 			const { BrowserModule: BrowserModuleClass } = await import('./tools/browser');
 			this.browserModule = await BrowserModuleClass.create({
@@ -195,12 +201,15 @@ export class GatewayClient {
 			});
 			if (this.browserModule) {
 				defs.push(...this.browserModule.definitions);
-				categories.push('browser');
+				categories.push({ name: 'browser', enabled: true });
 			} else {
 				logger.debug('Module not supported on this platform, skipping', {
 					module: 'Browser',
 				});
+				categories.push({ name: 'browser', enabled: false });
 			}
+		} else {
+			categories.push({ name: 'browser', enabled: false });
 		}
 
 		for (const def of defs) {

@@ -4,6 +4,7 @@ import type {
 	InstanceAiThreadStatusResponse,
 	InstanceAiGatewayCapabilities,
 	McpToolCallResult,
+	ToolCategory,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -588,7 +589,7 @@ export class InstanceAiService {
 		connectedAt: string | null;
 		directory: string | null;
 		hostIdentifier: string | null;
-		toolCategories: string[];
+		toolCategories: ToolCategory[];
 	} {
 		return this.gatewayRegistry.getGatewayStatus(userId);
 	}

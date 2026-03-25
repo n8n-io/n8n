@@ -750,7 +750,7 @@ export class PlaywrightAdapter {
 	async waitForCompletion<T>(pageId: string, action: () => Promise<T>): Promise<T> {
 		// Guard: if the page doesn't exist yet (e.g. tab_open before creation),
 		// just run the action without waiting for completion.
-		if (!this.pageStates.has(pageId) && (!this.relay || !this.relay.hasTab(pageId))) {
+		if (!this.pageStates.has(pageId) && !this.relay?.hasTab(pageId)) {
 			log.debug('waitForCompletion: page not found, running action directly:', pageId);
 			return await action();
 		}

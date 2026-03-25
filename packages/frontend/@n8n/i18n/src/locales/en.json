@@ -4181,6 +4181,8 @@
 	"instanceAi.filesystem.category.browser": "Browser",
 	"instanceAi.filesystem.category.computerUse": "Computer use",
 	"instanceAi.filesystem.category.shell": "Shell",
+	"instanceAi.filesystem.access.read": "Read",
+	"instanceAi.filesystem.access.readWrite": "Read & Write",
 	"variables.heading": "Variables",
 	"variables.add": "Add variable",
 	"variables.add.unavailable": "Upgrade plan to keep using variables",

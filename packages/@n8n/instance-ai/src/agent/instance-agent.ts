@@ -280,7 +280,7 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 				licenseHints: context.licenseHints,
 				timeZone: options.timeZone,
 				browserAvailable: !!(
-					orchestrationContext?.browserMcpConfig ||
+					orchestrationContext?.browserMcpConfig ??
 					context.localMcpServer?.getAvailableTools().some((t) => t.name.startsWith('browser_'))
 				),
 			}),
