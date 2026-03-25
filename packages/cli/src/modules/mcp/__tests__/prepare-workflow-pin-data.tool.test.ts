@@ -20,16 +20,20 @@ import { NodeTypes } from '@/node-types';
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-// Mock @n8n/workflow-sdk functions
-const mockDiscoverSchemasForNode = jest.fn();
-const mockFindSchemaForOperation = jest.fn();
-const mockGenerateJsonSchemaFromData = jest.fn();
+// Mock @n8n/workflow-sdk functions — keep real implementations for shared utils
+// (needsPinData, normalizePinData), but mock functions that do file I/O or
+// process execution data so tests stay isolated.
+const mockDiscoverOutputSchemaForNode = jest.fn();
+const mockInferSchemasFromRunData = jest.fn();
 
-jest.mock('@n8n/workflow-sdk', () => ({
-	discoverSchemasForNode: (...args: unknown[]) => mockDiscoverSchemasForNode(...args),
-	findSchemaForOperation: (...args: unknown[]) => mockFindSchemaForOperation(...args),
-	generateJsonSchemaFromData: (...args: unknown[]) => mockGenerateJsonSchemaFromData(...args),
-}));
+jest.mock('@n8n/workflow-sdk', () => {
+	const actual = jest.requireActual<typeof import('@n8n/workflow-sdk')>('@n8n/workflow-sdk');
+	return {
+		...actual,
+		discoverOutputSchemaForNode: (...args: unknown[]) => mockDiscoverOutputSchemaForNode(...args),
+		inferSchemasFromRunData: (...args: unknown[]) => mockInferSchemasFromRunData(...args),
+	};
+});
 
 // Helper: trigger node types
 const TRIGGER_NODE_TYPES = new Set([
@@ -75,9 +79,8 @@ describe('prepare-workflow-pin-data MCP tool', () => {
 
 		// Default: no execution history, no schema discovery
 		(executionService.getLastSuccessfulExecution as jest.Mock).mockResolvedValue(undefined);
-		mockDiscoverSchemasForNode.mockReturnValue([]);
-		mockFindSchemaForOperation.mockReturnValue(undefined);
-		mockGenerateJsonSchemaFromData.mockReturnValue(undefined);
+		mockDiscoverOutputSchemaForNode.mockReturnValue(undefined);
+		mockInferSchemasFromRunData.mockReturnValue({});
 	});
 
 	describe('smoke tests', () => {
@@ -375,7 +378,7 @@ describe('prepare-workflow-pin-data MCP tool', () => {
 					},
 				},
 			});
-			mockGenerateJsonSchemaFromData.mockReturnValue(executionSchema);
+			mockInferSchemasFromRunData.mockReturnValue({ SlackNode: executionSchema });
 
 			const workflow = createWorkflow({
 				settings: { availableInMCP: true },
@@ -418,8 +421,7 @@ describe('prepare-workflow-pin-data MCP tool', () => {
 
 		test('tier 2: falls back to node type definition schema', async () => {
 			const definitionSchema = { type: 'object', properties: { name: { type: 'string' } } };
-			mockDiscoverSchemasForNode.mockReturnValue([{ schema: definitionSchema }]);
-			mockFindSchemaForOperation.mockReturnValue({ schema: definitionSchema });
+			mockDiscoverOutputSchemaForNode.mockReturnValue(definitionSchema);
 
 			const workflow = createWorkflow({
 				settings: { availableInMCP: true },
@@ -463,7 +465,7 @@ describe('prepare-workflow-pin-data MCP tool', () => {
 
 		test('tier 2: uses single schema when only one exists and no resource/operation', async () => {
 			const singleSchema = { type: 'object', properties: { value: { type: 'number' } } };
-			mockDiscoverSchemasForNode.mockReturnValue([{ schema: singleSchema }]);
+			mockDiscoverOutputSchemaForNode.mockReturnValue(singleSchema);
 
 			const workflow = createWorkflow({
 				settings: { availableInMCP: true },
@@ -677,20 +679,15 @@ describe('prepare-workflow-pin-data MCP tool', () => {
 					},
 				},
 			});
-			mockGenerateJsonSchemaFromData.mockReturnValue(executionSchema);
+			mockInferSchemasFromRunData.mockReturnValue({ SlackNode: executionSchema });
 
 			// Schema discovery for GmailNode
-			mockDiscoverSchemasForNode.mockImplementation((type: string) => {
+			mockDiscoverOutputSchemaForNode.mockImplementation((type: string) => {
 				if (type === 'n8n-nodes-base.gmail') {
-					return [{ schema: definitionSchema }];
+					return definitionSchema;
 				}
-				return [];
+				return undefined;
 			});
-			mockFindSchemaForOperation.mockImplementation(
-				(schemas: Array<{ schema: unknown }>, _resource: string, _operation: string) => {
-					return schemas[0];
-				},
-			);
 
 			const workflow = createWorkflow({
 				settings: { availableInMCP: true },

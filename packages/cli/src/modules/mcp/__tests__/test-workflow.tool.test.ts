@@ -8,6 +8,10 @@ import {
 	UnexpectedError,
 } from 'n8n-workflow';
 
+jest.mock('@n8n/workflow-sdk', () =>
+	jest.requireActual<typeof import('@n8n/workflow-sdk')>('@n8n/workflow-sdk'),
+);
+
 import { createWorkflow } from './mock.utils';
 import { McpExecutionTimeoutError, WorkflowAccessError } from '../mcp.errors';
 import { createTestWorkflowTool, testWorkflow } from '../tools/test-workflow.tool';

@@ -1,13 +1,13 @@
 import type { User } from '@n8n/db';
 import {
-	discoverSchemasForNode,
-	findSchemaForOperation,
-	generateJsonSchemaFromData,
+	needsPinData,
+	discoverOutputSchemaForNode,
+	inferSchemasFromRunData,
 	type JsonSchema,
 } from '@n8n/workflow-sdk';
 import type { Logger } from '@n8n/backend-common';
-import type { INode, INodeExecutionData } from 'n8n-workflow';
-import { HTTP_REQUEST_NODE_TYPE, isTriggerNode, jsonStringify } from 'n8n-workflow';
+import type { INodeExecutionData } from 'n8n-workflow';
+import { isTriggerNode, jsonStringify } from 'n8n-workflow';
 import z from 'zod';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
@@ -147,8 +147,20 @@ export async function preparePinData(
 
 	const enabledNodes = (workflow.nodes ?? []).filter((n) => !n.disabled);
 
+	// Build trigger detection callback using the NodeTypes registry
+	const isTriggerNodeFn = (node: { type: string; typeVersion: number }) => {
+		try {
+			const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+			return isTriggerNode(nodeType.description);
+		} catch {
+			// Unknown node type — safer to pin it
+			return true;
+		}
+	};
+
 	// Tier 1: Try to infer schemas from last successful execution output
 	const executionRunData = await getExecutionRunData(workflowId, user, executionService, logger);
+	const executionSchemas = executionRunData ? inferSchemasFromRunData(executionRunData) : {};
 
 	const nodeSchemasToGenerate: Record<string, JsonSchema> = {};
 	const nodesWithoutSchema: string[] = [];
@@ -161,14 +173,14 @@ export async function preparePinData(
 
 	for (const node of enabledNodes) {
 		// Check if this node needs pin data at all
-		if (!needsPinData(node, nodeTypes)) {
+		if (!needsPinData(node, isTriggerNodeFn)) {
 			nodesSkipped.push(node.name);
 			skipped++;
 			continue;
 		}
 
 		// Tier 1: Infer schema from execution history output
-		const execSchema = inferSchemaFromExecution(node.name, executionRunData);
+		const execSchema = executionSchemas[node.name];
 		if (execSchema) {
 			nodeSchemasToGenerate[node.name] = execSchema;
 			withSchemaFromExecution++;
@@ -176,7 +188,10 @@ export async function preparePinData(
 		}
 
 		// Tier 2: Schema from node type definition
-		const schema = discoverOutputSchema(node, logger);
+		const schema = discoverOutputSchemaForNode(node.type, node.typeVersion, {
+			resource: node.parameters?.resource as string | undefined,
+			operation: node.parameters?.operation as string | undefined,
+		});
 		if (schema) {
 			nodeSchemasToGenerate[node.name] = schema;
 			withSchemaFromDefinition++;
@@ -203,47 +218,7 @@ export async function preparePinData(
 }
 
 // =============================================================================
-// Pin Data Eligibility
-// =============================================================================
-
-/**
- * Determine if a node needs pin data for test execution.
- *
- * Nodes that need pin data (can't execute without real services):
- * - Trigger nodes (can't fire without real events)
- * - Nodes with credentials configured (would fail without valid credentials)
- * - HTTP Request nodes (call external services directly)
- *
- * All other nodes (Set, If, Switch, Code, Merge, Respond to Webhook, etc.)
- * should execute normally to test the workflow logic.
- */
-function needsPinData(node: INode, nodeTypes: NodeTypes): boolean {
-	// Trigger nodes always need pin data
-	try {
-		const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-		if (isTriggerNode(nodeType.description)) {
-			return true;
-		}
-	} catch {
-		// Unknown node type — safer to pin it
-		return true;
-	}
-
-	// Nodes with credentials need pin data (would fail without valid credentials)
-	if (node.credentials && Object.keys(node.credentials).length > 0) {
-		return true;
-	}
-
-	// HTTP Request nodes call external services directly
-	if (node.type === HTTP_REQUEST_NODE_TYPE) {
-		return true;
-	}
-
-	return false;
-}
-
-// =============================================================================
-// Tier 1: Execution History
+// Execution Data Fetching (backend-specific)
 // =============================================================================
 
 async function getExecutionRunData(
@@ -268,60 +243,6 @@ async function getExecutionRunData(
 	} catch (error) {
 		logger.debug('Failed to fetch execution data for pin data generation', {
 			workflowId,
-			error: error instanceof Error ? error.message : String(error),
-		});
-		return undefined;
-	}
-}
-
-/**
- * Infer a JSON Schema from execution history output for a given node.
- * Only the data shape is extracted — no actual values are retained.
- */
-function inferSchemaFromExecution(
-	nodeName: string,
-	executionRunData: Record<string, INodeExecutionData[]> | undefined,
-): JsonSchema | undefined {
-	if (!executionRunData) return undefined;
-	const nodeData = executionRunData[nodeName];
-	if (!nodeData?.[0]) return undefined;
-
-	// Use the first item's json payload to infer the schema shape.
-	// Limitation: heterogeneous arrays (items with different fields) will only
-	// reflect the first element's shape. Acceptable for test/pin data generation.
-	const firstItem = nodeData[0].json;
-	if (!firstItem || Object.keys(firstItem).length === 0) return undefined;
-
-	return generateJsonSchemaFromData(firstItem);
-}
-
-// =============================================================================
-// Tier 2: Schema Discovery
-// =============================================================================
-
-function discoverOutputSchema(node: INode, logger: Logger): JsonSchema | undefined {
-	try {
-		if (!node.type) return undefined;
-
-		const resource = (node.parameters?.resource as string) ?? '';
-		const operation = (node.parameters?.operation as string) ?? '';
-		const version =
-			typeof node.typeVersion === 'number' ? node.typeVersion : Number(node.typeVersion);
-
-		const schemas = discoverSchemasForNode(node.type, version);
-		if (schemas.length === 0) return undefined;
-
-		let match;
-		if (resource || operation) {
-			match = findSchemaForOperation(schemas, resource, operation);
-		} else if (schemas.length === 1) {
-			match = schemas[0];
-		}
-
-		return match?.schema;
-	} catch (error) {
-		logger.debug('Failed to discover output schema for node', {
-			nodeType: node.type,
 			error: error instanceof Error ? error.message : String(error),
 		});
 		return undefined;

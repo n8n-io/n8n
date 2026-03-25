@@ -1,5 +1,6 @@
 import { Time } from '@n8n/constants';
 import type { User } from '@n8n/db';
+import { normalizePinData } from '@n8n/workflow-sdk';
 import {
 	type INode,
 	type IPinData,
@@ -268,23 +269,4 @@ function findTriggerNode(
 		}
 	}
 	return undefined;
-}
-
-/**
- * Normalize pin data items to ensure each has a "json" wrapper.
- * LLM clients may send flat objects like [{"id": "123"}] instead of
- * the required [{"json": {"id": "123"}}] format.
- */
-function normalizePinData(pinData: IPinData): IPinData {
-	const normalized: IPinData = {};
-	for (const [nodeName, items] of Object.entries(pinData)) {
-		normalized[nodeName] = items.map((item) => {
-			if ('json' in item && typeof item.json === 'object' && item.json !== null) {
-				return item;
-			}
-			// Wrap the flat object in { json: ... }
-			return { json: item } as INodeExecutionData;
-		});
-	}
-	return normalized;
 }
