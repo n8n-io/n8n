@@ -42,3 +42,7 @@
 !packages/@n8n/typescript-config
 !packages/@n8n/typescript-config/**
 
+node_modules
+.git
+
+
