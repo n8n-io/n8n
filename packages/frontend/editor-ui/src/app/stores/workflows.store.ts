@@ -128,6 +128,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const workflowsListStore = useWorkflowsListStore();
 
 	const workflow = ref<IWorkflowDb>(createEmptyWorkflow());
+	/** @deprecated Use `workflowDocumentStore` graph/expression methods instead. */
 	const workflowObject = ref<Workflow>(
 		// eslint-disable-next-line @typescript-eslint/no-use-before-define
 		createWorkflowObject(workflow.value.nodes, workflow.value.connections),
