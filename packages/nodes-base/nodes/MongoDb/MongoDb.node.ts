@@ -377,8 +377,6 @@ export class MongoDb implements INodeType {
 			}
 
 			if (operation === 'update') {
-				fallbackPairedItems = fallbackPairedItems ?? generatePairedItemData(items.length);
-
 				const jsonMode = this.getNodeParameter('jsonMode', 0, false) as boolean;
 				if (jsonMode) {
 					for (let i = 0; i < itemsLength; i++) {
@@ -422,6 +420,7 @@ export class MongoDb implements INodeType {
 						}
 					}
 				} else {
+					fallbackPairedItems = fallbackPairedItems ?? generatePairedItemData(items.length);
 					const updateOptions = (this.getNodeParameter('upsert', 0) as boolean)
 						? { upsert: true }
 						: undefined;
