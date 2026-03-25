@@ -32,7 +32,26 @@ function registerResource(
 	}
 }
 
+/** Tools that only read/list resources — their results should not appear as artifacts. */
+const READ_ONLY_TOOLS = new Set([
+	'list-workflows',
+	'get-workflow-as-code',
+	'list-credentials',
+	'list-data-tables',
+	'list-executions',
+	'get-execution',
+	'debug-execution',
+	'search-nodes',
+	'get-node-type-definition',
+	'list-nodes',
+	'explore-node-resources',
+	'get-suggested-nodes',
+	'web-search',
+	'fetch-url',
+]);
+
 function extractFromToolCall(tc: InstanceAiToolCallState, map: Map<string, ResourceEntry>): void {
+	if (READ_ONLY_TOOLS.has(tc.toolName)) return;
 	if (!tc.result || typeof tc.result !== 'object') return;
 	const result = tc.result as Record<string, unknown>;
 
