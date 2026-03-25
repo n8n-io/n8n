@@ -22,7 +22,7 @@ RUN pnpm install --no-frozen-lockfile --ignore-scripts
 
 # 5. Forzamos la descarga del binario de esbuild para Linux 64 bits
 # Esto soluciona el error 2 en los paquetes de codemirror
-RUN pnpm add -Dw @esbuild/linux-x64
+RUN pnpm add -Dw esbuild --ignore-scripts
 
 # 6. Compilamos manualmente los módulos de C++
 RUN pnpm rebuild isolated-vm sqlite3
