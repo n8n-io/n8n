@@ -15,7 +15,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json ./
 COPY . .
 
 # 2. Install and Build
-RUN rm -rf node_modules && CI=true pnpm install
+RUN rm -rf node_modules && CI=true pnpm install --no-frozen-lockfile --ignore-scripts
 RUN pnpm build --filter n8n
 
 # 3. Create Tapis configuration
