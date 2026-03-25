@@ -27,7 +27,7 @@ export class WorkflowEndHandler implements SpanHandler<WorkflowExecuteAfterConte
 
 			const error = ctx.runData.data.resultData.error;
 			if (error) {
-				span.setAttribute(ATTR.EXECUTION_ERROR_TYPE, error.constructor.name);
+				span.setAttribute(ATTR.EXECUTION_ERROR_TYPE, this.getErrorType(error));
 			}
 		} else {
 			span.setStatus({ code: SpanStatusCode.OK });
@@ -36,4 +36,29 @@ export class WorkflowEndHandler implements SpanHandler<WorkflowExecuteAfterConte
 		span.end();
 		spans.cleanup(ctx.executionId);
 	}
+
+	private getErrorType(error: unknown): string {
+		if (!isRecord(error)) return 'UnknownError';
+
+		const errorName = error.name;
+		if (typeof errorName === 'string' && errorName.trim() !== '') return errorName;
+
+		const constructor = error.constructor;
+		if (typeof constructor !== 'function') return 'UnknownError';
+
+		const constructorName = constructor.name;
+		if (
+			typeof constructorName === 'string' &&
+			constructorName.trim() !== '' &&
+			constructorName !== 'Object'
+		) {
+			return constructorName;
+		}
+
+		return 'UnknownError';
+	}
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null;
 }

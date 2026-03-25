@@ -34,4 +34,26 @@ describe('WorkflowEndHandler', () => {
 			}),
 		);
 	});
+
+	it('should prefer error.name over Object constructor for plain error objects', () => {
+		const handler = new WorkflowEndHandler();
+		const spans = new SpanRegistry();
+		const setAttribute = jest.fn();
+		const span = mock<Span>({ setAttribute });
+		spans.addWorkflow('exec-202', span);
+
+		const context = {
+			type: 'workflowExecuteAfter',
+			executionId: 'exec-202',
+			runData: {
+				mode: 'manual',
+				status: 'error',
+				data: { resultData: { error: { name: 'NodeApiError', message: 'failed' } } },
+			},
+		} as WorkflowExecuteAfterContext;
+
+		handler.handle(context, spans);
+
+		expect(setAttribute).toHaveBeenCalledWith(ATTR.EXECUTION_ERROR_TYPE, 'NodeApiError');
+	});
 });
