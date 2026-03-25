@@ -9,11 +9,26 @@ on:
         required: false
         type: string
         default: ''
+    outputs:
+      change_count:
+        description: Number of visual changes detected by Chromatic.
+        value: ${{ jobs.chromatic.outputs.change_count }}
+      build_url:
+        description: URL of the Chromatic build.
+        value: ${{ jobs.chromatic.outputs.build_url }}
+      ui_review_url:
+        description: URL of the Chromatic UI Review check details.
+        value: ${{ jobs.chromatic.outputs.ui_review_url }}
 
 jobs:
   chromatic:
     runs-on: blacksmith-4vcpu-ubuntu-2204
+    outputs:
+      change_count: ${{ steps.chromatic_tests.outputs.changeCount }}
+      build_url: ${{ steps.chromatic_tests.outputs.buildUrl }}
+      ui_review_url: ${{ steps.resolve_ui_review_url.outputs.ui_review_url }}
     permissions:
+      checks: read
       contents: read
       pull-requests: write
     steps:
@@ -39,12 +54,64 @@ jobs:
           projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
           exitZeroOnChanges: true
 
+      - name: Resolve UI Review URL
+        if: always() && github.event.pull_request.number && steps.chromatic_tests.outputs.buildUrl
+        id: resolve_ui_review_url
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          script: |
+            const refsToCheck = [
+              context.sha,
+              context.payload.pull_request?.head?.sha,
+            ].filter(Boolean);
+
+            const seenRefs = new Set();
+            const uniqueRefs = refsToCheck.filter((ref) => {
+              if (seenRefs.has(ref)) return false;
+              seenRefs.add(ref);
+              return true;
+            });
+
+            const findUiReviewCheck = async () => {
+              for (const ref of uniqueRefs) {
+                const { data } = await github.rest.checks.listForRef({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  ref,
+                  per_page: 100,
+                });
+
+                const checkRun = data.check_runs.find((run) => {
+                  const appSlug = run.app?.slug?.toLowerCase() ?? '';
+                  const name = run.name ?? '';
+                  return appSlug.includes('chromatic') && /ui review/i.test(name);
+                });
+
+                if (checkRun?.details_url) return checkRun.details_url;
+              }
+
+              return '';
+            };
+
+            let uiReviewUrl = '';
+            for (let attempt = 1; attempt <= 12; attempt++) {
+              uiReviewUrl = await findUiReviewCheck();
+              if (uiReviewUrl) break;
+
+              if (attempt < 12) {
+                await new Promise((resolve) => setTimeout(resolve, 10000));
+              }
+            }
+
+            core.setOutput('ui_review_url', uiReviewUrl);
+
       - name: Comment visual regression results on PR
         if: always() && github.event.pull_request.number && steps.chromatic_tests.outputs.buildUrl
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         env:
           CHANGE_COUNT: ${{ steps.chromatic_tests.outputs.changeCount }}
           BUILD_URL: ${{ steps.chromatic_tests.outputs.buildUrl }}
+          UI_REVIEW_URL: ${{ steps.resolve_ui_review_url.outputs.ui_review_url }}
         with:
           script: |
             const owner = context.repo.owner;
@@ -53,12 +120,18 @@ jobs:
             const marker = '<!-- chromatic-visual-regression-results -->';
             const changeCount = process.env.CHANGE_COUNT ?? '0';
             const buildUrl = process.env.BUILD_URL;
+            const uiReviewUrl = process.env.UI_REVIEW_URL;
+
+            const uiReviewLine = uiReviewUrl
+              ? `- UI Review: [Open Chromatic PR](${uiReviewUrl})`
+              : '- UI Review: UI Review check not found (Chromatic PR link unavailable)';
 
             const body =
               `${marker}\n` +
               `## Chromatic Results\n\n` +
               `- Visual changes: **${changeCount}**\n` +
-              `- Build: [Open Chromatic build](${buildUrl})`;
+              `- Build: [Open Chromatic build](${buildUrl})\n` +
+              `${uiReviewLine}`;
 
             const { data: comments } = await github.rest.issues.listComments({
               owner,
