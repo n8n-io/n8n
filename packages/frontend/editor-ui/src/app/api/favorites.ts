@@ -8,7 +8,7 @@ export type UserFavorite = {
 	id: number;
 	userId: string;
 	resourceId: string;
-	resourceType: string;
+	resourceType: FavoriteResourceType;
 	resourceName: string;
 	resourceProjectId?: string;
 };

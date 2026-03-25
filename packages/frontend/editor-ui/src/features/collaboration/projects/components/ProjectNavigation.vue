@@ -224,7 +224,7 @@ onBeforeUnmount(() => {
 		<div
 			v-if="
 				(projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled) &&
-				(!projectsCollapsed || props.collapsed)
+				(!projectsStore.isTeamProjectFeatureEnabled || !projectsCollapsed || props.collapsed)
 			"
 			:class="$style.projectItems"
 		>

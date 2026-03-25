@@ -13,6 +13,8 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 
+import type { FavoriteResourceType } from '@n8n/api-types';
+
 @Service()
 export class FavoritesService {
 	private readonly MAX_FAVORITES = 200;
@@ -123,7 +125,7 @@ export class FavoritesService {
 		return enriched;
 	}
 
-	async addFavorite(userId: string, resourceId: string, resourceType: string) {
+	async addFavorite(userId: string, resourceId: string, resourceType: FavoriteResourceType) {
 		const existing = await this.userFavoriteRepository.findOne({
 			where: { userId, resourceId, resourceType },
 		});
@@ -139,7 +141,7 @@ export class FavoritesService {
 		return await this.userFavoriteRepository.save(favorite);
 	}
 
-	async removeFavorite(userId: string, resourceId: string, resourceType: string) {
+	async removeFavorite(userId: string, resourceId: string, resourceType: FavoriteResourceType) {
 		const favorite = await this.userFavoriteRepository.findOne({
 			where: { userId, resourceId, resourceType },
 		});
@@ -151,11 +153,14 @@ export class FavoritesService {
 		await this.userFavoriteRepository.remove(favorite);
 	}
 
-	async deleteByResource(resourceId: string, resourceType: string): Promise<void> {
+	async deleteByResource(resourceId: string, resourceType: FavoriteResourceType): Promise<void> {
 		await this.userFavoriteRepository.deleteByResourceId(resourceId, resourceType);
 	}
 
-	async deleteByResourceIds(resourceIds: string[], resourceType: string): Promise<void> {
+	async deleteByResourceIds(
+		resourceIds: string[],
+		resourceType: FavoriteResourceType,
+	): Promise<void> {
 		await this.userFavoriteRepository.deleteByResourceIds(resourceIds, resourceType);
 	}
 }

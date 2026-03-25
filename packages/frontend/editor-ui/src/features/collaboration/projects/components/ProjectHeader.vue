@@ -22,7 +22,14 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
 import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
 
-import { N8nButton, N8nHeading, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nHeading,
+	N8nIcon,
+	N8nIconButton,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useUsersStore } from '@/features/settings/users/users.store';
@@ -457,10 +464,17 @@ const onSelect = (action: string) => {
 						isProjectFavorited ? i18n.baseText('favorites.remove') : i18n.baseText('favorites.add')
 					"
 				>
-					<N8nIcon
+					<N8nIconButton
 						:class="[$style.favoriteBtn, isProjectFavorited && $style.favoriteBtnActive]"
 						icon="star"
-						size="medium"
+						variant="ghost"
+						size="small"
+						:aria-label="
+							isProjectFavorited
+								? i18n.baseText('favorites.remove')
+								: i18n.baseText('favorites.add')
+						"
+						:aria-pressed="isProjectFavorited"
 						data-test-id="project-favorite-btn"
 						@click.stop="onToggleProjectFavorite"
 					/>
@@ -548,9 +562,6 @@ const onSelect = (action: string) => {
 .favoriteBtn {
 	color: var(--color--text--tint-2);
 	margin-left: var(--spacing--2xs);
-	cursor: pointer;
-	display: flex;
-	align-items: center;
 	opacity: 0;
 	transition:
 		opacity 0.15s ease,
