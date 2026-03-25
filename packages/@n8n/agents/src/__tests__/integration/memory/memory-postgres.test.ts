@@ -34,6 +34,7 @@ let connectionString: string;
 
 beforeAll(async () => {
 	if (!hasDocker) return;
+
 	container = await new GenericContainer('pgvector/pgvector:pg17')
 		.withExposedPorts(5432)
 		.withEnvironment({
