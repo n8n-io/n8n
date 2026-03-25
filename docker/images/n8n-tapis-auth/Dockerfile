@@ -35,7 +35,8 @@ RUN pnpm rebuild isolated-vm sqlite3
 
 # 7. BUILD FINAL
 ENV NODE_OPTIONS="--max-old-space-size=8192"
-RUN pnpm build
+#RUN pnpm build
+RUN pnpm turbo run build --filter=!@n8n/eslint-plugin-community-nodes --filter=!@n8n/eslint-config
 
 # --- ETAPA FINAL ---
 FROM node:20-bookworm-slim
