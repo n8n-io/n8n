@@ -39,7 +39,7 @@ describe('OAuthClientsController', () => {
 
 			refreshTokenRepository.find.mockResolvedValue([
 				mock<RefreshToken>({
-					token: 'abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890',
+					token: 'mock-test-token-not-real-0000000000000000000000000000000000007890',
 					clientId: 'n8n-cli',
 					userId: 'user-1',
 					expiresAt: now + 30 * 24 * 3600_000, // 30 days from now

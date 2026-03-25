@@ -1,5 +1,5 @@
 import * as os from 'node:os';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 import { contextNameFromUrl, uniqueContextName } from '../config';
 
@@ -111,7 +111,7 @@ describe('Login helpers', () => {
 		});
 
 		it('should generate unique values each time', async () => {
-			const { createHash, randomBytes } = await import('node:crypto');
+			const { randomBytes } = await import('node:crypto');
 
 			const v1 = randomBytes(32).toString('base64url');
 			const v2 = randomBytes(32).toString('base64url');
