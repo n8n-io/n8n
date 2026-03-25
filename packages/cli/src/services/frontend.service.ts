@@ -228,7 +228,7 @@ export class FrontendService {
 			},
 			dynamicBanners: {
 				endpoint: this.globalConfig.dynamicBanners.endpoint,
-				enabled: this.globalConfig.dynamicBanners.enabled,
+				enabled: this.globalConfig.dynamicBanners.enabled && this.globalConfig.diagnostics.enabled,
 			},
 			instanceId: this.instanceSettings.instanceId,
 			telemetry: telemetrySettings,
@@ -381,6 +381,7 @@ export class FrontendService {
 				quota: this.licenseState.getMaxWorkflowsWithEvaluations(),
 			},
 			activeModules: this.moduleRegistry.getActiveModules(),
+			canvasOnly: this.globalConfig.canvasOnly,
 			envFeatureFlags: this.collectEnvFeatureFlags(),
 		};
 	}

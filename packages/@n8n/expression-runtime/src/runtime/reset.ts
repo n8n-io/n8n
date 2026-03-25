@@ -3,7 +3,7 @@ import { DateTime, IANAZone, Settings } from 'luxon';
 import { extend, extendOptional } from '../extensions/extend';
 import { extendedFunctions } from '../extensions/function-extensions';
 
-import { __sanitize, createSafeErrorSubclass } from './safe-globals';
+import { __sanitize, createSafeErrorSubclass, ExpressionError } from './safe-globals';
 import { createDeepLazyProxy } from './lazy-proxy';
 
 // Pre-create safe error subclass wrappers (reused across evaluations)
@@ -43,7 +43,15 @@ export function resetDataProxies(timezone?: string): void {
 
 	// __sanitize must be on __data because PrototypeSanitizer generates:
 	// obj[this.__sanitize(expr)] where 'this' is __data (via .call(__data) wrapping)
-	globalThis.__data.__sanitize = __sanitize;
+	// Use a non-writable property descriptor so override attempts throw instead of silently succeeding.
+	Object.defineProperty(globalThis.__data, '__sanitize', {
+		get: () => __sanitize,
+		set: () => {
+			throw new ExpressionError('Cannot override "__sanitize" due to security concerns');
+		},
+		enumerable: false,
+		configurable: false,
+	});
 
 	// Verify callbacks are available
 	// Note: ivm.Reference may not be typeof 'function', check for existence
@@ -170,7 +178,14 @@ export function resetDataProxies(timezone?: string): void {
 	// Wire builtins so tournament's VariablePolyfill resolves them from __data
 	initializeBuiltins(globalThis.__data as Record<string, unknown>);
 
-	// TODO: Add other function properties as needed ($item, $vars, etc.)
+	// $item(itemIndex) returns a sub-proxy for the specified item (legacy syntax)
+	globalThis.__data.$item = function (itemIndex: number) {
+		const indexStr = String(itemIndex);
+		return {
+			$json: createDeepLazyProxy(['$item', indexStr, '$json']),
+			$binary: createDeepLazyProxy(['$item', indexStr, '$binary']),
+		};
+	};
 }
 
 // Matches initializeGlobalContext() lines 262-318 in packages/workflow/src/expression.ts

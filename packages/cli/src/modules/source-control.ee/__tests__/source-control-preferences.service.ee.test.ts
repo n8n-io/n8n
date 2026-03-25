@@ -40,6 +40,26 @@ describe('SourceControlPreferencesService', () => {
 		expect(validationResult).toBeTruthy();
 	});
 
+	describe('branchName validation', () => {
+		it.each(['main', 'develop', 'feature/my-branch', 'release-1.0', 'v2.3.4'])(
+			'should accept valid branch name: %s',
+			async (branchName) => {
+				await expect(
+					service.validateSourceControlPreferences({ branchName }),
+				).resolves.not.toThrow();
+			},
+		);
+
+		it.each(['--option-like-value', '-flag', '--receive-pack=cmd', '--upload-pack=cmd'])(
+			'should reject branch name that does not start with an alphanumeric character: %s',
+			async (branchName) => {
+				await expect(service.validateSourceControlPreferences({ branchName })).rejects.toThrow(
+					'Invalid source control preferences',
+				);
+			},
+		);
+	});
+
 	describe('line ending normalization', () => {
 		let tempDir: string;
 
