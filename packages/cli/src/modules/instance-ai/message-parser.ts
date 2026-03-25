@@ -5,8 +5,8 @@ import type {
 	InstanceAiToolCallState,
 	InstanceAiTimelineEntry,
 } from '@n8n/api-types';
+import type { AgentTreeSnapshot } from '@n8n/instance-ai';
 
-import type { AgentTreeSnapshot } from './agent-tree-snapshot';
 import { cleanStoredUserMessage } from './internal-messages';
 
 type RunSnapshots = AgentTreeSnapshot[];

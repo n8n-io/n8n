@@ -8,6 +8,10 @@ import DataTableCard from './DataTableCard.vue';
 import ResearchCard from './ResearchCard.vue';
 import AgentNodeSection from './AgentNodeSection.vue';
 import DelegateCard from './DelegateCard.vue';
+import TaskChecklist from './TaskChecklist.vue';
+import AnsweredQuestions from './AnsweredQuestions.vue';
+import PlanReviewPanel, { type PlannedTaskArg } from './PlanReviewPanel.vue';
+import { useInstanceAiStore } from '../instanceAi.store';
 
 const props = withDefaults(
 	defineProps<{
@@ -40,6 +44,15 @@ const childrenById = computed(() => {
 	}
 	return map;
 });
+
+const store = useInstanceAiStore();
+
+function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedback?: string) {
+	const requestId = tc.confirmation?.requestId;
+	if (!requestId) return;
+	store.resolveConfirmation(requestId, approved ? 'approved' : 'denied');
+	void store.confirmAction(requestId, approved, undefined, undefined, undefined, feedback);
+}
 </script>
 
 <template>
@@ -55,7 +68,10 @@ const childrenById = computed(() => {
 
 			<!-- Tool call -->
 			<template v-else-if="entry.type === 'tool-call' && toolCallsById[entry.toolCallId]">
-				<template v-if="toolCallsById[entry.toolCallId].renderHint === 'tasks'" />
+				<TaskChecklist
+					v-if="toolCallsById[entry.toolCallId].renderHint === 'tasks'"
+					:tasks="props.agentNode.tasks"
+				/>
 				<DelegateCard
 					v-else-if="toolCallsById[entry.toolCallId].renderHint === 'delegate'"
 					:args="toolCallsById[entry.toolCallId].args"
@@ -66,6 +82,31 @@ const childrenById = computed(() => {
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'builder'" />
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'data-table'" />
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'researcher'" />
+				<!-- Answered questions (read-only after resolution) -->
+				<AnsweredQuestions
+					v-else-if="
+						toolCallsById[entry.toolCallId].confirmation?.inputType === 'questions' &&
+						!toolCallsById[entry.toolCallId].isLoading
+					"
+					:tool-call="toolCallsById[entry.toolCallId]"
+				/>
+				<!-- Plan review: always render inline (interactive while pending, read-only after) -->
+				<PlanReviewPanel
+					v-else-if="toolCallsById[entry.toolCallId].confirmation?.inputType === 'plan-review'"
+					:planned-tasks="
+						(toolCallsById[entry.toolCallId].args?.tasks as PlannedTaskArg[] | undefined) ?? []
+					"
+					:read-only="!toolCallsById[entry.toolCallId].isLoading"
+					@approve="handlePlanConfirm(toolCallsById[entry.toolCallId], true)"
+					@request-changes="(fb) => handlePlanConfirm(toolCallsById[entry.toolCallId], false, fb)"
+				/>
+				<!-- Suppress default tool call while questions are pending -->
+				<template
+					v-else-if="
+						toolCallsById[entry.toolCallId].confirmation?.inputType === 'questions' &&
+						toolCallsById[entry.toolCallId].isLoading
+					"
+				/>
 				<template v-else>
 					<InstanceAiToolCall :tool-call="toolCallsById[entry.toolCallId]" />
 					<slot name="after-tool-call" :tool-call="toolCallsById[entry.toolCallId]" />

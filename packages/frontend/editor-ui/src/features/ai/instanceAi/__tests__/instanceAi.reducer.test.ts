@@ -604,6 +604,16 @@ describe('instanceAi.reducer', () => {
 			expect(getRenderHint('delegate')).toBe('delegate');
 		});
 
+		test('returns builder for workflow builder flow aliases', () => {
+			expect(getRenderHint('build-workflow-with-agent')).toBe('builder');
+			expect(getRenderHint('workflow-build-flow')).toBe('builder');
+		});
+
+		test('returns data-table for data-table flow aliases', () => {
+			expect(getRenderHint('manage-data-tables-with-agent')).toBe('data-table');
+			expect(getRenderHint('agent-data-table-manager')).toBe('data-table');
+		});
+
 		test('returns default for other tool names', () => {
 			expect(getRenderHint('some-tool')).toBe('default');
 		});

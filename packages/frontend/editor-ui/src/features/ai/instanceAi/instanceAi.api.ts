@@ -79,6 +79,7 @@ export async function postConfirmation(
 	autoSetup?: { credentialType: string },
 	userInput?: string,
 	domainAccessAction?: string,
+	answers?: InstanceAiConfirmResponse['answers'],
 ): Promise<void> {
 	const payload: InstanceAiConfirmResponse = {
 		approved,
@@ -91,6 +92,7 @@ export async function postConfirmation(
 					domainAccessAction: domainAccessAction as InstanceAiConfirmResponse['domainAccessAction'],
 				}
 			: {}),
+		...(answers ? { answers } : {}),
 	};
 	await makeRestApiRequest(context, 'POST', `/instance-ai/confirm/${requestId}`, payload);
 }

@@ -2,6 +2,21 @@
 const mockGenerateCompactionSummary = jest.fn();
 jest.mock('@n8n/instance-ai', () => ({
 	generateCompactionSummary: (...args: unknown[]) => mockGenerateCompactionSummary(...args),
+	// Inline the patchThread fallback path (getThreadById → update → updateThread)
+	patchThread: async (
+		memory: { getThreadById: Function; updateThread: Function },
+		args: { threadId: string; update: Function },
+	) => {
+		const thread = await memory.getThreadById({ threadId: args.threadId });
+		if (!thread) return null;
+		const patch = args.update({ ...thread, metadata: { ...(thread.metadata ?? {}) } });
+		if (!patch) return thread;
+		return await memory.updateThread({
+			id: args.threadId,
+			title: patch.title ?? thread.title ?? args.threadId,
+			metadata: patch.metadata ?? thread.metadata ?? {},
+		});
+	},
 }));
 
 jest.mock('@mastra/core/agent', () => ({}));

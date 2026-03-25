@@ -33,3 +33,6 @@ export {
 	handleVerificationVerdict,
 	formatAttemptHistory,
 } from './workflow-loop-controller';
+
+export { formatWorkflowLoopGuidance } from './guidance';
+export { WorkflowTaskCoordinator } from './workflow-task-service';

@@ -1,12 +1,16 @@
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
+import { ref, computed, triggerRef } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { ResponseError } from '@n8n/rest-api-client';
-import { instanceAiEventSchema, isSafeObjectKey } from '@n8n/api-types';
+import {
+	instanceAiEventSchema,
+	isSafeObjectKey,
+	type InstanceAiConfirmResponse,
+} from '@n8n/api-types';
 import {
 	ensureThread,
 	postMessage,
@@ -34,6 +38,7 @@ import type {
 	InstanceAiToolCallState,
 	InstanceAiThreadSummary,
 	InstanceAiSSEConnectionState,
+	TaskList,
 } from '@n8n/api-types';
 
 export interface PendingConfirmationItem {
@@ -55,7 +60,9 @@ function collectPendingConfirmations(
 			tc.isLoading &&
 			tc.confirmationStatus !== 'approved' &&
 			tc.confirmationStatus !== 'denied' &&
-			!resolved.has(tc.confirmation.requestId)
+			!resolved.has(tc.confirmation.requestId) &&
+			// Plan review renders inline in the timeline, not in the confirmation panel
+			tc.confirmation.inputType !== 'plan-review'
 		) {
 			out.push({ toolCall: tc, agentNode: node, messageId });
 		}
@@ -63,6 +70,15 @@ function collectPendingConfirmations(
 	for (const child of node.children) {
 		collectPendingConfirmations(child, messageId, resolved, out);
 	}
+}
+
+function findLatestTasksFromMessages(messages: InstanceAiMessage[]): TaskList | null {
+	for (let i = messages.length - 1; i >= 0; i--) {
+		const tasks = messages[i].agentTree?.tasks;
+		if (tasks) return tasks;
+	}
+
+	return null;
 }
 
 // Module-level EventSource reference — not in reactive state (not serializable,
@@ -93,6 +109,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const lastEventIdByThread = ref<Record<string, number>>({});
 	const activeRunId = ref<string | null>(null);
 	const messages = ref<InstanceAiMessage[]>([]);
+	const latestTasks = ref<TaskList | null>(null);
 	const debugEvents = ref<Array<{ timestamp: string; event: InstanceAiEvent }>>([]);
 	const debugMode = ref(false);
 	const researchMode = ref(localStorage.getItem('instanceAi.researchMode') === 'true');
@@ -122,14 +139,10 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const { feedbackByResponseId, rateableResponseId, submitFeedback, resetFeedback } =
 		useResponseFeedback({ messages, currentThreadId, telemetry });
 
-	/** The latest task list — scans all messages backwards since tasks persist across runs. */
-	const currentTasks = computed(() => {
-		for (let i = messages.value.length - 1; i >= 0; i--) {
-			const tasks = messages.value[i].agentTree?.tasks;
-			if (tasks) return tasks;
-		}
-		return null;
-	});
+	/** The latest task list, preferring explicit tasks-update events over tree snapshots. */
+	const currentTasks = computed(
+		() => latestTasks.value ?? findLatestTasksFromMessages(messages.value),
+	);
 
 	/**
 	 * Derive a single contextual follow-up suggestion from the last completed
@@ -214,6 +227,16 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				},
 				parsed.data,
 			);
+			if (parsed.data.type === 'tasks-update') {
+				latestTasks.value = parsed.data.payload.tasks;
+			}
+			// Force Vue reactivity when streaming state changes (run-start can
+			// re-activate a completed message for auto-follow-up runs, run-finish
+			// marks it done). In-place mutation of message properties may not
+			// reliably trigger deep watchers in all scenarios (e.g. background tabs).
+			if (parsed.data.type === 'run-start' || parsed.data.type === 'run-finish') {
+				triggerRef(messages);
+			}
 			// When a run finishes, refresh thread list to pick up Mastra-generated titles
 			if (previousRunId && activeRunId.value === null) {
 				void loadThreads();
@@ -260,6 +283,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				msg.agentTree = data.agentTree;
 				msg.runId = data.runId;
 				msg.messageGroupId = groupId;
+				latestTasks.value = findLatestTasksFromMessages(messages.value);
 				const isOrchestratorLive = data.status === 'active' || data.status === 'suspended';
 				// For background-only groups, the orchestrator already finished.
 				// Set isStreaming = false so InstanceAiMessage.vue's hasActiveBackgroundTasks
@@ -354,6 +378,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		closeSSE();
 		// 2. Clear store state
 		messages.value = [];
+		latestTasks.value = null;
 		activeRunId.value = null;
 		debugEvents.value = [];
 		resetFeedback();
@@ -378,6 +403,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		const newThreadId = uuidv4();
 		closeSSE();
 		messages.value = [];
+		latestTasks.value = null;
 		activeRunId.value = null;
 		debugEvents.value = [];
 		resetFeedback();
@@ -427,6 +453,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				const freshId = uuidv4();
 				closeSSE();
 				messages.value = [];
+				latestTasks.value = null;
 				activeRunId.value = null;
 				debugEvents.value = [];
 				resetFeedback();
@@ -495,6 +522,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			// Backend now returns InstanceAiMessage[] directly — no conversion needed
 			if (result.messages.length > 0) {
 				messages.value = result.messages;
+				latestTasks.value = findLatestTasksFromMessages(result.messages);
 
 				// Rebuild reducer routing state from historical messages so SSE
 				// replay events (which arrive before run-sync) can reduce into
@@ -644,6 +672,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		autoSetup?: { credentialType: string },
 		userInput?: string,
 		domainAccessAction?: string,
+		answers?: InstanceAiConfirmResponse['answers'],
 	): Promise<void> {
 		try {
 			await postConfirmation(
@@ -655,6 +684,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				autoSetup,
 				userInput,
 				domainAccessAction,
+				answers,
 			);
 		} catch {
 			toast.showError(new Error('Failed to send confirmation. Try again.'), 'Confirmation failed');

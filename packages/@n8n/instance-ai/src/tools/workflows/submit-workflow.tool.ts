@@ -135,7 +135,7 @@ export function createSubmitWorkflowTool(
 	context: InstanceAiContext,
 	workspace: Workspace,
 	credentialMap: CredentialMap = new Map(),
-	onAttempt?: (attempt: SubmitWorkflowAttempt) => void,
+	onAttempt?: (attempt: SubmitWorkflowAttempt) => void | Promise<void>,
 ) {
 	return createTool({
 		id: 'submit-workflow',
@@ -187,8 +187,10 @@ export function createSubmitWorkflowTool(
 			}
 
 			const sourceHash = hashContent(await readFileViaSandbox(workspace, filePath));
-			const reportAttempt = (attempt: Omit<SubmitWorkflowAttempt, 'filePath' | 'sourceHash'>) => {
-				onAttempt?.({
+			const reportAttempt = async (
+				attempt: Omit<SubmitWorkflowAttempt, 'filePath' | 'sourceHash'>,
+			) => {
+				await onAttempt?.({
 					filePath,
 					sourceHash,
 					...attempt,
@@ -221,7 +223,7 @@ export function createSubmitWorkflowTool(
 					`Failed to execute workflow file in sandbox (exit code ${buildResult.exitCode}).`,
 					buildResult.stderr?.trim() || buildResult.stdout?.trim() || 'No output',
 				];
-				reportAttempt({ success: false, errors });
+				await reportAttempt({ success: false, errors });
 				return {
 					success: false,
 					errors,
@@ -230,7 +232,7 @@ export function createSubmitWorkflowTool(
 
 			if (!buildOutput.success || !buildOutput.workflow) {
 				const errors = enhanceBuildErrors(buildOutput.errors ?? ['Unknown build error']);
-				reportAttempt({ success: false, errors });
+				await reportAttempt({ success: false, errors });
 				return {
 					success: false,
 					errors,
@@ -260,7 +262,7 @@ export function createSubmitWorkflowTool(
 				const formattedErrors = enhanceValidationErrors(
 					errors.map((e) => `[${e.code}]${e.nodeName ? ` (${e.nodeName})` : ''}: ${e.message}`),
 				);
-				reportAttempt({ success: false, errors: formattedErrors });
+				await reportAttempt({ success: false, errors: formattedErrors });
 				return {
 					success: false,
 					errors: formattedErrors,
@@ -279,7 +281,7 @@ export function createSubmitWorkflowTool(
 				const errors = [
 					'Workflow name is required for new workflows. Provide a name parameter or set it in the SDK code.',
 				];
-				reportAttempt({ success: false, errors });
+				await reportAttempt({ success: false, errors });
 				return {
 					success: false,
 					errors,
@@ -317,7 +319,7 @@ export function createSubmitWorkflowTool(
 				const errors = [
 					`Workflow save failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
 				];
-				reportAttempt({ success: false, errors });
+				await reportAttempt({ success: false, errors });
 				return {
 					success: false,
 					errors,
@@ -338,7 +340,7 @@ export function createSubmitWorkflowTool(
 				(n) => n.type?.endsWith?.('Trigger') || n.type?.endsWith?.('trigger'),
 			);
 			const triggerNodeTypes = triggers.map((t) => t.type).filter(Boolean);
-			reportAttempt({
+			await reportAttempt({
 				success: true,
 				workflowId: savedId,
 				triggerNodeTypes,
