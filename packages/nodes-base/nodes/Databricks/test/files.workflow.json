@@ -1,0 +1,152 @@
+{
+	"name": "Databricks Files Test Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-001",
+			"name": "When clicking 'Execute workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "files",
+				"operation": "deleteFile",
+				"volumePath": "main.default.my_volume",
+				"filePath": "data/test.csv"
+			},
+			"type": "n8n-nodes-base.databricks",
+			"typeVersion": 1,
+			"position": [220, -200],
+			"id": "files-delete-001",
+			"name": "Delete File",
+			"credentials": {
+				"databricksApi": {
+					"id": "cred-001",
+					"name": "Databricks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "files",
+				"operation": "listDirectory",
+				"volumePath": "main.default.my_volume",
+				"directoryPath": "data",
+				"additionalFields": {}
+			},
+			"type": "n8n-nodes-base.databricks",
+			"typeVersion": 1,
+			"position": [220, 0],
+			"id": "files-list-001",
+			"name": "List Directory",
+			"credentials": {
+				"databricksApi": {
+					"id": "cred-001",
+					"name": "Databricks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "files",
+				"operation": "createDirectory",
+				"volumePath": "main.default.my_volume",
+				"directoryPath": "new_dir"
+			},
+			"type": "n8n-nodes-base.databricks",
+			"typeVersion": 1,
+			"position": [220, 200],
+			"id": "files-mkdir-001",
+			"name": "Create Directory",
+			"credentials": {
+				"databricksApi": {
+					"id": "cred-001",
+					"name": "Databricks account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"resource": "files",
+				"operation": "deleteDirectory",
+				"volumePath": "main.default.my_volume",
+				"directoryPath": "old_dir"
+			},
+			"type": "n8n-nodes-base.databricks",
+			"typeVersion": 1,
+			"position": [220, 400],
+			"id": "files-rmdir-001",
+			"name": "Delete Directory",
+			"credentials": {
+				"databricksApi": {
+					"id": "cred-001",
+					"name": "Databricks account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Delete File": [
+			{
+				"json": {
+					"success": true,
+					"message": "File deleted successfully: data/test.csv",
+					"volumePath": "main.default.my_volume",
+					"filePath": "data/test.csv"
+				}
+			}
+		],
+		"List Directory": [
+			{
+				"json": {
+					"contents": [
+						{
+							"name": "test.csv",
+							"path": "/Volumes/main/default/my_volume/data/test.csv",
+							"type": "FILE"
+						}
+					],
+					"next_page_token": null
+				}
+			}
+		],
+		"Create Directory": [
+			{
+				"json": {
+					"success": true,
+					"message": "Directory created successfully: new_dir",
+					"volumePath": "main.default.my_volume",
+					"directoryPath": "new_dir"
+				}
+			}
+		],
+		"Delete Directory": [
+			{
+				"json": {
+					"success": true,
+					"message": "Directory deleted successfully: old_dir",
+					"volumePath": "main.default.my_volume",
+					"directoryPath": "old_dir"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{ "node": "Delete File", "type": "main", "index": 0 },
+					{ "node": "List Directory", "type": "main", "index": 0 },
+					{ "node": "Create Directory", "type": "main", "index": 0 },
+					{ "node": "Delete Directory", "type": "main", "index": 0 }
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

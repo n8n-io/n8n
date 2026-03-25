@@ -203,6 +203,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const settings = useSettingsStore();
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
 	const workflowState = injectWorkflowState();
 	const ndvStore = useNDVStore();
 	const route = useRoute();
@@ -755,10 +760,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		// Use workflow updatedAt as version timestamp
 		// might not be the same as "version.createdAt" but close enough
-		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
-		);
-		const updatedAt = workflowDocumentStore.updatedAt;
+		const updatedAt = workflowDocumentStore.value?.updatedAt;
+		if (!updatedAt) return undefined;
 		return {
 			id: versionId,
 			createdAt: typeof updatedAt === 'number' ? new Date(updatedAt).toISOString() : updatedAt,
@@ -880,7 +883,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			quickReplyType,
 			workflow: workflowsStore.workflow,
 			executionData: executionResult,
-			nodesForSchema: Object.keys(workflowsStore.nodesByName),
+			nodesForSchema: Object.keys(workflowDocumentStore.value?.nodesByName ?? {}),
 			mode: modeForPayload,
 			isPlanModeEnabled: isPlanModeAvailable.value,
 			allowSendingParameterValues: settings.settings.ai.allowSendingParameterValues,
@@ -1085,13 +1088,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	}
 
 	function unpinAllNodes() {
-		const workflowDocumentStore = workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined;
-		const pinData = workflowDocumentStore?.pinData;
+		const pinData = workflowDocumentStore.value?.pinData;
 		if (!pinData) return;
 		for (const nodeName of Object.keys(pinData)) {
-			workflowDocumentStore?.unpinNodeData(nodeName);
+			workflowDocumentStore.value?.unpinNodeData(nodeName);
 			if (workflowsStore.nodeMetadata[nodeName]) {
 				workflowsStore.nodeMetadata[nodeName].pinnedDataLastRemovedAt = Date.now();
 			}
@@ -1101,7 +1101,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 	function clearExistingWorkflow() {
 		workflowState.removeAllConnections({ setStateDirty: false });
-		workflowState.removeAllNodes({ setStateDirty: false, removePinData: true });
+		workflowDocumentStore.value?.removeAllNodes();
 	}
 
 	function getWorkflowSnapshot() {
@@ -1185,7 +1185,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	// Only applies when the chat is fresh (no messages) so it doesn't interfere
 	// with an active conversation.
 	watch(
-		[() => workflowsStore.workflowId, () => workflowsStore.workflow.nodes?.length ?? 0],
+		[() => workflowsStore.workflowId, () => (workflowDocumentStore.value?.allNodes ?? []).length],
 		([, nodesCount]) => {
 			if (chatMessages.value.length > 0) return;
 			if (!isPlanModeAvailable.value) return;
@@ -1271,8 +1271,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		// version id is important to update, because otherwise the next time user saves,
 		// "overwrite" prevention modal shows, because the version id on the FE would be out of sync with latest on the backend
 		workflowState.setWorkflowProperty('versionId', updatedWorkflow.versionId);
-		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
-		workflowDocumentStore.setUpdatedAt(updatedWorkflow.updatedAt);
+		workflowDocumentStore.value?.setUpdatedAt(updatedWorkflow.updatedAt);
 
 		// 2. Truncate messages in backend session (removes message with messageId and all after)
 		await truncateBuilderMessages(

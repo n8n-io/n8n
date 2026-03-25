@@ -125,6 +125,67 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		return count > 0;
 	}
 
+	async findByCredentialResolverId(
+		resolverId: string,
+	): Promise<Array<Pick<WorkflowEntity, 'id' | 'name'>>> {
+		const qb = this.createQueryBuilder('workflow').select(['workflow.id', 'workflow.name']);
+		this.addCredentialResolverFilter(qb, resolverId);
+		return await qb.getMany();
+	}
+
+	/**
+	 * Finds IDs of active workflows that reference a credential resolver.
+	 */
+	async findActiveByCredentialResolverId(resolverId: string): Promise<string[]> {
+		const qb = this.createQueryBuilder('workflow')
+			.select(['workflow.id'])
+			.where('workflow.activeVersionId IS NOT NULL');
+		this.addCredentialResolverFilter(qb, resolverId, 'andWhere');
+		const workflows = await qb.getMany();
+		return workflows.map((w) => w.id);
+	}
+
+	private addCredentialResolverFilter(
+		qb: SelectQueryBuilder<WorkflowEntity>,
+		resolverId: string,
+		method: 'where' | 'andWhere' = 'where',
+	): void {
+		const dbType = this.globalConfig.database.type;
+
+		if (dbType === 'postgresdb') {
+			qb[method]("workflow.settings ->> 'credentialResolverId' = :resolverId", { resolverId });
+		} else if (dbType === 'sqlite') {
+			qb[method]("JSON_EXTRACT(workflow.settings, '$.credentialResolverId') = :resolverId", {
+				resolverId,
+			});
+		}
+	}
+
+	async clearCredentialResolverId(resolverId: string, trx?: EntityManager): Promise<void> {
+		const dbType = this.globalConfig.database.type;
+		const qb = trx
+			? trx.createQueryBuilder().update(WorkflowEntity)
+			: this.createQueryBuilder('workflow').update();
+
+		if (dbType === 'postgresdb') {
+			await qb
+				.set({
+					settings: () => "settings::jsonb - 'credentialResolverId'",
+				})
+				.where("settings ->> 'credentialResolverId' = :resolverId", { resolverId })
+				.execute();
+		} else if (dbType === 'sqlite') {
+			await qb
+				.set({
+					settings: () => "json_remove(settings, '$.credentialResolverId')",
+				})
+				.where("JSON_EXTRACT(settings, '$.credentialResolverId') = :resolverId", {
+					resolverId,
+				})
+				.execute();
+		}
+	}
+
 	async findById(workflowId: string) {
 		return await this.findOne({
 			where: { id: workflowId },
