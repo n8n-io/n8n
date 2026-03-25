@@ -352,3 +352,99 @@ describe('Integration: IsolatedVmBridge error handling', () => {
 		}
 	});
 });
+
+describe('Integration: Concurrent execution pooling', () => {
+	let evaluator: ExpressionEvaluator;
+
+	beforeAll(async () => {
+		evaluator = new ExpressionEvaluator({
+			createBridge: () => new IsolatedVmBridge({ timeout: 5000 }),
+			isolatePoolSize: 2,
+			acquireTimeoutMs: 5000,
+		});
+		await evaluator.initialize();
+	});
+
+	afterAll(async () => {
+		await evaluator.dispose();
+	});
+
+	it('should hold separate bridges for separate executions', async () => {
+		await evaluator.acquireForExecution('exec-1');
+		await evaluator.acquireForExecution('exec-2');
+
+		const data1 = { $json: { value: 'from-exec-1' } };
+		const data2 = { $json: { value: 'from-exec-2' } };
+
+		const result1 = evaluator.evaluate('{{ $json.value }}', data1, { executionId: 'exec-1' });
+		const result2 = evaluator.evaluate('{{ $json.value }}', data2, { executionId: 'exec-2' });
+
+		expect(result1).toBe('from-exec-1');
+		expect(result2).toBe('from-exec-2');
+
+		await evaluator.releaseIsolate('exec-1');
+		await evaluator.releaseIsolate('exec-2');
+	});
+
+	it('should reuse the same bridge for the same execution', async () => {
+		await evaluator.acquireForExecution('exec-3');
+
+		const result1 = evaluator.evaluate(
+			'{{ $json.a }}',
+			{ $json: { a: 'first' } },
+			{ executionId: 'exec-3' },
+		);
+		const result2 = evaluator.evaluate(
+			'{{ $json.b }}',
+			{ $json: { b: 'second' } },
+			{ executionId: 'exec-3' },
+		);
+
+		expect(result1).toBe('first');
+		expect(result2).toBe('second');
+
+		await evaluator.releaseIsolate('exec-3');
+	});
+
+	it('should wait when pool is exhausted and resolve when a bridge is released', async () => {
+		await evaluator.acquireForExecution('exec-4');
+		await evaluator.acquireForExecution('exec-5');
+
+		// Pool of 2 is now exhausted — next acquire should wait
+		const acquirePromise = evaluator.acquireForExecution('exec-6');
+
+		// Release one — should unblock the waiter
+		await evaluator.releaseIsolate('exec-4');
+
+		await acquirePromise;
+
+		const result = evaluator.evaluate(
+			'{{ $json.x }}',
+			{ $json: { x: 'waited' } },
+			{ executionId: 'exec-6' },
+		);
+		expect(result).toBe('waited');
+
+		await evaluator.releaseIsolate('exec-5');
+		await evaluator.releaseIsolate('exec-6');
+	});
+
+	it('should replenish after release so pool recovers', async () => {
+		await evaluator.acquireForExecution('exec-7');
+		await evaluator.releaseIsolate('exec-7');
+
+		// Wait for replenishment
+		await new Promise((resolve) => setTimeout(resolve, 100));
+
+		// Pool should have a fresh bridge available
+		await evaluator.acquireForExecution('exec-8');
+		const result = evaluator.evaluate(
+			'{{ $json.y }}',
+			{ $json: { y: 'replenished' } },
+			{ executionId: 'exec-8' },
+		);
+		expect(result).toBe('replenished');
+
+		await evaluator.releaseIsolate('exec-8');
+	});
+});
