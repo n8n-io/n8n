@@ -40,6 +40,7 @@ describe('ExpressionEvaluator cache', () => {
 	let observability: ObservabilityProvider;
 
 	beforeEach(() => {
+		vi.clearAllMocks();
 		bridge = createMockBridge();
 		observability = createMockObservability();
 	});
@@ -88,7 +89,7 @@ describe('ExpressionEvaluator cache', () => {
 		evaluator.evaluate('={{ $json.b }}', {});
 		evaluator.evaluate('={{ $json.c }}', {});
 		expect(observability.metrics.counter).toHaveBeenCalledWith('expression.code_cache.eviction', 1);
-		(observability.metrics.counter as ReturnType<typeof vi.fn>).mockClear();
+		vi.clearAllMocks();
 		evaluator.evaluate('={{ $json.a }}', {});
 		expect(observability.metrics.counter).toHaveBeenCalledWith('expression.code_cache.miss', 1);
 	});
