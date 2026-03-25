@@ -183,30 +183,31 @@ export class McpService {
 			unpublishWorkflowTool.handler,
 		);
 
-		const prepareTestPinDataTool = createPrepareTestPinDataTool(
-			user,
-			this.workflowFinderService,
-			this.executionService,
-			this.nodeTypes,
-			this.telemetry,
-			this.logger,
-		);
-		server.registerTool(
-			prepareTestPinDataTool.name,
-			prepareTestPinDataTool.config,
-			prepareTestPinDataTool.handler,
-		);
+		// TODO: We are currently disabling the tools
+		// const prepareTestPinDataTool = createPrepareTestPinDataTool(
+		// 	user,
+		// 	this.workflowFinderService,
+		// 	this.executionService,
+		// 	this.nodeTypes,
+		// 	this.telemetry,
+		// 	this.logger,
+		// );
+		// server.registerTool(
+		// 	prepareTestPinDataTool.name,
+		// 	prepareTestPinDataTool.config,
+		// 	prepareTestPinDataTool.handler,
+		// );
 
-		const testWorkflowTool = createTestWorkflowTool(
-			user,
-			this.workflowFinderService,
-			this.activeExecutions,
-			this.workflowRunner,
-			this.nodeTypes,
-			this.telemetry,
-			this,
-		);
-		server.registerTool(testWorkflowTool.name, testWorkflowTool.config, testWorkflowTool.handler);
+		// const testWorkflowTool = createTestWorkflowTool(
+		// 	user,
+		// 	this.workflowFinderService,
+		// 	this.activeExecutions,
+		// 	this.workflowRunner,
+		// 	this.nodeTypes,
+		// 	this.telemetry,
+		// 	this,
+		// );
+		// server.registerTool(testWorkflowTool.name, testWorkflowTool.config, testWorkflowTool.handler);
 
 		// Workflow builder tools (enabled via N8N_MCP_BUILDER_ENABLED)
 		if (builderEnabled) {
