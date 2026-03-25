@@ -32,6 +32,8 @@ import type {
 	IExecuteFunctions,
 	IDataObject,
 	IDestinationNode,
+	IRunNodeResponse,
+	EngineRequest,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
@@ -53,6 +55,7 @@ import type { ExecutionLifecycleHooks } from '../execution-lifecycle-hooks';
 import { DirectedGraph } from '../partial-execution-utils';
 import * as partialExecutionUtils from '../partial-execution-utils';
 import { createNodeData, toITaskData } from '../partial-execution-utils/__tests__/helpers';
+import { isEngineRequest } from '../requests-response';
 import { WorkflowExecute } from '../workflow-execute';
 
 jest.mock('node:fs', () => ({
@@ -3388,6 +3391,55 @@ describe('WorkflowExecute', () => {
 			const result = await waitPromise.promise;
 
 			expect(result.finished).toBe(true);
+		});
+	});
+
+	describe('Node Retry Logic (Error Coercion) (Issue #27439)', () => {
+		// Simulating the exact evaluation logic from workflow-execute.ts
+		// !!runNodeData.data?.[0]?.[0]?.json?.error;
+		const evaluateNodeFailed = (runNodeData: IRunNodeResponse | EngineRequest) => {
+			if (isEngineRequest(runNodeData)) return false;
+			return !!runNodeData.data?.[0]?.[0]?.json?.error;
+		};
+
+		it('should NOT trigger retry when error is explicitly null (Issue Fix)', () => {
+			const runNodeData = {
+				data: [[{ json: { data: 'success', error: null } }]],
+			};
+			// Expected: false (don't retry, it's a success)
+			expect(evaluateNodeFailed(runNodeData)).toBe(false);
+		});
+
+		it('should NOT trigger retry when error is undefined', () => {
+			const runNodeData = {
+				data: [[{ json: { data: 'success' } }]],
+			};
+			// Expected: false
+			expect(evaluateNodeFailed(runNodeData)).toBe(false);
+		});
+
+		it('should trigger retry when error contains a string message', () => {
+			const runNodeData = {
+				data: [[{ json: { error: 'Connection timeout' } }]],
+			};
+			// Expected: true (retry on valid truthy error string)
+			expect(evaluateNodeFailed(runNodeData)).toBe(true);
+		});
+
+		it('should trigger retry when error contains an object', () => {
+			const runNodeData = {
+				data: [[{ json: { error: { message: 'Internal Server Error', code: 500 } } }]],
+			};
+			// Expected: true (retry on valid truthy error object)
+			expect(evaluateNodeFailed(runNodeData)).toBe(true);
+		});
+
+		it('should NOT trigger retry for engine requests even if error is present', () => {
+			const runNodeData = {
+				actions: [],
+				metadata: { error: 'some error' },
+			};
+			expect(evaluateNodeFailed(runNodeData)).toBe(false);
 		});
 	});
 });

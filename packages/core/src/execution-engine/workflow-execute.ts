@@ -1679,8 +1679,7 @@ export class WorkflowExecute {
 								);
 
 								let nodeFailed =
-									!isEngineRequest(runNodeData) &&
-									runNodeData.data?.[0]?.[0]?.json?.error !== undefined;
+									!isEngineRequest(runNodeData) && !!runNodeData.data?.[0]?.[0]?.json?.error;
 
 								while (nodeFailed && tryIndex !== maxTries - 1) {
 									await sleep(waitBetweenTries);
@@ -1696,8 +1695,7 @@ export class WorkflowExecute {
 									);
 
 									nodeFailed =
-										!isEngineRequest(runNodeData) &&
-										runNodeData.data?.[0]?.[0]?.json?.error !== undefined;
+										!isEngineRequest(runNodeData) && !!runNodeData.data?.[0]?.[0]?.json?.error;
 									tryIndex++;
 								}
 
