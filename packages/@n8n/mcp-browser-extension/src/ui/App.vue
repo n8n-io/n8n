@@ -81,8 +81,7 @@ async function loadTabs(): Promise<void> {
 
 async function connect(): Promise<void> {
 	if (!relayUrl.value) {
-		errorMessage.value =
-			'No relay URL provided. Use the browser_connect tool in n8n AI to start a session.';
+		errorMessage.value = 'No active session. Ask n8n AI to connect to your browser.';
 		log.warn('connect: no relay URL available');
 		return;
 	}
@@ -118,7 +117,7 @@ async function disconnect(): Promise<void> {
 	await chrome.runtime.sendMessage({ type: 'disconnect' });
 	status.value = 'disconnected';
 	controlledTabIds.value = [];
-	await loadTabs();
+	relayUrl.value = null;
 }
 
 async function refreshStatus(): Promise<void> {
@@ -162,11 +161,12 @@ chrome.runtime.onMessage.addListener(
 			if (message.connected) {
 				status.value = 'connected';
 				controlledTabIds.value = message.tabIds ?? [];
+				void loadTabs();
 			} else {
 				status.value = 'disconnected';
 				controlledTabIds.value = [];
+				relayUrl.value = null;
 			}
-			void loadTabs();
 		}
 	},
 );
@@ -268,8 +268,7 @@ const controlledTabs = computed(() => {
 				</button>
 			</template>
 			<p v-else class="info-text">
-				Waiting for n8n AI to open this page with a relay URL. Use the
-				<code>browser_connect</code> tool in n8n to get started.
+				Waiting for n8n AI to connect. Ask n8n AI to open your browser to get started.
 			</p>
 		</template>
 
