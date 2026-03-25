@@ -41,7 +41,7 @@ import { DataTableColumnNotFoundError } from './errors/data-table-column-not-fou
 import { DataTableNameConflictError } from './errors/data-table-name-conflict.error';
 import { DataTableNotFoundError } from './errors/data-table-not-found.error';
 import { DataTableValidationError } from './errors/data-table-validation.error';
-import { normalizeRows } from './utils/sql-utils';
+import { normalizeRows, toTableName } from './utils/sql-utils';
 
 import { RoleService } from '@/services/role.service';
 
@@ -219,6 +219,38 @@ export class DataTableService {
 
 	async getManyAndCount(options: DataTableListOptions) {
 		return await this.dataTableRepository.getManyAndCount(options);
+	}
+
+	async executeRawSql(
+		sql: string,
+		allowedTableIds: string[],
+		projectId: string,
+	): Promise<Record<string, unknown>[]> {
+		// Strip trailing semicolons and whitespace, then reject if any remain (multi-statement).
+		// Strip string literals first so semicolons inside strings (e.g. 'foo;bar') don't false-positive.
+		const trimmedSql = sql.replace(/\s*;\s*$/, '');
+		const sqlWithoutStringLiterals = trimmedSql.replace(/'(?:[^']|'')*'/g, "''");
+		if (sqlWithoutStringLiterals.includes(';')) {
+			throw new DataTableValidationError('Multi-statement SQL is not allowed');
+		}
+
+		// Only allow SELECT statements (including WITH ... SELECT CTEs).
+		// Strip SQL comments and leading whitespace before checking.
+		const sqlWithoutComments = trimmedSql
+			.replace(/--[^\n]*/g, '') // line comments
+			.replace(/\/\*[\s\S]*?\*\//g, '') // block comments
+			.trimStart();
+		if (!/^(SELECT|WITH)\b/i.test(sqlWithoutComments)) {
+			throw new DataTableValidationError('Only SELECT queries are allowed');
+		}
+
+		for (const tableId of allowedTableIds) {
+			await this.validateDataTableExists(tableId, projectId);
+		}
+
+		const allowedTableNames = new Set(allowedTableIds.map((id) => toTableName(id)));
+
+		return await this.dataTableRowsRepository.executeRawSqlReadOnly(trimmedSql, allowedTableNames);
 	}
 
 	async getManyRowsAndCount(

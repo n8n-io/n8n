@@ -1004,12 +1004,25 @@ export type DataTableProxyProvider = {
 		dataTableId: string,
 		projectId?: string,
 	): Promise<IDataTableProjectService>;
+	executeDataTableRawSql(
+		workflow: Workflow,
+		node: INode,
+		sql: string,
+		allowedTableIds: string[],
+		projectId?: string,
+	): Promise<Record<string, unknown>[]>;
+	getDataTableSqlName(dataTableId: string): string;
 };
 
 export type DataTableProxyFunctions = {
 	// These are optional to account for situations where the data-table module is disabled
 	getDataTableAggregateProxy?(): Promise<IDataTableProjectAggregateService>;
 	getDataTableProxy?(dataTableId: string): Promise<IDataTableProjectService>;
+	executeDataTableRawSql?(
+		sql: string,
+		allowedTableIds: string[],
+	): Promise<Record<string, unknown>[]>;
+	getDataTableSqlName?(dataTableId: string): string;
 };
 
 export type CredentialCheckStatus = {

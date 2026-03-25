@@ -23,6 +23,7 @@ import {
 } from 'n8n-workflow';
 
 import { DataTableService } from './data-table.service';
+import { toTableName } from './utils/sql-utils';
 
 import { OwnershipService } from '@/services/ownership.service';
 
@@ -31,6 +32,7 @@ const ALLOWED_NODES = [
 	'n8n-nodes-base.dataTableTool',
 	'n8n-nodes-base.evaluationTrigger',
 	'n8n-nodes-base.evaluation',
+	'@n8n/n8n-nodes-langchain.toolDataTableSql',
 ] as const;
 
 type AllowedNode = (typeof ALLOWED_NODES)[number];
@@ -81,6 +83,23 @@ export class DataTableProxyService implements DataTableProxyProvider {
 		projectId = projectId ?? (await this.getProjectId(workflow));
 
 		return this.makeDataTableOperations(projectId, dataTableId);
+	}
+
+	async executeDataTableRawSql(
+		workflow: Workflow,
+		node: INode,
+		sql: string,
+		allowedTableIds: string[],
+		projectId?: string,
+	): Promise<Record<string, unknown>[]> {
+		this.validateRequest(node);
+		projectId = projectId ?? (await this.getProjectId(workflow));
+
+		return await this.dataTableService.executeRawSql(sql, allowedTableIds, projectId);
+	}
+
+	getDataTableSqlName(dataTableId: string): string {
+		return toTableName(dataTableId);
 	}
 
 	private makeAggregateOperations(projectId: string): IDataTableProjectAggregateService {

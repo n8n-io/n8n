@@ -26,6 +26,7 @@ import {
 
 import { DataTableColumn } from './data-table-column.entity';
 import { DataTableUserTableName } from './data-table.types';
+import { DataTableValidationError } from './errors/data-table-validation.error';
 import {
 	escapeLikeSpecials,
 	extractInsertedIds,
@@ -696,5 +697,159 @@ export class DataTableRowsRepository {
 	private applyPagination(query: QueryBuilder, dto: ListDataTableContentQueryDto): void {
 		query.skip(dto.skip ?? 0);
 		if (dto.take) query.take(dto.take);
+	}
+
+	// Matches an identifier after a table keyword: unquoted, double-quoted,
+	// backtick-quoted, or bracket-quoted. Handles optional schema prefix.
+	private static readonly TABLE_IDENTIFIER_AFTER_KEYWORD =
+		/\s+(?:(?:"[^"]+"|`[^`]+`|\[[^\]]+\]|\w+)\.)?(?:"([^"]+)"|`([^`]+)`|\[([^\]]+)\]|(\w+))/;
+
+	/**
+	 * Execute a raw SQL query in a read-only context after validating
+	 * that ONLY allowed data tables are referenced (allowlist approach).
+	 */
+	async executeRawSqlReadOnly(
+		sql: string,
+		allowedTableNames: Set<DataTableUserTableName>,
+	): Promise<Record<string, unknown>[]> {
+		const dbType = this.dataSource.options.type;
+
+		// Validate that every table reference in the query is in the allowlist
+		this.validateAllTableReferences(sql, allowedTableNames);
+
+		// Execute in read-only context (defense-in-depth against mutations)
+		return await this.executeReadOnly(sql, dbType);
+	}
+
+	/**
+	 * Validates that every table referenced in the SQL is in the allowlist,
+	 * excluding CTE aliases which are virtual (not real tables).
+	 * At least one real table reference must be present.
+	 */
+	private validateAllTableReferences(
+		sql: string,
+		allowedTableNames: Set<DataTableUserTableName>,
+	): void {
+		const cleaned = this.cleanSqlForAnalysis(sql);
+		const referencedTables = this.extractTableReferences(cleaned);
+		const cteNames = this.extractCteNames(cleaned);
+
+		// Remove CTE aliases — they are virtual, not real tables
+		for (const table of referencedTables) {
+			if (cteNames.has(table.toLowerCase())) {
+				referencedTables.delete(table);
+			}
+		}
+
+		if (referencedTables.size === 0) {
+			throw new DataTableValidationError(
+				'Query must reference at least one data table (data_table_user_*)',
+			);
+		}
+
+		for (const table of referencedTables) {
+			if (!allowedTableNames.has(table as DataTableUserTableName)) {
+				throw new DataTableValidationError(`Query references unauthorized table: "${table}"`);
+			}
+		}
+	}
+
+	/**
+	 * Strips SQL comments and single-quoted string literals so that
+	 * downstream analysis only sees structural SQL tokens.
+	 */
+	private cleanSqlForAnalysis(sql: string): string {
+		const sqlWithoutComments = sql
+			.replace(/--[^\n]*/g, ' ') // line comments → space
+			.replace(/\/\*[\s\S]*?\*\//g, ' '); // block comments → space
+
+		// Strip single-quoted string literals (SQL-standard '' escaping)
+		return sqlWithoutComments.replace(/'(?:[^']|'')*'/g, "''");
+	}
+
+	/**
+	 * Extracts CTE (Common Table Expression) alias names from a WITH clause.
+	 * Matches the pattern: name [(columns)] AS (
+	 * Returns lowercased names for case-insensitive comparison.
+	 */
+	private extractCteNames(cleanedSql: string): Set<string> {
+		const cteNames = new Set<string>();
+
+		if (!/^\s*WITH\b/i.test(cleanedSql)) {
+			return cteNames;
+		}
+
+		// Matches: identifier [optional (column_list)] AS (
+		const ctePattern = /\b(\w+)\s+(?:\([^)]*\)\s+)?AS\s*\(/gi;
+		let match;
+		while ((match = ctePattern.exec(cleanedSql)) !== null) {
+			const name = match[1].toLowerCase();
+			if (name !== 'with' && name !== 'recursive') {
+				cteNames.add(name);
+			}
+		}
+
+		return cteNames;
+	}
+
+	/**
+	 * Extracts table names from already-cleaned SQL by finding all
+	 * table-position identifiers (after FROM, JOIN, INTO, etc.).
+	 */
+	private extractTableReferences(cleanedSql: string): Set<string> {
+		const tables = new Set<string>();
+
+		// Create fresh regex each call to avoid shared lastIndex state
+		const tableKeywords =
+			/\b(?:FROM|JOIN|INNER\s+JOIN|LEFT\s+JOIN|RIGHT\s+JOIN|FULL\s+JOIN|CROSS\s+JOIN|LEFT\s+OUTER\s+JOIN|RIGHT\s+OUTER\s+JOIN|FULL\s+OUTER\s+JOIN|NATURAL\s+JOIN|INTO|UPDATE|TABLE)\b/gi;
+
+		let keywordMatch;
+		while ((keywordMatch = tableKeywords.exec(cleanedSql)) !== null) {
+			const afterKeyword = cleanedSql.slice(keywordMatch.index + keywordMatch[0].length);
+			const identifierMatch =
+				DataTableRowsRepository.TABLE_IDENTIFIER_AFTER_KEYWORD.exec(afterKeyword);
+			if (identifierMatch) {
+				// Group 1 = double-quoted, 2 = backtick-quoted, 3 = bracket-quoted, 4 = unquoted
+				const tableName =
+					identifierMatch[1] ?? identifierMatch[2] ?? identifierMatch[3] ?? identifierMatch[4];
+				if (tableName) {
+					tables.add(tableName);
+				}
+			}
+		}
+
+		return tables;
+	}
+
+	private async executeReadOnly(
+		sql: string,
+		dbType: DataSourceOptions['type'],
+	): Promise<Record<string, unknown>[]> {
+		const em = this.dataSource.manager;
+
+		if (dbType === 'postgres') {
+			// PostgreSQL: use a read-only transaction
+			const results: Record<string, unknown>[] = [];
+			await em.transaction(async (trx) => {
+				await trx.query('SET TRANSACTION READ ONLY');
+				const rows = await trx.query(sql);
+				results.push(...(rows as Record<string, unknown>[]));
+			});
+			return results;
+		}
+
+		// SQLite: use a transaction to pin to a single connection,
+		// then set PRAGMA query_only within that connection
+		const results: Record<string, unknown>[] = [];
+		await em.transaction(async (trx) => {
+			await trx.query('PRAGMA query_only = ON');
+			try {
+				const rows = await trx.query(sql);
+				results.push(...(rows as Record<string, unknown>[]));
+			} finally {
+				await trx.query('PRAGMA query_only = OFF');
+			}
+		});
+		return results;
 	}
 }

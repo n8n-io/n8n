@@ -26,5 +26,15 @@ export function getDataTableHelperFunctions(
 				dataTableId,
 				additionalData.dataTableProjectId,
 			),
+		executeDataTableRawSql: async (sql: string, allowedTableIds: string[]) =>
+			await dataTableProxyProvider.executeDataTableRawSql(
+				workflow,
+				node,
+				sql,
+				allowedTableIds,
+				additionalData.dataTableProjectId,
+			),
+		getDataTableSqlName: (dataTableId: string) =>
+			dataTableProxyProvider.getDataTableSqlName(dataTableId),
 	};
 }
