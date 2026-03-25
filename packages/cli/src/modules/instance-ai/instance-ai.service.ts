@@ -452,6 +452,27 @@ export class InstanceAiService {
 		this.gatewayRegistry.clearDisconnectTimer(userId);
 	}
 
+	/**
+	 * Remove all in-memory state associated with a thread.
+	 * Must be called when a thread is deleted so the maps don't leak.
+	 */
+	async clearThreadState(threadId: string): Promise<void> {
+		// Clear run-state registry entries (active/suspended runs, confirmations,
+		// user, research mode, and message-group mappings).
+		const { active, suspended } = this.runState.clearThread(threadId);
+		if (active) active.abortController.abort();
+		if (suspended) suspended.abortController.abort();
+
+		// Cancel background tasks belonging to this thread
+		for (const task of this.backgroundTasks.cancelThread(threadId)) {
+			task.abortController.abort();
+		}
+
+		this.domainAccessTrackersByThread.delete(threadId);
+		await this.destroySandbox(threadId);
+		this.eventBus.clearThread(threadId);
+	}
+
 	async shutdown(): Promise<void> {
 		if (this.confirmationTimeoutInterval) {
 			clearInterval(this.confirmationTimeoutInterval);
@@ -470,6 +491,8 @@ export class InstanceAiService {
 			async (threadId) => await this.destroySandbox(threadId),
 		);
 		await Promise.allSettled(sandboxCleanups);
+
+		this.domainAccessTrackersByThread.clear();
 
 		this.snapshotManager?.invalidate();
 		this.eventBus.clear();
