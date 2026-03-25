@@ -32,8 +32,12 @@ via the `browser_connect` tool and torn down via `browser_disconnect`.
 1. AI calls `browser_connect`
 2. Server launches Playwright, which connects over CDP to the relay server
 3. Relay server waits for the Browser Bridge extension to connect via WebSocket
-4. Extension discovers and attaches to all eligible tabs
+4. Extension reports its registered (user-selected) tabs to the relay —
+   debugger is **not** attached yet
 5. Connection is ready — AI can use browser tools
+
+Tabs are lazily activated: the debugger only attaches to a tab when the AI
+first interacts with it.
 
 ### Multi-Tab
 
@@ -41,6 +45,11 @@ All eligible Chrome tabs are controlled simultaneously. The extension
 automatically tracks tab lifecycle (open/close) and reports changes to the
 relay server. Each tab gets a unique page ID that tools accept via the
 optional `pageId` parameter. Omitting `pageId` targets the active page.
+
+The relay maintains a lightweight metadata cache (title, URL) for all known
+tabs. Playwright only sees a tab after it has been **activated** (debugger
+attached). Activation is lazy — triggered on first tool interaction with that
+tab. Agent-created tabs (via `browser_tab_open`) are eagerly activated.
 
 ---
 
@@ -95,10 +104,9 @@ tab; the default is the active page.
 |------|-------------|
 | `browser_snapshot` | Get an accessibility tree snapshot of the page |
 | `browser_screenshot` | Capture a screenshot (PNG, base64) |
-| `browser_text` | Extract visible text from the page |
+| `browser_content` | Extract page content as structured Markdown |
 | `browser_evaluate` | Execute JavaScript in the page context |
-| `browser_console` | Read console log entries |
-| `browser_errors` | Read JavaScript error entries |
+| `browser_console` | Read console messages and page errors (filter by level) |
 | `browser_pdf` | Generate a PDF of the page |
 | `browser_network` | Read network request log |
 
