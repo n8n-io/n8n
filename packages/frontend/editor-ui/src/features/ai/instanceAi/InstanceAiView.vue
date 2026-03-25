@@ -268,11 +268,18 @@ function handleSidebarResize({ width }: { width: number }) {
 }
 
 // --- Chat area resize (when canvas is visible) ---
-const chatAreaWidth = ref(400);
+const chatAreaWidth = ref(Math.round((window.innerWidth - sidebarWidth.value) / 2));
 const isResizingChat = ref(false);
 function handleChatAreaResize({ width }: { width: number }) {
 	chatAreaWidth.value = width;
 }
+
+// Re-compute default width when preview opens so it starts at 50%
+watch(isPreviewVisible, (visible) => {
+	if (visible) {
+		chatAreaWidth.value = Math.round((window.innerWidth - sidebarWidth.value) / 2);
+	}
+});
 
 const chatAreaStyle = computed(() =>
 	isPreviewVisible.value ? { width: `${chatAreaWidth.value}px`, flex: 'none' } : {},
@@ -505,7 +512,6 @@ function handleStop() {
 						icon="panel-right"
 						variant="ghost"
 						size="small"
-						:class="{ [$style.activeButton]: showArtifactsPanel }"
 						@click="showArtifactsPanel = !showArtifactsPanel"
 					/>
 				</div>
