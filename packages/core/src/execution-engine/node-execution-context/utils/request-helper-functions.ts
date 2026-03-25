@@ -85,6 +85,8 @@ import {
 	setAxiosAgents,
 	tryParseUrl,
 } from './request-helpers';
+import { throwIfDomainNotAllowed } from './request-helpers/axios-utils';
+
 export async function invokeAxios(
 	axiosConfig: AxiosRequestConfig,
 	authOptions: IRequestOptions['auth'] = {},
@@ -356,6 +358,7 @@ export async function parseRequestObject(requestObject: IRequestOptions, ssrfBri
 		axiosConfig,
 		requestObject.proxy,
 		requestObject.sendCredentialsOnCrossOriginRedirect ?? true,
+		requestObject.allowedDomains,
 		ssrfBridge,
 	);
 
@@ -430,6 +433,7 @@ export async function proxyRequestToAxios(
 	await validateUrlSsrf(url, ssrfBridge);
 
 	axiosConfig = Object.assign(axiosConfig, await parseRequestObject(configObject, ssrfBridge));
+	throwIfDomainNotAllowed(axiosConfig, configObject.allowedDomains);
 
 	try {
 		const response = await invokeAxios(axiosConfig, configObject.auth);
@@ -550,6 +554,7 @@ export function convertN8nRequestToAxios(
 		axiosRequest,
 		n8nRequest.proxy,
 		n8nRequest.sendCredentialsOnCrossOriginRedirect ?? true,
+		n8nRequest.allowedDomains,
 		ssrfBridge,
 	);
 
@@ -669,6 +674,8 @@ export async function httpRequest(
 	) {
 		delete axiosRequest.data;
 	}
+
+	throwIfDomainNotAllowed(axiosRequest, requestOptions.allowedDomains);
 
 	const result = await invokeAxios(axiosRequest, requestOptions.auth);
 
