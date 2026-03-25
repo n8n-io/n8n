@@ -9,7 +9,6 @@ import { DATA_TABLE_DETAILS } from '@/features/core/dataTable/constants';
 export type FavoriteGroup = {
 	type: string;
 	items: IMenuItem[];
-	showIndividualIcons: boolean;
 };
 
 export function useFavoriteNavItems() {
@@ -79,28 +78,24 @@ export function useFavoriteNavItems() {
 			groups.push({
 				type: 'project',
 				items: favoriteProjectItems.value,
-				showIndividualIcons: true,
-			});
-		}
-		if (favoriteWorkflowItems.value.length > 0) {
-			groups.push({
-				type: 'workflow',
-				items: favoriteWorkflowItems.value,
-				showIndividualIcons: false,
-			});
-		}
-		if (favoriteDataTableItems.value.length > 0) {
-			groups.push({
-				type: 'dataTable',
-				items: favoriteDataTableItems.value,
-				showIndividualIcons: false,
 			});
 		}
 		if (favoriteFolderItems.value.length > 0) {
 			groups.push({
 				type: 'folder',
 				items: favoriteFolderItems.value,
-				showIndividualIcons: false,
+			});
+		}
+		if (favoriteWorkflowItems.value.length > 0) {
+			groups.push({
+				type: 'workflow',
+				items: favoriteWorkflowItems.value,
+			});
+		}
+		if (favoriteDataTableItems.value.length > 0) {
+			groups.push({
+				type: 'dataTable',
+				items: favoriteDataTableItems.value,
 			});
 		}
 		return groups;

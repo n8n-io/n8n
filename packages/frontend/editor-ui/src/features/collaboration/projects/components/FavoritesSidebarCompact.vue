@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import { computed, onBeforeUnmount, ref } from 'vue';
 import { N8nIcon, N8nMenuItem, N8nPopover, N8nText } from '@n8n/design-system';
-import type { IMenuItem } from '@n8n/design-system/types';
 import { useI18n } from '@n8n/i18n';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { useFavoriteNavItems } from '../composables/useFavoriteNavItems';
@@ -59,20 +58,12 @@ const hasFavorites = computed(() => favoritesStore.favorites.length > 0);
 				</N8nText>
 				<template v-for="(group, groupIndex) in favoriteGroups" :key="group.type">
 					<div v-if="groupIndex > 0" :class="$style.groupSpacer" />
-					<template v-for="(item, itemIndex) in group.items" :key="item.id">
+					<template v-for="item in group.items" :key="item.id">
 						<div v-if="group.type === 'project'" @click="onFavoriteProjectClick(item.id)">
 							<N8nMenuItem :item="item" :compact="false" :active="activeTabId === item.id" />
 						</div>
 						<div v-else @click="group.type === 'workflow' ? onFavoriteWorkflowClick() : undefined">
-							<N8nMenuItem
-								:item="
-									!group.showIndividualIcons && itemIndex > 0
-										? { ...item, icon: { type: 'icon', value: '' } as unknown as IMenuItem['icon'] }
-										: item
-								"
-								:compact="false"
-								:active="activeTabId === item.id"
-							/>
+							<N8nMenuItem :item="item" :compact="false" :active="activeTabId === item.id" />
 						</div>
 					</template>
 				</template>

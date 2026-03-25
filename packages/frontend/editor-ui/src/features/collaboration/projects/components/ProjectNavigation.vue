@@ -173,7 +173,7 @@ onBeforeUnmount(() => {
 				</N8nText>
 				<N8nIcon
 					icon="chevron-down"
-					size="xsmall"
+					size="small"
 					:class="[$style.chevron, favoritesCollapsed ? $style.chevronCollapsed : '']"
 				/>
 			</button>
@@ -182,7 +182,7 @@ onBeforeUnmount(() => {
 				<template v-if="!props.collapsed">
 					<template v-for="(group, groupIndex) in favoriteGroups" :key="group.type">
 						<div v-if="groupIndex > 0" :class="$style.groupSpacer" />
-						<template v-for="(item, itemIndex) in group.items" :key="item.id">
+						<template v-for="item in group.items" :key="item.id">
 							<div v-if="group.type === 'project'" @click="onFavoriteProjectClick(item.id)">
 								<N8nMenuItem :item="item" :compact="false" :active="activeTabId === item.id" />
 							</div>
@@ -190,18 +190,7 @@ onBeforeUnmount(() => {
 								v-else
 								@click="group.type === 'workflow' ? onFavoriteWorkflowClick() : undefined"
 							>
-								<N8nMenuItem
-									:item="
-										!group.showIndividualIcons && itemIndex > 0
-											? {
-													...item,
-													icon: { type: 'icon', value: '' } as unknown as IMenuItem['icon'],
-												}
-											: item
-									"
-									:compact="false"
-									:active="activeTabId === item.id"
-								/>
+								<N8nMenuItem :item="item" :compact="false" :active="activeTabId === item.id" />
 							</div>
 						</template>
 					</template>
@@ -227,7 +216,7 @@ onBeforeUnmount(() => {
 				</N8nText>
 				<N8nIcon
 					icon="chevron-down"
-					size="xsmall"
+					size="small"
 					:class="[$style.chevron, projectsCollapsed ? $style.chevronCollapsed : '']"
 				/>
 			</button>
@@ -278,7 +267,7 @@ onBeforeUnmount(() => {
 .sectionHeader {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
+	gap: var(--spacing--4xs);
 	width: 100%;
 	box-sizing: border-box;
 	padding: 0 var(--spacing--xs);

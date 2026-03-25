@@ -214,29 +214,7 @@ describe('useFavoriteNavItems', () => {
 			expect(favoriteGroups.value[0].type).toBe('workflow');
 		});
 
-		it('should include project group with showIndividualIcons=true', () => {
-			favoritesStore.favorites = [
-				makeFavorite({ resourceId: 'proj-1', resourceType: 'project', resourceName: 'Project 1' }),
-			];
-
-			const { favoriteGroups } = useFavoriteNavItems();
-
-			expect(favoriteGroups.value[0].type).toBe('project');
-			expect(favoriteGroups.value[0].showIndividualIcons).toBe(true);
-		});
-
-		it('should include workflow group with showIndividualIcons=false', () => {
-			favoritesStore.favorites = [
-				makeFavorite({ resourceId: 'wf-1', resourceType: 'workflow', resourceName: 'Workflow 1' }),
-			];
-
-			const { favoriteGroups } = useFavoriteNavItems();
-
-			expect(favoriteGroups.value[0].type).toBe('workflow');
-			expect(favoriteGroups.value[0].showIndividualIcons).toBe(false);
-		});
-
-		it('should order groups: projects first, then workflows, dataTables, folders', () => {
+		it('should order groups: projects first, then folders, workflows, dataTables', () => {
 			favoritesStore.favorites = [
 				makeFavorite({ id: 1, resourceId: 'wf-1', resourceType: 'workflow' }),
 				makeFavorite({
@@ -265,9 +243,9 @@ describe('useFavoriteNavItems', () => {
 
 			expect(favoriteGroups.value.map((g) => g.type)).toEqual([
 				'project',
+				'folder',
 				'workflow',
 				'dataTable',
-				'folder',
 			]);
 		});
 	});
