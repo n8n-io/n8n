@@ -3834,6 +3834,8 @@
 	"workflows.dependencies.modal.search": "Search dependencies...",
 	"workflows.dependencies.type.credentials": "Credentials",
 	"workflows.dependencies.type.dataTables": "Data Tables",
+	"workflows.dependencies.type.errorWorkflow": "Error workflow",
+	"workflows.dependencies.type.errorWorkflowParent": "Error handler for",
 	"workflows.dependencies.type.subWorkflows": "Sub-workflows",
 	"workflows.dependencies.type.parentWorkflows": "Used by workflows",
 	"workflows.dependencies.search.placeholder": "Search...",

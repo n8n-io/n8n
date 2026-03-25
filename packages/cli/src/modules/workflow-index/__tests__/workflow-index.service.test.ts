@@ -558,6 +558,74 @@ describe('WorkflowIndexService', () => {
 			);
 		});
 
+		it('should extract errorWorkflow dependency from workflow settings', async () => {
+			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
+
+			const workflow = createWorkflow([
+				createNode({ id: 'node-1', type: 'n8n-nodes-base.manualTrigger' }),
+			]);
+			workflow.settings = { errorWorkflow: 'error-wf-1' };
+
+			await service.updateIndexForDraft(workflow);
+
+			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledWith(
+				'workflow-123',
+				expect.objectContaining({
+					dependencies: expect.arrayContaining([
+						expect.objectContaining({
+							dependencyType: 'errorWorkflow',
+							dependencyKey: 'error-wf-1',
+							dependencyInfo: null,
+						}),
+					]),
+				}),
+			);
+		});
+
+		it('should skip errorWorkflow when set to DEFAULT', async () => {
+			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
+
+			const workflow = createWorkflow([
+				createNode({ id: 'node-1', type: 'n8n-nodes-base.manualTrigger' }),
+			]);
+			workflow.settings = { errorWorkflow: 'DEFAULT' };
+
+			await service.updateIndexForDraft(workflow);
+
+			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledWith(
+				'workflow-123',
+				expect.objectContaining({
+					dependencies: expect.not.arrayContaining([
+						expect.objectContaining({
+							dependencyType: 'errorWorkflow',
+						}),
+					]),
+				}),
+			);
+		});
+
+		it('should skip errorWorkflow when settings are not defined', async () => {
+			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
+
+			const workflow = createWorkflow([
+				createNode({ id: 'node-1', type: 'n8n-nodes-base.manualTrigger' }),
+			]);
+			// No settings at all
+
+			await service.updateIndexForDraft(workflow);
+
+			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledWith(
+				'workflow-123',
+				expect.objectContaining({
+					dependencies: expect.not.arrayContaining([
+						expect.objectContaining({
+							dependencyType: 'errorWorkflow',
+						}),
+					]),
+				}),
+			);
+		});
+
 		it('should pass null publishedVersionId when calling updateIndexForDraft', async () => {
 			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
 
