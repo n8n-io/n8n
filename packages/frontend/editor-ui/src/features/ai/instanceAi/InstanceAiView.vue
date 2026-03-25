@@ -132,6 +132,8 @@ watch(
 		}
 
 		wasCanvasOpenBeforeSwitch.value = false;
+		activeDataTableId.value = null;
+		activeDataTableProjectId.value = null;
 		activeExecutionId.value = null;
 		activeWorkflowId.value = latestBuildResult.value.workflowId;
 		workflowRefreshKey.value++;
@@ -154,6 +156,8 @@ watch(latestExecutionId, (execId) => {
 	if (!execId) return;
 	if (!isPreviewVisible.value && !store.isStreaming && !userSentMessage.value) return;
 
+	activeDataTableId.value = null;
+	activeDataTableProjectId.value = null;
 	activeExecutionId.value = execId;
 
 	// Open the canvas if it's not visible yet (e.g. user closed it, then asked to re-execute)

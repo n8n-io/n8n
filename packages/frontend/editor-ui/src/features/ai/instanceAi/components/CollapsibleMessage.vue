@@ -21,6 +21,7 @@ const needsCollapse = ref(false);
 function checkHeight() {
 	if (contentRef.value && contentRef.value.scrollHeight > props.maxHeight) {
 		needsCollapse.value = true;
+		isExpanded.value = false;
 	}
 }
 
@@ -81,7 +82,7 @@ onMounted(() => {
 	left: 0;
 	right: 0;
 	height: 80px;
-	background: linear-gradient(transparent, var(--color--background));
+	background: linear-gradient(transparent, var(--color--background--light-1));
 	display: flex;
 	align-items: flex-end;
 	justify-content: center;
