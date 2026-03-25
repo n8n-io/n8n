@@ -50,9 +50,9 @@ describe('InstanceAiCredentialSetup', () => {
 	});
 
 	describe('credential list', () => {
-		it('renders all credential requests as rows', () => {
+		it('shows all credential types at once', () => {
 			const requests = makeCredentialRequests(3);
-			const { getByText, getAllByTestId } = renderComponent({
+			const { getByText } = renderComponent({
 				props: {
 					requestId: 'req-1',
 					credentialRequests: requests,
@@ -63,12 +63,24 @@ describe('InstanceAiCredentialSetup', () => {
 			expect(getByText('Reason for type 1')).toBeTruthy();
 			expect(getByText('Reason for type 2')).toBeTruthy();
 			expect(getByText('Reason for type 3')).toBeTruthy();
+		});
+
+		it('renders a credential picker for each credential type', () => {
+			const requests = makeCredentialRequests(3);
+			const { getAllByTestId } = renderComponent({
+				props: {
+					requestId: 'req-1',
+					credentialRequests: requests,
+					message: 'Set up credentials',
+				},
+			});
+
 			expect(getAllByTestId('credential-picker')).toHaveLength(3);
 		});
 
-		it('renders single credential without issues', () => {
+		it('renders a single credential without extra pickers', () => {
 			const requests = makeCredentialRequests(1);
-			const { getByText, getAllByTestId } = renderComponent({
+			const { getAllByTestId, getByText } = renderComponent({
 				props: {
 					requestId: 'req-1',
 					credentialRequests: requests,
@@ -84,7 +96,7 @@ describe('InstanceAiCredentialSetup', () => {
 	describe('credential selection', () => {
 		it('shows check icon when credential is selected', async () => {
 			const requests = makeCredentialRequests(1);
-			const { getAllByTestId } = renderComponent({
+			const { getByTestId, container } = renderComponent({
 				props: {
 					requestId: 'req-1',
 					credentialRequests: requests,
@@ -92,11 +104,30 @@ describe('InstanceAiCredentialSetup', () => {
 				},
 			});
 
-			await userEvent.click(getAllByTestId('credential-picker')[0]);
+			// No check icon before selection
+			expect(container.querySelector('[data-icon="check"]')).toBeNull();
 
-			// Check icon appears in the row (rendered as an svg with data-icon="check")
-			const checkIcons = document.querySelectorAll('[data-icon="check"]');
-			expect(checkIcons.length).toBeGreaterThan(0);
+			await userEvent.click(getByTestId('credential-picker'));
+
+			// Check icon appears after selection
+			expect(container.querySelector('[data-icon="check"]')).toBeTruthy();
+		});
+
+		it('enables continue button when all credentials are selected', async () => {
+			const requests = makeCredentialRequests(1);
+			const { getByTestId } = renderComponent({
+				props: {
+					requestId: 'req-1',
+					credentialRequests: requests,
+					message: 'Set up credentials',
+				},
+			});
+
+			expect(getByTestId('instance-ai-credential-continue-button')).toBeDisabled();
+
+			await userEvent.click(getByTestId('credential-picker'));
+
+			expect(getByTestId('instance-ai-credential-continue-button')).not.toBeDisabled();
 		});
 
 		it('disables continue button when not all credentials are selected', () => {
@@ -120,7 +151,7 @@ describe('InstanceAiCredentialSetup', () => {
 			const confirmSpy = vi.spyOn(store, 'confirmAction').mockResolvedValue();
 			const resolveSpy = vi.spyOn(store, 'resolveConfirmation');
 
-			const { getByTestId, getAllByTestId } = renderComponent({
+			const { getByTestId } = renderComponent({
 				props: {
 					requestId: 'req-1',
 					credentialRequests: requests,
@@ -129,7 +160,7 @@ describe('InstanceAiCredentialSetup', () => {
 			});
 
 			// Select credential
-			await userEvent.click(getAllByTestId('credential-picker')[0]);
+			await userEvent.click(getByTestId('credential-picker'));
 
 			// Click continue
 			await userEvent.click(getByTestId('instance-ai-credential-continue-button'));
@@ -162,7 +193,7 @@ describe('InstanceAiCredentialSetup', () => {
 			const requests = makeCredentialRequests(1);
 			vi.spyOn(store, 'confirmAction').mockResolvedValue();
 
-			const { getByTestId, getByText, getAllByTestId } = renderComponent({
+			const { getByTestId, getByText } = renderComponent({
 				props: {
 					requestId: 'req-1',
 					credentialRequests: requests,
@@ -170,7 +201,7 @@ describe('InstanceAiCredentialSetup', () => {
 				},
 			});
 
-			await userEvent.click(getAllByTestId('credential-picker')[0]);
+			await userEvent.click(getByTestId('credential-picker'));
 			await userEvent.click(getByTestId('instance-ai-credential-continue-button'));
 
 			expect(getByText('instanceAi.credential.allSelected')).toBeTruthy();
@@ -213,7 +244,7 @@ describe('InstanceAiCredentialSetup', () => {
 			const requests = makeCredentialRequests(1);
 			vi.spyOn(store, 'confirmAction').mockResolvedValue();
 
-			const { getByTestId, getByText, getAllByTestId } = renderComponent({
+			const { getByTestId, getByText } = renderComponent({
 				props: {
 					requestId: 'req-1',
 					credentialRequests: requests,
@@ -222,7 +253,7 @@ describe('InstanceAiCredentialSetup', () => {
 				},
 			});
 
-			await userEvent.click(getAllByTestId('credential-picker')[0]);
+			await userEvent.click(getByTestId('credential-picker'));
 			await userEvent.click(getByTestId('instance-ai-credential-continue-button'));
 
 			expect(getByText('instanceAi.credential.finalize.applied')).toBeTruthy();
