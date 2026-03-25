@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
 import { resourceFromAttributes } from '@opentelemetry/resources';
@@ -17,6 +18,7 @@ export class OtelService {
 	constructor(
 		private readonly config: OtelConfig,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly logger: Logger,
 	) {}
 
 	init() {
@@ -43,14 +45,29 @@ export class OtelService {
 		await this.sdk?.shutdown();
 	}
 
-	private parseHeaders(exporterHeaders: string): Record<string, string> {
+	parseHeaders(exporterHeaders: string): Record<string, string> {
 		const headers: Record<string, string> = {};
 		for (const pair of exporterHeaders.split(',')) {
-			const [key, ...rest] = pair.split('=');
-			const trimmedKey = key.trim();
-			if (trimmedKey) {
-				headers[trimmedKey] = rest.join('=').trim();
+			const trimmedPair = pair.trim();
+			if (!trimmedPair) continue;
+
+			if (!trimmedPair.includes('=')) {
+				this.logger.warn(
+					`Skipping invalid OTEL exporter header "${trimmedPair}": missing "=" separator. Expected format: "key=value".`,
+				);
+				continue;
 			}
+
+			const [key, ...rest] = trimmedPair.split('=');
+			const trimmedKey = key.trim();
+			if (!trimmedKey) {
+				this.logger.warn(
+					`Skipping invalid OTEL exporter header "${trimmedPair}": empty key. Expected format: "key=value".`,
+				);
+				continue;
+			}
+
+			headers[trimmedKey] = rest.join('=').trim();
 		}
 		return headers;
 	}

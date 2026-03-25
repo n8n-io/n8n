@@ -23,6 +23,8 @@ export class WorkflowEndHandler implements SpanHandler<WorkflowExecuteAfterConte
 			if (error) {
 				span.setAttribute(ATTR.EXECUTION_ERROR_TYPE, error.constructor.name);
 			}
+		} else {
+			span.setStatus({ code: SpanStatusCode.OK });
 		}
 
 		span.end();

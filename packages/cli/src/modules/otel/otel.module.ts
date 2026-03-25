@@ -21,6 +21,10 @@ export class OtelModule implements ModuleInterface {
 
 	@OnShutdown()
 	async shutdown() {
+		const { OtelConfig } = await import('./otel.config');
+		const config = Container.get(OtelConfig);
+		if (!config.enabled) return;
+
 		const { OtelService } = await import('./otel.service');
 		await Container.get(OtelService).shutdown();
 	}
