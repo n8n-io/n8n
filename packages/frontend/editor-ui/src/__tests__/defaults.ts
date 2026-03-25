@@ -169,6 +169,7 @@ export const defaultSettings: FrontendSettings = {
 		quota: 0,
 	},
 	activeModules: [],
+	canvasOnly: false,
 	envFeatureFlags: {},
 	dynamicBanners: {
 		endpoint: 'https://api.n8n.io/api/banners',
