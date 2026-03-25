@@ -2,7 +2,7 @@ import { Command, Flags } from '@oclif/core';
 import * as fs from 'node:fs';
 
 import { N8nClient, ApiError } from './client';
-import { resolveConnection, readConfig, writeConfig } from './config';
+import { resolveConnection, getCurrentContext, setContext } from './config';
 import { formatOutput, applyJqFilter, type OutputFormat, type OutputOptions } from './output';
 
 /** Exit codes following the RFC spec. */
@@ -139,14 +139,14 @@ export abstract class BaseCommand extends Command {
 			await fn();
 		} catch (error) {
 			if (error instanceof ApiError && error.statusCode === 401) {
-				// Attempt automatic token refresh
-				const config = readConfig();
-				if (config.refreshToken && config.url) {
+				// Attempt automatic token refresh using current context
+				const ctx = getCurrentContext();
+				if (ctx?.config.refreshToken && ctx.config.url) {
 					try {
-						const tempClient = new N8nClient({ baseUrl: config.url });
-						const tokens = await tempClient.refreshAccessToken(config.refreshToken);
-						writeConfig({
-							...config,
+						const tempClient = new N8nClient({ baseUrl: ctx.config.url });
+						const tokens = await tempClient.refreshAccessToken(ctx.config.refreshToken);
+						setContext(ctx.name, {
+							...ctx.config,
 							accessToken: tokens.access_token,
 							refreshToken: tokens.refresh_token,
 							tokenExpiresAt: Math.floor(Date.now() / 1000) + tokens.expires_in,

@@ -1,11 +1,18 @@
 import { Command, Flags } from '@oclif/core';
-import { createHash, randomBytes } from 'node:crypto';
 import { exec } from 'node:child_process';
+import { createHash, randomBytes } from 'node:crypto';
 import * as http from 'node:http';
 import * as readline from 'node:readline';
 
 import { N8nClient, ApiError } from '../client';
-import { readConfig, writeConfig } from '../config';
+import {
+	readMultiConfig,
+	writeMultiConfig,
+	contextNameFromUrl,
+	uniqueContextName,
+	getCurrentContext,
+} from '../config';
+import type { ContextConfig } from '../config';
 
 function generatePkce(): { codeVerifier: string; codeChallenge: string } {
 	// 32 bytes = 43 chars in base64url (RFC 7636 recommends 43-128)
@@ -48,7 +55,7 @@ async function startCallbackServer(): Promise<{
 	});
 
 	const server = http.createServer((req, res) => {
-		const url = new URL(req.url ?? '/', `http://127.0.0.1`);
+		const url = new URL(req.url ?? '/', 'http://127.0.0.1');
 		if (url.pathname !== '/callback') {
 			res.writeHead(404);
 			res.end();
@@ -95,7 +102,7 @@ async function startCallbackServer(): Promise<{
 
 	return {
 		port,
-		waitForCallback: () => callbackPromise,
+		waitForCallback: async () => await callbackPromise,
 		close: () => server.close(),
 	};
 }
@@ -104,7 +111,11 @@ export default class Login extends Command {
 	static override description =
 		'Connect to an n8n instance via OAuth login (or API key with --api-key)';
 
-	static override examples = ['<%= config.bin %> login', '<%= config.bin %> login --api-key <key>'];
+	static override examples = [
+		'<%= config.bin %> login',
+		'<%= config.bin %> login --name production',
+		'<%= config.bin %> login --api-key <key>',
+	];
 
 	static override flags = {
 		apiKey: Flags.string({
@@ -112,30 +123,62 @@ export default class Login extends Command {
 			description: 'Use API key authentication instead of OAuth',
 			aliases: ['api-key'],
 		}),
+		name: Flags.string({
+			char: 'n',
+			description: 'Context name for this connection (auto-generated from URL hostname if omitted)',
+		}),
 	};
 
 	async run(): Promise<void> {
 		const { flags } = await this.parse(Login);
 
 		if (flags.apiKey) {
-			await this.loginWithApiKey(flags.apiKey);
+			await this.loginWithApiKey(flags.apiKey, flags.name);
 			return;
 		}
 
-		await this.loginWithOAuth();
+		await this.loginWithOAuth(flags.name);
 	}
 
-	private async loginWithApiKey(apiKeyFlag?: string): Promise<void> {
-		const existing = readConfig();
-		const urlDefault = existing.url ? ` (${existing.url})` : '';
+	private resolveContextName(url: string, explicitName?: string): string {
+		if (explicitName) return explicitName;
+
+		const baseName = contextNameFromUrl(url);
+		const multi = readMultiConfig();
+		return uniqueContextName(baseName, Object.keys(multi.contexts));
+	}
+
+	private async revokeExistingTokens(contextName: string): Promise<void> {
+		const multi = readMultiConfig();
+		const existing = multi.contexts[contextName];
+		if (existing?.url && existing.refreshToken) {
+			try {
+				const client = new N8nClient({ baseUrl: existing.url });
+				await client.revokeToken(existing.refreshToken, 'refresh_token');
+			} catch {
+				// Best-effort
+			}
+		}
+	}
+
+	private saveContext(name: string, config: ContextConfig): void {
+		const multi = readMultiConfig();
+		multi.contexts[name] = config;
+		multi.currentContext = name;
+		writeMultiConfig(multi);
+	}
+
+	private async loginWithApiKey(apiKeyFlag?: string, explicitName?: string): Promise<void> {
+		const current = getCurrentContext();
+		const urlDefault = current?.config.url ? ` (${current.config.url})` : '';
 		const keyHint = apiKeyFlag
 			? ''
-			: existing.apiKey
-				? ` (${existing.apiKey.slice(0, 12)}...${existing.apiKey.slice(-4)})`
+			: current?.config.apiKey
+				? ` (${current.config.apiKey.slice(0, 12)}...${current.config.apiKey.slice(-4)})`
 				: '';
 
-		const url = (await prompt(`n8n instance URL${urlDefault}: `)) || existing.url;
-		const apiKey = apiKeyFlag ?? ((await prompt(`API key${keyHint}: `)) || existing.apiKey);
+		const url = (await prompt(`n8n instance URL${urlDefault}: `)) || current?.config.url;
+		const apiKey = apiKeyFlag ?? ((await prompt(`API key${keyHint}: `)) || current?.config.apiKey);
 
 		if (!url) {
 			this.error('URL is required.');
@@ -158,15 +201,17 @@ export default class Login extends Command {
 			this.error(`Could not connect to ${url}: ${msg}`);
 		}
 
-		writeConfig({ url, apiKey });
-		this.log('Logged in successfully. Config saved to ~/.n8n-cli/config.json');
+		const contextName = this.resolveContextName(url, explicitName);
+		await this.revokeExistingTokens(contextName);
+		this.saveContext(contextName, { url, apiKey });
+		this.log(`Logged in successfully as context "${contextName}".`);
 	}
 
-	private async loginWithOAuth(): Promise<void> {
-		const existing = readConfig();
-		const urlDefault = existing.url ? ` (${existing.url})` : '';
+	private async loginWithOAuth(explicitName?: string): Promise<void> {
+		const current = getCurrentContext();
+		const urlDefault = current?.config.url ? ` (${current.config.url})` : '';
 
-		const url = (await prompt(`n8n instance URL${urlDefault}: `)) || existing.url;
+		const url = (await prompt(`n8n instance URL${urlDefault}: `)) || current?.config.url;
 
 		if (!url) {
 			this.error('URL is required.');
@@ -187,11 +232,11 @@ export default class Login extends Command {
 		// based on the authenticated user's role via getApiKeyScopesForRole()
 		const authUrl =
 			`${url}/oauth/authorize?` +
-			`client_id=n8n-cli` +
-			`&response_type=code` +
+			'client_id=n8n-cli' +
+			'&response_type=code' +
 			`&redirect_uri=${encodeURIComponent(redirectUri)}` +
 			`&code_challenge=${encodeURIComponent(codeChallenge)}` +
-			`&code_challenge_method=S256` +
+			'&code_challenge_method=S256' +
 			`&state=${encodeURIComponent(state)}`;
 
 		this.log('Opening browser for authorization...');
@@ -199,10 +244,10 @@ export default class Login extends Command {
 		openBrowser(authUrl);
 
 		try {
-			const callback = await callbackServer.waitForCallback();
+			const authResponse = await callbackServer.waitForCallback();
 
 			// Verify state matches
-			if (callback.state !== state) {
+			if (authResponse.state !== state) {
 				this.error('State mismatch — possible CSRF attack. Login aborted.');
 			}
 
@@ -210,17 +255,22 @@ export default class Login extends Command {
 
 			// Exchange code for tokens
 			const client = new N8nClient({ baseUrl: url });
-			const tokens = await client.exchangeCodeForTokens(callback.code, codeVerifier, redirectUri);
+			const tokens = await client.exchangeCodeForTokens(
+				authResponse.code,
+				codeVerifier,
+				redirectUri,
+			);
 
-			// Save to config
-			writeConfig({
+			const contextName = this.resolveContextName(url, explicitName);
+			await this.revokeExistingTokens(contextName);
+			this.saveContext(contextName, {
 				url,
 				accessToken: tokens.access_token,
 				refreshToken: tokens.refresh_token,
 				tokenExpiresAt: Math.floor(Date.now() / 1000) + tokens.expires_in,
 			});
 
-			this.log('Logged in successfully via OAuth. Config saved to ~/.n8n-cli/config.json');
+			this.log(`Logged in successfully via OAuth as context "${contextName}".`);
 		} catch (error) {
 			if (error instanceof ApiError) {
 				this.error(error.hint ? `${error.message}\nHint: ${error.hint}` : error.message);

@@ -15,6 +15,9 @@ It auto-detects piped output and switches to JSON, making it composable for scri
 # Interactive login (saves to ~/.n8n-cli/config.json)
 n8n-cli login
 
+# Login with a named context
+n8n-cli login --name production
+
 # Or configure directly
 n8n-cli config set-url https://my-instance.n8n.cloud
 n8n-cli config set-api-key n8n_api_...
@@ -187,6 +190,42 @@ cat rows.json | n8n-cli data-table add-rows <id> --stdin
 n8n-cli user list
 n8n-cli user get <id>
 ```
+
+## Contexts (Multi-Instance)
+
+The CLI supports named contexts for working with multiple n8n instances:
+
+```bash
+# Login creates a context (auto-named from hostname, or use --name)
+n8n-cli login                         # auto-names from URL, e.g. "localhost"
+n8n-cli login --name production       # explicit name
+
+# List all contexts (* marks active)
+n8n-cli context list
+
+# Switch active context
+n8n-cli context use staging
+
+# Show current context details
+n8n-cli context show
+
+# Rename a context
+n8n-cli context rename old-name new-name
+
+# Delete a context (revokes OAuth tokens)
+n8n-cli context delete staging
+
+# Logout current context
+n8n-cli logout
+
+# Logout a specific context
+n8n-cli logout --name staging
+
+# Logout all contexts
+n8n-cli logout --all
+```
+
+**Resolution priority:** `--url`/`--apiKey` flags > environment variables > active context config.
 
 ## Other
 
