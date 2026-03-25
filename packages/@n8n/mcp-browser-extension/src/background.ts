@@ -118,7 +118,7 @@ async function handleMessage(message: ExtensionMessage): Promise<unknown> {
 		case 'getStatus':
 			return {
 				connected: activeConnection !== null,
-				tabIds: activeConnection?.relay.getControlledTabIds() ?? [],
+				tabIds: activeConnection?.relay.getControlledIds() ?? [],
 			};
 
 		case 'updateSettings': {
@@ -172,12 +172,12 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
 	const relayUrl = parsed.searchParams.get('mcpRelayUrl');
 	if (!relayUrl) return;
 
-	log.info('connect.html tab detected:', tabId, 'relayUrl:', relayUrl);
+	log.debug('connect.html tab detected:', tabId, 'relayUrl:', relayUrl);
 
 	void (async () => {
 		// A new relay URL means the server started a new session — disconnect any existing one
 		if (activeConnection) {
-			log.info('new relay URL received while connected, disconnecting old session');
+			log.debug('new relay URL received while connected, disconnecting old session');
 			disconnect();
 		}
 
@@ -191,7 +191,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
 
 		if (existing?.id !== undefined) {
 			// Reuse existing tab: focus it and close the duplicate
-			log.info('reusing existing connect.html tab:', existing.id);
+			log.debug('reusing existing connect.html tab:', existing.id);
 			await chrome.tabs.update(existing.id, { active: true });
 			if (existing.windowId !== undefined) {
 				await chrome.windows.update(existing.windowId, { focused: true });
@@ -214,6 +214,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
 // ---------------------------------------------------------------------------
 
 chrome.tabs.onCreated.addListener((tab) => {
+	log.debug('[onCreated] fired:', JSON.stringify(tab));
 	if (!activeConnection || !tab.id) return;
 
 	const relay = activeConnection.relay;
@@ -221,16 +222,13 @@ chrome.tabs.onCreated.addListener((tab) => {
 
 	if (!isAgentCreated) return;
 
-	// Wait for URL to be populated, then add if eligible
-	if (
-		tab.url &&
-		tab.url !== 'chrome://newtab/' &&
-		!tab.url.startsWith('chrome://') &&
-		!tab.url.startsWith('chrome-extension://') &&
-		!tab.url.startsWith('about:')
-	) {
-		log.info('[onCreated] adding agent-created tab:', tab.id, tab.url);
-		relay.addTab(tab.id, tab.title ?? '', tab.url ?? '');
+	// For agent-created tabs (e.g. window.open popups), allow about:blank.
+	// Only exclude chrome:// and chrome-extension:// internal pages.
+	const url = tab.url ?? 'about:blank';
+	const isExcluded = url.startsWith('chrome://') || url.startsWith('chrome-extension://');
+	if (!isExcluded) {
+		log.debug('[onCreated] adding agent-created tab:', tab.id, url);
+		void relay.addTab(tab.id, tab.title ?? '', url);
 	}
 });
 
@@ -244,7 +242,7 @@ chrome.webNavigation.onCreatedNavigationTarget.addListener((details) => {
 	const sourceIsControlled = relay.isControlledTab(details.sourceTabId);
 	const tabCreationAllowed = relay.isTabCreationAllowed();
 
-	log.info(
+	log.debug(
 		'[onCreatedNavigationTarget] tabId:',
 		details.tabId,
 		'sourceTabId:',
@@ -263,16 +261,11 @@ chrome.webNavigation.onCreatedNavigationTarget.addListener((details) => {
 	relay.markAsAgentCreated(details.tabId);
 
 	const url = details.url;
-	if (
-		url &&
-		!url.startsWith('chrome://') &&
-		!url.startsWith('chrome-extension://') &&
-		!url.startsWith('about:')
-	) {
-		log.info('[onCreatedNavigationTarget] adding spawned tab:', details.tabId, url);
-		relay.addTab(details.tabId, '', url);
+	if (url && !url.startsWith('chrome://') && !url.startsWith('chrome-extension://')) {
+		log.debug('[onCreatedNavigationTarget] adding spawned tab:', details.tabId, url);
+		void relay.addTab(details.tabId, '', url);
 	} else {
-		log.info(
+		log.debug(
 			'[onCreatedNavigationTarget] URL not eligible yet, waiting for onUpdated:',
 			details.tabId,
 		);
@@ -292,9 +285,9 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
 			!url.startsWith('chrome-extension://') &&
 			!url.startsWith('about:')
 		) {
-			if (!activeConnection.relay.getControlledTabIds().includes(tabId)) {
-				log.info('[onUpdated] adding tab via URL update:', tabId, url);
-				activeConnection.relay.addTab(tabId, changeInfo.title ?? '', url);
+			if (!activeConnection.relay.isControlledTab(tabId)) {
+				log.debug('[onUpdated] adding tab via URL update:', tabId, url);
+				void activeConnection.relay.addTab(tabId, changeInfo.title ?? '', url);
 			}
 		}
 	}
@@ -314,7 +307,7 @@ async function connectToRelay(
 	relayUrl: string,
 	selectedTabIds: number[],
 ): Promise<{ success: boolean; error?: string }> {
-	log.info('connectToRelay:', relayUrl, 'selectedTabs:', selectedTabIds.length);
+	log.debug('connectToRelay:', relayUrl, 'selectedTabs:', selectedTabIds.length);
 	// Clean up existing connection
 	disconnect();
 
@@ -335,8 +328,8 @@ async function connectToRelay(
 
 		const relay = new RelayConnection(ws);
 
-		// Register only user-selected tabs (no debugger attachment yet)
-		relay.registerSelectedTabs(selectedTabIds);
+		// Eagerly attach debugger to selected tabs and resolve CDP targetIds
+		await relay.registerSelectedTabs(selectedTabIds);
 
 		// Load and apply settings
 		const settings = await loadSettings();
@@ -345,14 +338,14 @@ async function connectToRelay(
 		activeConnection = { relay };
 
 		relay.onclose = () => {
-			log.info('relay connection closed');
+			log.debug('relay connection closed');
 			activeConnection = null;
 			updateBadge(0);
 			broadcastStatusChange();
 		};
 
-		const tabCount = relay.getControlledTabIds().length;
-		log.info('connected, controlling', tabCount, 'tabs');
+		const tabCount = relay.getControlledIds().length;
+		log.debug('connected, controlling', tabCount, 'tabs');
 		updateBadge(tabCount);
 		broadcastStatusChange();
 		return { success: true };
@@ -367,7 +360,7 @@ async function connectToRelay(
 
 function disconnect(): void {
 	if (activeConnection) {
-		log.info('disconnecting');
+		log.debug('disconnecting');
 		activeConnection.relay.close('User disconnected');
 		activeConnection = null;
 		updateBadge(0);
@@ -377,7 +370,7 @@ function disconnect(): void {
 /** Notify all extension contexts (popup, connect.html tab) about connection state changes. */
 function broadcastStatusChange(): void {
 	const connected = activeConnection !== null;
-	const tabIds = activeConnection?.relay.getControlledTabIds() ?? [];
+	const tabIds = activeConnection?.relay.getControlledIds() ?? [];
 	chrome.runtime.sendMessage({ type: 'statusChanged', connected, tabIds }).catch(() => {
 		// No receivers — this is fine if the popup/tab is not open
 	});

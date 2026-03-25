@@ -12,7 +12,7 @@ interface TabManagementSettings {
 }
 
 const status = ref<ConnectionStatus>('disconnected');
-const controlledTabIds = ref<number[]>([]);
+const controlledTabIds = ref<string[]>([]);
 const tabs = ref<chrome.tabs.Tab[]>([]);
 const selectedTabIds = ref<Set<number>>(new Set());
 const errorMessage = ref('');
@@ -126,7 +126,7 @@ async function refreshStatus(): Promise<void> {
 	log.debug('refreshStatus response:', currentStatus);
 	const statusObj = (currentStatus && typeof currentStatus === 'object' ? currentStatus : {}) as {
 		connected?: boolean;
-		tabIds?: number[];
+		tabIds?: string[];
 	};
 	controlledTabIds.value = statusObj.tabIds ?? [];
 	await loadTabs();
@@ -146,7 +146,7 @@ const hasRelayUrl = computed(() => !!relayUrl.value);
 
 // Listen for status changes and relay URL updates from background script
 chrome.runtime.onMessage.addListener(
-	(message: { type: string; relayUrl?: string; connected?: boolean; tabIds?: number[] }) => {
+	(message: { type: string; relayUrl?: string; connected?: boolean; tabIds?: string[] }) => {
 		if (message.type === 'relayUrlReady' && message.relayUrl) {
 			log.debug('relayUrlReady received:', message.relayUrl);
 			relayUrl.value = message.relayUrl;
@@ -190,7 +190,7 @@ onMounted(async () => {
 	log.debug('initial status:', currentStatus);
 	const statusObj = (currentStatus && typeof currentStatus === 'object' ? currentStatus : {}) as {
 		connected?: boolean;
-		tabIds?: number[];
+		tabIds?: string[];
 	};
 
 	if (statusObj.connected) {
@@ -203,8 +203,9 @@ onMounted(async () => {
 });
 
 const controlledTabs = computed(() => {
-	if (status.value !== 'connected') return tabs.value;
-	return tabs.value.filter((t) => t.id !== undefined && controlledTabIds.value.includes(t.id));
+	// When connected, show all tabs — the extension only tracks controlled ones.
+	// controlledTabIds are CDP targetIds, not Chrome tab IDs, so we just use the count.
+	return tabs.value;
 });
 </script>
 

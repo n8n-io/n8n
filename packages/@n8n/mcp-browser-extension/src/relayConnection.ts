@@ -1,8 +1,13 @@
 /**
  * Manages the WebSocket connection from the Chrome extension to the CDP relay server.
- * Registers user-selected tabs and lazily attaches debugger on first CDP command.
- * Forwards CDP commands via chrome.debugger and relays CDP events back.
+ *
+ * The extension is the single source of truth for tab state. It resolves real CDP
+ * `Target.targetId` strings via `chrome.debugger.getTargets()` (no attach needed)
+ * and only attaches the debugger lazily on first interaction with a tab.
+ * All communication with the relay uses these CDP target IDs.
  */
+
+import { createLogger } from './logger';
 
 interface ProtocolCommand {
 	id: number;
@@ -28,6 +33,8 @@ const DEFAULT_SETTINGS: TabManagementSettings = {
 	allowTabClosing: false,
 };
 
+const log = createLogger('relay');
+
 /** URL prefixes to exclude from auto-attach */
 const EXCLUDED_PREFIXES = ['chrome://', 'chrome-extension://', 'about:'];
 
@@ -39,15 +46,34 @@ export function isEligibleTab(tab: chrome.tabs.Tab): boolean {
 	);
 }
 
+// ---------------------------------------------------------------------------
+// Tab entry — the single source of truth for each controlled tab
+// ---------------------------------------------------------------------------
+
+interface TabEntry {
+	chromeTabId: number;
+	attached: boolean;
+}
+
+const CDP_COMMAND_TIMEOUT_MS = 30_000;
+const ATTACH_TIMEOUT_MS = 5_000;
+
+// ---------------------------------------------------------------------------
+// RelayConnection
+// ---------------------------------------------------------------------------
+
 export class RelayConnection {
-	/** Map of tabId → debuggee for all controlled tabs */
-	private readonly debuggees = new Map<number, chrome.debugger.Debuggee>();
-	/** Set of tab IDs that have actually been attached via chrome.debugger.attach */
-	private readonly attachedTabs = new Set<number>();
-	/** Set of tab IDs created by the AI agent (via createTab or markAsAgentCreated) */
-	private readonly agentCreatedTabs = new Set<number>();
-	/** The first tab ID, used as default target for commands without explicit tabId */
-	private primaryTabId: number | undefined;
+	/** Primary map: CDP targetId → Chrome tab state */
+	private readonly tabs = new Map<string, TabEntry>();
+	/** Reverse lookup: chromeTabId → CDP targetId (for debugger events) */
+	private readonly chromeTabIdToId = new Map<number, string>();
+	/** In-flight attach promises to deduplicate concurrent attaches */
+	private readonly pendingAttaches = new Map<string, Promise<void>>();
+	/** Set of chrome tab IDs created by the AI agent */
+	private readonly agentCreatedChromeTabIds = new Set<number>();
+	/** The primary tab ID (first registered), used as default target */
+	private primaryId: string | undefined;
+
 	private readonly ws: WebSocket;
 	private readonly eventListener: (
 		source: chrome.debugger.Debuggee,
@@ -71,54 +97,78 @@ export class RelayConnection {
 		chrome.debugger.onDetach.addListener(this.detachListener);
 	}
 
-	/** Register user-selected tabs without attaching debugger (lazy attach). */
-	registerSelectedTabs(tabIds: number[]): void {
-		for (const tabId of tabIds) {
-			this.debuggees.set(tabId, { tabId });
-		}
-		if (tabIds.length > 0) {
-			this.primaryTabId ??= tabIds[0];
+	// =========================================================================
+	// Public API — called by background.ts
+	// =========================================================================
+
+	/**
+	 * Register user-selected tabs without attaching the debugger (lazy attach).
+	 * Resolves real CDP targetIds via chrome.debugger.getTargets().
+	 */
+	async registerSelectedTabs(chromeTabIds: number[]): Promise<void> {
+		const targetMap = await this.resolveTargetIds(chromeTabIds);
+
+		for (const chromeTabId of chromeTabIds) {
+			if (this.chromeTabIdToId.has(chromeTabId)) continue;
+
+			const targetId = targetMap.get(chromeTabId);
+			if (!targetId) {
+				log.debug(`registerTab: no CDP target found for chromeTabId=${chromeTabId}`);
+				continue;
+			}
+
+			this.tabs.set(targetId, { chromeTabId, attached: false });
+			this.chromeTabIdToId.set(chromeTabId, targetId);
+			this.primaryId ??= targetId;
+			log.debug(`registerTab: targetId=${targetId} chromeTabId=${chromeTabId} (lazy)`);
 		}
 	}
 
-	/** Add a newly opened tab and notify the relay. */
-	addTab(tabId: number, title: string, url: string): void {
-		if (this.debuggees.has(tabId)) return;
-		this.debuggees.set(tabId, { tabId });
-		this.primaryTabId ??= tabId;
-		// Notify relay about the new tab
-		this.sendMessage({
-			method: 'tabOpened',
-			params: { tabId, title, url },
-		});
+	/** Add a newly opened tab and notify the relay. Resolves targetId without attaching. */
+	async addTab(chromeTabId: number, title: string, url: string): Promise<void> {
+		if (this.chromeTabIdToId.has(chromeTabId)) return;
+
+		const targetMap = await this.resolveTargetIds([chromeTabId]);
+		const targetId = targetMap.get(chromeTabId);
+		if (!targetId) {
+			log.debug(`addTab: no CDP target found for chromeTabId=${chromeTabId}`);
+			return;
+		}
+
+		this.tabs.set(targetId, { chromeTabId, attached: false });
+		this.chromeTabIdToId.set(chromeTabId, targetId);
+		this.primaryId ??= targetId;
+
+		log.debug(`addTab: targetId=${targetId} chromeTabId=${chromeTabId} url=${url} (lazy)`);
+		this.sendMessage({ method: 'tabOpened', params: { id: targetId, title, url } });
 	}
 
 	/** Remove a closed tab and notify the relay. */
-	removeTab(tabId: number): void {
-		if (!this.debuggees.has(tabId)) return;
+	removeTab(chromeTabId: number): void {
+		const id = this.chromeTabIdToId.get(chromeTabId);
+		if (!id) return;
+
+		const entry = this.tabs.get(id);
 
 		// Detach debugger only if actually attached
-		if (this.attachedTabs.has(tabId)) {
-			chrome.debugger.detach({ tabId }).catch(() => {});
-			this.attachedTabs.delete(tabId);
-		}
-		this.debuggees.delete(tabId);
-		this.agentCreatedTabs.delete(tabId);
-
-		// Update primary tab
-		if (tabId === this.primaryTabId) {
-			const remaining = [...this.debuggees.keys()];
-			this.primaryTabId = remaining.length > 0 ? remaining[0] : undefined;
+		if (entry?.attached) {
+			chrome.debugger.detach({ tabId: chromeTabId }).catch(() => {});
 		}
 
-		// Notify relay
-		this.sendMessage({
-			method: 'tabClosed',
-			params: { tabId },
-		});
+		this.tabs.delete(id);
+		this.chromeTabIdToId.delete(chromeTabId);
+		this.agentCreatedChromeTabIds.delete(chromeTabId);
 
-		// If no tabs left, close the connection
-		if (this.debuggees.size === 0) {
+		// Update primary
+		if (id === this.primaryId) {
+			const remaining = [...this.tabs.keys()];
+			this.primaryId = remaining.length > 0 ? remaining[0] : undefined;
+		}
+
+		log.debug(`removeTab: ${id} (chromeTabId=${chromeTabId})`);
+		this.sendMessage({ method: 'tabClosed', params: { id } });
+
+		if (this.tabs.size === 0) {
 			this.close('All tabs closed');
 		}
 	}
@@ -127,28 +177,26 @@ export class RelayConnection {
 		this.settings = settings;
 	}
 
-	getControlledTabIds(): number[] {
-		return [...this.debuggees.keys()];
+	/** Return CDP targetIds for all controlled tabs. */
+	getControlledIds(): string[] {
+		return [...this.tabs.keys()];
 	}
 
-	/** Check whether a tab is controlled by this relay. */
-	isControlledTab(tabId: number): boolean {
-		return this.debuggees.has(tabId);
+	/** Check whether a chrome tab ID is controlled by this relay. */
+	isControlledTab(chromeTabId: number): boolean {
+		return this.chromeTabIdToId.has(chromeTabId);
 	}
 
-	/** Check whether tab creation is currently allowed. */
 	isTabCreationAllowed(): boolean {
 		return this.settings.allowTabCreation;
 	}
 
-	/** Check whether a tab was created by the AI agent. */
-	isAgentCreatedTab(tabId: number): boolean {
-		return this.agentCreatedTabs.has(tabId);
+	isAgentCreatedTab(chromeTabId: number): boolean {
+		return this.agentCreatedChromeTabIds.has(chromeTabId);
 	}
 
-	/** Mark a tab as agent-created so lifecycle listeners track it. */
-	markAsAgentCreated(tabId: number): void {
-		this.agentCreatedTabs.add(tabId);
+	markAsAgentCreated(chromeTabId: number): void {
+		this.agentCreatedChromeTabIds.add(chromeTabId);
 	}
 
 	close(message: string): void {
@@ -156,61 +204,163 @@ export class RelayConnection {
 		this.handleClose();
 	}
 
+	// =========================================================================
+	// Internal — connection lifecycle
+	// =========================================================================
+
 	private handleClose(): void {
 		if (this.closed) return;
 		this.closed = true;
 
 		chrome.debugger.onEvent.removeListener(this.eventListener);
 		chrome.debugger.onDetach.removeListener(this.detachListener);
-		// Only detach tabs that were actually attached
-		for (const tabId of this.attachedTabs) {
-			const debuggee = this.debuggees.get(tabId);
-			if (debuggee) {
-				chrome.debugger.detach(debuggee).catch(() => {});
+
+		// Detach only attached debuggers
+		for (const [id, entry] of this.tabs) {
+			if (entry.attached) {
+				log.debug(`close: detaching ${id} (chromeTabId=${entry.chromeTabId})`);
+				chrome.debugger.detach({ tabId: entry.chromeTabId }).catch(() => {});
 			}
 		}
-		this.attachedTabs.clear();
-		this.debuggees.clear();
-		this.agentCreatedTabs.clear();
+
+		this.tabs.clear();
+		this.chromeTabIdToId.clear();
+		this.pendingAttaches.clear();
+		this.agentCreatedChromeTabIds.clear();
 		this.onclose?.();
 	}
 
+	// =========================================================================
+	// Internal — targetId resolution & debugger attachment
+	// =========================================================================
+
+	/**
+	 * Resolve CDP targetIds for a set of chrome tab IDs using chrome.debugger.getTargets().
+	 * This does NOT attach the debugger — it only reads available targets.
+	 */
+	private async resolveTargetIds(chromeTabIds: number[]): Promise<Map<number, string>> {
+		const targets = await chrome.debugger.getTargets();
+		const result = new Map<number, string>();
+
+		for (const target of targets) {
+			if (target.tabId !== undefined && chromeTabIds.includes(target.tabId)) {
+				result.set(target.tabId, target.id);
+			}
+		}
+
+		log.debug(`resolveTargetIds: resolved ${result.size}/${chromeTabIds.length} tabs`);
+		return result;
+	}
+
+	/**
+	 * Attach debugger to a Chrome tab and resolve its CDP Target.targetId.
+	 * Used for agent-created tabs where we need immediate attachment.
+	 */
+	private async attachAndResolveTargetId(chromeTabId: number): Promise<string> {
+		log.debug(`attaching debugger to chromeTabId=${chromeTabId}`);
+
+		await Promise.race([
+			chrome.debugger.attach({ tabId: chromeTabId }, '1.3'),
+			new Promise<never>((_resolve, reject) => {
+				setTimeout(
+					() => reject(new Error(`Debugger attach timed out after ${ATTACH_TIMEOUT_MS}ms`)),
+					ATTACH_TIMEOUT_MS,
+				);
+			}),
+		]);
+
+		const result = (await chrome.debugger.sendCommand(
+			{ tabId: chromeTabId },
+			'Target.getTargetInfo',
+		)) as { targetInfo: { targetId: string } };
+
+		const targetId = result.targetInfo.targetId;
+		log.debug(`attached: chromeTabId=${chromeTabId} → targetId=${targetId}`);
+		return targetId;
+	}
+
+	/** Lazily attach debugger to a tab. Deduplicates concurrent calls. */
+	private async ensureAttached(id: string): Promise<void> {
+		const entry = this.tabs.get(id);
+		if (!entry) throw new Error(`Tab ${id} is not registered`);
+		if (entry.attached) return;
+
+		// Deduplicate concurrent attach attempts
+		const pending = this.pendingAttaches.get(id);
+		if (pending) {
+			await pending;
+			return;
+		}
+
+		log.debug(`ensureAttached: attaching ${id} (chromeTabId=${entry.chromeTabId})`);
+
+		const promise = (async () => {
+			await Promise.race([
+				chrome.debugger.attach({ tabId: entry.chromeTabId }, '1.3'),
+				new Promise<never>((_resolve, reject) => {
+					setTimeout(
+						() => reject(new Error(`Debugger attach timed out after ${ATTACH_TIMEOUT_MS}ms`)),
+						ATTACH_TIMEOUT_MS,
+					);
+				}),
+			]);
+			entry.attached = true;
+			log.debug(`ensureAttached: attached ${id}`);
+		})();
+
+		this.pendingAttaches.set(id, promise);
+		try {
+			await promise;
+		} finally {
+			this.pendingAttaches.delete(id);
+		}
+	}
+
+	// =========================================================================
+	// Internal — debugger events (chrome → relay)
+	// =========================================================================
+
 	private onDebuggerEvent(source: chrome.debugger.Debuggee, method: string, params?: object): void {
-		if (!source.tabId || !this.debuggees.has(source.tabId)) return;
+		if (!source.tabId) return;
+		const id = this.chromeTabIdToId.get(source.tabId);
+		if (!id) return;
 
 		this.sendMessage({
 			method: 'forwardCDPEvent',
-			params: {
-				method,
-				params,
-				tabId: source.tabId,
-			},
+			params: { method, params, id },
 		});
 	}
 
 	private onDebuggerDetach(source: chrome.debugger.Debuggee, reason: string): void {
-		if (!source.tabId || !this.debuggees.has(source.tabId)) return;
+		if (!source.tabId) return;
+		const id = this.chromeTabIdToId.get(source.tabId);
+		if (!id) return;
 
-		this.attachedTabs.delete(source.tabId);
-		this.debuggees.delete(source.tabId);
-		this.agentCreatedTabs.delete(source.tabId);
+		const entry = this.tabs.get(id);
+		if (entry) entry.attached = false;
 
-		// Update primary tab if the detached tab was primary
-		if (source.tabId === this.primaryTabId) {
-			const remaining = [...this.debuggees.keys()];
-			this.primaryTabId = remaining.length > 0 ? remaining[0] : undefined;
+		this.tabs.delete(id);
+		this.chromeTabIdToId.delete(source.tabId);
+		this.agentCreatedChromeTabIds.delete(source.tabId);
+
+		if (id === this.primaryId) {
+			const remaining = [...this.tabs.keys()];
+			this.primaryId = remaining.length > 0 ? remaining[0] : undefined;
 		}
 
-		// If no tabs left, close the connection
-		if (this.debuggees.size === 0) {
+		log.debug(`debuggerDetach: ${id} reason=${reason}`);
+
+		if (this.tabs.size === 0) {
 			this.close(`Debugger detached: ${reason}`);
 		}
 	}
 
+	// =========================================================================
+	// Internal — message handling (relay → extension)
+	// =========================================================================
+
 	private onMessage(event: MessageEvent): void {
-		void this.onMessageAsync(event).catch((e) =>
-			console.error('[n8n Extension] Error handling message:', e),
-		);
+		void this.onMessageAsync(event).catch((e) => log.error('Error handling message:', e));
 	}
 
 	private async onMessageAsync(event: MessageEvent): Promise<void> {
@@ -222,88 +372,87 @@ export class RelayConnection {
 			return;
 		}
 
+		log.debug(`← relay: id=${message.id} method=${message.method}`);
+
 		const response: ProtocolResponse = { id: message.id };
 		try {
 			response.result = await this.handleCommand(message);
 		} catch (error) {
 			response.error = error instanceof Error ? error.message : String(error);
+			log.error(`command error: ${message.method}:`, response.error);
 		}
+
+		log.debug(`→ relay: id=${message.id} ${response.error ? 'ERROR' : 'OK'}`);
 		this.sendMessage(response);
 	}
 
 	private async handleCommand(message: ProtocolCommand): Promise<unknown> {
 		switch (message.method) {
-			case 'attachToAllTabs':
-				return await this.handleAttachToAllTabs();
 			case 'forwardCDPCommand':
 				return await this.handleForwardCDPCommand(message.params ?? {});
 			case 'createTab':
 				return await this.handleCreateTab(message.params ?? {});
 			case 'closeTab':
 				return await this.handleCloseTab(message.params ?? {});
+			case 'attachTab':
+				return await this.handleAttachTab(message.params ?? {});
 			case 'listTabs':
 			case 'listRegisteredTabs':
 				return await this.handleListTabs();
 			default:
+				log.debug(`unknown command: ${message.method}`);
 				return undefined;
 		}
 	}
 
-	/** Lazily attach debugger to a tab if not already attached. */
-	private async ensureAttached(tabId: number): Promise<void> {
-		if (this.attachedTabs.has(tabId)) return;
-		const debuggee = this.debuggees.get(tabId);
-		if (!debuggee) return;
-		await chrome.debugger.attach(debuggee, '1.3');
-		this.attachedTabs.add(tabId);
+	// =========================================================================
+	// Internal — tab ID resolution
+	// =========================================================================
+
+	/** Resolve a CDP targetId to the tab entry, falling back to primary. */
+	private resolveTab(id?: string): { id: string; entry: TabEntry } {
+		if (id) {
+			const entry = this.tabs.get(id);
+			if (entry) return { id, entry };
+			throw new Error(`Tab ${id} is not registered`);
+		}
+		if (this.primaryId) {
+			const entry = this.tabs.get(this.primaryId);
+			if (entry) return { id: this.primaryId, entry };
+		}
+		throw new Error('No tab is connected');
 	}
 
-	private async handleAttachToAllTabs(): Promise<unknown> {
-		// Attach debugger to all controlled tabs
-		for (const [tabId] of this.debuggees) {
-			try {
-				await this.ensureAttached(tabId);
-			} catch {
-				// Tab may have been closed or debugger already attached
-			}
-		}
-
-		// Return first tab's target info for relay compat
-		if (this.primaryTabId) {
-			const primaryDebuggee = this.debuggees.get(this.primaryTabId)!;
-			try {
-				const result = (await chrome.debugger.sendCommand(
-					primaryDebuggee,
-					'Target.getTargetInfo',
-				)) as {
-					targetInfo?: unknown;
-				};
-				return { targetInfo: result?.targetInfo };
-			} catch {
-				return { targetInfo: undefined };
-			}
-		}
-
-		return { targetInfo: undefined };
-	}
+	// =========================================================================
+	// Command handlers
+	// =========================================================================
 
 	private async handleForwardCDPCommand(params: Record<string, unknown>): Promise<unknown> {
-		const { method, params: cmdParams, tabId } = params;
-		const targetTabId = (tabId as number) ?? this.primaryTabId;
+		const { method, params: cmdParams, id: rawId } = params;
+		const { id, entry } = this.resolveTab(rawId as string | undefined);
 
-		if (!targetTabId || !this.debuggees.has(targetTabId)) {
-			throw new Error('No tab is connected.');
-		}
+		log.debug(`CDP: ${method as string} → targetId=${id} (chromeTabId=${entry.chromeTabId})`);
 
-		// Lazy attach on first CDP command to this tab
-		await this.ensureAttached(targetTabId);
+		// Lazy attach on first CDP command
+		await this.ensureAttached(id);
 
-		const debuggee = this.debuggees.get(targetTabId)!;
-		return await chrome.debugger.sendCommand(
-			debuggee,
-			method as string,
-			cmdParams as object | undefined,
-		);
+		const debuggee = { tabId: entry.chromeTabId };
+
+		const result = await Promise.race([
+			chrome.debugger.sendCommand(debuggee, method as string, cmdParams as object | undefined),
+			new Promise<never>((_resolve, reject) => {
+				setTimeout(() => {
+					reject(
+						new Error(
+							`CDP command '${method as string}' timed out after ${CDP_COMMAND_TIMEOUT_MS}ms (${id})`,
+						),
+					);
+				}, CDP_COMMAND_TIMEOUT_MS);
+			}),
+		]);
+
+		log.debug(`CDP response: ${method as string} → ${id} OK`);
+		return result;
 	}
 
 	private async handleCreateTab(params: Record<string, unknown>): Promise<unknown> {
@@ -314,26 +463,23 @@ export class RelayConnection {
 		}
 
 		const url = (params.url as string) ?? undefined;
-		const tab = await chrome.tabs.create({ url, active: false });
+		log.debug(`createTab: url=${url ?? '(none)'}`);
 
+		const tab = await chrome.tabs.create({ url, active: false });
 		if (!tab.id) throw new Error('Failed to create tab');
 
-		// Attach debugger to the new tab immediately (agent-created tabs are eager)
-		const debuggee: chrome.debugger.Debuggee = { tabId: tab.id };
-		this.debuggees.set(tab.id, debuggee);
-		this.agentCreatedTabs.add(tab.id);
-		await chrome.debugger.attach(debuggee, '1.3');
-		this.attachedTabs.add(tab.id);
+		// Agent-created tabs are eagerly attached for immediate use
+		const targetId = await this.attachAndResolveTargetId(tab.id);
+		this.tabs.set(targetId, { chromeTabId: tab.id, attached: true });
+		this.chromeTabIdToId.set(tab.id, targetId);
+		this.agentCreatedChromeTabIds.add(tab.id);
 
-		const result = (await chrome.debugger.sendCommand(debuggee, 'Target.getTargetInfo')) as {
-			targetInfo?: unknown;
-		};
+		log.debug(`createTab: targetId=${targetId} chromeTabId=${tab.id} url=${tab.url ?? url ?? ''}`);
 
 		return {
-			tabId: tab.id,
+			id: targetId,
 			title: tab.title ?? '',
 			url: tab.url ?? url ?? '',
-			targetInfo: result?.targetInfo,
 		};
 	}
 
@@ -344,45 +490,65 @@ export class RelayConnection {
 			);
 		}
 
-		const tabId = params.tabId as number;
-		if (!tabId) throw new Error('tabId is required');
+		const id = params.id as string;
+		if (!id) throw new Error('id is required');
+
+		const entry = this.tabs.get(id);
+		if (!entry) throw new Error(`Tab ${id} is not registered`);
+
+		log.debug(`closeTab: ${id} (chromeTabId=${entry.chromeTabId})`);
 
 		// Detach debugger if attached
-		if (this.attachedTabs.has(tabId)) {
-			await chrome.debugger.detach({ tabId }).catch(() => {});
-			this.attachedTabs.delete(tabId);
+		if (entry.attached) {
+			await chrome.debugger.detach({ tabId: entry.chromeTabId }).catch(() => {});
 		}
-		if (this.debuggees.has(tabId)) {
-			this.debuggees.delete(tabId);
-		}
-		this.agentCreatedTabs.delete(tabId);
+
+		// Clean up maps
+		this.tabs.delete(id);
+		this.chromeTabIdToId.delete(entry.chromeTabId);
+		this.agentCreatedChromeTabIds.delete(entry.chromeTabId);
 
 		// Close the tab
-		await chrome.tabs.remove(tabId);
+		await chrome.tabs.remove(entry.chromeTabId);
 
-		// Update primary tab
-		if (tabId === this.primaryTabId) {
-			const remaining = [...this.debuggees.keys()];
-			this.primaryTabId = remaining.length > 0 ? remaining[0] : undefined;
+		// Update primary
+		if (id === this.primaryId) {
+			const remaining = [...this.tabs.keys()];
+			this.primaryId = remaining.length > 0 ? remaining[0] : undefined;
 		}
 
-		return { closed: true, tabId };
+		return { closed: true, id };
+	}
+
+	private async handleAttachTab(params: Record<string, unknown>): Promise<unknown> {
+		const id = params.id as string;
+		if (!id) throw new Error('id is required');
+
+		log.debug(`attachTab: ${id}`);
+		await this.ensureAttached(id);
+		log.debug(`attachTab: ${id} done`);
+		return { attached: true, id };
 	}
 
 	private async handleListTabs(): Promise<unknown> {
-		const tabIds = [...this.debuggees.keys()];
 		const tabs = await Promise.all(
-			tabIds.map(async (tabId) => {
+			[...this.tabs.entries()].map(async ([id, entry]) => {
 				try {
-					const tab = await chrome.tabs.get(tabId);
-					return { tabId, title: tab.title ?? '', url: tab.url ?? '' };
+					const tab = await chrome.tabs.get(entry.chromeTabId);
+					return { id, title: tab.title ?? '', url: tab.url ?? '' };
 				} catch {
-					return { tabId, title: '', url: '' };
+					return { id, title: '', url: '' };
 				}
 			}),
 		);
+
+		log.debug(`listTabs: ${tabs.length} tabs [${tabs.map((t) => t.id).join(', ')}]`);
 		return { tabs };
 	}
+
+	// =========================================================================
+	// Wire helpers
+	// =========================================================================
 
 	private sendError(code: number, message: string): void {
 		this.sendMessage({ error: JSON.stringify({ code, message }) });

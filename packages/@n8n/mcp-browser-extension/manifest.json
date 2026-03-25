@@ -4,7 +4,7 @@
 	"name": "n8n Browser Bridge",
 	"version": "0.0.1",
 	"description": "Share browser tabs with n8n's AI agent for browser automation",
-	"permissions": ["debugger", "activeTab", "tabs", "storage"],
+	"permissions": ["debugger", "activeTab", "tabs", "storage", "webNavigation"],
 	"host_permissions": ["<all_urls>"],
 	"background": {
 		"service_worker": "dist/background.mjs",
