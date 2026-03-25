@@ -381,6 +381,7 @@ export class FrontendService {
 				quota: this.licenseState.getMaxWorkflowsWithEvaluations(),
 			},
 			activeModules: this.moduleRegistry.getActiveModules(),
+			canvasOnly: this.globalConfig.canvasOnly,
 			envFeatureFlags: this.collectEnvFeatureFlags(),
 		};
 	}
