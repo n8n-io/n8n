@@ -124,6 +124,17 @@ export class EndpointsConfig {
 	@Env('N8N_ENDPOINT_MCP_TEST')
 	mcpTest: string = 'mcp-test';
 
+<<<<<<< HEAD
+=======
+	/** Whether to enable workflow builder tools in the MCP server. */
+	@Env('N8N_MCP_BUILDER_ENABLED')
+	mcpBuilderEnabled: boolean = true;
+
+	/** Maximum number of OAuth clients that can be registered for MCP. */
+	@Env('N8N_MCP_MAX_REGISTERED_CLIENTS')
+	mcpMaxRegisteredClients: number = 200;
+
+>>>>>>> 2d9a2ec76e (chore: Bundle 2026-W9 (#27532))
 	/** Whether to disable n8n's UI (frontend). */
 	@Env('N8N_DISABLE_UI')
 	disableUi: boolean = false;

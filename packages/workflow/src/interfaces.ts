@@ -484,6 +484,19 @@ export interface IHttpRequestOptions {
 	timeout?: number;
 	json?: boolean;
 	abortSignal?: GenericAbortSignal;
+<<<<<<< HEAD
+=======
+	/**
+	 * Whether to send credentials on cross-origin redirects
+	 * @default true - for backwards compatibility
+	 */
+	sendCredentialsOnCrossOriginRedirect?: boolean;
+	/**
+	 * Comma-separated list of allowed domains for credential requests.
+	 * If set, requests to domains not in this list will be blocked.
+	 */
+	allowedDomains?: string;
+>>>>>>> 2d9a2ec76e (chore: Bundle 2026-W9 (#27532))
 }
 
 /**
@@ -531,6 +544,20 @@ export interface IRequestOptions {
 	maxRedirects?: number;
 
 	agentOptions?: SecureContextOptions;
+<<<<<<< HEAD
+=======
+
+	/**
+	 * Whether to send credentials on cross-origin redirects
+	 * @default true - for backwards compatibility
+	 */
+	sendCredentialsOnCrossOriginRedirect?: boolean;
+	/**
+	 * Comma-separated list of allowed domains for credential requests.
+	 * If set, requests to domains not in this list will be blocked.
+	 */
+	allowedDomains?: string;
+>>>>>>> 2d9a2ec76e (chore: Bundle 2026-W9 (#27532))
 }
 
 export interface PaginationOptions {

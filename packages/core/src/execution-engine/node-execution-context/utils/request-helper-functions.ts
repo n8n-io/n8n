@@ -69,6 +69,7 @@ import type { IResponseError } from '@/interfaces';
 
 import { binaryToString } from './binary-helper-functions';
 import { parseIncomingMessage } from './parse-incoming-message';
+<<<<<<< HEAD
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
@@ -263,6 +264,23 @@ function digestAuthAxiosConfig(
 	}
 	return axiosConfig;
 }
+=======
+// Imported for side effects: sets axios defaults and registers the request interceptor
+import './request-helpers/axios-config';
+import {
+	buildTargetUrl,
+	createFormDataObject,
+	digestAuthAxiosConfig,
+	generateContentLengthHeader,
+	getBeforeRedirectFn,
+	getHostFromRequestObject,
+	isIgnoreStatusErrorConfig,
+	searchForHeader,
+	setAxiosAgents,
+	tryParseUrl,
+} from './request-helpers';
+import { throwIfDomainNotAllowed } from './request-helpers/axios-utils';
+>>>>>>> 2d9a2ec76e (chore: Bundle 2026-W9 (#27532))
 
 export async function invokeAxios(
 	axiosConfig: AxiosRequestConfig,
@@ -574,7 +592,18 @@ export async function parseRequestObject(requestObject: IRequestOptions) {
 
 	setAxiosAgents(axiosConfig, agentOptions, requestObject.proxy);
 
+<<<<<<< HEAD
 	axiosConfig.beforeRedirect = getBeforeRedirectFn(agentOptions, axiosConfig, requestObject.proxy);
+=======
+	axiosConfig.beforeRedirect = getBeforeRedirectFn(
+		agentOptions,
+		axiosConfig,
+		requestObject.proxy,
+		requestObject.sendCredentialsOnCrossOriginRedirect ?? true,
+		requestObject.allowedDomains,
+		ssrfBridge,
+	);
+>>>>>>> 2d9a2ec76e (chore: Bundle 2026-W9 (#27532))
 
 	if (requestObject.useStream) {
 		axiosConfig.responseType = 'stream';
@@ -642,7 +671,16 @@ export async function proxyRequestToAxios(
 		configObject = uriOrObject ?? {};
 	}
 
+<<<<<<< HEAD
 	axiosConfig = Object.assign(axiosConfig, await parseRequestObject(configObject));
+=======
+	const ssrfBridge = additionalData?.ssrfBridge;
+	const url = resolveLegacyRequestUrl(configObject);
+	await validateUrlSsrf(url, ssrfBridge);
+
+	axiosConfig = Object.assign(axiosConfig, await parseRequestObject(configObject, ssrfBridge));
+	throwIfDomainNotAllowed(axiosConfig, configObject.allowedDomains);
+>>>>>>> 2d9a2ec76e (chore: Bundle 2026-W9 (#27532))
 
 	try {
 		const response = await invokeAxios(axiosConfig, configObject.auth);
@@ -754,7 +792,18 @@ export function convertN8nRequestToAxios(n8nRequest: IHttpRequestOptions): Axios
 	}
 	setAxiosAgents(axiosRequest, agentOptions, proxy);
 
+<<<<<<< HEAD
 	axiosRequest.beforeRedirect = getBeforeRedirectFn(agentOptions, axiosRequest, n8nRequest.proxy);
+=======
+	axiosRequest.beforeRedirect = getBeforeRedirectFn(
+		agentOptions,
+		axiosRequest,
+		n8nRequest.proxy,
+		n8nRequest.sendCredentialsOnCrossOriginRedirect ?? true,
+		n8nRequest.allowedDomains,
+		ssrfBridge,
+	);
+>>>>>>> 2d9a2ec76e (chore: Bundle 2026-W9 (#27532))
 
 	if (n8nRequest.arrayFormat !== undefined) {
 		axiosRequest.paramsSerializer = (params) => {
@@ -842,6 +891,8 @@ export async function httpRequest(
 	) {
 		delete axiosRequest.data;
 	}
+
+	throwIfDomainNotAllowed(axiosRequest, requestOptions.allowedDomains);
 
 	const result = await invokeAxios(axiosRequest, requestOptions.auth);
 
