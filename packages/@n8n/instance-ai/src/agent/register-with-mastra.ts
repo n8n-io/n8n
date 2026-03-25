@@ -12,6 +12,8 @@
 import type { Agent } from '@mastra/core/agent';
 import { Mastra } from '@mastra/core/mastra';
 import type { MastraCompositeStore } from '@mastra/core/storage';
+import { LangSmithExporter } from '@mastra/langsmith';
+import { Observability } from '@mastra/observability';
 
 let cachedSubAgentMastra: Mastra | null = null;
 let cachedSubAgentStorageKey = '';
@@ -29,14 +31,14 @@ export function registerWithMastra(agentId: string, agent: Agent, storage: Mastr
 	cachedSubAgentMastra = new Mastra({
 		agents: { [agentId]: agent },
 		storage,
-		// observability: new Observability({
-		// 	configs: {
-		// 		langsmith: {
-		// 			serviceName: 'instance-ai',
-		// 			exporters: [new LangSmithExporter({ projectName: 'instance-ai' })],
-		// 		},
-		// 	},
-		// }),
+		observability: new Observability({
+			configs: {
+				langsmith: {
+					serviceName: 'instance-ai',
+					exporters: [new LangSmithExporter({ projectName: 'instance-ai' })],
+				},
+			},
+		}),
 	});
 	cachedSubAgentStorageKey = key;
 }

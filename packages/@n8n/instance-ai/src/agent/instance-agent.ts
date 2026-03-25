@@ -3,9 +3,9 @@ import { Agent } from '@mastra/core/agent';
 import { Mastra } from '@mastra/core/mastra';
 import { ToolSearchProcessor, type ToolSearchProcessorOptions } from '@mastra/core/processors';
 import type { MastraCompositeStore } from '@mastra/core/storage';
-import { withLangsmithMetadata } from '@mastra/langsmith';
+import { withLangsmithMetadata, LangSmithExporter } from '@mastra/langsmith';
 import { MCPClient } from '@mastra/mcp';
-import { buildTracingOptions } from '@mastra/observability';
+import { buildTracingOptions, Observability } from '@mastra/observability';
 import { nanoid } from 'nanoid';
 
 import { createMemory } from '../memory/memory-config';
@@ -113,14 +113,14 @@ function ensureMastraRegistered(agent: Agent, storage: MastraCompositeStore): vo
 	cachedMastra = new Mastra({
 		agents: { 'n8n-instance-agent': agent },
 		storage,
-		// observability: new Observability({
-		// 	configs: {
-		// 		langsmith: {
-		// 			serviceName: 'my-service',
-		// 			exporters: [new LangSmithExporter({ projectName: 'instance-ai' })],
-		// 		},
-		// 	},
-		// }),
+		observability: new Observability({
+			configs: {
+				langsmith: {
+					serviceName: 'my-service',
+					exporters: [new LangSmithExporter({ projectName: 'instance-ai' })],
+				},
+			},
+		}),
 	});
 	cachedMastraStorageKey = key;
 }
@@ -275,10 +275,6 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		defaultOptions: {
 			tracingOptions: buildTracingOptions(
 				withLangsmithMetadata({ projectName: 'instance-ai' }),
-				// Prevent full request/response bodies from being retained in RunTree
-				// trace nodes.  LangSmith's RunTree stores inputs/outputs in memory for
-				// the lifetime of the trace — with a 106KB system prompt this causes
-				// ~25MB+ of retained heap per long conversation.
 				(opts) => ({ ...opts, recordInputs: false, recordOutputs: false }),
 			),
 		},
