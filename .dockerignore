@@ -42,7 +42,12 @@
 !packages/@n8n/typescript-config
 !packages/@n8n/typescript-config/**
 
+
 node_modules
+packages/*/dist
+packages/*/node_modules
+.turbo
 .git
+*.log
 
 
