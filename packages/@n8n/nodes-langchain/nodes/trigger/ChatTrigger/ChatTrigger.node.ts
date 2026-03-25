@@ -26,6 +26,11 @@ import { createPage } from './templates';
 import { assertValidLoadPreviousSessionOption } from './types';
 
 const CHAT_TRIGGER_PATH_IDENTIFIER = 'chat';
+
+const isEnvFeatureEnabled = (value: string | undefined) => value !== undefined && value !== 'false';
+
+const isPublicChatTriggerDisabled = () =>
+	isEnvFeatureEnabled(process.env.N8N_DISABLE_PUBLIC_CHAT_TRIGGER);
 const allowFileUploadsOption: INodeProperties = {
 	displayName: 'Allow File Uploads',
 	name: 'allowFileUploads',
@@ -295,11 +300,13 @@ export class ChatTrigger extends Node {
 					'={{$parameter.options?.["responseMode"] ?? ($parameter.availableInChat ? "streaming" : "lastNode") }}',
 				path: CHAT_TRIGGER_PATH_IDENTIFIER,
 				ndvHideMethod: true,
-				ndvHideUrl: '={{ !$parameter.public }}',
+				ndvHideUrl: isPublicChatTriggerDisabled() ? true : '={{ !$parameter.public }}',
 			},
 		],
 		eventTriggerDescription: 'Waiting for you to submit the chat',
-		activationMessage: 'You can now make calls to your production chat URL.',
+		activationMessage: isPublicChatTriggerDisabled()
+			? 'Public chat is disabled by instance policy.'
+			: 'You can now make calls to your production chat URL.',
 		triggerPanel: false,
 		properties: [
 			/**
@@ -762,7 +769,7 @@ export class ChatTrigger extends Node {
 	async webhook(ctx: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const res = ctx.getResponseObject();
 
-		const isPublic = ctx.getNodeParameter('public', false);
+		const isPublic = isPublicChatTriggerDisabled() ? false : ctx.getNodeParameter('public', false);
 		assertParamIsBoolean('public', isPublic, ctx.getNode());
 
 		const nodeMode = ctx.getNodeParameter('mode', 'hostedChat');
