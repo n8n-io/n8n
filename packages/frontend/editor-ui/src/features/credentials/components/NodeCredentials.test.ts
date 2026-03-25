@@ -1,8 +1,9 @@
 import { shallowRef } from 'vue';
-import { describe, it, vi } from 'vitest';
+import { describe, it, vi, beforeEach } from 'vitest';
 import { screen } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
+import { setActivePinia } from 'pinia';
 import NodeCredentials from './NodeCredentials.vue';
 import type { RenderOptions } from '@/__tests__/render';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -15,7 +16,6 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { usePostHog } from '@/app/stores/posthog.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { FrontendSettings } from '@n8n/api-types';
 import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
@@ -82,6 +82,37 @@ const openAiNodeNoCreds2: INodeUi = {
 	credentials: {},
 };
 
+const openAiApiCredentialType = {
+	name: 'openAiApi',
+	displayName: 'OpenAi',
+	documentationUrl: 'openAi',
+	properties: [
+		{
+			displayName: 'API Key',
+			name: 'apiKey',
+			type: 'string',
+			typeOptions: { password: true },
+			required: true,
+			default: '',
+		},
+	],
+	authenticate: {
+		type: 'generic',
+		properties: {
+			headers: {
+				Authorization: '=Bearer {{$credentials.apiKey}}',
+				'OpenAI-Organization': '={{$credentials.organizationId}}',
+			},
+		},
+	},
+	test: { request: { baseURL: '={{$credentials?.url}}', url: '/models' } },
+	supportedNodes: ['openAi'],
+	iconUrl: {
+		light: 'icons/n8n-nodes-base/dist/nodes/OpenAi/openAi.svg',
+		dark: 'icons/n8n-nodes-base/dist/nodes/OpenAi/openAi.dark.svg',
+	},
+} satisfies ICredentialType;
+
 function createCredential(
 	overrides: Partial<{
 		id: string;
@@ -103,79 +134,65 @@ function createCredential(
 }
 
 describe('NodeCredentials', () => {
-	const pinia = createTestingPinia({ stubActions: false });
-	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('1'));
-	const workflowDocumentStoreRef = shallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>(
-		workflowDocumentStore,
-	);
+	let credentialsStore: ReturnType<typeof mockedStore<typeof useCredentialsStore>>;
+	let ndvStore: ReturnType<typeof mockedStore<typeof useNDVStore>>;
+	let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
+	let projectsStore: ReturnType<typeof mockedStore<typeof useProjectsStore>>;
+	let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
+	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
+	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
+	let workflowDocumentStoreRef: ReturnType<
+		typeof shallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>
+	>;
+	let renderComponent: ReturnType<typeof createComponentRenderer>;
 
-	const defaultRenderOptions: RenderOptions<typeof NodeCredentials> = {
-		pinia,
-		props: {
-			overrideCredType: 'openAiApi',
-			node: httpNode,
-			readonly: false,
-			showAll: false,
-			hideIssues: false,
-		},
-		global: {
-			provide: {
-				[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
+	beforeEach(() => {
+		vi.clearAllMocks();
+
+		const pinia = createTestingPinia({ stubActions: false });
+		setActivePinia(pinia);
+
+		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('1'));
+		workflowDocumentStoreRef = shallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>(
+			workflowDocumentStore,
+		);
+
+		const defaultRenderOptions: RenderOptions<typeof NodeCredentials> = {
+			pinia,
+			props: {
+				overrideCredType: 'openAiApi',
+				node: httpNode,
+				readonly: false,
+				showAll: false,
+				hideIssues: false,
 			},
-		},
-	};
+			global: {
+				provide: {
+					[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
+				},
+			},
+		};
 
-	const renderComponent = createComponentRenderer(NodeCredentials, defaultRenderOptions);
+		renderComponent = createComponentRenderer(NodeCredentials, defaultRenderOptions);
 
-	const credentialsStore = mockedStore(useCredentialsStore);
-	const ndvStore = mockedStore(useNDVStore);
-	const uiStore = mockedStore(useUIStore);
-	const projectsStore = mockedStore(useProjectsStore);
-	const settingsStore = mockedStore(useSettingsStore);
-	const workflowsStore = mockedStore(useWorkflowsStore);
-	const posthogStore = mockedStore(usePostHog);
+		credentialsStore = mockedStore(useCredentialsStore);
+		ndvStore = mockedStore(useNDVStore);
+		uiStore = mockedStore(useUIStore);
+		projectsStore = mockedStore(useProjectsStore);
+		settingsStore = mockedStore(useSettingsStore);
+		workflowsStore = mockedStore(useWorkflowsStore);
 
-	projectsStore.currentProject = { id: 'default', scopes: ['credential:create'] } as Project;
-	settingsStore.settings = {
-		envFeatureFlags: {
-			N8N_ENV_FEAT_DYNAMIC_CREDENTIALS: true,
-		},
-		activeModules: ['dynamic-credentials'],
-	} as unknown as FrontendSettings;
-	vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
+		projectsStore.currentProject = { id: 'default', scopes: ['credential:create'] } as Project;
+		settingsStore.settings = {
+			envFeatureFlags: {
+				N8N_ENV_FEAT_DYNAMIC_CREDENTIALS: true,
+			},
+			activeModules: ['dynamic-credentials'],
+		} as unknown as FrontendSettings;
+		vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 
-	beforeAll(() => {
 		credentialsStore.state.credentialTypes = {
-			openAiApi: {
-				name: 'openAiApi',
-				displayName: 'OpenAi',
-				documentationUrl: 'openAi',
-				properties: [
-					{
-						displayName: 'API Key',
-						name: 'apiKey',
-						type: 'string',
-						typeOptions: { password: true },
-						required: true,
-						default: '',
-					},
-				],
-				authenticate: {
-					type: 'generic',
-					properties: {
-						headers: {
-							Authorization: '=Bearer {{$credentials.apiKey}}',
-							'OpenAI-Organization': '={{$credentials.organizationId}}',
-						},
-					},
-				},
-				test: { request: { baseURL: '={{$credentials?.url}}', url: '/models' } },
-				supportedNodes: ['openAi'],
-				iconUrl: {
-					light: 'icons/n8n-nodes-base/dist/nodes/OpenAi/openAi.svg',
-					dark: 'icons/n8n-nodes-base/dist/nodes/OpenAi/openAi.dark.svg',
-				},
-			},
+			openAiApi: openAiApiCredentialType,
 		};
 	});
 
@@ -215,32 +232,20 @@ describe('NodeCredentials', () => {
 		expect(screen.queryByText('OpenAi account 2')).not.toBeInTheDocument();
 	});
 
-	it('should not ignored managed credentials in the dropdown if active node is not the HTTP node', async () => {
-		ndvStore.activeNode = openAiNode;
+	it('should open the new credential modal when clicked', async () => {
+		ndvStore.activeNode = httpNode;
 		credentialsStore.state.credentials = {
 			c8vqdPpPClh4TgIO: createCredential(),
-			SkXM3oUkQvvYS31c: createCredential({
-				id: 'SkXM3oUkQvvYS31c',
-				name: 'OpenAi account 2',
-				isManaged: true,
-			}),
 		};
 
-		renderComponent(
-			{
-				props: {
-					node: openAiNode,
-				},
-			},
-			{ merge: true },
-		);
+		renderComponent();
 
 		const credentialsSelect = screen.getByTestId('node-credentials-select');
 
 		await userEvent.click(credentialsSelect);
+		await userEvent.click(screen.getByTestId('node-credentials-select-item-new'));
 
-		expect(screen.queryByText('OpenAi account')).toBeInTheDocument();
-		expect(screen.queryByText('OpenAi account 2')).toBeInTheDocument();
+		expect(uiStore.openNewCredential).toHaveBeenCalledWith('openAiApi', false, false);
 	});
 
 	it('should filter available credentials in the dropdown', async () => {
@@ -275,53 +280,39 @@ describe('NodeCredentials', () => {
 		expect(screen.queryByText('Test OpenAi account')).toBeInTheDocument();
 	});
 
-	it('should open the new credential modal when clicked', async () => {
-		ndvStore.activeNode = httpNode;
+	it('should not ignored managed credentials in the dropdown if active node is not the HTTP node', async () => {
+		ndvStore.activeNode = openAiNode;
 		credentialsStore.state.credentials = {
-			c8vqdPpPClh4TgIO: createCredential(),
+			byDFnd7vN5GzMVD2: createCredential({
+				id: 'byDFnd7vN5GzMVD2',
+				name: 'n8n free OpenAI API credits',
+			}),
+			SkXM3oUkQvvYS31c: createCredential({
+				id: 'SkXM3oUkQvvYS31c',
+				name: 'OpenAi account 2',
+				isManaged: true,
+			}),
 		};
 
-		renderComponent();
+		renderComponent(
+			{
+				props: {
+					node: openAiNode,
+				},
+			},
+			{ merge: true },
+		);
 
 		const credentialsSelect = screen.getByTestId('node-credentials-select');
 
 		await userEvent.click(credentialsSelect);
-		await userEvent.click(screen.getByTestId('node-credentials-select-item-new'));
 
-		expect(uiStore.openNewCredential).toHaveBeenCalledWith('openAiApi', true, false);
+		expect(screen.queryByText('n8n free OpenAI API credits')).toBeInTheDocument();
+		expect(screen.queryByText('OpenAi account 2')).toBeInTheDocument();
 	});
 
 	describe('onCredentialSelected', () => {
-		const renderComponentNoCreds = createComponentRenderer(NodeCredentials, {
-			...defaultRenderOptions,
-			props: {
-				...defaultRenderOptions.props,
-				node: openAiNodeNoCreds,
-			},
-		});
-
 		it('should not call assignCredentialToMatchingNodes on mount when auto-selecting credentials', () => {
-			ndvStore.activeNode = openAiNodeNoCreds;
-			credentialsStore.state.credentials = {
-				c8vqdPpPClh4TgIO: {
-					id: 'c8vqdPpPClh4TgIO',
-					name: 'OpenAi account',
-					type: 'openAiApi',
-					isManaged: false,
-					createdAt: '',
-					updatedAt: '',
-				},
-			};
-
-			const workflowsStore = mockedStore(useWorkflowsStore);
-			workflowsStore.allNodes = [openAiNodeNoCreds, openAiNodeNoCreds2];
-
-			renderComponentNoCreds();
-
-			expect(workflowsStore.assignCredentialToMatchingNodes).not.toHaveBeenCalled();
-		});
-
-		it('should call assignCredentialToMatchingNodes after selecting credentials', async () => {
 			ndvStore.activeNode = openAiNodeNoCreds;
 			credentialsStore.state.credentials = {
 				c8vqdPpPClh4TgIO: createCredential(),
@@ -329,21 +320,55 @@ describe('NodeCredentials', () => {
 
 			workflowsStore.allNodes = [openAiNodeNoCreds, openAiNodeNoCreds2];
 
-			renderComponentNoCreds();
+			renderComponent(
+				{
+					props: {
+						node: openAiNodeNoCreds,
+					},
+				},
+				{ merge: true },
+			);
+
+			expect(workflowsStore.assignCredentialToMatchingNodes).not.toHaveBeenCalled();
+		});
+
+		it('should call assignCredentialToMatchingNodes after selecting credentials', async () => {
+			// Start with a credential already assigned so the dropdown renders
+			const openAiNodeWithCred: INodeUi = {
+				...openAiNodeNoCreds,
+				credentials: { openAiApi: { id: 'c8vqdPpPClh4TgIO', name: 'OpenAi account' } },
+			};
+
+			ndvStore.activeNode = openAiNodeWithCred;
+			credentialsStore.state.credentials = {
+				c8vqdPpPClh4TgIO: createCredential(),
+				secondCred: createCredential({ id: 'secondCred', name: 'OpenAi account 2' }),
+			};
+
+			workflowsStore.allNodes = [openAiNodeWithCred, openAiNodeNoCreds2];
+
+			renderComponent(
+				{
+					props: {
+						node: openAiNodeWithCred,
+					},
+				},
+				{ merge: true },
+			);
 
 			const credentialsSelect = screen.getByTestId('node-credentials-select');
 
 			await userEvent.click(credentialsSelect);
 
-			const openAiCreds = screen.queryByText('OpenAi account');
+			const openAiCreds = screen.queryByText('OpenAi account 2');
 			expect(openAiCreds).toBeInTheDocument();
 
 			await userEvent.click(openAiCreds!);
 
 			expect(workflowsStore.assignCredentialToMatchingNodes).toHaveBeenCalledWith({
 				credentials: {
-					id: 'c8vqdPpPClh4TgIO',
-					name: 'OpenAi account',
+					id: 'secondCred',
+					name: 'OpenAi account 2',
 				},
 				currentNodeName: 'OpenAI no creds',
 				type: 'openAiApi',
@@ -475,9 +500,7 @@ describe('NodeCredentials', () => {
 			credentials: {},
 		};
 
-		function setupQuickConnectStores(opts: { experimentEnabled: boolean }) {
-			vi.spyOn(posthogStore, 'isVariantEnabled').mockReturnValue(opts.experimentEnabled);
-
+		function setupQuickConnectStores() {
 			settingsStore.settings = {
 				envFeatureFlags: {
 					N8N_ENV_FEAT_DYNAMIC_CREDENTIALS: true,
@@ -493,8 +516,8 @@ describe('NodeCredentials', () => {
 			credentialsStore.state.credentials = {};
 		}
 
-		it('should show quick-connect-empty-state when experiment enabled and managed OAuth', () => {
-			setupQuickConnectStores({ experimentEnabled: true });
+		it('should show quick-connect-empty-state when managed OAuth credential has no credentials', () => {
+			setupQuickConnectStores();
 
 			ndvStore.activeNode = slackNode;
 
@@ -509,12 +532,12 @@ describe('NodeCredentials', () => {
 			);
 
 			expect(screen.queryByTestId('quick-connect-empty-state')).toBeInTheDocument();
-			expect(screen.queryByTestId('standard-empty-state')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('node-credentials-empty-state')).not.toBeInTheDocument();
 			expect(screen.queryByTestId('node-credentials-select')).not.toBeInTheDocument();
 		});
 
 		it('should derive service name from credential displayName when no quick connect config', () => {
-			setupQuickConnectStores({ experimentEnabled: true });
+			setupQuickConnectStores();
 
 			ndvStore.activeNode = slackNode;
 
@@ -533,8 +556,8 @@ describe('NodeCredentials', () => {
 			expect(screen.getByText('Connect to Slack')).toBeInTheDocument();
 		});
 
-		it('should show standard-empty-state when experiment enabled but non-OAuth type', () => {
-			setupQuickConnectStores({ experimentEnabled: true });
+		it('should show node-credentials-empty-state for non-OAuth type with no credentials', () => {
+			setupQuickConnectStores();
 
 			ndvStore.activeNode = openAiNodeNoCreds;
 
@@ -548,33 +571,12 @@ describe('NodeCredentials', () => {
 				{ merge: true },
 			);
 
-			expect(screen.queryByTestId('standard-empty-state')).toBeInTheDocument();
+			expect(screen.queryByTestId('node-credentials-empty-state')).toBeInTheDocument();
 			expect(screen.queryByTestId('quick-connect-empty-state')).not.toBeInTheDocument();
-		});
-
-		it('should show standard dropdown when experiment disabled', () => {
-			setupQuickConnectStores({ experimentEnabled: false });
-
-			ndvStore.activeNode = slackNode;
-
-			renderComponent(
-				{
-					props: {
-						node: slackNode,
-						overrideCredType: 'slackOAuth2Api',
-					},
-				},
-				{ merge: true },
-			);
-
-			// Neither quick connect nor standard empty state should show; dropdown should
-			expect(screen.queryByTestId('quick-connect-empty-state')).not.toBeInTheDocument();
-			expect(screen.queryByTestId('standard-empty-state')).not.toBeInTheDocument();
-			expect(screen.queryByTestId('node-credentials-select')).toBeInTheDocument();
 		});
 
 		it('should show "setup manually" link in quick connect state', () => {
-			setupQuickConnectStores({ experimentEnabled: true });
+			setupQuickConnectStores();
 
 			ndvStore.activeNode = slackNode;
 
@@ -592,7 +594,7 @@ describe('NodeCredentials', () => {
 		});
 
 		it('should open credential modal when "setup manually" is clicked', async () => {
-			setupQuickConnectStores({ experimentEnabled: true });
+			setupQuickConnectStores();
 
 			ndvStore.activeNode = slackNode;
 
@@ -618,7 +620,7 @@ describe('NodeCredentials', () => {
 		});
 
 		it('should show "Set up credential" button in standard empty state', () => {
-			setupQuickConnectStores({ experimentEnabled: true });
+			setupQuickConnectStores();
 
 			ndvStore.activeNode = openAiNodeNoCreds;
 
@@ -636,7 +638,7 @@ describe('NodeCredentials', () => {
 		});
 
 		it('should show quick connect when sibling credential type has managed OAuth', () => {
-			setupQuickConnectStores({ experimentEnabled: true });
+			setupQuickConnectStores();
 
 			const dropboxOAuth2ApiType: ICredentialType = {
 				name: 'dropboxOAuth2Api',
@@ -724,7 +726,7 @@ describe('NodeCredentials', () => {
 		});
 
 		it('should show standard dropdown when credential already exists', () => {
-			setupQuickConnectStores({ experimentEnabled: true });
+			setupQuickConnectStores();
 
 			const slackNodeWithCreds: INodeUi = {
 				...slackNode,
@@ -754,7 +756,7 @@ describe('NodeCredentials', () => {
 
 			// Should show the normal dropdown, not the empty states
 			expect(screen.queryByTestId('quick-connect-empty-state')).not.toBeInTheDocument();
-			expect(screen.queryByTestId('standard-empty-state')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('node-credentials-empty-state')).not.toBeInTheDocument();
 			expect(screen.queryByTestId('node-credentials-select')).toBeInTheDocument();
 		});
 	});
