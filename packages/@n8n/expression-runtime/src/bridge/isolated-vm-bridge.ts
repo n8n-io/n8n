@@ -527,10 +527,14 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			// when crossing the boundary. Instead we catch them inside the isolate,
 			// serialize them via this callback (which runs on the host), and return
 			// a sentinel so the host can reconstruct the original error type.
-			let capturedError: { name: string; message: string; stack?: string; extra?: string } | null =
-				null;
+			let capturedError: {
+				name: string;
+				message: string;
+				stack?: string;
+				extra?: Record<string, unknown>;
+			} | null = null;
 			const reportError = new (getIvm().Reference)(
-				(name: string, message: string, stack: string, extra: string) => {
+				(name: string, message: string, stack: string, extra: Record<string, unknown>) => {
 					capturedError = { name, message, stack, extra };
 				},
 			);
@@ -544,7 +548,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			const wrappedCode =
 				`(function() { try { var __result = (function() {\n${code}\n}).call(__data); return __prepareForTransfer(__result); }` +
 				` catch(e) { var extra = {}; for (var k in e) { if (e.hasOwnProperty(k)) extra[k] = e[k]; }` +
-				` __reportError.applySync(null, [e.name || "Error", e.message || "", e.stack || "", JSON.stringify(extra)],` +
+				` __reportError.applySync(null, [e.name || "Error", e.message || "", e.stack || "", extra],` +
 				` { arguments: { copy: true } }); return { __isError: true }; } })()`;
 
 			let script = this.scriptCache.get(code);
@@ -614,7 +618,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		name: string;
 		message: string;
 		stack?: string;
-		extra?: string;
+		extra?: Record<string, unknown>;
 	}): Error {
 		const error = new Error(data.message);
 		error.name = data.name;
@@ -622,14 +626,11 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			error.stack = data.stack;
 		}
 
-		// Restore custom properties from the extra JSON
+		// Restore custom properties transferred via copy: true
 		if (data.extra) {
-			try {
-				const extra = JSON.parse(data.extra) as Record<string, unknown>;
-				for (const [key, value] of Object.entries(extra)) {
-					(error as unknown as Record<string, unknown>)[key] = value;
-				}
-			} catch {}
+			for (const [key, value] of Object.entries(data.extra)) {
+				(error as unknown as Record<string, unknown>)[key] = value;
+			}
 		}
 
 		return error;
