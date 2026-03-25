@@ -1,3 +1,5 @@
+import flatted from 'flatted';
+
 import { test, expect } from '../../../../fixtures/base';
 import executionOutOfMemoryResponse from '../../../../fixtures/execution-out-of-memory-server-response.json';
 import { retryUntil } from '../../../../utils/retry-utils';
@@ -290,16 +292,21 @@ test.describe('Workflow Executions', () => {
 			const execution = await api.workflows.waitForWorkflowStatus(workflowId, 'waiting', 10000);
 			const originalStartedAt = execution.startedAt;
 
-			await new Promise((resolve) => setTimeout(resolve, 1000));
+			const fullExecution = await api.workflows.getExecution(execution.id);
+			const executionData = flatted.parse(fullExecution.data);
+			const resumeUrl = new URL(
+				executionData.resultData.runData['Capture Resume URL'][0].data.main[0][0].json
+					.resumeUrl as string,
+			);
 
-			const resumeResponse = await api.request.get(`/webhook-waiting/${execution.id}`);
+			const resumeResponse = await api.webhooks.trigger(`${resumeUrl.pathname}${resumeUrl.search}`);
 			expect(resumeResponse.ok()).toBe(true);
 
 			await api.workflows.waitForExecution(workflowId, 15000);
 
 			await retryUntil(async () => {
-				const finalExecution = await api.workflows.getExecution(execution.id);
-				expect(finalExecution.startedAt).toBe(originalStartedAt);
+				const completedExecution = await api.workflows.getExecution(execution.id);
+				expect(completedExecution.startedAt).toBe(originalStartedAt);
 			});
 		});
 	});
