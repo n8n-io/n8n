@@ -119,7 +119,7 @@ export class IsolatePool {
 
 				if (attempt < IsolatePool.MAX_REPLENISH_RETRIES) {
 					const delay = IsolatePool.REPLENISH_RETRY_BASE_MS * 2 ** attempt;
-					setTimeout(() => this.replenish(attempt + 1), delay);
+					setTimeout(() => this.replenish(attempt + 1), delay).unref();
 				}
 			});
 	}
