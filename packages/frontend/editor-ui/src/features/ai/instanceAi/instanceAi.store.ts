@@ -72,6 +72,21 @@ function collectPendingConfirmations(
 	}
 }
 
+/** Find a tool call in an agent tree by its confirmation requestId. */
+function findToolCallInTree(
+	node: InstanceAiAgentNode,
+	requestId: string,
+): InstanceAiToolCallState | undefined {
+	for (const tc of node.toolCalls) {
+		if (tc.confirmation?.requestId === requestId) return tc;
+	}
+	for (const child of node.children) {
+		const found = findToolCallInTree(child, requestId);
+		if (found) return found;
+	}
+	return undefined;
+}
+
 function findLatestTasksFromMessages(messages: InstanceAiMessage[]): TaskList | null {
 	for (let i = messages.length - 1; i >= 0; i--) {
 		const tasks = messages[i].agentTree?.tasks;
@@ -192,6 +207,16 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		const next = new Map(resolvedConfirmationIds.value);
 		next.set(requestId, action);
 		resolvedConfirmationIds.value = next;
+	}
+
+	/** Find a tool call by its confirmation requestId across all messages. */
+	function findToolCallByRequestId(requestId: string): InstanceAiToolCallState | undefined {
+		for (const msg of messages.value) {
+			if (!msg.agentTree) continue;
+			const found = findToolCallInTree(msg.agentTree, requestId);
+			if (found) return found;
+		}
+		return undefined;
 	}
 
 	// --- Event reducer (delegated to pure module) ---
@@ -672,8 +697,14 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		autoSetup?: { credentialType: string },
 		userInput?: string,
 		domainAccessAction?: string,
+		setupWorkflowData?: {
+			action?: 'apply' | 'test-trigger';
+			nodeCredentials?: Record<string, Record<string, string>>;
+			nodeParameters?: Record<string, Record<string, unknown>>;
+			testTriggerNode?: string;
+		},
 		answers?: InstanceAiConfirmResponse['answers'],
-	): Promise<void> {
+	): Promise<boolean> {
 		try {
 			await postConfirmation(
 				rootStore.restApiContext,
@@ -684,10 +715,13 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				autoSetup,
 				userInput,
 				domainAccessAction,
+				setupWorkflowData,
 				answers,
 			);
+			return true;
 		} catch {
 			toast.showError(new Error('Failed to send confirmation. Try again.'), 'Confirmation failed');
+			return false;
 		}
 	}
 
@@ -836,6 +870,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		toggleResearchMode,
 		confirmAction,
 		resolveConfirmation,
+		findToolCallByRequestId,
 		copyFullTrace,
 		submitFeedback,
 		connectSSE,

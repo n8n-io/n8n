@@ -10,8 +10,10 @@ export function createSetupCredentialsTool(context: InstanceAiContext) {
 		id: 'setup-credentials',
 		description:
 			'Open the n8n credential setup UI for the user to select existing credentials or ' +
-			'create new ones directly in their browser. Use this when setting up credentials for ' +
-			'workflow integrations, or when the user asks to set up/add/create a credential. ' +
+			'create new ones directly in their browser. Use this ONLY when the user explicitly ' +
+			'asks to set up/add/create a credential outside of a workflow context. ' +
+			'Do NOT use this after building a workflow — use setup-workflow instead, which ' +
+			'handles per-node credential assignment along with parameter and trigger setup. ' +
 			'The user handles secrets through the UI — you never see sensitive data. ' +
 			'Returns a mapping of credential type to selected credential ID. ' +
 			'When the result contains needsBrowserSetup=true, delegate to a browser agent ' +
