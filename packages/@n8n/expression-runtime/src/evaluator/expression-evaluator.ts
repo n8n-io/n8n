@@ -33,7 +33,15 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 			await bridge.initialize();
 			return bridge;
 		};
-		this.pool = new IsolatePool(createBridge, config.isolatePoolSize, config.acquireTimeoutMs);
+		this.pool = new IsolatePool(
+			createBridge,
+			config.isolatePoolSize,
+			config.acquireTimeoutMs,
+			(error) => {
+				console.error('[IsolatePool] Failed to replenish bridge:', error);
+				config.observability?.metrics.counter('expression.pool.replenish_failed', 1);
+			},
+		);
 	}
 
 	async initialize(): Promise<void> {
@@ -41,8 +49,29 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 	}
 
 	async acquireForExecution(executionId: string): Promise<void> {
-		const bridge = await this.pool.acquire();
-		this.bridges.set(executionId, bridge);
+		const metrics = this.config.observability?.metrics;
+
+		// Try synchronous acquire first
+		const immediate = this.pool.tryAcquire();
+		if (immediate) {
+			metrics?.counter('expression.pool.acquired', 1);
+			this.bridges.set(executionId, immediate);
+			return;
+		}
+
+		// Pool exhausted — wait in queue
+		metrics?.counter('expression.pool.wait', 1);
+		const waitStart = performance.now();
+
+		try {
+			const bridge = await this.pool.acquire();
+			metrics?.histogram('expression.pool.wait_time_ms', performance.now() - waitStart);
+			metrics?.counter('expression.pool.acquired', 1);
+			this.bridges.set(executionId, bridge);
+		} catch (error) {
+			metrics?.counter('expression.pool.timeout', 1);
+			throw error;
+		}
 	}
 
 	evaluate(expression: string, data: WorkflowData, ctx?: EvaluateContext): unknown {

@@ -16,6 +16,7 @@ export class IsolatePool {
 		private readonly createBridge: () => Promise<RuntimeBridge>,
 		private readonly size: number,
 		private readonly acquireTimeoutMs: number,
+		private readonly onReplenishFailed?: (error: unknown) => void,
 	) {}
 
 	async initialize() {
@@ -111,7 +112,7 @@ export class IsolatePool {
 			})
 			.catch((error: unknown) => {
 				this.warming--;
-				console.error('[IsolatePool] Failed to replenish bridge:', error);
+				this.onReplenishFailed?.(error);
 			});
 	}
 }
