@@ -1,13 +1,14 @@
 import { Service } from '@n8n/di';
-import { InstanceSettings } from 'n8n-core';
-import { NodeSDK } from '@opentelemetry/sdk-node';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
-import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from '@opentelemetry/semantic-conventions';
 import { resourceFromAttributes } from '@opentelemetry/resources';
+import { NodeSDK } from '@opentelemetry/sdk-node';
 import { TraceIdRatioBasedSampler } from '@opentelemetry/sdk-trace-node';
+import { InstanceSettings } from 'n8n-core';
 
 import { N8N_VERSION } from '@/constants';
+
 import { OtelConfig } from './otel.config';
+import { ATTR } from './otel.constants';
 
 @Service()
 export class OtelService {
@@ -23,14 +24,14 @@ export class OtelService {
 
 		this.sdk = new NodeSDK({
 			resource: resourceFromAttributes({
-				[ATTR_SERVICE_NAME]: 'n8n',
-				[ATTR_SERVICE_VERSION]: N8N_VERSION,
-				'n8n.instance.id': this.instanceSettings.instanceId,
-				'n8n.instance.role': this.instanceSettings.instanceType,
+				[ATTR.OTEL_SERVICE_NAME]: this.config.exporterServiceName,
+				[ATTR.OTEL_SERVICE_VERSION]: N8N_VERSION,
+				[ATTR.INSTANCE_ID]: this.instanceSettings.instanceId,
+				[ATTR.INSTANCE_ROLE]: this.instanceSettings.instanceType,
 			}),
 			traceExporter: new OTLPTraceExporter({
-				url: `${this.config.exporterOtlpEndpoint}/v1/traces`,
-				headers: this.parseHeaders(),
+				url: `${this.config.exporterEndpoint}${this.config.exporterTracingPath}`,
+				headers: this.config.exporterHeaders ? this.parseHeaders(this.config.exporterHeaders) : {},
 			}),
 			sampler: new TraceIdRatioBasedSampler(this.config.tracesSampleRate),
 		});
@@ -42,11 +43,9 @@ export class OtelService {
 		await this.sdk?.shutdown();
 	}
 
-	private parseHeaders(): Record<string, string> {
-		if (!this.config.exporterOtlpHeaders) return {};
-
+	private parseHeaders(exporterHeaders: string): Record<string, string> {
 		const headers: Record<string, string> = {};
-		for (const pair of this.config.exporterOtlpHeaders.split(',')) {
+		for (const pair of exporterHeaders.split(',')) {
 			const [key, ...rest] = pair.split('=');
 			const trimmedKey = key.trim();
 			if (trimmedKey) {

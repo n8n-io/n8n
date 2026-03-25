@@ -6,10 +6,16 @@ export class OtelConfig {
 	enabled: boolean = false;
 
 	@Env('N8N_OTEL_EXPORTER_OTLP_ENDPOINT')
-	exporterOtlpEndpoint: string = 'http://localhost:4318';
+	exporterEndpoint: string = 'http://localhost:4318';
+
+	@Env('N8N_OTEL_EXPORTER_OTLP_TRACING_PATH')
+	exporterTracingPath: string = '/v1/traces';
 
 	@Env('N8N_OTEL_EXPORTER_OTLP_HEADERS')
-	exporterOtlpHeaders: string = '';
+	exporterHeaders: string = '';
+
+	@Env('N8N_OTEL_EXPORTER_SERVICE_NAME')
+	exporterServiceName: string = 'n8n';
 
 	@Env('N8N_OTEL_TRACES_SAMPLE_RATE')
 	tracesSampleRate: number = 1.0;
