@@ -19,7 +19,7 @@ ENV PNPM_SKIP_PREPARE=1
 
 # Instalamos sin ignorar scripts de dependencias individuales, 
 # pero saltando los scripts del proyecto raíz.
-RUN pnpm install --no-frozen-lockfile
+RUN pnpm install --no-frozen-lockfile --ignore-scripts
 
 # 3. Compilamos manualmente lo que n8n necesita para el nodo de Code
 RUN pnpm rebuild isolated-vm sqlite3
