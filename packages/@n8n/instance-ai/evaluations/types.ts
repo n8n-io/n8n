@@ -263,6 +263,26 @@ export interface DatasetExample {
 }
 
 // ---------------------------------------------------------------------------
+// Workflow evaluation test cases
+// ---------------------------------------------------------------------------
+
+export interface TestScenario {
+	name: string;
+	description: string;
+	dataSetup: string;
+	successCriteria: string;
+	requires?: 'pin-data' | 'mock-server';
+}
+
+export interface WorkflowTestCase {
+	prompt: string;
+	complexity: 'simple' | 'medium' | 'complex';
+	tags: string[];
+	triggerType?: 'manual' | 'webhook' | 'schedule' | 'form';
+	scenarios: TestScenario[];
+}
+
+// ---------------------------------------------------------------------------
 // Result types
 // ---------------------------------------------------------------------------
 
