@@ -10,7 +10,7 @@ RUN corepack enable && corepack prepare pnpm@10.22.0 --activate
 
 WORKDIR /app
 
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yam[l] turbo.jso[n] ./
 COPY . .
 
 # 2. Install ignoring conflictive scripts
@@ -18,7 +18,9 @@ RUN rm -rf node_modules && CI=true pnpm install --no-frozen-lockfile --ignore-sc
 
 # 3. Selective Build 
 # Compile just with n8n direct dependencies, ignoring testing packages
-RUN pnpm build --filter n8n --filter @n8n/core --filter @n8n/cli
+RUN pnpm --filter @n8n/core run build && \
+    pnpm --filter @n8n/cli run build && \
+    pnpm --filter n8n run build
 
 # 4. Create Tapis configuration
 RUN mkdir -p /app/packages/cli/bin && \
