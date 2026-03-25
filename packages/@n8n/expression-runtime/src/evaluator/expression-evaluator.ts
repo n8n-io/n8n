@@ -33,11 +33,7 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 			await bridge.initialize();
 			return bridge;
 		};
-		this.pool = new IsolatePool(
-			createBridge,
-			config.isolatePoolSize ?? 1,
-			config.acquireTimeoutMs ?? 5000,
-		);
+		this.pool = new IsolatePool(createBridge, config.isolatePoolSize, config.acquireTimeoutMs);
 	}
 
 	async initialize(): Promise<void> {

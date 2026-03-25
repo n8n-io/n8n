@@ -17,19 +17,11 @@ export interface EvaluatorConfig {
 	/** Factory function to create a bridge instance. */
 	createBridge: () => RuntimeBridge;
 
-	/**
-	 * Number of isolates to keep in the pool.
-	 *
-	 * @default 1
-	 */
-	isolatePoolSize?: number;
+	/** Number of isolates to keep in the pool. */
+	isolatePoolSize: number;
 
-	/**
-	 * Max ms to wait for a bridge when pool is exhausted.
-	 *
-	 * @default 5000
-	 */
-	acquireTimeoutMs?: number;
+	/** Max ms to wait for a bridge when pool is exhausted. */
+	acquireTimeoutMs: number;
 
 	/**
 	 * Observability provider for metrics, traces, and logs.

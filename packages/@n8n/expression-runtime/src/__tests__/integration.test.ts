@@ -10,6 +10,8 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 	beforeAll(async () => {
 		evaluator = new ExpressionEvaluator({
 			createBridge: () => new IsolatedVmBridge({ timeout: 5000 }),
+			isolatePoolSize: 1,
+			acquireTimeoutMs: 5000,
 		});
 		await evaluator.initialize();
 	});
