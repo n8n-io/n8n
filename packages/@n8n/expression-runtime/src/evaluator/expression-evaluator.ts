@@ -115,10 +115,18 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 		}
 
 		const bridge = this.bridges.get(executionId);
-		if (!bridge)
+		if (!bridge) {
 			throw new Error(
 				`No bridge acquired for execution ${executionId}. Call acquireForExecution() first.`,
 			);
+		}
+
+		// If the isolate died mid-execution (e.g. OOM), all remaining expressions
+		// in this execution are expected to fail. Recovery is per-execution, not per-expression.
+		if (bridge.isDisposed()) {
+			throw new Error(`Isolate for execution ${executionId} is no longer available`);
+		}
+
 		return bridge;
 	}
 

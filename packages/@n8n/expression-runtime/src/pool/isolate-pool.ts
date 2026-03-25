@@ -90,7 +90,10 @@ export class IsolatePool {
 		this.bridges = [];
 	}
 
-	private replenish() {
+	private static readonly MAX_REPLENISH_RETRIES = 3;
+	private static readonly REPLENISH_RETRY_BASE_MS = 500;
+
+	private replenish(attempt = 0) {
 		if (this.disposed) return;
 		if (this.bridges.length + this.warming >= this.size) return;
 
@@ -113,6 +116,11 @@ export class IsolatePool {
 			.catch((error: unknown) => {
 				this.warming--;
 				this.onReplenishFailed?.(error);
+
+				if (attempt < IsolatePool.MAX_REPLENISH_RETRIES) {
+					const delay = IsolatePool.REPLENISH_RETRY_BASE_MS * 2 ** attempt;
+					setTimeout(() => this.replenish(attempt + 1), delay);
+				}
 			});
 	}
 }
