@@ -1,6 +1,6 @@
 
 # 1. Usamos Node 20 (LTS) - Importante para estabilidad en TACC
-FROM node:24-bookworm AS builder
+FROM node:23-bookworm AS builder
 
 WORKDIR /app
 
@@ -18,7 +18,10 @@ COPY . .
 # pero NO usamos --ignore-scripts para que esbuild y otros se instalen bien.
 ENV PNPM_SKIP_PREPARE=1
 
-RUN pnpm install --no-frozen-lockfile --ignore-scripts
+#RUN pnpm install --no-frozen-lockfile --ignore-scripts
+# Forzamos a pnpm a ignorar el script de preparación del monorepo
+RUN pnpm config set side-effects-cache false
+RUN pnpm install --no-frozen-lockfile --ignore-scripts=false --config.side-effects-cache=false
 
 # 5. Forzamos la descarga del binario de esbuild para Linux 64 bits
 # Esto soluciona el error 2 en los paquetes de codemirror
