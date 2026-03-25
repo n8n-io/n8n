@@ -57,10 +57,12 @@ export class ProjectController {
 			payload,
 		);
 
-		// When pagination params are provided, return { count, data } envelope.
+		// When pagination params are provided, return { count, data } envelope
+		// with role and scopes enriched per project.
 		// Otherwise return a bare array for backward compatibility with existing callers.
 		if (payload.take !== undefined || payload.skip !== undefined) {
-			return res.json({ count, data });
+			const enriched = await this.projectsService.addUserScopes(req.user, data);
+			return res.json({ count, data: enriched });
 		}
 		return data;
 	}

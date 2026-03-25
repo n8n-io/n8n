@@ -316,9 +316,20 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		// Used by createDeepLazyProxy when accessing properties
 		const getValueAtPath = new (getIvm().Reference)((path: string[]) => {
 			// Navigate to value
+			// Special-case: paths starting with ['$item', index] call data.$item(index)
+			// to get the sub-proxy for that item, then continue navigating the rest.
 			let value: unknown = data;
-			for (const key of path) {
-				value = (value as Record<string, unknown>)?.[key];
+			let startIndex = 0;
+			const itemFn = (data as Record<string, unknown>).$item;
+			if (path.length >= 2 && path[0] === '$item' && typeof itemFn === 'function') {
+				const itemIndex = parseInt(path[1], 10);
+				if (!isNaN(itemIndex)) {
+					value = (itemFn as (i: number) => unknown)(itemIndex);
+					startIndex = 2;
+				}
+			}
+			for (let i = startIndex; i < path.length; i++) {
+				value = (value as Record<string, unknown>)?.[path[i]];
 				if (value === undefined || value === null) {
 					return value;
 				}
@@ -359,9 +370,19 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		// Used by array proxy when accessing numeric indices
 		const getArrayElement = new (getIvm().Reference)((path: string[], index: number) => {
 			// Navigate to array
+			// Special-case: paths starting with ['$item', index] call data.$item(index)
 			let arr: unknown = data;
-			for (const key of path) {
-				arr = (arr as Record<string, unknown>)?.[key];
+			let startIndex = 0;
+			const itemFn = (data as Record<string, unknown>).$item;
+			if (path.length >= 2 && path[0] === '$item' && typeof itemFn === 'function') {
+				const itemIndex = parseInt(path[1], 10);
+				if (!isNaN(itemIndex)) {
+					arr = (itemFn as (i: number) => unknown)(itemIndex);
+					startIndex = 2;
+				}
+			}
+			for (let i = startIndex; i < path.length; i++) {
+				arr = (arr as Record<string, unknown>)?.[path[i]];
 				if (arr === undefined || arr === null) {
 					return undefined;
 				}

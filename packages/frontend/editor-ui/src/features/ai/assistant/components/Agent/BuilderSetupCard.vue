@@ -20,6 +20,7 @@ import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useTriggerExecution } from '@/features/setupPanel/composables/useTriggerExecution';
 import { useWebhookUrls } from '@/features/setupPanel/composables/useWebhookUrls';
 
+
 const props = defineProps<{
 	state: NodeSetupState;
 	stepIndex: number;
@@ -70,7 +71,7 @@ const {
 	execute,
 	isInListeningState,
 	listeningHint,
-} = useTriggerExecution(executableNode);
+} = useTriggerExecution(executableNode, { telemetrySource: 'aiWorkflowBuilder' });
 
 const { webhookUrls } = useWebhookUrls(executableNode);
 
@@ -86,6 +87,7 @@ const hasShownParameters = computed(() => {
 	const additionalParamNames = props.state.additionalParameterNames ?? [];
 	return issueParamNames.length > 0 || additionalParamNames.length > 0;
 });
+
 
 const isTriggerOnly = computed(
 	() => props.state.isTrigger && !hasCredential.value && !hasShownParameters.value,
