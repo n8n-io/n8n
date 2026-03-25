@@ -10,7 +10,7 @@ RUN corepack enable && corepack prepare pnpm@10.22.0 --activate
 
 WORKDIR /app
 
-COPY package.json pnpm-lock.yaml pnpm-workspace.yam[l] turbo.jso[n] ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json* ./
 COPY . .
 
 # 2. Install ignoring conflictive scripts
