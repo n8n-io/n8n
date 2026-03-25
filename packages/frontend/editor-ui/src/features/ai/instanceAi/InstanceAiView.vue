@@ -17,8 +17,6 @@ import InstanceAiMemoryPanel from './components/InstanceAiMemoryPanel.vue';
 import InstanceAiDebugPanel from './components/InstanceAiDebugPanel.vue';
 import InstanceAiArtifactsPanel from './components/InstanceAiArtifactsPanel.vue';
 import InstanceAiSettingsPanel from './components/settings/InstanceAiSettingsPanel.vue';
-import InstanceAiStatusBar from './components/InstanceAiStatusBar.vue';
-import InstanceAiConfirmationPanel from './components/InstanceAiConfirmationPanel.vue';
 
 const store = useInstanceAiStore();
 const settingsStore = useInstanceAiSettingsStore();
@@ -309,7 +307,6 @@ function handleStop() {
 							:message="message"
 						/>
 					</TransitionGroup>
-					<InstanceAiConfirmationPanel />
 				</div>
 			</N8nScrollArea>
 
@@ -332,7 +329,6 @@ function handleStop() {
 			<!-- Floating input -->
 			<div ref="inputContainer" :class="$style.inputContainer">
 				<div :class="$style.inputInner">
-					<InstanceAiStatusBar />
 					<InstanceAiInput
 						:is-streaming="store.isStreaming"
 						@submit="handleSubmit"

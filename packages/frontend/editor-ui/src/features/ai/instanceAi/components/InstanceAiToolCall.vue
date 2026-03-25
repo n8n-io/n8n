@@ -30,15 +30,6 @@ const displayName = computed(() => {
 	return label;
 });
 
-const showConfirmation = computed(
-	() =>
-		props.toolCall.confirmation &&
-		props.toolCall.isLoading &&
-		props.toolCall.confirmationStatus !== 'approved' &&
-		props.toolCall.confirmationStatus !== 'denied' &&
-		!store.resolvedConfirmationIds.has(props.toolCall.confirmation.requestId),
-);
-
 /** Resolved confirmation action — from backend or local optimistic state. */
 const resolvedAction = computed((): 'approved' | 'denied' | 'deferred' | null => {
 	// Local optimistic state takes priority (has richer semantics like 'deferred')
@@ -97,14 +88,8 @@ const resolvedAction = computed((): 'approved' | 'denied' | 'deferred' | null =>
 			</div>
 		</CollapsibleContent>
 
-		<!-- Compact pending indicator — full confirmation UI is in the top-level panel -->
-		<div v-if="showConfirmation" :class="$style.pendingIndicator">
-			<N8nIcon icon="circle-pause" size="small" :class="$style.pendingIcon" />
-			<span>{{ i18n.baseText('instanceAi.confirmation.pendingInline') }}</span>
-		</div>
-
-		<!-- Confirmation status indicator (after panel resolution or backend response) -->
-		<div v-else-if="resolvedAction" :class="$style.confirmationStatus">
+		<!-- Confirmation status indicator (after resolution or backend response) -->
+		<div v-if="resolvedAction" :class="$style.confirmationStatus">
 			<N8nIcon
 				:icon="
 					resolvedAction === 'approved'
@@ -135,10 +120,7 @@ const resolvedAction = computed((): 'approved' | 'denied' | 'deferred' | null =>
 
 <style lang="scss" module>
 .root {
-	border: var(--border);
-	border-radius: var(--radius--lg);
-	margin: var(--spacing--2xs) 0;
-	overflow: hidden;
+	margin: var(--spacing--4xs) 0;
 }
 
 .trigger {
@@ -146,8 +128,8 @@ const resolvedAction = computed((): 'approved' | 'denied' | 'deferred' | null =>
 	align-items: center;
 	justify-content: space-between;
 	width: 100%;
-	padding: var(--spacing--2xs) var(--spacing--xs);
-	background: var(--color--background);
+	padding: var(--spacing--4xs) 0;
+	background: none;
 	border: none;
 	cursor: pointer;
 	font-family: var(--font-family);
@@ -155,7 +137,7 @@ const resolvedAction = computed((): 'approved' | 'denied' | 'deferred' | null =>
 	color: var(--text-color--subtle);
 
 	&:hover {
-		background: var(--color--background--shade-1);
+		color: var(--color--text);
 	}
 }
 
@@ -189,9 +171,7 @@ const resolvedAction = computed((): 'approved' | 'denied' | 'deferred' | null =>
 }
 
 .content {
-	border-top: var(--border);
-	padding: var(--spacing--2xs) var(--spacing--xs);
-	background: var(--color--background);
+	padding: var(--spacing--2xs) 0 var(--spacing--2xs) var(--spacing--sm);
 }
 
 .section {
@@ -227,118 +207,12 @@ const resolvedAction = computed((): 'approved' | 'denied' | 'deferred' | null =>
 	color: var(--color--danger);
 }
 
-.pendingIndicator {
-	border-top: var(--border);
-	padding: var(--spacing--2xs) var(--spacing--xs);
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	font-size: var(--font-size--2xs);
-	color: var(--color--warning);
-	background: var(--color--background--shade-1);
-}
-
-.pendingIcon {
-	color: var(--color--warning);
-}
-
 .deferredIcon {
 	color: var(--text-color--subtler);
 }
 
-.confirmationMessage {
-	display: flex;
-	align-items: flex-start;
-	gap: var(--spacing--3xs);
-	font-size: var(--font-size--2xs);
-	color: var(--text-color);
-	margin-bottom: var(--spacing--2xs);
-}
-
-.destructiveIcon {
-	color: var(--color--danger);
-}
-
-.warningIcon {
-	color: var(--color--warning);
-}
-
-.infoIcon {
-	color: var(--color--primary);
-}
-
-.confirmationActions {
-	display: flex;
-	gap: var(--spacing--2xs);
-	justify-content: flex-end;
-}
-
-.confirmButton {
-	padding: var(--spacing--4xs) var(--spacing--xs);
-	border-radius: var(--radius);
-	font-size: var(--font-size--2xs);
-	font-family: var(--font-family);
-	cursor: pointer;
-	border: var(--border);
-	background: var(--color--background);
-	color: var(--text-color);
-
-	&:hover {
-		background: var(--color--background--shade-1);
-	}
-}
-
-.denyButton {
-	color: var(--text-color--subtle);
-}
-
-.approveButton {
-	background: var(--color--primary);
-	color: var(--button--color--text--primary);
-	border-color: var(--color--primary);
-
-	&:hover {
-		background: var(--color--primary--shade-1);
-	}
-}
-
-.approveDestructive {
-	background: var(--color--danger);
-	color: var(--button--color--text--primary);
-	border-color: var(--color--danger);
-
-	&:hover {
-		background: var(--color--danger--shade-1);
-	}
-}
-
-.textInputWrapper {
-	margin-bottom: var(--spacing--2xs);
-}
-
-.textInput {
-	width: 100%;
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	border: var(--border);
-	border-radius: var(--radius);
-	font-size: var(--font-size--2xs);
-	font-family: var(--font-family);
-	background: var(--color--background);
-	color: var(--text-color);
-	outline: none;
-
-	&:focus {
-		border-color: var(--color--primary);
-	}
-
-	&::placeholder {
-		color: var(--text-color--subtle);
-	}
-}
-
 .confirmationStatus {
-	border-top: var(--border);
-	padding: var(--spacing--2xs) var(--spacing--xs);
+	padding: var(--spacing--4xs) 0 var(--spacing--4xs) var(--spacing--sm);
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);

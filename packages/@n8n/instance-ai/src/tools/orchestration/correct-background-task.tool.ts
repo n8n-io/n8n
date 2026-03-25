@@ -12,7 +12,7 @@ export function createCorrectBackgroundTaskTool(context: OrchestrationContext) {
 	return createTool({
 		id: 'correct-background-task',
 		description:
-			'Send a correction to a running background task (e.g. a workflow builder). ' +
+			'Send a correction to a running task (e.g. a workflow builder). ' +
 			'Use when the user sends a message that is clearly a correction for an in-progress build ' +
 			'(mentions specific nodes, databases, credentials, or says "wait"/"use X instead"). ' +
 			'Running task IDs are listed in the <running-tasks> section of the message.',

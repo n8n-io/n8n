@@ -16,6 +16,7 @@ import { RESEARCH_AGENT_PROMPT } from './research-agent-prompt';
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
 import type { OrchestrationContext } from '../../types';
+import { buildSubAgentMessages } from '../sub-agent-messages';
 
 const RESEARCH_MAX_STEPS = 25;
 
@@ -50,7 +51,7 @@ export function startResearchAgentTask(
 	}
 
 	if (!context.spawnBackgroundTask) {
-		return { result: 'Error: background task support not available.', taskId: '', agentId: '' };
+		return { result: 'Error: task support not available.', taskId: '', agentId: '' };
 	}
 
 	const subAgentId = input.agentId ?? `agent-researcher-${nanoid(6)}`;
@@ -99,7 +100,9 @@ export function startResearchAgentTask(
 
 			registerWithMastra(subAgentId, subAgent, context.storage);
 
-			const stream = await subAgent.stream(briefing, {
+			const researchMessages = await buildSubAgentMessages(context, briefing);
+
+			const stream = await subAgent.stream(researchMessages, {
 				maxSteps: RESEARCH_MAX_STEPS,
 				abortSignal: signal,
 				providerOptions: {
@@ -124,7 +127,7 @@ export function startResearchAgentTask(
 	});
 
 	return {
-		result: `Research started (task: ${taskId}). Acknowledge briefly and move on.`,
+		result: `OK (task: ${taskId}).`,
 		taskId,
 		agentId: subAgentId,
 	};
@@ -134,7 +137,7 @@ export function createResearchWithAgentTool(context: OrchestrationContext) {
 	return createTool({
 		id: 'research-with-agent',
 		description:
-			'Spawn a background research agent that searches the web and reads pages ' +
+			'Spawn a research agent that searches the web and reads pages ' +
 			'to answer a complex question. Returns immediately with a task ID — results ' +
 			'arrive when the research completes. Use when the question requires multiple ' +
 			'searches and page reads, or needs synthesis from several sources.',

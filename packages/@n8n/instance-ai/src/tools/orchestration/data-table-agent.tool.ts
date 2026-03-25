@@ -18,6 +18,7 @@ import { registerWithMastra } from '../../agent/register-with-mastra';
 import { createSubAgentMemory, subAgentResourceId } from '../../memory/sub-agent-memory';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
 import type { OrchestrationContext } from '../../types';
+import { buildSubAgentMessages } from '../sub-agent-messages';
 
 const DATA_TABLE_MAX_STEPS = 15;
 
@@ -65,7 +66,7 @@ export function startDataTableAgentTask(
 	}
 
 	if (!context.spawnBackgroundTask) {
-		return { result: 'Error: background task support not available.', taskId: '', agentId: '' };
+		return { result: 'Error: task support not available.', taskId: '', agentId: '' };
 	}
 
 	const subAgentId = input.agentId ?? `agent-datatable-${nanoid(6)}`;
@@ -121,7 +122,9 @@ export function startDataTableAgentTask(
 					}
 				: undefined;
 
-			const stream = await subAgent.stream(input.task, {
+			const dtMessages = await buildSubAgentMessages(context, input.task);
+
+			const stream = await subAgent.stream(dtMessages, {
 				maxSteps: DATA_TABLE_MAX_STEPS,
 				abortSignal: signal,
 				providerOptions: {
@@ -150,7 +153,7 @@ export function startDataTableAgentTask(
 	});
 
 	return {
-		result: `Data table operation started (task: ${taskId}). Acknowledge briefly and move on.`,
+		result: `OK (task: ${taskId}).`,
 		taskId,
 		agentId: subAgentId,
 	};

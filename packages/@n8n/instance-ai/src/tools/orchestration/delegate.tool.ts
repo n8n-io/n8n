@@ -11,6 +11,7 @@ import { MEMORY_ENABLED_ROLES } from '../../memory/sub-agent-memory-templates';
 import { formatPreviousAttempts } from '../../storage/iteration-log';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
 import type { OrchestrationContext } from '../../types';
+import { buildSubAgentMessages } from '../sub-agent-messages';
 
 const FORBIDDEN_TOOL_NAMES = new Set(['plan', 'delegate']);
 
@@ -111,7 +112,7 @@ export async function startDetachedDelegateTask(
 
 	if (!context.spawnBackgroundTask) {
 		return {
-			result: 'Delegation failed: background task support not available.',
+			result: 'Delegation failed: task support not available.',
 			taskId: '',
 			agentId: '',
 		};
@@ -165,7 +166,10 @@ export async function startDetachedDelegateTask(
 			const memoryOpts = memory
 				? { resource: subAgentResourceId(context.userId, role), thread: subAgentId }
 				: undefined;
-			const stream = await subAgent.stream(briefingMessage, {
+
+			const detachedMessages = await buildSubAgentMessages(context, briefingMessage);
+
+			const stream = await subAgent.stream(detachedMessages, {
 				maxSteps: context.subAgentMaxSteps ?? FALLBACK_MAX_STEPS,
 				abortSignal: signal,
 				providerOptions: {
@@ -195,7 +199,7 @@ export async function startDetachedDelegateTask(
 	});
 
 	return {
-		result: `Delegation started (task: ${taskId}). Acknowledge briefly and move on.`,
+		result: `OK (task: ${taskId}).`,
 		taskId,
 		agentId: subAgentId,
 	};
@@ -269,7 +273,10 @@ export function createDelegateTool(context: OrchestrationContext) {
 				const memoryOpts = memory
 					? { resource: subAgentResourceId(context.userId, input.role), thread: subAgentId }
 					: undefined;
-				const stream = await subAgent.stream(briefingMessage, {
+
+				const inlineMessages = await buildSubAgentMessages(context, briefingMessage);
+
+				const stream = await subAgent.stream(inlineMessages, {
 					maxSteps: context.subAgentMaxSteps ?? FALLBACK_MAX_STEPS,
 					abortSignal: context.abortSignal,
 					providerOptions: {

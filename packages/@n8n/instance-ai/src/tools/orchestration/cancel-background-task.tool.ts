@@ -12,18 +12,18 @@ export function createCancelBackgroundTaskTool(context: OrchestrationContext) {
 	return createTool({
 		id: 'cancel-background-task',
 		description:
-			'Cancel a running background task (workflow builder, data table manager) by its task ID. ' +
-			'Use when the user asks to stop a background task. ' +
+			'Cancel a running task (workflow builder, data table manager) by its task ID. ' +
+			'Use when the user asks to stop an in-progress task. ' +
 			'Running task IDs are listed in the <running-tasks> section of the message.',
 		inputSchema: z.object({
 			taskId: z.string().describe('The task ID to cancel (e.g. build-XXXXXXXX)'),
 		}),
 		execute: async (input) => {
 			if (!context.cancelBackgroundTask) {
-				return { result: 'Error: background task cancellation not available.' };
+				return { result: 'Error: task cancellation not available.' };
 			}
 			await context.cancelBackgroundTask(input.taskId);
-			return { result: `Background task ${input.taskId} cancelled.` };
+			return { result: `Task ${input.taskId} cancelled.` };
 		},
 	});
 }

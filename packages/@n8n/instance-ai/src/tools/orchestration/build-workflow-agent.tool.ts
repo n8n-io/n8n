@@ -29,6 +29,7 @@ import type { TriggerType, WorkflowBuildOutcome } from '../../workflow-loop';
 import type { BuilderWorkspace } from '../../workspace/builder-sandbox-factory';
 import { readFileViaSandbox } from '../../workspace/sandbox-fs';
 import { getWorkspaceRoot } from '../../workspace/sandbox-setup';
+import { buildSubAgentMessages } from '../sub-agent-messages';
 import { createApplyWorkflowCredentialsTool } from '../workflows/apply-workflow-credentials.tool';
 import { buildCredentialMap, type CredentialMap } from '../workflows/resolve-credentials';
 import {
@@ -86,9 +87,9 @@ function buildOutcome(
 
 const BUILDER_MAX_STEPS = 30;
 
-const DETACHED_BUILDER_REQUIREMENTS = `## Detached Task Contract
+const DETACHED_BUILDER_REQUIREMENTS = `## Task Contract
 
-You are running as a detached background task. Do not stop after a successful submit — verify the workflow works.
+Do not stop after a successful submit — verify the workflow works.
 
 ### Completion criteria
 
@@ -158,7 +159,7 @@ export async function startBuildWorkflowAgentTask(
 ): Promise<StartedWorkflowBuildTask> {
 	if (!context.spawnBackgroundTask) {
 		return {
-			result: 'Error: background task support not available.',
+			result: 'Error: task support not available.',
 			taskId: '',
 			agentId: '',
 		};
@@ -380,7 +381,9 @@ export async function startBuildWorkflowAgentTask(
 							}
 						: undefined;
 
-					const stream = await subAgent.stream(briefing, {
+					const sandboxMessages = await buildSubAgentMessages(context, briefing);
+
+					const stream = await subAgent.stream(sandboxMessages, {
 						maxSteps: BUILDER_MAX_STEPS,
 						abortSignal: signal,
 						providerOptions: {
@@ -494,7 +497,9 @@ export async function startBuildWorkflowAgentTask(
 						}
 					: undefined;
 
-				const stream = await subAgent.stream(briefing, {
+				const toolMessages = await buildSubAgentMessages(context, briefing);
+
+				const stream = await subAgent.stream(toolMessages, {
 					maxSteps: BUILDER_MAX_STEPS,
 					abortSignal: signal,
 					providerOptions: {
@@ -528,7 +533,7 @@ export async function startBuildWorkflowAgentTask(
 	});
 
 	return {
-		result: `Workflow build started (task: ${taskId}). Acknowledge briefly and move on.`,
+		result: `OK (task: ${taskId}).`,
 		taskId,
 		agentId: subAgentId,
 	};

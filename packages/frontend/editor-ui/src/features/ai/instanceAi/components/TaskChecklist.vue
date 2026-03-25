@@ -47,10 +47,6 @@ function getConfig(status: string) {
 	flex-direction: column;
 	gap: var(--spacing--4xs);
 	margin: var(--spacing--2xs) 0;
-	padding: var(--spacing--2xs) var(--spacing--xs);
-	border: var(--border);
-	border-radius: var(--radius--lg);
-	background: var(--color--background);
 }
 
 .row {

@@ -769,6 +769,8 @@ export interface OrchestrationContext {
 	sendCorrectionToTask?: (taskId: string, correction: string) => void;
 	/** Shared workflow-task state service for build / verify / credential-finalize flows */
 	workflowTaskService?: WorkflowTaskService;
+	/** Retrieve recent conversation messages for passing context to sub-agents */
+	getRecentMessages?: () => Promise<Array<{ role: 'user' | 'assistant'; content: string }>>;
 }
 
 // ── Agent factory options ────────────────────────────────────────────────────

@@ -664,6 +664,33 @@ export class InstanceAiService {
 			builderSandboxFactory: this.builderSandboxFactory,
 			nodeDefinitionDirs: nodeDefDirs.length > 0 ? nodeDefDirs : undefined,
 			domainContext: context,
+			getRecentMessages: async () => {
+				try {
+					const memoryStore = this.compositeStore.stores.memory;
+					const { messages } = await memoryStore.listMessages({
+						threadId,
+						perPage: 10,
+						page: 0,
+						orderBy: { field: 'createdAt', direction: 'DESC' },
+					});
+					const recent: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+					for (const msg of messages) {
+						if (msg.role !== 'user' && msg.role !== 'assistant') continue;
+						const text =
+							typeof msg.content === 'string'
+								? msg.content
+								: typeof (msg.content as Record<string, unknown>)?.content === 'string'
+									? ((msg.content as Record<string, unknown>).content as string)
+									: '';
+						if (!text) continue;
+						recent.push({ role: msg.role, content: text });
+					}
+					// Reverse to chronological order and return the last 6
+					return recent.reverse().slice(-6);
+				} catch {
+					return [];
+				}
+			},
 		};
 
 		return {
