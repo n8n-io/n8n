@@ -27,7 +27,6 @@ import type { ChatPayload } from '../workflow-builder-agent';
 import {
 	CODE_BUILDER_GET_NODE_TYPES_TOOL,
 	CODE_BUILDER_GET_SUGGESTED_NODES_TOOL,
-	CODE_BUILDER_SDK_REFERENCE_TOOL,
 	CODE_BUILDER_SEARCH_NODES_TOOL,
 	MAX_AGENT_ITERATIONS,
 	MAX_VALIDATE_ATTEMPTS,
@@ -46,7 +45,6 @@ import { WarningTracker } from './state/warning-tracker';
 import { createCodeBuilderGetTool } from './tools/code-builder-get.tool';
 import { createCodeBuilderSearchTool } from './tools/code-builder-search.tool';
 import { createGetSuggestedNodesTool } from './tools/get-suggested-nodes.tool';
-import { createSdkReferenceTool } from './tools/sdk-reference.tool';
 import type { CodeBuilderAgentConfig, TokenUsage } from './types';
 export type { CodeBuilderAgentConfig } from './types';
 import { sanitizeLlmErrorMessage } from '../utils/error-sanitizer';
@@ -144,8 +142,7 @@ export class CodeBuilderAgent {
 		const searchTool = createCodeBuilderSearchTool(this.nodeTypeParser);
 		const getTool = createCodeBuilderGetTool({ nodeDefinitionDirs: config.nodeDefinitionDirs });
 		const suggestedNodesTool = createGetSuggestedNodesTool(this.nodeTypeParser);
-		const sdkReferenceTool = createSdkReferenceTool();
-		this.tools = [searchTool, getTool, suggestedNodesTool, sdkReferenceTool];
+		this.tools = [searchTool, getTool, suggestedNodesTool];
 		this.toolsMap = new Map(this.tools.map((t) => [t.name, t]));
 
 		// Initialize chat setup handler
@@ -171,7 +168,6 @@ export class CodeBuilderAgent {
 					CODE_BUILDER_GET_SUGGESTED_NODES_TOOL.toolName,
 					CODE_BUILDER_GET_SUGGESTED_NODES_TOOL.displayTitle,
 				],
-				[CODE_BUILDER_SDK_REFERENCE_TOOL.toolName, CODE_BUILDER_SDK_REFERENCE_TOOL.displayTitle],
 			]),
 			validateToolHandler: this.validateToolHandler,
 		});
