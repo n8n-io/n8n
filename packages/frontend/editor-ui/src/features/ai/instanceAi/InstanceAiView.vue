@@ -32,7 +32,21 @@ const i18n = useI18n();
 const route = useRoute();
 const documentTitle = useDocumentTitle();
 
-documentTitle.set('Instance AI');
+documentTitle.set('n8n Uberagent');
+
+// --- Header title ---
+const currentThreadTitle = computed(() => {
+	const thread = store.threads.find((t) => t.id === store.currentThreadId);
+	if (!thread || thread.title === NEW_CONVERSATION_TITLE) {
+		const firstUserMsg = store.messages.find((m) => m.role === 'user');
+		if (firstUserMsg?.content) {
+			const text = firstUserMsg.content.trim();
+			return text.length > 60 ? text.slice(0, 60) + '\u2026' : text;
+		}
+		return NEW_CONVERSATION_TITLE;
+	}
+	return thread.title;
+});
 
 // --- Canvas preview state ---
 const activeWorkflowId = ref<string | null>(null);
@@ -384,10 +398,6 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 	await store.sendMessage(message, attachments, iframePushRef.value ?? undefined);
 }
 
-function handleSuggestionSelect(prompt: string) {
-	void handleSubmit(prompt);
-}
-
 function handleStop() {
 	void store.cancelRun();
 }
@@ -431,8 +441,8 @@ function handleStop() {
 		>
 			<!-- Header -->
 			<div :class="$style.header">
-				<N8nText tag="h2" size="large" bold>
-					{{ i18n.baseText('instanceAi.view.title') }}
+				<N8nText tag="h2" size="large" bold :class="$style.headerTitle">
+					{{ currentThreadTitle }}
 				</N8nText>
 				<N8nText
 					v-if="store.sseState === 'reconnecting'"
@@ -475,53 +485,67 @@ function handleStop() {
 			<!-- Content area: chat + artifacts side by side below header -->
 			<div :class="$style.contentArea">
 				<div :class="$style.chatContent">
-					<!-- Messages -->
-					<N8nScrollArea :class="$style.scrollArea">
-						<div
-							ref="scrollable"
-							:class="$style.messageList"
-							:style="{ paddingBottom: `${inputAreaHeight}px` }"
-						>
-							<InstanceAiEmptyState v-if="!store.hasMessages" @select="handleSuggestionSelect" />
-							<TransitionGroup name="message-slide">
-								<InstanceAiMessage
-									v-for="message in store.messages"
-									:key="message.id"
-									:message="message"
-								/>
-							</TransitionGroup>
-							<InstanceAiConfirmationPanel />
-						</div>
-					</N8nScrollArea>
-
-					<!-- Scroll to bottom button -->
-					<div
-						:class="$style.scrollButtonContainer"
-						:style="{ bottom: `${inputAreaHeight + 8}px` }"
-					>
-						<Transition name="fade">
-							<N8nIconButton
-								v-if="userScrolledUp && store.hasMessages"
-								variant="outline"
-								icon="arrow-down"
-								:class="$style.scrollToBottomButton"
-								@click="
-									scrollToBottom(true);
-									userScrolledUp = false;
-								"
+					<!-- Empty state: centered layout -->
+					<div v-if="!store.hasMessages" :class="$style.emptyLayout">
+						<InstanceAiEmptyState />
+						<div :class="$style.centeredInput">
+							<InstanceAiStatusBar />
+							<InstanceAiInput
+								:is-streaming="store.isStreaming"
+								@submit="handleSubmit"
+								@stop="handleStop"
 							/>
-						</Transition>
+						</div>
 					</div>
 
-					<!-- Floating input -->
-					<div ref="inputContainer" :class="$style.inputContainer">
-						<InstanceAiStatusBar />
-						<InstanceAiInput
-							:is-streaming="store.isStreaming"
-							@submit="handleSubmit"
-							@stop="handleStop"
-						/>
-					</div>
+					<!-- Messages: scroll + floating input layout -->
+					<template v-else>
+						<N8nScrollArea :class="$style.scrollArea">
+							<div
+								ref="scrollable"
+								:class="$style.messageList"
+								:style="{ paddingBottom: `${inputAreaHeight}px` }"
+							>
+								<TransitionGroup name="message-slide">
+									<InstanceAiMessage
+										v-for="message in store.messages"
+										:key="message.id"
+										:message="message"
+									/>
+								</TransitionGroup>
+								<InstanceAiConfirmationPanel />
+							</div>
+						</N8nScrollArea>
+
+						<!-- Scroll to bottom button -->
+						<div
+							:class="$style.scrollButtonContainer"
+							:style="{ bottom: `${inputAreaHeight + 8}px` }"
+						>
+							<Transition name="fade">
+								<N8nIconButton
+									v-if="userScrolledUp && store.hasMessages"
+									variant="outline"
+									icon="arrow-down"
+									:class="$style.scrollToBottomButton"
+									@click="
+										scrollToBottom(true);
+										userScrolledUp = false;
+									"
+								/>
+							</Transition>
+						</div>
+
+						<!-- Floating input -->
+						<div ref="inputContainer" :class="$style.inputContainer">
+							<InstanceAiStatusBar />
+							<InstanceAiInput
+								:is-streaming="store.isStreaming"
+								@submit="handleSubmit"
+								@stop="handleStop"
+							/>
+						</div>
+					</template>
 				</div>
 
 				<!-- Artifacts panel (below header, beside chat) -->
@@ -631,6 +655,13 @@ function handleStop() {
 	gap: var(--spacing--xs);
 }
 
+.headerTitle {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	min-width: 0;
+}
+
 .headerActions {
 	margin-left: auto;
 	display: flex;
@@ -659,6 +690,21 @@ function handleStop() {
 	display: flex;
 	flex-direction: column;
 	position: relative;
+}
+
+.emptyLayout {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: var(--spacing--lg);
+	padding: var(--spacing--lg);
+}
+
+.centeredInput {
+	width: 100%;
+	max-width: 680px;
 }
 
 .scrollArea {
