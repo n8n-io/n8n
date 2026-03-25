@@ -2,11 +2,16 @@
 import { computed, reactive, watch } from 'vue';
 import { useWorkflowSetupState } from '@/features/setupPanel/composables/useWorkflowSetupState';
 import NodeSetupCard from '@/features/setupPanel/components/cards/NodeSetupCard.vue';
+import AgentGroupSetupCard from '@/features/setupPanel/components/cards/AgentGroupSetupCard.vue';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import type { SetupCardItem } from '@/features/setupPanel/setupPanel.types';
+import {
+	type SetupCardItem,
+	isCardComplete,
+	isAgentGroupCard,
+} from '@/features/setupPanel/setupPanel.types';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const props = withDefaults(
@@ -48,10 +53,13 @@ const onCredentialDeselected = (payload: { credentialType: string; nodeName?: st
 
 const visibleCards = computed(() => {
 	if (props.showCompleted) return setupCards.value;
-	return setupCards.value.filter((card) => !card.state.isComplete);
+	return setupCards.value.filter((card) => !isCardComplete(card));
 });
 
 const cardKey = (card: SetupCardItem): string => {
+	if (isAgentGroupCard(card)) {
+		return `agent-${card.agentGroup.agentNode.id}`;
+	}
 	return card.state.credentialType
 		? `${card.state.credentialType}-${card.state.node.id}`
 		: `${card.state.node.id}`;
@@ -68,7 +76,7 @@ const isCardExpanded = (key: string): boolean => expandedStates[key] ?? false;
 
 /** Find the next uncompleted card after a given index */
 const findNextUncompleted = (cards: SetupCardItem[], afterIndex: number) =>
-	cards.find((c, j) => j > afterIndex && !c.state.isComplete);
+	cards.find((c, j) => j > afterIndex && !isCardComplete(c));
 
 const setCardExpanded = (key: string, value: boolean) => {
 	expandedStates[key] = value;
@@ -78,7 +86,7 @@ const setCardExpanded = (key: string, value: boolean) => {
 		const cards = setupCards.value;
 		const cardIndex = cards.findIndex((c) => cardKey(c) === key);
 		const card = cards[cardIndex];
-		if (card?.state.isComplete && cardsWithParameters.has(key)) {
+		if (card && isCardComplete(card) && cardsWithParameters.has(key)) {
 			const nextUncompleted = findNextUncompleted(cards, cardIndex);
 			if (nextUncompleted) {
 				expandedStates[cardKey(nextUncompleted)] = true;
@@ -96,11 +104,24 @@ watch(
 			const key = cardKey(card);
 			if (cardsWithParameters.has(key)) continue;
 
-			const additionalParamNames = card.state.additionalParameterNames ?? [];
-			const issueParamNames = Object.keys(card.state.parameterIssues);
+			if (isAgentGroupCard(card)) {
+				const sections = [
+					...(card.agentGroup.agentState ? [card.agentGroup.agentState] : []),
+					...card.agentGroup.subnodeCards,
+				];
+				const hasParams = sections.some(
+					(s) =>
+						(s.additionalParameterNames?.length ?? 0) > 0 ||
+						Object.keys(s.parameterIssues).length > 0,
+				);
+				if (hasParams) cardsWithParameters.add(key);
+			} else {
+				const additionalParamNames = card.state.additionalParameterNames ?? [];
+				const issueParamNames = Object.keys(card.state.parameterIssues);
 
-			if (additionalParamNames.length > 0 || issueParamNames.length > 0) {
-				cardsWithParameters.add(key);
+				if (additionalParamNames.length > 0 || issueParamNames.length > 0) {
+					cardsWithParameters.add(key);
+				}
 			}
 		}
 
@@ -136,14 +157,21 @@ watch(
 				const key = cardKey(card);
 				const wasComplete = prevCompleteStates.get(key) ?? false;
 
-				if (card.state.isComplete && !wasComplete && !cardsWithParameters.has(key)) {
+				const cardIsComplete = isCardComplete(card);
+				const cardIsAutoApplied = isAgentGroupCard(card)
+					? [
+							...(card.agentGroup.agentState ? [card.agentGroup.agentState] : []),
+							...card.agentGroup.subnodeCards,
+						].some((s) => s.isAutoApplied)
+					: card.state.isAutoApplied;
+
+				if (cardIsComplete && !wasComplete && !cardsWithParameters.has(key)) {
 					expandedStates[key] = false;
 
 					// When auto-applied credentials complete a card, only open the next card
 					// if all other cards are already collapsed (don't disrupt user's current work).
 					const allOthersCollapsed =
-						!card.state.isAutoApplied ||
-						cards.every((c, j) => j === i || !expandedStates[cardKey(c)]);
+						!cardIsAutoApplied || cards.every((c, j) => j === i || !expandedStates[cardKey(c)]);
 
 					if (allOthersCollapsed) {
 						const nextUncompleted = findNextUncompleted(cards, i);
@@ -158,7 +186,7 @@ watch(
 
 		prevCompleteStates.clear();
 		for (const card of cards) {
-			prevCompleteStates.set(cardKey(card), card.state.isComplete);
+			prevCompleteStates.set(cardKey(card), isCardComplete(card));
 		}
 	},
 	{ deep: true, immediate: true },
@@ -188,16 +216,26 @@ watch(
 			</div>
 		</div>
 		<div v-else :class="$style['card-list']" data-test-id="setup-cards-list">
-			<NodeSetupCard
-				v-for="card in visibleCards"
-				:key="cardKey(card)"
-				:state="card.state"
-				:first-trigger-name="firstTriggerName"
-				:expanded="isCardExpanded(cardKey(card))"
-				@update:expanded="(val: boolean) => setCardExpanded(cardKey(card), val)"
-				@credential-selected="onCredentialSelected"
-				@credential-deselected="onCredentialDeselected"
-			/>
+			<template v-for="card in visibleCards" :key="cardKey(card)">
+				<AgentGroupSetupCard
+					v-if="card.agentGroup"
+					:agent-group="card.agentGroup"
+					:first-trigger-name="firstTriggerName"
+					:expanded="isCardExpanded(cardKey(card))"
+					@update:expanded="(val: boolean) => setCardExpanded(cardKey(card), val)"
+					@credential-selected="onCredentialSelected"
+					@credential-deselected="onCredentialDeselected"
+				/>
+				<NodeSetupCard
+					v-else
+					:state="card.state"
+					:first-trigger-name="firstTriggerName"
+					:expanded="isCardExpanded(cardKey(card))"
+					@update:expanded="(val: boolean) => setCardExpanded(cardKey(card), val)"
+					@credential-selected="onCredentialSelected"
+					@credential-deselected="onCredentialDeselected"
+				/>
+			</template>
 			<div
 				v-if="isAllComplete"
 				:class="$style['complete-message']"

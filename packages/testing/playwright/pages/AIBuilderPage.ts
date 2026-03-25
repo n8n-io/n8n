@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 
 import { BuilderSetupWizardPage } from './BuilderSetupWizardPage';
 
@@ -20,6 +20,10 @@ export class AIBuilderPage {
 		return this.page.getByTestId('workflow-suggestions');
 	}
 
+	getCanvasChoicePrompt() {
+		return this.page.getByTestId('canvas-choice-prompt');
+	}
+
 	getSuggestionPills() {
 		// Get buttons within the pills container section, not the prompt input section
 		return this.getWorkflowSuggestions()
@@ -34,6 +38,15 @@ export class AIBuilderPage {
 	// #endregion
 
 	// #region Actions
+
+	async waitForCanvasBuildEntry(options?: { timeout?: number }) {
+		const timeout = options?.timeout ?? 30000;
+		const buildButton = this.getCanvasBuildWithAIButton();
+
+		await expect(this.getCanvasChoicePrompt()).toBeVisible({ timeout });
+		await expect(buildButton).toBeVisible({ timeout });
+		await expect(buildButton).toBeEnabled({ timeout });
+	}
 
 	async waitForWorkflowBuildComplete(options?: { timeout?: number }) {
 		const timeout = options?.timeout ?? 300000; // Default 5 minutes

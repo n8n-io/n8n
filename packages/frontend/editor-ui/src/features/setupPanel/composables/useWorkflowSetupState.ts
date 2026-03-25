@@ -6,7 +6,12 @@ import {
 	type INode,
 	isResourceLocatorValue,
 } from 'n8n-workflow';
-import type { SetupCardItem, NodeSetupState } from '@/features/setupPanel/setupPanel.types';
+import type {
+	SetupCardItem,
+	NodeSetupState,
+	AgentGroupItem,
+} from '@/features/setupPanel/setupPanel.types';
+import { isCardComplete } from '@/features/setupPanel/setupPanel.types';
 
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
@@ -36,6 +41,8 @@ import {
 	findPlaceholderDetails,
 } from '@/features/ai/assistant/composables/useBuilderTodos';
 import { PLACEHOLDER_FILLED_AT_EXECUTION_TIME, MANUAL_TRIGGER_NODE_TYPE } from '@/app/constants';
+import { AGENT_NODE_TYPE } from '@/app/constants/nodeTypes';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { sortNodesByExecutionOrder } from '@/app/utils/workflowUtils';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -678,16 +685,110 @@ export const useWorkflowSetupState = (
 			isComplete: trigState.isComplete,
 		}));
 
-		const all: SetupCardItem[] = [...credentialCards, ...triggerCards, ...nodeStates.value]
+		const flatCards: SetupCardItem[] = [...credentialCards, ...triggerCards, ...nodeStates.value]
 			.filter((state) => state.node.type !== MANUAL_TRIGGER_NODE_TYPE)
 			.map((state) => ({ state }));
 
 		const executionOrder = nodesRequiringSetup.value.map(({ node }) => node.name);
 
-		return all.sort(
+		flatCards.sort(
 			(a, b) =>
-				executionOrder.indexOf(a.state.node.name) - executionOrder.indexOf(b.state.node.name),
+				executionOrder.indexOf(a.state!.node.name) - executionOrder.indexOf(b.state!.node.name),
 		);
+
+		// --- Agent grouping ---
+		const connByDest = workflowsStore.connectionsByDestinationNode;
+		const agentNodes = sourceNodes.value.filter((n) => n.type === AGENT_NODE_TYPE);
+
+		if (agentNodes.length === 0) return flatCards;
+
+		const claimedNodeNames = new Set<string>();
+		const agentGroups = new Map<string, AgentGroupItem>();
+
+		for (const agentNode of agentNodes) {
+			// Find subnodes connected via AI connection types
+			const destConns = connByDest[agentNode.name];
+			if (!destConns) continue;
+
+			const subnodeNames = new Set<string>();
+			for (const connType of Object.keys(destConns)) {
+				if (connType === NodeConnectionTypes.Main) continue;
+				for (const inputSlot of destConns[connType as keyof typeof destConns] ?? []) {
+					for (const conn of inputSlot ?? []) {
+						if (!claimedNodeNames.has(conn.node)) {
+							subnodeNames.add(conn.node);
+						}
+					}
+				}
+			}
+
+			// Collect subnode cards from the flat list
+			const subnodeCards: NodeSetupState[] = [];
+			let agentState: NodeSetupState | undefined;
+
+			for (const card of flatCards) {
+				if (!card.state) continue;
+				const nodeName = card.state.node.name;
+				if (subnodeNames.has(nodeName) && !claimedNodeNames.has(nodeName)) {
+					subnodeCards.push(card.state);
+				}
+				if (nodeName === agentNode.name && !claimedNodeNames.has(nodeName)) {
+					agentState = card.state;
+				}
+			}
+
+			// Only create group if at least one subnode has a card
+			if (subnodeCards.length === 0) continue;
+
+			// Claim all grouped node names
+			for (const s of subnodeCards) claimedNodeNames.add(s.node.name);
+			if (agentState) claimedNodeNames.add(agentNode.name);
+
+			agentGroups.set(agentNode.name, {
+				agentNode,
+				agentState,
+				subnodeCards,
+			});
+		}
+
+		if (agentGroups.size === 0) return flatCards;
+
+		// Build final list: replace claimed cards with agent group entries
+		const result: SetupCardItem[] = [];
+		const insertedAgentGroups = new Set<string>();
+
+		for (const card of flatCards) {
+			const nodeName = card.state!.node.name;
+
+			if (claimedNodeNames.has(nodeName)) {
+				// Check if this is an agent that owns a group
+				const group = agentGroups.get(nodeName);
+				if (group && !insertedAgentGroups.has(nodeName)) {
+					result.push({ agentGroup: group });
+					insertedAgentGroups.add(nodeName);
+				}
+				// For subnode cards that appear before their agent in execution order,
+				// insert the group at the first subnode position
+				if (!group) {
+					for (const [agentName, agentGroup] of agentGroups) {
+						if (
+							!insertedAgentGroups.has(agentName) &&
+							(agentGroup.subnodeCards.some((s) => s.node.name === nodeName) ||
+								agentGroup.agentState?.node.name === nodeName)
+						) {
+							result.push({ agentGroup });
+							insertedAgentGroups.add(agentName);
+							break;
+						}
+					}
+				}
+				continue;
+			}
+
+			result.push(card);
+		}
+
+		return result;
 	});
 
 	const totalCredentialsMissing = computed(() => {
@@ -699,7 +800,7 @@ export const useWorkflowSetupState = (
 	});
 
 	const isAllComplete = computed(() => {
-		return setupCards.value.length > 0 && setupCards.value.every((card) => card.state.isComplete);
+		return setupCards.value.length > 0 && setupCards.value.every((card) => isCardComplete(card));
 	});
 
 	/**

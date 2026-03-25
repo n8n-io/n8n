@@ -1,4 +1,4 @@
-import type { Locator } from '@playwright/test';
+import { expect, type Locator } from '@playwright/test';
 
 import { BasePage } from './BasePage';
 import { ROUTES } from '../config/constants';
@@ -69,6 +69,10 @@ export class CanvasPage extends BasePage {
 
 	getCanvasNodes() {
 		return this.page.getByTestId('canvas-node');
+	}
+
+	getChoicePrompt(): Locator {
+		return this.page.getByTestId('canvas-choice-prompt');
 	}
 
 	async clickNodeCreatorPlusButton(): Promise<void> {
@@ -529,6 +533,15 @@ export class CanvasPage extends BasePage {
 	}
 
 	// Actions
+
+	async waitForBlankCanvasReady(options?: { timeout?: number }): Promise<void> {
+		const timeout = options?.timeout ?? 30000;
+
+		await expect(this.canvasPane()).toBeVisible({ timeout });
+		await expect(this.getNodeViewLoader()).toBeHidden({ timeout });
+		await expect(this.getLoadingMask()).toBeHidden({ timeout });
+		await expect(this.getChoicePrompt()).toBeVisible({ timeout });
+	}
 
 	async addInitialNodeToCanvas(nodeName: string): Promise<void> {
 		await this.clickCanvasPlusButton();

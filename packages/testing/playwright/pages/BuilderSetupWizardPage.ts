@@ -74,4 +74,36 @@ export class BuilderSetupWizardPage {
 	}
 
 	// #endregion
+
+	// #region Agent Group Card Locators
+
+	/** The agent group card (shown instead of regular card for agent nodes) */
+	getAgentGroupCard(): Locator {
+		return this.page.getByTestId('builder-agent-group-card');
+	}
+
+	/** Agent group card title (agent node name) */
+	getAgentGroupTitle(name: string): Locator {
+		return this.getAgentGroupCard().getByText(name, { exact: true });
+	}
+
+	/** A specific sub-node section header by name (clickable to expand/collapse) */
+	getAgentGroupSectionHeader(name: string): Locator {
+		return this.page
+			.getByTestId('builder-agent-group-section')
+			.filter({ hasText: name })
+			.getByTestId('builder-agent-group-section-header');
+	}
+
+	/** Previous-step arrow inside the agent group card footer */
+	getAgentGroupPrevButton(): Locator {
+		return this.page.getByTestId('builder-agent-group-card-prev');
+	}
+
+	/** Next-step arrow inside the agent group card footer */
+	getAgentGroupNextButton(): Locator {
+		return this.page.getByTestId('builder-agent-group-card-next');
+	}
+
+	// #endregion
 }
