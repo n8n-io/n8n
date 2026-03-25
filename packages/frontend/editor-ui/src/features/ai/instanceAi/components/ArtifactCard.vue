@@ -56,16 +56,18 @@ function handleClick(e: MouseEvent) {
 .card {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--xs);
-	padding: var(--spacing--xs) var(--spacing--sm);
+	gap: var(--spacing--sm);
+	padding: var(--spacing--sm);
 	border: var(--border);
-	border-radius: var(--radius--xl);
-	background: var(--color--background);
+	border-radius: var(--radius--lg);
+	background: var(--color--background--light-2);
 	cursor: pointer;
-	margin: var(--spacing--2xs) 0;
+	margin: var(--spacing--xs) 0;
+	transition: box-shadow 0.3s ease;
 
 	&:hover {
-		background: var(--color--background--shade-1);
+		box-shadow: 0 2px 8px rgba(68, 28, 23, 0.1);
+		clip-path: inset(0 -8px -8px -8px);
 	}
 }
 
@@ -77,11 +79,12 @@ function handleClick(e: MouseEvent) {
 .content {
 	display: flex;
 	flex-direction: column;
+	gap: var(--spacing--5xs);
 	min-width: 0;
 }
 
 .name {
-	font-size: var(--font-size--md);
+	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--bold);
 	color: var(--color--text);
 	overflow: hidden;
@@ -90,8 +93,8 @@ function handleClick(e: MouseEvent) {
 }
 
 .metadata {
-	font-size: var(--font-size--xs);
-	color: var(--color--text--tint-2);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-1);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;

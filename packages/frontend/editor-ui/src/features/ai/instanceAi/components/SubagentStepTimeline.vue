@@ -14,7 +14,7 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
-const { getToolLabel, getToggleLabel } = useToolLabel();
+const { getToolLabel, getToggleLabel, getHideLabel } = useToolLabel();
 
 const CODE_BLOCK_PATTERN = /```/;
 
@@ -24,6 +24,7 @@ interface TimelineStep {
 	label: string;
 	isLoading: boolean;
 	toggleLabel?: string;
+	hideLabel?: string;
 	toolCall?: InstanceAiToolCallState;
 	textContent?: string;
 	isLongText?: boolean;
@@ -78,6 +79,7 @@ const steps = computed((): TimelineStep[] => {
 				label: getToolLabel(tc.toolName),
 				isLoading: tc.isLoading,
 				toggleLabel: getToggleLabel(tc),
+				hideLabel: getHideLabel(tc),
 				toolCall: tc,
 			});
 		}
@@ -118,9 +120,9 @@ const steps = computed((): TimelineStep[] => {
 				<template v-if="step.type === 'text'">
 					<template v-if="step.isLongText">
 						<span :class="$style.textLabel">{{ step.shortLabel }}</span>
-						<CollapsibleRoot :class="$style.toggleBlock">
+						<CollapsibleRoot v-slot="{ open: textOpen }" :class="$style.toggleBlock">
 							<CollapsibleTrigger :class="$style.toggleButton">
-								{{ i18n.baseText('instanceAi.stepTimeline.showData') }}
+								{{ i18n.baseText(textOpen ? 'instanceAi.stepTimeline.hideData' : 'instanceAi.stepTimeline.showData') }}
 							</CollapsibleTrigger>
 							<CollapsibleContent :class="$style.toggleContent">
 								<div :class="$style.dataSection">
@@ -137,9 +139,9 @@ const steps = computed((): TimelineStep[] => {
 				<!-- Tool call: label + optional toggle -->
 				<template v-else-if="step.type === 'tool-call'">
 					<span :class="$style.label">{{ step.label }}</span>
-					<CollapsibleRoot v-if="step.toggleLabel" :class="$style.toggleBlock">
+					<CollapsibleRoot v-if="step.toggleLabel" v-slot="{ open: toolOpen }" :class="$style.toggleBlock">
 						<CollapsibleTrigger :class="$style.toggleButton">
-							{{ step.toggleLabel }}
+							{{ toolOpen ? step.hideLabel : step.toggleLabel }}
 						</CollapsibleTrigger>
 						<CollapsibleContent :class="$style.toggleContent">
 							<div v-if="step.toolCall?.args" :class="$style.dataSection">
@@ -193,17 +195,17 @@ const steps = computed((): TimelineStep[] => {
 .connector {
 	width: 1px;
 	flex: 1;
-	background: var(--color--foreground);
+	background: var(--color--foreground--shade-1);
 	min-height: 12px;
 }
 
 .stepIcon {
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 	flex-shrink: 0;
 }
 
 .doneIcon {
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 }
 
 .loadingIcon {
@@ -226,13 +228,13 @@ const steps = computed((): TimelineStep[] => {
 
 .textLabel {
 	font-size: var(--font-size--sm);
-	color: var(--color--text--tint-1);
+	color: var(--color--text);
 	line-height: var(--line-height--lg);
 }
 
 .doneLabel {
 	font-size: var(--font-size--sm);
-	color: var(--color--text--tint-2);
+	color: var(--color--text);
 	line-height: var(--line-height--lg);
 }
 
@@ -246,14 +248,15 @@ const steps = computed((): TimelineStep[] => {
 	padding: var(--spacing--5xs) var(--spacing--2xs);
 	font-family: var(--font-family);
 	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--regular);
 	color: var(--color--text--tint-1);
-	background: var(--color--background);
+	background: var(--color--background--light-2);
 	border: var(--border);
 	border-radius: var(--radius);
 	cursor: pointer;
 
 	&:hover {
-		background: var(--color--background--shade-1);
+		background: var(--color--foreground--tint-2);
 	}
 }
 
@@ -266,11 +269,18 @@ const steps = computed((): TimelineStep[] => {
 .dataSection {
 	font-size: var(--font-size--2xs);
 	color: var(--color--text--tint-1);
+	background: var(--color--foreground--tint-2);
+	border-radius: var(--radius);
+	padding: var(--spacing--2xs);
+
+	:global(pre) {
+		background: transparent;
+		margin: 0;
+		padding: 0;
+	}
 
 	& + & {
 		margin-top: var(--spacing--4xs);
-		padding-top: var(--spacing--4xs);
-		border-top: 1px dashed var(--color--foreground);
 	}
 }
 

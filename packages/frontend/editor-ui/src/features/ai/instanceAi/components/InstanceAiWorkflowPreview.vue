@@ -94,14 +94,15 @@ onBeforeUnmount(() => {
 				{{ workflowName || i18n.baseText('instanceAi.workflowPreview.title') }}
 			</N8nText>
 			<div :class="$style.headerActions">
-				<a
+				<N8nIconButton
 					v-if="workflow"
+					icon="external-link"
+					variant="ghost"
+					size="small"
+					tag="a"
 					:href="`/workflow/${workflow.id}`"
 					target="_blank"
-					:class="$style.openLink"
-				>
-					{{ i18n.baseText('instanceAi.workflowPreview.openInEditor') }}
-				</a>
+				/>
 				<N8nIconButton icon="x" variant="ghost" size="small" @click="emit('close')" />
 			</div>
 		</div>

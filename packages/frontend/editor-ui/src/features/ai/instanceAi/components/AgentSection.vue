@@ -76,18 +76,16 @@ watch(
 	<div :class="$style.root">
 		<!-- Section header -->
 		<button :class="$style.header" @click="toggleExpanded">
+			<N8nIcon
+				:icon="isExpanded ? 'chevron-down' : 'chevron-right'"
+				size="small"
+				:class="$style.chevron"
+			/>
 			<span :class="[$style.title, isActive && $style.shimmer]">{{ sectionTitle }}</span>
-			<div :class="$style.headerRight">
-				<button v-if="isActive" :class="$style.stopButton" @click.stop="handleStop">
-					<N8nIcon icon="square" size="small" />
-					{{ i18n.baseText('instanceAi.agent.stop') }}
-				</button>
-				<N8nIcon
-					:icon="isExpanded ? 'chevron-down' : 'chevron-right'"
-					size="small"
-					:class="$style.chevron"
-				/>
-			</div>
+			<button v-if="isActive" :class="$style.stopButton" @click.stop="handleStop">
+				<N8nIcon icon="square" size="small" />
+				{{ i18n.baseText('instanceAi.agent.stop') }}
+			</button>
 		</button>
 
 		<!-- Expanded: full timeline -->
@@ -135,15 +133,9 @@ watch(
 	min-width: 0;
 }
 
-.headerRight {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	flex-shrink: 0;
-}
-
 .chevron {
-	color: var(--color--text--tint-2);
+	flex-shrink: 0;
+	color: var(--color--text--tint-1);
 }
 
 .content {

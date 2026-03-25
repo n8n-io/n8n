@@ -12,7 +12,7 @@ import ToolResultRenderer from './ToolResultRenderer.vue';
 import ToolResultJson from './ToolResultJson.vue';
 
 const i18n = useI18n();
-const { getToolLabel, getToggleLabel } = useToolLabel();
+const { getToolLabel, getToggleLabel, getHideLabel } = useToolLabel();
 
 function extractResourceId(node: InstanceAiAgentNode): string | undefined {
 	if (node.targetResource?.id) return node.targetResource.id;
@@ -105,40 +105,56 @@ function extractColumnCount(node: InstanceAiAgentNode): number | undefined {
 	return undefined;
 }
 
+function formatRelativeTime(isoTime: string): string {
+	const diffMs = Date.now() - new Date(isoTime).getTime();
+	const diffMin = Math.floor(diffMs / 60_000);
+	if (diffMin < 1) {
+		return i18n.baseText('instanceAi.artifactCard.updatedJustNow');
+	}
+	const diffHours = Math.floor(diffMin / 60);
+	if (diffHours < 1) {
+		return i18n.baseText('instanceAi.artifactCard.updatedAgo', {
+			interpolate: { time: `${diffMin} minutes` },
+		});
+	}
+	return i18n.baseText('instanceAi.artifactCard.updatedAgo', {
+		interpolate: { time: `${diffHours} hours` },
+	});
+}
+
+function formatCreatedDate(isoTime: string): string {
+	const date = new Date(isoTime);
+	const day = date.getDate();
+	const month = date.toLocaleString('en', { month: 'long' });
+	return i18n.baseText('instanceAi.artifactCard.createdAt', {
+		interpolate: { date: `${day} ${month}` },
+	});
+}
+
 function formatArtifactMetadata(node: InstanceAiAgentNode): string {
 	const parts: string[] = [];
-	if (node.targetResource?.type === 'data-table') {
-		const columnCount = extractColumnCount(node);
-		if (columnCount !== undefined) {
-			parts.push(
-				i18n.baseText('instanceAi.artifactCard.columns', {
-					interpolate: { count: String(columnCount) },
-				}),
-			);
-		}
-	}
+
+	// Find latest and earliest times from tool calls
 	let latestTime: string | undefined;
+	let earliestTime: string | undefined;
 	for (const tc of node.toolCalls) {
-		if (tc.completedAt && (!latestTime || tc.completedAt > latestTime)) {
-			latestTime = tc.completedAt;
+		if (tc.completedAt) {
+			if (!latestTime || tc.completedAt > latestTime) latestTime = tc.completedAt;
+			if (!earliestTime || tc.completedAt < earliestTime) earliestTime = tc.completedAt;
 		}
 	}
+
 	if (latestTime) {
-		const diffMs = Date.now() - new Date(latestTime).getTime();
-		const diffMin = Math.floor(diffMs / 60_000);
-		if (diffMin < 1) {
-			parts.push(i18n.baseText('instanceAi.artifactCard.updatedJustNow'));
-		} else {
-			parts.push(
-				i18n.baseText('instanceAi.artifactCard.updatedAgo', {
-					interpolate: { time: `${diffMin}m` },
-				}),
-			);
-		}
+		parts.push(formatRelativeTime(latestTime));
 	} else {
 		parts.push(i18n.baseText('instanceAi.artifactCard.updatedJustNow'));
 	}
-	return parts.join(' \u00B7 ');
+
+	if (earliestTime) {
+		parts.push(formatCreatedDate(earliestTime));
+	}
+
+	return parts.join(' \u2502 ');
 }
 
 /** Display label for a tool call, with contextual info for search/fetch. */
@@ -238,10 +254,11 @@ const childrenById = computed(() => {
 							}}</span>
 							<CollapsibleRoot
 								v-if="getToggleLabel(toolCallsById[entry.toolCallId])"
+								v-slot="{ open: toolOpen }"
 								:class="$style.toggleBlock"
 							>
 								<CollapsibleTrigger :class="$style.toggleButton">
-									{{ getToggleLabel(toolCallsById[entry.toolCallId]) }}
+									{{ toolOpen ? getHideLabel(toolCallsById[entry.toolCallId]) : getToggleLabel(toolCallsById[entry.toolCallId]) }}
 								</CollapsibleTrigger>
 								<CollapsibleContent :class="$style.toggleContent">
 									<div
@@ -300,9 +317,10 @@ const childrenById = computed(() => {
 }
 
 .textContent {
-	font-size: var(--font-size--sm);
+	font-size: var(--font-size--md);
 	line-height: var(--line-height--xl);
-	color: var(--text-color);
+	color: var(--color--text--shade-1);
+	margin-bottom: var(--spacing--xs);
 }
 
 .compactText {
@@ -328,12 +346,12 @@ const childrenById = computed(() => {
 .connector {
 	width: 1px;
 	flex: 1;
-	background: var(--color--foreground);
+	background: var(--color--foreground--shade-1);
 	min-height: 12px;
 }
 
 .stepIcon {
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 	flex-shrink: 0;
 }
 
@@ -365,14 +383,15 @@ const childrenById = computed(() => {
 	padding: var(--spacing--5xs) var(--spacing--2xs);
 	font-family: var(--font-family);
 	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--regular);
 	color: var(--color--text--tint-1);
-	background: var(--color--background);
+	background: var(--color--background--light-2);
 	border: var(--border);
 	border-radius: var(--radius);
 	cursor: pointer;
 
 	&:hover {
-		background: var(--color--background--shade-1);
+		background: var(--color--foreground--tint-2);
 	}
 }
 
@@ -385,11 +404,18 @@ const childrenById = computed(() => {
 .dataSection {
 	font-size: var(--font-size--2xs);
 	color: var(--color--text--tint-1);
+	background: var(--color--foreground--tint-2);
+	border-radius: var(--radius);
+	padding: var(--spacing--2xs);
+
+	:global(pre) {
+		background: transparent;
+		margin: 0;
+		padding: 0;
+	}
 
 	& + & {
 		margin-top: var(--spacing--4xs);
-		padding-top: var(--spacing--4xs);
-		border-top: 1px dashed var(--color--foreground);
 	}
 }
 

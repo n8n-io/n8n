@@ -55,5 +55,13 @@ export function useToolLabel() {
 		return i18n.baseText('instanceAi.stepTimeline.showData');
 	}
 
-	return { getToolLabel, getToggleLabel };
+	function getHideLabel(toolCall: InstanceAiToolCallState): string | undefined {
+		if (NO_TOGGLE_TOOLS.has(toolCall.toolName)) return undefined;
+		if (toolCall.toolName === 'delegate') {
+			return i18n.baseText('instanceAi.stepTimeline.hideBrief');
+		}
+		return i18n.baseText('instanceAi.stepTimeline.hideData');
+	}
+
+	return { getToolLabel, getToggleLabel, getHideLabel };
 }

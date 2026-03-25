@@ -689,6 +689,7 @@ function handleStop() {
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	min-width: 0;
+	color: var(--color--text);
 }
 
 .headerActions {

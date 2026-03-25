@@ -179,7 +179,7 @@ const artifactIconMap: Record<string, IconName> = {
 	border-radius: var(--radius);
 
 	&:hover {
-		background: var(--color--background--shade-1);
+		background: var(--color--foreground--tint-1);
 	}
 }
 

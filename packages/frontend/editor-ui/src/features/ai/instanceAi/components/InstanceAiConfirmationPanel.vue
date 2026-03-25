@@ -183,20 +183,22 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 					<!-- Generic approval -->
 					<div v-else :class="$style.confirmBody">
 						<div :class="$style.approvalRow">
-							<N8nIcon
-								:icon="getSeverityIcon(item.toolCall.confirmation!.severity)"
-								size="small"
-								:class="[
-									item.toolCall.confirmation!.severity === 'destructive'
-										? $style.destructiveIcon
-										: '',
-									item.toolCall.confirmation!.severity === 'warning' ? $style.warningIcon : '',
-									item.toolCall.confirmation!.severity === 'info' ? $style.infoIcon : '',
-								]"
-							/>
-							<span :class="$style.toolLabel">{{ getToolLabel(item.toolCall.toolName) }}</span>
+							<span :class="$style.toolLabel">
+								<N8nIcon
+									:icon="getSeverityIcon(item.toolCall.confirmation!.severity)"
+									size="small"
+									:class="[
+										item.toolCall.confirmation!.severity === 'destructive'
+											? $style.destructiveIcon
+											: '',
+										item.toolCall.confirmation!.severity === 'warning' ? $style.warningIcon : '',
+										item.toolCall.confirmation!.severity === 'info' ? $style.infoIcon : '',
+									]"
+								/>
+								{{ getToolLabel(item.toolCall.toolName) }}
+							</span>
 							<span :class="$style.approvalMessage">{{ item.toolCall.confirmation!.message }}</span>
-							<span :class="$style.approvalActions">
+							<div :class="$style.approvalActions">
 								<button
 									:class="[$style.btn, $style.secondaryBtn]"
 									data-test-id="instance-ai-panel-confirm-deny"
@@ -216,7 +218,7 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 								>
 									{{ i18n.baseText('instanceAi.confirmation.approve') }}
 								</button>
-							</span>
+							</div>
 						</div>
 					</div>
 				</div>
@@ -284,14 +286,16 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 
 .approvalRow {
 	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
+	flex-direction: column;
+	gap: var(--spacing--2xs);
 	padding: var(--spacing--4xs) 0;
 	font-size: var(--font-size--2xs);
-	flex-wrap: wrap;
 }
 
 .toolLabel {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
 	font-weight: var(--font-weight--bold);
 	font-family: var(--font-family--monospace);
 	font-size: var(--font-size--3xs);
@@ -301,15 +305,13 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 
 .approvalMessage {
 	color: var(--color--text--tint-1);
-	flex: 1;
-	min-width: 0;
+	word-break: break-word;
 }
 
 .approvalActions {
 	display: flex;
 	gap: var(--spacing--4xs);
-	margin-left: auto;
-	flex-shrink: 0;
+	justify-content: flex-end;
 }
 
 .destructiveIcon {
