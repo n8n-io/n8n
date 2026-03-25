@@ -10,6 +10,7 @@ import type {
 	OAuthTokenRevocationRequest,
 } from '@modelcontextprotocol/sdk/shared/auth';
 import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { Response } from 'express';
 
@@ -22,6 +23,12 @@ import { OAuthSessionService } from './oauth-session.service';
 
 export const SUPPORTED_SCOPES = ['tool:listWorkflows', 'tool:getWorkflowDetails'];
 
+/** Maximum number of redirect URIs per client */
+const MAX_REDIRECT_URIS = 10;
+
+/** Maximum length for a single redirect URI */
+const MAX_REDIRECT_URI_LENGTH = 2048;
+
 /**
  * OAuth 2.1 server implementation for MCP
  * Implements MCP SDK OAuthServerProvider interface for client registration, authorization, and token management
@@ -30,6 +37,7 @@ export const SUPPORTED_SCOPES = ['tool:listWorkflows', 'tool:getWorkflowDetails'
 export class McpOAuthService implements OAuthServerProvider {
 	constructor(
 		private readonly logger: Logger,
+		private readonly globalConfig: GlobalConfig,
 		private readonly oauthSessionService: OAuthSessionService,
 		private readonly oauthClientRepository: OAuthClientRepository,
 		private readonly tokenService: McpOAuthTokenService,
@@ -64,26 +72,53 @@ export class McpOAuthService implements OAuthServerProvider {
 			registerClient: async (
 				client: OAuthClientInformationFull,
 			): Promise<OAuthClientInformationFull> => {
-				try {
-					await this.oauthClientRepository.insert({
-						id: client.client_id,
-						name: client.client_name,
-						redirectUris: client.redirect_uris,
-						grantTypes: client.grant_types,
-						clientSecret: client.client_secret ?? null,
-						clientSecretExpiresAt: client.client_secret_expires_at ?? null,
-						tokenEndpointAuthMethod: client.token_endpoint_auth_method ?? 'none',
-					});
-				} catch (error) {
-					this.logger.error('Error registering OAuth client', {
-						error,
-						clientId: client.client_id,
-					});
-				}
+				this.validateClientRegistration(client);
+
+				await this.oauthClientRepository.insert({
+					id: client.client_id,
+					name: client.client_name,
+					redirectUris: client.redirect_uris,
+					grantTypes: client.grant_types,
+					clientSecret: client.client_secret ?? null,
+					clientSecretExpiresAt: client.client_secret_expires_at ?? null,
+					tokenEndpointAuthMethod: client.token_endpoint_auth_method ?? 'none',
+				});
+
+				await this.enforceClientLimit(client.client_id);
 
 				return client;
 			},
 		};
+	}
+
+	/**
+	 * Check count after insert to avoid race condition between count() and insert().
+	 * If over limit, rolls back by deleting the just-inserted client.
+	 */
+	private async enforceClientLimit(clientId: string): Promise<void> {
+		const clientCount = await this.oauthClientRepository.count();
+		if (clientCount > this.globalConfig.endpoints.mcpMaxRegisteredClients) {
+			await this.oauthClientRepository.delete({ id: clientId });
+			throw new Error(
+				`Maximum number of registered clients (${this.globalConfig.endpoints.mcpMaxRegisteredClients}) reached`,
+			);
+		}
+	}
+
+	private validateClientRegistration(client: OAuthClientInformationFull): void {
+		if (client.redirect_uris) {
+			if (client.redirect_uris.length > MAX_REDIRECT_URIS) {
+				throw new Error(`redirect_uris exceeds maximum count of ${MAX_REDIRECT_URIS}`);
+			}
+
+			for (const uri of client.redirect_uris) {
+				if (uri.length > MAX_REDIRECT_URI_LENGTH) {
+					throw new Error(
+						`redirect_uri exceeds maximum length of ${MAX_REDIRECT_URI_LENGTH} characters`,
+					);
+				}
+			}
+		}
 	}
 
 	async authorize(
