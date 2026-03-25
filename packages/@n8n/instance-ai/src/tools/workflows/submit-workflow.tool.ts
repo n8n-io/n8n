@@ -50,6 +50,7 @@ const WEBHOOK_NODE_TYPES = new Set([
 	'n8n-nodes-base.webhook',
 	'n8n-nodes-base.formTrigger',
 	'@n8n/n8n-nodes-langchain.mcpTrigger',
+	'@n8n/n8n-nodes-langchain.chatTrigger',
 ]);
 
 /**
@@ -60,7 +61,7 @@ const WEBHOOK_NODE_TYPES = new Set([
  * For updates: preserves existing webhookIds from the current workflow so
  * webhook URLs remain stable. Only generates new IDs for new nodes.
  */
-async function ensureWebhookIds(
+export async function ensureWebhookIds(
 	json: WorkflowJSON,
 	workflowId: string | undefined,
 	ctx: InstanceAiContext,

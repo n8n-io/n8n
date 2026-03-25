@@ -11,6 +11,7 @@ import { Time } from '@n8n/constants';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { UrlService } from '@/services/url.service';
 import {
 	createInstanceAgent,
 	createAllTools,
@@ -172,6 +173,9 @@ export class InstanceAiService {
 	/** Tracks the last researchMode setting per thread for follow-up runs. */
 	private readonly threadResearchMode = new Map<string, boolean>();
 
+	/** Tracks the last client timezone per thread for follow-up runs. */
+	private readonly threadTimeZone = new Map<string, string>();
+
 	/** Tracks the current messageGroupId per thread for auto-follow-up run merging. */
 	private readonly threadMessageGroupId = new Map<string, string>();
 
@@ -187,6 +191,9 @@ export class InstanceAiService {
 	/** Periodic sweep that auto-rejects timed-out HITL confirmations. */
 	private confirmationTimeoutInterval?: NodeJS.Timeout;
 
+	/** Default IANA timezone for the instance (from GENERIC_TIMEZONE env var). */
+	private readonly defaultTimeZone: string;
+
 	constructor(
 		private readonly logger: Logger,
 		globalConfig: GlobalConfig,
@@ -195,12 +202,14 @@ export class InstanceAiService {
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly compositeStore: TypeORMCompositeStore,
 		private readonly compactionService: InstanceAiCompactionService,
+		private readonly urlService: UrlService,
 	) {
 		this.instanceAiConfig = globalConfig.instanceAi;
+		this.defaultTimeZone = globalConfig.generic.timezone;
 		const editorBaseUrl = globalConfig.editorBaseUrl || `http://localhost:${globalConfig.port}`;
 		const restEndpoint = globalConfig.endpoints.rest;
 		this.oauth2CallbackUrl = `${editorBaseUrl.replace(/\/$/, '')}/${restEndpoint}/oauth2-credential/callback`;
-		this.webhookBaseUrl = `${editorBaseUrl.replace(/\/$/, '')}/${globalConfig.endpoints.webhook}`;
+		this.webhookBaseUrl = `${this.urlService.getWebhookBaseUrl()}${globalConfig.endpoints.webhook}`;
 
 		// Initialize per-builder sandbox factory from env vars (credential-based config resolves at runtime)
 		const sbxConfig = this.getSandboxConfigFromEnv();
@@ -372,6 +381,7 @@ export class InstanceAiService {
 		message: string,
 		researchMode?: boolean,
 		attachments?: InstanceAiAttachment[],
+		timeZone?: string,
 	): string {
 		const runId = `run_${nanoid()}`;
 		const abortController = new AbortController();
@@ -380,6 +390,9 @@ export class InstanceAiService {
 		this.threadUsers.set(threadId, user);
 		if (researchMode !== undefined) {
 			this.threadResearchMode.set(threadId, researchMode);
+		}
+		if (timeZone !== undefined) {
+			this.threadTimeZone.set(threadId, timeZone);
 		}
 
 		// User-initiated runs get a fresh messageGroupId.
@@ -409,6 +422,7 @@ export class InstanceAiService {
 			researchMode,
 			attachments,
 			messageGroupId,
+			timeZone,
 		);
 
 		return runId;
@@ -628,6 +642,7 @@ export class InstanceAiService {
 		researchMode?: boolean,
 		attachments?: InstanceAiAttachment[],
 		messageGroupId?: string,
+		timeZone?: string,
 	): Promise<void> {
 		const signal = abortController.signal;
 		let mastraRunId = '';
@@ -795,6 +810,7 @@ export class InstanceAiService {
 				memory,
 				workspace: sandboxEntry?.workspace,
 				disableDeferredTools: true,
+				timeZone: timeZone ?? this.threadTimeZone.get(threadId) ?? this.defaultTimeZone,
 			});
 
 			// Compact older conversation history into a summary (best-effort, non-blocking on failure)

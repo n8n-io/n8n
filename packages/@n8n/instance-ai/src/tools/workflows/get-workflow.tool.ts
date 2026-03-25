@@ -27,6 +27,7 @@ export function createGetWorkflowTool(context: InstanceAiContext) {
 					type: z.string(),
 					parameters: z.record(z.unknown()).optional(),
 					position: z.array(z.number()).length(2),
+					webhookId: z.string().optional(),
 				}),
 			),
 			connections: z.record(z.unknown()),

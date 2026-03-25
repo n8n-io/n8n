@@ -71,7 +71,7 @@ function formatCell(value: unknown): string {
 	text-align: left;
 	padding: var(--spacing--4xs) var(--spacing--2xs);
 	font-weight: var(--font-weight--bold);
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 	text-transform: uppercase;
 	letter-spacing: 0.05em;
 	border-bottom: var(--border);
@@ -89,7 +89,7 @@ function formatCell(value: unknown): string {
 
 .td {
 	padding: var(--spacing--4xs) var(--spacing--2xs);
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 	max-width: 200px;
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -99,7 +99,7 @@ function formatCell(value: unknown): string {
 .more {
 	padding: var(--spacing--4xs) var(--spacing--2xs);
 	font-size: var(--font-size--3xs);
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 	font-style: italic;
 	text-align: center;
 	border-top: var(--border);

@@ -35,6 +35,7 @@
     "@n8n/api-types": "workspace:*",
     "@n8n/utils": "workspace:*",
     "@n8n/workflow-sdk": "workspace:*",
+    "luxon": "catalog:",
     "nanoid": "catalog:",
     "zod": "catalog:",
     "@mozilla/readability": "^0.6.0",
@@ -46,6 +47,7 @@
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
+    "@types/luxon": "3.2.0",
     "@types/turndown": "^5.0.5"
   }
 }

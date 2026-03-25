@@ -47,6 +47,7 @@ export interface WorkflowNode {
 	type: string;
 	parameters?: Record<string, unknown>;
 	position: number[];
+	webhookId?: string;
 }
 
 export interface ExecutionResult {
@@ -692,4 +693,6 @@ export interface CreateInstanceAgentOptions {
 	workspace?: Workspace;
 	/** When true, all tools are loaded eagerly (no ToolSearchProcessor). Workaround for Mastra bug where toModelOutput is not called for deferred tools. */
 	disableDeferredTools?: boolean;
+	/** IANA time zone for the current user (e.g. "Europe/Helsinki"). Falls back to instance default. */
+	timeZone?: string;
 }

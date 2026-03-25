@@ -82,7 +82,7 @@ const { store, getString, getNumber, getBool } = useSettingsField();
 	gap: var(--spacing--3xs);
 	font-size: var(--font-size--xs);
 	font-weight: var(--font-weight--bold);
-	color: var(--color--text);
+	color: var(--text-color);
 	padding-bottom: var(--spacing--4xs);
 	border-bottom: var(--border);
 }
@@ -96,6 +96,6 @@ const { store, getString, getNumber, getBool } = useSettingsField();
 
 .switchLabel {
 	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 }
 </style>
