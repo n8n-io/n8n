@@ -57,7 +57,6 @@ export type { LangSmithTelemetryConfig } from './integrations/langsmith';
 export { Agent } from './sdk/agent';
 export { McpClient } from './sdk/mcp-client';
 export { Network } from './sdk/network';
-export { configure } from './sdk/configure';
 export { providerTools } from './sdk/provider-tools';
 export { verify } from './sdk/verify';
 export type { VerifyResult } from './sdk/verify';

@@ -128,6 +128,7 @@ export abstract class BaseFilesystem implements WorkspaceFilesystem {
 			this.status = 'destroyed';
 		} catch (error) {
 			this.status = 'error';
+			this.error = error instanceof Error ? error.message : String(error);
 			throw error;
 		}
 	}

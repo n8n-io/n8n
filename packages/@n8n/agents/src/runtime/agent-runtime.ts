@@ -1317,6 +1317,7 @@ export class AgentRuntime {
 		resolvedTelemetry?: BuiltTelemetry,
 	): Promise<ToolCallBatchResult> {
 		const executableCalls = toolCalls.filter((tc) => !tc.providerExecuted);
+		const executableCallsById = new Map(executableCalls.map((tc) => [tc.toolCallId, tc]));
 		const unexecutedIds = new Set(executableCalls.map((tc) => tc.toolCallId));
 		const batchSize = this.concurrency;
 		const results: ToolCallSuccess[] = [];
@@ -1408,7 +1409,7 @@ export class AgentRuntime {
 
 			if (hasSuspension) {
 				for (const id of unexecutedIds) {
-					const tc = executableCalls.find((c) => c.toolCallId === id)!;
+					const tc = executableCallsById.get(id)!;
 					pending[tc.toolCallId] = {
 						suspended: false,
 						toolCallId: tc.toolCallId,

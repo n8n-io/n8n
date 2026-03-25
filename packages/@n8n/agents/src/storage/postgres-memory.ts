@@ -558,6 +558,14 @@ export class PostgresMemory implements BuiltMemory {
 		let paramIdx = 2;
 
 		const scope = opts.scope ?? 'resource';
+
+		if (scope === 'thread' && opts.threadId === undefined) {
+			throw new Error('threadId is required when scope is thread');
+		}
+		if (scope === 'resource' && opts.resourceId === undefined) {
+			throw new Error('resourceId is required when scope is resource');
+		}
+
 		if (scope === 'thread' && opts.threadId) {
 			sql += ` WHERE "threadId" = $${paramIdx}`;
 			params.push(opts.threadId);

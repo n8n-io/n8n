@@ -4,9 +4,6 @@ Conventions for the `@n8n/agents` package.
 
 ## Code Style
 
-- **No `null`** — use `undefined` instead. This applies to variables, return
-  types, default values, and type annotations. The only exception is when
-  interfacing with external APIs that require `null`.
 - **No `_` prefix on private properties** — use `private` access modifier
   without underscore. Write `private name: string`, not `private _name: string`.
 - **Builder pattern with lazy build** — all public primitives use a fluent
@@ -31,7 +28,6 @@ src/
   sdk/                  # Fluent builders and SDK entry points
     agent.ts            # Agent builder
     catalog.ts          # Provider catalog fetch
-    configure.ts        # Engine-level configuration
     eval.ts             # Evaluation primitives
     evaluate.ts         # Evaluation runner over agents + dataset
     guardrail.ts        # Guardrail builder

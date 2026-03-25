@@ -58,9 +58,7 @@ export function convertChunk(c: TextStreamPart<ToolSet>): StreamChunk | undefine
 							type: 'tool-call',
 							toolCallId: c.toolCallId,
 							toolName: c.toolName ?? '',
-							input: (typeof c.input === 'string'
-								? c.input
-								: JSON.stringify(c.input ?? {})) as JSONValue,
+							input: c.input as JSONValue,
 						},
 					],
 				},

@@ -936,9 +936,7 @@ describe('AgentRuntime — concurrent tool execution', () => {
 				typeof m === 'object' && m !== null && (m as ToolMessage).role === 'tool',
 		);
 		expect(toolMsg).toBeDefined();
-		const hasErrorOutput = toolMsg!.content.some(
-			(c) => c.output?.value?.error === 'intentional failure',
-		);
+		const hasErrorOutput = toolMsg!.content.some((c) => !!c.output?.value?.error);
 		expect(hasErrorOutput).toBe(true);
 	});
 

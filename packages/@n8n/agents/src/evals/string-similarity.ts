@@ -34,7 +34,7 @@ export function stringSimilarity(): Eval {
 	return new Eval('string-similarity')
 		.description('Measures string similarity between output and expected answer')
 		.check(({ output, expected }) => {
-			if (!expected) {
+			if (expected === undefined) {
 				return { pass: false, reasoning: 'No expected value provided' };
 			}
 			const similarity = diceSimilarity(output, expected);

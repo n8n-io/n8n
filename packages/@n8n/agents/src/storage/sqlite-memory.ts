@@ -203,11 +203,14 @@ export class SqliteMemory implements BuiltMemory {
 
 		const result = await db.execute({ sql, args });
 
-		return result.rows.map((row) => {
-			const msg = parseJsonSafe(row.content as string) as AgentMessage & { id?: string };
-			msg.id = row.id as string;
-			return msg as AgentDbMessage;
-		});
+		return result.rows
+			.map((row) => {
+				const msg = parseJsonSafe(row.content as string) as AgentMessage & { id?: string };
+				if (!msg) return undefined;
+				msg.id = row.id as string;
+				return msg as AgentDbMessage;
+			})
+			.filter((m): m is AgentDbMessage => m !== undefined);
 	}
 
 	async saveMessages(args: {

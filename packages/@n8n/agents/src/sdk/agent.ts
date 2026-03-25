@@ -573,7 +573,7 @@ export class Agent implements BuiltAgent {
 
 		let finalStaticTools = finalTools;
 		if (this.requireToolApprovalValue) {
-			finalStaticTools = this.tools.map((t) =>
+			finalStaticTools = finalTools.map((t) =>
 				t.suspendSchema ? t : wrapToolForApproval(t, { requireApproval: true }),
 			);
 		}
@@ -654,7 +654,7 @@ export class Agent implements BuiltAgent {
 		this.runtime = new AgentRuntime({
 			name: this.name,
 			model: modelConfig,
-			instructions: this.instructionsText,
+			instructions,
 			tools: allTools.length > 0 ? allTools : undefined,
 			instructionProviderOptions: this.instructionProviderOpts,
 			providerTools: this.providerTools.length > 0 ? this.providerTools : undefined,

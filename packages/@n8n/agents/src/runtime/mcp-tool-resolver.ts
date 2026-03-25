@@ -50,7 +50,7 @@ export class McpToolResolver {
 /**
  * Convert an MCP CallToolResult into a rich AgentMessage containing text and image content parts.
  * Returns undefined if the result contains only text (the tool-result JSON is sufficient for the LLM).
- * Returns a user Message with ContentFile parts for image blocks so multimodal models can process them.
+ * Returns an assistant Message with ContentFile parts for image blocks so multimodal models can process them.
  */
 function buildRichMessage(result: McpCallToolResult): AgentMessage | undefined {
 	if (!result?.content) return undefined;
