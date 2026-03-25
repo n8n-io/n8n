@@ -1,0 +1,93 @@
+{
+  "name": "@ibm-cloud/watsonx-ai",
+  "version": "1.1.2",
+  "description": "IBM watsonx.ai Node.js SDK",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/IBM/watsonx-ai-node-sdk.git"
+  },
+  "keywords": [
+    "ibm",
+    "watsonx",
+    "watsonx-ai"
+  ],
+  "author": "IBM Corp.",
+  "scripts": {
+    "clean": "rm -rf node_modules",
+    "eslint:fix": "eslint . --fix",
+    "eslint:check": "eslint . --cache",
+    "lint": "npm run eslint:check",
+    "lint-fix": "npm run eslint:fix",
+    "build": "tsc && cp package.json dist/",
+    "prepublishOnly": "npm run build",
+    "postversion": "publisher --no-checks --dry-run",
+    "jest": "jest",
+    "test": "npm run build && npm run lint && jest test/",
+    "test-unit": "npm run build && jest test/unit/",
+    "test-integration": "npm run build && jest test/integration/",
+    "test-examples": "npm run build && jest examples/",
+    "test-travis": "jest --runInBand --testNamePattern='^((?!@slow).)*$' test/",
+    "test-unit-travis": "jest --runInBand --verbose test/unit/",
+    "test-integration-travis": "jest --runInBand --verbose --no-colors --testNamePattern='^((?!@slow).)*$' --json test/integration > test-output.log",
+    "check-packages": "installed-check -e -d -v",
+    "all": "npm run test-unit && npm run lint",
+    "typedoc": "typedoc",
+    "typedoc-merge": "typedoc --entryPointStrategy merge"
+  },
+  "license": "Apache-2.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@types/node": "^18.0.0",
+    "extend": "3.0.2",
+    "ibm-cloud-sdk-core": "^5.0.2"
+  },
+  "devDependencies": {
+    "@ibm-cloud/sdk-test-utilities": "^1.0.0",
+    "@masterodin/publisher": "^0.10.0",
+    "@semantic-release/changelog": "6.0.3",
+    "@semantic-release/git": "10.0.1",
+    "@typescript-eslint/eslint-plugin": "^4.33.0",
+    "@typescript-eslint/parser": "^4.24.0",
+    "dotenv": "^8.2.0",
+    "eslint": "^7.26.0",
+    "eslint-config-airbnb-base": "^14.2.1",
+    "eslint-config-airbnb-typescript": "^12.3.1",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-import": "^2.23.2",
+    "eslint-plugin-jest": "^24.3.6",
+    "eslint-plugin-jsdoc": "^34.6.3",
+    "eslint-plugin-node": "^9.0.0",
+    "eslint-plugin-prettier": "^3.0.1",
+    "installed-check": "^2.2.0",
+    "jest": "^29.3.1",
+    "nock": "^13.2.4",
+    "prettier": "^2.3.0",
+    "semantic-release": "^24.0.0",
+    "typedoc": "^0.25.13",
+    "typescript": "^4.9.5"
+  },
+  "jest": {
+    "collectCoverage": true,
+    "coverageDirectory": "./coverage/",
+    "coveragePathIgnorePatterns": [
+      "<rootDir>/test/",
+      "<rootDir>/examples/"
+    ],
+    "testEnvironment": "node"
+  },
+  "homepage": "https://github.com/IBM/watsonx-ai-node-sdk#readme",
+  "directories": {
+    "example": "examples",
+    "lib": "lib",
+    "test": "test"
+  },
+  "files": [
+    "dist/**"
+  ],
+  "main": "dist/index.js"
+}

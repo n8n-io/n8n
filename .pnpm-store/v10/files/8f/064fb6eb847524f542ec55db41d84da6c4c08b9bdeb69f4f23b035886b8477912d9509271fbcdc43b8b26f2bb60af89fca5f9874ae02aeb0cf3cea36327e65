@@ -1,0 +1,42 @@
+{
+    "name": "@types/compression",
+    "version": "1.7.5",
+    "description": "TypeScript definitions for compression",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/compression",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Santi Albo",
+            "githubUsername": "santialbo",
+            "url": "https://github.com/santialbo"
+        },
+        {
+            "name": "Rob van der Burgt",
+            "githubUsername": "rburgt",
+            "url": "https://github.com/rburgt"
+        },
+        {
+            "name": "Neil Bryson Cargamento",
+            "githubUsername": "neilbryson",
+            "url": "https://github.com/neilbryson"
+        },
+        {
+            "name": "Piotr Błażejewicz",
+            "githubUsername": "peterblazejewicz",
+            "url": "https://github.com/peterblazejewicz"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/compression"
+    },
+    "scripts": {},
+    "dependencies": {
+        "@types/express": "*"
+    },
+    "typesPublisherContentHash": "b24bacbc1e76bc852f5e6517447802a149cd663851f7be2b664abacb2467d3ed",
+    "typeScriptVersion": "4.5"
+}

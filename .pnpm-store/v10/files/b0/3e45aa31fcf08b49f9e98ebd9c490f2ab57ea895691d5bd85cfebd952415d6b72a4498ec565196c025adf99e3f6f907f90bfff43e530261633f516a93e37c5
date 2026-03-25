@@ -1,0 +1,82 @@
+{
+  "name": "minipass",
+  "version": "7.1.2",
+  "description": "minimal implementation of a PassThrough stream",
+  "main": "./dist/commonjs/index.js",
+  "types": "./dist/commonjs/index.d.ts",
+  "type": "module",
+  "tshy": {
+    "selfLink": false,
+    "main": true,
+    "exports": {
+      "./package.json": "./package.json",
+      ".": "./src/index.ts"
+    }
+  },
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/commonjs/index.d.ts",
+        "default": "./dist/commonjs/index.js"
+      }
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "preversion": "npm test",
+    "postversion": "npm publish",
+    "prepublishOnly": "git push origin --follow-tags",
+    "prepare": "tshy",
+    "pretest": "npm run prepare",
+    "presnap": "npm run prepare",
+    "test": "tap",
+    "snap": "tap",
+    "format": "prettier --write . --loglevel warn",
+    "typedoc": "typedoc --tsconfig .tshy/esm.json ./src/*.ts"
+  },
+  "prettier": {
+    "semi": false,
+    "printWidth": 75,
+    "tabWidth": 2,
+    "useTabs": false,
+    "singleQuote": true,
+    "jsxSingleQuote": false,
+    "bracketSameLine": true,
+    "arrowParens": "avoid",
+    "endOfLine": "lf"
+  },
+  "devDependencies": {
+    "@types/end-of-stream": "^1.4.2",
+    "@types/node": "^20.1.2",
+    "end-of-stream": "^1.4.0",
+    "node-abort-controller": "^3.1.1",
+    "prettier": "^2.6.2",
+    "tap": "^19.0.0",
+    "through2": "^2.0.3",
+    "tshy": "^1.14.0",
+    "typedoc": "^0.25.1"
+  },
+  "repository": "https://github.com/isaacs/minipass",
+  "keywords": [
+    "passthrough",
+    "stream"
+  ],
+  "author": "Isaac Z. Schlueter <i@izs.me> (http://blog.izs.me/)",
+  "license": "ISC",
+  "engines": {
+    "node": ">=16 || 14 >=14.17"
+  },
+  "tap": {
+    "typecheck": true,
+    "include": [
+      "test/*.ts"
+    ]
+  }
+}

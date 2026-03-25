@@ -1,0 +1,47 @@
+{
+  "name": "jest-haste-map",
+  "version": "29.6.2",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/facebook/jest.git",
+    "directory": "packages/jest-haste-map"
+  },
+  "license": "MIT",
+  "main": "./build/index.js",
+  "types": "./build/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./build/index.d.ts",
+      "default": "./build/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "dependencies": {
+    "@jest/types": "^29.6.1",
+    "@types/graceful-fs": "^4.1.3",
+    "@types/node": "*",
+    "anymatch": "^3.0.3",
+    "fb-watchman": "^2.0.0",
+    "graceful-fs": "^4.2.9",
+    "jest-regex-util": "^29.4.3",
+    "jest-util": "^29.6.2",
+    "jest-worker": "^29.6.2",
+    "micromatch": "^4.0.4",
+    "walker": "^1.0.8"
+  },
+  "devDependencies": {
+    "@types/fb-watchman": "^2.0.0",
+    "@types/micromatch": "^4.0.1",
+    "slash": "^3.0.0"
+  },
+  "optionalDependencies": {
+    "fsevents": "^2.3.2"
+  },
+  "engines": {
+    "node": "^14.15.0 || ^16.10.0 || >=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "gitHead": "0fd5b1c37555f485c56a6ad2d6b010a72204f9f6"
+}

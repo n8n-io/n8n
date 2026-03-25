@@ -1,0 +1,49 @@
+{
+  "name": "vue-inbrowser-compiler-independent-utils",
+  "version": "4.71.1",
+  "description": "the part of vue-inbrowser-compiler-utils that contains no vue dependency",
+  "module": "lib/vue-inbrowser-compiler-independent-utils.esm.mjs",
+  "main": "lib/vue-inbrowser-compiler-independent-utils.umd.js",
+  "types": "lib/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./lib/vue-inbrowser-compiler-independent-utils.esm.mjs",
+      "require": "./lib/vue-inbrowser-compiler-independent-utils.umd.js",
+      "types": "./lib/index.d.ts"
+    }
+  },
+  "keywords": [
+    "vue",
+    "compile",
+    "live",
+    "browser",
+    "acorn"
+  ],
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "15.1.0",
+    "@rollup/plugin-node-resolve": "9.0.0",
+    "@rollup/plugin-typescript": "8.5.0",
+    "@types/dedent": "0.7.0",
+    "@types/domhandler": "2.4.2",
+    "dedent": "0.7.0",
+    "tslib": "2.5.0",
+    "typescript": "4.9.5",
+    "rollup": "2.79.1",
+    "vue": "2.7.14"
+  },
+  "peerDependencies": {
+    "vue": ">=2"
+  },
+  "author": "Bart Ledoux <ledouxb@me.com>",
+  "license": "MIT",
+  "homepage": "https://vue-styleguidist.github.io",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vue-styleguidist/vue-styleguidist.git",
+    "directory": "packages/vue-inbrowser-compiler-utils"
+  },
+  "scripts": {
+    "compile": "rollup -c",
+    "compile:watch": "rollup -c --watch"
+  }
+}

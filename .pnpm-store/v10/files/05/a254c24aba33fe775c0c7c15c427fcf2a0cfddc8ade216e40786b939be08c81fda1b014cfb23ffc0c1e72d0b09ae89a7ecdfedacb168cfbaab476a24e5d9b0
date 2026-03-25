@@ -1,0 +1,153 @@
+"use strict";
+// File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.Batches = void 0;
+const resource_1 = require("../../core/resource.js");
+const pagination_1 = require("../../core/pagination.js");
+const headers_1 = require("../../internal/headers.js");
+const jsonl_1 = require("../../internal/decoders/jsonl.js");
+const error_1 = require("../../error.js");
+const path_1 = require("../../internal/utils/path.js");
+class Batches extends resource_1.APIResource {
+    /**
+     * Send a batch of Message creation requests.
+     *
+     * The Message Batches API can be used to process multiple Messages API requests at
+     * once. Once a Message Batch is created, it begins processing immediately. Batches
+     * can take up to 24 hours to complete.
+     *
+     * Learn more about the Message Batches API in our
+     * [user guide](https://docs.claude.com/en/docs/build-with-claude/batch-processing)
+     *
+     * @example
+     * ```ts
+     * const messageBatch = await client.messages.batches.create({
+     *   requests: [
+     *     {
+     *       custom_id: 'my-custom-id-1',
+     *       params: {
+     *         max_tokens: 1024,
+     *         messages: [
+     *           { content: 'Hello, world', role: 'user' },
+     *         ],
+     *         model: 'claude-sonnet-4-5-20250929',
+     *       },
+     *     },
+     *   ],
+     * });
+     * ```
+     */
+    create(body, options) {
+        return this._client.post('/v1/messages/batches', { body, ...options });
+    }
+    /**
+     * This endpoint is idempotent and can be used to poll for Message Batch
+     * completion. To access the results of a Message Batch, make a request to the
+     * `results_url` field in the response.
+     *
+     * Learn more about the Message Batches API in our
+     * [user guide](https://docs.claude.com/en/docs/build-with-claude/batch-processing)
+     *
+     * @example
+     * ```ts
+     * const messageBatch = await client.messages.batches.retrieve(
+     *   'message_batch_id',
+     * );
+     * ```
+     */
+    retrieve(messageBatchID, options) {
+        return this._client.get((0, path_1.path) `/v1/messages/batches/${messageBatchID}`, options);
+    }
+    /**
+     * List all Message Batches within a Workspace. Most recently created batches are
+     * returned first.
+     *
+     * Learn more about the Message Batches API in our
+     * [user guide](https://docs.claude.com/en/docs/build-with-claude/batch-processing)
+     *
+     * @example
+     * ```ts
+     * // Automatically fetches more pages as needed.
+     * for await (const messageBatch of client.messages.batches.list()) {
+     *   // ...
+     * }
+     * ```
+     */
+    list(query = {}, options) {
+        return this._client.getAPIList('/v1/messages/batches', (pagination_1.Page), { query, ...options });
+    }
+    /**
+     * Delete a Message Batch.
+     *
+     * Message Batches can only be deleted once they've finished processing. If you'd
+     * like to delete an in-progress batch, you must first cancel it.
+     *
+     * Learn more about the Message Batches API in our
+     * [user guide](https://docs.claude.com/en/docs/build-with-claude/batch-processing)
+     *
+     * @example
+     * ```ts
+     * const deletedMessageBatch =
+     *   await client.messages.batches.delete('message_batch_id');
+     * ```
+     */
+    delete(messageBatchID, options) {
+        return this._client.delete((0, path_1.path) `/v1/messages/batches/${messageBatchID}`, options);
+    }
+    /**
+     * Batches may be canceled any time before processing ends. Once cancellation is
+     * initiated, the batch enters a `canceling` state, at which time the system may
+     * complete any in-progress, non-interruptible requests before finalizing
+     * cancellation.
+     *
+     * The number of canceled requests is specified in `request_counts`. To determine
+     * which requests were canceled, check the individual results within the batch.
+     * Note that cancellation may not result in any canceled requests if they were
+     * non-interruptible.
+     *
+     * Learn more about the Message Batches API in our
+     * [user guide](https://docs.claude.com/en/docs/build-with-claude/batch-processing)
+     *
+     * @example
+     * ```ts
+     * const messageBatch = await client.messages.batches.cancel(
+     *   'message_batch_id',
+     * );
+     * ```
+     */
+    cancel(messageBatchID, options) {
+        return this._client.post((0, path_1.path) `/v1/messages/batches/${messageBatchID}/cancel`, options);
+    }
+    /**
+     * Streams the results of a Message Batch as a `.jsonl` file.
+     *
+     * Each line in the file is a JSON object containing the result of a single request
+     * in the Message Batch. Results are not guaranteed to be in the same order as
+     * requests. Use the `custom_id` field to match results to requests.
+     *
+     * Learn more about the Message Batches API in our
+     * [user guide](https://docs.claude.com/en/docs/build-with-claude/batch-processing)
+     *
+     * @example
+     * ```ts
+     * const messageBatchIndividualResponse =
+     *   await client.messages.batches.results('message_batch_id');
+     * ```
+     */
+    async results(messageBatchID, options) {
+        const batch = await this.retrieve(messageBatchID);
+        if (!batch.results_url) {
+            throw new error_1.AnthropicError(`No batch \`results_url\`; Has it finished processing? ${batch.processing_status} - ${batch.id}`);
+        }
+        return this._client
+            .get(batch.results_url, {
+            ...options,
+            headers: (0, headers_1.buildHeaders)([{ Accept: 'application/binary' }, options?.headers]),
+            stream: true,
+            __binaryResponse: true,
+        })
+            ._thenUnwrap((_, props) => jsonl_1.JSONLDecoder.fromResponse(props.response, props.controller));
+    }
+}
+exports.Batches = Batches;
+//# sourceMappingURL=batches.js.map

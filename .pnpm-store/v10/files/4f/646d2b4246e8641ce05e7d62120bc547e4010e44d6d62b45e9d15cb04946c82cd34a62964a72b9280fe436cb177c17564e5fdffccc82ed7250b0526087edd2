@@ -1,0 +1,9 @@
+import type { LiteralNodeValue, PluginSettings, RuleContext } from '../types.js';
+export declare function isAbsolute(name?: LiteralNodeValue): boolean;
+export declare function isBuiltIn(name: string, settings: PluginSettings, modulePath?: string | null): boolean;
+export declare function isExternalModule(name: string, modulePath: string, context: RuleContext): boolean;
+export declare function isExternalModuleMain(name: string, modulePath: string, context: RuleContext): boolean;
+export declare function isScoped(name: string): boolean;
+export declare function isScopedMain(name: string): boolean;
+export declare function importType(name: LiteralNodeValue, context: RuleContext): "internal" | "absolute" | "builtin" | "parent" | "index" | "sibling" | "external" | "unknown";
+export type ImportType = ReturnType<typeof importType>;

@@ -1,0 +1,1 @@
+{"version":3,"file":"log-browser.mjs","sourceRoot":"","sources":["../../../src/logger/log-browser.mts"],"names":[],"mappings":"AAAA,uCAAuC;AACvC,kCAAkC;AAElC,OAAO,EAAE,GAAG,EAAE,MAAM,iBAAiB,CAAC","sourcesContent":["// Copyright (c) Microsoft Corporation.\n// Licensed under the MIT License.\n\nexport { log } from \"./log.common.js\";\n"]}

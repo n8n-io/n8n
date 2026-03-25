@@ -1,0 +1,1 @@
+{"version":3,"file":"compression-algorithms.js","sourceRoot":"","sources":["../../src/compression-algorithms.ts"],"names":[],"mappings":";AAAA;;;;;;;;;;;;;;;GAeG;;;AAEH,IAAY,qBAIX;AAJD,WAAY,qBAAqB;IAC/B,yEAAY,CAAA;IACZ,uEAAW,CAAA;IACX,iEAAQ,CAAA;AACV,CAAC,EAJW,qBAAqB,qCAArB,qBAAqB,QAIhC"}

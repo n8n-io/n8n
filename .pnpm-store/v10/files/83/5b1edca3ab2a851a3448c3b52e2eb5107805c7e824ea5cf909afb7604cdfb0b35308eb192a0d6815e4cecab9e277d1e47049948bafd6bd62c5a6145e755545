@@ -1,0 +1,49 @@
+{
+  "name": "types",
+  "lockfileVersion": 3,
+  "requires": true,
+  "packages": {
+    "../..": {
+      "version": "3.25.0",
+      "license": "ISC",
+      "devDependencies": {
+        "@types/json-schema": "^7.0.9",
+        "@types/node": "^20.9.0",
+        "ajv": "^8.6.3",
+        "ajv-errors": "^3.0.0",
+        "ajv-formats": "^2.1.1",
+        "fast-diff": "^1.3.0",
+        "local-ref-resolver": "^0.2.0",
+        "rimraf": "^3.0.2",
+        "tsx": "^4.19.0",
+        "typescript": "^5.1.3",
+        "zod": "^3.25 || ^4"
+      },
+      "peerDependencies": {
+        "zod": "^3.25 || ^4"
+      }
+    },
+    "../../dist/cjs": {
+      "extraneous": true
+    },
+    "../../dist/cjs/package.json": {
+      "extraneous": true
+    },
+    "../../dist/esm": {
+      "extraneous": true
+    },
+    "node_modules/zod": {
+      "version": "3.25.76",
+      "resolved": "https://registry.npmjs.org/zod/-/zod-3.25.76.tgz",
+      "integrity": "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==",
+      "license": "MIT",
+      "funding": {
+        "url": "https://github.com/sponsors/colinhacks"
+      }
+    },
+    "node_modules/zod-to-json-schema": {
+      "resolved": "../..",
+      "link": true
+    }
+  }
+}

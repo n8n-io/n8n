@@ -1,0 +1,31 @@
+A minimal representation and break-down of the logical selectors regular expressions
+
+
+in GROUPS:
+
+    logicalsel: '(is|where|matches|not|has)(?:\\x28\\s?(\\[([^\\[\\]]*)\\]|[^()\\[\\]]*|.*)\\s?\\x29)'
+
+
+in PATTERNS:
+
+    logicalsel: RegExp('^:(?:' + GROUPS.logicalsel + ')(.*)', 'i')
+
+
+FINAL matcher regular expression in compiled form, double escapes removed and underscores used as separators:
+
+                                        (1)                                         (2)                        (3)           (4)
+                     -----------------------------------------        ------------------------------        ---------        ----
+                     |                                       |        |                            |        |       |        |  |
+
+    logicalsel: /____^:(?:(is|where|matches|not|has)(?:\x28\s?________(\[([^\[\]]*)\]|[^()\[\]]*|.*)________\s?\x29))________(.*)____/i
+
+
+    (1) matches any logical pseudo-class then an open parenthesis and possible whitespace following, then
+
+    (2) expression made of multiple compounds selectors surrounded by round or square brackets, then
+
+	(3) possible whitespace followed by closed parenthesis, then
+
+	(4) next selector group
+
+

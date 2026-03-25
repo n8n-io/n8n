@@ -1,0 +1,1 @@
+{"version":3,"file":"stream.js","names":["_stream","require"],"sources":["../../src/stream.ts"],"sourcesContent":["// Node.js streaming API\nexport { type JsonRepairTransformOptions, jsonrepairTransform } from './streaming/stream.js'\n"],"mappings":";;;;;;;;;;;AACA,IAAAA,OAAA,GAAAC,OAAA","ignoreList":[]}

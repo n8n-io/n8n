@@ -1,0 +1,1 @@
+export * from "../../dist/stores/doc/in_memory.js";

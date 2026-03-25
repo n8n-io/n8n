@@ -1,0 +1,58 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  lint:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        node_version: [16]
+      fail-fast: false
+
+    name: "Lint: node-${{ matrix.node_version }}, ${{ matrix.os }}"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Set node version to ${{ matrix.node_version }}
+        uses: actions/setup-node@v2
+        with:
+          node-version: ${{ matrix.node_version }}
+          cache: yarn
+      - name: Install dependencies
+        run: yarn install
+      - name: Lint js
+        run: yarn lint
+      - name: Lint typescript definitions
+        run: yarn lint:ts
+      - name: Check prettier
+        run: yarn prettier:check
+
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        node_version: [10, 12, 14, 16]
+        include:
+          - os: macos-latest
+            node_version: 14
+      fail-fast: false
+
+    name: "Build&Test: node-${{ matrix.node_version }}, ${{ matrix.os }}"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Set node version to ${{ matrix.node_version }}
+        uses: actions/setup-node@v2
+        with:
+          node-version: ${{ matrix.node_version }}
+          cache: yarn
+      - name: Install dependencies
+        run: yarn install
+      - name: Run tests
+        run: yarn test

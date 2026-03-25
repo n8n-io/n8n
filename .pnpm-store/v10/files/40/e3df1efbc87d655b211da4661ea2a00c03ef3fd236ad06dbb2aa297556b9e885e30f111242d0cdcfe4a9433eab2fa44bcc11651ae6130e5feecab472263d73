@@ -1,0 +1,1 @@
+{"version":3,"file":"GetSubchannelResponse.js","sourceRoot":"","sources":["../../../../../../src/generated/grpc/channelz/v1/GetSubchannelResponse.ts"],"names":[],"mappings":";AAAA,sCAAsC"}

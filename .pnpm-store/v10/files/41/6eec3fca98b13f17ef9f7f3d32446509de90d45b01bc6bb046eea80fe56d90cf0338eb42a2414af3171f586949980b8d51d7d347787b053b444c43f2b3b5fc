@@ -1,0 +1,69 @@
+{
+  "name": "@paralleldrive/cuid2",
+  "private": false,
+  "types": "index.d.ts",
+  "files": [
+    "src/index.js",
+    "index.js",
+    "index.d.ts"
+  ],
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint --fix",
+    "typescript": "npx -p typescript tsc --esModuleInterop --rootDir . src/index-test.js --noEmit --allowJs --checkJs --target es2020 --moduleResolution node && echo 'TypeScript Complete.'",
+    "test": "NODE_ENV=test node src/index-test.js",
+    "test-color": "NODE_ENV=test node src/index-test.js | tap-nirvana",
+    "collision-test": "NODE_ENV=test node src/collision-test.js | tap-nirvana",
+    "histogram": "NODE_ENV=test node src/histogram.js | tap-nirvana",
+    "watch": "watch 'npm run -s test | tap-nirvana && npm run -s lint && npm run -s typescript' src",
+    "update": "updtr",
+    "release": "release-it"
+  },
+  "pre-commit": [
+    "lint",
+    "test-color",
+    "collision-test"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ericelliott/cuid2.git"
+  },
+  "keywords": [
+    "uuid",
+    "guid",
+    "cuid",
+    "unique",
+    "id",
+    "ids",
+    "identifier",
+    "identifiers"
+  ],
+  "author": "Eric Elliott",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ericelliott/cuid2/issues"
+  },
+  "homepage": "https://github.com/ericelliott/cuid2#readme",
+  "devDependencies": {
+    "eslint": "8.30.0",
+    "eslint-config-next": "13.1.1",
+    "eslint-config-prettier": "8.5.0",
+    "eslint-plugin-prettier": "4.2.1",
+    "next": "13.1.1",
+    "pre-commit": "1.2.2",
+    "prettier": "2.8.1",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "release-it": "15.5.1",
+    "riteway": "7.0.0",
+    "tap-nirvana": "1.1.0",
+    "updtr": "4.0.0",
+    "watch": "1.0.2"
+  },
+  "dependencies": {
+    "@noble/hashes": "^1.1.5"
+  },
+  "version": "2.2.2"
+}

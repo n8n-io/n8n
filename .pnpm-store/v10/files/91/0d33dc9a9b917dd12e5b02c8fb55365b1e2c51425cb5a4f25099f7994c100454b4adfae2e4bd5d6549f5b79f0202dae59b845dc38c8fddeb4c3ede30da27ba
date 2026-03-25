@@ -1,0 +1,1 @@
+{"version":3,"sources":["../../../src/middlewares/basic-auth.js"],"sourcesContent":["export { default } from '../middleware/basic-auth'\n"],"mappings":";AAAA,SAAS,WAAAA,gBAAe;","names":["default"]}

@@ -1,0 +1,70 @@
+@use 'sass:map';
+
+@use 'mixins/mixins' as *;
+@use 'mixins/var' as *;
+@use 'common/var' as *;
+
+@include b(select-dropdown) {
+  @include e(option-item) {
+    font-size: getCssVar('select-font-size');
+    // 20 as the padding of option item, 12 as the size of ✓ icon size
+    padding: 0 #{20 + 12}px 0 20px;
+    position: relative;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: map.get($select-option, 'text-color');
+    height: map.get($select-option, 'height');
+    line-height: map.get($select-option, 'height');
+    box-sizing: border-box;
+    cursor: pointer;
+
+    @include when(disabled) {
+      color: map.get($select-option, 'disabled-color');
+      cursor: not-allowed;
+
+      &:hover {
+        background-color: getCssVar('bg-color');
+      }
+    }
+
+    @include when(selected) {
+      background-color: map.get($select-option, 'hover-background');
+      font-weight: 700;
+
+      &:not(.is-multiple) {
+        color: map.get($select-option, 'selected-text-color');
+      }
+    }
+
+    &.hover {
+      background-color: map.get($select-option, 'hover-background') !important;
+    }
+
+    &:hover {
+      background-color: map.get($select-option, 'hover-background');
+    }
+  }
+
+  @include when(multiple) {
+    .#{$namespace}-select-dropdown__option-item {
+      &.is-selected {
+        color: map.get($select-option, 'selected-text-color');
+        background-color: map.get($select-dropdown, 'bg-color');
+
+        & .#{$namespace}-icon {
+          position: absolute;
+          right: 20px;
+          top: 0;
+          height: inherit;
+          font-size: 12px;
+
+          svg {
+            height: inherit;
+            vertical-align: middle;
+          }
+        }
+      }
+    }
+  }
+}

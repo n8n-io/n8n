@@ -1,0 +1,34 @@
+{
+  "mappings": [
+    {
+      "scenarioName": "Test wiremock endpoint",
+      "request": {
+        "urlPathPattern": "/test/authorize.*",
+        "method": "GET"
+      },
+      "response": {
+        "status": 200,
+        "fixedDelayMilliseconds": 500
+
+        }
+    },
+    {
+      "scenarioName": "Test wiremock endpoint",
+      "request": {
+        "urlPathPattern": "/session/v1/login-request.*",
+        "method": "POST"
+      },
+      "response": {
+        "status": 200,
+        "fixedDelayMilliseconds": 500,
+        "jsonBody": {
+          "data": {
+            "masterToken": "master token",
+            "token": "session token",
+            "validityInSeconds": 3600
+          }
+        }
+      }
+    }
+  ]
+}

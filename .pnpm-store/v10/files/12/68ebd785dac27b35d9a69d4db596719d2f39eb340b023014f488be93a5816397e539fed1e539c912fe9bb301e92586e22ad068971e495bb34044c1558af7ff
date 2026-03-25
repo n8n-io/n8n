@@ -1,0 +1,12 @@
+import * as changeCase from "./index.js";
+export declare const camelCase: (object: unknown, depth?: number, options?: changeCase.PascalCaseOptions | undefined) => unknown;
+export declare const capitalCase: (object: unknown, depth?: number, options?: changeCase.Options | undefined) => unknown;
+export declare const constantCase: (object: unknown, depth?: number, options?: changeCase.Options | undefined) => unknown;
+export declare const dotCase: (object: unknown, depth?: number, options?: changeCase.Options | undefined) => unknown;
+export declare const trainCase: (object: unknown, depth?: number, options?: changeCase.Options | undefined) => unknown;
+export declare const noCase: (object: unknown, depth?: number, options?: changeCase.Options | undefined) => unknown;
+export declare const kebabCase: (object: unknown, depth?: number, options?: changeCase.Options | undefined) => unknown;
+export declare const pascalCase: (object: unknown, depth?: number, options?: changeCase.PascalCaseOptions | undefined) => unknown;
+export declare const pathCase: (object: unknown, depth?: number, options?: changeCase.Options | undefined) => unknown;
+export declare const sentenceCase: (object: unknown, depth?: number, options?: changeCase.Options | undefined) => unknown;
+export declare const snakeCase: (object: unknown, depth?: number, options?: changeCase.Options | undefined) => unknown;

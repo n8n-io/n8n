@@ -1,0 +1,49 @@
+{
+	"name": "@sindresorhus/merge-streams",
+	"version": "4.0.0",
+	"description": "Merge multiple streams into a unified stream",
+	"license": "MIT",
+	"repository": "sindresorhus/merge-streams",
+	"funding": "https://github.com/sponsors/sindresorhus",
+	"author": {
+		"name": "Sindre Sorhus",
+		"email": "sindresorhus@gmail.com",
+		"url": "https://sindresorhus.com"
+	},
+	"type": "module",
+	"exports": {
+		"types": "./index.d.ts",
+		"default": "./index.js"
+	},
+	"sideEffects": false,
+	"engines": {
+		"node": ">=18"
+	},
+	"scripts": {
+		"test": "xo && c8 ava && tsd"
+	},
+	"files": [
+		"index.js",
+		"index.d.ts"
+	],
+	"keywords": [
+		"merge",
+		"stream",
+		"streams",
+		"readable",
+		"passthrough",
+		"interleave",
+		"interleaved",
+		"unify",
+		"unified"
+	],
+	"devDependencies": {
+		"@types/node": "^20.8.9",
+		"ava": "^6.1.0",
+		"c8": "^9.1.0",
+		"tempfile": "^5.0.0",
+		"tsd": "^0.31.0",
+		"typescript": "^5.2.2",
+		"xo": "^0.58.0"
+	}
+}

@@ -1,0 +1,3 @@
+rules:
+  operation-2xx-response: off
+  operation-4xx-response: error

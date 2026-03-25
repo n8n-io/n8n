@@ -1,0 +1,109 @@
+{
+  "name": "object-treeify",
+  "version": "1.1.33",
+  "description": "Stringify Object as tree structure",
+  "main": "lib/index.js",
+  "scripts": {
+    "clean": "rm -rf lib",
+    "build": "npx babel src --out-dir lib --copy-files --include-dotfiles --config-file ./.babelrc",
+    "build-clean": "yarn run clean && yarn run build",
+    "test-simple": "nyc mocha \"./test/**/*.spec.js\"",
+    "test": "yarn run clean && yarn run gardener && yarn run test-simple",
+    "coveralls": "node ./node_modules/coveralls/bin/coveralls.js < ./coverage/lcov.info",
+    "semantic-release": "yarn run build-clean && npx semantic-release",
+    "gardener": "node gardener",
+    "docker": "docker run --net host -u`id -u`:`id -g` -v $(pwd):/user/project -v ~/.aws:/user/.aws -v ~/.npmrc:/user/.npmrc -w /user/project -it --entrypoint /bin/bash",
+    "t": "yarn test",
+    "ts": "yarn run test-simple",
+    "tsv": "yarn run test-simple --verbose",
+    "u": "yarn upgrade --latest --force",
+    "i": "yarn install --frozen-lockfile",
+    "it": "yarn run i && yarn run t"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/blackflux/object-treeify.git"
+  },
+  "keywords": [
+    "object",
+    "tree",
+    "print",
+    "console",
+    "pretty",
+    "treeify",
+    "stringify",
+    "visualize",
+    "convert",
+    "string",
+    "debug"
+  ],
+  "author": "Lukas Siemon",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/blackflux/object-treeify/issues"
+  },
+  "homepage": "https://github.com/blackflux/object-treeify#readme",
+  "devDependencies": {
+    "@babel/cli": "7.13.10",
+    "@babel/core": "7.13.10",
+    "@babel/register": "7.13.8",
+    "@blackflux/eslint-plugin-rules": "1.3.45",
+    "@blackflux/robo-config-plugin": "4.1.4",
+    "babel-eslint": "10.1.0",
+    "babel-preset-latest-node": "5.4.0",
+    "chai": "4.3.3",
+    "coveralls": "3.1.0",
+    "eslint": "7.21.0",
+    "eslint-config-airbnb-base": "14.2.1",
+    "eslint-plugin-import": "2.22.1",
+    "eslint-plugin-json": "2.1.2",
+    "eslint-plugin-markdown": "2.0.0",
+    "eslint-plugin-mocha": "8.1.0",
+    "js-gardener": "2.0.187",
+    "nyc": "15.1.0",
+    "semantic-release": "17.4.1"
+  },
+  "nyc": {
+    "tempDir": "./coverage/.nyc_output",
+    "report-dir": "./coverage",
+    "check-coverage": true,
+    "per-file": false,
+    "lines": 100,
+    "statements": 100,
+    "functions": 100,
+    "branches": 100,
+    "include": [
+      "**/*.js"
+    ],
+    "reporter": [
+      "lcov",
+      "text-summary"
+    ],
+    "require": [
+      "@babel/register"
+    ],
+    "extension": [],
+    "cache": true,
+    "all": true,
+    "babel": true,
+    "exclude": [
+      "gardener.js",
+      "node_modules/*",
+      "coverage/*",
+      "lib/*"
+    ]
+  },
+  "licenses": [
+    {
+      "type": "MIT",
+      "url": "https://github.com/blackflux/object-treeify/blob/master/LICENSE"
+    }
+  ],
+  "engines": {
+    "node": ">= 10"
+  },
+  "files": [
+    "lib"
+  ],
+  "dependencies": {}
+}

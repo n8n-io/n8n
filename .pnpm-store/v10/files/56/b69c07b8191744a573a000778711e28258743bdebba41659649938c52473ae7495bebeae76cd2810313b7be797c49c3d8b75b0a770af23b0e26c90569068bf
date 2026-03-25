@@ -1,0 +1,78 @@
+{
+  "name": "madge",
+  "version": "8.0.0",
+  "author": "Patrik Henningsson <patrik.henningsson@gmail.com>",
+  "repository": "git://github.com/pahen/madge",
+  "homepage": "https://github.com/pahen/madge",
+  "license": "MIT",
+  "reveal": true,
+  "description": "Create graphs from module dependencies.",
+  "keywords": [
+    "ES6",
+    "ES7",
+    "AMD",
+    "RequireJS",
+    "require",
+    "module",
+    "circular",
+    "dependency",
+    "dependencies",
+    "graphviz",
+    "graph"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "main": "./lib/api",
+  "bin": {
+    "madge": "./bin/cli.js"
+  },
+  "scripts": {
+    "test": "npm run lint && npm run mocha",
+    "mocha": "mocha test/*.js",
+    "watch": "mocha --watch --growl test/*.js",
+    "lint": "eslint bin/cli.js lib test/*.js",
+    "debug": "node bin/cli.js --debug bin lib",
+    "generate": "npm run generate:small && npm run generate:madge",
+    "generate:small": "bin/cli.js --image /tmp/simple.svg test/cjs/circular/a.js",
+    "generate:madge": "bin/cli.js --image /tmp/madge.svg bin lib",
+    "test:output": "./test/output.sh",
+    "release": "npm test && release-it"
+  },
+  "funding": {
+    "type": "individual",
+    "url": "https://www.paypal.me/pahen"
+  },
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "commander": "^7.2.0",
+    "commondir": "^1.0.1",
+    "debug": "^4.3.4",
+    "dependency-tree": "^11.0.0",
+    "ora": "^5.4.1",
+    "pluralize": "^8.0.0",
+    "pretty-ms": "^7.0.1",
+    "rc": "^1.2.8",
+    "stream-to-array": "^2.3.0",
+    "ts-graphviz": "^2.1.2",
+    "walkdir": "^0.4.1"
+  },
+  "peerDependencies": {
+    "typescript": "^5.4.4"
+  },
+  "peerDependenciesMeta": {
+    "typescript": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@aptoma/eslint-config": "^7.0.1",
+    "auto-changelog": "^2.4.0",
+    "eslint": "^7.29.0",
+    "mocha": "^9.0.1",
+    "mz": "^2.7.0",
+    "release-it": "^16.2.1",
+    "should": "^13.2.3",
+    "typescript": "^5.4.4"
+  }
+}

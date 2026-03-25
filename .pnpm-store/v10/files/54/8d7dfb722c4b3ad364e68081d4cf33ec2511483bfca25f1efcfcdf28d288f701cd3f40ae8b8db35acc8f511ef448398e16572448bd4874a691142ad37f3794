@@ -1,0 +1,11 @@
+{
+  "name": "array-parallel",
+  "description": "Call an array of asynchronous functions in parallel",
+  "repo": "array-parallel",
+  "version": "0.1.3",
+  "main": "index.js",
+  "scripts": [
+    "index.js"
+  ],
+  "license": "MIT"
+}

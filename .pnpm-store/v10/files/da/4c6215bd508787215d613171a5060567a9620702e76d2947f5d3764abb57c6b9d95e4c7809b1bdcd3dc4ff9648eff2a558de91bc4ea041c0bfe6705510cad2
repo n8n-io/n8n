@@ -1,0 +1,7 @@
+env:
+  mocha: true
+
+globals:
+  tmpl: true
+  brackets: true
+  expect: true

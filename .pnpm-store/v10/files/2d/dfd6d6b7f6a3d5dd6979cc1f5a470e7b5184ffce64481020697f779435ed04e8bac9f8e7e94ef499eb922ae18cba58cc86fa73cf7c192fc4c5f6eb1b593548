@@ -1,0 +1,57 @@
+{
+  "name": "d3-zoom",
+  "version": "3.0.0",
+  "description": "Pan and zoom SVG, HTML or Canvas using mouse or touch input.",
+  "homepage": "https://d3js.org/d3-zoom/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/d3/d3-zoom.git"
+  },
+  "keywords": [
+    "d3",
+    "d3-module",
+    "zoom",
+    "behavior",
+    "interaction"
+  ],
+  "license": "ISC",
+  "author": {
+    "name": "Mike Bostock",
+    "url": "https://bost.ocks.org/mike"
+  },
+  "type": "module",
+  "files": [
+    "dist/**/*.js",
+    "src/**/*.js"
+  ],
+  "module": "src/index.js",
+  "main": "src/index.js",
+  "jsdelivr": "dist/d3-zoom.min.js",
+  "unpkg": "dist/d3-zoom.min.js",
+  "exports": {
+    "umd": "./dist/d3-zoom.min.js",
+    "default": "./src/index.js"
+  },
+  "dependencies": {
+    "d3-dispatch": "1 - 3",
+    "d3-drag": "2 - 3",
+    "d3-interpolate": "1 - 3",
+    "d3-selection": "2 - 3",
+    "d3-transition": "2 - 3"
+  },
+  "devDependencies": {
+    "eslint": "7",
+    "jsdom": "16",
+    "mocha": "9",
+    "rollup": "2",
+    "rollup-plugin-terser": "7"
+  },
+  "scripts": {
+    "test": "mocha 'test/**/*-test.js' && eslint src test",
+    "prepublishOnly": "rm -rf dist && yarn test && rollup -c && git push",
+    "postpublish": "git push --tags && cd ../d3.github.com && git pull && cp ../${npm_package_name}/dist/${npm_package_name}.js ${npm_package_name}.v${npm_package_version%%.*}.js && cp ../${npm_package_name}/dist/${npm_package_name}.min.js ${npm_package_name}.v${npm_package_version%%.*}.min.js && git add ${npm_package_name}.v${npm_package_version%%.*}.js ${npm_package_name}.v${npm_package_version%%.*}.min.js && git commit -m \"${npm_package_name} ${npm_package_version}\" && git push && cd -"
+  },
+  "engines": {
+    "node": ">=12"
+  }
+}

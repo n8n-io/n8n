@@ -1,0 +1,23 @@
+export declare const defaultConditionNames: string[];
+export declare const defaultExtensions: string[];
+export declare const defaultExtensionAlias: {
+    '.js': string[];
+    '.ts': string[];
+    '.jsx': string[];
+    '.tsx': string[];
+    '.cjs': string[];
+    '.cts': string[];
+    '.mjs': string[];
+    '.mts': string[];
+};
+export declare const defaultMainFields: string[];
+export declare const JS_EXT_PATTERN: RegExp;
+export declare const IMPORT_RESOLVER_NAME = "eslint-import-resolver-typescript";
+export declare const interfaceVersion = 2;
+export declare const DEFAULT_TSCONFIG = "tsconfig.json";
+export declare const DEFAULT_JSCONFIG = "jsconfig.json";
+export declare const DEFAULT_CONFIGS: string[];
+export declare const DEFAULT_TRY_PATHS: string[];
+export declare const MATCH_ALL = "**";
+export declare const DEFAULT_IGNORE: string;
+export declare const TSCONFIG_NOT_FOUND_REGEXP: RegExp;

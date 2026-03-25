@@ -1,0 +1,60 @@
+{
+  "name": "package-hash",
+  "version": "4.0.0",
+  "description": "Generates a hash for an installed npm package, useful for salting caches",
+  "main": "index.js",
+  "files": [
+    "index.js"
+  ],
+  "engines": {
+    "node": ">=8"
+  },
+  "scripts": {
+    "lint": "as-i-preach",
+    "unpack-fixtures": "node scripts/unpack-fixtures.js",
+    "pregenerate-fixture-index": "npm run unpack-fixtures",
+    "generate-fixture-index": "node scripts/generate-fixture-index.js",
+    "pretest": "npm run unpack-fixtures",
+    "test": "ava",
+    "posttest": "npm run lint",
+    "coverage": "nyc npm test",
+    "watch:test": "npm run test -- --watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/novemberborn/package-hash.git"
+  },
+  "author": "Mark Wubben (https://novemberborn.net/)",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/novemberborn/package-hash/issues"
+  },
+  "homepage": "https://github.com/novemberborn/package-hash#readme",
+  "dependencies": {
+    "graceful-fs": "^4.1.15",
+    "hasha": "^5.0.0",
+    "lodash.flattendeep": "^4.4.0",
+    "release-zalgo": "^1.0.0"
+  },
+  "devDependencies": {
+    "@novemberborn/as-i-preach": "^11.0.0",
+    "ava": "^1.4.1",
+    "codecov": "^3.3.0",
+    "nyc": "^13.3.0",
+    "rimraf": "^2.6.3",
+    "tar": "^4.4.8"
+  },
+  "nyc": {
+    "cache": true,
+    "exclude": [
+      "scripts",
+      "test"
+    ],
+    "reporter": [
+      "html",
+      "lcov",
+      "text"
+    ]
+  },
+  "standard-engine": "@novemberborn/as-i-preach"
+}

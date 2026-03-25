@@ -1,0 +1,1 @@
+{"version":3,"file":"InvalidDNSyntaxError.js","sourceRoot":"./","sources":["errors/resultCodeErrors/InvalidDNSyntaxError.ts"],"names":[],"mappings":";;;AAAA,uDAAoD;AAEpD,MAAa,oBAAqB,SAAQ,iCAAe;IACvD,YAAmB,OAAgB;QACjC,KAAK,CAAC,EAAE,EAAE,OAAO,IAAI,oCAAoC,CAAC,CAAC;IAC7D,CAAC;CACF;AAJD,oDAIC"}

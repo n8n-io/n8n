@@ -1,0 +1,180 @@
+# Copyright 2012 Mozilla Foundation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Main toolbar buttons (tooltips and alt text for images)
+previous.title=Moo bisante
+previous_label=Bisante
+next.title=Jinehere moo
+next_label=Jine
+
+# LOCALIZATION NOTE (page.title): The tooltip for the pageNumber input.
+page.title=Moo
+# LOCALIZATION NOTE (of_pages): "{{pagesCount}}" will be replaced by a number
+# representing the total number of pages in the document.
+of_pages={{pagesCount}} ra
+# LOCALIZATION NOTE (page_of_pages): "{{pageNumber}}" and "{{pagesCount}}"
+# will be replaced by a number representing the currently visible page,
+# respectively a number representing the total number of pages in the document.
+page_of_pages=({{pageNumber}} ka hun {{pagesCount}}) ra
+
+zoom_out.title=Nakasandi
+zoom_out_label=Nakasandi
+zoom_in.title=Bebbeerandi
+zoom_in_label=Bebbeerandi
+zoom.title=Bebbeerandi
+presentation_mode.title=Bere cebeyan alhaali
+presentation_mode_label=Cebeyan alhaali
+open_file.title=Tuku feeri
+open_file_label=Feeri
+print.title=Kar
+print_label=Kar
+download.title=Zumandi
+download_label=Zumandi
+bookmark.title=Sohõ gunarro (bere wala feeri zanfun taaga ra)
+bookmark_label=Sohõ gunaroo
+
+# Secondary toolbar and context menu
+tools.title=Goyjinawey
+tools_label=Goyjinawey
+first_page.title=Koy moo jinaa ga
+first_page.label=Koy moo jinaa ga
+first_page_label=Koy moo jinaa ga
+last_page.title=Koy moo koraa ga
+last_page.label=Koy moo koraa ga
+last_page_label=Koy moo koraa ga
+page_rotate_cw.title=Kuubi kanbe guma here
+page_rotate_cw.label=Kuubi kanbe guma here
+page_rotate_cw_label=Kuubi kanbe guma here
+page_rotate_ccw.title=Kuubi kanbe wowa here
+page_rotate_ccw.label=Kuubi kanbe wowa here
+page_rotate_ccw_label=Kuubi kanbe wowa here
+
+
+# Document properties dialog box
+document_properties.title=Takadda mayrawey…
+document_properties_label=Takadda mayrawey…
+document_properties_file_name=Tuku maa:
+document_properties_file_size=Tuku adadu:
+# LOCALIZATION NOTE (document_properties_kb): "{{size_kb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in kilobytes, respectively in bytes.
+document_properties_kb=KB {{size_kb}} (cebsu-ize {{size_b}})
+# LOCALIZATION NOTE (document_properties_mb): "{{size_mb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in megabytes, respectively in bytes.
+document_properties_mb=MB {{size_mb}} (cebsu-ize {{size_b}})
+document_properties_title=Tiiramaa:
+document_properties_author=Hantumkaw:
+document_properties_subject=Dalil:
+document_properties_keywords=Kufalkalimawey:
+document_properties_creation_date=Teeyan han:
+document_properties_modification_date=Barmayan han:
+# LOCALIZATION NOTE (document_properties_date_string): "{{date}}" and "{{time}}"
+# will be replaced by the creation/modification date, and time, of the PDF file.
+document_properties_date_string={{date}}, {{time}}
+document_properties_creator=Teekaw:
+document_properties_producer=PDF berandikaw:
+document_properties_version=PDF dumi:
+document_properties_page_count=Moo hinna:
+document_properties_close=Daabu
+
+print_progress_message=Goo ma takaddaa soolu k'a kar se…
+# LOCALIZATION NOTE (print_progress_percent): "{{progress}}" will be replaced by
+# a numerical per cent value.
+print_progress_percent={{progress}}%
+print_progress_close=Naŋ
+
+# Tooltips and alt text for side panel toolbar buttons
+# (the _label strings are alt text for the buttons, the .title strings are
+# tooltips)
+toggle_sidebar.title=Kanjari ceraw zuu
+toggle_sidebar_notification.title=Kanjari ceraw-zuu (takaddaa goo nda filla-boŋ/hangandiyaŋ)
+toggle_sidebar_label=Kanjari ceraw zuu
+document_outline.title=Takaddaa korfur alhaaloo cebe (naagu cee hinka ka haya-izey kul hayandi/kankamandi)
+document_outline_label=Takadda filla-boŋ
+attachments.title=Hangarey cebe
+attachments_label=Hangarey
+thumbs.title=Kabeboy biyey cebe
+thumbs_label=Kabeboy biyey
+findbar.title=Ceeci takaddaa ra
+findbar_label=Ceeci
+
+# Thumbnails panel item (tooltip and alt text for images)
+# LOCALIZATION NOTE (thumb_page_title): "{{page}}" will be replaced by the page
+# number.
+thumb_page_title={{page}} moo
+# LOCALIZATION NOTE (thumb_page_canvas): "{{page}}" will be replaced by the page
+# number.
+thumb_page_canvas=Kabeboy bii {{page}} moo še
+
+# Find panel button title and messages
+find_input.title=Ceeci
+find_input.placeholder=Ceeci takaddaa ra…
+find_previous.title=Kalimaɲaŋoo bangayri bisantaa ceeci
+find_previous_label=Bisante
+find_next.title=Kalimaɲaŋoo hiino bangayroo ceeci
+find_next_label=Jine
+find_highlight=Ikul šilbay
+find_match_case_label=Harfu-beeriyan hawgay
+find_reached_top=A too moŋoo boŋoo, koy jine ka šinitin nda cewoo
+find_reached_bottom=A too moɲoo cewoo, koy jine šintioo ga
+find_not_found=Kalimaɲaa mana duwandi
+
+# Error panel labels
+error_more_info=Alhabar tontoni
+error_less_info=Alhabar tontoni
+error_close=Daabu
+# LOCALIZATION NOTE (error_version_info): "{{version}}" and "{{build}}" will be
+# replaced by the PDF.JS version and build ID.
+error_version_info=PDF.js v{{version}} (build: {{build}})
+# LOCALIZATION NOTE (error_message): "{{message}}" will be replaced by an
+# english string describing the error.
+error_message=Alhabar: {{message}}
+# LOCALIZATION NOTE (error_stack): "{{stack}}" will be replaced with a stack
+# trace.
+error_stack=Dekeri: {{stack}}
+# LOCALIZATION NOTE (error_file): "{{file}}" will be replaced with a filename
+error_file=Tuku: {{file}}
+# LOCALIZATION NOTE (error_line): "{{line}}" will be replaced with a line number
+error_line=Žeeri: {{line}}
+rendering_error=Firka bangay kaŋ moɲoo goo ma willandi.
+
+# Predefined zoom values
+page_scale_width=Mooo hayyan
+page_scale_fit=Moo sawayan
+page_scale_auto=Boŋše azzaati barmayyan
+page_scale_actual=Adadu cimi
+# LOCALIZATION NOTE (page_scale_percent): "{{scale}}" will be replaced by a
+# numerical scale value.
+page_scale_percent={{scale}}%
+
+# Loading indicator messages
+loading_error_indicator=Firka
+loading_error=Firka bangay kaŋ PDF goo ma zumandi.
+invalid_file_error=PDF tuku laala wala laybante.
+missing_file_error=PDF tuku kumante.
+unexpected_response_error=Manti feršikaw tuuruyan maatante.
+
+# LOCALIZATION NOTE (text_annotation_type.alt): This is used as a tooltip.
+# "{{type}}" will be replaced with an annotation type from a list defined in
+# the PDF spec (32000-1:2008 Table 169 – Annotation types).
+# Some common types are e.g.: "Check", "Text", "Comment", "Note"
+text_annotation_type.alt={{type}} maasa-caw]
+password_label=Šennikufal dam ka PDF tukoo woo feeri.
+password_invalid=Šennikufal laalo. Ceeci koyne taare.
+password_ok=Ayyo
+password_cancel=Naŋ
+
+printing_not_supported=Yaamar: Karyan ši tee ka timme nda ceecikaa woo.
+printing_not_ready=Yaamar: PDF ši zunbu ka timme karyan še.
+web_fonts_disabled=Interneti šigirawey kay: ši hin ka goy nda PDF šigira hurantey.
+document_colors_not_allowed=PDF takaddawey ši duu fondo ka ngey boŋ noonawey zaa: “Naŋ moɲey ma ngey boŋ noonawey suuba” ši dira ceecikaa ga.

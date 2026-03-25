@@ -1,0 +1,71 @@
+{
+  "name": "@sentry/cli",
+  "version": "2.55.0",
+  "description": "A command line utility to work with Sentry. https://docs.sentry.io/hosted/learn/cli/",
+  "repository": "git://github.com/getsentry/sentry-cli.git",
+  "homepage": "https://docs.sentry.io/hosted/learn/cli/",
+  "author": "Sentry",
+  "license": "BSD-3-Clause",
+  "engines": {
+    "node": ">= 10"
+  },
+  "main": "js/index.js",
+  "types": "js/index.d.ts",
+  "bin": {
+    "sentry-cli": "bin/sentry-cli"
+  },
+  "dependencies": {
+    "https-proxy-agent": "^5.0.0",
+    "node-fetch": "^2.6.7",
+    "progress": "^2.0.3",
+    "proxy-from-env": "^1.1.0",
+    "which": "^2.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@vercel/nft": "^0.22.1",
+    "eslint": "^7.32.0",
+    "eslint-config-prettier": "^8.5.0",
+    "jest": "^27.5.1",
+    "npm-run-all": "^4.1.5",
+    "prettier": "2.8.8",
+    "typescript": "~5.8.3"
+  },
+  "optionalDependencies": {
+    "@sentry/cli-darwin": "2.55.0",
+    "@sentry/cli-linux-arm": "2.55.0",
+    "@sentry/cli-linux-arm64": "2.55.0",
+    "@sentry/cli-linux-i686": "2.55.0",
+    "@sentry/cli-linux-x64": "2.55.0",
+    "@sentry/cli-win32-i686": "2.55.0",
+    "@sentry/cli-win32-x64": "2.55.0",
+    "@sentry/cli-win32-arm64": "2.55.0"
+  },
+  "scripts": {
+    "postinstall": "node ./scripts/install.js",
+    "fix": "npm-run-all fix:eslint fix:prettier",
+    "fix:eslint": "eslint --fix bin/* scripts/**/*.js js/**/*.js",
+    "fix:prettier": "prettier --write bin/* scripts/**/*.js js/**/*.js",
+    "test": "npm-run-all test:jest test:eslint test:prettier test:vercel-nft",
+    "test:jest": "jest",
+    "test:watch": "jest --watch --notify",
+    "test:eslint": "eslint bin/* scripts/**/*.js js/**/*.js",
+    "test:prettier": "prettier --check  bin/* scripts/**/*.js js/**/*.js",
+    "check:types": "tsc --noEmit",
+    "test:vercel-nft": "node scripts/test-vercel-nft.js"
+  },
+  "jest": {
+    "collectCoverage": true,
+    "testEnvironment": "node",
+    "testPathIgnorePatterns": [
+      "<rootDir>/src"
+    ]
+  },
+  "volta": {
+    "node": "24.8.0",
+    "npm": "11.6.0"
+  },
+  "overrides": {
+    "browserslist": "<4.26.0 || >4.26.0"
+  }
+}

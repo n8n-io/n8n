@@ -1,0 +1,1 @@
+{"version":3,"file":"Duration.js","sourceRoot":"","sources":["../../../../../src/generated/google/protobuf/Duration.ts"],"names":[],"mappings":";AAAA,sBAAsB"}

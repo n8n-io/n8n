@@ -1,0 +1,8 @@
+{
+  "disableSources": true,
+  "entryPoints": ["src/types/index.d.ts"],
+  "excludeNotDocumented": true,
+  "out": "docs",
+  "readme": "none",
+  "tsconfig": "src/types/tsconfig.json"
+}

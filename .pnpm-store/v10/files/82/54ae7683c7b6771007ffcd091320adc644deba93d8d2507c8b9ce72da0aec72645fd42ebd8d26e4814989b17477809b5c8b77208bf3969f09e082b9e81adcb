@@ -1,0 +1,1 @@
+module.exports = require("../dist/document_transformers/openai_functions.cjs");

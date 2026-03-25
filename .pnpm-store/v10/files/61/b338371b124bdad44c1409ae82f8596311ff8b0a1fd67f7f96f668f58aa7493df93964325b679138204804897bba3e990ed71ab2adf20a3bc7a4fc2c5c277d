@@ -1,0 +1,67 @@
+{
+  "name": "@supabase/postgrest-js",
+  "version": "1.19.4",
+  "description": "Isomorphic PostgREST client",
+  "keywords": [
+    "postgrest",
+    "supabase"
+  ],
+  "homepage": "https://github.com/supabase/postgrest-js",
+  "bugs": "https://github.com/supabase/postgrest-js/issues",
+  "license": "MIT",
+  "author": "Supabase",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "main": "dist/cjs/index.js",
+  "module": "dist/esm/wrapper.mjs",
+  "exports": {
+    "import": {
+      "types": "./dist/cjs/index.d.ts",
+      "default": "./dist/esm/wrapper.mjs"
+    },
+    "require": {
+      "types": "./dist/cjs/index.d.ts",
+      "default": "./dist/cjs/index.js"
+    }
+  },
+  "types": "./dist/cjs/index.d.ts",
+  "repository": "supabase/postgrest-js",
+  "scripts": {
+    "clean": "rimraf dist docs/v2",
+    "format": "prettier --write \"{src,test}/**/*.ts\" wrapper.mjs",
+    "format:check": "prettier --check \"{src,test}/**/*.ts\"",
+    "build": "run-s clean format build:*",
+    "build:cjs": "tsc -p tsconfig.json",
+    "build:esm": "cpy wrapper.mjs dist/esm/",
+    "docs": "typedoc src/index.ts --out docs/v2",
+    "docs:json": "typedoc --json docs/v2/spec.json --excludeExternals src/index.ts",
+    "test": "run-s format:check test:types db:clean db:run test:run db:clean && node test/smoke.cjs && node test/smoke.mjs",
+    "test:run": "jest --runInBand --coverage",
+    "test:update": "run-s db:clean db:run && jest --runInBand --updateSnapshot && run-s db:clean",
+    "test:types": "run-s build && tsd --files 'test/**/*.test-d.ts'",
+    "db:clean": "cd test/db && docker compose down --volumes",
+    "db:run": "cd test/db && docker compose up --detach && wait-for-localhost 3000"
+  },
+  "dependencies": {
+    "@supabase/node-fetch": "^2.6.14"
+  },
+  "devDependencies": {
+    "@types/jest": "^27.5.1",
+    "cpy-cli": "^5.0.0",
+    "jest": "^28.1.0",
+    "node-abort-controller": "^3.0.1",
+    "npm-run-all": "^4.1.5",
+    "prettier": "^2.6.2",
+    "rimraf": "^3.0.2",
+    "semantic-release-plugin-update-version-in-files": "^1.1.0",
+    "ts-expect": "^1.3.0",
+    "ts-jest": "^28.0.3",
+    "tsd": "^0.31.2",
+    "type-fest": "^4.32.0",
+    "typedoc": "^0.22.16",
+    "typescript": "^4.5.5",
+    "wait-for-localhost-cli": "^3.0.0"
+  }
+}

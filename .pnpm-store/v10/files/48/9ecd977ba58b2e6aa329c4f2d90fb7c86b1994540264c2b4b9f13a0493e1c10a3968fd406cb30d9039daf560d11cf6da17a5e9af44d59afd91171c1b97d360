@@ -1,0 +1,26 @@
+{
+  "name": "mensch",
+  "description": "A decent CSS parser",
+  "version": "0.3.4",
+  "main": "index.js",
+  "scripts": {
+    "test": "make test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/brettstimmerman/mensch.git"
+  },
+  "homepage": "https://github.com/brettstimmerman/mensch",
+  "keywords": [
+    "css",
+    "parser",
+    "parsing",
+    "stylesheet"
+  ],
+  "devDependencies": {
+    "jshint": "*",
+    "mocha": "*"
+  },
+  "author": "Brett Stimmerman <brettstimmerman@gmail.com>",
+  "license": "MIT"
+}

@@ -1,0 +1,82 @@
+{
+  "name": "ts-pattern",
+  "version": "5.8.0",
+  "description": " The exhaustive Pattern Matching library for TypeScript.",
+  "type": "module",
+  "source": "src/index.ts",
+  "exports": {
+    ".": {
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      },
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./types": {
+      "require": {
+        "types": "./dist/types/index.d.cts"
+      },
+      "import": {
+        "types": "./dist/types/index.d.ts"
+      },
+      "types": "./dist/types/index.d.ts"
+    },
+    "./package.json": "./package.json"
+  },
+  "types": "dist/index.d.ts",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "unpkg": "dist/index.umd.js",
+  "scripts": {
+    "build": "rimraf dist && microbundle --format modern,cjs,umd && sh ./scripts/generate-cts.sh",
+    "dev": "microbundle watch",
+    "prepublishOnly": "npm run test && npm run build",
+    "publish:jsr": "npm run prepublishOnly && npx jsr publish",
+    "release": "npm run prepublishOnly && npm publish && npx jsr publish",
+    "test": "jest",
+    "clear-test": "jest --clearCache",
+    "fmt": "prettier ./src/** ./tests/** -w",
+    "check": "tsc --strict --noEmit --extendedDiagnostics",
+    "perf": "tsc --project tests/tsconfig.json --noEmit --extendedDiagnostics",
+    "trace": "tsc --project tests/tsconfig.json --generateTrace trace --incremental false  --noEmit",
+    "analyzeTrace": "npx @typescript/analyze-trace trace"
+  },
+  "files": [
+    "dist/**/*",
+    "package.json"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/gvergnaud/ts-pattern.git"
+  },
+  "keywords": [
+    "pattern",
+    "matching",
+    "pattern-matching",
+    "typescript",
+    "match-with",
+    "match",
+    "switch",
+    "adt"
+  ],
+  "author": "Gabriel Vergnaud",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/gvergnaud/ts-pattern/issues"
+  },
+  "homepage": "https://github.com/gvergnaud/ts-pattern#readme",
+  "devDependencies": {
+    "@types/jest": "^29.5.2",
+    "jest": "^29.7.0",
+    "microbundle": "^0.15.1",
+    "prettier": "^2.8.8",
+    "rimraf": "^5.0.1",
+    "ts-jest": "^29.1.2",
+    "typescript": "^5.7.2"
+  }
+}

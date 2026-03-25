@@ -1,0 +1,35 @@
+{
+  "name": "is-lambda",
+  "version": "1.0.1",
+  "description": "Detect if your code is running on an AWS Lambda server",
+  "main": "index.js",
+  "dependencies": {},
+  "devDependencies": {
+    "clear-require": "^1.0.1",
+    "standard": "^10.0.2"
+  },
+  "scripts": {
+    "test": "standard && node test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/watson/is-lambda.git"
+  },
+  "keywords": [
+    "aws",
+    "hosting",
+    "hosted",
+    "lambda",
+    "detect"
+  ],
+  "author": "Thomas Watson Steen <w@tson.dk> (https://twitter.com/wa7son)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/watson/is-lambda/issues"
+  },
+  "homepage": "https://github.com/watson/is-lambda",
+  "coordinates": [
+    37.3859955,
+    -122.0838831
+  ]
+}

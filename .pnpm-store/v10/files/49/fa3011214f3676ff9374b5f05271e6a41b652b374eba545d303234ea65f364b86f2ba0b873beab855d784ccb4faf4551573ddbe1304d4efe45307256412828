@@ -1,0 +1,1 @@
+requirejs.config(%s);

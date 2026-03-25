@@ -1,0 +1,1 @@
+{"version":3,"file":"reduce.js","sourceRoot":"","sources":["../../../../src/internal/operators/reduce.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,aAAa,EAAE,MAAM,iBAAiB,CAAC;AAEhD,OAAO,EAAE,OAAO,EAAE,MAAM,cAAc,CAAC;AAyDvC,MAAM,UAAU,MAAM,CAAO,WAAuD,EAAE,IAAU;IAC9F,OAAO,OAAO,CAAC,aAAa,CAAC,WAAW,EAAE,IAAI,EAAE,SAAS,CAAC,MAAM,IAAI,CAAC,EAAE,KAAK,EAAE,IAAI,CAAC,CAAC,CAAC;AACvF,CAAC"}

@@ -1,0 +1,12 @@
+import { RedisCommandArgument, RedisCommandArguments } from '.';
+export declare const FIRST_KEY_INDEX = 1;
+type Types = RedisCommandArgument | number;
+type HSETObject = Record<string | number, Types>;
+type HSETMap = Map<Types, Types>;
+type HSETTuples = Array<[Types, Types]> | Array<Types>;
+type GenericArguments = [key: RedisCommandArgument];
+type SingleFieldArguments = [...generic: GenericArguments, field: Types, value: Types];
+type MultipleFieldsArguments = [...generic: GenericArguments, value: HSETObject | HSETMap | HSETTuples];
+export declare function transformArguments(...[key, value, fieldValue]: SingleFieldArguments | MultipleFieldsArguments): RedisCommandArguments;
+export declare function transformReply(): number;
+export {};

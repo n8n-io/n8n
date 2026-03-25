@@ -1,0 +1,1 @@
+{"version":3,"file":"base.js","names":[],"sources":["../../../src/agents/toolkits/base.ts"],"sourcesContent":["export { BaseToolkit as Toolkit } from \"@langchain/core/tools\";\n"],"mappings":""}

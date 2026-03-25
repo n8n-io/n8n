@@ -1,0 +1,226 @@
+/*
+	Copyright (c) 2011 Google Inc. All rights reserved.
+	Use of this source code is governed by a BSD-style license that can be
+	found in the LICENSE file.
+	
+	gyp.xclangspec
+	GYP language specification for Xcode 3
+
+	There is not much documentation available regarding the format
+	of .xclangspec files. As a starting point, see for instance the
+	outdated documentation at:
+	http://maxao.free.fr/xcode-plugin-interface/specifications.html
+	and the files in:
+	/Developer/Library/PrivateFrameworks/XcodeEdit.framework/Versions/A/Resources/
+
+	Place this file in directory:
+	~/Library/Application Support/Developer/Shared/Xcode/Specifications/
+*/
+
+(
+
+    {
+        Identifier = "xcode.lang.gyp.keyword";
+        Syntax = {
+            Words = (
+                "and",
+                "or",
+                "<!",
+                "<",
+             );
+            Type = "xcode.syntax.keyword";
+        };
+    },
+
+    {
+        Identifier = "xcode.lang.gyp.target.declarator";
+        Syntax = {
+        	Words = (
+        		"'target_name'",
+        	);
+            Type = "xcode.syntax.identifier.type";
+        };
+    },
+
+	{
+		Identifier = "xcode.lang.gyp.string.singlequote";
+		Syntax = {
+			IncludeRules = (
+				"xcode.lang.string",
+				"xcode.lang.gyp.keyword",
+				"xcode.lang.number",
+			);
+			Start = "'";
+			End = "'";
+		};
+	},
+	
+	{
+		Identifier = "xcode.lang.gyp.comma";
+		Syntax = {
+			Words = ( ",", );
+			
+		};
+	},
+
+	{
+		Identifier = "xcode.lang.gyp";
+		Description = "GYP Coloring";
+		BasedOn = "xcode.lang.simpleColoring";
+		IncludeInMenu = YES;
+		Name = "GYP";
+		Syntax = {
+			Tokenizer = "xcode.lang.gyp.lexer.toplevel";
+			IncludeRules = (
+				"xcode.lang.gyp.dictionary",
+			);
+			Type = "xcode.syntax.plain";
+		};
+	},
+
+	// The following rule returns tokens to the other rules
+	{
+		Identifier = "xcode.lang.gyp.lexer";
+		Syntax = {
+			IncludeRules = (
+				"xcode.lang.gyp.comment",
+				"xcode.lang.string",
+				'xcode.lang.gyp.targetname.declarator',
+				"xcode.lang.gyp.string.singlequote",
+				"xcode.lang.number",
+				"xcode.lang.gyp.comma",
+			);
+		};
+	},
+
+	{
+		Identifier = "xcode.lang.gyp.lexer.toplevel";
+		Syntax = {
+			IncludeRules = (
+				"xcode.lang.gyp.comment",
+			);
+		};
+	},
+
+	{
+        Identifier = "xcode.lang.gyp.assignment";
+        Syntax = {
+            Tokenizer = "xcode.lang.gyp.lexer";
+            Rules = (
+            	"xcode.lang.gyp.assignment.lhs",
+            	":",
+                "xcode.lang.gyp.assignment.rhs",
+            );
+        };
+       
+    },
+    
+    {
+        Identifier = "xcode.lang.gyp.target.declaration";
+        Syntax = {
+            Tokenizer = "xcode.lang.gyp.lexer";
+            Rules = (
+                "xcode.lang.gyp.target.declarator",
+                ":",
+                "xcode.lang.gyp.target.name",
+            );
+        };
+   },
+   
+   {
+        Identifier = "xcode.lang.gyp.target.name";
+        Syntax = {
+            Tokenizer = "xcode.lang.gyp.lexer";
+            Rules = (
+                "xcode.lang.gyp.string.singlequote",
+            );
+        	Type = "xcode.syntax.definition.function";
+        };
+    },
+    
+	{
+        Identifier = "xcode.lang.gyp.assignment.lhs";
+        Syntax = {
+            Tokenizer = "xcode.lang.gyp.lexer";
+            Rules = (
+            	"xcode.lang.gyp.string.singlequote",
+            );
+         	Type = "xcode.syntax.identifier.type";
+        };
+    },
+    
+    {
+        Identifier = "xcode.lang.gyp.assignment.rhs";
+        Syntax = {
+        	Tokenizer = "xcode.lang.gyp.lexer";
+            Rules = (
+            	"xcode.lang.gyp.string.singlequote?",
+                "xcode.lang.gyp.array?",
+				"xcode.lang.gyp.dictionary?",
+				"xcode.lang.number?",
+            );
+        };
+    },
+
+	{
+		Identifier = "xcode.lang.gyp.dictionary";
+		Syntax = {
+			Tokenizer = "xcode.lang.gyp.lexer";
+			Start = "{";
+			End = "}";
+			Foldable = YES;
+			Recursive = YES;
+			IncludeRules = (
+				"xcode.lang.gyp.target.declaration",
+				"xcode.lang.gyp.assignment",
+			);
+		};
+	},
+
+	{
+		Identifier = "xcode.lang.gyp.array";
+		Syntax = {
+			Tokenizer = "xcode.lang.gyp.lexer";
+			Start = "[";
+			End = "]";
+			Foldable = YES;
+			Recursive = YES;
+			IncludeRules = (
+				"xcode.lang.gyp.array",
+				"xcode.lang.gyp.dictionary",
+				"xcode.lang.gyp.string.singlequote",
+			);
+		};
+	},
+
+    {
+        Identifier = "xcode.lang.gyp.todo.mark";
+        Syntax = {
+            StartChars = "T";
+            Match = (
+                "^\(TODO\(.*\):[ \t]+.*\)$",       // include "TODO: " in the markers list
+            );
+            // This is the order of captures. All of the match strings above need the same order.
+            CaptureTypes = (
+                "xcode.syntax.mark"
+            );
+            Type = "xcode.syntax.comment";
+        };
+    },
+
+	{
+		Identifier = "xcode.lang.gyp.comment";
+		BasedOn = "xcode.lang.comment"; // for text macros
+		Syntax = {
+			Start = "#";
+			End = "\n";
+			IncludeRules = (
+				"xcode.lang.url",
+				"xcode.lang.url.mail",
+				"xcode.lang.comment.mark",
+				"xcode.lang.gyp.todo.mark",
+			);
+			Type = "xcode.syntax.comment";
+		};
+	},
+)

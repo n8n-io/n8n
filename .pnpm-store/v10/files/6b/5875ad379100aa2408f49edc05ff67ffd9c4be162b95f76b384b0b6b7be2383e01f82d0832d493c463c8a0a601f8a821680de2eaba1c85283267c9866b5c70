@@ -1,0 +1,30 @@
+{
+  "name": "lunr",
+  "description": "Simple full-text search in your browser.",
+  "version": "@VERSION",
+  "author": "Oliver Nightingale",
+  "keywords": ["search"],
+  "homepage": "https://lunrjs.com",
+  "bugs": "https://github.com/olivernn/lunr.js/issues",
+  "main": "lunr.js",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/olivernn/lunr.js.git"
+  },
+  "devDependencies": {
+    "benchmark": "2.1.x",
+    "chai": "3.5.x",
+    "eslint-plugin-spellcheck": "0.0.8",
+    "eslint": "3.4.x",
+    "jsdoc": "3.5.x",
+    "mocha": "3.3.x",
+    "mustache": "2.2.x",
+    "node-static": "0.7.x",
+    "uglify-js": "2.6.x",
+    "word-list": "1.0.x"
+  },
+  "scripts": {
+    "test": "make test"
+  }
+}

@@ -1,0 +1,1 @@
+{"version":3,"file":"observerFinalizationRegistry.js","sourceRoot":"","sources":["../../src/utils/observerFinalizationRegistry.ts"],"names":[],"mappings":"AACA,OAAO,EAAE,6BAA6B,EAAE,MAAM,iCAAiC,CAAA;AAE/E,MAAM,CAAC,IAAM,4BAA4B,GAAG,IAAI,6BAA6B,CACzE,UAAC,GAAkC;;IAC/B,MAAA,GAAG,CAAC,QAAQ,0CAAE,OAAO,EAAE,CAAA;IACvB,GAAG,CAAC,QAAQ,GAAG,IAAI,CAAA;AACvB,CAAC,CACJ,CAAA"}

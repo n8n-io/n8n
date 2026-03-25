@@ -1,0 +1,20 @@
+{
+  "nested": {
+    "google": {
+      "nested": {
+        "protobuf": {
+          "nested": {
+            "SourceContext": {
+              "fields": {
+                "fileName": {
+                  "type": "string",
+                  "id": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

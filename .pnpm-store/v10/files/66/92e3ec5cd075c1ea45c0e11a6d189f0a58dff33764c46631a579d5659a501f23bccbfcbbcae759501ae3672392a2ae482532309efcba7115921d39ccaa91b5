@@ -1,0 +1,38 @@
+{
+  "name": "http2-client",
+  "version": "1.3.5",
+  "description": "Drop-in replacement for Nodes http and https that transparently make http request to both http1 / http2 server, it's using the ALPN protocol",
+  "main": "lib/index.js",
+  "scripts": {
+    "test": "mocha --recursive --reporter spec",
+    "watch-test": "mocha --recursive --watch --reporter spec",
+    "test-ci": "istanbul cover ./node_modules/mocha/bin/_mocha test/**/*.js --report lcovonly -- -R spec && cat ./coverage/lcov.info"
+  },
+  "devDependencies": {
+    "chai": "^4.3.4",
+    "chai-spies": "^1.0.0",
+    "http2-debug": "1.2.1",
+    "istanbul": "0.4.5",
+    "mocha": "^9.0.2",
+    "request": "^2.88.2"
+  },
+  "keywords": [
+    "http2",
+    "http2 client",
+    "request",
+    "compatible",
+    "client",
+    "compatibility"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hisco/http2-client.git"
+  },
+  "bugs": {
+    "url": "https://github.com/hisco/http2-client/issues"
+  },
+  "homepage": "https://github.com/hisco",
+  "author": "Eyald <hisco@googlegroups.com‬>",
+  "license": "MIT",
+  "dependencies": {}
+}

@@ -1,0 +1,8 @@
+param-a:
+  first:
+    value: a1
+  second:
+    value: a2
+path-param:
+  first:
+    value: b1

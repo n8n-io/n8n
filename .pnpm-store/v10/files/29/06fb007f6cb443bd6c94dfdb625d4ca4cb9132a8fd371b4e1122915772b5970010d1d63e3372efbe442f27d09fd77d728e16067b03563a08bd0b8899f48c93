@@ -1,0 +1,64 @@
+{
+	"name": "@iconify/json",
+	"description": "Hundreds of open source icon sets in IconifyJSON format",
+	"license": "MIT",
+	"version": "2.2.354",
+	"type": "module",
+	"homepage": "https://iconify.design/icon-sets/",
+	"bugs": "https://github.com/iconify/icon-sets/issues",
+	"repository": {
+		"type": "git",
+		"url": "git+ssh://git@github.com/iconify/icon-sets.git"
+	},
+	"exports": {
+		"./*": "./*",
+		"./dist": {
+			"require": "./dist/index.cjs",
+			"import": "./dist/index.mjs",
+			"types": "./dist/index.d.ts"
+		},
+		"./dist/index": {
+			"require": "./dist/index.cjs",
+			"import": "./dist/index.mjs",
+			"types": "./dist/index.d.ts"
+		},
+		".": {
+			"require": "./dist/index.cjs",
+			"import": "./dist/index.mjs",
+			"types": "./dist/index.d.ts"
+		}
+	},
+	"files": [
+		"dist",
+		"json",
+		"lib",
+		"collections.json",
+		"collections.md",
+		"composer.json",
+		"readme.md"
+	],
+	"main": "dist/index.cjs",
+	"module": "dist/index.mjs",
+	"types": "dist/index.d.ts",
+	"scripts": {
+		"build": "rimraf dist && unbuild",
+		"test:cjs": "vitest --config vitest.config.cjs",
+		"test:esm": "vitest --config vitest.config.mjs",
+		"test": "npm run test:cjs && npm run test:esm",
+		"version": "node sync-version.cjs",
+		"prepublishOnly": "npm run build && npm run version"
+	},
+	"dependencies": {
+		"@iconify/types": "*",
+		"pathe": "^1.1.2"
+	},
+	"devDependencies": {
+		"@types/jest": "^29.5.12",
+		"@types/node": "^20.16.2",
+		"@typescript-eslint/eslint-plugin": "^8.3.0",
+		"cross-env": "^7.0.3",
+		"eslint": "^8.57.0",
+		"unbuild": "^2.0.0",
+		"vitest": "^2.0.5"
+	}
+}

@@ -1,0 +1,1 @@
+module.exports = require("../../dist/experimental/prompts/custom_format.cjs");

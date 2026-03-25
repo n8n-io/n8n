@@ -1,0 +1,142 @@
+url: https://mermade.github.io/oas-kit/default-rules.html
+rules:
+- name: parameter-description
+  object: parameter
+  description: parameter objects should have a description
+  truthy: description
+- name: parameter-name-regex
+  object: parameter
+  description: parameter names should match RFC6570
+  pattern:
+    property: name
+    value: '^[A-Za-z0-9?_\-()]+$'
+- name: operation-operationId
+  object: operation
+  description: operation should have an operationId
+  truthy: operationId
+- name: operation-summary-or-description
+  object: operation
+  description: operation should have summary or description
+  or:
+    - summary
+    - description
+- name: operation-tags
+  object: operation
+  description: operation should have non-empty tags array
+  truthy: tags
+  skip: isCallback
+- name: path-keys-no-trailing-slash
+  object: paths
+  notEndWith:
+    property: $key
+    value: /
+    omit: /
+- name: openapi-tags
+  object: openapi
+  description: openapi object should have non-empty tags array
+  truthy: tags
+- name: reference-no-other-properties
+  object: reference
+  description: reference objects should only have a $ref property
+  truthy: $ref
+  properties: 1
+- name: pathItem-summary-or-description
+  object: pathItem
+  disabled: true
+  description: pathItem should have summary or description
+  or:
+    - summary
+    - description
+- name: example-value-or-externalValue
+  object: example
+  description: example should have either value or externalValue
+  xor:
+    - value
+    - externalValue
+- name: reference-components-regex
+  object: reference
+  description: reference components should all match spec. regex
+  pattern:
+    property: $ref
+    startsWith: '#/components/'
+    omit: '#'
+    split: /
+    value: '^[a-zA-Z0-9\.\-_]+$'
+- name: no-script-tags-in-markdown
+  object: '*'
+  description: markdown descriptions should not contain <script> tags
+  notContain:
+    properties:
+      - description
+    value: <script
+- name: info-contact
+  object: info
+  description: info object should contain contact object
+  truthy: contact
+- name: contact-properties
+  object: contact
+  description: 'contact object should have name, url and email'
+  truthy:
+    - name
+    - url
+    - email
+- name: license-url
+  object: license
+  description: license object should include url
+  truthy: url
+- name: server-not-example.com
+  object: server
+  description: server url should not point at example.com
+  notContain:
+    properties:
+      - url
+    value: example.com
+- name: license-apimatic-bug
+  object: license
+  description: license url should not point at gruntjs
+  notContain:
+    properties:
+      - url
+    value: gruntjs
+- name: no-eval-in-descriptions
+  object: '*'
+  description: markdown descriptions should not contain 'eval('
+  notContain:
+    properties:
+      - description
+      - title
+    value: eval(
+- name: tag-description
+  object: tag
+  description: tag object should have a description
+  truthy: description
+- name: schema-properties-type
+  object: schema
+  description: "schema objects containing properties should have type: object"
+  if:
+    property: properties
+    then:
+      property: type
+      value: object
+- name: operations-must-exist
+  object: metadata.count
+  description: One or more operation objects must be present
+  schema:
+    type: object
+    properties:
+      operation:
+        type: integer
+        minimum: 1
+    required:
+    - operation
+- name: document-max-length
+  object: metadata
+  description: Document should have a max length of 1000 lines
+  schema:
+    type: object
+    properties:
+      lines:
+        type: integer
+        maximum: 1000
+    required:
+    - lines

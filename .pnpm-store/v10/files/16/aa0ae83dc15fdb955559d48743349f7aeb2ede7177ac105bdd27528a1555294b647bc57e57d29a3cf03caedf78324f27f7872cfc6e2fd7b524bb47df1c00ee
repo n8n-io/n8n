@@ -1,0 +1,171 @@
+# Copyright 2012 Mozilla Foundation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Main toolbar buttons (tooltips and alt text for images)
+previous.title=මීට පෙර පිටුව
+previous_label=පෙර
+next.title=මීළඟ පිටුව
+next_label=මීළඟ
+
+# LOCALIZATION NOTE (page.title): The tooltip for the pageNumber input.
+page.title=පිටුව
+# LOCALIZATION NOTE (of_pages): "{{pagesCount}}" will be replaced by a number
+# representing the total number of pages in the document.
+# LOCALIZATION NOTE (page_of_pages): "{{pageNumber}}" and "{{pagesCount}}"
+# will be replaced by a number representing the currently visible page,
+# respectively a number representing the total number of pages in the document.
+
+zoom_out.title=කුඩා කරන්න
+zoom_out_label=කුඩා කරන්න
+zoom_in.title=විශාල කරන්න
+zoom_in_label=විශාල කරන්න
+zoom.title=විශාලණය
+presentation_mode.title=ඉදිරිපත්කිරීම් ප්‍රකාරය වෙත මාරුවන්න
+presentation_mode_label=ඉදිරිපත්කිරීම් ප්‍රකාරය
+open_file.title=ගොනුව විවෘත කරන්න
+open_file_label=විවෘත කරන්න
+print.title=මුද්‍රණය
+print_label=මුද්‍රණය
+download.title=බාගන්න
+download_label=බාගන්න
+bookmark.title=දැනට ඇති දසුන (පිටපත් කරන්න හෝ නව කවුළුවක විවෘත කරන්න)
+bookmark_label=දැනට ඇති දසුන
+
+# Secondary toolbar and context menu
+tools.title=මෙවලම්
+tools_label=මෙවලම්
+first_page.title=මුල් පිටුවට යන්න
+first_page.label=මුල් පිටුවට යන්න
+first_page_label=මුල් පිටුවට යන්න
+last_page.title=අවසන් පිටුවට යන්න
+last_page.label=අවසන් පිටුවට යන්න
+last_page_label=අවසන් පිටුවට යන්න
+page_rotate_cw.title=දක්ශිණාවර්තව භ්‍රමණය
+page_rotate_cw.label=දක්ශිණාවර්තව භ්‍රමණය
+page_rotate_cw_label=දක්ශිණාවර්තව භ්‍රමණය
+page_rotate_ccw.title=වාමාවර්තව භ්‍රමණය
+page_rotate_ccw.label=වාමාවර්තව භ්‍රමණය
+page_rotate_ccw_label=වාමාවර්තව භ්‍රමණය
+
+
+# Document properties dialog box
+document_properties.title=ලේඛන වත්කම්...
+document_properties_label=ලේඛන වත්කම්...
+document_properties_file_name=ගොනු නම:
+document_properties_file_size=ගොනු ප්‍රමාණය:
+# LOCALIZATION NOTE (document_properties_kb): "{{size_kb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in kilobytes, respectively in bytes.
+document_properties_kb={{size_kb}} KB ({{size_b}} බයිට)
+# LOCALIZATION NOTE (document_properties_mb): "{{size_mb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in megabytes, respectively in bytes.
+document_properties_mb={{size_mb}} MB ({{size_b}} බයිට)
+document_properties_title=සිරස්තලය:
+document_properties_author=කතෲ
+document_properties_subject=මාතෘකාව:
+document_properties_keywords=යතුරු වදන්:
+document_properties_creation_date=නිර්මිත දිනය:
+document_properties_modification_date=වෙනස්කල දිනය:
+# LOCALIZATION NOTE (document_properties_date_string): "{{date}}" and "{{time}}"
+# will be replaced by the creation/modification date, and time, of the PDF file.
+document_properties_date_string={{date}}, {{time}}
+document_properties_creator=නිර්මාපක:
+document_properties_producer=PDF නිශ්පාදක:
+document_properties_version=PDF නිකුතුව:
+document_properties_page_count=පිටු ගණන:
+document_properties_close=වසන්න
+
+print_progress_message=ලේඛනය මුද්‍රණය සඳහා සූදානම් කරමින්…
+# LOCALIZATION NOTE (print_progress_percent): "{{progress}}" will be replaced by
+# a numerical per cent value.
+print_progress_close=අවලංගු කරන්න
+
+# Tooltips and alt text for side panel toolbar buttons
+# (the _label strings are alt text for the buttons, the .title strings are
+# tooltips)
+toggle_sidebar.title=පැති තීරුවට මාරුවන්න
+toggle_sidebar_label=පැති තීරුවට මාරුවන්න
+attachments.title=ඇමිණුම් පෙන්වන්න
+attachments_label=ඇමිණුම්
+thumbs.title=සිඟිති රූ පෙන්වන්න
+thumbs_label=සිඟිති රූ
+findbar.title=ලේඛනය තුළ සොයන්න
+findbar_label=සොයන්න
+
+# Thumbnails panel item (tooltip and alt text for images)
+# LOCALIZATION NOTE (thumb_page_title): "{{page}}" will be replaced by the page
+# number.
+thumb_page_title=පිටුව {{page}}
+# LOCALIZATION NOTE (thumb_page_canvas): "{{page}}" will be replaced by the page
+# number.
+thumb_page_canvas=පිටුවෙ සිඟිත රූව {{page}}
+
+# Find panel button title and messages
+find_previous.title=මේ වාක්‍ය ඛණ්ඩය මීට පෙර යෙදුණු ස්ථානය සොයන්න
+find_previous_label=පෙර:
+find_next.title=මේ වාක්‍ය ඛණ්ඩය මීළඟට යෙදෙන ස්ථානය සොයන්න
+find_next_label=මීළඟ
+find_highlight=සියල්ල උද්දීපනය
+find_match_case_label=අකුරු ගළපන්න
+find_reached_top=පිටුවේ ඉහළ කෙළවරට ලගාවිය, පහළ සිට ඉදිරියට යමින්
+find_reached_bottom=පිටුවේ පහළ කෙළවරට ලගාවිය, ඉහළ සිට ඉදිරියට යමින්
+find_not_found=ඔබ සෙව් වචන හමු නොවීය
+
+# Error panel labels
+error_more_info=බොහෝ තොරතුරු
+error_less_info=අවම තොරතුරු
+error_close=වසන්න
+# LOCALIZATION NOTE (error_version_info): "{{version}}" and "{{build}}" will be
+# replaced by the PDF.JS version and build ID.
+error_version_info=PDF.js v{{version}} (නිකුතුව: {{build}})
+# LOCALIZATION NOTE (error_message): "{{message}}" will be replaced by an
+# english string describing the error.
+error_message=පණිවිඩය: {{message}}
+# LOCALIZATION NOTE (error_stack): "{{stack}}" will be replaced with a stack
+# trace.
+error_stack=Stack: {{stack}}
+# LOCALIZATION NOTE (error_file): "{{file}}" will be replaced with a filename
+error_file=ගොනුව: {{file}}
+# LOCALIZATION NOTE (error_line): "{{line}}" will be replaced with a line number
+error_line=පේළිය: {{line}}
+rendering_error=පිටුව රෙන්ඩර් විමේදි ගැටලුවක් හට ගැනුණි.
+
+# Predefined zoom values
+page_scale_width=පිටුවේ පළල
+page_scale_fit=පිටුවට සුදුසු ලෙස
+page_scale_auto=ස්වයංක්‍රීය විශාලණය
+page_scale_actual=නියමිත ප්‍රමාණය
+# LOCALIZATION NOTE (page_scale_percent): "{{scale}}" will be replaced by a
+# numerical scale value.
+page_scale_percent={{scale}}%
+
+# Loading indicator messages
+loading_error_indicator=දෝෂය
+loading_error=PDF පූරණය විමේදි දෝෂයක් හට ගැනුණි.
+invalid_file_error=දූශිත හෝ සාවද්‍ය PDF ගොනුව.
+missing_file_error=නැතිවූ PDF ගොනුව.
+unexpected_response_error=බලාපොරොත්තු නොවූ සේවාදායක ප්‍රතිචාරය.
+
+# LOCALIZATION NOTE (text_annotation_type.alt): This is used as a tooltip.
+# "{{type}}" will be replaced with an annotation type from a list defined in
+# the PDF spec (32000-1:2008 Table 169 – Annotation types).
+# Some common types are e.g.: "Check", "Text", "Comment", "Note"
+text_annotation_type.alt=[{{type}} විස්තරය]
+password_label=මෙම PDF ගොනුව විවෘත කිරීමට මුරපදය ඇතුළත් කරන්න.
+password_invalid=වැරදි මුරපදයක්. කරුණාකර නැවත උත්සහ කරන්න.
+password_ok=හරි
+password_cancel=එපා
+
+printing_not_supported=අවවාදයයි: මෙම ගවේශකය මුද්‍රණය සඳහා සම්පූර්ණයෙන් සහය නොදක්වයි.
+printing_not_ready=අවවාදයයි: මුද්‍රණය සඳහා PDF සම්පූර්ණයෙන් පූර්ණය වී නොමැත.
+web_fonts_disabled=ජාල අකුරු අක්‍රීයයි: තිළැලි PDF අකුරු භාවිත කළ නොහැක.

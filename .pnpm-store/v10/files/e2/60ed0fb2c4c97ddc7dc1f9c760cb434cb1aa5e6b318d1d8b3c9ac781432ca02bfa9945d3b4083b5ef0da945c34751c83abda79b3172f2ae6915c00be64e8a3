@@ -1,0 +1,58 @@
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Mocha Tests</title>
+  <link href="/test/env/mocha.css" rel="stylesheet" />
+</head>
+<body>
+  <div id="mocha"></div>
+
+  <script src="/test/env/mocha.js"></script>
+  <script src="/test/env/chai.js"></script>
+  <script src="/lunr.js"></script>
+
+  <script>
+    mocha.setup('tdd')
+    window.assert = chai.assert
+
+    window.withFixture = function (name, fn) {
+      var fixturePath = '/test/fixtures/' + name,
+          xhr = new XMLHttpRequest
+
+      xhr.addEventListener('load', function () {
+        if (this.status != 200) {
+          fn('non 200 response')
+        } else {
+          fn(null, this.responseText)
+        }
+      })
+
+      xhr.open('GET', fixturePath)
+      xhr.send()
+    }
+  </script>
+  <script src="/test/builder_test.js"></script>
+  <script src="/test/field_ref_test.js"></script>
+  <script src="/test/match_data_test.js"></script>
+  <script src="/test/pipeline_test.js"></script>
+  <script src="/test/query_lexer_test.js"></script>
+  <script src="/test/query_parser_test.js"></script>
+  <script src="/test/query_test.js"></script>
+  <script src="/test/search_test.js"></script>
+  <script src="/test/serialization_test.js"></script>
+  <script src="/test/set_test.js"></script>
+  <script src="/test/stemmer_test.js"></script>
+  <script src="/test/stop_word_filter_test.js"></script>
+  <script src="/test/token_set_test.js"></script>
+  <script src="/test/token_test.js"></script>
+  <script src="/test/tokenizer_test.js"></script>
+  <script src="/test/trimmer_test.js"></script>
+  <script src="/test/utils_test.js"></script>
+  <script src="/test/vector_test.js"></script>
+  <script>
+    mocha.checkLeaks();
+    mocha.globals(['lunr']);
+    mocha.run();
+  </script>
+</body>
+</html>

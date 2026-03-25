@@ -1,0 +1,7 @@
+{
+  "name": "extraneous-dev-dep",
+  "version": "0.0.0",
+  "dependencies": {
+    "d": "1.0.0"
+  }
+}

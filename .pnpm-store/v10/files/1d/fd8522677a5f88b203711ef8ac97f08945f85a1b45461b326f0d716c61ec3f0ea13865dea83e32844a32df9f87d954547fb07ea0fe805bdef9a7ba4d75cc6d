@@ -1,0 +1,100 @@
+{
+  "name": "cli-table3",
+  "version": "0.6.5",
+  "description": "Pretty unicode tables for the command line. Based on the original cli-table.",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "files": [
+    "src/",
+    "index.d.ts",
+    "index.js"
+  ],
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {
+    "string-width": "^4.2.0"
+  },
+  "devDependencies": {
+    "cli-table": "^0.3.1",
+    "eslint": "^6.0.0",
+    "eslint-config-prettier": "^6.0.0",
+    "eslint-plugin-prettier": "^3.0.0",
+    "jest": "^25.2.4",
+    "jest-runner-eslint": "^0.7.0",
+    "lerna-changelog": "^1.0.1",
+    "prettier": "2.3.2"
+  },
+  "optionalDependencies": {
+    "@colors/colors": "1.5.0"
+  },
+  "scripts": {
+    "changelog": "lerna-changelog",
+    "docs": "node ./scripts/update-docs.js",
+    "prettier": "prettier --write '{examples,lib,scripts,src,test}/**/*.js'",
+    "test": "jest --color",
+    "test:watch": "jest --color --watchAll --notify"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cli-table/cli-table3.git"
+  },
+  "keywords": [
+    "node",
+    "command",
+    "line",
+    "cli",
+    "table",
+    "tables",
+    "tabular",
+    "unicode",
+    "colors",
+    "grid"
+  ],
+  "author": "James Talmage",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/cli-table/cli-table3/issues"
+  },
+  "homepage": "https://github.com/cli-table/cli-table3",
+  "engines": {
+    "node": "10.* || >= 12.*"
+  },
+  "changelog": {
+    "repo": "cli-table/cli-table3",
+    "labels": {
+      "breaking": ":boom: Breaking Change",
+      "enhancement": ":rocket: Enhancement",
+      "bug": ":bug: Bug Fix",
+      "documentation": ":memo: Documentation",
+      "internal": ":house: Internal"
+    }
+  },
+  "jest": {
+    "projects": [
+      {
+        "displayName": "test",
+        "testMatch": [
+          "<rootDir>/test/**/*.js"
+        ]
+      },
+      {
+        "runner": "jest-runner-eslint",
+        "displayName": "lint",
+        "testMatch": [
+          "<rootDir>/examples/**/*.js",
+          "<rootDir>/lib/**/*.js",
+          "<rootDir>/scripts/**/*.js",
+          "<rootDir>/src/**/*.js",
+          "<rootDir>/test/**/*.js"
+        ]
+      }
+    ]
+  },
+  "prettier": {
+    "printWidth": 120,
+    "tabWidth": 2,
+    "singleQuote": true,
+    "trailingComma": "es5"
+  }
+}

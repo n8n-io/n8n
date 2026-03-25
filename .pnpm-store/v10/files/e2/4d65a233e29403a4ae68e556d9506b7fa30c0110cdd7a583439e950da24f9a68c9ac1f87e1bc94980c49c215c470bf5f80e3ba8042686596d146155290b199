@@ -1,0 +1,12 @@
+import type * as ts from 'typescript';
+import type { Code, SfcBlock, VueCodeInformation } from '../types';
+export declare const newLine = "\n";
+export declare const endOfLine = ";\n";
+export declare const combineLastMapping: VueCodeInformation;
+export declare const variableNameRegex: RegExp;
+export declare function conditionWrapWith(condition: boolean, startOffset: number, endOffset: number, features: VueCodeInformation, ...wrapCodes: Code[]): Generator<Code>;
+export declare function wrapWith(startOffset: number, endOffset: number, features: VueCodeInformation, ...wrapCodes: Code[]): Generator<Code>;
+export declare function collectVars(ts: typeof import('typescript'), node: ts.Node, ast: ts.SourceFile, results?: string[]): string[];
+export declare function collectIdentifiers(ts: typeof import('typescript'), node: ts.Node, results?: [id: ts.Identifier, isRest: boolean][], isRest?: boolean): [id: ts.Identifier, isRest: boolean][];
+export declare function createTsAst(ts: typeof import('typescript'), astHolder: any, text: string): ts.SourceFile;
+export declare function generateSfcBlockSection(block: SfcBlock, start: number, end: number, features: VueCodeInformation): Code;

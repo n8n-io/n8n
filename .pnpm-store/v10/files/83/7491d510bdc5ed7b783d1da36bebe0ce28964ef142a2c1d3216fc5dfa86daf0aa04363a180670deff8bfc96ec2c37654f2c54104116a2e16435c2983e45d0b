@@ -1,0 +1,22 @@
+{
+	"name": "muggle-string",
+	"version": "0.4.1",
+	"main": "out/index.js",
+	"license": "MIT",
+	"files": [
+		"out/**/*.js",
+		"out/**/*.d.ts"
+	],
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/johnsoncodehk/muggle-string.git"
+	},
+	"scripts": {
+		"test": "vitest run"
+	},
+	"devDependencies": {
+		"typescript": "latest",
+		"vitest": "latest",
+		"vite": "latest"
+	}
+}

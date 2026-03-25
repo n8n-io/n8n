@@ -1,0 +1,35 @@
+{
+  "name": "@internationalized/date",
+  "version": "3.9.0",
+  "description": "Internationalized calendar, date, and time manipulation utilities",
+  "license": "Apache-2.0",
+  "main": "dist/main.js",
+  "module": "dist/module.js",
+  "exports": {
+    "source": "./src/index.ts",
+    "types": [
+      "./dist/types.d.ts",
+      "./src/index.ts"
+    ],
+    "import": "./dist/import.mjs",
+    "require": "./dist/main.js"
+  },
+  "types": "dist/types.d.ts",
+  "source": "src/index.ts",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/adobe/react-spectrum/tree/main/packages/@internationalized/date"
+  },
+  "dependencies": {
+    "@swc/helpers": "^0.5.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "gitHead": "2c58ed3ddd9be9100af9b1d0cfd137fcdc95ba2d"
+}

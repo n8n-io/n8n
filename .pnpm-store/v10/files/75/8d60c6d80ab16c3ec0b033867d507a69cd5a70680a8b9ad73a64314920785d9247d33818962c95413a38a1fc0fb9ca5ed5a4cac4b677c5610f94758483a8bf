@@ -1,0 +1,50 @@
+{
+  "name": "redis",
+  "description": "A modern, high performance Redis client",
+  "version": "4.6.14",
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist/"
+  ],
+  "workspaces": [
+    "./packages/*"
+  ],
+  "scripts": {
+    "test": "npm run test -ws --if-present",
+    "build:client": "npm run build -w ./packages/client",
+    "build:test-utils": "npm run build -w ./packages/test-utils",
+    "build:tests-tools": "npm run build:client && npm run build:test-utils",
+    "build:modules": "find ./packages -mindepth 1 -maxdepth 1 -type d ! -name 'client' ! -name 'test-utils' -exec npm run build -w {} \\;",
+    "build": "tsc",
+    "build-all": "npm run build:client && npm run build:test-utils && npm run build:modules && npm run build",
+    "documentation": "npm run documentation -ws --if-present",
+    "gh-pages": "gh-pages -d ./documentation -e ./documentation -u 'documentation-bot <documentation@bot>'"
+  },
+  "dependencies": {
+    "@redis/bloom": "1.2.0",
+    "@redis/client": "1.5.16",
+    "@redis/graph": "1.1.1",
+    "@redis/json": "1.0.6",
+    "@redis/search": "1.1.6",
+    "@redis/time-series": "1.0.5"
+  },
+  "devDependencies": {
+    "@tsconfig/node14": "^14.1.0",
+    "gh-pages": "^6.0.0",
+    "release-it": "^16.1.5",
+    "typescript": "^5.2.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/redis/node-redis.git"
+  },
+  "bugs": {
+    "url": "https://github.com/redis/node-redis/issues"
+  },
+  "homepage": "https://github.com/redis/node-redis",
+  "keywords": [
+    "redis"
+  ]
+}

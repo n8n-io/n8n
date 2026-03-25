@@ -1,0 +1,4 @@
+# These are supported funding model platforms
+
+github: [andris9] # enable once enrolled
+custom: ['https://www.paypal.me/nodemailer']

@@ -1,0 +1,35 @@
+{
+  "name": "amqplib",
+  "homepage": "http://amqp-node.github.io/amqplib/",
+  "main": "./channel_api.js",
+  "version": "0.10.6",
+  "description": "An AMQP 0-9-1 (e.g., RabbitMQ) library and client.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/amqp-node/amqplib.git"
+  },
+  "engines": {
+    "node": ">=10"
+  },
+  "dependencies": {
+    "@acuminous/bitsyntax": "^0.1.2",
+    "buffer-more-ints": "~1.0.0",
+    "url-parse": "~1.5.10"
+  },
+  "devDependencies": {
+    "claire": "0.4.1",
+    "mocha": "^9.2.2",
+    "nyc": "^15.1.0",
+    "uglify-js": "2.8.x"
+  },
+  "scripts": {
+    "test": "make test"
+  },
+  "keywords": [
+    "AMQP",
+    "AMQP 0-9-1",
+    "RabbitMQ"
+  ],
+  "author": "Michael Bridgen <mikeb@squaremobius.net>",
+  "license": "MIT"
+}

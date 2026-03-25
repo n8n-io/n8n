@@ -1,0 +1,43 @@
+{
+  "name": "tlds",
+  "version": "1.261.0",
+  "description": "A list of TLDs.",
+  "repository": "https://github.com/stephenmathieson/node-tlds.git",
+  "author": "Stephen Mathieson",
+  "license": "MIT",
+  "main": "index.json",
+  "files": [
+    "index.json",
+    "index.d.ts",
+    "bin.js"
+  ],
+  "bin": "bin.js",
+  "scripts": {
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "test": "node test.js"
+  },
+  "keywords": [
+    "data",
+    "tld",
+    "tlds",
+    "top",
+    "level",
+    "domains"
+  ],
+  "devDependencies": {
+    "eslint": "^7.6.0",
+    "got": "^11.5.1",
+    "is-punycode": "^1.0.1",
+    "prettier": "^2.8.8",
+    "punycode": "^2.1.1",
+    "semver": "^7.3.2"
+  },
+  "eslintConfig": {
+    "extends": "eslint:recommended",
+    "env": {
+      "node": true,
+      "es2020": true
+    }
+  }
+}

@@ -1,0 +1,184 @@
+# Copyright 2012 Mozilla Foundation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Main toolbar buttons (tooltips and alt text for images)
+previous.title=Pàgina anterior
+previous_label=Anterior
+next.title=Pàgina següent
+next_label=Següent
+
+# LOCALIZATION NOTE (page.title): The tooltip for the pageNumber input.
+page.title=Pàgina
+# LOCALIZATION NOTE (of_pages): "{{pagesCount}}" will be replaced by a number
+# representing the total number of pages in the document.
+of_pages=de {{pagesCount}}
+# LOCALIZATION NOTE (page_of_pages): "{{pageNumber}}" and "{{pagesCount}}"
+# will be replaced by a number representing the currently visible page,
+# respectively a number representing the total number of pages in the document.
+page_of_pages=({{pageNumber}} de {{pagesCount}})
+
+zoom_out.title=Allunya
+zoom_out_label=Allunya
+zoom_in.title=Apropa
+zoom_in_label=Apropa
+zoom.title=Escala
+presentation_mode.title=Canvia al mode de presentació
+presentation_mode_label=Mode de presentació
+open_file.title=Obre el fitxer
+open_file_label=Obre
+print.title=Imprimeix
+print_label=Imprimeix
+download.title=Baixa
+download_label=Baixa
+bookmark.title=Vista actual (copia o obre en una finestra nova)
+bookmark_label=Vista actual
+
+# Secondary toolbar and context menu
+tools.title=Eines
+tools_label=Eines
+first_page.title=Vés a la primera pàgina
+first_page.label=Vés a la primera pàgina
+first_page_label=Vés a la primera pàgina
+last_page.title=Vés a l'última pàgina
+last_page.label=Vés a l'última pàgina
+last_page_label=Vés a l'última pàgina
+page_rotate_cw.title=Gira cap a la dreta
+page_rotate_cw.label=Gira cap a la dreta
+page_rotate_cw_label=Gira cap a la dreta
+page_rotate_ccw.title=Gira cap a l'esquerra
+page_rotate_ccw.label=Gira cap a l'esquerra
+page_rotate_ccw_label=Gira cap a l'esquerra
+
+cursor_text_select_tool.title=Habilita l'eina de selecció de text
+cursor_text_select_tool_label=Eina de selecció de text
+cursor_hand_tool.title=Habilita l'eina de mà
+cursor_hand_tool_label=Eina de mà
+
+# Document properties dialog box
+document_properties.title=Propietats del document…
+document_properties_label=Propietats del document…
+document_properties_file_name=Nom del fitxer:
+document_properties_file_size=Mida del fitxer:
+# LOCALIZATION NOTE (document_properties_kb): "{{size_kb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in kilobytes, respectively in bytes.
+document_properties_kb={{size_kb}} KB ({{size_b}} bytes)
+# LOCALIZATION NOTE (document_properties_mb): "{{size_mb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in megabytes, respectively in bytes.
+document_properties_mb={{size_mb}} MB ({{size_b}} bytes)
+document_properties_title=Títol:
+document_properties_author=Autor:
+document_properties_subject=Assumpte:
+document_properties_keywords=Paraules clau:
+document_properties_creation_date=Data de creació:
+document_properties_modification_date=Data de modificació:
+# LOCALIZATION NOTE (document_properties_date_string): "{{date}}" and "{{time}}"
+# will be replaced by the creation/modification date, and time, of the PDF file.
+document_properties_date_string={{date}}, {{time}}
+document_properties_creator=Creador:
+document_properties_producer=Generador de PDF:
+document_properties_version=Versió de PDF:
+document_properties_page_count=Nombre de pàgines:
+document_properties_close=Tanca
+
+print_progress_message=S'està preparant la impressió del document…
+# LOCALIZATION NOTE (print_progress_percent): "{{progress}}" will be replaced by
+# a numerical per cent value.
+print_progress_percent={{progress}}%
+print_progress_close=Cancel·la
+
+# Tooltips and alt text for side panel toolbar buttons
+# (the _label strings are alt text for the buttons, the .title strings are
+# tooltips)
+toggle_sidebar.title=Mostra/amaga la barra lateral
+toggle_sidebar_notification.title=Mostra/amaga la barra lateral (el document conté un esquema o adjuncions)
+toggle_sidebar_label=Mostra/amaga la barra lateral
+document_outline.title=Mostra l'esquema del document (doble clic per ampliar/reduir tots els elements)
+document_outline_label=Contorn del document
+attachments.title=Mostra les adjuncions
+attachments_label=Adjuncions
+thumbs.title=Mostra les miniatures
+thumbs_label=Miniatures
+findbar.title=Cerca al document
+findbar_label=Cerca
+
+# Thumbnails panel item (tooltip and alt text for images)
+# LOCALIZATION NOTE (thumb_page_title): "{{page}}" will be replaced by the page
+# number.
+thumb_page_title=Pàgina {{page}}
+# LOCALIZATION NOTE (thumb_page_canvas): "{{page}}" will be replaced by the page
+# number.
+thumb_page_canvas=Miniatura de la pàgina {{page}}
+
+# Find panel button title and messages
+find_input.title=Cerca
+find_input.placeholder=Cerca al document…
+find_previous.title=Cerca l'anterior coincidència de l'expressió
+find_previous_label=Anterior
+find_next.title=Cerca la següent coincidència de l'expressió
+find_next_label=Següent
+find_highlight=Ressalta-ho tot
+find_match_case_label=Distingeix entre majúscules i minúscules
+find_reached_top=S'ha arribat al principi del document, es continua pel final
+find_reached_bottom=S'ha arribat al final del document, es continua pel principi
+find_not_found=No s'ha trobat l'expressió
+
+# Error panel labels
+error_more_info=Més informació
+error_less_info=Menys informació
+error_close=Tanca
+# LOCALIZATION NOTE (error_version_info): "{{version}}" and "{{build}}" will be
+# replaced by the PDF.JS version and build ID.
+error_version_info=PDF.js v{{version}} (muntatge: {{build}})
+# LOCALIZATION NOTE (error_message): "{{message}}" will be replaced by an
+# english string describing the error.
+error_message=Missatge: {{message}}
+# LOCALIZATION NOTE (error_stack): "{{stack}}" will be replaced with a stack
+# trace.
+error_stack=Pila: {{stack}}
+# LOCALIZATION NOTE (error_file): "{{file}}" will be replaced with a filename
+error_file=Fitxer: {{file}}
+# LOCALIZATION NOTE (error_line): "{{line}}" will be replaced with a line number
+error_line=Línia: {{line}}
+rendering_error=S'ha produït un error mentre es renderitzava la pàgina.
+
+# Predefined zoom values
+page_scale_width=Amplària de la pàgina
+page_scale_fit=Ajusta la pàgina
+page_scale_auto=Zoom automàtic
+page_scale_actual=Mida real
+# LOCALIZATION NOTE (page_scale_percent): "{{scale}}" will be replaced by a
+# numerical scale value.
+page_scale_percent={{scale}}%
+
+# Loading indicator messages
+loading_error_indicator=Error
+loading_error=S'ha produït un error en carregar el PDF.
+invalid_file_error=El fitxer PDF no és vàlid o està malmès.
+missing_file_error=Falta el fitxer PDF.
+unexpected_response_error=Resposta inesperada del servidor.
+
+# LOCALIZATION NOTE (text_annotation_type.alt): This is used as a tooltip.
+# "{{type}}" will be replaced with an annotation type from a list defined in
+# the PDF spec (32000-1:2008 Table 169 – Annotation types).
+# Some common types are e.g.: "Check", "Text", "Comment", "Note"
+text_annotation_type.alt=[Anotació {{type}}]
+password_label=Introduïu la contrasenya per obrir aquest fitxer PDF.
+password_invalid=La contrasenya no és vàlida. Torneu-ho a provar.
+password_ok=D'acord
+password_cancel=Cancel·la
+
+printing_not_supported=Avís: la impressió no és plenament funcional en aquest navegador.
+printing_not_ready=Atenció: el PDF no s'ha acabat de carregar per imprimir-lo.
+web_fonts_disabled=Els tipus de lletra web estan desactivats: no es poden utilitzar els tipus de lletra incrustats al PDF.
+document_colors_not_allowed=Els documents PDF no poden usar els seus colors propis: «Permet a les pàgines triar els colors propis» es troba desactivat al navegador.

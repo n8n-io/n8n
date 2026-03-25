@@ -1,0 +1,58 @@
+{
+  "name": "jest-runner",
+  "version": "29.6.2",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/facebook/jest.git",
+    "directory": "packages/jest-runner"
+  },
+  "license": "MIT",
+  "main": "./build/index.js",
+  "types": "./build/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./build/index.d.ts",
+      "default": "./build/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "dependencies": {
+    "@jest/console": "^29.6.2",
+    "@jest/environment": "^29.6.2",
+    "@jest/test-result": "^29.6.2",
+    "@jest/transform": "^29.6.2",
+    "@jest/types": "^29.6.1",
+    "@types/node": "*",
+    "chalk": "^4.0.0",
+    "emittery": "^0.13.1",
+    "graceful-fs": "^4.2.9",
+    "jest-docblock": "^29.4.3",
+    "jest-environment-node": "^29.6.2",
+    "jest-haste-map": "^29.6.2",
+    "jest-leak-detector": "^29.6.2",
+    "jest-message-util": "^29.6.2",
+    "jest-resolve": "^29.6.2",
+    "jest-runtime": "^29.6.2",
+    "jest-util": "^29.6.2",
+    "jest-watcher": "^29.6.2",
+    "jest-worker": "^29.6.2",
+    "p-limit": "^3.1.0",
+    "source-map-support": "0.5.13"
+  },
+  "devDependencies": {
+    "@jest/test-utils": "^29.6.2",
+    "@tsd/typescript": "^5.0.4",
+    "@types/exit": "^0.1.30",
+    "@types/graceful-fs": "^4.1.3",
+    "@types/source-map-support": "^0.5.0",
+    "jest-jasmine2": "^29.6.2",
+    "tsd-lite": "^0.7.0"
+  },
+  "engines": {
+    "node": "^14.15.0 || ^16.10.0 || >=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "gitHead": "0fd5b1c37555f485c56a6ad2d6b010a72204f9f6"
+}

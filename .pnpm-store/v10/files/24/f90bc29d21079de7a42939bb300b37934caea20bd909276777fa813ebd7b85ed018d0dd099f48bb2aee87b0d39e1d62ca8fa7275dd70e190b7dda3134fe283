@@ -1,0 +1,1 @@
+module.exports = require("../../dist/document_loaders/fs/obsidian.cjs");

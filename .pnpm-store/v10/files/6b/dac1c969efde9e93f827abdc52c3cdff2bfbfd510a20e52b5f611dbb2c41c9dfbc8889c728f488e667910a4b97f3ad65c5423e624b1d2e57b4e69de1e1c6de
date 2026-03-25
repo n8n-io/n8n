@@ -1,0 +1,45 @@
+{
+  "name": "@storybook/global",
+  "version": "5.0.0",
+  "description": "Require global variables",
+  "keywords": [],
+  "homepage": "https://github.com/storybookjs/global",
+  "repository": "git://github.com/storybookjs/global.git",
+  "license": "MIT",
+  "author": "Norbert <ndelangen@me.com>",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "require": "./dist/index.js",
+      "import": "./dist/index.mjs",
+      "types": "./dist/index.d.ts"
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "*.js",
+    "*.d.ts"
+  ],
+  "scripts": {
+    "prep": "tsup ./src/index.ts "
+  },
+  "devDependencies": {
+    "@types/node": "^18.11.10",
+    "@typescript-eslint/eslint-plugin": "^5.45.0",
+    "@typescript-eslint/parser": "^5.45.0",
+    "eslint": "^8.29.0",
+    "eslint-config-prettier": "^8.5.0",
+    "eslint-plugin-prettier": "^4.2.1",
+    "prettier": "^2.8.0",
+    "tsup": "^6.5.0",
+    "typescript": "^4.9.3"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

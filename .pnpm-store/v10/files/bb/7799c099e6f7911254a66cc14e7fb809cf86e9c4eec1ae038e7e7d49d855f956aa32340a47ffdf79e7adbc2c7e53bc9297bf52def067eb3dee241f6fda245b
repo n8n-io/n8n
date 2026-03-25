@@ -1,0 +1,18 @@
+{
+  "plugins": [
+    "plugins/markdown",
+    "jsdoc-plugin-typescript"
+  ],
+  "recurseDepth": 10,
+  "source": {
+    "excludePattern": "/\\.test\\.js/"
+  },
+  "sourceType": "module",
+  "tags": {
+    "allowUnknownTags": true,
+    "dictionaries": ["jsdoc", "closure"]
+  },
+  "typescript": {
+    "moduleRoot": "./"
+  }
+}

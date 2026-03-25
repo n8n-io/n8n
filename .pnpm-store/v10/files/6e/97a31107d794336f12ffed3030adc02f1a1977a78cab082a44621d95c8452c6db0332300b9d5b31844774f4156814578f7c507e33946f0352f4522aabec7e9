@@ -1,0 +1,52 @@
+{
+  "author": "GitHub Inc.",
+  "name": "which",
+  "description": "Like which(1) unix command. Find the first instance of an executable in the PATH.",
+  "version": "5.0.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/npm/node-which.git"
+  },
+  "main": "lib/index.js",
+  "bin": {
+    "node-which": "./bin/which.js"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "isexe": "^3.1.1"
+  },
+  "devDependencies": {
+    "@npmcli/eslint-config": "^5.0.0",
+    "@npmcli/template-oss": "4.23.3",
+    "tap": "^16.3.0"
+  },
+  "scripts": {
+    "test": "tap",
+    "lint": "npm run eslint",
+    "postlint": "template-oss-check",
+    "template-oss-apply": "template-oss-apply --force",
+    "lintfix": "npm run eslint -- --fix",
+    "snap": "tap",
+    "posttest": "npm run lint",
+    "eslint": "eslint \"**/*.{js,cjs,ts,mjs,jsx,tsx}\""
+  },
+  "files": [
+    "bin/",
+    "lib/"
+  ],
+  "tap": {
+    "check-coverage": true,
+    "nyc-arg": [
+      "--exclude",
+      "tap-snapshots/**"
+    ]
+  },
+  "engines": {
+    "node": "^18.17.0 || >=20.5.0"
+  },
+  "templateOSS": {
+    "//@npmcli/template-oss": "This file is partially managed by @npmcli/template-oss. Edits may be overwritten.",
+    "version": "4.23.3",
+    "publish": "true"
+  }
+}

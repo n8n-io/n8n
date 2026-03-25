@@ -1,0 +1,61 @@
+{
+  "name": "d3-dsv",
+  "version": "2.0.0",
+  "description": "A parser and formatter for delimiter-separated values, such as CSV and TSV",
+  "keywords": [
+    "d3",
+    "d3-module",
+    "dsv",
+    "csv",
+    "tsv"
+  ],
+  "homepage": "https://d3js.org/d3-dsv/",
+  "license": "BSD-3-Clause",
+  "author": {
+    "name": "Mike Bostock",
+    "url": "http://bost.ocks.org/mike"
+  },
+  "main": "dist/d3-dsv.js",
+  "unpkg": "dist/d3-dsv.min.js",
+  "jsdelivr": "dist/d3-dsv.min.js",
+  "module": "src/index.js",
+  "bin": {
+    "csv2json": "bin/dsv2json",
+    "csv2tsv": "bin/dsv2dsv",
+    "dsv2dsv": "bin/dsv2dsv",
+    "dsv2json": "bin/dsv2json",
+    "json2csv": "bin/json2dsv",
+    "json2dsv": "bin/json2dsv",
+    "json2tsv": "bin/json2dsv",
+    "tsv2csv": "bin/dsv2dsv",
+    "tsv2json": "bin/dsv2json"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/d3/d3-dsv.git"
+  },
+  "files": [
+    "bin/*",
+    "dist/**/*.js",
+    "src/**/*.js"
+  ],
+  "scripts": {
+    "pretest": "rollup -c",
+    "test": "TZ=America/Los_Angeles tape 'test/**/*-test.js' && eslint src test",
+    "prepublishOnly": "rm -rf dist && yarn test",
+    "postpublish": "git push && git push --tags && cd ../d3.github.com && git pull && cp ../${npm_package_name}/dist/${npm_package_name}.js ${npm_package_name}.v${npm_package_version%%.*}.js && cp ../${npm_package_name}/dist/${npm_package_name}.min.js ${npm_package_name}.v${npm_package_version%%.*}.min.js && git add ${npm_package_name}.v${npm_package_version%%.*}.js ${npm_package_name}.v${npm_package_version%%.*}.min.js && git commit -m \"${npm_package_name} ${npm_package_version}\" && git push && cd - && zip -j dist/${npm_package_name}.zip -- LICENSE README.md dist/${npm_package_name}.js dist/${npm_package_name}.min.js"
+  },
+  "dependencies": {
+    "commander": "2",
+    "iconv-lite": "0.4",
+    "rw": "1"
+  },
+  "sideEffects": false,
+  "devDependencies": {
+    "csv-spectrum": "1",
+    "eslint": "6",
+    "rollup": "1",
+    "rollup-plugin-terser": "5",
+    "tape": "4"
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "name": "change-case",
+  "version": "5.4.4",
+  "description": "Transform a string between `camelCase`, `PascalCase`, `Capital Case`, `snake_case`, `kebab-case`, `CONSTANT_CASE` and others",
+  "keywords": [
+    "change",
+    "case",
+    "convert",
+    "transform",
+    "camel-case",
+    "pascal-case",
+    "param-case",
+    "kebab-case",
+    "header-case"
+  ],
+  "homepage": "https://github.com/blakeembrey/change-case/tree/master/packages/change-case#readme",
+  "bugs": {
+    "url": "https://github.com/blakeembrey/change-case/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/blakeembrey/change-case.git"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Blake Embrey",
+    "email": "hello@blakeembrey.com",
+    "url": "http://blakeembrey.me"
+  },
+  "type": "module",
+  "exports": {
+    ".": "./dist/index.js",
+    "./keys": "./dist/keys.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist/"
+  ],
+  "scripts": {
+    "bench": "vitest bench",
+    "build": "ts-scripts build",
+    "format": "ts-scripts format",
+    "prepublishOnly": "npm run build",
+    "specs": "ts-scripts specs",
+    "test": "ts-scripts test"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

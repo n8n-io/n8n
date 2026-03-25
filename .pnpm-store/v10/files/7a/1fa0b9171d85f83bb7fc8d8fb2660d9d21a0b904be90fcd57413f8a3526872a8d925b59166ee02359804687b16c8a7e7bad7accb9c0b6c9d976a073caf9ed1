@@ -1,0 +1,346 @@
+@use 'sass:map';
+
+@use 'mixins/mixins' as *;
+@use 'mixins/utils' as *;
+@use 'mixins/var' as *;
+@use 'common/var' as *;
+@use './select-dropdown-v2.scss';
+@use './option-item.scss';
+@use './option-group.scss';
+@use './select/common.scss' as *;
+
+$input-inline-start: map.get($input-padding-horizontal, 'default') !default;
+
+@include b(select-v2) {
+  @include set-component-css-var('select', $select);
+}
+
+@include b(select-v2) {
+  display: inline-block;
+  position: relative;
+  vertical-align: middle;
+  font-size: map.get($input-font-size, 'default');
+  $selector: &;
+  @include e(wrapper) {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    position: relative;
+    box-sizing: border-box;
+    cursor: pointer;
+    padding: 1px 30px 1px 0;
+    border: 1px solid getCssVar('border-color');
+    border-radius: getCssVar('border-radius-base');
+    background-color: getCssVar('fill-color', 'blank');
+    transition: getCssVar('transition', 'duration');
+
+    &:hover {
+      border-color: getCssVar('text-color', 'placeholder');
+    }
+
+    @include when(filterable) {
+      cursor: text;
+    }
+
+    @include when(focused) {
+      border-color: getCssVar('color-primary');
+    }
+
+    @include when(hovering) {
+      &:not(.is-focused) {
+        border-color: getCssVar('border-color-hover');
+      }
+    }
+
+    @include when(disabled) {
+      cursor: not-allowed;
+
+      background-color: getCssVar('fill-color', 'light');
+      color: getCssVar('text-color', 'placeholder');
+      border-color: getCssVar('select-disabled-border');
+
+      &:hover {
+        border-color: getCssVar('select-disabled-border');
+      }
+
+      &.is-focus {
+        border-color: getCssVar('input-focus-border-color');
+      }
+
+      .is-transparent {
+        opacity: 1;
+        user-select: none;
+      }
+
+      #{$selector}__caret {
+        cursor: not-allowed;
+      }
+
+      #{$selector}__combobox-input {
+        cursor: not-allowed;
+      }
+    }
+
+    #{$selector}__input-wrapper {
+      box-sizing: border-box;
+      position: relative;
+      margin-inline-start: $input-inline-start;
+      max-width: 100%;
+      overflow: hidden;
+    }
+
+    &,
+    #{$selector}__input-wrapper {
+      line-height: map.get($input-height, 'default');
+    }
+
+    #{$selector}__input-wrapper input {
+      @include set-css-var-value(
+        'input-inner-height',
+        calc(
+          var(
+              #{getCssVarName('component-size')},
+              #{map.get($input-height, 'default')}
+            ) - 8px
+        )
+      );
+
+      height: getCssVar('input-inner-height');
+      line-height: getCssVar('input-inner-height');
+      min-width: 4px;
+      width: 100%;
+
+      background-color: transparent;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+      background: 0 0;
+      border: none;
+
+      margin: 2px 0;
+      outline: none;
+      padding: 0;
+    }
+  }
+
+  @include select-common(select-v2);
+
+  @include e(empty) {
+    padding: 10px 0;
+    margin: 0;
+    text-align: center;
+    color: getCssVar('text-color', 'secondary');
+    font-size: 14px;
+  }
+
+  @include e(popper) {
+    @include picker-popper(
+      map.get($select-dropdown, 'bg-color'),
+      map.get($select-dropdown, 'border'),
+      map.get($select-dropdown, 'shadow')
+    );
+  }
+
+  @each $size in (large, small) {
+    @include m($size) {
+      @include e(wrapper) {
+        #{$selector}__combobox-input {
+          height: map.get($input-height, $size) - 8px;
+        }
+      }
+      @include e(caret) {
+        height: map.get($input-height, $size);
+      }
+      @include e(suffix) {
+        height: map.get($input-height, $size);
+      }
+      @include e(placeholder) {
+        font-size: map.get($input-font-size, $size);
+        line-height: map.get($input-line-height, $size);
+      }
+    }
+  }
+
+  #{$selector}__selection > span {
+    display: inline-block;
+  }
+
+  &:hover {
+    #{$selector}__combobox-input {
+      border-color: getCssVar('select-border-color-hover');
+    }
+  }
+
+  .#{$namespace}-select__selection-text {
+    text-overflow: ellipsis;
+    display: inline-block;
+    overflow-x: hidden;
+    vertical-align: bottom;
+  }
+
+  #{$selector}__combobox-input {
+    padding-right: 35px;
+    display: block;
+    color: getCssVar('text-color', 'regular');
+
+    &:focus {
+      border-color: getCssVar('select-input-focus-border-color');
+    }
+  }
+
+  @include e(input) {
+    border: none;
+    outline: none;
+    padding: 0;
+    margin-left: 15px;
+    color: getCssVar('select-multiple-input-color');
+    font-size: getCssVar('select-font-size');
+    appearance: none;
+    height: 28px;
+
+    @include when(small) {
+      height: 14px;
+    }
+  }
+
+  @include e(close) {
+    cursor: pointer;
+    position: absolute;
+    top: 8px;
+    z-index: getCssVar('index-top');
+    right: 25px;
+    color: getCssVar('select-input-color');
+    line-height: 18px;
+    font-size: getCssVar('select-input-font-size');
+
+    &:hover {
+      color: getCssVar('select-close-hover-color');
+    }
+  }
+
+  @include e(suffix) {
+    display: inline-flex;
+    position: absolute;
+    right: 12px;
+    height: 32px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(
+      #{getCssVarName('input-icon-color')},
+      map.get($input, 'icon-color')
+    );
+
+    .#{$namespace}-input__icon {
+      height: inherit;
+
+      &:not(:first-child) {
+        margin-left: 8px;
+      }
+    }
+  }
+
+  @include e(caret) {
+    color: getCssVar('select-input-color');
+    font-size: getCssVar('select-input-font-size');
+    transition: getCssVar('transition', 'duration');
+    transform: rotateZ(180deg);
+    cursor: pointer;
+
+    @include when(reverse) {
+      transform: rotateZ(0deg);
+    }
+
+    @include when(show-close) {
+      font-size: getCssVar('select-font-size');
+      text-align: center;
+      transform: rotateZ(180deg);
+      border-radius: getCssVar('border-radius-circle');
+      color: getCssVar('select-input-color');
+      transition: getCssVar('transition', 'color');
+
+      &:hover {
+        color: getCssVar('select', 'close-hover-color');
+      }
+    }
+
+    &.#{$namespace}-icon {
+      height: inherit;
+
+      svg {
+        vertical-align: middle;
+      }
+    }
+  }
+
+  @include e(selection) {
+    white-space: normal;
+    z-index: getCssVar('index-normal');
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  @include e(input-calculator) {
+    left: 0;
+    position: absolute;
+    top: 0;
+    visibility: hidden;
+    white-space: pre;
+    z-index: 999;
+  }
+
+  @include e(selected-item) {
+    line-height: inherit;
+    height: inherit;
+    user-select: none;
+    // using this to keep the item centered in both vertically and horizontally
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  @include e(placeholder) {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    margin-inline-start: $input-inline-start;
+    width: calc(100% - 52px);
+    @include utils-ellipsis;
+    color: var(
+      #{getCssVarName('input-text-color')},
+      map.get($input, 'text-color')
+    );
+    @include when(transparent) {
+      color: getCssVar('text-color', 'placeholder');
+    }
+  }
+
+  .#{$namespace}-select-v2__selection .#{$namespace}-tag {
+    box-sizing: border-box;
+    border-color: transparent;
+    margin: 2px 0 2px 6px;
+    background-color: getCssVar('fill-color');
+
+    .#{$namespace}-icon-close {
+      background-color: getCssVar('text-color', 'placeholder');
+      right: -7px;
+      color: getCssVar('color-white');
+
+      &:hover {
+        background-color: getCssVar('text-color', 'secondary');
+      }
+
+      &::before {
+        display: block;
+        transform: translate(0, 0.5px);
+      }
+    }
+  }
+
+  &.#{$namespace}-select-v2--small {
+    .#{$namespace}-select-v2__selection .#{$namespace}-tag {
+      margin: 1px 0 1px 6px;
+      height: 18px;
+    }
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "name": "jest-config",
+  "version": "29.7.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jestjs/jest.git",
+    "directory": "packages/jest-config"
+  },
+  "license": "MIT",
+  "main": "./build/index.js",
+  "types": "./build/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./build/index.d.ts",
+      "default": "./build/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "peerDependencies": {
+    "@types/node": "*",
+    "ts-node": ">=9.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@types/node": {
+      "optional": true
+    },
+    "ts-node": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "@babel/core": "^7.11.6",
+    "@jest/test-sequencer": "^29.7.0",
+    "@jest/types": "^29.6.3",
+    "babel-jest": "^29.7.0",
+    "chalk": "^4.0.0",
+    "ci-info": "^3.2.0",
+    "deepmerge": "^4.2.2",
+    "glob": "^7.1.3",
+    "graceful-fs": "^4.2.9",
+    "jest-circus": "^29.7.0",
+    "jest-environment-node": "^29.7.0",
+    "jest-get-type": "^29.6.3",
+    "jest-regex-util": "^29.6.3",
+    "jest-resolve": "^29.7.0",
+    "jest-runner": "^29.7.0",
+    "jest-util": "^29.7.0",
+    "jest-validate": "^29.7.0",
+    "micromatch": "^4.0.4",
+    "parse-json": "^5.2.0",
+    "pretty-format": "^29.7.0",
+    "slash": "^3.0.0",
+    "strip-json-comments": "^3.1.1"
+  },
+  "devDependencies": {
+    "@types/glob": "^7.1.1",
+    "@types/graceful-fs": "^4.1.3",
+    "@types/micromatch": "^4.0.1",
+    "@types/parse-json": "^4.0.0",
+    "semver": "^7.5.3",
+    "ts-node": "^10.5.0",
+    "typescript": "^5.0.4"
+  },
+  "engines": {
+    "node": "^14.15.0 || ^16.10.0 || >=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "gitHead": "4e56991693da7cd4c3730dc3579a1dd1403ee630"
+}

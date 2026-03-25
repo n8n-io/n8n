@@ -1,0 +1,37 @@
+{
+  "name": "@testcontainers/mysql",
+  "version": "11.11.0",
+  "license": "MIT",
+  "keywords": [
+    "mysql",
+    "testing",
+    "docker",
+    "testcontainers"
+  ],
+  "description": "MySQL module for Testcontainers",
+  "homepage": "https://github.com/testcontainers/testcontainers-node#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/testcontainers/testcontainers-node.git"
+  },
+  "bugs": {
+    "url": "https://github.com/testcontainers/testcontainers-node/issues"
+  },
+  "main": "build/index.js",
+  "files": [
+    "build"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "prepack": "shx cp ../../../README.md . && shx cp ../../../LICENSE .",
+    "build": "tsc --project tsconfig.build.json"
+  },
+  "devDependencies": {
+    "mysql2": "^3.15.3"
+  },
+  "dependencies": {
+    "testcontainers": "^11.11.0"
+  }
+}

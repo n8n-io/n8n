@@ -1,0 +1,76 @@
+{
+  "mappings": [
+    {
+      "scenarioName": "Custom urls OAuth authorization code flow",
+      "requiredScenarioState": "Started",
+      "newScenarioState": "Authorized",
+      "request": {
+        "urlPathPattern": "/authorization",
+        "method": "GET",
+        "queryParameters": {
+          "response_type": {
+            "equalTo": "code"
+          },
+          "scope": {
+            "equalTo": "session:role:ANALYST"
+          },
+          "code_challenge_method": {
+            "equalTo": "S256"
+          },
+          "redirect_uri": {
+            "equalTo": "http://localhost:8007/snowflake/oauth-redirect"
+          },
+          "code_challenge": {
+            "matches": ".*"
+          },
+          "state": {
+            "matches": ".*"
+          },
+          "client_id": {
+            "equalTo": "123"
+          }
+        }
+      },
+      "response": {
+        "status": 302,
+        "headers": {
+          "Location": "http://localhost:8007/snowflake/oauth-redirect?code=123&state=abc123"
+        }
+      }
+    },
+    {
+      "scenarioName": "Custom urls OAuth authorization code flow",
+      "requiredScenarioState": "Authorized",
+      "newScenarioState": "Acquired access token",
+      "request": {
+        "urlPathPattern": "/tokenrequest.*",
+        "method": "POST",
+        "headers": {
+          "Authorization": {
+            "contains": "Basic"
+          },
+          "Content-Type": {
+            "contains": "application/x-www-form-urlencoded; charset=UTF-8"
+          }
+        },
+        "bodyPatterns": [
+          {
+            "contains": "grant_type=authorization_code&code=123&redirect_uri=http%3A%2F%2Flocalhost%3A8007%2Fsnowflake%2Foauth-redirect&code_verifier="
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "jsonBody": {
+          "access_token": "access-token-123",
+          "refresh_token": "123",
+          "token_type": "Bearer",
+          "username": "user",
+          "scope": "refresh_token session:role:ANALYST",
+          "expires_in": 600,
+          "refresh_token_expires_in": 86399,
+          "idpInitiated": false
+        }      }
+    }
+  ]
+}

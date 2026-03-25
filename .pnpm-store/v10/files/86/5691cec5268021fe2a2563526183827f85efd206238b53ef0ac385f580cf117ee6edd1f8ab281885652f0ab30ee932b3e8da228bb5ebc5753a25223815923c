@@ -1,0 +1,174 @@
+# Copyright 2012 Mozilla Foundation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Main toolbar buttons (tooltips and alt text for images)
+previous.title=Pagina precedenta
+previous_label=Precedent
+next.title=Pagina seguenta
+next_label=Seguent
+
+# LOCALIZATION NOTE (page.title): The tooltip for the pageNumber input.
+page.title=Pagina
+# LOCALIZATION NOTE (of_pages): "{{pagesCount}}" will be replaced by a number
+# representing the total number of pages in the document.
+of_pages=sus {{pagesCount}}
+# LOCALIZATION NOTE (page_of_pages): "{{pageNumber}}" and "{{pagesCount}}"
+# will be replaced by a number representing the currently visible page,
+# respectively a number representing the total number of pages in the document.
+
+zoom_out.title=Zoom arrièr
+zoom_out_label=Zoom arrièr
+zoom_in.title=Zoom avant
+zoom_in_label=Zoom avant
+zoom.title=Zoom
+presentation_mode.title=Bascular en mòde presentacion
+presentation_mode_label=Mòde Presentacion
+open_file.title=Dobrir lo fichièr
+open_file_label=Dobrir
+print.title=Imprimir
+print_label=Imprimir
+download.title=Telecargar
+download_label=Telecargar
+bookmark.title=Afichatge corrent (copiar o dobrir dins una fenèstra novèla)
+bookmark_label=Afichatge actual
+
+# Secondary toolbar and context menu
+tools.title=Aisinas
+tools_label=Aisinas
+first_page.title=Anar a la primièra pagina
+first_page.label=Anar a la primièra pagina
+first_page_label=Anar a la primièra pagina
+last_page.title=Anar a la darrièra pagina
+last_page.label=Anar a la darrièra pagina
+last_page_label=Anar a la darrièra pagina
+page_rotate_cw.title=Rotacion orària
+page_rotate_cw.label=Rotacion orària
+page_rotate_cw_label=Rotacion orària
+page_rotate_ccw.title=Rotacion antiorària
+page_rotate_ccw.label=Rotacion antiorària
+page_rotate_ccw_label=Rotacion antiorària
+
+hand_tool_enable.title=Activar l'aisina man
+hand_tool_enable_label=Activar l'aisina man
+hand_tool_disable.title=Desactivar l'aisina man
+hand_tool_disable_label=Desactivar l'aisina man
+
+# Document properties dialog box
+document_properties.title=Proprietats del document...
+document_properties_label=Proprietats del document...
+document_properties_file_name=Nom del fichièr :
+document_properties_file_size=Talha del fichièr :
+# LOCALIZATION NOTE (document_properties_kb): "{{size_kb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in kilobytes, respectively in bytes.
+document_properties_kb={{size_kb}} Ko ({{size_b}} octets)
+# LOCALIZATION NOTE (document_properties_mb): "{{size_mb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in megabytes, respectively in bytes.
+document_properties_mb={{size_mb}} Mo ({{size_b}} octets)
+document_properties_title=Títol :
+document_properties_author=Autor :
+document_properties_subject=Subjècte :
+document_properties_keywords=Mots claus :
+document_properties_creation_date=Data de creacion :
+document_properties_modification_date=Data de modificacion :
+# LOCALIZATION NOTE (document_properties_date_string): "{{date}}" and "{{time}}"
+# will be replaced by the creation/modification date, and time, of the PDF file.
+document_properties_date_string={{date}}, {{time}}
+document_properties_creator=Creator :
+document_properties_producer=Aisina de conversion PDF :
+document_properties_version=Version PDF :
+document_properties_page_count=Nombre de paginas :
+document_properties_close=Tampar
+
+# LOCALIZATION NOTE (print_progress_percent): "{{progress}}" will be replaced by
+# a numerical per cent value.
+print_progress_close=Anullar
+
+# Tooltips and alt text for side panel toolbar buttons
+# (the _label strings are alt text for the buttons, the .title strings are
+# tooltips)
+toggle_sidebar.title=Afichar/amagar lo panèl lateral
+toggle_sidebar_label=Afichar/amagar lo panèl lateral
+document_outline_label=Marcapaginas del document
+attachments.title=Visualizar las pèças juntas
+attachments_label=Pèças juntas
+thumbs.title=Afichar las vinhetas
+thumbs_label=Vinhetas
+findbar.title=Trobar dins lo document
+
+# Thumbnails panel item (tooltip and alt text for images)
+# LOCALIZATION NOTE (thumb_page_title): "{{page}}" will be replaced by the page
+# number.
+thumb_page_title=Pagina {{page}}
+# LOCALIZATION NOTE (thumb_page_canvas): "{{page}}" will be replaced by the page
+# number.
+thumb_page_canvas=Vinheta de la pagina {{page}}
+
+# Find panel button title and messages
+find_previous.title=Tròba l'ocurréncia precedenta de la frasa
+find_previous_label=Precedent
+find_next.title=Tròba l'ocurréncia venenta de la frasa
+find_next_label=Seguent
+find_highlight=Suslinhar tot
+find_match_case_label=Respectar la cassa
+find_reached_top=Naut de la pagina atench, perseguida dempuèi lo bas
+find_reached_bottom=Bas de la pagina atench, perseguida al començament
+find_not_found=Frasa pas trobada
+
+# Error panel labels
+error_more_info=Mai de detalhs
+error_less_info=Mens d'informacions
+error_close=Tampar
+# LOCALIZATION NOTE (error_version_info): "{{version}}" and "{{build}}" will be
+# replaced by the PDF.JS version and build ID.
+error_version_info=PDF.js v{{version}} (identificant de compilacion : {{build}})
+# LOCALIZATION NOTE (error_message): "{{message}}" will be replaced by an
+# english string describing the error.
+error_message=Messatge : {{message}}
+# LOCALIZATION NOTE (error_stack): "{{stack}}" will be replaced with a stack
+# trace.
+error_stack=Pila : {{stack}}
+# LOCALIZATION NOTE (error_file): "{{file}}" will be replaced with a filename
+error_file=Fichièr : {{file}}
+# LOCALIZATION NOTE (error_line): "{{line}}" will be replaced with a line number
+error_line=Linha : {{line}}
+rendering_error=Una error s'es produita pendent l'afichatge de la pagina.
+
+# Predefined zoom values
+page_scale_width=Largor plena
+page_scale_fit=Pagina entièra
+page_scale_auto=Zoom automatic
+page_scale_actual=Talha vertadièra
+# LOCALIZATION NOTE (page_scale_percent): "{{scale}}" will be replaced by a
+# numerical scale value.
+
+# Loading indicator messages
+loading_error_indicator=Error
+loading_error=Una error s'es produita pendent lo cargament del fichièr PDF.
+invalid_file_error=Fichièr PDF invalid o corromput.
+missing_file_error=Fichièr PDF mancant.
+
+# LOCALIZATION NOTE (text_annotation_type.alt): This is used as a tooltip.
+# "{{type}}" will be replaced with an annotation type from a list defined in
+# the PDF spec (32000-1:2008 Table 169 – Annotation types).
+# Some common types are e.g.: "Check", "Text", "Comment", "Note"
+text_annotation_type.alt=[Anotacion {{type}}]
+password_label=Picatz lo senhal per dobrir aqueste fichièr PDF.
+password_invalid=Senhal incorrècte. Tornatz ensajar.
+password_ok=D'acòrdi
+password_cancel=Anullar
+
+printing_not_supported=Atencion : l'impression es pas completament gerit per aqueste navigador.
+printing_not_ready=Atencion : lo PDF es pas entièrament cargat per lo poder imprimir.
+web_fonts_disabled=Las poliças web son desactivadas : impossible d'utilizar las poliças integradas al PDF.
+document_colors_not_allowed=Los documents PDF pòdon pas utilizar lors pròprias colors : « Autorizar las paginas web d'utilizar lors pròprias colors » es desactivat dins lo navigador.

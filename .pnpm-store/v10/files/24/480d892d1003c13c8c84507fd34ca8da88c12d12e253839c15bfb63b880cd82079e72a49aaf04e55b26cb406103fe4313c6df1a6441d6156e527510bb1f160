@@ -1,0 +1,142 @@
+{
+  "name": "@rudderstack/rudder-sdk-node",
+  "version": "3.0.0",
+  "description": "Rudder Node SDK",
+  "main": "./cjs/index.js",
+  "module": "./esm/index.js",
+  "types": "./index.d.ts",
+  "license": "",
+  "repository": "rudderlabs/rudder-sdk-node",
+  "author": {
+    "name": ""
+  },
+  "size-limit": [
+    {
+      "name": "Core CJS - NPM",
+      "limit": "6.5 KB",
+      "path": "dist/cjs/index.js"
+    },
+    {
+      "name": "Core ESM - NPM",
+      "limit": "7 KB",
+      "path": "dist/esm/index.js"
+    }
+  ],
+  "scripts": {
+    "size": "size-limit",
+    "copy:assets": "cp package.json dist/ && cp README.md dist/ && cp CHANGELOG.md dist/ && cp LICENSE.md dist/ && cp index.d.ts dist/",
+    "build:cjs": "tsc -p tsconfig.json --outDir ./dist/cjs --module commonjs",
+    "build:esm": "tsc -p tsconfig.json",
+    "test": "AVA_MODE_ON=true nyc --reporter=lcov --reporter=html --reporter=text --reporter=text-summary ava --serial --verbose",
+    "test:ci": "AVA_MODE_ON=true nyc --reporter=lcov --reporter=text --reporter=text-summary --reporter=clover ava --serial --verbose",
+    "changelog": "auto-changelog -p -t keepachangelog -u true -l false --sort-commits date-desc ",
+    "check:lint": "eslint src",
+    "check:lint:ci": "eslint src -f json -o reports/eslint.json || exit 0",
+    "check:circular": "madge --circular --extensions js src/index.js || exit 0",
+    "check:duplicates": "jscpd src --threshold 5",
+    "check:security": "npm audit --recursive --audit-level=high --omit=dev",
+    "format": "prettier --write .",
+    "lint:fix": "eslint . --fix",
+    "prepare": "husky",
+    "pre-commit": "npm run test && npx lint-staged",
+    "commit-msg": "commitlint --edit",
+    "commit": "git-cz",
+    "release": "npx standard-version",
+    "release:github": "npx conventional-github-releaser -p angular",
+    "package": "npm run build:cjs && npm run build:esm && npm run copy:assets",
+    "clean": "rm -rf dist",
+    "setup": "npm install"
+  },
+  "keywords": [
+    "analytics"
+  ],
+  "dependencies": {
+    "axios": "1.13.2",
+    "axios-retry": "4.5.0",
+    "component-type": "2.0.0",
+    "join-component": "1.1.0",
+    "lodash.clonedeep": "4.5.0",
+    "lodash.isstring": "4.0.1",
+    "md5": "2.3.0",
+    "ms": "2.1.3",
+    "remove-trailing-slash": "0.1.1",
+    "uuid": "11.1.0"
+  },
+  "devDependencies": {
+    "@babel/eslint-parser": "7.28.5",
+    "@babel/preset-env": "7.28.5",
+    "@commitlint/config-conventional": "20.3.0",
+    "@digitalroute/cz-conventional-changelog-for-jira": "8.0.1",
+    "@size-limit/preset-app": "12.0.0",
+    "auto-changelog": "2.5.0",
+    "ava": "6.4.1",
+    "basic-auth": "2.0.1",
+    "body-parser": "2.2.1",
+    "commitizen": "4.3.1",
+    "commitlint": "20.3.0",
+    "conventional-changelog-cli": "5.0.0",
+    "conventional-github-releaser": "1.1.13",
+    "delay": "7.0.0",
+    "dotenv": "17.2.3",
+    "eslint": "8.57.0",
+    "eslint-config-airbnb": "19.0.4",
+    "eslint-config-airbnb-base": "15.0.0",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-compat": "6.0.2",
+    "eslint-plugin-import": "2.32.0",
+    "eslint-plugin-sonarjs": "3.0.5",
+    "eslint-plugin-unicorn": "56.0.0",
+    "express": "5.2.1",
+    "husky": "9.1.7",
+    "jscpd": "4.0.5",
+    "lint-staged": "16.2.7",
+    "madge": "8.0.0",
+    "np": "10.2.0",
+    "nyc": "17.1.0",
+    "pify": "6.1.0",
+    "prettier": "3.7.4",
+    "sinon": "21.0.1",
+    "size-limit": "12.0.0",
+    "standard": "17.1.2",
+    "standard-version": "9.5.0",
+    "typescript": "5.9.3"
+  },
+  "overrides": {
+    "dot-prop": "5.3.0",
+    "semver-regex": "3.1.4",
+    "trim-newlines": "3.0.1",
+    "external-editor": {
+      "tmp": "0.2.5"
+    },
+    "conventional-changelog-core": {
+      "git-raw-commits": "2.0.11"
+    }
+  },
+  "resolutions": {
+    "dot-prop": "5.3.0",
+    "semver-regex": "3.1.4",
+    "trim-newlines": "3.0.1",
+    "external-editor": {
+      "tmp": "0.2.5"
+    },
+    "conventional-changelog-core": {
+      "git-raw-commits": "2.0.11"
+    }
+  },
+  "optionalDependencies": {
+    "bull": "4.16.5"
+  },
+  "lint-staged": {
+    "*.js": "eslint --cache --fix",
+    "*.{json,js,md,ts}": "prettier --write"
+  },
+  "config": {
+    "commitizen": {
+      "path": "./node_modules/@digitalroute/cz-conventional-changelog-for-jira",
+      "jiraMode": false,
+      "jiraOptional": true,
+      "skipScope": true,
+      "defaultType": "feat"
+    }
+  }
+}

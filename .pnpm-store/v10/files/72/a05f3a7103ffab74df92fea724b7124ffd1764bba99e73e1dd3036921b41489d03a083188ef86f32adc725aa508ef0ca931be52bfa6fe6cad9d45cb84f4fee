@@ -1,0 +1,37 @@
+{
+	"$id": "/inference/schemas/token-classification/output.json",
+	"$schema": "http://json-schema.org/draft-06/schema#",
+	"description": "Outputs of inference for the Token Classification task",
+	"title": "TokenClassificationOutput",
+	"type": "array",
+	"items": {
+		"type": "object",
+		"properties": {
+			"entity_group": {
+				"type": "string",
+				"description": "The predicted label for a group of one or more tokens"
+			},
+			"entity": {
+				"type": "string",
+				"description": "The predicted label for a single token"
+			},
+			"score": {
+				"type": "number",
+				"description": "The associated score / probability"
+			},
+			"word": {
+				"type": "string",
+				"description": "The corresponding text"
+			},
+			"start": {
+				"type": "integer",
+				"description": "The character position in the input where this group begins."
+			},
+			"end": {
+				"type": "integer",
+				"description": "The character position in the input where this group ends."
+			}
+		},
+		"required": ["score", "word", "start", "end"]
+	}
+}

@@ -1,0 +1,70 @@
+{
+  "name": "@aws-sdk/credential-provider-http",
+  "version": "3.936.0",
+  "description": "AWS credential provider for containers and HTTP sources",
+  "main": "./dist-cjs/index.js",
+  "module": "./dist-es/index.js",
+  "browser": "./dist-es/index.browser.js",
+  "react-native": "./dist-es/index.browser.js",
+  "scripts": {
+    "build": "concurrently 'yarn:build:cjs' 'yarn:build:es' 'yarn:build:types'",
+    "build:cjs": "node ../../scripts/compilation/inline credential-provider-http",
+    "build:es": "tsc -p tsconfig.es.json",
+    "build:include:deps": "lerna run --scope $npm_package_name --include-dependencies build",
+    "build:types": "tsc -p tsconfig.types.json",
+    "build:types:downlevel": "downlevel-dts dist-types dist-types/ts3.4",
+    "clean": "rimraf ./dist-* && rimraf *.tsbuildinfo",
+    "test": "yarn g:vitest run",
+    "test:watch": "yarn g:vitest watch"
+  },
+  "keywords": [
+    "aws",
+    "credentials"
+  ],
+  "sideEffects": false,
+  "author": {
+    "name": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/"
+  },
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@aws-sdk/core": "3.936.0",
+    "@aws-sdk/types": "3.936.0",
+    "@smithy/fetch-http-handler": "^5.3.6",
+    "@smithy/node-http-handler": "^4.4.5",
+    "@smithy/property-provider": "^4.2.5",
+    "@smithy/protocol-http": "^5.3.5",
+    "@smithy/smithy-client": "^4.9.8",
+    "@smithy/types": "^4.9.0",
+    "@smithy/util-stream": "^4.5.6",
+    "tslib": "^2.6.2"
+  },
+  "devDependencies": {
+    "@tsconfig/recommended": "1.0.1",
+    "@types/node": "^18.19.69",
+    "concurrently": "7.0.0",
+    "downlevel-dts": "0.10.1",
+    "rimraf": "3.0.2",
+    "typescript": "~5.8.3"
+  },
+  "types": "./dist-types/index.d.ts",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "typesVersions": {
+    "<4.0": {
+      "dist-types/*": [
+        "dist-types/ts3.4/*"
+      ]
+    }
+  },
+  "files": [
+    "dist-*/**"
+  ],
+  "homepage": "https://github.com/aws/aws-sdk-js-v3/tree/main/packages/credential-provider-http",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aws/aws-sdk-js-v3.git",
+    "directory": "packages/credential-provider-http"
+  }
+}

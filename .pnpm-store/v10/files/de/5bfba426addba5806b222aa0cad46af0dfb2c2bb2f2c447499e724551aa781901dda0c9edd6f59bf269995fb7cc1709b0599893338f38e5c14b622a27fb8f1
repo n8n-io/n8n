@@ -1,0 +1,10 @@
+{
+	"$id": "/inference/schemas/zero-shot-image-classification/output.json",
+	"$schema": "http://json-schema.org/draft-06/schema#",
+	"description": "Outputs of inference for the Zero Shot Image Classification task",
+	"title": "ZeroShotImageClassificationOutput",
+	"type": "array",
+	"items": {
+		"$ref": "/inference/schemas/common-definitions.json#/definitions/ClassificationOutput"
+	}
+}

@@ -1,0 +1,20 @@
+{
+"name":"ansis",
+"version":"3.17.0",
+"description":"ANSI color lib",
+"keywords":["ansi","color","cli"],
+"license":"ISC",
+"author":"webdiscus",
+"repository":"webdiscus/ansis",
+"types":"./index.d.ts",
+"exports":{
+ ".":{
+  "types":"./index.d.ts",
+  "require":"./index.js",
+  "import":"./index.mjs"
+ }
+},
+"sideEffects":false,
+"engines":{"node":">=14"},
+"files":["index.*"]
+}

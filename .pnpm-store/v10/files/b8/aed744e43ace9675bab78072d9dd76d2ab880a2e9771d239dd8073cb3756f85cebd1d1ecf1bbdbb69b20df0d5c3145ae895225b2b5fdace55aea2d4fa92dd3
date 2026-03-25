@@ -1,0 +1,1 @@
+{"version":3,"file":"OIDCOptions.d.ts","sourceRoot":"","sources":["../../src/authority/OIDCOptions.ts"],"names":[],"mappings":"AAKA,OAAO,EAAE,kBAAkB,EAAE,MAAM,uBAAuB,CAAC;AAE3D;;GAEG;AACH,MAAM,MAAM,WAAW,GAAG;IACtB,kBAAkB,CAAC,EAAE,kBAAkB,CAAC;IACxC,aAAa,CAAC,EAAE,KAAK,CAAC,MAAM,CAAC,CAAC;CACjC,CAAC"}

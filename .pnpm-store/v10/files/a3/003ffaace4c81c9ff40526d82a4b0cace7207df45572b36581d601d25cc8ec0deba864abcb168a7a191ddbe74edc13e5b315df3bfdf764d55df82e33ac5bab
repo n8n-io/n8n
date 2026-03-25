@@ -1,0 +1,1 @@
+{"version":3,"file":"tty.js","sources":["../../mock/tty.js"],"sourcesContent":["function noop() {}\n\nexport { noop as isatty, noop as setRawMode };\n"],"names":["noop"],"mappings":";;;;AAAA,SAASA,IAAIA,GAAG;;;;;"}

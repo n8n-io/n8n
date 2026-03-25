@@ -1,0 +1,52 @@
+{
+  "name": "magic-string",
+  "version": "0.25.9",
+  "description": "Modify strings, generate sourcemaps",
+  "keywords": [
+    "string",
+    "string manipulation",
+    "sourcemap",
+    "templating",
+    "transpilation"
+  ],
+  "repository": "https://github.com/rich-harris/magic-string",
+  "license": "MIT",
+  "author": "Rich Harris",
+  "main": "dist/magic-string.cjs.js",
+  "module": "dist/magic-string.es.js",
+  "jsnext:main": "dist/magic-string.es.js",
+  "typings": "index.d.ts",
+  "files": [
+    "dist/*",
+    "index.d.ts",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "rollup -c",
+    "changelog": "conventional-changelog -p angular -i CHANGELOG.md -s",
+    "format": "prettier --single-quote --print-width 100 --use-tabs --write src/*.js src/**/*.js",
+    "lint": "eslint src test",
+    "prepare": "npm run build",
+    "prepublishOnly": "rm -rf dist && npm test",
+    "release": "bumpp -x \"npm run changelog\" --all --commit --tag --push && npm publish",
+    "pretest": "npm run lint && npm run build",
+    "test": "mocha",
+    "watch": "rollup -cw"
+  },
+  "dependencies": {
+    "sourcemap-codec": "^1.4.8"
+  },
+  "devDependencies": {
+    "@rollup/plugin-buble": "^0.21.3",
+    "@rollup/plugin-node-resolve": "^13.1.3",
+    "@rollup/plugin-replace": "^4.0.0",
+    "bumpp": "^7.1.1",
+    "conventional-changelog-cli": "^2.2.2",
+    "eslint": "^7.32.0",
+    "mocha": "^9.2.1",
+    "prettier": "^2.5.1",
+    "rollup": "^2.69.0",
+    "source-map": "^0.6.1",
+    "source-map-support": "^0.5.21"
+  }
+}

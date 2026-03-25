@@ -1,0 +1,60 @@
+@use 'mixins/mixins' as *;
+@use 'common/var' as *;
+
+@include b(page-header) {
+  @include when(contentful) {
+    @include e('main') {
+      border-top: 1px solid getCssVar('border-color', 'light');
+      margin-top: 16px;
+    }
+  }
+
+  @include e(header) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    line-height: 24px;
+
+    @include e(left) {
+      display: flex;
+      align-items: center;
+      margin-right: 40px;
+      position: relative;
+
+      @include e('back') {
+        display: flex;
+        align-items: center;
+        cursor: pointer;
+      }
+
+      .#{$namespace}-divider--vertical {
+        margin: 0 16px;
+      }
+
+      @include e(icon) {
+        font-size: 16px;
+        margin-right: 10px;
+        display: flex;
+        align-items: center;
+
+        .#{$namespace}-icon {
+          font-size: inherit;
+        }
+      }
+
+      @include e(title) {
+        font-size: 14px;
+        font-weight: 500;
+      }
+    }
+  }
+
+  @include e(content) {
+    font-size: 18px;
+    color: getCssVar('text-color', 'primary');
+  }
+
+  @include e(breadcrumb) {
+    margin-bottom: 16px;
+  }
+}

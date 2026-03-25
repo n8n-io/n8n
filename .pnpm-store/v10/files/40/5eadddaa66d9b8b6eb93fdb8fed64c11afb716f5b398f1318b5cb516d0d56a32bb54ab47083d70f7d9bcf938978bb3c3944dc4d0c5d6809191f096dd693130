@@ -1,0 +1,46 @@
+{
+  "grammars": [
+    {
+      "name": "bash",
+      "camelcase": "Bash",
+      "scope": "source.bash",
+      "path": ".",
+      "file-types": [
+        "sh",
+        "bash",
+        ".bashrc",
+        ".bash_profile",
+        "ebuild",
+        "eclass"
+      ],
+      "injection-regex": "^(shell|bash|sh)$",
+      "first-line-regex": "^#!.*\\b(sh|bash|dash)\\b.*$"
+    }
+  ],
+  "metadata": {
+    "version": "0.23.3",
+    "license": "MIT",
+    "description": "Bash grammar for tree-sitter",
+    "authors": [
+      {
+        "name": "Max Brunsfeld",
+        "email": "maxbrunsfeld@gmail.com"
+      },
+      {
+        "name": "Amaan Qureshi",
+        "email": "amaanq12@gmail.com"
+      }
+    ],
+    "links": {
+      "repository": "https://github.com/tree-sitter/tree-sitter-bash"
+    }
+  },
+  "bindings": {
+    "c": true,
+    "go": true,
+    "node": true,
+    "python": true,
+    "rust": true,
+    "swift": true
+  }
+}

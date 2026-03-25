@@ -1,0 +1,1 @@
+{"version":3,"file":"embeddings.js","sourceRoot":"","sources":["../src/sdk/embeddings.ts"],"names":[],"mappings":";AAAA;;GAEG;;;AAEH,sEAAgE;AAChE,4CAA2D;AAE3D,0CAA6C;AAE7C,MAAa,UAAW,SAAQ,mBAAS;IACvC;;;;;OAKG;IACH,KAAK,CAAC,MAAM,CACV,OAAoC,EACpC,OAAwB;QAExB,OAAO,IAAA,mBAAW,EAAC,IAAA,sCAAgB,EACjC,IAAI,EACJ,OAAO,EACP,OAAO,CACR,CAAC,CAAC;IACL,CAAC;CACF;AAjBD,gCAiBC"}

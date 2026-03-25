@@ -1,0 +1,1 @@
+{"version":3,"file":"SocketOptionLinger.js","sourceRoot":"","sources":["../../../../../../src/generated/grpc/channelz/v1/SocketOptionLinger.ts"],"names":[],"mappings":";AAAA,sCAAsC"}

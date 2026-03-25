@@ -1,0 +1,48 @@
+{
+  "name": "markdown-it-footnote",
+  "version": "4.0.0",
+  "description": "Footnotes for markdown-it markdown parser.",
+  "keywords": [
+    "markdown-it-plugin",
+    "markdown-it",
+    "markdown",
+    "footnotes"
+  ],
+  "repository": "markdown-it/markdown-it-footnote",
+  "license": "MIT",
+  "main": "dist/index.cjs.js",
+  "module": "index.mjs",
+  "exports": {
+    ".": {
+      "require": "./dist/index.cjs.js",
+      "import": "./index.mjs"
+    },
+    "./*": {
+      "require": "./*",
+      "import": "./*"
+    }
+  },
+  "files": [
+    "index.mjs",
+    "lib/",
+    "dist/"
+  ],
+  "scripts": {
+    "lint": "eslint .",
+    "build": "rollup -c",
+    "test": "npm run lint && npm run build && c8 --exclude dist --exclude test -r text -r html -r lcov mocha",
+    "prepublishOnly": "npm run lint && npm run build"
+  },
+  "devDependencies": {
+    "@rollup/plugin-babel": "^6.0.4",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-terser": "^0.4.4",
+    "c8": "^8.0.1",
+    "eslint": "^8.55.0",
+    "eslint-config-standard": "^17.1.0",
+    "markdown-it": "^13.0.2",
+    "markdown-it-testgen": "^0.1.6",
+    "mocha": "^10.2.0",
+    "rollup": "^4.6.1"
+  }
+}

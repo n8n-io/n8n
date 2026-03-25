@@ -1,0 +1,1 @@
+module.exports = require("../dist/tools/wikipedia_query_run.cjs");

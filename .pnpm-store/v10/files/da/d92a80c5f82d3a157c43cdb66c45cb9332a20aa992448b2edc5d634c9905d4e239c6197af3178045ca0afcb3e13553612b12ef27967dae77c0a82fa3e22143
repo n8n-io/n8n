@@ -1,0 +1,182 @@
+{
+  "name": "ts-node",
+  "version": "10.9.2",
+  "description": "TypeScript execution environment and REPL for node.js, with source map support",
+  "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./package": "./package.json",
+    "./package.json": "./package.json",
+    "./dist/bin": "./dist/bin.js",
+    "./dist/bin.js": "./dist/bin.js",
+    "./dist/bin-transpile": "./dist/bin-transpile.js",
+    "./dist/bin-transpile.js": "./dist/bin-transpile.js",
+    "./dist/bin-script": "./dist/bin-script.js",
+    "./dist/bin-script.js": "./dist/bin-script.js",
+    "./dist/bin-cwd": "./dist/bin-cwd.js",
+    "./dist/bin-cwd.js": "./dist/bin-cwd.js",
+    "./dist/bin-esm": "./dist/bin-esm.js",
+    "./dist/bin-esm.js": "./dist/bin-esm.js",
+    "./register": "./register/index.js",
+    "./register/files": "./register/files.js",
+    "./register/transpile-only": "./register/transpile-only.js",
+    "./register/type-check": "./register/type-check.js",
+    "./esm": "./esm.mjs",
+    "./esm.mjs": "./esm.mjs",
+    "./esm/transpile-only": "./esm/transpile-only.mjs",
+    "./esm/transpile-only.mjs": "./esm/transpile-only.mjs",
+    "./child-loader.mjs": "./child-loader.mjs",
+    "./transpilers/swc": "./transpilers/swc.js",
+    "./transpilers/swc-experimental": "./transpilers/swc-experimental.js",
+    "./node10/tsconfig.json": "./node10/tsconfig.json",
+    "./node12/tsconfig.json": "./node12/tsconfig.json",
+    "./node14/tsconfig.json": "./node14/tsconfig.json",
+    "./node16/tsconfig.json": "./node16/tsconfig.json"
+  },
+  "types": "dist/index.d.ts",
+  "bin": {
+    "ts-node": "dist/bin.js",
+    "ts-node-cwd": "dist/bin-cwd.js",
+    "ts-node-esm": "dist/bin-esm.js",
+    "ts-node-script": "dist/bin-script.js",
+    "ts-node-transpile-only": "dist/bin-transpile.js",
+    "ts-script": "dist/bin-script-deprecated.js"
+  },
+  "files": [
+    "/transpilers/",
+    "/dist/",
+    "!/dist/test",
+    "/dist-raw/NODE-LICENSE.md",
+    "/dist-raw/**.js",
+    "/register/",
+    "/esm/",
+    "/esm.mjs",
+    "/child-loader.mjs",
+    "/LICENSE",
+    "/tsconfig.schema.json",
+    "/tsconfig.schemastore-schema.json",
+    "/node10/",
+    "/node12/",
+    "/node14/",
+    "/node16/"
+  ],
+  "scripts": {
+    "lint": "dprint check",
+    "lint-fix": "dprint fmt",
+    "clean": "rimraf temp dist tsconfig.schema.json tsconfig.schemastore-schema.json tsconfig.tsbuildinfo tests/ts-node-packed.tgz tests/node_modules tests/tmp",
+    "rebuild": "npm run clean && npm run build",
+    "build": "npm run build-nopack && npm run build-pack",
+    "build-nopack": "npm run build-tsc && npm run build-configSchema",
+    "build-tsc": "tsc -b ./tsconfig.build-dist.json",
+    "build-configSchema": "typescript-json-schema --topRef --refs --validationKeywords allOf --out tsconfig.schema.json tsconfig.build-schema.json TsConfigSchema && node --require ./register ./scripts/create-merged-schema",
+    "build-pack": "node ./scripts/build-pack.js",
+    "test-spec": "ava",
+    "test-cov": "nyc ava",
+    "test": "npm run build && npm run lint && npm run test-cov --",
+    "test-local": "npm run lint-fix && npm run build-tsc && npm run build-pack && npm run test-spec --",
+    "pre-debug": "npm run build-tsc && npm run build-pack",
+    "coverage-report": "nyc report --reporter=lcov",
+    "prepare": "npm run clean && npm run build-nopack",
+    "api-extractor": "api-extractor run --local --verbose",
+    "esm-usage-example": "npm run build-tsc && cd esm-usage-example && node --experimental-specifier-resolution node --loader ../esm.mjs ./index",
+    "esm-usage-example2": "npm run build-tsc && cd tests && TS_NODE_PROJECT=./module-types/override-to-cjs/tsconfig.json node --loader ../esm.mjs ./module-types/override-to-cjs/test.cjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/TypeStrong/ts-node.git"
+  },
+  "keywords": [
+    "typescript",
+    "node",
+    "runtime",
+    "environment",
+    "ts",
+    "compiler"
+  ],
+  "author": {
+    "name": "Blake Embrey",
+    "email": "hello@blakeembrey.com",
+    "url": "http://blakeembrey.me"
+  },
+  "contributors": [
+    {
+      "name": "Andrew Bradley",
+      "email": "cspotcode@gmail.com",
+      "url": "https://github.com/cspotcode"
+    }
+  ],
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/TypeStrong/ts-node/issues"
+  },
+  "homepage": "https://typestrong.org/ts-node",
+  "devDependencies": {
+    "@microsoft/api-extractor": "^7.19.4",
+    "@swc/core": "^1.3.100",
+    "@swc/wasm": "^1.3.100",
+    "@types/diff": "^4.0.2",
+    "@types/lodash": "^4.14.151",
+    "@types/node": "13.13.5",
+    "@types/proper-lockfile": "^4.1.2",
+    "@types/proxyquire": "^1.3.28",
+    "@types/react": "^16.14.19",
+    "@types/rimraf": "^3.0.0",
+    "@types/semver": "^7.1.0",
+    "@yarnpkg/fslib": "^2.4.0",
+    "ava": "^3.15.0",
+    "axios": "^0.21.1",
+    "dprint": "^0.25.0",
+    "expect": "^27.0.2",
+    "get-stream": "^6.0.0",
+    "lodash": "^4.17.15",
+    "ntypescript": "^1.201507091536.1",
+    "nyc": "^15.0.1",
+    "outdent": "^0.8.0",
+    "proper-lockfile": "^4.1.2",
+    "proxyquire": "^2.0.0",
+    "react": "^16.14.0",
+    "rimraf": "^3.0.0",
+    "semver": "^7.1.3",
+    "throat": "^6.0.1",
+    "typedoc": "^0.22.10",
+    "typescript": "4.7.4",
+    "typescript-json-schema": "^0.53.0",
+    "util.promisify": "^1.0.1"
+  },
+  "peerDependencies": {
+    "@swc/core": ">=1.2.50",
+    "@swc/wasm": ">=1.2.50",
+    "@types/node": "*",
+    "typescript": ">=2.7"
+  },
+  "peerDependenciesMeta": {
+    "@swc/core": {
+      "optional": true
+    },
+    "@swc/wasm": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "@cspotcode/source-map-support": "^0.8.0",
+    "@tsconfig/node10": "^1.0.7",
+    "@tsconfig/node12": "^1.0.7",
+    "@tsconfig/node14": "^1.0.0",
+    "@tsconfig/node16": "^1.0.2",
+    "acorn": "^8.4.1",
+    "acorn-walk": "^8.1.1",
+    "arg": "^4.1.0",
+    "create-require": "^1.1.0",
+    "diff": "^4.0.1",
+    "make-error": "^1.1.1",
+    "v8-compile-cache-lib": "^3.0.1",
+    "yn": "3.1.1"
+  },
+  "prettier": {
+    "singleQuote": true
+  },
+  "volta": {
+    "node": "18.1.0",
+    "npm": "6.14.15"
+  }
+}

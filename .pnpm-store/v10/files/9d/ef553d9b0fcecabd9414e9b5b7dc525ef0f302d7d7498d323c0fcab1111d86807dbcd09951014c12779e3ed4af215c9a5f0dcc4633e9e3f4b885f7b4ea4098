@@ -1,0 +1,85 @@
+{
+  "name": "@sentry/browser",
+  "version": "10.36.0",
+  "description": "Official Sentry SDK for browsers",
+  "repository": "git://github.com/getsentry/sentry-javascript.git",
+  "homepage": "https://github.com/getsentry/sentry-javascript/tree/master/packages/browser",
+  "author": "Sentry",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "/build/npm"
+  ],
+  "main": "build/npm/cjs/prod/index.js",
+  "module": "build/npm/esm/prod/index.js",
+  "types": "build/npm/types/index.d.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "types": "./build/npm/types/index.d.ts",
+      "development": {
+        "import": "./build/npm/esm/dev/index.js",
+        "require": "./build/npm/cjs/dev/index.js"
+      },
+      "production": {
+        "import": "./build/npm/esm/prod/index.js",
+        "require": "./build/npm/cjs/prod/index.js"
+      },
+      "default": {
+        "import": "./build/npm/esm/prod/index.js",
+        "require": "./build/npm/cjs/prod/index.js"
+      }
+    }
+  },
+  "typesVersions": {
+    "<5.0": {
+      "build/npm/types/index.d.ts": [
+        "build/npm/types-ts3.8/index.d.ts"
+      ]
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@sentry-internal/browser-utils": "10.36.0",
+    "@sentry-internal/feedback": "10.36.0",
+    "@sentry-internal/replay": "10.36.0",
+    "@sentry-internal/replay-canvas": "10.36.0",
+    "@sentry/core": "10.36.0"
+  },
+  "devDependencies": {
+    "@sentry-internal/integration-shims": "10.36.0",
+    "fake-indexeddb": "^6.2.4"
+  },
+  "scripts": {
+    "build": "run-p build:transpile build:bundle build:types",
+    "build:dev": "run-p build:transpile build:types",
+    "build:bundle": "rollup -c rollup.bundle.config.mjs",
+    "build:transpile": "rollup -c rollup.npm.config.mjs",
+    "build:types": "run-s build:types:core build:types:downlevel",
+    "build:types:core": "tsc -p tsconfig.types.json",
+    "build:types:downlevel": "yarn downlevel-dts build/npm/types build/npm/types-ts3.8 --to ts3.8",
+    "build:watch": "run-p build:transpile:watch build:bundle:watch build:types:watch",
+    "build:dev:watch": "run-p build:transpile:watch build:types:watch",
+    "build:bundle:watch": "rollup -c rollup.bundle.config.mjs --watch",
+    "build:transpile:watch": "rollup -c rollup.npm.config.mjs --watch",
+    "build:types:watch": "tsc -p tsconfig.types.json --watch",
+    "build:tarball": "npm pack",
+    "circularDepCheck": "madge --circular src/index.ts",
+    "clean": "rimraf build coverage .rpt2_cache sentry-browser-*.tgz",
+    "fix": "eslint . --format stylish --fix",
+    "lint": "eslint . --format stylish",
+    "lint:es-compatibility": "es-check es2020 ./build/{bundles,npm/cjs/prod}/*.js && es-check es2020 ./build/npm/esm/prod/*.js --module",
+    "size:check": "cat build/bundles/bundle.min.js | gzip -9 | wc -c | awk '{$1=$1/1024; print \"ES2017: \",$1,\"kB\";}'",
+    "test": "vitest run",
+    "test:watch": "vitest --watch",
+    "yalc:publish": "yalc publish --push --sig"
+  },
+  "volta": {
+    "extends": "../../package.json"
+  },
+  "sideEffects": false
+}

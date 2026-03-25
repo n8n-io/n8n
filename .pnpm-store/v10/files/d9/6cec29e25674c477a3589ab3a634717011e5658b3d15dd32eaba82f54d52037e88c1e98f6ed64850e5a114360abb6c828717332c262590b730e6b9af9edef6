@@ -1,0 +1,180 @@
+# Copyright 2012 Mozilla Foundation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Main toolbar buttons (tooltips and alt text for images)
+previous.title=Eelmine lehekülg
+previous_label=Eelmine
+next.title=Järgmine lehekülg
+next_label=Järgmine
+
+# LOCALIZATION NOTE (page.title): The tooltip for the pageNumber input.
+page.title=Leht
+# LOCALIZATION NOTE (of_pages): "{{pagesCount}}" will be replaced by a number
+# representing the total number of pages in the document.
+of_pages=/ {{pagesCount}}
+# LOCALIZATION NOTE (page_of_pages): "{{pageNumber}}" and "{{pagesCount}}"
+# will be replaced by a number representing the currently visible page,
+# respectively a number representing the total number of pages in the document.
+page_of_pages=({{pageNumber}}/{{pagesCount}})
+
+zoom_out.title=Vähenda
+zoom_out_label=Vähenda
+zoom_in.title=Suurenda
+zoom_in_label=Suurenda
+zoom.title=Suurendamine
+presentation_mode.title=Lülitu esitlusrežiimi
+presentation_mode_label=Esitlusrežiim
+open_file.title=Ava fail
+open_file_label=Ava
+print.title=Prindi
+print_label=Prindi
+download.title=Laadi alla
+download_label=Laadi alla
+bookmark.title=Praegune vaade (kopeeri või ava uues aknas)
+bookmark_label=Praegune vaade
+
+# Secondary toolbar and context menu
+tools.title=Tööriistad
+tools_label=Tööriistad
+first_page.title=Mine esimesele leheküljele
+first_page.label=Mine esimesele leheküljele
+first_page_label=Mine esimesele leheküljele
+last_page.title=Mine viimasele leheküljele
+last_page.label=Mine viimasele leheküljele
+last_page_label=Mine viimasele leheküljele
+page_rotate_cw.title=Pööra päripäeva
+page_rotate_cw.label=Pööra päripäeva
+page_rotate_cw_label=Pööra päripäeva
+page_rotate_ccw.title=Pööra vastupäeva
+page_rotate_ccw.label=Pööra vastupäeva
+page_rotate_ccw_label=Pööra vastupäeva
+
+
+# Document properties dialog box
+document_properties.title=Dokumendi omadused…
+document_properties_label=Dokumendi omadused…
+document_properties_file_name=Faili nimi:
+document_properties_file_size=Faili suurus:
+# LOCALIZATION NOTE (document_properties_kb): "{{size_kb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in kilobytes, respectively in bytes.
+document_properties_kb={{size_kb}} KiB ({{size_b}} baiti)
+# LOCALIZATION NOTE (document_properties_mb): "{{size_mb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in megabytes, respectively in bytes.
+document_properties_mb={{size_mb}} MiB ({{size_b}} baiti)
+document_properties_title=Pealkiri:
+document_properties_author=Autor:
+document_properties_subject=Teema:
+document_properties_keywords=Märksõnad:
+document_properties_creation_date=Loodud:
+document_properties_modification_date=Muudetud:
+# LOCALIZATION NOTE (document_properties_date_string): "{{date}}" and "{{time}}"
+# will be replaced by the creation/modification date, and time, of the PDF file.
+document_properties_date_string={{date}} {{time}}
+document_properties_creator=Looja:
+document_properties_producer=Generaator:
+document_properties_version=Generaatori versioon:
+document_properties_page_count=Lehekülgi:
+document_properties_close=Sulge
+
+print_progress_message=Dokumendi ettevalmistamine printimiseks…
+# LOCALIZATION NOTE (print_progress_percent): "{{progress}}" will be replaced by
+# a numerical per cent value.
+print_progress_percent={{progress}}%
+print_progress_close=Loobu
+
+# Tooltips and alt text for side panel toolbar buttons
+# (the _label strings are alt text for the buttons, the .title strings are
+# tooltips)
+toggle_sidebar.title=Näita külgriba
+toggle_sidebar_notification.title=Näita külgriba (dokument sisaldab sisukorda/manuseid)
+toggle_sidebar_label=Näita külgriba
+document_outline.title=Näita sisukorda (kõigi punktide laiendamiseks/ahendamiseks topeltklõpsa)
+document_outline_label=Näita sisukorda
+attachments.title=Näita manuseid
+attachments_label=Manused
+thumbs.title=Näita pisipilte
+thumbs_label=Pisipildid
+findbar.title=Otsi dokumendist
+findbar_label=Otsi
+
+# Thumbnails panel item (tooltip and alt text for images)
+# LOCALIZATION NOTE (thumb_page_title): "{{page}}" will be replaced by the page
+# number.
+thumb_page_title={{page}}. lehekülg
+# LOCALIZATION NOTE (thumb_page_canvas): "{{page}}" will be replaced by the page
+# number.
+thumb_page_canvas={{page}}. lehekülje pisipilt
+
+# Find panel button title and messages
+find_input.title=Otsi
+find_input.placeholder=Otsi dokumendist…
+find_previous.title=Otsi fraasi eelmine esinemiskoht
+find_previous_label=Eelmine
+find_next.title=Otsi fraasi järgmine esinemiskoht
+find_next_label=Järgmine
+find_highlight=Too kõik esile
+find_match_case_label=Tõstutundlik
+find_reached_top=Jõuti dokumendi algusesse, jätkati lõpust
+find_reached_bottom=Jõuti dokumendi lõppu, jätkati algusest
+find_not_found=Fraasi ei leitud
+
+# Error panel labels
+error_more_info=Rohkem teavet
+error_less_info=Vähem teavet
+error_close=Sulge
+# LOCALIZATION NOTE (error_version_info): "{{version}}" and "{{build}}" will be
+# replaced by the PDF.JS version and build ID.
+error_version_info=PDF.js v{{version}} (build: {{build}})
+# LOCALIZATION NOTE (error_message): "{{message}}" will be replaced by an
+# english string describing the error.
+error_message=Teade: {{message}}
+# LOCALIZATION NOTE (error_stack): "{{stack}}" will be replaced with a stack
+# trace.
+error_stack=Stack: {{stack}}
+# LOCALIZATION NOTE (error_file): "{{file}}" will be replaced with a filename
+error_file=Fail: {{file}}
+# LOCALIZATION NOTE (error_line): "{{line}}" will be replaced with a line number
+error_line=Rida: {{line}}
+rendering_error=Lehe renderdamisel esines viga.
+
+# Predefined zoom values
+page_scale_width=Mahuta laiusele
+page_scale_fit=Mahuta leheküljele
+page_scale_auto=Automaatne suurendamine
+page_scale_actual=Tegelik suurus
+# LOCALIZATION NOTE (page_scale_percent): "{{scale}}" will be replaced by a
+# numerical scale value.
+page_scale_percent={{scale}}%
+
+# Loading indicator messages
+loading_error_indicator=Viga
+loading_error=PDFi laadimisel esines viga.
+invalid_file_error=Vigane või rikutud PDF-fail.
+missing_file_error=PDF-fail puudub.
+unexpected_response_error=Ootamatu vastus serverilt.
+
+# LOCALIZATION NOTE (text_annotation_type.alt): This is used as a tooltip.
+# "{{type}}" will be replaced with an annotation type from a list defined in
+# the PDF spec (32000-1:2008 Table 169 – Annotation types).
+# Some common types are e.g.: "Check", "Text", "Comment", "Note"
+text_annotation_type.alt=[{{type}} Annotation]
+password_label=PDF-faili avamiseks sisesta parool.
+password_invalid=Vigane parool. Palun proovi uuesti.
+password_ok=Sobib
+password_cancel=Loobu
+
+printing_not_supported=Hoiatus: printimine pole selle brauseri poolt täielikult toetatud.
+printing_not_ready=Hoiatus: PDF pole printimiseks täielikult laaditud.
+web_fonts_disabled=Veebifondid on keelatud: PDFiga kaasatud fonte pole võimalik kasutada.
+document_colors_not_allowed=PDF-dokumentidel pole oma värvide kasutamine lubatud: “Veebilehtedel on lubatud kasutada oma värve” on brauseris deaktiveeritud.

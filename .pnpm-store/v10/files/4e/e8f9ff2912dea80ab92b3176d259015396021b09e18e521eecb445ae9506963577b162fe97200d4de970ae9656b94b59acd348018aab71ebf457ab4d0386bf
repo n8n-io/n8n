@@ -1,0 +1,47 @@
+{
+  "name": "vue-demi",
+  "version": "0.14.10",
+  "engines": {
+    "node": ">=12"
+  },
+  "repository": "https://github.com/antfu/vue-demi.git",
+  "funding": "https://github.com/sponsors/antfu",
+  "license": "MIT",
+  "author": "Anthony Fu <anthonyfu117@hotmail.com>",
+  "main": "lib/index.cjs",
+  "jsdelivr": "lib/index.iife.js",
+  "unpkg": "lib/index.iife.js",
+  "module": "lib/index.mjs",
+  "types": "lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "require": "./lib/index.cjs",
+      "import": "./lib/index.mjs",
+      "browser": "./lib/index.mjs"
+    },
+    "./*": "./*"
+  },
+  "bin": {
+    "vue-demi-fix": "bin/vue-demi-fix.js",
+    "vue-demi-switch": "bin/vue-demi-switch.js"
+  },
+  "files": [
+    "lib",
+    "bin",
+    "scripts"
+  ],
+  "scripts": {
+    "postinstall": "node -e \"try{require('./scripts/postinstall.js')}catch(e){}\"",
+    "release": "npx bumpp --tag --commit --push && npm publish"
+  },
+  "peerDependencies": {
+    "@vue/composition-api": "^1.0.0-rc.1",
+    "vue": "^3.0.0-0 || ^2.6.0"
+  },
+  "peerDependenciesMeta": {
+    "@vue/composition-api": {
+      "optional": true
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "spawn-command",
+  "author": "Maciej Małecki <me@mmalecki.com>",
+  "description": "Spawn commands like `child_process.exec` does but return a `ChildProcess`",
+  "version": "0.0.2",
+  "main": "./lib/spawn-command",
+  "scripts": {
+    "test": "node test/spawn-command-test.js"
+  },
+  "devDependencies": {
+    "assert-called": "0.1.x"
+  }
+}

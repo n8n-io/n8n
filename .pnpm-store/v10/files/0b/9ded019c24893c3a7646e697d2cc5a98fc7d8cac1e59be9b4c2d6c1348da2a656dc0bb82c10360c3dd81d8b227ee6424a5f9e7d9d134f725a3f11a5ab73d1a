@@ -1,0 +1,14 @@
+import type { BeanCollection } from '../context/context';
+import type { Column } from '../interfaces/iColumn';
+import type { FilterActionParams, FilterHandler, FilterModel, IFilter } from '../interfaces/iFilter';
+export declare function isColumnFilterPresent(beans: BeanCollection): boolean;
+export declare function getColumnFilterInstance<TFilter = IFilter>(beans: BeanCollection, key: string | Column): Promise<TFilter | null | undefined>;
+export declare function destroyFilter(beans: BeanCollection, key: string | Column): void;
+export declare function setFilterModel(beans: BeanCollection, model: FilterModel | null): void;
+export declare function getFilterModel(beans: BeanCollection): FilterModel;
+export declare function getColumnFilterModel<TModel>(beans: BeanCollection, key: string | Column, useUnapplied?: boolean): TModel | null;
+export declare function setColumnFilterModel<TModel>(beans: BeanCollection, column: string | Column, model: TModel | null): Promise<void>;
+export declare function showColumnFilter(beans: BeanCollection, colKey: string | Column): void;
+export declare function hideColumnFilter(beans: BeanCollection): void;
+export declare function getColumnFilterHandler(beans: BeanCollection, colKey: string | Column): FilterHandler | undefined;
+export declare function doFilterAction(beans: BeanCollection, params: FilterActionParams): void;

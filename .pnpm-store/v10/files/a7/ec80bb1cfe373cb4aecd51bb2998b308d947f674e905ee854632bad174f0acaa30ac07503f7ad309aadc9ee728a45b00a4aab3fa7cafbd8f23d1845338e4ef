@@ -1,0 +1,1 @@
+{"version":3,"file":"index.js","sourceRoot":"","sources":["../../../../../src/platform/nodejs/context/index.ts"],"names":[],"mappings":";AAAA,uCAAuC;AACvC,kCAAkC;;;AAElC,uDAA6B","sourcesContent":["// Copyright (c) Microsoft Corporation.\n// Licensed under the MIT License.\n\nexport * from \"./context.js\";\n"]}

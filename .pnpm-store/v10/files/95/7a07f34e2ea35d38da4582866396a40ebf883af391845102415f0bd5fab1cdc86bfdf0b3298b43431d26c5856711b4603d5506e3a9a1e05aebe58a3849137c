@@ -1,0 +1,1 @@
+{"version":3,"sources":["../../src/middlewares/encode-json.js"],"sourcesContent":["export { default, CONTENT_TYPE_JSON } from '../middleware/encode-json'\n"],"mappings":";;;;;;;;;;;;;;;;;;;;;;;;;;;;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA,yBAA2C;","names":[]}

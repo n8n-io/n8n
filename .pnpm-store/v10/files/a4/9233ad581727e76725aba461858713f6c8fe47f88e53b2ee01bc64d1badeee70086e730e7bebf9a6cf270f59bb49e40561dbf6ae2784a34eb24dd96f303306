@@ -1,0 +1,47 @@
+{
+    "name": "nodemailer",
+    "version": "7.0.11",
+    "description": "Easy as cake e-mail sending from your Node.js applications",
+    "main": "lib/nodemailer.js",
+    "scripts": {
+        "test": "node --test --test-concurrency=1 test/**/*.test.js test/**/*-test.js",
+        "test:coverage": "c8 node --test --test-concurrency=1 test/**/*.test.js test/**/*-test.js",
+        "format": "prettier --write \"**/*.{js,json,md}\"",
+        "format:check": "prettier --check \"**/*.{js,json,md}\"",
+        "lint": "eslint .",
+        "lint:fix": "eslint . --fix",
+        "update": "rm -rf node_modules/ package-lock.json && ncu -u && npm install"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/nodemailer/nodemailer.git"
+    },
+    "keywords": [
+        "Nodemailer"
+    ],
+    "author": "Andris Reinman",
+    "license": "MIT-0",
+    "bugs": {
+        "url": "https://github.com/nodemailer/nodemailer/issues"
+    },
+    "homepage": "https://nodemailer.com/",
+    "devDependencies": {
+        "@aws-sdk/client-sesv2": "3.940.0",
+        "bunyan": "1.8.15",
+        "c8": "10.1.3",
+        "eslint": "9.39.1",
+        "eslint-config-prettier": "10.1.8",
+        "globals": "16.5.0",
+        "libbase64": "1.3.0",
+        "libmime": "5.3.7",
+        "libqp": "2.1.1",
+        "nodemailer-ntlm-auth": "1.0.4",
+        "prettier": "3.6.2",
+        "proxy": "1.0.2",
+        "proxy-test-server": "1.0.0",
+        "smtp-server": "3.16.1"
+    },
+    "engines": {
+        "node": ">=6.0.0"
+    }
+}

@@ -1,0 +1,3 @@
+{
+  "extends": ["dtslint/dtslint.json", "tslint-config-prettier"]
+}

@@ -1,0 +1,28 @@
+{
+  "name": "bindings",
+  "description": "Helper module for loading your native module's .node file",
+  "keywords": [
+    "native",
+    "addon",
+    "bindings",
+    "gyp",
+    "waf",
+    "c",
+    "c++"
+  ],
+  "version": "1.5.0",
+  "author": "Nathan Rajlich <nathan@tootallnate.net> (http://tootallnate.net)",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/TooTallNate/node-bindings.git"
+  },
+  "main": "./bindings.js",
+  "bugs": {
+    "url": "https://github.com/TooTallNate/node-bindings/issues"
+  },
+  "homepage": "https://github.com/TooTallNate/node-bindings",
+  "license": "MIT",
+  "dependencies": {
+    "file-uri-to-path": "1.0.0"
+  }
+}

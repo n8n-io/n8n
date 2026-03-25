@@ -1,0 +1,68 @@
+{
+  "name": "vue-observe-visibility",
+  "description": "Detect when an element is becoming visible or hidden on the page. ",
+  "version": "2.0.0-alpha.1",
+  "author": {
+    "name": "Guillaume Chau",
+    "email": "guillaume.b.chau@gmail.com"
+  },
+  "keywords": [
+    "vue",
+    "vuejs",
+    "plugin"
+  ],
+  "license": "MIT",
+  "main": "dist/vue-observe-visibility.umd.js",
+  "module": "dist/vue-observe-visibility.esm.js",
+  "unpkg": "dist/vue-observe-visibility.min.js",
+  "scripts": {
+    "dev": "nodemon --exec 'npm run build' --watch src",
+    "build": "npm run build:browser && npm run build:es && npm run build:umd",
+    "build:browser": "rollup --config build/rollup.config.browser.js",
+    "build:es": "rollup --config build/rollup.config.es.js",
+    "build:umd": "rollup --config build/rollup.config.umd.js",
+    "prepublishOnly": "npm run build && npm run lint && npm run test",
+    "lint": "eslint . --ext js",
+    "serve": "serve -p 8080",
+    "test": "start-server-and-test serve 8080 test:e2e",
+    "test:e2e:open": "cypress open",
+    "test:e2e": "cypress run"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Akryum/vue-observe-visibility.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Akryum/vue-observe-visibility/issues"
+  },
+  "homepage": "https://github.com/Akryum/vue-observe-visibility#readme",
+  "peerDependencies": {
+    "vue": "^3.0.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.4.0",
+    "@babel/plugin-transform-runtime": "^7.4.0",
+    "@babel/polyfill": "^7.4.3",
+    "@babel/preset-env": "^7.4.2",
+    "babel-eslint": "^10.1.0",
+    "cross-env": "^5.2.0",
+    "cypress": "^6.2.0",
+    "eslint": "^5.16.0",
+    "eslint-config-standard": "^12.0.0",
+    "eslint-plugin-cypress": "^2.11.2",
+    "eslint-plugin-html": "^5.0.3",
+    "eslint-plugin-import": "^2.17.2",
+    "eslint-plugin-node": "^9.0.1",
+    "eslint-plugin-promise": "^4.1.1",
+    "eslint-plugin-standard": "^4.0.0",
+    "nodemon": "^1.19.0",
+    "rollup": "^1.7.0",
+    "rollup-plugin-babel": "^4.3.2",
+    "rollup-plugin-commonjs": "^9.2.1",
+    "rollup-plugin-node-resolve": "^4.0.1",
+    "rollup-plugin-replace": "^2.0.0",
+    "rollup-plugin-terser": "^4.0.4",
+    "serve": "^6.5.8",
+    "start-server-and-test": "^1.11.7"
+  }
+}

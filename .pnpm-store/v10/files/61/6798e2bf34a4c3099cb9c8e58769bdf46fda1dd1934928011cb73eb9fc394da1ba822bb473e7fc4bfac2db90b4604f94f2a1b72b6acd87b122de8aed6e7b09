@@ -1,0 +1,1 @@
+This is the x86_64-unknown-linux-gnu build of lightningcss. See https://github.com/parcel-bundler/lightningcss for details.

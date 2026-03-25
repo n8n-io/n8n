@@ -1,0 +1,1 @@
+{"version":3,"file":"empty.js","sourceRoot":"","sources":["empty.ts"],"names":[],"mappings":"","sourcesContent":["\nimport { ITSEmptyRecord } from '../../type/record/empty';\n\nexport type ITSLogicIsEmptyRecord<T, Y = true, N = false> = T extends ITSEmptyRecord ? Y : N\n"]}

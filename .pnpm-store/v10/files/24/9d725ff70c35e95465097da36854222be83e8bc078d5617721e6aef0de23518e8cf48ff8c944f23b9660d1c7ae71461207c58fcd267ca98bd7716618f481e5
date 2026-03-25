@@ -1,0 +1,33 @@
+{
+  "name": "slick",
+  "homepage": "https://github.com/kamicane/slick",
+  "version": "1.12.2",
+  "main": "./index.js",
+  "description": "Standalone CSS Selector Finder and Parser.",
+  "keywords": [
+    "dom",
+    "css",
+    "selector",
+    "finder",
+    "parser"
+  ],
+  "author": "Valerio Proietti <@kamicane> (http://mad4milk.net)",
+  "contributors": [
+    "Fabio Miranda Costa <@fabiomcosta>",
+    "Thomas Aylott <@SubtleGradient>"
+  ],
+  "bugs": {
+    "url": "https://github.com/kamicane/slick/issues"
+  },
+  "license": "MIT (http://mootools.net/license.txt)",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/kamicane/slick.git"
+  },
+  "dependencies": {},
+  "devDependencies": {},
+  "optionalDependencies": {},
+  "engines": {
+    "node": "*"
+  }
+}

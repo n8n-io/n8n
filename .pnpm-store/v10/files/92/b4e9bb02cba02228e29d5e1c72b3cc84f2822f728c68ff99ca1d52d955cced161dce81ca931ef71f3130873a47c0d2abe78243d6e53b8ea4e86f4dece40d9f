@@ -1,0 +1,46 @@
+{
+  "name": "relateurl",
+  "description": "Minify URLs by converting them from absolute to relative.",
+  "version": "0.2.7",
+  "license": "MIT",
+  "homepage": "https://github.com/stevenvachon/relateurl",
+  "author": {
+    "name": "Steven Vachon",
+    "email": "contact@svachon.com",
+    "url": "http://www.svachon.com/"
+  },
+  "main": "lib",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/stevenvachon/relateurl.git"
+  },
+  "bugs": {
+    "url": "https://github.com/stevenvachon/relateurl/issues"
+  },
+  "devDependencies": {
+    "browserify": "^13.0.1",
+    "chai": "^3.5.0",
+    "mocha": "^2.5.3",
+    "uglify-js": "^2.7.0"
+  },
+  "engines": {
+    "node": ">= 0.10"
+  },
+  "scripts": {
+    "browserify": "browserify lib/ --standalone RelateUrl | uglifyjs --compress --mangle -o relateurl-browser.js",
+    "test": "mocha test/ --bail --reporter spec --check-leaks"
+  },
+  "files": [
+    "lib",
+    "license"
+  ],
+  "keywords": [
+    "uri",
+    "url",
+    "minifier",
+    "minify",
+    "lint",
+    "relative",
+    "absolute"
+  ]
+}

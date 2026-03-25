@@ -1,0 +1,1 @@
+export * from "../../dist/document_loaders/fs/obsidian.js";

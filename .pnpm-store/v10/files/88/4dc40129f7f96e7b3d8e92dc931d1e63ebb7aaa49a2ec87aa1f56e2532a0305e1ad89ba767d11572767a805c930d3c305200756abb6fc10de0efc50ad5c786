@@ -1,0 +1,103 @@
+{
+	"$id": "/inference/schemas/text-generation/stream_output.json",
+	"$schema": "http://json-schema.org/draft-06/schema#",
+	"description": "Text Generation Stream Output.\n\nAuto-generated from TGI specs.\nFor more details, check out https://github.com/huggingface/huggingface.js/blob/main/packages/tasks/scripts/inference-tgi-import.ts.",
+	"title": "TextGenerationStreamOutput",
+	"type": "object",
+	"required": ["index", "token"],
+	"properties": {
+		"details": {
+			"allOf": [
+				{
+					"$ref": "#/$defs/TextGenerationStreamOutputStreamDetails"
+				}
+			],
+			"default": "null",
+			"nullable": true
+		},
+		"generated_text": {
+			"type": "string",
+			"default": "null",
+			"example": "test",
+			"nullable": true
+		},
+		"index": {
+			"type": "integer",
+			"format": "int32",
+			"minimum": 0
+		},
+		"token": {
+			"$ref": "#/$defs/TextGenerationStreamOutputToken"
+		},
+		"top_tokens": {
+			"type": "array",
+			"items": {
+				"$ref": "#/$defs/TextGenerationStreamOutputToken"
+			}
+		}
+	},
+	"$defs": {
+		"TextGenerationStreamOutputStreamDetails": {
+			"type": "object",
+			"required": ["finish_reason", "generated_tokens", "input_length"],
+			"properties": {
+				"finish_reason": {
+					"$ref": "#/$defs/TextGenerationStreamOutputFinishReason"
+				},
+				"generated_tokens": {
+					"type": "integer",
+					"format": "int32",
+					"example": 1,
+					"minimum": 0
+				},
+				"input_length": {
+					"type": "integer",
+					"format": "int32",
+					"example": 1,
+					"minimum": 0
+				},
+				"seed": {
+					"type": "integer",
+					"format": "int64",
+					"example": 42,
+					"nullable": true,
+					"minimum": 0
+				}
+			},
+			"title": "TextGenerationStreamOutputStreamDetails"
+		},
+		"TextGenerationStreamOutputFinishReason": {
+			"type": "string",
+			"enum": ["length", "eos_token", "stop_sequence"],
+			"example": "Length",
+			"title": "TextGenerationStreamOutputFinishReason"
+		},
+		"TextGenerationStreamOutputToken": {
+			"type": "object",
+			"required": ["id", "text", "logprob", "special"],
+			"properties": {
+				"id": {
+					"type": "integer",
+					"format": "int32",
+					"example": 0,
+					"minimum": 0
+				},
+				"logprob": {
+					"type": "number",
+					"format": "float",
+					"example": -0.34,
+					"nullable": true
+				},
+				"special": {
+					"type": "boolean",
+					"example": "false"
+				},
+				"text": {
+					"type": "string",
+					"example": "test"
+				}
+			},
+			"title": "TextGenerationStreamOutputToken"
+		}
+	}
+}

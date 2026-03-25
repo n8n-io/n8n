@@ -1,0 +1,59 @@
+// Copyright (c) 2022, Oracle and/or its affiliates.
+
+//-----------------------------------------------------------------------------
+//
+// This software is dual-licensed to you under the Universal Permissive License
+// (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl and Apache License
+// 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose
+// either license.
+//
+// If you elect to accept the software under the Apache License, Version 2.0,
+// the following applies:
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+//-----------------------------------------------------------------------------
+
+'use strict';
+
+const AqDeqOptionsImpl = require('./aqDeqOptions.js');
+const AqEnqOptionsImpl = require('./aqEnqOptions.js');
+const AqMessageImpl = require('./aqMessage.js');
+const AqQueueImpl = require('./aqQueue.js');
+const DbObjectImpl = require('./dbObject.js');
+const ConnectionImpl = require('./connection.js');
+const LobImpl = require('./lob.js');
+const PoolImpl = require('./pool.js');
+const ResultSetImpl = require('./resultset.js');
+const SodaCollectionImpl = require('./sodaCollection.js');
+const SodaDatabaseImpl = require('./sodaDatabase.js');
+const SodaDocCursorImpl = require('./sodaDocCursor.js');
+const SodaDocumentImpl = require('./sodaDocument.js');
+const SodaOperationImpl = require('./sodaOperation.js');
+
+module.exports = {
+  AqDeqOptionsImpl,
+  AqEnqOptionsImpl,
+  AqMessageImpl,
+  AqQueueImpl,
+  DbObjectImpl,
+  ConnectionImpl,
+  LobImpl,
+  PoolImpl,
+  ResultSetImpl,
+  SodaCollectionImpl,
+  SodaDatabaseImpl,
+  SodaDocCursorImpl,
+  SodaDocumentImpl,
+  SodaOperationImpl
+};

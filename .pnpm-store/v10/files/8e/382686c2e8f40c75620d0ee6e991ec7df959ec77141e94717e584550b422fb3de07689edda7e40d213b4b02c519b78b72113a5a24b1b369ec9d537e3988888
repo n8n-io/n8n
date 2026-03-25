@@ -1,0 +1,55 @@
+{
+  "name": "express-prom-bundle",
+  "version": "8.0.0",
+  "description": "express middleware with popular prometheus metrics in one bundle",
+  "main": "src/index.js",
+  "keywords": [
+    "prometheus",
+    "metrics",
+    "express",
+    "path",
+    "method"
+  ],
+  "files": [
+    "src",
+    "types/index.d.ts"
+  ],
+  "types": "types/index.d.ts",
+  "scripts": {
+    "test": "NODE_ENV=test node_modules/jasme/run.js",
+    "lint": "eslint src",
+    "coverage": "make coverage",
+    "test-types": "tsd"
+  },
+  "author": "Konstantin Pogorelov <or@pluseq.com>",
+  "license": "MIT",
+  "dependencies": {
+    "@types/express": "^5.0.0",
+    "on-finished": "^2.3.0",
+    "url-value-parser": "^2.0.0"
+  },
+  "devDependencies": {
+    "dts": "^0.1.1",
+    "eslint": "^5.11.0",
+    "express": "^5.0.1",
+    "istanbul": "^0.4.5",
+    "jasme": "^6.0.0",
+    "koa": "^2.6.2",
+    "koa-connect": "^2.0.1",
+    "prom-client": "^15.0.0",
+    "supertest": "^3.3.0",
+    "supertest-koa-agent": "^0.3.0",
+    "tsd": "^0.30.3",
+    "typescript": "^3.4.5"
+  },
+  "peerDependencies": {
+    "prom-client": ">=15.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jochen-schweizer/express-prom-bundle.git"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

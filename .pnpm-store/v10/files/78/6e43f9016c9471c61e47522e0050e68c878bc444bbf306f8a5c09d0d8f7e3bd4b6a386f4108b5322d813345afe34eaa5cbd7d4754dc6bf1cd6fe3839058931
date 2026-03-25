@@ -1,0 +1,39 @@
+{
+  "name": "@testcontainers/postgresql",
+  "version": "11.0.3",
+  "license": "MIT",
+  "keywords": [
+    "postgres",
+    "postgresql",
+    "testing",
+    "docker",
+    "testcontainers"
+  ],
+  "description": "PostgreSQL module for Testcontainers",
+  "homepage": "https://github.com/testcontainers/testcontainers-node#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/testcontainers/testcontainers-node.git"
+  },
+  "bugs": {
+    "url": "https://github.com/testcontainers/testcontainers-node/issues"
+  },
+  "main": "build/index.js",
+  "files": [
+    "build"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "prepack": "shx cp ../../../README.md . && shx cp ../../../LICENSE .",
+    "build": "tsc --project tsconfig.build.json"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.15.4",
+    "pg": "^8.16.0"
+  },
+  "dependencies": {
+    "testcontainers": "^11.0.3"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "name": "@one-ini/wasm",
+  "collaborators": [
+    "Jed Mao <jedmao@outlook.com>",
+    "Joe Hildebrand <joe-github@cursive.net>",
+    "Florian Neumann <florian.neumann@mindkeeper.solutions>"
+  ],
+  "description": "Parse EditorConfig-INI file contents into AST",
+  "version": "0.2.0",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/one-ini/core"
+  },
+  "files": [
+    "one_ini_bg.wasm",
+    "one_ini.js",
+    "one_ini.d.ts"
+  ],
+  "main": "one_ini.js",
+  "types": "one_ini.d.ts",
+  "keywords": [
+    "editorconfig",
+    "ini",
+    "parser",
+    "ast"
+  ]
+}

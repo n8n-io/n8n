@@ -1,0 +1,1 @@
+{"version":3,"file":"ChatMessageRequest.d.ts","sourceRoot":"","sources":["../../../src/models/ChatMessageRequest.ts"],"names":[],"mappings":"AAGA,OAAO,EAAE,kBAAkB,EAAE,MAAM,sBAAsB,CAAC;AAE1D;;GAEG;AACH,MAAM,WAAW,kBAAkB;IACjC;;OAEG;IACH,cAAc,EAAE,MAAM,CAAC;IAEvB;;OAEG;IACH,SAAS,EAAE,MAAM,CAAC;IAElB;;OAEG;IACH,WAAW,EAAE,MAAM,CAAC;IAEpB;;OAEG;IACH,WAAW,EAAE,kBAAkB,EAAE,CAAC;CACnC"}

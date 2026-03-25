@@ -1,0 +1,58 @@
+{
+  "compilerOptions": {
+    // Most non-library projects don't need to emit declarations.
+    // So we add this option by default to make the config more friendly to most users.
+    "noEmit": true,
+
+    // As long as you are using a build tool, we recommend you to author and ship in ES modules.
+    // Even if you are targeting Node.js, because
+    //  - `CommonJS` is too outdated
+    //  - the ecosystem hasn't fully caught up with `Node16`/`NodeNext`
+    // This recommendation includes environments like Vitest, Vite Config File, Vite SSR, etc.
+    "module": "ESNext",
+
+    // We expect users to use bundlers.
+    // So here we enable some resolution features that are only available in bundlers.
+    "moduleResolution": "Bundler",
+    "resolveJsonModule": true,
+    "allowImportingTsExtensions": true,
+    // Even files without `import` or `export` are treated as modules.
+    // It helps to avoid mysterious errors such as `Cannot redeclare block-scoped variable 'name`.
+    // https://www.totaltypescript.com/cannot-redeclare-block-scoped-variable#solution-3-your-module-isnt-a-module
+    "moduleDetection": "force",
+
+    // Required in Vue projects
+    "jsx": "preserve",
+    "jsxImportSource": "vue",
+
+    // `"noImplicitThis": true` is part of `strict`
+    // Added again here in case some users decide to disable `strict`.
+    // This enables stricter inference for data properties on `this`.
+    "noImplicitThis": true,
+    "strict": true,
+
+    // <https://devblogs.microsoft.com/typescript/announcing-typescript-5-0/#verbatimmodulesyntax>
+    // Any imports or exports without a type modifier are left around. This is important for `<script setup>`.
+    // Anything that uses the type modifier is dropped entirely.
+    "verbatimModuleSyntax": true,
+
+    // A few notes:
+    // - Vue 3 supports ES2016+
+    // - For Vite, the actual compilation target is determined by the
+    //   `build.target` option in the Vite config.
+    //   So don't change the `target` field here. It has to be
+    //   at least `ES2020` for dynamic `import()`s and `import.meta` to work correctly.
+    // - If you are not using Vite, feel free to overwrite the `target` field.
+    "target": "ESNext",
+    // For spec compliance.
+    // `true` by default if the `target` is `ES2020` or higher.
+    // Explicitly set it to `true` here in case some users want to overwrite the `target`.
+    "useDefineForClassFields": true,
+
+    // Recommended
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    // See <https://github.com/vuejs/vue-cli/pull/5688>
+    "skipLibCheck": true,
+  }
+}

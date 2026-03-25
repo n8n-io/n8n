@@ -1,0 +1,79 @@
+{
+  "name": "properties-reader",
+  "description": "Properties file reader for Node.js",
+  "version": "2.3.0",
+  "author": {
+    "name": "Steve King",
+    "email": "steve@mydev.co"
+  },
+  "contributors": [
+    {
+      "name": "Steve King",
+      "email": "steve@mydev.co"
+    },
+    {
+      "name": "Aureliano Bergese",
+      "email": "onailerua@hotmail.coom"
+    }
+  ],
+  "dependencies": {
+    "mkdirp": "^1.0.4"
+  },
+  "devDependencies": {
+    "@changesets/changelog-github": "^0.4.8",
+    "@changesets/cli": "^2.26.2",
+    "jest": "^29.6.3"
+  },
+  "keywords": [
+    "properties",
+    "ini",
+    "parser"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/steveukx/properties"
+  },
+  "main": "src/properties-reader-factory",
+  "files": [
+    "src/**/*.js"
+  ],
+  "scripts": {
+    "preversion": "npm test",
+    "postversion": "npm publish && git push && git push --tags",
+    "test": "jest --coverage"
+  },
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/steveukx/properties?sponsor=1"
+  },
+  "engines": {
+    "node": ">=14"
+  },
+  "license": "MIT",
+  "jest": {
+    "roots": [
+      "<rootDir>/src/",
+      "<rootDir>/test/"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 80,
+        "functions": 80,
+        "lines": 80,
+        "statements": 80
+      }
+    },
+    "coveragePathIgnorePatterns": [
+      "<rootDir>/test/"
+    ],
+    "coverageReporters": [
+      "json",
+      "lcov",
+      "text",
+      "clover"
+    ],
+    "testMatch": [
+      "**/test/**/*.spec.*"
+    ]
+  }
+}

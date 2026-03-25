@@ -1,0 +1,1 @@
+{"version":3,"file":"AsapScheduler.d.ts","sourceRoot":"","sources":["../../../../src/internal/scheduler/AsapScheduler.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,WAAW,EAAE,MAAM,eAAe,CAAC;AAC5C,OAAO,EAAE,cAAc,EAAE,MAAM,kBAAkB,CAAC;AAElD,qBAAa,aAAc,SAAQ,cAAc;IACxC,KAAK,CAAC,MAAM,CAAC,EAAE,WAAW,CAAC,GAAG,CAAC,GAAG,IAAI;CAiC9C"}

@@ -1,0 +1,58 @@
+{
+  "name": "websocket",
+  "description": "Websocket Client & Server Library implementing the WebSocket protocol as specified in RFC 6455.",
+  "keywords": [
+    "websocket",
+    "websockets",
+    "socket",
+    "networking",
+    "comet",
+    "push",
+    "RFC-6455",
+    "realtime",
+    "server",
+    "client"
+  ],
+  "author": "Brian McKelvey <theturtle32@gmail.com> (https://github.com/theturtle32)",
+  "contributors": [
+    "Iñaki Baz Castillo <ibc@aliax.net> (http://dev.sipdoc.net)"
+  ],
+  "version": "1.0.35",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/theturtle32/WebSocket-Node.git"
+  },
+  "homepage": "https://github.com/theturtle32/WebSocket-Node",
+  "engines": {
+    "node": ">=4.0.0"
+  },
+  "dependencies": {
+    "bufferutil": "^4.0.1",
+    "debug": "^2.2.0",
+    "es5-ext": "^0.10.63",
+    "typedarray-to-buffer": "^3.1.5",
+    "utf-8-validate": "^5.0.2",
+    "yaeti": "^0.0.6"
+  },
+  "devDependencies": {
+    "buffer-equal": "^1.0.0",
+    "gulp": "^4.0.2",
+    "gulp-jshint": "^2.0.4",
+    "jshint-stylish": "^2.2.1",
+    "jshint": "^2.0.0",
+    "tape": "^4.9.1"
+  },
+  "config": {
+    "verbose": false
+  },
+  "scripts": {
+    "test": "tape test/unit/*.js",
+    "gulp": "gulp"
+  },
+  "main": "index",
+  "directories": {
+    "lib": "./lib"
+  },
+  "browser": "lib/browser.js",
+  "license": "Apache-2.0"
+}

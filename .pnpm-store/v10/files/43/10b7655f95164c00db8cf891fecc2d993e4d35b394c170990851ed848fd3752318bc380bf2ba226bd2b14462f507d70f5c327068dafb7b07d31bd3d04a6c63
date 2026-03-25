@@ -1,0 +1,1 @@
+{"version":3,"file":"createPerformanceSpans.d.ts","sourceRoot":"","sources":["../../../../src/util/createPerformanceSpans.ts"],"names":[],"mappings":"AACA,OAAO,KAAK,EAAE,cAAc,EAAE,YAAY,EAAE,eAAe,EAAE,sBAAsB,EAAE,MAAM,UAAU,CAAC;AAEtG;;GAEG;AACH,wBAAgB,sBAAsB,CACpC,MAAM,EAAE,eAAe,EACvB,OAAO,EAAE,sBAAsB,CAAC,YAAY,CAAC,EAAE,GAC9C,OAAO,CAAC,cAAc,GAAG,IAAI,CAAC,EAAE,CAoBlC"}

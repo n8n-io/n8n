@@ -1,0 +1,1 @@
+module.exports = require("../dist/retrievers/vectara_summary.cjs");

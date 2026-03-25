@@ -1,0 +1,670 @@
+@use 'sass:map';
+
+@use 'mixins/mixins' as *;
+@use 'mixins/var' as *;
+@use 'common/var' as *;
+
+@include b(table) {
+  @include set-component-css-var('table', $table);
+}
+
+@include b(table) {
+  position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
+  height: fit-content;
+  width: 100%;
+  max-width: 100%;
+  background-color: getCssVar('table-bg-color');
+  font-size: 14px;
+  color: getCssVar('table-text-color');
+
+  @include e(inner-wrapper) {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    // 表格底部伪 border，总是有的
+    &::before {
+      @include extend-rule(border-pseudo);
+      left: 0;
+      bottom: 0px;
+      width: 100%;
+      height: 1px;
+    }
+  }
+
+  tbody {
+    &:focus-visible {
+      outline: none;
+    }
+  }
+
+  &.has-footer {
+    &.#{$namespace}-table--scrollable-y,
+    &.#{$namespace}-table--fluid-height {
+      tr:last-child td.#{$namespace}-table__cell {
+        border-bottom-color: transparent;
+      }
+    }
+  }
+
+  // when data is empty
+  @include e(empty-block) {
+    position: sticky;
+    left: 0;
+    min-height: 60px;
+    text-align: center;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  @include e(empty-text) {
+    // min-height doesn't work in IE10 and IE11 https://github.com/philipwalton/flexbugs#3-min-height-on-a-flex-container-wont-apply-to-its-flex-items
+    // set empty text line height up to contrainer min-height as workaround.
+    line-height: 60px;
+    width: 50%;
+    color: getCssVar('text-color', 'secondary');
+  }
+
+  // expand the row
+  @include e(expand-column) {
+    .cell {
+      padding: 0;
+      text-align: center;
+      user-select: none;
+    }
+  }
+
+  @include e(expand-icon) {
+    position: relative;
+    cursor: pointer;
+    color: getCssVar('text-color', 'regular');
+    font-size: 12px;
+    transition: transform getCssVar('transition-duration-fast') ease-in-out;
+    height: 20px;
+
+    @include m(expanded) {
+      transform: rotate(90deg);
+    }
+
+    > .#{$namespace}-icon {
+      font-size: 12px;
+    }
+  }
+
+  @include e(expanded-cell) {
+    background-color: getCssVar('table-expanded-cell-bg-color');
+
+    // increase the weight purely
+    &[class*='cell'] {
+      padding: 20px 50px;
+    }
+
+    &:hover {
+      background-color: transparent !important;
+    }
+  }
+
+  @include e(placeholder) {
+    display: inline-block;
+    width: 20px;
+  }
+
+  @include e(append-wrapper) {
+    // avoid overlapping margin https://developer.mozilla.org/zh-CN/docs/Web/CSS/CSS_Box_Model/Mastering_margin_collapsing
+    overflow: hidden;
+  }
+
+  @include m(fit) {
+    border-right: 0;
+    border-bottom: 0;
+
+    .#{$namespace}-table__cell.gutter {
+      border-right-width: 1px;
+    }
+  }
+
+  thead {
+    color: getCssVar('table-header-text-color');
+
+    th {
+      font-weight: 600;
+    }
+
+    &.is-group {
+      th.#{$namespace}-table__cell {
+        background: getCssVar('fill-color', 'light');
+      }
+    }
+  }
+
+  tfoot {
+    td.#{$namespace}-table__cell {
+      background-color: getCssVar('table-row-hover-bg-color');
+      color: getCssVar('table-text-color');
+    }
+  }
+
+  .#{$namespace}-table__cell {
+    padding: map.get($table-padding, 'default');
+    min-width: 0;
+    box-sizing: border-box;
+    text-overflow: ellipsis;
+    vertical-align: middle;
+    position: relative;
+    text-align: left;
+    z-index: getCssVar('table-index');
+    @include when(center) {
+      text-align: center;
+    }
+
+    @include when(right) {
+      text-align: right;
+    }
+
+    &.gutter {
+      width: 15px;
+      border-right-width: 0;
+      border-bottom-width: 0;
+      padding: 0;
+    }
+
+    &.is-hidden {
+      > * {
+        visibility: hidden;
+      }
+    }
+  }
+
+  .cell {
+    box-sizing: border-box;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: normal;
+    word-break: break-all;
+    line-height: 23px;
+    padding: 0 12px;
+
+    &.#{$namespace}-tooltip {
+      white-space: nowrap;
+      min-width: 50px;
+    }
+  }
+
+  @each $size in (large, default, small) {
+    @include m($size) {
+      font-size: map.get($table-font-size, $size);
+      .#{$namespace}-table__cell {
+        padding: map.get($table-padding, $size);
+      }
+      .cell {
+        padding: map.get($table-cell-padding, $size);
+      }
+    }
+  }
+
+  tr {
+    background-color: getCssVar('table-tr-bg-color');
+
+    input[type='checkbox'] {
+      margin: 0;
+    }
+  }
+
+  th.#{$namespace}-table__cell.is-leaf,
+  td.#{$namespace}-table__cell {
+    border-bottom: getCssVar('table-border');
+  }
+
+  th.#{$namespace}-table__cell.is-sortable {
+    cursor: pointer;
+  }
+
+  th.#{$namespace}-table__cell {
+    user-select: none;
+    background-color: getCssVar('table-header-bg-color');
+
+    > .cell.highlight {
+      color: getCssVar('color-primary');
+    }
+
+    &.required > div::before {
+      display: inline-block;
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #ff4d51;
+      margin-right: 5px;
+      vertical-align: middle;
+    }
+  }
+
+  td.#{$namespace}-table__cell {
+    div {
+      box-sizing: border-box;
+    }
+
+    &.gutter {
+      width: 0;
+    }
+  }
+
+  // 拥有多级表头
+  @include m((group, border)) {
+    @include share-rule(border-pseudo) {
+      content: '';
+      position: absolute;
+      background-color: getCssVar('table-border-color');
+      z-index: calc(getCssVar('table-index') + 2);
+    }
+  }
+
+  // table--border
+  @include m(border) {
+    @include e(inner-wrapper) {
+      &::after {
+        @include extend-rule(border-pseudo);
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 1px;
+        z-index: calc(getCssVar('table-index') + 2);
+      }
+    }
+
+    &::before {
+      @include extend-rule(border-pseudo);
+      top: -1px;
+      left: 0;
+      width: 1px;
+      height: 100%;
+    }
+
+    &::after {
+      @include extend-rule(border-pseudo);
+      top: -1px;
+      right: 0;
+      width: 1px;
+      height: 100%;
+    }
+
+    @include e(inner-wrapper) {
+      border-right: none;
+      border-bottom: none;
+    }
+
+    @include e(footer-wrapper) {
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .#{$namespace}-table__cell {
+      border-right: getCssVar('table-border');
+    }
+
+    th.#{$namespace}-table__cell.gutter:last-of-type {
+      border-bottom: getCssVar('table-border');
+      border-bottom-width: 1px;
+    }
+
+    & th.#{$namespace}-table__cell {
+      border-bottom: getCssVar('table-border');
+    }
+  }
+
+  @include m(hidden) {
+    visibility: hidden;
+  }
+
+  @include e((header-wrapper, body-wrapper, footer-wrapper)) {
+    width: 100%;
+    tr {
+      td,
+      th {
+        &.#{$namespace}-table-fixed-column--left,
+        &.#{$namespace}-table-fixed-column--right {
+          position: sticky !important;
+          background: inherit;
+          z-index: calc(getCssVar('table-index') + 1);
+          &.is-last-column,
+          &.is-first-column {
+            &::before {
+              content: '';
+              position: absolute;
+              top: 0px;
+              width: 10px;
+              bottom: -1px;
+              overflow-x: hidden;
+              overflow-y: hidden;
+              box-shadow: none;
+              touch-action: none;
+              pointer-events: none;
+            }
+          }
+          &.is-first-column {
+            &::before {
+              left: -10px;
+            }
+          }
+          &.is-last-column {
+            &::before {
+              right: -10px;
+              box-shadow: none;
+            }
+          }
+        }
+        &.#{$namespace}-table__fixed-right-patch {
+          position: sticky !important;
+          z-index: calc(getCssVar('table-index') + 1);
+          background: #fff;
+          right: 0;
+        }
+      }
+    }
+  }
+
+  @include e(header-wrapper) {
+    flex-shrink: 0;
+    tr {
+      th {
+        &.#{$namespace}-table-fixed-column--left,
+        &.#{$namespace}-table-fixed-column--right {
+          background-color: getCssVar('table-header-bg-color');
+        }
+      }
+    }
+  }
+
+  @include e((header, body, footer)) {
+    table-layout: fixed;
+    border-collapse: separate;
+  }
+
+  @include e((header-wrapper)) {
+    overflow: hidden;
+
+    & tbody td.#{$namespace}-table__cell {
+      background-color: getCssVar('table-row-hover-bg-color');
+      color: getCssVar('table-text-color');
+    }
+  }
+
+  @include e((footer-wrapper)) {
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  @include e((header-wrapper, body-wrapper)) {
+    .#{$namespace}-table-column--selection {
+      > .cell {
+        display: inline-flex;
+        align-items: center;
+        height: 23px;
+      }
+      .#{$namespace}-checkbox {
+        height: unset;
+      }
+    }
+  }
+
+  @include when(scrolling-left) {
+    .#{$namespace}-table-fixed-column--right.is-first-column {
+      &::before {
+        box-shadow: getCssVar('table-fixed-right-column');
+      }
+    }
+    &.#{$namespace}-table--border {
+      .#{$namespace}-table-fixed-column--left {
+        &.is-last-column {
+          &.#{$namespace}-table__cell {
+            border-right: getCssVar('table-border');
+          }
+        }
+      }
+    }
+    th.#{$namespace}-table-fixed-column--left {
+      background-color: getCssVar('table-header-bg-color');
+    }
+  }
+
+  @include when(scrolling-right) {
+    .#{$namespace}-table-fixed-column--left.is-last-column {
+      &::before {
+        box-shadow: getCssVar('table-fixed-left-column');
+      }
+    }
+    .#{$namespace}-table-fixed-column--left.is-last-column.#{$namespace}-table__cell {
+      border-right: none;
+    }
+    th.#{$namespace}-table-fixed-column--right {
+      background-color: getCssVar('table-header-bg-color');
+    }
+  }
+
+  @include when(scrolling-middle) {
+    .#{$namespace}-table-fixed-column--left.is-last-column.#{$namespace}-table__cell {
+      border-right: none;
+    }
+    .#{$namespace}-table-fixed-column--right.is-first-column {
+      &::before {
+        box-shadow: getCssVar('table-fixed-right-column');
+      }
+    }
+    .#{$namespace}-table-fixed-column--left.is-last-column {
+      &::before {
+        box-shadow: getCssVar('table-fixed-left-column');
+      }
+    }
+  }
+
+  @include when(scrolling-none) {
+    .#{$namespace}-table-fixed-column--left,
+    .#{$namespace}-table-fixed-column--right {
+      &.is-first-column,
+      &.is-last-column {
+        &::before {
+          box-shadow: none;
+        }
+      }
+    }
+
+    th.#{$namespace}-table-fixed-column--left,
+    th.#{$namespace}-table-fixed-column--right {
+      background-color: getCssVar('table-header-bg-color');
+    }
+  }
+
+  @include e(body-wrapper) {
+    overflow: hidden;
+    position: relative;
+    flex: 1;
+    .#{$namespace}-scrollbar__bar {
+      z-index: calc(getCssVar('table-index') + 2);
+    }
+  }
+
+  .caret-wrapper {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    height: 14px;
+    width: 24px;
+    vertical-align: middle;
+    cursor: pointer;
+    overflow: initial;
+    position: relative;
+  }
+
+  .sort-caret {
+    width: 0;
+    height: 0;
+    border: solid 5px transparent;
+    position: absolute;
+    left: 7px;
+
+    &.ascending {
+      border-bottom-color: getCssVar('text-color', 'placeholder');
+      top: -5px;
+    }
+
+    &.descending {
+      border-top-color: getCssVar('text-color', 'placeholder');
+      bottom: -3px;
+    }
+  }
+
+  .ascending .sort-caret.ascending {
+    border-bottom-color: getCssVar('color-primary');
+  }
+
+  .descending .sort-caret.descending {
+    border-top-color: getCssVar('color-primary');
+  }
+
+  .hidden-columns {
+    visibility: hidden;
+    position: absolute;
+    z-index: -1;
+  }
+
+  @include m(striped) {
+    & .#{$namespace}-table__body {
+      & tr.#{$namespace}-table__row--striped {
+        td.#{$namespace}-table__cell {
+          background: getCssVar('fill-color', 'lighter');
+        }
+
+        &.current-row td.#{$namespace}-table__cell {
+          background-color: getCssVar('table-current-row-bg-color');
+        }
+      }
+    }
+  }
+
+  @include e(body) {
+    tr.hover-row {
+      &,
+      &.#{$namespace}-table__row--striped {
+        &,
+        &.current-row {
+          > td.#{$namespace}-table__cell {
+            background-color: getCssVar('table-row-hover-bg-color');
+          }
+        }
+      }
+    }
+
+    tr.current-row > td.#{$namespace}-table__cell {
+      background-color: getCssVar('table-current-row-bg-color');
+    }
+  }
+
+  &.#{$namespace}-table--scrollable-y {
+    @include e(body-header) {
+      position: sticky;
+      top: 0;
+      z-index: calc(getCssVar('table-index') + 2);
+    }
+
+    @include e(body-footer) {
+      position: sticky;
+      bottom: 0;
+      z-index: calc(getCssVar('table-index') + 2);
+    }
+  }
+
+  @include e(column-resize-proxy) {
+    position: absolute;
+    left: 200px;
+    top: 0;
+    bottom: 0;
+    width: 0;
+    border-left: getCssVar('table-border');
+    z-index: calc(getCssVar('table-index') + 9);
+  }
+
+  @include e(column-filter-trigger) {
+    display: inline-block;
+    cursor: pointer;
+
+    & i {
+      color: getCssVar('color-info');
+      font-size: 14px;
+      vertical-align: middle;
+    }
+  }
+
+  @include e(border-left-patch) {
+    top: 0;
+    left: 0;
+    width: 1px;
+    height: 100%;
+    z-index: calc(getCssVar('table-index') + 2);
+    position: absolute;
+    background-color: getCssVar('table-border-color');
+  }
+
+  @include e(border-bottom-patch) {
+    left: 0;
+    height: 1px;
+    z-index: calc(getCssVar('table-index') + 2);
+    position: absolute;
+    background-color: getCssVar('table-border-color');
+  }
+
+  @include e(border-right-patch) {
+    top: 0;
+    height: 100%;
+    width: 1px;
+    z-index: calc(getCssVar('table-index') + 2);
+    position: absolute;
+    background-color: getCssVar('table-border-color');
+  }
+
+  @include m(enable-row-transition) {
+    .#{$namespace}-table__body td.#{$namespace}-table__cell {
+      transition: background-color 0.25s ease;
+    }
+  }
+
+  @include m(enable-row-hover) {
+    .#{$namespace}-table__body tr:hover > td.#{$namespace}-table__cell {
+      background-color: getCssVar('table-row-hover-bg-color');
+    }
+  }
+
+  [class*='#{$namespace}-table__row--level'] {
+    .#{$namespace}-table__expand-icon {
+      display: inline-block;
+      width: 12px;
+      line-height: 12px;
+      height: 12px;
+      text-align: center;
+      margin-right: 8px;
+    }
+  }
+
+  @include b(table) {
+    &.#{$namespace}-table--border {
+      .#{$namespace}-table__cell {
+        border-right: getCssVar('table-border');
+      }
+    }
+  }
+
+  &:not(.#{$namespace}-table--border) {
+    .#{$namespace}-table__cell {
+      border-right: none;
+    }
+
+    > .#{$namespace}-table__inner-wrapper {
+      &::after {
+        content: none;
+      }
+    }
+  }
+}

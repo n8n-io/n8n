@@ -1,0 +1,85 @@
+{
+  "name": "curlconverter",
+  "version": "4.12.0",
+  "description": "convert curl commands to Python, JavaScript, Go, PHP and more",
+  "homepage": "https://curlconverter.com",
+  "author": {
+    "name": "Nick Carneiro",
+    "email": "nickc@trillworks.com",
+    "url": "https://trillworks.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/curlconverter/curlconverter.git"
+  },
+  "license": "MIT",
+  "keywords": [
+    "curl",
+    "http",
+    "requests",
+    "python",
+    "converter"
+  ],
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "type": "module",
+  "dependencies": {
+    "jsesc": "^3.0.2",
+    "lossless-json": "^4.0.2",
+    "tree-sitter": "^0.21.1",
+    "tree-sitter-bash": "^0.23.1",
+    "web-tree-sitter": "^0.24.3",
+    "yamljs": "^0.3.0"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.1.0",
+    "@eslint/js": "^9.12.0",
+    "@types/diff": "^5.2.3",
+    "@types/har-format": "^1.2.16",
+    "@types/jsesc": "^3.0.3",
+    "@types/nunjucks": "^3.2.6",
+    "@types/tape": "^5.6.4",
+    "@types/yamljs": "^0.2.34",
+    "@types/yargs": "^17.0.33",
+    "@typescript-eslint/eslint-plugin": "^8.9.0",
+    "@typescript-eslint/parser": "^8.9.0",
+    "c8": "^10.1.2",
+    "colors": "^1.4.0",
+    "cross-env": "^7.0.3",
+    "diff": "^7.0.0",
+    "eslint": "^9.12.0",
+    "eslint-config-prettier": "^9.1.0",
+    "glob": "^11.0.0",
+    "husky": "^9.1.6",
+    "lint-staged": "^15.2.10",
+    "prettier": "^3.3.3",
+    "tape": "^5.9.0",
+    "tree-sitter-cli": "^0.22.6",
+    "typescript": "^5.6.3",
+    "yargs": "^17.7.2"
+  },
+  "scripts": {
+    "compile": "tsc",
+    "start": "tsc --watch --preserveWatchOutput -p ./",
+    "pretest": "cross-env TSC_COMPILE_ON_ERROR=true npm run compile || exit 0",
+    "test": "cross-env NODE_OPTIONS=\"--enable-source-maps --unhandled-rejections=strict\" npx tape dist/test/test.js",
+    "coverage": "c8 --check-coverage npm run test",
+    "prelint": "npm run compile",
+    "lint": "eslint src",
+    "format": "prettier --write .",
+    "prefix": "npm run compile",
+    "fix": "eslint src --fix",
+    "prepare": "npx husky && npm run compile && npx tree-sitter build --wasm node_modules/tree-sitter-bash --output dist/tree-sitter-bash.wasm",
+    "pregen-test": "npm run compile",
+    "gen-test": "node --enable-source-maps ./dist/tools/gen-test.js",
+    "compare-requests": "npm run compile && node --enable-source-maps ./dist/tools/compare-requests.js",
+    "compare-request": "npm run compile && node --enable-source-maps ./dist/tools/compare-requests.js"
+  },
+  "lint-staged": {
+    "**/*": "prettier --write --ignore-unknown"
+  },
+  "bin": "dist/src/cli.js",
+  "browser": {
+    "./dist/src/shell/Parser.js": "./dist/src/shell/webParser.js"
+  }
+}

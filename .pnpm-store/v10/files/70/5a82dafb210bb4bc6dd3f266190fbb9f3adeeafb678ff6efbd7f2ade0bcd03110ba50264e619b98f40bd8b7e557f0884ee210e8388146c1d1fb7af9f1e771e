@@ -1,0 +1,57 @@
+{
+	"name": "quoted-printable",
+	"version": "1.0.1",
+	"description": "A robust & character encoding–agnostic JavaScript implementation of the `Quoted-Printable` content transfer encoding as defined by RFC 2045.",
+	"homepage": "https://mths.be/quoted-printable",
+	"main": "quoted-printable.js",
+	"bin": "bin/quoted-printable",
+	"man": "man/quoted-printable.1",
+	"keywords": [
+		"decode",
+		"decoding",
+		"encode",
+		"encoding",
+		"quoted-printable",
+		"string"
+	],
+	"license": "MIT",
+	"author": {
+		"name": "Mathias Bynens",
+		"url": "https://mathiasbynens.be/"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/mathiasbynens/quoted-printable.git"
+	},
+	"bugs": "https://github.com/mathiasbynens/quoted-printable/issues",
+	"files": [
+		"LICENSE-MIT.txt",
+		"quoted-printable.js",
+		"bin/",
+		"man/"
+	],
+	"directories": {
+		"bin": "bin",
+		"man": "man",
+		"test": "tests"
+	},
+	"scripts": {
+		"test": "node tests/tests.js"
+	},
+	"dependencies": {
+		"utf8": "^2.1.0"
+	},
+	"devDependencies": {
+		"coveralls": "^2.11.1",
+		"grunt": "^0.4.5",
+		"grunt-shell": "^1.1.1",
+		"grunt-template": "^0.2.3",
+		"istanbul": "^0.3.5",
+		"jsesc": "^0.5.0",
+		"qunit-extras": "^1.4.0",
+		"qunitjs": "~1.11.0",
+		"regenerate": "^1.2.1",
+		"requirejs": "^2.1.15",
+		"string.fromcodepoint": "^0.2.1"
+	}
+}

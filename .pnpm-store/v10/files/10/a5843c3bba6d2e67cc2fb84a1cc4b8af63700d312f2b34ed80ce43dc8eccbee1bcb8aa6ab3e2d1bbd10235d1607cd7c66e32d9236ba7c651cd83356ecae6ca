@@ -1,0 +1,65 @@
+// Protocol Buffers - Google's data interchange format
+// Copyright 2023 Google Inc.  All rights reserved.
+//
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file or at
+// https://developers.google.com/open-source/licenses/bsd
+
+syntax = "proto2";
+
+package protobuf_editions_test.proto2;
+
+message Proto2Optional {
+  optional int32 int32_field = 17;
+  optional float float_field = 18;
+  optional double double_field = 19;
+  optional int64 int64_field = 20;
+  optional uint32 uint32_field = 21;
+  optional uint64 uint64_field = 22;
+  optional sint32 sint32_field = 23;
+  optional sint64 sint64_field = 24;
+  optional fixed32 fixed32_field = 25;
+  optional fixed64 fixed64_field = 26;
+  optional sfixed32 sfixed32_field = 27;
+  optional sfixed64 sfixed64_field = 28;
+  optional bool bool_field = 29;
+  optional string string_field = 30;
+  optional bytes bytes_field = 31;
+
+  message SubMessage {
+    optional int32 int32_field = 17;
+    optional float float_field = 18;
+    optional double double_field = 19;
+    optional int64 int64_field = 20;
+    optional uint32 uint32_field = 21;
+    optional uint64 uint64_field = 22;
+    optional sint32 sint32_field = 23;
+    optional sint64 sint64_field = 24;
+    optional fixed32 fixed32_field = 25;
+    optional fixed64 fixed64_field = 26;
+    optional sfixed32 sfixed32_field = 27;
+    optional sfixed64 sfixed64_field = 28;
+    optional bool bool_field = 29;
+    optional string string_field = 30;
+    optional bytes bytes_field = 31;
+  }
+
+  oneof oneof_field {
+    int32 int32_oneof_field = 152;
+    float float_oneof_field = 153;
+    double double_oneof_field = 154;
+    int64 int64_oneof_field = 155;
+    uint32 uint32_oneof_field = 156;
+    uint64 uint64_oneof_field = 157;
+    sint32 sint32_oneof_field = 158;
+    sint64 sint64_oneof_field = 159;
+    fixed32 fixed32_oneof_field = 160;
+    fixed64 fixed64_oneof_field = 161;
+    sfixed32 sfixed32_oneof_field = 162;
+    sfixed64 sfixed64_oneof_field = 163;
+    bool bool_oneof_field = 164;
+    string string_oneof_field = 165;
+    bytes bytes_oneof_field = 166;
+  }
+  optional SubMessage sub_message = 2;
+}

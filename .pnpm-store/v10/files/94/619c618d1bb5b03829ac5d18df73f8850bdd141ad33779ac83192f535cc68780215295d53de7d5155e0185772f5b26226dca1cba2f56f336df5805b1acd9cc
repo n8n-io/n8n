@@ -1,0 +1,1 @@
+module.exports = require("../dist/chains/combine_documents/index.cjs");

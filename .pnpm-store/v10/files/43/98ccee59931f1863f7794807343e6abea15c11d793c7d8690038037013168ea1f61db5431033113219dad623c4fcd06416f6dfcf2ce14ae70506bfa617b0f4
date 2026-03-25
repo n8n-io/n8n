@@ -1,0 +1,1 @@
+{"version":3,"file":"library.js","names":["name","exports"],"sources":["../src/library.ts"],"sourcesContent":["export const name = 'Tedious';\n"],"mappings":";;;;;;AAAO,MAAMA,IAAI,GAAG,SAAS;AAACC,OAAA,CAAAD,IAAA,GAAAA,IAAA"}

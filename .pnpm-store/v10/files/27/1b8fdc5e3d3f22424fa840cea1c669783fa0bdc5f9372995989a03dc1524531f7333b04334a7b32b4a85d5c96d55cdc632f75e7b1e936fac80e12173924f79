@@ -1,0 +1,56 @@
+{
+  "name": "@supercharge/promise-pool",
+  "description": "Map-like, concurrent promise processing for Node.js",
+  "version": "3.1.0",
+  "author": "Marcus Pöhls <marcus@superchargejs.com>",
+  "bugs": {
+    "url": "https://github.com/superchargejs/promise-pool/issues"
+  },
+  "devDependencies": {
+    "@supercharge/eslint-config-typescript": "~3.0.1",
+    "@supercharge/tsconfig": "~4.0.0",
+    "c8": "~8.0.1",
+    "eslint": "~8.50.0",
+    "expect": "~29.7.0",
+    "typescript": "~5.2.2",
+    "uvu": "~0.5.6"
+  },
+  "engines": {
+    "node": ">=8"
+  },
+  "homepage": "https://github.com/superchargejs/promise-pool",
+  "keywords": [
+    "supercharge",
+    "superchargejs",
+    "promise-pool",
+    "nodejs",
+    "async",
+    "map",
+    "async-map",
+    "promises"
+  ],
+  "license": "MIT",
+  "files": [
+    "dist"
+  ],
+  "main": "dist",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/superchargejs/promise-pool.git"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "lint": "eslint src --ext .js,.ts",
+    "lint:fix": "npm run lint -- --fix",
+    "test": "npm run build && npm run test:coverage",
+    "test:full": "npm run build && npm run lint && npm run test:coverage",
+    "test:run": "uvu",
+    "test:coverage": "c8 --include=dist npm run test:run && npm run test:report",
+    "test:report": "c8 report --reporter=html"
+  },
+  "types": "dist"
+}

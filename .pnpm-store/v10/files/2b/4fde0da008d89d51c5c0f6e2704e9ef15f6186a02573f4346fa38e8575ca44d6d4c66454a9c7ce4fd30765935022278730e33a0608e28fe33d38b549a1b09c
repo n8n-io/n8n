@@ -1,0 +1,17 @@
+sudo: false
+language: node_js
+node_js:
+  - "6"
+  - "8"
+  - "10"
+
+before_install:
+  - travis_retry npm install
+
+script:
+  - npm test
+
+notifications:
+  email:
+    - travis@nodejitsu.com
+  irc: "irc.freenode.org#nodejitsu"

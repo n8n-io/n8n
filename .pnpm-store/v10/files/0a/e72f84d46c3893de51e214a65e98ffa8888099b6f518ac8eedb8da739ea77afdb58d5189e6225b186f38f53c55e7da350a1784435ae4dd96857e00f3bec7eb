@@ -1,0 +1,1 @@
+"use strict";Object.defineProperty(exports,Symbol.toStringTag,{value:"Module"});const t=require("@ts-graphviz/adapter");Object.keys(t).forEach(e=>{e!=="default"&&!Object.prototype.hasOwnProperty.call(exports,e)&&Object.defineProperty(exports,e,{enumerable:!0,get:()=>t[e]})});

@@ -1,0 +1,66 @@
+{
+  "name": "app-root-path",
+  "version": "3.1.0",
+  "description": "Determine an app's root path from anywhere inside the app",
+  "main": "index.js",
+  "browser": "browser-shim.js",
+  "scripts": {
+    "test": "nyc mocha -R spec",
+    "report-coverage": "npm test && nyc report --reporter=text-lcov > coverage.lcov && codecov",
+    "release": "semantic-release pre && npm publish && semantic-release post",
+    "semantic-release": "semantic-release",
+    "commit": "npx git-cz"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/inxilpro/node-app-root-path.git"
+  },
+  "keywords": [
+    "root",
+    "path",
+    "utility",
+    "util",
+    "node",
+    "module",
+    "modules",
+    "node_modules",
+    "require",
+    "app"
+  ],
+  "author": "Chris Morrell <http://cmorrell.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/inxilpro/node-app-root-path/issues"
+  },
+  "homepage": "https://github.com/inxilpro/node-app-root-path",
+  "devDependencies": {
+    "codecov": "^3.6.1",
+    "coveralls": "^3.0.7",
+    "cracks": "^3.1.2",
+    "cz-conventional-changelog": "^3.0.2",
+    "ghooks": "^2.0.4",
+    "istanbul": "^0.3.4",
+    "mocha": "^6.2.2",
+    "mocha-lcov-reporter": "0.0.1",
+    "mockery": "^1.7.0",
+    "nyc": "^14.1.1",
+    "semantic-release": "^15.13.28",
+    "validate-commit-msg": "^2.14.0"
+  },
+  "engines": {
+    "node": ">= 6.0.0"
+  },
+  "release": {
+    "branch": "master"
+  },
+  "config": {
+    "ghooks": {
+      "commit-msg": "validate-commit-msg",
+      "post-merge": "npm install",
+      "post-rewrite": "npm install"
+    },
+    "commitizen": {
+      "path": "./node_modules/cz-conventional-changelog"
+    }
+  }
+}

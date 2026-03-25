@@ -1,0 +1,1 @@
+{"version":3,"file":"AzureRegionConfiguration.d.ts","sourceRoot":"","sources":["../../../src/authority/AzureRegionConfiguration.ts"],"names":[],"mappings":"AAKA,OAAO,EAAE,WAAW,EAAE,MAAM,kBAAkB,CAAC;AAO/C,MAAM,MAAM,wBAAwB,GAAG;IACnC,WAAW,CAAC,EAAE,WAAW,CAAC;IAC1B,iBAAiB,EAAE,MAAM,GAAG,SAAS,CAAC;CACzC,CAAC"}

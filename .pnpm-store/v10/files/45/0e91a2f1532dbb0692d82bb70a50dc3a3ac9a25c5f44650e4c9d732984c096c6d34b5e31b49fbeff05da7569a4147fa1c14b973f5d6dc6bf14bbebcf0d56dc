@@ -1,0 +1,1 @@
+{"version":3,"file":"fetch.d.ts","sourceRoot":"","sources":["../../../../src/transports/fetch.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,SAAS,EAAkD,MAAM,cAAc,CAAC;AAG9F,OAAO,KAAK,EAAE,MAAM,EAAE,MAAM,YAAY,CAAC;AACzC,OAAO,KAAK,EAAE,uBAAuB,EAAE,MAAM,SAAS,CAAC;AAIvD;;GAEG;AACH,wBAAgB,kBAAkB,CAChC,OAAO,EAAE,uBAAuB,EAChC,WAAW,GAAE,OAAO,MAAM,CAAC,KAAwC,GAClE,SAAS,CAsDX"}

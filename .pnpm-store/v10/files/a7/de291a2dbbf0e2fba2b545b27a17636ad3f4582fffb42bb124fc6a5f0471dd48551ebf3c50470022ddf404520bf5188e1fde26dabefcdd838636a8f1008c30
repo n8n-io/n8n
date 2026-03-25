@@ -1,0 +1,115 @@
+{
+  "name": "peberminta",
+  "version": "0.9.0",
+  "description": "Simple, transparent parser combinators toolkit that supports any tokens",
+  "keywords": [
+    "parser",
+    "parser-combinators",
+    "parsec"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mxxii/peberminta.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mxxii/peberminta/issues"
+  },
+  "homepage": "https://github.com/mxxii/peberminta",
+  "author": "KillyMXI",
+  "funding": "https://ko-fi.com/killymxi",
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "import": "./lib/core.mjs",
+      "require": "./lib/core.cjs"
+    },
+    "./char": {
+      "import": "./lib/char.mjs",
+      "require": "./lib/char.cjs"
+    }
+  },
+  "type": "module",
+  "main": "./lib/core.cjs",
+  "module": "./lib/core.mjs",
+  "types": "./lib/core.d.ts",
+  "typesVersions": {
+    "*": {
+      "char": [
+        "./lib/char.d.ts"
+      ],
+      "*": [
+        "./lib/core.d.ts"
+      ]
+    }
+  },
+  "files": [
+    "lib"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build:docs": "typedoc",
+    "build:deno": "denoify",
+    "build:rollup": "rollup -c",
+    "build:types": "tsc --declaration --emitDeclarationOnly && rimraf lib/util.d.ts",
+    "build": "npm run clean && concurrently npm:build:*",
+    "checkAll": "npm run lint && npm test",
+    "clean": "rimraf lib && rimraf docs && rimraf deno",
+    "cover": "c8 --reporter=lcov --reporter=text-summary ava \"test/!(examples).ts\" --timeout=60s",
+    "example:bf1": "npm run ts -- ./examples/bf1.ts",
+    "example:bf2": "npm run ts -- ./examples/bf2.ts",
+    "example:calc": "npm run ts -- ./examples/calc.ts",
+    "example:csv": "npm run ts -- ./examples/csv.ts",
+    "example:hexColor": "npm run ts -- ./examples/hexColor.ts",
+    "example:json": "npm run ts -- ./examples/json.ts",
+    "example:nonDec": "npm run ts -- ./examples/nonDec.ts",
+    "lint:eslint": "eslint .",
+    "lint:md": "markdownlint-cli2",
+    "lint": "concurrently npm:lint:*",
+    "prepublishOnly": "npm run build && npm run checkAll",
+    "test:ava": "ava --timeout=20s",
+    "test:tsc": "tsc --noEmit --project tsconfig.tsc.json",
+    "test": "concurrently npm:test:*",
+    "ts": "node --experimental-specifier-resolution=node --loader ts-node/esm"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@rollup/plugin-typescript": "^11.0.0",
+    "@tsconfig/node14": "^1.0.3",
+    "@types/node": "14.18.36",
+    "@typescript-eslint/eslint-plugin": "^5.48.2",
+    "@typescript-eslint/parser": "^5.48.2",
+    "ava": "^5.1.1",
+    "c8": "^7.12.0",
+    "concurrently": "^7.6.0",
+    "denoify": "^1.4.5",
+    "eslint": "^8.32.0",
+    "eslint-plugin-jsonc": "^2.6.0",
+    "eslint-plugin-tsdoc": "^0.2.17",
+    "expect-type": "^0.15.0",
+    "leac": "^0.6.0",
+    "markdownlint-cli2": "^0.6.0",
+    "rimraf": "^4.1.1",
+    "rollup": "^2.79.1",
+    "rollup-plugin-cleanup": "^3.2.1",
+    "ts-node": "^10.9.1",
+    "tslib": "^2.4.1",
+    "typedoc": "~0.23.24",
+    "typescript": "~4.9.4"
+  },
+  "ava": {
+    "extensions": {
+      "ts": "module"
+    },
+    "files": [
+      "test/**/*"
+    ],
+    "nodeArguments": [
+      "--loader=ts-node/esm",
+      "--experimental-specifier-resolution=node"
+    ],
+    "verbose": true
+  },
+  "denoify": {
+    "out": "./deno"
+  }
+}

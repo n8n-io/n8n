@@ -1,0 +1,43 @@
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Mocha Tests</title>
+  <link href="/test/env/mocha.css" rel="stylesheet" />
+</head>
+<body>
+  <div id="mocha"></div>
+
+  <script src="/test/env/mocha.js"></script>
+  <script src="/test/env/chai.js"></script>
+  <script src="/lunr.js"></script>
+
+  <script>
+    mocha.setup('tdd')
+    window.assert = chai.assert
+
+    window.withFixture = function (name, fn) {
+      var fixturePath = '/test/fixtures/' + name,
+          xhr = new XMLHttpRequest
+
+      xhr.addEventListener('load', function () {
+        if (this.status != 200) {
+          fn('non 200 response')
+        } else {
+          fn(null, this.responseText)
+        }
+      })
+
+      xhr.open('GET', fixturePath)
+      xhr.send()
+    }
+  </script>
+  {{#test_files}}
+  <script src="/{{{.}}}"></script>
+  {{/test_files}}
+  <script>
+    mocha.checkLeaks();
+    mocha.globals(['lunr']);
+    mocha.run();
+  </script>
+</body>
+</html>

@@ -1,0 +1,40 @@
+syntax = "proto3";
+package milvus.proto.feder;
+option go_package = "github.com/milvus-io/milvus-proto/go-api/v2/federpb";
+
+import "common.proto";
+
+message SegmentIndexData {
+  int64 segmentID = 1;
+  string index_data = 2; // data from knownwhere
+}
+
+message FederSegmentSearchResult {
+  int64 segmentID = 1;
+  string visit_info = 2;
+}
+
+message ListIndexedSegmentRequest {
+  common.MsgBase base = 1;
+  string collection_name = 2;
+  string index_name = 3;
+}
+
+message ListIndexedSegmentResponse {
+  common.Status status = 1;
+  repeated int64 segmentIDs = 2;
+}
+
+message DescribeSegmentIndexDataRequest {
+  common.MsgBase base = 1;
+  string collection_name = 2;
+  string index_name = 3;
+  repeated int64 segmentsIDs = 4;
+}
+
+message DescribeSegmentIndexDataResponse {
+  common.Status status = 1;
+  // segmentID => segmentIndexData
+  map<int64, feder.SegmentIndexData> index_data = 2;
+  repeated common.KeyValuePair index_params = 3;
+}

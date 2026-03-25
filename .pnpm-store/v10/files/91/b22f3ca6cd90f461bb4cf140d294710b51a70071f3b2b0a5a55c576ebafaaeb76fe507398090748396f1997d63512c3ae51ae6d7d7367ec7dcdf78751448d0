@@ -1,0 +1,62 @@
+{
+  "i18n-t/keypath": {
+    "description": "[required]\nThe locale message key can be specified prop",
+    "type": "string"
+  },
+  "i18n-t/plural": {
+    "description": "[optional]\nThe Plural Choosing the message number prop",
+    "type": "number|string"
+  },
+  "i18n-t/locale": {
+    "description": "[optional]\nThe locale to be used for the component",
+    "type": "string"
+  },
+  "i18n-t/scope": {
+    "description": "[optional]\tThe scope to be used in the target component.\nYou can specify either `global` or `parent`",
+    "type": "string"
+  },
+  "i18n-t/tag": {
+    "description": "[optional]\nUsed to wrap the content that is distribute in the slot.\nIf omitted, the slot content is treated as Fragments",
+    "type": "string|object"
+  },
+  "i18n-d/value": {
+    "description": "[required]\nThe value specified for the target component",
+    "type": "number|date"
+  },
+  "i18n-d/format": {
+    "description": "[optional]\nThe format to use in the target component",
+    "type": "string|object"
+  },
+  "i18n-d/locale": {
+    "description": "[optional]\nThe locale to be used for the component",
+    "type": "string"
+  },
+  "i18n-d/scope": {
+    "description": "[optional]\tThe scope to be used in the target component.\nYou can specify either `global` or `parent`",
+    "type": "string"
+  },
+  "i18n-d/tag": {
+    "description": "[optional]\nUsed to wrap the content that is distribute in the slot.\nIf omitted, the slot content is treated as Fragments",
+    "type": "string|object"
+  },
+  "i18n-n/value": {
+    "description": "[required]\nThe value specified for the target component",
+    "type": "number"
+  },
+  "i18n-n/format": {
+    "description": "[optional]\nThe format to use in the target component",
+    "type": "string|object"
+  },
+  "i18n-n/locale": {
+    "description": "[optional]\nThe locale to be used for the component",
+    "type": "string"
+  },
+  "i18n-n/scope": {
+    "description": "[optional]\tThe scope to be used in the target component.\nYou can specify either `global` or `parent`",
+    "type": "string"
+  },
+  "i18n-n/tag": {
+    "description": "[optional]\nUsed to wrap the content that is distribute in the slot.\nIf omitted, the slot content is treated as Fragments",
+    "type": "string|object"
+  }
+}

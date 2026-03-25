@@ -1,0 +1,63 @@
+{
+    "name": "ibm-cloud-sdk-core",
+    "version": "5.3.2",
+    "description": "Core functionality to support SDKs generated with IBM's OpenAPI SDK Generator.",
+    "main": "./index.js",
+    "typings": "./es/index.d.ts",
+    "sideEffects": false,
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/IBM/node-sdk-core.git"
+    },
+    "keywords": [
+        "ibm",
+        "sdk",
+        "openapi",
+        "core"
+    ],
+    "author": "IBM Corp.",
+    "contributors": [
+        {
+            "name": "Dustin Popp",
+            "email": "dustinpopp@ibm.com"
+        },
+        {
+            "name": "Phil Adams",
+            "email": "phil_adams@us.ibm.com"
+        }
+    ],
+    "license": "Apache-2.0",
+    "publishConfig": {
+        "access": "public"
+    },
+    "bugs": {
+        "url": "https://github.com/IBM/node-sdk-core/issues"
+    },
+    "dependencies": {
+        "@types/debug": "^4.1.12",
+        "@types/node": "^18.19.80",
+        "@types/tough-cookie": "^4.0.0",
+        "axios": "^1.8.2",
+        "camelcase": "^6.3.0",
+        "debug": "^4.3.4",
+        "dotenv": "^16.4.5",
+        "extend": "3.0.2",
+        "file-type": "16.5.4",
+        "form-data": "4.0.0",
+        "isstream": "0.1.2",
+        "jsonwebtoken": "^9.0.2",
+        "mime-types": "2.1.35",
+        "retry-axios": "^2.6.0",
+        "tough-cookie": "^4.1.3"
+    },
+    "overrides": {
+        "semver": "^7.5.3",
+        "micromatch": "4.0.8"
+    },
+    "browser": {
+        "./auth/utils/read-credentials-file": "./auth/utils/read-credentials-file.browser"
+    },
+    "engines": {
+        "node": ">=18"
+    }
+}

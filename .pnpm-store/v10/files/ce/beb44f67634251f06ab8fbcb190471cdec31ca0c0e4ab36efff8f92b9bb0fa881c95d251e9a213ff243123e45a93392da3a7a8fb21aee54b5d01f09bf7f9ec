@@ -1,0 +1,1 @@
+{"version":3,"file":"AdminLimitExceededError.js","sourceRoot":"./","sources":["errors/resultCodeErrors/AdminLimitExceededError.ts"],"names":[],"mappings":";;;AAAA,uDAAoD;AAEpD,MAAa,uBAAwB,SAAQ,iCAAe;IAC1D,YAAmB,OAAgB;QACjC,KAAK,CAAC,EAAE,EAAE,OAAO,IAAI,4EAA4E,CAAC,CAAC;IACrG,CAAC;CACF;AAJD,0DAIC"}

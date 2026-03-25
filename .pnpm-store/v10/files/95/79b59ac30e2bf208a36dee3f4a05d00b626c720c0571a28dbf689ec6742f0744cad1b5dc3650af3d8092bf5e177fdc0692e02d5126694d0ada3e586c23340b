@@ -1,0 +1,1 @@
+{"version":3,"file":"GetTopChannelsResponse.js","sourceRoot":"","sources":["../../../../../../src/generated/grpc/channelz/v1/GetTopChannelsResponse.ts"],"names":[],"mappings":";AAAA,sCAAsC"}

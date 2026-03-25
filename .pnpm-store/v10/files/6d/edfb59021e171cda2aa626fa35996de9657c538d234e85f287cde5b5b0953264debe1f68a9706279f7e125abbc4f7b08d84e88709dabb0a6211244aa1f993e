@@ -1,0 +1,57 @@
+{
+  "name": "ics",
+  "version": "2.40.0",
+  "description": "iCal (ics) file generator",
+  "exports": {
+    "require": "./index.js",
+    "default": "./dist/index.js"
+  },
+  "main": "index.js",
+  "module": "./dist/index.js",
+  "types": "index.d.ts",
+  "scripts": {
+    "start": "mocha --require @babel/register --watch --recursive",
+    "test": "mocha --require @babel/register --recursive",
+    "build": "rm -r dist; gulp build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/adamgibbons/ics.git"
+  },
+  "keywords": [
+    "ical",
+    "ics",
+    "calendar",
+    "icalendar",
+    "generator",
+    "date",
+    "date-time",
+    "events",
+    "alarms"
+  ],
+  "author": "Adam Gibbons <adam@agibbons.com> (http://agibbons.com/)",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/adamgibbons/ics/issues"
+  },
+  "homepage": "https://github.com/adamgibbons/ics",
+  "devDependencies": {
+    "@babel/core": "^7.6.2",
+    "@babel/preset-env": "^7.6.2",
+    "@babel/register": "^7.6.2",
+    "chai": "^4.2.0",
+    "dayjs": "^1.8.33",
+    "gulp": "^4.0.2",
+    "gulp-babel": "^8.0.0",
+    "mocha": "^9.1.3",
+    "yargs-parser": ">=13.1.2"
+  },
+  "dependencies": {
+    "nanoid": "^3.1.23",
+    "yup": "^0.32.9"
+  },
+  "files": [
+    "dist/",
+    "index.d.ts"
+  ]
+}

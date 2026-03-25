@@ -1,0 +1,4 @@
+{
+  "singleQuote": true,
+  "trailingComma": "all"
+}

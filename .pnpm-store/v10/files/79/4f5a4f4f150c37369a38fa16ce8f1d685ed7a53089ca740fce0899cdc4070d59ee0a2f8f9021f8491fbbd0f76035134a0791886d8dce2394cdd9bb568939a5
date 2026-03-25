@@ -1,0 +1,1 @@
+{"version":3,"file":"protobuf.js","sourceRoot":"","sources":["../../src/protobuf.ts"],"names":[],"mappings":";AAAA;;;;;;;;;;;;;;GAcG;;;AAEH,wEAAwE;AACxE,mEAAmE;AACnE,YAAY;AACZ,SAAS;AACT,wEAAwE;AAExE,wDAAsD"}

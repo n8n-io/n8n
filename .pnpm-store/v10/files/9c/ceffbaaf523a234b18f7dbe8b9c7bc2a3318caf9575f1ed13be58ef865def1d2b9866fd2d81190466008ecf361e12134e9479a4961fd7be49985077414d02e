@@ -1,0 +1,16 @@
+sudo: false
+language: node_js
+node_js:
+  - 6
+  - 8
+
+before_install:
+  - "export DISPLAY=:99.0"
+  - "sh -e /etc/init.d/xvfb start"
+
+addons:
+  firefox: "latest"
+
+script:
+  - npm run lint
+  - npm test

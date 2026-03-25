@@ -1,0 +1,33 @@
+{
+  "name": "esm",
+  "lockfileVersion": 3,
+  "requires": true,
+  "packages": {
+    "": {
+      "dependencies": {
+        "zod": "^4",
+        "zod-to-json-schema": "file://../../dist/esm/"
+      }
+    },
+    "../../dist/cjs": {
+      "extraneous": true
+    },
+    "../../dist/cjs/package.json": {
+      "extraneous": true
+    },
+    "../../dist/esm": {},
+    "node_modules/zod": {
+      "version": "4.1.12",
+      "resolved": "https://registry.npmjs.org/zod/-/zod-4.1.12.tgz",
+      "integrity": "sha512-JInaHOamG8pt5+Ey8kGmdcAcg3OL9reK8ltczgHTAwNhMys/6ThXHityHxVV2p3fkw/c+MAvBHFVYHFZDmjMCQ==",
+      "license": "MIT",
+      "funding": {
+        "url": "https://github.com/sponsors/colinhacks"
+      }
+    },
+    "node_modules/zod-to-json-schema": {
+      "resolved": "../../dist/esm",
+      "link": true
+    }
+  }
+}

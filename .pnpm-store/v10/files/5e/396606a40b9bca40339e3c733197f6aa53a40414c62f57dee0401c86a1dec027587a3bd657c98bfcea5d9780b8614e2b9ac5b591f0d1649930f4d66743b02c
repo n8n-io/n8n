@@ -1,0 +1,31 @@
+{
+  "raml-1-parser" : {
+    "build" : "npm run build",
+    "test" : "gulp test",
+    "gitUrl" : "https://github.com/raml-org/raml-js-parser-2.git"
+  },
+  "raml-definition-system" : {
+    "build" : "npm run build",
+    "gitUrl" : "https://github.com/raml-org/raml-definition-system.git"
+  },
+  "raml-typesystem" : {
+    "build" : "npm run build",
+    "test" : "npm run test-cov",
+    "gitUrl" : "https://github.com/raml-org/raml-typesystem.git"
+  },
+  "ts-structure-parser" : {
+    "build" : "npm run build",
+    "gitUrl" : "https://github.com/mulesoft-labs/ts-structure-parser.git"
+  },
+  "yaml-ast-parser" : {
+    "build" : "npm run build",
+    "test": "npm run test",
+    "gitUrl" : "https://github.com/mulesoft-labs/yaml-ast-parser.git",
+    "gitBranch" : false
+  },
+  "ts-model" : {
+    "build" : "npm run build",
+    "gitUrl" : "https://github.com/mulesoft-labs/ts-model.git"
+  }
+}
+

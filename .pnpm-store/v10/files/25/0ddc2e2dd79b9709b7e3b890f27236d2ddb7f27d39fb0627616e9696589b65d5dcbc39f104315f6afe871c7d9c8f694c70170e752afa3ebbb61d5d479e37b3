@@ -1,0 +1,44 @@
+{
+  "name": "@ioredis/as-callback",
+  "version": "3.0.0",
+  "description": "A performant and standard (Bluebird) library that registers a node-style callback on a promise",
+  "main": "built/index.js",
+  "types": "built/index.d.ts",
+  "directories": {
+    "lib": "built"
+  },
+  "files": [
+    "built/"
+  ],
+  "scripts": {
+    "build": "rm -rf built && tsc",
+    "test": "npm run build && mocha",
+    "prepublishOnly": "npm test"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ioredis/as-callback.git"
+  },
+  "keywords": [
+    "ascallback",
+    "nodeify",
+    "promise",
+    "bluebird"
+  ],
+  "author": "Zihua Li <i@zihua.li> (http://zihua.li)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ioredis/as-callback/issues"
+  },
+  "homepage": "https://github.com/ioredis/as-callback#readme",
+  "devDependencies": {
+    "mocha": "^9.2.2",
+    "promise-timeout": "^1.3.0",
+    "sinon": "^13.0.1",
+    "typescript": "^4.6.2"
+  }
+}

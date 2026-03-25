@@ -1,0 +1,65 @@
+{
+  "name": "inflected",
+  "version": "2.1.0",
+  "description": "A port of ActiveSupport's inflector to Node.js",
+  "main": "dist/umd/inflected.js",
+  "module": "dist/esm/inflected.js",
+  "repository": "martinandert/inflected",
+  "author": "Martin Andert",
+  "license": "MIT",
+  "keywords": [
+    "inflector",
+    "inflection",
+    "pluralize",
+    "singularize",
+    "camelize",
+    "titleize",
+    "tableize",
+    "humanize",
+    "capitalize",
+    "constantify",
+    "dasherize",
+    "ordinalize",
+    "parameterize",
+    "transliterate",
+    "activesupport"
+  ],
+  "scripts": {
+    "lint": "eslint --max-warnings 0 src/**",
+    "test": "yarn lint && yarn bundle && mocha -R spec --bail test/index.js && bundlesize",
+    "precommit": "lint-staged",
+    "build": "yarn bundle && yarn minify",
+    "bundle": "rollup --config",
+    "minify": "uglifyjs dist/umd/inflected.js --compress --mangle --output dist/umd/inflected.min.js"
+  },
+  "devDependencies": {
+    "babel-eslint": "^7.2.2",
+    "babel-plugin-external-helpers": "^6.22.0",
+    "babel-plugin-transform-class-properties": "^6.24.1",
+    "babel-preset-latest": "^6.24.1",
+    "bundlesize": "^0.18.0",
+    "eslint": "^4.18.2",
+    "eslint-plugin-import": "^2.2.0",
+    "husky": "^0.13.3",
+    "lint-staged": "^3.4.0",
+    "mocha": "^3.2.0",
+    "object-assign": "^4.1.1",
+    "prettier": "^1.1.0",
+    "rollup": "^0.41.6",
+    "rollup-plugin-babel": "^2.7.1",
+    "rollup-plugin-node-resolve": "^3.0.0",
+    "uglify-js": "^2.8.22"
+  },
+  "lint-staged": {
+    "src/**/*.js": [
+      "prettier --write",
+      "git add"
+    ]
+  },
+  "bundlesize": [
+    {
+      "path": "./dist/*/inflected.js",
+      "maxSize": "5 kB"
+    }
+  ]
+}

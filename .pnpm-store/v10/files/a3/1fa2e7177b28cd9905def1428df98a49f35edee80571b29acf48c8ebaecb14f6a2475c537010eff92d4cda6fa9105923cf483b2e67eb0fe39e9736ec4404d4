@@ -1,0 +1,1 @@
+{"version":3,"file":"UnsupportedEnvironmentError.d.ts","sourceRoot":"","sources":["../../../../src/custom_auth/core/error/UnsupportedEnvironmentError.ts"],"names":[],"mappings":"AAKA,OAAO,EAAE,eAAe,EAAE,MAAM,sBAAsB,CAAC;AAEvD,qBAAa,2BAA4B,SAAQ,eAAe;gBAChD,aAAa,CAAC,EAAE,MAAM;CAQrC"}

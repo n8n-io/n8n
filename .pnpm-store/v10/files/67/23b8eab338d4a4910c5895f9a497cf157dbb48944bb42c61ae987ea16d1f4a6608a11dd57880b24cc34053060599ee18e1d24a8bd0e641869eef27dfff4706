@@ -1,0 +1,37 @@
+{
+  "name": "reftools",
+  "version": "1.1.9",
+  "description": "Utility functions to deal with references in objects",
+  "main": "lib/recurse.js",
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Mermade/oas-kit.git"
+  },
+  "funding": "https://github.com/Mermade/oas-kit?sponsor=1",
+  "keywords": [
+    "json-reference",
+    "json-pointer",
+    "object",
+    "objects",
+    "circular",
+    "reference",
+    "dereference",
+    "clone",
+    "flatten",
+    "recurse",
+    "recursion",
+    "iterate",
+    "iteration",
+    "traverse",
+    "traversal",
+    "visitor"
+  ],
+  "author": "Mike Ralphson",
+  "license": "BSD-3-Clause",
+  "bugs": {
+    "url": "https://github.com/mermade/oas-kit/issues"
+  },
+  "homepage": "https://github.com/mermade/oas-kit#readme",
+  "gitHead": "b1bba3fc5007e96a991bf2a015cf0534ac36b88b"
+}

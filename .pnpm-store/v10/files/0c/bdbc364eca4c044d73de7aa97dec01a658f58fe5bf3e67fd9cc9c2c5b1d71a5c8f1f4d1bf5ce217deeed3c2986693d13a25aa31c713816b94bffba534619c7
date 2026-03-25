@@ -1,0 +1,65 @@
+{
+    "name": "@types/k6",
+    "version": "0.52.0",
+    "description": "TypeScript definitions for k6",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/k6",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Mihail Stoykov",
+            "githubUsername": "MStoykov",
+            "url": "https://github.com/MStoykov"
+        },
+        {
+            "name": "Ivan",
+            "githubUsername": "codebien",
+            "url": "https://github.com/codebien"
+        },
+        {
+            "name": "Théo Crevon",
+            "githubUsername": "oleiade",
+            "url": "https://github.com/oleiade"
+        },
+        {
+            "name": "Oleg Bespalov",
+            "githubUsername": "olegbespalov",
+            "url": "https://github.com/olegbespalov"
+        },
+        {
+            "name": "Nicole van der Hoeven",
+            "githubUsername": "nicolevanderhoeven",
+            "url": "https://github.com/nicolevanderhoeven"
+        },
+        {
+            "name": "Ankur Agarwal",
+            "githubUsername": "ankur22",
+            "url": "https://github.com/ankur22"
+        },
+        {
+            "name": "İnanç Gümüş",
+            "githubUsername": "inancgumus",
+            "url": "https://github.com/inancgumus"
+        },
+        {
+            "name": "Daniel Jiménez",
+            "githubUsername": "ka3de",
+            "url": "https://github.com/ka3de"
+        },
+        {
+            "name": "Joan López de la Franca Beltran",
+            "githubUsername": "joanlopez",
+            "url": "https://github.com/joanlopez"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/k6"
+    },
+    "scripts": {},
+    "dependencies": {},
+    "typesPublisherContentHash": "c77eb5d37a165f06102b569ae717ea8b899b5197a284ee88298683ce3ae51dd4",
+    "typeScriptVersion": "4.8"
+}

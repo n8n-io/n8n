@@ -1,0 +1,6 @@
+{
+  "sideEffects": false,
+  "type": "commonjs",
+  "module": "../esm/getTimezoneOffset/index.js",
+  "typings": "../typings.d.ts"
+}

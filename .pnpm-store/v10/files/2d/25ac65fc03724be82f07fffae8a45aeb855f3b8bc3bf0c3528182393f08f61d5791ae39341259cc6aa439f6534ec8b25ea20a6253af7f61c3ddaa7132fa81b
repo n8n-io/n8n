@@ -1,0 +1,3 @@
+export {
+    getServiceTokenData
+} from './queries';

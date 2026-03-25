@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="JSHintConfiguration" version="2.9.5" use-config-file="true" use-custom-config-file="true" custom-config-file-path="$PROJECT_DIR$/.jshintrc">
+    <option bitwise="true" />
+    <option browser="true" />
+    <option curly="true" />
+    <option eqeqeq="true" />
+    <option forin="true" />
+    <option maxerr="50" />
+    <option noarg="true" />
+    <option noempty="true" />
+    <option nonew="true" />
+    <option strict="true" />
+    <option undef="true" />
+  </component>
+</project>

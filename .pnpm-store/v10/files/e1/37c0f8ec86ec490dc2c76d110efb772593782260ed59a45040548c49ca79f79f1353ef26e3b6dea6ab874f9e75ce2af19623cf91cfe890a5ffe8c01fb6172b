@@ -1,0 +1,92 @@
+{
+  "name": "y-protocols",
+  "version": "1.0.7",
+  "description": "Yjs encoding protocols",
+  "type": "module",
+  "funding": {
+    "type": "GitHub Sponsors ❤",
+    "url": "https://github.com/sponsors/dmonad"
+  },
+  "files": [
+    "dist/*",
+    "auth.*",
+    "sync.*",
+    "awareness.*"
+  ],
+  "scripts": {
+    "clean": "rm -rf dist *.d.ts */*.d.ts *.d.ts.map */*.d.ts.map",
+    "dist": "rm -rf dist && rollup -c",
+    "test": "npm run lint && npm run dist && node dist/test.cjs",
+    "lint": "standard && tsc",
+    "types": "tsc --outDir .",
+    "debug": "rollup -c && concurrently 'rollup -wc' 'http-server -o test.html'",
+    "preversion": "npm run dist && npm run test && npm run types",
+    "postpublish": "npm run clean"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yjs/y-protocols.git"
+  },
+  "keywords": [
+    "Yjs"
+  ],
+  "author": "Kevin Jahns <kevin.jahns@protonmail.com>",
+  "license": "MIT",
+  "standard": {
+    "ignore": [
+      "/dist",
+      "/node_modules"
+    ]
+  },
+  "bugs": {
+    "url": "https://github.com/yjs/y-protocols/issues"
+  },
+  "homepage": "https://github.com/yjs/y-protocols#readme",
+  "exports": {
+    "./package.json": "./package.json",
+    "./sync.js": "./sync.js",
+    "./dist/sync.cjs": "./dist/sync.cjs",
+    "./sync": {
+      "types": "./sync.d.ts",
+      "module": "./sync.js",
+      "import": "./sync.js",
+      "require": "./dist/sync.cjs"
+    },
+    "./awareness.js": "./awareness.js",
+    "./dist/awareness.cjs": "./dist/awareness.cjs",
+    "./awareness": {
+      "types": "./awareness.d.ts",
+      "module": "./awareness.js",
+      "import": "./awareness.js",
+      "require": "./dist/awareness.cjs"
+    },
+    "./auth.js": "./auth.js",
+    "./dist/auth.cjs": "./dist/auth.cjs",
+    "./auth": {
+      "types": "./auth.d.ts",
+      "module": "./auth.js",
+      "import": "./auth.js",
+      "require": "./dist/auth.cjs"
+    }
+  },
+  "dependencies": {
+    "lib0": "^0.2.85"
+  },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^25.0.4",
+    "@rollup/plugin-node-resolve": "^15.2.1",
+    "@types/node": "^20.6.2",
+    "concurrently": "^5.3.0",
+    "rollup": "^3.29.2",
+    "standard": "^12.0.1",
+    "typescript": "^5.2.2",
+    "yjs": "^13.5.6"
+  },
+  "peerDependencies": {
+    "yjs": "^13.0.0"
+  },
+  "engines": {
+    "npm": ">=8.0.0",
+    "node": ">=16.0.0"
+  }
+}

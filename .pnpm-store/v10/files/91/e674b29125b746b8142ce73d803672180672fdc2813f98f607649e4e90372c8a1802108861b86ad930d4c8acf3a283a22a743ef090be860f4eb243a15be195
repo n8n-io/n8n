@@ -1,0 +1,1 @@
+export * from "../dist/caches/ioredis.js";

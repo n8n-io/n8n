@@ -1,0 +1,1 @@
+{"version":3,"file":"rimraf-native.d.ts","sourceRoot":"","sources":["../../src/rimraf-native.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,kBAAkB,EAAE,iBAAiB,EAAE,MAAM,YAAY,CAAA;AAIlE,eAAO,MAAM,YAAY,SACjB,MAAM,OACP,kBAAkB,KACtB,OAAO,CAAC,OAAO,CAOjB,CAAA;AAED,eAAO,MAAM,gBAAgB,SACrB,MAAM,OACP,iBAAiB,KACrB,OAOF,CAAA"}

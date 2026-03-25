@@ -1,0 +1,40 @@
+{
+  "name": "code-block-writer",
+  "version": "13.0.3",
+  "description": "A simple code writer that assists with formatting and visualizing blocks of code.",
+  "keywords": [
+    "code generation",
+    "typescript",
+    "writer",
+    "printer"
+  ],
+  "author": "David Sherret",
+  "homepage": "https://github.com/dsherret/code-block-writer#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dsherret/code-block-writer.git"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/dsherret/code-block-writer/issues"
+  },
+  "main": "./script/mod.js",
+  "module": "./esm/mod.js",
+  "exports": {
+    ".": {
+      "import": "./esm/mod.js",
+      "require": "./script/mod.js"
+    }
+  },
+  "scripts": {
+    "test": "node test_runner.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.9.0",
+    "picocolors": "^1.0.0",
+    "@types/chai": "4.3",
+    "chai": "4.3.7",
+    "@deno/shim-deno": "~0.18.0"
+  },
+  "_generatedBy": "dnt@dev"
+}

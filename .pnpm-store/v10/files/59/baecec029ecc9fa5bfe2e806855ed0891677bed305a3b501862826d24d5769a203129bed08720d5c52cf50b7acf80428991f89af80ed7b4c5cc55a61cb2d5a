@@ -1,0 +1,59 @@
+{
+  "name": "@opentelemetry/instrumentation-fs",
+  "version": "0.29.0",
+  "description": "OpenTelemetry instrumentation for `node:fs` file system interactions module",
+  "main": "build/src/index.js",
+  "types": "build/src/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/open-telemetry/opentelemetry-js-contrib.git",
+    "directory": "packages/instrumentation-fs"
+  },
+  "scripts": {
+    "test": "nyc --no-clean mocha 'test/**/*.test.ts'",
+    "tdd": "npm run test -- --watch-extensions ts --watch",
+    "clean": "rimraf build/*",
+    "lint:readme": "node ../../scripts/lint-readme.js",
+    "prepublishOnly": "npm run compile",
+    "version:update": "node ../../scripts/version-update.js",
+    "compile:with-dependencies": "nx run-many -t compile -p @opentelemetry/instrumentation-fs",
+    "compile": "tsc -p ."
+  },
+  "keywords": [
+    "fs",
+    "instrumentation",
+    "nodejs",
+    "opentelemetry",
+    "profiling",
+    "tracing"
+  ],
+  "author": "OpenTelemetry Authors",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": "^18.19.0 || >=20.6.0"
+  },
+  "files": [
+    "build/src/**/*.js",
+    "build/src/**/*.js.map",
+    "build/src/**/*.d.ts"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "peerDependencies": {
+    "@opentelemetry/api": "^1.3.0"
+  },
+  "devDependencies": {
+    "@opentelemetry/api": "^1.3.0",
+    "@opentelemetry/context-async-hooks": "^2.0.0",
+    "@opentelemetry/resources": "^2.0.0",
+    "@opentelemetry/sdk-trace-base": "^2.0.0",
+    "@opentelemetry/sdk-trace-node": "^2.0.0"
+  },
+  "dependencies": {
+    "@opentelemetry/core": "^2.0.0",
+    "@opentelemetry/instrumentation": "^0.210.0"
+  },
+  "homepage": "https://github.com/open-telemetry/opentelemetry-js-contrib/tree/main/packages/instrumentation-fs#readme",
+  "gitHead": "c84212cca7f010b80747cccb9942474e0459df6e"
+}

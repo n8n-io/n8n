@@ -1,0 +1,1 @@
+{"version":3,"file":"listCollections.js","sourceRoot":"","sources":["../../src/control/listCollections.ts"],"names":[],"mappings":";;;AAKO,MAAM,eAAe,GAAG,CAAC,GAAqB,EAAE,EAAE;IACvD,OAAO,KAAK,IAA6B,EAAE;QACzC,MAAM,OAAO,GAAG,MAAM,GAAG,CAAC,eAAe,EAAE,CAAC;QAE5C,OAAO,OAAO,CAAC;IACjB,CAAC,CAAC;AACJ,CAAC,CAAC;AANW,QAAA,eAAe,mBAM1B"}

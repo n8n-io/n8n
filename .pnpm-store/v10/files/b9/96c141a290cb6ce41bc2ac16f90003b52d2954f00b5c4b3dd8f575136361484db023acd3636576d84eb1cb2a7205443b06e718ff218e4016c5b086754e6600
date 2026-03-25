@@ -1,0 +1,26 @@
+import type { BeanCollection } from '../context/context';
+import type { AgColumn } from '../entities/agColumn';
+import type { AgProvidedColumnGroup } from '../entities/agProvidedColumnGroup';
+import type { ColumnEventType } from '../events';
+import type { PropertyChangedSource } from '../gridOptionsService';
+import type { ColKey, ColumnCollections } from './columnModel';
+import type { ColumnState, ColumnStateParams } from './columnStateUtils';
+export declare const GROUP_AUTO_COLUMN_ID: "ag-Grid-AutoColumn";
+export declare const SELECTION_COLUMN_ID: "ag-Grid-SelectionColumn";
+export declare const ROW_NUMBERS_COLUMN_ID: "ag-Grid-RowNumbersColumn";
+export declare function _getColumnsFromTree(rootColumns: (AgColumn | AgProvidedColumnGroup)[]): AgColumn[];
+export declare function getWidthOfColsInList(columnList: AgColumn[]): number;
+export declare function _destroyColumnTree(beans: BeanCollection, oldTree: (AgColumn | AgProvidedColumnGroup)[] | null | undefined, newTree?: (AgColumn | AgProvidedColumnGroup)[] | null): void;
+export declare function isColumnGroupAutoCol(col: AgColumn): boolean;
+export declare function isColumnSelectionCol(col: ColKey): boolean;
+export declare function isRowNumberCol(col: ColKey): boolean;
+export declare function isSpecialCol(col: ColKey): boolean;
+export declare function convertColumnTypes(type: string | string[]): string[];
+export declare function _areColIdsEqual(colsA: AgColumn[] | null, colsB: AgColumn[] | null): boolean;
+export declare function _updateColsMap(cols: ColumnCollections): void;
+export declare function _convertColumnEventSourceType(source: PropertyChangedSource): ColumnEventType;
+export declare function _columnsMatch(column: AgColumn, key: ColKey): boolean;
+export declare const getValueFactory: (stateItem: ColumnState | null, defaultState: ColumnStateParams | undefined) => <U extends keyof ColumnStateParams, S extends keyof ColumnStateParams>(key1: U, key2?: S | undefined) => {
+    value1: ColumnStateParams[U] | undefined;
+    value2: ColumnStateParams[S] | undefined;
+};

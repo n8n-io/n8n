@@ -1,0 +1,29 @@
+{
+  "name": "vue3-touch-events",
+  "version": "4.1.3",
+  "description": "Simple touch events support for vue.js 3",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/robinrodricks/vue3-touch-events.git"
+  },
+  "keywords": [
+    "vue",
+    "touch",
+    "tap",
+    "swipe",
+    "longtap"
+  ],
+  "author": "Robin Rodricks, Xavier Julien, Jerry Bendy",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/robinrodricks/vue3-touch-events/issues"
+  },
+  "homepage": "https://github.com/robinrodricks/vue3-touch-events#readme",
+  "devDependencies": {}
+}

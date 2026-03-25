@@ -1,0 +1,1 @@
+{"version":3,"file":"index.d.ts","sourceRoot":"","sources":["../../src/resources/audio/index.ts"],"names":[],"mappings":"AAEA,OAAO,EAAE,KAAK,EAAE,MAAM,SAAS,CAAC;AAChC,OAAO,EAAE,MAAM,EAAE,KAAK,kBAAkB,EAAE,MAAM,UAAU,CAAC;AAC3D,OAAO,EAAE,cAAc,EAAE,KAAK,aAAa,EAAE,KAAK,yBAAyB,EAAE,MAAM,kBAAkB,CAAC;AACtG,OAAO,EAAE,YAAY,EAAE,KAAK,WAAW,EAAE,KAAK,uBAAuB,EAAE,MAAM,gBAAgB,CAAC"}

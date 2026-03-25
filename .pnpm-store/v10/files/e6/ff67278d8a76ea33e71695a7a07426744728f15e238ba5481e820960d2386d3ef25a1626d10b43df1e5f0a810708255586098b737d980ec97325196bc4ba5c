@@ -1,0 +1,24 @@
+# ignore most things, include some others
+/*
+/.*
+
+!bin/
+!lib/
+!docs/
+!package.json
+!package-lock.json
+!README.md
+!CONTRIBUTING.md
+!LICENSE
+!CHANGELOG.md
+!example/
+!scripts/
+!tap-snapshots/
+!test/
+!.github/
+!.travis.yml
+!.gitignore
+!.gitattributes
+!coverage-map.js
+!map.js
+!index.js

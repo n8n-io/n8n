@@ -1,0 +1,30 @@
+{
+  "name": "promise-ftp-common",
+  "description": "error classes and other common code used in promise-ftp and promise-sftp",
+  "version": "1.1.5",
+  "main": "index.js",
+  "author": "RealtyMaps",
+  "contributors": [
+    "Joe Ibershoff <joe@realtymaps.com>",
+    "Moti Zilberman <motiz88@gmail.com>"
+  ],
+  "files": [
+    "dist",
+    "index.js"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/realtymaps/promise-ftp-common"
+  },
+  "devDependencies": {
+    "coffee-script": "1.x"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/realtymaps/promise-ftp-common/issues"
+  },
+  "scripts": {
+    "prepublish": "coffee --compile --output dist/ lib/",
+    "dev": "coffee --watch --output dist lib/"
+  }
+}

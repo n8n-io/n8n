@@ -1,0 +1,124 @@
+{
+  "name": "underscore",
+  "description": "JavaScript's functional programming helper library.",
+  "version": "1.13.8",
+  "author": "Jeremy Ashkenas <jeremy@documentcloud.org>",
+  "license": "MIT",
+  "homepage": "https://underscorejs.org",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/jashkenas/underscore.git"
+  },
+  "keywords": [
+    "util",
+    "functional",
+    "server",
+    "client",
+    "browser"
+  ],
+  "main": "underscore-umd.js",
+  "module": "modules/index-all.js",
+  "type": "commonjs",
+  "exports": {
+    ".": {
+      "import": {
+        "module": "./modules/index-all.js",
+        "browser": {
+          "production": "./underscore-esm-min.js",
+          "default": "./underscore-esm.js"
+        },
+        "node": "./underscore-node.mjs",
+        "default": "./underscore-esm.js"
+      },
+      "require": {
+        "module": "./modules/index-all.js",
+        "browser": {
+          "production": "./underscore-umd-min.js",
+          "default": "./underscore-umd.js"
+        },
+        "node": "./underscore-node.cjs",
+        "default": "./underscore-umd.js"
+      },
+      "default": "./underscore-umd.js"
+    },
+    "./underscore*": "./underscore*",
+    "./modules/*": {
+      "require": "./cjs/*",
+      "default": "./modules/*"
+    },
+    "./amd/*": "./amd/*",
+    "./cjs/*": "./cjs/*",
+    "./package.json": "./package.json"
+  },
+  "devDependencies": {
+    "coveralls": "^3.1.1",
+    "cpy-cli": "^3.1.1",
+    "docco": "^0.8.0",
+    "eslint": "^6.8.0",
+    "eslint-plugin-import": "^2.20.1",
+    "glob": "^7.1.6",
+    "gzip-size-cli": "^1.0.0",
+    "husky": "^4.2.3",
+    "karma": "^4.4.1",
+    "karma-qunit": "^4.1.2",
+    "karma-sauce-launcher": "^4.3.6",
+    "nyc": "^15.1.0",
+    "patch-package": "^6.4.7",
+    "pretty-bytes-cli": "^1.0.0",
+    "qunit": "2.10.1",
+    "rollup": "^2.40.0",
+    "terser": "^4.6.13"
+  },
+  "overrides": {
+    "colors@>1.4.0": "1.4.0"
+  },
+  "scripts": {
+    "test": "npm run lint && npm run prepare-tests && npm run test-node",
+    "coverage": "npm run prepare-tests && nyc npm run test-node && nyc report",
+    "coveralls": "nyc npm run test-node && nyc report --reporter=text-lcov | coveralls",
+    "lint": "eslint modules/*.js test/*.js",
+    "test-node": "qunit test/",
+    "test-browser": "npm i karma-phantomjs-launcher && karma start",
+    "bundle": "rollup -c && eslint underscore-umd.js && rollup -c rollup.config2.js",
+    "bundle-treeshake": "cd test-treeshake && rollup --config",
+    "prepare-tests": "npm run bundle && npm run bundle-treeshake",
+    "minify-umd": "terser underscore-umd.js -c \"evaluate=false\" --comments \"/    .*/\" -m",
+    "minify-esm": "terser underscore-esm.js -c \"evaluate=false\" --comments \"/    .*/\" -m",
+    "module-package-json": "node -e 'console.log(`{\"type\":\"module\",\"version\":\"${process.env.npm_package_version}\"}`)' > modules/package.json",
+    "build-umd": "npm run minify-umd -- --source-map content=underscore-umd.js.map --source-map-url \" \" -o underscore-umd-min.js",
+    "build-esm": "npm run module-package-json && npm run minify-esm -- --source-map content=underscore-esm.js.map --source-map-url \" \" -o underscore-esm-min.js",
+    "alias-bundle": "cpy --rename=underscore.js underscore-umd.js . && cpy --rename=underscore-min.js underscore-umd-min.js . && cpy --rename=underscore-min.js.map underscore-umd-min.js.map .",
+    "build": "npm run bundle && npm run build-umd && npm run build-esm && npm run alias-bundle",
+    "doc": "patch-package && docco underscore-esm.js && docco modules/*.js -c docco.css -t docs/linked-esm.jst",
+    "weight": "npm run bundle && npm run minify-umd | gzip-size | pretty-bytes",
+    "prepublishOnly": "npm run build && npm run doc"
+  },
+  "files": [
+    "underscore-esm.js",
+    "underscore-esm.js.map",
+    "underscore-esm-min.js",
+    "underscore-esm-min.js.map",
+    "underscore-umd.js",
+    "underscore-umd.js.map",
+    "underscore-umd-min.js",
+    "underscore-umd-min.js.map",
+    "underscore.js",
+    "underscore-min.js",
+    "underscore-min.js.map",
+    "underscore-node-f.cjs",
+    "underscore-node-f.cjs.map",
+    "underscore-node.cjs",
+    "underscore-node.cjs.map",
+    "underscore-node.mjs",
+    "underscore-node.mjs.map",
+    "modules/",
+    "amd/",
+    "cjs/"
+  ],
+  "husky": {
+    "hooks": {
+      "pre-commit": "npm run bundle && git add underscore-umd.js underscore-umd.js.map underscore-esm.js underscore-esm.js.map underscore-node-f.cjs underscore-node-f.cjs.map underscore-node.cjs underscore-node.cjs.map underscore-node.mjs underscore-node.mjs.map",
+      "post-commit": "git reset underscore-umd.js underscore-umd.js.map underscore-esm.js underscore-esm.js.map underscore-node-f.cjs underscore-node-f.cjs.map underscore-node.cjs underscore-node.cjs.map underscore-node.mjs underscore-node.mjs.map"
+    }
+  }
+}

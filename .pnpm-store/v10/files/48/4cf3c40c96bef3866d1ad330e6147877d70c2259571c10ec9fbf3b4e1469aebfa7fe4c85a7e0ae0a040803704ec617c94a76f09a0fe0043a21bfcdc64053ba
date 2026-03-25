@@ -1,0 +1,1 @@
+module.exports = require("../../dist/stores/message/neo4j.cjs");

@@ -1,0 +1,44 @@
+import { Backup } from '../backup/index.js';
+import { Batch } from '../batch/index.js';
+import { C11y } from '../c11y/index.js';
+import { Classifications } from '../classifications/index.js';
+import { Cluster } from '../cluster/index.js';
+import { ApiKey, AuthAccessTokenCredentials, AuthClientCredentials, AuthUserPasswordCredentials, OidcAuthenticator } from '../connection/auth.js';
+import { InternalConnectionParams as ConnectionParams } from '../connection/index.js';
+import { Data } from '../data/index.js';
+import { GraphQL } from '../graphql/index.js';
+import { Misc } from '../misc/index.js';
+import { Schema } from '../schema/index.js';
+export interface WeaviateClient {
+    graphql: GraphQL;
+    schema: Schema;
+    data: Data;
+    classifications: Classifications;
+    batch: Batch;
+    misc: Misc;
+    c11y: C11y;
+    backup: Backup;
+    cluster: Cluster;
+    oidcAuth?: OidcAuthenticator;
+}
+declare const app: {
+    client: (params: ConnectionParams) => WeaviateClient;
+    ApiKey: typeof ApiKey;
+    AuthUserPasswordCredentials: typeof AuthUserPasswordCredentials;
+    AuthAccessTokenCredentials: typeof AuthAccessTokenCredentials;
+    AuthClientCredentials: typeof AuthClientCredentials;
+};
+export default app;
+export * from '../backup/index.js';
+export * from '../batch/index.js';
+export * from '../c11y/index.js';
+export * from '../classifications/index.js';
+export * from '../cluster/index.js';
+export * from '../connection/index.js';
+export * from '../data/index.js';
+export * from '../graphql/index.js';
+export * from '../misc/index.js';
+export * from '../openapi/types.js';
+export * from '../schema/index.js';
+export * from '../utils/base64.js';
+export * from '../utils/uuid.js';

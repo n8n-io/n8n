@@ -1,0 +1,1 @@
+module.exports = require("../../../dist/experimental/callbacks/handlers/datadog.cjs");

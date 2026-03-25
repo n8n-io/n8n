@@ -1,0 +1,1 @@
+{"version":3,"file":"metadata.d.ts","sourceRoot":"","sources":["../../../../../src/server/auth/handlers/metadata.ts"],"names":[],"mappings":"AAAA,OAAgB,EAAE,cAAc,EAAE,MAAM,SAAS,CAAC;AAClD,OAAO,EAAE,aAAa,EAAE,8BAA8B,EAAE,MAAM,yBAAyB,CAAC;AAIxF,wBAAgB,eAAe,CAAC,QAAQ,EAAE,aAAa,GAAG,8BAA8B,GAAG,cAAc,CAaxG"}

@@ -1,0 +1,84 @@
+{
+  "type": "module",
+  "name": "form-data-encoder",
+  "description": "Encode FormData content into the multipart/form-data format",
+  "version": "4.0.2",
+  "author": "Nick K.",
+  "license": "MIT",
+  "repository": "octet-stream/form-data-encoder",
+  "sideEffects": false,
+  "packageManager": "pnpm@8.5.1",
+  "engines": {
+    "node": ">= 18"
+  },
+  "keywords": [
+    "form-data",
+    "encoder",
+    "multipart",
+    "files-upload",
+    "async-iterator",
+    "spec-compatible",
+    "form"
+  ],
+  "main": "./lib/index.js",
+  "module": "./lib/index.js",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "import": {
+        "types": "./lib/index.d.ts",
+        "default": "./lib/index.js"
+      },
+      "require": {
+        "types": "./lib/index.d.cts",
+        "default": "./lib/index.cjs"
+      }
+    }
+  },
+  "types": "./lib/index.d.ts",
+  "devDependencies": {
+    "@changesets/changelog-github": "0.4.8",
+    "@changesets/cli": "2.26.2",
+    "@octetstream/eslint-config": "7.2.1",
+    "@types/mime-types": "2.1.1",
+    "@types/node": "20.2.1",
+    "@types/sinon": "10.0.15",
+    "@typescript-eslint/eslint-plugin": "5.59.6",
+    "@typescript-eslint/parser": "5.59.6",
+    "ava": "5.2.0",
+    "c8": "7.13.0",
+    "cross-env": "7.0.3",
+    "del-cli": "5.0.0",
+    "eslint": "8.40.0",
+    "eslint-config-airbnb-typescript": "17.0.0",
+    "eslint-import-resolver-typescript": "3.5.5",
+    "eslint-plugin-ava": "14.0.0",
+    "eslint-plugin-import": "2.27.5",
+    "eslint-plugin-jsx-a11y": "6.7.1",
+    "eslint-plugin-react": "7.32.2",
+    "formdata-node": "6.0.2",
+    "husky": "8.0.3",
+    "lint-staged": "13.2.2",
+    "node-fetch": "^3.3.2",
+    "pinst": "3.0.0",
+    "sinon": "15.0.4",
+    "ts-expect": "^1.3.0",
+    "ts-node": "10.9.1",
+    "tsup": "7.2.0",
+    "ttypescript": "1.5.15",
+    "typescript": "5.0.4",
+    "undici": "^5.26.5",
+    "web-streams-polyfill": "4.0.0-beta.3"
+  },
+  "scripts": {
+    "eslint": "eslint src/**/*.ts",
+    "lint:types": "tsc --noEmit",
+    "lint": "pnpm eslint && pnpm lint:types",
+    "staged": "lint-staged",
+    "coverage": "c8 pnpm test",
+    "ci": "c8 pnpm test && c8 report --reporter=json",
+    "build": "pnpm exec del-cli lib && pnpm exec tsup",
+    "test": "cross-env NODE_OPTIONS=\"--no-warnings --experimental-fetch --loader=ts-node/esm\" ava",
+    "release": "pnpm build && pnpm changeset publish"
+  }
+}

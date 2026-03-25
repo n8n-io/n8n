@@ -1,0 +1,74 @@
+{
+  "name": "vue-docgen-api",
+  "version": "4.76.0",
+  "description": "Toolbox to extract information from Vue component files for documentation generation purposes.",
+  "homepage": "https://vue-styleguidist.github.io",
+  "main": "dist/main.js",
+  "types": "dist/main.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/main.js",
+      "require": "./dist/main.cjs",
+      "types": "./dist/main.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vue-styleguidist/vue-styleguidist.git",
+    "directory": "packages/vue-docgen-api"
+  },
+  "bugs": {
+    "url": "https://github.com/vue-styleguidist/vue-styleguidist/issues"
+  },
+  "keywords": [
+    "vue",
+    "documentation-generation",
+    "jsdoc",
+    "parse"
+  ],
+  "author": "elevatebart",
+  "license": "MIT",
+  "dependencies": {
+    "@babel/parser": "^7.21.4",
+    "@babel/types": "^7.21.4",
+    "@vue/compiler-dom": "^3.2.0",
+    "@vue/compiler-sfc": "^3.2.0",
+    "ast-types": "^0.16.1",
+    "esm-resolve": "^1.0.8",
+    "hash-sum": "^2.0.0",
+    "lru-cache": "^8.0.3",
+    "pug": "^3.0.2",
+    "recast": "^0.23.1",
+    "ts-map": "^1.0.3",
+    "vue-inbrowser-compiler-independent-utils": "^4.69.0"
+  },
+  "peerDependencies": {
+    "vue": ">=2"
+  },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^24.1.0",
+    "@rollup/plugin-node-resolve": "^15.0.2",
+    "@rollup/plugin-typescript": "^11.1.0",
+    "@test-vue-docgen/mixins": "^4.44.15",
+    "@types/dedent": "0.7.0",
+    "@types/pug": "2.0.6",
+    "@types/hash-sum": "^1.0.0",
+    "dedent": "0.7.0",
+    "globby": "10.0.2",
+    "rollup": "3.20.2",
+    "vitest": "0.31.0",
+    "vue": "2.7.14",
+    "vue-class-component": "7.2.6",
+    "vue-clickaway": "2.2.2",
+    "vue-property-decorator": "7.3.0",
+    "vuetify": "2.6.14"
+  },
+  "scripts": {
+    "compile": "tsc -p ./tsconfig.build.json && rollup -c ./rollup.config.mjs",
+    "compile:watch": "pnpm run compile --watch",
+    "test": "vitest"
+  }
+}

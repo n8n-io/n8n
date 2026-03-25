@@ -1,0 +1,15 @@
+{
+  "name": "binascii",
+  "version": "0.0.2",
+  "author": "Michał Budzyński <michal@virtualdesign.pl>",
+  "repository": "git@github.com:michalbe/binascii.git",
+  "devDependencies": {
+    "assert": "^1.1.1",
+    "jshint": "^2.5.2",
+    "precommit-hook": "^1.0.7"
+  },
+  "scripts": {
+    "test": "node tests/binascii-tests.js",
+    "lint": "node node_modules/jshint/bin/jshint ."
+  }
+}

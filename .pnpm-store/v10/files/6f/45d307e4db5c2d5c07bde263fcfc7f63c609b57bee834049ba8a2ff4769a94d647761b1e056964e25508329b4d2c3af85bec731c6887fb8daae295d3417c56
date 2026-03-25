@@ -1,0 +1,21 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <body>
+    <iframe src="about:blank" style="position:absolute;top:0;left:0;right:0;bottom:0;width:100%;height:100%;border:none;"></iframe>
+    <script>
+      (async () => {
+        if (!navigator.serviceWorker)
+          throw new Error(`Service workers are not supported.\nMake sure to serve the Trace Viewer (${window.location}) via HTTPS or localhost.`);
+        navigator.serviceWorker.register('sw.bundle.js');
+        if (!navigator.serviceWorker.controller)
+          await new Promise(f => navigator.serviceWorker.oncontrollerchange = f);
+        const traceUrl = new URL(location.href).searchParams.get('trace');
+        const params = new URLSearchParams();
+        params.set('trace', traceUrl);
+        await fetch('contexts?' + params.toString());
+        document.querySelector('iframe').src = new URLSearchParams(location.search).get('r');
+      })();
+    </script>
+  </body>
+</html>

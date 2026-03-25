@@ -1,0 +1,71 @@
+{
+  "name": "gcp-metadata",
+  "version": "5.3.0",
+  "description": "Get the metadata from a Google Cloud Platform environment",
+  "repository": "googleapis/gcp-metadata",
+  "main": "./build/src/index.js",
+  "types": "./build/src/index.d.ts",
+  "files": [
+    "build/src"
+  ],
+  "scripts": {
+    "compile": "cross-env NODE_OPTIONS=--max-old-space-size=8192 tsc -p .",
+    "fix": "gts fix",
+    "pretest": "npm run compile",
+    "prepare": "npm run compile",
+    "samples-test": "npm link && cd samples/ && npm link ../ && npm test && cd ../",
+    "presystem-test": "npm run compile",
+    "system-test": "mocha build/system-test --timeout 600000",
+    "test": "c8 mocha --timeout=5000 build/test",
+    "docs": "compodoc src/",
+    "lint": "gts check",
+    "docs-test": "linkinator docs",
+    "predocs-test": "npm run docs",
+    "prelint": "cd samples; npm link ../; npm install",
+    "clean": "gts clean",
+    "precompile": "gts clean"
+  },
+  "keywords": [
+    "google cloud platform",
+    "google cloud",
+    "google",
+    "app engine",
+    "compute engine",
+    "metadata server",
+    "metadata"
+  ],
+  "author": "Stephen Sawchuk",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "gaxios": "^5.0.0",
+    "json-bigint": "^1.0.0"
+  },
+  "devDependencies": {
+    "@babel/plugin-proposal-private-methods": "^7.18.6",
+    "@compodoc/compodoc": "^1.1.10",
+    "@google-cloud/functions": "^2.0.0",
+    "@types/json-bigint": "^1.0.0",
+    "@types/mocha": "^9.0.0",
+    "@types/ncp": "^2.0.1",
+    "@types/node": "^18.0.0",
+    "@types/sinon": "^10.0.13",
+    "@types/tmp": "0.2.3",
+    "@types/uuid": "^9.0.0",
+    "c8": "^8.0.0",
+    "cross-env": "^7.0.3",
+    "gcbuild": "^1.3.4",
+    "gcx": "^1.0.0",
+    "gts": "^3.1.0",
+    "linkinator": "^4.0.0",
+    "mocha": "^8.0.0",
+    "ncp": "^2.0.0",
+    "nock": "^13.0.0",
+    "sinon": "^15.0.0",
+    "tmp": "^0.2.0",
+    "typescript": "^4.6.3",
+    "uuid": "^9.0.0"
+  },
+  "engines": {
+    "node": ">=12"
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "name": "teeny-request",
+  "version": "9.0.0",
+  "description": "Like request, but smaller.",
+  "main": "./build/src/index.js",
+  "types": "./build/src/index.d.ts",
+  "engines": {
+    "node": ">=14"
+  },
+  "scripts": {
+    "test": "c8 mocha build/test",
+    "compile": "tsc -p .",
+    "pretest": "npm run compile",
+    "lint": "gts check",
+    "clean": "gts clean",
+    "fix": "gts fix",
+    "prepare": "npm run compile",
+    "docs": "compodoc src/",
+    "predocs-test": "npm run docs",
+    "docs-test": "linkinator docs",
+    "samples-test": "echo no sample tests!",
+    "system-test": "echo no system tests!",
+    "precompile": "gts clean"
+  },
+  "files": [
+    "build/src"
+  ],
+  "repository": "googleapis/teeny-request",
+  "keywords": [
+    "request",
+    "node-fetch",
+    "fetch"
+  ],
+  "author": "fhinkel",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/googleapis/teeny-request/issues"
+  },
+  "homepage": "https://github.com/googleapis/teeny-request#readme",
+  "dependencies": {
+    "http-proxy-agent": "^5.0.0",
+    "https-proxy-agent": "^5.0.0",
+    "node-fetch": "^2.6.9",
+    "stream-events": "^1.0.5",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "@babel/plugin-proposal-private-methods": "^7.18.6",
+    "@compodoc/compodoc": "^1.1.9",
+    "@types/mocha": "^10.0.0",
+    "@types/node-fetch": "^2.5.7",
+    "@types/sinon": "^10.0.0",
+    "@types/uuid": "^9.0.0",
+    "c8": "^8.0.0",
+    "codecov": "^3.1.0",
+    "gts": "^3.1.1",
+    "linkinator": "^4.0.0",
+    "mocha": "^10.0.0",
+    "nock": "^13.0.0",
+    "sinon": "^15.0.0",
+    "typescript": "^5.1.6"
+  },
+  "nyc": {
+    "exclude": [
+      "build/test"
+    ]
+  }
+}

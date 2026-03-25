@@ -1,0 +1,48 @@
+name: Tests
+'on':
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-18.04
+    name: Node ${{ matrix.node }}
+    strategy:
+      matrix:
+        node:
+          - '12'
+          - '14'
+          - '16'
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup node
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm install
+      - run: npm test
+
+  test-targets:
+    runs-on: ubuntu-18.04
+    name: ${{ matrix.targets.name }}
+    strategy:
+      matrix:
+        targets:
+          - name: 'Lint'
+            target: 'lint'
+          - name: 'Coverage'
+            target: 'coverage'
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup node
+        uses: actions/setup-node@v1
+        with:
+          node-version: '14'
+      - run: npm install
+      - run: npm run ${{ matrix.targets.target }}
+      - name: Upload coverage
+        uses: coverallsapp/github-action@master
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+        if: ${{ matrix.targets.target == 'coverage' }}

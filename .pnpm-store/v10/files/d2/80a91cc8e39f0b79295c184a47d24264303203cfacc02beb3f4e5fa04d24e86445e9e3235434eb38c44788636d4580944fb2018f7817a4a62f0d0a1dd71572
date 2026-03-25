@@ -1,0 +1,37 @@
+{
+  "name": "@apm-js-collab/code-transformer",
+  "version": "0.8.2",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/apm-js-collab/orchestrion-js.git"
+  },
+  "files": [
+    "./pkg/orchestrion_js.js",
+    "./pkg/orchestrion_js.d.ts",
+    "./index.js",
+    "./index.d.ts",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "scripts": {
+    "build": "wasm-pack build --target nodejs --release -- --features wasm && yarn build:wrapper && yarn build:inline-binary",
+    "build:wrapper": "tsc index.ts --declaration --module commonjs",
+    "build:inline-binary": "node inline-binary.js",
+    "test": "vitest run",
+    "test:update-snapshots": "vitest -u run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@types/node": "^18.0.0",
+    "source-map": "^0.7.6",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4",
+    "wasm-pack": "^0.13.1"
+  },
+  "volta": {
+    "node": "22.15.0"
+  }
+}

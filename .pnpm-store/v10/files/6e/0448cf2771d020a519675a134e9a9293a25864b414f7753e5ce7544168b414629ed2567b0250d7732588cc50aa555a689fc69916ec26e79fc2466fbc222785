@@ -1,0 +1,1 @@
+{"version":3,"file":"broker-event.d.ts","sourceRoot":"","sources":["../../../src/interfaces/broker-event.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,cAAc,EAAE,MAAM,UAAU,CAAC;AAE1C,MAAM,WAAW,YAAa,SAAQ,KAAK;IACvC,IAAI,EAAE,cAAc,CAAC;CACxB"}

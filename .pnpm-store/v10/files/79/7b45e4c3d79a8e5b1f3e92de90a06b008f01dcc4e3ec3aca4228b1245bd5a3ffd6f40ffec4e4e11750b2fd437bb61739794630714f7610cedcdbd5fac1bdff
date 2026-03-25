@@ -1,0 +1,91 @@
+{
+  "name": "jsonrepair",
+  "version": "3.13.2",
+  "description": "Repair broken JSON documents",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/josdejong/jsonrepair.git"
+  },
+  "type": "module",
+  "main": "lib/cjs/index.js",
+  "module": "lib/esm/index.js",
+  "browser": "lib/umd/jsonrepair.min.js",
+  "types": "lib/types/index.d.ts",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "import": "./lib/esm/index.js",
+      "require": "./lib/cjs/index.js",
+      "types": "./lib/types/index.d.ts"
+    },
+    "./stream": {
+      "import": "./lib/esm/stream.js",
+      "require": "./lib/cjs/stream.js",
+      "types": "./lib/types/stream.d.ts"
+    }
+  },
+  "keywords": [
+    "simple",
+    "json",
+    "repair",
+    "fix",
+    "invalid",
+    "stream",
+    "streaming"
+  ],
+  "bin": {
+    "jsonrepair": "./bin/cli.js"
+  },
+  "scripts": {
+    "test": "vitest watch src",
+    "test:it": "vitest run src",
+    "build": "npm-run-all build:**",
+    "build:clean": "del-cli lib",
+    "build:esm": "babel src --out-dir lib/esm --extensions \".ts\" --source-maps --config-file ./babel.config.json",
+    "build:cjs": "babel src --out-dir lib/cjs --extensions \".ts\" --source-maps --config-file ./babel-cjs.config.json && cpy tools/cjs lib/cjs --flat",
+    "build:umd": "rollup lib/esm/index.js --format umd --name JSONRepair --sourcemap --output.file lib/umd/jsonrepair.js && cpy tools/cjs/package.json lib/umd --flat",
+    "build:umd:min": "uglifyjs --compress --mangle --source-map --comments --output lib/umd/jsonrepair.min.js -- lib/umd/jsonrepair.js",
+    "build:types": "tsc --project tsconfig-types.json",
+    "build:validate": "vitest run test-lib",
+    "lint": "biome check",
+    "format": "biome check --write",
+    "benchmark": "npm run build:esm && node tools/benchmark/run.mjs",
+    "build-and-test": "npm run lint && npm run test:it && npm run build",
+    "release": "npm-run-all release:**",
+    "release:build-and-test": "npm run build-and-test",
+    "release:version": "standard-version",
+    "release:push": "git push && git push --tag",
+    "release:publish": "npm publish",
+    "release-dry-run": "npm run build-and-test && standard-version --dry-run",
+    "prepare": "husky"
+  },
+  "files": [
+    "README.md",
+    "LICENSE.md",
+    "lib"
+  ],
+  "author": "Jos de Jong",
+  "license": "ISC",
+  "devDependencies": {
+    "@babel/cli": "7.28.6",
+    "@babel/core": "7.28.6",
+    "@babel/plugin-transform-typescript": "7.28.6",
+    "@babel/preset-env": "7.28.6",
+    "@babel/preset-typescript": "7.28.5",
+    "@biomejs/biome": "2.3.11",
+    "@commitlint/cli": "20.3.1",
+    "@commitlint/config-conventional": "20.3.1",
+    "@types/node": "25.0.8",
+    "cpy-cli": "6.0.0",
+    "del-cli": "7.0.0",
+    "husky": "9.1.7",
+    "npm-run-all": "4.1.5",
+    "rollup": "4.55.1",
+    "standard-version": "9.5.0",
+    "tinybench": "6.0.0",
+    "ts-node": "10.9.2",
+    "typescript": "5.9.3",
+    "uglify-js": "3.19.3",
+    "vitest": "4.0.17"
+  }
+}

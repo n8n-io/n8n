@@ -1,0 +1,184 @@
+# Copyright 2012 Mozilla Foundation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Main toolbar buttons (tooltips and alt text for images)
+previous.title=Előző oldal
+previous_label=Előző
+next.title=Következő oldal
+next_label=Tovább
+
+# LOCALIZATION NOTE (page.title): The tooltip for the pageNumber input.
+page.title=Oldal
+# LOCALIZATION NOTE (of_pages): "{{pagesCount}}" will be replaced by a number
+# representing the total number of pages in the document.
+of_pages=összesen: {{pagesCount}}
+# LOCALIZATION NOTE (page_of_pages): "{{pageNumber}}" and "{{pagesCount}}"
+# will be replaced by a number representing the currently visible page,
+# respectively a number representing the total number of pages in the document.
+page_of_pages=({{pageNumber}} / {{pagesCount}})
+
+zoom_out.title=Kicsinyítés
+zoom_out_label=Kicsinyítés
+zoom_in.title=Nagyítás
+zoom_in_label=Nagyítás
+zoom.title=Nagyítás
+presentation_mode.title=Váltás bemutató módba
+presentation_mode_label=Bemutató mód
+open_file.title=Fájl megnyitása
+open_file_label=Megnyitás
+print.title=Nyomtatás
+print_label=Nyomtatás
+download.title=Letöltés
+download_label=Letöltés
+bookmark.title=Jelenlegi nézet (másolás vagy megnyitás új ablakban)
+bookmark_label=Aktuális nézet
+
+# Secondary toolbar and context menu
+tools.title=Eszközök
+tools_label=Eszközök
+first_page.title=Ugrás az első oldalra
+first_page.label=Ugrás az első oldalra
+first_page_label=Ugrás az első oldalra
+last_page.title=Ugrás az utolsó oldalra
+last_page.label=Ugrás az utolsó oldalra
+last_page_label=Ugrás az utolsó oldalra
+page_rotate_cw.title=Forgatás az óramutató járásával egyezően
+page_rotate_cw.label=Forgatás az óramutató járásával egyezően
+page_rotate_cw_label=Forgatás az óramutató járásával egyezően
+page_rotate_ccw.title=Forgatás az óramutató járásával ellentétesen
+page_rotate_ccw.label=Forgatás az óramutató járásával ellentétesen
+page_rotate_ccw_label=Forgatás az óramutató járásával ellentétesen
+
+cursor_text_select_tool.title=Szövegkijelölő eszköz bekapcsolása
+cursor_text_select_tool_label=Szövegkijelölő eszköz
+cursor_hand_tool.title=Kéz eszköz bekapcsolása
+cursor_hand_tool_label=Kéz eszköz
+
+# Document properties dialog box
+document_properties.title=Dokumentum tulajdonságai…
+document_properties_label=Dokumentum tulajdonságai…
+document_properties_file_name=Fájlnév:
+document_properties_file_size=Fájlméret:
+# LOCALIZATION NOTE (document_properties_kb): "{{size_kb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in kilobytes, respectively in bytes.
+document_properties_kb={{size_kb}} KB ({{size_b}} bájt)
+# LOCALIZATION NOTE (document_properties_mb): "{{size_mb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in megabytes, respectively in bytes.
+document_properties_mb={{size_mb}} MB ({{size_b}} bájt)
+document_properties_title=Cím:
+document_properties_author=Szerző:
+document_properties_subject=Tárgy:
+document_properties_keywords=Kulcsszavak:
+document_properties_creation_date=Létrehozás dátuma:
+document_properties_modification_date=Módosítás dátuma:
+# LOCALIZATION NOTE (document_properties_date_string): "{{date}}" and "{{time}}"
+# will be replaced by the creation/modification date, and time, of the PDF file.
+document_properties_date_string={{date}}, {{time}}
+document_properties_creator=Létrehozta:
+document_properties_producer=PDF előállító:
+document_properties_version=PDF verzió:
+document_properties_page_count=Oldalszám:
+document_properties_close=Bezárás
+
+print_progress_message=Dokumentum előkészítése nyomtatáshoz…
+# LOCALIZATION NOTE (print_progress_percent): "{{progress}}" will be replaced by
+# a numerical per cent value.
+print_progress_percent={{progress}}%
+print_progress_close=Mégse
+
+# Tooltips and alt text for side panel toolbar buttons
+# (the _label strings are alt text for the buttons, the .title strings are
+# tooltips)
+toggle_sidebar.title=Oldalsáv be/ki
+toggle_sidebar_notification.title=Oldalsáv be/ki (a dokumentum vázlatot/mellékleteket tartalmaz)
+toggle_sidebar_label=Oldalsáv be/ki
+document_outline.title=Dokumentum megjelenítése online (dupla kattintás minden elem kinyitásához/összecsukásához)
+document_outline_label=Dokumentumvázlat
+attachments.title=Mellékletek megjelenítése
+attachments_label=Van melléklet
+thumbs.title=Bélyegképek megjelenítése
+thumbs_label=Bélyegképek
+findbar.title=Keresés a dokumentumban
+findbar_label=Keresés
+
+# Thumbnails panel item (tooltip and alt text for images)
+# LOCALIZATION NOTE (thumb_page_title): "{{page}}" will be replaced by the page
+# number.
+thumb_page_title={{page}}. oldal
+# LOCALIZATION NOTE (thumb_page_canvas): "{{page}}" will be replaced by the page
+# number.
+thumb_page_canvas={{page}}. oldal bélyegképe
+
+# Find panel button title and messages
+find_input.title=Keresés
+find_input.placeholder=Keresés a dokumentumban…
+find_previous.title=A kifejezés előző előfordulásának keresése
+find_previous_label=Előző
+find_next.title=A kifejezés következő előfordulásának keresése
+find_next_label=Tovább
+find_highlight=Összes kiemelése
+find_match_case_label=Kis- és nagybetűk megkülönböztetése
+find_reached_top=A dokumentum eleje elérve, folytatás a végétől
+find_reached_bottom=A dokumentum vége elérve, folytatás az elejétől
+find_not_found=A kifejezés nem található
+
+# Error panel labels
+error_more_info=További tudnivalók
+error_less_info=Kevesebb információ
+error_close=Bezárás
+# LOCALIZATION NOTE (error_version_info): "{{version}}" and "{{build}}" will be
+# replaced by the PDF.JS version and build ID.
+error_version_info=PDF.js v{{version}} (build: {{build}})
+# LOCALIZATION NOTE (error_message): "{{message}}" will be replaced by an
+# english string describing the error.
+error_message=Üzenet: {{message}}
+# LOCALIZATION NOTE (error_stack): "{{stack}}" will be replaced with a stack
+# trace.
+error_stack=Nyomkövetés: {{stack}}
+# LOCALIZATION NOTE (error_file): "{{file}}" will be replaced with a filename
+error_file=Fájl: {{file}}
+# LOCALIZATION NOTE (error_line): "{{line}}" will be replaced with a line number
+error_line=Sor: {{line}}
+rendering_error=Hiba történt az oldal feldolgozása közben.
+
+# Predefined zoom values
+page_scale_width=Oldalszélesség
+page_scale_fit=Teljes oldal
+page_scale_auto=Automatikus nagyítás
+page_scale_actual=Valódi méret
+# LOCALIZATION NOTE (page_scale_percent): "{{scale}}" will be replaced by a
+# numerical scale value.
+page_scale_percent={{scale}}%
+
+# Loading indicator messages
+loading_error_indicator=Hiba
+loading_error=Hiba történt a PDF betöltésekor.
+invalid_file_error=Érvénytelen vagy sérült PDF fájl.
+missing_file_error=Hiányzó PDF fájl.
+unexpected_response_error=Váratlan kiszolgálóválasz.
+
+# LOCALIZATION NOTE (text_annotation_type.alt): This is used as a tooltip.
+# "{{type}}" will be replaced with an annotation type from a list defined in
+# the PDF spec (32000-1:2008 Table 169 – Annotation types).
+# Some common types are e.g.: "Check", "Text", "Comment", "Note"
+text_annotation_type.alt=[{{type}} megjegyzés]
+password_label=Adja meg a jelszót a PDF fájl megnyitásához.
+password_invalid=Helytelen jelszó. Próbálja újra.
+password_ok=OK
+password_cancel=Mégse
+
+printing_not_supported=Figyelmeztetés: Ez a böngésző nem teljesen támogatja a nyomtatást.
+printing_not_ready=Figyelmeztetés: A PDF nincs teljesen betöltve a nyomtatáshoz.
+web_fonts_disabled=Webes betűkészletek letiltva: nem használhatók a beágyazott PDF betűkészletek.
+document_colors_not_allowed=A PDF dokumentumok nem használhatják saját színeiket: „Az oldalak a saját maguk által kiválasztott színeket használhatják” beállítás ki van kapcsolva a böngészőben.

@@ -1,0 +1,73 @@
+{
+    "name": "@types/ssh2-sftp-client",
+    "version": "9.0.5",
+    "description": "TypeScript definitions for ssh2-sftp-client",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/ssh2-sftp-client",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "igrayson",
+            "githubUsername": "igrayson",
+            "url": "https://github.com/igrayson"
+        },
+        {
+            "name": "Ascari Andrea",
+            "githubUsername": "ascariandrea",
+            "url": "https://github.com/ascariandrea"
+        },
+        {
+            "name": "Kartik Malik",
+            "githubUsername": "kartik2406",
+            "url": "https://github.com/kartik2406"
+        },
+        {
+            "name": "Michael Pertl",
+            "githubUsername": "viamuli",
+            "url": "https://github.com/viamuli"
+        },
+        {
+            "name": "Taylor Herron",
+            "githubUsername": "gbhmt",
+            "url": "https://github.com/gbhmt"
+        },
+        {
+            "name": "Lane Goldberg",
+            "githubUsername": "builtbylane",
+            "url": "https://github.com/builtbylane"
+        },
+        {
+            "name": "Lorenzo Adinolfi",
+            "githubUsername": "loru88",
+            "url": "https://github.com/loru88"
+        },
+        {
+            "name": "Tom Xu",
+            "githubUsername": "hengkx",
+            "url": "https://github.com/hengkx"
+        },
+        {
+            "name": "Joseph Burger",
+            "githubUsername": "candyapplecorn",
+            "url": "https://github.com/candyapplecorn"
+        },
+        {
+            "name": "Emma Milner",
+            "githubUsername": "tsop14",
+            "url": "https://github.com/tsop14"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/ssh2-sftp-client"
+    },
+    "scripts": {},
+    "dependencies": {
+        "@types/ssh2": "^1.0.0"
+    },
+    "peerDependencies": {},
+    "typesPublisherContentHash": "79bb1b1feedcee198b9876ced9a717c30dd68aa7371db284e37870e42a39e9c8",
+    "typeScriptVersion": "5.1"
+}

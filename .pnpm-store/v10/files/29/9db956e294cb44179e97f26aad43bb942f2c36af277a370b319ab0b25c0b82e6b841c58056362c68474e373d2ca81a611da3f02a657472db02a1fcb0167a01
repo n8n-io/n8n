@@ -1,0 +1,65 @@
+{
+  "name": "local-pkg",
+  "type": "module",
+  "version": "0.5.0",
+  "packageManager": "pnpm@8.8.0",
+  "description": "Get information on local packages.",
+  "author": "Anthony Fu <anthonyfu117@hotmail.com>",
+  "license": "MIT",
+  "funding": "https://github.com/sponsors/antfu",
+  "homepage": "https://github.com/antfu/local-pkg#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/antfu/local-pkg.git"
+  },
+  "bugs": {
+    "url": "https://github.com/antfu/local-pkg/issues"
+  },
+  "keywords": [
+    "package"
+  ],
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "main": "dist/index.cjs",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=14"
+  },
+  "scripts": {
+    "prepublishOnly": "nr build",
+    "build": "unbuild",
+    "lint": "eslint .",
+    "release": "bumpp && npm publish",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run && node ./test/cjs.cjs && node ./test/esm.mjs"
+  },
+  "dependencies": {
+    "mlly": "^1.4.2",
+    "pkg-types": "^1.0.3"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "^1.0.0-beta.18",
+    "@antfu/ni": "^0.21.8",
+    "@antfu/utils": "^0.7.6",
+    "@types/chai": "^4.3.6",
+    "@types/node": "^20.8.0",
+    "bumpp": "^9.2.0",
+    "chai": "^4.3.10",
+    "eslint": "^8.50.0",
+    "esno": "^0.17.0",
+    "find-up": "^6.3.0",
+    "typescript": "^5.2.2",
+    "unbuild": "^2.0.0",
+    "vitest": "^0.34.6"
+  }
+}

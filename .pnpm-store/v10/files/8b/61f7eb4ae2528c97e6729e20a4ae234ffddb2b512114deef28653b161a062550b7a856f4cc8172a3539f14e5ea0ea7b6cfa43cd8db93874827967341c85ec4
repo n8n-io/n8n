@@ -1,0 +1,62 @@
+{
+  "name": "@opentelemetry/instrumentation-undici",
+  "version": "0.20.0",
+  "description": "OpenTelemetry instrumentation for `undici` http client and Node.js fetch()",
+  "main": "build/src/index.js",
+  "types": "build/src/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/open-telemetry/opentelemetry-js-contrib.git",
+    "directory": "packages/instrumentation-undici"
+  },
+  "scripts": {
+    "clean": "rimraf build/*",
+    "compile": "tsc -p .",
+    "compile:with-dependencies": "nx run-many -t compile -p @opentelemetry/instrumentation-undici",
+    "prepublishOnly": "npm run compile",
+    "tdd": "npm run test -- --watch-extensions ts --watch",
+    "test": "nyc --no-clean mocha test/**/*.test.ts",
+    "test-all-versions": "tav",
+    "version:update": "node ../../scripts/version-update.js",
+    "watch": "tsc -w"
+  },
+  "keywords": [
+    "opentelemetry",
+    "fetch",
+    "undici",
+    "nodejs",
+    "tracing",
+    "instrumentation"
+  ],
+  "author": "OpenTelemetry Authors",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": "^18.19.0 || >=20.6.0"
+  },
+  "files": [
+    "build/src/**/*.js",
+    "build/src/**/*.js.map",
+    "build/src/**/*.d.ts"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@opentelemetry/api": "^1.7.0",
+    "@opentelemetry/sdk-metrics": "^2.0.0",
+    "@opentelemetry/sdk-trace-base": "^2.0.0",
+    "@opentelemetry/sdk-trace-node": "^2.0.0",
+    "undici": "6.21.3"
+  },
+  "peerDependencies": {
+    "@opentelemetry/api": "^1.7.0"
+  },
+  "dependencies": {
+    "@opentelemetry/core": "^2.0.0",
+    "@opentelemetry/instrumentation": "^0.210.0",
+    "@opentelemetry/semantic-conventions": "^1.24.0"
+  },
+  "homepage": "https://github.com/open-telemetry/opentelemetry-js-contrib/tree/main/packages/instrumentation-undici#readme",
+  "sideEffects": false,
+  "gitHead": "c84212cca7f010b80747cccb9942474e0459df6e"
+}

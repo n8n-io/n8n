@@ -1,0 +1,27 @@
+language: node_js
+cache: npm
+
+# Trigger a push build on master and greenkeeper branches + PRs build on every branches
+# Avoid double build on PRs (See https://github.com/travis-ci/travis-ci/issues/1147)
+branches:
+  only:
+    - master
+    - /^greenkeeper.*$/
+    - beta # semantic-release preview releases
+    - next # semantic-release @next releases
+    - /^\d+\.x$/ # semantic-release maintenance releases
+
+stages:
+  - test
+  - name: release
+    if: branch =~ /^(\d+\.x|master|next|beta)$/ AND type IN (push)
+
+jobs:
+  include:
+    - stage: test
+      node_js: 10
+    - node_js: 8
+    - stage: release
+      node_js: lts/*
+      env: semantic-release
+      script: npx semantic-release

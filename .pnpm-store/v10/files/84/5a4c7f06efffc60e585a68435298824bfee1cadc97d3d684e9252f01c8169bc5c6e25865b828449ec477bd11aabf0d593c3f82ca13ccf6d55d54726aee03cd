@@ -1,0 +1,30 @@
+name: AArch64 Linux CMake
+
+on:
+  push:
+  pull_request:
+  schedule:
+    # min hours day(month) month day(week)
+    - cron: '0 0 7,22 * *'
+
+jobs:
+  # Building using the github runner environement directly.
+  make:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        targets: [
+          [aarch64],
+          [aarch64be],
+          [aarch64-linux-gnu],
+          [aarch64_be-linux-gnu]
+        ]
+      fail-fast: false
+    env:
+      TARGET: ${{ matrix.targets[0] }}
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build
+      run: make --directory=cmake/ci ${TARGET}_build
+    - name: Test
+      run: make --directory=cmake/ci ${TARGET}_test

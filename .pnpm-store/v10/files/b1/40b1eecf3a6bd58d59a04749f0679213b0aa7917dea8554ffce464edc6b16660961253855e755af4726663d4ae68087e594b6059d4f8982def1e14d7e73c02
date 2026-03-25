@@ -1,0 +1,10 @@
+{
+  "extends": [
+    "config:base"
+  ],
+  "devDependencies": {
+    "automerge": true,
+    "commitMessageTopic": "devDependency {{depName}}"
+  },
+  "rangeStrategy": "bump"
+}

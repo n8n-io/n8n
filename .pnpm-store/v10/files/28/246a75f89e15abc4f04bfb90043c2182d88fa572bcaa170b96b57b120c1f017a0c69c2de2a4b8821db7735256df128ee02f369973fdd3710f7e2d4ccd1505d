@@ -1,0 +1,1 @@
+.el-header{--el-header-padding:0 20px;--el-header-height:60px;padding:var(--el-header-padding);box-sizing:border-box;flex-shrink:0;height:var(--el-header-height)}

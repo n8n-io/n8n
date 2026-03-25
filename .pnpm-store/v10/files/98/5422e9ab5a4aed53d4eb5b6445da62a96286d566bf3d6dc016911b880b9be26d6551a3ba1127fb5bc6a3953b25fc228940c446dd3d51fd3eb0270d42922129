@@ -1,0 +1,13 @@
+import { InferInteropZodInput, InferInteropZodOutput, InteropZodDefault, InteropZodIssue, InteropZodLiteral, InteropZodObject, InteropZodObjectShape, InteropZodOptional, InteropZodType, Mutable, ZodDefaultV3, ZodDefaultV4, ZodNullableV4, ZodObjectMain, ZodObjectV3, ZodObjectV4, ZodObjectV4Classic, ZodOptionalV3, ZodOptionalV4, ZodStringV3, ZodStringV4, extendInteropZodObject, getInteropZodDefaultGetter, getInteropZodObjectShape, getSchemaDescription, interopParse, interopParseAsync, interopSafeParse, interopSafeParseAsync, interopZodObjectMakeFieldsOptional, interopZodObjectPartial, interopZodObjectPassthrough, interopZodObjectStrict, interopZodTransformInputSchema, isInteropZodError, isInteropZodLiteral, isInteropZodObject, isInteropZodSchema, isShapelessZodSchema, isSimpleStringZodSchema, isZodArrayV4, isZodLiteralV3, isZodLiteralV4, isZodNullableV4, isZodObjectV3, isZodObjectV4, isZodOptionalV4, isZodSchema, isZodSchemaV3, isZodSchemaV4 } from "./zod.cjs";
+
+//#region src/utils/types/index.d.ts
+/**
+ * Represents a string value with autocompleted, but not required, suggestions.
+ */
+type StringWithAutocomplete<T> = T | (string & Record<never, never>);
+type InputValues<K extends string = string> = Record<K, any>;
+type PartialValues<K extends string = string> = Record<K, string | (() => Promise<string>) | (() => string)>;
+type ChainValues = Record<string, any>;
+//#endregion
+export { ChainValues, InferInteropZodInput, InferInteropZodOutput, InputValues, InteropZodDefault, InteropZodIssue, InteropZodLiteral, InteropZodObject, InteropZodObjectShape, InteropZodOptional, InteropZodType, Mutable, PartialValues, StringWithAutocomplete, ZodDefaultV3, ZodDefaultV4, ZodNullableV4, ZodObjectMain, ZodObjectV3, ZodObjectV4, ZodObjectV4Classic, ZodOptionalV3, ZodOptionalV4, ZodStringV3, ZodStringV4, extendInteropZodObject, getInteropZodDefaultGetter, getInteropZodObjectShape, getSchemaDescription, interopParse, interopParseAsync, interopSafeParse, interopSafeParseAsync, interopZodObjectMakeFieldsOptional, interopZodObjectPartial, interopZodObjectPassthrough, interopZodObjectStrict, interopZodTransformInputSchema, isInteropZodError, isInteropZodLiteral, isInteropZodObject, isInteropZodSchema, isShapelessZodSchema, isSimpleStringZodSchema, isZodArrayV4, isZodLiteralV3, isZodLiteralV4, isZodNullableV4, isZodObjectV3, isZodObjectV4, isZodOptionalV4, isZodSchema, isZodSchemaV3, isZodSchemaV4 };
+//# sourceMappingURL=index.d.cts.map

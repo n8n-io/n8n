@@ -1,0 +1,457 @@
+// Copyright 2021 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package google.monitoring.v3;
+
+import "google/api/resource.proto";
+import "google/protobuf/duration.proto";
+import "google/type/calendar_period.proto";
+
+option csharp_namespace = "Google.Cloud.Monitoring.V3";
+option go_package = "cloud.google.com/go/monitoring/apiv3/v2/monitoringpb;monitoringpb";
+option java_multiple_files = true;
+option java_outer_classname = "ServiceMonitoringProto";
+option java_package = "com.google.monitoring.v3";
+option php_namespace = "Google\\Cloud\\Monitoring\\V3";
+option ruby_package = "Google::Cloud::Monitoring::V3";
+
+// A `Service` is a discrete, autonomous, and network-accessible unit, designed
+// to solve an individual concern
+// ([Wikipedia](https://en.wikipedia.org/wiki/Service-orientation)). In
+// Cloud Monitoring, a `Service` acts as the root resource under which
+// operational aspects of the service are accessible.
+message Service {
+  option (google.api.resource) = {
+    type: "monitoring.googleapis.com/Service"
+    pattern: "projects/{project}/services/{service}"
+    pattern: "organizations/{organization}/services/{service}"
+    pattern: "folders/{folder}/services/{service}"
+    pattern: "*"
+  };
+
+  // Custom view of service telemetry. Currently a place-holder pending final
+  // design.
+  message Custom {
+
+  }
+
+  // App Engine service. Learn more at https://cloud.google.com/appengine.
+  message AppEngine {
+    // The ID of the App Engine module underlying this service. Corresponds to
+    // the `module_id` resource label in the `gae_app` monitored resource:
+    // https://cloud.google.com/monitoring/api/resources#tag_gae_app
+    string module_id = 1;
+  }
+
+  // Cloud Endpoints service. Learn more at https://cloud.google.com/endpoints.
+  message CloudEndpoints {
+    // The name of the Cloud Endpoints service underlying this service.
+    // Corresponds to the `service` resource label in the `api` monitored
+    // resource: https://cloud.google.com/monitoring/api/resources#tag_api
+    string service = 1;
+  }
+
+  // Istio service scoped to a single Kubernetes cluster. Learn more at
+  // https://istio.io. Clusters running OSS Istio will have their services
+  // ingested as this type.
+  message ClusterIstio {
+    // The location of the Kubernetes cluster in which this Istio service is
+    // defined. Corresponds to the `location` resource label in `k8s_cluster`
+    // resources.
+    string location = 1;
+
+    // The name of the Kubernetes cluster in which this Istio service is
+    // defined. Corresponds to the `cluster_name` resource label in
+    // `k8s_cluster` resources.
+    string cluster_name = 2;
+
+    // The namespace of the Istio service underlying this service. Corresponds
+    // to the `destination_service_namespace` metric label in Istio metrics.
+    string service_namespace = 3;
+
+    // The name of the Istio service underlying this service. Corresponds to the
+    // `destination_service_name` metric label in Istio metrics.
+    string service_name = 4;
+  }
+
+  // Istio service scoped to an Istio mesh. Anthos clusters running ASM < 1.6.8
+  // will have their services ingested as this type.
+  message MeshIstio {
+    // Identifier for the mesh in which this Istio service is defined.
+    // Corresponds to the `mesh_uid` metric label in Istio metrics.
+    string mesh_uid = 1;
+
+    // The namespace of the Istio service underlying this service. Corresponds
+    // to the `destination_service_namespace` metric label in Istio metrics.
+    string service_namespace = 3;
+
+    // The name of the Istio service underlying this service. Corresponds to the
+    // `destination_service_name` metric label in Istio metrics.
+    string service_name = 4;
+  }
+
+  // Canonical service scoped to an Istio mesh. Anthos clusters running ASM >=
+  // 1.6.8 will have their services ingested as this type.
+  message IstioCanonicalService {
+    // Identifier for the Istio mesh in which this canonical service is defined.
+    // Corresponds to the `mesh_uid` metric label in
+    // [Istio metrics](https://cloud.google.com/monitoring/api/metrics_istio).
+    string mesh_uid = 1;
+
+    // The namespace of the canonical service underlying this service.
+    // Corresponds to the `destination_canonical_service_namespace` metric
+    // label in [Istio
+    // metrics](https://cloud.google.com/monitoring/api/metrics_istio).
+    string canonical_service_namespace = 3;
+
+    // The name of the canonical service underlying this service.
+    // Corresponds to the `destination_canonical_service_name` metric label in
+    // label in [Istio
+    // metrics](https://cloud.google.com/monitoring/api/metrics_istio).
+    string canonical_service = 4;
+  }
+
+  // Configuration for how to query telemetry on a Service.
+  message Telemetry {
+    // The full name of the resource that defines this service. Formatted as
+    // described in https://cloud.google.com/apis/design/resource_names.
+    string resource_name = 1;
+  }
+
+  // Resource name for this Service. The format is:
+  //
+  //     projects/[PROJECT_ID_OR_NUMBER]/services/[SERVICE_ID]
+  string name = 1;
+
+  // Name used for UI elements listing this Service.
+  string display_name = 2;
+
+  // REQUIRED. Service-identifying atoms specifying the underlying service.
+  oneof identifier {
+    // Custom service type.
+    Custom custom = 6;
+
+    // Type used for App Engine services.
+    AppEngine app_engine = 7;
+
+    // Type used for Cloud Endpoints services.
+    CloudEndpoints cloud_endpoints = 8;
+
+    // Type used for Istio services that live in a Kubernetes cluster.
+    ClusterIstio cluster_istio = 9;
+
+    // Type used for Istio services scoped to an Istio mesh.
+    MeshIstio mesh_istio = 10;
+
+    // Type used for canonical services scoped to an Istio mesh.
+    // Metrics for Istio are
+    // [documented here](https://istio.io/latest/docs/reference/config/metrics/)
+    IstioCanonicalService istio_canonical_service = 11;
+  }
+
+  // Configuration for how to query telemetry on a Service.
+  Telemetry telemetry = 13;
+
+  // Labels which have been used to annotate the service. Label keys must start
+  // with a letter. Label keys and values may contain lowercase letters,
+  // numbers, underscores, and dashes. Label keys and values have a maximum
+  // length of 63 characters, and must be less than 128 bytes in size. Up to 64
+  // label entries may be stored. For labels which do not have a semantic value,
+  // the empty string may be supplied for the label value.
+  map<string, string> user_labels = 14;
+}
+
+// A Service-Level Objective (SLO) describes a level of desired good service. It
+// consists of a service-level indicator (SLI), a performance goal, and a period
+// over which the objective is to be evaluated against that goal. The SLO can
+// use SLIs defined in a number of different manners. Typical SLOs might include
+// "99% of requests in each rolling week have latency below 200 milliseconds" or
+// "99.5% of requests in each calendar month return successfully."
+message ServiceLevelObjective {
+  option (google.api.resource) = {
+    type: "monitoring.googleapis.com/ServiceLevelObjective"
+    pattern: "projects/{project}/services/{service}/serviceLevelObjectives/{service_level_objective}"
+    pattern: "organizations/{organization}/services/{service}/serviceLevelObjectives/{service_level_objective}"
+    pattern: "folders/{folder}/services/{service}/serviceLevelObjectives/{service_level_objective}"
+    pattern: "*"
+    history: ORIGINALLY_SINGLE_PATTERN
+  };
+
+  // `ServiceLevelObjective.View` determines what form of
+  // `ServiceLevelObjective` is returned from `GetServiceLevelObjective`,
+  // `ListServiceLevelObjectives`, and `ListServiceLevelObjectiveVersions` RPCs.
+  enum View {
+    // Same as FULL.
+    VIEW_UNSPECIFIED = 0;
+
+    // Return the embedded `ServiceLevelIndicator` in the form in which it was
+    // defined. If it was defined using a `BasicSli`, return that `BasicSli`.
+    FULL = 2;
+
+    // For `ServiceLevelIndicator`s using `BasicSli` articulation, instead
+    // return the `ServiceLevelIndicator` with its mode of computation fully
+    // spelled out as a `RequestBasedSli`. For `ServiceLevelIndicator`s using
+    // `RequestBasedSli` or `WindowsBasedSli`, return the
+    // `ServiceLevelIndicator` as it was provided.
+    EXPLICIT = 1;
+  }
+
+  // Resource name for this `ServiceLevelObjective`. The format is:
+  //
+  //     projects/[PROJECT_ID_OR_NUMBER]/services/[SERVICE_ID]/serviceLevelObjectives/[SLO_NAME]
+  string name = 1;
+
+  // Name used for UI elements listing this SLO.
+  string display_name = 11;
+
+  // The definition of good service, used to measure and calculate the quality
+  // of the `Service`'s performance with respect to a single aspect of service
+  // quality.
+  ServiceLevelIndicator service_level_indicator = 3;
+
+  // The fraction of service that must be good in order for this objective to be
+  // met. `0 < goal <= 0.999`.
+  double goal = 4;
+
+  // The time period over which the objective will be evaluated.
+  oneof period {
+    // A rolling time period, semantically "in the past `<rolling_period>`".
+    // Must be an integer multiple of 1 day no larger than 30 days.
+    google.protobuf.Duration rolling_period = 5;
+
+    // A calendar period, semantically "since the start of the current
+    // `<calendar_period>`". At this time, only `DAY`, `WEEK`, `FORTNIGHT`, and
+    // `MONTH` are supported.
+    google.type.CalendarPeriod calendar_period = 6;
+  }
+
+  // Labels which have been used to annotate the service-level objective. Label
+  // keys must start with a letter. Label keys and values may contain lowercase
+  // letters, numbers, underscores, and dashes. Label keys and values have a
+  // maximum length of 63 characters, and must be less than 128 bytes in size.
+  // Up to 64 label entries may be stored. For labels which do not have a
+  // semantic value, the empty string may be supplied for the label value.
+  map<string, string> user_labels = 12;
+}
+
+// A Service-Level Indicator (SLI) describes the "performance" of a service. For
+// some services, the SLI is well-defined. In such cases, the SLI can be
+// described easily by referencing the well-known SLI and providing the needed
+// parameters. Alternatively, a "custom" SLI can be defined with a query to the
+// underlying metric store. An SLI is defined to be `good_service /
+// total_service` over any queried time interval. The value of performance
+// always falls into the range `0 <= performance <= 1`. A custom SLI describes
+// how to compute this ratio, whether this is by dividing values from a pair of
+// time series, cutting a `Distribution` into good and bad counts, or counting
+// time windows in which the service complies with a criterion. For separation
+// of concerns, a single Service-Level Indicator measures performance for only
+// one aspect of service quality, such as fraction of successful queries or
+// fast-enough queries.
+message ServiceLevelIndicator {
+  // Service level indicators can be grouped by whether the "unit" of service
+  // being measured is based on counts of good requests or on counts of good
+  // time windows
+  oneof type {
+    // Basic SLI on a well-known service type.
+    BasicSli basic_sli = 4;
+
+    // Request-based SLIs
+    RequestBasedSli request_based = 1;
+
+    // Windows-based SLIs
+    WindowsBasedSli windows_based = 2;
+  }
+}
+
+// An SLI measuring performance on a well-known service type. Performance will
+// be computed on the basis of pre-defined metrics. The type of the
+// `service_resource` determines the metrics to use and the
+// `service_resource.labels` and `metric_labels` are used to construct a
+// monitoring filter to filter that metric down to just the data relevant to
+// this service.
+message BasicSli {
+  // Future parameters for the availability SLI.
+  message AvailabilityCriteria {
+
+  }
+
+  // Parameters for a latency threshold SLI.
+  message LatencyCriteria {
+    // Good service is defined to be the count of requests made to this service
+    // that return in no more than `threshold`.
+    google.protobuf.Duration threshold = 3;
+  }
+
+  // OPTIONAL: The set of RPCs to which this SLI is relevant. Telemetry from
+  // other methods will not be used to calculate performance for this SLI. If
+  // omitted, this SLI applies to all the Service's methods. For service types
+  // that don't support breaking down by method, setting this field will result
+  // in an error.
+  repeated string method = 7;
+
+  // OPTIONAL: The set of locations to which this SLI is relevant. Telemetry
+  // from other locations will not be used to calculate performance for this
+  // SLI. If omitted, this SLI applies to all locations in which the Service has
+  // activity. For service types that don't support breaking down by location,
+  // setting this field will result in an error.
+  repeated string location = 8;
+
+  // OPTIONAL: The set of API versions to which this SLI is relevant. Telemetry
+  // from other API versions will not be used to calculate performance for this
+  // SLI. If omitted, this SLI applies to all API versions. For service types
+  // that don't support breaking down by version, setting this field will result
+  // in an error.
+  repeated string version = 9;
+
+  // This SLI can be evaluated on the basis of availability or latency.
+  oneof sli_criteria {
+    // Good service is defined to be the count of requests made to this service
+    // that return successfully.
+    AvailabilityCriteria availability = 2;
+
+    // Good service is defined to be the count of requests made to this service
+    // that are fast enough with respect to `latency.threshold`.
+    LatencyCriteria latency = 3;
+  }
+}
+
+// Range of numerical values within `min` and `max`.
+message Range {
+  // Range minimum.
+  double min = 1;
+
+  // Range maximum.
+  double max = 2;
+}
+
+// Service Level Indicators for which atomic units of service are counted
+// directly.
+message RequestBasedSli {
+  // The means to compute a ratio of `good_service` to `total_service`.
+  oneof method {
+    // `good_total_ratio` is used when the ratio of `good_service` to
+    // `total_service` is computed from two `TimeSeries`.
+    TimeSeriesRatio good_total_ratio = 1;
+
+    // `distribution_cut` is used when `good_service` is a count of values
+    // aggregated in a `Distribution` that fall into a good range. The
+    // `total_service` is the total count of all values aggregated in the
+    // `Distribution`.
+    DistributionCut distribution_cut = 3;
+  }
+}
+
+// A `TimeSeriesRatio` specifies two `TimeSeries` to use for computing the
+// `good_service / total_service` ratio. The specified `TimeSeries` must have
+// `ValueType = DOUBLE` or `ValueType = INT64` and must have `MetricKind =
+// DELTA` or `MetricKind = CUMULATIVE`. The `TimeSeriesRatio` must specify
+// exactly two of good, bad, and total, and the relationship `good_service +
+// bad_service = total_service` will be assumed.
+message TimeSeriesRatio {
+  // A [monitoring filter](https://cloud.google.com/monitoring/api/v3/filters)
+  // specifying a `TimeSeries` quantifying good service provided. Must have
+  // `ValueType = DOUBLE` or `ValueType = INT64` and must have `MetricKind =
+  // DELTA` or `MetricKind = CUMULATIVE`.
+  string good_service_filter = 4;
+
+  // A [monitoring filter](https://cloud.google.com/monitoring/api/v3/filters)
+  // specifying a `TimeSeries` quantifying bad service, either demanded service
+  // that was not provided or demanded service that was of inadequate quality.
+  // Must have `ValueType = DOUBLE` or `ValueType = INT64` and must have
+  // `MetricKind = DELTA` or `MetricKind = CUMULATIVE`.
+  string bad_service_filter = 5;
+
+  // A [monitoring filter](https://cloud.google.com/monitoring/api/v3/filters)
+  // specifying a `TimeSeries` quantifying total demanded service. Must have
+  // `ValueType = DOUBLE` or `ValueType = INT64` and must have `MetricKind =
+  // DELTA` or `MetricKind = CUMULATIVE`.
+  string total_service_filter = 6;
+}
+
+// A `DistributionCut` defines a `TimeSeries` and thresholds used for measuring
+// good service and total service. The `TimeSeries` must have `ValueType =
+// DISTRIBUTION` and `MetricKind = DELTA` or `MetricKind = CUMULATIVE`. The
+// computed `good_service` will be the estimated count of values in the
+// `Distribution` that fall within the specified `min` and `max`.
+message DistributionCut {
+  // A [monitoring filter](https://cloud.google.com/monitoring/api/v3/filters)
+  // specifying a `TimeSeries` aggregating values. Must have `ValueType =
+  // DISTRIBUTION` and `MetricKind = DELTA` or `MetricKind = CUMULATIVE`.
+  string distribution_filter = 4;
+
+  // Range of values considered "good." For a one-sided range, set one bound to
+  // an infinite value.
+  Range range = 5;
+}
+
+// A `WindowsBasedSli` defines `good_service` as the count of time windows for
+// which the provided service was of good quality. Criteria for determining
+// if service was good are embedded in the `window_criterion`.
+message WindowsBasedSli {
+  // A `PerformanceThreshold` is used when each window is good when that window
+  // has a sufficiently high `performance`.
+  message PerformanceThreshold {
+    // The means, either a request-based SLI or a basic SLI, by which to compute
+    // performance over a window.
+    oneof type {
+      // `RequestBasedSli` to evaluate to judge window quality.
+      RequestBasedSli performance = 1;
+
+      // `BasicSli` to evaluate to judge window quality.
+      BasicSli basic_sli_performance = 3;
+    }
+
+    // If window `performance >= threshold`, the window is counted as good.
+    double threshold = 2;
+  }
+
+  // A `MetricRange` is used when each window is good when the value x of a
+  // single `TimeSeries` satisfies `range.min <= x <= range.max`. The provided
+  // `TimeSeries` must have `ValueType = INT64` or `ValueType = DOUBLE` and
+  // `MetricKind = GAUGE`.
+  message MetricRange {
+    // A [monitoring filter](https://cloud.google.com/monitoring/api/v3/filters)
+    // specifying the `TimeSeries` to use for evaluating window quality.
+    string time_series = 1;
+
+    // Range of values considered "good." For a one-sided range, set one bound
+    // to an infinite value.
+    Range range = 4;
+  }
+
+  // The criterion to use for evaluating window goodness.
+  oneof window_criterion {
+    // A [monitoring filter](https://cloud.google.com/monitoring/api/v3/filters)
+    // specifying a `TimeSeries` with `ValueType = BOOL`. The window is good if
+    // any `true` values appear in the window.
+    string good_bad_metric_filter = 5;
+
+    // A window is good if its `performance` is high enough.
+    PerformanceThreshold good_total_ratio_threshold = 2;
+
+    // A window is good if the metric's value is in a good range, averaged
+    // across returned streams.
+    MetricRange metric_mean_in_range = 6;
+
+    // A window is good if the metric's value is in a good range, summed across
+    // returned streams.
+    MetricRange metric_sum_in_range = 7;
+  }
+
+  // Duration over which window quality is evaluated. Must be an integer
+  // fraction of a day and at least `60s`.
+  google.protobuf.Duration window_period = 4;
+}

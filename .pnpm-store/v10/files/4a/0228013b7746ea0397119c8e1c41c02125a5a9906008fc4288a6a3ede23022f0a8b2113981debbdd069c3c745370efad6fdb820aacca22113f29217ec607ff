@@ -1,0 +1,40 @@
+{
+  "name": "oas-resolver",
+  "version": "2.5.6",
+  "description": "Resolve external $refs in OpenAPI (swagger) 2.0 / 3.x definitions",
+  "main": "index.js",
+  "bin": {
+    "resolve": "resolve.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "funding": "https://github.com/Mermade/oas-kit?sponsor=1",
+  "keywords": [
+    "openapi",
+    "swagger",
+    "oas",
+    "resolver",
+    "resolution",
+    "ref",
+    "json-pointer",
+    "json-ref"
+  ],
+  "author": "Mike Ralphson",
+  "license": "BSD-3-Clause",
+  "dependencies": {
+    "node-fetch-h2": "^2.3.0",
+    "oas-kit-common": "^1.0.8",
+    "reftools": "^1.1.9",
+    "yaml": "^1.10.0",
+    "yargs": "^17.0.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Mermade/oas-kit.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mermade/oas-kit/issues"
+  },
+  "gitHead": "b1bba3fc5007e96a991bf2a015cf0534ac36b88b"
+}

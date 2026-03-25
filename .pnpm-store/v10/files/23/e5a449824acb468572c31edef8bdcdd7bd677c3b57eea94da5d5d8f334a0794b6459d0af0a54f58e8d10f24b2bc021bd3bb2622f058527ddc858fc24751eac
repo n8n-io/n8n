@@ -1,0 +1,39 @@
+{
+	"name": "clean-stack",
+	"version": "2.2.0",
+	"description": "Clean up error stack traces",
+	"license": "MIT",
+	"repository": "sindresorhus/clean-stack",
+	"author": {
+		"name": "Sindre Sorhus",
+		"email": "sindresorhus@gmail.com",
+		"url": "sindresorhus.com"
+	},
+	"engines": {
+		"node": ">=6"
+	},
+	"scripts": {
+		"test": "xo && ava && tsd"
+	},
+	"files": [
+		"index.js",
+		"index.d.ts"
+	],
+	"keywords": [
+		"clean",
+		"stack",
+		"trace",
+		"traces",
+		"error",
+		"err",
+		"electron"
+	],
+	"devDependencies": {
+		"ava": "^1.4.1",
+		"tsd": "^0.7.2",
+		"xo": "^0.24.0"
+	},
+	"browser": {
+		"os": false
+	}
+}

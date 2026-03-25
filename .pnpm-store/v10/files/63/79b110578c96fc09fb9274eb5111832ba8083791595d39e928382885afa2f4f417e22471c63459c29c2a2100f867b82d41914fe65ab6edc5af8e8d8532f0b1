@@ -1,0 +1,9 @@
+{
+  "singleQuote": false,
+  "trailingComma": "all",
+  "arrowParens": "avoid",
+  "importOrder": ["^~/(.*)$", "^[./]"],
+  "importOrderSeparation": true,
+  "importOrderSortSpecifiers": true,
+  "importOrderCaseInsensitive": true
+}

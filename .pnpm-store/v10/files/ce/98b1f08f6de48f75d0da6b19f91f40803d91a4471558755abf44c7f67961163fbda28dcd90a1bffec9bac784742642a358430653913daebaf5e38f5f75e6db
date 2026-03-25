@@ -1,0 +1,147 @@
+{
+  "name": "@azure/search-documents",
+  "version": "12.1.0",
+  "description": "Azure client library to use Cognitive Search for node.js and browser.",
+  "sdk-type": "client",
+  "main": "dist/index.js",
+  "module": "dist-esm/src/index.js",
+  "types": "types/search-documents.d.ts",
+  "scripts": {
+    "audit": "node ../../../common/scripts/rush-audit.js && rimraf node_modules package-lock.json && npm i --package-lock-only 2>&1 && npm audit",
+    "build": "npm run clean && tsc -p . && dev-tool run bundle && dev-tool run extract-api",
+    "build:browser": "tsc -p . && dev-tool run bundle",
+    "build:node": "tsc -p . && dev-tool run bundle",
+    "build:samples": "echo Obsolete.",
+    "build:test": "tsc -p . && dev-tool run bundle",
+    "check-format": "dev-tool run vendored prettier --list-different --config ../../../.prettierrc.json --ignore-path ../../../.prettierignore \"src/**/*.ts\" \"test/**/*.ts\" \"samples-dev/**/*.ts\" \"*.{js,json}\"",
+    "clean": "rimraf --glob dist dist-* temp types *.tgz *.log",
+    "execute:samples": "dev-tool samples run samples-dev",
+    "extract-api": "tsc -p . && dev-tool run extract-api",
+    "format": "dev-tool run vendored prettier --write --config ../../../.prettierrc.json --ignore-path ../../../.prettierignore \"src/**/*.ts\" \"test/**/*.ts\" \"samples-dev/**/*.ts\" \"*.{js,json}\"",
+    "generate:client": "autorest --typescript swagger/Service.md & autorest --typescript swagger/Data.md & wait",
+    "generate:embeddings": "ts-node scripts/generateSampleEmbeddings.ts",
+    "integration-test": "npm run integration-test:node && npm run integration-test:browser",
+    "integration-test:browser": "dev-tool run test:browser",
+    "integration-test:node": "dev-tool run test:node-js-input -- --timeout 5000000 'dist-esm/test/**/*.spec.js'",
+    "lint": "eslint package.json api-extractor.json src test samples-dev --ext .ts",
+    "lint:fix": "eslint package.json api-extractor.json src test samples-dev --ext .ts --fix --fix-type [problem,suggestion]",
+    "pack": "npm pack 2>&1",
+    "test": "npm run build:test && npm run unit-test",
+    "test:browser": "npm run build:test && npm run unit-test:browser",
+    "test:node": "npm run build:test && npm run unit-test:node",
+    "unit-test": "npm run unit-test:node && npm run unit-test:browser",
+    "unit-test:browser": "dev-tool run test:browser",
+    "unit-test:node": "dev-tool run test:node-ts-input -- --timeout 1200000 \"test/**/*.spec.ts\" \"test/**/**/*.spec.ts\""
+  },
+  "files": [
+    "LICENSE",
+    "README.md",
+    "dist-esm/src/",
+    "dist/",
+    "types/search-documents.d.ts"
+  ],
+  "browser": {
+    "./dist-esm/src/base64.js": "./dist-esm/src/base64.browser.js",
+    "./dist-esm/src/synonymMapHelper.js": "./dist-esm/src/synonymMapHelper.browser.js"
+  },
+  "//metadata": {
+    "constantPaths": [
+      {
+        "path": "src/constants.ts",
+        "prefix": "SDK_VERSION"
+      },
+      {
+        "path": "src/generated/data/searchClient.ts",
+        "prefix": "packageDetails"
+      },
+      {
+        "path": "src/generated/service/searchServiceClient.ts",
+        "prefix": "packageDetails"
+      },
+      {
+        "path": "swagger/Data.md",
+        "prefix": "package-version"
+      },
+      {
+        "path": "swagger/Service.md",
+        "prefix": "package-version"
+      }
+    ]
+  },
+  "repository": "github:Azure/azure-sdk-for-js",
+  "keywords": [
+    "azure",
+    "cloud"
+  ],
+  "author": "Microsoft Corporation",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Azure/azure-sdk-for-js/issues"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "homepage": "https://github.com/Azure/azure-sdk-for-js/tree/main/sdk/search/search-documents/",
+  "sideEffects": false,
+  "dependencies": {
+    "@azure/core-auth": "^1.3.0",
+    "@azure/core-client": "^1.3.0",
+    "@azure/core-http-compat": "^2.0.1",
+    "@azure/core-paging": "^1.1.1",
+    "@azure/core-rest-pipeline": "^1.3.0",
+    "@azure/core-tracing": "^1.0.0",
+    "@azure/core-util": "^1.0.0",
+    "@azure/logger": "^1.0.0",
+    "events": "^3.0.0",
+    "tslib": "^2.2.0"
+  },
+  "devDependencies": {
+    "@azure-tools/test-credential": "^2.0.0",
+    "@azure-tools/test-recorder": "^3.0.0",
+    "@azure-tools/test-utils": "^1.0.1",
+    "@azure/dev-tool": "^1.0.0",
+    "@azure/eslint-plugin-azure-sdk": "^3.0.0",
+    "@azure/identity": "^4.0.1",
+    "@azure/openai": "1.0.0-beta.13",
+    "@microsoft/api-extractor": "^7.31.1",
+    "@types/chai": "^4.1.6",
+    "@types/mocha": "^10.0.0",
+    "@types/node": "^18.0.0",
+    "@types/sinon": "^17.0.0",
+    "chai": "^4.2.0",
+    "cross-env": "^7.0.2",
+    "dotenv": "^16.0.0",
+    "eslint": "^8.0.0",
+    "inherits": "^2.0.3",
+    "karma-chrome-launcher": "^3.0.0",
+    "karma-coverage": "^2.0.0",
+    "karma-env-preprocessor": "^0.1.1",
+    "karma-firefox-launcher": "^1.1.0",
+    "karma-json-preprocessor": "^0.3.3",
+    "karma-json-to-file-reporter": "^1.0.1",
+    "karma-junit-reporter": "^2.0.1",
+    "karma-mocha-reporter": "^2.2.5",
+    "karma-mocha": "^2.0.1",
+    "karma-sourcemap-loader": "^0.3.8",
+    "karma": "^6.2.0",
+    "mocha": "^10.0.0",
+    "nyc": "^17.0.0",
+    "rimraf": "^5.0.5",
+    "sinon": "^17.0.0",
+    "ts-node": "^10.0.0",
+    "typescript": "~5.3.3",
+    "util": "^0.12.1",
+    "type-plus": "^7.6.2"
+  },
+  "//sampleConfiguration": {
+    "productName": "Azure Search Documents",
+    "productSlugs": [
+      "azure",
+      "azure-cognitive-search",
+      "azure-search"
+    ],
+    "requiredResources": {
+      "Azure Search Documents instance": "https://docs.microsoft.com/azure/search/search-create-service-portal"
+    }
+  }
+}

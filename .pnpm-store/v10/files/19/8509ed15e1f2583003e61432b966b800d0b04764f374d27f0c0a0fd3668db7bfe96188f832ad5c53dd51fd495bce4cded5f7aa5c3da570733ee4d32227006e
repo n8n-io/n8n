@@ -1,0 +1,75 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset='utf-8' />
+  <title>polished | A lightweight toolset for writing styles in JavaScript</title>
+  <meta name='viewport' content='width=device-width,initial-scale=1'>
+  <meta name="description" content="A lightweight toolset for writing styles in JavaScript." />
+
+  <!-- Twitter Card data -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:site" content="@b_hough">
+  <meta name="twitter:title" content="✨ polished | A lightweight toolset for writing styles in JavaScript">
+  <meta name="twitter:description" content="A lightweight toolset for writing styles in JavaScript.">
+  <meta name="twitter:creator" content="@b_hough">
+  <meta name="twitter:image" content="/assets/meta.png">
+
+  <!-- Open Graph data -->
+  <meta property="og:title" content="✨ polished | A lightweight toolset for writing styles in JavaScript" />
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content="https://styled-components.com/color-schemer/" />
+  <meta property="og:image" content="/assets/meta.png" />
+  <meta property="og:description" content="A lightweight toolset for writing styles in JavaScript." />
+  <meta property="og:site_name" content="✨ polished" />
+
+  <link href='/assets/bass.css' type='text/css' rel='stylesheet' />
+  <link href='/assets/github.css' type='text/css' rel='stylesheet' />
+  <link href='/assets/style.css' type='text/css' rel='stylesheet' />
+  <link rel="shortcut icon" href="/favicon.png" />
+</head>
+<body class='home'>
+  
+    <header class="header">
+	<img src="/assets/logo.svg" alt="polished" class="logo" />
+	<h2 class="subtitle">A lightweight toolset for writing styles in JavaScript</h2>
+	<a class="button" href="https://github.com/styled-components/polished"><img src="/assets/GitHub-Mark-Light-64px.png" />View on GitHub</a>
+	<a class="button" href="/docs/">Docs</a>
+  <h3>Installation</h3>
+	<div class="installation">
+		<code class="command">npm install --save polished</code>
+	</div>
+  <h3>Usage</h3>
+  <div class="usage">
+		<code class="javascript">import { lighten, modularScale } from 'polished'</code>
+	</div>
+	<h3>Open the console and play around with it!</h3>
+	<div class="repl">
+		<pre class="repl__input"><code>const styles = {
+  color: <span class="repl__func">lighten(0.2, '#000')</span>,
+  "font-size": <span class="repl__func">modularScale(1)</span>,
+  [<span class="repl__func">hiDPI(1.5)</span>]: {
+    "font-size": <span class="repl__func">modularScale(1.25)</span>
+  }
+}</code></pre>
+		<pre class="repl__output"><code>const styles = {
+  color: <span class="repl__func">'#333'</span>,
+  "font-size": <span class="repl__func">'1.33em'</span>,
+  <span class="repl__func">'@media only screen and (-webkit-min-device-pixel-ratio: 1.5), only screen and (min--moz-device-pixel-ratio: 1.5), only screen and (-o-min-device-pixel-ratio: 1.5/1), only screen and (min-resolution: 144dpi), only screen and (min-resolution: 1.5dppx)'</span>: {
+    "font-size": <span class="repl__func">'1.66625em'</span>,
+  }
+}</code></pre>
+	</div>
+</header>
+
+<footer class="footer">
+	<p>Made by <a href="https://github.com/bhough">@bhough</a>, <a href="https://github.com/mxstbr">@mxstbr</a>, <a href="https://github.com/nikgraf">@nikgraf</a> and our <a href="https://github.com/styled-components/polished/graphs/contributors">awesome contributors</a>.</p>
+</footer>
+
+  
+  
+  
+  <script defer src="/assets/polished.js"></script>
+  <script defer src="/assets/script.js"></script>
+  <img src="https://static.scarf.sh/a.png?x-pxid=8ab52548-9fc9-4161-9e8f-d122cdb6c880" />
+</body>
+</html>

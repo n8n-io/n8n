@@ -1,0 +1,1 @@
+{"version":3,"file":"FloatValue.js","sourceRoot":"","sources":["../../../../../src/generated/google/protobuf/FloatValue.ts"],"names":[],"mappings":";AAAA,sBAAsB"}

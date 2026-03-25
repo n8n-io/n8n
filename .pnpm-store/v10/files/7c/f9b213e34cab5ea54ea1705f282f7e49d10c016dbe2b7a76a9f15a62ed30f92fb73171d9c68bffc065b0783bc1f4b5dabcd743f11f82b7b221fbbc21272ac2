@@ -1,0 +1,4 @@
+--recursive
+--reporter spec
+--require dotenv/config
+--slow 1

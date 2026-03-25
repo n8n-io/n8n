@@ -1,0 +1,92 @@
+{
+	"name": "d",
+	"version": "1.0.2",
+	"description": "Property descriptor factory",
+	"author": "Mariusz Nowak <medyk@medikoo.com> (http://www.medikoo.com/)",
+	"keywords": [
+		"descriptor",
+		"es",
+		"ecmascript",
+		"ecma",
+		"property",
+		"descriptors",
+		"meta",
+		"properties"
+	],
+	"repository": "medikoo/d",
+	"dependencies": {
+		"es5-ext": "^0.10.64",
+		"type": "^2.7.2"
+	},
+	"devDependencies": {
+		"eslint": "^8.57.0",
+		"eslint-config-medikoo": "^4.2.0",
+		"git-list-updated": "^1.2.1",
+		"github-release-from-cc-changelog": "^2.3.0",
+		"husky": "^4.3.8",
+		"lint-staged": "~13.2.3",
+		"nyc": "^15.1.0",
+		"prettier-elastic": "^2.8.8",
+		"tad": "^3.1.1"
+	},
+	"husky": {
+		"hooks": {
+			"pre-commit": "lint-staged"
+		}
+	},
+	"lint-staged": {
+		"*.js": [
+			"eslint"
+		],
+		"*.{css,html,js,json,md,yaml,yml}": [
+			"prettier -c"
+		]
+	},
+	"eslintConfig": {
+		"extends": "medikoo/es5",
+		"root": true
+	},
+	"prettier": {
+		"printWidth": 100,
+		"tabWidth": 4,
+		"overrides": [
+			{
+				"files": [
+					"*.md",
+					"*.yml"
+				],
+				"options": {
+					"tabWidth": 2
+				}
+			}
+		]
+	},
+	"nyc": {
+		"all": true,
+		"exclude": [
+			".github",
+			"coverage/**",
+			"test/**",
+			"*.config.js"
+		],
+		"reporter": [
+			"lcov",
+			"html",
+			"text-summary"
+		]
+	},
+	"scripts": {
+		"coverage": "nyc npm test",
+		"lint": "eslint --ignore-path=.gitignore .",
+		"lint:updated": "pipe-git-updated --base=main --ext=js -- eslint --ignore-pattern '!*'",
+		"prettier-check": "prettier -c --ignore-path .gitignore \"**/*.{css,html,js,json,md,yaml,yml}\"",
+		"prettier-check:updated": "pipe-git-updated --base=main --ext=css --ext=html --ext=js --ext=json --ext=md --ext=yaml --ext=yml -- prettier -c",
+		"prettify": "prettier --write --ignore-path .gitignore \"**/*.{css,html,js,json,md,yaml,yml}\"",
+		"prettify:updated": "pipe-git-updated ---base=main -ext=css --ext=html --ext=js --ext=json --ext=md --ext=yaml --ext=yml -- prettier --write",
+		"test": "tad"
+	},
+	"license": "ISC",
+	"engines": {
+		"node": ">=0.12"
+	}
+}

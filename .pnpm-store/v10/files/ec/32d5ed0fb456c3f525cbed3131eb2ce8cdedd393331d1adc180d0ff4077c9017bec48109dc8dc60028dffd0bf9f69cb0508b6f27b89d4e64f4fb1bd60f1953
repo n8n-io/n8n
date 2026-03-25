@@ -1,0 +1,1 @@
+{"version":3,"file":"no-redeclare.d.ts","sourceRoot":"","sources":["../../src/rules/no-redeclare.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,QAAQ,EAAY,MAAM,0BAA0B,CAAC;AAOnE,MAAM,MAAM,UAAU,GAClB,YAAY,GACZ,qBAAqB,GACrB,oBAAoB,CAAC;AACzB,MAAM,MAAM,OAAO,GAAG;IACpB;QACE,cAAc,CAAC,EAAE,OAAO,CAAC;QACzB,sBAAsB,CAAC,EAAE,OAAO,CAAC;KAClC;CACF,CAAC;;AAEF,wBAyQG"}

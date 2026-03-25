@@ -1,0 +1,21 @@
+{
+  "rules": {
+    "trailing-comma": [
+      true,
+      {
+        "multiline": "never",
+        "singleline": "never"
+      }
+    ],
+    "quotemark": [
+      true,
+      "single"
+    ],
+    "class-name": true,
+    "interface-name": [
+      true,
+      "always-prefix"
+    ],
+    "no-consecutive-blank-lines": true
+  }
+}

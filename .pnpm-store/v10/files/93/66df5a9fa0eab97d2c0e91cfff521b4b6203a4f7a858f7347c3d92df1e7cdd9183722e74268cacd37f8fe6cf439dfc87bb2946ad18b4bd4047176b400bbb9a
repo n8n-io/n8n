@@ -1,0 +1,76 @@
+{
+    "name": "mobx-react",
+    "version": "9.1.1",
+    "description": "React bindings for MobX. Create fully reactive components.",
+    "source": "src/index.ts",
+    "main": "dist/index.js",
+    "umd:main": "dist/mobxreact.umd.production.min.js",
+    "unpkg": "dist/mobxreact.umd.production.min.js",
+    "jsdelivr": "dist/mobxreact.umd.production.min.js",
+    "jsnext:main": "dist/mobxreact.esm.js",
+    "module": "dist/mobxreact.esm.js",
+    "react-native": "dist/mobxreact.esm.js",
+    "types": "dist/index.d.ts",
+    "typings": "dist/index.d.ts",
+    "files": [
+        "src",
+        "dist",
+        "LICENSE",
+        "CHANGELOG.md",
+        "README.md",
+        "batching*"
+    ],
+    "sideEffects": false,
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/mobxjs/mobx.git"
+    },
+    "author": "Michel Weststrate",
+    "license": "MIT",
+    "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/mobx"
+    },
+    "bugs": {
+        "url": "https://github.com/mobxjs/mobx/issues"
+    },
+    "homepage": "https://mobx.js.org",
+    "dependencies": {
+        "mobx-react-lite": "^4.0.7"
+    },
+    "peerDependencies": {
+        "mobx": "^6.9.0",
+        "react": "^16.8.0 || ^17 || ^18"
+    },
+    "peerDependenciesMeta": {
+        "react-dom": {
+            "optional": true
+        },
+        "react-native": {
+            "optional": true
+        }
+    },
+    "devDependencies": {
+        "mobx": "^6.12.2",
+        "mobx-react-lite": "^4.0.7",
+        "expose-gc": "^1.0.0"
+    },
+    "keywords": [
+        "mobx",
+        "mobservable",
+        "react-component",
+        "react",
+        "reactjs",
+        "reactive"
+    ],
+    "scripts": {
+        "lint": "eslint src/**/* --ext .js,.ts,.tsx",
+        "build": "node ../../scripts/build.js mobxReact",
+        "build:test": "yarn build --target test",
+        "test": "jest",
+        "test:size": "yarn import-size --report . observer",
+        "test:types": "tsc --noEmit",
+        "test:check": "yarn test:types",
+        "prepublishOnly": "yarn build --target publish"
+    }
+}

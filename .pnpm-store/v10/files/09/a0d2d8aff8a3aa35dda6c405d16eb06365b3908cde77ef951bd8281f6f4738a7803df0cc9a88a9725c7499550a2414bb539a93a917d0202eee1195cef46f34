@@ -1,0 +1,49 @@
+{
+  "name": "v8-to-istanbul",
+  "version": "9.3.0",
+  "description": "convert from v8 coverage format to istanbul's format",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "scripts": {
+    "fix": "standard --fix",
+    "snapshot": "TAP_SNAPSHOT=1 tap test/*.js",
+    "test": "c8 --reporter=html --reporter=text tap --no-coverage test/*.js",
+    "posttest": "standard",
+    "coverage": "c8 report --check-coverage"
+  },
+  "repository": "istanbuljs/v8-to-istanbul",
+  "keywords": [
+    "istanbul",
+    "v8",
+    "coverage"
+  ],
+  "standard": {
+    "ignore": [
+      "**/test/fixtures"
+    ]
+  },
+  "author": "Ben Coe <ben@npmjs.com>",
+  "license": "ISC",
+  "dependencies": {
+    "@jridgewell/trace-mapping": "^0.3.12",
+    "@types/istanbul-lib-coverage": "^2.0.1",
+    "convert-source-map": "^2.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "c8": "^7.2.1",
+    "semver": "^7.3.2",
+    "should": "13.2.3",
+    "source-map": "^0.7.3",
+    "standard": "^17.0.0",
+    "tap": "^16.0.0"
+  },
+  "engines": {
+    "node": ">=10.12.0"
+  },
+  "files": [
+    "lib/*.js",
+    "index.js",
+    "index.d.ts"
+  ]
+}

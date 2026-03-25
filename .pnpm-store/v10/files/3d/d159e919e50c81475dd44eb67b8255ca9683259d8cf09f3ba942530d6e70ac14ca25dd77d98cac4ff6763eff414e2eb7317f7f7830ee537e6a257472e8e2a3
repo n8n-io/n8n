@@ -1,0 +1,1 @@
+{"version":3,"file":"lexer.d.ts","sourceRoot":"","sources":["../../src/lexer.ts"],"names":[],"mappings":"AAEA,OAAO,EAAc,KAAK,EAAE,WAAW,EAAU,MAAM,SAAS,CAAC;AACjE,OAAO,IAAI,MAAM,SAAS,CAAC;AAuG3B;;;;;;;;;;;;;;;;GAgBG;AAEH,wBAAgB,QAAQ,CAAC,IAAI,EAAE,IAAI,EAAE,SAAS,EAAE,KAAK,EAAE,QAgCtD;AAyCD,eAAO,MAAM,GAAG,SAAmB,IAAI,OAAO,MAAM,WAAW,KAAK,EAAE,kBAkQrE,CAAC"}

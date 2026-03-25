@@ -1,0 +1,40 @@
+import { ClientSDK } from "../lib/sdks.js";
+import { Agents } from "./agents.js";
+import { Audio } from "./audio.js";
+import { Batch } from "./batch.js";
+import { Beta } from "./beta.js";
+import { Chat } from "./chat.js";
+import { Classifiers } from "./classifiers.js";
+import { Embeddings } from "./embeddings.js";
+import { Files } from "./files.js";
+import { Fim } from "./fim.js";
+import { FineTuning } from "./finetuning.js";
+import { Models } from "./models.js";
+import { Ocr } from "./ocr.js";
+export declare class Mistral extends ClientSDK {
+    private _models?;
+    get models(): Models;
+    private _beta?;
+    get beta(): Beta;
+    private _files?;
+    get files(): Files;
+    private _fineTuning?;
+    get fineTuning(): FineTuning;
+    private _batch?;
+    get batch(): Batch;
+    private _chat?;
+    get chat(): Chat;
+    private _fim?;
+    get fim(): Fim;
+    private _agents?;
+    get agents(): Agents;
+    private _embeddings?;
+    get embeddings(): Embeddings;
+    private _classifiers?;
+    get classifiers(): Classifiers;
+    private _ocr?;
+    get ocr(): Ocr;
+    private _audio?;
+    get audio(): Audio;
+}
+//# sourceMappingURL=sdk.d.ts.map

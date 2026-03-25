@@ -1,0 +1,1 @@
+{"version":3,"file":"SymbolMetadata.d.ts","sourceRoot":"","sources":["../../src/collector/SymbolMetadata.ts"],"names":[],"mappings":"AAGA,OAAO,KAAK,EAAE,UAAU,EAAE,MAAM,gCAAgC,CAAC;AAEjE;;GAEG;AACH,MAAM,WAAW,sBAAsB;IACrC,sBAAsB,EAAE,UAAU,CAAC;CACpC;AAED;;;GAGG;AACH,qBAAa,cAAc;IAGzB,SAAgB,sBAAsB,EAAE,UAAU,CAAC;gBAEhC,OAAO,EAAE,sBAAsB;CAGnD"}

@@ -1,0 +1,31 @@
+{
+  "name": "@apm-js-collab/tracing-hooks",
+  "version": "0.3.1",
+  "description": "CJS and ESM hooks for orchestrion",
+  "license": "Apache-2.0",
+  "type": "commonjs",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/apm-js-collab/tracing-hooks.git"
+  },
+  "main": "index.js",
+  "scripts": {
+    "test": "c8 borp 'test/**/*.test.{js,mjs}'",
+    "test:update-snapshots": "SNAP_UPDATE=1 npm test"
+  },
+  "files": [
+    "index.js",
+    "hook.mjs",
+    "lib"
+  ],
+  "dependencies": {
+    "@apm-js-collab/code-transformer": "^0.8.0",
+    "debug": "^4.4.1",
+    "module-details-from-path": "^1.0.4"
+  },
+  "devDependencies": {
+    "@matteo.collina/snap": "^0.3.0",
+    "borp": "^0.20.1",
+    "c8": "^10.1.3"
+  }
+}

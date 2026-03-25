@@ -1,0 +1,35 @@
+openapi: 3.1.0
+info:
+  title: My API
+  description: It ain't so wonderful, but at least it's mine.
+  version: '1.0'
+  contact:
+    email: me@theintenet.com
+    name: me
+paths:
+  /test:
+    get:
+      summary: 'test'
+      responses:
+        200:
+          description: test
+          content:
+            application/json:
+              schema:
+                $ref: ./vendor.schema.yaml
+components:
+  schemas:
+    vendor:
+      $ref: ./vendor.schema.yaml
+    myvendor:
+      $ref: ./vendor.schema.yaml
+    simple:
+      $ref: ./simple.yaml
+    A:
+      $ref: ./definitions.yaml#/$defs/A
+    test:
+      $ref: ./rename.yaml
+    rename:
+      type: string
+    rename-2:
+      $ref: ./rename.yaml

@@ -1,0 +1,1 @@
+{"version":3,"file":"LayoutShiftManager.d.ts","sourceRoot":"","sources":["../../../../../src/metrics/web-vitals/lib/LayoutShiftManager.ts"],"names":[],"mappings":"AAiBA,qBAAa,kBAAkB;IAE7B,iCAAiC,CAAC,EAAE,CAAC,KAAK,EAAE,WAAW,KAAK,IAAI,CAAC;IAGjE,aAAa,SAAK;IAElB,eAAe,EAAE,WAAW,EAAE,CAAM;IAGpC,aAAa,CAAC,KAAK,EAAE,WAAW;CA4BjC"}

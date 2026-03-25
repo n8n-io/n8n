@@ -1,0 +1,53 @@
+{
+  "name": "object-hash",
+  "version": "3.0.0",
+  "description": "Generate hashes from javascript objects in node and the browser.",
+  "homepage": "https://github.com/puleos/object-hash",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/puleos/object-hash"
+  },
+  "keywords": [
+    "object",
+    "hash",
+    "sha1",
+    "md5"
+  ],
+  "bugs": {
+    "url": "https://github.com/puleos/object-hash/issues"
+  },
+  "scripts": {
+    "test": "node ./node_modules/.bin/mocha test",
+    "prepublish": "gulp dist"
+  },
+  "author": "Scott Puleo <puleos@gmail.com>",
+  "files": [
+    "index.js",
+    "dist/object_hash.js"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "browserify": "^16.2.3",
+    "gulp": "^4.0.0",
+    "gulp-browserify": "^0.5.1",
+    "gulp-coveralls": "^0.1.4",
+    "gulp-exec": "^3.0.1",
+    "gulp-istanbul": "^1.1.3",
+    "gulp-jshint": "^2.0.0",
+    "gulp-mocha": "^5.0.0",
+    "gulp-rename": "^1.2.0",
+    "gulp-replace": "^1.0.0",
+    "gulp-uglify": "^3.0.0",
+    "jshint": "^2.8.0",
+    "jshint-stylish": "^2.1.0",
+    "karma": "^4.2.0",
+    "karma-chrome-launcher": "^2.2.0",
+    "karma-mocha": "^1.3.0",
+    "mocha": "^6.2.0"
+  },
+  "engines": {
+    "node": ">= 6"
+  },
+  "main": "./index.js",
+  "browser": "./dist/object_hash.js"
+}

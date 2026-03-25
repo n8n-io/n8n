@@ -1,0 +1,1 @@
+{"version":3,"file":"finetuning.d.ts","sourceRoot":"","sources":["../src/sdk/finetuning.ts"],"names":[],"mappings":"AAIA,OAAO,EAAE,SAAS,EAAE,MAAM,gBAAgB,CAAC;AAC3C,OAAO,EAAE,IAAI,EAAE,MAAM,WAAW,CAAC;AAEjC,qBAAa,UAAW,SAAQ,SAAS;IACvC,OAAO,CAAC,KAAK,CAAC,CAAO;IACrB,IAAI,IAAI,IAAI,IAAI,CAEf;CACF"}

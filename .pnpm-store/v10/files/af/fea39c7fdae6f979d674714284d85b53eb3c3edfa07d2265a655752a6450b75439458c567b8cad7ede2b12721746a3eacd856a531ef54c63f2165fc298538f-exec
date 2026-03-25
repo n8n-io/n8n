@@ -1,0 +1,30 @@
+{
+    "name": "@types/humanize-duration",
+    "version": "3.27.1",
+    "description": "TypeScript definitions for humanize-duration",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/humanize-duration",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Piotr Błażejewicz",
+            "url": "https://github.com/peterblazejewicz",
+            "githubUsername": "peterblazejewicz"
+        },
+        {
+            "name": "Evan Hahn",
+            "url": "https://github.com/EvanHahn",
+            "githubUsername": "EvanHahn"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/humanize-duration"
+    },
+    "scripts": {},
+    "dependencies": {},
+    "typesPublisherContentHash": "c012d3198d81583583c288920a701e87603e4905fd6627e778bccf20a7e0e3e4",
+    "typeScriptVersion": "3.8"
+}

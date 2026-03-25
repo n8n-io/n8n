@@ -1,0 +1,26 @@
+import { BaseLanguageModel } from "@langchain/core/language_models/base";
+import { Runnable } from "@langchain/core/runnables";
+import { Client } from "langsmith";
+
+//#region src/hub/base.d.ts
+/**
+ * Push a prompt to the hub.
+ * If the specified repo doesn't already exist, it will be created.
+ * @param repoFullName The full name of the repo.
+ * @param runnable The prompt to push.
+ * @param options
+ * @returns The URL of the newly pushed prompt in the hub.
+ */
+declare function basePush(repoFullName: string, runnable: Runnable, options?: {
+  apiKey?: string;
+  apiUrl?: string;
+  parentCommitHash?: string;
+  isPublic?: boolean;
+  description?: string;
+  readme?: string;
+  tags?: string[];
+  client?: Client;
+}): Promise<string>;
+//#endregion
+export { basePush };
+//# sourceMappingURL=base.d.cts.map

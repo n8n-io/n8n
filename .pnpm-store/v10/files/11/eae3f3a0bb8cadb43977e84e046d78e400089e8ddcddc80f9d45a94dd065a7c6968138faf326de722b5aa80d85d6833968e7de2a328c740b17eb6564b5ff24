@@ -1,0 +1,1 @@
+module.exports = require("../dist/structured_query/supabase.cjs");

@@ -1,0 +1,1 @@
+{"version":3,"file":"createObject.js","sourceRoot":"","sources":["../../../../src/internal/util/createObject.ts"],"names":[],"mappings":";;;AAAA,SAAgB,YAAY,CAAC,IAAc,EAAE,MAAa;IACxD,OAAO,IAAI,CAAC,MAAM,CAAC,UAAC,MAAM,EAAE,GAAG,EAAE,CAAC,IAAK,OAAA,CAAC,CAAC,MAAM,CAAC,GAAG,CAAC,GAAG,MAAM,CAAC,CAAC,CAAC,CAAC,EAAE,MAAM,CAAC,EAAnC,CAAmC,EAAE,EAAS,CAAC,CAAC;AACzF,CAAC;AAFD,oCAEC"}

@@ -1,0 +1,46 @@
+{
+  "name": "markdown-it-link-attributes",
+  "version": "4.0.1",
+  "description": "A markdown-it plugin to configure the attributes for links",
+  "main": "index.js",
+  "scripts": {
+    "prebuild": "prettier --write .",
+    "build": "node tasks/build.js && npm run minify",
+    "minify": "uglifyjs dist/markdown-it-link-attributes.js > dist/markdown-it-link-attributes.min.js",
+    "lint": "eslint",
+    "pretest": "npm run lint && npm run build",
+    "test": "jest",
+    "prepublishOnly": "npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/crookedneighbor/markdown-it-link-attributes"
+  },
+  "keywords": [
+    "markdown",
+    "markdown-it",
+    "markdown-it-plugin"
+  ],
+  "author": "Blade Barringer <blade@crookedneighbor.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/crookedneighbor/markdown-it-link-attributes"
+  },
+  "homepage": "https://github.com/crookedneighbor/markdown-it-link-attributes",
+  "devDependencies": {
+    "browserify": "^17.0.0",
+    "check-ecmascript-version-compatibility": "^0.1.1",
+    "eslint": "^8.21.0",
+    "eslint-config-prettier": "^8.5.0",
+    "jest": "^28.1.3",
+    "markdown-it": "latest",
+    "prettier": "^2.7.1",
+    "rimraf": "^3.0.2",
+    "uglify-js": "^3.16.3"
+  },
+  "eslint": {
+    "ignore": [
+      "dist/"
+    ]
+  }
+}

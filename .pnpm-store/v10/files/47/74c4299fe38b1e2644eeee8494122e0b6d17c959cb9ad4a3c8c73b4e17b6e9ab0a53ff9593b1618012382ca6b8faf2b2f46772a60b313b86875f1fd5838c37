@@ -1,0 +1,110 @@
+{
+  "name": "lightningcss",
+  "version": "1.30.2",
+  "license": "MPL-2.0",
+  "description": "A CSS parser, transformer, and minifier written in Rust",
+  "main": "node/index.js",
+  "types": "node/index.d.ts",
+  "exports": {
+    "types": "./node/index.d.ts",
+    "import": "./node/index.mjs",
+    "require": "./node/index.js"
+  },
+  "browserslist": "last 2 versions, not dead",
+  "targets": {
+    "main": false,
+    "types": false
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "funding": {
+    "type": "opencollective",
+    "url": "https://opencollective.com/parcel"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/parcel-bundler/lightningcss.git"
+  },
+  "engines": {
+    "node": ">= 12.0.0"
+  },
+  "napi": {
+    "name": "lightningcss"
+  },
+  "files": [
+    "node/*.js",
+    "node/*.mjs",
+    "node/*.d.ts",
+    "node/*.flow"
+  ],
+  "dependencies": {
+    "detect-libc": "^2.0.3"
+  },
+  "devDependencies": {
+    "@babel/parser": "7.21.4",
+    "@babel/traverse": "7.21.4",
+    "@codemirror/lang-css": "^6.0.1",
+    "@codemirror/lang-javascript": "^6.1.2",
+    "@codemirror/lint": "^6.1.0",
+    "@codemirror/theme-one-dark": "^6.1.0",
+    "@mdn/browser-compat-data": "~7.1.8",
+    "@napi-rs/cli": "^2.14.0",
+    "autoprefixer": "^10.4.21",
+    "caniuse-lite": "^1.0.30001745",
+    "codemirror": "^6.0.1",
+    "cssnano": "^7.0.6",
+    "esbuild": "^0.19.8",
+    "flowgen": "^1.21.0",
+    "jest-diff": "^27.4.2",
+    "json-schema-to-typescript": "^11.0.2",
+    "markdown-it-anchor": "^8.6.6",
+    "markdown-it-prism": "^2.3.0",
+    "markdown-it-table-of-contents": "^0.6.0",
+    "napi-wasm": "^1.0.1",
+    "node-fetch": "^3.1.0",
+    "parcel": "^2.8.2",
+    "patch-package": "^6.5.0",
+    "path-browserify": "^1.0.1",
+    "postcss": "^8.3.11",
+    "posthtml-include": "^1.7.4",
+    "posthtml-markdownit": "^1.3.1",
+    "posthtml-prism": "^1.0.4",
+    "process": "^0.11.10",
+    "puppeteer": "^12.0.1",
+    "recast": "^0.22.0",
+    "sharp": "^0.33.5",
+    "typescript": "^5.7.2",
+    "util": "^0.12.4",
+    "uvu": "^0.5.6"
+  },
+  "resolutions": {
+    "lightningcss": "link:."
+  },
+  "scripts": {
+    "prepare": "patch-package",
+    "build": "node scripts/build.js && node scripts/build-flow.js",
+    "build-release": "node scripts/build.js --release && node scripts/build-flow.js",
+    "prepublishOnly": "node scripts/build-flow.js",
+    "wasm:build": "cargo build --target wasm32-unknown-unknown -p lightningcss_node && wasm-opt target/wasm32-unknown-unknown/debug/lightningcss_node.wasm --asyncify --pass-arg=asyncify-imports@env.await_promise_sync -Oz -o wasm/lightningcss_node.wasm && node scripts/build-wasm.js",
+    "wasm:build-release": "cargo build --target wasm32-unknown-unknown -p lightningcss_node --release && wasm-opt target/wasm32-unknown-unknown/release/lightningcss_node.wasm --asyncify --pass-arg=asyncify-imports@env.await_promise_sync -Oz -o wasm/lightningcss_node.wasm && node scripts/build-wasm.js",
+    "website:start": "parcel 'website/*.html' website/playground/index.html",
+    "website:build": "yarn wasm:build-release && parcel build 'website/*.html' website/playground/index.html",
+    "build-ast": "cargo run --example schema --features jsonschema && node scripts/build-ast.js",
+    "tsc": "tsc -p node/tsconfig.json",
+    "test": "uvu node/test"
+  },
+  "optionalDependencies": {
+    "lightningcss-darwin-x64": "1.30.2",
+    "lightningcss-linux-x64-gnu": "1.30.2",
+    "lightningcss-win32-x64-msvc": "1.30.2",
+    "lightningcss-win32-arm64-msvc": "1.30.2",
+    "lightningcss-darwin-arm64": "1.30.2",
+    "lightningcss-linux-arm64-gnu": "1.30.2",
+    "lightningcss-linux-arm-gnueabihf": "1.30.2",
+    "lightningcss-linux-arm64-musl": "1.30.2",
+    "lightningcss-linux-x64-musl": "1.30.2",
+    "lightningcss-freebsd-x64": "1.30.2",
+    "lightningcss-android-arm64": "1.30.2"
+  }
+}

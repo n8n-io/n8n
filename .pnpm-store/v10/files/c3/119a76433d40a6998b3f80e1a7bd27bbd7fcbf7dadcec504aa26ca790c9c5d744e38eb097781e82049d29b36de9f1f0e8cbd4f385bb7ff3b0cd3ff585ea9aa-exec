@@ -1,0 +1,42 @@
+{
+    "name": "@types/tedious",
+    "version": "4.0.9",
+    "description": "TypeScript definitions for tedious",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/tedious",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Rogier Schouten",
+            "url": "https://github.com/rogierschouten",
+            "githubUsername": "rogierschouten"
+        },
+        {
+            "name": "Chris Thompson",
+            "url": "https://github.com/cjthompson",
+            "githubUsername": "cjthompson"
+        },
+        {
+            "name": "Guilherme Amorim",
+            "url": "https://github.com/guiampm",
+            "githubUsername": "guiampm"
+        },
+        {
+            "name": "Simon Childs",
+            "url": "https://github.com/csharpsi",
+            "githubUsername": "csharpsi"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/tedious"
+    },
+    "scripts": {},
+    "dependencies": {
+        "@types/node": "*"
+    },
+    "typesPublisherContentHash": "d3f7b90375c88bbe6e7b7719c3a3fff9fc3aa722b897657ca393fee066efeb49",
+    "typeScriptVersion": "4.0"
+}

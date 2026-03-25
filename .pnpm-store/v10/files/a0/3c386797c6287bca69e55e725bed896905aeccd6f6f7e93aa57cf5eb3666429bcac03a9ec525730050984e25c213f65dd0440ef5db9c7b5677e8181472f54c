@@ -1,0 +1,71 @@
+{
+  "name": "aria-hidden",
+  "version": "1.2.6",
+  "description": "Cast aria-hidden to everything, except...",
+  "main": "dist/es5/index.js",
+  "sideEffects": false,
+  "scripts": {
+    "test": "jest",
+    "dev": "lib-builder dev",
+    "test:ci": "jest --runInBand --coverage",
+    "build": "lib-builder build && yarn size:report",
+    "prepublish": "yarn build",
+    "release": "yarn build && yarn test",
+    "lint": "lib-builder lint",
+    "format": "lib-builder format",
+    "size": "size-limit",
+    "size:report": "size-limit --json > .size.json",
+    "update": "lib-builder update",
+    "prepublish-only": "yarn build && yarn changelog",
+    "prepare": "husky install",
+    "changelog": "conventional-changelog -p angular -i CHANGELOG.md -s",
+    "changelog:rewrite": "conventional-changelog -p angular -i CHANGELOG.md -s -r 0"
+  },
+  "author": "Anton Korzunov <thekashey@gmail.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "@theuiteam/lib-builder": "^1.0.0",
+    "@size-limit/preset-small-lib": "^11.1.6"
+  },
+  "engines": {
+    "node": ">=10"
+  },
+  "jsnext:main": "dist/es2015/index.js",
+  "module": "dist/es2015/index.js",
+  "types": "dist/es5/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "keywords": [
+    "DOM",
+    "aria",
+    "hidden",
+    "inert"
+  ],
+  "homepage": "https://github.com/theKashey/aria-hidden#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/theKashey/aria-hidden.git"
+  },
+  "dependencies": {
+    "tslib": "^2.0.0"
+  },
+  "module:es2019": "dist/es2019/index.js",
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "prettier --write",
+      "eslint --fix"
+    ],
+    "*.{js,css,json,md}": [
+      "prettier --write"
+    ]
+  },
+  "prettier": {
+    "printWidth": 120,
+    "trailingComma": "es5",
+    "tabWidth": 2,
+    "semi": true,
+    "singleQuote": true
+  },
+  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
+}

@@ -1,0 +1,37 @@
+{
+  "name": "jest-matcher-utils",
+  "description": "A set of utility functions for expect and related packages",
+  "version": "29.5.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/facebook/jest.git",
+    "directory": "packages/jest-matcher-utils"
+  },
+  "engines": {
+    "node": "^14.15.0 || ^16.10.0 || >=18.0.0"
+  },
+  "license": "MIT",
+  "main": "./build/index.js",
+  "types": "./build/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./build/index.d.ts",
+      "default": "./build/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "dependencies": {
+    "chalk": "^4.0.0",
+    "jest-diff": "^29.5.0",
+    "jest-get-type": "^29.4.3",
+    "pretty-format": "^29.5.0"
+  },
+  "devDependencies": {
+    "@jest/test-utils": "^29.5.0",
+    "@types/node": "*"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "gitHead": "39f3beda6b396665bebffab94e8d7c45be30454c"
+}

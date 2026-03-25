@@ -1,0 +1,109 @@
+{
+  "name": "@azure/logger",
+  "sdk-type": "client",
+  "version": "1.0.3",
+  "description": "Microsoft Azure SDK for JavaScript - Logger",
+  "main": "./dist/index.js",
+  "module": "dist-esm/src/index.js",
+  "browser": {
+    "./dist-esm/src/log.js": "./dist-esm/src/log.browser.js",
+    "process": false
+  },
+  "react-native": {
+    "./dist/index.js": "./dist-esm/src/index.js"
+  },
+  "engines": {
+    "node": ">=12.0.0"
+  },
+  "scripts": {
+    "audit": "node ../../../common/scripts/rush-audit.js && rimraf node_modules package-lock.json && npm i --package-lock-only 2>&1 && npm audit",
+    "build:samples": "echo Obsolete",
+    "build:test": "tsc -p . && rollup -c 2>&1",
+    "build": "npm run clean && tsc -p . && rollup -c 2>&1 && api-extractor run --local --local",
+    "check-format": "prettier --list-different --config ../../../.prettierrc.json --ignore-path ../../../.prettierignore \"src/**/*.ts\" \"test/**/*.ts\" \"*.{js,json}\"",
+    "clean": "rimraf dist dist-* temp types *.tgz *.log",
+    "docs": "typedoc --excludePrivate --excludeNotExported --excludeExternals --stripInternal --mode file --out ./dist/docs ./src",
+    "execute:samples": "echo skipped",
+    "extract-api": "tsc -p . && api-extractor run --local",
+    "format": "prettier --write --config ../../../.prettierrc.json --ignore-path ../../../.prettierignore \"src/**/*.ts\" \"test/**/*.ts\" \"samples-dev/**/*.ts\" \"*.{js,json}\"",
+    "integration-test:browser": "echo skipped",
+    "integration-test:node": "echo skipped",
+    "integration-test": "npm run integration-test:node && npm run integration-test:browser",
+    "lint:fix": "eslint package.json api-extractor.json src test --ext .ts --fix --fix-type [problem,suggestion]",
+    "lint": "eslint package.json api-extractor.json src test --ext .ts",
+    "pack": "npm pack 2>&1",
+    "pretest": "npm run build:test",
+    "test:browser": "npm run clean && npm run build:test && npm run unit-test:browser && npm run integration-test:browser",
+    "test:node": "npm run clean && tsc -p . && npm run unit-test:node && npm run integration-test:node",
+    "test": "npm run clean && tsc -p . && npm run unit-test:node && rollup -c 2>&1 && npm run unit-test:browser && npm run integration-test",
+    "unit-test:browser": "karma start --single-run",
+    "unit-test:node": "mocha -r esm -r ts-node/register --reporter ../../../common/tools/mocha-multi-reporter.js --timeout 1200000 --full-trace  --exclude \"test/**/browser/*.spec.ts\" \"test/**/*.spec.ts\"",
+    "unit-test": "npm run unit-test:node && npm run unit-test:browser"
+  },
+  "types": "./types/logger.d.ts",
+  "files": [
+    "dist/",
+    "dist-esm/src/",
+    "types/logger.d.ts",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": "github:Azure/azure-sdk-for-js",
+  "keywords": [
+    "azure",
+    "log",
+    "logger",
+    "logging",
+    "node.js",
+    "typescript",
+    "javascript",
+    "browser",
+    "cloud"
+  ],
+  "author": "Microsoft Corporation",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Azure/azure-sdk-for-js/issues"
+  },
+  "homepage": "https://github.com/Azure/azure-sdk-for-js/tree/main/sdk/core/logger/README.md",
+  "sideEffects": false,
+  "dependencies": {
+    "tslib": "^2.2.0"
+  },
+  "devDependencies": {
+    "@azure/dev-tool": "^1.0.0",
+    "@azure/eslint-plugin-azure-sdk": "^3.0.0",
+    "@microsoft/api-extractor": "^7.18.11",
+    "@types/chai": "^4.1.6",
+    "@types/mocha": "^7.0.2",
+    "@types/node": "^12.0.0",
+    "@types/sinon": "^9.0.4",
+    "chai": "^4.2.0",
+    "cross-env": "^7.0.2",
+    "delay": "^4.2.0",
+    "dotenv": "^8.2.0",
+    "eslint": "^7.15.0",
+    "karma": "^6.2.0",
+    "karma-chrome-launcher": "^3.0.0",
+    "karma-coverage": "^2.0.0",
+    "karma-edge-launcher": "^0.4.2",
+    "karma-env-preprocessor": "^0.1.1",
+    "karma-firefox-launcher": "^1.1.0",
+    "karma-ie-launcher": "^1.0.0",
+    "karma-junit-reporter": "^2.0.1",
+    "karma-mocha": "^2.0.1",
+    "karma-mocha-reporter": "^2.2.5",
+    "karma-sourcemap-loader": "^0.3.8",
+    "mocha": "^7.1.1",
+    "mocha-junit-reporter": "^1.18.0",
+    "nyc": "^14.0.0",
+    "prettier": "^1.16.4",
+    "puppeteer": "^10.2.0",
+    "rimraf": "^3.0.0",
+    "rollup": "^1.16.3",
+    "sinon": "^9.0.2",
+    "ts-node": "^10.0.0",
+    "typescript": "~4.2.0",
+    "typedoc": "0.15.2"
+  }
+}

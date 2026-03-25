@@ -1,0 +1,59 @@
+{
+  "name": "ssh2-sftp-client",
+  "version": "12.1.0",
+  "description": "ssh2 sftp client for node",
+  "main": "src/index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/theophilusx/ssh2-sftp-client.git"
+  },
+  "keywords": [
+    "sftp",
+    "nodejs",
+    "promises"
+  ],
+  "scripts": {
+    "test": "mocha",
+    "coverage": "nyc npm run test",
+    "lint": "eslint \"src/**/*.js\" \"test/**/*.js\""
+  },
+  "engines": {
+    "node": ">=18.20.4"
+  },
+  "author": "Tim Cross",
+  "email": "theophilusx@gmail.com",
+  "funding": {
+    "type": "individual",
+    "url": "https://square.link/u/4g7sPflL"
+  },
+  "contributors": [
+    {
+      "name": "见见 (original author)",
+      "email": "jyu213@gmail.com"
+    }
+  ],
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "chai": "^4.5.0",
+    "chai-as-promised": "^7.1.2",
+    "chai-subset": "^1.6.0",
+    "checksum": "^1.0.0",
+    "dotenv": "^17.3.1",
+    "eslint": "^9.6.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-mocha": "^10.2.0",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^6.0.0",
+    "eslint-plugin-unicorn": "^54.0.0",
+    "mocha": "^10.0.0",
+    "moment": "^2.29.1",
+    "nyc": "^17.0.0",
+    "prettier": "^3.0.3",
+    "through2": "^4.0.2",
+    "winston": "^3.11.0"
+  },
+  "dependencies": {
+    "concat-stream": "^2.0.0",
+    "ssh2": "^1.16.0"
+  }
+}

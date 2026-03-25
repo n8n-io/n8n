@@ -1,0 +1,1 @@
+{"version":3,"sources":["../../src/entity-schema/EntitySchemaCheckOptions.ts"],"names":[],"mappings":"","file":"EntitySchemaCheckOptions.js","sourcesContent":["export interface EntitySchemaCheckOptions {\n    /**\n     * Check constraint name.\n     */\n    name?: string\n\n    /**\n     * Check expression.\n     */\n    expression: string\n}\n"],"sourceRoot":".."}

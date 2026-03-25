@@ -1,0 +1,34 @@
+{
+  "name": "@npmcli/move-file",
+  "version": "1.1.2",
+  "files": [
+    "index.js"
+  ],
+  "description": "move a file (fork of move-file)",
+  "dependencies": {
+    "mkdirp": "^1.0.4",
+    "rimraf": "^3.0.2"
+  },
+  "devDependencies": {
+    "require-inject": "^1.4.4",
+    "tap": "^14.10.7"
+  },
+  "scripts": {
+    "test": "tap",
+    "snap": "tap",
+    "preversion": "npm test",
+    "postversion": "npm publish",
+    "prepublishOnly": "git push origin --follow-tags"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/npm/move-file"
+  },
+  "tap": {
+    "check-coverage": true
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=10"
+  }
+}

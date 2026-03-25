@@ -1,0 +1,106 @@
+@use 'mixins/mixins' as *;
+@use 'mixins/var' as *;
+@use 'common/var' as *;
+
+@include b(popper) {
+  @include set-component-css-var('popper', $popper);
+}
+
+@include b(popper) {
+  position: absolute;
+  border-radius: getCssVar('popper', 'border-radius');
+  padding: 5px 11px;
+  z-index: 2000;
+  font-size: 12px;
+  line-height: 20px;
+  min-width: 10px;
+  word-wrap: break-word;
+  visibility: visible;
+
+  $arrow-selector: #{& + '__arrow'};
+
+  @include when(dark) {
+    color: getCssVar('bg-color');
+    background: getCssVar('text-color', 'primary');
+    border: 1px solid getCssVar('text-color', 'primary');
+
+    #{$arrow-selector}::before {
+      border: 1px solid getCssVar('text-color', 'primary');
+      background: getCssVar('text-color', 'primary');
+      right: 0;
+    }
+  }
+
+  @include when(light) {
+    background: getCssVar('bg-color', 'overlay');
+    border: 1px solid getCssVar('border-color', 'light');
+
+    #{$arrow-selector}::before {
+      border: 1px solid getCssVar('border-color', 'light');
+      background: getCssVar('bg-color', 'overlay');
+      right: 0;
+    }
+  }
+
+  @include when(pure) {
+    padding: 0;
+  }
+
+  @include e(arrow) {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    z-index: -1;
+
+    &::before {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      z-index: -1;
+      content: ' ';
+      transform: rotate(45deg);
+      background: getCssVar('text-color', 'primary');
+      box-sizing: border-box;
+    }
+  }
+
+  $placements: (
+    'top': 'bottom',
+    'bottom': 'top',
+    'left': 'right',
+    'right': 'left',
+  );
+
+  @each $placement, $opposite in $placements {
+    &[data-popper-placement^='#{$placement}'] > #{$arrow-selector} {
+      #{$opposite}: -5px;
+
+      &::before {
+        @if $placement == top {
+          border-bottom-right-radius: 2px;
+        }
+        @if $placement == bottom {
+          border-top-left-radius: 2px;
+        }
+        @if $placement == left {
+          border-top-right-radius: 2px;
+        }
+        @if $placement == right {
+          border-bottom-left-radius: 2px;
+        }
+      }
+    }
+  }
+
+  @each $placement,
+    $adjacency
+      in ('top': 'left', 'bottom': 'right', 'left': 'bottom', 'right': 'top')
+  {
+    &[data-popper-placement^='#{$placement}'] {
+      #{$arrow-selector}::before {
+        border-#{$placement}-color: transparent !important;
+        border-#{$adjacency}-color: transparent !important;
+      }
+    }
+  }
+}

@@ -1,0 +1,78 @@
+{
+  "name": "ast-module-types",
+  "version": "6.0.1",
+  "description": "Collection of useful helper functions when trying to determine module type (CommonJS or AMD) properties of an AST node.",
+  "main": "index.js",
+  "files": [
+    "index.js"
+  ],
+  "scripts": {
+    "lint": "xo",
+    "fix": "xo --fix",
+    "uvu": "uvu test -i fixtures -i utils",
+    "test": "npm run lint && npm run uvu",
+    "test:ci": "c8 npm run uvu"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dependents/node-ast-module-types.git"
+  },
+  "keywords": [
+    "esprima",
+    "module",
+    "type",
+    "define",
+    "require",
+    "factory"
+  ],
+  "author": "Joel Kemp <joel@mrjoelkemp.com> (https://mrjoelkemp.com/)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/dependents/node-ast-module-types/issues"
+  },
+  "homepage": "https://github.com/dependents/node-ast-module-types",
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "c8": "^10.1.3",
+    "node-source-walk": "^7.0.1",
+    "uvu": "^0.5.6",
+    "xo": "^0.60.0"
+  },
+  "xo": {
+    "space": true,
+    "ignores": [
+      "test/fixtures/*"
+    ],
+    "rules": {
+      "arrow-body-style": "off",
+      "capitalized-comments": "off",
+      "comma-dangle": [
+        "error",
+        "never"
+      ],
+      "curly": [
+        "error",
+        "multi-line"
+      ],
+      "operator-linebreak": [
+        "error",
+        "after"
+      ],
+      "object-curly-spacing": [
+        "error",
+        "always"
+      ],
+      "space-before-function-paren": [
+        "error",
+        "never"
+      ],
+      "unicorn/no-anonymous-default-export": "off",
+      "unicorn/prefer-module": "off",
+      "unicorn/prefer-node-protocol": "off",
+      "unicorn/prefer-top-level-await": "off",
+      "unicorn/prevent-abbreviations": "off"
+    }
+  }
+}

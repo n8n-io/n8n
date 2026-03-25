@@ -1,0 +1,1 @@
+module.exports = require("../../dist/embeddings/tencent_hunyuan/web.cjs");

@@ -1,0 +1,1 @@
+{"version":3,"file":"no-deprecated.d.ts","sourceRoot":"","sources":["../../src/rules/no-deprecated.ts"],"names":[],"mappings":"AAMA,OAAO,KAAK,EAAE,oBAAoB,EAAE,MAAM,SAAS,CAAC;AAgBpD,KAAK,UAAU,GAAG,YAAY,GAAG,sBAAsB,CAAC;AAExD,KAAK,OAAO,GAAG;IACb;QACE,KAAK,CAAC,EAAE,oBAAoB,EAAE,CAAC;KAChC;CACF,CAAC;;AAEF,wBAmaG"}

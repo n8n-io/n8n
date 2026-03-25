@@ -1,0 +1,1 @@
+{"version":3,"file":"pivot.cjs","names":["groupId: string","dragHandleId: string","panelGroupElement: ParentNode"],"sources":["../../src/Splitter/utils/pivot.ts"],"sourcesContent":[],"mappings":";;;AAEA,SAAgB,sBACdA,SACAC,cACAC,mBAC2C;CAC3C,MAAM,QAAQ,8CACZ,SACA,cACA,kBACD;AAED,QAAO,SAAS,OAAO,CAAC,OAAO,QAAQ,CAAE,IAAG,CAAC,IAAI,EAAG;AACrD"}

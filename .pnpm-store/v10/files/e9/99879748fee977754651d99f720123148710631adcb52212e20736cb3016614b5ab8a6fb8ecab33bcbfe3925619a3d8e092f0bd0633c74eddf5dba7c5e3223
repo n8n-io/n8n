@@ -1,0 +1,205 @@
+export class CanvasGraphics {
+    constructor(canvasCtx: any, commonObjs: any, objs: any, canvasFactory: any, filterFactory: any, { optionalContentConfig, markedContentStack }: {
+        optionalContentConfig: any;
+        markedContentStack?: null | undefined;
+    }, annotationCanvasMap: any, pageColors: any);
+    ctx: any;
+    current: CanvasExtraState;
+    stateStack: any[];
+    pendingClip: {} | {} | null;
+    pendingEOFill: boolean;
+    res: any;
+    xobjs: any;
+    commonObjs: any;
+    objs: any;
+    canvasFactory: any;
+    filterFactory: any;
+    groupStack: any[];
+    baseTransform: any;
+    baseTransformStack: any[];
+    groupLevel: number;
+    smaskStack: any[];
+    smaskCounter: number;
+    tempSMask: any;
+    suspendedCtx: any;
+    contentVisible: boolean;
+    markedContentStack: never[];
+    optionalContentConfig: any;
+    cachedCanvases: CachedCanvases;
+    cachedPatterns: Map<any, any>;
+    annotationCanvasMap: any;
+    viewportScale: number;
+    outputScaleX: number;
+    outputScaleY: number;
+    pageColors: any;
+    _cachedScaleForStroking: number[];
+    _cachedGetSinglePixelWidth: number | null;
+    _cachedBitmapsMap: Map<any, any>;
+    getObject(data: any, fallback?: null): any;
+    beginDrawing({ transform, viewport, transparency, background, }: {
+        transform: any;
+        viewport: any;
+        transparency?: boolean | undefined;
+        background?: null | undefined;
+    }): void;
+    compositeCtx: any;
+    transparentCanvas: any;
+    executeOperatorList(operatorList: any, executionStartIdx: any, continueCallback: any, stepper: any): any;
+    endDrawing(): void;
+    _scaleImage(img: any, inverseTransform: any): {
+        img: any;
+        paintWidth: any;
+        paintHeight: any;
+    };
+    _createMaskCanvas(img: any): {
+        canvas: any;
+        offsetX: number;
+        offsetY: number;
+    };
+    setLineWidth(width: any): void;
+    setLineCap(style: any): void;
+    setLineJoin(style: any): void;
+    setMiterLimit(limit: any): void;
+    setDash(dashArray: any, dashPhase: any): void;
+    setRenderingIntent(intent: any): void;
+    setFlatness(flatness: any): void;
+    setGState(states: any): void;
+    get inSMaskMode(): boolean;
+    checkSMaskState(): void;
+    /**
+     * Soft mask mode takes the current main drawing canvas and replaces it with
+     * a temporary canvas. Any drawing operations that happen on the temporary
+     * canvas need to be composed with the main canvas that was suspended (see
+     * `compose()`). The temporary canvas also duplicates many of its operations
+     * on the suspended canvas to keep them in sync, so that when the soft mask
+     * mode ends any clipping paths or transformations will still be active and in
+     * the right order on the canvas' graphics state stack.
+     */
+    beginSMaskMode(): void;
+    endSMaskMode(): void;
+    compose(dirtyBox: any): void;
+    composeSMask(ctx: any, smask: any, layerCtx: any, layerBox: any): void;
+    genericComposeSMask(maskCtx: any, layerCtx: any, width: any, height: any, subtype: any, backdrop: any, transferMap: any, layerOffsetX: any, layerOffsetY: any, maskOffsetX: any, maskOffsetY: any): void;
+    save(): void;
+    restore(): void;
+    transform(a: any, b: any, c: any, d: any, e: any, f: any): void;
+    constructPath(op: any, data: any, minMax: any): void;
+    closePath(): void;
+    stroke(path: any, consumePath?: boolean): void;
+    closeStroke(path: any): void;
+    fill(path: any, consumePath?: boolean): void;
+    eoFill(path: any): void;
+    fillStroke(path: any): void;
+    eoFillStroke(path: any): void;
+    closeFillStroke(path: any): void;
+    closeEOFillStroke(path: any): void;
+    endPath(path: any): void;
+    rawFillPath(path: any): void;
+    clip(): void;
+    eoClip(): void;
+    beginText(): void;
+    endText(): void;
+    setCharSpacing(spacing: any): void;
+    setWordSpacing(spacing: any): void;
+    setHScale(scale: any): void;
+    setLeading(leading: any): void;
+    setFont(fontRefName: any, size: any): void;
+    setTextRenderingMode(mode: any): void;
+    setTextRise(rise: any): void;
+    moveText(x: any, y: any): void;
+    setLeadingMoveText(x: any, y: any): void;
+    setTextMatrix(matrix: any): void;
+    nextLine(): void;
+    paintChar(character: any, x: any, y: any, patternFillTransform: any, patternStrokeTransform: any): void;
+    get isFontSubpixelAAEnabled(): any;
+    showText(glyphs: any): void;
+    showType3Text(glyphs: any): void;
+    setCharWidth(xWidth: any, yWidth: any): void;
+    setCharWidthAndBounds(xWidth: any, yWidth: any, llx: any, lly: any, urx: any, ury: any): void;
+    getColorN_Pattern(IR: any): any;
+    setStrokeColorN(...args: any[]): void;
+    setFillColorN(...args: any[]): void;
+    setStrokeRGBColor(color: any): void;
+    setStrokeTransparent(): void;
+    setFillRGBColor(color: any): void;
+    setFillTransparent(): void;
+    _getPattern(objId: any, matrix?: null): any;
+    shadingFill(objId: any): void;
+    beginInlineImage(): void;
+    beginImageData(): void;
+    paintFormXObjectBegin(matrix: any, bbox: any): void;
+    paintFormXObjectEnd(): void;
+    beginGroup(group: any): void;
+    endGroup(group: any): void;
+    beginAnnotation(id: any, rect: any, transform: any, matrix: any, hasOwnCanvas: any): void;
+    annotationCanvas: any;
+    endAnnotation(): void;
+    paintImageMaskXObject(img: any): void;
+    paintImageMaskXObjectRepeat(img: any, scaleX: any, skewX: number | undefined, skewY: number | undefined, scaleY: any, positions: any): void;
+    paintImageMaskXObjectGroup(images: any): void;
+    paintImageXObject(objId: any): void;
+    paintImageXObjectRepeat(objId: any, scaleX: any, scaleY: any, positions: any): void;
+    applyTransferMapsToCanvas(ctx: any): any;
+    applyTransferMapsToBitmap(imgData: any): any;
+    paintInlineImageXObject(imgData: any): void;
+    paintInlineImageXObjectGroup(imgData: any, map: any): void;
+    paintSolidColorImageMask(): void;
+    markPoint(tag: any): void;
+    markPointProps(tag: any, properties: any): void;
+    beginMarkedContent(tag: any): void;
+    beginMarkedContentProps(tag: any, properties: any): void;
+    endMarkedContent(): void;
+    beginCompat(): void;
+    endCompat(): void;
+    consumePath(path: any, clipBox: any): void;
+    getSinglePixelWidth(): number;
+    getScaleForStroking(): number[];
+    rescaleAndStroke(path: any, saveRestore: any): void;
+    isContentVisible(): boolean;
+    #private;
+}
+declare class CanvasExtraState {
+    constructor(width: any, height: any);
+    alphaIsShape: boolean;
+    fontSize: number;
+    fontSizeScale: number;
+    textMatrix: null;
+    textMatrixScale: number;
+    fontMatrix: number[];
+    leading: number;
+    x: number;
+    y: number;
+    lineX: number;
+    lineY: number;
+    charSpacing: number;
+    wordSpacing: number;
+    textHScale: number;
+    textRenderingMode: number;
+    textRise: number;
+    fillColor: string;
+    strokeColor: string;
+    patternFill: boolean;
+    patternStroke: boolean;
+    fillAlpha: number;
+    strokeAlpha: number;
+    lineWidth: number;
+    activeSMask: null;
+    transferMaps: string;
+    clipBox: Float32Array<ArrayBuffer>;
+    minMax: Float32Array<ArrayBuffer>;
+    clone(): any;
+    getPathBoundingBox(pathType?: string, transform?: null): Float32Array<ArrayBuffer>;
+    updateClipFromPath(): void;
+    isEmptyClip(): boolean;
+    startNewPathAndClipBox(box: any): void;
+    getClippedPathBoundingBox(pathType?: string, transform?: null): number[] | null;
+}
+declare class CachedCanvases {
+    constructor(canvasFactory: any);
+    canvasFactory: any;
+    cache: any;
+    getCanvas(id: any, width: any, height: any): any;
+    delete(id: any): void;
+    clear(): void;
+}
+export {};

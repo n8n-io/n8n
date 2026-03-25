@@ -1,0 +1,33 @@
+{
+  "name": "postgres-date",
+  "main": "index.js",
+  "version": "1.0.7",
+  "description": "Postgres date column parser",
+  "license": "MIT",
+  "repository": "bendrucker/postgres-date",
+  "author": {
+    "name": "Ben Drucker",
+    "email": "bvdrucker@gmail.com",
+    "url": "bendrucker.me"
+  },
+  "engines": {
+    "node": ">=0.10.0"
+  },
+  "scripts": {
+    "test": "standard && tape test.js"
+  },
+  "keywords": [
+    "postgres",
+    "date",
+    "parser"
+  ],
+  "dependencies": {},
+  "devDependencies": {
+    "standard": "^14.0.0",
+    "tape": "^5.0.0"
+  },
+  "files": [
+    "index.js",
+    "readme.md"
+  ]
+}

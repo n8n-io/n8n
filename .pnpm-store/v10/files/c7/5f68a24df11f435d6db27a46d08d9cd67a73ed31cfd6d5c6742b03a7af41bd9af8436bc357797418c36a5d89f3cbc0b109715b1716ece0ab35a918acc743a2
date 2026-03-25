@@ -1,0 +1,1 @@
+{"version":3,"file":"hostHeaderValidation.d.ts","sourceRoot":"","sources":["../../../../src/server/middleware/hostHeaderValidation.ts"],"names":[],"mappings":"AAAA,OAAO,EAAmC,cAAc,EAAE,MAAM,SAAS,CAAC;AAE1E;;;;;;;;;;;;;;;;;;GAkBG;AACH,wBAAgB,oBAAoB,CAAC,gBAAgB,EAAE,MAAM,EAAE,GAAG,cAAc,CA4C/E;AAED;;;;;;;;GAQG;AACH,wBAAgB,uBAAuB,IAAI,cAAc,CAExD"}

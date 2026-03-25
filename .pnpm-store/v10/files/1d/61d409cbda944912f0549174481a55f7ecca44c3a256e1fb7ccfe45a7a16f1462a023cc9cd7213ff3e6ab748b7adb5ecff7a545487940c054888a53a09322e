@@ -1,0 +1,55 @@
+declare function fromBig(n: bigint, le?: boolean): {
+    h: number;
+    l: number;
+};
+declare function split(lst: bigint[], le?: boolean): Uint32Array[];
+declare const toBig: (h: number, l: number) => bigint;
+declare const shrSH: (h: number, _l: number, s: number) => number;
+declare const shrSL: (h: number, l: number, s: number) => number;
+declare const rotrSH: (h: number, l: number, s: number) => number;
+declare const rotrSL: (h: number, l: number, s: number) => number;
+declare const rotrBH: (h: number, l: number, s: number) => number;
+declare const rotrBL: (h: number, l: number, s: number) => number;
+declare const rotr32H: (_h: number, l: number) => number;
+declare const rotr32L: (h: number, _l: number) => number;
+declare const rotlSH: (h: number, l: number, s: number) => number;
+declare const rotlSL: (h: number, l: number, s: number) => number;
+declare const rotlBH: (h: number, l: number, s: number) => number;
+declare const rotlBL: (h: number, l: number, s: number) => number;
+declare function add(Ah: number, Al: number, Bh: number, Bl: number): {
+    h: number;
+    l: number;
+};
+declare const add3L: (Al: number, Bl: number, Cl: number) => number;
+declare const add3H: (low: number, Ah: number, Bh: number, Ch: number) => number;
+declare const add4L: (Al: number, Bl: number, Cl: number, Dl: number) => number;
+declare const add4H: (low: number, Ah: number, Bh: number, Ch: number, Dh: number) => number;
+declare const add5L: (Al: number, Bl: number, Cl: number, Dl: number, El: number) => number;
+declare const add5H: (low: number, Ah: number, Bh: number, Ch: number, Dh: number, Eh: number) => number;
+export { add, add3H, add3L, add4H, add4L, add5H, add5L, fromBig, rotlBH, rotlBL, rotlSH, rotlSL, rotr32H, rotr32L, rotrBH, rotrBL, rotrSH, rotrSL, shrSH, shrSL, split, toBig };
+declare const u64: {
+    fromBig: typeof fromBig;
+    split: typeof split;
+    toBig: (h: number, l: number) => bigint;
+    shrSH: (h: number, _l: number, s: number) => number;
+    shrSL: (h: number, l: number, s: number) => number;
+    rotrSH: (h: number, l: number, s: number) => number;
+    rotrSL: (h: number, l: number, s: number) => number;
+    rotrBH: (h: number, l: number, s: number) => number;
+    rotrBL: (h: number, l: number, s: number) => number;
+    rotr32H: (_h: number, l: number) => number;
+    rotr32L: (h: number, _l: number) => number;
+    rotlSH: (h: number, l: number, s: number) => number;
+    rotlSL: (h: number, l: number, s: number) => number;
+    rotlBH: (h: number, l: number, s: number) => number;
+    rotlBL: (h: number, l: number, s: number) => number;
+    add: typeof add;
+    add3L: (Al: number, Bl: number, Cl: number) => number;
+    add3H: (low: number, Ah: number, Bh: number, Ch: number) => number;
+    add4L: (Al: number, Bl: number, Cl: number, Dl: number) => number;
+    add4H: (low: number, Ah: number, Bh: number, Ch: number, Dh: number) => number;
+    add5H: (low: number, Ah: number, Bh: number, Ch: number, Dh: number, Eh: number) => number;
+    add5L: (Al: number, Bl: number, Cl: number, Dl: number, El: number) => number;
+};
+export default u64;
+//# sourceMappingURL=_u64.d.ts.map

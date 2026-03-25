@@ -1,0 +1,23 @@
+export declare const americanExpress: string[];
+export declare const dinersClub: string[];
+export declare const discover: string[];
+export declare const instapayment: string[];
+export declare const jcb: string[];
+export declare const laser: string[];
+export declare const maestro: string[];
+export declare const mastercard: string[];
+export declare const solo: string[];
+export declare const visa: string[];
+declare const _default: {
+    visa: string[];
+    solo: string[];
+    mastercard: string[];
+    maestro: string[];
+    laser: string[];
+    jcb: string[];
+    instapayment: string[];
+    americanExpress: string[];
+    dinersClub: string[];
+    discover: string[];
+};
+export default _default;

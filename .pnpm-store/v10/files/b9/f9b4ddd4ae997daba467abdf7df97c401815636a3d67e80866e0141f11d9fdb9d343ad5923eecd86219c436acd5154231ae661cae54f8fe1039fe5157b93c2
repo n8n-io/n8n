@@ -1,0 +1,1 @@
+"use strict";exports.__esModule=true;exports.getTabsCount=getTabsCount;var _childrenDeepMap=require("./childrenDeepMap");var _elementTypes=require("./elementTypes");function getTabsCount(children){let tabCount=0;(0,_childrenDeepMap.deepForEach)(children,child=>{if((0,_elementTypes.isTab)(child))tabCount++});return tabCount}

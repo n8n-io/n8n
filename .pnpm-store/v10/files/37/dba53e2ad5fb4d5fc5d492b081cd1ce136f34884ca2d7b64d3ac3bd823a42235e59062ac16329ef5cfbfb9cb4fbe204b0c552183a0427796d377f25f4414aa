@@ -1,0 +1,58 @@
+{
+  "name": "pkce-challenge",
+  "version": "5.0.0",
+  "description": "Generate or verify a Proof Key for Code Exchange (PKCE) challenge pair",
+  "browser": "dist/index.browser.js",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": {
+        "require": "./dist/index.node.d.cts",
+        "import": "./dist/index.node.d.ts"
+      },
+      "browser": {
+        "types": "./dist/index.browser.d.ts",
+        "default": "./dist/index.browser.js"
+      },
+      "node": {
+        "import": "./dist/index.node.js",
+        "require": "./dist/index.node.cjs"
+      }
+    }
+  },
+  "files": [
+    "dist/"
+  ],
+  "scripts": {
+    "watch": "tsc --watch --declaration",
+    "preprocess": "env=browser diverge -f src/index.ts src/index.browser.ts && env=node diverge -f src/index.ts src/index.node.ts && env=node diverge -f src/index.ts src/index.node.cts",
+    "build": "npm run preprocess && tsc --declaration",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "test:bundle": "npm run --prefix browser-test build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/crouchcd/pkce-challenge.git"
+  },
+  "keywords": [
+    "PKCE",
+    "oauth2"
+  ],
+  "author": "crouchcd",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/crouchcd/pkce-challenge/issues"
+  },
+  "homepage": "https://github.com/crouchcd/pkce-challenge#readme",
+  "engines": {
+    "node": ">=16.20.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.0",
+    "@types/node": "^18.15.11",
+    "diverge": "^1.0.2",
+    "esbuild": "^0.25.2",
+    "jest": "^29.5.0",
+    "typescript": "^5.0.3"
+  }
+}

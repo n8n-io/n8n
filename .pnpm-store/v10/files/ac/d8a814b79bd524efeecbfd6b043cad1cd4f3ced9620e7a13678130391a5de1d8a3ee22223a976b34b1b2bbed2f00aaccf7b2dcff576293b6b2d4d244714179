@@ -1,0 +1,184 @@
+# Copyright 2012 Mozilla Foundation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Main toolbar buttons (tooltips and alt text for images)
+previous.title=પહેલાનુ પાનું
+previous_label=પહેલાનુ
+next.title=આગળનુ પાનું
+next_label=આગળનું
+
+# LOCALIZATION NOTE (page.title): The tooltip for the pageNumber input.
+page.title=પાનું
+# LOCALIZATION NOTE (of_pages): "{{pagesCount}}" will be replaced by a number
+# representing the total number of pages in the document.
+of_pages=નો {{pagesCount}}
+# LOCALIZATION NOTE (page_of_pages): "{{pageNumber}}" and "{{pagesCount}}"
+# will be replaced by a number representing the currently visible page,
+# respectively a number representing the total number of pages in the document.
+page_of_pages=({{pageNumber}} નો {{pagesCount}})
+
+zoom_out.title=મોટુ કરો
+zoom_out_label=મોટુ કરો
+zoom_in.title=નાનું કરો
+zoom_in_label=નાનું કરો
+zoom.title=નાનું મોટુ કરો
+presentation_mode.title=રજૂઆત સ્થિતિમાં જાવ
+presentation_mode_label=રજૂઆત સ્થિતિ
+open_file.title=ફાઇલ ખોલો
+open_file_label=ખોલો
+print.title=છાપો
+print_label=છારો
+download.title=ડાઉનલોડ
+download_label=ડાઉનલોડ
+bookmark.title=વર્તમાન દૃશ્ય (નવી વિન્ડોમાં નકલ કરો અથવા ખોલો)
+bookmark_label=વર્તમાન દૃશ્ય
+
+# Secondary toolbar and context menu
+tools.title=સાધનો
+tools_label=સાધનો
+first_page.title=પહેલાં પાનામાં જાવ
+first_page.label=પહેલાં પાનામાં જાવ
+first_page_label=પ્રથમ પાનાં પર જાવ
+last_page.title=છેલ્લા પાનાં પર જાવ
+last_page.label=છેલ્લા પાનામાં જાવ
+last_page_label=છેલ્લા પાનાં પર જાવ
+page_rotate_cw.title=ઘડિયાળનાં કાંટા તરફ ફેરવો
+page_rotate_cw.label=ઘડિયાળનાં કાંટાની જેમ ફેરવો
+page_rotate_cw_label=ઘડિયાળનાં કાંટા તરફ ફેરવો
+page_rotate_ccw.title=ઘડિયાળનાં કાંટાની ઉલટી દિશામાં ફેરવો
+page_rotate_ccw.label=ઘડિયાળનાં કાંટાની ઉલટી દિશામાં ફેરવો
+page_rotate_ccw_label=ઘડિયાળનાં કાંટાની વિરુદ્દ ફેરવો
+
+cursor_text_select_tool.title=ટેક્સ્ટ પસંદગી ટૂલ સક્ષમ કરો
+cursor_text_select_tool_label=ટેક્સ્ટ પસંદગી ટૂલ
+cursor_hand_tool.title=હાથનાં સાધનને સક્રિય કરો
+cursor_hand_tool_label=હેન્ડ ટૂલ
+
+# Document properties dialog box
+document_properties.title=દસ્તાવેજ ગુણધર્મો…
+document_properties_label=દસ્તાવેજ ગુણધર્મો…
+document_properties_file_name=ફાઇલ નામ:
+document_properties_file_size=ફાઇલ માપ:
+# LOCALIZATION NOTE (document_properties_kb): "{{size_kb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in kilobytes, respectively in bytes.
+document_properties_kb={{size_kb}} KB ({{size_b}} બાઇટ)
+# LOCALIZATION NOTE (document_properties_mb): "{{size_mb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in megabytes, respectively in bytes.
+document_properties_mb={{size_mb}} MB ({{size_b}} બાઇટ)
+document_properties_title=શીર્ષક:
+document_properties_author=લેખક:
+document_properties_subject=વિષય:
+document_properties_keywords=કિવર્ડ:
+document_properties_creation_date=નિર્માણ તારીખ:
+document_properties_modification_date=ફેરફાર તારીખ:
+# LOCALIZATION NOTE (document_properties_date_string): "{{date}}" and "{{time}}"
+# will be replaced by the creation/modification date, and time, of the PDF file.
+document_properties_date_string={{date}}, {{time}}
+document_properties_creator=નિર્માતા:
+document_properties_producer=PDF નિર્માતા:
+document_properties_version=PDF આવૃત્તિ:
+document_properties_page_count=પાનાં ગણતરી:
+document_properties_close=બંધ કરો
+
+print_progress_message=છાપકામ માટે દસ્તાવેજ તૈયાર કરી રહ્યા છે…
+# LOCALIZATION NOTE (print_progress_percent): "{{progress}}" will be replaced by
+# a numerical per cent value.
+print_progress_percent={{progress}}%
+print_progress_close=રદ કરો
+
+# Tooltips and alt text for side panel toolbar buttons
+# (the _label strings are alt text for the buttons, the .title strings are
+# tooltips)
+toggle_sidebar.title=ટૉગલ બાજુપટ્ટી
+toggle_sidebar_notification.title=સાઇડબારને ટૉગલ કરો(દસ્તાવેજની રૂપરેખા/જોડાણો શામેલ છે)
+toggle_sidebar_label=ટૉગલ બાજુપટ્ટી
+document_outline.title=દસ્તાવેજની રૂપરેખા બતાવો(બધી આઇટમ્સને વિસ્તૃત/સંકુચિત કરવા માટે ડબલ-ક્લિક કરો)
+document_outline_label=દસ્તાવેજ રૂપરેખા
+attachments.title=જોડાણોને બતાવો
+attachments_label=જોડાણો
+thumbs.title=થંબનેલ્સ બતાવો
+thumbs_label=થંબનેલ્સ
+findbar.title=દસ્તાવેજમાં શોધો
+findbar_label=શોધો
+
+# Thumbnails panel item (tooltip and alt text for images)
+# LOCALIZATION NOTE (thumb_page_title): "{{page}}" will be replaced by the page
+# number.
+thumb_page_title=પાનું {{page}}
+# LOCALIZATION NOTE (thumb_page_canvas): "{{page}}" will be replaced by the page
+# number.
+thumb_page_canvas=પાનાં {{page}} નું થંબનેલ્સ
+
+# Find panel button title and messages
+find_input.title=શોધો
+find_input.placeholder=દસ્તાવેજમાં શોધો…
+find_previous.title=શબ્દસમૂહની પાછલી ઘટનાને શોધો
+find_previous_label=પહેલાંનુ
+find_next.title=શબ્દસમૂહની આગળની ઘટનાને શોધો
+find_next_label=આગળનું
+find_highlight=બધુ પ્રકાશિત કરો
+find_match_case_label=કેસ બંધબેસાડો
+find_reached_top=દસ્તાવેજનાં ટોચે પહોંચી ગયા, તળિયેથી ચાલુ કરેલ હતુ
+find_reached_bottom=દસ્તાવેજનાં અંતે પહોંચી ગયા, ઉપરથી ચાલુ કરેલ હતુ
+find_not_found=શબ્દસમૂહ મળ્યુ નથી
+
+# Error panel labels
+error_more_info=વધારે જાણકારી
+error_less_info=ઓછી જાણકારી
+error_close=બંધ કરો
+# LOCALIZATION NOTE (error_version_info): "{{version}}" and "{{build}}" will be
+# replaced by the PDF.JS version and build ID.
+error_version_info=PDF.js v{{version}} (build: {{build}})
+# LOCALIZATION NOTE (error_message): "{{message}}" will be replaced by an
+# english string describing the error.
+error_message=સંદેશો: {{message}}
+# LOCALIZATION NOTE (error_stack): "{{stack}}" will be replaced with a stack
+# trace.
+error_stack=સ્ટેક: {{stack}}
+# LOCALIZATION NOTE (error_file): "{{file}}" will be replaced with a filename
+error_file=ફાઇલ: {{file}}
+# LOCALIZATION NOTE (error_line): "{{line}}" will be replaced with a line number
+error_line=વાક્ય: {{line}}
+rendering_error=ભૂલ ઉદ્ભવી જ્યારે પાનાંનુ રેન્ડ કરી રહ્યા હોય.
+
+# Predefined zoom values
+page_scale_width=પાનાની પહોળાઇ
+page_scale_fit=પાનું બંધબેસતુ
+page_scale_auto=આપમેળે નાનુંમોટુ કરો
+page_scale_actual=ચોક્કસ માપ
+# LOCALIZATION NOTE (page_scale_percent): "{{scale}}" will be replaced by a
+# numerical scale value.
+page_scale_percent={{scale}}%
+
+# Loading indicator messages
+loading_error_indicator=ભૂલ
+loading_error=ભૂલ ઉદ્ભવી જ્યારે PDF ને લાવી રહ્યા હોય.
+invalid_file_error=અયોગ્ય અથવા ભાંગેલ PDF ફાઇલ.
+missing_file_error=ગુમ થયેલ PDF ફાઇલ.
+unexpected_response_error=અનપેક્ષિત સર્વર પ્રતિસાદ.
+
+# LOCALIZATION NOTE (text_annotation_type.alt): This is used as a tooltip.
+# "{{type}}" will be replaced with an annotation type from a list defined in
+# the PDF spec (32000-1:2008 Table 169 – Annotation types).
+# Some common types are e.g.: "Check", "Text", "Comment", "Note"
+text_annotation_type.alt=[{{type}} Annotation]
+password_label=આ PDF ફાઇલને ખોલવા પાસવર્ડને દાખલ કરો.
+password_invalid=અયોગ્ય પાસવર્ડ. મહેરબાની કરીને ફરી પ્રયત્ન કરો.
+password_ok=બરાબર
+password_cancel=રદ કરો
+
+printing_not_supported=ચેતવણી: છાપવાનું આ બ્રાઉઝર દ્દારા સંપૂર્ણપણે આધારભૂત નથી.
+printing_not_ready=Warning: PDF એ છાપવા માટે સંપૂર્ણપણે લાવેલ છે.
+web_fonts_disabled=વેબ ફોન્ટ નિષ્ક્રિય થયેલ છે: ઍમ્બેડ થયેલ PDF ફોન્ટને વાપરવાનું અસમર્થ.
+document_colors_not_allowed=PDF દસ્તાવેજો તેનાં પોતાના રંગોને વાપરવા પરવાનગી આપતા નથી: 'તેનાં પોતાનાં રંગોને પસંદ કરવા માટે પાનાંને પરવાનગી આપો' બ્રાઉઝરમાં નિષ્ક્રિય થયેલ છે.

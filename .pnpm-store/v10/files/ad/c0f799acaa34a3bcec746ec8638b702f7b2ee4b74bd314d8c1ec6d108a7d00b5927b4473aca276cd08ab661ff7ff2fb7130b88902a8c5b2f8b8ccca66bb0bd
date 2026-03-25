@@ -1,0 +1,31 @@
+{
+  "name": "node-ensure",
+  "version": "0.0.0",
+  "description": "Async module-loading library and protocol for bundlers/loaders targeting isomorphic apps and Node.js.",
+  "main": "index.js",
+  "browser": {
+    "./index.js": "./browser.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "require",
+    "ensure",
+    "dynamic",
+    "module",
+    "loader",
+    "bundler",
+    "async"
+  ],
+  "author": "Carl A. Bauer",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bauerca/node-ensure.git"
+  },
+  "bugs": {
+    "url": "https://github.com/bauerca/node-ensure/issues"
+  },
+  "homepage": "https://github.com/bauerca/node-ensure",
+  "license": "MIT"
+}

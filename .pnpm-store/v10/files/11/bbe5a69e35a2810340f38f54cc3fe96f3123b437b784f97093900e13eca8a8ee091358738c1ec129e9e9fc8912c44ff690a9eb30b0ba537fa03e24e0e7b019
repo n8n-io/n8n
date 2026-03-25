@@ -1,0 +1,27 @@
+name: build
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@master
+        with:
+          persist-credentials: false
+
+      - name: set up node.js
+        uses: actions/setup-node@v1
+        with:
+          node-version: "14.x"
+
+      - name: lint and test
+        run: npm install && npm run ci

@@ -1,0 +1,17 @@
+language: node_js
+
+node_js:
+- '10'
+- '12'
+- '14'
+
+branches:
+  only:
+  - master
+
+before_script:
+- npm install -g grunt-cli
+- grunt --version
+
+notifications:
+  on_success: never

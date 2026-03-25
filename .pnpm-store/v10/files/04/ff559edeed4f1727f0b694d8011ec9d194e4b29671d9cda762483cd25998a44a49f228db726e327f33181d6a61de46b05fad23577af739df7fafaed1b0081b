@@ -1,0 +1,27 @@
+{
+  "name": "css-color-keywords",
+  "version": "1.0.0",
+  "description": "A list of all CSS color keywords.",
+  "keywords": [
+    "css",
+    "color",
+    "keywords",
+    "list"
+  ],
+  "license": "ISC",
+  "author": "Jakob Krigovsky <jakob@krigovsky.com>",
+  "files": [
+    "colors.json",
+    "index.js"
+  ],
+  "repository": "sonicdoe/css-color-keywords",
+  "scripts": {
+    "test": "standard && node test.js"
+  },
+  "devDependencies": {
+    "standard": "^8.6.0"
+  },
+  "engines": {
+    "node": ">=4"
+  }
+}

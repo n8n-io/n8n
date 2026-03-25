@@ -1,0 +1,151 @@
+THIRD PARTY LICENSES
+
+@nodelib/fs.scandir@2.1.5
+  <unknown>
+  https://github.com/nodelib/nodelib/tree/master/packages/fs/fs.scandir
+  MIT
+
+@nodelib/fs.stat@2.0.5
+  <unknown>
+  https://github.com/nodelib/nodelib/tree/master/packages/fs/fs.stat
+  MIT
+
+@nodelib/fs.walk@1.2.8
+  <unknown>
+  https://github.com/nodelib/nodelib/tree/master/packages/fs/fs.walk
+  MIT
+
+@sindresorhus/merge-streams@4.0.0
+  Sindre Sorhus <sindresorhus@gmail.com>
+  sindresorhus/merge-streams
+  MIT
+
+@webpod/ps@1.0.0
+  <unknown>
+  git://github.com/webpod/ps.git
+  MIT
+
+braces@3.0.3
+  Jon Schlinkert (https://github.com/jonschlinkert)
+  micromatch/braces
+  MIT
+
+chalk@5.6.2
+  <unknown>
+  chalk/chalk
+  MIT
+
+create-require@1.1.1
+  Maël Nison <nison.mael@gmail.com>, Paul Soporan <paul.soporan@gmail.com>, Pooya Parsa <pyapar@gmail.com>
+  nuxt-contrib/create-require
+  MIT
+
+envapi@0.2.3
+  Anton Golub <antongolub@antongolub.com>
+  git+https://github.com/webpod/envapi.git
+  MIT
+
+fast-glob@3.3.3
+  Denis Malinochkin <undefined>
+  mrmlnc/fast-glob
+  MIT
+
+fastq@1.19.1
+  Matteo Collina <hello@matteocollina.com>
+  git+https://github.com/mcollina/fastq.git
+  ISC
+
+fill-range@7.1.1
+  Jon Schlinkert (https://github.com/jonschlinkert)
+  jonschlinkert/fill-range
+  MIT
+
+fs-extra@11.3.2
+  JP Richardson <jprichardson@gmail.com>
+  https://github.com/jprichardson/node-fs-extra
+  MIT
+
+glob-parent@5.1.2
+  Gulp Team <team@gulpjs.com> (https://gulpjs.com/)
+  gulpjs/glob-parent
+  ISC
+
+globby@15.0.0
+  Sindre Sorhus <sindresorhus@gmail.com>
+  sindresorhus/globby
+  MIT
+
+graceful-fs@4.2.11
+  <unknown>
+  https://github.com/isaacs/node-graceful-fs
+  ISC
+
+is-glob@4.0.3
+  Jon Schlinkert (https://github.com/jonschlinkert)
+  micromatch/is-glob
+  MIT
+
+isexe@3.1.1
+  Isaac Z. Schlueter <i@izs.me> (http://blog.izs.me/)
+  https://github.com/isaacs/isexe
+  ISC
+
+jsonfile@6.1.0
+  JP Richardson <jprichardson@gmail.com>
+  git@github.com:jprichardson/node-jsonfile.git
+  MIT
+
+merge2@1.4.1
+  <unknown>
+  git@github.com:teambition/merge2.git
+  MIT
+
+micromatch@4.0.8
+  Jon Schlinkert (https://github.com/jonschlinkert)
+  micromatch/micromatch
+  MIT
+
+node-fetch-native@1.6.7
+  <unknown>
+  unjs/node-fetch-native
+  MIT
+
+path-type@6.0.0
+  Sindre Sorhus <sindresorhus@gmail.com>
+  sindresorhus/path-type
+  MIT
+
+picomatch@2.3.1
+  Jon Schlinkert (https://github.com/jonschlinkert)
+  micromatch/picomatch
+  MIT
+
+run-parallel@1.2.0
+  Feross Aboukhadijeh <feross@feross.org>
+  git://github.com/feross/run-parallel.git
+  MIT
+
+to-regex-range@5.0.1
+  Jon Schlinkert (https://github.com/jonschlinkert)
+  micromatch/to-regex-range
+  MIT
+
+unicorn-magic@0.3.0
+  Sindre Sorhus <sindresorhus@gmail.com>
+  sindresorhus/unicorn-magic
+  MIT
+
+which@5.0.0
+  GitHub Inc.
+  git+https://github.com/npm/node-which.git
+  ISC
+
+yaml@2.8.1
+  Eemeli Aro <eemeli@gmail.com>
+  github:eemeli/yaml
+  ISC
+
+zurk@0.11.10
+  Anton Golub <antongolub@antongolub.com>
+  git+https://github.com/webpod/zurk.git
+  MIT

@@ -1,0 +1,52 @@
+{
+    "name": "rhea",
+    "version": "3.0.4",
+    "description": "reactive AMQP 1.0 library",
+    "homepage": "http://github.com/amqp/rhea",
+    "license": "Apache-2.0",
+    "repository": {
+        "type": "git",
+        "url": "http://github.com/amqp/rhea"
+    },
+    "browser": {
+        "fs": false,
+        "net": false,
+        "tls": false
+    },
+    "dependencies": {
+        "debug": "^4.3.3"
+    },
+    "devDependencies": {
+        "@types/debug": "^4.1.7",
+        "@types/mocha": "^9.0.0",
+        "@types/node": "10 -",
+        "browserify": "",
+        "eslint": "^7.32.0",
+        "minimist": ">=0.2.4",
+        "mocha": "^9.1.4",
+        "nyc": "^15.1.0",
+        "require-self": "^0.2.1",
+        "ts-node": "^10.4.0",
+        "typescript": "^4.5.5",
+        "uglify-js": ">=2.4.24",
+        "ws": "^6.0.0"
+    },
+    "scripts": {
+        "lint": "eslint lib/*.js",
+        "test": "mocha --require ts-node/register ./test/*.ts",
+        "coverage": "nyc --reporter=json --reporter=lcov --reporter=text-summary npm run test",
+        "browserify": "browserify -r .:rhea -o dist/rhea.js && browserify -r .:rhea --standalone rhea-umd > dist/rhea-umd.js",
+        "run-examples": "require-self && mocha examples/test_examples.js",
+        "uglify": "uglifyjs --source-map --output dist/rhea.min.js dist/rhea.js",
+        "prepare": "npm run lint && npm run tsc",
+        "tsc": "tsc"
+    },
+    "keywords": [
+        "amqp",
+        "amqp10",
+        "amqp 1.0",
+        "messaging"
+    ],
+    "main": "./lib/container.js",
+    "types": "./typings/index.d.ts"
+}

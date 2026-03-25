@@ -1,0 +1,92 @@
+{
+  "name": "crlf-normalize",
+  "version": "1.0.19",
+  "description": "Detect and Normalize the newline characters",
+  "keywords": [
+    "char",
+    "character",
+    "convert",
+    "cr",
+    "crlf",
+    "detect",
+    "eol",
+    "lf",
+    "line",
+    "linebreak",
+    "linefeed",
+    "newline",
+    "normalize",
+    "replace",
+    "create-by-yarn-tool",
+    "create-by-tsdx"
+  ],
+  "homepage": "https://github.com/bluelovers/ws-string/tree/master/packages/crlf-normalize#readme",
+  "bugs": {
+    "url": "https://github.com/bluelovers/ws-string/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bluelovers/ws-string.git",
+    "directory": "packages/crlf-normalize"
+  },
+  "license": "ISC",
+  "author": "bluelovers",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.cjs",
+      "import": "./dist/index.esm.mjs"
+    },
+    "./package.json": "./package.json",
+    "./src/*": "./src/*"
+  },
+  "main": "dist/index.cjs",
+  "unpkg": "dist/index.umd.js",
+  "module": "dist/index.esm.mjs",
+  "types": "dist/index.d.ts",
+  "typings": "dist/index.d.ts",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "coverage": "yarn run test -- --coverage",
+    "pretest": "echo pretest",
+    "test": "jest",
+    "test:jest": "jest --passWithNoTests",
+    "test:jest:coverage": "yarn run test:jest -- --coverage",
+    "test:jest:snapshot": "yarn run test:jest -- -u",
+    "test:snapshot": "yarn run test -- -u",
+    "test:tsd": "ynpx tsd",
+    "posttest": "yarn run build",
+    "build": "yarn run build:tsdx && yarn run build:dts:tsc",
+    "build:dts:bundle": "ynpx dts-bundle-generator -o ./dist/index.d.ts ./src/index.ts --no-banner --inline-declare-global & echo build:dts:bundle",
+    "build:dts:copy": "copy .\\src\\index.d.ts .\\dist\\index.d.ts & echo build:dts",
+    "build:dts:tsc": "yarn run build:dts:tsc:emit && yarn run build:dts:copy",
+    "build:dts:tsc:emit": "tsc --emitDeclarationOnly --declaration --noEmit false",
+    "build:tsdx": "ynpx @bluelovers/tsdx build --target node",
+    "ci:install": "echo ci:install",
+    "ci:build": "echo ci:build",
+    "preversion": "echo preversion && yarn run test",
+    "version": "echo version",
+    "postversion": "echo postversion",
+    "prepublish": "echo prepublish",
+    "prepare": "echo prepare",
+    "prepublishOnly": "echo prepublishOnly",
+    "prepublishOnly:update": "yarn run ncu && yarn run sort-package-json",
+    "prepack": "echo prepack",
+    "pack": "echo pack",
+    "postpack": "echo postpack",
+    "publish": "echo publish",
+    "postpublish": "echo postpublish",
+    "postpublishOnly": "echo postpublishOnly",
+    "ncu": "yarn-tool ncu -u",
+    "sort-package-json": "yarn-tool sort",
+    "tsc:showConfig": "ynpx get-current-tsconfig -p"
+  },
+  "dependencies": {
+    "ts-type": ">=2"
+  },
+  "packageManager": "yarn@^1.22.11",
+  "gitHead": "402094ad4f5b1b3991ec56a62948480a9d8a2381"
+}

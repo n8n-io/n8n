@@ -1,0 +1,257 @@
+syntax = "proto3";
+package milvus.proto.schema;
+
+option go_package = "github.com/milvus-io/milvus-proto/go-api/v2/schemapb";
+
+option java_multiple_files = true;
+option java_package = "io.milvus.grpc";
+option java_outer_classname = "SchemaProto";
+option java_generate_equals_and_hash = true;
+
+option csharp_namespace = "Milvus.Client.Grpc";
+
+import "common.proto";
+import "google/protobuf/descriptor.proto";
+
+/**
+ * @brief Field data type
+ */
+enum DataType {
+  None = 0;
+  Bool = 1;
+  Int8 = 2;
+  Int16 = 3;
+  Int32 = 4;
+  Int64 = 5;
+
+  Float = 10;
+  Double = 11;
+
+  String = 20;
+  VarChar = 21; // variable-length strings with a specified maximum length
+  Array = 22;
+  JSON = 23;
+  Geometry = 24;
+
+  BinaryVector = 100;
+  FloatVector = 101;
+  Float16Vector = 102;
+  BFloat16Vector = 103;
+  SparseFloatVector = 104;
+}
+
+enum FunctionType{
+  Unknown =0;
+  BM25 =1;
+  TextEmbedding =2;
+}
+
+enum FieldState {
+  FieldCreated = 0;
+  FieldCreating = 1;
+  FieldDropping = 2;
+  FieldDropped = 3;
+}
+
+/**
+ * @brief Field schema
+ */
+message FieldSchema {
+  int64 fieldID = 1;
+  string name = 2;
+  bool is_primary_key = 3;
+  string description = 4;
+  DataType data_type = 5;
+  repeated common.KeyValuePair type_params = 6;
+  repeated common.KeyValuePair index_params = 7;
+  bool autoID = 8;
+  FieldState state = 9; // To keep compatible with older version, the default
+                        // state is `Created`.
+  DataType element_type = 10; // For array type, the element type is stored here
+  ValueField default_value = 11; // default_value only support scalars except array and json for now
+  bool is_dynamic = 12; // mark whether this field is the dynamic field
+  bool is_partition_key = 13; // enable logic partitions
+  bool is_clustering_key = 14;
+  bool nullable = 15; // enable set null as field value
+  bool is_function_output =16;
+}
+
+message FunctionSchema {
+  string name = 1;
+  int64 id =2;
+  string description = 3;
+  FunctionType type = 4;
+  repeated string input_field_names = 5;
+  repeated int64 input_field_ids = 6;
+  repeated string output_field_names = 7;
+  repeated int64 output_field_ids = 8;
+  repeated common.KeyValuePair params = 9;
+}
+
+/**
+ * @brief Collection schema
+ */
+message CollectionSchema {
+  string name = 1;
+  string description = 2;
+  bool autoID = 3 [deprecated=true]; // deprecated later, keep compatible with c++ part now
+  repeated FieldSchema fields = 4;
+  bool enable_dynamic_field = 5; // mark whether this table has the dynamic field function enabled.
+  repeated common.KeyValuePair properties = 6;
+  repeated FunctionSchema functions = 7;
+  string dbName = 8;
+}
+
+message BoolArray { repeated bool data = 1; }
+
+message IntArray { repeated int32 data = 1; }
+
+message LongArray { repeated int64 data = 1; }
+
+message FloatArray { repeated float data = 1; }
+
+message DoubleArray { repeated double data = 1; }
+
+// For special fields such as bigdecimal, array...
+message BytesArray { repeated bytes data = 1; }
+
+message StringArray { repeated string data = 1; }
+
+message ArrayArray {
+  repeated ScalarField data = 1;
+  DataType element_type = 2;
+}
+
+message JSONArray { repeated bytes data = 1; }
+
+message GeometryArray { repeated bytes data = 1; }
+
+message ValueField {
+  oneof data {
+    bool bool_data = 1;
+    int32 int_data = 2;
+    int64 long_data = 3;
+    float float_data = 4;
+    double double_data = 5;
+    string string_data = 6;
+    bytes bytes_data = 7;
+  }
+}
+
+message ScalarField {
+  oneof data {
+    BoolArray bool_data = 1;
+    IntArray int_data = 2;
+    LongArray long_data = 3;
+    FloatArray float_data = 4;
+    DoubleArray double_data = 5;
+    StringArray string_data = 6;
+    BytesArray bytes_data = 7;
+    ArrayArray array_data = 8;
+    JSONArray json_data = 9;
+    GeometryArray geometry_data = 10;
+  }
+}
+
+// beta, api may change
+message SparseFloatArray {
+  repeated bytes contents = 1;
+  // dim is the max dimension of the current batch of vectors
+  int64 dim = 2;
+}
+
+message VectorField {
+  // For sparse vector, dim is the max dimension of the current batch of vectors
+  int64 dim = 1;
+  oneof data {
+    FloatArray float_vector = 2;
+    bytes binary_vector = 3;
+    bytes float16_vector = 4;
+    bytes bfloat16_vector = 5;
+    SparseFloatArray sparse_float_vector = 6;
+  }
+}
+
+message FieldData {
+  DataType type = 1;
+  string field_name = 2;
+  oneof field {
+    ScalarField scalars = 3;
+    VectorField vectors = 4;
+  }
+  int64 field_id = 5;
+  bool is_dynamic = 6;
+  repeated bool valid_data = 7;
+}
+
+message IDs {
+  oneof id_field {
+    LongArray int_id = 1;
+    StringArray str_id = 2;
+  }
+}
+
+message SearchIteratorV2Results {
+  string token = 1;
+  float last_bound = 2;
+}
+
+message SearchResultData {
+  int64 num_queries = 1;
+  int64 top_k = 2;
+  repeated FieldData fields_data = 3;
+  repeated float scores = 4;
+  IDs ids = 5;
+  repeated int64 topks = 6;
+  repeated string output_fields = 7;
+  FieldData group_by_field_value = 8;
+  int64 all_search_count = 9;
+  repeated float distances = 10;
+  optional SearchIteratorV2Results search_iterator_v2_results = 11;
+  repeated float recalls = 12;
+  string primary_field_name = 13;
+}
+
+// vector field clustering info
+message VectorClusteringInfo {
+  // for multi vectors
+  string field = 1;
+  schema.VectorField centroid = 2;
+}
+
+// Scalar field clustering info
+// todo more definitions: min/max, etc
+message ScalarClusteringInfo {
+  string field = 1;
+}
+
+// clustering distribution info of a certain data unit, it can be segment, partition, etc.
+message ClusteringInfo {
+  repeated VectorClusteringInfo vector_clustering_infos = 1;
+  repeated ScalarClusteringInfo scalar_clustering_infos = 2;
+}
+
+message TemplateValue {
+  oneof val {
+    bool bool_val = 1;
+    int64 int64_val = 2;
+    double float_val = 3;
+    string string_val = 4;
+    TemplateArrayValue array_val = 5;
+  };
+}
+
+message TemplateArrayValue {
+  oneof data {
+    BoolArray bool_data = 1;
+    LongArray long_data = 2;
+    DoubleArray double_data = 3;
+    StringArray string_data = 4;
+    TemplateArrayValueArray array_data = 5;
+    JSONArray json_data = 6;
+  }
+}
+
+message TemplateArrayValueArray {
+  repeated TemplateArrayValue data = 1;
+}

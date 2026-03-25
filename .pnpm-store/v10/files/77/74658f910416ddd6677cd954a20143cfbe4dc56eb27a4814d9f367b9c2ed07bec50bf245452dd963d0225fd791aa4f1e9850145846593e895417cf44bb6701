@@ -1,0 +1,72 @@
+{
+  "name": "@ts-graphviz/adapter",
+  "version": "2.0.6",
+  "description": "Graphviz Runtime adapters for Cross Platform",
+  "keywords": [
+    "graphviz",
+    "dot"
+  ],
+  "homepage": "https://github.com/ts-graphviz/ts-graphviz#readme",
+  "bugs": {
+    "url": "https://github.com/ts-graphviz/ts-graphviz/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ts-graphviz/ts-graphviz.git",
+    "directory": "packages/adapter"
+  },
+  "funding": [
+    {
+      "type": "github",
+      "url": "https://github.com/sponsors/ts-graphviz"
+    },
+    {
+      "type": "opencollective",
+      "url": "https://opencollective.com/ts-graphviz"
+    }
+  ],
+  "license": "MIT",
+  "author": "Yuki Yamazaki <yuki@kamiazya.tech>",
+  "type": "module",
+  "exports": {
+    ".": {
+      "browser": {
+        "types": "./lib/browser.d.ts",
+        "require": "./lib/browser.cjs",
+        "default": "./lib/browser.js"
+      },
+      "deno": {
+        "types": "./lib/deno.d.ts",
+        "default": "./lib/deno.js"
+      },
+      "default": {
+        "types": "./lib/node.d.ts",
+        "require": "./lib/node.cjs",
+        "default": "./lib/node.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "./lib/node.cjs",
+  "module": "./lib/node.js",
+  "types": "./lib/node.d.ts",
+  "dependencies": {
+    "@ts-graphviz/common": "^2.1.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.7",
+    "typescript": "^5.4.5",
+    "vite": "^5.4.8",
+    "vite-plugin-dts": "^4.2.1"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "vite build && rm ./lib/deno.cjs "
+  }
+}

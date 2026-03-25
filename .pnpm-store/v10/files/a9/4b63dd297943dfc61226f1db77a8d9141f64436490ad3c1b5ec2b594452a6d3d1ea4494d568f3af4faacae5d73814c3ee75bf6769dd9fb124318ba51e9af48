@@ -1,0 +1,40 @@
+{
+  "name": "dockerode",
+  "description": "Docker Remote API module.",
+  "version": "4.0.9",
+  "author": "Pedro Dias <petermdias@gmail.com>",
+  "maintainers": [
+    "apocas <petermdias@gmail.com>"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "http://github.com/apocas/dockerode.git"
+  },
+  "keywords": [
+    "docker",
+    "docker.io"
+  ],
+  "dependencies": {
+    "@balena/dockerignore": "^1.0.2",
+    "@grpc/grpc-js": "^1.11.1",
+    "@grpc/proto-loader": "^0.7.13",
+    "docker-modem": "^5.0.6",
+    "protobufjs": "^7.3.2",
+    "tar-fs": "^2.1.4",
+    "uuid": "^10.0.0"
+  },
+  "devDependencies": {
+    "bluebird": "^3.7.0",
+    "chai": "~4.2.0",
+    "memorystream": "~0.3.0",
+    "mocha": "^10.2.0"
+  },
+  "main": "./lib/docker",
+  "scripts": {
+    "test": "./node_modules/mocha/bin/mocha.js -R spec --exit"
+  },
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">= 8.0"
+  }
+}

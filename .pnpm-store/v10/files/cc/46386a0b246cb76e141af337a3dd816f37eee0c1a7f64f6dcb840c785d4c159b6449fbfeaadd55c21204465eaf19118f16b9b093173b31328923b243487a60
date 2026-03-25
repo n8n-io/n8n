@@ -1,0 +1,44 @@
+{
+  "name": "@bcoe/v8-coverage",
+  "version": "0.2.3",
+  "description": "Helper functions for V8 coverage files.",
+  "author": "Charles Samborski <demurgos@demurgos.net> (https://demurgos.net)",
+  "license": "MIT",
+  "main": "index",
+  "types": "index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/demurgos/v8-coverage.git"
+  },
+  "homepage": "https://demurgos.github.io/v8-coverage",
+  "devDependencies": {
+    "@types/chai": "^4.1.4",
+    "@types/gulp": "^4.0.5",
+    "@types/minimist": "^1.2.0",
+    "@types/mocha": "^5.2.2",
+    "@types/node": "^10.5.4",
+    "chai": "^4.1.2",
+    "codecov": "^3.0.2",
+    "gulp": "^4.0.0",
+    "gulp-cli": "^2.0.1",
+    "minimist": "^1.2.0",
+    "pre-commit": "^1.2.2",
+    "ts-node": "^8.3.0",
+    "turbo-gulp": "^0.20.1"
+  },
+  "nyc": {
+    "include": [
+      "build/test/lib/**/*.js",
+      "build/test/lib/**/*.mjs"
+    ],
+    "reporter": [
+      "text",
+      "html"
+    ],
+    "extension": [
+      ".mjs"
+    ]
+  },
+  "gitHead": "529387e2bd3e0ba0b9336d80ec563aee593331e1",
+  "private": false
+}

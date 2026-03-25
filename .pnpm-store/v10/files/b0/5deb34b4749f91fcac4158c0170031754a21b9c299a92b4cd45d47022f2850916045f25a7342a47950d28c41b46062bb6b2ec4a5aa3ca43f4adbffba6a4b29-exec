@@ -1,0 +1,62 @@
+{
+    "name": "@types/ssh2",
+    "version": "1.11.6",
+    "description": "TypeScript definitions for ssh2",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/ssh2",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Qubo",
+            "url": "https://github.com/tkQubo",
+            "githubUsername": "tkQubo"
+        },
+        {
+            "name": "Ron Buckton",
+            "url": "https://github.com/rbuckton",
+            "githubUsername": "rbuckton"
+        },
+        {
+            "name": "Will Boyce",
+            "url": "https://github.com/wrboyce",
+            "githubUsername": "wrboyce"
+        },
+        {
+            "name": "Lucas Motta",
+            "url": "https://github.com/lucasmotta",
+            "githubUsername": "lucasmotta"
+        },
+        {
+            "name": "Tom Xu",
+            "url": "https://github.com/hengkx",
+            "githubUsername": "hengkx"
+        },
+        {
+            "name": "Leo Toneff",
+            "url": "https://github.com/bragle",
+            "githubUsername": "bragle"
+        },
+        {
+            "name": "Lucian Buzzo",
+            "url": "https://github.com/LucianBuzzo",
+            "githubUsername": "LucianBuzzo"
+        },
+        {
+            "name": "Dan Hensby",
+            "url": "https://github.com/dhensby",
+            "githubUsername": "dhensby"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/ssh2"
+    },
+    "scripts": {},
+    "dependencies": {
+        "@types/node": "*"
+    },
+    "typesPublisherContentHash": "41cd3f1a87059b210d19e30b6def940973de7bbf3205033a5a7027141eb4933a",
+    "typeScriptVersion": "4.1"
+}

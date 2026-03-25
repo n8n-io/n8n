@@ -1,0 +1,34 @@
+{
+  "name": "thenify-all",
+  "description": "Promisifies all the selected functions in an object",
+  "version": "1.6.0",
+  "author": "Jonathan Ong <me@jongleberry.com> (http://jongleberry.com)",
+  "license": "MIT",
+  "repository": "thenables/thenify-all",
+  "dependencies": {
+    "thenify": ">= 3.1.0 < 4"
+  },
+  "devDependencies": {
+    "bluebird": "2",
+    "istanbul": "0",
+    "mocha": "2"
+  },
+  "scripts": {
+    "test": "mocha --reporter spec",
+    "test-cov": "istanbul cover node_modules/.bin/_mocha -- --reporter dot",
+    "test-travis": "istanbul cover node_modules/.bin/_mocha --report lcovonly -- --reporter dot"
+  },
+  "keywords": [
+    "promisify",
+    "promise",
+    "thenify",
+    "then",
+    "es6"
+  ],
+  "files": [
+    "index.js"
+  ],
+  "engines": {
+    "node": ">=0.8"
+  }
+}

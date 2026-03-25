@@ -1,0 +1,41 @@
+{
+  "name": "babel-preset-current-node-syntax",
+  "version": "1.0.1",
+  "description": "A Babel preset that enables parsing of proposals supported by the current Node.js version.",
+  "main": "src/index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nicolo-ribaudo/babel-preset-current-node-syntax.git"
+  },
+  "author": {
+    "name": "Nicolò Ribaudo",
+    "url": "https://github.com/nicolo-ribaudo"
+  },
+  "scripts": {
+    "test": "node ./test/index.js",
+    "prepublish": "./scripts/check-yarn-bug.sh"
+  },
+  "dependencies": {
+    "@babel/plugin-syntax-async-generators": "^7.8.4",
+    "@babel/plugin-syntax-bigint": "^7.8.3",
+    "@babel/plugin-syntax-class-properties": "^7.8.3",
+    "@babel/plugin-syntax-import-meta": "^7.8.3",
+    "@babel/plugin-syntax-json-strings": "^7.8.3",
+    "@babel/plugin-syntax-logical-assignment-operators": "^7.8.3",
+    "@babel/plugin-syntax-nullish-coalescing-operator": "^7.8.3",
+    "@babel/plugin-syntax-numeric-separator": "^7.8.3",
+    "@babel/plugin-syntax-object-rest-spread": "^7.8.3",
+    "@babel/plugin-syntax-optional-catch-binding": "^7.8.3",
+    "@babel/plugin-syntax-optional-chaining": "^7.8.3",
+    "@babel/plugin-syntax-top-level-await": "^7.8.3"
+  },
+  "peerDependencies": {
+    "@babel/core": "^7.0.0"
+  },
+  "devDependencies": {
+    "@babel/core": "7.0.0",
+    "@babel/parser-7.0.0": "npm:@babel/parser@7.0.0",
+    "@babel/parser-7.9.0": "npm:@babel/parser@7.9.0"
+  },
+  "license": "MIT"
+}

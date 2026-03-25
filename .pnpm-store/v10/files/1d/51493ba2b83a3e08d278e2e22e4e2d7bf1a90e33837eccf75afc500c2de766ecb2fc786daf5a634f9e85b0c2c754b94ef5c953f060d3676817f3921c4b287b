@@ -1,0 +1,34 @@
+{
+    "name": "@types/promise-ftp",
+    "version": "1.3.4",
+    "description": "TypeScript definitions for promise-ftp",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "coolreader18",
+            "url": "https://github.com/coolreader18",
+            "githubUsername": "coolreader18"
+        },
+        {
+            "name": "Rolands Jegorovs",
+            "url": "https://github.com/Rolandisimo",
+            "githubUsername": "Rolandisimo"
+        }
+    ],
+    "main": "",
+    "types": "index",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/promise-ftp"
+    },
+    "scripts": {},
+    "dependencies": {
+        "@types/bluebird": "*",
+        "@types/ftp": "*",
+        "@types/node": "*",
+        "@types/promise-ftp-common": "*"
+    },
+    "typesPublisherContentHash": "3b0ed081d426e2e226bb16654ebb1e4239b5695b9d9e20038058bbabab45c3a5",
+    "typeScriptVersion": "3.2"
+}

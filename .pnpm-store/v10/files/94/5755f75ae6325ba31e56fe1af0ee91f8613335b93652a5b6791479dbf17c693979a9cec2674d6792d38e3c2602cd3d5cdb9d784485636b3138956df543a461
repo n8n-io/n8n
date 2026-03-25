@@ -1,0 +1,38 @@
+{
+  "name": "xml",
+  "version": "1.0.1",
+  "description": "Fast and simple xml generator. Supports attributes, CDATA, etc. Includes tests and examples.",
+  "homepage": "http://github.com/dylang/node-xml",
+  "keywords": [
+    "xml",
+    "create",
+    "builder",
+    "json",
+    "simple"
+  ],
+  "author": "Dylan Greene (https://github.com/dylang)",
+  "contributors": [
+    "Dylan Greene (https://github.com/dylang)",
+    "Dodo (https://github.com/dodo)",
+    "Felix Geisendrfer (felix@debuggable.com)",
+    "Mithgol",
+    "carolineBda (https://github.com/carolineBda)",
+    "Eric Vantillard https://github.com/evantill",
+    "Sean Dwyer https://github.com/reywood"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "http://github.com/dylang/node-xml"
+  },
+  "bugs": {
+    "url": "http://github.com/dylang/node-xml/issues"
+  },
+  "devDependencies": {
+    "ava": "^0.11.0"
+  },
+  "scripts": {
+    "test": "ava"
+  },
+  "main": "lib/xml.js",
+  "license": "MIT"
+}

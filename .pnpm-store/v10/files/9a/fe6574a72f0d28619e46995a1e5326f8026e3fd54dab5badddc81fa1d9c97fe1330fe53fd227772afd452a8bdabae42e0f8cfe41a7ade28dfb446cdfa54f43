@@ -1,0 +1,22 @@
+{
+  "name": "@mixmark-io/domino",
+  "version": "2.2.0",
+  "license": "BSD-2-Clause",
+  "author": "Felix Gnass <fgnass@gmail.com>",
+  "description": "Server-side DOM implementation based on Mozilla's dom.js",
+  "main": "./lib",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mixmark-io/domino.git"
+  },
+  "scripts": {
+    "test": "mocha"
+  },
+  "types": "lib/index.d.ts",
+  "devDependencies": {
+    "jquery": "^3.5.1",
+    "mocha": "^6.2.3",
+    "puppeteer": "^21.3.5",
+    "should": "^13.2.3"
+  }
+}

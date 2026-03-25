@@ -1,0 +1,40 @@
+{
+  "name": "timestring",
+  "version": "6.0.0",
+  "description": "Parse a human readable time string into a time based value",
+  "main": "index.js",
+  "scripts": {
+    "cover": "istanbul cover ./node_modules/mocha/bin/_mocha --report lcovonly -x test.js test.js",
+    "dev": "watch 'clear; npm test -s;' ./ -d",
+    "lint": "standard *.js",
+    "test": "mocha test.js"
+  },
+  "author": "Michael David Barrett <mike182uk@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/mike182uk/timestring.git"
+  },
+  "homepage": "https://github.com/mike182uk/timestring",
+  "bugs": {
+    "url": "https://github.com/mike182uk/timestring/issues"
+  },
+  "keywords": [
+    "time",
+    "timestring",
+    "duration",
+    "date"
+  ],
+  "engines": {
+    "node": ">=8"
+  },
+  "devDependencies": {
+    "chai": "^4.2.0",
+    "coveralls": "^3.0.3",
+    "istanbul": "^0.4.5",
+    "mocha": "^6.1.4",
+    "mocha-lcov-reporter": "1.3.0",
+    "standard": "^12.0.1",
+    "watch": "^1.0.2"
+  }
+}

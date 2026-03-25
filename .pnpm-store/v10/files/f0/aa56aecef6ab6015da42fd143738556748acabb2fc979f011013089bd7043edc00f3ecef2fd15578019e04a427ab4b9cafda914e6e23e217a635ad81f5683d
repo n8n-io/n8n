@@ -1,0 +1,44 @@
+{
+  "name": "node-rsa",
+  "version": "1.1.1",
+  "description": "Node.js RSA library",
+  "main": "src/NodeRSA.js",
+  "scripts": {
+    "test": "grunt test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rzcoder/node-rsa.git"
+  },
+  "keywords": [
+    "node",
+    "rsa",
+    "crypto",
+    "assymetric",
+    "encryption",
+    "decryption",
+    "sign",
+    "verify",
+    "pkcs1",
+    "oaep",
+    "pss"
+  ],
+  "author": "rzcoder",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/rzcoder/node-rsa/issues"
+  },
+  "homepage": "https://github.com/rzcoder/node-rsa",
+  "devDependencies": {
+    "chai": "^4.2.0",
+    "grunt": "^1.1.0",
+    "grunt-contrib-jshint": "^2.1.0",
+    "grunt-simple-mocha": "0.4.1",
+    "jit-grunt": "0.10.0",
+    "lodash": "^4.17.15",
+    "nyc": "^15.0.0"
+  },
+  "dependencies": {
+    "asn1": "^0.2.4"
+  }
+}

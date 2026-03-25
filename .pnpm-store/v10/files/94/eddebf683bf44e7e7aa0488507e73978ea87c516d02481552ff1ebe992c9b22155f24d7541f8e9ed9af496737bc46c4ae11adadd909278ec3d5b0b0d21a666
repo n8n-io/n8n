@@ -1,0 +1,253 @@
+{
+  "log": {
+    "version": "1.2",
+    "creator": {
+      "name": "Firefox",
+      "version": "80.0.1"
+    },
+    "browser": {
+      "name": "Firefox",
+      "version": "80.0.1"
+    },
+    "pages": [
+      {
+        "startedDateTime": "2020-09-28T20:47:18.735+02:00",
+        "id": "page_1",
+        "title": "https://httpbin.org/post",
+        "pageTimings": {
+          "onContentLoad": 170,
+          "onLoad": 187
+        }
+      }
+    ],
+    "entries": [
+      {
+        "pageref": "page_2",
+        "startedDateTime": "2020-09-28T22:03:15.885+02:00",
+        "request": {
+          "bodySize": 0,
+          "method": "GET",
+          "url": "https://httpbin.org/get",
+          "httpVersion": "HTTP/2",
+          "headers": [
+            {
+              "name": "Host",
+              "value": "httpbin.org"
+            },
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:80.0) Gecko/20100101 Firefox/80.0"
+            },
+            {
+              "name": "Accept",
+              "value": "*/*"
+            },
+            {
+              "name": "Accept-Language",
+              "value": "fr,en;q=0.5"
+            },
+            {
+              "name": "Accept-Encoding",
+              "value": "gzip, deflate, br"
+            },
+            {
+              "name": "Referer",
+              "value": "https://httpbin.org/"
+            },
+            {
+              "name": "DNT",
+              "value": "1"
+            },
+            {
+              "name": "Connection",
+              "value": "keep-alive"
+            }
+          ],
+          "cookies": [],
+          "queryString": [],
+          "headersSize": 272
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/2",
+          "headers": [
+            {
+              "name": "date",
+              "value": "Mon, 28 Sep 2020 20:03:16 GMT"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            },
+            {
+              "name": "content-length",
+              "value": "461"
+            },
+            {
+              "name": "server",
+              "value": "gunicorn/19.9.0"
+            },
+            {
+              "name": "access-control-allow-origin",
+              "value": "*"
+            },
+            {
+              "name": "access-control-allow-credentials",
+              "value": "true"
+            },
+            {
+              "name": "X-Firefox-Spdy",
+              "value": "h2"
+            }
+          ],
+          "cookies": [],
+          "content": {
+            "mimeType": "application/json",
+            "size": 461,
+            "text": "{\n  \"args\": {}, \n  \"headers\": {\n    \"Accept\": \"*/*\", \n    \"Accept-Encoding\": \"gzip, deflate, br\", \n    \"Accept-Language\": \"fr,en;q=0.5\", \n    \"Dnt\": \"1\", \n    \"Host\": \"httpbin.org\", \n    \"Referer\": \"https://httpbin.org/\", \n    \"User-Agent\": \"Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:80.0) Gecko/20100101 Firefox/80.0\", \n    \"X-Amzn-Trace-Id\": \"Root=1-5f724184-c2b2dc0aa856f9d04dac5d35\"\n  }, \n  \"origin\": \"78.192.173.27\", \n  \"url\": \"https://httpbin.org/get\"\n}\n"
+          },
+          "redirectURL": "",
+          "headersSize": 224,
+          "bodySize": 685
+        },
+        "cache": {},
+        "timings": {
+          "blocked": 184,
+          "dns": 8,
+          "connect": 85,
+          "ssl": 88,
+          "send": 0,
+          "wait": 86,
+          "receive": 0
+        },
+        "time": 451,
+        "_securityState": "secure",
+        "serverIPAddress": "35.170.21.246",
+        "connection": "443"
+      },
+      {
+        "pageref": "page_1",
+        "startedDateTime": "2020-09-28T21:46:29.772+02:00",
+        "request": {
+          "bodySize": 0,
+          "method": "GET",
+          "url": "https://httpbin.org/get?from=10&size=20&sort=+name",
+          "httpVersion": "HTTP/2",
+          "headers": [
+            {
+              "name": "Host",
+              "value": "httpbin.org"
+            },
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:80.0) Gecko/20100101 Firefox/80.0"
+            },
+            {
+              "name": "Accept",
+              "value": "*/*"
+            },
+            {
+              "name": "Accept-Language",
+              "value": "fr,en;q=0.5"
+            },
+            {
+              "name": "Accept-Encoding",
+              "value": "gzip, deflate, br"
+            },
+            {
+              "name": "Referer",
+              "value": "https://httpbin.org/"
+            },
+            {
+              "name": "DNT",
+              "value": "1"
+            },
+            {
+              "name": "Connection",
+              "value": "keep-alive"
+            },
+            {
+              "name": "TE",
+              "value": "Trailers"
+            }
+          ],
+          "cookies": [],
+          "queryString": [
+            {
+              "name": "from",
+              "value": "10"
+            },
+            {
+              "name": "size",
+              "value": "20"
+            },
+            {
+              "name": "sort",
+              "value": " name"
+            }
+          ],
+          "headersSize": 299
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/2",
+          "headers": [
+            {
+              "name": "date",
+              "value": "Mon, 28 Sep 2020 19:46:29 GMT"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            },
+            {
+              "name": "content-length",
+              "value": "549"
+            },
+            {
+              "name": "server",
+              "value": "gunicorn/19.9.0"
+            },
+            {
+              "name": "access-control-allow-origin",
+              "value": "*"
+            },
+            {
+              "name": "access-control-allow-credentials",
+              "value": "true"
+            },
+            {
+              "name": "X-Firefox-Spdy",
+              "value": "h2"
+            }
+          ],
+          "cookies": [],
+          "content": {
+            "mimeType": "application/json",
+            "size": 549,
+            "text": "{\n  \"args\": {\n    \"from\": \"10\", \n    \"size\": \"20\", \n    \"sort\": \" name\"\n  }, \n  \"headers\": {\n    \"Accept\": \"*/*\", \n    \"Accept-Encoding\": \"gzip, deflate, br\", \n    \"Accept-Language\": \"fr,en;q=0.5\", \n    \"Dnt\": \"1\", \n    \"Host\": \"httpbin.org\", \n    \"Referer\": \"https://httpbin.org/\", \n    \"User-Agent\": \"Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:80.0) Gecko/20100101 Firefox/80.0\", \n    \"X-Amzn-Trace-Id\": \"Root=1-5f723d95-9675a1b77254a636c2f09fa3\"\n  }, \n  \"origin\": \"78.192.173.27\", \n  \"url\": \"https://httpbin.org/get?from=10&size=20&sort=+name\"\n}\n"
+          },
+          "redirectURL": "",
+          "headersSize": 224,
+          "bodySize": 773
+        },
+        "cache": {},
+        "timings": {
+          "blocked": 0,
+          "dns": 0,
+          "connect": 0,
+          "ssl": 0,
+          "send": 0,
+          "wait": 168,
+          "receive": 0
+        },
+        "time": 168,
+        "_securityState": "secure",
+        "serverIPAddress": "35.170.21.246",
+        "connection": "443"
+      }
+    ]
+  }
+}

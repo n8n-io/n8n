@@ -1,0 +1,120 @@
+{
+  "extends": [
+    "eslint:recommended",
+    "plugin:jasmine-jquery/recommended"
+  ],
+  "plugins": [
+    "jasmine-jquery"
+  ],
+  "env": {
+    "commonjs": true,
+    "amd": true,
+    "node": true,
+    "es6": true,
+    "browser": true,
+    "jasmine": true,
+    "jquery": true
+  },
+  "globals": {
+    "Mark": true
+  },
+  "parserOptions": {
+    "ecmaVersion": 6,
+    "ecmaFeatures": {
+      "experimentalObjectRestSpread": true
+    },
+    "sourceType": "module"
+  },
+  "rules": {
+    "no-template-curly-in-string": "error",
+    "array-callback-return": "error",
+    "block-scoped-var": "error",
+    "default-case": "error",
+    "no-fallthrough": "error",
+    "no-global-assign": "error",
+    "no-extend-native": "error",
+    "no-invalid-this": "warn",
+    "eqeqeq": "warn",
+    "no-alert": "error",
+    "no-eval": "error",
+    "no-with": "error",
+    "consistent-return": "warn",
+    "curly": "warn",
+    "no-tabs": "error",
+    "arrow-spacing": "error",
+    "no-undefined": "error",
+    "global-require": "error",
+    "no-var": "error",
+    "no-useless-escape": "warn",
+    "indent": [
+      "error",
+      2
+    ],
+    "linebreak-style": [
+      "error",
+      "unix"
+    ],
+    "max-len": [
+      "error",
+      {
+        "ignoreStrings": false,
+        "ignoreTrailingComments": false,
+        "ignoreComments": false,
+        "code": 80
+      }
+    ],
+    "quotes": [
+      "error",
+      "single"
+    ],
+    "semi": [
+      "error",
+      "always"
+    ],
+    "dot-location": [
+      "error",
+      "property"
+    ],
+    "brace-style": [
+      "error",
+      "1tbs"
+    ],
+    "camelcase": [
+      "error",
+      {
+        "properties": "always"
+      }
+    ],
+    "no-console": 0,
+    "space-before-function-paren": [
+      "error",
+      "never"
+    ],
+    "keyword-spacing": [
+      "error",
+      {
+        "before": true,
+        "after": true
+      }
+    ],
+    "array-bracket-spacing": [
+      "error",
+      "never"
+    ],
+    "comma-spacing": [
+      "error",
+      {
+        "before": false,
+        "after": true
+      }
+    ],
+    "complexity": [
+      "error",
+      10
+    ],
+    "max-depth": [
+      "error",
+      8
+    ]
+  }
+}

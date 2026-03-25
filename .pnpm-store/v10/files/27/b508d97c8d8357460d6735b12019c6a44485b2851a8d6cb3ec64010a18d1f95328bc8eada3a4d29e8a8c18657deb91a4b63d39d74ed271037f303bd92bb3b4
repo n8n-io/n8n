@@ -1,0 +1,104 @@
+{
+  "name": "@azure/abort-controller",
+  "sdk-type": "client",
+  "version": "1.1.0",
+  "description": "Microsoft Azure SDK for JavaScript - Aborter",
+  "main": "./dist/index.js",
+  "module": "dist-esm/src/index.js",
+  "scripts": {
+    "audit": "node ../../../common/scripts/rush-audit.js && rimraf node_modules package-lock.json && npm i --package-lock-only 2>&1 && npm audit",
+    "build:samples": "echo Obsolete",
+    "build:test": "tsc -p . && dev-tool run bundle",
+    "build:types": "downlevel-dts types/src types/3.1",
+    "build": "npm run clean && tsc -p . && dev-tool run bundle && api-extractor run --local && npm run build:types",
+    "check-format": "prettier --list-different --config ../../../.prettierrc.json --ignore-path ../../../.prettierignore \"src/**/*.ts\" \"test/**/*.ts\" \"*.{js,json}\"",
+    "clean": "rimraf dist dist-* temp types *.tgz *.log",
+    "execute:samples": "echo skipped",
+    "extract-api": "tsc -p . && api-extractor run --local",
+    "format": "prettier --write --config ../../../.prettierrc.json --ignore-path ../../../.prettierignore \"src/**/*.ts\" \"test/**/*.ts\" \"*.{js,json}\"",
+    "integration-test:browser": "echo skipped",
+    "integration-test:node": "echo skipped",
+    "integration-test": "npm run integration-test:node && npm run integration-test:browser",
+    "lint:fix": "eslint package.json api-extractor.json src test --ext .ts --fix --fix-type [problem,suggestion]",
+    "lint": "eslint package.json api-extractor.json src test --ext .ts",
+    "pack": "npm pack 2>&1",
+    "test:browser": "npm run clean && npm run build:test && npm run unit-test:browser && npm run integration-test:browser",
+    "test:node": "npm run clean && tsc -p . && npm run unit-test:node && npm run integration-test:node",
+    "test": "npm run clean && tsc -p . && npm run unit-test:node && dev-tool run bundle && npm run unit-test:browser && npm run integration-test",
+    "unit-test:browser": "karma start --single-run",
+    "unit-test:node": "mocha -r esm -r ts-node/register --reporter ../../../common/tools/mocha-multi-reporter.js --timeout 1200000 --full-trace  --exclude \"test/**/browser/*.spec.ts\" \"test/**/*.spec.ts\"",
+    "unit-test": "npm run unit-test:node && npm run unit-test:browser"
+  },
+  "types": "./types/src/index.d.ts",
+  "typesVersions": {
+    "<3.6": {
+      "types/src/*": [
+        "types/3.1/*"
+      ]
+    }
+  },
+  "files": [
+    "dist/",
+    "dist-esm/src/",
+    "shims-public.d.ts",
+    "types/src",
+    "types/3.1",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=12.0.0"
+  },
+  "repository": "github:Azure/azure-sdk-for-js",
+  "keywords": [
+    "azure",
+    "aborter",
+    "abortsignal",
+    "cancellation",
+    "node.js",
+    "typescript",
+    "javascript",
+    "browser",
+    "cloud"
+  ],
+  "author": "Microsoft Corporation",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Azure/azure-sdk-for-js/issues"
+  },
+  "homepage": "https://github.com/Azure/azure-sdk-for-js/tree/main/sdk/core/abort-controller/README.md",
+  "sideEffects": false,
+  "dependencies": {
+    "tslib": "^2.2.0"
+  },
+  "devDependencies": {
+    "@azure/dev-tool": "^1.0.0",
+    "@azure/eslint-plugin-azure-sdk": "^3.0.0",
+    "@microsoft/api-extractor": "7.18.11",
+    "@types/chai": "^4.1.6",
+    "@types/mocha": "^7.0.2",
+    "@types/node": "^12.0.0",
+    "chai": "^4.2.0",
+    "cross-env": "^7.0.2",
+    "downlevel-dts": "^0.8.0",
+    "eslint": "^7.15.0",
+    "karma": "^6.2.0",
+    "karma-chrome-launcher": "^3.0.0",
+    "karma-coverage": "^2.0.0",
+    "karma-edge-launcher": "^0.4.2",
+    "karma-env-preprocessor": "^0.1.1",
+    "karma-firefox-launcher": "^1.1.0",
+    "karma-ie-launcher": "^1.0.0",
+    "karma-junit-reporter": "^2.0.1",
+    "karma-mocha": "^2.0.1",
+    "karma-mocha-reporter": "^2.2.5",
+    "karma-sourcemap-loader": "^0.3.8",
+    "mocha": "^7.1.1",
+    "mocha-junit-reporter": "^2.0.0",
+    "nyc": "^15.0.0",
+    "prettier": "^2.5.1",
+    "rimraf": "^3.0.0",
+    "ts-node": "^10.0.0",
+    "typescript": "~4.6.0"
+  }
+}

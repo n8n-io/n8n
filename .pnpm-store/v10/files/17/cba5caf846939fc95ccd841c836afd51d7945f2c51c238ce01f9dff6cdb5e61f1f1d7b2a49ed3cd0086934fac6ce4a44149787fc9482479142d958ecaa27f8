@@ -1,0 +1,42 @@
+{
+  "name": "whatwg-fetch",
+  "description": "A window.fetch polyfill.",
+  "version": "3.6.20",
+  "main": "./dist/fetch.umd.js",
+  "module": "./fetch.js",
+  "repository": "github/fetch",
+  "license": "MIT",
+  "devDependencies": {
+    "abortcontroller-polyfill": "^1.1.9",
+    "auto-changelog": "^2.4.0",
+    "chai": "^4.1.2",
+    "eslint": "^7.20.0",
+    "karma": "^3.0.0",
+    "karma-chai": "^0.1.0",
+    "karma-chrome-launcher": "^2.2.0",
+    "karma-detect-browsers": "^2.3.2",
+    "karma-firefox-launcher": "^1.1.0",
+    "karma-mocha": "^1.3.0",
+    "karma-safari-launcher": "^1.0.0",
+    "karma-safaritechpreview-launcher": "0.0.6",
+    "mocha": "^4.0.1",
+    "prettier": "^1.19.1",
+    "promise-polyfill": "6.0.2",
+    "rollup": "^0.59.1",
+    "url-search-params": "0.6.1"
+  },
+  "files": [
+    "LICENSE",
+    "dist/fetch.umd.js",
+    "dist/fetch.umd.js.flow",
+    "fetch.js",
+    "fetch.js.flow"
+  ],
+  "scripts": {
+    "karma": "karma start ./test/karma.config.js --no-single-run --auto-watch",
+    "prepare": "make dist/fetch.umd.js dist/fetch.umd.js.flow",
+    "pretest": "make",
+    "test": "karma start ./test/karma.config.js && karma start ./test/karma-worker.config.js",
+    "version": "auto-changelog -p && git add CHANGELOG.md"
+  }
+}

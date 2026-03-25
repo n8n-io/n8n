@@ -1,0 +1,40 @@
+{
+  "name": "xmlhttprequest-ssl",
+  "description": "XMLHttpRequest for Node",
+  "version": "3.1.0",
+  "author": {
+    "name": "Michael de Wit"
+  },
+  "keywords": [
+    "xhr",
+    "ajax"
+  ],
+  "licenses": [
+    {
+      "type": "MIT",
+      "url": "http://creativecommons.org/licenses/MIT/"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/mjwwit/node-XMLHttpRequest.git"
+  },
+  "bugs": "http://github.com/mjwwit/node-XMLHttpRequest/issues",
+  "engines": {
+    "node": ">=12.0.0"
+  },
+  "scripts": {
+    "test": "cd ./tests && node run-test.js"
+  },
+  "directories": {
+    "lib": "./lib",
+    "example": "./example"
+  },
+  "files": [
+    "lib/XMLHttpRequest.js",
+    "LICENSE",
+    "README.md"
+  ],
+  "main": "./lib/XMLHttpRequest.js",
+  "dependencies": {}
+}

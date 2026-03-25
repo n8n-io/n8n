@@ -1,0 +1,295 @@
+{
+  "name": "@noble/curves",
+  "version": "1.9.7",
+  "description": "Audited & minimal JS implementation of elliptic curve cryptography",
+  "files": [
+    "*.js",
+    "*.js.map",
+    "*.d.ts",
+    "*.d.ts.map",
+    "esm",
+    "src",
+    "abstract",
+    "!oprf.*",
+    "!webcrypto.*"
+  ],
+  "scripts": {
+    "bench": "npm run bench:install; cd test/benchmark; node secp256k1.js; node curves.js; node utils.js; node bls.js",
+    "bench:install": "cd test/benchmark; npm install; npm install ../.. --install-links",
+    "build": "tsc && tsc -p tsconfig.cjs.json",
+    "build:release": "npx jsbt esbuild test/build",
+    "build:clean": "rm {.,esm,abstract,esm/abstract}/*.{js,d.ts,d.ts.map,js.map} 2> /dev/null",
+    "lint": "prettier --check 'src/**/*.{js,ts}' 'test/*.js'",
+    "format": "prettier --write 'src/**/*.{js,ts}' 'test/*.js'",
+    "test": "node --disable-warning=ExperimentalWarning test/index.js",
+    "test:bun": "bun test/index.js",
+    "test:deno": "deno --allow-env --allow-read test/index.js",
+    "test:coverage": "npm install --no-save c8@10.1.2 && npx c8 npm test"
+  },
+  "author": "Paul Miller (https://paulmillr.com)",
+  "homepage": "https://paulmillr.com/noble/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/paulmillr/noble-curves.git"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@noble/hashes": "1.8.0"
+  },
+  "devDependencies": {
+    "@paulmillr/jsbt": "0.4.0",
+    "@types/node": "22.15.21",
+    "fast-check": "4.1.1",
+    "micro-bmark": "0.4.2",
+    "micro-should": "0.5.3",
+    "prettier": "3.5.3",
+    "typescript": "5.8.3"
+  },
+  "sideEffects": false,
+  "main": "index.js",
+  "exports": {
+    ".": {
+      "import": "./esm/index.js",
+      "require": "./index.js"
+    },
+    "./abstract/bls": {
+      "import": "./esm/abstract/bls.js",
+      "require": "./abstract/bls.js"
+    },
+    "./abstract/curve": {
+      "import": "./esm/abstract/curve.js",
+      "require": "./abstract/curve.js"
+    },
+    "./abstract/edwards": {
+      "import": "./esm/abstract/edwards.js",
+      "require": "./abstract/edwards.js"
+    },
+    "./abstract/hash-to-curve": {
+      "import": "./esm/abstract/hash-to-curve.js",
+      "require": "./abstract/hash-to-curve.js"
+    },
+    "./abstract/modular": {
+      "import": "./esm/abstract/modular.js",
+      "require": "./abstract/modular.js"
+    },
+    "./abstract/montgomery": {
+      "import": "./esm/abstract/montgomery.js",
+      "require": "./abstract/montgomery.js"
+    },
+    "./abstract/poseidon": {
+      "import": "./esm/abstract/poseidon.js",
+      "require": "./abstract/poseidon.js"
+    },
+    "./abstract/tower": {
+      "import": "./esm/abstract/tower.js",
+      "require": "./abstract/tower.js"
+    },
+    "./abstract/utils": {
+      "import": "./esm/abstract/utils.js",
+      "require": "./abstract/utils.js"
+    },
+    "./abstract/weierstrass": {
+      "import": "./esm/abstract/weierstrass.js",
+      "require": "./abstract/weierstrass.js"
+    },
+    "./abstract/fft": {
+      "import": "./esm/abstract/fft.js",
+      "require": "./abstract/fft.js"
+    },
+    "./_shortw_utils": {
+      "import": "./esm/_shortw_utils.js",
+      "require": "./_shortw_utils.js"
+    },
+    "./bls12-381": {
+      "import": "./esm/bls12-381.js",
+      "require": "./bls12-381.js"
+    },
+    "./bn254": {
+      "import": "./esm/bn254.js",
+      "require": "./bn254.js"
+    },
+    "./ed448": {
+      "import": "./esm/ed448.js",
+      "require": "./ed448.js"
+    },
+    "./ed25519": {
+      "import": "./esm/ed25519.js",
+      "require": "./ed25519.js"
+    },
+    "./index": {
+      "import": "./esm/index.js",
+      "require": "./index.js"
+    },
+    "./jubjub": {
+      "import": "./esm/jubjub.js",
+      "require": "./jubjub.js"
+    },
+    "./misc": {
+      "import": "./esm/misc.js",
+      "require": "./misc.js"
+    },
+    "./nist": {
+      "import": "./esm/nist.js",
+      "require": "./nist.js"
+    },
+    "./p256": {
+      "import": "./esm/p256.js",
+      "require": "./p256.js"
+    },
+    "./p384": {
+      "import": "./esm/p384.js",
+      "require": "./p384.js"
+    },
+    "./p521": {
+      "import": "./esm/p521.js",
+      "require": "./p521.js"
+    },
+    "./pasta": {
+      "import": "./esm/pasta.js",
+      "require": "./pasta.js"
+    },
+    "./secp256k1": {
+      "import": "./esm/secp256k1.js",
+      "require": "./secp256k1.js"
+    },
+    "./utils": {
+      "import": "./esm/utils.js",
+      "require": "./utils.js"
+    },
+    "./abstract/bls.js": {
+      "import": "./esm/abstract/bls.js",
+      "require": "./abstract/bls.js"
+    },
+    "./abstract/curve.js": {
+      "import": "./esm/abstract/curve.js",
+      "require": "./abstract/curve.js"
+    },
+    "./abstract/edwards.js": {
+      "import": "./esm/abstract/edwards.js",
+      "require": "./abstract/edwards.js"
+    },
+    "./abstract/hash-to-curve.js": {
+      "import": "./esm/abstract/hash-to-curve.js",
+      "require": "./abstract/hash-to-curve.js"
+    },
+    "./abstract/modular.js": {
+      "import": "./esm/abstract/modular.js",
+      "require": "./abstract/modular.js"
+    },
+    "./abstract/montgomery.js": {
+      "import": "./esm/abstract/montgomery.js",
+      "require": "./abstract/montgomery.js"
+    },
+    "./abstract/poseidon.js": {
+      "import": "./esm/abstract/poseidon.js",
+      "require": "./abstract/poseidon.js"
+    },
+    "./abstract/tower.js": {
+      "import": "./esm/abstract/tower.js",
+      "require": "./abstract/tower.js"
+    },
+    "./abstract/utils.js": {
+      "import": "./esm/abstract/utils.js",
+      "require": "./abstract/utils.js"
+    },
+    "./abstract/weierstrass.js": {
+      "import": "./esm/abstract/weierstrass.js",
+      "require": "./abstract/weierstrass.js"
+    },
+    "./abstract/fft.js": {
+      "import": "./esm/abstract/fft.js",
+      "require": "./abstract/fft.js"
+    },
+    "./_shortw_utils.js": {
+      "import": "./esm/_shortw_utils.js",
+      "require": "./_shortw_utils.js"
+    },
+    "./bls12-381.js": {
+      "import": "./esm/bls12-381.js",
+      "require": "./bls12-381.js"
+    },
+    "./bn254.js": {
+      "import": "./esm/bn254.js",
+      "require": "./bn254.js"
+    },
+    "./utils.js": {
+      "import": "./esm/utils.js",
+      "require": "./utils.js"
+    },
+    "./ed448.js": {
+      "import": "./esm/ed448.js",
+      "require": "./ed448.js"
+    },
+    "./ed25519.js": {
+      "import": "./esm/ed25519.js",
+      "require": "./ed25519.js"
+    },
+    "./index.js": {
+      "import": "./esm/index.js",
+      "require": "./index.js"
+    },
+    "./jubjub.js": {
+      "import": "./esm/jubjub.js",
+      "require": "./jubjub.js"
+    },
+    "./misc.js": {
+      "import": "./esm/misc.js",
+      "require": "./misc.js"
+    },
+    "./nist.js": {
+      "import": "./esm/nist.js",
+      "require": "./nist.js"
+    },
+    "./p256.js": {
+      "import": "./esm/p256.js",
+      "require": "./p256.js"
+    },
+    "./p384.js": {
+      "import": "./esm/p384.js",
+      "require": "./p384.js"
+    },
+    "./p521.js": {
+      "import": "./esm/p521.js",
+      "require": "./p521.js"
+    },
+    "./pasta.js": {
+      "import": "./esm/pasta.js",
+      "require": "./pasta.js"
+    },
+    "./secp256k1.js": {
+      "import": "./esm/secp256k1.js",
+      "require": "./secp256k1.js"
+    }
+  },
+  "engines": {
+    "node": "^14.21.3 || >=16"
+  },
+  "keywords": [
+    "elliptic",
+    "curve",
+    "cryptography",
+    "secp256k1",
+    "ed25519",
+    "p256",
+    "p384",
+    "p521",
+    "secp256r1",
+    "ed448",
+    "x25519",
+    "ed25519",
+    "bls12-381",
+    "bn254",
+    "alt_bn128",
+    "bls",
+    "noble",
+    "ecc",
+    "ecdsa",
+    "eddsa",
+    "weierstrass",
+    "montgomery",
+    "edwards",
+    "schnorr",
+    "fft"
+  ],
+  "funding": "https://paulmillr.com/funding/"
+}

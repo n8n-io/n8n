@@ -1,0 +1,71 @@
+{
+  "name": "@sentry-internal/node-native-stacktrace",
+  "version": "0.3.0",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "repository": "git://github.com/getsentry/sentry-javascript-node-native-stacktrace.git",
+  "homepage": "https://github.com/getsentry/sentry-javascript-node-native-stacktrace",
+  "author": "Sentry",
+  "license": "MIT",
+  "description": "A native Node.js module that can capture JavaScript stack traces from main and worker threads, even with blocked event loops.",
+  "keywords": [
+    "stacktrace",
+    "native",
+    "nodejs",
+    "worker",
+    "sentry"
+  ],
+  "scripts": {
+    "install": "node scripts/check-build.mjs",
+    "lint": "yarn lint:eslint && yarn lint:clang",
+    "lint:eslint": "eslint . --format stylish",
+    "lint:clang": "node scripts/clang-format.mjs",
+    "fix": "yarn fix:eslint && yarn fix:clang",
+    "fix:eslint": "eslint . --format stylish --fix",
+    "fix:clang": "node scripts/clang-format.mjs --fix",
+    "build": "yarn clean && yarn build:lib && yarn build:bindings:configure && yarn build:bindings",
+    "build:lib": "tsc",
+    "build:bindings:configure": "node-gyp configure",
+    "build:bindings:configure:arm64": "node-gyp configure --arch=arm64 --target_arch=arm64",
+    "build:bindings": "node-gyp build && node scripts/copy-target.mjs",
+    "build:bindings:arm64": "node-gyp build --arch=arm64 && node scripts/copy-target.mjs",
+    "build:tarball": "npm pack",
+    "clean": "node-gyp clean && rm -rf lib && rm -rf build && rm -f *.tgz",
+    "test": "yarn test:install && yarn test:prepare && vitest run --poolOptions.forks.singleFork --silent=false --disable-console-intercept",
+    "test:prepare": "node ./test/prepare.mjs",
+    "test:install": "cross-env ALWAYS_THROW=true yarn install"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "detect-libc": "^2.0.4",
+    "node-abi": "^3.73.0"
+  },
+  "devDependencies": {
+    "@sentry-internal/eslint-config-sdk": "^9.22.0",
+    "@types/node": "^18.19.1",
+    "@types/node-abi": "^3.0.3",
+    "clang-format": "^1.8.0",
+    "cross-env": "^7.0.3",
+    "eslint": "^7.0.0",
+    "node-gyp": "^11.2.0",
+    "typescript": "^5.8.3",
+    "vitest": "^3.1.4"
+  },
+  "files": [
+    "lib/",
+    "/module.cc",
+    "/binding.gyp",
+    "package.json",
+    "/scripts/binaries.mjs",
+    "/scripts/check-build.mjs",
+    "/scripts/copy-target.mjs"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "volta": {
+    "node": "24.9.0"
+  }
+}

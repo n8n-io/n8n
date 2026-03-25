@@ -1,0 +1,6 @@
+{
+  "rules": {
+    "no-var": "off",
+    "no-invalid-this": "off"
+  }
+}

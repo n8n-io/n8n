@@ -1,0 +1,9 @@
+export declare const USER_INTERACTION_REQUIRED = "USER_INTERACTION_REQUIRED";
+export declare const USER_CANCEL = "USER_CANCEL";
+export declare const NO_NETWORK = "NO_NETWORK";
+export declare const TRANSIENT_ERROR = "TRANSIENT_ERROR";
+export declare const PERSISTENT_ERROR = "PERSISTENT_ERROR";
+export declare const DISABLED = "DISABLED";
+export declare const ACCOUNT_UNAVAILABLE = "ACCOUNT_UNAVAILABLE";
+export declare const UX_NOT_ALLOWED = "UX_NOT_ALLOWED";
+//# sourceMappingURL=NativeStatusCodes.d.ts.map

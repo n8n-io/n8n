@@ -1,0 +1,29 @@
+{
+  "name": "spdx-compare",
+  "description": "compare SPDX license expressions",
+  "version": "1.0.0",
+  "author": "Kyle E. Mitchell <kyle@kemitchell.com> (https://kemitchell.com)",
+  "dependencies": {
+    "array-find-index": "^1.0.2",
+    "spdx-expression-parse": "^3.0.0",
+    "spdx-ranges": "^2.0.0"
+  },
+  "devDependencies": {
+    "defence-cli": "^2.0.1"
+  },
+  "keywords": [
+    "SPDX",
+    "law",
+    "legal",
+    "license",
+    "metadata",
+    "package",
+    "package.json",
+    "standards"
+  ],
+  "license": "MIT",
+  "repository": "kemitchell/spdx-compare.js",
+  "scripts": {
+    "test": "defence -i javascript README.md | sed 's!spdx-compare!./!' | node"
+  }
+}

@@ -1,0 +1,129 @@
+// Protocol Buffers - Google's data interchange format
+// Copyright 2023 Google Inc.  All rights reserved.
+//
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file or at
+// https://developers.google.com/open-source/licenses/bsd
+
+edition = "2023";
+
+// This file contains various edge cases we've collected from migrating real
+// protos in order to lock down the transformations.
+
+// LINT: ALLOW_GROUPS
+
+package protobuf_editions_test;
+
+import "net/proto/proto1_features.proto";
+import "third_party/java_src/protobuf/current/java/com/google/protobuf/java_features.proto";
+import "google/protobuf/cpp_features.proto";
+import "google/protobuf/editions/proto/editions_transform_proto3.proto";
+
+option features.repeated_field_encoding = EXPANDED;
+option features.utf8_validation = NONE;
+option java_multiple_files = true;
+
+message EmptyMessage {
+}
+
+message EmptyMessage2 {
+}
+
+service EmptyService {
+}
+
+service BasicService {
+  rpc BasicMethod(EmptyMessage) returns (EmptyMessage) {}
+}
+
+// clang-format off
+message UnformattedMessage {
+  int32 a = 1;
+
+  message Foo {
+    int32 a = 1;
+  }
+
+  Foo foo = 2 [
+    features.message_encoding = DELIMITED
+  ];
+
+  string string_piece_with_zero = 3 [
+    ctype = STRING_PIECE,
+    default = "ab\000c"
+  ];
+
+  float long_float_name_wrapped = 4;
+}
+
+// clang-format on
+
+message ParentMessage {
+  message ExtendedMessage {
+    extensions 536860000 to 536869999 [
+      declaration = {
+        number: 536860000
+        full_name: ".protobuf_editions_test.extension"
+        type: ".protobuf_editions_test.EmptyMessage"
+      }
+    ];
+  }
+}
+
+extend ParentMessage.ExtendedMessage {
+  EmptyMessage extension = 536860000;
+}
+
+message TestMessage {
+  string string_field = 1;
+  map<string, string> string_map_field = 7;
+  repeated int32 int_field = 8;
+  repeated int32 int_field_packed = 9 [
+    features.repeated_field_encoding = PACKED,
+    features.(pb.proto1).legacy_packed = true
+  ];
+
+  repeated int32 int_field_unpacked = 10;
+  repeated int32 options_strip_beginning = 4 [
+    /* inline comment */
+    debug_redact = true,
+    deprecated = false
+  ];
+
+  repeated int32 options_strip_middle = 5 [
+    debug_redact = true,
+    deprecated = false
+  ];
+
+  repeated int32 options_strip_end = 6 [
+    debug_redact = true,
+    deprecated = false
+  ];
+
+  message OptionalGroup {
+    int32 a = 17;
+  }
+
+  OptionalGroup optionalgroup = 16 [
+    features.message_encoding = DELIMITED
+  ];
+}
+
+enum TestEnum {
+  option features.enum_type = CLOSED;
+
+  FOO = 1; // Non-zero default
+
+  BAR = 2;
+  BAZ = 3;
+  NEG = -1; // Intentionally negative.
+}
+
+message TestOpenEnumMessage {
+  TestEnumProto3 open_enum_field = 1 [
+    features.(pb.cpp).legacy_closed_enum = true,
+    features.(pb.java).legacy_closed_enum = true
+  ];
+
+  TestEnum closed_enum_field = 2;
+}

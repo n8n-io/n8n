@@ -1,0 +1,1 @@
+{"version":3,"file":"web-runtime.d.ts","sourceRoot":"","sources":["../src/_shims/web-runtime.ts"],"names":[],"mappings":"AAKA,OAAO,EAAE,KAAK,KAAK,EAAE,MAAM,YAAY,CAAC;AAExC,wBAAgB,UAAU,CAAC,EAAE,gBAAgB,EAAE,GAAE;IAAE,gBAAgB,CAAC,EAAE,OAAO,CAAA;CAAO,GAAG,KAAK,CA+F3F"}

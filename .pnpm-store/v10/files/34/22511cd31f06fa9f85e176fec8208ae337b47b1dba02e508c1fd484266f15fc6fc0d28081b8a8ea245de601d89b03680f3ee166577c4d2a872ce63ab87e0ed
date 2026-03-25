@@ -1,0 +1,4 @@
+{
+  "node":true,
+  "strict":true
+}

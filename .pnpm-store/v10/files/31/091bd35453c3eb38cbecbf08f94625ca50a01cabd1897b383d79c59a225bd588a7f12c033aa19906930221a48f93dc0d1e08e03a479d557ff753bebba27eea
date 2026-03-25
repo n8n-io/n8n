@@ -1,0 +1,1 @@
+module.exports = require("../../dist/document_loaders/web/google_cloud_storage.cjs");

@@ -1,0 +1,1 @@
+{"version":3,"sources":["../../src/middlewares/csrf.js"],"sourcesContent":["export { default } from '../middleware/csrf'\n"],"mappings":";;;;;;;;;;;;;;;;;;;;;;;;;;;;AAAA;AAAA;AAAA;AAAA;AAAA;AAAA,kBAAwB;","names":[]}

@@ -1,0 +1,34 @@
+{
+  "name": "lru-memoizer",
+  "description": "Memoize functions results using an lru-cache.",
+  "version": "2.3.0",
+  "author": "José F. Romaniello <jfromaniello@gmail.com> (http://joseoncode.com)",
+  "repository": {
+    "url": "git://github.com/jfromaniello/lru-memoizer.git"
+  },
+  "keywords": [
+    "cache",
+    "memoize",
+    "lru"
+  ],
+  "main": "./lib/index.js",
+  "types": "./lib/index.d.ts",
+  "scripts": {
+    "prepare": "tsc",
+    "test": "npm run prepare && mocha"
+  },
+  "dependencies": {
+    "lodash.clonedeep": "^4.5.0",
+    "lru-cache": "6.0.0"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@types/lodash.clonedeep": "^4.5.9",
+    "@types/lru-cache": "^5.1.0",
+    "@types/node": "^12.0.10",
+    "chai": "^3.5.0",
+    "mocha": "^10.4.0",
+    "sinon": "^7.3.2",
+    "typescript": "^3.5.2"
+  }
+}

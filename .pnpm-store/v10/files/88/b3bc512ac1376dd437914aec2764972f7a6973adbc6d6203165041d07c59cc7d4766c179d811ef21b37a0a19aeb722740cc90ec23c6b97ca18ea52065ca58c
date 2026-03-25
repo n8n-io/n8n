@@ -1,0 +1,1 @@
+{"version":3,"sources":["../../src/common/ObjectLiteral.ts"],"names":[],"mappings":"","file":"ObjectLiteral.js","sourcesContent":["/**\n * Interface of the simple literal object with any string keys.\n */\nexport interface ObjectLiteral {\n    [key: string]: any\n}\n"],"sourceRoot":".."}

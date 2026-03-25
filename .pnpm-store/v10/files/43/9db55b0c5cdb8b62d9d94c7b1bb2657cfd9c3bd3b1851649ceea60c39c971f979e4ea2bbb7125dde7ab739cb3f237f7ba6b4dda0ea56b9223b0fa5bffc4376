@@ -1,0 +1,4 @@
+[flake8]
+max-complexity = 101
+max-line-length = 88
+extend-ignore = E203  # whitespace before ':' to agree with psf/black

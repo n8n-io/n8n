@@ -1,0 +1,58 @@
+{
+  "name": "webpack-sources",
+  "version": "3.2.3",
+  "description": "Source code handling classes for webpack",
+  "main": "./lib/index.js",
+  "scripts": {
+    "pretest": "yarn lint",
+    "test": "jest",
+    "lint": "eslint --cache lib test/*.js",
+    "cover": "jest --coverage"
+  },
+  "devDependencies": {
+    "coveralls": "^3.0.2",
+    "eslint": "^7.7.0",
+    "eslint-config-prettier": "^6.11.0",
+    "eslint-plugin-jest": "^23.20.0",
+    "eslint-plugin-mocha": "^8.0.0",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-nodeca": "^1.0.3",
+    "eslint-plugin-prettier": "^3.0.1",
+    "istanbul": "^0.4.1",
+    "jest": "^26.4.0",
+    "prettier": "^2.0.5",
+    "source-map": "^0.7.3",
+    "sourcemap-validator": "^2.1.0"
+  },
+  "files": [
+    "lib/",
+    "!lib/helpers/__mocks__"
+  ],
+  "engines": {
+    "node": ">=10.13.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/webpack/webpack-sources.git"
+  },
+  "keywords": [
+    "webpack",
+    "source-map"
+  ],
+  "author": "Tobias Koppers @sokra",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/webpack/webpack-sources/issues"
+  },
+  "homepage": "https://github.com/webpack/webpack-sources#readme",
+  "jest": {
+    "forceExit": true,
+    "testMatch": [
+      "<rootDir>/test/*.js"
+    ],
+    "transformIgnorePatterns": [
+      "<rootDir>"
+    ],
+    "testEnvironment": "node"
+  }
+}

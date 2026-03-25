@@ -1,0 +1,68 @@
+{
+  "name": "@redocly/cli",
+  "version": "1.28.5",
+  "description": "",
+  "license": "MIT",
+  "bin": {
+    "openapi": "bin/cli.js",
+    "redocly": "bin/cli.js"
+  },
+  "engines": {
+    "node": ">=18.17.0",
+    "npm": ">=9.5.0"
+  },
+  "engineStrict": true,
+  "scripts": {
+    "compile": "tsc",
+    "copy-assets": "cp src/commands/preview-docs/preview-server/default.hbs lib/commands/preview-docs/preview-server/default.hbs && cp src/commands/preview-docs/preview-server/hot.js lib/commands/preview-docs/preview-server/hot.js && cp src/commands/preview-docs/preview-server/oauth2-redirect.html lib/commands/preview-docs/preview-server/oauth2-redirect.html && cp src/commands/build-docs/template.hbs lib/commands/build-docs/template.hbs ",
+    "prepack": "npm run copy-assets",
+    "prepublishOnly": "npm run copy-assets && cp ../../README.md ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Redocly/redocly-cli.git"
+  },
+  "homepage": "https://github.com/Redocly/redocly-cli",
+  "keywords": [
+    "linter",
+    "OpenAPI",
+    "Swagger",
+    "OpenAPI linter",
+    "Swagger linter",
+    "AsyncAPI linter",
+    "oas"
+  ],
+  "contributors": [
+    "Roman Hotsiy <roman@redocly.com> (https://redocly.com/)"
+  ],
+  "dependencies": {
+    "@redocly/openapi-core": "1.28.5",
+    "abort-controller": "^3.0.0",
+    "chokidar": "^3.5.1",
+    "colorette": "^1.2.0",
+    "core-js": "^3.32.1",
+    "form-data": "^4.0.0",
+    "get-port-please": "^3.0.1",
+    "glob": "^7.1.6",
+    "handlebars": "^4.7.6",
+    "mobx": "^6.0.4",
+    "pluralize": "^8.0.0",
+    "react": "^17.0.0 || ^18.2.0 || ^19.0.0",
+    "react-dom": "^17.0.0 || ^18.2.0 || ^19.0.0",
+    "redoc": "2.4.0",
+    "semver": "^7.5.2",
+    "simple-websocket": "^9.0.0",
+    "styled-components": "^6.0.7",
+    "yargs": "17.0.1"
+  },
+  "devDependencies": {
+    "@types/configstore": "^5.0.1",
+    "@types/glob": "^8.1.0",
+    "@types/pluralize": "^0.0.29",
+    "@types/react": "^17.0.0 || ^18.2.21 || ^19.0.0",
+    "@types/react-dom": "^17.0.0 || ^18.2.7 || ^19.0.0",
+    "@types/semver": "^7.5.0",
+    "@types/yargs": "17.0.32",
+    "typescript": "5.5.3"
+  }
+}

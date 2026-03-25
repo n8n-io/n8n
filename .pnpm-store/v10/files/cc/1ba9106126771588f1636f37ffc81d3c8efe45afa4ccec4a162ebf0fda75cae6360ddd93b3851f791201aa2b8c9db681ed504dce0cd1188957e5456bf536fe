@@ -1,0 +1,34 @@
+{
+  "name": "@rolldown/pluginutils",
+  "version": "1.0.0-beta.53",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rolldown/rolldown.git",
+    "directory": "packages/pluginutils"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "devDependencies": {
+    "@types/picomatch": "^4.0.0",
+    "picomatch": "^4.0.2",
+    "typescript": "^5.8.3",
+    "vitest": "^4.0.1"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest --typecheck"
+  }
+}

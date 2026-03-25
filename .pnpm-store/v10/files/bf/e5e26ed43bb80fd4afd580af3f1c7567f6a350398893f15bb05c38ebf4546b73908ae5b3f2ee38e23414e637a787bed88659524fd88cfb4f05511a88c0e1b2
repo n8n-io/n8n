@@ -1,0 +1,178 @@
+# Copyright 2012 Mozilla Foundation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Main toolbar buttons (tooltips and alt text for images)
+previous.title=ਸਫ਼ਾ ਪਿੱਛੇ
+previous_label=ਪਿੱਛੇ
+next.title=ਸਫ਼ਾ ਅੱਗੇ
+next_label=ਅੱਗੇ
+
+# LOCALIZATION NOTE (page.title): The tooltip for the pageNumber input.
+page.title=Page
+# LOCALIZATION NOTE (of_pages): "{{pagesCount}}" will be replaced by a number
+# representing the total number of pages in the document.
+of_pages=of {{pagesCount}}
+# LOCALIZATION NOTE (page_of_pages): "{{pageNumber}}" and "{{pagesCount}}"
+# will be replaced by a number representing the currently visible page,
+# respectively a number representing the total number of pages in the document.
+page_of_pages=({{pageNumber}} of {{pagesCount}})
+
+zoom_out.title=ਜ਼ੂਮ ਆਉਟ
+zoom_out_label=ਜ਼ੂਮ ਆਉਟ
+zoom_in.title=ਜ਼ੂਮ ਇਨ
+zoom_in_label=ਜ਼ੂਮ ਇਨ
+zoom.title=ਜ਼ੂਨ
+presentation_mode.title=ਪਰਿਜੈਂਟੇਸ਼ਨ ਮੋਡ ਵਿੱਚ ਜਾਓ
+presentation_mode_label=ਪਰਿਜੈਂਟੇਸ਼ਨ ਮੋਡ
+open_file.title=ਫਾਈਲ ਨੂੰ ਖੋਲ੍ਹੋ
+open_file_label=ਖੋਲ੍ਹੋ
+print.title=ਪਰਿੰਟ
+print_label=ਪਰਿੰਟ
+download.title=ਡਾਊਨਲੋਡ
+download_label=ਡਾਊਨਲੋਡ
+bookmark.title=ਮੌਜੂਦਾ ਝਲਕ (ਨਵੀਂ ਵਿੰਡੋ ਵਿੱਚ ਕਾਪੀ ਕਰੋ ਜਾਂ ਖੋਲ੍ਹੋ)
+bookmark_label=ਮੌਜੂਦਾ ਝਲਕ
+
+# Secondary toolbar and context menu
+tools.title=ਟੂਲ
+tools_label=ਟੂਲ
+first_page.title=ਪਹਿਲੇ ਸਫ਼ੇ ਉੱਤੇ ਜਾਓ
+first_page.label=ਪਹਿਲੇ ਸਫ਼ੇ ਉੱਤੇ ਜਾਓ
+first_page_label=ਪਹਿਲੇ ਸਫ਼ੇ ਉੱਤੇ ਜਾਓ
+last_page.title=ਆਖਰੀ ਸਫ਼ੇ ਉੱਤੇ ਜਾਓ
+last_page.label=ਆਖਰੀ ਸਫ਼ੇ ਉੱਤੇ ਜਾਓ
+last_page_label=ਆਖਰੀ ਸਫ਼ੇ ਉੱਤੇ ਜਾਓ
+page_rotate_cw.title=ਸੱਜੇ ਦਾਅ ਘੁੰਮਾਓ
+page_rotate_cw.label=ਸੱਜੇ ਦਾਅ ਘੁੰਮਾਉ
+page_rotate_cw_label=ਸੱਜੇ ਦਾਅ ਘੁੰਮਾਓ
+page_rotate_ccw.title=ਖੱਬੇ ਦਾਅ ਘੁੰਮਾਓ
+page_rotate_ccw.label=ਖੱਬੇ ਦਾਅ ਘੁੰਮਾਉ
+page_rotate_ccw_label=ਖੱਬੇ ਦਾਅ ਘੁੰਮਾਓ
+
+
+# Document properties dialog box
+document_properties.title=…ਦਸਤਾਵੇਜ਼ ਦੀ ਵਿਸ਼ੇਸ਼ਤਾ
+document_properties_label=…ਦਸਤਾਵੇਜ਼ ਦੀ ਵਿਸ਼ੇਸ਼ਤਾ
+document_properties_file_name=ਫਾਈਲ ਦਾ ਨਾਂ:
+document_properties_file_size=ਫਾਈਲ ਦਾ ਆਕਾਰ:
+# LOCALIZATION NOTE (document_properties_kb): "{{size_kb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in kilobytes, respectively in bytes.
+document_properties_kb={{size_kb}} KB ({{size_b}} ਬਾਈਟ)
+# LOCALIZATION NOTE (document_properties_mb): "{{size_mb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in megabytes, respectively in bytes.
+document_properties_mb={{size_mb}} MB ({{size_b}} ਬਾਈਟ)
+document_properties_title=ਟਾਈਟਲ:
+document_properties_author=ਲੇਖਕ:
+document_properties_subject=ਵਿਸ਼ਾ:
+document_properties_keywords=ਸ਼ਬਦ:
+document_properties_creation_date=ਬਣਾਉਣ ਦੀ ਮਿਤੀ:
+document_properties_modification_date=ਸੋਧ ਦੀ ਮਿਤੀ:
+# LOCALIZATION NOTE (document_properties_date_string): "{{date}}" and "{{time}}"
+# will be replaced by the creation/modification date, and time, of the PDF file.
+document_properties_date_string={{date}}, {{time}}
+document_properties_creator=ਨਿਰਮਾਤਾ:
+document_properties_producer=PDF ਪ੍ਰੋਡਿਊਸਰ:
+document_properties_version=PDF ਵਰਜਨ:
+document_properties_page_count=ਸਫ਼ੇ ਦੀ ਗਿਣਤੀ:
+document_properties_close=ਬੰਦ ਕਰੋ
+
+print_progress_message=Preparing document for printing…
+# LOCALIZATION NOTE (print_progress_percent): "{{progress}}" will be replaced by
+# a numerical per cent value.
+print_progress_percent={{progress}}%
+print_progress_close=Cancel
+
+# Tooltips and alt text for side panel toolbar buttons
+# (the _label strings are alt text for the buttons, the .title strings are
+# tooltips)
+toggle_sidebar.title=ਬਾਹੀ ਬਦਲੋ
+toggle_sidebar_notification.title=Toggle Sidebar (document contains outline/attachments)
+toggle_sidebar_label=ਬਾਹੀ ਬਦਲੋ
+document_outline.title=Show Document Outline (double-click to expand/collapse all items)
+document_outline_label=Document Outline
+attachments.title=ਅਟੈਚਮੈਂਟ ਨੂੰ ਵੇਖਾਓ
+attachments_label=ਅਟੈਚਮੈਂਟ
+thumbs.title=ਥੰਮਨੇਲ ਨੂੰ ਵੇਖਾਓ
+thumbs_label=ਥੰਮਨੇਲ
+findbar.title=ਦਸਤਾਵੇਜ਼ ਵਿੱਚ ਲੱਭੋ
+findbar_label=ਲੱਭੋ
+
+# Thumbnails panel item (tooltip and alt text for images)
+# LOCALIZATION NOTE (thumb_page_title): "{{page}}" will be replaced by the page
+# number.
+thumb_page_title=ਸਫ਼ਾ {{page}}
+# LOCALIZATION NOTE (thumb_page_canvas): "{{page}}" will be replaced by the page
+# number.
+thumb_page_canvas={{page}} ਸਫ਼ੇ ਦਾ ਥੰਮਨੇਲ
+
+# Find panel button title and messages
+find_previous.title=ਵਾਕ ਦੀ ਪਿਛਲੀ ਮੌਜੂਦਗੀ ਲੱਭੋ
+find_previous_label=ਪਿੱਛੇ
+find_next.title=ਵਾਕ ਦੀ ਅਗਲੀ ਮੌਜੂਦਗੀ ਲੱਭੋ
+find_next_label=ਅੱਗੇ
+find_highlight=ਸਭ ਉਭਾਰੋ
+find_match_case_label=ਅੱਖਰ ਆਕਾਰ ਨੂੰ ਮਿਲਾਉ
+find_reached_top=ਦਸਤਾਵੇਜ਼ ਦੇ ਉੱਤੇ ਆ ਗਏ ਹਾਂ, ਥੱਲੇ ਤੋਂ ਜਾਰੀ ਰੱਖਿਆ ਹੈ
+find_reached_bottom=ਦਸਤਾਵੇਜ਼ ਦੇ ਅੰਤ ਉੱਤੇ ਆ ਗਏ ਹਾਂ, ਉੱਤੇ ਤੋਂ ਜਾਰੀ ਰੱਖਿਆ ਹੈ
+find_not_found=ਵਾਕ ਨਹੀਂ ਲੱਭਿਆ
+
+# Error panel labels
+error_more_info=ਹੋਰ ਜਾਣਕਾਰੀ
+error_less_info=ਘੱਟ ਜਾਣਕਾਰੀ
+error_close=ਬੰਦ ਕਰੋ
+# LOCALIZATION NOTE (error_version_info): "{{version}}" and "{{build}}" will be
+# replaced by the PDF.JS version and build ID.
+error_version_info=PDF.js v{{version}} (ਬਿਲਡ: {{build}}
+# LOCALIZATION NOTE (error_message): "{{message}}" will be replaced by an
+# english string describing the error.
+error_message=ਸੁਨੇਹਾ: {{message}}
+# LOCALIZATION NOTE (error_stack): "{{stack}}" will be replaced with a stack
+# trace.
+error_stack=ਸਟੈਕ: {{stack}}
+# LOCALIZATION NOTE (error_file): "{{file}}" will be replaced with a filename
+error_file=ਫਾਈਲ: {{file}}
+# LOCALIZATION NOTE (error_line): "{{line}}" will be replaced with a line number
+error_line=ਲਾਈਨ: {{line}}
+rendering_error=ਸਫ਼ਾ ਰੈਡਰ ਕਰਨ ਦੇ ਦੌਰਾਨ ਗਲਤੀ ਆਈ ਹੈ।
+
+# Predefined zoom values
+page_scale_width=ਸਫ਼ੇ ਦੀ ਚੌੜਾਈ
+page_scale_fit=ਸਫ਼ਾ ਫਿੱਟ
+page_scale_auto=ਆਟੋਮੈਟਿਕ ਜ਼ੂਮ ਕਰੋ
+page_scale_actual=ਆਟੋਮੈਟਿਕ ਆਕਾਰ
+# LOCALIZATION NOTE (page_scale_percent): "{{scale}}" will be replaced by a
+# numerical scale value.
+page_scale_percent={{scale}}%
+
+# Loading indicator messages
+loading_error_indicator=ਗਲਤੀ
+loading_error=PDF ਲੋਡ ਕਰਨ ਦੇ ਦੌਰਾਨ ਗਲਤੀ ਆਈ ਹੈ।
+invalid_file_error=ਗਲਤ ਜਾਂ ਨਿਕਾਰਾ PDF ਫਾਈਲ ਹੈ।
+missing_file_error=ਨਾ-ਮੌਜੂਦ PDF ਫਾਈਲ।
+unexpected_response_error=ਅਣਜਾਣ ਸਰਵਰ ਜਵਾਬ।
+
+# LOCALIZATION NOTE (text_annotation_type.alt): This is used as a tooltip.
+# "{{type}}" will be replaced with an annotation type from a list defined in
+# the PDF spec (32000-1:2008 Table 169 – Annotation types).
+# Some common types are e.g.: "Check", "Text", "Comment", "Note"
+text_annotation_type.alt=[{{type}}  ਵਿਆਖਿਆ]
+password_label=ਇਹ PDF ਫਾਈਲ ਨੂੰ ਖੋਲ੍ਹਣ ਲਈ ਪਾਸਵਰਡ ਦਿਉ।
+password_invalid=ਗਲਤ ਪਾਸਵਰਡ। ਫੇਰ ਕੋਸ਼ਿਸ਼ ਕਰੋ ਜੀ।
+password_ok=ਠੀਕ ਹੈ
+password_cancel=ਰੱਦ ਕਰੋ
+
+printing_not_supported=ਸਾਵਧਾਨ: ਇਹ ਬਰਾਊਜ਼ਰ ਪਰਿੰਟ ਕਰਨ ਲਈ ਪੂਰੀ ਤਰ੍ਹਾਂ ਸਹਾਇਕ ਨਹੀਂ ਹੈ।
+printing_not_ready=ਸਾਵਧਾਨ: PDF ਨੂੰ ਪਰਿੰਟ ਕਰਨ ਲਈ ਪੂਰੀ ਤਰ੍ਹਾਂ ਲੋਡ ਨਹੀਂ ਹੈ।
+web_fonts_disabled=ਵੈਬ ਫੋਂਟ ਬੰਦ ਹਨ: ਇੰਬੈਡ PDF ਫੋਂਟ ਨੂੰ ਵਰਤਣ ਲਈ ਅਸਮਰੱਥ ਹੈ।
+document_colors_not_allowed=PDF ਦਸਤਾਵੇਜ਼ਾਂ ਨੂੰ ਆਪਣੇ ਰੰਗ ਵਰਤਣ ਦੀ ਇਜ਼ਾਜ਼ਤ ਨਹੀਂ ਹੈ।: ਬਰਾਊਜ਼ਰ ਵਿੱਚ “ਸਫ਼ਿਆਂ ਨੂੰ ਆਪਣੇ ਰੰਗ ਚੁਣਨ ਦੀ ਇਜ਼ਾਜ਼ਤ ਦਿਓ” ਨਾ-ਸਰਗਰਮ ਹੈ।

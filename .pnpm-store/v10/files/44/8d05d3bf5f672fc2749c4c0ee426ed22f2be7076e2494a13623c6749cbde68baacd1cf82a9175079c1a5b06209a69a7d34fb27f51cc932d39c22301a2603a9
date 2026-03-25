@@ -1,0 +1,1 @@
+{"version":3,"sources":["../../src/driver/types/DatabaseType.ts"],"names":[],"mappings":"","file":"DatabaseType.js","sourcesContent":["/**\n * Database type.\n */\nexport type DatabaseType =\n    | \"mysql\"\n    | \"postgres\"\n    | \"mariadb\"\n    | \"sqlite\"\n    | \"sqlite-pooled\"\n"],"sourceRoot":"../.."}

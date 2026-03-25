@@ -1,0 +1,86 @@
+{
+	"name": "fengari-interop",
+	"version": "0.1.3",
+	"description": "JS library for Fengari",
+	"author": "Daurnimator <quae@daurnimator.com>",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/fengari-lua/fengari-interop.git"
+	},
+	"license": "MIT",
+	"keywords": [
+		"lua",
+		"fengari",
+		"language"
+	],
+	"bugs": {
+		"url": "https://github.com/fengari-lua/fengari-interop/issues"
+	},
+	"homepage": "https://github.com/fengari-lua/fengari-interop",
+	"peerDependencies": {
+		"fengari": "^0.1.0"
+	},
+	"main": "src/js.js",
+	"directories": {
+		"lib": "src",
+		"test": "test"
+	},
+	"devDependencies": {
+		"eslint": "^8.3.0",
+		"fengari": "^0.1.0",
+		"jest": "^27.4.0"
+	},
+	"scripts": {
+		"lint": "eslint src/ test/",
+		"prepublishOnly": "git diff-index --quiet --cached HEAD -- && npm run lint && npm run test",
+		"test": "jest"
+	},
+	"eslintConfig": {
+		"env": {
+			"browser": true,
+			"es6": true,
+			"node": true,
+			"worker": true
+		},
+		"extends": "eslint:recommended",
+		"rules": {
+			"indent": [
+				"error",
+				"tab",
+				{
+					"SwitchCase": 1
+				}
+			],
+			"linebreak-style": [
+				"error",
+				"unix"
+			],
+			"no-empty": [
+				2,
+				{
+					"allowEmptyCatch": true
+				}
+			],
+			"no-unused-vars": [
+				2,
+				{
+					"args": "none"
+				}
+			],
+			"semi": [
+				"error",
+				"always"
+			]
+		},
+		"overrides": [
+			{
+				"files": [
+					"test/*.js"
+				],
+				"env": {
+					"jest": true
+				}
+			}
+		]
+	}
+}

@@ -1,0 +1,50 @@
+{
+  "name": "v3-infinite-loading",
+  "version": "1.2.2",
+  "description": "Infinite scroller component for vuejs-3",
+  "homepage": "https://vue3-infinite-loading.netlify.app/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/oumoussa98/vue3-infinite-loading.git"
+  },
+  "main": "lib/v3-infinite-loading.mjs",
+  "browser": "lib/v3-infinite-loading.umd.js",
+  "module": "lib/v3-infinite-loading.mjs",
+  "files": [
+    "lib"
+  ],
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^3.2.0",
+    "@vue/compiler-sfc": "^3.2.19",
+    "eslint": "^7.32.0",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-vue": "^7.18.0",
+    "pnpm": "^7.15.0",
+    "prettier": "2.4.1",
+    "vite": "^3.0.2",
+    "vue": "^3.2.44"
+  },
+  "scripts": {
+    "lint": "eslint . --ext .js,.vue --ignore-path .gitignore --fix",
+    "format": "prettier . --write",
+    "dev:docs": "pnpm -C docs run dev",
+    "dev:demo": "pnpm -C demo run dev",
+    "serve:docs": "pnpm -C docs run serve",
+    "serve:demo": "pnpm -C demo run serve",
+    "build:demo": "rm -rf ./demo/lib && pnpm run build:lib && mv lib demo && pnpm -C demo run build",
+    "build:docs": "pnpm -C docs run build",
+    "build:lib": "vite build --mode lib"
+  },
+  "keywords": [
+    "vue3",
+    "vue",
+    "vue3 infinite loading",
+    "vue component",
+    "infinite loader",
+    "infinite scroller",
+    "infinite scrolling",
+    "infinite loading"
+  ],
+  "author": "abdelouahed oumoussa",
+  "license": "MIT"
+}

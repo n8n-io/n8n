@@ -1,0 +1,1 @@
+module.exports = require("../../dist/stores/message/postgres.cjs");

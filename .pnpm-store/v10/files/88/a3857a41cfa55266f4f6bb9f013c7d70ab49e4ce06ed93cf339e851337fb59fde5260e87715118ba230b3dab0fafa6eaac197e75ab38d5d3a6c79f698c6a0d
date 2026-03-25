@@ -1,0 +1,1 @@
+module.exports = require('../dist/message-compiler.prod.cjs')

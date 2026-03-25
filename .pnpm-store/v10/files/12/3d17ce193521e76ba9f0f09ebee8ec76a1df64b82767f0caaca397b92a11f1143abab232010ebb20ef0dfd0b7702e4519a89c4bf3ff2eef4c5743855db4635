@@ -1,0 +1,1 @@
+{"version":3,"file":"boolean.js","names":[],"sources":["../../../../src/utils/zod-to-json-schema/parsers/boolean.ts"],"sourcesContent":["export type JsonSchema7BooleanType = {\n  type: \"boolean\";\n};\n\nexport function parseBooleanDef(): JsonSchema7BooleanType {\n  return {\n    type: \"boolean\",\n  };\n}\n"],"mappings":";AAIA,SAAgB,kBAA0C;AACxD,QAAO,EACL,MAAM,WACP"}

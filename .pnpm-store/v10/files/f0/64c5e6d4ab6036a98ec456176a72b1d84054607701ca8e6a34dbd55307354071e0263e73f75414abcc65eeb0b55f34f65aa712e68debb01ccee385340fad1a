@@ -1,0 +1,287 @@
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+  color: #222;
+  line-height: 1.5;
+  font-size: 16px;
+}
+
+.documentation {
+  background: #65daa2;
+}
+
+.home {
+  background: #65daa2;
+  color: #fff!important;
+}
+
+.header {
+  text-align: center;
+  margin-top: 5em;
+}
+
+.logo {
+  height: 10em;
+  background-color: #fff;
+}
+
+.home h2,
+.home h3 {
+  text-shadow: 0 1px 1px #3a9b6d;
+  text-shadow: 0 1px 1px rgba(58, 155, 109, 0.37);
+}
+
+.home a {
+  color: #fff!important;
+  text-decoration: underline;
+}
+
+.home h2 {
+  font-size: 2em;
+}
+
+.home h3 {
+  font-size: 1.5em;
+}
+
+.installation {
+  margin-bottom: 1.5em;
+  margin-top: 1.5em;
+  color: #fff;
+}
+
+.command, .javascript {
+  background-color: #3a9b6d;
+  color: #d6f5e6;
+  border-radius: 4px;
+  padding: 0.5em 1.5em;
+  display: inline-block;
+  font-size: 1em;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+#installation ~ .installation, #usage ~ .usage {
+  text-align: center;
+  margin-bottom: 0;
+}
+
+.command:before {
+  content: "$";
+  margin-right: 0.5em;
+}
+
+.button {
+  background-color: #ff583f;
+  border-bottom: 4px solid #D7493A;
+  border-radius: 4px;
+  padding: 1em 2em;
+  color: #fff!important;
+  font-weight: bold;
+  font-size: 1em;
+  display: inline-block;
+  text-decoration: none!important;
+}
+
+.button img {
+  height: 1em;
+  width: 1em;
+  transform: translateY(0.1em);
+  margin-right: 0.5em;
+}
+
+.button:hover {
+  text-decoration: none;
+  border-bottom: 5px solid #D7493A;
+  transform: translateY(-1px);
+  margin-bottom: -1px;
+}
+
+.button:active {
+  text-decoration: none;
+  border-bottom: 3px solid #D7493A;
+  transform: translateY(1px);
+  margin-bottom: 1px;
+}
+
+.main {
+  text-align: center;
+  max-width: 35em;
+  text-align: left;
+  margin: 0 auto;
+  width: 100%;
+  text-shadow: 0 1px 1px #3a9b6d;
+  text-shadow: 0 1px 1px rgba(58, 155, 109, 0.37);
+}
+
+.repl {
+  position: relative;
+  width: 100%;
+  max-width: 35em;
+  height: 10em;
+  display: flex;
+  flex-direction: row;
+  margin: 2em auto;
+  background: #48be85;
+  padding: 1em;
+  border-radius: 4px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.repl__input,
+.repl__output {
+  position: relative;
+  text-align: left;
+  padding: 0;
+  margin: 0;
+  width: 50%;
+  overflow: scroll;
+  color: #1e7b4f;
+}
+
+.repl__arg {
+  font-weight: bold;
+}
+
+.repl__func {
+  color: #0a291a;
+  font-weight: bold;
+}
+
+.footer {
+  text-align: center;
+  text-shadow: 0 1px 1px #3a9b6d;
+  text-shadow: 0 1px 1px rgba(58, 155, 109, 0.37);
+}
+
+.bg-white {
+  background-color: #fff;
+}
+
+h4 {
+  margin: 20px 0 10px 0;
+}
+
+.documentation h3 {
+  color: #000;
+}
+
+.border-bottom {
+  border-color: #ddd;
+}
+
+a {
+  color: #0D3523;
+  text-decoration: none;
+}
+
+.section__heading {
+  text-align: center;
+  color: #fff;
+  text-shadow: 0 1px 1px #3a9b6d;
+  text-shadow: 0 1px 1px rgba(58, 155, 109, 0.37);
+  font-size: 2em;
+}
+
+.documentation a[href]:hover {
+  text-decoration: underline;
+}
+
+a:hover {
+  cursor: pointer;
+}
+
+.py1-ul li {
+  padding: 5px 0;
+}
+
+.max-height-100 {
+  max-height: 100%;
+}
+
+section:target h3 {
+  font-weight:700;
+}
+
+.documentation td,
+.documentation th {
+    padding: .25rem .25rem;
+}
+
+h1:hover .anchorjs-link,
+h2:hover .anchorjs-link,
+h3:hover .anchorjs-link,
+h4:hover .anchorjs-link {
+  opacity: 1;
+}
+
+.fix-3 {
+  width: 25%;
+  max-width: 244px;
+}
+
+.fix-3 {
+  width: 25%;
+  max-width: 244px;
+}
+
+@media (min-width: 52em) {
+  .fix-margin-3 {
+    margin-left: 25%;
+  }
+}
+
+.pre, pre, code, .code {
+  font-family: Source Code Pro,Menlo,Consolas,Liberation Mono,monospace;
+  font-size: 14px;
+}
+
+.fill-light {
+  background: #F9F9F9;
+}
+
+.width2 {
+  width: 1rem;
+}
+
+.input {
+  font-family: inherit;
+  display: block;
+  width: 100%;
+  height: 2rem;
+  padding: .5rem;
+  margin-bottom: 1rem;
+  border: 1px solid #ccc;
+  font-size: .875rem;
+  border-radius: 3px;
+  box-sizing: border-box;
+}
+
+table {
+  border-collapse: collapse;
+}
+
+.prose table th,
+.prose table td {
+  text-align: left;
+  padding:8px;
+  border:1px solid #ddd;
+}
+
+.prose table th:nth-child(1) { border-right: none; }
+.prose table th:nth-child(2) { border-left: none; }
+
+.prose table {
+  border:1px solid #ddd;
+}
+
+.prose-big {
+  font-size: 18px;
+  line-height: 30px;
+}
+
+.quiet {
+  opacity: 0.7;
+}
+
+.minishadow {
+  box-shadow: 2px 2px 10px #f3f3f3;
+}

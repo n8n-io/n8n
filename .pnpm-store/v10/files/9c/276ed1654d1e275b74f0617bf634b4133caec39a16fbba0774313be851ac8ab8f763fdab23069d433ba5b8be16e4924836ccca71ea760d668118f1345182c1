@@ -1,0 +1,100 @@
+{
+  "name": "pinia",
+  "version": "2.2.4",
+  "description": "Intuitive, type safe and flexible Store for Vue",
+  "main": "index.js",
+  "module": "dist/pinia.mjs",
+  "unpkg": "dist/pinia.iife.js",
+  "jsdelivr": "dist/pinia.iife.js",
+  "types": "dist/pinia.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/pinia.d.ts",
+      "node": {
+        "import": {
+          "production": "./dist/pinia.prod.cjs",
+          "development": "./dist/pinia.mjs",
+          "default": "./dist/pinia.mjs"
+        },
+        "require": {
+          "production": "./dist/pinia.prod.cjs",
+          "development": "./dist/pinia.cjs",
+          "default": "./index.js"
+        }
+      },
+      "import": "./dist/pinia.mjs",
+      "require": "./index.js"
+    },
+    "./package.json": "./package.json",
+    "./dist/*": "./dist/*"
+  },
+  "sideEffects": false,
+  "author": {
+    "name": "Eduardo San Martin Morote",
+    "email": "posva13@gmail.com"
+  },
+  "funding": "https://github.com/sponsors/posva",
+  "files": [
+    "dist/*.js",
+    "dist/*.mjs",
+    "dist/*.cjs",
+    "dist/pinia.d.ts",
+    "index.js",
+    "index.cjs",
+    "LICENSE",
+    "README.md"
+  ],
+  "keywords": [
+    "vue",
+    "vuex",
+    "store",
+    "pinia",
+    "piña",
+    "pigna",
+    "composition",
+    "api",
+    "setup",
+    "typed",
+    "typescript",
+    "ts",
+    "type",
+    "safe"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@microsoft/api-extractor": "7.47.9",
+    "@vue/test-utils": "^2.4.6"
+  },
+  "dependencies": {
+    "@vue/devtools-api": "^6.6.3",
+    "vue-demi": "^0.14.10"
+  },
+  "peerDependencies": {
+    "@vue/composition-api": "^1.4.0",
+    "typescript": ">=4.4.4",
+    "vue": "^2.6.14 || ^3.3.0"
+  },
+  "peerDependenciesMeta": {
+    "typescript": {
+      "optional": true
+    },
+    "@vue/composition-api": {
+      "optional": true
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vuejs/pinia.git"
+  },
+  "bugs": {
+    "url": "https://github.com/vuejs/pinia/issues"
+  },
+  "homepage": "https://github.com/vuejs/pinia#readme",
+  "scripts": {
+    "build": "rimraf dist && rollup -c ../../rollup.config.mjs --environment TARGET:pinia",
+    "build:dts": "api-extractor run --local --verbose && tail -n +3 ./src/globalExtensions.ts >> dist/pinia.d.ts",
+    "changelog": "conventional-changelog -p angular -i CHANGELOG.md -s --commit-path . -l pinia -r 1",
+    "test:dts": "tsc -p ./test-dts/tsconfig.json",
+    "test": "pnpm run build && pnpm run build:dts && pnpm test:dts"
+  }
+}

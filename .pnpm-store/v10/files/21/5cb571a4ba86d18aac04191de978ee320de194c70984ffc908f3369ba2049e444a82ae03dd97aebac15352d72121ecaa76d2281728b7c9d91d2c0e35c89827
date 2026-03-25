@@ -1,0 +1,1 @@
+module.exports = require("../dist/experimental/openai_files/index.cjs");

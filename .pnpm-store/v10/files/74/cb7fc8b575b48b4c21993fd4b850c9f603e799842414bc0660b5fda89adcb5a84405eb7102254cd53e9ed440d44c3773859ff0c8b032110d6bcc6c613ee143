@@ -1,0 +1,72 @@
+{
+  "name": "eslint-plugin-storybook",
+  "version": "10.1.11",
+  "description": "Storybook ESLint Plugin: Best practice rules for writing stories",
+  "keywords": [
+    "eslint",
+    "eslintplugin",
+    "eslint-plugin",
+    "storybook"
+  ],
+  "homepage": "https://github.com/storybookjs/storybook/tree/next/code/lib/eslint-plugin#readme",
+  "bugs": {
+    "url": "https://github.com/storybookjs/storybook/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/storybookjs/storybook",
+    "directory": "code/lib/eslint-plugin"
+  },
+  "license": "MIT",
+  "author": "yannbf@gmail.com",
+  "contributors": [
+    {
+      "name": "Rafael Rozon",
+      "email": "rafaelrozon.developer@gmail.com"
+    }
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist/**/*",
+    "README.md"
+  ],
+  "scripts": {
+    "check": "jiti ../../../scripts/check/check-package.ts",
+    "generate-rule": "jiti ./scripts/generate-rule",
+    "prep": "jiti ../../../scripts/build/build-package.ts"
+  },
+  "dependencies": {
+    "@typescript-eslint/utils": "^8.8.1"
+  },
+  "devDependencies": {
+    "@types/eslint": "^8.56.2",
+    "@types/node": "^22.0.0",
+    "@types/prompts": "^2.0.9",
+    "@typescript-eslint/eslint-plugin": "^8.8.1",
+    "@typescript-eslint/parser": "^8.8.1",
+    "@typescript-eslint/rule-tester": "^8.8.1",
+    "@vitest/coverage-v8": "^3.2.4",
+    "eslint": "^8.57.1",
+    "eslint-plugin-eslint-plugin": "^6.2.0",
+    "eslint-plugin-node": "^11.1.0",
+    "prettier": "^3.5.3",
+    "prompts": "^2.4.0",
+    "ts-dedent": "^2.0.0",
+    "typescript": "^5.8.3"
+  },
+  "peerDependencies": {
+    "eslint": ">=8",
+    "storybook": "^10.1.11"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "gitHead": "a8e7fd8a655c69780bc20b9749d2699e45beae1l"
+}

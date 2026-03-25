@@ -1,0 +1,49 @@
+{
+	"name": "figures",
+	"version": "6.1.0",
+	"description": "Unicode symbols with fallbacks for older terminals",
+	"license": "MIT",
+	"repository": "sindresorhus/figures",
+	"funding": "https://github.com/sponsors/sindresorhus",
+	"author": {
+		"name": "Sindre Sorhus",
+		"email": "sindresorhus@gmail.com",
+		"url": "https://sindresorhus.com"
+	},
+	"type": "module",
+	"exports": {
+		"types": "./index.d.ts",
+		"default": "./index.js"
+	},
+	"sideEffects": false,
+	"engines": {
+		"node": ">=18"
+	},
+	"scripts": {
+		"test": "xo && ava && tsd"
+	},
+	"files": [
+		"index.js",
+		"index.d.ts"
+	],
+	"keywords": [
+		"unicode",
+		"cli",
+		"cmd",
+		"command-line",
+		"characters",
+		"symbol",
+		"symbols",
+		"figure",
+		"figures",
+		"fallback"
+	],
+	"dependencies": {
+		"is-unicode-supported": "^2.0.0"
+	},
+	"devDependencies": {
+		"ava": "^5.3.1",
+		"tsd": "^0.29.0",
+		"xo": "^0.56.0"
+	}
+}

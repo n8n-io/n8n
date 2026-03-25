@@ -1,0 +1,1 @@
+{"version":3,"file":"getParentFunctionNode.d.ts","sourceRoot":"","sources":["../../src/util/getParentFunctionNode.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,QAAQ,EAAE,MAAM,0BAA0B,CAAC;AAIzD,wBAAgB,qBAAqB,CACnC,IAAI,EAAE,QAAQ,CAAC,IAAI,GAEjB,QAAQ,CAAC,uBAAuB,GAChC,QAAQ,CAAC,mBAAmB,GAC5B,QAAQ,CAAC,kBAAkB,GAC3B,IAAI,CAiBP"}

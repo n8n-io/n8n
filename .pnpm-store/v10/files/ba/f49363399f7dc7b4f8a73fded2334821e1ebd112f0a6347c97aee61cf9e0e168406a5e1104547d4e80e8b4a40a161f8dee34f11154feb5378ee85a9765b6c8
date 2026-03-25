@@ -1,0 +1,6 @@
+{
+  "sideEffects": false,
+  "type": "commonjs",
+  "module": "../../esm/fp/formatWithOptions/index.js",
+  "typings": "../../typings.d.ts"
+}

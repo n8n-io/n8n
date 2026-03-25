@@ -1,0 +1,1 @@
+{"version":3,"file":"prefer-promise-reject-errors.d.ts","sourceRoot":"","sources":["../../src/rules/prefer-promise-reject-errors.ts"],"names":[],"mappings":"AAmBA,MAAM,MAAM,UAAU,GAAG,eAAe,CAAC;AAEzC,MAAM,MAAM,OAAO,GAAG;IACpB;QACE,gBAAgB,CAAC,EAAE,OAAO,CAAC;QAC3B,gBAAgB,CAAC,EAAE,OAAO,CAAC;QAC3B,oBAAoB,CAAC,EAAE,OAAO,CAAC;KAChC;CACF,CAAC;;AAEF,wBA4IG"}

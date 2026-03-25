@@ -1,0 +1,1 @@
+{"version":3,"file":"Operator.d.ts","sourceRoot":"","sources":["../../../src/internal/Operator.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,UAAU,EAAE,MAAM,cAAc,CAAC;AAC1C,OAAO,EAAE,aAAa,EAAE,MAAM,SAAS,CAAC;AAExC;;GAEG;AACH,MAAM,WAAW,QAAQ,CAAC,CAAC,EAAE,CAAC;IAC5B,IAAI,CAAC,UAAU,EAAE,UAAU,CAAC,CAAC,CAAC,EAAE,MAAM,EAAE,GAAG,GAAG,aAAa,CAAC;CAC7D"}

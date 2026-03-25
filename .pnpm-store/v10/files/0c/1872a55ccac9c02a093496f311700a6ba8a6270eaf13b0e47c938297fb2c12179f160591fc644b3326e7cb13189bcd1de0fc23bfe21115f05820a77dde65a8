@@ -1,0 +1,1 @@
+export * from "../dist/tools/google_trends.js";

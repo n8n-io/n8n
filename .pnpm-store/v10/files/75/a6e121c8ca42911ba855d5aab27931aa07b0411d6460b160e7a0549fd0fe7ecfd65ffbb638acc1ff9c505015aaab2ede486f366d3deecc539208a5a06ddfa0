@@ -1,0 +1,1 @@
+{"version":3,"sources":["../../src/metadata/types/TableTypes.ts"],"names":[],"mappings":"","file":"TableTypes.js","sourcesContent":["/**\n * Table type. Tables can be closure, junction,, etc.\n */\nexport type TableType =\n    | \"regular\"\n    | \"view\"\n    | \"junction\"\n    | \"closure\"\n    | \"closure-junction\"\n    | \"entity-child\"\n"],"sourceRoot":"../.."}

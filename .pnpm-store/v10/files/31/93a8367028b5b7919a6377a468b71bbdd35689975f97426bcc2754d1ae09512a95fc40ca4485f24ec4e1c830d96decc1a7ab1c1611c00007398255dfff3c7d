@@ -1,0 +1,1 @@
+{"version":3,"file":"consts.d.ts","sourceRoot":"","sources":["../../../src/providers/consts.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,6BAA6B,EAAE,MAAM,uCAAuC,CAAC;AAC3F,OAAO,KAAK,EAAE,iBAAiB,EAAE,MAAM,aAAa,CAAC;AACrD,OAAO,EAAE,KAAK,OAAO,EAAE,MAAM,aAAa,CAAC;AAE3C;;;;;;GAMG;AACH,eAAO,MAAM,iCAAiC,EAAE,MAAM,CACrD,iBAAiB,EACjB,MAAM,CAAC,OAAO,EAAE,6BAA6B,CAAC,CAyB9C,CAAC"}

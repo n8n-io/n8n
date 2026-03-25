@@ -1,0 +1,1 @@
+{"version":3,"file":"ICachePlugin.d.ts","sourceRoot":"","sources":["../../../src/cache/interface/ICachePlugin.ts"],"names":[],"mappings":"AAKA,OAAO,EAAE,iBAAiB,EAAE,MAAM,qCAAqC,CAAC;AAExE,MAAM,WAAW,YAAY;IACzB,iBAAiB,EAAE,CAAC,iBAAiB,EAAE,iBAAiB,KAAK,OAAO,CAAC,IAAI,CAAC,CAAC;IAC3E,gBAAgB,EAAE,CAAC,iBAAiB,EAAE,iBAAiB,KAAK,OAAO,CAAC,IAAI,CAAC,CAAC;CAC7E"}

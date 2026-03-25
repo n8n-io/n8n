@@ -1,0 +1,108 @@
+@use 'sass:map';
+
+@use 'mixins/mixins' as *;
+@use 'mixins/var' as *;
+@use 'common/var' as *;
+
+$rate-height: () !default;
+$rate-height: map.merge(
+  (
+    'large': 40px,
+    'default': 32px,
+    'small': 24px,
+  ),
+  $rate-height
+);
+
+$rate-size: () !default;
+$rate-size: map.merge(
+  (
+    'small': 14px,
+  ),
+  $rate-size
+);
+
+@include b(rate) {
+  @include set-component-css-var('rate', $rate);
+}
+
+@include b(rate) {
+  display: inline-flex;
+  align-items: center;
+  height: map.get($rate-height, 'default');
+
+  &:focus,
+  &:active {
+    outline: none;
+  }
+
+  @include e(item) {
+    cursor: pointer;
+    display: inline-block;
+    position: relative;
+    font-size: 0;
+    vertical-align: middle;
+    color: getCssVar('rate-void-color');
+    line-height: normal;
+  }
+
+  & .#{bem('rate', 'icon')} {
+    position: relative;
+    display: inline-block;
+    font-size: getCssVar('rate-icon-size');
+    margin-right: getCssVar('rate-icon-margin');
+    transition: getCssVar('transition-duration');
+
+    &.hover {
+      transform: scale(1.15);
+    }
+
+    .path2 {
+      position: absolute;
+      left: 0;
+      top: 0;
+    }
+
+    @include when(active) {
+      color: getCssVar('rate', 'fill-color');
+    }
+  }
+
+  @include e(decimal) {
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: inline-block;
+    overflow: hidden;
+    color: getCssVar('rate', 'fill-color');
+
+    @include m('box') {
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+  }
+
+  @include e(text) {
+    font-size: getCssVar('rate-font-size');
+    vertical-align: middle;
+    color: getCssVar('rate', 'text-color');
+  }
+
+  @each $size in (large, small) {
+    @include m($size) {
+      height: map.get($rate-height, $size);
+
+      & .#{bem('rate', 'icon')} {
+        font-size: map.get($rate-size, $size);
+      }
+    }
+  }
+
+  @include when(disabled) {
+    @include e(item) {
+      cursor: auto;
+      color: getCssVar('rate', 'disabled-void-color');
+    }
+  }
+}

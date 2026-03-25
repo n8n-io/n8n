@@ -1,0 +1,73 @@
+{
+  "name": "hdr-histogram-js",
+  "version": "3.0.1",
+  "description": "TypeScript port of HdrHistogram",
+  "main": "dist/index.js",
+  "browser": "dist/hdrhistogram.umd.js",
+  "types": "dist/index.d.ts",
+  "keywords": [
+    "hdr-histogram",
+    "hdr-histogram-js",
+    "percentiles",
+    "monitoring",
+    "latency",
+    "performance"
+  ],
+  "engines": {
+    "node": ">=14"
+  },
+  "scripts": {
+    "tsc": "tsc --skipLibCheck --outDir dist --declaration true --sourceMap true",
+    "test": "jest",
+    "build": "npm run tsc && npm run rollup",
+    "prettier": "prettier --parser typescript -l src/**/*.ts",
+    "prettier:fix": "prettier --write --parser typescript -l src/**/*.ts",
+    "astest": "asp --verbose",
+    "astest:ci": "asp --summary",
+    "asbuild:untouched": "asc assembly/index.ts -b build/untouched.wasm -t build/untouched.wat --sourceMap --debug --exportRuntime",
+    "asbuild:optimized": "asc assembly/index.ts -b build/optimized.wasm -t build/optimized.wat --sourceMap -O3 --noAssert --exportRuntime",
+    "asbuild:base64": "echo \"/** @internal */\nexport const BINARY = \\\"$(node ./base64.js build/optimized.wasm)\\\";\" > src/wasm/generated-wasm.ts",
+    "asbuild": "npm run asbuild:untouched && npm run asbuild:optimized && npm run asbuild:base64",
+    "rollup": "rollup -c"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HdrHistogram/HdrHistogramJS.git"
+  },
+  "author": "Alexandre Victoor",
+  "license": "BSD-2-Clause",
+  "devDependencies": {
+    "@as-pect/cli": "^6.2.4",
+    "@babel/preset-env": "^7.14.8",
+    "@babel/preset-typescript": "^7.14.5",
+    "@types/benchmark": "^1.0.31",
+    "@types/jest": "^25.2.1",
+    "@types/node": "7.0.0",
+    "assemblyscript": "^0.19.21",
+    "benchmark": "^2.1.4",
+    "benny": "^3.6.14",
+    "fast-check": "^1.1.1",
+    "jest": "25.1.x",
+    "node-notifier": ">=8.0.1",
+    "prettier": "^1.6.1",
+    "rollup": "^2.8.2",
+    "rollup-plugin-commonjs": "^10.1.0",
+    "rollup-plugin-node-resolve": "^5.2.0",
+    "rollup-plugin-terser": "^5.3.0",
+    "rollup-plugin-typescript": "^1.0.1",
+    "ts-jest": "25.0.x",
+    "ts-loader": "^3.5.0",
+    "ts-node": "^5.0.1",
+    "typescript": "^5.6.3",
+    "yargs": "^6.4.0"
+  },
+  "dependencies": {
+    "@assemblyscript/loader": "^0.19.21",
+    "base64-js": "^1.2.0",
+    "pako": "^1.0.3"
+  },
+  "files": [
+    ".",
+    "dist"
+  ]
+}

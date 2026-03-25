@@ -1,0 +1,8 @@
+{
+  "name": "example",
+  "version": "0.0.0",
+  "devDependencies": {
+    "plugin-wrapper": "0.0.0",
+    "framework": "0.0.0"
+  }
+}

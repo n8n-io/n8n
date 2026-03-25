@@ -1,0 +1,74 @@
+{
+  "mappings": [
+    {
+      "scenarioName": "Successful PAT authentication flow",
+      "requiredScenarioState": "Started",
+      "newScenarioState": "Authenticated",
+      "request": {
+        "urlPathPattern": "/session/v1/login-request.*",
+        "method": "POST",
+        "headers": {
+          "accept": {
+            "equalTo": "application/json"
+          }
+        },
+        "bodyPatterns": [
+          {
+            "equalToJson": {
+              "data": {
+                "ACCOUNT_NAME": "MOCK_ACCOUNT_NAME",
+                "TOKEN": "MOCK_TOKEN",
+                "LOGIN_NAME": "MOCK_USERNAME",
+                "AUTHENTICATOR": "PROGRAMMATIC_ACCESS_TOKEN"
+              }
+            },
+            "ignoreExtraElements": true
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "data": {
+            "masterToken": "master token",
+            "token": "session token",
+            "validityInSeconds": 3600,
+            "masterValidityInSeconds": 14400,
+            "displayUserName": "OAUTH_TEST_AUTH_CODE",
+            "serverVersion": "8.48.0 b2024121104444034239f05",
+            "firstLogin": false,
+            "remMeToken": null,
+            "remMeValidityInSeconds": 0,
+            "healthCheckInterval": 45,
+            "newClientForUpgrade": "3.12.3",
+            "sessionId": 1172562260498,
+            "parameters": [
+              {
+                "name": "CLIENT_PREFETCH_THREADS",
+                "value": 4
+              }
+            ],
+            "sessionInfo": {
+              "databaseName": "TEST_DATABASE",
+              "schemaName": "TEST_JDBC",
+              "warehouseName": "TEST_XSMALL",
+              "roleName": "ANALYST"
+            },
+            "idToken": null,
+            "idTokenValidityInSeconds": 0,
+            "responseData": null,
+            "mfaToken": null,
+            "mfaTokenValidityInSeconds": 0
+          },
+          "code": null,
+          "message": null,
+          "success": true
+        }
+      }
+    }
+  ]
+}
+

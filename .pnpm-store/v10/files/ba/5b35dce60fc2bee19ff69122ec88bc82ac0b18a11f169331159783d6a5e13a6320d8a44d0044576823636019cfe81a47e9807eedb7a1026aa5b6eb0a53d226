@@ -1,0 +1,122 @@
+{
+  "name": "docker-compose",
+  "version": "1.3.0",
+  "main": "dist/index.js",
+  "typings": "dist/index.d.ts",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "ci": "yarn install --frozen-lockfile",
+    "test": "npx vitest --dir test --test-timeout=30000",
+    "lint": "eslint src/**/*.ts test/**/*.ts",
+    "build": "tsc",
+    "prepublishOnly": "tsc",
+    "release": "yarn build && standard-version",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
+  },
+  "repository": {
+    "url": "git@github.com:PDMLab/docker-compose.git"
+  },
+  "homepage": "https://pdmlab.github.io/docker-compose/",
+  "keywords": [
+    "devops",
+    "devops-tools",
+    "docker",
+    "docker-compose",
+    "test",
+    "test-tools"
+  ],
+  "author": "Alexander Zeitler <alexander.zeitler@pdmlab.com>",
+  "contributors": [
+    {
+      "name": "Ignatiev Mikhail"
+    },
+    {
+      "name": "Ezekiel Warren"
+    },
+    {
+      "name": "Palash Mondal"
+    },
+    {
+      "name": "lacabra"
+    },
+    {
+      "name": "Lance Rutkin"
+    },
+    {
+      "name": "MartinJLee"
+    },
+    {
+      "name": "Sergey Falinsky"
+    },
+    {
+      "name": "Lars Kumbier",
+      "url": "https://kumbier.it"
+    },
+    {
+      "name": "Paweł Niedzielski"
+    },
+    {
+      "name": "Jannis Pohlmann"
+    },
+    {
+      "name": "Eduardo Weiland"
+    },
+    {
+      "name": "Nacho González Bullón"
+    },
+    {
+      "name": "Will O'Beirne"
+    },
+    {
+      "name": "Sebastián Balay"
+    },
+    {
+      "name": "Gabriel Fürstenheim",
+      "url": "https://github.com/furstenheim"
+    },
+    {
+      "name": "gautaz"
+    }
+  ],
+  "license": "MIT",
+  "description": "Manage docker-compose from Node.js",
+  "devDependencies": {
+    "@commitlint/cli": "^13.1.0",
+    "@commitlint/config-conventional": "13.1.0",
+    "@types/dockerode": "^2.5.27",
+    "@types/node": "^12.12.6",
+    "@typescript-eslint/eslint-plugin": "^4.21.0",
+    "@typescript-eslint/parser": "^4.21.0",
+    "@vitest/ui": "^0.30.1",
+    "dockerode": "^3.2.1",
+    "eslint": "^7.24.0",
+    "eslint-config-prettier": "^8.1.0",
+    "eslint-plugin-import": "^2.22.1",
+    "eslint-plugin-prettier": "^3.3.1",
+    "eslint-watch": "^7.0.0",
+    "husky": "^6.0.0",
+    "prettier": "^2.2.1",
+    "standard-version": "9.3.1",
+    "typescript": "^4.9.5",
+    "vitepress": "^1.0.0-alpha.76",
+    "vitest": "^0.30.1"
+  },
+  "engines": {
+    "node": ">= 6.0.0"
+  },
+  "husky": {
+    "hooks": {
+      "commit-msg": "commitlint -E HUSKY_GIT_PARAMS"
+    }
+  },
+  "commitlint": {
+    "extends": [
+      "@commitlint/config-conventional"
+    ]
+  },
+  "dependencies": {
+    "yaml": "^2.2.2"
+  }
+}

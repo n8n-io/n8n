@@ -1,0 +1,77 @@
+{
+  "name": "autocannon",
+  "version": "8.0.0",
+  "description": "Fast HTTP benchmarking tool written in Node.js",
+  "main": "autocannon.js",
+  "bin": {
+    "autocannon": "autocannon.js"
+  },
+  "scripts": {
+    "test": "standard && tap test/serial/*.test.js test/*.test.js",
+    "standard:fix": "standard --fix"
+  },
+  "pre-commit": [
+    "test"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mcollina/autocannon.git"
+  },
+  "keywords": [
+    "http",
+    "soak",
+    "load",
+    "fast",
+    "wrk",
+    "ab",
+    "test"
+  ],
+  "author": "Matteo Collina <hello@matteocollina.com>",
+  "contributors": [
+    "Glen Keane <glenkeane.94@gmail.com>",
+    "Donald Robertson <donaldarobertson89@gmail.com",
+    "Salman Mitha <SalmanMitha@gmail.com>"
+  ],
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/mcollina/autocannon/issues"
+  },
+  "homepage": "https://github.com/mcollina/autocannon#readme",
+  "devDependencies": {
+    "ansi-regex": "^5.0.1",
+    "bl": "^6.0.0",
+    "busboy": "^0.3.1",
+    "pre-commit": "^1.1.2",
+    "proxyquire": "^2.1.3",
+    "sinon": "^15.0.0",
+    "split2": "^4.0.0",
+    "standard": "^17.0.0",
+    "tap": "^16.0.0",
+    "why-is-node-running": "^2.3.0"
+  },
+  "dependencies": {
+    "@minimistjs/subarg": "^1.0.0",
+    "chalk": "^4.1.0",
+    "char-spinner": "^1.0.1",
+    "cli-table3": "^0.6.0",
+    "color-support": "^1.1.1",
+    "cross-argv": "^2.0.0",
+    "form-data": "^4.0.0",
+    "has-async-hooks": "^1.0.0",
+    "hdr-histogram-js": "^3.0.0",
+    "hdr-histogram-percentiles-obj": "^3.0.0",
+    "http-parser-js": "^0.5.2",
+    "hyperid": "^3.0.0",
+    "lodash.chunk": "^4.2.0",
+    "lodash.clonedeep": "^4.5.0",
+    "lodash.flatten": "^4.4.0",
+    "manage-path": "^2.0.0",
+    "on-net-listen": "^1.1.1",
+    "pretty-bytes": "^5.4.1",
+    "progress": "^2.0.3",
+    "reinterval": "^1.1.0",
+    "retimer": "^3.0.0",
+    "semver": "^7.3.2",
+    "timestring": "^6.0.0"
+  }
+}

@@ -1,0 +1,1 @@
+{"version":3,"file":"HttpError.d.ts","sourceRoot":"","sources":["../../../../../src/custom_auth/core/error/HttpError.ts"],"names":[],"mappings":"AAKA,OAAO,EAAE,eAAe,EAAE,MAAM,sBAAsB,CAAC;AAEvD,qBAAa,SAAU,SAAQ,eAAe;gBAC9B,KAAK,EAAE,MAAM,EAAE,OAAO,EAAE,MAAM,EAAE,aAAa,CAAC,EAAE,MAAM;CAIrE"}

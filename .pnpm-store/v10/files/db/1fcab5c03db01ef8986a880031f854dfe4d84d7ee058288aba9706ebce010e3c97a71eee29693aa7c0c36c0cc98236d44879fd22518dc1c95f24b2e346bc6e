@@ -1,0 +1,91 @@
+{
+  "name": "postcss-html",
+  "version": "1.8.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "description": "PostCSS syntax for parsing HTML (and HTML-like)",
+  "engines": {
+    "node": "^12 || >=14"
+  },
+  "main": "./lib/index.js",
+  "files": [
+    "lib"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ota-meshi/postcss-html.git"
+  },
+  "keywords": [
+    "postcss",
+    "syntax",
+    "html",
+    "vue",
+    "quickapp",
+    "PHP",
+    "css",
+    "less",
+    "sass",
+    "scss",
+    "sss",
+    "sugarss"
+  ],
+  "author": "gucong",
+  "contributors": [
+    "Yosuke Ota (https://github.com/ota-meshi)"
+  ],
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ota-meshi/postcss-html/issues"
+  },
+  "homepage": "https://github.com/ota-meshi/postcss-html#readme",
+  "nyc": {
+    "reporter": [
+      "lcov",
+      "text"
+    ],
+    "cache": true,
+    "check-coverage": true
+  },
+  "scripts": {
+    "mocha": "mocha \"test/**/*.js\" --no-timeouts",
+    "test": "nyc npm run mocha",
+    "lint": "eslint .",
+    "eslint-fix": "eslint . --fix",
+    "preversion": "npm run test",
+    "update-snap": "mocha \"test/**/*.js\" --no-timeouts --update"
+  },
+  "dependencies": {
+    "htmlparser2": "^8.0.0",
+    "js-tokens": "^9.0.0",
+    "postcss": "^8.5.0",
+    "postcss-safe-parser": "^6.0.0"
+  },
+  "devDependencies": {
+    "@ota-meshi/eslint-plugin": "^0.15.0",
+    "autoprefixer": "^10.3.7",
+    "chai": "~4.5.0",
+    "codecov": "^3.8.3",
+    "eslint": "^8.0.1",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-eslint-comments": "^3.2.0",
+    "eslint-plugin-json-schema-validator": "^5.0.0",
+    "eslint-plugin-jsonc": "^2.0.0",
+    "eslint-plugin-n": "^17.0.0",
+    "eslint-plugin-node-dependencies": "^0.12.0",
+    "eslint-plugin-prettier": "^5.0.0",
+    "eslint-plugin-regexp": "^2.0.0",
+    "eslint-plugin-vue": "^9.0.0",
+    "eslint-plugin-yml": "^1.0.0",
+    "mocha": "^10.0.0",
+    "mocha-chai-jest-snapshot": "1.1.3",
+    "nyc": "^15.0.0",
+    "postcss-less": "^6.0.0",
+    "postcss-scss": "^4.0.1",
+    "postcss-styl": "^0.12.0",
+    "prettier": "^3.0.0",
+    "stylelint": "^14.4.0",
+    "stylelint-config-standard": "^28.0.0",
+    "sugarss": "^4.0.1"
+  }
+}

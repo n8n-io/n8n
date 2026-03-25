@@ -1,0 +1,21 @@
+openapi: 3.0.0
+paths:
+  /pet:
+    parameters:
+      - $ref: '#/components/parameters/path-param'
+    put:
+      parameters:
+        - $ref: '#/components/parameters/param-b'
+        - $ref: ./param-b.yaml
+    get:
+      parameters:
+        - $ref: '#/components/parameters/param-a'
+        - $ref: ./param-c.yaml
+components:
+  parameters:
+    param-a:
+      name: test
+    param-b:
+      name: param_b_alt
+    path-param:
+      name: path_param

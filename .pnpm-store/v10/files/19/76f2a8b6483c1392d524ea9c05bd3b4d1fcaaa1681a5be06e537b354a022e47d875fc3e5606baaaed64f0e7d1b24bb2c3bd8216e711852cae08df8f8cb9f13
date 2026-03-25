@@ -1,0 +1,38 @@
+{
+    "name": "@types/sshpk",
+    "version": "1.17.4",
+    "description": "TypeScript definitions for sshpk",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/sshpk",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Meno Abels",
+            "githubUsername": "mabels",
+            "url": "https://github.com/mabels"
+        },
+        {
+            "name": "Alexander Lavallee",
+            "githubUsername": "lavalleeale",
+            "url": "https://github.com/lavalleeale"
+        },
+        {
+            "name": "Lukáš Cezner",
+            "githubUsername": "coalzombik",
+            "url": "https://github.com/coalzombik"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/sshpk"
+    },
+    "scripts": {},
+    "dependencies": {
+        "@types/asn1": "*",
+        "@types/node": "*"
+    },
+    "typesPublisherContentHash": "16cab0146a3846dc907637adf631c83649e86983ba27ee73ad61c321af2a7168",
+    "typeScriptVersion": "4.5"
+}

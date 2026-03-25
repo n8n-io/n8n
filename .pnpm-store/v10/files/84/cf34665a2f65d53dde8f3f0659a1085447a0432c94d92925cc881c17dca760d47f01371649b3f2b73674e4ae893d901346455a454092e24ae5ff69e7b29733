@@ -1,0 +1,31 @@
+{
+  "name": "oas-linter",
+  "version": "3.2.2",
+  "description": "Default linter plugin for oas-validator",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "funding": "https://github.com/Mermade/oas-kit?sponsor=1",
+  "keywords": [
+    "openapi",
+    "oas",
+    "lint",
+    "linter"
+  ],
+  "author": "Mike Ralphson",
+  "license": "BSD-3-Clause",
+  "dependencies": {
+    "@exodus/schemasafe": "^1.0.0-rc.2",
+    "should": "^13.2.1",
+    "yaml": "^1.10.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Mermade/oas-kit.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mermade/oas-kit/issues"
+  },
+  "gitHead": "1d2d860880c20ab2994d00857439f83107e922a3"
+}

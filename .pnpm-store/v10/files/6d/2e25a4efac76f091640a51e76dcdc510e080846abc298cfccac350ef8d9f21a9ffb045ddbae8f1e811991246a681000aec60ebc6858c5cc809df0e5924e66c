@@ -1,0 +1,57 @@
+@use 'mixins/mixins' as *;
+@use 'mixins/var' as *;
+@use 'common/var' as *;
+
+@include b(result) {
+  @include set-component-css-var('result', $result);
+}
+
+@include b(result) {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  text-align: center;
+  box-sizing: border-box;
+  padding: getCssVar('result-padding');
+
+  @include e(icon) {
+    svg {
+      width: getCssVar('result-icon-font-size');
+      height: getCssVar('result-icon-font-size');
+    }
+  }
+
+  @include e(title) {
+    margin-top: getCssVar('result-title-margin-top');
+
+    p {
+      margin: 0;
+      font-size: getCssVar('result-title-font-size');
+      color: getCssVar('text-color', 'primary');
+      line-height: 1.3;
+    }
+  }
+
+  @include e(subtitle) {
+    margin-top: getCssVar('result-subtitle-margin-top');
+
+    p {
+      margin: 0;
+      font-size: getCssVar('font-size', 'base');
+      color: getCssVar('text-color', 'regular');
+      line-height: 1.3;
+    }
+  }
+
+  @include e(extra) {
+    margin-top: getCssVar('result-extra-margin-top');
+  }
+
+  @each $type in $types {
+    .icon-#{$type} {
+      @include css-var-from-global(('result', 'color'), ('color', $type));
+      color: getCssVar('result-color');
+    }
+  }
+}

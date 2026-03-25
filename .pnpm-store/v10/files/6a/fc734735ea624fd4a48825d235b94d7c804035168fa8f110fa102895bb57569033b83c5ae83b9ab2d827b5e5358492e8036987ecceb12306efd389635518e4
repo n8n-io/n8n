@@ -1,0 +1,41 @@
+{
+  "name": "vite-svg-loader",
+  "version": "5.1.0",
+  "description": "Vite plugin to load SVG files as Vue components",
+  "keywords": [
+    "vite",
+    "vue",
+    "svg"
+  ],
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "dependencies": {
+    "svgo": "^3.0.2"
+  },
+  "devDependencies": {
+    "cypress": "^8.6.0",
+    "standard": "^16.0.3"
+  },
+  "peerDependencies": {
+    "vue": ">=3.2.13"
+  },
+  "scripts": {
+    "lint": "standard --fix",
+    "cypress": "cypress run",
+    "example:build": "cd ./example && npm ci && npm run build",
+    "example:preview": "cd ./example && npm run preview -- --host"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jpkleemans/vite-svg-loader.git"
+  },
+  "author": {
+    "name": "Jan-Paul Kleemans",
+    "email": "jpkleemans@gmail.com"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/jpkleemans/vite-svg-loader/issues"
+  },
+  "homepage": "https://github.com/jpkleemans/vite-svg-loader#readme"
+}

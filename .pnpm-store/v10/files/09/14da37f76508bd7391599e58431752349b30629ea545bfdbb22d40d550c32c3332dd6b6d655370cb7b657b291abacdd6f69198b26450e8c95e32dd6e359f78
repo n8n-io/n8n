@@ -1,0 +1,184 @@
+# Copyright 2012 Mozilla Foundation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Main toolbar buttons (tooltips and alt text for images)
+previous.title=An duilleag roimhe
+previous_label=Air ais
+next.title=An ath-dhuilleag
+next_label=Air adhart
+
+# LOCALIZATION NOTE (page.title): The tooltip for the pageNumber input.
+page.title=Duilleag
+# LOCALIZATION NOTE (of_pages): "{{pagesCount}}" will be replaced by a number
+# representing the total number of pages in the document.
+of_pages=à {{pagesCount}}
+# LOCALIZATION NOTE (page_of_pages): "{{pageNumber}}" and "{{pagesCount}}"
+# will be replaced by a number representing the currently visible page,
+# respectively a number representing the total number of pages in the document.
+page_of_pages=({{pageNumber}} à {{pagesCount}})
+
+zoom_out.title=Sùm a-mach
+zoom_out_label=Sùm a-mach
+zoom_in.title=Sùm a-steach
+zoom_in_label=Sùm a-steach
+zoom.title=Sùm
+presentation_mode.title=Gearr leum dhan mhodh taisbeanaidh
+presentation_mode_label=Am modh taisbeanaidh
+open_file.title=Fosgail faidhle
+open_file_label=Fosgail
+print.title=Clò-bhuail
+print_label=Clò-bhuail
+download.title=Luchdaich a-nuas
+download_label=Luchdaich a-nuas
+bookmark.title=An sealladh làithreach (dèan lethbhreac no fosgail e ann an uinneag ùr)
+bookmark_label=An sealladh làithreach
+
+# Secondary toolbar and context menu
+tools.title=Innealan
+tools_label=Innealan
+first_page.title=Rach gun chiad duilleag
+first_page.label=Rach gun chiad duilleag
+first_page_label=Rach gun chiad duilleag
+last_page.title=Rach gun duilleag mu dheireadh
+last_page.label=Rach gun duilleag mu dheireadh
+last_page_label=Rach gun duilleag mu dheireadh
+page_rotate_cw.title=Cuairtich gu deiseil
+page_rotate_cw.label=Cuairtich gu deiseil
+page_rotate_cw_label=Cuairtich gu deiseil
+page_rotate_ccw.title=Cuairtich gu tuathail
+page_rotate_ccw.label=Cuairtich gu tuathail
+page_rotate_ccw_label=Cuairtich gu tuathail
+
+cursor_text_select_tool.title=Cuir an comas inneal taghadh an teacsa
+cursor_text_select_tool_label=Inneal taghadh an teacsa
+cursor_hand_tool.title=Cuir inneal na làimhe an comas
+cursor_hand_tool_label=Inneal na làimhe
+
+# Document properties dialog box
+document_properties.title=Roghainnean na sgrìobhainne…
+document_properties_label=Roghainnean na sgrìobhainne…
+document_properties_file_name=Ainm an fhaidhle:
+document_properties_file_size=Meud an fhaidhle:
+# LOCALIZATION NOTE (document_properties_kb): "{{size_kb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in kilobytes, respectively in bytes.
+document_properties_kb={{size_kb}} KB ({{size_b}} bytes)
+# LOCALIZATION NOTE (document_properties_mb): "{{size_mb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in megabytes, respectively in bytes.
+document_properties_mb={{size_mb}} MB ({{size_b}} bytes)
+document_properties_title=Tiotal:
+document_properties_author=Ùghdar:
+document_properties_subject=Cuspair:
+document_properties_keywords=Faclan-luirg:
+document_properties_creation_date=Latha a chruthachaidh:
+document_properties_modification_date=Latha atharrachaidh:
+# LOCALIZATION NOTE (document_properties_date_string): "{{date}}" and "{{time}}"
+# will be replaced by the creation/modification date, and time, of the PDF file.
+document_properties_date_string={{date}}, {{time}}
+document_properties_creator=Cruthadair:
+document_properties_producer=Saothraiche a' PDF:
+document_properties_version=Tionndadh a' PDF:
+document_properties_page_count=Àireamh de dhuilleagan:
+document_properties_close=Dùin
+
+print_progress_message=Ag ullachadh na sgrìobhainn airson clò-bhualadh…
+# LOCALIZATION NOTE (print_progress_percent): "{{progress}}" will be replaced by
+# a numerical per cent value.
+print_progress_percent={{progress}}%
+print_progress_close=Sguir dheth
+
+# Tooltips and alt text for side panel toolbar buttons
+# (the _label strings are alt text for the buttons, the .title strings are
+# tooltips)
+toggle_sidebar.title=Toglaich am bàr-taoibh
+toggle_sidebar_notification.title=Toglaich am bàr-taoibh (tha oir-loidhne/ceanglachain aig an sgrìobhainn)
+toggle_sidebar_label=Toglaich am bàr-taoibh
+document_outline.title=Seall oir-loidhne na sgrìobhainn (dèan briogadh dùbailte airson a h-uile nì a leudachadh/a cho-theannadh)
+document_outline_label=Oir-loidhne na sgrìobhainne
+attachments.title=Seall na ceanglachain
+attachments_label=Ceanglachain
+thumbs.title=Seall na dealbhagan
+thumbs_label=Dealbhagan
+findbar.title=Lorg san sgrìobhainn
+findbar_label=Lorg
+
+# Thumbnails panel item (tooltip and alt text for images)
+# LOCALIZATION NOTE (thumb_page_title): "{{page}}" will be replaced by the page
+# number.
+thumb_page_title=Duilleag a {{page}}
+# LOCALIZATION NOTE (thumb_page_canvas): "{{page}}" will be replaced by the page
+# number.
+thumb_page_canvas=Dealbhag duilleag a {{page}}
+
+# Find panel button title and messages
+find_input.title=Lorg
+find_input.placeholder=Lorg san sgrìobhainn...
+find_previous.title=Lorg làthair roimhe na h-abairt seo
+find_previous_label=Air ais
+find_next.title=Lorg ath-làthair na h-abairt seo
+find_next_label=Air adhart
+find_highlight=Soillsich a h-uile
+find_match_case_label=Aire do litrichean mòra is beaga
+find_reached_top=Ràinig sinn barr na duilleige, a' leantainn air adhart o bhonn na duilleige
+find_reached_bottom=Ràinig sinn bonn na duilleige, a' leantainn air adhart o bharr na duilleige
+find_not_found=Cha deach an abairt a lorg
+
+# Error panel labels
+error_more_info=Barrachd fiosrachaidh
+error_less_info=Nas lugha de dh'fhiosrachadh
+error_close=Dùin
+# LOCALIZATION NOTE (error_version_info): "{{version}}" and "{{build}}" will be
+# replaced by the PDF.JS version and build ID.
+error_version_info=PDF.js v{{version}} (build: {{build}})
+# LOCALIZATION NOTE (error_message): "{{message}}" will be replaced by an
+# english string describing the error.
+error_message=Teachdaireachd: {{message}}
+# LOCALIZATION NOTE (error_stack): "{{stack}}" will be replaced with a stack
+# trace.
+error_stack=Stac: {{stack}}
+# LOCALIZATION NOTE (error_file): "{{file}}" will be replaced with a filename
+error_file=Faidhle: {{file}}
+# LOCALIZATION NOTE (error_line): "{{line}}" will be replaced with a line number
+error_line=Loidhne: {{line}}
+rendering_error=Thachair mearachd rè reandaradh na duilleige.
+
+# Predefined zoom values
+page_scale_width=Leud na duilleige
+page_scale_fit=Freagair ri meud na duilleige
+page_scale_auto=Sùm fèin-obrachail
+page_scale_actual=Am fìor-mheud
+# LOCALIZATION NOTE (page_scale_percent): "{{scale}}" will be replaced by a
+# numerical scale value.
+page_scale_percent={{scale}}%
+
+# Loading indicator messages
+loading_error_indicator=Mearachd
+loading_error=Thachair mearachd rè luchdadh a' PDF.
+invalid_file_error=Faidhle PDF a tha mì-dhligheach no coirbte.
+missing_file_error=Faidhle PDF a tha a dhìth.
+unexpected_response_error=Freagairt on fhrithealaiche ris nach robh dùil.
+
+# LOCALIZATION NOTE (text_annotation_type.alt): This is used as a tooltip.
+# "{{type}}" will be replaced with an annotation type from a list defined in
+# the PDF spec (32000-1:2008 Table 169 – Annotation types).
+# Some common types are e.g.: "Check", "Text", "Comment", "Note"
+text_annotation_type.alt=[Nòtachadh {{type}}]
+password_label=Cuir a-steach am facal-faire gus am faidhle PDF seo fhosgladh.
+password_invalid=Tha am facal-faire cearr. Nach fheuch thu ris a-rithist?
+password_ok=Ceart ma-tha
+password_cancel=Sguir dheth
+
+printing_not_supported=Rabhadh: Chan eil am brabhsair seo a' cur làn-taic ri clò-bhualadh.
+printing_not_ready=Rabhadh: Cha deach am PDF a luchdadh gu tur airson clò-bhualadh.
+web_fonts_disabled=Tha cruthan-clò lìn à comas: Chan urrainn dhuinn cruthan-clò PDF leabaichte a chleachdadh.
+document_colors_not_allowed=Chan fhaod sgrìobhainnean PDF na dathan aca fhèin a chleachdadh: Tha “Leig le duilleagan na dathan aca fhèin a chleachdadh” à comas sa bhrabhsair.

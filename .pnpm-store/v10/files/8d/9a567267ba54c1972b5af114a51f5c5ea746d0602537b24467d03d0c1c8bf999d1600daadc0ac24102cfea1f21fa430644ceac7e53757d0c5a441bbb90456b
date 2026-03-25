@@ -1,0 +1,20 @@
+{
+    "name": "xregexp",
+    "version": "2.0.0",
+    "homepage": "http://xregexp.com/",
+    "author": "Steven Levithan <steves_list@hotmail.com>",
+    "license": "MIT",
+    "repository" : {
+        "type": "git",
+        "url": "https://github.com/slevithan/XRegExp.git"
+    },
+    "description": "Extended JavaScript regular expressions",
+    "keywords": ["regex", "regexp"],
+    "main": "./xregexp-all.js",
+    "scripts": {
+        "test": "node tests/node-qunit.js"
+    },
+    "devDependencies": {
+        "qunit": ">= 0.2.x"
+    }
+}

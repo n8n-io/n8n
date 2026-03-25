@@ -1,0 +1,26 @@
+{
+  "name": "pug-linker",
+  "version": "4.0.0",
+  "description": "Link multiple pug ASTs together using include/extends",
+  "keywords": [
+    "pug"
+  ],
+  "dependencies": {
+    "pug-error": "^2.0.0",
+    "pug-walk": "^2.0.0"
+  },
+  "devDependencies": {
+    "pug-lexer": "^5.0.0",
+    "pug-load": "^3.0.0",
+    "pug-parser": "^6.0.0"
+  },
+  "files": [
+    "index.js"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pugjs/pug/tree/master/packages/pug-linker"
+  },
+  "author": "Forbes Lindesay",
+  "license": "MIT"
+}

@@ -1,0 +1,16 @@
+{
+  "name": "amqplib-tutorials",
+  "version": "0.0.1",
+  "description": "The RabbitMQ tutorials, ported to amqplib",
+  "main": "send.js",
+  "dependencies": {
+    "amqplib": "../..",
+    "uuid": "*"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": "",
+  "author": "Michael Bridgen <mikeb@squaremobius.net>",
+  "license": "MPL 2.0"
+}

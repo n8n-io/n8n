@@ -1,0 +1,65 @@
+{
+  "name": "pg-promise",
+  "version": "11.9.1",
+  "description": "PostgreSQL interface for Node.js",
+  "main": "lib/index.js",
+  "typings": "typescript/pg-promise.d.ts",
+  "scripts": {
+    "spelling": "cspell --config=.cspell.json \"**/*.{md,ts,js}\" --no-progress",
+    "coverage": "istanbul cover ./node_modules/jasmine-node/bin/jasmine-node --captureExceptions test",
+    "doc": "jsdoc -c ./jsdoc/jsdoc.js ./jsdoc/README.md -t ./jsdoc/templates/custom",
+    "lint": "eslint ./lib ./test/*.js ./test/db --fix",
+    "test": "jasmine-node --captureExceptions test",
+    "test:init": "node test/db/init.js",
+    "test:native": "jasmine-node test --config PG_NATIVE true",
+    "tslint": "tslint ./typescript/*.ts"
+  },
+  "files": [
+    "lib",
+    "typescript"
+  ],
+  "homepage": "https://github.com/vitaly-t/pg-promise",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vitaly-t/pg-promise.git"
+  },
+  "bugs": {
+    "url": "https://github.com/vitaly-t/pg-promise/issues",
+    "email": "vitaly.tomilov@gmail.com"
+  },
+  "keywords": [
+    "pg",
+    "promise",
+    "postgres"
+  ],
+  "author": {
+    "name": "Vitaly Tomilov",
+    "email": "vitaly.tomilov@gmail.com"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0"
+  },
+  "dependencies": {
+    "assert-options": "0.8.1",
+    "pg": "8.12.0",
+    "pg-minify": "1.6.5",
+    "spex": "3.3.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.7.0",
+    "@types/node": "20.14.10",
+    "bluebird": "3.7.2",
+    "coveralls": "3.1.1",
+    "cspell": "8.10.4",
+    "eslint": "9.7.0",
+    "globals": "15.8.0",
+    "istanbul": "0.4.5",
+    "jasmine-node": "3.0.0",
+    "jsdoc": "4.0.3",
+    "JSONStream": "1.3.5",
+    "pg-query-stream": "4.6.0",
+    "tslint": "6.1.3",
+    "typescript": "5.5.3"
+  }
+}

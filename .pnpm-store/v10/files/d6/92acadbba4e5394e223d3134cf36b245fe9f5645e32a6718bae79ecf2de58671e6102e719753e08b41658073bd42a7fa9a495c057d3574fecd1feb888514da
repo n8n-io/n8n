@@ -1,0 +1,1 @@
+.el-vl__wrapper{position:relative}.el-vl__wrapper:hover .el-virtual-scrollbar{opacity:1}.el-vl__wrapper.always-on .el-virtual-scrollbar{opacity:1}.el-vl__window{scrollbar-width:none}.el-vl__window::-webkit-scrollbar{display:none}.el-virtual-scrollbar{opacity:0;transition:opacity 340ms ease-out}.el-virtual-scrollbar.always-on{opacity:1}.el-vg__wrapper{position:relative}

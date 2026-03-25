@@ -1,0 +1,36 @@
+{
+  "name": "constantinople",
+  "version": "4.0.1",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "description": "Determine whether a JavaScript expression evaluates to a constant",
+  "keywords": [
+    "constant",
+    "ast",
+    "tooling"
+  ],
+  "dependencies": {
+    "@babel/parser": "^7.6.0",
+    "@babel/types": "^7.6.1"
+  },
+  "devDependencies": {
+    "@types/node": "^9.4.4",
+    "mocha": "*",
+    "prettier": "^1.18.2",
+    "typescript": "^2.7.1"
+  },
+  "scripts": {
+    "prepublish": "npm run build",
+    "build": "tsc",
+    "pretest": "npm run build && npm run prettier:check",
+    "test": "mocha -R spec",
+    "prettier:write": "prettier --ignore-path .gitignore --write './**/*.{md,json,yaml,js,jsx,ts,tsx}'",
+    "prettier:check": "echo \"If prettier fails you can fix it by running npm run prettier:write\" && prettier --ignore-path .gitignore --list-different './**/*.{md,json,yaml,js,jsx,ts,tsx}'"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ForbesLindesay/constantinople.git"
+  },
+  "author": "ForbesLindesay",
+  "license": "MIT"
+}

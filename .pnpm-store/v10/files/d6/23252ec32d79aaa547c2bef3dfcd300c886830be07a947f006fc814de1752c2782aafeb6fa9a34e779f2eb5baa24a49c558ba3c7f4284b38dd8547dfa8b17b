@@ -1,0 +1,1 @@
+{"version":3,"file":"index.cjs","names":[],"sources":["../../src/documents/index.ts"],"sourcesContent":["export * from \"./document.js\";\nexport * from \"./transformers.js\";\n"],"mappings":""}

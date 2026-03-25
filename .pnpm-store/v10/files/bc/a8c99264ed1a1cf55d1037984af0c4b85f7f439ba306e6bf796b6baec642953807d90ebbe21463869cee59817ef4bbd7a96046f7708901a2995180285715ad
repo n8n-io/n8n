@@ -1,0 +1,1 @@
+{"version":3,"file":"no-duplicate-type-constituents.d.ts","sourceRoot":"","sources":["../../src/rules/no-duplicate-type-constituents.ts"],"names":[],"mappings":"AAeA,MAAM,MAAM,OAAO,GAAG;IACpB;QACE,mBAAmB,CAAC,EAAE,OAAO,CAAC;QAC9B,YAAY,CAAC,EAAE,OAAO,CAAC;KACxB;CACF,CAAC;AAEF,MAAM,MAAM,UAAU,GAAG,WAAW,GAAG,aAAa,CAAC;;AAwDrD,wBA4NG"}

@@ -1,0 +1,8 @@
+<html>
+  <head>
+    <script src="/bundle.js"></script>
+  </head>
+  <body>
+    result = <span id="res"></span>
+  </body>
+</html>

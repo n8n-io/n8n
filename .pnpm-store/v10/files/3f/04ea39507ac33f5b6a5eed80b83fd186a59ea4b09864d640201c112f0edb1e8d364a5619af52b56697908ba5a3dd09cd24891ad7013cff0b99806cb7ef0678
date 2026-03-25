@@ -1,0 +1,22 @@
+engines:
+  eslint:
+    enabled: true
+    channel: "eslint-3"
+    config:
+      config: '.eslint.json'
+  duplication:
+    enabled: false
+    config:
+      languages:
+        - javascript
+exclude_patterns:
+  - ".*.*"
+  - ".*"
+  - "dist/**.js"
+  - "gulp/**.js"
+  - "test/**.*"
+  - "**.json"
+  - "**.md"
+  - "*.js"
+  - "**.coffee"
+  - "LICENSE"

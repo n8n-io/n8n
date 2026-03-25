@@ -1,0 +1,228 @@
+@use 'mixins/mixins' as *;
+@use 'mixins/var' as *;
+@use 'common/var' as *;
+
+@mixin center-flex() {
+  display: flex;
+  align-items: center;
+}
+
+@mixin cell-padding() {
+  padding: 0 8px;
+}
+
+@mixin safe-padding() {
+  padding-inline-end: getCssVar('table-scrollbar-size');
+}
+
+@mixin cell-alignment() {
+  @include when('align-center') {
+    justify-content: center;
+    text-align: center;
+  }
+  @include when('align-right') {
+    justify-content: flex-end;
+    text-align: right;
+  }
+}
+
+@mixin table-root() {
+  display: flex;
+  flex-direction: column-reverse;
+  position: absolute;
+  overflow: hidden;
+  top: 0;
+  background-color: getCssVar('bg', 'color');
+}
+
+@mixin hidden-scrollbar {
+  .#{$namespace}-virtual-scrollbar {
+    opacity: 0;
+  }
+  .#{$namespace}-vl__vertical,
+  .#{$namespace}-vl__horizontal {
+    z-index: -1;
+  }
+}
+
+@include b('table-v2') {
+  @include set-component-css-var('table', $table);
+}
+
+@include b('table-v2') {
+  font-size: 14px;
+  * {
+    box-sizing: border-box;
+  }
+
+  @include e('root') {
+    position: relative;
+
+    // for showing the scrollbar when mouse is on the root table
+    &:hover {
+      @include e('main') {
+        .#{$namespace}-virtual-scrollbar {
+          opacity: 1;
+        }
+      }
+    }
+  }
+
+  @include e('main') {
+    @include table-root;
+    left: 0;
+
+    .#{$namespace}-vl__horizontal,
+    .#{$namespace}-vl__vertical {
+      z-index: 2;
+    }
+  }
+
+  @include e('left') {
+    @include table-root;
+    left: 0;
+    box-shadow: 2px 0 4px 0 rgb(0 0 0 / 6%);
+    @include hidden-scrollbar;
+  }
+
+  @include e('right') {
+    @include table-root;
+    right: 0;
+    box-shadow: -2px 0 4px 0 rgb(0 0 0 / 6%);
+    @include hidden-scrollbar;
+
+    @include e('header-row') {
+      @include safe-padding;
+    }
+
+    @include e('row') {
+      @include safe-padding;
+    }
+  }
+
+  @include e('header-wrapper') {
+    overflow: hidden;
+  }
+
+  @include e('header') {
+    position: relative;
+    overflow: hidden;
+  }
+
+  @include e('footer') {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow: hidden;
+  }
+
+  @include e('empty') {
+    position: absolute;
+    left: 0;
+  }
+
+  @include e('overlay') {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 9999;
+  }
+
+  @include e('header-row') {
+    display: flex;
+    border-bottom: getCssVar('table', 'border');
+
+    @include e('header-cell') {
+      @include center-flex;
+      @include cell-padding;
+      @include cell-alignment;
+      height: 100%;
+      user-select: none;
+      overflow: hidden;
+      background-color: getCssVar('table-header', 'bg-color');
+      color: getCssVar('table-header', 'text-color');
+      font-weight: bold;
+
+      @include when(sortable) {
+        cursor: pointer;
+      }
+
+      &:hover {
+        .#{$namespace}-icon {
+          display: block;
+        }
+      }
+    }
+
+    @include e('sort-icon') {
+      transition: opacity, display getCssVar('transition-duration', '');
+      opacity: 0.6;
+      display: none;
+
+      @include when(sorting) {
+        display: block;
+        opacity: 1;
+      }
+    }
+  }
+
+  @include e('row') {
+    border-bottom: getCssVar('table', 'border');
+
+    @include center-flex;
+    transition: background-color getCssVar('transition-duration', '');
+
+    @include when('hovered') {
+      background-color: getCssVar('table-row', 'hover-bg-color');
+    }
+
+    &:hover {
+      background-color: getCssVar('table-row', 'hover-bg-color');
+    }
+
+    @include e('row-cell') {
+      height: 100%;
+      overflow: hidden;
+      @include center-flex;
+      @include cell-padding;
+      @include cell-alignment;
+    }
+
+    @include e('expand-icon') {
+      margin: 0 4px;
+      cursor: pointer;
+      user-select: none;
+
+      svg {
+        transition: transform getCssVar('transition-duration', '');
+      }
+
+      @include when(expanded) {
+        svg {
+          transform: rotate(90deg);
+        }
+      }
+    }
+  }
+
+  &:not(.is-dynamic) {
+    @include e('cell-text') {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+
+  @include when(dynamic) {
+    @include e('row') {
+      overflow: hidden;
+      align-items: stretch;
+      @include e('row-cell') {
+        word-break: break-all;
+      }
+    }
+  }
+}

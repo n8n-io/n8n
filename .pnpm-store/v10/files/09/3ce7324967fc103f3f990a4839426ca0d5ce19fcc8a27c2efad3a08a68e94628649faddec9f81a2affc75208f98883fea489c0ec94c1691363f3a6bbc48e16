@@ -1,0 +1,53 @@
+version: 2
+
+common_steps: &common_steps
+    steps:
+      - checkout
+
+      - run:
+          name: Install dependencies
+          command: npm install
+
+      - run:
+          name: Run tests
+          command: npm run mocha
+
+      - run:
+          name: Check Typescript types
+          command: npm run check-types
+          when: always
+
+jobs:
+  node-8:
+    docker:
+      - image: circleci/node:8
+
+    <<: *common_steps
+
+  node-10:
+    docker:
+      - image: circleci/node:10
+
+    <<: *common_steps
+
+  node-11:
+    docker:
+      - image: circleci/node:11
+
+    <<: *common_steps
+
+  node-12:
+    docker:
+      - image: circleci/node:12
+
+    <<: *common_steps
+
+workflows:
+  version: 2
+
+  on-commit:
+    jobs:
+      - node-8
+      - node-10
+      - node-11
+      - node-12

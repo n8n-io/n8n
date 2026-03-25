@@ -1,0 +1,24 @@
+{
+	"name": "pg-int8",
+	"version": "1.0.1",
+	"description": "64-bit big-endian signed integer-to-string conversion",
+	"bugs": "https://github.com/charmander/pg-int8/issues",
+	"license": "ISC",
+	"files": [
+		"index.js"
+	],
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/charmander/pg-int8"
+	},
+	"scripts": {
+		"test": "tap test"
+	},
+	"devDependencies": {
+		"@charmander/eslint-config-base": "1.0.2",
+		"tap": "10.7.3"
+	},
+	"engines": {
+		"node": ">=4.0.0"
+	}
+}

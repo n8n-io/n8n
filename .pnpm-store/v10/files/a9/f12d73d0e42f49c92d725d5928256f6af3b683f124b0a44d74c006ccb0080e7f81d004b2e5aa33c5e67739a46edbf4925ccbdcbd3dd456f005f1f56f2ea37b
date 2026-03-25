@@ -1,0 +1,1 @@
+{"version":3,"file":"reportingobserver.d.ts","sourceRoot":"","sources":["../../../../src/integrations/reportingobserver.ts"],"names":[],"mappings":"AAqBA,KAAK,WAAW,GAAG,OAAO,GAAG,aAAa,GAAG,cAAc,CAAC;AA6B5D,UAAU,wBAAwB;IAChC,KAAK,CAAC,EAAE,WAAW,EAAE,CAAC;CACvB;AAkFD;;GAEG;AACH,eAAO,MAAM,4BAA4B,wFAAmD,CAAC"}

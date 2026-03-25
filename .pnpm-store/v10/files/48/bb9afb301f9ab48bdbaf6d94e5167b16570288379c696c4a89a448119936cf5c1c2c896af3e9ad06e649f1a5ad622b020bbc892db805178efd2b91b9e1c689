@@ -1,0 +1,692 @@
+{
+  "name": "hono",
+  "version": "4.12.7",
+  "description": "Web framework built on Web Standards",
+  "main": "dist/cjs/index.js",
+  "type": "module",
+  "module": "dist/index.js",
+  "types": "dist/types/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "test": "tsc --noEmit && vitest --run",
+    "test:watch": "vitest --watch",
+    "test:deno": "deno test --allow-read --allow-env --allow-write --allow-net -c runtime-tests/deno/deno.json runtime-tests/deno && deno test --no-lock -c runtime-tests/deno-jsx/deno.precompile.json runtime-tests/deno-jsx && deno test --no-lock -c runtime-tests/deno-jsx/deno.react-jsx.json runtime-tests/deno-jsx",
+    "test:bun": "bun test --jsx-import-source ../../src/jsx runtime-tests/bun/*",
+    "test:fastly": "vitest --run --project fastly",
+    "test:node": "vitest --run --project node",
+    "test:workerd": "vitest --run --project workerd",
+    "test:lambda": "vitest --run --project lambda",
+    "test:lambda-edge": "vitest --run --project lambda-edge",
+    "test:all": "bun run test && bun test:deno && bun test:bun",
+    "lint": "eslint src runtime-tests build perf-measures benchmarks",
+    "lint:fix": "eslint src runtime-tests build perf-measures benchmarks --fix",
+    "format": "prettier --check --cache \"src/**/*.{js,ts,tsx}\" \"runtime-tests/**/*.{js,ts,tsx}\" \"build/**/*.{js,ts,tsx}\" \"perf-measures/**/*.{js,ts,tsx}\" \"benchmarks/**/*.{js,ts,tsx}\"",
+    "format:fix": "prettier --write --cache --cache-strategy metadata \"src/**/*.{js,ts,tsx}\" \"runtime-tests/**/*.{js,ts,tsx}\" \"build/**/*.{js,ts,tsx}\" \"perf-measures/**/*.{js,ts,tsx}\" \"benchmarks/**/*.{js,ts,tsx}\"",
+    "editorconfig-checker": "editorconfig-checker",
+    "copy:package.cjs.json": "cp ./package.cjs.json ./dist/cjs/package.json && cp ./package.cjs.json ./dist/types/package.json",
+    "build": "bun run --shell bun remove-dist && bun ./build/build.ts && bun run copy:package.cjs.json",
+    "postbuild": "publint",
+    "watch": "bun run --shell bun remove-dist && bun ./build/build.ts --watch && bun run copy:package.cjs.json",
+    "coverage": "vitest --run --coverage",
+    "prerelease": "bun test:deno && bun run build",
+    "release": "np",
+    "remove-dist": "rm -rf dist"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/cjs/index.js"
+    },
+    "./request": {
+      "types": "./dist/types/request.d.ts",
+      "import": "./dist/request.js",
+      "require": "./dist/cjs/request.js"
+    },
+    "./types": {
+      "types": "./dist/types/types.d.ts",
+      "import": "./dist/types.js",
+      "require": "./dist/cjs/types.js"
+    },
+    "./hono-base": {
+      "types": "./dist/types/hono-base.d.ts",
+      "import": "./dist/hono-base.js",
+      "require": "./dist/cjs/hono-base.js"
+    },
+    "./tiny": {
+      "types": "./dist/types/preset/tiny.d.ts",
+      "import": "./dist/preset/tiny.js",
+      "require": "./dist/cjs/preset/tiny.js"
+    },
+    "./quick": {
+      "types": "./dist/types/preset/quick.d.ts",
+      "import": "./dist/preset/quick.js",
+      "require": "./dist/cjs/preset/quick.js"
+    },
+    "./http-exception": {
+      "types": "./dist/types/http-exception.d.ts",
+      "import": "./dist/http-exception.js",
+      "require": "./dist/cjs/http-exception.js"
+    },
+    "./basic-auth": {
+      "types": "./dist/types/middleware/basic-auth/index.d.ts",
+      "import": "./dist/middleware/basic-auth/index.js",
+      "require": "./dist/cjs/middleware/basic-auth/index.js"
+    },
+    "./bearer-auth": {
+      "types": "./dist/types/middleware/bearer-auth/index.d.ts",
+      "import": "./dist/middleware/bearer-auth/index.js",
+      "require": "./dist/cjs/middleware/bearer-auth/index.js"
+    },
+    "./body-limit": {
+      "types": "./dist/types/middleware/body-limit/index.d.ts",
+      "import": "./dist/middleware/body-limit/index.js",
+      "require": "./dist/cjs/middleware/body-limit/index.js"
+    },
+    "./ip-restriction": {
+      "types": "./dist/types/middleware/ip-restriction/index.d.ts",
+      "import": "./dist/middleware/ip-restriction/index.js",
+      "require": "./dist/cjs/middleware/ip-restriction/index.js"
+    },
+    "./cache": {
+      "types": "./dist/types/middleware/cache/index.d.ts",
+      "import": "./dist/middleware/cache/index.js",
+      "require": "./dist/cjs/middleware/cache/index.js"
+    },
+    "./route": {
+      "types": "./dist/types/helper/route/index.d.ts",
+      "import": "./dist/helper/route/index.js",
+      "require": "./dist/cjs/helper/route/index.js"
+    },
+    "./cookie": {
+      "types": "./dist/types/helper/cookie/index.d.ts",
+      "import": "./dist/helper/cookie/index.js",
+      "require": "./dist/cjs/helper/cookie/index.js"
+    },
+    "./accepts": {
+      "types": "./dist/types/helper/accepts/index.d.ts",
+      "import": "./dist/helper/accepts/index.js",
+      "require": "./dist/cjs/helper/accepts/index.js"
+    },
+    "./compress": {
+      "types": "./dist/types/middleware/compress/index.d.ts",
+      "import": "./dist/middleware/compress/index.js",
+      "require": "./dist/cjs/middleware/compress/index.js"
+    },
+    "./context-storage": {
+      "types": "./dist/types/middleware/context-storage/index.d.ts",
+      "import": "./dist/middleware/context-storage/index.js",
+      "require": "./dist/cjs/middleware/context-storage/index.js"
+    },
+    "./cors": {
+      "types": "./dist/types/middleware/cors/index.d.ts",
+      "import": "./dist/middleware/cors/index.js",
+      "require": "./dist/cjs/middleware/cors/index.js"
+    },
+    "./csrf": {
+      "types": "./dist/types/middleware/csrf/index.d.ts",
+      "import": "./dist/middleware/csrf/index.js",
+      "require": "./dist/cjs/middleware/csrf/index.js"
+    },
+    "./etag": {
+      "types": "./dist/types/middleware/etag/index.d.ts",
+      "import": "./dist/middleware/etag/index.js",
+      "require": "./dist/cjs/middleware/etag/index.js"
+    },
+    "./trailing-slash": {
+      "types": "./dist/types/middleware/trailing-slash/index.d.ts",
+      "import": "./dist/middleware/trailing-slash/index.js",
+      "require": "./dist/cjs/middleware/trailing-slash/index.js"
+    },
+    "./html": {
+      "types": "./dist/types/helper/html/index.d.ts",
+      "import": "./dist/helper/html/index.js",
+      "require": "./dist/cjs/helper/html/index.js"
+    },
+    "./css": {
+      "types": "./dist/types/helper/css/index.d.ts",
+      "import": "./dist/helper/css/index.js",
+      "require": "./dist/cjs/helper/css/index.js"
+    },
+    "./jsx": {
+      "types": "./dist/types/jsx/index.d.ts",
+      "import": "./dist/jsx/index.js",
+      "require": "./dist/cjs/jsx/index.js"
+    },
+    "./jsx/jsx-dev-runtime": {
+      "types": "./dist/types/jsx/jsx-dev-runtime.d.ts",
+      "import": "./dist/jsx/jsx-dev-runtime.js",
+      "require": "./dist/cjs/jsx/jsx-dev-runtime.js"
+    },
+    "./jsx/jsx-runtime": {
+      "types": "./dist/types/jsx/jsx-runtime.d.ts",
+      "import": "./dist/jsx/jsx-runtime.js",
+      "require": "./dist/cjs/jsx/jsx-runtime.js"
+    },
+    "./jsx/streaming": {
+      "types": "./dist/types/jsx/streaming.d.ts",
+      "import": "./dist/jsx/streaming.js",
+      "require": "./dist/cjs/jsx/streaming.js"
+    },
+    "./jsx-renderer": {
+      "types": "./dist/types/middleware/jsx-renderer/index.d.ts",
+      "import": "./dist/middleware/jsx-renderer/index.js",
+      "require": "./dist/cjs/middleware/jsx-renderer/index.js"
+    },
+    "./jsx/dom": {
+      "types": "./dist/types/jsx/dom/index.d.ts",
+      "import": "./dist/jsx/dom/index.js",
+      "require": "./dist/cjs/jsx/dom/index.js"
+    },
+    "./jsx/dom/jsx-dev-runtime": {
+      "types": "./dist/types/jsx/dom/jsx-dev-runtime.d.ts",
+      "import": "./dist/jsx/dom/jsx-dev-runtime.js",
+      "require": "./dist/cjs/jsx/dom/jsx-dev-runtime.js"
+    },
+    "./jsx/dom/jsx-runtime": {
+      "types": "./dist/types/jsx/dom/jsx-runtime.d.ts",
+      "import": "./dist/jsx/dom/jsx-runtime.js",
+      "require": "./dist/cjs/jsx/dom/jsx-runtime.js"
+    },
+    "./jsx/dom/client": {
+      "types": "./dist/types/jsx/dom/client.d.ts",
+      "import": "./dist/jsx/dom/client.js",
+      "require": "./dist/cjs/jsx/dom/client.js"
+    },
+    "./jsx/dom/css": {
+      "types": "./dist/types/jsx/dom/css.d.ts",
+      "import": "./dist/jsx/dom/css.js",
+      "require": "./dist/cjs/jsx/dom/css.js"
+    },
+    "./jsx/dom/server": {
+      "types": "./dist/types/jsx/dom/server.d.ts",
+      "import": "./dist/jsx/dom/server.js",
+      "require": "./dist/cjs/jsx/dom/server.js"
+    },
+    "./jwt": {
+      "types": "./dist/types/middleware/jwt/index.d.ts",
+      "import": "./dist/middleware/jwt/index.js",
+      "require": "./dist/cjs/middleware/jwt/index.js"
+    },
+    "./jwk": {
+      "types": "./dist/types/middleware/jwk/index.d.ts",
+      "import": "./dist/middleware/jwk/index.js",
+      "require": "./dist/cjs/middleware/jwk/index.js"
+    },
+    "./timeout": {
+      "types": "./dist/types/middleware/timeout/index.d.ts",
+      "import": "./dist/middleware/timeout/index.js",
+      "require": "./dist/cjs/middleware/timeout/index.js"
+    },
+    "./timing": {
+      "types": "./dist/types/middleware/timing/index.d.ts",
+      "import": "./dist/middleware/timing/index.js",
+      "require": "./dist/cjs/middleware/timing/index.js"
+    },
+    "./logger": {
+      "types": "./dist/types/middleware/logger/index.d.ts",
+      "import": "./dist/middleware/logger/index.js",
+      "require": "./dist/cjs/middleware/logger/index.js"
+    },
+    "./method-override": {
+      "types": "./dist/types/middleware/method-override/index.d.ts",
+      "import": "./dist/middleware/method-override/index.js",
+      "require": "./dist/cjs/middleware/method-override/index.js"
+    },
+    "./powered-by": {
+      "types": "./dist/types/middleware/powered-by/index.d.ts",
+      "import": "./dist/middleware/powered-by/index.js",
+      "require": "./dist/cjs/middleware/powered-by/index.js"
+    },
+    "./pretty-json": {
+      "types": "./dist/types/middleware/pretty-json/index.d.ts",
+      "import": "./dist/middleware/pretty-json/index.js",
+      "require": "./dist/cjs/middleware/pretty-json/index.js"
+    },
+    "./request-id": {
+      "types": "./dist/types/middleware/request-id/index.d.ts",
+      "import": "./dist/middleware/request-id/index.js",
+      "require": "./dist/cjs/middleware/request-id/index.js"
+    },
+    "./language": {
+      "types": "./dist/types/middleware/language/index.d.ts",
+      "import": "./dist/middleware/language/index.js",
+      "require": "./dist/cjs/middleware/language/index.js"
+    },
+    "./secure-headers": {
+      "types": "./dist/types/middleware/secure-headers/index.d.ts",
+      "import": "./dist/middleware/secure-headers/index.js",
+      "require": "./dist/cjs/middleware/secure-headers/index.js"
+    },
+    "./combine": {
+      "types": "./dist/types/middleware/combine/index.d.ts",
+      "import": "./dist/middleware/combine/index.js",
+      "require": "./dist/cjs/middleware/combine/index.js"
+    },
+    "./ssg": {
+      "types": "./dist/types/helper/ssg/index.d.ts",
+      "import": "./dist/helper/ssg/index.js",
+      "require": "./dist/cjs/helper/ssg/index.js"
+    },
+    "./streaming": {
+      "types": "./dist/types/helper/streaming/index.d.ts",
+      "import": "./dist/helper/streaming/index.js",
+      "require": "./dist/cjs/helper/streaming/index.js"
+    },
+    "./validator": {
+      "types": "./dist/types/validator/index.d.ts",
+      "import": "./dist/validator/index.js",
+      "require": "./dist/cjs/validator/index.js"
+    },
+    "./router": {
+      "types": "./dist/types/router.d.ts",
+      "import": "./dist/router.js",
+      "require": "./dist/cjs/router.js"
+    },
+    "./router/reg-exp-router": {
+      "types": "./dist/types/router/reg-exp-router/index.d.ts",
+      "import": "./dist/router/reg-exp-router/index.js",
+      "require": "./dist/cjs/router/reg-exp-router/index.js"
+    },
+    "./router/smart-router": {
+      "types": "./dist/types/router/smart-router/index.d.ts",
+      "import": "./dist/router/smart-router/index.js",
+      "require": "./dist/cjs/router/smart-router/index.js"
+    },
+    "./router/trie-router": {
+      "types": "./dist/types/router/trie-router/index.d.ts",
+      "import": "./dist/router/trie-router/index.js",
+      "require": "./dist/cjs/router/trie-router/index.js"
+    },
+    "./router/pattern-router": {
+      "types": "./dist/types/router/pattern-router/index.d.ts",
+      "import": "./dist/router/pattern-router/index.js",
+      "require": "./dist/cjs/router/pattern-router/index.js"
+    },
+    "./router/linear-router": {
+      "types": "./dist/types/router/linear-router/index.d.ts",
+      "import": "./dist/router/linear-router/index.js",
+      "require": "./dist/cjs/router/linear-router/index.js"
+    },
+    "./utils/jwt": {
+      "types": "./dist/types/utils/jwt/index.d.ts",
+      "import": "./dist/utils/jwt/index.js",
+      "require": "./dist/cjs/utils/jwt/index.js"
+    },
+    "./utils/*": {
+      "types": "./dist/types/utils/*.d.ts",
+      "import": "./dist/utils/*.js",
+      "require": "./dist/cjs/utils/*.js"
+    },
+    "./client": {
+      "types": "./dist/types/client/index.d.ts",
+      "import": "./dist/client/index.js",
+      "require": "./dist/cjs/client/index.js"
+    },
+    "./adapter": {
+      "types": "./dist/types/helper/adapter/index.d.ts",
+      "import": "./dist/helper/adapter/index.js",
+      "require": "./dist/cjs/helper/adapter/index.js"
+    },
+    "./factory": {
+      "types": "./dist/types/helper/factory/index.d.ts",
+      "import": "./dist/helper/factory/index.js",
+      "require": "./dist/cjs/helper/factory/index.js"
+    },
+    "./serve-static": {
+      "types": "./dist/types/middleware/serve-static/index.d.ts",
+      "import": "./dist/middleware/serve-static/index.js",
+      "require": "./dist/cjs/middleware/serve-static/index.js"
+    },
+    "./cloudflare-workers": {
+      "types": "./dist/types/adapter/cloudflare-workers/index.d.ts",
+      "import": "./dist/adapter/cloudflare-workers/index.js",
+      "require": "./dist/cjs/adapter/cloudflare-workers/index.js"
+    },
+    "./cloudflare-pages": {
+      "types": "./dist/types/adapter/cloudflare-pages/index.d.ts",
+      "import": "./dist/adapter/cloudflare-pages/index.js",
+      "require": "./dist/cjs/adapter/cloudflare-pages/index.js"
+    },
+    "./deno": {
+      "types": "./dist/types/adapter/deno/index.d.ts",
+      "import": "./dist/adapter/deno/index.js",
+      "require": "./dist/cjs/adapter/deno/index.js"
+    },
+    "./bun": {
+      "types": "./dist/types/adapter/bun/index.d.ts",
+      "import": "./dist/adapter/bun/index.js",
+      "require": "./dist/cjs/adapter/bun/index.js"
+    },
+    "./aws-lambda": {
+      "types": "./dist/types/adapter/aws-lambda/index.d.ts",
+      "import": "./dist/adapter/aws-lambda/index.js",
+      "require": "./dist/cjs/adapter/aws-lambda/index.js"
+    },
+    "./vercel": {
+      "types": "./dist/types/adapter/vercel/index.d.ts",
+      "import": "./dist/adapter/vercel/index.js",
+      "require": "./dist/cjs/adapter/vercel/index.js"
+    },
+    "./netlify": {
+      "types": "./dist/types/adapter/netlify/index.d.ts",
+      "import": "./dist/adapter/netlify/index.js",
+      "require": "./dist/cjs/adapter/netlify/index.js"
+    },
+    "./lambda-edge": {
+      "types": "./dist/types/adapter/lambda-edge/index.d.ts",
+      "import": "./dist/adapter/lambda-edge/index.js",
+      "require": "./dist/cjs/adapter/lambda-edge/index.js"
+    },
+    "./service-worker": {
+      "types": "./dist/types/adapter/service-worker/index.d.ts",
+      "import": "./dist/adapter/service-worker/index.js",
+      "require": "./dist/cjs/adapter/service-worker/index.js"
+    },
+    "./testing": {
+      "types": "./dist/types/helper/testing/index.d.ts",
+      "import": "./dist/helper/testing/index.js",
+      "require": "./dist/cjs/helper/testing/index.js"
+    },
+    "./dev": {
+      "types": "./dist/types/helper/dev/index.d.ts",
+      "import": "./dist/helper/dev/index.js",
+      "require": "./dist/cjs/helper/dev/index.js"
+    },
+    "./ws": {
+      "types": "./dist/types/helper/websocket/index.d.ts",
+      "import": "./dist/helper/websocket/index.js",
+      "require": "./dist/cjs/helper/websocket/index.js"
+    },
+    "./conninfo": {
+      "types": "./dist/types/helper/conninfo/index.d.ts",
+      "import": "./dist/helper/conninfo/index.js",
+      "require": "./dist/cjs/helper/conninfo/index.js"
+    },
+    "./proxy": {
+      "types": "./dist/types/helper/proxy/index.d.ts",
+      "import": "./dist/helper/proxy/index.js",
+      "require": "./dist/cjs/helper/proxy/index.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "request": [
+        "./dist/types/request"
+      ],
+      "types": [
+        "./dist/types/types"
+      ],
+      "hono-base": [
+        "./dist/types/hono-base"
+      ],
+      "tiny": [
+        "./dist/types/preset/tiny"
+      ],
+      "quick": [
+        "./dist/types/preset/quick"
+      ],
+      "http-exception": [
+        "./dist/types/http-exception"
+      ],
+      "basic-auth": [
+        "./dist/types/middleware/basic-auth"
+      ],
+      "bearer-auth": [
+        "./dist/types/middleware/bearer-auth"
+      ],
+      "body-limit": [
+        "./dist/types/middleware/body-limit"
+      ],
+      "ip-restriction": [
+        "./dist/types/middleware/ip-restriction"
+      ],
+      "cache": [
+        "./dist/types/middleware/cache"
+      ],
+      "route": [
+        "./dist/types/helper/route"
+      ],
+      "cookie": [
+        "./dist/types/helper/cookie"
+      ],
+      "accepts": [
+        "./dist/types/helper/accepts"
+      ],
+      "compress": [
+        "./dist/types/middleware/compress"
+      ],
+      "context-storage": [
+        "./dist/types/middleware/context-storage"
+      ],
+      "cors": [
+        "./dist/types/middleware/cors"
+      ],
+      "csrf": [
+        "./dist/types/middleware/csrf"
+      ],
+      "etag": [
+        "./dist/types/middleware/etag"
+      ],
+      "trailing-slash": [
+        "./dist/types/middleware/trailing-slash"
+      ],
+      "html": [
+        "./dist/types/helper/html"
+      ],
+      "css": [
+        "./dist/types/helper/css"
+      ],
+      "jsx": [
+        "./dist/types/jsx"
+      ],
+      "jsx/jsx-runtime": [
+        "./dist/types/jsx/jsx-runtime.d.ts"
+      ],
+      "jsx/jsx-dev-runtime": [
+        "./dist/types/jsx/jsx-dev-runtime.d.ts"
+      ],
+      "jsx/streaming": [
+        "./dist/types/jsx/streaming.d.ts"
+      ],
+      "jsx-renderer": [
+        "./dist/types/middleware/jsx-renderer"
+      ],
+      "jsx/dom": [
+        "./dist/types/jsx/dom"
+      ],
+      "jsx/dom/client": [
+        "./dist/types/jsx/dom/client.d.ts"
+      ],
+      "jsx/dom/css": [
+        "./dist/types/jsx/dom/css.d.ts"
+      ],
+      "jsx/dom/server": [
+        "./dist/types/jsx/dom/server.d.ts"
+      ],
+      "jwt": [
+        "./dist/types/middleware/jwt"
+      ],
+      "timeout": [
+        "./dist/types/middleware/timeout"
+      ],
+      "timing": [
+        "./dist/types/middleware/timing"
+      ],
+      "logger": [
+        "./dist/types/middleware/logger"
+      ],
+      "method-override": [
+        "./dist/types/middleware/method-override"
+      ],
+      "powered-by": [
+        "./dist/types/middleware/powered-by"
+      ],
+      "pretty-json": [
+        "./dist/types/middleware/pretty-json"
+      ],
+      "request-id": [
+        "./dist/types/middleware/request-id"
+      ],
+      "language": [
+        "./dist/types/middleware/language"
+      ],
+      "streaming": [
+        "./dist/types/helper/streaming"
+      ],
+      "ssg": [
+        "./dist/types/helper/ssg"
+      ],
+      "secure-headers": [
+        "./dist/types/middleware/secure-headers"
+      ],
+      "combine": [
+        "./dist/types/middleware/combine"
+      ],
+      "validator": [
+        "./dist/types/validator/index.d.ts"
+      ],
+      "router": [
+        "./dist/types/router.d.ts"
+      ],
+      "router/reg-exp-router": [
+        "./dist/types/router/reg-exp-router/router.d.ts"
+      ],
+      "router/smart-router": [
+        "./dist/types/router/smart-router/router.d.ts"
+      ],
+      "router/trie-router": [
+        "./dist/types/router/trie-router/router.d.ts"
+      ],
+      "router/pattern-router": [
+        "./dist/types/router/pattern-router/router.d.ts"
+      ],
+      "router/linear-router": [
+        "./dist/types/router/linear-router/router.d.ts"
+      ],
+      "utils/jwt": [
+        "./dist/types/utils/jwt/index.d.ts"
+      ],
+      "utils/*": [
+        "./dist/types/utils/*"
+      ],
+      "client": [
+        "./dist/types/client/index.d.ts"
+      ],
+      "adapter": [
+        "./dist/types/helper/adapter/index.d.ts"
+      ],
+      "factory": [
+        "./dist/types/helper/factory/index.d.ts"
+      ],
+      "serve-static": [
+        "./dist/types/middleware/serve-static"
+      ],
+      "cloudflare-workers": [
+        "./dist/types/adapter/cloudflare-workers"
+      ],
+      "cloudflare-pages": [
+        "./dist/types/adapter/cloudflare-pages"
+      ],
+      "deno": [
+        "./dist/types/adapter/deno"
+      ],
+      "bun": [
+        "./dist/types/adapter/bun"
+      ],
+      "nextjs": [
+        "./dist/types/adapter/nextjs"
+      ],
+      "aws-lambda": [
+        "./dist/types/adapter/aws-lambda"
+      ],
+      "vercel": [
+        "./dist/types/adapter/vercel"
+      ],
+      "lambda-edge": [
+        "./dist/types/adapter/lambda-edge"
+      ],
+      "service-worker": [
+        "./dist/types/adapter/service-worker"
+      ],
+      "testing": [
+        "./dist/types/helper/testing"
+      ],
+      "dev": [
+        "./dist/types/helper/dev"
+      ],
+      "ws": [
+        "./dist/types/helper/websocket"
+      ],
+      "conninfo": [
+        "./dist/types/helper/conninfo"
+      ],
+      "proxy": [
+        "./dist/types/helper/proxy"
+      ]
+    }
+  },
+  "author": "Yusuke Wada <yusuke@kamawada.com> (https://github.com/yusukebe)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/honojs/hono.git"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org"
+  },
+  "homepage": "https://hono.dev",
+  "keywords": [
+    "hono",
+    "web",
+    "app",
+    "http",
+    "application",
+    "framework",
+    "router",
+    "cloudflare",
+    "workers",
+    "fastly",
+    "compute",
+    "deno",
+    "bun",
+    "lambda",
+    "nodejs"
+  ],
+  "devDependencies": {
+    "@hono/eslint-config": "^2.1.0",
+    "@hono/node-server": "^1.13.5",
+    "@types/glob": "^9.0.0",
+    "@types/jsdom": "^21.1.7",
+    "@types/node": "^24.3.0",
+    "@types/ws": "^8.18.1",
+    "@typescript/native-preview": "7.0.0-dev.20260210.1",
+    "@vitest/coverage-v8": "^3.2.4",
+    "arg": "^5.0.2",
+    "bun-types": "^1.2.20",
+    "editorconfig-checker": "6.1.1",
+    "esbuild": "^0.27.1",
+    "eslint": "^9.39.3",
+    "glob": "^11.0.0",
+    "jsdom": "22.1.0",
+    "msw": "^2.6.0",
+    "np": "10.2.0",
+    "oxc-parser": "^0.96.0",
+    "pkg-pr-new": "^0.0.53",
+    "prettier": "3.7.4",
+    "publint": "0.3.15",
+    "typescript": "^5.9.2",
+    "undici": "^6.21.3",
+    "vite-plugin-fastly-js-compute": "^0.4.2",
+    "vitest": "^3.2.4",
+    "wrangler": "4.12.0",
+    "ws": "^8.18.0",
+    "zod": "^3.23.8"
+  },
+  "packageManager": "bun@1.2.20",
+  "engines": {
+    "node": ">=16.9.0"
+  }
+}

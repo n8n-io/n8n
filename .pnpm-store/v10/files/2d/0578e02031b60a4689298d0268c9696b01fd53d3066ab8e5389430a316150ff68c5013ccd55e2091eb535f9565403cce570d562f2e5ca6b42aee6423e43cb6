@@ -1,0 +1,45 @@
+{
+  "name": "test-exclude",
+  "version": "6.0.0",
+  "description": "test for inclusion or exclusion of paths using globs",
+  "main": "index.js",
+  "files": [
+    "*.js",
+    "!nyc.config.js"
+  ],
+  "scripts": {
+    "release": "standard-version",
+    "test": "nyc tap",
+    "snap": "npm test -- --snapshot"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/istanbuljs/test-exclude.git"
+  },
+  "keywords": [
+    "exclude",
+    "include",
+    "glob",
+    "package",
+    "config"
+  ],
+  "author": "Ben Coe <ben@npmjs.com>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/istanbuljs/test-exclude/issues"
+  },
+  "homepage": "https://istanbul.js.org/",
+  "dependencies": {
+    "@istanbuljs/schema": "^0.1.2",
+    "glob": "^7.1.4",
+    "minimatch": "^3.0.4"
+  },
+  "devDependencies": {
+    "nyc": "^15.0.0-beta.3",
+    "standard-version": "^7.0.0",
+    "tap": "^14.10.5"
+  },
+  "engines": {
+    "node": ">=8"
+  }
+}

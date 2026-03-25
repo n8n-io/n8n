@@ -1,0 +1,84 @@
+@use 'mixins/mixins' as *;
+@use 'common/var' as *;
+
+@include b(timeline-item) {
+  position: relative;
+  padding-bottom: 20px;
+
+  @include e(wrapper) {
+    position: relative;
+    padding-left: 28px;
+    top: -3px;
+  }
+
+  @include e(tail) {
+    position: absolute;
+    left: 4px;
+    height: 100%;
+    border-left: 2px solid getCssVar('timeline-node-color');
+  }
+
+  & .#{$namespace}-timeline-item__icon {
+    color: getCssVar('color-white');
+    font-size: getCssVar('font-size-small');
+  }
+
+  @include e(node) {
+    position: absolute;
+    background-color: getCssVar('timeline-node-color');
+    border-color: getCssVar('timeline-node-color');
+    border-radius: 50%;
+    box-sizing: border-box;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    @include m(normal) {
+      left: -1px;
+      width: getCssVar('timeline-node-size-normal');
+      height: getCssVar('timeline-node-size-normal');
+    }
+    @include m(large) {
+      left: -2px;
+      width: getCssVar('timeline-node-size-large');
+      height: getCssVar('timeline-node-size-large');
+    }
+    @include when(hollow) {
+      background: getCssVar('color-white');
+      border-style: solid;
+      border-width: 2px;
+    }
+
+    @each $type in (primary, success, warning, danger, info) {
+      @include m($type) {
+        background-color: getCssVar('color', $type);
+        border-color: getCssVar('color', $type);
+      }
+    }
+  }
+
+  @include e(dot) {
+    position: absolute;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  @include e(content) {
+    color: getCssVar('text-color', 'primary');
+  }
+
+  @include e(timestamp) {
+    color: getCssVar('text-color', 'secondary');
+    line-height: 1;
+    font-size: getCssVar('font-size-small');
+
+    @include when(top) {
+      margin-bottom: 8px;
+      padding-top: 4px;
+    }
+    @include when(bottom) {
+      margin-top: 8px;
+    }
+  }
+}

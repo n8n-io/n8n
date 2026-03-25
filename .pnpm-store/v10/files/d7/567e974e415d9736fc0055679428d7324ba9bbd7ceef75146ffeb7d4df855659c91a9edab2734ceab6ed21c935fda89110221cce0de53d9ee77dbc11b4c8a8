@@ -1,0 +1,18 @@
+{
+  "name": "spdx-ranges",
+  "description": "list of SPDX standard license ranges",
+  "version": "2.1.1",
+  "author": "The Linux Foundation",
+  "contributors": [
+    "Kyle E. Mitchell <kyle@kemitchell.com> (https://kemitchell.com/)"
+  ],
+  "devDependencies": {
+    "defence-cli": "^3.0.1",
+    "replace-require-self": "^1.1.1"
+  },
+  "license": "(MIT AND CC-BY-3.0)",
+  "repository": "kemitchell/spdx-ranges.js",
+  "scripts": {
+    "test": "defence -i javascript README.md | replace-require-self | node"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "name": "join-component",
+  "repo": "component/join",
+  "description": "Join a list",
+  "version": "1.1.0",
+  "keywords": [],
+  "dependencies": {},
+  "devDependencies": {
+    "mocha": "*",
+    "should": "*"
+  },
+  "license": "MIT",
+  "component": {
+    "scripts": {
+      "join/index.js": "index.js"
+    }
+  }
+}

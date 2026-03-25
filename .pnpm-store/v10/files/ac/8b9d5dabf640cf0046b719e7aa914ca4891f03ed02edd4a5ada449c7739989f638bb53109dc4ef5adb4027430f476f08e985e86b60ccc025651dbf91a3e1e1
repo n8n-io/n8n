@@ -1,0 +1,17 @@
+{
+  "mappings": [
+    {
+      "scenarioName": "Successful OAuth authorization code flow",
+      "request": {
+        "urlPathPattern": "/oauth/token-request.*",
+        "method": "POST"
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "Content-Type": "application/json"
+        }
+      }
+    }
+  ]
+}

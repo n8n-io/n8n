@@ -1,0 +1,13 @@
+{
+	"name": "iconify/json",
+	"description": "Iconify icons collection in JSON format",
+	"type": "library",
+	"version": "2.2.354",
+	"license": "MIT",
+	"homepage": "https://iconify.design/icon-sets/",
+	"autoload": {
+		"psr-4": {
+			"Iconify\\IconsJSON\\": "lib"
+		}
+	}
+}

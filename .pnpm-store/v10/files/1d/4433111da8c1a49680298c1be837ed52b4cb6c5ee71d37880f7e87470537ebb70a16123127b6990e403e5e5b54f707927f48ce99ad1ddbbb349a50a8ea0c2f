@@ -1,0 +1,70 @@
+{
+    "name": "vitest-mock-extended",
+    "version": "3.1.0",
+    "homepage": "https://github.com/eratio08/vitest-mock-extended",
+    "description": "Type safe mocking extensions for vitest, forked from jest-mock-extended",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/eratio08/vitest-mock-extended"
+    },
+    "author": "Eike Lurz <eike.lurz@tuta.io>",
+    "license": "MIT",
+    "files": [
+        "lib/**/*"
+    ],
+    "main": "./lib/esm/index.js",
+    "types": "./lib/esm/index.d.ts",
+    "module": "./lib/esm/index.js",
+    "exports": {
+        ".": {
+            "import": {
+                "types": "./lib/esm/index.d.ts",
+                "default": "./lib/esm/index.js"
+            },
+            "require": {
+                "types": "./lib/index.d.cts",
+                "default": "./lib/index.cjs"
+            }
+        }
+    },
+    "type": "module",
+    "scripts": {
+        "test": "vitest run --coverage",
+        "clean": "rimraf coverage lib",
+        "lint": "eslint .",
+        "lint:fix": "eslint --fix .",
+        "lint:fix-example": "eslint --fix example/src",
+        "build": "pnpm clean && pnpm build:rollup",
+        "build:rollup": "rollup -c"
+    },
+    "dependencies": {
+        "ts-essentials": ">=10.0.0"
+    },
+    "devDependencies": {
+        "@eslint/js": "9.23.0",
+        "@vitest/coverage-v8": "3.0.6",
+        "esbuild": "0.25.2",
+        "eslint": "9.23.0",
+        "eslint-config-prettier": "10.1.1",
+        "rimraf": "6.0.1",
+        "rollup": "4.39.0",
+        "rollup-plugin-dts": "6.2.1",
+        "rollup-plugin-esbuild": "6.2.1",
+        "semantic-release": "24.2.3",
+        "typescript": "5.8.2",
+        "typescript-eslint": "8.29.0",
+        "vitest": "3.0.6"
+    },
+    "peerDependencies": {
+        "typescript": "3.x || 4.x || 5.x",
+        "vitest": ">=3.0.0"
+    },
+    "release": {
+        "branches": [
+            "main"
+        ]
+    },
+    "publishConfig": {
+        "access": "public"
+    }
+}

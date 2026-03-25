@@ -1,0 +1,605 @@
+#! /usr/bin/env node
+// -*- js -*-
+
+"use strict";
+
+require("../tools/tty");
+
+var fs = require("fs");
+var info = require("../package.json");
+var path = require("path");
+var UglifyJS = require("../tools/node");
+
+var skip_keys = [ "cname", "fixed", "in_arg", "inlined", "length_read", "parent_scope", "redef", "scope", "unused" ];
+var truthy_keys = [ "optional", "pure", "terminal", "uses_arguments", "uses_eval", "uses_with" ];
+
+var files = {};
+var options = {};
+var short_forms = {
+    b: "beautify",
+    c: "compress",
+    d: "define",
+    e: "enclose",
+    h: "help",
+    m: "mangle",
+    o: "output",
+    O: "output-opts",
+    p: "parse",
+    v: "version",
+    V: "version",
+};
+var args = process.argv.slice(2);
+var paths = [];
+var output, nameCache;
+var specified = {};
+while (args.length) {
+    var arg = args.shift();
+    if (arg[0] != "-") {
+        paths.push(arg);
+    } else if (arg == "--") {
+        paths = paths.concat(args);
+        break;
+    } else if (arg[1] == "-") {
+        process_option(arg.slice(2));
+    } else [].forEach.call(arg.slice(1), function(letter, index, arg) {
+        if (!(letter in short_forms)) fatal("invalid option -" + letter);
+        process_option(short_forms[letter], index + 1 < arg.length);
+    });
+}
+
+function process_option(name, no_value) {
+    specified[name] = true;
+    switch (name) {
+      case "help":
+        switch (read_value()) {
+          case "ast":
+            print(UglifyJS.describe_ast());
+            break;
+          case "options":
+            var text = [];
+            var toplevels = [];
+            var padding = "";
+            var defaults = UglifyJS.default_options();
+            for (var name in defaults) {
+                var option = defaults[name];
+                if (option && typeof option == "object") {
+                    text.push("--" + ({
+                        output: "beautify",
+                        sourceMap: "source-map",
+                    }[name] || name) + " options:");
+                    text.push(format_object(option));
+                    text.push("");
+                } else {
+                    if (padding.length < name.length) padding = Array(name.length + 1).join(" ");
+                    toplevels.push([ {
+                        keep_fargs: "keep-fargs",
+                        keep_fnames: "keep-fnames",
+                        nameCache: "name-cache",
+                    }[name] || name, option ]);
+                }
+            }
+            toplevels.forEach(function(tokens) {
+                text.push("--" + tokens[0] + padding.slice(tokens[0].length - 2) + tokens[1]);
+            });
+            print(text.join("\n"));
+            break;
+          default:
+            print([
+                "Usage: uglifyjs [files...] [options]",
+                "",
+                "Options:",
+                "  -h, --help                               Print usage information.",
+                "                                           `--help options` for details on available options.",
+                "  -v, -V, --version                        Print version number.",
+                "  -p, --parse <options>                    Specify parser options.",
+                "  -c, --compress [options]                 Enable compressor/specify compressor options.",
+                "  -m, --mangle [options]                   Mangle names/specify mangler options.",
+                "  --mangle-props [options]                 Mangle properties/specify mangler options.",
+                "  -b, --beautify [options]                 Beautify output/specify output options.",
+                "  -O, --output-opts <options>              Output options (beautify disabled).",
+                "  -o, --output <file>                      Output file (default STDOUT).",
+                "  --annotations                            Process and preserve comment annotations.",
+                "  --no-annotations                         Ignore and discard comment annotations.",
+                "  --comments [filter]                      Preserve copyright comments in the output.",
+                "  --config-file <file>                     Read minify() options from JSON file.",
+                "  -d, --define <expr>[=value]              Global definitions.",
+                "  -e, --enclose [arg[,...][:value[,...]]]  Embed everything in a big function, with configurable argument(s) & value(s).",
+                "  --expression                             Parse a single expression, rather than a program.",
+                "  --ie                                     Support non-standard Internet Explorer.",
+                "  --keep-fargs                             Do not mangle/drop function arguments.",
+                "  --keep-fnames                            Do not mangle/drop function names. Useful for code relying on Function.prototype.name.",
+                "  --module                                 Process input as ES module (implies --toplevel)",
+                "  --name-cache <file>                      File to hold mangled name mappings.",
+                "  --rename                                 Force symbol expansion.",
+                "  --no-rename                              Disable symbol expansion.",
+                "  --self                                   Build UglifyJS as a library (implies --wrap UglifyJS)",
+                "  --source-map [options]                   Enable source map/specify source map options.",
+                "  --timings                                Display operations run time on STDERR.",
+                "  --toplevel                               Compress and/or mangle variables in toplevel scope.",
+                "  --v8                                     Support non-standard Chrome & Node.js.",
+                "  --validate                               Perform validation during AST manipulations.",
+                "  --verbose                                Print diagnostic messages.",
+                "  --warn                                   Print warning messages.",
+                "  --webkit                                 Support non-standard Safari/Webkit.",
+                "  --wrap <name>                            Embed everything as a function with “exports” corresponding to “name” globally.",
+                "",
+                "(internal debug use only)",
+                "  --in-situ                                Warning: replaces original source files with minified output.",
+                "  --reduce-test                            Reduce a standalone test case (assumes cloned repository).",
+            ].join("\n"));
+        }
+        process.exit();
+      case "version":
+        print(info.name + " " + info.version);
+        process.exit();
+      case "config-file":
+        var config = JSON.parse(read_file(read_value(true)));
+        if (config.mangle && config.mangle.properties && config.mangle.properties.regex) {
+            config.mangle.properties.regex = UglifyJS.parse(config.mangle.properties.regex, {
+                expression: true,
+            }).value;
+        }
+        for (var key in config) if (!(key in options)) options[key] = config[key];
+        break;
+      case "compress":
+      case "mangle":
+        options[name] = parse_js(read_value(), options[name]);
+        break;
+      case "source-map":
+        options.sourceMap = parse_js(read_value(), options.sourceMap);
+        break;
+      case "enclose":
+        options[name] = read_value();
+        break;
+      case "annotations":
+      case "expression":
+      case "ie":
+      case "ie8":
+      case "module":
+      case "timings":
+      case "toplevel":
+      case "v8":
+      case "validate":
+      case "webkit":
+        options[name] = true;
+        break;
+      case "no-annotations":
+        options.annotations = false;
+        break;
+      case "keep-fargs":
+        options.keep_fargs = true;
+        break;
+      case "keep-fnames":
+        options.keep_fnames = true;
+        break;
+      case "wrap":
+        options[name] = read_value(true);
+        break;
+      case "verbose":
+        options.warnings = "verbose";
+        break;
+      case "warn":
+        if (!options.warnings) options.warnings = true;
+        break;
+      case "beautify":
+        options.output = parse_js(read_value(), options.output);
+        if (!("beautify" in options.output)) options.output.beautify = true;
+        break;
+      case "output-opts":
+        options.output = parse_js(read_value(true), options.output);
+        break;
+      case "comments":
+        if (typeof options.output != "object") options.output = {};
+        options.output.comments = read_value();
+        if (options.output.comments === true) options.output.comments = "some";
+        break;
+      case "define":
+        if (typeof options.compress != "object") options.compress = {};
+        options.compress.global_defs = parse_js(read_value(true), options.compress.global_defs, "define");
+        break;
+      case "mangle-props":
+        if (typeof options.mangle != "object") options.mangle = {};
+        options.mangle.properties = parse_js(read_value(), options.mangle.properties);
+        break;
+      case "name-cache":
+        nameCache = read_value(true);
+        options.nameCache = JSON.parse(read_file(nameCache, "{}"));
+        break;
+      case "output":
+        output = read_value(true);
+        break;
+      case "parse":
+        options.parse = parse_js(read_value(true), options.parse);
+        break;
+      case "rename":
+        options.rename = true;
+        break;
+      case "no-rename":
+        options.rename = false;
+        break;
+      case "in-situ":
+      case "reduce-test":
+      case "self":
+        break;
+      default:
+        fatal("invalid option --" + name);
+    }
+
+    function read_value(required) {
+        if (no_value || !args.length || args[0][0] == "-") {
+            if (required) fatal("missing option argument for --" + name);
+            return true;
+        }
+        return args.shift();
+    }
+}
+if (!output && options.sourceMap && options.sourceMap.url != "inline") fatal("cannot write source map to STDOUT");
+if (specified["beautify"] && specified["output-opts"]) fatal("--beautify cannot be used with --output-opts");
+[ "compress", "mangle" ].forEach(function(name) {
+    if (!(name in options)) options[name] = false;
+});
+if (/^ast|spidermonkey$/.test(output)) {
+    if (typeof options.output != "object") options.output = {};
+    options.output.ast = true;
+    options.output.code = false;
+}
+if (options.parse && (options.parse.acorn || options.parse.spidermonkey)
+    && options.sourceMap && options.sourceMap.content == "inline") {
+    fatal("inline source map only works with built-in parser");
+}
+if (options.warnings) {
+    UglifyJS.AST_Node.log_function(print_error, options.warnings == "verbose");
+    delete options.warnings;
+}
+var convert_path = function(name) {
+    return name;
+};
+if (typeof options.sourceMap == "object" && "base" in options.sourceMap) {
+    convert_path = function() {
+        var base = options.sourceMap.base;
+        delete options.sourceMap.base;
+        return function(name) {
+            return path.relative(base, name);
+        };
+    }();
+}
+if (specified["self"]) {
+    if (paths.length) UglifyJS.AST_Node.warn("Ignoring input files since --self was passed");
+    if (!options.wrap) options.wrap = "UglifyJS";
+    paths = UglifyJS.FILES;
+} else if (paths.length) {
+    paths = simple_glob(paths);
+}
+if (specified["in-situ"]) {
+    if (output && output != "spidermonkey" || specified["reduce-test"] || specified["self"]) {
+        fatal("incompatible options specified");
+    }
+    paths.forEach(function(name) {
+        print(name);
+        if (/^ast|spidermonkey$/.test(name)) fatal("invalid file name specified");
+        files = {};
+        files[convert_path(name)] = read_file(name);
+        output = name;
+        run();
+    });
+} else if (paths.length) {
+    paths.forEach(function(name) {
+        files[convert_path(name)] = read_file(name);
+    });
+    run();
+} else {
+    var timerId = process.stdin.isTTY && process.argv.length < 3 && setTimeout(function() {
+        print_error("Waiting for input... (use `--help` to print usage information)");
+    }, 1500);
+    var chunks = [];
+    process.stdin.setEncoding("utf8");
+    process.stdin.once("data", function() {
+        clearTimeout(timerId);
+    }).on("data", function(chunk) {
+        chunks.push(chunk);
+    }).on("end", function() {
+        files = { STDIN: chunks.join("") };
+        run();
+    });
+    process.stdin.resume();
+}
+
+function convert_ast(fn) {
+    return UglifyJS.AST_Node.from_mozilla_ast(Object.keys(files).reduce(fn, null));
+}
+
+function run() {
+    var content = options.sourceMap && options.sourceMap.content;
+    if (content && content != "inline") {
+        UglifyJS.AST_Node.info("Using input source map: {content}", {
+            content : content,
+        });
+        options.sourceMap.content = read_file(content, content);
+    }
+    try {
+        if (options.parse) {
+            if (options.parse.acorn) {
+                var annotations = Object.create(null);
+                files = convert_ast(function(toplevel, name) {
+                    var content = files[name];
+                    var list = annotations[name] = [];
+                    var prev = -1;
+                    return require("acorn").parse(content, {
+                        allowHashBang: true,
+                        ecmaVersion: "latest",
+                        locations: true,
+                        onComment: function(block, text, start, end) {
+                            var match = /[@#]__PURE__/.exec(text);
+                            if (!match) {
+                                if (start != prev) return;
+                                match = [ list[prev] ];
+                            }
+                            while (/\s/.test(content[end])) end++;
+                            list[end] = match[0];
+                            prev = end;
+                        },
+                        preserveParens: true,
+                        program: toplevel,
+                        sourceFile: name,
+                        sourceType: "module",
+                    });
+                });
+                files.walk(new UglifyJS.TreeWalker(function(node) {
+                    if (!(node instanceof UglifyJS.AST_Call)) return;
+                    var list = annotations[node.start.file];
+                    var pure = list[node.start.pos];
+                    if (!pure) {
+                        var tokens = node.start.parens;
+                        if (tokens) for (var i = 0; !pure && i < tokens.length; i++) {
+                            pure = list[tokens[i].pos];
+                        }
+                    }
+                    if (pure) node.pure = pure;
+                }));
+            } else if (options.parse.spidermonkey) {
+                files = convert_ast(function(toplevel, name) {
+                    var obj = JSON.parse(files[name]);
+                    if (!toplevel) return obj;
+                    toplevel.body = toplevel.body.concat(obj.body);
+                    return toplevel;
+                });
+            }
+        }
+    } catch (ex) {
+        fatal(ex);
+    }
+    var result;
+    if (specified["reduce-test"]) {
+        // load on demand - assumes cloned repository
+        var reduce_test = require("../test/reduce");
+        if (Object.keys(files).length != 1) fatal("can only test on a single file");
+        result = reduce_test(files[Object.keys(files)[0]], options, {
+            log: print_error,
+            verbose: true,
+        });
+    } else {
+        result = UglifyJS.minify(files, options);
+    }
+    if (result.error) {
+        var ex = result.error;
+        if (ex.name == "SyntaxError") {
+            print_error("Parse error at " + ex.filename + ":" + ex.line + "," + ex.col);
+            var file = files[ex.filename];
+            if (file) {
+                var col = ex.col;
+                var lines = file.split(/\r?\n/);
+                var line = lines[ex.line - 1];
+                if (!line && !col) {
+                    line = lines[ex.line - 2];
+                    col = line.length;
+                }
+                if (line) {
+                    var limit = 70;
+                    if (col > limit) {
+                        line = line.slice(col - limit);
+                        col = limit;
+                    }
+                    print_error(line.slice(0, 80));
+                    print_error(line.slice(0, col).replace(/\S/g, " ") + "^");
+                }
+            }
+        } else if (ex.defs) {
+            print_error("Supported options:");
+            print_error(format_object(ex.defs));
+        }
+        fatal(ex);
+    } else if (output == "ast") {
+        if (!options.compress && !options.mangle) {
+            var toplevel = result.ast;
+            if (!(toplevel instanceof UglifyJS.AST_Toplevel)) {
+                if (!(toplevel instanceof UglifyJS.AST_Statement)) toplevel = new UglifyJS.AST_SimpleStatement({
+                    body: toplevel,
+                });
+                toplevel = new UglifyJS.AST_Toplevel({
+                    body: [ toplevel ],
+                });
+            }
+            toplevel.figure_out_scope({});
+        }
+        print(JSON.stringify(result.ast, function(key, value) {
+            if (value) switch (key) {
+              case "enclosed":
+                return value.length ? value.map(symdef) : undefined;
+              case "functions":
+              case "globals":
+              case "variables":
+                return value.size() ? value.map(symdef) : undefined;
+              case "thedef":
+                return symdef(value);
+            }
+            if (skip_property(key, value)) return;
+            if (value instanceof UglifyJS.AST_Token) return;
+            if (value instanceof UglifyJS.Dictionary) return;
+            if (value instanceof UglifyJS.AST_Node) {
+                var result = {
+                    _class: "AST_" + value.TYPE
+                };
+                value.CTOR.PROPS.forEach(function(prop) {
+                    result[prop] = value[prop];
+                });
+                return result;
+            }
+            return value;
+        }, 2));
+    } else if (output == "spidermonkey") {
+        print(JSON.stringify(result.ast.to_mozilla_ast(), null, 2));
+    } else if (output) {
+        var code;
+        if (result.ast) {
+            var opts = {};
+            for (var name in options.output) {
+                if (!/^ast|code$/.test(name)) opts[name] = options.output[name];
+            }
+            code = UglifyJS.AST_Node.from_mozilla_ast(result.ast.to_mozilla_ast()).print_to_string(opts);
+        } else {
+            code = result.code;
+        }
+        fs.writeFileSync(output, code);
+        if (result.map) fs.writeFileSync(output + ".map", result.map);
+    } else {
+        print(result.code);
+    }
+    if (nameCache) fs.writeFileSync(nameCache, JSON.stringify(options.nameCache));
+    if (result.timings) for (var phase in result.timings) {
+        print_error("- " + phase + ": " + result.timings[phase].toFixed(3) + "s");
+    }
+}
+
+function fatal(message) {
+    if (message instanceof Error) {
+        message = message.stack.replace(/^\S*?Error:/, "ERROR:")
+    } else {
+        message = "ERROR: " + message;
+    }
+    print_error(message);
+    process.exit(1);
+}
+
+// A file glob function that only supports "*" and "?" wildcards in the basename.
+// Example: "foo/bar/*baz??.*.js"
+// Argument `paths` must be an array of strings.
+// Returns an array of strings. Garbage in, garbage out.
+function simple_glob(paths) {
+    return paths.reduce(function(paths, glob) {
+        if (/\*|\?/.test(glob)) {
+            var dir = path.dirname(glob);
+            try {
+                var entries = fs.readdirSync(dir).filter(function(name) {
+                    try {
+                        return fs.statSync(path.join(dir, name)).isFile();
+                    } catch (ex) {
+                        return false;
+                    }
+                });
+            } catch (ex) {}
+            if (entries) {
+                var pattern = "^" + path.basename(glob)
+                    .replace(/[.+^$[\]\\(){}]/g, "\\$&")
+                    .replace(/\*/g, "[^/\\\\]*")
+                    .replace(/\?/g, "[^/\\\\]") + "$";
+                var mod = process.platform === "win32" ? "i" : "";
+                var rx = new RegExp(pattern, mod);
+                var results = entries.filter(function(name) {
+                    return rx.test(name);
+                }).sort().map(function(name) {
+                    return path.join(dir, name);
+                });
+                if (results.length) {
+                    [].push.apply(paths, results);
+                    return paths;
+                }
+            }
+        }
+        paths.push(glob);
+        return paths;
+    }, []);
+}
+
+function read_file(path, default_value) {
+    try {
+        return fs.readFileSync(path, "utf8");
+    } catch (ex) {
+        if (ex.code == "ENOENT" && default_value != null) return default_value;
+        fatal(ex);
+    }
+}
+
+function parse_js(value, options, flag) {
+    if (!options || typeof options != "object") options = Object.create(null);
+    if (typeof value == "string") try {
+        UglifyJS.parse(value, {
+            expression: true
+        }).walk(new UglifyJS.TreeWalker(function(node) {
+            if (node instanceof UglifyJS.AST_Assign) {
+                var name = node.left.print_to_string();
+                var value = node.right;
+                if (flag) {
+                    options[name] = value;
+                } else if (value instanceof UglifyJS.AST_Array) {
+                    options[name] = value.elements.map(to_string);
+                } else {
+                    options[name] = to_string(value);
+                }
+                return true;
+            }
+            if (node instanceof UglifyJS.AST_Symbol || node instanceof UglifyJS.AST_PropAccess) {
+                var name = node.print_to_string();
+                options[name] = true;
+                return true;
+            }
+            if (!(node instanceof UglifyJS.AST_Sequence)) throw node;
+
+            function to_string(value) {
+                return value instanceof UglifyJS.AST_Constant ? value.value : value.print_to_string({
+                    quote_keys: true
+                });
+            }
+        }));
+    } catch (ex) {
+        if (flag) {
+            fatal("cannot parse arguments for '" + flag + "': " + value);
+        } else {
+            options[value] = null;
+        }
+    }
+    return options;
+}
+
+function skip_property(key, value) {
+    return skip_keys.indexOf(key) >= 0
+        // only skip truthy_keys if their value is falsy
+        || truthy_keys.indexOf(key) >= 0 && !value;
+}
+
+function symdef(def) {
+    var ret = (1e6 + def.id) + " " + def.name;
+    if (def.mangled_name) ret += " " + def.mangled_name;
+    return ret;
+}
+
+function format_object(obj) {
+    var lines = [];
+    var padding = "";
+    Object.keys(obj).map(function(name) {
+        if (padding.length < name.length) padding = Array(name.length + 1).join(" ");
+        return [ name, JSON.stringify(obj[name]) ];
+    }).forEach(function(tokens) {
+        lines.push("  " + tokens[0] + padding.slice(tokens[0].length - 2) + tokens[1]);
+    });
+    return lines.join("\n");
+}
+
+function print_error(msg) {
+    process.stderr.write(msg);
+    process.stderr.write("\n");
+}
+
+function print(txt) {
+    process.stdout.write(txt);
+    process.stdout.write("\n");
+}

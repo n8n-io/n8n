@@ -1,0 +1,94 @@
+{
+  "name": "formdata-node",
+  "version": "4.4.1",
+  "description": "Spec-compliant FormData implementation for Node.js",
+  "repository": "octet-stream/form-data",
+  "sideEffects": false,
+  "keywords": [
+    "form-data",
+    "node",
+    "form",
+    "upload",
+    "files-upload",
+    "ponyfill"
+  ],
+  "author": "Nick K. <io@octetstream.me>",
+  "license": "MIT",
+  "main": "./lib/cjs/index.js",
+  "module": "./lib/esm/browser.js",
+  "browser": "./lib/cjs/browser.js",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "node": {
+        "types": "./@type/index.d.ts",
+        "import": "./lib/esm/index.js",
+        "require": "./lib/cjs/index.js"
+      },
+      "browser": {
+        "types": "./@type/browser.d.ts",
+        "import": "./lib/esm/browser.js",
+        "require": "./lib/cjs/browser.js"
+      },
+      "default": "./lib/esm/index.js"
+    },
+    "./file-from-path": {
+      "types": "./@type/fileFromPath.d.ts",
+      "import": "./lib/esm/fileFromPath.js",
+      "require": "./lib/cjs/fileFromPath.js"
+    }
+  },
+  "types": "./@type/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "file-from-path": [
+        "@type/fileFromPath.d.ts"
+      ]
+    }
+  },
+  "engines": {
+    "node": ">= 12.20"
+  },
+  "scripts": {
+    "eslint": "eslint lib/**/*.ts",
+    "staged": "lint-staged",
+    "coverage": "c8 npm test",
+    "report:html": "c8 -r=html npm test",
+    "ci": "c8 npm test && c8 report --reporter=json",
+    "build:esm": "ttsc --project tsconfig.esm.json",
+    "build:cjs": "ttsc --project tsconfig.cjs.json",
+    "build:types": "ttsc --project tsconfig.d.ts.json",
+    "build": "npm run build:esm && npm run build:cjs && npm run build:types",
+    "test": "ava --fail-fast",
+    "cleanup": "npx rimraf @type \"lib/**/*.js\"",
+    "prepare": "npm run cleanup && npm run build",
+    "husky": "husky install"
+  },
+  "devDependencies": {
+    "@octetstream/eslint-config": "5.0.0",
+    "@types/node": "17.0.19",
+    "@types/sinon": "10.0.11",
+    "@typescript-eslint/eslint-plugin": "4.32.0",
+    "@typescript-eslint/parser": "4.32.0",
+    "@zoltu/typescript-transformer-append-js-extension": "1.0.1",
+    "ava": "4.0.1",
+    "c8": "7.12.0",
+    "eslint": "7.32.0",
+    "eslint-config-airbnb-typescript": "12.3.1",
+    "eslint-import-resolver-typescript": "2.5.0",
+    "eslint-plugin-ava": "12.0.0",
+    "eslint-plugin-jsx-a11y": "6.4.1",
+    "eslint-plugin-react": "7.26.1",
+    "husky": "7.0.4",
+    "lint-staged": "12.3.4",
+    "rimraf": "^3.0.2",
+    "sinon": "13.0.1",
+    "ts-node": "10.5.0",
+    "ttypescript": "1.5.13",
+    "typescript": "4.5.5"
+  },
+  "dependencies": {
+    "node-domexception": "1.0.0",
+    "web-streams-polyfill": "4.0.0-beta.3"
+  }
+}

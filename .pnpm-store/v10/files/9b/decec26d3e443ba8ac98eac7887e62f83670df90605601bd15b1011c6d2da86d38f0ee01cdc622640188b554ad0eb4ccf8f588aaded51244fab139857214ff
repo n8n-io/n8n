@@ -1,0 +1,66 @@
+{
+	"$id": "/inference/schemas/question-answering/input.json",
+	"$schema": "http://json-schema.org/draft-06/schema#",
+	"description": "Inputs for Question Answering inference",
+	"title": "QuestionAnsweringInput",
+	"type": "object",
+	"properties": {
+		"inputs": {
+			"title": "QuestionAnsweringInputData",
+			"description": "One (context, question) pair to answer",
+			"type": "object",
+			"properties": {
+				"context": {
+					"type": "string",
+					"description": "The context to be used for answering the question"
+				},
+				"question": {
+					"type": "string",
+					"description": "The question to be answered"
+				}
+			},
+			"required": ["question", "context"]
+		},
+		"parameters": {
+			"description": "Additional inference parameters for Question Answering",
+			"$ref": "#/$defs/QuestionAnsweringParameters"
+		}
+	},
+	"$defs": {
+		"QuestionAnsweringParameters": {
+			"title": "QuestionAnsweringParameters",
+			"type": "object",
+			"properties": {
+				"top_k": {
+					"type": "integer",
+					"description": "The number of answers to return (will be chosen by order of likelihood). Note that we return less than topk answers if there are not enough options available within the context."
+				},
+				"doc_stride": {
+					"type": "integer",
+					"description": "If the context is too long to fit with the question for the model, it will be split in several chunks with some overlap. This argument controls the size of that overlap."
+				},
+				"max_answer_len": {
+					"type": "integer",
+					"description": "The maximum length of predicted answers (e.g., only answers with a shorter length are considered)."
+				},
+				"max_seq_len": {
+					"type": "integer",
+					"description": "The maximum length of the total sentence (context + question) in tokens of each chunk passed to the model. The context will be split in several chunks (using docStride as overlap) if needed."
+				},
+				"max_question_len": {
+					"type": "integer",
+					"description": "The maximum length of the question after tokenization. It will be truncated if needed."
+				},
+				"handle_impossible_answer": {
+					"type": "boolean",
+					"description": "Whether to accept impossible as an answer."
+				},
+				"align_to_words": {
+					"type": "boolean",
+					"description": "Attempts to align the answer to real words. Improves quality on space separated languages. Might hurt on non-space-separated languages (like Japanese or Chinese)"
+				}
+			}
+		}
+	},
+	"required": ["inputs"]
+}

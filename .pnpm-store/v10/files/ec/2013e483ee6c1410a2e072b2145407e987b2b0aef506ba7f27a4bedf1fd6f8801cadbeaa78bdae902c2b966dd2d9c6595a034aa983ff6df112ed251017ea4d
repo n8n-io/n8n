@@ -1,0 +1,65 @@
+{
+  "name": "@ts-morph/common",
+  "version": "0.28.1",
+  "description": "Common functionality for ts-morph packages.",
+  "main": "dist/ts-morph-common.js",
+  "author": "David Sherret",
+  "license": "MIT",
+  "repository": "git+https://github.com/dsherret/ts-morph.git",
+  "types": "lib/ts-morph-common.d.ts",
+  "scripts": {
+    "build": "deno task build:declarations && deno task build:node",
+    "build:node": "rimraf dist && deno task createLibFile && deno task rollup && deno run -A scripts/bundleLocalTs.ts",
+    "build:deno": "rimraf ../../deno/common && rimraf dist-deno && deno task rollup --environment BUILD:deno && deno task build:declarations && deno run -A scripts/buildDeno.ts",
+    "build:declarations": "deno run -A scripts/buildDeclarations.ts",
+    "createLibFile": "deno run -A scripts/createLibFile.ts",
+    "test": "deno run -A npm:mocha",
+    "test:ci": "deno task test",
+    "test:debug": "deno task test --inspect-brk",
+    "rollup": "rollup --config"
+  },
+  "dependencies": {
+    "minimatch": "^10.0.1",
+    "path-browserify": "^1.0.1",
+    "tinyglobby": "^0.2.14"
+  },
+  "devDependencies": {
+    "@rollup/plugin-typescript": "^12.1.2",
+    "@types/chai": "^5.2.1",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.14.1",
+    "chai": "^5.2.0",
+    "cross-env": "^7.0.3",
+    "mocha": "^11.1.0",
+    "rimraf": "^6.0.1",
+    "rollup": "=4.40.0",
+    "ts-node": "^10.9.2",
+    "tslib": "^2.8.1",
+    "typescript": "5.9.2"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "browser": {
+    "fs": false,
+    "node:fs": false,
+    "fs/promises": false,
+    "node:fs/promises": false,
+    "os": false,
+    "node:os": false,
+    "fs.realpath": false,
+    "mkdirp": false,
+    "dir-glob": false,
+    "graceful-fs": false,
+    "tinyglobby": false,
+    "source-map-support": false,
+    "glob-parent": false,
+    "glob": false,
+    "path": false,
+    "node:path": false,
+    "crypto": false,
+    "buffer": false,
+    "@microsoft/typescript-etw": false,
+    "inspector": false
+  }
+}

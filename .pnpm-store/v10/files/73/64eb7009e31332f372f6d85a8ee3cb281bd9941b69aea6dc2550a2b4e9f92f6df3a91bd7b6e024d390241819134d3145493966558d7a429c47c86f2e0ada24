@@ -1,0 +1,111 @@
+@use 'mixins/mixins' as *;
+@use 'mixins/var' as *;
+@use 'common/var' as *;
+
+@include b(alert) {
+  @include set-component-css-var('alert', $alert);
+
+  width: 100%;
+  padding: getCssVar('alert', 'padding');
+  margin: 0;
+  box-sizing: border-box;
+  border-radius: getCssVar('alert', 'border-radius-base');
+  position: relative;
+  background-color: getCssVar('color', 'white');
+  overflow: hidden;
+  opacity: 1;
+  display: flex;
+  align-items: center;
+  transition: opacity getCssVar('transition-duration', 'fast');
+
+  @include when(light) {
+    .#{$namespace}-alert__close-btn {
+      color: getCssVar('text-color', 'placeholder');
+    }
+  }
+
+  @include when(dark) {
+    .#{$namespace}-alert__close-btn {
+      color: getCssVar('color', 'white');
+    }
+    .#{$namespace}-alert__description {
+      color: getCssVar('color', 'white');
+    }
+  }
+
+  @include when(center) {
+    justify-content: center;
+  }
+
+  @each $type in (success, info, warning, error) {
+    @include m($type) {
+      @include css-var-from-global(
+        ('alert', 'bg-color'),
+        ('color', $type, 'light-9')
+      );
+
+      &.is-light {
+        background-color: getCssVar('alert', 'bg-color');
+        color: getCssVar('color', $type);
+
+        .#{$namespace}-alert__description {
+          color: getCssVar('color', $type);
+        }
+      }
+
+      &.is-dark {
+        background-color: getCssVar('color', $type);
+        color: getCssVar('color', 'white');
+      }
+    }
+  }
+
+  @include e(content) {
+    display: table-cell;
+    padding: 0 8px;
+  }
+
+  & .#{$namespace}-alert__icon {
+    font-size: getCssVar('alert', 'icon-size');
+    width: getCssVar('alert', 'icon-size');
+
+    @include when(big) {
+      font-size: getCssVar('alert', 'icon-large-size');
+      width: getCssVar('alert', 'icon-large-size');
+    }
+  }
+
+  @include e(title) {
+    font-size: getCssVar('alert', 'title-font-size');
+    line-height: 18px;
+    vertical-align: text-top;
+    @include when(bold) {
+      font-weight: bold;
+    }
+  }
+
+  & .#{$namespace}-alert__description {
+    font-size: getCssVar('alert', 'description-font-size');
+    margin: 5px 0 0 0;
+  }
+
+  & .#{$namespace}-alert__close-btn {
+    font-size: getCssVar('alert', 'close-font-size');
+    opacity: 1;
+    position: absolute;
+    top: 12px;
+    right: 15px;
+    cursor: pointer;
+
+    @include when(customed) {
+      font-style: normal;
+      font-size: getCssVar('alert', 'close-customed-font-size');
+      top: 9px;
+    }
+  }
+}
+
+.#{$namespace}-alert-fade-enter-from,
+.#{$namespace}-alert-fade-leave-active {
+  opacity: 0;
+}

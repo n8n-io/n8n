@@ -1,0 +1,1 @@
+{"version":3,"file":"AliasDerefProblemError.js","sourceRoot":"./","sources":["errors/resultCodeErrors/AliasDerefProblemError.ts"],"names":[],"mappings":";;;AAAA,uDAAoD;AAEpD,MAAa,sBAAuB,SAAQ,iCAAe;IACzD,YAAmB,OAAgB;QACjC,KAAK,CAAC,EAAE,EAAE,OAAO,IAAI,kHAAkH,CAAC,CAAC;IAC3I,CAAC;CACF;AAJD,wDAIC"}

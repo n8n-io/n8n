@@ -1,0 +1,21 @@
+{
+  "name": "@redocly/config",
+  "version": "0.20.3",
+  "license": "MIT",
+  "main": "./lib/index.js",
+  "module": "./lib-esm/index.js",
+  "types": "./lib/index.d.ts",
+  "devDependencies": {
+    "@markdoc/markdoc": "0.4.0",
+    "@types/react": "18.3.9",
+    "react-router-dom": "6.21.1",
+    "json-schema-to-ts": "2.7.2",
+    "rimraf": "5.0.7",
+    "typescript": "5.6.2"
+  },
+  "scripts": {
+    "clean": "rimraf lib",
+    "compile": "tsc -p tsconfig.build.json && tsc -p tsconfig.lib-esm.json",
+    "build": "npm run clean && npm run compile"
+  }
+}

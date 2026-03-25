@@ -1,0 +1,1 @@
+{"version":3,"file":"Timestamp.js","sourceRoot":"","sources":["../../../../../src/generated/google/protobuf/Timestamp.ts"],"names":[],"mappings":";AAAA,sBAAsB"}

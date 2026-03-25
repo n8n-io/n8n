@@ -1,0 +1,52 @@
+{
+    "name": "@types/convict",
+    "version": "6.1.1",
+    "description": "TypeScript definitions for convict",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/convict",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Wim Looman",
+            "url": "https://github.com/Nemo157",
+            "githubUsername": "Nemo157"
+        },
+        {
+            "name": "Vesa Poikajärvi",
+            "url": "https://github.com/vesse",
+            "githubUsername": "vesse"
+        },
+        {
+            "name": "Eli Young",
+            "url": "https://github.com/elyscape",
+            "githubUsername": "elyscape"
+        },
+        {
+            "name": "Suntharesan Mohan",
+            "url": "https://github.com/msuntharesan",
+            "githubUsername": "msuntharesan"
+        },
+        {
+            "name": "Igor Strebezhev",
+            "url": "https://github.com/xamgore",
+            "githubUsername": "xamgore"
+        },
+        {
+            "name": "Peter Somogyvari",
+            "url": "https://github.com/petermetz",
+            "githubUsername": "petermetz"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/convict"
+    },
+    "scripts": {},
+    "dependencies": {
+        "@types/node": "*"
+    },
+    "typesPublisherContentHash": "0e67077e1f876880dccb15d3330edc81c6ef14dfaaa18f696d2be9ee5f29caa9",
+    "typeScriptVersion": "4.1"
+}

@@ -1,0 +1,1 @@
+{"version":3,"file":"azurePowerShellCredential-browser.d.mts","sourceRoot":"","sources":["../../../src/credentials/azurePowerShellCredential-browser.mts"],"names":[],"mappings":"AAGA,OAAO,KAAK,EAAE,WAAW,EAAE,eAAe,EAAE,MAAM,kBAAkB,CAAC;AAQrE;;GAEG;AACH,qBAAa,yBAA0B,YAAW,eAAe;IAC/D;;OAEG;;IAMH,QAAQ,IAAI,OAAO,CAAC,WAAW,GAAG,IAAI,CAAC;CAIxC"}

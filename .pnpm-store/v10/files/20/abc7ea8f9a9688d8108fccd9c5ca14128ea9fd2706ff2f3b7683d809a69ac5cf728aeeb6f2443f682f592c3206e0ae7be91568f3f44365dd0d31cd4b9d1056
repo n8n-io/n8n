@@ -1,0 +1,30 @@
+{
+  "name": "lodash-unified",
+  "version": "1.0.3",
+  "description": "A union entrypoint of lodash for both ESModule and Commonjs.",
+  "main": "./require.cjs",
+  "types": "./type.d.ts",
+  "exports": {
+    "import": {
+      "types": "./type.d.ts",
+      "default": "./import.js"
+    },
+    "require": {
+      "types": "./type.d.ts",
+      "default": "./require.cjs"
+    }
+  },
+  "type": "module",
+  "author": "Jack Works",
+  "license": "MIT",
+  "devDependencies": {
+    "lodash": "*",
+    "lodash-es": "*",
+    "@types/lodash-es": "*"
+  },
+  "peerDependencies": {
+    "lodash": "*",
+    "lodash-es": "*",
+    "@types/lodash-es": "*"
+  }
+}

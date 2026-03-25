@@ -1,0 +1,25 @@
+name: Tests on Windows
+on: [push, pull_request]
+jobs:
+  Tests:
+    strategy:
+      fail-fast: false
+      max-parallel: 15
+      matrix:
+        os: [windows-2022]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+      - name: Install Dependencies
+        run: |
+          npm install --no-progress
+      - name: Set Windows environment
+        if: matrix.os == 'windows-latest'
+        run: |
+          echo 'GYP_MSVS_VERSION=2015' >> $Env:GITHUB_ENV
+          echo 'GYP_MSVS_OVERRIDE_PATH=C:\\Dummy' >> $Env:GITHUB_ENV
+      - name: Environment Information
+        run: npx envinfo
+      - name: Run Node tests
+        run: npm test

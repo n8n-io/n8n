@@ -1,0 +1,4 @@
+
+    Y.mustache = Mustache.render;
+
+}, "0");

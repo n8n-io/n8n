@@ -1,0 +1,88 @@
+{
+  "name": "@vitest/browser",
+  "type": "module",
+  "version": "4.0.16",
+  "description": "Browser running for Vitest",
+  "license": "MIT",
+  "funding": "https://opencollective.com/vitest",
+  "homepage": "https://github.com/vitest-dev/vitest/tree/main/packages/browser#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vitest-dev/vitest.git",
+    "directory": "packages/browser"
+  },
+  "bugs": {
+    "url": "https://github.com/vitest-dev/vitest/issues"
+  },
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./context": {
+      "types": "./context.d.ts",
+      "default": "./context.js"
+    },
+    "./client": {
+      "default": "./dist/client.js"
+    },
+    "./matchers": {
+      "types": "./matchers.d.ts",
+      "default": "./dummy.js"
+    },
+    "./locators": {
+      "types": "./dist/locators.d.ts",
+      "default": "./dist/locators.js"
+    },
+    "./utils": {
+      "default": "./dummy.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "*.d.ts",
+    "context.js",
+    "dist",
+    "dummy.js",
+    "providers"
+  ],
+  "peerDependencies": {
+    "vitest": "4.0.16"
+  },
+  "dependencies": {
+    "magic-string": "^0.30.21",
+    "pixelmatch": "7.1.0",
+    "pngjs": "^7.0.0",
+    "sirv": "^3.0.2",
+    "tinyrainbow": "^3.0.3",
+    "ws": "^8.18.3",
+    "@vitest/mocker": "4.0.16",
+    "@vitest/utils": "4.0.16"
+  },
+  "devDependencies": {
+    "@testing-library/user-event": "^14.6.1",
+    "@types/pngjs": "^6.0.5",
+    "@types/ws": "^8.18.1",
+    "birpc": "^4.0.0",
+    "flatted": "^3.3.3",
+    "ivya": "^1.7.0",
+    "mime": "^4.1.0",
+    "pathe": "^2.0.3",
+    "@vitest/runner": "4.0.16",
+    "vitest": "4.0.16"
+  },
+  "scripts": {
+    "typecheck": "tsc -p ./src/client/tsconfig.json --noEmit",
+    "typecheck:why": "tsc -p ./src/client/tsconfig.json --noEmit --explainFiles > explainTypes.txt",
+    "build": "premove dist && pnpm build:node && pnpm build:client",
+    "build:client": "vite build src/client",
+    "build:node": "rollup -c",
+    "dev:client": "vite build src/client --watch",
+    "dev:node": "rollup -c --watch --watch.include 'src/**'",
+    "dev": "premove dist && pnpm run --stream '/^dev:/'"
+  }
+}

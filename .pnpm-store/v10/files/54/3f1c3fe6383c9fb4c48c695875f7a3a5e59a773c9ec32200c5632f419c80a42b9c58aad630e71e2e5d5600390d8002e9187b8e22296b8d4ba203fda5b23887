@@ -1,0 +1,68 @@
+{
+  "name": "@opentelemetry/instrumentation-koa",
+  "version": "0.58.0",
+  "description": "OpenTelemetry instrumentation for `koa` http web application framework",
+  "main": "build/src/index.js",
+  "types": "build/src/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/open-telemetry/opentelemetry-js-contrib.git",
+    "directory": "packages/instrumentation-koa"
+  },
+  "scripts": {
+    "clean": "rimraf build/*",
+    "compile": "tsc -p .",
+    "compile:with-dependencies": "nx run-many -t compile -p @opentelemetry/instrumentation-koa",
+    "lint:readme": "node ../../scripts/lint-readme.js",
+    "prepublishOnly": "npm run compile",
+    "tdd": "npm run test -- --watch-extensions ts --watch",
+    "test": "nyc --no-clean mocha 'test/**/*.ts'",
+    "test-all-versions": "tav",
+    "version:update": "node ../../scripts/version-update.js",
+    "watch": "tsc -w"
+  },
+  "keywords": [
+    "instrumentation",
+    "koa",
+    "nodejs",
+    "opentelemetry",
+    "plugin",
+    "profiling",
+    "tracing"
+  ],
+  "author": "OpenTelemetry Authors",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": "^18.19.0 || >=20.6.0"
+  },
+  "files": [
+    "build/src/**/*.js",
+    "build/src/**/*.js.map",
+    "build/src/**/*.d.ts"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "peerDependencies": {
+    "@opentelemetry/api": "^1.9.0"
+  },
+  "devDependencies": {
+    "@koa/router": "14.0.0",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/context-async-hooks": "^2.0.0",
+    "@opentelemetry/contrib-test-utils": "^0.57.0",
+    "@opentelemetry/instrumentation-http": "^0.210.0",
+    "@opentelemetry/sdk-trace-base": "^2.0.0",
+    "@opentelemetry/sdk-trace-node": "^2.0.0",
+    "@types/koa": "3.0.1",
+    "@types/koa__router": "12.0.5",
+    "koa": "3.0.3"
+  },
+  "dependencies": {
+    "@opentelemetry/core": "^2.0.0",
+    "@opentelemetry/instrumentation": "^0.210.0",
+    "@opentelemetry/semantic-conventions": "^1.36.0"
+  },
+  "homepage": "https://github.com/open-telemetry/opentelemetry-js-contrib/tree/main/packages/instrumentation-koa#readme",
+  "gitHead": "c84212cca7f010b80747cccb9942474e0459df6e"
+}

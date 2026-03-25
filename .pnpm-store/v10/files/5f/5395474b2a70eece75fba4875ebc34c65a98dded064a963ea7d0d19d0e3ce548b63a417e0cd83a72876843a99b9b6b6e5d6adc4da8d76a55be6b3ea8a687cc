@@ -1,0 +1,135 @@
+{
+  "name": "@smithy/core",
+  "version": "3.18.5",
+  "scripts": {
+    "build": "yarn lint && concurrently 'yarn:build:cjs' 'yarn:build:es' 'yarn:build:types && yarn build:types:downlevel'",
+    "build:cjs": "node ../../scripts/inline core",
+    "build:es": "yarn g:tsc -p tsconfig.es.json",
+    "build:types": "yarn g:tsc -p tsconfig.types.json",
+    "build:types:downlevel": "rimraf dist-types/ts3.4 && downlevel-dts dist-types dist-types/ts3.4",
+    "stage-release": "rimraf ./.release && yarn pack && mkdir ./.release && tar zxvf ./package.tgz --directory ./.release && rm ./package.tgz",
+    "clean": "rimraf ./dist-* && rimraf *.tsbuildinfo || exit 0",
+    "lint": "npx eslint -c ../../.eslintrc.js \"src/**/*.ts\" --fix && node ./scripts/lint",
+    "format": "prettier --config ../../prettier.config.js --ignore-path ../../.prettierignore --write \"**/*.{ts,md,json}\"",
+    "extract:docs": "api-extractor run --local",
+    "test:cbor:perf": "node ./scripts/cbor-perf.mjs",
+    "test": "yarn g:vitest run",
+    "test:watch": "yarn g:vitest watch"
+  },
+  "main": "./dist-cjs/index.js",
+  "module": "./dist-es/index.js",
+  "types": "./dist-types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist-types/index.d.ts",
+      "module": "./dist-es/index.js",
+      "node": "./dist-cjs/index.js",
+      "import": "./dist-es/index.js",
+      "require": "./dist-cjs/index.js"
+    },
+    "./package.json": {
+      "module": "./package.json",
+      "node": "./package.json",
+      "import": "./package.json",
+      "require": "./package.json"
+    },
+    "./cbor": {
+      "types": "./dist-types/submodules/cbor/index.d.ts",
+      "module": "./dist-es/submodules/cbor/index.js",
+      "node": "./dist-cjs/submodules/cbor/index.js",
+      "import": "./dist-es/submodules/cbor/index.js",
+      "require": "./dist-cjs/submodules/cbor/index.js"
+    },
+    "./protocols": {
+      "types": "./dist-types/submodules/protocols/index.d.ts",
+      "module": "./dist-es/submodules/protocols/index.js",
+      "node": "./dist-cjs/submodules/protocols/index.js",
+      "import": "./dist-es/submodules/protocols/index.js",
+      "require": "./dist-cjs/submodules/protocols/index.js"
+    },
+    "./serde": {
+      "types": "./dist-types/submodules/serde/index.d.ts",
+      "module": "./dist-es/submodules/serde/index.js",
+      "node": "./dist-cjs/submodules/serde/index.js",
+      "import": "./dist-es/submodules/serde/index.js",
+      "require": "./dist-cjs/submodules/serde/index.js"
+    },
+    "./schema": {
+      "types": "./dist-types/submodules/schema/index.d.ts",
+      "module": "./dist-es/submodules/schema/index.js",
+      "node": "./dist-cjs/submodules/schema/index.js",
+      "import": "./dist-es/submodules/schema/index.js",
+      "require": "./dist-cjs/submodules/schema/index.js"
+    },
+    "./event-streams": {
+      "types": "./dist-types/submodules/event-streams/index.d.ts",
+      "module": "./dist-es/submodules/event-streams/index.js",
+      "node": "./dist-cjs/submodules/event-streams/index.js",
+      "import": "./dist-es/submodules/event-streams/index.js",
+      "require": "./dist-cjs/submodules/event-streams/index.js"
+    }
+  },
+  "author": {
+    "name": "AWS Smithy Team",
+    "email": "",
+    "url": "https://smithy.io"
+  },
+  "license": "Apache-2.0",
+  "sideEffects": false,
+  "dependencies": {
+    "@smithy/middleware-serde": "^4.2.6",
+    "@smithy/protocol-http": "^5.3.5",
+    "@smithy/types": "^4.9.0",
+    "@smithy/util-base64": "^4.3.0",
+    "@smithy/util-body-length-browser": "^4.2.0",
+    "@smithy/util-middleware": "^4.2.5",
+    "@smithy/util-stream": "^4.5.6",
+    "@smithy/util-utf8": "^4.2.0",
+    "@smithy/uuid": "^1.1.0",
+    "tslib": "^2.6.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "typesVersions": {
+    "<4.0": {
+      "dist-types/*": [
+        "dist-types/ts3.4/*"
+      ]
+    }
+  },
+  "files": [
+    "./cbor.d.ts",
+    "./cbor.js",
+    "./event-streams.d.ts",
+    "./event-streams.js",
+    "./protocols.d.ts",
+    "./protocols.js",
+    "./schema.d.ts",
+    "./schema.js",
+    "./serde.d.ts",
+    "./serde.js",
+    "dist-*/**"
+  ],
+  "homepage": "https://github.com/smithy-lang/smithy-typescript/tree/main/packages/core",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/smithy-lang/smithy-typescript.git",
+    "directory": "packages/core"
+  },
+  "devDependencies": {
+    "@smithy/eventstream-serde-node": "^4.2.5",
+    "@types/node": "^18.11.9",
+    "concurrently": "7.0.0",
+    "downlevel-dts": "0.10.1",
+    "json-bigint": "^1.0.0",
+    "rimraf": "3.0.2",
+    "typedoc": "0.23.23"
+  },
+  "typedoc": {
+    "entryPoint": "src/index.ts"
+  },
+  "publishConfig": {
+    "directory": ".release/package"
+  }
+}

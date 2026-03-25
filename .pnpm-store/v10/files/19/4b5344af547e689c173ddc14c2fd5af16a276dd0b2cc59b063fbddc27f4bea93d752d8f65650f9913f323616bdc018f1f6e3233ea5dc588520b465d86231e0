@@ -1,0 +1,24 @@
+{
+    "name": "lop",
+    "version": "0.4.2",
+    "author": "Michael Williamson <mike@zwobble.org>",
+    "description": "Create parsers using parser combinators with helpful error messages",
+    "keywords": [
+        "parse",
+        "parser",
+        "combinator"
+    ],
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/mwilliamson/lop.git"
+    },
+    "dependencies": {
+        "duck": "^0.1.12",
+        "option": "~0.2.1",
+        "underscore": "^1.13.1"
+    },
+    "devDependencies": {
+        "nodeunit": "~0.8.0"
+    },
+    "license": "BSD-2-Clause"
+}

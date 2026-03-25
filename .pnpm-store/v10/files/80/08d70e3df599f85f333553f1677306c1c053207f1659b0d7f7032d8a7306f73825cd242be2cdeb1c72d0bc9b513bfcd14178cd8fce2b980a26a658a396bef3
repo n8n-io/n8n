@@ -1,0 +1,35 @@
+{
+  "name": "postgres-array",
+  "main": "index.js",
+  "version": "2.0.0",
+  "description": "Parse postgres array columns",
+  "license": "MIT",
+  "repository": "bendrucker/postgres-array",
+  "author": {
+    "name": "Ben Drucker",
+    "email": "bvdrucker@gmail.com",
+    "url": "bendrucker.me"
+  },
+  "engines": {
+    "node": ">=4"
+  },
+  "scripts": {
+    "test": "standard && tape test.js"
+  },
+  "types": "index.d.ts",
+  "keywords": [
+    "postgres",
+    "array",
+    "parser"
+  ],
+  "dependencies": {},
+  "devDependencies": {
+    "standard": "^12.0.1",
+    "tape": "^4.0.0"
+  },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "readme.md"
+  ]
+}

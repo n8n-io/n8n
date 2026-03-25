@@ -1,0 +1,1 @@
+{"version":3,"file":"DoubleValue.js","sourceRoot":"","sources":["../../../../../src/generated/google/protobuf/DoubleValue.ts"],"names":[],"mappings":";AAAA,sBAAsB"}

@@ -1,0 +1,1 @@
+{"version":3,"file":"UnavailableCriticalExtensionError.js","sourceRoot":"./","sources":["errors/resultCodeErrors/UnavailableCriticalExtensionError.ts"],"names":[],"mappings":";;;AAAA,uDAAoD;AAEpD,MAAa,iCAAkC,SAAQ,iCAAe;IACpE,YAAmB,OAAgB;QACjC,KAAK,CACH,EAAE,EACF,OAAO,IAAI,iLAAiL,CAC7L,CAAC;IACJ,CAAC;CACF;AAPD,8EAOC"}

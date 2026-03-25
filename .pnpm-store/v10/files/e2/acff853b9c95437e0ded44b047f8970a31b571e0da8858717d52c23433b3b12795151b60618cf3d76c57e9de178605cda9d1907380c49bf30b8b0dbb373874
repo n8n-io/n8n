@@ -1,0 +1,39 @@
+{
+  "name": "load-tsconfig",
+  "version": "0.2.5",
+  "description": "Load tsconfig.json",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "default": "./dist/index.cjs"
+    }
+  },
+  "scripts": {
+    "build-fast": "tsup src/index.ts --format esm,cjs --target node12.20.0",
+    "build": "pnpm build-fast --dts-resolve",
+    "test": "npm run build-fast && vitest run",
+    "prepublishOnly": "pnpm build"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@egoist/prettier-config": "1.0.0",
+    "@types/node": "18.15.3",
+    "kanpai": "0.11.0",
+    "prettier": "2.8.4",
+    "strip-json-comments": "5.0.0",
+    "tsup": "6.6.3",
+    "typescript": "5.0.2",
+    "vitest": "0.29.3"
+  },
+  "engines": {
+    "node": "^12.20.0 || ^14.13.1 || >=16.0.0"
+  }
+}

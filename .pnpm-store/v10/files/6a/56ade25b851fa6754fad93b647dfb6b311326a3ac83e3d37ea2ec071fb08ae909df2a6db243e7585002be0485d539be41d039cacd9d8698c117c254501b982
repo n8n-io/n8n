@@ -1,0 +1,1 @@
+{"version":3,"file":"StorageSharedKeyCredential.browser.js","sourceRoot":"","sources":["../../../../src/credentials/StorageSharedKeyCredential.browser.ts"],"names":[],"mappings":"AAAA,uCAAuC;AACvC,kCAAkC;AAElC,MAAM,OAAO,0BAA0B;CAAG","sourcesContent":["// Copyright (c) Microsoft Corporation.\n// Licensed under the MIT License.\n\nexport class StorageSharedKeyCredential {}\n"]}

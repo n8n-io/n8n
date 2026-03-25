@@ -1,0 +1,101 @@
+{
+  "name": "@azure/core-tracing",
+  "version": "1.0.1",
+  "description": "Provides low-level interfaces and helper methods for tracing in Azure SDK",
+  "sdk-type": "client",
+  "main": "dist/index.js",
+  "module": "dist-esm/src/index.js",
+  "browser": {},
+  "react-native": {
+    "./dist/index.js": "./dist-esm/src/index.js"
+  },
+  "types": "types/core-tracing.d.ts",
+  "scripts": {
+    "audit": "node ../../../common/scripts/rush-audit.js && rimraf node_modules package-lock.json && npm i --package-lock-only 2>&1 && npm audit",
+    "build:samples": "echo Obsolete",
+    "build:test": "tsc -p . && dev-tool run bundle",
+    "build": "npm run clean && tsc -p . && dev-tool run bundle && api-extractor run --local",
+    "check-format": "prettier --list-different --config ../../../.prettierrc.json --ignore-path ../../../.prettierignore \"src/**/*.ts\" \"test/**/*.ts\" \"*.{js,json}\"",
+    "clean": "rimraf dist dist-* temp types *.tgz *.log",
+    "execute:samples": "echo skipped",
+    "extract-api": "tsc -p . && api-extractor run --local",
+    "format": "prettier --write --config ../../../.prettierrc.json --ignore-path ../../../.prettierignore \"src/**/*.ts\" \"test/**/*.ts\" \"samples-dev/**/*.ts\" \"*.{js,json}\"",
+    "integration-test:browser": "echo skipped",
+    "integration-test:node": "echo skipped",
+    "integration-test": "npm run integration-test:node && npm run integration-test:browser",
+    "lint:fix": "eslint package.json api-extractor.json src test --ext .ts --fix --fix-type [problem,suggestion]",
+    "lint": "eslint package.json api-extractor.json src test --ext .ts",
+    "pack": "npm pack 2>&1",
+    "test:browser": "npm run clean && npm run build:test && npm run unit-test:browser && npm run integration-test:browser",
+    "test:node": "npm run clean && tsc -p . && npm run unit-test:node && npm run integration-test:node",
+    "test": "npm run clean && tsc -p . && npm run unit-test:node && dev-tool run bundle && npm run unit-test:browser && npm run integration-test",
+    "unit-test:browser": "karma start --single-run",
+    "unit-test:node": "mocha -r esm -r ts-node/register --reporter ../../../common/tools/mocha-multi-reporter.js --timeout 1200000 --full-trace  --exclude \"test/**/browser/*.spec.ts\" \"test/**/*.spec.ts\"",
+    "unit-test": "npm run unit-test:node && npm run unit-test:browser"
+  },
+  "files": [
+    "dist/",
+    "dist-esm/src/",
+    "types/core-tracing.d.ts",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": "github:Azure/azure-sdk-for-js",
+  "keywords": [
+    "azure",
+    "tracing",
+    "cloud"
+  ],
+  "author": "Microsoft Corporation",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Azure/azure-sdk-for-js/issues"
+  },
+  "engines": {
+    "node": ">=12.0.0"
+  },
+  "homepage": "https://github.com/Azure/azure-sdk-for-js/blob/main/sdk/core/core-tracing/README.md",
+  "sideEffects": false,
+  "dependencies": {
+    "tslib": "^2.2.0"
+  },
+  "devDependencies": {
+    "@azure/core-auth": "^1.3.0",
+    "@azure/dev-tool": "^1.0.0",
+    "@azure/eslint-plugin-azure-sdk": "^3.0.0",
+    "@microsoft/api-extractor": "7.18.11",
+    "@types/chai": "^4.1.6",
+    "@types/mocha": "^7.0.2",
+    "@types/node": "^12.0.0",
+    "chai": "^4.2.0",
+    "cross-env": "^7.0.2",
+    "eslint": "^7.15.0",
+    "inherits": "^2.0.3",
+    "karma": "^6.2.0",
+    "karma-chrome-launcher": "^3.0.0",
+    "karma-coverage": "^2.0.0",
+    "karma-edge-launcher": "^0.4.2",
+    "karma-env-preprocessor": "^0.1.1",
+    "karma-firefox-launcher": "^1.1.0",
+    "karma-ie-launcher": "^1.0.0",
+    "karma-junit-reporter": "^2.0.1",
+    "karma-mocha": "^2.0.1",
+    "karma-mocha-reporter": "^2.2.5",
+    "karma-sourcemap-loader": "^0.3.8",
+    "mocha": "^7.1.1",
+    "mocha-junit-reporter": "^2.0.0",
+    "prettier": "^2.5.1",
+    "rimraf": "^3.0.0",
+    "typescript": "~4.6.0",
+    "util": "^0.12.1",
+    "sinon": "^9.0.2",
+    "@types/sinon": "^9.0.4"
+  },
+  "//sampleConfiguration": {
+    "disableDocsMs": true,
+    "productName": "Azure SDK Core",
+    "productSlugs": [
+      "azure"
+    ]
+  }
+}

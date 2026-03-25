@@ -1,0 +1,113 @@
+@use '../mixins/mixins' as *;
+@use '../common/var' as *;
+@use '../mixins/var' as *;
+
+@include b(date-range-picker) {
+  @include set-component-css-var('datepicker', $datepicker);
+}
+
+@include b(date-range-picker) {
+  width: 646px;
+
+  &.has-sidebar {
+    width: 756px;
+  }
+
+  &.has-time .#{$namespace}-picker-panel__body-wrapper {
+    position: relative;
+  }
+
+  table {
+    table-layout: fixed;
+    width: 100%;
+  }
+
+  .#{$namespace}-picker-panel__body {
+    min-width: 513px;
+  }
+
+  .#{$namespace}-picker-panel__content {
+    margin: 0;
+  }
+
+  @include e(header) {
+    position: relative;
+    text-align: center;
+    height: 28px;
+
+    [class*='arrow-left'] {
+      float: left;
+    }
+
+    [class*='arrow-right'] {
+      float: right;
+    }
+
+    div {
+      font-size: 16px;
+      font-weight: 500;
+      margin-right: 50px;
+    }
+  }
+
+  @include e(content) {
+    float: left;
+    width: 50%;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 16px;
+
+    @include when(left) {
+      border-right: 1px solid getCssVar('datepicker-inner-border-color');
+    }
+    .#{$namespace}-date-range-picker__header {
+      div {
+        margin-left: 50px;
+        margin-right: 50px;
+      }
+    }
+  }
+
+  @include e(editors-wrap) {
+    box-sizing: border-box;
+    display: table-cell;
+
+    @include when(right) {
+      text-align: right;
+    }
+  }
+
+  @include e(time-header) {
+    position: relative;
+    border-bottom: 1px solid getCssVar('datepicker-inner-border-color');
+    font-size: 12px;
+    padding: 8px 5px 5px 5px;
+    display: table;
+    width: 100%;
+    box-sizing: border-box;
+
+    > .#{$namespace}-icon-arrow-right {
+      font-size: 20px;
+      vertical-align: middle;
+      display: table-cell;
+      color: getCssVar('datepicker-icon-color');
+    }
+  }
+
+  @include e(time-picker-wrap) {
+    position: relative;
+    display: table-cell;
+    padding: 0 5px;
+
+    .#{$namespace}-picker-panel {
+      position: absolute;
+      top: 13px;
+      right: 0;
+      z-index: 1;
+      background: $color-white;
+    }
+    .#{$namespace}-time-panel {
+      position: absolute;
+    }
+  }
+}

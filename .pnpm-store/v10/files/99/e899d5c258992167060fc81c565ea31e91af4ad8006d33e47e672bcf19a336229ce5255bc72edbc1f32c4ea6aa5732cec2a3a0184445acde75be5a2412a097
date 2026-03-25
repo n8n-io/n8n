@@ -1,0 +1,74 @@
+{
+  "name": "jest",
+  "description": "Delightful JavaScript Testing.",
+  "version": "29.6.2",
+  "main": "./build/index.js",
+  "types": "./build/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./build/index.d.ts",
+      "default": "./build/index.js"
+    },
+    "./package.json": "./package.json",
+    "./bin/jest": "./bin/jest.js"
+  },
+  "dependencies": {
+    "@jest/core": "^29.6.2",
+    "@jest/types": "^29.6.1",
+    "import-local": "^3.0.2",
+    "jest-cli": "^29.6.2"
+  },
+  "devDependencies": {
+    "@tsd/typescript": "^5.0.4",
+    "tsd-lite": "^0.7.0"
+  },
+  "peerDependencies": {
+    "node-notifier": "^8.0.1 || ^9.0.0 || ^10.0.0"
+  },
+  "peerDependenciesMeta": {
+    "node-notifier": {
+      "optional": true
+    }
+  },
+  "bin": "./bin/jest.js",
+  "engines": {
+    "node": "^14.15.0 || ^16.10.0 || >=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/facebook/jest.git",
+    "directory": "packages/jest"
+  },
+  "homepage": "https://jestjs.io/",
+  "license": "MIT",
+  "keywords": [
+    "ava",
+    "babel",
+    "coverage",
+    "easy",
+    "expect",
+    "facebook",
+    "immersive",
+    "instant",
+    "jasmine",
+    "jest",
+    "jsdom",
+    "mocha",
+    "mocking",
+    "painless",
+    "qunit",
+    "runner",
+    "sandboxed",
+    "snapshot",
+    "tap",
+    "tape",
+    "test",
+    "testing",
+    "typescript",
+    "watch"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "gitHead": "0fd5b1c37555f485c56a6ad2d6b010a72204f9f6"
+}

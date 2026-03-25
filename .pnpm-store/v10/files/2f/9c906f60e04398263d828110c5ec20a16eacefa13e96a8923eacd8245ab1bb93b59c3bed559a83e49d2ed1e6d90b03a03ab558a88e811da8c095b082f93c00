@@ -1,0 +1,31 @@
+{
+  "name": "thenify",
+  "description": "Promisify a callback-based function",
+  "version": "3.3.1",
+  "author": "Jonathan Ong <me@jongleberry.com> (http://jongleberry.com)",
+  "license": "MIT",
+  "repository": "thenables/thenify",
+  "dependencies": {
+    "any-promise": "^1.0.0"
+  },
+  "devDependencies": {
+    "bluebird": "^3.1.1",
+    "istanbul": "^0.4.0",
+    "mocha": "^3.0.2"
+  },
+  "scripts": {
+    "test": "mocha --reporter spec",
+    "test-cov": "istanbul cover node_modules/mocha/bin/_mocha -- --reporter dot",
+    "test-travis": "istanbul cover node_modules/mocha/bin/_mocha --report lcovonly -- --reporter dot"
+  },
+  "keywords": [
+    "promisify",
+    "promise",
+    "thenify",
+    "then",
+    "es6"
+  ],
+  "files": [
+    "index.js"
+  ]
+}

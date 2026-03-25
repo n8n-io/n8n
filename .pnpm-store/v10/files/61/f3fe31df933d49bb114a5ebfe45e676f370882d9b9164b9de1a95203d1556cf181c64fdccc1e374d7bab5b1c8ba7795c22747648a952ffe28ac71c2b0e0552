@@ -1,0 +1,65 @@
+{
+  "name": "@sinonjs/fake-timers",
+  "description": "Fake JavaScript timers",
+  "version": "10.3.0",
+  "homepage": "https://github.com/sinonjs/fake-timers",
+  "author": "Christian Johansen",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sinonjs/fake-timers.git"
+  },
+  "bugs": {
+    "mail": "christian@cjohansen.no",
+    "url": "https://github.com/sinonjs/fake-timers/issues"
+  },
+  "license": "BSD-3-Clause",
+  "scripts": {
+    "lint": "eslint .",
+    "test-node": "mocha --timeout 200 test/ integration-test/ -R dot --check-leaks",
+    "test-headless": "mochify --no-detect-globals --timeout=10000",
+    "test-check-coverage": "npm run test-coverage && nyc check-coverage",
+    "test-cloud": "mochify --wd --no-detect-globals --timeout=10000",
+    "test-coverage": "nyc --all --reporter text --reporter html --reporter lcovonly npm run test-node",
+    "test": "npm run test-node && npm run test-headless",
+    "prettier:check": "prettier --check '**/*.{js,css,md}'",
+    "prettier:write": "prettier --write '**/*.{js,css,md}'",
+    "preversion": "./scripts/preversion.sh",
+    "version": "./scripts/version.sh",
+    "postversion": "./scripts/postversion.sh",
+    "prepare": "husky install"
+  },
+  "lint-staged": {
+    "*.{js,css,md}": "prettier --check",
+    "*.js": "eslint"
+  },
+  "files": [
+    "src/"
+  ],
+  "devDependencies": {
+    "@sinonjs/eslint-config": "^4.1.0",
+    "@sinonjs/referee-sinon": "11.0.0",
+    "husky": "^8.0.3",
+    "jsdom": "22.0.0",
+    "lint-staged": "13.2.2",
+    "mocha": "10.2.0",
+    "mochify": "9.2.0",
+    "nyc": "15.1.0",
+    "prettier": "2.8.8"
+  },
+  "main": "./src/fake-timers-src.js",
+  "dependencies": {
+    "@sinonjs/commons": "^3.0.0"
+  },
+  "nyc": {
+    "branches": 85,
+    "lines": 92,
+    "functions": 92,
+    "statements": 92,
+    "exclude": [
+      "**/*-test.js",
+      "coverage/**",
+      "types/**",
+      "fake-timers.js"
+    ]
+  }
+}

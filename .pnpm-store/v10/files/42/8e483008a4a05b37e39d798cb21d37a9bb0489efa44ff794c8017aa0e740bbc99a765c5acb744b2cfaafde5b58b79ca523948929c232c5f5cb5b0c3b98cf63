@@ -1,0 +1,37 @@
+{
+  "name": "pug-filters",
+  "version": "4.0.0",
+  "description": "Code for processing filters in pug templates",
+  "keywords": [
+    "pug"
+  ],
+  "dependencies": {
+    "constantinople": "^4.0.1",
+    "jstransformer": "1.0.0",
+    "pug-error": "^2.0.0",
+    "pug-walk": "^2.0.0",
+    "resolve": "^1.15.1"
+  },
+  "devDependencies": {
+    "jstransformer-cdata": "^1.0.0",
+    "jstransformer-coffee-script": "^1.1.1",
+    "jstransformer-less": "^2.3.0",
+    "jstransformer-markdown-it": "^2.0.0",
+    "jstransformer-stylus": "^1.5.0",
+    "jstransformer-uglify-js": "^1.2.0",
+    "pug-lexer": "^5.0.0",
+    "pug-load": "^3.0.0",
+    "pug-parser": "^6.0.0"
+  },
+  "files": [
+    "lib/handle-filters.js",
+    "lib/run-filter.js",
+    "index.js"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pugjs/pug/tree/master/packages/pug-filters"
+  },
+  "author": "Forbes Lindesay",
+  "license": "MIT"
+}

@@ -1,0 +1,21 @@
+0.1.3 - 2021-11-30
+
+  - call Function lazily to avoid triggering CSP
+
+0.1.2 - 2018-04-23
+
+  - Use indirect eval to get reference to global environment
+
+
+0.1.1 - 2018-04-03
+
+  - createproxy with function type no longer has .prototype field
+  - No longer attach Symbol to built-in prototypes.
+  - If no __pairs Symbol is present then return iterator over Object.keys
+  - If no __len Symbol is present then return .length.
+
+
+0.1.0 - 2018-04-01
+
+  - Lua <=> JavaScript bridge for Fengari
+  - All types of data can be passed either way with no memory leaks

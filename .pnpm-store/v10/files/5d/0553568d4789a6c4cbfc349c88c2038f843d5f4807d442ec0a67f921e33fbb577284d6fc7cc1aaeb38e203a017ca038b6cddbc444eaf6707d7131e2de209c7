@@ -1,0 +1,21 @@
+{
+  "name": "@sentry/cli-linux-x64",
+  "version": "2.55.0",
+  "description": "The linux x64 distribution of the Sentry CLI binary.",
+  "repository": "https://github.com/getsentry/sentry-cli",
+  "license": "BSD-3-Clause",
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=10"
+  },
+  "os": [
+    "linux",
+    "freebsd",
+    "android"
+  ],
+  "cpu": [
+    "x64"
+  ]
+}

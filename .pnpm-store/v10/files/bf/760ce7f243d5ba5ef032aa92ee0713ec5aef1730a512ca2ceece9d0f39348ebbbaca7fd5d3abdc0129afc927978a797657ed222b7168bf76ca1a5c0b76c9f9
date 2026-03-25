@@ -1,0 +1,45 @@
+{
+  "name": "compare-versions",
+  "version": "6.1.1",
+  "description": "Compare semver version strings to find greater, equal or lesser.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/omichelsen/compare-versions.git"
+  },
+  "author": "Ole Michelsen",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/omichelsen/compare-versions/issues"
+  },
+  "homepage": "https://github.com/omichelsen/compare-versions#readme",
+  "keywords": [
+    "semver",
+    "version",
+    "compare",
+    "browser",
+    "node"
+  ],
+  "scripts": {
+    "build": "npm run build:esm && npm run build:umd",
+    "build:esm": "tsc --module esnext --target es2017 --outDir lib/esm",
+    "build:umd": "rollup lib/esm/index.js --format umd --name compareVersions --sourcemap -o lib/umd/index.js",
+    "prepublishOnly": "npm run build",
+    "test": "c8 --reporter=lcov mocha"
+  },
+  "main": "./lib/umd/index.js",
+  "module": "./lib/esm/index.js",
+  "types": "./lib/esm/index.d.ts",
+  "sideEffects": false,
+  "files": [
+    "lib",
+    "src"
+  ],
+  "devDependencies": {
+    "@types/mocha": "^10.0.7",
+    "c8": "^10.1.2",
+    "mocha": "^10.6.0",
+    "rollup": "^4.18.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.3"
+  }
+}

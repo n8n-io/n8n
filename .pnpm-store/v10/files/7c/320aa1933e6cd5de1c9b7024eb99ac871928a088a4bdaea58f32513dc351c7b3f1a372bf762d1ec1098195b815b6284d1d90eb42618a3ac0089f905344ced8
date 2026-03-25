@@ -1,0 +1,25 @@
+{
+  "name": "node-domexception",
+  "version": "1.0.0",
+  "description": "An implementation of the DOMException class from NodeJS",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jimmywarting/node-domexception.git"
+  },
+  "engines": {
+    "node": ">=10.5.0"
+  },
+  "author": "Jimmy Wärting",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/jimmywarting/node-domexception/issues"
+  },
+  "homepage": "https://github.com/jimmywarting/node-domexception#readme",
+  "funding": [
+    {
+      "type": "github",
+      "url": "https://github.com/sponsors/jimmywarting"
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+    "name": "@types/psl",
+    "version": "1.1.0",
+    "description": "TypeScript definitions for psl",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "BendingBender",
+            "url": "https://github.com/BendingBender",
+            "githubUsername": "BendingBender"
+        }
+    ],
+    "main": "",
+    "types": "index",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git"
+    },
+    "scripts": {},
+    "dependencies": {},
+    "typesPublisherContentHash": "e6f85a1dd784cf650ff0f32258a4d74d6e85488f40089fe23a1cbcc1f0ae77ae",
+    "typeScriptVersion": "2.1"
+}

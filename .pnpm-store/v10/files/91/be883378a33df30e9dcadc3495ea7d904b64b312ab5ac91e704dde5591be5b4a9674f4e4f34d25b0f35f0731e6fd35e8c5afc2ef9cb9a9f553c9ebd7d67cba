@@ -1,0 +1,1 @@
+module.exports = require("../dist/embeddings/huggingface_transformers.cjs");

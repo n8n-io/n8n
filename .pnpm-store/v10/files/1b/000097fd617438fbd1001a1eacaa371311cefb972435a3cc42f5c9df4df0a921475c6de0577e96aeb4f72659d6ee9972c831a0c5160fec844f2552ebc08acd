@@ -1,0 +1,96 @@
+{
+  "name": "@sec-ant/readable-stream",
+  "description": "A tiny, zero-dependency yet spec-compliant asynchronous iterator polyfill/ponyfill for ReadableStreams.",
+  "private": false,
+  "version": "0.4.1",
+  "type": "module",
+  "files": ["./dist"],
+  "main": "./dist/index/index.js",
+  "module": "./dist/index/index.js",
+  "exports": {
+    ".": "./dist/index/index.js",
+    "./asyncIterator": "./dist/index/asyncIterator.js",
+    "./fromAnyIterable": "./dist/index/fromAnyIterable.js",
+    "./ponyfill": "./dist/ponyfill/index.js",
+    "./ponyfill/asyncIterator": "./dist/ponyfill/asyncIterator.js",
+    "./ponyfill/fromAnyIterable": "./dist/ponyfill/fromAnyIterable.js",
+    "./polyfill": "./dist/polyfill/index.js",
+    "./polyfill/asyncIterator": "./dist/polyfill/asyncIterator.js",
+    "./polyfill/fromAnyIterable": "./dist/polyfill/fromAnyIterable.js",
+    "./async-iterator": {
+      "types": "./dist/types/async-iterator.d.ts"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Sec-ant/readable-stream.git"
+  },
+  "homepage": "https://github.com/Sec-ant/readable-stream",
+  "bugs": {
+    "url": "https://github.com/Sec-ant/readable-stream/issues",
+    "email": "zezhengwu@proton.me"
+  },
+  "keywords": [
+    "stream",
+    "web-streams",
+    "readablestream",
+    "async",
+    "asynchronous",
+    "iterator",
+    "iteration",
+    "async-iterator",
+    "polyfill",
+    "esm",
+    "from-iterable"
+  ],
+  "author": {
+    "name": "Ze-Zheng Wu"
+  },
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "install:ci": "npm ci && npx playwright install --with-deps",
+    "install:codesandbox": "npm ci && ./scripts/prepare.sh",
+    "update-hooks": "simple-git-hooks",
+    "changeset": "changeset",
+    "bump": "changeset version 2>/dev/null | grep . && npm i; exit 0",
+    "type-check": "tsc --noEmit --emitDeclarationOnly false",
+    "format:prettier": "prettier . --write",
+    "format:biome": "biome format . --write",
+    "format": "conc \"npm:format:prettier\" \"npm:format:biome\"",
+    "check:biome": "biome check --apply .",
+    "check": "conc \"npm:format:prettier\" \"npm:check:biome\"",
+    "prebuild": "npm run check && npm run type-check",
+    "build": "vite build",
+    "copy": "copy-files-from-to",
+    "postbuild": "tsc && npm run copy",
+    "test:chromium": "vitest run --browser.name=chromium",
+    "test:firefox": "vitest run --browser.name=firefox",
+    "test": "npm run test:chromium && npm run test:firefox",
+    "test:coverage": "vitest run --coverage",
+    "test:ui": "vitest --ui --coverage",
+    "prepublishOnly": "npm run build",
+    "bump-biome:latest": "npm i -DE @biomejs/biome@latest",
+    "bump-biome:nightly": "npm i -DE @biomejs/biome@nightly"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "1.6.1",
+    "@changesets/cli": "^2.27.1",
+    "@commitlint/cli": "^19.1.0",
+    "@commitlint/config-conventional": "^19.1.0",
+    "@vitest/browser": "^1.3.1",
+    "@vitest/coverage-istanbul": "^1.3.1",
+    "@vitest/ui": "^1.3.1",
+    "concurrently": "^8.2.2",
+    "copy-files-from-to": "^3.9.1",
+    "lint-staged": "^15.2.2",
+    "playwright": "^1.42.1",
+    "prettier": "^3.2.5",
+    "simple-git-hooks": "^2.10.0",
+    "typescript": "^5.4.2",
+    "vite": "^5.1.6",
+    "vitest": "^1.3.1"
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "name": "@authenio/xml-encryption",
+  "version": "2.0.2",
+  "devDependencies": {
+    "mocha": "^7.1.2",
+    "should": "^11.2.1",
+    "sinon": "^9.0.2"
+  },
+  "main": "./lib",
+  "repository": "https://github.com/auth0/node-xml-encryption",
+  "keywords": [
+    "xml",
+    "encryption",
+    "xmlenc"
+  ],
+  "author": "Matias Woloski (Auth0)",
+  "contributors": [
+    "Jose F. Romaniello <jfromaniello@gmail.com> (http://joseoncode.com)",
+    "Tommi Pisto <tommi@pistogroup.com> (http://pasm.pis.to)"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@xmldom/xmldom": "^0.8.6",
+    "escape-html": "^1.0.3",
+    "xpath": "0.0.32"
+  },
+  "files": [
+    "lib",
+    "package-lock.json"
+  ],
+  "scripts": {
+    "test": "mocha"
+  },
+  "engines": {
+    "node": ">=12"
+  }
+}

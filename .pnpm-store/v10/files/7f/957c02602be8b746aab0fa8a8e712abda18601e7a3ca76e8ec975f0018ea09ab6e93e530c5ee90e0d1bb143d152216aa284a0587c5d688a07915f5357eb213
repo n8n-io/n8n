@@ -1,0 +1,89 @@
+{
+  "name": "mock-socket",
+  "description": "Javascript mocking library for websockets and socket.io",
+  "version": "9.3.1",
+  "license": "MIT",
+  "author": "Travis Hoover",
+  "main": "./dist/mock-socket",
+  "directories": {
+    "test": "tests"
+  },
+  "engines": {
+    "node": ">= 8"
+  },
+  "scripts": {
+    "build": "rm -rf dist && rollup -c rollup.config.js",
+    "lint": "eslint src tests",
+    "prepublishOnly": "yarn build",
+    "test": "ava --serial --verbose"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/thoov/mock-socket.git"
+  },
+  "keywords": [
+    "websockets",
+    "mock",
+    "mocksocket",
+    "sockets"
+  ],
+  "bugs": {
+    "url": "https://github.com/thoov/mock-socket/issues"
+  },
+  "homepage": "https://github.com/thoov/mock-socket",
+  "dependencies": {
+  },
+  "devDependencies": {
+    "ava": "^0.19.1",
+    "babel-core": "^6.24.1",
+    "babel-loader": "^7.0.0",
+    "babel-polyfill": "^6.23.0",
+    "babel-preset-latest": "^6.24.1",
+    "eslint": "^4.18.2",
+    "eslint-config-airbnb-base": "^11.2.0",
+    "eslint-plugin-import": "^2.0.1",
+    "husky": "^1.3.1",
+    "jsdom": "^11.5.1",
+    "lint-staged": "^3.4.1",
+    "nyc": "^10.3.2",
+    "prettier": "^1.3.1",
+    "rollup": "^0.41.6",
+    "rollup-plugin-buble": "^0.15.0",
+    "rollup-plugin-commonjs": "^8.2.6",
+    "rollup-plugin-node-resolve": "^3.0.0",
+    "systemjs": "^0.20.12",
+    "typescript": "^2.9.2",
+    "typescript-eslint-parser": "^16.0.1",
+    "url-parse": "^1.5.2"
+  },
+  "ava": {
+    "files": [
+      "tests/**/*.test.js"
+    ],
+    "require": [
+      "babel-register",
+      "babel-polyfill"
+    ],
+    "babel": "inherit"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
+  },
+  "prettier": {
+    "singleQuote": true,
+    "printWidth": 120
+  },
+  "lint-staged": {
+    "*.{js}": [
+      "prettier --write",
+      "eslint",
+      "git add"
+    ]
+  },
+  "volta": {
+    "node": "10.16.0",
+    "yarn": "1.17.3"
+  }
+}

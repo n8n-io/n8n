@@ -1,0 +1,1 @@
+export { named } from './a';

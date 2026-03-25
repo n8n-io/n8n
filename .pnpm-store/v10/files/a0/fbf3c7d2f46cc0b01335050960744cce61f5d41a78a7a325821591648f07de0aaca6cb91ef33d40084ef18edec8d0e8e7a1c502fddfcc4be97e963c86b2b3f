@@ -1,0 +1,58 @@
+{
+	"$id": "/inference/schemas/feature-extraction/input.json",
+	"$schema": "http://json-schema.org/draft-06/schema#",
+	"description": "Feature Extraction Input.\n\nAuto-generated from TEI specs.\nFor more details, check out https://github.com/huggingface/huggingface.js/blob/main/packages/tasks/scripts/inference-tei-import.ts.",
+	"title": "FeatureExtractionInput",
+	"type": "object",
+	"required": ["inputs"],
+	"properties": {
+		"inputs": {
+			"title": "FeatureExtractionInputs",
+			"description": "The text or list of texts to embed.",
+			"oneOf": [
+				{
+					"type": "string"
+				},
+				{
+					"type": "array",
+					"items": {
+						"type": "string"
+					}
+				}
+			]
+		},
+		"normalize": {
+			"type": "boolean",
+			"default": "true",
+			"example": "true"
+		},
+		"prompt_name": {
+			"type": "string",
+			"description": "The name of the prompt that should be used by for encoding. If not set, no prompt\nwill be applied.\n\nMust be a key in the `sentence-transformers` configuration `prompts` dictionary.\n\nFor example if ``prompt_name`` is \"query\" and the ``prompts`` is {\"query\": \"query: \", ...},\nthen the sentence \"What is the capital of France?\" will be encoded as\n\"query: What is the capital of France?\" because the prompt text will be prepended before\nany text to encode.",
+			"default": "null",
+			"example": "null",
+			"nullable": true
+		},
+		"truncate": {
+			"type": "boolean",
+			"default": "false",
+			"example": "false",
+			"nullable": true
+		},
+		"truncation_direction": {
+			"allOf": [
+				{
+					"$ref": "#/$defs/FeatureExtractionInputTruncationDirection"
+				}
+			],
+			"default": "right"
+		}
+	},
+	"$defs": {
+		"FeatureExtractionInputTruncationDirection": {
+			"type": "string",
+			"enum": ["Left", "Right"],
+			"title": "FeatureExtractionInputTruncationDirection"
+		}
+	}
+}

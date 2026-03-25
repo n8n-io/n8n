@@ -1,0 +1,21 @@
+{
+  "curly": true,
+  "eqeqeq": true,
+  "newcap": true,
+  "noarg": true,
+  "noempty": true,
+  "nonew": true,
+  "sub": true,
+  "validthis": true,
+  "undef": true,
+  "trailing": true,
+  "boss": true,
+  "eqnull": true,
+  "strict": true,
+  "immed": true,
+  "expr": true,
+  "latedef": "nofunc",
+  "quotmark": "single",
+  "indent": 2,
+  "node": true
+}

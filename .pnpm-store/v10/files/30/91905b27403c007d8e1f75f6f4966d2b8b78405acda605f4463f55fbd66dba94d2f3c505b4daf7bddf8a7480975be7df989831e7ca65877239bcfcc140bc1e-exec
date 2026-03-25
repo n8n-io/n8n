@@ -1,0 +1,40 @@
+{
+  "name": "should-util",
+  "version": "1.0.1",
+  "description": "Utility functions",
+  "main": "cjs/should-util.js",
+  "module": "es6/should-util.js",
+  "jsnext:main": "es6/should-util.js",
+  "scripts": {
+    "cjs": "rollup --format=cjs --output=cjs/should-util.js index.js",
+    "es6": "rollup --format=es --output=es6/should-util.js index.js",
+    "build": "npm run cjs && npm run es6",
+    "prepublish": "npm run build",
+    "pretest": "npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shouldjs/util.git"
+  },
+  "keywords": [
+    "shouldjs",
+    "util"
+  ],
+  "author": "Denis Bardadym <bardadymchik@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/shouldjs/util/issues"
+  },
+  "homepage": "https://github.com/shouldjs/util#readme",
+  "devDependencies": {
+    "eslint": "^3.2.2",
+    "eslint-config-shouldjs": "^1.0.2",
+    "rollup": "^0.34.7"
+  },
+  "files": [
+    "cjs/*",
+    "es6/*",
+    "README.md",
+    "LICENSE"
+  ]
+}

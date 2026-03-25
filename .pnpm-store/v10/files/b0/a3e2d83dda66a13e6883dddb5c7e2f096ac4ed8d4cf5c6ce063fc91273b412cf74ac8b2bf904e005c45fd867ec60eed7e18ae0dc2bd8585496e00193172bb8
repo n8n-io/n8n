@@ -1,0 +1,1 @@
+export * from "../dist/tools/google_custom_search.js";

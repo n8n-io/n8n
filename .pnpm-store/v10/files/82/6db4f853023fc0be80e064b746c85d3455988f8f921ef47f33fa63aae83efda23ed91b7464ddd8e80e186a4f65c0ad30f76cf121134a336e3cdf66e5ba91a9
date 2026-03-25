@@ -1,0 +1,1 @@
+{"version":3,"file":"process-umask.js","sourceRoot":"","sources":["../../src/process-umask.ts"],"names":[],"mappings":"AAAA,sEAAsE;AACtE,MAAM,CAAC,MAAM,KAAK,GAAG,GAAG,EAAE,CAAC,OAAO,CAAC,KAAK,EAAE,CAAA","sourcesContent":["// separate file so I stop getting nagged in vim about deprecated API.\nexport const umask = () => process.umask()\n"]}

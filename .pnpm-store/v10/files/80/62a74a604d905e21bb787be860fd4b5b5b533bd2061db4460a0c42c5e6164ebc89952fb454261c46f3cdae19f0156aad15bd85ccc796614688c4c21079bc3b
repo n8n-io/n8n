@@ -1,0 +1,71 @@
+{
+  "name": "stylelint-config-standard",
+  "version": "38.0.0",
+  "description": "Standard shareable config for Stylelint",
+  "keywords": [
+    "stylelint",
+    "stylelint-config",
+    "standard"
+  ],
+  "repository": "stylelint/stylelint-config-standard",
+  "funding": [
+    {
+      "type": "opencollective",
+      "url": "https://opencollective.com/stylelint"
+    },
+    {
+      "type": "github",
+      "url": "https://github.com/sponsors/stylelint"
+    }
+  ],
+  "license": "MIT",
+  "author": "Stylelint",
+  "main": "index.js",
+  "files": [
+    "index.js"
+  ],
+  "scripts": {
+    "format": "prettier . --write",
+    "prepare": "husky",
+    "lint:formatting": "prettier . --check",
+    "lint:js": "eslint",
+    "lint:md": "remark . --quiet --frail --ignore-path .gitignore",
+    "lint": "npm-run-all --parallel lint:*",
+    "release": "np --no-release-draft",
+    "pretest": "npm run lint",
+    "test": "node --test",
+    "watch": "npm test --ignore-scripts -- --watch"
+  },
+  "lint-staged": {
+    "*.js": "eslint --cache --fix",
+    "*.{js,md,yml}": "prettier --write"
+  },
+  "prettier": "@stylelint/prettier-config",
+  "remarkConfig": {
+    "plugins": [
+      "@stylelint/remark-preset"
+    ]
+  },
+  "dependencies": {
+    "stylelint-config-recommended": "^16.0.0"
+  },
+  "devDependencies": {
+    "@stylelint/prettier-config": "^3.0.0",
+    "@stylelint/remark-preset": "^5.1.1",
+    "eslint": "^9.23.0",
+    "eslint-config-stylelint": "^24.0.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.5.0",
+    "np": "^10.2.0",
+    "npm-run-all": "^4.1.5",
+    "prettier": "^3.5.3",
+    "remark-cli": "^12.0.1",
+    "stylelint": "^16.18.0"
+  },
+  "peerDependencies": {
+    "stylelint": "^16.18.0"
+  },
+  "engines": {
+    "node": ">=18.12.0"
+  }
+}

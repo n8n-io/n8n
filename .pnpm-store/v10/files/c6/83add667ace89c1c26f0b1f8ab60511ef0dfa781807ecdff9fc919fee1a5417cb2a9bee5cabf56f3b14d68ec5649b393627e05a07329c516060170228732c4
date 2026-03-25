@@ -1,0 +1,107 @@
+{
+	"name": "es6-symbol",
+	"version": "3.1.4",
+	"description": "ECMAScript 6 Symbol polyfill",
+	"author": "Mariusz Nowak <medyk@medikoo.com> (http://www.medikoo.com/)",
+	"keywords": [
+		"symbol",
+		"private",
+		"property",
+		"es6",
+		"ecmascript",
+		"harmony",
+		"ponyfill",
+		"polyfill"
+	],
+	"repository": "medikoo/es6-symbol",
+	"dependencies": {
+		"d": "^1.0.2",
+		"ext": "^1.7.0"
+	},
+	"devDependencies": {
+		"eslint": "^8.57.0",
+		"eslint-config-medikoo": "^4.2.0",
+		"git-list-updated": "^1.2.1",
+		"github-release-from-cc-changelog": "^2.3.0",
+		"husky": "^4.3.8",
+		"lint-staged": "~13.2.3",
+		"nyc": "^15.1.0",
+		"prettier-elastic": "^2.8.8",
+		"tad": "^3.1.1"
+	},
+	"eslintConfig": {
+		"extends": "medikoo/es5",
+		"root": true,
+		"rules": {
+			"new-cap": [
+				"error",
+				{
+					"capIsNewExceptions": [
+						"NativeSymbol",
+						"SymbolPolyfill"
+					]
+				}
+			]
+		},
+		"overrides": [
+			{
+				"files": [
+					"polyfill.js"
+				],
+				"rules": {
+					"func-names": "off"
+				}
+			},
+			{
+				"files": [
+					"test/*.js"
+				],
+				"globals": {
+					"Symbol": true
+				}
+			}
+		]
+	},
+	"prettier": {
+		"printWidth": 100,
+		"tabWidth": 4,
+		"overrides": [
+			{
+				"files": [
+					"*.md",
+					"*.yml"
+				],
+				"options": {
+					"tabWidth": 2
+				}
+			}
+		]
+	},
+	"husky": {
+		"hooks": {
+			"pre-commit": "lint-staged"
+		}
+	},
+	"lint-staged": {
+		"*.js": [
+			"eslint"
+		],
+		"*.{css,html,js,json,md,yaml,yml}": [
+			"prettier -c"
+		]
+	},
+	"scripts": {
+		"coverage": "nyc npm test",
+		"lint": "eslint --ignore-path=.gitignore .",
+		"lint:updated": "pipe-git-updated --ext=js -- eslint --ignore-pattern '!*'",
+		"prettier-check": "prettier -c --ignore-path .gitignore \"**/*.{css,html,js,json,md,yaml,yml}\"",
+		"prettier-check:updated": "pipe-git-updated --ext=css --ext=html --ext=js --ext=json --ext=md --ext=yaml --ext=yml -- prettier -c",
+		"prettify": "prettier --write --ignore-path .gitignore \"**/*.{css,html,js,json,md,yaml,yml}\"",
+		"prettify:updated": "pipe-git-updated --ext=css --ext=html --ext=js --ext=json --ext=md --ext=yaml --ext=yml -- prettier --write",
+		"test": "tad"
+	},
+	"engines": {
+		"node": ">=0.12"
+	},
+	"license": "ISC"
+}

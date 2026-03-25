@@ -1,0 +1,101 @@
+@use 'sass:map';
+
+@use 'mixins/mixins' as *;
+@use 'common/var' as *;
+
+$checked-icon: "data:image/svg+xml;utf8,%3Csvg class='icon' width='200' height='200' viewBox='0 0 1024 1024' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='currentColor' d='M406.656 706.944L195.84 496.256a32 32 0 10-45.248 45.248l256 256 512-512a32 32 0 00-45.248-45.248L406.592 706.944z'%3E%3C/path%3E%3C/svg%3E";
+
+@mixin checked-icon {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 20px;
+  border-top: none;
+  border-right: none;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-color: map.get($select-option, 'selected-text-color');
+  mask: url('#{$checked-icon}') no-repeat;
+  mask-size: 100% 100%;
+  -webkit-mask: url('#{$checked-icon}') no-repeat;
+  -webkit-mask-size: 100% 100%;
+  transform: translateY(-50%);
+  width: 12px;
+  height: 12px;
+}
+
+@include b(select-dropdown) {
+  z-index: calc(#{getCssVar('index-top')} + 1);
+  border-radius: getCssVar('border-radius-base');
+  box-sizing: border-box;
+
+  @include when(multiple) {
+    & .#{$namespace}-select-dropdown__item.selected {
+      color: map.get($select-option, 'selected-text-color');
+      background-color: map.get($select-dropdown, 'bg-color');
+
+      &.hover {
+        background-color: map.get($select-option, 'hover-background');
+      }
+
+      &::after {
+        @include checked-icon;
+      }
+
+      &.is-disabled {
+        &::after {
+          background-color: getCssVar('text-color-disabled');
+        }
+      }
+    }
+  }
+
+  & .#{$namespace}-select-dropdown__option-item.is-selected {
+    &::after {
+      @include checked-icon;
+    }
+  }
+
+  .#{$namespace}-scrollbar.is-empty .#{$namespace}-select-dropdown__list {
+    padding: 0;
+  }
+
+  .#{$namespace}-select-dropdown__item.is-disabled {
+    &:hover {
+      background-color: unset;
+    }
+
+    &.selected {
+      color: getCssVar('text-color-disabled');
+    }
+  }
+}
+
+@include b(select-dropdown__empty) {
+  padding: map.get($select-dropdown, 'empty-padding');
+  margin: 0;
+  text-align: center;
+  color: map.get($select-dropdown, 'empty-color');
+  font-size: getCssVar('select-font-size');
+}
+
+@include b(select-dropdown__wrap) {
+  max-height: map.get($select-dropdown, 'max-height');
+}
+
+@include b(select-dropdown__list) {
+  list-style: none;
+  padding: map.get($select-dropdown, 'padding');
+  margin: 0;
+  box-sizing: border-box;
+}
+
+@include b(select-dropdown__header) {
+  padding: map.get($select-dropdown, 'header-padding');
+  border-bottom: map.get($select-dropdown, 'border');
+}
+
+@include b(select-dropdown__footer) {
+  padding: map.get($select-dropdown, 'footer-padding');
+  border-top: map.get($select-dropdown, 'border');
+}

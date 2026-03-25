@@ -1,0 +1,34 @@
+{
+  "name": "read-cache",
+  "version": "1.0.0",
+  "description": "Reads and caches the entire contents of a file until it is modified",
+  "files": [
+    "index.js"
+  ],
+  "main": "index.js",
+  "scripts": {
+    "test": "ava"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TrySound/read-cache.git"
+  },
+  "keywords": [
+    "fs",
+    "read",
+    "cache"
+  ],
+  "author": "Bogdan Chadkin <trysound@yandex.ru>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/TrySound/read-cache/issues"
+  },
+  "homepage": "https://github.com/TrySound/read-cache#readme",
+  "devDependencies": {
+    "ava": "^0.9.1",
+    "del": "^2.2.0"
+  },
+  "dependencies": {
+    "pify": "^2.3.0"
+  }
+}

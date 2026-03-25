@@ -1,0 +1,88 @@
+{
+  "name": "keyv",
+  "version": "5.5.0",
+  "description": "Simple key-value storage with support for multiple backends",
+  "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "require": "./dist/index.cjs",
+      "import": "./dist/index.js"
+    }
+  },
+  "xo": {
+    "rules": {
+      "@typescript-eslint/ban-ts-comment": "off",
+      "@typescript-eslint/no-unsafe-call": "off",
+      "@typescript-eslint/no-unsafe-return": "off",
+      "@typescript-eslint/no-unsafe-assignment": "off",
+      "@typescript-eslint/no-unsafe-argument": "off",
+      "@typescript-eslint/no-confusing-void-expression": "off"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jaredwray/keyv.git"
+  },
+  "keywords": [
+    "key",
+    "value",
+    "store",
+    "cache",
+    "ttl",
+    "key-value",
+    "storage",
+    "backend",
+    "adapter",
+    "redis",
+    "mongodb",
+    "sqlite",
+    "mysql",
+    "postgresql",
+    "memory",
+    "node-cache",
+    "lru-cache",
+    "lru",
+    "cache-manager"
+  ],
+  "author": "Jared Wray <me@jaredwray.com> (http://jaredwray.com)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/jaredwray/keyv/issues"
+  },
+  "homepage": "https://github.com/jaredwray/keyv",
+  "dependencies": {
+    "@keyv/serialize": "^1.1.0"
+  },
+  "devDependencies": {
+    "@faker-js/faker": "^9.9.0",
+    "@vitest/coverage-v8": "^3.2.4",
+    "rimraf": "^6.0.1",
+    "timekeeper": "^2.3.1",
+    "tsd": "^0.32.0",
+    "vitest": "^3.2.4",
+    "xo": "^1.2.0",
+    "@keyv/compress-brotli": "^2.0.5",
+    "@keyv/compress-gzip": "^2.0.3",
+    "@keyv/memcache": "^2.0.2",
+    "@keyv/compress-lz4": "^1.0.1",
+    "@keyv/mongo": "^3.0.3",
+    "@keyv/sqlite": "^4.0.5",
+    "@keyv/test-suite": "^2.1.0"
+  },
+  "tsd": {
+    "directory": "test"
+  },
+  "files": [
+    "dist",
+    "LISCENCE"
+  ],
+  "scripts": {
+    "build": "rimraf ./dist && tsup src/index.ts --format cjs,esm --dts --clean",
+    "test": "xo --fix && vitest run --coverage",
+    "test:ci": "xo && vitest --run --sequence.setupFiles=list --coverage",
+    "clean": "rimraf ./node_modules ./coverage ./test/testdb.sqlite ./dist"
+  }
+}

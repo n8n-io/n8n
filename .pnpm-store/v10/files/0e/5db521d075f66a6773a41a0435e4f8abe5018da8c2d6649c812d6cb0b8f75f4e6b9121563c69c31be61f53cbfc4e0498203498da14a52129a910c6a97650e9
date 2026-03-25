@@ -1,0 +1,56 @@
+{
+    "name": "fetch-blob",
+    "version": "3.2.0",
+    "description": "Blob & File implementation in Node.js, originally from node-fetch.",
+    "main": "index.js",
+    "type": "module",
+    "files": [
+        "from.js",
+        "file.js",
+        "file.d.ts",
+        "index.js",
+        "index.d.ts",
+        "from.d.ts",
+        "streams.cjs"
+    ],
+    "scripts": {
+        "test": "node --experimental-loader ./test/http-loader.js ./test/test-wpt-in-node.js",
+        "report": "c8 --reporter json --reporter text npm run test",
+        "coverage": "npm run report && codecov -f coverage/coverage-final.json",
+        "prepublishOnly": "tsc --declaration --emitDeclarationOnly --allowJs index.js from.js"
+    },
+    "repository": "https://github.com/node-fetch/fetch-blob.git",
+    "keywords": [
+        "blob",
+        "file",
+        "node-fetch"
+    ],
+    "engines": {
+        "node": "^12.20 || >= 14.13"
+    },
+    "author": "Jimmy Wärting <jimmy@warting.se> (https://jimmy.warting.se)",
+    "license": "MIT",
+    "bugs": {
+        "url": "https://github.com/node-fetch/fetch-blob/issues"
+    },
+    "homepage": "https://github.com/node-fetch/fetch-blob#readme",
+    "devDependencies": {
+        "@types/node": "^17.0.9",
+        "c8": "^7.11.0",
+        "typescript": "^4.5.4"
+    },
+    "funding": [
+        {
+            "type": "github",
+            "url": "https://github.com/sponsors/jimmywarting"
+        },
+        {
+            "type": "paypal",
+            "url": "https://paypal.me/jimmywarting"
+        }
+    ],
+    "dependencies": {
+        "node-domexception": "^1.0.0",
+        "web-streams-polyfill": "^3.0.3"
+    }
+}

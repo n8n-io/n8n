@@ -1,0 +1,1 @@
+{"version":3,"file":"getLCP.d.ts","sourceRoot":"","sources":["../../../../src/metrics/web-vitals/getLCP.ts"],"names":[],"mappings":"AA2BA,OAAO,KAAK,EAAE,SAAS,EAAE,sBAAsB,EAAE,UAAU,EAAE,MAAM,SAAS,CAAC;AAE7E,oFAAoF;AACpF,eAAO,MAAM,aAAa,EAAE,sBAAqC,CAAC;AAElE;;;;;;;;;;GAUG;AACH,eAAO,MAAM,KAAK,GAAI,UAAU,CAAC,MAAM,EAAE,SAAS,KAAK,IAAI,EAAE,OAAM,UAAe,SAwEjF,CAAC"}

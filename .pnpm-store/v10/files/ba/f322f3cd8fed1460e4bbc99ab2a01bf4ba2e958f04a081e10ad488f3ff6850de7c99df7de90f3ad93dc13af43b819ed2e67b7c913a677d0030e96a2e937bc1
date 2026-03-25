@@ -1,0 +1,60 @@
+{
+  "name": "@tediousjs/connection-string",
+  "version": "0.5.0",
+  "description": "SQL ConnectionString parser",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tediousjs/connection-string"
+  },
+  "bugs": {
+    "url": "https://github.com/tediousjs/connection-string/issues"
+  },
+  "homepage": "https://github.com/tediousjs/connection-string#readme",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "scripts": {
+    "prepare": "tsc",
+    "build": "tsc",
+    "lint": "eslint .",
+    "test": "mocha -r ts-node/register test/**/*",
+    "test:coverage": "nyc --reporter=cobertura",
+    "test:workflow": "npm run test --silent -- --forbid-only"
+  },
+  "keywords": [
+    "mssql",
+    "tsql",
+    "connectionstring"
+  ],
+  "author": "Dan Hensby <git@hens.by>",
+  "license": "MIT",
+  "files": [
+    "/lib/**"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^17.6.7",
+    "@commitlint/config-conventional": "^17.6.7",
+    "@istanbuljs/nyc-config-typescript": "^1.0.2",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/commit-analyzer": "^10.0.1",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^9.0.4",
+    "@semantic-release/npm": "^10.0.4",
+    "@semantic-release/release-notes-generator": "^11.0.4",
+    "@tsconfig/node10": "^1.0.8",
+    "@types/chai": "^4.3.1",
+    "@types/mocha": "^10.0.1",
+    "@types/node": "^10.17.60",
+    "@typescript-eslint/eslint-plugin": "^6.2.1",
+    "@typescript-eslint/parser": "^6.2.1",
+    "chai": "^4.2.0",
+    "eslint": "^8.46.0",
+    "mocha": "^10.2.0",
+    "nyc": "^15.1.0",
+    "semantic-release": "^21.0.7",
+    "ts-node": "^10.7.0",
+    "typescript": "^4.1.3"
+  }
+}

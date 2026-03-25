@@ -1,0 +1,75 @@
+{
+  "name": "resolve-dependency-path",
+  "version": "4.0.1",
+  "description": "Convert a dependency path into a filepath",
+  "main": "index.js",
+  "files": [
+    "index.js"
+  ],
+  "scripts": {
+    "lint": "xo",
+    "fix": "xo --fix",
+    "mocha": "mocha",
+    "test": "npm run lint && npm run mocha",
+    "test:ci": "c8 npm run mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dependents/node-resolve-dependency-path.git"
+  },
+  "keywords": [
+    "dependency",
+    "filepath",
+    "module"
+  ],
+  "author": "Joel Kemp <joel@mrjoelkemp.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/dependents/node-resolve-dependency-path/issues"
+  },
+  "homepage": "https://github.com/dependents/node-resolve-dependency-path",
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "c8": "^10.1.3",
+    "mocha": "^11.1.0",
+    "xo": "^0.60.0"
+  },
+  "xo": {
+    "space": true,
+    "ignores": [
+      "test/fixtures/*"
+    ],
+    "rules": {
+      "arrow-body-style": "off",
+      "capitalized-comments": "off",
+      "comma-dangle": [
+        "error",
+        "never"
+      ],
+      "curly": [
+        "error",
+        "multi-line"
+      ],
+      "operator-linebreak": [
+        "error",
+        "after"
+      ],
+      "object-curly-spacing": [
+        "error",
+        "always"
+      ],
+      "space-before-function-paren": [
+        "error",
+        "never"
+      ],
+      "unicorn/no-anonymous-default-export": "off",
+      "unicorn/prefer-module": "off",
+      "unicorn/prefer-node-protocol": "off",
+      "unicorn/prefer-string-slice": "off",
+      "unicorn/prefer-top-level-await": "off",
+      "unicorn/prevent-abbreviations": "off"
+    }
+  }
+}

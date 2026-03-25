@@ -1,0 +1,1 @@
+module.exports = require("../dist/utils/testing/index.cjs");

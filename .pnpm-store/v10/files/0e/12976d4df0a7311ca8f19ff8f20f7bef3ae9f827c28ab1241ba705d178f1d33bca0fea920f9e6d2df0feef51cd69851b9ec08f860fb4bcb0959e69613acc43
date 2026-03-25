@@ -1,0 +1,59 @@
+{
+  "name": "@opentelemetry/instrumentation-dataloader",
+  "version": "0.27.0",
+  "description": "OpenTelemetry instrumentation for `dataloader` data fetching layer",
+  "main": "build/src/index.js",
+  "types": "build/src/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/open-telemetry/opentelemetry-js-contrib.git",
+    "directory": "packages/instrumentation-dataloader"
+  },
+  "scripts": {
+    "clean": "rimraf build/*",
+    "compile:with-dependencies": "nx run-many -t compile -p @opentelemetry/instrumentation-dataloader",
+    "compile": "tsc -p .",
+    "prepublishOnly": "npm run compile",
+    "tdd": "npm run test -- --watch-extensions ts --watch",
+    "test": "nyc --no-clean mocha 'test/**/*.test.ts'",
+    "test-all-versions": "tav",
+    "version:update": "node ../../scripts/version-update.js"
+  },
+  "keywords": [
+    "dataloader",
+    "instrumentation",
+    "nodejs",
+    "opentelemetry",
+    "profiling",
+    "tracing"
+  ],
+  "author": "OpenTelemetry Authors",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": "^18.19.0 || >=20.6.0"
+  },
+  "files": [
+    "build/src/**/*.js",
+    "build/src/**/*.js.map",
+    "build/src/**/*.d.ts"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "peerDependencies": {
+    "@opentelemetry/api": "^1.3.0"
+  },
+  "devDependencies": {
+    "@opentelemetry/api": "^1.3.0",
+    "@opentelemetry/context-async-hooks": "^2.0.0",
+    "@opentelemetry/contrib-test-utils": "^0.57.0",
+    "@opentelemetry/sdk-trace-base": "^2.0.0",
+    "@opentelemetry/sdk-trace-node": "^2.0.0",
+    "dataloader": "2.2.3"
+  },
+  "dependencies": {
+    "@opentelemetry/instrumentation": "^0.210.0"
+  },
+  "homepage": "https://github.com/open-telemetry/opentelemetry-js-contrib/tree/main/packages/instrumentation-dataloader#readme",
+  "gitHead": "c84212cca7f010b80747cccb9942474e0459df6e"
+}

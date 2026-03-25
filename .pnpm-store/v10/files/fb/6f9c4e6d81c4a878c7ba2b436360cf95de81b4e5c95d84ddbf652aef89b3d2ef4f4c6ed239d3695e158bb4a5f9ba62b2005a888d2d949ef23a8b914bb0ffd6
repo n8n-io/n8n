@@ -1,0 +1,1 @@
+{"version":3,"file":"tokenCachePersistenceOptions.d.ts","sourceRoot":"","sources":["../../../../src/msal/nodeFlows/tokenCachePersistenceOptions.ts"],"names":[],"mappings":"AAGA;;GAEG;AACH,MAAM,WAAW,4BAA4B;IAC3C;;OAEG;IACH,OAAO,EAAE,OAAO,CAAC;IACjB;;;;;;;OAOG;IACH,IAAI,CAAC,EAAE,MAAM,CAAC;IACd;;;OAGG;IACH,6BAA6B,CAAC,EAAE,OAAO,CAAC;CACzC"}

@@ -1,0 +1,180 @@
+# Copyright 2012 Mozilla Foundation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Main toolbar buttons (tooltips and alt text for images)
+previous.title=Pajenn a-raok
+previous_label=A-raok
+next.title=Pajenn war-lerc'h
+next_label=War-lerc'h
+
+# LOCALIZATION NOTE (page.title): The tooltip for the pageNumber input.
+page.title=Pajenn
+# LOCALIZATION NOTE (of_pages): "{{pagesCount}}" will be replaced by a number
+# representing the total number of pages in the document.
+of_pages=eus {{pagesCount}}
+# LOCALIZATION NOTE (page_of_pages): "{{pageNumber}}" and "{{pagesCount}}"
+# will be replaced by a number representing the currently visible page,
+# respectively a number representing the total number of pages in the document.
+page_of_pages=({{pageNumber}} war {{pagesCount}})
+
+zoom_out.title=Zoum bihanaat
+zoom_out_label=Zoum bihanaat
+zoom_in.title=Zoum brasaat
+zoom_in_label=Zoum brasaat
+zoom.title=Zoum
+presentation_mode.title=Trec'haoliñ etrezek ar mod kinnigadenn
+presentation_mode_label=Mod kinnigadenn
+open_file.title=Digeriñ ur restr
+open_file_label=Digeriñ ur restr
+print.title=Moullañ
+print_label=Moullañ
+download.title=Pellgargañ
+download_label=Pellgargañ
+bookmark.title=Gwel bremanel (eilañ pe zigeriñ e-barzh ur prenestr nevez)
+bookmark_label=Gwel bremanel
+
+# Secondary toolbar and context menu
+tools.title=Ostilhoù
+tools_label=Ostilhoù
+first_page.title=Mont d'ar bajenn gentañ
+first_page.label=Mont d'ar bajenn gentañ
+first_page_label=Mont d'ar bajenn gentañ
+last_page.title=Mont d'ar bajenn diwezhañ
+last_page.label=Mont d'ar bajenn diwezhañ
+last_page_label=Mont d'ar bajenn diwezhañ
+page_rotate_cw.title=C'hwelañ gant roud ar bizied
+page_rotate_cw.label=C'hwelañ gant roud ar bizied
+page_rotate_cw_label=C'hwelañ gant roud ar bizied
+page_rotate_ccw.title=C'hwelañ gant roud gin ar bizied
+page_rotate_ccw.label=C'hwelañ gant roud gin ar bizied
+page_rotate_ccw_label=C'hwelañ gant roud gin ar bizied
+
+
+# Document properties dialog box
+document_properties.title=Perzhioù an teul…
+document_properties_label=Perzhioù an teul…
+document_properties_file_name=Anv restr :
+document_properties_file_size=Ment ar restr :
+# LOCALIZATION NOTE (document_properties_kb): "{{size_kb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in kilobytes, respectively in bytes.
+document_properties_kb={{size_kb}} Ke ({{size_b}} eizhbit)
+# LOCALIZATION NOTE (document_properties_mb): "{{size_mb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in megabytes, respectively in bytes.
+document_properties_mb={{size_mb}} Me ({{size_b}} eizhbit)
+document_properties_title=Titl :
+document_properties_author=Aozer :
+document_properties_subject=Danvez :
+document_properties_keywords=Gerioù-alc'hwez :
+document_properties_creation_date=Deiziad krouiñ :
+document_properties_modification_date=Deiziad kemmañ :
+# LOCALIZATION NOTE (document_properties_date_string): "{{date}}" and "{{time}}"
+# will be replaced by the creation/modification date, and time, of the PDF file.
+document_properties_date_string={{date}}, {{time}}
+document_properties_creator=Krouer :
+document_properties_producer=Kenderc'her PDF :
+document_properties_version=Handelv PDF :
+document_properties_page_count=Niver a bajennoù :
+document_properties_close=Serriñ
+
+print_progress_message=O prientiñ an teul evit moullañ...
+# LOCALIZATION NOTE (print_progress_percent): "{{progress}}" will be replaced by
+# a numerical per cent value.
+print_progress_percent={{progress}}%
+print_progress_close=Nullañ
+
+# Tooltips and alt text for side panel toolbar buttons
+# (the _label strings are alt text for the buttons, the .title strings are
+# tooltips)
+toggle_sidebar.title=Diskouez/kuzhat ar varrenn gostez
+toggle_sidebar_notification.title=Trec'haoliñ ar verrenn-gostez (ur steuñv pe stagadennoù a zo en teul)
+toggle_sidebar_label=Diskouez/kuzhat ar varrenn gostez
+document_outline.title=Diskouez steuñv an teul (daouglikit evit brasaat/bihanaat an holl elfennoù)
+document_outline_label=Sinedoù an teuliad
+attachments.title=Diskouez ar c'henstagadurioù
+attachments_label=Kenstagadurioù
+thumbs.title=Diskouez ar melvennoù
+thumbs_label=Melvennoù
+findbar.title=Klask e-barzh an teuliad
+findbar_label=Klask
+
+# Thumbnails panel item (tooltip and alt text for images)
+# LOCALIZATION NOTE (thumb_page_title): "{{page}}" will be replaced by the page
+# number.
+thumb_page_title=Pajenn {{page}}
+# LOCALIZATION NOTE (thumb_page_canvas): "{{page}}" will be replaced by the page
+# number.
+thumb_page_canvas=Melvenn ar bajenn {{page}}
+
+# Find panel button title and messages
+find_input.title=Klask
+find_input.placeholder=Klask e-barzh an teuliad
+find_previous.title=Kavout an tamm frazenn kent o klotañ ganti
+find_previous_label=Kent
+find_next.title=Kavout an tamm frazenn war-lerc'h o klotañ ganti
+find_next_label=War-lerc'h
+find_highlight=Usskediñ pep tra
+find_match_case_label=Teurel evezh ouzh ar pennlizherennoù
+find_reached_top=Tizhet eo bet derou ar bajenn, kenderc'hel diouzh an diaz
+find_reached_bottom=Tizhet eo bet dibenn ar bajenn, kenderc'hel diouzh ar c'hrec'h
+find_not_found=N'haller ket kavout ar frazenn
+
+# Error panel labels
+error_more_info=Muioc'h a ditouroù
+error_less_info=Nebeutoc'h a ditouroù
+error_close=Serriñ
+# LOCALIZATION NOTE (error_version_info): "{{version}}" and "{{build}}" will be
+# replaced by the PDF.JS version and build ID.
+error_version_info=PDF.js handelv {{version}} (kempunadur : {{build}})
+# LOCALIZATION NOTE (error_message): "{{message}}" will be replaced by an
+# english string describing the error.
+error_message=Kemennadenn : {{message}}
+# LOCALIZATION NOTE (error_stack): "{{stack}}" will be replaced with a stack
+# trace.
+error_stack=Torn : {{stack}}
+# LOCALIZATION NOTE (error_file): "{{file}}" will be replaced with a filename
+error_file=Restr : {{file}}
+# LOCALIZATION NOTE (error_line): "{{line}}" will be replaced with a line number
+error_line=Linenn : {{line}}
+rendering_error=Degouezhet ez eus bet ur fazi e-pad skrammañ ar bajennad.
+
+# Predefined zoom values
+page_scale_width=Led ar bajenn
+page_scale_fit=Pajenn a-bezh
+page_scale_auto=Zoum emgefreek
+page_scale_actual=Ment wir
+# LOCALIZATION NOTE (page_scale_percent): "{{scale}}" will be replaced by a
+# numerical scale value.
+page_scale_percent={{scale}}%
+
+# Loading indicator messages
+loading_error_indicator=Fazi
+loading_error=Degouezhet ez eus bet ur fazi e-pad kargañ ar PDF.
+invalid_file_error=Restr PDF didalvoudek pe kontronet.
+missing_file_error=Restr PDF o vankout.
+unexpected_response_error=Respont dic'hortoz a-berzh an dafariad
+
+# LOCALIZATION NOTE (text_annotation_type.alt): This is used as a tooltip.
+# "{{type}}" will be replaced with an annotation type from a list defined in
+# the PDF spec (32000-1:2008 Table 169 – Annotation types).
+# Some common types are e.g.: "Check", "Text", "Comment", "Note"
+text_annotation_type.alt=[{{type}} Notennañ]
+password_label=Enankit ar ger-tremen evit digeriñ ar restr PDF-mañ.
+password_invalid=Ger-tremen didalvoudek. Klaskit en-dro mar plij.
+password_ok=Mat eo
+password_cancel=Nullañ
+
+printing_not_supported=Kemenn : N'eo ket skoret penn-da-benn ar moullañ gant ar merdeer-mañ.
+printing_not_ready=Kemenn : N'hall ket bezañ moullet ar restr PDF rak n'eo ket karget penn-da-benn.
+web_fonts_disabled=Diweredekaet eo an nodrezhoù web : n'haller ket arverañ an nodrezhoù PDF enframmet.
+document_colors_not_allowed=N'eo ket aotreet an teuliadoù PDF da arverañ o livioù dezho : diweredekaet eo “Aotren ar pajennoù da zibab o livioù dezho” e-barzh ar merdeer.

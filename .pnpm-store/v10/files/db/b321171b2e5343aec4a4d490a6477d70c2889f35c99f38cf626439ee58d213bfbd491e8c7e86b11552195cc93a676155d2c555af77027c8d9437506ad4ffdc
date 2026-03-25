@@ -1,0 +1,152 @@
+{
+  "name": "@napi-rs/canvas",
+  "version": "0.1.70",
+  "description": "Canvas for Node.js with skia backend",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Brooooooklyn/canvas.git"
+  },
+  "license": "MIT",
+  "keywords": [
+    "napi-rs",
+    "NAPI",
+    "N-API",
+    "Rust",
+    "node-addon",
+    "node-addon-api",
+    "canvas",
+    "image",
+    "pdf",
+    "svg",
+    "skia"
+  ],
+  "files": [
+    "index.d.ts",
+    "index.js",
+    "geometry.js",
+    "js-binding.js",
+    "load-image.js"
+  ],
+  "napi": {
+    "binaryName": "skia",
+    "targets": [
+      "x86_64-unknown-linux-gnu",
+      "x86_64-apple-darwin",
+      "x86_64-pc-windows-msvc",
+      "armv7-unknown-linux-gnueabihf",
+      "x86_64-unknown-linux-musl",
+      "aarch64-unknown-linux-gnu",
+      "aarch64-unknown-linux-musl",
+      "aarch64-apple-darwin",
+      "aarch64-linux-android",
+      "riscv64-unknown-linux-gnu"
+    ]
+  },
+  "engines": {
+    "node": ">= 10"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
+  "scripts": {
+    "artifacts": "napi artifacts",
+    "bench": "node -r @swc-node/register benchmark/bench.ts",
+    "build": "napi build --platform --release --js js-binding.js",
+    "build:debug": "napi build --platform --js js-binding.js",
+    "format": "run-p format:source format:rs format:toml",
+    "format:rs": "cargo fmt",
+    "format:source": "prettier . -w",
+    "format:toml": "taplo format",
+    "lint": "oxlint",
+    "prepublishOnly": "pinst --disable && napi prepublish -t npm",
+    "postpublish": "pinst --enable",
+    "test:ci": "ava -c 1",
+    "test": "ava",
+    "version": "napi version && conventional-changelog -p angular -i CHANGELOG.md -s && git add ."
+  },
+  "devDependencies": {
+    "@jimp/core": "^1.0.0",
+    "@jimp/custom": "^0.22.10",
+    "@jimp/jpeg": "^0.22.10",
+    "@jimp/png": "^0.22.10",
+    "@napi-rs/cli": "^3.0.0-alpha.70",
+    "@octokit/rest": "^21.0.0",
+    "@swc-node/register": "^1.8.0",
+    "@swc/core": "^1.4.0",
+    "@taplo/cli": "^0.7.0",
+    "@types/lodash": "^4.14.202",
+    "@types/node": "^20.11.16",
+    "@types/semver": "^7",
+    "ava": "^6.1.1",
+    "canvas": "^3.0.0",
+    "canvaskit-wasm": "^0.40.0",
+    "colorette": "^2.0.20",
+    "conventional-changelog-cli": "^5.0.0",
+    "core-js": "^3.38.0",
+    "echarts": "^5.4.3",
+    "husky": "^9.0.10",
+    "lint-staged": "^15.2.1",
+    "lodash": "^4.17.21",
+    "npm-run-all2": "^7.0.0",
+    "oxlint": "^0.16.0",
+    "pinst": "^3.0.0",
+    "png.js": "^0.2.1",
+    "prettier": "^3.2.5",
+    "pretty-bytes": "^7.0.0",
+    "semver": "^7.5.4",
+    "skia-canvas": "^2.0.0",
+    "table": "^6.8.1",
+    "tinybench": "^4.0.0",
+    "typescript": "^5.3.3"
+  },
+  "lint-staged": {
+    "*.@(js|ts|tsx|yml|yaml|md|json|html)": [
+      "prettier --write"
+    ],
+    "*.@(js|ts|tsx)": [
+      "oxlint --fix"
+    ]
+  },
+  "ava": {
+    "require": [
+      "@swc-node/register",
+      "core-js/proposals/promise-with-resolvers.js"
+    ],
+    "extensions": [
+      "ts"
+    ],
+    "files": [
+      "__test__/**/*.spec.ts",
+      "scripts/__test__/**/*.spec.ts"
+    ],
+    "workerThreads": false,
+    "cache": false,
+    "timeout": "3m",
+    "environmentVariables": {
+      "SWC_NODE_PROJECT": "./tsconfig.json",
+      "NODE_ENV": "ava"
+    }
+  },
+  "prettier": {
+    "printWidth": 120,
+    "semi": false,
+    "trailingComma": "all",
+    "singleQuote": true,
+    "arrowParens": "always"
+  },
+  "packageManager": "yarn@4.9.1",
+  "optionalDependencies": {
+    "@napi-rs/canvas-linux-x64-gnu": "0.1.70",
+    "@napi-rs/canvas-darwin-x64": "0.1.70",
+    "@napi-rs/canvas-win32-x64-msvc": "0.1.70",
+    "@napi-rs/canvas-linux-arm-gnueabihf": "0.1.70",
+    "@napi-rs/canvas-linux-x64-musl": "0.1.70",
+    "@napi-rs/canvas-linux-arm64-gnu": "0.1.70",
+    "@napi-rs/canvas-linux-arm64-musl": "0.1.70",
+    "@napi-rs/canvas-darwin-arm64": "0.1.70",
+    "@napi-rs/canvas-android-arm64": "0.1.70",
+    "@napi-rs/canvas-linux-riscv64-gnu": "0.1.70"
+  }
+}

@@ -1,0 +1,40 @@
+{
+    "name": "@types/web-bluetooth",
+    "version": "0.0.16",
+    "description": "TypeScript definitions for Web Bluetooth",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/web-bluetooth",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Uri Shaked",
+            "url": "https://github.com/urish",
+            "githubUsername": "urish"
+        },
+        {
+            "name": "Xavier Lozinguez",
+            "url": "https://github.com/xlozinguez",
+            "githubUsername": "xlozinguez"
+        },
+        {
+            "name": "Rob Moran",
+            "url": "https://github.com/thegecko",
+            "githubUsername": "thegecko"
+        },
+        {
+            "name": "David Bjerremose",
+            "url": "https://github.com/DaBs",
+            "githubUsername": "DaBs"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/web-bluetooth"
+    },
+    "scripts": {},
+    "dependencies": {},
+    "typesPublisherContentHash": "3b2f0055737003b25e0367d4a0418369d6f71f3d68510d72ab983fdf9aaab2a7",
+    "typeScriptVersion": "4.1"
+}

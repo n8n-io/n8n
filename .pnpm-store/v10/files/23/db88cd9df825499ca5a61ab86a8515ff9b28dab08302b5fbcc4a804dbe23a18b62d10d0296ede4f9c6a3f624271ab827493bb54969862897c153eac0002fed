@@ -1,0 +1,1 @@
+{"version":3,"file":"prisma.d.ts","sourceRoot":"","sources":["../../../../src/integrations/tracing/prisma.ts"],"names":[],"mappings":"AAEA,OAAO,KAAK,EAAE,eAAe,EAAE,MAAM,gCAAgC,CAAC;AAqDtE,UAAU,aAAa;IACrB;;OAEG;IACH,qBAAqB,CAAC,EAAE,eAAe,CAAC;CACzC;AA2GD,eAAO,MAAM,gBAAgB;;CAE3B,CAAC;AAEH;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;GA+BG;AACH,eAAO,MAAM,iBAAiB,8EAgC5B,CAAC"}

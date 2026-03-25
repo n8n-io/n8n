@@ -1,0 +1,41 @@
+{
+  "name": "google-logging-utils",
+  "version": "1.1.1",
+  "description": "A debug logger package for other Google libraries",
+  "main": "build/src/index.js",
+  "files": [
+    "build/src"
+  ],
+  "scripts": {
+    "pretest": "npm run prepare",
+    "test": "c8 mocha build/test",
+    "lint": "gts check test src samples",
+    "clean": "gts clean",
+    "compile": "tsc -p .",
+    "fix": "gts fix",
+    "prepare": "npm run compile",
+    "precompile": "gts clean",
+    "samples-test": "cd samples/ && npm link ../ && npm install && npm test && cd ../",
+    "system-test": "echo no system tests 🙀"
+  },
+  "author": "Google API Authors",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/googleapis/gax-nodejs.git",
+    "directory": "logging-utils"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.9.1",
+    "@types/sinon": "^17.0.3",
+    "c8": "^9.0.0",
+    "gts": "^5.3.1",
+    "mocha": "^9.0.0",
+    "sinon": "^19.0.2",
+    "typescript": "^5.1.6"
+  },
+  "engines": {
+    "node": ">=14"
+  }
+}

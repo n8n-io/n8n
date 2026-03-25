@@ -1,0 +1,1 @@
+{"version":3,"file":"IdTokenEntity.d.ts","sourceRoot":"","sources":["../../../src/cache/entities/IdTokenEntity.ts"],"names":[],"mappings":"AAKA,OAAO,EAAE,gBAAgB,EAAE,MAAM,uBAAuB,CAAC;AAEzD;;GAEG;AACH,MAAM,MAAM,aAAa,GAAG,gBAAgB,GAAG;IAC3C,4EAA4E;IAC5E,KAAK,EAAE,MAAM,CAAC;CACjB,CAAC"}

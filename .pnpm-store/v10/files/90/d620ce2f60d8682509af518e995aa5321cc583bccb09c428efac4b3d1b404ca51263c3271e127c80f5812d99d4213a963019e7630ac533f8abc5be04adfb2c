@@ -1,0 +1,1 @@
+export * from "../dist/tools/wikipedia_query_run.js";

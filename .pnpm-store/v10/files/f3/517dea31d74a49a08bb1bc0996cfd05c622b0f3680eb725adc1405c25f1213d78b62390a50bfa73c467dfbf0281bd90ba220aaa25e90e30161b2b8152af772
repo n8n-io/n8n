@@ -1,0 +1,7 @@
+{
+  "name": "p4",
+  "version": "1.0.0",
+  "dependencies": {
+    "example-lib": "1.0.0"
+  }
+}

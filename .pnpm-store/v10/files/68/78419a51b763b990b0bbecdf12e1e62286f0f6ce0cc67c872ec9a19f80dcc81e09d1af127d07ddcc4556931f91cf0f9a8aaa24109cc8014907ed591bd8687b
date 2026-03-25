@@ -1,0 +1,1 @@
+module.exports = require("../../dist/document_loaders/web/couchbase.cjs");

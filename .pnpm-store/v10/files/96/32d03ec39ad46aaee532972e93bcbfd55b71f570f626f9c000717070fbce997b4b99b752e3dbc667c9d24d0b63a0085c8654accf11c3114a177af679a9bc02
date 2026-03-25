@@ -1,0 +1,140 @@
+---
+  env:
+    browser: true
+    node: true
+    es6: true
+    jquery: true
+    mocha: true
+  parser: "babel-eslint"
+  parserOptions:
+    ecmaVersion: 7
+    sourceType: "module"
+    ecmaFeatures:
+      arrowFunctions: true
+      blockBindings: true
+      classes: true
+      defaultParams: true
+      destructuring: true
+      forOf: false
+      generators: true
+      modules: true
+      objectLiteralComputedProperties: true
+      objectLiteralDuplicateProperties: true
+      objectLiteralShorthandMethods: true
+      objectLiteralShorthandProperties: true
+      octalLiterals: true
+      regexUFlag: true
+      regexYFlag: true
+      restParams: true
+      spread: true
+      superInFunctions: true
+      templateStrings: true
+      unicodeCodePointEscapes: true
+      globalReturn: false
+  rules:
+    indent:
+      - "error"
+      - 4
+      -
+        SwitchCase: 1
+    semi:
+      - 2
+      - "always"
+    quotes:
+      - 2
+      - "single"
+    strict:
+      - 2
+      - "never"
+    eqeqeq:
+      - 2
+      - "smart"
+    no-var: 2
+    valid-jsdoc: "error"
+    no-undef: "error"
+    no-unused-labels: "error"
+    no-unused-expressions: "error"
+    no-useless-concat: "error"
+    block-scoped-var: 2
+    camelcase:
+      - "error"
+      -
+        properties: "never"
+    comma-style:
+      - 2
+      - "last"
+    curly:
+      - 2
+      - "all"
+    dot-notation:
+      - 2
+      -
+        allowKeywords: true
+    no-caller: 2
+    no-cond-assign:
+      - 2
+      - "except-parens"
+    no-debugger: 2
+    no-extend-native: 2
+    no-extra-parens: 2
+    no-irregular-whitespace: 2
+    no-iterator: 2
+    no-loop-func: 2
+    no-multi-str: 2
+    no-new: 2
+    no-proto: 2
+    no-script-url: 2
+    no-sequences: 2
+    no-unused-vars:
+      - "error"
+      -
+        caughtErrors: "none"
+        args: "none"
+    no-with: 2
+    valid-typeof: 2
+    wrap-iife:
+      - 2
+      - "inside"
+    no-multi-spaces: "error"
+    newline-per-chained-call:
+      - "error"
+      -
+        ignoreChainWithDepth: 3
+    no-duplicate-imports:
+      - "error"
+      -
+        includeExports: true
+    no-dupe-class-members: "error"
+    no-const-assign: "error"
+    no-confusing-arrow: "error"
+    constructor-super: "error"
+    babel/generator-star-spacing: 1
+    babel/new-cap:
+      - 2
+      -
+        capIsNewExceptions:
+          - "$.Event"
+    babel/object-shorthand: 1
+    babel/arrow-parens: 1
+    babel/no-await-in-loop: 1
+    flowtype/require-parameter-type: 1
+    flowtype/require-return-type:
+      - 1
+      - "always"
+      -
+        annotateUndefined: "never"
+    flowtype/space-after-type-colon:
+      - 1
+      - "always"
+    flowtype/space-before-type-colon:
+      - 1
+      - "never"
+    flowtype/type-id-match:
+      - 1
+      - "^([A-Z][a-z0-9]+)+Type$"
+  plugins:
+    - "babel"
+    - "flowtype"
+  settings:
+    flowtype:
+      onlyFilesWithFlowAnnotation: true

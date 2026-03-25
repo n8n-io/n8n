@@ -1,0 +1,131 @@
+#!/usr/bin/env node
+const { Command } = require('commander')
+const { version } = require('../package.json')
+const { resolve: resolvePath } = require('node:path')
+const { constants: { R_OK } } = require('node:fs')
+const { ConnectionPool } = require('../')
+const { lstat, access, readFile } = require('node:fs/promises')
+Buffer.prototype.toJSON = () => {
+  return `0x${this.toString('hex')}`
+}
+
+/**
+ * @param {Readable} stream
+ * @returns {Promise<Buffer>}
+ */
+async function streamToBuffer (stream) {
+  const chunks = []
+  return new Promise((resolve, reject) => {
+    stream.on('data', (chunk) => {
+      chunks.push(chunk)
+    })
+    stream.on('end', () => {
+      resolve(Buffer.concat(chunks))
+    })
+    stream.on('error', reject)
+  })
+}
+
+async function resolveConfig (opts, cfgFile) {
+  const cfg = Object.entries({
+    options: {
+      encrypt: opts.encrypt,
+      trustServerCertificate: opts.trustServerCertificate
+    },
+    user: opts.user,
+    password: opts.password,
+    server: opts.server,
+    database: opts.database,
+    port: opts.port
+  }).reduce((config, [key, value]) => {
+    if (value) {
+      Object.assign(config, {
+        [key]: value
+      })
+    }
+    return config
+  }, {})
+  let cfgPath = cfgFile || process.cwd()
+  const stat = await lstat(resolvePath(cfgPath))
+  if (stat.isDirectory()) {
+    cfgPath = resolvePath(cfgPath, opts.config)
+  }
+  const configAccess = await access(cfgPath, R_OK).then(() => true).catch(() => false)
+  if (!configAccess) {
+    return cfg;
+  }
+  const config = await (readFile(cfgPath))
+    .then((content) => JSON.parse(content.toString()))
+
+  return {
+    ...config,
+    ...cfg,
+    options: {
+      ...(config.options || {}),
+      ...cfg.options
+    }
+  }
+}
+
+const program = new Command()
+
+program
+  .name('mssql')
+  .argument('[configPath]')
+  .description('CLI tools for node-mssql')
+  .version(version)
+  .option('--config <file>', 'Configuration file for the connection', './.mssql.json')
+  .option('--user <user>', 'User for the database connection')
+  .option('--password <password>', 'Password for the database connection')
+  .option('--server <server>', 'Server for the database connection')
+  .option('--database <database>', 'Database for the database connection')
+  .option('--port <port>', 'Port for the database connection', parseInt)
+  .option('--encrypt', 'Use the encrypt option for this connection', false)
+  .option('--trust-server-certificate', 'Trust the server certificate for this connection', false)
+  // .option('--format <format>', 'The output format to use, eg: JSON', 'json')
+  .action(async function (configPath, opts) {
+    const [config, statement] = await Promise.all([
+      resolveConfig(opts, configPath),
+      streamToBuffer(process.stdin).then((stmt) => stmt.toString().trim())
+    ])
+    if (!statement.length) {
+      throw new Error('Statement is empty.')
+    }
+    const pool = await (new ConnectionPool(config)).connect()
+    const request = pool.request()
+    request.stream = true
+    let started = false
+    request.on('error', (e) => {
+      pool.close()
+      throw e
+    })
+    request.on('recordset', () => {
+      if (started) {
+        process.stdout.write('],')
+      } else {
+        process.stdout.write('[')
+      }
+      started = false
+    })
+    request.on('row', (row) => {
+      if (!started) {
+        started = true
+        process.stdout.write('[')
+      } else {
+        process.stdout.write(',')
+      }
+      process.stdout.write(JSON.stringify(row))
+    })
+    request.on('done', () => {
+      if (started) {
+        process.stdout.write(']]')
+      }
+      process.stdout.write('\n')
+      pool.close()
+    })
+    request.query(statement)
+  })
+
+program.parseAsync(process.argv).catch((e) => {
+  program.error(e.message, { exitCode: 1 });
+})

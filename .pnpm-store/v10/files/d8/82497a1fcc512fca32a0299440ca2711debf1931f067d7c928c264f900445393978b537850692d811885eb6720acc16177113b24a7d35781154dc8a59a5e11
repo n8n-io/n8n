@@ -1,0 +1,84 @@
+{
+  "name": "@element-plus/icons-vue",
+  "version": "2.3.1",
+  "description": "Vue components of Element Plus Icons collection.",
+  "type": "module",
+  "keywords": [
+    "icon",
+    "svg",
+    "vue",
+    "element-plus"
+  ],
+  "license": "MIT",
+  "homepage": "https://element-plus.org/",
+  "bugs": {
+    "url": "https://github.com/element-plus/element-plus-icons/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/element-plus/element-plus-icons.git",
+    "directory": "packages/vue"
+  },
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "require": "./dist/index.cjs",
+      "import": "./dist/index.js"
+    },
+    "./global": {
+      "types": "./dist/types/global.d.ts",
+      "require": "./dist/global.cjs",
+      "import": "./dist/global.js"
+    },
+    "./*": "./*"
+  },
+  "typesVersions": {
+    "*": {
+      "*": [
+        "./*",
+        "./dist/types/*"
+      ]
+    }
+  },
+  "sideEffects": false,
+  "unpkg": "dist/index.iife.min.js",
+  "jsdelivr": "dist/index.iife.min.js",
+  "peerDependencies": {
+    "vue": "^3.2.0"
+  },
+  "devDependencies": {
+    "@pnpm/find-workspace-dir": "^6.0.2",
+    "@pnpm/find-workspace-packages": "^6.0.9",
+    "@pnpm/logger": "^5.0.0",
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^20.10.0",
+    "@types/prettier": "^3.0.0",
+    "camelcase": "^8.0.0",
+    "chalk": "^5.3.0",
+    "consola": "^3.2.3",
+    "esbuild": "^0.19.8",
+    "esbuild-plugin-globals": "^0.2.0",
+    "fast-glob": "^3.3.2",
+    "fs-extra": "^11.1.1",
+    "npm-run-all": "^4.1.5",
+    "prettier": "^3.1.0",
+    "tsx": "^4.5.0",
+    "typescript": "^5.3.2",
+    "unplugin-vue": "^4.5.0",
+    "vue": "^3.3.9",
+    "vue-tsc": "^1.8.22",
+    "@element-plus/icons-svg": "2.3.1"
+  },
+  "scripts": {
+    "build": "pnpm run build:generate && run-p build:build build:types",
+    "build:generate": "tsx build/generate.ts",
+    "build:build": "NODE_ENV=production tsx build/build.ts",
+    "build:types": "vue-tsc --declaration --emitDeclarationOnly"
+  }
+}

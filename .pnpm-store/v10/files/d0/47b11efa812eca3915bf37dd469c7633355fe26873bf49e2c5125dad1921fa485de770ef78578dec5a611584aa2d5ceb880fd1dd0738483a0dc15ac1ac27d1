@@ -1,0 +1,2 @@
+<h1>{{> subdir/partial-subdir}}</h1>
+<p>{{text}}</p>

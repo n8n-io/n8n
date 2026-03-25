@@ -1,0 +1,73 @@
+{
+  "name": "simple-websocket",
+  "description": "Simple, EventEmitter API for WebSockets (browser)",
+  "version": "9.1.0",
+  "author": {
+    "name": "Feross Aboukhadijeh",
+    "email": "feross@feross.org",
+    "url": "https://feross.org"
+  },
+  "browser": {
+    "ws": false
+  },
+  "bugs": {
+    "url": "https://github.com/feross/simple-websocket/issues"
+  },
+  "dependencies": {
+    "debug": "^4.3.1",
+    "queue-microtask": "^1.2.2",
+    "randombytes": "^2.1.0",
+    "readable-stream": "^3.6.0",
+    "ws": "^7.4.2"
+  },
+  "devDependencies": {
+    "airtap": "^3.0.0",
+    "babel-eslint": "^10.1.0",
+    "babel-minify": "^0.5.1",
+    "browserify": "^17.0.0",
+    "prettier-bytes": "^1.0.4",
+    "speedometer": "^1.1.0",
+    "standard": "*",
+    "tape": "^5.1.1"
+  },
+  "homepage": "https://github.com/feross/simple-websocket",
+  "keywords": [
+    "simple",
+    "simple websocket",
+    "simple-websocket",
+    "socket",
+    "websocket",
+    "ws"
+  ],
+  "license": "MIT",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/feross/simple-websocket.git"
+  },
+  "scripts": {
+    "build": "browserify -s SimpleWebsocket -r . | minify > simplewebsocket.min.js",
+    "size": "npm run build && cat simplewebsocket.min.js | gzip | wc -c",
+    "test": "standard && npm run test-node && npm run test-browser",
+    "test-browser": "airtap -- test/*.js",
+    "test-browser-local": "airtap --local -- test/*.js",
+    "test-node": "tape test/*.js test/node/*.js"
+  },
+  "standard": {
+    "parser": "babel-eslint"
+  },
+  "funding": [
+    {
+      "type": "github",
+      "url": "https://github.com/sponsors/feross"
+    },
+    {
+      "type": "patreon",
+      "url": "https://www.patreon.com/feross"
+    },
+    {
+      "type": "consulting",
+      "url": "https://feross.org/support"
+    }
+  ]
+}

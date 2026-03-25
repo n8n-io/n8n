@@ -1,0 +1,71 @@
+{
+  "name": "ag-grid-vue3",
+  "description": "AG Grid Vue 3 Component",
+  "version": "34.1.1",
+  "author": "Sean Landsman <sean@thelandsmans.com>",
+  "license": "MIT",
+  "files": [
+    "dist"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ag-grid/ag-grid.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ag-grid/ag-grid/issues"
+  },
+  "homepage": "https://www.ag-grid.com/",
+  "keywords": [
+    "grid",
+    "data",
+    "table",
+    "vue",
+    "vuejs"
+  ],
+  "main": "./dist/main.umd.js",
+  "module": "./dist/main.mjs",
+  "typings": "./dist/typings/main.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/main.mjs",
+      "types": "./dist/typings/main.d.ts",
+      "require": "./dist/main.umd.js",
+      "default": "./dist/main.umd.js"
+    }
+  },
+  "scripts": {
+    "clean": "rimraf dist lib",
+    "dev": "vite",
+    "update-properties": "node updateGridAndColumnProperties.cjs",
+    "build": "run-p update-properties type-check \"build-only {@}\" --",
+    "preview": "vite preview",
+    "build-only": "vite build",
+    "type-check": "vue-tsc --build --force --declaration --emitDeclarationOnly"
+  },
+  "dependencies": {
+    "ag-grid-community": "34.1.1"
+  },
+  "devDependencies": {
+    "vue": "^3.5.0",
+    "replace-in-file": "4.1.0",
+    "@tsconfig/node20": "^20.1.4",
+    "@types/jsdom": "^21.1.7",
+    "@types/node": "^20.14.5",
+    "@vitejs/plugin-vue": "^5.0.5",
+    "@vitejs/plugin-vue-jsx": "^4.0.0",
+    "@vue/test-utils": "^2.4.6",
+    "@vue/tsconfig": "^0.5.1",
+    "jsdom": "^24.1.0",
+    "npm-run-all2": "^6.2.0",
+    "typescript": "~5.4.0",
+    "vite": "~5.4.19",
+    "vite-plugin-vue-devtools": "^7.3.1",
+    "vue-tsc": "^2.0.21"
+  },
+  "peerDependencies": {
+    "vue": "^3.5.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

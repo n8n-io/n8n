@@ -1,0 +1,63 @@
+{
+    "name": "@types/babel__traverse",
+    "version": "7.28.0",
+    "description": "TypeScript definitions for @babel/traverse",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/babel__traverse",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Troy Gerwien",
+            "githubUsername": "yortus",
+            "url": "https://github.com/yortus"
+        },
+        {
+            "name": "Marvin Hagemeister",
+            "githubUsername": "marvinhagemeister",
+            "url": "https://github.com/marvinhagemeister"
+        },
+        {
+            "name": "Ryan Petrich",
+            "githubUsername": "rpetrich",
+            "url": "https://github.com/rpetrich"
+        },
+        {
+            "name": "Melvin Groenhoff",
+            "githubUsername": "mgroenhoff",
+            "url": "https://github.com/mgroenhoff"
+        },
+        {
+            "name": "Dean L.",
+            "githubUsername": "dlgrit",
+            "url": "https://github.com/dlgrit"
+        },
+        {
+            "name": "Ifiok Jr.",
+            "githubUsername": "ifiokjr",
+            "url": "https://github.com/ifiokjr"
+        },
+        {
+            "name": "ExE Boss",
+            "githubUsername": "ExE-Boss",
+            "url": "https://github.com/ExE-Boss"
+        },
+        {
+            "name": "Daniel Tschinder",
+            "githubUsername": "danez",
+            "url": "https://github.com/danez"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/babel__traverse"
+    },
+    "scripts": {},
+    "dependencies": {
+        "@babel/types": "^7.28.2"
+    },
+    "peerDependencies": {},
+    "typesPublisherContentHash": "f8bf439253873b2b30a22c425df086f130320cf70d832d84412e82a51e410680",
+    "typeScriptVersion": "5.1"
+}

@@ -1,0 +1,70 @@
+<html>
+<head>
+  <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>
+    var module = {}
+    var exports = {};
+    module.exports = exports;
+  </script>
+  <script src="../index.js"></script>
+  <script src="./assertAll.js"></script>
+  <script>
+    $(document).ready(function () {
+      var Type = module.exports;
+      
+      var primitives = [
+        [{ x : 2 }, Object, "Object"],
+        [function () {}, Function, "Function"],
+        [[1, 2, 3], Array, "Array"],
+        ["barf", String, "String"],
+        [true, Boolean, "Boolean"],
+        [10, Number, "Number"],
+        [new Date(), Date, "Date"],
+        [/abc/, RegExp, "RegExp"],
+        [new Error("barf!"), Error, "Error"]
+      ];
+      
+      function Person (name) {
+        this.name = name;
+      }
+      Person.prototype.barf = function () {
+        return this.name + " just barfed!";
+      };
+      
+      try {
+        for (var i = 0; i < primitives.length; i++) {
+          var primitive = primitives[i];
+          var obj = primitive[0];
+          var ctype = primitive[1];
+          var stype = primitive[2];
+          
+          assertAll([
+            [Type.instance(obj, ctype), true, "Type.instance(" + obj + ") is " + ctype],
+            [Type.of(obj), ctype, "Type.of(" + obj + ") is " + ctype],
+            [Type.is(obj, ctype), true, "Type.is(" + obj + ", " + ctype + ") is true"],
+            [Type.is(obj, stype), true, "Type.is(" + obj + ", " + stype + ") is true"]
+          ]);
+        }
+        
+        var ralph = new Person('Ralph');
+        assertAll([
+          [Type.of(ralph), Person, "Type.of(ralph) is Person"],
+          [Type.is(ralph, Person), true, "Type.is(ralph, Person) is true"],
+          [Type.is(ralph, Object), false, "Type.is(ralph, Object) is false"],
+          [Type.instance(ralph, Person), true, "Type.instance(ralph, Person) is true"],
+          [Type.instance(ralph, Object), true, "Type.instance(ralph, Object) is true"],
+          [Type.any(ralph, [Person, String]), true, "Type.any(ralph, [Person, String]) is true"],
+          [Type.any(ralph, [String, Number]), false, "Type.any(ralph, [String, Number]) is false"]
+        ]);
+        
+        alert("all tests passed");
+        
+      } catch (error) {
+        alert(error);
+      }
+    });
+  </script>
+</head>
+<body>
+</body>
+</html>

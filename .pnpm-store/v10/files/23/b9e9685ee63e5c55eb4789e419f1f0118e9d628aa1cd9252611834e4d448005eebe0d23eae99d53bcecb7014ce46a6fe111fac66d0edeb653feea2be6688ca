@@ -1,0 +1,16 @@
+language: node_js
+sudo: false
+
+node_js:
+  - "0.10"
+  - "0.12"
+  - "4"
+
+after_success:
+  - npm run coverage
+  - npm i coveralls
+  - cat ./coverage/lcov.info | coveralls
+
+notifications:
+  email:
+    on_success: never

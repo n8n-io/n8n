@@ -1,0 +1,40 @@
+{
+  "name": "with",
+  "version": "7.0.2",
+  "description": "Compile time `with` for strict mode JavaScript",
+  "main": "lib/index.js",
+  "scripts": {
+    "build": "tsc",
+    "postbuild": "rimraf lib/**/__tests__",
+    "lint": "tslint './src/**/*.{ts,tsx}' -t verbose -p .",
+    "prettier:write": "prettier --ignore-path .gitignore --write './**/*.{md,json,yaml,js,jsx,ts,tsx}'",
+    "prettier:check": "prettier --ignore-path .gitignore --list-different './**/*.{md,json,yaml,js,jsx,ts,tsx}'",
+    "pretest": "yarn build",
+    "test": "mocha test/index.js -R spec"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pugjs/with.git"
+  },
+  "author": "ForbesLindesay",
+  "license": "MIT",
+  "dependencies": {
+    "@babel/parser": "^7.9.6",
+    "@babel/types": "^7.9.6",
+    "assert-never": "^1.2.1",
+    "babel-walk": "3.0.0-canary-5"
+  },
+  "devDependencies": {
+    "@forbeslindesay/tsconfig": "^2.0.0",
+    "@types/node": "^14.0.5",
+    "mocha": "*",
+    "prettier": "^2.0.5",
+    "rimraf": "^3.0.2",
+    "tslint": "^6.1.2",
+    "typescript": "^3.9.3",
+    "uglify-js": "^2.6.2"
+  },
+  "engines": {
+    "node": ">= 10.0.0"
+  }
+}

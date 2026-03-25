@@ -1,0 +1,37 @@
+{
+  "name": "osenv",
+  "version": "0.1.5",
+  "main": "osenv.js",
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {
+    "os-homedir": "^1.0.0",
+    "os-tmpdir": "^1.0.0"
+  },
+  "devDependencies": {
+    "tap": "^11.1.0"
+  },
+  "scripts": {
+    "test": "tap test/*.js",
+    "preversion": "npm test",
+    "postversion": "npm publish",
+    "postpublish": "git push origin --all; git push origin --tags"
+  },
+  "repository": "https://github.com/npm/osenv",
+  "keywords": [
+    "environment",
+    "variable",
+    "home",
+    "tmpdir",
+    "path",
+    "prompt",
+    "ps1"
+  ],
+  "author": "Isaac Z. Schlueter <i@izs.me> (http://blog.izs.me/)",
+  "license": "ISC",
+  "description": "Look up environment settings specific to different operating systems",
+  "files": [
+    "osenv.js"
+  ]
+}

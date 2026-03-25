@@ -1,0 +1,19 @@
+// @flow
+// This file is generated automatically by `scripts/build/typings.js`. Please, don't change it.
+
+import type { Locale } from 'date-fns'
+
+type OptionsWithTZ = {
+  weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6,
+  firstWeekContainsDate?: 1 | 2 | 3 | 4 | 5 | 6 | 7,
+  additionalDigits?: 0 | 1 | 2,
+  timeZone?: string,
+  locale?: Locale,
+  includeSeconds?: boolean,
+  addSuffix?: boolean,
+  unit?: 'second' | 'minute' | 'hour' | 'day' | 'month' | 'year',
+  roundingMethod?: 'floor' | 'ceil' | 'round',
+  awareOfUnicodeTokens?: boolean,
+}
+
+declare module.exports: (date: Date | number, format: string, options?: OptionsWithTZ) => string

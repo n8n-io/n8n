@@ -1,0 +1,41 @@
+{
+  "name": "http-proxy",
+  "version": "1.18.1",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/http-party/node-http-proxy.git"
+  },
+  "description": "HTTP proxying for the masses",
+  "author": "Charlie Robbins <charlie.robbins@gmail.com>",
+  "maintainers": [
+    "jcrugzz <jcrugzz@gmail.com>"
+  ],
+  "main": "index.js",
+  "dependencies": {
+    "eventemitter3": "^4.0.0",
+    "requires-port": "^1.0.0",
+    "follow-redirects": "^1.0.0"
+  },
+  "devDependencies": {
+    "async": "^3.0.0",
+    "auto-changelog": "^1.15.0",
+    "concat-stream": "^2.0.0",
+    "expect.js": "~0.3.1",
+    "mocha": "^3.5.3",
+    "nyc": "^14.0.0",
+    "semver": "^5.0.3",
+    "socket.io": "^2.1.0",
+    "socket.io-client": "^2.1.0",
+    "sse": "0.0.8",
+    "ws": "^3.0.0"
+  },
+  "scripts": {
+    "mocha": "mocha test/*-test.js",
+    "test": "nyc --reporter=text --reporter=lcov npm run mocha",
+    "version": "auto-changelog -p && git add CHANGELOG.md"
+  },
+  "engines": {
+    "node": ">=8.0.0"
+  },
+  "license": "MIT"
+}

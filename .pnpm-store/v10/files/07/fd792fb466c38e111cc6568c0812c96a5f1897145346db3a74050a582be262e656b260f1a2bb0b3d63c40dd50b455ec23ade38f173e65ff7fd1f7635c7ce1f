@@ -1,0 +1,1 @@
+export * from "../dist/structured_query/supabase.js";

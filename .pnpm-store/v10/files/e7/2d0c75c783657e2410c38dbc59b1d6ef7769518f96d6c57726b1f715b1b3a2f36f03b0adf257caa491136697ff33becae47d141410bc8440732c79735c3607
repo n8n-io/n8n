@@ -1,0 +1,1 @@
+{"version":3,"file":"CommonUsernamePasswordRequest.d.ts","sourceRoot":"","sources":["../../src/request/CommonUsernamePasswordRequest.ts"],"names":[],"mappings":"AAKA,OAAO,EAAE,eAAe,EAAE,MAAM,sBAAsB,CAAC;AAEvD;;;;;;;;;;;GAWG;AACH,MAAM,MAAM,6BAA6B,GAAG,eAAe,GAAG;IAC1D,QAAQ,EAAE,MAAM,CAAC;IACjB,QAAQ,EAAE,MAAM,CAAC;CACpB,CAAC"}

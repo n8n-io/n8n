@@ -1,0 +1,167 @@
+# Copyright 2012 Mozilla Foundation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Main toolbar buttons (tooltips and alt text for images)
+previous.title=ପୂର୍ବ ପୃଷ୍ଠା
+previous_label=ପୂର୍ବ
+next.title=ପର ପୃଷ୍ଠା
+next_label=ପର
+
+# LOCALIZATION NOTE (page.title): The tooltip for the pageNumber input.
+# LOCALIZATION NOTE (of_pages): "{{pagesCount}}" will be replaced by a number
+# representing the total number of pages in the document.
+# LOCALIZATION NOTE (page_of_pages): "{{pageNumber}}" and "{{pagesCount}}"
+# will be replaced by a number representing the currently visible page,
+# respectively a number representing the total number of pages in the document.
+
+zoom_out.title=ଛୋଟ କରନ୍ତୁ
+zoom_out_label=ଛୋଟ କରନ୍ତୁ
+zoom_in.title=ବଡ଼ କରନ୍ତୁ
+zoom_in_label=ବଡ଼ କରନ୍ତୁ
+zoom.title=ଛୋଟ ବଡ଼ କରନ୍ତୁ
+presentation_mode.title=ଉପସ୍ଥାପନ ଧାରାକୁ ବଦଳାନ୍ତୁ
+presentation_mode_label=ଉପସ୍ଥାପନ ଧାରା
+open_file.title=ଫାଇଲ ଖୋଲନ୍ତୁ
+open_file_label=ଖୋଲନ୍ତୁ
+print.title=ମୁଦ୍ରଣ
+print_label=ମୁଦ୍ରଣ
+download.title=ଆହରଣ
+download_label=ଆହରଣ
+bookmark.title=ପ୍ରଚଳିତ ଦୃଶ୍ୟ (ନକଲ କରନ୍ତୁ କିମ୍ବା ଏକ ନୂତନ ୱିଣ୍ଡୋରେ ଖୋଲନ୍ତୁ)
+bookmark_label=ପ୍ରଚଳିତ ଦୃଶ୍ୟ
+
+# Secondary toolbar and context menu
+tools.title=ସାଧନଗୁଡ଼ିକ
+tools_label=ସାଧନଗୁଡ଼ିକ
+first_page.title=ପ୍ରଥମ ପୃଷ୍ଠାକୁ ଯାଆନ୍ତୁ
+first_page.label=ପ୍ରଥମ ପୃଷ୍ଠାକୁ ଯାଆନ୍ତୁ
+first_page_label=ପ୍ରଥମ ପୃଷ୍ଠାକୁ ଯାଆନ୍ତୁ
+last_page.title=ଶେଷ ପୃଷ୍ଠାକୁ ଯାଆନ୍ତୁ
+last_page.label=ଶେଷ ପୃଷ୍ଠାକୁ ଯାଆନ୍ତୁ
+last_page_label=ଶେଷ ପୃଷ୍ଠାକୁ ଯାଆନ୍ତୁ
+page_rotate_cw.title=ଦକ୍ଷିଣାବର୍ତ୍ତୀ ଘୁରାନ୍ତୁ
+page_rotate_cw.label=ଦକ୍ଷିଣାବର୍ତ୍ତୀ ଘୁରାନ୍ତୁ
+page_rotate_cw_label=ଦକ୍ଷିଣାବର୍ତ୍ତୀ ଘୁରାନ୍ତୁ
+page_rotate_ccw.title=ବାମାବର୍ତ୍ତୀ ଘୁରାନ୍ତୁ
+page_rotate_ccw.label=ବାମାବର୍ତ୍ତୀ ଘୁରାନ୍ତୁ
+page_rotate_ccw_label=ବାମାବର୍ତ୍ତୀ ଘୁରାନ୍ତୁ
+
+
+# Document properties dialog box
+document_properties.title=ଦଲିଲ ଗୁଣଧର୍ମ…
+document_properties_label=ଦଲିଲ ଗୁଣଧର୍ମ…
+document_properties_file_name=ଫାଇଲ ନାମ:
+document_properties_file_size=ଫାଇଲ ଆକାର:
+# LOCALIZATION NOTE (document_properties_kb): "{{size_kb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in kilobytes, respectively in bytes.
+document_properties_kb={{size_kb}} KB ({{size_b}} bytes)
+# LOCALIZATION NOTE (document_properties_mb): "{{size_mb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in megabytes, respectively in bytes.
+document_properties_mb={{size_mb}} MB ({{size_b}} bytes)
+document_properties_title=ଶୀର୍ଷକ:
+document_properties_author=ଲେଖକ:
+document_properties_subject=ବିଷୟ:
+document_properties_keywords=ସୂଚକ ଶବ୍ଦ:
+document_properties_creation_date=ନିର୍ମାଣ ତାରିଖ:
+document_properties_modification_date=ପରିବର୍ତ୍ତନ ତାରିଖ:
+# LOCALIZATION NOTE (document_properties_date_string): "{{date}}" and "{{time}}"
+# will be replaced by the creation/modification date, and time, of the PDF file.
+document_properties_date_string={{date}}, {{time}}
+document_properties_creator=ନିର୍ମାତା:
+document_properties_producer=PDF ପ୍ରଯୋଜକ:
+document_properties_version=PDF ସଂସ୍କରଣ:
+document_properties_page_count=ପୃଷ୍ଠା ଗଣନା:
+document_properties_close=ବନ୍ଦ କରନ୍ତୁ
+
+# LOCALIZATION NOTE (print_progress_percent): "{{progress}}" will be replaced by
+# a numerical per cent value.
+
+# Tooltips and alt text for side panel toolbar buttons
+# (the _label strings are alt text for the buttons, the .title strings are
+# tooltips)
+toggle_sidebar.title=ପାର୍ଶ୍ୱପଟିକୁ ଆଗପଛ କରନ୍ତୁ
+toggle_sidebar_label=ପାର୍ଶ୍ୱପଟିକୁ ଆଗପଛ କରନ୍ତୁ
+document_outline_label=ଦଲିଲ ସାରାଂଶ
+attachments.title=ସଂଲଗ୍ନକଗୁଡ଼ିକୁ ଦର୍ଶାନ୍ତୁ
+attachments_label=ସଲଗ୍ନକଗୁଡିକ
+thumbs.title=ସଂକ୍ଷିପ୍ତ ବିବରଣୀ ଦର୍ଶାନ୍ତୁ
+thumbs_label=ସଂକ୍ଷିପ୍ତ ବିବରଣୀ
+findbar.title=ଦଲିଲରେ ଖୋଜନ୍ତୁ
+
+# Thumbnails panel item (tooltip and alt text for images)
+# LOCALIZATION NOTE (thumb_page_title): "{{page}}" will be replaced by the page
+# number.
+thumb_page_title=ପୃଷ୍ଠା {{page}}
+# LOCALIZATION NOTE (thumb_page_canvas): "{{page}}" will be replaced by the page
+# number.
+thumb_page_canvas=ପୃଷ୍ଠାର ସଂକ୍ଷିପ୍ତ ବିବରଣୀ {{page}}
+
+# Find panel button title and messages
+find_previous.title=ଏହି ବାକ୍ୟାଂଶର ପୂର୍ବ ଉପସ୍ଥିତିକୁ ଖୋଜନ୍ତୁ
+find_previous_label=ପୂର୍ବବର୍ତ୍ତୀ
+find_next.title=ଏହି ବାକ୍ୟାଂଶର ପରବର୍ତ୍ତୀ ଉପସ୍ଥିତିକୁ ଖୋଜନ୍ତୁ
+find_next_label=ପରବର୍ତ୍ତୀ\u0020
+find_highlight=ସମସ୍ତଙ୍କୁ ଆଲୋକିତ କରନ୍ତୁ
+find_match_case_label=ଅକ୍ଷର ମେଳାନ୍ତୁ
+find_reached_top=ତଳୁ ଉପରକୁ ଗତି କରି ଦଲିଲର ଉପର ଭାଗରେ ପହଞ୍ଚି ଯାଇଛି
+find_reached_bottom=ଉପରୁ ତଳକୁ ଗତି କରି ଦଲିଲର ଶେଷ ଭାଗରେ ପହଞ୍ଚି ଯାଇଛି
+find_not_found=ବାକ୍ୟାଂଶ ମିଳିଲା ନାହିଁ
+
+# Error panel labels
+error_more_info=ଅଧିକ ସୂଚନା
+error_less_info=ସ୍ୱଳ୍ପ ସୂଚନା
+error_close=ବନ୍ଦ କରନ୍ତୁ
+# LOCALIZATION NOTE (error_version_info): "{{version}}" and "{{build}}" will be
+# replaced by the PDF.JS version and build ID.
+error_version_info=PDF.js v{{version}} (build: {{build}})
+# LOCALIZATION NOTE (error_message): "{{message}}" will be replaced by an
+# english string describing the error.
+error_message=ସନ୍ଦେଶ: {{message}}
+# LOCALIZATION NOTE (error_stack): "{{stack}}" will be replaced with a stack
+# trace.
+error_stack=ଷ୍ଟାକ: {{stack}}
+# LOCALIZATION NOTE (error_file): "{{file}}" will be replaced with a filename
+error_file=ଫାଇଲ: {{file}}
+# LOCALIZATION NOTE (error_line): "{{line}}" will be replaced with a line number
+error_line=ଧାଡ଼ି: {{line}}
+rendering_error=ପୃଷ୍ଠା ଚିତ୍ରଣ କରିବା ସମୟରେ ତ୍ରୁଟି ଘଟିଲା।
+
+# Predefined zoom values
+page_scale_width=ପୃଷ୍ଠା ଓସାର
+page_scale_fit=ପୃଷ୍ଠା ମେଳନ
+page_scale_auto=ସ୍ୱୟଂଚାଳିତ ଭାବରେ ଛୋଟବଡ଼ କରିବା
+page_scale_actual=ପ୍ରକୃତ ଆକାର
+# LOCALIZATION NOTE (page_scale_percent): "{{scale}}" will be replaced by a
+# numerical scale value.
+
+# Loading indicator messages
+loading_error_indicator=ତ୍ରୁଟି
+loading_error=PDF ଧାରଣ କରିବା ସମୟରେ ଏକ ତ୍ରୁଟି ଘଟିଲା।
+invalid_file_error=ଅବୈଧ କିମ୍ବା ତ୍ରୁଟିଯୁକ୍ତ PDF ଫାଇଲ।
+missing_file_error=ହଜିଯାଇଥିବା PDF ଫାଇଲ।
+unexpected_response_error=ଅପ୍ରତ୍ୟାଶିତ ସର୍ଭର ଉତ୍ତର।
+
+# LOCALIZATION NOTE (text_annotation_type.alt): This is used as a tooltip.
+# "{{type}}" will be replaced with an annotation type from a list defined in
+# the PDF spec (32000-1:2008 Table 169 – Annotation types).
+# Some common types are e.g.: "Check", "Text", "Comment", "Note"
+text_annotation_type.alt=[{{type}} Annotation]
+password_label=ଏହି PDF ଫାଇଲକୁ ଖୋଲିବା ପାଇଁ ପ୍ରବେଶ ସଂକେତ ଭରଣ କରନ୍ତୁ।
+password_invalid=ଭୁଲ ପ୍ରବେଶ ସଂକେତ। ଦୟାକରି ପୁଣି ଚେଷ୍ଟା କରନ୍ତୁ।
+password_ok=ଠିକ ଅଛି
+
+printing_not_supported=ଚେତାବନୀ: ଏହି ବ୍ରାଉଜର ଦ୍ୱାରା ମୁଦ୍ରଣ କ୍ରିୟା ସମ୍ପୂର୍ଣ୍ଣ ଭାବରେ ସହାୟତା ପ୍ରାପ୍ତ ନୁହଁ।
+printing_not_ready=ଚେତାବନୀ: PDF ଟି ମୁଦ୍ରଣ ପାଇଁ ସମ୍ପୂର୍ଣ୍ଣ ଭାବରେ ଧାରଣ ହୋଇ ନାହିଁ।
+web_fonts_disabled=ୱେବ ଅକ୍ଷରରୂପଗୁଡ଼ିକୁ ନିଷ୍କ୍ରିୟ କରାଯାଇଛି: ସନ୍ନିହିତ PDF ଅକ୍ଷରରୂପଗୁଡ଼ିକୁ ବ୍ୟବହାର କରିବାରେ ଅସମର୍ଥ।
+document_colors_not_allowed=PDF ଦଲିଲଗୁଡ଼ିକ ସେମାନଙ୍କର ନିଜର ରଙ୍ଗ ବ୍ୟବହାର କରିବା ପାଇଁ ଅନୁମତି ପ୍ରାପ୍ତ ନୁହଁ: 'ସେମାନଙ୍କର ନିଜ ରଙ୍ଗ ବାଛିବା ପାଇଁ ପୃଷ୍ଠାଗୁଡ଼ିକୁ ଅନୁମତି ଦିଅନ୍ତୁ' କୁ ବ୍ରାଉଜରରେ ନିଷ୍କ୍ରିୟ କରାଯାଇଛି।

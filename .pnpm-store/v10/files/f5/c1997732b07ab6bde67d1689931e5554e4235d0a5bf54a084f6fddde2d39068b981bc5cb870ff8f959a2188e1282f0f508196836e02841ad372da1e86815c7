@@ -1,0 +1,39 @@
+{
+  "name": "minipass-flush",
+  "version": "1.0.5",
+  "description": "A Minipass stream that calls a flush function before emitting 'end'",
+  "author": "Isaac Z. Schlueter <i@izs.me> (https://izs.me)",
+  "license": "ISC",
+  "scripts": {
+    "test": "tap",
+    "snap": "tap",
+    "preversion": "npm test",
+    "postversion": "npm publish",
+    "postpublish": "git push origin --follow-tags"
+  },
+  "tap": {
+    "check-coverage": true
+  },
+  "devDependencies": {
+    "tap": "^14.6.9"
+  },
+  "dependencies": {
+    "minipass": "^3.0.0"
+  },
+  "files": [
+    "index.js"
+  ],
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/isaacs/minipass-flush.git"
+  },
+  "keywords": [
+    "minipass",
+    "flush",
+    "stream"
+  ],
+  "engines": {
+    "node": ">= 8"
+  }
+}

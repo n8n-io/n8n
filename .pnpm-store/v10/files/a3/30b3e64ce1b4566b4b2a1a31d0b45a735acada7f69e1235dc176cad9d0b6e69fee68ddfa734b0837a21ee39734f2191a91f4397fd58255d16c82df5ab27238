@@ -1,0 +1,1 @@
+{"version":3,"file":"index.mjs","sources":["../../../../../packages/components/text/index.ts"],"sourcesContent":["import { withInstall } from '@element-plus/utils'\n\nimport Text from './src/text.vue'\n\nexport const ElText = withInstall(Text)\nexport default ElText\n\nexport * from './src/text'\n"],"names":[],"mappings":";;;;;AAEY,MAAC,MAAM,GAAG,WAAW,CAAC,IAAI;;;;"}

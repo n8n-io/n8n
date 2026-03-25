@@ -1,0 +1,32 @@
+import {
+  StaticErrorSchema,
+  StaticListSchema,
+  StaticOperationSchema,
+  StaticSimpleSchema,
+  StaticStructureSchema,
+} from "@smithy/types";
+export declare var AccessTokenType: StaticSimpleSchema;
+export declare var SecretAccessKeyType: StaticSimpleSchema;
+export declare var SessionTokenType: StaticSimpleSchema;
+export declare var AccountInfo: StaticStructureSchema;
+export declare var GetRoleCredentialsRequest: StaticStructureSchema;
+export declare var GetRoleCredentialsResponse: StaticStructureSchema;
+export declare var InvalidRequestException: StaticErrorSchema;
+export declare var ListAccountRolesRequest: StaticStructureSchema;
+export declare var ListAccountRolesResponse: StaticStructureSchema;
+export declare var ListAccountsRequest: StaticStructureSchema;
+export declare var ListAccountsResponse: StaticStructureSchema;
+export declare var LogoutRequest: StaticStructureSchema;
+export declare var ResourceNotFoundException: StaticErrorSchema;
+export declare var RoleCredentials: StaticStructureSchema;
+export declare var RoleInfo: StaticStructureSchema;
+export declare var TooManyRequestsException: StaticErrorSchema;
+export declare var UnauthorizedException: StaticErrorSchema;
+export declare var __Unit: "unit";
+export declare var SSOServiceException: StaticErrorSchema;
+export declare var AccountListType: StaticListSchema;
+export declare var RoleListType: StaticListSchema;
+export declare var GetRoleCredentials: StaticOperationSchema;
+export declare var ListAccountRoles: StaticOperationSchema;
+export declare var ListAccounts: StaticOperationSchema;
+export declare var Logout: StaticOperationSchema;

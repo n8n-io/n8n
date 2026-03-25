@@ -1,0 +1,1 @@
+{"version":3,"sources":["../../src/query-builder/SelectQuery.ts"],"names":[],"mappings":"","file":"SelectQuery.js","sourcesContent":["export interface SelectQuery {\n    selection: string\n    aliasName?: string\n    virtual?: boolean\n}\n"],"sourceRoot":".."}

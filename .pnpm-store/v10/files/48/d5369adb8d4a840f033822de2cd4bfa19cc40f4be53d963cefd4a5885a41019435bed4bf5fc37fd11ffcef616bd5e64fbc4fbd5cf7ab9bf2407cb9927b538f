@@ -1,0 +1,35 @@
+{
+  "name": "jsbi",
+  "version": "4.3.0",
+  "repository": "GoogleChromeLabs/jsbi",
+  "devDependencies": {
+    "@babel/preset-env": "^7.5.5",
+    "@typescript-eslint/eslint-plugin": "^4.29.1",
+    "@typescript-eslint/parser": "^4.29.1",
+    "eslint": "^6.2.0",
+    "eslint-config-google": "^0.13.0",
+    "rollup": "^1.19.4",
+    "rollup-plugin-babel": "^4.3.3",
+    "rollup-plugin-babel-minify": "^9.0.0",
+    "typescript": "^4.4.2"
+  },
+  "main": "dist/jsbi-cjs.js",
+  "module": "dist/jsbi.mjs",
+  "browser": "dist/jsbi-umd.js",
+  "types": "jsbi.d.ts",
+  "files": [
+    "dist",
+    "jsbi.d.ts"
+  ],
+  "scripts": {
+    "build": "tsc && for f in tsc-out/*.js; do mv -- \"$f\" \"${f%.js}.mjs\"; done && sed -e '/__absoluteDivLarge/,+4d' tsc-out/jsbi.d.ts | grep -v ' __' > jsbi.d.ts && rollup --config rollup.config.js",
+    "dev": "tsc --watch",
+    "test": "set -e; for file in tests/*.mjs; do node --no-warnings --experimental-modules --experimental-specifier-resolution=node --loader ./tests/resolve.source.mjs \"${file}\"; done; for file in benchmarks/*.mjs; do node --no-warnings --experimental-modules --experimental-specifier-resolution=node --loader ./tests/resolve.source.mjs \"${file}\"; done",
+    "pretest": "npm run build",
+    "prepublish": "npm run ci",
+    "lint": "eslint . --ext ts --fix",
+    "generate-benchmarks": "for op in add and div mod mul neg not or sar shl sub xor; do scripts/generate-benchmark.py generate \"${op}\" > \"benchmarks/${op}.mjs\"; done",
+    "ci": "npm run lint && npm run build && git status && git diff-index --quiet HEAD -- || git diff && npm test"
+  },
+  "license": "Apache-2.0"
+}

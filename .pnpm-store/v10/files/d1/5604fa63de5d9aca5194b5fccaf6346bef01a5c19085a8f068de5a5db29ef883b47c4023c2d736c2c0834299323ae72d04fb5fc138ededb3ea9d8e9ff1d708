@@ -1,0 +1,184 @@
+# Copyright 2012 Mozilla Foundation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Main toolbar buttons (tooltips and alt text for images)
+previous.title=الصفحة السابقة
+previous_label=السابقة
+next.title=الصفحة التالية
+next_label=التالية
+
+# LOCALIZATION NOTE (page.title): The tooltip for the pageNumber input.
+page.title=صفحة
+# LOCALIZATION NOTE (of_pages): "{{pagesCount}}" will be replaced by a number
+# representing the total number of pages in the document.
+of_pages=من {{pagesCount}}
+# LOCALIZATION NOTE (page_of_pages): "{{pageNumber}}" and "{{pagesCount}}"
+# will be replaced by a number representing the currently visible page,
+# respectively a number representing the total number of pages in the document.
+page_of_pages=({{pageNumber}} من {{pagesCount}})
+
+zoom_out.title=بعّد
+zoom_out_label=بعّد
+zoom_in.title=قرّب
+zoom_in_label=قرّب
+zoom.title=التقريب
+presentation_mode.title=انتقل لوضع العرض التقديمي
+presentation_mode_label=وضع العرض التقديمي
+open_file.title=افتح ملفًا
+open_file_label=افتح
+print.title=اطبع
+print_label=اطبع
+download.title=نزّل
+download_label=نزّل
+bookmark.title=المنظور الحالي (انسخ أو افتح في نافذة جديدة)
+bookmark_label=المنظور الحالي
+
+# Secondary toolbar and context menu
+tools.title=الأدوات
+tools_label=الأدوات
+first_page.title=اذهب إلى الصفحة الأولى
+first_page.label=اذهب إلى الصفحة الأولى
+first_page_label=اذهب إلى الصفحة الأولى
+last_page.title=اذهب إلى الصفحة الأخيرة
+last_page.label=اذهب إلى الصفحة الأخيرة
+last_page_label=اذهب إلى الصفحة الأخيرة
+page_rotate_cw.title=أدر باتجاه عقارب الساعة
+page_rotate_cw.label=أدر باتجاه عقارب الساعة
+page_rotate_cw_label=أدر باتجاه عقارب الساعة
+page_rotate_ccw.title=أدر بعكس اتجاه عقارب الساعة
+page_rotate_ccw.label=أدر بعكس اتجاه عقارب الساعة
+page_rotate_ccw_label=أدر بعكس اتجاه عقارب الساعة
+
+cursor_text_select_tool.title=فعّل أداة اختيار النص
+cursor_text_select_tool_label=أداة اختيار النص
+cursor_hand_tool.title=فعّل أداة اليد
+cursor_hand_tool_label=أداة اليد
+
+# Document properties dialog box
+document_properties.title=خصائص المستند…
+document_properties_label=خصائص المستند…
+document_properties_file_name=اسم الملف:
+document_properties_file_size=حجم الملف:
+# LOCALIZATION NOTE (document_properties_kb): "{{size_kb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in kilobytes, respectively in bytes.
+document_properties_kb={{size_kb}} ك.بايت ({{size_b}} بايت)
+# LOCALIZATION NOTE (document_properties_mb): "{{size_mb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in megabytes, respectively in bytes.
+document_properties_mb={{size_mb}} م.بايت ({{size_b}} بايت)
+document_properties_title=العنوان:
+document_properties_author=المؤلف:
+document_properties_subject=الموضوع:
+document_properties_keywords=الكلمات الأساسية:
+document_properties_creation_date=تاريخ الإنشاء:
+document_properties_modification_date=تاريخ التعديل:
+# LOCALIZATION NOTE (document_properties_date_string): "{{date}}" and "{{time}}"
+# will be replaced by the creation/modification date, and time, of the PDF file.
+document_properties_date_string={{date}}، {{time}}
+document_properties_creator=المنشئ:
+document_properties_producer=منتج PDF:
+document_properties_version=إصدارة PDF:
+document_properties_page_count=عدد الصفحات:
+document_properties_close=أغلق
+
+print_progress_message=يُحضّر المستند للطباعة…
+# LOCALIZATION NOTE (print_progress_percent): "{{progress}}" will be replaced by
+# a numerical per cent value.
+print_progress_percent={{progress}}٪
+print_progress_close=ألغِ
+
+# Tooltips and alt text for side panel toolbar buttons
+# (the _label strings are alt text for the buttons, the .title strings are
+# tooltips)
+toggle_sidebar.title=بدّل ظهور الشريط الجانبي
+toggle_sidebar_notification.title=بدّل ظهور الشريط الجانبي (يحتوي المستند على مخطط أو مرفقات)
+toggle_sidebar_label=بدّل ظهور الشريط الجانبي
+document_outline.title=اعرض فهرس المستند (نقر مزدوج لتمديد أو تقليص كل العناصر)
+document_outline_label=مخطط المستند
+attachments.title=اعرض المرفقات
+attachments_label=المُرفقات
+thumbs.title=اعرض مُصغرات
+thumbs_label=مُصغّرات
+findbar.title=ابحث في المستند
+findbar_label=ابحث
+
+# Thumbnails panel item (tooltip and alt text for images)
+# LOCALIZATION NOTE (thumb_page_title): "{{page}}" will be replaced by the page
+# number.
+thumb_page_title=صفحة {{page}}
+# LOCALIZATION NOTE (thumb_page_canvas): "{{page}}" will be replaced by the page
+# number.
+thumb_page_canvas=مصغّرة صفحة {{page}}
+
+# Find panel button title and messages
+find_input.title=ابحث
+find_input.placeholder=ابحث في المستند…
+find_previous.title=ابحث عن التّواجد السّابق للعبارة
+find_previous_label=السابق
+find_next.title=ابحث عن التّواجد التّالي للعبارة
+find_next_label=التالي
+find_highlight=أبرِز الكل
+find_match_case_label=طابق حالة الأحرف
+find_reached_top=تابعت من الأسفل بعدما وصلت إلى بداية المستند
+find_reached_bottom=تابعت من الأعلى بعدما وصلت إلى نهاية المستند
+find_not_found=لا وجود للعبارة
+
+# Error panel labels
+error_more_info=معلومات أكثر
+error_less_info=معلومات أقل
+error_close=أغلق
+# LOCALIZATION NOTE (error_version_info): "{{version}}" and "{{build}}" will be
+# replaced by the PDF.JS version and build ID.
+error_version_info=‏PDF.js ن{{version}} ‏(بناء: {{build}})
+# LOCALIZATION NOTE (error_message): "{{message}}" will be replaced by an
+# english string describing the error.
+error_message=الرسالة: {{message}}
+# LOCALIZATION NOTE (error_stack): "{{stack}}" will be replaced with a stack
+# trace.
+error_stack=الرصّة: {{stack}}
+# LOCALIZATION NOTE (error_file): "{{file}}" will be replaced with a filename
+error_file=الملف: {{file}}
+# LOCALIZATION NOTE (error_line): "{{line}}" will be replaced with a line number
+error_line=السطر: {{line}}
+rendering_error=حدث خطأ أثناء عرض الصفحة.
+
+# Predefined zoom values
+page_scale_width=عرض الصفحة
+page_scale_fit=ملائمة الصفحة
+page_scale_auto=تقريب تلقائي
+page_scale_actual=الحجم الحقيقي
+# LOCALIZATION NOTE (page_scale_percent): "{{scale}}" will be replaced by a
+# numerical scale value.
+page_scale_percent={{scale}}٪
+
+# Loading indicator messages
+loading_error_indicator=عطل
+loading_error=حدث عطل أثناء تحميل ملف PDF.
+invalid_file_error=ملف PDF تالف أو غير صحيح.
+missing_file_error=ملف PDF غير موجود.
+unexpected_response_error=استجابة خادوم غير متوقعة.
+
+# LOCALIZATION NOTE (text_annotation_type.alt): This is used as a tooltip.
+# "{{type}}" will be replaced with an annotation type from a list defined in
+# the PDF spec (32000-1:2008 Table 169 – Annotation types).
+# Some common types are e.g.: "Check", "Text", "Comment", "Note"
+text_annotation_type.alt=[تعليق {{type}}]
+password_label=أدخل لكلمة السر لفتح هذا الملف.
+password_invalid=كلمة سر خطأ. من فضلك أعد المحاولة.
+password_ok=حسنا
+password_cancel=ألغِ
+
+printing_not_supported=تحذير: لا يدعم هذا المتصفح الطباعة بشكل كامل.
+printing_not_ready=تحذير: ملف PDF لم يُحمّل كاملًا للطباعة.
+web_fonts_disabled=خطوط الوب مُعطّلة: تعذّر استخدام خطوط PDF المُضمّنة.
+document_colors_not_allowed=ليس مسموحًا لملفات PDF باستخدام ألوانها الخاصة: خيار ”اسمح للصفحات باختيار ألوانها الخاصة“ ليس مُفعّلًا في المتصفح.

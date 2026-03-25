@@ -1,0 +1,48 @@
+{
+  "name": "@octokit/request-error",
+  "version": "5.1.1",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "description": "Error class for Octokit request errors",
+  "repository": "github:octokit/request-error.js",
+  "keywords": [
+    "octokit",
+    "github",
+    "api",
+    "error"
+  ],
+  "author": "Gregor Martynus (https://github.com/gr2m)",
+  "license": "MIT",
+  "dependencies": {
+    "@octokit/types": "^13.1.0",
+    "deprecation": "^2.0.0",
+    "once": "^1.4.0"
+  },
+  "devDependencies": {
+    "@octokit/tsconfig": "^2.0.0",
+    "@types/jest": "^29.0.0",
+    "@types/node": "^18.0.0",
+    "@types/once": "^1.4.0",
+    "esbuild": "^0.19.0",
+    "glob": "^10.2.6",
+    "jest": "^29.0.0",
+    "prettier": "3.0.3",
+    "ts-jest": "^29.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">= 18"
+  },
+  "files": [
+    "dist-*/**",
+    "bin/**"
+  ],
+  "main": "dist-node/index.js",
+  "browser": "dist-web/index.js",
+  "types": "dist-types/index.d.ts",
+  "module": "dist-src/index.js",
+  "sideEffects": false,
+  "unpkg": "dist-web/index.js"
+}

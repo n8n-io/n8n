@@ -1,0 +1,32 @@
+{
+  "type": "module",
+  "name": "chat",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.js",
+  "scripts": {
+    "script": "tsx --env-file=.env",
+    "chat-streaming": "npm run script -- ./src/chat_streaming.ts",
+    "gcp": "npm run script -- ./src/gcp/async_chat_no_streaming.ts",
+    "azure": "npm run script -- ./src/azure/async_chat_no_streaming.ts",
+    "format": "prettier --write .",
+    "test": "tsx ./test.ts",
+    "build:examples": "echo 'skipping build examples'"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@mistralai/mistralai": "file:../",
+    "@mistralai/mistralai-azure": "file:../packages/mistralai-azure",
+    "@mistralai/mistralai-gcp": "file:../packages/mistralai-gcp",
+    "yargs": "^17.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.4",
+    "glob": "^11.0.0",
+    "prettier": "3.3.3",
+    "tsx": "^4.7.0",
+    "typescript": "^5.9.2"
+  }
+}

@@ -1,0 +1,1 @@
+{"version":3,"file":"InappropriateMatchingError.js","sourceRoot":"./","sources":["errors/resultCodeErrors/InappropriateMatchingError.ts"],"names":[],"mappings":";;;AAAA,uDAAoD;AAEpD,MAAa,0BAA2B,SAAQ,iCAAe;IAC7D,YAAmB,OAAgB;QACjC,KAAK,CAAC,EAAE,EAAE,OAAO,IAAI,4GAA4G,CAAC,CAAC;IACrI,CAAC;CACF;AAJD,gEAIC"}

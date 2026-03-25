@@ -1,0 +1,88 @@
+{
+  "name": "rechoir",
+  "description": "Require any supported file as a node module.",
+  "version": "0.6.2",
+  "homepage": "https://github.com/tkellen/node-rechoir",
+  "author": {
+    "name": "Tyler Kellen",
+    "url": "http://goingslowly.com/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/tkellen/node-rechoir.git"
+  },
+  "bugs": {
+    "url": "https://github.com/tkellen/node-rechoir/issues"
+  },
+  "licenses": [
+    {
+      "type": "MIT",
+      "url": "https://github.com/tkellen/node-rechoir/blob/master/LICENSE"
+    }
+  ],
+  "main": "index.js",
+  "engines": {
+    "node": ">= 0.10"
+  },
+  "scripts": {
+    "test": "mocha -R spec test/index.js"
+  },
+  "dependencies": {
+    "resolve": "^1.1.6"
+  },
+  "devDependencies": {
+    "babel": "^5.4.3",
+    "chai": "^2.3.0",
+    "coco": "^0.9.1",
+    "coffee-script": "^1.9.2",
+    "earlgrey": "0.0.9",
+    "iced-coffee-script": "^1.8.0-d",
+    "interpret": "^0.6.1",
+    "json5": "^0.4.0",
+    "livescript": "^1.4.0",
+    "mocha": "^2.2.5",
+    "node-jsx": "^0.13.3",
+    "require-csv": "0.0.1",
+    "require-ini": "0.0.1",
+    "require-uncached": "^1.0.2",
+    "require-xml": "0.0.1",
+    "require-yaml": "0.0.1",
+    "rimraf": "^2.3.4",
+    "semver": "^4.3.4",
+    "sinon": "^1.14.1",
+    "toml-require": "^1.0.1",
+    "typescript-register": "^1.1.0"
+  },
+  "keywords": [
+    "require",
+    "cjsx",
+    "co",
+    "coco",
+    "coffee-script",
+    "coffee",
+    "coffee.md",
+    "csv",
+    "earlgrey",
+    "es",
+    "es6",
+    "iced",
+    "iced.md",
+    "iced-coffee-script",
+    "ini",
+    "js",
+    "json",
+    "json5",
+    "jsx",
+    "react",
+    "litcoffee",
+    "liticed",
+    "ls",
+    "livescript",
+    "toml",
+    "ts",
+    "typescript",
+    "xml",
+    "yaml",
+    "yml"
+  ]
+}

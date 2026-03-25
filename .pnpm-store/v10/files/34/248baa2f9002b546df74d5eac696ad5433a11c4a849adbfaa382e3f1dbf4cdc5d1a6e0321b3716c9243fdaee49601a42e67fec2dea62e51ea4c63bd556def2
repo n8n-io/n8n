@@ -1,0 +1,95 @@
+{
+  "name": "@testing-library/vue",
+  "version": "8.1.0",
+  "description": "Simple and complete Vue DOM testing utilities that encourage good testing practices.",
+  "main": "dist/index.js",
+  "types": "types/index.d.ts",
+  "scripts": {
+    "format": "kcd-scripts format",
+    "build": "kcd-scripts build",
+    "lint": "kcd-scripts lint",
+    "test": "kcd-scripts test",
+    "test:update": "npm test -- --updateSnapshot --coverage",
+    "validate": "kcd-scripts validate",
+    "typecheck": "tsd",
+    "setup": "npm install && npm run validate -s"
+  },
+  "engines": {
+    "node": ">=14"
+  },
+  "files": [
+    "types",
+    "dist",
+    "cleanup-after-each.js"
+  ],
+  "homepage": "https://github.com/testing-library/vue-testing-library#readme",
+  "bugs": {
+    "url": "https://github.com/testing-library/vue-testing-library/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/testing-library/vue-testing-library.git"
+  },
+  "keywords": [
+    "vue.js",
+    "vue.js testing",
+    "vue",
+    "vue testing",
+    "vue.js 3",
+    "vue.js 3 testing",
+    "vue 3",
+    "vue 3 testing"
+  ],
+  "author": "Daniel Cook",
+  "license": "MIT",
+  "dependencies": {
+    "@babel/runtime": "^7.23.2",
+    "@testing-library/dom": "^9.3.3",
+    "@vue/test-utils": "^2.4.1"
+  },
+  "devDependencies": {
+    "@babel/plugin-proposal-private-methods": "^7.18.6",
+    "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
+    "@babel/plugin-transform-runtime": "^7.23.2",
+    "@element-plus/icons-vue": "^2.1.0",
+    "@testing-library/jest-dom": "^6.1.4",
+    "@testing-library/user-event": "^14.5.1",
+    "@types/estree": "^1.0.3",
+    "@vue/compiler-sfc": "^3.3.5",
+    "@vue/server-renderer": "^3.3.5",
+    "@vue/vue3-jest": "^29.2.6",
+    "axios": "^1.5.1",
+    "element-plus": "^2.4.1",
+    "eslint-plugin-vue": "^9.17.0",
+    "isomorphic-unfetch": "^4.0.2",
+    "jest-environment-jsdom": "^29.7.0",
+    "jest-serializer-vue": "^3.1.0",
+    "kcd-scripts": "^14.0.0",
+    "lodash.merge": "^4.6.2",
+    "msw": "^1.3.2",
+    "tsd": "^0.29.0",
+    "type-fest": "~2.19",
+    "typescript": "^5.2.2",
+    "vee-validate": "^4.11.8",
+    "vue": "^3.3.5",
+    "vue-component-type-helpers": "^2.0.19",
+    "vue-eslint-parser": "^9.3.2",
+    "vue-i18n": "^9.5.0",
+    "vue-router": "^4.2.5",
+    "vuex": "^4.1.0"
+  },
+  "peerDependencies": {
+    "@vue/compiler-sfc": ">= 3",
+    "vue": ">= 3"
+  },
+  "peerDependenciesMeta": {
+    "@vue/compiler-sfc": {
+      "optional": true
+    }
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "kcd-scripts pre-commit"
+    }
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "name": "stream-http",
+  "version": "3.2.0",
+  "description": "Streaming http in the browser",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/jhiesey/stream-http.git"
+  },
+  "scripts": {
+    "test": "npm run test-node && ([ -n \"${TRAVIS_PULL_REQUEST}\" -a \"${TRAVIS_PULL_REQUEST}\" != 'false' ] || npm run test-browser)",
+    "test-node": "tape test/node/*.js",
+    "test-browser": "airtap --concurrency 1 -- test/browser/*.js",
+    "test-browser-local": "airtap --preset local -- test/browser/*.js"
+  },
+  "author": "John Hiesey",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/jhiesey/stream-http/issues"
+  },
+  "homepage": "https://github.com/jhiesey/stream-http#readme",
+  "keywords": [
+    "http",
+    "stream",
+    "streaming",
+    "xhr",
+    "http-browserify"
+  ],
+  "dependencies": {
+    "builtin-status-codes": "^3.0.0",
+    "inherits": "^2.0.4",
+    "readable-stream": "^3.6.0",
+    "xtend": "^4.0.2"
+  },
+  "devDependencies": {
+    "airtap": "^4.0.3",
+    "airtap-manual": "^1.0.0",
+    "airtap-sauce": "^1.1.0",
+    "basic-auth": "^2.0.1",
+    "brfs": "^2.0.2",
+    "cookie-parser": "^1.4.5",
+    "express": "^4.17.1",
+    "tape": "^5.2.2",
+    "ua-parser-js": "^0.7.28",
+    "webworkify": "^1.5.0"
+  }
+}

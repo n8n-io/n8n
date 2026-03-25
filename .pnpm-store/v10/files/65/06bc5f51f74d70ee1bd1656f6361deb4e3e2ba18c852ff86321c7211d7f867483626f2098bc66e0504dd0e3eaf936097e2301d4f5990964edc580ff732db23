@@ -1,0 +1,8 @@
+rules:
+  $ref: rules.yaml
+
+seo:
+  $ref: seo.yaml
+
+theme:
+  $ref: wrong-ref.yaml

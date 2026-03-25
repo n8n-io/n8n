@@ -1,0 +1,1 @@
+{"version":3,"file":"handleGlobalEvent.d.ts","sourceRoot":"","sources":["../../../../src/coreHandlers/handleGlobalEvent.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,KAAK,EAAE,SAAS,EAAE,MAAM,cAAc,CAAC;AAGrD,OAAO,KAAK,EAAE,eAAe,EAAE,MAAM,UAAU,CAAC;AAQhD;;GAEG;AACH,wBAAgB,yBAAyB,CAAC,MAAM,EAAE,eAAe,GAAG,CAAC,KAAK,EAAE,KAAK,EAAE,IAAI,EAAE,SAAS,KAAK,KAAK,GAAG,IAAI,CA4ElH"}

@@ -1,0 +1,1 @@
+export * from "../../dist/stores/message/ipfs_datastore.js";

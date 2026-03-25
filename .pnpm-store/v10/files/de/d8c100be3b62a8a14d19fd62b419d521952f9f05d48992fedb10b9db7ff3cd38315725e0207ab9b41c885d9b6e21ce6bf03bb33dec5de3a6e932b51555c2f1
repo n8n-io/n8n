@@ -1,0 +1,20 @@
+{
+  "name": "@octokit/openapi-types",
+  "description": "Generated TypeScript definitions based on GitHub's OpenAPI spec for api.github.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/octokit/openapi-types.ts.git",
+    "directory": "packages/openapi-types"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "version": "20.0.0",
+  "main": "",
+  "types": "types.d.ts",
+  "author": "Gregor Martynus (https://twitter.com/gr2m)",
+  "license": "MIT",
+  "octokit": {
+    "openapi-version": "14.0.0"
+  }
+}

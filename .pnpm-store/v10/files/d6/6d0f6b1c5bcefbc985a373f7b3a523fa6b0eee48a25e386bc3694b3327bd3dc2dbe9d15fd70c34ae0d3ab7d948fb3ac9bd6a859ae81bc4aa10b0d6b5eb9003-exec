@@ -1,0 +1,45 @@
+{
+    "name": "@types/showdown",
+    "version": "1.9.4",
+    "description": "TypeScript definitions for Showdown",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/showdown",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Hamed Baatour",
+            "url": "https://github.com/hamedbaatour",
+            "githubUsername": "hamedbaatour"
+        },
+        {
+            "name": "cbowdon",
+            "url": "https://github.com/cbowdon",
+            "githubUsername": "cbowdon"
+        },
+        {
+            "name": "Pei-Tang Huang",
+            "url": "https://github.com/tan9",
+            "githubUsername": "tan9"
+        },
+        {
+            "name": "Ariel-Saldana",
+            "url": "https://github.com/arielsaldana",
+            "githubUsername": "arielsaldana"
+        },
+        {
+            "name": "Yisrael Eliav",
+            "url": "https://github.com/yisraelx",
+            "githubUsername": "yisraelx"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/showdown"
+    },
+    "scripts": {},
+    "dependencies": {},
+    "typesPublisherContentHash": "62ca2e66ec6a309e0abc3462dc34377d0ad1fc62ca9ce1978bdb978c6de4500b",
+    "typeScriptVersion": "3.6"
+}

@@ -1,0 +1,10 @@
+<script type="module">
+  import * as Comlink from "/base/dist/esm/comlink.mjs";
+
+  const parentEndpoint = Comlink.windowEndpoint(self.parent);
+  const wrappedParent = Comlink.wrap(parentEndpoint);
+
+  Comlink.expose(async (a, b) => {
+    return a + (await wrappedParent(b));
+  }, parentEndpoint);
+</script>

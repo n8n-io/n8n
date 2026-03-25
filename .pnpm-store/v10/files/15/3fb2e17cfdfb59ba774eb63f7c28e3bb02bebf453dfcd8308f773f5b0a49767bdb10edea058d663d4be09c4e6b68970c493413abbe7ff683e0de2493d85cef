@@ -1,0 +1,775 @@
+{
+  "mappings": [
+    {
+      "scenarioName": "Successful OAuth client credentials flow",
+      "requiredScenarioState": "Started",
+      "newScenarioState": "Acquired access token",
+      "request": {
+        "urlPathPattern": "/oauth/token-request.*",
+        "method": "POST",
+        "headers": {
+          "Content-Type": {
+            "contains": "application/x-www-form-urlencoded;charset=UTF-8"
+          }
+        },
+        "bodyPatterns": [
+          {
+            "contains": "scope=session%3Arole%3AANALYST&grant_type=client_credentials&client_id=123&client_secret=clientSecret"
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "access_token": "access-token-123",
+          "refresh_token": "123",
+          "token_type": "Bearer",
+          "username": "user",
+          "scope": "refresh_token session:role:ANALYST",
+          "expires_in": 600,
+          "refresh_token_expires_in": 86399,
+          "idpInitiated": false
+        }
+      }
+    },
+    {
+      "scenarioName": "Successful login",
+      "requiredScenarioState": "Started",
+      "request": {
+        "urlPathPattern": "/session/v1/login-request.*",
+        "method": "POST",
+        "bodyPatterns": [
+          {
+            "equalToJson": {
+              "data": {
+                "ACCOUNT_NAME": "MOCK_ACCOUNT_NAME",
+                "CLIENT_APP_ID": "JavaScript",
+                "TOKEN": "access-token-123",
+                "LOGIN_NAME": "MOCK_USERNAME",
+                "AUTHENTICATOR": "OAUTH",
+                "OAUTH_TYPE": "OAUTH_CLIENT_CREDENTIALS"
+              }
+            },
+            "ignoreExtraElements": true
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "data": {
+            "masterToken": "master token",
+            "token": "session token",
+            "validityInSeconds": 3600,
+            "masterValidityInSeconds": 14400,
+            "displayUserName": "OAUTH_TEST_AUTH_CODE",
+            "serverVersion": "8.48.0 b2024121104444034239f05",
+            "firstLogin": false,
+            "remMeToken": null,
+            "remMeValidityInSeconds": 0,
+            "healthCheckInterval": 45,
+            "newClientForUpgrade": "3.12.3",
+            "sessionId": 1172562260498,
+            "parameters": [
+              {
+                "name": "CLIENT_PREFETCH_THREADS",
+                "value": 4
+              },
+              {
+                "name": "TIMESTAMP_OUTPUT_FORMAT",
+                "value": "YYYY-MM-DD HH24:MI:SS.FF3 TZHTZM"
+              },
+              {
+                "name": "TIME_OUTPUT_FORMAT",
+                "value": "HH24:MI:SS"
+              },
+              {
+                "name": "TIMESTAMP_TZ_OUTPUT_FORMAT",
+                "value": ""
+              },
+              {
+                "name": "CLIENT_RESULT_CHUNK_SIZE",
+                "value": 16
+              },
+              {
+                "name": "CLIENT_SESSION_KEEP_ALIVE",
+                "value": false
+              },
+              {
+                "name": "JDBC_RS_COLUMN_CASE_INSENSITIVE",
+                "value": false
+              },
+              {
+                "name": "SNOWPARK_HIDE_INTERNAL_ALIAS",
+                "value": true
+              },
+              {
+                "name": "CLIENT_CONSERVATIVE_MEMORY_ADJUST_STEP",
+                "value": 64
+              },
+              {
+                "name": "QUERY_CONTEXT_CACHE_SIZE",
+                "value": 5
+              },
+              {
+                "name": "CLIENT_METADATA_USE_SESSION_DATABASE",
+                "value": false
+              },
+              {
+                "name": "JDBC_ENABLE_COMBINED_DESCRIBE",
+                "value": true
+              },
+              {
+                "name": "ENABLE_STAGE_S3_PRIVATELINK_FOR_US_EAST_1",
+                "value": true
+              },
+              {
+                "name": "JDBC_TREAT_DECIMAL_AS_INT",
+                "value": true
+              },
+              {
+                "name": "CLIENT_RESULT_PREFETCH_THREADS",
+                "value": 1
+              },
+              {
+                "name": "TIMESTAMP_NTZ_OUTPUT_FORMAT",
+                "value": "YYYY-MM-DD HH24:MI:SS.FF3"
+              },
+              {
+                "name": "CLIENT_METADATA_REQUEST_USE_CONNECTION_CTX",
+                "value": false
+              },
+              {
+                "name": "CLIENT_HONOR_CLIENT_TZ_FOR_TIMESTAMP_NTZ",
+                "value": true
+              },
+              {
+                "name": "CLIENT_MEMORY_LIMIT",
+                "value": 1536
+              },
+              {
+                "name": "CLIENT_TIMESTAMP_TYPE_MAPPING",
+                "value": "TIMESTAMP_LTZ"
+              },
+              {
+                "name": "JDBC_EFFICIENT_CHUNK_STORAGE",
+                "value": true
+              },
+              {
+                "name": "TIMEZONE",
+                "value": "America/Los_Angeles"
+              },
+              {
+                "name": "SNOWPARK_REQUEST_TIMEOUT_IN_SECONDS",
+                "value": 86400
+              },
+              {
+                "name": "PYTHON_SNOWPARK_USE_AST",
+                "value": false
+              },
+              {
+                "name": "SERVICE_NAME",
+                "value": ""
+              },
+              {
+                "name": "CLIENT_RESULT_PREFETCH_SLOTS",
+                "value": 2
+              },
+              {
+                "name": "CLIENT_DISABLE_INCIDENTS",
+                "value": true
+              },
+              {
+                "name": "JDBC_ENABLE_PUT_GET",
+                "value": true
+              },
+              {
+                "name": "CLIENT_ENABLE_CONSERVATIVE_MEMORY_USAGE",
+                "value": true
+              },
+              {
+                "name": "BINARY_OUTPUT_FORMAT",
+                "value": "HEX"
+              },
+              {
+                "name": "CSV_TIMESTAMP_FORMAT",
+                "value": ""
+              },
+              {
+                "name": "CLIENT_TELEMETRY_SESSIONLESS_ENABLED",
+                "value": true
+              },
+              {
+                "name": "DATE_OUTPUT_FORMAT",
+                "value": "YYYY-MM-DD"
+              },
+              {
+                "name": "JDBC_FORMAT_DATE_WITH_TIMEZONE",
+                "value": true
+              },
+              {
+                "name": "SNOWPARK_LAZY_ANALYSIS",
+                "value": true
+              },
+              {
+                "name": "JDBC_USE_JSON_PARSER",
+                "value": true
+              },
+              {
+                "name": "CLIENT_SESSION_KEEP_ALIVE_HEARTBEAT_FREQUENCY",
+                "value": 3600
+              },
+              {
+                "name": "AUTOCOMMIT",
+                "value": true
+              },
+              {
+                "name": "CLIENT_SESSION_CLONE",
+                "value": false
+              },
+              {
+                "name": "TIMESTAMP_LTZ_OUTPUT_FORMAT",
+                "value": ""
+              },
+              {
+                "name": "VARIANT_MAX_SIZE_IN_RESULT",
+                "value": 134217728
+              },
+              {
+                "name": "JDBC_USE_SESSION_TIMEZONE",
+                "value": true
+              },
+              {
+                "name": "JDBC_TREAT_TIMESTAMP_NTZ_AS_UTC",
+                "value": false
+              },
+              {
+                "name": "JDBC_EXECUTE_RETURN_COUNT_FOR_DML",
+                "value": false
+              },
+              {
+                "name": "ENABLE_FIX_1247059",
+                "value": true
+              },
+              {
+                "name": "CLIENT_OUT_OF_BAND_TELEMETRY_ENABLED",
+                "value": false
+              },
+              {
+                "name": "VARCHAR_AND_BINARY_MAX_SIZE_IN_RESULT",
+                "value": 134217728
+              },
+              {
+                "name": "SNOWPARK_USE_SCOPED_TEMP_OBJECTS",
+                "value": true
+              },
+              {
+                "name": "CLIENT_TELEMETRY_ENABLED",
+                "value": true
+              },
+              {
+                "name": "CLIENT_USE_V1_QUERY_API",
+                "value": true
+              },
+              {
+                "name": "CLIENT_RESULT_COLUMN_CASE_INSENSITIVE",
+                "value": false
+              },
+              {
+                "name": "CLIENT_ENABLE_LOG_INFO_STATEMENT_PARAMETERS",
+                "value": false
+              },
+              {
+                "name": "CLIENT_STAGE_ARRAY_BINDING_THRESHOLD",
+                "value": 65280
+              }
+            ],
+            "sessionInfo": {
+              "databaseName": "TEST_DATABASE",
+              "schemaName": "TEST_JDBC",
+              "warehouseName": "TEST_XSMALL",
+              "roleName": "ANALYST"
+            },
+            "idToken": null,
+            "idTokenValidityInSeconds": 0,
+            "responseData": null,
+            "mfaToken": null,
+            "mfaTokenValidityInSeconds": 0
+          },
+          "code": null,
+          "message": null,
+          "success": true
+        }
+      }
+    },
+    {
+      "scenarioName": "Heartbeat",
+      "request": {
+        "urlPathPattern": "/session/heartbeat.*",
+        "method": "POST"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "data": {
+            "masterToken": "master token",
+            "token": "session token",
+            "validityInSeconds": 3600,
+            "masterValidityInSeconds": 14400,
+            "displayUserName": "OAUTH_TEST_AUTH_CODE",
+            "serverVersion": "8.48.0 b2024121104444034239f05",
+            "firstLogin": false,
+            "remMeToken": null,
+            "remMeValidityInSeconds": 0,
+            "healthCheckInterval": 45,
+            "newClientForUpgrade": "3.12.3",
+            "sessionId": 1172562260498,
+            "parameters": [
+              {
+                "name": "CLIENT_PREFETCH_THREADS",
+                "value": 4
+              },
+              {
+                "name": "TIMESTAMP_OUTPUT_FORMAT",
+                "value": "YYYY-MM-DD HH24:MI:SS.FF3 TZHTZM"
+              },
+              {
+                "name": "TIME_OUTPUT_FORMAT",
+                "value": "HH24:MI:SS"
+              },
+              {
+                "name": "TIMESTAMP_TZ_OUTPUT_FORMAT",
+                "value": ""
+              },
+              {
+                "name": "CLIENT_RESULT_CHUNK_SIZE",
+                "value": 16
+              },
+              {
+                "name": "CLIENT_SESSION_KEEP_ALIVE",
+                "value": false
+              },
+              {
+                "name": "JDBC_RS_COLUMN_CASE_INSENSITIVE",
+                "value": false
+              },
+              {
+                "name": "SNOWPARK_HIDE_INTERNAL_ALIAS",
+                "value": true
+              },
+              {
+                "name": "CLIENT_CONSERVATIVE_MEMORY_ADJUST_STEP",
+                "value": 64
+              },
+              {
+                "name": "QUERY_CONTEXT_CACHE_SIZE",
+                "value": 5
+              },
+              {
+                "name": "CLIENT_METADATA_USE_SESSION_DATABASE",
+                "value": false
+              },
+              {
+                "name": "JDBC_ENABLE_COMBINED_DESCRIBE",
+                "value": true
+              },
+              {
+                "name": "ENABLE_STAGE_S3_PRIVATELINK_FOR_US_EAST_1",
+                "value": true
+              },
+              {
+                "name": "JDBC_TREAT_DECIMAL_AS_INT",
+                "value": true
+              },
+              {
+                "name": "CLIENT_RESULT_PREFETCH_THREADS",
+                "value": 1
+              },
+              {
+                "name": "TIMESTAMP_NTZ_OUTPUT_FORMAT",
+                "value": "YYYY-MM-DD HH24:MI:SS.FF3"
+              },
+              {
+                "name": "CLIENT_METADATA_REQUEST_USE_CONNECTION_CTX",
+                "value": false
+              },
+              {
+                "name": "CLIENT_HONOR_CLIENT_TZ_FOR_TIMESTAMP_NTZ",
+                "value": true
+              },
+              {
+                "name": "CLIENT_MEMORY_LIMIT",
+                "value": 1536
+              },
+              {
+                "name": "CLIENT_TIMESTAMP_TYPE_MAPPING",
+                "value": "TIMESTAMP_LTZ"
+              },
+              {
+                "name": "JDBC_EFFICIENT_CHUNK_STORAGE",
+                "value": true
+              },
+              {
+                "name": "TIMEZONE",
+                "value": "America/Los_Angeles"
+              },
+              {
+                "name": "SNOWPARK_REQUEST_TIMEOUT_IN_SECONDS",
+                "value": 86400
+              },
+              {
+                "name": "PYTHON_SNOWPARK_USE_AST",
+                "value": false
+              },
+              {
+                "name": "SERVICE_NAME",
+                "value": ""
+              },
+              {
+                "name": "CLIENT_RESULT_PREFETCH_SLOTS",
+                "value": 2
+              },
+              {
+                "name": "CLIENT_DISABLE_INCIDENTS",
+                "value": true
+              },
+              {
+                "name": "JDBC_ENABLE_PUT_GET",
+                "value": true
+              },
+              {
+                "name": "CLIENT_ENABLE_CONSERVATIVE_MEMORY_USAGE",
+                "value": true
+              },
+              {
+                "name": "BINARY_OUTPUT_FORMAT",
+                "value": "HEX"
+              },
+              {
+                "name": "CSV_TIMESTAMP_FORMAT",
+                "value": ""
+              },
+              {
+                "name": "CLIENT_TELEMETRY_SESSIONLESS_ENABLED",
+                "value": true
+              },
+              {
+                "name": "DATE_OUTPUT_FORMAT",
+                "value": "YYYY-MM-DD"
+              },
+              {
+                "name": "JDBC_FORMAT_DATE_WITH_TIMEZONE",
+                "value": true
+              },
+              {
+                "name": "SNOWPARK_LAZY_ANALYSIS",
+                "value": true
+              },
+              {
+                "name": "JDBC_USE_JSON_PARSER",
+                "value": true
+              },
+              {
+                "name": "CLIENT_SESSION_KEEP_ALIVE_HEARTBEAT_FREQUENCY",
+                "value": 3600
+              },
+              {
+                "name": "AUTOCOMMIT",
+                "value": true
+              },
+              {
+                "name": "CLIENT_SESSION_CLONE",
+                "value": false
+              },
+              {
+                "name": "TIMESTAMP_LTZ_OUTPUT_FORMAT",
+                "value": ""
+              },
+              {
+                "name": "VARIANT_MAX_SIZE_IN_RESULT",
+                "value": 134217728
+              },
+              {
+                "name": "JDBC_USE_SESSION_TIMEZONE",
+                "value": true
+              },
+              {
+                "name": "JDBC_TREAT_TIMESTAMP_NTZ_AS_UTC",
+                "value": false
+              },
+              {
+                "name": "JDBC_EXECUTE_RETURN_COUNT_FOR_DML",
+                "value": false
+              },
+              {
+                "name": "ENABLE_FIX_1247059",
+                "value": true
+              },
+              {
+                "name": "CLIENT_OUT_OF_BAND_TELEMETRY_ENABLED",
+                "value": false
+              },
+              {
+                "name": "VARCHAR_AND_BINARY_MAX_SIZE_IN_RESULT",
+                "value": 134217728
+              },
+              {
+                "name": "SNOWPARK_USE_SCOPED_TEMP_OBJECTS",
+                "value": true
+              },
+              {
+                "name": "CLIENT_TELEMETRY_ENABLED",
+                "value": true
+              },
+              {
+                "name": "CLIENT_USE_V1_QUERY_API",
+                "value": true
+              },
+              {
+                "name": "CLIENT_RESULT_COLUMN_CASE_INSENSITIVE",
+                "value": false
+              },
+              {
+                "name": "CLIENT_ENABLE_LOG_INFO_STATEMENT_PARAMETERS",
+                "value": false
+              },
+              {
+                "name": "CLIENT_STAGE_ARRAY_BINDING_THRESHOLD",
+                "value": 65280
+              }
+            ],
+            "sessionInfo": {
+              "databaseName": "TEST_DATABASE",
+              "schemaName": "TEST_JDBC",
+              "warehouseName": "TEST_XSMALL",
+              "roleName": "ANALYST"
+            },
+            "idToken": null,
+            "idTokenValidityInSeconds": 0,
+            "responseData": null,
+            "mfaToken": null,
+            "mfaTokenValidityInSeconds": 0
+          },
+          "code": null,
+          "message": null,
+          "success": true
+        }
+      }
+    },
+    {
+      "scenarioName": "Simple query",
+      "request": {
+        "urlPathPattern": "/queries/v1/query-request.*",
+        "method": "POST"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "data": {
+            "parameters": [
+              {
+                "name": "CLIENT_PREFETCH_THREADS",
+                "value": 4
+              },
+              {
+                "name": "TIMESTAMP_OUTPUT_FORMAT",
+                "value": "YYYY-MM-DD HH24:MI:SS.FF3 TZHTZM"
+              },
+              {
+                "name": "JS_TREAT_INTEGER_AS_BIGINT",
+                "value": false
+              },
+              {
+                "name": "TIME_OUTPUT_FORMAT",
+                "value": "HH24:MI:SS"
+              },
+              {
+                "name": "TIMESTAMP_TZ_OUTPUT_FORMAT",
+                "value": ""
+              },
+              {
+                "name": "CLIENT_RESULT_CHUNK_SIZE",
+                "value": 16
+              },
+              {
+                "name": "CLIENT_SESSION_KEEP_ALIVE",
+                "value": false
+              },
+              {
+                "name": "CLIENT_OUT_OF_BAND_TELEMETRY_ENABLED",
+                "value": false
+              },
+              {
+                "name": "QUERY_CONTEXT_CACHE_SIZE",
+                "value": 5
+              },
+              {
+                "name": "CLIENT_METADATA_USE_SESSION_DATABASE",
+                "value": false
+              },
+              {
+                "name": "ENABLE_STAGE_S3_PRIVATELINK_FOR_US_EAST_1",
+                "value": true
+              },
+              {
+                "name": "TIMESTAMP_NTZ_OUTPUT_FORMAT",
+                "value": "YYYY-MM-DD HH24:MI:SS.FF3"
+              },
+              {
+                "name": "CLIENT_RESULT_PREFETCH_THREADS",
+                "value": 1
+              },
+              {
+                "name": "CLIENT_METADATA_REQUEST_USE_CONNECTION_CTX",
+                "value": false
+              },
+              {
+                "name": "CLIENT_HONOR_CLIENT_TZ_FOR_TIMESTAMP_NTZ",
+                "value": true
+              },
+              {
+                "name": "CLIENT_MEMORY_LIMIT",
+                "value": 1536
+              },
+              {
+                "name": "CLIENT_TIMESTAMP_TYPE_MAPPING",
+                "value": "TIMESTAMP_LTZ"
+              },
+              {
+                "name": "TIMEZONE",
+                "value": "America/Los_Angeles"
+              },
+              {
+                "name": "SERVICE_NAME",
+                "value": ""
+              },
+              {
+                "name": "CLIENT_RESULT_PREFETCH_SLOTS",
+                "value": 2
+              },
+              {
+                "name": "CLIENT_TELEMETRY_ENABLED",
+                "value": true
+              },
+              {
+                "name": "CLIENT_USE_V1_QUERY_API",
+                "value": true
+              },
+              {
+                "name": "CLIENT_DISABLE_INCIDENTS",
+                "value": true
+              },
+              {
+                "name": "CLIENT_RESULT_COLUMN_CASE_INSENSITIVE",
+                "value": false
+              },
+              {
+                "name": "BINARY_OUTPUT_FORMAT",
+                "value": "HEX"
+              },
+              {
+                "name": "CSV_TIMESTAMP_FORMAT",
+                "value": ""
+              },
+              {
+                "name": "CLIENT_ENABLE_LOG_INFO_STATEMENT_PARAMETERS",
+                "value": false
+              },
+              {
+                "name": "CLIENT_TELEMETRY_SESSIONLESS_ENABLED",
+                "value": true
+              },
+              {
+                "name": "JS_DRIVER_DISABLE_OCSP_FOR_NON_SF_ENDPOINTS",
+                "value": false
+              },
+              {
+                "name": "DATE_OUTPUT_FORMAT",
+                "value": "YYYY-MM-DD"
+              },
+              {
+                "name": "CLIENT_STAGE_ARRAY_BINDING_THRESHOLD",
+                "value": 65280
+              },
+              {
+                "name": "CLIENT_SESSION_KEEP_ALIVE_HEARTBEAT_FREQUENCY",
+                "value": 3600
+              },
+              {
+                "name": "AUTOCOMMIT",
+                "value": true
+              },
+              {
+                "name": "CLIENT_SESSION_CLONE",
+                "value": false
+              },
+              {
+                "name": "TIMESTAMP_LTZ_OUTPUT_FORMAT",
+                "value": ""
+              }
+            ],
+            "rowtype": [
+              {
+                "name": "1",
+                "database": "",
+                "schema": "",
+                "table": "",
+                "byteLength": null,
+                "scale": 0,
+                "nullable": false,
+                "precision": 1,
+                "collation": null,
+                "length": null,
+                "type": "fixed"
+              }
+            ],
+            "rowset": [
+              [
+                "1"
+              ]
+            ],
+            "total": 1,
+            "returned": 1,
+            "queryId": "01baf79b-0108-1a60-0000-01110354a6ce",
+            "databaseProvider": null,
+            "finalDatabaseName": "TEST_PMOTACKI",
+            "finalSchemaName": "TEST_NODEJS",
+            "finalWarehouseName": "TEST1",
+            "finalRoleName": "ACCOUNTADMIN",
+            "numberOfBinds": 0,
+            "arrayBindSupported": false,
+            "statementTypeId": 4096,
+            "version": 1,
+            "sendResultTime": 1741817979585,
+            "queryResultFormat": "json",
+            "queryContext": {
+              "entries": [
+                {
+                  "id": 0,
+                  "timestamp": 1741817979580218,
+                  "priority": 0,
+                  "context": "CILTgQE="
+                }
+              ]
+            }
+          },
+          "code": null,
+          "message": null,
+          "success": true
+        }
+      }
+    }
+  ]
+}

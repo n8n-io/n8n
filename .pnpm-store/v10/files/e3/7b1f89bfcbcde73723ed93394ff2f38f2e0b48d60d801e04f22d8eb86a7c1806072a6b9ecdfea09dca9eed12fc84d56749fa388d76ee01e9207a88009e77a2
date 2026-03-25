@@ -1,0 +1,52 @@
+{
+  "name": "spex",
+  "version": "3.3.0",
+  "description": "Specialized Promise Extensions",
+  "main": "lib/index.js",
+  "typings": "typescript/spex.d.ts",
+  "scripts": {
+    "test": "jasmine-node test",
+    "doc": "jsdoc -c ./jsdoc/jsDoc.js ./jsdoc/README.md -u ./jsdoc/tutorials",
+    "coverage": "istanbul cover ./node_modules/jasmine-node/bin/jasmine-node test",
+    "travis": "npm run lint && istanbul cover ./node_modules/jasmine-node/bin/jasmine-node test --captureExceptions && cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js && rm -rf ./coverage",
+    "browserify": "browserify lib/index.js -s spexLib -o spex.js",
+    "lint": "eslint ./lib ./test/**/*.spec.js"
+  },
+  "files": [
+    "lib",
+    "typescript"
+  ],
+  "homepage": "https://github.com/vitaly-t/spex",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vitaly-t/spex.git"
+  },
+  "bugs": {
+    "url": "https://github.com/vitaly-t/spex/issues",
+    "email": "vitaly.tomilov@gmail.com"
+  },
+  "keywords": [
+    "promise",
+    "throttle",
+    "throttling",
+    "load balancing"
+  ],
+  "author": {
+    "name": "Vitaly Tomilov",
+    "email": "vitaly.tomilov@gmail.com"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=10.0.0"
+  },
+  "devDependencies": {
+    "bluebird": "3.7.2",
+    "browserify": "17.0.0",
+    "coveralls": "3.1.1",
+    "eslint": "8.36.0",
+    "istanbul": "0.4.5",
+    "jasmine-node": "3.0.0",
+    "jsdoc": "4.0.2",
+    "typescript": "5.0.2"
+  }
+}

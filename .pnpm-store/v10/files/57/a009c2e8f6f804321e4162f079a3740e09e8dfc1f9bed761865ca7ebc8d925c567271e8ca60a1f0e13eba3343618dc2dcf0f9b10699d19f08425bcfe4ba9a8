@@ -1,0 +1,1 @@
+module.exports = require("../../dist/retrievers/document_compressors/chain_extract.cjs");

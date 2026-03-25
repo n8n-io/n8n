@@ -1,0 +1,27 @@
+export declare const OPENAI_INTEGRATION_NAME = "OpenAI";
+export declare const INSTRUMENTED_METHODS: readonly [
+    "responses.create",
+    "chat.completions.create",
+    "embeddings.create",
+    "conversations.create"
+];
+export declare const RESPONSES_TOOL_CALL_EVENT_TYPES: readonly [
+    "response.output_item.added",
+    "response.function_call_arguments.delta",
+    "response.function_call_arguments.done",
+    "response.output_item.done"
+];
+export declare const RESPONSE_EVENT_TYPES: readonly [
+    "response.created",
+    "response.in_progress",
+    "response.failed",
+    "response.completed",
+    "response.incomplete",
+    "response.queued",
+    "response.output_text.delta",
+    "response.output_item.added",
+    "response.function_call_arguments.delta",
+    "response.function_call_arguments.done",
+    "response.output_item.done"
+];
+//# sourceMappingURL=constants.d.ts.map

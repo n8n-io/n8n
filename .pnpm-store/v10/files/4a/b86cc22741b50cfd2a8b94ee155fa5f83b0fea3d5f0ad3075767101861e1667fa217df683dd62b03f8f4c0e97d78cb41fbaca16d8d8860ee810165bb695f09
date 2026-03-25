@@ -1,0 +1,4 @@
+node_modules
+lib/protocol/crypto/poly1305.js
+.eslint-plugins
+!.eslintrc.js

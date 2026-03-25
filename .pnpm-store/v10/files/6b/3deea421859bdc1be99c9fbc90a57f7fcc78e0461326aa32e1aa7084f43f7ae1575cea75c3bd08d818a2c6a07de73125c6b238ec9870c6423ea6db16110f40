@@ -1,0 +1,46 @@
+{
+	"name": "wsl-utils",
+	"version": "0.1.0",
+	"description": "Utilities for working with Windows Subsystem for Linux (WSL)",
+	"license": "MIT",
+	"repository": "sindresorhus/wsl-utils",
+	"funding": "https://github.com/sponsors/sindresorhus",
+	"author": {
+		"name": "Sindre Sorhus",
+		"email": "sindresorhus@gmail.com",
+		"url": "https://sindresorhus.com"
+	},
+	"type": "module",
+	"exports": {
+		"types": "./index.d.ts",
+		"default": "./index.js"
+	},
+	"sideEffects": false,
+	"engines": {
+		"node": ">=18"
+	},
+	"scripts": {
+		"test": "xo && ava && tsc index.d.ts --skipLibCheck"
+	},
+	"files": [
+		"index.js",
+		"index.d.ts"
+	],
+	"keywords": [
+		"wsl",
+		"windows",
+		"subsystem",
+		"linux",
+		"powershell",
+		"mount",
+		"utilities"
+	],
+	"dependencies": {
+		"is-wsl": "^3.1.0"
+	},
+	"devDependencies": {
+		"ava": "^6.3.0",
+		"typescript": "^5.8.3",
+		"xo": "^1.0.0"
+	}
+}

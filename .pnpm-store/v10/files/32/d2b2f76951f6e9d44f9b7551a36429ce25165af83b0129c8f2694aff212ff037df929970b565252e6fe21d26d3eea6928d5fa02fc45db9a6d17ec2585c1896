@@ -1,0 +1,1 @@
+{"version":3,"file":"fix-eperm.d.ts","sourceRoot":"","sources":["../../src/fix-eperm.ts"],"names":[],"mappings":"AAGA,eAAO,MAAM,QAAQ,OACd,CAAC,IAAI,EAAE,MAAM,KAAK,OAAO,CAAC,GAAG,CAAC,YAAkB,MAAM,iBAsB1D,CAAA;AAEH,eAAO,MAAM,YAAY,OAAQ,CAAC,IAAI,EAAE,MAAM,KAAK,GAAG,YAAY,MAAM,QAsBvE,CAAA"}

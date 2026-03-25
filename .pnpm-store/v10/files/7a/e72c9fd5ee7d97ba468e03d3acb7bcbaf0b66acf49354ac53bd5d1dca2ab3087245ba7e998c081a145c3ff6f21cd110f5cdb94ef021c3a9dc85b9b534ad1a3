@@ -1,0 +1,133 @@
+syntax = "proto3";
+package milvus.proto.msg;
+option go_package = "github.com/milvus-io/milvus-proto/go-api/v2/msgpb";
+
+import "common.proto";
+import "schema.proto";
+
+enum InsertDataVersion {
+  // 0 must refer to row-based format, since it's the first version in Milvus.
+  RowBased = 0;
+  ColumnBased = 1;
+}
+
+message InsertRequest {
+  common.MsgBase base = 1;
+  string shardName = 2;
+  string db_name = 3;
+  string collection_name = 4;
+  string partition_name = 5;
+  int64 dbID = 6;
+  int64 collectionID = 7;
+  int64 partitionID = 8;
+  int64 segmentID = 9;
+  repeated uint64 timestamps = 10;
+  repeated int64 rowIDs = 11;
+  // row_data was reserved for compatibility
+  repeated common.Blob row_data = 12;
+  repeated schema.FieldData fields_data = 13;
+  uint64 num_rows = 14;
+  InsertDataVersion version = 15;
+}
+
+message DeleteRequest {
+  common.MsgBase base = 1;
+  string shardName = 2;
+  string db_name = 3;
+  string collection_name = 4;
+  string partition_name = 5;
+  int64 dbID = 6;
+  int64 collectionID = 7;
+  int64 partitionID = 8;
+  repeated int64 int64_primary_keys = 9; // deprecated
+  repeated uint64 timestamps = 10;
+  int64 num_rows = 11;
+  schema.IDs primary_keys = 12;
+  int64 segment_id = 13;
+}
+
+message MsgPosition {
+  string channel_name = 1;
+  bytes msgID = 2;
+  string msgGroup = 3;
+  uint64 timestamp = 4;
+}
+
+message CreateCollectionRequest {
+  common.MsgBase base = 1;
+  string db_name = 2;
+  string collectionName = 3;
+  string partitionName = 4;
+  // `schema` is the serialized `schema.CollectionSchema`
+  int64 dbID = 5;
+  int64 collectionID = 6;
+  int64 partitionID = 7; // deprecated
+  bytes schema = 8;
+  repeated string virtualChannelNames = 9;
+  repeated string physicalChannelNames = 10;
+  repeated int64 partitionIDs = 11;
+}
+
+message DropCollectionRequest {
+  common.MsgBase base = 1;
+  string db_name = 2;
+  string collectionName = 3;
+  int64 dbID = 4;
+  int64 collectionID = 5;
+}
+
+message CreatePartitionRequest {
+  common.MsgBase base = 1;
+  string db_name = 2;
+  string collection_name = 3;
+  string partition_name = 4;
+  int64 dbID = 5;
+  int64 collectionID = 6;
+  int64 partitionID = 7;
+}
+
+message DropPartitionRequest {
+  common.MsgBase base = 1;
+  string db_name = 2;
+  string collection_name = 3;
+  string partition_name = 4;
+  int64 dbID = 5;
+  int64 collectionID = 6;
+  int64 partitionID = 7;
+}
+
+message TimeTickMsg {
+  common.MsgBase base = 1;
+}
+
+message DataNodeTtMsg {
+  common.MsgBase base =1;
+  string channel_name = 2;
+  uint64 timestamp = 3;
+  repeated common.SegmentStats segments_stats = 4;
+}
+
+message ReplicateMsg {
+  common.MsgBase base = 1;
+  bool is_end = 2;
+  bool is_cluster = 3;
+  string database = 4;
+  string collection = 5;
+}
+
+message ImportFile {
+  int64 id = 1;
+  // A singular row-based file or multiple column-based files.
+  repeated string paths = 2;
+}
+message ImportMsg {
+  common.MsgBase base = 1;
+  string db_name = 2;
+  string collection_name = 3;
+  int64 collectionID = 4;
+  repeated int64 partitionIDs = 5;
+  map<string, string> options = 6;
+  repeated ImportFile files = 7;
+  schema.CollectionSchema schema = 8;
+  int64 jobID = 9;
+}

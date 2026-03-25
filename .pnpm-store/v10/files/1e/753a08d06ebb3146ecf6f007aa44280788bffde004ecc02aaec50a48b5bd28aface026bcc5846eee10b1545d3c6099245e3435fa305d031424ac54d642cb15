@@ -1,0 +1,22 @@
+{
+  "author": "Paul Vorbach <paul@vorb.de> (http://vorb.de)",
+  "name": "crypt",
+  "description": "utilities for encryption and hashing",
+  "tags": [
+    "hash",
+    "security"
+  ],
+  "version": "0.0.2",
+  "license": "BSD-3-Clause",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/pvorb/node-crypt.git"
+  },
+  "bugs": {
+    "url": "https://github.com/pvorb/node-crypt/issues"
+  },
+  "main": "crypt.js",
+  "engines": {
+    "node": "*"
+  }
+}

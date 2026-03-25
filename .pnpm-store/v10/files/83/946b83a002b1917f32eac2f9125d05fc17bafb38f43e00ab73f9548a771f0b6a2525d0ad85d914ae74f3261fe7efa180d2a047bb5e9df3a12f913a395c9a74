@@ -1,0 +1,30 @@
+import type { NamedBean } from '../context/bean';
+import { BeanStub } from '../context/beanStub';
+import type { RowNode } from '../entities/rowNode';
+type QuickFilterServiceEvent = 'quickFilterChanged';
+export declare class QuickFilterService extends BeanStub<QuickFilterServiceEvent> implements NamedBean {
+    beanName: "quickFilter";
+    private colsToUse;
+    private quickFilter;
+    private quickFilterParts;
+    private parser?;
+    private matcher?;
+    postConstruct(): void;
+    refreshCols(): void;
+    isFilterPresent(): boolean;
+    doesRowPass(node: RowNode): boolean;
+    resetCache(): void;
+    getText(): string | undefined;
+    private setFilterParts;
+    private parseFilter;
+    private setFilter;
+    private setParserAndMatcher;
+    private onColumnConfigChanged;
+    private doesRowPassNoCache;
+    private doesRowPassCache;
+    private doesRowPassMatcher;
+    private checkGenerateAggText;
+    private getTextForColumn;
+    private getAggText;
+}
+export {};

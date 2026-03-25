@@ -1,0 +1,37 @@
+{
+    "name" : "nub",
+    "version" : "0.0.0",
+    "description" : "Uniqueness functions",
+    "main" : "index.js",
+    "directories" : {
+        "lib" : ".",
+        "example" : "example",
+        "test" : "test"
+    },
+    "dependencies" : {
+    },
+    "devDependencies" : {
+        "expresso" : "0.7.x"
+    },
+    "scripts" : {
+        "test" : "expresso"
+    },
+    "repository" : {
+        "type" : "git",
+        "url" : "http://github.com/substack/node-nub.git"
+    },
+    "keywords" : [
+        "unique",
+        "uniq",
+        "uniqBy",
+        "nub",
+        "nubBy"
+    ],
+    "author" : {
+        "name" : "James Halliday",
+        "email" : "mail@substack.net",
+        "url" : "http://substack.net"
+    },
+    "license" : "MIT/X11",
+    "engine" : { "node" : ">=0.4" }
+}

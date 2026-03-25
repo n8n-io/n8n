@@ -1,0 +1,7 @@
+{
+  "type": "ecdsa-sha2-nistp256",
+  "comment": "new openssh format",
+  "public": "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE4yG9Dp/wM2AyxUYvoN3xnQCBe9ih\nRomQaT/KCmfG7J3B/VC7VVfede3DXETbgxE0Lby6qAnSJ+04qWKPCb/5Sg==\n-----END PUBLIC KEY-----",
+  "publicSSH": "AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBOMhvQ6f8DNgMsVGL6Dd8Z0AgXvYoUaJkGk/ygpnxuydwf1Qu1VX3nXtw1xE24MRNC28uqgJ0iftOKlijwm/+Uo=",
+  "private": "-----BEGIN EC PRIVATE KEY-----\nMHYCAQEEH1Xd4473tvK+xYWOlKP/3CiDNawXlmRtem/G48lchbOgCgYIKoZIzj0D\nAQehRANCAATjIb0On/AzYDLFRi+g3fGdAIF72KFGiZBpP8oKZ8bsncH9ULtVV951\n7cNcRNuDETQtvLqoCdIn7TipYo8Jv/lK\n-----END EC PRIVATE KEY-----"
+}

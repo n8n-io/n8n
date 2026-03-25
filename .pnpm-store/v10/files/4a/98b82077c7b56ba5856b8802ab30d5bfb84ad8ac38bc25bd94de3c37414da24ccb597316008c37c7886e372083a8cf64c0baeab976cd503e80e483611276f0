@@ -1,0 +1,21 @@
+@use 'mixins/mixins' as *;
+@use 'common/var' as *;
+
+@include b(steps) {
+  display: flex;
+
+  @include m(simple) {
+    padding: 13px 8%;
+    border-radius: 4px;
+    background: getCssVar('fill-color', 'light');
+  }
+
+  @include m(horizontal) {
+    white-space: nowrap;
+  }
+
+  @include m(vertical) {
+    height: 100%;
+    flex-flow: column;
+  }
+}

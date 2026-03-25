@@ -1,0 +1,31 @@
+# Project Files unneeded by docker
+cmake/ci/Makefile
+cmake/ci/docker
+cmake/ci/doc
+cmake/ci/cache
+.git
+.gitignore
+.github
+.dockerignore
+.clang-format
+appveyor.yml
+.travis.yml
+AUTHORS
+CONTRIBUTING.md
+CONTRIBUTORS
+LICENSE
+README.md
+
+build/
+cmake_build/
+build_cross/
+cmake-build-*/
+out/
+
+# Editor directories and files
+.idea/
+.vagrant/
+.vscode/
+.vs/
+*.user
+*.swp

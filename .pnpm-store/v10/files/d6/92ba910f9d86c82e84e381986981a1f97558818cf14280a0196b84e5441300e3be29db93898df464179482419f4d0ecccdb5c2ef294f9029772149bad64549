@@ -1,0 +1,50 @@
+{
+  "name": "@vitejs/plugin-vue",
+  "version": "5.2.4",
+  "type": "commonjs",
+  "license": "MIT",
+  "author": "Evan You",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "engines": {
+    "node": "^18.0.0 || >=20.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vitejs/vite-plugin-vue.git",
+    "directory": "packages/plugin-vue"
+  },
+  "bugs": {
+    "url": "https://github.com/vitejs/vite-plugin-vue/issues"
+  },
+  "homepage": "https://github.com/vitejs/vite-plugin-vue/tree/main/packages/plugin-vue#readme",
+  "peerDependencies": {
+    "vite": "^5.0.0 || ^6.0.0",
+    "vue": "^3.2.25"
+  },
+  "devDependencies": {
+    "@jridgewell/gen-mapping": "^0.3.8",
+    "@jridgewell/trace-mapping": "^0.3.25",
+    "debug": "^4.4.0",
+    "rollup": "^4.40.2",
+    "slash": "^5.1.0",
+    "source-map-js": "^1.2.1",
+    "vite": "^6.3.5",
+    "vue": "^3.5.13"
+  },
+  "scripts": {
+    "dev": "unbuild --stub",
+    "build": "unbuild && pnpm run patch-cjs",
+    "patch-cjs": "tsx ../../scripts/patchCJS.ts"
+  }
+}

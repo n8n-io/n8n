@@ -1,0 +1,83 @@
+{
+  "nested": {
+    "google": {
+      "nested": {
+        "api": {
+          "nested": {
+            "http": {
+              "type": "HttpRule",
+              "id": 72295728,
+              "extend": "google.protobuf.MethodOptions"
+            },
+            "HttpRule": {
+              "oneofs": {
+                "pattern": {
+                  "oneof": [
+                    "get",
+                    "put",
+                    "post",
+                    "delete",
+                    "patch",
+                    "custom"
+                  ]
+                }
+              },
+              "fields": {
+                "get": {
+                  "type": "string",
+                  "id": 2
+                },
+                "put": {
+                  "type": "string",
+                  "id": 3
+                },
+                "post": {
+                  "type": "string",
+                  "id": 4
+                },
+                "delete": {
+                  "type": "string",
+                  "id": 5
+                },
+                "patch": {
+                  "type": "string",
+                  "id": 6
+                },
+                "custom": {
+                  "type": "CustomHttpPattern",
+                  "id": 8
+                },
+                "selector": {
+                  "type": "string",
+                  "id": 1
+                },
+                "body": {
+                  "type": "string",
+                  "id": 7
+                },
+                "additionalBindings": {
+                  "rule": "repeated",
+                  "type": "HttpRule",
+                  "id": 11
+                }
+              }
+            }
+          }
+        },
+        "protobuf": {
+          "nested": {
+            "MethodOptions": {
+              "fields": {},
+              "extensions": [
+                [
+                  1000,
+                  536870911
+                ]
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}

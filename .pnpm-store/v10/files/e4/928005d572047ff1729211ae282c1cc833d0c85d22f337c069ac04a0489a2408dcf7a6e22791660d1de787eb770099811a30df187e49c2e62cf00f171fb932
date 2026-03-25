@@ -1,0 +1,10 @@
+{
+  "type": "module",
+  "sideEffects": false,
+  "browser": {
+    "node:crypto": false
+  },
+  "node": {
+    "./crypto": "./esm/cryptoNode.js"
+  }
+}

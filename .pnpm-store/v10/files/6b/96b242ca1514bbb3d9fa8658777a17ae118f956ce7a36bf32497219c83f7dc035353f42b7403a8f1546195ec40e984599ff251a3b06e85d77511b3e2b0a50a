@@ -1,0 +1,33 @@
+{
+  "name": "hdr-histogram-percentiles-obj",
+  "version": "3.0.0",
+  "description": "A little lib for turning hdr-histogram-js to objects",
+  "main": "index.js",
+  "scripts": {
+    "test": "standard && tap ./test/*.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GlenTiki/hdr-histogram-percentiles-obj.git"
+  },
+  "keywords": [
+    "hdr-histogram",
+    "hdr-histogram-js",
+    "percentiles"
+  ],
+  "author": "Glen Keane <glenkeane.94@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/GlenTiki/hdr-histogram-percentiles-obj/issues"
+  },
+  "pre-commit": [
+    "test"
+  ],
+  "homepage": "https://github.com/GlenTiki/hdr-histogram-percentiles-obj#readme",
+  "devDependencies": {
+    "pre-commit": "^1.1.3",
+    "standard": "^14.0.0",
+    "tap": "^14.0.0",
+    "hdr-histogram-js": "^2.0.0"
+  }
+}

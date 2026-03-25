@@ -1,0 +1,1 @@
+module.exports = require("../dist/vectorstores/momento_vector_index.cjs");

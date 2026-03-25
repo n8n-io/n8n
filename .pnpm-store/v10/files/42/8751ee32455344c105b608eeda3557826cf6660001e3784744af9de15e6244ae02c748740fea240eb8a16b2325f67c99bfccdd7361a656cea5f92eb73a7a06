@@ -1,0 +1,1 @@
+export * from "../../dist/retrievers/document_compressors/embeddings_filter.js";

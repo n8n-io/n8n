@@ -1,0 +1,62 @@
+// @flow
+// This file is generated automatically by `scripts/build/typings.js`. Please, don't change it.
+
+import type { Locale } from 'date-fns'
+
+type OptionsWithTZ = {
+  weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6,
+  firstWeekContainsDate?: 1 | 2 | 3 | 4 | 5 | 6 | 7,
+  additionalDigits?: 0 | 1 | 2,
+  timeZone?: string,
+  locale?: Locale,
+  includeSeconds?: boolean,
+  addSuffix?: boolean,
+  unit?: 'second' | 'minute' | 'hour' | 'day' | 'month' | 'year',
+  roundingMethod?: 'floor' | 'ceil' | 'round',
+  awareOfUnicodeTokens?: boolean,
+}
+
+type CurriedFn1<A, R> = <A>(a: A) => R
+
+type CurriedFn2<A, B, R> = <A>(a: A) => CurriedFn1<B, R> | (<A, B>(a: A, b: B) => R)
+
+type CurriedFn3<A, B, C, R> = <A>(
+  a: A
+) =>
+  | CurriedFn2<B, C, R>
+  | (<A, B>(a: A, b: B) => CurriedFn1<C, R> | (<A, B, C>(a: A, b: B, c: C) => R))
+
+type CurriedFn4<A, B, C, D, R> = <A>(
+  a: A
+) =>
+  | CurriedFn3<B, C, D, R>
+  | (<A, B>(
+      a: A,
+      b: B
+    ) =>
+      | CurriedFn2<C, D, R>
+      | (<A, B, C>(
+          a: A,
+          b: B,
+          c: C
+        ) => CurriedFn1<D, R> | (<A, B, C, D>(a: A, b: B, c: C, d: D) => R)))
+
+declare module.exports: {
+  format: CurriedFn2<string, Date | number, string>,
+  formatInTimeZone: CurriedFn3<string, string, Date | string | number, string>,
+  formatInTimeZoneWithOptions: CurriedFn4<
+    OptionsWithTZ,
+    string,
+    string,
+    Date | string | number,
+    string
+  >,
+  formatWithOptions: CurriedFn3<OptionsWithTZ, string, Date | number, string>,
+  getTimezoneOffset: CurriedFn2<Date | number, string, number>,
+  toDate: CurriedFn1<Date | string | number, Date>,
+  toDateWithOptions: CurriedFn2<OptionsWithTZ, Date | string | number, Date>,
+  utcToZonedTime: CurriedFn2<string, Date | string | number, Date>,
+  utcToZonedTimeWithOptions: CurriedFn3<OptionsWithTZ, string, Date | string | number, Date>,
+  zonedTimeToUtc: CurriedFn2<string, Date | string | number, Date>,
+  zonedTimeToUtcWithOptions: CurriedFn3<OptionsWithTZ, string, Date | string | number, Date>,
+}

@@ -1,0 +1,184 @@
+# Copyright 2012 Mozilla Foundation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Main toolbar buttons (tooltips and alt text for images)
+previous.title=Pagina precedentă
+previous_label=Înapoi
+next.title=Pagina următoare
+next_label=Înainte
+
+# LOCALIZATION NOTE (page.title): The tooltip for the pageNumber input.
+page.title=Pagina
+# LOCALIZATION NOTE (of_pages): "{{pagesCount}}" will be replaced by a number
+# representing the total number of pages in the document.
+of_pages=din {{pagesCount}}
+# LOCALIZATION NOTE (page_of_pages): "{{pageNumber}}" and "{{pagesCount}}"
+# will be replaced by a number representing the currently visible page,
+# respectively a number representing the total number of pages in the document.
+page_of_pages=({{pageNumber}} din {{pagesCount}})
+
+zoom_out.title=Micșorează
+zoom_out_label=Micșorează
+zoom_in.title=Mărește
+zoom_in_label=Mărește
+zoom.title=Zoom
+presentation_mode.title=Schimbă la modul de prezentare
+presentation_mode_label=Mod de prezentare
+open_file.title=Deschide un fișier
+open_file_label=Deschide
+print.title=Tipărește
+print_label=Tipărește
+download.title=Descarcă
+download_label=Descarcă
+bookmark.title=Vizualizare actuală (copiați sau deschideți într-o fereastră nouă)
+bookmark_label=Vizualizare actuală
+
+# Secondary toolbar and context menu
+tools.title=Unelte
+tools_label=Unelte
+first_page.title=Mergi la prima pagină
+first_page.label=Mergi la prima pagină
+first_page_label=Mergi la prima pagină
+last_page.title=Mergi la ultima pagină
+last_page.label=Mergi la ultima pagină
+last_page_label=Mergi la ultima pagină
+page_rotate_cw.title=Rotește în sensul acelor de ceasornic
+page_rotate_cw.label=Rotește în sensul acelor de ceasornic
+page_rotate_cw_label=Rotește în sensul acelor de ceasornic
+page_rotate_ccw.title=Rotește în sens invers al acelor de ceasornic
+page_rotate_ccw.label=Rotește în sens invers al acelor de ceasornic
+page_rotate_ccw_label=Rotește în sens invers al acelor de ceasornic
+
+cursor_text_select_tool.title=Pornește instrumentul de selecție a textului
+cursor_text_select_tool_label=Instrumentul de selecţie a textului
+cursor_hand_tool.title=Pornește unealta mână
+cursor_hand_tool_label=Unealta mână
+
+# Document properties dialog box
+document_properties.title=Proprietățile documentului…
+document_properties_label=Proprietățile documentului…
+document_properties_file_name=Numele fișierului:
+document_properties_file_size=Dimensiunea fișierului:
+# LOCALIZATION NOTE (document_properties_kb): "{{size_kb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in kilobytes, respectively in bytes.
+document_properties_kb={{size_kb}} KB ({{size_b}} byți)
+# LOCALIZATION NOTE (document_properties_mb): "{{size_mb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in megabytes, respectively in bytes.
+document_properties_mb={{size_mb}} MB ({{size_b}} byți)
+document_properties_title=Titlu:
+document_properties_author=Autor:
+document_properties_subject=Subiect:
+document_properties_keywords=Cuvinte cheie:
+document_properties_creation_date=Data creării:
+document_properties_modification_date=Data modificării:
+# LOCALIZATION NOTE (document_properties_date_string): "{{date}}" and "{{time}}"
+# will be replaced by the creation/modification date, and time, of the PDF file.
+document_properties_date_string={{date}}, {{time}}
+document_properties_creator=Autor:
+document_properties_producer=Producător PDF:
+document_properties_version=Versiune PDF:
+document_properties_page_count=Număr de pagini:
+document_properties_close=Închide
+
+print_progress_message=Se pregătește documentul pentru imprimare…
+# LOCALIZATION NOTE (print_progress_percent): "{{progress}}" will be replaced by
+# a numerical per cent value.
+print_progress_percent={{progress}}%
+print_progress_close=Renunță
+
+# Tooltips and alt text for side panel toolbar buttons
+# (the _label strings are alt text for the buttons, the .title strings are
+# tooltips)
+toggle_sidebar.title=Comută bara laterală
+toggle_sidebar_notification.title=Comută bara laterală (documentul conține schițe/atașamente)
+toggle_sidebar_label=Comută bara laterală
+document_outline.title=Arată schița documentului (dublu-clic pentru a expanda/colapsa toate elementele
+document_outline_label=Schiță document
+attachments.title=Afișează atașamentele
+attachments_label=Atașamente
+thumbs.title=Arată miniaturi
+thumbs_label=Miniaturi
+findbar.title=Găsește în document
+findbar_label=Caută
+
+# Thumbnails panel item (tooltip and alt text for images)
+# LOCALIZATION NOTE (thumb_page_title): "{{page}}" will be replaced by the page
+# number.
+thumb_page_title=Pagina {{page}}
+# LOCALIZATION NOTE (thumb_page_canvas): "{{page}}" will be replaced by the page
+# number.
+thumb_page_canvas=Miniatura paginii {{page}}
+
+# Find panel button title and messages
+find_input.title=Caută
+find_input.placeholder=Caută în document…
+find_previous.title=Găsește instanța anterioară în frază
+find_previous_label=Anterior
+find_next.title=Găsește instanța următoare în frază
+find_next_label=Următor
+find_highlight=Evidențiază aparițiile
+find_match_case_label=Potrivește literele mari și mici
+find_reached_top=Am ajuns la începutul documentului, continuă de la sfârșit
+find_reached_bottom=Am ajuns la sfârșitul documentului, continuă de la început
+find_not_found=Nu s-a găsit textul
+
+# Error panel labels
+error_more_info=Mai multe informații
+error_less_info=Mai puține informații
+error_close=Închide
+# LOCALIZATION NOTE (error_version_info): "{{version}}" and "{{build}}" will be
+# replaced by the PDF.JS version and build ID.
+error_version_info=PDF.js v{{version}} (varianta: {{build}})
+# LOCALIZATION NOTE (error_message): "{{message}}" will be replaced by an
+# english string describing the error.
+error_message=Mesaj: {{message}}
+# LOCALIZATION NOTE (error_stack): "{{stack}}" will be replaced with a stack
+# trace.
+error_stack=Stivă: {{stack}}
+# LOCALIZATION NOTE (error_file): "{{file}}" will be replaced with a filename
+error_file=Fișier: {{file}}
+# LOCALIZATION NOTE (error_line): "{{line}}" will be replaced with a line number
+error_line=Linie: {{line}}
+rendering_error=A intervenit o eroare la afișarea paginii.
+
+# Predefined zoom values
+page_scale_width=Lățime pagină
+page_scale_fit=Potrivire la pagină
+page_scale_auto=Zoom automat
+page_scale_actual=Dimensiune reală
+# LOCALIZATION NOTE (page_scale_percent): "{{scale}}" will be replaced by a
+# numerical scale value.
+page_scale_percent={{scale}}%
+
+# Loading indicator messages
+loading_error_indicator=Eroare
+loading_error=A intervenit o eroare la încărcarea fișierului PDF.
+invalid_file_error=Fișier PDF invalid sau deteriorat.
+missing_file_error=Fișier PDF lipsă.
+unexpected_response_error=Răspuns neașteptat de la server.
+
+# LOCALIZATION NOTE (text_annotation_type.alt): This is used as a tooltip.
+# "{{type}}" will be replaced with an annotation type from a list defined in
+# the PDF spec (32000-1:2008 Table 169 – Annotation types).
+# Some common types are e.g.: "Check", "Text", "Comment", "Note"
+text_annotation_type.alt=[{{type}} Adnotare]
+password_label=Introdu parola pentru a deschide acest fișier PDF.
+password_invalid=Parolă greșită. Te rugăm să încerci din nou.
+password_ok=Ok
+password_cancel=Renunță
+
+printing_not_supported=Avertisment: Tipărirea nu este suportată în totalitate de acest browser.
+printing_not_ready=Avertisment: Fișierul PDF nu este încărcat complet pentru tipărire.
+web_fonts_disabled=Fonturile web sunt dezactivate: nu pot utiliza fonturile PDF încorporate.
+document_colors_not_allowed=Documentele PDF nu sunt autorizate să folosească propriile culori: 'Permite paginilor să aleagă propriile culori' este dezactivată în browser.

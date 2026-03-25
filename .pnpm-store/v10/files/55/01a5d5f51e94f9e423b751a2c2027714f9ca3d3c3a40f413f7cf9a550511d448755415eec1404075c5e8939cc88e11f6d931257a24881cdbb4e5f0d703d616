@@ -1,0 +1,21 @@
+{
+    "name": "utf7",
+    "version": "1.0.2",
+    "description": "Converts text to and from UTF-7 (RFC 2152 and IMAP)",
+    "author": "Konstantin Käfer <kkaefer@gmail.com>",
+    "licenses": [ { "type": "BSD" } ],
+
+    "main": "./utf7",
+
+    "dependencies": {
+        "semver": "~5.3.0"
+    },
+
+    "devDependencies": {
+        "tape": "~4.6.0"
+    },
+
+    "scripts": {
+        "test": "tape test/*.js"
+    }
+}

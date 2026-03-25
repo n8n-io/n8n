@@ -1,0 +1,43 @@
+{
+    "name": "@types/glob",
+    "version": "8.0.0",
+    "description": "TypeScript definitions for glob",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/glob",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "vvakame",
+            "url": "https://github.com/vvakame",
+            "githubUsername": "vvakame"
+        },
+        {
+            "name": "voy",
+            "url": "https://github.com/voy",
+            "githubUsername": "voy"
+        },
+        {
+            "name": "Klaus Meinhardt",
+            "url": "https://github.com/ajafff",
+            "githubUsername": "ajafff"
+        },
+        {
+            "name": "Piotr Błażejewicz",
+            "url": "https://github.com/peterblazejewicz",
+            "githubUsername": "peterblazejewicz"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/glob"
+    },
+    "scripts": {},
+    "dependencies": {
+        "@types/minimatch": "*",
+        "@types/node": "*"
+    },
+    "typesPublisherContentHash": "b2c2628316cd0616e7fa5dc88461badd4a5bc09e1b4ea0d80245a89a46164b42",
+    "typeScriptVersion": "4.0"
+}

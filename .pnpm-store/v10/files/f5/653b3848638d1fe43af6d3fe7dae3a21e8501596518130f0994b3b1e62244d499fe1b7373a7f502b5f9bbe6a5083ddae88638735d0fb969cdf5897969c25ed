@@ -1,0 +1,1 @@
+module.exports = require("../../dist/retrievers/document_compressors/embeddings_filter.cjs");

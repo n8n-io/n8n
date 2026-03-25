@@ -1,0 +1,93 @@
+{
+  "name": "postcss-values-parser",
+  "version": "6.0.2",
+  "description": "A CSS property value parser for use with PostCSS",
+  "license": "MPL-2.0",
+  "repository": "shellscape/postcss-values-parser",
+  "author": {
+    "name": "Andrew Powell (shellscape)",
+    "email": "andrew@shellscape.org",
+    "url": "http://shellscape.org"
+  },
+  "homepage": "https://github.com/shellscape/postcss-values-parser",
+  "bugs": "https://github.com/shellscape/postcss-values-parser/issues",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "engines": {
+    "node": ">=10"
+  },
+  "scripts": {
+    "ci:coverage": "nyc npm run test && nyc report --reporter=text-lcov > coverage.lcov",
+    "ci:test": "npm run test",
+    "lint": "eslint lib test --fix --cache",
+    "check-types": "tsc --noEmit",
+    "lint-staged": "lint-staged",
+    "security": "npm audit --audit-level=high --prod",
+    "test": "ava"
+  },
+  "files": [
+    "lib",
+    "LICENSE",
+    "README.md"
+  ],
+  "dependencies": {
+    "color-name": "^1.1.4",
+    "is-url-superb": "^4.0.0",
+    "quote-unquote": "^1.0.0"
+  },
+  "devDependencies": {
+    "ava": "^3.12.1",
+    "chalk": "^4.1.0",
+    "eslint-config-shellscape": "^2.1.0",
+    "globby": "^11.0.1",
+    "lint-staged": "^10.4.0",
+    "nyc": "^15.1.0",
+    "perfy": "^1.1.5",
+    "postcss": "^8.2.9",
+    "postcss-value-parser": "^4.1.0",
+    "pre-commit": "^1.2.2",
+    "prettier": "^2.1.2",
+    "rewiremock": "^3.14.3",
+    "strip-ansi": "^6.0.0",
+    "text-table": "^0.2.0",
+    "typescript": "^4.2.3"
+  },
+  "peerDependencies": {
+    "postcss": "^8.2.9"
+  },
+  "keywords": [
+    "css",
+    "less",
+    "ast",
+    "postcss",
+    "value",
+    "values",
+    "parser",
+    "parsing",
+    "properties"
+  ],
+  "ava": {
+    "files": [
+      "!**/fixtures/**",
+      "!**/helpers/**",
+      "!**/rewiremock.js"
+    ],
+    "require": [
+      "./test/rewiremock.js"
+    ]
+  },
+  "lint-staged": {
+    "*.js": [
+      "eslint --fix"
+    ]
+  },
+  "nyc": {
+    "include": [
+      "lib/*.js"
+    ],
+    "exclude": [
+      "test/"
+    ]
+  },
+  "pre-commit": "lint-staged"
+}

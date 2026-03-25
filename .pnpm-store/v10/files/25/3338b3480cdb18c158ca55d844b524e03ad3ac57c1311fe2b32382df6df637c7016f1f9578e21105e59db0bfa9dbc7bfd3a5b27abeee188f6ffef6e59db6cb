@@ -1,0 +1,24 @@
+{
+  "name": "cross-argv",
+  "version": "2.0.0",
+  "description": "Cross platform normalization of process.argv",
+  "main": "index.js",
+  "dependencies": {},
+  "devDependencies": {
+    "standard": "^11.0.1",
+    "tape": "^4.9.1"
+  },
+  "scripts": {
+    "test": "standard && tape test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mafintosh/cross-argv.git"
+  },
+  "author": "Mathias Buus (@mafintosh)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/mafintosh/cross-argv/issues"
+  },
+  "homepage": "https://github.com/mafintosh/cross-argv"
+}

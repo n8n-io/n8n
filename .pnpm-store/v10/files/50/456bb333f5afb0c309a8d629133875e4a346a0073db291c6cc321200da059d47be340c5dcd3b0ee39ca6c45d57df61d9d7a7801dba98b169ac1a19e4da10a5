@@ -1,0 +1,1 @@
+module.exports = require("../dist/retrievers/remote/index.cjs");

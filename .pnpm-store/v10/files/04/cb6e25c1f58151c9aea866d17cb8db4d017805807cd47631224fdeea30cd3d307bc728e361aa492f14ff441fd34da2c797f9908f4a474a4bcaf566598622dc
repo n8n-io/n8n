@@ -1,0 +1,12 @@
+export declare const CURLAUTH_BASIC: number;
+export declare const CURLAUTH_DIGEST: number;
+export declare const CURLAUTH_NEGOTIATE: number;
+export declare const CURLAUTH_NTLM: number;
+export declare const CURLAUTH_DIGEST_IE: number;
+export declare const CURLAUTH_NTLM_WB: number;
+export declare const CURLAUTH_BEARER: number;
+export declare const CURLAUTH_AWS_SIGV4: number;
+export declare const CURLAUTH_ANY: number;
+export type ProxyAuthType = "basic" | "digest" | "ntlm" | "negotiate" | "none";
+export type AuthType = ProxyAuthType | "ntlm-wb" | "bearer" | "aws-sigv4";
+export declare function pickAuth(mask: number): AuthType;

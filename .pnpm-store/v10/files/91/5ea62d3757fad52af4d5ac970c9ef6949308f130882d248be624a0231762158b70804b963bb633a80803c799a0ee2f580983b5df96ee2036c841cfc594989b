@@ -1,0 +1,52 @@
+{
+  "name": "whatwg-url",
+  "version": "14.0.0",
+  "description": "An implementation of the WHATWG URL Standard's URL API and parsing machinery",
+  "main": "index.js",
+  "files": [
+    "index.js",
+    "webidl2js-wrapper.js",
+    "lib/*.js"
+  ],
+  "author": "Sebastian Mayr <github@smayr.name>",
+  "license": "MIT",
+  "repository": "jsdom/whatwg-url",
+  "dependencies": {
+    "tr46": "^5.0.0",
+    "webidl-conversions": "^7.0.0"
+  },
+  "devDependencies": {
+    "@domenic/eslint-config": "^3.0.0",
+    "benchmark": "^2.1.4",
+    "c8": "^8.0.1",
+    "domexception": "^4.0.0",
+    "esbuild": "^0.19.5",
+    "eslint": "^8.53.0",
+    "webidl2js": "^17.1.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "coverage": "c8 node --test --experimental-test-coverage test/*.js",
+    "lint": "eslint .",
+    "prepare": "node scripts/transform.js",
+    "pretest": "node scripts/get-latest-platform-tests.js && node scripts/transform.js",
+    "build-live-viewer": "esbuild --bundle --format=esm --sourcemap --outfile=live-viewer/whatwg-url.mjs index.js",
+    "test": "node --test test/*.js"
+  },
+  "c8": {
+    "reporter": [
+      "text",
+      "html"
+    ],
+    "exclude": [
+      "lib/Function.js",
+      "lib/URL.js",
+      "lib/URLSearchParams.js",
+      "lib/utils.js",
+      "scripts/",
+      "test/"
+    ]
+  }
+}

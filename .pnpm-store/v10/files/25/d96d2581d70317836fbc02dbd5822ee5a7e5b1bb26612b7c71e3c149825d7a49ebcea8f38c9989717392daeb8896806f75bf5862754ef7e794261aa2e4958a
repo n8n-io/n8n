@@ -1,0 +1,64 @@
+{
+  "name": "import-in-the-middle",
+  "version": "1.15.0",
+  "description": "Intercept imports in Node.js",
+  "main": "index.js",
+  "scripts": {
+    "test": "c8 --reporter lcov --check-coverage --lines 50 imhotap --files test/{hook,low-level,other,get-esm-exports,register}/*",
+    "test:e2e": "node test/check-exports/test.mjs",
+    "test:ts": "c8 --reporter lcov imhotap --files test/typescript/*.test.mts",
+    "coverage": "c8 --reporter html imhotap --files test/{hook,low-level,other,get-esm-exports}/* && echo '\nNow open coverage/index.html\n'",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/nodejs/import-in-the-middle.git"
+  },
+  "keywords": [
+    "import",
+    "ritm",
+    "iitm",
+    "loader",
+    "hook",
+    "hooks"
+  ],
+  "author": "Bryan English <bryan.english@datadoghq.com>",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/nodejs/import-in-the-middle/issues"
+  },
+  "homepage": "https://github.com/nodejs/import-in-the-middle#readme",
+  "imhotap": {
+    "runner": "node",
+    "test-env": "NODE_OPTIONS=--no-warnings --require ./test/version-check.js --experimental-loader ./test/generic-loader.mjs"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.23.7",
+    "@babel/eslint-parser": "^7.23.3",
+    "@babel/plugin-syntax-import-assertions": "^7.23.3",
+    "@node-rs/crc32": "^1.10.3",
+    "@react-email/components": "^0.0.19",
+    "@types/node": "^18.0.6",
+    "c8": "^7.8.0",
+    "date-fns": "^3.6.0",
+    "eslint": "^8.55.0",
+    "eslint-config-standard": "^17.1.0",
+    "eslint-plugin-import": "^2.29.0",
+    "eslint-plugin-n": "^16.4.0",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^6.1.1",
+    "got": "^14.3.0",
+    "imhotap": "^2.1.0",
+    "openai": "4.47.2",
+    "ts-node": "^10.9.1",
+    "typescript": "^4.7.4",
+    "vue": "^3.4.31"
+  },
+  "dependencies": {
+    "acorn": "^8.14.0",
+    "acorn-import-attributes": "^1.9.5",
+    "cjs-module-lexer": "^1.2.2",
+    "module-details-from-path": "^1.0.3"
+  }
+}

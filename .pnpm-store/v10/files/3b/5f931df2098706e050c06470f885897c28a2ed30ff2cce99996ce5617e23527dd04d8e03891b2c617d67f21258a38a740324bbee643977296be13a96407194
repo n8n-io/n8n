@@ -1,0 +1,27 @@
+/*
+	gyp.pbfilespec
+	GYP source file spec for Xcode 3
+
+	There is not much documentation available regarding the format
+	of .pbfilespec files. As a starting point, see for instance the
+	outdated documentation at:
+	http://maxao.free.fr/xcode-plugin-interface/specifications.html
+	and the files in:
+	/Developer/Library/PrivateFrameworks/XcodeEdit.framework/Versions/A/Resources/
+
+	Place this file in directory:
+	~/Library/Application Support/Developer/Shared/Xcode/Specifications/
+*/
+
+(
+	{
+		Identifier = sourcecode.gyp;
+		BasedOn = sourcecode;
+		Name = "GYP Files";
+		Extensions = ("gyp", "gypi");
+		MIMETypes = ("text/gyp");
+		Language = "xcode.lang.gyp";
+		IsTextFile = YES;
+		IsSourceFile = YES;
+	}
+)

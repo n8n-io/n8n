@@ -1,0 +1,181 @@
+{
+  "name": "socks-proxy-agent",
+  "description": "A SOCKS proxy `http.Agent` implementation for HTTP and HTTPS",
+  "homepage": "https://github.com/TooTallNate/node-socks-proxy-agent#readme",
+  "version": "6.2.1",
+  "main": "dist/index.js",
+  "author": {
+    "email": "nathan@tootallnate.net",
+    "name": "Nathan Rajlich",
+    "url": "http://n8.io/"
+  },
+  "contributors": [
+    {
+      "name": "Kiko Beats",
+      "email": "josefrancisco.verdu@gmail.com"
+    },
+    {
+      "name": "Josh Glazebrook",
+      "email": "josh@joshglazebrook.com"
+    },
+    {
+      "name": "talmobi",
+      "email": "talmobi@users.noreply.github.com"
+    },
+    {
+      "name": "Indospace.io",
+      "email": "justin@indospace.io"
+    },
+    {
+      "name": "Kilian von Pflugk",
+      "email": "github@jumoog.io"
+    },
+    {
+      "name": "Kyle",
+      "email": "admin@hk1229.cn"
+    },
+    {
+      "name": "Matheus Fernandes",
+      "email": "matheus.frndes@gmail.com"
+    },
+    {
+      "name": "Ricky Miller",
+      "email": "richardkazuomiller@gmail.com"
+    },
+    {
+      "name": "Shantanu Sharma",
+      "email": "shantanu34@outlook.com"
+    },
+    {
+      "name": "Tim Perry",
+      "email": "pimterry@gmail.com"
+    },
+    {
+      "name": "Vadim Baryshev",
+      "email": "vadimbaryshev@gmail.com"
+    },
+    {
+      "name": "jigu",
+      "email": "luo1257857309@gmail.com"
+    },
+    {
+      "name": "Alba Mendez",
+      "email": "me@jmendeth.com"
+    },
+    {
+      "name": "Дмитрий Гуденков",
+      "email": "Dimangud@rambler.ru"
+    },
+    {
+      "name": "Andrei Bitca",
+      "email": "63638922+andrei-bitca-dc@users.noreply.github.com"
+    },
+    {
+      "name": "Andrew Casey",
+      "email": "amcasey@users.noreply.github.com"
+    },
+    {
+      "name": "Brandon Ros",
+      "email": "brandonros1@gmail.com"
+    },
+    {
+      "name": "Dang Duy Thanh",
+      "email": "thanhdd.it@gmail.com"
+    },
+    {
+      "name": "Dimitar Nestorov",
+      "email": "8790386+dimitarnestorov@users.noreply.github.com"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/TooTallNate/node-socks-proxy-agent.git"
+  },
+  "bugs": {
+    "url": "https://github.com/TooTallNate/node-socks-proxy-agent/issues"
+  },
+  "keywords": [
+    "agent",
+    "http",
+    "https",
+    "proxy",
+    "socks",
+    "socks4",
+    "socks4a",
+    "socks5",
+    "socks5h"
+  ],
+  "dependencies": {
+    "agent-base": "^6.0.2",
+    "debug": "^4.3.3",
+    "socks": "^2.6.2"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "latest",
+    "@commitlint/config-conventional": "latest",
+    "@types/debug": "latest",
+    "@types/node": "latest",
+    "cacheable-lookup": "^6.0.4",
+    "conventional-github-releaser": "latest",
+    "dns2": "latest",
+    "finepack": "latest",
+    "git-authors-cli": "latest",
+    "mocha": "9",
+    "nano-staged": "latest",
+    "npm-check-updates": "latest",
+    "prettier-standard": "latest",
+    "raw-body": "latest",
+    "rimraf": "latest",
+    "simple-git-hooks": "latest",
+    "socksv5": "github:TooTallNate/socksv5#fix/dstSock-close-event",
+    "standard": "latest",
+    "standard-markdown": "latest",
+    "standard-version": "latest",
+    "ts-standard": "latest",
+    "typescript": "latest"
+  },
+  "engines": {
+    "node": ">= 10"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rimraf node_modules",
+    "contributors": "(git-authors-cli && finepack && git add package.json && git commit -m 'build: contributors' --no-verify) || true",
+    "lint": "ts-standard",
+    "postrelease": "npm run release:tags && npm run release:github && (ci-publish || npm publish --access=public)",
+    "prebuild": "rimraf dist",
+    "prepublishOnly": "npm run build",
+    "prerelease": "npm run update:check && npm run contributors",
+    "release": "standard-version -a",
+    "release:github": "conventional-github-releaser -p angular",
+    "release:tags": "git push --follow-tags origin HEAD:master",
+    "test": "mocha --reporter spec",
+    "update": "ncu -u",
+    "update:check": "ncu -- --error-level 2"
+  },
+  "license": "MIT",
+  "commitlint": {
+    "extends": [
+      "@commitlint/config-conventional"
+    ]
+  },
+  "nano-staged": {
+    "*.js": [
+      "prettier-standard"
+    ],
+    "*.md": [
+      "standard-markdown"
+    ],
+    "package.json": [
+      "finepack"
+    ]
+  },
+  "simple-git-hooks": {
+    "commit-msg": "npx commitlint --edit",
+    "pre-commit": "npx nano-staged"
+  },
+  "typings": "dist/index.d.ts"
+}

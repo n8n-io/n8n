@@ -1,0 +1,156 @@
+// Copyright 2020 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package google.cloud.secrets.v1beta1;
+
+import "google/api/field_behavior.proto";
+import "google/api/resource.proto";
+import "google/protobuf/timestamp.proto";
+import "google/api/annotations.proto";
+
+option cc_enable_arenas = true;
+option csharp_namespace = "Google.Cloud.SecretManager.V1Beta1";
+option go_package = "google.golang.org/genproto/googleapis/cloud/secretmanager/v1beta1;secretmanager";
+option java_multiple_files = true;
+option java_outer_classname = "ResourcesProto";
+option java_package = "com.google.cloud.secretmanager.v1beta1";
+option objc_class_prefix = "GSM";
+option php_namespace = "Google\\Cloud\\SecretManager\\V1beta1";
+option ruby_package = "Google::Cloud::SecretManager::V1beta1";
+
+// A [Secret][google.cloud.secrets.v1beta1.Secret] is a logical secret whose value and versions can
+// be accessed.
+//
+// A [Secret][google.cloud.secrets.v1beta1.Secret] is made up of zero or more [SecretVersions][google.cloud.secrets.v1beta1.SecretVersion] that
+// represent the secret data.
+message Secret {
+  option (google.api.resource) = {
+    type: "secretmanager.googleapis.com/Secret"
+    pattern: "projects/{project}/secrets/{secret}"
+  };
+
+  // Output only. The resource name of the [Secret][google.cloud.secrets.v1beta1.Secret] in the format `projects/*/secrets/*`.
+  string name = 1 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  // Required. Immutable. The replication policy of the secret data attached to the [Secret][google.cloud.secrets.v1beta1.Secret].
+  //
+  // The replication policy cannot be changed after the Secret has been created.
+  Replication replication = 2 [
+    (google.api.field_behavior) = IMMUTABLE,
+    (google.api.field_behavior) = REQUIRED
+  ];
+
+  // Output only. The time at which the [Secret][google.cloud.secrets.v1beta1.Secret] was created.
+  google.protobuf.Timestamp create_time = 3 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  // The labels assigned to this Secret.
+  //
+  // Label keys must be between 1 and 63 characters long, have a UTF-8 encoding
+  // of maximum 128 bytes, and must conform to the following PCRE regular
+  // expression: `[\p{Ll}\p{Lo}][\p{Ll}\p{Lo}\p{N}_-]{0,62}`
+  //
+  // Label values must be between 0 and 63 characters long, have a UTF-8
+  // encoding of maximum 128 bytes, and must conform to the following PCRE
+  // regular expression: `[\p{Ll}\p{Lo}\p{N}_-]{0,63}`
+  //
+  // No more than 64 labels can be assigned to a given resource.
+  map<string, string> labels = 4;
+}
+
+// A secret version resource in the Secret Manager API.
+message SecretVersion {
+  option (google.api.resource) = {
+    type: "secretmanager.googleapis.com/SecretVersion"
+    pattern: "projects/{project}/secrets/{secret}/versions/{secret_version}"
+  };
+
+  // The state of a [SecretVersion][google.cloud.secrets.v1beta1.SecretVersion], indicating if it can be accessed.
+  enum State {
+    // Not specified. This value is unused and invalid.
+    STATE_UNSPECIFIED = 0;
+
+    // The [SecretVersion][google.cloud.secrets.v1beta1.SecretVersion] may be accessed.
+    ENABLED = 1;
+
+    // The [SecretVersion][google.cloud.secrets.v1beta1.SecretVersion] may not be accessed, but the secret data
+    // is still available and can be placed back into the [ENABLED][google.cloud.secrets.v1beta1.SecretVersion.State.ENABLED]
+    // state.
+    DISABLED = 2;
+
+    // The [SecretVersion][google.cloud.secrets.v1beta1.SecretVersion] is destroyed and the secret data is no longer
+    // stored. A version may not leave this state once entered.
+    DESTROYED = 3;
+  }
+
+  // Output only. The resource name of the [SecretVersion][google.cloud.secrets.v1beta1.SecretVersion] in the
+  // format `projects/*/secrets/*/versions/*`.
+  //
+  // [SecretVersion][google.cloud.secrets.v1beta1.SecretVersion] IDs in a [Secret][google.cloud.secrets.v1beta1.Secret] start at 1 and
+  // are incremented for each subsequent version of the secret.
+  string name = 1 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  // Output only. The time at which the [SecretVersion][google.cloud.secrets.v1beta1.SecretVersion] was created.
+  google.protobuf.Timestamp create_time = 2 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  // Output only. The time this [SecretVersion][google.cloud.secrets.v1beta1.SecretVersion] was destroyed.
+  // Only present if [state][google.cloud.secrets.v1beta1.SecretVersion.state] is
+  // [DESTROYED][google.cloud.secrets.v1beta1.SecretVersion.State.DESTROYED].
+  google.protobuf.Timestamp destroy_time = 3 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  // Output only. The current state of the [SecretVersion][google.cloud.secrets.v1beta1.SecretVersion].
+  State state = 4 [(google.api.field_behavior) = OUTPUT_ONLY];
+}
+
+// A policy that defines the replication configuration of data.
+message Replication {
+  // A replication policy that replicates the [Secret][google.cloud.secrets.v1beta1.Secret] payload without any
+  // restrictions.
+  message Automatic {
+
+  }
+
+  // A replication policy that replicates the [Secret][google.cloud.secrets.v1beta1.Secret] payload into the
+  // locations specified in [Secret.replication.user_managed.replicas][]
+  message UserManaged {
+    // Represents a Replica for this [Secret][google.cloud.secrets.v1beta1.Secret].
+    message Replica {
+      // The canonical IDs of the location to replicate data.
+      // For example: `"us-east1"`.
+      string location = 1;
+    }
+
+    // Required. The list of Replicas for this [Secret][google.cloud.secrets.v1beta1.Secret].
+    //
+    // Cannot be empty.
+    repeated Replica replicas = 1 [(google.api.field_behavior) = REQUIRED];
+  }
+
+  // The replication policy for this secret.
+  oneof replication {
+    // The [Secret][google.cloud.secrets.v1beta1.Secret] will automatically be replicated without any restrictions.
+    Automatic automatic = 1;
+
+    // The [Secret][google.cloud.secrets.v1beta1.Secret] will only be replicated into the locations specified.
+    UserManaged user_managed = 2;
+  }
+}
+
+// A secret payload resource in the Secret Manager API. This contains the
+// sensitive secret data that is associated with a [SecretVersion][google.cloud.secrets.v1beta1.SecretVersion].
+message SecretPayload {
+  // The secret data. Must be no larger than 64KiB.
+  bytes data = 1;
+}

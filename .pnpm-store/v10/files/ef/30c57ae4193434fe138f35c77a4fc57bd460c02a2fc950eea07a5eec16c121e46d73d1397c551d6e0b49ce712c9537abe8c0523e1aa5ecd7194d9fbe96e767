@@ -1,0 +1,184 @@
+# Copyright 2012 Mozilla Foundation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Main toolbar buttons (tooltips and alt text for images)
+previous.title=หน้าก่อนหน้า
+previous_label=ก่อนหน้า
+next.title=หน้าถัดไป
+next_label=ถัดไป
+
+# LOCALIZATION NOTE (page.title): The tooltip for the pageNumber input.
+page.title=หน้า
+# LOCALIZATION NOTE (of_pages): "{{pagesCount}}" will be replaced by a number
+# representing the total number of pages in the document.
+of_pages=จาก {{pagesCount}}
+# LOCALIZATION NOTE (page_of_pages): "{{pageNumber}}" and "{{pagesCount}}"
+# will be replaced by a number representing the currently visible page,
+# respectively a number representing the total number of pages in the document.
+page_of_pages=({{pageNumber}} จาก {{pagesCount}})
+
+zoom_out.title=ซูมออก
+zoom_out_label=ซูมออก
+zoom_in.title=ซูมเข้า
+zoom_in_label=ซูมเข้า
+zoom.title=ซูม
+presentation_mode.title=สลับเป็นโหมดการนำเสนอ
+presentation_mode_label=โหมดการนำเสนอ
+open_file.title=เปิดไฟล์
+open_file_label=เปิด
+print.title=พิมพ์
+print_label=พิมพ์
+download.title=ดาวน์โหลด
+download_label=ดาวน์โหลด
+bookmark.title=มุมมองปัจจุบัน (คัดลอกหรือเปิดในหน้าต่างใหม่)
+bookmark_label=มุมมองปัจจุบัน
+
+# Secondary toolbar and context menu
+tools.title=เครื่องมือ
+tools_label=เครื่องมือ
+first_page.title=ไปยังหน้าแรก
+first_page.label=ไปยังหน้าแรก
+first_page_label=ไปยังหน้าแรก
+last_page.title=ไปยังหน้าสุดท้าย
+last_page.label=ไปยังหน้าสุดท้าย
+last_page_label=ไปยังหน้าสุดท้าย
+page_rotate_cw.title=หมุนตามเข็มนาฬิกา
+page_rotate_cw.label=หมุนตามเข็มนาฬิกา
+page_rotate_cw_label=หมุนตามเข็มนาฬิกา
+page_rotate_ccw.title=หมุนทวนเข็มนาฬิกา
+page_rotate_ccw.label=หมุนทวนเข็มนาฬิกา
+page_rotate_ccw_label=หมุนทวนเข็มนาฬิกา
+
+cursor_text_select_tool.title=เปิดใช้งานเครื่องมือการเลือกข้อความ
+cursor_text_select_tool_label=เครื่องมือการเลือกข้อความ
+cursor_hand_tool.title=เปิดใช้งานเครื่องมือมือ
+cursor_hand_tool_label=เครื่องมือมือ
+
+# Document properties dialog box
+document_properties.title=คุณสมบัติเอกสาร…
+document_properties_label=คุณสมบัติเอกสาร…
+document_properties_file_name=ชื่อไฟล์:
+document_properties_file_size=ขนาดไฟล์:
+# LOCALIZATION NOTE (document_properties_kb): "{{size_kb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in kilobytes, respectively in bytes.
+document_properties_kb={{size_kb}} กิโลไบต์ ({{size_b}} ไบต์)
+# LOCALIZATION NOTE (document_properties_mb): "{{size_mb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in megabytes, respectively in bytes.
+document_properties_mb={{size_mb}} เมกะไบต์ ({{size_b}} ไบต์)
+document_properties_title=ชื่อ:
+document_properties_author=ผู้สร้าง:
+document_properties_subject=ชื่อเรื่อง:
+document_properties_keywords=คำสำคัญ:
+document_properties_creation_date=วันที่สร้าง:
+document_properties_modification_date=วันที่แก้ไข:
+# LOCALIZATION NOTE (document_properties_date_string): "{{date}}" and "{{time}}"
+# will be replaced by the creation/modification date, and time, of the PDF file.
+document_properties_date_string={{date}}, {{time}}
+document_properties_creator=ผู้สร้าง:
+document_properties_producer=ผู้ผลิต PDF:
+document_properties_version=รุ่น PDF:
+document_properties_page_count=จำนวนหน้า:
+document_properties_close=ปิด
+
+print_progress_message=กำลังเตรียมเอกสารสำหรับการพิมพ์…
+# LOCALIZATION NOTE (print_progress_percent): "{{progress}}" will be replaced by
+# a numerical per cent value.
+print_progress_percent={{progress}}%
+print_progress_close=ยกเลิก
+
+# Tooltips and alt text for side panel toolbar buttons
+# (the _label strings are alt text for the buttons, the .title strings are
+# tooltips)
+toggle_sidebar.title=เปิด/ปิดแถบข้าง
+toggle_sidebar_notification.title=เปิด/ปิดแถบข้าง (เอกสารมีเค้าร่าง/ไฟล์แนบ)
+toggle_sidebar_label=เปิด/ปิดแถบข้าง
+document_outline.title=แสดงเค้าร่างเอกสาร (คลิกสองครั้งเพื่อขยาย/ยุบรายการทั้งหมด)
+document_outline_label=เค้าร่างเอกสาร
+attachments.title=แสดงไฟล์แนบ
+attachments_label=ไฟล์แนบ
+thumbs.title=แสดงภาพขนาดย่อ
+thumbs_label=ภาพขนาดย่อ
+findbar.title=ค้นหาในเอกสาร
+findbar_label=ค้นหา
+
+# Thumbnails panel item (tooltip and alt text for images)
+# LOCALIZATION NOTE (thumb_page_title): "{{page}}" will be replaced by the page
+# number.
+thumb_page_title=หน้า {{page}}
+# LOCALIZATION NOTE (thumb_page_canvas): "{{page}}" will be replaced by the page
+# number.
+thumb_page_canvas=ภาพขนาดย่อของหน้า {{page}}
+
+# Find panel button title and messages
+find_input.title=ค้นหา
+find_input.placeholder=ค้นหาในเอกสาร…
+find_previous.title=หาตำแหน่งก่อนหน้าของวลี
+find_previous_label=ก่อนหน้า
+find_next.title=หาตำแหน่งถัดไปของวลี
+find_next_label=ถัดไป
+find_highlight=เน้นสีทั้งหมด
+find_match_case_label=ตัวพิมพ์ใหญ่เล็กตรงกัน
+find_reached_top=ค้นหาถึงจุดเริ่มต้นของหน้า เริ่มค้นต่อจากด้านล่าง
+find_reached_bottom=ค้นหาถึงจุดสิ้นสุดหน้า เริ่มค้นต่อจากด้านบน
+find_not_found=ไม่พบวลี
+
+# Error panel labels
+error_more_info=ข้อมูลเพิ่มเติม
+error_less_info=ข้อมูลน้อยลง
+error_close=ปิด
+# LOCALIZATION NOTE (error_version_info): "{{version}}" and "{{build}}" will be
+# replaced by the PDF.JS version and build ID.
+error_version_info=PDF.js v{{version}} (build: {{build}})
+# LOCALIZATION NOTE (error_message): "{{message}}" will be replaced by an
+# english string describing the error.
+error_message=ข้อความ: {{message}}
+# LOCALIZATION NOTE (error_stack): "{{stack}}" will be replaced with a stack
+# trace.
+error_stack=สแต็ก: {{stack}}
+# LOCALIZATION NOTE (error_file): "{{file}}" will be replaced with a filename
+error_file=ไฟล์: {{file}}
+# LOCALIZATION NOTE (error_line): "{{line}}" will be replaced with a line number
+error_line=บรรทัด: {{line}}
+rendering_error=เกิดข้อผิดพลาดขณะกำลังเรนเดอร์หน้า
+
+# Predefined zoom values
+page_scale_width=ความกว้างหน้า
+page_scale_fit=พอดีหน้า
+page_scale_auto=ซูมอัตโนมัติ
+page_scale_actual=ขนาดจริง
+# LOCALIZATION NOTE (page_scale_percent): "{{scale}}" will be replaced by a
+# numerical scale value.
+page_scale_percent={{scale}}%
+
+# Loading indicator messages
+loading_error_indicator=ข้อผิดพลาด
+loading_error=เกิดข้อผิดพลาดขณะกำลังโหลด PDF
+invalid_file_error=ไฟล์ PDF ไม่ถูกต้องหรือเสียหาย
+missing_file_error=ไฟล์ PDF ขาดหาย
+unexpected_response_error=การตอบสนองของเซิร์ฟเวอร์ที่ไม่คาดคิด
+
+# LOCALIZATION NOTE (text_annotation_type.alt): This is used as a tooltip.
+# "{{type}}" will be replaced with an annotation type from a list defined in
+# the PDF spec (32000-1:2008 Table 169 – Annotation types).
+# Some common types are e.g.: "Check", "Text", "Comment", "Note"
+text_annotation_type.alt=[คำอธิบายประกอบ {{type}}]
+password_label=ป้อนรหัสผ่านเพื่อเปิดไฟล์ PDF นี้
+password_invalid=รหัสผ่านไม่ถูกต้อง โปรดลองอีกครั้ง
+password_ok=ตกลง
+password_cancel=ยกเลิก
+
+printing_not_supported=คำเตือน: เบราว์เซอร์นี้ไม่ได้สนับสนุนการพิมพ์อย่างเต็มที่
+printing_not_ready=คำเตือน: PDF ไม่ได้รับการโหลดอย่างเต็มที่สำหรับการพิมพ์
+web_fonts_disabled=แบบอักษรเว็บถูกปิดใช้งาน: ไม่สามารถใช้แบบอักษร PDF ฝังตัว
+document_colors_not_allowed=เอกสาร PDF ไม่ได้รับอนุญาตให้ใช้สีของตัวเอง: "อนุญาตให้หน้าเอกสารสามารถเลือกสีของตัวเอง" ถูกปิดใช้งานในเบราว์เซอร์

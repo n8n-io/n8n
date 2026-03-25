@@ -1,0 +1,11 @@
+reporting:
+    reports:
+        - lcov
+        - text
+        - text-summary
+check:
+    global:
+        statements: 95
+        lines: 95
+        branches: 90
+        functions: 100

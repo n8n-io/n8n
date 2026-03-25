@@ -1,0 +1,22 @@
+{
+	"root": true,
+
+	"extends": "@ljharb",
+
+	"rules": {
+		"id-length": "off",
+		"new-cap": ["error", {
+			"capIsNewExceptions": [
+				"StringToCodePoints",
+				"UTF16EncodeCodePoint",
+
+				"EncodeForRegExpEscape",
+				"NumberToString",
+				"StringIndexOf",
+				"StringPad",
+				"UnicodeEscape",
+				"UTF16EncodeCodePoint"
+			],
+		}],
+	},
+}

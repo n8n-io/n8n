@@ -1,0 +1,84 @@
+{
+    "name": "@types/node-fetch",
+    "version": "2.6.13",
+    "description": "TypeScript definitions for node-fetch",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/node-fetch",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Torsten Werner",
+            "githubUsername": "torstenwerner",
+            "url": "https://github.com/torstenwerner"
+        },
+        {
+            "name": "Niklas Lindgren",
+            "githubUsername": "nikcorg",
+            "url": "https://github.com/nikcorg"
+        },
+        {
+            "name": "Vinay Bedre",
+            "githubUsername": "vinaybedre",
+            "url": "https://github.com/vinaybedre"
+        },
+        {
+            "name": "Antonio Román",
+            "githubUsername": "kyranet",
+            "url": "https://github.com/kyranet"
+        },
+        {
+            "name": "Andrew Leedham",
+            "githubUsername": "AndrewLeedham",
+            "url": "https://github.com/AndrewLeedham"
+        },
+        {
+            "name": "Jason Li",
+            "githubUsername": "JasonLi914",
+            "url": "https://github.com/JasonLi914"
+        },
+        {
+            "name": "Steve Faulkner",
+            "githubUsername": "southpolesteve",
+            "url": "https://github.com/southpolesteve"
+        },
+        {
+            "name": "ExE Boss",
+            "githubUsername": "ExE-Boss",
+            "url": "https://github.com/ExE-Boss"
+        },
+        {
+            "name": "Alex Savin",
+            "githubUsername": "alexandrusavin",
+            "url": "https://github.com/alexandrusavin"
+        },
+        {
+            "name": "Alexis Tyler",
+            "githubUsername": "OmgImAlexis",
+            "url": "https://github.com/OmgImAlexis"
+        },
+        {
+            "name": "Jakub Kisielewski",
+            "githubUsername": "kbkk",
+            "url": "https://github.com/kbkk"
+        },
+        {
+            "name": "David Glasser",
+            "githubUsername": "glasser",
+            "url": "https://github.com/glasser"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/node-fetch"
+    },
+    "scripts": {},
+    "dependencies": {
+        "@types/node": "*",
+        "form-data": "^4.0.4"
+    },
+    "peerDependencies": {},
+    "typesPublisherContentHash": "502a2d320543373ad812a0b841a43dd3721f54164da2a7d0395a5498e2d10f46",
+    "typeScriptVersion": "5.1"
+}

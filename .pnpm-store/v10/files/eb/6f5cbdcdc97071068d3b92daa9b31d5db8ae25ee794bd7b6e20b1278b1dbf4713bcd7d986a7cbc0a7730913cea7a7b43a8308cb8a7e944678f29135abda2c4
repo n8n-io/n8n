@@ -1,0 +1,60 @@
+{
+  "name": "istanbul-reports",
+  "version": "3.2.0",
+  "description": "istanbul reports",
+  "author": "Krishnan Anantheswaran <kananthmail-github@yahoo.com>",
+  "main": "index.js",
+  "files": [
+    "index.js",
+    "lib"
+  ],
+  "scripts": {
+    "test": "nyc mocha --recursive",
+    "prepare": "webpack --config lib/html-spa/webpack.config.js --mode production",
+    "prepare:watch": "webpack --config lib/html-spa/webpack.config.js --watch --mode development"
+  },
+  "dependencies": {
+    "html-escaper": "^2.0.0",
+    "istanbul-lib-report": "^3.0.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.7.5",
+    "@babel/preset-env": "^7.7.5",
+    "@babel/preset-react": "^7.7.4",
+    "babel-loader": "^8.0.6",
+    "chai": "^4.2.0",
+    "is-windows": "^1.0.2",
+    "istanbul-lib-coverage": "^3.0.0",
+    "mocha": "^6.2.2",
+    "nyc": "^15.0.0-beta.2",
+    "react": "^16.12.0",
+    "react-dom": "^16.12.0",
+    "webpack": "^4.41.2",
+    "webpack-cli": "^3.3.10"
+  },
+  "license": "BSD-3-Clause",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/istanbuljs/istanbuljs.git",
+    "directory": "packages/istanbul-reports"
+  },
+  "keywords": [
+    "istanbul",
+    "reports"
+  ],
+  "bugs": {
+    "url": "https://github.com/istanbuljs/istanbuljs/issues"
+  },
+  "homepage": "https://istanbul.js.org/",
+  "nyc": {
+    "exclude": [
+      "lib/html/assets/**",
+      "lib/html-spa/assets/**",
+      "lib/html-spa/rollup.config.js",
+      "test/**"
+    ]
+  },
+  "engines": {
+    "node": ">=8"
+  }
+}

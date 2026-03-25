@@ -1,0 +1,1 @@
+{"version":3,"file":"AuthResult.d.ts","sourceRoot":"","sources":["../../../../src/naa/AuthResult.ts"],"names":[],"mappings":"AAKA,OAAO,EAAE,WAAW,EAAE,MAAM,kBAAkB,CAAC;AAC/C,OAAO,EAAE,aAAa,EAAE,MAAM,oBAAoB,CAAC;AAEnD,MAAM,MAAM,UAAU,GAAG;IACrB,KAAK,EAAE,aAAa,CAAC;IACrB,OAAO,EAAE,WAAW,CAAC;CACxB,CAAC"}

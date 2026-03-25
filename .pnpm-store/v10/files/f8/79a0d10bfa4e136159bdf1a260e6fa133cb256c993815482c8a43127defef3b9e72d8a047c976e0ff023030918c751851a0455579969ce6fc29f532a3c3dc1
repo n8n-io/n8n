@@ -1,0 +1,65 @@
+{
+  "name": "css-to-react-native",
+  "version": "3.2.0",
+  "description": "Convert CSS text to a React Native stylesheet object",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "scripts": {
+    "build": "rollup ./src/index.js -o index.js --f cjs && babel index.js -o index.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "lint": "eslint src",
+    "prepublish": "npm run build",
+    "precommit": "lint-staged",
+    "lint-staged": "lint-staged"
+  },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "src"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/styled-components/css-to-react-native.git"
+  },
+  "keywords": [
+    "styled-components",
+    "React",
+    "ReactNative",
+    "styles",
+    "CSS"
+  ],
+  "author": "Jacob Parker",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/styled-components/css-to-react-native/issues"
+  },
+  "homepage": "https://github.com/styled-components/css-to-react-native#readme",
+  "jest": {
+    "testURL": "http://localhost"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.6.2",
+    "@babel/preset-env": "^7.6.2",
+    "eslint": "^4.17.0",
+    "eslint-config-airbnb-base": "^12.1.0",
+    "eslint-config-prettier": "^2.9.0",
+    "eslint-plugin-import": "^2.8.0",
+    "eslint-plugin-prettier": "^2.6.0",
+    "jest": "^24.9.0",
+    "lint-staged": "^6.1.0",
+    "prettier": "^1.18.2",
+    "rollup": "^1.22.0"
+  },
+  "dependencies": {
+    "camelize": "^1.0.0",
+    "css-color-keywords": "^1.0.0",
+    "postcss-value-parser": "^4.0.2"
+  },
+  "lint-staged": {
+    "*.js": [
+      "eslint --fix",
+      "git add"
+    ]
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "name": "propagate",
+  "description": "Propagate events from one event emitter into another",
+  "keywords": [
+    "event",
+    "events",
+    "emitter",
+    "eventemitter",
+    "propagation"
+  ],
+  "version": "2.0.1",
+  "author": "Pedro Teixeira <pedro.teixeira@gmail.com>",
+  "contributors": [
+    {
+      "name": "Pedro Teixeira"
+    }
+  ],
+  "repository": "nock/propagate",
+  "homepage": "http://github.com/nock/propagate#readme",
+  "bugs": "http://github.com/nock/propagate/issues",
+  "engines": {
+    "node": ">= 8"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "eslint": "^5.16.0",
+    "eslint-config-prettier": "^4.1.0",
+    "eslint-config-standard": "^12.0.0",
+    "eslint-plugin-import": "^2.16.0",
+    "eslint-plugin-node": "^8.0.1",
+    "eslint-plugin-promise": "^4.1.1",
+    "eslint-plugin-standard": "^4.0.0",
+    "prettier": "^1.16.4",
+    "semantic-release": "16.0.0-beta.18",
+    "tap": "^12.6.1"
+  },
+  "scripts": {
+    "lint": "eslint \"**/*.js\"",
+    "unit": "tap tests/index.js",
+    "coverage": "tap --coverage-report=html && open coverage/lcov-report/index.html",
+    "prettier": "prettier --write \"**/*.@(js|md|yml|json)\"",
+    "prettier:check": "prettier --check \"**/*.@(js|md|yml|json)\"",
+    "pretest": "npm run lint",
+    "test": "npm run -s unit",
+    "posttest": "npm run -s prettier:check"
+  },
+  "nyc": {
+    "exclude": [
+      "tests/"
+    ]
+  },
+  "license": "MIT"
+}

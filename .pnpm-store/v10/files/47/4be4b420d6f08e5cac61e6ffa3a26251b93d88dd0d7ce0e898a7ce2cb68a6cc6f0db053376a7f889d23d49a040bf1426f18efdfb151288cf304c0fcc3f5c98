@@ -1,0 +1,35 @@
+@use 'mixins/mixins' as *;
+@use 'mixins/var' as *;
+@use 'common/var' as *;
+
+@include b(statistic) {
+  @include set-component-css-var('statistic', $statistic);
+
+  @include e(head) {
+    font-weight: getCssVar('statistic-title-font-weight');
+    font-size: getCssVar('statistic-title-font-size');
+    color: getCssVar('statistic-title-color');
+    line-height: 20px;
+    margin-bottom: 4px;
+  }
+
+  @include e(content) {
+    font-weight: getCssVar('statistic-content-font-weight');
+    font-size: getCssVar('statistic-content-font-size');
+    color: getCssVar('statistic-content-color');
+
+    @include e(value) {
+      display: inline-block;
+    }
+
+    @include e(prefix) {
+      margin-right: 4px;
+      display: inline-block;
+    }
+
+    @include e(suffix) {
+      margin-left: 4px;
+      display: inline-block;
+    }
+  }
+}

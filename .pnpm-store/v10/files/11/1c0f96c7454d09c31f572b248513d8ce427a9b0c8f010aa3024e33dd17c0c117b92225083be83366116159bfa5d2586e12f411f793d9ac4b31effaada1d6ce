@@ -1,0 +1,72 @@
+{
+  "name": "eslint-plugin-import-x",
+  "version": "4.15.2",
+  "type": "module",
+  "description": "Import with sanity.",
+  "repository": "https://github.com/un-ts/eslint-plugin-import-x",
+  "homepage": "https://github.com/un-ts/eslint-plugin-import-x#readme",
+  "author": "JounQin <admin@1stg.me> (https://www.1stG.me)",
+  "funding": "https://opencollective.com/eslint-plugin-import-x",
+  "license": "MIT",
+  "engines": {
+    "node": "^18.18.0 || ^20.9.0 || >=21.1.0"
+  },
+  "main": "lib/index.cjs",
+  "types": "lib/index.d.cts",
+  "module": "lib/index.js",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./lib/index.d.ts",
+        "default": "./lib/index.js"
+      },
+      "require": {
+        "types": "./lib/index.d.cts",
+        "default": "./lib/index.cjs"
+      }
+    },
+    "./config": "./lib/config/index.js",
+    "./rules": "./lib/rules/index.js",
+    "./utils": "./lib/utils/index.js",
+    "./package.json": "./package.json",
+    "./*": "./lib/*.js"
+  },
+  "files": [
+    "lib",
+    "!lib/*.tsbuildinfo"
+  ],
+  "keywords": [
+    "eslint",
+    "eslintplugin",
+    "eslint-plugin",
+    "es6",
+    "jsnext",
+    "modules",
+    "import",
+    "export"
+  ],
+  "peerDependencies": {
+    "@typescript-eslint/utils": "^8.0.0",
+    "eslint": "^8.57.0 || ^9.0.0",
+    "eslint-import-resolver-node": "*"
+  },
+  "peerDependenciesMeta": {
+    "@typescript-eslint/utils": {
+      "optional": true
+    },
+    "eslint-import-resolver-node": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "@typescript-eslint/types": "^8.34.0",
+    "comment-parser": "^1.4.1",
+    "debug": "^4.4.1",
+    "eslint-import-context": "^0.1.8",
+    "is-glob": "^4.0.3",
+    "minimatch": "^9.0.3 || ^10.0.1",
+    "semver": "^7.7.2",
+    "stable-hash-x": "^0.1.1",
+    "unrs-resolver": "^1.9.0"
+  }
+}

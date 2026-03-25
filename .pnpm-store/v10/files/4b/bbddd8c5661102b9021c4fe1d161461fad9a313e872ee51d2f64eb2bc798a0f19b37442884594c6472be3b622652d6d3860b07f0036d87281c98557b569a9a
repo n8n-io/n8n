@@ -1,0 +1,107 @@
+* {
+    box-sizing: border-box;
+    font-family:system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    color: #161230;
+}
+
+body {
+    font-size: 18px;
+    background-color: #fafafa;
+}
+
+main {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+}
+
+form {
+}
+
+label {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+}
+
+input,
+select,
+button {
+    /* flex-grow: 1; */
+    font-size: 1rem;
+    padding: 0.25rem;
+    border: 1px solid;
+    border-radius: 4px;
+}
+
+input[type="checkbox"] {
+    width: 1.5rem;
+    height: 1.5rem;
+}
+
+button {
+    cursor: pointer;
+    align-self: center;
+    padding: 0.5rem 1.5rem;
+    background-color: #161230;
+    color: #fafafa;
+    font-size: 1.5rem;
+}
+
+summary {
+    cursor: pointer;
+}
+
+code,
+code > input,
+code > select {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 1.5rem;
+}
+
+code {
+    display: flex;
+    align-items: center;
+}
+
+code input,
+code select {
+    border-color: #a9b7c9;
+}
+
+code button {
+    margin-left: 2rem;
+}
+
+details {
+    width: 100%;
+}
+
+summary {
+    margin-bottom: 0.5rem;
+}
+
+details code {
+    display: inline-block;
+    font-size: 1.1rem;
+    margin-left: 0.2rem;
+    font-weight: 600;
+}
+
+.code-container {
+    width: 80vw;
+    max-width: 800px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    border: 1px solid;
+    border-radius: 4px;
+    background-color: #eaf3ff;
+    padding: 1rem;
+    flex-wrap: wrap;
+}

@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "preserveConstEnums": true,
+    "newLine": "LF",
+    "target": "es2018",
+    "moduleResolution": "node",
+    "noImplicitReturns": true,
+    "strict": true,
+    "declaration": true,
+    "declarationDir": "./typings",
+    "lib": [
+      "es2018"
+    ]
+  },
+  "compileOnSave": true,
+  "include": [
+    "typings/*"
+  ],
+  "exclude": [
+    "node_modules/*"
+  ]
+}

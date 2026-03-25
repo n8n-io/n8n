@@ -1,0 +1,32 @@
+{
+  "name": "rw",
+  "version": "1.3.3",
+  "description": "Now stdin and stdout are files.",
+  "keywords": [
+    "fs",
+    "readFile",
+    "writeFile",
+    "stdin",
+    "stdout"
+  ],
+  "homepage": "https://github.com/mbostock/rw",
+  "license": "BSD-3-Clause",
+  "author": {
+    "name": "Mike Bostock",
+    "url": "http://bost.ocks.org/mike"
+  },
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "http://github.com/mbostock/rw.git"
+  },
+  "scripts": {
+    "test": "test/run-tests && eslint index.js lib",
+    "prepublish": "npm test",
+    "postpublish": "git push && git push --tags"
+  },
+  "devDependencies": {
+    "d3-queue": "3",
+    "eslint": "3"
+  }
+}

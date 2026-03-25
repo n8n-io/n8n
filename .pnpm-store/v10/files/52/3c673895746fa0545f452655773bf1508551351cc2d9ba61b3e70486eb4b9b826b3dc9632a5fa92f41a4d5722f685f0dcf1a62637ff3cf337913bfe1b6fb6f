@@ -1,0 +1,74 @@
+{
+  "name": "@qdrant/js-client-rest",
+  "version": "1.16.2",
+  "engines": {
+    "node": ">=18.17.0",
+    "pnpm": ">=8"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/qdrant/qdrant-js.git",
+    "directory": "packages/js-client-rest"
+  },
+  "bugs": {
+    "url": "https://github.com/qdrant/qdrant-js/issues"
+  },
+  "homepage": "https://github.com/qdrant/qdrant-js#readme",
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "browser": "./dist/browser/index.js",
+      "require": "./dist/cjs/index.js",
+      "default": "./dist/esm/index.js"
+    }
+  },
+  "types": "./dist/types/index.d.ts",
+  "browser": "./dist/browser/index.js",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "sideEffects": false,
+  "config": {
+    "openapi_schema_remote": "https://raw.githubusercontent.com/qdrant/qdrant/dev/docs/redoc/master/openapi.json"
+  },
+  "dependencies": {
+    "@qdrant/openapi-typescript-fetch": "1.2.6",
+    "undici": "^6.0.0"
+  },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^24.1.0",
+    "@rollup/plugin-replace": "^5.0.2",
+    "@total-typescript/ts-reset": "^0.4.2",
+    "@types/semver": "7.5.7",
+    "openapi-typescript": "^6.2.6",
+    "semver": "7.6.0",
+    "ts-prune": "^0.10.3",
+    "tsx": "^4.19.3",
+    "vitest": "^0.31.4"
+  },
+  "peerDependencies": {
+    "typescript": ">=4.7"
+  },
+  "scripts": {
+    "build": "pnpm tsc:build && pnpm bundle",
+    "test": "vitest",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "pre-check": "pnpm tsc:check && pnpm tsc:deadcode && pnpm lint && pnpm test run",
+    "pre-commit": "pnpm tsc:check && pnpm tsc:deadcode && pnpm lint-staged && pnpm test run",
+    "tsc:deadcode": "ts-prune -e -i 'src/openapi|src/index.ts|vitest.config.ts|vitest.integration.config.ts'",
+    "tsc:check": "tsc --noEmit",
+    "tsc:build": "pnpm clean && tsc -p tsconfig.esm.json && tsc -p tsconfig.cjs.json",
+    "bundle": "rollup -c rollup.config.js",
+    "lint": "eslint src",
+    "clean": "rimraf ./dist",
+    "codegen:openapi-typescript": "openapi-typescript $npm_package_config_openapi_schema_remote --output src/openapi/generated_schema.ts && pnpm codegen:openapi-client-constructor",
+    "codegen:openapi-client-constructor": "tsx scripts/generate_client_construction.ts"
+  }
+}

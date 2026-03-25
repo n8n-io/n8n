@@ -1,0 +1,42 @@
+{
+  "name": "jake",
+  "description": "JavaScript build tool, similar to Make or Rake",
+  "keywords": [
+    "build",
+    "cli",
+    "make",
+    "rake"
+  ],
+  "version": "10.8.5",
+  "author": "Matthew Eernisse <mde@fleegix.org> (http://fleegix.org)",
+  "license": "Apache-2.0",
+  "bin": {
+    "jake": "./bin/cli.js"
+  },
+  "main": "./lib/jake.js",
+  "scripts": {
+    "lint": "eslint --format codeframe \"lib/**/*.js\" \"test/**/*.js\"",
+    "lint:fix": "eslint --fix \"lib/**/*.js\" \"test/**/*.js\"",
+    "test": "./bin/cli.js test",
+    "test:ci": "npm run lint && npm run test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/jakejs/jake.git"
+  },
+  "preferGlobal": true,
+  "dependencies": {
+    "async": "^3.2.3",
+    "chalk": "^4.0.2",
+    "filelist": "^1.0.1",
+    "minimatch": "^3.0.4"
+  },
+  "devDependencies": {
+    "eslint": "^6.8.0",
+    "mocha": "^7.1.1",
+    "q": "^1.5.1"
+  },
+  "engines": {
+    "node": ">=10"
+  }
+}

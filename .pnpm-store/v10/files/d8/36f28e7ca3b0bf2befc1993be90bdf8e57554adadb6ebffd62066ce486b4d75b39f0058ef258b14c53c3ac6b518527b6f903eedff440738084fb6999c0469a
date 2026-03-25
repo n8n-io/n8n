@@ -1,0 +1,76 @@
+{
+  "name": "@storybook/builder-vite",
+  "version": "10.1.11",
+  "description": "A Storybook builder to dev and build with Vite",
+  "keywords": [
+    "storybook",
+    "storybook-builder",
+    "vite",
+    "builder",
+    "bundler",
+    "component",
+    "components"
+  ],
+  "homepage": "https://github.com/storybookjs/storybook/tree/next/code/builders/builder-vite/#readme",
+  "bugs": {
+    "url": "https://github.com/storybookjs/storybook/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/storybookjs/storybook.git",
+    "directory": "code/builders/builder-vite"
+  },
+  "funding": {
+    "type": "opencollective",
+    "url": "https://opencollective.com/storybook"
+  },
+  "license": "MIT",
+  "author": "Eirik Sletteberg",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./input/iframe.html": "./input/iframe.html",
+    "./package.json": "./package.json",
+    "./preset": "./dist/preset.js"
+  },
+  "files": [
+    "dist/**/*",
+    "input/**/*",
+    "README.md",
+    "*.js",
+    "*.d.ts",
+    "preset.js",
+    "!src/**/*"
+  ],
+  "scripts": {
+    "check": "jiti ../../../scripts/check/check-package.ts",
+    "prep": "jiti ../../../scripts/build/build-package.ts"
+  },
+  "dependencies": {
+    "@storybook/csf-plugin": "10.1.11",
+    "@vitest/mocker": "3.2.4",
+    "ts-dedent": "^2.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "empathic": "^2.0.0",
+    "es-module-lexer": "^1.5.0",
+    "glob": "^10.0.0",
+    "knitwork": "^1.1.0",
+    "magic-string": "^0.30.0",
+    "pathe": "^1.1.2",
+    "slash": "^5.0.0",
+    "vite": "^7.0.4"
+  },
+  "peerDependencies": {
+    "storybook": "^10.1.11",
+    "vite": "^5.0.0 || ^6.0.0 || ^7.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "gitHead": "a8e7fd8a655c69780bc20b9749d2699e45beae1l"
+}

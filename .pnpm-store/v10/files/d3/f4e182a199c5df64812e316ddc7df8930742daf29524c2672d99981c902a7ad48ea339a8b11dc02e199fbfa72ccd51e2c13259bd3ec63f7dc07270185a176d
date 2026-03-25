@@ -1,0 +1,3 @@
+{
+    "vsicons.presets.angular": false
+}

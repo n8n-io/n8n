@@ -1,0 +1,50 @@
+{
+	"name": "alien-signals",
+	"version": "0.4.14",
+	"sideEffects": false,
+	"license": "MIT",
+	"description": "The lightest signal library.",
+	"packageManager": "pnpm@9.12.0",
+	"types": "./types/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./types/index.d.ts",
+			"import": "./esm/index.mjs",
+			"require": "./cjs/index.cjs"
+		},
+		"./cjs": {
+			"types": "./types/index.d.ts",
+			"import": "./cjs/index.cjs",
+			"require": "./cjs/index.cjs"
+		},
+		"./esm": {
+			"types": "./types/index.d.ts",
+			"import": "./esm/index.mjs",
+			"require": "./esm/index.mjs"
+		}
+	},
+	"files": [
+		"**/*.cjs",
+		"**/*.mjs",
+		"**/*.d.ts"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/johnsoncodehk/signals.git"
+	},
+	"scripts": {
+		"prepublishOnly": "npm run build",
+		"build": "tsc && npm run build:esm && npm run build:cjs",
+		"build:esm": "esbuild src/index.ts --bundle --format=esm --outfile=esm/index.mjs",
+		"build:cjs": "esbuild src/index.ts --bundle --format=cjs --outfile=cjs/index.cjs",
+		"test": "vitest run",
+		"bench": "npm run build:esm && node --jitless --expose-gc benchs/propagate.mjs && node --jitless --expose-gc benchs/complex.mjs",
+		"bench:memory": "npm run build:esm && node --expose-gc benchs/memoryUsage.mjs"
+	},
+	"devDependencies": {
+		"esbuild": "latest",
+		"mitata": "latest",
+		"typescript": "latest",
+		"vitest": "latest"
+	}
+}

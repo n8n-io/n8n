@@ -1,0 +1,1 @@
+{"version":3,"file":"custom_user_agent.d.ts","sourceRoot":"","sources":["../src/hooks/custom_user_agent.ts"],"names":[],"mappings":"AACA,OAAO,EAAE,oBAAoB,EAAE,iBAAiB,EAAE,SAAS,EAAE,MAAM,SAAS,CAAC;AAE7E,qBAAa,mBAAoB,YAAW,iBAAiB;IAC3D,aAAa,CAAC,CAAC,EAAE,oBAAoB,EAAE,OAAO,EAAE,OAAO,GAAG,SAAS,CAAC,OAAO,CAAC;CAe7E"}

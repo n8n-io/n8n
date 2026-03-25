@@ -1,0 +1,46 @@
+{
+  "name": "uid-safe",
+  "description": "URL and cookie safe UIDs",
+  "version": "2.1.5",
+  "contributors": [
+    "Douglas Christopher Wilson <doug@somethingdoug.com>",
+    "Jonathan Ong <me@jongleberry.com> (http://jongleberry.com)"
+  ],
+  "license": "MIT",
+  "repository": "crypto-utils/uid-safe",
+  "dependencies": {
+    "random-bytes": "~1.0.0"
+  },
+  "devDependencies": {
+    "bluebird": "3.5.0",
+    "eslint": "3.19.0",
+    "eslint-config-standard": "10.2.1",
+    "eslint-plugin-import": "2.7.0",
+    "eslint-plugin-node": "5.1.1",
+    "eslint-plugin-promise": "3.5.0",
+    "eslint-plugin-standard": "3.0.1",
+    "istanbul": "0.4.5",
+    "mocha": "2.5.3"
+  },
+  "files": [
+    "LICENSE",
+    "HISTORY.md",
+    "README.md",
+    "index.js"
+  ],
+  "engines": {
+    "node": ">= 0.8"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "test": "mocha --trace-deprecation --reporter spec --bail --check-leaks test/",
+    "test-cov": "istanbul cover node_modules/mocha/bin/_mocha -- --trace-deprecation --reporter dot --check-leaks test/",
+    "test-travis": "istanbul cover node_modules/mocha/bin/_mocha --report lcovonly -- --trace-deprecation --reporter spec --check-leaks test/"
+  },
+  "keywords": [
+    "random",
+    "generator",
+    "uid",
+    "safe"
+  ]
+}

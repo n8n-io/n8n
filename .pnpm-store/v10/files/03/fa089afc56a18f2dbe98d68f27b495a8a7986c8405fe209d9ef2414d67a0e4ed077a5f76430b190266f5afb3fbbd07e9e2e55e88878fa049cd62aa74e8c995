@@ -1,0 +1,16 @@
+{
+	"root": true,
+
+	"extends": "@ljharb",
+
+	"globals": {
+		"Float64Array": "readonly",
+		"Uint8Array": "readonly",
+		"Uint16Array": "readonly",
+	},
+
+	"rules": {
+		"complexity": "off",
+		"max-lines-per-function": "off",
+	},
+}

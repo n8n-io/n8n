@@ -1,0 +1,34 @@
+{
+  "name": "postgres-interval",
+  "main": "index.js",
+  "version": "3.0.0",
+  "description": "Parse Postgres interval columns",
+  "license": "MIT",
+  "repository": "bendrucker/postgres-interval",
+  "author": {
+    "name": "Ben Drucker",
+    "email": "bvdrucker@gmail.com",
+    "url": "https://www.bendrucker.me"
+  },
+  "engines": {
+    "node": ">=12"
+  },
+  "scripts": {
+    "test": "standard && tape test.js"
+  },
+  "keywords": [
+    "postgres",
+    "interval",
+    "parser"
+  ],
+  "dependencies": {},
+  "devDependencies": {
+    "standard": "^16.0.0",
+    "tape": "^5.0.0"
+  },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "readme.md"
+  ]
+}

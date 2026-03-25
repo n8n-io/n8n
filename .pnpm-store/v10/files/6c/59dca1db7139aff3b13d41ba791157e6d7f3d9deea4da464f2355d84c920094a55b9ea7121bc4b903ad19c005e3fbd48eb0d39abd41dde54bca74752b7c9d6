@@ -1,0 +1,1 @@
+export * from "../dist/embeddings/tencent_hunyuan/index.js";

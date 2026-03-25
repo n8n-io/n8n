@@ -1,0 +1,38 @@
+{
+  "name": "node-readfiles",
+  "version": "0.2.0",
+  "description": "A lightweight Node.js module to recursively read files in a directory using ES6 Promises",
+  "main": "index.js",
+  "scripts": {
+    "start": "echo 'Not a runnable module' && exit 1",
+    "test": "mocha",
+    "lint": "eslint lib test",
+    "preversion": "npm run lint && npm test"
+  },
+  "keywords": [
+    "readfiles",
+    "read",
+    "readfile",
+    "readdir",
+    "dir",
+    "path",
+    "pattern",
+    "fs"
+  ],
+  "author": "Alejandro Gonzalez Sole",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/guatedude2/node-readfiles.git"
+  },
+  "devDependencies": {
+    "chai": "^3.5.0",
+    "eslint": "^2.10.2",
+    "mocha": "^2.4.5",
+    "mock-fs": "^3.9.0",
+    "sinon": "^1.17.4"
+  },
+  "dependencies": {
+    "es6-promise": "^3.2.1"
+  }
+}

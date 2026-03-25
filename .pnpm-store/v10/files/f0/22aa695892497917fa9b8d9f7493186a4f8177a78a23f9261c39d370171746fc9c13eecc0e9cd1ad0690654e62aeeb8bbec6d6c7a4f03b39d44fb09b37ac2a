@@ -1,0 +1,1 @@
+{"version":3,"file":"UnwillingToPerformError.js","sourceRoot":"./","sources":["errors/resultCodeErrors/UnwillingToPerformError.ts"],"names":[],"mappings":";;;AAAA,uDAAoD;AAEpD,MAAa,uBAAwB,SAAQ,iCAAe;IAC1D,YAAmB,OAAgB;QACjC,KAAK,CAAC,EAAE,EAAE,OAAO,IAAI,oFAAoF,CAAC,CAAC;IAC7G,CAAC;CACF;AAJD,0DAIC"}

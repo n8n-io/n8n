@@ -1,0 +1,21 @@
+language: node_js
+node_js:
+- 8.11.2
+- 10.3.0
+cache:
+  directories:
+  - node_modules
+install:
+- npm install
+script:
+- npm run test
+after_script: npm install coveralls@3.0.1 && npm run test-ci && cat ./coverage/lcov.info
+  | coveralls
+deploy:
+  provider: npm
+  email: hisco@googlegroups.com
+  api_key:
+    secure: OaMiQbh8vZLWjQ3uoALTwSFiWO0lOKFZUR6m2+g00UwIgukXev9CF/WQGWeW3Z4Gj57fZyuyHTys7NsGNmfSvwPqm63HTLGTy8aUuG7xVEDdjcGepqPf19J0s0TGW1Y7vxzvwkBDmV3x9qBFGwmjRjsQ+vQ/jQ2XX5DlCy2NqSyTwcGDsMM09worRAmfc/Q5PGn+sngl0LQFd0vSVWAI9M5kztUTxl2xQFH80Nt6j11r8R1+aqkHhHuJLuYHZGAV9Xf6VjrJ3e2b29SeeTmii1EnphJsljHzjoEpluuGwfQIdOEpbSfXqVxQR1RyFfVR/KE0kJppKLucykPz4PA+e5Ak9hTFt5D44/wHDsDNPpGAlLCdKSzkPciPk3gPHR310m0B5Mb01fAEkCZ9AEQuc/Q7rJtthE9eriK7741Zin5rtxfInMyrwTfVpKyuwBoqlMZjBzuo9EfnaUXZ0VrccX9cu0yz4qXGzziYoMmBDZ/wYaXnzWT9d6Q95nFxetC9l7KoLBUQM/TtEhmiPTJcd3hj75/cuAA6/XWTs6yQ7il5DgstvnHPxbpCnH/eedFTubRv5amSmI97r3als0B4m7bCWFG3M8ZJB1WovZ+Rymzw0Fqb9nt4eeiJE1m1qqZLUn0/eo4T0wbAUyPx2Zq0RKFvjqKfRaQXDE/TeJSGOfc=
+  on:
+    tags: true
+    repo: hisco/http2-client

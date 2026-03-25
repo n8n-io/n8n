@@ -1,0 +1,60 @@
+{
+	"name": "get-stream",
+	"version": "9.0.1",
+	"description": "Get a stream as a string, Buffer, ArrayBuffer or array",
+	"license": "MIT",
+	"repository": "sindresorhus/get-stream",
+	"funding": "https://github.com/sponsors/sindresorhus",
+	"author": {
+		"name": "Sindre Sorhus",
+		"email": "sindresorhus@gmail.com",
+		"url": "https://sindresorhus.com"
+	},
+	"type": "module",
+	"exports": {
+		"types": "./source/index.d.ts",
+		"browser": "./source/exports.js",
+		"default": "./source/index.js"
+	},
+	"sideEffects": false,
+	"engines": {
+		"node": ">=18"
+	},
+	"scripts": {
+		"benchmark": "node benchmarks/index.js",
+		"test": "xo && ava && tsd --typings=source/index.d.ts --files=source/index.test-d.ts"
+	},
+	"files": [
+		"source",
+		"!*.test-d.ts"
+	],
+	"keywords": [
+		"get",
+		"stream",
+		"promise",
+		"concat",
+		"string",
+		"text",
+		"buffer",
+		"read",
+		"data",
+		"consume",
+		"readable",
+		"readablestream",
+		"object",
+		"concat"
+	],
+	"dependencies": {
+		"@sec-ant/readable-stream": "^0.4.1",
+		"is-stream": "^4.0.1"
+	},
+	"devDependencies": {
+		"@types/node": "^20.8.9",
+		"ava": "^6.1.2",
+		"onetime": "^7.0.0",
+		"precise-now": "^3.0.0",
+		"stream-json": "^1.8.0",
+		"tsd": "^0.29.0",
+		"xo": "^0.58.0"
+	}
+}

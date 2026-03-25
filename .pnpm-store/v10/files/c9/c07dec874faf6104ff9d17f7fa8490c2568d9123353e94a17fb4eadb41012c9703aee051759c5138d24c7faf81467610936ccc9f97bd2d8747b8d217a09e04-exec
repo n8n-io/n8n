@@ -1,0 +1,27 @@
+{
+  "name": "didyoumean",
+  "version": "1.2.2",
+  "description": "Match human-quality input to potential matches by edit distance.",
+  "homepage": "https://github.com/dcporter/didyoumean.js",
+  "author": {
+    "name": "Dave Porter",
+    "email": "dcporter@gmail.com",
+    "url": "http://dcporter.net/"
+  },
+  "keywords": [
+    "didyoumean",
+    "mean",
+    "edit",
+    "distance",
+    "levenshtein"
+  ],
+  "main": "./didYouMean-1.2.1.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dcporter/didyoumean.js.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dcporter/didyoumean.js/issues"
+  },
+  "license": "Apache-2.0"
+}

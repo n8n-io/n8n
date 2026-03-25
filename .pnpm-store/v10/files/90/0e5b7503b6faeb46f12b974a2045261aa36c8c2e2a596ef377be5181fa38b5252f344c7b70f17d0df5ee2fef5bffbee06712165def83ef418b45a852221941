@@ -1,0 +1,66 @@
+{
+  "version": "2.1.1",
+  "name": "check-error",
+  "description": "Error comparison and information related utility for node and the browser",
+  "keywords": ["check-error", "error", "chai util"],
+  "license": "MIT",
+  "author": "Jake Luer <jake@alogicalparadox.com> (http://alogicalparadox.com)",
+  "contributors": [
+    "David Losert (https://github.com/davelosert)",
+    "Keith Cirkel (https://github.com/keithamus)",
+    "Miroslav Bajtoš (https://github.com/bajtos)",
+    "Lucas Fernandes da Costa (https://github.com/lucasfcosta)"
+  ],
+  "files": ["index.js", "check-error.js"],
+  "type": "module",
+  "main": "./index.js",
+  "module": "./index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/chaijs/check-error.git"
+  },
+  "scripts": {
+    "lint": "eslint --ignore-path .gitignore index.js test/",
+    "semantic-release": "semantic-release pre && npm publish && semantic-release post",
+    "pretest": "npm run lint",
+    "test": "npm run test:node && npm run test:browser",
+    "test:browser": "web-test-runner",
+    "test:node": "mocha"
+  },
+  "config": {
+    "ghooks": {
+      "commit-msg": "validate-commit-msg"
+    }
+  },
+  "eslintConfig": {
+    "extends": ["strict/es6"],
+    "env": {
+      "es6": true
+    },
+    "globals": {
+      "HTMLElement": false
+    },
+    "rules": {
+      "complexity": "off",
+      "max-statements": "off",
+      "prefer-arrow-callback": "off",
+      "prefer-reflect": "off"
+    }
+  },
+  "devDependencies": {
+    "@web/test-runner": "^0.17.0",
+    "browserify": "^13.0.0",
+    "browserify-istanbul": "^1.0.0",
+    "eslint": "^2.4.0",
+    "eslint-config-strict": "^8.5.0",
+    "eslint-plugin-filenames": "^0.2.0",
+    "ghooks": "^1.0.1",
+    "mocha": "^9.1.2",
+    "semantic-release": "^4.3.5",
+    "simple-assert": "^2.0.0",
+    "validate-commit-msg": "^2.3.1"
+  },
+  "engines": {
+    "node": ">= 16"
+  }
+}

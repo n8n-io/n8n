@@ -1,0 +1,98 @@
+@use 'sass:map';
+
+@use 'mixins/mixins' as *;
+@use 'common/var' as *;
+
+@include b(table-column) {
+  @include m(selection) {
+    .cell {
+      padding-left: 14px;
+      padding-right: 14px;
+    }
+  }
+}
+
+@include b(table-filter) {
+  border: solid 1px getCssVar('border-color-lighter');
+  border-radius: 2px;
+  background-color: $color-white;
+  box-shadow: map.get($dropdown, 'menu-box-shadow');
+  box-sizing: border-box;
+
+  /** used for dropdown mode */
+  @include e(list) {
+    padding: 5px 0;
+    margin: 0;
+    list-style: none;
+    min-width: 100px;
+  }
+
+  @include e(list-item) {
+    line-height: 36px;
+    padding: 0 10px;
+    cursor: pointer;
+    font-size: getCssVar('font-size', 'base');
+
+    &:hover {
+      background-color: map.get($dropdown, 'menuItem-hover-fill');
+      color: map.get($dropdown, 'menuItem-hover-color');
+    }
+
+    @include when(active) {
+      background-color: getCssVar('color-primary');
+      color: $color-white;
+    }
+  }
+
+  @include e(content) {
+    min-width: 100px;
+  }
+
+  @include e(bottom) {
+    border-top: 1px solid getCssVar('border-color-lighter');
+    padding: 8px;
+
+    button {
+      background: transparent;
+      border: none;
+      color: getCssVar('text-color', 'regular');
+      cursor: pointer;
+      font-size: getCssVar('font-size-small');
+      padding: 0 3px;
+
+      &:hover {
+        color: getCssVar('color-primary');
+      }
+
+      &:focus {
+        outline: none;
+      }
+
+      &.is-disabled {
+        color: getCssVar('disabled-text-color');
+        cursor: not-allowed;
+      }
+    }
+  }
+
+  @include e(wrap) {
+    max-height: 280px;
+  }
+
+  @include e(checkbox-group) {
+    padding: 10px;
+
+    label.#{$namespace}-checkbox {
+      display: flex;
+      align-items: center;
+      margin-right: 5px;
+      margin-bottom: 12px;
+      margin-left: 5px;
+      height: unset;
+    }
+
+    .#{$namespace}-checkbox:last-child {
+      margin-bottom: 0;
+    }
+  }
+}

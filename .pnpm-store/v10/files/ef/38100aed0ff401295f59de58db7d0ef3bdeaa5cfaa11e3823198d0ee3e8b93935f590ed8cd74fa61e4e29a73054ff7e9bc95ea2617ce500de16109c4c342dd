@@ -1,0 +1,5 @@
+components:
+  schemas:
+    $ref: ./schemas.yaml#/schemas
+  shouldNotCrash:
+    $ref: ./schemas.yaml#invalid-hash-fragment

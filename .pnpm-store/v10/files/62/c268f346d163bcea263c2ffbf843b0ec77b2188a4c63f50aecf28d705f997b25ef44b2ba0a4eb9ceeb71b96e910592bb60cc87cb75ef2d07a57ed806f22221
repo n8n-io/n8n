@@ -1,0 +1,17 @@
+// this additional tsconfig is required by dtslint
+// see: https://github.com/Microsoft/dtslint#typestsconfigjson
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "lib": ["ES2020", "DOM"],
+    "noImplicitAny": true,
+    "noImplicitThis": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@testing-library/vue": ["."]
+    }
+  }
+}

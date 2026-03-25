@@ -1,0 +1,54 @@
+{
+    "name": "mailparser",
+    "version": "3.9.3",
+    "description": "Parse e-mails",
+    "main": "index.js",
+    "scripts": {
+        "test": "grunt",
+        "format": "prettier --write .",
+        "update": "rm -rf node_modules package-lock.json && ncu -u && npm install"
+    },
+    "author": "Andris Reinman",
+    "contributors": [
+        {
+            "name": "Peter Salomonsen",
+            "email": "petersalomonsen@runbox.com",
+            "url": "https://github.com/petersalomonsen"
+        }
+    ],
+    "license": "MIT",
+    "dependencies": {
+        "encoding-japanese": "2.2.0",
+        "he": "1.2.0",
+        "html-to-text": "9.0.5",
+        "iconv-lite": "0.7.2",
+        "libmime": "5.3.7",
+        "linkify-it": "5.0.0",
+        "@zone-eu/mailsplit": "5.4.8",
+        "nodemailer": "7.0.13",
+        "punycode.js": "2.3.1",
+        "tlds": "1.261.0"
+    },
+    "devDependencies": {
+        "@eslint/eslintrc": "3.3.3",
+        "@eslint/js": "9.39.2",
+        "ajv": "8.17.1",
+        "eslint": "9.39.2",
+        "eslint-config-nodemailer": "1.2.0",
+        "eslint-config-prettier": "10.1.8",
+        "grunt": "1.6.1",
+        "grunt-cli": "1.5.0",
+        "grunt-contrib-nodeunit": "5.0.0",
+        "grunt-eslint": "26.0.0",
+        "iconv": "3.0.1",
+        "prettier": "3.8.1",
+        "random-message": "1.1.0"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/nodemailer/mailparser.git"
+    },
+    "bugs": {
+        "url": "https://github.com/nodemailer/mailparser/issues"
+    }
+}

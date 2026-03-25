@@ -1,0 +1,76 @@
+{
+  "name": "@aws-sdk/middleware-flexible-checksums",
+  "version": "3.808.0",
+  "scripts": {
+    "build": "concurrently 'yarn:build:cjs' 'yarn:build:es' 'yarn:build:types'",
+    "build:cjs": "node ../../scripts/compilation/inline middleware-flexible-checksums",
+    "build:es": "tsc -p tsconfig.es.json",
+    "build:include:deps": "lerna run --scope $npm_package_name --include-dependencies build",
+    "build:types": "tsc -p tsconfig.types.json",
+    "build:types:downlevel": "downlevel-dts dist-types dist-types/ts3.4",
+    "clean": "rimraf ./dist-* && rimraf *.tsbuildinfo",
+    "extract:docs": "api-extractor run --local",
+    "test": "yarn g:vitest run",
+    "test:watch": "yarn g:vitest watch",
+    "test:integration": "yarn g:vitest run -c vitest.config.integ.ts",
+    "test:integration:watch": "yarn g:vitest watch -c vitest.config.integ.ts",
+    "test:e2e": "yarn g:vitest run -c vitest.config.e2e.ts",
+    "test:e2e:watch": "yarn g:vitest watch -c vitest.config.e2e.ts"
+  },
+  "main": "./dist-cjs/index.js",
+  "module": "./dist-es/index.js",
+  "browser": {
+    "./dist-es/getCrc32ChecksumAlgorithmFunction": "./dist-es/getCrc32ChecksumAlgorithmFunction.browser"
+  },
+  "react-native": {
+    "./dist-es/getCrc32ChecksumAlgorithmFunction": "./dist-es/getCrc32ChecksumAlgorithmFunction.browser",
+    "./dist-cjs/getCrc32ChecksumAlgorithmFunction": "./dist-cjs/getCrc32ChecksumAlgorithmFunction.browser"
+  },
+  "types": "./dist-types/index.d.ts",
+  "author": {
+    "name": "AWS SDK for JavaScript Team",
+    "url": "https://aws.amazon.com/javascript/"
+  },
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@aws-crypto/crc32": "5.2.0",
+    "@aws-crypto/crc32c": "5.2.0",
+    "@aws-crypto/util": "5.2.0",
+    "@aws-sdk/core": "3.808.0",
+    "@aws-sdk/types": "3.804.0",
+    "@smithy/is-array-buffer": "^4.0.0",
+    "@smithy/node-config-provider": "^4.1.1",
+    "@smithy/protocol-http": "^5.1.0",
+    "@smithy/types": "^4.2.0",
+    "@smithy/util-middleware": "^4.0.2",
+    "@smithy/util-stream": "^4.2.0",
+    "@smithy/util-utf8": "^4.0.0",
+    "tslib": "^2.6.2"
+  },
+  "devDependencies": {
+    "@smithy/node-http-handler": "^4.0.4",
+    "concurrently": "7.0.0",
+    "downlevel-dts": "0.10.1",
+    "rimraf": "3.0.2",
+    "typescript": "~5.8.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "typesVersions": {
+    "<4.0": {
+      "dist-types/*": [
+        "dist-types/ts3.4/*"
+      ]
+    }
+  },
+  "files": [
+    "dist-*/**"
+  ],
+  "homepage": "https://github.com/aws/aws-sdk-js-v3/tree/main/packages/middleware-flexible-checksums",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aws/aws-sdk-js-v3.git",
+    "directory": "packages/middleware-flexible-checksums"
+  }
+}

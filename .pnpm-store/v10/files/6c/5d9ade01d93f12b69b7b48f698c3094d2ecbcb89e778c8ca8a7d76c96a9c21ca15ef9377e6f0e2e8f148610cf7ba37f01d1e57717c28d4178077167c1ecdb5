@@ -1,0 +1,1 @@
+module.exports = require('../dist/vue-i18n.prod.cjs')

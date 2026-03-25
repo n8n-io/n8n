@@ -1,0 +1,74 @@
+{
+  "name": "showdown",
+  "version": "2.1.0",
+  "description": "A Markdown to HTML converter written in Javascript",
+  "author": "Estevão Santos",
+  "homepage": "http://showdownjs.com/",
+  "keywords": [
+    "markdown",
+    "converter"
+  ],
+  "contributors": [
+    "John Gruber",
+    "John Fraser",
+    "Corey Innis",
+    "Remy Sharp",
+    "Konstantin Käfer",
+    "Roger Braun",
+    "Dominic Tarr",
+    "Cat Chen",
+    "Titus Stone",
+    "Rob Sutherland",
+    "Pavel Lang",
+    "Ben Combee",
+    "Adam Backstrom",
+    "Pascal Deschênes",
+    "Estevão Santos"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/showdownjs/showdown.git",
+    "web": "https://github.com/showdownjs/showdown"
+  },
+  "funding": {
+    "type" : "individual",
+    "url" : "https://www.paypal.me/tiviesantos"
+  },
+  "license": "MIT",
+  "main": "./dist/showdown.js",
+  "scripts": {
+    "test": "grunt test"
+  },
+  "bin": {
+    "showdown": "bin/showdown.js"
+  },
+  "files": [
+    "bin",
+    "dist"
+  ],
+  "devDependencies": {
+    "chai": "*",
+    "chai-match": "*",
+    "grunt": "^1.4.1",
+    "grunt-contrib-clean": "^2.0.0",
+    "grunt-contrib-concat": "^2.0.0",
+    "grunt-contrib-jshint": "^3.1.0",
+    "grunt-contrib-uglify": "^5.0.1",
+    "grunt-conventional-changelog": "^6.1.0",
+    "grunt-conventional-github-releaser": "^1.0.0",
+    "grunt-endline": "^0.7.0",
+    "grunt-eslint": "^24.0.0",
+    "grunt-simple-mocha": "^0.4.0",
+    "jsdom": "^19.0.0",
+    "load-grunt-tasks": "^5.1.0",
+    "performance-now": "^2.1.0",
+    "quiet-grunt": "^0.2.0",
+    "semver": "^7.3.0",
+    "semver-sort": "^0.0.4",
+    "sinon": "*",
+    "source-map-support": "^0.5.20"
+  },
+  "dependencies": {
+    "commander": "^9.0.0"
+  }
+}

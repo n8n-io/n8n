@@ -1,0 +1,119 @@
+<div class="sb-preparing-story sb-wrapper">
+  <div class="sb-loader"></div>
+</div>
+
+<div class="sb-preparing-docs sb-wrapper">
+  <div class="sb-previewBlock">
+    <div class="sb-previewBlock_header">
+      <div class="sb-previewBlock_icon"></div>
+      <div class="sb-previewBlock_icon"></div>
+      <div class="sb-previewBlock_icon"></div>
+      <div class="sb-previewBlock_icon"></div>
+    </div>
+    <div class="sb-previewBlock_body">
+      <div class="sb-loader"></div>
+    </div>
+  </div>
+  <table aria-hidden="true" class="sb-argstableBlock">
+    <thead class="sb-argstableBlock-head">
+      <tr>
+        <th><span>Name</span></th>
+        <th><span>Description</span></th>
+        <th><span>Default</span></th>
+        <th><span>Control </span></th>
+      </tr>
+    </thead>
+    <tbody class="sb-argstableBlock-body">
+      <tr>
+        <td><span>propertyName</span><span title="Required">*</span></td>
+        <td>
+          <div><span>This is a short description</span></div>
+          <div class="sb-argstableBlock-summary">
+            <div><span class="sb-argstableBlock-code">summary</span></div>
+          </div>
+        </td>
+        <td>
+          <div><span class="sb-argstableBlock-code">defaultValue</span></div>
+        </td>
+        <td><button>Set string</button></td>
+      </tr>
+      <tr>
+        <td><span>propertyName</span><span>*</span></td>
+        <td>
+          <div><span>This is a short description</span></div>
+          <div class="sb-argstableBlock-summary">
+            <div><span class="sb-argstableBlock-code">summary</span></div>
+          </div>
+        </td>
+        <td>
+          <div><span class="sb-argstableBlock-code">defaultValue</span></div>
+        </td>
+        <td><button>Set string</button></td>
+      </tr>
+      <tr>
+        <td><span>propertyName</span><span>*</span></td>
+        <td>
+          <div><span>This is a short description</span></div>
+          <div class="sb-argstableBlock-summary">
+            <div><span class="sb-argstableBlock-code">summary</span></div>
+          </div>
+        </td>
+        <td>
+          <div><span class="sb-argstableBlock-code">defaultValue</span></div>
+        </td>
+        <td><button>Set string</button></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="sb-nopreview sb-wrapper">
+  <div class="sb-nopreview_main">
+    <h1 class="sb-nopreview_heading sb-heading">No Preview</h1>
+    <p>Sorry, but you either have no stories or none are selected somehow.</p>
+    <ul>
+      <li>Please check the Storybook config.</li>
+      <li>Try reloading the page.</li>
+    </ul>
+    <p>
+      If the problem persists, check the browser console, or the terminal you've run Storybook from.
+    </p>
+  </div>
+</div>
+
+<div class="sb-errordisplay sb-wrapper">
+  <div class="sb-errordisplay_main">
+    <h1 id="error-message"></h1>
+    <p>
+      The component failed to render properly, likely due to a configuration issue in Storybook.
+      Here are some common causes and how you can address them:
+    </p>
+    <ol>
+      <li>
+        <strong>Missing Context/Providers</strong>: You can use decorators to supply specific
+        contexts or providers, which are sometimes necessary for components to render correctly. For
+        detailed instructions on using decorators, please visit the
+        <a href="https://storybook.js.org/docs/writing-stories/decorators"
+          >Decorators documentation</a
+        >.
+      </li>
+      <li>
+        <strong>Misconfigured Webpack or Vite</strong>: Verify that Storybook picks up all necessary
+        settings for loaders, plugins, and other relevant parameters. You can find step-by-step
+        guides for configuring
+        <a href="https://storybook.js.org/docs/builders/webpack">Webpack</a> or
+        <a href="https://storybook.js.org/docs/builders/vite">Vite</a>
+        with Storybook.
+      </li>
+      <li>
+        <strong>Missing Environment Variables</strong>: Your Storybook may require specific
+        environment variables to function as intended. You can set up custom environment variables
+        as outlined in the
+        <a href="https://storybook.js.org/docs/configure/environment-variables"
+          >Environment Variables documentation</a
+        >.
+      </li>
+    </ol>
+    <pre class="sb-errordisplay_code"><code id="error-stack"></code></pre>
+  </div>
+</div>

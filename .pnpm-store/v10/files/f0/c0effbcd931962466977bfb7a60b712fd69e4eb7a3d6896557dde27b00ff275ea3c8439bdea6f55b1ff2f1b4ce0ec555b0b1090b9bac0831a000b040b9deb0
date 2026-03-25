@@ -1,0 +1,87 @@
+{
+  "name": "module-lookup-amd",
+  "version": "9.0.5",
+  "description": "Resolve aliased dependency paths using a RequireJS config",
+  "main": "index.js",
+  "files": [
+    "bin/cli.js",
+    "index.js"
+  ],
+  "bin": {
+    "lookup-amd": "bin/cli.js"
+  },
+  "scripts": {
+    "lint": "xo",
+    "fix": "xo --fix",
+    "mocha": "mocha",
+    "test": "npm run lint && npm run mocha",
+    "test:ci": "c8 npm run mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dependents/node-module-lookup-amd.git"
+  },
+  "keywords": [
+    "amd",
+    "module",
+    "lookup",
+    "alias"
+  ],
+  "author": "Joel Kemp <joel@mrjoelkemp.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/dependents/node-module-lookup-amd/issues"
+  },
+  "homepage": "https://github.com/dependents/node-module-lookup-amd",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "glob": "^7.2.3",
+    "requirejs": "^2.3.7",
+    "requirejs-config-file": "^4.0.0"
+  },
+  "devDependencies": {
+    "c8": "^10.1.3",
+    "mocha": "^11.1.0",
+    "xo": "^0.60.0"
+  },
+  "xo": {
+    "space": true,
+    "ignores": [
+      "test/fixtures/*"
+    ],
+    "rules": {
+      "arrow-body-style": "off",
+      "capitalized-comments": "off",
+      "comma-dangle": [
+        "error",
+        "never"
+      ],
+      "curly": [
+        "error",
+        "multi-line"
+      ],
+      "operator-linebreak": [
+        "error",
+        "after"
+      ],
+      "object-curly-spacing": [
+        "error",
+        "always"
+      ],
+      "prefer-template": "error",
+      "space-before-function-paren": [
+        "error",
+        "never"
+      ],
+      "unicorn/no-anonymous-default-export": "off",
+      "unicorn/prefer-module": "off",
+      "unicorn/prefer-node-protocol": "off",
+      "unicorn/prefer-string-slice": "off",
+      "unicorn/prefer-top-level-await": "off",
+      "unicorn/prevent-abbreviations": "off"
+    }
+  }
+}

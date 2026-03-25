@@ -1,0 +1,34 @@
+{
+  "name": "app-module-path",
+  "description": "Simple module to add additional directories to the Node module search for top-level app modules",
+  "main": "lib/index.js",
+  "scripts": {
+    "test": "node test/test.js && ./node_modules/mocha/bin/mocha test/test2.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/patrick-steele-idem/app-module-path-node"
+  },
+  "keywords": [
+    "modules",
+    "path",
+    "node",
+    "extend",
+    "resolve"
+  ],
+  "author": "Patrick Steele-Idem <pnidem@gmail.com>",
+  "license": "BSD-2-Clause",
+  "bugs": {
+    "url": "https://github.com/patrick-steele-idem/app-module-path-node/issues"
+  },
+  "homepage": "https://github.com/patrick-steele-idem/app-module-path-node",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/"
+  },
+  "ebay": {},
+  "devDependencies": {
+    "chai": "^3.5.0",
+    "mocha": "^3.2.0"
+  },
+  "version": "2.2.0"
+}

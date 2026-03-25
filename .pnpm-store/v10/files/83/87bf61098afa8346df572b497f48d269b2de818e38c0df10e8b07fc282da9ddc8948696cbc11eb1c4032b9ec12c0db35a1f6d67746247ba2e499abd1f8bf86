@@ -1,0 +1,62 @@
+@use 'mixins/mixins' as *;
+@use 'mixins/var' as *;
+@use 'common/var' as *;
+
+@include b(popover) {
+  @include set-component-css-var('popover', $popover);
+
+  &.#{$namespace}-popper {
+    background: getCssVar('popover-bg-color');
+    min-width: 150px;
+    border-radius: getCssVar('popover-border-radius');
+    border: 1px solid getCssVar('popover-border-color');
+    padding: getCssVar('popover-padding');
+    z-index: getCssVar('index-popper');
+    color: getCssVar('text-color', 'regular');
+    line-height: 1.4;
+    text-align: justify;
+    font-size: getCssVar('popover-font-size');
+    box-shadow: getCssVar('box-shadow-light');
+    word-break: break-all;
+    box-sizing: border-box;
+
+    @include m(plain) {
+      padding: getCssVar('popover-padding-large');
+    }
+
+    @include e(title) {
+      color: getCssVar('popover-title-text-color');
+      font-size: getCssVar('popover-title-font-size');
+      line-height: 1;
+      margin-bottom: 12px;
+    }
+
+    @include e(reference) {
+      &:focus:not(.focusing),
+      &:focus:hover {
+        outline-width: 0;
+      }
+    }
+
+    @include when(dark) {
+      @include set-css-var-value(
+        ('popover', 'bg-color'),
+        var(#{getCssVarName('text-color', 'primary')})
+      );
+      @include set-css-var-value(
+        ('popover', 'border-color'),
+        var(#{getCssVarName('text-color', 'primary')})
+      );
+      @include set-css-var-value(
+        ('popover', 'title-text-color'),
+        var(#{getCssVarName('bg-color')})
+      );
+      color: getCssVar('bg-color');
+    }
+
+    &:focus:active,
+    &:focus {
+      outline-width: 0;
+    }
+  }
+}

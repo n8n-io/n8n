@@ -1,0 +1,1 @@
+{"version":3,"file":"private.mjs","sources":["../../../../../../packages/components/table-v2/src/private.ts"],"sourcesContent":["export const placeholderSign = Symbol('placeholder')\n"],"names":[],"mappings":"AAAY,MAAC,eAAe,GAAG,MAAM,CAAC,aAAa;;;;"}

@@ -1,0 +1,4 @@
+info:
+  contact: {}
+  license:
+    $ref: ./externalLicense.yaml

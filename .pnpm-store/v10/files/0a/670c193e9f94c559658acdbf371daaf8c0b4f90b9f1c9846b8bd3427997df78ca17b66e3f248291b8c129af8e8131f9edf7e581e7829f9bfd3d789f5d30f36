@@ -1,0 +1,59 @@
+{
+  "name": "sshpk",
+  "version": "1.18.0",
+  "description": "A library for finding and using SSH public keys",
+  "main": "lib/index.js",
+  "scripts": {
+    "test": "tape test/*.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/joyent/node-sshpk.git"
+  },
+  "author": "Joyent, Inc",
+  "contributors": [
+    {
+      "name": "Dave Eddy",
+      "email": "dave@daveeddy.com"
+    },
+    {
+      "name": "Mark Cavage",
+      "email": "mcavage@gmail.com"
+    },
+    {
+      "name": "Alex Wilson",
+      "email": "alex@cooperi.net"
+    }
+  ],
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/arekinath/node-sshpk/issues"
+  },
+  "engines": {
+    "node": ">=0.10.0"
+  },
+  "directories": {
+    "bin": "./bin",
+    "lib": "./lib",
+    "man": "./man/man1"
+  },
+  "homepage": "https://github.com/arekinath/node-sshpk#readme",
+  "dependencies": {
+    "asn1": "~0.2.3",
+    "assert-plus": "^1.0.0",
+    "dashdash": "^1.12.0",
+    "getpass": "^0.1.1",
+    "safer-buffer": "^2.0.2",
+    "jsbn": "~0.1.0",
+    "tweetnacl": "~0.14.0",
+    "ecc-jsbn": "~0.1.1",
+    "bcrypt-pbkdf": "^1.0.0"
+  },
+  "optionalDependencies": {},
+  "devDependencies": {
+    "tape": "^3.5.0",
+    "benchmark": "^1.0.0",
+    "sinon": "^1.17.2",
+    "temp": "^0.8.2"
+  }
+}

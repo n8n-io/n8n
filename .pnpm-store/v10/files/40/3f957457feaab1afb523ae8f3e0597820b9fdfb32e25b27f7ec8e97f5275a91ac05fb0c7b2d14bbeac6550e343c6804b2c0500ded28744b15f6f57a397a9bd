@@ -1,0 +1,71 @@
+{
+  "name": "@floating-ui/vue",
+  "version": "1.1.6",
+  "description": "Floating UI for Vue",
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "./dist/floating-ui.vue.umd.js",
+  "module": "./dist/floating-ui.vue.esm.js",
+  "unpkg": "./dist/floating-ui.vue.umd.min.js",
+  "types": "./dist/floating-ui.vue.d.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "import": {
+        "types": "./dist/floating-ui.vue.d.mts",
+        "default": "./dist/floating-ui.vue.mjs"
+      },
+      "types": "./dist/floating-ui.vue.d.ts",
+      "module": "./dist/floating-ui.vue.esm.js",
+      "default": "./dist/floating-ui.vue.umd.js"
+    }
+  },
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "author": "lozinsky",
+  "license": "MIT",
+  "bugs": "https://github.com/floating-ui/floating-ui",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/floating-ui/floating-ui.git",
+    "directory": "packages/vue"
+  },
+  "homepage": "https://floating-ui.com/docs/vue",
+  "keywords": [
+    "tooltip",
+    "popover",
+    "dropdown",
+    "menu",
+    "popup",
+    "positioning",
+    "vue"
+  ],
+  "dependencies": {
+    "@floating-ui/dom": "^1.0.0",
+    "vue-demi": ">=0.13.0",
+    "@floating-ui/utils": "^0.2.9"
+  },
+  "devDependencies": {
+    "@parcel/transformer-vue": "^2.10.3",
+    "@testing-library/jest-dom": "^6.1.6",
+    "@testing-library/vue": "^6.6.1",
+    "@vitejs/plugin-vue": "^5.0.2",
+    "vue": "^3.4.4",
+    "config": "0.0.0"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "clean": "rimraf dist out-tsc",
+    "test": "vitest run",
+    "test:watch": "vitest watch",
+    "build": "rollup -c",
+    "build:api": "build-api --tsc tsconfig.lib.json",
+    "dev": "vite",
+    "publint": "publint",
+    "typecheck": "tsc -b"
+  }
+}

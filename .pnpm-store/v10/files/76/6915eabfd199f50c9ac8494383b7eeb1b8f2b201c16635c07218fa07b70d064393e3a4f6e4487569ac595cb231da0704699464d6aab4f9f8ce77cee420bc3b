@@ -1,0 +1,32 @@
+{
+  "name": "readable-stream",
+  "version": "1.1.14",
+  "description": "Streams3, a user-land copy of the stream library from Node.js v0.11.x",
+  "main": "readable.js",
+  "dependencies": {
+    "core-util-is": "~1.0.0",
+    "isarray": "0.0.1",
+    "string_decoder": "~0.10.x",
+    "inherits": "~2.0.1"
+  },
+  "devDependencies": {
+    "tap": "~0.2.6"
+  },
+  "scripts": {
+    "test": "tap test/simple/*.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/isaacs/readable-stream"
+  },
+  "keywords": [
+    "readable",
+    "stream",
+    "pipe"
+  ],
+  "browser": {
+    "util": false
+  },
+  "author": "Isaac Z. Schlueter <i@izs.me> (http://blog.izs.me/)",
+  "license": "MIT"
+}

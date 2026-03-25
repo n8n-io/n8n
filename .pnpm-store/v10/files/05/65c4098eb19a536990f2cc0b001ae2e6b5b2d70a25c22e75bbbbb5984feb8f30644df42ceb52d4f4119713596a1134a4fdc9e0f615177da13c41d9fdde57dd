@@ -1,0 +1,1 @@
+{"version":3,"file":"unified-signatures.d.ts","sourceRoot":"","sources":["../../src/rules/unified-signatures.ts"],"names":[],"mappings":"AAuDA,MAAM,MAAM,UAAU,GAClB,uBAAuB,GACvB,yBAAyB,GACzB,2BAA2B,CAAC;AAEhC,MAAM,MAAM,OAAO,GAAG;IACpB;QACE,gCAAgC,CAAC,EAAE,OAAO,CAAC;QAC3C,iCAAiC,CAAC,EAAE,OAAO,CAAC;KAC7C;CACF,CAAC;;AAEF,wBA8kBG"}

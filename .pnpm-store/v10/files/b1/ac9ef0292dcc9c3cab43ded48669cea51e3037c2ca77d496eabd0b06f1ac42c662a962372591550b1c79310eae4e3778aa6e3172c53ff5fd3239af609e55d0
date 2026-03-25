@@ -1,0 +1,58 @@
+{
+  "name": "fromentries",
+  "description": "Object.fromEntries() ponyfill (in 6 lines)",
+  "version": "1.3.2",
+  "author": {
+    "name": "Feross Aboukhadijeh",
+    "email": "feross@feross.org",
+    "url": "https://feross.org"
+  },
+  "bugs": {
+    "url": "https://github.com/feross/fromentries/issues"
+  },
+  "devDependencies": {
+    "standard": "*",
+    "tape": "^5.0.1"
+  },
+  "homepage": "https://github.com/feross/fromentries",
+  "keywords": [
+    "Object.fromEntries",
+    "Object.entries",
+    "Object.values",
+    "Object.keys",
+    "entries",
+    "values",
+    "fromEntries",
+    "ES7",
+    "ES8",
+    "shim",
+    "object",
+    "keys",
+    "polyfill",
+    "ponyfill"
+  ],
+  "license": "MIT",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/feross/fromentries.git"
+  },
+  "scripts": {
+    "test": "standard && tape test/**/*.js"
+  },
+  "funding": [
+    {
+      "type": "github",
+      "url": "https://github.com/sponsors/feross"
+    },
+    {
+      "type": "patreon",
+      "url": "https://www.patreon.com/feross"
+    },
+    {
+      "type": "consulting",
+      "url": "https://feross.org/support"
+    }
+  ]
+}

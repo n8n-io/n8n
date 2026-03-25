@@ -1,0 +1,45 @@
+{
+    "name": "@types/file-saver",
+    "version": "2.0.5",
+    "description": "TypeScript definitions for FileSaver.js",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/file-saver",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Cyril Schumacher",
+            "url": "https://github.com/cyrilschumacher",
+            "githubUsername": "cyrilschumacher"
+        },
+        {
+            "name": "Daniel Roth",
+            "url": "https://github.com/DaIgeb",
+            "githubUsername": "DaIgeb"
+        },
+        {
+            "name": "HitkoDev",
+            "url": "https://github.com/HitkoDev",
+            "githubUsername": "HitkoDev"
+        },
+        {
+            "name": "JounQin",
+            "url": "https://github.com/JounQin",
+            "githubUsername": "JounQin"
+        },
+        {
+            "name": "BendingBender",
+            "url": "https://github.com/bendingbender",
+            "githubUsername": "bendingbender"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/file-saver"
+    },
+    "scripts": {},
+    "dependencies": {},
+    "typesPublisherContentHash": "a023b1301806061e7195c52600726b6a4e69796cd8cb6549ee13c1d5197c902e",
+    "typeScriptVersion": "3.8"
+}

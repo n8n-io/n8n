@@ -1,0 +1,68 @@
+{
+	"name": "open",
+	"version": "10.2.0",
+	"description": "Open stuff like URLs, files, executables. Cross-platform.",
+	"license": "MIT",
+	"repository": "sindresorhus/open",
+	"funding": "https://github.com/sponsors/sindresorhus",
+	"author": {
+		"name": "Sindre Sorhus",
+		"email": "sindresorhus@gmail.com",
+		"url": "https://sindresorhus.com"
+	},
+	"type": "module",
+	"exports": {
+		"types": "./index.d.ts",
+		"default": "./index.js"
+	},
+	"sideEffects": false,
+	"engines": {
+		"node": ">=18"
+	},
+	"scripts": {
+		"test": "xo && tsd"
+	},
+	"files": [
+		"index.js",
+		"index.d.ts",
+		"xdg-open"
+	],
+	"keywords": [
+		"app",
+		"open",
+		"opener",
+		"opens",
+		"launch",
+		"start",
+		"xdg-open",
+		"xdg",
+		"default",
+		"cmd",
+		"browser",
+		"editor",
+		"executable",
+		"exe",
+		"url",
+		"urls",
+		"arguments",
+		"args",
+		"spawn",
+		"exec",
+		"child",
+		"process",
+		"website",
+		"file"
+	],
+	"dependencies": {
+		"default-browser": "^5.2.1",
+		"define-lazy-prop": "^3.0.0",
+		"is-inside-container": "^1.0.0",
+		"wsl-utils": "^0.1.0"
+	},
+	"devDependencies": {
+		"@types/node": "^20.10.5",
+		"ava": "^6.4.0",
+		"tsd": "^0.32.0",
+		"xo": "^1.1.1"
+	}
+}

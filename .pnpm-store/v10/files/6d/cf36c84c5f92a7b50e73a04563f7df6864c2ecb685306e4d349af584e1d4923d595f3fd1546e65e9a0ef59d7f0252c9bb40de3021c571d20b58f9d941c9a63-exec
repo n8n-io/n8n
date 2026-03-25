@@ -1,0 +1,75 @@
+{
+    "name": "@types/luxon",
+    "version": "3.2.0",
+    "description": "TypeScript definitions for luxon",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/luxon",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Hyeonseok Yang",
+            "url": "https://github.com/FourwingsY",
+            "githubUsername": "FourwingsY"
+        },
+        {
+            "name": "Jonathan Siebern",
+            "url": "https://github.com/jsiebern",
+            "githubUsername": "jsiebern"
+        },
+        {
+            "name": "Matt R. Wilson",
+            "url": "https://github.com/mastermatt",
+            "githubUsername": "mastermatt"
+        },
+        {
+            "name": "Pietro Vismara",
+            "url": "https://github.com/pietrovismara",
+            "githubUsername": "pietrovismara"
+        },
+        {
+            "name": "Janeene Beeforth",
+            "url": "https://github.com/dawnmist",
+            "githubUsername": "dawnmist"
+        },
+        {
+            "name": "Jason Yu",
+            "url": "https://github.com/ycmjason",
+            "githubUsername": "ycmjason"
+        },
+        {
+            "name": "Aitor Pérez Rodal",
+            "url": "https://github.com/Aitor1995",
+            "githubUsername": "Aitor1995"
+        },
+        {
+            "name": "Piotr Błażejewicz",
+            "url": "https://github.com/peterblazejewicz",
+            "githubUsername": "peterblazejewicz"
+        },
+        {
+            "name": "Carson Full",
+            "url": "https://github.com/carsonf",
+            "githubUsername": "carsonf"
+        },
+        {
+            "name": "Hugo Silva",
+            "url": "https://github.com/hugofpsilva",
+            "githubUsername": "hugofpsilva"
+        },
+        {
+            "name": "Martin Badin",
+            "url": "https://github.com/martin-badin",
+            "githubUsername": "martin-badin"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/luxon"
+    },
+    "scripts": {},
+    "dependencies": {},
+    "typesPublisherContentHash": "03a37d1e5351858b8756132b3294c4d047d4b271d0c710d08daf4e513a601510",
+    "typeScriptVersion": "4.2"
+}

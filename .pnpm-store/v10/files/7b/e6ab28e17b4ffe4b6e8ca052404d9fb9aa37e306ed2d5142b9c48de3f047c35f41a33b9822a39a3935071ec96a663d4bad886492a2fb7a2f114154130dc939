@@ -1,0 +1,11 @@
+{
+  "name": "lunr.js",
+  "version": "2.3.9",
+  "main": "lunr.js",
+  "ignore": [
+    "tests/",
+    "perf/",
+    "build/",
+    "docs/"
+  ]
+}

@@ -1,0 +1,1 @@
+{"version":3,"file":"seq.js","sourceRoot":"","sources":["../../../src/type/seq.ts"],"names":[],"mappings":"AAEA,YAAY,CAAC;AAEb,gCAA6B;AAE7B,iBAAS,IAAI,WAAI,CAAC,uBAAuB,EAAE;IACzC,IAAI,EAAE,UAAU;IAChB,SAAS,EAAE,UAAU,IAAI,IAAI,MAAM,CAAC,IAAI,KAAK,IAAI,GAAG,IAAI,GAAG,EAAE,CAAC,CAAC,CAAC;CACjE,CAAC,CAAC"}

@@ -1,0 +1,1 @@
+{"version":3,"file":"UserDelegationKeyCredential.browser.js","sourceRoot":"","sources":["../../../../src/credentials/UserDelegationKeyCredential.browser.ts"],"names":[],"mappings":"AAAA,uCAAuC;AACvC,kCAAkC;AAElC,MAAM,OAAO,2BAA2B;CAAG","sourcesContent":["// Copyright (c) Microsoft Corporation.\n// Licensed under the MIT License.\n\nexport class UserDelegationKeyCredential {}\n"]}

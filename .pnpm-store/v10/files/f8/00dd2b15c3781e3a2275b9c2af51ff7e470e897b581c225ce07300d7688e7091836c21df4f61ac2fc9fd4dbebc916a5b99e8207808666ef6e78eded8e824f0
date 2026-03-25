@@ -1,0 +1,59 @@
+{
+  "name": "wiremock-rest-client",
+  "version": "1.11.0",
+  "description": "Lightweight REST client to interact with a running WireMock server",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/**/*"
+  ],
+  "bin": {
+    "wrc": "bin/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint src/**/*.ts",
+    "prepare": "npm run build",
+    "preversion": "npm run lint",
+    "version": "git add -A src",
+    "postversion": "git push && git push --tags"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kwoding/wiremock-rest-client.git"
+  },
+  "author": "Kwo Ding",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/kwoding/wiremock-rest-client/issues"
+  },
+  "homepage": "https://github.com/kwoding/wiremock-rest-client#readme",
+  "keywords": [
+    "wiremock",
+    "mock",
+    "stub",
+    "automation",
+    "test"
+  ],
+  "engines": {
+    "node": "^12.22.0 || ^14.15.0 || >=16.0.0"
+  },
+  "dependencies": {
+    "commander": "^6.2.1",
+    "cross-fetch": "^3.1.5",
+    "https-proxy-agent": "~4.0.0",
+    "json5": "^2.2.0",
+    "loglevel": "^1.8.0",
+    "nanoid": "^3.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^14.18.12",
+    "@typescript-eslint/eslint-plugin": "^5.12.1",
+    "@typescript-eslint/parser": "^5.12.1",
+    "eslint": "^8.9.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-import-resolver-typescript": "^2.5.0",
+    "eslint-plugin-import": "^2.25.4",
+    "typescript": "~4.0.8"
+  }
+}

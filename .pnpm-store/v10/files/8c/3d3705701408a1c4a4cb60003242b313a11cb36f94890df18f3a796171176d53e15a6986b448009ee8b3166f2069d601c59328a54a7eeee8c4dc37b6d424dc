@@ -1,0 +1,56 @@
+{
+  "name": "@n8n_io/license-sdk",
+  "version": "2.25.0",
+  "description": "License SDK",
+  "main": "dist/LicenseManager.js",
+  "types": "dist/LicenseManager.d.ts",
+  "files": [
+    "dist"
+  ],
+  "tsup": {
+    "entry": [
+      "src/LicenseManager.ts",
+      "src/httpRequest.ts"
+    ],
+    "splitting": false,
+    "sourcemap": true,
+    "dts": false,
+    "experimentalDts": true,
+    "clean": true,
+    "minify": true,
+    "format": [
+      "esm",
+      "cjs"
+    ]
+  },
+  "keywords": [],
+  "author": {
+    "name": "Cornelius Suermann",
+    "email": "cornelius@n8n.io",
+    "url": "https://www.linkedin.com/in/csuermann/"
+  },
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=18.12.1"
+  },
+  "dependencies": {
+    "crypto-js": "^4.2.0",
+    "node-machine-id": "^1.1.12",
+    "node-rsa": "^1.1.1",
+    "undici": "^7.16.0"
+  },
+  "devDependencies": {
+    "@microsoft/api-extractor": "^7.53.0",
+    "@types/crypto-js": "^4.2.2",
+    "@types/node-rsa": "^1.1.4",
+    "tsup": "8.4.0",
+    "@n8n_io/license-server": "1.0.0"
+  },
+  "scripts": {
+    "build": "tsup",
+    "incrementVersion": "npm version from-git --git-tag-version false",
+    "prepublish": "tsup",
+    "publishToNpm": "pnpm publish --access public --no-git-checks",
+    "test": "jest --collectCoverage -t '.*'"
+  }
+}

@@ -1,0 +1,43 @@
+{
+    "name": "@types/babel__template",
+    "version": "7.4.1",
+    "description": "TypeScript definitions for @babel/template",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/babel__template",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Troy Gerwien",
+            "url": "https://github.com/yortus",
+            "githubUsername": "yortus"
+        },
+        {
+            "name": "Marvin Hagemeister",
+            "url": "https://github.com/marvinhagemeister",
+            "githubUsername": "marvinhagemeister"
+        },
+        {
+            "name": "Melvin Groenhoff",
+            "url": "https://github.com/mgroenhoff",
+            "githubUsername": "mgroenhoff"
+        },
+        {
+            "name": "ExE Boss",
+            "url": "https://github.com/ExE-Boss",
+            "githubUsername": "ExE-Boss"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/babel__template"
+    },
+    "scripts": {},
+    "dependencies": {
+        "@babel/parser": "^7.1.0",
+        "@babel/types": "^7.0.0"
+    },
+    "typesPublisherContentHash": "8b488d3b882af8da43e3bb35fc9efcf3bd5fdaec465b98ed620d47b2231b62ed",
+    "typeScriptVersion": "3.6"
+}

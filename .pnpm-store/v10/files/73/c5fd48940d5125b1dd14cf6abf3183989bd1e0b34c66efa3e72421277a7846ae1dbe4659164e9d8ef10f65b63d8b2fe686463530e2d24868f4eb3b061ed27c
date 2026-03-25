@@ -1,0 +1,41 @@
+{
+  "name": "redis-errors",
+  "version": "1.2.0",
+  "description": "Error classes used in node_redis",
+  "main": "index.js",
+  "scripts": {
+    "test": "npm run coverage",
+    "lint": "standard --fix",
+    "posttest": "npm run lint && npm run coverage:check",
+    "coverage": "node ./node_modules/istanbul/lib/cli.js cover --preserve-comments ./node_modules/mocha/bin/_mocha -- -R spec",
+    "coverage:check": "node ./node_modules/istanbul/lib/cli.js check-coverage --statement 100"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NodeRedis/redis-errors.git"
+  },
+  "keywords": [
+    "redis",
+    "javascript",
+    "node",
+    "error"
+  ],
+  "engines": {
+    "node": ">=4"
+  },
+  "devDependencies": {
+    "istanbul": "^0.4.0",
+    "mocha": "^3.1.2",
+    "standard": "^10.0.0"
+  },
+  "author": "Ruben Bridgewater",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/NodeRedis/redis-errors/issues"
+  },
+  "homepage": "https://github.com/NodeRedis/redis-errors#readme",
+  "directories": {
+    "test": "test",
+    "lib": "lib"
+  }
+}

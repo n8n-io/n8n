@@ -1,0 +1,1 @@
+{"version":3,"file":"require-array-sort-compare.d.ts","sourceRoot":"","sources":["../../src/rules/require-array-sort-compare.ts"],"names":[],"mappings":"AAWA,MAAM,MAAM,OAAO,GAAG;IACpB;QACE,kBAAkB,CAAC,EAAE,OAAO,CAAC;KAC9B;CACF,CAAC;AACF,MAAM,MAAM,UAAU,GAAG,gBAAgB,CAAC;;AAE1C,wBAyEG"}

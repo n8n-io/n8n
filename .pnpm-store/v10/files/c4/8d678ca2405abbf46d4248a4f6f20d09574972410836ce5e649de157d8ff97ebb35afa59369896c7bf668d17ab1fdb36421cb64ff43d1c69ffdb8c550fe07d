@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>SharedService test</title>
+</head>
+<body>
+  <button data-op="add">Add</button>
+  <button data-op="multiply">Multiply</button>
+  <button data-op="slow_subtract">Slow subtract</button>
+  <button data-op="throw_error">Throw error</button>
+  <div><pre id="output"></pre></div>
+  <script src="index.js" type="module"></script>
+</body>
+</html>

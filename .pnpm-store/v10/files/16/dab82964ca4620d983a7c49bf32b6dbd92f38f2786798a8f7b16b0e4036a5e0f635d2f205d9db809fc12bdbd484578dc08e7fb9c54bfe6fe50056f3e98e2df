@@ -1,0 +1,54 @@
+{
+    "name": "@types/mssql",
+    "version": "9.1.5",
+    "description": "TypeScript definitions for mssql",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/mssql",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Jørgen Elgaard Larsen",
+            "githubUsername": "elhaard",
+            "url": "https://github.com/elhaard"
+        },
+        {
+            "name": "Peter Keuter",
+            "githubUsername": "pkeuter",
+            "url": "https://github.com/pkeuter"
+        },
+        {
+            "name": "Jeff Wooden",
+            "githubUsername": "woodenconsulting",
+            "url": "https://github.com/woodenconsulting"
+        },
+        {
+            "name": "Cahil Foley",
+            "githubUsername": "cahilfoley",
+            "url": "https://github.com/cahilfoley"
+        },
+        {
+            "name": "Rifa Achrinza",
+            "githubUsername": "achrinza",
+            "url": "https://github.com/achrinza"
+        },
+        {
+            "name": "Daniel Hensby",
+            "githubUsername": "dhensby",
+            "url": "https://github.com/dhensby"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/mssql"
+    },
+    "scripts": {},
+    "dependencies": {
+        "@types/node": "*",
+        "@types/tedious": "*",
+        "tarn": "^3.0.1"
+    },
+    "typesPublisherContentHash": "cbbe329ee45f4214c5e93d91a90ae6582a6d63c50421533983599a5f8b2fc518",
+    "typeScriptVersion": "4.6"
+}

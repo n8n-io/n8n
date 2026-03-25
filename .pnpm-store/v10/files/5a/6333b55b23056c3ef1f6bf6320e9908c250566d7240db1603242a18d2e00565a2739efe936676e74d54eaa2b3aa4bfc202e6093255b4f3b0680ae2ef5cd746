@@ -1,0 +1,1 @@
+{"version":3,"file":"union.d.cts","names":[],"sources":["../../../../src/utils/zod-to-json-schema/parsers/union.ts"],"mappings":";;;cAUa,iBAAA;EAAA;;;;;;KAQR,oBAAA,WACK,iBAAA,eAAgC,iBAAA;AAAA,KAE9B,oBAAA,GACR,6BAAA,GACA,oBAAA;AAAA,KAEC,6BAAA;EAEC,IAAA,EAAM,oBAAA,GAAuB,oBAAA;AAAA;EAG7B,IAAA,EAAM,oBAAA,GAAuB,oBAAA;EAC7B,IAAA;AAAA;AAAA,KAGD,oBAAA;EACH,KAAA,EAAO,eAAA;AAAA"}

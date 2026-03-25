@@ -1,0 +1,28 @@
+{
+  "name": "@aws-crypto/supports-web-crypto",
+  "version": "5.2.0",
+  "description": "Provides functions for detecting if the host environment supports the WebCrypto API",
+  "scripts": {
+    "prepublishOnly": "tsc -p tsconfig.json && tsc -p tsconfig.module.json",
+    "pretest": "tsc -p tsconfig.test.json",
+    "test": "mocha --require ts-node/register test/**/*test.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:aws/aws-sdk-js-crypto-helpers.git"
+  },
+  "author": {
+    "name": "AWS Crypto Tools Team",
+    "email": "aws-cryptools@amazon.com",
+    "url": "https://docs.aws.amazon.com/aws-crypto-tools/index.html?id=docs_gateway#lang/en_us"
+  },
+  "homepage": "https://github.com/aws/aws-sdk-js-crypto-helpers/tree/master/packages/supports-web-crypto",
+  "license": "Apache-2.0",
+  "main": "./build/main/index.js",
+  "module": "./build/module/index.js",
+  "types": "./build/main/index.d.ts",
+  "dependencies": {
+    "tslib": "^2.6.2"
+  },
+  "gitHead": "c11b171b35ec5c093364f0e0d8dc4ab1af68e748"
+}

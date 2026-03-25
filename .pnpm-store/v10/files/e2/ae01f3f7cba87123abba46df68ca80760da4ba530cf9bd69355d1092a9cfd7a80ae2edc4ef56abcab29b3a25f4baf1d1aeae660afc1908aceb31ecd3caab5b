@@ -1,0 +1,36 @@
+@use 'mixins/mixins' as *;
+@use 'mixins/var' as *;
+@use 'common/var' as *;
+
+@include b(tree-select) {
+  @include set-component-css-var('tree', $tree);
+}
+
+@include b(tree-select) {
+  @include e(popper) {
+    // padding-left same with select option
+    .#{$namespace}-tree-node__expand-icon {
+      margin-left: 8px;
+    }
+
+    // remove icon when show checkbox
+    .#{$namespace}-tree-node.is-checked
+      > .#{$namespace}-tree-node__content
+      .#{$namespace}-select-dropdown__item.selected::after {
+      content: none;
+    }
+
+    .#{$namespace}-select-dropdown__item {
+      flex: 1;
+      background: transparent !important;
+
+      // padding-left move to `el-tree-node__expand-icon`
+      padding-left: 0;
+
+      // fix: select height > tree node height
+      // https://github.com/yujinpan/el-select-tree/pull/33
+      height: 20px;
+      line-height: 20px;
+    }
+  }
+}

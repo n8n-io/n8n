@@ -1,0 +1,6 @@
+{
+  "main": "../lib/node/RemoteHttpInterceptor.js",
+  "module": "../lib/node/RemoteHttpInterceptor.mjs",
+  "browser": null,
+  "types": "../lib/node/RemoteHttpInterceptor.d.ts"
+}

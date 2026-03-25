@@ -1,0 +1,91 @@
+{
+  "name": "fengari",
+  "version": "0.1.4",
+  "description": "A Lua VM written in JS ES6 targeting the browser",
+  "main": "src/fengari.js",
+  "directories": {
+    "lib": "src",
+    "test": "test"
+  },
+  "scripts": {
+    "lint": "eslint src/ test/",
+    "prepublishOnly": "git diff-index --quiet --cached HEAD -- && npm run lint && npm run test",
+    "test": "jest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fengari-lua/fengari.git"
+  },
+  "keywords": [
+    "lua",
+    "vm"
+  ],
+  "contributors": [
+    "Benoit Giannangeli",
+    "Daurnimator <quae@daurnimator.com>"
+  ],
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/fengari-lua/fengari/issues"
+  },
+  "homepage": "https://github.com/fengari-lua/fengari#readme",
+  "devDependencies": {
+    "eslint": "^5.9.0",
+    "jest": "^23.6.0"
+  },
+  "dependencies": {
+    "readline-sync": "^1.4.9",
+    "sprintf-js": "^1.1.1",
+    "tmp": "^0.0.33"
+  },
+  "sideEffects": false,
+  "eslintConfig": {
+    "env": {
+      "browser": true,
+      "es6": true,
+      "node": true,
+      "worker": true
+    },
+    "extends": "eslint:recommended",
+    "rules": {
+      "indent": [
+        "error",
+        4,
+        {
+          "SwitchCase": 1
+        }
+      ],
+      "linebreak-style": [
+        "error",
+        "unix"
+      ],
+      "no-console": 0,
+      "no-empty": [
+        2,
+        {
+          "allowEmptyCatch": true
+        }
+      ],
+      "no-unused-vars": [
+        2,
+        {
+          "args": "none"
+        }
+      ],
+      "semi": [
+        "error",
+        "always"
+      ]
+    },
+    "overrides": [
+      {
+        "files": [
+          "test/**/*.test.js"
+        ],
+        "env": {
+          "jest": true
+        }
+      }
+    ]
+  }
+}

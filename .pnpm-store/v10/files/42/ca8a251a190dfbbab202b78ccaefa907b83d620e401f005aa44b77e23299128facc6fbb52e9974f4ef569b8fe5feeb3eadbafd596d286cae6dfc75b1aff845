@@ -1,0 +1,64 @@
+{
+	"$id": "/inference/schemas/image-to-video/input.json",
+	"$schema": "http://json-schema.org/draft-06/schema#",
+	"description": "Inputs for Image To Video inference",
+	"title": "ImageToVideoInput",
+	"type": "object",
+	"properties": {
+		"inputs": {
+			"type": "string",
+			"description": "The input image data as a base64-encoded string. If no `parameters` are provided, you can also provide the image data as a raw bytes payload.",
+			"comment": "type=binary"
+		},
+		"parameters": {
+			"description": "Additional inference parameters for Image To Video",
+			"$ref": "#/$defs/ImageToVideoParameters"
+		}
+	},
+	"$defs": {
+		"ImageToVideoParameters": {
+			"title": "ImageToVideoParameters",
+			"type": "object",
+			"properties": {
+				"prompt": {
+					"type": "string",
+					"description": "The text prompt to guide the video generation."
+				},
+				"guidance_scale": {
+					"type": "number",
+					"description": "For diffusion models. A higher guidance scale value encourages the model to generate videos closely linked to the text prompt at the expense of lower image quality."
+				},
+				"negative_prompt": {
+					"type": "string",
+					"description": "One prompt to guide what NOT to include in video generation."
+				},
+				"num_inference_steps": {
+					"type": "integer",
+					"description": "The number of denoising steps. More denoising steps usually lead to a higher quality video at the expense of slower inference."
+				},
+				"num_frames": {
+					"type": "number",
+					"description": "The num_frames parameter determines how many video frames are generated."
+				},
+				"target_size": {
+					"type": "object",
+					"description": "The size in pixel of the output video frames.",
+					"properties": {
+						"width": {
+							"type": "integer"
+						},
+						"height": {
+							"type": "integer"
+						}
+					},
+					"required": ["width", "height"]
+				},
+				"seed": {
+					"type": "integer",
+					"description": "Seed for the random number generator."
+				}
+			}
+		}
+	},
+	"required": ["inputs"]
+}

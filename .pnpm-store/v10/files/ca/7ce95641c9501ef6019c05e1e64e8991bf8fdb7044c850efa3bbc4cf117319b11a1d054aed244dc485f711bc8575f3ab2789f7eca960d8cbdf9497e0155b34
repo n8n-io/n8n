@@ -1,0 +1,41 @@
+{
+  "name": "pgpass",
+  "version": "1.0.5",
+  "description": "Module for reading .pgpass",
+  "main": "lib/index",
+  "scripts": {
+    "pretest": "chmod 600 ./test/_pgpass",
+    "_hint": "jshint --exclude node_modules --verbose lib test",
+    "_test": "mocha --recursive -R list",
+    "_covered_test": "nyc --reporter html --reporter text \"$npm_execpath\" run _test",
+    "test": "\"$npm_execpath\" run _hint && \"$npm_execpath\" run _covered_test"
+  },
+  "author": "Hannes Hörl <hannes.hoerl+pgpass@snowreporter.com>",
+  "license": "MIT",
+  "dependencies": {
+    "split2": "^4.1.0"
+  },
+  "devDependencies": {
+    "jshint": "^2.12.0",
+    "mocha": "^8.2.0",
+    "nyc": "^15.1.0",
+    "pg": "^8.4.1",
+    "pg-escape": "^0.2.0",
+    "pg-native": "3.0.0",
+    "resumer": "0.0.0",
+    "tmp": "^0.2.1",
+    "which": "^2.0.2"
+  },
+  "keywords": [
+    "postgres",
+    "pg",
+    "pgpass",
+    "password",
+    "postgresql"
+  ],
+  "bugs": "https://github.com/hoegaarden/pgpass/issues",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hoegaarden/pgpass.git"
+  }
+}

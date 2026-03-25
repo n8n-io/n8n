@@ -1,0 +1,9 @@
+commit 26b11915b1c16440468a4b5f4b07d2409b98c68c
+Author: Bert Belder <bertbelder@gmail.com>
+Date:   Wed Jun 20 01:07:57 2012 +0200
+
+    test-domain: fix the test to work on Windows
+    
+    On Windows, full pathnames are stored in the Error object when
+    a file i/o error happens. This is not the case on Unix. Before
+    this fix the test would break because of these full paths.

@@ -1,0 +1,184 @@
+# Copyright 2012 Mozilla Foundation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Main toolbar buttons (tooltips and alt text for images)
+previous.title=Antaŭa paĝo
+previous_label=Malantaŭen
+next.title=Venonta paĝo
+next_label=Antaŭen
+
+# LOCALIZATION NOTE (page.title): The tooltip for the pageNumber input.
+page.title=Paĝo
+# LOCALIZATION NOTE (of_pages): "{{pagesCount}}" will be replaced by a number
+# representing the total number of pages in the document.
+of_pages=el {{pagesCount}}
+# LOCALIZATION NOTE (page_of_pages): "{{pageNumber}}" and "{{pagesCount}}"
+# will be replaced by a number representing the currently visible page,
+# respectively a number representing the total number of pages in the document.
+page_of_pages=({{pageNumber}} el {{pagesCount}})
+
+zoom_out.title=Malpligrandigi
+zoom_out_label=Malpligrandigi
+zoom_in.title=Pligrandigi
+zoom_in_label=Pligrandigi
+zoom.title=Pligrandigilo
+presentation_mode.title=Iri al prezenta reĝimo
+presentation_mode_label=Prezenta reĝimo
+open_file.title=Malfermi dosieron
+open_file_label=Malfermi
+print.title=Presi
+print_label=Presi
+download.title=Elŝuti
+download_label=Elŝuti
+bookmark.title=Nuna vido (kopii aŭ malfermi en nova fenestro)
+bookmark_label=Nuna vido
+
+# Secondary toolbar and context menu
+tools.title=Iloj
+tools_label=Iloj
+first_page.title=Iri al la unua paĝo
+first_page.label=Iri al la unua paĝo
+first_page_label=Iri al la unua paĝo
+last_page.title=Iri al la lasta paĝo
+last_page.label=Iri al la lasta paĝo
+last_page_label=Iri al la lasta paĝo
+page_rotate_cw.title=Rotaciigi dekstrume
+page_rotate_cw.label=Rotaciigi dekstrume
+page_rotate_cw_label=Rotaciigi dekstrume
+page_rotate_ccw.title=Rotaciigi maldekstrume
+page_rotate_ccw.label=Rotaciigi maldekstrume
+page_rotate_ccw_label=Rotaciigi maldekstrume
+
+cursor_text_select_tool.title=Aktivigi tekstan elektilon
+cursor_text_select_tool_label=Teksta elektilo
+cursor_hand_tool.title=Aktivigi ilon de mano
+cursor_hand_tool_label=Ilo de mano
+
+# Document properties dialog box
+document_properties.title=Atributoj de dokumento…
+document_properties_label=Atributoj de dokumento…
+document_properties_file_name=Nomo de dosiero:
+document_properties_file_size=Grado de dosiero:
+# LOCALIZATION NOTE (document_properties_kb): "{{size_kb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in kilobytes, respectively in bytes.
+document_properties_kb={{size_kb}} KO ({{size_b}} oktetoj)
+# LOCALIZATION NOTE (document_properties_mb): "{{size_mb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in megabytes, respectively in bytes.
+document_properties_mb={{size_mb}} MO ({{size_b}} oktetoj)
+document_properties_title=Titolo:
+document_properties_author=Aŭtoro:
+document_properties_subject=Temo:
+document_properties_keywords=Ŝlosilvorto:
+document_properties_creation_date=Dato de kreado:
+document_properties_modification_date=Dato de modifo:
+# LOCALIZATION NOTE (document_properties_date_string): "{{date}}" and "{{time}}"
+# will be replaced by the creation/modification date, and time, of the PDF file.
+document_properties_date_string={{date}}, {{time}}
+document_properties_creator=Kreinto:
+document_properties_producer=Produktinto de PDF:
+document_properties_version=Versio de PDF:
+document_properties_page_count=Nombro de paĝoj:
+document_properties_close=Fermi
+
+print_progress_message=Preparo de dokumento por presi ĝin …
+# LOCALIZATION NOTE (print_progress_percent): "{{progress}}" will be replaced by
+# a numerical per cent value.
+print_progress_percent={{progress}}%
+print_progress_close=Nuligi
+
+# Tooltips and alt text for side panel toolbar buttons
+# (the _label strings are alt text for the buttons, the .title strings are
+# tooltips)
+toggle_sidebar.title=Montri/kaŝi flankan strion
+toggle_sidebar_notification.title=Montri/kaŝi flankan strion (la dokumento enhavas konturon/aneksaĵojn)
+toggle_sidebar_label=Montri/kaŝi flankan strion
+document_outline.title=Montri la konturon de dokumento (alklaku duoble por faldi/malfaldi ĉiujn elementojn)
+document_outline_label=Konturo de dokumento
+attachments.title=Montri kunsendaĵojn
+attachments_label=Kunsendaĵojn
+thumbs.title=Montri miniaturojn
+thumbs_label=Miniaturoj
+findbar.title=Serĉi en dokumento
+findbar_label=Serĉi
+
+# Thumbnails panel item (tooltip and alt text for images)
+# LOCALIZATION NOTE (thumb_page_title): "{{page}}" will be replaced by the page
+# number.
+thumb_page_title=Paĝo {{page}}
+# LOCALIZATION NOTE (thumb_page_canvas): "{{page}}" will be replaced by the page
+# number.
+thumb_page_canvas=Miniaturo de paĝo {{page}}
+
+# Find panel button title and messages
+find_input.title=Serĉi
+find_input.placeholder=Serĉi en dokumento…
+find_previous.title=Serĉi la antaŭan aperon de la frazo
+find_previous_label=Malantaŭen
+find_next.title=Serĉi la venontan aperon de la frazo
+find_next_label=Antaŭen
+find_highlight=Elstarigi ĉiujn
+find_match_case_label=Distingi inter majuskloj kaj minuskloj
+find_reached_top=Komenco de la dokumento atingita, daŭrigado ekde la fino
+find_reached_bottom=Fino de la dokumento atingita, daŭrigado ekde la komenco
+find_not_found=Frazo ne trovita
+
+# Error panel labels
+error_more_info=Pli da informo
+error_less_info=Mapli da informo
+error_close=Fermi
+# LOCALIZATION NOTE (error_version_info): "{{version}}" and "{{build}}" will be
+# replaced by the PDF.JS version and build ID.
+error_version_info=PDF.js v{{version}} (build: {{build}})
+# LOCALIZATION NOTE (error_message): "{{message}}" will be replaced by an
+# english string describing the error.
+error_message=Mesaĝo: {{message}}
+# LOCALIZATION NOTE (error_stack): "{{stack}}" will be replaced with a stack
+# trace.
+error_stack=Stako: {{stack}}
+# LOCALIZATION NOTE (error_file): "{{file}}" will be replaced with a filename
+error_file=Dosiero: {{file}}
+# LOCALIZATION NOTE (error_line): "{{line}}" will be replaced with a line number
+error_line=Linio: {{line}}
+rendering_error=Okazis eraro dum la montrado de la paĝo.
+
+# Predefined zoom values
+page_scale_width=Larĝo de paĝo
+page_scale_fit=Adapti paĝon
+page_scale_auto=Aŭtomata skalo
+page_scale_actual=Reala gandeco
+# LOCALIZATION NOTE (page_scale_percent): "{{scale}}" will be replaced by a
+# numerical scale value.
+page_scale_percent={{scale}}%
+
+# Loading indicator messages
+loading_error_indicator=Eraro
+loading_error=Okazis eraro dum la ŝargado de la PDF dosiero.
+invalid_file_error=Nevalida aŭ difektita PDF dosiero.
+missing_file_error=Mankas dosiero PDF.
+unexpected_response_error=Neatendita respondo de servilo.
+
+# LOCALIZATION NOTE (text_annotation_type.alt): This is used as a tooltip.
+# "{{type}}" will be replaced with an annotation type from a list defined in
+# the PDF spec (32000-1:2008 Table 169 – Annotation types).
+# Some common types are e.g.: "Check", "Text", "Comment", "Note"
+text_annotation_type.alt=[Prinoto: {{type}}]
+password_label=Tajpu pasvorton por malfermi tiun ĉi dosieron PDF.
+password_invalid=Nevalida pasvorto. Bonvolu provi denove.
+password_ok=Akcepti
+password_cancel=Nuligi
+
+printing_not_supported=Averto: tiu ĉi retumilo ne plene subtenas presadon.
+printing_not_ready=Averto: La PDF dosiero ne estas plene ŝargita por presado.
+web_fonts_disabled=Neaktivaj teksaĵaj tiparoj: ne elbas uzi enmetitajn tiparojn de PDF.
+document_colors_not_allowed=PDF dokumentoj ne rajtas uzi siajn proprajn kolorojn: 'Permesi al paĝoj uzi siajn proprajn kolorojn' ne estas aktiva en la retumilo.

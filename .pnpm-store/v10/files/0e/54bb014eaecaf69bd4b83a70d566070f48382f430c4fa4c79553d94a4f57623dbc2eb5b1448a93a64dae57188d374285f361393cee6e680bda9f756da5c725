@@ -1,0 +1,1 @@
+{"version":3,"file":"getForStatementHeadLoc.d.ts","sourceRoot":"","sources":["../../src/util/getForStatementHeadLoc.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,QAAQ,EAAE,QAAQ,EAAE,MAAM,0BAA0B,CAAC;AAInE;;;;;;;;;;;;;;GAcG;AACH,wBAAgB,sBAAsB,CACpC,UAAU,EAAE,QAAQ,CAAC,UAAU,EAC/B,IAAI,EACA,QAAQ,CAAC,cAAc,GACvB,QAAQ,CAAC,cAAc,GACvB,QAAQ,CAAC,YAAY,GACxB,QAAQ,CAAC,cAAc,CASzB"}

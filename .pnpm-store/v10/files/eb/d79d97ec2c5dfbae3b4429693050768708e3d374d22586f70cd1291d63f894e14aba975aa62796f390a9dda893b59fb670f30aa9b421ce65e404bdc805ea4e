@@ -1,0 +1,184 @@
+# Copyright 2012 Mozilla Foundation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Main toolbar buttons (tooltips and alt text for images)
+previous.title=Aurreko orria
+previous_label=Aurrekoa
+next.title=Hurrengo orria
+next_label=Hurrengoa
+
+# LOCALIZATION NOTE (page.title): The tooltip for the pageNumber input.
+page.title=Orria
+# LOCALIZATION NOTE (of_pages): "{{pagesCount}}" will be replaced by a number
+# representing the total number of pages in the document.
+of_pages=/ {{pagesCount}}
+# LOCALIZATION NOTE (page_of_pages): "{{pageNumber}}" and "{{pagesCount}}"
+# will be replaced by a number representing the currently visible page,
+# respectively a number representing the total number of pages in the document.
+page_of_pages={{pagesCount}}/{{pageNumber}}
+
+zoom_out.title=Urrundu zooma
+zoom_out_label=Urrundu zooma
+zoom_in.title=Gerturatu zooma
+zoom_in_label=Gerturatu zooma
+zoom.title=Zooma
+presentation_mode.title=Aldatu aurkezpen modura
+presentation_mode_label=Arkezpen modua
+open_file.title=Ireki fitxategia
+open_file_label=Ireki
+print.title=Inprimatu
+print_label=Inprimatu
+download.title=Deskargatu
+download_label=Deskargatu
+bookmark.title=Uneko ikuspegia (kopiatu edo ireki leiho berrian)
+bookmark_label=Uneko ikuspegia
+
+# Secondary toolbar and context menu
+tools.title=Tresnak
+tools_label=Tresnak
+first_page.title=Joan lehen orrira
+first_page.label=Joan lehen orrira
+first_page_label=Joan lehen orrira
+last_page.title=Joan azken orrira
+last_page.label=Joan azken orrira
+last_page_label=Joan azken orrira
+page_rotate_cw.title=Biratu erlojuaren norantzan
+page_rotate_cw.label=Biratu erlojuaren norantzan
+page_rotate_cw_label=Biratu erlojuaren norantzan
+page_rotate_ccw.title=Biratu erlojuaren aurkako norantzan
+page_rotate_ccw.label=Biratu erlojuaren aurkako norantzan
+page_rotate_ccw_label=Biratu erlojuaren aurkako norantzan
+
+cursor_text_select_tool.title=Gaitu testuaren hautapen tresna
+cursor_text_select_tool_label=Testuaren hautapen tresna
+cursor_hand_tool.title=Gaitu eskuaren tresna
+cursor_hand_tool_label=Eskuaren tresna
+
+# Document properties dialog box
+document_properties.title=Dokumentuaren propietateak…
+document_properties_label=Dokumentuaren propietateak…
+document_properties_file_name=Fitxategi-izena:
+document_properties_file_size=Fitxategiaren tamaina:
+# LOCALIZATION NOTE (document_properties_kb): "{{size_kb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in kilobytes, respectively in bytes.
+document_properties_kb={{size_kb}} KB ({{size_b}} byte)
+# LOCALIZATION NOTE (document_properties_mb): "{{size_mb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in megabytes, respectively in bytes.
+document_properties_mb={{size_mb}} MB ({{size_b}} byte)
+document_properties_title=Izenburua:
+document_properties_author=Egilea:
+document_properties_subject=Gaia:
+document_properties_keywords=Gako-hitzak:
+document_properties_creation_date=Sortze-data:
+document_properties_modification_date=Aldatze-data:
+# LOCALIZATION NOTE (document_properties_date_string): "{{date}}" and "{{time}}"
+# will be replaced by the creation/modification date, and time, of the PDF file.
+document_properties_date_string={{date}}, {{time}}
+document_properties_creator=Sortzailea:
+document_properties_producer=PDFaren ekoizlea:
+document_properties_version=PDF bertsioa:
+document_properties_page_count=Orrialde kopurua:
+document_properties_close=Itxi
+
+print_progress_message=Dokumentua inprimatzeko prestatzen…
+# LOCALIZATION NOTE (print_progress_percent): "{{progress}}" will be replaced by
+# a numerical per cent value.
+print_progress_percent=%{{progress}}
+print_progress_close=Utzi
+
+# Tooltips and alt text for side panel toolbar buttons
+# (the _label strings are alt text for the buttons, the .title strings are
+# tooltips)
+toggle_sidebar.title=Txandakatu alboko barra
+toggle_sidebar_notification.title=Txandakatu alboko barra (dokumentuak eskema/eranskinak ditu)
+toggle_sidebar_label=Txandakatu alboko barra
+document_outline.title=Erakutsi dokumentuaren eskema (klik bikoitza elementu guztiak zabaltzeko/tolesteko)
+document_outline_label=Dokumentuaren eskema
+attachments.title=Erakutsi eranskinak
+attachments_label=Eranskinak
+thumbs.title=Erakutsi koadro txikiak
+thumbs_label=Koadro txikiak
+findbar.title=Bilatu dokumentuan
+findbar_label=Bilatu
+
+# Thumbnails panel item (tooltip and alt text for images)
+# LOCALIZATION NOTE (thumb_page_title): "{{page}}" will be replaced by the page
+# number.
+thumb_page_title={{page}}. orria
+# LOCALIZATION NOTE (thumb_page_canvas): "{{page}}" will be replaced by the page
+# number.
+thumb_page_canvas={{page}}. orriaren koadro txikia
+
+# Find panel button title and messages
+find_input.title=Bilatu
+find_input.placeholder=Bilatu dokumentuan…
+find_previous.title=Bilatu esaldiaren aurreko parekatzea
+find_previous_label=Aurrekoa
+find_next.title=Bilatu esaldiaren hurrengo parekatzea
+find_next_label=Hurrengoa
+find_highlight=Nabarmendu guztia
+find_match_case_label=Bat etorri maiuskulekin/minuskulekin
+find_reached_top=Dokumentuaren hasierara heldu da, bukaeratik jarraitzen
+find_reached_bottom=Dokumentuaren bukaerara heldu da, hasieratik jarraitzen
+find_not_found=Esaldia ez da aurkitu
+
+# Error panel labels
+error_more_info=Informazio gehiago
+error_less_info=Informazio gutxiago
+error_close=Itxi
+# LOCALIZATION NOTE (error_version_info): "{{version}}" and "{{build}}" will be
+# replaced by the PDF.JS version and build ID.
+error_version_info=PDF.js v{{version}} (eraikuntza: {{build}})
+# LOCALIZATION NOTE (error_message): "{{message}}" will be replaced by an
+# english string describing the error.
+error_message=Mezua: {{message}}
+# LOCALIZATION NOTE (error_stack): "{{stack}}" will be replaced with a stack
+# trace.
+error_stack=Pila: {{stack}}
+# LOCALIZATION NOTE (error_file): "{{file}}" will be replaced with a filename
+error_file=Fitxategia: {{file}}
+# LOCALIZATION NOTE (error_line): "{{line}}" will be replaced with a line number
+error_line=Lerroa: {{line}}
+rendering_error=Errorea gertatu da orria errendatzean.
+
+# Predefined zoom values
+page_scale_width=Orriaren zabalera
+page_scale_fit=Doitu orrira
+page_scale_auto=Zoom automatikoa
+page_scale_actual=Benetako tamaina
+# LOCALIZATION NOTE (page_scale_percent): "{{scale}}" will be replaced by a
+# numerical scale value.
+page_scale_percent=%{{scale}}
+
+# Loading indicator messages
+loading_error_indicator=Errorea
+loading_error=Errorea gertatu da PDFa kargatzean.
+invalid_file_error=PDF fitxategi baliogabe edo hondatua.
+missing_file_error=PDF fitxategia falta da.
+unexpected_response_error=Espero gabeko zerbitzariaren erantzuna.
+
+# LOCALIZATION NOTE (text_annotation_type.alt): This is used as a tooltip.
+# "{{type}}" will be replaced with an annotation type from a list defined in
+# the PDF spec (32000-1:2008 Table 169 – Annotation types).
+# Some common types are e.g.: "Check", "Text", "Comment", "Note"
+text_annotation_type.alt=[{{type}} ohartarazpena]
+password_label=Idatzi PDF fitxategi hau irekitzeko pasahitza.
+password_invalid=Pasahitz baliogabea. Saiatu berriro mesedez.
+password_ok=Ados
+password_cancel=Utzi
+
+printing_not_supported=Abisua: inprimatzeko euskarria ez da erabatekoa nabigatzaile honetan.
+printing_not_ready=Abisua: PDFa ez dago erabat kargatuta inprimatzeko.
+web_fonts_disabled=Webeko letra-tipoak desgaituta daude: ezin dira kapsulatutako PDF letra-tipoak erabili.
+document_colors_not_allowed=PDF dokumentuek ez dute beraien koloreak erabiltzeko baimenik: 'Baimendu orriak beraien letra-tipoak aukeratzea' desaktibatuta dago nabigatzailean.

@@ -1,0 +1,22 @@
+{
+  "name": "diff-match-patch",
+  "version": "1.0.5",
+  "description": "npm package for https://github.com/google/diff-match-patch",
+  "keywords": [
+    "diff",
+    "diff-match-patch",
+    "google-diff-match-patch"
+  ],
+  "dependencies": {},
+  "devDependencies": {
+    "testit": "^3.0.0"
+  },
+  "scripts": {
+    "test": "node test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JackuB/diff-match-patch.git"
+  },
+  "license": "Apache-2.0"
+}

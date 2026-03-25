@@ -1,0 +1,61 @@
+{
+  "name": "browser-or-node",
+  "version": "2.1.1",
+  "description": "Check where the code is running in the browser or node.js",
+  "main": "./lib/index.js",
+  "types": "./lib/index.d.ts",
+  "scripts": {
+    "clean": "rimraf lib",
+    "test": "npm run cover",
+    "test:only": "cross-env BABEL_ENV=commonjs mocha --require babel-core/register --recursive",
+    "test:watch": "npm test -- --watch",
+    "test:examples": "node examples/",
+    "cover": "cross-env BABEL_ENV=commonjs istanbul cover node_modules/mocha/bin/_mocha -- --require babel-core/register --recursive",
+    "lint": "eslint src",
+    "build": "cross-env BABEL_ENV=commonjs babel src --out-dir lib --copy-files",
+    "prepublish": "npm run clean && npm run lint && npm run test && npm run build"
+  },
+  "files": [
+    "lib",
+    "src"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/flexdinesh/browser-or-node.git"
+  },
+  "keywords": [
+    "npm",
+    "browser",
+    "node",
+    "is browser",
+    "is node",
+    "is browser node"
+  ],
+  "author": "Dineshkumar Pandiyan <flexdinesh@gmail.com>",
+  "contributors": [
+    "Daniel Wang <daniel.liberated@gmail.com> (https://github.com/dan1wang/)"
+  ],
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/flexdinesh/browser-or-node/issues"
+  },
+  "homepage": "https://github.com/flexdinesh/browser-or-node#readme",
+  "devDependencies": {
+    "babel": "^6.23.0",
+    "babel-cli": "^6.26.0",
+    "babel-eslint": "^10.1.0",
+    "babel-plugin-add-module-exports": "^1.0.2",
+    "babel-preset-es2015": "^6.24.1",
+    "babel-preset-stage-2": "^6.24.1",
+    "chai": "^4.2.0",
+    "cross-env": "^7.0.2",
+    "eslint": "^7.3.1",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-import": "^2.21.2",
+    "eslint-plugin-jsx-a11y": "^6.3.1",
+    "eslint-plugin-react": "^7.20.0",
+    "istanbul": "^1.0.0-alpha",
+    "mocha": "^8.0.1",
+    "rimraf": "^3.0.2"
+  }
+}

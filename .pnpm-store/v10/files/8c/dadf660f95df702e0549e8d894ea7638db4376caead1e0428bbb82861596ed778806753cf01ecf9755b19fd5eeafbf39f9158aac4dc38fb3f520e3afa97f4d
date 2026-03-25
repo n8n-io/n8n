@@ -1,0 +1,90 @@
+{
+  "name": "ldapts",
+  "version": "4.2.6",
+  "description": "LDAP client",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "mocha \"tests/**/*.tests.ts\"",
+    "lint:markdown": "prettier --write '*.md' '!(node_modules|dist)/**/*.md' && markdownlint '*.md' '!(node_modules|dist)/**/*.md' --config=.github/linters/.markdown-lint.yml --fix",
+    "lint:code": "eslint --fix --ext .ts src tests",
+    "lint": "run-p lint:*",
+    "lint-staged": "lint-staged",
+    "dist": "if [ -d \"src\" ]; then rm -rf dist && npm run lint && npm run build && npm run test && cp package.json dist && cp package-lock.json dist && cp *.md dist && cp .npmignore dist && cd dist && npm publish; fi",
+    "prepublishOnly": "if [ -d \"src\" ]; then echo \"Please use: npm run dist\" && exit 125; fi && pinst --disable",
+    "_postinstall": "husky install",
+    "postpublish": "pinst --enable"
+  },
+  "lint-staged": {
+    "*.md": [
+      "prettier --write",
+      "markdownlint --config=.github/linters/.markdown-lint.yml --fix"
+    ],
+    "*.js": [
+      "eslint --fix"
+    ],
+    "*.ts": [
+      "eslint --fix"
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ldapts/ldapts.git"
+  },
+  "engines": {
+    "node": ">=14"
+  },
+  "keywords": [
+    "ldap",
+    "active",
+    "directory"
+  ],
+  "author": "jim@biacreations.com",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ldapts/ldapts/issues"
+  },
+  "homepage": "https://github.com/ldapts/ldapts#readme",
+  "dependencies": {
+    "@types/asn1": ">=0.2.0",
+    "@types/node": ">=14",
+    "@types/uuid": ">=9",
+    "asn1": "~0.2.6",
+    "debug": "~4.3.4",
+    "strict-event-emitter-types": "~2.0.0",
+    "uuid": "~9.0.0"
+  },
+  "devDependencies": {
+    "@types/chai": "~4.3.4",
+    "@types/chai-as-promised": "~7.1.5",
+    "@types/debug": "~4.1.7",
+    "@types/mocha": "~10.0.1",
+    "@types/sinon": "~10.0.14",
+    "@typescript-eslint/eslint-plugin": "~5.59.1",
+    "@typescript-eslint/parser": "~5.59.1",
+    "chai": "~4.3.7",
+    "chai-as-promised": "~7.1.1",
+    "eslint": "~8.39.0",
+    "eslint-config-airbnb-base": "~15.0.0",
+    "eslint-config-airbnb-typescript": "~17.0.0",
+    "eslint-config-prettier": "~8.8.0",
+    "eslint-plugin-import": "~2.27.5",
+    "eslint-plugin-jsdoc": "~43.1.1",
+    "eslint-plugin-mocha": "10.1.0",
+    "eslint-plugin-prettier": "~4.2.1",
+    "eslint-plugin-promise": "~6.1.1",
+    "eslint-plugin-security": "~1.7.1",
+    "husky": "~8.0.3",
+    "lint-staged": "~13.2.2",
+    "markdownlint-cli": "~0.33.0",
+    "mocha": "~10.2.0",
+    "npm-run-all": "~4.1.5",
+    "pinst": "~3.0.0",
+    "prettier": "~2.8.8",
+    "sinon": "~15.0.4",
+    "ts-mockito": "~2.6.1",
+    "ts-node": "~10.9.1",
+    "typescript": "~5.0.4"
+  }
+}

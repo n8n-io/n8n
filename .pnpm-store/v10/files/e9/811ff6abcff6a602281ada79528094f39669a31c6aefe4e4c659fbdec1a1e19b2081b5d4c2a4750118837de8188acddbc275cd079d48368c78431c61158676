@@ -1,0 +1,43 @@
+{
+  "name": "playwright-core",
+  "version": "1.58.0",
+  "description": "A high-level API to automate web browsers",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/microsoft/playwright.git"
+  },
+  "homepage": "https://playwright.dev",
+  "engines": {
+    "node": ">=18"
+  },
+  "author": {
+    "name": "Microsoft Corporation"
+  },
+  "license": "Apache-2.0",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./index.mjs",
+      "require": "./index.js",
+      "default": "./index.js"
+    },
+    "./package.json": "./package.json",
+    "./lib/outofprocess": "./lib/outofprocess.js",
+    "./lib/cli/program": "./lib/cli/program.js",
+    "./lib/mcpBundle": "./lib/mcpBundle.js",
+    "./lib/remote/playwrightServer": "./lib/remote/playwrightServer.js",
+    "./lib/server": "./lib/server/index.js",
+    "./lib/server/utils/image_tools/stats": "./lib/server/utils/image_tools/stats.js",
+    "./lib/server/utils/image_tools/compare": "./lib/server/utils/image_tools/compare.js",
+    "./lib/server/utils/image_tools/imageChannel": "./lib/server/utils/image_tools/imageChannel.js",
+    "./lib/server/utils/image_tools/colorUtils": "./lib/server/utils/image_tools/colorUtils.js",
+    "./lib/server/registry/index": "./lib/server/registry/index.js",
+    "./lib/utils": "./lib/utils.js",
+    "./lib/utilsBundle": "./lib/utilsBundle.js",
+    "./lib/zipBundle": "./lib/zipBundle.js"
+  },
+  "bin": {
+    "playwright-core": "cli.js"
+  },
+  "types": "types/types.d.ts"
+}

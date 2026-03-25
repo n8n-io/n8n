@@ -1,0 +1,73 @@
+{
+  "name": "vite-plugin-static-copy",
+  "version": "2.2.0",
+  "description": "rollup-plugin-copy for vite with dev server support.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": "./dist/index.js",
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": "^18.0.0 || >=20.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sapphi-red/vite-plugin-static-copy.git"
+  },
+  "keywords": [
+    "vite",
+    "vite-plugin"
+  ],
+  "author": "sapphi-red (https://github.com/sapphi-red)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/sapphi-red/vite-plugin-static-copy/issues"
+  },
+  "homepage": "https://github.com/sapphi-red/vite-plugin-static-copy#readme",
+  "sideEffects": false,
+  "peerDependencies": {
+    "vite": "^5.0.0 || ^6.0.0"
+  },
+  "devDependencies": {
+    "@changesets/changelog-github": "^0.5.0",
+    "@changesets/cli": "^2.27.9",
+    "@eslint/js": "^9.14.0",
+    "@polka/url": "^1.0.0-next.28",
+    "@types/eslint-config-prettier": "^6.11.3",
+    "@types/eslint__js": "^8.42.3",
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^22.9.0",
+    "@types/throttle-debounce": "^5.0.2",
+    "@vitest/eslint-plugin": "^1.1.7",
+    "eslint": "^9.12.0",
+    "eslint-config-prettier": "^9.1.0",
+    "mrmime": "^2.0.0",
+    "node-fetch": "^3.3.2",
+    "prettier": "^3.3.3",
+    "throttle-debounce": "^5.0.2",
+    "tsup": "^8.3.5",
+    "typescript": "^5.6.3",
+    "typescript-eslint": "^8.13.0",
+    "vite": "^6.0.1",
+    "vitest": "^1.6.0",
+    "vitest-github-actions-reporter": "^0.11.1"
+  },
+  "dependencies": {
+    "chokidar": "^3.5.3",
+    "fast-glob": "^3.2.11",
+    "fs-extra": "^11.1.0",
+    "picocolors": "^1.0.0"
+  },
+  "scripts": {
+    "dev": "tsup --watch",
+    "build": "tsup",
+    "lint": "eslint --cache .",
+    "format": "prettier --write --cache .",
+    "type-check": "tsc --noEmit",
+    "test": "vitest",
+    "release:version": "changeset version && pnpm install --no-frozen-lockfile",
+    "release:publish": "changeset publish"
+  }
+}

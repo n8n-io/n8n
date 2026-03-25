@@ -1,0 +1,184 @@
+# Copyright 2012 Mozilla Foundation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Main toolbar buttons (tooltips and alt text for images)
+previous.title=Page précédente
+previous_label=Précédent
+next.title=Page suivante
+next_label=Suivant
+
+# LOCALIZATION NOTE (page.title): The tooltip for the pageNumber input.
+page.title=Page
+# LOCALIZATION NOTE (of_pages): "{{pagesCount}}" will be replaced by a number
+# representing the total number of pages in the document.
+of_pages=sur {{pagesCount}}
+# LOCALIZATION NOTE (page_of_pages): "{{pageNumber}}" and "{{pagesCount}}"
+# will be replaced by a number representing the currently visible page,
+# respectively a number representing the total number of pages in the document.
+page_of_pages=({{pageNumber}} sur {{pagesCount}})
+
+zoom_out.title=Zoom arrière
+zoom_out_label=Zoom arrière
+zoom_in.title=Zoom avant
+zoom_in_label=Zoom avant
+zoom.title=Zoom
+presentation_mode.title=Basculer en mode présentation
+presentation_mode_label=Mode présentation
+open_file.title=Ouvrir le fichier
+open_file_label=Ouvrir le fichier
+print.title=Imprimer
+print_label=Imprimer
+download.title=Télécharger
+download_label=Télécharger
+bookmark.title=Affichage courant (copier ou ouvrir dans une nouvelle fenêtre)
+bookmark_label=Affichage actuel
+
+# Secondary toolbar and context menu
+tools.title=Outils
+tools_label=Outils
+first_page.title=Aller à la première page
+first_page.label=Aller à la première page
+first_page_label=Aller à la première page
+last_page.title=Aller à la dernière page
+last_page.label=Aller à la dernière page
+last_page_label=Aller à la dernière page
+page_rotate_cw.title=Rotation horaire
+page_rotate_cw.label=Rotation horaire
+page_rotate_cw_label=Rotation horaire
+page_rotate_ccw.title=Rotation anti-horaire
+page_rotate_ccw.label=Rotation anti-horaire
+page_rotate_ccw_label=Rotation anti-horaire
+
+cursor_text_select_tool.title=Activer l’outil de sélection de texte
+cursor_text_select_tool_label=Outil de sélection de texte
+cursor_hand_tool.title=Activer l’outil main
+cursor_hand_tool_label=Outil main
+
+# Document properties dialog box
+document_properties.title=Propriétés du document…
+document_properties_label=Propriétés du document…
+document_properties_file_name=Nom du fichier :
+document_properties_file_size=Taille du fichier :
+# LOCALIZATION NOTE (document_properties_kb): "{{size_kb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in kilobytes, respectively in bytes.
+document_properties_kb={{size_kb}} Ko ({{size_b}} octets)
+# LOCALIZATION NOTE (document_properties_mb): "{{size_mb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in megabytes, respectively in bytes.
+document_properties_mb={{size_mb}} Mo ({{size_b}} octets)
+document_properties_title=Titre :
+document_properties_author=Auteur :
+document_properties_subject=Sujet :
+document_properties_keywords=Mots-clés :
+document_properties_creation_date=Date de création :
+document_properties_modification_date=Modifié le :
+# LOCALIZATION NOTE (document_properties_date_string): "{{date}}" and "{{time}}"
+# will be replaced by the creation/modification date, and time, of the PDF file.
+document_properties_date_string={{date}} à {{time}}
+document_properties_creator=Créé par :
+document_properties_producer=Outil de conversion PDF :
+document_properties_version=Version PDF :
+document_properties_page_count=Nombre de pages :
+document_properties_close=Fermer
+
+print_progress_message=Préparation du document pour l’impression…
+# LOCALIZATION NOTE (print_progress_percent): "{{progress}}" will be replaced by
+# a numerical per cent value.
+print_progress_percent={{progress}} %
+print_progress_close=Annuler
+
+# Tooltips and alt text for side panel toolbar buttons
+# (the _label strings are alt text for the buttons, the .title strings are
+# tooltips)
+toggle_sidebar.title=Afficher/Masquer le panneau latéral
+toggle_sidebar_notification.title=Afficher/Masquer le panneau latéral (le document contient des signets/pièces jointes)
+toggle_sidebar_label=Afficher/Masquer le panneau latéral
+document_outline.title=Afficher les signets du document (double-cliquer pour développer/réduire tous les éléments)
+document_outline_label=Signets du document
+attachments.title=Afficher les pièces jointes
+attachments_label=Pièces jointes
+thumbs.title=Afficher les vignettes
+thumbs_label=Vignettes
+findbar.title=Rechercher dans le document
+findbar_label=Rechercher
+
+# Thumbnails panel item (tooltip and alt text for images)
+# LOCALIZATION NOTE (thumb_page_title): "{{page}}" will be replaced by the page
+# number.
+thumb_page_title=Page {{page}}
+# LOCALIZATION NOTE (thumb_page_canvas): "{{page}}" will be replaced by the page
+# number.
+thumb_page_canvas=Vignette de la page {{page}}
+
+# Find panel button title and messages
+find_input.title=Rechercher
+find_input.placeholder=Rechercher dans le document…
+find_previous.title=Trouver l’occurrence précédente de la phrase
+find_previous_label=Précédent
+find_next.title=Trouver la prochaine occurrence de la phrase
+find_next_label=Suivant
+find_highlight=Tout surligner
+find_match_case_label=Respecter la casse
+find_reached_top=Haut de la page atteint, poursuite depuis la fin
+find_reached_bottom=Bas de la page atteint, poursuite au début
+find_not_found=Phrase introuvable
+
+# Error panel labels
+error_more_info=Plus d’informations
+error_less_info=Moins d’informations
+error_close=Fermer
+# LOCALIZATION NOTE (error_version_info): "{{version}}" and "{{build}}" will be
+# replaced by the PDF.JS version and build ID.
+error_version_info=PDF.js v{{version}} (identifiant de compilation : {{build}})
+# LOCALIZATION NOTE (error_message): "{{message}}" will be replaced by an
+# english string describing the error.
+error_message=Message : {{message}}
+# LOCALIZATION NOTE (error_stack): "{{stack}}" will be replaced with a stack
+# trace.
+error_stack=Pile : {{stack}}
+# LOCALIZATION NOTE (error_file): "{{file}}" will be replaced with a filename
+error_file=Fichier : {{file}}
+# LOCALIZATION NOTE (error_line): "{{line}}" will be replaced with a line number
+error_line=Ligne : {{line}}
+rendering_error=Une erreur s’est produite lors de l’affichage de la page.
+
+# Predefined zoom values
+page_scale_width=Pleine largeur
+page_scale_fit=Page entière
+page_scale_auto=Zoom automatique
+page_scale_actual=Taille réelle
+# LOCALIZATION NOTE (page_scale_percent): "{{scale}}" will be replaced by a
+# numerical scale value.
+page_scale_percent={{scale}} %
+
+# Loading indicator messages
+loading_error_indicator=Erreur
+loading_error=Une erreur s’est produite lors du chargement du fichier PDF.
+invalid_file_error=Fichier PDF invalide ou corrompu.
+missing_file_error=Fichier PDF manquant.
+unexpected_response_error=Réponse inattendue du serveur.
+
+# LOCALIZATION NOTE (text_annotation_type.alt): This is used as a tooltip.
+# "{{type}}" will be replaced with an annotation type from a list defined in
+# the PDF spec (32000-1:2008 Table 169 – Annotation types).
+# Some common types are e.g.: "Check", "Text", "Comment", "Note"
+text_annotation_type.alt=[Annotation {{type}}]
+password_label=Veuillez saisir le mot de passe pour ouvrir ce fichier PDF.
+password_invalid=Mot de passe incorrect. Veuillez réessayer.
+password_ok=OK
+password_cancel=Annuler
+
+printing_not_supported=Attention : l’impression n’est pas totalement prise en charge par ce navigateur.
+printing_not_ready=Attention : le PDF n’est pas entièrement chargé pour pouvoir l’imprimer.
+web_fonts_disabled=Les polices web sont désactivées : impossible d’utiliser les polices intégrées au PDF.
+document_colors_not_allowed=Les documents PDF ne peuvent pas utiliser leurs propres couleurs : « Autoriser les pages web à utiliser leurs propres couleurs » est désactivé dans le navigateur.

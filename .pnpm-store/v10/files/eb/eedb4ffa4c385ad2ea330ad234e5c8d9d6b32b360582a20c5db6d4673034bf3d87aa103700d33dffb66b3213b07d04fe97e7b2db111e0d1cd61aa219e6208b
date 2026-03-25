@@ -1,0 +1,43 @@
+{
+  "name": "@kwsites/promise-deferred",
+  "description": "Minimalist creation of promise wrappers, exposing the ability to resolve or reject the inner promise",
+  "version": "1.1.1",
+  "private": false,
+  "author": "Steve King <steve@mydev.co>",
+  "contributors": [
+    {
+      "name": "Steve King",
+      "email": "steve@mydev.co"
+    }
+  ],
+  "main": "./dist/index",
+  "types": "./dist/index",
+  "license": "MIT",
+  "repository": "git://github.com/kwsites/promise-deferred.git",
+  "devDependencies": {
+    "@babel/core": "^7.10.3",
+    "@babel/preset-env": "^7.10.3",
+    "@babel/preset-typescript": "^7.10.1",
+    "@types/jest": "^26.0.0",
+    "@types/node": "^14.0.13",
+    "babel-jest": "^26.1.0",
+    "babel-preset-env": "^1.7.0",
+    "jest": "^26.1.0",
+    "ts-node": "^8.10.2",
+    "typescript": "^3.9.5"
+  },
+  "files": [
+    "LICENSE",
+    "dist/**/*.*"
+  ],
+  "scripts": {
+    "clean": "git clean -fxd -e .idea -e node_modules",
+    "clean:modules": "git clean -fxd node_modules",
+    "build": "tsc --build",
+    "build:clean": "yarn run clean && tsc",
+    "preversion": "yarn run build:clean && yarn test",
+    "postversion": "npm publish --access=public && git push && git push --tags",
+    "test": "jest --coverage",
+    "tsc": "tsc"
+  }
+}

@@ -1,0 +1,78 @@
+# Pinecone Connect
+
+The [Connect to Pinecone widget](https://docs.pinecone.io/integrations/build-integration/connect-to-pinecone-with-embedded-widget)
+gets our integration partners started fast with a seamless Pinecone authentication experience. Your users can get started with Pinecone in just 3 clicks.
+
+This NPM package provides a JavaScript library for rendering the Connect to Pinecone widget embedded in a website, and making use of the user's Pinecone API key.
+
+[Learn more](https://docs.pinecone.io/integrations/build-integration/become-a-partner) about
+becoming a Pinecone integration partner.
+
+## Installation
+
+To install this package into your NPM project:
+
+```Shell
+npm i -S @pinecone-database/connect
+```
+
+## Usage
+
+This package provides two alternative functions for rendering the Connect to Pinecone widget and obtaining the API key.
+
+### connectToPinecone
+
+Renders the "Connect to Pinecone" widget in an embedded context. Calls the provided callback with the API key that results from the user completing the flow.
+
+```TypeScript
+function connectToPinecone(callback: (apiKey: string) => void, options: ConnectToPineconeOptions): void
+```
+
+The second parameter is an object with the following options:
+
+```TypeScript
+type ConnectToPineconeOptions = {
+    /** The ID of the integration being used. Default is "[unknown app]" */
+    integrationId?: string;
+    /** An HTML element into which the widget will be rendered. Default is document.body. */
+    container?: HTMLElement;
+}
+```
+
+#### Example
+
+This example renders the Connect to Pinecone widget into the HTML element with `id="connect-widget"`.
+
+```TypeScript
+import {connectToPinecone} from '@pinecone-database/connect'
+
+const setupPinecone = (apiKey: string) => { /* Set up a pinecone client using the API key, etc. */ }
+
+connectToPinecone(
+  setupPinecone,
+  {
+    integrationId: 'myApp',
+    container: document.getElementById('connect-widget')
+  }
+)
+```
+
+### ConnectPopup
+
+A popup that allows Pinecone users to login and generate an API key. Returns an object with fields:
+
+- `open` - A function that opens the popup. Suitable for use as an on-click handler.
+- `cleanup` - A function that removes all event listeners.
+
+#### Example
+
+```JavaScript
+  const popup = ConnectPopup({
+    onConnect: (key) => {/* ... */},
+    integrationId: 'myApp'
+  })
+```
+
+```HTML
+<button onclick="popup.open">Connect to Pinecone!</button>
+```

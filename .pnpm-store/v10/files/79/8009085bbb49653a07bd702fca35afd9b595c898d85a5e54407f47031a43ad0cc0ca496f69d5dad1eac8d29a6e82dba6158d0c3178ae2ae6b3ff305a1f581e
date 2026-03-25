@@ -1,0 +1,142 @@
+{
+  "name": "get-system-fonts",
+  "version": "2.0.2",
+  "description": "List full paths to all system fonts",
+  "homepage": "https://github.com/princjef/get-system-fonts#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/princjef/get-system-fonts.git"
+  },
+  "bugs": {
+    "url": "https://github.com/princjef/get-system-fonts/issues"
+  },
+  "engines": {
+    "node": ">8.0.0"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "commit": "commit",
+    "lint": "tslint --project tsconfig.json --fix",
+    "clean": "rimraf dist",
+    "prebuild": "npm run clean && npm run lint",
+    "build": "tsc",
+    "watch": "tsc -w",
+    "pretest": "npm run build",
+    "test": "nyc ava --serial dist/**/*.spec.js",
+    "pretest-nocover": "npm run build",
+    "test-nocover": "ava --serial dist/**/*.spec.js",
+    "show-coverage": "opener ./coverage/index.html",
+    "coverage": "nyc report --reporter=text-lcov > coverage.lcov && codecov",
+    "prerelease": "npm run build",
+    "release": "semantic-release"
+  },
+  "keywords": [
+    "font",
+    "system",
+    "ttf",
+    "otf",
+    "file"
+  ],
+  "author": "Jeff Principe <princjef@gmail.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "@commitlint/cli": "^7.5.2",
+    "@commitlint/config-conventional": "^7.5.0",
+    "@commitlint/prompt-cli": "^7.5.0",
+    "@commitlint/travis-cli": "^7.5.2",
+    "@semantic-release/changelog": "^3.0.2",
+    "@semantic-release/git": "^7.0.8",
+    "@semantic-release/github": "^5.2.10",
+    "@semantic-release/npm": "^5.1.4",
+    "@types/node": "^8.10.46",
+    "@types/sinon": "^7.0.11",
+    "ava": "^1.4.1",
+    "codecov": "^3.3.0",
+    "husky": "^1.3.1",
+    "nyc": "^13.3.0",
+    "opener": "^1.5.1",
+    "rimraf": "^2.6.3",
+    "semantic-release": "^15.13.3",
+    "sinon": "^7.3.2",
+    "tslint": "^5.16.0",
+    "tslint-config-standard": "^8.0.1",
+    "typescript": "^3.4.4"
+  },
+  "dependencies": {},
+  "nyc": {
+    "sourceMap": true,
+    "reporter": [
+      "text",
+      "html",
+      "json"
+    ],
+    "include": [
+      "dist/**/*.js"
+    ],
+    "exclude": [
+      "dist/**/*.spec.*",
+      "dist/**/*.d.ts",
+      "dist/**/*.map*"
+    ],
+    "check-coverage": true,
+    "lines": 100,
+    "statements": 100,
+    "functions": 100,
+    "branches": 100,
+    "watermarks": {
+      "lines": [
+        100,
+        100
+      ],
+      "statements": [
+        100,
+        100
+      ],
+      "functions": [
+        100,
+        100
+      ],
+      "branches": [
+        100,
+        100
+      ]
+    }
+  },
+  "commitlint": {
+    "extends": [
+      "@commitlint/config-conventional"
+    ]
+  },
+  "husky": {
+    "hooks": {
+      "commit-msg": "commitlint -e $HUSKY_GIT_PARAMS"
+    }
+  },
+  "release": {
+    "verifyConditions": [
+      "@semantic-release/changelog",
+      "@semantic-release/github",
+      "@semantic-release/npm",
+      "@semantic-release/git"
+    ],
+    "prepare": [
+      {
+        "path": "@semantic-release/changelog",
+        "changelogFile": "CHANGELOG.md"
+      },
+      "@semantic-release/npm",
+      "@semantic-release/git"
+    ],
+    "publish": [
+      "@semantic-release/npm",
+      "@semantic-release/github"
+    ],
+    "success": [
+      "@semantic-release/github"
+    ],
+    "fail": [
+      "@semantic-release/github"
+    ]
+  }
+}

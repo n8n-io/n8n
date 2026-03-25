@@ -1,0 +1,78 @@
+{
+  "name": "babel-plugin-transform-import-meta",
+  "version": "2.3.3",
+  "description": "Transforms import.meta for nodejs environments",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/javiertury/babel-plugin-transform-import-meta"
+  },
+  "license": "BSD-3-Clause",
+  "author": "Javier Garcia <javiertury@gmail.com>",
+  "keywords": [
+    "babel-plugin",
+    "import-meta"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "lib"
+  ],
+  "type": "commonjs",
+  "main": "lib/index.js",
+  "module": "lib/index.esm.mjs",
+  "exports": {
+    "require": "./lib/index.js",
+    "import": "./lib/index.esm.mjs"
+  },
+  "types": "lib/index.d.ts",
+  "dependencies": {
+    "@babel/template": "^7.25.9",
+    "tslib": "^2.8.1"
+  },
+  "peerDependencies": {
+    "@babel/core": "^7.10.0"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.26.4",
+    "@babel/core": "^7.26.0",
+    "@babel/types": "^7.26.3",
+    "@commitlint/cli": "^19.6.1",
+    "@commitlint/config-conventional": "^19.6.0",
+    "@rollup/plugin-node-resolve": "^16.0.0",
+    "@types/babel__core": "^7.20.5",
+    "@types/babel__template": "^7.4.4",
+    "@types/jest": "^29.5.14",
+    "commit-and-tag-version": "^12.5.0",
+    "eslint": "^9.17.0",
+    "eslint-config-love": "^114.0.0",
+    "jest": "^29.7.0",
+    "lint-staged": "^15.3.0",
+    "rimraf": "^6.0.1",
+    "rollup": "^4.29.1",
+    "rollup-plugin-typescript2": "^0.36.0",
+    "simple-git-hooks": "^2.11.1",
+    "ts-dedent": "^2.2.0",
+    "ts-jest": "^29.2.5",
+    "typescript": "^5.7.2"
+  },
+  "commitlint": {
+    "extends": [
+      "@commitlint/config-conventional"
+    ]
+  },
+  "lint-staged": {
+    "*.ts": "eslint"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "pnpm exec lint-staged",
+    "commit-msg": "pnpm exec commitlint -e"
+  },
+  "scripts": {
+    "clean": "rimraf lib",
+    "build": "rollup -c rollup.config.mjs",
+    "lint": "eslint --max-warnings=0 .",
+    "test": "jest",
+    "release": "commit-and-tag-version"
+  }
+}

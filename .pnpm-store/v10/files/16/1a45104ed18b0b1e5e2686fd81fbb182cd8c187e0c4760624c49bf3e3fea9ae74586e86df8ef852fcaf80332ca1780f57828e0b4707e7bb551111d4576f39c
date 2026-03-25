@@ -1,0 +1,245 @@
+{
+  "name": "rxjs",
+  "version": "7.8.1",
+  "description": "Reactive Extensions for modern JavaScript",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm5/index.js",
+  "es2015": "./dist/esm/index.js",
+  "types": "index.d.ts",
+  "typesVersions": {
+    ">=4.2": {
+      "*": [
+        "dist/types/*"
+      ]
+    }
+  },
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "node": "./dist/cjs/index.js",
+      "require": "./dist/cjs/index.js",
+      "es2015": "./dist/esm/index.js",
+      "default": "./dist/esm5/index.js"
+    },
+    "./ajax": {
+      "types": "./dist/types/ajax/index.d.ts",
+      "node": "./dist/cjs/ajax/index.js",
+      "require": "./dist/cjs/ajax/index.js",
+      "es2015": "./dist/esm/ajax/index.js",
+      "default": "./dist/esm5/ajax/index.js"
+    },
+    "./fetch": {
+      "types": "./dist/types/fetch/index.d.ts",
+      "node": "./dist/cjs/fetch/index.js",
+      "require": "./dist/cjs/fetch/index.js",
+      "es2015": "./dist/esm/fetch/index.js",
+      "default": "./dist/esm5/fetch/index.js"
+    },
+    "./operators": {
+      "types": "./dist/types/operators/index.d.ts",
+      "node": "./dist/cjs/operators/index.js",
+      "require": "./dist/cjs/operators/index.js",
+      "es2015": "./dist/esm/operators/index.js",
+      "default": "./dist/esm5/operators/index.js"
+    },
+    "./testing": {
+      "types": "./dist/types/testing/index.d.ts",
+      "node": "./dist/cjs/testing/index.js",
+      "require": "./dist/cjs/testing/index.js",
+      "es2015": "./dist/esm/testing/index.js",
+      "default": "./dist/esm5/testing/index.js"
+    },
+    "./webSocket": {
+      "types": "./dist/types/webSocket/index.d.ts",
+      "node": "./dist/cjs/webSocket/index.js",
+      "require": "./dist/cjs/webSocket/index.js",
+      "es2015": "./dist/esm/webSocket/index.js",
+      "default": "./dist/esm5/webSocket/index.js"
+    },
+    "./internal/*": {
+      "types": "./dist/types/internal/*.d.ts",
+      "node": "./dist/cjs/internal/*.js",
+      "require": "./dist/cjs/internal/*.js",
+      "es2015": "./dist/esm/internal/*.js",
+      "default": "./dist/esm5/internal/*.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "config": {
+    "commitizen": {
+      "path": "cz-conventional-changelog"
+    }
+  },
+  "lint-staged": {
+    "*.js": "eslint --cache --fix",
+    "(src|spec)/**/*.ts": [
+      "tslint --fix",
+      "prettier --write"
+    ],
+    "*.{js,css,md}": "prettier --write"
+  },
+  "scripts": {
+    "changelog": "npx conventional-changelog-cli -p angular -i CHANGELOG.md -s",
+    "build:spec:browser": "echo \"Browser test is not working currently\" && exit -1 && webpack --config spec/support/webpack.mocha.config.js",
+    "lint_spec": "tslint -c spec/tslint.json -p spec/tsconfig.json \"spec/**/*.ts\"",
+    "lint_src": "tslint -c tslint.json -p src/tsconfig.base.json \"src/**/*.ts\"",
+    "lint": "npm-run-all --parallel lint_*",
+    "dtslint": "tsc -b ./src/tsconfig.types.json && tslint -c spec-dtslint/tslint.json -p spec-dtslint/tsconfig.json \"spec-dtslint/**/*.ts\"",
+    "prepublishOnly": "npm run build:package && npm run lint && npm run test && npm run test:circular && npm run dtslint && npm run test:side-effects",
+    "publish_docs": "./publish_docs.sh",
+    "test": "cross-env TS_NODE_PROJECT=tsconfig.mocha.json mocha --config spec/support/.mocharc.js \"spec/**/*-spec.ts\"",
+    "test:esm": "node spec/module-test-spec.mjs",
+    "test:browser": "echo \"Browser test is not working currently\" && exit -1 && npm-run-all build:spec:browser && opn spec/support/mocha-browser-runner.html",
+    "test:circular": "dependency-cruiser --validate .dependency-cruiser.json -x \"^node_modules\" dist/esm5",
+    "test:systemjs": "node integration/systemjs/systemjs-compatibility-spec.js",
+    "test:side-effects": "check-side-effects --test integration/side-effects/side-effects.json",
+    "test:side-effects:update": "npm run test:side-effects -- --update",
+    "test:import": "ts-node ./integration/import/runner.ts",
+    "compile": "tsc -b ./src/tsconfig.cjs.json ./src/tsconfig.cjs.spec.json ./src/tsconfig.esm.json ./src/tsconfig.esm5.json ./src/tsconfig.esm5.rollup.json ./src/tsconfig.types.json ./src/tsconfig.types.spec.json ./spec/tsconfig.json",
+    "build:clean": "shx rm -rf ./dist",
+    "build:global": "node ./tools/make-umd-bundle.js && node ./tools/make-closure-core.js",
+    "build:package": "npm-run-all build:clean compile build:global && node ./tools/prepare-package.js && node ./tools/generate-alias.js",
+    "watch": "nodemon -w \"src/\" -w \"spec/\" -e ts -x npm test",
+    "watch:dtslint": "nodemon -w \"src/\" -w \"spec-dtslint/\" -e ts -x npm run dtslint"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/reactivex/rxjs.git"
+  },
+  "keywords": [
+    "Rx",
+    "RxJS",
+    "ReactiveX",
+    "ReactiveExtensions",
+    "Streams",
+    "Observables",
+    "Observable",
+    "Stream",
+    "ES6",
+    "ES2015"
+  ],
+  "author": "Ben Lesh <ben@benlesh.com>",
+  "contributors": [
+    {
+      "name": "Ben Lesh",
+      "email": "ben@benlesh.com"
+    },
+    {
+      "name": "Paul Taylor",
+      "email": "paul.e.taylor@me.com"
+    },
+    {
+      "name": "Jeff Cross",
+      "email": "crossj@google.com"
+    },
+    {
+      "name": "Matthew Podwysocki",
+      "email": "matthewp@microsoft.com"
+    },
+    {
+      "name": "OJ Kwon",
+      "email": "kwon.ohjoong@gmail.com"
+    },
+    {
+      "name": "Andre Staltz",
+      "email": "andre@staltz.com"
+    }
+  ],
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/ReactiveX/RxJS/issues"
+  },
+  "homepage": "https://rxjs.dev",
+  "dependencies": {
+    "tslib": "^2.1.0"
+  },
+  "devDependencies": {
+    "@angular-devkit/build-optimizer": "0.4.6",
+    "@angular-devkit/schematics": "^11.0.7",
+    "@swc/core": "^1.2.128",
+    "@swc/helpers": "^0.3.2",
+    "@types/chai": "^4.2.11",
+    "@types/lodash": "4.14.102",
+    "@types/mocha": "^7.0.2",
+    "@types/node": "^14.14.6",
+    "@types/shelljs": "^0.8.8",
+    "@types/sinon": "4.1.3",
+    "@types/sinon-chai": "2.7.29",
+    "@types/source-map": "^0.5.2",
+    "@typescript-eslint/eslint-plugin": "^4.29.1",
+    "@typescript-eslint/parser": "^4.29.1",
+    "babel-polyfill": "6.26.0",
+    "chai": "^4.2.0",
+    "check-side-effects": "0.0.23",
+    "color": "3.0.0",
+    "colors": "1.1.2",
+    "cross-env": "5.1.3",
+    "cz-conventional-changelog": "1.2.0",
+    "dependency-cruiser": "^9.12.0",
+    "escape-string-regexp": "1.0.5",
+    "eslint": "^7.8.1",
+    "eslint-plugin-jasmine": "^2.10.1",
+    "form-data": "^3.0.0",
+    "fs-extra": "^8.1.0",
+    "glob": "7.1.2",
+    "google-closure-compiler-js": "20170218.0.0",
+    "husky": "^4.2.5",
+    "klaw-sync": "3.0.2",
+    "lint-staged": "^10.2.11",
+    "lodash": "^4.17.15",
+    "minimist": "^1.2.5",
+    "mocha": "^8.1.3",
+    "nodemon": "^1.9.2",
+    "npm-run-all": "4.1.2",
+    "opn-cli": "3.1.0",
+    "platform": "1.3.5",
+    "prettier": "^2.5.1",
+    "promise": "8.0.1",
+    "rollup": "0.66.6",
+    "rollup-plugin-alias": "1.4.0",
+    "rollup-plugin-inject": "2.0.0",
+    "rollup-plugin-node-resolve": "2.0.0",
+    "shelljs": "^0.8.4",
+    "shx": "^0.3.2",
+    "sinon": "4.3.0",
+    "sinon-chai": "2.14.0",
+    "source-map-support": "0.5.3",
+    "systemjs": "^0.21.0",
+    "ts-node": "^9.1.1",
+    "tslint": "^5.20.1",
+    "tslint-config-prettier": "^1.18.0",
+    "tslint-etc": "1.13.10",
+    "tslint-no-toplevel-property-access": "0.0.2",
+    "tslint-no-unused-expression-chai": "0.0.3",
+    "typescript": "~4.2.0",
+    "validate-commit-msg": "2.14.0",
+    "web-streams-polyfill": "^3.0.2",
+    "webpack": "^4.31.0"
+  },
+  "files": [
+    "dist/bundles",
+    "dist/cjs/**/!(*.tsbuildinfo)",
+    "dist/esm/**/!(*.tsbuildinfo)",
+    "dist/esm5/**/!(*.tsbuildinfo)",
+    "dist/types/**/!(*.tsbuildinfo)",
+    "ajax",
+    "fetch",
+    "operators",
+    "testing",
+    "webSocket",
+    "src",
+    "CHANGELOG.md",
+    "CODE_OF_CONDUCT.md",
+    "LICENSE.txt",
+    "package.json",
+    "README.md",
+    "tsconfig.json"
+  ],
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged",
+      "commit-msg": "validate-commit-msg"
+    }
+  }
+}

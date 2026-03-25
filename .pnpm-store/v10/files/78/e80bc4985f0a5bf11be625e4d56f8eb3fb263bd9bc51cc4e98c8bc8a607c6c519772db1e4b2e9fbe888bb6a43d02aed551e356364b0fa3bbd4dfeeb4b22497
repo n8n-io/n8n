@@ -1,0 +1,1 @@
+export * from "../../dist/experimental/multimodal_embeddings/googlevertexai.js";

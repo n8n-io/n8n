@@ -1,0 +1,48 @@
+{
+  "mappings": [
+    {
+      "scenarioName": "Invalid PAT authentication flow",
+      "requiredScenarioState": "Started",
+      "newScenarioState": "Authenticated",
+      "request": {
+        "urlPathPattern": "/session/v1/login-request.*",
+        "method": "POST",
+        "headers": {
+          "accept": {
+            "equalTo": "application/json"
+          }
+        },
+        "bodyPatterns": [
+          {
+            "equalToJson": {
+              "data": {
+                "ACCOUNT_NAME": "MOCK_ACCOUNT_NAME",
+                "TOKEN": "INVALID_TOKEN",
+                "LOGIN_NAME": "MOCK_USERNAME",
+                "AUTHENTICATOR": "PROGRAMMATIC_ACCESS_TOKEN"
+              }
+            },
+            "ignoreExtraElements": true
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "data": {
+            "nextAction": "RETRY_LOGIN",
+            "authnMethod": "PAT",
+            "signInOptions": {}
+          },
+          "code": "394400",
+          "message": "Programmatic access token is invalid.",
+          "success": false,
+          "headers": null
+        }
+      }
+    }
+  ]
+}

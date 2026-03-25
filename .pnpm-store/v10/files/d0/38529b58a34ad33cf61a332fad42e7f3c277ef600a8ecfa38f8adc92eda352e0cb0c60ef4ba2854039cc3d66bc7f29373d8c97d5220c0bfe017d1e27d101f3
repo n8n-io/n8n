@@ -1,0 +1,52 @@
+{
+  "name": "@jest/transform",
+  "version": "29.7.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jestjs/jest.git",
+    "directory": "packages/jest-transform"
+  },
+  "license": "MIT",
+  "main": "./build/index.js",
+  "types": "./build/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./build/index.d.ts",
+      "default": "./build/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "dependencies": {
+    "@babel/core": "^7.11.6",
+    "@jest/types": "^29.6.3",
+    "@jridgewell/trace-mapping": "^0.3.18",
+    "babel-plugin-istanbul": "^6.1.1",
+    "chalk": "^4.0.0",
+    "convert-source-map": "^2.0.0",
+    "fast-json-stable-stringify": "^2.1.0",
+    "graceful-fs": "^4.2.9",
+    "jest-haste-map": "^29.7.0",
+    "jest-regex-util": "^29.6.3",
+    "jest-util": "^29.7.0",
+    "micromatch": "^4.0.4",
+    "pirates": "^4.0.4",
+    "slash": "^3.0.0",
+    "write-file-atomic": "^4.0.2"
+  },
+  "devDependencies": {
+    "@jest/test-utils": "^29.7.0",
+    "@types/babel__core": "^7.1.14",
+    "@types/convert-source-map": "^2.0.0",
+    "@types/graceful-fs": "^4.1.3",
+    "@types/micromatch": "^4.0.1",
+    "@types/write-file-atomic": "^4.0.0",
+    "dedent": "^1.0.0"
+  },
+  "engines": {
+    "node": "^14.15.0 || ^16.10.0 || >=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "gitHead": "4e56991693da7cd4c3730dc3579a1dd1403ee630"
+}

@@ -1,0 +1,172 @@
+<html>
+  <head>
+    <style>
+      body {
+        font-family: sans-serif;
+      }
+
+      #app {
+        padding: 100px;
+      }
+
+      .toolbar {
+        position: fixed;
+        bottom: 12px;
+        left: 0;
+        width: 100%;
+      }
+
+      .toolbar .wrapper {
+        background: white;
+        padding: 12px;
+        border-radius: 3px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.07);
+        display: flex;
+        align-items: center;
+        border: #eee 1px solid;
+      }
+
+      .toolbar .wrapper > *:not(:last-child) {
+        margin-right: 6px;
+      }
+
+      .separator {
+        margin: 0 12px;
+      }
+
+      .info {
+        color: #eee;
+      }
+
+      .test {
+        background: #eee;
+        height: 100%;
+        border-radius: 3px;
+        flex-direction: column;
+      }
+
+      .info,
+      .test {
+        font-size: 42px;
+      }
+
+      .test-wrapper {
+        margin: 3000px 0;
+        height: 400px;
+      }
+
+      .toolbar,
+      .info,
+      .test {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      input[type="number"] {
+        width: 90px;
+      }
+
+      .number {
+        display: inline-block;
+        width: 40px;
+        font-family: monospace;
+        text-align: center;
+        background: #eee;
+        border-radius: 3px;
+        padding: 4px 0;
+      }
+    </style>
+  </head>
+  <body>
+      <div id="app">
+        <div class="toolbar">
+          <div class="wrapper">
+            <input id="is-visible" type="checkbox" v-model="isVisible" disabled>
+            <label for="is-visible">Is visible?</label>
+
+            <input id="disabled" type="checkbox" v-model="disabled">
+            <label for="disabled">Disable</label>
+
+            <span class="separator"></span>
+
+            <button class="toggle" @click="show = !show">Toggle</button>
+
+            <span class="separator"></span>
+
+            <label for="throttle">Throttle</label>
+            <input id="throttle" type="number" v-model="throttle" min="0" step="100">
+
+            <input id="throttle-leading-visible" type="checkbox" v-model="leadingVisible">
+            <label for="throttle-leading-visible">Leading (Visible)</label>
+            <input id="throttle-leading-hidden" type="checkbox" v-model="leadingHidden">
+            <label for="throttle-leading-hidden">Leading (Hidden)</label>
+
+            <span class="separator"></span>
+
+            <label for="threshold">Threshold</label>
+            <span class="number">{{ threshold }}</span>
+            <input type="range" v-model="threshold" min="0" max="1" step="0.01">
+            <input id="once" type="checkbox" v-model="once">
+            <label for="once">Once</label>
+          </div>
+        </div>
+
+        <div class="info">Scroll down</div>
+        <div class="test-wrapper">
+          <div
+            v-show="show"
+            ref="test"
+            class="test"
+            v-observe-visibility="disabled ? false : {
+              callback: visibilityChanged,
+              throttle,
+              throttleOptions: {
+                leading: leadingVisible && leadingHidden ? 'both' : leadingVisible ? 'visible' : leadingHidden ? 'hidden' : false,
+              },
+              intersection: {
+                threshold,
+              },
+              once,
+            }"
+          >
+            <div v-for="n in count">Hello world!</div>
+          </div>
+        </div>
+      </div>
+
+
+      <script src="https://unpkg.com/vue@3.0.4/dist/vue.global.js"></script>
+      <script src="./dist/vue-observe-visibility.min.js"></script>
+      <script>
+        // App
+        const app = Vue.createApp({
+          data () {
+            return {
+              show: true,
+              isVisible: true,
+              throttle: 0,
+              leadingVisible: false,
+              leadingHidden: false,
+              threshold: 0,
+              count: 1,
+              once: false,
+              disabled: false,
+            }
+          },
+          methods: {
+            visibilityChanged: function (isVisible, entry) {
+              this.isVisible = isVisible
+              this.count++
+              console.log('is visible:', isVisible, 'intersection:', Math.round(entry.intersectionRatio * 100) + '%')
+            }
+          }
+        })
+
+        app.use(VueObserveVisibility)
+
+        app.mount('#app')
+      </script>
+  </body>
+
+</html>

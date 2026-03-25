@@ -1,0 +1,36 @@
+import type { Ref } from 'vue';
+import type { TableColumnCtx } from './table-column/defaults';
+import type { TableHeader } from './table-header';
+import type { Table } from './table/defaults';
+import type { Store } from './store';
+declare class TableLayout<T> {
+    observers: TableHeader[];
+    table: Table<T>;
+    store: Store<T>;
+    columns: TableColumnCtx<T>[];
+    fit: boolean;
+    showHeader: boolean;
+    height: Ref<null | number>;
+    scrollX: Ref<boolean>;
+    scrollY: Ref<boolean>;
+    bodyWidth: Ref<null | number>;
+    fixedWidth: Ref<null | number>;
+    rightFixedWidth: Ref<null | number>;
+    tableHeight: Ref<null | number>;
+    headerHeight: Ref<null | number>;
+    appendHeight: Ref<null | number>;
+    footerHeight: Ref<null | number>;
+    gutterWidth: number;
+    constructor(options: Record<string, any>);
+    updateScrollY(): boolean;
+    setHeight(value: string | number, prop?: string): any;
+    setMaxHeight(value: string | number): void;
+    getFlattenColumns(): TableColumnCtx<T>[];
+    updateElsHeight(): void;
+    headerDisplayNone(elm: HTMLElement): boolean;
+    updateColumnsWidth(): void;
+    addObserver(observer: TableHeader): void;
+    removeObserver(observer: TableHeader): void;
+    notifyObservers(event: string): void;
+}
+export default TableLayout;

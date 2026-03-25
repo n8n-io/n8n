@@ -1,0 +1,180 @@
+@use 'mixins/mixins' as *;
+@use 'mixins/var' as *;
+@use 'mixins/utils' as *;
+@use 'common/var' as *;
+
+@include b(carousel) {
+  @include set-component-css-var('carousel', $carousel);
+
+  position: relative;
+
+  @include m(horizontal) {
+    overflow: hidden;
+  }
+
+  @include m(vertical) {
+    overflow: hidden;
+  }
+
+  @include e(container) {
+    position: relative;
+    height: 300px;
+  }
+
+  @include e(arrow) {
+    border: none;
+    outline: none;
+    padding: 0;
+    margin: 0;
+    height: getCssVar('carousel', 'arrow-size');
+    width: getCssVar('carousel', 'arrow-size');
+    cursor: pointer;
+    transition: getCssVar('transition', 'duration');
+    border-radius: 50%;
+    background-color: getCssVar('carousel', 'arrow-background');
+    color: $color-white;
+    position: absolute;
+    top: 50%;
+    z-index: 10;
+    transform: translateY(-50%);
+    text-align: center;
+    font-size: getCssVar('carousel', 'arrow-font-size');
+
+    @include utils-inline-flex-center;
+
+    @include m(left) {
+      left: 16px;
+    }
+
+    @include m(right) {
+      right: 16px;
+    }
+
+    &:hover {
+      background-color: getCssVar('carousel', 'arrow-hover-background');
+    }
+
+    & i {
+      cursor: pointer;
+    }
+  }
+
+  @include e(indicators) {
+    position: absolute;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    z-index: calc(#{getCssVar('index-normal')} + 1);
+
+    @include m(horizontal) {
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    @include m(vertical) {
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    @include m(outside) {
+      bottom: calc(
+        getCssVar('carousel-indicator-height') +
+          getCssVar('carousel-indicator-padding-vertical') * 2
+      );
+      text-align: center;
+      position: static;
+      transform: none;
+
+      .#{$namespace}-carousel__indicator:hover button {
+        opacity: 0.64;
+      }
+
+      button {
+        background-color: getCssVar('carousel', 'indicator-out-color');
+        opacity: 0.24;
+      }
+    }
+
+    @include m(right) {
+      right: 0;
+    }
+
+    @include m(labels) {
+      left: 0;
+      right: 0;
+      transform: none;
+      text-align: center;
+
+      .#{$namespace}-carousel__button {
+        height: auto;
+        width: auto;
+        padding: 2px 18px;
+        font-size: 12px;
+        color: $color-black;
+      }
+
+      .#{$namespace}-carousel__indicator {
+        padding: 6px 4px;
+      }
+    }
+  }
+
+  @include e(indicator) {
+    background-color: transparent;
+    cursor: pointer;
+
+    &:hover button {
+      opacity: 0.72;
+    }
+
+    @include m(horizontal) {
+      display: inline-block;
+      padding: getCssVar('carousel-indicator-padding-vertical')
+        getCssVar('carousel-indicator-padding-horizontal');
+    }
+
+    @include m(vertical) {
+      padding: getCssVar('carousel-indicator-padding-horizontal')
+        getCssVar('carousel-indicator-padding-vertical');
+
+      .#{$namespace}-carousel__button {
+        width: getCssVar('carousel-indicator-height');
+        height: calc(#{getCssVar('carousel-indicator-width')} / 2);
+      }
+    }
+
+    @include when(active) {
+      button {
+        opacity: 1;
+      }
+    }
+  }
+
+  @include e(button) {
+    display: block;
+    opacity: 0.48;
+    width: getCssVar('carousel-indicator-width');
+    height: getCssVar('carousel-indicator-height');
+    background-color: $color-white;
+    border: none;
+    outline: none;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+    transition: getCssVar('transition-duration');
+  }
+}
+
+.carousel-arrow-left-enter-from,
+.carousel-arrow-left-leave-active {
+  transform: translateY(-50%) translateX(-10px);
+  opacity: 0;
+}
+
+.carousel-arrow-right-enter-from,
+.carousel-arrow-right-leave-active {
+  transform: translateY(-50%) translateX(10px);
+  opacity: 0;
+}

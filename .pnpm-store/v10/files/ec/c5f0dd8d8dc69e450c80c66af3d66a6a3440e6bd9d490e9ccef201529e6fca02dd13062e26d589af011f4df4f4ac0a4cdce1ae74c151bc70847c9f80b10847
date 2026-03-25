@@ -1,0 +1,27 @@
+{
+    "name": "@types/temp",
+    "version": "0.9.4",
+    "description": "TypeScript definitions for temp",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/temp",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Daniel Rosenwasser",
+            "githubUsername": "DanielRosenwasser",
+            "url": "https://github.com/DanielRosenwasser"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/temp"
+    },
+    "scripts": {},
+    "dependencies": {
+        "@types/node": "*"
+    },
+    "typesPublisherContentHash": "7ee495fc0ad2a5bd1f779fd1128d4de98d5258615aeea5ac5820df76642d3662",
+    "typeScriptVersion": "4.5"
+}

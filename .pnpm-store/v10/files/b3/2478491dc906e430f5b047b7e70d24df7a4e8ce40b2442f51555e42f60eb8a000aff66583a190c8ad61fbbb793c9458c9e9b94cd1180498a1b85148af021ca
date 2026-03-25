@@ -1,0 +1,17 @@
+{
+  "name": "stickyfill",
+  "description": "A polyfill for `position: sticky` for browsers that don't support it yet.",
+  "version": "1.1.1",
+  "tags": [
+    "polyfill",
+    "webmodule",
+    "position",
+    "sticky",
+    "browser"
+  ],
+  "dependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:webmodules/stickyfill.git"
+  }
+}

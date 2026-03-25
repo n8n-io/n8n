@@ -1,0 +1,1 @@
+{"version":3,"file":"customUserTokenAPI.js","sourceRoot":"","sources":["../../../src/oauth/customUserTokenAPI.ts"],"names":[],"mappings":";;;AAAA,4DAA4D;AAC5D,kCAAkC;AAC3B,MAAM,uBAAuB,GAAG,GAAW,EAAE;;IAClD,OAAO,MAAA,OAAO,CAAC,GAAG,CAAC,sBAAsB,mCAAI,8BAA8B,CAAA;AAC7E,CAAC,CAAA;AAFY,QAAA,uBAAuB,2BAEnC"}

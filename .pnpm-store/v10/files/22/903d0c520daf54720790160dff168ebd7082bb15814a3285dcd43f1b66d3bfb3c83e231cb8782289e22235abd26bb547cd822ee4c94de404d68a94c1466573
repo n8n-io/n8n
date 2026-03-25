@@ -1,0 +1,184 @@
+# Copyright 2012 Mozilla Foundation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Main toolbar buttons (tooltips and alt text for images)
+previous.title=Tudalen Flaenorol
+previous_label=Blaenorol
+next.title=Tudalen Nesaf
+next_label=Nesaf
+
+# LOCALIZATION NOTE (page.title): The tooltip for the pageNumber input.
+page.title=Tudalen
+# LOCALIZATION NOTE (of_pages): "{{pagesCount}}" will be replaced by a number
+# representing the total number of pages in the document.
+of_pages=o {{pagesCount}}
+# LOCALIZATION NOTE (page_of_pages): "{{pageNumber}}" and "{{pagesCount}}"
+# will be replaced by a number representing the currently visible page,
+# respectively a number representing the total number of pages in the document.
+page_of_pages=({{pageNumber}} o {{pagesCount}})
+
+zoom_out.title=Chwyddo Allan
+zoom_out_label=Chwyddo Allan
+zoom_in.title=Chwyddo Mewn
+zoom_in_label=Chwyddo Mewn
+zoom.title=Chwyddo
+presentation_mode.title=Newid i'r Modd Cyflwyno
+presentation_mode_label=Modd Cyflwyno
+open_file.title=Agor Ffeil
+open_file_label=Agor
+print.title=Argraffu
+print_label=Argraffu
+download.title=Llwyth
+download_label=Llwytho i Lawr
+bookmark.title=Golwg cyfredol (copïo neu agor ffenestr newydd)
+bookmark_label=Golwg Gyfredol
+
+# Secondary toolbar and context menu
+tools.title=Offer
+tools_label=Offer
+first_page.title=Mynd i'r Dudalen Gyntaf
+first_page.label=Mynd i'r Dudalen Gyntaf
+first_page_label=Mynd i'r Dudalen Gyntaf
+last_page.title=Mynd i'r Dudalen Olaf
+last_page.label=Mynd i'r Dudalen Olaf
+last_page_label=Mynd i'r Dudalen Olaf
+page_rotate_cw.title=Cylchdroi Clocwedd
+page_rotate_cw.label=Cylchdroi Clocwedd
+page_rotate_cw_label=Cylchdroi Clocwedd
+page_rotate_ccw.title=Cylchdroi Gwrthglocwedd
+page_rotate_ccw.label=Cylchdroi Gwrthglocwedd
+page_rotate_ccw_label=Cylchdroi Gwrthglocwedd
+
+cursor_text_select_tool.title=Galluogi Dewis Offeryn Testun
+cursor_text_select_tool_label=Offeryn Dewis Testun
+cursor_hand_tool.title=Galluogi Offeryn Llaw
+cursor_hand_tool_label=Offeryn Llaw
+
+# Document properties dialog box
+document_properties.title=Priodweddau Dogfen…
+document_properties_label=Priodweddau Dogfen…
+document_properties_file_name=Enw ffeil:
+document_properties_file_size=Maint ffeil:
+# LOCALIZATION NOTE (document_properties_kb): "{{size_kb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in kilobytes, respectively in bytes.
+document_properties_kb={{size_kb}} KB ({{size_b}} beit)
+# LOCALIZATION NOTE (document_properties_mb): "{{size_mb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in megabytes, respectively in bytes.
+document_properties_mb={{size_mb}} MB ({{size_b}} beit)
+document_properties_title=Teitl:
+document_properties_author=Awdur:
+document_properties_subject=Pwnc:
+document_properties_keywords=Allweddair:
+document_properties_creation_date=Dyddiad Creu:
+document_properties_modification_date=Dyddiad Addasu:
+# LOCALIZATION NOTE (document_properties_date_string): "{{date}}" and "{{time}}"
+# will be replaced by the creation/modification date, and time, of the PDF file.
+document_properties_date_string={{date}}, {{time}}
+document_properties_creator=Crewr:
+document_properties_producer=Cynhyrchydd PDF:
+document_properties_version=Fersiwn PDF:
+document_properties_page_count=Cyfrif Tudalen:
+document_properties_close=Cau
+
+print_progress_message=Paratoi dogfen ar gyfer ei hargraffu…
+# LOCALIZATION NOTE (print_progress_percent): "{{progress}}" will be replaced by
+# a numerical per cent value.
+print_progress_percent={{progress}}%
+print_progress_close=Diddymu
+
+# Tooltips and alt text for side panel toolbar buttons
+# (the _label strings are alt text for the buttons, the .title strings are
+# tooltips)
+toggle_sidebar.title=Toglo'r Bar Ochr
+toggle_sidebar_notification.title=Toglo'r Bar Ochr (mae'r ddogfen yn cynnwys outline/attachments)
+toggle_sidebar_label=Toglo'r Bar Ochr
+document_outline.title=Dangos Amlinell Dogfen (clic dwbl i ymestyn/cau pob eitem)
+document_outline_label=Amlinelliad Dogfen
+attachments.title=Dangos Atodiadau
+attachments_label=Atodiadau
+thumbs.title=Dangos Lluniau Bach
+thumbs_label=Lluniau Bach
+findbar.title=Canfod yn y Ddogfen
+findbar_label=Canfod
+
+# Thumbnails panel item (tooltip and alt text for images)
+# LOCALIZATION NOTE (thumb_page_title): "{{page}}" will be replaced by the page
+# number.
+thumb_page_title=Tudalen {{page}}
+# LOCALIZATION NOTE (thumb_page_canvas): "{{page}}" will be replaced by the page
+# number.
+thumb_page_canvas=Llun Bach Tudalen {{page}}
+
+# Find panel button title and messages
+find_input.title=Canfod
+find_input.placeholder=Canfod yn y ddogfen…
+find_previous.title=Canfod enghraifft flaenorol o'r ymadrodd
+find_previous_label=Blaenorol
+find_next.title=Canfod enghraifft nesaf yr ymadrodd
+find_next_label=Nesaf
+find_highlight=Amlygu popeth
+find_match_case_label=Cydweddu maint
+find_reached_top=Wedi cyrraedd brig y dudalen, parhau o'r gwaelod
+find_reached_bottom=Wedi cyrraedd diwedd y dudalen, parhau o'r brig
+find_not_found=Heb ganfod ymadrodd
+
+# Error panel labels
+error_more_info=Rhagor o Wybodaeth
+error_less_info=Llai o wybodaeth
+error_close=Cau
+# LOCALIZATION NOTE (error_version_info): "{{version}}" and "{{build}}" will be
+# replaced by the PDF.JS version and build ID.
+error_version_info=PDF.js v{{version}} (build: {{build}})
+# LOCALIZATION NOTE (error_message): "{{message}}" will be replaced by an
+# english string describing the error.
+error_message=Neges: {{message}}
+# LOCALIZATION NOTE (error_stack): "{{stack}}" will be replaced with a stack
+# trace.
+error_stack=Stac: {{stack}}
+# LOCALIZATION NOTE (error_file): "{{file}}" will be replaced with a filename
+error_file=Ffeil: {{file}}
+# LOCALIZATION NOTE (error_line): "{{line}}" will be replaced with a line number
+error_line=Llinell: {{line}}
+rendering_error=Digwyddodd gwall wrth adeiladu'r dudalen.
+
+# Predefined zoom values
+page_scale_width=Lled Tudalen
+page_scale_fit=Ffit Tudalen
+page_scale_auto=Chwyddo Awtomatig
+page_scale_actual=Maint Gwirioneddol
+# LOCALIZATION NOTE (page_scale_percent): "{{scale}}" will be replaced by a
+# numerical scale value.
+page_scale_percent={{scale}}%
+
+# Loading indicator messages
+loading_error_indicator=Gwall
+loading_error=Digwyddodd gwall wrth lwytho'r PDF.
+invalid_file_error=Ffeil PDF annilys neu llwgr.
+missing_file_error=Ffeil PDF coll.
+unexpected_response_error=Ymateb annisgwyl gan y gweinydd.
+
+# LOCALIZATION NOTE (text_annotation_type.alt): This is used as a tooltip.
+# "{{type}}" will be replaced with an annotation type from a list defined in
+# the PDF spec (32000-1:2008 Table 169 – Annotation types).
+# Some common types are e.g.: "Check", "Text", "Comment", "Note"
+text_annotation_type.alt=[Anodiad {{type}} ]
+password_label=Rhowch gyfrinair i agor y PDF.
+password_invalid=Cyfrinair annilys. Ceisiwch eto.
+password_ok=Iawn
+password_cancel=Diddymu
+
+printing_not_supported=Rhybudd: Nid yw argraffu yn cael ei gynnal yn llawn gan y porwr.
+printing_not_ready=Rhybudd: Nid yw'r PDF wedi ei lwytho'n llawn ar gyfer argraffu.
+web_fonts_disabled=Ffontiau gwe wedi eu hanalluogi: methu defnyddio ffontiau PDF mewnblanedig.
+document_colors_not_allowed=Nid oes caniatâd i ddogfennau PDF i ddefnyddio eu lliwiau eu hunain: Mae “Caniatáu i dudalennau ddefnyddio eu lliwiau eu hunain” wedi ei atal yn y porwr.

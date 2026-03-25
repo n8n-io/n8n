@@ -1,0 +1,75 @@
+{
+  "name": "c12",
+  "version": "1.11.2",
+  "description": "Smart Config Loader",
+  "repository": "unjs/c12",
+  "license": "MIT",
+  "sideEffects": false,
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts"
+    },
+    "./update": {
+      "import": "./dist/update.mjs",
+      "require": "./dist/update.cjs",
+      "types": "./dist/update.d.ts"
+    }
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "update.d.ts"
+  ],
+  "scripts": {
+    "build": "automd && unbuild",
+    "dev": "vitest dev",
+    "lint": "eslint . && prettier -c src test",
+    "lint:fix": "eslint . --fix && prettier -w src test",
+    "prepack": "unbuild",
+    "release": "pnpm test && changelogen --release && npm publish && git push --follow-tags",
+    "test": "pnpm lint && vitest run --coverage && pnpm test:types",
+    "test:types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "chokidar": "^3.6.0",
+    "confbox": "^0.1.7",
+    "defu": "^6.1.4",
+    "dotenv": "^16.4.5",
+    "giget": "^1.2.3",
+    "jiti": "^1.21.6",
+    "mlly": "^1.7.1",
+    "ohash": "^1.1.3",
+    "pathe": "^1.1.2",
+    "perfect-debounce": "^1.0.0",
+    "pkg-types": "^1.2.0",
+    "rc9": "^2.1.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.5.2",
+    "@vitest/coverage-v8": "^2.0.5",
+    "automd": "^0.3.8",
+    "changelogen": "^0.5.5",
+    "eslint": "^9.9.1",
+    "eslint-config-unjs": "^0.3.2",
+    "expect-type": "^0.20.0",
+    "magicast": "^0.3.5",
+    "prettier": "^3.3.3",
+    "typescript": "^5.5.4",
+    "unbuild": "^2.0.0",
+    "vitest": "^2.0.5"
+  },
+  "peerDependencies": {
+    "magicast": "^0.3.4"
+  },
+  "peerDependenciesMeta": {
+    "magicast": {
+      "optional": true
+    }
+  },
+  "packageManager": "pnpm@9.3.0"
+}

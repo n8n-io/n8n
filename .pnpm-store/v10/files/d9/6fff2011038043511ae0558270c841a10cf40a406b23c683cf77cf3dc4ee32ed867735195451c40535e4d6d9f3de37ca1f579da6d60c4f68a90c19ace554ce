@@ -1,0 +1,89 @@
+{
+  "name": "nock",
+  "description": "HTTP server mocking and expectations library for Node.js",
+  "tags": [
+    "Mock",
+    "HTTP",
+    "testing",
+    "isolation"
+  ],
+  "version": "14.0.1",
+  "author": "Pedro Teixeira <pedro.teixeira@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nock/nock.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nock/nock/issues"
+  },
+  "engines": {
+    "node": ">=18.20.0 <20 || >=20.12.1"
+  },
+  "main": "./index.js",
+  "types": "types",
+  "dependencies": {
+    "@mswjs/interceptors": "^0.37.3",
+    "json-stringify-safe": "^5.0.1",
+    "propagate": "^2.0.0"
+  },
+  "devDependencies": {
+    "@definitelytyped/dtslint": "^0.0.163",
+    "@sinonjs/fake-timers": "^11.2.2",
+    "assert-rejects": "^1.0.0",
+    "chai": "^4.1.2",
+    "dirty-chai": "^2.0.1",
+    "eslint": "^8.8.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-config-standard": "^17.0.0-0",
+    "eslint-plugin-import": "^2.16.0",
+    "eslint-plugin-mocha": "^10.0.3",
+    "eslint-plugin-node": "^11.0.0",
+    "eslint-plugin-promise": "^6.0.0",
+    "form-data": "^4.0.0",
+    "got": "^11.3.0",
+    "jest": "^29.7.0",
+    "mocha": "^9.1.3",
+    "npm-run-all": "^4.1.5",
+    "nyc": "^15.0.0",
+    "prettier": "3.2.5",
+    "proxyquire": "^2.1.0",
+    "rimraf": "^3.0.0",
+    "semantic-release": "^24.1.0",
+    "sinon": "^17.0.1",
+    "sinon-chai": "^3.7.0",
+    "typescript": "^5.0.4"
+  },
+  "scripts": {
+    "format:fix": "prettier --write '**/*.{js,json,md,ts,yml,yaml}'",
+    "format": "prettier --check '**/*.{js,json,md,ts,yml,yaml}'",
+    "lint": "run-p lint:js lint:ts",
+    "lint:js": "eslint --cache --cache-location './.cache/eslint' '**/*.js'",
+    "lint:js:fix": "eslint --cache --cache-location './.cache/eslint' --fix '**/*.js'",
+    "lint:ts": "dtslint --expectOnly types",
+    "test": "nyc --reporter=lcov --reporter=text mocha --recursive tests",
+    "test:coverage": "open coverage/lcov-report/index.html",
+    "test:jest": "jest tests_jest --detectLeaks"
+  },
+  "license": "MIT",
+  "files": [
+    "index.js",
+    "lib",
+    "types/index.d.ts"
+  ],
+  "release": {
+    "branches": [
+      "+([0-9])?(.{+([0-9]),x}).x",
+      "main",
+      "next",
+      "next-major",
+      {
+        "name": "beta",
+        "prerelease": true
+      },
+      {
+        "name": "alpha",
+        "prerelease": true
+      }
+    ]
+  }
+}

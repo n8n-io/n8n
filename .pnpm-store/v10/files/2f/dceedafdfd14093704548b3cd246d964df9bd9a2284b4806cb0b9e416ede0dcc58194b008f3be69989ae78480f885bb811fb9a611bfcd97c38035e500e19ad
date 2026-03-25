@@ -1,0 +1,71 @@
+{
+  "name": "vite-plugin-istanbul",
+  "version": "7.2.0",
+  "author": "iFaxity (christian@faxity.se)",
+  "license": "MIT",
+  "files": [
+    "dist/*"
+  ],
+  "main": "./dist/index.mjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": null
+    }
+  },
+  "scripts": {
+    "dev": "unbuild --stub",
+    "build": "unbuild",
+    "prettier": "prettier --check .",
+    "format": "prettier --write .",
+    "prepublishOnly": "npm run build",
+    "prepare": "husky"
+  },
+  "homepage": "https://github.com/ifaxity/vite-plugin-istanbul",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ifaxity/vite-plugin-istanbul.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ifaxity/vite-plugin-istanbul/issues"
+  },
+  "keywords": [
+    "vite",
+    "babel",
+    "plugin",
+    "istanbul",
+    "nyc"
+  ],
+  "dependencies": {
+    "@babel/generator": "^7.28.0",
+    "@istanbuljs/load-nyc-config": "^1.1.0",
+    "espree": "^10.3.0",
+    "istanbul-lib-instrument": "^6.0.3",
+    "picocolors": "^1.1.1",
+    "source-map": "^0.7.4",
+    "test-exclude": "^7.0.1"
+  },
+  "peerDependencies": {
+    "vite": ">=4 <=7"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "19.6.1",
+    "@commitlint/config-conventional": "19.6.0",
+    "@ianvs/prettier-plugin-sort-imports": "4.4.1",
+    "@semantic-release/changelog": "6.0.3",
+    "@semantic-release/git": "10.0.1",
+    "@types/babel__generator": "7.6.8",
+    "@types/node": "22.10.7",
+    "@types/ws": "8.5.13",
+    "husky": "9.1.7",
+    "lint-staged": "15.4.3",
+    "prettier": "3.4.2",
+    "rollup": "4.31.0",
+    "typescript": "5.7.3",
+    "unbuild": "3.3.1"
+  },
+  "packageManager": "pnpm@9.0.6+sha1.648f6014eb363abb36618f2ba59282a9eeb3e879"
+}

@@ -1,0 +1,69 @@
+{
+  "name": "mark.js",
+  "version": "8.11.1",
+  "keywords": [
+    "mark.js",
+    "markjs",
+    "mark",
+    "jquery.mark",
+    "jmHighlight",
+    "highlight",
+    "search",
+    "jquery",
+    "javascript",
+    "text",
+    "keyword"
+  ],
+  "license": "MIT",
+  "homepage": "https://markjs.io/",
+  "author": {
+    "name": "Julian Kühnel",
+    "url": "https://github.com/julmot"
+  },
+  "description": "Highlight keywords using JavaScript. Intended for every use case. Can e.g. be used to mark text in search results.",
+  "main": "dist/mark.js",
+  "repository": "julmot/mark.js",
+  "bugs": {
+    "url": "https://github.com/julmot/mark.js/issues"
+  },
+  "scripts": {
+    "eslint": "eslint src/ test/",
+    "karma": "karma start build/karma.config.js",
+    "karma-ci": "karma start build/karma.config-ci.js",
+    "jsdoc": "jsdoc src/lib/ -d build/doc -R README.md -P package.json -r",
+    "compile": "rollup -c build/rollup.config.js",
+    "build": "npm run eslint && npm run compile && npm run karma && npm run jsdoc",
+    "dev": "nodemon --exec \"npm run eslint && npm run compile\" --watch src/ --watch test/ -e js,html",
+    "test": "npm run build"
+  },
+  "devDependencies": {
+    "babel-core": "^6.26.0",
+    "babel-plugin-external-helpers": "^6.22.0",
+    "babel-plugin-transform-object-assign": "^6.22.0",
+    "babel-preset-env": "^1.6.1",
+    "eslint": "^4.14.0",
+    "eslint-plugin-jasmine-jquery": "^1.0.0",
+    "handlebars": "^4.0.11",
+    "jasmine-core": "^2.8.0",
+    "jquery": "^3.2.1",
+    "jsdoc": "^3.5.5",
+    "karma": "^2.0.0",
+    "karma-cli": "^1.0.1",
+    "karma-coverage": "^1.1.1",
+    "karma-jasmine": "^1.1.1",
+    "karma-jasmine-jquery": "^0.1.1",
+    "karma-phantomjs-launcher": "^1.0.4",
+    "karma-sauce-launcher": "^1.2.0",
+    "karma-spec-reporter": "0.0.32",
+    "karma-summary-reporter": "^1.4.0",
+    "nodemon": "^1.14.10",
+    "phantomjs-prebuilt": "^2.1.16",
+    "rollup": "^0.53.3",
+    "rollup-plugin-babel": "^3.0.3",
+    "rollup-plugin-cleanup": "^2.0.0",
+    "rollup-plugin-commonjs": "^8.2.6",
+    "rollup-plugin-node-resolve": "^3.0.0",
+    "rollup-plugin-uglify": "^2.0.1",
+    "uglify-es": "^3.3.4"
+  }
+}

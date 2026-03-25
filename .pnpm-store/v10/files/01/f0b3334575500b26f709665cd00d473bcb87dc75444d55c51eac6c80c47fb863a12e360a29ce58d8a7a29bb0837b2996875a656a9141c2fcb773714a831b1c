@@ -1,0 +1,29 @@
+language: node_js
+
+node_js:
+  - "16"
+  - "18"
+  - "20"
+
+env:
+  - INSTALL_JDK=1
+  - INSTALL_JDK=0
+
+before_install:
+  - if [[ "$INSTALL_JDK" == "1" ]] ; then make install_jdk ; fi
+
+install:
+  - yarn install --production=true
+
+script:
+  - yarn add @authenio/samlify-xsd-schema-validator
+  - yarn test --timeout=30s
+
+branches:
+  only:
+  - master
+  - /^.*-alpha$/
+  - /^.*-rc.*$/
+  - /^feature\/.*$/
+
+after_success: npm run coverage

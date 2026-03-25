@@ -1,0 +1,27 @@
+{
+    "name": "@types/ioredis-mock",
+    "version": "8.2.2",
+    "description": "TypeScript definitions for ioredis-mock",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/ioredis-mock",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Lukas Elmer",
+            "url": "https://github.com/lukaselmer",
+            "githubUsername": "lukaselmer"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/ioredis-mock"
+    },
+    "scripts": {},
+    "dependencies": {
+        "ioredis": ">=5"
+    },
+    "typesPublisherContentHash": "417de2c8c93af1970f8c6d951237852ab6f29841f59243b12903af742d4863af",
+    "typeScriptVersion": "4.3"
+}

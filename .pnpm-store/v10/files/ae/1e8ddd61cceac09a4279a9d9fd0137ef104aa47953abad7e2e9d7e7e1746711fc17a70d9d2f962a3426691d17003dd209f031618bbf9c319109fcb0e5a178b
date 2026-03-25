@@ -1,0 +1,3 @@
+schemas:
+  a:
+    $ref: a.yaml

@@ -1,0 +1,65 @@
+{
+  "name": "xss",
+  "main": "./lib/index.js",
+  "typings": "./typings/xss.d.ts",
+  "version": "1.0.15",
+  "description": "Sanitize untrusted HTML (to prevent XSS) with a configuration specified by a Whitelist",
+  "author": "Zongmin Lei <leizongmin@gmail.com> (http://ucdok.com)",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/leizongmin/js-xss.git"
+  },
+  "engines": {
+    "node": ">= 0.10.0"
+  },
+  "dependencies": {
+    "commander": "^2.20.3",
+    "cssfilter": "0.0.10"
+  },
+  "devDependencies": {
+    "browserify": "^17.0.0",
+    "coveralls": "^3.1.1",
+    "debug": "^4.3.4",
+    "eslint": "^8.16.0",
+    "mocha": "^8.4.0",
+    "nyc": "^15.1.0",
+    "uglify-js": "^3.15.5"
+  },
+  "files": [
+    "lib",
+    "bin/xss",
+    "dist",
+    "typings/*.d.ts"
+  ],
+  "bin": {
+    "xss": "./bin/xss"
+  },
+  "scripts": {
+    "lint": "eslint lib/**",
+    "test": "export DEBUG=xss:* && mocha -t 5000",
+    "test-cov": "nyc --reporter=lcov mocha --exit \"test/*.js\" && nyc report",
+    "coveralls": "cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js",
+    "build": "./bin/build",
+    "prepublish": "npm run test && npm run build"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/leizongmin/js-xss/issues"
+  },
+  "homepage": "https://github.com/leizongmin/js-xss",
+  "keywords": [
+    "sanitization",
+    "xss",
+    "sanitize",
+    "sanitisation",
+    "input",
+    "security",
+    "escape",
+    "encode",
+    "filter",
+    "validator",
+    "html",
+    "injection",
+    "whitelist"
+  ]
+}

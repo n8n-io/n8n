@@ -1,0 +1,65 @@
+{
+  "name": "@n8n/tournament",
+  "version": "1.0.6",
+  "description": "Output compatible rewrite of riot tmpl",
+  "main": "dist/index.js",
+  "module": "src/index.ts",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "require": "./dist/index.js",
+      "import": "./src/index.ts",
+      "types": "./dist/index.d.ts"
+    },
+    "./*": "./*"
+  },
+  "scripts": {
+    "start": "ts-node src/index.ts",
+    "build": "tsc -p ./tsconfig.build.json",
+    "prepack": "pnpm build",
+    "test": "jest",
+    "lint": "eslint .",
+    "lintfix": "eslint . --fix"
+  },
+  "engines": {
+    "node": ">=20.15",
+    "pnpm": ">=9.5"
+  },
+  "files": [
+    "src/",
+    "dist/",
+    "LICENSE.md",
+    "package.json",
+    "tsconfig.json"
+  ],
+  "packageManager": "pnpm@9.6.0",
+  "keywords": [],
+  "author": "",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "@n8n_io/eslint-config": "^0.0.2",
+    "@types/jest": "^29.5.0",
+    "@types/node": "^18.13.0",
+    "@typescript-eslint/eslint-plugin": "^6.1.0",
+    "eslint": "^8.38.0",
+    "eslint-config-airbnb-typescript": "^17.1.0",
+    "eslint-config-prettier": "^8.8.0",
+    "eslint-plugin-n8n-local-rules": "^1.0.0",
+    "eslint-plugin-prettier": "^5.0.0",
+    "eslint-plugin-unicorn": "^48.0.0",
+    "eslint-plugin-unused-imports": "^3.0.0",
+    "jest": "^29.5.0",
+    "nodemon": "^2.0.20",
+    "prettier": "^3.0.0",
+    "ts-jest": "^29.1.0",
+    "ts-node": "^10.9.1",
+    "tsc-alias": "^1.8.7",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@n8n_io/riot-tmpl": "^4.0.1",
+    "ast-types": "^0.16.1",
+    "esprima-next": "^5.8.4",
+    "recast": "^0.22.0"
+  }
+}

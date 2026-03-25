@@ -1,0 +1,29 @@
+{
+    "name": "@types/stream-json",
+    "version": "1.7.8",
+    "description": "TypeScript definitions for stream-json",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/stream-json",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Eugene Lazutkin",
+            "githubUsername": "uhop",
+            "url": "https://github.com/uhop"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/stream-json"
+    },
+    "scripts": {},
+    "dependencies": {
+        "@types/node": "*",
+        "@types/stream-chain": "*"
+    },
+    "peerDependencies": {},
+    "typesPublisherContentHash": "d57bc032ca052f625a5bb9645b69b5d12152a340466e2eb14cb495c2637ccb50",
+    "typeScriptVersion": "4.9"
+}

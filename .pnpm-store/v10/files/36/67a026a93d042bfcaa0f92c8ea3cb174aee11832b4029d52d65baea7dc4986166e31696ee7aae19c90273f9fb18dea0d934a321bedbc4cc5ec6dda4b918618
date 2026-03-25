@@ -1,0 +1,1 @@
+module.exports = require("../dist/tools/dataforseo_api_search.cjs");

@@ -1,0 +1,177 @@
+{
+  "name": "@noble/ciphers",
+  "version": "1.3.0",
+  "description": "Audited & minimal JS implementation of Salsa20, ChaCha and AES",
+  "files": [
+    "esm",
+    "src",
+    "*.js",
+    "*.js.map",
+    "*.d.ts",
+    "*.d.ts.map"
+  ],
+  "scripts": {
+    "bench": "node benchmark/noble.js",
+    "bench:compare": "node benchmark/compare.js",
+    "bench:install": "cd benchmark; npm install; npm install .. --install-links",
+    "build": "npm run build:clean; tsc && tsc -p tsconfig.cjs.json",
+    "build:release": "npx jsbt esbuild test/build",
+    "build:clean": "rm *.{js,d.ts,js.map,d.ts.map} esm/*.{js,d.ts,js.map,d.ts.map} 2> /dev/null",
+    "lint": "prettier --check 'src/**/*.{js,ts}' 'test/**/*.{js,ts,mjs}'",
+    "format": "prettier --write 'src/**/*.{js,ts}' 'test/**/*.{js,ts,mjs}'",
+    "test": "node --import ./test/esm-register.js test/index.js",
+    "test:bun": "bun test/index.js",
+    "test:deno": "deno --allow-env --allow-read --import-map=./test/import_map.json test/index.js",
+    "test:big": "node --import ./test/esm-register.js test/crosstest.test.js slow"
+  },
+  "author": "Paul Miller (https://paulmillr.com)",
+  "homepage": "https://paulmillr.com/noble/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/paulmillr/noble-ciphers.git"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@paulmillr/jsbt": "0.3.3",
+    "@scure/base": "1.2.5",
+    "fast-check": "3.0.0",
+    "micro-bmark": "0.4.1",
+    "micro-should": "0.5.2",
+    "prettier": "3.5.3",
+    "typescript": "5.8.3"
+  },
+  "engines": {
+    "node": "^14.21.3 || >=16"
+  },
+  "main": "index.js",
+  "exports": {
+    ".": {
+      "import": "./esm/index.js",
+      "require": "./index.js"
+    },
+    "./_micro": {
+      "import": "./esm/_micro.js",
+      "require": "./_micro.js"
+    },
+    "./_poly1305": {
+      "import": "./esm/_poly1305.js",
+      "require": "./_poly1305.js"
+    },
+    "./_polyval": {
+      "import": "./esm/_polyval.js",
+      "require": "./_polyval.js"
+    },
+    "./aes": {
+      "import": "./esm/aes.js",
+      "require": "./aes.js"
+    },
+    "./chacha": {
+      "import": "./esm/chacha.js",
+      "require": "./chacha.js"
+    },
+    "./crypto": {
+      "types": "./crypto.d.ts",
+      "node": {
+        "import": "./esm/cryptoNode.js",
+        "default": "./cryptoNode.js"
+      },
+      "import": "./esm/crypto.js",
+      "default": "./crypto.js"
+    },
+    "./ff1": {
+      "import": "./esm/ff1.js",
+      "require": "./ff1.js"
+    },
+    "./index": {
+      "import": "./esm/index.js",
+      "require": "./index.js"
+    },
+    "./salsa": {
+      "import": "./esm/salsa.js",
+      "require": "./salsa.js"
+    },
+    "./utils": {
+      "import": "./esm/utils.js",
+      "require": "./utils.js"
+    },
+    "./webcrypto": {
+      "import": "./esm/webcrypto.js",
+      "require": "./webcrypto.js"
+    },
+    "./_micro.js": {
+      "import": "./esm/_micro.js",
+      "require": "./_micro.js"
+    },
+    "./_poly1305.js": {
+      "import": "./esm/_poly1305.js",
+      "require": "./_poly1305.js"
+    },
+    "./_polyval.js": {
+      "import": "./esm/_polyval.js",
+      "require": "./_polyval.js"
+    },
+    "./aes.js": {
+      "import": "./esm/aes.js",
+      "require": "./aes.js"
+    },
+    "./chacha.js": {
+      "import": "./esm/chacha.js",
+      "require": "./chacha.js"
+    },
+    "./crypto.js": {
+      "types": "./crypto.d.ts",
+      "node": {
+        "import": "./esm/cryptoNode.js",
+        "default": "./cryptoNode.js"
+      },
+      "import": "./esm/crypto.js",
+      "default": "./crypto.js"
+    },
+    "./ff1.js": {
+      "import": "./esm/ff1.js",
+      "require": "./ff1.js"
+    },
+    "./index.js": {
+      "import": "./esm/index.js",
+      "require": "./index.js"
+    },
+    "./salsa.js": {
+      "import": "./esm/salsa.js",
+      "require": "./salsa.js"
+    },
+    "./utils.js": {
+      "import": "./esm/utils.js",
+      "require": "./utils.js"
+    },
+    "./webcrypto.js": {
+      "import": "./esm/webcrypto.js",
+      "require": "./webcrypto.js"
+    }
+  },
+  "sideEffects": false,
+  "browser": {
+    "node:crypto": false,
+    "./crypto": "./crypto.js"
+  },
+  "keywords": [
+    "salsa20",
+    "chacha",
+    "aes",
+    "cryptography",
+    "crypto",
+    "noble",
+    "cipher",
+    "ciphers",
+    "xsalsa20",
+    "xchacha20",
+    "poly1305",
+    "xsalsa20poly1305",
+    "chacha20poly1305",
+    "xchacha20poly1305",
+    "secretbox",
+    "rijndael",
+    "siv",
+    "ff1"
+  ],
+  "funding": "https://paulmillr.com/funding/"
+}

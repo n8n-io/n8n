@@ -1,0 +1,19 @@
+{
+  "platform": "github",
+  "autodiscover": false,
+  "requireConfig": true,
+  "ignoreNpmrcFile": true,
+  "rangeStrategy": "replace",
+  "packageRules": [
+    {
+      "packagePatterns": [
+        "*"
+      ],
+      "minor": {
+        "groupName": "all non-major dependencies",
+        "groupSlug": "all-minor-patch"
+      }
+    }
+  ],
+  "commitMessagePrefix": "[dist]"
+}

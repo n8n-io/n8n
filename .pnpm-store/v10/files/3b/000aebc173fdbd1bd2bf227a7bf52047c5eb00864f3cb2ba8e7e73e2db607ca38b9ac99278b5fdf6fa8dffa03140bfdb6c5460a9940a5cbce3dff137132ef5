@@ -1,0 +1,8 @@
+{
+  "extends": "./tsconfig.esm5.json",
+  "compilerOptions": {
+    "outDir": "../dist/esm5_for_rollup",
+    "noEmitHelpers": true
+  },
+  "exclude": []
+}

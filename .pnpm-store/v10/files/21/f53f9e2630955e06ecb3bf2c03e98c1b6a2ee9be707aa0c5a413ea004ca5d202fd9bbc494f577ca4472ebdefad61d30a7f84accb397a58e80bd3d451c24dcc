@@ -1,0 +1,30 @@
+{
+    "root": true,
+    "extends": "eslint:recommended",
+    "parserOptions": {
+        "ecmaVersion": 6,
+        "sourceType": "script"
+    },
+    "globals": {
+        "YUI_config": true
+    },
+    "rules": {
+        "no-unused-vars": ["error", { "args": "after-used" }],
+        "semi": 2,
+        "eqeqeq": [2, "always"],
+        "no-console": 0,
+        "no-irregular-whitespace": 2,
+        "no-useless-escape": 0,
+        "indent": ["error", 4],
+        "space-before-function-paren": ["error", "never"],
+        "brace-style": [2, "1tbs", { "allowSingleLine": true }],
+        "arrow-body-style": [2, "always"],
+        "array-bracket-spacing": [2, "never"],
+        "object-curly-spacing": [2, "always"],
+        "key-spacing": ["error", { "beforeColon": false }]
+    },
+    "env": {
+        "node": true,
+        "browser": true
+    }
+}

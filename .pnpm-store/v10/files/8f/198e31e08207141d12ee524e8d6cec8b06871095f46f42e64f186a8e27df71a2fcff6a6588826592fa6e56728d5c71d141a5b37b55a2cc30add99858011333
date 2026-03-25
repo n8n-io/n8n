@@ -1,0 +1,1 @@
+{"version":3,"file":"GetServerSocketsResponse.js","sourceRoot":"","sources":["../../../../../../src/generated/grpc/channelz/v1/GetServerSocketsResponse.ts"],"names":[],"mappings":";AAAA,sCAAsC"}

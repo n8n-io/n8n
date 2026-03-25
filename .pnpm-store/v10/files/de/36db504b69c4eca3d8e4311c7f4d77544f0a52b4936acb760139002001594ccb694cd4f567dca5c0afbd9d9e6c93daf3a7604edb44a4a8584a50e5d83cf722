@@ -1,0 +1,159 @@
+import type {ArraySplice} from './array-splice';
+import type {ExactKey, IsArrayReadonly, NonRecursiveType, SetArrayAccess, ToString} from './internal';
+import type {IsEqual} from './is-equal';
+import type {IsNever} from './is-never';
+import type {LiteralUnion} from './literal-union';
+import type {Paths} from './paths';
+import type {SharedUnionFieldsDeep} from './shared-union-fields-deep';
+import type {SimplifyDeep} from './simplify-deep';
+import type {UnknownArray} from './unknown-array';
+
+/**
+Omit properties from a deeply-nested object.
+
+It supports recursing into arrays.
+
+It supports removing specific items from an array, replacing each removed item with unknown at the specified index.
+
+Use-case: Remove unneeded parts of complex objects.
+
+Use [`Omit`](https://www.typescriptlang.org/docs/handbook/utility-types.html#omittype-keys) if you only need one level deep.
+
+@example
+```
+import type {OmitDeep} from 'type-fest';
+
+type Info = {
+	userInfo: {
+		name: string;
+		uselessInfo: {
+			foo: string;
+		};
+	};
+};
+
+type UsefulInfo = OmitDeep<Info, 'userInfo.uselessInfo'>;
+// type UsefulInfo = {
+// 	userInfo: {
+// 		name: string;
+// 	};
+// };
+
+// Supports removing multiple paths
+type Info1 = {
+	userInfo: {
+		name: string;
+		uselessField: string;
+		uselessInfo: {
+			foo: string;
+		};
+	};
+};
+
+type UsefulInfo1 = OmitDeep<Info1, 'userInfo.uselessInfo' | 'userInfo.uselessField'>;
+// type UsefulInfo1 = {
+// 	userInfo: {
+// 		name: string;
+// 	};
+// };
+
+// Supports array
+type A = OmitDeep<[1, 'foo', 2], 1>;
+// type A = [1, unknown, 2];
+
+// Supports recursing into array
+
+type Info1 = {
+	address: [
+		{
+			street: string
+		},
+		{
+			street2: string,
+			foo: string
+		};
+	];
+}
+type AddressInfo = OmitDeep<Info1, 'address.1.foo'>;
+// type AddressInfo = {
+// 	address: [
+// 		{
+// 			street: string;
+// 		},
+// 		{
+// 			street2: string;
+// 		};
+// 	];
+// };
+```
+
+@category Object
+@category Array
+*/
+export type OmitDeep<T, PathUnion extends LiteralUnion<Paths<T>, string>> =
+	SimplifyDeep<
+	SharedUnionFieldsDeep<
+	{[P in PathUnion]: OmitDeepWithOnePath<T, P>}[PathUnion]
+	>,
+	UnknownArray>;
+
+/**
+Omit one path from the given object/array.
+*/
+type OmitDeepWithOnePath<T, Path extends string | number> =
+T extends NonRecursiveType
+	? T
+	: T extends UnknownArray ? SetArrayAccess<OmitDeepArrayWithOnePath<T, Path>, IsArrayReadonly<T>>
+		: T extends object ? OmitDeepObjectWithOnePath<T, Path>
+			: T;
+
+/**
+Omit one path from the given object.
+*/
+type OmitDeepObjectWithOnePath<ObjectT extends object, P extends string | number> =
+P extends `${infer RecordKeyInPath}.${infer SubPath}`
+	? {
+		[Key in keyof ObjectT]:
+		IsEqual<RecordKeyInPath, ToString<Key>> extends true
+			? ExactKey<ObjectT, Key> extends infer RealKey
+				? RealKey extends keyof ObjectT
+					? OmitDeepWithOnePath<ObjectT[RealKey], SubPath>
+					: ObjectT[Key]
+				: ObjectT[Key]
+			: ObjectT[Key]
+	}
+	: ExactKey<ObjectT, P> extends infer Key
+		? IsNever<Key> extends true
+			? ObjectT
+			: Key extends PropertyKey
+				? Omit<ObjectT, Key>
+				: ObjectT
+		: ObjectT;
+
+/**
+Omit one path from from the given array.
+
+It replaces the item to `unknown` at the given index.
+
+@example
+```
+type A = OmitDeepArrayWithOnePath<[10, 20, 30, 40], 2>;
+//=> type A = [10, 20, unknown, 40];
+```
+*/
+type OmitDeepArrayWithOnePath<ArrayType extends UnknownArray, P extends string | number> =
+	// Handle paths that are `${number}.${string}`
+	P extends `${infer ArrayIndex extends number}.${infer SubPath}`
+		// If `ArrayIndex` is equal to `number`
+		? number extends ArrayIndex
+			? Array<OmitDeepWithOnePath<NonNullable<ArrayType[number]>, SubPath>>
+			// If `ArrayIndex` is a number literal
+			: ArraySplice<ArrayType, ArrayIndex, 1, [OmitDeepWithOnePath<NonNullable<ArrayType[ArrayIndex]>, SubPath>]>
+		// If the path is equal to `number`
+		: P extends `${infer ArrayIndex extends number}`
+			// If `ArrayIndex` is `number`
+			? number extends ArrayIndex
+				? []
+				// If `ArrayIndex` is a number literal
+				: ArraySplice<ArrayType, ArrayIndex, 1, [unknown]>
+			: ArrayType;

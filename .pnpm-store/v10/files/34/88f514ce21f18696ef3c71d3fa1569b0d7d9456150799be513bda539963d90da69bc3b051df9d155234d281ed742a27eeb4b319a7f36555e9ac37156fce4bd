@@ -1,0 +1,60 @@
+{
+	"$id": "/inference/schemas/table-question-answering/input.json",
+	"$schema": "http://json-schema.org/draft-06/schema#",
+	"description": "Inputs for Table Question Answering inference",
+	"title": "TableQuestionAnsweringInput",
+	"type": "object",
+	"properties": {
+		"inputs": {
+			"description": "One (table, question) pair to answer",
+			"title": "TableQuestionAnsweringInputData",
+			"type": "object",
+			"properties": {
+				"table": {
+					"description": "The table to serve as context for the questions",
+					"type": "object",
+					"additionalProperties": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						}
+					}
+				},
+				"question": {
+					"description": "The question to be answered about the table",
+					"type": "string"
+				}
+			},
+			"required": ["table", "question"]
+		},
+		"parameters": {
+			"description": "Additional inference parameters for Table Question Answering",
+			"$ref": "#/$defs/TableQuestionAnsweringParameters"
+		}
+	},
+	"$defs": {
+		"TableQuestionAnsweringParameters": {
+			"title": "TableQuestionAnsweringParameters",
+			"type": "object",
+			"properties": {
+				"padding": {
+					"type": "string",
+					"default": "do_not_pad",
+					"description": "Activates and controls padding.",
+					"enum": ["do_not_pad", "longest", "max_length"]
+				},
+				"sequential": {
+					"type": "boolean",
+					"default": "false",
+					"description": "Whether to do inference sequentially or as a batch. Batching is faster, but models like SQA require the inference to be done sequentially to extract relations within sequences, given their conversational nature."
+				},
+				"truncation": {
+					"type": "boolean",
+					"default": "false",
+					"description": "Activates and controls truncation."
+				}
+			}
+		}
+	},
+	"required": ["inputs"]
+}

@@ -1,0 +1,1 @@
+module.exports = require("../dist/vectorstores/neo4j_vector.cjs");

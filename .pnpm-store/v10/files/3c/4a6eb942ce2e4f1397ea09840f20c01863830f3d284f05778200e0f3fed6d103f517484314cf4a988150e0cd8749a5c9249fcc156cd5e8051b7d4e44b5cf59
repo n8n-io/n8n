@@ -1,0 +1,103 @@
+.vue-flow__resize-control {
+  position: absolute;
+}
+
+.vue-flow__resize-control.left,
+.vue-flow__resize-control.right {
+  cursor: ew-resize;
+}
+
+.vue-flow__resize-control.top,
+.vue-flow__resize-control.bottom {
+  cursor: ns-resize;
+}
+
+.vue-flow__resize-control.top.left,
+.vue-flow__resize-control.bottom.right {
+  cursor: nwse-resize;
+}
+
+.vue-flow__resize-control.bottom.left,
+.vue-flow__resize-control.top.right {
+  cursor: nesw-resize;
+}
+
+/* handle styles */
+.vue-flow__resize-control.handle {
+  width: 5px;
+  height: 5px;
+  border: 1px solid #fff;
+  border-radius: 1px;
+  background-color: #3367d9;
+  transform: translate(-50%, -50%);
+}
+
+.vue-flow__resize-control.handle.left {
+  left: 0;
+  top: 50%;
+}
+.vue-flow__resize-control.handle.right {
+  left: 100%;
+  top: 50%;
+}
+.vue-flow__resize-control.handle.top {
+  left: 50%;
+  top: 0;
+}
+.vue-flow__resize-control.handle.bottom {
+  left: 50%;
+  top: 100%;
+}
+.vue-flow__resize-control.handle.top.left {
+  left: 0;
+}
+.vue-flow__resize-control.handle.bottom.left {
+  left: 0;
+}
+.vue-flow__resize-control.handle.top.right {
+  left: 100%;
+}
+.vue-flow__resize-control.handle.bottom.right {
+  left: 100%;
+}
+
+/* line styles */
+.vue-flow__resize-control.line {
+  border-color: #3367d9;
+  border-width: 0;
+  border-style: solid;
+}
+
+.vue-flow__resize-control.line.left,
+.vue-flow__resize-control.line.right {
+  width: 1px;
+  transform: translate(-50%, 0);
+  top: 0;
+  height: 100%;
+}
+
+.vue-flow__resize-control.line.left {
+  left: 0;
+  border-left-width: 1px;
+}
+.vue-flow__resize-control.line.right {
+  left: 100%;
+  border-right-width: 1px;
+}
+
+.vue-flow__resize-control.line.top,
+.vue-flow__resize-control.line.bottom {
+  height: 1px;
+  transform: translate(0, -50%);
+  left: 0;
+  width: 100%;
+}
+
+.vue-flow__resize-control.line.top {
+  top: 0;
+  border-top-width: 1px;
+}
+.vue-flow__resize-control.line.bottom {
+  border-bottom-width: 1px;
+  top: 100%;
+}

@@ -1,0 +1,54 @@
+{
+    "name": "@types/uuid",
+    "version": "8.3.4",
+    "description": "TypeScript definitions for uuid",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/uuid",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Oliver Hoffmann",
+            "url": "https://github.com/iamolivinius",
+            "githubUsername": "iamolivinius"
+        },
+        {
+            "name": "Felipe Ochoa",
+            "url": "https://github.com/felipeochoa",
+            "githubUsername": "felipeochoa"
+        },
+        {
+            "name": "Chris Barth",
+            "url": "https://github.com/cjbarth",
+            "githubUsername": "cjbarth"
+        },
+        {
+            "name": "Linus Unnebäck",
+            "url": "https://github.com/LinusU",
+            "githubUsername": "LinusU"
+        },
+        {
+            "name": "Christoph Tavan",
+            "url": "https://github.com/ctavan",
+            "githubUsername": "ctavan"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/uuid"
+    },
+    "scripts": {},
+    "dependencies": {},
+    "typesPublisherContentHash": "7bd9cd358e9e4357393eb0163c44f44dc265ab936b456743af6ed3d0d0ac644f",
+    "typeScriptVersion": "3.8",
+    "exports": {
+        "./package.json": "./package.json",
+        ".": {
+            "types": {
+                "import": "./index.d.mts",
+                "default": "./index.d.ts"
+            }
+        }
+    }
+}

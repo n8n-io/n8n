@@ -1,0 +1,3153 @@
+
+    The Project Gutenberg eBook of Babbage's calculating engine
+
+This ebook is for the use of anyone anywhere in the United States and
+most other parts of the world at no cost and with almost no restrictions
+whatsoever. You may copy it, give it away or re-use it under the terms
+of the Project Gutenberg License included with this ebook or online
+at www.gutenberg.org. If you are not located in the United States,
+you will have to check the laws of the country where you are located
+before using this eBook.
+
+
+
+
+        Title: Babbage's calculating engine
+
+        Author: Charles Babbage
+
+
+        Release date: July 28, 2023 [eBook #71292]
+        Language: English
+        Original publication: United Kingdom: Adam and Charles Black, 1834
+        Credits: Laura Natal Rodrigues (Images generously made available by Hathi Trust Digital Library)
+
+
+            *** START OF THE PROJECT GUTENBERG EBOOK BABBAGE'S CALCULATING ENGINE ***
+
+
+
+                        THE
+                   EDINBURGH REVIEW,
+
+
+
+
+                      JULY, 1834.
+
+                        No. CXX.
+
+
+
+
+                 THE CALCULATING ENGINE
+
+
+                           BY
+
+                     CHARLES BABBAGE
+
+
+Art I.--1. _Letter to Sir Humphry Davy, Bart. P.R.S., on the application
+of Machinery to Calculate and Print Mathematical Tables_. By CHARLES
+BABBAGE, Esq. F.R.S. 4to. Printed by order of the House of Commons.
+
+2. _On the Application of Machinery to the Calculation of Astronomical and
+Mathematical Tables_. By CHARLES BABBAGE, Esq. Memoirs Astron. Soc.
+Vol. I. Part 2. London: 1822.
+
+3. _Address to the Astronomical Society, by Henry Thomas Colebrooke,
+Esq. F.R.S. President, on presenting the first gold medal of the Society
+to Charles Babbage, Esq. for the invention of the Calculating Engine_.
+Memoirs Astron. Soc. Vol. I. Part 2. London: 1822.
+
+4. _On the determination of the General Term of a new Class of Infinite
+Series_. By CHARLES BABBAGE, Esq. Transactions Camb. Phil. Soc.
+Cambridge: 1824.
+
+5. _On Errors common to many Tables of Logarithms_. By CHARLES BABBAGE,
+Esq. Memoirs Astron. Soc. London: 1827.
+
+6. _On a Method of Expressing by Signs the Action of Machinery_.
+By CHARLES BABBAGE, Esq. Phil. Trans. London: 1826.
+
+7. _Report by the Committee appointed by the Council of the Royal
+Society to consider the subject referred to in a Communication received
+by them from the Treasury, respecting Mr Babbage's Calculating Engine,
+and to report thereupon_. London: 1829.
+
+
+THERE is no position in society more enviable than that of the few who
+unite a moderate independence with high intellectual qualities.
+Liberated from the necessity of seeking their support by a profession,
+they are unfettered by its restraints, and are enabled to direct the
+powers of their minds, and to concentrate their intellectual energies on
+those objects exclusively to which they feel that their powers may be
+applied with the greatest advantage to the community, and with the most
+lasting reputation to themselves. On the other hand, their middle
+station and limited income rescue them from those allurements to
+frivolity and dissipation, to which rank and wealth ever expose their
+possessors. Placed in such favourable circumstances, Mr Babbage selected
+science as the field of his ambition; and his mathematical researches
+have conferred on him a high reputation, wherever the exact sciences are
+studied and appreciated. The suffrages of the mathematical world have
+been ratified in his own country, where he has been elected to the
+Lucasian Professorship in his own University--a chair, which, though of
+inconsiderable emolument, is one on which Newton has conferred
+everlasting celebrity. But it has been the fortune of this mathematician
+to surround himself with fame of another and more popular kind, and
+which rarely falls to the lot of those who devote their lives to the
+cultivation of the abstract sciences. This distinction he owes to the
+announcement, some years since, of his celebrated project of a
+Calculating Engine. A proposition to reduce arithmetic to the dominion
+of mechanism,--to substitute an automaton for a compositor,--to throw
+the powers of thought into wheel-work could not fail to awaken the
+attention of the world. To bring the practicability of such a project
+within the compass of popular belief was not easy: to do so by bringing
+it within the compass of popular comprehension was not possible. It
+transcended the imagination of the public in general to conceive its
+possibility; and the sentiments of wonder with which it was received,
+were only prevented from merging into those of incredulity, by the faith
+reposed in the high attainments of its projector. This extraordinary
+undertaking was, however, viewed in a very different light by the small
+section of the community, who, being sufficiently versed in mathematics,
+were acquainted with the principle upon which it was founded. By
+reference to that principle, they perceived at a glance the
+practicability of the project; and being enabled by the nature of their
+attainments and pursuits to appreciate the immeasurable importance of
+its results, they regarded the invention with a proportionately profound
+interest. The production of numerical tables, unlimited in quantity and
+variety, restricted to no particular species, and limited by no
+particular law;--extending not merely to the boundaries of existing
+knowledge, but spreading their powers over the undefined regions of
+future discovery--were results, the magnitude and the value of which the
+community in general could neither comprehend nor appreciate. In such a
+case, the judgment of the world could only rest upon the authority of
+the philosophical part of it; and the fiat of the scientific community
+swayed for once political councils. The British Government, advised by
+the Royal Society, and a committee formed of the most eminent
+mechanicians and practical engineers, determined on constructing the
+projected mechanism at the expense of the nation, to be held as national
+property.
+
+Notwithstanding the interest with which this invention has been regarded
+in every part of the world, it has never yet been embodied in a written,
+much less in a published form. We trust, therefore, that some credit
+will be conceded to us for having been the first to make the public
+acquainted with the object, principle, and structure of a piece of
+machinery, which, though at present unknown (except as to a few of its
+probable results), must, when completed, produce important effects, not
+only on the progress of science, but on that of civilisation.
+
+The calculating machinery thus undertaken for the public gratuitously
+(so far as Mr Babbage is concerned), has now attained a very advanced
+stage towards completion; and a portion of it has been put together, and
+performs various calculations;--affording a practical demonstration
+that the anticipations of those, under whose advice Government has
+acted, have been well founded.
+
+There are nevertheless many persons who, admitting the great ingenuity
+of the contrivance, have, notwithstanding, been accustomed to regard it
+more in the light of a philosophical curiosity, than an instrument for
+purposes practically useful. This mistake (than which it is not possible
+to imagine a greater) has arisen mainly from the ignorance which
+prevails of the extensive utility of those numerical tables which it is
+the purpose of the engine in question to produce. There are also some
+persons who, not considering the time requisite to bring any invention
+of this magnitude to perfection in all its details, incline to consider
+the delays which have taken place in its progress as presumptions
+against its practicability. These persons should, however, before they
+arrive at such a conclusion, reflect upon the time which was necessary
+to bring to perfection engines infinitely inferior in complexity and
+mechanical difficulty. Let them remember that--not to mention the
+_invention_ of that machine--the _improvements_ alone introduced into the
+steam-engine by the celebrated Watt, occupied a period of not less than
+twenty years of the life of that distinguished person, and involved an
+expenditure of capital amounting to L.50,000.[1] The calculating
+machinery is a contrivance new even in its details. Its inventor did not
+take it up already imperfectly formed, after having received the
+contributions of human ingenuity exercised upon it for a century or
+more. It has not, like almost all other great mechanical inventions,
+been gradually advanced to its present state through a series of
+failures, through difficulties encountered and overcome by a succession
+of projectors. It is not an object on which the light of various minds
+has thus been shed. It is, on the contrary, the production of solitary
+and individual thought,--begun, advanced through each successive stage
+of improvement, and brought to perfection by one mind. Yet this creation
+of genius, from its first rude conception to its present state, has cost
+little more than half the time, and not one-third of the expense,
+consumed in bringing the steam-engine (previously far advanced in the
+course of improvement) to that state of comparative perfection in which
+it was left by Watt. Short as the period of time has been which the
+inventor has devoted to this enterprise, it has, nevertheless, been
+demonstrated, to the satisfaction of many scientific men of the first
+eminence, that the design in all its details, reduced, as it is, to a
+system of mechanical drawings, is complete; and requires only to be
+constructed in conformity with those plans, to realize all that its
+inventor has promised.
+
+[Footnote 1: Watt commenced his investigations respecting the
+steam-engine in 1763, between which time, and the year 1782 inclusive,
+he took out several patents for improvements in details. Bolton and Watt
+had expended the above sum on their improvements before they began to
+receive any return.]
+
+With a view to remove and correct erroneous impressions, and at
+the same time to convert the vague sense of wonder at what seems
+incomprehensible, with which this project is contemplated by the public
+in general, into a more rational and edifying sentiment, it is our
+purpose in the purpose in the present article.
+
+_First_, To show, the immense importance of any method by which numerical
+tables, absolutely accurate in every individual copy, may be produced
+with facility and cheapness. This we shall establish by conveying to the
+reader some notion of the number and variety of tables published in
+every country of the world to which civilisation has extended, a large
+portion of which have been produced at the public expense; by showing
+also, that they are nevertheless rendered inefficient, to a greater or
+less extent, by the prevalence of errors in them; that these errors
+pervade not merely tables produced by individual labour and enterprise,
+but that they vitiate even those on which national resources have been
+prodigally expended, and to which the highest mathematical ability,
+which the most enlightened nations of the world could command, has been
+unsparingly and systematically directed.
+
+_Secondly_, To attempt to convey to the reader a general notion of the
+mathematical principle on which the calculating machinery is founded,
+and of the manner in which this principle is brought into practical
+operation, both in the process of calculating and printing. It would be
+incompatible with the nature of this review, and indeed impossible
+without the aid of numerous plans, sections, and elevations, to convey
+clear and precise notions of the details of the means by which the
+process of reasoning is performed by inanimate matter, and the arbitrary
+and capricious evolutions of the fingers of typographical compositors
+are reduced to a system of wheel-work. We are, nevertheless, not without
+hopes of conveying, even to readers unskilled in mathematics, some
+satisfactory notions of a general nature on this subject.
+
+_Thirdly_, To explain the actual state of the machinery a the present
+time; what progress has been made towards its completion; and what are
+the probable causes of those delays in its progress, which must be a
+subject of regret to all friends of science. We shall indicate what
+appears to us the best and most practicable course to prevent the
+unnecessary recurrence of such obstructions for the future, and to bring
+this noble project to a speedy and successful issue.
+
+
+Viewing the infinite extent and variety of the tables which have been
+calculated and printed, from the earliest periods of human civilisation
+to the present time, we feel embarrassed with the difficulties of the
+task which we have imposed on ourselves;--that of attempting to convey
+to readers unaccustomed to such speculations, any thing approaching to
+an adequate idea of them. These tables are connected with the various
+sciences, with almost every department of the useful arts, with commerce
+in all its relations; but above all, with Astronomy and Navigation. So
+important have they been considered, that in many instances large sums
+have been appropriated by the most enlightened nations in the production
+of them; and yet so numerous and insurmountable have been the
+difficulties attending the attainment of this end, that after all, even
+navigators, putting aside every other department of art and science,
+have, until very recently, been scantily and imperfectly supplied with
+the tables indispensably necessary to determine their position at sea.
+
+The first class of tables which naturally present themselves, are those
+of Multiplication. A great variety of extensive multiplication tables
+have been published from an early period in different countries; and
+especially tables of _Powers_, in which a number is multiplied by itself
+successively. In Dodson's _Calculator_ we find a table of multiplication
+extending as far as 10 times 1000.[2] In 1775, a still more extensive
+table was published to 10 times 10,000. The Board of Longitude
+subsequently employed the late Dr Hutton to calculate and print various
+numerical tables, and among others, a multiplication table extending as
+far as 100 times 1000; tables of the squares of numbers, as far as
+25,400; tables of cubes, and of the first ten powers of numbers, as far
+as 100.[3] In 1814, Professor Barlow, of Woolwich, published, in an
+octavo volume, the squares, cubes, square roots, cube roots, and
+reciprocals of all numbers from 1 to 10,000; a table of the first ten
+powers of all numbers from 1 to 100, and of the fourth and fifth powers
+of all numbers from 100 to 1000.
+
+[Footnote 2: Dodson's _Calculator_. 4to. London: 1747.]
+
+[Footnote 3: Hutton's _Tables of Products and Powers_. Folio.
+London; 1781.]
+
+Tables of Multiplication to a still greater extent have been published
+in France. In 1785, was published an octavo volume of tables of the
+squares, cubes, square roots, and cube roots of all numbers from 1 to
+10,000; and similar tables were again published in 1801. In 1817,
+multiplication tables were published in Paris by Voisin; and similar
+tables, in two quarto volumes, in 1824, by the French Board of
+Longitude, extending as far as a thousand times a thousand. A table of
+squares was published in 1810, in Hanover; in 1812, at Leipzig; in 1825,
+at Berlin; and in 1827, at Ghent. A table of cubes was published in
+1827, at Eisenach; in the same year a similar table at Ghent; and one of
+the squares of all numbers as far as 10,000, was published in that year,
+in quarto, at Bonn. The Prussian Government has caused a multiplication
+table to be calculated and printed, extending as far as 1000 times 1000.
+Such are a few of the tables of this class which have been published in
+different countries.
+
+This class of tables may be considered as purely arithmetical, since the
+results which they express involve no other relations than the
+arithmetical dependence of abstract numbers upon each other. When
+numbers, however, are taken in a concrete sense, and are applied to
+express peculiar modes of quantity,--such as angular, linear,
+superficial, and solid magnitudes,--a new set of numerical relations
+arise, and a large number of computations are required.
+
+To express angular magnitude, and the various relations of linear
+magnitude with which it is connected, involves the consideration of a
+vast variety of Geometrical and Trigonometrical tables; such as tables
+of the natural sines, co-sines, tangents, secants, co-tangents, &c. &c.;
+tables of arcs and angles in terms of the radius; tables for the
+immediate solution of various cases of triangles, &c. Volumes without
+number of such tables have been from time to time computed and
+published. It is not sufficient, however, for the purposes of
+computation to tabulate these immediate trigonometrical functions. Their
+squares[4] and higher powers, their square roots, and other roots, occur
+so frequently, that it has been found expedient to compute tables for
+them, as well as for the same functions of abstract numbers.
+
+[Footnote 4: The squares of the sines of angles are extensively used in
+the calculations connected with the theory of the tides. Not aware that
+tables of these squares existed, Bouvard, who calculated the tides for
+Laplace, underwent the labour of calculating the square of each
+individual sine in every case in which it occurred.]
+
+The measurement of linear, superficial, and solid magnitudes, in the
+various forms and modifications in which they are required in the arts,
+demands another extensive catalogue of numerical tables. The surveyor,
+the architect, the builder, the carpenter, the miner, the ganger, the
+naval architect, the engineer, civil and military, all require the aid
+of peculiar numerical tables, and such have been published in all
+countries.
+
+The increased expedition and accuracy which was introduced into the art
+of computation by the invention of Logarithms, greatly enlarged the
+number of tables previously necessary. To apply the logarithmic method,
+it was not merely necessary to place in the hands of the computist
+extensive tables of the logarithms of the natural numbers, but likewise
+to supply him with tables in which he might find already calculated the
+logarithms of those arithmetical, trigonometrical, and geometrical
+functions of numbers, which he has most frequent occasion to use. It
+would be a circuitous process, when the logarithm of a sine or co-sine
+of an angle is required, to refer, first to the table of sines, or
+co-sines, and thence to the table of the logarithms of natural numbers.
+It was therefore found expedient to compute distinct tables of the
+logarithms of the sines, co-sines, tangents, &c., as well as of various
+other functions frequently required, such as sums, differences, &c.
+
+Great as is the extent of the tables we have just enumerated, they bear
+a very insignificant proportion to those which remain to be mentioned.
+The above are, for the most part, general in their nature, not belonging
+particularly to any science or art. There is a much greater variety of
+tables, whose importance is no way inferior, which are, however, of a
+more special nature: Such are, for example, tables of interest,
+discount, and exchange, tables of annuities, and other tables necessary
+in life insurances; tables of rates of various kinds necessary in
+general commerce. But the science in which, above all others, the most
+extensive and accurate tables are indispensable, is Astronomy; with the
+improvement and perfection of which is inseparably connected that of the
+kindred art of Navigation. We scarcely dare hope to convey to the
+general reader any thing approaching to an adequate notion of the
+multiplicity and complexity of the tables necessary for the purposes of
+the astronomer and navigator. We feel, nevertheless, that the truly
+national importance which must attach to any perfect and easy means of
+producing those tables cannot be at all estimated, unless we state some
+of the previous calculations necessary in order to enable the mariner to
+determine, with the requisite certainty and precision, the place of his
+ship.
+
+In a word, then, all the purely arithmetical, trigonometrical, and
+logarithmic tables already mentioned, are necessary, either immediately
+or remotely, for this purpose. But in addition to these, a great number
+of tables, exclusively astronomical, are likewise indispensable. The
+predictions of the astronomer, with respect to the positions and motions
+of the bodies of the firmament, are the means, and the only means, which
+enable the mariner to prosecute his art. By these he is enabled to
+discover the distance of his ship from the Line, and the extent of his
+departure from the meridian of Greenwich, or from any other meridian to
+which the astronomical predictions refer. The more numerous, minute, and
+accurate these predictions can be made, the greater will be the
+facilities which can be furnished to the mariner. But the computation of
+those tables, in which the future position of celestial objects are
+registered, depend themselves upon an infinite variety of other tables
+which never reach the hands of the mariner. It cannot be said that there
+is any table whatever, necessary for the astronomer, which is
+unnecessary for the navigator.
+
+The purposes of the marine of a country whose interests are so
+inseparably connected as ours are with the improvement of the art of
+navigation, would be very inadequately fulfilled, if our navigators were
+merely supplied with the means of determining by _Nautical Astronomy_ the
+position of a ship at sea. It has been well observed by the Committee of
+the Astronomical Society, to whom the recent improvement of the Nautical
+Almanac was confided, that it is not by those means merely by which the
+seaman is enabled to determine the position of his vessel at sea, that
+the full intent and purpose of what is usually called _Nautical Astronomy_
+are answered. This object is merely a part of that comprehensive and
+important subject; and might be attained by a very cheap publication,
+and without the aid of expensive instruments. A not less important and
+much more difficult part of nautical science has for its object to
+determine the precise position of various interesting and important
+points on the surface of the earth,--such as remarkable headlands,
+ports, and islands; together with the general trending of the coast
+between well-known harbours. It is not necessary to point out here how
+important such knowledge is to the mariner. This knowledge, which may be
+called _Nautical Geography_, cannot be obtained by the methods of
+observation used on board ship, but requires much more delicate and
+accurate instruments, firmly placed upon the solid ground, besides all
+the astronomical aid which can be afforded by the best tables, arranged
+in the most convenient form for immediate use. This was Dr Maskelyne's
+view of the subject, and his opinion has been confirmed by the repeated
+wants and demands of those distinguished navigators who have been
+employed in several recent scientific expeditions.[5]
+
+[Footnote 5: Report of the Committee of the Astronomical Society prefixed
+to the Nautical Almanac for 1834.]
+
+Among the tables _directly_ necessary for navigation, are those which
+predict the position of the centre of the sun from hour to hour. These
+tables include the sun's right ascension and declination, daily, at
+noon, with the hourly change in these quantities. They also include the
+equation of time, together with its hourly variation.
+
+Tables of the moon's place for every hour, are likewise necessary,
+together with the change of declination for every ten minutes. The lunar
+method of determining the longitude depends upon tables containing the
+predicted distances of the moon from the sun, the principal planets, and
+from certain conspicuous fixed stars; which distances being observed by
+the mariner, he is enabled thence to discover the _time_ at the meridian
+from which the longitude is measured; and, by comparing that time with
+the time known or discoverable in his actual situation, he infers his
+longitude. But not only does the prediction of the position of the moon,
+with respect to these celestial objects, require a vast number of
+numerical tables, but likewise the observations necessary to be made by
+the mariner, in order to determine the lunar distances, also require
+several tables. To predict the exact position of any fixed star,
+requires not less than ten numerical tables peculiar to that star; and
+if the mariner be furnished (as is actually the case) with tables of the
+predicted distances of the moon from one hundred such stars, such
+predictions must require not less than a thousand numerical tables.
+Regarding the range of the moon through the firmament, however, it will
+readily be conceived that a hundred stars form but a scanty supply;
+especially when it is considered that an accurate method of determining
+the longitude, consists in observing the extinction of a star by the
+dark edge of the moon. Within the limits of the lunar orbit there are
+not less than one thousand stars, which are so situated as to be in the
+moon's path, and therefore to exhibit, at some period or other, those
+desirable occultations. These stars are also of such magnitudes, that
+their occultations may be distinctly observed from the deck, even when
+subject to all the unsteadiness produced by an agitated sea. To predict
+the occultations of such stars, would require not less than ten thousand
+tables. The stars from which lunar distances might be taken are still
+more numerous; and we may safely pronounce, that, great as has been the
+improvement effected recently in our Nautical Almanac, it does not yet
+furnish more than a small fraction of that aid to navigation (in the
+large sense of that term), which, with greater facility, expedition, and
+economy in the calculation and printing of tables, it might be made to
+supply.
+
+Tables necessary to determine the places of the planets are not less
+necessary than those for the sun, moon, and stars. Some notion of the
+number and complexity of these tables may be formed, when we state that
+the positions of the two principal planets, (and these the most
+necessary for the navigator,) Jupiter and Saturn, require each not less
+than one hundred and sixteen tables. Yet it is not only necessary to
+predict the position of these bodies, but it is likewise expedient to
+tabulate the motions of the four satellites of Jupiter, to predict the
+exact times at which they enter his shadow, and at which their shadows
+cross his disc, as well as the times at which they are interposed
+between him and the Earth, and he between them and the Earth.
+
+Among the extensive classes of tables here enumerated, there are several
+which are in their nature permanent and unalterable, and would never
+require to be recomputed, if they could once be computed with perfect
+accuracy on accurate data; but the data on which such computations are
+conducted, can only be regarded as approximations to truth, within
+limits the extent of which must necessarily vary with our knowledge of
+astronomical science. It has accordingly happened, that one set of
+tables after another has been superseded with each advance of
+astronomical science. Some striking examples of this may not be
+uninstructive. In 1765, the Board of Longitude paid to the celebrated
+Euler the sum of L.300, for furnishing general formulæ for the
+computation of lunar tables. Professor Mayer was employed to calculate
+the tables upon these formulæ, and the sum of L.3000 was voted for them
+by the British Parliament, to his widow, after his decease. These tables
+had been used for ten years, from 1766 to 1776, in computing the
+Nautical Almanac, when they were superseded by new and improved tables,
+composed by Mr Charles Mason, under the direction of Dr Maskelyne, from
+calculations made by order of the Board of Longitude, on the
+observations of Dr Bradley. A farther improvement was made by Mason in
+1780; but a much more extensive improvement took place in the lunar
+calculations by the publication of the tables of the Moon, by M. Bürg,
+deduced from Laplace's theory, in 1806. Perfect, however, as Bürg's
+tables were considered, at the time of their publication, they were,
+within the short period of six years, superseded by a more accurate set
+of tables published by Burckhardt in 1812; and these also have since
+been followed by the tables of Damoiseau. Professor Schumacher has
+calculated by the latter tables his ephemeris of the Planetary Lunar
+Distances, and astronomers will hence be enabled to put to the strict
+test of observation the merits of the tables of Burckhardt and
+Damoiseau.[6]
+
+[Footnote 6: A comparison of the results for 1834, will be found in the
+Nautical Almanac for 1835.]
+
+The solar tables have undergone, from time to time, similar changes. The
+solar tables of Mayer were used in the computation of the Nautical
+Almanac, from its commencement in 1767, to 1804 inclusive. Within the
+six years immediately succeeding 1804, not less than three successive
+sets of solar tables appeared, each improving on the other; the first by
+Baron de Zach, the second by Delambre, under the direction of the French
+Board of Longitude, and the third by Carlini. The last, however, differ
+only in arrangement from those of Delambre.
+
+Similar observations will be applicable to the tables of the principal
+planets. Bouvard published, in 1803, tables of Jupiter and Saturn; but
+from the improved state of astronomy, he found it necessary to recompute
+these tables in 1821.
+
+Although it is now about thirty years since the discovery of the four
+new planets, Ceres, Pallas, Juno, and Vesta, it was not till recently
+that tables of their motions were published. They have lately appeared
+in Encke's Ephemeris.
+
+We have thus attempted to convey some notion (though necessarily a very
+inadequate one) of the immense extent of numerical tables which it has
+been found necessary to calculate and print for the purposes of the arts
+and sciences. We have before us a catalogue of the tables contained in
+the library of one private individual, consisting of not less than one
+hundred and forty volumes. Among these there are no duplicate copies:
+and we observe that many of the most celebrated voluminous tabular works
+are not contained among them. They are confined exclusively to
+arithmetical and trigonometrical tables; and, consequently, the myriad
+of astronomical and nautical tables are totally excluded from them.
+Nevertheless, they contain an extent of printed surface covered with
+figures amounting to above sixteen thousand square feet. We have taken
+at random forty of these tables, and have found that the number of
+errors _acknowledged_ in the respective errata, amounts to above _three
+thousand seven hundred_.
+
+To be convinced of the necessity which has existed for accurate
+numerical tables, it will only be necessary to consider at what an
+immense expenditure of labour and of money even the imperfect ones which
+we possess have been produced.
+
+To enable the reader to estimate the difficulties which attend the
+attainment even of a limited degree of accuracy, we shall now explain
+some of the expedients which have been from time to time resorted to for
+the attainment of numerical correctness in calculating and printing
+them.
+
+Among the scientific enterprises which the ambition of the French nation
+aspired to during the Republic, was the construction of a magnificent
+system of numerical tables. Their most distinguished mathematicians were
+called upon to contribute to the attainment of this important object;
+and the superintendence of the undertaking was confided to the
+celebrated Prony, who co-operated with the government in the adoption of
+such means as might be expected to ensure the production of a system of
+logarithmic and trigonometric tables, constructed with such accuracy
+that they should form a monument of calculation the most vast and
+imposing that had ever been executed, or even conceived. To accomplish
+this gigantic task, the principle of the division of labour, found to be
+so powerful in manufactures, was resorted to with singular success. The
+persons employed in the work were divided into three sections: the first
+consisted of half a dozen of the most eminent analysts. Their duty was
+to investigate the most convenient mathematical formulæ, which should
+enable the computers to proceed with the greatest expedition and
+accuracy by the method of Differences, of which we shall speak more
+fully hereafter. These formulæ, when decided upon by this first
+section, were handed over to the second section, which consisted of
+eight or ten properly qualified mathematicians. It was the duty of this
+second section to convert into numbers certain general or algebraical
+expressions which occurred in the formulæ, so as to prepare them for,
+the hands of the computers. Thus prepared, these formulæ were handed
+over to the third section, who formed a body of nearly one hundred
+computers. The duty of this numerous section was to compute the numbers
+finally intended for the tables. Every possible precaution was of course
+taken to ensure the numerical accuracy of the results. Each number was
+calculated by two or more distinct and independent computers, and its
+truth and accuracy determined by the coincidence of the results thus
+obtained.
+
+The body of tables thus calculated occupied in manuscript _seventeen_
+folio volumes.[7]
+
+[Footnote 7: These tables were never published. The printing of them was
+commenced by Didot, and a small portion was actually stereotyped, but
+never published. Soon after the commencement of the undertaking, the
+sudden fall of the assignats rendered it impossible for Didot to fulfil
+his contract with the government. The work was accordingly abandoned,
+and has never since been resumed. We have before us a copy of 100 pages
+folio of the portion which was printed at the time the work was stopped,
+given to a friend on a late occasion by Didot himself. It was remarked
+in this, as in other similar cases, that the computers who committed
+fewest errors were those who understood nothing beyond the process of
+addition.]
+
+As an example of the precautions which have been considered necessary to
+guard against errors in the calculation of numerical tables, we shall
+further state those which were adopted by Mr Babbage, previously to the
+publication of his tables of logarithms. In order to render the terminal
+figure of tables in which one or more decimal places are omitted as
+accurate as it can be, it has been the practice to compute one or more
+of the succeeding figures; and if the first omitted figure be greater
+than 4, then the terminal figure is always increased by 1, since the
+value of the tabulated number is by such means brought nearer to the
+truth.[8] The tables of Callet, which were among the most accurate
+published logarithms, and which extended to seven places of decimals,
+were first carefully compared with the tables of Vega, which extended to
+ten places, in order to discover whether Callet had made the above
+correction of the final figure in every case where it was necessary.
+This previous precaution being taken, and the corrections which appeared
+to be necessary being made in a copy of Callet's tables, the proofs of
+Mr Babbage's tables were submitted to the following test: They were
+first compared, number by number, with the corrected copy of Callet's
+logarithms; secondly, with Hutton's logarithms; and thirdly, with Vega's
+logarithms. The corrections thus suggested being marked in the proofs,
+corrected revises were received back. These revises were then again
+compared, number by number, first with Vega's logarithms; secondly, with
+the logarithms of Callet; and thirdly, as far as the first 20,000
+numbers, with the corresponding ones in Briggs's logarithms. They were
+now returned to the printer, and were stereotyped; proofs were taken
+from the stereotyped plates, which were put through the following
+ordeal: They were first compared once more with the logarithms of Vega
+as far as 47,500; they were then compared with the whole of the
+logarithms of Gardner; and next with the whole of Taylor's logarithms;
+and as a last test, they were transferred to the hands of a different
+set of readers, and were once more compared with Taylor. That these
+precautions were by no means superfluous may be collected from the
+following circumstances mentioned by Mr Babbage: In the sheets read
+immediately previous to stereotyping, thirty-two errors were detected;
+after stereotyping, eight more were found, and corrected in the plates.
+
+[Footnote 8: Thus suppose the number expressed at full length were
+3.1415927. If the table extend to no more than four places of decimals,
+we should tabulate the number 3.1416 and not 3.1415. The former would be
+evidently nearer to the true number 3.1415927.]
+
+By such elaborate and expensive precautions many of the errors of
+computation and printing may certainly be removed; but it is too much to
+expect that in general such measures can be adopted; and we accordingly
+find by far the greater number of tables disfigured by errors, the
+extent of which is rather to be conjectured than determined. When the
+nature of a numerical table is considered,--page after page densely
+covered with figures, and with nothing else,--the chances against the
+detection of any single error will be easily comprehended; and it may
+therefore be fairly presumed, that for one error which may happen to be
+detected, there must be a great number which escape detection.
+Notwithstanding this difficulty, it is truly surprising how great a
+number of numerical errors have been detected by individuals no
+otherwise concerned in the tables than in their use. Mr Baily states
+that he has himself detected in the solar and lunar tables, from which
+our Nautical Almanac was for a long period computed, more than five
+hundred errors. In the multiplication table already mentioned, computed
+by Dr Hutton for the Board of Longitude, a single page was examined and
+recomputed: it was found to contain about forty errors.
+
+In order to make the calculations upon the numbers found in the
+Ephemeral Tables published in the Nautical Almanac, it is necessary that
+the mariner should be supplied with certain permanent tables. A volume
+of these, to the number of about thirty, was accordingly computed, and
+published at national expense, by order of the Board of Longitude,
+entitled 'Tables requisite to be used with the Nautical Ephemeris for
+finding the latitude and longitude at sea.' In the first edition of
+these requisite tables, there were detected, by one individual, above a
+thousand errors.
+
+The tables published by the Board of Longitude for the correction of the
+observed distances of the moon from certain fixed stars, are followed by
+a table of acknowledged errata, extending to seven folio pages, and
+containing more than eleven hundred errors. Even this table of errata
+itself is not correct: a considerable number of errors have been
+detected in it, so that errata upon errata have become necessary.
+
+One of the tests most frequently resorted to for the detection of errors
+in numerical tables, has been the comparison of tables of the same kind,
+published by different authors. It has been generally considered that
+those numbers in which they are found to agree must be correct; inasmuch
+as the chances are supposed to be very considerable against two or more
+independent computers falling into precisely the same errors. How far
+this coincidence may be safely assumed as a test of accuracy we shall
+presently see.
+
+A few years ago, it was found desirable to compute some very accurate
+logarithmic tables for the use of the great national survey of Ireland,
+which was then, and still is in progress; and on that occasion a careful
+comparison of various logarithmic tables was made. Six remarkable errors
+were detected, which were found to be common to several apparently
+independent sets of tables. This singular coincidence led to an
+unusually extensive examination of the logarithmic tables published both
+in England and in other countries; by which it appeared that thirteen
+sets of tables, published in London between the years 1633 and 1822, all
+agreed in these six errors. Upon extending the enquiry to foreign
+tables, it appeared that two sets of tables published at Paris, one at
+Gouda, one at Avignon, one at Berlin, and one at Florence, were infected
+by exactly the same six errors. The only tables which were found free
+from them were those of Vega, and the more recent impressions of Callet.
+It happened that the Royal Society possessed a set of tables of
+logarithms printed in the Chinese character, and on Chinese paper,
+consisting of two volumes: these volumes contained no indication or
+acknowledgment of being copied from any other work. They were examined;
+and the result was the detection in them of the same six errors.[9]
+
+[Footnote 9: Memoirs Ast. Soc. vol. III, p. 65.]
+
+It is quite apparent that this remarkable coincidence of error must have
+arisen from the various tables being copied successively one from
+another. The earliest work in which they appeared was Vlacq's
+Logarithms, (folio, Gouda, 1628); and from it, doubtless, those which
+immediately succeeded it in point of time were copied; from which the
+same errors were subsequently transcribed into all the other, including
+the Chinese logarithms.
+
+The most certain and effectual check upon errors which arise in the
+process of computation, is to cause the same computations to be made by
+separate and independent computers; and this check is rendered still
+more decisive if they make their computations by different methods. It
+is, nevertheless, a remarkable fact, that several computers, working
+separately and independently, do frequently commit precisely the same
+error; so that falsehood in this case assumes that character of
+consistency, which is regarded as the exclusive attribute of truth.
+Instances of this are familiar to most persons who have had the
+management of the computation of tables. We have reason to know, that M.
+Prony experienced it on many occasions in the management of the great
+French tables, when he found three, and even a greater number of
+computers, working separately and independently, to return him the same
+numerical result, and _that result wrong_. Mr Stratford, the conductor of
+the Nautical Almanac, to whose talents and zeal that work owes the
+execution of its recent improvements, has more than once observed a
+similar occurrence. But one of the most signal examples of this kind, of
+which we are aware, is related by Mr Baily. The catalogue of stars
+published by the Astronomical Society was computed by two separate and
+independent persons, and was afterwards compared and examined with great
+care and attention by Mr Stratford. On examining this catalogue, and
+recalculating a portion of it, Mr Baily discovered an error in the case
+of the star, χ Cephei. Its right ascension was calculated _wrongly_, and
+yet _consistently_, by two computers working separately. Their numerical
+results agreed precisely in every figure; and Mr Stratford, on examining
+the catalogue, failed to detect the error. Mr Baily having reason, from
+some discordancy which he observed, to suspect an error, recomputed the
+place of the star with a view to discover it; and he himself, in the
+first instance, obtained precisely _the same erroneous numerical result_.
+It was only on going over the operation a second time that he
+_accidentally_ discovered that he had inadvertently committed the same
+error.[10]
+
+[Footnote 10: Memoirs Ast. Soc. vol. iv., p. 290.]
+
+It appears, therefore, that the coincidence of different tables, even
+when it is certain that they could not have been copied one from
+another, but must have been computed independently, is not a decisive
+test of their correctness, neither is it possible to ensure accuracy by
+the device of separate and independent computation.
+
+Besides the errors incidental to the process of computation, there are
+further liabilities in the process of transcribing the final results of
+each calculation into the fair copy of the table designed for the
+printer. The next source of error lies with the compositor, in
+transferring this copy into type. But the liabilities to error do not
+stop even here; for it frequently happens, that after the press has been
+fully corrected, errors will be produced in the process of printing. A
+remarkable instance of this occurs in one of the six errors detected in
+so many different tables already mentioned. In one of these cases, the
+last five figures of two successive numbers of a logarithmic table were
+the following:--
+
+                        35875
+                        10436.
+
+Now, both of these are erroneous; the figure 8 in the first line should
+be 4, and the figure 4 in the second should be 8. It is evident that the
+types, as first composed, were correct; but in the course of printing,
+the two types 4 and 8 being loose, adhered to the inking-balls, and were
+drawn out: the pressmen in replacing them transposed them, putting the 8
+_above_ and the 4 _below_, instead of _vice versa_. It would be a curious
+enquiry, were it possible to obtain all the copies of the original
+edition of Vlacq's Logarithms, published at Gouda in 1628, from which
+this error appears to have been copied in all the subsequent tables, to
+ascertain whether it extends through the entire edition. It would
+probably, nay almost certainly, be discovered that some of the copies of
+that edition are correct in this number, while others are incorrect; the
+former having been worked off before the transposition of the types.
+
+It is a circumstance worthy of notice, that this error in Vlacq's tables
+has produced a corresponding error in a variety of other tables deduced
+from them, _in which nevertheless the erroneous figures in Vlacq are
+omitted_. In no less than sixteen sets of tables published at various
+times since the publication of Vlacq, in which the logarithms extend
+only to seven places of figures, the error just mentioned in the _eighth
+place_ in Vlacq causes a corresponding error in the _seventh_ place. When
+the last three figures are omitted in the first of the above numbers,
+the seventh figure should be 5, inasmuch as the first of the omitted
+figures is under 5: the erroneous insertion, however, of the figure 8 in
+Vlacq has caused the figure 6 to be substituted for 5 in the various
+tables just alluded to. For the same reason, the erroneous occurrence of
+4 in the second number has caused the adoption of a 0 instead of a 1 in
+the seventh place in the other tables. The only tables in which this
+error does not occur are those of Vega, the more recent editions of
+Callet, and the still later Logarithms of Mr Babbage.
+
+The _Opus Palatinum_, a work published in 1596, containing an extensive
+collection of trigonometrical tables, affords a remarkable instance of a
+tabular error; which, as it is not generally known, it may not be
+uninteresting to mention here. After that work had been for several
+years in circulation in every part of Europe, it was discovered that the
+commencement of the table of co-tangents and co-secants was vitiated by
+an error of considerable magnitude. In the first co-tangent the last
+nine places of figures were incorrect; but from the manner in which the
+numbers of the table were computed, the error was gradually, though
+slowly, diminished, until at length it became extinguished in the
+eighty-sixth page. After the detection of this extensive error, Pitiscus
+undertook the recomputation of the eighty-six erroneous pages. His
+corrected calculation was printed, and the erroneous part of the
+remaining copies of the _Opus Palatinum_ was cancelled. But as the
+corrected table of Pitiscus was not published until 1607,--thirteen
+years after the original work,--the erroneous part of the volume was
+cancelled in comparatively few copies, and consequently correct copies
+of the work are now exceedingly rare. Thus, in the collection of tables
+published by M. Schulze,[11] the whole of the erroneous part of the _Opus
+Palatinum_ has been adopted; he having used the copy of that work which
+exists in the library of the Academy of Berlin, and which is one of
+those copies in which the incorrect part was not cancelled. The
+corrected copies of this work may be very easily distinguished at
+present from the erroneous ones: it happened that the former were
+printed with a very bad and worn-out type, and upon paper of a quality
+inferior to that of the original work. On comparing the first eighty-six
+pages of the volume with the succeeding ones, they are, therefore,
+immediately distinguishable in the corrected copies. Besides this test,
+there is another, which it may not be uninteresting to point out:--At
+the bottom of page 7 in the corrected copies, there is an error in the
+position of the words _basis_ and _hypothenusa_, their places being
+interchanged. In the original uncorrected work this error does not
+exist.
+
+[Footnote 11: _Recueil des Tables Logarithmiques et Trigonometriques_.
+Par J. C. Schulze. 2 vols. Berlin: 1778.]
+
+At the time when the calculation and publication of Taylor's Logarithms
+were undertaken, it so happened that a similar work was in progress in
+France; and it was not until the calculation of the French work was
+completed, that its author was informed of the publication of the
+English work. This circumstance caused the French calculator to
+relinquish the publication of his tables. The manuscript subsequently
+passed into the library of Delambre, and, after his death, was purchased
+at the sale of his books, by Mr Babbage, in whose possession it now is.
+Some years ago it was thought advisable to compare these manuscript
+tables with Taylor's Logarithms, with a view to ascertain the errors in
+each, but especially in Taylor. The two works were peculiarly well
+suited for the attainment of this end; as the circumstances under which
+they were produced, rendered it quite certain that they were computed
+independently of each other. The comparison was conducted under the
+direction of the late Dr Young, and the result was the detection of the
+following nineteen errors in Taylor's Logarithms. To enable those who
+used Taylor's Logarithms to make the necessary corrections in them, the
+corrections of the detected errors appeared as follows in the Nautical
+Almanac for 1832.
+
+
+ERRATA, _detected in_ Taylor's _Logarithms_. _London: 4to_, 1792.
+
+                                 °  '  "
+ 1    _E_        Co-tangent of    1.35.35    _for_ 43671    _read_ 42671
+ 2    _M_        Co-tangent of    4. 4.49     ---  66976     ----  66979
+ 3               Sine of          4.23.38     ---  43107     ----  43007
+ 4               Sine of          4.23.39     ---  43381     ----  43281
+ 5    _S_        Sine of          6.45.52     ---  10001     ----  11001
+ 6    _Kk_       Co-sine of      14.18. 3     ---   3398     ----   3298
+ 7    _Ss_       Tangent of      18. 1.56     ---   5064     ----   6064
+ 8    _Aaa_      Co-tangent of   21.11.14     ---   6062     ----   5962
+ 9    _Ggg_      Tangent of      23.48.19     ---   6087     ----   5987
+ 10              Co-tangent of   23.48.19     ---   3913     ----   4013
+ 11   _Iii_      Sine of         25. 5. 4     ---   3173     ----   3183
+ 12              Sine of         25. 5. 5     ---   3218     ----   3228
+ 13              Sine of         25. 5. 6     ---   3263     ----   3273
+ 14              Sine of         25. 5. 7     ---   3308     ----   3318
+ 15              Sine of         25. 5. 8     ---   3353     ----   3363
+ 16              Sine of         25. 5. 9     ---   3398     ----   3408
+ 17   _Qqq_      Tangent of      28.19.39     ---   6302     ----   6402
+ 18   _4H_       Tangent of      35.55.51     ---   1681     ----   1581
+ 19   _4K_       Co-sine of      37.29. 2     ---   5503     ----   5603
+
+
+An error being detected in this list of ERRATA, we find, in the Nautical
+Almanac for the year 1833, the following ERRATUM of the ERRATA of
+Taylor's Logarithms:--
+
+'In the list of ERRATA detected in Taylor's Logarithms, for _cos_. 4°
+18' 3", read cos. 14° 18' 2".'
+
+Here, however, confusion is worse confounded; for a new error, not
+before existing, and of much greater magnitude, is introduced! It will
+be necessary, in the Nautical Almanac for 1836, (that for 1835 is
+already published,) to introduce the following:
+
+ERRATUM of the ERRATUM of the ERRATA of TAYLOR's _Logarithms_. For cos. 4°
+18' 3", _read_ cos. 14° 18' 3".
+
+If proof were wanted to establish incontrovertibly the utter
+impracticability of precluding numerical errors in works of this nature,
+we should find it in this succession of error upon error, produced, in
+spite of the universally acknowledged accuracy and assiduity of the
+persons at present employed in the construction and management of the
+Nautical Almanac. It is only by the _mechanical fabrication of tables_
+that such errors can be rendered impossible.
+
+On examining this list with attention, we have been particularly struck
+with the circumstances in which these errors appear to have originated.
+It is a remarkable fact, that of the above nineteen errors, eighteen
+have arisen from mistakes in _carrying_. Errors 5, 7, 10, 11, 12, 13, 14,
+15, 16, 17, 19, have arisen from a carriage being neglected; and errors
+1, 3, 4, 6, 8, 9, and 18, from a carriage being made where none should
+take place. In four cases, namely, errors 8, 9, 10, and 16, this has
+caused _two_ figures to be wrong. The only error of the nineteen which
+appears to have been a press error is the second; which has evidently
+arisen from the type 9 being accidentally inverted, and thus becoming a
+6. This may have originated with the compositor, but more probably it
+took place in the press-work; the type 9 being accidentally drawn out of
+the form by the inking-ball, as mentioned in a former case, and on being
+restored to its place, inverted by the pressman.
+
+There are two cases among the above errata, in which an error, committed
+in the calculation of one number, has evidently been the cause of other
+errors. In the third erratum, a wrong carriage was made, in computing
+the sine of 4° 23' 38". The next number of the table was vitiated
+by this error; for we find the next erratum to be in the sine of 4°
+23' 39", in which the figure similarly placed is 1 in excess. A
+still more extensive effect of this kind appears in errata 11, 12, 13,
+14, 15, 16. A carriage was neglected in computing the sine of 25° 5'
+4", and this produced a corresponding error in the five following
+numbers of the table, which are those corrected in the five following
+errata.
+
+This frequency of errors arising in the process of carrying, would
+afford a curious subject of metaphysical speculation respecting the
+operation of the faculty of memory. In the arithmetical process, the
+memory is employed in a twofold way;--in ascertaining each successive
+figure of the calculated result by the recollection of a table committed
+to memory at an early period of life; and by another act of memory, in
+which the number carried from column to column is retained. It is a
+curious fact, that this latter circumstance, occurring only the moment
+before, and being in its nature little complex, is so much more liable
+to be forgotten or mistaken than the results of rather complicated
+tables. It appears, that among the above errata, the errors 5, 7, 10,
+11, 17, 19, have been produced by the computer forgetting a carriage;
+while the errors 1, 3, 6, 8, 9, 18, have been produced by his making a
+carriage improperly. Thus, so far as the above list of errata affords
+grounds for judging, it would seem, (contrary to what might be
+expected,) that the error by which improper carriages are made is as
+frequent as that by which necessary carriages are overlooked.
+
+
+We trust that we have succeeded in proving, first, the great national
+and universal utility of numerical tables, by showing the vast number of
+them, which have been calculated and published; secondly, that more
+effectual means are necessary to obtain such tables suitable to the
+present state of the arts, sciences and commerce, by showing that the
+existing supply of tables, vast as it certainly is, is still scanty, and
+utterly inadequate to the demands of the community;--that it is
+rendered inefficient, not only in quantity, but in quality, by its want
+of numerical correctness; and that such numerical correctness is
+altogether unattainable until some more perfect method be discovered,
+not only of calculating the numerical results, but of tabulating
+these,--of reducing such tallies to type, and of printing that type so
+as to intercept the possibility of error during the press-work. Such are
+the ends which are proposed to be attained by the calculating machinery
+invented by Mr Babbage.
+
+The benefits to be derived from this invention cannot be more strongly
+expressed than they have been by Mr Colebrooke, President of the
+Astronomical Society, on the occasion of presenting the gold medal voted
+by that body to Mr Babbage:--'In no department of science, or of the
+arts, does this discovery promise to be so eminently useful as in that
+of astronomy, and its kindred sciences, with the various arts dependent
+on them. In none are computations more operose than those which
+astronomy in particular requires;--in none are preparatory facilities
+more needful;--in none is error more detrimental. The practical
+astronomer is interrupted in his pursuit, and diverted from his task of
+observation by the irksome labours of computation, or his diligence in
+observing becomes ineffectual for want of yet greater industry of
+calculation. Let the aid which tables previously computed afford, be
+furnished to the utmost extent which mechanism has made attainable
+through Mr Babbage's invention, and the most irksome portion of the
+astronomer's task is alleviated, and a fresh impulse is given to
+astronomical research.'
+
+The first step in the progress of this singular invention was the
+discovery of some common principle which pervaded numerical tables of
+every description; so that by the adoption of such a principle as the
+basis of the machinery, a corresponding degree of generality would be
+conferred upon its calculations. Among the properties of numerical
+functions, several of a general nature exist; and it was a matter of no
+ordinary difficulty, and requiring no common skill, to select one which
+might, in all respects, be preferable to the others. Whether or not that
+which was selected by Mr Babbage affords the greatest practical
+advantages, would be extremely difficult to decide--perhaps impossible,
+unless some other projector could be found possessed of sufficient
+genius, and sustained by sufficient energy of mind and character, to
+attempt the invention of calculating machinery on other principles. The
+principle selected by Mr Babbage as the basis of that part of the
+machinery which calculates, is the Method of Differences; and he has in
+fact literally thrown this mathematical principle into wheel-work. In
+order to form a notion of the nature of the machinery, it will be
+necessary, first to convey to the reader some idea of the mathematical
+principle just alluded to.
+
+A numerical table, of whatever kind, is a series of numbers which
+possess some common character, and which proceed increasing or
+decreasing according to some general law. Supposing such a series
+continually to increase, let us imagine each number in it to be
+subtracted from that which follows it, and the remainders thus
+successively obtained to be ranged beside the first, so as to form
+another table: these numbers are called the _first differences_. If we
+suppose these likewise to increase continually, we may obtain a third
+table from them by a like process, subtracting each number from the
+succeeding one: this series is called the _second differences_. By
+adopting a like method of proceeding, another series may be obtained,
+called the _third differences_; and so on. By continuing this process, we
+shall at length obtain a series of differences, of some order, more or
+less high, according to the nature of the original table, in which we
+shall find the same number constantly repeated, to whatever extent the
+original table may have been continued; so that if the next series of
+differences had been obtained in the same manner as the preceding ones,
+every term of it would be 0. In some cases this would continue to
+whatever extent the original table might be carried; but in all cases a
+series of differences would be obtained, which would continue constant
+for a very long succession of terms.
+
+As the successive serieses of differences are derived from the original
+table, and from each other, by _subtraction_, the same succession of
+series may be reproduced in the other direction by _addition_. But let us
+suppose that the first number of the original table, and of each of the
+series of differences, including the last, be given: all the numbers of
+each of the series may thence be obtained by the mere process of
+addition. The second term of the original table will be obtained by
+adding to the first the first term of the first difference series; in
+like manner, the second term of the first difference series will be
+obtained by adding to the first term, the first term of the third
+difference series, and so on. The second terms of all the serieses being
+thus obtained, the third terms may be obtained by a like process of
+addition; and so the series may be continued. These observations will
+perhaps be rendered more clearly intelligible when illustrated by a
+numerical example. The following is the commencement of a series of the
+fourth powers of the natural numbers:--
+
+                   No.     Table.
+                    1          1
+                    2         16
+                    3         81
+                    4        256
+                    5        625
+                    6       1296
+                    7       2401
+                    8       4096
+                    9       6561
+                    10    10,000
+                    11    14,641
+                    12    20,736
+                    13    28,561
+
+By subtracting each number from the succeeding one in this series, we
+obtain the following series of first differences:
+
+                          15
+                          65
+                         175
+                         369
+                         671
+                        1105
+                        1695
+                        2465
+                        3439
+                        4641
+                        6095
+                        7825
+
+In like manner, subtracting each term of this series from the succeeding
+one, we obtain the following series of second differences:--
+
+                          50
+                         110
+                         194
+                         302
+                         434
+                         590
+                         770
+                         974
+                        1202
+                        1454
+                        1730
+
+Proceeding with this series in the same way, we obtain the following
+series of third differences:--
+
+                         60
+                         84
+                        108
+                        132
+                        156
+                        180
+                        204
+                        228
+                        252
+                        276
+
+Proceeding in the same way with these, we obtain the following for the
+series of fourth differences:--
+
+                         24
+                         24
+                         24
+                         24
+                         24
+                         24
+                         24
+                         24
+                         24
+
+It appears, therefore, that in this case the series of fourth
+differences consists of a constant repetition of the number 24. Now, a
+slight consideration of the succession of arithmetical operations by
+which we have obtained this result, will show, that by reversing the
+process, we could obtain the table of fourth powers by the mere process
+of addition. Beginning with the first numbers in each successive series
+of differences, and designating the table and the successive differences
+by the letters T, D^1 D^2 D^3 D^4, we have then the following to begin
+with:--
+
+                  T   D^1   D^2   D^3   D^4
+                  1    15    50    60    24
+
+Adding each number to the number on its left, and repeating 24, we get
+the following as the second terms of the several series:--
+
+                  T   D^1   D^2   D^3   D^4
+                 16    65   110    84    24
+
+And, in the same manner, the third and succeeding terms as follows:--
+
+           No.      T     D^1    D^2    D^3    D^4
+            1       1      15     50     60     24
+            2      16      65    110     84     24
+            3      81     175    194    108     24
+            4     256     369    302    132     24
+            5     625     671    434    156     24
+            6    1296    1105    590    180     24
+            7    2401    1695    770    204     24
+            8    4096    2465    974    228     24
+            9    6561    3439   1202    252     24
+           10   10000    4641   1454    276
+           11   14641    6095   1730
+           12   20736    7825
+           13   28561
+
+There are numerous tables in which, as already stated, to whatever order
+of differences we may proceed, we should not obtain a series of
+rigorously constant differences; but we should always obtain a certain
+number of differences which to a given number of decimal places would
+remain constant for a long succession of terms. It is plain that such a
+table might be calculated by addition in the same manner as those which
+have a difference rigorously and continuously constant; and if at every
+point where the last difference requires an increase, that increase be
+given to it, the same principle of addition may again be applied for a
+like succession of terms, and so on.
+
+By this principle it appears, that all tables in which each series of
+differences continually increases, may be produced by the operation of
+addition alone; provided the first terms of the table, and of each
+series of differences, be given in the first instance. But it sometimes
+happens, that while the table continually increases, one or more
+serieses of differences may continually diminish. In this case, the
+series of differences are found by subtracting each term of the series,
+not from that which follows, but from that which precedes it; and
+consequently, in the re-production of the several serieses, when their
+first terms are given, it will be necessary in some cases to obtain them
+by _addition_, and in others by _subtraction_. It is possible, however,
+still to perform all the operations by addition alone: this is effected
+in performing the operation of subtraction, by substituting for the
+subtrahend its _arithmetical complement_, and adding that, omitting the
+unit of the highest order in the result. This process, and its
+principle, will be readily comprehended by an example. Let it be
+required to subtract 357 from 768.
+
+The common process would be as follows:--
+
+                        From       768
+                        Subtract   357
+                                  ----
+                        Remainder  411
+
+The _arithmetical complement_ of 357, or the number by which it falls
+short of 1000, is 643. Now, if this number be added to 768, and the
+first figure on the left be struck out of the sum, the process will be
+as follows:--
+
+                        To                 768
+                        Add                643
+                                          ----
+                        Sum               1411
+                                          ----
+                        Remainder sought   411
+
+The principle on which this process is founded is easily explained. In
+the latter process we have first added 643, and then subtracted 1000. On
+the whole, therefore, we have subtracted 357, since the number actually
+subtracted exceeds the number previously added by that amount.
+
+Since, therefore, subtraction may be effected in this manner by
+addition, it follows that the calculation of all serieses, so far as an
+order of differences can be found in them which continues constant, may
+be conducted by the process of addition alone.
+
+It also appears from what has been stated, that each addition consists
+only of two operations. However numerous the figures may be of which the
+several pairs of numbers to be thus added may consist, it is obvious
+that the operation of adding them can only consist of repetitions of the
+process of adding one digit to another; and of carrying one from the
+column of inferior units to the column of units next superior when
+necessary. If we would therefore reduce such a process to machinery, it
+would only be necessary to discover such a combination of moving parts
+as are capable of performing these two processes of _adding_ and _carrying_
+on two single figures; for, this being once accomplished, the process of
+adding two numbers, consisting of any number of digits, will be effected
+by repeating the same mechanism as often as there are pairs of digits to
+be added. Such was the simple form to which Mr Babbage reduced the
+problem of discovering the calculating machinery; and we shall now
+proceed to convey some notion of the manner in which he solved it.
+
+For the sake of illustration, we shall suppose that the table to be
+calculated shall consist of numbers not exceeding six places of figures;
+and we shall also suppose that the difference of the fifth order is the
+constant difference. Imagine, then, six rows of wheels, each wheel
+carrying upon it a dial-plate like that of a common clock, but
+consisting of _ten_ instead of _twelve_ divisions; the several divisions
+being marked 1, 2, 3, 4, 5, 6, 7, 8, 9, 0. Let these dials be supposed
+to revolve whenever the wheels to which they are attached are put in
+motion, and to turn in such a direction that the series of increasing
+numbers shall pass under the index which appears over each dial:--thus,
+after 0 passes the index, 1 follows, then 2, 3, and so on, as the dial
+revolves. In Fig. 1 are represented six horizontal rows of such dials.
+
+Fig. 1.
+
+The method of differences, as already explained, requires, that in
+proceeding with the calculation, this apparatus should perform
+continually the addition of the number expressed upon each row of dials,
+to the number expressed upon the row immediately above it. Now, we shall
+first explain how this process of addition may be conceived to be
+performed by the motion of the dials; and in doing so, we shall consider
+separately the processes of addition and carriage, considering the
+addition first, and then the carriage.
+
+Let us first suppose the line D^1 to be added to the line T. To
+accomplish this, let us imagine that while the dials on the line D^1 are
+quiescent, the dials on the line T are put in motion, in such a manner,
+that as many divisions on each dial shall pass under its index, as there
+are units in the number at the index immediately below it. It is evident
+that this condition supposes, that if be at any index on the line D^1,
+the dial immediately above it in the line T shall not move. Now the
+motion here supposed, would bring under the indices on the line T such a
+number as would be produced by adding the number D^1 to T, neglecting all
+the carriages; for a carriage should have taken place in every case in
+which the figure 9 of any dial in the line T had passed under the index
+during the adding motion. To accomplish this carriage, it would be
+necessary that the dial immediately on the left of any dial in which 9
+passes under the index, should be advanced one division, independently
+of those divisions which it may have been advanced by the addition of
+the number immediately below it. This effect may be conceived to take
+place in, either of two ways. It may be either produced at the moment
+when the division between 9 and 0 of any dial passes under the index; in
+which case the process of carrying would go on simultaneously with the
+process of adding; or the process of carrying may be postponed in every
+instance until the process of addition, without carrying, has been
+completed; and then by another distinct and independent motion of the
+machinery, a carriage may be made by advancing one division all those
+dials on the right of which a dial had, during the previous addition,
+passed from 9 to 0 under the index. The latter is the method adopted in
+the calculating machinery, in order to enable its inventor to construct
+the carrying machinery independent of the adding mechanism.
+
+Having explained the motion of the dials by which the addition,
+excluding the carriages of the number on the row D^1, may be made to the
+number on the row T, the same explanation may be applied to the number
+on the row D^2 to the number on the row D^1; also, of the number D^3 to the
+number on the row D^2, and so on. Now it is possible to suppose the
+additions of all the rows, except the first, to be made to all the rows
+except the last, simultaneously; and after these additions have been
+made, to conceive all the requisite carriages to be also made by
+advancing the proper dials one division forward. This would suppose all
+the dials in the scheme to receive their adding motion together; and,
+this being accomplished, the requisite dials to receive their carrying
+motions together. The production of so great a number of simultaneous
+motions throughout any machinery, would be attended with great
+mechanical difficulties, if indeed it be practicable. In the calculating
+machinery it is not attempted. The additions are performed in two
+successive periods of time, and the carriages in two other periods of
+time, in the following manner. We shall suppose one complete revolution
+of the axis which moves the machinery, to make one complete set of
+additions and carriages; it will then make them in the following
+order:--
+
+The first quarter of a turn of the axis will add the second, fourth, and
+sixth rows to the first, third, and fifth, omitting the carriages; this
+it will do by causing the dials on the first, third, and fifth rows, to
+turn through as many divisions as are expressed by the numbers at the
+indices below them, as already explained.
+
+The second quarter of a turn will cause the carriages consequent on the
+previous addition, to be made by moving forward the proper dials one
+division.
+
+(During these two quarters of a turn, the dials of the first, third, and
+fifth row alone have been moved; those of the second, fourth, and sixth,
+have been quiescent.)
+
+The third quarter of a turn will produce the addition of the third and
+fifth rows to the second and fourth, omitting the carriages; which it
+will do by causing the dials of the second and fourth rows to turn
+through as many divisions as are expressed by the numbers at the indices
+immediately below them.
+
+The fourth and last quarter of a turn will cause the carriages
+consequent on the previous addition, to be made by moving the proper
+dials forward one division.
+
+This evidently completes one calculation, since all the rows except the
+first have been respectively added to all the rows except the last.
+
+To illustrate this: let us suppose the table to be computed to be that
+of the fifth powers of the natural numbers, and the computation to have
+already proceeded so far as the fifth power of 6, which is 7776. This
+number appears, accordingly, in the highest row, being the place
+appropriated to the number of the table to be calculated. The several
+differences as far as the fifth, which is in this case constant, are
+exhibited on the successive rows of dials in such a manner, as to be
+adapted to the process of addition by alternate rows, in the manner
+already explained. The process of addition will commence by the motion
+of the dials in the first, third, and fifth rows, in the following
+manner: The dial A, fig. 1, must turn through one division, which will
+bring the number 7 to the index; the dial B must turn through three
+divisions, which will 0 bring to the index; this will render a carriage
+necessary, but that carriage will not take place during the present
+motion of the dial. The dial C will remain unmoved, since 0 is at the
+index below it; the dial D must turn through nine divisions; and as, in
+doing so, the division between 9 and 0 must pass under the index, a
+carriage must subsequently take place upon the dial to the left; the
+remaining dials of the row T, fig. 1, will remain unmoved. In the row D^2
+the dial A^2 will remain unmoved, since 0 is at the index below it; the
+dial B^2 will be moved through five divisions, and will render a
+subsequent carriage on the dial to the left necessary; the dial C^2 will
+be moved through five divisions; the dial D^2 will be moved through three
+divisions, and the remaining dials of this row will remain unmoved. The
+dials of the row D^4 will be moved according to the same rules; and the
+whole scheme will undergo a change exhibited in fig. 2; a mark (*) being
+introduced on those dials to which a carriage rendered necessary by the
+addition which has just taken place.
+
+Fig. 2.
+
+The second quarter of a turn of the moving axis, will move forward
+through one division all the dials which in fig. 2 are marked (*), and
+the scheme will be converted into the scheme expressed in fig. 3.
+
+Fig. 3.
+
+In third quarter of a turn, the dial A^1, fig. 3, will remain unmoved,
+since is at the index below it; the dial B^1 will be moved forward
+through three divisions; C^1 through nine divisions, and so on; and in
+like manner the dials of the row D^3 will be moved forward through the
+number of divisions expressed at the indices in the row D^4. This change
+will convert the arrangement into that expressed in fig. 4, the dials to
+which a carriage is due, being distinguished as before by (*).
+
+Fig. 4.
+
+The fourth quarter of a turn of the axis will move forward one division
+all the dials marked (*); and the arrangement will finally assume the
+form exhibited in fig. 5, in which the calculation is completed. The
+first row T in this expresses the fifth power of 7; and the second
+expresses the number which must be added to the first row, in order to
+produce the fifth power of 8; the numbers in each row being prepared for
+the change which they must undergo, in order to enable them to continue
+the computation according to the method of alternate addition here
+adopted.
+
+Fig. 5.
+
+Having thus explained what it is that the mechanism is required to do,
+we shall now attempt to convey at least a general notion of some of the
+mechanical contrivances by which the desired ends are attained. To
+simplify the explanation, let us first take one particular
+instance--the dials B and B^1, fig. 1, for example. Behind the dial B^1
+is a bolt, which, at the commencement of the process, is shot between
+the teeth of a wheel which drives the dial B: during the first quarter
+of a turn this bolt is made to revolve, and if it continued to be
+engaged in the teeth of the said wheel, it would cause the dial B to
+make a complete revolution; but it is necessary that the dial B should
+only move through three divisions, and, therefore, when three divisions
+of this dial have passed under its index, the aforesaid bolt must be
+withdrawn: this is accomplished by a small wedge, which is placed in a
+fixed position on the wheel behind the dial B^1, and that position is
+such that this wedge will press upon the bolt in such a manner, that at
+the moment when three divisions of the dial B have passed under the
+index, it shall withdraw the bolt from the teeth of the wheel which it
+drives. The bolt will continue to revolve during the remainder of the
+first quarter of a turn of the axis, but it will no longer drive the
+dial B, which will remain quiescent. Had the figure at the index of the
+dial B^1 been any other, the wedge which withdraws the bolt would have
+assumed a different position, and would have withdrawn the bolt at a
+different time, but at a time always corresponding with the number under
+the index of the dial B^1: thus, if 5 had been under the index of the
+dial B^1, then the bolt would have been withdrawn from between the teeth
+of the wheel which it drives, when five divisions of the dial B had
+passed under the index, and so on. Behind each dial in the row D^1 there
+is a similar bolt and a similar withdrawing wedge, and the action upon
+the dial above is transmitted and suspended in precisely the same
+manner. Like observations will be applicable to all the dials in the
+scheme here referred to, in reference to their adding actions upon those
+above them.
+
+There is, however, a particular case which here merits notice: it is the
+case in which 0 is under the index of the dial from which the addition
+is to be transmitted upwards. As in that case nothing is to be added, a
+mechanical provision should be made to prevent the bolt from engaging in
+the teeth of the wheel which acts upon the dial above: the wedge which
+causes the bolt to be withdrawn, is thrown into such a position as to
+render it impossible that the bolt should be shot, or that it should
+enter between the teeth of the wheel, which in other cases it drives.
+But inasmuch as the usual means of shooting the bolt would still act, a
+strain would necessarily take place in the parts of the mechanism, owing
+to the bolt not yielding to the usual impulse. A small shoulder is
+therefore provided, which puts aside, in this case, the piece by which
+the bolt is usually struck, and allows the striking implement to pass
+without encountering the head of the bolt or any other obstruction. This
+mechanism is brought into play in the scheme, fig. 1, in the cases of
+all those dials in which 0 is under the index.
+
+Such is a general description of the nature of the mechanism by which
+the adding process, apart from the carriages, is effected. During the
+first quarter of a turn, the bolts which drive the dials in the first,
+third, and fifth rows, are caused to revolve, and to act upon these
+dials, so long as they are permitted by the position of the several
+wedges on the second, fourth, and sixth rows of dials, by which these
+bolts are respectively withdrawn; and, during the third quarter of a
+turn, the bolts which drive the dials of the second and fourth rows are
+made to revolve and act upon these dials so long as the wedges on the
+dials of the third and fifth rows, which withdraw them, permit. It will
+hence be perceived, that, during the first and third quarters of a turn,
+the process of addition is continually passing upwards through the
+machinery; alternately from the even to the odd rows, and from the odd
+to the even rows, counting downwards.
+
+We shall now attempt to convey some notion of the mechanism by which the
+process of carrying is effected during the second and fourth quarters of
+a turn of the axis. As before, we shall first explain it in reference to
+a particular instance. During the first quarter of a turn the wheel B^2,
+fig. 1, is caused by the adding bolt to move through five divisions; and
+the fifth of these divisions, which passes under the index, is that
+between 9 and 0. On the axis of the wheel C^2, immediately to the left of
+B^2, is fixed a wheel, called in mechanics a ratchet wheel, which is
+driven by a claw which constantly rests in its teeth. This claw is in
+such a position as to permit the wheel C^2 to move in obedience to the
+action of the adding bolt, but to resist its motion in the contrary
+direction. It is drawn back by a spiral spring, but its recoil is
+prevented by a hook which sustains it; which hook, however, is capable
+of being withdrawn, and when withdrawn, the aforesaid spiral spring
+would draw back the claw, and make it fall through one tooth of the
+ratchet wheel. Now, at the moment that the division between 9 and 0 on
+the dial B^2 passes under the index, a thumb placed on the axis of this
+dial touches a trigger which raises out of the notch the hook which
+sustains the claw just mentioned, and allows it to fall back by the
+recoil of the spring, and to drop into the next tooth of the ratchet
+wheel. This process, however, produces no immediate effect upon the
+position of the wheel C^2, and is merely preparatory to an action
+intended to take place during the second quarter of a turn of the moving
+axis. It is in effect a memorandum taken by the machine of a carriage to
+be made in the next quarter of a turn.
+
+During the second quarter of a turn, a finger placed on the axis of the
+dial B^2 is made to revolve, and it encounters the heel of the
+above-mentioned claw. As it moves forward it drives the claw before it:
+and this claw, resting in the teeth of the ratchet wheel fixed upon the
+axis of the dial C^2 drives forward that wheel, and with it the dial. But
+the length and position of the finger which drives the claw limits its
+action, so as to move the claw forward through such a space only as will
+cause the dial C^2 to advance through a single division; at which point
+it is again caught and retained by the hook. This will be added to the
+number under its index, and the requisite carriage from B^2 to C^2 will be
+accomplished.
+
+In connexion with every dial is placed a similar ratchet wheel with a
+similar claw, drawn by a similar spring, sustained by a similar hook,
+and acted upon by a similar thumb and trigger; and therefore the
+necessary carriages, throughout the whole machinery, take place in the
+same manner and by similar means.
+
+During the second quarter of a turn, such of the carrying claws as have
+been allowed to recoil in the first, third, and fifth rows, are drawn up
+by the fingers on the axes of the adjacent dials; and, during the fourth
+quarter of a turn, such of the carrying claws on the second and fourth
+rows as have been allowed to recoil during the third quarter of a turn,
+are in like manner drawn up by the carrying fingers on the axes of the
+adjacent dials. It appears that the carriages proceed alternately from
+right to left along the horizontal rows during the second and fourth
+quarters of a turn; in the one, they pass along the first, third, and
+fifth rows, and in the other, along the second and fourth.
+
+There are two systems of waves of mechanical action continually flowing
+from the bottom to the top; and two streams of similar action constantly
+passing from the right to the left. The crests of the first system of
+adding waves fall upon the last difference, and upon every alternate one
+proceeding upwards; while the crests of the other system touch upon the
+intermediate differences. The first stream of carrying action passes
+from right to left along the highest row and every alternate tow, while
+the second stream passes along the intermediate rows.
+
+Such is a very rapid and general outline of this machinery. Its wonders,
+however, are still greater in its details than even in its broader
+features. Although we despair of doing it justice by any description
+which can be attempted here, yet we should not fulfil the duty we owe to
+our readers, if we did not call their attention at least to a few of the
+instances of consummate skill which are scattered, with a prodigality
+characteristic of the highest order of inventive genius, throughout this
+astonishing mechanism.
+
+In the general description which we have given of the mechanism for
+_carrying_, it will be observed, that the preparation for every carriage
+is stated to be made during the previous addition, by the disengagement
+of the carrying claw before mentioned, and by its consequent recoil,
+urged by the spiral spring with which it is connected; but it may, and
+does, frequently happen, that though the process of addition may not
+have rendered a carriage necessary, one carriage may itself produce the
+necessity for another. This is a contingency not provided against in the
+mechanism as we have described it: the case would occur in the scheme
+represented in fig. 1, if the figure under the index of C^2 were 4
+instead of 3. The addition of the number 5 at the index of C^3 would, in
+this case, in the first quarter of a turn, bring 9 to the index of C^2:
+this would obviously render no carriage necessary, and of course no
+preparation would be made for one by the mechanism--that is to say, the
+carrying claw of the wheel D^2 would not be detached. Meanwhile a
+carriage upon C^2 has been rendered necessary by the addition made in the
+first quarter of a turn to B^2. This carriage takes place in the ordinary
+way, and would cause the dial C^2, in the second quarter of a turn, to
+advance from 9 to 0: this would make the necessary preparation for a
+carriage from C^2 to D^2. But unless some special arrangement was made for
+the purpose, that carriage would not take place during the second
+quarter of a turn. This peculiar contingency is provided against by an
+arrangement of singular mechanical beauty, and which, at the same time,
+answers another purpose--that of equalizing the resistance opposed to
+the moving power by the carrying mechanism. The fingers placed on the
+axes of the several dials in the row D^2, do not act at the same instant
+on the carrying claws adjacent to them; but they are so placed, that
+their action may be distributed throughout the second quarter of a turn
+in regular succession. Thus the finger on the axis of the dial A^2 first
+encounters the claw upon B^2, and drives it through one tooth immediately
+forwards; the finger on the axis of B^2 encounters the claw upon C^2 and
+drives it through one tooth; the action of the finger on C^2 on the claw
+on D^2 next succeeds, and so on. Thus, while the finger on B^2 acts on C^2,
+and causes the division from 9 to 0 to pass under the index, the thumb
+on C^2 at the same instant acts on the trigger, and detaches the carrying
+claw on D^2, which is forthwith encountered by the carrying finger on C^2,
+and, driven forward one tooth. The dial D^2 accordingly moves forward one
+division, and 5 is brought under the index. This arrangement is
+beautifully effected by placing the several fingers, which act upon the
+carrying claws, _spirally_ on their axes, so that they come into action in
+regular succession.
+
+We have stated that, at the commencement of each revolution of the
+moving axis, the bolts which drive the dials of the first, third, and
+fifth rows, are shot. The process of shooting these bolts must therefore
+have taken place during the last quarter of the preceding revolution;
+but it is during that quarter of a turn that the carriages are effected
+in the second and fourth rows. Since the bolts which drive the dials of
+the first, third, and fifth rows, have no mechanical connexion with the
+dials in the second and fourth rows, there is nothing in the process of
+shooting those bolts incompatible with that of moving the dials of the
+second and fourth rows: hence these two processes may both take place
+during the same quarter of a turn. But in order to equalize the
+resistance to the moving power, the same expedient is here adopted as
+that already described in the process of carrying. The arms which shoot
+the bolts of each row of dials are arranged spirally, so as to act
+successively throughout the quarter of a turn. There is, however, a
+contingency which, under certain circumstances, would here produce a
+difficulty which must be provided against. It is possible, and in fact
+does sometimes happen, that the process of carrying causes a dial to
+move under the index from 0 to 1. In that case, the bolt, preparatory to
+the next addition, ought not to be shot until after the carriage takes
+place; for if the arm which shoots it passes its point of action before
+the carriage takes place, the bolt will be moved out of its sphere of
+action, and will not be shot, which, as we have already explained, must
+always happen when 0 is at the index: therefore no addition would in
+this case take place during the next quarter of a turn of the axis;
+whereas, since 1 is brought to the index by the carriage, which
+immediately succeeds the passage of the arm which ought to bolt, 1
+should be added during the next quarter of a turn. It is plain,
+accordingly, that the mechanism should be so arranged, that the action
+of the arms, which shoot the bolts successively, should immediately
+follow the action of those fingers which raise the carrying claws
+successively; and therefore either a separate quarter of a turn should
+be appropriated to each of those movements, or if they be executed in
+the same quarter of a turn, the mechanism must be so constructed, that
+the arms which shoot the bolts successively, shall severally follow
+immediately after those which raise the carrying claws successively. The
+latter object is attained by a mechanical arrangement of singular
+felicity, and partaking of that elegance which characterises all the
+details of this mechanism. Both sets of arms are spirally arranged on
+their respective axes, so as to be carried through their period in the
+same quarter of a turn; but the one spiral is shifted a few degrees, in
+angular position, behind the other, so that each pair of corresponding
+arms succeed each other in the most regular order,--equalizing the
+resistance, economizing time, harmonizing the mechanism, and giving to
+the whole mechanical action the utmost practical perfection.
+
+The system of mechanical contrivances by which the results, here
+attempted to be described, are attained, form only one order of
+expedients adopted in this machinery;--although such is the perfection
+of their action, that in any ordinary case they would be regarded as
+having attained the ends in view with an almost superfluous degree of
+precision. Considering, however, the immense importance of the purposes
+which the mechanism was destined to fulfil, its inventor determined that
+a higher order of expedients should be superinduced upon those already
+described; the purpose of which should be to obliterate all small errors
+or inequalities which might, even by remote possibility, arise, either
+from defects in the original formation of the mechanism, from inequality
+of wear, from casual strain or derangement,--or, in short, from any
+other cause whatever. Thus the movements of the first and principal
+parts of the mechanism were regarded by him merely as a first, though
+extremely nice approximation, upon which a system of small corrections
+was to be subsequently made by suitable and independent mechanism. This
+supplementary system of mechanism is so contrived, that if one or more
+of the moving parts of the mechanism of the first order be slightly out
+of their places, they will be forced to their exact position by the
+action of the mechanical expedients of the second order to which we now
+allude. If a more considerable derangement were produced by any
+accidental disturbance, the consequence would be that the supplementary
+mechanism would cause the whole system to become locked, so that not a
+wheel would be capable of moving; the impelling power would necessarily
+lose all its energy, and the machine would stop. The consequence of this
+exquisite arrangement is, that the machine will either calculate
+rightly, or not at all.
+
+The supernumerary contrivances which we now allude to, being in a great
+degree unconnected with each other, and scattered through the machinery
+to a certain extent, independent of the mechanical arrangement of the
+principal parts, we find it difficult to convey any distinct notion of
+their nature or form.
+
+In some instances they consist of a roller resting between certain
+curved surfaces, which has but one position of stable equilibrium, and
+that position the same, however the roller or the curved surfaces may
+wear. A slight error in the motion of the principal parts would make
+this roller for the moment rest on one of the curves; but, being
+constantly urged by a spring, it would press on the curved surface in
+such a manner as to force the moving piece on which that curved surface
+is formed, into such a position that the roller may rest between the two
+surfaces; that position being the one which the mechanism should have. A
+greater derangement would bring the roller to the crest of the curve, on
+which it would rest in instable equilibrium; and the machine would
+either become locked, or the roller would throw it as before into its
+true position.
+
+In other instances a similar object is attained by a solid cone being
+pressed into a conical seat; the position of the axis of the cone and
+that of its seat being necessarily invariable, however the cone may
+wear: and the action of the cone upon the seat being such, that it
+cannot rest in any position except that in which the axis of the cone
+coincides with the axis of its seat.
+
+Having thus attempted to convey a notion, however inadequate, of the
+calculating section of the machinery, we shall proceed to offer some
+explanation of the means whereby it is enabled, to print its
+calculations in such a manner as to preclude the possibility of error in
+any individual printed copy.
+
+On the axle of each of the wheels which express the calculated number of
+the table T, there is fixed a solid piece of metal, formed into a curve,
+not unlike the wheel in a common clock, which is called the _snail_. This
+curved surface acts against the arm of a lever, so as to raise that arm
+to a higher or lower point according to the position of the dial with
+which the snail is connected. Without entering into a more minute
+description, it will be easily understood that the snail may be so
+formed that the arm of the lever shall be raised to ten different
+elevations, corresponding to the ten figures of the dial which may be
+brought under the index. The opposite arm of the lever here described
+puts in motion a solid arch, or sector, which carries ten punches: each
+punch bearing on its face a raised character of a figure, and the ten
+punchy bearing the ten characters, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0. It will
+be apparent from what has been just stated, that this _type sector_ (as it
+is called) will receive ten different attitudes, corresponding to the
+ten figures which may successively be brought under the index of the
+dial-plate. At a point over which the type sector is thus moved, and
+immediately under a point through which it plays, is placed a frame, in
+which is fixed a plate of copper. Immediately over a certain point
+through which the type sector moves, is likewise placed a _bent lever_,
+which, being straightened, is forcibly pressed upon the punch which has
+been brought under it. If the type sector be moved, so as to bring under
+the bent lever one of the steel punches above mentioned, and be held in
+that position for a certain time, the bent lever, being straightened,
+acts upon the steel punch, and drives it against the face of the copper
+beneath, and thus causes a sunken impression of the character upon the
+punch to be left upon the copper. If the copper be now shifted slightly
+in its position, and the type sector be also shifted so as to bring
+another punch under the bent lever, another character may be engraved on
+the copper by straightening the bent lever, and pressing it on the punch
+as before. It will be evident, that if the copper was shifted from right
+to left through a space equal to two figures of a number, and, at the
+same time, the type sector so shifted as to bring the punches
+corresponding to the figures of the number successively under the bent
+lever, an engraved impression of the number might thus be obtained upon
+the copper by the continued action of the bent lever. If, when one line
+of figures is thus obtained, a provision be made to shift the copper in
+a direction at right angles to its former motion, through a space equal
+to the distance between two lines of figures, and at the same time to
+shift it through a space in the other direction equal to the length of
+an entire line, it will be evident that another line of figures might be
+printed below the first in the same manner.
+
+The motion of the type sector, here described, is accomplished by the
+action of the snail upon the lever already mentioned. In the case where
+the number calculated is that expressed in fig. 1, the process would be
+as follows:--The snail of the wheel F^1, acting upon the lever, would
+throw the type sector into such an attitude, that the punch bearing the
+character 0 would come under the bent lever. The next turn of the moving
+axis would cause the bent lever to press on the tail of the punch, and
+the character 0 would be impressed upon the copper. The bent lever being
+again drawn up, the punch would recoil from the copper by the action of
+a spring; the next turn of the moving axis would shift the copper
+through the interval between two figures, so as to bring the point
+destined to be impressed with the next figure under the bent lever. At
+the same time, the snail of the wheel E would cause the type sector to
+be thrown into the same attitude as before, and the punch would be
+brought under the bent lever; the next turn would impress the figure
+beside the former one, as before described. The snail upon the wheel D
+would now come into action, and throw the type sector into that position
+in which the punch bearing the character 7 would come under the bent
+lever, and at the same time the copper would be shifted through the
+interval between two figures; the straightening of the lever would next
+follow, and the character 7 would be engraved. In the same manner, the
+wheels C, B, and A would successively act by means of their snails; and
+the copper being shifted, and the lever allowed to act, the number
+007776 would be finally engraved upon the copper: this being
+accomplished, the calculating machinery would next be called into
+action, and another calculation would be made, producing the next number
+of the Table exhibited in fig. 5. During this process the machinery
+would be engaged in shifting the copper both in the direction of its
+length and its breadth, with a view to commence the printing of another
+line; and this change of position would be accomplished at the moment
+when the next calculation would be completed: the printing of the next
+number would go on like the former, and the operation of the machine
+would proceed in the same manner, calculating and printing alternately.
+It is not, however, at all necessary--though we have here supposed it,
+for the sake of simplifying the explanation--that the calculating part
+of the mechanism should have its action suspended while the printing
+part is in operation, or _vice versa_; it is not intended, in fact, to be
+so suspended in the actual machinery. The same turn of the axis by which
+one number is printed, executes a part of the movements necessary for
+the succeeding calculation; so that the whole mechanism will be
+simultaneously and continuously in action.
+
+Of the mechanism by which the position of the copper is shifted from
+figure to figure, from line to line, we shall not attempt any
+description. We feel that it would be quite vain. Complicated and
+difficult to describe as every other part of this machinery is, the
+mechanism for moving the copper is such as it would be quite impossible
+to render at all intelligible, without numerous illustrative drawings.
+
+The engraved plate of copper obtained in the manner above described, is
+designed to be used as a mould from which a stereotyped plate may be
+cast; or, if deemed advisable, it may be used as the immediate means of
+printing. In the one case we should produce a table, printed from type,
+in the same manner as common letter-press printing; in the other an
+engraved table. If it be thought most advisable to print from the
+stereotyped plates, then as many stereotyped plates as may be required
+may be taken from the copper mould; so that when once a table has been
+calculated and engraved by the machinery, the whole world may be
+supplied with stereotyped plates to print it, and may continue to be so
+supplied for an unlimited period of time. There is no practical limit to
+the number of stereotyped plates which may be taken from the engraved
+copper; and there is scarcely any limit to the number of printed copies
+which may be taken from any single stereotyped plate. Not only,
+therefore, is the numerical table by these means engraved and
+stereotyped with infallible accuracy, but such stereotyped plates are
+producible in unbounded quantity. Each plate, when produced, becomes
+itself the means of producing printed copies of the table, in accuracy
+perfect, and in number without limit.
+
+Unlike all other machinery, the calculating mechanism produces, not the
+object of consumption, but the machinery by which that object may be
+made. To say that it computes and prints with infallible accuracy, is to
+understate its merits:--it computes and fabricates _the means_ of
+printing with absolute correctness and in unlimited abundance.
+
+For the sake of clearness, and to render ourselves more easily
+intelligible to the general reader, we have in the preceding explanation
+thrown the mechanism into an arrangement somewhat different from that
+which is really adopted. The dials expressing the numbers of the tables
+of the successive differences are not placed, as we have supposed them,
+in horizontal rows, and read from right to left, in the ordinary way;
+they are, on the contrary, placed vertically, one below the other, and
+read from top to bottom. The number of the table occupies the first
+vertical column on the right, the units being expressed on the lowest
+dial, and the tens on the next above that, and so on. The first
+difference occupies the next vertical column on the left; and the
+numbers of the succeeding differences occupy vertical columns,
+proceeding regularly to the left; the constant difference being on the
+last vertical column. It is intended in the machine now in progress to
+introduce six orders of differences, so that there will be seven columns
+of dials; it is also intended that the calculations shall extend to
+eighteen places of figures: thus each column will have eighteen dials.
+We have referred to the dials as if they were inscribed upon the faces
+of wheels, whose axes are horizontal and planes vertical. In the actual
+machinery the axes are vertical and the planes horizontal, so that the
+edges of the _figure wheels_, as they are called, are presented to the
+eye. The figures are inscribed, not upon the dial-plate, but around the
+surface of a small cylinder or barrel, placed upon the axis of the
+figure wheel, which revolves with it; so that as the figure wheel
+revolves, the figures on the barrel are successively brought to the
+front, and pass under an index engraved upon a plate of metal
+immediately above the barrel. This arrangement has the obvious practical
+advantage, that, instead of each figure wheel having a separate axis,
+all the figure wheels of the same vertical column revolve on the same
+axis; and the same observation will apply to all the wheels with which
+the figure wheels are in mechanical connexion. This arrangement has the
+further mechanical advantage over that which has been assumed for the
+purposes of explanation, that the friction of the wheel-work on the axes
+is less in amount, and more uniformly distributed, than it could be if
+the axes were placed in the horizontal position.
+
+A notion may therefore be formed of the front elevation of the
+calculating part of the mechanism, by conceiving seven steel axes
+erected, one beside another, on each of which shall be placed eighteen
+wheels,[12] five inches in diameter, having cylinders or barrels upon
+them an inch and a half in height, and inscribed, as already stated,
+with the ten arithmetical characters. The entire elevation of the
+machinery would occupy a space measuring ten feet broad, ten feet high,
+and five feet deep. The process of calculation would be observed by the
+alternate motion of the figure wheels on the several axes. During the
+first quarter of a turn, the wheels on the first, third, and fifth axes
+would turn, receiving their addition from the second, fourth, and sixth;
+during the second quarter of a turn, such of the wheels on the first,
+third, and fifth axes, to which carriages are due, would be moved
+forward one additional figure; the second, fourth, and sixth columns of
+wheels being all this time quiescent. During the third quarter of a
+turn, the second, fourth, and sixth columns would be observed to move,
+receiving their additions from the third, fifth, and seventh axes; and
+during the fourth quarter of a turn, such of these wheels to which
+carriages are due, would be observed to move forward one additional
+figure; the wheels of the first, third, and fifth columns being
+quiescent during this time.
+
+[Footnote 12: The wheels, and every other part of the mechanism except
+the axes, springs, and such parts as are necessarily of steel, are
+formed of an alloy of copper with a small portion of tin.]
+
+It will be observed that the wheels of the seventh column are always
+quiescent in this process; and it may be asked, of what use they are,
+and whether some mechanism of a fixed nature would not serve the same
+purpose? It must, however, be remembered, that for different tables
+there will be different constant differences; and that when the
+calculation of a table is about to commence, the wheels on the seventh
+axis must be moved by the hand, so as to express the constant
+difference, whatever it may be. In tables, also, which have not a
+difference rigorously constant, it will be necessary, after a certain
+number of calculations, to change the constant difference by the hand;
+and in this case the wheels of the seventh axis must be moved when
+occasion requires. Such adjustment, however, will only be necessary at
+very distant intervals, and after a considerable extent of printing and
+calculation has taken place; and when it is necessary, a provision is
+made in the machinery by which notice will be given by the sounding of a
+bell, so that the machine may not run beyond the extent of its powers of
+calculation.
+
+Immediately behind the seven axes on which the figure wheels revolve,
+are seven other axes; on which are placed, first, the wheels already
+described as driven by the figure wheels, and which bear upon them the
+wedge which withdraws the bolt immediately over these latter wheels, and
+on the same axis is placed the adding bolt. From the bottom of this bolt
+there projects downwards the pin, which acts upon the unbolting wedge by
+which the bolt is withdrawn: from the upper surface of the bolt proceeds
+a tooth, which, when the bolt is shot, enters between the teeth of the
+adding wheel, which turns on the same axis, and is placed immediately
+above the bolt: its teeth, on which the bolt acts, are like the teeth of
+a crown wheel, and are presented downwards. The bolt is fixed upon this
+axis, and turns with it; but the adding wheel above the bolt, and the
+unbolting wheel below it, both turn upon the axis, and independently of
+it. When the axis is made to revolve by the moving power, the bolt
+revolves with it; and so long as the tooth of the bolt remains inserted
+between those of the adding wheel, the latter is likewise moved; but
+when the lower pin of the bolt encounters the unbolting wedge on the
+lower wheel, the tooth of the bolt is withdrawn, and the motion of the
+adding wheel is stopped. This adding wheel is furnished with spur teeth,
+besides the crown teeth just mentioned; and these spur teeth are engaged
+with those of that unbolting wheel which is in connexion with the
+adjacent figure wheel to which the addition is to be made. By such an
+arrangement it is evident that the revolution of the bolt will
+necessarily add to the adjacent figure wheel the requisite number.
+
+It will be perceived, that upon the same axis are placed an unbolting
+wheel, a bolt, and an adding wheel, one above the other, for every
+figure wheel; and as there are eighteen figure wheels there will be
+eighteen tiers; each tier formed of an unbolting wheel, a bolt, and an
+adding wheel, placed one above the other; the wheels on this axis all
+revolving independent of the axis, but the bolts being all fixed upon
+it. The same observations, of course, will apply to each of the seven
+axes.
+
+At the commencement of every revolution of the adding axes, it is
+evident that the several bolts placed upon them must be shot in order to
+perform the various additions. This is accomplished by a third set of
+seven axes, placed at some distance behind the range of the wheels,
+which turn upon the adding axes: these are called _bolting axes_. On these
+bolting axes are fixed, so as to revolve with them, a bolting finger
+opposite to each bolt; as the bolting axis is made to revolve by the
+moving power, the bolting finger is turned, and as it passes near the
+bolt, it encounters the shoulder of a hammer or lever, which strikes the
+heel of the bolt, and presses it forward so as to shoot its tooth
+between the crown teeth of the adding wheel. The only exception to this
+action is the case in which happens to be at the index of the figure
+wheel; in that case, the lever or hammer, which the bolting finger would
+encounter, is, as before stated, lifted out of the way of the bolting
+finger, so that it revolves without encountering it. It is on the
+bolting axes that the fingers are spirally arranged so as to equalize
+their action, as already explained.
+
+The same axes in the front of the machinery on which the figure wheels
+turn, are made to serve the purpose of _carrying_. Each of these bear a
+series of fingers which turn with them, and which encounter a carrying
+claw, already described, so as to make the carriage: these carrying
+fingers are also spirally arranged on their axes, as already described.
+
+Although the absolute accuracy which appears to be ensured by the
+mechanical arrangements here described is such as to render further
+precautions nearly superfluous, still it may be right to state, that,
+supposing it were possible for an error to be produced in calculation,
+this error could be easily and speedily detected in the printed tables:
+it would only be necessary to calculate a number of the table taken at
+intervals, through which the mechanical action of the machine has not
+been suspended, and during which it has received no adjustment by the
+hand: if the computed number be found to agree with those printed, it
+may be taken for granted that all the intermediate numbers are correct;
+because, from the nature of the mechanism, and the principle of
+computation, an error occurring in any single number of the table would
+be unavoidably entailed, in an increasing ratio, upon all the succeeding
+numbers.
+
+We have hitherto spoken merely of the practicability of executing by the
+machinery, when completed, that which its inventor originally
+contemplated--namely, the calculating and printing of all numerical
+tables, derived by the method of differences from a constant difference.
+It has, however, happened that the actual powers of the machinery
+greatly transcend those contemplated in its original design:--they not
+only have exceeded the most sanguine anticipations of its inventor, but
+they appear to have an extent to which it is utterly impossible, even
+for the most acute mathematical thinker, to fix a probable limit.
+Certain subsidiary mechanical inventions have, in the progress of the
+enterprise, been, by the very nature of the machinery, suggested to the
+mind of the inventor, which confer upon it capabilities which he had
+never foreseen. It would be impossible even to enumerate, within the
+limits of this article, much less to describe in detail, those
+extraordinary mechanical arrangements, the effects of which have not
+failed to strike with astonishment every one who has been favoured with
+an opportunity of witnessing them, and who has been enabled, by
+sufficient mathematical attainments, in any degree to estimate their
+probable consequences.
+
+As we have described the mechanism, the axes containing the several
+differences are successively and regularly added one to another; but
+there are certain mechanical adjustments, and these of a very simple
+nature, which being thrown into action, will cause a difference of any
+order to be added any number of times to a difference of any other
+order; and that either proceeding backwards or forwards, from a
+difference of an inferior to one of a superior order, and _vice versa_.[13]
+
+[Footnote 13: The machine was constructed with the intention of tabulating
+the equation Delta^{7}_{u} = 0, but, by the means
+above alluded to, it is capable of tabulating such equations as the
+following: Delta^{7}u = a Delta u, Delta^{7}u = aDelta^{3}u,
+Delta^{7}u = units figure of Delta u.]
+
+Among other peculiar mechanical provisions in the machinery is one by
+which, when the table for any order of difference amounts to a certain
+number, a certain arithmetical change would be made in the constant
+difference. In this way a series may be tabulated by the machine, in
+which the constant difference is subject to periodical change; or the
+very nature of the table itself may be subject to periodical change, and
+yet to one which has a regular law.
+
+Some of these subsidiary powers are peculiarly applicable to
+calculations required in astronomy, and are therefore of eminent and
+immediate practical utility: others there are by which tables are
+produced, following the most extraordinary, and apparently capricious,
+but still regular laws. Thus a table will be computed, which, to any
+required extent, shall coincide with a given table, and which shall
+deviate from that table for a single term, or for any required number of
+terms, and then resume its course, or which shall permanently alter the
+law of its construction. Thus the engine has calculated a table which
+agreed precisely with a table of square numbers, until it attained the
+hundred and first term, which was not the square of 101, nor were any of
+the subsequent numbers squares. Again, it has computed a table which
+coincided with the series of natural numbers, as far as 100,000,001, but
+which subsequently followed another law. This result was obtained, not
+by working the engine through the whole of the first table, for that
+would have required an enormous length of time; but by showing, from the
+arrangement of the mechanism, that it must continue to exhibit the
+succession of natural numbers, until it would reach 100,000,000. To save
+time, the engine was set by the hand to the number 99999995, and was
+then put in regular operation. It produced successively the following
+numbers.[14]
+
+                   99,999,996
+                   99,999,997
+                   99,999,998
+                   99,999,999
+                  100,000,000
+                  100,010,002
+                  100,030,003
+                  100,060,004
+                  100,100,005
+                  100,150,006
+                    &c. &c.
+
+[Footnote 14: Such results as this suggest a train of reflection on the
+nature and operation of general laws, which would lead to very curious
+and interesting speculations. The natural philosopher and astronomer
+will be hardly less struck with them than the metaphysician and
+theologian.]
+
+Equations have been already tabulated by the portion of the machinery
+which has been put together, which are so far beyond the reach of the
+present power of mathematics, that no distant term of the table can be
+predicted, nor any function discovered capable of expressing its general
+law. Yet the very fact of the table being produced by mechanism of an
+invariable form, and including a distinct principle of mechanical
+action, renders it quite manifest that _some_ general law must exist in
+every table which it produces. But we must dismiss these speculations:
+we feel it impossible to stretch the powers of our own mind, so as to
+grasp the probable capabilities of this splendid production of combined
+mechanical and mathematical genius; much less can we hope to enable
+others to appreciate them, without being furnished with such means of
+comprehending them as those with which we have been favoured. Years must
+in fact elapse, and many enquirers direct their energies to the
+cultivation of the vast field of research thus opened, before we can
+fully estimate the extent of this triumph of matter over mind. 'Nor is
+it,' says Mr Colebrooke, 'among the least curious results of this
+ingenious device, that it affords a new opening for discovery, since it
+is applicable, as has been shown by its inventor, to surmount novel
+difficulties of analysis. Not confined to constant differences, it is
+available in every case of differences that follow a definite law,
+reducible therefore to an equation. An engine adjusted to the purpose
+being set to work, will produce any distant term, or succession of
+terms, required--thus presenting the numerical solution of a problem,
+even though the analytical solution be yet undetermined.' That the
+future path of some important branches of mathematical enquiry must now
+in some measure be directed by the dictates of mechanism, is
+sufficiently evident; for who would toil on in any course of analytical
+enquiry, in which he must ultimately depend on the expensive and
+fallible aid of human arithmetic, with an instrument in his hands, in
+which all the dull monotony of numerical computation is turned over to
+the untiring action and unerring certainty of mechanical agency?
+
+It is worth notice, that each of the axes in front of the machinery on
+which the figure wheels revolve, is connected with a bell, the tongue of
+which is governed by a system of levers, moved by the several figure
+wheels; an adjustment is provided by which the levers shall be
+dismissed, so as to allow the hammer to strike against the bell,
+whenever any proposed number shall be exhibited on the axis. This
+contrivance enables the machine to give notice to its attendants at any
+time that an adjustment may be required.
+
+Among a great variety of curious accidental properties (so to speak)
+which the machine is found to possess, is one by which it is capable of
+solving numerical equations which have rational roots. Such an equation
+being reduced (as it always may be) by suitable transformations to that
+state in which the roots shall be whole numbers, the values 0, 1, 2, 3,
+&c., are substituted for the unknown quantity, and the corresponding
+values of the equation ascertained. From these a sufficient number of
+differences being derived, they are set upon the machine. The machine
+being then put in motion, the table axis will exhibit the successive
+values of the formula, corresponding to the substitutions of the
+successive whole numbers for the unknown quantity: at length the number
+exhibited on the table axis will be 0, which will evidently correspond
+to a root of the equation. By previous adjustment, the bell of the table
+axis will in this case ring and give notice of the exhibition of the
+value of the root in another part of the machinery.
+
+If the equation have imaginary roots, the formula being necessarily a
+maximum or minimum on the occurrence of such roots, the first difference
+will become nothing; and the dials of that axis will under such
+circumstances present to the respective indices. By previous adjustment,
+the bell of this axis would here give notice of a pair of imaginary
+roots.
+
+Mr Colebrooke speculates on the probable extension of these powers of
+the machine: 'It may not therefore be deemed too sanguine an
+anticipation when I express the hope that an compliment which, in its
+simpler form, attains to the extraction of roots of numbers, and
+approximates to the roots of equations, may, in a more advanced state of
+improvement, rise to the approximate solution of algebraic equations of
+elevated degrees. I refer to solutions of such equations proposed by La
+Grange, and more recently by other annalists, which involve operations
+too tedious and intricate for use, and which must remain without
+efficacy, unless some mode be devised of abridging the labour, or
+facilitating the means of its performance. In any case this engine tends
+to lighten the excessive and accumulating burden of arithmetical
+application of mathematical formulæ, and to relieve the progress of
+science from what is justly termed by the author of this invention, the
+overwhelming encumbrance of numerical detail.'
+
+Although there are not more than eighteen figure wheels on each axis,
+and therefore it might be supposed that the machinery was capable of
+calculating only to the extent of eighteen decimal places; yet there are
+contrivances connected with it, by which, in two successive
+calculations, it will be possible to calculate even to the extent of
+thirty decimal places. Its powers, therefore, in this respect, greatly
+exceed any which can be required in practical science. It is also
+remarkable, that the machinery is capable of producing the calculated
+results _true to the last figure_. We have already explained, that when
+the figure which would follow the last is greater than 4, then it would
+be necessary to increase the last figure by 1; since the excess of the
+calculated number above the true value would in such case be less than
+its defect from it would be, had the regularly computed final figure
+been adopted: this is a precaution necessary in all numerical tables,
+and it is one which would hardly have been expected to be provided for
+in the calculating machinery.
+
+As might be expected in a mechanical undertaking of such complexity and
+novelty, many practical difficulties have since its commencement been
+encountered and surmounted. It might have been foreseen, that many
+expedients would be adopted and carried into effect, which farther
+experiments would render it necessary to reject; and thus a large source
+of additional expense could scarcely fail to be produced. To a certain
+extent this has taken place; but owing to the admirable system of
+mechanical drawings, which in every instance Mr Babbage has caused to be
+made, and owing to his own profound acquaintance with the practical
+working of the most complicated mechanism, he has been able to predict
+in every case what the result of any contrivance would be, as perfectly
+from the drawing, as if it had been reduced to the form of a working
+model. The drawings, consequently, form a most extensive and essential
+part of the enterprise. They are executed with extraordinary ability and
+precision, and may be considered as perhaps the best specimens of
+mechanical drawings which have ever been executed. It has been on these,
+and on these only, that the work of invention has been bestowed. In
+these, all those progressive modifications suggested by consideration
+and study have been made; and it was not until the inventor was fully
+satisfied with the result of any contrivance, that he had it reduced to
+a working form. The whole of the loss which has been incurred by the
+necessarily progressive course of invention, has been the expense of
+rejected drawings. Nothing can perhaps more forcibly illustrate the
+extent of labour and thought which has been incurred in the production
+of this machinery, than the contemplation of the working drawings which
+have been executed previously to its construction: these drawings cover
+above a thousand square feet of surface, and many of them are of the
+most elaborate and complicated description.
+
+One of the practical difficulties which presented themselves at a very
+early stage in the progress of this undertaking, was the impossibility
+of bearing in mind all the variety of motions propagated simultaneously
+through so many complicated trains of mechanism. Nothing but the utmost
+imaginable harmony and order among such a number of movements, could
+prevent obstructions arising from incompatible motions encountering each
+other. It was very soon found impossible, by a mere act of memory, to
+guard against such an occurrence; and Mr Babbage found, that, without
+some effective expedient by which he could at a glance see what every
+moving piece in the machinery was doing at each instant of time, such
+inconsistencies and obstructions as are here alluded to must continually
+have occurred. This difficulty was removed by another invention of even
+a more general nature than the calculating machinery itself, and
+pregnant with results probably of higher importance. This invention
+consisted in the contrivance of a scheme of _mechanical notation_ which is
+generally applicable to all machinery whatsoever; and which is exhibited
+on a table or plan consisting of two distinct sections. In the first is
+traced, by a peculiar system of signs, the origin of every motion which
+takes place throughout the machinery; so that the mechanist or inventor
+is able, by moving his finger along a certain line, to follow out the
+motion of every piece from effect to cause, until he arrives at the
+prime mover. The same sign which thus indicates the _source_ of motion
+indicates likewise the _species_ of motion, whether it be continuous or
+reciprocating, circular or progressive, &c. The same system of signs
+further indicates the nature of the mechanical connexion between the
+mover and the thing moved, whether it be permanent and invariable (as
+between the two arms of a lever), or whether the mover and the moved are
+separate and independent pieces, as is the case when a pinion drives a
+wheel; also whether the motion of one piece necessarily implies the
+motion of another; or when such motion in the one is interrupted, and in
+the other continuous, &c.
+
+The second section of the table divides the time of a complete period of
+the machinery into any required number of parts; and it exhibits in a
+map, as it were, that which every part of the machine is doing at each
+moment of time. In this way, incompatibility in the motions of different
+parts is rendered perceptible at a glance. By such means the contriver
+of machinery is not merely prevented from introducing into one part of
+the mechanism any movement inconsistent with the simultaneous action of
+the other parts; but when he finds that the introduction of any
+particular movement is necessary for his purpose, he can easily and
+rapidly examine the whole range of the machinery during one of its
+periods, and can find by inspection whether there is any, and what
+portion of time, at which no motion exists incompatible with the desired
+one, and thus discover a _niche_, as it were, in which to place the
+required movement. A further and collateral advantage consists in
+placing it in the power of the contriver to exercise the utmost possible
+economy of _time_ in the application of his moving power. For example,
+without some instrument of mechanical enquiry equally powerful with that
+now described, it would be scarcely possible, at least in the first
+instance, so to arrange the various movements that they should be all
+executed in the least possible number of revolutions of the moving axis.
+Additional revolutions would almost inevitably be made for the purpose
+of producing movements and changes which it would be possible to
+introduce in some of the phases of previous revolutions: and there is no
+one acquainted with the history of mechanical invention who must not be
+aware, that in the progressive contrivance of almost every machine the
+earliest arrangements are invariably defective in this respect; and that
+it is only by a succession of improvements, suggested by long
+experience, that that arrangement is at length arrived at, which
+accomplishes all the necessary motions in the shortest possible time. By
+the application of the mechanical notation, however, absolute perfection
+may be arrived at in this respect; even before a single part of the
+machinery is constructed, and before it has any other existence than
+that which it obtains upon paper.
+
+Examples of this class of advantages derivable from the notation will
+occur to the mind of every one acquainted with the history of mechanical
+invention. In the common suction-pump, for example, the effective agency
+of the power is suspended during the descent of the piston. A very
+simple contrivance, however, will transfer to the descent the work to be
+accomplished in the next ascent; so that the duty of four strokes of the
+piston may thus be executed in the time of two. In the earlier
+applications of the steam-engine, that machine was applied almost
+exclusively to the process of pumping; and the power acted only during
+the descent of the piston, being suspended during its ascent. When,
+however, the notion of applying the engine to the general purposes of
+manufacture occurred to the mind of Watt, he saw that it would be
+necessary to cause it to produce a continued rotatory motion; and,
+therefore, that the intervals of intermission must be filled up by the
+action of the power. He first proposed to accomplish this by a second
+cylinder working alternately with the first; but it soon became apparent
+that the blank which existed during the upstroke in the action of the
+power, might be filled up by introducing the steam at both ends of the
+cylinder alternately. Had Watt placed before him a scheme of mechanical
+notation such as we allude to, this expedient would have been so
+obtruded upon him that he must have adopted it from the first.
+
+One of the circumstances from which the mechanical notation derives a
+great portion of its power as an instrument of investigation and
+discovery, is that it enables the inventor to dismiss from his thoughts,
+and to disencumber his imagination of the arrangement and connexion of
+the mechanism; which, when it is very complex (and it is in that case
+that the notation is most useful), can only be kept before the mind by
+an embarrassing and painful effort. In this respect the powers of the
+notation may not inaptly be illustrated by the facilities derived in
+complex and difficult arithmetical questions from the use of the
+language and notation of algebra. When once the peculiar conditions of
+the question are translated into algebraical signs, and 'reduced to an
+equation,' the computist dismisses from his thoughts all the
+circumstances of the question, and is relieved from the consideration of
+the complicated relations of the quantities of various kinds which may
+have entered it. He deals with the algebraical symbols, which are the
+representatives of those quantities and relations, according to certain
+technical rules of a general nature, the truth of which he has
+previously established; and, by a process almost mechanical, he arrives
+at the required result. What algebra is to arithmetic, the notation we
+now allude to is to mechanism. The various parts of the machinery under
+consideration being once expressed upon paper by proper symbols, the
+enquirer dismisses altogether from his thoughts the mechanism itself,
+and attends only to the symbols; the management of which is so extremely
+simple and obvious, that the most unpractised person, having once
+acquired an acquaintance with the signs, cannot fail to comprehend their
+use.
+
+A remarkable instance of the power and utility of this notation occurred
+in a certain stage of the invention of the calculating machinery. A
+question arose as to the best method of producing and arranging a
+certain series of motions necessary to print and calculate a number. The
+inventor, assisted by a practical engineer of considerable experience
+and skill, had so arranged these motions, that the whole might be
+performed by twelve revolutions of the principal moving axis. It seemed,
+however, desirable, if possible, to execute these motions by a less
+number of revolutions. To accomplish this, the engineer sat down to
+study the complicated details of a part of the machinery which had been
+put together; the inventor at the same time applied himself to the
+consideration of the arrangement and connexion of the symbols in his
+scheme of notation. After a short time, by some transposition of
+symbols, he caused the received motions to be completed by eight turns
+of the axis. This he accomplished by transferring the symbols which
+occupied the last four divisions of his scheme, into such blank spaces
+as he could discover in the first eight divisions; due care being taken
+that no symbols should express actions at once simultaneous and
+incompatible. Pushing his enquiry, however, still further, he proceeded
+to ascertain whether his scheme of symbols did not admit of a still more
+compact arrangement, and whether eight revolutions were not more than
+enough to accomplish what was required. Here the powers of the practical
+engineer completely broke down. By no effort could he bring before his
+mind such a view of the complicated mechanism as would enable him to
+decide upon any improved arrangement. The inventor, however, without any
+extraordinary mental exertion, and merely by sliding a bit of ruled
+pasteboard up and down his plan, in search of a vacancy where the
+different motions might be placed, at length contrived to pack all the
+motions, which had previously occupied eight turns of the handle, into
+five turns. The symbolic instrument with which he conducted the
+investigation, now informed him of the impossibility of reducing the
+action of the machine to a more condensed form. This appeared by the
+fulness of every space along the lines of compatible action. It was,
+however, still possible, by going back to the actual machinery, to
+ascertain whether movements, which, under existing arrangements, were
+incompatible, might not be brought into harmony. This he accordingly
+did, and succeeded in diminishing the number of incompatible conditions,
+and thereby rendered it possible to make actions simultaneous which were
+before necessarily successive. The notation was now again called into
+requisition, and a new disposition of the parts was made. At this point
+of the investigation, this extraordinary instrument of mechanical
+analysis put forth one of its most singular exertions of power. It
+presented to the eye of the engineer two currents of mechanical action,
+which, from their nature, could not be simultaneous; and each of which
+occupied a complete revolution of the axis, except about a twentieth;
+the one occupying the last nineteen-twentieths of a complete revolution
+of the axis, and the other occupying the first nineteen-twentieths of a
+complete revolution. One of these streams of action was, the successive
+picking up by the carrying fingers of the successive carrying claws; and
+the other was, the successive shooting of nineteen bolts by the nineteen
+bolting fingers. The notation rendered it obvious, that as the bolting
+action commenced a small space below the commencement of the carrying,
+and ended an equal space below the termination of the carrying, the two
+streams of action could be made to flow after one another in one and the
+same revolution of the axis. He thus succeeded in reducing the period of
+completing the action to four turns of the axis; when the notation again
+informed him that he had again attained a limit of condensed action,
+which could not be exceeded without a further change in the mechanism.
+To the mechanism he again recurred, and soon found that it was possible
+to introduce a change which would cause the action to be completed in
+three revolutions of the axis. An odd number of revolutions, however,
+being attended with certain practical inconveniences, it was considered
+more advantageous to execute the motions in four turns; and here again
+the notation put forth its powers, by informing the inventor, _through
+the eye_, almost independent of his mind, what would be the most elegant,
+symmetrical, and harmonious disposition of the required motions in four
+turns. This application of an almost metaphysical system of abstract
+signs, by which the motion of the hand performs the office of the mind,
+and of profound practical skill in mechanics alternately, to the
+construction of a most complicated engine, forcibly reminds us of a
+parallel in another science, where the chemist with difficulty succeeds
+in dissolving a refractory mineral, by the alternate action of the most
+powerful acids, and the most caustic alkalies, repeated in
+long-continued succession.
+
+This important discovery was explained by Mr Babbage, in a short paper
+read before the Royal Society, and published in the Philosophical
+Transactions in 1826.[15] It is to us more a matter of regret than
+surprise, that the subject did not receive from scientific men in this
+country that attention to which its importance in every practical point
+of view so fully entitled it. To appreciate it would indeed have been
+scarcely possible, from the very brief memoir which its inventor
+presented, unaccompanied by any observations or arguments of a nature to
+force it upon the attention of minds unprepared for it by the nature of
+their studies or occupations. In this country, science has been
+generally separated from practical mechanics by a wide chasm. It will be
+easily admitted, that an assembly of eminent naturalists and physicians,
+with a sprinkling of astronomers, and one or two abstract
+mathematicians, were not precisely the persons best qualified to
+appreciate such an instrument of mechanical investigation as we have
+here described. We shall not therefore be understood as intending the
+slightest disrespect for these distinguished persons, when we express
+our regret, that a discovery of such paramount practical value, in a
+country preeminently conspicuous for the results of its machinery,
+should fall still-born and inconsequential through their hands, and be
+buried unhonoured and undiscriminated in their miscellaneous
+transactions. We trust that a more auspicious period is at hand; that
+the chasm which has separated practical from scientific men will
+speedily close; and that that combination of knowledge will be effected,
+which can only be obtained when we see the men of science more
+frequently extending their observant eye over the wonders of our
+factories, and our great practical manufacturers, with a reciprocal
+ambition, presenting themselves as active and useful members of our
+scientific associations. When this has taken place, an order of
+scientific men will spring up, which will render impossible an oversight
+so little creditable to the country as that which has been committed
+respecting the mechanical notation.[16] This notation has recently
+undergone very considerable extension and improvement. An additional
+section has been introduced into it; designed to express the process of
+circulation in machines, through which fluids, whether liquid or
+gaseous, are moved. Mr Babbage, with the assistance of a friend who
+happened to be conversant with the structure and operation of the
+steam-engine, has illustrated it with singular felicity and success in
+its application to that machine. An eminent French surgeon, on seeing
+the scheme of notation thus applied, immediately suggested the
+advantages which must attend it as an instrument for expressing the
+structure, operation, and circulation of the animal system; and we
+entertain no doubt of its adequacy for that purpose. Not only the
+mechanical connexion of the solid members of the bodies of men and
+animals, but likewise the structure and operation of the softer parts,
+including the muscles, integuments, membranes, &c.; the nature, motion,
+and circulation of the various fluids, their reciprocal effects, the
+changes through which they pass, the deposits which they leave in
+various parts of the system; the functions of respiration, digestion,
+and assimilation,--all would find appropriate symbols and
+representatives in the notation, even as it now stands, without those
+additions of which, however, it is easily susceptible. Indeed, when we
+reflect for what a very different purpose this scheme of symbols was
+contrived, we cannot refrain from expressing our wonder that it should
+seem, in all respects, as if it had been designed expressly for the
+purposes of anatomy and physiology.
+
+[Footnote 15: Phil. Trans. 1820, Part III. p, 250, on a method of
+expressing by signs the action of machinery.]
+
+[Footnote 16: This discovery has been more justly appreciated by
+scientific men abroad. It was, almost immediately after its publication,
+adopted as the topic of lectures, in an institution on the Continent for
+the instruction of Civil Engineers.]
+
+Another of the uses which the slightest attention to the details of this
+notation irresistibly forces upon our notice, is to exhibit, in the form
+of a connected plan or map, the organization of an extensive factory, or
+any great public institution, in which a vast number of individuals are
+employed, and their duties regulated (as they generally are or ought to
+be) by a consistent and well-digested system. The mechanical notation is
+admirably adapted, not only to express such an organized connexion of
+human agents, but even to suggest the improvements of which such
+organization is susceptible--to betray its weak and defective points,
+and to disclose, at a glance, the origin of any fault which may, from
+time to time, be observed in the working of the system. Our limits,
+however, preclude us from pursuing this interesting topic to the extent
+which its importance would justify. We shall be satisfied if the hints
+here thrown out should direct to the subject the attention of those who,
+being most interested in such an enquiry, are likely to prosecute it
+with greatest success.
+
+One of the consequences which has arisen in the prosecution of the
+invention of the calculating machinery, has been the discovery of a
+multitude of mechanical contrivances, which have been elicited by the
+exigencies of the undertaking, and which are as novel in their nature as
+the purposes were novel which they were designed to attain. In some
+cases several different contrivances were devised for the attainment of
+the same end; and that among them which was best suited for the purpose
+was finally selected: the rejected expedients--those overflowings or
+waste of the invention--were not, however, always found useless. Like
+the _waste_ in various manufactures, they were soon converted to purposes
+of utility. These rejected contrivances have found their way, in many
+cases, into the mills of our manufacturers; and we now find them busily
+effecting purposes, far different from any which the inventor dreamed
+of, in the spinning-frames of Manchester.[17]
+
+[Footnote 17: An eminent and wealthy retired manufacturer at Manchester
+assured us, that on the occasion of a visit to London, when he was
+favoured with a view of the calculating machinery, he found in it
+mechanical contrivances, which he subsequently introduced with the
+greatest advantage into his own spinning-machinery.]
+
+Another department of mechanical art, which has been enriched by this
+invention, has been that of _tools_. The great variety of new forms which
+it was necessary to produce, created the necessity of contriving and
+constructing a vast number of novel and most valuable tools, by which,
+with the aid of the lathe, and that alone, the required forms could be
+given to the different parts of the machinery with all the requisite
+accuracy.
+
+The idea of calculation by mechanism is not new. Arithmetical
+instruments, such as the calculating boards of the ancients, on which
+they made their computations by the aid of counters--the _Abacus_, an
+instrument for computing by the aid of balls sliding upon parallel
+rods--the method of calculation invented by Baron Napier, called by him
+_Rhabdology_, and since called _Napier's bones_--the Swan Pan of the
+Chinese--and other similar contrivances, among which more particularly
+may be mentioned the Sliding Rule, of so much use in practical
+calculations to modern engineers, will occur to every reader: these may
+more properly be called _arithmetical instruments_, partaking more or less
+of a mechanical character. But the earliest piece of mechanism to which
+the name of a 'calculating machine' can fairly be given, appears to have
+been a machine invented by the celebrated Pascal. This philosopher and
+mathematician, at a very early age, being engaged with his father, who
+held an official situation in Upper Normandy, the duties of which
+required frequent numerical calculations, contrived a piece of mechanism
+to facilitate the performance of them. This mechanism consisted of a
+series of wheels, carrying cylindrical barrels, on which were engraved
+the ten arithmetical characters, in a manner not very dissimilar to that
+already described. The wheel which expressed each order of units was so
+connected with the wheel which expressed the superior order, that when
+the former passed from 9 to 0, the latter was necessarily advanced one
+figure; and thus the process of carrying was executed by mechanism: when
+one number was to be added to another by this machine, the addition of
+each figure to the other was performed by the hand; when it was required
+to add more than two numbers, the additions were performed in the same
+manner successively; the second was added to the first, the third to
+their sum, and so on.
+
+Subtraction was reduced to addition by the method of arithmetical
+complements; multiplication was performed by a succession of additions;
+and division by a succession of subtractions. In all cases, however, the
+operations were executed from wheel to wheel by the hand.[18]
+
+[Footnote 18: See a description of this machine by Diderot, in the
+_Encyc. Method._; also in the works of Pascal, tom, IV., p. 7; Paris,
+1819.]
+
+This mechanism, which was invented about the year 1650, does not appear
+ever to have been brought into any practical use; and seems to have
+speedily found its appropriate place in a museum of curiosities. It was
+capable of performing only particular arithmetical operations, and these
+subject to all the chances of error in manipulation; attended also with
+little more expedition (if so much), as would be attained by the pen of
+an expert computer.
+
+This attempt of Pascal was followed by various others, with very little
+improvement, and with no additional success. Polenus, a learned and
+ingenious Italian, invented a machine by which multiplication was
+performed, but which does not appear to have afforded any material
+facilities, nor any more security against error than the common process
+of the pen. A similar attempt was made by Sir Samuel Moreland, who is
+described as having transferred to wheel-work the figures of _Napier's
+bones_, and as having made some additions to the machine of Pascal.[19]
+
+[Footnote 19: Equidem Morelandus in Anglia, tubæ stentoriæ author,
+Rhabdologiam ex baculis in cylindrulos transtulit, et additiones
+auxiliares peragit in adjuncta machina additionum Pascaliana.]
+
+Grillet, a French mechanician, made a like attempt with as little
+success. Another contrivance for mechanical calculation was made by
+Saunderson. Mechanical contrivances for performing particular
+arithmetical processes were also made about a century ago by Delepréne
+and Boitissendeau; but they were merely modifications of Pascal's,
+without varying or extending its objects. But one of the most remarkable
+attempts of this kind which has been made since that of Pascal, was a
+machine invented by Leibnitz, of which we are not aware that any
+detailed or intelligible description was ever published. Leibnitz
+described its mode of operation, and its results, in the Berlin
+Miscellany,[20] but he appears to have declined any description of its
+details. In a letter addressed by him to Bernoulli, in answer to a
+request of the latter that he would afford a description of the
+machinery, he says, 'Descriptionem ejus dare accuratam res non facilis
+foret. De effectu ex eo judicaveris quod ad multiplicandum numerum sex
+figurarum, _e.g._ rotam quamdam tantum sexies gyrari necesse est, nulla
+alia opera mentis, nullis additionibus intervenientibus; quo facto,
+integrum absolutumque productum oculis objicietur.'[21] He goes on to
+say that the process of division is performed independently of a
+succession of subtractions, such as that used by Pascal.
+
+[Footnote 20: Tom. I., p. 317.]
+
+[Footnote 21: _Com. Epist._ tom, I., p. 289.]
+
+It appears that this machine was one of an extremely complicated nature,
+which would be attended with considerable expense of construction, and
+only fit to be used in cases where numerous and expensive calculations
+were necessary.[22] Leibnitz observes to his correspondent, who required
+whether it might not be brought into common use, 'Non est facta pro his
+qui olera aut pisculos vendunt, sed pro observatoriis aut cameris
+computorum, aut aliis, qui sumptus facile ferunt et multo calculo
+egent.' Nevertheless, it does not appear that this contrivance, of which
+the inventor states that he caused two models to be made, was ever
+applied to any useful purpose; nor indeed do the mechanical details of
+the invention appear ever to have been published.
+
+[Footnote 22: Sed machinam esse sumptuosam et multarum rotarum instar
+horologii: Huygenius aliquoties admonuit ut absolvi curarem; quod non
+sine magno sumptu tædioque factum est, dum varie mihi cum opificibus
+fuit conflictandum.--_Com. Epist._]
+
+Even had the mechanism of these machines performed all which their
+inventors expected from them, they would have been still altogether
+inapplicable for the purposes to which it is proposed that the
+calculating machinery of Mr Babbage shall be applied. They were all
+constructed with a view to perform particular arithmetical operations,
+and in all of them the accuracy of the result depended more or less upon
+manipulation. The principle of the calculating machinery of Mr Babbage
+is perfectly general in its nature, not depending on any _particular
+arithmetical operation_, and is equally applicable to numerical tables of
+every kind. This distinguishing characteristic was well expressed by Mr
+Colebrooke in his address to the Astronomical Society on this invention.
+'The principle which essentially distinguishes Mr Babbage's invention
+from all these is, that it proposes to calculate a series of numbers
+following any law, by the aid of differences, and that by setting a few
+figures at the outset; a long series of numbers is readily produced by a
+mechanical operation. The method of differences in a very wide sense is
+the mathematical principle of the contrivance. A machine to add a number
+of arbitrary figures together is no economy of time or trouble, since
+each individual figure must be placed in the machine; but it is
+otherwise when those figures follow some law. The insertion of a few at
+first determines the magnitude of the next, and those of the succeeding.
+It is this constant repetition of similar operations which renders the
+computation of tables a fit subject for the application of machinery. Mr
+Babbage's invention puts an engine in the place of the computer; the
+question is set to the instrument, or the instrument is set to the
+question, and by simply giving it motion the solution is wrought, and a
+string of answers is exhibited.' But perhaps the greatest of its
+advantages is, that it prints what it calculates; and this completely
+precludes the possibility of error in those numerical results which pass
+into the hands of the public. 'The usefulness of the instrument,' says
+Mr Colebrooke, 'is thus more than doubled; for it not only saves time
+and trouble in transcribing results into a tabular form, and setting
+types for the printing of the table, but it likewise accomplishes the
+yet more important object of ensuring accuracy, obviating numerous
+sources of error through the careless hands of transcribers and
+compositors.'
+
+
+Some solicitude will doubtless be felt respecting the present state of
+the calculating machinery, and the probable period of its completion. In
+the beginning of the year 1829, Government directed the Royal Society to
+institute such enquiries as would enable them to report upon the state
+to which it had then arrived; and also whether the progress made in its
+construction confirmed them in the opinion which they had formerly
+expressed,--that it would ultimately prove adequate to the important
+object which it was intended to attain. The Royal Society, in accordance
+with these directions, appointed a Committee to make the necessary
+enquiry, and report. This Committee consisted of Mr Davies Gilbert, then
+President, the Secretaries, Sir John Herschel, Mr Francis Baily, Mr
+Brunel, engineer, Mr Donkin, engineer, Mr G. Rennie, engineer, Mr
+Barton, comptroller of the Mint, and Mr Warburton, M.P. The voluminous
+drawings, the various tools, and the portion of the machinery then
+executed, underwent a close and elaborate examination by this Committee,
+who reported upon it to the Society.
+
+They stated in their report, that they declined the consideration of the
+principle on which the practicability of the machinery depends, and of
+the public utility of the object which it proposes to attain; because
+they considered the former fully admitted, and the latter obvious to all
+who consider the immense advantage of accurate numerical tables in all
+matters of calculation, especially in those which relate to astronomy
+and navigation, and the great variety and extent of those which it is
+professedly the object of the machinery to calculate and print with
+perfect accuracy;--that absolute accuracy being one of the prominent
+pretensions of the undertaking, they had directed their attention
+especially to this point, by careful examination of the drawings and of
+the work already executed, and by repeated conferences with Mr Babbage
+on the subject;--that the result of their enquiry was, that such
+precautions appeared to have been taken in every part of the
+contrivance, and so fully aware was the inventor of every circumstance
+which might by possibility produce error, that they had no hesitation in
+stating their belief that these precautions were effectual, and that
+whatever the machine would do, it would do truly.
+
+They further stated, that the progress which Mr Babbage had then made,
+considering the very great difficulties to be overcome in an undertaking
+of so novel a kind, fully equalled any expectations that could
+reasonably have been formed; and that although several years had elapsed
+since the commencement of the undertaking, yet when the necessity of
+constructing plans, sections, elevations, and working drawings of every
+part; of constructing, and in many cases inventing, tools and machinery
+of great expense and complexity, necessary to form with the requisite
+precision parts of the apparatus differing from any which had previously
+been introduced in ordinary mechanical works; of making many trials to
+ascertain the value of each proposed contrivance; of altering,
+improving, and simplifying the drawings;--that, considering all these
+matters, the Committee, instead of feeling surprise at the time which
+the work has occupied, felt more disposed to wonder at the possibility
+of accomplishing so much.
+
+The Committee expressed their confident opinion of the adequacy of the
+machinery to work under all the friction and strain to which it can be
+exposed; of its durability, strength, solidity, and equilibrium; of the
+prevention of, or compensation for, wear by friction; of the accuracy of
+the various adjustments; and of the judgment and discretion displayed by
+the inventor, in his determination to admit into the mechanism nothing
+but the very best and most finished workmanship; as a contrary course
+would have been false economy, and might have led to the loss of the
+whole capital expended on it.
+
+Finally, considering all that had come before them, and relying on the
+talent and skill displayed by Mr Babbage as a mechanist in the progress
+of this arduous undertaking, not less for what remained, than on the
+matured and digested plan and admirable execution of what is completed,
+the Committee did not hesitate to express their opinion, that in the
+then state of the engine, they regarded it as likely to fulfil the
+expectations entertained of it by its inventor.
+
+This report was printed in the commencement of the year 1829. From that
+time until the beginning of the year 1833, the progress of the work has
+been slow and interrupted. Meanwhile many unfounded rumours have
+obtained circulation as to the course adopted by Government in this
+undertaking; and as to the position in which Mr Babbage stands with
+respect to it. We shall here state, upon authority on which the most
+perfect reliance may be placed, what have been the actual circumstances
+of the arrangement which has been made, and of the steps which have been
+already taken.
+
+Being advised that the objects of the projected machinery were of
+paramount national importance to a maritime country, and that, from its
+nature, it could never be undertaken with advantage by any individual as
+a pecuniary speculation. Government determined to engage Mr Babbage to
+construct the calculating engine for the nation. It was then thought
+that the work could be completed in two or three years; and it was
+accordingly undertaken on this understanding about the year 1821, and
+since then has been in progress. The execution of the workmanship was
+confided to an engineer by whom all the subordinate workmen were
+employed, and who supplied for the work the requisite tools and other
+machinery; the latter being his own property, and not that of
+Government. This engineer furnished, at intervals, his accounts, which
+were duly audited by proper persons appointed for that purpose. It was
+thought advisable--with a view, perhaps, to invest Mr Babbage with a
+more strict authority over the subordinate agents--that the payments of
+these accounts of the engineer should pass through his hands. The amount
+was accordingly from time to time issued to him by the Treasury, and
+paid over to the engineer. This circumstance has given rise to reports,
+that he has received considerable sums of money as a remuneration for
+his skill and labour in inventing and constructing this machinery. Such
+reports are altogether destitute of truth. He has received, neither
+directly nor indirectly, any remuneration whatever;--on the contrary,
+owing to various official delays in the issues of money from the
+Treasury for the payment of the engineer, he has frequently been obliged
+to advance these payments himself, that the work might proceed without
+interruption. Had he not been enabled to do this from his private
+resources, it would have been impossible that the machinery could have
+arrived at its present advanced state.
+
+It will be a matter of regret to every friend of science to learn, that,
+notwithstanding such assistance, the progress of the work has been
+suspended, and the workmen dismissed for more than a year and a half;
+nor does there at the present moment appear to be any immediate prospect
+of its being resumed. What the causes may be of a suspension so
+extraordinary, of a project of such great national and universal
+interest,--in which the country has already invested a sum of such
+serious amount as L.15,000,--is a question which will at once suggest
+itself to every mind; and is one to which, notwithstanding frequent
+enquiries, in quarters from which correct information might be expected,
+we have not been able to obtain any satisfactory answer. It is not true,
+we are assured, that the Government object to make the necessary
+payments, or even advances, to carry on the work. It is not true, we
+also are assured, that any practical difficulty has arisen in the
+construction of the mechanism;--on the contrary, the drawings of all
+the parts of it are completed, and may be inspected by any person
+appointed on the part of Government to examine them.[23] Mr Babbage is
+known as a man of unwearied activity, and aspiring ambition. Why, then,
+it may be asked, is it that he, seeing his present reputation and future
+fame depending in so great a degree upon the successful issue of this
+undertaking, has nevertheless allowed it to stand still for so long a
+period, without distinctly pointing out to Government the course which
+they should adopt to remove the causes of delay? Had he done this (which
+we consider to be equally due to the nation and to himself), he would
+have thrown upon Government and its agents the whole responsibility for
+the delay and consequent loss; but we believe he has not done so. On the
+contrary, it is said that he has of late almost withdrawn from all
+interference on the subject, either with the Government or the engineer.
+Does not Mr Babbage perceive the inference which the world will draw
+from this course of conduct? Does he not see that they will impute it to
+a distrust of his own power, or even to a consciousness of his own
+inability to complete what he has begun? We feel assured that such is
+not the case; and we are anxious, equally for the sake of science, and
+for Mr Babbage's own reputation, that the mystery--for such it must be
+regarded--should be cleared up; and that all obstructions to the
+progress of the undertaking should immediately be removed. Does this
+supineness and apparent indifference, so incompatible with the known
+character of Mr Babbage, arise from any feeling of dissatisfaction at
+the existing arrangements between himself and the Government? If such be
+the actual cause of the delay, (and we believe that, in some degree, it
+is so,) we cannot refrain from expressing our surprise that he does not
+adopt the candid and straightforward course of declaring the grounds of
+his discontent, and explaining the arrangement which he desires to be
+adopted. We do not hesitate to say, that every reasonable accommodation
+and assistance ought to be afforded him. But if he will pertinaciously
+abstain from this, to our minds, obvious and proper course, then it is
+surely the duty of Government to appoint proper persons to enquire into
+and report on the present state of the machinery; to ascertain the
+causes of its suspension; and to recommend such measures as may appear
+to be most effectual to ensure its speedy completion. If they do not by
+such means succeed in putting the project in a state of advancement,
+they will at least shift from themselves all responsibility for its
+suspension.
+
+[Footnote 23: Government has erected a fire-proof building, in which it
+is intended that the calculating machinery shall be placed when
+completed. In this building are now deposited the large collection of
+drawings, containing the designs, not only of the part of the machinery
+which has been already constructed, but what is of much greater
+importance, of those parts which have not yet been even modelled. It is
+gratifying to know that Government has shown a proper solicitude for the
+preservation of those precious but perishable documents, the loss or
+destruction of which would, in the event of the death of the inventor,
+render the completion of the machinery impracticable.]
+
+
+
+            *** END OF THE PROJECT GUTENBERG EBOOK BABBAGE'S CALCULATING ENGINE ***
+
+
+
+
+Updated editions will replace the previous one—the old editions will
+be renamed.
+
+
+Creating the works from print editions not protected by U.S. copyright
+law means that no one owns a United States copyright in these works,
+so the Foundation (and you!) can copy and distribute it in the United
+States without permission and without paying copyright
+royalties. Special rules, set forth in the General Terms of Use part
+of this license, apply to copying and distributing Project
+Gutenberg™ electronic works to protect the PROJECT GUTENBERG™
+concept and trademark. Project Gutenberg is a registered trademark,
+and may not be used if you charge for an eBook, except by following
+the terms of the trademark license, including paying royalties for use
+of the Project Gutenberg trademark. If you do not charge anything for
+copies of this eBook, complying with the trademark license is very
+easy. You may use this eBook for nearly any purpose such as creation
+of derivative works, reports, performances and research. Project
+Gutenberg eBooks may be modified and printed and given away—you may
+do practically ANYTHING in the United States with eBooks not protected
+by U.S. copyright law. Redistribution is subject to the trademark
+license, especially commercial redistribution.
+
+
+START: FULL LICENSE
+THE FULL PROJECT GUTENBERG LICENSE
+PLEASE READ THIS BEFORE YOU DISTRIBUTE OR USE THIS WORK
+
+
+To protect the Project Gutenberg™ mission of promoting the free
+distribution of electronic works, by using or distributing this work
+(or any other work associated in any way with the phrase “Project
+Gutenberg”), you agree to comply with all the terms of the Full
+Project Gutenberg™ License available with this file or online at
+www.gutenberg.org/license.
+
+
+Section 1. General Terms of Use and Redistributing Project Gutenberg™ electronic works
+
+
+1.A. By reading or using any part of this Project Gutenberg™
+electronic work, you indicate that you have read, understand, agree to
+and accept all the terms of this license and intellectual property
+(trademark/copyright) agreement. If you do not agree to abide by all
+the terms of this agreement, you must cease using and return or
+destroy all copies of Project Gutenberg™ electronic works in your
+possession. If you paid a fee for obtaining a copy of or access to a
+Project Gutenberg™ electronic work and you do not agree to be bound
+by the terms of this agreement, you may obtain a refund from the person
+or entity to whom you paid the fee as set forth in paragraph 1.E.8.
+
+
+1.B. “Project Gutenberg” is a registered trademark. It may only be
+used on or associated in any way with an electronic work by people who
+agree to be bound by the terms of this agreement. There are a few
+things that you can do with most Project Gutenberg™ electronic works
+even without complying with the full terms of this agreement. See
+paragraph 1.C below. There are a lot of things you can do with Project
+Gutenberg™ electronic works if you follow the terms of this
+agreement and help preserve free future access to Project Gutenberg™
+electronic works. See paragraph 1.E below.
+
+
+1.C. The Project Gutenberg Literary Archive Foundation (“the
+Foundation” or PGLAF), owns a compilation copyright in the collection
+of Project Gutenberg™ electronic works. Nearly all the individual
+works in the collection are in the public domain in the United
+States. If an individual work is unprotected by copyright law in the
+United States and you are located in the United States, we do not
+claim a right to prevent you from copying, distributing, performing,
+displaying or creating derivative works based on the work as long as
+all references to Project Gutenberg are removed. Of course, we hope
+that you will support the Project Gutenberg™ mission of promoting
+free access to electronic works by freely sharing Project Gutenberg™
+works in compliance with the terms of this agreement for keeping the
+Project Gutenberg™ name associated with the work. You can easily
+comply with the terms of this agreement by keeping this work in the
+same format with its attached full Project Gutenberg™ License when
+you share it without charge with others.
+
+
+
+1.D. The copyright laws of the place where you are located also govern
+what you can do with this work. Copyright laws in most countries are
+in a constant state of change. If you are outside the United States,
+check the laws of your country in addition to the terms of this
+agreement before downloading, copying, displaying, performing,
+distributing or creating derivative works based on this work or any
+other Project Gutenberg™ work. The Foundation makes no
+representations concerning the copyright status of any work in any
+country other than the United States.
+
+
+1.E. Unless you have removed all references to Project Gutenberg:
+
+
+1.E.1. The following sentence, with active links to, or other
+immediate access to, the full Project Gutenberg™ License must appear
+prominently whenever any copy of a Project Gutenberg™ work (any work
+on which the phrase “Project Gutenberg” appears, or with which the
+phrase “Project Gutenberg” is associated) is accessed, displayed,
+performed, viewed, copied or distributed:
+
+
+
+    This eBook is for the use of anyone anywhere in the United States and most
+    other parts of the world at no cost and with almost no restrictions
+    whatsoever. You may copy it, give it away or re-use it under the terms
+    of the Project Gutenberg License included with this eBook or online
+    at www.gutenberg.org. If you
+    are not located in the United States, you will have to check the laws
+    of the country where you are located before using this eBook.
+
+
+
+1.E.2. If an individual Project Gutenberg™ electronic work is
+derived from texts not protected by U.S. copyright law (does not
+contain a notice indicating that it is posted with permission of the
+copyright holder), the work can be copied and distributed to anyone in
+the United States without paying any fees or charges. If you are
+redistributing or providing access to a work with the phrase “Project
+Gutenberg” associated with or appearing on the work, you must comply
+either with the requirements of paragraphs 1.E.1 through 1.E.7 or
+obtain permission for the use of the work and the Project Gutenberg™
+trademark as set forth in paragraphs 1.E.8 or 1.E.9.
+
+
+1.E.3. If an individual Project Gutenberg™ electronic work is posted
+with the permission of the copyright holder, your use and distribution
+must comply with both paragraphs 1.E.1 through 1.E.7 and any
+additional terms imposed by the copyright holder. Additional terms
+will be linked to the Project Gutenberg™ License for all works
+posted with the permission of the copyright holder found at the
+beginning of this work.
+
+
+1.E.4. Do not unlink or detach or remove the full Project Gutenberg™
+License terms from this work, or any files containing a part of this
+work or any other work associated with Project Gutenberg™.
+
+
+1.E.5. Do not copy, display, perform, distribute or redistribute this
+electronic work, or any part of this electronic work, without
+prominently displaying the sentence set forth in paragraph 1.E.1 with
+active links or immediate access to the full terms of the Project
+Gutenberg™ License.
+
+
+1.E.6. You may convert to and distribute this work in any binary,
+compressed, marked up, nonproprietary or proprietary form, including
+any word processing or hypertext form. However, if you provide access
+to or distribute copies of a Project Gutenberg™ work in a format
+other than “Plain Vanilla ASCII” or other format used in the official
+version posted on the official Project Gutenberg™ website
+(www.gutenberg.org), you must, at no additional cost, fee or expense
+to the user, provide a copy, a means of exporting a copy, or a means
+of obtaining a copy upon request, of the work in its original “Plain
+Vanilla ASCII” or other form. Any alternate format must include the
+full Project Gutenberg™ License as specified in paragraph 1.E.1.
+
+
+1.E.7. Do not charge a fee for access to, viewing, displaying,
+performing, copying or distributing any Project Gutenberg™ works
+unless you comply with paragraph 1.E.8 or 1.E.9.
+
+
+1.E.8. You may charge a reasonable fee for copies of or providing
+access to or distributing Project Gutenberg™ electronic works
+provided that:
+
+
+    • You pay a royalty fee of 20% of the gross profits you derive from
+        the use of Project Gutenberg™ works calculated using the method
+        you already use to calculate your applicable taxes. The fee is owed
+        to the owner of the Project Gutenberg™ trademark, but he has
+        agreed to donate royalties under this paragraph to the Project
+        Gutenberg Literary Archive Foundation. Royalty payments must be paid
+        within 60 days following each date on which you prepare (or are
+        legally required to prepare) your periodic tax returns. Royalty
+        payments should be clearly marked as such and sent to the Project
+        Gutenberg Literary Archive Foundation at the address specified in
+        Section 4, “Information about donations to the Project Gutenberg
+        Literary Archive Foundation.”
+
+    • You provide a full refund of any money paid by a user who notifies
+        you in writing (or by e-mail) within 30 days of receipt that s/he
+        does not agree to the terms of the full Project Gutenberg™
+        License. You must require such a user to return or destroy all
+        copies of the works possessed in a physical medium and discontinue
+        all use of and all access to other copies of Project Gutenberg™
+        works.
+
+    • You provide, in accordance with paragraph 1.F.3, a full refund of
+        any money paid for a work or a replacement copy, if a defect in the
+        electronic work is discovered and reported to you within 90 days of
+        receipt of the work.
+
+    • You comply with all other terms of this agreement for free
+        distribution of Project Gutenberg™ works.
+
+
+
+1.E.9. If you wish to charge a fee or distribute a Project
+Gutenberg™ electronic work or group of works on different terms than
+are set forth in this agreement, you must obtain permission in writing
+from the Project Gutenberg Literary Archive Foundation, the manager of
+the Project Gutenberg™ trademark. Contact the Foundation as set
+forth in Section 3 below.
+
+
+1.F.
+
+
+1.F.1. Project Gutenberg volunteers and employees expend considerable
+effort to identify, do copyright research on, transcribe and proofread
+works not protected by U.S. copyright law in creating the Project
+Gutenberg™ collection. Despite these efforts, Project Gutenberg™
+electronic works, and the medium on which they may be stored, may
+contain “Defects,” such as, but not limited to, incomplete, inaccurate
+or corrupt data, transcription errors, a copyright or other
+intellectual property infringement, a defective or damaged disk or
+other medium, a computer virus, or computer codes that damage or
+cannot be read by your equipment.
+
+
+1.F.2. LIMITED WARRANTY, DISCLAIMER OF DAMAGES - Except for the “Right
+of Replacement or Refund” described in paragraph 1.F.3, the Project
+Gutenberg Literary Archive Foundation, the owner of the Project
+Gutenberg™ trademark, and any other party distributing a Project
+Gutenberg™ electronic work under this agreement, disclaim all
+liability to you for damages, costs and expenses, including legal
+fees. YOU AGREE THAT YOU HAVE NO REMEDIES FOR NEGLIGENCE, STRICT
+LIABILITY, BREACH OF WARRANTY OR BREACH OF CONTRACT EXCEPT THOSE
+PROVIDED IN PARAGRAPH 1.F.3. YOU AGREE THAT THE FOUNDATION, THE
+TRADEMARK OWNER, AND ANY DISTRIBUTOR UNDER THIS AGREEMENT WILL NOT BE
+LIABLE TO YOU FOR ACTUAL, DIRECT, INDIRECT, CONSEQUENTIAL, PUNITIVE OR
+INCIDENTAL DAMAGES EVEN IF YOU GIVE NOTICE OF THE POSSIBILITY OF SUCH
+DAMAGE.
+
+
+1.F.3. LIMITED RIGHT OF REPLACEMENT OR REFUND - If you discover a
+defect in this electronic work within 90 days of receiving it, you can
+receive a refund of the money (if any) you paid for it by sending a
+written explanation to the person you received the work from. If you
+received the work on a physical medium, you must return the medium
+with your written explanation. The person or entity that provided you
+with the defective work may elect to provide a replacement copy in
+lieu of a refund. If you received the work electronically, the person
+or entity providing it to you may choose to give you a second
+opportunity to receive the work electronically in lieu of a refund. If
+the second copy is also defective, you may demand a refund in writing
+without further opportunities to fix the problem.
+
+
+1.F.4. Except for the limited right of replacement or refund set forth
+in paragraph 1.F.3, this work is provided to you ‘AS-IS’, WITH NO
+OTHER WARRANTIES OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
+LIMITED TO WARRANTIES OF MERCHANTABILITY OR FITNESS FOR ANY PURPOSE.
+
+
+1.F.5. Some states do not allow disclaimers of certain implied
+warranties or the exclusion or limitation of certain types of
+damages. If any disclaimer or limitation set forth in this agreement
+violates the law of the state applicable to this agreement, the
+agreement shall be interpreted to make the maximum disclaimer or
+limitation permitted by the applicable state law. The invalidity or
+unenforceability of any provision of this agreement shall not void the
+remaining provisions.
+
+
+1.F.6. INDEMNITY - You agree to indemnify and hold the Foundation, the
+trademark owner, any agent or employee of the Foundation, anyone
+providing copies of Project Gutenberg™ electronic works in
+accordance with this agreement, and any volunteers associated with the
+production, promotion and distribution of Project Gutenberg™
+electronic works, harmless from all liability, costs and expenses,
+including legal fees, that arise directly or indirectly from any of
+the following which you do or cause to occur: (a) distribution of this
+or any Project Gutenberg™ work, (b) alteration, modification, or
+additions or deletions to any Project Gutenberg™ work, and (c) any
+Defect you cause.
+
+
+Section 2. Information about the Mission of Project Gutenberg™
+
+
+Project Gutenberg™ is synonymous with the free distribution of
+electronic works in formats readable by the widest variety of
+computers including obsolete, old, middle-aged and new computers. It
+exists because of the efforts of hundreds of volunteers and donations
+from people in all walks of life.
+
+
+Volunteers and financial support to provide volunteers with the
+assistance they need are critical to reaching Project Gutenberg™’s
+goals and ensuring that the Project Gutenberg™ collection will
+remain freely available for generations to come. In 2001, the Project
+Gutenberg Literary Archive Foundation was created to provide a secure
+and permanent future for Project Gutenberg™ and future
+generations. To learn more about the Project Gutenberg Literary
+Archive Foundation and how your efforts and donations can help, see
+Sections 3 and 4 and the Foundation information page at www.gutenberg.org.
+
+
+Section 3. Information about the Project Gutenberg Literary Archive Foundation
+
+
+The Project Gutenberg Literary Archive Foundation is a non-profit
+501(c)(3) educational corporation organized under the laws of the
+state of Mississippi and granted tax exempt status by the Internal
+Revenue Service. The Foundation’s EIN or federal tax identification
+number is 64-6221541. Contributions to the Project Gutenberg Literary
+Archive Foundation are tax deductible to the full extent permitted by
+U.S. federal laws and your state’s laws.
+
+
+The Foundation’s business office is located at 809 North 1500 West,
+Salt Lake City, UT 84116, (801) 596-1887. Email contact links and up
+to date contact information can be found at the Foundation’s website
+and official page at www.gutenberg.org/contact
+
+
+Section 4. Information about Donations to the Project Gutenberg Literary Archive Foundation
+
+
+Project Gutenberg™ depends upon and cannot survive without widespread
+public support and donations to carry out its mission of
+increasing the number of public domain and licensed works that can be
+freely distributed in machine-readable form accessible by the widest
+array of equipment including outdated equipment. Many small donations
+($1 to $5,000) are particularly important to maintaining tax exempt
+status with the IRS.
+
+
+The Foundation is committed to complying with the laws regulating
+charities and charitable donations in all 50 states of the United
+States. Compliance requirements are not uniform and it takes a
+considerable effort, much paperwork and many fees to meet and keep up
+with these requirements. We do not solicit donations in locations
+where we have not received written confirmation of compliance. To SEND
+DONATIONS or determine the status of compliance for any particular state
+visit www.gutenberg.org/donate.
+
+
+While we cannot and do not solicit contributions from states where we
+have not met the solicitation requirements, we know of no prohibition
+against accepting unsolicited donations from donors in such states who
+approach us with offers to donate.
+
+
+International donations are gratefully accepted, but we cannot make
+any statements concerning tax treatment of donations received from
+outside the United States. U.S. laws alone swamp our small staff.
+
+
+Please check the Project Gutenberg web pages for current donation
+methods and addresses. Donations are accepted in a number of other
+ways including checks, online payments and credit card donations. To
+donate, please visit: www.gutenberg.org/donate.
+
+
+Section 5. General Information About Project Gutenberg™ electronic works
+
+
+Professor Michael S. Hart was the originator of the Project
+Gutenberg™ concept of a library of electronic works that could be
+freely shared with anyone. For forty years, he produced and
+distributed Project Gutenberg™ eBooks with only a loose network of
+volunteer support.
+
+
+Project Gutenberg™ eBooks are often created from several printed
+editions, all of which are confirmed as not protected by copyright in
+the U.S. unless a copyright notice is included. Thus, we do not
+necessarily keep eBooks in compliance with any particular paper
+edition.
+
+
+Most people start at our website which has the main PG search
+facility: www.gutenberg.org.
+
+
+This website includes information about Project Gutenberg™,
+including how to make donations to the Project Gutenberg Literary
+Archive Foundation, how to help produce our new eBooks, and how to
+subscribe to our email newsletter to hear about new eBooks.
+

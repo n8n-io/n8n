@@ -1,0 +1,24 @@
+{
+    "root": true,
+
+    "extends": "@ljharb",
+
+    "rules": {
+        "camelcase": 0,
+        "func-style": 1,
+        "max-statements-per-line": 0,
+        "no-param-reassign": 1,
+        "no-restricted-syntax": 1,
+        "no-use-before-define": 1,
+        "sort-keys": 0,
+    },
+
+    "overrides": [
+        {
+            "files": "example/**",
+            "rules": {
+                "no-console": 0,
+            },
+        }
+    ]
+}

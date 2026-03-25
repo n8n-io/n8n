@@ -1,0 +1,1 @@
+{"version":3,"file":"promise.js","sourceRoot":"","sources":["promise.ts"],"names":[],"mappings":"","sourcesContent":["import { ITSAnyFunction } from '../type/base';\n\nexport type ITSAwaitedLazy<T> = T extends PromiseLike<infer U> ? Awaited<U> : T;\n\nexport type ITSAwaitedReturnType<T extends ITSAnyFunction> = ITSAwaitedLazy<ReturnType<T>>\n"]}

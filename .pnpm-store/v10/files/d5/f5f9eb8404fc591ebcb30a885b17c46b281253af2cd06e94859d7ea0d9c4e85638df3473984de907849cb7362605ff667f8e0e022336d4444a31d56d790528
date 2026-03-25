@@ -1,0 +1,74 @@
+{
+  "name": "winston",
+  "description": "A logger for just about everything.",
+  "version": "3.14.2",
+  "author": "Charlie Robbins <charlie.robbins@gmail.com>",
+  "maintainers": [
+    "David Hyde <dabh@alumni.stanford.edu>"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/winstonjs/winston.git"
+  },
+  "keywords": [
+    "winston",
+    "logger",
+    "logging",
+    "logs",
+    "sysadmin",
+    "bunyan",
+    "pino",
+    "loglevel",
+    "tools",
+    "json",
+    "stream"
+  ],
+  "dependencies": {
+    "@dabh/diagnostics": "^2.0.2",
+    "@colors/colors": "^1.6.0",
+    "async": "^3.2.3",
+    "is-stream": "^2.0.0",
+    "logform": "^2.6.0",
+    "one-time": "^1.0.0",
+    "readable-stream": "^3.4.0",
+    "safe-stable-stringify": "^2.3.1",
+    "stack-trace": "0.0.x",
+    "triple-beam": "^1.3.0",
+    "winston-transport": "^4.7.0"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.23.9",
+    "@babel/core": "^7.24.0",
+    "@babel/preset-env": "^7.24.0",
+    "@dabh/eslint-config-populist": "^4.4.0",
+    "@types/node": "^20.11.24",
+    "abstract-winston-transport": "^0.5.1",
+    "assume": "^2.2.0",
+    "cross-spawn-async": "^2.2.5",
+    "eslint": "^8.57.0",
+    "hock": "^1.4.1",
+    "mocha": "^10.3.0",
+    "nyc": "^15.1.0",
+    "rimraf": "5.0.1",
+    "split2": "^4.1.0",
+    "std-mocks": "^2.0.0",
+    "through2": "^4.0.2",
+    "winston-compat": "^0.1.5"
+  },
+  "main": "./lib/winston.js",
+  "browser": "./dist/winston",
+  "types": "./index.d.ts",
+  "scripts": {
+    "lint": "eslint lib/*.js lib/winston/*.js lib/winston/**/*.js --resolve-plugins-relative-to ./node_modules/@dabh/eslint-config-populist",
+    "test": "rimraf test/fixtures/logs/* && mocha",
+    "test:coverage": "nyc npm run test:unit",
+    "test:unit": "mocha test/unit",
+    "test:integration": "mocha test/integration",
+    "build": "rimraf dist && babel lib -d dist",
+    "prepublishOnly": "npm run build"
+  },
+  "engines": {
+    "node": ">= 12.0.0"
+  },
+  "license": "MIT"
+}

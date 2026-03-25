@@ -1,0 +1,31 @@
+{
+    "name": "@types/bcryptjs",
+    "version": "2.4.2",
+    "description": "TypeScript definitions for bcryptjs",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Joshua Filby",
+            "url": "https://github.com/Joshua-F/"
+        },
+        {
+            "name": "Rafael Kraut",
+            "url": "https://github.com/RafaelKr",
+            "githubUsername": "RafaelKr"
+        },
+        {
+            "name": "Branislav Holý",
+            "url": "https://github.com/branoholy",
+            "githubUsername": "branoholy"
+        }
+    ],
+    "main": "",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git"
+    },
+    "scripts": {},
+    "dependencies": {},
+    "typesPublisherContentHash": "9345c8c9ad3f5bca4c674be7a291facba6488a5a4ef0fa3ed9a60bda92c48db6",
+    "typeScriptVersion": "2.1"
+}

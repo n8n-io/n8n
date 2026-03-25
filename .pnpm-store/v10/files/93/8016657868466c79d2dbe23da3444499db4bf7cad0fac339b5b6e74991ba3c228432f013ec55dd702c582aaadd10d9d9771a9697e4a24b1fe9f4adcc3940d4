@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "lib": ["es6", "dom"],
+    "stripInternal": true,
+    "noUnusedLocals": true,
+    "strict": true,
+    "target": "es2020",
+    "module": "es6",
+    "newLine": "lf",
+    "moduleResolution": "node",
+    "allowSyntheticDefaultImports": true
+  },
+  "include": ["*.ts"]
+}

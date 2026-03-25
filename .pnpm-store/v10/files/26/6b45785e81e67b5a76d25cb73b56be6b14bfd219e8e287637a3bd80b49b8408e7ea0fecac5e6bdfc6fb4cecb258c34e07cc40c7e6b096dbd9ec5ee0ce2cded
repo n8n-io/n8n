@@ -1,0 +1,45 @@
+{
+  "name": "@replit/codemirror-indentation-markers",
+  "description": "Render indentation markers in CodeMirror",
+  "version": "6.5.3",
+  "author": {
+    "name": "Sergei Chestakov",
+    "email": "me@sergei.com"
+  },
+  "type": "module",
+  "main": "dist/index.cjs",
+  "exports": {
+    "import": "./dist/index.js",
+    "require": "./dist/index.cjs"
+  },
+  "types": "dist/index.d.ts",
+  "module": "dist/index.js",
+  "sideEffects": false,
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite ./dev",
+    "build": "cm-buildhelper src/index.ts",
+    "test": "cm-runtests",
+    "prepare": "npm run build"
+  },
+  "peerDependencies": {
+    "@codemirror/language": "^6.0.0",
+    "@codemirror/state": "^6.0.0",
+    "@codemirror/view": "^6.0.0"
+  },
+  "devDependencies": {
+    "@codemirror/buildhelper": "^0.1.16",
+    "@codemirror/commands": "^6.0.0",
+    "@codemirror/lang-css": "^6.0.0",
+    "@codemirror/lang-python": "^6.1.1",
+    "@codemirror/language": "^6.0.0",
+    "@codemirror/state": "^6.0.0",
+    "@codemirror/view": "^6.0.0",
+    "codemirror": "^6.0.0",
+    "vite": "^2.3.8"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/replit/codemirror-indentation-markers.git"
+  }
+}

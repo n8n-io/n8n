@@ -31,6 +31,7 @@ RUN cd /usr/local/lib/node_modules/n8n/packages/cli && \
     chown -R node:node /home/node && \
     rm -rf /root/.npm /tmp/*
 
+
 EXPOSE 5678/tcp
 USER node
 ENTRYPOINT ["tini", "--", "/docker-entrypoint.sh"]

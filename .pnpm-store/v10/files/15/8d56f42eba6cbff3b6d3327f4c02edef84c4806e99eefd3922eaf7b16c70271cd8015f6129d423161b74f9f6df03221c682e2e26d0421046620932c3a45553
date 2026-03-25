@@ -1,0 +1,39 @@
+{
+  "name": "builtin-status-codes",
+  "main": "index.js",
+  "browser": "browser.js",
+  "version": "3.0.0",
+  "description": "The map of HTTP status codes from the builtin http module",
+  "license": "MIT",
+  "repository": "bendrucker/builtin-status-codes",
+  "author": {
+    "name": "Ben Drucker",
+    "email": "bvdrucker@gmail.com",
+    "url": "bendrucker.me"
+  },
+  "scripts": {
+    "test": "standard && tape test.js",
+    "build": "node build.js"
+  },
+  "keywords": [
+    "http",
+    "status",
+    "codes",
+    "builtin",
+    "map"
+  ],
+  "devDependencies": {
+    "tape": "^4.0.0",
+    "standard": "^4.0.0"
+  },
+  "files": [
+    "index.js",
+    "browser.js",
+    "build.js"
+  ],
+  "standard": {
+    "ignore": [
+      "browser.js"
+    ]
+  }
+}

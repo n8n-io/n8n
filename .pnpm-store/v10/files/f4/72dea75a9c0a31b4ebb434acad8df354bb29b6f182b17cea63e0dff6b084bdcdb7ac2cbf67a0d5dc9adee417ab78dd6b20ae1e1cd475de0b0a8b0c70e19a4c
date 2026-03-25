@@ -1,0 +1,622 @@
+@use 'mixins/mixins' as *;
+@use 'mixins/utils' as *;
+@use 'common/var' as *;
+
+@mixin upload-success($color: null) {
+  right: -15px;
+  top: -6px;
+  width: 40px;
+  height: 24px;
+  background: getCssVar('color-success');
+  text-align: center;
+  transform: rotate(45deg);
+
+  i {
+    font-size: 12px;
+    margin-top: 11px;
+    transform: rotate(-45deg);
+    color: $color;
+  }
+}
+
+@include b(upload) {
+  @include set-component-css-var('upload', $upload);
+}
+
+@include b(upload) {
+  @include utils-inline-flex-center;
+
+  cursor: pointer;
+  outline: none;
+  @include e(input) {
+    display: none;
+  }
+
+  @include e(tip) {
+    font-size: 12px;
+    color: getCssVar('text-color', 'regular');
+    margin-top: 7px;
+  }
+
+  iframe {
+    position: absolute;
+    z-index: -1;
+    top: 0;
+    left: 0;
+    opacity: 0;
+    filter: alpha(opacity=0);
+  }
+
+  /* Picture Card for Wall */
+  @include m(picture-card) {
+    @include set-css-var-value(('upload', 'picture-card', 'size'), 148px);
+
+    background-color: getCssVar('fill-color', 'lighter');
+    border: 1px dashed getCssVar('border-color', 'darker');
+    border-radius: 6px;
+    box-sizing: border-box;
+    width: getCssVar('upload', 'picture-card', 'size');
+    height: getCssVar('upload', 'picture-card', 'size');
+    cursor: pointer;
+    vertical-align: top;
+
+    @include utils-inline-flex-center;
+
+    > i {
+      font-size: 28px;
+      color: getCssVar('text-color', 'secondary');
+    }
+
+    &:hover {
+      border-color: getCssVar('color-primary');
+      color: getCssVar('color-primary');
+    }
+  }
+
+  @include when(drag) {
+    display: block;
+  }
+
+  &:focus {
+    border-color: getCssVar('color-primary');
+    color: getCssVar('color-primary');
+
+    .#{$namespace}-upload-dragger {
+      border-color: getCssVar('color-primary');
+    }
+  }
+}
+
+@include b(upload-dragger) {
+  padding: getCssVar('upload-dragger-padding-horizontal')
+    getCssVar('upload-dragger-padding-vertical');
+  background-color: getCssVar('fill-color', 'blank');
+  border: 1px dashed getCssVar('border-color');
+  border-radius: 6px;
+  box-sizing: border-box;
+  text-align: center;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+
+  .#{bem('icon', '', 'upload')} {
+    font-size: 67px;
+    color: getCssVar('text-color', 'placeholder');
+    margin-bottom: 16px;
+    line-height: 50px;
+  }
+
+  + .#{bem('upload', 'tip')} {
+    text-align: center;
+  }
+
+  ~ .#{bem('upload', 'files')} {
+    border-top: getCssVar('border');
+    margin-top: 7px;
+    padding-top: 5px;
+  }
+
+  .#{bem('upload', 'text')} {
+    color: getCssVar('text-color', 'regular');
+    font-size: 14px;
+    text-align: center;
+
+    em {
+      color: getCssVar('color-primary');
+      font-style: normal;
+    }
+  }
+
+  &:hover {
+    border-color: getCssVar('color-primary');
+  }
+
+  @include when(dragover) {
+    padding: calc(#{getCssVar('upload-dragger-padding-horizontal')} - 1px)
+      calc(#{getCssVar('upload-dragger-padding-vertical')} - 1px);
+    background-color: getCssVar('color', 'primary', 'light-9');
+    border: 2px dashed getCssVar('color-primary');
+  }
+}
+
+@include b(upload-list) {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  position: relative;
+  @include e(item) {
+    transition: all 0.5s cubic-bezier(0.55, 0, 0.1, 1);
+    font-size: 14px;
+    color: getCssVar('text-color', 'regular');
+    margin-bottom: 5px;
+    position: relative;
+    box-sizing: border-box;
+    border-radius: 4px;
+    width: 100%;
+
+    .#{bem('progress')} {
+      position: absolute;
+      top: 20px;
+      width: 100%;
+    }
+
+    .#{bem('progress', 'text')} {
+      position: absolute;
+      right: 0;
+      top: -13px;
+    }
+
+    .#{bem('progress-bar')} {
+      margin-right: 0;
+      padding-right: 0;
+    }
+
+    & .#{bem('icon', '', 'upload-success')} {
+      color: getCssVar('color-success');
+    }
+
+    .#{bem('icon', '', 'close')} {
+      display: none;
+      position: absolute;
+      right: 5px;
+      top: 50%;
+      cursor: pointer;
+      opacity: 0.75;
+      color: getCssVar('text-color', 'regular');
+      transition: opacity getCssVar('transition-duration');
+      transform: translateY(-50%);
+
+      &:hover {
+        opacity: 1;
+        color: getCssVar('color-primary');
+      }
+    }
+
+    & .#{bem('icon', '', 'close-tip')} {
+      display: none;
+      position: absolute;
+      top: 1px;
+      right: 5px;
+      font-size: 12px;
+      cursor: pointer;
+      opacity: 1;
+      color: getCssVar('color-primary');
+      font-style: normal;
+    }
+
+    &:hover {
+      background-color: getCssVar('fill-color', 'light');
+
+      .#{bem('icon', '', 'close')} {
+        display: inline-flex;
+      }
+
+      .#{bem('progress', 'text')} {
+        display: none;
+      }
+    }
+
+    .#{bem('upload-list', 'item-info')} {
+      display: inline-flex;
+      justify-content: center;
+      flex-direction: column;
+      width: calc(100% - 30px);
+      margin-left: 4px;
+    }
+
+    @include when(success) {
+      .#{bem('upload-list', 'item-status-label')} {
+        display: inline-flex;
+      }
+
+      .#{bem('upload-list', 'item-name')}:hover,
+      .#{bem('upload-list', 'item-name')}:focus {
+        color: getCssVar('color-primary');
+        cursor: pointer;
+      }
+
+      &:focus:not(:hover) {
+        /* 键盘focus */
+        .#{bem('icon', '', 'close-tip')} {
+          display: inline-block;
+        }
+      }
+
+      &:not(.focusing):focus,
+      &:active {
+        /* click时 */
+        outline-width: 0;
+        .#{bem('icon', '', 'close-tip')} {
+          display: none;
+        }
+      }
+
+      &:hover,
+      &:focus {
+        .#{bem('upload-list', 'item-status-label')} {
+          display: none;
+          opacity: 0;
+        }
+      }
+    }
+  }
+
+  @include e(item-name) {
+    color: getCssVar('text-color', 'regular');
+    display: inline-flex;
+    text-align: center;
+    align-items: center;
+
+    padding: 0 4px;
+
+    transition: color getCssVar('transition-duration');
+    font-size: getCssVar('font-size', 'base');
+
+    .#{$namespace}-icon {
+      margin-right: 6px;
+      color: getCssVar('text-color', 'secondary');
+    }
+  }
+
+  @include e(item-file-name) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  @include e(item-status-label) {
+    position: absolute;
+    right: 5px;
+    top: 0;
+    line-height: inherit;
+    display: none;
+
+    height: 100%;
+    justify-content: center;
+    align-items: center;
+
+    transition: opacity getCssVar('transition-duration');
+  }
+
+  @include e(item-delete) {
+    position: absolute;
+    right: 10px;
+    top: 0;
+    font-size: 12px;
+    color: getCssVar('text-color', 'regular');
+    display: none;
+
+    &:hover {
+      color: getCssVar('color-primary');
+    }
+  }
+
+  // upload-list
+  @include m(picture-card) {
+    @include set-css-var-value(('upload-list', 'picture-card', 'size'), 148px);
+
+    display: inline-flex;
+    flex-wrap: wrap;
+    margin: 0;
+
+    .#{bem('upload-list', 'item')} {
+      overflow: hidden;
+      background-color: getCssVar('fill-color', 'blank');
+      border: 1px solid getCssVar('border-color');
+      border-radius: 6px;
+      box-sizing: border-box;
+      width: getCssVar('upload-list', 'picture-card', 'size');
+      height: getCssVar('upload-list', 'picture-card', 'size');
+      margin: 0 8px 8px 0;
+      padding: 0;
+
+      display: inline-flex;
+
+      .#{bem('icon', '' ,'check')},
+      .#{bem('icon', '' ,'circle-check')} {
+        color: $color-white;
+      }
+
+      .#{bem('icon', '', 'close')} {
+        display: none;
+      }
+      &:hover {
+        .#{bem('upload-list', 'item-status-label')} {
+          opacity: 0;
+          // for fade out
+          display: block;
+        }
+
+        .#{$namespace}-progress__text {
+          display: block;
+        }
+      }
+    }
+
+    .#{bem('upload-list', 'item')} {
+      .#{bem('upload-list', 'item-name')} {
+        display: none;
+      }
+    }
+
+    .#{bem('upload-list', 'item-thumbnail')} {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .#{bem('upload-list', 'item-status-label')} {
+      @include upload-success();
+    }
+
+    .#{bem('upload-list', 'item-actions')} {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      left: 0;
+      top: 0;
+      cursor: default;
+
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+
+      color: #fff;
+      opacity: 0;
+      font-size: 20px;
+      background-color: getCssVar('overlay-color', 'lighter');
+      transition: opacity getCssVar('transition-duration');
+
+      span {
+        display: none;
+        cursor: pointer;
+      }
+
+      span + span {
+        margin-left: 1rem;
+      }
+
+      .#{bem('upload-list', 'item-delete')} {
+        position: static;
+        font-size: inherit;
+        color: inherit;
+      }
+
+      &:hover {
+        opacity: 1;
+        span {
+          display: inline-flex;
+        }
+      }
+    }
+
+    .#{bem('progress')} {
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      bottom: auto;
+      width: 126px;
+
+      .#{$namespace}-progress__text {
+        top: 50%;
+      }
+    }
+  }
+
+  @include m(picture) {
+    .#{bem('upload-list', 'item')} {
+      overflow: hidden;
+      z-index: 0;
+      background-color: getCssVar('fill-color', 'blank');
+      border: 1px solid getCssVar('border-color');
+      border-radius: 6px;
+      box-sizing: border-box;
+      margin-top: 10px;
+      padding: 10px;
+      display: flex;
+      align-items: center;
+
+      .#{bem('icon', '' ,'check')},
+      .#{bem('icon', '' ,'circle-check')} {
+        color: $color-white;
+      }
+
+      &:hover {
+        .#{bem('upload-list', 'item-status-label')} {
+          opacity: 0;
+          display: inline-flex;
+        }
+
+        .#{bem('progress', 'text')} {
+          display: block;
+        }
+      }
+
+      &.is-success {
+        .#{bem('upload-list', 'item-name')} {
+          i {
+            display: none;
+          }
+        }
+      }
+
+      & .#{bem('icon', '' ,'close')} {
+        top: 5px;
+        transform: translateY(0);
+      }
+    }
+
+    .#{bem('upload-list', 'item-thumbnail')} {
+      $item-thumbnail-size: 70px;
+
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+
+      width: $item-thumbnail-size;
+      height: $item-thumbnail-size;
+      object-fit: contain;
+
+      position: relative;
+      z-index: 1;
+      background-color: getCssVar('color-white');
+    }
+
+    .#{bem('upload-list', 'item-status-label')} {
+      position: absolute;
+      right: -17px;
+      top: -7px;
+      width: 46px;
+      height: 26px;
+      background: getCssVar('color-success');
+      text-align: center;
+      transform: rotate(45deg);
+
+      i {
+        font-size: 12px;
+        margin-top: 12px;
+        transform: rotate(-45deg);
+      }
+    }
+
+    .#{$namespace}-progress {
+      position: relative;
+      top: -7px;
+    }
+  }
+}
+
+@include b(upload-cover) {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  z-index: 10;
+  cursor: default;
+  @include utils-vertical-center;
+
+  img {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  @include e(label) {
+    @include upload-success(#fff);
+  }
+
+  @include e(progress) {
+    display: inline-block;
+    vertical-align: middle;
+    position: static;
+    width: 243px;
+
+    + .#{bem('upload', 'inner')} {
+      opacity: 0;
+    }
+  }
+
+  @include e(content) {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  @include e(interact) {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: getCssVar('overlay-color', 'light');
+    text-align: center;
+
+    .btn {
+      display: inline-block;
+      color: $color-white;
+      font-size: 14px;
+      cursor: pointer;
+      vertical-align: middle;
+      transition: getCssVar('transition-md-fade');
+      margin-top: 60px;
+
+      i {
+        margin-top: 0;
+      }
+
+      span {
+        opacity: 0;
+        transition: opacity 0.15s linear;
+      }
+
+      &:not(:first-child) {
+        margin-left: 35px;
+      }
+
+      &:hover {
+        transform: translateY(-13px);
+
+        span {
+          opacity: 1;
+        }
+      }
+
+      i {
+        color: $color-white;
+        display: block;
+        font-size: 24px;
+        line-height: inherit;
+        margin: 0 auto 5px;
+      }
+    }
+  }
+
+  @include e(title) {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    background-color: $color-white;
+    height: 36px;
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: normal;
+    text-align: left;
+    padding: 0 10px;
+    margin: 0;
+    line-height: 36px;
+    font-size: 14px;
+    color: getCssVar('text-color', 'primary');
+  }
+
+  + .#{bem('upload', 'inner')} {
+    opacity: 0;
+    position: relative;
+    z-index: 1;
+  }
+}

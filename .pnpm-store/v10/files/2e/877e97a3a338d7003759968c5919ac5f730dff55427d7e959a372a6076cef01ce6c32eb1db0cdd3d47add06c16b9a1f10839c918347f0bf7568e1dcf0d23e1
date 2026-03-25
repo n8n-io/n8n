@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "dist",
+    "pretty": true,
+    "sourceMap": true,
+    "strict": true,
+    "target": "es2018",
+    "lib": ["es2018", "dom"],
+    "moduleResolution": "node",
+    "module": "es2022",
+    "esModuleInterop": true,
+    "strictNullChecks": true,
+    "noUnusedParameters": false,
+    "noUnusedLocals": false,
+    "noImplicitReturns": true,
+    "declaration": true
+  },
+  "include": ["src", "test", "tools", "index.d.ts"],
+  "exclude": ["tools/extract_curl_args.py", "test/fixtures", "node_modules"]
+}

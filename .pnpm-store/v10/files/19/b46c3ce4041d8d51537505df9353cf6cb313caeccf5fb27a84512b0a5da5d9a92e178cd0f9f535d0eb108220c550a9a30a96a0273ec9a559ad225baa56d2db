@@ -1,0 +1,13 @@
+[
+  "sqlite3_close",
+  "sqlite3_finalize",
+  "sqlite3_open_v2",
+  "sqlite3_prepare",
+  "sqlite3_prepare16",
+  "sqlite3_prepare_v2",
+  "sqlite3_prepare16_v2",
+  "sqlite3_prepare_v3",
+  "sqlite3_prepare16_v3",
+  "sqlite3_reset",
+  "sqlite3_step"
+]

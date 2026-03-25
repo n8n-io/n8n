@@ -1,0 +1,9 @@
+FROM node:22-alpine3.20 AS build
+WORKDIR /isolated-vm
+RUN apk add g++ make python3
+COPY . .
+RUN npm install --ignore-scripts
+RUN MAKEFLAGS=-j$(nproc) npx -y prebuild
+
+FROM scratch
+COPY --from=build /isolated-vm/prebuilds .

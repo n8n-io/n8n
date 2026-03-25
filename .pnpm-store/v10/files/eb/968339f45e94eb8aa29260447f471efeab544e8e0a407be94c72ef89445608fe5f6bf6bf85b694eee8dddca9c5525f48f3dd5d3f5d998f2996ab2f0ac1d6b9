@@ -1,0 +1,268 @@
+// Copyright 2024 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package google.cloud.resourcemanager.v3;
+
+import "google/api/annotations.proto";
+import "google/api/client.proto";
+import "google/api/field_behavior.proto";
+import "google/api/resource.proto";
+import "google/longrunning/operations.proto";
+import "google/protobuf/empty.proto";
+
+option csharp_namespace = "Google.Cloud.ResourceManager.V3";
+option go_package = "cloud.google.com/go/resourcemanager/apiv3/resourcemanagerpb;resourcemanagerpb";
+option java_multiple_files = true;
+option java_outer_classname = "TagBindingsProto";
+option java_package = "com.google.cloud.resourcemanager.v3";
+option php_namespace = "Google\\Cloud\\ResourceManager\\V3";
+option ruby_package = "Google::Cloud::ResourceManager::V3";
+
+// Allow users to create and manage TagBindings between TagValues and
+// different Google Cloud resources throughout the GCP resource hierarchy.
+service TagBindings {
+  option (google.api.default_host) = "cloudresourcemanager.googleapis.com";
+  option (google.api.oauth_scopes) =
+      "https://www.googleapis.com/auth/cloud-platform,"
+      "https://www.googleapis.com/auth/cloud-platform.read-only";
+
+  // Lists the TagBindings for the given Google Cloud resource, as specified
+  // with `parent`.
+  //
+  // NOTE: The `parent` field is expected to be a full resource name:
+  // https://cloud.google.com/apis/design/resource_names#full_resource_name
+  rpc ListTagBindings(ListTagBindingsRequest)
+      returns (ListTagBindingsResponse) {
+    option (google.api.http) = {
+      get: "/v3/tagBindings"
+    };
+    option (google.api.method_signature) = "parent";
+  }
+
+  // Creates a TagBinding between a TagValue and a Google Cloud resource.
+  rpc CreateTagBinding(CreateTagBindingRequest)
+      returns (google.longrunning.Operation) {
+    option (google.api.http) = {
+      post: "/v3/tagBindings"
+      body: "tag_binding"
+    };
+    option (google.api.method_signature) = "tag_binding";
+    option (google.longrunning.operation_info) = {
+      response_type: "TagBinding"
+      metadata_type: "CreateTagBindingMetadata"
+    };
+  }
+
+  // Deletes a TagBinding.
+  rpc DeleteTagBinding(DeleteTagBindingRequest)
+      returns (google.longrunning.Operation) {
+    option (google.api.http) = {
+      delete: "/v3/{name=tagBindings/**}"
+    };
+    option (google.api.method_signature) = "name";
+    option (google.longrunning.operation_info) = {
+      response_type: "google.protobuf.Empty"
+      metadata_type: "DeleteTagBindingMetadata"
+    };
+  }
+
+  // Return a list of effective tags for the given Google Cloud resource, as
+  // specified in `parent`.
+  rpc ListEffectiveTags(ListEffectiveTagsRequest)
+      returns (ListEffectiveTagsResponse) {
+    option (google.api.http) = {
+      get: "/v3/effectiveTags"
+    };
+    option (google.api.method_signature) = "parent";
+  }
+}
+
+// A TagBinding represents a connection between a TagValue and a cloud
+// resource Once a TagBinding is created, the TagValue is applied to all the
+// descendants of the Google Cloud resource.
+message TagBinding {
+  option (google.api.resource) = {
+    type: "cloudresourcemanager.googleapis.com/TagBinding"
+    pattern: "tagBindings/{tag_binding}"
+  };
+
+  // Output only. The name of the TagBinding. This is a String of the form:
+  // `tagBindings/{full-resource-name}/{tag-value-name}` (e.g.
+  // `tagBindings/%2F%2Fcloudresourcemanager.googleapis.com%2Fprojects%2F123/tagValues/456`).
+  string name = 1 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  // The full resource name of the resource the TagValue is bound to.
+  // E.g. `//cloudresourcemanager.googleapis.com/projects/123`
+  string parent = 2;
+
+  // The TagValue of the TagBinding.
+  // Must be of the form `tagValues/456`.
+  string tag_value = 3;
+
+  // The namespaced name for the TagValue of the TagBinding.
+  // Must be in the format
+  // `{parent_id}/{tag_key_short_name}/{short_name}`.
+  //
+  // For methods that support TagValue namespaced name, only one of
+  // tag_value_namespaced_name or tag_value may be filled. Requests with both
+  // fields will be rejected.
+  string tag_value_namespaced_name = 4;
+}
+
+// Runtime operation information for creating a TagValue.
+message CreateTagBindingMetadata {}
+
+// The request message to create a TagBinding.
+message CreateTagBindingRequest {
+  // Required. The TagBinding to be created.
+  TagBinding tag_binding = 1 [(google.api.field_behavior) = REQUIRED];
+
+  // Optional. Set to true to perform the validations necessary for creating the
+  // resource, but not actually perform the action.
+  bool validate_only = 2 [(google.api.field_behavior) = OPTIONAL];
+}
+
+// Runtime operation information for deleting a TagBinding.
+message DeleteTagBindingMetadata {}
+
+// The request message to delete a TagBinding.
+message DeleteTagBindingRequest {
+  // Required. The name of the TagBinding. This is a String of the form:
+  // `tagBindings/{id}` (e.g.
+  // `tagBindings/%2F%2Fcloudresourcemanager.googleapis.com%2Fprojects%2F123/tagValues/456`).
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "cloudresourcemanager.googleapis.com/TagBinding"
+    }
+  ];
+}
+
+// The request message to list all TagBindings for a parent.
+message ListTagBindingsRequest {
+  // Required. The full resource name of a resource for which you want to list
+  // existing TagBindings. E.g.
+  // "//cloudresourcemanager.googleapis.com/projects/123"
+  string parent = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = { child_type: "*" }
+  ];
+
+  // Optional. The maximum number of TagBindings to return in the response. The
+  // server allows a maximum of 300 TagBindings to return. If unspecified, the
+  // server will use 100 as the default.
+  int32 page_size = 2 [(google.api.field_behavior) = OPTIONAL];
+
+  // Optional. A pagination token returned from a previous call to
+  // `ListTagBindings` that indicates where this listing should continue from.
+  string page_token = 3 [(google.api.field_behavior) = OPTIONAL];
+}
+
+// The ListTagBindings response.
+message ListTagBindingsResponse {
+  // A possibly paginated list of TagBindings for the specified resource.
+  repeated TagBinding tag_bindings = 1;
+
+  // Pagination token.
+  //
+  // If the result set is too large to fit in a single response, this token
+  // is returned. It encodes the position of the current result cursor.
+  // Feeding this value into a new list request with the `page_token` parameter
+  // gives the next page of the results.
+  //
+  // When `next_page_token` is not filled in, there is no next page and
+  // the list returned is the last page in the result set.
+  //
+  // Pagination tokens have a limited lifetime.
+  string next_page_token = 2;
+}
+
+// The request message to ListEffectiveTags
+message ListEffectiveTagsRequest {
+  // Required. The full resource name of a resource for which you want to list
+  // the effective tags. E.g.
+  // "//cloudresourcemanager.googleapis.com/projects/123"
+  string parent = 1 [(google.api.field_behavior) = REQUIRED];
+
+  // Optional. The maximum number of effective tags to return in the response.
+  // The server allows a maximum of 300 effective tags to return in a single
+  // page. If unspecified, the server will use 100 as the default.
+  int32 page_size = 2 [(google.api.field_behavior) = OPTIONAL];
+
+  // Optional. A pagination token returned from a previous call to
+  // `ListEffectiveTags` that indicates from where this listing should continue.
+  string page_token = 3 [(google.api.field_behavior) = OPTIONAL];
+}
+
+// The response of ListEffectiveTags.
+message ListEffectiveTagsResponse {
+  // A possibly paginated list of effective tags for the specified resource.
+  repeated EffectiveTag effective_tags = 1;
+
+  // Pagination token.
+  //
+  // If the result set is too large to fit in a single response, this token
+  // is returned. It encodes the position of the current result cursor.
+  // Feeding this value into a new list request with the `page_token` parameter
+  // gives the next page of the results.
+  //
+  // When `next_page_token` is not filled in, there is no next page and
+  // the list returned is the last page in the result set.
+  //
+  // Pagination tokens have a limited lifetime.
+  string next_page_token = 2;
+}
+
+// An EffectiveTag represents a tag that applies to a resource during policy
+// evaluation. Tags can be either directly bound to a resource or inherited from
+// its ancestor. EffectiveTag contains the name and
+// namespaced_name of the tag value and tag key, with additional fields of
+// `inherited` to indicate the inheritance status of the effective tag.
+message EffectiveTag {
+  // Resource name for TagValue in the format `tagValues/456`.
+  string tag_value = 1 [(google.api.resource_reference) = {
+    type: "cloudresourcemanager.googleapis.com/TagValue"
+  }];
+
+  // The namespaced name of the TagValue. Can be in the form
+  // `{organization_id}/{tag_key_short_name}/{tag_value_short_name}` or
+  // `{project_id}/{tag_key_short_name}/{tag_value_short_name}` or
+  // `{project_number}/{tag_key_short_name}/{tag_value_short_name}`.
+  string namespaced_tag_value = 2;
+
+  // The name of the TagKey, in the format `tagKeys/{id}`, such as
+  // `tagKeys/123`.
+  string tag_key = 3 [(google.api.resource_reference) = {
+    type: "cloudresourcemanager.googleapis.com/TagKey"
+  }];
+
+  // The namespaced name of the TagKey. Can be in the form
+  // `{organization_id}/{tag_key_short_name}` or
+  // `{project_id}/{tag_key_short_name}` or
+  // `{project_number}/{tag_key_short_name}`.
+  string namespaced_tag_key = 4;
+
+  // The parent name of the tag key.
+  // Must be in the format `organizations/{organization_id}` or
+  // `projects/{project_number}`
+  string tag_key_parent_name = 6;
+
+  // Indicates the inheritance status of a tag value
+  // attached to the given resource. If the tag value is inherited from one of
+  // the resource's ancestors, inherited will be true. If false, then the tag
+  // value is directly attached to the resource, inherited will be false.
+  bool inherited = 5;
+}

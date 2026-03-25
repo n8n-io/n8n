@@ -1,0 +1,108 @@
+{
+  "name": "http-proxy-middleware",
+  "type": "commonjs",
+  "version": "3.0.5",
+  "description": "The one-liner node.js proxy middleware for connect, express, next.js and more",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "clean": "rm -rf dist coverage tsconfig.tsbuildinfo .eslintcache",
+    "install:all": "yarn && (cd examples && yarn)",
+    "lint": "yarn prettier && yarn eslint",
+    "lint:fix": "yarn prettier:fix && yarn eslint:fix",
+    "eslint": "eslint '{src,test,examples}/**/*.{js,ts}' --cache",
+    "eslint:fix": "yarn eslint --fix",
+    "prettier": "prettier --list-different \"**/*.{js,ts,md,yml,json,html}\"",
+    "prettier:fix": "prettier --write \"**/*.{js,ts,md,yml,json,html}\"",
+    "build": "tsc --build",
+    "test": "jest",
+    "coverage": "jest --coverage",
+    "prepare": "husky && patch-package",
+    "prepack": "yarn clean && yarn test && yarn build",
+    "spellcheck": "npx --yes cspell --show-context --show-suggestions '**/*.*'"
+  },
+  "publishConfig": {
+    "provenance": true
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chimurai/http-proxy-middleware.git"
+  },
+  "keywords": [
+    "reverse",
+    "proxy",
+    "middleware",
+    "http",
+    "https",
+    "connect",
+    "express",
+    "fastify",
+    "polka",
+    "next.js",
+    "browser-sync",
+    "gulp",
+    "grunt-contrib-connect",
+    "websocket",
+    "ws",
+    "cors"
+  ],
+  "author": "Steven Chim",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/chimurai/http-proxy-middleware/issues"
+  },
+  "homepage": "https://github.com/chimurai/http-proxy-middleware#readme",
+  "devDependencies": {
+    "@commitlint/cli": "19.8.0",
+    "@commitlint/config-conventional": "19.8.0",
+    "@eslint/js": "9.23.0",
+    "@types/debug": "4.1.12",
+    "@types/eslint": "9.6.1",
+    "@types/express": "4.17.21",
+    "@types/is-glob": "4.0.4",
+    "@types/jest": "29.5.14",
+    "@types/micromatch": "4.0.9",
+    "@types/node": "22.10.2",
+    "@types/supertest": "6.0.2",
+    "@types/ws": "8.18.0",
+    "body-parser": "1.20.3",
+    "eslint": "9.23.0",
+    "eslint-config-prettier": "10.1.1",
+    "eslint-plugin-prettier": "5.2.3",
+    "express": "4.21.2",
+    "get-port": "5.1.1",
+    "globals": "16.0.0",
+    "husky": "9.1.7",
+    "jest": "29.7.0",
+    "lint-staged": "15.5.0",
+    "mockttp": "3.17.0",
+    "open": "8.4.2",
+    "patch-package": "8.0.0",
+    "pkg-pr-new": "0.0.41",
+    "prettier": "3.5.3",
+    "supertest": "7.1.0",
+    "ts-jest": "29.2.6",
+    "typescript": "5.8.2",
+    "typescript-eslint": "8.27.0",
+    "ws": "8.18.1"
+  },
+  "dependencies": {
+    "@types/http-proxy": "^1.17.15",
+    "debug": "^4.3.6",
+    "http-proxy": "^1.18.1",
+    "is-glob": "^4.0.3",
+    "is-plain-object": "^5.0.0",
+    "micromatch": "^4.0.8"
+  },
+  "engines": {
+    "node": "^14.15.0 || ^16.10.0 || >=18.0.0"
+  },
+  "commitlint": {
+    "extends": [
+      "@commitlint/config-conventional"
+    ]
+  }
+}

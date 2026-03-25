@@ -1,0 +1,37 @@
+{
+  "mappings": [
+    {
+      "scenarioName": "Successful OAuth client credentials flow",
+      "requiredScenarioState": "Started",
+      "newScenarioState": "Acquired access token",
+      "request": {
+        "urlPathPattern": "/oauth/token-request.*",
+        "method": "POST",
+        "headers": {
+          "Content-Type": {
+            "contains": "application/x-www-form-urlencoded;charset=UTF-8"
+          }
+        },
+        "bodyPatterns": [
+          {
+            "contains": "scope=session%3Arole%3AANALYST&grant_type=client_credentials&client_id=123&client_secret=clientSecret"
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "token_type": "Bearer",
+          "username": "user",
+          "scope": "refresh_token session:role:ANALYST",
+          "expires_in": 600,
+          "refresh_token_expires_in": 86399,
+          "idpInitiated": false
+        }
+      }
+    }
+  ]
+}

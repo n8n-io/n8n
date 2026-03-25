@@ -1,0 +1,568 @@
+{
+  "name": "@rushstack/rig-package",
+  "entries": [
+    {
+      "version": "0.5.3",
+      "tag": "@rushstack/rig-package_v0.5.3",
+      "date": "Sat, 27 Jul 2024 00:10:27 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Include CHANGELOG.md in published releases again"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.5.2",
+      "tag": "@rushstack/rig-package_v0.5.2",
+      "date": "Sat, 17 Feb 2024 06:24:35 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Fix broken link to API documentation"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.5.1",
+      "tag": "@rushstack/rig-package_v0.5.1",
+      "date": "Tue, 26 Sep 2023 09:30:33 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Update type-only imports to include the type modifier."
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.5.0",
+      "tag": "@rushstack/rig-package_v0.5.0",
+      "date": "Fri, 15 Sep 2023 00:36:58 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Update @types/node from 14 to 18"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `3.3.4`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.4.1",
+      "tag": "@rushstack/rig-package_v0.4.1",
+      "date": "Tue, 08 Aug 2023 07:10:40 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `3.3.3`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.4.0",
+      "tag": "@rushstack/rig-package_v0.4.0",
+      "date": "Mon, 19 Jun 2023 22:40:21 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Expose an `IRigConfig` interface that `RigConfig` implements."
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.21",
+      "tag": "@rushstack/rig-package_v0.3.21",
+      "date": "Thu, 15 Jun 2023 00:21:01 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `3.3.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.20",
+      "tag": "@rushstack/rig-package_v0.3.20",
+      "date": "Wed, 07 Jun 2023 22:45:16 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `3.3.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.19",
+      "tag": "@rushstack/rig-package_v0.3.19",
+      "date": "Mon, 22 May 2023 06:34:33 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `3.3.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.18",
+      "tag": "@rushstack/rig-package_v0.3.18",
+      "date": "Fri, 10 Feb 2023 01:18:50 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `3.2.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.17",
+      "tag": "@rushstack/rig-package_v0.3.17",
+      "date": "Mon, 10 Oct 2022 15:23:44 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `3.1.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.16",
+      "tag": "@rushstack/rig-package_v0.3.16",
+      "date": "Thu, 29 Sep 2022 07:13:06 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `3.1.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.15",
+      "tag": "@rushstack/rig-package_v0.3.15",
+      "date": "Thu, 15 Sep 2022 00:18:51 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `3.0.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.14",
+      "tag": "@rushstack/rig-package_v0.3.14",
+      "date": "Wed, 03 Aug 2022 18:40:35 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `3.0.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.13",
+      "tag": "@rushstack/rig-package_v0.3.13",
+      "date": "Tue, 28 Jun 2022 00:23:32 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.6.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.12",
+      "tag": "@rushstack/rig-package_v0.3.12",
+      "date": "Fri, 17 Jun 2022 00:16:18 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.6.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.11",
+      "tag": "@rushstack/rig-package_v0.3.11",
+      "date": "Sat, 23 Apr 2022 02:13:07 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.6.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.10",
+      "tag": "@rushstack/rig-package_v0.3.10",
+      "date": "Fri, 15 Apr 2022 00:12:36 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.5.4`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.9",
+      "tag": "@rushstack/rig-package_v0.3.9",
+      "date": "Sat, 09 Apr 2022 02:24:26 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Rename the \"master\" branch to \"main\"."
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.5.3`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.8",
+      "tag": "@rushstack/rig-package_v0.3.8",
+      "date": "Tue, 15 Mar 2022 19:15:53 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.5.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.7",
+      "tag": "@rushstack/rig-package_v0.3.7",
+      "date": "Mon, 27 Dec 2021 16:10:40 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.5.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.6",
+      "tag": "@rushstack/rig-package_v0.3.6",
+      "date": "Mon, 06 Dec 2021 16:08:32 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.5.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.5",
+      "tag": "@rushstack/rig-package_v0.3.5",
+      "date": "Fri, 05 Nov 2021 15:09:18 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.4.5`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.4",
+      "tag": "@rushstack/rig-package_v0.3.4",
+      "date": "Wed, 27 Oct 2021 00:08:15 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Update the package.json repository field to include the directory property."
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.4.4`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.3",
+      "tag": "@rushstack/rig-package_v0.3.3",
+      "date": "Wed, 13 Oct 2021 15:09:54 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.4.3`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.2",
+      "tag": "@rushstack/rig-package_v0.3.2",
+      "date": "Thu, 07 Oct 2021 07:13:35 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.4.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.1",
+      "tag": "@rushstack/rig-package_v0.3.1",
+      "date": "Thu, 23 Sep 2021 00:10:41 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Upgrade the `@types/node` dependency to version to version 12."
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.4.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.0",
+      "tag": "@rushstack/rig-package_v0.3.0",
+      "date": "Fri, 27 Aug 2021 00:07:25 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Cache rig.json reads"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.13",
+      "tag": "@rushstack/rig-package_v0.2.13",
+      "date": "Mon, 12 Jul 2021 23:08:26 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.4.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.12",
+      "tag": "@rushstack/rig-package_v0.2.12",
+      "date": "Mon, 12 Apr 2021 15:10:28 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.3.4`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.11",
+      "tag": "@rushstack/rig-package_v0.2.11",
+      "date": "Tue, 06 Apr 2021 15:14:22 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.3.3`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.10",
+      "tag": "@rushstack/rig-package_v0.2.10",
+      "date": "Thu, 04 Mar 2021 01:11:31 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Eliminate dependency on @types/node"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.9",
+      "tag": "@rushstack/rig-package_v0.2.9",
+      "date": "Thu, 10 Dec 2020 23:25:49 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.3.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.8",
+      "tag": "@rushstack/rig-package_v0.2.8",
+      "date": "Wed, 11 Nov 2020 01:08:59 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.3.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.7",
+      "tag": "@rushstack/rig-package_v0.2.7",
+      "date": "Fri, 30 Oct 2020 06:38:39 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.3.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.6",
+      "tag": "@rushstack/rig-package_v0.2.6",
+      "date": "Fri, 30 Oct 2020 00:10:14 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.2.3`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.5",
+      "tag": "@rushstack/rig-package_v0.2.5",
+      "date": "Wed, 28 Oct 2020 01:18:03 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.2.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.4",
+      "tag": "@rushstack/rig-package_v0.2.4",
+      "date": "Tue, 06 Oct 2020 00:24:06 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.2.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.3",
+      "tag": "@rushstack/rig-package_v0.2.3",
+      "date": "Mon, 05 Oct 2020 22:36:57 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.2.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.2",
+      "tag": "@rushstack/rig-package_v0.2.2",
+      "date": "Mon, 05 Oct 2020 15:10:42 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Fix minor mistake in README.md"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.1",
+      "tag": "@rushstack/rig-package_v0.2.1",
+      "date": "Wed, 30 Sep 2020 18:39:17 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Update to build with @rushstack/heft-node-rig"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.1.3`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.0",
+      "tag": "@rushstack/rig-package_v0.2.0",
+      "date": "Wed, 30 Sep 2020 06:53:53 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Update the rig package guidance to place tool configuration files that would normally be in a \"config\" folder in a \"config\" folder inside the rig package as well."
+          },
+          {
+            "comment": "Add ILoadForProjectFolderOptions.overrideRigJsonObject"
+          },
+          {
+            "comment": "Add RigConfig.tryResolveConfigFilePath()"
+          },
+          {
+            "comment": "Upgrade compiler; the API now requires TypeScript 3.9 or newer"
+          }
+        ],
+        "patch": [
+          {
+            "comment": "Report an error if the specified \"rigProfile\" is not defined by the rig package"
+          },
+          {
+            "comment": "Update README.md"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.1.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.0",
+      "tag": "@rushstack/rig-package_v0.1.0",
+      "date": "Fri, 25 Sep 2020 08:13:01 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Initial release"
+          }
+        ]
+      }
+    }
+  ]
+}

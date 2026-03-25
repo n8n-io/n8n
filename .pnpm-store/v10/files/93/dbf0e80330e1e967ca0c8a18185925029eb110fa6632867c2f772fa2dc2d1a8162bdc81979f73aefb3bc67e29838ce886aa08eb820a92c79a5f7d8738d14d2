@@ -1,0 +1,51 @@
+{
+	"name": "p-debounce",
+	"version": "2.1.0",
+	"description": "Debounce promise-returning & async functions",
+	"license": "MIT",
+	"repository": "sindresorhus/p-debounce",
+	"author": {
+		"name": "Sindre Sorhus",
+		"email": "sindresorhus@gmail.com",
+		"url": "sindresorhus.com"
+	},
+	"engines": {
+		"node": ">=6"
+	},
+	"scripts": {
+		"test": "xo && ava && tsd"
+	},
+	"files": [
+		"index.js",
+		"index.d.ts"
+	],
+	"keywords": [
+		"promise",
+		"debounce",
+		"debounced",
+		"limit",
+		"limited",
+		"concurrency",
+		"throttle",
+		"throat",
+		"limited",
+		"interval",
+		"rate",
+		"batch",
+		"ratelimit",
+		"task",
+		"queue",
+		"async",
+		"await",
+		"promises",
+		"bluebird"
+	],
+	"devDependencies": {
+		"ava": "^1.4.1",
+		"delay": "^4.1.0",
+		"in-range": "^1.0.0",
+		"time-span": "^3.0.0",
+		"tsd": "^0.7.2",
+		"xo": "^0.24.0"
+	}
+}

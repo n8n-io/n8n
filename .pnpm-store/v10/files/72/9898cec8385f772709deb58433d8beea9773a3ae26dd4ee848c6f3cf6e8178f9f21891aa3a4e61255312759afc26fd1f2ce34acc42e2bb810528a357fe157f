@@ -1,0 +1,36 @@
+{
+  "name": "babel-walk",
+  "version": "3.0.0-canary-5",
+  "description": "Lightweight Babel AST traversal",
+  "main": "lib/index.js",
+  "files": [
+    "lib"
+  ],
+  "scripts": {
+    "build": "tsc && node lib",
+    "postbuild": "rimraf lib/**/__tests__",
+    "lint": "tslint './src/**/*.{ts,tsx}' -t verbose -p .",
+    "prettier:write": "prettier --ignore-path .gitignore --write './**/*.{md,json,yaml,js,jsx,ts,tsx}'",
+    "prettier:check": "prettier --ignore-path .gitignore --list-different './**/*.{md,json,yaml,js,jsx,ts,tsx}'"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pugjs/babel-walk.git"
+  },
+  "engines": {
+    "node": ">= 10.0.0"
+  },
+  "author": "Timothy Gu <timothygu99@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "@babel/types": "^7.9.6"
+  },
+  "devDependencies": {
+    "@forbeslindesay/tsconfig": "^2.0.0",
+    "@types/node": "^14.0.5",
+    "prettier": "^2.0.5",
+    "rimraf": "^3.0.2",
+    "tslint": "^6.1.2",
+    "typescript": "^3.9.3"
+  }
+}

@@ -1,0 +1,13 @@
+<div class="ranges-iframes" id="iframes-target">
+    <p>
+        Lorem ipsum dolor sit amet.
+    </p>
+    <script>
+        // Can't use document.write here, as this fixture will be
+        // included after the document was fully loaded
+        var target = document.getElementById("iframes-target");
+        var iframe = document.createElement("iframe");
+        iframe.src = jasmine.getFixtures().fixturesPath + "/ranges/inc.html";
+        target.appendChild(iframe);
+    </script>
+</div>

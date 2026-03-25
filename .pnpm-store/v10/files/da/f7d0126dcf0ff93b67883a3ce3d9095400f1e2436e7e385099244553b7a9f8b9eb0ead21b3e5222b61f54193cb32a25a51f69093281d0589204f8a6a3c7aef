@@ -1,0 +1,21 @@
+{
+  "name": "uc.micro",
+  "version": "1.0.6",
+  "description": "Micro subset of unicode data files for markdown-it projects.",
+  "repository": "markdown-it/uc.micro",
+  "license": "MIT",
+  "files": [
+    "categories/",
+    "properties/",
+    "index.js"
+  ],
+  "scripts": {
+    "test": "mocha",
+    "update": "node update.js && npm test"
+  },
+  "devDependencies": {
+    "mocha": "^5.0.0",
+    "shelljs": "^0.8.1",
+    "unicode-11.0.0": "^0.7.8"
+  }
+}

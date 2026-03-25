@@ -1,0 +1,56 @@
+{
+  "name": "jest-runtime",
+  "version": "29.7.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jestjs/jest.git",
+    "directory": "packages/jest-runtime"
+  },
+  "license": "MIT",
+  "main": "./build/index.js",
+  "types": "./build/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./build/index.d.ts",
+      "default": "./build/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "dependencies": {
+    "@jest/environment": "^29.7.0",
+    "@jest/fake-timers": "^29.7.0",
+    "@jest/globals": "^29.7.0",
+    "@jest/source-map": "^29.6.3",
+    "@jest/test-result": "^29.7.0",
+    "@jest/transform": "^29.7.0",
+    "@jest/types": "^29.6.3",
+    "@types/node": "*",
+    "chalk": "^4.0.0",
+    "cjs-module-lexer": "^1.0.0",
+    "collect-v8-coverage": "^1.0.0",
+    "glob": "^7.1.3",
+    "graceful-fs": "^4.2.9",
+    "jest-haste-map": "^29.7.0",
+    "jest-message-util": "^29.7.0",
+    "jest-mock": "^29.7.0",
+    "jest-regex-util": "^29.6.3",
+    "jest-resolve": "^29.7.0",
+    "jest-snapshot": "^29.7.0",
+    "jest-util": "^29.7.0",
+    "slash": "^3.0.0",
+    "strip-bom": "^4.0.0"
+  },
+  "devDependencies": {
+    "@jest/test-utils": "^29.7.0",
+    "@types/glob": "^7.1.1",
+    "@types/graceful-fs": "^4.1.3",
+    "jest-environment-node": "^29.7.0"
+  },
+  "engines": {
+    "node": "^14.15.0 || ^16.10.0 || >=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "gitHead": "4e56991693da7cd4c3730dc3579a1dd1403ee630"
+}

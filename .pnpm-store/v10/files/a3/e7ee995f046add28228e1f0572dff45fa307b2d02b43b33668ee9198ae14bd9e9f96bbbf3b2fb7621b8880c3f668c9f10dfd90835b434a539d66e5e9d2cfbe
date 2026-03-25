@@ -1,0 +1,13 @@
+import type { StartEditingCellParams } from '../api/gridApi';
+import type { BeanCollection } from '../context/context';
+import type { EditingCellPosition, ICellEditorValidationError } from '../interfaces/iCellEditor';
+import type { CellPosition } from '../interfaces/iCellPosition';
+export declare function undoCellEditing(beans: BeanCollection): void;
+export declare function redoCellEditing(beans: BeanCollection): void;
+export declare function getEditingCells(beans: BeanCollection): EditingCellPosition[];
+export declare function stopEditing(beans: BeanCollection, cancel?: boolean): void;
+export declare function isEditing(beans: BeanCollection, cellPosition: CellPosition): boolean;
+export declare function startEditingCell(beans: BeanCollection, params: StartEditingCellParams): void;
+export declare function validateEdit(beans: BeanCollection): ICellEditorValidationError[] | null;
+export declare function getCurrentUndoSize(beans: BeanCollection): number;
+export declare function getCurrentRedoSize(beans: BeanCollection): number;

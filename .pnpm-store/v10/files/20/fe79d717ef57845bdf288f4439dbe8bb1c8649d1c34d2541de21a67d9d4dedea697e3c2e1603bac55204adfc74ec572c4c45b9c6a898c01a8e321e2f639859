@@ -1,0 +1,1 @@
+module.exports = require("../dist/hub/node.cjs");

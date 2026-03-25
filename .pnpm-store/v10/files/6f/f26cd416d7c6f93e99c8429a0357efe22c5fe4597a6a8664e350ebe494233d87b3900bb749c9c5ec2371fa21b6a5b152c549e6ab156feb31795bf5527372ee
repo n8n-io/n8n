@@ -1,0 +1,90 @@
+{
+  "name": "detective-vue2",
+  "version": "2.2.0",
+  "author": "Havunen <sampo.kivisto@live.fi>",
+  "description": "Get the dependencies of a Vue module",
+  "main": "index.js",
+  "files": [
+    "index.js"
+  ],
+  "scripts": {
+    "lint": "xo",
+    "fix": "xo --fix",
+    "mocha": "mocha",
+    "test": "npm run lint && npm run mocha",
+    "test:ci": "c8 npm run mocha",
+    "watch": "npm run mocha -- -w"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dependents/detective-vue2.git"
+  },
+  "keywords": [
+    "detective",
+    "dependencies",
+    "module",
+    "ast",
+    "import",
+    "vue"
+  ],
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/dependents/detective-vue2/issues"
+  },
+  "homepage": "https://github.com/dependents/detective-vue2",
+  "engines": {
+    "node": ">=18"
+  },
+  "peerDependencies": {
+    "typescript": "^5.4.4"
+  },
+  "dependencies": {
+    "@dependents/detective-less": "^5.0.1",
+    "@vue/compiler-sfc": "^3.5.13",
+    "detective-es6": "^5.0.1",
+    "detective-sass": "^6.0.1",
+    "detective-scss": "^5.0.1",
+    "detective-stylus": "^5.0.1",
+    "detective-typescript": "^14.0.0"
+  },
+  "devDependencies": {
+    "c8": "^10.1.3",
+    "mocha": "^11.1.0",
+    "typescript": "^5.7.3",
+    "xo": "^0.60.0"
+  },
+  "xo": {
+    "space": true,
+    "ignores": [
+      "test/fixtures/*"
+    ],
+    "rules": {
+      "arrow-body-style": "off",
+      "capitalized-comments": "off",
+      "comma-dangle": [
+        "error",
+        "never"
+      ],
+      "curly": [
+        "error",
+        "multi-line"
+      ],
+      "operator-linebreak": [
+        "error",
+        "after"
+      ],
+      "object-curly-spacing": [
+        "error",
+        "always"
+      ],
+      "space-before-function-paren": [
+        "error",
+        "never"
+      ],
+      "unicorn/prefer-module": "off",
+      "unicorn/prefer-node-protocol": "off",
+      "unicorn/prefer-top-level-await": "off",
+      "unicorn/prevent-abbreviations": "off"
+    }
+  }
+}

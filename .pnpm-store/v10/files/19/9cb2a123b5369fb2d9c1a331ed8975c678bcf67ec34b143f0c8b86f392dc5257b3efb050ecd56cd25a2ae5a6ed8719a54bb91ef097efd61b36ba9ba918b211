@@ -1,0 +1,54 @@
+{
+  "author": "Brian J. Brennan <brianloveswords@gmail.com>",
+  "name": "buffer-crc32",
+  "description": "A pure javascript CRC32 algorithm that plays nice with binary data",
+  "version": "1.0.0",
+  "licenses": [
+    {
+      "type": "MIT",
+      "url": "https://github.com/brianloveswords/buffer-crc32/raw/master/LICENSE"
+    }
+  ],
+  "contributors": [
+    {
+      "name": "Vladimir Kuznetsov",
+      "github": "mistakster"
+    }
+  ],
+  "homepage": "https://github.com/brianloveswords/buffer-crc32",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/brianloveswords/buffer-crc32.git"
+  },
+  "scripts": {
+    "test": "tap tests/*.test.js --reporter classic",
+    "build": "npx unbuild@2.0.0 && npx cpy-cli index.d.ts dist --rename=index.d.cts && npx cpy-cli index.d.ts dist --rename=index.d.mts",
+    "prepublishOnly": "npm run build",
+    "format": "prettier --write --log-level warn \"**/*.{json,md,js}\""
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "prettier": "^3.2.4",
+    "tap": "~11.1.5"
+  },
+  "optionalDependencies": {},
+  "engines": {
+    "node": ">=8.0.0"
+  },
+  "license": "MIT",
+  "type": "commonjs",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "main": "./dist/index.cjs",
+  "types": "./index.d.ts",
+  "files": [
+    "dist",
+    "index.d.ts",
+    "LICENSE",
+    "README.md"
+  ]
+}

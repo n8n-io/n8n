@@ -1,0 +1,78 @@
+{
+  "name": "ip-address",
+  "description": "A library for parsing IPv4 and IPv6 IP addresses in node and the browser.",
+  "keywords": [
+    "ipv6",
+    "ipv4",
+    "browser",
+    "validation"
+  ],
+  "version": "10.1.0",
+  "author": "Beau Gunderson <beau@beaugunderson.com> (https://beaugunderson.com/)",
+  "license": "MIT",
+  "main": "dist/ip-address.js",
+  "types": "dist/ip-address.d.ts",
+  "scripts": {
+    "docs": "documentation build --github --output docs --format html ./ip-address.js",
+    "build": "rm -rf dist; mkdir dist; tsc",
+    "prepack": "npm run build",
+    "release": "release-it",
+    "test-ci": "nyc mocha",
+    "test": "mocha",
+    "watch": "mocha --watch"
+  },
+  "nyc": {
+    "extension": [
+      ".ts"
+    ],
+    "exclude": [
+      "**/*.d.ts",
+      ".eslintrc.js",
+      "coverage/",
+      "dist/",
+      "test/",
+      "tmp/"
+    ],
+    "reporter": [
+      "html",
+      "lcov",
+      "text"
+    ],
+    "all": true
+  },
+  "engines": {
+    "node": ">= 12"
+  },
+  "files": [
+    "src",
+    "dist"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/beaugunderson/ip-address.git"
+  },
+  "devDependencies": {
+    "@types/chai": "^5.0.0",
+    "@types/mocha": "^10.0.8",
+    "@typescript-eslint/eslint-plugin": "^8.8.0",
+    "@typescript-eslint/parser": "^8.8.0",
+    "chai": "^5.1.1",
+    "documentation": "^14.0.3",
+    "eslint": "^8.50.0",
+    "eslint_d": "^14.0.4",
+    "eslint-config-airbnb": "^19.0.4",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-filenames": "^1.3.2",
+    "eslint-plugin-import": "^2.30.0",
+    "eslint-plugin-jsx-a11y": "^6.10.0",
+    "eslint-plugin-prettier": "^5.2.1",
+    "eslint-plugin-sort-imports-es6-autofix": "^0.6.0",
+    "mocha": "^10.7.3",
+    "nyc": "^17.1.0",
+    "prettier": "^3.3.3",
+    "release-it": "^17.6.0",
+    "source-map-support": "^0.5.21",
+    "tsx": "^4.19.1",
+    "typescript": "<5.6.0"
+  }
+}

@@ -1,0 +1,50 @@
+{
+	"name": "node-preload",
+	"version": "0.2.1",
+	"description": "Request that Node.js child processes preload modules",
+	"scripts": {
+		"release": "standard-version --sign",
+		"pretest": "xo",
+		"test": "nyc tape test/*.js"
+	},
+	"engines": {
+		"node": ">=8"
+	},
+	"main": "index.js",
+	"author": "Corey Farrell",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/cfware/node-preload.git"
+	},
+	"bugs": {
+		"url": "https://github.com/cfware/node-preload/issues"
+	},
+	"homepage": "https://github.com/cfware/node-preload#readme",
+	"dependencies": {
+		"process-on-spawn": "^1.0.0"
+	},
+	"devDependencies": {
+		"esm": "^3.2.25",
+		"glob": "^7.1.6",
+		"nyc": "^15.0.0-beta.3",
+		"standard-version": "^7.0.0",
+		"tape": "^4.11.0",
+		"xo": "^0.25.3"
+	},
+	"xo": {
+		"rules": {
+			"import/no-unassigned-import": [
+				2,
+				{
+					"allow": [
+						"hook-spawn.js"
+					]
+				}
+			]
+		},
+		"ignores": [
+			"fixtures/esm.js"
+		]
+	}
+}

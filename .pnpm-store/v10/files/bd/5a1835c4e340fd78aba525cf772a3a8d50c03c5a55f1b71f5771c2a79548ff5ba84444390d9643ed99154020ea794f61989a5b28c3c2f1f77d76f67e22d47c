@@ -1,0 +1,1 @@
+module.exports = require("../dist/embeddings/cache_backed.cjs");

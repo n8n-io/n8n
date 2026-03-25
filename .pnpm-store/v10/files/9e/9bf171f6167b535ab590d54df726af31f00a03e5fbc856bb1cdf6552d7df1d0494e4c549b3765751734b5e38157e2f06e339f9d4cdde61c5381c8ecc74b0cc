@@ -1,0 +1,68 @@
+{
+  "name": "node-fetch-h2",
+  "version": "2.3.0",
+  "description": "Implementation of window.fetch which can use http2 seamlessly",
+  "main": "lib/index",
+  "browser": "./browser.js",
+  "module": "lib/index.mjs",
+  "files": [
+    "lib/index.js",
+    "lib/index.mjs",
+    "lib/index.es.js",
+    "browser.js"
+  ],
+  "engines": {
+    "node": "4.x || >=6.0.0"
+  },
+  "scripts": {
+    "build": "cross-env BABEL_ENV=rollup rollup -c",
+    "prepare": "npm run build",
+    "test": "cross-env BABEL_ENV=test mocha --require babel-register test/test.js",
+    "report": "cross-env BABEL_ENV=coverage nyc --reporter lcov --reporter text mocha -R spec test/test.js",
+    "coverage": "cross-env BABEL_ENV=coverage nyc --reporter json --reporter text mocha -R spec test/test.js && codecov -f coverage/coverage-final.json"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mikeralphson/node-fetch-h2.git"
+  },
+  "keywords": [
+    "fetch",
+    "http",
+    "promise"
+  ],
+  "author": "David Frank",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/mikeralphson/node-fetch-h2/issues"
+  },
+  "homepage": "https://github.com/mikeralphson/node-fetch-h2",
+  "devDependencies": {
+    "abort-controller": "^1.0.2",
+    "abortcontroller-polyfill": "^1.1.9",
+    "babel-core": "^6.26.0",
+    "babel-plugin-istanbul": "^4.1.5",
+    "babel-preset-env": "^1.6.1",
+    "babel-register": "^6.16.3",
+    "chai": "^3.5.0",
+    "chai-as-promised": "^7.1.1",
+    "chai-iterator": "^1.1.1",
+    "chai-string": "~1.3.0",
+    "codecov": "^3.0.0",
+    "cross-env": "^5.1.3",
+    "form-data": "^2.3.1",
+    "is-builtin-module": "^1.0.0",
+    "mocha": "^5.0.0",
+    "nyc": "11.9.0",
+    "parted": "^0.1.1",
+    "promise": "^8.0.1",
+    "resumer": "0.0.0",
+    "rollup": "^0.63.4",
+    "rollup-plugin-babel": "^3.0.3",
+    "string-to-arraybuffer": "^1.0.0",
+    "url-search-params": "^1.0.2",
+    "whatwg-url": "^5.0.0"
+  },
+  "dependencies": {
+    "http2-client": "^1.2.5"
+  }
+}

@@ -1,0 +1,28 @@
+{
+    "name": "libqp",
+    "version": "2.1.1",
+    "description": "Encode and decode quoted-printable strings according to rfc2045",
+    "main": "lib/libqp.js",
+    "scripts": {
+        "test": "node --test",
+        "update": "rm -rf node_modules package-lock.json && ncu -u && npm install"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git://github.com/nodemailer/libqp.git"
+    },
+    "keywords": [
+        "quoted-printable",
+        "mime"
+    ],
+    "author": "Andris Reinman",
+    "license": "MIT",
+    "bugs": {
+        "url": "https://github.com/nodemailer/libqp/issues"
+    },
+    "homepage": "https://github.com/nodemailer/libqp",
+    "devDependencies": {
+        "eslint-config-nodemailer": "1.2.0",
+        "eslint-config-prettier": "9.1.0"
+    }
+}

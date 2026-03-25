@@ -1,0 +1,42 @@
+{
+	"$id": "/inference/schemas/zero-shot-classification/input.json",
+	"$schema": "http://json-schema.org/draft-06/schema#",
+	"description": "Inputs for Zero Shot Classification inference",
+	"title": "ZeroShotClassificationInput",
+	"type": "object",
+	"properties": {
+		"inputs": {
+			"description": "The text to classify",
+			"type": "string"
+		},
+		"parameters": {
+			"description": "Additional inference parameters for Zero Shot Classification",
+			"$ref": "#/$defs/ZeroShotClassificationParameters"
+		}
+	},
+	"$defs": {
+		"ZeroShotClassificationParameters": {
+			"title": "ZeroShotClassificationParameters",
+			"type": "object",
+			"properties": {
+				"candidate_labels": {
+					"type": "array",
+					"description": "The set of possible class labels to classify the text into.",
+					"items": {
+						"type": "string"
+					}
+				},
+				"hypothesis_template": {
+					"type": "string",
+					"description": "The sentence used in conjunction with `candidate_labels` to attempt the text classification by replacing the placeholder with the candidate labels."
+				},
+				"multi_label": {
+					"type": "boolean",
+					"description": "Whether multiple candidate labels can be true. If false, the scores are normalized such that the sum of the label likelihoods for each sequence is 1. If true, the labels are considered independent and probabilities are normalized for each candidate."
+				}
+			},
+			"required": ["candidate_labels"]
+		}
+	},
+	"required": ["inputs", "parameters"]
+}

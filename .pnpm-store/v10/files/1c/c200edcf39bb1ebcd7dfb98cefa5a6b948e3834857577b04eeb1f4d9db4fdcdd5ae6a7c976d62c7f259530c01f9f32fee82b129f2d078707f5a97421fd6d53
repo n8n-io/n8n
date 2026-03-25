@@ -1,0 +1,1 @@
+export default 'node:crypto';

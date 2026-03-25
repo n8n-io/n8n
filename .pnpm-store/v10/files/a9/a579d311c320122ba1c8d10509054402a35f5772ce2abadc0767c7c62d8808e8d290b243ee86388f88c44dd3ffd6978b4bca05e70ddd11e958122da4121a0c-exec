@@ -1,0 +1,25 @@
+{
+    "name": "@types/replacestream",
+    "version": "4.0.1",
+    "description": "TypeScript definitions for replacestream",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/replacestream",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Piotr Roszatycki",
+            "url": "https://github.com/dex4er",
+            "githubUsername": "dex4er"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/replacestream"
+    },
+    "scripts": {},
+    "dependencies": {},
+    "typesPublisherContentHash": "7e89afaf588d08f3b4d3d7d45a9fa39642ac211a00d11498b9c4ac3e3230391f",
+    "typeScriptVersion": "3.6"
+}

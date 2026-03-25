@@ -1,0 +1,48 @@
+{
+  "name": "clean-css",
+  "version": "4.2.4",
+  "author": "Jakub Pawlowicz <contact@jakubpawlowicz.com> (http://twitter.com/jakubpawlowicz)",
+  "description": "A well-tested CSS minifier",
+  "license": "MIT",
+  "keywords": [
+    "css",
+    "minifier"
+  ],
+  "homepage": "https://github.com/jakubpawlowicz/clean-css",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jakubpawlowicz/clean-css.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jakubpawlowicz/clean-css/issues"
+  },
+  "main": "index.js",
+  "files": [
+    "lib",
+    "History.md",
+    "index.js",
+    "LICENSE"
+  ],
+  "scripts": {
+    "browserify": "browserify --standalone CleanCSS index.js | uglifyjs --compress --mangle -o cleancss-browser.js",
+    "bench": "node ./test/bench.js",
+    "check": "jshint .",
+    "prepublish": "npm run check",
+    "test": "vows"
+  },
+  "dependencies": {
+    "source-map": "~0.6.0"
+  },
+  "devDependencies": {
+    "browserify": "^14.0.0",
+    "http-proxy": "1.x",
+    "jshint": "2.x",
+    "nock": "9.x",
+    "server-destroy": "1.x",
+    "uglify-js": ">=2.6.1",
+    "vows": "0.8.x"
+  },
+  "engines": {
+    "node": ">= 4.0"
+  }
+}

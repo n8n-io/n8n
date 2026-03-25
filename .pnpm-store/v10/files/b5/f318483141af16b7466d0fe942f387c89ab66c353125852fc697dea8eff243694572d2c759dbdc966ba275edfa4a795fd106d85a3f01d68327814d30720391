@@ -1,0 +1,82 @@
+{
+  "name": "csso",
+  "version": "5.0.5",
+  "description": "CSS minifier with structural optimisations",
+  "author": "Sergey Kryzhanovsky <skryzhanovsky@ya.ru> (https://github.com/afelix)",
+  "maintainers": [
+    {
+      "name": "Roman Dvornov",
+      "email": "rdvornov@gmail.com",
+      "github-username": "lahmatiy"
+    }
+  ],
+  "repository": "css/csso",
+  "license": "MIT",
+  "keywords": [
+    "css",
+    "compress",
+    "minifier",
+    "minify",
+    "optimise",
+    "optimisation",
+    "csstree"
+  ],
+  "type": "module",
+  "unpkg": "dist/csso.esm.js",
+  "jsdelivr": "dist/csso.esm.js",
+  "browser": {
+    "./cjs/version.cjs": "./dist/version.cjs",
+    "./lib/version.js": "./dist/version.js"
+  },
+  "main": "./cjs/index.cjs",
+  "module": "./lib/index.js",
+  "exports": {
+    ".": {
+      "import": "./lib/index.js",
+      "require": "./cjs/index.cjs"
+    },
+    "./syntax": {
+      "import": "./lib/syntax.js",
+      "require": "./cjs/syntax.cjs"
+    },
+    "./dist/*": "./dist/*.js",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "test": "mocha test --reporter ${REPORTER:-progress}",
+    "test:cjs": "mocha cjs-test --reporter ${REPORTER:-progress}",
+    "test:dist": "mocha dist/test --reporter ${REPORTER:-progress}",
+    "lint": "eslint lib scripts test",
+    "lint-and-test": "npm run lint && npm test",
+    "build": "npm run bundle && npm run esm-to-cjs",
+    "build-and-test": "npm run build && npm run test:dist && npm run test:cjs",
+    "bundle": "node scripts/bundle",
+    "bundle-and-test": "npm run bundle && npm run test:dist",
+    "esm-to-cjs": "node scripts/esm-to-cjs.cjs",
+    "esm-to-cjs-and-test": "npm run esm-to-cjs && npm run test:cjs",
+    "coverage": "c8 --reporter=lcovonly npm test",
+    "prepublishOnly": "npm run lint-and-test && npm run build-and-test",
+    "hydrogen": "node --trace-hydrogen --trace-phase=Z --trace-deopt --code-comments --hydrogen-track-positions --redirect-code-traces --redirect-code-traces-to=code.asm --trace_hydrogen_file=code.cfg --print-opt-code bin/csso --stat -o /dev/null"
+  },
+  "dependencies": {
+    "css-tree": "~2.2.0"
+  },
+  "devDependencies": {
+    "c8": "^7.10.0",
+    "esbuild": "^0.14.54",
+    "eslint": "^7.24.0",
+    "mocha": "^9.2.2",
+    "rollup": "^2.60.2",
+    "source-map-js": "^1.0.1"
+  },
+  "engines": {
+    "node": "^10 || ^12.20.0 || ^14.13.0 || >=15.0.0",
+    "npm": ">=7.0.0"
+  },
+  "files": [
+    "dist",
+    "!dist/test",
+    "cjs",
+    "lib"
+  ]
+}

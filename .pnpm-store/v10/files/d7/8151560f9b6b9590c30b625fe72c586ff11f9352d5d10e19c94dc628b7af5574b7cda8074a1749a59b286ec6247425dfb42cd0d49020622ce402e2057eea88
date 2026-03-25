@@ -1,0 +1,78 @@
+{
+  "name": "humanize-duration",
+  "author": "Evan Hahn <me@evanhahn.com> (https://evanhahn.com)",
+  "contributors": [
+    "Óli Tómas Freysson (https://github.com/olitomas)",
+    "Martin Prins (https://github.com/magarcia)",
+    "Filipi Siqueira (https://github.com/filipi777)",
+    "Peter Rekdal Sunde (https://github.com/peters)",
+    "Michał Janiec (https://github.com/mjjaniec)",
+    "Eileen Li (https://github.com/eileen3)",
+    "Tommy Brunn (https://github.com/Nevon)",
+    "Giovanni Pellerano (https://github.com/evilaliv3)",
+    "Rahma Sghaier (https://twitter.com/sghaierrahma)",
+    "Evgenios Kastanias (https://github.com/evgenios)",
+    "Oleksii Mylotskyi (https://github.com/spalax)",
+    "Matthew Brandly (https://github.com/brandly)",
+    "Patrik Simek (https://github.com/patriksimek)",
+    "Toni Helminen (https://github.com/tonihelminen)",
+    "Vidmantas Drasutis (https://github.com/drasius2)",
+    "Manh Tuan (https://github.com/J2TeaM)",
+    "Leonard Lee (https://github.com/sheeeng)",
+    "Jesse Jackson (https://github.com/jsejcksn)",
+    "Caner Elci (https://github.com/canerelci)",
+    "Matej Kolesár (https://github.com/rasel-sk)",
+    "Abdul Jalil (https://github.com/abduljalilm94)",
+    "Alex Sam (https://github.com/sam-lex)",
+    "Wasuwat Limsuparhat (https://github.com/rappad)",
+    "Harijs Deksnis (https://github.com/arcanous)",
+    "Neer Thapa(Subit) (https://github.com/nirmalathapa)",
+    "Fahad Kassim (https://github.com/fadsel)",
+    "Prayag Roy Choudhury (https://github.com/BeardyGod)",
+    "Aryan Rawlani (https://github.com/aryanrawlani28)",
+    "Kristijan Jesenski (https://github.com/kjesenski)",
+    "Michal Karzel (https://github.com/Misioka)"
+  ],
+  "version": "3.27.3",
+  "description": "Convert millisecond durations to English and many other languages.",
+  "homepage": "https://github.com/EvanHahn/HumanizeDuration.js",
+  "main": "humanize-duration.js",
+  "scripts": {
+    "pretest": "npm run lint",
+    "lint": "prettier --check . && eslint .",
+    "format": "prettier --write .",
+    "test": "mocha"
+  },
+  "devDependencies": {
+    "csv-parse": "^5.3.0",
+    "eslint": "^8.22.0",
+    "eslint-plugin-mocha": "^10.1.0",
+    "mocha": "^10.0.0",
+    "ms": "^2.1.3",
+    "prettier": "^2.7.1"
+  },
+  "keywords": [
+    "humanize",
+    "duration",
+    "time",
+    "hours",
+    "minutes",
+    "seconds",
+    "days",
+    "years",
+    "months"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/EvanHahn/HumanizeDuration.js.git"
+  },
+  "bugs": "https://github.com/EvanHahn/HumanizeDuration.js/issues",
+  "license": "Unlicense",
+  "files": [
+    "README.md",
+    "LICENSE.txt",
+    "CONTRIBUTING.md",
+    "HISTORY.md",
+    "humanize-duration.js"
+  ]
+}

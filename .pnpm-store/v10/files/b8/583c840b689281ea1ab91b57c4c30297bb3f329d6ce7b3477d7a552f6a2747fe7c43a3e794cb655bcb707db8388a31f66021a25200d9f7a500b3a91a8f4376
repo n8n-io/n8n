@@ -1,0 +1,37 @@
+{
+  "name": "hash-base",
+  "version": "2.0.2",
+  "description": "abstract base class for hash-streams",
+  "keywords": [
+    "hash",
+    "stream"
+  ],
+  "homepage": "https://github.com/crypto-browserify/hash-base",
+  "bugs": {
+    "url": "https://github.com/crypto-browserify/hash-base/issues"
+  },
+  "license": "MIT",
+  "author": "Kirill Fomichev <fanatid@ya.ru> (https://github.com/fanatid)",
+  "files": [
+    "index.js"
+  ],
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/crypto-browserify/hash-base.git"
+  },
+  "scripts": {
+    "coverage": "nyc node test/*.js",
+    "lint": "standard",
+    "test": "npm run lint && npm run unit",
+    "unit": "node test/*.js"
+  },
+  "dependencies": {
+    "inherits": "^2.0.1"
+  },
+  "devDependencies": {
+    "nyc": "^6.1.1",
+    "standard": "^6.0.8",
+    "tape": "^4.2.0"
+  }
+}

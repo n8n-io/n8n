@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>write_hint test</title>
+  <style>
+    pre {
+      margin: 0;
+    }
+  </style>
+  <script type="module" src="./index.js"></script>
+</head>
+<body>
+  <h1>Test write transaction hinting</h1>
+  <p>
+    This page tests write transaction hinting that allows deadlock-free
+    synchronization. The proposal is for SQLite to pass the hint via
+    xFileControl; here that is simulated with a PRAGMA.
+  </p>
+  <p>
+    The test creates a number of Worker contexts that repeatedly submit
+    a write transaction until a target combined total is reached.
+  </p>
+  <div>
+    <input type="checkbox" id="writeHint" checked>
+    <label for="writeHint">Use write hint</label>
+  </div>
+  <div>
+    <input type="text" id="nWorkers" value="4" size="3">
+    <label for="nWorkers">Number of workers</label>
+  </div>
+  <div>
+    <div>Preamble:</div>
+    <textarea id="preamble" rows="5" cols="80">
+CREATE TABLE t(x);      
+    </textarea>
+  </div>
+  <div>
+    <div>Transaction:</div>
+    <textarea id="transaction" rows="5" cols="80">
+PRAGMA write_hint;  -- simulate fcntl write transaction hint
+
+WITH cnt AS (SELECT COUNT() AS n FROM t)
+INSERT INTO t SELECT * FROM cnt WHERE n &lt; 500 RETURNING *;
+    </textarea>
+  </div>
+  <div>
+    <button id="run">Run</button>
+  </div>
+
+  <div id="output"></div>
+</body>
+</html>

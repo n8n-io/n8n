@@ -1,0 +1,26 @@
+{
+    "env": {
+        "development": {}
+    },
+    "presets": ["stage-0", "es2015"],
+    "plugins": [
+        "transform-runtime",
+        "transform-regenerator",
+        "transform-decorators-legacy",
+        "transform-class-properties",
+        "transform-flow-strip-types",
+        "syntax-object-rest-spread",
+        "syntax-decorators",
+        "syntax-async-functions",
+        "array-includes",
+        ["transform-async-to-module-method", {
+            "module": "bluebird",
+            "method": "coroutine"
+        }],
+        ["babel-plugin-module-resolver", [
+            { "src": "./src/", "expose": "~" },
+            { "src": "./test", "expose": "t" }
+        ]],
+        "lodash"
+    ]
+}

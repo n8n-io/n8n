@@ -1,0 +1,1 @@
+# Pinia testing module

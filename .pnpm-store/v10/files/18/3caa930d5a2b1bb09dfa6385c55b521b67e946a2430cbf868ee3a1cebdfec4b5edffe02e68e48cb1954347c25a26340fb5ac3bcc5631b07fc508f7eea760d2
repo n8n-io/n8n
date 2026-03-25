@@ -1,0 +1,52 @@
+{
+    "name": "iconv-lite",
+    "description": "Convert character encodings in pure javascript.",
+    "version": "0.4.5",
+    "license": "MIT",
+    
+    "keywords": ["iconv", "convert", "charset", "icu"],
+    "author": "Alexander Shtuchkin <ashtuchkin@gmail.com>",
+    "contributors": [
+        "Jinwu Zhan (https://github.com/jenkinv)",
+        "Adamansky Anton (https://github.com/adamansky)",
+        "George Stagas (https://github.com/stagas)",
+        "Mike D Pilsbury (https://github.com/pekim)",
+        "Niggler (https://github.com/Niggler)",
+        "wychi (https://github.com/wychi)",
+        "David Kuo (https://github.com/david50407)",
+        "ChangZhuo Chen (https://github.com/czchen)",
+        "Lee Treveil (https://github.com/leetreveil)",
+        "Brian White (https://github.com/mscdex)",
+        "Mithgol (https://github.com/Mithgol)",
+        "Nazar Leush (https://github.com/nleush)"
+    ],
+    
+    "main": "./lib/index.js",
+    "homepage": "https://github.com/ashtuchkin/iconv-lite",
+    "bugs": "https://github.com/ashtuchkin/iconv-lite/issues",
+    "repository": {
+        "type": "git",
+        "url": "git://github.com/ashtuchkin/iconv-lite.git"
+    },
+    "engines": {
+        "node": ">=0.8.0"
+    },
+    "scripts": {
+      "coverage": "istanbul cover _mocha -- --grep .",
+      "coverage-open": "open coverage/lcov-report/index.html",
+      "test": "mocha --reporter spec --grep ."
+    },
+    "browser": {
+        "./extend-node": false,
+        "./streams": false
+    },
+    "devDependencies": {
+        "mocha": "*",
+        "request": "2.47",
+        "unorm": "*",
+        "errto": "*",
+        "async": "*",
+        "istanbul": "*",
+        "iconv": "~2.1.4"
+    }
+}

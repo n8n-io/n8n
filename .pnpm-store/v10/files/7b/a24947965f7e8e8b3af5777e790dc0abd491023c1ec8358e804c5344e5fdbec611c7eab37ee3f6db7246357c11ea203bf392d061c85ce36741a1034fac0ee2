@@ -1,0 +1,1 @@
+{"version":3,"file":"CcsCredential.d.ts","sourceRoot":"","sources":["../../../src/account/CcsCredential.ts"],"names":[],"mappings":"AAKA,MAAM,MAAM,aAAa,GAAG;IACxB,UAAU,EAAE,MAAM,CAAC;IACnB,IAAI,EAAE,iBAAiB,CAAC;CAC3B,CAAC;AAEF,eAAO,MAAM,iBAAiB;;;CAGpB,CAAC;AACX,MAAM,MAAM,iBAAiB,GACzB,CAAC,OAAO,iBAAiB,CAAC,CAAC,MAAM,OAAO,iBAAiB,CAAC,CAAC"}

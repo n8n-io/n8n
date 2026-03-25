@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Hello wa-sqlite</title>
+  <style>
+    table {
+      border-collapse: collapse;
+      display: inline-block;
+      margin: 0.3em;
+    }
+
+    th, td {
+      border: 1px solid black;
+      padding: 4px;
+    }
+
+    th {
+      background-color: lightblue;
+    }
+  </style>
+</head>
+<body>
+  <h1></h1>
+  <textarea id="input" rows="5" cols="50">CREATE TABLE IF NOT EXISTS t(x PRIMARY KEY);
+INSERT OR REPLACE INTO t VALUES ('foo'), ('bar');
+SELECT * FROM t;
+    </textarea>
+  <button id="submit">Submit query</button>
+  <div id="output"></div>
+
+  <script type="module">
+    // Load script in the Window or in a Worker, depending on whether
+    // the URL contains a "worker" query parameter. Use a MessageChannel
+    // to communicate with the script.
+    const { port1, port2 } = new MessageChannel();
+    const searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.has('worker')) {
+      document.querySelector('h1').textContent = 'Running in a Worker';
+      const worker = new Worker('./hello.js', { type: 'module' });
+      worker.postMessage('messagePort', [port2])
+    } else {
+      document.querySelector('h1').textContent = 'Running in the Window';
+      await import('./hello.js')
+      window.postMessage('messagePort', '*', [port2]);
+    }
+
+    // Submit SQL over the MessageChannel.
+    document.getElementById('submit').addEventListener('click', () => {
+      port1.postMessage(document.getElementById('input').value);
+    });
+
+    // Handle query results.
+    port1.addEventListener('message', (event) => {
+      console.log(event.data);
+      const output = document.getElementById('output');
+      output.innerHTML = '';
+      if (Array.isArray(event.data)) {
+        for (const { columns, rows } of event.data) {
+          output.appendChild(buildHTMLTable(columns, rows));
+        }
+      } else {
+        output.textContent = 'Error: ' + event.data.error;
+      }
+    });
+    port1.start();
+
+    function buildHTMLTable(columns, rows) {
+      function tx(tag, data) {
+        const tx = document.createElement(tag);
+        tx.textContent = data.toString();
+        return tx;
+      }
+
+      const table = document.createElement('table');
+      const thead = document.createElement('thead');
+      const tr = document.createElement('tr');
+      columns.forEach(column => tr.appendChild(tx('th', column)));
+      thead.appendChild(tr);
+      table.appendChild(thead);
+
+      const tbody = document.createElement('tbody');
+      rows.forEach(row => {
+        const tr = document.createElement('tr');
+        row.forEach(cell => tr.appendChild(tx('td', cell)));
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+
+      return table;
+    }
+  </script>
+</body>
+</html>

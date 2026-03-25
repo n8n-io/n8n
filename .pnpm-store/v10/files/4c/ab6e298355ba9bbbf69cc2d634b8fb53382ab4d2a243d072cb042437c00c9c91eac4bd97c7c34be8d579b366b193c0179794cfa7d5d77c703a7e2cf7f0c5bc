@@ -1,0 +1,1 @@
+{"version":3,"file":"getRuleOptionsSchema.d.ts","sourceRoot":"","sources":["../../src/utils/getRuleOptionsSchema.ts"],"names":[],"mappings":"AAEA,OAAO,KAAK,EAAE,WAAW,EAAE,MAAM,sCAAsC,CAAC;AACxE,OAAO,KAAK,EAAE,aAAa,EAAE,MAAM,oCAAoC,CAAC;AAIxE;;;;GAIG;AACH,wBAAgB,oBAAoB,CAClC,IAAI,EAAE,OAAO,CAAC,aAAa,CAAC,GAC3B,WAAW,GAAG,IAAI,CAsBpB"}

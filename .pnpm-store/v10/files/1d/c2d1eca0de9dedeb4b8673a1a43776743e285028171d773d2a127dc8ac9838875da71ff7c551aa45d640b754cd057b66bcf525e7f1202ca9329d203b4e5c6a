@@ -1,0 +1,1 @@
+{"version":3,"sources":["../../src/metadata/types/PropertyTypeInFunction.ts"],"names":[],"mappings":"","file":"PropertyTypeInFunction.js","sourcesContent":["/**\n * Contains the name of the property of the object, or the function that returns this name.\n */\nexport type PropertyTypeFactory<T> = string | ((t: T) => string | any)\n"],"sourceRoot":"../.."}

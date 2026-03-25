@@ -1,0 +1,95 @@
+{
+  "name": "quansync",
+  "type": "module",
+  "version": "0.2.11",
+  "description": "Create sync/async APIs with usable logic",
+  "author": "Anthony Fu <anthonyfu117@hotmail.com>",
+  "contributors": [
+    {
+      "name": "三咲智子 Kevin Deng",
+      "email": "sxzz@sxzz.moe"
+    }
+  ],
+  "license": "MIT",
+  "funding": [
+    {
+      "type": "individual",
+      "url": "https://github.com/sponsors/antfu"
+    },
+    {
+      "type": "individual",
+      "url": "https://github.com/sponsors/sxzz"
+    }
+  ],
+  "homepage": "https://github.com/quansync-dev/quansync#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/quansync-dev/quansync.git"
+  },
+  "bugs": "https://github.com/quansync-dev/quansync/issues",
+  "keywords": [
+    "async",
+    "sync",
+    "generator"
+  ],
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    },
+    "./macro": {
+      "import": "./dist/macro.mjs",
+      "require": "./dist/macro.cjs"
+    },
+    "./types": {
+      "import": "./dist/types.mjs",
+      "require": "./dist/types.cjs"
+    }
+  },
+  "main": "./dist/index.mjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "typesVersions": {
+    "*": {
+      "*": [
+        "./dist/*",
+        "./*"
+      ]
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "devDependencies": {
+    "@antfu/eslint-config": "^5.2.1",
+    "@types/node": "^24.3.0",
+    "bumpp": "^10.2.3",
+    "eslint": "^9.33.0",
+    "gensync": "1.0.0-beta.2",
+    "lint-staged": "^16.1.5",
+    "mitata": "^1.0.34",
+    "simple-git-hooks": "^2.13.1",
+    "tsx": "^4.20.4",
+    "typescript": "^5.9.2",
+    "unbuild": "^3.6.1",
+    "vite": "^7.1.2",
+    "vitest": "^3.2.4"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "pnpm lint-staged"
+  },
+  "lint-staged": {
+    "*": "eslint --fix"
+  },
+  "scripts": {
+    "build": "unbuild",
+    "dev": "unbuild --stub",
+    "lint": "eslint .",
+    "release": "bumpp",
+    "start": "tsx src/index.ts",
+    "benchmark": "node scripts/benchmark.js",
+    "test": "vitest",
+    "typecheck": "tsc --noEmit"
+  }
+}

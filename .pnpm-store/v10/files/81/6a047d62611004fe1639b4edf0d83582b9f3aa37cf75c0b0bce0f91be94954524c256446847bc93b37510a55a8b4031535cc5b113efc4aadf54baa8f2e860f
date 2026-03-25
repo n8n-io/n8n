@@ -1,0 +1,1 @@
+{"version":3,"file":"Deserializer.d.ts","sourceRoot":"","sources":["../../src/model/Deserializer.ts"],"names":[],"mappings":"AAGA,OAAO,EAAE,KAAK,YAAY,EAAwB,KAAK,OAAO,EAAe,MAAM,kBAAkB,CAAC;AAsBtG,OAAO,KAAK,EAAE,mBAAmB,EAAE,MAAM,uBAAuB,CAAC;AAEjE,qBAAa,YAAY;WACT,WAAW,CAAC,OAAO,EAAE,mBAAmB,EAAE,UAAU,EAAE,YAAY,GAAG,OAAO;CAgE3F"}

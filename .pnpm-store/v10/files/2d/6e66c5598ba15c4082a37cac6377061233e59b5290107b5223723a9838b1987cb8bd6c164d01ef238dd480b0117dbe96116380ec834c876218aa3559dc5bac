@@ -1,0 +1,10 @@
+os:
+  - linux
+  - osx
+language: node_js
+node_js:
+  - "6"
+  - "8"
+addons:
+  chrome: stable
+  firefox: latest

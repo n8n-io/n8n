@@ -1,0 +1,81 @@
+{
+    "name": "mobx-react-lite",
+    "version": "4.0.7",
+    "description": "Lightweight React bindings for MobX based on React 16.8+ and Hooks",
+    "source": "src/index.ts",
+    "main": "dist/index.js",
+    "umd:main": "dist/mobxreact.umd.production.min.js",
+    "unpkg": "dist/mobxreactlite.umd.production.min.js",
+    "jsdelivr": "dist/mobxreactlite.umd.production.min.js",
+    "jsnext:main": "dist/mobxreactlite.esm.production.min.js",
+    "module": "es/index.js",
+    "react-native": "es/index.js",
+    "types": "dist/index.d.ts",
+    "typings": "dist/index.d.ts",
+    "files": [
+        "src",
+        "dist/",
+        "lib/",
+        "es/",
+        "LICENSE",
+        "CHANGELOG.md",
+        "README.md",
+        "batching*"
+    ],
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/mobxjs/mobx.git"
+    },
+    "author": "Daniel K.",
+    "license": "MIT",
+    "funding": {
+        "type": "opencollective",
+        "url": "https://opencollective.com/mobx"
+    },
+    "bugs": {
+        "url": "https://github.com/mobxjs/mobx/issues"
+    },
+    "homepage": "https://mobx.js.org",
+    "dependencies": {
+        "use-sync-external-store": "^1.2.0"
+    },
+    "peerDependencies": {
+        "mobx": "^6.9.0",
+        "react": "^16.8.0 || ^17 || ^18"
+    },
+    "peerDependenciesMeta": {
+        "react-dom": {
+            "optional": true
+        },
+        "react-native": {
+            "optional": true
+        }
+    },
+    "devDependencies": {
+        "mobx": "^6.12.2",
+        "expose-gc": "^1.0.0"
+    },
+    "keywords": [
+        "mobx",
+        "mobservable",
+        "react-component",
+        "react",
+        "reactjs",
+        "reactive",
+        "hooks",
+        "observer",
+        "useLocalObservable"
+    ],
+    "scripts": {
+        "lint": "eslint src/**/* --ext .js,.ts,.tsx",
+        "build": "node ../../scripts/build.js mobxReactLite",
+        "build:test": "yarn build --target test",
+        "build:cjs": "tsc --project tsconfig.build.cjs.json",
+        "build:es": "tsc --project tsconfig.build.es.json",
+        "test": "jest",
+        "test:size": "yarn import-size --report . observer useLocalObservable",
+        "test:types": "tsc --noEmit",
+        "test:check": "yarn test:types",
+        "prepublishOnly": "cd ../mobx && yarn build --target publish && cd ../mobx-react-lite && yarn build --target publish && yarn build:cjs && yarn build:es"
+    }
+}

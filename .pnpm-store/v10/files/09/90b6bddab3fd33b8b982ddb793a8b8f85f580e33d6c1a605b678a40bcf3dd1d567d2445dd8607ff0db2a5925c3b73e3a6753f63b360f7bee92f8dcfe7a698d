@@ -1,0 +1,184 @@
+# Copyright 2012 Mozilla Foundation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Main toolbar buttons (tooltips and alt text for images)
+previous.title=Fyrri síða
+previous_label=Fyrri
+next.title=Næsta síða
+next_label=Næsti
+
+# LOCALIZATION NOTE (page.title): The tooltip for the pageNumber input.
+page.title=Síða
+# LOCALIZATION NOTE (of_pages): "{{pagesCount}}" will be replaced by a number
+# representing the total number of pages in the document.
+of_pages=af {{pagesCount}}
+# LOCALIZATION NOTE (page_of_pages): "{{pageNumber}}" and "{{pagesCount}}"
+# will be replaced by a number representing the currently visible page,
+# respectively a number representing the total number of pages in the document.
+page_of_pages=({{pageNumber}} af {{pagesCount}})
+
+zoom_out.title=Minnka
+zoom_out_label=Minnka
+zoom_in.title=Stækka
+zoom_in_label=Stækka
+zoom.title=Aðdráttur
+presentation_mode.title=Skipta yfir á kynningarham
+presentation_mode_label=Kynningarhamur
+open_file.title=Opna skrá
+open_file_label=Opna
+print.title=Prenta
+print_label=Prenta
+download.title=Hala niður
+download_label=Hala niður
+bookmark.title=Núverandi sýn (afritaðu eða opnaðu í nýjum glugga)
+bookmark_label=Núverandi sýn
+
+# Secondary toolbar and context menu
+tools.title=Verkfæri
+tools_label=Verkfæri
+first_page.title=Fara á fyrstu síðu
+first_page.label=Fara á fyrstu síðu
+first_page_label=Fara á fyrstu síðu
+last_page.title=Fara á síðustu síðu
+last_page.label=Fara á síðustu síðu
+last_page_label=Fara á síðustu síðu
+page_rotate_cw.title=Snúa réttsælis
+page_rotate_cw.label=Snúa réttsælis
+page_rotate_cw_label=Snúa réttsælis
+page_rotate_ccw.title=Snúa rangsælis
+page_rotate_ccw.label=Snúa rangsælis
+page_rotate_ccw_label=Snúa rangsælis
+
+cursor_text_select_tool.title=Virkja textavalsáhald
+cursor_text_select_tool_label=Textavalsáhald
+cursor_hand_tool.title=Virkja handarverkfæri
+cursor_hand_tool_label=Handarverkfæri
+
+# Document properties dialog box
+document_properties.title=Eiginleikar skjals…
+document_properties_label=Eiginleikar skjals…
+document_properties_file_name=Skráarnafn:
+document_properties_file_size=Skrárstærð:
+# LOCALIZATION NOTE (document_properties_kb): "{{size_kb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in kilobytes, respectively in bytes.
+document_properties_kb={{size_kb}} KB ({{size_b}} bytes)
+# LOCALIZATION NOTE (document_properties_mb): "{{size_mb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in megabytes, respectively in bytes.
+document_properties_mb={{size_mb}} MB ({{size_b}} bytes)
+document_properties_title=Titill:
+document_properties_author=Hönnuður:
+document_properties_subject=Efni:
+document_properties_keywords=Stikkorð:
+document_properties_creation_date=Búið til:
+document_properties_modification_date=Dags breytingar:
+# LOCALIZATION NOTE (document_properties_date_string): "{{date}}" and "{{time}}"
+# will be replaced by the creation/modification date, and time, of the PDF file.
+document_properties_date_string={{date}}, {{time}}
+document_properties_creator=Höfundur:
+document_properties_producer=PDF framleiðandi:
+document_properties_version=PDF útgáfa:
+document_properties_page_count=Blaðsíðufjöldi:
+document_properties_close=Loka
+
+print_progress_message=Undirbý skjal fyrir prentun…
+# LOCALIZATION NOTE (print_progress_percent): "{{progress}}" will be replaced by
+# a numerical per cent value.
+print_progress_percent={{progress}}%
+print_progress_close=Hætta við
+
+# Tooltips and alt text for side panel toolbar buttons
+# (the _label strings are alt text for the buttons, the .title strings are
+# tooltips)
+toggle_sidebar.title=Víxla hliðslá
+toggle_sidebar_notification.title=Víxla hliðarslá (skjal inniheldur yfirlit/viðhengi)
+toggle_sidebar_label=Víxla hliðslá
+document_outline.title=Sýna yfirlit skjals (tvísmelltu til að opna/loka öllum hlutum)
+document_outline_label=Efnisskipan skjals
+attachments.title=Sýna viðhengi
+attachments_label=Viðhengi
+thumbs.title=Sýna smámyndir
+thumbs_label=Smámyndir
+findbar.title=Leita í skjali
+findbar_label=Leita
+
+# Thumbnails panel item (tooltip and alt text for images)
+# LOCALIZATION NOTE (thumb_page_title): "{{page}}" will be replaced by the page
+# number.
+thumb_page_title=Síða {{page}}
+# LOCALIZATION NOTE (thumb_page_canvas): "{{page}}" will be replaced by the page
+# number.
+thumb_page_canvas=Smámynd af síðu {{page}}
+
+# Find panel button title and messages
+find_input.title=Leita
+find_input.placeholder=Leita í skjali…
+find_previous.title=Leita að fyrra tilfelli þessara orða
+find_previous_label=Fyrri
+find_next.title=Leita að næsta tilfelli þessara orða
+find_next_label=Næsti
+find_highlight=Lita allt
+find_match_case_label=Passa við stafstöðu
+find_reached_top=Náði efst í skjal, held áfram neðst
+find_reached_bottom=Náði enda skjals, held áfram efst
+find_not_found=Fann ekki orðið
+
+# Error panel labels
+error_more_info=Meiri upplýsingar
+error_less_info=Minni upplýsingar
+error_close=Loka
+# LOCALIZATION NOTE (error_version_info): "{{version}}" and "{{build}}" will be
+# replaced by the PDF.JS version and build ID.
+error_version_info=PDF.js v{{version}} (build: {{build}})
+# LOCALIZATION NOTE (error_message): "{{message}}" will be replaced by an
+# english string describing the error.
+error_message=Skilaboð: {{message}}
+# LOCALIZATION NOTE (error_stack): "{{stack}}" will be replaced with a stack
+# trace.
+error_stack=Stafli: {{stack}}
+# LOCALIZATION NOTE (error_file): "{{file}}" will be replaced with a filename
+error_file=Skrá: {{file}}
+# LOCALIZATION NOTE (error_line): "{{line}}" will be replaced with a line number
+error_line=Lína: {{line}}
+rendering_error=Upp kom villa við að birta síðuna.
+
+# Predefined zoom values
+page_scale_width=Síðubreidd
+page_scale_fit=Passa á síðu
+page_scale_auto=Sjálfvirkur aðdráttur
+page_scale_actual=Raunstærð
+# LOCALIZATION NOTE (page_scale_percent): "{{scale}}" will be replaced by a
+# numerical scale value.
+page_scale_percent={{scale}}%
+
+# Loading indicator messages
+loading_error_indicator=Villa
+loading_error=Villa kom upp við að hlaða inn PDF.
+invalid_file_error=Ógild eða skemmd PDF skrá.
+missing_file_error=Vantar PDF skrá.
+unexpected_response_error=Óvænt svar frá netþjóni.
+
+# LOCALIZATION NOTE (text_annotation_type.alt): This is used as a tooltip.
+# "{{type}}" will be replaced with an annotation type from a list defined in
+# the PDF spec (32000-1:2008 Table 169 – Annotation types).
+# Some common types are e.g.: "Check", "Text", "Comment", "Note"
+text_annotation_type.alt=[{{type}} Skýring]
+password_label=Sláðu inn lykilorð til að opna þessa PDF skrá.
+password_invalid=Ógilt lykilorð. Reyndu aftur.
+password_ok=Í lagi
+password_cancel=Hætta við
+
+printing_not_supported=Aðvörun: Prentun er ekki með fyllilegan stuðning á þessum vafra.
+printing_not_ready=Aðvörun: Ekki er búið að hlaða inn allri PDF skránni fyrir prentun.
+web_fonts_disabled=Vef leturgerðir eru óvirkar: get ekki notað innbyggðar PDF leturgerðir.
+document_colors_not_allowed=PDF skjöl hafa ekki leyfi til að nota sína eigin liti: “Leyfa síðum að velja eigin liti” er óvirkt í vafranum.

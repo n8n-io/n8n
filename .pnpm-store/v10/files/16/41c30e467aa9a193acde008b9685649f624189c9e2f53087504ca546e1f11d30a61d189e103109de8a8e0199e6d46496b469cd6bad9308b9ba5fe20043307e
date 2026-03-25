@@ -1,0 +1,42 @@
+{
+  "name": "immediate",
+  "version": "3.0.6",
+  "description": "A cross browser microtask library",
+  "contributors": [
+    "Domenic Denicola <domenic@domenicdenicola.com> (http://domenicdenicola.com)",
+    "Donavon West <github@donavon.com> (http://donavon.com)",
+    "Yaffle",
+    "Calvin Metcalf <calvin.metcalf@gmail.com>"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/calvinmetcalf/immediate.git"
+  },
+  "files": [
+    "lib",
+    "dist"
+  ],
+  "bugs": "https://github.com/calvinmetcalf/immediate/issues",
+  "main": "lib/index.js",
+  "scripts": {
+    "build": "npm run build-node && npm run build-js && npm run uglify",
+    "build-node": "browserify-transform-cli inline-process-browser unreachable-branch-transform < ./lib/index.js > ./lib/browser.js",
+    "uglify": "uglifyjs dist/immediate.js -mc > dist/immediate.min.js",
+    "build-js": "browserify -s immediate ./lib/browser.js | derequire > dist/immediate.js",
+    "test": "jshint lib/*.js && node test/tests.js"
+  },
+  "browser": {
+    "./lib/index.js": "./lib/browser.js"
+  },
+  "devDependencies": {
+    "browserify": "^13.0.0",
+    "browserify-transform-cli": "^1.1.1",
+    "derequire": "^2.0.0",
+    "inline-process-browser": "^2.0.0",
+    "jshint": "^2.5.1",
+    "tape": "^4.0.0",
+    "uglify-js": "^2.4.13",
+    "unreachable-branch-transform": "^0.5.1"
+  }
+}

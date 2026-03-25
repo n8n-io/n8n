@@ -1,0 +1,39 @@
+{
+	"$id": "/inference/schemas/zero-shot-image-classification/input.json",
+	"$schema": "http://json-schema.org/draft-06/schema#",
+	"description": "Inputs for Zero Shot Image Classification inference",
+	"title": "ZeroShotImageClassificationInput",
+	"type": "object",
+	"properties": {
+		"inputs": {
+			"type": "string",
+			"description": "The input image data to classify as a base64-encoded string.",
+			"comment": "type=binary"
+		},
+		"parameters": {
+			"description": "Additional inference parameters for Zero Shot Image Classification",
+			"$ref": "#/$defs/ZeroShotImageClassificationParameters"
+		}
+	},
+	"$defs": {
+		"ZeroShotImageClassificationParameters": {
+			"title": "ZeroShotImageClassificationParameters",
+			"type": "object",
+			"properties": {
+				"candidate_labels": {
+					"description": "The candidate labels for this image",
+					"type": "array",
+					"items": {
+						"type": "string"
+					}
+				},
+				"hypothesis_template": {
+					"type": "string",
+					"description": "The sentence used in conjunction with `candidate_labels` to attempt the image classification by replacing the placeholder with the candidate labels."
+				}
+			},
+			"required": ["candidate_labels"]
+		}
+	},
+	"required": ["inputs", "parameters"]
+}

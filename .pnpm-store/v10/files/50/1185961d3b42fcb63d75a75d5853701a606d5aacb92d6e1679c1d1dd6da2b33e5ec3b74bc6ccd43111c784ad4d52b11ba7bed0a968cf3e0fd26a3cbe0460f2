@@ -1,0 +1,84 @@
+{
+  "name": "@vitest/coverage-v8",
+  "type": "module",
+  "version": "3.2.4",
+  "description": "V8 coverage provider for Vitest",
+  "author": "Anthony Fu <anthonyfu117@hotmail.com>",
+  "license": "MIT",
+  "funding": "https://opencollective.com/vitest",
+  "homepage": "https://github.com/vitest-dev/vitest/tree/main/packages/coverage-v8#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vitest-dev/vitest.git",
+    "directory": "packages/coverage-v8"
+  },
+  "bugs": {
+    "url": "https://github.com/vitest-dev/vitest/issues"
+  },
+  "keywords": [
+    "vite",
+    "vitest",
+    "test",
+    "coverage",
+    "v8"
+  ],
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./browser": {
+      "types": "./dist/browser.d.ts",
+      "default": "./dist/browser.js"
+    },
+    "./*": "./*"
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "peerDependencies": {
+    "@vitest/browser": "3.2.4",
+    "vitest": "3.2.4"
+  },
+  "peerDependenciesMeta": {
+    "@vitest/browser": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "@ampproject/remapping": "^2.3.0",
+    "@bcoe/v8-coverage": "^1.0.2",
+    "ast-v8-to-istanbul": "^0.3.3",
+    "debug": "^4.4.1",
+    "istanbul-lib-coverage": "^3.2.2",
+    "istanbul-lib-report": "^3.0.1",
+    "istanbul-lib-source-maps": "^5.0.6",
+    "istanbul-reports": "^3.1.7",
+    "magic-string": "^0.30.17",
+    "magicast": "^0.3.5",
+    "std-env": "^3.9.0",
+    "test-exclude": "^7.0.1",
+    "tinyrainbow": "^2.0.0"
+  },
+  "devDependencies": {
+    "@types/debug": "^4.1.12",
+    "@types/istanbul-lib-coverage": "^2.0.6",
+    "@types/istanbul-lib-report": "^3.0.3",
+    "@types/istanbul-lib-source-maps": "^4.0.4",
+    "@types/istanbul-reports": "^3.0.4",
+    "@types/test-exclude": "^6.0.2",
+    "pathe": "^2.0.3",
+    "v8-to-istanbul": "^9.3.0",
+    "@vitest/browser": "3.2.4",
+    "vitest": "3.2.4",
+    "vite-node": "3.2.4"
+  },
+  "scripts": {
+    "build": "rimraf dist && rollup -c",
+    "dev": "rollup -c --watch --watch.include 'src/**'"
+  }
+}

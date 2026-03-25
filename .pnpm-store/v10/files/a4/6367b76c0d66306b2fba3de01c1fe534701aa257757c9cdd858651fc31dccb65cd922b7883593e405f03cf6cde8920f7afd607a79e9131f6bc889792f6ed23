@@ -1,0 +1,14 @@
+{
+    "name": "chart.js-helpers",
+    "private": true,
+    "description": "Helpers package. Exists to support bundlers without exports support such as webpack 4.",
+    "type": "module",
+    "main": "./helpers.cjs",
+    "module": "./helpers.js",
+    "exports": {
+        "types": "./helpers.d.ts",
+        "import": "./helpers.js",
+        "require": "./helpers.cjs"
+    },
+    "types": "./helpers.d.ts"
+}

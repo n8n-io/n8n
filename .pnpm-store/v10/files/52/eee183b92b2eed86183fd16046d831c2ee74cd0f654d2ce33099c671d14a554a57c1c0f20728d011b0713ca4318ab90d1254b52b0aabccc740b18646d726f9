@@ -1,0 +1,66 @@
+{
+  "name": "gauge",
+  "version": "4.0.4",
+  "description": "A terminal based horizontal gauge",
+  "main": "lib",
+  "scripts": {
+    "test": "tap",
+    "lint": "eslint \"**/*.js\"",
+    "postlint": "template-oss-check",
+    "lintfix": "npm run lint -- --fix",
+    "preversion": "npm test",
+    "postversion": "npm publish",
+    "prepublishOnly": "git push origin --follow-tags",
+    "snap": "tap",
+    "posttest": "npm run lint",
+    "template-oss-apply": "template-oss-apply --force"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/npm/gauge.git"
+  },
+  "keywords": [
+    "progressbar",
+    "progress",
+    "gauge"
+  ],
+  "author": "GitHub Inc.",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/npm/gauge/issues"
+  },
+  "homepage": "https://github.com/npm/gauge",
+  "dependencies": {
+    "aproba": "^1.0.3 || ^2.0.0",
+    "color-support": "^1.1.3",
+    "console-control-strings": "^1.1.0",
+    "has-unicode": "^2.0.1",
+    "signal-exit": "^3.0.7",
+    "string-width": "^4.2.3",
+    "strip-ansi": "^6.0.1",
+    "wide-align": "^1.1.5"
+  },
+  "devDependencies": {
+    "@npmcli/eslint-config": "^3.0.1",
+    "@npmcli/template-oss": "3.2.0",
+    "readable-stream": "^3.6.0",
+    "tap": "^16.0.1"
+  },
+  "files": [
+    "bin/",
+    "lib/"
+  ],
+  "engines": {
+    "node": "^12.13.0 || ^14.15.0 || >=16.0.0"
+  },
+  "tap": {
+    "branches": 79,
+    "statements": 89,
+    "functions": 92,
+    "lines": 90
+  },
+  "templateOSS": {
+    "//@npmcli/template-oss": "This file is partially managed by @npmcli/template-oss. Edits may be overwritten.",
+    "version": "3.2.0"
+  }
+}

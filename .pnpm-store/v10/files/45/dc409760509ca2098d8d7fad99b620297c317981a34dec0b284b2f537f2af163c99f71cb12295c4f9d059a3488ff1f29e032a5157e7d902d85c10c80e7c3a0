@@ -1,0 +1,42 @@
+{
+  "name": "markdown-it-task-lists",
+  "version": "2.1.1",
+  "description": "A markdown-it plugin to create GitHub-style task lists",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha --timeout 5000",
+    "clean": "rm -Rf dist && mkdir dist",
+    "build": "npm run clean && npm run build-dist",
+    "build-dist": "npm run build-dist-copyright && npm run build-dist-file && npm run build-dist-min",
+    "build-dist-copyright": "echo /*! ${npm_package_name} ${npm_package_version} ${npm_package_homepage} by ${npm_package_author} @license ${npm_package_license} \\*/ > dist/${npm_package_name}.js",
+    "build-dist-file": "browserify ${npm_package_main} -s markdownitTaskLists >> dist/${npm_package_name}.js",
+    "build-dist-min": "uglifyjs dist/${npm_package_name}.js -b beautify=false,ascii-only=true -c -m --preamble \"/*! ${npm_package_name} ${npm_package_version} ${npm_package_homepage} by ${npm_package_author} @license {$npm_package_license} */\" > dist/${npm_package_name}.min.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:revin/markdown-it-task-lists.git"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "browserify": "^16.1.1",
+    "cheerio": ">=0.20.0",
+    "markdown-it": ">=7.0.0",
+    "mocha": "^5.0.2",
+    "uglify": "*"
+  },
+  "keywords": [
+    "markdown",
+    "markdown-it",
+    "markdown-it-plugin",
+    "task",
+    "list",
+    "todo",
+    "checkbox"
+  ],
+  "author": "Revin Guillen",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/revin/markdown-it-task-lists/issues"
+  },
+  "homepage": "https://github.com/revin/markdown-it-task-lists#readme"
+}

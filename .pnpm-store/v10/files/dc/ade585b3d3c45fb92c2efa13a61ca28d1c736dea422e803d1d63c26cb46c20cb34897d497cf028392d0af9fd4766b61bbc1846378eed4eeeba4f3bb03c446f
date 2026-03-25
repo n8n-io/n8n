@@ -1,0 +1,39 @@
+{
+  "name": "fs-minipass",
+  "version": "2.1.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "tap",
+    "preversion": "npm test",
+    "postversion": "npm publish",
+    "postpublish": "git push origin --follow-tags"
+  },
+  "keywords": [],
+  "author": "Isaac Z. Schlueter <i@izs.me> (http://blog.izs.me/)",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/npm/fs-minipass.git"
+  },
+  "bugs": {
+    "url": "https://github.com/npm/fs-minipass/issues"
+  },
+  "homepage": "https://github.com/npm/fs-minipass#readme",
+  "description": "fs read and write streams based on minipass",
+  "dependencies": {
+    "minipass": "^3.0.0"
+  },
+  "devDependencies": {
+    "mutate-fs": "^2.0.1",
+    "tap": "^14.6.4"
+  },
+  "files": [
+    "index.js"
+  ],
+  "tap": {
+    "check-coverage": true
+  },
+  "engines": {
+    "node": ">= 8"
+  }
+}

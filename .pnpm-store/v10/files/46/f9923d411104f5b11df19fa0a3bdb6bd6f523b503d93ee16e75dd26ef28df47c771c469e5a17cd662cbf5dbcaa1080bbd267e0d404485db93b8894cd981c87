@@ -1,0 +1,1 @@
+{"version":3,"file":"BoolValue.js","sourceRoot":"","sources":["../../../../../src/generated/google/protobuf/BoolValue.ts"],"names":[],"mappings":";AAAA,sBAAsB"}

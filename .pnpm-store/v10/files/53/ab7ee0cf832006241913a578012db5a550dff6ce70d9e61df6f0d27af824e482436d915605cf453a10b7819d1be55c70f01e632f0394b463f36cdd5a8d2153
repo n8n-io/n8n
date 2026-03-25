@@ -1,0 +1,1 @@
+{"version":3,"file":"SocketData.js","sourceRoot":"","sources":["../../../../../../src/generated/grpc/channelz/v1/SocketData.ts"],"names":[],"mappings":";AAAA,sCAAsC"}

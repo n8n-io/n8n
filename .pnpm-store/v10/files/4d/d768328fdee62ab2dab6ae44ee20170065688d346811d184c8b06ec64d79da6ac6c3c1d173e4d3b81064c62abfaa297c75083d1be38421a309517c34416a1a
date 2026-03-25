@@ -1,0 +1,184 @@
+# Copyright 2012 Mozilla Foundation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Main toolbar buttons (tooltips and alt text for images)
+previous.title=صفحهٔ قبلی
+previous_label=قبلی
+next.title=صفحهٔ بعدی
+next_label=بعدی
+
+# LOCALIZATION NOTE (page.title): The tooltip for the pageNumber input.
+page.title=صفحه
+# LOCALIZATION NOTE (of_pages): "{{pagesCount}}" will be replaced by a number
+# representing the total number of pages in the document.
+of_pages=از {{pagesCount}}
+# LOCALIZATION NOTE (page_of_pages): "{{pageNumber}}" and "{{pagesCount}}"
+# will be replaced by a number representing the currently visible page,
+# respectively a number representing the total number of pages in the document.
+page_of_pages=({{pageNumber}}از {{pagesCount}})
+
+zoom_out.title=کوچک‌نمایی
+zoom_out_label=کوچک‌نمایی
+zoom_in.title=بزرگ‌نمایی
+zoom_in_label=بزرگ‌نمایی
+zoom.title=زوم
+presentation_mode.title=تغییر به حالت ارائه
+presentation_mode_label=حالت ارائه
+open_file.title=باز کردن پرونده
+open_file_label=باز کردن
+print.title=چاپ
+print_label=چاپ
+download.title=بارگیری
+download_label=بارگیری
+bookmark.title=نمای فعلی (رونوشت و یا نشان دادن در پنجره جدید)
+bookmark_label=نمای فعلی
+
+# Secondary toolbar and context menu
+tools.title=ابزارها
+tools_label=ابزارها
+first_page.title=برو به اولین صفحه
+first_page.label=برو یه اولین صفحه
+first_page_label=برو به اولین صفحه
+last_page.title=برو به آخرین صفحه
+last_page.label=برو به آخرین صفحه
+last_page_label=برو به آخرین صفحه
+page_rotate_cw.title=چرخش ساعتگرد
+page_rotate_cw.label=چرخش ساعتگرد
+page_rotate_cw_label=چرخش ساعتگرد
+page_rotate_ccw.title=چرخش پاد ساعتگرد
+page_rotate_ccw.label=چرخش پاد ساعتگرد
+page_rotate_ccw_label=چرخش پاد ساعتگرد
+
+cursor_text_select_tool.title=فعال کردن ابزارِ انتخابِ متن
+cursor_text_select_tool_label=ابزارِ انتخابِ متن
+cursor_hand_tool.title=فعال کردن ابزارِ دست
+cursor_hand_tool_label=ابزار دست
+
+# Document properties dialog box
+document_properties.title=خصوصیات سند...
+document_properties_label=خصوصیات سند...
+document_properties_file_name=نام فایل:
+document_properties_file_size=حجم پرونده:
+# LOCALIZATION NOTE (document_properties_kb): "{{size_kb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in kilobytes, respectively in bytes.
+document_properties_kb={{size_kb}} کیلوبایت ({{size_b}} بایت)
+# LOCALIZATION NOTE (document_properties_mb): "{{size_mb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in megabytes, respectively in bytes.
+document_properties_mb={{size_mb}} مگابایت ({{size_b}} بایت)
+document_properties_title=عنوان:
+document_properties_author=نویسنده:
+document_properties_subject=موضوع:
+document_properties_keywords=کلیدواژه‌ها:
+document_properties_creation_date=تاریخ ایجاد:
+document_properties_modification_date=تاریخ ویرایش:
+# LOCALIZATION NOTE (document_properties_date_string): "{{date}}" and "{{time}}"
+# will be replaced by the creation/modification date, and time, of the PDF file.
+document_properties_date_string={{date}}، {{time}}
+document_properties_creator=ایجاد کننده:
+document_properties_producer=ایجاد کننده PDF:
+document_properties_version=نسخه PDF:
+document_properties_page_count=تعداد صفحات:
+document_properties_close=بستن
+
+print_progress_message=آماده سازی مدارک برای چاپ کردن…
+# LOCALIZATION NOTE (print_progress_percent): "{{progress}}" will be replaced by
+# a numerical per cent value.
+print_progress_percent={{progress}}%
+print_progress_close=لغو
+
+# Tooltips and alt text for side panel toolbar buttons
+# (the _label strings are alt text for the buttons, the .title strings are
+# tooltips)
+toggle_sidebar.title=باز و بسته کردن نوار کناری
+toggle_sidebar_notification.title=تغییر وضعیت نوار کناری (سند حاوی طرح/پیوست است)
+toggle_sidebar_label=تغییرحالت نوارکناری
+document_outline.title=نمایش رئوس مطالب مدارک(برای بازشدن/جمع شدن همه موارد دوبار کلیک کنید)
+document_outline_label=طرح نوشتار
+attachments.title=نمایش پیوست‌ها
+attachments_label=پیوست‌ها
+thumbs.title=نمایش تصاویر بندانگشتی
+thumbs_label=تصاویر بندانگشتی
+findbar.title=جستجو در سند
+findbar_label=پیدا کردن
+
+# Thumbnails panel item (tooltip and alt text for images)
+# LOCALIZATION NOTE (thumb_page_title): "{{page}}" will be replaced by the page
+# number.
+thumb_page_title=صفحه {{page}}
+# LOCALIZATION NOTE (thumb_page_canvas): "{{page}}" will be replaced by the page
+# number.
+thumb_page_canvas=تصویر بند‌ انگشتی صفحه {{page}}
+
+# Find panel button title and messages
+find_input.title=پیدا کردن
+find_input.placeholder=پیدا کردن در سند…
+find_previous.title=پیدا کردن رخداد قبلی عبارت
+find_previous_label=قبلی
+find_next.title=پیدا کردن رخداد بعدی عبارت
+find_next_label=بعدی
+find_highlight=برجسته و هایلایت کردن همه موارد
+find_match_case_label=تطبیق کوچکی و بزرگی حروف
+find_reached_top=به بالای صفحه رسیدیم، از پایین ادامه می‌دهیم
+find_reached_bottom=به آخر صفحه رسیدیم، از بالا ادامه می‌دهیم
+find_not_found=عبارت پیدا نشد
+
+# Error panel labels
+error_more_info=اطلاعات بیشتر
+error_less_info=اطلاعات کمتر
+error_close=بستن
+# LOCALIZATION NOTE (error_version_info): "{{version}}" and "{{build}}" will be
+# replaced by the PDF.JS version and build ID.
+error_version_info=‏PDF.js ورژن{{version}} ‏(ساخت: {{build}})
+# LOCALIZATION NOTE (error_message): "{{message}}" will be replaced by an
+# english string describing the error.
+error_message=پیام: {{message}}
+# LOCALIZATION NOTE (error_stack): "{{stack}}" will be replaced with a stack
+# trace.
+error_stack=توده: {{stack}}
+# LOCALIZATION NOTE (error_file): "{{file}}" will be replaced with a filename
+error_file=پرونده: {{file}}
+# LOCALIZATION NOTE (error_line): "{{line}}" will be replaced with a line number
+error_line=سطر: {{line}}
+rendering_error=هنگام بارگیری صفحه خطایی رخ داد.
+
+# Predefined zoom values
+page_scale_width=عرض صفحه
+page_scale_fit=اندازه کردن صفحه
+page_scale_auto=بزرگنمایی خودکار
+page_scale_actual=اندازه واقعی‌
+# LOCALIZATION NOTE (page_scale_percent): "{{scale}}" will be replaced by a
+# numerical scale value.
+page_scale_percent={{scale}}%
+
+# Loading indicator messages
+loading_error_indicator=خطا
+loading_error=هنگام بارگیری پرونده PDF خطایی رخ داد.
+invalid_file_error=پرونده PDF نامعتبر یامعیوب می‌باشد.
+missing_file_error=پرونده PDF یافت نشد.
+unexpected_response_error=پاسخ پیش بینی نشده سرور
+
+# LOCALIZATION NOTE (text_annotation_type.alt): This is used as a tooltip.
+# "{{type}}" will be replaced with an annotation type from a list defined in
+# the PDF spec (32000-1:2008 Table 169 – Annotation types).
+# Some common types are e.g.: "Check", "Text", "Comment", "Note"
+text_annotation_type.alt=[{{type}} Annotation]
+password_label=جهت باز کردن پرونده PDF گذرواژه را وارد نمائید.
+password_invalid=گذرواژه نامعتبر. لطفا مجددا تلاش کنید.
+password_ok=تأیید
+password_cancel=لغو
+
+printing_not_supported=هشدار: قابلیت چاپ به‌طور کامل در این مرورگر پشتیبانی نمی‌شود.
+printing_not_ready=اخطار: پرونده PDF بطور کامل بارگیری نشده و امکان چاپ وجود ندارد.
+web_fonts_disabled=فونت های تحت وب غیر فعال شده اند: امکان استفاده از نمایش دهنده داخلی PDF وجود ندارد.
+document_colors_not_allowed=فایلهای PDF اجازه ندارند تا از رنگ‌های خود استفاده کنند: گزینه «به صفحات اجازه بده تا از رنگ‌های خود استفاده کنند» در مرورگر غیر فعال است.

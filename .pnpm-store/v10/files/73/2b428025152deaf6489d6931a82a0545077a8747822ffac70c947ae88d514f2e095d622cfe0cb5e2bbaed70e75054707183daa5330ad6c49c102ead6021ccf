@@ -1,0 +1,2 @@
+!function(t,n){"object"==typeof exports&&"undefined"!=typeof module?module.exports=function(t,n,e,i,o){for(n=n.split?n.split("."):n,i=0;i<n.length;i++)t=t?t[n[i]]:o;return t===o?e:t}:"function"==typeof define&&define.amd?define(function(){return function(t,n,e,i,o){for(n=n.split?n.split("."):n,i=0;i<n.length;i++)t=t?t[n[i]]:o;return t===o?e:t}}):t.dlv=function(t,n,e,i,o){for(n=n.split?n.split("."):n,i=0;i<n.length;i++)t=t?t[n[i]]:o;return t===o?e:t}}(this);
+//# sourceMappingURL=dlv.umd.js.map

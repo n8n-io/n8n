@@ -1,0 +1,31 @@
+# Empty String
+
+""
+
+==>
+
+JsonText(String)
+
+# Non-empty String
+
+"This is a boring old string"
+
+==>
+
+JsonText(String)
+
+# All The Valid One-Character Escapes
+
+"\"\\\/\b\f\n\rt\t"
+
+==>
+
+JsonText(String)
+
+# Unicode Escape
+
+"\u005C"
+
+==>
+
+JsonText(String)

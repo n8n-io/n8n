@@ -1,0 +1,14 @@
+dist: trusty
+
+language: node_js
+node_js:
+  - "8"
+
+before_script:
+  - npm install -g mocha
+script: npm test
+
+addons:
+  apt:
+    packages:
+      - libnss3

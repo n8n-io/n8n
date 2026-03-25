@@ -1,0 +1,25 @@
+{
+  "name": "stream-shift",
+  "version": "1.0.3",
+  "description": "Returns the next buffer/object in a stream's readable queue",
+  "main": "index.js",
+  "dependencies": {},
+  "devDependencies": {
+    "standard": "^7.1.2",
+    "tape": "^4.6.0",
+    "through2": "^2.0.1"
+  },
+  "scripts": {
+    "test": "standard && tape test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mafintosh/stream-shift.git"
+  },
+  "author": "Mathias Buus (@mafintosh)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/mafintosh/stream-shift/issues"
+  },
+  "homepage": "https://github.com/mafintosh/stream-shift"
+}

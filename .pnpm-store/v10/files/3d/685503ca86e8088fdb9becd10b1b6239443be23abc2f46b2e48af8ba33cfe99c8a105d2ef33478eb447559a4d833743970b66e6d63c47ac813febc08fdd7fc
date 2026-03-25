@@ -1,0 +1,5 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/tsdoc/v0/tsdoc.schema.json",
+  "extends": ["./base1/tsdoc-base1.json"],
+  "reportUnsupportedHtmlElements": false
+}

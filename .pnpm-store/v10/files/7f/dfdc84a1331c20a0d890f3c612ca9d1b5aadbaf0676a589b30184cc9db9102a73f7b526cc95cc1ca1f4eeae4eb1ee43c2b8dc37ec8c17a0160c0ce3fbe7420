@@ -1,0 +1,90 @@
+{
+  "name": "@storybook/addon-a11y",
+  "version": "10.1.11",
+  "description": "Storybook Addon A11y: Test UI component compliance with WCAG web accessibility standards",
+  "keywords": [
+    "a11y",
+    "accessibility",
+    "storybook",
+    "storybook-addon",
+    "test",
+    "axe",
+    "WCAG",
+    "ARIA",
+    "component",
+    "components",
+    "react",
+    "vue",
+    "angular",
+    "svelte",
+    "web-components"
+  ],
+  "homepage": "https://github.com/storybookjs/storybook/tree/next/code/addons/a11y",
+  "bugs": {
+    "url": "https://github.com/storybookjs/storybook/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/storybookjs/storybook.git",
+    "directory": "code/addons/a11y"
+  },
+  "funding": {
+    "type": "opencollective",
+    "url": "https://opencollective.com/storybook"
+  },
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./manager": "./dist/manager.js",
+    "./package.json": "./package.json",
+    "./postinstall": "./dist/postinstall.js",
+    "./preview": {
+      "types": "./dist/preview.d.ts",
+      "default": "./dist/preview.js"
+    }
+  },
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "*.js",
+    "*.d.ts",
+    "!src/**/*"
+  ],
+  "scripts": {
+    "check": "jiti ../../../scripts/check/check-package.ts",
+    "prep": "jiti ../../../scripts/build/build-package.ts"
+  },
+  "dependencies": {
+    "@storybook/global": "^5.0.0",
+    "axe-core": "^4.2.0"
+  },
+  "devDependencies": {
+    "@radix-ui/react-tabs": "1.0.4",
+    "@storybook/icons": "^2.0.0",
+    "@testing-library/react": "^14.0.0",
+    "execa": "^9.5.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-resize-detector": "^7.1.2",
+    "typescript": "^5.8.3",
+    "vitest-axe": "^0.1.0"
+  },
+  "peerDependencies": {
+    "storybook": "^10.1.11"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "gitHead": "a8e7fd8a655c69780bc20b9749d2699e45beae1l",
+  "storybook": {
+    "displayName": "Accessibility",
+    "icon": "https://user-images.githubusercontent.com/263385/101991665-47042f80-3c7c-11eb-8f00-64b5a18f498a.png",
+    "unsupportedFrameworks": [
+      "react-native"
+    ]
+  }
+}

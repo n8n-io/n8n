@@ -1,0 +1,47 @@
+{
+  "name": "@sinclair/typebox",
+  "version": "0.27.8",
+  "description": "JSONSchema Type Builder with Static Type Resolution for TypeScript",
+  "keywords": [
+    "typescript",
+    "json-schema",
+    "validate",
+    "typecheck"
+  ],
+  "author": "sinclairzx81",
+  "license": "MIT",
+  "main": "./typebox.js",
+  "types": "./typebox.d.ts",
+  "exports": {
+    "./compiler": "./compiler/index.js",
+    "./errors": "./errors/index.js",
+    "./system": "./system/index.js",
+    "./value": "./value/index.js",
+    ".": "./typebox.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sinclairzx81/typebox"
+  },
+  "scripts": {
+    "clean": "hammer task clean",
+    "format": "hammer task format",
+    "start": "hammer task start",
+    "test": "hammer task test",
+    "benchmark": "hammer task benchmark",
+    "build": "hammer task build",
+    "publish": "hammer task publish"
+  },
+  "devDependencies": {
+    "@sinclair/hammer": "^0.17.1",
+    "@types/chai": "^4.3.3",
+    "@types/mocha": "^9.1.1",
+    "@types/node": "^18.11.9",
+    "ajv": "^8.12.0",
+    "ajv-formats": "^2.1.1",
+    "chai": "^4.3.6",
+    "mocha": "^9.2.2",
+    "prettier": "^2.7.1",
+    "typescript": "^5.0.2"
+  }
+}

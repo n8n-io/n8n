@@ -1,0 +1,44 @@
+{
+    "name": "@vscode/markdown-it-katex",
+    "version": "1.1.2",
+    "description": "Markdown-it plugin that provides VS Code's KaTeX support",
+    "main": "dist/index.js",
+    "types": "types.d.ts",
+    "files": [
+        "dist/index.js",
+        "types.d.ts"
+    ],
+    "scripts": {
+        "compile": "tsc -p .",
+        "watch": "tsc -p . -watch",
+        "test": "node test/all.js",
+        "test-render": "node test/test-render.js test/test.md > test/out.html"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/microsoft/vscode-markdown-it-katex.git"
+    },
+    "keywords": [
+        "markdown",
+        "KaTeX",
+        "math",
+        "LaTeX",
+        "markdown-it-plugin",
+        "markdown-it"
+    ],
+    "author": {
+        "name": "Microsoft Corporation"
+    },
+    "license": "MIT",
+    "dependencies": {
+        "katex": "^0.16.4"
+    },
+    "devDependencies": {
+        "@types/katex": "^0.16.0",
+        "@types/markdown-it": "^12.2.3",
+        "markdown-it": "^14.0.0",
+        "markdown-it-testgen": "^0.1.6",
+        "tape": "^5.6.0",
+        "typescript": "^5.3.0"
+    }
+}

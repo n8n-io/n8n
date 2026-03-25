@@ -1,0 +1,103 @@
+{
+  "author": "Scott Sauyet <scott@sauyet.com> (scott.sauyet.com)",
+  "contributors": [
+    {
+      "name": "Michael Hurley",
+      "email": "mh@buzzdecafe.com",
+      "web": "http://buzzdecafe.com"
+    },
+    {
+      "name": "Scott Sauyet",
+      "email": "scott@sauyet.com",
+      "web": "http://fr.umio.us"
+    },
+    {
+      "name": "David Chambers",
+      "email": "dc@davidchambers.me",
+      "web": "http://davidchambers.me"
+    },
+    {
+      "name": "Graeme Yeates",
+      "email": "yeatesgraeme@gmail.com",
+      "web": "https://github.com/megawac"
+    }
+  ],
+  "name": "ramda",
+  "description": "A practical functional library for JavaScript programmers.",
+  "keywords": [
+    "ramda",
+    "functional",
+    "utils",
+    "utilities",
+    "toolkit",
+    "fp",
+    "tacit",
+    "point-free",
+    "curried",
+    "pure",
+    "fantasy-land"
+  ],
+  "sideEffects": false,
+  "version": "0.26.1",
+  "homepage": "https://ramdajs.com/",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/ramda/ramda.git"
+  },
+  "module": "es/index.js",
+  "main": "src/index",
+  "unpkg": "dist/ramda.min.js",
+  "jsdelivr": "dist/ramda.min.js",
+  "files": [
+    "es",
+    "src",
+    "dist"
+  ],
+  "scripts": {
+    "bench": "scripts/benchRunner",
+    "bookmarklet": "scripts/bookmarklet",
+    "build:es": "cross-env BABEL_ENV=es babel source --out-dir es",
+    "build:cjs": "cross-env BABEL_ENV=cjs babel source --out-dir src",
+    "build:mjs": "cross-env BABEL_ENV=es babel source/index.js --out-file src/index.mjs",
+    "build:umd": "cross-env NODE_ENV=development rollup -c -o dist/ramda.js",
+    "build:umd:min": "cross-env NODE_ENV=production rollup -c -o dist/ramda.min.js",
+    "build": "npm run build:es && npm run build:cjs && npm run build:umd && npm run build:umd:min && npm run build:mjs",
+    "partial-build": "node ./scripts/partialBuild",
+    "clean": "rimraf es/* src/* dist/* coverage/*",
+    "prepare": "npm run clean && npm run build",
+    "coverage": "istanbul cover node_modules/.bin/_mocha -- --reporter spec",
+    "lint": "eslint scripts/bookmarklet scripts/*.js source/*.js source/internal/*.js test/*.js test/**/*.js lib/sauce/*.js lib/bench/*.js",
+    "browser_test": "testem ci",
+    "test": "cross-env BABEL_ENV=cjs mocha --require babel-register --reporter spec"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-plugin-annotate-pure-calls": "^0.2.2",
+    "babel-plugin-import-export-rename": "^1.0.1",
+    "babel-register": "^6.26.0",
+    "babel-types": "^6.26.0",
+    "babelify": "^8.0.0",
+    "benchmark": "~1.0.0",
+    "browserify": "https://api.github.com/repos/browserify/browserify/tarball/9ff7c55cc67a7ddbc64f8e7270bcd75fcc72ce2f",
+    "cli-table": "0.3.x",
+    "cross-env": "^2.0.1",
+    "dox": "latest",
+    "envvar": "1.x.x",
+    "eslint": "^5.9.0",
+    "handlebars": ">=4.0.0",
+    "istanbul": "^0.4.x",
+    "js-yaml": "^3.12.0",
+    "jsverify": "^0.7.3",
+    "mocha": "^5.2.0",
+    "ramda": "0.17.x",
+    "rimraf": "^2.6.2",
+    "rollup": "^0.50.0",
+    "rollup-plugin-terser": "^1.0.1",
+    "sanctuary": "0.7.x",
+    "sinon": "^1.17.4",
+    "testem": "^2.9.0",
+    "xyz": "^3.0.0"
+  }
+}

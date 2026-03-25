@@ -1,0 +1,44 @@
+{
+  "name": "generate-schema",
+  "version": "2.6.0",
+  "author": "Nijiko Yonskai <nijikokun@gmail.com>",
+  "description": "Effortlessly convert your JSON Object to JSON Schema, Mongoose Schema, or a Generic template for quick documentation / upstart.",
+  "license": "MIT",
+  "repository": "Nijikokun/generate-schema",
+  "homepage": "https://github.com/Nijikokun/generate-schema",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "node_modules/mocha/bin/mocha"
+  },
+  "bin": {
+    "generate-schema": "./bin/generate-schema"
+  },
+  "keywords": [
+    "json",
+    "schema",
+    "object",
+    "convert",
+    "manipulate",
+    "traverse",
+    "types",
+    "type",
+    "is",
+    "generate",
+    "produce",
+    "mongoose",
+    "generic",
+    "validation",
+    "bigquery",
+    "google",
+    "data",
+    "datatypes"
+  ],
+  "dependencies": {
+    "commander": "^2.9.0",
+    "type-of-is": "^3.4.0"
+  },
+  "devDependencies": {
+    "mocha": "^3.0.0",
+    "should": "^10.0.0"
+  }
+}

@@ -1,0 +1,25 @@
+{
+    "name": "@types/utf8",
+    "version": "3.0.3",
+    "description": "TypeScript definitions for utf8",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/utf8",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Piotr Błażejewicz",
+            "githubUsername": "peterblazejewicz",
+            "url": "https://github.com/peterblazejewicz"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/utf8"
+    },
+    "scripts": {},
+    "dependencies": {},
+    "typesPublisherContentHash": "d2edb20486408e14c45261e6bef6ab8eea0ccd631ddc3a5b7ebe6792d0e24a36",
+    "typeScriptVersion": "4.5"
+}

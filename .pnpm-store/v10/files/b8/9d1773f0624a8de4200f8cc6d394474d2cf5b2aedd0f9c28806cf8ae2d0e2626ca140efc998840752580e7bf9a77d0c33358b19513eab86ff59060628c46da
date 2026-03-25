@@ -1,0 +1,16 @@
+name: websocket-tests
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 10.x
+
+      - uses: actions/checkout@v2
+
+      - run: npm install
+
+      - run: npm run test
+

@@ -1,0 +1,115 @@
+name: "Tests"
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+env:
+  CI: true
+
+jobs:
+  TestOS:
+    name: Test
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest]
+        node_version: ['lts/*']
+    runs-on: ${{ matrix.os }}
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+    - name: Install Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node_version }}
+        check-latest: true
+    - name: Install dependencies
+      run: npm ci
+    - name: Run tests 👩🏾‍💻
+      run: npm run test
+  TestNode:
+    name: Test
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        node_version: ['20', 'lts/*', '*']
+    runs-on: ${{ matrix.os }}
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+    - name: Install Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node_version }}
+        check-latest: true
+    - name: Install dependencies
+      run: npm ci
+    - name: Run tests 👩🏾‍💻
+      run: npm run test
+  Coverage:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+    - name: Install Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: 'lts/*'
+        check-latest: true
+    - name: Install dependencies
+      run: npm ci
+    - name: Run tests 👩🏾‍💻
+      run: npm run test:cover
+  Lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          check-latest: true
+      - name: NPM install
+        run: npm ci
+      - name: Lint ✨
+        run: npm run lint
+  Build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          check-latest: true
+      - name: NPM install
+        run: npm ci
+      - name: Build 🧱
+        run: npm run build
+
+  Release:
+    needs: [TestOS, TestNode, Coverage, Lint, Build]
+    if: |
+      github.ref == 'refs/heads/master' &&
+      github.event.repository.fork == false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          check-latest: true
+      - name: NPM install
+        run: npm ci
+      - name: NPM build
+        run: npm run build
+      - name: Release 🎉
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npx semantic-release

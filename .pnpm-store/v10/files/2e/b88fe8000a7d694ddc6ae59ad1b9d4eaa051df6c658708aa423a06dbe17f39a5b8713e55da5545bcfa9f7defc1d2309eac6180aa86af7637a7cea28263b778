@@ -1,0 +1,1 @@
+export * from "../../dist/vectorstores/closevector/node.js";

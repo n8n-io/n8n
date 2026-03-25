@@ -1,0 +1,46 @@
+{
+  "name": "regjsparser",
+  "version": "0.12.0",
+  "author": "'Julian Viereck' <julian.viereck@gmail.com>",
+  "license": "BSD-2-Clause",
+  "main": "./parser",
+  "types": "./parser.d.ts",
+  "bin": {
+    "regjsparser": "bin/parser"
+  },
+  "homepage": "https://github.com/jviereck/regjsparser",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/jviereck/regjsparser.git"
+  },
+  "scripts": {
+    "lint": "eslint --max-warnings 0 .",
+    "test": "run-p test:* lint",
+    "test:src": "node test/index.js",
+    "test:types": "tsc test/types.ts --noEmit",
+    "bench:baseline": "node ./tools/bench/index.mjs baseline",
+    "bench:current": "node ./tools/bench/index.mjs current",
+    "bench": "run-s bench:*"
+  },
+  "files": [
+    "bin/",
+    "LICENSE.BSD",
+    "parser.js",
+    "parser.d.ts",
+    "README.md"
+  ],
+  "dependencies": {
+    "jsesc": "~3.0.2"
+  },
+  "devDependencies": {
+    "@unicode/unicode-16.0.0": "^1.6.0",
+    "eslint": "^9.10.0",
+    "eslint-plugin-regexp": "^2.6.0",
+    "globals": "^15.9.0",
+    "npm-run-all": "^4.1.5",
+    "regenerate": "~1.0.1",
+    "regjsparser": "^0.11.2",
+    "tinybench": "^2.9.0",
+    "typescript": "^4.5.2"
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "version": "2.0.3",
+  "name": "resolve.exports",
+  "repository": "lukeed/resolve.exports",
+  "description": "A tiny (952b), correct, general-purpose, and configurable \"exports\" and \"imports\" resolver without file-system reliance",
+  "module": "dist/index.mjs",
+  "main": "dist/index.js",
+  "types": "index.d.ts",
+  "license": "MIT",
+  "author": {
+    "name": "Luke Edwards",
+    "email": "luke.edwards05@gmail.com",
+    "url": "https://lukeed.com"
+  },
+  "engines": {
+    "node": ">=10"
+  },
+  "scripts": {
+    "build": "bundt -m",
+    "types": "tsc --noEmit",
+    "test": "uvu -r tsm test"
+  },
+  "files": [
+    "*.d.ts",
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "keywords": [
+    "esm",
+    "exports",
+    "esmodules",
+    "fields",
+    "modules",
+    "resolution",
+    "resolve"
+  ],
+  "devDependencies": {
+    "bundt": "next",
+    "tsm": "2.3.0",
+    "typescript": "4.9.4",
+    "uvu": "0.5.4"
+  }
+}

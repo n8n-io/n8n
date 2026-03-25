@@ -1,0 +1,1 @@
+{"version":3,"file":"suggestedActions.js","sourceRoot":"","sources":["../../../src/action/suggestedActions.ts"],"names":[],"mappings":";AAAA;;;GAGG;;;AAEH,6BAAuB;AACvB,6CAA8D;AAgB9D;;GAEG;AACU,QAAA,yBAAyB,GAAG,OAAC,CAAC,MAAM,CAAC;IAChD,EAAE,EAAE,OAAC,CAAC,KAAK,CAAC,OAAC,CAAC,MAAM,EAAE,CAAC,GAAG,CAAC,CAAC,CAAC,CAAC;IAC9B,OAAO,EAAE,OAAC,CAAC,KAAK,CAAC,gCAAmB,CAAC;CACtC,CAAC,CAAA"}

@@ -1,0 +1,77 @@
+{
+    "name": "@types/inquirer",
+    "version": "6.5.0",
+    "description": "TypeScript definitions for inquirer",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Qubo",
+            "url": "https://github.com/tkQubo",
+            "githubUsername": "tkQubo"
+        },
+        {
+            "name": "Parvez",
+            "url": "https://github.com/ppathan",
+            "githubUsername": "ppathan"
+        },
+        {
+            "name": "Jouderian",
+            "url": "https://github.com/jouderianjr",
+            "githubUsername": "jouderianjr"
+        },
+        {
+            "name": "Qibang",
+            "url": "https://github.com/bang88",
+            "githubUsername": "bang88"
+        },
+        {
+            "name": "Jason Dreyzehner",
+            "url": "https://github.com/bitjson",
+            "githubUsername": "bitjson"
+        },
+        {
+            "name": "Synarque",
+            "url": "https://github.com/synarque",
+            "githubUsername": "synarque"
+        },
+        {
+            "name": "Justin Rockwood",
+            "url": "https://github.com/jrockwood",
+            "githubUsername": "jrockwood"
+        },
+        {
+            "name": "Keith Kelly",
+            "url": "https://github.com/kwkelly",
+            "githubUsername": "kwkelly"
+        },
+        {
+            "name": "Richard Lea",
+            "url": "https://github.com/chigix",
+            "githubUsername": "chigix"
+        },
+        {
+            "name": "Jed Mao",
+            "url": "https://github.com/jedmao",
+            "githubUsername": "jedmao"
+        },
+        {
+            "name": "Manuel Thalmann",
+            "url": "https://github.com/manuth",
+            "githubUsername": "manuth"
+        }
+    ],
+    "main": "",
+    "types": "index",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/inquirer"
+    },
+    "scripts": {},
+    "dependencies": {
+        "@types/through": "*",
+        "rxjs": "^6.4.0"
+    },
+    "typesPublisherContentHash": "3ad7bbf17647a468e5db6e137a5e3edcc026c56aa33f9421315fcb94ca58cf0a",
+    "typeScriptVersion": "3.3"
+}

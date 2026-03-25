@@ -1,0 +1,26 @@
+{
+  "name": "heap",
+  "version": "0.2.7",
+  "description": "binary heap (priority queue) algorithms (ported from Python's heapq module)",
+  "homepage": "https://github.com/qiao/heap.js",
+  "keywords": [
+    "algorithm",
+    "data structure",
+    "heap"
+  ],
+  "author": "Xueqiao Xu <xueqiaoxu@gmail.com>",
+  "main": "./index.js",
+  "devDependencies": {
+    "coffee-script": "1.3.x",
+    "mocha": "2.1.x",
+    "should": "0.6.x"
+  },
+  "scripts": {
+    "test": "make test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/qiao/heap.js.git"
+  },
+  "license": "MIT"
+}

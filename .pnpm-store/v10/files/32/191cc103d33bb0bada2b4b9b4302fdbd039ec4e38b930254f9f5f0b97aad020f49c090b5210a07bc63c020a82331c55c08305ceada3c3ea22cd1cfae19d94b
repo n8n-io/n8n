@@ -1,0 +1,88 @@
+{
+  "name": "css-functions-list",
+  "version": "3.2.3",
+  "description": "List of standard and browser specific CSS functions.",
+  "license": "MIT",
+  "author": "Ivan Nikolić <niksy5@gmail.com> (http://ivannikolic.com)",
+  "sideEffects": false,
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./esm/index.js",
+      "require": "./cjs/index.js"
+    },
+    "./index.json": {
+      "import": "./esm/index.json",
+      "require": "./cjs/index.json"
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "cjs/index.js",
+  "module": "esm/index.js",
+  "types": "esm/index.d.ts",
+  "directories": {
+    "test": "test"
+  },
+  "files": [
+    "cjs/",
+    "esm/",
+    "CHANGELOG.md",
+    "LICENSE.md",
+    "README.md"
+  ],
+  "scripts": {
+    "generate-list": "node generate-list.js",
+    "release": "np --no-release-draft",
+    "version": "if [ $(git rev-parse --abbrev-ref HEAD) == 'master' ]; then sed -i '' '/\\[unreleased\\]:/d' CHANGELOG.md && version-changelog CHANGELOG.md && changelog-verify CHANGELOG.md && git add CHANGELOG.md; else echo; fi",
+    "postpublish": "GITHUB_TOKEN=$GITHUB_RELEASE_TOKEN github-release-from-changelog",
+    "lint": "eslint '{index,lib/**/*,test/**/*,generate-list}.js'",
+    "test": "mocha 'test/**/*.js'",
+    "test:watch": "npm test -- --watch",
+    "build": "rollup --config rollup.config.js",
+    "module-check": "node -e 'require(\"css-functions-list\");' && node --input-type=module -e 'import \"css-functions-list\";'",
+    "prepublishOnly": "npm run build",
+    "lint:types": "tsc",
+    "prerelease": "npm run lint && npm run lint:types && npm run build && npm run module-check"
+  },
+  "devDependencies": {
+    "@types/jsdom": "^16.2.13",
+    "@types/mocha": "^9.0.0",
+    "@types/node": "^16.3.0",
+    "@types/node-fetch": "^2.5.12",
+    "changelog-verify": "^1.1.2",
+    "cpy": "^8.1.2",
+    "eslint": "^8.5.0",
+    "eslint-config-nitpick": "^11.1.0",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-prettier": "^4.0.0",
+    "execa": "^5.1.1",
+    "github-release-from-changelog": "^2.1.1",
+    "husky": "^4.3.0",
+    "isomorphic-unfetch": "^3.1.0",
+    "jsdom": "^17.0.0",
+    "lint-staged": "^10.4.2",
+    "mocha": "^10.2.0",
+    "np": "^7.6.0",
+    "prettier": "^2.4.0",
+    "rollup": "^2.32.1",
+    "typescript": "^4.3.5",
+    "version-changelog": "^3.1.1",
+    "write-json-file": "^4.3.0"
+  },
+  "engines": {
+    "node": ">=12 || >=16"
+  },
+  "keywords": [
+    "css",
+    "functions",
+    "list"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/niksy/css-functions-list.git"
+  },
+  "bugs": {
+    "url": "https://github.com/niksy/css-functions-list/issues"
+  },
+  "homepage": "https://github.com/niksy/css-functions-list#readme"
+}

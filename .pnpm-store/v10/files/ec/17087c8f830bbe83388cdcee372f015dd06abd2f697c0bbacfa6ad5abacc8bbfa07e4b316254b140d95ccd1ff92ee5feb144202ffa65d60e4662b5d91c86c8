@@ -1,0 +1,1 @@
+{"version":3,"file":"index.mjs","sources":["../../../../../packages/components/tree-v2/index.ts"],"sourcesContent":["import { withInstall } from '@element-plus/utils'\nimport TreeV2 from './src/tree.vue'\n\nexport const ElTreeV2 = withInstall(TreeV2)\nexport default ElTreeV2\n"],"names":[],"mappings":";;;;AAEY,MAAC,QAAQ,GAAG,WAAW,CAAC,MAAM;;;;"}

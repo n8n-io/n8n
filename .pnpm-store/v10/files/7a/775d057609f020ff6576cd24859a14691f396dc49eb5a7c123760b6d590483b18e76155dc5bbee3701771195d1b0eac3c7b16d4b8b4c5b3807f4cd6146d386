@@ -1,0 +1,63 @@
+{
+  "name": "@microsoft/agents-a365-tooling",
+  "version": "0.1.0-preview.113",
+  "description": "Agent 365 Tooling SDK for AI agents built with TypeScript/Node.js",
+  "main": "dist/cjs/index.js",
+  "module": "dist/esm/index.js",
+  "types": "dist/esm/index.d.ts",
+  "keywords": [
+    "ai",
+    "agents",
+    "azure",
+    "typescript"
+  ],
+  "author": "Microsoft Corporation",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/microsoft/Agent365-nodejs.git",
+    "directory": "packages/agents-a365-tooling"
+  },
+  "dependencies": {
+    "@microsoft/agents-a365-runtime": "0.1.0-preview.113",
+    "@microsoft/agents-hosting": "^1.1.0-alpha.85",
+    "@modelcontextprotocol/sdk": "^1.25.2",
+    "express": "^5.2.0",
+    "hono": "^4.11.7"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^20.17.0",
+    "@typescript-eslint/eslint-plugin": "^8.47.0",
+    "@typescript-eslint/parser": "^8.47.0",
+    "eslint": "^9.39.1",
+    "jest": "^30.2.0",
+    "rimraf": "^6.0.0",
+    "ts-jest": "^29.4.5",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.47.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE.md"
+  ],
+  "scripts": {
+    "build:cjs": "npx tsc --project tsconfig.cjs.json",
+    "build:esm": "npx tsc --project tsconfig.esm.json",
+    "build": "npm run build:cjs && npm run build:esm",
+    "build:watch": "npx tsc --watch",
+    "clean": "npx rimraf dist",
+    "test": "jest --passWithNoTests",
+    "test:watch": "jest --watch",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
+    "ci": "npm ci",
+    "pack": "node ../../copyFiles.js . && pnpm pack --pack-destination=../"
+  }
+}

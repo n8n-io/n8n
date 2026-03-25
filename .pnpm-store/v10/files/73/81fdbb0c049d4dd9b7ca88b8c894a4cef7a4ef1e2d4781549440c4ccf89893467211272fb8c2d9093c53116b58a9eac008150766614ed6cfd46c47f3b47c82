@@ -1,0 +1,77 @@
+{
+  "name": "epub2",
+  "version": "3.0.2",
+  "description": "Parse ePub electronic book files with Node.JS",
+  "keywords": [
+    "archive",
+    "async",
+    "book",
+    "books",
+    "chapter",
+    "comic",
+    "epub",
+    "epub-maker",
+    "epub-maker2",
+    "extract",
+    "file",
+    "image",
+    "manifest",
+    "metadata",
+    "mobile",
+    "node-novel",
+    "novel",
+    "parse",
+    "promise",
+    "raw",
+    "volume",
+    "zip"
+  ],
+  "homepage": "https://github.com/bluelovers/ws-epub/tree/master/packages/epub2#readme",
+  "bugs": {
+    "url": "https://github.com/bluelovers/ws-epub/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bluelovers/ws-epub.git",
+    "directory": "packages/epub2"
+  },
+  "license": "ISC",
+  "licenses": [
+    {
+      "type": "MIT",
+      "url": "http://github.com/julien-c/epub/blob/master/LICENSE"
+    }
+  ],
+  "author": "Andris Reinman",
+  "contributors": [
+    "andris <andris@node.ee>",
+    "Julien Chaumond <chaumond@gmail.com> (https://github.com/julien-c)"
+  ],
+  "main": "./index",
+  "typings": "./index.d.ts",
+  "directories": {
+    "lib": "lib",
+    "test": "test"
+  },
+  "scripts": {
+    "coverage": "yarn run test -- --coverage",
+    "test": "echo \"Error: no test specified\"",
+    "test:jest": "jest --passWithNoTests",
+    "test:jest:snapshot": "yarn run test:jest -- -u",
+    "test:snapshot": "yarn run test -- -u",
+    "test:tsd": "ynpx tsd",
+    "preversion": "yarn run test"
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.10",
+    "array-hyper-unique": "^2.1.4",
+    "bluebird": "^3.7.2",
+    "crlf-normalize": "^1.0.19",
+    "tslib": "^2.6.2",
+    "xml2js": "^0.6.2"
+  },
+  "engine": [
+    "node >=0.3.0"
+  ],
+  "gitHead": "d27ef52af34a27b1f18b4fc3a101850638c7bb38"
+}

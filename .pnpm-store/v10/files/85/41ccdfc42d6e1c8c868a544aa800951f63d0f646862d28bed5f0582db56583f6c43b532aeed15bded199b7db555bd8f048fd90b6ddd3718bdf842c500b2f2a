@@ -1,0 +1,35 @@
+{
+  "name": "aproba",
+  "version": "2.0.0",
+  "description": "A ridiculously light-weight argument validator (now browser friendly)",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "standard": "^11.0.1",
+    "tap": "^12.0.1"
+  },
+  "files": [
+    "index.js"
+  ],
+  "scripts": {
+    "pretest": "standard",
+    "test": "tap --100 -J test/*.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/iarna/aproba"
+  },
+  "keywords": [
+    "argument",
+    "validate"
+  ],
+  "author": "Rebecca Turner <me@re-becca.org>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/iarna/aproba/issues"
+  },
+  "homepage": "https://github.com/iarna/aproba"
+}

@@ -1,0 +1,1 @@
+{"version":3,"file":"stack.d.ts","sourceRoot":"","sources":["../../../src/streaming/stack.ts"],"names":[],"mappings":"AAAA,oBAAY,KAAK;IACf,WAAW,gBAAgB;IAC3B,UAAU,eAAe;IACzB,SAAS,cAAc;CACxB;AAED,oBAAY,SAAS;IACnB,IAAI,SAAS;IACb,MAAM,WAAW;IACjB,KAAK,UAAU;IACf,MAAM,WAAW;IACjB,YAAY,aAAa;CAC1B;AAED,wBAAgB,WAAW;;;WAahB,IAAI;eAOA,SAAS,YAAY,KAAK,GAAG,IAAI;qBAO3B,KAAK,GAAG,IAAI;EAMhC"}

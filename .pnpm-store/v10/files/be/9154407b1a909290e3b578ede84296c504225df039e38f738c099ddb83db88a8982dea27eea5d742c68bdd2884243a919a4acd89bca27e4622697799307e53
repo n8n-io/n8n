@@ -1,0 +1,101 @@
+{
+  "name": "@sentry-internal/replay",
+  "version": "10.36.0",
+  "description": "User replays for Sentry",
+  "main": "build/npm/cjs/index.js",
+  "module": "build/npm/esm/index.js",
+  "types": "build/npm/types/index.d.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    "./worker-bundler": {
+      "import": {
+        "types": "./build/npm/types/worker-bundler.d.ts",
+        "default": "./build/npm/esm/worker-bundler.js"
+      },
+      "require": {
+        "types": "./build/npm/types/worker-bundler.d.ts",
+        "default": "./build/npm/cjs/worker-bundler.js"
+      }
+    },
+    ".": {
+      "import": {
+        "types": "./build/npm/types/index.d.ts",
+        "default": "./build/npm/esm/index.js"
+      },
+      "require": {
+        "types": "./build/npm/types/index.d.ts",
+        "default": "./build/npm/cjs/index.js"
+      }
+    }
+  },
+  "typesVersions": {
+    "<5.0": {
+      "build/npm/types/index.d.ts": [
+        "build/npm/types-ts3.8/index.d.ts"
+      ]
+    }
+  },
+  "files": [
+    "/build/npm"
+  ],
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "run-p build:transpile build:types build:bundle",
+    "build:transpile": "rollup -c rollup.npm.config.mjs",
+    "build:bundle": "rollup -c rollup.bundle.config.mjs",
+    "build:dev": "run-p build:transpile build:types",
+    "build:types": "run-s build:types:core build:types:downlevel",
+    "build:types:core": "tsc -p tsconfig.types.json",
+    "build:types:downlevel": "yarn downlevel-dts build/npm/types build/npm/types-ts3.8 --to ts3.8",
+    "build:watch": "run-p build:transpile:watch build:bundle:watch build:types:watch",
+    "build:dev:watch": "run-p build:transpile:watch build:types:watch",
+    "build:transpile:watch": "yarn build:transpile --watch",
+    "build:bundle:watch": "yarn build:bundle --watch",
+    "build:types:watch": "tsc -p tsconfig.types.json --watch",
+    "build:tarball": "npm pack",
+    "circularDepCheck": "madge --circular src/index.ts",
+    "clean": "rimraf build sentry-replay-*.tgz",
+    "fix": "run-s fix:prettier fix:eslint",
+    "fix:eslint": "eslint . --format stylish --fix",
+    "fix:prettier": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+    "lint": "run-s lint:prettier lint:eslint",
+    "lint:eslint": "eslint . --format stylish",
+    "lint:prettier": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
+    "lint:es-compatibility": "es-check es2020 ./build/{bundles,npm/cjs}/*.js && es-check es2020 ./build/npm/esm/*.js --module",
+    "test": "vitest run",
+    "test:watch": "vitest --watch",
+    "yalc:publish": "yalc publish --push --sig"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/getsentry/sentry-javascript.git"
+  },
+  "author": "Sentry",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/getsentry/sentry-javascript/issues"
+  },
+  "homepage": "https://docs.sentry.io/platforms/javascript/session-replay/",
+  "devDependencies": {
+    "@babel/core": "^7.27.7",
+    "@sentry-internal/replay-worker": "10.36.0",
+    "@sentry-internal/rrweb": "2.40.0",
+    "@sentry-internal/rrweb-snapshot": "2.40.0",
+    "fflate": "0.8.2",
+    "jest-matcher-utils": "^29.0.0",
+    "jsdom-worker": "^0.3.0"
+  },
+  "dependencies": {
+    "@sentry-internal/browser-utils": "10.36.0",
+    "@sentry/core": "10.36.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "volta": {
+    "extends": "../../package.json"
+  }
+}

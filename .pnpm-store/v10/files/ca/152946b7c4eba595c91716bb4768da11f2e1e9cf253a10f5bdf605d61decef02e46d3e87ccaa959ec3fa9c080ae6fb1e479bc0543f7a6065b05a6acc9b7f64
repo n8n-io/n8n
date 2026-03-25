@@ -1,0 +1,65 @@
+{
+  "name": "@ts-graphviz/core",
+  "version": "2.0.7",
+  "description": "Graphviz Models for Object-Oriented Programming",
+  "keywords": [
+    "graphviz",
+    "dot"
+  ],
+  "homepage": "https://github.com/ts-graphviz/ts-graphviz#readme",
+  "bugs": {
+    "url": "https://github.com/ts-graphviz/ts-graphviz/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ts-graphviz/ts-graphviz.git",
+    "directory": "packages/core"
+  },
+  "funding": [
+    {
+      "type": "github",
+      "url": "https://github.com/sponsors/ts-graphviz"
+    },
+    {
+      "type": "opencollective",
+      "url": "https://opencollective.com/ts-graphviz"
+    }
+  ],
+  "license": "MIT",
+  "author": "Yuki Yamazaki <yuki@kamiazya.tech>",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./lib/core.d.ts",
+      "require": "./lib/core.cjs",
+      "default": "./lib/core.js"
+    },
+    "./register-default": {
+      "require": "./lib/register-default.cjs",
+      "default": "./lib/register-default.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "lib/core.cjs",
+  "module": "lib/core.js",
+  "types": "lib/core.d.ts",
+  "dependencies": {
+    "@ts-graphviz/ast": "^2.0.7",
+    "@ts-graphviz/common": "^2.1.5"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5",
+    "vite": "^5.4.8",
+    "vite-plugin-dts": "^4.2.1"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "vite build"
+  }
+}

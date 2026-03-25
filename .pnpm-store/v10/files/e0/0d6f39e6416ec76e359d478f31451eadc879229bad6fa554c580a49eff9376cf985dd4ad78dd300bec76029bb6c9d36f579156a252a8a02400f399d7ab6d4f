@@ -1,0 +1,1 @@
+{"version":3,"file":"multiTenantTokenCredentialOptions.d.ts","sourceRoot":"","sources":["../../../src/credentials/multiTenantTokenCredentialOptions.ts"],"names":[],"mappings":"AAGA,OAAO,KAAK,EAAE,sBAAsB,EAAE,MAAM,8BAA8B,CAAC;AAE3E;;GAEG;AACH,MAAM,WAAW,iCAAkC,SAAQ,sBAAsB;IAC/E;;;OAGG;IACH,0BAA0B,CAAC,EAAE,MAAM,EAAE,CAAC;CACvC"}

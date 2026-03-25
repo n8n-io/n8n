@@ -1,0 +1,33 @@
+{
+  "name": "decko",
+  "version": "1.2.0",
+  "main": "dist/decko.js",
+  "types": "dist/decko.d.ts",
+  "description": "A collection of the most useful property decorators.",
+  "scripts": {
+    "build": "mkdir -p dist && babel -f src/decko.js -s -o $npm_package_main < src/decko.js && npm run build:ts",
+    "build:ts": "cp src/decko.d.ts dist/",
+    "test": "npm run test:ts && eslint {src,tests}/**.js && mocha --compilers js:babel/register tests/**/*.js",
+    "test:ts": "tsc -p ./",
+    "style:ts": "tsfmt -r",
+    "prepublish": "npm run build",
+    "release": "npm run build && git commit -am $npm_package_version && git tag $npm_package_version && git push && git push --tags && npm publish"
+  },
+  "files": [
+    "src",
+	"dist"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/developit/decko.git"
+  },
+  "devDependencies": {
+    "babel": "^5.8.21",
+    "babel-eslint": "^4.1.6",
+    "chai": "^3.2.0",
+    "eslint": "^1.10.3",
+    "mocha": "^2.3.0",
+    "typescript": "2.1.6",
+    "typescript-formatter": "4.1.1"
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "name": "extended-eventsource",
+  "version": "1.7.0",
+  "author": "Lukas Reining",
+  "readme": "README.md",
+  "description": "Spec compliant EventSource implementation for browsers and Node.JS",
+  "homepage": "https://github.com/lukas-reining/eventsource",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lukas-reining/eventsource.git"
+  },
+  "license": "MIT",
+  "type": "module",
+  "keywords": [
+    "EventSource",
+    "Server Sent Events",
+    "server sent events",
+    "SSE",
+    "sse"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.esm.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "main": "dist/index.cjs",
+  "module": "dist/index.esm.js",
+  "browser": "dist/index.iife.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "test": "jest",
+    "clean": "rimraf dist",
+    "type-check": "tsc --noEmit",
+    "type-check:watch": "npm run type-check -- --watch",
+    "build:types": "tsc -p tsconfig.lib.json",
+    "build:js": "rollup -c",
+    "build": "npm run build:types && npm run build:js"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.23.0",
+    "@babel/core": "^7.23.2",
+    "@babel/preset-env": "^7.23.2",
+    "@babel/preset-typescript": "^7.23.2",
+    "@rollup/plugin-babel": "^6.0.4",
+    "@rollup/plugin-commonjs": "^25.0.7",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@types/jest": "^29.5.7",
+    "@typescript-eslint/eslint-plugin": "^6.10.0",
+    "@typescript-eslint/parser": "^6.10.0",
+    "core-js": "^3.33.2",
+    "eslint": "^8.53.0",
+    "jest": "^29.7.0",
+    "jest-environment-node": "^29.7.0",
+    "msw": "^2.0.3",
+    "prettier": "3.0.3",
+    "prettier-plugin-organize-imports": "^3.2.3",
+    "rimraf": "^5.0.5",
+    "rollup": "^4.3.0",
+    "ts-jest": "^29.1.1",
+    "typescript": "^5.2.2"
+  },
+  "msw": {
+    "workerDirectory": "public"
+  }
+}

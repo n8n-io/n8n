@@ -1,0 +1,1 @@
+{"version":3,"file":"InternalError.d.ts","sourceRoot":"","sources":["../src/InternalError.ts"],"names":[],"mappings":"AAGA;;;;;;;;GAQG;AACH,qBAAa,aAAc,SAAQ,KAAK;IACtC;;;;;;;OAOG;IACH,OAAc,eAAe,EAAE,OAAO,CAAQ;IAE9C;;OAEG;IACH,SAAgB,kBAAkB,EAAE,MAAM,CAAC;IAE3C;;;;;;OAMG;gBACgB,OAAO,EAAE,MAAM;IAiBlC,OAAO,CAAC,MAAM,CAAC,cAAc;IAO7B,gBAAgB;IACT,QAAQ,IAAI,MAAM;CAG1B"}

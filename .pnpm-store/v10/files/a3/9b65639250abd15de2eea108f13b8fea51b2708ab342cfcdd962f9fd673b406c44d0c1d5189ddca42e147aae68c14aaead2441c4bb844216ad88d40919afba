@@ -1,0 +1,16 @@
+import type { AgChartCaptionOptions } from './chart/chartOptions';
+export type Path = any;
+export type Group = any;
+export type TranslatableGroup = any;
+export type Scene = any;
+export type Marker = any;
+export type Shape = any;
+export type Rect = any;
+export type Arc = any;
+export type Line = any;
+export type Sector = any;
+export type RadialColumnShape = any;
+export type CategoryScale = any;
+export type LinearScale = any;
+export type BBox = any;
+export type Caption = AgChartCaptionOptions;

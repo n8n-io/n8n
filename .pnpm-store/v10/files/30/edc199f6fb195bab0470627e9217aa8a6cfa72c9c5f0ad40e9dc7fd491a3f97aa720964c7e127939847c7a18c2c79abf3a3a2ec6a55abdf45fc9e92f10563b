@@ -1,0 +1,38 @@
+{
+  "name": "md5",
+  "description": "js function for hashing messages with MD5",
+  "version": "2.3.0",
+  "author": "Paul Vorbach <paul@vorba.ch> (http://paul.vorba.ch)",
+  "contributors": [
+    "salba"
+  ],
+  "tags": [
+    "md5",
+    "hash",
+    "encryption",
+    "message digest"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/pvorb/node-md5.git"
+  },
+  "bugs": {
+    "url": "https://github.com/pvorb/node-md5/issues"
+  },
+  "main": "md5.js",
+  "scripts": {
+    "test": "mocha",
+    "webpack": "webpack -p"
+  },
+  "dependencies": {
+    "charenc": "0.0.2",
+    "crypt": "0.0.2",
+    "is-buffer": "~1.1.6"
+  },
+  "devDependencies": {
+    "mocha": "~2.3.4",
+    "webpack": "~2.4.1"
+  },
+  "optionalDependencies": {},
+  "license": "BSD-3-Clause"
+}

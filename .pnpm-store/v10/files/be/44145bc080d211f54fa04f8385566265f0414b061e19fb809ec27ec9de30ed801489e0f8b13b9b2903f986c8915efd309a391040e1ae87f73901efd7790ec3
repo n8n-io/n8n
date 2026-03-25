@@ -1,0 +1,99 @@
+{
+  "name": "cheerio",
+  "version": "1.0.0-rc.6",
+  "description": "Tiny, fast, and elegant implementation of core jQuery designed specifically for the server",
+  "author": "Matt Mueller <mattmuelle@gmail.com> (mat.io)",
+  "license": "MIT",
+  "keywords": [
+    "htmlparser",
+    "jquery",
+    "selector",
+    "scraper",
+    "parser",
+    "html"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/cheeriojs/cheerio.git"
+  },
+  "bugs": {
+    "url": "https://github.com/cheeriojs/cheerio/issues"
+  },
+  "homepage": "https://cheerio.js.org/",
+  "main": "./index.js",
+  "types": "types/index.d.ts",
+  "files": [
+    "index.js",
+    "types/index.d.ts",
+    "lib"
+  ],
+  "engines": {
+    "node": ">= 0.12"
+  },
+  "dependencies": {
+    "cheerio-select": "^1.3.0",
+    "dom-serializer": "^1.3.1",
+    "domhandler": "^4.1.0",
+    "htmlparser2": "^6.1.0",
+    "parse5": "^6.0.1",
+    "parse5-htmlparser2-tree-adapter": "^6.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^14.14.37",
+    "benchmark": "^2.1.4",
+    "clean-jsdoc-theme": "^3.1.2",
+    "eslint": "^7.23.0",
+    "eslint-config-prettier": "^8.1.0",
+    "eslint-plugin-jest": "^24.3.4",
+    "eslint-plugin-jsdoc": "^32.3.0",
+    "eslint-plugin-node": "^11.1.0",
+    "husky": "^4.3.8",
+    "jest": "^26.6.3",
+    "jquery": "^3.6.0",
+    "jsdoc": "^3.6.6",
+    "jsdom": "^16.5.2",
+    "lint-staged": "^10.5.4",
+    "prettier": "^2.2.1",
+    "prettier-plugin-jsdoc": "0.3.14",
+    "tsd": "^0.14.0"
+  },
+  "scripts": {
+    "test": "npm run lint && npm run test:jest && npm run test:types",
+    "test:jest": "jest",
+    "test:jest:cov": "npm run test:jest -- --coverage",
+    "test:types": "tsd",
+    "lint": "npm run lint:es && npm run lint:prettier",
+    "lint:es": "eslint --ignore-path .gitignore .",
+    "lint:prettier": "npm run format:prettier:raw -- --check",
+    "format": "npm run format:es && npm run format:prettier",
+    "format:es": "npm run lint:es -- --fix",
+    "format:prettier": "npm run format:prettier:raw -- --write",
+    "format:prettier:raw": "prettier \"**/*.{js,ts,md,json,yml}\" --ignore-path .gitignore",
+    "build:docs": "jsdoc --configure jsdoc-config.json",
+    "benchmark": "node benchmark/benchmark.js --regex \"^(?!.*highmem)\"",
+    "bench": "npm run benchmark",
+    "pre-commit": "lint-staged"
+  },
+  "prettier": {
+    "singleQuote": true,
+    "tabWidth": 2
+  },
+  "lint-staged": {
+    "*.js": [
+      "prettier --write",
+      "npm run test:lint -- --fix"
+    ],
+    "*.{json,md,ts,yml}": [
+      "prettier --write"
+    ]
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": [
+      "<rootDir>/test/**/*.js"
+    ],
+    "testPathIgnorePatterns": [
+      "/__fixtures__/"
+    ]
+  }
+}

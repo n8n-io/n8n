@@ -1,0 +1,34 @@
+{
+  "name": "node-abort-controller",
+  "version": "3.1.1",
+  "description": "AbortController for Node based on EventEmitter",
+  "main": "index.js",
+  "browser": "browser.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/southpolesteve/node-abort-controller.git"
+  },
+  "keywords": [
+    "AbortController",
+    "AbortSignal",
+    "fetch",
+    "polyfill"
+  ],
+  "author": "Steve Faulkner <southpolesteve@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/southpolesteve/node-abort-controller/issues"
+  },
+  "homepage": "https://github.com/southpolesteve/node-abort-controller#readme",
+  "devDependencies": {
+    "jest": "^27.2.4",
+    "node-fetch": "^2.6.5",
+    "whatwg-fetch": "^3.6.2"
+  },
+  "jest": {
+    "testEnvironment": "jsdom"
+  }
+}

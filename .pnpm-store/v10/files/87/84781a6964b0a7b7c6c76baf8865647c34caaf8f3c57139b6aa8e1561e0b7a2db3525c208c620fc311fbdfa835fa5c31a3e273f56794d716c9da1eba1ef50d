@@ -1,0 +1,1 @@
+{"version":3,"file":"disableKeepAlivePolicy.d.ts","sourceRoot":"","sources":["../../../src/policies/disableKeepAlivePolicy.ts"],"names":[],"mappings":"AAGA,OAAO,EACL,QAAQ,EACR,cAAc,EAIf,MAAM,2BAA2B,CAAC;AAEnC,eAAO,MAAM,0BAA0B,2BAA2B,CAAC;AAEnE,wBAAgB,4BAA4B,IAAI,cAAc,CAQ7D;AAED;;GAEG;AACH,wBAAgB,sCAAsC,CAAC,QAAQ,EAAE,QAAQ,GAAG,OAAO,CAElF"}

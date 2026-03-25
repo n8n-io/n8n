@@ -1,0 +1,87 @@
+{
+  "name": "@storybook/icons",
+  "version": "2.0.1",
+  "description": "Icon library from the Storybook team",
+  "homepage": "https://github.com/storybookjs/icons#readme",
+  "bugs": {
+    "url": "https://github.com/storybookjs/icons/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/storybookjs/icons.git"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "cdedreuille",
+    "email": "charles@chromatic.com"
+  },
+  "sideEffects": false,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "lint-staged": {
+    "*": "prettier --write"
+  },
+  "devDependencies": {
+    "@changesets/changelog-github": "^0.5.1",
+    "@changesets/cli": "^2.29.6",
+    "@chromatic-com/storybook": "^4.1.1",
+    "@storybook/addon-a11y": "^10.0.0",
+    "@storybook/addon-docs": "^10.0.0",
+    "@storybook/react-vite": "^10.0.0",
+    "@svgr/core": "5.5.0",
+    "@svgr/plugin-prettier": "^8.1.0",
+    "@svgr/plugin-svgo": "5.5.0",
+    "@types/node": "^22.12.0",
+    "@types/react": "^18.2.14",
+    "@types/react-dom": "^18.0.11",
+    "@vitejs/plugin-react": "^5.1.0",
+    "axios": "^1.13.2",
+    "chromatic": "^13.3.3",
+    "concurrently": "^9.2.1",
+    "dotenv": "^17.2.3",
+    "figma-api-exporter": "0.0.2",
+    "figma-js": "1.16.0",
+    "figma-transformer": "2.1.0",
+    "jiti": "^2.6.1",
+    "lint-staged": "^16.2.6",
+    "oxlint": "^1.28.0",
+    "picocolors": "^1.1.1",
+    "pkg-pr-new": "^0.0.57",
+    "prettier": "^3.6.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "storybook": "^10.0.0",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.3",
+    "vite": "^7.2.2"
+  },
+  "peerDependencies": {
+    "react": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0",
+    "react-dom": "^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
+  "scripts": {
+    "build": "tsup --onSuccess \"cp -a public/. dist/public\"",
+    "build-storybook": "storybook build",
+    "changeset": "changeset",
+    "chromatic": "npx chromatic --project-token=chpt_d0c5927e55681dd",
+    "dev": "concurrently  -n \"Build,SB\" \"pnpm build --watch\" \"pnpm storybook\" ",
+    "format": "prettier --write .",
+    "generate-icons": "jiti ./src/generate.ts",
+    "lint": "oxlint",
+    "release": "pnpm build && pnpm changeset publish",
+    "storybook": "storybook dev -p 6006",
+    "type-check": "tsc"
+  }
+}

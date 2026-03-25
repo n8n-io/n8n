@@ -1,0 +1,1 @@
+export * from "../../dist/document_loaders/fs/openai_whisper_audio.js";

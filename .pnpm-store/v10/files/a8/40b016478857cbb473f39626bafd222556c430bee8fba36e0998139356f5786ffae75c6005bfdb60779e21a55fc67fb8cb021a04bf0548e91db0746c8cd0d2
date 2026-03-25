@@ -1,0 +1,1 @@
+{"version":3,"file":"partial.js","sourceRoot":"","sources":["partial.ts"],"names":[],"mappings":"","sourcesContent":["\nexport type ITSPartialRecord<K extends keyof any, T> = {\n\t[P in K]?: T;\n};\n\nexport type ITSRequireRecord<K extends keyof any, T> = {\n\t[P in K]-?: T;\n};\n"]}

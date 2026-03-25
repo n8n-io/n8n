@@ -1,0 +1,71 @@
+{
+  "name": "@floating-ui/dom",
+  "version": "1.7.0",
+  "description": "Floating UI for the web",
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "./dist/floating-ui.dom.umd.js",
+  "module": "./dist/floating-ui.dom.esm.js",
+  "unpkg": "./dist/floating-ui.dom.umd.min.js",
+  "types": "./dist/floating-ui.dom.d.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "import": {
+        "types": "./dist/floating-ui.dom.d.mts",
+        "default": "./dist/floating-ui.dom.mjs"
+      },
+      "types": "./dist/floating-ui.dom.d.ts",
+      "module": "./dist/floating-ui.dom.esm.js",
+      "default": "./dist/floating-ui.dom.umd.js"
+    }
+  },
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "author": "atomiks",
+  "license": "MIT",
+  "bugs": "https://github.com/floating-ui/floating-ui",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/floating-ui/floating-ui.git",
+    "directory": "packages/dom"
+  },
+  "homepage": "https://floating-ui.com",
+  "keywords": [
+    "tooltip",
+    "popover",
+    "dropdown",
+    "menu",
+    "popup",
+    "positioning"
+  ],
+  "dependencies": {
+    "@floating-ui/core": "^1.7.0",
+    "@floating-ui/utils": "^0.2.9"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.19",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.21.1",
+    "config": "0.0.0"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "clean": "rimraf dist out-tsc test-results",
+    "dev": "vite",
+    "build": "rollup -c",
+    "build:api": "build-api --tsc tsconfig.lib.json",
+    "test": "vitest run",
+    "test:watch": "vitest watch",
+    "publint": "publint",
+    "playwright": "playwright test ./test/functional",
+    "typecheck": "tsc -b"
+  }
+}

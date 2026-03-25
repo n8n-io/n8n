@@ -1,0 +1,10 @@
+{
+	"$id": "/inference/schemas/video-classification/output.json",
+	"$schema": "http://json-schema.org/draft-06/schema#",
+	"description": "Outputs of inference for the Video Classification task",
+	"title": "VideoClassificationOutput",
+	"type": "array",
+	"items": {
+		"$ref": "/inference/schemas/common-definitions.json#/definitions/ClassificationOutput"
+	}
+}

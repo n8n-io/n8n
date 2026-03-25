@@ -1,0 +1,34 @@
+{
+  "name": "err-code",
+  "version": "2.0.3",
+  "description": "Create an error with a code",
+  "main": "index.js",
+  "scripts": {
+    "lint": "eslint '{*.js,test/**/*.js}' --ignore-pattern *.umd.js",
+    "test": "mocha --bail",
+    "browserify": "browserify -s err-code index.js > index.umd.js"
+  },
+  "bugs": {
+    "url": "https://github.com/IndigoUnited/js-err-code/issues/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/IndigoUnited/js-err-code.git"
+  },
+  "keywords": [
+    "error",
+    "err",
+    "code",
+    "properties",
+    "property"
+  ],
+  "author": "IndigoUnited <hello@indigounited.com> (http://indigounited.com)",
+  "license": "MIT",
+  "devDependencies": {
+    "@satazor/eslint-config": "^3.0.0",
+    "browserify": "^16.5.1",
+    "eslint": "^7.2.0",
+    "expect.js": "^0.3.1",
+    "mocha": "^8.0.1"
+  }
+}

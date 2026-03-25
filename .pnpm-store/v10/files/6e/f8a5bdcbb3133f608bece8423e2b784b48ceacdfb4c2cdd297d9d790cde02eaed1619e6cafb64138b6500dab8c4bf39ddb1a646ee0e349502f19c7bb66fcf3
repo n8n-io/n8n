@@ -1,0 +1,1 @@
+{"version":3,"file":"InitContext.d.ts","sourceRoot":"","sources":["../../../src/naa/InitContext.ts"],"names":[],"mappings":"AAKA,OAAO,EAAE,kBAAkB,EAAE,MAAM,yBAAyB,CAAC;AAC7D,OAAO,EAAE,cAAc,EAAE,MAAM,2BAA2B,CAAC;AAE3D,MAAM,WAAW,WAAW;IACxB,YAAY,CAAC,EAAE,kBAAkB,CAAC;IAClC,OAAO,EAAE,MAAM,CAAC;IAChB,UAAU,EAAE,MAAM,CAAC;IACnB,cAAc,CAAC,EAAE,cAAc,CAAC;CACnC"}

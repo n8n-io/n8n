@@ -1,0 +1,417 @@
+// Copyright 2020 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package google.cloud.secrets.v1beta1;
+
+import "google/api/annotations.proto";
+import "google/api/client.proto";
+import "google/api/field_behavior.proto";
+import "google/api/resource.proto";
+import "google/cloud/secrets/v1beta1/resources.proto";
+import "google/iam/v1/iam_policy.proto";
+import "google/iam/v1/policy.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/field_mask.proto";
+
+option cc_enable_arenas = true;
+option csharp_namespace = "Google.Cloud.SecretManager.V1Beta1";
+option go_package = "google.golang.org/genproto/googleapis/cloud/secretmanager/v1beta1;secretmanager";
+option java_multiple_files = true;
+option java_outer_classname = "ServiceProto";
+option java_package = "com.google.cloud.secretmanager.v1beta1";
+option objc_class_prefix = "GSM";
+option php_namespace = "Google\\Cloud\\SecretManager\\V1beta1";
+option ruby_package = "Google::Cloud::SecretManager::V1beta1";
+
+// Secret Manager Service
+//
+// Manages secrets and operations using those secrets. Implements a REST
+// model with the following objects:
+//
+// * [Secret][google.cloud.secrets.v1beta1.Secret]
+// * [SecretVersion][google.cloud.secrets.v1beta1.SecretVersion]
+service SecretManagerService {
+  option (google.api.default_host) = "secretmanager.googleapis.com";
+  option (google.api.oauth_scopes) = "https://www.googleapis.com/auth/cloud-platform";
+
+  // Lists [Secrets][google.cloud.secrets.v1beta1.Secret].
+  rpc ListSecrets(ListSecretsRequest) returns (ListSecretsResponse) {
+    option (google.api.http) = {
+      get: "/v1beta1/{parent=projects/*}/secrets"
+    };
+    option (google.api.method_signature) = "parent";
+  }
+
+  // Creates a new [Secret][google.cloud.secrets.v1beta1.Secret] containing no [SecretVersions][google.cloud.secrets.v1beta1.SecretVersion].
+  rpc CreateSecret(CreateSecretRequest) returns (Secret) {
+    option (google.api.http) = {
+      post: "/v1beta1/{parent=projects/*}/secrets"
+      body: "secret"
+    };
+    option (google.api.method_signature) = "parent,secret_id,secret";
+  }
+
+  // Creates a new [SecretVersion][google.cloud.secrets.v1beta1.SecretVersion] containing secret data and attaches
+  // it to an existing [Secret][google.cloud.secrets.v1beta1.Secret].
+  rpc AddSecretVersion(AddSecretVersionRequest) returns (SecretVersion) {
+    option (google.api.http) = {
+      post: "/v1beta1/{parent=projects/*/secrets/*}:addVersion"
+      body: "*"
+    };
+    option (google.api.method_signature) = "parent,payload";
+  }
+
+  // Gets metadata for a given [Secret][google.cloud.secrets.v1beta1.Secret].
+  rpc GetSecret(GetSecretRequest) returns (Secret) {
+    option (google.api.http) = {
+      get: "/v1beta1/{name=projects/*/secrets/*}"
+    };
+    option (google.api.method_signature) = "name";
+  }
+
+  // Updates metadata of an existing [Secret][google.cloud.secrets.v1beta1.Secret].
+  rpc UpdateSecret(UpdateSecretRequest) returns (Secret) {
+    option (google.api.http) = {
+      patch: "/v1beta1/{secret.name=projects/*/secrets/*}"
+      body: "secret"
+    };
+    option (google.api.method_signature) = "secret,update_mask";
+  }
+
+  // Deletes a [Secret][google.cloud.secrets.v1beta1.Secret].
+  rpc DeleteSecret(DeleteSecretRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/v1beta1/{name=projects/*/secrets/*}"
+    };
+    option (google.api.method_signature) = "name";
+  }
+
+  // Lists [SecretVersions][google.cloud.secrets.v1beta1.SecretVersion]. This call does not return secret
+  // data.
+  rpc ListSecretVersions(ListSecretVersionsRequest) returns (ListSecretVersionsResponse) {
+    option (google.api.http) = {
+      get: "/v1beta1/{parent=projects/*/secrets/*}/versions"
+    };
+    option (google.api.method_signature) = "parent";
+  }
+
+  // Gets metadata for a [SecretVersion][google.cloud.secrets.v1beta1.SecretVersion].
+  //
+  // `projects/*/secrets/*/versions/latest` is an alias to the `latest`
+  // [SecretVersion][google.cloud.secrets.v1beta1.SecretVersion].
+  rpc GetSecretVersion(GetSecretVersionRequest) returns (SecretVersion) {
+    option (google.api.http) = {
+      get: "/v1beta1/{name=projects/*/secrets/*/versions/*}"
+    };
+    option (google.api.method_signature) = "name";
+  }
+
+  // Accesses a [SecretVersion][google.cloud.secrets.v1beta1.SecretVersion]. This call returns the secret data.
+  //
+  // `projects/*/secrets/*/versions/latest` is an alias to the `latest`
+  // [SecretVersion][google.cloud.secrets.v1beta1.SecretVersion].
+  rpc AccessSecretVersion(AccessSecretVersionRequest) returns (AccessSecretVersionResponse) {
+    option (google.api.http) = {
+      get: "/v1beta1/{name=projects/*/secrets/*/versions/*}:access"
+    };
+    option (google.api.method_signature) = "name";
+  }
+
+  // Disables a [SecretVersion][google.cloud.secrets.v1beta1.SecretVersion].
+  //
+  // Sets the [state][google.cloud.secrets.v1beta1.SecretVersion.state] of the [SecretVersion][google.cloud.secrets.v1beta1.SecretVersion] to
+  // [DISABLED][google.cloud.secrets.v1beta1.SecretVersion.State.DISABLED].
+  rpc DisableSecretVersion(DisableSecretVersionRequest) returns (SecretVersion) {
+    option (google.api.http) = {
+      post: "/v1beta1/{name=projects/*/secrets/*/versions/*}:disable"
+      body: "*"
+    };
+    option (google.api.method_signature) = "name";
+  }
+
+  // Enables a [SecretVersion][google.cloud.secrets.v1beta1.SecretVersion].
+  //
+  // Sets the [state][google.cloud.secrets.v1beta1.SecretVersion.state] of the [SecretVersion][google.cloud.secrets.v1beta1.SecretVersion] to
+  // [ENABLED][google.cloud.secrets.v1beta1.SecretVersion.State.ENABLED].
+  rpc EnableSecretVersion(EnableSecretVersionRequest) returns (SecretVersion) {
+    option (google.api.http) = {
+      post: "/v1beta1/{name=projects/*/secrets/*/versions/*}:enable"
+      body: "*"
+    };
+    option (google.api.method_signature) = "name";
+  }
+
+  // Destroys a [SecretVersion][google.cloud.secrets.v1beta1.SecretVersion].
+  //
+  // Sets the [state][google.cloud.secrets.v1beta1.SecretVersion.state] of the [SecretVersion][google.cloud.secrets.v1beta1.SecretVersion] to
+  // [DESTROYED][google.cloud.secrets.v1beta1.SecretVersion.State.DESTROYED] and irrevocably destroys the
+  // secret data.
+  rpc DestroySecretVersion(DestroySecretVersionRequest) returns (SecretVersion) {
+    option (google.api.http) = {
+      post: "/v1beta1/{name=projects/*/secrets/*/versions/*}:destroy"
+      body: "*"
+    };
+    option (google.api.method_signature) = "name";
+  }
+
+  // Sets the access control policy on the specified secret. Replaces any
+  // existing policy.
+  //
+  // Permissions on [SecretVersions][google.cloud.secrets.v1beta1.SecretVersion] are enforced according
+  // to the policy set on the associated [Secret][google.cloud.secrets.v1beta1.Secret].
+  rpc SetIamPolicy(google.iam.v1.SetIamPolicyRequest) returns (google.iam.v1.Policy) {
+    option (google.api.http) = {
+      post: "/v1beta1/{resource=projects/*/secrets/*}:setIamPolicy"
+      body: "*"
+    };
+  }
+
+  // Gets the access control policy for a secret.
+  // Returns empty policy if the secret exists and does not have a policy set.
+  rpc GetIamPolicy(google.iam.v1.GetIamPolicyRequest) returns (google.iam.v1.Policy) {
+    option (google.api.http) = {
+      get: "/v1beta1/{resource=projects/*/secrets/*}:getIamPolicy"
+    };
+  }
+
+  // Returns permissions that a caller has for the specified secret.
+  // If the secret does not exist, this call returns an empty set of
+  // permissions, not a NOT_FOUND error.
+  //
+  // Note: This operation is designed to be used for building permission-aware
+  // UIs and command-line tools, not for authorization checking. This operation
+  // may "fail open" without warning.
+  rpc TestIamPermissions(google.iam.v1.TestIamPermissionsRequest) returns (google.iam.v1.TestIamPermissionsResponse) {
+    option (google.api.http) = {
+      post: "/v1beta1/{resource=projects/*/secrets/*}:testIamPermissions"
+      body: "*"
+    };
+  }
+}
+
+// Request message for [SecretManagerService.ListSecrets][google.cloud.secrets.v1beta1.SecretManagerService.ListSecrets].
+message ListSecretsRequest {
+  // Required. The resource name of the project associated with the
+  // [Secrets][google.cloud.secrets.v1beta1.Secret], in the format `projects/*`.
+  string parent = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "cloudresourcemanager.googleapis.com/Project"
+    }
+  ];
+
+  // Optional. The maximum number of results to be returned in a single page. If
+  // set to 0, the server decides the number of results to return. If the
+  // number is greater than 25000, it is capped at 25000.
+  int32 page_size = 2 [(google.api.field_behavior) = OPTIONAL];
+
+  // Optional. Pagination token, returned earlier via
+  // [ListSecretsResponse.next_page_token][google.cloud.secrets.v1beta1.ListSecretsResponse.next_page_token].
+  string page_token = 3 [(google.api.field_behavior) = OPTIONAL];
+}
+
+// Response message for [SecretManagerService.ListSecrets][google.cloud.secrets.v1beta1.SecretManagerService.ListSecrets].
+message ListSecretsResponse {
+  // The list of [Secrets][google.cloud.secrets.v1beta1.Secret] sorted in reverse by create_time (newest
+  // first).
+  repeated Secret secrets = 1;
+
+  // A token to retrieve the next page of results. Pass this value in
+  // [ListSecretsRequest.page_token][google.cloud.secrets.v1beta1.ListSecretsRequest.page_token] to retrieve the next page.
+  string next_page_token = 2;
+
+  // The total number of [Secrets][google.cloud.secrets.v1beta1.Secret].
+  int32 total_size = 3;
+}
+
+// Request message for [SecretManagerService.CreateSecret][google.cloud.secrets.v1beta1.SecretManagerService.CreateSecret].
+message CreateSecretRequest {
+  // Required. The resource name of the project to associate with the
+  // [Secret][google.cloud.secrets.v1beta1.Secret], in the format `projects/*`.
+  string parent = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "cloudresourcemanager.googleapis.com/Project"
+    }
+  ];
+
+  // Required. This must be unique within the project.
+  //
+  // A secret ID is a string with a maximum length of 255 characters and can
+  // contain uppercase and lowercase letters, numerals, and the hyphen (`-`) and
+  // underscore (`_`) characters.
+  string secret_id = 2 [(google.api.field_behavior) = REQUIRED];
+
+  // Required. A [Secret][google.cloud.secrets.v1beta1.Secret] with initial field values.
+  Secret secret = 3 [(google.api.field_behavior) = REQUIRED];
+}
+
+// Request message for [SecretManagerService.AddSecretVersion][google.cloud.secrets.v1beta1.SecretManagerService.AddSecretVersion].
+message AddSecretVersionRequest {
+  // Required. The resource name of the [Secret][google.cloud.secrets.v1beta1.Secret] to associate with the
+  // [SecretVersion][google.cloud.secrets.v1beta1.SecretVersion] in the format `projects/*/secrets/*`.
+  string parent = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "secretmanager.googleapis.com/Secret"
+    }
+  ];
+
+  // Required. The secret payload of the [SecretVersion][google.cloud.secrets.v1beta1.SecretVersion].
+  SecretPayload payload = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+// Request message for [SecretManagerService.GetSecret][google.cloud.secrets.v1beta1.SecretManagerService.GetSecret].
+message GetSecretRequest {
+  // Required. The resource name of the [Secret][google.cloud.secrets.v1beta1.Secret], in the format `projects/*/secrets/*`.
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "secretmanager.googleapis.com/Secret"
+    }
+  ];
+}
+
+// Request message for [SecretManagerService.ListSecretVersions][google.cloud.secrets.v1beta1.SecretManagerService.ListSecretVersions].
+message ListSecretVersionsRequest {
+  // Required. The resource name of the [Secret][google.cloud.secrets.v1beta1.Secret] associated with the
+  // [SecretVersions][google.cloud.secrets.v1beta1.SecretVersion] to list, in the format
+  // `projects/*/secrets/*`.
+  string parent = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "secretmanager.googleapis.com/Secret"
+    }
+  ];
+
+  // Optional. The maximum number of results to be returned in a single page. If
+  // set to 0, the server decides the number of results to return. If the
+  // number is greater than 25000, it is capped at 25000.
+  int32 page_size = 2 [(google.api.field_behavior) = OPTIONAL];
+
+  // Optional. Pagination token, returned earlier via
+  // ListSecretVersionsResponse.next_page_token][].
+  string page_token = 3 [(google.api.field_behavior) = OPTIONAL];
+}
+
+// Response message for [SecretManagerService.ListSecretVersions][google.cloud.secrets.v1beta1.SecretManagerService.ListSecretVersions].
+message ListSecretVersionsResponse {
+  // The list of [SecretVersions][google.cloud.secrets.v1beta1.SecretVersion] sorted in reverse by
+  // create_time (newest first).
+  repeated SecretVersion versions = 1;
+
+  // A token to retrieve the next page of results. Pass this value in
+  // [ListSecretVersionsRequest.page_token][google.cloud.secrets.v1beta1.ListSecretVersionsRequest.page_token] to retrieve the next page.
+  string next_page_token = 2;
+
+  // The total number of [SecretVersions][google.cloud.secrets.v1beta1.SecretVersion].
+  int32 total_size = 3;
+}
+
+// Request message for [SecretManagerService.GetSecretVersion][google.cloud.secrets.v1beta1.SecretManagerService.GetSecretVersion].
+message GetSecretVersionRequest {
+  // Required. The resource name of the [SecretVersion][google.cloud.secrets.v1beta1.SecretVersion] in the format
+  // `projects/*/secrets/*/versions/*`.
+  // `projects/*/secrets/*/versions/latest` is an alias to the `latest`
+  // [SecretVersion][google.cloud.secrets.v1beta1.SecretVersion].
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "secretmanager.googleapis.com/SecretVersion"
+    }
+  ];
+}
+
+// Request message for [SecretManagerService.UpdateSecret][google.cloud.secrets.v1beta1.SecretManagerService.UpdateSecret].
+message UpdateSecretRequest {
+  // Required. [Secret][google.cloud.secrets.v1beta1.Secret] with updated field values.
+  Secret secret = 1 [(google.api.field_behavior) = REQUIRED];
+
+  // Required. Specifies the fields to be updated.
+  google.protobuf.FieldMask update_mask = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+// Request message for [SecretManagerService.AccessSecretVersion][google.cloud.secrets.v1beta1.SecretManagerService.AccessSecretVersion].
+message AccessSecretVersionRequest {
+  // Required. The resource name of the [SecretVersion][google.cloud.secrets.v1beta1.SecretVersion] in the format
+  // `projects/*/secrets/*/versions/*`.
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "secretmanager.googleapis.com/SecretVersion"
+    }
+  ];
+}
+
+// Response message for [SecretManagerService.AccessSecretVersion][google.cloud.secrets.v1beta1.SecretManagerService.AccessSecretVersion].
+message AccessSecretVersionResponse {
+  // The resource name of the [SecretVersion][google.cloud.secrets.v1beta1.SecretVersion] in the format
+  // `projects/*/secrets/*/versions/*`.
+  string name = 1 [(google.api.resource_reference) = {
+                     type: "secretmanager.googleapis.com/SecretVersion"
+                   }];
+
+  // Secret payload
+  SecretPayload payload = 2;
+}
+
+// Request message for [SecretManagerService.DeleteSecret][google.cloud.secrets.v1beta1.SecretManagerService.DeleteSecret].
+message DeleteSecretRequest {
+  // Required. The resource name of the [Secret][google.cloud.secrets.v1beta1.Secret] to delete in the format
+  // `projects/*/secrets/*`.
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "secretmanager.googleapis.com/Secret"
+    }
+  ];
+}
+
+// Request message for [SecretManagerService.DisableSecretVersion][google.cloud.secrets.v1beta1.SecretManagerService.DisableSecretVersion].
+message DisableSecretVersionRequest {
+  // Required. The resource name of the [SecretVersion][google.cloud.secrets.v1beta1.SecretVersion] to disable in the format
+  // `projects/*/secrets/*/versions/*`.
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "secretmanager.googleapis.com/SecretVersion"
+    }
+  ];
+}
+
+// Request message for [SecretManagerService.EnableSecretVersion][google.cloud.secrets.v1beta1.SecretManagerService.EnableSecretVersion].
+message EnableSecretVersionRequest {
+  // Required. The resource name of the [SecretVersion][google.cloud.secrets.v1beta1.SecretVersion] to enable in the format
+  // `projects/*/secrets/*/versions/*`.
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "secretmanager.googleapis.com/SecretVersion"
+    }
+  ];
+}
+
+// Request message for [SecretManagerService.DestroySecretVersion][google.cloud.secrets.v1beta1.SecretManagerService.DestroySecretVersion].
+message DestroySecretVersionRequest {
+  // Required. The resource name of the [SecretVersion][google.cloud.secrets.v1beta1.SecretVersion] to destroy in the format
+  // `projects/*/secrets/*/versions/*`.
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {
+      type: "secretmanager.googleapis.com/SecretVersion"
+    }
+  ];
+}

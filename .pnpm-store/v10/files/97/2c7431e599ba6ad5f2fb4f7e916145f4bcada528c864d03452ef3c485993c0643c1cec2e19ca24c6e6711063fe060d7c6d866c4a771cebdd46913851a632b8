@@ -1,0 +1,4945 @@
+{
+  "nested": {
+    "google": {
+      "nested": {
+        "cloud": {
+          "nested": {
+            "secretmanager": {
+              "nested": {
+                "v1": {
+                  "options": {
+                    "cc_enable_arenas": true,
+                    "csharp_namespace": "Google.Cloud.SecretManager.V1",
+                    "go_package": "cloud.google.com/go/secretmanager/apiv1/secretmanagerpb;secretmanagerpb",
+                    "java_multiple_files": true,
+                    "java_outer_classname": "ServiceProto",
+                    "java_package": "com.google.cloud.secretmanager.v1",
+                    "objc_class_prefix": "GSM",
+                    "php_namespace": "Google\\Cloud\\SecretManager\\V1",
+                    "ruby_package": "Google::Cloud::SecretManager::V1"
+                  },
+                  "nested": {
+                    "Secret": {
+                      "options": {
+                        "(google.api.resource).type": "secretmanager.googleapis.com/Secret",
+                        "(google.api.resource).pattern": "projects/{project}/locations/{location}/secrets/{secret}",
+                        "(google.api.resource).plural": "secrets",
+                        "(google.api.resource).singular": "secret"
+                      },
+                      "oneofs": {
+                        "expiration": {
+                          "oneof": [
+                            "expireTime",
+                            "ttl"
+                          ]
+                        }
+                      },
+                      "fields": {
+                        "name": {
+                          "type": "string",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "OUTPUT_ONLY"
+                          }
+                        },
+                        "replication": {
+                          "type": "Replication",
+                          "id": 2,
+                          "options": {
+                            "(google.api.field_behavior)": "OPTIONAL"
+                          }
+                        },
+                        "createTime": {
+                          "type": "google.protobuf.Timestamp",
+                          "id": 3,
+                          "options": {
+                            "(google.api.field_behavior)": "OUTPUT_ONLY"
+                          }
+                        },
+                        "labels": {
+                          "keyType": "string",
+                          "type": "string",
+                          "id": 4
+                        },
+                        "topics": {
+                          "rule": "repeated",
+                          "type": "Topic",
+                          "id": 5,
+                          "options": {
+                            "(google.api.field_behavior)": "OPTIONAL"
+                          }
+                        },
+                        "expireTime": {
+                          "type": "google.protobuf.Timestamp",
+                          "id": 6,
+                          "options": {
+                            "(google.api.field_behavior)": "OPTIONAL"
+                          }
+                        },
+                        "ttl": {
+                          "type": "google.protobuf.Duration",
+                          "id": 7,
+                          "options": {
+                            "(google.api.field_behavior)": "INPUT_ONLY"
+                          }
+                        },
+                        "etag": {
+                          "type": "string",
+                          "id": 8,
+                          "options": {
+                            "(google.api.field_behavior)": "OPTIONAL"
+                          }
+                        },
+                        "rotation": {
+                          "type": "Rotation",
+                          "id": 9,
+                          "options": {
+                            "(google.api.field_behavior)": "OPTIONAL"
+                          }
+                        },
+                        "versionAliases": {
+                          "keyType": "string",
+                          "type": "int64",
+                          "id": 11,
+                          "options": {
+                            "(google.api.field_behavior)": "OPTIONAL"
+                          }
+                        },
+                        "annotations": {
+                          "keyType": "string",
+                          "type": "string",
+                          "id": 13,
+                          "options": {
+                            "(google.api.field_behavior)": "OPTIONAL"
+                          }
+                        },
+                        "versionDestroyTtl": {
+                          "type": "google.protobuf.Duration",
+                          "id": 14,
+                          "options": {
+                            "(google.api.field_behavior)": "OPTIONAL"
+                          }
+                        },
+                        "customerManagedEncryption": {
+                          "type": "CustomerManagedEncryption",
+                          "id": 15,
+                          "options": {
+                            "(google.api.field_behavior)": "OPTIONAL"
+                          }
+                        }
+                      }
+                    },
+                    "SecretVersion": {
+                      "options": {
+                        "(google.api.resource).type": "secretmanager.googleapis.com/SecretVersion",
+                        "(google.api.resource).pattern": "projects/{project}/locations/{location}/secrets/{secret}/versions/{secret_version}",
+                        "(google.api.resource).plural": "secretVersions",
+                        "(google.api.resource).singular": "secretVersion"
+                      },
+                      "fields": {
+                        "name": {
+                          "type": "string",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "OUTPUT_ONLY"
+                          }
+                        },
+                        "createTime": {
+                          "type": "google.protobuf.Timestamp",
+                          "id": 2,
+                          "options": {
+                            "(google.api.field_behavior)": "OUTPUT_ONLY"
+                          }
+                        },
+                        "destroyTime": {
+                          "type": "google.protobuf.Timestamp",
+                          "id": 3,
+                          "options": {
+                            "(google.api.field_behavior)": "OUTPUT_ONLY"
+                          }
+                        },
+                        "state": {
+                          "type": "State",
+                          "id": 4,
+                          "options": {
+                            "(google.api.field_behavior)": "OUTPUT_ONLY"
+                          }
+                        },
+                        "replicationStatus": {
+                          "type": "ReplicationStatus",
+                          "id": 5
+                        },
+                        "etag": {
+                          "type": "string",
+                          "id": 6,
+                          "options": {
+                            "(google.api.field_behavior)": "OUTPUT_ONLY"
+                          }
+                        },
+                        "clientSpecifiedPayloadChecksum": {
+                          "type": "bool",
+                          "id": 7,
+                          "options": {
+                            "(google.api.field_behavior)": "OUTPUT_ONLY"
+                          }
+                        },
+                        "scheduledDestroyTime": {
+                          "type": "google.protobuf.Timestamp",
+                          "id": 8,
+                          "options": {
+                            "(google.api.field_behavior)": "OUTPUT_ONLY"
+                          }
+                        },
+                        "customerManagedEncryption": {
+                          "type": "CustomerManagedEncryptionStatus",
+                          "id": 9,
+                          "options": {
+                            "(google.api.field_behavior)": "OUTPUT_ONLY"
+                          }
+                        }
+                      },
+                      "nested": {
+                        "State": {
+                          "values": {
+                            "STATE_UNSPECIFIED": 0,
+                            "ENABLED": 1,
+                            "DISABLED": 2,
+                            "DESTROYED": 3
+                          }
+                        }
+                      }
+                    },
+                    "Replication": {
+                      "oneofs": {
+                        "replication": {
+                          "oneof": [
+                            "automatic",
+                            "userManaged"
+                          ]
+                        }
+                      },
+                      "fields": {
+                        "automatic": {
+                          "type": "Automatic",
+                          "id": 1
+                        },
+                        "userManaged": {
+                          "type": "UserManaged",
+                          "id": 2
+                        }
+                      },
+                      "nested": {
+                        "Automatic": {
+                          "fields": {
+                            "customerManagedEncryption": {
+                              "type": "CustomerManagedEncryption",
+                              "id": 1,
+                              "options": {
+                                "(google.api.field_behavior)": "OPTIONAL"
+                              }
+                            }
+                          }
+                        },
+                        "UserManaged": {
+                          "fields": {
+                            "replicas": {
+                              "rule": "repeated",
+                              "type": "Replica",
+                              "id": 1,
+                              "options": {
+                                "(google.api.field_behavior)": "REQUIRED"
+                              }
+                            }
+                          },
+                          "nested": {
+                            "Replica": {
+                              "fields": {
+                                "location": {
+                                  "type": "string",
+                                  "id": 1
+                                },
+                                "customerManagedEncryption": {
+                                  "type": "CustomerManagedEncryption",
+                                  "id": 2,
+                                  "options": {
+                                    "(google.api.field_behavior)": "OPTIONAL"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "CustomerManagedEncryption": {
+                      "fields": {
+                        "kmsKeyName": {
+                          "type": "string",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED"
+                          }
+                        }
+                      }
+                    },
+                    "ReplicationStatus": {
+                      "oneofs": {
+                        "replicationStatus": {
+                          "oneof": [
+                            "automatic",
+                            "userManaged"
+                          ]
+                        }
+                      },
+                      "fields": {
+                        "automatic": {
+                          "type": "AutomaticStatus",
+                          "id": 1
+                        },
+                        "userManaged": {
+                          "type": "UserManagedStatus",
+                          "id": 2
+                        }
+                      },
+                      "nested": {
+                        "AutomaticStatus": {
+                          "fields": {
+                            "customerManagedEncryption": {
+                              "type": "CustomerManagedEncryptionStatus",
+                              "id": 1,
+                              "options": {
+                                "(google.api.field_behavior)": "OUTPUT_ONLY"
+                              }
+                            }
+                          }
+                        },
+                        "UserManagedStatus": {
+                          "fields": {
+                            "replicas": {
+                              "rule": "repeated",
+                              "type": "ReplicaStatus",
+                              "id": 1,
+                              "options": {
+                                "(google.api.field_behavior)": "OUTPUT_ONLY"
+                              }
+                            }
+                          },
+                          "nested": {
+                            "ReplicaStatus": {
+                              "fields": {
+                                "location": {
+                                  "type": "string",
+                                  "id": 1,
+                                  "options": {
+                                    "(google.api.field_behavior)": "OUTPUT_ONLY"
+                                  }
+                                },
+                                "customerManagedEncryption": {
+                                  "type": "CustomerManagedEncryptionStatus",
+                                  "id": 2,
+                                  "options": {
+                                    "(google.api.field_behavior)": "OUTPUT_ONLY"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "CustomerManagedEncryptionStatus": {
+                      "fields": {
+                        "kmsKeyVersionName": {
+                          "type": "string",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED"
+                          }
+                        }
+                      }
+                    },
+                    "Topic": {
+                      "options": {
+                        "(google.api.resource).type": "pubsub.googleapis.com/Topic",
+                        "(google.api.resource).pattern": "projects/{project}/topics/{topic}"
+                      },
+                      "fields": {
+                        "name": {
+                          "type": "string",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED"
+                          }
+                        }
+                      }
+                    },
+                    "Rotation": {
+                      "fields": {
+                        "nextRotationTime": {
+                          "type": "google.protobuf.Timestamp",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "OPTIONAL"
+                          }
+                        },
+                        "rotationPeriod": {
+                          "type": "google.protobuf.Duration",
+                          "id": 2,
+                          "options": {
+                            "(google.api.field_behavior)": "INPUT_ONLY"
+                          }
+                        }
+                      }
+                    },
+                    "SecretPayload": {
+                      "oneofs": {
+                        "_dataCrc32c": {
+                          "oneof": [
+                            "dataCrc32c"
+                          ]
+                        }
+                      },
+                      "fields": {
+                        "data": {
+                          "type": "bytes",
+                          "id": 1
+                        },
+                        "dataCrc32c": {
+                          "type": "int64",
+                          "id": 2,
+                          "options": {
+                            "(google.api.field_behavior)": "OPTIONAL",
+                            "proto3_optional": true
+                          }
+                        }
+                      }
+                    },
+                    "SecretManagerService": {
+                      "options": {
+                        "(google.api.default_host)": "secretmanager.googleapis.com",
+                        "(google.api.oauth_scopes)": "https://www.googleapis.com/auth/cloud-platform"
+                      },
+                      "methods": {
+                        "ListSecrets": {
+                          "requestType": "ListSecretsRequest",
+                          "responseType": "ListSecretsResponse",
+                          "options": {
+                            "(google.api.http).get": "/v1/{parent=projects/*}/secrets",
+                            "(google.api.http).additional_bindings.get": "/v1/{parent=projects/*/locations/*}/secrets",
+                            "(google.api.method_signature)": "parent"
+                          },
+                          "parsedOptions": [
+                            {
+                              "(google.api.http)": {
+                                "get": "/v1/{parent=projects/*}/secrets",
+                                "additional_bindings": {
+                                  "get": "/v1/{parent=projects/*/locations/*}/secrets"
+                                }
+                              }
+                            },
+                            {
+                              "(google.api.method_signature)": "parent"
+                            }
+                          ]
+                        },
+                        "CreateSecret": {
+                          "requestType": "CreateSecretRequest",
+                          "responseType": "Secret",
+                          "options": {
+                            "(google.api.http).post": "/v1/{parent=projects/*}/secrets",
+                            "(google.api.http).body": "secret",
+                            "(google.api.http).additional_bindings.post": "/v1/{parent=projects/*/locations/*}/secrets",
+                            "(google.api.http).additional_bindings.body": "secret",
+                            "(google.api.method_signature)": "parent,secret_id,secret"
+                          },
+                          "parsedOptions": [
+                            {
+                              "(google.api.http)": {
+                                "post": "/v1/{parent=projects/*}/secrets",
+                                "body": "secret",
+                                "additional_bindings": {
+                                  "post": "/v1/{parent=projects/*/locations/*}/secrets",
+                                  "body": "secret"
+                                }
+                              }
+                            },
+                            {
+                              "(google.api.method_signature)": "parent,secret_id,secret"
+                            }
+                          ]
+                        },
+                        "AddSecretVersion": {
+                          "requestType": "AddSecretVersionRequest",
+                          "responseType": "SecretVersion",
+                          "options": {
+                            "(google.api.http).post": "/v1/{parent=projects/*/secrets/*}:addVersion",
+                            "(google.api.http).body": "*",
+                            "(google.api.http).additional_bindings.post": "/v1/{parent=projects/*/locations/*/secrets/*}:addVersion",
+                            "(google.api.http).additional_bindings.body": "*",
+                            "(google.api.method_signature)": "parent,payload"
+                          },
+                          "parsedOptions": [
+                            {
+                              "(google.api.http)": {
+                                "post": "/v1/{parent=projects/*/secrets/*}:addVersion",
+                                "body": "*",
+                                "additional_bindings": {
+                                  "post": "/v1/{parent=projects/*/locations/*/secrets/*}:addVersion",
+                                  "body": "*"
+                                }
+                              }
+                            },
+                            {
+                              "(google.api.method_signature)": "parent,payload"
+                            }
+                          ]
+                        },
+                        "GetSecret": {
+                          "requestType": "GetSecretRequest",
+                          "responseType": "Secret",
+                          "options": {
+                            "(google.api.http).get": "/v1/{name=projects/*/secrets/*}",
+                            "(google.api.http).additional_bindings.get": "/v1/{name=projects/*/locations/*/secrets/*}",
+                            "(google.api.method_signature)": "name"
+                          },
+                          "parsedOptions": [
+                            {
+                              "(google.api.http)": {
+                                "get": "/v1/{name=projects/*/secrets/*}",
+                                "additional_bindings": {
+                                  "get": "/v1/{name=projects/*/locations/*/secrets/*}"
+                                }
+                              }
+                            },
+                            {
+                              "(google.api.method_signature)": "name"
+                            }
+                          ]
+                        },
+                        "UpdateSecret": {
+                          "requestType": "UpdateSecretRequest",
+                          "responseType": "Secret",
+                          "options": {
+                            "(google.api.http).patch": "/v1/{secret.name=projects/*/secrets/*}",
+                            "(google.api.http).body": "secret",
+                            "(google.api.http).additional_bindings.patch": "/v1/{secret.name=projects/*/locations/*/secrets/*}",
+                            "(google.api.http).additional_bindings.body": "secret",
+                            "(google.api.method_signature)": "secret,update_mask"
+                          },
+                          "parsedOptions": [
+                            {
+                              "(google.api.http)": {
+                                "patch": "/v1/{secret.name=projects/*/secrets/*}",
+                                "body": "secret",
+                                "additional_bindings": {
+                                  "patch": "/v1/{secret.name=projects/*/locations/*/secrets/*}",
+                                  "body": "secret"
+                                }
+                              }
+                            },
+                            {
+                              "(google.api.method_signature)": "secret,update_mask"
+                            }
+                          ]
+                        },
+                        "DeleteSecret": {
+                          "requestType": "DeleteSecretRequest",
+                          "responseType": "google.protobuf.Empty",
+                          "options": {
+                            "(google.api.http).delete": "/v1/{name=projects/*/secrets/*}",
+                            "(google.api.http).additional_bindings.delete": "/v1/{name=projects/*/locations/*/secrets/*}",
+                            "(google.api.method_signature)": "name"
+                          },
+                          "parsedOptions": [
+                            {
+                              "(google.api.http)": {
+                                "delete": "/v1/{name=projects/*/secrets/*}",
+                                "additional_bindings": {
+                                  "delete": "/v1/{name=projects/*/locations/*/secrets/*}"
+                                }
+                              }
+                            },
+                            {
+                              "(google.api.method_signature)": "name"
+                            }
+                          ]
+                        },
+                        "ListSecretVersions": {
+                          "requestType": "ListSecretVersionsRequest",
+                          "responseType": "ListSecretVersionsResponse",
+                          "options": {
+                            "(google.api.http).get": "/v1/{parent=projects/*/secrets/*}/versions",
+                            "(google.api.http).additional_bindings.get": "/v1/{parent=projects/*/locations/*/secrets/*}/versions",
+                            "(google.api.method_signature)": "parent"
+                          },
+                          "parsedOptions": [
+                            {
+                              "(google.api.http)": {
+                                "get": "/v1/{parent=projects/*/secrets/*}/versions",
+                                "additional_bindings": {
+                                  "get": "/v1/{parent=projects/*/locations/*/secrets/*}/versions"
+                                }
+                              }
+                            },
+                            {
+                              "(google.api.method_signature)": "parent"
+                            }
+                          ]
+                        },
+                        "GetSecretVersion": {
+                          "requestType": "GetSecretVersionRequest",
+                          "responseType": "SecretVersion",
+                          "options": {
+                            "(google.api.http).get": "/v1/{name=projects/*/secrets/*/versions/*}",
+                            "(google.api.http).additional_bindings.get": "/v1/{name=projects/*/locations/*/secrets/*/versions/*}",
+                            "(google.api.method_signature)": "name"
+                          },
+                          "parsedOptions": [
+                            {
+                              "(google.api.http)": {
+                                "get": "/v1/{name=projects/*/secrets/*/versions/*}",
+                                "additional_bindings": {
+                                  "get": "/v1/{name=projects/*/locations/*/secrets/*/versions/*}"
+                                }
+                              }
+                            },
+                            {
+                              "(google.api.method_signature)": "name"
+                            }
+                          ]
+                        },
+                        "AccessSecretVersion": {
+                          "requestType": "AccessSecretVersionRequest",
+                          "responseType": "AccessSecretVersionResponse",
+                          "options": {
+                            "(google.api.http).get": "/v1/{name=projects/*/secrets/*/versions/*}:access",
+                            "(google.api.http).additional_bindings.get": "/v1/{name=projects/*/locations/*/secrets/*/versions/*}:access",
+                            "(google.api.method_signature)": "name"
+                          },
+                          "parsedOptions": [
+                            {
+                              "(google.api.http)": {
+                                "get": "/v1/{name=projects/*/secrets/*/versions/*}:access",
+                                "additional_bindings": {
+                                  "get": "/v1/{name=projects/*/locations/*/secrets/*/versions/*}:access"
+                                }
+                              }
+                            },
+                            {
+                              "(google.api.method_signature)": "name"
+                            }
+                          ]
+                        },
+                        "DisableSecretVersion": {
+                          "requestType": "DisableSecretVersionRequest",
+                          "responseType": "SecretVersion",
+                          "options": {
+                            "(google.api.http).post": "/v1/{name=projects/*/secrets/*/versions/*}:disable",
+                            "(google.api.http).body": "*",
+                            "(google.api.http).additional_bindings.post": "/v1/{name=projects/*/locations/*/secrets/*/versions/*}:disable",
+                            "(google.api.http).additional_bindings.body": "*",
+                            "(google.api.method_signature)": "name"
+                          },
+                          "parsedOptions": [
+                            {
+                              "(google.api.http)": {
+                                "post": "/v1/{name=projects/*/secrets/*/versions/*}:disable",
+                                "body": "*",
+                                "additional_bindings": {
+                                  "post": "/v1/{name=projects/*/locations/*/secrets/*/versions/*}:disable",
+                                  "body": "*"
+                                }
+                              }
+                            },
+                            {
+                              "(google.api.method_signature)": "name"
+                            }
+                          ]
+                        },
+                        "EnableSecretVersion": {
+                          "requestType": "EnableSecretVersionRequest",
+                          "responseType": "SecretVersion",
+                          "options": {
+                            "(google.api.http).post": "/v1/{name=projects/*/secrets/*/versions/*}:enable",
+                            "(google.api.http).body": "*",
+                            "(google.api.http).additional_bindings.post": "/v1/{name=projects/*/locations/*/secrets/*/versions/*}:enable",
+                            "(google.api.http).additional_bindings.body": "*",
+                            "(google.api.method_signature)": "name"
+                          },
+                          "parsedOptions": [
+                            {
+                              "(google.api.http)": {
+                                "post": "/v1/{name=projects/*/secrets/*/versions/*}:enable",
+                                "body": "*",
+                                "additional_bindings": {
+                                  "post": "/v1/{name=projects/*/locations/*/secrets/*/versions/*}:enable",
+                                  "body": "*"
+                                }
+                              }
+                            },
+                            {
+                              "(google.api.method_signature)": "name"
+                            }
+                          ]
+                        },
+                        "DestroySecretVersion": {
+                          "requestType": "DestroySecretVersionRequest",
+                          "responseType": "SecretVersion",
+                          "options": {
+                            "(google.api.http).post": "/v1/{name=projects/*/secrets/*/versions/*}:destroy",
+                            "(google.api.http).body": "*",
+                            "(google.api.http).additional_bindings.post": "/v1/{name=projects/*/locations/*/secrets/*/versions/*}:destroy",
+                            "(google.api.http).additional_bindings.body": "*",
+                            "(google.api.method_signature)": "name"
+                          },
+                          "parsedOptions": [
+                            {
+                              "(google.api.http)": {
+                                "post": "/v1/{name=projects/*/secrets/*/versions/*}:destroy",
+                                "body": "*",
+                                "additional_bindings": {
+                                  "post": "/v1/{name=projects/*/locations/*/secrets/*/versions/*}:destroy",
+                                  "body": "*"
+                                }
+                              }
+                            },
+                            {
+                              "(google.api.method_signature)": "name"
+                            }
+                          ]
+                        },
+                        "SetIamPolicy": {
+                          "requestType": "google.iam.v1.SetIamPolicyRequest",
+                          "responseType": "google.iam.v1.Policy",
+                          "options": {
+                            "(google.api.http).post": "/v1/{resource=projects/*/secrets/*}:setIamPolicy",
+                            "(google.api.http).body": "*",
+                            "(google.api.http).additional_bindings.post": "/v1/{resource=projects/*/locations/*/secrets/*}:setIamPolicy",
+                            "(google.api.http).additional_bindings.body": "*"
+                          },
+                          "parsedOptions": [
+                            {
+                              "(google.api.http)": {
+                                "post": "/v1/{resource=projects/*/secrets/*}:setIamPolicy",
+                                "body": "*",
+                                "additional_bindings": {
+                                  "post": "/v1/{resource=projects/*/locations/*/secrets/*}:setIamPolicy",
+                                  "body": "*"
+                                }
+                              }
+                            }
+                          ]
+                        },
+                        "GetIamPolicy": {
+                          "requestType": "google.iam.v1.GetIamPolicyRequest",
+                          "responseType": "google.iam.v1.Policy",
+                          "options": {
+                            "(google.api.http).get": "/v1/{resource=projects/*/secrets/*}:getIamPolicy",
+                            "(google.api.http).additional_bindings.get": "/v1/{resource=projects/*/locations/*/secrets/*}:getIamPolicy"
+                          },
+                          "parsedOptions": [
+                            {
+                              "(google.api.http)": {
+                                "get": "/v1/{resource=projects/*/secrets/*}:getIamPolicy",
+                                "additional_bindings": {
+                                  "get": "/v1/{resource=projects/*/locations/*/secrets/*}:getIamPolicy"
+                                }
+                              }
+                            }
+                          ]
+                        },
+                        "TestIamPermissions": {
+                          "requestType": "google.iam.v1.TestIamPermissionsRequest",
+                          "responseType": "google.iam.v1.TestIamPermissionsResponse",
+                          "options": {
+                            "(google.api.http).post": "/v1/{resource=projects/*/secrets/*}:testIamPermissions",
+                            "(google.api.http).body": "*",
+                            "(google.api.http).additional_bindings.post": "/v1/{resource=projects/*/locations/*/secrets/*}:testIamPermissions",
+                            "(google.api.http).additional_bindings.body": "*"
+                          },
+                          "parsedOptions": [
+                            {
+                              "(google.api.http)": {
+                                "post": "/v1/{resource=projects/*/secrets/*}:testIamPermissions",
+                                "body": "*",
+                                "additional_bindings": {
+                                  "post": "/v1/{resource=projects/*/locations/*/secrets/*}:testIamPermissions",
+                                  "body": "*"
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    "ListSecretsRequest": {
+                      "fields": {
+                        "parent": {
+                          "type": "string",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED",
+                            "(google.api.resource_reference).child_type": "secretmanager.googleapis.com/Secret"
+                          }
+                        },
+                        "pageSize": {
+                          "type": "int32",
+                          "id": 2,
+                          "options": {
+                            "(google.api.field_behavior)": "OPTIONAL"
+                          }
+                        },
+                        "pageToken": {
+                          "type": "string",
+                          "id": 3,
+                          "options": {
+                            "(google.api.field_behavior)": "OPTIONAL"
+                          }
+                        },
+                        "filter": {
+                          "type": "string",
+                          "id": 4,
+                          "options": {
+                            "(google.api.field_behavior)": "OPTIONAL"
+                          }
+                        }
+                      }
+                    },
+                    "ListSecretsResponse": {
+                      "fields": {
+                        "secrets": {
+                          "rule": "repeated",
+                          "type": "Secret",
+                          "id": 1
+                        },
+                        "nextPageToken": {
+                          "type": "string",
+                          "id": 2
+                        },
+                        "totalSize": {
+                          "type": "int32",
+                          "id": 3
+                        }
+                      }
+                    },
+                    "CreateSecretRequest": {
+                      "fields": {
+                        "parent": {
+                          "type": "string",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED",
+                            "(google.api.resource_reference).child_type": "secretmanager.googleapis.com/Secret"
+                          }
+                        },
+                        "secretId": {
+                          "type": "string",
+                          "id": 2,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED"
+                          }
+                        },
+                        "secret": {
+                          "type": "Secret",
+                          "id": 3,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED"
+                          }
+                        }
+                      }
+                    },
+                    "AddSecretVersionRequest": {
+                      "fields": {
+                        "parent": {
+                          "type": "string",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED",
+                            "(google.api.resource_reference).type": "secretmanager.googleapis.com/Secret"
+                          }
+                        },
+                        "payload": {
+                          "type": "SecretPayload",
+                          "id": 2,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED"
+                          }
+                        }
+                      }
+                    },
+                    "GetSecretRequest": {
+                      "fields": {
+                        "name": {
+                          "type": "string",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED",
+                            "(google.api.resource_reference).type": "secretmanager.googleapis.com/Secret"
+                          }
+                        }
+                      }
+                    },
+                    "ListSecretVersionsRequest": {
+                      "fields": {
+                        "parent": {
+                          "type": "string",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED",
+                            "(google.api.resource_reference).type": "secretmanager.googleapis.com/Secret"
+                          }
+                        },
+                        "pageSize": {
+                          "type": "int32",
+                          "id": 2,
+                          "options": {
+                            "(google.api.field_behavior)": "OPTIONAL"
+                          }
+                        },
+                        "pageToken": {
+                          "type": "string",
+                          "id": 3,
+                          "options": {
+                            "(google.api.field_behavior)": "OPTIONAL"
+                          }
+                        },
+                        "filter": {
+                          "type": "string",
+                          "id": 4,
+                          "options": {
+                            "(google.api.field_behavior)": "OPTIONAL"
+                          }
+                        }
+                      }
+                    },
+                    "ListSecretVersionsResponse": {
+                      "fields": {
+                        "versions": {
+                          "rule": "repeated",
+                          "type": "SecretVersion",
+                          "id": 1
+                        },
+                        "nextPageToken": {
+                          "type": "string",
+                          "id": 2
+                        },
+                        "totalSize": {
+                          "type": "int32",
+                          "id": 3
+                        }
+                      }
+                    },
+                    "GetSecretVersionRequest": {
+                      "fields": {
+                        "name": {
+                          "type": "string",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED",
+                            "(google.api.resource_reference).type": "secretmanager.googleapis.com/SecretVersion"
+                          }
+                        }
+                      }
+                    },
+                    "UpdateSecretRequest": {
+                      "fields": {
+                        "secret": {
+                          "type": "Secret",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED"
+                          }
+                        },
+                        "updateMask": {
+                          "type": "google.protobuf.FieldMask",
+                          "id": 2,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED"
+                          }
+                        }
+                      }
+                    },
+                    "AccessSecretVersionRequest": {
+                      "fields": {
+                        "name": {
+                          "type": "string",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED",
+                            "(google.api.resource_reference).type": "secretmanager.googleapis.com/SecretVersion"
+                          }
+                        }
+                      }
+                    },
+                    "AccessSecretVersionResponse": {
+                      "fields": {
+                        "name": {
+                          "type": "string",
+                          "id": 1,
+                          "options": {
+                            "(google.api.resource_reference).type": "secretmanager.googleapis.com/SecretVersion"
+                          }
+                        },
+                        "payload": {
+                          "type": "SecretPayload",
+                          "id": 2
+                        }
+                      }
+                    },
+                    "DeleteSecretRequest": {
+                      "fields": {
+                        "name": {
+                          "type": "string",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED",
+                            "(google.api.resource_reference).type": "secretmanager.googleapis.com/Secret"
+                          }
+                        },
+                        "etag": {
+                          "type": "string",
+                          "id": 2,
+                          "options": {
+                            "(google.api.field_behavior)": "OPTIONAL"
+                          }
+                        }
+                      }
+                    },
+                    "DisableSecretVersionRequest": {
+                      "fields": {
+                        "name": {
+                          "type": "string",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED",
+                            "(google.api.resource_reference).type": "secretmanager.googleapis.com/SecretVersion"
+                          }
+                        },
+                        "etag": {
+                          "type": "string",
+                          "id": 2,
+                          "options": {
+                            "(google.api.field_behavior)": "OPTIONAL"
+                          }
+                        }
+                      }
+                    },
+                    "EnableSecretVersionRequest": {
+                      "fields": {
+                        "name": {
+                          "type": "string",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED",
+                            "(google.api.resource_reference).type": "secretmanager.googleapis.com/SecretVersion"
+                          }
+                        },
+                        "etag": {
+                          "type": "string",
+                          "id": 2,
+                          "options": {
+                            "(google.api.field_behavior)": "OPTIONAL"
+                          }
+                        }
+                      }
+                    },
+                    "DestroySecretVersionRequest": {
+                      "fields": {
+                        "name": {
+                          "type": "string",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED",
+                            "(google.api.resource_reference).type": "secretmanager.googleapis.com/SecretVersion"
+                          }
+                        },
+                        "etag": {
+                          "type": "string",
+                          "id": 2,
+                          "options": {
+                            "(google.api.field_behavior)": "OPTIONAL"
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "v1beta2": {
+                  "options": {
+                    "cc_enable_arenas": true,
+                    "csharp_namespace": "Google.Cloud.SecretManager.V1Beta2",
+                    "go_package": "cloud.google.com/go/secretmanager/apiv1beta2/secretmanagerpb;secretmanagerpb",
+                    "java_multiple_files": true,
+                    "java_outer_classname": "ServiceProto",
+                    "java_package": "com.google.cloud.secretmanager.v1beta2",
+                    "objc_class_prefix": "GSM",
+                    "php_namespace": "Google\\Cloud\\SecretManager\\V1beta2",
+                    "ruby_package": "Google::Cloud::SecretManager::V1beta2"
+                  },
+                  "nested": {
+                    "Secret": {
+                      "options": {
+                        "(google.api.resource).type": "secretmanager.googleapis.com/Secret",
+                        "(google.api.resource).pattern": "projects/{project}/locations/{location}/secrets/{secret}",
+                        "(google.api.resource).plural": "secrets",
+                        "(google.api.resource).singular": "secret"
+                      },
+                      "oneofs": {
+                        "expiration": {
+                          "oneof": [
+                            "expireTime",
+                            "ttl"
+                          ]
+                        }
+                      },
+                      "fields": {
+                        "name": {
+                          "type": "string",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "OUTPUT_ONLY"
+                          }
+                        },
+                        "replication": {
+                          "type": "Replication",
+                          "id": 2,
+                          "options": {
+                            "(google.api.field_behavior)": "OPTIONAL"
+                          }
+                        },
+                        "createTime": {
+                          "type": "google.protobuf.Timestamp",
+                          "id": 3,
+                          "options": {
+                            "(google.api.field_behavior)": "OUTPUT_ONLY"
+                          }
+                        },
+                        "labels": {
+                          "keyType": "string",
+                          "type": "string",
+                          "id": 4
+                        },
+                        "topics": {
+                          "rule": "repeated",
+                          "type": "Topic",
+                          "id": 5,
+                          "options": {
+                            "(google.api.field_behavior)": "OPTIONAL"
+                          }
+                        },
+                        "expireTime": {
+                          "type": "google.protobuf.Timestamp",
+                          "id": 6,
+                          "options": {
+                            "(google.api.field_behavior)": "OPTIONAL"
+                          }
+                        },
+                        "ttl": {
+                          "type": "google.protobuf.Duration",
+                          "id": 7,
+                          "options": {
+                            "(google.api.field_behavior)": "INPUT_ONLY"
+                          }
+                        },
+                        "etag": {
+                          "type": "string",
+                          "id": 8,
+                          "options": {
+                            "(google.api.field_behavior)": "OPTIONAL"
+                          }
+                        },
+                        "rotation": {
+                          "type": "Rotation",
+                          "id": 9,
+                          "options": {
+                            "(google.api.field_behavior)": "OPTIONAL"
+                          }
+                        },
+                        "versionAliases": {
+                          "keyType": "string",
+                          "type": "int64",
+                          "id": 11,
+                          "options": {
+                            "(google.api.field_behavior)": "OPTIONAL"
+                          }
+                        },
+                        "annotations": {
+                          "keyType": "string",
+                          "type": "string",
+                          "id": 13,
+                          "options": {
+                            "(google.api.field_behavior)": "OPTIONAL"
+                          }
+                        },
+                        "versionDestroyTtl": {
+                          "type": "google.protobuf.Duration",
+                          "id": 14,
+                          "options": {
+                            "(google.api.field_behavior)": "OPTIONAL"
+                          }
+                        },
+                        "customerManagedEncryption": {
+                          "type": "CustomerManagedEncryption",
+                          "id": 15,
+                          "options": {
+                            "(google.api.field_behavior)": "OPTIONAL"
+                          }
+                        }
+                      }
+                    },
+                    "SecretVersion": {
+                      "options": {
+                        "(google.api.resource).type": "secretmanager.googleapis.com/SecretVersion",
+                        "(google.api.resource).pattern": "projects/{project}/locations/{location}/secrets/{secret}/versions/{secret_version}",
+                        "(google.api.resource).plural": "secretVersions",
+                        "(google.api.resource).singular": "secretVersion"
+                      },
+                      "fields": {
+                        "name": {
+                          "type": "string",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "OUTPUT_ONLY"
+                          }
+                        },
+                        "createTime": {
+                          "type": "google.protobuf.Timestamp",
+                          "id": 2,
+                          "options": {
+                            "(google.api.field_behavior)": "OUTPUT_ONLY"
+                          }
+                        },
+                        "destroyTime": {
+                          "type": "google.protobuf.Timestamp",
+                          "id": 3,
+                          "options": {
+                            "(google.api.field_behavior)": "OUTPUT_ONLY"
+                          }
+                        },
+                        "state": {
+                          "type": "State",
+                          "id": 4,
+                          "options": {
+                            "(google.api.field_behavior)": "OUTPUT_ONLY"
+                          }
+                        },
+                        "replicationStatus": {
+                          "type": "ReplicationStatus",
+                          "id": 5
+                        },
+                        "etag": {
+                          "type": "string",
+                          "id": 6,
+                          "options": {
+                            "(google.api.field_behavior)": "OUTPUT_ONLY"
+                          }
+                        },
+                        "clientSpecifiedPayloadChecksum": {
+                          "type": "bool",
+                          "id": 7,
+                          "options": {
+                            "(google.api.field_behavior)": "OUTPUT_ONLY"
+                          }
+                        },
+                        "scheduledDestroyTime": {
+                          "type": "google.protobuf.Timestamp",
+                          "id": 8,
+                          "options": {
+                            "(google.api.field_behavior)": "OUTPUT_ONLY"
+                          }
+                        },
+                        "customerManagedEncryption": {
+                          "type": "CustomerManagedEncryptionStatus",
+                          "id": 9,
+                          "options": {
+                            "(google.api.field_behavior)": "OUTPUT_ONLY"
+                          }
+                        }
+                      },
+                      "nested": {
+                        "State": {
+                          "values": {
+                            "STATE_UNSPECIFIED": 0,
+                            "ENABLED": 1,
+                            "DISABLED": 2,
+                            "DESTROYED": 3
+                          }
+                        }
+                      }
+                    },
+                    "Replication": {
+                      "oneofs": {
+                        "replication": {
+                          "oneof": [
+                            "automatic",
+                            "userManaged"
+                          ]
+                        }
+                      },
+                      "fields": {
+                        "automatic": {
+                          "type": "Automatic",
+                          "id": 1
+                        },
+                        "userManaged": {
+                          "type": "UserManaged",
+                          "id": 2
+                        }
+                      },
+                      "nested": {
+                        "Automatic": {
+                          "fields": {
+                            "customerManagedEncryption": {
+                              "type": "CustomerManagedEncryption",
+                              "id": 1,
+                              "options": {
+                                "(google.api.field_behavior)": "OPTIONAL"
+                              }
+                            }
+                          }
+                        },
+                        "UserManaged": {
+                          "fields": {
+                            "replicas": {
+                              "rule": "repeated",
+                              "type": "Replica",
+                              "id": 1,
+                              "options": {
+                                "(google.api.field_behavior)": "REQUIRED"
+                              }
+                            }
+                          },
+                          "nested": {
+                            "Replica": {
+                              "fields": {
+                                "location": {
+                                  "type": "string",
+                                  "id": 1
+                                },
+                                "customerManagedEncryption": {
+                                  "type": "CustomerManagedEncryption",
+                                  "id": 2,
+                                  "options": {
+                                    "(google.api.field_behavior)": "OPTIONAL"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "CustomerManagedEncryption": {
+                      "fields": {
+                        "kmsKeyName": {
+                          "type": "string",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED"
+                          }
+                        }
+                      }
+                    },
+                    "ReplicationStatus": {
+                      "oneofs": {
+                        "replicationStatus": {
+                          "oneof": [
+                            "automatic",
+                            "userManaged"
+                          ]
+                        }
+                      },
+                      "fields": {
+                        "automatic": {
+                          "type": "AutomaticStatus",
+                          "id": 1
+                        },
+                        "userManaged": {
+                          "type": "UserManagedStatus",
+                          "id": 2
+                        }
+                      },
+                      "nested": {
+                        "AutomaticStatus": {
+                          "fields": {
+                            "customerManagedEncryption": {
+                              "type": "CustomerManagedEncryptionStatus",
+                              "id": 1,
+                              "options": {
+                                "(google.api.field_behavior)": "OUTPUT_ONLY"
+                              }
+                            }
+                          }
+                        },
+                        "UserManagedStatus": {
+                          "fields": {
+                            "replicas": {
+                              "rule": "repeated",
+                              "type": "ReplicaStatus",
+                              "id": 1,
+                              "options": {
+                                "(google.api.field_behavior)": "OUTPUT_ONLY"
+                              }
+                            }
+                          },
+                          "nested": {
+                            "ReplicaStatus": {
+                              "fields": {
+                                "location": {
+                                  "type": "string",
+                                  "id": 1,
+                                  "options": {
+                                    "(google.api.field_behavior)": "OUTPUT_ONLY"
+                                  }
+                                },
+                                "customerManagedEncryption": {
+                                  "type": "CustomerManagedEncryptionStatus",
+                                  "id": 2,
+                                  "options": {
+                                    "(google.api.field_behavior)": "OUTPUT_ONLY"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "CustomerManagedEncryptionStatus": {
+                      "fields": {
+                        "kmsKeyVersionName": {
+                          "type": "string",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED"
+                          }
+                        }
+                      }
+                    },
+                    "Topic": {
+                      "options": {
+                        "(google.api.resource).type": "pubsub.googleapis.com/Topic",
+                        "(google.api.resource).pattern": "projects/{project}/topics/{topic}"
+                      },
+                      "fields": {
+                        "name": {
+                          "type": "string",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED"
+                          }
+                        }
+                      }
+                    },
+                    "Rotation": {
+                      "fields": {
+                        "nextRotationTime": {
+                          "type": "google.protobuf.Timestamp",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "OPTIONAL"
+                          }
+                        },
+                        "rotationPeriod": {
+                          "type": "google.protobuf.Duration",
+                          "id": 2,
+                          "options": {
+                            "(google.api.field_behavior)": "INPUT_ONLY"
+                          }
+                        }
+                      }
+                    },
+                    "SecretPayload": {
+                      "oneofs": {
+                        "_dataCrc32c": {
+                          "oneof": [
+                            "dataCrc32c"
+                          ]
+                        }
+                      },
+                      "fields": {
+                        "data": {
+                          "type": "bytes",
+                          "id": 1
+                        },
+                        "dataCrc32c": {
+                          "type": "int64",
+                          "id": 2,
+                          "options": {
+                            "(google.api.field_behavior)": "OPTIONAL",
+                            "proto3_optional": true
+                          }
+                        }
+                      }
+                    },
+                    "SecretManagerService": {
+                      "options": {
+                        "(google.api.default_host)": "secretmanager.googleapis.com",
+                        "(google.api.oauth_scopes)": "https://www.googleapis.com/auth/cloud-platform"
+                      },
+                      "methods": {
+                        "ListSecrets": {
+                          "requestType": "ListSecretsRequest",
+                          "responseType": "ListSecretsResponse",
+                          "options": {
+                            "(google.api.http).get": "/v1beta2/{parent=projects/*}/secrets",
+                            "(google.api.http).additional_bindings.get": "/v1beta2/{parent=projects/*/locations/*}/secrets",
+                            "(google.api.method_signature)": "parent"
+                          },
+                          "parsedOptions": [
+                            {
+                              "(google.api.http)": {
+                                "get": "/v1beta2/{parent=projects/*}/secrets",
+                                "additional_bindings": {
+                                  "get": "/v1beta2/{parent=projects/*/locations/*}/secrets"
+                                }
+                              }
+                            },
+                            {
+                              "(google.api.method_signature)": "parent"
+                            }
+                          ]
+                        },
+                        "CreateSecret": {
+                          "requestType": "CreateSecretRequest",
+                          "responseType": "Secret",
+                          "options": {
+                            "(google.api.http).post": "/v1beta2/{parent=projects/*}/secrets",
+                            "(google.api.http).body": "secret",
+                            "(google.api.http).additional_bindings.post": "/v1beta2/{parent=projects/*/locations/*}/secrets",
+                            "(google.api.http).additional_bindings.body": "secret",
+                            "(google.api.method_signature)": "parent,secret_id,secret"
+                          },
+                          "parsedOptions": [
+                            {
+                              "(google.api.http)": {
+                                "post": "/v1beta2/{parent=projects/*}/secrets",
+                                "body": "secret",
+                                "additional_bindings": {
+                                  "post": "/v1beta2/{parent=projects/*/locations/*}/secrets",
+                                  "body": "secret"
+                                }
+                              }
+                            },
+                            {
+                              "(google.api.method_signature)": "parent,secret_id,secret"
+                            }
+                          ]
+                        },
+                        "AddSecretVersion": {
+                          "requestType": "AddSecretVersionRequest",
+                          "responseType": "SecretVersion",
+                          "options": {
+                            "(google.api.http).post": "/v1beta2/{parent=projects/*/secrets/*}:addVersion",
+                            "(google.api.http).body": "*",
+                            "(google.api.http).additional_bindings.post": "/v1beta2/{parent=projects/*/locations/*/secrets/*}:addVersion",
+                            "(google.api.http).additional_bindings.body": "*",
+                            "(google.api.method_signature)": "parent,payload"
+                          },
+                          "parsedOptions": [
+                            {
+                              "(google.api.http)": {
+                                "post": "/v1beta2/{parent=projects/*/secrets/*}:addVersion",
+                                "body": "*",
+                                "additional_bindings": {
+                                  "post": "/v1beta2/{parent=projects/*/locations/*/secrets/*}:addVersion",
+                                  "body": "*"
+                                }
+                              }
+                            },
+                            {
+                              "(google.api.method_signature)": "parent,payload"
+                            }
+                          ]
+                        },
+                        "GetSecret": {
+                          "requestType": "GetSecretRequest",
+                          "responseType": "Secret",
+                          "options": {
+                            "(google.api.http).get": "/v1beta2/{name=projects/*/secrets/*}",
+                            "(google.api.http).additional_bindings.get": "/v1beta2/{name=projects/*/locations/*/secrets/*}",
+                            "(google.api.method_signature)": "name"
+                          },
+                          "parsedOptions": [
+                            {
+                              "(google.api.http)": {
+                                "get": "/v1beta2/{name=projects/*/secrets/*}",
+                                "additional_bindings": {
+                                  "get": "/v1beta2/{name=projects/*/locations/*/secrets/*}"
+                                }
+                              }
+                            },
+                            {
+                              "(google.api.method_signature)": "name"
+                            }
+                          ]
+                        },
+                        "UpdateSecret": {
+                          "requestType": "UpdateSecretRequest",
+                          "responseType": "Secret",
+                          "options": {
+                            "(google.api.http).patch": "/v1beta2/{secret.name=projects/*/secrets/*}",
+                            "(google.api.http).body": "secret",
+                            "(google.api.http).additional_bindings.patch": "/v1beta2/{secret.name=projects/*/locations/*/secrets/*}",
+                            "(google.api.http).additional_bindings.body": "secret",
+                            "(google.api.method_signature)": "secret,update_mask"
+                          },
+                          "parsedOptions": [
+                            {
+                              "(google.api.http)": {
+                                "patch": "/v1beta2/{secret.name=projects/*/secrets/*}",
+                                "body": "secret",
+                                "additional_bindings": {
+                                  "patch": "/v1beta2/{secret.name=projects/*/locations/*/secrets/*}",
+                                  "body": "secret"
+                                }
+                              }
+                            },
+                            {
+                              "(google.api.method_signature)": "secret,update_mask"
+                            }
+                          ]
+                        },
+                        "DeleteSecret": {
+                          "requestType": "DeleteSecretRequest",
+                          "responseType": "google.protobuf.Empty",
+                          "options": {
+                            "(google.api.http).delete": "/v1beta2/{name=projects/*/secrets/*}",
+                            "(google.api.http).additional_bindings.delete": "/v1beta2/{name=projects/*/locations/*/secrets/*}",
+                            "(google.api.method_signature)": "name"
+                          },
+                          "parsedOptions": [
+                            {
+                              "(google.api.http)": {
+                                "delete": "/v1beta2/{name=projects/*/secrets/*}",
+                                "additional_bindings": {
+                                  "delete": "/v1beta2/{name=projects/*/locations/*/secrets/*}"
+                                }
+                              }
+                            },
+                            {
+                              "(google.api.method_signature)": "name"
+                            }
+                          ]
+                        },
+                        "ListSecretVersions": {
+                          "requestType": "ListSecretVersionsRequest",
+                          "responseType": "ListSecretVersionsResponse",
+                          "options": {
+                            "(google.api.http).get": "/v1beta2/{parent=projects/*/secrets/*}/versions",
+                            "(google.api.http).additional_bindings.get": "/v1beta2/{parent=projects/*/locations/*/secrets/*}/versions",
+                            "(google.api.method_signature)": "parent"
+                          },
+                          "parsedOptions": [
+                            {
+                              "(google.api.http)": {
+                                "get": "/v1beta2/{parent=projects/*/secrets/*}/versions",
+                                "additional_bindings": {
+                                  "get": "/v1beta2/{parent=projects/*/locations/*/secrets/*}/versions"
+                                }
+                              }
+                            },
+                            {
+                              "(google.api.method_signature)": "parent"
+                            }
+                          ]
+                        },
+                        "GetSecretVersion": {
+                          "requestType": "GetSecretVersionRequest",
+                          "responseType": "SecretVersion",
+                          "options": {
+                            "(google.api.http).get": "/v1beta2/{name=projects/*/secrets/*/versions/*}",
+                            "(google.api.http).additional_bindings.get": "/v1beta2/{name=projects/*/locations/*/secrets/*/versions/*}",
+                            "(google.api.method_signature)": "name"
+                          },
+                          "parsedOptions": [
+                            {
+                              "(google.api.http)": {
+                                "get": "/v1beta2/{name=projects/*/secrets/*/versions/*}",
+                                "additional_bindings": {
+                                  "get": "/v1beta2/{name=projects/*/locations/*/secrets/*/versions/*}"
+                                }
+                              }
+                            },
+                            {
+                              "(google.api.method_signature)": "name"
+                            }
+                          ]
+                        },
+                        "AccessSecretVersion": {
+                          "requestType": "AccessSecretVersionRequest",
+                          "responseType": "AccessSecretVersionResponse",
+                          "options": {
+                            "(google.api.http).get": "/v1beta2/{name=projects/*/secrets/*/versions/*}:access",
+                            "(google.api.http).additional_bindings.get": "/v1beta2/{name=projects/*/locations/*/secrets/*/versions/*}:access",
+                            "(google.api.method_signature)": "name"
+                          },
+                          "parsedOptions": [
+                            {
+                              "(google.api.http)": {
+                                "get": "/v1beta2/{name=projects/*/secrets/*/versions/*}:access",
+                                "additional_bindings": {
+                                  "get": "/v1beta2/{name=projects/*/locations/*/secrets/*/versions/*}:access"
+                                }
+                              }
+                            },
+                            {
+                              "(google.api.method_signature)": "name"
+                            }
+                          ]
+                        },
+                        "DisableSecretVersion": {
+                          "requestType": "DisableSecretVersionRequest",
+                          "responseType": "SecretVersion",
+                          "options": {
+                            "(google.api.http).post": "/v1beta2/{name=projects/*/secrets/*/versions/*}:disable",
+                            "(google.api.http).body": "*",
+                            "(google.api.http).additional_bindings.post": "/v1beta2/{name=projects/*/locations/*/secrets/*/versions/*}:disable",
+                            "(google.api.http).additional_bindings.body": "*",
+                            "(google.api.method_signature)": "name"
+                          },
+                          "parsedOptions": [
+                            {
+                              "(google.api.http)": {
+                                "post": "/v1beta2/{name=projects/*/secrets/*/versions/*}:disable",
+                                "body": "*",
+                                "additional_bindings": {
+                                  "post": "/v1beta2/{name=projects/*/locations/*/secrets/*/versions/*}:disable",
+                                  "body": "*"
+                                }
+                              }
+                            },
+                            {
+                              "(google.api.method_signature)": "name"
+                            }
+                          ]
+                        },
+                        "EnableSecretVersion": {
+                          "requestType": "EnableSecretVersionRequest",
+                          "responseType": "SecretVersion",
+                          "options": {
+                            "(google.api.http).post": "/v1beta2/{name=projects/*/secrets/*/versions/*}:enable",
+                            "(google.api.http).body": "*",
+                            "(google.api.http).additional_bindings.post": "/v1beta2/{name=projects/*/locations/*/secrets/*/versions/*}:enable",
+                            "(google.api.http).additional_bindings.body": "*",
+                            "(google.api.method_signature)": "name"
+                          },
+                          "parsedOptions": [
+                            {
+                              "(google.api.http)": {
+                                "post": "/v1beta2/{name=projects/*/secrets/*/versions/*}:enable",
+                                "body": "*",
+                                "additional_bindings": {
+                                  "post": "/v1beta2/{name=projects/*/locations/*/secrets/*/versions/*}:enable",
+                                  "body": "*"
+                                }
+                              }
+                            },
+                            {
+                              "(google.api.method_signature)": "name"
+                            }
+                          ]
+                        },
+                        "DestroySecretVersion": {
+                          "requestType": "DestroySecretVersionRequest",
+                          "responseType": "SecretVersion",
+                          "options": {
+                            "(google.api.http).post": "/v1beta2/{name=projects/*/secrets/*/versions/*}:destroy",
+                            "(google.api.http).body": "*",
+                            "(google.api.http).additional_bindings.post": "/v1beta2/{name=projects/*/locations/*/secrets/*/versions/*}:destroy",
+                            "(google.api.http).additional_bindings.body": "*",
+                            "(google.api.method_signature)": "name"
+                          },
+                          "parsedOptions": [
+                            {
+                              "(google.api.http)": {
+                                "post": "/v1beta2/{name=projects/*/secrets/*/versions/*}:destroy",
+                                "body": "*",
+                                "additional_bindings": {
+                                  "post": "/v1beta2/{name=projects/*/locations/*/secrets/*/versions/*}:destroy",
+                                  "body": "*"
+                                }
+                              }
+                            },
+                            {
+                              "(google.api.method_signature)": "name"
+                            }
+                          ]
+                        },
+                        "SetIamPolicy": {
+                          "requestType": "google.iam.v1.SetIamPolicyRequest",
+                          "responseType": "google.iam.v1.Policy",
+                          "options": {
+                            "(google.api.http).post": "/v1beta2/{resource=projects/*/secrets/*}:setIamPolicy",
+                            "(google.api.http).body": "*",
+                            "(google.api.http).additional_bindings.post": "/v1beta2/{resource=projects/*/locations/*/secrets/*}:setIamPolicy",
+                            "(google.api.http).additional_bindings.body": "*"
+                          },
+                          "parsedOptions": [
+                            {
+                              "(google.api.http)": {
+                                "post": "/v1beta2/{resource=projects/*/secrets/*}:setIamPolicy",
+                                "body": "*",
+                                "additional_bindings": {
+                                  "post": "/v1beta2/{resource=projects/*/locations/*/secrets/*}:setIamPolicy",
+                                  "body": "*"
+                                }
+                              }
+                            }
+                          ]
+                        },
+                        "GetIamPolicy": {
+                          "requestType": "google.iam.v1.GetIamPolicyRequest",
+                          "responseType": "google.iam.v1.Policy",
+                          "options": {
+                            "(google.api.http).get": "/v1beta2/{resource=projects/*/secrets/*}:getIamPolicy",
+                            "(google.api.http).additional_bindings.get": "/v1beta2/{resource=projects/*/locations/*/secrets/*}:getIamPolicy"
+                          },
+                          "parsedOptions": [
+                            {
+                              "(google.api.http)": {
+                                "get": "/v1beta2/{resource=projects/*/secrets/*}:getIamPolicy",
+                                "additional_bindings": {
+                                  "get": "/v1beta2/{resource=projects/*/locations/*/secrets/*}:getIamPolicy"
+                                }
+                              }
+                            }
+                          ]
+                        },
+                        "TestIamPermissions": {
+                          "requestType": "google.iam.v1.TestIamPermissionsRequest",
+                          "responseType": "google.iam.v1.TestIamPermissionsResponse",
+                          "options": {
+                            "(google.api.http).post": "/v1beta2/{resource=projects/*/secrets/*}:testIamPermissions",
+                            "(google.api.http).body": "*",
+                            "(google.api.http).additional_bindings.post": "/v1beta2/{resource=projects/*/locations/*/secrets/*}:testIamPermissions",
+                            "(google.api.http).additional_bindings.body": "*"
+                          },
+                          "parsedOptions": [
+                            {
+                              "(google.api.http)": {
+                                "post": "/v1beta2/{resource=projects/*/secrets/*}:testIamPermissions",
+                                "body": "*",
+                                "additional_bindings": {
+                                  "post": "/v1beta2/{resource=projects/*/locations/*/secrets/*}:testIamPermissions",
+                                  "body": "*"
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    "ListSecretsRequest": {
+                      "fields": {
+                        "parent": {
+                          "type": "string",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED",
+                            "(google.api.resource_reference).child_type": "secretmanager.googleapis.com/Secret"
+                          }
+                        },
+                        "pageSize": {
+                          "type": "int32",
+                          "id": 2,
+                          "options": {
+                            "(google.api.field_behavior)": "OPTIONAL"
+                          }
+                        },
+                        "pageToken": {
+                          "type": "string",
+                          "id": 3,
+                          "options": {
+                            "(google.api.field_behavior)": "OPTIONAL"
+                          }
+                        },
+                        "filter": {
+                          "type": "string",
+                          "id": 4,
+                          "options": {
+                            "(google.api.field_behavior)": "OPTIONAL"
+                          }
+                        }
+                      }
+                    },
+                    "ListSecretsResponse": {
+                      "fields": {
+                        "secrets": {
+                          "rule": "repeated",
+                          "type": "Secret",
+                          "id": 1
+                        },
+                        "nextPageToken": {
+                          "type": "string",
+                          "id": 2
+                        },
+                        "totalSize": {
+                          "type": "int32",
+                          "id": 3
+                        }
+                      }
+                    },
+                    "CreateSecretRequest": {
+                      "fields": {
+                        "parent": {
+                          "type": "string",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED",
+                            "(google.api.resource_reference).child_type": "secretmanager.googleapis.com/Secret"
+                          }
+                        },
+                        "secretId": {
+                          "type": "string",
+                          "id": 2,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED"
+                          }
+                        },
+                        "secret": {
+                          "type": "Secret",
+                          "id": 3,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED"
+                          }
+                        }
+                      }
+                    },
+                    "AddSecretVersionRequest": {
+                      "fields": {
+                        "parent": {
+                          "type": "string",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED",
+                            "(google.api.resource_reference).type": "secretmanager.googleapis.com/Secret"
+                          }
+                        },
+                        "payload": {
+                          "type": "SecretPayload",
+                          "id": 2,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED"
+                          }
+                        }
+                      }
+                    },
+                    "GetSecretRequest": {
+                      "fields": {
+                        "name": {
+                          "type": "string",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED",
+                            "(google.api.resource_reference).type": "secretmanager.googleapis.com/Secret"
+                          }
+                        }
+                      }
+                    },
+                    "ListSecretVersionsRequest": {
+                      "fields": {
+                        "parent": {
+                          "type": "string",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED",
+                            "(google.api.resource_reference).type": "secretmanager.googleapis.com/Secret"
+                          }
+                        },
+                        "pageSize": {
+                          "type": "int32",
+                          "id": 2,
+                          "options": {
+                            "(google.api.field_behavior)": "OPTIONAL"
+                          }
+                        },
+                        "pageToken": {
+                          "type": "string",
+                          "id": 3,
+                          "options": {
+                            "(google.api.field_behavior)": "OPTIONAL"
+                          }
+                        },
+                        "filter": {
+                          "type": "string",
+                          "id": 4,
+                          "options": {
+                            "(google.api.field_behavior)": "OPTIONAL"
+                          }
+                        }
+                      }
+                    },
+                    "ListSecretVersionsResponse": {
+                      "fields": {
+                        "versions": {
+                          "rule": "repeated",
+                          "type": "SecretVersion",
+                          "id": 1
+                        },
+                        "nextPageToken": {
+                          "type": "string",
+                          "id": 2
+                        },
+                        "totalSize": {
+                          "type": "int32",
+                          "id": 3
+                        }
+                      }
+                    },
+                    "GetSecretVersionRequest": {
+                      "fields": {
+                        "name": {
+                          "type": "string",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED",
+                            "(google.api.resource_reference).type": "secretmanager.googleapis.com/SecretVersion"
+                          }
+                        }
+                      }
+                    },
+                    "UpdateSecretRequest": {
+                      "fields": {
+                        "secret": {
+                          "type": "Secret",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED"
+                          }
+                        },
+                        "updateMask": {
+                          "type": "google.protobuf.FieldMask",
+                          "id": 2,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED"
+                          }
+                        }
+                      }
+                    },
+                    "AccessSecretVersionRequest": {
+                      "fields": {
+                        "name": {
+                          "type": "string",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED",
+                            "(google.api.resource_reference).type": "secretmanager.googleapis.com/SecretVersion"
+                          }
+                        }
+                      }
+                    },
+                    "AccessSecretVersionResponse": {
+                      "fields": {
+                        "name": {
+                          "type": "string",
+                          "id": 1,
+                          "options": {
+                            "(google.api.resource_reference).type": "secretmanager.googleapis.com/SecretVersion"
+                          }
+                        },
+                        "payload": {
+                          "type": "SecretPayload",
+                          "id": 2
+                        }
+                      }
+                    },
+                    "DeleteSecretRequest": {
+                      "fields": {
+                        "name": {
+                          "type": "string",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED",
+                            "(google.api.resource_reference).type": "secretmanager.googleapis.com/Secret"
+                          }
+                        },
+                        "etag": {
+                          "type": "string",
+                          "id": 2,
+                          "options": {
+                            "(google.api.field_behavior)": "OPTIONAL"
+                          }
+                        }
+                      }
+                    },
+                    "DisableSecretVersionRequest": {
+                      "fields": {
+                        "name": {
+                          "type": "string",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED",
+                            "(google.api.resource_reference).type": "secretmanager.googleapis.com/SecretVersion"
+                          }
+                        },
+                        "etag": {
+                          "type": "string",
+                          "id": 2,
+                          "options": {
+                            "(google.api.field_behavior)": "OPTIONAL"
+                          }
+                        }
+                      }
+                    },
+                    "EnableSecretVersionRequest": {
+                      "fields": {
+                        "name": {
+                          "type": "string",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED",
+                            "(google.api.resource_reference).type": "secretmanager.googleapis.com/SecretVersion"
+                          }
+                        },
+                        "etag": {
+                          "type": "string",
+                          "id": 2,
+                          "options": {
+                            "(google.api.field_behavior)": "OPTIONAL"
+                          }
+                        }
+                      }
+                    },
+                    "DestroySecretVersionRequest": {
+                      "fields": {
+                        "name": {
+                          "type": "string",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED",
+                            "(google.api.resource_reference).type": "secretmanager.googleapis.com/SecretVersion"
+                          }
+                        },
+                        "etag": {
+                          "type": "string",
+                          "id": 2,
+                          "options": {
+                            "(google.api.field_behavior)": "OPTIONAL"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "secrets": {
+              "nested": {
+                "v1beta1": {
+                  "options": {
+                    "cc_enable_arenas": true,
+                    "csharp_namespace": "Google.Cloud.SecretManager.V1Beta1",
+                    "go_package": "google.golang.org/genproto/googleapis/cloud/secretmanager/v1beta1;secretmanager",
+                    "java_multiple_files": true,
+                    "java_outer_classname": "ServiceProto",
+                    "java_package": "com.google.cloud.secretmanager.v1beta1",
+                    "objc_class_prefix": "GSM",
+                    "php_namespace": "Google\\Cloud\\SecretManager\\V1beta1",
+                    "ruby_package": "Google::Cloud::SecretManager::V1beta1"
+                  },
+                  "nested": {
+                    "Secret": {
+                      "options": {
+                        "(google.api.resource).type": "secretmanager.googleapis.com/Secret",
+                        "(google.api.resource).pattern": "projects/{project}/secrets/{secret}"
+                      },
+                      "fields": {
+                        "name": {
+                          "type": "string",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "OUTPUT_ONLY"
+                          }
+                        },
+                        "replication": {
+                          "type": "Replication",
+                          "id": 2,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED"
+                          }
+                        },
+                        "createTime": {
+                          "type": "google.protobuf.Timestamp",
+                          "id": 3,
+                          "options": {
+                            "(google.api.field_behavior)": "OUTPUT_ONLY"
+                          }
+                        },
+                        "labels": {
+                          "keyType": "string",
+                          "type": "string",
+                          "id": 4
+                        }
+                      }
+                    },
+                    "SecretVersion": {
+                      "options": {
+                        "(google.api.resource).type": "secretmanager.googleapis.com/SecretVersion",
+                        "(google.api.resource).pattern": "projects/{project}/secrets/{secret}/versions/{secret_version}"
+                      },
+                      "fields": {
+                        "name": {
+                          "type": "string",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "OUTPUT_ONLY"
+                          }
+                        },
+                        "createTime": {
+                          "type": "google.protobuf.Timestamp",
+                          "id": 2,
+                          "options": {
+                            "(google.api.field_behavior)": "OUTPUT_ONLY"
+                          }
+                        },
+                        "destroyTime": {
+                          "type": "google.protobuf.Timestamp",
+                          "id": 3,
+                          "options": {
+                            "(google.api.field_behavior)": "OUTPUT_ONLY"
+                          }
+                        },
+                        "state": {
+                          "type": "State",
+                          "id": 4,
+                          "options": {
+                            "(google.api.field_behavior)": "OUTPUT_ONLY"
+                          }
+                        }
+                      },
+                      "nested": {
+                        "State": {
+                          "values": {
+                            "STATE_UNSPECIFIED": 0,
+                            "ENABLED": 1,
+                            "DISABLED": 2,
+                            "DESTROYED": 3
+                          }
+                        }
+                      }
+                    },
+                    "Replication": {
+                      "oneofs": {
+                        "replication": {
+                          "oneof": [
+                            "automatic",
+                            "userManaged"
+                          ]
+                        }
+                      },
+                      "fields": {
+                        "automatic": {
+                          "type": "Automatic",
+                          "id": 1
+                        },
+                        "userManaged": {
+                          "type": "UserManaged",
+                          "id": 2
+                        }
+                      },
+                      "nested": {
+                        "Automatic": {
+                          "fields": {}
+                        },
+                        "UserManaged": {
+                          "fields": {
+                            "replicas": {
+                              "rule": "repeated",
+                              "type": "Replica",
+                              "id": 1,
+                              "options": {
+                                "(google.api.field_behavior)": "REQUIRED"
+                              }
+                            }
+                          },
+                          "nested": {
+                            "Replica": {
+                              "fields": {
+                                "location": {
+                                  "type": "string",
+                                  "id": 1
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "SecretPayload": {
+                      "fields": {
+                        "data": {
+                          "type": "bytes",
+                          "id": 1
+                        }
+                      }
+                    },
+                    "SecretManagerService": {
+                      "options": {
+                        "(google.api.default_host)": "secretmanager.googleapis.com",
+                        "(google.api.oauth_scopes)": "https://www.googleapis.com/auth/cloud-platform"
+                      },
+                      "methods": {
+                        "ListSecrets": {
+                          "requestType": "ListSecretsRequest",
+                          "responseType": "ListSecretsResponse",
+                          "options": {
+                            "(google.api.http).get": "/v1beta1/{parent=projects/*}/secrets",
+                            "(google.api.method_signature)": "parent"
+                          },
+                          "parsedOptions": [
+                            {
+                              "(google.api.http)": {
+                                "get": "/v1beta1/{parent=projects/*}/secrets"
+                              }
+                            },
+                            {
+                              "(google.api.method_signature)": "parent"
+                            }
+                          ]
+                        },
+                        "CreateSecret": {
+                          "requestType": "CreateSecretRequest",
+                          "responseType": "Secret",
+                          "options": {
+                            "(google.api.http).post": "/v1beta1/{parent=projects/*}/secrets",
+                            "(google.api.http).body": "secret",
+                            "(google.api.method_signature)": "parent,secret_id,secret"
+                          },
+                          "parsedOptions": [
+                            {
+                              "(google.api.http)": {
+                                "post": "/v1beta1/{parent=projects/*}/secrets",
+                                "body": "secret"
+                              }
+                            },
+                            {
+                              "(google.api.method_signature)": "parent,secret_id,secret"
+                            }
+                          ]
+                        },
+                        "AddSecretVersion": {
+                          "requestType": "AddSecretVersionRequest",
+                          "responseType": "SecretVersion",
+                          "options": {
+                            "(google.api.http).post": "/v1beta1/{parent=projects/*/secrets/*}:addVersion",
+                            "(google.api.http).body": "*",
+                            "(google.api.method_signature)": "parent,payload"
+                          },
+                          "parsedOptions": [
+                            {
+                              "(google.api.http)": {
+                                "post": "/v1beta1/{parent=projects/*/secrets/*}:addVersion",
+                                "body": "*"
+                              }
+                            },
+                            {
+                              "(google.api.method_signature)": "parent,payload"
+                            }
+                          ]
+                        },
+                        "GetSecret": {
+                          "requestType": "GetSecretRequest",
+                          "responseType": "Secret",
+                          "options": {
+                            "(google.api.http).get": "/v1beta1/{name=projects/*/secrets/*}",
+                            "(google.api.method_signature)": "name"
+                          },
+                          "parsedOptions": [
+                            {
+                              "(google.api.http)": {
+                                "get": "/v1beta1/{name=projects/*/secrets/*}"
+                              }
+                            },
+                            {
+                              "(google.api.method_signature)": "name"
+                            }
+                          ]
+                        },
+                        "UpdateSecret": {
+                          "requestType": "UpdateSecretRequest",
+                          "responseType": "Secret",
+                          "options": {
+                            "(google.api.http).patch": "/v1beta1/{secret.name=projects/*/secrets/*}",
+                            "(google.api.http).body": "secret",
+                            "(google.api.method_signature)": "secret,update_mask"
+                          },
+                          "parsedOptions": [
+                            {
+                              "(google.api.http)": {
+                                "patch": "/v1beta1/{secret.name=projects/*/secrets/*}",
+                                "body": "secret"
+                              }
+                            },
+                            {
+                              "(google.api.method_signature)": "secret,update_mask"
+                            }
+                          ]
+                        },
+                        "DeleteSecret": {
+                          "requestType": "DeleteSecretRequest",
+                          "responseType": "google.protobuf.Empty",
+                          "options": {
+                            "(google.api.http).delete": "/v1beta1/{name=projects/*/secrets/*}",
+                            "(google.api.method_signature)": "name"
+                          },
+                          "parsedOptions": [
+                            {
+                              "(google.api.http)": {
+                                "delete": "/v1beta1/{name=projects/*/secrets/*}"
+                              }
+                            },
+                            {
+                              "(google.api.method_signature)": "name"
+                            }
+                          ]
+                        },
+                        "ListSecretVersions": {
+                          "requestType": "ListSecretVersionsRequest",
+                          "responseType": "ListSecretVersionsResponse",
+                          "options": {
+                            "(google.api.http).get": "/v1beta1/{parent=projects/*/secrets/*}/versions",
+                            "(google.api.method_signature)": "parent"
+                          },
+                          "parsedOptions": [
+                            {
+                              "(google.api.http)": {
+                                "get": "/v1beta1/{parent=projects/*/secrets/*}/versions"
+                              }
+                            },
+                            {
+                              "(google.api.method_signature)": "parent"
+                            }
+                          ]
+                        },
+                        "GetSecretVersion": {
+                          "requestType": "GetSecretVersionRequest",
+                          "responseType": "SecretVersion",
+                          "options": {
+                            "(google.api.http).get": "/v1beta1/{name=projects/*/secrets/*/versions/*}",
+                            "(google.api.method_signature)": "name"
+                          },
+                          "parsedOptions": [
+                            {
+                              "(google.api.http)": {
+                                "get": "/v1beta1/{name=projects/*/secrets/*/versions/*}"
+                              }
+                            },
+                            {
+                              "(google.api.method_signature)": "name"
+                            }
+                          ]
+                        },
+                        "AccessSecretVersion": {
+                          "requestType": "AccessSecretVersionRequest",
+                          "responseType": "AccessSecretVersionResponse",
+                          "options": {
+                            "(google.api.http).get": "/v1beta1/{name=projects/*/secrets/*/versions/*}:access",
+                            "(google.api.method_signature)": "name"
+                          },
+                          "parsedOptions": [
+                            {
+                              "(google.api.http)": {
+                                "get": "/v1beta1/{name=projects/*/secrets/*/versions/*}:access"
+                              }
+                            },
+                            {
+                              "(google.api.method_signature)": "name"
+                            }
+                          ]
+                        },
+                        "DisableSecretVersion": {
+                          "requestType": "DisableSecretVersionRequest",
+                          "responseType": "SecretVersion",
+                          "options": {
+                            "(google.api.http).post": "/v1beta1/{name=projects/*/secrets/*/versions/*}:disable",
+                            "(google.api.http).body": "*",
+                            "(google.api.method_signature)": "name"
+                          },
+                          "parsedOptions": [
+                            {
+                              "(google.api.http)": {
+                                "post": "/v1beta1/{name=projects/*/secrets/*/versions/*}:disable",
+                                "body": "*"
+                              }
+                            },
+                            {
+                              "(google.api.method_signature)": "name"
+                            }
+                          ]
+                        },
+                        "EnableSecretVersion": {
+                          "requestType": "EnableSecretVersionRequest",
+                          "responseType": "SecretVersion",
+                          "options": {
+                            "(google.api.http).post": "/v1beta1/{name=projects/*/secrets/*/versions/*}:enable",
+                            "(google.api.http).body": "*",
+                            "(google.api.method_signature)": "name"
+                          },
+                          "parsedOptions": [
+                            {
+                              "(google.api.http)": {
+                                "post": "/v1beta1/{name=projects/*/secrets/*/versions/*}:enable",
+                                "body": "*"
+                              }
+                            },
+                            {
+                              "(google.api.method_signature)": "name"
+                            }
+                          ]
+                        },
+                        "DestroySecretVersion": {
+                          "requestType": "DestroySecretVersionRequest",
+                          "responseType": "SecretVersion",
+                          "options": {
+                            "(google.api.http).post": "/v1beta1/{name=projects/*/secrets/*/versions/*}:destroy",
+                            "(google.api.http).body": "*",
+                            "(google.api.method_signature)": "name"
+                          },
+                          "parsedOptions": [
+                            {
+                              "(google.api.http)": {
+                                "post": "/v1beta1/{name=projects/*/secrets/*/versions/*}:destroy",
+                                "body": "*"
+                              }
+                            },
+                            {
+                              "(google.api.method_signature)": "name"
+                            }
+                          ]
+                        },
+                        "SetIamPolicy": {
+                          "requestType": "google.iam.v1.SetIamPolicyRequest",
+                          "responseType": "google.iam.v1.Policy",
+                          "options": {
+                            "(google.api.http).post": "/v1beta1/{resource=projects/*/secrets/*}:setIamPolicy",
+                            "(google.api.http).body": "*"
+                          },
+                          "parsedOptions": [
+                            {
+                              "(google.api.http)": {
+                                "post": "/v1beta1/{resource=projects/*/secrets/*}:setIamPolicy",
+                                "body": "*"
+                              }
+                            }
+                          ]
+                        },
+                        "GetIamPolicy": {
+                          "requestType": "google.iam.v1.GetIamPolicyRequest",
+                          "responseType": "google.iam.v1.Policy",
+                          "options": {
+                            "(google.api.http).get": "/v1beta1/{resource=projects/*/secrets/*}:getIamPolicy"
+                          },
+                          "parsedOptions": [
+                            {
+                              "(google.api.http)": {
+                                "get": "/v1beta1/{resource=projects/*/secrets/*}:getIamPolicy"
+                              }
+                            }
+                          ]
+                        },
+                        "TestIamPermissions": {
+                          "requestType": "google.iam.v1.TestIamPermissionsRequest",
+                          "responseType": "google.iam.v1.TestIamPermissionsResponse",
+                          "options": {
+                            "(google.api.http).post": "/v1beta1/{resource=projects/*/secrets/*}:testIamPermissions",
+                            "(google.api.http).body": "*"
+                          },
+                          "parsedOptions": [
+                            {
+                              "(google.api.http)": {
+                                "post": "/v1beta1/{resource=projects/*/secrets/*}:testIamPermissions",
+                                "body": "*"
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    "ListSecretsRequest": {
+                      "fields": {
+                        "parent": {
+                          "type": "string",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED",
+                            "(google.api.resource_reference).type": "cloudresourcemanager.googleapis.com/Project"
+                          }
+                        },
+                        "pageSize": {
+                          "type": "int32",
+                          "id": 2,
+                          "options": {
+                            "(google.api.field_behavior)": "OPTIONAL"
+                          }
+                        },
+                        "pageToken": {
+                          "type": "string",
+                          "id": 3,
+                          "options": {
+                            "(google.api.field_behavior)": "OPTIONAL"
+                          }
+                        }
+                      }
+                    },
+                    "ListSecretsResponse": {
+                      "fields": {
+                        "secrets": {
+                          "rule": "repeated",
+                          "type": "Secret",
+                          "id": 1
+                        },
+                        "nextPageToken": {
+                          "type": "string",
+                          "id": 2
+                        },
+                        "totalSize": {
+                          "type": "int32",
+                          "id": 3
+                        }
+                      }
+                    },
+                    "CreateSecretRequest": {
+                      "fields": {
+                        "parent": {
+                          "type": "string",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED",
+                            "(google.api.resource_reference).type": "cloudresourcemanager.googleapis.com/Project"
+                          }
+                        },
+                        "secretId": {
+                          "type": "string",
+                          "id": 2,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED"
+                          }
+                        },
+                        "secret": {
+                          "type": "Secret",
+                          "id": 3,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED"
+                          }
+                        }
+                      }
+                    },
+                    "AddSecretVersionRequest": {
+                      "fields": {
+                        "parent": {
+                          "type": "string",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED",
+                            "(google.api.resource_reference).type": "secretmanager.googleapis.com/Secret"
+                          }
+                        },
+                        "payload": {
+                          "type": "SecretPayload",
+                          "id": 2,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED"
+                          }
+                        }
+                      }
+                    },
+                    "GetSecretRequest": {
+                      "fields": {
+                        "name": {
+                          "type": "string",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED",
+                            "(google.api.resource_reference).type": "secretmanager.googleapis.com/Secret"
+                          }
+                        }
+                      }
+                    },
+                    "ListSecretVersionsRequest": {
+                      "fields": {
+                        "parent": {
+                          "type": "string",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED",
+                            "(google.api.resource_reference).type": "secretmanager.googleapis.com/Secret"
+                          }
+                        },
+                        "pageSize": {
+                          "type": "int32",
+                          "id": 2,
+                          "options": {
+                            "(google.api.field_behavior)": "OPTIONAL"
+                          }
+                        },
+                        "pageToken": {
+                          "type": "string",
+                          "id": 3,
+                          "options": {
+                            "(google.api.field_behavior)": "OPTIONAL"
+                          }
+                        }
+                      }
+                    },
+                    "ListSecretVersionsResponse": {
+                      "fields": {
+                        "versions": {
+                          "rule": "repeated",
+                          "type": "SecretVersion",
+                          "id": 1
+                        },
+                        "nextPageToken": {
+                          "type": "string",
+                          "id": 2
+                        },
+                        "totalSize": {
+                          "type": "int32",
+                          "id": 3
+                        }
+                      }
+                    },
+                    "GetSecretVersionRequest": {
+                      "fields": {
+                        "name": {
+                          "type": "string",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED",
+                            "(google.api.resource_reference).type": "secretmanager.googleapis.com/SecretVersion"
+                          }
+                        }
+                      }
+                    },
+                    "UpdateSecretRequest": {
+                      "fields": {
+                        "secret": {
+                          "type": "Secret",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED"
+                          }
+                        },
+                        "updateMask": {
+                          "type": "google.protobuf.FieldMask",
+                          "id": 2,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED"
+                          }
+                        }
+                      }
+                    },
+                    "AccessSecretVersionRequest": {
+                      "fields": {
+                        "name": {
+                          "type": "string",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED",
+                            "(google.api.resource_reference).type": "secretmanager.googleapis.com/SecretVersion"
+                          }
+                        }
+                      }
+                    },
+                    "AccessSecretVersionResponse": {
+                      "fields": {
+                        "name": {
+                          "type": "string",
+                          "id": 1,
+                          "options": {
+                            "(google.api.resource_reference).type": "secretmanager.googleapis.com/SecretVersion"
+                          }
+                        },
+                        "payload": {
+                          "type": "SecretPayload",
+                          "id": 2
+                        }
+                      }
+                    },
+                    "DeleteSecretRequest": {
+                      "fields": {
+                        "name": {
+                          "type": "string",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED",
+                            "(google.api.resource_reference).type": "secretmanager.googleapis.com/Secret"
+                          }
+                        }
+                      }
+                    },
+                    "DisableSecretVersionRequest": {
+                      "fields": {
+                        "name": {
+                          "type": "string",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED",
+                            "(google.api.resource_reference).type": "secretmanager.googleapis.com/SecretVersion"
+                          }
+                        }
+                      }
+                    },
+                    "EnableSecretVersionRequest": {
+                      "fields": {
+                        "name": {
+                          "type": "string",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED",
+                            "(google.api.resource_reference).type": "secretmanager.googleapis.com/SecretVersion"
+                          }
+                        }
+                      }
+                    },
+                    "DestroySecretVersionRequest": {
+                      "fields": {
+                        "name": {
+                          "type": "string",
+                          "id": 1,
+                          "options": {
+                            "(google.api.field_behavior)": "REQUIRED",
+                            "(google.api.resource_reference).type": "secretmanager.googleapis.com/SecretVersion"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "api": {
+          "options": {
+            "go_package": "google.golang.org/genproto/googleapis/api;api",
+            "java_multiple_files": true,
+            "java_outer_classname": "LaunchStageProto",
+            "java_package": "com.google.api",
+            "objc_class_prefix": "GAPI",
+            "cc_enable_arenas": true
+          },
+          "nested": {
+            "fieldBehavior": {
+              "rule": "repeated",
+              "type": "google.api.FieldBehavior",
+              "id": 1052,
+              "extend": "google.protobuf.FieldOptions"
+            },
+            "FieldBehavior": {
+              "values": {
+                "FIELD_BEHAVIOR_UNSPECIFIED": 0,
+                "OPTIONAL": 1,
+                "REQUIRED": 2,
+                "OUTPUT_ONLY": 3,
+                "INPUT_ONLY": 4,
+                "IMMUTABLE": 5,
+                "UNORDERED_LIST": 6,
+                "NON_EMPTY_DEFAULT": 7,
+                "IDENTIFIER": 8
+              }
+            },
+            "resourceReference": {
+              "type": "google.api.ResourceReference",
+              "id": 1055,
+              "extend": "google.protobuf.FieldOptions"
+            },
+            "resourceDefinition": {
+              "rule": "repeated",
+              "type": "google.api.ResourceDescriptor",
+              "id": 1053,
+              "extend": "google.protobuf.FileOptions"
+            },
+            "resource": {
+              "type": "google.api.ResourceDescriptor",
+              "id": 1053,
+              "extend": "google.protobuf.MessageOptions"
+            },
+            "ResourceDescriptor": {
+              "fields": {
+                "type": {
+                  "type": "string",
+                  "id": 1
+                },
+                "pattern": {
+                  "rule": "repeated",
+                  "type": "string",
+                  "id": 2
+                },
+                "nameField": {
+                  "type": "string",
+                  "id": 3
+                },
+                "history": {
+                  "type": "History",
+                  "id": 4
+                },
+                "plural": {
+                  "type": "string",
+                  "id": 5
+                },
+                "singular": {
+                  "type": "string",
+                  "id": 6
+                },
+                "style": {
+                  "rule": "repeated",
+                  "type": "Style",
+                  "id": 10
+                }
+              },
+              "nested": {
+                "History": {
+                  "values": {
+                    "HISTORY_UNSPECIFIED": 0,
+                    "ORIGINALLY_SINGLE_PATTERN": 1,
+                    "FUTURE_MULTI_PATTERN": 2
+                  }
+                },
+                "Style": {
+                  "values": {
+                    "STYLE_UNSPECIFIED": 0,
+                    "DECLARATIVE_FRIENDLY": 1
+                  }
+                }
+              }
+            },
+            "ResourceReference": {
+              "fields": {
+                "type": {
+                  "type": "string",
+                  "id": 1
+                },
+                "childType": {
+                  "type": "string",
+                  "id": 2
+                }
+              }
+            },
+            "http": {
+              "type": "HttpRule",
+              "id": 72295728,
+              "extend": "google.protobuf.MethodOptions"
+            },
+            "Http": {
+              "fields": {
+                "rules": {
+                  "rule": "repeated",
+                  "type": "HttpRule",
+                  "id": 1
+                },
+                "fullyDecodeReservedExpansion": {
+                  "type": "bool",
+                  "id": 2
+                }
+              }
+            },
+            "HttpRule": {
+              "oneofs": {
+                "pattern": {
+                  "oneof": [
+                    "get",
+                    "put",
+                    "post",
+                    "delete",
+                    "patch",
+                    "custom"
+                  ]
+                }
+              },
+              "fields": {
+                "selector": {
+                  "type": "string",
+                  "id": 1
+                },
+                "get": {
+                  "type": "string",
+                  "id": 2
+                },
+                "put": {
+                  "type": "string",
+                  "id": 3
+                },
+                "post": {
+                  "type": "string",
+                  "id": 4
+                },
+                "delete": {
+                  "type": "string",
+                  "id": 5
+                },
+                "patch": {
+                  "type": "string",
+                  "id": 6
+                },
+                "custom": {
+                  "type": "CustomHttpPattern",
+                  "id": 8
+                },
+                "body": {
+                  "type": "string",
+                  "id": 7
+                },
+                "responseBody": {
+                  "type": "string",
+                  "id": 12
+                },
+                "additionalBindings": {
+                  "rule": "repeated",
+                  "type": "HttpRule",
+                  "id": 11
+                }
+              }
+            },
+            "CustomHttpPattern": {
+              "fields": {
+                "kind": {
+                  "type": "string",
+                  "id": 1
+                },
+                "path": {
+                  "type": "string",
+                  "id": 2
+                }
+              }
+            },
+            "methodSignature": {
+              "rule": "repeated",
+              "type": "string",
+              "id": 1051,
+              "extend": "google.protobuf.MethodOptions"
+            },
+            "defaultHost": {
+              "type": "string",
+              "id": 1049,
+              "extend": "google.protobuf.ServiceOptions"
+            },
+            "oauthScopes": {
+              "type": "string",
+              "id": 1050,
+              "extend": "google.protobuf.ServiceOptions"
+            },
+            "CommonLanguageSettings": {
+              "fields": {
+                "referenceDocsUri": {
+                  "type": "string",
+                  "id": 1,
+                  "options": {
+                    "deprecated": true
+                  }
+                },
+                "destinations": {
+                  "rule": "repeated",
+                  "type": "ClientLibraryDestination",
+                  "id": 2
+                }
+              }
+            },
+            "ClientLibrarySettings": {
+              "fields": {
+                "version": {
+                  "type": "string",
+                  "id": 1
+                },
+                "launchStage": {
+                  "type": "LaunchStage",
+                  "id": 2
+                },
+                "restNumericEnums": {
+                  "type": "bool",
+                  "id": 3
+                },
+                "javaSettings": {
+                  "type": "JavaSettings",
+                  "id": 21
+                },
+                "cppSettings": {
+                  "type": "CppSettings",
+                  "id": 22
+                },
+                "phpSettings": {
+                  "type": "PhpSettings",
+                  "id": 23
+                },
+                "pythonSettings": {
+                  "type": "PythonSettings",
+                  "id": 24
+                },
+                "nodeSettings": {
+                  "type": "NodeSettings",
+                  "id": 25
+                },
+                "dotnetSettings": {
+                  "type": "DotnetSettings",
+                  "id": 26
+                },
+                "rubySettings": {
+                  "type": "RubySettings",
+                  "id": 27
+                },
+                "goSettings": {
+                  "type": "GoSettings",
+                  "id": 28
+                }
+              }
+            },
+            "Publishing": {
+              "fields": {
+                "methodSettings": {
+                  "rule": "repeated",
+                  "type": "MethodSettings",
+                  "id": 2
+                },
+                "newIssueUri": {
+                  "type": "string",
+                  "id": 101
+                },
+                "documentationUri": {
+                  "type": "string",
+                  "id": 102
+                },
+                "apiShortName": {
+                  "type": "string",
+                  "id": 103
+                },
+                "githubLabel": {
+                  "type": "string",
+                  "id": 104
+                },
+                "codeownerGithubTeams": {
+                  "rule": "repeated",
+                  "type": "string",
+                  "id": 105
+                },
+                "docTagPrefix": {
+                  "type": "string",
+                  "id": 106
+                },
+                "organization": {
+                  "type": "ClientLibraryOrganization",
+                  "id": 107
+                },
+                "librarySettings": {
+                  "rule": "repeated",
+                  "type": "ClientLibrarySettings",
+                  "id": 109
+                },
+                "protoReferenceDocumentationUri": {
+                  "type": "string",
+                  "id": 110
+                }
+              }
+            },
+            "JavaSettings": {
+              "fields": {
+                "libraryPackage": {
+                  "type": "string",
+                  "id": 1
+                },
+                "serviceClassNames": {
+                  "keyType": "string",
+                  "type": "string",
+                  "id": 2
+                },
+                "common": {
+                  "type": "CommonLanguageSettings",
+                  "id": 3
+                }
+              }
+            },
+            "CppSettings": {
+              "fields": {
+                "common": {
+                  "type": "CommonLanguageSettings",
+                  "id": 1
+                }
+              }
+            },
+            "PhpSettings": {
+              "fields": {
+                "common": {
+                  "type": "CommonLanguageSettings",
+                  "id": 1
+                }
+              }
+            },
+            "PythonSettings": {
+              "fields": {
+                "common": {
+                  "type": "CommonLanguageSettings",
+                  "id": 1
+                }
+              }
+            },
+            "NodeSettings": {
+              "fields": {
+                "common": {
+                  "type": "CommonLanguageSettings",
+                  "id": 1
+                }
+              }
+            },
+            "DotnetSettings": {
+              "fields": {
+                "common": {
+                  "type": "CommonLanguageSettings",
+                  "id": 1
+                },
+                "renamedServices": {
+                  "keyType": "string",
+                  "type": "string",
+                  "id": 2
+                },
+                "renamedResources": {
+                  "keyType": "string",
+                  "type": "string",
+                  "id": 3
+                },
+                "ignoredResources": {
+                  "rule": "repeated",
+                  "type": "string",
+                  "id": 4
+                },
+                "forcedNamespaceAliases": {
+                  "rule": "repeated",
+                  "type": "string",
+                  "id": 5
+                },
+                "handwrittenSignatures": {
+                  "rule": "repeated",
+                  "type": "string",
+                  "id": 6
+                }
+              }
+            },
+            "RubySettings": {
+              "fields": {
+                "common": {
+                  "type": "CommonLanguageSettings",
+                  "id": 1
+                }
+              }
+            },
+            "GoSettings": {
+              "fields": {
+                "common": {
+                  "type": "CommonLanguageSettings",
+                  "id": 1
+                }
+              }
+            },
+            "MethodSettings": {
+              "fields": {
+                "selector": {
+                  "type": "string",
+                  "id": 1
+                },
+                "longRunning": {
+                  "type": "LongRunning",
+                  "id": 2
+                },
+                "autoPopulatedFields": {
+                  "rule": "repeated",
+                  "type": "string",
+                  "id": 3
+                }
+              },
+              "nested": {
+                "LongRunning": {
+                  "fields": {
+                    "initialPollDelay": {
+                      "type": "google.protobuf.Duration",
+                      "id": 1
+                    },
+                    "pollDelayMultiplier": {
+                      "type": "float",
+                      "id": 2
+                    },
+                    "maxPollDelay": {
+                      "type": "google.protobuf.Duration",
+                      "id": 3
+                    },
+                    "totalPollTimeout": {
+                      "type": "google.protobuf.Duration",
+                      "id": 4
+                    }
+                  }
+                }
+              }
+            },
+            "ClientLibraryOrganization": {
+              "values": {
+                "CLIENT_LIBRARY_ORGANIZATION_UNSPECIFIED": 0,
+                "CLOUD": 1,
+                "ADS": 2,
+                "PHOTOS": 3,
+                "STREET_VIEW": 4,
+                "SHOPPING": 5,
+                "GEO": 6,
+                "GENERATIVE_AI": 7
+              }
+            },
+            "ClientLibraryDestination": {
+              "values": {
+                "CLIENT_LIBRARY_DESTINATION_UNSPECIFIED": 0,
+                "GITHUB": 10,
+                "PACKAGE_MANAGER": 20
+              }
+            },
+            "LaunchStage": {
+              "values": {
+                "LAUNCH_STAGE_UNSPECIFIED": 0,
+                "UNIMPLEMENTED": 6,
+                "PRELAUNCH": 7,
+                "EARLY_ACCESS": 1,
+                "ALPHA": 2,
+                "BETA": 3,
+                "GA": 4,
+                "DEPRECATED": 5
+              }
+            }
+          }
+        },
+        "protobuf": {
+          "options": {
+            "go_package": "google.golang.org/protobuf/types/descriptorpb",
+            "java_package": "com.google.protobuf",
+            "java_outer_classname": "DescriptorProtos",
+            "csharp_namespace": "Google.Protobuf.Reflection",
+            "objc_class_prefix": "GPB",
+            "cc_enable_arenas": true,
+            "optimize_for": "SPEED"
+          },
+          "nested": {
+            "FileDescriptorSet": {
+              "fields": {
+                "file": {
+                  "rule": "repeated",
+                  "type": "FileDescriptorProto",
+                  "id": 1
+                }
+              }
+            },
+            "Edition": {
+              "values": {
+                "EDITION_UNKNOWN": 0,
+                "EDITION_PROTO2": 998,
+                "EDITION_PROTO3": 999,
+                "EDITION_2023": 1000,
+                "EDITION_2024": 1001,
+                "EDITION_1_TEST_ONLY": 1,
+                "EDITION_2_TEST_ONLY": 2,
+                "EDITION_99997_TEST_ONLY": 99997,
+                "EDITION_99998_TEST_ONLY": 99998,
+                "EDITION_99999_TEST_ONLY": 99999,
+                "EDITION_MAX": 2147483647
+              }
+            },
+            "FileDescriptorProto": {
+              "fields": {
+                "name": {
+                  "type": "string",
+                  "id": 1
+                },
+                "package": {
+                  "type": "string",
+                  "id": 2
+                },
+                "dependency": {
+                  "rule": "repeated",
+                  "type": "string",
+                  "id": 3
+                },
+                "publicDependency": {
+                  "rule": "repeated",
+                  "type": "int32",
+                  "id": 10,
+                  "options": {
+                    "packed": false
+                  }
+                },
+                "weakDependency": {
+                  "rule": "repeated",
+                  "type": "int32",
+                  "id": 11,
+                  "options": {
+                    "packed": false
+                  }
+                },
+                "messageType": {
+                  "rule": "repeated",
+                  "type": "DescriptorProto",
+                  "id": 4
+                },
+                "enumType": {
+                  "rule": "repeated",
+                  "type": "EnumDescriptorProto",
+                  "id": 5
+                },
+                "service": {
+                  "rule": "repeated",
+                  "type": "ServiceDescriptorProto",
+                  "id": 6
+                },
+                "extension": {
+                  "rule": "repeated",
+                  "type": "FieldDescriptorProto",
+                  "id": 7
+                },
+                "options": {
+                  "type": "FileOptions",
+                  "id": 8
+                },
+                "sourceCodeInfo": {
+                  "type": "SourceCodeInfo",
+                  "id": 9
+                },
+                "syntax": {
+                  "type": "string",
+                  "id": 12
+                },
+                "edition": {
+                  "type": "Edition",
+                  "id": 14
+                }
+              }
+            },
+            "DescriptorProto": {
+              "fields": {
+                "name": {
+                  "type": "string",
+                  "id": 1
+                },
+                "field": {
+                  "rule": "repeated",
+                  "type": "FieldDescriptorProto",
+                  "id": 2
+                },
+                "extension": {
+                  "rule": "repeated",
+                  "type": "FieldDescriptorProto",
+                  "id": 6
+                },
+                "nestedType": {
+                  "rule": "repeated",
+                  "type": "DescriptorProto",
+                  "id": 3
+                },
+                "enumType": {
+                  "rule": "repeated",
+                  "type": "EnumDescriptorProto",
+                  "id": 4
+                },
+                "extensionRange": {
+                  "rule": "repeated",
+                  "type": "ExtensionRange",
+                  "id": 5
+                },
+                "oneofDecl": {
+                  "rule": "repeated",
+                  "type": "OneofDescriptorProto",
+                  "id": 8
+                },
+                "options": {
+                  "type": "MessageOptions",
+                  "id": 7
+                },
+                "reservedRange": {
+                  "rule": "repeated",
+                  "type": "ReservedRange",
+                  "id": 9
+                },
+                "reservedName": {
+                  "rule": "repeated",
+                  "type": "string",
+                  "id": 10
+                }
+              },
+              "nested": {
+                "ExtensionRange": {
+                  "fields": {
+                    "start": {
+                      "type": "int32",
+                      "id": 1
+                    },
+                    "end": {
+                      "type": "int32",
+                      "id": 2
+                    },
+                    "options": {
+                      "type": "ExtensionRangeOptions",
+                      "id": 3
+                    }
+                  }
+                },
+                "ReservedRange": {
+                  "fields": {
+                    "start": {
+                      "type": "int32",
+                      "id": 1
+                    },
+                    "end": {
+                      "type": "int32",
+                      "id": 2
+                    }
+                  }
+                }
+              }
+            },
+            "ExtensionRangeOptions": {
+              "fields": {
+                "uninterpretedOption": {
+                  "rule": "repeated",
+                  "type": "UninterpretedOption",
+                  "id": 999
+                },
+                "declaration": {
+                  "rule": "repeated",
+                  "type": "Declaration",
+                  "id": 2,
+                  "options": {
+                    "retention": "RETENTION_SOURCE"
+                  }
+                },
+                "features": {
+                  "type": "FeatureSet",
+                  "id": 50
+                },
+                "verification": {
+                  "type": "VerificationState",
+                  "id": 3,
+                  "options": {
+                    "default": "UNVERIFIED",
+                    "retention": "RETENTION_SOURCE"
+                  }
+                }
+              },
+              "extensions": [
+                [
+                  1000,
+                  536870911
+                ]
+              ],
+              "nested": {
+                "Declaration": {
+                  "fields": {
+                    "number": {
+                      "type": "int32",
+                      "id": 1
+                    },
+                    "fullName": {
+                      "type": "string",
+                      "id": 2
+                    },
+                    "type": {
+                      "type": "string",
+                      "id": 3
+                    },
+                    "reserved": {
+                      "type": "bool",
+                      "id": 5
+                    },
+                    "repeated": {
+                      "type": "bool",
+                      "id": 6
+                    }
+                  },
+                  "reserved": [
+                    [
+                      4,
+                      4
+                    ]
+                  ]
+                },
+                "VerificationState": {
+                  "values": {
+                    "DECLARATION": 0,
+                    "UNVERIFIED": 1
+                  }
+                }
+              }
+            },
+            "FieldDescriptorProto": {
+              "fields": {
+                "name": {
+                  "type": "string",
+                  "id": 1
+                },
+                "number": {
+                  "type": "int32",
+                  "id": 3
+                },
+                "label": {
+                  "type": "Label",
+                  "id": 4
+                },
+                "type": {
+                  "type": "Type",
+                  "id": 5
+                },
+                "typeName": {
+                  "type": "string",
+                  "id": 6
+                },
+                "extendee": {
+                  "type": "string",
+                  "id": 2
+                },
+                "defaultValue": {
+                  "type": "string",
+                  "id": 7
+                },
+                "oneofIndex": {
+                  "type": "int32",
+                  "id": 9
+                },
+                "jsonName": {
+                  "type": "string",
+                  "id": 10
+                },
+                "options": {
+                  "type": "FieldOptions",
+                  "id": 8
+                },
+                "proto3Optional": {
+                  "type": "bool",
+                  "id": 17
+                }
+              },
+              "nested": {
+                "Type": {
+                  "values": {
+                    "TYPE_DOUBLE": 1,
+                    "TYPE_FLOAT": 2,
+                    "TYPE_INT64": 3,
+                    "TYPE_UINT64": 4,
+                    "TYPE_INT32": 5,
+                    "TYPE_FIXED64": 6,
+                    "TYPE_FIXED32": 7,
+                    "TYPE_BOOL": 8,
+                    "TYPE_STRING": 9,
+                    "TYPE_GROUP": 10,
+                    "TYPE_MESSAGE": 11,
+                    "TYPE_BYTES": 12,
+                    "TYPE_UINT32": 13,
+                    "TYPE_ENUM": 14,
+                    "TYPE_SFIXED32": 15,
+                    "TYPE_SFIXED64": 16,
+                    "TYPE_SINT32": 17,
+                    "TYPE_SINT64": 18
+                  }
+                },
+                "Label": {
+                  "values": {
+                    "LABEL_OPTIONAL": 1,
+                    "LABEL_REPEATED": 3,
+                    "LABEL_REQUIRED": 2
+                  }
+                }
+              }
+            },
+            "OneofDescriptorProto": {
+              "fields": {
+                "name": {
+                  "type": "string",
+                  "id": 1
+                },
+                "options": {
+                  "type": "OneofOptions",
+                  "id": 2
+                }
+              }
+            },
+            "EnumDescriptorProto": {
+              "fields": {
+                "name": {
+                  "type": "string",
+                  "id": 1
+                },
+                "value": {
+                  "rule": "repeated",
+                  "type": "EnumValueDescriptorProto",
+                  "id": 2
+                },
+                "options": {
+                  "type": "EnumOptions",
+                  "id": 3
+                },
+                "reservedRange": {
+                  "rule": "repeated",
+                  "type": "EnumReservedRange",
+                  "id": 4
+                },
+                "reservedName": {
+                  "rule": "repeated",
+                  "type": "string",
+                  "id": 5
+                }
+              },
+              "nested": {
+                "EnumReservedRange": {
+                  "fields": {
+                    "start": {
+                      "type": "int32",
+                      "id": 1
+                    },
+                    "end": {
+                      "type": "int32",
+                      "id": 2
+                    }
+                  }
+                }
+              }
+            },
+            "EnumValueDescriptorProto": {
+              "fields": {
+                "name": {
+                  "type": "string",
+                  "id": 1
+                },
+                "number": {
+                  "type": "int32",
+                  "id": 2
+                },
+                "options": {
+                  "type": "EnumValueOptions",
+                  "id": 3
+                }
+              }
+            },
+            "ServiceDescriptorProto": {
+              "fields": {
+                "name": {
+                  "type": "string",
+                  "id": 1
+                },
+                "method": {
+                  "rule": "repeated",
+                  "type": "MethodDescriptorProto",
+                  "id": 2
+                },
+                "options": {
+                  "type": "ServiceOptions",
+                  "id": 3
+                }
+              }
+            },
+            "MethodDescriptorProto": {
+              "fields": {
+                "name": {
+                  "type": "string",
+                  "id": 1
+                },
+                "inputType": {
+                  "type": "string",
+                  "id": 2
+                },
+                "outputType": {
+                  "type": "string",
+                  "id": 3
+                },
+                "options": {
+                  "type": "MethodOptions",
+                  "id": 4
+                },
+                "clientStreaming": {
+                  "type": "bool",
+                  "id": 5,
+                  "options": {
+                    "default": false
+                  }
+                },
+                "serverStreaming": {
+                  "type": "bool",
+                  "id": 6,
+                  "options": {
+                    "default": false
+                  }
+                }
+              }
+            },
+            "FileOptions": {
+              "fields": {
+                "javaPackage": {
+                  "type": "string",
+                  "id": 1
+                },
+                "javaOuterClassname": {
+                  "type": "string",
+                  "id": 8
+                },
+                "javaMultipleFiles": {
+                  "type": "bool",
+                  "id": 10,
+                  "options": {
+                    "default": false
+                  }
+                },
+                "javaGenerateEqualsAndHash": {
+                  "type": "bool",
+                  "id": 20,
+                  "options": {
+                    "deprecated": true
+                  }
+                },
+                "javaStringCheckUtf8": {
+                  "type": "bool",
+                  "id": 27,
+                  "options": {
+                    "default": false
+                  }
+                },
+                "optimizeFor": {
+                  "type": "OptimizeMode",
+                  "id": 9,
+                  "options": {
+                    "default": "SPEED"
+                  }
+                },
+                "goPackage": {
+                  "type": "string",
+                  "id": 11
+                },
+                "ccGenericServices": {
+                  "type": "bool",
+                  "id": 16,
+                  "options": {
+                    "default": false
+                  }
+                },
+                "javaGenericServices": {
+                  "type": "bool",
+                  "id": 17,
+                  "options": {
+                    "default": false
+                  }
+                },
+                "pyGenericServices": {
+                  "type": "bool",
+                  "id": 18,
+                  "options": {
+                    "default": false
+                  }
+                },
+                "deprecated": {
+                  "type": "bool",
+                  "id": 23,
+                  "options": {
+                    "default": false
+                  }
+                },
+                "ccEnableArenas": {
+                  "type": "bool",
+                  "id": 31,
+                  "options": {
+                    "default": true
+                  }
+                },
+                "objcClassPrefix": {
+                  "type": "string",
+                  "id": 36
+                },
+                "csharpNamespace": {
+                  "type": "string",
+                  "id": 37
+                },
+                "swiftPrefix": {
+                  "type": "string",
+                  "id": 39
+                },
+                "phpClassPrefix": {
+                  "type": "string",
+                  "id": 40
+                },
+                "phpNamespace": {
+                  "type": "string",
+                  "id": 41
+                },
+                "phpMetadataNamespace": {
+                  "type": "string",
+                  "id": 44
+                },
+                "rubyPackage": {
+                  "type": "string",
+                  "id": 45
+                },
+                "features": {
+                  "type": "FeatureSet",
+                  "id": 50
+                },
+                "uninterpretedOption": {
+                  "rule": "repeated",
+                  "type": "UninterpretedOption",
+                  "id": 999
+                }
+              },
+              "extensions": [
+                [
+                  1000,
+                  536870911
+                ]
+              ],
+              "reserved": [
+                [
+                  42,
+                  42
+                ],
+                [
+                  38,
+                  38
+                ]
+              ],
+              "nested": {
+                "OptimizeMode": {
+                  "values": {
+                    "SPEED": 1,
+                    "CODE_SIZE": 2,
+                    "LITE_RUNTIME": 3
+                  }
+                }
+              }
+            },
+            "MessageOptions": {
+              "fields": {
+                "messageSetWireFormat": {
+                  "type": "bool",
+                  "id": 1,
+                  "options": {
+                    "default": false
+                  }
+                },
+                "noStandardDescriptorAccessor": {
+                  "type": "bool",
+                  "id": 2,
+                  "options": {
+                    "default": false
+                  }
+                },
+                "deprecated": {
+                  "type": "bool",
+                  "id": 3,
+                  "options": {
+                    "default": false
+                  }
+                },
+                "mapEntry": {
+                  "type": "bool",
+                  "id": 7
+                },
+                "deprecatedLegacyJsonFieldConflicts": {
+                  "type": "bool",
+                  "id": 11,
+                  "options": {
+                    "deprecated": true
+                  }
+                },
+                "features": {
+                  "type": "FeatureSet",
+                  "id": 12
+                },
+                "uninterpretedOption": {
+                  "rule": "repeated",
+                  "type": "UninterpretedOption",
+                  "id": 999
+                }
+              },
+              "extensions": [
+                [
+                  1000,
+                  536870911
+                ]
+              ],
+              "reserved": [
+                [
+                  4,
+                  4
+                ],
+                [
+                  5,
+                  5
+                ],
+                [
+                  6,
+                  6
+                ],
+                [
+                  8,
+                  8
+                ],
+                [
+                  9,
+                  9
+                ]
+              ]
+            },
+            "FieldOptions": {
+              "fields": {
+                "ctype": {
+                  "type": "CType",
+                  "id": 1,
+                  "options": {
+                    "default": "STRING"
+                  }
+                },
+                "packed": {
+                  "type": "bool",
+                  "id": 2
+                },
+                "jstype": {
+                  "type": "JSType",
+                  "id": 6,
+                  "options": {
+                    "default": "JS_NORMAL"
+                  }
+                },
+                "lazy": {
+                  "type": "bool",
+                  "id": 5,
+                  "options": {
+                    "default": false
+                  }
+                },
+                "unverifiedLazy": {
+                  "type": "bool",
+                  "id": 15,
+                  "options": {
+                    "default": false
+                  }
+                },
+                "deprecated": {
+                  "type": "bool",
+                  "id": 3,
+                  "options": {
+                    "default": false
+                  }
+                },
+                "weak": {
+                  "type": "bool",
+                  "id": 10,
+                  "options": {
+                    "default": false
+                  }
+                },
+                "debugRedact": {
+                  "type": "bool",
+                  "id": 16,
+                  "options": {
+                    "default": false
+                  }
+                },
+                "retention": {
+                  "type": "OptionRetention",
+                  "id": 17
+                },
+                "targets": {
+                  "rule": "repeated",
+                  "type": "OptionTargetType",
+                  "id": 19,
+                  "options": {
+                    "packed": false
+                  }
+                },
+                "editionDefaults": {
+                  "rule": "repeated",
+                  "type": "EditionDefault",
+                  "id": 20
+                },
+                "features": {
+                  "type": "FeatureSet",
+                  "id": 21
+                },
+                "uninterpretedOption": {
+                  "rule": "repeated",
+                  "type": "UninterpretedOption",
+                  "id": 999
+                }
+              },
+              "extensions": [
+                [
+                  1000,
+                  536870911
+                ]
+              ],
+              "reserved": [
+                [
+                  4,
+                  4
+                ],
+                [
+                  18,
+                  18
+                ]
+              ],
+              "nested": {
+                "CType": {
+                  "values": {
+                    "STRING": 0,
+                    "CORD": 1,
+                    "STRING_PIECE": 2
+                  }
+                },
+                "JSType": {
+                  "values": {
+                    "JS_NORMAL": 0,
+                    "JS_STRING": 1,
+                    "JS_NUMBER": 2
+                  }
+                },
+                "OptionRetention": {
+                  "values": {
+                    "RETENTION_UNKNOWN": 0,
+                    "RETENTION_RUNTIME": 1,
+                    "RETENTION_SOURCE": 2
+                  }
+                },
+                "OptionTargetType": {
+                  "values": {
+                    "TARGET_TYPE_UNKNOWN": 0,
+                    "TARGET_TYPE_FILE": 1,
+                    "TARGET_TYPE_EXTENSION_RANGE": 2,
+                    "TARGET_TYPE_MESSAGE": 3,
+                    "TARGET_TYPE_FIELD": 4,
+                    "TARGET_TYPE_ONEOF": 5,
+                    "TARGET_TYPE_ENUM": 6,
+                    "TARGET_TYPE_ENUM_ENTRY": 7,
+                    "TARGET_TYPE_SERVICE": 8,
+                    "TARGET_TYPE_METHOD": 9
+                  }
+                },
+                "EditionDefault": {
+                  "fields": {
+                    "edition": {
+                      "type": "Edition",
+                      "id": 3
+                    },
+                    "value": {
+                      "type": "string",
+                      "id": 2
+                    }
+                  }
+                }
+              }
+            },
+            "OneofOptions": {
+              "fields": {
+                "features": {
+                  "type": "FeatureSet",
+                  "id": 1
+                },
+                "uninterpretedOption": {
+                  "rule": "repeated",
+                  "type": "UninterpretedOption",
+                  "id": 999
+                }
+              },
+              "extensions": [
+                [
+                  1000,
+                  536870911
+                ]
+              ]
+            },
+            "EnumOptions": {
+              "fields": {
+                "allowAlias": {
+                  "type": "bool",
+                  "id": 2
+                },
+                "deprecated": {
+                  "type": "bool",
+                  "id": 3,
+                  "options": {
+                    "default": false
+                  }
+                },
+                "deprecatedLegacyJsonFieldConflicts": {
+                  "type": "bool",
+                  "id": 6,
+                  "options": {
+                    "deprecated": true
+                  }
+                },
+                "features": {
+                  "type": "FeatureSet",
+                  "id": 7
+                },
+                "uninterpretedOption": {
+                  "rule": "repeated",
+                  "type": "UninterpretedOption",
+                  "id": 999
+                }
+              },
+              "extensions": [
+                [
+                  1000,
+                  536870911
+                ]
+              ],
+              "reserved": [
+                [
+                  5,
+                  5
+                ]
+              ]
+            },
+            "EnumValueOptions": {
+              "fields": {
+                "deprecated": {
+                  "type": "bool",
+                  "id": 1,
+                  "options": {
+                    "default": false
+                  }
+                },
+                "features": {
+                  "type": "FeatureSet",
+                  "id": 2
+                },
+                "debugRedact": {
+                  "type": "bool",
+                  "id": 3,
+                  "options": {
+                    "default": false
+                  }
+                },
+                "uninterpretedOption": {
+                  "rule": "repeated",
+                  "type": "UninterpretedOption",
+                  "id": 999
+                }
+              },
+              "extensions": [
+                [
+                  1000,
+                  536870911
+                ]
+              ]
+            },
+            "ServiceOptions": {
+              "fields": {
+                "features": {
+                  "type": "FeatureSet",
+                  "id": 34
+                },
+                "deprecated": {
+                  "type": "bool",
+                  "id": 33,
+                  "options": {
+                    "default": false
+                  }
+                },
+                "uninterpretedOption": {
+                  "rule": "repeated",
+                  "type": "UninterpretedOption",
+                  "id": 999
+                }
+              },
+              "extensions": [
+                [
+                  1000,
+                  536870911
+                ]
+              ]
+            },
+            "MethodOptions": {
+              "fields": {
+                "deprecated": {
+                  "type": "bool",
+                  "id": 33,
+                  "options": {
+                    "default": false
+                  }
+                },
+                "idempotencyLevel": {
+                  "type": "IdempotencyLevel",
+                  "id": 34,
+                  "options": {
+                    "default": "IDEMPOTENCY_UNKNOWN"
+                  }
+                },
+                "features": {
+                  "type": "FeatureSet",
+                  "id": 35
+                },
+                "uninterpretedOption": {
+                  "rule": "repeated",
+                  "type": "UninterpretedOption",
+                  "id": 999
+                }
+              },
+              "extensions": [
+                [
+                  1000,
+                  536870911
+                ]
+              ],
+              "nested": {
+                "IdempotencyLevel": {
+                  "values": {
+                    "IDEMPOTENCY_UNKNOWN": 0,
+                    "NO_SIDE_EFFECTS": 1,
+                    "IDEMPOTENT": 2
+                  }
+                }
+              }
+            },
+            "UninterpretedOption": {
+              "fields": {
+                "name": {
+                  "rule": "repeated",
+                  "type": "NamePart",
+                  "id": 2
+                },
+                "identifierValue": {
+                  "type": "string",
+                  "id": 3
+                },
+                "positiveIntValue": {
+                  "type": "uint64",
+                  "id": 4
+                },
+                "negativeIntValue": {
+                  "type": "int64",
+                  "id": 5
+                },
+                "doubleValue": {
+                  "type": "double",
+                  "id": 6
+                },
+                "stringValue": {
+                  "type": "bytes",
+                  "id": 7
+                },
+                "aggregateValue": {
+                  "type": "string",
+                  "id": 8
+                }
+              },
+              "nested": {
+                "NamePart": {
+                  "fields": {
+                    "namePart": {
+                      "rule": "required",
+                      "type": "string",
+                      "id": 1
+                    },
+                    "isExtension": {
+                      "rule": "required",
+                      "type": "bool",
+                      "id": 2
+                    }
+                  }
+                }
+              }
+            },
+            "FeatureSet": {
+              "fields": {
+                "fieldPresence": {
+                  "type": "FieldPresence",
+                  "id": 1,
+                  "options": {
+                    "retention": "RETENTION_RUNTIME",
+                    "targets": "TARGET_TYPE_FILE",
+                    "edition_defaults.edition": "EDITION_2023",
+                    "edition_defaults.value": "EXPLICIT"
+                  }
+                },
+                "enumType": {
+                  "type": "EnumType",
+                  "id": 2,
+                  "options": {
+                    "retention": "RETENTION_RUNTIME",
+                    "targets": "TARGET_TYPE_FILE",
+                    "edition_defaults.edition": "EDITION_PROTO3",
+                    "edition_defaults.value": "OPEN"
+                  }
+                },
+                "repeatedFieldEncoding": {
+                  "type": "RepeatedFieldEncoding",
+                  "id": 3,
+                  "options": {
+                    "retention": "RETENTION_RUNTIME",
+                    "targets": "TARGET_TYPE_FILE",
+                    "edition_defaults.edition": "EDITION_PROTO3",
+                    "edition_defaults.value": "PACKED"
+                  }
+                },
+                "utf8Validation": {
+                  "type": "Utf8Validation",
+                  "id": 4,
+                  "options": {
+                    "retention": "RETENTION_RUNTIME",
+                    "targets": "TARGET_TYPE_FILE",
+                    "edition_defaults.edition": "EDITION_PROTO3",
+                    "edition_defaults.value": "VERIFY"
+                  }
+                },
+                "messageEncoding": {
+                  "type": "MessageEncoding",
+                  "id": 5,
+                  "options": {
+                    "retention": "RETENTION_RUNTIME",
+                    "targets": "TARGET_TYPE_FILE",
+                    "edition_defaults.edition": "EDITION_PROTO2",
+                    "edition_defaults.value": "LENGTH_PREFIXED"
+                  }
+                },
+                "jsonFormat": {
+                  "type": "JsonFormat",
+                  "id": 6,
+                  "options": {
+                    "retention": "RETENTION_RUNTIME",
+                    "targets": "TARGET_TYPE_FILE",
+                    "edition_defaults.edition": "EDITION_PROTO3",
+                    "edition_defaults.value": "ALLOW"
+                  }
+                }
+              },
+              "extensions": [
+                [
+                  1000,
+                  1000
+                ],
+                [
+                  1001,
+                  1001
+                ],
+                [
+                  9995,
+                  9999
+                ]
+              ],
+              "reserved": [
+                [
+                  999,
+                  999
+                ]
+              ],
+              "nested": {
+                "FieldPresence": {
+                  "values": {
+                    "FIELD_PRESENCE_UNKNOWN": 0,
+                    "EXPLICIT": 1,
+                    "IMPLICIT": 2,
+                    "LEGACY_REQUIRED": 3
+                  }
+                },
+                "EnumType": {
+                  "values": {
+                    "ENUM_TYPE_UNKNOWN": 0,
+                    "OPEN": 1,
+                    "CLOSED": 2
+                  }
+                },
+                "RepeatedFieldEncoding": {
+                  "values": {
+                    "REPEATED_FIELD_ENCODING_UNKNOWN": 0,
+                    "PACKED": 1,
+                    "EXPANDED": 2
+                  }
+                },
+                "Utf8Validation": {
+                  "values": {
+                    "UTF8_VALIDATION_UNKNOWN": 0,
+                    "VERIFY": 2,
+                    "NONE": 3
+                  }
+                },
+                "MessageEncoding": {
+                  "values": {
+                    "MESSAGE_ENCODING_UNKNOWN": 0,
+                    "LENGTH_PREFIXED": 1,
+                    "DELIMITED": 2
+                  }
+                },
+                "JsonFormat": {
+                  "values": {
+                    "JSON_FORMAT_UNKNOWN": 0,
+                    "ALLOW": 1,
+                    "LEGACY_BEST_EFFORT": 2
+                  }
+                }
+              }
+            },
+            "FeatureSetDefaults": {
+              "fields": {
+                "defaults": {
+                  "rule": "repeated",
+                  "type": "FeatureSetEditionDefault",
+                  "id": 1
+                },
+                "minimumEdition": {
+                  "type": "Edition",
+                  "id": 4
+                },
+                "maximumEdition": {
+                  "type": "Edition",
+                  "id": 5
+                }
+              },
+              "nested": {
+                "FeatureSetEditionDefault": {
+                  "fields": {
+                    "edition": {
+                      "type": "Edition",
+                      "id": 3
+                    },
+                    "features": {
+                      "type": "FeatureSet",
+                      "id": 2
+                    }
+                  }
+                }
+              }
+            },
+            "SourceCodeInfo": {
+              "fields": {
+                "location": {
+                  "rule": "repeated",
+                  "type": "Location",
+                  "id": 1
+                }
+              },
+              "nested": {
+                "Location": {
+                  "fields": {
+                    "path": {
+                      "rule": "repeated",
+                      "type": "int32",
+                      "id": 1
+                    },
+                    "span": {
+                      "rule": "repeated",
+                      "type": "int32",
+                      "id": 2
+                    },
+                    "leadingComments": {
+                      "type": "string",
+                      "id": 3
+                    },
+                    "trailingComments": {
+                      "type": "string",
+                      "id": 4
+                    },
+                    "leadingDetachedComments": {
+                      "rule": "repeated",
+                      "type": "string",
+                      "id": 6
+                    }
+                  }
+                }
+              }
+            },
+            "GeneratedCodeInfo": {
+              "fields": {
+                "annotation": {
+                  "rule": "repeated",
+                  "type": "Annotation",
+                  "id": 1
+                }
+              },
+              "nested": {
+                "Annotation": {
+                  "fields": {
+                    "path": {
+                      "rule": "repeated",
+                      "type": "int32",
+                      "id": 1
+                    },
+                    "sourceFile": {
+                      "type": "string",
+                      "id": 2
+                    },
+                    "begin": {
+                      "type": "int32",
+                      "id": 3
+                    },
+                    "end": {
+                      "type": "int32",
+                      "id": 4
+                    },
+                    "semantic": {
+                      "type": "Semantic",
+                      "id": 5
+                    }
+                  },
+                  "nested": {
+                    "Semantic": {
+                      "values": {
+                        "NONE": 0,
+                        "SET": 1,
+                        "ALIAS": 2
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "Duration": {
+              "fields": {
+                "seconds": {
+                  "type": "int64",
+                  "id": 1
+                },
+                "nanos": {
+                  "type": "int32",
+                  "id": 2
+                }
+              }
+            },
+            "Timestamp": {
+              "fields": {
+                "seconds": {
+                  "type": "int64",
+                  "id": 1
+                },
+                "nanos": {
+                  "type": "int32",
+                  "id": 2
+                }
+              }
+            },
+            "FieldMask": {
+              "fields": {
+                "paths": {
+                  "rule": "repeated",
+                  "type": "string",
+                  "id": 1
+                }
+              }
+            },
+            "Empty": {
+              "fields": {}
+            }
+          }
+        },
+        "iam": {
+          "nested": {
+            "v1": {
+              "options": {
+                "cc_enable_arenas": true,
+                "csharp_namespace": "Google.Cloud.Iam.V1",
+                "go_package": "cloud.google.com/go/iam/apiv1/iampb;iampb",
+                "java_multiple_files": true,
+                "java_outer_classname": "PolicyProto",
+                "java_package": "com.google.iam.v1",
+                "php_namespace": "Google\\Cloud\\Iam\\V1"
+              },
+              "nested": {
+                "IAMPolicy": {
+                  "options": {
+                    "(google.api.default_host)": "iam-meta-api.googleapis.com"
+                  },
+                  "methods": {
+                    "SetIamPolicy": {
+                      "requestType": "SetIamPolicyRequest",
+                      "responseType": "Policy",
+                      "options": {
+                        "(google.api.http).post": "/v1/{resource=**}:setIamPolicy",
+                        "(google.api.http).body": "*"
+                      },
+                      "parsedOptions": [
+                        {
+                          "(google.api.http)": {
+                            "post": "/v1/{resource=**}:setIamPolicy",
+                            "body": "*"
+                          }
+                        }
+                      ]
+                    },
+                    "GetIamPolicy": {
+                      "requestType": "GetIamPolicyRequest",
+                      "responseType": "Policy",
+                      "options": {
+                        "(google.api.http).post": "/v1/{resource=**}:getIamPolicy",
+                        "(google.api.http).body": "*"
+                      },
+                      "parsedOptions": [
+                        {
+                          "(google.api.http)": {
+                            "post": "/v1/{resource=**}:getIamPolicy",
+                            "body": "*"
+                          }
+                        }
+                      ]
+                    },
+                    "TestIamPermissions": {
+                      "requestType": "TestIamPermissionsRequest",
+                      "responseType": "TestIamPermissionsResponse",
+                      "options": {
+                        "(google.api.http).post": "/v1/{resource=**}:testIamPermissions",
+                        "(google.api.http).body": "*"
+                      },
+                      "parsedOptions": [
+                        {
+                          "(google.api.http)": {
+                            "post": "/v1/{resource=**}:testIamPermissions",
+                            "body": "*"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                },
+                "SetIamPolicyRequest": {
+                  "fields": {
+                    "resource": {
+                      "type": "string",
+                      "id": 1,
+                      "options": {
+                        "(google.api.field_behavior)": "REQUIRED",
+                        "(google.api.resource_reference).type": "*"
+                      }
+                    },
+                    "policy": {
+                      "type": "Policy",
+                      "id": 2,
+                      "options": {
+                        "(google.api.field_behavior)": "REQUIRED"
+                      }
+                    },
+                    "updateMask": {
+                      "type": "google.protobuf.FieldMask",
+                      "id": 3
+                    }
+                  }
+                },
+                "GetIamPolicyRequest": {
+                  "fields": {
+                    "resource": {
+                      "type": "string",
+                      "id": 1,
+                      "options": {
+                        "(google.api.field_behavior)": "REQUIRED",
+                        "(google.api.resource_reference).type": "*"
+                      }
+                    },
+                    "options": {
+                      "type": "GetPolicyOptions",
+                      "id": 2
+                    }
+                  }
+                },
+                "TestIamPermissionsRequest": {
+                  "fields": {
+                    "resource": {
+                      "type": "string",
+                      "id": 1,
+                      "options": {
+                        "(google.api.field_behavior)": "REQUIRED",
+                        "(google.api.resource_reference).type": "*"
+                      }
+                    },
+                    "permissions": {
+                      "rule": "repeated",
+                      "type": "string",
+                      "id": 2,
+                      "options": {
+                        "(google.api.field_behavior)": "REQUIRED"
+                      }
+                    }
+                  }
+                },
+                "TestIamPermissionsResponse": {
+                  "fields": {
+                    "permissions": {
+                      "rule": "repeated",
+                      "type": "string",
+                      "id": 1
+                    }
+                  }
+                },
+                "GetPolicyOptions": {
+                  "fields": {
+                    "requestedPolicyVersion": {
+                      "type": "int32",
+                      "id": 1
+                    }
+                  }
+                },
+                "Policy": {
+                  "fields": {
+                    "version": {
+                      "type": "int32",
+                      "id": 1
+                    },
+                    "bindings": {
+                      "rule": "repeated",
+                      "type": "Binding",
+                      "id": 4
+                    },
+                    "auditConfigs": {
+                      "rule": "repeated",
+                      "type": "AuditConfig",
+                      "id": 6
+                    },
+                    "etag": {
+                      "type": "bytes",
+                      "id": 3
+                    }
+                  }
+                },
+                "Binding": {
+                  "fields": {
+                    "role": {
+                      "type": "string",
+                      "id": 1
+                    },
+                    "members": {
+                      "rule": "repeated",
+                      "type": "string",
+                      "id": 2
+                    },
+                    "condition": {
+                      "type": "google.type.Expr",
+                      "id": 3
+                    }
+                  }
+                },
+                "AuditConfig": {
+                  "fields": {
+                    "service": {
+                      "type": "string",
+                      "id": 1
+                    },
+                    "auditLogConfigs": {
+                      "rule": "repeated",
+                      "type": "AuditLogConfig",
+                      "id": 3
+                    }
+                  }
+                },
+                "AuditLogConfig": {
+                  "fields": {
+                    "logType": {
+                      "type": "LogType",
+                      "id": 1
+                    },
+                    "exemptedMembers": {
+                      "rule": "repeated",
+                      "type": "string",
+                      "id": 2
+                    }
+                  },
+                  "nested": {
+                    "LogType": {
+                      "values": {
+                        "LOG_TYPE_UNSPECIFIED": 0,
+                        "ADMIN_READ": 1,
+                        "DATA_WRITE": 2,
+                        "DATA_READ": 3
+                      }
+                    }
+                  }
+                },
+                "PolicyDelta": {
+                  "fields": {
+                    "bindingDeltas": {
+                      "rule": "repeated",
+                      "type": "BindingDelta",
+                      "id": 1
+                    },
+                    "auditConfigDeltas": {
+                      "rule": "repeated",
+                      "type": "AuditConfigDelta",
+                      "id": 2
+                    }
+                  }
+                },
+                "BindingDelta": {
+                  "fields": {
+                    "action": {
+                      "type": "Action",
+                      "id": 1
+                    },
+                    "role": {
+                      "type": "string",
+                      "id": 2
+                    },
+                    "member": {
+                      "type": "string",
+                      "id": 3
+                    },
+                    "condition": {
+                      "type": "google.type.Expr",
+                      "id": 4
+                    }
+                  },
+                  "nested": {
+                    "Action": {
+                      "values": {
+                        "ACTION_UNSPECIFIED": 0,
+                        "ADD": 1,
+                        "REMOVE": 2
+                      }
+                    }
+                  }
+                },
+                "AuditConfigDelta": {
+                  "fields": {
+                    "action": {
+                      "type": "Action",
+                      "id": 1
+                    },
+                    "service": {
+                      "type": "string",
+                      "id": 2
+                    },
+                    "exemptedMember": {
+                      "type": "string",
+                      "id": 3
+                    },
+                    "logType": {
+                      "type": "string",
+                      "id": 4
+                    }
+                  },
+                  "nested": {
+                    "Action": {
+                      "values": {
+                        "ACTION_UNSPECIFIED": 0,
+                        "ADD": 1,
+                        "REMOVE": 2
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "type": {
+          "options": {
+            "go_package": "google.golang.org/genproto/googleapis/type/expr;expr",
+            "java_multiple_files": true,
+            "java_outer_classname": "ExprProto",
+            "java_package": "com.google.type",
+            "objc_class_prefix": "GTP"
+          },
+          "nested": {
+            "Expr": {
+              "fields": {
+                "expression": {
+                  "type": "string",
+                  "id": 1
+                },
+                "title": {
+                  "type": "string",
+                  "id": 2
+                },
+                "description": {
+                  "type": "string",
+                  "id": 3
+                },
+                "location": {
+                  "type": "string",
+                  "id": 4
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

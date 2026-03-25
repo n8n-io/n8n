@@ -1,0 +1,26 @@
+{
+  "name": "uri-js-replace",
+  "version": "1.0.1",
+  "description": "Replacement for abandoned library URI.js (uri-js)",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "/dist"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/andreinwald/uri-js-replace.git"
+  },
+  "scripts": {
+    "test": "vitest"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "typescript": "^5.4.4",
+    "uri-js": "^4.4.1",
+    "vitest": "^1.2.2"
+  },
+  "author": "https://github.com/andreinwald",
+  "license": "MIT",
+  "homepage": "https://github.com/andreinwald/uri-js-replace"
+}

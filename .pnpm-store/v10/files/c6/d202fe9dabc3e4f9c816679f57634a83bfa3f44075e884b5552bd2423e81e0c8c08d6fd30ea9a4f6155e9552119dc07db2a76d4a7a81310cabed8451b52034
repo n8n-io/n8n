@@ -1,0 +1,36 @@
+{
+  "name": "triple-beam",
+  "version": "1.3.0",
+  "description": "Definitions of levels for logging purposes & shareable Symbol constants.",
+  "main": "index.js",
+  "scripts": {
+    "lint": "populist config/*.js index.js",
+    "pretest": "npm run lint",
+    "test": "nyc mocha test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/winstonjs/triple-beam.git"
+  },
+  "keywords": [
+    "winstonjs",
+    "winston",
+    "logging",
+    "logform",
+    "symbols",
+    "logs",
+    "levels"
+  ],
+  "author": "Charlie Robbins <charlie.robbins@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/winstonjs/triple-beam/issues"
+  },
+  "homepage": "https://github.com/winstonjs/triple-beam#readme",
+  "devDependencies": {
+    "assume": "^2.0.1",
+    "eslint-config-populist": "^4.1.0",
+    "mocha": "^5.1.1",
+    "nyc": "^11.7.1"
+  }
+}

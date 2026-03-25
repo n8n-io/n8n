@@ -1,0 +1,49 @@
+{
+  "name": "@balena/dockerignore",
+  "version": "1.0.2",
+  "description": "dockerignore is a file filter library compatible with Docker and the node-ignore API",
+  "main": "./ignore.js",
+  "files": [
+    "ignore.js",
+    "index.d.ts"
+  ],
+  "scripts": {
+    "prepublishOnly": "npm run build",
+    "build": "babel -o ignore.js index.js",
+    "test": "npm run build && nyc ava ./test/ignore.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:balena-io-modules/dockerignore.git"
+  },
+  "keywords": [
+    "ignore",
+    ".dockerignore",
+    "dockerignore",
+    "rules",
+    "manager",
+    "filter",
+    "regexp",
+    "regex",
+    "fnmatch",
+    "glob",
+    "asterisks",
+    "regular-expression"
+  ],
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/balena-io-modules/dockerignore/issues"
+  },
+  "devDependencies": {
+    "async-sema": "^3.1.0",
+    "ava": "^0.25.0",
+    "@babel/cli": "^7.8.4",
+    "@babel/preset-env": "^7.9.6",
+    "chai": "^4.2.0",
+    "cuid": "^2.1.8",
+    "mkdirp": "^1.0.4",
+    "nyc": "^15.0.1",
+    "rimraf": "^3.0.2",
+    "tmp": "^0.2.1"
+  }
+}

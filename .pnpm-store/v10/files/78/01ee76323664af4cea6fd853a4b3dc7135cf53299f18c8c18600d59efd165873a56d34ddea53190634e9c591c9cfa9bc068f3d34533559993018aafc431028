@@ -1,0 +1,1 @@
+{"version":3,"file":"azureKeyCredential.d.ts","sourceRoot":"","sources":["../../src/azureKeyCredential.ts"],"names":[],"mappings":"AAGA,OAAO,EAAE,aAAa,EAAE,MAAM,oBAAoB,CAAC;AAEnD;;;GAGG;AACH,qBAAa,kBAAmB,YAAW,aAAa;IACtD,OAAO,CAAC,IAAI,CAAS;IAErB;;OAEG;IACH,IAAW,GAAG,IAAI,MAAM,CAEvB;IAED;;;;;OAKG;gBACS,GAAG,EAAE,MAAM;IAQvB;;;;;;;OAOG;IACI,MAAM,CAAC,MAAM,EAAE,MAAM,GAAG,IAAI;CAGpC"}

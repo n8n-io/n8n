@@ -1,0 +1,21 @@
+{
+  "parserOptions": {
+    "ecmaVersion": 6,
+    "sourceType": "module",
+  },
+  "plugins": [
+    "import"
+  ],
+  "extends": [
+    "plugin:import/errors"
+  ],
+  "rules": {
+    // ExtendScript wrongly gives equal precedence to && and ||. #2949
+    "no-mixed-operators": [
+      "error",
+      {
+        "groups": [["&&", "||"]]
+      }
+    ]
+  }
+}

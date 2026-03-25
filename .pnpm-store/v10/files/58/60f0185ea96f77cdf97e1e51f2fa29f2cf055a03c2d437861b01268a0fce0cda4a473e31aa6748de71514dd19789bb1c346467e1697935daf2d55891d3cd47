@@ -1,0 +1,385 @@
+# Function definition
+
+def foo():
+  pass
+def bar(a: str, b = 22, **c) -> num:
+  pass
+
+==>
+
+Script(
+  FunctionDefinition(def,VariableName,ParamList,Body(PassStatement(pass))),
+  FunctionDefinition(def,VariableName,ParamList(VariableName, TypeDef(VariableName), VariableName, AssignOp, Number, VariableName),
+    TypeDef(VariableName), Body(PassStatement(pass))))
+
+# Single-line function definition
+
+def foo(a, b): return a + b
+
+==>
+
+Script(FunctionDefinition(def,VariableName,ParamList(VariableName, VariableName),
+  Body(ReturnStatement(return, BinaryExpression(VariableName, ArithOp, VariableName)))))
+
+# Return with no body
+
+def foo(a, b):
+  a = b
+  return
+
+==>
+
+Script(FunctionDefinition(def,VariableName,ParamList(VariableName, VariableName),
+  Body(AssignStatement(VariableName, AssignOp, VariableName), ReturnStatement(return))))
+
+# Conditional
+
+if a: b()
+
+if 1 + 3:
+  pass
+elif 55 < 2:
+  pass
+else:
+  pass
+
+==>
+
+Script(
+  IfStatement(if, VariableName, Body(ExpressionStatement(CallExpression(VariableName, ArgList))))
+  IfStatement(if, BinaryExpression(Number, ArithOp, Number), Body(PassStatement(pass)),
+              elif, BinaryExpression(Number, CompareOp, Number), Body(PassStatement(pass)),
+              else, Body(PassStatement(pass))))
+
+# Assignment
+
+a = 4
+b: str = "hi"
+c, d, e = None
+f = g = False
+h += 1
+
+==>
+
+Script(
+  AssignStatement(VariableName, AssignOp, Number),
+  AssignStatement(VariableName, TypeDef(VariableName), AssignOp, String),
+  AssignStatement(VariableName, VariableName, VariableName, AssignOp, None),
+  AssignStatement(VariableName, AssignOp, VariableName, AssignOp, Boolean),
+  UpdateStatement(VariableName, UpdateOp, Number))
+
+# For loops
+
+for a, b in woop():
+  doStuff(b, a)
+
+==>
+
+Script(ForStatement(for, VariableName, VariableName, in CallExpression(VariableName, ArgList),
+  Body(ExpressionStatement(CallExpression(VariableName, ArgList(VariableName, VariableName))))))
+
+# Try statements
+
+try:
+  pass
+except SomeException as e:
+  pass
+except OtherException:
+  pass
+else:
+  pass
+finally:
+  pass
+
+==>
+
+Script(TryStatement(
+  try, Body(PassStatement(pass)),
+  except, VariableName, as, VariableName, Body(PassStatement(pass)),
+  except VariableName, Body(PassStatement(pass)),
+  else Body(PassStatement(pass)),
+  finally Body(PassStatement(pass))))
+
+# With statements
+
+with open("x") as file:
+  pass
+async with foo as bar:
+  pass
+
+==>
+
+Script(
+  WithStatement(with, CallExpression(VariableName, ArgList(String)), as, VariableName, Body(PassStatement(pass))),
+  WithStatement(async, with, VariableName, as, VariableName, Body(PassStatement(pass))))
+
+# Class definition
+
+class Foo:
+  prop = 0
+  def __init__(self):
+    pass
+  def plus(self):
+    self.prop += 1
+
+class Bar(Foo): pass
+
+==>
+
+Script(
+  ClassDefinition(class, VariableName, Body(
+    AssignStatement(VariableName, AssignOp, Number),
+    FunctionDefinition(def, VariableName, ParamList(VariableName), Body(PassStatement(pass))),
+    FunctionDefinition(def, VariableName, ParamList(VariableName), Body(
+      UpdateStatement(MemberExpression(VariableName, PropertyName), UpdateOp, Number))))),
+  ClassDefinition(class, VariableName, ArgList(VariableName), Body(PassStatement(pass))))
+
+# Scope statements
+
+global a
+nonlocal b, c
+
+==>
+
+Script(
+  ScopeStatement(global, VariableName),
+  ScopeStatement(nonlocal, VariableName, VariableName))
+
+# Decorators
+
+@Something.X
+def f(): pass
+
+@Other(arg1, arg2)
+class C: pass
+
+==>
+
+Script(
+  DecoratedStatement(Decorator(At, VariableName, VariableName),
+    FunctionDefinition(def, VariableName, ParamList, Body(PassStatement(pass)))),
+  DecoratedStatement(Decorator(At, VariableName, ArgList(VariableName, VariableName)),
+    ClassDefinition(class, VariableName, Body(PassStatement(pass)))))
+
+# Small statements
+
+def x(): return 5
+raise Exception("woop")
+while False:
+  break
+  continue
+assert 1 == 2
+del x[2]
+
+==>
+
+Script(
+  FunctionDefinition(def, VariableName, ParamList, Body(ReturnStatement(return, Number))),
+  RaiseStatement(raise, CallExpression(VariableName, ArgList(String))),
+  WhileStatement(while, Boolean, Body(BreakStatement(break), ContinueStatement(continue))),
+  AssertStatement(assert, BinaryExpression(Number, CompareOp, Number)),
+  DeleteStatement(del, MemberExpression(VariableName, Number)))
+
+# Import statements
+
+import datetime
+from something.other import one, two
+
+==>
+
+Script(
+  ImportStatement(import, VariableName),
+  ImportStatement(from, VariableName, VariableName, import VariableName, VariableName))
+
+# One-line small statements
+
+x; y(); z = 2
+raise "oh"
+
+==>
+
+Script(
+  StatementGroup(
+    ExpressionStatement(VariableName),
+    ExpressionStatement(CallExpression(VariableName, ArgList)),
+    AssignStatement(VariableName, AssignOp, Number)),
+  RaiseStatement(raise, String))
+
+# Nested bodies
+
+def x():
+  ok
+  if not ok:
+    while True:
+      one
+      two
+  three
+  if None:
+    four
+  else:
+    five
+  six
+seven
+
+==>
+
+Script(
+  FunctionDefinition(def, VariableName, ParamList, Body(
+    ExpressionStatement(VariableName),
+    IfStatement(if, UnaryExpression(not, VariableName), Body(
+      WhileStatement(while, Boolean, Body(
+        ExpressionStatement(VariableName),
+        ExpressionStatement(VariableName))))),
+    ExpressionStatement(VariableName),
+    IfStatement(if, None, Body(
+      ExpressionStatement(VariableName)
+    ), else, Body(
+      ExpressionStatement(VariableName))),
+    ExpressionStatement(VariableName))),
+  ExpressionStatement(VariableName))
+
+# Empty and commented lines
+
+if None:
+  one
+
+  two
+
+  four
+# comment
+  five
+six
+
+==>
+
+Script(
+  IfStatement(if, None, Body(
+    ExpressionStatement(VariableName),
+    ExpressionStatement(VariableName),
+    ExpressionStatement(VariableName),
+    Comment,
+    ExpressionStatement(VariableName))),
+  ExpressionStatement(VariableName))
+
+# Escaped newlines
+
+x = 1 + \
+  2
+
+==>
+
+Script(AssignStatement(VariableName, AssignOp, BinaryExpression(Number, ArithOp, Number)))
+
+# Python 2 compatibility
+
+print "hi"
+print(print.something)
+
+try:
+  raise Exception, "foo"
+except Exception, foo:
+  pass
+
+==>
+
+Script(
+  PrintStatement(print, String),
+  ExpressionStatement(CallExpression(VariableName, ArgList(MemberExpression(VariableName, PropertyName)))),
+  TryStatement(try, Body(RaiseStatement(raise, VariableName, String)),
+               except, VariableName, VariableName, Body(PassStatement(pass))))
+
+# Require indentation on body
+
+def foo():
+pass
+
+==>
+
+Script(FunctionDefinition(def,VariableName,ParamList,Body(⚠)), PassStatement(pass))
+
+# Nested else
+
+if a:
+  if b:
+    pass
+else:
+  pass
+
+==>
+
+Script(IfStatement(if, VariableName, Body(
+  IfStatement(if, VariableName, Body(PassStatement(pass)))),
+  else, Body(PassStatement(pass))))
+
+# Self not reserved
+
+self = True
+
+==>
+
+Script(AssignStatement(VariableName,AssignOp,Boolean))
+
+# Trailing whitespace in block
+
+def x():
+  one
+  
+  two
+
+==>
+
+Script(FunctionDefinition(def,VariableName,ParamList,Body(ExpressionStatement(VariableName),ExpressionStatement(VariableName))))
+
+# Can handle tab indentation
+
+class Employee:
+	first_name: str
+        last_name: str
+
+	def __init__(self, a):
+		self.first_name = a
+	  	self.last_name = a
+
+==>
+
+Script(ClassDefinition(class,VariableName,Body(
+  AssignStatement(VariableName,TypeDef(VariableName)),
+  AssignStatement(VariableName,TypeDef(VariableName)),
+  FunctionDefinition(def,VariableName,ParamList(VariableName,VariableName),Body(
+    AssignStatement(MemberExpression(VariableName,PropertyName),AssignOp,VariableName),
+    AssignStatement(MemberExpression(VariableName,PropertyName),AssignOp,VariableName))))))
+
+# Parses match statements
+
+match foo:
+  case 1:
+    pass
+  case Point("a", True) as z | a.b | {x: None, **y}:
+    pass
+  case [a, b, *rest] | (p, q):
+    pass
+
+==>
+
+Script(MatchStatement(match,VariableName,MatchBody(
+  MatchClause(case,
+    LiteralPattern(Number),
+    Body(PassStatement(pass))),
+  MatchClause(case,
+    OrPattern(
+      AsPattern(
+        ClassPattern(VariableName,PatternArgList(LiteralPattern(String),LiteralPattern(Boolean))),
+        as,VariableName),
+      LogicOp,
+      AttributePattern(VariableName,PropertyName),
+      LogicOp,
+      MappingPattern(VariableName,LiteralPattern(None),CapturePattern(VariableName))),
+    Body(PassStatement(pass))),
+  MatchClause(case,
+      OrPattern(SequencePattern(
+        CapturePattern(VariableName),
+        CapturePattern(VariableName),
+        StarPattern(CapturePattern(VariableName))),
+      LogicOp,
+      SequencePattern(CapturePattern(VariableName),CapturePattern(VariableName))),
+    Body(PassStatement(pass))))))

@@ -1,0 +1,39 @@
+{
+  "name": "@vue/tsconfig",
+  "version": "0.7.0",
+  "description": "A base TSConfig for working with Vue.js",
+  "main": "tsconfig.json",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vuejs/tsconfig.git"
+  },
+  "keywords": [
+    "vue",
+    "tsconfig"
+  ],
+  "author": "Haoqun Jiang <npm@haoqun.me>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/vuejs/tsconfig/issues"
+  },
+  "homepage": "https://github.com/vuejs/tsconfig#readme",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "peerDependencies": {
+    "typescript": "5.x",
+    "vue": "^3.4.0"
+  },
+  "peerDependenciesMeta": {
+    "typescript": {
+      "optional": true
+    },
+    "vue": {
+      "optional": true
+    }
+  }
+}

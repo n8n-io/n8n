@@ -1,0 +1,129 @@
+/*! Element Plus v2.4.3 */
+
+var es = {
+  name: "es",
+  el: {
+    colorpicker: {
+      confirm: "Confirmar",
+      clear: "Despejar"
+    },
+    datepicker: {
+      now: "Ahora",
+      today: "Hoy",
+      cancel: "Cancelar",
+      clear: "Despejar",
+      confirm: "Confirmar",
+      selectDate: "Seleccionar fecha",
+      selectTime: "Seleccionar hora",
+      startDate: "Fecha Incial",
+      startTime: "Hora Inicial",
+      endDate: "Fecha Final",
+      endTime: "Hora Final",
+      prevYear: "A\xF1o Anterior",
+      nextYear: "Pr\xF3ximo A\xF1o",
+      prevMonth: "Mes Anterior",
+      nextMonth: "Pr\xF3ximo Mes",
+      year: "",
+      month1: "enero",
+      month2: "febrero",
+      month3: "marzo",
+      month4: "abril",
+      month5: "mayo",
+      month6: "junio",
+      month7: "julio",
+      month8: "agosto",
+      month9: "septiembre",
+      month10: "octubre",
+      month11: "noviembre",
+      month12: "diciembre",
+      weeks: {
+        sun: "dom",
+        mon: "lun",
+        tue: "mar",
+        wed: "mi\xE9",
+        thu: "jue",
+        fri: "vie",
+        sat: "s\xE1b"
+      },
+      months: {
+        jan: "ene",
+        feb: "feb",
+        mar: "mar",
+        apr: "abr",
+        may: "may",
+        jun: "jun",
+        jul: "jul",
+        aug: "ago",
+        sep: "sep",
+        oct: "oct",
+        nov: "nov",
+        dec: "dic"
+      }
+    },
+    select: {
+      loading: "Cargando",
+      noMatch: "No hay datos que coincidan",
+      noData: "Sin datos",
+      placeholder: "Seleccionar"
+    },
+    cascader: {
+      noMatch: "No hay datos que coincidan",
+      loading: "Cargando",
+      placeholder: "Seleccionar",
+      noData: "Sin datos"
+    },
+    pagination: {
+      goto: "Ir a",
+      pagesize: "/p\xE1gina",
+      total: "Total {total}",
+      pageClassifier: "",
+      page: "Page",
+      prev: "Go to previous page",
+      next: "Go to next page",
+      currentPage: "page {pager}",
+      prevPages: "Previous {pager} pages",
+      nextPages: "Next {pager} pages"
+    },
+    messagebox: {
+      confirm: "Aceptar",
+      cancel: "Cancelar",
+      error: "Entrada inv\xE1lida"
+    },
+    upload: {
+      deleteTip: "Pulse Eliminar para retirar",
+      delete: "Eliminar",
+      preview: "Vista Previa",
+      continue: "Continuar"
+    },
+    table: {
+      emptyText: "Sin Datos",
+      confirmFilter: "Confirmar",
+      resetFilter: "Reiniciar",
+      clearFilter: "Despejar",
+      sumText: "Suma"
+    },
+    tree: {
+      emptyText: "Sin Datos"
+    },
+    transfer: {
+      noMatch: "No hay datos que coincidan",
+      noData: "Sin datos",
+      titles: ["Lista 1", "Lista 2"],
+      filterPlaceholder: "Ingresar palabra clave",
+      noCheckedFormat: "{total} art\xEDculos",
+      hasCheckedFormat: "{checked}/{total} revisados"
+    },
+    image: {
+      error: "HA FALLADO"
+    },
+    pageHeader: {
+      title: "Volver"
+    },
+    popconfirm: {
+      confirmButtonText: "Si",
+      cancelButtonText: "No"
+    }
+  }
+};
+
+export { es as default };

@@ -1,0 +1,108 @@
+{
+  "name": "dependency-tree",
+  "version": "11.2.0",
+  "description": "Get the dependency tree of a module",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "files": [
+    "bin/cli.js",
+    "lib/*.js",
+    "index.d.ts",
+    "index.js"
+  ],
+  "bin": {
+    "dependency-tree": "bin/cli.js"
+  },
+  "scripts": {
+    "lint": "xo",
+    "fix": "xo --fix",
+    "mocha": "mocha",
+    "test": "npm run lint && npm run mocha",
+    "test:ci": "c8 npm run mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dependents/node-dependency-tree.git"
+  },
+  "keywords": [
+    "dependency",
+    "tree",
+    "graph",
+    "module",
+    "ast",
+    "requirejs",
+    "AMD",
+    "commonjs",
+    "es6",
+    "sass",
+    "stylus",
+    "less",
+    "typescript"
+  ],
+  "author": "Joel Kemp <joel@mrjoelkemp.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/dependents/node-dependency-tree/issues"
+  },
+  "homepage": "https://github.com/dependents/node-dependency-tree",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "filing-cabinet": "^5.0.3",
+    "precinct": "^12.2.0",
+    "typescript": "^5.8.3"
+  },
+  "devDependencies": {
+    "c8": "^10.1.3",
+    "debug": "^4.4.1",
+    "mocha": "^11.7.0",
+    "mock-fs": "^5.5.0",
+    "resolve": "^1.22.10",
+    "sinon": "^19.0.5",
+    "xo": "^0.60.0"
+  },
+  "xo": {
+    "space": true,
+    "ignores": [
+      "index.d.ts",
+      "test/fixtures/*"
+    ],
+    "rules": {
+      "arrow-body-style": "off",
+      "camelcase": [
+        "error",
+        {
+          "properties": "never"
+        }
+      ],
+      "capitalized-comments": "off",
+      "comma-dangle": [
+        "error",
+        "never"
+      ],
+      "curly": [
+        "error",
+        "multi-line"
+      ],
+      "operator-linebreak": [
+        "error",
+        "after"
+      ],
+      "object-curly-spacing": [
+        "error",
+        "always"
+      ],
+      "prefer-template": "error",
+      "space-before-function-paren": [
+        "error",
+        "never"
+      ],
+      "unicorn/no-anonymous-default-export": "off",
+      "unicorn/prefer-module": "off",
+      "unicorn/prefer-top-level-await": "off",
+      "unicorn/prevent-abbreviations": "off"
+    }
+  }
+}

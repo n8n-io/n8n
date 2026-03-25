@@ -1,0 +1,61 @@
+{
+  "name": "simple-git",
+  "description": "Simple GIT interface for node.js",
+  "version": "3.32.3",
+  "author": "Steve King <steve@mydev.co>",
+  "contributors": [
+    {
+      "name": "Steve King",
+      "email": "steve@mydev.co"
+    }
+  ],
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/steveukx/git-js?sponsor=1"
+  },
+  "dependencies": {
+    "@kwsites/file-exists": "^1.1.1",
+    "@kwsites/promise-deferred": "^1.1.1",
+    "debug": "^4.4.0"
+  },
+  "devDependencies": {
+    "@kwsites/promise-result": "^1.1.0",
+    "@simple-git/babel-config": "^1.0.0",
+    "@types/debug": "^4.1.12",
+    "@types/jest": "^29.2.2",
+    "@types/node": "^22.15.30",
+    "esbuild": "^0.25.0",
+    "esbuild-node-externals": "^1.18.0",
+    "jest": "^29.7.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.3"
+  },
+  "keywords": [
+    "git",
+    "source control",
+    "vcs"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/steveukx/git-js.git",
+    "directory": "simple-git"
+  },
+  "main": "dist/cjs/index.js",
+  "module": "dist/esm/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/typings/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    },
+    "./promise": {
+      "require": "./promise.js"
+    }
+  },
+  "types": "./dist/typings/index.d.ts",
+  "files": [
+    "promise.*",
+    "dist"
+  ]
+}

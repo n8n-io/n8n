@@ -1,0 +1,40 @@
+import type { IAfterGuiAttachedParams } from '../../../interfaces/iAfterGuiAttachedParams';
+import type { FilterDisplayParams } from '../../../interfaces/iFilter';
+import type { FilterLocaleTextKey } from '../../filterLocaleText';
+import type { ICombinedSimpleModel, Tuple } from '../iSimpleFilter';
+import { SimpleFilter } from '../simpleFilter';
+import { DateCompWrapper } from './dateCompWrapper';
+import type { DateFilterModel, IDateFilterParams } from './iDateFilter';
+/** temporary type until `DateFilterParams` is updated as breaking change */
+type DateFilterDisplayParams = IDateFilterParams & FilterDisplayParams<any, any, DateFilterModel | ICombinedSimpleModel<DateFilterModel>>;
+export declare class DateFilter extends SimpleFilter<DateFilterModel, Date, DateCompWrapper, DateFilterDisplayParams> {
+    private readonly eConditionPanelsFrom;
+    private readonly eConditionPanelsTo;
+    private readonly dateConditionFromComps;
+    private readonly dateConditionToComps;
+    private minValidYear;
+    private maxValidYear;
+    private minValidDate;
+    private maxValidDate;
+    readonly filterType: "date";
+    constructor();
+    afterGuiAttached(params?: IAfterGuiAttachedParams): void;
+    protected commonUpdateSimpleParams(params: DateFilterDisplayParams): void;
+    createDateCompWrapper(element: HTMLElement): DateCompWrapper;
+    protected setElementValue(element: DateCompWrapper, value: Date | null): void;
+    protected setElementDisplayed(element: DateCompWrapper, displayed: boolean): void;
+    protected setElementDisabled(element: DateCompWrapper, disabled: boolean): void;
+    protected createEValue(): HTMLElement;
+    private createFromToElement;
+    protected removeEValues(startPosition: number, deleteCount?: number): void;
+    protected removeDateComps(components: DateCompWrapper[], startPosition: number, deleteCount?: number): void;
+    private isValidDateValue;
+    protected isConditionUiComplete(position: number): boolean;
+    protected areSimpleModelsEqual(aSimple: DateFilterModel, bSimple: DateFilterModel): boolean;
+    protected createCondition(position: number): DateFilterModel;
+    protected resetPlaceholder(): void;
+    protected getInputs(position: number): Tuple<DateCompWrapper>;
+    protected getValues(position: number): Tuple<Date>;
+    protected translate(key: FilterLocaleTextKey): string;
+}
+export {};

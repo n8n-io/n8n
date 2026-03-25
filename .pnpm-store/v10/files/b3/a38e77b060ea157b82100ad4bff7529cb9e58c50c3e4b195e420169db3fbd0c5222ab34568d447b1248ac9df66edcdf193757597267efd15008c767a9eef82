@@ -1,0 +1,204 @@
+@use 'mixins/mixins' as *;
+@use 'mixins/utils' as *;
+@use 'mixins/var' as *;
+@use 'common/var' as *;
+
+@include b(transfer) {
+  @include set-component-css-var('transfer', $transfer);
+}
+
+@include b(transfer) {
+  font-size: getCssVar('font-size', 'base');
+
+  @include e(buttons) {
+    display: inline-block;
+    vertical-align: middle;
+    padding: 0 30px;
+  }
+
+  @include e(button) {
+    vertical-align: top;
+
+    &:nth-child(2) {
+      margin: 0 0 0 10px;
+    }
+
+    i,
+    span {
+      font-size: 14px;
+    }
+
+    & .#{$namespace}-icon + span {
+      margin-left: 0;
+    }
+  }
+}
+
+@include b(transfer-panel) {
+  overflow: hidden;
+  background: getCssVar('bg-color', 'overlay');
+  display: inline-block;
+  text-align: left;
+  vertical-align: middle;
+  width: getCssVar('transfer-panel-width');
+  max-height: 100%;
+  box-sizing: border-box;
+  position: relative;
+
+  @include e(body) {
+    height: getCssVar('transfer-panel-body-height');
+    border-left: 1px solid getCssVar('transfer-border-color');
+    border-right: 1px solid getCssVar('transfer-border-color');
+    border-bottom: 1px solid getCssVar('transfer-border-color');
+    border-bottom-left-radius: getCssVar('transfer-border-radius');
+    border-bottom-right-radius: getCssVar('transfer-border-radius');
+    overflow: hidden;
+    @include when('with-footer') {
+      border-bottom: none;
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+  }
+
+  @include e(list) {
+    margin: 0;
+    padding: 6px 0;
+    list-style: none;
+    height: getCssVar('transfer-panel-body-height');
+    overflow: auto;
+    box-sizing: border-box;
+    @include when(filterable) {
+      height: calc(100% - getCssVar('transfer-filter-height') - 30px);
+      padding-top: 0;
+    }
+  }
+
+  @include e(item) {
+    height: getCssVar('transfer-item-height');
+    line-height: getCssVar('transfer-item-height');
+    padding-left: 15px;
+    display: block !important;
+
+    & + .#{$namespace}-transfer-panel__item {
+      margin-left: 0;
+    }
+
+    &.#{$namespace}-checkbox {
+      color: getCssVar('text-color', 'regular');
+    }
+
+    &:hover {
+      color: getCssVar('color-primary');
+    }
+
+    &.#{$namespace}-checkbox .#{$namespace}-checkbox__label {
+      width: 100%;
+      @include utils-ellipsis;
+      display: block;
+      box-sizing: border-box;
+      padding-left: 22px;
+      line-height: getCssVar('transfer-item-height');
+    }
+
+    .#{$namespace}-checkbox__input {
+      position: absolute;
+      top: 8px;
+    }
+  }
+
+  @include e(filter) {
+    text-align: center;
+    padding: 15px;
+    box-sizing: border-box;
+
+    .#{$namespace}-input__inner {
+      height: getCssVar('transfer-filter-height');
+      width: 100%;
+      font-size: 12px;
+      display: inline-block;
+      box-sizing: border-box;
+      border-radius: calc(#{getCssVar('transfer-filter-height')} / 2);
+    }
+
+    .#{$namespace}-icon-circle-close {
+      cursor: pointer;
+    }
+  }
+
+  .#{$namespace}-transfer-panel__header {
+    display: flex;
+    align-items: center;
+    height: getCssVar('transfer-panel-header-height');
+    background: getCssVar('transfer-panel-header-bg-color');
+    margin: 0;
+    padding-left: 15px;
+    border: 1px solid getCssVar('transfer-border-color');
+    border-top-left-radius: getCssVar('transfer-border-radius');
+    border-top-right-radius: getCssVar('transfer-border-radius');
+    box-sizing: border-box;
+    color: getCssVar('color-black');
+
+    .#{$namespace}-checkbox {
+      position: relative;
+      display: flex;
+      width: 100%;
+      align-items: center;
+
+      .#{$namespace}-checkbox__label {
+        font-size: 16px;
+        color: getCssVar('text-color', 'primary');
+        font-weight: normal;
+
+        span {
+          position: absolute;
+          right: 15px;
+          top: 50%;
+          transform: translate3d(0, -50%, 0);
+          color: getCssVar('text-color', 'secondary');
+          font-size: 12px;
+          font-weight: normal;
+        }
+      }
+    }
+  }
+
+  .#{$namespace}-transfer-panel__footer {
+    height: getCssVar('transfer-panel-footer-height');
+    background: getCssVar('bg-color', 'overlay');
+    margin: 0;
+    padding: 0;
+    border: 1px solid getCssVar('transfer-border-color');
+    border-bottom-left-radius: getCssVar('transfer-border-radius');
+    border-bottom-right-radius: getCssVar('transfer-border-radius');
+    @include utils-vertical-center;
+
+    .#{$namespace}-checkbox {
+      padding-left: 20px;
+      color: getCssVar('text-color', 'regular');
+    }
+  }
+
+  .#{$namespace}-transfer-panel__empty {
+    margin: 0;
+    height: getCssVar('transfer-item-height');
+    line-height: getCssVar('transfer-item-height');
+    padding: 6px 15px 0;
+    color: getCssVar('text-color', 'secondary');
+    text-align: center;
+  }
+
+  .#{$namespace}-checkbox__label {
+    padding-left: 8px;
+  }
+
+  .#{$namespace}-checkbox__inner {
+    height: 14px;
+    width: 14px;
+    border-radius: 3px;
+    &::after {
+      height: 6px;
+      width: 3px;
+      left: 4px;
+    }
+  }
+}

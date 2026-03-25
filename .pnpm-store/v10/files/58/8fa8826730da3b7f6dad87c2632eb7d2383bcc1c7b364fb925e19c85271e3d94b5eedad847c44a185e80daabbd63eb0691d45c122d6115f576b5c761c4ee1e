@@ -1,0 +1,35 @@
+{
+  "name": "pg-protocol",
+  "version": "1.6.1",
+  "description": "The postgres client/server binary protocol, implemented in TypeScript",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/chai": "^4.2.7",
+    "@types/mocha": "^5.2.7",
+    "@types/node": "^12.12.21",
+    "chai": "^4.2.0",
+    "chunky": "^0.0.0",
+    "mocha": "^7.1.2",
+    "ts-node": "^8.5.4",
+    "typescript": "^4.0.3"
+  },
+  "scripts": {
+    "test": "mocha dist/**/*.test.js",
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "prepublish": "yarn build",
+    "pretest": "yarn build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/brianc/node-postgres.git",
+    "directory": "packages/pg-protocol"
+  },
+  "files": [
+    "/dist/*{js,ts,map}",
+    "/src"
+  ],
+  "gitHead": "b03c071d2d15af259e1e008e9628191c865e58fa"
+}

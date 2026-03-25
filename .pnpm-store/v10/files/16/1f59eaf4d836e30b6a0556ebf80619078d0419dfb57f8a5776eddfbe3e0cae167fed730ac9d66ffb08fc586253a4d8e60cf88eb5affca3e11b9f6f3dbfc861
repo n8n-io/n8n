@@ -1,0 +1,27 @@
+export interface OnHiddenCallback {
+    (event: Event): void;
+}
+/**
+ * Sentry-specific change:
+ *
+ * This function's logic was NOT updated to web-vitals 4.2.4 or 5.x but we continue
+ * to use the web-vitals 3.5.2 version due to having stricter browser support.
+ *
+ * PR with context that made the changes:
+ * https://github.com/GoogleChrome/web-vitals/pull/442/files#r1530492402
+ *
+ * The PR removed listening to the `pagehide` event, in favour of only listening to
+ * the `visibilitychange` event. This is "more correct" but some browsers we still
+ * support (Safari <14.4) don't fully support `visibilitychange` or have known bugs
+ * with respect to the `visibilitychange` event.
+ *
+ * TODO (v11): If we decide to drop support for Safari 14.4, we can use the logic
+ * from web-vitals 4.2.4. In this case, we also need to update the integration tests
+ * that currently trigger the `pagehide` event to simulate the page being hidden.
+ *
+ * @param {OnHiddenCallback} cb - Callback to be executed when the page is hidden or unloaded.
+ *
+ * @deprecated use `whenIdleOrHidden` or `addPageListener('visibilitychange')` instead
+ */
+export declare const onHidden: (cb: OnHiddenCallback) => void;
+//# sourceMappingURL=onHidden.d.ts.map

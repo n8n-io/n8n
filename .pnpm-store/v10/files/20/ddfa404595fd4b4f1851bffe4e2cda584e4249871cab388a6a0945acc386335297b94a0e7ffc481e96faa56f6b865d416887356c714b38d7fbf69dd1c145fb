@@ -1,0 +1,34 @@
+{
+  "name": "simple-lru-cache",
+  "version": "0.0.2",
+  "author": "Gabriel Eisbruch",
+  "description": "",
+  "main": "index",
+  "keywords":["cache","lru","simple","fast"],
+  "directories": {
+    "lib": "./lib"
+  },
+  "maintainers": [{
+      "name":"Gabriel Eisbruch",
+      "email":"gabrieleisbruch@gmail.com",
+      "web":"http://www.mercadolibre.com"
+  }],
+  "licenses": [{
+      "type": "MIT",
+      "url": "https://github.com/geisbruch/node-simple-lru-cache/blob/master/LICENSE"
+  }],
+  "repositories": [{
+      "type": "git",
+      "url" : "http://github.com/geisbruch/node-simple-lru-cache.git"
+  }],
+  "dependencies": {
+  },
+  "devDependencies": {
+      "mocha": "*",
+      "should": "*"
+  },
+  "scripts": {
+      "test": "make test",
+      "bench":"make bench"
+  }
+}

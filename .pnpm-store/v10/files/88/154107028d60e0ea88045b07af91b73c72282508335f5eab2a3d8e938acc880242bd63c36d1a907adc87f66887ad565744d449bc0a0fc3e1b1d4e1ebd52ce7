@@ -1,0 +1,34 @@
+# Empty Array
+
+[ ]
+
+==>
+
+JsonText(Array)
+
+# Array With One Value
+
+["One is the loneliest number"]
+
+==>
+
+JsonText(Array(String))
+
+# Array With Multiple Values
+
+[
+  "The more the merrier",
+  1e5,
+  true,
+  { },
+  ["I'm", "nested"]
+]
+
+==>
+
+JsonText(Array(
+  String,
+  Number,
+  True,
+  Object,
+  Array(String,String)))

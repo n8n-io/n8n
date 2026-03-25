@@ -1,0 +1,1 @@
+module.exports = require("../dist/utils/json_schema.cjs");

@@ -1,0 +1,1 @@
+{"version":3,"file":"worker-message.d.ts","sourceRoot":"","sources":["../../../src/types/worker-message.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,iBAAiB,EAAE,cAAc,EAAE,kBAAkB,EAAE,cAAc,EAAE,MAAM,eAAe,CAAC;AAEtG,MAAM,MAAM,cAAc,GAAG,iBAAiB,GAAG,cAAc,GAAG,kBAAkB,GAAG,cAAc,CAAC"}

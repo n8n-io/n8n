@@ -1,0 +1,7 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "types": ["node", "rusha"],
+    "typeRoots": ["./node_modules/@types", "../node_modules/@types", "./src/types"]
+  }
+}

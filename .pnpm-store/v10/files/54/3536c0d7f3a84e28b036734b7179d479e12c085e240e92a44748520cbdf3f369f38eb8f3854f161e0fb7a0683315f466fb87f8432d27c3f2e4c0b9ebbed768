@@ -1,0 +1,35 @@
+{
+  "name": "json-pointer",
+  "description": "Some utilities for JSON pointers described by RFC 6901",
+  "version": "0.6.2",
+  "author": "Manuel Stofer <manuel@smallpdf.com>",
+  "license": "MIT",
+  "dependencies": {
+    "foreach": "^2.0.4"
+  },
+  "homepage": "https://github.com/manuelstofer/json-pointer",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/manuelstofer/json-pointer.git"
+  },
+  "devDependencies": {
+    "chai": "^1.9.1",
+    "coveralls": "^2.11.14",
+    "mocha": "^1.9.0",
+    "nyc": "^8.3.1",
+    "seamless-immutable": "^5.1.1"
+  },
+  "scripts": {
+    "test": "nyc make test"
+  },
+  "nyc": {
+    "exclude": [
+      "test",
+      "node_modules"
+    ],
+    "reporter": [
+      "lcov",
+      "text-summary"
+    ]
+  }
+}

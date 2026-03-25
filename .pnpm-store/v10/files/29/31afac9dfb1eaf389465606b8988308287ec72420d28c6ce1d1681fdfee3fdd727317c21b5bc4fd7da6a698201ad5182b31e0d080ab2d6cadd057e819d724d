@@ -1,0 +1,316 @@
+@use 'mixins/mixins' as *;
+@use 'common/var' as *;
+
+@include b(step) {
+  position: relative;
+  flex-shrink: 1;
+
+  @include pseudo(last-of-type) {
+    @include e(line) {
+      display: none;
+    }
+
+    // 只有未设置 space 的情况下才自适应宽度
+    @include when(flex) {
+      flex-basis: auto !important;
+      flex-shrink: 0;
+      flex-grow: 0;
+    }
+
+    @include e((main, description)) {
+      padding-right: 0;
+    }
+  }
+
+  @include e(head) {
+    position: relative;
+    width: 100%;
+
+    @include when(process) {
+      color: getCssVar('text-color', 'primary');
+      border-color: getCssVar('text-color', 'primary');
+    }
+
+    @include when(wait) {
+      color: getCssVar('text-color', 'placeholder');
+      border-color: getCssVar('text-color', 'placeholder');
+    }
+
+    @include when(success) {
+      color: getCssVar('color-success');
+      border-color: getCssVar('color-success');
+    }
+
+    @include when(error) {
+      color: getCssVar('color-danger');
+      border-color: getCssVar('color-danger');
+    }
+
+    @include when(finish) {
+      color: getCssVar('color-primary');
+      border-color: getCssVar('color-primary');
+    }
+  }
+
+  @include e(icon) {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    width: 24px;
+    height: 24px;
+    font-size: 14px;
+    box-sizing: border-box;
+    background: getCssVar('bg-color');
+    transition: 0.15s ease-out;
+
+    @include when(text) {
+      border-radius: 50%;
+      border: 2px solid;
+      border-color: inherit;
+    }
+
+    @include when(icon) {
+      width: 40px;
+    }
+  }
+
+  @include e(icon-inner) {
+    display: inline-block;
+    user-select: none;
+    text-align: center;
+    font-weight: bold;
+    line-height: 1;
+    color: inherit;
+
+    &[class*='#{$namespace}-icon']:not(.is-status) {
+      font-size: 25px;
+      font-weight: normal;
+    }
+
+    // 组件自身表示状态的图标
+    @include when(status) {
+      transform: translateY(1px);
+    }
+  }
+
+  @include e(line) {
+    position: absolute;
+    border-color: inherit;
+    background-color: getCssVar('text-color', 'placeholder');
+  }
+
+  @include e(line-inner) {
+    display: block;
+    border-width: 1px;
+    border-style: solid;
+    border-color: inherit;
+    transition: 0.15s ease-out;
+    box-sizing: border-box;
+    width: 0;
+    height: 0;
+  }
+
+  @include e(main) {
+    white-space: normal;
+    text-align: left;
+  }
+
+  @include e(title) {
+    font-size: 16px;
+    line-height: 38px;
+
+    @include when(process) {
+      font-weight: bold;
+      color: getCssVar('text-color', 'primary');
+    }
+
+    @include when(wait) {
+      color: getCssVar('text-color', 'placeholder');
+    }
+
+    @include when(success) {
+      color: getCssVar('color-success');
+    }
+
+    @include when(error) {
+      color: getCssVar('color-danger');
+    }
+
+    @include when(finish) {
+      color: getCssVar('color-primary');
+    }
+  }
+
+  @include e(description) {
+    padding-right: 10%;
+    margin-top: -5px;
+    font-size: 12px;
+    line-height: 20px;
+    font-weight: normal;
+
+    @include when(process) {
+      color: getCssVar('text-color', 'primary');
+    }
+
+    @include when(wait) {
+      color: getCssVar('text-color', 'placeholder');
+    }
+
+    @include when(success) {
+      color: getCssVar('color-success');
+    }
+
+    @include when(error) {
+      color: getCssVar('color-danger');
+    }
+
+    @include when(finish) {
+      color: getCssVar('color-primary');
+    }
+  }
+
+  @include when(horizontal) {
+    display: inline-block;
+
+    @include e(line) {
+      height: 2px;
+      top: 11px;
+      left: 0;
+      right: 0;
+    }
+  }
+
+  @include when(vertical) {
+    display: flex;
+
+    @include e(head) {
+      flex-grow: 0;
+      width: 24px;
+    }
+
+    @include e(main) {
+      padding-left: 10px;
+      flex-grow: 1;
+    }
+
+    @include e(title) {
+      line-height: 24px;
+      padding-bottom: 8px;
+    }
+
+    @include e(line) {
+      width: 2px;
+      top: 0;
+      bottom: 0;
+      left: 11px;
+    }
+
+    @include e(icon) {
+      @include when(icon) {
+        width: 24px;
+      }
+    }
+  }
+
+  @include when(center) {
+    @include e(head) {
+      text-align: center;
+    }
+
+    @include e(main) {
+      text-align: center;
+    }
+
+    @include e(description) {
+      padding-left: 20%;
+      padding-right: 20%;
+    }
+
+    @include e(line) {
+      left: 50%;
+      right: -50%;
+    }
+  }
+
+  @include when(simple) {
+    display: flex;
+    align-items: center;
+
+    @include e(head) {
+      width: auto;
+      font-size: 0;
+      padding-right: 10px;
+    }
+
+    @include e(icon) {
+      background: transparent;
+      width: 16px;
+      height: 16px;
+      font-size: 12px;
+    }
+
+    @include e(icon-inner) {
+      &[class*='#{$namespace}-icon']:not(.is-status) {
+        font-size: 18px;
+      }
+
+      &.is-status {
+        transform: scale(0.8) translateY(1px);
+      }
+    }
+
+    @include e(main) {
+      position: relative;
+      display: flex;
+      align-items: stretch;
+      flex-grow: 1;
+    }
+
+    @include e(title) {
+      font-size: 16px;
+      line-height: 20px;
+    }
+
+    @include pseudo('not(:last-of-type)') {
+      @include e(title) {
+        max-width: 50%;
+        word-break: break-all;
+      }
+    }
+
+    @include e(arrow) {
+      flex-grow: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      &::before,
+      &::after {
+        content: '';
+        display: inline-block;
+        position: absolute;
+        height: 15px;
+        width: 1px;
+        background: getCssVar('text-color', 'placeholder');
+      }
+
+      &::before {
+        transform: rotate(-45deg) translateY(-4px);
+        transform-origin: 0 0;
+      }
+
+      &::after {
+        transform: rotate(45deg) translateY(4px);
+        transform-origin: 100% 100%;
+      }
+    }
+
+    @include pseudo(last-of-type) {
+      @include e(arrow) {
+        display: none;
+      }
+    }
+  }
+}

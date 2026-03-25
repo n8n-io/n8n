@@ -1,0 +1,71 @@
+{
+  "name": "before-after-hook",
+  "version": "2.2.3",
+  "description": "asynchronous before/error/after hooks for internal functionality",
+  "main": "index.js",
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "lib"
+  ],
+  "types": "./index.d.ts",
+  "scripts": {
+    "prebuild": "rimraf dist && mkdirp dist",
+    "build": "browserify index.js --standalone=Hook > dist/before-after-hook.js",
+    "postbuild": "uglifyjs dist/before-after-hook.js -mc > dist/before-after-hook.min.js",
+    "lint": "prettier --check '{lib,test,examples}/**/*' 'index.*' README.md package.json",
+    "lint:fix": "prettier --write '{lib,test,examples}/**/*' 'index.*' README.md package.json",
+    "pretest": "npm run -s lint",
+    "test": "npm run -s test:node | tap-spec",
+    "posttest": "npm run validate:ts",
+    "test:node": "node test",
+    "test:watch": "gaze 'clear && node test | tap-min' 'test/**/*.js' 'index.js' 'lib/**/*.js'",
+    "test:coverage": "istanbul cover test",
+    "test:coverage:upload": "istanbul-coveralls",
+    "validate:ts": "tsc --strict --target es6 index.d.ts",
+    "postvalidate:ts": "tsc --noEmit --strict --target es6 test/typescript-validate.ts",
+    "presemantic-release": "npm run build",
+    "semantic-release": "semantic-release"
+  },
+  "repository": "github:gr2m/before-after-hook",
+  "keywords": [
+    "hook",
+    "hooks",
+    "api"
+  ],
+  "author": "Gregor Martynus",
+  "license": "Apache-2.0",
+  "dependencies": {},
+  "devDependencies": {
+    "browserify": "^16.0.0",
+    "gaze-cli": "^0.2.0",
+    "istanbul": "^0.4.0",
+    "istanbul-coveralls": "^1.0.3",
+    "mkdirp": "^1.0.3",
+    "prettier": "^2.0.0",
+    "rimraf": "^3.0.0",
+    "semantic-release": "^19.0.3",
+    "simple-mock": "^0.8.0",
+    "tap-min": "^2.0.0",
+    "tap-spec": "^5.0.0",
+    "tape": "^5.0.0",
+    "typescript": "^3.5.3",
+    "uglify-js": "^3.9.0"
+  },
+  "release": {
+    "branches": [
+      "+([0-9]).x",
+      "main",
+      "next",
+      {
+        "name": "beta",
+        "prerelease": true
+      }
+    ]
+  },
+  "renovate": {
+    "extends": [
+      "github>gr2m/.github"
+    ]
+  }
+}

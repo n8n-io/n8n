@@ -1,0 +1,127 @@
+{
+	"name": "eslint-plugin-unicorn",
+	"version": "59.0.1",
+	"description": "More than 100 powerful ESLint rules",
+	"license": "MIT",
+	"repository": "sindresorhus/eslint-plugin-unicorn",
+	"funding": "https://github.com/sindresorhus/eslint-plugin-unicorn?sponsor=1",
+	"author": {
+		"name": "Sindre Sorhus",
+		"email": "sindresorhus@gmail.com",
+		"url": "https://sindresorhus.com"
+	},
+	"type": "module",
+	"exports": {
+		"types": "./index.d.ts",
+		"default": "./index.js"
+	},
+	"sideEffects": false,
+	"engines": {
+		"node": "^18.20.0 || ^20.10.0 || >=21.0.0"
+	},
+	"scripts": {
+		"bundle-lodash": "echo export {defaultsDeep, camelCase, kebabCase, snakeCase, upperFirst, lowerFirst} from 'lodash-es'; | npx esbuild --bundle --outfile=rules/utils/lodash.js --format=esm",
+		"create-rule": "node ./scripts/create-rule.js && npm run create-rules-index-file && npm run fix:eslint-docs",
+		"create-rules-index-file": "node ./scripts/create-rules-index-file.js",
+		"fix": "run-p --continue-on-error fix:*",
+		"fix:eslint-docs": "eslint-doc-generator workaround-for-eslint-doc-generator",
+		"fix:js": "npm run lint:js -- --fix",
+		"fix:markdown": "npm run lint:markdown -- --fix",
+		"fix:snapshots": "ava --update-snapshots",
+		"integration": "node ./test/integration/test.js",
+		"lint": "run-p --continue-on-error lint:*",
+		"lint:eslint-docs": "npm run fix:eslint-docs -- --check",
+		"lint:js": "eslint",
+		"lint:markdown": "markdownlint \"**/*.md\"",
+		"lint:package-json": "npmPkgJsonLint .",
+		"rename-rule": "node ./scripts/rename-rule.js && npm run create-rules-index-file && npm run fix:eslint-docs",
+		"run-rules-on-codebase": "eslint --config=./eslint.dogfooding.config.js",
+		"smoke": "eslint-remote-tester --config ./test/smoke/eslint-remote-tester.config.js",
+		"test": "npm-run-all --continue-on-error lint test:*",
+		"test:js": "c8 ava"
+	},
+	"files": [
+		"index.js",
+		"index.d.ts",
+		"rules",
+		"configs"
+	],
+	"keywords": [
+		"eslint",
+		"eslintplugin",
+		"eslint-plugin",
+		"unicorn",
+		"linter",
+		"lint",
+		"style",
+		"xo"
+	],
+	"dependencies": {
+		"@babel/helper-validator-identifier": "^7.25.9",
+		"@eslint-community/eslint-utils": "^4.5.1",
+		"@eslint/plugin-kit": "^0.2.7",
+		"ci-info": "^4.2.0",
+		"clean-regexp": "^1.0.0",
+		"core-js-compat": "^3.41.0",
+		"esquery": "^1.6.0",
+		"find-up-simple": "^1.0.1",
+		"globals": "^16.0.0",
+		"indent-string": "^5.0.0",
+		"is-builtin-module": "^5.0.0",
+		"jsesc": "^3.1.0",
+		"pluralize": "^8.0.0",
+		"regexp-tree": "^0.1.27",
+		"regjsparser": "^0.12.0",
+		"semver": "^7.7.1",
+		"strip-indent": "^4.0.0"
+	},
+	"devDependencies": {
+		"@babel/code-frame": "^7.26.2",
+		"@babel/core": "^7.26.10",
+		"@babel/eslint-parser": "^7.26.10",
+		"@eslint/eslintrc": "^3.3.0",
+		"@lubien/fixture-beta-package": "^1.0.0-beta.1",
+		"@typescript-eslint/parser": "^8.26.1",
+		"ava": "^6.2.0",
+		"c8": "^10.1.3",
+		"enquirer": "^2.4.1",
+		"eslint": "^9.22.0",
+		"eslint-ava-rule-tester": "^5.0.1",
+		"eslint-config-xo": "^0.46.0",
+		"eslint-doc-generator": "^2.1.2",
+		"eslint-plugin-eslint-plugin": "^6.4.0",
+		"eslint-plugin-jsdoc": "^50.6.8",
+		"eslint-remote-tester": "^4.0.1",
+		"eslint-remote-tester-repositories": "^2.0.1",
+		"espree": "^10.3.0",
+		"listr2": "^8.2.5",
+		"lodash-es": "^4.17.21",
+		"markdownlint-cli": "^0.44.0",
+		"memoize": "^10.1.0",
+		"nano-spawn": "^0.2.0",
+		"node-style-text": "^0.0.7",
+		"npm-package-json-lint": "^8.0.0",
+		"npm-run-all2": "^7.0.2",
+		"open-editor": "^5.1.0",
+		"outdent": "^0.8.0",
+		"pretty-ms": "^9.2.0",
+		"typescript": "^5.8.2",
+		"vue-eslint-parser": "^10.1.1",
+		"yaml": "^2.7.0"
+	},
+	"peerDependencies": {
+		"eslint": ">=9.22.0"
+	},
+	"ava": {
+		"files": [
+			"test/*.js",
+			"test/unit/*.js"
+		]
+	},
+	"c8": {
+		"reporter": [
+			"text",
+			"lcov"
+		]
+	}
+}

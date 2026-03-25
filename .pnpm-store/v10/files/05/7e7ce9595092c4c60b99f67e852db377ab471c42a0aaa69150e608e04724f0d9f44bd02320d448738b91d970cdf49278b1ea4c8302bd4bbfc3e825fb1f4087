@@ -1,0 +1,1 @@
+export declare const columnMovingCSS = ":where(.ag-ltr) :where(.ag-column-moving){.ag-cell,.ag-header-cell,.ag-spanned-cell-wrapper{transition:left .2s}.ag-header-group-cell{transition:left .2s,width .2s}}:where(.ag-rtl) :where(.ag-column-moving){.ag-cell,.ag-header-cell,.ag-spanned-cell-wrapper{transition:right .2s}.ag-header-group-cell{transition:right .2s,width .2s}}";

@@ -1,0 +1,1 @@
+module.exports = require("../dist/tools/duckduckgo_search.cjs");

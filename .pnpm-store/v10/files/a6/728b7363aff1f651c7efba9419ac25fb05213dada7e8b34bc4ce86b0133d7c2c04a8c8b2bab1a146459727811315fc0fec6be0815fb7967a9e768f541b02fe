@@ -1,0 +1,144 @@
+root: true
+extends: eslint:recommended
+parserOptions:
+  ecmaVersion: 11
+  ecmaFeatures:
+    impliedStrict: true
+  sourceType: module
+env:
+  es6: true
+  node: true
+  mocha: true
+  jasmine: true
+rules:
+  linebreak-style:
+    - error
+    - unix
+  max-len:
+    - warn
+    - code: 80
+      tabWidth: 2
+      ignoreUrls: true
+      ignoreTemplateLiterals: true
+      ignoreRegExpLiterals: true
+      ignorePattern: import|require\('
+  indent:
+    - error
+    - 2
+    - SwitchCase: 1
+      VariableDeclarator:
+        let: 2
+        const: 3
+  semi:
+    - error
+    - always
+  consistent-this:
+    - error
+    - self
+    - $ctrl
+  quotes:
+    - error
+    - single
+    - allowTemplateLiterals: true
+  curly:
+    - error
+    - all
+  comma-dangle:
+    - error
+    - functions: never
+      arrays: always-multiline
+      objects: always-multiline
+  new-cap:
+    - error
+    - newIsCap: true
+      capIsNew: true
+      properties: false
+  camelcase:
+    - error
+    - properties: never
+  array-bracket-spacing:
+    - error
+    - never
+  arrow-spacing:
+    - error
+    - before: true
+      after: true
+  block-spacing:
+    - error
+    - always
+  comma-spacing:
+    - error
+    - before: false
+      after: true
+  computed-property-spacing:
+    - error
+    - never
+  generator-star-spacing:
+    - error
+    - before: true
+      after: false
+  key-spacing:
+    - error
+    - beforeColon: false
+      afterColon: true
+      mode: minimum
+  keyword-spacing:
+    - error
+    - before: true
+  semi-spacing:
+    - error
+    - before: false
+      after: true
+  space-in-parens:
+    - error
+    - never
+  space-unary-ops:
+    - error
+    - words: true
+      nonwords: false
+  space-before-function-paren:
+    - error
+    - never
+  space-before-blocks:
+    - error
+    - always
+  yoda:
+    - error
+    - never
+  wrap-iife:
+    - error
+    - outside
+  eqeqeq:
+    - error
+    - always
+  newline-per-chained-call:
+    - error
+    - ignoreChainWithDepth: 3
+  one-var-declaration-per-line:
+    - error
+    - initializations
+  brace-style:
+    - error
+    - stroustrup
+  no-implicit-coercion:
+    - error
+    - boolean: false
+  no-multiple-empty-lines:
+    - error
+    - max: 1
+  eol-last: error
+  dot-notation: error
+  space-infix-ops: error
+  no-with: error
+  no-unreachable: error
+  no-redeclare: error
+  no-unexpected-multiline: error
+  no-multi-spaces: error
+  no-multi-str: error
+  no-trailing-spaces: error
+  no-mixed-spaces-and-tabs: error
+  no-spaced-func: error
+  no-whitespace-before-property: error
+  no-lonely-if: error
+  no-var: error
+  no-console: off

@@ -1,0 +1,82 @@
+{
+  "name": "ts-error",
+  "version": "1.0.6",
+  "description": "An extendable Error class that actually works, with TypeScript definition files, supporting old and new style classes and compatibility even with the oldest browsers",
+  "author": "Frédérique Mittelstaedt <npm@gfm.io> (https://www.gfm.io)",
+  "license": "MIT",
+  "main": "./lib/cjs.js",
+  "module": "./lib/es.js",
+  "browser": "./lib/cjs.js",
+  "types": "./lib/es.d.ts",
+  "homepage": "https://github.com/gfmio/ts-error#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gfmio/ts-error.git"
+  },
+  "bugs": {
+    "url": "https://github.com/gfmio/ts-error/issues"
+  },
+  "keywords": [
+    "Error",
+    "Extendable",
+    "JavaScript",
+    "ES6",
+    "esnext",
+    "TypeScript"
+  ],
+  "scripts": {
+    "build:test:browser:es3": "export TARGET=\"es3\" && ./node_modules/.bin/webpack --config ./tests/build/webpack/webpack.config.js",
+    "build:test:browser:es3:watch": "export TARGET=\"es3\" && ./node_modules/.bin/webpack --watch --config ./tests/build/webpack/webpack.config.js",
+    "build:test:browser:es5": "export TARGET=\"es5\" && ./node_modules/.bin/webpack --config ./tests/build/webpack/webpack.config.js",
+    "build:test:browser:es5:watch": "export TARGET=\"es5\" && ./node_modules/.bin/webpack --watch --config ./tests/build/webpack/webpack.config.js",
+    "build:test:browser:es6": "export TARGET=\"es6\" && ./node_modules/.bin/webpack --config ./tests/build/webpack/webpack.config.js",
+    "build:test:browser:es6:watch": "export TARGET=\"es6\" && ./node_modules/.bin/webpack --watch --config ./tests/build/webpack/webpack.config.js",
+    "build:test:browser:esnext": "export TARGET=\"esnext\" && ./node_modules/.bin/webpack --config ./tests/build/webpack/webpack.config.js",
+    "build:test:browser:esnext:watch": "export TARGET=\"esnext\" && ./node_modules/.bin/webpack --watch --config ./tests/build/webpack/webpack.config.js",
+    "build:test:browser": "./node_modules/.bin/concurrently \"npm run build:test:browser:es3\" \"npm run build:test:browser:es5\" \"npm run build:test:browser:es6\" \"npm run build:test:browser:esnext\"",
+    "build:test:browser:watch": "./node_modules/.bin/concurrently \"npm run build:test:browser:es3:watch\" \"npm run build:test:browser:es5:watch\" \"npm run build:test:browser:es6:watch\" \"npm run build:test:browser:esnext:watch\"",
+    "build:test": "npm run build:test:browser",
+    "build:test:watch": "npm run build:test:browser:watch",
+    "pretest": "npm run build:test",
+    "test:node:cjs": "./node_modules/.bin/mocha --reporter spec --require ./tests/mocha.tshook.es3.js ./tests/node/cjs.ts",
+    "test:node:es": "./node_modules/.bin/mocha --reporter spec --require ./tests/mocha.tshook.esnext.js ./tests/node/es.ts",
+    "test:node": "npm run test:node:cjs && npm run test:node:es",
+    "test:browser": "lite-server -c ./tests/build/lite-server/bs-config.json",
+    "test": "npm run test:node && npm run test:browser",
+    "watch": "./node_modules/.bin/concurrently \"npm run build:test:watch\" \"npm run test:browser\"",
+    "clean:node": "rm -rf ./node_modules",
+    "clean:test:browser:dist": "rm -rf ./tests/browser/dist",
+    "clean": "./node_modules/.bin/concurrently \"npm run clean:test:browser:dist\" \"npm run clean:node\"",
+    "release-major": "./node_modules/.bin/xyz --repo git@github.com:gfmio/ts-error.git --increment major",
+    "release-minor": "./node_modules/.bin/xyz --repo git@github.com:gfmio/ts-error.git --increment minor",
+    "release-patch": "./node_modules/.bin/xyz --repo git@github.com:gfmio/ts-error.git --increment patch"
+  },
+  "devDependencies": {
+    "@types/chai": "^4.2.11",
+    "@types/mocha": "^7.0.2",
+    "@types/node": "^14.0.1",
+    "awesome-typescript-loader": "^5.2.1",
+    "chai": "^4.2.0",
+    "concurrently": "^5.2.0",
+    "copy-webpack-plugin": "^5.1.1",
+    "hard-source-webpack-plugin": "^0.13.1",
+    "husky": "^4.2.5",
+    "lite-server": "^2.5.4",
+    "mocha": "^7.1.2",
+    "prettier": "^2.0.5",
+    "pretty-quick": "^2.0.1",
+    "source-map-loader": "^0.2.4",
+    "ts-node": "^8.10.1",
+    "tslint": "^6.1.2",
+    "typescript": "^3.9.2",
+    "webpack": "^4.43.0",
+    "webpack-cli": "^3.3.11",
+    "xyz": "^4.0.0"
+  },
+  "dependencies": {},
+  "husky": {
+    "hooks": {
+      "pre-commit": "pretty-quick --staged"
+    }
+  }
+}

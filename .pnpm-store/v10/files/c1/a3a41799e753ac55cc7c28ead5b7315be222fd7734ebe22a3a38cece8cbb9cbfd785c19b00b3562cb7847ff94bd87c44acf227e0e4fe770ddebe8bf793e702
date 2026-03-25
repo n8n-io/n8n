@@ -1,0 +1,6 @@
+{
+  "exclude": ["node_modules", "test", "**/*.spec.js"],
+  "require": ["@babel/register"],
+  "reporter": ["lcov", "text", "html"],
+  "sourceMap": false
+}

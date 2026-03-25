@@ -1,0 +1,36 @@
+{
+  "author": "Michael Bridgen <mikeb@squaremobius.net>",
+  "name": "@acuminous/bitsyntax",
+  "description": "Pattern-matching on byte buffers",
+  "license": "MIT",
+  "version": "0.1.2",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/acuminous/bitsyntax-js.git"
+  },
+  "main": "./index",
+  "scripts": {
+    "test": "make test",
+    "prepublish": "make all"
+  },
+  "engines": {
+    "node": ">=0.8"
+  },
+  "dependencies": {
+    "buffer-more-ints": "~1.0.0",
+    "debug": "^4.3.4",
+    "safe-buffer": "~5.1.2"
+  },
+  "devDependencies": {
+    "pegjs": "^0.7.0",
+    "zunit": "^3.2.1"
+  },
+  "bugs": {
+    "url": "https://github.com/acuminous/bitsyntax-js/issues"
+  },
+  "homepage": "https://github.com/acuminous/bitsyntax-js#readme",
+  "directories": {
+    "lib": "lib",
+    "test": "test"
+  }
+}

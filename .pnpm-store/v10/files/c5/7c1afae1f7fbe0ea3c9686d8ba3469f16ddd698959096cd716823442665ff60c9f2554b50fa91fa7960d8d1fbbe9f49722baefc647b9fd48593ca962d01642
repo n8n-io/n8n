@@ -1,0 +1,1 @@
+{"version":3,"file":"connectivity-state.js","sourceRoot":"","sources":["../../src/connectivity-state.ts"],"names":[],"mappings":";AAAA;;;;;;;;;;;;;;;GAeG;;;AAEH,IAAY,iBAMX;AAND,WAAY,iBAAiB;IAC3B,yDAAI,CAAA;IACJ,qEAAU,CAAA;IACV,2DAAK,CAAA;IACL,mFAAiB,CAAA;IACjB,iEAAQ,CAAA;AACV,CAAC,EANW,iBAAiB,iCAAjB,iBAAiB,QAM5B"}

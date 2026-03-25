@@ -1,0 +1,82 @@
+{
+  "pkg": "@anthropic-ai/sdk",
+  "githubRepo": "https://github.com/anthropics/anthropic-sdk-typescript",
+  "clientClass": "Anthropic",
+  "baseClientClass": "BaseAnthropic",
+  "methods": [
+    {
+      "base": "beta.skills.versions",
+      "name": "retrieve",
+      "params": [
+        {
+          "type": "param",
+          "key": "version",
+          "location": "path"
+        },
+        {
+          "type": "params",
+          "maybeOverload": false
+        },
+        {
+          "type": "options"
+        }
+      ],
+      "oldParams": [
+        {
+          "type": "param",
+          "key": "skill_id",
+          "location": "path"
+        },
+        {
+          "type": "param",
+          "key": "version",
+          "location": "path"
+        },
+        {
+          "type": "params",
+          "maybeOverload": true
+        },
+        {
+          "type": "options"
+        }
+      ]
+    },
+    {
+      "base": "beta.skills.versions",
+      "name": "delete",
+      "params": [
+        {
+          "type": "param",
+          "key": "version",
+          "location": "path"
+        },
+        {
+          "type": "params",
+          "maybeOverload": false
+        },
+        {
+          "type": "options"
+        }
+      ],
+      "oldParams": [
+        {
+          "type": "param",
+          "key": "skill_id",
+          "location": "path"
+        },
+        {
+          "type": "param",
+          "key": "version",
+          "location": "path"
+        },
+        {
+          "type": "params",
+          "maybeOverload": true
+        },
+        {
+          "type": "options"
+        }
+      ]
+    }
+  ]
+}

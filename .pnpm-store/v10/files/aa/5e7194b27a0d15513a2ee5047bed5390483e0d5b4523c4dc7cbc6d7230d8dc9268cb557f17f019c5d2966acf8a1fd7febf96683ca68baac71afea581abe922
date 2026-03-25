@@ -1,0 +1,42 @@
+{
+  "name": "pg-types",
+  "version": "2.2.0",
+  "description": "Query result type converters for node-postgres",
+  "main": "index.js",
+  "scripts": {
+    "test": "tape test/*.js | tap-spec && npm run test-ts",
+    "test-ts": "if-node-version '>= 8' tsd"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/brianc/node-pg-types.git"
+  },
+  "keywords": [
+    "postgres",
+    "PostgreSQL",
+    "pg"
+  ],
+  "author": "Brian M. Carlson",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/brianc/node-pg-types/issues"
+  },
+  "homepage": "https://github.com/brianc/node-pg-types",
+  "devDependencies": {
+    "if-node-version": "^1.1.1",
+    "pff": "^1.0.0",
+    "tap-spec": "^4.0.0",
+    "tape": "^4.0.0",
+    "tsd": "^0.7.4"
+  },
+  "dependencies": {
+    "pg-int8": "1.0.1",
+    "postgres-array": "~2.0.0",
+    "postgres-bytea": "~1.0.0",
+    "postgres-date": "~1.0.4",
+    "postgres-interval": "^1.1.0"
+  },
+  "engines": {
+    "node": ">=4"
+  }
+}

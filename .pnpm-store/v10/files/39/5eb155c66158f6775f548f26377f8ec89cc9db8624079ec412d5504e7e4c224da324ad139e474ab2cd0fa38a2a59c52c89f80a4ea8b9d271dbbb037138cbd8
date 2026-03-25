@@ -1,0 +1,70 @@
+{
+  "name": "@n8n_io/riot-tmpl",
+  "version": "4.0.1",
+  "description": "n8n fork of the riot template engine",
+  "main": "dist/tmpl.js",
+  "module": "dist/es6.tmpl.js",
+  "jsnext:main": "dist/es6.tmpl.js",
+  "types": "index.d.ts",
+  "directories": {
+    "doc": "doc"
+  },
+  "files": [
+    "src",
+    "doc",
+    "dist/*.js",
+    "test/**",
+    "index.d.ts"
+  ],
+  "scripts": {
+    "test": "make test",
+    "prepublish": "make build && ./node_modules/.bin/riot-bump"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/n8n-io/tmpl.git"
+  },
+  "keywords": [
+    "riot",
+    "tmpl",
+    "template",
+    "engine",
+    "n8n"
+  ],
+  "devDependencies": {
+    "coveralls": "^2.13.1",
+    "eslint": "^3.19.0",
+    "esprima": "^3.1.3",
+    "expect.js": "^0.3.1",
+    "hoister": "0.0.2",
+    "istanbul": "^0.4.5",
+    "jspreproc": "^0.2.7",
+    "karma": "^1.7.0",
+    "karma-browserstack-launcher": "^1.2.0",
+    "karma-coverage": "^1.1.1",
+    "karma-mocha": "^1.3.0",
+    "karma-phantomjs-launcher": "^1.0.4",
+    "mocha": "^3.3.0",
+    "phantomjs-prebuilt": "^2.1.14",
+    "riot-bump": "^1.0.0",
+    "rollup": "^0.41.6",
+    "rollup-plugin-commonjs": "^8.0.2",
+    "rollup-plugin-node-resolve": "^3.0.0"
+  },
+  "author": "Riot maintainers team + smart people from all over the world",
+  "contributors": [
+    "Richard Bondi https://github.com/rsbondi",
+    "Gianluca Guarini https://github.com/GianlucaGuarini",
+    "Tsutomu Kawamura https://github.com/cognitom",
+    "Alberto Martínez https://github.com/aMarCruz",
+    "Tero Piirainen  https://github.com/tipiirai"
+  ],
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/n8n-io/tmpl/issues"
+  },
+  "homepage": "https://github.com/n8n-io/tmpl#readme",
+  "dependencies": {
+    "eslint-config-riot": "^1.0.0"
+  }
+}

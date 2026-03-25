@@ -1,0 +1,137 @@
+{
+  "name": "@langchain/google-common",
+  "version": "2.1.24",
+  "description": "Core types and classes for Google services.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:langchain-ai/langchainjs.git"
+  },
+  "homepage": "https://github.com/langchain-ai/langchainjs/tree/main/libs/langchain-google-common/",
+  "author": "LangChain",
+  "license": "MIT",
+  "dependencies": {
+    "uuid": "^10.0.0"
+  },
+  "peerDependencies": {
+    "@langchain/core": "^1.1.30"
+  },
+  "devDependencies": {
+    "@jest/globals": "^30.2.0",
+    "@types/uuid": "^10.0.0",
+    "@swc/core": "^1.15.13",
+    "@swc/jest": "^0.2.29",
+    "@tsconfig/recommended": "^1.0.3",
+    "dotenv": "^16.3.1",
+    "dpdm": "^3.14.0",
+    "eslint": "^9.34.0",
+    "jest": "^30.2.0",
+    "jest-environment-node": "^30.2.0",
+    "prettier": "^3.5.0",
+    "ts-jest": "^29.4.6",
+    "typescript": "~5.8.3",
+    "zod": "^3.25.76",
+    "@langchain/core": "^1.1.30",
+    "@langchain/eslint": "0.1.1",
+    "@langchain/tsconfig": "0.0.1"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "./dist/index.cjs",
+  "types": "./dist/index.d.cts",
+  "exports": {
+    ".": {
+      "input": "./src/index.ts",
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      },
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    },
+    "./experimental/media": {
+      "input": "./src/experimental/media.ts",
+      "require": {
+        "types": "./dist/experimental/media.d.cts",
+        "default": "./dist/experimental/media.cjs"
+      },
+      "import": {
+        "types": "./dist/experimental/media.d.ts",
+        "default": "./dist/experimental/media.js"
+      }
+    },
+    "./experimental/utils/media_core": {
+      "input": "./src/experimental/utils/media_core.ts",
+      "require": {
+        "types": "./dist/experimental/utils/media_core.d.cts",
+        "default": "./dist/experimental/utils/media_core.cjs"
+      },
+      "import": {
+        "types": "./dist/experimental/utils/media_core.d.ts",
+        "default": "./dist/experimental/utils/media_core.js"
+      }
+    },
+    "./types": {
+      "input": "./src/types.ts",
+      "require": {
+        "types": "./dist/types.d.cts",
+        "default": "./dist/types.cjs"
+      },
+      "import": {
+        "types": "./dist/types.d.ts",
+        "default": "./dist/types.js"
+      }
+    },
+    "./utils": {
+      "input": "./src/utils/index.ts",
+      "require": {
+        "types": "./dist/utils/index.d.cts",
+        "default": "./dist/utils/index.cjs"
+      },
+      "import": {
+        "types": "./dist/utils/index.d.ts",
+        "default": "./dist/utils/index.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist/",
+    "CHANGELOG.md",
+    "README.md",
+    "LICENSE",
+    "types.d.cts",
+    "types.cjs",
+    "types.d.ts",
+    "types.js",
+    "experimental",
+    "utils.d.cts",
+    "utils.cjs",
+    "utils.d.ts",
+    "utils.js"
+  ],
+  "module": "./dist/index.js",
+  "scripts": {
+    "build": "turbo build:compile --filter @langchain/google-common --output-logs new-only",
+    "build:compile": "tsdown",
+    "lint:eslint": "eslint --cache src/",
+    "lint:dpdm": "dpdm --skip-dynamic-imports circular --exit-code circular:1 --no-warning --no-tree src/*.ts src/**/*.ts",
+    "lint": "pnpm lint:eslint && pnpm lint:dpdm",
+    "lint:fix": "pnpm lint:eslint --fix && pnpm lint:dpdm",
+    "clean": "rm -rf .turbo dist/",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest --testPathIgnorePatterns=\\.int\\.test.ts --testTimeout 30000 --maxWorkers=50%",
+    "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch --testPathIgnorePatterns=\\.int\\.test.ts",
+    "test:single": "NODE_OPTIONS=--experimental-vm-modules pnpm run jest --config jest.config.cjs --testTimeout 100000",
+    "test:int": "NODE_OPTIONS=--experimental-vm-modules jest --testPathPatterns=\\.int\\.test.ts --testTimeout 100000 --maxWorkers=50%",
+    "format": "prettier --write \"src\"",
+    "format:check": "prettier --check \"src\"",
+    "typegen": "pnpm run typegen:profiles",
+    "typegen:profiles": "pnpm --filter @langchain/model-profiles make --config profiles.toml"
+  }
+}

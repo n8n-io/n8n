@@ -1,0 +1,1 @@
+{"version":3,"file":"UserAccountAttributeError.d.ts","sourceRoot":"","sources":["../../../../../../src/custom_auth/core/error/UserAccountAttributeError.ts"],"names":[],"mappings":"AAKA,OAAO,EAAE,eAAe,EAAE,MAAM,sBAAsB,CAAC;AAEvD,qBAAa,yBAA0B,SAAQ,eAAe;gBAC9C,KAAK,EAAE,MAAM,EAAE,aAAa,EAAE,MAAM,EAAE,cAAc,EAAE,MAAM;CAM3E"}

@@ -1,0 +1,10 @@
+import type { BeanCollection } from '../context/context';
+import type { CellPosition } from '../interfaces/iCellPosition';
+import type { Column, ColumnGroup } from '../interfaces/iColumn';
+import type { RowPinnedType } from '../interfaces/iRowNode';
+export declare function getFocusedCell(beans: BeanCollection): CellPosition | null;
+export declare function clearFocusedCell(beans: BeanCollection): void;
+export declare function setFocusedCell(beans: BeanCollection, rowIndex: number, colKey: string | Column, rowPinned?: RowPinnedType): void;
+export declare function tabToNextCell(beans: BeanCollection, event?: KeyboardEvent): boolean;
+export declare function tabToPreviousCell(beans: BeanCollection, event?: KeyboardEvent): boolean;
+export declare function setFocusedHeader(beans: BeanCollection, colKey: string | Column | ColumnGroup, floatingFilter?: boolean): void;

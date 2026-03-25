@@ -1,0 +1,65 @@
+{
+    "name": "@types/qs",
+    "version": "6.9.15",
+    "description": "TypeScript definitions for qs",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/qs",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Roman Korneev",
+            "githubUsername": "RWander",
+            "url": "https://github.com/RWander"
+        },
+        {
+            "name": "Leon Yu",
+            "githubUsername": "leonyu",
+            "url": "https://github.com/leonyu"
+        },
+        {
+            "name": "Belinda Teh",
+            "githubUsername": "tehbelinda",
+            "url": "https://github.com/tehbelinda"
+        },
+        {
+            "name": "Melvin Lee",
+            "githubUsername": "zyml",
+            "url": "https://github.com/zyml"
+        },
+        {
+            "name": "Arturs Vonda",
+            "githubUsername": "artursvonda",
+            "url": "https://github.com/artursvonda"
+        },
+        {
+            "name": "Carlos Bonetti",
+            "githubUsername": "CarlosBonetti",
+            "url": "https://github.com/CarlosBonetti"
+        },
+        {
+            "name": "Dan Smith",
+            "githubUsername": "dpsmith3",
+            "url": "https://github.com/dpsmith3"
+        },
+        {
+            "name": "Hunter Perrin",
+            "githubUsername": "hperrin",
+            "url": "https://github.com/hperrin"
+        },
+        {
+            "name": "Jordan Harband",
+            "githubUsername": "ljharb",
+            "url": "https://github.com/ljharb"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/qs"
+    },
+    "scripts": {},
+    "dependencies": {},
+    "typesPublisherContentHash": "1f1cbc913fb092d4ffa9230a21894f18d2826d04431244517086c6fc477dbf12",
+    "typeScriptVersion": "4.7"
+}

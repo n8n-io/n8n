@@ -1,0 +1,48 @@
+{
+  "name": "async-lock",
+  "description": "Lock on asynchronous code",
+  "version": "1.4.1",
+  "author": {
+    "name": "Rogier Schouten",
+    "url": "https://github.com/rogierschouten/",
+    "email": "github@workingcode.ninja"
+  },
+  "private": false,
+  "homepage": "https://github.com/rogierschouten/async-lock",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rogierschouten/async-lock.git"
+  },
+  "bugs": {
+    "url": "https://github.com/rogierschouten/async-lock/issues"
+  },
+  "license": "MIT",
+  "keywords": [
+    "lock",
+    "async",
+    "concurrency",
+    "critical",
+    "section",
+    "mutex"
+  ],
+  "engines": {},
+  "scripts": {
+    "start": "grunt",
+    "test": "grunt test"
+  },
+  "devDependencies": {
+    "bluebird": "^3.5.1",
+    "grunt": "^1.0.4",
+    "grunt-cli": "^1.2.0",
+    "grunt-contrib-clean": "^1.1.0",
+    "grunt-contrib-jshint": "^3.2.0",
+    "grunt-contrib-watch": "^1.1.0",
+    "grunt-env": "^1.0.1",
+    "grunt-mocha-test": "^0.13.3",
+    "load-grunt-tasks": "^4.0.0",
+    "lodash": "^4.17.20",
+    "mocha": "^10.2.0",
+    "q": "^1.5.1",
+    "should": "^13.2.1"
+  }
+}

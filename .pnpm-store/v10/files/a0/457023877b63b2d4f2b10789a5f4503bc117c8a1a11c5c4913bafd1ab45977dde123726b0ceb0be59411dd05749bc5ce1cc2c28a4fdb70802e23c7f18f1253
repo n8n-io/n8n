@@ -1,0 +1,28 @@
+openapi: 3.0.0
+paths:
+  /pet:
+    put:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                local:
+                  $ref: '#/components/schemas/Local'
+                localTransitive:
+                  $ref: '#/components/schemas/Local/properties/string'
+                externalWithPointer:
+                  $ref: ./External.yaml#/properties/string
+                external:
+                  $ref: ./External.yaml
+components:
+  schemas:
+    Local:
+      properties:
+        number:
+          type: number
+        string:
+          type: string
+        localCircular:
+          $ref: '#/components/schemas/Local'

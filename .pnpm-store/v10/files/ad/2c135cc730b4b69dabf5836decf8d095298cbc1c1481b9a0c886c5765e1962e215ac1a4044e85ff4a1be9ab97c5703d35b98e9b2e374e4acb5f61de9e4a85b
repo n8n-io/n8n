@@ -1,0 +1,80 @@
+{
+  "name": "cacache",
+  "version": "15.3.0",
+  "cache-version": {
+    "content": "2",
+    "index": "5"
+  },
+  "description": "Fast, fault-tolerant, cross-platform, disk-based, data-agnostic, content-addressable cache.",
+  "main": "index.js",
+  "files": [
+    "*.js",
+    "lib"
+  ],
+  "scripts": {
+    "benchmarks": "node test/benchmarks",
+    "preversion": "npm test",
+    "postversion": "npm publish",
+    "prepublishOnly": "git push origin --follow-tags",
+    "test": "tap",
+    "snap": "tap",
+    "coverage": "tap",
+    "test-docker": "docker run -it --rm --name pacotest -v \"$PWD\":/tmp -w /tmp node:latest npm test",
+    "lint": "npm run npmclilint -- \"*.*js\" \"lib/**/*.*js\" \"test/**/*.*js\"",
+    "npmclilint": "npmcli-lint",
+    "lintfix": "npm run lint -- --fix",
+    "postsnap": "npm run lintfix --"
+  },
+  "repository": "https://github.com/npm/cacache",
+  "keywords": [
+    "cache",
+    "caching",
+    "content-addressable",
+    "sri",
+    "sri hash",
+    "subresource integrity",
+    "cache",
+    "storage",
+    "store",
+    "file store",
+    "filesystem",
+    "disk cache",
+    "disk storage"
+  ],
+  "license": "ISC",
+  "dependencies": {
+    "@npmcli/fs": "^1.0.0",
+    "@npmcli/move-file": "^1.0.1",
+    "chownr": "^2.0.0",
+    "fs-minipass": "^2.0.0",
+    "glob": "^7.1.4",
+    "infer-owner": "^1.0.4",
+    "lru-cache": "^6.0.0",
+    "minipass": "^3.1.1",
+    "minipass-collect": "^1.0.2",
+    "minipass-flush": "^1.0.5",
+    "minipass-pipeline": "^1.2.2",
+    "mkdirp": "^1.0.3",
+    "p-map": "^4.0.0",
+    "promise-inflight": "^1.0.1",
+    "rimraf": "^3.0.2",
+    "ssri": "^8.0.1",
+    "tar": "^6.0.2",
+    "unique-filename": "^1.1.1"
+  },
+  "devDependencies": {
+    "@npmcli/lint": "^1.0.1",
+    "benchmark": "^2.1.4",
+    "chalk": "^4.0.0",
+    "require-inject": "^1.4.4",
+    "tacks": "^1.3.0",
+    "tap": "^15.0.9"
+  },
+  "tap": {
+    "100": true,
+    "test-regex": "test/[^/]*.js"
+  },
+  "engines": {
+    "node": ">= 10"
+  }
+}

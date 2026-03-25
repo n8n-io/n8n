@@ -1,0 +1,1 @@
+{"version":3,"file":"utils.js","names":["items: T[]","acc: any[]","item: T"],"sources":["../../src/Tree/utils.ts"],"sourcesContent":[],"mappings":";AAAA,SAAgB,QAA0CA,OAAiB;AACzE,QAAO,MAAM,OAAO,CAACC,KAAYC,SAAY;AAC3C,MAAI,KAAK,KAAK;AAEd,MAAI,KAAK,SACP,KAAI,KAAK,GAAG,QAAQ,KAAK,SAAS,CAAC;AAErC,SAAO;CACR,GAAE,CAAE,EAAC;AACP"}

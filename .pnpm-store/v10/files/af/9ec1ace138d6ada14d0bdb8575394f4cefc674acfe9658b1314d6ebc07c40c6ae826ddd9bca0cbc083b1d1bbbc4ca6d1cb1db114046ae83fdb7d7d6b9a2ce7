@@ -1,0 +1,36 @@
+{
+  "name": "spdx-satisfies",
+  "description": "test whether SPDX expressions satisfy licensing criteria",
+  "version": "4.0.1",
+  "author": "Kyle E. Mitchell <kyle@kemitchell.com> (https://kemitchell.com)",
+  "contributors": [
+    "Kyle E. Mitchell <kyle@kemitchell.com> (https://kemitchell.com)",
+    "Dan Butvinik <butvinik@outlook.com>"
+  ],
+  "dependencies": {
+    "spdx-compare": "^1.0.0",
+    "spdx-expression-parse": "^3.0.0",
+    "spdx-ranges": "^2.0.0"
+  },
+  "devDependencies": {
+    "defence-cli": "^2.0.1",
+    "replace-require-self": "^1.1.1",
+    "standard": "^11.0.0"
+  },
+  "keywords": [
+    "SPDX",
+    "law",
+    "legal",
+    "license",
+    "metadata",
+    "package",
+    "package.json",
+    "standards"
+  ],
+  "license": "MIT",
+  "repository": "kemitchell/spdx-satisfies.js",
+  "scripts": {
+    "test": "defence -i javascript README.md | replace-require-self | node",
+    "lint": "standard"
+  }
+}

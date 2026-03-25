@@ -1,0 +1,1 @@
+module.exports = require('../../dist/experimental/otel/exporter.cjs');

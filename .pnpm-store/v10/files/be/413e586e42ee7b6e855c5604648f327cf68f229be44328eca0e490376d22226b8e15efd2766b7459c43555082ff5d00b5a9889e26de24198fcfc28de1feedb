@@ -1,0 +1,25 @@
+name: amd64 Windows CMake
+
+on:
+  push:
+  pull_request:
+  schedule:
+    # min hours day(month) month day(week)
+    - cron: '0 0 7,22 * *'
+
+jobs:
+  # Building using the github runner environement directly.
+  msvc:
+    runs-on: windows-latest
+    env:
+      CTEST_OUTPUT_ON_FAILURE: 1
+    steps:
+    - uses: actions/checkout@v2
+    - name: Configure
+      run: cmake -S. -Bbuild -G "Visual Studio 17 2022" -DCMAKE_CONFIGURATION_TYPES=Release
+    - name: Build
+      run: cmake --build build --config Release --target ALL_BUILD -- /maxcpucount
+    - name: Test
+      run: cmake --build build --config Release --target RUN_TESTS -- /maxcpucount
+    - name: Install
+      run: cmake --build build --config Release --target INSTALL -- /maxcpucount

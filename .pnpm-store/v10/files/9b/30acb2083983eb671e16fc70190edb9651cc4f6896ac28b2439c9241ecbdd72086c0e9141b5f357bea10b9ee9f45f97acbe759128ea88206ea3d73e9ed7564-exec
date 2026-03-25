@@ -1,0 +1,10 @@
+import uuid from './index.js';
+export import v1 = uuid.v1;
+export import v3 = uuid.v3;
+export import v4 = uuid.v4;
+export import v5 = uuid.v5;
+export import NIL = uuid.NIL;
+export import version = uuid.version;
+export import validate = uuid.validate;
+export import stringify = uuid.stringify;
+export import parse = uuid.parse;

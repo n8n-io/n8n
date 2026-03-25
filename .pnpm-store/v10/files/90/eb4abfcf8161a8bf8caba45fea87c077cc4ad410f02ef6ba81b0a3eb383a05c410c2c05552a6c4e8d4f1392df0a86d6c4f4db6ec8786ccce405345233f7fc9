@@ -1,0 +1,34 @@
+import { Uuid } from "../common";
+import { ComposeOptions } from "../container-runtime";
+import { Environment } from "../types";
+import { ImagePullPolicy } from "../utils/pull-policy";
+import { WaitStrategy } from "../wait-strategies/wait-strategy";
+import { StartedDockerComposeEnvironment } from "./started-docker-compose-environment";
+export declare class DockerComposeEnvironment {
+    private readonly composeFilePath;
+    private readonly composeFiles;
+    private projectName;
+    private build;
+    private recreate;
+    private environmentFile;
+    private profiles;
+    private environment;
+    private pullPolicy;
+    private defaultWaitStrategy;
+    private waitStrategy;
+    private startupTimeoutMs?;
+    private clientOptions;
+    constructor(composeFilePath: string, composeFiles: string | string[], uuid?: Uuid);
+    withBuild(): this;
+    withEnvironment(environment: Environment): this;
+    withEnvironmentFile(environmentFile: string): this;
+    withProfiles(...profiles: string[]): this;
+    withNoRecreate(): this;
+    withPullPolicy(pullPolicy: ImagePullPolicy): this;
+    withDefaultWaitStrategy(waitStrategy: WaitStrategy): this;
+    withWaitStrategy(containerName: string, waitStrategy: WaitStrategy): this;
+    withStartupTimeout(startupTimeoutMs: number): this;
+    withProjectName(projectName: string): this;
+    withClientOptions(options: Partial<Omit<ComposeOptions, "filePath" | "files" | "projectName" | "environment">>): this;
+    up(services?: Array<string>): Promise<StartedDockerComposeEnvironment>;
+}

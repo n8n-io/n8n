@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package google.api;
+
+import "google/api/http.proto";
+import "google/protobuf/descriptor.proto";
+
+extend google.protobuf.MethodOptions {
+
+    HttpRule http = 72295728;
+}

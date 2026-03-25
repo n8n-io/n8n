@@ -1,0 +1,59 @@
+{
+  "name": "properties-reader",
+  "description": "Properties file reader for Node.js",
+  "version": "3.0.1",
+  "author": {
+    "name": "Steve King",
+    "email": "steve@mydev.co"
+  },
+  "contributors": [
+    {
+      "name": "Steve King",
+      "email": "steve@mydev.co"
+    },
+    {
+      "name": "Aureliano Bergese",
+      "email": "onailerua@hotmail.coom"
+    }
+  ],
+  "dependencies": {
+    "@kwsites/file-exists": "^1.1.1",
+    "mkdirp": "^3.0.1"
+  },
+  "keywords": [
+    "properties",
+    "ini",
+    "parser"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/steveukx/properties"
+  },
+  "main": "dist/cjs/index.cjs",
+  "types": "./dist/types/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/steveukx/properties?sponsor=1"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT",
+  "module": "dist/esm/index.mjs",
+  "exports": {
+    ".": {
+      "import": {
+        "default": "./dist/esm/index.mjs",
+        "types": "./dist/types/index.d.mts"
+      },
+      "require": {
+        "default": "./dist/cjs/index.cjs",
+        "types": "./dist/types/index.d.ts"
+      },
+      "types": "./dist/types/index.d.ts"
+    }
+  }
+}

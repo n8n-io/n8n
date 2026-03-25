@@ -1,0 +1,92 @@
+{
+  "name": "fast-xml-parser",
+  "version": "5.3.8",
+  "description": "Validate XML, Parse XML, Build XML without C/C++ based libraries",
+  "main": "./lib/fxp.cjs",
+  "type": "module",
+  "sideEffects": false,
+  "module": "./src/fxp.js",
+  "types": "./src/fxp.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./src/fxp.d.ts",
+        "default": "./src/fxp.js"
+      },
+      "require": {
+        "types": "./lib/fxp.d.cts",
+        "default": "./lib/fxp.cjs"
+      }
+    }
+  },
+  "scripts": {
+    "test": "c8 --reporter=lcov --reporter=text jasmine spec/*spec.js",
+    "test-types": "tsc --noEmit spec/typings/typings-test.ts",
+    "unit": "jasmine",
+    "coverage": "nyc report --reporter html --reporter text -t .nyc_output --report-dir .nyc_output/summary",
+    "perf": "node ./benchmark/perfTest3.js",
+    "lint": "eslint src/**/*.js spec/**/*.js benchmark/**/*.js",
+    "bundle": "webpack --config webpack.cjs.config.js",
+    "prettier": "prettier --write src/**/*.js",
+    "checkReadiness": "publish-please --dry-run",
+    "publish-please": "publish-please",
+    "prepublishOnly": "publish-please guard"
+  },
+  "bin": {
+    "fxparser": "src/cli/cli.js"
+  },
+  "files": [
+    "lib",
+    "src",
+    "CHANGELOG.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NaturalIntelligence/fast-xml-parser.git"
+  },
+  "keywords": [
+    "fast",
+    "xml",
+    "json",
+    "parser",
+    "xml2js",
+    "x2js",
+    "xml2json",
+    "js",
+    "validator",
+    "validate",
+    "transformer",
+    "assert",
+    "js2xml",
+    "json2xml",
+    "html"
+  ],
+  "author": "Amit Gupta (https://solothought.com)",
+  "license": "MIT",
+  "devDependencies": {
+    "@babel/core": "^7.13.10",
+    "@babel/plugin-transform-runtime": "^7.13.10",
+    "@babel/preset-env": "^7.13.10",
+    "@babel/register": "^7.13.8",
+    "@types/node": "20",
+    "babel-loader": "^8.2.2",
+    "c8": "^10.1.3",
+    "eslint": "^8.3.0",
+    "he": "^1.2.0",
+    "jasmine": "^5.6.0",
+    "prettier": "^3.5.1",
+    "publish-please": "^5.5.2",
+    "typescript": "5",
+    "webpack": "^5.64.4",
+    "webpack-cli": "^4.9.1"
+  },
+  "funding": [
+    {
+      "type": "github",
+      "url": "https://github.com/sponsors/NaturalIntelligence"
+    }
+  ],
+  "dependencies": {
+    "strnum": "^2.1.2"
+  }
+}

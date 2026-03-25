@@ -1,0 +1,23 @@
+{
+    "name": "duck",
+    "version": "0.1.12",
+    "author": "Michael Williamson <mike@zwobble.org>",
+    "description": "Rich matchers inspired by Hamcrest. Useful for generating helpful assertion failure messages in tests.",
+    "license": "BSD",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/mwilliamson/duck.js.git"
+    },
+    "keywords": [
+        "test",
+        "assert",
+        "matcher",
+        "assertThat"
+    ],
+    "dependencies": {
+        "underscore": "^1.13.1"
+    },
+    "devDependencies": {
+        "nodeunit": "~0.8.0"
+    }
+}

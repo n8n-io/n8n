@@ -1,0 +1,80 @@
+{
+  "name": "flat-cache",
+  "version": "6.1.12",
+  "description": "A simple key/value storage using files to persist the data",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "require": "./dist/index.cjs",
+      "import": "./dist/index.js"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jaredwray/cacheable.git",
+    "directory": "packages/flat-cache"
+  },
+  "author": "Jared Wray <me@jaredwray.com>",
+  "license": "MIT",
+  "private": false,
+  "keywords": [
+    "cache",
+    "caching",
+    "cacheable",
+    "flat-cache",
+    "flat",
+    "file",
+    "file-cache",
+    "file-caching",
+    "file-based-cache",
+    "file-persist",
+    "file-persistence",
+    "file-storage",
+    "file-system",
+    "file-management",
+    "filesystem-cache",
+    "disk-cache",
+    "cache-persistence",
+    "cache-persist",
+    "persistent-cache",
+    "persistent-storage",
+    "cache-to-file",
+    "cache-on-disk",
+    "cache-file",
+    "cache-expiration",
+    "cache-lifetime",
+    "data-persistence",
+    "data-storage",
+    "local-storage",
+    "file-system-cache"
+  ],
+  "devDependencies": {
+    "@faker-js/faker": "^9.9.0",
+    "@types/node": "^24.1.0",
+    "@vitest/coverage-v8": "^3.2.4",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.5.0",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4",
+    "xo": "^1.2.1"
+  },
+  "dependencies": {
+    "flatted": "^3.3.3",
+    "hookified": "^1.10.0",
+    "cacheable": "^1.10.3"
+  },
+  "files": [
+    "dist",
+    "license"
+  ],
+  "scripts": {
+    "build": "rimraf ./dist && tsup src/index.ts --format cjs,esm --dts --clean",
+    "prepublish": "pnpm build",
+    "test": "xo --fix && vitest run --coverage",
+    "test:ci": "xo && vitest run --coverage",
+    "clean": "rimraf ./dist ./coverage ./node_modules"
+  }
+}

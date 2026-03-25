@@ -1,0 +1,1 @@
+{"version":3,"file":"ChannelData.js","sourceRoot":"","sources":["../../../../../../src/generated/grpc/channelz/v1/ChannelData.ts"],"names":[],"mappings":";AAAA,sCAAsC"}

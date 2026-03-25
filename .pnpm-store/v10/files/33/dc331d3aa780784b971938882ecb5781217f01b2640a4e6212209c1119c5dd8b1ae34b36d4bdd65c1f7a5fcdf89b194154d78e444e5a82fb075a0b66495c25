@@ -1,0 +1,26 @@
+{
+    "name": "@types/turndown",
+    "version": "5.0.6",
+    "description": "TypeScript definitions for turndown",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/turndown",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Sergey Zhidkov",
+            "githubUsername": "sergey-zhidkov",
+            "url": "https://github.com/sergey-zhidkov"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/turndown"
+    },
+    "scripts": {},
+    "dependencies": {},
+    "peerDependencies": {},
+    "typesPublisherContentHash": "fc26e56b8bdf466d1f9be3041a9cdb3b75d107b5a1f8b45afa222d0638269f28",
+    "typeScriptVersion": "5.2"
+}

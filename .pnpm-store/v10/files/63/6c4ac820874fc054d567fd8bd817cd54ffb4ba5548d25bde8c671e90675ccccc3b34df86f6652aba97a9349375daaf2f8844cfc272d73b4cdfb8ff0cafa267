@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" href="{__VITEST_FAVICON__}" type="image/svg+xml">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vitest Browser Runner</title>
+    <style>
+      html {
+        overflow: hidden;
+        padding: 0;
+        margin: 0;
+      }
+      body {
+        padding: 0;
+        margin: 0;
+      }
+      html,
+      body,
+      iframe[data-vitest],
+      #vitest-tester {
+        width: 100%;
+        height: 100%;
+      }
+    </style>
+    {__VITEST_INJECTOR__}
+    {__VITEST_ERROR_CATCHER__}
+    {__VITEST_SCRIPTS__}
+    <script type="module" crossorigin src="/__vitest_browser__/orchestrator-8U3FyXSU.js"></script>
+    <link rel="modulepreload" crossorigin href="/__vitest_browser__/utils-uxqdqUz8.js">
+  </head>
+  <body>
+    <div id="vitest-tester"></div>
+  </body>
+</html>

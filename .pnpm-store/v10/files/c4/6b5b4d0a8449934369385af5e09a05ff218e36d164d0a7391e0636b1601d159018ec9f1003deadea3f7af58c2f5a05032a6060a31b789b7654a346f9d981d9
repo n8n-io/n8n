@@ -1,0 +1,55 @@
+{
+  "name": "stylelint-config-standard-scss",
+  "version": "15.0.1",
+  "description": "The standard shareable SCSS config for Stylelint",
+  "keywords": [
+    "stylelint",
+    "stylelint-config",
+    "standard",
+    "scss"
+  ],
+  "repository": "stylelint-scss/stylelint-config-standard-scss",
+  "license": "MIT",
+  "author": "Stylelint SCSS",
+  "main": "index.js",
+  "files": [
+    "index.js"
+  ],
+  "scripts": {
+    "format": "prettier . --write --ignore-path=.prettierignore",
+    "lint": "npm-run-all --parallel lint:*",
+    "lint:formatting": "prettier . --check",
+    "lint:js": "eslint .",
+    "lint:md": "remark . --quiet --frail --ignore-path .gitignore",
+    "release": "np",
+    "test": "node --test",
+    "watch": "node --test --watch"
+  },
+  "dependencies": {
+    "stylelint-config-recommended-scss": "^15.0.1",
+    "stylelint-config-standard": "^38.0.0"
+  },
+  "devDependencies": {
+    "@stylelint/prettier-config": "^3.0.0",
+    "@stylelint/remark-preset": "^5.1.1",
+    "eslint": "^9.25.1",
+    "eslint-config-stylelint": "^24.0.0",
+    "np": "^10.2.0",
+    "npm-run-all2": "^8.0.1",
+    "prettier": "^3.5.3",
+    "remark-cli": "^12.0.1",
+    "stylelint": "^16.18.0"
+  },
+  "peerDependencies": {
+    "postcss": "^8.3.3",
+    "stylelint": "^16.18.0"
+  },
+  "peerDependenciesMeta": {
+    "postcss": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

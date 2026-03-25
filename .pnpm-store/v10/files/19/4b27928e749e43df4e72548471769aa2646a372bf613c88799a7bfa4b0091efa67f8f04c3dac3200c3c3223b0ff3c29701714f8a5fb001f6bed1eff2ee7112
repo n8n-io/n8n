@@ -1,0 +1,2 @@
+import { ViolationOfExpectationsChain, ViolationOfExpectationsChainInput } from "./violation_of_expectations_chain.cjs";
+export { ViolationOfExpectationsChain, type ViolationOfExpectationsChainInput };

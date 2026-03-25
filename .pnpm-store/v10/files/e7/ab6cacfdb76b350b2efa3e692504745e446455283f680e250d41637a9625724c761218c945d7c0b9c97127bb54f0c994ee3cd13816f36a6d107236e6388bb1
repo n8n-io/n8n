@@ -1,0 +1,122 @@
+{
+  "name": "yup",
+  "version": "0.32.11",
+  "description": "Dead simple Object schema validation",
+  "main": "lib/index.js",
+  "module": "es/index.js",
+  "runkitExampleFilename": "./runkit-example.js",
+  "scripts": {
+    "test": "yarn lint && yarn test-all --runInBand",
+    "testonly": "jest",
+    "test-sync": "yarn  testonly --projects ./jest-sync.config.json",
+    "test-all": "yarn testonly --projects ./jest-sync.config.json --projects ./package.json",
+    "tdd": "jest --watch",
+    "lint": "eslint src test",
+    "precommit": "lint-staged",
+    "toc": "doctoc README.md --github",
+    "release": "rollout",
+    "build": "yarn 4c build && yarn toc",
+    "prepublishOnly": "yarn build"
+  },
+  "files": [
+    "es",
+    "lib"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jquense/yup.git"
+  },
+  "author": {
+    "name": "@monasticpanic Jason Quense"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/jquense/yup/issues"
+  },
+  "homepage": "https://github.com/jquense/yup",
+  "release": {
+    "conventionalCommits": true
+  },
+  "prettier": {
+    "singleQuote": true,
+    "trailingComma": "all"
+  },
+  "lint-staged": {
+    "*.{js,json,css,md}": [
+      "prettier --write",
+      "git add"
+    ]
+  },
+  "jest": {
+    "globals": {
+      "YUP_USE_SYNC": false
+    },
+    "testEnvironment": "node",
+    "setupFilesAfterEnv": [
+      "./test-setup.js"
+    ],
+    "roots": [
+      "test"
+    ],
+    "testRegex": "\\.(j|t)s$",
+    "testPathIgnorePatterns": [
+      "helpers\\.js",
+      "\\.eslintrc\\.js",
+      "types\\.ts"
+    ]
+  },
+  "devDependencies": {
+    "@4c/cli": "^3.0.1",
+    "@4c/rollout": "^3.0.1",
+    "@4c/tsconfig": "^0.4.0",
+    "@babel/cli": "^7.15.7",
+    "@babel/core": "^7.15.8",
+    "@babel/plugin-proposal-logical-assignment-operators": "^7.14.5",
+    "@babel/preset-typescript": "^7.15.0",
+    "@typescript-eslint/eslint-plugin": "^4.33.0",
+    "@typescript-eslint/parser": "^4.33.0",
+    "babel-eslint": "^10.1.0",
+    "babel-jest": "^27.2.5",
+    "babel-plugin-transform-rename-import": "^2.3.0",
+    "babel-preset-jason": "^6.3.0",
+    "benchmark": "^2.1.4",
+    "chai": "^4.3.4",
+    "chai-as-promised": "^7.1.1",
+    "dirty-chai": "^2.0.1",
+    "doctoc": "^2.0.1",
+    "eslint": "^7.12.0",
+    "eslint-config-jason": "^8.1.1",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-import": "^2.24.2",
+    "eslint-plugin-jest": "^25.0.1",
+    "eslint-plugin-react": "^7.26.1",
+    "eslint-plugin-react-hooks": "^4.2.0",
+    "eslint-plugin-ts-expect": "^2.0.0",
+    "eslint-plugin-typescript": "^0.14.0",
+    "hookem": "^2.0.1",
+    "jest": "^27.2.5",
+    "lint-staged": "^11.2.3",
+    "prettier": "^2.4.1",
+    "rollup": "^2.58.0",
+    "rollup-plugin-babel": "^4.4.0",
+    "rollup-plugin-filesize": "^9.1.1",
+    "rollup-plugin-node-resolve": "^5.2.0",
+    "rollup-plugin-size-snapshot": "^0.12.0",
+    "sinon": "^11.1.2",
+    "sinon-chai": "^3.7.0",
+    "synchronous-promise": "^2.0.15",
+    "typescript": "^4.4.3"
+  },
+  "dependencies": {
+    "@babel/runtime": "^7.15.4",
+    "@types/lodash": "^4.14.175",
+    "lodash": "^4.17.21",
+    "lodash-es": "^4.17.21",
+    "nanoclone": "^0.2.1",
+    "property-expr": "^2.0.4",
+    "toposort": "^2.0.2"
+  },
+  "engines": {
+    "node": ">=10"
+  }
+}

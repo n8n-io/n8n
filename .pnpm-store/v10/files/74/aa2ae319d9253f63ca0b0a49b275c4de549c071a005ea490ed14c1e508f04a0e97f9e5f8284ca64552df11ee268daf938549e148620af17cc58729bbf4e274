@@ -1,0 +1,20 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const taskData = {
+    datasets: [],
+    demo: {
+        inputs: [],
+        outputs: [],
+    },
+    isPlaceholder: true,
+    metrics: [],
+    models: [],
+    spaces: [],
+    summary: "",
+    widgetModels: [],
+    youtubeId: undefined,
+    /// If this is a subtask, link to the most general task ID
+    /// (eg, text-generation is the canonical ID of text-simplification)
+    canonicalId: undefined,
+};
+exports.default = taskData;

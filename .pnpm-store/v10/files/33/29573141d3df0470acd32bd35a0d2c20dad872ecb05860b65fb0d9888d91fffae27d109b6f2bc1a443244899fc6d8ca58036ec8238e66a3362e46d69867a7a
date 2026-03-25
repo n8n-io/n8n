@@ -1,0 +1,46 @@
+import { AbstractStartedContainer, Content, GenericContainer, InspectResult, StartedTestContainer } from "testcontainers";
+export interface SaslSslListenerOptions {
+    sasl: SaslOptions;
+    port: number;
+    keystore: PKCS12CertificateStore;
+    truststore?: PKCS12CertificateStore;
+}
+interface SaslOptions {
+    mechanism: "SCRAM-SHA-256" | "SCRAM-SHA-512";
+    user: User;
+}
+interface User {
+    name: string;
+    password: string;
+}
+interface PKCS12CertificateStore {
+    content: Content;
+    passphrase: string;
+}
+export declare class KafkaContainer extends GenericContainer {
+    private readonly uuid;
+    private mode;
+    private zooKeeperHost?;
+    private zooKeeperPort?;
+    private saslSslConfig?;
+    private originalWaitinStrategy;
+    constructor(image: string);
+    withZooKeeper(host: string, port: number): this;
+    withKraft(): this;
+    withSaslSslListener(options: SaslSslListenerOptions): this;
+    protected beforeContainerCreated(): Promise<void>;
+    start(): Promise<StartedKafkaContainer>;
+    protected containerStarted(container: StartedTestContainer, inspectResult: InspectResult): Promise<void>;
+    private addPlaintextAndSecureListener;
+    private addPlaintextListener;
+    private updateAdvertisedListeners;
+    private createUser;
+    private verifyMinKraftVersion;
+    private commandKraftCreateUser;
+    private commandKraft;
+    private commandZookeeper;
+}
+export declare class StartedKafkaContainer extends AbstractStartedContainer {
+    constructor(startedTestContainer: StartedTestContainer);
+}
+export {};

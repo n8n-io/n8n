@@ -1,0 +1,1 @@
+{"version":3,"file":"ResultsTooLargeError.js","sourceRoot":"./","sources":["errors/resultCodeErrors/ResultsTooLargeError.ts"],"names":[],"mappings":";;;AAAA,uDAAoD;AAEpD,MAAa,oBAAqB,SAAQ,iCAAe;IACvD,YAAmB,OAAgB;QACjC,KAAK,CAAC,EAAE,EAAE,OAAO,IAAI,wBAAwB,CAAC,CAAC;IACjD,CAAC;CACF;AAJD,oDAIC"}

@@ -1,0 +1,76 @@
+{
+  "name": "@ecies/ciphers",
+  "description": "Node/Pure JavaScript symmetric ciphers adapter",
+  "license": "MIT",
+  "author": {
+    "name": "Weiliang Li",
+    "email": "to.be.impressive@gmail.com",
+    "url": "https://github.com/kigawas"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ecies/js-ciphers.git"
+  },
+  "version": "0.2.5",
+  "engines": {
+    "node": ">=16",
+    "bun": ">=1",
+    "deno": ">=2"
+  },
+  "keywords": [
+    "cryptography",
+    "cipher",
+    "aes",
+    "chacha",
+    "chacha20",
+    "chacha20poly1305",
+    "xchacha20",
+    "xchacha20poly1305"
+  ],
+  "files": [
+    "dist"
+  ],
+  "main": "dist/index.js",
+  "exports": {
+    ".": null,
+    "./aes": {
+      "types": "./dist/aes/node.d.ts",
+      "browser": "./dist/aes/noble.js",
+      "react-native": "./dist/aes/noble.js",
+      "deno": "./dist/aes/node.js",
+      "bun": "./dist/aes/node.js",
+      "default": "./dist/aes/node.js"
+    },
+    "./chacha": {
+      "types": "./dist/chacha/node.d.ts",
+      "browser": "./dist/chacha/noble.js",
+      "react-native": "./dist/chacha/noble.js",
+      "deno": "./dist/chacha/noble.js",
+      "bun": "./dist/chacha/noble.js",
+      "default": "./dist/chacha/node.js"
+    }
+  },
+  "scripts": {
+    "check": "biome check",
+    "check:fix": "biome check --fix",
+    "build": "npx tsc",
+    "test": "vitest",
+    "test:browser": "cd tests-browser && pnpm test"
+  },
+  "peerDependencies": {
+    "@noble/ciphers": "^1.0.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.3.2",
+    "@types/node": "^24.10.0",
+    "@vitest/coverage-v8": "^4.0.6",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.6"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  },
+  "packageManager": "pnpm@10.20.0+sha512.cf9998222162dd85864d0a8102e7892e7ba4ceadebbf5a31f9c2fce48dfce317a9c53b9f6464d1ef9042cba2e02ae02a9f7c143a2b438cd93c91840f0192b9dd"
+}

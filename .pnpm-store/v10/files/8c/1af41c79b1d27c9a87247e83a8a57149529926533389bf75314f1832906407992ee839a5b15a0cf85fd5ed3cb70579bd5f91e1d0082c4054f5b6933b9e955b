@@ -1,0 +1,1 @@
+{"version":3,"file":"eslint-recommended-raw.d.ts","sourceRoot":"","sources":["../../src/configs/eslint-recommended-raw.ts"],"names":[],"mappings":"AAEA;;;;GAIG;AACH,QAAA,MAAM,MAAM,GACV,OAAO,MAAM,GAAG,WAAW,KAC1B;IACD,KAAK,EAAE,MAAM,EAAE,CAAC;IAChB,KAAK,EAAE,MAAM,CAAC,MAAM,EAAE,OAAO,GAAG,KAAK,GAAG,MAAM,CAAC,CAAC;CAkChD,CAAC;AAEH,SAAS,MAAM,CAAC"}

@@ -1,0 +1,44 @@
+{
+  "name": "ansis",
+  "version": "3.2.0",
+  "description": "Colorize terminal with ANSI colors & styles",
+  "keywords": [
+    "ansi",
+    "color",
+    "truecolor",
+    "ansi256",
+    "terminal",
+    "cli",
+    "chalk"
+  ],
+  "license": "ISC",
+  "author": "webdiscus",
+  "homepage": "https://github.com/webdiscus/ansis",
+  "repository": "webdiscus/ansis",
+  "sideEffects": false,
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "require": "./index.js",
+      "import": "./index.mjs"
+    },
+    "./colors": {
+      "types": "./index.d.ts",
+      "require": "./index.js",
+      "import": "./index.mjs"
+    }
+  },
+  "engines": {
+    "node": ">=15"
+  },
+  "files": [
+    "index.d.ts",
+    "index.js",
+    "index.mjs",
+    "package.json",
+    "LICENSE",
+    "README.md"
+  ]
+}

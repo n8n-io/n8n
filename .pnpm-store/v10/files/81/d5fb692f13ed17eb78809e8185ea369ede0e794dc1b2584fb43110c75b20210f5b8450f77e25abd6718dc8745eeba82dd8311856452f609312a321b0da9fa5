@@ -1,0 +1,1 @@
+{"version":3,"file":"unescape.d.ts","sourceRoot":"","sources":["../../src/unescape.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,gBAAgB,EAAE,MAAM,YAAY,CAAA;AAE7C;;;;;;;;;;;;;;;;;;GAkBG;AAEH,eAAO,MAAM,QAAQ,GACnB,GAAG,MAAM,EACT,2CAGG,IAAI,CAAC,gBAAgB,EAAE,sBAAsB,GAAG,eAAe,CAAM,WAczE,CAAA"}

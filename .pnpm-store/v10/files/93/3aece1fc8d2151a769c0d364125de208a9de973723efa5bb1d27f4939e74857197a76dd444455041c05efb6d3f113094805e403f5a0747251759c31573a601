@@ -1,0 +1,23 @@
+# True
+
+true
+
+==>
+
+JsonText(True)
+
+# False
+
+false
+
+==>
+
+JsonText(False)
+
+# Null
+
+null
+
+==>
+
+JsonText(Null)

@@ -1,0 +1,16 @@
+{
+  "name": "turbo-linux-64",
+  "version": "2.8.9",
+  "description": "The linux-x64 binary for turbo, a monorepo build system.",
+  "repository": "https://github.com/vercel/turborepo",
+  "bugs": "https://github.com/vercel/turborepo/issues",
+  "homepage": "https://turborepo.dev",
+  "license": "MIT",
+  "os": [
+    "linux"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "preferUnplugged": true
+}

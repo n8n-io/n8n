@@ -1,0 +1,42 @@
+{
+  "name": "@kwsites/file-exists",
+  "version": "1.1.1",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "license": "MIT",
+  "repository": "git@github.com:kwsites/file-exists.git",
+  "author": "Steve King <steve@mydev.co>",
+  "contributors": [
+    {
+      "name": "Steve King",
+      "email": "steve@mydev.co"
+    }
+  ],
+  "files": [
+    "dist/**/*.*"
+  ],
+  "scripts": {
+    "clean": "rimraf ./dist",
+    "build": "yarn run clean && tsc",
+    "preversion": "yarn run clean && yarn run build && yarn test",
+    "postversion": "npm publish --access=public && git push && git push --tags",
+    "test": "jest --coverage",
+    "tsc": "tsc"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.10.1",
+    "@babel/preset-env": "^7.10.1",
+    "@babel/preset-typescript": "^7.10.1",
+    "@types/debug": "^4.1.5",
+    "@types/jest": "^26.0.0",
+    "@types/node": "^10.12.0",
+    "babel-jest": "^26.0.1",
+    "jest": "^25.3.0",
+    "rimraf": "^2.6.2",
+    "ts-node": "^8.10.2",
+    "typescript": "^3.1.3"
+  },
+  "dependencies": {
+    "debug": "^4.1.1"
+  }
+}

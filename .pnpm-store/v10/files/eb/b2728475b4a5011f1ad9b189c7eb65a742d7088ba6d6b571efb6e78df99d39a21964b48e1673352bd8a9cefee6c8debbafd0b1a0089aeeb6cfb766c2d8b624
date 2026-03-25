@@ -1,0 +1,26 @@
+"use strict";
+Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
+const GraphBase = require("./GraphBase.cjs");
+class Subgraph extends GraphBase.GraphBase {
+  get $$type() {
+    return "Subgraph";
+  }
+  id;
+  constructor(...args) {
+    super();
+    this.id = args.find((arg) => typeof arg === "string");
+    const attributes = args.find(
+      (arg) => typeof arg === "object" && arg !== null
+    );
+    if (attributes !== void 0) {
+      this.apply(attributes);
+    }
+  }
+  isSubgraphCluster() {
+    if (typeof this.id === "string") {
+      return this.id.startsWith("cluster");
+    }
+    return false;
+  }
+}
+exports.Subgraph = Subgraph;

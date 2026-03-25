@@ -1,0 +1,10 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.UnreachableCaseError = void 0;
+class UnreachableCaseError extends Error {
+    constructor(value) {
+        super(`Unreachable case: ${value}`);
+    }
+}
+exports.UnreachableCaseError = UnreachableCaseError;
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiaW5kZXguanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyIuLi8uLi8uLi9saWIvZnVuY3Rpb25zL3VucmVhY2hhYmxlLWNhc2UtZXJyb3IvaW5kZXgudHMiXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6Ijs7O0FBQUEsTUFBYSxvQkFBcUIsU0FBUSxLQUFLO0lBQzdDLFlBQVksS0FBWTtRQUN0QixLQUFLLENBQUMscUJBQXFCLEtBQUssRUFBRSxDQUFDLENBQUM7SUFDdEMsQ0FBQztDQUNGO0FBSkQsb0RBSUMiLCJzb3VyY2VzQ29udGVudCI6WyJleHBvcnQgY2xhc3MgVW5yZWFjaGFibGVDYXNlRXJyb3IgZXh0ZW5kcyBFcnJvciB7XG4gIGNvbnN0cnVjdG9yKHZhbHVlOiBuZXZlcikge1xuICAgIHN1cGVyKGBVbnJlYWNoYWJsZSBjYXNlOiAke3ZhbHVlfWApO1xuICB9XG59XG4iXX0=

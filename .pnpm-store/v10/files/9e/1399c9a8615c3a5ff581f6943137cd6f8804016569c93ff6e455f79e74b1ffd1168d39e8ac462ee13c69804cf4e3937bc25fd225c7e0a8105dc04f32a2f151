@@ -1,0 +1,32 @@
+import type { FilterChangedEvent } from '../../../events';
+import { Component } from '../../../widgets/component';
+import type { ProvidedFilterModel } from '../../provided/iProvidedFilter';
+import type { ISimpleFilter, ISimpleFilterParams } from '../../provided/iSimpleFilter';
+import { OptionsFactory } from '../../provided/optionsFactory';
+import type { SimpleFilterModelFormatter } from '../../provided/simpleFilterModelFormatter';
+import type { IFloatingFilterComp, IFloatingFilterParams } from '../floatingFilter';
+export declare abstract class SimpleFloatingFilter<TParams extends IFloatingFilterParams<ISimpleFilter>> extends Component implements IFloatingFilterComp<ISimpleFilter> {
+    protected abstract onModelUpdated(model: ProvidedFilterModel): void;
+    protected abstract readonly defaultOptions: string[];
+    protected abstract setEditable(editable: boolean): void;
+    protected filterModelFormatter: SimpleFilterModelFormatter<ISimpleFilterParams>;
+    protected params: TParams;
+    protected lastType: string | null | undefined;
+    protected optionsFactory: OptionsFactory;
+    protected readOnly: boolean;
+    protected defaultDebounceMs: number;
+    protected reactive: boolean;
+    protected abstract readonly filterType: 'text' | 'number' | 'date';
+    protected abstract readonly FilterModelFormatterClass: new (optionsFactory: OptionsFactory, filterParams: ISimpleFilterParams) => SimpleFilterModelFormatter<ISimpleFilterParams>;
+    protected setLastTypeFromModel(model: ProvidedFilterModel): void;
+    protected canWeEditAfterModelFromParentFilter(model: ProvidedFilterModel): boolean;
+    init(params: TParams): void;
+    protected setParams(params: TParams): void;
+    private setSimpleParams;
+    refresh(params: TParams): void;
+    protected updateParams(params: TParams): void;
+    onParentModelChanged(model: ProvidedFilterModel, event: FilterChangedEvent): void;
+    private hasSingleInput;
+    private isTypeEditable;
+    protected getAriaLabel(params: IFloatingFilterParams): string;
+}

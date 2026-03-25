@@ -1,0 +1,71 @@
+{
+  "name": "eslint-plugin-lodash",
+  "version": "8.0.0",
+  "author": "Ido Keren <keren.ido@gmail.com>",
+  "description": "Lodash specific linting rules for ESLint",
+  "main": "src/index.js",
+  "type": "commonjs",
+  "contributors": [
+    {
+      "name": "Omer Ganim",
+      "email": "ganimomer@gmail.com"
+    },
+    {
+      "name": "Ido Keren",
+      "email": "keren.ido@gmail.com"
+    }
+  ],
+  "scripts": {
+    "coveralls": "nyc report --reporter=text-lcov | coveralls",
+    "lint": "eslint --cache",
+    "test": "npm run lint && npm run unit-test",
+    "unit-test": "yarn mocha \"tests/lib/rules/**/*.js\" --reporter=dot",
+    "unit-test2": "cross-env nyc mocha \"tests/lib/rules/**/*.js\" --reporter=dot",
+    "patch": "npm version patch -m\"update version to %s\" && git push --follow-tags",
+    "minor": "npm version minor -m\"update version to %s\" && git push --follow-tags",
+    "major": "npm version major -m\"update version to %s\" && git push --follow-tags",
+    "version": "auto-changelog -p && git add CHANGELOG.md && git commit -m'update change log' && git push"
+  },
+  "files": [
+    "LICENSE",
+    "README.md",
+    "src",
+    "docs"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/idok/eslint-plugin-lodash"
+  },
+  "homepage": "https://github.com/idok/eslint-plugin-lodash",
+  "bugs": "https://github.com/idok/eslint-plugin-lodash/issues",
+  "engines": {
+    "node": ">=10"
+  },
+  "keywords": [
+    "eslint",
+    "eslint-plugin",
+    "eslintplugin",
+    "lodash"
+  ],
+  "license": "MIT",
+  "peerDependencies": {
+    "eslint": ">=9.0.0"
+  },
+  "devDependencies": {
+    "auto-changelog": "^2.4.0",
+    "coveralls": "^3.1.1",
+    "cross-env": "^7.0.3",
+    "eslint": "^9.2.0",
+    "eslint-config-wix-editor": "^8.4.2",
+    "eslint-import-resolver-node": "^0.3.9",
+    "eslint-plugin-eslint-plugin": "^6.1.0",
+    "eslint-plugin-import": "^2.29.1",
+    "eslint-traverser": "^1.5.2",
+    "mocha": "^10.4.0",
+    "nyc": "^15.1.0"
+  },
+  "dependencies": {
+    "lodash": "^4.17.21"
+  },
+  "packageManager": "yarn@4.1.0"
+}

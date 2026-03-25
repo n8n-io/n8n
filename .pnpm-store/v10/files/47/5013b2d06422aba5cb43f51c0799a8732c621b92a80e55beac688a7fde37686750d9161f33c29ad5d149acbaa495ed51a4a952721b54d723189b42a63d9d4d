@@ -1,0 +1,184 @@
+# Copyright 2012 Mozilla Foundation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Main toolbar buttons (tooltips and alt text for images)
+previous.title=Edellinen sivu
+previous_label=Edellinen
+next.title=Seuraava sivu
+next_label=Seuraava
+
+# LOCALIZATION NOTE (page.title): The tooltip for the pageNumber input.
+page.title=Sivu
+# LOCALIZATION NOTE (of_pages): "{{pagesCount}}" will be replaced by a number
+# representing the total number of pages in the document.
+of_pages=/ {{pagesCount}}
+# LOCALIZATION NOTE (page_of_pages): "{{pageNumber}}" and "{{pagesCount}}"
+# will be replaced by a number representing the currently visible page,
+# respectively a number representing the total number of pages in the document.
+page_of_pages=({{pageNumber}} / {{pagesCount}})
+
+zoom_out.title=Loitonna
+zoom_out_label=Loitonna
+zoom_in.title=Lähennä
+zoom_in_label=Lähennä
+zoom.title=Suurennus
+presentation_mode.title=Siirry esitystilaan
+presentation_mode_label=Esitystila
+open_file.title=Avaa tiedosto
+open_file_label=Avaa
+print.title=Tulosta
+print_label=Tulosta
+download.title=Lataa
+download_label=Lataa
+bookmark.title=Avoin ikkuna (kopioi tai avaa uuteen ikkunaan)
+bookmark_label=Avoin ikkuna
+
+# Secondary toolbar and context menu
+tools.title=Tools
+tools_label=Tools
+first_page.title=Siirry ensimmäiselle sivulle
+first_page.label=Siirry ensimmäiselle sivulle
+first_page_label=Siirry ensimmäiselle sivulle
+last_page.title=Siirry viimeiselle sivulle
+last_page.label=Siirry viimeiselle sivulle
+last_page_label=Siirry viimeiselle sivulle
+page_rotate_cw.title=Kierrä oikealle
+page_rotate_cw.label=Kierrä oikealle
+page_rotate_cw_label=Kierrä oikealle
+page_rotate_ccw.title=Kierrä vasemmalle
+page_rotate_ccw.label=Kierrä vasemmalle
+page_rotate_ccw_label=Kierrä vasemmalle
+
+cursor_text_select_tool.title=Käytä tekstinvalintatyökalua
+cursor_text_select_tool_label=Tekstinvalintatyökalu
+cursor_hand_tool.title=Käytä käsityökalua
+cursor_hand_tool_label=Käsityökalu
+
+# Document properties dialog box
+document_properties.title=Dokumentin ominaisuudet…
+document_properties_label=Dokumentin ominaisuudet…
+document_properties_file_name=Tiedostonimi:
+document_properties_file_size=Tiedoston koko:
+# LOCALIZATION NOTE (document_properties_kb): "{{size_kb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in kilobytes, respectively in bytes.
+document_properties_kb={{size_kb}} kt ({{size_b}} tavua)
+# LOCALIZATION NOTE (document_properties_mb): "{{size_mb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in megabytes, respectively in bytes.
+document_properties_mb={{size_mb}} Mt ({{size_b}} tavua)
+document_properties_title=Otsikko:
+document_properties_author=Tekijä:
+document_properties_subject=Aihe:
+document_properties_keywords=Avainsanat:
+document_properties_creation_date=Luomispäivämäärä:
+document_properties_modification_date=Muokkauspäivämäärä:
+# LOCALIZATION NOTE (document_properties_date_string): "{{date}}" and "{{time}}"
+# will be replaced by the creation/modification date, and time, of the PDF file.
+document_properties_date_string={{date}}, {{time}}
+document_properties_creator=Luoja:
+document_properties_producer=PDF-tuottaja:
+document_properties_version=PDF-versio:
+document_properties_page_count=Sivujen määrä:
+document_properties_close=Sulje
+
+print_progress_message=Valmistellaan dokumenttia tulostamista varten…
+# LOCALIZATION NOTE (print_progress_percent): "{{progress}}" will be replaced by
+# a numerical per cent value.
+print_progress_percent={{progress}} %
+print_progress_close=Peruuta
+
+# Tooltips and alt text for side panel toolbar buttons
+# (the _label strings are alt text for the buttons, the .title strings are
+# tooltips)
+toggle_sidebar.title=Näytä/piilota sivupaneeli
+toggle_sidebar_notification.title=Näytä/piilota sivupaneeli (dokumentissa on sisällys tai liitteitä)
+toggle_sidebar_label=Näytä/piilota sivupaneeli
+document_outline.title=Näytä dokumentin sisällys (laajenna tai kutista kohdat kaksoisnapsauttamalla)
+document_outline_label=Dokumentin sisällys
+attachments.title=Näytä liitteet
+attachments_label=Liitteet
+thumbs.title=Näytä pienoiskuvat
+thumbs_label=Pienoiskuvat
+findbar.title=Etsi dokumentista
+findbar_label=Etsi
+
+# Thumbnails panel item (tooltip and alt text for images)
+# LOCALIZATION NOTE (thumb_page_title): "{{page}}" will be replaced by the page
+# number.
+thumb_page_title=Sivu {{page}}
+# LOCALIZATION NOTE (thumb_page_canvas): "{{page}}" will be replaced by the page
+# number.
+thumb_page_canvas=Pienoiskuva sivusta {{page}}
+
+# Find panel button title and messages
+find_input.title=Etsi
+find_input.placeholder=Etsi dokumentista…
+find_previous.title=Etsi hakusanan edellinen osuma
+find_previous_label=Edellinen
+find_next.title=Etsi hakusanan seuraava osuma
+find_next_label=Seuraava
+find_highlight=Korosta kaikki
+find_match_case_label=Huomioi kirjainkoko
+find_reached_top=Päästiin dokumentin alkuun, jatketaan lopusta
+find_reached_bottom=Päästiin dokumentin loppuun, continued from top
+find_not_found=Hakusanaa ei löytynyt
+
+# Error panel labels
+error_more_info=Lisätietoja
+error_less_info=Lisätietoja
+error_close=Sulje
+# LOCALIZATION NOTE (error_version_info): "{{version}}" and "{{build}}" will be
+# replaced by the PDF.JS version and build ID.
+error_version_info=PDF.js v{{version}} (kooste: {{build}})
+# LOCALIZATION NOTE (error_message): "{{message}}" will be replaced by an
+# english string describing the error.
+error_message=Virheilmoitus: {{message}}
+# LOCALIZATION NOTE (error_stack): "{{stack}}" will be replaced with a stack
+# trace.
+error_stack=Pino: {{stack}}
+# LOCALIZATION NOTE (error_file): "{{file}}" will be replaced with a filename
+error_file=Tiedosto: {{file}}
+# LOCALIZATION NOTE (error_line): "{{line}}" will be replaced with a line number
+error_line=Rivi: {{line}}
+rendering_error=Tapahtui virhe piirrettäessä sivua.
+
+# Predefined zoom values
+page_scale_width=Sivun leveys
+page_scale_fit=Koko sivu
+page_scale_auto=Automaattinen suurennus
+page_scale_actual=Todellinen koko
+# LOCALIZATION NOTE (page_scale_percent): "{{scale}}" will be replaced by a
+# numerical scale value.
+page_scale_percent={{scale}} %
+
+# Loading indicator messages
+loading_error_indicator=Virhe
+loading_error=Tapahtui virhe ladattaessa PDF-tiedostoa.
+invalid_file_error=Virheellinen tai vioittunut PDF-tiedosto.
+missing_file_error=Puuttuva PDF-tiedosto.
+unexpected_response_error=Odottamaton vastaus palvelimelta.
+
+# LOCALIZATION NOTE (text_annotation_type.alt): This is used as a tooltip.
+# "{{type}}" will be replaced with an annotation type from a list defined in
+# the PDF spec (32000-1:2008 Table 169 – Annotation types).
+# Some common types are e.g.: "Check", "Text", "Comment", "Note"
+text_annotation_type.alt=[{{type}} Annotation]
+password_label=Kirjoita PDF-tiedoston salasana.
+password_invalid=Virheellinen salasana. Yritä uudestaan.
+password_ok=OK
+password_cancel=Peruuta
+
+printing_not_supported=Varoitus: Selain ei tue kaikkia tulostustapoja.
+printing_not_ready=Varoitus: PDF-tiedosto ei ole vielä latautunut kokonaan, eikä sitä voi vielä tulostaa.
+web_fonts_disabled=Verkkosivujen omat kirjasinlajit on estetty: ei voida käyttää upotettuja PDF-kirjasinlajeja.
+document_colors_not_allowed=PDF-dokumenttien ei ole sallittua käyttää omia värejään: Asetusta ”Sivut saavat käyttää omia värejään oletusten sijaan” ei ole valittu selaimen asetuksissa.

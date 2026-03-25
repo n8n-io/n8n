@@ -1,0 +1,184 @@
+# Copyright 2012 Mozilla Foundation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Main toolbar buttons (tooltips and alt text for images)
+previous.title=Əvvəlki səhifə
+previous_label=Əvvəlkini tap
+next.title=Növbəti səhifə
+next_label=İrəli
+
+# LOCALIZATION NOTE (page.title): The tooltip for the pageNumber input.
+page.title=Səhifə
+# LOCALIZATION NOTE (of_pages): "{{pagesCount}}" will be replaced by a number
+# representing the total number of pages in the document.
+of_pages=/ {{pagesCount}}
+# LOCALIZATION NOTE (page_of_pages): "{{pageNumber}}" and "{{pagesCount}}"
+# will be replaced by a number representing the currently visible page,
+# respectively a number representing the total number of pages in the document.
+page_of_pages=({{pageNumber}} / {{pagesCount}})
+
+zoom_out.title=Uzaqlaş
+zoom_out_label=Uzaqlaş
+zoom_in.title=Yaxınlaş
+zoom_in_label=Yaxınlaş
+zoom.title=Yaxınlaşdırma
+presentation_mode.title=Təqdimat Rejiminə Keç
+presentation_mode_label=Təqdimat Rejimi
+open_file.title=Fayl Aç
+open_file_label=Aç
+print.title=Yazdır
+print_label=Yazdır
+download.title=Yüklə
+download_label=Yüklə
+bookmark.title=Hazırkı görünüş (köçür və ya yeni pəncərədə aç)
+bookmark_label=Hazırki görünüş
+
+# Secondary toolbar and context menu
+tools.title=Alətlər
+tools_label=Alətlər
+first_page.title=İlk Səhifəyə get
+first_page.label=İlk Səhifəyə get
+first_page_label=İlk Səhifəyə get
+last_page.title=Son Səhifəyə get
+last_page.label=Son Səhifəyə get
+last_page_label=Son Səhifəyə get
+page_rotate_cw.title=Saat İstiqamətində Fırlat
+page_rotate_cw.label=Saat İstiqamətində Fırlat
+page_rotate_cw_label=Saat İstiqamətində Fırlat
+page_rotate_ccw.title=Saat İstiqamətinin Əksinə Fırlat
+page_rotate_ccw.label=Saat İstiqamətinin Əksinə Fırlat
+page_rotate_ccw_label=Saat İstiqamətinin Əksinə Fırlat
+
+cursor_text_select_tool.title=Yazı seçmə alətini aktivləşdir
+cursor_text_select_tool_label=Yazı seçmə aləti
+cursor_hand_tool.title=Əl alətini aktivləşdir
+cursor_hand_tool_label=Əl aləti
+
+# Document properties dialog box
+document_properties.title=Sənəd xüsusiyyətləri…
+document_properties_label=Sənəd xüsusiyyətləri…
+document_properties_file_name=Fayl adı:
+document_properties_file_size=Fayl ölçüsü:
+# LOCALIZATION NOTE (document_properties_kb): "{{size_kb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in kilobytes, respectively in bytes.
+document_properties_kb={{size_kb}} KB ({{size_b}} bayt)
+# LOCALIZATION NOTE (document_properties_mb): "{{size_mb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in megabytes, respectively in bytes.
+document_properties_mb={{size_mb}} MB ({{size_b}} bayt)
+document_properties_title=Başlık:
+document_properties_author=Müəllif:
+document_properties_subject=Mövzu:
+document_properties_keywords=Açar sözlər:
+document_properties_creation_date=Yaradılış Tarixi :
+document_properties_modification_date=Dəyişdirilmə Tarixi :
+# LOCALIZATION NOTE (document_properties_date_string): "{{date}}" and "{{time}}"
+# will be replaced by the creation/modification date, and time, of the PDF file.
+document_properties_date_string={{date}}, {{time}}
+document_properties_creator=Yaradan:
+document_properties_producer=PDF yaradıcısı:
+document_properties_version=PDF versiyası:
+document_properties_page_count=Səhifə sayı:
+document_properties_close=Qapat
+
+print_progress_message=Sənəd çap üçün hazırlanır…
+# LOCALIZATION NOTE (print_progress_percent): "{{progress}}" will be replaced by
+# a numerical per cent value.
+print_progress_percent={{progress}}%
+print_progress_close=Ləğv et
+
+# Tooltips and alt text for side panel toolbar buttons
+# (the _label strings are alt text for the buttons, the .title strings are
+# tooltips)
+toggle_sidebar.title=Yan Paneli Aç/Bağla
+toggle_sidebar_notification.title=Yan paneli çevir (sənəddə icmal/bağlama var)
+toggle_sidebar_label=Yan Paneli Aç/Bağla
+document_outline.title=Sənədin eskizini göstər (bütün bəndləri açmaq/yığmaq üçün iki dəfə klikləyin)
+document_outline_label=Sənəd strukturu
+attachments.title=Bağlamaları göstər
+attachments_label=Bağlamalar
+thumbs.title=Kiçik şəkilləri göstər
+thumbs_label=Kiçik şəkillər
+findbar.title=Sənəddə Tap
+findbar_label=Tap
+
+# Thumbnails panel item (tooltip and alt text for images)
+# LOCALIZATION NOTE (thumb_page_title): "{{page}}" will be replaced by the page
+# number.
+thumb_page_title=Səhifə{{page}}
+# LOCALIZATION NOTE (thumb_page_canvas): "{{page}}" will be replaced by the page
+# number.
+thumb_page_canvas={{page}} səhifəsinin kiçik vəziyyəti
+
+# Find panel button title and messages
+find_input.title=Tap
+find_input.placeholder=Sənəddə tap…
+find_previous.title=Bir öncəki uyğun gələn sözü tapır
+find_previous_label=Geri
+find_next.title=Bir sonrakı uyğun gələn sözü tapır
+find_next_label=İrəli
+find_highlight=İşarələ
+find_match_case_label=Böyük/kiçik hərfə həssaslıq
+find_reached_top=Sənədin yuxarısına çatdı, aşağıdan davam edir
+find_reached_bottom=Sənədin sonuna çatdı, yuxarıdan davam edir
+find_not_found=Uyğunlaşma tapılmadı
+
+# Error panel labels
+error_more_info=Daha çox məlumati
+error_less_info=Daha az məlumat
+error_close=Qapat
+# LOCALIZATION NOTE (error_version_info): "{{version}}" and "{{build}}" will be
+# replaced by the PDF.JS version and build ID.
+error_version_info=PDF.js v{{version}} (yığma: {{build}})
+# LOCALIZATION NOTE (error_message): "{{message}}" will be replaced by an
+# english string describing the error.
+error_message=İsmarıc: {{message}}
+# LOCALIZATION NOTE (error_stack): "{{stack}}" will be replaced with a stack
+# trace.
+error_stack=Stek: {{stack}}
+# LOCALIZATION NOTE (error_file): "{{file}}" will be replaced with a filename
+error_file=Fayl: {{file}}
+# LOCALIZATION NOTE (error_line): "{{line}}" will be replaced with a line number
+error_line=Sətir: {{line}}
+rendering_error=Səhifə göstərilərkən səhv yarandı.
+
+# Predefined zoom values
+page_scale_width=Səhifə genişliyi
+page_scale_fit=Səhifəni sığdır
+page_scale_auto=Avtomatik yaxınlaşdır
+page_scale_actual=Hazırki Həcm
+# LOCALIZATION NOTE (page_scale_percent): "{{scale}}" will be replaced by a
+# numerical scale value.
+page_scale_percent={{scale}}%
+
+# Loading indicator messages
+loading_error_indicator=Səhv
+loading_error=PDF yüklenərkən bir səhv yarandı.
+invalid_file_error=Səhv və ya zədələnmiş olmuş PDF fayl.
+missing_file_error=PDF fayl yoxdur.
+unexpected_response_error=Gözlənilməz server cavabı.
+
+# LOCALIZATION NOTE (text_annotation_type.alt): This is used as a tooltip.
+# "{{type}}" will be replaced with an annotation type from a list defined in
+# the PDF spec (32000-1:2008 Table 169 – Annotation types).
+# Some common types are e.g.: "Check", "Text", "Comment", "Note"
+text_annotation_type.alt=[{{type}} Annotasiyası]
+password_label=Bu PDF faylı açmaq üçün şifrəni daxil edin.
+password_invalid=Şifrə yanlışdır. Bir daha sınayın.
+password_ok=Tamam
+password_cancel=Ləğv et
+
+printing_not_supported=Xəbərdarlıq: Çap bu səyyah tərəfindən tam olaraq dəstəklənmir.
+printing_not_ready=Xəbərdarlıq: PDF çap üçün tam yüklənməyib.
+web_fonts_disabled=Web Şriftlər söndürülüb: yerləşdirilmiş PDF şriftlərini istifadə etmək mümkün deyil.
+document_colors_not_allowed=PDF sənədlərə öz rənglərini işlətməyə icazə verilmir: “Səhifələrə öz rənglərini istifadə etməyə icazə ver”mə səyyahda söndürülüb.

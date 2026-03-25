@@ -1,0 +1,1 @@
+{"version":3,"file":"index.js","names":["fn: () => T"],"sources":["../../src/utils/index.ts"],"sourcesContent":["export const iife = <T>(fn: () => T) => fn();\n\nexport const safeParseJson = <T>(json: string): T | object => {\n  try {\n    return JSON.parse(json);\n  } catch {\n    return {};\n  }\n};\n"],"mappings":";AAAA,MAAa,OAAO,CAAIA,OAAgB,IAAI"}

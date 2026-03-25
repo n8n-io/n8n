@@ -1,0 +1,47 @@
+{
+  "name": "regenerate-unicode-properties",
+  "version": "10.2.2",
+  "description": "Regenerate sets for Unicode properties and values.",
+  "homepage": "https://github.com/mathiasbynens/regenerate-unicode-properties",
+  "main": "index.js",
+  "engines": {
+    "node": ">=4"
+  },
+  "files": [
+    "LICENSE-MIT.txt",
+    "index.js",
+    "unicode-version.js",
+    "Binary_Property",
+    "General_Category",
+    "Property_of_Strings",
+    "Script",
+    "Script_Extensions"
+  ],
+  "keywords": [
+    "unicode",
+    "unicode-data",
+    "regenerate"
+  ],
+  "license": "MIT",
+  "author": {
+    "name": "Mathias Bynens",
+    "url": "https://mathiasbynens.be/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mathiasbynens/regenerate-unicode-properties.git"
+  },
+  "bugs": "https://github.com/mathiasbynens/regenerate-unicode-properties/issues",
+  "dependencies": {
+    "regenerate": "^1.4.2"
+  },
+  "devDependencies": {
+    "@unicode/unicode-17.0.0": "^1.6.12",
+    "jsesc": "^3.1.0",
+    "unicode-canonical-property-names-ecmascript": "^2.0.1"
+  },
+  "scripts": {
+    "build": "node build.js",
+    "test": "node --test tests/tests.js"
+  }
+}

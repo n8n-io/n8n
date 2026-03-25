@@ -1,0 +1,21 @@
+{
+  "name": "stream-combiner",
+  "version": "0.0.4",
+  "homepage": "https://github.com/dominictarr/stream-combiner",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/dominictarr/stream-combiner.git"
+  },
+  "dependencies": {
+    "duplexer": "~0.1.1"
+  },
+  "devDependencies": {
+    "tape": "~2.3.0",
+    "event-stream": "~3.0.7"
+  },
+  "scripts": {
+    "test": "set -e; for t in test/*.js; do node $t; done"
+  },
+  "author": "'Dominic Tarr' <dominic.tarr@gmail.com> (http://dominictarr.com)",
+  "license": "MIT"
+}

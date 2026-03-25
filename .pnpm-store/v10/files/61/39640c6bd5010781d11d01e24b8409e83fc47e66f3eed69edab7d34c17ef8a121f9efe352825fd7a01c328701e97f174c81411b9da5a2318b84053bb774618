@@ -1,0 +1,1 @@
+{"version":3,"file":"no-unnecessary-type-assertion.d.ts","sourceRoot":"","sources":["../../src/rules/no-unnecessary-type-assertion.ts"],"names":[],"mappings":"AAqBA,MAAM,MAAM,OAAO,GAAG;IACpB;QACE,2BAA2B,CAAC,EAAE,OAAO,CAAC;QACtC,aAAa,CAAC,EAAE,MAAM,EAAE,CAAC;KAC1B;CACF,CAAC;AACF,MAAM,MAAM,UAAU,GAAG,yBAAyB,GAAG,sBAAsB,CAAC;;AAE5E,wBA4YG"}

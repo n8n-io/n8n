@@ -1,0 +1,36 @@
+{
+  "name": "editorconfig",
+  "version": "2.0.1",
+  "description": "EditorConfig File Locator and Interpreter for Node.js",
+  "keywords": [
+    "editorconfig",
+    "core"
+  ],
+  "main": "./lib/index.js",
+  "contributors": [
+    "Hong Xu (topbug.net)",
+    "Jed Mao (https://github.com/jedmao/)",
+    "Trey Hunner (http://treyhunner.com)",
+    "Joe Hildebrand (https://github.com/hildjj/)"
+  ],
+  "directories": {
+    "bin": "./bin",
+    "lib": "./lib"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/editorconfig/editorconfig-core-js.git"
+  },
+  "bugs": "https://github.com/editorconfig/editorconfig-core-js/issues",
+  "author": "EditorConfig Team",
+  "license": "MIT",
+  "dependencies": {
+    "@one-ini/wasm": "0.2.0",
+    "commander": "^13.1.0",
+    "minimatch": "10.0.1",
+    "semver": "^7.7.1"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

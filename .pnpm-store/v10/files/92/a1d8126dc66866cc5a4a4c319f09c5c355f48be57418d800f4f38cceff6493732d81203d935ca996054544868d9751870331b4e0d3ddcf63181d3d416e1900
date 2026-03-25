@@ -1,0 +1,142 @@
+{
+  "author": "Mike D Pilsbury <mike.pilsbury@gmail.com>",
+  "contributors": [
+    "Alex Robson",
+    "Arthur Schreiber",
+    "Bret Copeland <bret@atlantisflight.org> (https://github.com/bretcope)",
+    "Bryan Ross <bryan@rossipedia.com> (https://github.com/rossipedia)",
+    "Ciaran Jessup <ciaranj@gmail.com>",
+    "Cort Fritz <cfritz@caa.com>",
+    "lastonesky",
+    "Patrik Simek <patrik@patriksimek.cz>",
+    "Phil Dodderidge <pdodde@poyntz.com>",
+    "Zach Aller"
+  ],
+  "name": "tedious",
+  "description": "A TDS driver, for connecting to MS SQLServer databases.",
+  "keywords": [
+    "sql",
+    "database",
+    "mssql",
+    "sqlserver",
+    "sql-server",
+    "tds",
+    "msnodesql",
+    "azure"
+  ],
+  "homepage": "https://github.com/tediousjs/tedious",
+  "bugs": "https://github.com/tediousjs/tedious/issues",
+  "license": "MIT",
+  "version": "16.7.1",
+  "main": "./lib/tedious.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tediousjs/tedious.git"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "publishConfig": {
+    "tag": "next"
+  },
+  "dependencies": {
+    "@azure/identity": "^3.4.1",
+    "@azure/keyvault-keys": "^4.4.0",
+    "@js-joda/core": "^5.5.3",
+    "bl": "^6.0.3",
+    "es-aggregate-error": "^1.0.9",
+    "iconv-lite": "^0.6.3",
+    "js-md4": "^0.3.2",
+    "jsbi": "^4.3.0",
+    "native-duplexpair": "^1.0.0",
+    "node-abort-controller": "^3.1.1",
+    "sprintf-js": "^1.1.2"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.22.9",
+    "@babel/core": "^7.22.9",
+    "@babel/node": "^7.22.6",
+    "@babel/preset-env": "^7.22.9",
+    "@babel/preset-typescript": "^7.22.5",
+    "@babel/register": "^7.22.5",
+    "@types/async": "^3.2.20",
+    "@types/bl": "^5.1.0",
+    "@types/chai": "^4.3.5",
+    "@types/depd": "^1.1.32",
+    "@types/es-aggregate-error": "^1.0.2",
+    "@types/lru-cache": "^5.1.1",
+    "@types/mocha": "^10.0.1",
+    "@types/node": "^16.18.38",
+    "@types/sprintf-js": "^1.1.2",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "async": "^3.2.4",
+    "babel-plugin-istanbul": "^6.1.1",
+    "chai": "^4.3.7",
+    "codecov": "^3.8.3",
+    "eslint": "^8.45.0",
+    "mitm": "^1.7.2",
+    "mocha": "^10.2.0",
+    "nyc": "^15.1.0",
+    "rimraf": "^5.0.1",
+    "semantic-release": "^19.0.3",
+    "sinon": "^15.2.0",
+    "typedoc": "^0.24.8",
+    "typescript": "^5.1.6"
+  },
+  "scripts": {
+    "docs": "typedoc",
+    "lint": "eslint src test --ext .js,.ts && tsc",
+    "test": "mocha test/unit test/unit/token test/unit/tracking-buffer",
+    "test-integration": "mocha test/integration/",
+    "test-all": "mocha test/unit/ test/unit/token/ test/unit/tracking-buffer test/integration/",
+    "build": "rimraf lib && babel src --out-dir lib --extensions .js,.ts",
+    "prepublish": "npm run build",
+    "semantic-release": "semantic-release"
+  },
+  "babel": {
+    "sourceMaps": "both",
+    "ignore": [
+      "./src/**/*.d.ts"
+    ],
+    "presets": [
+      [
+        "@babel/preset-env",
+        {
+          "targets": {
+            "node": 16
+          }
+        }
+      ],
+      [
+        "@babel/preset-typescript",
+        {
+          "allowDeclareFields": true
+        }
+      ]
+    ],
+    "plugins": [
+      [
+        "@babel/transform-typescript",
+        {
+          "allowDeclareFields": true
+        }
+      ]
+    ]
+  },
+  "mocha": {
+    "require": "test/setup.js",
+    "timeout": 5000,
+    "extension": [
+      "js",
+      "ts"
+    ]
+  },
+  "nyc": {
+    "sourceMap": false,
+    "instrument": false,
+    "extension": [
+      ".ts"
+    ]
+  }
+}

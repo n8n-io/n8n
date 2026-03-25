@@ -1,0 +1,39 @@
+<html>
+<head>
+  <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>
+    var module = {}
+    var exports = {};
+    module.exports = exports;
+  </script>
+  <script src="../index.js"></script>
+  <script src="./assertAll.js"></script>
+  <script>
+    $(document).ready(function () {
+      var Type = module.exports;
+      console.log(Type);
+
+      var iFrame = document.createElement('IFRAME');
+      document.body.appendChild(iFrame);
+      var IFrameArray = window.frames[0].Array;
+      var array = new IFrameArray();
+
+      try {
+        assertAll([
+          [array instanceof Array, false, "array from other frame isn't Array"],
+          [array instanceof IFrameArray, true, "array from other frame is instance of that frames Array"],
+          [Type.of(array), Array, "Type.of(array) is Array"],
+          [Type.is(array, Array), false, "Type.is(array, Array) is false (other frame)"],
+          [Type.is(array, "Array"), true, "Type.is(array, \"Array\") is true"]
+        ]);
+        alert('all tests passed');
+      } catch (error) {
+        alert(error);
+      }
+
+    });
+  </script>
+</head>
+<body>
+</body>
+</html>

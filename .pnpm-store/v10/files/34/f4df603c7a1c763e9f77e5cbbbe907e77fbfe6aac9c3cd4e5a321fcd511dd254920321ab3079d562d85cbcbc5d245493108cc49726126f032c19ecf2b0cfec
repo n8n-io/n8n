@@ -1,0 +1,49 @@
+{
+    "name": "cohere-ai",
+    "version": "7.14.0",
+    "private": false,
+    "repository": "https://github.com/cohere-ai/cohere-typescript",
+    "main": "./index.js",
+    "types": "./index.d.ts",
+    "scripts": {
+        "format": "prettier . --write --ignore-unknown",
+        "build": "tsc",
+        "prepack": "cp -rv dist/. .",
+        "test": "jest"
+    },
+    "dependencies": {
+        "url-join": "4.0.1",
+        "form-data": "^4.0.0",
+        "formdata-node": "^6.0.3",
+        "node-fetch": "2.7.0",
+        "qs": "6.11.2",
+        "js-base64": "3.7.2",
+        "form-data-encoder": "^4.0.2",
+        "readable-stream": "^4.5.2",
+        "@aws-sdk/client-sagemaker": "^3.583.0",
+        "@aws-sdk/credential-providers": "^3.583.0",
+        "@aws-sdk/protocol-http": "^3.374.0",
+        "@aws-sdk/signature-v4": "^3.374.0"
+    },
+    "devDependencies": {
+        "@types/url-join": "4.0.1",
+        "@types/qs": "6.9.8",
+        "@types/node-fetch": "2.6.9",
+        "fetch-mock-jest": "^1.5.1",
+        "jest": "^29.7.0",
+        "@types/jest": "29.5.5",
+        "ts-jest": "^29.1.2",
+        "jest-environment-jsdom": "29.7.0",
+        "@types/node": "17.0.33",
+        "prettier": "2.7.1",
+        "typescript": "4.6.4",
+        "@types/readable-stream": "^4.0.14",
+        "ts-loader": "^9.5.1",
+        "webpack": "^5.91.0"
+    },
+    "browser": {
+        "fs": false,
+        "os": false,
+        "path": false
+    }
+}

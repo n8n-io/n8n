@@ -1,0 +1,94 @@
+{
+    "author": "Christoph Guttandin",
+    "browser": "build/es5/bundle.js",
+    "bugs": {
+        "url": "https://github.com/chrisguttandin/fast-unique-numbers/issues"
+    },
+    "config": {
+        "commitizen": {
+            "path": "cz-conventional-changelog"
+        }
+    },
+    "dependencies": {
+        "@babel/runtime": "^7.23.8",
+        "tslib": "^2.6.2"
+    },
+    "description": "A module to create a set of unique numbers as fast as possible.",
+    "devDependencies": {
+        "@babel/cli": "^7.23.4",
+        "@babel/core": "^7.23.7",
+        "@babel/plugin-external-helpers": "^7.23.3",
+        "@babel/plugin-transform-runtime": "^7.23.7",
+        "@babel/preset-env": "^7.23.8",
+        "@babel/register": "^7.23.7",
+        "@commitlint/cli": "^17.8.0",
+        "@commitlint/config-angular": "^17.8.0",
+        "@rollup/plugin-babel": "^6.0.4",
+        "chai": "^4.3.10",
+        "commitizen": "^4.3.0",
+        "cz-conventional-changelog": "^3.3.0",
+        "eslint": "^8.56.0",
+        "eslint-config-holy-grail": "^57.2.27",
+        "grunt": "^1.6.1",
+        "grunt-cli": "^1.4.3",
+        "grunt-sh": "^0.2.1",
+        "husky": "^8.0.3",
+        "karma": "^6.4.2",
+        "karma-browserstack-launcher": "^1.6.0",
+        "karma-chrome-launcher": "^3.2.0",
+        "karma-firefox-launcher": "^2.1.2",
+        "karma-mocha": "^2.0.1",
+        "karma-sinon-chai": "^2.0.2",
+        "karma-webkit-launcher": "^2.4.0",
+        "karma-webpack": "^5.0.0",
+        "lint-staged": "^15.2.0",
+        "load-grunt-config": "^4.0.1",
+        "mocha": "^10.2.0",
+        "prettier": "^3.2.2",
+        "rimraf": "^5.0.5",
+        "rollup": "^4.9.5",
+        "sinon": "^17.0.1",
+        "sinon-chai": "^3.7.0",
+        "tinybench": "^2.6.0",
+        "ts-loader": "^9.5.1",
+        "tsconfig-holy-grail": "^14.0.8",
+        "tslint": "^6.1.3",
+        "tslint-config-holy-grail": "^55.0.5",
+        "typescript": "^5.3.3",
+        "webpack": "^5.89.0"
+    },
+    "engines": {
+        "node": ">=16.1.0"
+    },
+    "files": [
+        "build/es2019/",
+        "build/es5/",
+        "build/node/",
+        "src/"
+    ],
+    "homepage": "https://github.com/chrisguttandin/fast-unique-numbers",
+    "keywords": [
+        "performance",
+        "speed"
+    ],
+    "license": "MIT",
+    "main": "build/node/module.js",
+    "module": "build/es2019/module.js",
+    "name": "fast-unique-numbers",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/chrisguttandin/fast-unique-numbers.git"
+    },
+    "scripts": {
+        "build": "rimraf build/* && tsc --project src/tsconfig.json && rollup --config config/rollup/bundle.mjs && babel ./build/es2019 --config-file ./config/babel/build.json --out-dir ./build/node",
+        "lint": "npm run lint:config && npm run lint:src && npm run lint:test",
+        "lint:config": "eslint --config config/eslint/config.json --ext .js --report-unused-disable-directives config/",
+        "lint:src": "tslint --config config/tslint/src.json --project src/tsconfig.json src/*.ts src/**/*.ts",
+        "lint:test": "eslint --config config/eslint/test.json --ext .js --report-unused-disable-directives test/",
+        "prepare": "husky install",
+        "prepublishOnly": "npm run build",
+        "test": "grunt lint && grunt test"
+    },
+    "types": "build/es2019/module.d.ts",
+    "version": "8.0.13"
+}

@@ -1,0 +1,38 @@
+{
+  "name": "text-decoder",
+  "version": "1.2.3",
+  "description": "Streaming text decoder that preserves multibyte Unicode characters",
+  "main": "index.js",
+  "files": [
+    "index.js",
+    "lib"
+  ],
+  "browser": {
+    "./lib/pass-through-decoder.js": "./lib/browser-decoder.js",
+    "./lib/utf8-decoder.js": "./lib/browser-decoder.js"
+  },
+  "react-native": {
+    "./lib/pass-through-decoder.js": "./lib/pass-through-decoder.js",
+    "./lib/utf8-decoder.js": "./lib/utf8-decoder.js"
+  },
+  "scripts": {
+    "test": "standard && brittle test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/holepunchto/text-decoder.git"
+  },
+  "author": "Holepunch",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/holepunchto/text-decoder/issues"
+  },
+  "homepage": "https://github.com/holepunchto/text-decoder#readme",
+  "dependencies": {
+    "b4a": "^1.6.4"
+  },
+  "devDependencies": {
+    "brittle": "^3.3.2",
+    "standard": "^17.0.0"
+  }
+}

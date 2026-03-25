@@ -1,0 +1,35 @@
+syntax = "proto3";
+package milvus.proto.rg;
+
+option go_package = "github.com/milvus-io/milvus-proto/go-api/v2/rgpb";
+
+option java_multiple_files = true;
+option java_package = "io.milvus.grpc";
+option java_outer_classname = "ResourceGroupProto";
+option java_generate_equals_and_hash = true;
+
+option csharp_namespace = "Milvus.Client.Grpc";
+
+import "common.proto";
+
+message ResourceGroupLimit {
+  int32 node_num = 1;
+  // preserve for other limit.
+}
+  
+message ResourceGroupTransfer {
+  string resource_group = 1; // resource groups can be transfered with current resource group.
+  // preserve for other option, such as weight, priority or affinity setup.
+}
+
+message ResourceGroupNodeFilter {
+  repeated common.KeyValuePair node_labels = 1; // node in resource group must match node labels requirements
+}
+  
+message ResourceGroupConfig {
+  ResourceGroupLimit requests = 1; // requests node num in resource group, if node num is less than requests.nodeNum, it will be transfer from other resource group.
+  ResourceGroupLimit limits = 2; // limited node num in resource group, if node num is more than limits.nodeNum, it will be transfer to other resource group.
+  repeated ResourceGroupTransfer transfer_from = 3; // missing node should be transfer from given resource group at high priority in repeated list.
+  repeated ResourceGroupTransfer transfer_to = 4; // redundant node should be transfer to given resource group at high priority in repeated list.
+  ResourceGroupNodeFilter node_filter = 5; // node in resource group must match node filters
+}

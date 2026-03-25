@@ -1,0 +1,247 @@
+{
+	"$id": "/inference/schemas/text-generation/input.json",
+	"$schema": "http://json-schema.org/draft-06/schema#",
+	"description": "Text Generation Input.\n\nAuto-generated from TGI specs.\nFor more details, check out https://github.com/huggingface/huggingface.js/blob/main/packages/tasks/scripts/inference-tgi-import.ts.",
+	"title": "TextGenerationInput",
+	"type": "object",
+	"required": ["inputs"],
+	"properties": {
+		"inputs": {
+			"type": "string",
+			"example": "My name is Olivier and I"
+		},
+		"parameters": {
+			"$ref": "#/$defs/TextGenerationInputGenerateParameters"
+		},
+		"stream": {
+			"type": "boolean",
+			"default": "false"
+		}
+	},
+	"$defs": {
+		"TextGenerationInputGenerateParameters": {
+			"type": "object",
+			"properties": {
+				"adapter_id": {
+					"type": "string",
+					"description": "Lora adapter id",
+					"default": "null",
+					"example": "null",
+					"nullable": true
+				},
+				"best_of": {
+					"type": "integer",
+					"description": "Generate best_of sequences and return the one if the highest token logprobs.",
+					"default": "null",
+					"example": 1,
+					"nullable": true,
+					"minimum": 0,
+					"exclusiveMinimum": 0
+				},
+				"decoder_input_details": {
+					"type": "boolean",
+					"description": "Whether to return decoder input token logprobs and ids.",
+					"default": "false"
+				},
+				"details": {
+					"type": "boolean",
+					"description": "Whether to return generation details.",
+					"default": "true"
+				},
+				"do_sample": {
+					"type": "boolean",
+					"description": "Activate logits sampling.",
+					"default": "false",
+					"example": true
+				},
+				"frequency_penalty": {
+					"type": "number",
+					"format": "float",
+					"description": "The parameter for frequency penalty. 1.0 means no penalty\nPenalize new tokens based on their existing frequency in the text so far,\ndecreasing the model's likelihood to repeat the same line verbatim.",
+					"default": "null",
+					"example": 0.1,
+					"nullable": true,
+					"exclusiveMinimum": -2
+				},
+				"grammar": {
+					"allOf": [
+						{
+							"$ref": "#/$defs/TextGenerationInputGrammarType"
+						}
+					],
+					"default": "null",
+					"nullable": true
+				},
+				"max_new_tokens": {
+					"type": "integer",
+					"format": "int32",
+					"description": "Maximum number of tokens to generate.",
+					"default": "1024",
+					"example": "20",
+					"nullable": true,
+					"minimum": 0
+				},
+				"repetition_penalty": {
+					"type": "number",
+					"format": "float",
+					"description": "The parameter for repetition penalty. 1.0 means no penalty.\nSee [this paper](https://arxiv.org/pdf/1909.05858.pdf) for more details.",
+					"default": "null",
+					"example": 1.03,
+					"nullable": true,
+					"exclusiveMinimum": 0
+				},
+				"return_full_text": {
+					"type": "boolean",
+					"description": "Whether to prepend the prompt to the generated text",
+					"default": "null",
+					"example": false,
+					"nullable": true
+				},
+				"seed": {
+					"type": "integer",
+					"format": "int64",
+					"description": "Random sampling seed.",
+					"default": "null",
+					"example": "null",
+					"nullable": true,
+					"minimum": 0,
+					"exclusiveMinimum": 0
+				},
+				"stop": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					},
+					"description": "Stop generating tokens if a member of `stop` is generated.",
+					"example": ["photographer"],
+					"maxItems": 4
+				},
+				"temperature": {
+					"type": "number",
+					"format": "float",
+					"description": "The value used to module the logits distribution.",
+					"default": "null",
+					"example": 0.5,
+					"nullable": true,
+					"exclusiveMinimum": 0
+				},
+				"top_k": {
+					"type": "integer",
+					"format": "int32",
+					"description": "The number of highest probability vocabulary tokens to keep for top-k-filtering.",
+					"default": "null",
+					"example": 10,
+					"nullable": true,
+					"exclusiveMinimum": 0
+				},
+				"top_n_tokens": {
+					"type": "integer",
+					"format": "int32",
+					"description": "The number of highest probability vocabulary tokens to keep for top-n-filtering.",
+					"default": "null",
+					"example": 5,
+					"nullable": true,
+					"minimum": 0,
+					"exclusiveMinimum": 0
+				},
+				"top_p": {
+					"type": "number",
+					"format": "float",
+					"description": "Top-p value for nucleus sampling.",
+					"default": "null",
+					"example": 0.95,
+					"nullable": true,
+					"maximum": 1,
+					"exclusiveMinimum": 0
+				},
+				"truncate": {
+					"type": "integer",
+					"description": "Truncate inputs tokens to the given size.",
+					"default": "null",
+					"example": "null",
+					"nullable": true,
+					"minimum": 0
+				},
+				"typical_p": {
+					"type": "number",
+					"format": "float",
+					"description": "Typical Decoding mass\nSee [Typical Decoding for Natural Language Generation](https://arxiv.org/abs/2202.00666) for more information.",
+					"default": "null",
+					"example": 0.95,
+					"nullable": true,
+					"maximum": 1,
+					"exclusiveMinimum": 0
+				},
+				"watermark": {
+					"type": "boolean",
+					"description": "Watermarking with [A Watermark for Large Language Models](https://arxiv.org/abs/2301.10226).",
+					"default": "false",
+					"example": true
+				}
+			},
+			"title": "TextGenerationInputGenerateParameters"
+		},
+		"TextGenerationInputGrammarType": {
+			"oneOf": [
+				{
+					"type": "object",
+					"required": ["type", "value"],
+					"properties": {
+						"type": {
+							"type": "string",
+							"enum": ["json"]
+						},
+						"value": {
+							"description": "A string that represents a [JSON Schema](https://json-schema.org/).\n\nJSON Schema is a declarative language that allows to annotate JSON documents\nwith types and descriptions."
+						}
+					}
+				},
+				{
+					"type": "object",
+					"required": ["type", "value"],
+					"properties": {
+						"type": {
+							"type": "string",
+							"enum": ["regex"]
+						},
+						"value": {
+							"type": "string"
+						}
+					}
+				},
+				{
+					"type": "object",
+					"required": ["type", "value"],
+					"properties": {
+						"type": {
+							"type": "string",
+							"enum": ["json_schema"]
+						},
+						"value": {
+							"$ref": "#/$defs/TextGenerationInputJsonSchemaConfig"
+						}
+					}
+				}
+			],
+			"discriminator": {
+				"propertyName": "type"
+			},
+			"title": "TextGenerationInputGrammarType"
+		},
+		"TextGenerationInputJsonSchemaConfig": {
+			"type": "object",
+			"required": ["schema"],
+			"properties": {
+				"name": {
+					"type": "string",
+					"description": "Optional name identifier for the schema",
+					"nullable": true
+				},
+				"schema": {
+					"description": "The actual JSON schema definition"
+				}
+			},
+			"title": "TextGenerationInputJsonSchemaConfig"
+		}
+	}
+}

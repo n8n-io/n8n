@@ -1,0 +1,34 @@
+{
+  "name": "tmp-promise",
+  "version": "3.0.3",
+  "description": "The tmp package with promises support and disposers.",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "scripts": {
+    "mocha": "mocha",
+    "check-types": "tsd",
+    "test": "npm run mocha && npm run check-types",
+    "publish": "node publish"
+  },
+  "keywords": [
+    "tmp",
+    "promise",
+    "tempfile",
+    "mkdtemp",
+    "mktemp"
+  ],
+  "author": "Benjamin Gruenbaum and Collaborators.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/benjamingr/tmp-promise.git"
+  },
+  "dependencies": {
+    "tmp": "^0.2.0"
+  },
+  "devDependencies": {
+    "@types/tmp": "^0.2.0",
+    "mocha": "7.1.2",
+    "tsd": "0.11.0"
+  }
+}

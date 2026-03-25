@@ -1,0 +1,1 @@
+{"version":3,"file":"type-help-options.interface.js","sourceRoot":"","sources":["../../../src/interfaces/type-help-options.interface.ts"],"names":[],"mappings":"","sourcesContent":["// TODO: Document this interface. What does each property means?\nexport interface TypeHelpOptions {\n  newObject: any;\n  object: Record<string, any>;\n  property: string;\n}\n"]}

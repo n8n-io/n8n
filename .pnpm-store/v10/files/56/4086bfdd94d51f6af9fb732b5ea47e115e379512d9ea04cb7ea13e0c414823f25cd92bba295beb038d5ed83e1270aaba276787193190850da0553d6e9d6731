@@ -1,0 +1,54 @@
+{
+  "name": "cross-env",
+  "version": "7.0.3",
+  "description": "Run scripts that set and use environment variables across platforms",
+  "main": "src/index.js",
+  "bin": {
+    "cross-env": "src/bin/cross-env.js",
+    "cross-env-shell": "src/bin/cross-env-shell.js"
+  },
+  "engines": {
+    "node": ">=10.14",
+    "npm": ">=6",
+    "yarn": ">=1"
+  },
+  "scripts": {
+    "lint": "kcd-scripts lint",
+    "setup": "npm install && npm run validate -s",
+    "test": "kcd-scripts test",
+    "test:update": "npm test -- --updateSnapshot --coverage",
+    "validate": "kcd-scripts validate"
+  },
+  "files": [
+    "src",
+    "!__tests__"
+  ],
+  "keywords": [
+    "cross-environment",
+    "environment variable",
+    "windows"
+  ],
+  "author": "Kent C. Dodds <me@kentcdodds.com> (https://kentcdodds.com)",
+  "license": "MIT",
+  "dependencies": {
+    "cross-spawn": "^7.0.1"
+  },
+  "devDependencies": {
+    "kcd-scripts": "^5.5.0"
+  },
+  "eslintConfig": {
+    "extends": "./node_modules/kcd-scripts/eslint.js"
+  },
+  "// babel 1": "this disables all built-in plugins from kcd-scripts for tests",
+  "// babel 2": "that way we ensure that the tests run without compilation",
+  "// babel 3": "because this module is published as-is. It is not compiled.",
+  "babel": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kentcdodds/cross-env.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kentcdodds/cross-env/issues"
+  },
+  "homepage": "https://github.com/kentcdodds/cross-env#readme"
+}

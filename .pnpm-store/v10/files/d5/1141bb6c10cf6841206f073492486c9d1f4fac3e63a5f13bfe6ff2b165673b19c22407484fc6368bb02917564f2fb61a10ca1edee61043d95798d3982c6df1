@@ -1,0 +1,53 @@
+{
+  "name": "redis-parser",
+  "version": "3.0.0",
+  "description": "Javascript Redis protocol (RESP) parser",
+  "main": "index.js",
+  "scripts": {
+    "test": "npm run coverage",
+    "benchmark": "node ./benchmark",
+    "lint": "standard --fix",
+    "posttest": "npm run lint && npm run coverage:check",
+    "coverage": "node ./node_modules/istanbul/lib/cli.js cover --preserve-comments ./node_modules/mocha/bin/_mocha -- -R spec",
+    "coverage:check": "node ./node_modules/istanbul/lib/cli.js check-coverage --branch 100 --statement 100"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NodeRedis/node-redis-parser.git"
+  },
+  "keywords": [
+    "redis",
+    "protocol",
+    "parser",
+    "database",
+    "javascript",
+    "node",
+    "nodejs",
+    "resp",
+    "hiredis"
+  ],
+  "engines": {
+    "node": ">=4"
+  },
+  "dependencies": {
+    "redis-errors": "^1.0.0"
+  },
+  "devDependencies": {
+    "benchmark": "^2.1.0",
+    "codeclimate-test-reporter": "^0.4.0",
+    "hiredis": "^0.5.0",
+    "istanbul": "^0.4.0",
+    "mocha": "^3.1.2",
+    "standard": "^10.0.0"
+  },
+  "author": "Ruben Bridgewater",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/NodeRedis/node-redis-parser/issues"
+  },
+  "homepage": "https://github.com/NodeRedis/node-redis-parser#readme",
+  "directories": {
+    "test": "test",
+    "lib": "lib"
+  }
+}

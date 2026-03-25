@@ -1,0 +1,20 @@
+title: vendor
+type: object
+description: Vendors
+properties:
+  key:
+    type: string
+    description: System-assigned key for the vendor.
+    readOnly: true
+  id:
+    type: string
+    description: |
+      Unique identifier of the vendor.
+      You must specify a unique vendor ID when creating a vendor unless document sequencing is configured, in which case the ID is auto-generated.
+  name:
+    type: string
+    description: Name of the vendor.
+  isOneTimeUse:
+    type: boolean
+    description: One-time use
+    default: false

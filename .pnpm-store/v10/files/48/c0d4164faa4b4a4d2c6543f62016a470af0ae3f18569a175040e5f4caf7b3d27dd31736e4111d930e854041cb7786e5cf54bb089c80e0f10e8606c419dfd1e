@@ -1,0 +1,73 @@
+{
+  "name": "@vue-flow/background",
+  "version": "1.3.2",
+  "private": false,
+  "license": "MIT",
+  "author": "Burak Cakmakoglu<78412429+bcakmakoglu@users.noreply.github.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bcakmakoglu/vue-flow/packages/plugins/background"
+  },
+  "homepage": "https://github.com/bcakmakoglu/vue-flow#readme",
+  "bugs": {
+    "url": "https://github.com/bcakmakoglu/vue-flow/issues"
+  },
+  "keywords": [
+    "vue",
+    "flow",
+    "diagram",
+    "editor",
+    "graph",
+    "node",
+    "link",
+    "port",
+    "slot",
+    "vue3",
+    "composition-api",
+    "vue-flow",
+    "vueflow",
+    "typescript"
+  ],
+  "main": "./dist/vue-flow-background.js",
+  "module": "./dist/vue-flow-background.mjs",
+  "types": "./dist/index.d.ts",
+  "unpkg": "./dist/vue-flow-background.iife.js",
+  "jsdelivr": "./dist/vue-flow-background.iife.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/vue-flow-background.mjs",
+      "require": "./dist/vue-flow-background.js"
+    }
+  },
+  "files": [
+    "dist",
+    "*.d.ts"
+  ],
+  "sideEffects": false,
+  "peerDependencies": {
+    "@vue-flow/core": "^1.23.0",
+    "vue": "^3.3.0"
+  },
+  "devDependencies": {
+    "vue-tsc": "^1.8.16",
+    "@tooling/eslint-config": "0.0.0",
+    "@tooling/tsconfig": "0.0.0",
+    "@tooling/vite-config": "0.0.0",
+    "@vue-flow/core": "1.41.5"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "dev": "pnpm types:watch & pnpm build:watch",
+    "build": "vite build",
+    "build:watch": "vite build --watch",
+    "types": "vue-tsc --declaration --emitDeclarationOnly && pnpm lint:dist",
+    "types:watch": "vue-tsc --declaration --emitDeclarationOnly --watch",
+    "lint": "eslint --ext .js,.ts,.vue ./",
+    "lint:dist": "eslint --ext \".ts,.tsx\" -c .eslintrc.js --fix --ignore-pattern !**/*  ./dist",
+    "test": "exit 0"
+  }
+}

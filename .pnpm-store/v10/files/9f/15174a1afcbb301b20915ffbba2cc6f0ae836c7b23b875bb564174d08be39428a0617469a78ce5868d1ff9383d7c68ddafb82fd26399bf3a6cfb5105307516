@@ -1,0 +1,1 @@
+{"version":3,"file":"mongo.d.ts","sourceRoot":"","sources":["../../../../src/integrations/tracing/mongo.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,sBAAsB,EAAE,MAAM,wCAAwC,CAAC;AAOhF,eAAO,MAAM,eAAe;;CAS3B,CAAC;AAEF;;GAEG;AACH,wBAAgB,6BAA6B,CAAC,UAAU,EAAE,MAAM,CAAC,MAAM,EAAE,OAAO,CAAC,GAAG,MAAM,CAGzF;AAgDD;;;;;;;;;;;;;GAaG;AACH,eAAO,MAAM,gBAAgB,0CAAuC,CAAC"}

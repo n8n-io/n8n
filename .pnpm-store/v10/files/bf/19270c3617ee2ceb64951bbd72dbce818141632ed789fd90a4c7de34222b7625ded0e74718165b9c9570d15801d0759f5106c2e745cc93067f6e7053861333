@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package google.protobuf;
+
+import "google/protobuf/source_context.proto";
+import "google/protobuf/type.proto";
+
+message Api {
+
+    string name = 1;
+    repeated Method methods = 2;
+    repeated Option options = 3;
+    string version = 4;
+    SourceContext source_context = 5;
+    repeated Mixin mixins = 6;
+    Syntax syntax = 7;
+}
+
+message Method {
+
+    string name = 1;
+    string request_type_url = 2;
+    bool request_streaming = 3;
+    string response_type_url = 4;
+    bool response_streaming = 5;
+    repeated Option options = 6;
+    Syntax syntax = 7;
+}
+
+message Mixin {
+
+    string name = 1;
+    string root = 2;
+}

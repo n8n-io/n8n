@@ -1,0 +1,5 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": ["lib/index.js", "bin/*/*.js", "test-workspace/tasks/*.js"],
+  "ignoreDependencies": ["yarn"]
+}

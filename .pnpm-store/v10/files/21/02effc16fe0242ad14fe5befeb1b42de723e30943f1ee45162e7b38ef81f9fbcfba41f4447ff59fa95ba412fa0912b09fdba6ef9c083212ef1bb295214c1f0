@@ -1,0 +1,40 @@
+{
+  "name": "istanbul-lib-hook",
+  "version": "3.0.0",
+  "description": "Hooks for require, vm and script used in istanbul",
+  "author": "Krishnan Anantheswaran <kananthmail-github@yahoo.com>",
+  "main": "index.js",
+  "files": [
+    "lib",
+    "index.js"
+  ],
+  "scripts": {
+    "test": "nyc --nycrc-path=../../monorepo-per-package-full.js mocha"
+  },
+  "dependencies": {
+    "append-transform": "^2.0.0"
+  },
+  "devDependencies": {
+    "chai": "^4.2.0",
+    "mocha": "^6.2.2",
+    "nyc": "^15.0.0-beta.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/istanbuljs/istanbuljs.git",
+    "directory": "packages/istanbul-lib-hook"
+  },
+  "keywords": [
+    "istanbul",
+    "hook"
+  ],
+  "license": "BSD-3-Clause",
+  "bugs": {
+    "url": "https://github.com/istanbuljs/istanbuljs/issues"
+  },
+  "homepage": "https://istanbul.js.org/",
+  "engines": {
+    "node": ">=8"
+  },
+  "gitHead": "5319df684b508ff6fb19fe8b9a6147a3c5924e4b"
+}

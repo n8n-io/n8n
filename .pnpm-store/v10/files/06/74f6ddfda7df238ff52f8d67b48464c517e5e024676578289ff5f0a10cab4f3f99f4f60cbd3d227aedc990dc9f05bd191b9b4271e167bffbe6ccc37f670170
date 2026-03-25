@@ -1,0 +1,47 @@
+{
+  "name": "emojibase",
+  "version": "17.0.0",
+  "description": "Emojibase utility functions for working with emoji characters.",
+  "keywords": [
+    "emoji",
+    "emojibase",
+    "data",
+    "regex",
+    "helper",
+    "loader",
+    "cdn"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:milesj/emojibase.git",
+    "directory": "packages/core"
+  },
+  "author": "Miles Johnson",
+  "license": "MIT",
+  "main": "./lib/index.js",
+  "module": "./esm/index.js",
+  "types": "./lib/index.d.ts",
+  "files": [
+    "esm/**/*",
+    "lib/**/*",
+    "src/**/*"
+  ],
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "funding": {
+    "type": "ko-fi",
+    "url": "https://ko-fi.com/milesjohnson"
+  },
+  "packemon": {
+    "format": [
+      "esm",
+      "lib"
+    ],
+    "platform": "browser"
+  },
+  "engines": {
+    "node": ">=18.12.0"
+  }
+}

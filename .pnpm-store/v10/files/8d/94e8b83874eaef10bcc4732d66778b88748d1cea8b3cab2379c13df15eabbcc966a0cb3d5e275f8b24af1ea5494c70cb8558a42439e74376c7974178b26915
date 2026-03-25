@@ -1,0 +1,44 @@
+{
+  "name": "getos",
+  "version": "3.2.1",
+  "description": "Get the OS/Distribution name of the environment you are working on",
+  "main": "index.js",
+  "scripts": {
+    "test": "node tests/mocktests.js",
+    "posttest": "standard",
+    "integration": "node tests/runTest.js",
+    "standard-fix": "standard --fix"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/retrohacker/getos.git"
+  },
+  "keywords": [
+    "OS",
+    "Distribution",
+    "Platform",
+    "Version"
+  ],
+  "author": "william.jblankenship@gmail.com",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/retrohacker/getos/issues"
+  },
+  "homepage": "https://github.com/retrohacker/getos",
+  "devDependencies": {
+    "cli-color": "^2.0.0",
+    "execSync": "^1.0.2",
+    "standard": "^14.3.1",
+    "tape": "^4.13.2"
+  },
+  "dependencies": {
+    "async": "^3.2.0"
+  },
+  "contributors": [
+    {
+      "name": "Benjamin E. Coe",
+      "email": "bencoe@gmail.com",
+      "url": "https://github.com/bcoe"
+    }
+  ]
+}

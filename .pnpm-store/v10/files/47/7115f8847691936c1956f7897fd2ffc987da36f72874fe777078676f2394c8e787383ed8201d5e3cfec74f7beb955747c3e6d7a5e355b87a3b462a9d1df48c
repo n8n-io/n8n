@@ -1,0 +1,10 @@
+{
+  "name": "public-domain-module",
+  "version": "0.0.0",
+  "licenses": [
+    {
+      "type": "Public Domain",
+      "url": "https://spdx.org/licenses/PublicDomain.html"
+    }
+  ]
+}

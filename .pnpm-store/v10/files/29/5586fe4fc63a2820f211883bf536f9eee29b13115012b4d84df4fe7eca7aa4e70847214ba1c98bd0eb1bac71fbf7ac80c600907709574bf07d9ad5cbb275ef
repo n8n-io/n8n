@@ -1,0 +1,26 @@
+overrides:
+  - files:
+    - '**/*.{js,cjs,mjs}'
+
+parser: '@babel/eslint-parser'
+parserOptions:
+  ecmaVersion: latest
+  requireConfigFile: false
+  sourceType: 'script'
+  babelOptions:
+    plugins:
+      - '@babel/plugin-syntax-import-assertions'
+
+rules:
+  "import/first": off
+
+extends:
+  - "standard"
+
+ignorePatterns:
+  - test/fixtures/circular-a.js
+  - test/fixtures/circular-b.js
+  - test/fixtures/reexport.js
+  - test/fixtures/duplicate-explicit.mjs
+  - test/fixtures/duplicate.mjs
+  - test/fixtures/export-types/default-call-expression-renamed.mjs

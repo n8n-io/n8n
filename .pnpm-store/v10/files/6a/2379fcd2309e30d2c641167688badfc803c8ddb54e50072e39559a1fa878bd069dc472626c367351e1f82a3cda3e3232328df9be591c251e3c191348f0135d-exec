@@ -1,0 +1,25 @@
+{
+    "name": "@types/lossless-json",
+    "version": "1.0.1",
+    "description": "TypeScript definitions for lossless-json",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/lossless-json",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "André Vitor de Lima Matos",
+            "url": "https://github.com/andrevmatos",
+            "githubUsername": "andrevmatos"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/lossless-json"
+    },
+    "scripts": {},
+    "dependencies": {},
+    "typesPublisherContentHash": "49070bc4e69c339104af3827d95c400f5aad6b1d96b359cccc7db0e3970f9ea9",
+    "typeScriptVersion": "3.6"
+}

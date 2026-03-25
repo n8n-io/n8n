@@ -1,0 +1,8 @@
+#!/usr/bin/env node
+
+var rw = require("../").dash;
+
+rw.readFile(process.argv[2] || "-", function(error, contents) {
+  if (error) throw error;
+  console.log(contents.length);
+});

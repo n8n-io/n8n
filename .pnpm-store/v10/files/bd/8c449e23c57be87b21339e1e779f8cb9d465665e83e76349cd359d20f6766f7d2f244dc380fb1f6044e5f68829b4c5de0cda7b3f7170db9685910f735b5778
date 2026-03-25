@@ -1,0 +1,24 @@
+{
+    "name": "@types/js-nacl",
+    "version": "1.3.0",
+    "description": "TypeScript definitions for js-nacl",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Ethan Frey",
+            "url": "https://github.com/ethanfrey",
+            "githubUsername": "ethanfrey"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/js-nacl"
+    },
+    "scripts": {},
+    "dependencies": {},
+    "typesPublisherContentHash": "a645e15a9ac937503ff7b7515489eaca14eee9bd927714f0e35d0e6ea55e72fd",
+    "typeScriptVersion": "2.8"
+}

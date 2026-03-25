@@ -1,0 +1,1 @@
+{"version":3,"file":"imdsRetryPolicy.d.ts","sourceRoot":"","sources":["../../../../src/credentials/managedIdentityCredential/imdsRetryPolicy.ts"],"names":[],"mappings":"AAGA,OAAO,KAAK,EAAE,cAAc,EAAE,MAAM,2BAA2B,CAAC;AAGhE,OAAO,KAAK,EAAE,gBAAgB,EAAE,MAAM,aAAa,CAAC;AAYpD;;;;;;;;GAQG;AACH,wBAAgB,eAAe,CAAC,cAAc,EAAE,gBAAgB,CAAC,aAAa,CAAC,GAAG,cAAc,CA2B/F"}

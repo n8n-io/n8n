@@ -1,0 +1,140 @@
+{
+  "version": "5.5.0",
+  "name": "csv-parse",
+  "description": "CSV parsing implementing the Node.js `stream.Transform` API",
+  "keywords": [
+    "csv",
+    "parse",
+    "parser",
+    "convert",
+    "tsv",
+    "stream"
+  ],
+  "author": "David Worms <david@adaltas.com> (https://www.adaltas.com)",
+  "contributors": [
+    "David Worms <david@adaltas.com> (https://www.adaltas.com)",
+    "Will White (https://github.com/willwhite)",
+    "Justin Latimer (https://github.com/justinlatimer)",
+    "jonseymour (https://github.com/jonseymour)",
+    "pascalopitz (https://github.com/pascalopitz)",
+    "Josh Pschorr (https://github.com/jpschorr)",
+    "Elad Ben-Israel (https://github.com/eladb)",
+    "Philippe Plantier (https://github.com/phipla)",
+    "Tim Oxley (https://github.com/timoxley)",
+    "Damon Oehlman (https://github.com/DamonOehlman)",
+    "Alexandru Topliceanu (https://github.com/topliceanu)",
+    "Visup (https://github.com/visup)",
+    "Edmund von der Burg (https://github.com/evdb)",
+    "Douglas Christopher Wilson (https://github.com/dougwilson)",
+    "Joe Eaves (https://github.com/Joeasaurus)",
+    "Mark Stosberg (https://github.com/markstos)"
+  ],
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./lib/index.d.ts",
+        "default": "./lib/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.cts",
+        "default": "./dist/cjs/index.cjs"
+      }
+    },
+    "./sync": {
+      "import": {
+        "types": "./lib/sync.d.ts",
+        "default": "./lib/sync.js"
+      },
+      "require": {
+        "types": "./dist/cjs/sync.d.cts",
+        "default": "./dist/cjs/sync.cjs"
+      }
+    },
+    "./browser/esm": {
+      "types": "./dist/esm/index.d.ts",
+      "default": "./dist/esm/index.js"
+    },
+    "./browser/esm/sync": {
+      "types": "./dist/esm/sync.d.ts",
+      "default": "./dist/esm/sync.js"
+    }
+  },
+  "devDependencies": {
+    "@rollup/plugin-eslint": "^9.0.4",
+    "@rollup/plugin-node-resolve": "^15.2.1",
+    "@types/mocha": "^10.0.1",
+    "@types/node": "^20.5.6",
+    "coffeelint": "^2.1.0",
+    "coffeescript": "^2.7.0",
+    "csv-generate": "^4.2.8",
+    "csv-spectrum": "^1.0.0",
+    "each": "^2.4.0",
+    "eslint": "^8.47.0",
+    "mocha": "^10.2.0",
+    "pad": "^3.2.0",
+    "rollup": "^3.28.1",
+    "rollup-plugin-node-builtins": "^2.1.2",
+    "rollup-plugin-node-globals": "^1.4.0",
+    "should": "^13.2.3",
+    "stream-transform": "^3.2.8",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.2.2"
+  },
+  "files": [
+    "dist",
+    "lib"
+  ],
+  "homepage": "https://csv.js.org/parse",
+  "license": "MIT",
+  "main": "./dist/cjs/index.cjs",
+  "mocha": {
+    "inline-diffs": true,
+    "loader": "./test/loaders/all.js",
+    "recursive": true,
+    "reporter": "spec",
+    "require": [
+      "should"
+    ],
+    "throw-deprecation": true,
+    "timeout": 40000
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/adaltas/node-csv.git",
+    "directory": "packages/csv-parse"
+  },
+  "scripts": {
+    "build": "npm run build:rollup && npm run build:ts",
+    "build:rollup": "npx rollup -c",
+    "build:ts": "cp lib/index.d.ts dist/cjs/index.d.cts && cp lib/sync.d.ts dist/cjs/sync.d.cts && cp lib/*.ts dist/esm",
+    "postbuild:ts": "find dist/cjs -name '*.d.cts' -exec sh -c \"sed -i \"s/\\.js'/\\.cjs'/g\" {} || sed -i '' \"s/\\.js'/\\.cjs'/g\" {}\" \\;",
+    "lint": "npm run lint:lib && npm run lint:samples && npm run lint:test",
+    "postlint": "tsc --noEmit true",
+    "lint:lib": "eslint --fix lib/*.js",
+    "lint:samples": "eslint --fix samples/*.js",
+    "lint:test": "coffeelint --fix test/*.coffee",
+    "preversion": "npm run build && git add dist",
+    "pretest": "npm run build",
+    "test": "mocha 'test/**/*.{coffee,ts}'",
+    "test:legacy": "mocha --ignore test/api.web_stream.coffee --ignore test/api.stream.finished.coffee --loader=./test/loaders/legacy/all.js 'test/**/*.{coffee,ts}'"
+  },
+  "type": "module",
+  "types": "dist/esm/index.d.ts",
+  "typesVersions": {
+    "*": {
+      ".": [
+        "dist/esm/index.d.ts"
+      ],
+      "sync": [
+        "dist/esm/sync.d.ts"
+      ],
+      "browser/esm": [
+        "dist/esm/index.d.ts"
+      ],
+      "browser/esm/sync": [
+        "dist/esm/sync.d.ts"
+      ]
+    }
+  },
+  "gitHead": "c3347b15c75224255c839b3d8a406f74efd90123"
+}

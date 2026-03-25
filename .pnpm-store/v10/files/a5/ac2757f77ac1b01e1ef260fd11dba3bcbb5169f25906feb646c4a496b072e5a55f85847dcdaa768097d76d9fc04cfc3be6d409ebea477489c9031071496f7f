@@ -1,0 +1,1 @@
+{"version":3,"file":"no-namespace.d.ts","sourceRoot":"","sources":["../../src/rules/no-namespace.ts"],"names":[],"mappings":"AAMA,MAAM,MAAM,OAAO,GAAG;IACpB;QACE,iBAAiB,CAAC,EAAE,OAAO,CAAC;QAC5B,oBAAoB,CAAC,EAAE,OAAO,CAAC;KAChC;CACF,CAAC;AACF,MAAM,MAAM,UAAU,GAAG,yBAAyB,CAAC;;AAEnD,wBAiEG"}

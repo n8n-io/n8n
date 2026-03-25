@@ -1,0 +1,2191 @@
+{
+  "name": "@rushstack/ts-command-line",
+  "entries": [
+    {
+      "version": "4.23.6",
+      "tag": "@rushstack/ts-command-line_v4.23.6",
+      "date": "Tue, 11 Mar 2025 02:12:33 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/terminal\" to `0.15.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `5.12.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.23.5",
+      "tag": "@rushstack/ts-command-line_v4.23.5",
+      "date": "Wed, 12 Feb 2025 01:10:52 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/terminal\" to `0.15.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.23.4",
+      "tag": "@rushstack/ts-command-line_v4.23.4",
+      "date": "Thu, 30 Jan 2025 01:11:42 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/terminal\" to `0.14.6`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.23.3",
+      "tag": "@rushstack/ts-command-line_v4.23.3",
+      "date": "Thu, 09 Jan 2025 01:10:10 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/terminal\" to `0.14.5`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.23.2",
+      "tag": "@rushstack/ts-command-line_v4.23.2",
+      "date": "Sat, 14 Dec 2024 01:11:07 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/terminal\" to `0.14.4`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.23.1",
+      "tag": "@rushstack/ts-command-line_v4.23.1",
+      "date": "Fri, 22 Nov 2024 01:10:43 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/terminal\" to `0.14.3`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.23.0",
+      "tag": "@rushstack/ts-command-line_v4.23.0",
+      "date": "Thu, 17 Oct 2024 08:35:06 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Expand the `alternatives` and `completions` options of `CommandLineChoiceParameter` and `CommandLineChoiceListParameter` to allow readonly arrays and sets."
+          },
+          {
+            "comment": "(BREAKING API CHANGE) Change the type of the `alternatives` property of `CommandLineChoiceParameter` and `CommandLineChoiceParameter` from an array to a `ReadonlySet`."
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.22.8",
+      "tag": "@rushstack/ts-command-line_v4.22.8",
+      "date": "Fri, 13 Sep 2024 00:11:43 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/terminal\" to `0.14.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.22.7",
+      "tag": "@rushstack/ts-command-line_v4.22.7",
+      "date": "Tue, 10 Sep 2024 20:08:11 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/terminal\" to `0.14.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.22.6",
+      "tag": "@rushstack/ts-command-line_v4.22.6",
+      "date": "Wed, 21 Aug 2024 05:43:04 GMT",
+      "comments": {
+        "none": [
+          {
+            "comment": "Fix a README typo."
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/terminal\" to `0.14.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.22.5",
+      "tag": "@rushstack/ts-command-line_v4.22.5",
+      "date": "Mon, 12 Aug 2024 22:16:04 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/terminal\" to `0.13.4`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.22.4",
+      "tag": "@rushstack/ts-command-line_v4.22.4",
+      "date": "Fri, 02 Aug 2024 17:26:42 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Remove @internal so that subclasses can call _getArgumentParser"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.22.3",
+      "tag": "@rushstack/ts-command-line_v4.22.3",
+      "date": "Sat, 27 Jul 2024 00:10:27 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Include CHANGELOG.md in published releases again"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/terminal\" to `0.13.3`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.22.2",
+      "tag": "@rushstack/ts-command-line_v4.22.2",
+      "date": "Wed, 17 Jul 2024 06:55:10 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/terminal\" to `0.13.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.22.1",
+      "tag": "@rushstack/ts-command-line_v4.22.1",
+      "date": "Tue, 16 Jul 2024 00:36:21 GMT",
+      "comments": {
+        "none": [
+          {
+            "comment": "Improve the `CommandLineParser` error reporting to handle `AlreadyReportedError` from `@rushstack/node-core-library`"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/terminal\" to `0.13.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.22.0",
+      "tag": "@rushstack/ts-command-line_v4.22.0",
+      "date": "Thu, 30 May 2024 00:13:05 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Eliminate a const enum from the public API."
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/terminal\" to `0.13.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.21.5",
+      "tag": "@rushstack/ts-command-line_v4.21.5",
+      "date": "Wed, 29 May 2024 02:03:51 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/terminal\" to `0.12.3`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.21.4",
+      "tag": "@rushstack/ts-command-line_v4.21.4",
+      "date": "Tue, 28 May 2024 15:10:09 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/terminal\" to `0.12.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.21.3",
+      "tag": "@rushstack/ts-command-line_v4.21.3",
+      "date": "Tue, 28 May 2024 00:09:47 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/terminal\" to `0.12.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.21.2",
+      "tag": "@rushstack/ts-command-line_v4.21.2",
+      "date": "Sat, 25 May 2024 04:54:08 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/terminal\" to `0.12.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.21.1",
+      "tag": "@rushstack/ts-command-line_v4.21.1",
+      "date": "Thu, 23 May 2024 02:26:56 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/terminal\" to `0.11.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.21.0",
+      "tag": "@rushstack/ts-command-line_v4.21.0",
+      "date": "Thu, 16 May 2024 15:10:22 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Mark `onDefineParameters` and `onDefineUnscopedParameters` as deprecated and update README accordingly because defining parameters causes issues when the compiler targets >=es2022."
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.20.1",
+      "tag": "@rushstack/ts-command-line_v4.20.1",
+      "date": "Wed, 15 May 2024 23:42:58 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/terminal\" to `0.11.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.20.0",
+      "tag": "@rushstack/ts-command-line_v4.20.0",
+      "date": "Wed, 15 May 2024 06:04:17 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Rename `CommandLineParser.execute` to `CommandLineParser.executeAsync` and `CommandLineParser.executeWithoutErrorHandling` to `CommandLineParser.executeWithoutErrorHandlingAsync`. The old functions are marked as `@deprecated`."
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/terminal\" to `0.10.4`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.19.5",
+      "tag": "@rushstack/ts-command-line_v4.19.5",
+      "date": "Fri, 10 May 2024 05:33:34 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/terminal\" to `0.10.3`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.19.4",
+      "tag": "@rushstack/ts-command-line_v4.19.4",
+      "date": "Wed, 08 May 2024 22:23:50 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Fix an issue where tab completions did not suggest parameter values."
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.19.3",
+      "tag": "@rushstack/ts-command-line_v4.19.3",
+      "date": "Mon, 06 May 2024 15:11:05 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/terminal\" to `0.10.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.19.2",
+      "tag": "@rushstack/ts-command-line_v4.19.2",
+      "date": "Wed, 10 Apr 2024 15:10:09 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/terminal\" to `0.10.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.19.1",
+      "tag": "@rushstack/ts-command-line_v4.19.1",
+      "date": "Sun, 03 Mar 2024 20:58:12 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Fix an issue where the `allowNonStandardEnvironmentVariableNames` parameter option had no effect."
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.19.0",
+      "tag": "@rushstack/ts-command-line_v4.19.0",
+      "date": "Sat, 02 Mar 2024 02:22:23 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Use more specific types for command line parameters' `kind` properties."
+          },
+          {
+            "comment": "Allow parameters that may be backed by an environment variable to be marked as `required`."
+          },
+          {
+            "comment": "Update the return type of `defineChoiceParameter`, `defineIntegerParameter`, and `defineStringParameter` respectively when the `defaultValue` option is provided to return `IRequiredCommandLineChoiceParameter`, `IRequiredCommandLineIntegerParameter`, and `IRequiredCommandLineStringParameter` respectively, as the value will definitely be defined in these cases."
+          }
+        ],
+        "patch": [
+          {
+            "comment": "Include a missing `readonly` modifier on the `value` properties of `IRequiredCommandLineChoiceParameter`, `IRequiredCommandLineIntegerParameter`, and `IRequiredCommandLineStringParameter`."
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.18.1",
+      "tag": "@rushstack/ts-command-line_v4.18.1",
+      "date": "Fri, 01 Mar 2024 01:10:08 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Add an \"allowNonStandardEnvironmentVariableNames\" option to remove naming restrictions on parameter environment variables"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.18.0",
+      "tag": "@rushstack/ts-command-line_v4.18.0",
+      "date": "Wed, 28 Feb 2024 16:09:27 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Allow choice parameters alternatives to be typed."
+          },
+          {
+            "comment": "Update the return type of `defineChoiceParameter`, `defineIntegerParameter`, and `defineStringParameter` respectively when the `{ required: true }` option is set to a new type (`IRequiredCommandLineChoiceParameter`, `IRequiredCommandLineIntegerParameter`, and `IRequiredCommandLineStringParameter` respectively) with a required `value` property."
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.17.4",
+      "tag": "@rushstack/ts-command-line_v4.17.4",
+      "date": "Sat, 24 Feb 2024 23:02:51 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/terminal\" to `0.10.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.17.3",
+      "tag": "@rushstack/ts-command-line_v4.17.3",
+      "date": "Wed, 21 Feb 2024 21:45:28 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Replace the dependency on the `colors` package with `Colorize` from `@rushstack/terminal`."
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/terminal\" to `0.9.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.17.2",
+      "tag": "@rushstack/ts-command-line_v4.17.2",
+      "date": "Sat, 17 Feb 2024 06:24:35 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Fix broken link to API documentation"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.17.1",
+      "tag": "@rushstack/ts-command-line_v4.17.1",
+      "date": "Wed, 01 Nov 2023 23:11:35 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Fix line endings in published package."
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.17.0",
+      "tag": "@rushstack/ts-command-line_v4.17.0",
+      "date": "Mon, 30 Oct 2023 23:36:37 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Consider parent tool and action parameters when determining ambiguous abbreviations. For example, if a CLI tool `mytool` has a parameter `--myparam` and an action `myaction`, then `myaction` would not accept a parameter named `--myparam` (i.e. - `mytool --myparam myaction` is valid, `mytool myaction --myparam` is not). Additionally, any parameter that can be abbreviated to `--myparam` must be uniquely provided (i.e. - `--myparam-2` can only be abbreviated to `--myparam-`, since any shorter abbreviation would be ambiguous with the original `--myparam` on the tool)."
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.16.1",
+      "tag": "@rushstack/ts-command-line_v4.16.1",
+      "date": "Tue, 26 Sep 2023 09:30:33 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Update type-only imports to include the type modifier."
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.16.0",
+      "tag": "@rushstack/ts-command-line_v4.16.0",
+      "date": "Fri, 15 Sep 2023 00:36:58 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Update @types/node from 14 to 18"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `3.3.4`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.15.2",
+      "tag": "@rushstack/ts-command-line_v4.15.2",
+      "date": "Tue, 08 Aug 2023 07:10:40 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `3.3.3`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.15.1",
+      "tag": "@rushstack/ts-command-line_v4.15.1",
+      "date": "Thu, 15 Jun 2023 00:21:01 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `3.3.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.15.0",
+      "tag": "@rushstack/ts-command-line_v4.15.0",
+      "date": "Tue, 13 Jun 2023 01:49:01 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Add support for handling ambiguous parameters when conflicting parameters are provided but they provide a non-conflicting alternative (e.g. parameters with the same short-name but different long-names, scoped parameters with the same long-name but different scopes). When using an ambiguous parameter on the CLI, an error message describing the ambiguous parameter usage will appear."
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.14.0",
+      "tag": "@rushstack/ts-command-line_v4.14.0",
+      "date": "Wed, 07 Jun 2023 22:45:16 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Add AliasCommandLineAction, a CommandLineAction that can be used to redirect commands with optional default arguments to existing commands."
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `3.3.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.13.3",
+      "tag": "@rushstack/ts-command-line_v4.13.3",
+      "date": "Mon, 22 May 2023 06:34:33 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `3.3.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.13.2",
+      "tag": "@rushstack/ts-command-line_v4.13.2",
+      "date": "Fri, 10 Feb 2023 01:18:50 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `3.2.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.13.1",
+      "tag": "@rushstack/ts-command-line_v4.13.1",
+      "date": "Tue, 08 Nov 2022 01:20:55 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Make ScopedCommandLineAction.onDefineUnscopedParameters optional to match CommandLineAciton.onDefineParameters"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.13.0",
+      "tag": "@rushstack/ts-command-line_v4.13.0",
+      "date": "Mon, 17 Oct 2022 22:14:21 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Make the onDefineParameters function optional for `CommandLineAction`s and `CommandLineParser`s that either don't have parameters or that define their parameters in their constructor."
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.12.5",
+      "tag": "@rushstack/ts-command-line_v4.12.5",
+      "date": "Mon, 10 Oct 2022 15:23:44 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `3.1.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.12.4",
+      "tag": "@rushstack/ts-command-line_v4.12.4",
+      "date": "Thu, 29 Sep 2022 07:13:06 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `3.1.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.12.3",
+      "tag": "@rushstack/ts-command-line_v4.12.3",
+      "date": "Thu, 15 Sep 2022 00:18:51 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `3.0.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.12.2",
+      "tag": "@rushstack/ts-command-line_v4.12.2",
+      "date": "Wed, 03 Aug 2022 18:40:35 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `3.0.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.12.1",
+      "tag": "@rushstack/ts-command-line_v4.12.1",
+      "date": "Tue, 28 Jun 2022 00:23:32 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.6.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.12.0",
+      "tag": "@rushstack/ts-command-line_v4.12.0",
+      "date": "Thu, 23 Jun 2022 22:14:24 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Add parameter scopes. Parameter scopes allow for behind-the-scenes conflict resolution between parameters with the same long name. For example, when provided scope \"my-scope\", a parameter can be referenced on the CLI as \"--my-parameter\" or as \"--my-scope:my-parameter\". In the case that multiple parameters are registered with the same long name but different scopes, the parameters can only be referenced by their scoped long names, eg. \"--my-scope:my-parameter\" and \"--my-other-scope:my-parameter\"."
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.11.1",
+      "tag": "@rushstack/ts-command-line_v4.11.1",
+      "date": "Fri, 17 Jun 2022 00:16:18 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.6.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.11.0",
+      "tag": "@rushstack/ts-command-line_v4.11.0",
+      "date": "Tue, 10 May 2022 01:20:43 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Add ScopedCommandLineAction class, which allows for the definition of actions that have dynamic arguments whose definition depends on a provided scope. See https://github.com/microsoft/rushstack/pull/3364"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.10.10",
+      "tag": "@rushstack/ts-command-line_v4.10.10",
+      "date": "Sat, 23 Apr 2022 02:13:07 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.6.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.10.9",
+      "tag": "@rushstack/ts-command-line_v4.10.9",
+      "date": "Fri, 15 Apr 2022 00:12:36 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.5.4`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.10.8",
+      "tag": "@rushstack/ts-command-line_v4.10.8",
+      "date": "Sat, 09 Apr 2022 02:24:27 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Rename the \"master\" branch to \"main\"."
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.5.3`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.10.7",
+      "tag": "@rushstack/ts-command-line_v4.10.7",
+      "date": "Tue, 15 Mar 2022 19:15:53 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.5.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.10.6",
+      "tag": "@rushstack/ts-command-line_v4.10.6",
+      "date": "Mon, 27 Dec 2021 16:10:40 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.5.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.10.5",
+      "tag": "@rushstack/ts-command-line_v4.10.5",
+      "date": "Mon, 06 Dec 2021 16:08:32 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.5.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.10.4",
+      "tag": "@rushstack/ts-command-line_v4.10.4",
+      "date": "Fri, 05 Nov 2021 15:09:18 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.4.5`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.10.3",
+      "tag": "@rushstack/ts-command-line_v4.10.3",
+      "date": "Wed, 27 Oct 2021 00:08:15 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Update the package.json repository field to include the directory property."
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.4.4`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.10.2",
+      "tag": "@rushstack/ts-command-line_v4.10.2",
+      "date": "Wed, 13 Oct 2021 15:09:54 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.4.3`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.10.1",
+      "tag": "@rushstack/ts-command-line_v4.10.1",
+      "date": "Thu, 07 Oct 2021 07:13:35 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.4.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.10.0",
+      "tag": "@rushstack/ts-command-line_v4.10.0",
+      "date": "Mon, 04 Oct 2021 15:10:18 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Add safety check parametersProcessed to CommandLineParameterProvider"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.9.1",
+      "tag": "@rushstack/ts-command-line_v4.9.1",
+      "date": "Thu, 23 Sep 2021 00:10:41 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Upgrade the `@types/node` dependency to version to version 12."
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.4.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.9.0",
+      "tag": "@rushstack/ts-command-line_v4.9.0",
+      "date": "Fri, 20 Aug 2021 15:08:10 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Add getParameterStringMap to CommandLineParameterProvider, to easily query parameter usage for telemetry"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.8.1",
+      "tag": "@rushstack/ts-command-line_v4.8.1",
+      "date": "Mon, 12 Jul 2021 23:08:26 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.4.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.8.0",
+      "tag": "@rushstack/ts-command-line_v4.8.0",
+      "date": "Thu, 01 Jul 2021 15:08:27 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Add ChoiceList and IntegerList parameter types"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.7.10",
+      "tag": "@rushstack/ts-command-line_v4.7.10",
+      "date": "Mon, 12 Apr 2021 15:10:28 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.3.4`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.7.9",
+      "tag": "@rushstack/ts-command-line_v4.7.9",
+      "date": "Tue, 06 Apr 2021 15:14:22 GMT",
+      "comments": {
+        "none": [
+          {
+            "comment": "Fix a mistake in sample code in the README."
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.3.3`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.7.8",
+      "tag": "@rushstack/ts-command-line_v4.7.8",
+      "date": "Thu, 10 Dec 2020 23:25:49 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.3.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.7.7",
+      "tag": "@rushstack/ts-command-line_v4.7.7",
+      "date": "Wed, 11 Nov 2020 01:08:59 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.3.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.7.6",
+      "tag": "@rushstack/ts-command-line_v4.7.6",
+      "date": "Fri, 30 Oct 2020 06:38:39 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.3.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.7.5",
+      "tag": "@rushstack/ts-command-line_v4.7.5",
+      "date": "Fri, 30 Oct 2020 00:10:14 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.2.3`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.7.4",
+      "tag": "@rushstack/ts-command-line_v4.7.4",
+      "date": "Wed, 28 Oct 2020 01:18:03 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.2.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.7.3",
+      "tag": "@rushstack/ts-command-line_v4.7.3",
+      "date": "Tue, 06 Oct 2020 00:24:06 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.2.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.7.2",
+      "tag": "@rushstack/ts-command-line_v4.7.2",
+      "date": "Mon, 05 Oct 2020 22:36:57 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.2.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.7.1",
+      "tag": "@rushstack/ts-command-line_v4.7.1",
+      "date": "Wed, 30 Sep 2020 18:39:17 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Update to build with @rushstack/heft-node-rig"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.1.3`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.7.0",
+      "tag": "@rushstack/ts-command-line_v4.7.0",
+      "date": "Wed, 30 Sep 2020 06:53:53 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Update README.md"
+          }
+        ],
+        "minor": [
+          {
+            "comment": "Upgrade compiler; the API now requires TypeScript 3.9 or newer"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.1.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.6.10",
+      "tag": "@rushstack/ts-command-line_v4.6.10",
+      "date": "Tue, 22 Sep 2020 05:45:57 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.1.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.6.9",
+      "tag": "@rushstack/ts-command-line_v4.6.9",
+      "date": "Tue, 22 Sep 2020 01:45:31 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.1.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.6.8",
+      "tag": "@rushstack/ts-command-line_v4.6.8",
+      "date": "Tue, 22 Sep 2020 00:08:53 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.0.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.6.7",
+      "tag": "@rushstack/ts-command-line_v4.6.7",
+      "date": "Sat, 19 Sep 2020 04:37:27 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `1.4.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.6.6",
+      "tag": "@rushstack/ts-command-line_v4.6.6",
+      "date": "Sat, 19 Sep 2020 03:33:07 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `1.4.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.6.5",
+      "tag": "@rushstack/ts-command-line_v4.6.5",
+      "date": "Fri, 18 Sep 2020 22:57:24 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `1.4.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.6.4",
+      "tag": "@rushstack/ts-command-line_v4.6.4",
+      "date": "Thu, 27 Aug 2020 11:27:06 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `1.3.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.6.3",
+      "tag": "@rushstack/ts-command-line_v4.6.3",
+      "date": "Mon, 24 Aug 2020 07:35:20 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `1.2.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.6.2",
+      "tag": "@rushstack/ts-command-line_v4.6.2",
+      "date": "Sat, 22 Aug 2020 05:55:43 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `1.2.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.6.1",
+      "tag": "@rushstack/ts-command-line_v4.6.1",
+      "date": "Fri, 21 Aug 2020 01:21:17 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Fix an issue where usage of a parameter specified undocumentedSynonyms yielded invalid data."
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.6.0",
+      "tag": "@rushstack/ts-command-line_v4.6.0",
+      "date": "Thu, 20 Aug 2020 15:13:52 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Add a feature for specifying \"undocumented synonyms\" for parameters."
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.5.0",
+      "tag": "@rushstack/ts-command-line_v4.5.0",
+      "date": "Tue, 18 Aug 2020 23:59:42 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Add support for shell tab completion."
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.4.8",
+      "tag": "@rushstack/ts-command-line_v4.4.8",
+      "date": "Mon, 17 Aug 2020 04:53:23 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `1.1.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.4.7",
+      "tag": "@rushstack/ts-command-line_v4.4.7",
+      "date": "Wed, 12 Aug 2020 00:10:05 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Updated project to build with Heft"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `1.0.4`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.4.6",
+      "tag": "@rushstack/ts-command-line_v4.4.6",
+      "date": "Fri, 03 Jul 2020 05:46:41 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Improve formatting of errors reported by CommandLineParser.execute()"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.4.5",
+      "tag": "@rushstack/ts-command-line_v4.4.5",
+      "date": "Thu, 25 Jun 2020 06:43:35 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" from `1.0.1` to `1.0.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.4.4",
+      "tag": "@rushstack/ts-command-line_v4.4.4",
+      "date": "Wed, 24 Jun 2020 09:50:48 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" from `1.0.0` to `1.0.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.4.3",
+      "tag": "@rushstack/ts-command-line_v4.4.3",
+      "date": "Wed, 24 Jun 2020 09:04:28 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" from `0.5.8` to `1.0.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.4.2",
+      "tag": "@rushstack/ts-command-line_v4.4.2",
+      "date": "Mon, 01 Jun 2020 08:34:17 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Fix a typo in the supplementary notes for parameters with environment variable mappings"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.4.1",
+      "tag": "@rushstack/ts-command-line_v4.4.1",
+      "date": "Wed, 27 May 2020 05:15:10 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" from `0.5.7` to `0.5.8`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.4.0",
+      "tag": "@rushstack/ts-command-line_v4.4.0",
+      "date": "Fri, 15 May 2020 08:10:59 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Add a new feature defineCommandLineRemainder() which allows additional unvalidated CLI arguments, e.g. to pass along to another tool"
+          },
+          {
+            "comment": "Add the ability for an environment variable to specify multiple values for CommandLineStringListParameter, encoded as a JSON array"
+          },
+          {
+            "comment": "Fix some bugs that prevented a CommandLineParser from being defined without any actions"
+          }
+        ],
+        "patch": [
+          {
+            "comment": "Fix a bug with environmentVariable mapping for CommandLineFlagParameter"
+          },
+          {
+            "comment": "Use API Extractor to trim internal APIs from the .d.ts rollup"
+          },
+          {
+            "comment": "Improve the README.md and API documentation"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.3.14",
+      "tag": "@rushstack/ts-command-line_v4.3.14",
+      "date": "Wed, 08 Apr 2020 04:07:33 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" from `0.5.6` to `0.5.7`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.3.13",
+      "tag": "@rushstack/ts-command-line_v4.3.13",
+      "date": "Sat, 28 Mar 2020 00:37:16 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" from `0.5.5` to `0.5.6`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.3.12",
+      "tag": "@rushstack/ts-command-line_v4.3.12",
+      "date": "Wed, 18 Mar 2020 15:07:47 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Upgrade cyclic dependencies"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" from `0.5.4` to `0.5.5`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.3.11",
+      "tag": "@rushstack/ts-command-line_v4.3.11",
+      "date": "Tue, 17 Mar 2020 23:55:58 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "PACKAGE NAME CHANGE: The NPM scope was changed from `@microsoft/ts-command-line` to `@rushstack/ts-command-line`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.3.10",
+      "tag": "@microsoft/ts-command-line_v4.3.10",
+      "date": "Tue, 21 Jan 2020 21:56:14 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" from `0.5.3` to `0.5.4`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.3.9",
+      "tag": "@microsoft/ts-command-line_v4.3.9",
+      "date": "Sun, 19 Jan 2020 02:26:52 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Upgrade Node typings to Node 10"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" from `0.5.2` to `0.5.3`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.3.8",
+      "tag": "@microsoft/ts-command-line_v4.3.8",
+      "date": "Fri, 17 Jan 2020 01:08:23 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" from `0.5.1` to `0.5.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.3.7",
+      "tag": "@microsoft/ts-command-line_v4.3.7",
+      "date": "Thu, 09 Jan 2020 06:44:13 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" from `0.5.0` to `0.5.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.3.6",
+      "tag": "@microsoft/ts-command-line_v4.3.6",
+      "date": "Wed, 08 Jan 2020 00:11:31 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" from `0.4.2` to `0.5.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.3.5",
+      "tag": "@microsoft/ts-command-line_v4.3.5",
+      "date": "Mon, 11 Nov 2019 16:07:56 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" from `0.4.1` to `0.4.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.3.4",
+      "tag": "@microsoft/ts-command-line_v4.3.4",
+      "date": "Tue, 22 Oct 2019 06:24:44 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" from `0.4.0` to `0.4.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.3.3",
+      "tag": "@microsoft/ts-command-line_v4.3.3",
+      "date": "Fri, 18 Oct 2019 15:15:00 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Fix Choice parameter error when only one alternative value is provided"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.3.2",
+      "tag": "@microsoft/ts-command-line_v4.3.2",
+      "date": "Sun, 29 Sep 2019 23:56:29 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Update repository URL"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.3.1",
+      "tag": "@microsoft/ts-command-line_v4.3.1",
+      "date": "Tue, 24 Sep 2019 02:58:49 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Add back a missing dependency."
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.3.0",
+      "tag": "@microsoft/ts-command-line_v4.3.0",
+      "date": "Mon, 23 Sep 2019 15:14:55 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Remove unnecessary dependencies on @types/argparse and @types/node"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.2.8",
+      "tag": "@microsoft/ts-command-line_v4.2.8",
+      "date": "Tue, 10 Sep 2019 22:32:23 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Update documentation"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.2.7",
+      "tag": "@microsoft/ts-command-line_v4.2.7",
+      "date": "Mon, 12 Aug 2019 15:15:14 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "fix for #1443 allow rush command to use numbers"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.2.6",
+      "tag": "@microsoft/ts-command-line_v4.2.6",
+      "date": "Wed, 12 Jun 2019 19:12:33 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Update Readme."
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.2.5",
+      "tag": "@microsoft/ts-command-line_v4.2.5",
+      "date": "Mon, 27 May 2019 04:13:44 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Fix a broken link in the README.md (GitHub issue #1285)"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.2.4",
+      "tag": "@microsoft/ts-command-line_v4.2.4",
+      "date": "Mon, 06 May 2019 20:46:21 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Allow colons in command line action names"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.2.3",
+      "tag": "@microsoft/ts-command-line_v4.2.3",
+      "date": "Fri, 07 Dec 2018 17:04:56 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Updated to use the new InternalError class for reporting software defects"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.2.2",
+      "tag": "@microsoft/ts-command-line_v4.2.2",
+      "date": "Thu, 06 Sep 2018 01:25:26 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Update \"repository\" field in package.json"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.2.1",
+      "tag": "@microsoft/ts-command-line_v4.2.1",
+      "date": "Thu, 23 Aug 2018 18:18:53 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Republish all packages in web-build-tools to resolve GitHub issue #782"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.2.0",
+      "tag": "@microsoft/ts-command-line_v4.2.0",
+      "date": "Fri, 08 Jun 2018 08:43:52 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Add CommandLineChoiceParameter.appendToArgList() and CommandLineParser.tryGetAction()"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.1.0",
+      "tag": "@microsoft/ts-command-line_v4.1.0",
+      "date": "Fri, 27 Apr 2018 03:04:32 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Add \"defaultValue\", \"environmentVariable\", and \"required\" features for command-line parameters"
+          }
+        ]
+      }
+    },
+    {
+      "version": "4.0.0",
+      "tag": "@microsoft/ts-command-line_v4.0.0",
+      "date": "Thu, 19 Apr 2018 21:25:56 GMT",
+      "comments": {
+        "major": [
+          {
+            "comment": "Rename \"CommandLineOptionParameter\" to \"CommandLineChoiceParameter\" (API change)"
+          },
+          {
+            "comment": "Rename \"ICommandLineChoiceDefinition.options\" to \"alternatives\" (API change)"
+          },
+          {
+            "comment": "Add DynamicCommandLineAction, DynamicCommandLineParser, and other APIs to support defining and reading command-line parameters at runtime"
+          },
+          {
+            "comment": "Rename \"actionVerb\" to \"actionName\" (API change)"
+          },
+          {
+            "comment": "Replace \"CommandLineAction.options\" with more concise top-level properties (API change)"
+          }
+        ]
+      }
+    },
+    {
+      "version": "3.1.1",
+      "tag": "@microsoft/ts-command-line_v3.1.1",
+      "date": "Fri, 23 Mar 2018 00:34:53 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Upgrade colors to version ~1.2.1"
+          }
+        ]
+      }
+    },
+    {
+      "version": "3.1.0",
+      "tag": "@microsoft/ts-command-line_v3.1.0",
+      "date": "Thu, 15 Mar 2018 20:00:50 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Add default error handler so the caller to CommandLineParser.execute() is not expected to handle promise rejections"
+          },
+          {
+            "comment": "Add a new API \"CommandLineParser.executeWithoutErrorHandling()\""
+          }
+        ]
+      }
+    },
+    {
+      "version": "3.0.7",
+      "tag": "@microsoft/ts-command-line_v3.0.7",
+      "date": "Mon, 12 Mar 2018 20:36:19 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Locked down some \"@types/\" dependency versions to avoid upgrade conflicts"
+          }
+        ]
+      }
+    },
+    {
+      "version": "3.0.6",
+      "tag": "@microsoft/ts-command-line_v3.0.6",
+      "date": "Fri, 02 Mar 2018 01:13:59 GMT",
+      "comments": {}
+    },
+    {
+      "version": "3.0.5",
+      "tag": "@microsoft/ts-command-line_v3.0.5",
+      "date": "Tue, 27 Feb 2018 22:05:57 GMT",
+      "comments": {}
+    },
+    {
+      "version": "3.0.4",
+      "tag": "@microsoft/ts-command-line_v3.0.4",
+      "date": "Wed, 21 Feb 2018 22:04:19 GMT",
+      "comments": {}
+    },
+    {
+      "version": "3.0.3",
+      "tag": "@microsoft/ts-command-line_v3.0.3",
+      "date": "Wed, 21 Feb 2018 03:13:28 GMT",
+      "comments": {}
+    },
+    {
+      "version": "3.0.2",
+      "tag": "@microsoft/ts-command-line_v3.0.2",
+      "date": "Sat, 17 Feb 2018 02:53:49 GMT",
+      "comments": {}
+    },
+    {
+      "version": "3.0.1",
+      "tag": "@microsoft/ts-command-line_v3.0.1",
+      "date": "Fri, 16 Feb 2018 22:05:23 GMT",
+      "comments": {}
+    },
+    {
+      "version": "3.0.0",
+      "tag": "@microsoft/ts-command-line_v3.0.0",
+      "date": "Fri, 16 Feb 2018 17:05:11 GMT",
+      "comments": {
+        "major": [
+          {
+            "comment": "Change all CommandLineActions to have an asychronous API that returns a promise."
+          }
+        ]
+      }
+    },
+    {
+      "version": "2.3.10",
+      "tag": "@microsoft/ts-command-line_v2.3.10",
+      "date": "Wed, 07 Feb 2018 17:05:11 GMT",
+      "comments": {}
+    },
+    {
+      "version": "2.3.9",
+      "tag": "@microsoft/ts-command-line_v2.3.9",
+      "date": "Fri, 26 Jan 2018 22:05:30 GMT",
+      "comments": {}
+    },
+    {
+      "version": "2.3.8",
+      "tag": "@microsoft/ts-command-line_v2.3.8",
+      "date": "Fri, 26 Jan 2018 17:53:38 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Force a patch bump in case the previous version was an empty package"
+          }
+        ]
+      }
+    },
+    {
+      "version": "2.3.7",
+      "tag": "@microsoft/ts-command-line_v2.3.7",
+      "date": "Fri, 26 Jan 2018 00:36:51 GMT",
+      "comments": {}
+    },
+    {
+      "version": "2.3.6",
+      "tag": "@microsoft/ts-command-line_v2.3.6",
+      "date": "Tue, 23 Jan 2018 17:05:28 GMT",
+      "comments": {}
+    },
+    {
+      "version": "2.3.5",
+      "tag": "@microsoft/ts-command-line_v2.3.5",
+      "date": "Thu, 18 Jan 2018 03:23:46 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Enable package typings generated by api-extractor"
+          }
+        ]
+      }
+    },
+    {
+      "version": "2.3.4",
+      "tag": "@microsoft/ts-command-line_v2.3.4",
+      "date": "Thu, 18 Jan 2018 00:48:06 GMT",
+      "comments": {}
+    },
+    {
+      "version": "2.3.3",
+      "tag": "@microsoft/ts-command-line_v2.3.3",
+      "date": "Wed, 17 Jan 2018 10:49:31 GMT",
+      "comments": {}
+    },
+    {
+      "version": "2.3.2",
+      "tag": "@microsoft/ts-command-line_v2.3.2",
+      "date": "Fri, 12 Jan 2018 03:35:22 GMT",
+      "comments": {}
+    },
+    {
+      "version": "2.3.1",
+      "tag": "@microsoft/ts-command-line_v2.3.1",
+      "date": "Thu, 11 Jan 2018 22:31:51 GMT",
+      "comments": {}
+    },
+    {
+      "version": "2.3.0",
+      "tag": "@microsoft/ts-command-line_v2.3.0",
+      "date": "Wed, 10 Jan 2018 20:40:01 GMT",
+      "comments": {
+        "minor": [
+          {
+            "author": "Nicholas Pape <nickpape-msft@users.noreply.github.com>",
+            "commit": "1271a0dc21fedb882e7953f491771724f80323a1",
+            "comment": "Upgrade to Node 8"
+          }
+        ]
+      }
+    },
+    {
+      "version": "2.2.14",
+      "tag": "@microsoft/ts-command-line_v2.2.14",
+      "date": "Tue, 09 Jan 2018 17:05:51 GMT",
+      "comments": {
+        "patch": [
+          {
+            "author": "Nicholas Pape <nickpape-msft@users.noreply.github.com>",
+            "commit": "d00b6549d13610fbb6f84be3478b532be9da0747",
+            "comment": "Get web-build-tools building with pnpm"
+          }
+        ]
+      }
+    },
+    {
+      "version": "2.2.13",
+      "tag": "@microsoft/ts-command-line_v2.2.13",
+      "date": "Sun, 07 Jan 2018 05:12:08 GMT",
+      "comments": {}
+    },
+    {
+      "version": "2.2.12",
+      "tag": "@microsoft/ts-command-line_v2.2.12",
+      "date": "Fri, 05 Jan 2018 20:26:45 GMT",
+      "comments": {}
+    },
+    {
+      "version": "2.2.11",
+      "tag": "@microsoft/ts-command-line_v2.2.11",
+      "date": "Fri, 05 Jan 2018 00:48:42 GMT",
+      "comments": {}
+    },
+    {
+      "version": "2.2.10",
+      "tag": "@microsoft/ts-command-line_v2.2.10",
+      "date": "Fri, 22 Dec 2017 17:04:46 GMT",
+      "comments": {}
+    },
+    {
+      "version": "2.2.9",
+      "tag": "@microsoft/ts-command-line_v2.2.9",
+      "date": "Tue, 12 Dec 2017 03:33:27 GMT",
+      "comments": {}
+    },
+    {
+      "version": "2.2.8",
+      "tag": "@microsoft/ts-command-line_v2.2.8",
+      "date": "Thu, 30 Nov 2017 23:59:09 GMT",
+      "comments": {}
+    },
+    {
+      "version": "2.2.7",
+      "tag": "@microsoft/ts-command-line_v2.2.7",
+      "date": "Thu, 30 Nov 2017 23:12:21 GMT",
+      "comments": {}
+    },
+    {
+      "version": "2.2.6",
+      "tag": "@microsoft/ts-command-line_v2.2.6",
+      "date": "Wed, 29 Nov 2017 17:05:37 GMT",
+      "comments": {}
+    },
+    {
+      "version": "2.2.5",
+      "tag": "@microsoft/ts-command-line_v2.2.5",
+      "date": "Tue, 28 Nov 2017 23:43:55 GMT",
+      "comments": {}
+    },
+    {
+      "version": "2.2.4",
+      "tag": "@microsoft/ts-command-line_v2.2.4",
+      "date": "Mon, 13 Nov 2017 17:04:50 GMT",
+      "comments": {}
+    },
+    {
+      "version": "2.2.3",
+      "tag": "@microsoft/ts-command-line_v2.2.3",
+      "date": "Mon, 06 Nov 2017 17:04:18 GMT",
+      "comments": {}
+    },
+    {
+      "version": "2.2.2",
+      "tag": "@microsoft/ts-command-line_v2.2.2",
+      "date": "Thu, 02 Nov 2017 16:05:24 GMT",
+      "comments": {
+        "patch": [
+          {
+            "author": "QZ <qz2017@users.noreply.github.com>",
+            "commit": "2c58095f2f13492887cc1278c9a0cff49af9735b",
+            "comment": "lock the reference version between web build tools projects"
+          }
+        ]
+      }
+    },
+    {
+      "version": "2.2.1",
+      "tag": "@microsoft/ts-command-line_v2.2.1",
+      "date": "Wed, 01 Nov 2017 21:06:08 GMT",
+      "comments": {
+        "patch": [
+          {
+            "author": "pgonzal <pgonzal@users.noreply.github.com>",
+            "commit": "e449bd6cdc3c179461be68e59590c25021cd1286",
+            "comment": "Upgrade cyclic dependencies"
+          }
+        ]
+      }
+    },
+    {
+      "version": "2.2.0",
+      "tag": "@microsoft/ts-command-line_v2.2.0",
+      "date": "Tue, 31 Oct 2017 21:04:04 GMT",
+      "comments": {
+        "minor": [
+          {
+            "author": "Nicholas Pape <nickpape-msft@users.noreply.github.com>",
+            "commit": "fe386a0305b16e6dbde953197c6dc2b89005216e",
+            "comment": "Add ability to specify default value for enum options."
+          }
+        ]
+      }
+    },
+    {
+      "version": "2.1.4",
+      "tag": "@microsoft/ts-command-line_v2.1.4",
+      "date": "Tue, 31 Oct 2017 16:04:55 GMT",
+      "comments": {}
+    },
+    {
+      "version": "2.1.3",
+      "tag": "@microsoft/ts-command-line_v2.1.3",
+      "date": "Wed, 25 Oct 2017 20:03:59 GMT",
+      "comments": {}
+    },
+    {
+      "version": "2.1.2",
+      "tag": "@microsoft/ts-command-line_v2.1.2",
+      "date": "Tue, 24 Oct 2017 18:17:12 GMT",
+      "comments": {}
+    },
+    {
+      "version": "2.1.1",
+      "tag": "@microsoft/ts-command-line_v2.1.1",
+      "date": "Mon, 23 Oct 2017 21:53:12 GMT",
+      "comments": {
+        "patch": [
+          {
+            "author": "pgonzal <pgonzal@users.noreply.github.com>",
+            "commit": "5de032b254b632b8af0d0dd98913acef589f88d5",
+            "comment": "Updated cyclic dependencies"
+          }
+        ]
+      }
+    },
+    {
+      "version": "2.1.0",
+      "tag": "@microsoft/ts-command-line_v2.1.0",
+      "date": "Fri, 22 Sep 2017 01:04:02 GMT",
+      "comments": {
+        "minor": [
+          {
+            "author": "Nick Pape <nickpape@users.noreply.github.com>",
+            "commit": "481a10f460a454fb5a3e336e3cf25a1c3f710645",
+            "comment": "Upgrade to es6"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/node-library-build\" from `~4.0.8` to `~4.1.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "2.0.7",
+      "tag": "@microsoft/ts-command-line_v2.0.7",
+      "date": "Fri, 08 Sep 2017 01:28:04 GMT",
+      "comments": {
+        "patch": [
+          {
+            "author": "Nick Pape <nickpape@users.noreply.github.com>",
+            "commit": "bb96549aa8508ff627a0cae5ee41ae0251f2777d",
+            "comment": "Deprecate @types/es6-coll ections in favor of built-in typescript typings 'es2015.collection' a nd 'es2015.iterable'"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/node-library-build\" from `~4.0.5` to `~4.0.6`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "2.0.6",
+      "tag": "@microsoft/ts-command-line_v2.0.6",
+      "date": "Thu, 31 Aug 2017 18:41:18 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/node-library-build\" from `~3.4.1` to `~4.0.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "2.0.5",
+      "tag": "@microsoft/ts-command-line_v2.0.5",
+      "date": "Wed, 30 Aug 2017 01:04:34 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/node-library-build\" from `~3.3.2` to `~3.4.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "2.0.4",
+      "tag": "@microsoft/ts-command-line_v2.0.4",
+      "date": "Tue, 22 Aug 2017 13:04:22 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/node-library-build\" from `~3.2.8` to `~3.3.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "2.0.3",
+      "tag": "@microsoft/ts-command-line_v2.0.3",
+      "date": "Tue, 25 Jul 2017 20:03:31 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Upgrade to TypeScript 2.4"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/node-library-build\" from `~3.1.0` to `~3.2.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "2.0.2",
+      "tag": "@microsoft/ts-command-line_v2.0.2",
+      "date": "Fri, 23 Jun 2017 20:05:07 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Initial open source release of this library"
+          }
+        ]
+      }
+    },
+    {
+      "version": "2.0.1",
+      "tag": "@microsoft/ts-command-line_v2.0.1",
+      "date": "Thu, 25 May 2017 21:09:42 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Dependency version change"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/sp-build-node\" from `~1.0.0` to `~1.1.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "2.0.0",
+      "tag": "@microsoft/ts-command-line_v2.0.0",
+      "date": "Fri, 17 Feb 2017 23:09:23 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Locked version numbers for @types packages"
+          },
+          {
+            "comment": "Updated .npmignore"
+          }
+        ],
+        "minor": [
+          {
+            "comment": "Added a \"option\" parameter, which can limit the input to a list of possible strings."
+          },
+          {
+            "comment": "Added the ability to give custom names to keys in the help menu."
+          }
+        ],
+        "major": [
+          {
+            "comment": "General availability"
+          }
+        ]
+      }
+    },
+    {
+      "version": "1.1.1",
+      "tag": "@microsoft/ts-command-line_v1.1.1",
+      "date": "Tue, 06 Dec 2016 20:44:26 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Changes for RC0 release."
+          }
+        ]
+      }
+    },
+    {
+      "version": "1.2.0",
+      "tag": "@microsoft/ts-command-line_v1.2.0",
+      "comments": {}
+    },
+    {
+      "version": "1.1.0",
+      "tag": "@microsoft/ts-command-line_v1.1.0",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Introduces a new command line argument type for a list of strings"
+          },
+          {
+            "comment": "Introduces a new command line argument type for integers"
+          }
+        ]
+      }
+    },
+    {
+      "version": "1.0.1",
+      "tag": "@microsoft/ts-command-line_v1.0.1",
+      "comments": {}
+    }
+  ]
+}

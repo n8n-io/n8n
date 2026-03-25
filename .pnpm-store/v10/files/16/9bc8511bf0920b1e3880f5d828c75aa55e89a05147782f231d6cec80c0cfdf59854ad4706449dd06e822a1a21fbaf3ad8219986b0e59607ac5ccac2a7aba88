@@ -1,0 +1,10 @@
+language: node_js
+sudo: false
+before_install:
+  - "npm -g install npm"
+node_js:
+  - "6"
+  - "8"
+  - "10"
+  - "lts/*"
+  - "node"

@@ -1,0 +1,1 @@
+{"version":3,"file":"symlink-error.d.ts","sourceRoot":"","sources":["../../src/symlink-error.ts"],"names":[],"mappings":"AAAA,qBAAa,YAAa,SAAQ,KAAK;IACrC,IAAI,EAAE,MAAM,CAAA;IACZ,OAAO,EAAE,MAAM,CAAA;IACf,OAAO,EAAE,SAAS,CAAY;IAC9B,IAAI,EAAE,mBAAmB,CAAsB;gBACnC,OAAO,EAAE,MAAM,EAAE,IAAI,EAAE,MAAM;IAKzC,IAAI,IAAI,WAEP;CACF"}

@@ -1,0 +1,48 @@
+{
+  "name": "@zilliz/milvus2-sdk-node",
+  "author": "Zilliz",
+  "milvusVersion": "v2.5.7",
+  "version": "2.5.7",
+  "main": "dist/milvus",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "pre": "git submodule update --remote && rm -rf proto/proto/google && mkdir -p proto/proto/google/protobuf && wget https://raw.githubusercontent.com/protocolbuffers/protobuf/main/src/google/protobuf/descriptor.proto -O proto/proto/google/protobuf/descriptor.proto",
+    "build": "rm -rf dist && tsc --declaration && node build.js",
+    "test": "NODE_ENV=dev jest",
+    "test-cloud": "NODE_ENV=dev jest test/http --testPathIgnorePatterns=none",
+    "bench": "ts-node test/tools/bench.ts",
+    "coverage": "NODE_ENV=dev jest --coverage=true --config jest.config.js --no-cache",
+    "build-test": " yarn build && NODE_ENV=dev jest test/build/Collection.spec.ts --testPathIgnorePatterns=none",
+    "example": "npx ts-node",
+    "doc": "rm -rf docs && npx typedoc",
+    "doc-json": "npx typedoc milvus --json"
+  },
+  "dependencies": {
+    "@grpc/grpc-js": "^1.12.1",
+    "@grpc/proto-loader": "^0.7.10",
+    "@opentelemetry/api": "^1.9.0",
+    "@petamoriken/float16": "^3.8.6",
+    "dayjs": "^1.11.7",
+    "generic-pool": "^3.9.0",
+    "lru-cache": "^9.1.2",
+    "protobufjs": "^7.2.6",
+    "winston": "^3.9.0"
+  },
+  "devDependencies": {
+    "@babel/plugin-transform-modules-commonjs": "^7.21.5",
+    "@types/jest": "^29.5.1",
+    "@types/node-fetch": "^2.6.8",
+    "jest": "^29.5.0",
+    "long": "^5.2.3",
+    "node-fetch": "2",
+    "ts-jest": "^29.1.0",
+    "ts-node": "^10.9.1",
+    "typedoc": "^0.24.7",
+    "typescript": "^5.0.4"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

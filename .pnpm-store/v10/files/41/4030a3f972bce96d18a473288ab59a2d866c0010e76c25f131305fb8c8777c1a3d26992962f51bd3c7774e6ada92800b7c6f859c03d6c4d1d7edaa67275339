@@ -1,0 +1,69 @@
+{
+  "name": "@xmldom/is-dom-node",
+  "version": "1.0.1",
+  "description": "TypeScript helper functions to narrow the type of object to a Node descendant",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "changelog": "gren changelog --override --generate --head main",
+    "lint": "eslint \"{src,test}/*.ts\" --cache && npm run prettier-check",
+    "lint:fix": "eslint --fix \"{src,test}/*.ts\" && npm run prettier-format",
+    "prepare": "tsc",
+    "prettier-check": "prettier --config .prettierrc.json --check .",
+    "prettier-format": "prettier --config .prettierrc.json --write .",
+    "prerelease": "git clean -xfd && npm ci && npm run lint && npm test && npm run build",
+    "release": "release-it",
+    "update:major": "npx npm-check-updates -i",
+    "tsc": "tsc",
+    "update:minor": "npx npm-check-updates -i -t minor",
+    "test": "npm run tsc && nyc mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xmldom/is-dom-node.git"
+  },
+  "keywords": [
+    "dom",
+    "node",
+    "typescript",
+    "narrow",
+    "guard"
+  ],
+  "author": "Chris Barth <chrisjbarth@hotmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/xmldom/is-dom-node/issues"
+  },
+  "homepage": "https://github.com/xmldom/is-dom-node#readme",
+  "files": [
+    "dist/"
+  ],
+  "devDependencies": {
+    "@cjbarth/github-release-notes": "^4.2.0",
+    "@istanbuljs/nyc-config-typescript": "^1.0.2",
+    "@types/jsdom": "^21.1.2",
+    "@types/mocha": "^10.0.2",
+    "@types/node": "^16.18.58",
+    "@typescript-eslint/eslint-plugin": "^6.7.5",
+    "@typescript-eslint/parser": "^6.7.5",
+    "@xmldom/xmldom": "^0.8.10",
+    "choma": "^1.2.1",
+    "eslint": "^8.51.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-deprecation": "^2.0.0",
+    "jsdom": "^22.1.0",
+    "mocha": "^10.2.0",
+    "nyc": "^15.1.0",
+    "prettier": "^3.0.3",
+    "prettier-plugin-packagejson": "^2.4.6",
+    "release-it": "^16.2.1",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.2.2"
+  },
+  "engines": {
+    "node": ">= 16"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

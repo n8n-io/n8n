@@ -1,0 +1,46 @@
+{
+  "name": "assert",
+  "version": "2.1.0",
+  "description": "The assert module from Node.js, for the browser.",
+  "main": "build/assert.js",
+  "files": [
+    "build/assert.js",
+    "build/internal"
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/browserify/commonjs-assert",
+  "repository": "browserify/commonjs-assert",
+  "scripts": {
+    "build": "babel assert.js test.js --out-dir build && babel internal --out-dir build/internal && babel test --out-dir build/test",
+    "prepare": "npm run build",
+    "dev": "babel assert.js test.js --watch --out-dir build & babel internal --watch --out-dir build/internal & babel test --watch --out-dir build/test",
+    "test": "npm run build && npm run test:nobuild",
+    "test:nobuild": "node build/test.js",
+    "test:source": "node test.js",
+    "test:browsers": "airtap build/test.js",
+    "test:browsers:local": "npm run test:browsers -- --local"
+  },
+  "keywords": [
+    "assert",
+    "browser"
+  ],
+  "devDependencies": {
+    "@babel/cli": "^7.22.15",
+    "@babel/core": "^7.22.15",
+    "@babel/preset-env": "^7.22.15",
+    "airtap": "^2.0.4",
+    "array-fill": "^1.2.0",
+    "core-js": "^3.32.2",
+    "cross-env": "^5.2.1",
+    "object.entries": "^1.1.7",
+    "object.getownpropertydescriptors": "^2.1.7",
+    "tape": "^5.6.6"
+  },
+  "dependencies": {
+    "call-bind": "^1.0.2",
+    "is-nan": "^1.3.2",
+    "object-is": "^1.1.5",
+    "object.assign": "^4.1.4",
+    "util": "^0.12.5"
+  }
+}

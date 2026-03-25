@@ -1,0 +1,95 @@
+{
+  "name": "yaml",
+  "version": "2.3.4",
+  "license": "ISC",
+  "author": "Eemeli Aro <eemeli@gmail.com>",
+  "repository": "github:eemeli/yaml",
+  "description": "JavaScript parser and stringifier for YAML",
+  "keywords": [
+    "YAML",
+    "parser",
+    "stringifier"
+  ],
+  "homepage": "https://eemeli.org/yaml/",
+  "files": [
+    "browser/",
+    "dist/",
+    "util.js"
+  ],
+  "type": "commonjs",
+  "main": "./dist/index.js",
+  "browser": {
+    "./dist/index.js": "./browser/index.js",
+    "./dist/util.js": "./browser/dist/util.js",
+    "./util.js": "./browser/dist/util.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "node": "./dist/index.js",
+      "default": "./browser/index.js"
+    },
+    "./package.json": "./package.json",
+    "./util": {
+      "types": "./dist/util.d.ts",
+      "node": "./dist/util.js",
+      "default": "./browser/dist/util.js"
+    }
+  },
+  "scripts": {
+    "build": "npm run build:node && npm run build:browser",
+    "build:browser": "rollup -c config/rollup.browser-config.mjs",
+    "build:node": "rollup -c config/rollup.node-config.mjs",
+    "clean": "git clean -fdxe node_modules",
+    "lint": "eslint src/",
+    "prettier": "prettier --write .",
+    "prestart": "npm run build:node",
+    "start": "node -i -e 'YAML=require(\"./dist/index.js\")'",
+    "test": "jest --config config/jest.config.js",
+    "test:all": "npm test && npm run test:types && npm run test:dist && npm run test:dist:types",
+    "test:browsers": "cd playground && npm test",
+    "test:dist": "npm run build:node && jest --config config/jest.config.js",
+    "test:dist:types": "tsc --allowJs --moduleResolution node --noEmit --target es5 dist/index.js",
+    "test:types": "tsc --noEmit && tsc --noEmit -p tests/tsconfig.json",
+    "docs:install": "cd docs-slate && bundle install",
+    "docs:deploy": "cd docs-slate && ./deploy.sh",
+    "docs": "cd docs-slate && bundle exec middleman server",
+    "preversion": "npm test && npm run build",
+    "prepublishOnly": "npm run clean && npm test && npm run build"
+  },
+  "browserslist": "defaults, not ie 11",
+  "prettier": {
+    "arrowParens": "avoid",
+    "semi": false,
+    "singleQuote": true,
+    "trailingComma": "none"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.12.10",
+    "@babel/plugin-proposal-class-properties": "^7.12.1",
+    "@babel/plugin-proposal-nullish-coalescing-operator": "^7.12.1",
+    "@babel/plugin-transform-typescript": "^7.12.17",
+    "@babel/preset-env": "^7.12.11",
+    "@rollup/plugin-babel": "^6.0.3",
+    "@rollup/plugin-replace": "^5.0.2",
+    "@rollup/plugin-typescript": "^11.0.0",
+    "@types/jest": "^29.2.4",
+    "@types/node": "^14.18.35",
+    "@typescript-eslint/eslint-plugin": "^6.4.1",
+    "@typescript-eslint/parser": "^6.4.1",
+    "babel-jest": "^29.0.1",
+    "cross-env": "^7.0.3",
+    "eslint": "^8.2.0",
+    "eslint-config-prettier": "^9.0.0",
+    "fast-check": "^2.12.0",
+    "jest": "^29.0.1",
+    "jest-ts-webcompat-resolver": "^1.0.0",
+    "prettier": "^3.0.2",
+    "rollup": "^3.7.5",
+    "tslib": "^2.1.0",
+    "typescript": "^5.0.3"
+  },
+  "engines": {
+    "node": ">= 14"
+  }
+}

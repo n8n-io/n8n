@@ -1,0 +1,1 @@
+{"version":3,"file":"AuthenticationResult.d.ts","sourceRoot":"","sources":["../../../src/response/AuthenticationResult.ts"],"names":[],"mappings":"AAKA,OAAO,EACH,WAAW,EACX,oBAAoB,IAAI,0BAA0B,EACrD,MAAM,4BAA4B,CAAC;AAEpC,MAAM,MAAM,oBAAoB,GAAG,0BAA0B,GAAG;IAC5D,OAAO,EAAE,WAAW,CAAC;CACxB,CAAC"}

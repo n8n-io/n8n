@@ -1,0 +1,38 @@
+{
+  "name": "should-equal",
+  "version": "2.0.0",
+  "description": "Deep comparison of 2 instances for should.js",
+  "main": "cjs/should-equal.js",
+  "jsnext:main": "es6/should-equal.js",
+  "module": "es6/should-equal.js",
+  "scripts": {
+    "test": "mocha --ui bdd -R mocha-better-spec-reporter test.js",
+    "cjs": "rollup --format=cjs --output=cjs/should-equal.js index.js",
+    "es6": "rollup --format=es --output=es6/should-equal.js index.js",
+    "build": "npm run cjs && npm run es6",
+    "prepare": "npm run build",
+    "pretest": "npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shouldjs/equal.git"
+  },
+  "keywords": ["should.js", "deep", "equal"],
+  "author": "Denis Bardadym <bardadymchik@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/shouldjs/equal/issues"
+  },
+  "homepage": "https://github.com/shouldjs/equal",
+  "devDependencies": {
+    "eslint": "^3.0.0",
+    "eslint-config-shouldjs": "^1.0.2",
+    "mocha": "^3.5.0",
+    "mocha-better-spec-reporter": "^3.1.0",
+    "rollup": "0.34.7"
+  },
+  "dependencies": {
+    "should-type": "^1.4.0"
+  },
+  "files": ["cjs/*", "es6/*", "README.md", "LICENSE"]
+}

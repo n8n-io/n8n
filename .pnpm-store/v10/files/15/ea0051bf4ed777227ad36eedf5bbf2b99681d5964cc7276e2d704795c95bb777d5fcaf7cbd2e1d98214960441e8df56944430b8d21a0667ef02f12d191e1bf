@@ -1,0 +1,201 @@
+{
+  "name": "@langchain/langgraph-sdk",
+  "version": "1.7.2",
+  "description": "Client library for interacting with the LangGraph API",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/langchain-ai/langgraphjs.git",
+    "directory": "libs/sdk"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@types/json-schema": "^7.0.15",
+    "p-queue": "^9.0.1",
+    "p-retry": "^7.1.1",
+    "uuid": "^13.0.0"
+  },
+  "devDependencies": {
+    "@langchain/core": "^1.1.28",
+    "@langchain/scripts": "^0.1.4",
+    "deepagents": "^1.8.1",
+    "langchain": "^1.2.27",
+    "@tsconfig/recommended": "^1.0.2",
+    "@types/node": "^18.15.11",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@types/uuid": "^9.0.1",
+    "@typescript-eslint/eslint-plugin": "^6.12.0",
+    "@typescript-eslint/parser": "^6.12.0",
+    "eslint": "^8.33.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-config-prettier": "^8.6.0",
+    "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-no-instanceof": "^1.0.1",
+    "eslint-plugin-prettier": "^4.2.1",
+    "prettier": "^2.8.3",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "svelte": "^5.43.6",
+    "typescript": "^4.9.5 || ^5.4.5",
+    "vitest": "^3.2.4",
+    "vue": "^3.5.24",
+    "zod": "^4.3.5"
+  },
+  "peerDependencies": {
+    "@angular/core": "^18.0.0 || ^19.0.0 || ^20.0.0",
+    "@langchain/core": "^1.1.16",
+    "react": "^18 || ^19",
+    "react-dom": "^18 || ^19",
+    "svelte": "^4.0.0 || ^5.0.0",
+    "vue": "^3.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@angular/core": {
+      "optional": true
+    },
+    "@langchain/core": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    },
+    "svelte": {
+      "optional": true
+    },
+    "vue": {
+      "optional": true
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "input": "./src/index.ts",
+      "typedoc": "./src/index.ts",
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./ui": {
+      "input": "./src/ui/index.ts",
+      "typedoc": "./src/ui/index.ts",
+      "import": {
+        "types": "./dist/ui/index.d.ts",
+        "default": "./dist/ui/index.js"
+      },
+      "require": {
+        "types": "./dist/ui/index.d.cts",
+        "default": "./dist/ui/index.cjs"
+      }
+    },
+    "./client": {
+      "input": "./src/client.ts",
+      "typedoc": "./src/client.ts",
+      "import": {
+        "types": "./dist/client.d.ts",
+        "default": "./dist/client.js"
+      },
+      "require": {
+        "types": "./dist/client.d.cts",
+        "default": "./dist/client.cjs"
+      }
+    },
+    "./auth": {
+      "input": "./src/auth/index.ts",
+      "typedoc": "./src/auth/index.ts",
+      "import": {
+        "types": "./dist/auth/index.d.ts",
+        "default": "./dist/auth/index.js"
+      },
+      "require": {
+        "types": "./dist/auth/index.d.cts",
+        "default": "./dist/auth/index.cjs"
+      }
+    },
+    "./react": {
+      "input": "./src/react/index.ts",
+      "typedoc": "./src/react/index.ts",
+      "import": {
+        "types": "./dist/react/index.d.ts",
+        "default": "./dist/react/index.js"
+      },
+      "require": {
+        "types": "./dist/react/index.d.cts",
+        "default": "./dist/react/index.cjs"
+      }
+    },
+    "./logging": {
+      "input": "./src/logging/index.ts",
+      "typedoc": "./src/logging/index.ts",
+      "import": {
+        "types": "./dist/logging/index.d.ts",
+        "default": "./dist/logging/index.js"
+      },
+      "require": {
+        "types": "./dist/logging/index.d.cts",
+        "default": "./dist/logging/index.cjs"
+      }
+    },
+    "./react-ui": {
+      "input": "./src/react-ui/index.ts",
+      "typedoc": "./src/react-ui/index.ts",
+      "import": {
+        "types": "./dist/react-ui/index.d.ts",
+        "default": "./dist/react-ui/index.js"
+      },
+      "require": {
+        "types": "./dist/react-ui/index.d.cts",
+        "default": "./dist/react-ui/index.cjs"
+      }
+    },
+    "./utils": {
+      "input": "./src/utils/index.ts",
+      "typedoc": "./src/utils/index.ts",
+      "import": {
+        "types": "./dist/utils/index.d.ts",
+        "default": "./dist/utils/index.js"
+      },
+      "require": {
+        "types": "./dist/utils/index.d.cts",
+        "default": "./dist/utils/index.cjs"
+      }
+    },
+    "./react-ui/server": {
+      "input": "./src/react-ui/server/index.ts",
+      "typedoc": "./src/react-ui/server/index.ts",
+      "import": {
+        "types": "./dist/react-ui/server/index.d.ts",
+        "default": "./dist/react-ui/server/index.js"
+      },
+      "require": {
+        "types": "./dist/react-ui/server/index.d.cts",
+        "default": "./dist/react-ui/server/index.cjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist/"
+  ],
+  "scripts": {
+    "clean": "rm -rf dist/ dist-cjs/",
+    "build": "pnpm turbo build:internal --filter=@langchain/langgraph-sdk",
+    "build:internal": "pnpm --filter @langchain/build compile @langchain/langgraph-sdk",
+    "prepublish": "pnpm build",
+    "format:check": "prettier --check src",
+    "format": "prettier --write src",
+    "lint:eslint": "NODE_OPTIONS=--max-old-space-size=4096 eslint --cache --ext .ts,.js,.jsx,.tsx src/",
+    "lint": "pnpm lint:eslint",
+    "lint:fix": "pnpm lint:eslint --fix",
+    "test": "vitest run"
+  }
+}

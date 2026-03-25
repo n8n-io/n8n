@@ -1,0 +1,42 @@
+{
+  "name": "postcss-js",
+  "version": "4.0.1",
+  "description": "PostCSS for CSS-in-JS and styles in JS objects",
+  "keywords": [
+    "postcss",
+    "postcss-runner",
+    "js",
+    "inline",
+    "react",
+    "css",
+    "cssinjs"
+  ],
+  "author": "Andrey Sitnik <andrey@sitnik.ru>",
+  "license": "MIT",
+  "repository": "postcss/postcss-js",
+  "engines": {
+    "node": "^12 || ^14 || >= 16"
+  },
+  "exports": {
+    ".": {
+      "require": "./index.js",
+      "import": "./index.mjs"
+    },
+    "./package.json": "./package.json",
+    "./async": "./async.js",
+    "./objectifier": "./objectifier.js",
+    "./parser": "./parser.js",
+    "./process-result": "./process-result.js",
+    "./sync": "./sync.js"
+  },
+  "funding": {
+    "type": "opencollective",
+    "url": "https://opencollective.com/postcss/"
+  },
+  "peerDependencies": {
+    "postcss": "^8.4.21"
+  },
+  "dependencies": {
+    "camelcase-css": "^2.0.1"
+  }
+}

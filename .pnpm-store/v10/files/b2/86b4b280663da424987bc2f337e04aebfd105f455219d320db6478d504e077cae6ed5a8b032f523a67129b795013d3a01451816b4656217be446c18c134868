@@ -1,0 +1,16 @@
+{
+  "name": "object-path",
+  "main": "index.js",
+  "keywords": [
+    "deep",
+    "path",
+    "access",
+    "bean",
+    "object"
+  ],
+  "ignore" : [
+    "test.js",
+    "coverage",
+    "*.yml"
+  ]
+}

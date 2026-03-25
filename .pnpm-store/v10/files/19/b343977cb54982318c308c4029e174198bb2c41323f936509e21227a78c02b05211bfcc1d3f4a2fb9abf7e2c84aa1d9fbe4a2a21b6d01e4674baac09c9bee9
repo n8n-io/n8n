@@ -1,0 +1,1 @@
+{"version":3,"file":"performanceTimestampProvider.d.ts","sourceRoot":"","sources":["../../../../src/internal/scheduler/performanceTimestampProvider.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,iBAAiB,EAAE,MAAM,UAAU,CAAC;AAE7C,UAAU,4BAA6B,SAAQ,iBAAiB;IAC9D,QAAQ,EAAE,iBAAiB,GAAG,SAAS,CAAC;CACzC;AAED,eAAO,MAAM,4BAA4B,EAAE,4BAO1C,CAAC"}

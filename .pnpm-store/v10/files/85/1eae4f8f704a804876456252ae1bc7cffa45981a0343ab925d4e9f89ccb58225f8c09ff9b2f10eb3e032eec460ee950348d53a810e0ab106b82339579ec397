@@ -1,0 +1,64 @@
+@startdot
+digraph DockerDeps {
+  //rankdir=BT;
+  rankdir=TD;
+  node [shape=cylinder, style="rounded,filled", color=black, fillcolor=royalblue];
+  DISTRO_IMG [label="ubuntu:latest"];
+  PKG [label="packages\ne.g. cmake, g++", shape=box3d];
+  SRC [label="git repo", shape=folder];
+  SPL [label="sample", shape=folder];
+
+  subgraph clusterDockerfile {
+    ENV_IMG [label="cpu_features:amd64_env\nenv"];
+    DEVEL_IMG [label="cpu_features:amd64_devel\ndevel"];
+    BUILD_IMG [label="cpu_features:amd64_build\nbuild"];
+    TEST_IMG [label="cpu_features:amd64_test\ntest"];
+    INSTALL_ENV_IMG [label="cpu_features:amd64_install_env\ninstall_env"];
+    INSTALL_DEVEL_IMG [label="cpu_features:amd64_install_devel\ninstall_devel"];
+    INSTALL_BUILD_IMG [label="cpu_features:amd64_install_build\ninstall_build"];
+    INSTALL_TEST_IMG [label="cpu_features:amd64_install_test\ninstall_test"];
+
+    ENV_IMG -> DEVEL_IMG;
+    DEVEL_IMG -> BUILD_IMG;
+    BUILD_IMG -> TEST_IMG;
+
+    ENV_IMG -> INSTALL_ENV_IMG;
+    BUILD_IMG -> INSTALL_ENV_IMG [label="copy install", style="dashed"];
+    INSTALL_ENV_IMG -> INSTALL_DEVEL_IMG;
+    SPL -> INSTALL_DEVEL_IMG [label="copy", style="dashed"];
+    INSTALL_DEVEL_IMG -> INSTALL_BUILD_IMG;
+    INSTALL_BUILD_IMG -> INSTALL_TEST_IMG;
+
+    color=royalblue;
+    label = "docker/amd64/Dockerfile";
+  }
+  DISTRO_IMG -> ENV_IMG;
+  PKG -> ENV_IMG [label="install", style="dashed"];
+  SRC -> DEVEL_IMG [label="copy", style="dashed"];
+
+  subgraph clusterCache {
+    node [shape=note, style="rounded,filled", color=black, fillcolor=royalblue];
+    ENV_TAR [label="docker_amd64_env.tar"];
+    DEVEL_TAR [label="docker_amd64_devel.tar"];
+    BUILD_TAR [label="docker_amd64_build.tar"];
+    TEST_TAR [label="docker_amd64_test.tar"];
+    INSTALL_ENV_TAR [label="docker_amd64_install_env.tar"];
+    INSTALL_DEVEL_TAR [label="docker_amd64_install_devel.tar"];
+    INSTALL_BUILD_TAR [label="docker_amd64_install_build.tar"];
+    INSTALL_TEST_TAR [label="docker_amd64_install_test.tar"];
+
+    edge [color=red];
+    ENV_IMG -> ENV_TAR [label="make save_amd64_env"];
+    DEVEL_IMG -> DEVEL_TAR [label="make save_amd64_devel"];
+    BUILD_IMG -> BUILD_TAR [label="make save_amd64_build"];
+    TEST_IMG -> TEST_TAR [label="make save_amd64_test"];
+    INSTALL_ENV_IMG -> INSTALL_ENV_TAR [label="make save_amd64_install_env"];
+    INSTALL_DEVEL_IMG -> INSTALL_DEVEL_TAR [label="make save_amd64_install_devel"];
+    INSTALL_BUILD_IMG -> INSTALL_BUILD_TAR [label="make save_amd64_install_build"];
+    INSTALL_TEST_IMG -> INSTALL_TEST_TAR [label="make save_amd64_install_test"];
+
+    color=royalblue;
+    label = "cache/amd64/";
+  }
+}
+@enddot

@@ -1,0 +1,47 @@
+{
+  "name": "is-emoji-supported",
+  "version": "0.0.5",
+  "description": "Detect if the current device support the specified emoji",
+  "main": "./dist/cjs/is-emoji-supported.js",
+  "module": "./dist/esm/is-emoji-supported.js",
+  "sideEffects": false,
+  "browser": {
+    "./dist/cjs/is-emoji-supported.js": "./dist/umd/is-emoji-supported.js"
+  },
+  "files": [
+    "dist/",
+    "index.d.ts"
+  ],
+  "scripts": {
+    "test": "cypress run",
+    "lint": "tsc --noEmit",
+    "build": "del dist && rollup -c"
+  },
+  "author": "Vincent Thibault <vthibault.mobile@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/koala-interactive/is-emoji-supported/issues"
+  },
+  "repository": "github:koala-interactive/is-emoji-supported",
+  "keywords": [
+    "is-emoji-supported",
+    "support",
+    "detect",
+    "emoji",
+    "emojione",
+    "joypixel"
+  ],
+  "devDependencies": {
+    "@babel/core": "^7.10.2",
+    "@babel/preset-env": "^7.10.2",
+    "@babel/preset-typescript": "^7.10.1",
+    "@rollup/plugin-typescript": "^4.1.2",
+    "@types/cypress": "^1.1.3",
+    "cypress": "^4.8.0",
+    "del-cli": "^3.0.1",
+    "prettier": "2.0.5",
+    "rollup": "^2.12.0",
+    "rollup-plugin-terser": "^6.1.0",
+    "typescript": "^3.9.3"
+  }
+}

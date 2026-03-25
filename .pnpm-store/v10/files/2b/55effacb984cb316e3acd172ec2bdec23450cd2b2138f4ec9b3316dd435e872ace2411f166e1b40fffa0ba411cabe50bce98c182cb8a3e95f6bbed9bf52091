@@ -1,0 +1,44 @@
+{
+  "name": "@octokit/auth-token",
+  "publishConfig": {
+    "access": "public"
+  },
+  "version": "4.0.0",
+  "description": "GitHub API token authentication for browsers and Node.js",
+  "repository": "github:octokit/auth-token.js",
+  "keywords": [
+    "github",
+    "octokit",
+    "authentication",
+    "api"
+  ],
+  "author": "Gregor Martynus (https://github.com/gr2m)",
+  "license": "MIT",
+  "devDependencies": {
+    "@octokit/request": "^6.0.0",
+    "@octokit/tsconfig": "^2.0.0",
+    "@octokit/types": "^9.2.3",
+    "@types/fetch-mock": "^7.3.1",
+    "@types/jest": "^29.0.0",
+    "esbuild": "^0.18.0",
+    "fetch-mock": "^9.0.0",
+    "glob": "^10.2.6",
+    "jest": "^29.0.0",
+    "prettier": "2.8.8",
+    "semantic-release": "^21.0.0",
+    "ts-jest": "^29.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">= 18"
+  },
+  "files": [
+    "dist-*/**",
+    "bin/**"
+  ],
+  "main": "dist-node/index.js",
+  "browser": "dist-web/index.js",
+  "types": "dist-types/index.d.ts",
+  "module": "dist-src/index.js",
+  "sideEffects": false
+}

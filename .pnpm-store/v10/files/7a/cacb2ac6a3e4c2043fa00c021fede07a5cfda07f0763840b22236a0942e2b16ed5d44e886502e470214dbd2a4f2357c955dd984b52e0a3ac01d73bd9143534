@@ -1,0 +1,23 @@
+{
+  "name": "pug-strip-comments",
+  "version": "2.0.0",
+  "description": "Strip comments from a Pug token stream (from the lexer)",
+  "keywords": [
+    "pug"
+  ],
+  "dependencies": {
+    "pug-error": "^2.0.0"
+  },
+  "devDependencies": {
+    "line-json": "^2.0.0"
+  },
+  "files": [
+    "index.js"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pugjs/pug/tree/master/packages/pug-strip-comments"
+  },
+  "author": "Timothy Gu <timothygu99@gmail.com>",
+  "license": "MIT"
+}

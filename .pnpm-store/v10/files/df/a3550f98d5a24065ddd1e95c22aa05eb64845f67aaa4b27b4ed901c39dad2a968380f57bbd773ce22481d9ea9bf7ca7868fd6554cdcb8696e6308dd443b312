@@ -1,0 +1,1 @@
+{"version":3,"file":"clientreport.d.ts","sourceRoot":"","sources":["../../../src/utils/clientreport.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,YAAY,EAAE,MAAM,6BAA6B,CAAC;AAChE,OAAO,KAAK,EAAE,oBAAoB,EAAoB,MAAM,yBAAyB,CAAC;AAItF;;;;GAIG;AACH,wBAAgB,0BAA0B,CACxC,gBAAgB,EAAE,YAAY,CAAC,kBAAkB,CAAC,EAClD,GAAG,CAAC,EAAE,MAAM,EACZ,SAAS,CAAC,EAAE,MAAM,GACjB,oBAAoB,CAStB"}

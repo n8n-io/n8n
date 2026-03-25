@@ -1,0 +1,20 @@
+{
+  "name": "ts-map",
+  "version": "1.0.3",
+  "description": "A typescript Map structure like ES6 Map",
+  "main": "./dist/ts-map.js",
+  "homepage": "https://github.com/lavyun/ts-map",
+  "types": "./dist/ts-map.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "http://github.com/lavyun/ts-map.git"
+  },
+  "keywords": [
+    "typescript",
+    "Map",
+    "ts",
+    "ts-map"
+  ],
+  "author": "lavyun",
+  "license": "MIT"
+}

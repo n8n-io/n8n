@@ -1,0 +1,64 @@
+{
+  "name": "mammoth",
+  "version": "1.11.0",
+  "author": "Michael Williamson <mike@zwobble.org>",
+  "description": "Convert Word documents from docx to simple HTML and Markdown",
+  "keywords": [
+    "docx",
+    "html",
+    "office",
+    "word",
+    "markdown",
+    "md"
+  ],
+  "main": "./lib/index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mwilliamson/mammoth.js.git"
+  },
+  "dependencies": {
+    "@xmldom/xmldom": "^0.8.6",
+    "argparse": "~1.0.3",
+    "base64-js": "^1.5.1",
+    "bluebird": "~3.4.0",
+    "dingbat-to-unicode": "^1.0.1",
+    "jszip": "^3.7.1",
+    "lop": "^0.4.2",
+    "path-is-absolute": "^1.0.0",
+    "underscore": "^1.13.1",
+    "xmlbuilder": "^10.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.2.5",
+    "browserify": "~13.0.1",
+    "browserify-prepend-licenses": "~1.0.0",
+    "duck": "^0.1.12",
+    "eslint": "2.13.1",
+    "hamjest": "^4.0.1",
+    "mocha": "~2.2.5",
+    "temp": "^0.9.4",
+    "typescript": "^5.0.4",
+    "uglify-js": "~2.4.8"
+  },
+  "browser": {
+    "./lib/unzip.js": "./browser/unzip.js",
+    "./lib/docx/files.js": "./browser/docx/files.js"
+  },
+  "bin": {
+    "mammoth": "bin/mammoth"
+  },
+  "scripts": {
+    "pretest": "eslint lib test",
+    "test": "mocha 'test/**/*.tests.js'",
+    "check-typescript": "tsc --noEmit lib/index.d.ts",
+    "prepare": "make mammoth.browser.min.js"
+  },
+  "license": "BSD-2-Clause",
+  "engines": {
+    "node": ">=12.0.0"
+  },
+  "volta": {
+    "node": "16.18.1",
+    "npm": "8.19.2"
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "name": "replace-in-file",
+  "version": "6.3.5",
+  "description": "A simple utility to quickly replace text in one or more files.",
+  "homepage": "https://github.com/adamreisnz/replace-in-file#readme",
+  "author": {
+    "name": "Adam Reis",
+    "email": "adam@reis.nz",
+    "url": "https://adam.reiz.nz/"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/adamreisnz/replace-in-file.git"
+  },
+  "bugs": {
+    "url": "https://github.com/adamreisnz/replace-in-file/issues"
+  },
+  "keywords": [
+    "replace",
+    "text",
+    "contents",
+    "file"
+  ],
+  "main": "index.js",
+  "bin": "./bin/cli.js",
+  "types": "./types/index.d.ts",
+  "engines": {
+    "node": ">=10"
+  },
+  "scripts": {
+    "test": "nyc mocha 'lib/**/*.spec.js'",
+    "postversion": "git push && git push --tags && npm publish",
+    "coverage": "open -a \"Google Chrome\" ./coverage/lcov-report/index.html"
+  },
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "glob": "^7.2.0",
+    "yargs": "^17.2.1"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.15.8",
+    "@babel/cli": "^7.15.7",
+    "@babel/preset-env": "^7.15.8",
+    "@babel/register": "^7.15.3",
+    "babel-plugin-istanbul": "^6.1.1",
+    "bluebird": "^3.7.2",
+    "chai": "^4.3.4",
+    "chai-as-promised": "^7.1.1",
+    "dirty-chai": "^2.0.1",
+    "mocha": "^9.1.3",
+    "nyc": "^15.0.1"
+  },
+  "browserify": {
+    "transform": [
+      [
+        "babelify",
+        {
+          "presets": [
+            "es2015"
+          ]
+        }
+      ]
+    ]
+  }
+}

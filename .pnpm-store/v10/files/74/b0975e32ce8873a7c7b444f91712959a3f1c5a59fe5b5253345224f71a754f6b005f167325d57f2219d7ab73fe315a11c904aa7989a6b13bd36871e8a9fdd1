@@ -1,0 +1,60 @@
+{
+  "name": "@ts-graphviz/ast",
+  "version": "2.0.7",
+  "description": "Graphviz AST(Abstract Syntax Tree) Utilities",
+  "keywords": [],
+  "homepage": "https://github.com/ts-graphviz/ts-graphviz#readme",
+  "bugs": {
+    "url": "https://github.com/ts-graphviz/ts-graphviz/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ts-graphviz/ts-graphviz.git",
+    "directory": "packages/ast"
+  },
+  "funding": [
+    {
+      "type": "github",
+      "url": "https://github.com/sponsors/ts-graphviz"
+    },
+    {
+      "type": "opencollective",
+      "url": "https://opencollective.com/ts-graphviz"
+    }
+  ],
+  "license": "MIT",
+  "author": "kamiazya <yuki@kamiazya.tech>",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./lib/ast.d.ts",
+      "require": "./lib/ast.cjs",
+      "default": "./lib/ast.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "lib/ast.cjs",
+  "module": "lib/ast.js",
+  "types": "lib/ast.d.ts",
+  "dependencies": {
+    "@ts-graphviz/common": "^2.1.5"
+  },
+  "devDependencies": {
+    "peggy": "^4.0.3",
+    "ts-pegjs": "^4.2.1",
+    "typescript": "^5.4.5",
+    "vite": "^5.4.8",
+    "vite-plugin-dts": "^4.2.1"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "vite build",
+    "codegen": "peggy --plugin ts-pegjs --extra-options-file src/dot-shim/parser/peggy.options.json -o src/dot-shim/parser/_parse.ts src/dot-shim/parser/dot.peggy"
+  }
+}

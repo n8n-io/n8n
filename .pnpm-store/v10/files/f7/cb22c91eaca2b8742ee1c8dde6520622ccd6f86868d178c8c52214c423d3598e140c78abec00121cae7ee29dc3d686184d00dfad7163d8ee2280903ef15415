@@ -1,0 +1,5 @@
+{
+  "name": "web-streams-polyfill",
+  "main": "../../dist/polyfill.es5.js",
+  "types": "../../types/polyfill.d.ts"
+}

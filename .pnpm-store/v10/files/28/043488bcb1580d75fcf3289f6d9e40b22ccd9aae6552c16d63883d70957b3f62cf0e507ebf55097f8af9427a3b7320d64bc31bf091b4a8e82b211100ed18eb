@@ -1,0 +1,1 @@
+{"version":3,"sources":["../../src/driver/types/DataTypeDefaults.ts"],"names":[],"mappings":"","file":"DataTypeDefaults.js","sourcesContent":["export interface DataTypeDefaults {\n    [type: string]: {\n        length?: number\n        width?: number\n        precision?: number\n        scale?: number\n    }\n}\n"],"sourceRoot":"../.."}

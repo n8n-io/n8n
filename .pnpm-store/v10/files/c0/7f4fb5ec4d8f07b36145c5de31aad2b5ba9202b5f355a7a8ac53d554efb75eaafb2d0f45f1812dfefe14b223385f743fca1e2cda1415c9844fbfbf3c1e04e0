@@ -1,0 +1,104 @@
+{
+  "name": "vue-json-pretty",
+  "version": "2.6.0",
+  "description": "A JSON tree view component that is easy to use and also supports data selection.",
+  "author": "leezng <im.leezng@gmail.com>",
+  "main": "lib/vue-json-pretty.js",
+  "module": "esm/vue-json-pretty.js",
+  "scripts": {
+    "dev": "node build/dev-server.js",
+    "build": "npm run build:main && npm run build:esm && npm run build:dts",
+    "build:main": "node build/build.js",
+    "build:esm": "cross-env ESM=true node build/build.js",
+    "build:example": "cross-env EXAMPLE_ENV=true node build/build.js",
+    "build:dts": "tsc --p tsconfig.dts.json && tsc-alias -p ./tsconfig.dts.json",
+    "test": "cypress open",
+    "lint": "eslint --ext .ts,.tsx,.vue src example"
+  },
+  "typings": "types/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:leezng/vue-json-pretty.git"
+  },
+  "homepage": "https://leezng.github.io/vue-json-pretty",
+  "keywords": [
+    "vue",
+    "json",
+    "format",
+    "pretty",
+    "vue-component"
+  ],
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/leezng/vue-json-pretty/issues"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.14.6",
+    "@babel/plugin-transform-runtime": "^7.14.5",
+    "@babel/preset-env": "^7.14.7",
+    "@babel/preset-typescript": "^7.14.5",
+    "@typescript-eslint/eslint-plugin": "^4.28.0",
+    "@typescript-eslint/parser": "^4.28.0",
+    "@vue/babel-plugin-jsx": "^1.0.6",
+    "@vue/compiler-sfc": "^3.1.2",
+    "@vue/eslint-config-typescript": "^7.0.0",
+    "autoprefixer": "^10.2.6",
+    "babel-loader": "^8.2.2",
+    "chalk": "^4.1.1",
+    "clean-webpack-plugin": "^3.0.0",
+    "connect-history-api-fallback": "^1.3.0",
+    "copy-webpack-plugin": "^6.4.1",
+    "cross-env": "^7.0.3",
+    "cross-spawn": "^7.0.3",
+    "css-loader": "^5.2.6",
+    "cssnano": "^4.1.11",
+    "cypress": "^5.5.0",
+    "eslint": "^7.29.0",
+    "eslint-plugin-vue": "^7.11.1",
+    "eslint-webpack-plugin": "^2.5.4",
+    "eventsource-polyfill": "^0.9.6",
+    "express": "^4.17.1",
+    "file-loader": "^6.0.0",
+    "friendly-errors-webpack-plugin": "^1.7.0",
+    "html-webpack-plugin": "^4.5.2",
+    "http-proxy-middleware": "^1.3.1",
+    "less": "^3.13.1",
+    "less-loader": "^7.3.0",
+    "mini-css-extract-plugin": "^1.6.0",
+    "open": "^7.4.2",
+    "optimize-css-assets-webpack-plugin": "^5.0.7",
+    "prettier": "^2.3.1",
+    "selenium-server": "^3.0.1",
+    "semver": "^7.3.5",
+    "shelljs": "^0.8.4",
+    "tsc-alias": "^1.6.9",
+    "typescript": "^4.3.4",
+    "url-loader": "^4.1.0",
+    "vue": "^3.2.37",
+    "vue-loader": "^16.2.0",
+    "vue-style-loader": "^4.1.3",
+    "webpack": "^5.40.0",
+    "webpack-bundle-analyzer": "^4.5.0",
+    "webpack-dev-middleware": "^3.7.3",
+    "webpack-hot-middleware": "^2.25.1",
+    "webpack-merge": "^5.8.0"
+  },
+  "engines": {
+    "node": ">= 10.0.0",
+    "npm": ">= 5.0.0"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 10 versions",
+    "not ie <= 11"
+  ],
+  "files": [
+    "lib",
+    "esm",
+    "types"
+  ],
+  "peerDependencies": {
+    "vue": ">=3.0.0"
+  },
+  "dependencies": {}
+}

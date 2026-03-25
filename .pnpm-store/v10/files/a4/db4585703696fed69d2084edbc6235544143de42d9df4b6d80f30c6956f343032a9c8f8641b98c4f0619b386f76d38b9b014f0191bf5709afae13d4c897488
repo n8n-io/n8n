@@ -1,0 +1,5 @@
+import type { ChecksumConstructor, HashConstructor, HttpRequest } from "@smithy/types";
+/**
+ * @internal
+ */
+export declare const getPayloadHash: ({ headers, body }: HttpRequest, hashConstructor: ChecksumConstructor | HashConstructor) => Promise<string>;

@@ -1,0 +1,1 @@
+{"version":3,"file":"uuidUtils-react-native.mjs","sourceRoot":"","sources":["../../../src/util/uuidUtils-react-native.mts"],"names":[],"mappings":"AAAA,uCAAuC;AACvC,kCAAkC;AAElC,OAAO,EAAE,UAAU,EAAE,MAAM,uBAAuB,CAAC","sourcesContent":["// Copyright (c) Microsoft Corporation.\n// Licensed under the MIT License.\n\nexport { randomUUID } from \"./uuidUtils.common.js\";\n"]}

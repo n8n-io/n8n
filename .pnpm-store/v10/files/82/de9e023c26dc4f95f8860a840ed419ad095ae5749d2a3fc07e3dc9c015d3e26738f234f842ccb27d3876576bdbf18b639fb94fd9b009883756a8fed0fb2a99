@@ -1,0 +1,141 @@
+{
+  "name": "@azure/monitor-opentelemetry-exporter",
+  "author": "Microsoft Corporation",
+  "sdk-type": "client",
+  "version": "1.0.0-beta.32",
+  "description": "Application Insights exporter for the OpenTelemetry JavaScript (Node.js) SDK",
+  "main": "./dist/commonjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/commonjs/index.d.ts",
+  "scripts": {
+    "build": "npm run clean && dev-tool run build-package && dev-tool run extract-api",
+    "build:samples": "echo Obsolete.",
+    "check-format": "dev-tool run vendored prettier --list-different --config ../../../.prettierrc.json --ignore-path ../../../.prettierignore \"src/**/*.ts\" \"test/**/*.ts\" \"samples-dev/**/*.ts\" \"*.{js,json}\"",
+    "clean": "dev-tool run vendored rimraf --glob dist-esm types dist",
+    "execute:samples": "dev-tool samples run samples-dev",
+    "extract-api": "dev-tool run build-package && dev-tool run extract-api",
+    "format": "dev-tool run vendored prettier --write --config ../../../.prettierrc.json --ignore-path ../../../.prettierignore \"src/**/*.ts\" \"test/**/*.ts\" \"samples-dev/**/*.ts\" \"*.{js,json}\"",
+    "generate:client": "autorest --typescript ./swagger/README.md",
+    "lint": "eslint package.json api-extractor.json src test",
+    "lint:fix": "eslint package.json api-extractor.json src test --fix --fix-type [problem,suggestion]",
+    "pack": "npm pack 2>&1",
+    "report": "nyc report --reporter=json",
+    "test": "npm run test:node && npm run test:browser",
+    "test-opentelemetry-versions": "node test-opentelemetry-versions.js 2>&1",
+    "test:browser": "echo skipped",
+    "test:node": "dev-tool run test:vitest",
+    "test:node:esm": "dev-tool run test:vitest --esm",
+    "test:node:live": "dev-tool run test:vitest --no-test-proxy -- -c vitest.integration.config.ts",
+    "update-snippets": "dev-tool run update-snippets"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/Azure/azure-sdk-for-js/tree/main/sdk/monitor/monitor-opentelemetry-exporter/",
+  "repository": "github:Azure/azure-sdk-for-js",
+  "bugs": {
+    "url": "https://github.com/Azure/azure-sdk-for-js/issues"
+  },
+  "prettier": "@azure/eslint-plugin-azure-sdk/prettier.json",
+  "//metadata": {
+    "constantPaths": [
+      {
+        "path": "src/generated/applicationInsightsClient.ts",
+        "prefix": "packageDetails"
+      },
+      {
+        "path": "src/utils/constants/applicationinsights.ts",
+        "prefix": "packageVersion"
+      },
+      {
+        "path": "swagger/README.md",
+        "prefix": "package-version"
+      }
+    ]
+  },
+  "//sampleConfiguration": {
+    "productName": "Azure Monitor Trace Exporter",
+    "productSlugs": [
+      "azure-monitor"
+    ],
+    "requiredResources": {
+      "Azure Application Insights workspace instance": "https://learn.microsoft.com/azure/azure-monitor/app/app-insights-overview"
+    }
+  },
+  "devDependencies": {
+    "@azure-tools/test-utils-vitest": "^1.0.0",
+    "@azure/core-util": "^1.11.0",
+    "@azure/dev-tool": "^1.0.0",
+    "@azure/eslint-plugin-azure-sdk": "^3.0.0",
+    "@azure/logger": "^1.1.4",
+    "@opentelemetry/instrumentation": "^0.200.0",
+    "@opentelemetry/instrumentation-http": "^0.200.0",
+    "@opentelemetry/sdk-trace-node": "^2.0.0",
+    "@types/node": "^18.0.0",
+    "@vitest/browser": "^3.0.9",
+    "@vitest/coverage-istanbul": "^3.0.9",
+    "dotenv": "^16.0.0",
+    "eslint": "^9.9.0",
+    "nock": "^13.5.4",
+    "playwright": "^1.50.1",
+    "typescript": "~5.8.2",
+    "vitest": "^3.0.9"
+  },
+  "dependencies": {
+    "@azure/core-auth": "^1.9.0",
+    "@azure/core-client": "^1.9.2",
+    "@azure/core-rest-pipeline": "^1.19.0",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/api-logs": "^0.200.0",
+    "@opentelemetry/core": "^2.0.0",
+    "@opentelemetry/resources": "^2.0.0",
+    "@opentelemetry/sdk-logs": "^0.200.0",
+    "@opentelemetry/sdk-metrics": "^2.0.0",
+    "@opentelemetry/sdk-trace-base": "^2.0.0",
+    "@opentelemetry/semantic-conventions": "^1.32.0",
+    "tslib": "^2.8.1"
+  },
+  "sideEffects": false,
+  "keywords": [
+    "node",
+    "azure",
+    "monitor",
+    "javascript",
+    "applicationinsights",
+    "opentelemetry",
+    "exporter",
+    "cloud"
+  ],
+  "type": "module",
+  "tshy": {
+    "project": "./tsconfig.src.json",
+    "exports": {
+      "./package.json": "./package.json",
+      ".": "./src/index.ts"
+    },
+    "dialects": [
+      "esm",
+      "commonjs"
+    ],
+    "selfLink": false
+  },
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/commonjs/index.d.ts",
+        "default": "./dist/commonjs/index.js"
+      }
+    }
+  }
+}

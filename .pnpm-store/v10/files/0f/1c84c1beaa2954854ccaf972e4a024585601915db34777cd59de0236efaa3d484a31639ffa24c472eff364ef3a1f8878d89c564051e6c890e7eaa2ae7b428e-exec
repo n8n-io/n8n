@@ -1,0 +1,5 @@
+#!/usr/bin/env node
+
+var rw = require("../").dash;
+
+rw.writeFileSync(process.argv[2] || "-", "gréén\n", process.argv[3]);

@@ -1,0 +1,1 @@
+export * from "../dist/embeddings/huggingface_transformers.js";

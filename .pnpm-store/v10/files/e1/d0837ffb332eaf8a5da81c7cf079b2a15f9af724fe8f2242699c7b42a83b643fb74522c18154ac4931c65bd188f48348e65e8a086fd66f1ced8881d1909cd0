@@ -1,0 +1,18 @@
+{
+  "node": true,
+  "browser": true,
+  "browserify": true,
+  "curly": true,
+  "eqeqeq": true,
+  "eqnull": false,
+  "latedef": "nofunc",
+  "newcap": true,
+  "noarg": true,
+  "undef": true,
+  "strict": true,
+  "trailing": true,
+  "smarttabs": true,
+  "indent": 2,
+  "quotmark": true,
+  "laxbreak": true
+}

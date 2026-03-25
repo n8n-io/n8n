@@ -1,0 +1,1 @@
+{"version":3,"file":"InappropriateAuthError.js","sourceRoot":"./","sources":["errors/resultCodeErrors/InappropriateAuthError.ts"],"names":[],"mappings":";;;AAAA,uDAAoD;AAEpD,MAAa,sBAAuB,SAAQ,iCAAe;IACzD,YAAmB,OAAgB;QACjC,KAAK,CAAC,EAAE,EAAE,OAAO,IAAI,uEAAuE,CAAC,CAAC;IAChG,CAAC;CACF;AAJD,wDAIC"}

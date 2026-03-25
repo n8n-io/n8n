@@ -1,0 +1,92 @@
+@use 'common/var' as *;
+@use 'mixins/mixins' as *;
+
+body {
+  font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', '微软雅黑', Arial, sans-serif;
+  font-weight: 400;
+  font-size: getCssVar('font-size', 'base');
+  color: getCssVar('text-color', 'primary');
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+}
+
+a {
+  color: getCssVar('color', 'primary');
+  text-decoration: none;
+
+  &:hover,
+  &:focus {
+    color: getCssVar('color-primary', 'light-3');
+  }
+
+  &:active {
+    color: getCssVar('color-primary', 'dark-2');
+  }
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: getCssVar('text-color', 'regular');
+  font-weight: inherit;
+
+  &:first-child {
+    margin-top: 0;
+  }
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+h1 {
+  font-size: calc(getCssVar('font-size', 'base') + 6px);
+}
+
+h2 {
+  font-size: calc(getCssVar('font-size', 'base') + 4px);
+}
+
+h3 {
+  font-size: calc(getCssVar('font-size', 'base') + 2px);
+}
+
+h4,
+h5,
+h6,
+p {
+  font-size: inherit;
+}
+
+p {
+  line-height: 1.8;
+
+  &:first-child {
+    margin-top: 0;
+  }
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+sup,
+sub {
+  font-size: calc(getCssVar('font-size', 'base') - 1px);
+}
+
+small {
+  font-size: calc(getCssVar('font-size', 'base') - 2px);
+}
+
+hr {
+  margin-top: 20px;
+  margin-bottom: 20px;
+  border: 0;
+  border-top: 1px solid getCssVar('border-color', 'lighter');
+}

@@ -1,0 +1,1 @@
+export { getEndpointProperty } from "./getEndpointProperties";

@@ -1,0 +1,3 @@
+*.d.ts
+test/data/
+/example

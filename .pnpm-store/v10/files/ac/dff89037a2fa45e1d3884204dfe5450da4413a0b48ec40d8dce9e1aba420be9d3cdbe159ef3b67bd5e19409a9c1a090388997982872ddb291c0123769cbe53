@@ -1,0 +1,68 @@
+{
+  "name": "vue-agile",
+  "version": "2.0.0",
+  "description": "A carousel component for Vue.js",
+  "author": "Łukasz Florczak <lukasz@florczak.dev>",
+  "scripts": {
+    "serve": "vue-cli-service serve --open ./demo/main.js",
+    "test:unit": "vue-cli-service test:unit",
+    "lint": "vue-cli-service lint",
+    "build-bundle": "vue-cli-service build --target lib --name VueAgile ./src/Agile.vue && rm dist/demo.html",
+    "build-docs": "vue-cli-service build ./demo/main.js --dest ./docs --modern"
+  },
+  "main": "src/index.js",
+  "unpkg": "dist/VueAgile.umd.min.js",
+  "files": [
+    "dist/*",
+    "src/*",
+    "*.json",
+    "*.js"
+  ],
+  "dependencies": {
+    "lodash.orderby": "^4.6.0",
+    "lodash.throttle": "^4.1.1"
+  },
+  "devDependencies": {
+    "core-js": "^3.6.5",
+    "vue": "^3.0.0",
+    "@types/jest": "^24.0.19",
+    "@typescript-eslint/eslint-plugin": "^4.18.0",
+    "@typescript-eslint/parser": "^4.18.0",
+    "@vue/cli-plugin-babel": "~4.5.0",
+    "@vue/cli-plugin-eslint": "~4.5.0",
+    "@vue/cli-plugin-typescript": "~4.5.0",
+    "@vue/cli-plugin-unit-jest": "~4.5.0",
+    "@vue/cli-service": "~4.5.0",
+    "@vue/compiler-sfc": "^3.0.0",
+    "@vue/eslint-config-standard": "^5.1.2",
+    "@vue/eslint-config-typescript": "^7.0.0",
+    "@vue/test-utils": "^2.0.0-0",
+    "eslint": "^6.7.2",
+    "eslint-plugin-import": "^2.20.2",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^4.2.1",
+    "eslint-plugin-standard": "^4.0.0",
+    "eslint-plugin-vue": "^7.0.0",
+    "lint-staged": "^9.5.0",
+    "sass": "^1.18.0",
+    "sass-loader": "^8.0.2",
+    "typescript": "~4.1.5",
+    "vue-cli-plugin-pug": "~2.0.0",
+    "vue-jest": "^5.0.0-0"
+  },
+  "bugs": {
+    "url": "https://github.com/lukaszflorczak/vue-agile/issues"
+  },
+  "keywords": [
+    "vue",
+    "component",
+    "slider",
+    "carousel",
+    "slide"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lukaszflorczak/vue-agile.git"
+  }
+}

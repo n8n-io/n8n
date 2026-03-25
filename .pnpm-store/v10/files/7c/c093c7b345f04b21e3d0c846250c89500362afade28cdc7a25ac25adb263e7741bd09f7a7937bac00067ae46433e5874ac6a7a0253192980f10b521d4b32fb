@@ -1,0 +1,43 @@
+{
+    "name": "@types/adm-zip",
+    "version": "0.5.7",
+    "description": "TypeScript definitions for adm-zip",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/adm-zip",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "John Vilk",
+            "githubUsername": "jvilk",
+            "url": "https://github.com/jvilk"
+        },
+        {
+            "name": "Abner Oliveira",
+            "githubUsername": "abner",
+            "url": "https://github.com/abner"
+        },
+        {
+            "name": "BendingBender",
+            "githubUsername": "BendingBender",
+            "url": "https://github.com/BendingBender"
+        },
+        {
+            "name": "Lei Nelissen",
+            "githubUsername": "LeiNelissen",
+            "url": "https://github.com/LeiNelissen"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/adm-zip"
+    },
+    "scripts": {},
+    "dependencies": {
+        "@types/node": "*"
+    },
+    "peerDependencies": {},
+    "typesPublisherContentHash": "2b7ccefc1df4e05662e7d47904e27f4af394ff59c9d5f8b3ea47f579e5146bba",
+    "typeScriptVersion": "5.0"
+}

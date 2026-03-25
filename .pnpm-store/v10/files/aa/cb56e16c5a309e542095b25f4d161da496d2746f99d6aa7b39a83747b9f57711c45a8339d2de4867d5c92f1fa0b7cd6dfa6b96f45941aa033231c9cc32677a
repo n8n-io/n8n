@@ -1,0 +1,11 @@
+{
+  "name": "loglevel",
+  "version": "1.9.2",
+  "main": "dist/loglevel.min.js",
+  "dependencies": {},
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "components"
+  ]
+}

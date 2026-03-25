@@ -1,0 +1,51 @@
+# This workflow will do a clean install of node dependencies, cache/restore them, build the source code and run tests across different versions of node
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-nodejs-with-github-actions
+
+name: Node.js CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    services:
+      rabbitmq:
+        image: rabbitmq:3.12-alpine
+        ports:
+          - 5672:5672
+
+    strategy:
+      matrix:
+        node-version: [10.x, 12.x, 14.x, 16.x, 18.x, 20.x]
+        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v2
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "npm"
+
+      # Install all prerequisites
+      - run: npm ci
+
+      # Ensure RabbitMQ is available before continuing
+      - run: |
+          n=0
+          while :
+          do
+            sleep 5
+            echo 'HELO\n\n\n\n' | nc localhost 5672 | grep AMQP
+            [[ $? = 0 ]] && break || ((n++))
+            (( n >= 5 )) && break
+          done
+
+      - run: echo 'HELO\n\n\n\n' | nc localhost 5672 | grep AMQP
+
+      # Run the tests
+      - run: make test

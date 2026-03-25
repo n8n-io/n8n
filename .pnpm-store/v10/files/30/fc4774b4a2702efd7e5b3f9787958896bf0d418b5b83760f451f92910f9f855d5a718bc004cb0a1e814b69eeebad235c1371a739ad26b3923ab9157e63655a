@@ -1,0 +1,34 @@
+language: node_js
+cache:
+  directories:
+    # https://twitter.com/maybekatz/status/905213355748720640
+    - ~/.npm
+node_js:
+  - '8'
+  - '9'
+  - '10'
+
+# Trigger a push build on master and greenkeeper branches + PRs build on every
+# branch. Avoid double build on PRs (See https://github.com/travis-ci/travis-ci/issues/1147)
+branches:
+  only:
+    - master
+    - /^greenkeeper.*$/
+
+stages:
+  - commitlint
+  - test
+  - name: release
+    if: branch = master AND type IN (push)
+
+jobs:
+  include:
+    - stage: commitlint
+      node_js: '8'
+      script: commitlint-travis
+    - stage: test
+      script: npm test
+      after_success: npm run coverage
+    - stage: release
+      node_js: '8'
+      script: npm run release

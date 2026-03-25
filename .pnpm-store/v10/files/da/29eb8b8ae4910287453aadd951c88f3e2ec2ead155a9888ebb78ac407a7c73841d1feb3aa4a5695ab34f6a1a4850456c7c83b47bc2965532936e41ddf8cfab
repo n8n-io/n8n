@@ -1,0 +1,1 @@
+{"version":3,"file":"parse-args.d.ts","sourceRoot":"","sources":["../../src/parse-args.ts"],"names":[],"mappings":";AAAA,OAAO,KAAK,IAAI,MAAM,MAAM,CAAA;AAoC5B,eAAO,MAAM,SAAS,uBAA6C,CAAA"}

@@ -1,0 +1,27 @@
+{
+  "name": "mensch",
+  "main": "index.js",
+  "version": "0.3.4",
+  "homepage": "https://github.com/brettstimmerman/mensch",
+  "authors": [
+    "Brett Stimmerman <brettstimmerman@gmail.com>"
+  ],
+  "description": "A decent CSS parser",
+  "moduleType": [
+    "node"
+  ],
+  "keywords": [
+    "css",
+    "parser",
+    "parsing",
+    "stylesheet"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
+}

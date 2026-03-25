@@ -1,0 +1,143 @@
+{
+  "name": "node-stdlib-browser",
+  "version": "1.3.1",
+  "description": "Node standard library for browser.",
+  "license": "MIT",
+  "author": "Ivan Nikolić <niksy5@gmail.com> (http://ivannikolic.com)",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "import": "./esm/index.js",
+      "require": "./cjs/index.js"
+    },
+    "./mock/*": {
+      "import": "./esm/mock/*.js",
+      "require": "./cjs/mock/*.js"
+    },
+    "./helpers/esbuild/*": "./helpers/esbuild/*.js",
+    "./helpers/webpack/*": "./helpers/webpack/*.js",
+    "./helpers/rollup/*": "./helpers/rollup/*.js",
+    "./package.json": "./package.json"
+  },
+  "main": "cjs/index.js",
+  "module": "esm/index.js",
+  "types": "esm/index.d.ts",
+  "directories": {
+    "test": "test"
+  },
+  "files": [
+    "cjs/",
+    "esm/",
+    "helpers/esbuild/{plugin,shim}.js",
+    "helpers/webpack/plugin.js",
+    "helpers/rollup/plugin.js",
+    "CHANGELOG.md",
+    "LICENSE.md",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "del '{esm/,cjs/}' && rollup --config rollup.config.js && babel helpers/esbuild/shim.src.js --out-file=helpers/esbuild/shim.js",
+    "lint": "eslint '{index,lib/**/*,test/**/*,helpers/**/*,example/**/*}.{js,mjs}'",
+    "lint:types": "tsc",
+    "module-check": "node -e 'require(\"node-stdlib-browser\"); require(\"node-stdlib-browser/helpers/esbuild/plugin\");' && node --input-type=module -e 'import \"node-stdlib-browser\"; import \"node-stdlib-browser/helpers/esbuild/plugin\";'",
+    "prepublishOnly": "npm run build",
+    "postpublish": "GITHUB_TOKEN=$GITHUB_RELEASE_TOKEN github-release-from-changelog",
+    "prerelease": "npm run lint && npm run lint:types && npm run build && npm run module-check",
+    "release": "np --no-release-draft",
+    "test": "BABEL_ENV=test nyc mocha --require @babel/register --require esm 'test/**/*.js' && nyc check-coverage",
+    "test:watch": "nodemon --exec npm test",
+    "version": "if [ $(git rev-parse --abbrev-ref HEAD) == 'master' ]; then sed -i '' '/\\[unreleased\\]:/d' CHANGELOG.md && version-changelog CHANGELOG.md && changelog-verify CHANGELOG.md && git add CHANGELOG.md; else echo; fi"
+  },
+  "dependencies": {
+    "assert": "^2.0.0",
+    "browser-resolve": "^2.0.0",
+    "browserify-zlib": "^0.2.0",
+    "buffer": "^5.7.1",
+    "console-browserify": "^1.1.0",
+    "constants-browserify": "^1.0.0",
+    "create-require": "^1.1.1",
+    "crypto-browserify": "^3.12.1",
+    "domain-browser": "4.22.0",
+    "events": "^3.0.0",
+    "https-browserify": "^1.0.0",
+    "isomorphic-timers-promises": "^1.0.1",
+    "os-browserify": "^0.3.0",
+    "path-browserify": "^1.0.1",
+    "pkg-dir": "^5.0.0",
+    "process": "^0.11.10",
+    "punycode": "^1.4.1",
+    "querystring-es3": "^0.2.1",
+    "readable-stream": "^3.6.0",
+    "stream-browserify": "^3.0.0",
+    "stream-http": "^3.2.0",
+    "string_decoder": "^1.0.0",
+    "timers-browserify": "^2.0.4",
+    "tty-browserify": "0.0.1",
+    "url": "^0.11.4",
+    "util": "^0.12.4",
+    "vm-browserify": "^1.0.1"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.2.3",
+    "@babel/core": "^7.2.2",
+    "@babel/preset-env": "^7.12.1",
+    "@babel/register": "^7.0.0",
+    "@rollup/plugin-babel": "^5.2.1",
+    "@rollup/plugin-commonjs": "^20.0.0",
+    "@types/browser-resolve": "^2.0.1",
+    "@types/mocha": "^8.2.3",
+    "@types/node": "^16.3.0",
+    "@types/parse-node-version": "^1.0.0",
+    "babel-plugin-istanbul": "^6.0.0",
+    "babel-plugin-transform-globalthis": "^1.0.0",
+    "changelog-verify": "^1.1.2",
+    "core-js": "^2.6.5",
+    "cpy": "^8.1.2",
+    "del": "^6.0.0",
+    "del-cli": "^3.0.1",
+    "esbuild": "^0.13.14",
+    "eslint": "^7.31.0",
+    "eslint-config-niksy": "^10.0.0",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-import": "^2.23.4",
+    "eslint-plugin-jsdoc": "^33.3.0",
+    "eslint-plugin-mocha": "^8.0.0",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-prettier": "^3.4.0",
+    "eslint-plugin-promise": "^5.1.0",
+    "eslint-plugin-unicorn": "^31.0.0",
+    "esm": "^3.0.51",
+    "execa": "^5.1.1",
+    "github-release-from-changelog": "^2.1.1",
+    "husky": "^4.3.0",
+    "lint-staged": "^10.4.2",
+    "mocha": "^8.2.0",
+    "nodemon": "^2.0.6",
+    "np": "^7.6.0",
+    "nyc": "^15.1.0",
+    "parse-node-version": "^1.0.1",
+    "prettier": "^2.4.0",
+    "rollup": "^2.32.1",
+    "rollup-plugin-node-builtins": "^2.1.2",
+    "typescript": "^4.3.5",
+    "version-changelog": "^3.1.1",
+    "webpack": "^5.65.0"
+  },
+  "engines": {
+    "node": ">=10"
+  },
+  "keywords": [
+    "node",
+    "std",
+    "browser",
+    "api"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/niksy/node-stdlib-browser.git"
+  },
+  "bugs": {
+    "url": "https://github.com/niksy/node-stdlib-browser/issues"
+  },
+  "homepage": "https://github.com/niksy/node-stdlib-browser#readme"
+}

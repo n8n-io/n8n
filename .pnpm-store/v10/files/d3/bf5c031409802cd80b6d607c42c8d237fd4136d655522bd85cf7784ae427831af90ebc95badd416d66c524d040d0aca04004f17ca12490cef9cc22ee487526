@@ -1,0 +1,30 @@
+{
+	"name": "vue-tsc",
+	"version": "2.2.8",
+	"license": "MIT",
+	"files": [
+		"bin",
+		"**/*.js",
+		"**/*.d.ts"
+	],
+	"sideEffects": false,
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/vuejs/language-tools.git",
+		"directory": "packages/tsc"
+	},
+	"bin": {
+		"vue-tsc": "./bin/vue-tsc.js"
+	},
+	"peerDependencies": {
+		"typescript": ">=5.0.0"
+	},
+	"dependencies": {
+		"@volar/typescript": "~2.4.11",
+		"@vue/language-core": "2.2.8"
+	},
+	"devDependencies": {
+		"@types/node": "^22.10.4"
+	},
+	"gitHead": "cdf00e6f19971260607ea2347924b94126a254fc"
+}

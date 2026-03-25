@@ -1,0 +1,69 @@
+{
+  "name": "get-own-enumerable-property-symbols",
+  "version": "3.0.2",
+  "description": "Returns an array of all enumerable symbol properties found directly upon a given object",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "files": [
+    "lib/index.d.ts",
+    "lib/index.js",
+    "lib/index.js.map"
+  ],
+  "scripts": {
+    "release": "standard-version",
+    "lint": "eslint --ext .ts .",
+    "transpile": "tsc",
+    "unit": "node lib/test.js",
+    "test": "run-s lint transpile unit"
+  },
+  "standard": {
+    "ignore": [
+      "lib"
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mightyiam/get-own-enumerable-property-symbols.git"
+  },
+  "keywords": [
+    "get",
+    "enumerable",
+    "symbol",
+    "property",
+    "key",
+    "object"
+  ],
+  "author": "Shahar Or <mightyiampresence@gmail.com> (mightyiam)",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/mightyiam/get-own-enumerable-property-symbols/issues"
+  },
+  "husky": {
+    "hooks": {
+      "commit-msg": "commitlint -E HUSKY_GIT_PARAMS",
+      "pre-commit": "npm test"
+    }
+  },
+  "homepage": "https://github.com/mightyiam/get-own-enumerable-property-symbols#readme",
+  "devDependencies": {
+    "@commitlint/cli": "^8.2.0",
+    "@commitlint/config-conventional": "^8.2.0",
+    "@commitlint/travis-cli": "^8.2.0",
+    "@types/node": "^12.12.11",
+    "@typescript-eslint/eslint-plugin": "^2.8.0",
+    "eslint": "^6.6.0",
+    "eslint-config-standard-with-typescript": "^11.0.1",
+    "eslint-plugin-import": "^2.18.2",
+    "eslint-plugin-node": "^10.0.0",
+    "eslint-plugin-promise": "^4.2.1",
+    "eslint-plugin-standard": "^4.0.1",
+    "husky": "^3.1.0",
+    "npm-run-all": "^4.1.5",
+    "standard-version": "^7.0.1",
+    "tsconfigs": "^4.0.1",
+    "typescript": "^3.7.2"
+  },
+  "eslintIgnore": [
+    "*.d.ts"
+  ]
+}

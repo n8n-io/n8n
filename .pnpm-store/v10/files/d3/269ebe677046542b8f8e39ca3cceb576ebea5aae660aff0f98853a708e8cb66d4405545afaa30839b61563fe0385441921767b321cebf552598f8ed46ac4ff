@@ -1,0 +1,9 @@
+/*
+Shameless port of a shameless port
+@defunkt => @janl => @aq => @voodootikigod
+ 
+See http://github.com/defunkt/mustache for more info.
+*/
+
+dojo.provide("dojox.mustache._base");
+(function(){

@@ -1,0 +1,42 @@
+{
+	"name": "email-providers",
+	"description": "A list of common eMail providers.",
+	"version": "2.0.1",
+	"type": "module",
+	"main": "index.js",
+	"files": [
+		"index.js",
+		"all.json",
+		"common.json"
+	],
+	"keywords": [
+		"email",
+		"mail",
+		"providers",
+		"endings",
+		"address"
+	],
+	"authors": [
+		"Jannis R <mail@jannisr.de>"
+	],
+	"homepage": "https://github.com/derhuerst/email-providers",
+	"repository": "derhuerst/email-providers",
+	"bugs": "https://github.com/derhuerst/email-providers/issues",
+	"license": "ISC",
+	"engines": {
+		"node": ">=16"
+	},
+	"devDependencies": {
+		"node-fetch": "^3.0.0",
+		"lodash.uniq": "^4.5",
+		"csv-parser": "^3.0.0",
+		"domain-regex": "^0.0.1",
+		"pump": "^3.0.0",
+		"punycode": "^2"
+	},
+	"scripts": {
+		"build": "node build.js",
+		"test": "node test.js",
+		"prepublishOnly": "npm run build && npm test"
+	}
+}

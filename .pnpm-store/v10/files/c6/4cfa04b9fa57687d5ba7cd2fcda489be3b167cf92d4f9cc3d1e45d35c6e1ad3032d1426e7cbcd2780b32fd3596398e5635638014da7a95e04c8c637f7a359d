@@ -1,0 +1,1 @@
+{"name":"@tsconfig/node14","repository":{"type":"git","url":"https://github.com/tsconfig/bases.git","directory":"bases"},"license":"MIT","description":"A base TSConfig for working with Node 14.","keywords":["tsconfig","node14"],"version":"1.0.3"}

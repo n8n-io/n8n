@@ -1,0 +1,116 @@
+// Protocol Buffers - Google's data interchange format
+// Copyright 2008 Google Inc.  All rights reserved.
+//
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file or at
+// https://developers.google.com/open-source/licenses/bsd
+
+// Author: kenton@google.com (Kenton Varda)
+//  Based on original Protocol Buffers design by
+//  Sanjay Ghemawat, Jeff Dean, and others.
+//
+// A proto file we will use for unit testing.
+
+syntax = "proto2";
+
+package protobuf_unittest;
+
+message TestFlagsAndStrings {
+  required int32 A = 1;
+  repeated group RepeatedGroup = 2 {
+    required string f = 3;
+  }
+}
+
+message TestBase64ByteArrays {
+  required bytes a = 1;
+}
+
+message TestJavaScriptJSON {
+  optional int32 a = 1;
+  optional float final = 2;
+  optional string in = 3;
+  optional string Var = 4;
+}
+
+message TestJavaScriptOrderJSON1 {
+  optional int32 d = 1;
+  optional int32 c = 2;
+  optional bool x = 3;
+  optional int32 b = 4;
+  optional int32 a = 5;
+}
+
+message TestJavaScriptOrderJSON2 {
+  optional int32 d = 1;
+  optional int32 c = 2;
+  optional bool x = 3;
+  optional int32 b = 4;
+  optional int32 a = 5;
+  repeated TestJavaScriptOrderJSON1 z = 6;
+}
+
+message TestLargeInt {
+  required int64 a = 1;
+  required uint64 b = 2;
+}
+
+message TestNumbers {
+  enum MyType {
+    OK = 0;
+    WARNING = 1;
+    ERROR = 2;
+  }
+  optional MyType a = 1;
+  optional int32 b = 2;
+  optional float c = 3;
+  optional bool d = 4;
+  optional double e = 5;
+  optional uint32 f = 6;
+}
+
+message TestCamelCase {
+  optional string normal_field = 1;
+  optional int32 CAPITAL_FIELD = 2;
+  optional int32 CamelCaseField = 3;
+}
+
+message TestBoolMap {
+  map<bool, int32> bool_map = 1;
+}
+
+message TestRecursion {
+  optional int32 value = 1;
+  optional TestRecursion child = 2;
+}
+
+message TestStringMap {
+  map<string, string> string_map = 1;
+}
+
+message TestStringSerializer {
+  optional string scalar_string = 1;
+  repeated string repeated_string = 2;
+  map<string, string> string_map = 3;
+}
+
+message TestMessageWithExtension {
+  extensions 100 to max;
+}
+
+message TestExtension {
+  extend TestMessageWithExtension {
+    optional TestExtension ext = 100;
+  }
+  optional string value = 1;
+}
+
+enum EnumValue {
+  PROTOCOL = 0;
+  BUFFER = 1;
+  DEFAULT = 2;
+}
+
+message TestDefaultEnumValue {
+  optional EnumValue enum_value = 1 [default = DEFAULT];
+}

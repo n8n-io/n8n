@@ -1,0 +1,63 @@
+{
+  "name": "form-data-encoder",
+  "version": "1.7.2",
+  "description": "Encode FormData content into the multipart/form-data format",
+  "repository": "octet-stream/form-data-encoder",
+  "sideEffects": false,
+  "keywords": [
+    "form-data",
+    "encoder",
+    "multipart",
+    "files-upload",
+    "async-iterator",
+    "spec-compatible",
+    "form"
+  ],
+  "main": "./lib/cjs/index.js",
+  "module": "./lib/esm/index.js",
+  "types": "./@type/index.d.ts",
+  "exports": {
+    "import": "./lib/esm/index.js",
+    "require": "./lib/cjs/index.js"
+  },
+  "scripts": {
+    "eslint": "eslint lib/**/*.ts",
+    "staged": "lint-staged",
+    "coverage": "c8 npm test",
+    "ci": "c8 npm test && c8 report --reporter=json",
+    "build:esm": "ttsc --project tsconfig.esm.json",
+    "build:cjs": "ttsc --project tsconfig.cjs.json",
+    "build:types": "ttsc --project tsconfig.d.ts.json",
+    "build": "npm run build:esm && npm run build:cjs && npm run build:types",
+    "test": "ava --fail-fast",
+    "cleanup": "npx rimraf @type \"lib/**/*.js\"",
+    "prepare": "npm run cleanup && npm run build",
+    "_postinstall": "husky install",
+    "prepublishOnly": "pinst --disable",
+    "postpublish": "pinst --enable"
+  },
+  "author": "Nick K.",
+  "license": "MIT",
+  "devDependencies": {
+    "@octetstream/eslint-config": "5.0.0",
+    "@types/mime-types": "2.1.1",
+    "@types/node": "17.0.21",
+    "@typescript-eslint/eslint-plugin": "4.33.0",
+    "@typescript-eslint/parser": "4.33.0",
+    "@zoltu/typescript-transformer-append-js-extension": "1.0.1",
+    "ava": "4.1.0",
+    "c8": "7.11.0",
+    "eslint": "7.32.0",
+    "eslint-config-airbnb-typescript": "12.3.1",
+    "eslint-plugin-ava": "12.0.0",
+    "eslint-plugin-jsx-a11y": "6.4.1",
+    "eslint-plugin-react": "7.26.1",
+    "formdata-node": "4.3.2",
+    "husky": "7.0.4",
+    "lint-staged": "12.3.7",
+    "pinst": "2.1.6",
+    "ts-node": "10.7.0",
+    "ttypescript": "1.5.13",
+    "typescript": "4.4.4"
+  }
+}

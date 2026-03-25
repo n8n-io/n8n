@@ -1,0 +1,74 @@
+{
+  "name": "jwks-rsa",
+  "version": "3.2.2",
+  "description": "Library to retrieve RSA public keys from a JWKS endpoint",
+  "main": "src/index.js",
+  "files": [
+    "src",
+    "index.d.ts"
+  ],
+  "types": "index.d.ts",
+  "engines": {
+    "node": ">=14"
+  },
+  "dependencies": {
+    "@types/jsonwebtoken": "^9.0.4",
+    "debug": "^4.3.4",
+    "jose": "^4.15.4",
+    "limiter": "^1.1.5",
+    "lru-memoizer": "^2.2.0"
+  },
+  "devDependencies": {
+    "@types/chai": "^4.3.9",
+    "@types/express": "^4.17.20",
+    "@types/express-jwt-v6": "npm:@types/express-jwt@^6.0.4",
+    "@types/mocha": "^10.0.3",
+    "@types/nock": "^11.0.0",
+    "@types/node": "^20.8.10",
+    "chai": "^4.3.10",
+    "chai-as-promised": "^7.1.1",
+    "eslint": "^8.52.0",
+    "express": "^4.18.2",
+    "express-jwt": "^8.4.1",
+    "express-jwt-v6": "npm:express-jwt@^6.1.2",
+    "express-jwt-v7": "npm:express-jwt@^7.5.0",
+    "jose2": "npm:jose@^2.0.6",
+    "jsonwebtoken": "^9.0.2",
+    "koa": "^2.14.2",
+    "koa-jwt": "^4.0.4",
+    "mocha": "^10.2.0",
+    "nock": "^13.3.7",
+    "nyc": "^15.1.0",
+    "passport": "^0.6.0",
+    "passport-jwt": "^4.0.1",
+    "rimraf": "^5.0.5",
+    "supertest": "^6.3.3",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.2.2"
+  },
+  "scripts": {
+    "clean:ts": "rimraf ts-output/",
+    "lint": "eslint ./src ./tests",
+    "test:ts": "npm run clean:ts && tsc && NODE_ENV=test mocha --exit --timeout 5000 $(find ./ts-output -name *.tests.js)",
+    "test:js": "NODE_ENV=test mocha --exit --timeout 5000 $(find ./tests -name *.tests.js)",
+    "test": "npm run test:js && npm run test:ts",
+    "test:ci": "nyc --reporter=lcov npm test",
+    "test-watch": "NODE_ENV=test mocha --exit --timeout 5000 $(find ./tests -name *.tests.js) --watch",
+    "release": "git tag $npm_package_version && git push && git push --tags && npm publish"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/auth0/node-jwks-rsa.git"
+  },
+  "keywords": [
+    "jwks",
+    "rsa",
+    "jwt"
+  ],
+  "author": "Auth0",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/auth0/node-jwks-rsa/issues"
+  },
+  "homepage": "https://github.com/auth0/node-jwks-rsa#readme"
+}

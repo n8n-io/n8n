@@ -1,0 +1,1 @@
+{"version":3,"file":"InsufficientAccessError.js","sourceRoot":"./","sources":["errors/resultCodeErrors/InsufficientAccessError.ts"],"names":[],"mappings":";;;AAAA,uDAAoD;AAEpD,MAAa,uBAAwB,SAAQ,iCAAe;IAC1D,YAAmB,OAAgB;QACjC,KAAK,CAAC,EAAE,EAAE,OAAO,IAAI,gFAAgF,CAAC,CAAC;IACzG,CAAC;CACF;AAJD,0DAIC"}

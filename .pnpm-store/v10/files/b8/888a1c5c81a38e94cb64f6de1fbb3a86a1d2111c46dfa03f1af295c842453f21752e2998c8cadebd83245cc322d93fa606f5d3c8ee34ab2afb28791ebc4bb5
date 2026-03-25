@@ -1,0 +1,19 @@
+{
+	"root": true,
+
+	"extends": "@ljharb",
+
+	"rules": {
+		"id-length": [1],
+		"operator-linebreak": [2, "before"],
+	},
+
+	"overrides": [
+		{
+			"files": ["test/**/*.js"],
+			"globals": {
+				"Proxy": false,
+			},
+		},
+	],
+}

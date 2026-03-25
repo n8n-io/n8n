@@ -1,0 +1,1 @@
+{"version":3,"file":"constants.js","sourceRoot":"","sources":["../../../src/constants.ts"],"names":[],"mappings":"AAAA,uCAAuC;AACvC,kCAAkC;AAElC,MAAM,CAAC,MAAM,WAAW,GAAW,OAAO,CAAC","sourcesContent":["// Copyright (c) Microsoft Corporation.\n// Licensed under the MIT license.\n\nexport const SDK_VERSION: string = \"4.6.0\";\n"]}

@@ -1,0 +1,176 @@
+{
+  "name": "@n8n/typeorm",
+  "private": false,
+  "version": "0.3.20-16",
+  "description": "Data-Mapper ORM for TypeScript, ES7, ES6, ES5. Supports MySQL, PostgreSQL, MariaDB, SQLitedatabases.",
+  "license": "MIT",
+  "readmeFilename": "README.md",
+  "author": {
+    "name": "Umed Khudoiberdiev",
+    "email": "pleerock.me@gmail.com"
+  },
+  "engines": {
+    "node": ">=16.13.0"
+  },
+  "packageManager": "pnpm@9.6.0",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "node": {
+        "import": "./index.mjs",
+        "require": "./index.js",
+        "types": "./index.d.ts"
+      }
+    },
+    "./*.js": "./*.js",
+    "./*": {
+      "require": "./*.js",
+      "import": "./*"
+    }
+  },
+  "main": "./index.js",
+  "module": "./index.mjs",
+  "types": "./index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/typeorm/typeorm.git"
+  },
+  "bugs": {
+    "url": "https://github.com/typeorm/typeorm/issues"
+  },
+  "homepage": "https://typeorm.io",
+  "tags": [
+    "orm",
+    "typescript",
+    "typescript-orm",
+    "mysql",
+    "mysql-orm",
+    "postgresql",
+    "postgresql-orm",
+    "mariadb",
+    "mariadb-orm",
+    "sqlite",
+    "sqlite-orm"
+  ],
+  "devDependencies": {
+    "@tsconfig/node16": "^16.1.1",
+    "@types/app-root-path": "^1.2.4",
+    "@types/chai": "^4.3.4",
+    "@types/chai-as-promised": "^7.1.5",
+    "@types/debug": "^4.1.7",
+    "@types/gulp": "^4.0.17",
+    "@types/gulp-sourcemaps": "^0.0.38",
+    "@types/mkdirp": "^1.0.2",
+    "@types/mocha": "^10.0.1",
+    "@types/node": "^18.13.0",
+    "@types/pg": "^8.16.0",
+    "@types/sha.js": "^2.4.0",
+    "@types/sinon": "^10.0.13",
+    "@types/source-map-support": "^0.5.6",
+    "@types/uuid": "^9.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.17.0",
+    "chai": "^4.3.7",
+    "chai-as-promised": "^7.1.1",
+    "conventional-changelog-angular": "^5.0.13",
+    "conventional-changelog-cli": "^2.2.2",
+    "del": "6.1.1",
+    "eslint": "^8.44.0",
+    "gulp": "^4.0.2",
+    "gulp-istanbul": "^1.1.3",
+    "gulp-mocha": "^10.0.0",
+    "gulp-replace": "^1.1.4",
+    "gulp-shell": "^0.8.0",
+    "gulp-sourcemaps": "^3.0.0",
+    "gulp-typescript": "^6.0.0-alpha.1",
+    "gulpclass": "^0.2.0",
+    "husky": "^8.0.3",
+    "mocha": "^10.2.0",
+    "mysql2": "^3.11.0",
+    "pg": "^8.17.0",
+    "pg-query-stream": "^4.10.3",
+    "prettier": "^2.8.3",
+    "remap-istanbul": "^0.13.0",
+    "rimraf": "^4.1.2",
+    "sinon": "^15.0.1",
+    "sinon-chai": "^3.7.0",
+    "source-map-support": "^0.5.21",
+    "sqlite3": "^5.1.7",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  },
+  "peerDependencies": {
+    "@sentry/node": "^10.0.0",
+    "mysql2": "^3.11.0",
+    "pg": "^8.17.0",
+    "pg-native": "^3.5.2",
+    "pg-query-stream": "^4.10.3",
+    "sqlite3": "^5.1.7"
+  },
+  "peerDependenciesMeta": {
+    "@sentry/node": {
+      "optional": true
+    },
+    "mysql2": {
+      "optional": true
+    },
+    "pg": {
+      "optional": true
+    },
+    "pg-native": {
+      "optional": true
+    },
+    "pg-query-stream": {
+      "optional": true
+    },
+    "sqlite3": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "app-root-path": "^3.1.0",
+    "async-mutex": "^0.5.0",
+    "chalk": "^4.1.2",
+    "dayjs": "^1.11.9",
+    "debug": "^4.3.4",
+    "dotenv": "^16.0.3",
+    "glob": "^10.3.10",
+    "mkdirp": "^2.1.3",
+    "reflect-metadata": "^0.2.2",
+    "sha.js": "^2.4.12",
+    "tarn": "3.0.2",
+    "tslib": "^2.5.0",
+    "uuid": "^9.0.0"
+  },
+  "scripts": {
+    "test": "tsc && mocha --file ./build/compiled/test/utils/test-setup.js --bail --recursive --timeout 90000 ./build/compiled/test",
+    "test-fast": "mocha --file ./build/compiled/test/utils/test-setup.js --bail --recursive --timeout 90000 ./build/compiled/test",
+    "compile": "tsc",
+    "watch": "./node_modules/.bin/tsc -w",
+    "package": "gulp package",
+    "pack": "gulp pack",
+    "lint": "eslint . --ext .ts",
+    "format": "prettier --write --end-of-line auto \"./src/**/*.ts\" \"./test/**/*.ts\" \"./sample/**/*.ts\"",
+    "changelog": "conventional-changelog -p angular -i CHANGELOG.md -s -r 2"
+  },
+  "funding": "https://opencollective.com/typeorm",
+  "collective": {
+    "type": "opencollective",
+    "url": "https://opencollective.com/typeorm",
+    "logo": "https://opencollective.com/opencollective/logo.txt"
+  },
+  "nyc": {
+    "all": true,
+    "cache": false,
+    "exclude": [
+      "**/*.d.ts"
+    ],
+    "extension": [
+      ".ts"
+    ],
+    "include": [
+      "build/compiled/src/**",
+      "src/**"
+    ],
+    "reporter": "json"
+  }
+}

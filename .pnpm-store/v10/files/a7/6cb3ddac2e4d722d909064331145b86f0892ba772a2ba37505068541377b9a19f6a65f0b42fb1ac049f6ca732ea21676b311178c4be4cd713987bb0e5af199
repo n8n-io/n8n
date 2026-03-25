@@ -1,0 +1,4 @@
+
+> spdx-compare@0.1.2 test /home/kyle/spdx-compare.js
+> defence -i javascript README.md | sed 's!spdx-compare!./!' | node
+

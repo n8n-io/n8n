@@ -1,0 +1,47 @@
+{
+  "name": "@minimistjs/subarg",
+  "version": "1.0.0",
+  "description": "parse arguments with recursive contexts",
+  "main": "index.js",
+  "dependencies": {
+    "minimist": "^1.1.0"
+  },
+  "devDependencies": {
+    "tape": "^3.0.0"
+  },
+  "scripts": {
+    "test": "tape test/*.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/substack/subarg.git"
+  },
+  "homepage": "https://github.com/substack/subarg",
+  "keywords": [
+    "argument",
+    "option",
+    "parser",
+    "parsing",
+    "flags",
+    "command-line",
+    "cli",
+    "recursive",
+    "minimist"
+  ],
+  "author": {
+    "name": "James Halliday",
+    "email": "mail@substack.net",
+    "url": "http://substack.net"
+  },
+  "license": "MIT",
+  "testling": {
+    "files": "test/*.js",
+    "browsers": [
+      "ie/8..latest",
+      "firefox/16", "firefox/latest", "firefox/nightly",
+      "chrome/22", "chrome/latest", "chrome/canary",
+      "opera/12..latest", "opera/next",
+      "safari/5.1..latest"
+    ]
+  }
+}

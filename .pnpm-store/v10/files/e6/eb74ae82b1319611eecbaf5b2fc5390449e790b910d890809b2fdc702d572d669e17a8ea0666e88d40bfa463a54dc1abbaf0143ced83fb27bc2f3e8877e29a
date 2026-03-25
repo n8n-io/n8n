@@ -1,0 +1,57 @@
+{
+  "name": "juice",
+  "version": "10.0.1",
+  "description": "Inlines css into html source",
+  "bin": "bin/juice",
+  "main": "index.js",
+  "browser": "client.js",
+  "types": "juice.d.ts",
+  "files": [
+    "bin",
+    "lib",
+    "client.js",
+    "index.js",
+    "juice.d.ts"
+  ],
+  "scripts": {
+    "test": "mocha --reporter spec && npm run test-typescript",
+    "testcover": "istanbul cover node_modules/mocha/bin/_mocha -- -R spec",
+    "test-typescript": "tsc ./test/typescript/juice-tests.ts && rm ./test/typescript/juice-tests.js",
+    "browserify": "browserify client.js -o tmp/bundle.js --standalone juice"
+  },
+  "license": "MIT",
+  "contributors": [
+    {
+      "name": "Guillermo Rauch"
+    },
+    {
+      "name": "Andrew Kelley"
+    },
+    {
+      "name": "Jarrett Widman"
+    }
+  ],
+  "engines": {
+    "node": ">=10.0.0"
+  },
+  "dependencies": {
+    "cheerio": "1.0.0-rc.12",
+    "commander": "^6.1.0",
+    "mensch": "^0.3.4",
+    "slick": "^1.12.2",
+    "web-resource-inliner": "^6.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.2.0",
+    "batch": "0.6.1",
+    "browserify": "^17.0.0",
+    "cross-spawn": "^7.0.3",
+    "mocha": "^5.2.0",
+    "should": "^13.2.3",
+    "typescript": "^5.0.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Automattic/juice.git"
+  }
+}

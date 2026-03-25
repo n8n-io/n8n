@@ -1,0 +1,70 @@
+{
+  "name": "unplugin-swc",
+  "type": "module",
+  "version": "1.5.9",
+  "packageManager": "pnpm@10.23.0",
+  "description": "SWC plugin for Vite and Rollup",
+  "publishConfig": {
+    "access": "public"
+  },
+  "author": "EGOIST <hi@egoist.dev> (https://github.com/egoist)",
+  "contributors": [
+    "hannoeru <me@hanlee.co> (https://github.com/hannoeru)"
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/unplugin/unplugin-swc/tree/main/#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/unplugin/unplugin-swc.git"
+  },
+  "bugs": {
+    "url": "https://github.com/unplugin/unplugin-swc/issues"
+  },
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "prepublishOnly": "npm run build",
+    "type-check": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@swc/core": "^1.2.108"
+  },
+  "dependencies": {
+    "@rollup/pluginutils": "^5.3.0",
+    "load-tsconfig": "^0.2.5",
+    "unplugin": "^2.3.11"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "^6.2.0",
+    "@swc/core": "^1.15.3",
+    "@types/node": "^24.10.1",
+    "defu": "^6.1.4",
+    "esbuild": "0.27.0",
+    "eslint": "^9.39.1",
+    "path-exists": "^5.0.0",
+    "prettier": "3.6.2",
+    "rollup": "^4.53.3",
+    "tsup": "8.5.1",
+    "typescript": "5.9.3",
+    "vite": "^7.2.4",
+    "vitest": "^4.0.13"
+  }
+}

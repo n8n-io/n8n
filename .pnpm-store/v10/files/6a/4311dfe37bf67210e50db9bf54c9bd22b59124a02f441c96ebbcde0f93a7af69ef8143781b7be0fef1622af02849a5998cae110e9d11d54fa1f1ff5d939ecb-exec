@@ -1,0 +1,27 @@
+{
+    "name": "@types/syslog-client",
+    "version": "1.1.2",
+    "description": "TypeScript definitions for node-syslog-client",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/syslog-client",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Romain CONNESSON",
+            "url": "https://github.com/helorem",
+            "githubUsername": "helorem"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/syslog-client"
+    },
+    "scripts": {},
+    "dependencies": {
+        "@types/node": "*"
+    },
+    "typesPublisherContentHash": "63c65c839aa459a90637957ce1b9901895cd7f28a073ae25d0640571da518fab",
+    "typeScriptVersion": "3.6"
+}

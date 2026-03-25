@@ -1,0 +1,60 @@
+name: tests
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - '*'
+  pull_request:
+    branches:
+      - master
+
+env:
+  FORCE_COLOR: 2
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js lts/*
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+      - run: npm i
+      - run: npm run check
+
+  test:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node: ['lts/*', 18]
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js ${{ matrix.node }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm i
+      - run: npm run test-mocha
+      - uses: codecov/codecov-action@v5
+        if: ${{ github.event_name == 'pull_request' }}
+        with:
+          flags: ${{ matrix.os }}-${{ matrix.node }}
+
+  automerge:
+    needs: [lint, test]
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: write
+    steps:
+      - uses: fastify/github-action-merge-dependabot@v3
+        if: ${{ github.actor == 'dependabot[bot]' && github.event_name == 'pull_request' && contains(github.head_ref, 'dependabot/github_actions') }}
+        with:
+          github-token: ${{ secrets.github_token }}

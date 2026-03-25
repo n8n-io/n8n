@@ -1,0 +1,1 @@
+module.exports = require("../dist/retrievers/parent_document.cjs");

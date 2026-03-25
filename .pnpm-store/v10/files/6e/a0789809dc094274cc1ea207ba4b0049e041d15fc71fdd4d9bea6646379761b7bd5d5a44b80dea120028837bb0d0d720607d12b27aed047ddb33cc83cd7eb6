@@ -1,0 +1,1 @@
+module.exports = require("../../dist/agents/toolkits/connery/index.cjs");

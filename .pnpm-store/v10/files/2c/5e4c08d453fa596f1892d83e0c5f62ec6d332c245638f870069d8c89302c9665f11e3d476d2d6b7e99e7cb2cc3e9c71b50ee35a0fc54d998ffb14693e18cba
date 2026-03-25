@@ -1,0 +1,61 @@
+{
+  "name": "mockserver-client",
+  "description": "A node client for the MockServer",
+  "version": "5.15.0",
+  "homepage": "http://mock-server.com",
+  "author": {
+    "name": "James Bloom",
+    "email": "jamesdbloom@gmail.com",
+    "url": "http://mock-server.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mock-server/mockserver-client-node.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mock-server/mockserver-client-node/issues"
+  },
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">= 0.8.0"
+  },
+  "files": [
+    "README.md",
+    "LICENSE.md",
+    "index.js",
+    "index.d.ts",
+    "mockServer.d.ts",
+    "mockServerClient.js",
+    "mockServerClient.d.ts",
+    "sendRequest.js",
+    "webSocketClient.js",
+    "stop_MockServer.sh"
+  ],
+  "devDependencies": {
+    "grunt-contrib-jshint": "~3.2.0",
+    "grunt-contrib-nodeunit": "~4.0.0",
+    "grunt-exec": "~3.0.0",
+    "grunt-karma": "~4.0.2",
+    "grunt-ts": "^6.0.0-beta.22",
+    "jasmine-core": "~4.5.0",
+    "karma": "~6.4.1",
+    "karma-chrome-launcher": "~3.1.1",
+    "karma-firefox-launcher": "~2.1.2",
+    "karma-jasmine": "~5.1.0",
+    "karma-spec-reporter": "~0.0.36",
+    "karma-xvfb-chrome-launcher": "~0.0.1",
+    "mockserver-node": "~5.15.0",
+    "nodeunit": "~0.11.3",
+    "typescript": "~4.9.4"
+  },
+  "keywords": [
+    "mockserver",
+    "client",
+    "gruntplugin"
+  ],
+  "dependencies": {
+    "browser-or-node": "~2.1.1",
+    "q": "~2.0.3",
+    "websocket": "~1.0.34"
+  }
+}

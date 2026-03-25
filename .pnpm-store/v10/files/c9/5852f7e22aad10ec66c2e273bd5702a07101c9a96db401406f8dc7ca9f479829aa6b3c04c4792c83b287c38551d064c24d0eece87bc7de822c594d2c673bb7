@@ -1,0 +1,1 @@
+{"version":3,"file":"CommonOnBehalfOfRequest.d.ts","sourceRoot":"","sources":["../../../src/request/CommonOnBehalfOfRequest.ts"],"names":[],"mappings":"AAKA,OAAO,EAAE,eAAe,EAAE,MAAM,sBAAsB,CAAC;AAEvD;;;;;;;GAOG;AACH,MAAM,MAAM,uBAAuB,GAAG,eAAe,GAAG;IACpD,YAAY,EAAE,MAAM,CAAC;IACrB,SAAS,CAAC,EAAE,OAAO,CAAC;CACvB,CAAC"}

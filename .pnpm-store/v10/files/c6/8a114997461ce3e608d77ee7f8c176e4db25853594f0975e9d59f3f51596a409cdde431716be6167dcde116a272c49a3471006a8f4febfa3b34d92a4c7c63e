@@ -1,0 +1,99 @@
+{
+	"$id": "/inference/schemas/common-definitions.json",
+	"$schema": "http://json-schema.org/draft-06/schema#",
+	"description": "(Incomplete!) Common type definitions shared by several tasks",
+	"definitions": {
+		"ClassificationOutputTransform": {
+			"title": "ClassificationOutputTransform",
+			"type": "string",
+			"description": "The function to apply to the model outputs in order to retrieve the scores.",
+			"enum": ["sigmoid", "softmax", "none"]
+		},
+		"ClassificationOutput": {
+			"title": "ClassificationOutput",
+			"type": "object",
+			"properties": {
+				"label": {
+					"type": "string",
+					"description": "The predicted class label."
+				},
+				"score": {
+					"type": "number",
+					"description": "The corresponding probability."
+				}
+			},
+			"required": ["label", "score"]
+		},
+		"GenerationParameters": {
+			"title": "GenerationParameters",
+			"type": "object",
+			"properties": {
+				"temperature": {
+					"type": "number",
+					"description": "The value used to modulate the next token probabilities."
+				},
+				"top_k": {
+					"type": "integer",
+					"description": "The number of highest probability vocabulary tokens to keep for top-k-filtering."
+				},
+				"top_p": {
+					"type": "number",
+					"description": "If set to float < 1, only the smallest set of most probable tokens with probabilities that add up to top_p or higher are kept for generation."
+				},
+				"typical_p": {
+					"type": "number",
+					"description": " Local typicality measures how similar the conditional probability of predicting a target token next is to the expected conditional probability of predicting a random token next, given the partial text already generated. If set to float < 1, the smallest set of the most locally typical tokens with probabilities that add up to typical_p or higher are kept for generation. See [this paper](https://hf.co/papers/2202.00666) for more details."
+				},
+				"epsilon_cutoff": {
+					"type": "number",
+					"description": "If set to float strictly between 0 and 1, only tokens with a conditional probability greater than epsilon_cutoff will be sampled. In the paper, suggested values range from 3e-4 to 9e-4, depending on the size of the model. See [Truncation Sampling as Language Model Desmoothing](https://hf.co/papers/2210.15191) for more details."
+				},
+				"eta_cutoff": {
+					"type": "number",
+					"description": "Eta sampling is a hybrid of locally typical sampling and epsilon sampling. If set to float strictly between 0 and 1, a token is only considered if it is greater than either eta_cutoff or sqrt(eta_cutoff) * exp(-entropy(softmax(next_token_logits))). The latter term is intuitively the expected next token probability, scaled by sqrt(eta_cutoff). In the paper, suggested values range from 3e-4 to 2e-3, depending on the size of the model. See [Truncation Sampling as Language Model Desmoothing](https://hf.co/papers/2210.15191) for more details."
+				},
+				"max_length": {
+					"type": "integer",
+					"description": "The maximum length (in tokens) of the generated text, including the input."
+				},
+				"max_new_tokens": {
+					"type": "integer",
+					"description": "The maximum number of tokens to generate. Takes precedence over max_length."
+				},
+				"min_length": {
+					"type": "integer",
+					"description": "The minimum length (in tokens) of the generated text, including the input."
+				},
+				"min_new_tokens": {
+					"type": "integer",
+					"description": "The minimum number of tokens to generate. Takes precedence over min_length."
+				},
+				"do_sample": {
+					"type": "boolean",
+					"description": "Whether to use sampling instead of greedy decoding when generating new tokens."
+				},
+				"early_stopping": {
+					"type": ["boolean", "string"],
+					"description": "Controls the stopping condition for beam-based methods.",
+					"enum": ["never", true, false]
+				},
+				"num_beams": {
+					"type": "integer",
+					"description": "Number of beams to use for beam search."
+				},
+				"num_beam_groups": {
+					"type": "integer",
+					"description": "Number of groups to divide num_beams into in order to ensure diversity among different groups of beams. See [this paper](https://hf.co/papers/1610.02424) for more details."
+				},
+				"penalty_alpha": {
+					"type": "number",
+					"description": "The value balances the model confidence and the degeneration penalty in contrastive search decoding."
+				},
+				"use_cache": {
+					"type": "boolean",
+					"description": "Whether the model should use the past last key/values attentions to speed up decoding"
+				}
+			}
+		}
+	}
+}

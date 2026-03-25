@@ -1,0 +1,1 @@
+{"version":3,"file":"bin.d.mts","sourceRoot":"","sources":["../../src/bin.mts"],"names":[],"mappings":""}

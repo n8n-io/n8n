@@ -1,0 +1,4 @@
+
+> @xata.io/client@0.28.4 add-version /home/runner/work/client-ts/client-ts/packages/client
+> node ../../scripts/add-version-file.mjs
+

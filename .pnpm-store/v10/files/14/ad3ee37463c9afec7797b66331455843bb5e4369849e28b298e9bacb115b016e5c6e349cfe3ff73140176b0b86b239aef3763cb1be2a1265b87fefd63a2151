@@ -1,0 +1,22 @@
+{
+    "name": "@types/rfc2047",
+    "version": "2.0.1",
+    "description": "TypeScript definitions for rfc2047",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Masanori Ohgita",
+            "url": "https://github.com/mugifly",
+            "githubUsername": "mugifly"
+        }
+    ],
+    "main": "",
+    "repository": {
+        "type": "git",
+        "url": "https://www.github.com/DefinitelyTyped/DefinitelyTyped.git"
+    },
+    "scripts": {},
+    "dependencies": {},
+    "typesPublisherContentHash": "f93a318f4c11e230a2737c7a2607489465e6913d7b0559edd64bcd56c8f6aa32",
+    "typeScriptVersion": "2.0"
+}

@@ -1,0 +1,37 @@
+{
+  "name": "lightningcss-linux-x64-gnu",
+  "version": "1.30.2",
+  "license": "MPL-2.0",
+  "description": "A CSS parser, transformer, and minifier written in Rust",
+  "main": "lightningcss.linux-x64-gnu.node",
+  "browserslist": "last 2 versions, not dead",
+  "publishConfig": {
+    "access": "public"
+  },
+  "funding": {
+    "type": "opencollective",
+    "url": "https://opencollective.com/parcel"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/parcel-bundler/lightningcss.git"
+  },
+  "engines": {
+    "node": ">= 12.0.0"
+  },
+  "files": [
+    "lightningcss.linux-x64-gnu.node"
+  ],
+  "resolutions": {
+    "lightningcss": "link:."
+  },
+  "os": [
+    "linux"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "libc": [
+    "glibc"
+  ]
+}

@@ -1,0 +1,1 @@
+{"version":3,"file":"msal.js","sourceRoot":"","sources":["../../../src/msal/msal.ts"],"names":[],"mappings":";AAAA,uCAAuC;AACvC,kCAAkC;;;;AAElC,qEAA+C;AAEtC,gCAAU","sourcesContent":["// Copyright (c) Microsoft Corporation.\n// Licensed under the MIT License.\n\nimport * as msalCommon from \"@azure/msal-node\";\n\nexport { msalCommon };\n"]}

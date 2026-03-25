@@ -1,0 +1,184 @@
+# Copyright 2012 Mozilla Foundation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Main toolbar buttons (tooltips and alt text for images)
+previous.title=ទំព័រ​មុន
+previous_label=មុន
+next.title=ទំព័រ​បន្ទាប់
+next_label=បន្ទាប់
+
+# LOCALIZATION NOTE (page.title): The tooltip for the pageNumber input.
+page.title=ទំព័រ
+# LOCALIZATION NOTE (of_pages): "{{pagesCount}}" will be replaced by a number
+# representing the total number of pages in the document.
+of_pages=នៃ {{pagesCount}}
+# LOCALIZATION NOTE (page_of_pages): "{{pageNumber}}" and "{{pagesCount}}"
+# will be replaced by a number representing the currently visible page,
+# respectively a number representing the total number of pages in the document.
+page_of_pages=({{pageNumber}} នៃ {{pagesCount}})
+
+zoom_out.title=​បង្រួម
+zoom_out_label=​បង្រួម
+zoom_in.title=​ពង្រីក
+zoom_in_label=​ពង្រីក
+zoom.title=ពង្រីក
+presentation_mode.title=ប្ដូរ​ទៅ​របៀប​បទ​បង្ហាញ
+presentation_mode_label=របៀប​បទ​បង្ហាញ
+open_file.title=បើក​ឯកសារ
+open_file_label=បើក
+print.title=បោះពុម្ព
+print_label=បោះពុម្ព
+download.title=ទាញ​យក
+download_label=ទាញ​យក
+bookmark.title=ទិដ្ឋភាព​បច្ចុប្បន្ន (ចម្លង ឬ​បើក​នៅ​ក្នុង​បង្អួច​ថ្មី)
+bookmark_label=ទិដ្ឋភាព​បច្ចុប្បន្ន
+
+# Secondary toolbar and context menu
+tools.title=ឧបករណ៍
+tools_label=ឧបករណ៍
+first_page.title=ទៅកាន់​ទំព័រ​ដំបូង​
+first_page.label=ទៅកាន់​ទំព័រ​ដំបូង​
+first_page_label=ទៅកាន់​ទំព័រ​ដំបូង​
+last_page.title=ទៅកាន់​ទំព័រ​ចុងក្រោយ​
+last_page.label=ទៅកាន់​ទំព័រ​ចុងក្រោយ​
+last_page_label=ទៅកាន់​ទំព័រ​ចុងក្រោយ
+page_rotate_cw.title=បង្វិល​ស្រប​ទ្រនិច​នាឡិកា
+page_rotate_cw.label=បង្វិល​ស្រប​ទ្រនិច​នាឡិកា
+page_rotate_cw_label=បង្វិល​ស្រប​ទ្រនិច​នាឡិកា
+page_rotate_ccw.title=បង្វិល​ច្រាស​ទ្រនិច​នាឡិកា​​
+page_rotate_ccw.label=បង្វិល​ច្រាស​ទ្រនិច​នាឡិកា​​
+page_rotate_ccw_label=បង្វិល​ច្រាស​ទ្រនិច​នាឡិកា​​
+
+cursor_text_select_tool.title=បើក​ឧបករណ៍​ជ្រើស​អត្ថបទ
+cursor_text_select_tool_label=ឧបករណ៍​ជ្រើស​អត្ថបទ
+cursor_hand_tool.title=បើក​ឧបករណ៍​ដៃ
+cursor_hand_tool_label=ឧបករណ៍​ដៃ
+
+# Document properties dialog box
+document_properties.title=លក្ខណ​សម្បត្តិ​ឯកសារ…
+document_properties_label=លក្ខណ​សម្បត្តិ​ឯកសារ…
+document_properties_file_name=ឈ្មោះ​ឯកសារ៖
+document_properties_file_size=ទំហំ​ឯកសារ៖
+# LOCALIZATION NOTE (document_properties_kb): "{{size_kb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in kilobytes, respectively in bytes.
+document_properties_kb={{size_kb}} KB ({{size_b}} បៃ)
+# LOCALIZATION NOTE (document_properties_mb): "{{size_mb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in megabytes, respectively in bytes.
+document_properties_mb={{size_mb}} MB ({{size_b}} បៃ)
+document_properties_title=ចំណងជើង៖
+document_properties_author=អ្នក​និពន្ធ៖
+document_properties_subject=ប្រធានបទ៖
+document_properties_keywords=ពាក្យ​គន្លឹះ៖
+document_properties_creation_date=កាលបរិច្ឆេទ​បង្កើត៖
+document_properties_modification_date=កាលបរិច្ឆេទ​កែប្រែ៖
+# LOCALIZATION NOTE (document_properties_date_string): "{{date}}" and "{{time}}"
+# will be replaced by the creation/modification date, and time, of the PDF file.
+document_properties_date_string={{date}}, {{time}}
+document_properties_creator=អ្នក​បង្កើត៖
+document_properties_producer=កម្មវិធី​បង្កើត PDF ៖
+document_properties_version=កំណែ PDF ៖
+document_properties_page_count=ចំនួន​ទំព័រ៖
+document_properties_close=បិទ
+
+print_progress_message=កំពុង​រៀបចំ​ឯកសារ​សម្រាប់​បោះពុម្ព…
+# LOCALIZATION NOTE (print_progress_percent): "{{progress}}" will be replaced by
+# a numerical per cent value.
+print_progress_percent={{progress}}%
+print_progress_close=បោះបង់
+
+# Tooltips and alt text for side panel toolbar buttons
+# (the _label strings are alt text for the buttons, the .title strings are
+# tooltips)
+toggle_sidebar.title=បិទ/បើក​គ្រាប់​រំកិល
+toggle_sidebar_notification.title=បិទ/បើក​របារ​ចំហៀង (ឯកសារ​មាន​មាតិកា​នៅ​ក្រៅ/attachments)
+toggle_sidebar_label=បិទ/បើក​គ្រាប់​រំកិល
+document_outline.title=បង្ហាញ​គ្រោង​ឯកសារ (ចុច​ទ្វេ​ដង​ដើម្បី​ពង្រីក/បង្រួម​ធាតុ​ទាំងអស់)
+document_outline_label=គ្រោង​ឯកសារ
+attachments.title=បង្ហាញ​ឯកសារ​ភ្ជាប់
+attachments_label=ឯកសារ​ភ្ជាប់
+thumbs.title=បង្ហាញ​រូបភាព​តូចៗ
+thumbs_label=រួបភាព​តូចៗ
+findbar.title=រក​នៅ​ក្នុង​ឯកសារ
+findbar_label=រក
+
+# Thumbnails panel item (tooltip and alt text for images)
+# LOCALIZATION NOTE (thumb_page_title): "{{page}}" will be replaced by the page
+# number.
+thumb_page_title=ទំព័រ {{page}}
+# LOCALIZATION NOTE (thumb_page_canvas): "{{page}}" will be replaced by the page
+# number.
+thumb_page_canvas=រូបភាព​តូច​របស់​ទំព័រ {{page}}
+
+# Find panel button title and messages
+find_input.title=រក
+find_input.placeholder=រក​នៅ​ក្នុង​ឯកសារ...
+find_previous.title=រក​ពាក្យ ឬ​ឃ្លា​ដែល​បាន​ជួប​មុន
+find_previous_label=មុន
+find_next.title=រក​ពាក្យ ឬ​ឃ្លា​ដែល​បាន​ជួប​បន្ទាប់
+find_next_label=បន្ទាប់
+find_highlight=បន្លិច​ទាំងអស់
+find_match_case_label=ករណី​ដំណូច
+find_reached_top=បាន​បន្ត​ពី​ខាង​ក្រោម ទៅ​ដល់​ខាង​​លើ​នៃ​ឯកសារ
+find_reached_bottom=បាន​បន្ត​ពី​ខាងលើ ទៅដល់​ចុង​​នៃ​ឯកសារ
+find_not_found=រក​មិន​ឃើញ​ពាក្យ ឬ​ឃ្លា
+
+# Error panel labels
+error_more_info=ព័ត៌មាន​បន្ថែម
+error_less_info=ព័ត៌មាន​តិចតួច
+error_close=បិទ
+# LOCALIZATION NOTE (error_version_info): "{{version}}" and "{{build}}" will be
+# replaced by the PDF.JS version and build ID.
+error_version_info=PDF.js v{{version}} (build: {{build}})
+# LOCALIZATION NOTE (error_message): "{{message}}" will be replaced by an
+# english string describing the error.
+error_message=សារ ៖ {{message}}
+# LOCALIZATION NOTE (error_stack): "{{stack}}" will be replaced with a stack
+# trace.
+error_stack=ជង់ ៖ {{stack}}
+# LOCALIZATION NOTE (error_file): "{{file}}" will be replaced with a filename
+error_file=ឯកសារ ៖ {{file}}
+# LOCALIZATION NOTE (error_line): "{{line}}" will be replaced with a line number
+error_line=ជួរ ៖ {{line}}
+rendering_error=មាន​កំហុស​បាន​កើតឡើង​ពេល​បង្ហាញ​ទំព័រ ។
+
+# Predefined zoom values
+page_scale_width=ទទឹង​ទំព័រ
+page_scale_fit=សម​ទំព័រ
+page_scale_auto=ពង្រីក​ស្វ័យប្រវត្តិ
+page_scale_actual=ទំហំ​ជាក់ស្ដែង
+# LOCALIZATION NOTE (page_scale_percent): "{{scale}}" will be replaced by a
+# numerical scale value.
+page_scale_percent={{scale}}%
+
+# Loading indicator messages
+loading_error_indicator=កំហុស
+loading_error=មាន​កំហុស​បាន​កើតឡើង​ពេល​កំពុង​ផ្ទុក PDF ។
+invalid_file_error=ឯកសារ PDF ខូច ឬ​មិន​ត្រឹមត្រូវ ។
+missing_file_error=បាត់​ឯកសារ PDF
+unexpected_response_error=ការ​ឆ្លើយ​តម​ម៉ាស៊ីន​មេ​ដែល​មិន​បាន​រំពឹង។
+
+# LOCALIZATION NOTE (text_annotation_type.alt): This is used as a tooltip.
+# "{{type}}" will be replaced with an annotation type from a list defined in
+# the PDF spec (32000-1:2008 Table 169 – Annotation types).
+# Some common types are e.g.: "Check", "Text", "Comment", "Note"
+text_annotation_type.alt=[{{type}} ចំណារ​ពន្យល់]
+password_label=បញ្ចូល​ពាក្យសម្ងាត់​ដើម្បី​បើក​ឯកសារ PDF នេះ។
+password_invalid=ពាក្យសម្ងាត់​មិន​ត្រឹមត្រូវ។ សូម​ព្យាយាម​ម្ដងទៀត។
+password_ok=យល់​ព្រម
+password_cancel=បោះបង់
+
+printing_not_supported=ការ​ព្រមាន ៖ កា​រ​បោះពុម្ព​មិន​ត្រូវ​បាន​គាំទ្រ​ពេញលេញ​ដោយ​កម្មវិធី​រុករក​នេះ​ទេ ។
+printing_not_ready=ព្រមាន៖ PDF មិន​ត្រូវ​បាន​ផ្ទុក​ទាំងស្រុង​ដើម្បី​បោះពុម្ព​ទេ។
+web_fonts_disabled=បាន​បិទ​ពុម្ពអក្សរ​បណ្ដាញ ៖ មិន​អាច​ប្រើ​ពុម្ពអក្សរ PDF ដែល​បាន​បង្កប់​បាន​ទេ ។
+document_colors_not_allowed=ឯកសារ PDF មិន​ត្រូវ​បាន​អនុញ្ញាត​ឲ្យ​ប្រើ​ពណ៌​ផ្ទាល់​របស់​វា​ទេ៖ 'អនុញ្ញាត​​ឲ្យ​ទំព័រ​ជ្រើស​ពណ៌​ផ្ទាល់​ខ្លួន' ត្រូវ​បាន​ធ្វើ​ឲ្យ​អសកម្ម​ក្នុង​​កម្មវិធី​រុករក។

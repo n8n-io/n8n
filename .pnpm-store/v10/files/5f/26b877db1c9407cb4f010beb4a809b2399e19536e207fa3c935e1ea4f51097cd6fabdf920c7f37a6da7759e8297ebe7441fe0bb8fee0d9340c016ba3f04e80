@@ -1,0 +1,89 @@
+{
+  "name": "leac",
+  "version": "0.6.0",
+  "description": "Lexer / tokenizer",
+  "keywords": [
+    "lexer",
+    "tokenizer",
+    "lex",
+    "token"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mxxii/leac.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mxxii/leac/issues"
+  },
+  "homepage": "https://github.com/mxxii/leac",
+  "author": "KillyMXI",
+  "funding": "https://ko-fi.com/killymxi",
+  "license": "MIT",
+  "exports": {
+    "import": "./lib/leac.mjs",
+    "require": "./lib/leac.cjs"
+  },
+  "type": "module",
+  "main": "./lib/leac.cjs",
+  "module": "./lib/leac.mjs",
+  "types": "./lib/leac.d.ts",
+  "files": [
+    "lib"
+  ],
+  "scripts": {
+    "build:docs": "typedoc",
+    "build:deno": "denoify",
+    "build:rollup": "rollup -c",
+    "build:types": "tsc --declaration --emitDeclarationOnly && rimraf lib/!(leac).d.ts",
+    "build": "npm run clean && concurrently npm:build:*",
+    "checkAll": "npm run lint && npm test",
+    "clean": "rimraf lib && rimraf docs && rimraf deno",
+    "example:calc": "npm run ts -- ./examples/calc.ts",
+    "example:json": "npm run ts -- ./examples/json.ts",
+    "lint:eslint": "eslint .",
+    "lint:md": "markdownlint-cli2",
+    "lint": "concurrently npm:lint:*",
+    "prepublishOnly": "npm run build && npm run checkAll",
+    "test": "ava",
+    "ts": "node --experimental-specifier-resolution=node --loader ts-node/esm"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@rollup/plugin-typescript": "^8.3.4",
+    "@tsconfig/node14": "^1.0.3",
+    "@types/node": "14.18.23",
+    "@typescript-eslint/eslint-plugin": "^5.33.1",
+    "@typescript-eslint/parser": "^5.33.1",
+    "ava": "^4.3.1",
+    "concurrently": "^7.3.0",
+    "denoify": "^1.0.0",
+    "eslint": "^8.22.0",
+    "eslint-plugin-jsonc": "^2.4.0",
+    "eslint-plugin-tsdoc": "^0.2.16",
+    "markdownlint-cli2": "^0.5.1",
+    "rimraf": "^3.0.2",
+    "rollup": "^2.78.0",
+    "rollup-plugin-terser": "^7.0.2",
+    "ts-node": "^10.9.1",
+    "tslib": "^2.4.0",
+    "typedoc": "~0.22.18",
+    "typedoc-plugin-markdown": "~3.12.1",
+    "typescript": "~4.7.4"
+  },
+  "ava": {
+    "extensions": {
+      "ts": "module"
+    },
+    "files": [
+      "test/**/*"
+    ],
+    "nodeArguments": [
+      "--loader=ts-node/esm",
+      "--experimental-specifier-resolution=node"
+    ],
+    "verbose": true
+  },
+  "denoify": {
+    "out": "./deno"
+  }
+}

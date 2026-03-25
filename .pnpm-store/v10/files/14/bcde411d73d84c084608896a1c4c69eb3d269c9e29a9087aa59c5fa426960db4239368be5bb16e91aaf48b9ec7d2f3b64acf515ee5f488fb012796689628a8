@@ -1,0 +1,1 @@
+{"version":3,"file":"GetChannelResponse.js","sourceRoot":"","sources":["../../../../../../src/generated/grpc/channelz/v1/GetChannelResponse.ts"],"names":[],"mappings":";AAAA,sCAAsC"}

@@ -1,0 +1,191 @@
+import { createVitePlugin } from 'unplugin';
+import { red, createRollupAsset, checkNodeVersion, normalizeOptions, handleErrors, createSentryInstance, Output, telemetryPlugin } from '@codecov/bundler-plugin-core';
+import path from 'node:path';
+
+const viteBundleAnalysisPlugin = ({
+  output,
+  pluginName,
+  pluginVersion
+}) => ({
+  version: output.version,
+  name: pluginName,
+  pluginVersion,
+  buildStart: () => {
+    output.start();
+    output.setPlugin(pluginName, pluginVersion);
+  },
+  buildEnd: () => {
+    output.end();
+  },
+  writeBundle: async () => {
+    await output.write();
+  },
+  vite: {
+    async generateBundle(options, bundle) {
+      if (!output.bundleName || output.bundleName === "") {
+        red("Bundle name is not present or empty. Skipping upload.");
+        return;
+      }
+      output.setBundleName(output.originalBundleName);
+      if (options.name && options.name !== "") {
+        output.setBundleName(`${output.bundleName}-${options.name}`);
+      }
+      const format = options.format === "es" ? "esm" : options.format;
+      output.setBundleName(`${output.bundleName}-${format}`);
+      const cwd = process.cwd();
+      const assets = [];
+      const chunks = [];
+      const moduleByFileName = /* @__PURE__ */ new Map();
+      const items = Object.values(bundle);
+      const customOptions = {
+        moduleOriginalSize: false,
+        ...options
+      };
+      let assetFormatString = "";
+      if (typeof customOptions.assetFileNames === "string") {
+        assetFormatString = customOptions.assetFileNames;
+      }
+      let chunkFormatString = "";
+      if (typeof customOptions.chunkFileNames === "string") {
+        chunkFormatString = customOptions.chunkFileNames;
+      }
+      let counter = 0;
+      await Promise.all(
+        items.map(async (item) => {
+          if (item?.type === "asset") {
+            const fileName = item?.fileName ?? "";
+            if (path.extname(fileName) === ".map") {
+              return;
+            }
+            const asset = await createRollupAsset({
+              fileName,
+              source: item.source,
+              formatString: assetFormatString,
+              metaFramework: output.metaFramework
+            });
+            assets.push(asset);
+          } else if (item?.type === "chunk") {
+            const fileName = item?.fileName ?? "";
+            if (path.extname(fileName) === ".map") {
+              return;
+            }
+            const asset = await createRollupAsset({
+              fileName,
+              source: item.code,
+              formatString: chunkFormatString,
+              metaFramework: output.metaFramework
+            });
+            assets.push(asset);
+            const chunkId = item?.name ?? "";
+            const uniqueId = `${counter}-${chunkId}`;
+            chunks.push({
+              id: chunkId,
+              uniqueId,
+              entry: item?.isEntry,
+              initial: item?.isDynamicEntry,
+              files: [fileName],
+              names: [item?.name],
+              dynamicImports: item?.dynamicImports ?? []
+            });
+            const moduleEntries = Object.entries(item?.modules ?? {});
+            for (const [modulePath, moduleInfo] of moduleEntries) {
+              const normalizedModulePath = modulePath.replace("\0", "");
+              const relativeModulePath = path.relative(
+                cwd,
+                normalizedModulePath
+              );
+              const relativeModulePathWithPrefix = relativeModulePath.match(
+                /^\.\./
+              ) ? relativeModulePath : `.${path.sep}${relativeModulePath}`;
+              const moduleEntry = moduleByFileName.get(
+                relativeModulePathWithPrefix
+              );
+              if (moduleEntry) {
+                moduleEntry.chunkUniqueIds.push(uniqueId);
+              } else {
+                const size = customOptions.moduleOriginalSize ? moduleInfo.originalLength : moduleInfo.renderedLength;
+                const module = {
+                  name: relativeModulePathWithPrefix,
+                  size,
+                  chunkUniqueIds: [uniqueId]
+                };
+                moduleByFileName.set(relativeModulePathWithPrefix, module);
+              }
+            }
+            counter += 1;
+          }
+          return;
+        })
+      );
+      const modules = Array.from(moduleByFileName.values());
+      output.bundler = {
+        name: "rollup",
+        version: this.meta.rollupVersion
+      };
+      output.assets = assets;
+      output.chunks = chunks;
+      output.modules = modules;
+      output.outputPath = options.dir ?? "";
+      if (output.dryRun) {
+        this.emitFile({
+          type: "asset",
+          fileName: `${output.bundleName}-stats.json`,
+          source: output.bundleStatsToJson()
+        });
+      }
+    }
+  }
+});
+
+const PLUGIN_NAME = "@codecov/vite-plugin";
+const PLUGIN_VERSION = "1.9.1";
+const codecovVitePluginFactory = createVitePlugin(
+  (userOptions, unpluginMetaContext) => {
+    if (checkNodeVersion(unpluginMetaContext)) {
+      return [];
+    }
+    const normalizedOptions = normalizeOptions(userOptions);
+    if (!normalizedOptions.success) {
+      const { shouldExit } = handleErrors(normalizedOptions);
+      if (shouldExit) {
+        process.exit(1);
+      }
+      return [];
+    }
+    const plugins = [];
+    const options = normalizedOptions.options;
+    const sentryConfig = createSentryInstance({
+      telemetry: options.telemetry,
+      isDryRun: options.dryRun,
+      pluginName: PLUGIN_NAME,
+      pluginVersion: PLUGIN_VERSION,
+      options,
+      bundler: unpluginMetaContext.framework
+    });
+    const output = new Output(
+      options,
+      { metaFramework: unpluginMetaContext.framework },
+      sentryConfig
+    );
+    if (options.enableBundleAnalysis) {
+      plugins.push(
+        telemetryPlugin({
+          sentryClient: sentryConfig.sentryClient,
+          sentryScope: sentryConfig.sentryScope,
+          telemetry: options.telemetry
+        }),
+        viteBundleAnalysisPlugin({
+          output,
+          pluginName: PLUGIN_NAME,
+          pluginVersion: PLUGIN_VERSION
+        })
+      );
+    }
+    return plugins;
+  }
+);
+const codecovVitePlugin = codecovVitePluginFactory;
+const _internal_viteBundleAnalysisPlugin = viteBundleAnalysisPlugin;
+
+export { _internal_viteBundleAnalysisPlugin, codecovVitePlugin };
+//# sourceMappingURL=index.mjs.map

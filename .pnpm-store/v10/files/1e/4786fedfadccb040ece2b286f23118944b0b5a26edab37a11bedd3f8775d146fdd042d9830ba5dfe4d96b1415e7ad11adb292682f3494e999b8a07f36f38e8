@@ -1,0 +1,32 @@
+{
+  "name": {
+    "type": "string | symbol",
+    "description": "When a `<router-view>` has a `name` prop, it will render the component with the corresponding name in the matched route record's components option."
+  },
+  "route": {
+    "description": "When a `<router-view>` has a `route` prop, it will use that resolved Route Location instead of the current location."
+  },
+  "to": {
+    "description": "Denotes the target route of the link. When clicked, the value of the `to` prop will be internally passed to `router.push()`, so the value can be either a string or a location descriptor object."
+  },
+  "replace": {
+    "type": "boolean",
+    "description": "Setting replace prop will call `router.replace()` instead of `router.push()` when clicked, so the navigation will replace the current history entry."
+  },
+  "custom": {
+    "type": "boolean",
+    "description": "Whether `<router-link>` should not wrap its content in an `<a>` tag."
+  },
+  "active-class": {
+    "type": "string",
+    "description": "Configure the active CSS class applied when the link is active. Note the default value can also be configured globally via the `linkActiveClass` router constructor option."
+  },
+  "exact-active-class": {
+    "type": "string",
+    "description": "Configure the active CSS class applied when the link is exactly active. Note the default value can also be configured globally via the `linkExactActiveClass` router constructor option."
+  },
+  "aria-current-value": {
+    "options": ["page", "step", "location", "date", "time", "true", "false"],
+    "description": "Configure the value of `aria-current` when the link is active with exact match. It must be one of the [allowed values for `aria-current`](https://www.w3.org/TR/wai-aria-1.2/#aria-current) in the ARIA spec. In most cases, the default of `page` should be the best fit."
+  }
+}

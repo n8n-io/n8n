@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>MD4</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/mocha/2.1.0/mocha.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mocha/2.1.0/mocha.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/expect.js/0.2.0/expect.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.17/require.min.js"></script>
+</head>
+<body>
+  <div id="mocha"></div>
+  <script>
+    mocha.setup('bdd');
+    require(['../src/md4.js'], function(md4) {
+      window.md4 = md4;
+      require(['test.js'], function() {
+        mocha.checkLeaks();
+        mocha.run();
+      })
+    });
+  </script>
+</body>
+</html>

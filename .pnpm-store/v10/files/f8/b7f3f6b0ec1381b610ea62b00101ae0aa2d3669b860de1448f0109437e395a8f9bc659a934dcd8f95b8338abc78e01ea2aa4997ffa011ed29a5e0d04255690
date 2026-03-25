@@ -1,0 +1,66 @@
+{
+  "name": "@vitejs/plugin-legacy",
+  "version": "7.2.1",
+  "type": "module",
+  "license": "MIT",
+  "author": "Evan You",
+  "files": [
+    "dist"
+  ],
+  "keywords": [
+    "frontend",
+    "vite",
+    "vite-plugin",
+    "@vitejs/plugin-legacy"
+  ],
+  "exports": "./dist/index.js",
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vitejs/vite.git",
+    "directory": "packages/plugin-legacy"
+  },
+  "bugs": {
+    "url": "https://github.com/vitejs/vite/issues"
+  },
+  "homepage": "https://github.com/vitejs/vite/tree/main/packages/plugin-legacy#readme",
+  "funding": "https://github.com/vitejs/vite?sponsor=1",
+  "imports": {
+    "#legacy-for-rolldown-vite": {
+      "types": "./types/legacy-for-rolldown-vite.d.ts",
+      "default": "./dist/vendor/rolldown-vite/index.js"
+    }
+  },
+  "dependencies": {
+    "@babel/core": "^7.28.0",
+    "@babel/plugin-transform-dynamic-import": "^7.27.1",
+    "@babel/plugin-transform-modules-systemjs": "^7.27.1",
+    "@babel/preset-env": "^7.28.0",
+    "babel-plugin-polyfill-corejs3": "^0.13.0",
+    "babel-plugin-polyfill-regenerator": "^0.6.5",
+    "browserslist": "^4.25.1",
+    "browserslist-to-esbuild": "^2.1.1",
+    "core-js": "^3.45.0",
+    "magic-string": "^0.30.17",
+    "regenerator-runtime": "^0.14.1",
+    "systemjs": "^6.15.1"
+  },
+  "peerDependencies": {
+    "terser": "^5.16.0",
+    "vite": "^7.0.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-legacy-for-rolldown-vite": "https://pkg.pr.new/vitejs/rolldown-vite/@vitejs/plugin-legacy@a2594ec",
+    "acorn": "^8.15.0",
+    "fdir": "^6.4.6",
+    "picocolors": "^1.1.1",
+    "tsdown": "^0.13.3",
+    "vite": "7.1.0"
+  },
+  "scripts": {
+    "dev": "tsdown --watch",
+    "build": "tsdown"
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "name": "@microsoft/agents-a365-observability",
+  "version": "0.1.0-preview.113",
+  "description": "OpenTelemetry tracing and monitoring SDK for AI agents built with TypeScript/Node.js",
+  "main": "dist/cjs/index.js",
+  "module": "dist/esm/index.js",
+  "types": "dist/esm/index.d.ts",
+  "keywords": [
+    "Agent365",
+    "opentelemetry",
+    "tracing",
+    "monitoring",
+    "ai",
+    "agents",
+    "azure",
+    "typescript"
+  ],
+  "author": "Microsoft Corporation",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/microsoft/Agent365-nodejs.git",
+    "directory": "packages/agents-a365-observability"
+  },
+  "dependencies": {
+    "@azure/monitor-opentelemetry-exporter": "^1.0.0-beta.32",
+    "@microsoft/agents-a365-runtime": "0.1.0-preview.113",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.205.0",
+    "@opentelemetry/instrumentation": "^0.204.0",
+    "@opentelemetry/resources": "^2.1.0",
+    "@opentelemetry/sdk-node": "^0.204.0",
+    "@opentelemetry/sdk-trace-base": "^2.1.0",
+    "@opentelemetry/semantic-conventions": "^1.37.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^20.17.0",
+    "@typescript-eslint/eslint-plugin": "^8.47.0",
+    "@typescript-eslint/parser": "^8.47.0",
+    "eslint": "^9.39.1",
+    "jest": "^30.2.0",
+    "rimraf": "^6.0.0",
+    "ts-jest": "^29.4.5",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.47.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE.md"
+  ],
+  "scripts": {
+    "build:cjs": "npx tsc --project tsconfig.cjs.json",
+    "build:esm": "npx tsc --project tsconfig.esm.json",
+    "build": "npm run build:cjs && npm run build:esm",
+    "build:watch": "npx tsc --watch",
+    "clean": "npx rimraf dist",
+    "test": "jest --passWithNoTests",
+    "test:watch": "jest --watch",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
+    "ci": "npm ci",
+    "pack": "node ../../copyFiles.js . && pnpm pack --pack-destination=../"
+  }
+}

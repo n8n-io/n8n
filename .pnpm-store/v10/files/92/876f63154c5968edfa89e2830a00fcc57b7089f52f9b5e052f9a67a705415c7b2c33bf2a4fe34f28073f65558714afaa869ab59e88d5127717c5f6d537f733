@@ -1,0 +1,48 @@
+{
+	"name": "kolorist",
+	"version": "1.8.0",
+	"description": "A tiny utility to colorize stdin/stdout",
+	"main": "dist/cjs/index.js",
+	"module": "dist/module/index.js",
+	"types": "dist/types/index.d.ts",
+	"scripts": {
+		"test": "mocha -r @esbuild-kit/cjs-loader --extension ts,js src/*.test.ts",
+		"build": "rimraf dist/ && tsc && tsc -p tsconfig.module.json && tsc -p tsconfig.esm.json && node tools/post-build.js",
+		"prepublishOnly": "npm run build"
+	},
+	"author": "Marvin Hagemeister <hello@marvinh.dev>",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/marvinhagemeister/kolorist.git"
+	},
+	"license": "MIT",
+	"devDependencies": {
+		"@changesets/cli": "^2.26.0",
+		"@esbuild-kit/cjs-loader": "^2.4.1",
+		"@types/mocha": "^8.2.1",
+		"@types/node": "^14.14.35",
+		"mocha": "^8.3.2",
+		"node-pty": "^0.10.0",
+		"prettier": "^2.2.1",
+		"rimraf": "^3.0.2",
+		"typescript": "^4.2.3"
+	},
+	"exports": {
+		".": {
+			"types": "./dist/types/index.d.ts",
+			"browser": "./dist/module/index.js",
+			"import": "./dist/esm/index.mjs",
+			"require": "./dist/cjs/index.js"
+		},
+		"./package.json": "./package.json",
+		"./*": "./*"
+	},
+	"files": [
+		"dist/"
+	],
+	"prettier": {
+		"useTabs": true,
+		"arrowParens": "avoid",
+		"singleQuote": true
+	}
+}

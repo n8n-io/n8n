@@ -1,0 +1,17 @@
+{
+  "mappings": [
+    {
+      "scenarioName": "Invalid scope authorization error",
+      "request": {
+        "urlPathPattern": "/oauth/authorize.*",
+        "method": "GET"
+      },
+      "response": {
+        "status": 302,
+        "headers": {
+          "Location": "http://localhost:8010/snowflake/oauth-redirect?code=123&state=invalidstate"
+        }
+      }
+    }
+  ]
+}

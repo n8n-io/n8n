@@ -1,0 +1,67 @@
+{
+  "name": "@opentelemetry/instrumentation-mongoose",
+  "version": "0.56.0",
+  "description": "OpenTelemetry instrumentation for `mongoose` database object data modeling (ODM) library for MongoDB",
+  "main": "build/src/index.js",
+  "types": "build/src/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/open-telemetry/opentelemetry-js-contrib.git",
+    "directory": "packages/instrumentation-mongoose"
+  },
+  "scripts": {
+    "clean": "rimraf build/*",
+    "compile": "tsc -p .",
+    "compile:with-dependencies": "nx run-many -t compile -p @opentelemetry/instrumentation-mongoose",
+    "lint:readme": "node ../../scripts/lint-readme.js",
+    "prepublishOnly": "npm run compile",
+    "tdd": "npm run test -- --watch-extensions ts --watch",
+    "test": "npm run test-v5-v6",
+    "test-v5-v6": "nyc --no-clean mocha --require '@opentelemetry/contrib-test-utils' 'test/mongoose-common.test.ts' 'test/**/mongoose-v5-v6.test.ts'",
+    "test-v7-v8": "nyc --no-clean mocha --require '@opentelemetry/contrib-test-utils' 'test/mongoose-common.test.ts' 'test/**/mongoose-v7-v8.test.ts'",
+    "test:with-services-env": "cross-env NODE_OPTIONS='-r dotenv/config' DOTENV_CONFIG_PATH=../../test/test-services.env npm test",
+    "test-all-versions": "tav",
+    "test-all-versions:with-services-env": "cross-env NODE_OPTIONS='-r dotenv/config' DOTENV_CONFIG_PATH=../../test/test-services.env npm run test-all-versions",
+    "test-services:start": "cd ../.. && npm run test-services:start mongodb",
+    "test-services:stop": "cd ../.. && npm run test-services:stop mongodb",
+    "version:update": "node ../../scripts/version-update.js"
+  },
+  "keywords": [
+    "mongodb",
+    "mongoose",
+    "orm",
+    "instrumentation",
+    "nodejs",
+    "opentelemetry",
+    "tracing"
+  ],
+  "author": "OpenTelemetry Authors",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": "^18.19.0 || >=20.6.0"
+  },
+  "files": [
+    "build/src/**/*.js",
+    "build/src/**/*.js.map",
+    "build/src/**/*.d.ts"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "peerDependencies": {
+    "@opentelemetry/api": "^1.3.0"
+  },
+  "devDependencies": {
+    "@opentelemetry/api": "^1.3.0",
+    "@opentelemetry/contrib-test-utils": "^0.57.0",
+    "@opentelemetry/sdk-trace-base": "^2.0.0",
+    "mongoose": "6.13.8"
+  },
+  "dependencies": {
+    "@opentelemetry/core": "^2.0.0",
+    "@opentelemetry/instrumentation": "^0.210.0",
+    "@opentelemetry/semantic-conventions": "^1.33.0"
+  },
+  "homepage": "https://github.com/open-telemetry/opentelemetry-js-contrib/tree/main/packages/instrumentation-mongoose#readme",
+  "gitHead": "c84212cca7f010b80747cccb9942474e0459df6e"
+}

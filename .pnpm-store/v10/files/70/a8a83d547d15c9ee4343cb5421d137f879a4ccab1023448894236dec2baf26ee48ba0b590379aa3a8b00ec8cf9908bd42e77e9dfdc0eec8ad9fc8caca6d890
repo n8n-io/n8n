@@ -1,0 +1,22 @@
+name: amd64 FreeBSD CMake
+
+on:
+  push:
+  pull_request:
+  schedule:
+    # min hours day(month) month day(week)
+    - cron: '0 0 7,22 * *'
+
+jobs:
+  # Only MacOS hosted runner provides virtualisation with vagrant/virtualbox installed.
+  # see: https://github.com/actions/virtual-environments/tree/main/images/macos
+  make:
+    runs-on: macos-10.15
+    steps:
+    - uses: actions/checkout@v2
+    - name: vagrant version
+      run: Vagrant --version
+    - name: VirtualBox version
+      run: virtualbox -h
+    - name: Build
+      run: cd cmake/ci/vagrant/freebsd && vagrant up

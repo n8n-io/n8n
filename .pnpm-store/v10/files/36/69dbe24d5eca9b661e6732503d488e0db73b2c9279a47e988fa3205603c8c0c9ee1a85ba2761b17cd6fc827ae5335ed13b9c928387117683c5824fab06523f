@@ -1,0 +1,81 @@
+{
+  "name": "node-source-walk",
+  "version": "7.0.1",
+  "description": "Execute a callback on every node of a source code's AST and stop walking when you see fit",
+  "main": "index.js",
+  "files": [
+    "index.js"
+  ],
+  "scripts": {
+    "lint": "xo",
+    "fix": "xo --fix",
+    "uvu": "uvu test -i fixtures",
+    "test": "npm run lint && npm run uvu",
+    "test:ci": "c8 npm run uvu"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dependents/node-source-walk.git"
+  },
+  "keywords": [
+    "ast",
+    "traversal",
+    "acorn",
+    "static analysis",
+    "source code",
+    "walker",
+    "jsx"
+  ],
+  "author": "Joel Kemp <joel@mrjoelkemp.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/dependents/node-source-walk/issues"
+  },
+  "homepage": "https://github.com/dependents/node-source-walk",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@babel/parser": "^7.26.7"
+  },
+  "devDependencies": {
+    "c8": "^10.1.3",
+    "sinon": "^19.0.2",
+    "uvu": "^0.5.6",
+    "xo": "^0.60.0"
+  },
+  "xo": {
+    "space": true,
+    "ignores": [
+      "test/fixtures/*"
+    ],
+    "rules": {
+      "arrow-body-style": "off",
+      "capitalized-comments": "off",
+      "comma-dangle": [
+        "error",
+        "never"
+      ],
+      "curly": [
+        "error",
+        "multi-line"
+      ],
+      "operator-linebreak": [
+        "error",
+        "after"
+      ],
+      "object-curly-spacing": [
+        "error",
+        "always"
+      ],
+      "space-before-function-paren": [
+        "error",
+        "never"
+      ],
+      "unicorn/prefer-module": "off",
+      "unicorn/prefer-node-protocol": "off",
+      "unicorn/prefer-top-level-await": "off",
+      "unicorn/prevent-abbreviations": "off"
+    }
+  }
+}

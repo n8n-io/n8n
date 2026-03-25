@@ -1,0 +1,79 @@
+{
+  "name": "node-ssh",
+  "version": "13.2.0",
+  "description": "SSH2 with Promises",
+  "main": "lib/cjs/index.js",
+  "typings": "lib/typings/index.d.ts",
+  "module": "lib/esm/index.mjs",
+  "exports": {
+    ".": {
+      "types": "./lib/typings/index.d.ts",
+      "import": "./lib/esm/index.mjs",
+      "require": "./lib/cjs/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "type": "commonjs",
+  "scripts": {
+    "test": "ava",
+    "lint": "(tsc -p . --noEmit) && (eslint . --ext .ts) && (prettier --list-different src/*.ts)",
+    "prepare": "yarn build:clean ; yarn build:cjs ; yarn build:esm ; yarn build:typings",
+    "build:clean": "rm -rf lib",
+    "build:esm": "tsc --module es2015 --target es2018 --outDir lib/esm && mv lib/esm/index.js lib/esm/index.mjs",
+    "build:cjs": "tsc --module commonjs --target es2018 --outDir lib/cjs",
+    "build:typings": "tsc --declaration --outDir lib/typings --emitDeclarationOnly"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/steelbrain/node-ssh.git"
+  },
+  "keywords": [
+    "ssh",
+    "ssh2",
+    "sftp"
+  ],
+  "author": "steelbrain",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/steelbrain/node-ssh/issues"
+  },
+  "files": [
+    "lib/*"
+  ],
+  "homepage": "https://github.com/steelbrain/node-ssh#readme",
+  "devDependencies": {
+    "@trivago/prettier-plugin-sort-imports": "^4.2.0",
+    "@types/node": "18",
+    "@types/shell-escape": "^0.2.1",
+    "@types/ssh2": "^1.11.13",
+    "ava": "^5.3.1",
+    "eslint-config-steelbrain": "^11.0.0",
+    "node-pty": "^1.0.0",
+    "ssh2": "^1.14.0",
+    "ssh2-streams": "^0.4.10",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.1.6"
+  },
+  "dependencies": {
+    "is-stream": "^2.0.0",
+    "make-dir": "^3.1.0",
+    "sb-promise-queue": "^2.1.0",
+    "sb-scandir": "^3.1.0",
+    "shell-escape": "^0.2.0",
+    "ssh2": "^1.14.0"
+  },
+  "ava": {
+    "files": [
+      "test/*-test.ts"
+    ],
+    "extensions": [
+      "ts"
+    ],
+    "require": [
+      "ts-node/register/transpile-only"
+    ]
+  },
+  "engines": {
+    "node": ">= 10"
+  }
+}

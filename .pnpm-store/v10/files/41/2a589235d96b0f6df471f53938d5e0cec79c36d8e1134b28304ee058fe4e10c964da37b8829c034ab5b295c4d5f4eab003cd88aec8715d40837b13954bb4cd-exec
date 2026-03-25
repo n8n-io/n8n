@@ -1,0 +1,73 @@
+{
+  "name": "bs-logger",
+  "version": "0.2.6",
+  "description": "Bare simple logger for NodeJS",
+  "author": "Huafu Gandon <huafu.gandon@gmail.com>",
+  "license": "MIT",
+  "repository": "git+https://github.com/huafu/bs-logger.git",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "rimraf dist coverage",
+    "typecheck": "tsc -p . --noEmit",
+    "lint": "tslint --project tsconfig.json --format stylish",
+    "lint:fix": "tslint --fix --project tsconfig.json",
+    "test": "jest --coverage",
+    "test:watch": "jest --watch",
+    "prebuild": "npm run clean",
+    "posttest": "npm run typecheck && npm run lint",
+    "prepare": "npm run build",
+    "prepublishOnly": "npm run test",
+    "preversion": "npm test",
+    "version": "npm run changelog && git add CHANGELOG.md",
+    "postversion": "git push && git push --tags",
+    "changelog": "conventional-changelog -p angular -i CHANGELOG.md -s -r 0",
+    "commitmsg": "commitlint -E GIT_PARAMS",
+    "precommit": "lint-staged",
+    "postcommit": "git reset"
+  },
+  "keywords": [
+    "bare simple logger",
+    "simple logger",
+    "simple",
+    "logger",
+    "typescript",
+    "lib",
+    "library"
+  ],
+  "files": [
+    "dist"
+  ],
+  "devDependencies": {
+    "@commitlint/cli": "7.x",
+    "@commitlint/config-conventional": "7.x",
+    "@types/jest": "23.x",
+    "@types/node": "10.x",
+    "conventional-changelog-cli": "2.x",
+    "husky": "0.x",
+    "jest": "23.x",
+    "lint-staged": "7.x",
+    "prettier": "1.x",
+    "rimraf": "2.x",
+    "ts-jest": "23.x",
+    "tslint": "5.x",
+    "tslint-config-prettier": "1.x",
+    "tslint-plugin-prettier": "2.x",
+    "typescript": "3.x"
+  },
+  "dependencies": {
+    "fast-json-stable-stringify": "2.x"
+  },
+  "lint-staged": {
+    "linters": {
+      "*.{ts,tsx}": [
+        "tslint --fix",
+        "git add"
+      ]
+    }
+  },
+  "engines": {
+    "node": ">= 6"
+  }
+}

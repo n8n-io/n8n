@@ -1,0 +1,41 @@
+{
+  "name": "@redis/graph",
+  "version": "1.1.1",
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist/"
+  ],
+  "scripts": {
+    "test": "nyc -r text-summary -r lcov mocha -r source-map-support/register -r ts-node/register './lib/**/*.spec.ts'",
+    "build": "tsc",
+    "documentation": "typedoc"
+  },
+  "peerDependencies": {
+    "@redis/client": "^1.0.0"
+  },
+  "devDependencies": {
+    "@istanbuljs/nyc-config-typescript": "^1.0.2",
+    "@redis/test-utils": "*",
+    "@types/node": "^20.6.2",
+    "nyc": "^15.1.0",
+    "release-it": "^16.1.5",
+    "source-map-support": "^0.5.21",
+    "ts-node": "^10.9.1",
+    "typedoc": "^0.25.1",
+    "typescript": "^5.2.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/redis/node-redis.git"
+  },
+  "bugs": {
+    "url": "https://github.com/redis/node-redis/issues"
+  },
+  "homepage": "https://github.com/redis/node-redis/tree/master/packages/graph",
+  "keywords": [
+    "redis",
+    "RedisGraph"
+  ]
+}

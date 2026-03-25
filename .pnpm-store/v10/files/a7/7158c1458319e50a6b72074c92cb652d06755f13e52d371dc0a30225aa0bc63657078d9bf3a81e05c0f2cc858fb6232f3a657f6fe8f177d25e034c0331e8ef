@@ -1,0 +1,30 @@
+{
+  "mappings": [
+    {
+      "scenarioName": "Successful OAuth client credentials flow",
+      "requiredScenarioState": "Started",
+      "newScenarioState": "Acquired access token",
+      "request": {
+        "urlPathPattern": "/oauth/token-request.*",
+        "method": "POST",
+        "headers": {
+          "Content-Type": {
+            "contains": "application/x-www-form-urlencoded;charset=UTF-8"
+          }
+        },
+        "bodyPatterns": [
+          {
+            "contains": "scope=session%3Arole%3AANALYST&grant_type=client_credentials&client_id=123&client_secret=clientSecret"
+          }
+        ]
+      },
+      "response": {
+        "status": 400,
+        "jsonBody": {
+          "error": "invalid_client",
+          "error_description": "The client secret supplied for a confidential client is invalid."
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package moby.filesync.v1;
+
+option go_package = "auth";
+
+service Auth{
+	rpc Credentials(CredentialsRequest) returns (CredentialsResponse);
+	rpc FetchToken(FetchTokenRequest) returns (FetchTokenResponse);
+	rpc GetTokenAuthority(GetTokenAuthorityRequest) returns (GetTokenAuthorityResponse);
+	rpc VerifyTokenAuthority(VerifyTokenAuthorityRequest) returns (VerifyTokenAuthorityResponse);
+}
+
+message CredentialsRequest {
+	string Host = 1;
+}
+
+message CredentialsResponse {
+	string Username = 1;
+	string Secret = 2;
+}
+
+message FetchTokenRequest {
+	string ClientID = 1;
+	string Host = 2;
+	string Realm = 3;
+	string Service = 4;
+	repeated string Scopes = 5;
+}
+
+message FetchTokenResponse {
+	string Token = 1;
+	int64 ExpiresIn = 2; // seconds
+	int64 IssuedAt = 3; // timestamp
+}
+
+message GetTokenAuthorityRequest {
+	string Host = 1;
+	bytes Salt = 2;
+}
+
+message GetTokenAuthorityResponse {
+	bytes PublicKey = 1;
+}
+
+message VerifyTokenAuthorityRequest {
+	string Host = 1;
+	bytes Payload = 2;
+	bytes Salt = 3;
+}
+
+message VerifyTokenAuthorityResponse {
+	bytes Signed = 1;
+}

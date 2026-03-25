@@ -1,0 +1,58 @@
+.Dd May 4, 2014
+.Dt quoted-printable 1
+.Sh NAME
+.Nm quoted-printable
+.Nd encode or decode messages using the `Quoted-Printable` content transfer encoding
+.Sh SYNOPSIS
+.Nm
+.Op Fl e | -encode Ar string
+.br
+.Op Fl d | -decode Ar string
+.br
+.Op Fl v | -version
+.br
+.Op Fl h | -help
+.Sh DESCRIPTION
+.Nm
+encode or decode messages using the `Quoted-Printable` content transfer encoding.
+.Sh OPTIONS
+.Bl -ohang -offset
+.It Sy "--encode"
+Encode a string of text using the `Quoted-Printable` content transfer encoding.
+.It Sy "--decode"
+Decode a string of text using the `Quoted-Printable` content transfer encoding.
+.It Sy "-v, --version"
+Print quoted-printable's version.
+.It Sy "-h, --help"
+Show the help screen.
+.El
+.Sh EXIT STATUS
+The
+.Nm quoted-printable
+utility exits with one of the following values:
+.Pp
+.Bl -tag -width flag -compact
+.It Li 0
+.Nm
+successfully encoded/decoded the input and printed the result.
+.It Li 1
+.Nm
+wasn't instructed to encode/decode anything (for example, the
+.Ar --help
+flag was set); or, an error occurred.
+.El
+.Sh EXAMPLES
+.Bl -ohang -offset
+.It Sy "quoted-printable --encode 'foo = bar'"
+Print an encoded version of the given string.
+.It Sy "quoted-printable --decode 'foo=3Dbar'"
+Print the decoded version of the given `Quoted-Printable`-encoded message.
+.It Sy "echo\ 'foo = bar'\ |\ quoted-printable --encode"
+Print the encoded version of the string that gets piped in.
+.El
+.Sh BUGS
+quoted-printable's bug tracker is located at <https://github.com/mathiasbynens/quoted-printable/issues>.
+.Sh AUTHOR
+Mathias Bynens <https://mathiasbynens.be/>
+.Sh WWW
+<https://mths.be/quoted-printable>

@@ -1,0 +1,22 @@
+{
+  "name": "typedarray-dts",
+  "version": "1.0.0",
+  "description": "TypeScript type definitions for JS TypedArrays",
+  "author": "George Thomas",
+  "license": "MIT",
+  "homepage": "https://github.com/mgthomas99/typedarray-dts/README.md",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mgthomas99/typedarray-dts.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mgthomas99/typedarray-dts/issues"
+  },
+  "keywords": [
+    "definitions",
+    "typescript",
+    "types",
+    "typings"
+  ],
+  "typings": "src/index.d.ts"
+}

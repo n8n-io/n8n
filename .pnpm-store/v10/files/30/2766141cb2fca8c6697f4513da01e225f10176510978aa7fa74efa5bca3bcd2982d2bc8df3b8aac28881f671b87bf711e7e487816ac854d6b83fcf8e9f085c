@@ -1,0 +1,43 @@
+{
+	"name": "default-require-extensions",
+	"version": "3.0.1",
+	"description": "Node's default require extensions as a separate module",
+	"license": "MIT",
+	"repository": "avajs/default-require-extensions",
+	"funding": "https://github.com/sponsors/sindresorhus",
+	"main": "js.js",
+	"engines": {
+		"node": ">=8"
+	},
+	"scripts": {
+		"test": "xo && nyc ava"
+	},
+	"files": [
+		"js.js",
+		"json.js"
+	],
+	"keywords": [
+		"require",
+		"extension",
+		"default",
+		"node"
+	],
+	"dependencies": {
+		"strip-bom": "^4.0.0"
+	},
+	"devDependencies": {
+		"ava": "^2.3.0",
+		"nyc": "^14.1.1",
+		"xo": "^0.24.0"
+	},
+	"nyc": {
+		"exclude": [
+			"fixture"
+		]
+	},
+	"xo": {
+		"rules": {
+			"import/extensions": "off"
+		}
+	}
+}

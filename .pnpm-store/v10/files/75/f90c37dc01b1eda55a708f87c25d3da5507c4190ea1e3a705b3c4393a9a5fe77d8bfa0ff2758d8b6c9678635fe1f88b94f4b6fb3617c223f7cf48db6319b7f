@@ -1,0 +1,47 @@
+{
+  "name": "@rushstack/node-core-library",
+  "version": "5.12.0",
+  "description": "Core libraries that every NodeJS toolchain project should use",
+  "main": "lib/index.js",
+  "typings": "dist/node-core-library.d.ts",
+  "license": "MIT",
+  "repository": {
+    "url": "https://github.com/microsoft/rushstack.git",
+    "type": "git",
+    "directory": "libraries/node-core-library"
+  },
+  "dependencies": {
+    "fs-extra": "~11.3.0",
+    "import-lazy": "~4.0.0",
+    "jju": "~1.4.0",
+    "resolve": "~1.22.1",
+    "semver": "~7.5.4",
+    "ajv": "~8.13.0",
+    "ajv-draft-04": "~1.0.0",
+    "ajv-formats": "~3.0.1"
+  },
+  "devDependencies": {
+    "@rushstack/heft": "0.69.2",
+    "@rushstack/heft-node-rig": "2.7.0",
+    "@types/fs-extra": "7.0.0",
+    "@types/heft-jest": "1.0.1",
+    "@types/jju": "1.4.1",
+    "@types/node": "20.17.19",
+    "@types/resolve": "1.20.2",
+    "@types/semver": "7.5.0",
+    "local-eslint-config": "1.0.0"
+  },
+  "peerDependencies": {
+    "@types/node": "*"
+  },
+  "peerDependenciesMeta": {
+    "@types/node": {
+      "optional": true
+    }
+  },
+  "scripts": {
+    "build": "heft build --clean",
+    "_phase:build": "heft run --only build -- --clean",
+    "_phase:test": "heft run --only test -- --clean"
+  }
+}

@@ -1,0 +1,1 @@
+module.exports = require('../dist/wrappers/anthropic.cjs');

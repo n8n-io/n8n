@@ -1,0 +1,51 @@
+{
+  "name": "commander",
+  "version": "6.2.1",
+  "description": "the complete solution for node.js command-line programs",
+  "keywords": [
+    "commander",
+    "command",
+    "option",
+    "parser",
+    "cli",
+    "argument",
+    "args",
+    "argv"
+  ],
+  "author": "TJ Holowaychuk <tj@vision-media.ca>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tj/commander.js.git"
+  },
+  "scripts": {
+    "lint": "eslint index.js \"tests/**/*.js\"",
+    "typescript-lint": "eslint typings/*.ts",
+    "test": "jest && npm run test-typings",
+    "test-typings": "tsc -p tsconfig.json"
+  },
+  "main": "index",
+  "files": [
+    "index.js",
+    "typings/index.d.ts"
+  ],
+  "dependencies": {},
+  "devDependencies": {
+    "@types/jest": "^26.0.15",
+    "@types/node": "^14.14.2",
+    "@typescript-eslint/eslint-plugin": "^4.5.0",
+    "eslint": "^7.11.0",
+    "eslint-config-standard-with-typescript": "^19.0.1",
+    "eslint-plugin-jest": "^24.1.0",
+    "jest": "^26.6.0",
+    "standard": "^15.0.0",
+    "typescript": "^4.0.3"
+  },
+  "typings": "typings/index.d.ts",
+  "jest": {
+    "collectCoverage": true
+  },
+  "engines": {
+    "node": ">= 6"
+  }
+}

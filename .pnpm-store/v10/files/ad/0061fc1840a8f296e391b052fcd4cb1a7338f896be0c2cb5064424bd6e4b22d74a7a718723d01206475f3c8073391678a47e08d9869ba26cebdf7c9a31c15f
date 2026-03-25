@@ -1,0 +1,22 @@
+import * as http from 'http';
+import type { ReadStream } from 'fs';
+export declare const mimeTypes: {
+    '.html': string;
+    '.js': string;
+    '.css': string;
+    '.json': string;
+    '.png': string;
+    '.jpg': string;
+    '.gif': string;
+    '.svg': string;
+    '.wav': string;
+    '.mp4': string;
+    '.woff': string;
+    '.ttf': string;
+    '.eot': string;
+    '.otf': string;
+    '.wasm': string;
+};
+export declare function respondWithGzip(contents: string | Buffer | ReadStream, request: http.IncomingMessage, response: http.ServerResponse, headers?: {}, code?: number): void;
+export declare function startHttpServer(port: number, host: string, handler: http.RequestListener): http.Server<typeof http.IncomingMessage, typeof http.ServerResponse>;
+export declare function startWsServer(port: number, host: string): any;

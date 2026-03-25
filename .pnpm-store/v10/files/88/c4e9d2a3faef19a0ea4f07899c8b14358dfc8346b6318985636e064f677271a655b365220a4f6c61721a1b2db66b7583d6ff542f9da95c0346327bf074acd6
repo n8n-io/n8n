@@ -1,0 +1,10 @@
+language: node_js
+node_js:
+  - "9"
+  - "8"
+  - "6"
+  - "4"
+after_success:
+  - npm install coveralls
+  - nyc report --reporter=text-lcov | ./node_modules/.bin/coveralls
+sudo: false

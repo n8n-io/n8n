@@ -1,0 +1,83 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.StartedK3sContainer = exports.K3sContainer = void 0;
+const node_path_1 = require("node:path");
+const tar_stream_1 = __importDefault(require("tar-stream"));
+const testcontainers_1 = require("testcontainers");
+const KUBE_CONFIG_PATH = "/etc/rancher/k3s/k3s.yaml";
+const KUBE_SECURE_PORT = 6443;
+const RANCHER_WEBHOOK_PORT = 8443;
+class K3sContainer extends testcontainers_1.GenericContainer {
+    constructor(image) {
+        super(image);
+        this.hostConfig.CgroupnsMode = "host";
+        this.withExposedPorts(KUBE_SECURE_PORT, RANCHER_WEBHOOK_PORT)
+            .withPrivilegedMode()
+            // Why do Java and .NET implementations bind cgroup but Golang does not?
+            .withBindMounts([{ source: "/sys/fs/cgroup", target: "/sys/fs/cgroup" }])
+            .withTmpFs({ "/run": "rw" })
+            .withTmpFs({ "/var/run": "rw" })
+            .withWaitStrategy(testcontainers_1.Wait.forLogMessage("Node controller sync successful"))
+            .withStartupTimeout(120_000);
+    }
+    async start() {
+        const container = await super.start();
+        const tarStream = await container.copyArchiveFromContainer(KUBE_CONFIG_PATH);
+        const rawKubeConfig = await extractFromTarStream(tarStream, (0, node_path_1.basename)(KUBE_CONFIG_PATH));
+        return new StartedK3sContainer(container, rawKubeConfig);
+    }
+    async beforeContainerCreated() {
+        let command = this.createOpts.Cmd ?? ["server", "--disable=traefik"];
+        if (this.networkMode && this.networkAliases.length > 0) {
+            const aliases = this.networkAliases.join();
+            command = [...command, `--tls-san=${aliases}`];
+        }
+        this.withCommand(command);
+    }
+}
+exports.K3sContainer = K3sContainer;
+class StartedK3sContainer extends testcontainers_1.AbstractStartedContainer {
+    rawKubeConfig;
+    constructor(startedTestContainer, rawKubeConfig) {
+        super(startedTestContainer);
+        this.rawKubeConfig = rawKubeConfig;
+    }
+    getKubeConfig() {
+        const serverUrl = `https://${this.getHost()}:${this.getMappedPort(KUBE_SECURE_PORT)}`;
+        return kubeConfigWithServerUrl(this.rawKubeConfig, serverUrl);
+    }
+    getAliasedKubeConfig(networkAlias) {
+        const serverUrl = `https://${networkAlias}:${KUBE_SECURE_PORT}`;
+        return kubeConfigWithServerUrl(this.rawKubeConfig, serverUrl);
+    }
+}
+exports.StartedK3sContainer = StartedK3sContainer;
+async function extractFromTarStream(tarStream, entryName) {
+    const extract = tar_stream_1.default.extract();
+    tarStream.pipe(extract);
+    let extracted = undefined;
+    for await (const entry of extract) {
+        const { header } = entry;
+        if (header.type === "file" && header.name === entryName) {
+            const chunks = [];
+            for await (const chunk of entry) {
+                chunks.push(chunk);
+            }
+            extracted = Buffer.concat(chunks).toString("utf-8");
+        }
+        else {
+            entry.resume();
+        }
+    }
+    if (!extracted) {
+        throw new Error(`Failed to extract ${entryName} from archive`);
+    }
+    return extracted;
+}
+function kubeConfigWithServerUrl(kubeConfig, server) {
+    return kubeConfig.replace(/server:\s?[:/.\d\w]+/, `server: ${server}`);
+}
+//# sourceMappingURL=k3s-container.js.map

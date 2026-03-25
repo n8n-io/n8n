@@ -1,0 +1,28 @@
+{
+  "name": "treeify",
+  "version": "1.1.0",
+  "author": "Luke Plaster <notatestuser@gmail.com>",
+  "description": "converts a JS object into a nice and readable tree structure for the console",
+  "license": "MIT",
+  "scripts": {
+    "test": "./node_modules/vows/bin/vows --spec"
+  },
+  "main": "./treeify",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/notatestuser/treeify.git"
+  },
+  "keywords": [
+    "object", "tree", "print", "console", "pretty"
+  ],
+  "devDependencies": {
+    "vows": "git://github.com/Filirom1/vows.git#expect"
+  },
+  "licenses": [{
+    "type": "MIT",
+    "url": "http://lp.mit-license.org/"
+  }],
+  "engines": {
+    "node": ">=0.6"
+  }
+}

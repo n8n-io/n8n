@@ -1,0 +1,32 @@
+{
+  "name": "@rushstack/ts-command-line",
+  "version": "4.23.6",
+  "description": "An object-oriented command-line parser for TypeScript",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/microsoft/rushstack.git",
+    "directory": "libraries/ts-command-line"
+  },
+  "main": "lib/index.js",
+  "typings": "dist/ts-command-line.d.ts",
+  "license": "MIT",
+  "dependencies": {
+    "@types/argparse": "1.0.38",
+    "argparse": "~1.0.9",
+    "string-argv": "~0.3.1",
+    "@rushstack/terminal": "0.15.1"
+  },
+  "devDependencies": {
+    "@rushstack/heft": "0.69.2",
+    "@rushstack/heft-node-rig": "2.7.0",
+    "@types/heft-jest": "1.0.1",
+    "@types/node": "20.17.19",
+    "local-eslint-config": "1.0.0",
+    "@rushstack/node-core-library": "5.12.0"
+  },
+  "scripts": {
+    "build": "heft build --clean",
+    "_phase:build": "heft run --only build -- --clean",
+    "_phase:test": "heft run --only test -- --clean"
+  }
+}

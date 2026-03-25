@@ -1,0 +1,60 @@
+{
+  "name": "postcss-media-query-parser",
+  "version": "0.2.3",
+  "description": "A tool for parsing media query lists.",
+  "main": "dist/index.js",
+  "keywords": [
+    "postcss",
+    "postcss tool",
+    "media query",
+    "media query parsing"
+  ],
+  "author": "dryoma",
+  "license": "MIT",
+  "homepage": "https://github.com/dryoma/postcss-media-query-parser",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dryoma/postcss-media-query-parser.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dryoma/postcss-media-query-parser/issues"
+  },
+  "devDependencies": {
+    "babel-cli": "^6.14.0",
+    "babel-preset-es2015": "^6.14.0",
+    "babel-register": "^6.14.0",
+    "eslint": "^2.5.1",
+    "eslint-config-airbnb": "^6.0.2",
+    "eslint-plugin-react": "^4.2.3",
+    "tap-spec": "^4.1.1",
+    "tape": "^4.6.0"
+  },
+  "scripts": {
+    "lint": "eslint . --ignore-path .gitignore",
+    "test": "tape -r babel-register \"src/**/__tests__/*.js\" | tap-spec",
+    "pretest": "npm run lint",
+    "prebuild": "rimraf dist",
+    "prepublish": "npm run build",
+    "build": "babel src --out-dir dist"
+  },
+  "eslintConfig": {
+    "extends": "airbnb",
+    "rules": {
+      "max-len": [
+        2,
+        80,
+        4
+      ],
+      "func-names": 0
+    }
+  },
+  "babel": {
+    "presets": [
+      "es2015"
+    ]
+  },
+  "files": [
+    "dist",
+    "!**/__tests__"
+  ]
+}

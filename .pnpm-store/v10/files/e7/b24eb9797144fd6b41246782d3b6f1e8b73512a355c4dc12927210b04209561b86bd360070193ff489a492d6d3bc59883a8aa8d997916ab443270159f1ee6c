@@ -1,0 +1,1 @@
+{"version":3,"file":"ModifyDNResponse.js","sourceRoot":"./","sources":["messages/ModifyDNResponse.ts"],"names":[],"mappings":";;;AAAA,4DAAyD;AAGzD,uDAAoD;AAEpD,MAAa,gBAAiB,SAAQ,iCAAe;IAGnD,YAAmB,OAA+B;QAChD,KAAK,CAAC,OAAO,CAAC,CAAC;QACf,IAAI,CAAC,iBAAiB,GAAG,qCAAiB,CAAC,eAAe,CAAC;IAC7D,CAAC;CACF;AAPD,4CAOC"}

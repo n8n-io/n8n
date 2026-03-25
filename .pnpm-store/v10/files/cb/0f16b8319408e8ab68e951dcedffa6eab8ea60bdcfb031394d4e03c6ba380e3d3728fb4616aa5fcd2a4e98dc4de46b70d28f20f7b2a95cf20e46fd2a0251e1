@@ -1,0 +1,1 @@
+module.exports = require("./dist/example_selectors/index.cjs");

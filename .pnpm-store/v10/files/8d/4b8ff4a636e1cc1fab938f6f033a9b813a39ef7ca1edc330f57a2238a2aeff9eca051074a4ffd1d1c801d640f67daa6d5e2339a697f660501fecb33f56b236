@@ -1,0 +1,1 @@
+module.exports = require("../../dist/experimental/llms/chrome_ai.cjs");

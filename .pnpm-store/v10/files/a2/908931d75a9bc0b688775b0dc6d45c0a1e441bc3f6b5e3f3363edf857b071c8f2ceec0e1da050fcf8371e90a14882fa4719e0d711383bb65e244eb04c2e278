@@ -1,0 +1,2725 @@
+{
+  "name": "@microsoft/api-extractor-model",
+  "entries": [
+    {
+      "version": "7.30.4",
+      "tag": "@microsoft/api-extractor-model_v7.30.4",
+      "date": "Tue, 11 Mar 2025 02:12:33 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `5.12.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.30.3",
+      "tag": "@microsoft/api-extractor-model_v7.30.3",
+      "date": "Thu, 30 Jan 2025 01:11:42 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `5.11.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.30.2",
+      "tag": "@microsoft/api-extractor-model_v7.30.2",
+      "date": "Thu, 09 Jan 2025 01:10:10 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `5.10.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.30.1",
+      "tag": "@microsoft/api-extractor-model_v7.30.1",
+      "date": "Sat, 14 Dec 2024 01:11:07 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `5.10.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.30.0",
+      "tag": "@microsoft/api-extractor-model_v7.30.0",
+      "date": "Sat, 23 Nov 2024 01:18:55 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Update TSDoc dependencies."
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.29.9",
+      "tag": "@microsoft/api-extractor-model_v7.29.9",
+      "date": "Fri, 22 Nov 2024 01:10:43 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `5.10.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.29.8",
+      "tag": "@microsoft/api-extractor-model_v7.29.8",
+      "date": "Fri, 13 Sep 2024 00:11:43 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `5.9.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.29.7",
+      "tag": "@microsoft/api-extractor-model_v7.29.7",
+      "date": "Tue, 10 Sep 2024 20:08:11 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `5.8.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.29.6",
+      "tag": "@microsoft/api-extractor-model_v7.29.6",
+      "date": "Wed, 21 Aug 2024 05:43:04 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `5.7.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.29.5",
+      "tag": "@microsoft/api-extractor-model_v7.29.5",
+      "date": "Mon, 12 Aug 2024 22:16:04 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `5.6.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.29.4",
+      "tag": "@microsoft/api-extractor-model_v7.29.4",
+      "date": "Sat, 27 Jul 2024 00:10:27 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Include CHANGELOG.md in published releases again"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `5.5.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.29.3",
+      "tag": "@microsoft/api-extractor-model_v7.29.3",
+      "date": "Tue, 16 Jul 2024 00:36:21 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `5.5.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.29.2",
+      "tag": "@microsoft/api-extractor-model_v7.29.2",
+      "date": "Thu, 30 May 2024 00:13:05 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Include missing `type` modifiers on type-only exports."
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `5.4.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.29.1",
+      "tag": "@microsoft/api-extractor-model_v7.29.1",
+      "date": "Wed, 29 May 2024 02:03:51 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `5.4.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.29.0",
+      "tag": "@microsoft/api-extractor-model_v7.29.0",
+      "date": "Wed, 29 May 2024 00:10:52 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Bump TSDoc dependencies."
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.28.21",
+      "tag": "@microsoft/api-extractor-model_v7.28.21",
+      "date": "Tue, 28 May 2024 15:10:09 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `5.3.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.28.20",
+      "tag": "@microsoft/api-extractor-model_v7.28.20",
+      "date": "Tue, 28 May 2024 00:09:47 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `5.2.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.28.19",
+      "tag": "@microsoft/api-extractor-model_v7.28.19",
+      "date": "Sat, 25 May 2024 04:54:08 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `5.1.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.28.18",
+      "tag": "@microsoft/api-extractor-model_v7.28.18",
+      "date": "Thu, 23 May 2024 02:26:56 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `5.0.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.28.17",
+      "tag": "@microsoft/api-extractor-model_v7.28.17",
+      "date": "Wed, 15 May 2024 06:04:17 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `4.3.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.28.16",
+      "tag": "@microsoft/api-extractor-model_v7.28.16",
+      "date": "Fri, 10 May 2024 05:33:34 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `4.2.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.28.15",
+      "tag": "@microsoft/api-extractor-model_v7.28.15",
+      "date": "Mon, 06 May 2024 15:11:05 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `4.2.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.28.14",
+      "tag": "@microsoft/api-extractor-model_v7.28.14",
+      "date": "Wed, 10 Apr 2024 15:10:08 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `4.1.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.28.13",
+      "tag": "@microsoft/api-extractor-model_v7.28.13",
+      "date": "Wed, 21 Feb 2024 21:45:28 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `4.0.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.28.12",
+      "tag": "@microsoft/api-extractor-model_v7.28.12",
+      "date": "Tue, 20 Feb 2024 21:45:10 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `4.0.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.28.11",
+      "tag": "@microsoft/api-extractor-model_v7.28.11",
+      "date": "Mon, 19 Feb 2024 21:54:26 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Fix a formatting issue with the LICENSE."
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `4.0.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.28.10",
+      "tag": "@microsoft/api-extractor-model_v7.28.10",
+      "date": "Sat, 17 Feb 2024 06:24:34 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Fix broken link to API documentation"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.66.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.28.9",
+      "tag": "@microsoft/api-extractor-model_v7.28.9",
+      "date": "Thu, 08 Feb 2024 01:09:22 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.66.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.28.8",
+      "tag": "@microsoft/api-extractor-model_v7.28.8",
+      "date": "Mon, 05 Feb 2024 23:46:52 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.65.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.28.7",
+      "tag": "@microsoft/api-extractor-model_v7.28.7",
+      "date": "Thu, 25 Jan 2024 01:09:30 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.64.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.28.6",
+      "tag": "@microsoft/api-extractor-model_v7.28.6",
+      "date": "Tue, 23 Jan 2024 20:12:58 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.64.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.28.5",
+      "tag": "@microsoft/api-extractor-model_v7.28.5",
+      "date": "Tue, 23 Jan 2024 16:15:05 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.64.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.28.4",
+      "tag": "@microsoft/api-extractor-model_v7.28.4",
+      "date": "Wed, 03 Jan 2024 00:31:18 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.63.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.28.3",
+      "tag": "@microsoft/api-extractor-model_v7.28.3",
+      "date": "Thu, 07 Dec 2023 03:44:13 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.62.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.28.2",
+      "tag": "@microsoft/api-extractor-model_v7.28.2",
+      "date": "Thu, 28 Sep 2023 20:53:16 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.61.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.28.1",
+      "tag": "@microsoft/api-extractor-model_v7.28.1",
+      "date": "Tue, 26 Sep 2023 09:30:33 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Update type-only imports to include the type modifier."
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.60.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.28.0",
+      "tag": "@microsoft/api-extractor-model_v7.28.0",
+      "date": "Fri, 15 Sep 2023 00:36:58 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Update @types/node from 14 to 18"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.60.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `3.3.4`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.27.6",
+      "tag": "@microsoft/api-extractor-model_v7.27.6",
+      "date": "Tue, 08 Aug 2023 07:10:40 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.59.7`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `3.3.3`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.27.5",
+      "tag": "@microsoft/api-extractor-model_v7.27.5",
+      "date": "Wed, 19 Jul 2023 00:20:32 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.59.6`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.27.4",
+      "tag": "@microsoft/api-extractor-model_v7.27.4",
+      "date": "Thu, 06 Jul 2023 00:16:20 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.59.5`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.27.3",
+      "tag": "@microsoft/api-extractor-model_v7.27.3",
+      "date": "Thu, 15 Jun 2023 00:21:01 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.59.4`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `3.3.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.27.2",
+      "tag": "@microsoft/api-extractor-model_v7.27.2",
+      "date": "Wed, 07 Jun 2023 22:45:16 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.59.3`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `3.3.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.27.1",
+      "tag": "@microsoft/api-extractor-model_v7.27.1",
+      "date": "Mon, 29 May 2023 15:21:15 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.59.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.27.0",
+      "tag": "@microsoft/api-extractor-model_v7.27.0",
+      "date": "Mon, 22 May 2023 06:34:32 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Upgrade the TypeScript dependency to ~5.0.4"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.59.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `3.3.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.26.9",
+      "tag": "@microsoft/api-extractor-model_v7.26.9",
+      "date": "Fri, 12 May 2023 00:23:05 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.59.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.26.8",
+      "tag": "@microsoft/api-extractor-model_v7.26.8",
+      "date": "Thu, 04 May 2023 00:20:28 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Fix a mistake in the documentation for ApiParameterListMixin.overloadIndex"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.26.7",
+      "tag": "@microsoft/api-extractor-model_v7.26.7",
+      "date": "Mon, 01 May 2023 15:23:20 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.58.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.26.6",
+      "tag": "@microsoft/api-extractor-model_v7.26.6",
+      "date": "Sat, 29 Apr 2023 00:23:03 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.57.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.26.5",
+      "tag": "@microsoft/api-extractor-model_v7.26.5",
+      "date": "Thu, 27 Apr 2023 17:18:43 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.56.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.26.4",
+      "tag": "@microsoft/api-extractor-model_v7.26.4",
+      "date": "Fri, 10 Feb 2023 01:18:51 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.55.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `3.2.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.26.3",
+      "tag": "@microsoft/api-extractor-model_v7.26.3",
+      "date": "Sun, 05 Feb 2023 03:02:02 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.55.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.26.2",
+      "tag": "@microsoft/api-extractor-model_v7.26.2",
+      "date": "Wed, 01 Feb 2023 02:16:34 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.55.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.26.1",
+      "tag": "@microsoft/api-extractor-model_v7.26.1",
+      "date": "Mon, 30 Jan 2023 16:22:30 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.54.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.26.0",
+      "tag": "@microsoft/api-extractor-model_v7.26.0",
+      "date": "Wed, 25 Jan 2023 07:26:55 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Add new .api.json field `isAbstract` to track `abstract` modifier in ApiClass, ApiMethod, and ApiProperty via ApiAbstractMixin (GitHub #3661)"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.25.3",
+      "tag": "@microsoft/api-extractor-model_v7.25.3",
+      "date": "Fri, 09 Dec 2022 16:18:28 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.53.3`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.25.2",
+      "tag": "@microsoft/api-extractor-model_v7.25.2",
+      "date": "Wed, 26 Oct 2022 00:16:16 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Update the @microsoft/tsdoc dependency version to 0.14.2."
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.25.1",
+      "tag": "@microsoft/api-extractor-model_v7.25.1",
+      "date": "Thu, 13 Oct 2022 00:20:15 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.53.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.25.0",
+      "tag": "@microsoft/api-extractor-model_v7.25.0",
+      "date": "Tue, 11 Oct 2022 23:49:12 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Add a new fileUrlPath property to relevant API items and serialize this to the .api.json. Additionally, add a SourceFile helper class for constructing file URLs from these paths and the projectFolderUrl."
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.24.4",
+      "tag": "@microsoft/api-extractor-model_v7.24.4",
+      "date": "Mon, 10 Oct 2022 15:23:44 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.53.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `3.1.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.24.3",
+      "tag": "@microsoft/api-extractor-model_v7.24.3",
+      "date": "Thu, 29 Sep 2022 07:13:06 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.53.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `3.1.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.24.2",
+      "tag": "@microsoft/api-extractor-model_v7.24.2",
+      "date": "Wed, 21 Sep 2022 20:21:10 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.52.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.24.1",
+      "tag": "@microsoft/api-extractor-model_v7.24.1",
+      "date": "Thu, 15 Sep 2022 00:18:52 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.51.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `3.0.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.24.0",
+      "tag": "@microsoft/api-extractor-model_v7.24.0",
+      "date": "Fri, 02 Sep 2022 17:48:42 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Add new ApiExportedMixin mixin class for determining whether an API item is exported or not"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.23.3",
+      "tag": "@microsoft/api-extractor-model_v7.23.3",
+      "date": "Wed, 24 Aug 2022 03:01:22 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.51.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.23.2",
+      "tag": "@microsoft/api-extractor-model_v7.23.2",
+      "date": "Wed, 24 Aug 2022 00:14:38 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Remove use of LegacyAdapters.sortStable"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.51.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.23.1",
+      "tag": "@microsoft/api-extractor-model_v7.23.1",
+      "date": "Fri, 19 Aug 2022 00:17:19 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.50.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.23.0",
+      "tag": "@microsoft/api-extractor-model_v7.23.0",
+      "date": "Wed, 03 Aug 2022 18:40:35 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Upgrade TypeScript dependency to 4.7"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.50.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `3.0.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.22.2",
+      "tag": "@microsoft/api-extractor-model_v7.22.2",
+      "date": "Mon, 01 Aug 2022 02:45:32 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.50.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.22.1",
+      "tag": "@microsoft/api-extractor-model_v7.22.1",
+      "date": "Thu, 21 Jul 2022 23:30:27 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Improve IFindApiItemMessage and fix two small bugs with ApiItemContainerMixin.findMembersWithInheritance()"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.22.0",
+      "tag": "@microsoft/api-extractor-model_v7.22.0",
+      "date": "Thu, 21 Jul 2022 00:16:14 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Add a new ApiItemContainerMixin.findMembersWithInheritance() method for finding an item's inherited members"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.21.0",
+      "tag": "@microsoft/api-extractor-model_v7.21.0",
+      "date": "Thu, 30 Jun 2022 04:48:53 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Update model to reflect that index signatures can also be readonly"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.20.3",
+      "tag": "@microsoft/api-extractor-model_v7.20.3",
+      "date": "Tue, 28 Jun 2022 22:47:13 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.49.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.20.2",
+      "tag": "@microsoft/api-extractor-model_v7.20.2",
+      "date": "Tue, 28 Jun 2022 00:23:32 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.48.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.6.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.20.1",
+      "tag": "@microsoft/api-extractor-model_v7.20.1",
+      "date": "Mon, 27 Jun 2022 18:43:09 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.47.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.20.0",
+      "tag": "@microsoft/api-extractor-model_v7.20.0",
+      "date": "Sat, 25 Jun 2022 21:00:40 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Add a new initializerTokenRange field to ApiProperty and ApiVariable items."
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.19.1",
+      "tag": "@microsoft/api-extractor-model_v7.19.1",
+      "date": "Sat, 25 Jun 2022 01:54:29 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.46.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.19.0",
+      "tag": "@microsoft/api-extractor-model_v7.19.0",
+      "date": "Fri, 24 Jun 2022 07:16:47 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Added new configuration for ItemContainerMixin member ordering"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.18.2",
+      "tag": "@microsoft/api-extractor-model_v7.18.2",
+      "date": "Fri, 17 Jun 2022 09:17:54 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.45.7`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.18.1",
+      "tag": "@microsoft/api-extractor-model_v7.18.1",
+      "date": "Fri, 17 Jun 2022 00:16:18 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.45.6`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.6.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.18.0",
+      "tag": "@microsoft/api-extractor-model_v7.18.0",
+      "date": "Tue, 07 Jun 2022 09:37:04 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Add an \"isReadonly\" field to ApiProperty, ApiPropertySignature, and ApiVariable"
+          },
+          {
+            "comment": "Add an \"isProtected\" field to ApiConstructor, ApiMethod, and ApiProperty"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.17.3",
+      "tag": "@microsoft/api-extractor-model_v7.17.3",
+      "date": "Tue, 10 May 2022 01:20:43 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.45.5`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.17.2",
+      "tag": "@microsoft/api-extractor-model_v7.17.2",
+      "date": "Sat, 23 Apr 2022 02:13:07 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.45.4`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.6.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.17.1",
+      "tag": "@microsoft/api-extractor-model_v7.17.1",
+      "date": "Fri, 15 Apr 2022 00:12:36 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.45.3`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.5.4`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.17.0",
+      "tag": "@microsoft/api-extractor-model_v7.17.0",
+      "date": "Wed, 13 Apr 2022 15:12:40 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Add a new isOptional property to TypeParameters deserialized from the .api.json file with api-extractor-model."
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.16.2",
+      "tag": "@microsoft/api-extractor-model_v7.16.2",
+      "date": "Tue, 12 Apr 2022 02:58:32 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Update TSDoc dependencies."
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.16.1",
+      "tag": "@microsoft/api-extractor-model_v7.16.1",
+      "date": "Sat, 09 Apr 2022 02:24:26 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Rename the \"master\" branch to \"main\"."
+          },
+          {
+            "comment": "Update a path in the README."
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.45.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.5.3`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.16.0",
+      "tag": "@microsoft/api-extractor-model_v7.16.0",
+      "date": "Thu, 31 Mar 2022 02:06:05 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Updated api-extractor-model to store whether a parameter is optional."
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.15.4",
+      "tag": "@microsoft/api-extractor-model_v7.15.4",
+      "date": "Tue, 15 Mar 2022 19:15:53 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.45.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.5.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.15.3",
+      "tag": "@microsoft/api-extractor-model_v7.15.3",
+      "date": "Wed, 05 Jan 2022 16:07:47 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.45.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.15.2",
+      "tag": "@microsoft/api-extractor-model_v7.15.2",
+      "date": "Mon, 27 Dec 2021 16:10:40 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.44.3`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.5.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.15.1",
+      "tag": "@microsoft/api-extractor-model_v7.15.1",
+      "date": "Thu, 09 Dec 2021 20:34:41 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.44.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.15.0",
+      "tag": "@microsoft/api-extractor-model_v7.15.0",
+      "date": "Thu, 09 Dec 2021 00:21:54 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Replace const enums with conventional enums to allow for compatibility with JavaScript consumers."
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.14.0",
+      "tag": "@microsoft/api-extractor-model_v7.14.0",
+      "date": "Wed, 08 Dec 2021 16:14:05 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Update to TypeScript 4.5"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.13.18",
+      "tag": "@microsoft/api-extractor-model_v7.13.18",
+      "date": "Mon, 06 Dec 2021 16:08:33 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.44.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.5.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.13.17",
+      "tag": "@microsoft/api-extractor-model_v7.13.17",
+      "date": "Fri, 03 Dec 2021 03:05:22 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.44.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.13.16",
+      "tag": "@microsoft/api-extractor-model_v7.13.16",
+      "date": "Sat, 06 Nov 2021 00:09:13 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.43.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.13.15",
+      "tag": "@microsoft/api-extractor-model_v7.13.15",
+      "date": "Fri, 05 Nov 2021 15:09:18 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.43.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.4.5`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.13.14",
+      "tag": "@microsoft/api-extractor-model_v7.13.14",
+      "date": "Wed, 27 Oct 2021 00:08:15 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Update the package.json repository field to include the directory property."
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.43.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.4.4`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.13.13",
+      "tag": "@microsoft/api-extractor-model_v7.13.13",
+      "date": "Wed, 13 Oct 2021 15:09:54 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.42.3`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.4.3`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.13.12",
+      "tag": "@microsoft/api-extractor-model_v7.13.12",
+      "date": "Fri, 08 Oct 2021 08:08:34 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.42.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.13.11",
+      "tag": "@microsoft/api-extractor-model_v7.13.11",
+      "date": "Thu, 07 Oct 2021 07:13:35 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.42.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.4.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.13.10",
+      "tag": "@microsoft/api-extractor-model_v7.13.10",
+      "date": "Tue, 05 Oct 2021 15:08:38 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.42.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.13.9",
+      "tag": "@microsoft/api-extractor-model_v7.13.9",
+      "date": "Fri, 24 Sep 2021 00:09:29 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.41.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.13.8",
+      "tag": "@microsoft/api-extractor-model_v7.13.8",
+      "date": "Thu, 23 Sep 2021 00:10:40 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Upgrade the `@types/node` dependency to version to version 12."
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.40.3`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.4.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.13.7",
+      "tag": "@microsoft/api-extractor-model_v7.13.7",
+      "date": "Tue, 14 Sep 2021 01:17:04 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.40.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.13.6",
+      "tag": "@microsoft/api-extractor-model_v7.13.6",
+      "date": "Mon, 13 Sep 2021 15:07:06 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.40.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.13.5",
+      "tag": "@microsoft/api-extractor-model_v7.13.5",
+      "date": "Wed, 11 Aug 2021 00:07:21 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.40.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.13.4",
+      "tag": "@microsoft/api-extractor-model_v7.13.4",
+      "date": "Mon, 12 Jul 2021 23:08:26 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.39.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.4.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.13.3",
+      "tag": "@microsoft/api-extractor-model_v7.13.3",
+      "date": "Fri, 04 Jun 2021 19:59:53 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.39.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.13.2",
+      "tag": "@microsoft/api-extractor-model_v7.13.2",
+      "date": "Wed, 19 May 2021 00:11:39 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.38.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.13.1",
+      "tag": "@microsoft/api-extractor-model_v7.13.1",
+      "date": "Mon, 03 May 2021 15:10:29 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.37.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.13.0",
+      "tag": "@microsoft/api-extractor-model_v7.13.0",
+      "date": "Tue, 20 Apr 2021 04:59:51 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "The .api.json file format now stores the TSDoc configuration used for parsing doc comments"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.12.5",
+      "tag": "@microsoft/api-extractor-model_v7.12.5",
+      "date": "Mon, 12 Apr 2021 15:10:28 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.36.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.3.4`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.12.4",
+      "tag": "@microsoft/api-extractor-model_v7.12.4",
+      "date": "Thu, 08 Apr 2021 06:05:31 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Fix minor typo in README.md"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.12.3",
+      "tag": "@microsoft/api-extractor-model_v7.12.3",
+      "date": "Tue, 06 Apr 2021 15:14:22 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.36.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.3.3`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.12.2",
+      "tag": "@microsoft/api-extractor-model_v7.12.2",
+      "date": "Fri, 05 Feb 2021 16:10:42 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.36.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.12.1",
+      "tag": "@microsoft/api-extractor-model_v7.12.1",
+      "date": "Thu, 10 Dec 2020 23:25:49 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Enable support for @decorator"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.35.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.3.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.12.0",
+      "tag": "@microsoft/api-extractor-model_v7.12.0",
+      "date": "Wed, 18 Nov 2020 08:19:54 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Introduce an ApiOptionalMixin base class for representing optional properties and methods"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.11.0",
+      "tag": "@microsoft/api-extractor-model_v7.11.0",
+      "date": "Wed, 18 Nov 2020 06:21:57 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Update .api.json file format to store a new field \"isOptional\" for documenting optional properties"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.10.10",
+      "tag": "@microsoft/api-extractor-model_v7.10.10",
+      "date": "Wed, 11 Nov 2020 01:08:59 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.35.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.3.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.10.9",
+      "tag": "@microsoft/api-extractor-model_v7.10.9",
+      "date": "Tue, 10 Nov 2020 23:13:12 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.35.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.10.8",
+      "tag": "@microsoft/api-extractor-model_v7.10.8",
+      "date": "Fri, 30 Oct 2020 06:38:39 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.34.7`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.3.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.10.7",
+      "tag": "@microsoft/api-extractor-model_v7.10.7",
+      "date": "Fri, 30 Oct 2020 00:10:14 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.34.6`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.2.3`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.10.6",
+      "tag": "@microsoft/api-extractor-model_v7.10.6",
+      "date": "Thu, 29 Oct 2020 06:14:19 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Fix .d.ts error when the library is imported by a project using TypeScript 4.0"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.10.5",
+      "tag": "@microsoft/api-extractor-model_v7.10.5",
+      "date": "Wed, 28 Oct 2020 01:18:03 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.34.5`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.2.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.10.4",
+      "tag": "@microsoft/api-extractor-model_v7.10.4",
+      "date": "Tue, 27 Oct 2020 15:10:14 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.34.4`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.10.3",
+      "tag": "@microsoft/api-extractor-model_v7.10.3",
+      "date": "Tue, 06 Oct 2020 00:24:06 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.34.3`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.2.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.10.2",
+      "tag": "@microsoft/api-extractor-model_v7.10.2",
+      "date": "Mon, 05 Oct 2020 22:36:57 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.34.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.2.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.10.1",
+      "tag": "@microsoft/api-extractor-model_v7.10.1",
+      "date": "Wed, 30 Sep 2020 18:39:17 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Update to build with @rushstack/heft-node-rig"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.34.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.1.3`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.10.0",
+      "tag": "@microsoft/api-extractor-model_v7.10.0",
+      "date": "Wed, 30 Sep 2020 06:53:53 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Update README.md"
+          }
+        ],
+        "minor": [
+          {
+            "comment": "Upgrade compiler; the API now requires TypeScript 3.9 or newer"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.34.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.1.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.9.7",
+      "tag": "@microsoft/api-extractor-model_v7.9.7",
+      "date": "Tue, 22 Sep 2020 05:45:57 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.33.6`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.1.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.9.6",
+      "tag": "@microsoft/api-extractor-model_v7.9.6",
+      "date": "Tue, 22 Sep 2020 01:45:31 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.33.5`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.1.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.9.5",
+      "tag": "@microsoft/api-extractor-model_v7.9.5",
+      "date": "Tue, 22 Sep 2020 00:08:53 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.33.4`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.0.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.9.4",
+      "tag": "@microsoft/api-extractor-model_v7.9.4",
+      "date": "Sat, 19 Sep 2020 04:37:27 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.33.3`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `1.4.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.9.3",
+      "tag": "@microsoft/api-extractor-model_v7.9.3",
+      "date": "Sat, 19 Sep 2020 03:33:07 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.33.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `1.4.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.9.2",
+      "tag": "@microsoft/api-extractor-model_v7.9.2",
+      "date": "Fri, 18 Sep 2020 22:57:24 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.33.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `1.4.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.9.1",
+      "tag": "@microsoft/api-extractor-model_v7.9.1",
+      "date": "Fri, 18 Sep 2020 21:49:54 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.33.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.9.0",
+      "tag": "@microsoft/api-extractor-model_v7.9.0",
+      "date": "Sun, 13 Sep 2020 01:53:20 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Add support for system selectors in declaration references"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.8.22",
+      "tag": "@microsoft/api-extractor-model_v7.8.22",
+      "date": "Fri, 11 Sep 2020 02:13:35 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.32.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.8.21",
+      "tag": "@microsoft/api-extractor-model_v7.8.21",
+      "date": "Mon, 07 Sep 2020 07:37:37 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.31.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.8.20",
+      "tag": "@microsoft/api-extractor-model_v7.8.20",
+      "date": "Sat, 05 Sep 2020 18:56:34 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Fix \"Converting circular structure to JSON\" error (GitHub #2152)"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.8.19",
+      "tag": "@microsoft/api-extractor-model_v7.8.19",
+      "date": "Thu, 27 Aug 2020 11:27:06 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.30.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `1.3.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.8.18",
+      "tag": "@microsoft/api-extractor-model_v7.8.18",
+      "date": "Mon, 24 Aug 2020 07:35:20 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.29.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `1.2.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.8.17",
+      "tag": "@microsoft/api-extractor-model_v7.8.17",
+      "date": "Sat, 22 Aug 2020 05:55:43 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.29.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `1.2.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.8.16",
+      "tag": "@microsoft/api-extractor-model_v7.8.16",
+      "date": "Tue, 18 Aug 2020 23:59:42 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.28.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.8.15",
+      "tag": "@microsoft/api-extractor-model_v7.8.15",
+      "date": "Mon, 17 Aug 2020 04:53:23 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.27.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `1.1.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.8.14",
+      "tag": "@microsoft/api-extractor-model_v7.8.14",
+      "date": "Wed, 12 Aug 2020 00:10:05 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Updated project to build with Heft"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.26.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `1.0.4`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.8.13",
+      "tag": "@microsoft/api-extractor-model_v7.8.13",
+      "date": "Wed, 05 Aug 2020 18:27:33 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.26.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.8.12",
+      "tag": "@microsoft/api-extractor-model_v7.8.12",
+      "date": "Fri, 03 Jul 2020 15:09:04 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" from `3.24.4` to `3.25.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.8.11",
+      "tag": "@microsoft/api-extractor-model_v7.8.11",
+      "date": "Thu, 25 Jun 2020 06:43:35 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" from `3.24.3` to `3.24.4`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" from `1.0.1` to `1.0.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.8.10",
+      "tag": "@microsoft/api-extractor-model_v7.8.10",
+      "date": "Wed, 24 Jun 2020 09:50:48 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" from `3.24.2` to `3.24.3`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" from `1.0.0` to `1.0.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.8.9",
+      "tag": "@microsoft/api-extractor-model_v7.8.9",
+      "date": "Wed, 24 Jun 2020 09:04:28 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" from `3.24.1` to `3.24.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" from `0.5.8` to `1.0.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.8.8",
+      "tag": "@microsoft/api-extractor-model_v7.8.8",
+      "date": "Wed, 10 Jun 2020 20:48:30 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" from `3.24.0` to `3.24.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.8.7",
+      "tag": "@microsoft/api-extractor-model_v7.8.7",
+      "date": "Sat, 30 May 2020 02:59:54 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" from `3.23.1` to `3.24.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.8.6",
+      "tag": "@microsoft/api-extractor-model_v7.8.6",
+      "date": "Thu, 28 May 2020 05:59:02 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" from `3.23.0` to `3.23.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.8.5",
+      "tag": "@microsoft/api-extractor-model_v7.8.5",
+      "date": "Wed, 27 May 2020 05:15:11 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" from `3.22.1` to `3.23.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" from `0.5.7` to `0.5.8`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.8.4",
+      "tag": "@microsoft/api-extractor-model_v7.8.4",
+      "date": "Tue, 26 May 2020 23:00:25 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" from `3.22.0` to `3.22.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.8.3",
+      "tag": "@microsoft/api-extractor-model_v7.8.3",
+      "date": "Fri, 22 May 2020 15:08:43 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" from `3.21.0` to `3.22.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.8.2",
+      "tag": "@microsoft/api-extractor-model_v7.8.2",
+      "date": "Thu, 21 May 2020 23:09:44 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" from `3.20.0` to `3.21.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.8.1",
+      "tag": "@microsoft/api-extractor-model_v7.8.1",
+      "date": "Thu, 21 May 2020 15:42:00 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" from `3.19.7` to `3.20.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.8.0",
+      "tag": "@microsoft/api-extractor-model_v7.8.0",
+      "date": "Wed, 06 May 2020 08:23:45 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Enable canonicalReference to ApiItem lookup"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.7.11",
+      "tag": "@microsoft/api-extractor-model_v7.7.11",
+      "date": "Wed, 08 Apr 2020 04:07:33 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" from `3.19.6` to `3.19.7`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" from `0.5.6` to `0.5.7`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.7.10",
+      "tag": "@microsoft/api-extractor-model_v7.7.10",
+      "date": "Sat, 28 Mar 2020 00:37:16 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Upgrade to TSdoc 0.12.19"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" from `3.19.5` to `3.19.6`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" from `0.5.5` to `0.5.6`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.7.9",
+      "tag": "@microsoft/api-extractor-model_v7.7.9",
+      "date": "Wed, 18 Mar 2020 15:07:47 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Upgrade cyclic dependencies"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" from `3.19.4` to `3.19.5`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" from `0.5.4` to `0.5.5`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.7.8",
+      "tag": "@microsoft/api-extractor-model_v7.7.8",
+      "date": "Tue, 17 Mar 2020 23:55:58 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Replace dependencies whose NPM scope was renamed from `@microsoft` to `@rushstack`"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" from `3.19.3` to `3.19.4`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.7.7",
+      "tag": "@microsoft/api-extractor-model_v7.7.7",
+      "date": "Tue, 28 Jan 2020 02:23:44 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/node-core-library\" from `3.19.2` to `3.19.3`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.7.6",
+      "tag": "@microsoft/api-extractor-model_v7.7.6",
+      "date": "Thu, 23 Jan 2020 01:07:56 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/node-core-library\" from `3.19.1` to `3.19.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.7.5",
+      "tag": "@microsoft/api-extractor-model_v7.7.5",
+      "date": "Tue, 21 Jan 2020 21:56:14 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/node-core-library\" from `3.19.0` to `3.19.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" from `0.5.3` to `0.5.4`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.7.4",
+      "tag": "@microsoft/api-extractor-model_v7.7.4",
+      "date": "Sun, 19 Jan 2020 02:26:52 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Upgrade Node typings to Node 10"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/node-core-library\" from `3.18.3` to `3.19.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" from `0.5.2` to `0.5.3`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.7.3",
+      "tag": "@microsoft/api-extractor-model_v7.7.3",
+      "date": "Fri, 17 Jan 2020 01:08:23 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/node-core-library\" from `3.18.2` to `3.18.3`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" from `0.5.1` to `0.5.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.7.2",
+      "tag": "@microsoft/api-extractor-model_v7.7.2",
+      "date": "Thu, 09 Jan 2020 06:44:13 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/node-core-library\" from `3.18.1` to `3.18.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" from `0.5.0` to `0.5.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.7.1",
+      "tag": "@microsoft/api-extractor-model_v7.7.1",
+      "date": "Wed, 08 Jan 2020 00:11:31 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/node-core-library\" from `3.18.0` to `3.18.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" from `0.4.2` to `0.5.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.7.0",
+      "tag": "@microsoft/api-extractor-model_v7.7.0",
+      "date": "Tue, 03 Dec 2019 03:17:43 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Improve declaration reference syntax to allow linking to overloaded functions/methods"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.6.0",
+      "tag": "@microsoft/api-extractor-model_v7.6.0",
+      "date": "Sun, 24 Nov 2019 00:54:04 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Added support for `@throws`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.5.6",
+      "tag": "@microsoft/api-extractor-model_v7.5.6",
+      "date": "Fri, 15 Nov 2019 04:50:50 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/node-core-library\" from `3.17.1` to `3.18.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.5.5",
+      "tag": "@microsoft/api-extractor-model_v7.5.5",
+      "date": "Mon, 11 Nov 2019 16:07:56 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/node-core-library\" from `3.17.0` to `3.17.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" from `0.4.1` to `0.4.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.5.4",
+      "tag": "@microsoft/api-extractor-model_v7.5.4",
+      "date": "Tue, 05 Nov 2019 06:49:28 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Fix an issue where API reports sometimes were ordered differently depending on the version of NodeJS (GitHub #1552)"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/node-core-library\" from `3.16.0` to `3.17.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.5.3",
+      "tag": "@microsoft/api-extractor-model_v7.5.3",
+      "date": "Tue, 05 Nov 2019 01:08:39 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Clarified an error message"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.5.2",
+      "tag": "@microsoft/api-extractor-model_v7.5.2",
+      "date": "Tue, 22 Oct 2019 06:24:44 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Refactor some code as part of migration from TSLint to ESLint"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/node-core-library\" from `3.15.1` to `3.16.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" from `0.4.0` to `0.4.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.5.1",
+      "tag": "@microsoft/api-extractor-model_v7.5.1",
+      "date": "Sun, 29 Sep 2019 23:56:29 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Update repository URL"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/node-core-library\" from `3.15.0` to `3.15.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.5.0",
+      "tag": "@microsoft/api-extractor-model_v7.5.0",
+      "date": "Wed, 25 Sep 2019 15:15:31 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Add ApiItem.getMergedSiblings() API"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.4.2",
+      "tag": "@microsoft/api-extractor-model_v7.4.2",
+      "date": "Mon, 23 Sep 2019 15:14:55 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Remove unnecessary dependency on @types/node"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/node-core-library\" from `3.14.2` to `3.15.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.4.1",
+      "tag": "@microsoft/api-extractor-model_v7.4.1",
+      "date": "Tue, 10 Sep 2019 22:32:23 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Update documentation"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/node-core-library\" from `3.14.1` to `3.14.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.4.0",
+      "tag": "@microsoft/api-extractor-model_v7.4.0",
+      "date": "Tue, 10 Sep 2019 20:38:33 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Add 'canonicalReference' to ExcerptToken"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.3.4",
+      "tag": "@microsoft/api-extractor-model_v7.3.4",
+      "date": "Wed, 04 Sep 2019 18:28:06 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/node-core-library\" from `3.14.0` to `3.14.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.3.3",
+      "tag": "@microsoft/api-extractor-model_v7.3.3",
+      "date": "Wed, 04 Sep 2019 15:15:37 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Update TSDoc dependency to 0.12.14"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.3.2",
+      "tag": "@microsoft/api-extractor-model_v7.3.2",
+      "date": "Thu, 08 Aug 2019 15:14:17 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/node-core-library\" from `3.13.0` to `3.14.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.3.1",
+      "tag": "@microsoft/api-extractor-model_v7.3.1",
+      "date": "Thu, 08 Aug 2019 00:49:05 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "(Experimental) Add ApiExtractor.canonicalReference which is a beta implementation of the revised TSDoc declaration reference notation"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.3.0",
+      "tag": "@microsoft/api-extractor-model_v7.3.0",
+      "date": "Mon, 22 Jul 2019 19:13:10 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Rename `ApiItem.canonicalReference` to `.containerKey`; rename `ApiItemContainerMixin.tryGetMember()` to `.tryGetMemberByKey()`; rename `Api___.getCanonicalReference()` to `.getContainerKey()`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.2.0",
+      "tag": "@microsoft/api-extractor-model_v7.2.0",
+      "date": "Tue, 11 Jun 2019 00:48:06 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Improve the .api.json deserializer to validate the schema version and support backwards compatibility"
+          }
+        ],
+        "minor": [
+          {
+            "comment": "Add API support for type parameters and type alias types"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.1.3",
+      "tag": "@microsoft/api-extractor-model_v7.1.3",
+      "date": "Wed, 05 Jun 2019 19:12:34 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Fix an issue where TSDoc index selectors (ApiParameterListMixin.overloadIndex) started from 0, whereas TSDoc requires a nonzero number"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.1.2",
+      "tag": "@microsoft/api-extractor-model_v7.1.2",
+      "date": "Tue, 04 Jun 2019 05:51:53 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Fix an issue where ApiConstructor inherited from ApiStaticMixin, but TypeScript constructors cannot be static"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.1.1",
+      "tag": "@microsoft/api-extractor-model_v7.1.1",
+      "date": "Mon, 27 May 2019 04:13:44 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Make the strings returned by ApiItem.displayName less verbose"
+          },
+          {
+            "comment": "Improve formatting of the strings returned by ApiItem.getScopedNameWithinPackage()"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.1.0",
+      "tag": "@microsoft/api-extractor-model_v7.1.0",
+      "date": "Tue, 16 Apr 2019 11:01:37 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Initial stable release of API Extractor 7"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.0.28",
+      "tag": "@microsoft/api-extractor-model_v7.0.28",
+      "date": "Wed, 20 Mar 2019 19:14:49 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/node-core-library\" from `3.12.1` to `3.13.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.0.27",
+      "tag": "@microsoft/api-extractor-model_v7.0.27",
+      "date": "Mon, 18 Mar 2019 04:28:43 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Add helper functions for ReleaseTag"
+          },
+          {
+            "comment": "Export IApiItemConstructor to eliminate the ae-forgotten-export warning"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/node-core-library\" from `3.12.0` to `3.12.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.0.26",
+      "tag": "@microsoft/api-extractor-model_v7.0.26",
+      "date": "Wed, 13 Mar 2019 19:13:14 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Refactor code to move the IndentedWriter API from api-extractor-model to api-documenter"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.0.25",
+      "tag": "@microsoft/api-extractor-model_v7.0.25",
+      "date": "Wed, 13 Mar 2019 01:14:05 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Upgrade TSDoc"
+          }
+        ]
+      }
+    },
+    {
+      "version": "7.0.24",
+      "tag": "@microsoft/api-extractor-model_v7.0.24",
+      "date": "Mon, 11 Mar 2019 16:13:36 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Initial setup of new package @microsoft/api-extractor-model"
+          }
+        ]
+      }
+    }
+  ]
+}

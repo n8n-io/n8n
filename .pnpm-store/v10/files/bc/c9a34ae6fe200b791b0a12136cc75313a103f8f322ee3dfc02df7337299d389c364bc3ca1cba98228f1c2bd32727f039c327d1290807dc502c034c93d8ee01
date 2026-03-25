@@ -1,0 +1,1 @@
+{"version":3,"sources":["../../src/query-builder/SelectQueryBuilderOption.ts"],"names":[],"mappings":"","file":"SelectQueryBuilderOption.js","sourcesContent":["export type SelectQueryBuilderOption = \"disable-global-order\" | \"create-pojo\"\n"],"sourceRoot":".."}

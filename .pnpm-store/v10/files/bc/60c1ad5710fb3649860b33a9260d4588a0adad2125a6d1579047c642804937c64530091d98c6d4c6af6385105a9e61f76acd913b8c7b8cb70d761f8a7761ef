@@ -1,0 +1,22 @@
+{
+	"prefix": "mdi",
+	"name": "Material Design Icons",
+	"total": 7367,
+	"author": {
+		"name": "Pictogrammers",
+		"url": "https://github.com/Templarian/MaterialDesign"
+	},
+	"license": {
+		"title": "Apache 2.0",
+		"spdx": "Apache-2.0",
+		"url": "https://github.com/Templarian/MaterialDesign/blob/master/LICENSE"
+	},
+	"samples": [
+		"account-check",
+		"bell-alert-outline",
+		"calendar-edit"
+	],
+	"height": 24,
+	"category": "General",
+	"palette": false
+}

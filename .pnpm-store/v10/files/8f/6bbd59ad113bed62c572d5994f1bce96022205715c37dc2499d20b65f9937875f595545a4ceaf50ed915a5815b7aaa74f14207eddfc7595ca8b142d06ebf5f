@@ -1,0 +1,26 @@
+<html>
+<head>
+    <title> Tests </title>
+    <meta charset="utf-8"/>
+    <link rel="stylesheet" href="../node_modules/mocha/mocha.css" />
+</head>
+<body>
+<div id="mocha"></div>
+<script src="../node_modules/mocha/mocha.js"></script>
+<script src="../node_modules/chai/chai.js"></script>
+<script>
+    mocha.ui('bdd');
+    mocha.reporter('html');
+</script>
+<script src="../build/build.js"></script>
+<script>
+    var pointer = require('json-pointer'),
+        each    = require('manuelstofer-foreach');
+</script>
+<script src="test.js"></script>
+<script>
+    if (window.mochaPhantomJS) { mochaPhantomJS.run(); }
+    else { mocha.run(); }
+</script>
+</body>
+</html>

@@ -1,0 +1,84 @@
+{
+  "name": "kafkajs",
+  "version": "2.2.4",
+  "description": "A modern Apache Kafka client for node.js",
+  "author": "Tulio Ornelas <ornelas.tulio@gmail.com>",
+  "main": "index.js",
+  "types": "types/index.d.ts",
+  "license": "MIT",
+  "keywords": [
+    "kafka",
+    "sasl",
+    "scram"
+  ],
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tulios/kafkajs.git"
+  },
+  "bugs": {
+    "url": "https://github.com/tulios/kafkajs/issues"
+  },
+  "homepage": "https://kafka.js.org",
+  "scripts": {
+    "jest": "export KAFKA_VERSION=${KAFKA_VERSION:='2.4'} && NODE_ENV=test echo \"KAFKA_VERSION: ${KAFKA_VERSION}\" && KAFKAJS_DEBUG_PROTOCOL_BUFFERS=1 jest",
+    "test:local": "yarn jest --detectOpenHandles",
+    "test:debug": "NODE_ENV=test KAFKAJS_DEBUG_PROTOCOL_BUFFERS=1 node --inspect-brk $(yarn bin 2>/dev/null)/jest --detectOpenHandles --runInBand --watch",
+    "test:local:watch": "yarn test:local --watch",
+    "test": "yarn lint && JEST_JUNIT_OUTPUT_NAME=test-report.xml ./scripts/testWithKafka.sh 'yarn jest --ci --maxWorkers=4 --no-watchman --forceExit'",
+    "lint": "find . -path ./node_modules -prune -o -path ./coverage -prune -o -path ./website -prune -o -name '*.js' -print0 | xargs -0 eslint",
+    "format": "find . -path ./node_modules -prune -o -path ./coverage -prune -o -path ./website -prune -o -name '*.js' -print0 | xargs -0 prettier --write",
+    "precommit": "lint-staged",
+    "test:group:broker": "yarn jest --forceExit --testPathPattern 'src/broker/.*'",
+    "test:group:admin": "yarn jest --forceExit --testPathPattern 'src/admin/.*'",
+    "test:group:producer": "yarn jest --forceExit --testPathPattern 'src/producer/.*'",
+    "test:group:consumer": "yarn jest --forceExit --testPathPattern 'src/consumer/.*.spec.js'",
+    "test:group:others": "yarn jest --forceExit --testPathPattern 'src/(?!(broker|admin|producer|consumer)/).*'",
+    "test:group:oauthbearer": "OAUTHBEARER_ENABLED=1 yarn jest --forceExit src/producer/index.spec.js src/broker/__tests__/connect.spec.js src/consumer/__tests__/connection.spec.js src/broker/__tests__/disconnect.spec.js src/admin/__tests__/connection.spec.js src/broker/__tests__/reauthenticate.spec.js",
+    "test:group:broker:ci": "JEST_JUNIT_OUTPUT_NAME=test-report.xml ./scripts/testWithKafka.sh \"yarn test:group:broker --ci --maxWorkers=4 --no-watchman\"",
+    "test:group:admin:ci": "JEST_JUNIT_OUTPUT_NAME=test-report.xml ./scripts/testWithKafka.sh \"yarn test:group:admin --ci --maxWorkers=4 --no-watchman\"",
+    "test:group:producer:ci": "JEST_JUNIT_OUTPUT_NAME=test-report.xml ./scripts/testWithKafka.sh \"yarn test:group:producer --ci --maxWorkers=4 --no-watchman\"",
+    "test:group:consumer:ci": "JEST_JUNIT_OUTPUT_NAME=test-report.xml ./scripts/testWithKafka.sh \"yarn test:group:consumer --ci --maxWorkers=4 --no-watchman\"",
+    "test:group:others:ci": "JEST_JUNIT_OUTPUT_NAME=test-report.xml ./scripts/testWithKafka.sh \"yarn test:group:others --ci --maxWorkers=4 --no-watchman\"",
+    "test:group:oauthbearer:ci": "JEST_JUNIT_OUTPUT_NAME=test-report.xml COMPOSE_FILE='docker-compose.2_4_oauthbearer.yml' ./scripts/testWithKafka.sh \"yarn test:group:oauthbearer --ci --maxWorkers=4 --no-watchman\"",
+    "test:types": "tsc -p types/"
+  },
+  "devDependencies": {
+    "@types/jest": "^27.4.0",
+    "@types/node": "^12.0.8",
+    "@typescript-eslint/typescript-estree": "^1.10.2",
+    "eslint": "^6.8.0",
+    "eslint-config-prettier": "^6.0.0",
+    "eslint-config-standard": "^13.0.1",
+    "eslint-plugin-import": "^2.18.2",
+    "eslint-plugin-jest": "^26.1.0",
+    "eslint-plugin-node": "^11.0.0",
+    "eslint-plugin-prettier": "^3.1.0",
+    "eslint-plugin-promise": "^4.2.1",
+    "eslint-plugin-standard": "^4.0.0",
+    "execa": "^2.0.3",
+    "glob": "^7.1.4",
+    "husky": "^3.0.1",
+    "ip": "^1.1.5",
+    "jest": "^25.1.0",
+    "jest-circus": "^25.1.0",
+    "jest-extended": "^0.11.2",
+    "jest-junit": "^10.0.0",
+    "jsonwebtoken": "^9.0.0",
+    "lint-staged": "^9.2.0",
+    "mockdate": "^2.0.5",
+    "prettier": "^1.18.2",
+    "semver": "^6.2.0",
+    "typescript": "^3.8.3",
+    "uuid": "^3.3.2"
+  },
+  "dependencies": {},
+  "lint-staged": {
+    "*.js": [
+      "prettier --write",
+      "git add"
+    ]
+  }
+}

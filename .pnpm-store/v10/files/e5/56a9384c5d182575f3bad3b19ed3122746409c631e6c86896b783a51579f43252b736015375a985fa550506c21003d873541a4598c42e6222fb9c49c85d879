@@ -1,0 +1,1 @@
+{"version":3,"file":"object-stream.js","sourceRoot":"","sources":["../../src/object-stream.ts"],"names":[],"mappings":";AAAA;;;;;;;;;;;;;;;GAeG"}

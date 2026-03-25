@@ -1,0 +1,74 @@
+{
+  "name": "@sentry-internal/feedback",
+  "version": "10.36.0",
+  "description": "Sentry SDK integration for user feedback",
+  "repository": "git://github.com/getsentry/sentry-javascript.git",
+  "homepage": "https://github.com/getsentry/sentry-javascript/tree/master/packages/feedback",
+  "author": "Sentry",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "/build/npm"
+  ],
+  "main": "build/npm/cjs/index.js",
+  "module": "build/npm/esm/index.js",
+  "types": "build/npm/types/index.d.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "import": {
+        "types": "./build/npm/types/index.d.ts",
+        "default": "./build/npm/esm/index.js"
+      },
+      "require": {
+        "types": "./build/npm/types/index.d.ts",
+        "default": "./build/npm/cjs/index.js"
+      }
+    }
+  },
+  "typesVersions": {
+    "<5.0": {
+      "build/npm/types/index.d.ts": [
+        "build/npm/types-ts3.8/index.d.ts"
+      ]
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@sentry/core": "10.36.0"
+  },
+  "devDependencies": {
+    "preact": "^10.19.4"
+  },
+  "scripts": {
+    "build": "run-p build:transpile build:types build:bundle",
+    "build:transpile": "rollup -c rollup.npm.config.mjs",
+    "build:bundle": "rollup -c rollup.bundle.config.mjs",
+    "build:dev": "run-p build:transpile build:types",
+    "build:types": "run-s build:types:core build:types:downlevel",
+    "build:types:core": "tsc -p tsconfig.types.json",
+    "build:types:downlevel": "yarn downlevel-dts build/npm/types build/npm/types-ts3.8 --to ts3.8 && yarn node ./scripts/shim-preact-export.js",
+    "build:watch": "run-p build:transpile:watch build:bundle:watch build:types:watch",
+    "build:dev:watch": "run-p build:transpile:watch build:types:watch",
+    "build:transpile:watch": "yarn build:transpile --watch",
+    "build:bundle:watch": "yarn build:bundle --watch",
+    "build:types:watch": "tsc -p tsconfig.types.json --watch",
+    "build:tarball": "npm pack",
+    "circularDepCheck": "madge --circular src/index.ts",
+    "clean": "rimraf build sentry-internal-feedback-*.tgz",
+    "fix": "eslint . --format stylish --fix",
+    "lint": "eslint . --format stylish",
+    "lint:es-compatibility": "es-check es2020 ./build/{bundles,npm/cjs}/*.js && es-check es2020 ./build/npm/esm/*.js --module",
+    "test": "vitest run",
+    "test:watch": "vitest --watch",
+    "yalc:publish": "yalc publish --push --sig"
+  },
+  "volta": {
+    "extends": "../../package.json"
+  },
+  "sideEffects": false
+}

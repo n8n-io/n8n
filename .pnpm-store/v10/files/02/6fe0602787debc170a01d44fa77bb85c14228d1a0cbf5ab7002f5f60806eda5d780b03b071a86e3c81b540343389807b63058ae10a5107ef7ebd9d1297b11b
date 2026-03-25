@@ -1,0 +1,54 @@
+@use 'sass:map';
+
+@use 'mixins/mixins' as *;
+@use 'common/var' as *;
+
+@include b(select-group) {
+  $gap: 20px;
+
+  margin: 0;
+  padding: 0;
+
+  @include e(wrap) {
+    position: relative;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+
+    &:not(:last-of-type) {
+      padding-bottom: 24px;
+
+      &::after {
+        content: '';
+        position: absolute;
+        display: block;
+        left: $gap;
+        right: $gap;
+        bottom: 12px;
+        height: 1px;
+        background: getCssVar('border-color-light');
+      }
+    }
+  }
+
+  @include e(split) {
+    &-dash {
+      position: absolute;
+      left: $gap;
+      right: $gap;
+      height: 1px;
+      background: getCssVar('border-color-light');
+    }
+  }
+
+  @include e(title) {
+    padding-left: $gap;
+    font-size: map.get($select-group, 'font-size');
+    color: map.get($select-group, 'text-color');
+    line-height: map.get($select-group, 'height');
+  }
+
+  & .#{$namespace}-select-dropdown__item {
+    padding-left: $gap;
+  }
+}

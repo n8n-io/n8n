@@ -1,0 +1,53 @@
+{
+  "name": "minipass-fetch",
+  "version": "1.4.1",
+  "description": "An implementation of window.fetch in Node.js using Minipass streams",
+  "license": "MIT",
+  "main": "lib/index.js",
+  "scripts": {
+    "test": "tap",
+    "snap": "tap",
+    "preversion": "npm test",
+    "postversion": "npm publish",
+    "postpublish": "git push origin --follow-tags"
+  },
+  "tap": {
+    "coverage-map": "map.js",
+    "check-coverage": true
+  },
+  "devDependencies": {
+    "@ungap/url-search-params": "^0.1.2",
+    "abort-controller": "^3.0.0",
+    "abortcontroller-polyfill": "~1.3.0",
+    "form-data": "^2.5.1",
+    "parted": "^0.1.1",
+    "string-to-arraybuffer": "^1.0.2",
+    "tap": "^15.0.9",
+    "whatwg-url": "^7.0.0"
+  },
+  "dependencies": {
+    "minipass": "^3.1.0",
+    "minipass-sized": "^1.0.3",
+    "minizlib": "^2.0.0"
+  },
+  "optionalDependencies": {
+    "encoding": "^0.1.12"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/npm/minipass-fetch.git"
+  },
+  "keywords": [
+    "fetch",
+    "minipass",
+    "node-fetch",
+    "window.fetch"
+  ],
+  "files": [
+    "index.js",
+    "lib/*.js"
+  ],
+  "engines": {
+    "node": ">=8"
+  }
+}

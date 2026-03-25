@@ -1,0 +1,15 @@
+# IntelliJ project files
+.idea
+*.iml
+out
+gen
+
+# Unrelevant files and folders
+benchmark
+coverage
+test
+.travis.yml
+.gitignore
+*.log
+.vscode
+.codeclimate.yml

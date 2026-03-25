@@ -1,0 +1,54 @@
+@use 'mixins/mixins' as *;
+@use 'mixins/var' as *;
+@use 'common/var' as *;
+
+@include b(badge) {
+  @include set-component-css-var('badge', $badge);
+
+  position: relative;
+  vertical-align: middle;
+  display: inline-block;
+  width: fit-content;
+
+  @include e(content) {
+    background-color: getCssVar('badge', 'bg-color');
+    border-radius: getCssVar('badge', 'radius');
+    color: getCssVar('color', 'white');
+
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+
+    font-size: getCssVar('badge', 'font-size');
+    height: getCssVar('badge', 'size');
+    padding: 0 getCssVar('badge', 'padding');
+    white-space: nowrap;
+    border: 1px solid getCssVar('bg-color');
+
+    @include when(fixed) {
+      position: absolute;
+      top: 0;
+      right: calc(1px + #{getCssVar('badge', 'size')} / 2);
+      transform: translateY(-50%) translateX(100%);
+      z-index: getCssVar('index', 'normal');
+
+      @include when(dot) {
+        right: 5px;
+      }
+    }
+
+    @include when(dot) {
+      height: 8px;
+      width: 8px;
+      padding: 0;
+      right: 0;
+      border-radius: 50%;
+    }
+
+    @each $type in (primary, success, warning, info, danger) {
+      @include m($type) {
+        background-color: getCssVar('color', $type);
+      }
+    }
+  }
+}

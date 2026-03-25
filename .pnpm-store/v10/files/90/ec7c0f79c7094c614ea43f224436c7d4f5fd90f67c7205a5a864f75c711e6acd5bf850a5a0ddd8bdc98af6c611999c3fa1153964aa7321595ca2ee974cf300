@@ -1,0 +1,49 @@
+{
+  "name": "zip-stream",
+  "version": "6.0.1",
+  "description": "a streaming zip archive generator.",
+  "homepage": "https://github.com/archiverjs/node-zip-stream",
+  "author": {
+    "name": "Chris Talkington",
+    "url": "http://christalkington.com/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/archiverjs/node-zip-stream.git"
+  },
+  "bugs": {
+    "url": "https://github.com/archiverjs/node-zip-stream/issues"
+  },
+  "license": "MIT",
+  "main": "index.js",
+  "files": [
+    "index.js"
+  ],
+  "engines": {
+    "node": ">= 14"
+  },
+  "scripts": {
+    "test": "mocha --reporter dot",
+    "jsdoc": "jsdoc -c jsdoc.json README.md"
+  },
+  "dependencies": {
+    "archiver-utils": "^5.0.0",
+    "compress-commons": "^6.0.2",
+    "readable-stream": "^4.0.0"
+  },
+  "devDependencies": {
+    "archiver-jsdoc-theme": "1.1.3",
+    "chai": "4.4.1",
+    "jsdoc": "4.0.2",
+    "minami": "1.2.3",
+    "mkdirp": "3.0.1",
+    "mocha": "10.3.0",
+    "rimraf": "5.0.5"
+  },
+  "keywords": [
+    "archive",
+    "stream",
+    "zip-stream",
+    "zip"
+  ]
+}

@@ -1,0 +1,1 @@
+module.exports = require("../../dist/agents/format_scratchpad/openai_tools.cjs");

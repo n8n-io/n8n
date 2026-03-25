@@ -1,0 +1,105 @@
+{
+  "name": "@currents/commit-info",
+  "description": "Collects Git commit info from CI or from CLI",
+  "version": "1.0.1-beta.0",
+  "author": "Gleb Bahmutov <gleb.bahmutov@gmail.com>",
+  "contributors": [
+    "Gleb Bahmutov <gleb.bahmutov@gmail.com>",
+    "Currents Software Inc <support@currents.dev>"
+  ],
+  "bugs": "https://github.com/currents-dev/commit-info/issues",
+  "config": {
+    "pre-git": {
+      "commit-msg": "simple",
+      "pre-commit": [
+        "npm prune",
+        "npm run deps",
+        "npm test",
+        "git add src/*.js",
+        "npm run ban"
+      ],
+      "pre-push": [
+        "npm run license",
+        "npm run ban -- --all",
+        "npm run size"
+      ],
+      "post-commit": [],
+      "post-merge": []
+    }
+  },
+  "engines": {
+    "node": ">=6"
+  },
+  "files": [
+    "src/*.js",
+    "!src/*-spec.js"
+  ],
+  "homepage": "https://github.com/currents-dev/commit-info#readme",
+  "keywords": [
+    "cli",
+    "commit",
+    "git",
+    "info"
+  ],
+  "license": "MIT",
+  "main": "src/",
+  "private": false,
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/currents-dev/commit-info.git"
+  },
+  "scripts": {
+    "ban": "ban",
+    "deps": "deps-ok && dependency-check --no-dev .",
+    "issues": "git-issues",
+    "license": "license-checker --production --onlyunknown --csv",
+    "lint": "standard --verbose --fix src/*.js",
+    "prelint": "npm run pretty",
+    "pretest": "npm run lint",
+    "pretty": "prettier-standard 'src/*.js'",
+    "size": "t=\"$(npm pack .)\"; wc -c \"${t}\"; tar tvf \"${t}\"; rm \"${t}\";",
+    "test": "npm run unit",
+    "unit": "mocha src/*-spec.js",
+    "gha-e2e": "mocha src/utils-e2e.js",
+    "semantic-release": "semantic-release pre && npm publish --access public && semantic-release post"
+  },
+  "release": {
+    "analyzeCommits": "simple-commit-message",
+    "generateNotes": "github-post-release",
+    "verifyRelease": {
+      "path": "dont-crack",
+      "test-against": []
+    }
+  },
+  "devDependencies": {
+    "ban-sensitive-files": "1.9.2",
+    "chdir-promise": "0.6.2",
+    "dependency-check": "4.1.0",
+    "deps-ok": "1.4.1",
+    "dont-crack": "1.2.1",
+    "git-issues": "1.3.1",
+    "github-post-release": "1.13.1",
+    "license-checker": "24.1.0",
+    "mocha": "6.2.1",
+    "mocked-env": "1.3.1",
+    "pre-git": "3.17.1",
+    "prettier-standard": "8.0.1",
+    "semantic-release": "17.2.3",
+    "simple-commit-message": "4.1.3",
+    "sinon": "17.0.1",
+    "snap-shot-it": "7.9.3",
+    "standard": "13.1.0",
+    "stub-spawn-once": "2.3.0"
+  },
+  "dependencies": {
+    "bluebird": "3.5.5",
+    "check-more-types": "2.24.0",
+    "debug": "4.3.4",
+    "execa": "1.0.0",
+    "lazy-ass": "1.6.0",
+    "ramda": "0.26.1"
+  }
+}

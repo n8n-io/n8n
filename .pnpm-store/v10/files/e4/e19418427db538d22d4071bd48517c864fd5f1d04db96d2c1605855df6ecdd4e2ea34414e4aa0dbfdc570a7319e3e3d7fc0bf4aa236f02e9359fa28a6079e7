@@ -1,0 +1,9 @@
+content:
+  application/json:
+    schema:
+      type: object
+      properties:
+        a:
+          type: string
+        b:
+          type: number

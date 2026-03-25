@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+
+<iframe src="iframe.html"></iframe>
+<script type="module">
+  import * as Comlink from "https://unpkg.com/comlink/dist/esm/comlink.mjs";
+  // import * as Comlink from "../../../../dist/esm/comlink.mjs";
+  async function main() {
+    const ifr = document.querySelector("iframe");
+    await new Promise((resolve) => (ifr.onload = resolve));
+    const f = Comlink.wrap(Comlink.windowEndpoint(ifr.contentWindow));
+    alert(`1 + 3 = ${await f(1, 3)}`);
+  }
+  main();
+</script>

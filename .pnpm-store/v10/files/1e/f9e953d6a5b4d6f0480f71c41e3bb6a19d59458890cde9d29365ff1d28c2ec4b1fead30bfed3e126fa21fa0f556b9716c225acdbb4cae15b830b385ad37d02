@@ -1,0 +1,90 @@
+@use '../mixins/mixins' as *;
+@use '../common/var' as *;
+
+@include b(time-panel) {
+  border-radius: 2px;
+  position: relative;
+  width: 180px;
+  left: 0;
+  z-index: getCssVar('index-top');
+  user-select: none;
+  box-sizing: content-box;
+
+  @include e(content) {
+    font-size: 0;
+    position: relative;
+    overflow: hidden;
+
+    &::after,
+    &::before {
+      content: '';
+      top: 50%;
+      position: absolute;
+      margin-top: -16px;
+      height: 32px;
+      z-index: -1;
+      left: 0;
+      right: 0;
+      box-sizing: border-box;
+      padding-top: 6px;
+      text-align: left;
+    }
+
+    &::after {
+      left: 50%;
+      margin-left: 12%;
+      margin-right: 12%;
+    }
+
+    &::before {
+      padding-left: 50%;
+      margin-right: 12%;
+      margin-left: 12%;
+      border-top: 1px solid getCssVar('border-color-light');
+      border-bottom: 1px solid getCssVar('border-color-light');
+    }
+
+    &.has-seconds {
+      &::after {
+        left: calc(100% / 3 * 2);
+      }
+
+      &::before {
+        padding-left: calc(100% / 3);
+      }
+    }
+  }
+
+  @include e(footer) {
+    border-top: 1px solid
+      var(
+        #{getCssVarName('timepicker-inner-border-color')},
+        #{getCssVar('border-color-light')}
+      );
+    padding: 4px;
+    height: 36px;
+    line-height: 25px;
+    text-align: right;
+    box-sizing: border-box;
+  }
+
+  @include e(btn) {
+    border: none;
+    line-height: 28px;
+    padding: 0 5px;
+    margin: 0 5px;
+    cursor: pointer;
+    background-color: transparent;
+    outline: none;
+    font-size: 12px;
+    color: getCssVar('text-color', 'primary');
+
+    &.confirm {
+      font-weight: 800;
+      color: var(
+        #{getCssVarName('timepicker-active-color')},
+        #{getCssVar('color-primary')}
+      );
+    }
+  }
+}

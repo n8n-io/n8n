@@ -1,0 +1,73 @@
+{
+  "name": "@opentelemetry/instrumentation-mongodb",
+  "version": "0.63.0",
+  "description": "OpenTelemetry instrumentation for `mongodb` database client for MongoDB",
+  "main": "build/src/index.js",
+  "types": "build/src/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/open-telemetry/opentelemetry-js-contrib.git",
+    "directory": "packages/instrumentation-mongodb"
+  },
+  "scripts": {
+    "clean": "rimraf build/*",
+    "lint:readme": "node ../../scripts/lint-readme.js",
+    "version:update": "node ../../scripts/version-update.js",
+    "compile:with-dependencies": "nx run-many -t compile -p @opentelemetry/instrumentation-mongodb",
+    "compile": "tsc -p .",
+    "prepublishOnly": "npm run compile",
+    "test": "npm run test-v6 && npm run test-unit",
+    "test-unit": "nyc --no-clean mocha --require '@opentelemetry/contrib-test-utils' test/unit/*.test.ts",
+    "test-v3": "nyc --no-clean mocha --require '@opentelemetry/contrib-test-utils' test/mongodb-v3.test.ts",
+    "test-v4": "nyc --no-clean mocha --require '@opentelemetry/contrib-test-utils' test/mongodb-metrics-v4plus.test.ts test/mongodb-v4.test.ts",
+    "test-v5": "nyc --no-clean mocha --require '@opentelemetry/contrib-test-utils' test/mongodb-metrics-v4plus.test.ts test/mongodb-v5plus.test.ts",
+    "test-v6": "nyc --no-clean mocha --require '@opentelemetry/contrib-test-utils' test/mongodb-metrics-v4plus.test.ts test/mongodb-v5plus.test.ts",
+    "test-v7": "nyc --no-clean mocha --require '@opentelemetry/contrib-test-utils' test/mongodb-metrics-v4plus.test.ts test/mongodb-v5plus.test.ts",
+    "test:with-services-env": "cross-env NODE_OPTIONS='-r dotenv/config' DOTENV_CONFIG_PATH=../../test/test-services.env npm test",
+    "test-all-versions": "tav",
+    "test-all-versions:with-services-env": "cross-env NODE_OPTIONS='-r dotenv/config' DOTENV_CONFIG_PATH=../../test/test-services.env npm run test-all-versions",
+    "test-services:start": "cd ../.. && npm run test-services:start mongodb",
+    "test-services:stop": "cd ../.. && npm run test-services:stop mongodb",
+    "watch": "tsc -w"
+  },
+  "keywords": [
+    "mongodb",
+    "nodejs",
+    "opentelemetry",
+    "plugin",
+    "profiling",
+    "tracing"
+  ],
+  "author": "OpenTelemetry Authors",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": "^18.19.0 || >=20.6.0"
+  },
+  "files": [
+    "build/src/**/*.js",
+    "build/src/**/*.js.map",
+    "build/src/**/*.d.ts"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "peerDependencies": {
+    "@opentelemetry/api": "^1.3.0"
+  },
+  "devDependencies": {
+    "@opentelemetry/api": "^1.3.0",
+    "@opentelemetry/context-async-hooks": "^2.0.0",
+    "@opentelemetry/contrib-test-utils": "^0.57.0",
+    "@opentelemetry/sdk-metrics": "^2.0.0",
+    "@opentelemetry/sdk-trace-base": "^2.0.0",
+    "@opentelemetry/sdk-trace-node": "^2.0.0",
+    "@types/bson": "4.0.5",
+    "mongodb": "6.19.0"
+  },
+  "dependencies": {
+    "@opentelemetry/instrumentation": "^0.210.0",
+    "@opentelemetry/semantic-conventions": "^1.33.0"
+  },
+  "homepage": "https://github.com/open-telemetry/opentelemetry-js-contrib/tree/main/packages/instrumentation-mongodb#readme",
+  "gitHead": "c84212cca7f010b80747cccb9942474e0459df6e"
+}

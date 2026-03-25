@@ -1,0 +1,52 @@
+{
+  "name": "postcss-scss",
+  "version": "4.0.9",
+  "description": "SCSS parser for PostCSS",
+  "keywords": [
+    "css",
+    "postcss",
+    "postcss-syntax",
+    "parser",
+    "scss",
+    "sass"
+  ],
+  "author": "Andrey Sitnik <andrey@sitnik.ru>",
+  "license": "MIT",
+  "repository": "postcss/postcss-scss",
+  "engines": {
+    "node": ">=12.0"
+  },
+  "main": "lib/scss-syntax",
+  "types": "lib/scss-syntax.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/scss-syntax.d.ts",
+      "require": "./lib/scss-syntax.js",
+      "import": "./lib/scss-syntax.mjs"
+    },
+    "./lib/nested-declaration": "./lib/nested-declaration.js",
+    "./lib/scss-parse": "./lib/scss-parse.js",
+    "./lib/scss-parser": "./lib/scss-parser.js",
+    "./lib/scss-stringifier": "./lib/scss-stringifier.js",
+    "./lib/scss-stringify": "./lib/scss-stringify.js",
+    "./lib/scss-tokenize": "./lib/scss-tokenize.js",
+    "./package.json": "./package.json"
+  },
+  "funding": [
+    {
+      "type": "opencollective",
+      "url": "https://opencollective.com/postcss/"
+    },
+    {
+      "type": "tidelift",
+      "url": "https://tidelift.com/funding/github/npm/postcss-scss"
+    },
+    {
+      "type": "github",
+      "url": "https://github.com/sponsors/ai"
+    }
+  ],
+  "peerDependencies": {
+    "postcss": "^8.4.29"
+  }
+}

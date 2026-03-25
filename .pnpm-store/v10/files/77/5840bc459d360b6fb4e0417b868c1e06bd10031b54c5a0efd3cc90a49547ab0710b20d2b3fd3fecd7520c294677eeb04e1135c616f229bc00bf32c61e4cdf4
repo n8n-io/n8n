@@ -1,0 +1,138 @@
+/*! Element Plus v2.4.3 */
+
+(function (global, factory) {
+  typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
+  typeof define === 'function' && define.amd ? define(factory) :
+  (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.ElementPlusLocaleRo = factory());
+})(this, (function () { 'use strict';
+
+  var ro = {
+    name: "ro",
+    el: {
+      colorpicker: {
+        confirm: "OK",
+        clear: "\u0218terge"
+      },
+      datepicker: {
+        now: "Acum",
+        today: "Azi",
+        cancel: "Anuleaz\u0103",
+        clear: "\u0218terge",
+        confirm: "OK",
+        selectDate: "Selecteaz\u0103 data",
+        selectTime: "Selecteaz\u0103 ora",
+        startDate: "Data de \xEEnceput",
+        startTime: "Ora de \xEEnceput",
+        endDate: "Data de sf\xE2r\u0219it",
+        endTime: "Ora de sf\xE2r\u0219it",
+        prevYear: "Anul trecut",
+        nextYear: "Anul urm\u0103tor",
+        prevMonth: "Luna trecut\u0103",
+        nextMonth: "Luna urm\u0103toare",
+        year: "",
+        month1: "Ianuarie",
+        month2: "Februarie",
+        month3: "Martie",
+        month4: "Aprilie",
+        month5: "Mai",
+        month6: "Iunie",
+        month7: "Iulie",
+        month8: "August",
+        month9: "Septembrie",
+        month10: "Octombrie",
+        month11: "Noiembrie",
+        month12: "Decembrie",
+        weeks: {
+          sun: "Du",
+          mon: "Lu",
+          tue: "Ma",
+          wed: "Mi",
+          thu: "Jo",
+          fri: "Vi",
+          sat: "S\xE2"
+        },
+        months: {
+          jan: "Ian",
+          feb: "Feb",
+          mar: "Mar",
+          apr: "Apr",
+          may: "Mai",
+          jun: "Iun",
+          jul: "Iul",
+          aug: "Aug",
+          sep: "Sep",
+          oct: "Oct",
+          nov: "Noi",
+          dec: "Dec"
+        }
+      },
+      select: {
+        loading: "Se \xEEncarc\u0103",
+        noMatch: "Nu exist\u0103 date potrivite",
+        noData: "Nu exist\u0103 date",
+        placeholder: "Selecteaz\u0103"
+      },
+      cascader: {
+        noMatch: "Nu exist\u0103 date potrivite",
+        loading: "Se \xEEncarc\u0103",
+        placeholder: "Selecteaz\u0103",
+        noData: "Nu exist\u0103 date"
+      },
+      pagination: {
+        goto: "Go to",
+        pagesize: "/pagina",
+        total: "Total {total}",
+        pageClassifier: "",
+        page: "Page",
+        prev: "Go to previous page",
+        next: "Go to next page",
+        currentPage: "page {pager}",
+        prevPages: "Previous {pager} pages",
+        nextPages: "Next {pager} pages"
+      },
+      messagebox: {
+        title: "Mesaj",
+        confirm: "OK",
+        cancel: "Anuleaz\u0103",
+        error: "Date introduse eronate"
+      },
+      upload: {
+        deleteTip: "ap\u0103sa\u021Bi pe \u0219terge\u021Bi pentru a elimina",
+        delete: "\u0219terge",
+        preview: "previzualizare",
+        continue: "continu\u0103"
+      },
+      table: {
+        emptyText: "Nu exist\u0103 date",
+        confirmFilter: "Confirm\u0103",
+        resetFilter: "Reseteaz\u0103",
+        clearFilter: "Tot",
+        sumText: "Suma"
+      },
+      tree: {
+        emptyText: "Nu exist\u0103 date"
+      },
+      transfer: {
+        noMatch: "Nu exist\u0103 date potrivite",
+        noData: "Nu exist\u0103 date",
+        titles: ["Lista 1", "Lista 2"],
+        filterPlaceholder: "Introduce\u021Bi cuv\xE2ntul cheie",
+        noCheckedFormat: "{total} elemente",
+        hasCheckedFormat: "{checked}/{total} verificate"
+      },
+      image: {
+        error: "FAILED"
+      },
+      pageHeader: {
+        title: "Back"
+      },
+      popconfirm: {
+        confirmButtonText: "Yes",
+        cancelButtonText: "No"
+      }
+    }
+  };
+
+  return ro;
+
+}));

@@ -1,0 +1,46 @@
+@use 'mixins/mixins' as *;
+@use 'mixins/var' as *;
+@use 'common/var' as *;
+
+@include b(timeline) {
+  @include set-component-css-var('timeline', $timeline);
+}
+
+@include b(timeline) {
+  margin: 0;
+  font-size: getCssVar('font-size', 'base');
+  list-style: none;
+
+  .#{$namespace}-timeline-item:last-child {
+    .#{$namespace}-timeline-item__tail {
+      display: none;
+    }
+  }
+
+  .#{$namespace}-timeline-item__center {
+    display: flex;
+    align-items: center;
+
+    .#{$namespace}-timeline-item__wrapper {
+      width: 100%;
+    }
+
+    .#{$namespace}-timeline-item__tail {
+      top: 0;
+    }
+  }
+
+  .#{$namespace}-timeline-item__center:first-child {
+    .#{$namespace}-timeline-item__tail {
+      height: calc(50% + 10px);
+      top: calc(50% - 10px);
+    }
+  }
+
+  .#{$namespace}-timeline-item__center:last-child {
+    .#{$namespace}-timeline-item__tail {
+      display: block;
+      height: calc(50% - 10px);
+    }
+  }
+}

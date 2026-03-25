@@ -1,0 +1,24 @@
+{
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "require": "./dist/index.cjs",
+      "import": "./dist/index.js"
+    },
+    "./buffer": {
+      "require": "./buffer/dist/index.cjs",
+      "import": "./buffer/dist/index.js"
+    },
+    "./global": {
+      "require": "./global/dist/index.cjs",
+      "import": "./global/dist/index.js"
+    },
+    "./process": {
+      "require": "./process/dist/index.cjs",
+      "import": "./process/dist/index.js"
+    }
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js"
+}

@@ -1,0 +1,38 @@
+{
+  "name": "stream-events",
+  "version": "1.0.5",
+  "description": "Get an event when you're being sent data or asked for it.",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "files": [
+    "index.js",
+    "index.d.ts"
+  ],
+  "scripts": {
+    "test": "node ./test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/stephenplusplus/stream-events"
+  },
+  "keywords": [
+    "stream",
+    "events",
+    "read",
+    "write",
+    "duplexify",
+    "lazy-stream"
+  ],
+  "author": "Stephen Sawchuk",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/stephenplusplus/stream-events/issues"
+  },
+  "homepage": "https://github.com/stephenplusplus/stream-events",
+  "devDependencies": {
+    "duplexify": "^3.2.0"
+  },
+  "dependencies": {
+    "stubs": "^3.0.0"
+  }
+}

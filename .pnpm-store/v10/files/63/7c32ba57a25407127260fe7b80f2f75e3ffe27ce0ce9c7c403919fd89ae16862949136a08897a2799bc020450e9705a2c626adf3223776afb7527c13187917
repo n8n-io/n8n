@@ -1,0 +1,5 @@
+class DotObject {
+}
+export {
+  DotObject
+};

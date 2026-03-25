@@ -1,0 +1,27 @@
+type TimingFunction =
+  | 'easeInBack'
+  | 'easeInCirc'
+  | 'easeInCubic'
+  | 'easeInExpo'
+  | 'easeInQuad'
+  | 'easeInQuart'
+  | 'easeInQuint'
+  | 'easeInSine'
+  | 'easeOutBack'
+  | 'easeOutCubic'
+  | 'easeOutCirc'
+  | 'easeOutExpo'
+  | 'easeOutQuad'
+  | 'easeOutQuart'
+  | 'easeOutQuint'
+  | 'easeOutSine'
+  | 'easeInOutBack'
+  | 'easeInOutCirc'
+  | 'easeInOutCubic'
+  | 'easeInOutExpo'
+  | 'easeInOutQuad'
+  | 'easeInOutQuart'
+  | 'easeInOutQuint'
+  | 'easeInOutSine';
+
+export { TimingFunction };

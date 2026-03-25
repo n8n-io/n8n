@@ -1,0 +1,15 @@
+{
+  "name": "npm-run-all-test",
+  "version": "0.0.0",
+  "private": true,
+  "description": "",
+  "config": {
+    "test": "OK"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mysticatea/npm-run-all.git"
+  },
+  "author": "Toru Nagashima",
+  "license": "MIT"
+}

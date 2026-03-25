@@ -1,0 +1,45 @@
+{
+  "name": "@babel/plugin-transform-regexp-modifiers",
+  "version": "7.27.1",
+  "description": "Compile inline regular expression modifiers",
+  "homepage": "https://babel.dev/docs/en/next/babel-plugin-transform-regexp-modifiers",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "./lib/index.js",
+  "keywords": [
+    "babel-plugin",
+    "regex",
+    "regexp",
+    "regular expressions"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/babel/babel.git",
+    "directory": "packages/babel-plugin-transform-regexp-modifiers"
+  },
+  "bugs": "https://github.com/babel/babel/issues",
+  "dependencies": {
+    "@babel/helper-create-regexp-features-plugin": "^7.27.1",
+    "@babel/helper-plugin-utils": "^7.27.1"
+  },
+  "peerDependencies": {
+    "@babel/core": "^7.0.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.27.1"
+  },
+  "engines": {
+    "node": ">=6.9.0"
+  },
+  "author": "The Babel Team (https://babel.dev/team)",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "type": "commonjs"
+}

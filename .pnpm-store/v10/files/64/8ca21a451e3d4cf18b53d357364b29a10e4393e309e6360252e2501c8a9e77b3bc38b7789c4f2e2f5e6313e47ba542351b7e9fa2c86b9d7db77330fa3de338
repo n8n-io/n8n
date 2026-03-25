@@ -1,0 +1,50 @@
+{
+  "name": "@kafkajs/confluent-schema-registry",
+  "version": "3.8.0",
+  "main": "dist/index.js",
+  "description": "ConfluentSchemaRegistry is a library that makes it easier to interact with the Confluent schema registry, it provides convenient methods to encode, decode and register new schemas using the Apache Avro serialization format.",
+  "keywords": [
+    "confluent schema registry",
+    "kafka"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kafkajs/confluent-schema-registry.git"
+  },
+  "scripts": {
+    "prepare:release": "./pipeline/prepareRelease.sh",
+    "build": "rm -rf ./dist && tsc",
+    "build:watch": "rm -rf ./dist && tsc --watch",
+    "test:unit:watch": "yarn test:unit --watch",
+    "test:unit": "jest",
+    "test": "docker compose up -d --wait schemaRegistry && jest",
+    "lint": "eslint './src/**/*.ts'",
+    "check:types": "tsc --noEmit",
+    "format": "yarn lint --fix"
+  },
+  "dependencies": {
+    "ajv": "^7.1.0",
+    "avsc": ">= 5.4.13 < 6",
+    "mappersmith": ">= 2.44.0 < 3",
+    "protobufjs": "^7.4.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.14",
+    "@types/node": "^18.19.70",
+    "@types/prettier": "^1.18.2",
+    "@typescript-eslint/eslint-plugin": "^2.1.0",
+    "@typescript-eslint/parser": "^2.1.0",
+    "@typescript-eslint/typescript-estree": "^2.1.0",
+    "ajv8": "npm:ajv@^8.6.3",
+    "eslint": "^6.3.0",
+    "eslint-config-prettier": "^6.1.0",
+    "eslint-plugin-no-only-tests": "^2.3.1",
+    "eslint-plugin-prettier": "^3.1.0",
+    "jest": "^29.7.0",
+    "prettier": "^1.18.2",
+    "ts-jest": "^29.2.5",
+    "ts-node": "^8.3.0",
+    "typescript": "^5.7.3",
+    "uuid": "^11.0.5"
+  }
+}

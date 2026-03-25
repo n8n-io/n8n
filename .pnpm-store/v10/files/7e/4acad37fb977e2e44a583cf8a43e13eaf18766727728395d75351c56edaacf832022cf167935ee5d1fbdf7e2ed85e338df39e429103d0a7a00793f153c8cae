@@ -1,0 +1,1 @@
+{"version":3,"file":"ThrottlingEntity.d.ts","sourceRoot":"","sources":["../../../src/cache/entities/ThrottlingEntity.ts"],"names":[],"mappings":"AAKA,MAAM,MAAM,gBAAgB,GAAG;IAE3B,YAAY,EAAE,MAAM,CAAC;IAErB,KAAK,CAAC,EAAE,MAAM,CAAC;IACf,UAAU,CAAC,EAAE,KAAK,CAAC,MAAM,CAAC,CAAC;IAC3B,YAAY,CAAC,EAAE,MAAM,CAAC;IACtB,QAAQ,CAAC,EAAE,MAAM,CAAC;CACrB,CAAC"}

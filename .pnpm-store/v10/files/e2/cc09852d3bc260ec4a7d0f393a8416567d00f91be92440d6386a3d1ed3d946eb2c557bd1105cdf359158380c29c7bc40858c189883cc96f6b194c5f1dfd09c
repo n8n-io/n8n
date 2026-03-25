@@ -1,0 +1,71 @@
+{
+  "name": "github-buttons",
+  "version": "2.29.1",
+  "description": "GitHub Buttons",
+  "keywords": [
+    "github",
+    "button",
+    "frontend",
+    "component"
+  ],
+  "license": "BSD-2-Clause",
+  "homepage": "https://buttons.github.io/",
+  "bugs": {
+    "url": "https://github.com/buttons/github-buttons/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/buttons/github-buttons.git"
+  },
+  "author": {
+    "name": "なつき",
+    "email": "i@ntk.me",
+    "url": "https://ntk.me/"
+  },
+  "main": "dist/buttons.common.js",
+  "module": "dist/buttons.esm.js",
+  "unpkg": "dist/buttons.min.js",
+  "jsdelivr": "dist/buttons.min.js",
+  "types": "dist/buttons.d.ts",
+  "scripts": {
+    "build": "rollup -c rollup.config.mjs",
+    "lint": "eslint .",
+    "pretest": "npm run lint",
+    "test": "babel-node --presets @babel/preset-env -- node_modules/karma/bin/karma start --single-run"
+  },
+  "devDependencies": {
+    "@babel/node": "^7.23.9",
+    "@babel/preset-env": "^7.24.4",
+    "@primer/octicons": "^19.9.0",
+    "@primer/primitives": "^9.0.0",
+    "@rollup/plugin-html": "^1.0.3",
+    "@rollup/plugin-json": "^6.1.0",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-replace": "^6.0.1",
+    "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/pluginutils": "^5.1.0",
+    "chai": "^4.4.1",
+    "eslint": "^8.57.0",
+    "eslint-config-standard": "^17.1.0",
+    "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^6.1.1",
+    "karma": "^6.4.3",
+    "karma-chai": "^0.1.0",
+    "karma-chrome-launcher": "^3.2.0",
+    "karma-coverage": "^2.2.1",
+    "karma-firefox-launcher": "^2.1.3",
+    "karma-mocha": "^2.0.1",
+    "karma-mocha-reporter": "^2.2.5",
+    "karma-rollup-preprocessor": "^7.0.8",
+    "karma-safari-launcher": "^1.0.0",
+    "karma-sinon": "^1.0.5",
+    "karma-sinon-chai": "^2.0.2",
+    "mocha": "^10.4.0",
+    "rollup": "^4.16.4",
+    "rollup-plugin-istanbul": "^5.0.0",
+    "sass": "^1.79.0",
+    "sinon": "^19.0.0",
+    "sinon-chai": "^3.7.0"
+  }
+}

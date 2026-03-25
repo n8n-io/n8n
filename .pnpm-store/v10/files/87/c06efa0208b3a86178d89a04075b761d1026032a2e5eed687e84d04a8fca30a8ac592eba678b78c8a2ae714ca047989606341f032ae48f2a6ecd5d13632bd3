@@ -1,0 +1,1 @@
+{"version":3,"file":"ILoopbackClient.d.ts","sourceRoot":"","sources":["../../src/network/ILoopbackClient.ts"],"names":[],"mappings":"AAKA,OAAO,EAAE,iBAAiB,EAAE,MAAM,yBAAyB,CAAC;AAE5D;;;GAGG;AACH,MAAM,WAAW,eAAe;IAC5B,iBAAiB,CACb,eAAe,CAAC,EAAE,MAAM,EACxB,aAAa,CAAC,EAAE,MAAM,GACvB,OAAO,CAAC,iBAAiB,CAAC,CAAC;IAC9B,cAAc,IAAI,MAAM,CAAC;IACzB,WAAW,IAAI,IAAI,CAAC;CACvB"}

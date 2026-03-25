@@ -1,0 +1,1 @@
+{"version":3,"file":"textHighlight.js","sourceRoot":"","sources":["../../src/textHighlight.ts"],"names":[],"mappings":";AAAA;;;GAGG;;;AAEH,6BAAuB;AAgBvB;;GAEG;AACU,QAAA,sBAAsB,GAAG,OAAC,CAAC,MAAM,CAAC;IAC7C,IAAI,EAAE,OAAC,CAAC,MAAM,EAAE,CAAC,GAAG,CAAC,CAAC,CAAC;IACvB,UAAU,EAAE,OAAC,CAAC,MAAM,EAAE;CACvB,CAAC,CAAA"}

@@ -1,0 +1,63 @@
+{
+  "name": "loglevel",
+  "description": "Minimal lightweight logging for JavaScript, adding reliable log level methods to any available console.log methods",
+  "version": "1.9.2",
+  "homepage": "https://github.com/pimterry/loglevel",
+  "author": {
+    "name": "Tim Perry",
+    "email": "pimterry@gmail.com",
+    "url": "http://tim-perry.co.uk"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/pimterry/loglevel.git"
+  },
+  "bugs": {
+    "url": "https://github.com/pimterry/loglevel/issues"
+  },
+  "funding": {
+    "type": "tidelift",
+    "url": "https://tidelift.com/funding/github/npm/loglevel"
+  },
+  "license": "MIT",
+  "main": "lib/loglevel.js",
+  "types": "./index.d.ts",
+  "engines": {
+    "node": ">= 0.6.0"
+  },
+  "scripts": {
+    "lint": "grunt jshint",
+    "test": "grunt test && npm run test-types",
+    "test-browser": "grunt test-browser",
+    "test-node": "grunt test-node",
+    "test-types": "tsc --noEmit ./test/type-test.ts && ts-node ./test/type-test.ts",
+    "dist": "grunt dist",
+    "dist-build": "grunt dist-build",
+    "watch": "grunt watch"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/core-js": "2.5.0",
+    "@types/node": "^12.0.4",
+    "grunt": "~1.5.3",
+    "grunt-cli": "^1.4.3",
+    "grunt-contrib-clean": "^1.1.0",
+    "grunt-contrib-concat": "~0.5.0",
+    "grunt-contrib-connect": "^3.0.0",
+    "grunt-contrib-jasmine": "^4.0.0",
+    "grunt-contrib-jshint": "^3.2.0",
+    "grunt-contrib-uglify": "^3.4.0",
+    "grunt-contrib-watch": "^1.1.0",
+    "grunt-open": "~0.2.3",
+    "grunt-preprocess": "^5.1.0",
+    "jasmine": "^2.4.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^3.5.1"
+  },
+  "keywords": [
+    "log",
+    "logger",
+    "logging",
+    "browser"
+  ]
+}

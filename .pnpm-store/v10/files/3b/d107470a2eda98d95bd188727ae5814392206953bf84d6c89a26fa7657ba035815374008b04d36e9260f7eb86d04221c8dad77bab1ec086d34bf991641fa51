@@ -1,0 +1,143 @@
+{
+  "name": "@vvo/tzdb",
+  "version": "6.141.0",
+  "description": "Always up to date list of time zones, with grouping and major cities",
+  "keywords": [
+    "timezones",
+    "time zones",
+    "time zone",
+    "timezones list",
+    "time zones list",
+    "IANA time zones",
+    "geonames"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vvo/tzdb.git"
+  },
+  "license": "MIT",
+  "author": "Vincent Voyer <vincent@codeagain.com>",
+  "sideEffects": false,
+  "main": "dist/",
+  "module": "lib/",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/",
+    "lib/",
+    "time-zones-names.json",
+    "abbreviations.json",
+    "raw-time-zones.json",
+    "LICENSE",
+    "README.md",
+    "index.d.ts"
+  ],
+  "scripts": {
+    "build": "babel lib/ -d dist/ --source-maps --ignore '**/*.test.js' --delete-dir-on-start",
+    "postbuild": "cp index.d.ts dist/",
+    "format": "prettier --write '**/*.*' && eslint . --fix",
+    "generate": "babel-node generate.js",
+    "generate-abbreviations": "babel-node generate-abbreviations.js",
+    "lint": "prettier --check '**/*.*' && eslint .",
+    "prepublishOnly": "npm run build",
+    "test": "npm run lint && npm run build"
+  },
+  "babel": {
+    "presets": [
+      [
+        "@babel/preset-env",
+        {
+          "targets": {
+            "node": "12"
+          }
+        }
+      ]
+    ]
+  },
+  "prettier": {
+    "trailingComma": "all",
+    "overrides": [
+      {
+        "files": "*.md",
+        "options": {
+          "printWidth": 100
+        }
+      }
+    ]
+  },
+  "eslintConfig": {
+    "env": {
+      "es6": true,
+      "node": true
+    },
+    "parser": "babel-eslint",
+    "parserOptions": {
+      "ecmaVersion": 2019,
+      "sourceType": "module"
+    },
+    "extends": [
+      "eslint:recommended",
+      "plugin:import/recommended"
+    ],
+    "rules": {
+      "arrow-body-style": [
+        "error",
+        "always"
+      ],
+      "curly": "error",
+      "import/order": [
+        "error",
+        {
+          "newlines-between": "always"
+        }
+      ]
+    }
+  },
+  "release": {
+    "branches": [
+      "main",
+      "next"
+    ]
+  },
+  "devDependencies": {
+    "@babel/cli": "7.17.3",
+    "@babel/core": "7.17.5",
+    "@babel/node": "7.16.8",
+    "@babel/preset-env": "7.16.11",
+    "babel-eslint": "10.1.0",
+    "cheerio": "1.0.0-rc.10",
+    "csv-parse": "5.0.4",
+    "eslint": "7.32.0",
+    "eslint-plugin-import": "2.25.4",
+    "got": "11.8.3",
+    "lodash": "4.17.21",
+    "luxon": "2.3.0",
+    "p-each-series": "2.2.0",
+    "prettier": "2.5.1",
+    "prettier-plugin-packagejson": "2.2.15",
+    "semantic-release": "18.0.1",
+    "semantic-release-cli": "5.4.4",
+    "sort-keys": "4.2.0",
+    "tzdata": "1.0.29",
+    "unzipper": "0.10.11"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "renovate": {
+    "extends": [
+      "config:js-lib",
+      ":automergePatch",
+      ":automergeBranch",
+      ":automergePatch",
+      ":automergeBranch",
+      ":automergeLinters",
+      ":automergeTesters",
+      ":automergeTypes"
+    ],
+    "timezone": "Europe/Paris",
+    "schedule": [
+      "before 3am on Monday"
+    ],
+    "groupName": "all"
+  }
+}

@@ -1,0 +1,1 @@
+{"version":3,"file":"NoSuchObjectError.js","sourceRoot":"./","sources":["errors/resultCodeErrors/NoSuchObjectError.ts"],"names":[],"mappings":";;;AAAA,uDAAoD;AAEpD,MAAa,iBAAkB,SAAQ,iCAAe;IACpD,YAAmB,OAAgB;QACjC,KAAK,CAAC,EAAE,EAAE,OAAO,IAAI,oCAAoC,CAAC,CAAC;IAC7D,CAAC;CACF;AAJD,8CAIC"}

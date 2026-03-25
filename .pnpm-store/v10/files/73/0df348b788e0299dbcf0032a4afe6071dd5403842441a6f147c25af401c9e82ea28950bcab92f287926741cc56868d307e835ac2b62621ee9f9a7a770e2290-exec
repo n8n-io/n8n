@@ -1,0 +1,35 @@
+{
+    "name": "@types/json-diff",
+    "version": "1.0.0",
+    "description": "TypeScript definitions for json-diff",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/json-diff",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Tommy Wong",
+            "url": "https://github.com/wchtommy20013",
+            "githubUsername": "wchtommy20013"
+        },
+        {
+            "name": "Jerryh001",
+            "url": "https://github.com/Jerryh001",
+            "githubUsername": "Jerryh001"
+        },
+        {
+            "name": "HoldYourWaffle",
+            "url": "https://github.com/HoldYourWaffle",
+            "githubUsername": "HoldYourWaffle"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/json-diff"
+    },
+    "scripts": {},
+    "dependencies": {},
+    "typesPublisherContentHash": "4f6a61d253071ec4c820b4122ae0548f0a969e9b10d2b7c64c98497b6f6cbe6e",
+    "typeScriptVersion": "4.3"
+}

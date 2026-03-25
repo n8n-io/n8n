@@ -1,0 +1,75 @@
+{
+  "name": "@opentelemetry/instrumentation-pg",
+  "version": "0.62.0",
+  "description": "OpenTelemetry instrumentation for `pg` and `pg-pool` database client for PostgreSQL",
+  "main": "build/src/index.js",
+  "types": "build/src/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/open-telemetry/opentelemetry-js-contrib.git",
+    "directory": "packages/instrumentation-pg"
+  },
+  "scripts": {
+    "clean": "rimraf build/*",
+    "compile:with-dependencies": "nx run-many -t compile -p @opentelemetry/instrumentation-pg",
+    "compile": "tsc -p .",
+    "lint:readme": "node ../../scripts/lint-readme.js",
+    "prepublishOnly": "npm run compile",
+    "tdd": "npm run test -- --watch-extensions ts --watch",
+    "test": "nyc --no-clean mocha 'test/**/*.test.ts'",
+    "test:debug": "mocha --inspect-brk --no-timeouts 'test/**/*.test.ts'",
+    "test:with-services-env": "cross-env NODE_OPTIONS='-r dotenv/config' DOTENV_CONFIG_PATH=../../test/test-services.env npm test",
+    "test-all-versions": "tav",
+    "test-all-versions:with-services-env": "cross-env NODE_OPTIONS='-r dotenv/config' DOTENV_CONFIG_PATH=../../test/test-services.env npm run test-all-versions",
+    "test-services:start": "cd ../.. && npm run test-services:start postgres",
+    "test-services:stop": "cd ../.. && npm run test-services:stop postgres",
+    "version:update": "node ../../scripts/version-update.js",
+    "watch": "tsc -w"
+  },
+  "keywords": [
+    "instrumentation",
+    "nodejs",
+    "opentelemetry",
+    "pg",
+    "plugin",
+    "postgres",
+    "postgresql",
+    "profiling",
+    "tracing"
+  ],
+  "author": "OpenTelemetry Authors",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": "^18.19.0 || >=20.6.0"
+  },
+  "files": [
+    "build/src/**/*.js",
+    "build/src/**/*.js.map",
+    "build/src/**/*.d.ts"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "peerDependencies": {
+    "@opentelemetry/api": "^1.3.0"
+  },
+  "devDependencies": {
+    "@opentelemetry/api": "^1.3.0",
+    "@opentelemetry/context-async-hooks": "^2.0.0",
+    "@opentelemetry/contrib-test-utils": "^0.57.0",
+    "@opentelemetry/sdk-trace-base": "^2.0.0",
+    "@opentelemetry/sdk-trace-node": "^2.0.0",
+    "pg": "8.7.1",
+    "pg-pool": "3.4.1"
+  },
+  "dependencies": {
+    "@opentelemetry/core": "^2.0.0",
+    "@opentelemetry/instrumentation": "^0.210.0",
+    "@opentelemetry/semantic-conventions": "^1.34.0",
+    "@opentelemetry/sql-common": "^0.41.2",
+    "@types/pg": "8.15.6",
+    "@types/pg-pool": "2.0.7"
+  },
+  "homepage": "https://github.com/open-telemetry/opentelemetry-js-contrib/tree/main/packages/instrumentation-pg#readme",
+  "gitHead": "c84212cca7f010b80747cccb9942474e0459df6e"
+}

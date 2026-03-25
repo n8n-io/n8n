@@ -1,0 +1,10 @@
+{
+  "name": "bsd-3-module",
+  "version": "0.0.0",
+  "licenses": [
+    {
+      "type": "BSD-3-Clause",
+      "url": "https://spdx.org/licenses/BSD-3-Clause.html"
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+module.exports = require("../../dist/chains/query_constructor/ir.cjs");

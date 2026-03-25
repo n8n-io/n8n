@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>wa-sqlite import/export</title>
+  <style>
+    button { margin-top: 1em; }
+    pre { margin: 0 }
+  </style>
+  <script type="module" defer src="./index.js"></script>
+</head>
+<body>
+  <h1>Sample database import/export</h1>
+  <div>
+    Import from local file <input type="file" id="file-import">
+  </div>
+  <div>
+    URL: <input type="text" id="file-url" size="40">
+    <button id="file-fetch">Import from URL</button>
+  </div>
+  <div>
+    <button id="file-export" disabled>Export to local file</button>
+    <a id="file-download" hidden></a>
+  </div>
+  <hr>
+</body>
+</html>

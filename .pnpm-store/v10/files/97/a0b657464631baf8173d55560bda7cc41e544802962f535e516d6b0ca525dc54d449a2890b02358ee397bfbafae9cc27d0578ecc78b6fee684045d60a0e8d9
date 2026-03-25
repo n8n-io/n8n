@@ -1,0 +1,1 @@
+{"version":3,"file":"NativeSignOutRequest.d.ts","sourceRoot":"","sources":["../../src/request/NativeSignOutRequest.ts"],"names":[],"mappings":"AAKA,MAAM,MAAM,oBAAoB,GAAG;IAC/B,QAAQ,EAAE,MAAM,CAAC;IACjB,SAAS,EAAE,MAAM,CAAC;IAClB,aAAa,EAAE,MAAM,CAAC;CACzB,CAAC"}

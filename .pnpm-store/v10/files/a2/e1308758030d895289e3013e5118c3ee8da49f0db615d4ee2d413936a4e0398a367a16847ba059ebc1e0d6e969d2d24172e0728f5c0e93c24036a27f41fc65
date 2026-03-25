@@ -1,0 +1,426 @@
+import { Client, Scope } from '@sentry/core';
+export { Client as SentryClient, Scope as SentryScope } from '@sentry/core';
+import { UnpluginContextMeta, UnpluginOptions } from 'unplugin';
+import { z } from 'zod';
+
+type NormalizedOptions = z.infer<ReturnType<typeof optionsSchemaFactory>> & Options;
+type ValidGitService = z.infer<typeof ValidGitServiceSchema>;
+declare const ValidGitServiceSchema: z.ZodUnion<[z.ZodLiteral<"github">, z.ZodLiteral<"gitlab">, z.ZodLiteral<"bitbucket">, z.ZodLiteral<"github_enterprise">, z.ZodLiteral<"gitlab_enterprise">, z.ZodLiteral<"bitbucket_server">]>;
+declare const optionsSchemaFactory: (options: Options) => z.ZodObject<{
+    apiUrl: z.ZodDefault<z.ZodString>;
+    bundleName: z.ZodString;
+    dryRun: z.ZodDefault<z.ZodBoolean>;
+    retryCount: z.ZodDefault<z.ZodNumber>;
+    enableBundleAnalysis: z.ZodDefault<z.ZodBoolean>;
+    uploadToken: z.ZodOptional<z.ZodString>;
+    uploadOverrides: z.ZodOptional<z.ZodObject<{
+        branch: z.ZodOptional<z.ZodString>;
+        build: z.ZodOptional<z.ZodString>;
+        compareSha: z.ZodOptional<z.ZodString>;
+        pr: z.ZodOptional<z.ZodString>;
+        sha: z.ZodOptional<z.ZodString>;
+        slug: z.ZodOptional<z.ZodString>;
+    }, "strip", z.ZodTypeAny, {
+        branch?: string | undefined;
+        build?: string | undefined;
+        compareSha?: string | undefined;
+        pr?: string | undefined;
+        sha?: string | undefined;
+        slug?: string | undefined;
+    }, {
+        branch?: string | undefined;
+        build?: string | undefined;
+        compareSha?: string | undefined;
+        pr?: string | undefined;
+        sha?: string | undefined;
+        slug?: string | undefined;
+    }>>;
+    debug: z.ZodDefault<z.ZodBoolean>;
+    /**
+     * Using an enum here, as custom error messages for union types seem to be broken currently.
+     *
+     * Issue: https://github.com/colinhacks/zod/issues/3675
+     */
+    gitService: z.ZodOptional<z.ZodEnum<["github", "gitlab", "bitbucket", "github_enterprise", "gitlab_enterprise", "bitbucket_server"]>>;
+    oidc: z.ZodOptional<z.ZodObject<{
+        useGitHubOIDC: z.ZodDefault<z.ZodBoolean>;
+        /**
+         * Following along with how we handle this in our GH Action.
+         *
+         * See: https://github.com/codecov/codecov-action/blob/main/src/buildExec.ts#L53-L58
+         */
+        gitHubOIDCTokenAudience: z.ZodDefault<z.ZodOptional<z.ZodString>>;
+    }, "strip", z.ZodTypeAny, {
+        useGitHubOIDC: boolean;
+        gitHubOIDCTokenAudience: string;
+    }, {
+        useGitHubOIDC?: boolean | undefined;
+        gitHubOIDCTokenAudience?: string | undefined;
+    }>>;
+    telemetry: z.ZodDefault<z.ZodBoolean>;
+}, "strip", z.ZodTypeAny, {
+    retryCount: number;
+    apiUrl: string;
+    bundleName: string;
+    dryRun: boolean;
+    enableBundleAnalysis: boolean;
+    debug: boolean;
+    telemetry: boolean;
+    uploadToken?: string | undefined;
+    uploadOverrides?: {
+        branch?: string | undefined;
+        build?: string | undefined;
+        compareSha?: string | undefined;
+        pr?: string | undefined;
+        sha?: string | undefined;
+        slug?: string | undefined;
+    } | undefined;
+    gitService?: "github" | "gitlab" | "bitbucket" | "github_enterprise" | "gitlab_enterprise" | "bitbucket_server" | undefined;
+    oidc?: {
+        useGitHubOIDC: boolean;
+        gitHubOIDCTokenAudience: string;
+    } | undefined;
+}, {
+    bundleName: string;
+    apiUrl?: string | undefined;
+    dryRun?: boolean | undefined;
+    retryCount?: number | undefined;
+    enableBundleAnalysis?: boolean | undefined;
+    uploadToken?: string | undefined;
+    uploadOverrides?: {
+        branch?: string | undefined;
+        build?: string | undefined;
+        compareSha?: string | undefined;
+        pr?: string | undefined;
+        sha?: string | undefined;
+        slug?: string | undefined;
+    } | undefined;
+    debug?: boolean | undefined;
+    gitService?: "github" | "gitlab" | "bitbucket" | "github_enterprise" | "gitlab_enterprise" | "bitbucket_server" | undefined;
+    oidc?: {
+        useGitHubOIDC?: boolean | undefined;
+        gitHubOIDCTokenAudience?: string | undefined;
+    } | undefined;
+    telemetry?: boolean | undefined;
+}>;
+interface NormalizedOptionsFailure {
+    success: false;
+    errors: string[];
+}
+interface NormalizedOptionsSuccess {
+    success: true;
+    options: NormalizedOptions;
+}
+/**
+ * This type represents a union of possible results from the the function.
+ *
+ * @see {@link normalizeOptions}
+ */
+type NormalizedOptionsResult = NormalizedOptionsFailure | NormalizedOptionsSuccess;
+/**
+ * This function is used to normalize the options provided by the user. Validating the options
+ * passed by the user, and providing default values for a given set of options if none were
+ * provided.
+ *
+ * @param {Options} userOptions
+ * @returns {NormalizedOptionsResult}
+ */
+declare const normalizeOptions: (userOptions: Options) => NormalizedOptionsResult;
+/**
+ * This function logs the errors to the console, and will return `shouldExit` if there are errors
+ * that we should exit the build process for.
+ *
+ * @param {NormalizedOptionsFailure} options - The normalized options that failed validation.
+ */
+declare const handleErrors: (options: NormalizedOptionsFailure) => {
+    shouldExit: boolean;
+};
+
+interface OtherOptions {
+    metaFramework: MetaFramework;
+}
+interface SentryConfig {
+    sentryClient?: Client;
+    sentryScope?: Scope;
+}
+declare class Output {
+    #private;
+    apiUrl: string;
+    dryRun: boolean;
+    retryCount: number;
+    enableBundleAnalysis: boolean;
+    uploadToken?: string;
+    oidc?: {
+        useGitHubOIDC: boolean;
+        gitHubOIDCTokenAudience: string;
+    };
+    debug: boolean;
+    gitService?: ValidGitService;
+    telemetry: boolean;
+    branch?: string;
+    build?: string;
+    pr?: string;
+    sha?: string;
+    slug?: string;
+    version: string;
+    bundler?: {
+        name: string;
+        version: string;
+    };
+    metaFramework: MetaFramework;
+    outputPath?: string;
+    builtAt?: number;
+    duration?: number;
+    assets?: Asset[];
+    chunks?: Chunk[];
+    modules?: Module[];
+    sentryClient?: Client;
+    sentryScope?: Scope;
+    constructor(userOptions: NormalizedOptions, otherOptions: OtherOptions, sentryConfig?: SentryConfig);
+    start(): void;
+    end(): void;
+    lockBundleName(): void;
+    unlockBundleName(): void;
+    setBundleName(bundleName: string): string;
+    get bundleName(): string;
+    get originalBundleName(): string;
+    setPlugin(pluginName: string, pluginVersion: string): {
+        name: string;
+        version: string;
+    } | undefined;
+    get plugin(): {
+        name: string;
+        version: string;
+    } | undefined;
+    lockPluginDetails(): void;
+    unlockPluginDetails(): void;
+    write(emitError?: boolean): Promise<void>;
+    bundleStatsToJson(): string;
+}
+
+type MetaFramework = UnpluginContextMeta["framework"] | "bundle-analyzer";
+interface Asset {
+    name: string;
+    size: number;
+    gzipSize: number | null;
+    normalized: string;
+}
+interface Chunk {
+    id: string;
+    uniqueId: string;
+    entry: boolean;
+    initial: boolean;
+    names: string[];
+    files: string[];
+    dynamicImports: string[];
+}
+interface Module {
+    name: string;
+    size?: number;
+    chunkUniqueIds: string[];
+}
+interface BundleAnalysisUploadPluginArgs {
+    output: Output;
+    pluginName: string;
+    pluginVersion: string;
+}
+interface ExtendedBAUploadArgs<TArgs extends object> extends BundleAnalysisUploadPluginArgs {
+    options: TArgs;
+}
+/** Configuration options for the Codecov bundler plugin. */
+interface Options {
+    /**
+     * The api url used to fetch the upload url.
+     *
+     * Only required if self-hosting codecov.
+     *
+     * Example: `apiUrl: 'https://api.codecov.io'`
+     *
+     * Defaults to `https://api.codecov.io`.
+     */
+    apiUrl?: string;
+    /**
+     * Override value for git service used for tokenless uploads. Using tokenless uploads is only
+     * supported for public repositories.
+     *
+     * Note: If an `uploadToken` is provided you do not need to provide a `gitService`.
+     *
+     * The value must be one of the following:
+     * - `github`
+     * - `gitlab`
+     * - `bitbucket`
+     * - `github_enterprise`
+     * - `gitlab_enterprise`
+     * - `bitbucket_server`
+     *
+     * Example `gitService: 'github'`
+     */
+    gitService?: ValidGitService;
+    /**
+     * The upload token to use for uploading the bundle analysis information.
+     *
+     * This field is **required** for uploading bundle analysis information in private repositories.
+     * Alternatively if you're using GitHub Actions and have configured OIDC authentication you can
+     * omit this field, and enable the `oidc.useGitHubOIDC` option.
+     *
+     * This value can either be a global upload token or a repo token.
+     * - The global upload token can be found under the organization settings page.
+     * - The repo token can be found under the repo settings page under the general tab.
+     */
+    uploadToken?: string;
+    /**
+     * The amount of times the upload function will retry to upload bundle analysis information.
+     *
+     * Defaults to `3`
+     */
+    retryCount?: number;
+    /**
+     * The name for the bundle being built.
+     *
+     * Required for uploading bundle analysis information.
+     *
+     * The name must match the pattern `/^[\w\d_:/@\.{}\[\]$-]+$/`.
+     *
+     * Example: `bundleName: '@codecov/rollup-plugin'`
+     */
+    bundleName?: string;
+    /**
+     * Whether you would like bundle analysis to be enabled. *
+     *
+     * Example: `enableBundleAnalysis: true`
+     *
+     * Defaults to `false`
+     */
+    enableBundleAnalysis?: boolean;
+    /** Override values for passing custom information to API. */
+    uploadOverrides?: UploadOverrides;
+    /** Option to enable debug logs for the plugin. */
+    debug?: boolean;
+    /**
+     * When enabled information will not be uploaded to Codecov.
+     *
+     * Example: `dryRun: true`
+     *
+     * Defaults to `false`
+     */
+    dryRun?: boolean;
+    /**
+     * When enabled telemetry data will be sent to Codecov.
+     *
+     * Example: `telemetry: false`
+     *
+     * Defaults to `true`
+     */
+    telemetry?: boolean;
+    /** Options for OIDC authentication. */
+    oidc?: {
+        /**
+         * When using GitHub Actions this option can be enabled to use OIDC authentication, which
+         * removes the requirement for an upload token.
+         *
+         * [OpenID Connect
+         * (OIDC)](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect)
+         * is **required** to be configured in order to use GitHub OIDC.
+         *
+         * Defaults to `false`
+         */
+        useGitHubOIDC: boolean;
+        /**
+         * The OIDC audience to use for authentication.
+         *
+         * If you're using a self hosted version of Codecov, you will need to provide the audience for
+         * the OIDC token.
+         *
+         * Defaults to `https://codecov.io`
+         */
+        gitHubOIDCTokenAudience?: string;
+    };
+}
+type BundleAnalysisUploadPluginReturn = UnpluginOptions & {
+    pluginVersion: string;
+    version: string;
+};
+type BundleAnalysisUploadPlugin = (args: BundleAnalysisUploadPluginArgs) => BundleAnalysisUploadPluginReturn;
+type ExtendedBAUploadPlugin<TArgs extends object> = (args: ExtendedBAUploadArgs<TArgs>) => UnpluginOptions & {
+    pluginVersion: string;
+    version: string;
+};
+/** A set of overrides that are passed to Codecov. */
+interface UploadOverrides {
+    /** Specify the branch manually. */
+    branch?: string;
+    /** Specify the build number manually. */
+    build?: string;
+    /** Specify the compare SHA manually. **GH Actions only**. */
+    compareSha?: string;
+    /** Specify the pull request number manually. */
+    pr?: string;
+    /** Specify the commit SHA manually. */
+    sha?: string;
+    /** Specify the slug manually. */
+    slug?: string;
+}
+type ProviderEnvs = NodeJS.Dict<string>;
+interface ProviderUtilInputs {
+    envs: ProviderEnvs;
+    args: Options["uploadOverrides"];
+}
+
+declare function checkNodeVersion(unpluginMetaContext: UnpluginContextMeta): boolean;
+
+interface CreateAssetOptions {
+    fileName: string;
+    source: Uint8Array | string;
+    formatString: string;
+    metaFramework: MetaFramework;
+}
+declare const createRollupAsset: ({ source, fileName, formatString, metaFramework, }: CreateAssetOptions) => Promise<{
+    name: string;
+    size: number;
+    gzipSize: number | null;
+    normalized: string;
+}>;
+
+declare function red(msg: string): void;
+
+interface GetCompressedSizeOptions {
+    fileName: string;
+    code: string | Uint8Array;
+}
+declare const getCompressedSize: ({ fileName, code, }: GetCompressedSizeOptions) => Promise<number | null>;
+
+declare const normalizePath: (path: string, format: string, metaFramework: MetaFramework) => string;
+
+/**
+ * Copied and modified from:
+ * https://github.com/getsentry/sentry-javascript-bundler-plugins/blob/main/packages/bundler-plugin-core/src/sentry/telemetry.ts
+ */
+
+interface CreateSentryInstanceOptions {
+    telemetry: boolean;
+    isDryRun: boolean;
+    pluginName: string;
+    pluginVersion: string;
+    options?: NormalizedOptions;
+    bundler: string;
+    metaFramework?: string;
+}
+declare function createSentryInstance({ telemetry, isDryRun, pluginName, pluginVersion, options, bundler, metaFramework, }: CreateSentryInstanceOptions): {
+    sentryScope: Scope;
+    sentryClient: Client;
+};
+interface PluginInfo {
+    name: string;
+    version: string;
+}
+declare function setTelemetryDataOnScope(options: NormalizedOptions, pluginInfo: PluginInfo, scope: Scope, bundler: string, metaFramework?: string): void;
+/** Flushing the SDK client can fail. We never want to crash the plugin because of telemetry. */
+declare function safeFlushTelemetry(sentryClient: Client): Promise<void>;
+interface TelemetryPluginOptions {
+    sentryClient: Client;
+    sentryScope: Scope;
+    telemetry: boolean;
+}
+declare function telemetryPlugin({ sentryClient, sentryScope, telemetry, }: TelemetryPluginOptions): UnpluginOptions;
+
+export { type Asset, type BundleAnalysisUploadPlugin, type BundleAnalysisUploadPluginArgs, type BundleAnalysisUploadPluginReturn, type Chunk, type ExtendedBAUploadArgs, type ExtendedBAUploadPlugin, type MetaFramework, type Module, type NormalizedOptions, type Options, Output, type ProviderUtilInputs, type UploadOverrides, checkNodeVersion, createRollupAsset, createSentryInstance, getCompressedSize, handleErrors, normalizeOptions, normalizePath, red, safeFlushTelemetry, setTelemetryDataOnScope, telemetryPlugin };

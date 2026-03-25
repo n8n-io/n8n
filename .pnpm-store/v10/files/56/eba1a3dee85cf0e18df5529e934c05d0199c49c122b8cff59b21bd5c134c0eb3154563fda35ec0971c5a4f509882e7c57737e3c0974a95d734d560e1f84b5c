@@ -1,0 +1,3 @@
+declare const _default: import("@typescript-eslint/utils/ts-eslint").RuleModule<"unsafeOfAnyTypeAssertion" | "unsafeToAnyTypeAssertion" | "unsafeToUnconstrainedTypeAssertion" | "unsafeTypeAssertion" | "unsafeTypeAssertionAssignableToConstraint", [], import("../../rules").ESLintPluginDocs, import("@typescript-eslint/utils/ts-eslint").RuleListener>;
+export default _default;
+//# sourceMappingURL=no-unsafe-type-assertion.d.ts.map

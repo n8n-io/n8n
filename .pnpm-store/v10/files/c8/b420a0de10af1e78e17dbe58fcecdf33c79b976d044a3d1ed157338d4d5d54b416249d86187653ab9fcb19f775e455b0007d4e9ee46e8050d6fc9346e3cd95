@@ -1,0 +1,42 @@
+name: node-gyp integration
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+        python: [3.6, 3.9]
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Clone gyp-next
+        uses: actions/checkout@v2
+        with:
+          path: gyp-next
+      - name: Clone nodejs/node-gyp
+        uses: actions/checkout@v2
+        with:
+          repository: nodejs/node-gyp
+          path: node-gyp
+      - uses: actions/setup-node@v2
+        with:
+          node-version: 14.x
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install dependencies
+        run: |
+          cd node-gyp
+          npm install --no-progress
+      - name: Replace gyp in node-gyp
+        shell: bash
+        run: |
+          rm -rf node-gyp/gyp
+          cp -r gyp-next node-gyp/gyp
+      - name: Run tests
+        run: |
+          cd node-gyp
+          npm test

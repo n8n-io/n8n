@@ -1,0 +1,49 @@
+@use 'mixins/mixins' as *;
+@use 'common/var' as *;
+
+%size {
+  width: 100%;
+  height: 100%;
+}
+
+@include b(image) {
+  position: relative;
+  display: inline-block;
+  overflow: hidden;
+
+  @include e(inner) {
+    @extend %size !optional;
+    vertical-align: top;
+    opacity: 1;
+    @include when(loading) {
+      opacity: 0;
+    }
+  }
+
+  @include e(wrapper) {
+    @extend %size !optional;
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+
+  @include e(placeholder) {
+    @extend %size !optional;
+    background: getCssVar('fill-color', 'light');
+  }
+
+  @include e(error) {
+    @extend %size !optional;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 14px;
+    background: getCssVar('fill-color', 'light');
+    color: getCssVar('text-color', 'placeholder');
+    vertical-align: middle;
+  }
+
+  @include e(preview) {
+    cursor: pointer;
+  }
+}

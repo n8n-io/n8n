@@ -1,0 +1,27 @@
+{
+    "name": "@types/imap",
+    "version": "0.8.40",
+    "description": "TypeScript definitions for imap",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/imap",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Peter Snider",
+            "githubUsername": "psnider",
+            "url": "https://github.com/psnider"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/imap"
+    },
+    "scripts": {},
+    "dependencies": {
+        "@types/node": "*"
+    },
+    "typesPublisherContentHash": "7920b3a5e2e281016a1b0b5ee467f35a3fc28bfa9e5ff1cedb2b8699503218b2",
+    "typeScriptVersion": "4.5"
+}

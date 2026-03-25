@@ -1,0 +1,36 @@
+{
+  "name": "python-struct",
+  "version": "1.1.3",
+  "description": "Packs/Unpacks/Measures structs according to Python's `struct` format",
+  "main": "src/node_adapter.js",
+  "browser": "src/browser_adapter.js",
+  "scripts": {
+    "lint": "eslint ./",
+    "lint-fix": "eslint --fix ./",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/danielgindi/node-python-struct"
+  },
+  "keywords": [
+    "pack",
+    "unpack",
+    "struct",
+    "cstruct",
+    "python"
+  ],
+  "author": "Daniel Cohen Gindi <danielgindi@gmail.com> (https://github.com/danielgindi)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/danielgindi/node-python-struct/issues"
+  },
+  "homepage": "https://github.com/danielgindi/node-python-struct",
+  "dependencies": {
+    "long": "^4.0.0"
+  },
+  "devDependencies": {
+    "eslint": "^7.0.0",
+    "husky": "^4.2.5"
+  }
+}

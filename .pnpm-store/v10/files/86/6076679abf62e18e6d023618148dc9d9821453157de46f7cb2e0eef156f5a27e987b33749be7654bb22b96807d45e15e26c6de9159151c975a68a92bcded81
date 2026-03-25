@@ -1,0 +1,7 @@
+
+> vue-inbrowser-compiler-independent-utils@4.71.1 compile /home/runner/work/vue-styleguidist/vue-styleguidist/packages/vue-inbrowser-compiler-independent-utils
+> rollup -c
+
+[36m
+[1m/home/runner/work/vue-styleguidist/vue-styleguidist/packages/vue-inbrowser-compiler-independent-utils/src/index.ts[22m → [1mlib/vue-inbrowser-compiler-independent-utils.umd.js, lib/vue-inbrowser-compiler-independent-utils.esm.mjs[22m...[39m
+[32mcreated [1mlib/vue-inbrowser-compiler-independent-utils.umd.js, lib/vue-inbrowser-compiler-independent-utils.esm.mjs[22m in [1m2s[22m[39m

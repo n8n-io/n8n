@@ -1,0 +1,30 @@
+{
+    "name": "@types/flat",
+    "version": "5.0.5",
+    "description": "TypeScript definitions for flat",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/flat",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": " Ilya Mochalov",
+            "githubUsername": "chrootsu",
+            "url": "https://github.com/chrootsu"
+        },
+        {
+            "name": "Oz Weiss",
+            "githubUsername": "thewizarodofoz",
+            "url": "https://github.com/thewizarodofoz"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/flat"
+    },
+    "scripts": {},
+    "dependencies": {},
+    "typesPublisherContentHash": "4d9a041e6da6cb6b8a459617e12d002835384ce6423092284e9feadde0567c27",
+    "typeScriptVersion": "4.5"
+}

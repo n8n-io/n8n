@@ -1,0 +1,11 @@
+Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
+const require_subagents = require("../ui/subagents.cjs");
+const require_stream_custom = require("./stream.custom.cjs");
+const require_stream = require("./stream.cjs");
+exports.FetchStreamTransport = require_stream_custom.FetchStreamTransport;
+exports.SubagentManager = require_subagents.SubagentManager;
+exports.calculateDepthFromNamespace = require_subagents.calculateDepthFromNamespace;
+exports.extractParentIdFromNamespace = require_subagents.extractParentIdFromNamespace;
+exports.extractToolCallIdFromNamespace = require_subagents.extractToolCallIdFromNamespace;
+exports.isSubagentNamespace = require_subagents.isSubagentNamespace;
+exports.useStream = require_stream.useStream;

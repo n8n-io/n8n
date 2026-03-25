@@ -1,0 +1,44 @@
+{
+  "name": "on-headers",
+  "description": "Execute a listener when a response is about to write headers",
+  "version": "1.1.0",
+  "author": "Douglas Christopher Wilson <doug@somethingdoug.com>",
+  "license": "MIT",
+  "keywords": [
+    "event",
+    "headers",
+    "http",
+    "onheaders"
+  ],
+  "repository": "jshttp/on-headers",
+  "devDependencies": {
+    "eslint": "6.8.0",
+    "eslint-config-standard": "14.1.1",
+    "eslint-plugin-import": "2.21.2",
+    "eslint-plugin-markdown": "1.0.2",
+    "eslint-plugin-node": "11.1.0",
+    "eslint-plugin-promise": "4.2.1",
+    "eslint-plugin-standard": "4.0.1",
+    "mocha": "10.2.0",
+    "nyc": "15.1.0",
+    "supertest": "4.0.2"
+  },
+  "files": [
+    "LICENSE",
+    "HISTORY.md",
+    "README.md",
+    "index.js"
+  ],
+  "engines": {
+    "node": ">= 0.8"
+  },
+  "scripts": {
+    "lint": "eslint --plugin markdown --ext js,md .",
+    "test": "mocha --reporter spec --check-leaks test/test.js",
+    "test-ci": "nyc --reporter=lcov --reporter=text npm test",
+    "test-cov": "nyc --reporter=html --reporter=text npm test",
+    "update-upstream-hashes": "node scripts/update-upstream-hashes.js",
+    "upstream": "mocha --reporter spec --check-leaks test/upstream.js",
+    "version": "node scripts/version-history.js && git add HISTORY.md"
+  }
+}

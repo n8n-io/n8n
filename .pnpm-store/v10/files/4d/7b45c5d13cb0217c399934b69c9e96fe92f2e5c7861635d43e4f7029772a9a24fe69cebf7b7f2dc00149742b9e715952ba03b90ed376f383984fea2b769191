@@ -1,0 +1,65 @@
+{
+  "name": "mylas",
+  "version": "2.1.13",
+  "description": "Mylas is a npm package to make the loading and storing of data from fs easy and reliable.",
+  "main": "build/index.js",
+  "typings": "build/index",
+  "files": [
+    "build/"
+  ],
+  "exports": {
+    ".": {
+      "types": "./build/index.d.ts",
+      "require": "./build/index.js",
+      "default": "./build/index.js"
+    },
+    "./register": {
+      "types": "./build/register.d.ts",
+      "require": "./build/register.js",
+      "default": "./build/register.js"
+    }
+  },
+  "scripts": {
+    "prepack": "npm run build",
+    "test": "jest --config='./tests/jest.config.js'",
+    "build": "bash ./config/build.sh",
+    "lint": "eslint -c ./config/.eslintrc --ext .ts ./ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/raouldeheer/Mylas.git"
+  },
+  "keywords": [
+    "fs",
+    "data",
+    "json",
+    "loader",
+    "multithreaded",
+    "json-comments",
+    "node-modules"
+  ],
+  "author": "Raoul de Heer",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/raouldeheer/Mylas/issues"
+  },
+  "homepage": "https://mylas.js.org/",
+  "devDependencies": {
+    "@types/jest": "^29.0.0",
+    "@types/node": "^18.0.0",
+    "@typescript-eslint/eslint-plugin": "^5.27.1",
+    "@typescript-eslint/parser": "^5.27.1",
+    "eslint": "^8.17.0",
+    "jest": "^28.1.1",
+    "ts-jest": "^28.0.4",
+    "tsup": "^6.1.0",
+    "typescript": "^4.7.3"
+  },
+  "engines": {
+    "node": ">=12.0.0"
+  },
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/raouldeheer"
+  }
+}

@@ -1,0 +1,35 @@
+env:
+  node: true
+
+parserOptions:
+  ecmaVersion: 9
+  # Override eslint-config-standard, which incorrectly sets this to "module",
+  # though that setting is only for ES6 modules, not CommonJS modules.
+  sourceType: 'script'
+
+extends:
+  - 'eslint:recommended'
+  - standard
+  - prettier
+
+rules:
+  # Override some recommended rules.
+  no-unused-vars: ['error', { 'args': 'none' }]
+  no-empty: ['error', { 'allowEmptyCatch': true }]
+
+  # Nock additions.
+  strict: ['error', 'safe']
+  no-loop-func: 'error'
+  no-var: 'error'
+  prefer-const: 'error'
+  object-shorthand: ['error', 'properties']
+  prefer-template: 'error'
+  arrow-body-style: ['error', 'as-needed']
+  prefer-destructuring:
+    [
+      'error',
+      {
+        'VariableDeclarator': { 'array': false, 'object': true },
+        'AssignmentExpression': { 'array': false, 'object': false },
+      },
+    ]

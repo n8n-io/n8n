@@ -1,0 +1,1 @@
+{"version":3,"file":"sdkerror.d.ts","sourceRoot":"","sources":["../../src/models/errors/sdkerror.ts"],"names":[],"mappings":"AAIA,OAAO,EAAE,YAAY,EAAE,MAAM,mBAAmB,CAAC;AAEjD,0EAA0E;AAC1E,qBAAa,QAAS,SAAQ,YAAY;gBAEtC,OAAO,EAAE,MAAM,EACf,QAAQ,EAAE;QACR,QAAQ,EAAE,QAAQ,CAAC;QACnB,OAAO,EAAE,OAAO,CAAC;QACjB,IAAI,EAAE,MAAM,CAAC;KACd;CAyBJ"}

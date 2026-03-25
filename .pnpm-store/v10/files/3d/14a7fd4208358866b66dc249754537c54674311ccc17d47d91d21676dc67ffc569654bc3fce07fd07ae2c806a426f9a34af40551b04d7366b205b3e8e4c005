@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+	<style type="text/css">
+	/*
+	Copyright (c) 2010, Yahoo! Inc. All rights reserved.
+	Code licensed under the BSD License:
+	http://developer.yahoo.com/yui/license.html
+	version: 3.2.0
+	build: 2676
+	*/
+	html{color:#000;background:#FFF;}body,div,dl,dt,dd,ul,ol,li,h1,h2,h3,h4,h5,h6,pre,code,form,fieldset,legend,input,textarea,p,blockquote,th,td{margin:0;padding:0;}table{border-collapse:collapse;border-spacing:0;}fieldset,img{border:0;}address,caption,cite,code,dfn,em,strong,th,var{font-style:normal;font-weight:normal;}li{list-style:none;}caption,th{text-align:left;}h1,h2,h3,h4,h5,h6{font-size:100%;font-weight:normal;}q:before,q:after{content:'';}abbr,acronym{border:0;font-variant:normal;}sup{vertical-align:text-top;}sub{vertical-align:text-bottom;}input,textarea,select{font-family:inherit;font-size:inherit;font-weight:inherit;}input,textarea,select{*font-size:100%;}legend{color:#000;}
+	
+	/*
+	 * Custom styles
+	 */
+	body {
+		width: 100%;
+		overflow: hidden;
+	}
+	#parse {
+		border: none;
+		background-color: white;
+		color: black;
+		z-index: 3;
+		position: absolute;
+		right: 50%;
+		top: 0;
+		width: 100px;
+	}
+	#yaml {
+		color: white;
+		background-color: black;
+		font-family: "Courier New";
+		font-size: 14px;
+		width: 50%;
+		border: none;
+		position: absolute;
+		top: 0;
+		left: 0;
+		z-index: 1;
+		height: 100%;
+	}
+	#result {
+		color: black;
+		background-color: white;
+		font-family: "Courier New";
+		font-size: 12px;
+		width: 50%;		
+		border: none;
+		position: absolute;
+		top: 0;
+		left: 50%;
+		overflow: auto;
+		z-index: 2;
+		height: 100%;
+        vertical-align: top;
+        overflow: auto;
+	}
+	#tests {
+		width: 50%;		
+		border: none;
+		position: absolute;
+		top: 0;
+		left: 50%;
+		z-index: 2;
+	}
+	</style>
+	
+	<!-- standalone yaml.js library -->
+	<script type="text/javascript" src="../dist/yaml.debug.js"></script>
+		
+	<title>yaml.js demo</title>
+</head>
+
+<body>
+<form action="" onsubmit="return false;">
+	<textarea name="yaml" id="yaml" cols="70" rows="20">--- !clarkevans.com/^invoice
+invoice: 34843
+date   : 2001-01-23
+bill-to: &amp;id001
+    given  : Chris
+    family : Dumars
+    address:
+        lines: |
+            458 Walkman Dr.
+            Suite #292
+        city    : Royal Oak
+        state   : MI
+        postal  : 48046
+ship-to: *id001
+product:
+    - sku         : &quot;BL394D&quot;
+      quantity    : 4
+      description : Basketball
+      price       : 450.00
+    - sku         : BL4438H
+      quantity    : 1
+      description : Super Hoop
+      price       : 2392.00
+tax  : 251.42
+total: 4443.52
+comments: &gt;
+    Late afternoon is best.
+    Backup contact is Nancy
+    Billsmer @ 338-4338.
+</textarea>
+<input type="button" id="parse" name="parse" value="Parse &raquo;" onclick="document.getElementById('result').innerHTML='<pre>'+JSON.stringify(YAML.parse(document.getElementById('yaml').value), null, 4)+'</pre>'" />
+<div id="result"></div>
+
+</form>
+</body>
+</html>

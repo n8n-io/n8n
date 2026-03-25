@@ -1,0 +1,17 @@
+{
+	"$id": "/inference/schemas/<TASK_ID>/output.json",
+	"$schema": "http://json-schema.org/draft-06/schema#",
+	"description": "Outputs for <TASK_ID> inference",
+	"title": "PlaceholderOutput",
+	"type": "array",
+	"items": {
+		"type": "object",
+		"properties": {
+			"meaningful_output_name": {
+				"type": "string",
+				"description": "TODO: Describe what is outputted by the inference here"
+			}
+		},
+		"required": ["meaningfulOutputName"]
+	}
+}

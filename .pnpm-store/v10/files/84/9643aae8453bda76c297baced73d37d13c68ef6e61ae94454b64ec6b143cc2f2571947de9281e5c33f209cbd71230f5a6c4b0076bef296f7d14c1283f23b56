@@ -1,0 +1,24 @@
+{
+  "author": "Paul Vorbach <paul@vorb.de> (http://vorb.de)",
+  "name": "charenc",
+  "description": "character encoding utilities",
+  "tags": [
+    "utf8",
+    "binary",
+    "byte",
+    "string"
+  ],
+  "version": "0.0.2",
+  "license": "BSD-3-Clause",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/pvorb/node-charenc.git"
+  },
+  "bugs": {
+    "url": "https://github.com/pvorb/node-charenc/issues"
+  },
+  "main": "charenc.js",
+  "engines": {
+    "node": "*"
+  }
+}

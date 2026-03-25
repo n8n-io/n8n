@@ -1,0 +1,38 @@
+{
+	"name": "is-generator-fn",
+	"version": "2.1.0",
+	"description": "Check if something is a generator function",
+	"license": "MIT",
+	"repository": "sindresorhus/is-generator-fn",
+	"author": {
+		"name": "Sindre Sorhus",
+		"email": "sindresorhus@gmail.com",
+		"url": "sindresorhus.com"
+	},
+	"engines": {
+		"node": ">=6"
+	},
+	"scripts": {
+		"test": "xo && ava && tsd"
+	},
+	"files": [
+		"index.js",
+		"index.d.ts"
+	],
+	"keywords": [
+		"generator",
+		"function",
+		"func",
+		"fn",
+		"is",
+		"check",
+		"detect",
+		"yield",
+		"type"
+	],
+	"devDependencies": {
+		"ava": "^1.4.1",
+		"tsd": "^0.7.2",
+		"xo": "^0.24.0"
+	}
+}

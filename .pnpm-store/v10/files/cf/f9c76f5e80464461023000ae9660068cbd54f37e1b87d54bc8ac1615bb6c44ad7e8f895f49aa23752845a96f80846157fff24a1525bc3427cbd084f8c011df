@@ -1,0 +1,2 @@
+export declare class DownedDockerComposeEnvironment {
+}

@@ -1,0 +1,52 @@
+{
+	"name": "npm-run-path",
+	"version": "6.0.0",
+	"description": "Get your PATH prepended with locally installed binaries",
+	"license": "MIT",
+	"repository": "sindresorhus/npm-run-path",
+	"funding": "https://github.com/sponsors/sindresorhus",
+	"author": {
+		"name": "Sindre Sorhus",
+		"email": "sindresorhus@gmail.com",
+		"url": "https://sindresorhus.com"
+	},
+	"type": "module",
+	"exports": {
+		"types": "./index.d.ts",
+		"default": "./index.js"
+	},
+	"sideEffects": false,
+	"engines": {
+		"node": ">=18"
+	},
+	"scripts": {
+		"test": "xo && ava && tsd"
+	},
+	"files": [
+		"index.js",
+		"index.d.ts"
+	],
+	"keywords": [
+		"npm",
+		"run",
+		"path",
+		"package",
+		"bin",
+		"binary",
+		"binaries",
+		"script",
+		"cli",
+		"command-line",
+		"execute",
+		"executable"
+	],
+	"dependencies": {
+		"path-key": "^4.0.0",
+		"unicorn-magic": "^0.3.0"
+	},
+	"devDependencies": {
+		"ava": "^6.1.3",
+		"tsd": "^0.31.1",
+		"xo": "^0.59.3"
+	}
+}

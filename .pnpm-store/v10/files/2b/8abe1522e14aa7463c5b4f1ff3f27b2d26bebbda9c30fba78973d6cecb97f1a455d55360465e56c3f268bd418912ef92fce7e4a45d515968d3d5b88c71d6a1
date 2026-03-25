@@ -1,0 +1,32 @@
+{
+    "name": "@types/markdown-it-link-attributes",
+    "version": "3.0.5",
+    "description": "TypeScript definitions for markdown-it-link-attributes",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/markdown-it-link-attributes",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Katy Richard",
+            "githubUsername": "cowpewter",
+            "url": "https://github.com/cowpewter"
+        },
+        {
+            "name": "Piotr Błażejewicz",
+            "githubUsername": "peterblazejewicz",
+            "url": "https://github.com/peterblazejewicz"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/markdown-it-link-attributes"
+    },
+    "scripts": {},
+    "dependencies": {
+        "@types/markdown-it": "*"
+    },
+    "typesPublisherContentHash": "c3dd58e8aed88a94466bcbd10044e1805d4b899c4b06480f241e1aa49af2190b",
+    "typeScriptVersion": "4.7"
+}

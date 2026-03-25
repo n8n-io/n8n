@@ -1,0 +1,1 @@
+DELETE FROM t2 WHERE c LIKE '%fifty%';

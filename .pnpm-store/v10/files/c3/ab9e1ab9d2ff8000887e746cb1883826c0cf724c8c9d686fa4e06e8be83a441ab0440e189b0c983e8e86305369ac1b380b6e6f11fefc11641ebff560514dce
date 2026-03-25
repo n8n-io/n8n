@@ -1,0 +1,55 @@
+{
+  "name": "@prisma/instrumentation",
+  "version": "7.2.0",
+  "description": "OpenTelemetry compliant instrumentation for Prisma Client",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "require": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.mjs"
+      }
+    }
+  },
+  "license": "Apache-2.0",
+  "homepage": "https://www.prisma.io",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/prisma/prisma.git",
+    "directory": "packages/instrumentation"
+  },
+  "bugs": "https://github.com/prisma/prisma/issues",
+  "devDependencies": {
+    "@opentelemetry/api": "1.9.0",
+    "@types/node": "~20.19.24",
+    "typescript": "5.4.5",
+    "@prisma/instrumentation-contract": "7.2.0"
+  },
+  "dependencies": {
+    "@opentelemetry/instrumentation": "^0.207.0"
+  },
+  "peerDependencies": {
+    "@opentelemetry/api": "^1.8"
+  },
+  "files": [
+    "dist"
+  ],
+  "keywords": [
+    "prisma",
+    "instrumentation",
+    "opentelemetry",
+    "otel"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "dev": "DEV=true tsx helpers/build.ts",
+    "build": "tsx helpers/build.ts",
+    "test": "vitest run"
+  }
+}

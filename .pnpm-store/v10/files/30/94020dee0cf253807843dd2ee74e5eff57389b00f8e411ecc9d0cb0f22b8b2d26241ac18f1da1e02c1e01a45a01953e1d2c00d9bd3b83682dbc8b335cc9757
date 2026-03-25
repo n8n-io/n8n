@@ -1,0 +1,34 @@
+{
+  "name": "@techteamer/ocsp",
+  "version": "1.0.1",
+  "description": "OCSP Stapling implementation",
+  "main": "lib/ocsp.js",
+  "scripts": {
+    "lint": "standard --env mocha",
+    "test": "mocha"
+  },
+  "keywords": [
+    "OCSP",
+    "ASN.1",
+    "Stapling"
+  ],
+  "author": "Fedor Indutny <fedor@indutny.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TechTeamer/ocsp.git"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "eslint-plugin-mocha": "^10.1.0",
+    "mocha": "^10.2.0",
+    "selfsigned.js": "^3.0.2",
+    "standard": "^17.0.0"
+  },
+  "dependencies": {
+    "asn1.js": "^5.4.1",
+    "asn1.js-rfc2560": "^5.0.1",
+    "asn1.js-rfc5280": "^3.0.0",
+    "async": "^3.2.4",
+    "simple-lru-cache": "^0.0.2"
+  }
+}

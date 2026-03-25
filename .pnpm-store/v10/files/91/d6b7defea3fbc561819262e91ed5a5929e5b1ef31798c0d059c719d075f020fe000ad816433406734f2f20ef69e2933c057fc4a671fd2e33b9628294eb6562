@@ -1,0 +1,1 @@
+{"version":3,"file":"amqplib.d.ts","sourceRoot":"","sources":["../../../../src/integrations/tracing/amqplib.ts"],"names":[],"mappings":"AACA,OAAO,EAAE,sBAAsB,EAAqC,MAAM,wCAAwC,CAAC;AAgBnH,eAAO,MAAM,iBAAiB;;CAAqF,CAAC;AAWpH;;;;;;;;;;;;;GAaG;AACH,eAAO,MAAM,kBAAkB,0CAAyC,CAAC"}

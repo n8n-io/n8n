@@ -1,0 +1,5009 @@
+{
+  "name": "@rushstack/terminal",
+  "entries": [
+    {
+      "version": "0.15.1",
+      "tag": "@rushstack/terminal_v0.15.1",
+      "date": "Tue, 11 Mar 2025 02:12:33 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `5.12.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.15.0",
+      "tag": "@rushstack/terminal_v0.15.0",
+      "date": "Wed, 12 Feb 2025 01:10:52 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Introduce a NoOpTerminalProvider."
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.14.6",
+      "tag": "@rushstack/terminal_v0.14.6",
+      "date": "Thu, 30 Jan 2025 01:11:42 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `5.11.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.14.5",
+      "tag": "@rushstack/terminal_v0.14.5",
+      "date": "Thu, 09 Jan 2025 01:10:10 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `5.10.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.14.4",
+      "tag": "@rushstack/terminal_v0.14.4",
+      "date": "Sat, 14 Dec 2024 01:11:07 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `5.10.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.14.3",
+      "tag": "@rushstack/terminal_v0.14.3",
+      "date": "Fri, 22 Nov 2024 01:10:43 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `5.10.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.14.2",
+      "tag": "@rushstack/terminal_v0.14.2",
+      "date": "Fri, 13 Sep 2024 00:11:43 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `5.9.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.14.1",
+      "tag": "@rushstack/terminal_v0.14.1",
+      "date": "Tue, 10 Sep 2024 20:08:11 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `5.8.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.14.0",
+      "tag": "@rushstack/terminal_v0.14.0",
+      "date": "Wed, 21 Aug 2024 05:43:04 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Create a new instance function called `getVerboseOutput` on `StringBufferTerminalProvider` and mark `getVerbose` as deprecated."
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `5.7.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.13.4",
+      "tag": "@rushstack/terminal_v0.13.4",
+      "date": "Mon, 12 Aug 2024 22:16:04 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `5.6.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.13.3",
+      "tag": "@rushstack/terminal_v0.13.3",
+      "date": "Sat, 27 Jul 2024 00:10:27 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Include CHANGELOG.md in published releases again"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `5.5.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.13.2",
+      "tag": "@rushstack/terminal_v0.13.2",
+      "date": "Wed, 17 Jul 2024 06:55:09 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Improve the PrintUtilities API to handle an edge case when word-wrapping a final line"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.13.1",
+      "tag": "@rushstack/terminal_v0.13.1",
+      "date": "Tue, 16 Jul 2024 00:36:21 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `5.5.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.13.0",
+      "tag": "@rushstack/terminal_v0.13.0",
+      "date": "Thu, 30 May 2024 00:13:05 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Include missing `type` modifiers on type-only exports."
+          }
+        ],
+        "minor": [
+          {
+            "comment": "Eliminate a const enum from the public API."
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `5.4.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.12.3",
+      "tag": "@rushstack/terminal_v0.12.3",
+      "date": "Wed, 29 May 2024 02:03:51 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `5.4.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.12.2",
+      "tag": "@rushstack/terminal_v0.12.2",
+      "date": "Tue, 28 May 2024 15:10:09 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `5.3.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.12.1",
+      "tag": "@rushstack/terminal_v0.12.1",
+      "date": "Tue, 28 May 2024 00:09:47 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `5.2.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.12.0",
+      "tag": "@rushstack/terminal_v0.12.0",
+      "date": "Sat, 25 May 2024 04:54:07 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Change the `eolCharacter` property value of `StringBufferTerminalProvider` to `\\n` from `[n]`. This does not change the default `getOutput()` result, but removes the `[n]` characters from the `getOutput({ normalizeSpecialCharacters: false })` result."
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `5.1.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.11.1",
+      "tag": "@rushstack/terminal_v0.11.1",
+      "date": "Thu, 23 May 2024 02:26:56 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `5.0.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.11.0",
+      "tag": "@rushstack/terminal_v0.11.0",
+      "date": "Wed, 15 May 2024 23:42:58 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Allow use of 'preventAutoclose' flag in StdioSummarizer."
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.10.4",
+      "tag": "@rushstack/terminal_v0.10.4",
+      "date": "Wed, 15 May 2024 06:04:17 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `4.3.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.10.3",
+      "tag": "@rushstack/terminal_v0.10.3",
+      "date": "Fri, 10 May 2024 05:33:34 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `4.2.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.10.2",
+      "tag": "@rushstack/terminal_v0.10.2",
+      "date": "Mon, 06 May 2024 15:11:05 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `4.2.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.10.1",
+      "tag": "@rushstack/terminal_v0.10.1",
+      "date": "Wed, 10 Apr 2024 15:10:08 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `4.1.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.10.0",
+      "tag": "@rushstack/terminal_v0.10.0",
+      "date": "Sat, 24 Feb 2024 23:02:51 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Replace the `colors` dependency with `supports-color` for detecting if STDOUT and STDERR support color."
+          },
+          {
+            "comment": "Add a `Colorize.rainbow` API."
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.9.0",
+      "tag": "@rushstack/terminal_v0.9.0",
+      "date": "Wed, 21 Feb 2024 21:45:28 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Expose a `supportsColor` property on `ConsoleTerminalProvider`."
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `4.0.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.8.1",
+      "tag": "@rushstack/terminal_v0.8.1",
+      "date": "Tue, 20 Feb 2024 21:45:10 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Fix a recent regression causing `Error: Cannot find module 'colors/safe'` (GitHub #4525)"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `4.0.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.8.0",
+      "tag": "@rushstack/terminal_v0.8.0",
+      "date": "Mon, 19 Feb 2024 21:54:27 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Introduce a Terminal, Colors, AsciEscape, and some related APIs. These APIs were previously in the @rushstack/node-core-library package. See https://github.com/microsoft/rushstack/pull/3176 for details."
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `4.0.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.7.24",
+      "tag": "@rushstack/terminal_v0.7.24",
+      "date": "Sat, 17 Feb 2024 06:24:35 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Fix broken link to API documentation"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.66.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.64.7`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.7.23",
+      "tag": "@rushstack/terminal_v0.7.23",
+      "date": "Thu, 08 Feb 2024 01:09:22 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.66.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.64.6`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.7.22",
+      "tag": "@rushstack/terminal_v0.7.22",
+      "date": "Wed, 07 Feb 2024 01:11:18 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.64.5`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.7.21",
+      "tag": "@rushstack/terminal_v0.7.21",
+      "date": "Mon, 05 Feb 2024 23:46:52 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.65.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.64.4`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.7.20",
+      "tag": "@rushstack/terminal_v0.7.20",
+      "date": "Thu, 25 Jan 2024 01:09:30 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.64.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.64.3`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.7.19",
+      "tag": "@rushstack/terminal_v0.7.19",
+      "date": "Tue, 23 Jan 2024 20:12:58 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.64.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.64.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.7.18",
+      "tag": "@rushstack/terminal_v0.7.18",
+      "date": "Tue, 23 Jan 2024 16:15:06 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.64.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.64.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.7.17",
+      "tag": "@rushstack/terminal_v0.7.17",
+      "date": "Tue, 16 Jan 2024 18:30:11 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.64.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.7.16",
+      "tag": "@rushstack/terminal_v0.7.16",
+      "date": "Wed, 03 Jan 2024 00:31:18 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.63.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.63.6`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.7.15",
+      "tag": "@rushstack/terminal_v0.7.15",
+      "date": "Wed, 20 Dec 2023 01:09:46 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.63.5`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.7.14",
+      "tag": "@rushstack/terminal_v0.7.14",
+      "date": "Thu, 07 Dec 2023 03:44:13 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.62.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.63.4`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.7.13",
+      "tag": "@rushstack/terminal_v0.7.13",
+      "date": "Tue, 05 Dec 2023 01:10:16 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.63.3`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.7.12",
+      "tag": "@rushstack/terminal_v0.7.12",
+      "date": "Fri, 10 Nov 2023 18:02:04 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.63.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.7.11",
+      "tag": "@rushstack/terminal_v0.7.11",
+      "date": "Wed, 01 Nov 2023 23:11:35 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Fix line endings in published package."
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.63.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.7.10",
+      "tag": "@rushstack/terminal_v0.7.10",
+      "date": "Mon, 30 Oct 2023 23:36:38 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.63.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.7.9",
+      "tag": "@rushstack/terminal_v0.7.9",
+      "date": "Sun, 01 Oct 2023 02:56:30 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.62.3`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.7.8",
+      "tag": "@rushstack/terminal_v0.7.8",
+      "date": "Sat, 30 Sep 2023 00:20:51 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.62.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.7.7",
+      "tag": "@rushstack/terminal_v0.7.7",
+      "date": "Thu, 28 Sep 2023 20:53:17 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Fix an issue where `PrintUtilities.printMessageInBox` would throw if the message contains a word that is longer than the box width. In this case, `printMessageInBox` will print bars above and below the message, and then print the message lines, allowing the console to wrap them."
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.61.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.62.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.7.6",
+      "tag": "@rushstack/terminal_v0.7.6",
+      "date": "Wed, 27 Sep 2023 00:21:39 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.62.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.7.5",
+      "tag": "@rushstack/terminal_v0.7.5",
+      "date": "Tue, 26 Sep 2023 21:02:31 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.61.3`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.7.4",
+      "tag": "@rushstack/terminal_v0.7.4",
+      "date": "Tue, 26 Sep 2023 09:30:33 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Update type-only imports to include the type modifier."
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.60.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.61.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.7.3",
+      "tag": "@rushstack/terminal_v0.7.3",
+      "date": "Mon, 25 Sep 2023 23:38:28 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.61.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.7.2",
+      "tag": "@rushstack/terminal_v0.7.2",
+      "date": "Fri, 22 Sep 2023 00:05:50 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.61.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.7.1",
+      "tag": "@rushstack/terminal_v0.7.1",
+      "date": "Tue, 19 Sep 2023 15:21:52 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.60.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `2.2.24`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.7.0",
+      "tag": "@rushstack/terminal_v0.7.0",
+      "date": "Tue, 19 Sep 2023 00:36:30 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Remove the dependency on `wordwrap`."
+          },
+          {
+            "comment": "Add support for a custom line prefix in `PrintUtilities.wrapWords`."
+          },
+          {
+            "comment": "Add a `PrintUtilities.wrapWordsToLines` function that is functionally identical to `PrintUtilities.wrapWords`, except that it returns an array of lines instead of a joined string with line breaks."
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.6.0",
+      "tag": "@rushstack/terminal_v0.6.0",
+      "date": "Fri, 15 Sep 2023 00:36:58 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Update @types/node from 14 to 18"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.60.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `3.3.4`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.59.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `2.2.23`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.5.38",
+      "tag": "@rushstack/terminal_v0.5.38",
+      "date": "Thu, 24 Aug 2023 15:20:46 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Fix a minor logic issue for TextRewriterTransform cleanup"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.5.37",
+      "tag": "@rushstack/terminal_v0.5.37",
+      "date": "Tue, 08 Aug 2023 07:10:40 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.59.7`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `3.3.3`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.58.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `2.2.22`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.5.36",
+      "tag": "@rushstack/terminal_v0.5.36",
+      "date": "Mon, 31 Jul 2023 15:19:06 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `2.2.21`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.5.35",
+      "tag": "@rushstack/terminal_v0.5.35",
+      "date": "Sat, 29 Jul 2023 00:22:51 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.58.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `2.2.20`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.5.34",
+      "tag": "@rushstack/terminal_v0.5.34",
+      "date": "Thu, 20 Jul 2023 20:47:29 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.58.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `2.2.19`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.5.33",
+      "tag": "@rushstack/terminal_v0.5.33",
+      "date": "Wed, 19 Jul 2023 00:20:32 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.59.6`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.57.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `2.2.18`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.5.32",
+      "tag": "@rushstack/terminal_v0.5.32",
+      "date": "Fri, 14 Jul 2023 15:20:46 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `2.2.17`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.5.31",
+      "tag": "@rushstack/terminal_v0.5.31",
+      "date": "Thu, 13 Jul 2023 00:22:37 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.57.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `2.2.16`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.5.30",
+      "tag": "@rushstack/terminal_v0.5.30",
+      "date": "Wed, 12 Jul 2023 15:20:40 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.56.3`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `2.2.15`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.5.29",
+      "tag": "@rushstack/terminal_v0.5.29",
+      "date": "Wed, 12 Jul 2023 00:23:30 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `2.2.14`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.5.28",
+      "tag": "@rushstack/terminal_v0.5.28",
+      "date": "Fri, 07 Jul 2023 00:19:33 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.56.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `2.2.13`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.5.27",
+      "tag": "@rushstack/terminal_v0.5.27",
+      "date": "Thu, 06 Jul 2023 00:16:20 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.59.5`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.56.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `2.2.12`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.5.26",
+      "tag": "@rushstack/terminal_v0.5.26",
+      "date": "Tue, 04 Jul 2023 00:18:47 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `2.2.11`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.5.25",
+      "tag": "@rushstack/terminal_v0.5.25",
+      "date": "Mon, 19 Jun 2023 22:40:21 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.56.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `2.2.10`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.5.24",
+      "tag": "@rushstack/terminal_v0.5.24",
+      "date": "Thu, 15 Jun 2023 00:21:02 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.59.4`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `3.3.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.55.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `2.2.9`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.5.23",
+      "tag": "@rushstack/terminal_v0.5.23",
+      "date": "Wed, 14 Jun 2023 00:19:42 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.55.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `2.2.8`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.5.22",
+      "tag": "@rushstack/terminal_v0.5.22",
+      "date": "Tue, 13 Jun 2023 15:17:21 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.55.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `2.2.7`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.5.21",
+      "tag": "@rushstack/terminal_v0.5.21",
+      "date": "Tue, 13 Jun 2023 01:49:02 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.54.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `2.2.6`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.5.20",
+      "tag": "@rushstack/terminal_v0.5.20",
+      "date": "Fri, 09 Jun 2023 18:05:35 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.53.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `2.2.5`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.5.19",
+      "tag": "@rushstack/terminal_v0.5.19",
+      "date": "Fri, 09 Jun 2023 15:23:15 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `2.2.4`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.5.18",
+      "tag": "@rushstack/terminal_v0.5.18",
+      "date": "Fri, 09 Jun 2023 00:19:49 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.53.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `2.2.3`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.5.17",
+      "tag": "@rushstack/terminal_v0.5.17",
+      "date": "Thu, 08 Jun 2023 15:21:17 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.52.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `2.2.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.5.16",
+      "tag": "@rushstack/terminal_v0.5.16",
+      "date": "Thu, 08 Jun 2023 00:20:03 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.52.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `2.2.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.5.15",
+      "tag": "@rushstack/terminal_v0.5.15",
+      "date": "Wed, 07 Jun 2023 22:45:17 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.59.3`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `3.3.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.52.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `2.2.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.5.14",
+      "tag": "@rushstack/terminal_v0.5.14",
+      "date": "Tue, 06 Jun 2023 02:52:51 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `2.1.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.5.13",
+      "tag": "@rushstack/terminal_v0.5.13",
+      "date": "Mon, 05 Jun 2023 21:45:21 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `2.0.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.5.12",
+      "tag": "@rushstack/terminal_v0.5.12",
+      "date": "Fri, 02 Jun 2023 02:01:13 GMT",
+      "comments": {
+        "none": [
+          {
+            "comment": "Convert to multi-phase Heft"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.51.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `2.0.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.5.11",
+      "tag": "@rushstack/terminal_v0.5.11",
+      "date": "Mon, 29 May 2023 15:21:15 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.59.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.50.7`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.13.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.5.10",
+      "tag": "@rushstack/terminal_v0.5.10",
+      "date": "Mon, 22 May 2023 06:34:33 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.59.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `3.3.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.50.6`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.13.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.5.9",
+      "tag": "@rushstack/terminal_v0.5.9",
+      "date": "Fri, 12 May 2023 00:23:05 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.59.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.50.5`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.12.11`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.5.8",
+      "tag": "@rushstack/terminal_v0.5.8",
+      "date": "Thu, 04 May 2023 00:20:29 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.50.4`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.12.10`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.5.7",
+      "tag": "@rushstack/terminal_v0.5.7",
+      "date": "Mon, 01 May 2023 15:23:20 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.58.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.50.3`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.12.9`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.5.6",
+      "tag": "@rushstack/terminal_v0.5.6",
+      "date": "Sat, 29 Apr 2023 00:23:03 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.57.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.50.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.12.8`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.5.5",
+      "tag": "@rushstack/terminal_v0.5.5",
+      "date": "Thu, 27 Apr 2023 17:18:43 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.56.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.50.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.12.7`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.5.4",
+      "tag": "@rushstack/terminal_v0.5.4",
+      "date": "Tue, 04 Apr 2023 22:36:28 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.12.6`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.5.3",
+      "tag": "@rushstack/terminal_v0.5.3",
+      "date": "Sat, 18 Mar 2023 00:20:56 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.50.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.12.5`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.5.2",
+      "tag": "@rushstack/terminal_v0.5.2",
+      "date": "Fri, 10 Feb 2023 01:18:51 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.55.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `3.2.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.49.7`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.12.4`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.5.1",
+      "tag": "@rushstack/terminal_v0.5.1",
+      "date": "Sun, 05 Feb 2023 03:02:02 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Change the peer dependency selector on `@types/node` to a wildcard (`*`)."
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.55.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.49.6`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.12.3`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.5.0",
+      "tag": "@rushstack/terminal_v0.5.0",
+      "date": "Wed, 01 Feb 2023 02:16:34 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Bump @types/node peerDependency to ^14.18.36."
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.55.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.49.5`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.12.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.4.0",
+      "tag": "@rushstack/terminal_v0.4.0",
+      "date": "Mon, 30 Jan 2023 16:22:30 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Move the @types/node dependency to an optional peerDependency."
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.54.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.49.4`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.12.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.92",
+      "tag": "@rushstack/terminal_v0.3.92",
+      "date": "Mon, 30 Jan 2023 00:55:44 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.12.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.91",
+      "tag": "@rushstack/terminal_v0.3.91",
+      "date": "Thu, 26 Jan 2023 02:55:10 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.49.3`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.11.14`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.90",
+      "tag": "@rushstack/terminal_v0.3.90",
+      "date": "Wed, 25 Jan 2023 07:26:56 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.49.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.11.13`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.89",
+      "tag": "@rushstack/terminal_v0.3.89",
+      "date": "Wed, 18 Jan 2023 22:44:12 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.49.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.11.12`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.88",
+      "tag": "@rushstack/terminal_v0.3.88",
+      "date": "Tue, 20 Dec 2022 01:18:23 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.49.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.11.11`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.87",
+      "tag": "@rushstack/terminal_v0.3.87",
+      "date": "Fri, 09 Dec 2022 16:18:28 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.53.3`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.48.9`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.11.10`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.86",
+      "tag": "@rushstack/terminal_v0.3.86",
+      "date": "Mon, 05 Dec 2022 16:16:09 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "The wrapWords method now respects existing spaces and newlines in a pre-formatted message."
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.85",
+      "tag": "@rushstack/terminal_v0.3.85",
+      "date": "Tue, 29 Nov 2022 01:16:50 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.11.9`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.84",
+      "tag": "@rushstack/terminal_v0.3.84",
+      "date": "Tue, 08 Nov 2022 01:20:56 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.48.8`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.11.8`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.83",
+      "tag": "@rushstack/terminal_v0.3.83",
+      "date": "Wed, 26 Oct 2022 00:16:16 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.48.7`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.11.7`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.82",
+      "tag": "@rushstack/terminal_v0.3.82",
+      "date": "Mon, 17 Oct 2022 22:14:21 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.48.6`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.11.6`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.81",
+      "tag": "@rushstack/terminal_v0.3.81",
+      "date": "Mon, 17 Oct 2022 15:16:00 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.48.5`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.11.5`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.80",
+      "tag": "@rushstack/terminal_v0.3.80",
+      "date": "Fri, 14 Oct 2022 15:26:32 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.48.4`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.11.4`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.79",
+      "tag": "@rushstack/terminal_v0.3.79",
+      "date": "Thu, 13 Oct 2022 00:20:15 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.53.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.48.3`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.11.3`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.78",
+      "tag": "@rushstack/terminal_v0.3.78",
+      "date": "Tue, 11 Oct 2022 23:49:12 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.48.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.11.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.77",
+      "tag": "@rushstack/terminal_v0.3.77",
+      "date": "Mon, 10 Oct 2022 15:23:44 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.53.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `3.1.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.48.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.11.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.76",
+      "tag": "@rushstack/terminal_v0.3.76",
+      "date": "Thu, 29 Sep 2022 07:13:06 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.53.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `3.1.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.48.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.11.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.75",
+      "tag": "@rushstack/terminal_v0.3.75",
+      "date": "Tue, 27 Sep 2022 22:17:20 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.47.11`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.10.13`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.74",
+      "tag": "@rushstack/terminal_v0.3.74",
+      "date": "Wed, 21 Sep 2022 20:21:10 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.52.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.47.10`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.10.12`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.73",
+      "tag": "@rushstack/terminal_v0.3.73",
+      "date": "Thu, 15 Sep 2022 00:18:52 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.51.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `3.0.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.47.9`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.10.11`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.72",
+      "tag": "@rushstack/terminal_v0.3.72",
+      "date": "Tue, 13 Sep 2022 00:16:55 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.47.8`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.10.10`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.71",
+      "tag": "@rushstack/terminal_v0.3.71",
+      "date": "Mon, 12 Sep 2022 22:27:48 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.47.7`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.10.9`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.70",
+      "tag": "@rushstack/terminal_v0.3.70",
+      "date": "Fri, 02 Sep 2022 17:48:43 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.47.6`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.10.8`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.69",
+      "tag": "@rushstack/terminal_v0.3.69",
+      "date": "Wed, 31 Aug 2022 01:45:06 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.10.7`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.68",
+      "tag": "@rushstack/terminal_v0.3.68",
+      "date": "Wed, 31 Aug 2022 00:42:46 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.10.6`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.67",
+      "tag": "@rushstack/terminal_v0.3.67",
+      "date": "Wed, 24 Aug 2022 03:01:22 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.51.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.47.5`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.10.5`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.66",
+      "tag": "@rushstack/terminal_v0.3.66",
+      "date": "Wed, 24 Aug 2022 00:14:38 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.51.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.47.4`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.10.4`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.65",
+      "tag": "@rushstack/terminal_v0.3.65",
+      "date": "Fri, 19 Aug 2022 00:17:20 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.50.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.47.3`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.10.3`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.64",
+      "tag": "@rushstack/terminal_v0.3.64",
+      "date": "Wed, 10 Aug 2022 09:52:12 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.47.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.10.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.63",
+      "tag": "@rushstack/terminal_v0.3.63",
+      "date": "Wed, 10 Aug 2022 08:12:16 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.47.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.10.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.62",
+      "tag": "@rushstack/terminal_v0.3.62",
+      "date": "Wed, 03 Aug 2022 18:40:35 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.50.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `3.0.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.47.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.10.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.61",
+      "tag": "@rushstack/terminal_v0.3.61",
+      "date": "Mon, 01 Aug 2022 02:45:32 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.50.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.46.7`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.9.23`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.60",
+      "tag": "@rushstack/terminal_v0.3.60",
+      "date": "Thu, 21 Jul 2022 23:30:28 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.46.6`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.9.22`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.59",
+      "tag": "@rushstack/terminal_v0.3.59",
+      "date": "Thu, 21 Jul 2022 00:16:14 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.46.5`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.9.21`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.58",
+      "tag": "@rushstack/terminal_v0.3.58",
+      "date": "Wed, 13 Jul 2022 21:31:13 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.46.4`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.9.20`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.57",
+      "tag": "@rushstack/terminal_v0.3.57",
+      "date": "Fri, 08 Jul 2022 15:17:47 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.46.3`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.9.19`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.56",
+      "tag": "@rushstack/terminal_v0.3.56",
+      "date": "Mon, 04 Jul 2022 15:15:13 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.46.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.9.18`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.55",
+      "tag": "@rushstack/terminal_v0.3.55",
+      "date": "Thu, 30 Jun 2022 04:48:54 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.46.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.9.17`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.54",
+      "tag": "@rushstack/terminal_v0.3.54",
+      "date": "Tue, 28 Jun 2022 22:47:14 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.49.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.46.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.9.16`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.53",
+      "tag": "@rushstack/terminal_v0.3.53",
+      "date": "Tue, 28 Jun 2022 00:23:32 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.48.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.6.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.45.14`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.9.15`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.52",
+      "tag": "@rushstack/terminal_v0.3.52",
+      "date": "Mon, 27 Jun 2022 18:43:09 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.47.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.45.13`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.9.14`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.51",
+      "tag": "@rushstack/terminal_v0.3.51",
+      "date": "Sat, 25 Jun 2022 21:00:40 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.45.12`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.9.13`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.50",
+      "tag": "@rushstack/terminal_v0.3.50",
+      "date": "Sat, 25 Jun 2022 01:54:29 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.46.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.45.11`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.9.12`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.49",
+      "tag": "@rushstack/terminal_v0.3.49",
+      "date": "Fri, 24 Jun 2022 07:16:47 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.45.10`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.9.11`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.48",
+      "tag": "@rushstack/terminal_v0.3.48",
+      "date": "Thu, 23 Jun 2022 22:14:25 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.45.9`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.9.10`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.47",
+      "tag": "@rushstack/terminal_v0.3.47",
+      "date": "Fri, 17 Jun 2022 09:17:54 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.45.7`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.45.8`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.9.9`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.46",
+      "tag": "@rushstack/terminal_v0.3.46",
+      "date": "Fri, 17 Jun 2022 00:16:18 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.45.6`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.6.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.45.7`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.9.8`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.45",
+      "tag": "@rushstack/terminal_v0.3.45",
+      "date": "Tue, 07 Jun 2022 09:37:05 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.45.6`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.9.7`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.44",
+      "tag": "@rushstack/terminal_v0.3.44",
+      "date": "Wed, 25 May 2022 22:25:08 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.45.5`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.9.6`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.43",
+      "tag": "@rushstack/terminal_v0.3.43",
+      "date": "Thu, 19 May 2022 15:13:21 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.45.4`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.9.5`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.42",
+      "tag": "@rushstack/terminal_v0.3.42",
+      "date": "Sat, 14 May 2022 03:01:27 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.45.3`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.9.4`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.41",
+      "tag": "@rushstack/terminal_v0.3.41",
+      "date": "Tue, 10 May 2022 01:20:44 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.45.5`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.45.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.9.3`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.40",
+      "tag": "@rushstack/terminal_v0.3.40",
+      "date": "Wed, 04 May 2022 23:29:13 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.45.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.9.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.39",
+      "tag": "@rushstack/terminal_v0.3.39",
+      "date": "Tue, 26 Apr 2022 00:10:15 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.9.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.38",
+      "tag": "@rushstack/terminal_v0.3.38",
+      "date": "Sat, 23 Apr 2022 02:13:07 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.45.4`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.6.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.45.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.9.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.37",
+      "tag": "@rushstack/terminal_v0.3.37",
+      "date": "Fri, 15 Apr 2022 00:12:36 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.45.3`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.5.4`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.44.13`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.8.11`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.36",
+      "tag": "@rushstack/terminal_v0.3.36",
+      "date": "Wed, 13 Apr 2022 15:12:41 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.44.12`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.8.10`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.35",
+      "tag": "@rushstack/terminal_v0.3.35",
+      "date": "Tue, 12 Apr 2022 23:29:34 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.44.11`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.8.9`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.34",
+      "tag": "@rushstack/terminal_v0.3.34",
+      "date": "Tue, 12 Apr 2022 02:58:32 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.44.10`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.8.8`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.33",
+      "tag": "@rushstack/terminal_v0.3.33",
+      "date": "Sat, 09 Apr 2022 19:07:48 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.44.9`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.8.7`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.32",
+      "tag": "@rushstack/terminal_v0.3.32",
+      "date": "Sat, 09 Apr 2022 02:24:27 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Rename the \"master\" branch to \"main\"."
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.45.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.5.3`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.44.8`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.8.6`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.31",
+      "tag": "@rushstack/terminal_v0.3.31",
+      "date": "Fri, 08 Apr 2022 20:05:59 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.44.7`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.8.5`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.30",
+      "tag": "@rushstack/terminal_v0.3.30",
+      "date": "Wed, 06 Apr 2022 22:35:23 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.44.6`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.8.4`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.29",
+      "tag": "@rushstack/terminal_v0.3.29",
+      "date": "Thu, 31 Mar 2022 02:06:06 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.44.5`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.8.3`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.28",
+      "tag": "@rushstack/terminal_v0.3.28",
+      "date": "Sat, 19 Mar 2022 08:05:38 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.44.4`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.8.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.27",
+      "tag": "@rushstack/terminal_v0.3.27",
+      "date": "Tue, 15 Mar 2022 19:15:53 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.45.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.5.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.44.3`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.8.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.26",
+      "tag": "@rushstack/terminal_v0.3.26",
+      "date": "Fri, 11 Feb 2022 10:30:26 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.8.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.25",
+      "tag": "@rushstack/terminal_v0.3.25",
+      "date": "Tue, 25 Jan 2022 01:11:07 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.7.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.24",
+      "tag": "@rushstack/terminal_v0.3.24",
+      "date": "Fri, 21 Jan 2022 01:10:41 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.7.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.23",
+      "tag": "@rushstack/terminal_v0.3.23",
+      "date": "Thu, 20 Jan 2022 02:43:46 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.6.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.22",
+      "tag": "@rushstack/terminal_v0.3.22",
+      "date": "Wed, 05 Jan 2022 16:07:47 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.45.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.44.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.5.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.21",
+      "tag": "@rushstack/terminal_v0.3.21",
+      "date": "Mon, 27 Dec 2021 16:10:40 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.44.3`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.5.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.44.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.5.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.20",
+      "tag": "@rushstack/terminal_v0.3.20",
+      "date": "Tue, 14 Dec 2021 19:27:52 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.44.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.5.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.19",
+      "tag": "@rushstack/terminal_v0.3.19",
+      "date": "Thu, 09 Dec 2021 20:34:41 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.44.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.43.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.4.3`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.18",
+      "tag": "@rushstack/terminal_v0.3.18",
+      "date": "Thu, 09 Dec 2021 00:21:54 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.43.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.4.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.17",
+      "tag": "@rushstack/terminal_v0.3.17",
+      "date": "Wed, 08 Dec 2021 19:05:08 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.43.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.4.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.16",
+      "tag": "@rushstack/terminal_v0.3.16",
+      "date": "Wed, 08 Dec 2021 16:14:05 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.42.6`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.4.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.15",
+      "tag": "@rushstack/terminal_v0.3.15",
+      "date": "Mon, 06 Dec 2021 16:08:33 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.44.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.5.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.42.5`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.3.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.14",
+      "tag": "@rushstack/terminal_v0.3.14",
+      "date": "Fri, 03 Dec 2021 03:05:23 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.44.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.42.4`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.2.33`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.13",
+      "tag": "@rushstack/terminal_v0.3.13",
+      "date": "Tue, 30 Nov 2021 20:18:41 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.2.32`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.12",
+      "tag": "@rushstack/terminal_v0.3.12",
+      "date": "Mon, 29 Nov 2021 07:26:16 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.42.3`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.2.31`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.11",
+      "tag": "@rushstack/terminal_v0.3.11",
+      "date": "Sat, 06 Nov 2021 00:09:13 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.43.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.42.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.2.30`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.10",
+      "tag": "@rushstack/terminal_v0.3.10",
+      "date": "Fri, 05 Nov 2021 15:09:18 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.43.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.4.5`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.42.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.2.29`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.9",
+      "tag": "@rushstack/terminal_v0.3.9",
+      "date": "Thu, 28 Oct 2021 00:08:22 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.42.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.2.28`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.8",
+      "tag": "@rushstack/terminal_v0.3.8",
+      "date": "Wed, 27 Oct 2021 00:08:15 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Update the package.json repository field to include the directory property."
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.43.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.4.4`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.41.8`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.2.27`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.7",
+      "tag": "@rushstack/terminal_v0.3.7",
+      "date": "Wed, 13 Oct 2021 15:09:55 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.42.3`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.4.3`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.41.7`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.2.26`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.6",
+      "tag": "@rushstack/terminal_v0.3.6",
+      "date": "Fri, 08 Oct 2021 09:35:07 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.41.6`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.2.25`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.5",
+      "tag": "@rushstack/terminal_v0.3.5",
+      "date": "Fri, 08 Oct 2021 08:08:34 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.42.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.41.5`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.2.24`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.4",
+      "tag": "@rushstack/terminal_v0.3.4",
+      "date": "Thu, 07 Oct 2021 23:43:12 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.41.4`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.2.23`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.3",
+      "tag": "@rushstack/terminal_v0.3.3",
+      "date": "Thu, 07 Oct 2021 07:13:35 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.42.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.4.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.41.3`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.2.22`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.2",
+      "tag": "@rushstack/terminal_v0.3.2",
+      "date": "Wed, 06 Oct 2021 15:08:26 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.41.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.2.21`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.1",
+      "tag": "@rushstack/terminal_v0.3.1",
+      "date": "Wed, 06 Oct 2021 02:41:48 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.41.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.2.20`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.3.0",
+      "tag": "@rushstack/terminal_v0.3.0",
+      "date": "Tue, 05 Oct 2021 15:08:38 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Use ITerminal instead of Terminal to allow for compatibility with other versions of @rushstack/node-core-library."
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.42.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.41.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.2.19`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.32",
+      "tag": "@rushstack/terminal_v0.2.32",
+      "date": "Mon, 04 Oct 2021 15:10:18 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.40.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.2.18`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.31",
+      "tag": "@rushstack/terminal_v0.2.31",
+      "date": "Fri, 24 Sep 2021 00:09:29 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.41.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.39.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.2.17`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.30",
+      "tag": "@rushstack/terminal_v0.2.30",
+      "date": "Thu, 23 Sep 2021 00:10:41 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Upgrade the `@types/node` dependency to version to version 12."
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.40.3`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.4.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.39.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.2.16`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.29",
+      "tag": "@rushstack/terminal_v0.2.29",
+      "date": "Wed, 22 Sep 2021 03:27:12 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.39.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.2.15`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.28",
+      "tag": "@rushstack/terminal_v0.2.28",
+      "date": "Wed, 22 Sep 2021 00:09:33 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.38.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.2.14`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.27",
+      "tag": "@rushstack/terminal_v0.2.27",
+      "date": "Sat, 18 Sep 2021 03:05:57 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.38.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.2.13`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.26",
+      "tag": "@rushstack/terminal_v0.2.26",
+      "date": "Tue, 14 Sep 2021 01:17:04 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.40.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.38.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.2.12`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.25",
+      "tag": "@rushstack/terminal_v0.2.25",
+      "date": "Mon, 13 Sep 2021 15:07:06 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.40.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.37.4`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.2.11`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.24",
+      "tag": "@rushstack/terminal_v0.2.24",
+      "date": "Fri, 10 Sep 2021 15:08:28 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.37.3`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.2.10`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.23",
+      "tag": "@rushstack/terminal_v0.2.23",
+      "date": "Wed, 08 Sep 2021 19:06:22 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.37.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.2.9`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.22",
+      "tag": "@rushstack/terminal_v0.2.22",
+      "date": "Wed, 08 Sep 2021 00:08:03 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.37.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.2.8`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.21",
+      "tag": "@rushstack/terminal_v0.2.21",
+      "date": "Fri, 03 Sep 2021 00:09:10 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.2.7`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.20",
+      "tag": "@rushstack/terminal_v0.2.20",
+      "date": "Tue, 31 Aug 2021 00:07:11 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.37.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.2.6`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.19",
+      "tag": "@rushstack/terminal_v0.2.19",
+      "date": "Fri, 27 Aug 2021 00:07:25 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.36.4`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.2.5`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.18",
+      "tag": "@rushstack/terminal_v0.2.18",
+      "date": "Fri, 20 Aug 2021 15:08:10 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.36.3`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.2.4`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.17",
+      "tag": "@rushstack/terminal_v0.2.17",
+      "date": "Fri, 13 Aug 2021 00:09:14 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.2.3`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.16",
+      "tag": "@rushstack/terminal_v0.2.16",
+      "date": "Thu, 12 Aug 2021 18:11:18 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.36.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.2.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.15",
+      "tag": "@rushstack/terminal_v0.2.15",
+      "date": "Thu, 12 Aug 2021 01:28:38 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.36.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.2.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.14",
+      "tag": "@rushstack/terminal_v0.2.14",
+      "date": "Wed, 11 Aug 2021 23:14:17 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.36.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.2.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.13",
+      "tag": "@rushstack/terminal_v0.2.13",
+      "date": "Wed, 11 Aug 2021 00:07:21 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.40.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.35.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.1.15`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.12",
+      "tag": "@rushstack/terminal_v0.2.12",
+      "date": "Sat, 31 Jul 2021 00:52:12 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.35.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.1.14`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.11",
+      "tag": "@rushstack/terminal_v0.2.11",
+      "date": "Wed, 14 Jul 2021 15:06:29 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.34.8`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.1.13`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.10",
+      "tag": "@rushstack/terminal_v0.2.10",
+      "date": "Tue, 13 Jul 2021 23:00:33 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.34.7`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.1.12`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.9",
+      "tag": "@rushstack/terminal_v0.2.9",
+      "date": "Mon, 12 Jul 2021 23:08:26 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.39.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.4.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.34.6`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.1.11`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.8",
+      "tag": "@rushstack/terminal_v0.2.8",
+      "date": "Thu, 08 Jul 2021 23:41:17 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.34.5`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.1.10`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.7",
+      "tag": "@rushstack/terminal_v0.2.7",
+      "date": "Thu, 08 Jul 2021 06:00:48 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.34.4`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.1.9`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.6",
+      "tag": "@rushstack/terminal_v0.2.6",
+      "date": "Thu, 01 Jul 2021 15:08:27 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.34.3`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.1.8`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.5",
+      "tag": "@rushstack/terminal_v0.2.5",
+      "date": "Wed, 30 Jun 2021 19:16:19 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.1.7`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.4",
+      "tag": "@rushstack/terminal_v0.2.4",
+      "date": "Wed, 30 Jun 2021 15:06:54 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.34.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.1.6`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.3",
+      "tag": "@rushstack/terminal_v0.2.3",
+      "date": "Wed, 30 Jun 2021 01:37:17 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.34.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.1.5`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.2",
+      "tag": "@rushstack/terminal_v0.2.2",
+      "date": "Fri, 25 Jun 2021 00:08:28 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.34.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.1.4`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.1",
+      "tag": "@rushstack/terminal_v0.2.1",
+      "date": "Fri, 18 Jun 2021 06:23:05 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.33.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.1.3`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.2.0",
+      "tag": "@rushstack/terminal_v0.2.0",
+      "date": "Fri, 18 Jun 2021 00:08:51 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Export console printing utilities from the PrintUtility class."
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.96",
+      "tag": "@rushstack/terminal_v0.1.96",
+      "date": "Wed, 16 Jun 2021 18:53:52 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.1.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.95",
+      "tag": "@rushstack/terminal_v0.1.95",
+      "date": "Wed, 16 Jun 2021 15:07:24 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.33.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.1.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.94",
+      "tag": "@rushstack/terminal_v0.1.94",
+      "date": "Tue, 15 Jun 2021 20:38:35 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.1.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.93",
+      "tag": "@rushstack/terminal_v0.1.93",
+      "date": "Fri, 11 Jun 2021 23:26:16 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.0.31`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.92",
+      "tag": "@rushstack/terminal_v0.1.92",
+      "date": "Fri, 11 Jun 2021 00:34:02 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.32.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.0.30`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.91",
+      "tag": "@rushstack/terminal_v0.1.91",
+      "date": "Thu, 10 Jun 2021 15:08:16 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.31.5`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.0.29`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.90",
+      "tag": "@rushstack/terminal_v0.1.90",
+      "date": "Fri, 04 Jun 2021 19:59:53 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.39.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.31.4`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.0.28`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.89",
+      "tag": "@rushstack/terminal_v0.1.89",
+      "date": "Fri, 04 Jun 2021 15:08:21 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.31.3`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.0.27`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.88",
+      "tag": "@rushstack/terminal_v0.1.88",
+      "date": "Fri, 04 Jun 2021 00:08:34 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.31.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.0.26`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.87",
+      "tag": "@rushstack/terminal_v0.1.87",
+      "date": "Tue, 01 Jun 2021 18:29:26 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.31.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.0.25`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.86",
+      "tag": "@rushstack/terminal_v0.1.86",
+      "date": "Sat, 29 May 2021 01:05:06 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.31.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.0.24`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.85",
+      "tag": "@rushstack/terminal_v0.1.85",
+      "date": "Fri, 28 May 2021 06:19:58 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.30.7`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.0.23`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.84",
+      "tag": "@rushstack/terminal_v0.1.84",
+      "date": "Tue, 25 May 2021 00:12:21 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.30.6`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.0.22`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.83",
+      "tag": "@rushstack/terminal_v0.1.83",
+      "date": "Wed, 19 May 2021 00:11:39 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.38.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.30.5`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.0.21`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.82",
+      "tag": "@rushstack/terminal_v0.1.82",
+      "date": "Thu, 13 May 2021 01:52:47 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.30.4`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.0.20`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.81",
+      "tag": "@rushstack/terminal_v0.1.81",
+      "date": "Tue, 11 May 2021 22:19:17 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.30.3`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.0.19`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.80",
+      "tag": "@rushstack/terminal_v0.1.80",
+      "date": "Mon, 03 May 2021 15:10:29 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.37.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.30.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.0.18`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.79",
+      "tag": "@rushstack/terminal_v0.1.79",
+      "date": "Thu, 29 Apr 2021 23:26:50 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.30.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.0.17`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.78",
+      "tag": "@rushstack/terminal_v0.1.78",
+      "date": "Thu, 29 Apr 2021 01:07:29 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.30.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.0.16`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.77",
+      "tag": "@rushstack/terminal_v0.1.77",
+      "date": "Fri, 23 Apr 2021 22:00:07 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.29.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.0.15`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.76",
+      "tag": "@rushstack/terminal_v0.1.76",
+      "date": "Fri, 23 Apr 2021 15:11:21 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.29.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.0.14`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.75",
+      "tag": "@rushstack/terminal_v0.1.75",
+      "date": "Wed, 21 Apr 2021 15:12:28 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.28.5`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.0.13`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.74",
+      "tag": "@rushstack/terminal_v0.1.74",
+      "date": "Tue, 20 Apr 2021 04:59:51 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.28.4`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.0.12`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.73",
+      "tag": "@rushstack/terminal_v0.1.73",
+      "date": "Thu, 15 Apr 2021 02:59:25 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.28.3`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.0.11`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.72",
+      "tag": "@rushstack/terminal_v0.1.72",
+      "date": "Mon, 12 Apr 2021 15:10:29 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.36.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.3.4`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.28.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.0.10`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.71",
+      "tag": "@rushstack/terminal_v0.1.71",
+      "date": "Thu, 08 Apr 2021 20:41:55 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.28.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.0.9`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.70",
+      "tag": "@rushstack/terminal_v0.1.70",
+      "date": "Thu, 08 Apr 2021 06:05:32 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.28.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.0.8`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.69",
+      "tag": "@rushstack/terminal_v0.1.69",
+      "date": "Thu, 08 Apr 2021 00:10:18 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.27.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.0.7`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.68",
+      "tag": "@rushstack/terminal_v0.1.68",
+      "date": "Tue, 06 Apr 2021 15:14:22 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.36.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.3.3`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.26.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.0.6`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.67",
+      "tag": "@rushstack/terminal_v0.1.67",
+      "date": "Wed, 31 Mar 2021 15:10:36 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.25.5`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.0.5`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.66",
+      "tag": "@rushstack/terminal_v0.1.66",
+      "date": "Mon, 29 Mar 2021 05:02:07 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.25.4`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.0.4`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.65",
+      "tag": "@rushstack/terminal_v0.1.65",
+      "date": "Fri, 19 Mar 2021 22:31:38 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.25.3`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.0.3`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.64",
+      "tag": "@rushstack/terminal_v0.1.64",
+      "date": "Wed, 17 Mar 2021 05:04:38 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.25.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.0.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.63",
+      "tag": "@rushstack/terminal_v0.1.63",
+      "date": "Fri, 12 Mar 2021 01:13:27 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.25.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.0.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.62",
+      "tag": "@rushstack/terminal_v0.1.62",
+      "date": "Wed, 10 Mar 2021 06:23:29 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `1.0.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.61",
+      "tag": "@rushstack/terminal_v0.1.61",
+      "date": "Wed, 10 Mar 2021 05:10:06 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.25.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `0.2.7`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.60",
+      "tag": "@rushstack/terminal_v0.1.60",
+      "date": "Thu, 04 Mar 2021 01:11:31 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.24.4`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `0.2.6`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.59",
+      "tag": "@rushstack/terminal_v0.1.59",
+      "date": "Tue, 02 Mar 2021 23:25:05 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.24.3`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `0.2.5`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.58",
+      "tag": "@rushstack/terminal_v0.1.58",
+      "date": "Fri, 05 Feb 2021 16:10:42 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.36.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.24.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `0.2.4`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.57",
+      "tag": "@rushstack/terminal_v0.1.57",
+      "date": "Fri, 22 Jan 2021 05:39:22 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.24.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `0.2.3`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.56",
+      "tag": "@rushstack/terminal_v0.1.56",
+      "date": "Thu, 21 Jan 2021 04:19:01 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.24.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `0.2.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.55",
+      "tag": "@rushstack/terminal_v0.1.55",
+      "date": "Wed, 13 Jan 2021 01:11:06 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.23.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `0.2.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.54",
+      "tag": "@rushstack/terminal_v0.1.54",
+      "date": "Fri, 08 Jan 2021 07:28:50 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `0.2.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.53",
+      "tag": "@rushstack/terminal_v0.1.53",
+      "date": "Wed, 06 Jan 2021 16:10:43 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.23.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `0.1.34`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.52",
+      "tag": "@rushstack/terminal_v0.1.52",
+      "date": "Mon, 14 Dec 2020 16:12:21 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.23.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `0.1.33`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.51",
+      "tag": "@rushstack/terminal_v0.1.51",
+      "date": "Thu, 10 Dec 2020 23:25:50 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.35.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.3.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.22.7`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `0.1.32`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.50",
+      "tag": "@rushstack/terminal_v0.1.50",
+      "date": "Sat, 05 Dec 2020 01:11:23 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.22.6`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `0.1.31`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.49",
+      "tag": "@rushstack/terminal_v0.1.49",
+      "date": "Tue, 01 Dec 2020 01:10:38 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.22.5`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `0.1.30`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.48",
+      "tag": "@rushstack/terminal_v0.1.48",
+      "date": "Mon, 30 Nov 2020 16:11:50 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.22.4`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `0.1.29`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.47",
+      "tag": "@rushstack/terminal_v0.1.47",
+      "date": "Wed, 18 Nov 2020 08:19:54 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.22.3`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `0.1.28`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.46",
+      "tag": "@rushstack/terminal_v0.1.46",
+      "date": "Wed, 18 Nov 2020 06:21:58 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.22.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `0.1.27`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.45",
+      "tag": "@rushstack/terminal_v0.1.45",
+      "date": "Tue, 17 Nov 2020 01:17:38 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.22.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `0.1.26`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.44",
+      "tag": "@rushstack/terminal_v0.1.44",
+      "date": "Mon, 16 Nov 2020 01:57:58 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.22.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `0.1.25`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.43",
+      "tag": "@rushstack/terminal_v0.1.43",
+      "date": "Fri, 13 Nov 2020 01:11:01 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.21.3`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `0.1.24`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.42",
+      "tag": "@rushstack/terminal_v0.1.42",
+      "date": "Thu, 12 Nov 2020 01:11:10 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.21.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `0.1.23`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.41",
+      "tag": "@rushstack/terminal_v0.1.41",
+      "date": "Wed, 11 Nov 2020 01:08:58 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.35.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.3.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.21.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `0.1.22`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.40",
+      "tag": "@rushstack/terminal_v0.1.40",
+      "date": "Tue, 10 Nov 2020 23:13:12 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.35.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.21.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `0.1.21`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.39",
+      "tag": "@rushstack/terminal_v0.1.39",
+      "date": "Tue, 10 Nov 2020 16:11:42 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.20.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `0.1.20`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.38",
+      "tag": "@rushstack/terminal_v0.1.38",
+      "date": "Sun, 08 Nov 2020 22:52:49 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.20.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `0.1.19`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.37",
+      "tag": "@rushstack/terminal_v0.1.37",
+      "date": "Fri, 06 Nov 2020 16:09:30 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.19.5`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `0.1.18`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.36",
+      "tag": "@rushstack/terminal_v0.1.36",
+      "date": "Tue, 03 Nov 2020 01:11:19 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.19.4`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `0.1.17`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.35",
+      "tag": "@rushstack/terminal_v0.1.35",
+      "date": "Mon, 02 Nov 2020 16:12:05 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.19.3`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `0.1.16`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.34",
+      "tag": "@rushstack/terminal_v0.1.34",
+      "date": "Fri, 30 Oct 2020 06:38:39 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.34.7`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.3.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.19.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `0.1.15`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.33",
+      "tag": "@rushstack/terminal_v0.1.33",
+      "date": "Fri, 30 Oct 2020 00:10:14 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.34.6`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.2.3`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.19.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `0.1.14`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.32",
+      "tag": "@rushstack/terminal_v0.1.32",
+      "date": "Thu, 29 Oct 2020 06:14:19 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.19.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `0.1.13`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.31",
+      "tag": "@rushstack/terminal_v0.1.31",
+      "date": "Thu, 29 Oct 2020 00:11:33 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.18.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `0.1.12`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.30",
+      "tag": "@rushstack/terminal_v0.1.30",
+      "date": "Wed, 28 Oct 2020 01:18:03 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.34.5`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.2.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.17.4`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `0.1.11`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.29",
+      "tag": "@rushstack/terminal_v0.1.29",
+      "date": "Tue, 27 Oct 2020 15:10:14 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.34.4`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.17.3`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `0.1.10`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.28",
+      "tag": "@rushstack/terminal_v0.1.28",
+      "date": "Sat, 24 Oct 2020 00:11:19 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.17.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `0.1.9`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.27",
+      "tag": "@rushstack/terminal_v0.1.27",
+      "date": "Wed, 21 Oct 2020 05:09:44 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.17.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `0.1.8`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.26",
+      "tag": "@rushstack/terminal_v0.1.26",
+      "date": "Wed, 21 Oct 2020 02:28:17 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `0.1.7`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.25",
+      "tag": "@rushstack/terminal_v0.1.25",
+      "date": "Fri, 16 Oct 2020 23:32:58 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.17.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.24",
+      "tag": "@rushstack/terminal_v0.1.24",
+      "date": "Thu, 15 Oct 2020 00:59:08 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.16.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `0.1.6`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.23",
+      "tag": "@rushstack/terminal_v0.1.23",
+      "date": "Wed, 14 Oct 2020 23:30:14 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.16.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.22",
+      "tag": "@rushstack/terminal_v0.1.22",
+      "date": "Tue, 13 Oct 2020 15:11:28 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.15.8`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.21",
+      "tag": "@rushstack/terminal_v0.1.21",
+      "date": "Mon, 12 Oct 2020 15:11:16 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.15.7`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.20",
+      "tag": "@rushstack/terminal_v0.1.20",
+      "date": "Fri, 09 Oct 2020 15:11:09 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.15.6`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.19",
+      "tag": "@rushstack/terminal_v0.1.19",
+      "date": "Tue, 06 Oct 2020 00:24:06 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.34.3`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.2.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.15.5`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `0.1.5`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.18",
+      "tag": "@rushstack/terminal_v0.1.18",
+      "date": "Mon, 05 Oct 2020 22:36:57 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.34.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.2.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.15.4`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `0.1.4`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.17",
+      "tag": "@rushstack/terminal_v0.1.17",
+      "date": "Mon, 05 Oct 2020 15:10:43 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.15.3`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `0.1.3`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.16",
+      "tag": "@rushstack/terminal_v0.1.16",
+      "date": "Fri, 02 Oct 2020 00:10:59 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.15.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.15",
+      "tag": "@rushstack/terminal_v0.1.15",
+      "date": "Thu, 01 Oct 2020 20:27:16 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.15.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `0.1.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.14",
+      "tag": "@rushstack/terminal_v0.1.14",
+      "date": "Thu, 01 Oct 2020 18:51:21 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.15.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.13",
+      "tag": "@rushstack/terminal_v0.1.13",
+      "date": "Wed, 30 Sep 2020 18:39:17 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.34.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.1.3`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.14.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `0.1.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.12",
+      "tag": "@rushstack/terminal_v0.1.12",
+      "date": "Wed, 30 Sep 2020 06:53:53 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Update README.md"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.34.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.1.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.14.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft-node-rig\" to `0.1.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.11",
+      "tag": "@rushstack/terminal_v0.1.11",
+      "date": "Tue, 22 Sep 2020 05:45:57 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.33.6`"
+          },
+          {
+            "comment": "Updating dependency \"@microsoft/rush-stack-compiler-3.5\" to `0.8.21`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.1.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.13.9`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.10",
+      "tag": "@rushstack/terminal_v0.1.10",
+      "date": "Tue, 22 Sep 2020 01:45:31 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Fix @rushstack/node-core-library dependency"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.33.5`"
+          },
+          {
+            "comment": "Updating dependency \"@microsoft/rush-stack-compiler-3.5\" to `0.8.20`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.1.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.13.8`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.9",
+      "tag": "@rushstack/terminal_v0.1.9",
+      "date": "Tue, 22 Sep 2020 00:08:53 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/rush-stack-compiler-3.5\" to `0.8.19`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `2.0.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.13.7`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.33.4`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.8",
+      "tag": "@rushstack/terminal_v0.1.8",
+      "date": "Sat, 19 Sep 2020 04:37:27 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/rush-stack-compiler-3.5\" to `0.8.18`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `1.4.2`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.13.6`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.33.3`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.7",
+      "tag": "@rushstack/terminal_v0.1.7",
+      "date": "Sat, 19 Sep 2020 03:33:07 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/rush-stack-compiler-3.5\" to `0.8.17`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `1.4.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.13.5`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.33.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.6",
+      "tag": "@rushstack/terminal_v0.1.6",
+      "date": "Fri, 18 Sep 2020 22:57:24 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/rush-stack-compiler-3.5\" to `0.8.16`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/eslint-config\" to `1.4.0`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.13.4`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.33.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.5",
+      "tag": "@rushstack/terminal_v0.1.5",
+      "date": "Fri, 18 Sep 2020 21:49:54 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/rush-stack-compiler-3.5\" to `0.8.15`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.13.3`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.33.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.4",
+      "tag": "@rushstack/terminal_v0.1.4",
+      "date": "Wed, 16 Sep 2020 05:30:26 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.13.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.3",
+      "tag": "@rushstack/terminal_v0.1.3",
+      "date": "Tue, 15 Sep 2020 01:51:37 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.13.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.2",
+      "tag": "@rushstack/terminal_v0.1.2",
+      "date": "Mon, 14 Sep 2020 15:09:49 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.13.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.1",
+      "tag": "@rushstack/terminal_v0.1.1",
+      "date": "Sun, 13 Sep 2020 01:53:20 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/rush-stack-compiler-3.5\" to `0.8.14`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.12.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.1.0",
+      "tag": "@rushstack/terminal_v0.1.0",
+      "date": "Fri, 11 Sep 2020 02:13:35 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Initial release"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/rush-stack-compiler-3.5\" to `0.8.13`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/heft\" to `0.11.1`"
+          },
+          {
+            "comment": "Updating dependency \"@rushstack/node-core-library\" to `3.32.0`"
+          }
+        ]
+      }
+    }
+  ]
+}

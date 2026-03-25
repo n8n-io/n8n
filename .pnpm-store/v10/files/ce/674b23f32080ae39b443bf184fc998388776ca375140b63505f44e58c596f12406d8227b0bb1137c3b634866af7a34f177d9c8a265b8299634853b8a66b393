@@ -1,0 +1,7 @@
+{
+  "extends": "@dabh/eslint-config-populist",
+  "rules": {
+    "one-var": ["error", { var: "never", let: "never", const: "never" }],
+    "strict": 0
+  }
+}

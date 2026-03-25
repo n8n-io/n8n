@@ -1,0 +1,49 @@
+interface Measurement$1 {
+    isInstrumented: () => boolean;
+    startInstrumentation: () => void;
+    stopInstrumentation: (pos: string) => void;
+}
+
+type SetupInstrumentsRequestBody = {
+    /**
+     * The full `MONGO_URL` that is usually used to connect to the database.
+     */
+    mongoUrl: string;
+};
+
+type SetupInstrumentsResponse = {
+    /**
+     * The patched `MONGO_URL` that should be used to connect to the database.
+     */
+    remoteAddr: string;
+};
+
+declare class MongoMeasurement {
+    private tracerClient;
+    constructor();
+    setupInstruments(body: SetupInstrumentsRequestBody): Promise<SetupInstrumentsResponse>;
+    start(uri: string): Promise<void>;
+    stop(uri: string): Promise<void>;
+}
+
+declare const getV8Flags: () => string[];
+declare const tryIntrospect: () => void;
+
+declare const optimizeFunction: (fn: CallableFunction) => Promise<void>;
+declare const optimizeFunctionSync: (fn: CallableFunction) => void;
+
+declare function getGitDir(path: string): string | undefined;
+/**
+ * Log debug messages if the environment variable `CODSPEED_DEBUG` is set.
+ */
+declare function logDebug(...args: unknown[]): void;
+
+declare const isBound: boolean;
+declare const mongoMeasurement: MongoMeasurement;
+declare const setupCore: () => void;
+declare const teardownCore: () => void;
+
+declare const Measurement: Measurement$1;
+
+export { Measurement, type SetupInstrumentsRequestBody, type SetupInstrumentsResponse, getGitDir, getV8Flags, isBound, logDebug, mongoMeasurement, optimizeFunction, optimizeFunctionSync, setupCore, teardownCore, tryIntrospect };
+//# sourceMappingURL=index.d.ts.map

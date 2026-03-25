@@ -1,0 +1,19 @@
+language: node_js
+sudo: false
+addons:
+  code_climate:
+    repo_token: "7db887541ba6df3075e3a6ead2456b0ddf6bee65969308191c62afe1ea461566"
+install:
+  - "npm install"
+script:
+  - "npm run travis"
+node_js:
+  - 9
+  - 10
+  - 11
+  - 12
+  - 13
+  - 14
+cache:
+  directories:
+    - 'node_modules'

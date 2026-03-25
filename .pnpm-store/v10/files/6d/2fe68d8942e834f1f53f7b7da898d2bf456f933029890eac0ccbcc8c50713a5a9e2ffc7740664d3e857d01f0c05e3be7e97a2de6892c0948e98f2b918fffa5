@@ -1,0 +1,42 @@
+{
+  "name": "@codemirror/buildhelper",
+  "version": "0.1.16",
+  "description": "Helper package to build CodeMirror packages",
+  "author": {
+    "name": "Marijn Haverbeke",
+    "email": "marijnh@gmail.com",
+    "url": "http://marijnhaverbeke.nl"
+  },
+  "main": "./src/build.js",
+  "bin": {
+    "cm-buildhelper": "bin/cm-buildhelper.js",
+    "cm-runtests": "bin/cm-runtests.js"
+  },
+  "scripts": {
+    "prepare": "tsc && tsc -p lib"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/codemirror/buildhelper.git"
+  },
+  "devDependencies": {
+    "@types/node": "^14.14.33",
+    "@codemirror/view": "^6.0.0",
+    "@codemirror/state": "^6.0.0"
+  },
+  "dependencies": {
+    "@types/mocha": "^9.1.1",
+    "acorn": "^8.1.0",
+    "acorn-walk": "^8.0.2",
+    "@lezer/generator": "^1.0.0",
+    "rollup": "^2.35.1",
+    "rollup-plugin-dts": "^3.0.0",
+    "typescript": "^4.2.3",
+    "mocha": "^10.0.0",
+    "ist": "^1.1.7",
+    "esmoduleserve": "^0.2.0",
+    "selenium-webdriver": "^4.0.0-beta.3",
+    "serve-static": "^1.14.1"
+  }
+}

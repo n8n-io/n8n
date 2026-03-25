@@ -1,0 +1,1 @@
+{"version":3,"file":"deprecation_warning.d.ts","sourceRoot":"","sources":["../src/hooks/deprecation_warning.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,mBAAmB,EAAE,gBAAgB,EAAE,SAAS,EAAE,MAAM,SAAS,CAAC;AAK3E,qBAAa,sBAAuB,YAAW,gBAAgB;IAC3D,YAAY,CAAC,CAAC,EAAE,mBAAmB,EAAE,QAAQ,EAAE,QAAQ,GAAG,SAAS,CAAC,QAAQ,CAAC;CAYhF"}

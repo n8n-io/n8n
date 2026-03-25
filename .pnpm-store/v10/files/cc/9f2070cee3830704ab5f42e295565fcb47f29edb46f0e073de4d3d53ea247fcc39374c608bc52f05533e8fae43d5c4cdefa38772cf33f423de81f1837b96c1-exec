@@ -1,0 +1,10 @@
+#!/usr/bin/env node
+
+var rw = require("../").dash;
+
+rw.readFile(process.argv[2] || "-", "utf8", function(error, contents) {
+  if (error) throw error;
+  rw.writeFile("-", contents, "utf8", function(error) {
+    if (error) throw error;
+  });
+});

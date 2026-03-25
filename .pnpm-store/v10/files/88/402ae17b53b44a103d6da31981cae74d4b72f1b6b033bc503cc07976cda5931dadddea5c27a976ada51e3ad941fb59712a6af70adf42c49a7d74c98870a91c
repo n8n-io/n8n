@@ -1,0 +1,15 @@
+{
+  "name": "@tsconfig/node16",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tsconfig/bases.git",
+    "directory": "bases"
+  },
+  "license": "MIT",
+  "description": "A base TSConfig for working with Node 16.",
+  "keywords": [
+    "tsconfig",
+    "node16"
+  ],
+  "version": "1.0.4"
+}

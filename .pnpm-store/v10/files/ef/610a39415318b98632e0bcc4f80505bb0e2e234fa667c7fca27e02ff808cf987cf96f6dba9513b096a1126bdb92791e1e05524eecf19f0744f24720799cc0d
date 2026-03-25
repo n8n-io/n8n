@@ -1,0 +1,45 @@
+{
+	"name": "bundle-name",
+	"version": "4.1.0",
+	"description": "Get bundle name from a bundle identifier (macOS): `com.apple.Safari` → `Safari`",
+	"license": "MIT",
+	"repository": "sindresorhus/bundle-name",
+	"funding": "https://github.com/sponsors/sindresorhus",
+	"author": {
+		"name": "Sindre Sorhus",
+		"email": "sindresorhus@gmail.com",
+		"url": "https://sindresorhus.com"
+	},
+	"type": "module",
+	"exports": "./index.js",
+	"sideEffects": false,
+	"engines": {
+		"node": ">=18"
+	},
+	"scripts": {
+		"test": "xo && ava"
+	},
+	"files": [
+		"index.js"
+	],
+	"keywords": [
+		"macos",
+		"plist",
+		"applescript",
+		"bundle",
+		"bundleid",
+		"bundlename",
+		"id",
+		"identifier",
+		"CFBundleName",
+		"CFBundleIdentifier",
+		"uti"
+	],
+	"dependencies": {
+		"run-applescript": "^7.0.0"
+	},
+	"devDependencies": {
+		"ava": "^6.0.1",
+		"xo": "^0.56.0"
+	}
+}

@@ -1,0 +1,36 @@
+{
+  "name": "tdigest",
+  "version": "0.1.2",
+  "description": "javascript implementation of Dunning's T-Digest for streaming quantile approximation",
+  "main": "tdigest.js",
+  "scripts": {
+    "test": "mocha specs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/welch/tdigest.git"
+  },
+  "keywords": [
+    "tdigest",
+    "percentile",
+    "quantile",
+    "histogram",
+    "approximation"
+  ],
+  "author": "Will Welch <welch@quietplease.com> (http://quietplease.com/)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/welch/tdigest/issues"
+  },
+  "homepage": "https://github.com/welch/tdigest",
+  "dependencies": {
+    "bintrees": "1.0.2"
+  },
+  "devDependencies": {
+    "better-assert": "^1.0.2",
+    "chai": "^3.0.0",
+    "grunt": "^0.4.5",
+    "grunt-pure-cjs": "^1.4.0",
+    "mocha": "^2.1.0"
+  }
+}

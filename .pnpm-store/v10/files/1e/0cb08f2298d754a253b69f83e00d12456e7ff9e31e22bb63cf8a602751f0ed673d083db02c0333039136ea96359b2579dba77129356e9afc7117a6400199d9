@@ -1,0 +1,48 @@
+{
+  "name": "oracledb",
+  "version": "6.9.0",
+  "description": "A Node.js module for Oracle Database access from JavaScript and TypeScript",
+  "license": "(Apache-2.0 OR UPL-1.0)",
+  "homepage": "http://oracle.github.io/node-oracledb/",
+  "keywords": [
+    "Oracle",
+    "Database",
+    "official",
+    "DB",
+    "SQL",
+    "JSON",
+    "PL/SQL",
+    "SODA",
+    "OCI",
+    "API",
+    "client",
+    "library",
+    "driver",
+    "add-on",
+    "extension",
+    "binding",
+    "interface",
+    "adapter",
+    "module"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/oracle/node-oracledb.git"
+  },
+  "scripts": {
+    "install": "node package/install.js",
+    "prune": "node package/prunebinaries.js"
+  },
+  "engines": {
+    "node": ">=14.17"
+  },
+  "maintainers": [
+    {
+      "name": "Oracle Corp."
+    }
+  ],
+  "bugs": {
+    "url": "https://github.com/oracle/node-oracledb/issues"
+  },
+  "main": "./index.js"
+}

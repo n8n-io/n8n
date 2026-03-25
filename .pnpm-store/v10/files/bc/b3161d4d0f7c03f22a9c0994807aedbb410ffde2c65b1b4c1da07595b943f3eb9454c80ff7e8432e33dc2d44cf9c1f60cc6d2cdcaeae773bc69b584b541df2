@@ -1,0 +1,1 @@
+{"version":3,"file":"isAsyncIterable.js","sourceRoot":"","sources":["../../../../src/internal/util/isAsyncIterable.ts"],"names":[],"mappings":";;;AAAA,2CAA0C;AAE1C,SAAgB,eAAe,CAAI,GAAQ;IACzC,OAAO,MAAM,CAAC,aAAa,IAAI,uBAAU,CAAC,GAAG,aAAH,GAAG,uBAAH,GAAG,CAAG,MAAM,CAAC,aAAa,CAAC,CAAC,CAAC;AACzE,CAAC;AAFD,0CAEC"}

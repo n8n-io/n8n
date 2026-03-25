@@ -1,0 +1,35 @@
+openapi: '3.0.3'
+info:
+  title: bugtest
+  version: '1.0'
+  description: Demo
+  license:
+    name: DEMO
+    url: https://demo.com
+servers:
+  - url: http://demo.com/api
+paths:
+  /customer:
+    summary: 'Customer scope'
+    get:
+      summary: 'Get demo no refs'
+      operationId: GetCustomer
+      description: 'Returns Demo No Refs'
+      responses:
+        200:
+          description: Demo No Refs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+components:
+  schemas:
+    Customer:
+      type: object
+      properties:
+        customerName:
+          type: string
+        accounts:
+          type: array
+          items:
+            $ref: 'https://someexternal.schema'

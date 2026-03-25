@@ -1,0 +1,69 @@
+{
+  "name": "lie",
+  "version": "3.3.0",
+  "description": "A basic but performant promise implementation",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/calvinmetcalf/lie.git"
+  },
+  "bugs": {
+    "url": "https://github.com/calvinmetcalf/lie/issues"
+  },
+  "keywords": [
+    "lie",
+    "promise",
+    "async",
+    "aplus"
+  ],
+  "main": "lib/index.js",
+  "scripts": {
+    "pretest": "npm run build",
+    "test": "npm run jshint && mocha -R nyan ./test/cover.js && tsc --noEmit ./test/types.ts",
+    "build-node": "copyfiles -f src/index.js lib && browserify-transform-cli inline-process-browser unreachable-branch-transform es3ify < src/index.js > lib/browser.js",
+    "build-js": "browserify -s Promise -p bundle-collapser/plugin . | derequire > ./dist/lie.js",
+    "build-min": "uglifyjs ./dist/lie.js -mc > ./dist/lie.min.js",
+    "build-poly-js": "browserify -p bundle-collapser/plugin ./polyfill.js | derequire > ./dist/lie.polyfill.js",
+    "build-poly-min": "uglifyjs ./dist/lie.polyfill.js -mc > ./dist/lie.polyfill.min.js",
+    "build-poly": "npm run build-poly-js && npm run build-poly-min",
+    "build": "npm run build-node && npm run build-js && npm run build-min && npm run build-poly",
+    "prebuild": "rimraf lib dist && mkdirp lib dist",
+    "cover": "istanbul cover _mocha ./test/cover.js -- -R spec && istanbul check-coverage --lines 100 --function 100 --statements 100 --branches 100",
+    "jshint": "jshint src",
+    "node": "mocha -R spec ./test/cover.js",
+    "browser": "browserify test/cover.js > test/browser.js && mocha-phantomjs test/test.html"
+  },
+  "devDependencies": {
+    "browserify": "^13.0.0",
+    "browserify-transform-cli": "^1.1.1",
+    "bundle-collapser": "^1.2.1",
+    "copyfiles": "^1.0.0",
+    "derequire": "^1.2.0",
+    "es3ify": "^0.2.2",
+    "inline-process-browser": "^1.0.0",
+    "istanbul": "^0.2.6",
+    "jshint": "^2.4.4",
+    "mkdirp": "^0.5.1",
+    "mocha": "^1.18.0",
+    "mocha-phantomjs": "~3.5.0",
+    "phantomjs": "^1.9.9",
+    "promises-aplus-tests": "calvinmetcalf/promises-tests#phantom",
+    "rimraf": "^2.5.4",
+    "typescript": "^2.7.1",
+    "uglify-js": "^2.4.13",
+    "unreachable-branch-transform": "^0.3.0"
+  },
+  "dependencies": {
+    "immediate": "~3.0.5"
+  },
+  "browser": {
+    "./lib/index.js": "./lib/browser.js"
+  },
+  "files": [
+    "lib",
+    "dist",
+    "polyfill.js",
+    "lie.d.ts"
+  ],
+  "types": "lie.d.ts"
+}

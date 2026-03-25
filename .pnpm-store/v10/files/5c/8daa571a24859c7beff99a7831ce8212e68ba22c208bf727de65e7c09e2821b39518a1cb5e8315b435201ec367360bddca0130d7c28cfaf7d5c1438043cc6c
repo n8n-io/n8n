@@ -1,0 +1,81 @@
+{
+  "name": "dedent",
+  "version": "1.3.0",
+  "description": "An ES6 string tag that strips indentation from multi-line strings",
+  "main": "dist/dedent.js",
+  "types": "./dist/dedent.d.ts",
+  "module": "./dist/dedent.mjs",
+  "exports": {
+    ".": {
+      "types": "./dist/dedent.d.ts",
+      "import": "./dist/dedent.mjs",
+      "default": "./dist/dedent.js"
+    }
+  },
+  "files": [
+    "dist/dedent.d.ts",
+    "dist/dedent.js",
+    "dist/dedent.mjs",
+    "macro.js",
+    "index.d.ts",
+    "macro.d.ts",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/dmnd/dedent.git"
+  },
+  "keywords": [
+    "dedent",
+    "tag",
+    "multi-line string",
+    "es6"
+  ],
+  "author": {
+    "name": "Desmond Brand",
+    "email": "dmnd@desmondbrand.com",
+    "url": "http://desmondbrand.com"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/dmnd/dedent/issues"
+  },
+  "homepage": "https://github.com/dmnd/dedent",
+  "peerDependencies": {
+    "babel-plugin-macros": "^3.1.0"
+  },
+  "peerDependenciesMeta": {
+    "babel-plugin-macros": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.21.5",
+    "@babel/core": "^7.21.8",
+    "@babel/preset-env": "^7.21.5",
+    "@babel/preset-typescript": "^7.22.5",
+    "@types/babel-plugin-macros": "^3.1.0",
+    "@types/jest": "^29.5.3",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "babel-plugin-add-module-exports": "^1.0.4",
+    "babel-plugin-macros": "^3.1.0",
+    "babel-plugin-tester": "^11.0.4",
+    "eslint": "^8.41.0",
+    "hermes-eslint": "^0.11.1",
+    "jest": "^29.5.0",
+    "tsup": "^7.1.0",
+    "typescript": "^5.1.6"
+  },
+  "scripts": {
+    "build": "yarn build:legacy && yarn build:modern && yarn build:types",
+    "build:legacy": "BABEL_ENV=legacy babel dedent.ts --out-file dist/dedent.js",
+    "build:modern": "BABEL_ENV=modern babel dedent.ts --out-file dist/dedent.mjs",
+    "build:types": "tsup dedent.ts --dts-only",
+    "lint": "eslint .",
+    "prepack": "yarn build",
+    "test": "jest",
+    "tsc": "tsc"
+  }
+}

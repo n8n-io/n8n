@@ -1,0 +1,118 @@
+{
+  "mappings": [
+    {
+      "scenarioName": "Caching refreshed access token and new refresh token",
+      "newScenarioState": "Acquired new access token and new refresh token",
+      "request": {
+        "urlPathPattern": "/oauth/token-request.*",
+        "method": "POST",
+        "headers": {
+          "Content-Type": {
+            "contains": "application/x-www-form-urlencoded;charset=UTF-8"
+          }
+        },
+        "formParameters": {
+          "grant_type": {
+            "equalTo": "refresh_token"
+          },
+          "client_id": {
+            "equalTo": "123"
+          },
+          "client_secret": {
+            "equalTo": "clientSecret"
+          },
+          "refresh_token": {
+            "equalTo" : "first_refresh_token"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "access_token" : "new-refreshed-access-token-123",
+          "refresh_token": "new-refresh-token-123",
+          "token_type" : "Bearer",
+          "expires_in" : 599,
+          "idpInitiated" : false
+        }
+      }
+    },
+    {
+      "scenarioName": "Caching refreshed access token and new refresh token",
+      "requiredScenarioState": "Acquired new access token and new refresh token",
+      "newScenarioState": "Established session with newly acquired access token and cache both tokens",
+      "request": {
+        "urlPathPattern": "/session/v1/login-request.*",
+        "method": "POST",
+        "headers": {
+          "CLIENT_APP_ID": {
+            "equalTo": "JavaScript"
+          },
+          "accept": {
+            "equalTo": "application/json"
+          }
+        },
+        "bodyPatterns": [
+          {
+            "equalToJson": {
+              "data": {
+                "ACCOUNT_NAME": "MOCK_ACCOUNT_NAME",
+                "CLIENT_APP_ID": "JavaScript",
+                "TOKEN": "new-refreshed-access-token-123",
+                "LOGIN_NAME": "MOCK_USERNAME",
+                "AUTHENTICATOR": "OAUTH",
+                "OAUTH_TYPE": "OAUTH_AUTHORIZATION_CODE"
+              }
+            },
+            "ignoreExtraElements": true
+          }
+        ]
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "jsonBody": {
+          "data": {
+            "masterToken": "master token",
+            "token": "session token",
+            "validityInSeconds": 3600,
+            "masterValidityInSeconds": 14400,
+            "displayUserName": "OAUTH_TEST_AUTH_CODE",
+            "serverVersion": "8.48.0 b2024121104444034239f05",
+            "firstLogin": false,
+            "remMeToken": null,
+            "remMeValidityInSeconds": 0,
+            "healthCheckInterval": 45,
+            "newClientForUpgrade": "3.12.3",
+            "sessionId": 1172562260498,
+            "parameters": [
+              {
+                "name": "CLIENT_PREFETCH_THREADS",
+                "value": 4
+              }
+            ],
+            "sessionInfo": {
+              "databaseName": "TEST_DATABASE",
+              "schemaName": "TEST_JDBC",
+              "warehouseName": "TEST_XSMALL",
+              "roleName": "ANALYST"
+            },
+            "idToken": null,
+            "idTokenValidityInSeconds": 0,
+            "responseData": null,
+            "mfaToken": null,
+            "mfaTokenValidityInSeconds": 0
+          },
+          "code": null,
+          "message": null,
+          "success": true
+        }
+      }
+    }
+  ]
+}

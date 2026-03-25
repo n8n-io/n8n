@@ -1,0 +1,1 @@
+{"version":3,"file":"utils.js","names":["checked?: CheckedState","checked: CheckedState"],"sources":["../../src/Checkbox/utils.ts"],"sourcesContent":[],"mappings":";AAEA,SAAgB,gBAAgBA,SAAoD;AAClF,QAAO,YAAY;AACpB;AAED,SAAgB,SAASC,SAAuB;AAC9C,QAAO,gBAAgB,QAAQ,GAAG,kBAAkB,UAAU,YAAY;AAC3E"}

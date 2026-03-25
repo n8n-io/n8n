@@ -1,0 +1,11 @@
+export * from "./SignatureV4";
+export * from "./constants";
+export { getCanonicalHeaders } from "./getCanonicalHeaders";
+export { getCanonicalQuery } from "./getCanonicalQuery";
+export { getPayloadHash } from "./getPayloadHash";
+export { moveHeadersToQuery } from "./moveHeadersToQuery";
+export { prepareRequest } from "./prepareRequest";
+export * from "./credentialDerivation";
+export { SignatureV4Base } from "./SignatureV4Base";
+export { hasHeader } from "./headerUtil";
+export * from "./signature-v4a-container";

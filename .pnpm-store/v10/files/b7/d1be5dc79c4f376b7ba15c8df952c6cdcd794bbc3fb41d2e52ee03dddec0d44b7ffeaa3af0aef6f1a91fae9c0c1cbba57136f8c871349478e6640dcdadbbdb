@@ -1,0 +1,70 @@
+@use 'mixins/mixins' as *;
+@use 'mixins/var' as *;
+@use 'common/var' as *;
+@use 'common/transition';
+
+@include b(collapse) {
+  @include set-component-css-var('collapse', $collapse);
+
+  border-top: 1px solid getCssVar('collapse-border-color');
+  border-bottom: 1px solid getCssVar('collapse-border-color');
+}
+
+@include b(collapse-item) {
+  @include when(disabled) {
+    .#{$namespace}-collapse-item__header {
+      color: getCssVar('text-color-disabled');
+      cursor: not-allowed;
+    }
+  }
+  @include e(header) {
+    width: 100%;
+    padding: 0;
+    border: none;
+    display: flex;
+    align-items: center;
+    height: getCssVar('collapse-header-height');
+    line-height: getCssVar('collapse-header-height');
+    background-color: getCssVar('collapse-header-bg-color');
+    color: getCssVar('collapse-header-text-color');
+    cursor: pointer;
+    border-bottom: 1px solid getCssVar('collapse-border-color');
+    font-size: getCssVar('collapse-header-font-size');
+    font-weight: 500;
+    transition: border-bottom-color getCssVar('transition-duration');
+    outline: none;
+    @include e(arrow) {
+      margin: 0 8px 0 auto;
+      transition: transform getCssVar('transition-duration');
+      font-weight: 300;
+      @include when(active) {
+        transform: rotate(90deg);
+      }
+    }
+    &.focusing:focus:not(:hover) {
+      color: getCssVar('color-primary');
+    }
+    @include when(active) {
+      border-bottom-color: transparent;
+    }
+  }
+
+  @include e(wrap) {
+    will-change: height;
+    background-color: getCssVar('collapse-content-bg-color');
+    overflow: hidden;
+    box-sizing: border-box;
+    border-bottom: 1px solid getCssVar('collapse-border-color');
+  }
+
+  @include e(content) {
+    padding-bottom: 25px;
+    font-size: getCssVar('collapse-content-font-size');
+    color: getCssVar('collapse-content-text-color');
+    line-height: 1.769230769230769;
+  }
+
+  &:last-child {
+    margin-bottom: -1px;
+  }
+}

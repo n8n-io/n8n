@@ -1,0 +1,40 @@
+{
+  "name": "cpu-features",
+  "version": "0.0.10",
+  "author": "Brian White <mscdex@mscdex.net>",
+  "description": "A simple binding to Google's cpu_features library for obtaining information about installed CPU(s)",
+  "main": "./lib/index",
+  "dependencies": {
+    "buildcheck": "~0.0.6",
+    "nan": "^2.19.0"
+  },
+  "devDependencies": {
+    "@mscdex/eslint-config": "^1.1.0",
+    "eslint": "^7.0.0"
+  },
+  "scripts": {
+    "install": "node buildcheck.js > buildcheck.gypi && node-gyp rebuild",
+    "test": "node test/test.js",
+    "lint": "eslint --cache --report-unused-disable-directives --ext=.js .eslintrc.js lib test",
+    "lint:fix": "npm run lint -- --fix"
+  },
+  "engines": {
+    "node": ">=10.0.0"
+  },
+  "keywords": [
+    "cpu",
+    "detect",
+    "detection",
+    "features"
+  ],
+  "licenses": [
+    {
+      "type": "MIT",
+      "url": "https://github.com/mscdex/cpu-features/raw/master/LICENSE"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mscdex/cpu-features.git"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "name": "typescript",
+  "version": "5.3.3-sdk",
+  "main": "./lib/typescript.js",
+  "type": "commonjs",
+  "bin": {
+    "tsc": "./bin/tsc",
+    "tsserver": "./bin/tsserver"
+  }
+}

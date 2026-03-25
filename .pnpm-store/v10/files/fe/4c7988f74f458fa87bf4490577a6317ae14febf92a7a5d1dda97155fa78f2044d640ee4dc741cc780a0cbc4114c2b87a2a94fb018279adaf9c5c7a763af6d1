@@ -1,0 +1,13 @@
+language: node_js
+
+notifications:
+  email:
+    on_success: change
+    on_failure: change
+
+node_js:
+  - "4.0"
+
+before_script: npm run devInstall
+
+script: npm run buildall && npm run testall

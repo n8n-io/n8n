@@ -1,0 +1,3 @@
+const set = require('regenerate')(0xB7, 0x308, 0x331);
+set.addRange(0x304, 0x305).addRange(0x10330, 0x1034A);
+exports.characters = set;

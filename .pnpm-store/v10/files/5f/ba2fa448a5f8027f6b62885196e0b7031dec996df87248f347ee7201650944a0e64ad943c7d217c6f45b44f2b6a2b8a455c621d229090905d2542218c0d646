@@ -1,0 +1,168 @@
+# Copyright 2012 Mozilla Foundation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Main toolbar buttons (tooltips and alt text for images)
+previous.title=पछिला पृष्ठ
+previous_label=पछिला
+next.title=अगिला पृष्ठ
+next_label=आगाँ
+
+# LOCALIZATION NOTE (page.title): The tooltip for the pageNumber input.
+# LOCALIZATION NOTE (of_pages): "{{pagesCount}}" will be replaced by a number
+# representing the total number of pages in the document.
+# LOCALIZATION NOTE (page_of_pages): "{{pageNumber}}" and "{{pagesCount}}"
+# will be replaced by a number representing the currently visible page,
+# respectively a number representing the total number of pages in the document.
+
+zoom_out.title=छोट करू
+zoom_out_label=छोट करू
+zoom_in.title=पैघ करू
+zoom_in_label=जूम इन
+zoom.title=छोट-पैघ करू\u0020
+presentation_mode.title=प्रस्तुति अवस्थामे जाउ
+presentation_mode_label=प्रस्तुति अवस्था
+open_file.title=फाइल खोलू
+open_file_label=खोलू
+print.title=छापू
+print_label=छापू
+download.title=डाउनलोड
+download_label=डाउनलोड
+bookmark.title=मोजुदा दृश्य (नव विंडोमे नकल लिअ अथवा खोलू)
+bookmark_label=वर्तमान दृश्य
+
+# Secondary toolbar and context menu
+tools.title=अओजार
+tools_label=अओजार
+first_page.title=प्रथम पृष्ठ पर जाउ
+first_page.label=प्रथम पृष्ठ पर जाउ
+first_page_label=प्रथम पृष्ठ पर जाउ
+last_page.title=अंतिम पृष्ठ पर जाउ
+last_page.label=अंतिम पृष्ठ पर जाउ
+last_page_label=अंतिम पृष्ठ पर जाउ
+page_rotate_cw.title=घड़ीक दिशा मे घुमाउ
+page_rotate_cw.label=घड़ीक दिशा मे घुमाउ
+page_rotate_cw_label=घड़ीक दिशा मे घुमाउ
+page_rotate_ccw.title=घड़ीक दिशा सँ उनटा घुमाउ
+page_rotate_ccw.label=घड़ीक दिशा सँ उनटा घुमाउ
+page_rotate_ccw_label=घड़ीक दिशा सँ उनटा घुमाउ
+
+
+# Document properties dialog box
+document_properties.title=दस्तावेज़ विशेषता...
+document_properties_label=दस्तावेज़ विशेषता...
+document_properties_file_name=फाइल नाम:
+document_properties_file_size=फ़ाइल आकार:
+# LOCALIZATION NOTE (document_properties_kb): "{{size_kb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in kilobytes, respectively in bytes.
+document_properties_kb={{size_kb}} KB ({{size_b}} बाइट)
+# LOCALIZATION NOTE (document_properties_mb): "{{size_mb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in megabytes, respectively in bytes.
+document_properties_mb={{size_mb}} MB ({{size_b}} बाइट)
+document_properties_title=शीर्षक:
+document_properties_author=लेखकः
+document_properties_subject=विषय
+document_properties_keywords=बीजशब्द
+document_properties_creation_date=निर्माण तिथि:
+document_properties_modification_date=संशोधन दिनांक:
+# LOCALIZATION NOTE (document_properties_date_string): "{{date}}" and "{{time}}"
+# will be replaced by the creation/modification date, and time, of the PDF file.
+document_properties_date_string={{date}}, {{time}}
+document_properties_creator=सृजक:
+document_properties_producer=PDF उत्पादक:
+document_properties_version=PDF संस्करण:
+document_properties_page_count=पृष्ठ गिनती:
+document_properties_close=बन्न करू
+
+# LOCALIZATION NOTE (print_progress_percent): "{{progress}}" will be replaced by
+# a numerical per cent value.
+
+# Tooltips and alt text for side panel toolbar buttons
+# (the _label strings are alt text for the buttons, the .title strings are
+# tooltips)
+toggle_sidebar.title=स्लाइडर टागल
+toggle_sidebar_label=स्लाइडर टागल
+document_outline_label=दस्तावेज खाका
+attachments.title=संलग्नक देखाबू
+attachments_label=संलग्नक
+thumbs.title=लघु-छवि देखाउ
+thumbs_label=लघु छवि
+findbar.title=दस्तावेजमे ढूँढू
+
+# Thumbnails panel item (tooltip and alt text for images)
+# LOCALIZATION NOTE (thumb_page_title): "{{page}}" will be replaced by the page
+# number.
+thumb_page_title=पृष्ठ {{page}}
+# LOCALIZATION NOTE (thumb_page_canvas): "{{page}}" will be replaced by the page
+# number.
+thumb_page_canvas=पृष्ठ {{page}} का लघु-चित्र
+
+# Find panel button title and messages
+find_previous.title=खोजक पछिला उपस्थिति ताकू
+find_previous_label=पछिला
+find_next.title=खोजक अगिला उपस्थिति ताकू
+find_next_label=आगाँ
+find_highlight=सभटा आलोकित करू
+find_match_case_label=मिलान स्थिति
+find_reached_top=पृष्ठक शीर्ष जाए पहुँचल, तल सँ जारी
+find_reached_bottom=पृष्ठक तल मे जाए पहुँचल, शीर्ष सँ जारी
+find_not_found=वाकींश नहि भेटल
+
+# Error panel labels
+error_more_info=बेसी  सूचना
+error_less_info=कम सूचना
+error_close=बन्न करू
+# LOCALIZATION NOTE (error_version_info): "{{version}}" and "{{build}}" will be
+# replaced by the PDF.JS version and build ID.
+error_version_info=PDF.js v{{version}} (build: {{build}})
+# LOCALIZATION NOTE (error_message): "{{message}}" will be replaced by an
+# english string describing the error.
+error_message=संदेश: {{message}}
+# LOCALIZATION NOTE (error_stack): "{{stack}}" will be replaced with a stack
+# trace.
+error_stack=स्टैक: {{stack}}
+# LOCALIZATION NOTE (error_file): "{{file}}" will be replaced with a filename
+error_file=फ़ाइल: {{file}}
+# LOCALIZATION NOTE (error_line): "{{line}}" will be replaced with a line number
+error_line=पंक्ति: {{line}}
+rendering_error=पृष्ठ रेंडरिंगक समय त्रुटि आएल.
+
+# Predefined zoom values
+page_scale_width=पृष्ठ चओड़ाइ
+page_scale_fit=पृष्ठ फिट
+page_scale_auto=स्वचालित जूम
+page_scale_actual=सही आकार
+# LOCALIZATION NOTE (page_scale_percent): "{{scale}}" will be replaced by a
+# numerical scale value.
+page_scale_percent={{scale}}%
+
+# Loading indicator messages
+loading_error_indicator=त्रुटि
+loading_error=पीडीएफ लोड करैत समय एकटा त्रुटि भेल.
+invalid_file_error=अमान्य अथवा भ्रष्ट PDF फाइल.
+missing_file_error=अनुपस्थित PDF फाइल.
+unexpected_response_error=सर्वर सँ अप्रत्याशित प्रतिक्रिया.
+
+# LOCALIZATION NOTE (text_annotation_type.alt): This is used as a tooltip.
+# "{{type}}" will be replaced with an annotation type from a list defined in
+# the PDF spec (32000-1:2008 Table 169 – Annotation types).
+# Some common types are e.g.: "Check", "Text", "Comment", "Note"
+text_annotation_type.alt=[{{type}} Annotation]
+password_label=एहि पीडीएफ फ़ाइल केँ खोलबाक लेल कृपया कूटशब्द भरू.
+password_invalid=अवैध कूटशब्द, कृपया फिनु कोशिश करू.
+password_ok=बेस
+
+printing_not_supported=चेतावनी: ई ब्राउजर पर छपाइ पूर्ण तरह सँ समर्थित नहि अछि.
+printing_not_ready=चेतावनी: पीडीएफ छपाइक लेल पूर्ण तरह सँ लोड नहि अछि.
+web_fonts_disabled=वेब फॉन्ट्स निष्क्रिय अछि: अंतःस्थापित PDF फान्टसक उपयोगमे असमर्थ.
+document_colors_not_allowed=PDF दस्तावेज़ हुकर अपन रंग केँ उपयोग करबाक लेल अनुमति प्राप्त नहि अछि: 'पृष्ठ केँ हुकर अपन रंग केँ चुनबाक लेल स्वीकृति दिअ जे ओ ओहि ब्राउज़र मे निष्क्रिय अछि.

@@ -1,0 +1,42 @@
+{
+  "author": "Tom de Grunt <tom@degrunt.nl>",
+  "name": "jsonschema",
+  "version": "1.4.1",
+  "license": "MIT",
+  "dependencies": {},
+  "contributors": [
+    {
+      "name": "Austin Wright"
+    }
+  ],
+  "main": "./lib/index.js",
+  "typings": "./lib/index.d.ts",
+  "devDependencies": {
+    "@stryker-mutator/core": "^4.0.0",
+    "@stryker-mutator/mocha-runner": "^4.0.0",
+    "chai": "~4.2.0",
+    "eslint": "^7.7.0",
+    "json-metaschema": "^1.2.0",
+    "mocha": "~8.1.1"
+  },
+  "optionalDependencies": {},
+  "engines": {
+    "node": "*"
+  },
+  "keywords": [
+    "json",
+    "schema",
+    "jsonschema",
+    "validator",
+    "validation"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/tdegrunt/jsonschema.git"
+  },
+  "description": "A fast and easy to use JSON Schema validator",
+  "scripts": {
+    "stryker": "stryker run",
+    "test": "./node_modules/.bin/mocha -R spec"
+  }
+}

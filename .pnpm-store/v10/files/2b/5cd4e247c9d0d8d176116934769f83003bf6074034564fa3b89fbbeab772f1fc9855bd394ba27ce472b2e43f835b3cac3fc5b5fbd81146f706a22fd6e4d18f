@@ -1,0 +1,70 @@
+{
+    "name": "@types/dockerode",
+    "version": "3.3.47",
+    "description": "TypeScript definitions for dockerode",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/dockerode",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Carl Winkler",
+            "githubUsername": "seikho",
+            "url": "https://github.com/seikho"
+        },
+        {
+            "name": "Nicolas Laplante",
+            "githubUsername": "nlaplante",
+            "url": "https://github.com/nlaplante"
+        },
+        {
+            "name": "ByeongHun Yoo",
+            "githubUsername": "isac322",
+            "url": "https://github.com/isac322"
+        },
+        {
+            "name": "Ray Fang",
+            "githubUsername": "lazarusx",
+            "url": "https://github.com/lazarusx"
+        },
+        {
+            "name": "Marius Meisenzahl",
+            "githubUsername": "meisenzahl",
+            "url": "https://github.com/meisenzahl"
+        },
+        {
+            "name": "Rob Moran",
+            "githubUsername": "thegecko",
+            "url": "https://github.com/thegecko"
+        },
+        {
+            "name": "Cameron Diver",
+            "githubUsername": "CameronDiver",
+            "url": "https://github.com/CameronDiver"
+        },
+        {
+            "name": "Pascal Sthamer",
+            "githubUsername": "p4sca1",
+            "url": "https://github.com/p4sca1"
+        },
+        {
+            "name": "Luis Rueda",
+            "githubUsername": "userlerueda",
+            "url": "https://github.com/userlerueda"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/dockerode"
+    },
+    "scripts": {},
+    "dependencies": {
+        "@types/docker-modem": "*",
+        "@types/node": "*",
+        "@types/ssh2": "*"
+    },
+    "peerDependencies": {},
+    "typesPublisherContentHash": "9f832598702b599d28ab48a53e27bce6b305cb33b2c4789864ed0b668a1a8bf2",
+    "typeScriptVersion": "5.2"
+}

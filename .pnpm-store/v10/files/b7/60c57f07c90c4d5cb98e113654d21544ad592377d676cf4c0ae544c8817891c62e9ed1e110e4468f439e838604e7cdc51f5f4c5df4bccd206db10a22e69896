@@ -1,0 +1,3 @@
+disable-coverage: true
+files:
+  - test/**/*.test.js

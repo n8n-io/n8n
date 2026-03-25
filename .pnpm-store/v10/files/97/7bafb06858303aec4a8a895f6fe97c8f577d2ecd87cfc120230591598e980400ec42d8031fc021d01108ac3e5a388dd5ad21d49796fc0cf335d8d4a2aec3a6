@@ -1,0 +1,511 @@
+syntax = "proto3";
+package milvus.proto.common;
+
+option go_package="github.com/milvus-io/milvus-proto/go-api/v2/commonpb";
+
+option java_multiple_files = true;
+option java_package = "io.milvus.grpc";
+option java_outer_classname = "CommonProto";
+option java_generate_equals_and_hash = true;
+
+option csharp_namespace = "Milvus.Client.Grpc";
+
+import "google/protobuf/descriptor.proto";
+
+// Deprecated
+enum ErrorCode {
+    option deprecated = true;
+    Success = 0;
+    UnexpectedError = 1;
+    ConnectFailed = 2;
+    PermissionDenied = 3;
+    CollectionNotExists = 4;
+    IllegalArgument = 5;
+    IllegalDimension = 7;
+    IllegalIndexType = 8;
+    IllegalCollectionName = 9;
+    IllegalTOPK = 10;
+    IllegalRowRecord = 11;
+    IllegalVectorID = 12;
+    IllegalSearchResult = 13;
+    FileNotFound = 14;
+    MetaFailed = 15;
+    CacheFailed = 16;
+    CannotCreateFolder = 17;
+    CannotCreateFile = 18;
+    CannotDeleteFolder = 19;
+    CannotDeleteFile = 20;
+    BuildIndexError = 21;
+    IllegalNLIST = 22;
+    IllegalMetricType = 23;
+    OutOfMemory = 24;
+    IndexNotExist = 25;
+    EmptyCollection = 26;
+    UpdateImportTaskFailure = 27;
+    CollectionNameNotFound = 28;
+    CreateCredentialFailure = 29;
+    UpdateCredentialFailure = 30;
+    DeleteCredentialFailure = 31;
+    GetCredentialFailure = 32;
+    ListCredUsersFailure = 33;
+    GetUserFailure = 34;
+    CreateRoleFailure = 35;
+    DropRoleFailure = 36;
+    OperateUserRoleFailure = 37;
+    SelectRoleFailure = 38;
+    SelectUserFailure = 39;
+    SelectResourceFailure = 40;
+    OperatePrivilegeFailure = 41;
+    SelectGrantFailure = 42;
+    RefreshPolicyInfoCacheFailure = 43;
+    ListPolicyFailure = 44;
+    NotShardLeader = 45;
+    NoReplicaAvailable = 46;
+    SegmentNotFound = 47;
+    ForceDeny = 48;
+    RateLimit = 49;
+    NodeIDNotMatch = 50;
+    UpsertAutoIDTrue = 51;
+    InsufficientMemoryToLoad = 52;
+    MemoryQuotaExhausted = 53;
+    DiskQuotaExhausted = 54;
+    TimeTickLongDelay = 55;
+    NotReadyServe = 56;
+    // Coord is switching from standby mode to active mode
+    NotReadyCoordActivating = 57;
+    CreatePrivilegeGroupFailure = 58;
+    DropPrivilegeGroupFailure = 59;
+    ListPrivilegeGroupsFailure = 60;
+    OperatePrivilegeGroupFailure = 61;
+    SchemaMismatch = 62;
+    // Service availability.
+    // NA: Not Available.
+    DataCoordNA = 100;
+
+    // internal error code.
+    DDRequestRace = 1000;
+}
+
+enum IndexState {
+    IndexStateNone = 0;
+    Unissued = 1;
+    InProgress = 2;
+    Finished = 3;
+    Failed = 4;
+    Retry = 5;
+}
+
+enum SegmentState {
+    SegmentStateNone = 0;
+    NotExist = 1;
+    Growing = 2;
+    Sealed = 3;
+    Flushed = 4;
+    Flushing = 5;
+    Dropped = 6;
+    Importing = 7;
+}
+
+enum SegmentLevel {
+    Legacy = 0; // zero value for legacy logic
+    L0 = 1; // L0 segment, contains delta data for current channel
+    L1 = 2; // L1 segment, normal segment, with no extra compaction attribute
+    L2 = 3; // L2 segment, segment with extra data distribution info
+}
+
+message Status {
+    ErrorCode error_code = 1 [deprecated=true];
+    string reason = 2;
+    int32 code = 3;
+    bool retriable = 4;
+    string detail = 5;
+    map<string, string> extra_info = 6;
+}
+
+message KeyValuePair {
+    string key = 1;
+    string value = 2;
+}
+
+message KeyDataPair {
+    string key = 1;
+    bytes data = 2;
+}
+
+message Blob {
+    bytes value = 1;
+}
+
+enum PlaceholderType {
+    None = 0;
+    BinaryVector = 100;
+    FloatVector = 101;
+    Float16Vector = 102;
+    BFloat16Vector = 103;
+    SparseFloatVector = 104;
+    Int64 = 5;
+    VarChar = 21;
+}
+
+message PlaceholderValue {
+    string tag = 1;
+    PlaceholderType type = 2;
+    // values is a 2d-array of nq rows, every row contains a query vector.
+    // for dense vector, all rows are of the same length; for sparse vector,
+    // the length of each row may vary depending on their number of non-zeros.
+    repeated bytes values = 3;
+}
+
+message PlaceholderGroup {
+    repeated PlaceholderValue placeholders = 1;
+}
+
+
+message Address {
+    string ip = 1;
+    int64 port = 2;
+}
+
+enum MsgType {
+    Undefined = 0;
+    /* DEFINITION REQUESTS: COLLECTION */
+    CreateCollection = 100;
+    DropCollection = 101;
+    HasCollection = 102;
+    DescribeCollection = 103;
+    ShowCollections = 104;
+    GetSystemConfigs = 105;
+    LoadCollection = 106;
+    ReleaseCollection = 107;
+    CreateAlias = 108;
+    DropAlias = 109;
+    AlterAlias = 110;
+    AlterCollection = 111;
+    RenameCollection = 112;
+    DescribeAlias = 113;
+    ListAliases = 114;
+    AlterCollectionField = 115;
+
+    /* DEFINITION REQUESTS: PARTITION */
+    CreatePartition = 200;
+    DropPartition = 201;
+    HasPartition = 202;
+    DescribePartition = 203;
+    ShowPartitions = 204;
+    LoadPartitions = 205;
+    ReleasePartitions = 206;
+
+    /* DEFINE REQUESTS: SEGMENT */
+    ShowSegments = 250;
+    DescribeSegment = 251;
+    LoadSegments = 252;
+    ReleaseSegments = 253;
+    HandoffSegments = 254;
+    LoadBalanceSegments = 255;
+    DescribeSegments = 256;
+    FederListIndexedSegment = 257;
+    FederDescribeSegmentIndexData = 258;
+
+    /* DEFINITION REQUESTS: INDEX */
+    CreateIndex = 300;
+    DescribeIndex = 301;
+    DropIndex = 302;
+    GetIndexStatistics = 303;
+    AlterIndex = 304;
+
+    /* MANIPULATION REQUESTS */
+    Insert = 400;
+    Delete = 401;
+    Flush = 402;
+    ResendSegmentStats = 403;
+    Upsert = 404;
+    ManualFlush = 405; // streaming service new msg type for internal usage compatible
+    FlushSegment = 406; // streaming service new msg type for internal usage compatible
+    CreateSegment = 407; // streaming service new msg type for internal usage compatible
+    Import = 408;
+
+    /* QUERY */
+    Search = 500;
+    SearchResult = 501;
+    GetIndexState = 502;
+    GetIndexBuildProgress = 503;
+    GetCollectionStatistics = 504;
+    GetPartitionStatistics = 505;
+    Retrieve = 506;
+    RetrieveResult = 507;
+    WatchDmChannels = 508;
+    RemoveDmChannels = 509;
+    WatchQueryChannels = 510;
+    RemoveQueryChannels = 511;
+    SealedSegmentsChangeInfo = 512;
+    WatchDeltaChannels = 513;
+    GetShardLeaders = 514;
+    GetReplicas = 515;
+    UnsubDmChannel = 516;
+    GetDistribution = 517;
+    SyncDistribution = 518;
+
+    /* DATA SERVICE */
+    SegmentInfo = 600;
+    SystemInfo = 601;
+    GetRecoveryInfo = 602;
+    GetSegmentState = 603;
+
+    /* SYSTEM CONTROL */
+    TimeTick = 1200;
+    QueryNodeStats = 1201; // GOOSE TODO: Remove kQueryNodeStats
+    LoadIndex = 1202;
+    RequestID = 1203;
+    RequestTSO = 1204;
+    AllocateSegment = 1205;
+    SegmentStatistics = 1206;
+    SegmentFlushDone = 1207;
+
+    DataNodeTt = 1208;
+    Connect = 1209;
+    ListClientInfos = 1210;
+    AllocTimestamp = 1211;
+    Replicate = 1212;
+
+    /* Credential */
+    CreateCredential = 1500;
+    GetCredential = 1501;
+    DeleteCredential = 1502;
+    UpdateCredential = 1503;
+    ListCredUsernames = 1504;
+
+    /* RBAC */
+    CreateRole = 1600;
+    DropRole = 1601;
+    OperateUserRole = 1602;
+    SelectRole = 1603;
+    SelectUser = 1604;
+    SelectResource = 1605;
+    OperatePrivilege = 1606;
+    SelectGrant = 1607;
+    RefreshPolicyInfoCache = 1608;
+    ListPolicy = 1609;
+    CreatePrivilegeGroup = 1610;
+    DropPrivilegeGroup = 1611;
+    ListPrivilegeGroups = 1612;
+    OperatePrivilegeGroup = 1613;
+    OperatePrivilegeV2 = 1614;
+
+
+    /* Resource group */
+    CreateResourceGroup = 1700;
+    DropResourceGroup = 1701;
+    ListResourceGroups = 1702;
+    DescribeResourceGroup = 1703;
+    TransferNode = 1704;
+    TransferReplica = 1705;
+    UpdateResourceGroups = 1706;
+
+    /* Database group */
+    CreateDatabase = 1801;
+    DropDatabase = 1802;
+    ListDatabases = 1803;
+    AlterDatabase = 1804;
+    DescribeDatabase = 1805;
+}
+
+message MsgBase {
+    MsgType msg_type = 1;
+    int64  msgID = 2;
+    uint64 timestamp = 3;
+    int64 sourceID = 4;
+    int64 targetID = 5;
+    map<string, string> properties = 6;
+    ReplicateInfo replicateInfo = 7;
+}
+
+message ReplicateInfo {
+    bool isReplicate = 1;
+    uint64 msgTimestamp = 2;
+    string replicateID = 3;
+}
+
+enum DslType {
+    Dsl = 0;
+    BoolExprV1 = 1;
+}
+
+// Don't Modify This. @czs
+message MsgHeader {
+    common.MsgBase base = 1;
+}
+
+// Don't Modify This. @czs
+message DMLMsgHeader {
+    common.MsgBase base = 1;
+    string shardName = 2;
+}
+
+enum CompactionState {
+    UndefiedState = 0;
+    Executing = 1;
+    Completed = 2;
+}
+
+enum ConsistencyLevel {
+    Strong = 0;
+    Session = 1; // default in PyMilvus
+    Bounded = 2;
+    Eventually = 3;
+    Customized = 4; // Users pass their own `guarantee_timestamp`.
+}
+
+enum ImportState {
+    ImportPending = 0;              // the task in in pending list of rootCoord, waiting to be executed
+    ImportFailed = 1;               // the task failed for some reason, get detail reason from GetImportStateResponse.infos
+    ImportStarted = 2;              // the task has been sent to datanode to execute
+    ImportPersisted = 5;            // all data files have been parsed and all meta data already persisted, ready to be flushed.
+    ImportFlushed = 8;              // all segments are successfully flushed.
+    ImportCompleted = 6;            // all indexes are successfully built and segments are able to be compacted as normal.
+    ImportFailedAndCleaned = 7;     // the task failed and all segments it generated are cleaned up.
+}
+
+enum ObjectType {
+    Collection = 0;
+    Global = 1;
+    User = 2;
+}
+
+enum ObjectPrivilege {
+    PrivilegeAll = 0;
+    PrivilegeCreateCollection = 1;
+    PrivilegeDropCollection = 2;
+    PrivilegeDescribeCollection = 3;
+    PrivilegeShowCollections = 4;
+    PrivilegeLoad = 5;
+    PrivilegeRelease = 6;
+    PrivilegeCompaction = 7;
+    PrivilegeInsert = 8;
+    PrivilegeDelete = 9;
+
+    PrivilegeGetStatistics = 10;
+    PrivilegeCreateIndex = 11;
+    PrivilegeIndexDetail = 12;
+    PrivilegeDropIndex = 13;
+    PrivilegeSearch = 14;
+    PrivilegeFlush = 15;
+    PrivilegeQuery = 16;
+    PrivilegeLoadBalance = 17;
+    PrivilegeImport = 18;
+    PrivilegeCreateOwnership = 19;
+    PrivilegeUpdateUser = 20;
+    PrivilegeDropOwnership = 21;
+    PrivilegeSelectOwnership = 22;
+    PrivilegeManageOwnership = 23;
+    PrivilegeSelectUser = 24;
+    PrivilegeUpsert = 25;
+    PrivilegeCreateResourceGroup = 26;
+    PrivilegeDropResourceGroup = 27;
+    PrivilegeDescribeResourceGroup = 28;
+    PrivilegeListResourceGroups = 29;
+    PrivilegeTransferNode = 30;
+    PrivilegeTransferReplica = 31;
+    PrivilegeGetLoadingProgress = 32;
+    PrivilegeGetLoadState = 33;
+
+    PrivilegeRenameCollection = 34;
+    PrivilegeCreateDatabase = 35;
+    PrivilegeDropDatabase = 36;
+    PrivilegeListDatabases = 37;
+    PrivilegeFlushAll = 38;
+
+    PrivilegeCreatePartition = 39;
+    PrivilegeDropPartition = 40;
+    PrivilegeShowPartitions = 41;
+    PrivilegeHasPartition = 42;
+    PrivilegeGetFlushState = 43;
+    PrivilegeCreateAlias = 44;
+    PrivilegeDropAlias = 45;
+    PrivilegeDescribeAlias = 46;
+    PrivilegeListAliases = 47;
+
+    PrivilegeUpdateResourceGroups = 48;
+    PrivilegeAlterDatabase = 49;
+    PrivilegeDescribeDatabase = 50;
+    PrivilegeBackupRBAC = 51;
+    PrivilegeRestoreRBAC = 52;
+
+    PrivilegeGroupReadOnly = 53;
+    PrivilegeGroupReadWrite = 54;
+    PrivilegeGroupAdmin = 55;
+
+    PrivilegeCreatePrivilegeGroup = 56;
+    PrivilegeDropPrivilegeGroup = 57;
+    PrivilegeListPrivilegeGroups = 58;
+    PrivilegeOperatePrivilegeGroup = 59;
+
+    PrivilegeGroupClusterReadOnly = 60;
+    PrivilegeGroupClusterReadWrite = 61;
+    PrivilegeGroupClusterAdmin = 62;
+    PrivilegeGroupDatabaseReadOnly = 63;
+    PrivilegeGroupDatabaseReadWrite = 64;
+    PrivilegeGroupDatabaseAdmin = 65;
+    PrivilegeGroupCollectionReadOnly = 66;
+    PrivilegeGroupCollectionReadWrite = 67;
+    PrivilegeGroupCollectionAdmin = 68;
+}
+
+message PrivilegeExt {
+    ObjectType object_type = 1;
+    ObjectPrivilege object_privilege = 2;
+    int32 object_name_index = 3;
+    int32 object_name_indexs = 4;
+}
+
+extend google.protobuf.MessageOptions {
+    PrivilegeExt privilege_ext_obj = 1001;
+}
+
+enum StateCode {
+    Initializing = 0;
+    Healthy = 1;
+    Abnormal = 2;
+    StandBy = 3;
+    Stopping = 4;
+}
+
+enum LoadState {
+    LoadStateNotExist = 0;
+    LoadStateNotLoad = 1;
+    LoadStateLoading = 2;
+    LoadStateLoaded = 3;
+}
+
+message SegmentStats {
+    int64 SegmentID = 1;
+    int64 NumRows = 2;
+}
+
+message ClientInfo {
+    // sdk_type can be `python`, `golang`, `nodejs` and etc. It's not proper to make `sdk_type` an
+    // enumerate type, since we cannot always update the enum value everytime when newly sdk is supported.
+    string sdk_type = 1;
+    string sdk_version = 2;
+    string local_time = 3;
+    string user = 4;
+    string host = 5;
+    // reserved for newly-added feature if necessary.
+    map<string, string> reserved = 6;
+}
+
+message ServerInfo {
+    string build_tags = 1;
+    string build_time = 2;
+    string git_commit = 3;
+    string go_version = 4;
+    string deploy_mode = 5;
+    // reserved for newly-added feature if necessary.
+    map<string, string> reserved = 6;
+}
+
+// NodeInfo is used to describe the node information.
+message NodeInfo {
+    int64 node_id = 1;
+    string address = 2;
+    string hostname = 3;
+}

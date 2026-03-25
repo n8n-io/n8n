@@ -1,0 +1,28 @@
+{
+  "name": "filelist",
+  "version": "1.0.4",
+  "description": "Lazy-evaluating list of files, based on globs or regex patterns",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "scripts": {
+    "test": "jake test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/mde/filelist.git"
+  },
+  "keywords": [
+    "file",
+    "utility",
+    "glob"
+  ],
+  "author": "Matthew Eernisse <mde@fleegix.org> (http://fleegix.org)",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/mde/filelist/issues"
+  },
+  "homepage": "https://github.com/mde/filelist",
+  "dependencies": {
+    "minimatch": "^5.0.1"
+  }
+}

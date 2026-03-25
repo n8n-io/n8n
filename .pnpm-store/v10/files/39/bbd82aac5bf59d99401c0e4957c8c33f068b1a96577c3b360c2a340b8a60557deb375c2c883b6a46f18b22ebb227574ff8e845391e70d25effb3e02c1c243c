@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+
+<script type="module">
+  import * as Comlink from "https://unpkg.com/comlink/dist/esm/comlink.mjs";
+  // import * as Comlink from "../../../dist/esm/comlink.mjs";
+
+  async function initComlink() {
+    const { port1, port2 } = new MessageChannel();
+    const msg = {
+      comlinkInit: true,
+      port: port1,
+    };
+    navigator.serviceWorker.controller.postMessage(msg, [port1]);
+
+    const swProxy = Comlink.wrap(port2);
+    console.log(await swProxy.counter);
+    await swProxy.inc();
+    console.log(await swProxy.counter);
+  }
+
+  if (navigator.serviceWorker.controller) {
+    initComlink();
+  }
+  navigator.serviceWorker.addEventListener("controllerchange", initComlink);
+  navigator.serviceWorker.register("worker.js");
+</script>

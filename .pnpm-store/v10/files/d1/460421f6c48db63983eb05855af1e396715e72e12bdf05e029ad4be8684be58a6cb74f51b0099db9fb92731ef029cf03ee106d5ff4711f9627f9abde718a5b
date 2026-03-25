@@ -1,0 +1,52 @@
+{
+  "name": "npm-run-all-test",
+  "version": "0.0.0",
+  "private": true,
+  "description": "",
+  "engines": {
+    "node": ">=4"
+  },
+  "config": {
+    "DEST": "build",
+    "test": "OK"
+  },
+  "scripts": {
+    "start": "node tasks/append2.js start",
+    "stop": "node tasks/append2.js stop",
+    "test-task:package-config": "node tasks/package-config1.js",
+    "test-task:package-config2": "node tasks/package-config2.js",
+    "test-task:nested-package-config": "node ../bin/npm-run-all/index.js test-task:package-config",
+    "test-task:config": "node tasks/config1.js",
+    "test-task:config2": "node tasks/config2.js",
+    "test-task:nested-config": "node ../bin/npm-run-all/index.js test-task:config",
+    "test-task:append": "node tasks/append2.js",
+    "test-task:append:a": "node tasks/append2.js a",
+    "test-task:append:a:c": "node tasks/append2.js ac",
+    "test-task:append:a:d": "node tasks/append2.js ad",
+    "test-task:append:b": "node tasks/append2.js b",
+    "test-task:append1": "node tasks/append1.js",
+    "test-task:append2": "node tasks/append2.js",
+    "test-task:abort": "node tasks/abort.js",
+    "test-task:error": "node tasks/error.js",
+    "test-task:stdout": "node tasks/stdout.js > test.txt",
+    "test-task:stderr": "node tasks/stderr.js 2> test.txt",
+    "test-task:stdin": "echo STDIN | node tasks/stdin.js",
+    "test-task:issue14:win32": "rm -rf build && mkdir %npm_package_config_DEST% && cd build",
+    "test-task:issue14:posix": "rm -rf build && mkdir $npm_package_config_DEST && cd build",
+    "test-task:echo": "node tasks/echo.js",
+    "test-task:dump": "node tasks/dump.js",
+    "test-task:nest-append:npm-run-all": "node ../bin/npm-run-all/index.js test-task:append",
+    "test-task:nest-append:run-s": "node ../bin/run-s/index.js test-task:append",
+    "test-task:nest-append:run-p": "node ../bin/run-p/index.js test-task:append",
+    "test-task:delayed": "node tasks/output-with-delay.js",
+    "test-task:yarn": "node ../bin/npm-run-all/index.js test-task:append:{a,b} --npm-path yarn",
+    "!test": "node tasks/append1.js X",
+    "?test": "node tasks/append1.js Q"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mysticatea/npm-run-all.git"
+  },
+  "author": "Toru Nagashima",
+  "license": "MIT"
+}

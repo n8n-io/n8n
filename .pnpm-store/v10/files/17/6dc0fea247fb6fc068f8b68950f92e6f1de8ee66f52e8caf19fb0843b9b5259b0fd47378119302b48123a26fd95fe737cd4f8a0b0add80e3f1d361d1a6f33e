@@ -1,0 +1,40 @@
+{
+  "name": "retimer",
+  "version": "3.0.0",
+  "description": "Reschedulable Timer for your node needs",
+  "main": "retimer.js",
+  "scripts": {
+    "lint": "standard",
+    "test": "tape test.js | tap-dot"
+  },
+  "pre-commit": [
+    "lint",
+    "test"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mcollina/retimer.git"
+  },
+  "keywords": [
+    "schedulable",
+    "reschedulable",
+    "timer",
+    "setTimeout"
+  ],
+  "author": "Matteo Collina <hello@matteocollina.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/mcollina/retimer/issues"
+  },
+  "homepage": "https://github.com/mcollina/retimer#readme",
+  "devDependencies": {
+    "fastbench": "^1.0.0",
+    "pre-commit": "^1.0.10",
+    "standard": "^16.0.0",
+    "tap-dot": "^2.0.0",
+    "tape": "^5.0.0"
+  },
+  "browser": {
+    "./time.js": "./time-browser.js"
+  }
+}

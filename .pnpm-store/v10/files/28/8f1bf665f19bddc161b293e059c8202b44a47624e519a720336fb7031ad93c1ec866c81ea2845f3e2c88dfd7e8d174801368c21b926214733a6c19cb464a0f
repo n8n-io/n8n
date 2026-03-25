@@ -1,0 +1,16 @@
+---
+engines:
+  duplication:
+    enabled: true
+    config:
+      languages:
+      - javascript
+  eslint:
+    enabled: true
+  fixme:
+    enabled: true
+ratings:
+  paths:
+  - "lib/*.js"
+exclude_paths:
+- "dist/*"

@@ -1,0 +1,40 @@
+{
+  "name": "object-sizeof",
+  "version": "2.6.5",
+  "description": "Sizeof of a JavaScript object in Bytes",
+  "main": "indexv2.js",
+  "scripts": {
+    "test": "./node_modules/.bin/standard; ./node_modules/.bin/mocha",
+    "lint": "./node_modules/.bin/standard",
+    "coverage": "./node_modules/.bin/nyc npm test; ./node_modules/.bin/nyc report --reporter=text-lcov > coverage.lcov && ./node_modules/.bin/codecov --token=708ee89f-4e9c-402d-8380-1257b979596c"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/miktam/sizeof.git"
+  },
+  "keywords": [
+    "sizeof",
+    "size",
+    "object",
+    "bytes"
+  ],
+  "author": "Andrei Karpushonak",
+  "license": "MIT",
+  "readmeFilename": "README.md",
+  "dependencies": {
+    "buffer": "^6.0.3"
+  },
+  "devDependencies": {
+    "codecov": "^3.8.3",
+    "mocha": "^10.6.0",
+    "nyc": "^17.0.0",
+    "should": "^13.2.3",
+    "standard": "^17.1.0"
+  },
+  "types": "indexv2.d.ts",
+  "standard": {
+    "env": [
+      "mocha"
+    ]
+  }
+}

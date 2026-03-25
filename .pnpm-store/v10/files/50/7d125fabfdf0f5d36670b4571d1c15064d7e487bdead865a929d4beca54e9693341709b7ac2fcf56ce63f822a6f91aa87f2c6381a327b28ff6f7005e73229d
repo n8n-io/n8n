@@ -1,0 +1,6 @@
+language: node_js
+node_js:
+  - "stable"
+script:
+  - npm run build
+  - npm run karma-ci

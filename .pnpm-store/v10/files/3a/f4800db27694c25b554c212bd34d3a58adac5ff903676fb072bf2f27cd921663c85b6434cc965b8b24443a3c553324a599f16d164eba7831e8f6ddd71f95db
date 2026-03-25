@@ -1,0 +1,50 @@
+{
+  "name": "istanbul-lib-instrument",
+  "version": "5.2.1",
+  "description": "Core istanbul API for JS code coverage",
+  "author": "Krishnan Anantheswaran <kananthmail-github@yahoo.com>",
+  "main": "src/index.js",
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "test": "nyc mocha"
+  },
+  "dependencies": {
+    "@babel/core": "^7.12.3",
+    "@babel/parser": "^7.14.7",
+    "@istanbuljs/schema": "^0.1.2",
+    "istanbul-lib-coverage": "^3.2.0",
+    "semver": "^6.3.0"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.7.5",
+    "chai": "^4.2.0",
+    "clone": "^2.1.2",
+    "debug": "^4.1.1",
+    "documentation": "^12.1.4",
+    "js-yaml": "^3.13.1",
+    "mocha": "^6.2.3",
+    "nopt": "^4.0.1",
+    "nyc": "^15.1.0"
+  },
+  "license": "BSD-3-Clause",
+  "bugs": {
+    "url": "https://github.com/istanbuljs/istanbuljs/issues"
+  },
+  "homepage": "https://istanbul.js.org/",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/istanbuljs/istanbuljs.git",
+    "directory": "packages/istanbul-lib-instrument"
+  },
+  "keywords": [
+    "coverage",
+    "istanbul",
+    "js",
+    "instrumentation"
+  ],
+  "engines": {
+    "node": ">=8"
+  }
+}

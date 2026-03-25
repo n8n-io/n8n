@@ -1,0 +1,26 @@
+{
+  "root": true,
+
+  "extends": "@ljharb",
+
+  "rules": {
+    "func-style": "off",
+  },
+
+  "globals": {
+    "Uint8Array": false,
+    "Uint16Array": false,
+  },
+
+  "overrides": [
+    {
+      "files": [
+        "./index.js",
+        "./test/index.js",
+      ],
+      "rules": {
+        "no-underscore-dangle": "warn",
+      },
+    },
+  ],
+}

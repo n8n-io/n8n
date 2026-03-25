@@ -1,0 +1,35 @@
+{
+  "name": "eslint-plugin-playwright",
+  "description": "ESLint plugin for Playwright testing.",
+  "version": "2.2.2",
+  "repository": "https://github.com/playwright-community/eslint-plugin-playwright",
+  "author": "Mark Skelton <mark@mskelton.dev>",
+  "contributors": [
+    "Max Schmitt <max@schmitt.mx>"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=16.6.0"
+  },
+  "type": "module",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./index.js",
+      "require": "./index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "index.js",
+    "index.cjs",
+    "index.d.ts"
+  ],
+  "peerDependencies": {
+    "eslint": ">=8.40.0"
+  },
+  "dependencies": {
+    "globals": "^13.23.0"
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "name": "ci-info",
+  "version": "3.9.0",
+  "description": "Get details about the current Continuous Integration environment",
+  "main": "index.js",
+  "typings": "index.d.ts",
+  "author": "Thomas Watson Steen <w@tson.dk> (https://twitter.com/wa7son)",
+  "license": "MIT",
+  "repository": "https://github.com/watson/ci-info.git",
+  "bugs": "https://github.com/watson/ci-info/issues",
+  "homepage": "https://github.com/watson/ci-info",
+  "keywords": [
+    "ci",
+    "continuous",
+    "integration",
+    "test",
+    "detect"
+  ],
+  "files": [
+    "vendors.json",
+    "index.js",
+    "index.d.ts",
+    "CHANGELOG.md"
+  ],
+  "funding": [
+    {
+      "type": "github",
+      "url": "https://github.com/sponsors/sibiraj-s"
+    }
+  ],
+  "scripts": {
+    "lint:fix": "standard --fix",
+    "test": "standard && node test.js",
+    "prepare": "husky install"
+  },
+  "devDependencies": {
+    "clear-module": "^4.1.2",
+    "husky": "^8.0.3",
+    "standard": "^17.1.0",
+    "tape": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=8"
+  }
+}

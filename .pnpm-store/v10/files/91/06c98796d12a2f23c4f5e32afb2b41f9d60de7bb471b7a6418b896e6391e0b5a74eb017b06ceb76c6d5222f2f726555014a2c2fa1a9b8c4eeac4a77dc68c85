@@ -1,0 +1,41 @@
+{
+  "name": "node-cleanup",
+  "version": "2.1.2",
+  "description": "installs custom cleanup handlers that run on exiting node",
+  "main": "node-cleanup.js",
+  "scripts": {
+    "test": "tap tests/*.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jtlapp/node-cleanup.git"
+  },
+  "keywords": [
+    "node",
+    "exit",
+    "cleanup",
+    "sigint",
+    "ctrl-c"
+  ],
+  "author": "",
+  "contributors": [
+    {
+      "name": "CanyonCasa",
+      "url": "http://stackoverflow.com/users/3319552/canyoncasa"
+    },
+    {
+      "name": "Joseph T. Lapp",
+      "email": "arachnojoe@gmail.com",
+      "url": "http://josephtlapp.com"
+    }
+  ],
+  "bugs": {
+    "url": "https://github.com/jtlapp/node-cleanup/issues"
+  },
+  "homepage": "https://github.com/jtlapp/node-cleanup#readme",
+  "license": "MIT",
+  "devDependencies": {
+    "memory-streams": "^0.1.0",
+    "tap": "^8.0.1"
+  }
+}

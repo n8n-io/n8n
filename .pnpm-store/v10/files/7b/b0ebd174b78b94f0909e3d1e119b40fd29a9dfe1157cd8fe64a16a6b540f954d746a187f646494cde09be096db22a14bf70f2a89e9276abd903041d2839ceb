@@ -1,0 +1,49 @@
+{
+	"name": "strip-final-newline",
+	"version": "4.0.0",
+	"description": "Strip the final newline character from a string or Uint8Array",
+	"license": "MIT",
+	"repository": "sindresorhus/strip-final-newline",
+	"funding": "https://github.com/sponsors/sindresorhus",
+	"author": {
+		"name": "Sindre Sorhus",
+		"email": "sindresorhus@gmail.com",
+		"url": "https://sindresorhus.com"
+	},
+	"type": "module",
+	"exports": {
+		"types": "./index.d.ts",
+		"default": "./index.js"
+	},
+	"sideEffects": false,
+	"engines": {
+		"node": ">=18"
+	},
+	"scripts": {
+		"test": "xo && ava && tsd"
+	},
+	"files": [
+		"index.js",
+		"index.d.ts"
+	],
+	"keywords": [
+		"strip",
+		"trim",
+		"remove",
+		"delete",
+		"final",
+		"last",
+		"end",
+		"file",
+		"newline",
+		"linebreak",
+		"character",
+		"string",
+		"uint8array"
+	],
+	"devDependencies": {
+		"ava": "^6.0.1",
+		"tsd": "^0.29.0",
+		"xo": "^0.56.0"
+	}
+}

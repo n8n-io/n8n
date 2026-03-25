@@ -1,0 +1,37 @@
+{
+    "name": "@types/ftp",
+    "version": "0.3.33",
+    "description": "TypeScript definitions for ftp",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/ftp",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Rogier Schouten",
+            "url": "https://github.com/rogierschouten",
+            "githubUsername": "rogierschouten"
+        },
+        {
+            "name": "Nathan Rajlich",
+            "url": "https://github.com/TooTallNate",
+            "githubUsername": "TooTallNate"
+        },
+        {
+            "name": "Marvin Witt",
+            "url": "https://github.com/NurMarvin",
+            "githubUsername": "NurMarvin"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/ftp"
+    },
+    "scripts": {},
+    "dependencies": {
+        "@types/node": "*"
+    },
+    "typesPublisherContentHash": "24297305c5e8f51c19df2d38cde1308d98beb596470eb573613e48a925bd57e7",
+    "typeScriptVersion": "3.7"
+}

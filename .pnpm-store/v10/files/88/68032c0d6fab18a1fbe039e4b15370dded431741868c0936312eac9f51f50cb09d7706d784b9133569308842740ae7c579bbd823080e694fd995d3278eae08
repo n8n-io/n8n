@@ -1,0 +1,37 @@
+{
+	"$id": "/inference/schemas/fill-mask/input.json",
+	"$schema": "http://json-schema.org/draft-06/schema#",
+	"description": "Inputs for Fill Mask inference",
+	"title": "FillMaskInput",
+	"type": "object",
+	"properties": {
+		"inputs": {
+			"description": "The text with masked tokens",
+			"type": "string"
+		},
+		"parameters": {
+			"description": "Additional inference parameters for Fill Mask",
+			"$ref": "#/$defs/FillMaskParameters"
+		}
+	},
+	"$defs": {
+		"FillMaskParameters": {
+			"title": "FillMaskParameters",
+			"type": "object",
+			"properties": {
+				"top_k": {
+					"type": "integer",
+					"description": "When passed, overrides the number of predictions to return."
+				},
+				"targets": {
+					"description": "When passed, the model will limit the scores to the passed targets instead of looking up in the whole vocabulary. If the provided targets are not in the model vocab, they will be tokenized and the first resulting token will be used (with a warning, and that might be slower).",
+					"type": "array",
+					"items": {
+						"type": "string"
+					}
+				}
+			}
+		}
+	},
+	"required": ["inputs"]
+}

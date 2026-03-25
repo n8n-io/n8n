@@ -1,0 +1,19 @@
+{
+  "name": "postgres-range",
+  "version": "1.1.4",
+  "description": "Range data type parser and serializer for PostgreSQL",
+  "main": "index.js",
+  "repository": "https://github.com/martianboy/postgres-range",
+  "author": "Abbas Mashayekh <martianboy2005@gmail.com>",
+  "license": "MIT",
+  "scripts": {
+    "test": "standard && tape test.js | tap-spec"
+  },
+  "devDependencies": {
+    "@types/tape": "^4.13.2",
+    "standard": "^17.0.0",
+    "tap-spec": "^5.0.0",
+    "tape": "^5.5.3",
+    "typescript": "^4.7.3"
+  }
+}

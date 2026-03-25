@@ -1,0 +1,9 @@
+language: node_js
+
+node_js:
+  - "0.12"
+  - "0.10"
+
+notifications:
+  email:
+    - "jhurliman@jhurliman.org"

@@ -1,0 +1,45 @@
+{
+    "name": "@colors/colors",
+    "description": "get colors in your node.js console",
+    "version": "1.5.0",
+    "author": "DABH",
+    "contributors": [
+        {
+            "name": "DABH",
+            "url": "https://github.com/DABH"
+        }
+    ],
+    "homepage": "https://github.com/DABH/colors.js",
+    "bugs": "https://github.com/DABH/colors.js/issues",
+    "keywords": [
+        "ansi",
+        "terminal",
+        "colors"
+    ],
+    "repository": {
+        "type": "git",
+        "url": "http://github.com/DABH/colors.js.git"
+    },
+    "license": "MIT",
+    "scripts": {
+        "lint": "eslint . --fix",
+        "test": "export FORCE_COLOR=1 && node tests/basic-test.js && node tests/safe-test.js"
+    },
+    "engines": {
+        "node": ">=0.1.90"
+    },
+    "main": "lib/index.js",
+    "files": [
+        "examples",
+        "lib",
+        "LICENSE",
+        "safe.js",
+        "themes",
+        "index.d.ts",
+        "safe.d.ts"
+    ],
+    "devDependencies": {
+        "eslint": "^5.2.0",
+        "eslint-config-google": "^0.11.0"
+    }
+}

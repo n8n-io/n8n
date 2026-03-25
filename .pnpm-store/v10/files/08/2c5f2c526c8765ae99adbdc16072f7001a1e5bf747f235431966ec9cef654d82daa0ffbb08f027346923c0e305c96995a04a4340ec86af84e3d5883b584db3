@@ -1,0 +1,48 @@
+{
+	"name": "browserslist-to-esbuild",
+	"version": "2.1.1",
+	"description": "Get esbuild-compatible targets from a browserlist config",
+	"license": "MIT",
+	"repository": "marcofugaro/browserslist-to-esbuild",
+	"author": {
+		"name": "Marco Fugaro",
+		"email": "marco.fugaro@gmail.com",
+		"url": "https://marcofuga.ro"
+	},
+	"keywords": [
+		"browserslist",
+		"browserlist",
+		"esbuild",
+		"browsers"
+	],
+	"type": "module",
+	"exports": {
+		"types": "./src/index.d.ts",
+		"default": "./src/index.js"
+	},
+	"types": "./src/index.d.ts",
+	"bin": {
+		"browserslist-to-esbuild": "./cli/index.js"
+	},
+	"engines": {
+		"node": ">=18"
+	},
+	"scripts": {
+		"test": "ava"
+	},
+	"files": [
+		"src/",
+		"cli/"
+	],
+	"peerDependencies": {
+		"browserslist": "*"
+	},
+	"dependencies": {
+		"meow": "^13.0.0"
+	},
+	"devDependencies": {
+		"ava": "^6.0.1",
+		"browserslist": "^4.22.2",
+		"sinon": "^17.0.1"
+	}
+}

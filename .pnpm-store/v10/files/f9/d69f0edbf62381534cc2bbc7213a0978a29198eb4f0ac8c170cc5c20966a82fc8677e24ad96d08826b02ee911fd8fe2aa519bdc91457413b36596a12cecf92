@@ -1,0 +1,103 @@
+{
+  "name": "concurrently",
+  "version": "8.2.0",
+  "description": "Run commands concurrently",
+  "main": "index.js",
+  "types": "dist/src/index.d.ts",
+  "type": "commonjs",
+  "bin": {
+    "concurrently": "./dist/bin/concurrently.js",
+    "conc": "./dist/bin/concurrently.js"
+  },
+  "engines": {
+    "node": "^14.13.0 || >=16.0.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./index.mjs",
+      "require": "./index.js",
+      "default": "./index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/open-cli-tools/concurrently.git"
+  },
+  "funding": "https://github.com/open-cli-tools/concurrently?sponsor=1",
+  "keywords": [
+    "bash",
+    "concurrent",
+    "parallel",
+    "concurrently",
+    "command",
+    "sh"
+  ],
+  "author": "Kimmo Brunfeldt",
+  "license": "MIT",
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "date-fns": "^2.30.0",
+    "lodash": "^4.17.21",
+    "rxjs": "^7.8.1",
+    "shell-quote": "^1.8.1",
+    "spawn-command": "0.0.2",
+    "supports-color": "^8.1.1",
+    "tree-kill": "^1.2.2",
+    "yargs": "^17.7.2"
+  },
+  "devDependencies": {
+    "@hirez_io/observer-spy": "^2.2.0",
+    "@swc/core": "^1.3.62",
+    "@swc/jest": "^0.2.26",
+    "@types/jest": "^29.5.2",
+    "@types/lodash": "^4.14.195",
+    "@types/node": "^14.18.48",
+    "@types/shell-quote": "^1.7.1",
+    "@types/supports-color": "^8.1.1",
+    "@types/yargs": "^17.0.24",
+    "@typescript-eslint/eslint-plugin": "^5.59.9",
+    "@typescript-eslint/parser": "^5.59.9",
+    "coveralls-next": "^4.2.0",
+    "ctrlc-wrapper": "^0.0.4",
+    "esbuild": "~0.17.19",
+    "eslint": "^8.42.0",
+    "eslint-config-prettier": "^8.8.0",
+    "eslint-plugin-import": "^2.27.5",
+    "eslint-plugin-jest": "^27.2.1",
+    "eslint-plugin-prettier": "^4.2.1",
+    "eslint-plugin-simple-import-sort": "^10.0.0",
+    "husky": "^8.0.3",
+    "jest": "^29.5.0",
+    "jest-create-mock-instance": "^2.0.0",
+    "lint-staged": "^13.2.2",
+    "prettier": "^2.8.8",
+    "safe-publish-latest": "^2.0.0",
+    "string-argv": "^0.3.2",
+    "typescript": "~5.1.3"
+  },
+  "files": [
+    "dist",
+    "index.js",
+    "index.mjs",
+    "!**/fixtures",
+    "!**/*.spec.js",
+    "!**/*.spec.d.ts"
+  ],
+  "lint-staged": {
+    "*.?(m){js,ts}": "eslint --fix",
+    "*.{json,y?(a)ml,md}": "prettier --write"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "postbuild": "chmod +x dist/bin/concurrently.js",
+    "clean": "tsc --build --clean",
+    "format": "prettier --check '**/*.{json,y?(a)ml,md}'",
+    "format:fix": "pnpm run format --write",
+    "lint": "eslint --ignore-path .gitignore --ext mjs,js,ts .",
+    "lint:fix": "pnpm run lint --fix",
+    "report-coverage": "cat coverage/lcov.info | coveralls",
+    "test": "jest"
+  }
+}

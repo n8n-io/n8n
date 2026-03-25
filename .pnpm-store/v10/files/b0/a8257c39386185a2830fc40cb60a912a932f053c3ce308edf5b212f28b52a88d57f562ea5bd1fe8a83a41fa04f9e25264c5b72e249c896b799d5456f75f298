@@ -1,0 +1,50 @@
+{
+  "name": "json-parse-even-better-errors",
+  "version": "4.0.0",
+  "description": "JSON.parse with context information on error",
+  "main": "lib/index.js",
+  "files": [
+    "bin/",
+    "lib/"
+  ],
+  "scripts": {
+    "test": "tap",
+    "snap": "tap",
+    "lint": "npm run eslint",
+    "postlint": "template-oss-check",
+    "template-oss-apply": "template-oss-apply --force",
+    "lintfix": "npm run eslint -- --fix",
+    "posttest": "npm run lint",
+    "eslint": "eslint \"**/*.{js,cjs,ts,mjs,jsx,tsx}\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/npm/json-parse-even-better-errors.git"
+  },
+  "keywords": [
+    "JSON",
+    "parser"
+  ],
+  "author": "GitHub Inc.",
+  "license": "MIT",
+  "devDependencies": {
+    "@npmcli/eslint-config": "^5.0.0",
+    "@npmcli/template-oss": "4.23.3",
+    "tap": "^16.3.0"
+  },
+  "tap": {
+    "check-coverage": true,
+    "nyc-arg": [
+      "--exclude",
+      "tap-snapshots/**"
+    ]
+  },
+  "engines": {
+    "node": "^18.17.0 || >=20.5.0"
+  },
+  "templateOSS": {
+    "//@npmcli/template-oss": "This file is partially managed by @npmcli/template-oss. Edits may be overwritten.",
+    "version": "4.23.3",
+    "publish": true
+  }
+}

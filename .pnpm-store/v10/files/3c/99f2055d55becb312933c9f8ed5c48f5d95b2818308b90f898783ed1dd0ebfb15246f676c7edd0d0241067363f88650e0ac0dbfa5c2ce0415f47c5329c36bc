@@ -1,0 +1,29 @@
+{
+	"$id": "/inference/schemas/question-answering/output.json",
+	"$schema": "http://json-schema.org/draft-06/schema#",
+	"title": "QuestionAnsweringOutput",
+	"description": "Outputs of inference for the Question Answering task",
+	"type": "array",
+	"items": {
+		"type": "object",
+		"properties": {
+			"answer": {
+				"type": "string",
+				"description": "The answer to the question."
+			},
+			"score": {
+				"type": "number",
+				"description": "The probability associated to the answer."
+			},
+			"start": {
+				"type": "integer",
+				"description": "The character position in the input where the answer begins."
+			},
+			"end": {
+				"type": "integer",
+				"description": "The character position in the input where the answer ends."
+			}
+		},
+		"required": ["answer", "score", "start", "end"]
+	}
+}

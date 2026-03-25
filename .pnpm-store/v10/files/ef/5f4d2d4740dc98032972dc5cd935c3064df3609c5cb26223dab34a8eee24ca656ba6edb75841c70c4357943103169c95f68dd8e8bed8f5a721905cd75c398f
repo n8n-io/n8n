@@ -1,0 +1,326 @@
+{
+  "name": "@microsoft/tsdoc-config",
+  "entries": [
+    {
+      "version": "0.17.1",
+      "tag": "@microsoft/tsdoc-config_v0.17.1",
+      "date": "Sat, 23 Nov 2024 00:23:35 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Include CHANGELOG.md in published releases again"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/tsdoc\" to `0.15.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.17.0",
+      "tag": "@microsoft/tsdoc-config_v0.17.0",
+      "date": "Tue, 28 May 2024 21:34:19 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Minor package cleanup."
+          }
+        ],
+        "patch": [
+          {
+            "comment": "Upgrade dev toolchain (Heft, Webpack, TypeScript)"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/tsdoc\" to `0.15.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.16.2",
+      "tag": "@microsoft/tsdoc-config_v0.16.2",
+      "date": "Wed, 14 Sep 2022 02:55:06 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/tsdoc\" from `0.14.1` to `0.14.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.16.1",
+      "tag": "@microsoft/tsdoc-config_v0.16.1",
+      "date": "Sat, 09 Apr 2022 02:28:41 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Rename the \"master\" branch to \"main.\""
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/tsdoc\" from `0.14.0` to `0.14.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.16.0",
+      "tag": "@microsoft/tsdoc-config_v0.16.0",
+      "date": "Thu, 07 Apr 2022 22:51:07 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Add `supportedHtmlElements` and `reportUnsupportedHtmlElements` configuration options"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/tsdoc\" from `0.13.2` to `0.14.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.15.2",
+      "tag": "@microsoft/tsdoc-config_v0.15.2",
+      "date": "Tue, 20 Apr 2021 04:25:13 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Improve reporting of tsdoc-config-unresolved-extends"
+          },
+          {
+            "comment": "Fix some issues with the logic for TSDocConfigFile.hasErrors and TSDocConfigFile.fileNotFound"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/tsdoc\" from `0.13.1` to `0.13.2`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.15.1",
+      "tag": "@microsoft/tsdoc-config_v0.15.1",
+      "date": "Mon, 19 Apr 2021 21:22:32 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Improve reporting of error messages when loading tsdoc.json"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/tsdoc\" from `0.13.0` to `0.13.1`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.15.0",
+      "tag": "@microsoft/tsdoc-config_v0.15.0",
+      "date": "Fri, 16 Apr 2021 23:22:26 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Add a new API TSDocConfigFile.loadFromObject()"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.14.0",
+      "tag": "@microsoft/tsdoc-config_v0.14.0",
+      "date": "Fri, 22 Jan 2021 18:07:19 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Update tsdoc.json schema to add a new field \"noStandardTags\""
+          },
+          {
+            "comment": "TSDocConfigFile.configureParser() now clears any previous state, and it only defines standard tags if \"noStandardTags\" is not true."
+          },
+          {
+            "comment": "Added new API TSDocConfigFile.updateParser() which preserves the previous configuration state"
+          },
+          {
+            "comment": "Add new \"supportForTags\" field to tsdoc.json schema"
+          },
+          {
+            "comment": "Add new APIs: TSDocConfigFile.supportForTags, .clearTagDefinitions(), .addTagDefinition(), .clearSupportForTags(), .setSupportForTag(), .loadFromParser(), .saveFile(), .saveToObject()"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/tsdoc\" from `0.12.24` to `0.13.0`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.13.9",
+      "tag": "@microsoft/tsdoc-config_v0.13.9",
+      "date": "Thu, 03 Dec 2020 08:07:55 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/tsdoc\" from `0.12.23` to `0.12.24`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.13.8",
+      "tag": "@microsoft/tsdoc-config_v0.13.8",
+      "date": "Thu, 03 Dec 2020 04:31:52 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/tsdoc\" from `0.12.22` to `0.12.23`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.13.7",
+      "tag": "@microsoft/tsdoc-config_v0.13.7",
+      "date": "Mon, 30 Nov 2020 06:16:21 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Update documentation to reference the new website URL"
+          },
+          {
+            "comment": "Upgrade build tools and configuration"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/tsdoc\" from `0.12.21` to `0.12.22`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.13.6",
+      "tag": "@microsoft/tsdoc-config_v0.13.6",
+      "date": "Fri, 04 Sep 2020 15:53:27 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Update build system"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/tsdoc\" from `0.12.20` to `0.12.21`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.13.5",
+      "tag": "@microsoft/tsdoc-config_v0.13.5",
+      "date": "Sun, 19 Jul 2020 01:22:35 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Bump ajv dependency to ~6.12.3"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.13.4",
+      "tag": "@microsoft/tsdoc-config_v0.13.4",
+      "date": "Wed, 20 May 2020 22:33:27 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Fix typo"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/tsdoc\" from `0.12.19` to `0.12.20`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.13.3",
+      "tag": "@microsoft/tsdoc-config_v0.13.3",
+      "date": "Fri, 27 Mar 2020 23:14:53 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/tsdoc\" from `0.12.18` to `0.12.19`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.13.2",
+      "tag": "@microsoft/tsdoc-config_v0.13.2",
+      "date": "Sat, 22 Feb 2020 20:44:16 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/tsdoc\" from `0.12.17` to `0.12.18`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.13.1",
+      "tag": "@microsoft/tsdoc-config_v0.13.1",
+      "date": "Sat, 22 Feb 2020 02:55:07 GMT",
+      "comments": {
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/tsdoc\" from `0.12.16` to `0.12.17`"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.13.0",
+      "tag": "@microsoft/tsdoc-config_v0.13.0",
+      "date": "Tue, 21 Jan 2020 21:26:36 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Improve tsdoc.json parser to allow JSON comments"
+          },
+          {
+            "comment": "Add a new API TSDocConfigFile.checkForModifiedFiles() to facilitate caching"
+          }
+        ]
+      }
+    },
+    {
+      "version": "0.12.16",
+      "tag": "@microsoft/tsdoc-config_v0.12.16",
+      "date": "Tue, 19 Nov 2019 22:01:56 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Initial release"
+          }
+        ],
+        "dependency": [
+          {
+            "comment": "Updating dependency \"@microsoft/tsdoc\" from `0.12.15` to `0.12.16`"
+          }
+        ]
+      }
+    }
+  ]
+}

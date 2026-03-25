@@ -1,0 +1,45 @@
+{
+    "name": "cli-progress",
+    "version": "3.12.0",
+    "description": "easy to use progress-bar for command-line/terminal applications",
+    "keywords": [
+        "cli",
+        "tty",
+        "terminal",
+        "progress",
+        "progressbar",
+        "multibar",
+        "bar",
+        "status",
+        "statusbar",
+        "utility",
+        "widget"
+    ],
+    "homepage": "https://github.com/npkgz/cli-progress",
+    "bugs": "https://github.com/npkgz/cli-progress/issues",
+    "repository": "npkgz/cli-progress",
+    "files": [
+        "cli-progress.js",
+        "lib/",
+        "presets/"
+    ],
+    "scripts": {
+        "lint": "eslint lib/**.js",
+        "pretest": "npm run lint",
+        "test": "mocha test/**/*.test.js"
+    },
+    "engines": {
+        "node": ">=4"
+    },
+    "main": "./cli-progress.js",
+    "author": "Andi Dittrich (https://andidittrich.com)",
+    "license": "MIT",
+    "dependencies": {
+        "string-width": "^4.2.3"
+    },
+    "devDependencies": {
+        "eslint": "^8.14.0",
+        "eslint-config-aenondynamics": "^0.2.0",
+        "mocha": "^9.2.2"
+    }
+}

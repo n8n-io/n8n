@@ -1,0 +1,77 @@
+'use strict';
+
+var $TypeError = require('es-errors/type');
+
+var AddValueToKeyedGroup = require('./AddValueToKeyedGroup');
+var Call = require('./Call');
+var GetIterator = require('./GetIterator');
+var IsCallable = require('./IsCallable');
+var IteratorClose = require('./IteratorClose');
+var IteratorStep = require('./IteratorStep');
+var IteratorValue = require('./IteratorValue');
+var RequireObjectCoercible = require('./RequireObjectCoercible');
+var ThrowCompletion = require('./ThrowCompletion');
+var ToPropertyKey = require('./ToPropertyKey');
+
+var isNegativeZero = require('../helpers/isNegativeZero');
+var maxSafeInteger = require('../helpers/maxSafeInteger');
+
+// https://tc39.es/ecma262/#sec-groupby
+
+module.exports = function GroupBy(items, callbackfn, keyCoercion) {
+	if (keyCoercion !== 'PROPERTY' && keyCoercion !== 'ZERO') {
+		throw new $TypeError('Assertion failed: `keyCoercion` must be `"PROPERTY"` or `"ZERO"`');
+	}
+
+	RequireObjectCoercible(items); // step 1
+
+	if (!IsCallable(callbackfn)) {
+		throw new $TypeError('callbackfn must be callable'); // step 2
+	}
+
+	var groups = []; // step 3
+
+	var iteratorRecord = GetIterator(items, 'SYNC'); // step 4
+
+	var k = 0; // step 5
+
+	// eslint-disable-next-line no-constant-condition
+	while (true) { // step 6
+		if (k >= maxSafeInteger) { // step 6.a
+			var error = ThrowCompletion(new $TypeError('k must be less than 2 ** 53 - 1')); // step 6.a.i
+			return IteratorClose(iteratorRecord, error); // step 6.a.ii
+		}
+		var next = IteratorStep(iteratorRecord); // step 6.b
+		if (!next) { // step 6.c
+			return groups; // step 6.c.i
+		}
+
+		var value = IteratorValue(next); // step 6.dv
+
+		var key;
+		try {
+			key = Call(callbackfn, undefined, [value, k]); // step 6.e
+		} catch (e) {
+			return IteratorClose(iteratorRecord, ThrowCompletion(e)); // step 6.f
+		}
+
+		if (keyCoercion === 'PROPERTY') { // step 6.g
+			try {
+				key = ToPropertyKey(key); // step 6.g.i
+			} catch (e) {
+				return IteratorClose(iteratorRecord, ThrowCompletion(e)); // step 6.g.ii
+			}
+		} else { // step 6.h
+			if (keyCoercion !== 'ZERO') {
+				throw new $TypeError('keyCoercion must be ~PROPERTY~ or ~ZERO~'); // step 6.h.i
+			}
+			if (isNegativeZero(key)) {
+				key = +0; // step 6.h.ii
+			}
+		}
+
+		AddValueToKeyedGroup(groups, key, value); // step 6.i
+
+		k += 1; // step 6.j
+	}
+};

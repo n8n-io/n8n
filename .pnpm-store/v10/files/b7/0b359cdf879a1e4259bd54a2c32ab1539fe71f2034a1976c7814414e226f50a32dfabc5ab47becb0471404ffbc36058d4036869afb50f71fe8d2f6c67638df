@@ -1,0 +1,53 @@
+import type { EntryTypeCode, EntryTypeName } from './types.js';
+export type HeaderData = {
+    path?: string;
+    mode?: number;
+    uid?: number;
+    gid?: number;
+    size?: number;
+    cksum?: number;
+    type?: EntryTypeName | 'Unsupported';
+    linkpath?: string;
+    uname?: string;
+    gname?: string;
+    devmaj?: number;
+    devmin?: number;
+    atime?: Date;
+    ctime?: Date;
+    mtime?: Date;
+    charset?: string;
+    comment?: string;
+    dev?: number;
+    ino?: number;
+    nlink?: number;
+};
+export declare class Header implements HeaderData {
+    #private;
+    cksumValid: boolean;
+    needPax: boolean;
+    nullBlock: boolean;
+    block?: Buffer;
+    path?: string;
+    mode?: number;
+    uid?: number;
+    gid?: number;
+    size?: number;
+    cksum?: number;
+    linkpath?: string;
+    uname?: string;
+    gname?: string;
+    devmaj: number;
+    devmin: number;
+    atime?: Date;
+    ctime?: Date;
+    mtime?: Date;
+    charset?: string;
+    comment?: string;
+    constructor(data?: Buffer | HeaderData, off?: number, ex?: HeaderData, gex?: HeaderData);
+    decode(buf: Buffer, off: number, ex?: HeaderData, gex?: HeaderData): void;
+    encode(buf?: Buffer, off?: number): boolean;
+    get type(): EntryTypeName;
+    get typeKey(): EntryTypeCode | 'Unsupported';
+    set type(type: EntryTypeCode | EntryTypeName | 'Unsupported');
+}
+//# sourceMappingURL=header.d.ts.map

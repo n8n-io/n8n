@@ -1,0 +1,1 @@
+{"version":3,"file":"inspect.browser.js","sourceRoot":"","sources":["../../../src/util/inspect.browser.ts"],"names":[],"mappings":"AAAA,uCAAuC;AACvC,kCAAkC;AAElC,MAAM,CAAC,MAAM,MAAM,GAAG,EAAE,CAAC","sourcesContent":["// Copyright (c) Microsoft Corporation.\n// Licensed under the MIT license.\n\nexport const custom = {};\n"]}

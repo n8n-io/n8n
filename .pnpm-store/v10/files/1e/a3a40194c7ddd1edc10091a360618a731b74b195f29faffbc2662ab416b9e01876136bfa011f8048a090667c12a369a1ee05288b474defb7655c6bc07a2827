@@ -1,0 +1,57 @@
+{
+  "name": "@huggingface/tasks",
+  "version": "0.19.34",
+  "description": "List of ML tasks for huggingface.co/tasks",
+  "repository": "https://github.com/huggingface/huggingface.js.git",
+  "publishConfig": {
+    "access": "public"
+  },
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/commonjs/index.d.ts",
+        "default": "./dist/commonjs/index.js"
+      }
+    }
+  },
+  "source": "./src/index.ts",
+  "type": "module",
+  "files": [
+    "dist",
+    "src",
+    "tsconfig.json"
+  ],
+  "keywords": [
+    "huggingface",
+    "hub",
+    "languages"
+  ],
+  "author": "Hugging Face",
+  "license": "MIT",
+  "tshy": {
+    "exports": {
+      "./package.json": "./package.json",
+      ".": "./src/index.ts"
+    }
+  },
+  "main": "./dist/commonjs/index.js",
+  "types": "./dist/commonjs/index.d.ts",
+  "module": "./dist/esm/index.js",
+  "scripts": {
+    "lint": "eslint --quiet --fix --ext .cjs,.ts .",
+    "lint:check": "eslint --ext .cjs,.ts .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "build": "tshy",
+    "watch:cjs": "tsc --declaration --outdir dist/commonjs --module commonjs --watch",
+    "watch:esm": "tsc --declaration --outdir dist/esm --watch",
+    "watch": "npm-run-all --parallel watch:esm watch:cjs",
+    "check": "tsc",
+    "test": "vitest run"
+  }
+}

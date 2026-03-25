@@ -1,0 +1,62 @@
+{
+  "name": "pg",
+  "version": "8.12.0",
+  "description": "PostgreSQL client - pure javascript & libpq with the same API",
+  "keywords": [
+    "database",
+    "libpq",
+    "pg",
+    "postgre",
+    "postgres",
+    "postgresql",
+    "rdbms"
+  ],
+  "homepage": "https://github.com/brianc/node-postgres",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/brianc/node-postgres.git",
+    "directory": "packages/pg"
+  },
+  "author": "Brian Carlson <brian.m.carlson@gmail.com>",
+  "main": "./lib",
+  "dependencies": {
+    "pg-connection-string": "^2.6.4",
+    "pg-pool": "^3.6.2",
+    "pg-protocol": "^1.6.1",
+    "pg-types": "^2.1.0",
+    "pgpass": "1.x"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20230404.0",
+    "async": "2.6.4",
+    "bluebird": "3.5.2",
+    "co": "4.6.0",
+    "pg-copy-streams": "0.3.0",
+    "typescript": "^4.0.3",
+    "workerd": "^1.20230419.0",
+    "wrangler": "3.58.0"
+  },
+  "optionalDependencies": {
+    "pg-cloudflare": "^1.1.1"
+  },
+  "peerDependencies": {
+    "pg-native": ">=3.0.1"
+  },
+  "peerDependenciesMeta": {
+    "pg-native": {
+      "optional": true
+    }
+  },
+  "scripts": {
+    "test": "make test-all"
+  },
+  "files": [
+    "lib",
+    "SPONSORS.md"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">= 8.0.0"
+  },
+  "gitHead": "0f42880861951970e193d31359508d460a67d25a"
+}

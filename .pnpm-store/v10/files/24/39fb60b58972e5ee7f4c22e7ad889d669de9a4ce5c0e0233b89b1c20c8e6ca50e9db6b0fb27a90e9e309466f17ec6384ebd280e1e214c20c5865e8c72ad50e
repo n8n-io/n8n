@@ -1,0 +1,28 @@
+name: ci
+
+on: [pull_request]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        node-version: [18.x, 20.x]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: ${{ matrix.os }} / Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: npm install, build, and test
+        run: |
+          sudo apt install -y --no-install-recommends graphviz
+          npm i -g npm@9
+          npm ci
+          npm run test
+          npm run debug
+          npm run generate

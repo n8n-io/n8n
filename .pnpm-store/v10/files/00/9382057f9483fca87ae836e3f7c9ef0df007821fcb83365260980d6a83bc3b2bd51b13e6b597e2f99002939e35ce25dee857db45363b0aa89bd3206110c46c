@@ -1,0 +1,45 @@
+# TODO: Line 43, enable pytest --doctest-modules
+
+name: Tests
+on: [push, pull_request]
+jobs:
+  Tests:
+    strategy:
+      fail-fast: false
+      max-parallel: 15
+      matrix:
+        node: [12.x, 14.x, 16.x]
+        python: ["3.6", "3.8", "3.10"]
+        os: [macos-latest, ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+      - name: Use Node.js ${{ matrix.node }}
+        uses: actions/setup-node@v2
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Use Python ${{ matrix.python }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python }}
+        env:
+          PYTHON_VERSION: ${{ matrix.python }}
+      - name: Install Dependencies
+        run: |
+          npm install --no-progress
+          pip install flake8 pytest
+      - name: Set Windows environment
+        if: matrix.os == 'windows-latest'
+        run: |
+          echo 'GYP_MSVS_VERSION=2015' >> $Env:GITHUB_ENV
+          echo 'GYP_MSVS_OVERRIDE_PATH=C:\\Dummy' >> $Env:GITHUB_ENV
+      - name: Lint Python
+        if: matrix.os == 'ubuntu-latest'
+        run: flake8 . --ignore=E203,W503  --max-complexity=101 --max-line-length=88 --show-source --statistics
+      - name: Run Python tests
+        run: python -m pytest
+      # - name: Run doctests with pytest
+      #   run: python -m pytest --doctest-modules
+      - name: Run Node tests
+        run: npm test

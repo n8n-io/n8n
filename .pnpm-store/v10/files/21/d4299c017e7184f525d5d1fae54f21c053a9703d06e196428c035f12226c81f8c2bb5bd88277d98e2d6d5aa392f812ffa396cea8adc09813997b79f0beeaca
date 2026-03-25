@@ -1,0 +1,78 @@
+{
+  "name": "ts-morph",
+  "version": "27.0.2",
+  "description": "TypeScript compiler wrapper for static analysis and code manipulation.",
+  "main": "dist/ts-morph.js",
+  "types": "lib/ts-morph.d.ts",
+  "scripts": {
+    "dopublish": "deno task type-check-docs && deno task code-generate && deno task package && deno task publish-code-verification && echo \"Run: npm publish\"",
+    "build": "deno task build:declarations && deno task build:node",
+    "build:node": "rimraf dist && rollup -c ",
+    "build:deno": "deno task build:declarations && rimraf dist-deno && rollup -c --environment BUILD:deno && deno run -A scripts/buildDeno.ts",
+    "build:declarations": "deno run -A scripts/generation/main.ts create-declaration-file",
+    "test": "deno run -A npm:mocha",
+    "test:debug": "deno task test --inspect-brk",
+    "test:watch": "deno task test --watch-extensions ts --watch",
+    "test:ci": "deno task test",
+    "test:ts-versions": "deno run -A scripts/test/testTypeScriptVersions.ts",
+    "type-check": "deno run -A scripts/typeCheckLibrary.ts",
+    "code-generate": "deno run -A scripts/generation/main.ts",
+    "output-wrapped-nodes": "deno run -A scripts/generation/outputWrappedNodesInfo.ts",
+    "package": "deno task build",
+    "publish-code-verification": "deno task code-verification && deno task ensure-no-declaration-file-errors",
+    "code-verification": "deno run -A scripts/verification/main.ts ensure-structures-match-classes ensure-overload-structures-match ensure-array-inputs-readonly ensure-classes-implement-structure-methods ensure-mixin-not-applied-multiple-times validate-public-api-class-member-names validate-compiler-node-to-wrapped-type validate-code-fences",
+    "ensure-structures-match-classes": "deno run -A scripts/verification/main.ts ensure-structures-match-classes",
+    "ensure-overload-structures-match": "deno run -A scripts/verification/main.ts ensure-overload-structures-match",
+    "ensure-no-project-compile-errors": "deno run -A scripts/verification/ensureNoProjectCompileErrors.ts",
+    "ensure-no-declaration-file-errors": "deno run -A scripts/verification/ensureNoDeclarationFileErrors.ts",
+    "ensure-array-inputs-readonly": "deno run -A scripts/verification/main ensure-array-inputs-readonly.ts",
+    "ensure-or-throw-exists": "deno run -A scripts/verification/main ensure-or-throw-exists.ts",
+    "type-check-docs": "deno run -A scripts/typeCheckDocumentation.ts"
+  },
+  "repository": "git+https://github.com/dsherret/ts-morph.git",
+  "keywords": [
+    "typescript",
+    "ast",
+    "static analysis",
+    "code generation",
+    "code refactor"
+  ],
+  "author": "David Sherret",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/dsherret/ts-morph/issues"
+  },
+  "homepage": "https://github.com/dsherret/ts-morph#readme",
+  "dependencies": {
+    "@ts-morph/common": "~0.28.1",
+    "code-block-writer": "^13.0.3"
+  },
+  "devDependencies": {
+    "@rollup/plugin-typescript": "^12.1.2",
+    "@types/chai": "^5.2.1",
+    "@types/diff": "^7.0.2",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.14.1",
+    "chai": "^5.2.0",
+    "conditional-type-checks": "^1.0.6",
+    "cross-env": "^7.0.3",
+    "diff": "^7.0.0",
+    "mocha": "11.1.0",
+    "rimraf": "^6.0.1",
+    "rollup": "=4.40.0",
+    "ts-node": "10.9.2",
+    "typescript": "~5.9.2"
+  },
+  "browser": {
+    "fs": false,
+    "os": false,
+    "fs.realpath": false,
+    "mkdirp": false,
+    "dir-glob": false,
+    "graceful-fs": false,
+    "source-map-support": false,
+    "glob-parent": false,
+    "glob": false,
+    "tinyglobby": false
+  }
+}

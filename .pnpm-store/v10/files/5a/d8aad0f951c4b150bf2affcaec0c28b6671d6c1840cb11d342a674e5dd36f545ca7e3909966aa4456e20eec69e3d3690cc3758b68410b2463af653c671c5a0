@@ -1,0 +1,36 @@
+{
+  "name": "random-bytes",
+  "description": "URL and cookie safe UIDs",
+  "version": "1.0.0",
+  "contributors": [
+    "Douglas Christopher Wilson <doug@somethingdoug.com>"
+  ],
+  "license": "MIT",
+  "repository": "crypto-utils/random-bytes",
+  "devDependencies": {
+    "bluebird": "3.1.1",
+    "istanbul": "0.4.2",
+    "mocha": "2.3.4",
+    "proxyquire": "1.2.0"
+  },
+  "files": [
+    "LICENSE",
+    "HISTORY.md",
+    "README.md",
+    "index.js"
+  ],
+  "engines": {
+    "node": ">= 0.8"
+  },
+  "scripts": {
+    "test": "mocha --trace-deprecation --reporter spec --bail --check-leaks test/",
+    "test-cov": "istanbul cover node_modules/mocha/bin/_mocha -- --trace-deprecation --reporter dot --check-leaks test/",
+    "test-travis": "istanbul cover node_modules/mocha/bin/_mocha --report lcovonly -- --trace-deprecation --reporter spec --check-leaks test/"
+  },
+  "keywords": [
+    "bytes",
+    "generator",
+    "random",
+    "safe"
+  ]
+}

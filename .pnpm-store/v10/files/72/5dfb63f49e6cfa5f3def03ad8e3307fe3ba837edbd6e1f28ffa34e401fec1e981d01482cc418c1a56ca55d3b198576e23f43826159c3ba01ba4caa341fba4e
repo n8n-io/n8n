@@ -1,0 +1,44 @@
+{
+  "name": "json-schema-typed",
+  "description": "JSON Schema TypeScript definitions with complete inline documentation.",
+  "license": "BSD-2-Clause",
+  "version": "8.0.2",
+  "homepage": "https://github.com/RemyRylan/json-schema-typed/tree/main/dist/node",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/RemyRylan/json-schema-typed.git"
+  },
+  "author": {
+    "name": "Remy Rylan",
+    "url": "https://github.com/RemyRylan"
+  },
+  "main": "./draft_2020_12.js",
+  "types": "./draft_2020_12.d.ts",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./draft_2020_12.d.ts",
+      "default": "./draft_2020_12.js"
+    },
+    "./draft-07": {
+      "types": "./draft_07.d.ts",
+      "default": "./draft_07.js"
+    },
+    "./draft-2019-09": {
+      "types": "./draft_2019_09.d.ts",
+      "default": "./draft_2019_09.js"
+    },
+    "./draft-2020-12": {
+      "types": "./draft_2020_12.d.ts",
+      "default": "./draft_2020_12.js"
+    }
+  },
+  "keywords": [
+    "jsonschema",
+    "typescript",
+    "types",
+    "definitions",
+    "json",
+    "schema"
+  ]
+}

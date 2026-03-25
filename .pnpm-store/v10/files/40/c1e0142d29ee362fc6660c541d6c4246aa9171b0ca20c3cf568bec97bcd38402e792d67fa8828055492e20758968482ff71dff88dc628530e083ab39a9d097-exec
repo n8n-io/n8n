@@ -1,0 +1,42 @@
+#!/usr/bin/env node
+
+var fs = require("fs"),
+    queue = require("d3-queue").queue,
+    rw = require("../");
+
+var code = 0;
+
+queue(1)
+    .defer(testRead, "utf8", "gréén\n")
+    .defer(testRead, {encoding: "utf8"}, "gréén\n")
+    .defer(testRead, "ascii", "grC)C)n\n")
+    .defer(testRead, {encoding: "ascii"}, "grC)C)n\n")
+    .defer(testWrite, "utf8", "gréén\n")
+    .defer(testWrite, {encoding: "utf8"}, "gréén\n")
+    .defer(testWrite, "ascii", "gr��n\n")
+    .defer(testWrite, {encoding: "ascii"}, "gr��n\n")
+    .await(done);
+
+function testRead(options, expected, callback) {
+  rw.readFile("test/utf8.txt", options, function(error, actual) {
+    if (error) return void callback(error);
+    if (actual !== expected) console.warn(actual + " !== " + expected), code = 1;
+    callback(null);
+  });
+}
+
+function testWrite(options, expected, callback) {
+  rw.writeFile("test/encoding-async.out", "gréén\n", options, function(error) {
+    if (error) return void callback(error);
+    fs.readFile("test/encoding-async.out", "utf8", function(error, actual) {
+      if (error) return void callback(error);
+      if (actual !== expected) console.warn(actual + " !== " + expected), code = 1;
+      callback(null);
+    });
+  });
+}
+
+function done(error) {
+  if (error) throw error;
+  process.exit(code);
+}

@@ -1,0 +1,56 @@
+{
+  "name": "@lezer/generator",
+  "version": "1.8.0",
+  "description": "Parser generator for the incremental lezer parser",
+  "main": "dist/index.cjs",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./test": {
+      "import": "./dist/test.js",
+      "require": "./dist/test.cjs"
+    },
+    "./dist/test": {
+      "import": "./dist/test.js",
+      "require": "./dist/test.cjs"
+    },
+    "./rollup": {
+      "import": "./dist/rollup-plugin-lezer.js",
+      "require": "./dist/rollup-plugin-lezer.cjs"
+    }
+  },
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "author": "Marijn Haverbeke <marijn@haverbeke.berlin>",
+  "license": "MIT",
+  "devDependencies": {
+    "@marijn/buildtool": "^0.1.6",
+    "@types/mocha": "^5.2.6",
+    "@types/node": "^20.5.0",
+    "ist": "^1.1.1",
+    "mocha": "^10.2.0",
+    "ts-node": "^10.9.2"
+  },
+  "dependencies": {
+    "@lezer/common": "^1.1.0",
+    "@lezer/lr": "^1.3.0"
+  },
+  "files": [
+    "dist"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lezer-parser/generator.git"
+  },
+  "scripts": {
+    "watch": "node build.js --watch",
+    "prepare": "node build.js",
+    "test": "mocha"
+  },
+  "bin": {
+    "lezer-generator": "./src/lezer-generator.cjs"
+  }
+}

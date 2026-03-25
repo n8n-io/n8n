@@ -1,0 +1,11 @@
+{
+    "rules": {
+        "indent": 0,
+        "global-require": 0,
+        "no-await-in-loop": 0
+    },
+    "extends": ["nodemailer", "prettier"],
+    "parserOptions": {
+        "ecmaVersion": 2017
+    }
+}

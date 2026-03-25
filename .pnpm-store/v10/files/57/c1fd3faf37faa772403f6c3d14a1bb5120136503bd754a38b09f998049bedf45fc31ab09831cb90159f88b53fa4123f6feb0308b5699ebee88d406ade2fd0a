@@ -1,0 +1,1 @@
+{"version":3,"file":"apitypes.js","sourceRoot":"","sources":["../../src/apitypes.ts"],"names":[],"mappings":";AAAA;;;;;;;;;;;;;;GAcG"}

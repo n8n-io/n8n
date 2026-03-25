@@ -1,0 +1,69 @@
+{
+  "name": "@supabase/auth-js",
+  "version": "2.69.1",
+  "private": false,
+  "description": "Official client library for Supabase Auth",
+  "keywords": [
+    "auth",
+    "supabase",
+    "auth",
+    "authentication"
+  ],
+  "homepage": "https://github.com/supabase/auth-js",
+  "bugs": "https://github.com/supabase/auth-js/issues",
+  "license": "MIT",
+  "author": "Supabase",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "main": "dist/main/index.js",
+  "module": "dist/module/index.js",
+  "types": "dist/module/index.d.ts",
+  "repository": "github:supabase/auth-js",
+  "scripts": {
+    "clean": "rimraf dist docs",
+    "coverage": "echo \"run npm test\"",
+    "format": "prettier --write \"{src,test}/**/*.ts\"",
+    "build": "genversion src/lib/version.ts --es6 && run-s clean format build:* && run-s lint",
+    "build:main": "tsc -p tsconfig.json",
+    "build:module": "tsc -p tsconfig.module.json",
+    "lint": "eslint ./src/**/* test/**/*.test.ts",
+    "test": "run-s test:clean test:infra test:suite test:clean",
+    "test:suite": "jest --runInBand --coverage",
+    "test:infra": "cd infra && docker compose down && docker compose pull && docker compose up -d && sleep 30",
+    "test:clean": "cd infra && docker compose down",
+    "docs": "typedoc src/index.ts --out docs/v2 --excludePrivate --excludeProtected",
+    "docs:json": "typedoc --json docs/v2/spec.json --excludeExternals --excludePrivate --excludeProtected src/index.ts"
+  },
+  "dependencies": {
+    "@supabase/node-fetch": "^2.6.14"
+  },
+  "devDependencies": {
+    "@types/faker": "^5.1.6",
+    "@types/jest": "^28.1.6",
+    "@types/jsonwebtoken": "^8.5.6",
+    "@types/node": "^18.16.19",
+    "@types/node-fetch": "^2.6.4",
+    "@typescript-eslint/eslint-plugin": "^5.30.7",
+    "@typescript-eslint/parser": "^5.30.7",
+    "eslint": "^8.20.0",
+    "eslint-config-prettier": "^8.5.0",
+    "eslint-config-standard": "^17.0.0",
+    "eslint-plugin-import": "^2.26.0",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^6.0.0",
+    "faker": "^5.3.1",
+    "genversion": "^3.1.1",
+    "jest": "^28.1.3",
+    "jest-mock-server": "^0.1.0",
+    "jsonwebtoken": "^9.0.0",
+    "npm-run-all": "^4.1.5",
+    "prettier": "2.7.1",
+    "rimraf": "^3.0.2",
+    "semantic-release-plugin-update-version-in-files": "^1.1.0",
+    "ts-jest": "^28.0.7",
+    "typedoc": "^0.22.16",
+    "typescript": "^4.7.4"
+  }
+}

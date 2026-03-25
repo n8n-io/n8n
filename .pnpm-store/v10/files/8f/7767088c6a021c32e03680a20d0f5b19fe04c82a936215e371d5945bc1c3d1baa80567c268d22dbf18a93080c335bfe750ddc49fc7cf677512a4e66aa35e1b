@@ -1,0 +1,184 @@
+# Copyright 2012 Mozilla Foundation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Main toolbar buttons (tooltips and alt text for images)
+previous.title=Iphepha langaphambili
+previous_label=Okwangaphambili
+next.title=Iphepha elilandelayo
+next_label=Okulandelayo
+
+# LOCALIZATION NOTE (page.title): The tooltip for the pageNumber input.
+page.title=Iphepha
+# LOCALIZATION NOTE (of_pages): "{{pagesCount}}" will be replaced by a number
+# representing the total number of pages in the document.
+of_pages=kwali- {{pagesCount}}
+# LOCALIZATION NOTE (page_of_pages): "{{pageNumber}}" and "{{pagesCount}}"
+# will be replaced by a number representing the currently visible page,
+# respectively a number representing the total number of pages in the document.
+page_of_pages=({{pageNumber}} kwali {{pagesCount}})
+
+zoom_out.title=Bhekelisela Kudana
+zoom_out_label=Bhekelisela Kudana
+zoom_in.title=Sondeza Kufuphi
+zoom_in_label=Sondeza Kufuphi
+zoom.title=Yandisa / Nciphisa
+presentation_mode.title=Tshintshela kwimo yonikezelo
+presentation_mode_label=Imo yonikezelo
+open_file.title=Vula Ifayile
+open_file_label=Vula
+print.title=Printa
+print_label=Printa
+download.title=Khuphela
+download_label=Khuphela
+bookmark.title=Imbonakalo ekhoyo (kopa okanye vula kwifestile entsha)
+bookmark_label=Imbonakalo ekhoyo
+
+# Secondary toolbar and context menu
+tools.title=Izixhobo zemiyalelo
+tools_label=Izixhobo zemiyalelo
+first_page.title=Yiya kwiphepha lokuqala
+first_page.label=Yiya kwiphepha lokuqala
+first_page_label=Yiya kwiphepha lokuqala
+last_page.title=Yiya kwiphepha lokugqibela
+last_page.label=Yiya kwiphepha lokugqibela
+last_page_label=Yiya kwiphepha lokugqibela
+page_rotate_cw.title=Jikelisa ngasekunene
+page_rotate_cw.label=Jikelisa ngasekunene
+page_rotate_cw_label=Jikelisa ngasekunene
+page_rotate_ccw.title=Jikelisa ngasekhohlo
+page_rotate_ccw.label=Jikelisa ngasekhohlo
+page_rotate_ccw_label=Jikelisa ngasekhohlo
+
+cursor_text_select_tool.title=Vumela iSixhobo sokuKhetha iTeksti
+cursor_text_select_tool_label=ISixhobo sokuKhetha iTeksti
+cursor_hand_tool.title=Yenza iSixhobo seSandla siSebenze
+cursor_hand_tool_label=ISixhobo seSandla
+
+# Document properties dialog box
+document_properties.title=Iipropati zoxwebhu…
+document_properties_label=Iipropati zoxwebhu…
+document_properties_file_name=Igama lefayile:
+document_properties_file_size=Isayizi yefayile:
+# LOCALIZATION NOTE (document_properties_kb): "{{size_kb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in kilobytes, respectively in bytes.
+document_properties_kb={{size_kb}} KB (iibhayiti{{size_b}})
+# LOCALIZATION NOTE (document_properties_mb): "{{size_mb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in megabytes, respectively in bytes.
+document_properties_mb={{size_mb}} MB (iibhayithi{{size_b}})
+document_properties_title=Umxholo:
+document_properties_author=Umbhali:
+document_properties_subject=Umbandela:
+document_properties_keywords=Amagama aphambili:
+document_properties_creation_date=Umhla wokwenziwa kwayo:
+document_properties_modification_date=Umhla wokulungiswa kwayo:
+# LOCALIZATION NOTE (document_properties_date_string): "{{date}}" and "{{time}}"
+# will be replaced by the creation/modification date, and time, of the PDF file.
+document_properties_date_string={{date}}, {{time}}
+document_properties_creator=Umntu oyenzileyo:
+document_properties_producer=Umvelisi we-PDF:
+document_properties_version=Uhlelo lwe-PDF:
+document_properties_page_count=Inani lamaphepha:
+document_properties_close=Vala
+
+print_progress_message=Ilungisa uxwebhu ukuze iprinte…
+# LOCALIZATION NOTE (print_progress_percent): "{{progress}}" will be replaced by
+# a numerical per cent value.
+print_progress_percent={{progress}}%
+print_progress_close=Rhoxisa
+
+# Tooltips and alt text for side panel toolbar buttons
+# (the _label strings are alt text for the buttons, the .title strings are
+# tooltips)
+toggle_sidebar.title=Togola ngebha eseCaleni
+toggle_sidebar_notification.title=ISidebar yeQhosha (uxwebhu lunolwandlalo/iziqhotyoshelwa)
+toggle_sidebar_label=Togola ngebha eseCaleni
+document_outline.title=Bonisa uLwandlalo loXwebhu (cofa kabini ukuze wandise/diliza zonke izinto)
+document_outline_label=Isishwankathelo soxwebhu
+attachments.title=Bonisa iziqhotyoshelwa
+attachments_label=Iziqhoboshelo
+thumbs.title=Bonisa ukrobiso kumfanekiso
+thumbs_label=Ukrobiso kumfanekiso
+findbar.title=Fumana kuXwebhu
+findbar_label=Fumana
+
+# Thumbnails panel item (tooltip and alt text for images)
+# LOCALIZATION NOTE (thumb_page_title): "{{page}}" will be replaced by the page
+# number.
+thumb_page_title=Iphepha {{page}}
+# LOCALIZATION NOTE (thumb_page_canvas): "{{page}}" will be replaced by the page
+# number.
+thumb_page_canvas=Ukrobiso kumfanekiso wephepha {{page}}
+
+# Find panel button title and messages
+find_input.title=Fumana
+find_input.placeholder=Fumana kuXwebhu…
+find_previous.title=Fumanisa isenzeko sangaphambili sebinzana lamagama
+find_previous_label=Okwangaphambili
+find_next.title=Fumanisa isenzeko esilandelayo sebinzana lamagama
+find_next_label=Okulandelayo
+find_highlight=Qaqambisa konke
+find_match_case_label=Tshatisa ngobukhulu bukanobumba
+find_reached_top=Ufike ngaphezulu ephepheni, kusukwa ngezantsi
+find_reached_bottom=Ufike ekupheleni kwephepha, kusukwa ngaphezulu
+find_not_found=Ibinzana alifunyenwanga
+
+# Error panel labels
+error_more_info=Inkcazelo Engakumbi
+error_less_info=Inkcazelo Encinane
+error_close=Vala
+# LOCALIZATION NOTE (error_version_info): "{{version}}" and "{{build}}" will be
+# replaced by the PDF.JS version and build ID.
+error_version_info=I-PDF.js v{{version}} (yakha: {{build}})
+# LOCALIZATION NOTE (error_message): "{{message}}" will be replaced by an
+# english string describing the error.
+error_message=Umyalezo: {{message}}
+# LOCALIZATION NOTE (error_stack): "{{stack}}" will be replaced with a stack
+# trace.
+error_stack=Imfumba: {{stack}}
+# LOCALIZATION NOTE (error_file): "{{file}}" will be replaced with a filename
+error_file=Ifayile: {{file}}
+# LOCALIZATION NOTE (error_line): "{{line}}" will be replaced with a line number
+error_line=Umgca: {{line}}
+rendering_error=Imposiso yenzekile xa bekunikezelwa iphepha.
+
+# Predefined zoom values
+page_scale_width=Ububanzi bephepha
+page_scale_fit=Ukulinganiswa kwephepha
+page_scale_auto=Ukwandisa/Ukunciphisa Ngokwayo
+page_scale_actual=Ubungakanani bokwenene
+# LOCALIZATION NOTE (page_scale_percent): "{{scale}}" will be replaced by a
+# numerical scale value.
+page_scale_percent={{scale}}%
+
+# Loading indicator messages
+loading_error_indicator=Imposiso
+loading_error=Imposiso yenzekile xa kulayishwa i-PDF.
+invalid_file_error=Ifayile ye-PDF engeyiyo okanye eyonakalisiweyo.
+missing_file_error=Ifayile ye-PDF edukileyo.
+unexpected_response_error=Impendulo yeseva engalindelekanga.
+
+# LOCALIZATION NOTE (text_annotation_type.alt): This is used as a tooltip.
+# "{{type}}" will be replaced with an annotation type from a list defined in
+# the PDF spec (32000-1:2008 Table 169 – Annotation types).
+# Some common types are e.g.: "Check", "Text", "Comment", "Note"
+text_annotation_type.alt=[{{type}} Ubhalo-nqaku]
+password_label=Faka ipasiwedi ukuze uvule le fayile yePDF.
+password_invalid=Ipasiwedi ayisebenzi. Nceda uzame kwakhona.
+password_ok=KULUNGILE
+password_cancel=Rhoxisa
+
+printing_not_supported=Isilumkiso: Ukuprinta akuxhaswa ngokupheleleyo yile bhrawuza.
+printing_not_ready=Isilumkiso: IPDF ayihlohlwanga ngokupheleleyo ukwenzela ukuprinta.
+web_fonts_disabled=Iifonti zewebhu ziqhwalelisiwe: ayikwazi ukusebenzisa iifonti ze-PDF ezincanyathelisiweyo.
+document_colors_not_allowed=Amaxwebhu ePDF akavumelekanga ukuba asebenzise imibala yawo: 'Ukuvumela amaphepha ukuba asebenzise eyawo imibala' kuvaliwe ukuba kungasebenzi kwibhrawuza.

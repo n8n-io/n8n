@@ -1,0 +1,1414 @@
+:root {
+    /* Light */
+    --light-color-background: #f2f4f8;
+    --light-color-background-secondary: #eff0f1;
+    --light-color-warning-text: #222;
+    --light-color-background-warning: #e6e600;
+    --light-color-icon-background: var(--light-color-background);
+    --light-color-accent: #c5c7c9;
+    --light-color-active-menu-item: var(--light-color-accent);
+    --light-color-text: #222;
+    --light-color-text-aside: #6e6e6e;
+    --light-color-link: #1f70c2;
+
+    --light-color-ts-keyword: #056bd6;
+    --light-color-ts-project: #b111c9;
+    --light-color-ts-module: var(--light-color-ts-project);
+    --light-color-ts-namespace: var(--light-color-ts-project);
+    --light-color-ts-enum: #7e6f15;
+    --light-color-ts-enum-member: var(--light-color-ts-enum);
+    --light-color-ts-variable: #4760ec;
+    --light-color-ts-function: #572be7;
+    --light-color-ts-class: #1f70c2;
+    --light-color-ts-interface: #108024;
+    --light-color-ts-constructor: var(--light-color-ts-class);
+    --light-color-ts-property: var(--light-color-ts-variable);
+    --light-color-ts-method: var(--light-color-ts-function);
+    --light-color-ts-call-signature: var(--light-color-ts-method);
+    --light-color-ts-index-signature: var(--light-color-ts-property);
+    --light-color-ts-constructor-signature: var(--light-color-ts-constructor);
+    --light-color-ts-parameter: var(--light-color-ts-variable);
+    /* type literal not included as links will never be generated to it */
+    --light-color-ts-type-parameter: #a55c0e;
+    --light-color-ts-accessor: var(--light-color-ts-property);
+    --light-color-ts-get-signature: var(--light-color-ts-accessor);
+    --light-color-ts-set-signature: var(--light-color-ts-accessor);
+    --light-color-ts-type-alias: #d51270;
+    /* reference not included as links will be colored with the kind that it points to */
+
+    --light-external-icon: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' width='10' height='10'><path fill-opacity='0' stroke='%23000' stroke-width='10' d='m43,35H5v60h60V57M45,5v10l10,10-30,30 20,20 30-30 10,10h10V5z'/></svg>");
+    --light-color-scheme: light;
+
+    /* Dark */
+    --dark-color-background: #2b2e33;
+    --dark-color-background-secondary: #1e2024;
+    --dark-color-background-warning: #bebe00;
+    --dark-color-warning-text: #222;
+    --dark-color-icon-background: var(--dark-color-background-secondary);
+    --dark-color-accent: #9096a2;
+    --dark-color-active-menu-item: #5d5d6a;
+    --dark-color-text: #f5f5f5;
+    --dark-color-text-aside: #dddddd;
+    --dark-color-link: #00aff4;
+
+    --dark-color-ts-keyword: #3399ff;
+    --dark-color-ts-project: #e358ff;
+    --dark-color-ts-module: var(--dark-color-ts-project);
+    --dark-color-ts-namespace: var(--dark-color-ts-project);
+    --dark-color-ts-enum: #f4d93e;
+    --dark-color-ts-enum-member: var(--dark-color-ts-enum);
+    --dark-color-ts-variable: #798dff;
+    --dark-color-ts-function: #a280ff;
+    --dark-color-ts-class: #8ac4ff;
+    --dark-color-ts-interface: #6cff87;
+    --dark-color-ts-constructor: var(--dark-color-ts-class);
+    --dark-color-ts-property: var(--dark-color-ts-variable);
+    --dark-color-ts-method: var(--dark-color-ts-function);
+    --dark-color-ts-call-signature: var(--dark-color-ts-method);
+    --dark-color-ts-index-signature: var(--dark-color-ts-property);
+    --dark-color-ts-constructor-signature: var(--dark-color-ts-constructor);
+    --dark-color-ts-parameter: var(--dark-color-ts-variable);
+    /* type literal not included as links will never be generated to it */
+    --dark-color-ts-type-parameter: #e07d13;
+    --dark-color-ts-accessor: var(--dark-color-ts-property);
+    --dark-color-ts-get-signature: var(--dark-color-ts-accessor);
+    --dark-color-ts-set-signature: var(--dark-color-ts-accessor);
+    --dark-color-ts-type-alias: #ff6492;
+    /* reference not included as links will be colored with the kind that it points to */
+
+    --dark-external-icon: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' width='10' height='10'><path fill-opacity='0' stroke='%23fff' stroke-width='10' d='m43,35H5v60h60V57M45,5v10l10,10-30,30 20,20 30-30 10,10h10V5z'/></svg>");
+    --dark-color-scheme: dark;
+}
+
+@media (prefers-color-scheme: light) {
+    :root {
+        --color-background: var(--light-color-background);
+        --color-background-secondary: var(--light-color-background-secondary);
+        --color-background-warning: var(--light-color-background-warning);
+        --color-warning-text: var(--light-color-warning-text);
+        --color-icon-background: var(--light-color-icon-background);
+        --color-accent: var(--light-color-accent);
+        --color-active-menu-item: var(--light-color-active-menu-item);
+        --color-text: var(--light-color-text);
+        --color-text-aside: var(--light-color-text-aside);
+        --color-link: var(--light-color-link);
+
+        --color-ts-keyword: var(--light-color-ts-keyword);
+        --color-ts-module: var(--light-color-ts-module);
+        --color-ts-namespace: var(--light-color-ts-namespace);
+        --color-ts-enum: var(--light-color-ts-enum);
+        --color-ts-enum-member: var(--light-color-ts-enum-member);
+        --color-ts-variable: var(--light-color-ts-variable);
+        --color-ts-function: var(--light-color-ts-function);
+        --color-ts-class: var(--light-color-ts-class);
+        --color-ts-interface: var(--light-color-ts-interface);
+        --color-ts-constructor: var(--light-color-ts-constructor);
+        --color-ts-property: var(--light-color-ts-property);
+        --color-ts-method: var(--light-color-ts-method);
+        --color-ts-call-signature: var(--light-color-ts-call-signature);
+        --color-ts-index-signature: var(--light-color-ts-index-signature);
+        --color-ts-constructor-signature: var(
+            --light-color-ts-constructor-signature
+        );
+        --color-ts-parameter: var(--light-color-ts-parameter);
+        --color-ts-type-parameter: var(--light-color-ts-type-parameter);
+        --color-ts-accessor: var(--light-color-ts-accessor);
+        --color-ts-get-signature: var(--light-color-ts-get-signature);
+        --color-ts-set-signature: var(--light-color-ts-set-signature);
+        --color-ts-type-alias: var(--light-color-ts-type-alias);
+
+        --external-icon: var(--light-external-icon);
+        --color-scheme: var(--light-color-scheme);
+    }
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --color-background: var(--dark-color-background);
+        --color-background-secondary: var(--dark-color-background-secondary);
+        --color-background-warning: var(--dark-color-background-warning);
+        --color-warning-text: var(--dark-color-warning-text);
+        --color-icon-background: var(--dark-color-icon-background);
+        --color-accent: var(--dark-color-accent);
+        --color-active-menu-item: var(--dark-color-active-menu-item);
+        --color-text: var(--dark-color-text);
+        --color-text-aside: var(--dark-color-text-aside);
+        --color-link: var(--dark-color-link);
+
+        --color-ts-keyword: var(--dark-color-ts-keyword);
+        --color-ts-module: var(--dark-color-ts-module);
+        --color-ts-namespace: var(--dark-color-ts-namespace);
+        --color-ts-enum: var(--dark-color-ts-enum);
+        --color-ts-enum-member: var(--dark-color-ts-enum-member);
+        --color-ts-variable: var(--dark-color-ts-variable);
+        --color-ts-function: var(--dark-color-ts-function);
+        --color-ts-class: var(--dark-color-ts-class);
+        --color-ts-interface: var(--dark-color-ts-interface);
+        --color-ts-constructor: var(--dark-color-ts-constructor);
+        --color-ts-property: var(--dark-color-ts-property);
+        --color-ts-method: var(--dark-color-ts-method);
+        --color-ts-call-signature: var(--dark-color-ts-call-signature);
+        --color-ts-index-signature: var(--dark-color-ts-index-signature);
+        --color-ts-constructor-signature: var(
+            --dark-color-ts-constructor-signature
+        );
+        --color-ts-parameter: var(--dark-color-ts-parameter);
+        --color-ts-type-parameter: var(--dark-color-ts-type-parameter);
+        --color-ts-accessor: var(--dark-color-ts-accessor);
+        --color-ts-get-signature: var(--dark-color-ts-get-signature);
+        --color-ts-set-signature: var(--dark-color-ts-set-signature);
+        --color-ts-type-alias: var(--dark-color-ts-type-alias);
+
+        --external-icon: var(--dark-external-icon);
+        --color-scheme: var(--dark-color-scheme);
+    }
+}
+
+html {
+    color-scheme: var(--color-scheme);
+}
+
+body {
+    margin: 0;
+}
+
+:root[data-theme="light"] {
+    --color-background: var(--light-color-background);
+    --color-background-secondary: var(--light-color-background-secondary);
+    --color-background-warning: var(--light-color-background-warning);
+    --color-warning-text: var(--light-color-warning-text);
+    --color-icon-background: var(--light-color-icon-background);
+    --color-accent: var(--light-color-accent);
+    --color-active-menu-item: var(--light-color-active-menu-item);
+    --color-text: var(--light-color-text);
+    --color-text-aside: var(--light-color-text-aside);
+    --color-link: var(--light-color-link);
+
+    --color-ts-keyword: var(--light-color-ts-keyword);
+    --color-ts-module: var(--light-color-ts-module);
+    --color-ts-namespace: var(--light-color-ts-namespace);
+    --color-ts-enum: var(--light-color-ts-enum);
+    --color-ts-enum-member: var(--light-color-ts-enum-member);
+    --color-ts-variable: var(--light-color-ts-variable);
+    --color-ts-function: var(--light-color-ts-function);
+    --color-ts-class: var(--light-color-ts-class);
+    --color-ts-interface: var(--light-color-ts-interface);
+    --color-ts-constructor: var(--light-color-ts-constructor);
+    --color-ts-property: var(--light-color-ts-property);
+    --color-ts-method: var(--light-color-ts-method);
+    --color-ts-call-signature: var(--light-color-ts-call-signature);
+    --color-ts-index-signature: var(--light-color-ts-index-signature);
+    --color-ts-constructor-signature: var(
+        --light-color-ts-constructor-signature
+    );
+    --color-ts-parameter: var(--light-color-ts-parameter);
+    --color-ts-type-parameter: var(--light-color-ts-type-parameter);
+    --color-ts-accessor: var(--light-color-ts-accessor);
+    --color-ts-get-signature: var(--light-color-ts-get-signature);
+    --color-ts-set-signature: var(--light-color-ts-set-signature);
+    --color-ts-type-alias: var(--light-color-ts-type-alias);
+
+    --external-icon: var(--light-external-icon);
+    --color-scheme: var(--light-color-scheme);
+}
+
+:root[data-theme="dark"] {
+    --color-background: var(--dark-color-background);
+    --color-background-secondary: var(--dark-color-background-secondary);
+    --color-background-warning: var(--dark-color-background-warning);
+    --color-warning-text: var(--dark-color-warning-text);
+    --color-icon-background: var(--dark-color-icon-background);
+    --color-accent: var(--dark-color-accent);
+    --color-active-menu-item: var(--dark-color-active-menu-item);
+    --color-text: var(--dark-color-text);
+    --color-text-aside: var(--dark-color-text-aside);
+    --color-link: var(--dark-color-link);
+
+    --color-ts-keyword: var(--dark-color-ts-keyword);
+    --color-ts-module: var(--dark-color-ts-module);
+    --color-ts-namespace: var(--dark-color-ts-namespace);
+    --color-ts-enum: var(--dark-color-ts-enum);
+    --color-ts-enum-member: var(--dark-color-ts-enum-member);
+    --color-ts-variable: var(--dark-color-ts-variable);
+    --color-ts-function: var(--dark-color-ts-function);
+    --color-ts-class: var(--dark-color-ts-class);
+    --color-ts-interface: var(--dark-color-ts-interface);
+    --color-ts-constructor: var(--dark-color-ts-constructor);
+    --color-ts-property: var(--dark-color-ts-property);
+    --color-ts-method: var(--dark-color-ts-method);
+    --color-ts-call-signature: var(--dark-color-ts-call-signature);
+    --color-ts-index-signature: var(--dark-color-ts-index-signature);
+    --color-ts-constructor-signature: var(
+        --dark-color-ts-constructor-signature
+    );
+    --color-ts-parameter: var(--dark-color-ts-parameter);
+    --color-ts-type-parameter: var(--dark-color-ts-type-parameter);
+    --color-ts-accessor: var(--dark-color-ts-accessor);
+    --color-ts-get-signature: var(--dark-color-ts-get-signature);
+    --color-ts-set-signature: var(--dark-color-ts-set-signature);
+    --color-ts-type-alias: var(--dark-color-ts-type-alias);
+
+    --external-icon: var(--dark-external-icon);
+    --color-scheme: var(--dark-color-scheme);
+}
+
+.always-visible,
+.always-visible .tsd-signatures {
+    display: inherit !important;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    line-height: 1.2;
+}
+
+h1 > a:not(.link),
+h2 > a:not(.link),
+h3 > a:not(.link),
+h4 > a:not(.link),
+h5 > a:not(.link),
+h6 > a:not(.link) {
+    text-decoration: none;
+    color: var(--color-text);
+}
+
+h1 {
+    font-size: 1.875rem;
+    margin: 0.67rem 0;
+}
+
+h2 {
+    font-size: 1.5rem;
+    margin: 0.83rem 0;
+}
+
+h3 {
+    font-size: 1.25rem;
+    margin: 1rem 0;
+}
+
+h4 {
+    font-size: 1.05rem;
+    margin: 1.33rem 0;
+}
+
+h5 {
+    font-size: 1rem;
+    margin: 1.5rem 0;
+}
+
+h6 {
+    font-size: 0.875rem;
+    margin: 2.33rem 0;
+}
+
+.uppercase {
+    text-transform: uppercase;
+}
+
+dl,
+menu,
+ol,
+ul {
+    margin: 1em 0;
+}
+
+dd {
+    margin: 0 0 0 40px;
+}
+
+.container {
+    max-width: 1700px;
+    padding: 0 2rem;
+}
+
+/* Footer */
+.tsd-generator {
+    border-top: 1px solid var(--color-accent);
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+    max-height: 3.5rem;
+}
+
+.tsd-generator > p {
+    margin-top: 0;
+    margin-bottom: 0;
+    padding: 0 1rem;
+}
+
+.container-main {
+    margin: 0 auto;
+    /* toolbar, footer, margin */
+    min-height: calc(100vh - 41px - 56px - 4rem);
+}
+
+@keyframes fade-in {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+@keyframes fade-out {
+    from {
+        opacity: 1;
+        visibility: visible;
+    }
+    to {
+        opacity: 0;
+    }
+}
+@keyframes fade-in-delayed {
+    0% {
+        opacity: 0;
+    }
+    33% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+@keyframes fade-out-delayed {
+    0% {
+        opacity: 1;
+        visibility: visible;
+    }
+    66% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+@keyframes pop-in-from-right {
+    from {
+        transform: translate(100%, 0);
+    }
+    to {
+        transform: translate(0, 0);
+    }
+}
+@keyframes pop-out-to-right {
+    from {
+        transform: translate(0, 0);
+        visibility: visible;
+    }
+    to {
+        transform: translate(100%, 0);
+    }
+}
+body {
+    background: var(--color-background);
+    font-family: "Segoe UI", sans-serif;
+    font-size: 16px;
+    color: var(--color-text);
+}
+
+a {
+    color: var(--color-link);
+    text-decoration: none;
+}
+a:hover {
+    text-decoration: underline;
+}
+a.external[target="_blank"] {
+    background-image: var(--external-icon);
+    background-position: top 3px right;
+    background-repeat: no-repeat;
+    padding-right: 13px;
+}
+
+code,
+pre {
+    font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+    padding: 0.2em;
+    margin: 0;
+    font-size: 0.875rem;
+    border-radius: 0.8em;
+}
+
+pre {
+    position: relative;
+    white-space: pre;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    padding: 10px;
+    border: 1px solid var(--color-accent);
+}
+pre code {
+    padding: 0;
+    font-size: 100%;
+}
+pre > button {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    opacity: 0;
+    transition: opacity 0.1s;
+    box-sizing: border-box;
+}
+pre:hover > button,
+pre > button.visible {
+    opacity: 1;
+}
+
+blockquote {
+    margin: 1em 0;
+    padding-left: 1em;
+    border-left: 4px solid gray;
+}
+
+.tsd-typography {
+    line-height: 1.333em;
+}
+.tsd-typography ul {
+    list-style: square;
+    padding: 0 0 0 20px;
+    margin: 0;
+}
+.tsd-typography .tsd-index-panel h3,
+.tsd-index-panel .tsd-typography h3,
+.tsd-typography h4,
+.tsd-typography h5,
+.tsd-typography h6 {
+    font-size: 1em;
+}
+.tsd-typography h5,
+.tsd-typography h6 {
+    font-weight: normal;
+}
+.tsd-typography p,
+.tsd-typography ul,
+.tsd-typography ol {
+    margin: 1em 0;
+}
+.tsd-typography table {
+    border-collapse: collapse;
+    border: none;
+}
+.tsd-typography td,
+.tsd-typography th {
+    padding: 6px 13px;
+    border: 1px solid var(--color-accent);
+}
+.tsd-typography thead,
+.tsd-typography tr:nth-child(even) {
+    background-color: var(--color-background-secondary);
+}
+
+.tsd-breadcrumb {
+    margin: 0;
+    padding: 0;
+    color: var(--color-text-aside);
+}
+.tsd-breadcrumb a {
+    color: var(--color-text-aside);
+    text-decoration: none;
+}
+.tsd-breadcrumb a:hover {
+    text-decoration: underline;
+}
+.tsd-breadcrumb li {
+    display: inline;
+}
+.tsd-breadcrumb li:after {
+    content: " / ";
+}
+
+.tsd-comment-tags {
+    display: flex;
+    flex-direction: column;
+}
+dl.tsd-comment-tag-group {
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    margin: 0.5em 0;
+}
+dl.tsd-comment-tag-group dt {
+    display: flex;
+    margin-right: 0.5em;
+    font-size: 0.875em;
+    font-weight: normal;
+}
+dl.tsd-comment-tag-group dd {
+    margin: 0;
+}
+code.tsd-tag {
+    padding: 0.25em 0.4em;
+    border: 0.1em solid var(--color-accent);
+    margin-right: 0.25em;
+    font-size: 70%;
+}
+h1 code.tsd-tag:first-of-type {
+    margin-left: 0.25em;
+}
+
+dl.tsd-comment-tag-group dd:before,
+dl.tsd-comment-tag-group dd:after {
+    content: " ";
+}
+dl.tsd-comment-tag-group dd pre,
+dl.tsd-comment-tag-group dd:after {
+    clear: both;
+}
+dl.tsd-comment-tag-group p {
+    margin: 0;
+}
+
+.tsd-panel.tsd-comment .lead {
+    font-size: 1.1em;
+    line-height: 1.333em;
+    margin-bottom: 2em;
+}
+.tsd-panel.tsd-comment .lead:last-child {
+    margin-bottom: 0;
+}
+
+.tsd-filter-visibility h4 {
+    font-size: 1rem;
+    padding-top: 0.75rem;
+    padding-bottom: 0.5rem;
+    margin: 0;
+}
+.tsd-filter-item:not(:last-child) {
+    margin-bottom: 0.5rem;
+}
+.tsd-filter-input {
+    display: flex;
+    width: fit-content;
+    width: -moz-fit-content;
+    align-items: center;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    cursor: pointer;
+}
+.tsd-filter-input input[type="checkbox"] {
+    cursor: pointer;
+    position: absolute;
+    width: 1.5em;
+    height: 1.5em;
+    opacity: 0;
+}
+.tsd-filter-input input[type="checkbox"]:disabled {
+    pointer-events: none;
+}
+.tsd-filter-input svg {
+    cursor: pointer;
+    width: 1.5em;
+    height: 1.5em;
+    margin-right: 0.5em;
+    border-radius: 0.33em;
+    /* Leaving this at full opacity breaks event listeners on Firefox.
+    Don't remove unless you know what you're doing. */
+    opacity: 0.99;
+}
+.tsd-filter-input input[type="checkbox"]:focus + svg {
+    transform: scale(0.95);
+}
+.tsd-filter-input input[type="checkbox"]:focus:not(:focus-visible) + svg {
+    transform: scale(1);
+}
+.tsd-checkbox-background {
+    fill: var(--color-accent);
+}
+input[type="checkbox"]:checked ~ svg .tsd-checkbox-checkmark {
+    stroke: var(--color-text);
+}
+.tsd-filter-input input:disabled ~ svg > .tsd-checkbox-background {
+    fill: var(--color-background);
+    stroke: var(--color-accent);
+    stroke-width: 0.25rem;
+}
+.tsd-filter-input input:disabled ~ svg > .tsd-checkbox-checkmark {
+    stroke: var(--color-accent);
+}
+
+.tsd-theme-toggle {
+    padding-top: 0.75rem;
+}
+.tsd-theme-toggle > h4 {
+    display: inline;
+    vertical-align: middle;
+    margin-right: 0.75rem;
+}
+
+.tsd-hierarchy {
+    list-style: square;
+    margin: 0;
+}
+.tsd-hierarchy .target {
+    font-weight: bold;
+}
+
+.tsd-full-hierarchy:not(:last-child) {
+    margin-bottom: 1em;
+    padding-bottom: 1em;
+    border-bottom: 1px solid var(--color-accent);
+}
+.tsd-full-hierarchy,
+.tsd-full-hierarchy ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+.tsd-full-hierarchy ul {
+    padding-left: 1.5rem;
+}
+.tsd-full-hierarchy a {
+    padding: 0.25rem 0 !important;
+    font-size: 1rem;
+    display: inline-flex;
+    align-items: center;
+    color: var(--color-text);
+}
+
+.tsd-panel-group.tsd-index-group {
+    margin-bottom: 0;
+}
+.tsd-index-panel .tsd-index-list {
+    list-style: none;
+    line-height: 1.333em;
+    margin: 0;
+    padding: 0.25rem 0 0 0;
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    column-gap: 1rem;
+    grid-template-rows: auto;
+}
+@media (max-width: 1024px) {
+    .tsd-index-panel .tsd-index-list {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+@media (max-width: 768px) {
+    .tsd-index-panel .tsd-index-list {
+        grid-template-columns: repeat(1, 1fr);
+    }
+}
+.tsd-index-panel .tsd-index-list li {
+    -webkit-page-break-inside: avoid;
+    -moz-page-break-inside: avoid;
+    -ms-page-break-inside: avoid;
+    -o-page-break-inside: avoid;
+    page-break-inside: avoid;
+}
+
+.tsd-flag {
+    display: inline-block;
+    padding: 0.25em 0.4em;
+    border-radius: 4px;
+    color: var(--color-comment-tag-text);
+    background-color: var(--color-comment-tag);
+    text-indent: 0;
+    font-size: 75%;
+    line-height: 1;
+    font-weight: normal;
+}
+
+.tsd-anchor {
+    position: relative;
+    top: -100px;
+}
+
+.tsd-member {
+    position: relative;
+}
+.tsd-member .tsd-anchor + h3 {
+    display: flex;
+    align-items: center;
+    margin-top: 0;
+    margin-bottom: 0;
+    border-bottom: none;
+}
+
+.tsd-navigation.settings {
+    margin: 1rem 0;
+}
+.tsd-navigation > a,
+.tsd-navigation .tsd-accordion-summary {
+    width: calc(100% - 0.25rem);
+    display: flex;
+    align-items: center;
+}
+.tsd-navigation a,
+.tsd-navigation summary > span,
+.tsd-page-navigation a {
+    display: flex;
+    width: calc(100% - 0.25rem);
+    align-items: center;
+    padding: 0.25rem;
+    color: var(--color-text);
+    text-decoration: none;
+    box-sizing: border-box;
+}
+.tsd-navigation a.current,
+.tsd-page-navigation a.current {
+    background: var(--color-active-menu-item);
+}
+.tsd-navigation a:hover,
+.tsd-page-navigation a:hover {
+    text-decoration: underline;
+}
+.tsd-navigation ul,
+.tsd-page-navigation ul {
+    margin-top: 0;
+    margin-bottom: 0;
+    padding: 0;
+    list-style: none;
+}
+.tsd-navigation li,
+.tsd-page-navigation li {
+    padding: 0;
+    max-width: 100%;
+}
+.tsd-nested-navigation {
+    margin-left: 3rem;
+}
+.tsd-nested-navigation > li > details {
+    margin-left: -1.5rem;
+}
+.tsd-small-nested-navigation {
+    margin-left: 1.5rem;
+}
+.tsd-small-nested-navigation > li > details {
+    margin-left: -1.5rem;
+}
+
+.tsd-page-navigation ul {
+    padding-left: 1.75rem;
+}
+
+#tsd-sidebar-links a {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    line-height: 1.25rem;
+}
+#tsd-sidebar-links a:last-of-type {
+    margin-bottom: 0;
+}
+
+a.tsd-index-link {
+    padding: 0.25rem 0 !important;
+    font-size: 1rem;
+    line-height: 1.25rem;
+    display: inline-flex;
+    align-items: center;
+    color: var(--color-text);
+}
+.tsd-accordion-summary {
+    list-style-type: none; /* hide marker on non-safari */
+    outline: none; /* broken on safari, so just hide it */
+}
+.tsd-accordion-summary::-webkit-details-marker {
+    display: none; /* hide marker on safari */
+}
+.tsd-accordion-summary,
+.tsd-accordion-summary a {
+    user-select: none;
+    -moz-user-select: none;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+
+    cursor: pointer;
+}
+.tsd-accordion-summary a {
+    width: calc(100% - 1.5rem);
+}
+.tsd-accordion-summary > * {
+    margin-top: 0;
+    margin-bottom: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+}
+.tsd-index-accordion .tsd-accordion-summary > svg {
+    margin-left: 0.25rem;
+}
+.tsd-index-content > :not(:first-child) {
+    margin-top: 0.75rem;
+}
+.tsd-index-heading {
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.tsd-kind-icon {
+    margin-right: 0.5rem;
+    width: 1.25rem;
+    height: 1.25rem;
+    min-width: 1.25rem;
+    min-height: 1.25rem;
+}
+.tsd-kind-icon path {
+    transform-origin: center;
+    transform: scale(1.1);
+}
+.tsd-signature > .tsd-kind-icon {
+    margin-right: 0.8rem;
+}
+
+.tsd-panel {
+    margin-bottom: 2.5rem;
+}
+.tsd-panel.tsd-member {
+    margin-bottom: 4rem;
+}
+.tsd-panel:empty {
+    display: none;
+}
+.tsd-panel > h1,
+.tsd-panel > h2,
+.tsd-panel > h3 {
+    margin: 1.5rem -1.5rem 0.75rem -1.5rem;
+    padding: 0 1.5rem 0.75rem 1.5rem;
+}
+.tsd-panel > h1.tsd-before-signature,
+.tsd-panel > h2.tsd-before-signature,
+.tsd-panel > h3.tsd-before-signature {
+    margin-bottom: 0;
+    border-bottom: none;
+}
+
+.tsd-panel-group {
+    margin: 4rem 0;
+}
+.tsd-panel-group.tsd-index-group {
+    margin: 2rem 0;
+}
+.tsd-panel-group.tsd-index-group details {
+    margin: 2rem 0;
+}
+
+#tsd-search {
+    transition: background-color 0.2s;
+}
+#tsd-search .title {
+    position: relative;
+    z-index: 2;
+}
+#tsd-search .field {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 2.5rem;
+    height: 100%;
+}
+#tsd-search .field input {
+    box-sizing: border-box;
+    position: relative;
+    top: -50px;
+    z-index: 1;
+    width: 100%;
+    padding: 0 10px;
+    opacity: 0;
+    outline: 0;
+    border: 0;
+    background: transparent;
+    color: var(--color-text);
+}
+#tsd-search .field label {
+    position: absolute;
+    overflow: hidden;
+    right: -40px;
+}
+#tsd-search .field input,
+#tsd-search .title,
+#tsd-toolbar-links a {
+    transition: opacity 0.2s;
+}
+#tsd-search .results {
+    position: absolute;
+    visibility: hidden;
+    top: 40px;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    box-shadow: 0 0 4px rgba(0, 0, 0, 0.25);
+}
+#tsd-search .results li {
+    background-color: var(--color-background);
+    line-height: initial;
+    padding: 4px;
+}
+#tsd-search .results li:nth-child(even) {
+    background-color: var(--color-background-secondary);
+}
+#tsd-search .results li.state {
+    display: none;
+}
+#tsd-search .results li.current:not(.no-results),
+#tsd-search .results li:hover:not(.no-results) {
+    background-color: var(--color-accent);
+}
+#tsd-search .results a {
+    display: flex;
+    align-items: center;
+    padding: 0.25rem;
+    box-sizing: border-box;
+}
+#tsd-search .results a:before {
+    top: 10px;
+}
+#tsd-search .results span.parent {
+    color: var(--color-text-aside);
+    font-weight: normal;
+}
+#tsd-search.has-focus {
+    background-color: var(--color-accent);
+}
+#tsd-search.has-focus .field input {
+    top: 0;
+    opacity: 1;
+}
+#tsd-search.has-focus .title,
+#tsd-search.has-focus #tsd-toolbar-links a {
+    z-index: 0;
+    opacity: 0;
+}
+#tsd-search.has-focus .results {
+    visibility: visible;
+}
+#tsd-search.loading .results li.state.loading {
+    display: block;
+}
+#tsd-search.failure .results li.state.failure {
+    display: block;
+}
+
+#tsd-toolbar-links {
+    position: absolute;
+    top: 0;
+    right: 2rem;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+}
+#tsd-toolbar-links a {
+    margin-left: 1.5rem;
+}
+#tsd-toolbar-links a:hover {
+    text-decoration: underline;
+}
+
+.tsd-signature {
+    margin: 0 0 1rem 0;
+    padding: 1rem 0.5rem;
+    border: 1px solid var(--color-accent);
+    font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+    font-size: 14px;
+    overflow-x: auto;
+}
+
+.tsd-signature-keyword {
+    color: var(--color-ts-keyword);
+    font-weight: normal;
+}
+
+.tsd-signature-symbol {
+    color: var(--color-text-aside);
+    font-weight: normal;
+}
+
+.tsd-signature-type {
+    font-style: italic;
+    font-weight: normal;
+}
+
+.tsd-signatures {
+    padding: 0;
+    margin: 0 0 1em 0;
+    list-style-type: none;
+}
+.tsd-signatures .tsd-signature {
+    margin: 0;
+    border-color: var(--color-accent);
+    border-width: 1px 0;
+    transition: background-color 0.1s;
+}
+.tsd-description .tsd-signatures .tsd-signature {
+    border-width: 1px;
+}
+
+ul.tsd-parameter-list,
+ul.tsd-type-parameter-list {
+    list-style: square;
+    margin: 0;
+    padding-left: 20px;
+}
+ul.tsd-parameter-list > li.tsd-parameter-signature,
+ul.tsd-type-parameter-list > li.tsd-parameter-signature {
+    list-style: none;
+    margin-left: -20px;
+}
+ul.tsd-parameter-list h5,
+ul.tsd-type-parameter-list h5 {
+    font-size: 16px;
+    margin: 1em 0 0.5em 0;
+}
+.tsd-sources {
+    margin-top: 1rem;
+    font-size: 0.875em;
+}
+.tsd-sources a {
+    color: var(--color-text-aside);
+    text-decoration: underline;
+}
+.tsd-sources ul {
+    list-style: none;
+    padding: 0;
+}
+
+.tsd-page-toolbar {
+    position: sticky;
+    z-index: 1;
+    top: 0;
+    left: 0;
+    width: 100%;
+    color: var(--color-text);
+    background: var(--color-background-secondary);
+    border-bottom: 1px var(--color-accent) solid;
+    transition: transform 0.3s ease-in-out;
+}
+.tsd-page-toolbar a {
+    color: var(--color-text);
+    text-decoration: none;
+}
+.tsd-page-toolbar a.title {
+    font-weight: bold;
+}
+.tsd-page-toolbar a.title:hover {
+    text-decoration: underline;
+}
+.tsd-page-toolbar .tsd-toolbar-contents {
+    display: flex;
+    justify-content: space-between;
+    height: 2.5rem;
+    margin: 0 auto;
+}
+.tsd-page-toolbar .table-cell {
+    position: relative;
+    white-space: nowrap;
+    line-height: 40px;
+}
+.tsd-page-toolbar .table-cell:first-child {
+    width: 100%;
+}
+.tsd-page-toolbar .tsd-toolbar-icon {
+    box-sizing: border-box;
+    line-height: 0;
+    padding: 12px 0;
+}
+
+.tsd-widget {
+    display: inline-block;
+    overflow: hidden;
+    opacity: 0.8;
+    height: 40px;
+    transition:
+        opacity 0.1s,
+        background-color 0.2s;
+    vertical-align: bottom;
+    cursor: pointer;
+}
+.tsd-widget:hover {
+    opacity: 0.9;
+}
+.tsd-widget.active {
+    opacity: 1;
+    background-color: var(--color-accent);
+}
+.tsd-widget.no-caption {
+    width: 40px;
+}
+.tsd-widget.no-caption:before {
+    margin: 0;
+}
+
+.tsd-widget.options,
+.tsd-widget.menu {
+    display: none;
+}
+input[type="checkbox"] + .tsd-widget:before {
+    background-position: -120px 0;
+}
+input[type="checkbox"]:checked + .tsd-widget:before {
+    background-position: -160px 0;
+}
+
+img {
+    max-width: 100%;
+}
+
+.tsd-anchor-icon {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 0.5rem;
+    vertical-align: middle;
+    color: var(--color-text);
+}
+
+.tsd-anchor-icon svg {
+    width: 1em;
+    height: 1em;
+    visibility: hidden;
+}
+
+.tsd-anchor-link:hover > .tsd-anchor-icon svg {
+    visibility: visible;
+}
+
+.deprecated {
+    text-decoration: line-through !important;
+}
+
+.warning {
+    padding: 1rem;
+    color: var(--color-warning-text);
+    background: var(--color-background-warning);
+}
+
+.tsd-kind-project {
+    color: var(--color-ts-project);
+}
+.tsd-kind-module {
+    color: var(--color-ts-module);
+}
+.tsd-kind-namespace {
+    color: var(--color-ts-namespace);
+}
+.tsd-kind-enum {
+    color: var(--color-ts-enum);
+}
+.tsd-kind-enum-member {
+    color: var(--color-ts-enum-member);
+}
+.tsd-kind-variable {
+    color: var(--color-ts-variable);
+}
+.tsd-kind-function {
+    color: var(--color-ts-function);
+}
+.tsd-kind-class {
+    color: var(--color-ts-class);
+}
+.tsd-kind-interface {
+    color: var(--color-ts-interface);
+}
+.tsd-kind-constructor {
+    color: var(--color-ts-constructor);
+}
+.tsd-kind-property {
+    color: var(--color-ts-property);
+}
+.tsd-kind-method {
+    color: var(--color-ts-method);
+}
+.tsd-kind-call-signature {
+    color: var(--color-ts-call-signature);
+}
+.tsd-kind-index-signature {
+    color: var(--color-ts-index-signature);
+}
+.tsd-kind-constructor-signature {
+    color: var(--color-ts-constructor-signature);
+}
+.tsd-kind-parameter {
+    color: var(--color-ts-parameter);
+}
+.tsd-kind-type-literal {
+    color: var(--color-ts-type-literal);
+}
+.tsd-kind-type-parameter {
+    color: var(--color-ts-type-parameter);
+}
+.tsd-kind-accessor {
+    color: var(--color-ts-accessor);
+}
+.tsd-kind-get-signature {
+    color: var(--color-ts-get-signature);
+}
+.tsd-kind-set-signature {
+    color: var(--color-ts-set-signature);
+}
+.tsd-kind-type-alias {
+    color: var(--color-ts-type-alias);
+}
+
+/* if we have a kind icon, don't color the text by kind */
+.tsd-kind-icon ~ span {
+    color: var(--color-text);
+}
+
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-accent) var(--color-icon-background);
+}
+
+*::-webkit-scrollbar {
+    width: 0.75rem;
+}
+
+*::-webkit-scrollbar-track {
+    background: var(--color-icon-background);
+}
+
+*::-webkit-scrollbar-thumb {
+    background-color: var(--color-accent);
+    border-radius: 999rem;
+    border: 0.25rem solid var(--color-icon-background);
+}
+
+/* mobile */
+@media (max-width: 769px) {
+    .tsd-widget.options,
+    .tsd-widget.menu {
+        display: inline-block;
+    }
+
+    .container-main {
+        display: flex;
+    }
+    html .col-content {
+        float: none;
+        max-width: 100%;
+        width: 100%;
+    }
+    html .col-sidebar {
+        position: fixed !important;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        z-index: 1024;
+        top: 0 !important;
+        bottom: 0 !important;
+        left: auto !important;
+        right: 0 !important;
+        padding: 1.5rem 1.5rem 0 0;
+        width: 75vw;
+        visibility: hidden;
+        background-color: var(--color-background);
+        transform: translate(100%, 0);
+    }
+    html .col-sidebar > *:last-child {
+        padding-bottom: 20px;
+    }
+    html .overlay {
+        content: "";
+        display: block;
+        position: fixed;
+        z-index: 1023;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.75);
+        visibility: hidden;
+    }
+
+    .to-has-menu .overlay {
+        animation: fade-in 0.4s;
+    }
+
+    .to-has-menu .col-sidebar {
+        animation: pop-in-from-right 0.4s;
+    }
+
+    .from-has-menu .overlay {
+        animation: fade-out 0.4s;
+    }
+
+    .from-has-menu .col-sidebar {
+        animation: pop-out-to-right 0.4s;
+    }
+
+    .has-menu body {
+        overflow: hidden;
+    }
+    .has-menu .overlay {
+        visibility: visible;
+    }
+    .has-menu .col-sidebar {
+        visibility: visible;
+        transform: translate(0, 0);
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        max-height: 100vh;
+        padding: 1rem 2rem;
+    }
+    .has-menu .tsd-navigation {
+        max-height: 100%;
+    }
+}
+
+/* one sidebar */
+@media (min-width: 770px) {
+    .container-main {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+        grid-template-areas: "sidebar content";
+        margin: 2rem auto;
+    }
+
+    .col-sidebar {
+        grid-area: sidebar;
+    }
+    .col-content {
+        grid-area: content;
+        padding: 0 1rem;
+    }
+}
+@media (min-width: 770px) and (max-width: 1399px) {
+    .col-sidebar {
+        max-height: calc(100vh - 2rem - 42px);
+        overflow: auto;
+        position: sticky;
+        top: 42px;
+        padding-top: 1rem;
+    }
+    .site-menu {
+        margin-top: 1rem;
+    }
+}
+
+/* two sidebars */
+@media (min-width: 1200px) {
+    .container-main {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 2.5fr) minmax(0, 20rem);
+        grid-template-areas: "sidebar content toc";
+    }
+
+    .col-sidebar {
+        display: contents;
+    }
+
+    .page-menu {
+        grid-area: toc;
+        padding-left: 1rem;
+    }
+    .site-menu {
+        grid-area: sidebar;
+    }
+
+    .site-menu {
+        margin-top: 1rem 0;
+    }
+
+    .page-menu,
+    .site-menu {
+        max-height: calc(100vh - 2rem - 42px);
+        overflow: auto;
+        position: sticky;
+        top: 42px;
+    }
+}

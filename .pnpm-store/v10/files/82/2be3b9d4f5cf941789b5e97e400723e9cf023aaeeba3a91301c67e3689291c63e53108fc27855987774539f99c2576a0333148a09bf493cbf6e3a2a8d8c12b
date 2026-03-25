@@ -1,0 +1,33 @@
+{
+  "name": "pug-runtime",
+  "version": "3.0.1",
+  "description": "The runtime components for the pug templating language",
+  "keywords": [
+    "pug"
+  ],
+  "devDependencies": {
+    "uglify-js": "^2.6.1"
+  },
+  "files": [
+    "build.js",
+    "index.js",
+    "lib/dependencies.js",
+    "lib/internals.js",
+    "lib/sources.js",
+    "wrap.js"
+  ],
+  "scripts": {
+    "prepublish": "node prepublish",
+    "pretest": "npm run prepublish",
+    "build": "node prepublish"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pugjs/pug/tree/master/packages/pug-runtime"
+  },
+  "browser": {
+    "fs": false
+  },
+  "author": "ForbesLindesay",
+  "license": "MIT"
+}

@@ -1,0 +1,5 @@
+# This file instructs Redocly's linter to ignore the rules contained for specific parts of your API.
+# See https://redoc.ly/docs/cli/ for more information.
+openapi.yaml:
+  operation-operationId:
+    - '#/paths/~1pets~1{petId}/post/operationId'

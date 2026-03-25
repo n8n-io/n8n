@@ -1,0 +1,86 @@
+{
+  "name": "detective-typescript",
+  "version": "14.0.0",
+  "author": "Patrik Henningsson <patrik.henningsson@gmail.com>",
+  "description": "Get the dependencies of a TypeScript module",
+  "main": "index.js",
+  "files": [
+    "index.js"
+  ],
+  "scripts": {
+    "lint": "xo",
+    "fix": "xo --fix",
+    "mocha": "mocha",
+    "test": "npm run lint && npm run mocha",
+    "test:ci": "c8 npm run mocha",
+    "watch": "npm run mocha -- -w"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dependents/detective-typescript.git"
+  },
+  "keywords": [
+    "detective",
+    "typescript",
+    "dependencies",
+    "module",
+    "ast",
+    "import"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/dependents/detective-typescript",
+  "peerDependencies": {
+    "typescript": "^5.4.4"
+  },
+  "dependencies": {
+    "@typescript-eslint/typescript-estree": "^8.23.0",
+    "ast-module-types": "^6.0.1",
+    "node-source-walk": "^7.0.1"
+  },
+  "devDependencies": {
+    "c8": "^10.1.3",
+    "mocha": "^11.1.0",
+    "typescript": "^5.7.3",
+    "xo": "^0.60.0"
+  },
+  "xo": {
+    "space": true,
+    "ignores": [
+      "index.d.ts",
+      "test/fixtures/*"
+    ],
+    "rules": {
+      "arrow-body-style": "off",
+      "capitalized-comments": "off",
+      "comma-dangle": [
+        "error",
+        "never"
+      ],
+      "curly": [
+        "error",
+        "multi-line"
+      ],
+      "operator-linebreak": [
+        "error",
+        "after"
+      ],
+      "object-curly-spacing": [
+        "error",
+        "always"
+      ],
+      "prefer-template": "error",
+      "space-before-function-paren": [
+        "error",
+        "never"
+      ],
+      "unicorn/no-anonymous-default-export": "off",
+      "unicorn/prefer-module": "off",
+      "unicorn/prefer-node-protocol": "off",
+      "unicorn/prefer-top-level-await": "off",
+      "unicorn/prevent-abbreviations": "off"
+    }
+  }
+}

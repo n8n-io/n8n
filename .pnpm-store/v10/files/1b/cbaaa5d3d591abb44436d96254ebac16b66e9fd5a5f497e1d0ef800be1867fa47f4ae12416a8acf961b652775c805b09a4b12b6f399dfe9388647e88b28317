@@ -1,0 +1,1 @@
+module.exports = require("../dist/utils/event_source_parse.cjs");

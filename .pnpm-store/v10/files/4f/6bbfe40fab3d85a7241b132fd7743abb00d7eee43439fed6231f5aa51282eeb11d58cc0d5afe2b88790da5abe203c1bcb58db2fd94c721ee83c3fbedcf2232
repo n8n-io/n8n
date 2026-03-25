@@ -1,0 +1,78 @@
+{
+  "name": "@supabase/realtime-js",
+  "version": "2.11.9",
+  "description": "Listen to realtime updates to your PostgreSQL database",
+  "keywords": [
+    "realtime",
+    "phoenix",
+    "elixir",
+    "javascript",
+    "typescript",
+    "firebase",
+    "supabase"
+  ],
+  "homepage": "https://github.com/supabase/realtime-js",
+  "bugs": "https://github.com/supabase/realtime-js/issues",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "main": "dist/main/index.js",
+  "module": "dist/module/index.js",
+  "types": "dist/module/index.d.ts",
+  "repository": "https://github.com/supabase/realtime-js",
+  "author": "Supabase",
+  "license": "MIT",
+  "scripts": {
+    "clean": "rimraf dist docs/v2",
+    "format": "prettier --write \"{src,test}/**/*.ts\"",
+    "build": "run-s clean format build:*",
+    "build:main": "tsc -p tsconfig.json",
+    "build:module": "tsc -p tsconfig.module.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage",
+    "docs": "typedoc src/index.ts --out docs/v2",
+    "docs:json": "typedoc --json docs/v2/spec.json --excludeExternals src/index.ts",
+    "check-exports": "attw --pack .",
+    "ci": "run-s test coverage"
+  },
+  "dependencies": {
+    "@supabase/node-fetch": "^2.6.13",
+    "@types/phoenix": "^1.6.6",
+    "@types/ws": "^8.18.1",
+    "ws": "^8.18.2"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "^0.16.4",
+    "@types/sinon": "^17.0.4",
+    "@vitest/coverage-v8": "^3.1.4",
+    "eslint": "^9.27.0",
+    "esm": "^3.2.25",
+    "jsdom": "^16.7.0",
+    "jsdom-global": "3.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "mock-socket": "^9.3.1",
+    "npm-run-all": "^4.1.5",
+    "nyc": "^15.1.0",
+    "prettier": "^2.8.8",
+    "semantic-release-plugin-update-version-in-files": "^1.1.0",
+    "sinon": "^18.0.1",
+    "typedoc": "^0.27.9",
+    "typescript": "^5.8.3",
+    "vitest": "^3.1.4",
+    "web-worker": "1.2.0"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/module/index.js",
+      "require": "./dist/main/index.js"
+    },
+    "./websocket": {
+      "node": "./dist/WebSocket.js",
+      "browser": "./dist/WebSocket.native.js",
+      "types": "./dist/WebSocket.d.ts",
+      "default": "./dist/WebSocket.native.js"
+    }
+  }
+}

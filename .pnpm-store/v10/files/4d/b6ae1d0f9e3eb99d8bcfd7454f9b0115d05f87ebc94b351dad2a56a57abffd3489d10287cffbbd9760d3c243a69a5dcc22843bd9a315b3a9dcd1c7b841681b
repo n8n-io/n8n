@@ -1,0 +1,97 @@
+# Copyright 2012 Mozilla Foundation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Main toolbar buttons (tooltips and alt text for images)
+previous.title=Naunang Pahina
+next.title=Sunod na Pahina
+
+# LOCALIZATION NOTE (page.title): The tooltip for the pageNumber input.
+# LOCALIZATION NOTE (of_pages): "{{pagesCount}}" will be replaced by a number
+# representing the total number of pages in the document.
+# LOCALIZATION NOTE (page_of_pages): "{{pageNumber}}" and "{{pagesCount}}"
+# will be replaced by a number representing the currently visible page,
+# respectively a number representing the total number of pages in the document.
+
+open_file.title=Magbukas ng file
+open_file_label=Buksan
+bookmark.title=Kasalukuyang tingin (kopyahin o buksan sa bagong window)
+bookmark_label=Kasalukuyang tingin
+
+# Secondary toolbar and context menu
+tools.title=Mga Tool
+tools_label=Mga Tool
+
+
+# Document properties dialog box
+# LOCALIZATION NOTE (document_properties_kb): "{{size_kb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in kilobytes, respectively in bytes.
+# LOCALIZATION NOTE (document_properties_mb): "{{size_mb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in megabytes, respectively in bytes.
+document_properties_title=Pamagat:
+# LOCALIZATION NOTE (document_properties_date_string): "{{date}}" and "{{time}}"
+# will be replaced by the creation/modification date, and time, of the PDF file.
+
+# LOCALIZATION NOTE (print_progress_percent): "{{progress}}" will be replaced by
+# a numerical per cent value.
+print_progress_close=Kanselahin
+
+# Tooltips and alt text for side panel toolbar buttons
+# (the _label strings are alt text for the buttons, the .title strings are
+# tooltips)
+thumbs.title=Ipakita ang mga Thumbnails
+findbar_label=Hanapin
+
+# Thumbnails panel item (tooltip and alt text for images)
+# LOCALIZATION NOTE (thumb_page_title): "{{page}}" will be replaced by the page
+# number.
+thumb_page_title=Pahina {{page}}
+# LOCALIZATION NOTE (thumb_page_canvas): "{{page}}" will be replaced by the page
+# number.
+thumb_page_canvas=Thumbnail ng Pahina {{page}}
+
+# Find panel button title and messages
+find_highlight=I-highlight lahat
+
+# Error panel labels
+error_more_info=Maraming Inpormasyon
+error_less_info=Maikling Inpormasyon
+# LOCALIZATION NOTE (error_version_info): "{{version}}" and "{{build}}" will be
+# replaced by the PDF.JS version and build ID.
+# LOCALIZATION NOTE (error_message): "{{message}}" will be replaced by an
+# english string describing the error.
+error_message=Mensahe: {{message}}
+# LOCALIZATION NOTE (error_stack): "{{stack}}" will be replaced with a stack
+# trace.
+# LOCALIZATION NOTE (error_file): "{{file}}" will be replaced with a filename
+# LOCALIZATION NOTE (error_line): "{{line}}" will be replaced with a line number
+error_line=Linya: {{line}}
+rendering_error=May naganap na pagkakamali habang pagsasalin sa pahina.
+
+# Predefined zoom values
+page_scale_width=Haba ng Pahina
+page_scale_fit=ang pahina ay angkop
+page_scale_auto=awtomatikong pag-imbulog
+# LOCALIZATION NOTE (page_scale_percent): "{{scale}}" will be replaced by a
+# numerical scale value.
+
+# Loading indicator messages
+loading_error=May maling nangyari habang kinakarga ang PDF.
+
+# LOCALIZATION NOTE (text_annotation_type.alt): This is used as a tooltip.
+# "{{type}}" will be replaced with an annotation type from a list defined in
+# the PDF spec (32000-1:2008 Table 169 – Annotation types).
+# Some common types are e.g.: "Check", "Text", "Comment", "Note"
+password_ok=OK
+password_cancel=Kanselahin
+

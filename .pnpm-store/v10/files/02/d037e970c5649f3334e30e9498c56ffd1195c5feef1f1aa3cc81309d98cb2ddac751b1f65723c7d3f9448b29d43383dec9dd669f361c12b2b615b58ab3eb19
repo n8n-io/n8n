@@ -1,0 +1,31 @@
+{
+  "name": "read-installed",
+  "description": "Read all the installed packages in a folder, and return a tree structure with all the data.",
+  "version": "4.0.3",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/isaacs/read-installed"
+  },
+  "main": "read-installed.js",
+  "scripts": {
+    "test": "tap ./test/*.js"
+  },
+  "dependencies": {
+    "debuglog": "^1.0.1",
+    "read-package-json": "^2.0.0",
+    "readdir-scoped-modules": "^1.0.0",
+    "semver": "2 || 3 || 4 || 5",
+    "slide": "~1.1.3",
+    "util-extend": "^1.0.1"
+  },
+  "optionalDependencies": {
+    "graceful-fs": "^4.1.2"
+  },
+  "author": "Isaac Z. Schlueter <i@izs.me> (http://blog.izs.me/)",
+  "license": "ISC",
+  "devDependencies": {
+    "mkdirp": "^0.5.0",
+    "rimraf": "^2.2.8",
+    "tap": "^1.2.0"
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "name": "postgres-bytea",
+  "main": "index.js",
+  "version": "3.0.0",
+  "description": "Postgres bytea parser",
+  "license": "MIT",
+  "repository": "bendrucker/postgres-bytea",
+  "author": {
+    "name": "Ben Drucker",
+    "email": "bvdrucker@gmail.com",
+    "url": "bendrucker.me"
+  },
+  "engines": {
+    "node": ">= 6"
+  },
+  "scripts": {
+    "test": "standard && tape *.js"
+  },
+  "keywords": [
+    "bytea",
+    "postgres",
+    "binary",
+    "parser"
+  ],
+  "dependencies": {
+    "obuf": "~1.1.2"
+  },
+  "devDependencies": {
+    "concat-stream": "2.0.0",
+    "standard": "^14.0.0",
+    "stream-to-promise": "^3.0.0",
+    "tape": "^5.0.0",
+    "tape-promise": "4.0.0"
+  },
+  "files": [
+    "*.js"
+  ]
+}

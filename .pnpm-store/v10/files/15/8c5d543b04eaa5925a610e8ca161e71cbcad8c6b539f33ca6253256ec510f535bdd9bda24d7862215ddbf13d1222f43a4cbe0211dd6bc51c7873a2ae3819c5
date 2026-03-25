@@ -1,0 +1,111 @@
+{
+  "name": "eslint-plugin-eslint-plugin",
+  "version": "7.0.0",
+  "description": "An ESLint plugin for linting ESLint plugins",
+  "author": "Teddy Katz",
+  "main": "./dist/index.js",
+  "type": "module",
+  "exports": {
+    ".": "./dist/index.js",
+    "./package.json": "./package.json"
+  },
+  "license": "MIT",
+  "scripts": {
+    "build": "tsup",
+    "lint": "npm-run-all --continue-on-error --aggregate-output --parallel lint:*",
+    "lint:docs": "markdownlint \"**/*.md\"",
+    "lint:eslint-docs": "npm-run-all -s build \"update:eslint-docs -- --check\"",
+    "lint:js": "eslint --cache --ignore-pattern \"**/*.md\" .",
+    "lint:js-docs": "eslint --no-inline-config \"**/*.md\"",
+    "lint:package-json": "npmPkgJsonLint .",
+    "release": "release-it",
+    "test": "vitest run --coverage",
+    "test:remote": "eslint-remote-tester",
+    "typecheck": "tsc",
+    "update:eslint-docs": "eslint-doc-generator"
+  },
+  "files": [
+    "CHANGELOG.md",
+    "dist/"
+  ],
+  "keywords": [
+    "eslint",
+    "eslintplugin",
+    "eslint-plugin"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/eslint-community/eslint-plugin-eslint-plugin.git"
+  },
+  "bugs": {
+    "url": "https://github.com/eslint-community/eslint-plugin-eslint-plugin/issues"
+  },
+  "homepage": "https://github.com/eslint-community/eslint-plugin-eslint-plugin#readme",
+  "dependencies": {
+    "@eslint-community/eslint-utils": "^4.4.0",
+    "estraverse": "^5.3.0"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.6.0",
+    "@commitlint/config-conventional": "^19.6.0",
+    "@eslint-community/eslint-plugin-eslint-comments": "^4.3.0",
+    "@eslint/eslintrc": "^3.0.2",
+    "@eslint/js": "^9.31.0",
+    "@release-it/conventional-changelog": "^9.0.3",
+    "@types/eslint-plugin-markdown": "^2.0.2",
+    "@types/eslint-scope": "^8.3.0",
+    "@types/espree": "^10.1.0",
+    "@types/estraverse": "^5.1.7",
+    "@types/estree": "^1.0.8",
+    "@types/lodash": "^4.17.18",
+    "@types/node": "^20.19.0",
+    "@typescript-eslint/parser": "^8.38.0",
+    "@typescript-eslint/utils": "^8.38.0",
+    "@vitest/coverage-istanbul": "^3.2.4",
+    "eslint": "^9.31.0",
+    "eslint-config-not-an-aardvark": "^2.1.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-doc-generator": "^2.2.2",
+    "eslint-plugin-markdown": "^5.1.0",
+    "eslint-plugin-n": "^17.21.0",
+    "eslint-plugin-prettier": "^5.5.3",
+    "eslint-plugin-unicorn": "^56.0.1",
+    "eslint-remote-tester": "^4.0.3",
+    "eslint-scope": "^8.0.1",
+    "espree": "^10.0.1",
+    "husky": "^9.1.7",
+    "jiti": "^2.5.1",
+    "lodash": "^4.17.21",
+    "markdownlint-cli": "^0.43.0",
+    "npm-package-json-lint": "^8.0.0",
+    "npm-run-all2": "^7.0.1",
+    "prettier": "^3.4.1",
+    "release-it": "^17.2.0",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  },
+  "peerDependencies": {
+    "eslint": ">=9.0.0"
+  },
+  "engines": {
+    "node": "^20.19.0 || ^22.13.1 || >=24.0.0"
+  },
+  "release-it": {
+    "git": {
+      "commitMessage": "chore: release v${version}"
+    },
+    "plugins": {
+      "@release-it/conventional-changelog": {
+        "preset": "conventionalcommits",
+        "infile": "CHANGELOG.md"
+      }
+    },
+    "github": {
+      "release": true
+    },
+    "npm": {
+      "skipChecks": true
+    }
+  }
+}

@@ -1,0 +1,1 @@
+{"version":3,"file":"allowedMethods.d.ts","sourceRoot":"","sources":["../../../../../src/server/auth/middleware/allowedMethods.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,cAAc,EAAE,MAAM,SAAS,CAAC;AAGzC;;;;;GAKG;AACH,wBAAgB,cAAc,CAAC,cAAc,EAAE,MAAM,EAAE,GAAG,cAAc,CAUvE"}

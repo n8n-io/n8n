@@ -1,0 +1,78 @@
+{
+  "name": "classnames",
+  "version": "2.5.1",
+  "description": "A simple utility for conditionally joining classNames together",
+  "author": "Jed Watson",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JedWatson/classnames.git"
+  },
+  "type": "commonjs",
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    },
+    "./index.js": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    },
+    "./bind": {
+      "types": "./bind.d.ts",
+      "default": "./bind.js"
+    },
+    "./bind.js": {
+      "types": "./bind.d.ts",
+      "default": "./bind.js"
+    },
+    "./dedupe": {
+      "types": "./dedupe.d.ts",
+      "default": "./dedupe.js"
+    },
+    "./dedupe.js": {
+      "types": "./dedupe.d.ts",
+      "default": "./dedupe.js"
+    }
+  },
+  "scripts": {
+    "test": "node --test ./tests/*.mjs",
+    "bench": "node ./benchmarks/run.js",
+    "bench-browser": "rollup --plugin commonjs,json,node-resolve ./benchmarks/runInBrowser.js --file ./benchmarks/runInBrowser.bundle.js && http-server -c-1 ./benchmarks",
+    "check-types": "tsd"
+  },
+  "keywords": [
+    "react",
+    "css",
+    "classes",
+    "classname",
+    "classnames",
+    "util",
+    "utility"
+  ],
+  "files": [
+    "HISTORY.md",
+    "LICENSE",
+    "README.md",
+    "*.d.ts",
+    "*.js"
+  ],
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^25.0.7",
+    "@rollup/plugin-json": "^6.1.0",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "classnames-local": "file:.",
+    "classnames-npm": "npm:classnames@*",
+    "http-server": "^14.1.1",
+    "markdown-table": "^3.0.3",
+    "rollup": "^4.9.1",
+    "tinybench": "^2.5.1",
+    "tsd": "^0.30.1"
+  },
+  "tsd": {
+    "directory": "./tests"
+  }
+}

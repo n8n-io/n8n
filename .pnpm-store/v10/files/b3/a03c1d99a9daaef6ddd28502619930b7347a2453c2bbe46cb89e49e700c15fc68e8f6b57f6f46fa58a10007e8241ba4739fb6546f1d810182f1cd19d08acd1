@@ -1,0 +1,1 @@
+{"version":3,"file":"Authorize.d.ts","sourceRoot":"","sources":["../../../src/protocol/Authorize.ts"],"names":[],"mappings":"AAKA,OAAO,EACH,SAAS,EAET,6BAA6B,EAC7B,MAAM,EAIT,MAAM,yBAAyB,CAAC;AACjC,OAAO,EAAE,iBAAiB,EAAE,MAAM,4BAA4B,CAAC;AAI/D;;;;;;;GAOG;AACH,wBAAgB,qBAAqB,CACjC,MAAM,EAAE,iBAAiB,EACzB,SAAS,EAAE,SAAS,EACpB,OAAO,EAAE,6BAA6B,EACtC,MAAM,EAAE,MAAM,GACf,MAAM,CA0CR"}

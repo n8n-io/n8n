@@ -1,0 +1,2 @@
+plugins:
+  - plugin-with-init-logic.js

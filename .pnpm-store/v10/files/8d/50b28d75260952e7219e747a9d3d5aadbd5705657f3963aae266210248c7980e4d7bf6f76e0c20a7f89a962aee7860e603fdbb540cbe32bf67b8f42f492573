@@ -1,0 +1,89 @@
+{
+  "name": "@langchain/google-genai",
+  "version": "2.1.24",
+  "description": "Google Generative AI integration for LangChain.js",
+  "author": "LangChain",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:langchain-ai/langchainjs.git"
+  },
+  "homepage": "https://github.com/langchain-ai/langchainjs/tree/main/libs/langchain-google-genai/",
+  "dependencies": {
+    "@google/generative-ai": "^0.24.0",
+    "uuid": "^11.1.0"
+  },
+  "peerDependencies": {
+    "@langchain/core": "^1.1.30"
+  },
+  "devDependencies": {
+    "@jest/globals": "^30.2.0",
+    "@swc/core": "^1.15.13",
+    "@swc/jest": "^0.2.29",
+    "@tsconfig/recommended": "^1.0.3",
+    "dotenv": "^16.3.1",
+    "dpdm": "^3.14.0",
+    "eslint": "^9.34.0",
+    "hnswlib-node": "^3.0.0",
+    "jest": "^30.2.0",
+    "jest-environment-node": "^30.2.0",
+    "prettier": "^3.5.0",
+    "ts-jest": "^29.4.6",
+    "typescript": "~5.8.3",
+    "zod": "^3.25.76",
+    "@langchain/core": "^1.1.30",
+    "@langchain/eslint": "0.1.1",
+    "@langchain/standard-tests": "0.0.23",
+    "@langchain/tsconfig": "0.0.1"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "./dist/index.cjs",
+  "types": "./dist/index.d.cts",
+  "exports": {
+    ".": {
+      "input": "./src/index.ts",
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      },
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist/",
+    "CHANGELOG.md",
+    "README.md",
+    "LICENSE"
+  ],
+  "module": "./dist/index.js",
+  "scripts": {
+    "build": "turbo build:compile --filter @langchain/google-genai --output-logs new-only",
+    "build:compile": "tsdown",
+    "lint:eslint": "eslint --cache src/",
+    "lint:dpdm": "dpdm --skip-dynamic-imports circular --exit-code circular:1 --no-warning --no-tree src/*.ts src/**/*.ts",
+    "lint": "pnpm lint:eslint && pnpm lint:dpdm",
+    "lint:fix": "pnpm lint:eslint --fix && pnpm lint:dpdm",
+    "clean": "rm -rf .turbo dist/",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest --testPathIgnorePatterns=\\.int\\.test.ts --testTimeout 30000 --maxWorkers=50%",
+    "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch --testPathIgnorePatterns=\\.int\\.test.ts",
+    "test:single": "NODE_OPTIONS=--experimental-vm-modules jest --config jest.config.cjs --testTimeout 100000",
+    "test:int": "NODE_OPTIONS=--experimental-vm-modules jest --testPathPatterns=\\.int\\.test.ts --testTimeout 100000 --maxWorkers=50%",
+    "test:standard:unit": "NODE_OPTIONS=--experimental-vm-modules jest --testPathPatterns=\\.standard\\.test.ts --testTimeout 100000 --maxWorkers=50%",
+    "test:standard:int": "NODE_OPTIONS=--experimental-vm-modules jest --testPathPatterns=\\.standard\\.int\\.test.ts --testTimeout 100000 --maxWorkers=50%",
+    "test:standard": "pnpm test:standard:unit && pnpm test:standard:int",
+    "format": "prettier --write \"src\"",
+    "format:check": "prettier --check \"src\"",
+    "typegen": "pnpm run typegen:profiles",
+    "typegen:profiles": "pnpm --filter @langchain/model-profiles make --config profiles.toml"
+  }
+}

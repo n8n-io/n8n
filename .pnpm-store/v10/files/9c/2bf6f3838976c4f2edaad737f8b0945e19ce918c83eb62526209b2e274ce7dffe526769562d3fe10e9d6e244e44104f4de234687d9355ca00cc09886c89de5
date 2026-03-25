@@ -1,0 +1,3 @@
+require('./').install({
+    hookRequire: true
+});

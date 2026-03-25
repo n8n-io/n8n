@@ -1,0 +1,22 @@
+{
+	"root": true,
+
+	"extends": "@ljharb",
+
+	"rules": {
+		"complexity": [2, 14],
+		"func-name-matching": 0,
+		"id-length": [2, { "min": 1, "max": 24, "properties": "never" }],
+		"max-statements": [2, 20],
+		"new-cap": [2, { "capIsNewExceptions": ["GetMethod"] }]
+	},
+
+	"overrides": [
+		{
+			"files": "test/**",
+			"rules": {
+				"max-lines-per-function": [2, { "max": 68 }],
+			},
+		}
+	],
+}

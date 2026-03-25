@@ -1,0 +1,24 @@
+name: clang-format Check
+
+on: [push, pull_request]
+
+jobs:
+  # Building using the github runner environement directly.
+  clang-format:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Fetch origin/main
+      run: git fetch origin main
+    - name: List of changed file(s)
+      run: git diff --name-only FETCH_HEAD
+
+    - name: Build clang-format docker
+      run: cd .github/workflows && docker build --tag=linter .
+    - name: Check clang-format
+      run: docker run --rm --init -v $(pwd):/repo linter:latest clang-format --version
+    - name: clang-format help
+      run: docker run --rm --init -v $(pwd):/repo linter:latest clang-format --help
+
+    - name: Check current commit
+      run: docker run --rm --init -v $(pwd):/repo -w /repo linter:latest sh -c "git diff --diff-filter=d --name-only FETCH_HEAD | grep '\.c$\|\.h$\|\.cc$' | xargs clang-format --style=file --dry-run --Werror "

@@ -1,0 +1,1 @@
+{"version":3,"file":"DialogHeader.d.ts","sourceRoot":"","sources":["../../../../../src/modal/components/DialogHeader.tsx"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,uBAAuB,EAAE,MAAM,cAAc,CAAC;AAC5D,OAAO,KAAK,EAAE,KAAK,EAAE,MAAM,QAAQ,CAAC;AAKpC,MAAM,WAAW,KAAK;IACpB,OAAO,EAAE,uBAAuB,CAAC;CAClC;AAED,wBAAgB,YAAY,CAAC,EAAE,OAAO,EAAE,EAAE,KAAK,GAAG,KAAK,CAkBtD"}

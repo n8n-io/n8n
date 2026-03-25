@@ -1,0 +1,3 @@
+require('../').register({
+  transpileOnly: true,
+});

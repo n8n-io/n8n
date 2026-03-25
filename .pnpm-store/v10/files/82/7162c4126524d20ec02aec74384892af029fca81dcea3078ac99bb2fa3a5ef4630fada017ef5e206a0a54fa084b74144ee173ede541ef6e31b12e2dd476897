@@ -1,0 +1,71 @@
+{
+  "name": "stylelint-scss",
+  "description": "A collection of SCSS-specific rules for Stylelint",
+  "version": "6.12.1",
+  "author": "Krister Kari",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stylelint-scss/stylelint-scss.git"
+  },
+  "license": "MIT",
+  "main": "src/index.js",
+  "engines": {
+    "node": ">=18.12.0"
+  },
+  "peerDependencies": {
+    "stylelint": "^16.0.2"
+  },
+  "dependencies": {
+    "css-tree": "^3.0.1",
+    "is-plain-object": "^5.0.0",
+    "known-css-properties": "^0.36.0",
+    "mdn-data": "^2.21.0",
+    "postcss-media-query-parser": "^0.2.3",
+    "postcss-resolve-nested-selector": "^0.1.6",
+    "postcss-selector-parser": "^7.1.0",
+    "postcss-value-parser": "^4.2.0"
+  },
+  "devDependencies": {
+    "common-tags": "^1.8.2",
+    "cross-env": "^7.0.3",
+    "eslint": "^8.57.0",
+    "github-contributors-list": "^1.2.5",
+    "husky": "^9.1.7",
+    "jest": "^29.7.0",
+    "jest-preset-stylelint": "^7.3.0",
+    "lint-staged": "^16.1.0",
+    "np": "^10.2.0",
+    "postcss": "^8.5.4",
+    "postcss-less": "^6.0.0",
+    "postcss-scss": "^4.0.9",
+    "prettier": "^3.5.3",
+    "stylelint": "^16.20.0"
+  },
+  "files": [
+    "src/**/*.js",
+    "!src/**/README.md",
+    "!**/__tests__/**"
+  ],
+  "keywords": [
+    "css",
+    "csslint",
+    "lint",
+    "linter",
+    "scss",
+    "stylelint",
+    "stylelint-plugin"
+  ],
+  "scripts": {
+    "lint": "eslint . --ignore-path .gitignore",
+    "prettify": "prettier --write \"src/**/*.js\" --ignore-path=.prettierignore",
+    "pretest": "npm run lint",
+    "release": "np",
+    "jest": "cross-env NODE_OPTIONS=\"--experimental-vm-modules --no-warnings\" jest",
+    "test": "npm run jest -- --coverage",
+    "watch": "npm run jest -- --watch",
+    "test-rule": "npm run jest",
+    "test-util": "npm run jest",
+    "generate-contributors-list": "githubcontrib --owner stylelint-scss --repo stylelint-scss --cols 6 --sortOrder desc --filter greenkeeper[bot],dependabot[bot] --showlogin true --imagesize 80 --format html",
+    "prepare": "husky install"
+  }
+}

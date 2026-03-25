@@ -1,0 +1,34 @@
+{
+  "name": "co",
+  "version": "4.6.0",
+  "description": "generator async control flow goodness",
+  "keywords": [
+    "async",
+    "flow",
+    "generator",
+    "coro",
+    "coroutine"
+  ],
+  "devDependencies": {
+    "browserify": "^10.0.0",
+    "istanbul-harmony": "0",
+    "mocha": "^2.0.0",
+    "mz": "^1.0.2"
+  },
+  "scripts": {
+    "test": "mocha --harmony",
+    "test-cov": "node --harmony node_modules/.bin/istanbul cover ./node_modules/.bin/_mocha -- --reporter dot",
+    "test-travis": "node --harmony node_modules/.bin/istanbul cover ./node_modules/.bin/_mocha --report lcovonly -- --reporter dot",
+    "prepublish": "npm run browserify",
+    "browserify": "browserify index.js -o ./co-browser.js -s co"
+  },
+  "files": [
+    "index.js"
+  ],
+  "license": "MIT",
+  "repository": "tj/co",
+  "engines": {
+    "iojs": ">= 1.0.0",
+    "node": ">= 0.12.0"
+  }
+}

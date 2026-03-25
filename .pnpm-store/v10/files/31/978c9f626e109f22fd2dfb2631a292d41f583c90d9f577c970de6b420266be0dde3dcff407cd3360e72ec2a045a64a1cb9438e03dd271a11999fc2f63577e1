@@ -1,0 +1,50 @@
+{
+  "name": "gm",
+  "description": "GraphicsMagick and ImageMagick for node.js",
+  "version": "1.25.1",
+  "author": "Aaron Heckmann <aaron.heckmann+github@gmail.com>",
+  "keywords": [
+    "graphics",
+    "magick",
+    "image",
+    "graphicsmagick",
+    "imagemagick",
+    "gm",
+    "convert",
+    "identify",
+    "compare"
+  ],
+  "engines": {
+    "node": ">=14"
+  },
+  "bugs": {
+    "url": "http://github.com/aheckmann/gm/issues"
+  },
+  "licenses": [
+    {
+      "type": "MIT",
+      "url": "http://www.opensource.org/licenses/mit-license.php"
+    }
+  ],
+  "main": "./index",
+  "scripts": {
+    "security": "npm audit",
+    "test": "npm run security && npm run test-integration",
+    "test-integration": "node test/ --integration",
+    "test-unit": "node test/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aheckmann/gm.git"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "async": "~0.9.0"
+  },
+  "dependencies": {
+    "array-parallel": "~0.1.3",
+    "array-series": "~0.1.5",
+    "cross-spawn": "^7.0.5",
+    "debug": "^3.1.0"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "all": true,
+  "include": ["dist/**"],
+  "exclude": [
+    "dist/test/",
+    "dist/tools/",
+    "**/*.d.ts",
+    "dist/src/shell/webParser.*",
+    "dist/src/cli.*",
+    "dist/src/generators/php/requests.*"
+  ],
+  "report-dir": "./coverage",
+  "reporter": ["text", "lcov"]
+}

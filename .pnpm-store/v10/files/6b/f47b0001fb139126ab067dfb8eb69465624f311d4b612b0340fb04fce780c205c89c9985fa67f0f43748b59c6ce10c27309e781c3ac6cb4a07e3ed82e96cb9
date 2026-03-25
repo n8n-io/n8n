@@ -1,0 +1,1 @@
+{"version":3,"file":"index.browser.js","sourceRoot":"","sources":["../../../../storage-common/src/index.browser.ts"],"names":[],"mappings":"AAAA,uCAAuC;AACvC,kCAAkC;AAElC,cAAc,2BAA2B,CAAC","sourcesContent":["// Copyright (c) Microsoft Corporation.\n// Licensed under the MIT License.\n\nexport * from \"./BufferScheduler.browser\";\n"]}

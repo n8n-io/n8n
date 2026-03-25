@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json.schemastore.org/package.json",
+  "name": "@microsoft/agents-activity",
+  "version": "1.2.3",
+  "homepage": "https://github.com/microsoft/Agents-for-js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/microsoft/Agents-for-js.git"
+  },
+  "author": {
+    "name": "Microsoft",
+    "email": "agentssdk@microsoft.com",
+    "url": "https://aka.ms/Agents"
+  },
+  "description": "Microsoft 365 Agents SDK for JavaScript. Activity Protocol serialization and deserialization.",
+  "keywords": [
+    "Agents"
+  ],
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "dependencies": {
+    "debug": "^4.4.3",
+    "uuid": "^11.1.0",
+    "zod": "3.25.75"
+  },
+  "license": "MIT",
+  "files": [
+    "README.md",
+    "dist/src",
+    "src",
+    "package.json"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js",
+      "require": "./dist/src/index.js"
+    },
+    "./logger": {
+      "types": "./dist/src/logger.d.ts",
+      "import": "./dist/src/logger.js",
+      "require": "./dist/src/logger.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

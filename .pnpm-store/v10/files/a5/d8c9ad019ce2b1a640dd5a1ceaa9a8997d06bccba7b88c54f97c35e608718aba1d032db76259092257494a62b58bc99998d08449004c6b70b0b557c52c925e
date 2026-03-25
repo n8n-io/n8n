@@ -1,0 +1,1 @@
+export * from "../dist/tools/discord.js";

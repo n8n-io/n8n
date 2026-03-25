@@ -1,0 +1,12 @@
+{
+	"extends": "../../tsconfig",
+	"compilerOptions": {
+		"outDir": "lib",
+		"declaration": true,
+		"declarationMap": true,
+		"sourceMap": false,
+		"module": "es2015"
+	},
+	"include": ["src/**/*.ts", "../../@types/**/*"],
+	"exclude": ["node_modules", "src/**/*.spec.ts"]
+}

@@ -1,0 +1,2 @@
+ require('./b');
+ require('./c');

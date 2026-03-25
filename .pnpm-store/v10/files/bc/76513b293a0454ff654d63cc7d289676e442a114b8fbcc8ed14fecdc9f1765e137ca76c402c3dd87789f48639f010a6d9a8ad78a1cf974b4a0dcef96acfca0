@@ -1,0 +1,91 @@
+{
+  "name": "jest-cli",
+  "description": "Delightful JavaScript Testing.",
+  "version": "29.6.2",
+  "main": "./build/index.js",
+  "types": "./build/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./build/index.d.ts",
+      "default": "./build/index.js"
+    },
+    "./package.json": "./package.json",
+    "./bin/jest": "./bin/jest.js"
+  },
+  "dependencies": {
+    "@jest/core": "^29.6.2",
+    "@jest/test-result": "^29.6.2",
+    "@jest/types": "^29.6.1",
+    "chalk": "^4.0.0",
+    "exit": "^0.1.2",
+    "graceful-fs": "^4.2.9",
+    "import-local": "^3.0.2",
+    "jest-config": "^29.6.2",
+    "jest-util": "^29.6.2",
+    "jest-validate": "^29.6.2",
+    "prompts": "^2.0.1",
+    "yargs": "^17.3.1"
+  },
+  "devDependencies": {
+    "@tsd/typescript": "^5.0.4",
+    "@types/exit": "^0.1.30",
+    "@types/graceful-fs": "^4.1.3",
+    "@types/prompts": "^2.0.1",
+    "@types/yargs": "^17.0.8",
+    "tsd-lite": "^0.7.0"
+  },
+  "peerDependencies": {
+    "node-notifier": "^8.0.1 || ^9.0.0 || ^10.0.0"
+  },
+  "peerDependenciesMeta": {
+    "node-notifier": {
+      "optional": true
+    }
+  },
+  "bin": {
+    "jest": "./bin/jest.js"
+  },
+  "engines": {
+    "node": "^14.15.0 || ^16.10.0 || >=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/facebook/jest.git",
+    "directory": "packages/jest-cli"
+  },
+  "bugs": {
+    "url": "https://github.com/facebook/jest/issues"
+  },
+  "homepage": "https://jestjs.io/",
+  "license": "MIT",
+  "keywords": [
+    "ava",
+    "babel",
+    "coverage",
+    "easy",
+    "expect",
+    "facebook",
+    "immersive",
+    "instant",
+    "jasmine",
+    "jest",
+    "jsdom",
+    "mocha",
+    "mocking",
+    "painless",
+    "qunit",
+    "runner",
+    "sandboxed",
+    "snapshot",
+    "tap",
+    "tape",
+    "test",
+    "testing",
+    "typescript",
+    "watch"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "gitHead": "0fd5b1c37555f485c56a6ad2d6b010a72204f9f6"
+}

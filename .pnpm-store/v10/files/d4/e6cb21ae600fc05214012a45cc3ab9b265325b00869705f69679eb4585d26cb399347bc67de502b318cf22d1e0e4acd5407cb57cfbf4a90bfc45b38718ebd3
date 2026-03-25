@@ -1,0 +1,1 @@
+{"version":3,"file":"jubjub.d.ts","sourceRoot":"","sources":["../src/jubjub.ts"],"names":[],"mappings":"AAAA;;;GAGG;AACH,OAAO,EAAE,oBAAoB,EAAE,gBAAgB,EAAE,MAAM,IAAI,OAAO,EAAE,MAAM,WAAW,CAAC;AAEtF,wEAAwE;AACxE,eAAO,MAAM,MAAM,EAAE,OAAO,OAAiB,CAAC;AAC9C,sFAAsF;AACtF,eAAO,MAAM,aAAa,EAAE,OAAO,oBAA2C,CAAC;AAC/E,kFAAkF;AAClF,eAAO,MAAM,SAAS,EAAE,OAAO,gBAAmC,CAAC"}

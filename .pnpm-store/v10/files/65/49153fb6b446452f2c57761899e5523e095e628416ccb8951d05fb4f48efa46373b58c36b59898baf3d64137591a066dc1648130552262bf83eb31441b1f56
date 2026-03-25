@@ -1,0 +1,55 @@
+{
+  "name": "@octokit/request",
+  "version": "8.4.1",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "description": "Send parameterized requests to GitHub's APIs with sensible defaults in browsers and Node",
+  "repository": "github:octokit/request.js",
+  "keywords": [
+    "octokit",
+    "github",
+    "api",
+    "request"
+  ],
+  "author": "Gregor Martynus (https://github.com/gr2m)",
+  "license": "MIT",
+  "dependencies": {
+    "@octokit/endpoint": "^9.0.6",
+    "@octokit/request-error": "^5.1.1",
+    "@octokit/types": "^13.1.0",
+    "universal-user-agent": "^6.0.0"
+  },
+  "devDependencies": {
+    "@octokit/auth-app": "^6.0.0",
+    "@octokit/tsconfig": "^2.0.0",
+    "@types/fetch-mock": "^7.2.4",
+    "@types/jest": "^29.0.0",
+    "@types/lolex": "^5.1.0",
+    "@types/node": "^20.0.0",
+    "@types/once": "^1.4.0",
+    "esbuild": "^0.20.0",
+    "fetch-mock": "npm:@gr2m/fetch-mock@^9.11.0-pull-request-644.1",
+    "glob": "^10.2.4",
+    "jest": "^29.0.0",
+    "lolex": "^6.0.0",
+    "prettier": "3.2.5",
+    "semantic-release-plugin-update-version-in-files": "^1.0.0",
+    "string-to-arraybuffer": "^1.0.2",
+    "ts-jest": "^29.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">= 18"
+  },
+  "files": [
+    "dist-*/**",
+    "bin/**"
+  ],
+  "main": "dist-node/index.js",
+  "browser": "dist-web/index.js",
+  "types": "dist-types/index.d.ts",
+  "module": "dist-src/index.js",
+  "sideEffects": false
+}

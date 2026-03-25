@@ -1,0 +1,73 @@
+{
+  "author": "Ben Newman <bn@cs.stanford.edu>",
+  "name": "recast",
+  "version": "0.22.0",
+  "description": "JavaScript syntax tree transformer, nondestructive pretty-printer, and automatic source map generator",
+  "keywords": [
+    "ast",
+    "rewriting",
+    "refactoring",
+    "codegen",
+    "syntax",
+    "transformation",
+    "parsing",
+    "pretty-printing"
+  ],
+  "homepage": "http://github.com/benjamn/recast",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/benjamn/recast.git"
+  },
+  "license": "MIT",
+  "main": "main.js",
+  "types": "main.d.ts",
+  "scripts": {
+    "mocha": "test/run.sh",
+    "debug": "test/run.sh --inspect-brk",
+    "test": "npm run lint && npm run build && npm run mocha",
+    "build": "npm run clean && tsc",
+    "lint": "eslint --ext .ts .",
+    "format": "prettier --write .",
+    "clean": "tsc --build --clean",
+    "prepare": "npm run build",
+    "postpack": "npm run clean"
+  },
+  "lint-staged": {
+    "*.ts": [
+      "eslint",
+      "prettier -c"
+    ]
+  },
+  "browser": {
+    "fs": false
+  },
+  "dependencies": {
+    "assert": "^2.0.0",
+    "ast-types": "0.15.2",
+    "esprima": "~4.0.0",
+    "source-map": "~0.6.1",
+    "tslib": "^2.0.1"
+  },
+  "devDependencies": {
+    "@babel/core": "7.14.8",
+    "@babel/parser": "7.14.8",
+    "@babel/preset-env": "7.16.11",
+    "@types/esprima": "4.0.3",
+    "@types/glob": "7.2.0",
+    "@types/mocha": "8.2.0",
+    "@types/node": "16.4.0",
+    "@typescript-eslint/parser": "^4.9.1",
+    "eslint": "^7.1.0",
+    "esprima-fb": "15001.1001.0-dev-harmony-fb",
+    "flow-parser": "0.156.0",
+    "glob": "7.2.0",
+    "lint-staged": "^12.4.1",
+    "mocha": "^9.2.2",
+    "prettier": "^2.6.2",
+    "reify": "0.20.12",
+    "typescript": "^4.3.5"
+  },
+  "engines": {
+    "node": ">= 4"
+  }
+}

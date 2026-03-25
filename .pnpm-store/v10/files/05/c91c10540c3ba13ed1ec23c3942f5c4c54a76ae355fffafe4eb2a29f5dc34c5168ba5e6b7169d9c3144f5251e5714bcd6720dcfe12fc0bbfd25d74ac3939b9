@@ -1,0 +1,1 @@
+{"version":3,"file":"useNonce.js","names":["nonce?: Ref<string | undefined>"],"sources":["../../src/shared/useNonce.ts"],"sourcesContent":[],"mappings":";;;;AAIA,SAAgB,SAASA,OAAiC;CACxD,MAAM,UAAU,4BAA4B,EAC1C,OAAO,KAAK,CACb,EAAC;AACF,QAAO,SAAS,MAAM,OAAO,SAAS,QAAQ,OAAO,MAAM;AAC5D"}

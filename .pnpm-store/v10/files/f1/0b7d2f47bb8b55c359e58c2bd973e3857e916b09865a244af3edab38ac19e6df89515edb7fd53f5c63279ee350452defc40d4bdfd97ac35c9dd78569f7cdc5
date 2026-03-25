@@ -1,0 +1,48 @@
+{
+	"name": "helmet",
+	"description": "help secure Express/Connect apps with various HTTP headers",
+	"version": "8.1.0",
+	"author": "Adam Baldwin <adam@npmjs.com> (https://evilpacket.net)",
+	"contributors": [
+		"Evan Hahn <me@evanhahn.com> (https://evanhahn.com)"
+	],
+	"homepage": "https://helmetjs.github.io/",
+	"bugs": {
+		"url": "https://github.com/helmetjs/helmet/issues",
+		"email": "me@evanhahn.com"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git://github.com/helmetjs/helmet.git"
+	},
+	"license": "MIT",
+	"keywords": [
+		"express",
+		"security",
+		"headers",
+		"backend",
+		"content-security-policy",
+		"cross-origin-embedder-policy",
+		"cross-origin-opener-policy",
+		"cross-origin-resource-policy",
+		"origin-agent-cluster",
+		"referrer-policy",
+		"strict-transport-security",
+		"x-content-type-options",
+		"x-dns-prefetch-control",
+		"x-download-options",
+		"x-frame-options",
+		"x-permitted-cross-domain-policies",
+		"x-powered-by",
+		"x-xss-protection"
+	],
+	"engines": {
+		"node": ">=18.0.0"
+	},
+	"exports": {
+		"import": "./index.mjs",
+		"require": "./index.cjs"
+	},
+	"main": "./index.cjs",
+	"types": "./index.d.cts"
+}

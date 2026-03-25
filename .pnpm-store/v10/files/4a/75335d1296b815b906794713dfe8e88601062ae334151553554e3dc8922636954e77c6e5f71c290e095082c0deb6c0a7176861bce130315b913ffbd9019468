@@ -1,0 +1,1 @@
+{"version":3,"file":"audio.js","sourceRoot":"","sources":["../src/sdk/audio.ts"],"names":[],"mappings":";AAAA;;GAEG;;;AAEH,4CAA2C;AAC3C,2DAAqD;AAErD,MAAa,KAAM,SAAQ,mBAAS;IAElC,IAAI,cAAc;QAChB,OAAO,CAAC,IAAI,CAAC,eAAe,KAApB,IAAI,CAAC,eAAe,GAAK,IAAI,kCAAc,CAAC,IAAI,CAAC,QAAQ,CAAC,EAAC,CAAC;IACtE,CAAC;CACF;AALD,sBAKC"}

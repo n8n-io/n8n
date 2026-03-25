@@ -1,0 +1,1 @@
+{"version":3,"file":"ChannelTraceEvent.js","sourceRoot":"","sources":["../../../../../../src/generated/grpc/channelz/v1/ChannelTraceEvent.ts"],"names":[],"mappings":";AAAA,sCAAsC;;;AAMtC,sCAAsC;AAEtC;;GAEG;AACU,QAAA,4CAA4C,GAAG;IAC1D,UAAU,EAAE,YAAY;IACxB,OAAO,EAAE,SAAS;IAClB,UAAU,EAAE,YAAY;IACxB,QAAQ,EAAE,UAAU;CACZ,CAAC"}

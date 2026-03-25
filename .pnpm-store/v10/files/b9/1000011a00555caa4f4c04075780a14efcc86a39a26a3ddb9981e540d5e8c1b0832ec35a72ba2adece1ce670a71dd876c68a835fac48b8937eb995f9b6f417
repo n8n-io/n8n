@@ -1,0 +1,85 @@
+{
+	"$id": "/inference/schemas/document-question-answering/input.json",
+	"$schema": "http://json-schema.org/draft-06/schema#",
+	"description": "Inputs for Document Question Answering inference",
+	"title": "DocumentQuestionAnsweringInput",
+	"type": "object",
+	"properties": {
+		"inputs": {
+			"description": "One (document, question) pair to answer",
+			"type": "object",
+			"title": "DocumentQuestionAnsweringInputData",
+			"properties": {
+				"image": {
+					"description": "The image on which the question is asked",
+					"comment": "type=binary"
+				},
+				"question": {
+					"type": "string",
+					"description": "A question to ask of the document"
+				}
+			},
+			"required": ["image", "question"]
+		},
+		"parameters": {
+			"description": "Additional inference parameters for Document Question Answering",
+			"$ref": "#/$defs/DocumentQuestionAnsweringParameters"
+		}
+	},
+	"$defs": {
+		"DocumentQuestionAnsweringParameters": {
+			"title": "DocumentQuestionAnsweringParameters",
+			"type": "object",
+			"properties": {
+				"doc_stride": {
+					"type": "integer",
+					"description": "If the words in the document are too long to fit with the question for the model, it will be split in several chunks with some overlap. This argument controls the size of that overlap."
+				},
+				"handle_impossible_answer": {
+					"type": "boolean",
+					"description": "Whether to accept impossible as an answer"
+				},
+				"lang": {
+					"type": "string",
+					"description": "Language to use while running OCR. Defaults to english."
+				},
+				"max_answer_len": {
+					"type": "integer",
+					"description": "The maximum length of predicted answers (e.g., only answers with a shorter length are considered)."
+				},
+				"max_seq_len": {
+					"type": "integer",
+					"description": "The maximum length of the total sentence (context + question) in tokens of each chunk passed to the model. The context will be split in several chunks (using doc_stride as overlap) if needed."
+				},
+				"max_question_len": {
+					"type": "integer",
+					"description": "The maximum length of the question after tokenization. It will be truncated if needed."
+				},
+				"top_k": {
+					"type": "integer",
+					"description": "The number of answers to return (will be chosen by order of likelihood). Can return less than top_k answers if there are not enough options available within the context."
+				},
+				"word_boxes": {
+					"type": "array",
+					"description": "A list of words and bounding boxes (normalized 0->1000). If provided, the inference will skip the OCR step and use the provided bounding boxes instead.",
+					"items": {
+						"anyOf": [
+							{
+								"type": "string"
+							},
+							{
+								"type": "array",
+								"items": {
+									"type": "number"
+								},
+								"maxLength": 4,
+								"minLength": 4
+							}
+						]
+					}
+				}
+			}
+		}
+	},
+	"required": ["inputs"]
+}

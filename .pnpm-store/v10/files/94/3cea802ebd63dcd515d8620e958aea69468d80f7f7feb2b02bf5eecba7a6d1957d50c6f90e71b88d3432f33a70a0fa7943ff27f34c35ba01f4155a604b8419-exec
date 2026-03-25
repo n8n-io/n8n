@@ -1,0 +1,7 @@
+#!/usr/bin/env node
+
+var rw = require("../").dash;
+
+rw.writeFile(process.argv[2] || "-", "Hello, world!", "utf8", function(error) {
+  if (error) throw error;
+});

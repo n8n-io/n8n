@@ -1,0 +1,1 @@
+export * from "../dist/retrievers/vespa.js";

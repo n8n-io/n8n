@@ -1,0 +1,1 @@
+{"version":3,"file":"authorizationCodeCredentialOptions.d.ts","sourceRoot":"","sources":["../../../src/credentials/authorizationCodeCredentialOptions.ts"],"names":[],"mappings":"AAGA,OAAO,KAAK,EAAE,0BAA0B,EAAE,MAAM,iCAAiC,CAAC;AAClF,OAAO,KAAK,EAAE,iCAAiC,EAAE,MAAM,wCAAwC,CAAC;AAEhG;;GAEG;AACH,MAAM,WAAW,kCACf,SAAQ,iCAAiC,EACvC,0BAA0B;CAAG"}

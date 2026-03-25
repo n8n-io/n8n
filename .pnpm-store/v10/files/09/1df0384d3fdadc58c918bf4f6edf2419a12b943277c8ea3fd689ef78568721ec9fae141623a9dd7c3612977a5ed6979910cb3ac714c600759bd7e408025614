@@ -1,0 +1,92 @@
+{
+  "name": "vue-i18n",
+  "version": "11.1.10",
+  "description": "Internationalization plugin for Vue.js",
+  "keywords": [
+    "i18n",
+    "internationalization",
+    "intlify",
+    "plugin",
+    "vue",
+    "vue.js"
+  ],
+  "license": "MIT",
+  "author": {
+    "name": "kazuya kawaguchi",
+    "email": "kawakazu80@gmail.com"
+  },
+  "homepage": "https://github.com/intlify/vue-i18n/tree/master/packages/vue-i18n#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/intlify/vue-i18n.git",
+    "directory": "packages/vue-i18n"
+  },
+  "bugs": {
+    "url": "https://github.com/intlify/vue-i18n/issues"
+  },
+  "files": [
+    "index.js",
+    "dist",
+    "vetur"
+  ],
+  "main": "index.js",
+  "module": "dist/vue-i18n.mjs",
+  "unpkg": "dist/vue-i18n.global.js",
+  "jsdelivr": "dist/vue-i18n.global.js",
+  "types": "dist/vue-i18n.d.ts",
+  "dependencies": {
+    "@vue/devtools-api": "^6.5.0",
+    "@intlify/shared": "11.1.10",
+    "@intlify/core-base": "11.1.10"
+  },
+  "devDependencies": {
+    "@intlify/devtools-types": "11.1.10"
+  },
+  "peerDependencies": {
+    "vue": "^3.0.0"
+  },
+  "engines": {
+    "node": ">= 16"
+  },
+  "buildOptions": {
+    "name": "VueI18n",
+    "formats": [
+      "mjs",
+      "mjs-node",
+      "mjs-runtime",
+      "mjs-node-runtime",
+      "browser",
+      "browser-runtime",
+      "cjs",
+      "global",
+      "global-runtime"
+    ]
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/vue-i18n.d.ts",
+      "import": "./dist/vue-i18n.mjs",
+      "browser": "./dist/vue-i18n.esm-browser.js",
+      "node": {
+        "import": {
+          "production": "./dist/vue-i18n.node.mjs",
+          "development": "./dist/vue-i18n.node.mjs",
+          "default": "./dist/vue-i18n.node.mjs"
+        },
+        "require": {
+          "production": "./dist/vue-i18n.prod.cjs",
+          "development": "./dist/vue-i18n.cjs",
+          "default": "./index.js"
+        }
+      }
+    },
+    "./dist/*": "./dist/*",
+    "./package.json": "./package.json"
+  },
+  "funding": "https://github.com/sponsors/kazupon",
+  "sideEffects": false,
+  "vetur": {
+    "tags": "vetur/tags.json",
+    "attributes": "vetur/attributes.json"
+  }
+}

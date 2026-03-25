@@ -1,0 +1,1 @@
+{"version":3,"file":"prepareRecordingData.d.ts","sourceRoot":"","sources":["../../../../src/util/prepareRecordingData.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,mBAAmB,EAAE,MAAM,cAAc,CAAC;AAExD;;GAEG;AACH,wBAAgB,oBAAoB,CAAC,EACnC,aAAa,EACb,OAAO,GACR,EAAE;IACD,aAAa,EAAE,mBAAmB,CAAC;IACnC,OAAO,EAAE,MAAM,CAAC,MAAM,EAAE,OAAO,CAAC,CAAC;CAClC,GAAG,mBAAmB,CAoBtB"}

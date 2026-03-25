@@ -1,0 +1,184 @@
+# Copyright 2012 Mozilla Foundation
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Main toolbar buttons (tooltips and alt text for images)
+previous.title=Ankstesnis puslapis
+previous_label=Ankstesnis
+next.title=Kitas puslapis
+next_label=Kitas
+
+# LOCALIZATION NOTE (page.title): The tooltip for the pageNumber input.
+page.title=Puslapis
+# LOCALIZATION NOTE (of_pages): "{{pagesCount}}" will be replaced by a number
+# representing the total number of pages in the document.
+of_pages=iš {{pagesCount}}
+# LOCALIZATION NOTE (page_of_pages): "{{pageNumber}}" and "{{pagesCount}}"
+# will be replaced by a number representing the currently visible page,
+# respectively a number representing the total number of pages in the document.
+page_of_pages=({{pageNumber}} iš {{pagesCount}})
+
+zoom_out.title=Sumažinti
+zoom_out_label=Sumažinti
+zoom_in.title=Padidinti
+zoom_in_label=Padidinti
+zoom.title=Mastelis
+presentation_mode.title=Pereiti į pateikties veikseną
+presentation_mode_label=Pateikties veiksena
+open_file.title=Atverti failą
+open_file_label=Atverti
+print.title=Spausdinti
+print_label=Spausdinti
+download.title=Parsiųsti
+download_label=Parsiųsti
+bookmark.title=Esamojo rodinio saitas (kopijavimui ar atvėrimui kitame lange)
+bookmark_label=Esamasis rodinys
+
+# Secondary toolbar and context menu
+tools.title=Priemonės
+tools_label=Priemonės
+first_page.title=Eiti į pirmą puslapį
+first_page.label=Eiti į pirmą puslapį
+first_page_label=Eiti į pirmą puslapį
+last_page.title=Eiti į paskutinį puslapį
+last_page.label=Eiti į paskutinį puslapį
+last_page_label=Eiti į paskutinį puslapį
+page_rotate_cw.title=Pasukti pagal laikrodžio rodyklę
+page_rotate_cw.label=Pasukti pagal laikrodžio rodyklę
+page_rotate_cw_label=Pasukti pagal laikrodžio rodyklę
+page_rotate_ccw.title=Pasukti prieš laikrodžio rodyklę
+page_rotate_ccw.label=Pasukti prieš laikrodžio rodyklę
+page_rotate_ccw_label=Pasukti prieš laikrodžio rodyklę
+
+cursor_text_select_tool.title=Įjungti teksto žymėjimo įrankį
+cursor_text_select_tool_label=Teksto žymėjimo įrankis
+cursor_hand_tool.title=Įjungti vilkimo įrankį
+cursor_hand_tool_label=Vilkimo įrankis
+
+# Document properties dialog box
+document_properties.title=Dokumento savybės…
+document_properties_label=Dokumento savybės…
+document_properties_file_name=Failo vardas:
+document_properties_file_size=Failo dydis:
+# LOCALIZATION NOTE (document_properties_kb): "{{size_kb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in kilobytes, respectively in bytes.
+document_properties_kb={{size_kb}} KB ({{size_b}} B)
+# LOCALIZATION NOTE (document_properties_mb): "{{size_mb}}" and "{{size_b}}"
+# will be replaced by the PDF file size in megabytes, respectively in bytes.
+document_properties_mb={{size_mb}} MB ({{size_b}} B)
+document_properties_title=Antraštė:
+document_properties_author=Autorius:
+document_properties_subject=Tema:
+document_properties_keywords=Reikšminiai žodžiai:
+document_properties_creation_date=Sukūrimo data:
+document_properties_modification_date=Modifikavimo data:
+# LOCALIZATION NOTE (document_properties_date_string): "{{date}}" and "{{time}}"
+# will be replaced by the creation/modification date, and time, of the PDF file.
+document_properties_date_string={{date}}, {{time}}
+document_properties_creator=Kūrėjas:
+document_properties_producer=PDF generatorius:
+document_properties_version=PDF versija:
+document_properties_page_count=Puslapių skaičius:
+document_properties_close=Užverti
+
+print_progress_message=Dokumentas ruošiamas spausdinimui…
+# LOCALIZATION NOTE (print_progress_percent): "{{progress}}" will be replaced by
+# a numerical per cent value.
+print_progress_percent={{progress}}%
+print_progress_close=Atsisakyti
+
+# Tooltips and alt text for side panel toolbar buttons
+# (the _label strings are alt text for the buttons, the .title strings are
+# tooltips)
+toggle_sidebar.title=Rodyti / slėpti šoninį polangį
+toggle_sidebar_notification.title=Parankinė (dokumentas turi struktūrą / priedų)
+toggle_sidebar_label=Šoninis polangis
+document_outline.title=Rodyti dokumento struktūrą (spustelėkite dukart norėdami išplėsti/suskleisti visus elementus)
+document_outline_label=Dokumento struktūra
+attachments.title=Rodyti priedus
+attachments_label=Priedai
+thumbs.title=Rodyti puslapių miniatiūras
+thumbs_label=Miniatiūros
+findbar.title=Ieškoti dokumente
+findbar_label=Rasti
+
+# Thumbnails panel item (tooltip and alt text for images)
+# LOCALIZATION NOTE (thumb_page_title): "{{page}}" will be replaced by the page
+# number.
+thumb_page_title={{page}} puslapis
+# LOCALIZATION NOTE (thumb_page_canvas): "{{page}}" will be replaced by the page
+# number.
+thumb_page_canvas={{page}} puslapio miniatiūra
+
+# Find panel button title and messages
+find_input.title=Rasti
+find_input.placeholder=Rasti dokumente…
+find_previous.title=Ieškoti ankstesnio frazės egzemplioriaus
+find_previous_label=Ankstesnis
+find_next.title=Ieškoti tolesnio frazės egzemplioriaus
+find_next_label=Tolesnis
+find_highlight=Viską paryškinti
+find_match_case_label=Skirti didžiąsias ir mažąsias raides
+find_reached_top=Pasiekus dokumento pradžią, paieška pratęsta nuo pabaigos
+find_reached_bottom=Pasiekus dokumento pabaigą, paieška pratęsta nuo pradžios
+find_not_found=Ieškoma frazė nerasta
+
+# Error panel labels
+error_more_info=Išsamiau
+error_less_info=Glausčiau
+error_close=Užverti
+# LOCALIZATION NOTE (error_version_info): "{{version}}" and "{{build}}" will be
+# replaced by the PDF.JS version and build ID.
+error_version_info=PDF.js v. {{version}} (darinys: {{build}})
+# LOCALIZATION NOTE (error_message): "{{message}}" will be replaced by an
+# english string describing the error.
+error_message=Pranešimas: {{message}}
+# LOCALIZATION NOTE (error_stack): "{{stack}}" will be replaced with a stack
+# trace.
+error_stack=Dėklas: {{stack}}
+# LOCALIZATION NOTE (error_file): "{{file}}" will be replaced with a filename
+error_file=Failas: {{file}}
+# LOCALIZATION NOTE (error_line): "{{line}}" will be replaced with a line number
+error_line=Eilutė: {{line}}
+rendering_error=Atvaizduojant puslapį įvyko klaida.
+
+# Predefined zoom values
+page_scale_width=Priderinti prie lapo pločio
+page_scale_fit=Pritaikyti prie lapo dydžio
+page_scale_auto=Automatinis mastelis
+page_scale_actual=Tikras dydis
+# LOCALIZATION NOTE (page_scale_percent): "{{scale}}" will be replaced by a
+# numerical scale value.
+page_scale_percent={{scale}}%
+
+# Loading indicator messages
+loading_error_indicator=Klaida
+loading_error=Įkeliant PDF failą įvyko klaida.
+invalid_file_error=Tai nėra PDF failas arba jis yra sugadintas.
+missing_file_error=PDF failas nerastas.
+unexpected_response_error=Netikėtas serverio atsakas.
+
+# LOCALIZATION NOTE (text_annotation_type.alt): This is used as a tooltip.
+# "{{type}}" will be replaced with an annotation type from a list defined in
+# the PDF spec (32000-1:2008 Table 169 – Annotation types).
+# Some common types are e.g.: "Check", "Text", "Comment", "Note"
+text_annotation_type.alt=[„{{type}}“ tipo anotacija]
+password_label=Įveskite slaptažodį šiam PDF failui atverti.
+password_invalid=Slaptažodis neteisingas. Bandykite dar kartą.
+password_ok=Gerai
+password_cancel=Atsisakyti
+
+printing_not_supported=Dėmesio! Spausdinimas šioje naršyklėje nėra pilnai realizuotas.
+printing_not_ready=Dėmesio! PDF failas dar nėra pilnai įkeltas spausdinimui.
+web_fonts_disabled=Saityno šriftai išjungti – PDF faile esančių šriftų naudoti negalima.
+document_colors_not_allowed=PDF dokumentams neleidžiama nurodyti savo spalvų, nes išjungta naršyklės nuostata „Leisti tinklalapiams nurodyti spalvas“.

@@ -1,0 +1,1 @@
+module.exports = require('../dist/utils/jestlike/index.cjs');

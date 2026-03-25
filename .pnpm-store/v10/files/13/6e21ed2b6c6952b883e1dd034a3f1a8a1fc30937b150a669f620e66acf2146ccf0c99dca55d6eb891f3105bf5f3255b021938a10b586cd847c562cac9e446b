@@ -1,0 +1,87 @@
+{
+  "name": "snowflake-sdk",
+  "version": "2.1.0",
+  "description": "Node.js driver for Snowflake",
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.726.0",
+    "@azure/storage-blob": "12.26.x",
+    "@google-cloud/storage": "^7.7.0",
+    "@smithy/node-http-handler": "^4.0.1",
+    "@techteamer/ocsp": "1.0.1",
+    "asn1.js-rfc2560": "^5.0.0",
+    "asn1.js-rfc5280": "^3.0.0",
+    "axios": "^1.8.3",
+    "big-integer": "^1.6.43",
+    "bignumber.js": "^9.1.2",
+    "binascii": "0.0.2",
+    "bn.js": "^5.2.1",
+    "browser-request": "^0.3.3",
+    "expand-tilde": "^2.0.2",
+    "fast-xml-parser": "^4.2.5",
+    "fastest-levenshtein": "^1.0.16",
+    "generic-pool": "^3.8.2",
+    "glob": "^10.0.0",
+    "https-proxy-agent": "^7.0.2",
+    "jsonwebtoken": "^9.0.0",
+    "mime-types": "^2.1.29",
+    "mkdirp": "^1.0.3",
+    "moment": "^2.29.4",
+    "moment-timezone": "^0.5.15",
+    "oauth4webapi": "^3.0.1",
+    "open": "^7.3.1",
+    "python-struct": "^1.1.3",
+    "simple-lru-cache": "^0.0.2",
+    "toml": "^3.0.0",
+    "uuid": "^8.3.2",
+    "winston": "^3.1.0",
+    "wiremock-rest-client": "^1.11.0"
+  },
+  "devDependencies": {
+    "@aws-sdk/types": "^3.387.0",
+    "async": "^3.2.3",
+    "check-dts": "^0.8.2",
+    "eslint": "^8.41.0",
+    "mocha": "^11.1.0",
+    "mock-require": "^3.0.3",
+    "nyc": "^15.1.0",
+    "test-console": "^2.0.0",
+    "wiremock": "^3.10.0"
+  },
+  "peerDependencies": {
+    "asn1.js": "^5.4.1"
+  },
+  "overrides": {
+    "semver": "^7.5.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/snowflakedb/snowflake-connector-nodejs"
+  },
+  "typings": "./index.d.ts",
+  "scripts": {
+    "lint:check": "eslint && check-dts index.d.ts",
+    "lint:check:all": "eslint lib samples system_test test && check-dts index.d.ts",
+    "lint:check:all:errorsOnly": "npm run lint:check:all -- --quiet",
+    "lint:fix": "eslint --fix",
+    "test": "mocha --exit -timeout 180000 --recursive --full-trace test/unit/**/*.js test/unit/*.js",
+    "test:authentication": "mocha --exit -timeout 180000 --recursive --full-trace test/authentication/**/*.js test/authentication/*.js",
+    "test:integration": "mocha --exit -timeout 180000 --recursive --full-trace test/integration/**/*.js test/integration/*.js",
+    "test:single": "mocha --exit -timeout 180000 --full-trace",
+    "test:system": "mocha --exit -timeout 180000 --recursive --full-trace system_test/*.js",
+    "test:unit": "mocha --exit -timeout 180000 --recursive --full-trace test/unit/**/*.js test/unit/*.js",
+    "test:unit:coverage": "nyc npm run test:unit",
+    "test:ci": "mocha --exit -timeout 180000 --recursive --full-trace 'test/{unit,integration}/**/*.js'",
+    "test:ci:coverage": "nyc npm run test:ci",
+    "test:ci:withSystemTests": "mocha --exit -timeout 180000 --recursive --full-trace 'test/{unit,integration}/**/*.js' system_test/*.js",
+    "test:ci:withSystemTests:coverage": "nyc npm run test:ci:withSystemTests",
+    "test:manual": "mocha --exit -timeout 180000 --full-trace --full-trace test/integration/testManualConnection.js",
+    "serve-wiremock": "wiremock --enable-browser-proxying --proxy-pass-through  false --port 8081 ",
+    "wiremock": "npm run serve-wiremock"
+  },
+  "author": {
+    "name": "Snowflake Computing, Inc.",
+    "email": "support@snowflake.com",
+    "url": "https://www.snowflake.com/"
+  },
+  "license": "Apache-2.0"
+}

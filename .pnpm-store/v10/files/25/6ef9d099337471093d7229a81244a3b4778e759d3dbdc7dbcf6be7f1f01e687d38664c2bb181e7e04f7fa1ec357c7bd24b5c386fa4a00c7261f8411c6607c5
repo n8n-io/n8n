@@ -1,0 +1,34 @@
+{
+  "name": "nopt",
+  "version": "5.0.0",
+  "description": "Option parsing for Node, supporting types, shorthands, etc. Used by npm.",
+  "author": "Isaac Z. Schlueter <i@izs.me> (http://blog.izs.me/)",
+  "main": "lib/nopt.js",
+  "scripts": {
+    "preversion": "npm test",
+    "postversion": "npm publish",
+    "prepublishOnly": "git push origin --follow-tags",
+    "test": "tap test/*.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/npm/nopt.git"
+  },
+  "bin": {
+    "nopt": "bin/nopt.js"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "abbrev": "1"
+  },
+  "devDependencies": {
+    "tap": "^14.10.6"
+  },
+  "files": [
+    "bin",
+    "lib"
+  ],
+  "engines": {
+    "node": ">=6"
+  }
+}

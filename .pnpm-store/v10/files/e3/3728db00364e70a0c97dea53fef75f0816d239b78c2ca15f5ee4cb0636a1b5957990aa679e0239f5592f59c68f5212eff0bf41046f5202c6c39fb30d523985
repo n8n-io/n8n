@@ -1,0 +1,1 @@
+{"version":3,"file":"DeleteResponse.js","sourceRoot":"./","sources":["messages/DeleteResponse.ts"],"names":[],"mappings":";;;AAAA,4DAAyD;AAGzD,uDAAoD;AAEpD,MAAa,cAAe,SAAQ,iCAAe;IAGjD,YAAmB,OAA+B;QAChD,KAAK,CAAC,OAAO,CAAC,CAAC;QACf,IAAI,CAAC,iBAAiB,GAAG,qCAAiB,CAAC,eAAe,CAAC;IAC7D,CAAC;CACF;AAPD,wCAOC"}

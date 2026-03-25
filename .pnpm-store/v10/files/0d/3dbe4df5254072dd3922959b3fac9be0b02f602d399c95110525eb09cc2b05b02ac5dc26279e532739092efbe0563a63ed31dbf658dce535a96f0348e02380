@@ -1,0 +1,33 @@
+// This is a detached leading comment
+//
+// With a forced unwrapped line.
+
+// File detached leading comment
+
+// Syntax leading comment
+syntax = "proto2";  // Syntax trailing comment
+
+// Package leading comment
+package protobuf_editions_test.proto2;  // Package trailing comment
+
+// Leading message comment
+message Foo {  // Message trailing comment
+  // Message inner comment
+
+  // Field leading comment
+  optional int32 field1 = 1;  // Field trailing comment
+
+  optional /* card */ int32 /* type */ field2 /* name */ = 2 /* tag */;
+
+  // Message inner trailing comment
+}  // Message trailing comment
+
+// Leading message comment
+enum Bar {  // Enum trailing comment
+  // Enum inner comment
+
+  // Enum value leading comment
+  BAR_UNKNOWN = 0;  // Enum value trailing comment
+
+  // Enum inner trailing comment
+}  // Enum trailing comment

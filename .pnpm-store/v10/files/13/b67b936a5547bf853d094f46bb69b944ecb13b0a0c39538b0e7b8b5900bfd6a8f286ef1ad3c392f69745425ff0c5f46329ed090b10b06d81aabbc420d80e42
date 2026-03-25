@@ -1,0 +1,13 @@
+<div class="iframes-order">
+    <p>Lorem ipsum dolor</p>
+    <div id="iframes-order-target"></div>
+    <p>Lorem ipsum dolor</p>
+    <script>
+        // Can't use document.write here, as this fixture will be
+        // included after the document was fully loaded
+        var target = document.getElementById("iframes-order-target");
+        var iframe = document.createElement("iframe");
+        iframe.src = jasmine.getFixtures().fixturesPath + "/iframes/inc.html";
+        target.appendChild(iframe);
+    </script>
+</div>

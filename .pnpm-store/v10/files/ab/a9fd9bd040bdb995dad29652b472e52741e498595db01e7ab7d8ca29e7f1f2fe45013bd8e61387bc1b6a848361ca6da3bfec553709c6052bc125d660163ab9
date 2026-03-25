@@ -1,0 +1,41 @@
+<div class="basic-ignore-punctuation">
+    <div>
+        <p>
+            Lorem, ip‒sum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod
+            tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua.
+            At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd
+            gubergren, no sea takimata sanctus est lo[rem]! ips'um dolor sit. Lore'm
+            ip(sum) dolor sit amet, consetetur sadipscing elitr, sed diam nonumy
+            eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam
+            voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet
+            clita kasd gubergren, no sea takimata sanctus est lorem ips+-=um dolor
+            sit amet. Lor}{em "ipsum". Lorem ip&shy;sum.
+        </p>
+    </div>
+    <div>
+        <p>
+            Lorem, ip‒sum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod
+            tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua.
+            At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd
+            gubergren, no sea takimata sanctus est lo[rem]! ips'um dolor sit. Lore'm
+            ip(sum) dolor sit amet, consetetur sadipscing elitr, sed diam nonumy
+            eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam
+            voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet
+            clita kasd gubergren, no sea takimata sanctus est lorem ips+-=um dolor
+            sit amet. Lor}{em "ipsum". Lorem ip&shy;sum.
+        </p>
+    </div>
+    <div>
+        <p>
+            Lorem, ip‒sum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod
+            tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua.
+            At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd
+            gubergren, no sea takimata sanctus est lo[rem]! ips'um dolor sit. Lore'm
+            ip(sum) dolor sit amet, consetetur sadipscing elitr, sed diam nonumy
+            eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam
+            voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet
+            clita kasd gubergren, no sea takimata sanctus est lorem ips+-=um dolor
+            sit amet. Lor}{em "ipsum". Lorem ip&shy;sum.
+        </p>
+    </div>
+</div>

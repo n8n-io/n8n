@@ -1,0 +1,46 @@
+{
+  "name": "normalize-range",
+  "version": "0.1.2",
+  "description": "Utility for normalizing a numeric range, with a wrapping function useful for polar coordinates",
+  "license": "MIT",
+  "repository": "jamestalmage/normalize-range",
+  "author": {
+    "name": "James Talmage",
+    "email": "james@talmage.io",
+    "url": "github.com/jamestalmage"
+  },
+  "engines": {
+    "node": ">=0.10.0"
+  },
+  "scripts": {
+    "test": "npm run cover && npm run lint && npm run style",
+    "cover": "istanbul cover ./node_modules/.bin/_mocha",
+    "lint": "jshint --reporter=node_modules/jshint-stylish *.js test/*.js",
+    "debug": "mocha",
+    "watch": "mocha -w",
+    "style": "jscs *.js ./**/*.js && jscs ./test/** --config=./test/.jscsrc"
+  },
+  "files": [
+    "index.js"
+  ],
+  "keywords": [
+    "range",
+    "normalize",
+    "utility",
+    "angle",
+    "degrees",
+    "polar"
+  ],
+  "dependencies": {},
+  "devDependencies": {
+    "almost-equal": "^1.0.0",
+    "codeclimate-test-reporter": "^0.1.0",
+    "coveralls": "^2.11.2",
+    "istanbul": "^0.3.17",
+    "jscs": "^2.1.1",
+    "jshint": "^2.8.0",
+    "jshint-stylish": "^2.0.1",
+    "mocha": "^2.2.5",
+    "stringify-pi": "0.0.3"
+  }
+}

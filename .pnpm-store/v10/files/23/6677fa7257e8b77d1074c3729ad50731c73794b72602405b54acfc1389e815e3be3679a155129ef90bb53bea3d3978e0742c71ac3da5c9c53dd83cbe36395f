@@ -1,0 +1,34 @@
+{
+  "name": "wordwrap",
+  "description": "Wrap those words. Show them at what columns to start and stop.",
+  "version": "1.0.0",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/substack/node-wordwrap.git"
+  },
+  "main": "./index.js",
+  "keywords": [
+    "word",
+    "wrap",
+    "rule",
+    "format",
+    "column"
+  ],
+  "directories": {
+    "lib": ".",
+    "example": "example",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "expresso"
+  },
+  "devDependencies": {
+    "tape": "^4.0.0"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "James Halliday",
+    "email": "mail@substack.net",
+    "url": "http://substack.net"
+  }
+}

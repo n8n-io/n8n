@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,shrink-to-fit=no" />
+    <title>Redocly Reference Docs: OAuth2 Redirect</title>
+    <style>
+      .user-info {
+        margin: 150px auto auto;
+        width: 50%;
+        background-color: whitesmoke;
+        padding: 20px;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <script src="https://cdn.redocly.com/reference-docs/latest/oauth2-redirect.js"></script>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+  </body>
+</html>

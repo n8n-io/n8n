@@ -1,0 +1,1 @@
+{"version":3,"file":"ManagedIdentityRequestParams.d.ts","sourceRoot":"","sources":["../../../src/request/ManagedIdentityRequestParams.ts"],"names":[],"mappings":"AAKA;;;;;;GAMG;AACH,MAAM,MAAM,4BAA4B,GAAG;IACvC,MAAM,CAAC,EAAE,MAAM,CAAC;IAChB,YAAY,CAAC,EAAE,OAAO,CAAC;IACvB,QAAQ,EAAE,MAAM,CAAC;CACpB,CAAC"}

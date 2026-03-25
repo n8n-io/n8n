@@ -1,0 +1,1 @@
+{"version":3,"file":"SocketOption.js","sourceRoot":"","sources":["../../../../../../src/generated/grpc/channelz/v1/SocketOption.ts"],"names":[],"mappings":";AAAA,sCAAsC"}

@@ -1,0 +1,64 @@
+{
+  "name": "vitest-websocket-mock",
+  "version": "0.5.0",
+  "description": "Mock websockets and assert complex websocket interactions with Vitest",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/akiomik/vitest-websocket-mock.git"
+  },
+  "types": "dist/index.d.ts",
+  "module": "dist/index.js",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "clean": "rimraf dist",
+    "prebuild": "npm run clean",
+    "build": "tsup",
+    "lint": "prettier --check . && eslint .",
+    "format": "prettier --write .",
+    "prepublishOnly": "npm run build",
+    "test": "vitest --run",
+    "test:watch": "vitest"
+  },
+  "keywords": [
+    "vitest",
+    "websocket",
+    "mock",
+    "unit-testing"
+  ],
+  "author": "Akiomi Kamakura",
+  "license": "MIT",
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^5.59.0",
+    "@typescript-eslint/parser": "^5.59.0",
+    "@vitest/coverage-v8": "^3.0.0",
+    "eslint": "^8.38.0",
+    "eslint-config-prettier": "^8.5.0",
+    "eslint-config-react-app": "^7.0.1",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.3.4",
+    "eslint-plugin-simple-import-sort": "^10.0.0",
+    "prettier": "^2.0.2",
+    "rimraf": "^4.1.2",
+    "tsup": "^7.0.0",
+    "typescript": "^4.0.2",
+    "vite": "^5.0.6",
+    "vitest": "^3.0.0"
+  },
+  "peerDependencies": {
+    "vitest": ">=3"
+  },
+  "dependencies": {
+    "@vitest/utils": "^3.0.0",
+    "mock-socket": "^9.2.1"
+  },
+  "files": [
+    "dist",
+    "LICENSE"
+  ]
+}

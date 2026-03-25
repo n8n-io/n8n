@@ -1,0 +1,32 @@
+{
+    "name": "@types/graceful-fs",
+    "version": "4.1.9",
+    "description": "TypeScript definitions for graceful-fs",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/graceful-fs",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Bart van der Schoor",
+            "githubUsername": "Bartvds",
+            "url": "https://github.com/Bartvds"
+        },
+        {
+            "name": "BendingBender",
+            "githubUsername": "BendingBender",
+            "url": "https://github.com/BendingBender"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/graceful-fs"
+    },
+    "scripts": {},
+    "dependencies": {
+        "@types/node": "*"
+    },
+    "typesPublisherContentHash": "4e85fab24364f5c04bc484efb612d1c679702932e21e6f4f30c297aa14e21b36",
+    "typeScriptVersion": "4.5"
+}

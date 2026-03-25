@@ -1,0 +1,39 @@
+// CSS3 var
+@use './var' as *;
+@use '../mixins/_var.scss' as *;
+@use '../mixins/mixins.scss' as *;
+
+html.dark {
+  color-scheme: dark;
+
+  // hex colors
+  @each $type in (primary, success, warning, danger, error, info) {
+    @include set-css-color-type($colors, $type);
+  }
+
+  // --el-box-shadow-#{$type}
+  @include set-component-css-var('box-shadow', $box-shadow);
+
+  // color-scheme
+  // Background --el-bg-color-#{$type}
+  @include set-component-css-var('bg-color', $bg-color);
+  // --el-text-color-#{$type}
+  @include set-component-css-var('text-color', $text-color);
+  // --el-border-color-#{$type}
+  @include set-component-css-var('border-color', $border-color);
+  // Fill --el-fill-color-#{$type}
+  @include set-component-css-var('fill-color', $fill-color);
+  @include set-component-css-var('mask-color', $mask-color);
+}
+
+@include dark(button) {
+  @include set-component-css-var('button', $button);
+}
+
+@include dark(card) {
+  @include set-component-css-var('card', $card);
+}
+
+@include dark(empty) {
+  @include set-component-css-var('empty', $empty);
+}

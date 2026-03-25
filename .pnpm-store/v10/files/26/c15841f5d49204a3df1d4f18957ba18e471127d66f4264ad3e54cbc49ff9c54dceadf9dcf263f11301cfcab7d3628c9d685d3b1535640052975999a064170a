@@ -1,0 +1,71 @@
+{
+  "name": "@typescript-eslint/scope-manager",
+  "version": "6.21.0",
+  "description": "TypeScript scope analyser for ESLint",
+  "files": [
+    "dist",
+    "package.json",
+    "README.md",
+    "LICENSE"
+  ],
+  "type": "commonjs",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "engines": {
+    "node": "^16.0.0 || >=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/typescript-eslint/typescript-eslint.git",
+    "directory": "packages/scope-manager"
+  },
+  "bugs": {
+    "url": "https://github.com/typescript-eslint/typescript-eslint/issues"
+  },
+  "license": "MIT",
+  "keywords": [
+    "eslint",
+    "typescript",
+    "estree"
+  ],
+  "scripts": {
+    "build": "npx nx build",
+    "clean": "npx nx clean",
+    "clean-fixtures": "npx nx clean-fixtures",
+    "format": "prettier --write \"./**/*.{ts,mts,cts,tsx,js,mjs,cjs,jsx,json,md,css}\" --ignore-path ../../.prettierignore",
+    "generate-lib": "npx nx generate-lib",
+    "lint": "npx nx lint",
+    "test": "npx nx test --code-coverage",
+    "typecheck": "npx nx typecheck"
+  },
+  "dependencies": {
+    "@typescript-eslint/types": "6.21.0",
+    "@typescript-eslint/visitor-keys": "6.21.0"
+  },
+  "devDependencies": {
+    "@prettier/sync": "*",
+    "@types/glob": "*",
+    "@typescript-eslint/typescript-estree": "6.21.0",
+    "glob": "*",
+    "jest-specific-snapshot": "*",
+    "make-dir": "*",
+    "pretty-format": "*",
+    "typescript": "*"
+  },
+  "funding": {
+    "type": "opencollective",
+    "url": "https://opencollective.com/typescript-eslint"
+  },
+  "typesVersions": {
+    "<4.7": {
+      "*": [
+        "_ts4.3/*"
+      ]
+    }
+  }
+}

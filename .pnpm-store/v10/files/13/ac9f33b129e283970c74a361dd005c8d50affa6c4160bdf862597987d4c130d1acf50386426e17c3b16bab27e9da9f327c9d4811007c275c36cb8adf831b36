@@ -1,0 +1,72 @@
+{
+  "name": "cssstyle",
+  "description": "CSSStyleDeclaration Object Model implementation",
+  "keywords": [
+    "CSS",
+    "CSSStyleDeclaration",
+    "StyleSheet"
+  ],
+  "version": "3.0.0",
+  "homepage": "https://github.com/jsdom/cssstyle",
+  "maintainers": [
+    {
+      "name": "Jon Sakas",
+      "email": "jon.sakas@gmail.com",
+      "url": "https://jon.sakas.co/"
+    },
+    {
+      "name": "Rafał Ruciński",
+      "email": "fatfisz@gmail.com",
+      "url": "https://fatfisz.com"
+    }
+  ],
+  "contributors": [
+    {
+      "name": "Chad Walker",
+      "email": "chad@chad-cat-lore-eddie.com",
+      "url": "https://github.com/chad3814"
+    }
+  ],
+  "repository": "jsdom/cssstyle",
+  "bugs": "https://github.com/jsdom/cssstyle/issues",
+  "directories": {
+    "lib": "./lib"
+  },
+  "files": [
+    "lib/"
+  ],
+  "main": "./lib/CSSStyleDeclaration.js",
+  "dependencies": {
+    "rrweb-cssom": "^0.6.0"
+  },
+  "devDependencies": {
+    "babel-generator": "^6.26.1",
+    "babel-traverse": "^6.26.0",
+    "babel-types": "^6.26.0",
+    "babylon": "^6.18.0",
+    "eslint": "^8.32.0",
+    "eslint-config-prettier": "^8.6.0",
+    "eslint-plugin-prettier": "^4.2.1",
+    "jest": "^29.3.1",
+    "minipass-fetch": "^3.0.1",
+    "npm-run-all": "^4.1.5",
+    "prettier": "^2.8.3",
+    "resolve": "^1.22.1"
+  },
+  "scripts": {
+    "download": "node ./scripts/download_latest_properties.js && eslint lib/allProperties.js --fix",
+    "generate": "run-p generate:*",
+    "generate:implemented_properties": "node ./scripts/generate_implemented_properties.js",
+    "generate:properties": "node ./scripts/generate_properties.js",
+    "lint": "npm run generate && eslint . --max-warnings 0",
+    "lint:fix": "eslint . --fix --max-warnings 0",
+    "prepublishOnly": "npm run lint && npm run test",
+    "test": "npm run generate && jest",
+    "test-ci": "npm run lint && npm run test",
+    "update-authors": "git log --format=\"%aN <%aE>\" | sort -f | uniq > AUTHORS"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=14"
+  }
+}

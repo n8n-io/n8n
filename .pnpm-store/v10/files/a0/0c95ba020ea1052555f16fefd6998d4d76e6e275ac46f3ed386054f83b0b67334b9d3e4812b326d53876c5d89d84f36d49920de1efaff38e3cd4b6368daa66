@@ -1,0 +1,111 @@
+{
+  "name": "@apidevtools/json-schema-ref-parser",
+  "version": "12.0.2",
+  "description": "Parse, Resolve, and Dereference JSON Schema $ref pointers",
+  "scripts": {
+    "prepublishOnly": "yarn build",
+    "lint": "eslint lib",
+    "build": "rimraf dist && tsc",
+    "typecheck": "tsc --noEmit",
+    "prettier": "prettier --write \"**/*.+(js|jsx|ts|tsx|har||json|css|md)\"",
+    "test": "vitest --coverage",
+    "test:node": "yarn test",
+    "test:browser": "cross-env BROWSER=\"true\" yarn test",
+    "test:update": "vitest -u",
+    "test:watch": "vitest -w"
+  },
+  "keywords": [
+    "json",
+    "schema",
+    "jsonschema",
+    "json-schema",
+    "json-pointer",
+    "$ref",
+    "dereference",
+    "resolve"
+  ],
+  "author": {
+    "name": "James Messinger",
+    "url": "https://jamesmessinger.com"
+  },
+  "contributors": [
+    {
+      "name": "Boris Cherny",
+      "email": "boris@performancejs.com"
+    },
+    {
+      "name": "Phil Sturgeon",
+      "email": "phil@apisyouwonthate.com"
+    },
+    {
+      "name": "Jakub Rożek",
+      "email": "jakub@stoplight.io"
+    },
+    {
+      "name": "JonLuca DeCaro",
+      "email": "apis@jonlu.ca"
+    }
+  ],
+  "homepage": "https://apitools.dev/json-schema-ref-parser/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/APIDevTools/json-schema-ref-parser.git"
+  },
+  "license": "MIT",
+  "funding": "https://github.com/sponsors/philsturgeon",
+  "types": "dist/lib/index.d.ts",
+  "main": "dist/lib/index.js",
+  "browser": {
+    "fs": false
+  },
+  "engines": {
+    "node": ">= 16"
+  },
+  "files": [
+    "lib",
+    "dist",
+    "cjs"
+  ],
+  "devDependencies": {
+    "@eslint/compat": "^1.2.5",
+    "@eslint/js": "^9.18.0",
+    "@types/eslint": "^9.6.1",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^22",
+    "@typescript-eslint/eslint-plugin": "^8.21.0",
+    "@typescript-eslint/parser": "^8.21.0",
+    "@vitest/coverage-v8": "^3.0.4",
+    "cross-env": "^7.0.3",
+    "eslint": "^9.18.0",
+    "eslint-config-prettier": "^10.0.1",
+    "eslint-config-standard": "^17.1.0",
+    "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-prettier": "^5.2.3",
+    "eslint-plugin-promise": "^7.2.1",
+    "eslint-plugin-unused-imports": "^4.1.4",
+    "globals": "^15.14.0",
+    "jsdom": "^26.0.0",
+    "prettier": "^3.4.2",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.21.0",
+    "vitest": "^3.0.4"
+  },
+  "dependencies": {
+    "@jsdevtools/ono": "^7.1.3",
+    "@types/json-schema": "^7.0.15",
+    "js-yaml": "^4.1.0"
+  },
+  "release": {
+    "branches": [
+      "main"
+    ],
+    "plugins": [
+      "@semantic-release/commit-analyzer",
+      "@semantic-release/release-notes-generator",
+      "@semantic-release/npm",
+      "@semantic-release/github"
+    ]
+  },
+  "packageManager": "yarn@4.2.2"
+}

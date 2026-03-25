@@ -1,0 +1,1 @@
+{"version":3,"file":"needsToBeAwaited.d.ts","sourceRoot":"","sources":["../../src/util/needsToBeAwaited.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,KAAK,EAAE,MAAM,YAAY,CAAC;AAUtC,oBAAY,SAAS;IACnB,MAAM,IAAA;IACN,KAAK,IAAA;IACL,GAAG,IAAA;CACJ;AAED,wBAAgB,gBAAgB,CAC9B,OAAO,EAAE,EAAE,CAAC,WAAW,EACvB,IAAI,EAAE,EAAE,CAAC,IAAI,EACb,IAAI,EAAE,EAAE,CAAC,IAAI,GACZ,SAAS,CAoBX"}

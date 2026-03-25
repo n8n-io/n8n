@@ -1,0 +1,37 @@
+{
+  "name": "@testcontainers/redis",
+  "version": "11.0.3",
+  "license": "MIT",
+  "keywords": [
+    "redis",
+    "testing",
+    "docker",
+    "testcontainers"
+  ],
+  "description": "Redis module for Testcontainers",
+  "homepage": "https://github.com/testcontainers/testcontainers-node#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/testcontainers/testcontainers-node.git"
+  },
+  "bugs": {
+    "url": "https://github.com/testcontainers/testcontainers-node/issues"
+  },
+  "main": "build/index.js",
+  "files": [
+    "build"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "prepack": "shx cp ../../../README.md . && shx cp ../../../LICENSE .",
+    "build": "tsc --project tsconfig.build.json"
+  },
+  "devDependencies": {
+    "redis": "^5.5.6"
+  },
+  "dependencies": {
+    "testcontainers": "^11.0.3"
+  }
+}

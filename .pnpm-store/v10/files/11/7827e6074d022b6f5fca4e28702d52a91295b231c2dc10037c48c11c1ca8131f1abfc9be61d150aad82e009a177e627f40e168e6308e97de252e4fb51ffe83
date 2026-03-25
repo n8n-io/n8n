@@ -1,0 +1,67 @@
+{
+  "name": "z-vue-scan",
+  "type": "module",
+  "version": "0.0.35",
+  "description": "The component will flash with a red border when it will update.",
+  "author": "zcf0508",
+  "license": "MIT",
+  "homepage": "https://github.com/zcf0508/vue-scan#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zcf0508/vue-scan.git"
+  },
+  "bugs": {
+    "url": "https://github.com/zcf0508/vue-scan/issues"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    },
+    "./vue2": {
+      "types": "./dist/index_vue2.d.mts",
+      "import": "./dist/index_vue2.mjs",
+      "require": "./dist/index_vue2.cjs"
+    }
+  },
+  "main": "dist/index.cjs",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "peerDependencies": {
+    "@vue/composition-api": "^1.0.0-rc.1",
+    "vue": "^2.0.0 || >=3.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@vue/composition-api": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "vue-demi": "latest"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "^3.9.2",
+    "@types/lodash-es": "^4.17.12",
+    "@types/node": "^22.10.0",
+    "@vue/devtools-kit": "^7.6.4",
+    "@vue/devtools-shared": "^7.6.7",
+    "bumpp": "^9.8.1",
+    "consola": "^3.2.3",
+    "lodash-es": "^4.17.21",
+    "typescript": "~5.6.3",
+    "unbuild": "^2.0.0",
+    "vue": "^3.0.0"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "dev": "pnpm -C examples/vue3 dev",
+    "dev:vue2": "pnpm -C examples/vue2 dev",
+    "build": "unbuild",
+    "typecheck": "tsc",
+    "release": "bumpp -r"
+  }
+}

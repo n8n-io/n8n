@@ -1,0 +1,101 @@
+{
+  "name": "web-streams-polyfill",
+  "version": "4.0.0-beta.3",
+  "description": "Web Streams, based on the WHATWG spec reference implementation",
+  "main": "dist/ponyfill.js",
+  "module": "dist/ponyfill.mjs",
+  "types": "types/ponyfill.d.ts",
+  "exports": {
+    ".": {
+      "types": "./types/ponyfill.d.ts",
+      "import": "./dist/ponyfill.mjs",
+      "require": "./dist/ponyfill.js"
+    },
+    "./es5": {
+      "types": "./types/ponyfill.d.ts",
+      "import": "./dist/ponyfill.es5.mjs",
+      "require": "./dist/ponyfill.es5.js"
+    },
+    "./polyfill": {
+      "types": "./types/polyfill.d.ts",
+      "default": "./dist/polyfill.js"
+    },
+    "./polyfill/es5": {
+      "types": "./types/polyfill.d.ts",
+      "default": "./dist/polyfill.es5.js"
+    },
+    "./dist/*": "./dist/*",
+    "./types/*": "./types/*",
+    "./package": "./package.json",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "test": "npm run test:types && npm run test:unit && npm run test:wpt && npm run test:bundler",
+    "test:wpt": "npm run test:wpt:node && npm run test:wpt:chromium && npm run test:wpt:firefox",
+    "test:wpt:node": "node --expose_gc ./test/wpt/node/run.js",
+    "test:wpt:chromium": "node ./test/wpt/browser/run.js --browser chromium",
+    "test:wpt:firefox": "node ./test/wpt/browser/run.js --browser firefox",
+    "test:bundler": "npm run test:bundler:rollup && npm run test:bundler:webpack",
+    "test:bundler:rollup": "cd test/rollup && npm ci && npm test",
+    "test:bundler:webpack": "cd test/webpack && npm ci && npm test",
+    "test:types": "tsc -p ./test/types/tsconfig.json",
+    "test:unit": "node --experimental-import-meta-resolve ./node_modules/jasmine/bin/jasmine.js --config=test/unit/jasmine.json",
+    "lint": "eslint \"src/**/*.ts\"",
+    "build": "npm run build:bundle && npm run build:types",
+    "build:bundle": "rollup -c",
+    "build:types": "tsc --project . --emitDeclarationOnly --declarationDir ./lib && api-extractor run",
+    "accept:types": "tsc --project . --emitDeclarationOnly --declarationDir ./lib && api-extractor run --local",
+    "prepare": "npm run build"
+  },
+  "files": [
+    "dist",
+    "es5",
+    "polyfill",
+    "types"
+  ],
+  "engines": {
+    "node": ">= 14"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MattiasBuelens/web-streams-polyfill.git"
+  },
+  "keywords": [
+    "streams",
+    "whatwg",
+    "polyfill"
+  ],
+  "author": "Mattias Buelens <mattias@buelens.com>",
+  "contributors": [
+    "Diwank Singh <diwank.singh@gmail.com>"
+  ],
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/MattiasBuelens/web-streams-polyfill/issues"
+  },
+  "homepage": "https://github.com/MattiasBuelens/web-streams-polyfill#readme",
+  "devDependencies": {
+    "@microsoft/api-extractor": "^7.21.2",
+    "@rollup/plugin-inject": "^4.0.4",
+    "@rollup/plugin-replace": "^4.0.0",
+    "@rollup/plugin-strip": "^2.1.0",
+    "@rollup/plugin-typescript": "^8.3.1",
+    "@types/jasmine": "^4.0.2",
+    "@types/node": "^14.18.12",
+    "@typescript-eslint/eslint-plugin": "^5.19.0",
+    "@typescript-eslint/parser": "^5.19.0",
+    "@ungap/promise-all-settled": "^1.1.2",
+    "abort-controller": "^3.0.0",
+    "eslint": "^8.13.0",
+    "jasmine": "^4.0.2",
+    "micromatch": "^4.0.5",
+    "minimist": "^1.2.6",
+    "playwright": "^1.20.2",
+    "recursive-readdir": "^2.2.2",
+    "rollup": "^2.70.1",
+    "rollup-plugin-terser": "^7.0.2",
+    "tslib": "^2.3.1",
+    "typescript": "^4.7.0-beta",
+    "wpt-runner": "^4.1.0"
+  }
+}

@@ -1,0 +1,42 @@
+{
+    "name": "@types/gm",
+    "version": "1.25.0",
+    "description": "TypeScript definitions for gm",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/gm",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Maarten van Vliet",
+            "url": "https://github.com/maartenvanvliet",
+            "githubUsername": "maartenvanvliet"
+        },
+        {
+            "name": "Vaclav Mlejnsky",
+            "url": "https://github.com/mlejva",
+            "githubUsername": "mlejva"
+        },
+        {
+            "name": "Dimitry Kooijmans",
+            "url": "https://github.com/mrcageman",
+            "githubUsername": "mrcageman"
+        },
+        {
+            "name": "Dmitry Semigradsky",
+            "url": "https://github.com/Semigradsky",
+            "githubUsername": "Semigradsky"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/gm"
+    },
+    "scripts": {},
+    "dependencies": {
+        "@types/node": "*"
+    },
+    "typesPublisherContentHash": "bff63747a24ff3018bdee5883ff29188bdd1cb5d090118323d394c23b8c78ddb",
+    "typeScriptVersion": "4.1"
+}

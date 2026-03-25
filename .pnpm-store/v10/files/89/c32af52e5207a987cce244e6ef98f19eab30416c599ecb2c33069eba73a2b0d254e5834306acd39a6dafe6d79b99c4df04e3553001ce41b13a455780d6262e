@@ -1,0 +1,51 @@
+{
+  "name": "@actions/http-client",
+  "version": "2.2.3",
+  "description": "Actions Http Client",
+  "keywords": [
+    "github",
+    "actions",
+    "http"
+  ],
+  "homepage": "https://github.com/actions/toolkit/tree/main/packages/http-client",
+  "license": "MIT",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "directories": {
+    "lib": "lib",
+    "test": "__tests__"
+  },
+  "files": [
+    "lib",
+    "!.DS_Store"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/actions/toolkit.git",
+    "directory": "packages/http-client"
+  },
+  "scripts": {
+    "audit-moderate": "npm install && npm audit --json --audit-level=moderate > audit.json",
+    "test": "echo \"Error: run tests from root\" && exit 1",
+    "build": "tsc",
+    "format": "prettier --write **/*.ts",
+    "format-check": "prettier --check **/*.ts",
+    "tsc": "tsc"
+  },
+  "bugs": {
+    "url": "https://github.com/actions/toolkit/issues"
+  },
+  "devDependencies": {
+    "@types/node": "20.7.1",
+    "@types/tunnel": "0.0.3",
+    "proxy": "^2.1.1",
+    "@types/proxy": "^1.0.1"
+  },
+  "dependencies": {
+    "tunnel": "^0.0.6",
+    "undici": "^5.25.4"
+  }
+}

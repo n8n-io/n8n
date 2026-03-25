@@ -1,0 +1,73 @@
+{
+	"name": "eslint-plugin-n8n-nodes-base",
+	"version": "1.16.5",
+	"main": "dist/index.js",
+	"engines": {
+		"node": ">=20.15",
+		"pnpm": ">=9.6"
+	},
+	"packageManager": "pnpm@9.6.0",
+	"author": {
+		"name": "Iván Ovejero",
+		"url": "https://ivov.dev"
+	},
+	"license": "MIT",
+	"files": [
+		"dist/index.js",
+		"dist/lib/**/*"
+	],
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/ivov/eslint-plugin-n8n-nodes-base.git"
+	},
+	"keywords": [
+		"n8n",
+		"eslint-plugin"
+	],
+	"scripts": {
+		"preinstall": "npx only-allow pnpm",
+		"build": "node scripts/build.mjs",
+		"typecheck": "tsc --noEmit",
+		"doc": "pnpm build; node scripts/make-docs.mjs",
+		"format": "prettier lib scripts tests --write",
+		"lint": "eslint lib tests --ext .ts",
+		"lint-codebase": "chmod +x scripts/lint-codebase.sh && scripts/lint-codebase.sh",
+		"track-pending": "node scripts/track-pending-rules.mjs",
+		"test": "jest",
+		"test:watch": "jest --watch"
+	},
+	"dependencies": {
+		"@typescript-eslint/utils": "^6.21.0",
+		"camel-case": "^4.1.2",
+		"indefinite": "^2.5.1",
+		"pascal-case": "^3.1.2",
+		"pluralize": "^8.0.0",
+		"sentence-case": "^3.0.4",
+		"title-case": "^3.0.3"
+	},
+	"devDependencies": {
+		"@types/indefinite": "^2.3.4",
+		"@types/node": "~18.11.19",
+		"@types/pluralize": "0.0.30",
+		"@typescript-eslint/eslint-plugin": "^7.0.0",
+		"@typescript-eslint/parser": "^7.9.0",
+		"esbuild": "0.18.17",
+		"esbuild-jest": "^0.5.0",
+		"eslint": "8.57.0",
+		"eslint-config-airbnb-typescript": "^18.0.0",
+		"eslint-config-prettier": "^9.1.0",
+		"eslint-docgen": "^0.7.1",
+		"eslint-plugin-eslint-plugin": "^5.5.1",
+		"eslint-plugin-import": "^2.30.0",
+		"eslint-plugin-prettier": "^5.2.1",
+		"jest": "^29.7.0",
+		"list-github-dir-content": "^3.0.0",
+		"node-fetch": "^3.3.2",
+		"outdent": "^0.8.0",
+		"p-map": "^6.0.0",
+		"prettier": "^3.3.3",
+		"shelljs": "^0.8.5",
+		"tiny-glob": "^0.2.9",
+		"typescript": "^5.6.2"
+	}
+}

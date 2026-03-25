@@ -1,0 +1,60 @@
+{
+  "ava": {
+    "files": [
+      "test/src/**/*"
+    ]
+  },
+  "description": "Zero dependencies, gracefully terminates HTTP(S) server.",
+  "devDependencies": {
+    "agentkeepalive": "^4.2.1",
+    "ava": "^4.0.1",
+    "eslint": "^8.9.0",
+    "got": "^11.8.3",
+    "mocha": "^9.2.1",
+    "nyc": "^15.1.0",
+    "pem": "^1.14.6",
+    "prettier": "^2.5.1"
+  },
+  "eslintConfig": {
+    "parserOptions": {
+      "ecmaVersion": 2021
+    },
+    "env": {
+      "es6": true,
+      "node": true,
+      "mocha": true
+    },
+    "extends": "eslint:recommended"
+  },
+  "engines": {
+    "node": ">=12"
+  },
+  "files": [
+    "src"
+  ],
+  "keywords": [
+    "docker",
+    "kubernetes",
+    "prometheus",
+    "http",
+    "https",
+    "keep-alive",
+    "close",
+    "terminate"
+  ],
+  "license": "BSD-3-Clause",
+  "source": "src/index.js",
+  "main": "src/index.js",
+  "name": "lil-http-terminator",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/flash-oss/lil-http-terminator"
+  },
+  "scripts": {
+    "ci": "npm i && npm t && npm run lint",
+    "test": "NODE_ENV=test mocha --recursive --exit",
+    "cov": "NODE_ENV=test nyc --reporter=lcov --reporter=text-summary mocha --recursive --exit",
+    "lint": "eslint ./src ./test"
+  },
+  "version": "1.2.3"
+}

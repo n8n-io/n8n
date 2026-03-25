@@ -1,0 +1,357 @@
+{
+  "name": "storybook",
+  "version": "10.1.11",
+  "description": "Storybook: Develop, document, and test UI components in isolation",
+  "keywords": [
+    "storybook",
+    "component",
+    "components",
+    "design-systems",
+    "component-testing",
+    "react",
+    "next",
+    "next.js",
+    "react-native",
+    "react-native-web",
+    "vue",
+    "angular",
+    "svelte",
+    "sveltekit",
+    "web-components"
+  ],
+  "homepage": "https://storybook.js.org",
+  "bugs": {
+    "url": "https://github.com/storybookjs/storybook/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/storybookjs/storybook.git",
+    "directory": "code/core"
+  },
+  "funding": {
+    "type": "opencollective",
+    "url": "https://opencollective.com/storybook"
+  },
+  "license": "MIT",
+  "sideEffects": false,
+  "type": "module",
+  "imports": {
+    "#manager-stores": {
+      "storybook": "./src/manager/manager-stores.mock.ts",
+      "default": "./src/manager/manager-stores.ts"
+    },
+    "#utils": {
+      "storybook": "./template/stories/utils.mock.ts",
+      "default": "./template/stories/utils.ts"
+    }
+  },
+  "exports": {
+    "./actions": {
+      "types": "./dist/actions/index.d.ts",
+      "default": "./dist/actions/index.js"
+    },
+    "./actions/decorator": {
+      "types": "./dist/actions/decorator.d.ts",
+      "default": "./dist/actions/decorator.js"
+    },
+    "./highlight": {
+      "types": "./dist/highlight/index.d.ts",
+      "default": "./dist/highlight/index.js"
+    },
+    "./internal/babel": {
+      "types": "./dist/babel/index.d.ts",
+      "default": "./dist/babel/index.js"
+    },
+    "./internal/bin/dispatcher": "./dist/bin/dispatcher.js",
+    "./internal/bin/loader": "./dist/bin/loader.js",
+    "./internal/channels": {
+      "types": "./dist/channels/index.d.ts",
+      "default": "./dist/channels/index.js"
+    },
+    "./internal/cli": {
+      "types": "./dist/cli/index.d.ts",
+      "default": "./dist/cli/index.js"
+    },
+    "./internal/client-logger": {
+      "types": "./dist/client-logger/index.d.ts",
+      "default": "./dist/client-logger/index.js"
+    },
+    "./internal/common": {
+      "types": "./dist/common/index.d.ts",
+      "default": "./dist/common/index.js"
+    },
+    "./internal/components": {
+      "types": "./dist/components/index.d.ts",
+      "default": "./dist/components/index.js"
+    },
+    "./internal/core-events": {
+      "types": "./dist/core-events/index.d.ts",
+      "default": "./dist/core-events/index.js"
+    },
+    "./internal/core-server": {
+      "types": "./dist/core-server/index.d.ts",
+      "default": "./dist/core-server/index.js"
+    },
+    "./internal/core-server/presets/common-override-preset": "./dist/core-server/presets/common-override-preset.js",
+    "./internal/csf": {
+      "types": "./dist/csf/index.d.ts",
+      "default": "./dist/csf/index.js"
+    },
+    "./internal/csf-tools": {
+      "types": "./dist/csf-tools/index.d.ts",
+      "default": "./dist/csf-tools/index.js"
+    },
+    "./internal/docs-tools": {
+      "types": "./dist/docs-tools/index.d.ts",
+      "default": "./dist/docs-tools/index.js"
+    },
+    "./internal/instrumenter": {
+      "types": "./dist/instrumenter/index.d.ts",
+      "default": "./dist/instrumenter/index.js"
+    },
+    "./internal/manager-errors": {
+      "types": "./dist/manager-errors.d.ts",
+      "default": "./dist/manager-errors.js"
+    },
+    "./internal/manager/globals": {
+      "types": "./dist/manager/globals.d.ts",
+      "default": "./dist/manager/globals.js"
+    },
+    "./internal/manager/globals-runtime": "./dist/manager/globals-runtime.js",
+    "./internal/manager/manager-stores": {
+      "types": "./dist/manager/manager-stores.d.ts",
+      "default": "./dist/manager/manager-stores.js"
+    },
+    "./internal/mocking-utils": {
+      "types": "./dist/mocking-utils/index.d.ts",
+      "default": "./dist/mocking-utils/index.js"
+    },
+    "./internal/node-logger": {
+      "types": "./dist/node-logger/index.d.ts",
+      "default": "./dist/node-logger/index.js"
+    },
+    "./internal/preview-api": {
+      "types": "./dist/preview-api/index.d.ts",
+      "default": "./dist/preview-api/index.js"
+    },
+    "./internal/preview-errors": {
+      "types": "./dist/preview-errors.d.ts",
+      "default": "./dist/preview-errors.js"
+    },
+    "./internal/preview/globals": {
+      "types": "./dist/preview/globals.d.ts",
+      "default": "./dist/preview/globals.js"
+    },
+    "./internal/preview/runtime": "./dist/preview/runtime.js",
+    "./internal/router": {
+      "types": "./dist/router/index.d.ts",
+      "default": "./dist/router/index.js"
+    },
+    "./internal/server-errors": {
+      "types": "./dist/server-errors.d.ts",
+      "default": "./dist/server-errors.js"
+    },
+    "./internal/telemetry": {
+      "types": "./dist/telemetry/index.d.ts",
+      "default": "./dist/telemetry/index.js"
+    },
+    "./internal/types": {
+      "types": "./dist/types/index.d.ts",
+      "default": "./dist/types/index.js"
+    },
+    "./manager-api": {
+      "types": "./dist/manager-api/index.d.ts",
+      "default": "./dist/manager-api/index.js"
+    },
+    "./package.json": "./package.json",
+    "./preview-api": {
+      "types": "./dist/preview-api/index.d.ts",
+      "default": "./dist/preview-api/index.js"
+    },
+    "./test": {
+      "types": "./dist/test/index.d.ts",
+      "default": "./dist/test/index.js"
+    },
+    "./theming": {
+      "types": "./dist/theming/index.d.ts",
+      "default": "./dist/theming/index.js"
+    },
+    "./theming/create": {
+      "types": "./dist/theming/create.d.ts",
+      "default": "./dist/theming/create.js"
+    },
+    "./viewport": {
+      "types": "./dist/viewport/index.d.ts",
+      "default": "./dist/viewport/index.js"
+    }
+  },
+  "bin": "./dist/bin/dispatcher.js",
+  "files": [
+    "bin/**/*",
+    "dist/**/*",
+    "assets/**/*",
+    "README.md",
+    "!src/**/*"
+  ],
+  "scripts": {
+    "check": "jiti ../../scripts/check/check-package.ts",
+    "prep": "jiti ../../scripts/build/build-package.ts"
+  },
+  "resolutions": {
+    "@testing-library/user-event": "patch:@testing-library/user-event@npm%3A14.6.1#~/../.yarn/patches/@testing-library-user-event-npm-14.6.1-5da7e1d4e2.patch"
+  },
+  "dependencies": {
+    "@storybook/global": "^5.0.0",
+    "@storybook/icons": "^2.0.0",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/user-event": "^14.6.1",
+    "@vitest/expect": "3.2.4",
+    "@vitest/spy": "3.2.4",
+    "esbuild": "^0.18.0 || ^0.19.0 || ^0.20.0 || ^0.21.0 || ^0.22.0 || ^0.23.0 || ^0.24.0 || ^0.25.0 || ^0.26.0 || ^0.27.0",
+    "open": "^10.2.0",
+    "recast": "^0.23.5",
+    "semver": "^7.6.2",
+    "use-sync-external-store": "^1.5.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@aw-web-design/x-default-browser": "1.4.126",
+    "@babel/core": "^7.26.9",
+    "@babel/generator": "^7.26.9",
+    "@babel/parser": "^7.26.9",
+    "@babel/traverse": "^7.26.9",
+    "@babel/types": "^7.26.8",
+    "@clack/prompts": "1.0.0-alpha.7",
+    "@devtools-ds/object-inspector": "^1.1.2",
+    "@discoveryjs/json-ext": "^0.5.3",
+    "@emotion/cache": "^11.14.0",
+    "@emotion/is-prop-valid": "^1.3.1",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@fal-works/esbuild-plugin-global-externals": "^2.1.2",
+    "@happy-dom/global-registrator": "^18.0.1",
+    "@ngard/tiny-isequal": "^1.1.0",
+    "@polka/compression": "^1.0.0-next.28",
+    "@radix-ui/react-scroll-area": "1.2.0-rc.7",
+    "@radix-ui/react-slot": "^1.0.2",
+    "@react-aria/interactions": "^3.25.5",
+    "@react-aria/overlays": "^3.29.1",
+    "@react-aria/tabs": "^3.10.7",
+    "@react-aria/toolbar": "3.0.0-beta.20",
+    "@react-aria/utils": "^3.30.1",
+    "@react-stately/overlays": "^3.6.19",
+    "@react-stately/tabs": "^3.8.5",
+    "@react-types/shared": "^3.32.0",
+    "@rolldown/pluginutils": "1.0.0-beta.18",
+    "@storybook/docs-mdx": "4.0.0-next.1",
+    "@tanstack/react-virtual": "^3.3.0",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^14.0.0",
+    "@types/cross-spawn": "^6.0.6",
+    "@types/detect-port": "^1.3.0",
+    "@types/diff": "^5.0.9",
+    "@types/ejs": "^3.1.1",
+    "@types/js-yaml": "^4.0.5",
+    "@types/node": "^22.0.0",
+    "@types/npmlog": "^7.0.0",
+    "@types/picomatch": "^2.3.0",
+    "@types/prettier": "^3.0.0",
+    "@types/pretty-hrtime": "^1.0.0",
+    "@types/prompts": "^2.0.9",
+    "@types/react-syntax-highlighter": "11.0.5",
+    "@types/semver": "^7.5.8",
+    "@types/ws": "^8",
+    "@vitest/utils": "^3.2.4",
+    "@yarnpkg/fslib": "2.10.3",
+    "@yarnpkg/libzip": "2.3.0",
+    "ansi-to-html": "^0.7.2",
+    "browser-dtector": "^3.4.0",
+    "bundle-require": "^5.1.0",
+    "camelcase": "^8.0.0",
+    "chai": "^5.1.1",
+    "commander": "^14.0.1",
+    "comment-parser": "^1.4.1",
+    "copy-to-clipboard": "^3.3.1",
+    "cross-spawn": "^7.0.6",
+    "deep-object-diff": "^1.1.0",
+    "dequal": "^2.0.2",
+    "detect-indent": "^7.0.1",
+    "detect-port": "^1.3.0",
+    "diff": "^5.2.0",
+    "downshift": "^9.0.4",
+    "ejs": "^3.1.10",
+    "empathic": "^2.0.0",
+    "es-toolkit": "^1.36.0",
+    "esbuild": "^0.18.0 || ^0.19.0 || ^0.20.0 || ^0.21.0 || ^0.22.0 || ^0.23.0 || ^0.24.0 || ^0.25.0 || ^0.26.0 || ^0.27.0",
+    "execa": "^8.0.1",
+    "exsolve": "^1.0.7",
+    "fetch-retry": "^6.0.0",
+    "flush-promises": "^1.0.2",
+    "fuse.js": "^3.6.1",
+    "get-npm-tarball-url": "^2.0.3",
+    "glob": "^10.0.0",
+    "globby": "^14.0.1",
+    "jiti": "^2.4.2",
+    "js-yaml": "^4.1.0",
+    "jsdoc-type-pratt-parser": "^4.0.0",
+    "launch-editor": "^2.11.1",
+    "lazy-universal-dotenv": "^4.0.0",
+    "leven": "^4.0.0",
+    "memfs": "^4.11.1",
+    "memoizerific": "^1.11.3",
+    "modern-tar": "^0.5.5",
+    "nanoid": "^4.0.2",
+    "npmlog": "^7.0.0",
+    "p-limit": "^6.2.0",
+    "package-manager-detector": "^1.1.0",
+    "picocolors": "^1.1.0",
+    "picomatch": "^2.3.0",
+    "picoquery": "^1.4.0",
+    "polished": "^4.2.2",
+    "polka": "^1.0.0-next.28",
+    "prettier": "^3.5.3",
+    "pretty-hrtime": "^1.0.3",
+    "qrcode.react": "^4.2.0",
+    "react": "^18.2.0",
+    "react-aria-components": "patch:react-aria-components@npm%3A1.12.2#~/.yarn/patches/react-aria-components-npm-1.12.2-6c5dcdafab.patch",
+    "react-dom": "^18.2.0",
+    "react-helmet-async": "^1.3.0",
+    "react-inspector": "^6.0.0",
+    "react-router-dom": "6.15.0",
+    "react-syntax-highlighter": "^15.4.5",
+    "react-textarea-autosize": "^8.3.0",
+    "react-transition-state": "^2.3.1",
+    "require-from-string": "^2.0.2",
+    "resolve": "^1.22.11",
+    "resolve.exports": "^2.0.3",
+    "sirv": "^2.0.4",
+    "slash": "^5.0.0",
+    "source-map": "^0.7.4",
+    "store2": "^2.14.2",
+    "strip-ansi": "^7.1.0",
+    "strip-json-comments": "^5.0.1",
+    "telejson": "8.0.0",
+    "tiny-invariant": "^1.3.1",
+    "tinyspy": "^3.0.2",
+    "ts-dedent": "^2.0.0",
+    "tsconfig-paths": "^4.2.0",
+    "type-fest": "^4.18.1",
+    "typescript": "^5.8.3",
+    "unique-string": "^3.0.0",
+    "use-resize-observer": "^9.1.0",
+    "watchpack": "^2.2.0",
+    "zod": "^3.24.1"
+  },
+  "peerDependencies": {
+    "prettier": "^2 || ^3"
+  },
+  "peerDependenciesMeta": {
+    "prettier": {
+      "optional": true
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "gitHead": "a8e7fd8a655c69780bc20b9749d2699e45beae1l"
+}

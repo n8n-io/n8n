@@ -1,0 +1,79 @@
+{
+  "name": "vue-boring-avatars",
+  "version": "1.3.0",
+  "description": "vue-boring-avatars is a Vue.js port of Boring Avatars, a JS library that generates custom, SVG-based avatars from any username and color palette.",
+  "license": "MIT",
+  "homepage": "https://github.com/mujahidfa/vue-boring-avatars",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mujahidfa/vue-boring-avatars"
+  },
+  "bugs": {
+    "url": "https://github.com/mujahidfa/vue-boring-avatars/issues"
+  },
+  "keywords": [
+    "vue",
+    "vue3",
+    "Vue 3",
+    "avatar",
+    "gravatar",
+    "profile picture",
+    "user avatar",
+    "avatar generator",
+    "avatar placeholder"
+  ],
+  "type": "module",
+  "files": ["dist"],
+  "main": "./dist/vue-boring-avatars.umd.cjs",
+  "module": "./dist/vue-boring-avatars.js",
+  "exports": {
+    ".": {
+      "import": "./dist/vue-boring-avatars.js",
+      "require": "./dist/vue-boring-avatars.umd.cjs"
+    }
+  },
+  "types": "./dist/vue-boring-avatars.d.ts",
+  "scripts": {
+    "dev": "vite",
+    "test": "run-s download lint type-check test-only",
+    "build": "run-s type-check build-only gen-types",
+    "preview": "vite preview --port 4173",
+    "download": "node scripts/download-boring-avatars.mjs",
+    "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore",
+    "type-check": "vue-tsc --noEmit -p tsconfig.vitest.json --composite false",
+    "test-only": "vitest --environment jsdom",
+    "build-only": "vite build",
+    "gen-types": "vue-typegen gen -s src -o temp && move-cli temp/components/Avatar.vue.d.ts dist/vue-boring-avatars.d.ts && rimraf -r temp"
+  },
+  "peerDependencies": {
+    "vue": "^3.0.0"
+  },
+  "devDependencies": {
+    "@rushstack/eslint-patch": "^1.2.0",
+    "@types/jsdom": "^20.0.0",
+    "@types/node": "^16.11.62",
+    "@vitejs/plugin-vue": "^3.1.0",
+    "@vue/eslint-config-prettier": "^7.0.0",
+    "@vue/eslint-config-typescript": "^11.0.2",
+    "@vue/test-utils": "^2.1.0",
+    "@vue/tsconfig": "^0.1.3",
+    "eslint": "^8.24.0",
+    "eslint-plugin-vue": "^9.5.1",
+    "github-directory-downloader": "^1.3.6",
+    "html-crush": "^5.1.11",
+    "jsdom": "^20.0.0",
+    "move-cli": "^2.0.0",
+    "npm-run-all": "^4.1.5",
+    "prettier": "^2.7.1",
+    "prop-types": "^15.8.1",
+    "react": "16.14.0",
+    "react-dom": "16.14.0",
+    "rimraf": "^3.0.2",
+    "typescript": "~4.7.4",
+    "vite": "^3.1.4",
+    "vitest": "^0.23.4",
+    "vue": "^3.2.40",
+    "vue-tsc": "^0.40.13",
+    "vue-typegen": "^0.2.0"
+  }
+}

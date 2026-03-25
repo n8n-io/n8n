@@ -1,0 +1,21 @@
+import { Name } from "./codegen";
+declare const names: {
+    data: Name;
+    valCxt: Name;
+    instancePath: Name;
+    parentData: Name;
+    parentDataProperty: Name;
+    rootData: Name;
+    dynamicAnchors: Name;
+    isAllOfVariant: Name;
+    vErrors: Name;
+    errors: Name;
+    this: Name;
+    self: Name;
+    scope: Name;
+    json: Name;
+    jsonPos: Name;
+    jsonLen: Name;
+    jsonPart: Name;
+};
+export default names;

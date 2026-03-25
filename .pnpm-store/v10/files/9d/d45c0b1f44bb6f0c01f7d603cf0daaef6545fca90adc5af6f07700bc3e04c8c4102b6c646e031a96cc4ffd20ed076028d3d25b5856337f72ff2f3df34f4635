@@ -1,0 +1,2 @@
+import { CleanupMode, IndexOptions, _HashedDocument, _batch, _deduplicateInOrder, _getSourceIdAssigner, _isBaseDocumentLoader, index } from "@langchain/core/indexing";
+export { type CleanupMode, type IndexOptions, _HashedDocument, _batch, _deduplicateInOrder, _getSourceIdAssigner, _isBaseDocumentLoader, index };
