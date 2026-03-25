@@ -6,10 +6,15 @@ const props = defineProps<{
 	type: 'workflow' | 'data-table';
 	name: string;
 	resourceId: string;
+	projectId?: string;
 	metadata?: string;
 }>();
 
 const openPreview = inject<((id: string) => void) | undefined>('openWorkflowPreview', undefined);
+const openDataTablePreview = inject<((id: string, projectId: string) => void) | undefined>(
+	'openDataTablePreview',
+	undefined,
+);
 
 const iconMap: Record<string, IconName> = {
 	workflow: 'workflow',
@@ -25,8 +30,14 @@ function handleClick(e: MouseEvent) {
 			return;
 		}
 		openPreview?.(props.resourceId);
-	} else {
-		window.open('/data-tables', '_blank');
+	} else if (props.type === 'data-table') {
+		if (e.metaKey || e.ctrlKey) {
+			window.open('/data-tables', '_blank');
+			return;
+		}
+		if (props.projectId) {
+			openDataTablePreview?.(props.resourceId, props.projectId);
+		}
 	}
 }
 </script>

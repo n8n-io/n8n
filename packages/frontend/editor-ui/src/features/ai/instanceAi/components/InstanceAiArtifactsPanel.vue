@@ -10,6 +10,10 @@ import type { ResourceEntry } from '../useResourceRegistry';
 const i18n = useI18n();
 const store = useInstanceAiStore();
 const openPreview = inject<((id: string) => void) | undefined>('openWorkflowPreview', undefined);
+const openDataTablePreview = inject<((id: string, projectId: string) => void) | undefined>(
+	'openDataTablePreview',
+	undefined,
+);
 
 function handleArtifactClick(artifact: ResourceEntry, e: MouseEvent) {
 	if (artifact.type === 'workflow' && artifact.id) {
@@ -18,8 +22,14 @@ function handleArtifactClick(artifact: ResourceEntry, e: MouseEvent) {
 			return;
 		}
 		openPreview?.(artifact.id);
-	} else if (artifact.type === 'data-table') {
-		window.open('/data-tables', '_blank');
+	} else if (artifact.type === 'data-table' && artifact.id) {
+		if (e.metaKey || e.ctrlKey) {
+			window.open('/data-tables', '_blank');
+			return;
+		}
+		if (artifact.projectId) {
+			openDataTablePreview?.(artifact.id, artifact.projectId);
+		}
 	}
 }
 
@@ -238,7 +248,7 @@ const artifactIconMap: Record<string, IconName> = {
 }
 
 .todoIcon {
-	color: var(--text-color--subtle);
+	color: var(--color--text--tint-2);
 }
 
 .inProgressIcon {

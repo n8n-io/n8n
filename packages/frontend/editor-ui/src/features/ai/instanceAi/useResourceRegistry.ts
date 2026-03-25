@@ -11,6 +11,7 @@ export interface ResourceEntry {
 	name: string;
 	createdAt?: string;
 	updatedAt?: string;
+	projectId?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -26,6 +27,7 @@ function registerResource(
 		const entry: ResourceEntry = { type, id: obj.id, name: obj.name };
 		if (typeof obj.createdAt === 'string') entry.createdAt = obj.createdAt;
 		if (typeof obj.updatedAt === 'string') entry.updatedAt = obj.updatedAt;
+		if (typeof obj.projectId === 'string') entry.projectId = obj.projectId;
 		map.set(obj.name.toLowerCase(), entry);
 	}
 }
@@ -79,6 +81,11 @@ function extractFromToolCall(tc: InstanceAiToolCallState, map: Map<string, Resou
 		for (const table of result.dataTables as Array<Record<string, unknown>>) {
 			registerResource(map, 'data-table', table);
 		}
+	}
+
+	// Singular data table (e.g. create-data-table result)
+	if (result.table && typeof result.table === 'object') {
+		registerResource(map, 'data-table', result.table as Record<string, unknown>);
 	}
 }
 

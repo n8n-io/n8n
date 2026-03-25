@@ -19,7 +19,12 @@ import InstanceAiArtifactsPanel from './components/InstanceAiArtifactsPanel.vue'
 import InstanceAiStatusBar from './components/InstanceAiStatusBar.vue';
 import InstanceAiConfirmationPanel from './components/InstanceAiConfirmationPanel.vue';
 import InstanceAiWorkflowPreview from './components/InstanceAiWorkflowPreview.vue';
-import { getLatestBuildResult, getLatestExecutionId } from './canvasPreview.utils';
+import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
+import {
+	getLatestBuildResult,
+	getLatestExecutionId,
+	getLatestDataTableResult,
+} from './canvasPreview.utils';
 
 const store = useInstanceAiStore();
 const settingsStore = useInstanceAiSettingsStore();
@@ -32,24 +37,43 @@ documentTitle.set('Instance AI');
 // --- Canvas preview state ---
 const activeWorkflowId = ref<string | null>(null);
 const activeExecutionId = ref<string | null>(null);
-const isCanvasVisible = computed(() => activeWorkflowId.value !== null);
 const iframePushRef = ref<string | null>(null);
+
+// --- Data table preview state ---
+const activeDataTableId = ref<string | null>(null);
+const activeDataTableProjectId = ref<string | null>(null);
+const dataTableRefreshKey = ref(0);
+
+const isPreviewVisible = computed(
+	() => activeWorkflowId.value !== null || activeDataTableId.value !== null,
+);
 
 // Tracks whether the canvas was open before the most recent thread switch,
 // so we can restore it when the new thread has a build result.
 const wasCanvasOpenBeforeSwitch = ref(false);
 
 provide('openWorkflowPreview', (workflowId: string) => {
+	activeDataTableId.value = null;
+	activeDataTableProjectId.value = null;
 	activeWorkflowId.value = workflowId;
+});
+
+provide('openDataTablePreview', (dataTableId: string, projectId: string) => {
+	activeWorkflowId.value = null;
+	activeExecutionId.value = null;
+	activeDataTableId.value = dataTableId;
+	activeDataTableProjectId.value = projectId;
 });
 
 // Preserve canvas intent when switching threads
 watch(
 	() => route.params.threadId,
 	() => {
-		wasCanvasOpenBeforeSwitch.value = isCanvasVisible.value;
+		wasCanvasOpenBeforeSwitch.value = isPreviewVisible.value;
 		activeWorkflowId.value = null;
 		activeExecutionId.value = null;
+		activeDataTableId.value = null;
+		activeDataTableProjectId.value = null;
 	},
 );
 
@@ -80,7 +104,7 @@ watch(
 			return;
 		}
 
-		if (!isCanvasVisible.value && !store.isStreaming && !wasCanvasOpenBeforeSwitch.value) {
+		if (!isPreviewVisible.value && !store.isStreaming && !wasCanvasOpenBeforeSwitch.value) {
 			wasCanvasOpenBeforeSwitch.value = false;
 			return;
 		}
@@ -106,16 +130,55 @@ const latestExecutionId = computed(() => {
 
 watch(latestExecutionId, (execId) => {
 	if (!execId) return;
-	if (!isCanvasVisible.value && !store.isStreaming) return;
+	if (!isPreviewVisible.value && !store.isStreaming) return;
 
 	activeExecutionId.value = execId;
 
 	// Open the canvas if it's not visible yet (e.g. user closed it, then asked to re-execute)
-	if (!isCanvasVisible.value && latestBuildResult.value) {
+	if (!isPreviewVisible.value && latestBuildResult.value) {
 		activeWorkflowId.value = latestBuildResult.value.workflowId;
 		workflowRefreshKey.value++;
 	}
 });
+
+// --- Auto-open data table preview when AI creates/modifies a data table ---
+const latestDataTableResult = computed(() => {
+	for (let i = store.messages.length - 1; i >= 0; i--) {
+		const msg = store.messages[i];
+		if (msg.agentTree) {
+			const result = getLatestDataTableResult(msg.agentTree);
+			if (result) return result;
+		}
+	}
+	return null;
+});
+
+watch(
+	() => latestDataTableResult.value?.toolCallId,
+	(toolCallId) => {
+		if (!toolCallId || !latestDataTableResult.value) {
+			wasCanvasOpenBeforeSwitch.value = false;
+			return;
+		}
+
+		if (!isPreviewVisible.value && !store.isStreaming && !wasCanvasOpenBeforeSwitch.value) {
+			wasCanvasOpenBeforeSwitch.value = false;
+			return;
+		}
+
+		wasCanvasOpenBeforeSwitch.value = false;
+		const dataTableId = latestDataTableResult.value.dataTableId;
+		const registryEntry = [...store.resourceRegistry.values()].find(
+			(e) => e.type === 'data-table' && e.id === dataTableId,
+		);
+
+		activeWorkflowId.value = null;
+		activeExecutionId.value = null;
+		activeDataTableId.value = dataTableId;
+		activeDataTableProjectId.value = registryEntry?.projectId ?? null;
+		dataTableRefreshKey.value++;
+	},
+);
 
 // Load persisted threads from Mastra storage on mount
 onMounted(() => {
@@ -170,7 +233,7 @@ function handleChatAreaResize({ width }: { width: number }) {
 }
 
 const chatAreaStyle = computed(() =>
-	isCanvasVisible.value ? { width: `${chatAreaWidth.value}px`, flex: 'none' } : {},
+	isPreviewVisible.value ? { width: `${chatAreaWidth.value}px`, flex: 'none' } : {},
 );
 
 // --- Scroll management ---
@@ -346,11 +409,11 @@ function handleStop() {
 
 		<!-- Main chat area (resizable when canvas is visible) -->
 		<component
-			:is="isCanvasVisible ? N8nResizeWrapper : 'div'"
+			:is="isPreviewVisible ? N8nResizeWrapper : 'div'"
 			:class="$style.chatArea"
 			:style="chatAreaStyle"
 			v-bind="
-				isCanvasVisible
+				isPreviewVisible
 					? {
 							width: chatAreaWidth,
 							minWidth: 300,
@@ -388,7 +451,7 @@ function handleStop() {
 						@click="showMemoryPanel = !showMemoryPanel"
 					/>
 					<N8nIconButton
-						v-if="!isCanvasVisible"
+						v-if="!isPreviewVisible"
 						icon="panel-right"
 						variant="ghost"
 						size="small"
@@ -462,7 +525,7 @@ function handleStop() {
 				</div>
 
 				<!-- Artifacts panel (below header, beside chat) -->
-				<InstanceAiArtifactsPanel v-if="showArtifactsPanel && !isCanvasVisible" />
+				<InstanceAiArtifactsPanel v-if="showArtifactsPanel && !isPreviewVisible" />
 
 				<!-- Overlay panels -->
 				<InstanceAiMemoryPanel v-if="showMemoryPanel" @close="showMemoryPanel = false" />
@@ -476,18 +539,29 @@ function handleStop() {
 			</div>
 		</component>
 
-		<!-- Canvas preview panel (eager mount via v-show) -->
+		<!-- Preview panel (workflow OR datatable) -->
 		<div
-			v-show="isCanvasVisible"
+			v-show="isPreviewVisible"
 			:class="$style.canvasArea"
 			:style="isResizingChat ? { pointerEvents: 'none' } : {}"
 		>
 			<InstanceAiWorkflowPreview
+				v-if="activeWorkflowId"
 				:workflow-id="activeWorkflowId"
 				:execution-id="activeExecutionId"
 				:refresh-key="workflowRefreshKey"
 				@close="activeWorkflowId = null"
 				@push-ref-ready="iframePushRef = $event"
+			/>
+			<InstanceAiDataTablePreview
+				v-else-if="activeDataTableId"
+				:data-table-id="activeDataTableId"
+				:project-id="activeDataTableProjectId"
+				:refresh-key="dataTableRefreshKey"
+				@close="
+					activeDataTableId = null;
+					activeDataTableProjectId = null;
+				"
 			/>
 		</div>
 	</div>
