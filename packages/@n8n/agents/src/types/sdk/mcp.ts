@@ -22,6 +22,13 @@ export interface McpServerConfig {
 	headers?: Record<string, string>;
 
 	/**
+	 * Maximum time in milliseconds to wait for this server connection (transport
+	 * start and MCP initialize). When omitted, the MCP SDK default applies for
+	 * the initialize request (60s); the transport layer has no explicit cap.
+	 */
+	connectionTimeoutMs?: number;
+
+	/**
 	 * Require human-in-the-loop approval for tool calls from this server.
 	 *
 	 * - `true` — every tool from this server requires approval before execution.

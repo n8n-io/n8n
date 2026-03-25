@@ -35,12 +35,47 @@ export class McpConnection {
 		if (this.connectionPromise !== undefined) {
 			return await this.connectionPromise;
 		}
-		this.connectionPromise = this.client.connect(this.createTransport(this.config));
+		this.connectionPromise = this.connectWithTransport(this.createTransport(this.config));
 		try {
 			await this.connectionPromise;
 		} catch (error) {
 			this.connectionPromise = undefined;
 			throw error;
+		}
+	}
+
+	private async connectWithTransport(
+		transport: SSEClientTransport | StreamableHTTPClientTransport | StdioClientTransport,
+	): Promise<void> {
+		const timeoutMs = this.config.connectionTimeoutMs;
+		if (timeoutMs === undefined) {
+			await this.client.connect(transport);
+			return;
+		}
+		if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+			throw new Error(
+				`MCP server "${this.config.name}": connectionTimeoutMs must be a positive finite number`,
+			);
+		}
+		let timeoutId: ReturnType<typeof setTimeout> | undefined;
+		try {
+			await Promise.race([
+				this.client.connect(transport),
+				new Promise<never>((_, reject) => {
+					timeoutId = setTimeout(() => {
+						reject(
+							new Error(
+								`MCP server "${this.config.name}": connection timed out after ${timeoutMs}ms`,
+							),
+						);
+					}, timeoutMs);
+				}),
+			]);
+		} catch (error) {
+			await this.client.close().catch(() => {});
+			throw error;
+		} finally {
+			if (timeoutId !== undefined) clearTimeout(timeoutId);
 		}
 	}
 
