@@ -22,7 +22,6 @@ import type { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifec
 import {
 	applyPaginationRequestData,
 	convertN8nRequestToAxios,
-	createFormDataObject,
 	httpRequest,
 	invokeAxios,
 	parseRequestObject,
@@ -31,6 +30,7 @@ import {
 	removeEmptyBody,
 	requestOAuth2,
 } from '../request-helper-functions';
+import { createFormDataObject } from '../request-helpers/axios-utils';
 
 describe('Request Helper Functions', () => {
 	describe('proxyRequestToAxios', () => {
