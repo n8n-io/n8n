@@ -128,9 +128,7 @@ onMounted(() => {
 					>
 						<N8nIcon :icon="cat.icon" size="xsmall" />
 						{{ cat.label }}
-						<span v-if="cat.sublabel" :class="$style.categorySublabel">
-							({{ cat.sublabel }})
-						</span>
+						<span v-if="cat.sublabel" :class="$style.categorySublabel"> ({{ cat.sublabel }}) </span>
 					</span>
 				</div>
 			</div>
