@@ -5,10 +5,27 @@ import axios from 'axios';
 import crypto from 'crypto';
 import FormData from 'form-data';
 import type { AgentOptions } from 'https';
-import type { IHttpRequestOptions, IgnoreStatusErrorConfig } from 'n8n-workflow';
+import {
+	ApplicationError,
+	isDomainAllowed,
+	type IHttpRequestOptions,
+	type IgnoreStatusErrorConfig,
+} from 'n8n-workflow';
 
 import type { SsrfBridge } from '@/execution-engine';
 import { createHttpProxyAgent, createHttpsProxyAgent } from '@/http-proxy';
+
+export function throwIfDomainNotAllowed(
+	configOrUrl: AxiosRequestConfig | string,
+	allowedDomains?: string,
+): void {
+	const url = typeof configOrUrl === 'string' ? configOrUrl : axios.getUri(configOrUrl);
+	if (allowedDomains && !isDomainAllowed(url, { allowedDomains })) {
+		throw new ApplicationError(
+			`Domain not allowed: This credential is restricted from accessing ${url}. Only the following domains are allowed: ${allowedDomains}`,
+		);
+	}
+}
 
 /** Attempts to parse a string as a URL. Returns the parsed `URL` or `null` on failure. */
 export function tryParseUrl(url: string): URL | null {
@@ -67,9 +84,11 @@ export const getBeforeRedirectFn =
 		axiosConfig: AxiosRequestConfig,
 		proxyConfig: IHttpRequestOptions['proxy'] | string | undefined,
 		sendCredentialsOnCrossOriginRedirect: boolean,
+		allowedDomains?: string,
 		ssrfBridge?: SsrfBridge,
 	) =>
 	(redirectedRequest: Record<string, any>) => {
+		throwIfDomainNotAllowed(redirectedRequest.href, allowedDomains);
 		// SSRF: validate redirect target synchronously for direct-IP URIs.
 		// Hostname-based redirect targets are caught by secureLookup on the agent.
 		if (ssrfBridge) {
