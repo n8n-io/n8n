@@ -258,13 +258,14 @@ const childrenById = computed(() => {
 								:class="$style.toggleBlock"
 							>
 								<CollapsibleTrigger :class="$style.toggleButton">
-									{{ toolOpen ? getHideLabel(toolCallsById[entry.toolCallId]) : getToggleLabel(toolCallsById[entry.toolCallId]) }}
+									{{
+										toolOpen
+											? getHideLabel(toolCallsById[entry.toolCallId])
+											: getToggleLabel(toolCallsById[entry.toolCallId])
+									}}
 								</CollapsibleTrigger>
 								<CollapsibleContent :class="$style.toggleContent">
-									<div
-										v-if="toolCallsById[entry.toolCallId].args"
-										:class="$style.dataSection"
-									>
+									<div v-if="toolCallsById[entry.toolCallId].args" :class="$style.dataSection">
 										<ToolResultJson :value="toolCallsById[entry.toolCallId].args" />
 									</div>
 									<div
@@ -325,7 +326,7 @@ const childrenById = computed(() => {
 
 .compactText {
 	font-size: var(--font-size--2xs);
-	color: var(--text-color--subtle);
+	color: var(--color--text--tint-1);
 }
 
 /* Flat timeline step styles (matching SubagentStepTimeline) */

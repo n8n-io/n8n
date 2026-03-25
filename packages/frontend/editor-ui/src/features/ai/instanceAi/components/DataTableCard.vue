@@ -99,11 +99,11 @@ const isError = computed(() => props.agentNode.status === 'error');
 
 .title {
 	font-weight: var(--font-weight--bold);
-	color: var(--text-color);
+	color: var(--color--text);
 }
 
 .subtitle {
-	color: var(--text-color--subtle);
+	color: var(--color--text--tint-1);
 	font-weight: var(--font-weight--regular);
 	max-width: 280px;
 	overflow: hidden;

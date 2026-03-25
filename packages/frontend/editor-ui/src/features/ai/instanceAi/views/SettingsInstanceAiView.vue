@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { onMounted, watch } from 'vue';
-import { N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
@@ -55,20 +55,22 @@ watch(
 		</div>
 
 		<div :class="$style.footer">
-			<button
-				:class="$style.resetButton"
+			<N8nButton
+				size="large"
+				:disabled="!store.isDirty || store.isSaving"
+				:loading="store.isSaving"
+				@click="store.save()"
+			>
+				{{ i18n.baseText('instanceAi.settings.save') }}
+			</N8nButton>
+			<N8nButton
+				variant="subtle"
+				size="large"
 				:disabled="!store.isDirty || store.isSaving"
 				@click="store.reset()"
 			>
 				{{ i18n.baseText('instanceAi.settings.reset') }}
-			</button>
-			<button
-				:class="$style.saveButton"
-				:disabled="!store.isDirty || store.isSaving"
-				@click="store.save()"
-			>
-				{{ store.isSaving ? '...' : i18n.baseText('instanceAi.settings.save') }}
-			</button>
+			</N8nButton>
 		</div>
 	</div>
 </template>
@@ -102,49 +104,9 @@ watch(
 
 .footer {
 	display: flex;
-	justify-content: flex-end;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--lg) 0;
+	justify-content: flex-start;
+	gap: var(--spacing--sm);
+	padding: var(--spacing--2xl) 0 var(--spacing--2xs);
 	max-width: 720px;
-}
-
-.resetButton {
-	padding: var(--spacing--4xs) var(--spacing--xs);
-	border-radius: var(--radius);
-	font-size: var(--font-size--sm);
-	font-family: var(--font-family);
-	cursor: pointer;
-	border: var(--border);
-	background: var(--color--background);
-	color: var(--color--text--tint-1);
-
-	&:hover:not(:disabled) {
-		background: var(--color--background--shade-1);
-	}
-
-	&:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-}
-
-.saveButton {
-	padding: var(--spacing--4xs) var(--spacing--sm);
-	border-radius: var(--radius);
-	font-size: var(--font-size--sm);
-	font-family: var(--font-family);
-	cursor: pointer;
-	border: none;
-	background: var(--color--primary);
-	color: white;
-
-	&:hover:not(:disabled) {
-		background: var(--color--primary--shade-1);
-	}
-
-	&:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
 }
 </style>

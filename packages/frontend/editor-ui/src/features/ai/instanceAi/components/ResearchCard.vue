@@ -96,7 +96,7 @@ const isError = computed(() => props.agentNode.status === 'error');
 
 .title {
 	font-weight: var(--font-weight--bold);
-	color: var(--text-color);
+	color: var(--color--text);
 }
 
 .body {
