@@ -27,6 +27,7 @@ const mockDiscoverOutputSchemaForNode = jest.fn();
 const mockInferSchemasFromRunData = jest.fn();
 
 jest.mock('@n8n/workflow-sdk', () => {
+	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 	const actual = jest.requireActual<typeof import('@n8n/workflow-sdk')>('@n8n/workflow-sdk');
 	return {
 		...actual,
