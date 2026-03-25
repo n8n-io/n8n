@@ -9,7 +9,12 @@ import { v4 as uuid } from 'uuid';
 
 import type { TodoistResponse } from './Service';
 import type { Context } from '../GenericFunctions';
-import { FormatDueDatetime, todoistApiRequest, todoistSyncRequest } from '../GenericFunctions';
+import {
+	FormatDueDatetime,
+	todoistApiGetAllRequest,
+	todoistApiRequest,
+	todoistSyncRequest,
+} from '../GenericFunctions';
 
 // Helper function for string or number validation
 function assertValidTodoistId(
@@ -269,6 +274,7 @@ export class GetAllHandler implements OperationHandler {
 		//https://developer.todoist.com/rest/v2/#get-active-tasks
 		const returnAll = ctx.getNodeParameter('returnAll', itemIndex) as boolean;
 		const filters = ctx.getNodeParameter('filters', itemIndex) as IDataObject;
+		const nodeVersion = ctx.getNode().typeVersion;
 
 		validateNodeParameters(
 			filters,
@@ -295,7 +301,11 @@ export class GetAllHandler implements OperationHandler {
 			qs.label = filters.labelId;
 		}
 		if (filters.filter) {
-			qs.filter = filters.filter;
+			if (nodeVersion >= 2.2) {
+				qs.query = filters.filter;
+			} else {
+				qs.filter = filters.filter;
+			}
 		}
 		if (filters.lang) {
 			qs.lang = filters.lang;
@@ -304,17 +314,17 @@ export class GetAllHandler implements OperationHandler {
 			qs.ids = filters.ids;
 		}
 
-		let responseData = await todoistApiRequest.call(ctx, 'GET', '/tasks', {}, qs);
-
+		let limit: undefined | number = undefined;
 		if (!returnAll) {
-			const limit = ctx.getNodeParameter('limit', itemIndex);
+			limit = ctx.getNodeParameter('limit', itemIndex) as number;
 			assertParamIsNumber('limit', limit, ctx.getNode());
-			responseData = responseData.splice(0, limit);
 		}
 
-		return {
-			data: responseData,
-		};
+		// https://developer.todoist.com/api/v1/#tag/Tasks/operation/get_tasks_by_filter_api_v1_tasks_filter_get
+		const endpoint = qs.query ? '/tasks/filter' : '/tasks';
+		const data = await todoistApiGetAllRequest(ctx, endpoint, qs, limit);
+
+		return { data };
 	}
 }
 
@@ -533,7 +543,7 @@ export class ProjectGetHandler implements OperationHandler {
 
 export class ProjectGetAllHandler implements OperationHandler {
 	async handleOperation(ctx: Context, _itemIndex: number): Promise<TodoistResponse> {
-		const data = await todoistApiRequest.call(ctx, 'GET', '/projects');
+		const data = await todoistApiGetAllRequest(ctx, '/projects');
 		return { data };
 	}
 }
@@ -585,7 +595,7 @@ export class ProjectGetCollaboratorsHandler implements OperationHandler {
 		const id = ctx.getNodeParameter('projectId', itemIndex);
 		assertValidTodoistId('projectId', id, ctx.getNode());
 
-		const data = await todoistApiRequest.call(ctx, 'GET', `/projects/${id}/collaborators`);
+		const data = await todoistApiGetAllRequest(ctx, `/projects/${id}/collaborators`);
 		return { data };
 	}
 }
@@ -651,7 +661,7 @@ export class SectionGetAllHandler implements OperationHandler {
 			qs.project_id = filters.project_id;
 		}
 
-		const data = await todoistApiRequest.call(ctx, 'GET', '/sections', {}, qs);
+		const data = await todoistApiGetAllRequest(ctx, '/sections', qs);
 		return { data };
 	}
 }
@@ -729,7 +739,7 @@ export class CommentGetAllHandler implements OperationHandler {
 			qs.project_id = filters.project_id;
 		}
 
-		const data = await todoistApiRequest.call(ctx, 'GET', '/comments', {}, qs);
+		const data = await todoistApiGetAllRequest(ctx, '/comments', qs);
 		return { data };
 	}
 }
@@ -802,7 +812,7 @@ export class LabelGetHandler implements OperationHandler {
 
 export class LabelGetAllHandler implements OperationHandler {
 	async handleOperation(ctx: Context, _itemIndex: number): Promise<TodoistResponse> {
-		const data = await todoistApiRequest.call(ctx, 'GET', '/labels');
+		const data = await todoistApiGetAllRequest(ctx, '/labels');
 		return { data };
 	}
 }

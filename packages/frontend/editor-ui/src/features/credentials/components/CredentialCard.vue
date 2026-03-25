@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import dateformat from 'dateformat';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/collaboration/projects/projects.constants';
+import { useDependencies } from '@/app/composables/useDependencies';
 import { useMessage } from '@/app/composables/useMessage';
 import CredentialIcon from './CredentialIcon.vue';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -11,11 +12,20 @@ import { useCredentialsStore } from '../credentials.store';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ProjectCardBadge from '@/features/collaboration/projects/components/ProjectCardBadge.vue';
+import DependencyPill from '@/app/components/DependencyPill.vue';
 import { useI18n } from '@n8n/i18n';
 import { ResourceType } from '@/features/collaboration/projects/projects.utils';
 import type { CredentialsResource } from '@/Interface';
+import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 
-import { N8nActionToggle, N8nBadge, N8nCard, N8nText } from '@n8n/design-system';
+import {
+	N8nActionToggle,
+	N8nBadge,
+	N8nCard,
+	N8nIcon,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 const CREDENTIAL_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
 	DELETE: 'delete',
@@ -43,6 +53,8 @@ const message = useMessage();
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
+const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
+const { hasDependencies } = useDependencies();
 
 const resourceTypeLabel = computed(() => locale.baseText('generic.credential').toLowerCase());
 const credentialType = computed(() =>
@@ -81,6 +93,8 @@ const formattedCreatedAtDate = computed(() => {
 		`d mmmm${String(props.data.createdAt).startsWith(currentYear) ? '' : ', yyyy'}`,
 	);
 });
+
+const credentialHasDependents = computed(() => hasDependencies(props.data.id));
 
 function onClick() {
 	emit('click', props.data.id);
@@ -144,6 +158,24 @@ function moveResource() {
 				<N8nBadge v-if="needsSetup" class="ml-3xs" theme="warning">
 					{{ locale.baseText('credentials.item.needsSetup') }}
 				</N8nBadge>
+				<N8nTooltip v-if="isDynamicCredentialsEnabled && data.isResolvable" placement="top">
+					<template #content>
+						<div :class="$style.tooltipContent">
+							<strong>{{ locale.baseText('credentials.dynamic.tooltipTitle') }}</strong>
+							<span>{{ locale.baseText('credentials.dynamic.tooltip') }}</span>
+						</div>
+					</template>
+					<N8nBadge
+						theme="tertiary"
+						class="ml-3xs pl-3xs pr-3xs"
+						data-test-id="credential-card-dynamic"
+					>
+						<span :class="$style.dynamicBadgeText">
+							<N8nIcon icon="key-round" size="medium" />
+							{{ locale.baseText('credentials.dynamic.badge') }}
+						</span>
+					</N8nBadge>
+				</N8nTooltip>
 			</N8nText>
 		</template>
 		<div :class="$style.cardDescription">
@@ -159,6 +191,13 @@ function moveResource() {
 		</div>
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
+				<DependencyPill
+					v-if="credentialHasDependents"
+					resource-type="credential"
+					:resource-id="data.id"
+					source="credential_card"
+					data-test-id="credential-card-dependents"
+				/>
 				<ProjectCardBadge
 					:class="$style.cardBadge"
 					:resource="data"
@@ -188,11 +227,13 @@ function moveResource() {
 	align-items: stretch;
 
 	&:hover {
-		box-shadow: 0 2px 8px rgba(#441c17, 0.1);
+		box-shadow: var(--shadow--card-hover);
 	}
 }
 
 .cardHeading {
+	display: flex;
+	align-items: center;
 	font-size: var(--font-size--sm);
 	padding: var(--spacing--sm) 0 0;
 }
@@ -206,12 +247,27 @@ function moveResource() {
 
 .cardActions {
 	display: flex;
+	gap: var(--spacing--2xs);
 	flex-direction: row;
 	justify-content: center;
 	align-items: center;
 	align-self: stretch;
 	padding: 0 var(--spacing--sm) 0 0;
 	cursor: default;
+}
+
+.dynamicBadgeText {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	font-size: var(--font-size--3xs);
+	height: 18px;
+}
+
+.tooltipContent {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
 }
 
 @include mixins.breakpoint('sm-and-down') {

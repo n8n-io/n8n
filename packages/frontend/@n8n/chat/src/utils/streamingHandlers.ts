@@ -2,10 +2,11 @@ import { nextTick } from 'vue';
 import type { Ref } from 'vue';
 
 import { chatEventBus } from '@n8n/chat/event-buses';
-import type { ChatMessage, ChatMessageText } from '@n8n/chat/types';
+import type { ChatMessage, ChatMessageText, ChatOptions } from '@n8n/chat/types';
 
 import type { StreamingMessageManager } from './streaming';
 import { createBotMessage, updateMessageInArray } from './streaming';
+import { parseBotChatMessageContent, shouldBlockUserInput } from './utils';
 
 export function handleStreamingChunk(
 	chunk: string,
@@ -74,14 +75,45 @@ export function handleNodeStart(
 	}
 }
 
-export function handleNodeComplete(
+export async function handleNodeComplete(
 	nodeId: string,
 	streamingManager: StreamingMessageManager,
-	runIndex?: number,
-): void {
+	runIndex: number | undefined,
+	userMessage: string,
+	options: ChatOptions,
+	messages: Ref<ChatMessage[]>,
+): Promise<boolean> {
 	try {
+		// Get the completed message before marking it complete
+		const completedMessage = streamingManager.getRunMessage(nodeId, runIndex);
+
+		// Mark the run as complete
 		streamingManager.removeRunFromActive(nodeId, runIndex);
+
+		// Check if the completed streaming message is a HITL component message
+		if (completedMessage && 'text' in completedMessage) {
+			const parsed = parseBotChatMessageContent(completedMessage.text);
+			if (parsed.type === 'component') {
+				// Replace the text message with the component message in the array
+				const index = messages.value.findIndex((m) => m.id === completedMessage.id);
+				if (index !== -1) {
+					parsed.id = completedMessage.id;
+					messages.value[index] = parsed;
+				}
+
+				return shouldBlockUserInput(parsed);
+			}
+		}
+
+		// Call afterMessageSent hook if provided and we have a message
+		if (options.afterMessageSent && completedMessage) {
+			await options.afterMessageSent(userMessage, {
+				message: completedMessage,
+				hasReceivedChunks: true,
+			});
+		}
 	} catch (error) {
 		console.error('Error handling node complete:', error);
 	}
+	return false;
 }

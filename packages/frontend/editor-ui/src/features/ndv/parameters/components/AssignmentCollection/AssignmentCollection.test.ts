@@ -43,7 +43,9 @@ const getInput = (e: HTMLElement): HTMLInputElement => {
 };
 
 const getAssignmentType = (assignment: HTMLElement): string => {
-	return getInput(within(assignment).getByTestId('assignment-type-select')).value;
+	const typeSelect = within(assignment).getByTestId('assignment-type-select');
+	const button = within(typeSelect).getByRole('button');
+	return button.textContent?.trim() ?? '';
 };
 
 async function dropAssignment({
@@ -197,6 +199,23 @@ describe('AssignmentCollection.vue', () => {
 		expect(getAssignmentType(assignments[2])).toEqual('Number');
 		expect(getAssignmentType(assignments[3])).toEqual('Object');
 		expect(getAssignmentType(assignments[4])).toEqual('Array');
+	});
+
+	it('can infer binary type for binary-like objects', async () => {
+		const { getByTestId, findAllByTestId } = renderComponent();
+		const dropArea = getByTestId('drop-area');
+
+		const binaryValue = {
+			mimeType: 'image/png',
+			data: 'base64data',
+		};
+
+		await dropAssignment({ key: 'binaryKey', value: binaryValue, dropArea });
+
+		const assignments = await findAllByTestId('assignment');
+
+		expect(assignments.length).toBe(1);
+		expect(getAssignmentType(assignments[0])).toEqual('Binary Data');
 	});
 
 	describe('defaultType prop', () => {

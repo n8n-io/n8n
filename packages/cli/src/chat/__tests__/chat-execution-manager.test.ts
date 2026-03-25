@@ -1,9 +1,16 @@
 import { ExecutionRepository } from '@n8n/db';
 import type { IExecutionResponse } from '@n8n/db';
+import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
 import { mockInstance } from '@n8n/backend-test-utils';
+import {
+	CHAT_NODE_TYPE,
+	CHAT_TOOL_NODE_TYPE,
+	NodeConnectionTypes,
+	RESPOND_TO_WEBHOOK_NODE_TYPE,
+} from 'n8n-workflow';
 
 import { NodeTypes } from '../../node-types';
 import { OwnershipService } from '../../services/ownership.service';
@@ -142,7 +149,9 @@ describe('ChatExecutionManager', () => {
 				workflowData: { id: 'workflowId' },
 				data: {
 					resultData: { pinData: {} },
-					executionData: { nodeExecutionStack: [{ data: { main: [[]] } }] },
+					executionData: {
+						nodeExecutionStack: [{ node: { type: 'testType' }, data: { main: [[]] } }],
+					},
 					pushRef: 'pushRef',
 				},
 				mode: 'manual',
@@ -173,6 +182,181 @@ describe('ChatExecutionManager', () => {
 				workflowData: execution.workflowData,
 				pinData: execution.data.resultData.pinData,
 				projectId: 'projectId',
+			});
+		});
+
+		describe('when node is a chat tool', () => {
+			const message: ChatMessage = { sessionId: '123', action: 'sendMessage', chatInput: 'input' };
+
+			function makeChatToolExecution(runDataEntry: object = {}) {
+				return {
+					id: '1',
+					workflowData: { id: 'workflowId' },
+					data: {
+						resultData: {
+							pinData: {},
+							lastNodeExecuted: 'ChatToolNode',
+							runData: {
+								ChatToolNode: [
+									{
+										startTime: 123,
+										executionTime: 456,
+										executionIndex: 0,
+										source: [],
+										...runDataEntry,
+									},
+								],
+							},
+						},
+						executionData: {
+							nodeExecutionStack: [
+								{
+									node: { name: 'ChatToolNode', type: CHAT_TOOL_NODE_TYPE, disabled: false },
+									data: { main: [[]] },
+								},
+							],
+						},
+						pushRef: 'pushRef',
+					},
+					mode: 'manual',
+				} as any;
+			}
+
+			beforeEach(() => {
+				jest.spyOn(chatExecutionManager as any, 'runNode').mockResolvedValue(null);
+				jest
+					.spyOn(ownershipService, 'getWorkflowProjectCached')
+					.mockResolvedValue({ id: 'projectId' } as any);
+			});
+
+			it('should disable node and clear waitTill even when waitTill is not set', async () => {
+				const execution = makeChatToolExecution();
+
+				await (chatExecutionManager as any).getRunData(execution, message);
+
+				expect(execution.data.executionData.nodeExecutionStack[0].node.disabled).toBe(true);
+				expect(execution.data.waitTill).toBeUndefined();
+			});
+
+			it('should set rewireOutputLogTo to AiTool', async () => {
+				const execution = makeChatToolExecution();
+
+				await (chatExecutionManager as any).getRunData(execution, message);
+
+				expect(execution.data.executionData.nodeExecutionStack[0].node.rewireOutputLogTo).toBe(
+					NodeConnectionTypes.AiTool,
+				);
+			});
+
+			it('should replace run data entry with inputOverride placeholder', async () => {
+				const inputOverride = { main: [[{ json: { toolInput: 'test' } }]] };
+				const execution = makeChatToolExecution({
+					source: [{ previousNode: 'Agent' }],
+					inputOverride,
+				});
+
+				await (chatExecutionManager as any).getRunData(execution, message);
+
+				const runData = execution.data.resultData.runData.ChatToolNode;
+				expect(runData).toHaveLength(1);
+				expect(runData[0].inputOverride).toBe(inputOverride);
+				expect(runData[0].startTime).toBe(0);
+				expect(runData[0].source[0]).toMatchObject({ previousNode: 'Agent' });
+			});
+
+			it('should pop run data entry when no inputOverride', async () => {
+				const execution = makeChatToolExecution();
+
+				await (chatExecutionManager as any).getRunData(execution, message);
+
+				expect(execution.data.resultData.runData.ChatToolNode).toHaveLength(0);
+			});
+		});
+
+		describe('when node is a regular chat node', () => {
+			const message: ChatMessage = { sessionId: '123', action: 'sendMessage', chatInput: 'input' };
+
+			beforeEach(() => {
+				jest.spyOn(chatExecutionManager as any, 'runNode').mockResolvedValue(null);
+				jest
+					.spyOn(ownershipService, 'getWorkflowProjectCached')
+					.mockResolvedValue({ id: 'projectId' } as any);
+			});
+
+			it('should not modify node state or run data for chat node', async () => {
+				const runDataEntry = { startTime: 123, executionTime: 456, executionIndex: 0, source: [] };
+				const waitTill = new Date();
+				const execution = {
+					id: '1',
+					workflowData: { id: 'workflowId' },
+					data: {
+						resultData: {
+							pinData: {},
+							lastNodeExecuted: 'ChatNode',
+							runData: { ChatNode: [runDataEntry] },
+						},
+						executionData: {
+							nodeExecutionStack: [
+								{
+									node: { name: 'ChatNode', type: CHAT_NODE_TYPE, disabled: false },
+									data: { main: [[]] },
+								},
+							],
+						},
+						pushRef: 'pushRef',
+						waitTill,
+					},
+					mode: 'manual',
+				} as any;
+
+				await (chatExecutionManager as any).getRunData(execution, message);
+
+				expect(execution.data.executionData.nodeExecutionStack[0].node.disabled).toBe(false);
+				expect(execution.data.waitTill).toBe(waitTill);
+				expect(execution.data.resultData.runData.ChatNode).toHaveLength(1);
+				expect(
+					execution.data.executionData.nodeExecutionStack[0].node.rewireOutputLogTo,
+				).toBeUndefined();
+			});
+
+			it('should not modify node state or run data for respond to webhook node', async () => {
+				const runDataEntry = { startTime: 123, executionTime: 456, executionIndex: 0, source: [] };
+				const waitTill = new Date();
+				const execution = {
+					id: '1',
+					workflowData: { id: 'workflowId' },
+					data: {
+						resultData: {
+							pinData: {},
+							lastNodeExecuted: 'RespondNode',
+							runData: { RespondNode: [runDataEntry] },
+						},
+						executionData: {
+							nodeExecutionStack: [
+								{
+									node: {
+										name: 'RespondNode',
+										type: RESPOND_TO_WEBHOOK_NODE_TYPE,
+										disabled: false,
+									},
+									data: { main: [[]] },
+								},
+							],
+						},
+						pushRef: 'pushRef',
+						waitTill,
+					},
+					mode: 'manual',
+				} as any;
+
+				await (chatExecutionManager as any).getRunData(execution, message);
+
+				expect(execution.data.executionData.nodeExecutionStack[0].node.disabled).toBe(false);
+				expect(execution.data.waitTill).toBe(waitTill);
+				expect(execution.data.resultData.runData.RespondNode).toHaveLength(1);
+				expect(
+					execution.data.executionData.nodeExecutionStack[0].node.rewireOutputLogTo,
+				).toBeUndefined();
 			});
 		});
 	});
@@ -287,6 +471,96 @@ describe('ChatExecutionManager', () => {
 			const result = await (chatExecutionManager as any).runNode(execution, message);
 
 			expect(result).toEqual([[{ json: message }]]);
+		});
+
+		describe('when lastNodeExecuted is TOOL_EXECUTOR_NODE_NAME', () => {
+			const message: ChatMessage = { sessionId: '123', action: 'sendMessage', chatInput: 'input' };
+			const toolNode = {
+				name: 'My Tool',
+				type: 'n8n-nodes-base.myTool',
+				typeVersion: 1,
+				parameters: {},
+			};
+
+			it('returns null when the referenced tool node is not in the workflow', async () => {
+				const execution = {
+					id: '1',
+					workflowData: { id: 'workflowId' },
+					data: {
+						resultData: { lastNodeExecuted: TOOL_EXECUTOR_NODE_NAME, runData: {} },
+						startData: {},
+						executionData: {
+							nodeExecutionStack: [
+								{
+									node: {
+										name: TOOL_EXECUTOR_NODE_NAME,
+										parameters: { node: 'My Tool' },
+									},
+									data: { main: [[{}]] },
+								},
+							],
+						},
+					},
+					mode: 'manual',
+				} as any;
+
+				const workflow = {
+					id: 'workflowId',
+					getNode: jest.fn().mockReturnValue(null), // tool node not found
+				};
+				jest.spyOn(chatExecutionManager as any, 'getWorkflow').mockReturnValue(workflow);
+				jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
+
+				const result = await (chatExecutionManager as any).runNode(execution, message);
+
+				expect(result).toBeNull();
+			});
+
+			it('redirects to the real tool node and runs onMessage on it', async () => {
+				const onMessage = jest.fn().mockResolvedValue([[{ json: { result: 'ok' } }]]);
+				const execution = {
+					id: '1',
+					workflowData: { id: 'workflowId' },
+					data: {
+						resultData: { lastNodeExecuted: TOOL_EXECUTOR_NODE_NAME, runData: {} },
+						startData: { runNodeFilter: ['My Tool'], destinationNode: 'My Tool' },
+						executionData: {
+							nodeExecutionStack: [
+								{
+									node: {
+										name: TOOL_EXECUTOR_NODE_NAME,
+										parameters: { node: 'My Tool' },
+									},
+									data: { main: [[{}]] },
+								},
+							],
+						},
+					},
+					mode: 'manual',
+				} as any;
+
+				const workflow = {
+					id: 'workflowId',
+					getNode: jest.fn().mockImplementation((name: string) => {
+						if (name === TOOL_EXECUTOR_NODE_NAME) return null;
+						if (name === 'My Tool') return toolNode;
+						return null;
+					}),
+					nodeTypes: {
+						getByNameAndVersion: jest.fn().mockReturnValue({ onMessage }),
+					},
+				};
+				jest.spyOn(chatExecutionManager as any, 'getWorkflow').mockReturnValue(workflow);
+				jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
+
+				const result = await (chatExecutionManager as any).runNode(execution, message);
+
+				// The node was redirected to the real tool node
+				expect(execution.data.resultData.lastNodeExecuted).toBe('My Tool');
+				// onMessage was called on the tool node
+				expect(onMessage).toHaveBeenCalled();
+				expect(result).toEqual([[{ json: { result: 'ok' } }]]);
+			});
 		});
 	});
 });

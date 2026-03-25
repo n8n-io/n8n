@@ -124,6 +124,23 @@ describe('POST /data-tables/uploads', () => {
 				{ name: 'createdDate', type: 'date', compatibleTypes: ['date', 'string'] },
 			]);
 		});
+
+		test('should infer types from later rows when first row has empty values', async () => {
+			const csvContent = 'name,isActive,count\nJohn,,\nJane,true,42\nBob,false,7';
+
+			const response = await authOwnerAgent
+				.post('/data-tables/uploads')
+				.attach('file', Buffer.from(csvContent), 'empty-first-row.csv')
+				.expect(200);
+
+			expect(response.body.data).toHaveProperty('rowCount', 3);
+			expect(response.body.data).toHaveProperty('columnCount', 3);
+			expect(response.body.data.columns).toEqual([
+				{ name: 'name', type: 'string', compatibleTypes: ['string'] },
+				{ name: 'isActive', type: 'boolean', compatibleTypes: ['boolean', 'string'] },
+				{ name: 'count', type: 'number', compatibleTypes: ['number', 'string'] },
+			]);
+		});
 	});
 
 	describe('header handling', () => {

@@ -38,6 +38,7 @@ export type IMenuItem = {
 	notification?: boolean;
 	size?: 'medium' | 'small';
 	beta?: boolean;
+	new?: boolean;
 };
 
 export interface ICustomMenuItem {

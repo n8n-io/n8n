@@ -148,6 +148,36 @@ describe('formCompletionUtils', () => {
 			sanitizeHtmlSpy.mockRestore();
 		});
 
+		it.each([
+			['\\n', '\n'],
+			['\\\\n', '\\n'],
+		])('should replace %j with %j in completionMessage', async (pattern, replacement) => {
+			const completionMessage = `Some message${pattern}Other text`;
+			const responseText = 'Response text';
+			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+				const params: { [key: string]: any } = {
+					completionTitle: 'Form Completion',
+					completionMessage,
+					responseText,
+					options: { formTitle: 'Form Title' },
+				};
+				return params[parameterName];
+			});
+
+			await renderFormCompletion(mockWebhookFunctions, mockResponse, trigger);
+
+			expect(mockResponse.render).toHaveBeenCalledWith('form-trigger-completion', {
+				appendAttribution: undefined,
+				formTitle: 'Form Title',
+				message: `Some message${replacement}Other text`,
+				redirectUrl: undefined,
+				responseBinary: encodeURIComponent(JSON.stringify('')),
+				responseText: 'Response text',
+				title: 'Form Completion',
+				dangerousCustomCss: undefined,
+			});
+		});
+
 		it('throw an error if no binary data with the field name is found', async () => {
 			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
 				const params: { [key: string]: any } = {
@@ -299,7 +329,7 @@ describe('formCompletionUtils', () => {
 
 			expect(mockResponse.setHeader).toHaveBeenCalledWith(
 				'Content-Security-Policy',
-				'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
+				'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
 			);
 			expect(mockResponse.render).toHaveBeenCalled();
 		});

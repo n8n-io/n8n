@@ -153,7 +153,7 @@ export class FolderService {
 		);
 
 		for (const workflowId of workflowIds) {
-			await this.workflowService.archive(user, workflowId, true);
+			await this.workflowService.archive(user, workflowId, { skipArchived: true });
 		}
 
 		await this.workflowRepository.moveToFolder(workflowIds, PROJECT_ROOT);

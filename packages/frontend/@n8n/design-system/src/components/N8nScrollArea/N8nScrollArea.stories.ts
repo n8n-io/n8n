@@ -3,7 +3,7 @@ import type { StoryFn } from '@storybook/vue3-vite';
 import N8nScrollArea from './N8nScrollArea.vue';
 
 export default {
-	title: 'Atoms/ScrollArea',
+	title: 'Core/ScrollArea',
 	component: N8nScrollArea,
 	argTypes: {
 		type: {
@@ -28,6 +28,14 @@ export default {
 		},
 		enableVerticalScroll: {
 			control: 'boolean',
+		},
+	},
+
+	parameters: {
+		docs: {
+			description: {
+				component: 'A custom scroll container with styled scrollbars and controlled overflow.',
+			},
 		},
 	},
 };

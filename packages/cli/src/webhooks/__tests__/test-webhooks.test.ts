@@ -150,6 +150,134 @@ describe('TestWebhooks', () => {
 			expect(needsWebhook).toBe(true);
 		});
 
+		test('should use sessionId-based path for ChatTrigger nodes when chatSessionId is provided', async () => {
+			// ARRANGE
+			const workflow = mock<Workflow>({
+				id: workflowEntity.id,
+				nodes: {
+					chatTriggerNode: {
+						type: '@n8n/n8n-nodes-langchain.chatTrigger',
+						name: 'chatTriggerNode',
+					},
+				},
+			});
+			const chatSessionId = 'test-session-123';
+			const chatWebhook = mock<IWebhookData>({
+				node: 'chatTriggerNode',
+				httpMethod,
+				path: 'original-path',
+				workflowId: workflowEntity.id,
+				userId,
+			});
+
+			jest.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(workflow);
+			jest.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([chatWebhook]);
+
+			// ACT
+			await testWebhooks.needsWebhook({
+				...args,
+				chatSessionId,
+			});
+
+			// ASSERT
+			// The webhook path should be modified to use workflowId/sessionId format
+			expect(registrations.register.mock.calls[0][0].webhook.path).toBe(
+				`${workflowEntity.id}/${chatSessionId}`,
+			);
+			expect(webhookService.createWebhookIfNotExists.mock.calls[0][1].path).toBe(
+				`${workflowEntity.id}/${chatSessionId}`,
+			);
+		});
+
+		test('should not modify path for ChatTrigger nodes when chatSessionId is not provided', async () => {
+			// ARRANGE
+			const workflow = mock<Workflow>({
+				id: workflowEntity.id,
+				nodes: {
+					chatTriggerNode: {
+						type: '@n8n/n8n-nodes-langchain.chatTrigger',
+						name: 'chatTriggerNode',
+					},
+				},
+			});
+			const chatWebhook = mock<IWebhookData>({
+				node: 'chatTriggerNode',
+				httpMethod,
+				path: 'original-path',
+				workflowId: workflowEntity.id,
+				userId,
+			});
+
+			jest.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(workflow);
+			jest.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([chatWebhook]);
+
+			// ACT
+			await testWebhooks.needsWebhook(args);
+
+			// ASSERT
+			// The webhook path should remain unchanged
+			expect(registrations.register.mock.calls[0][0].webhook.path).toBe('original-path');
+		});
+
+		test('should not modify path for non-ChatTrigger nodes even with chatSessionId', async () => {
+			// ARRANGE
+			const workflow = mock<Workflow>({
+				id: workflowEntity.id,
+				nodes: {
+					webhookNode: {
+						type: 'n8n-nodes-base.webhook',
+						name: 'webhookNode',
+					},
+				},
+			});
+			const chatSessionId = 'test-session-123';
+			const regularWebhook = mock<IWebhookData>({
+				node: 'webhookNode',
+				httpMethod,
+				path: 'webhook-path',
+				workflowId: workflowEntity.id,
+				userId,
+			});
+
+			jest.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(workflow);
+			jest.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([regularWebhook]);
+
+			// ACT
+			await testWebhooks.needsWebhook({
+				...args,
+				chatSessionId,
+			});
+
+			// ASSERT
+			// The webhook path should remain unchanged for non-ChatTrigger nodes
+			expect(registrations.register.mock.calls[0][0].webhook.path).toBe('webhook-path');
+		});
+
+		test('should handle destinationNode parameter correctly', async () => {
+			// ARRANGE
+			const workflow = mock<Workflow>();
+			const destinationNodeObj = { nodeName: 'DestinationNode', mode: 'inclusive' as const };
+			webhook.webhookDescription = {
+				restartWebhook: false,
+				httpMethod,
+				name: 'default',
+				path,
+			};
+
+			jest.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(workflow);
+			jest.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook]);
+
+			// ACT
+			await testWebhooks.needsWebhook({
+				...args,
+				destinationNode: destinationNodeObj,
+			});
+
+			// ASSERT
+			// The registration should store the full destinationNode object
+			expect(registrations.register).toHaveBeenCalled();
+			expect(registrations.register.mock.calls[0][0].destinationNode).toEqual(destinationNodeObj);
+		});
 		test.each([
 			{ published: true, withSingleWebhookTrigger: true, shouldThrow: true },
 			{ published: true, withSingleWebhookTrigger: false, shouldThrow: false },

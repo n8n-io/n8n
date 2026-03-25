@@ -1,5 +1,13 @@
-ARG NODE_VERSION=22.21.1
+ARG NODE_VERSION=24.13.1
 ARG N8N_VERSION=snapshot
+
+# Rebuild native addons for the container platform. The base image has no
+# package manager or build tools, so we compile in a throwaway builder stage.
+FROM node:${NODE_VERSION}-alpine AS builder
+COPY ./compiled /usr/local/lib/node_modules/n8n
+RUN apk add --no-cache python3 make g++ && \
+    cd /usr/local/lib/node_modules/n8n && \
+    npm rebuild sqlite3 isolated-vm
 
 FROM n8nio/base:${NODE_VERSION}
 
@@ -7,7 +15,6 @@ ARG N8N_VERSION
 ARG N8N_RELEASE_TYPE=dev
 ENV NODE_ENV=production
 ENV N8N_RELEASE_TYPE=${N8N_RELEASE_TYPE}
-ENV NODE_ICU_DATA=/usr/local/lib/node_modules/full-icu
 ENV SHELL=/bin/sh
 
 WORKDIR /home/node

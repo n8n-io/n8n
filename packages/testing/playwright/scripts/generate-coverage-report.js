@@ -17,13 +17,9 @@ const NYC_CONFIG = path.join(__dirname, '..', 'nyc.config.ts');
 const COVERAGE_PROJECT_PATTERNS = [
 	'e2e', // Local mode project
 	'sqlite:e2e', // Container mode projects
-	'sqlite:e2e:isolated',
 	'postgres:e2e',
-	'postgres:e2e:isolated',
 	'queue:e2e',
-	'queue:e2e:isolated',
 	'multi-main:e2e',
-	'multi-main:e2e:isolated',
 ];
 
 /**

@@ -1,27 +1,27 @@
 {
-	"type": "object",
-	"properties": {
-		"Arn": {
-			"type": "string"
-		},
-		"CreateDate": {
-			"type": "integer"
-		},
-		"Path": {
-			"type": "string"
-		},
-		"PermissionsBoundary": {
-			"type": ["array", "null"]
-		},
-		"Tags": {
-			"type": ["array", "null"]
-		},
-		"UserId": {
-			"type": "string"
-		},
-		"UserName": {
-			"type": "string"
-		}
-	},
-	"version": 2
+    "type": "object",
+    "properties": {
+        "Arn": {
+            "type": "string"
+        },
+        "CreateDate": {
+            "type": "integer"
+        },
+        "Path": {
+            "type": "string"
+        },
+        "PermissionsBoundary": {
+            "type": "null"
+        },
+        "Tags": {
+            "type": "null"
+        },
+        "UserId": {
+            "type": "string"
+        },
+        "UserName": {
+            "type": "string"
+        }
+    },
+    "version": 3
 }

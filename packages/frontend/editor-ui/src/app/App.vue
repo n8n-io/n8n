@@ -7,6 +7,7 @@ import AppLayout from '@/app/components/app/AppLayout.vue';
 import AppChatPanel from '@/app/components/app/AppChatPanel.vue';
 
 import { useHistoryHelper } from '@/app/composables/useHistoryHelper';
+import { useBackendStatus } from '@/app/composables/useBackendStatus';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
 import { useTelemetryInitializer } from '@/app/composables/useTelemetryInitializer';
 import { useWorkflowDiffRouting } from '@/app/composables/useWorkflowDiffRouting';
@@ -30,7 +31,8 @@ const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
 const ndvStore = useNDVStore();
 const { setAppZIndexes } = useStyles();
-const { toastBottomOffset, askAiFloatingButtonBottomOffset } = useFloatingUiOffsets();
+const { toastBottomOffset, toastRightOffset, askAiFloatingButtonBottomOffset } =
+	useFloatingUiOffsets();
 
 // Initialize undo/redo
 useHistoryHelper(route);
@@ -39,6 +41,9 @@ useHistoryHelper(route);
 useWorkflowDiffRouting();
 
 useTelemetryInitializer();
+
+// Initialize global backend status tracking
+useBackendStatus();
 
 const loading = ref(true);
 const defaultLocale = computed(() => rootStore.defaultLocale);
@@ -84,6 +89,7 @@ const setLayoutRef = (el: Element) => {
 };
 
 useExposeCssVar('--toast--offset', toastBottomOffset);
+useExposeCssVar('--toast--right', toastRightOffset);
 useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloatingButtonBottomOffset);
 </script>
 

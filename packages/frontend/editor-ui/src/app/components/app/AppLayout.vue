@@ -1,13 +1,19 @@
 <script lang="ts" setup>
-import { ref } from 'vue';
+import { defineAsyncComponent, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
-import DefaultLayout from '@/app/layouts/DefaultLayout.vue';
-import SettingsLayout from '@/app/layouts/SettingsLayout.vue';
-import WorkflowLayout from '@/app/layouts/WorkflowLayout.vue';
-import AuthLayout from '@/app/layouts/AuthLayout.vue';
-import DemoLayout from '@/app/layouts/DemoLayout.vue';
-import ChatLayout from '@/app/layouts/ChatLayout.vue';
+const DefaultLayout = defineAsyncComponent(
+	async () => await import('@/app/layouts/DefaultLayout.vue'),
+);
+const SettingsLayout = defineAsyncComponent(
+	async () => await import('@/app/layouts/SettingsLayout.vue'),
+);
+const WorkflowLayout = defineAsyncComponent(
+	async () => await import('@/app/layouts/WorkflowLayout.vue'),
+);
+const AuthLayout = defineAsyncComponent(async () => await import('@/app/layouts/AuthLayout.vue'));
+const DemoLayout = defineAsyncComponent(async () => await import('@/app/layouts/DemoLayout.vue'));
+const ChatLayout = defineAsyncComponent(async () => await import('@/app/layouts/ChatLayout.vue'));
 
 const route = useRoute();
 const router = useRouter();
@@ -30,10 +36,12 @@ function onMounted(element: Element) {
 
 <template>
 	<div v-if="!initialized" />
-	<SettingsLayout v-else-if="route.meta.layout === 'settings'" @mounted="onMounted" />
-	<WorkflowLayout v-else-if="route.meta.layout === 'workflow'" @mounted="onMounted" />
-	<AuthLayout v-else-if="route.meta.layout === 'auth'" @mounted="onMounted" />
-	<DemoLayout v-else-if="route.meta.layout === 'demo'" @mounted="onMounted" />
-	<ChatLayout v-else-if="route.meta.layout === 'chat'" @mounted="onMounted" />
-	<DefaultLayout v-else @mounted="onMounted" />
+	<Suspense v-else>
+		<SettingsLayout v-if="route.meta.layout === 'settings'" @mounted="onMounted" />
+		<WorkflowLayout v-else-if="route.meta.layout === 'workflow'" @mounted="onMounted" />
+		<AuthLayout v-else-if="route.meta.layout === 'auth'" @mounted="onMounted" />
+		<DemoLayout v-else-if="route.meta.layout === 'demo'" @mounted="onMounted" />
+		<ChatLayout v-else-if="route.meta.layout === 'chat'" @mounted="onMounted" />
+		<DefaultLayout v-else @mounted="onMounted" />
+	</Suspense>
 </template>

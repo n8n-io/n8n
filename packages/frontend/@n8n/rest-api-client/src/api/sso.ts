@@ -36,8 +36,11 @@ export const toggleSamlConfig = async (
 	return await makeRestApiRequest(context, 'POST', '/sso/saml/config/toggle', data);
 };
 
-export const testSamlConfig = async (context: IRestApiContext): Promise<string> => {
-	return await makeRestApiRequest(context, 'GET', '/sso/saml/config/test');
+export const testSamlConfig = async (
+	context: IRestApiContext,
+	data: Partial<SamlPreferences>,
+): Promise<string> => {
+	return await makeRestApiRequest(context, 'POST', '/sso/saml/config/test', data);
 };
 
 export const getOidcConfig = async (context: IRestApiContext): Promise<OidcConfigDto> => {

@@ -1,4 +1,8 @@
+import z from 'zod';
+
 import { Config, Env } from '../decorators';
+
+const crossOriginOpenerPolicySchema = z.enum(['same-origin', 'same-origin-allow-popups']);
 
 @Config
 export class SecurityConfig {
@@ -21,9 +25,8 @@ export class SecurityConfig {
 	blockFileAccessToN8nFiles: boolean = true;
 
 	/**
-	 * Blocked file and folder regular expression patterns that `ReadWriteFile` and `ReadBinaryFiles` nodes cant access. Separate multiple patterns with with semicolon `;`.
-	 * - `^(.*\/)*\.git(\/.*)*$`
-	 * Set to empty to not block based on file patterns.
+	 * Regex patterns for files and folders that `ReadWriteFile` and `ReadBinaryFiles` nodes cannot access.
+	 * Separate multiple patterns with semicolons. Default blocks `.git`. Set to empty to disable pattern-based blocking.
 	 */
 	@Env('N8N_BLOCK_FILE_PATTERNS')
 	blockFilePatterns: string = '^(.*\\/)*\\.git(\\/.*)*$';
@@ -47,6 +50,12 @@ export class SecurityConfig {
 	 */
 	@Env('N8N_CONTENT_SECURITY_POLICY_REPORT_ONLY')
 	contentSecurityPolicyReportOnly: boolean = false;
+
+	/**
+	 * Configuration for the `Cross-Origin-Opener-Policy` header.
+	 */
+	@Env('N8N_CROSS_ORIGIN_OPENER_POLICY', crossOriginOpenerPolicySchema)
+	crossOriginOpenerPolicy: z.infer<typeof crossOriginOpenerPolicySchema> = 'same-origin';
 
 	/**
 	 * Whether to disable HTML sandboxing for webhooks. The sandboxing mechanism uses CSP headers now,

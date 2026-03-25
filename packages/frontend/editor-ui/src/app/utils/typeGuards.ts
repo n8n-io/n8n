@@ -43,6 +43,9 @@ export function isValidCredentialResponse(value: unknown): value is ICredentials
 export const isObj = (obj: unknown): obj is object =>
 	!!obj && Object.getPrototypeOf(obj) === Object.prototype;
 
+export const isBinaryLike = (obj: unknown): obj is object =>
+	isObj(obj) && 'mimeType' in obj && 'data' in obj;
+
 export function isString(value: unknown): value is string {
 	return typeof value === 'string';
 }

@@ -459,6 +459,52 @@ describe('McpOAuthService', () => {
 		});
 	});
 
+	describe('deleteClient', () => {
+		it('should delete client when user has consent', async () => {
+			const client = {
+				id: 'client-123',
+				name: 'Test Client',
+			} as OAuthClient;
+
+			oauthClientRepository.findOne.mockResolvedValue(client);
+			userConsentRepository.findOneBy.mockResolvedValue({
+				userId: 'user-456',
+				clientId: 'client-123',
+			} as any);
+			oauthClientRepository.delete.mockResolvedValue({} as any);
+
+			await service.deleteClient('client-123', 'user-456');
+
+			expect(oauthClientRepository.delete).toHaveBeenCalledWith({ id: 'client-123' });
+		});
+
+		it('should throw when client does not exist', async () => {
+			oauthClientRepository.findOne.mockResolvedValue(null);
+
+			await expect(service.deleteClient('nonexistent', 'user-456')).rejects.toThrow(
+				'OAuth client with ID nonexistent not found',
+			);
+
+			expect(oauthClientRepository.delete).not.toHaveBeenCalled();
+		});
+
+		it('should throw when user has no consent for the client', async () => {
+			const client = {
+				id: 'client-123',
+				name: 'Test Client',
+			} as OAuthClient;
+
+			oauthClientRepository.findOne.mockResolvedValue(client);
+			userConsentRepository.findOneBy.mockResolvedValue(null);
+
+			await expect(service.deleteClient('client-123', 'other-user')).rejects.toThrow(
+				'OAuth client with ID client-123 not found',
+			);
+
+			expect(oauthClientRepository.delete).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('revokeToken', () => {
 		it('should revoke access token when type hint is access_token', async () => {
 			const client = {

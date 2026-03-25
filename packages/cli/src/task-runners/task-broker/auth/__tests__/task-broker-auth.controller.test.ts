@@ -1,14 +1,11 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import type { NextFunction, Response } from 'express';
-import { mock } from 'jest-mock-extended';
 
 import { CacheService } from '@/services/cache/cache.service';
 
 import { BadRequestError } from '../../../../errors/response-errors/bad-request.error';
 import { ForbiddenError } from '../../../../errors/response-errors/forbidden.error';
 import type { AuthlessRequest } from '../../../../requests';
-import type { TaskBrokerServerInitRequest } from '../../task-broker-types';
 import { TaskBrokerAuthController } from '../task-broker-auth.controller';
 import { TaskBrokerAuthService } from '../task-broker-auth.service';
 
@@ -56,7 +53,7 @@ describe('TaskBrokerAuthController', () => {
 			await expect(authController.createGrantToken(req)).rejects.toThrowError(ForbiddenError);
 		});
 
-		it('should return rant token when auth token is valid', async () => {
+		it('should return grant token when auth token is valid', async () => {
 			const req = createMockGrantTokenReq('random-secret');
 
 			// Act
@@ -66,50 +63,67 @@ describe('TaskBrokerAuthController', () => {
 		});
 	});
 
-	describe('authMiddleware', () => {
-		const res = mock<Response>();
-		const next = jest.fn() as NextFunction;
+	describe('validateUpgradeRequest', () => {
+		it('should return 401 when Authorization header is missing', async () => {
+			const result = await authController.validateUpgradeRequest(undefined);
 
-		const createMockReqWithToken = (token?: string) =>
-			mock<TaskBrokerServerInitRequest>({
-				headers: {
-					authorization: `Bearer ${token}`,
-				},
+			expect(result).toStrictEqual({
+				isValid: false,
+				statusCode: 401,
+				reason: 'missing or invalid Authorization header',
 			});
-
-		beforeEach(() => {
-			res.status.mockReturnThis();
 		});
 
-		it('should respond with 401 when grant token is missing', async () => {
-			const req = mock<TaskBrokerServerInitRequest>({});
+		it('should return 401 when Authorization header is not a Bearer token', async () => {
+			const result = await authController.validateUpgradeRequest('Basic abc123');
 
-			await authController.authMiddleware(req, res, next);
-
-			expect(next).not.toHaveBeenCalled();
-			expect(res.status).toHaveBeenCalledWith(401);
-			expect(res.json).toHaveBeenCalledWith({ code: 401, message: 'Unauthorized' });
+			expect(result).toStrictEqual({
+				isValid: false,
+				statusCode: 401,
+				reason: 'missing or invalid Authorization header',
+			});
 		});
 
-		it('should respond with 403 when grant token is invalid', async () => {
-			const req = createMockReqWithToken('invalid');
+		it('should return 403 when grant token is invalid', async () => {
+			const result = await authController.validateUpgradeRequest('Bearer invalid-token');
 
-			await authController.authMiddleware(req, res, next);
-
-			expect(next).not.toHaveBeenCalled();
-			expect(res.status).toHaveBeenCalledWith(403);
-			expect(res.json).toHaveBeenCalledWith({ code: 403, message: 'Forbidden' });
+			expect(result).toStrictEqual({
+				isValid: false,
+				statusCode: 403,
+				reason: 'invalid or expired grant token',
+			});
 		});
 
-		it('should call next() when grant token is valid', async () => {
-			const { token: validToken } = await authController.createGrantToken(
+		it('should return valid when grant token is correct', async () => {
+			// First create a valid grant token
+			const { token } = await authController.createGrantToken(
 				createMockGrantTokenReq('random-secret'),
 			);
 
-			await authController.authMiddleware(createMockReqWithToken(validToken), res, next);
+			const result = await authController.validateUpgradeRequest(`Bearer ${token}`);
 
-			expect(next).toHaveBeenCalled();
-			expect(res.status).not.toHaveBeenCalled();
+			expect(result).toStrictEqual({
+				isValid: true,
+				statusCode: 200,
+			});
+		});
+
+		it('should return 403 when grant token is used twice', async () => {
+			const { token } = await authController.createGrantToken(
+				createMockGrantTokenReq('random-secret'),
+			);
+
+			// First use should succeed
+			await authController.validateUpgradeRequest(`Bearer ${token}`);
+
+			// Second use should fail (token is consumed)
+			const result = await authController.validateUpgradeRequest(`Bearer ${token}`);
+
+			expect(result).toStrictEqual({
+				isValid: false,
+				statusCode: 403,
+				reason: 'invalid or expired grant token',
+			});
 		});
 	});
 });

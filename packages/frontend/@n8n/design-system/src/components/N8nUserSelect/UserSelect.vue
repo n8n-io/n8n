@@ -14,6 +14,9 @@ interface UserSelectProps {
 	currentUserId?: string;
 	placeholder?: string;
 	size?: Exclude<SelectSize, 'xlarge'>;
+	remote?: boolean;
+	remoteMethod?: (query: string) => void;
+	loading?: boolean;
 }
 
 const props = withDefaults(defineProps<UserSelectProps>(), {
@@ -21,6 +24,8 @@ const props = withDefaults(defineProps<UserSelectProps>(), {
 	modelValue: '',
 	ignoreIds: () => [],
 	currentUserId: '',
+	remote: false,
+	loading: false,
 });
 
 const emit = defineEmits<{
@@ -32,8 +37,14 @@ const { t } = useI18n();
 
 const filter = ref('');
 
-const filteredUsers = computed(() =>
-	props.users.filter((user) => {
+const filteredUsers = computed(() => {
+	// In remote mode, don't do client-side filtering - use the users as-is
+	if (props.remote) {
+		return props.users.filter((user) => !props.ignoreIds.includes(user.id));
+	}
+
+	// Local filtering mode (existing behavior)
+	return props.users.filter((user) => {
 		if (props.ignoreIds.includes(user.id)) {
 			return false;
 		}
@@ -46,8 +57,8 @@ const filteredUsers = computed(() =>
 		}
 
 		return user.email?.includes(filter.value) ?? false;
-	}),
-);
+	});
+});
 
 const sortedUsers = computed(() =>
 	[...filteredUsers.value].sort((a: IUser, b: IUser) => {
@@ -68,6 +79,10 @@ const sortedUsers = computed(() =>
 
 const setFilter = (value: string = '') => {
 	filter.value = value;
+	// In remote mode, delegate to the parent's remote method
+	if (props.remote && props.remoteMethod) {
+		props.remoteMethod(value);
+	}
 };
 
 const onBlur = () => emit('blur');
@@ -90,6 +105,8 @@ const getLabel = (user: IUser) =>
 		:popper-class="$style.limitPopperWidth"
 		:no-data-text="t('nds.userSelect.noMatchingUsers')"
 		:size="size"
+		:remote="remote"
+		:loading="loading"
 		@blur="onBlur"
 		@focus="onFocus"
 	>

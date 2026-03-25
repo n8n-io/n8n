@@ -8,10 +8,12 @@ export const LOG_SCOPES = [
 	'concurrency',
 	'external-secrets',
 	'license',
+	'mcp',
 	'multi-main-setup',
 	'pruning',
 	'pubsub',
 	'push',
+	'quick-connect',
 	'redis',
 	'scaling',
 	'waiting-executions',
@@ -24,13 +26,14 @@ export const LOG_SCOPES = [
 	'data-table',
 	'cron',
 	'community-nodes',
-	'legacy-sqlite-execution-recovery',
 	'chat-hub',
 	'breaking-changes',
 	'circuit-breaker',
 	'source-control',
 	'dynamic-credentials',
 	'workflow-history-compaction',
+	'data-table-csv-import',
+	'ssrf-protection',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];

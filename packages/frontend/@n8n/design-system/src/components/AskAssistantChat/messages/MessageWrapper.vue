@@ -59,7 +59,11 @@ const messageComponent = computed<Component | null>(() => {
 			"
 			@restore-cancel="emit('restoreCancel')"
 			@show-version="(versionId: string) => emit('showVersion', versionId)"
-		/>
+		>
+			<template v-if="$slots['focused-nodes-chips']" #focused-nodes-chips="slotProps">
+				<slot name="focused-nodes-chips" v-bind="slotProps" />
+			</template>
+		</component>
 		<slot
 			v-else-if="message.type === 'custom'"
 			name="custom-message"

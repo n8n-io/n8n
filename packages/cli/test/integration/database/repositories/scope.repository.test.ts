@@ -406,4 +406,83 @@ describe('ScopeRepository', () => {
 			});
 		});
 	});
+
+	describe('findByListOrFail()', () => {
+		describe('success path', () => {
+			it('should return empty array when given empty slug array', async () => {
+				await createTestScopes();
+
+				const scopes = await scopeRepository.findByListOrFail([]);
+
+				expect(scopes).toEqual([]);
+			});
+
+			it('should return single scope when one slug matches', async () => {
+				const { readScope } = await createTestScopes();
+
+				const scopes = await scopeRepository.findByListOrFail([readScope.slug]);
+
+				expect(scopes).toHaveLength(1);
+				expect(scopes[0]).toEqual(
+					expect.objectContaining({
+						slug: readScope.slug,
+						displayName: readScope.displayName,
+						description: readScope.description,
+					}),
+				);
+			});
+
+			it('should return multiple scopes when multiple slugs match', async () => {
+				const { readScope, writeScope, deleteScope } = await createTestScopes();
+
+				const scopes = await scopeRepository.findByListOrFail([
+					readScope.slug,
+					writeScope.slug,
+					deleteScope.slug,
+				]);
+
+				expect(scopes).toHaveLength(3);
+				expect(scopes).toEqual(
+					expect.arrayContaining([
+						expect.objectContaining({ slug: readScope.slug }),
+						expect.objectContaining({ slug: writeScope.slug }),
+						expect.objectContaining({ slug: deleteScope.slug }),
+					]),
+				);
+			});
+		});
+
+		describe('error path (invalid scopes)', () => {
+			it('should throw when one slug does not exist', async () => {
+				await createTestScopes();
+
+				await expect(
+					scopeRepository.findByListOrFail(['non-existent:scope' as ScopeType]),
+				).rejects.toThrow('The following scopes are invalid: non-existent:scope');
+			});
+
+			it('should throw when some slugs do not exist and list invalid scopes in message', async () => {
+				const { readScope } = await createTestScopes();
+
+				await expect(
+					scopeRepository.findByListOrFail([
+						readScope.slug,
+						'non-existent:1' as ScopeType,
+						'non-existent:2' as ScopeType,
+					]),
+				).rejects.toThrow('The following scopes are invalid: non-existent:1, non-existent:2');
+			});
+
+			it('should throw when all slugs do not exist', async () => {
+				await createTestScopes();
+
+				await expect(
+					scopeRepository.findByListOrFail([
+						'non-existent:1' as ScopeType,
+						'non-existent:2' as ScopeType,
+					]),
+				).rejects.toThrow('The following scopes are invalid: non-existent:1, non-existent:2');
+			});
+		});
+	});
 });

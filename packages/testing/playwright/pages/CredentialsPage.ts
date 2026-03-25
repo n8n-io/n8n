@@ -24,7 +24,7 @@ export class CredentialsPage extends BasePage {
 	async createCredentialFromCredentialPicker(
 		credentialType: string,
 		fields: Record<string, string>,
-		options?: { closeDialog?: boolean; name?: string },
+		options?: { closeDialog?: boolean; skipSave?: boolean; name?: string },
 	): Promise<void> {
 		await this.page.getByRole('combobox', { name: 'Search for app...' }).fill(credentialType);
 		await this.page
@@ -35,6 +35,7 @@ export class CredentialsPage extends BasePage {
 		await this.credentialModal.addCredential(fields, {
 			name: options?.name,
 			closeDialog: options?.closeDialog,
+			skipSave: options?.skipSave,
 		});
 	}
 

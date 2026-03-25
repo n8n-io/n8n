@@ -72,6 +72,10 @@ export class TemplateConfig {
 	/** Overrides default HTML template for notifying that credentials were shared (use full path) */
 	@Env('N8N_UM_EMAIL_TEMPLATES_PROJECT_SHARED')
 	'project-shared': string = '';
+
+	/** Overrides default HTML template for notifying that a workflow failed in production (use full path) */
+	@Env('N8N_UM_EMAIL_TEMPLATES_WORKFLOW_FAILURE')
+	'workflow-failure': string = '';
 }
 
 const emailModeSchema = z.enum(['', 'smtp']);
@@ -79,7 +83,7 @@ type EmailMode = z.infer<typeof emailModeSchema>;
 
 @Config
 class EmailConfig {
-	/** How to send emails */
+	/** Email delivery method: `smtp` or empty (disabled). */
 	@Env('N8N_EMAIL_MODE', emailModeSchema)
 	mode: EmailMode = 'smtp';
 

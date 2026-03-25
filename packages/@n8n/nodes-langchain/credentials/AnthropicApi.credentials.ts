@@ -71,7 +71,7 @@ export class AnthropicApi implements ICredentialType {
 				'anthropic-version': '2023-06-01',
 			},
 			body: {
-				model: 'claude-3-haiku-20240307',
+				model: 'claude-haiku-4-5-20251001',
 				messages: [{ role: 'user', content: 'Hey' }],
 				max_tokens: 1,
 			},

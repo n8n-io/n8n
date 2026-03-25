@@ -12,6 +12,7 @@ export class GoogleCloudStorage implements INodeType {
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Use the Google Cloud Storage API',
+		schemaPath: 'Google/CloudStorage',
 		defaults: {
 			name: 'Google Cloud Storage',
 		},

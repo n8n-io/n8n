@@ -2134,7 +2134,7 @@ export class Telegram implements INodeType {
 
 				if (binaryData) {
 					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
-					const itemBinaryData = items[i].binary![binaryPropertyName];
+					const itemBinaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 					const propertyName = getPropertyName(operation);
 					const fileName = this.getNodeParameter('additionalFields.fileName', i, '') as string;
 

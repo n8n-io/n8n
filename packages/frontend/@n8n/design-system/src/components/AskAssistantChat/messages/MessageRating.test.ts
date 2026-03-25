@@ -190,7 +190,7 @@ describe('MessageRating', () => {
 
 		it('should focus feedback input after thumbs down in regular mode', async () => {
 			const wrapper = render(MessageRating, {
-				props: { showFeedback: true, style: 'regular' },
+				props: { showFeedback: true },
 				global: { stubs },
 			});
 

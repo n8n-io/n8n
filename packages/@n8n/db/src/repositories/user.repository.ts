@@ -242,6 +242,22 @@ export class UserRepository extends Repository<User> {
 			}
 		}
 
+		if (filter?.ids !== undefined && filter.ids.length > 0) {
+			queryBuilder.andWhere('user.id IN (:...ids)', {
+				ids: filter.ids,
+			});
+		}
+
+		if (filter?.isPending !== undefined) {
+			if (filter.isPending) {
+				queryBuilder.andWhere('user.password IS NULL AND user.role <> :ownerRole', {
+					ownerRole: 'global:owner',
+				});
+			} else {
+				queryBuilder.andWhere('user.password IS NOT NULL');
+			}
+		}
+
 		if (filter?.fullText !== undefined) {
 			const fullTextFilter = `%${filter.fullText}%`;
 			queryBuilder.andWhere(
@@ -330,7 +346,6 @@ export class UserRepository extends Repository<User> {
 		this.applyUserListPagination(queryBuilder, take, skip);
 		this.applyUserListSort(queryBuilder, sortBy);
 		queryBuilder.leftJoinAndSelect('user.role', 'role');
-		queryBuilder.leftJoinAndSelect('role.scopes', 'scopes');
 
 		return queryBuilder;
 	}

@@ -1,9 +1,17 @@
 import type { ICredentialContext } from 'n8n-workflow';
 
+import { CredentialResolutionError } from '../../errors/credential-resolution.error';
+
 /**
- * Error thrown when token identifier validation or resolution fails
+ * Error thrown when token identifier validation or resolution fails.
+ * Extends CredentialResolutionError so it propagates correctly through the resolution pipeline.
  */
-export class IdentifierValidationError extends Error {}
+export class IdentifierValidationError extends CredentialResolutionError {
+	constructor(message: string, options?: ErrorOptions) {
+		super(message, options);
+		this.name = 'IdentifierValidationError';
+	}
+}
 
 /**
  * Interface for resolving unique identifiers from credential contexts

@@ -5,10 +5,11 @@ import type {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { type User } from '@n8n/db';
+import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { writeFileSync } from 'fs';
 import { UnexpectedError, UserError, jsonParse } from 'n8n-workflow';
-import path from 'path';
+import * as path from 'path';
 import type { PushResult } from 'simple-git';
 
 import {
@@ -54,6 +55,9 @@ export class SourceControlService {
 
 	private gitFolder: string;
 
+	/** Flag to prevent concurrent configuration reloads */
+	private isReloading = false;
+
 	constructor(
 		private readonly logger: Logger,
 		private gitService: SourceControlGitService,
@@ -71,11 +75,62 @@ export class SourceControlService {
 	}
 
 	async start(): Promise<void> {
+		await this.refreshServiceState();
+	}
+
+	/**
+	 * Detects SSH host key verification errors.
+	 * Note: simple-git doesn't provide structured error codes for SSH failures,
+	 * so we must match against standardized SSH error message strings.
+	 * These messages are stable across OpenSSH implementations.
+	 *
+	 * @see https://github.com/openssh/openssh-portable/blob/master/sshconnect.c
+	 * - "Host key verification failed" - returned when host key check fails
+	 * - "REMOTE HOST IDENTIFICATION HAS CHANGED" - from warn_changed_key()
+	 * - "Offending key" - shown alongside changed host warnings
+	 */
+	private isHostKeyVerificationError(error: Error): boolean {
+		const message = error.message.toLowerCase();
+		return (
+			message.includes('host key verification failed') ||
+			message.includes('host identification has changed') ||
+			message.includes('offending key')
+		);
+	}
+
+	private async refreshServiceState(): Promise<void> {
 		this.gitService.resetService();
 		sourceControlFoldersExistCheck([this.gitFolder, this.sshFolder]);
 		await this.sourceControlPreferencesService.loadFromDbAndApplySourceControlPreferences();
 		if (this.sourceControlPreferencesService.isSourceControlLicensedAndEnabled()) {
 			await this.initGitService();
+		}
+	}
+
+	/**
+	 * Ensures all main instances stay in sync with source control config changes made elsewhere in a multi-main setup.
+	 */
+	@OnPubSubEvent('reload-source-control-config', { instanceType: 'main' })
+	async reloadConfiguration(): Promise<void> {
+		if (this.isReloading) {
+			this.logger.warn('Source control configuration reload already in progress');
+			return;
+		}
+
+		this.isReloading = true;
+		try {
+			this.logger.debug('Source control configuration changed, reloading from database');
+
+			const wasConnected = this.sourceControlPreferencesService.isSourceControlConnected();
+			await this.refreshServiceState();
+			const isNowConnected = this.sourceControlPreferencesService.isSourceControlConnected();
+
+			if (wasConnected && !isNowConnected) {
+				await this.sourceControlExportService.deleteRepositoryFolder();
+				this.logger.info('Cleaned up git repository folder after source control disconnect');
+			}
+		} finally {
+			this.isReloading = false;
 		}
 	}
 
@@ -94,12 +149,15 @@ export class SourceControlService {
 				[this.gitFolder, this.sshFolder],
 				false,
 			);
+
 			if (!foldersExisted) {
 				throw new UserError('No folders exist');
 			}
+
 			if (!this.gitService.git) {
 				await this.initGitService();
 			}
+
 			const branches = await this.gitService.getCurrentBranch();
 			if (
 				branches.current === '' ||
@@ -133,7 +191,11 @@ export class SourceControlService {
 				await this.sourceControlPreferencesService.deleteKeyPair();
 			}
 
+			// Clear known_hosts to allow fresh host key verification on reconnect
+			await this.sourceControlPreferencesService.resetKnownHosts();
+
 			this.gitService.resetService();
+
 			return this.sourceControlPreferencesService.sourceControlPreferences;
 		} catch (error) {
 			throw new UnexpectedError('Failed to disconnect from source control', { cause: error });
@@ -153,6 +215,11 @@ export class SourceControlService {
 			if ((error as Error).message.includes('Warning: Permanently added')) {
 				this.logger.debug('Added repository host to the list of known hosts. Retrying...');
 				getBranchesResult = await this.getBranches();
+			} else if (this.isHostKeyVerificationError(error as Error)) {
+				throw new UserError(
+					"SSH host key verification failed. The remote server's key may have changed. " +
+						'If this is expected (e.g., server migration), disconnect and reconnect from Source Control settings to reset the known hosts.',
+				);
 			} else {
 				throw error;
 			}
@@ -238,7 +305,7 @@ export class SourceControlService {
 
 		const context = new SourceControlContext(user);
 
-		let filesToPush = options.fileNames.map((file) => {
+		let filesToPush: SourceControlledFile[] = options.fileNames.map((file) => {
 			const normalizedPath = normalizeAndValidateSourceControlledFilePath(
 				this.gitFolder,
 				file.file,
@@ -250,11 +317,11 @@ export class SourceControlService {
 			};
 		});
 
-		const allowedResources = (await this.sourceControlStatusService.getStatus(user, {
+		const allowedResources = await this.sourceControlStatusService.getStatus(user, {
 			direction: 'push',
 			verbose: false,
 			preferLocalVersion: true,
-		})) as SourceControlledFile[];
+		});
 
 		// Fallback to all allowed resources if no fileNames are provided
 		if (!filesToPush.length) {
@@ -296,7 +363,7 @@ export class SourceControlService {
 			we keep track of them in a single file unlike workflows and credentials
 		*/
 			filesToPush
-				.filter((f) => ['workflow', 'credential', 'project'].includes(f.type))
+				.filter((f) => ['workflow', 'credential', 'project', 'datatable'].includes(f.type))
 				.forEach((e) => {
 					if (e.status !== 'deleted') {
 						filesToBePushed.add(e.file);
@@ -305,7 +372,7 @@ export class SourceControlService {
 					}
 				});
 
-			this.sourceControlExportService.rmFilesFromExportFolder(filesToBeDeleted);
+			await this.sourceControlExportService.rmFilesFromExportFolder(filesToBeDeleted);
 
 			const workflowsToBeExported = getNonDeletedResources(filesToPush, 'workflow');
 			await this.sourceControlExportService.exportWorkflowsToWorkFolder(workflowsToBeExported);
@@ -341,6 +408,14 @@ export class SourceControlService {
 			if (variablesChanges) {
 				filesToBePushed.add(variablesChanges.file);
 				await this.sourceControlExportService.exportGlobalVariablesToWorkFolder();
+			}
+
+			const dataTableCandidates = filterByType(filesToPush, 'datatable');
+			if (dataTableCandidates.length > 0) {
+				await this.sourceControlExportService.exportDataTablesToWorkFolder(
+					dataTableCandidates,
+					context,
+				);
 			}
 
 			await this.gitService.stage(filesToBePushed, filesToBeDeleted);
@@ -398,11 +473,11 @@ export class SourceControlService {
 	): Promise<{ statusCode: number; statusResult: SourceControlledFile[] }> {
 		await this.sanityCheck();
 
-		const statusResult = (await this.sourceControlStatusService.getStatus(user, {
+		const statusResult = await this.sourceControlStatusService.getStatus(user, {
 			direction: 'pull',
 			verbose: false,
 			preferLocalVersion: false,
-		})) as SourceControlledFile[];
+		});
 
 		if (options.force !== true) {
 			const possibleConflicts = statusResult.filter(
@@ -420,6 +495,9 @@ export class SourceControlService {
 
 		// IMPORTANT: Make sure the projects and folders get processed first as the workflows depend on them
 		const projectsToBeImported = getNonDeletedResources(statusResult, 'project');
+		this.logger.debug(
+			`[Project Debug] Found ${projectsToBeImported.length} projects to import: ${JSON.stringify(projectsToBeImported.map((p) => ({ id: p.id, name: p.name })))}`,
+		);
 		await this.sourceControlImportService.importTeamProjectsFromWorkFolder(
 			projectsToBeImported,
 			user.id,
@@ -431,10 +509,27 @@ export class SourceControlService {
 		}
 
 		const workflowsToBeImported = getNonDeletedResources(statusResult, 'workflow');
-		await this.sourceControlImportService.importWorkflowFromWorkFolder(
-			workflowsToBeImported,
-			user.id,
+		const workflowImportResults =
+			await this.sourceControlImportService.importWorkflowFromWorkFolder(
+				workflowsToBeImported,
+				user.id,
+				options.autoPublish,
+			);
+
+		// Add publishing errors to status result
+		const statusByWorkflowId = new Map(
+			statusResult.filter((item) => item.type === 'workflow').map((item) => [item.id, item]),
 		);
+
+		for (const { id, publishingError } of workflowImportResults) {
+			if (!publishingError) continue;
+
+			const statusItem = statusByWorkflowId.get(id);
+			if (statusItem) {
+				statusItem.publishingError = publishingError;
+			}
+		}
+
 		const workflowsToBeDeleted = getDeletedResources(statusResult, 'workflow');
 		await this.sourceControlImportService.deleteWorkflowsNotInWorkfolder(
 			user,
@@ -454,7 +549,7 @@ export class SourceControlService {
 
 		const tagsToBeImported = getNonDeletedResources(statusResult, 'tags')[0];
 		if (tagsToBeImported) {
-			await this.sourceControlImportService.importTagsFromWorkFolder(tagsToBeImported);
+			await this.sourceControlImportService.importTagsFromWorkFolder(tagsToBeImported, user);
 		}
 		const tagsToBeDeleted = getDeletedResources(statusResult, 'tags');
 		await this.sourceControlImportService.deleteTagsNotInWorkfolder(tagsToBeDeleted);
@@ -465,6 +560,16 @@ export class SourceControlService {
 		}
 		const variablesToBeDeleted = getDeletedResources(statusResult, 'variables');
 		await this.sourceControlImportService.deleteVariablesNotInWorkfolder(variablesToBeDeleted);
+
+		const dataTableCandidates = getNonDeletedResources(statusResult, 'datatable');
+		if (dataTableCandidates.length > 0) {
+			await this.sourceControlImportService.importDataTablesFromWorkFolder(
+				dataTableCandidates,
+				user.id,
+			);
+		}
+		const dataTablesToBeDeleted = getDeletedResources(statusResult, 'datatable');
+		await this.sourceControlImportService.deleteDataTablesNotInWorkFolder(dataTablesToBeDeleted);
 
 		const foldersToBeDeleted = getDeletedResources(statusResult, 'folders');
 		await this.sourceControlImportService.deleteFoldersNotInWorkfolder(foldersToBeDeleted);

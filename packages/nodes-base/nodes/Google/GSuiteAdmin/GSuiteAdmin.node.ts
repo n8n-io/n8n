@@ -24,6 +24,7 @@ export class GSuiteAdmin implements INodeType {
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Google Workspace Admin API',
+		schemaPath: 'Google/GSuiteAdmin',
 		defaults: {
 			name: 'Google Workspace Admin',
 		},

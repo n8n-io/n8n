@@ -117,6 +117,10 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		await this.moduleRegistry.initModules(this.instanceSettings.instanceType);
 
+		// Re-register pubsub event handlers after modules have been initialized
+		// As modules can add new event handlers we need to make sure they are registered
+		Container.get(PubSubRegistry).init();
+
 		await this.executionContextHookRegistry.init();
 		await Container.get(LoadNodesAndCredentials).postProcessLoaders();
 	}
@@ -168,11 +172,6 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 	}
 
 	async run() {
-		this.logger.info('\nn8n worker is now ready');
-		this.logger.info(` * Version: ${N8N_VERSION}`);
-		this.logger.info(` * Concurrency: ${this.concurrency}`);
-		this.logger.info('');
-
 		const endpointsConfig: WorkerServerEndpointsConfig = {
 			health: this.globalConfig.queue.health.active,
 			overwrites: this.globalConfig.credentials.overwrite.endpoint !== '',
@@ -181,8 +180,15 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		if (Object.values(endpointsConfig).some((e) => e)) {
 			const { WorkerServer } = await import('@/scaling/worker-server');
-			await Container.get(WorkerServer).init(endpointsConfig);
+			const workerServer = Container.get(WorkerServer);
+			await workerServer.init(endpointsConfig);
+			workerServer.markAsReady();
 		}
+
+		this.logger.info('\nn8n worker is now ready');
+		this.logger.info(` * Version: ${N8N_VERSION}`);
+		this.logger.info(` * Concurrency: ${this.concurrency}`);
+		this.logger.info('');
 
 		if (!inTest && process.stdout.isTTY) {
 			process.stdin.setRawMode(true);
@@ -193,6 +199,8 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 				if (key.charCodeAt(0) === 3) process.kill(process.pid, 'SIGINT'); // ctrl+c
 			});
 		}
+
+		Container.get(LoadNodesAndCredentials).releaseTypes();
 
 		// Make sure that the process does not close
 		if (!inTest) await new Promise(() => {});

@@ -8,6 +8,8 @@ export const createVitestConfig = (options: InlineConfig = {}) => {
 			globals: true,
 			environment: 'jsdom',
 			setupFiles: ['./src/__tests__/setup.ts'],
+			reporters: process.env.CI === 'true' ? ['default', 'junit'] : ['default'],
+			outputFile: { junit: './junit.xml' },
 			coverage: {
 				enabled: false,
 				all: false,

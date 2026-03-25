@@ -10,8 +10,8 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useWorkflowsEEStore } from '@/app/stores/workflows.ee.store';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import type { BaseTextKey } from '@n8n/i18n';
@@ -19,11 +19,17 @@ import ProjectSharing from '@/features/collaboration/projects/components/Project
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectSharingData, Project } from '@/features/collaboration/projects/projects.types';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
+import { useRemoteProjectSearch } from '@/features/collaboration/projects/projects.utils';
+import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { useRolesStore } from '@/app/stores/roles.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useI18n } from '@n8n/i18n';
 import { telemetry } from '@/app/plugins/telemetry';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { I18nT } from 'vue-i18n';
 
 import { N8nButton, N8nInfoTip, N8nText } from '@n8n/design-system';
@@ -36,9 +42,9 @@ const props = defineProps<{
 const { data } = props;
 
 const workflowsStore = useWorkflowsStore();
+const workflowsListStore = useWorkflowsListStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
-const usersStore = useUsersStore();
 const workflowsEEStore = useWorkflowsEEStore();
 const projectsStore = useProjectsStore();
 const rolesStore = useRolesStore();
@@ -52,8 +58,8 @@ const route = useRoute();
 const workflowSaving = useWorkflowSaving({ router });
 
 const workflow = ref(
-	data.id && workflowsStore.workflowsById[data.id]
-		? workflowsStore.workflowsById[data.id]
+	data.id && workflowsListStore.workflowsById[data.id]
+		? workflowsListStore.workflowsById[data.id]
 		: workflowsStore.workflow,
 );
 const loading = ref(true);
@@ -87,15 +93,29 @@ const modalTitle = computed(() => {
 	);
 });
 
-const workflowPermissions = computed(() => getResourcePermissions(workflow.value?.scopes).workflow);
+const workflowPermissions = computed(() => {
+	// For existing workflows, scopes come from the API response on the workflow object.
+	// For new unsaved workflows, scopes are only in the workflowDocument store.
+	const scopes =
+		workflow.value?.scopes ??
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflow.value.id)).scopes;
+	return getResourcePermissions(scopes).workflow;
+});
+
+const isPersonalSpaceRestricted = computed(
+	() =>
+		workflow.value.homeProject?.type === ProjectTypes.Personal &&
+		workflow.value.homeProject?.id === projectsStore.personalProject?.id &&
+		!workflowPermissions.value.share,
+);
 
 const workflowOwnerName = computed(() =>
 	workflowsEEStore.getWorkflowOwnerName(`${workflow.value.id}`),
 );
 
-const projects = computed(() =>
-	projectsStore.personalProjects.filter((project) => project.id !== workflow.value.homeProject?.id),
-);
+const searchFn = useRemoteProjectSearch();
+const filterFn = (project: ProjectListItem) =>
+	project.type === 'personal' && project.id !== workflow.value.homeProject?.id;
 
 const numberOfMembersInHomeTeamProject = computed(() => teamProject.value?.relations.length ?? 0);
 
@@ -207,11 +227,9 @@ const goToUpgrade = () => {
 
 const initialize = async () => {
 	if (isSharingEnabled.value) {
-		await Promise.all([usersStore.fetchUsers(), projectsStore.getAllProjects()]);
-
 		// Fetch workflow if it exists and is not new
 		if (workflowsStore.isWorkflowSaved[workflow.value.id]) {
-			await workflowsStore.fetchWorkflow(workflow.value.id);
+			await workflowsListStore.fetchWorkflow(workflow.value.id);
 		}
 
 		if (isHomeTeamProject.value && workflow.value.homeProject) {
@@ -257,7 +275,7 @@ watch(
 			</div>
 			<div v-else :class="$style.container">
 				<N8nInfoTip
-					v-if="!workflowPermissions.share && !isHomeTeamProject"
+					v-if="!workflowPermissions.share && !isHomeTeamProject && !isPersonalSpaceRestricted"
 					:bold="false"
 					class="mb-s"
 				>
@@ -272,10 +290,16 @@ watch(
 						<ProjectSharing
 							v-model="sharedWithProjects"
 							:home-project="workflow.homeProject"
-							:projects="projects"
+							:search-fn="searchFn"
+							:filter-fn="filterFn"
 							:roles="workflowRoles"
 							:readonly="!workflowPermissions.share"
 							:static="isHomeTeamProject || !workflowPermissions.share"
+							:disabled-tooltip="
+								isPersonalSpaceRestricted
+									? i18n.baseText('workflows.shareModal.info.personalSpaceRestricted')
+									: undefined
+							"
 							:placeholder="i18n.baseText('workflows.shareModal.select.placeholder')"
 							:empty-options-text="i18n.baseText('workflows.shareModel.select.notFound')"
 							@project-added="onProjectAdded"
@@ -335,7 +359,7 @@ watch(
 				<N8nText v-show="isDirty" color="text-light" size="small" class="mr-xs">
 					{{ i18n.baseText('workflows.shareModal.changesHint') }}
 				</N8nText>
-				<N8nButton v-if="isHomeTeamProject" type="secondary" @click="modalBus.emit('close')">
+				<N8nButton variant="subtle" v-if="isHomeTeamProject" @click="modalBus.emit('close')">
 					{{ i18n.baseText('generic.close') }}
 				</N8nButton>
 				<N8nButton

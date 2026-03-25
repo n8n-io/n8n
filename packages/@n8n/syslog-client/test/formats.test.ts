@@ -138,6 +138,45 @@ describe('SyslogClient - Message Formats', () => {
 			client.close();
 		});
 
+		it('should accept msgid up to 32 characters (RFC 5424 limit)', async () => {
+			const hostname = 'testhostname';
+			const client = new SyslogClient('127.0.0.1', {
+				port: SYSLOG_UDP_PORT,
+				syslogHostname: hostname,
+				transport: Transport.Udp,
+			});
+
+			const maxLengthMsgid = '550e8400e29b41d4a716446655440000'; // 32 chars (UUID without hyphens)
+			await client.log('Max length msgid', {
+				rfc3164: false,
+				msgid: maxLengthMsgid,
+			});
+
+			const msg = await awaitUdpMsg();
+			expect(msg).toMatch(constructRfc5424Regex(134, hostname, 'Max length msgid', maxLengthMsgid));
+
+			client.close();
+		});
+
+		it('should reject msgid longer than 32 characters (RFC 5424 limit)', async () => {
+			const hostname = 'testhostname';
+			const client = new SyslogClient('127.0.0.1', {
+				port: SYSLOG_UDP_PORT,
+				syslogHostname: hostname,
+				transport: Transport.Udp,
+			});
+
+			const tooLongMsgid = '550e8400-e29b-41d4-a716-446655440000'; // 36 chars (UUID with hyphens)
+			await expect(
+				client.log('Too long msgid', {
+					rfc3164: false,
+					msgid: tooLongMsgid,
+				}),
+			).rejects.toThrow();
+
+			client.close();
+		});
+
 		it('should send back-dated RFC 5424 messages', async () => {
 			const hostname = 'testhostname';
 			const client = new SyslogClient('127.0.0.1', {

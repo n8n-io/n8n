@@ -140,6 +140,43 @@ describe('components', () => {
 			);
 		});
 
+		describe('loading state', () => {
+			it('shows spinner only when isLoading is true', async () => {
+				const { rerender } = render(N8nCommandBar, {
+					props: { items: createSampleItems(), isLoading: false },
+				});
+				await openCommandBar();
+
+				expect(screen.queryByTestId('command-bar-input-spinner')).not.toBeInTheDocument();
+
+				await rerender({ items: createSampleItems(), isLoading: true });
+
+				expect(screen.getByTestId('command-bar-input-spinner')).toBeInTheDocument();
+			});
+
+			it('shows loading items when isLoading is true', async () => {
+				render(N8nCommandBar, {
+					props: { items: [], isLoading: true },
+				});
+				await openCommandBar();
+
+				expect(screen.getByTestId('command-bar-items-list')).toBeInTheDocument();
+			});
+
+			it('hides spinner when isLoading becomes false', async () => {
+				const { rerender } = render(N8nCommandBar, {
+					props: { items: createSampleItems(), isLoading: true },
+				});
+				await openCommandBar();
+
+				expect(screen.getByTestId('command-bar-input-spinner')).toBeInTheDocument();
+
+				await rerender({ items: createSampleItems(), isLoading: false });
+
+				expect(screen.queryByTestId('command-bar-input-spinner')).not.toBeInTheDocument();
+			});
+		});
+
 		describe('matchAnySearchTerm', () => {
 			it('should match entire query string when matchAnySearchTerm is false', async () => {
 				const items = [

@@ -6,4 +6,18 @@ export { Middleware } from './middleware';
 export { ControllerRegistryMetadata } from './controller-registry-metadata';
 export { Licensed } from './licensed';
 export { GlobalScope, ProjectScope } from './scoped';
-export type { AccessScope, Controller, RateLimit, StaticRouterMetadata } from './types';
+export type {
+	AccessScope,
+	Controller,
+	CorsOptions,
+	Method,
+	StaticRouterMetadata,
+} from './types';
+export {
+	type RateLimiterLimits,
+	type BodyKeyedRateLimiterConfig,
+	type UserKeyedRateLimiterConfig,
+	type KeyedRateLimiterConfig,
+	createBodyKeyedRateLimiter,
+	createUserKeyedRateLimiter,
+} from './rate-limit';

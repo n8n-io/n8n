@@ -210,15 +210,22 @@ export class McpOAuthService implements OAuthServerProvider {
 	}
 
 	/**
-	 * Delete an OAuth client and all related data
+	 * Delete an OAuth client and all related data.
+	 * Verifies that the requesting user has a consent relationship with the client.
 	 */
-	async deleteClient(clientId: string): Promise<void> {
+	async deleteClient(clientId: string, userId: string): Promise<void> {
 		// First check if the client exists
 		const client = await this.oauthClientRepository.findOne({
 			where: { id: clientId },
 		});
 
 		if (!client) {
+			throw new Error(`OAuth client with ID ${clientId} not found`);
+		}
+
+		// Verify the requesting user has a consent relationship with this client
+		const consent = await this.userConsentRepository.findOneBy({ clientId, userId });
+		if (!consent) {
 			throw new Error(`OAuth client with ID ${clientId} not found`);
 		}
 

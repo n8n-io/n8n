@@ -1,5 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
-import type { SelectQueryBuilder } from '@n8n/typeorm';
+import { In, type SelectQueryBuilder } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 
 import { WorkflowEntity } from '../../entities';
@@ -54,7 +54,7 @@ describe('WorkflowRepository', () => {
 	});
 
 	describe('applyNameFilter', () => {
-		it('should search for workflows containing any word from the query', async () => {
+		it('should search for workflows containing all words from the query', async () => {
 			const workflowIds = ['workflow1'];
 			const options = {
 				filter: { query: 'Users database' },
@@ -63,7 +63,7 @@ describe('WorkflowRepository', () => {
 			await workflowRepository.getMany(workflowIds, options);
 
 			expect(queryBuilder.andWhere).toHaveBeenCalledWith(
-				expect.stringContaining('OR'),
+				expect.stringContaining('AND'),
 				expect.objectContaining({
 					searchWord0: '%users%',
 					searchWord1: '%database%',
@@ -414,34 +414,6 @@ describe('WorkflowRepository', () => {
 			);
 		});
 
-		it('should left join activeVersion with addSelect and use COALESCE for MySQL', async () => {
-			const mysqlConfig = mockInstance(GlobalConfig, {
-				database: { type: 'mysqldb' },
-			});
-			const mysqlWorkflowRepository = new WorkflowRepository(
-				entityManager.connection,
-				mysqlConfig,
-				folderRepository,
-				workflowHistoryRepository,
-			);
-			jest.spyOn(mysqlWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
-
-			const workflowIds = ['workflow1'];
-			const options = {
-				filter: { triggerNodeTypes: ['n8n-nodes-base.executeWorkflowTrigger'] },
-			};
-
-			await mysqlWorkflowRepository.getMany(workflowIds, options);
-
-			expect(queryBuilder.leftJoin).toHaveBeenCalledWith('workflow.activeVersion', 'activeVersion');
-			expect(queryBuilder.addSelect).toHaveBeenCalledWith('activeVersion.versionId');
-			// Should use COALESCE to check activeVersion.nodes first, falling back to workflow.nodes
-			expect(queryBuilder.andWhere).toHaveBeenCalledWith(
-				'(COALESCE(activeVersion.nodes, workflow.nodes) LIKE :triggerNodeType0)',
-				{ triggerNodeType0: '%n8n-nodes-base.executeWorkflowTrigger%' },
-			);
-		});
-
 		it('should not join activeVersion again if already joined', async () => {
 			// Simulate activeVersion already being joined
 			Object.defineProperty(queryBuilder, 'expressionMap', {
@@ -537,6 +509,163 @@ describe('WorkflowRepository', () => {
 
 			// Should left join activeVersion for the trigger filter
 			expect(queryBuilder.leftJoin).toHaveBeenCalledWith('workflow.activeVersion', 'activeVersion');
+		});
+	});
+
+	describe('findByIds', () => {
+		it('should return an empty array and not call the database when no workflow ids are provided', async () => {
+			const findSpy = jest.spyOn(workflowRepository, 'find');
+			const workflowIds: string[] = [];
+			const result = await workflowRepository.findByIds(workflowIds);
+
+			expect(result).toEqual([]);
+			expect(findSpy).not.toHaveBeenCalled();
+		});
+
+		it('should call the database when workflow ids are provided', async () => {
+			const findSpy = jest.spyOn(workflowRepository, 'find').mockResolvedValue([]);
+			const workflowIds = ['workflow1'];
+			const result = await workflowRepository.findByIds(workflowIds);
+			expect(result).toEqual([]);
+			expect(findSpy).toHaveBeenCalledTimes(1);
+			expect(findSpy).toHaveBeenCalledWith({ where: { id: In(workflowIds) } });
+		});
+	});
+
+	describe('getPublishedPersonalWorkflowsCount', () => {
+		it('should return count from query builder with correct joins and filters', async () => {
+			queryBuilder.getCount.mockResolvedValue(5);
+
+			const result = await workflowRepository.getPublishedPersonalWorkflowsCount();
+
+			expect(result).toBe(5);
+			expect(queryBuilder.innerJoin).toHaveBeenCalledWith('workflow.shared', 'shared');
+			expect(queryBuilder.innerJoin).toHaveBeenCalledWith('shared.project', 'project');
+			expect(queryBuilder.where).toHaveBeenCalledWith('workflow.activeVersionId IS NOT NULL');
+			expect(queryBuilder.andWhere).toHaveBeenCalledWith('project.type = :type', {
+				type: 'personal',
+			});
+			expect(queryBuilder.andWhere).toHaveBeenCalledWith('shared.role = :role', {
+				role: 'workflow:owner',
+			});
+			expect(queryBuilder.getCount).toHaveBeenCalled();
+		});
+
+		it('should return 0 when no workflows exist', async () => {
+			queryBuilder.getCount.mockResolvedValue(0);
+
+			const result = await workflowRepository.getPublishedPersonalWorkflowsCount();
+
+			expect(result).toBe(0);
+		});
+
+		it('should return correct count for multiple published personal workflows', async () => {
+			queryBuilder.getCount.mockResolvedValue(3);
+
+			const result = await workflowRepository.getPublishedPersonalWorkflowsCount();
+
+			expect(result).toBe(3);
+		});
+	});
+
+	describe('findByCredentialResolverId', () => {
+		it('should use PostgreSQL JSON operator for postgresdb', async () => {
+			const workflows = [{ id: 'wf-1', name: 'Workflow 1' }] as WorkflowEntity[];
+			queryBuilder.getMany.mockResolvedValue(workflows);
+
+			const result = await workflowRepository.findByCredentialResolverId('resolver-123');
+
+			expect(queryBuilder.select).toHaveBeenCalledWith(['workflow.id', 'workflow.name']);
+			expect(queryBuilder.where).toHaveBeenCalledWith(
+				"workflow.settings ->> 'credentialResolverId' = :resolverId",
+				{ resolverId: 'resolver-123' },
+			);
+			expect(result).toEqual(workflows);
+		});
+
+		it('should use SQLite JSON_EXTRACT for sqlite', async () => {
+			const sqliteConfig = mockInstance(GlobalConfig, {
+				database: { type: 'sqlite' },
+			});
+			const sqliteWorkflowRepository = new WorkflowRepository(
+				entityManager.connection,
+				sqliteConfig,
+				folderRepository,
+				workflowHistoryRepository,
+			);
+			jest.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
+			queryBuilder.getMany.mockResolvedValue([]);
+
+			const result = await sqliteWorkflowRepository.findByCredentialResolverId('resolver-123');
+
+			expect(queryBuilder.where).toHaveBeenCalledWith(
+				"JSON_EXTRACT(workflow.settings, '$.credentialResolverId') = :resolverId",
+				{ resolverId: 'resolver-123' },
+			);
+			expect(result).toEqual([]);
+		});
+
+		it('should return empty array when no workflows match', async () => {
+			queryBuilder.getMany.mockResolvedValue([]);
+
+			const result = await workflowRepository.findByCredentialResolverId('no-match');
+
+			expect(result).toEqual([]);
+		});
+	});
+
+	describe('clearCredentialResolverId', () => {
+		it('should use PostgreSQL jsonb removal for postgresdb', async () => {
+			const mockExecute = jest.fn().mockResolvedValue({ affected: 1 });
+			const mockUpdateWhere = jest.fn().mockReturnValue({ execute: mockExecute });
+			const mockSet = jest.fn().mockReturnValue({ where: mockUpdateWhere });
+			const mockUpdate = jest.fn().mockReturnValue({ set: mockSet });
+			const updateQb = { update: mockUpdate } as unknown as SelectQueryBuilder<WorkflowEntity>;
+
+			jest.spyOn(workflowRepository, 'createQueryBuilder').mockReturnValue(updateQb);
+
+			await workflowRepository.clearCredentialResolverId('resolver-123');
+
+			expect(mockUpdate).toHaveBeenCalled();
+			expect(mockSet).toHaveBeenCalledWith({
+				settings: expect.any(Function),
+			});
+			expect(mockUpdateWhere).toHaveBeenCalledWith(
+				"settings ->> 'credentialResolverId' = :resolverId",
+				{ resolverId: 'resolver-123' },
+			);
+			expect(mockExecute).toHaveBeenCalled();
+		});
+
+		it('should use SQLite json_remove for sqlite', async () => {
+			const mockExecute = jest.fn().mockResolvedValue({ affected: 1 });
+			const mockUpdateWhere = jest.fn().mockReturnValue({ execute: mockExecute });
+			const mockSet = jest.fn().mockReturnValue({ where: mockUpdateWhere });
+			const mockUpdate = jest.fn().mockReturnValue({ set: mockSet });
+			const updateQb = { update: mockUpdate } as unknown as SelectQueryBuilder<WorkflowEntity>;
+
+			const sqliteConfig = mockInstance(GlobalConfig, {
+				database: { type: 'sqlite' },
+			});
+			const sqliteWorkflowRepository = new WorkflowRepository(
+				entityManager.connection,
+				sqliteConfig,
+				folderRepository,
+				workflowHistoryRepository,
+			);
+			jest.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(updateQb);
+
+			await sqliteWorkflowRepository.clearCredentialResolverId('resolver-123');
+
+			expect(mockUpdate).toHaveBeenCalled();
+			expect(mockSet).toHaveBeenCalledWith({
+				settings: expect.any(Function),
+			});
+			expect(mockUpdateWhere).toHaveBeenCalledWith(
+				"JSON_EXTRACT(settings, '$.credentialResolverId') = :resolverId",
+				{ resolverId: 'resolver-123' },
+			);
+			expect(mockExecute).toHaveBeenCalled();
 		});
 	});
 });

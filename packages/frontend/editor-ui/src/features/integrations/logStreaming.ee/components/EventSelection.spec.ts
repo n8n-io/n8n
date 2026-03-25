@@ -99,7 +99,7 @@ describe('EventSelection.ee.vue', () => {
 			});
 
 			// 3 groups + 6 children (2+2+2) + 1 anonymize = 10 checkboxes
-			expect(container.querySelectorAll('.el-checkbox')).toHaveLength(10);
+			expect(container.querySelectorAll('[role="checkbox"]')).toHaveLength(10);
 		});
 
 		it('should disable checkboxes in readonly mode', () => {
@@ -110,9 +110,9 @@ describe('EventSelection.ee.vue', () => {
 				},
 			});
 
-			const checkboxes = container.querySelectorAll('.el-checkbox');
+			const checkboxes = container.querySelectorAll('[role="checkbox"]');
 			checkboxes.forEach((checkbox) => {
-				expect(checkbox.classList.contains('is-disabled')).toBe(true);
+				expect(checkbox.getAttribute('data-disabled')).toBe('');
 			});
 		});
 
@@ -124,9 +124,9 @@ describe('EventSelection.ee.vue', () => {
 				},
 			});
 
-			const checkboxes = container.querySelectorAll('.el-checkbox');
+			const checkboxes = container.querySelectorAll('[role="checkbox"]');
 			checkboxes.forEach((checkbox) => {
-				expect(checkbox.classList.contains('is-disabled')).toBe(false);
+				expect(checkbox.getAttribute('data-disabled')).toBeNull();
 			});
 		});
 	});
@@ -140,7 +140,7 @@ describe('EventSelection.ee.vue', () => {
 			});
 
 			// Verify that groups are rendered
-			const allCheckboxes = container.querySelectorAll('.el-checkbox');
+			const allCheckboxes = container.querySelectorAll('[role="checkbox"]');
 			expect(allCheckboxes.length).toBeGreaterThan(3);
 		});
 
@@ -151,11 +151,11 @@ describe('EventSelection.ee.vue', () => {
 				},
 			});
 
-			// Verify audit group is rendered (indeterminate state)
-			const auditGroupLabel = Array.from(container.querySelectorAll('.el-checkbox')).find(
-				(checkbox) => checkbox.textContent?.includes('Audit Events'),
+			// Verify audit group has indeterminate state
+			const auditGroupCheckbox = Array.from(container.querySelectorAll('[role="checkbox"]')).find(
+				(checkbox) => checkbox.getAttribute('data-state') === 'indeterminate',
 			);
-			expect(auditGroupLabel).toBeTruthy();
+			expect(auditGroupCheckbox).toBeTruthy();
 		});
 
 		it('should emit input event when group checkbox changes', async () => {
@@ -165,7 +165,7 @@ describe('EventSelection.ee.vue', () => {
 				},
 			});
 
-			const firstCheckbox = container.querySelector('.el-checkbox input') as HTMLInputElement;
+			const firstCheckbox = container.querySelector('[role="checkbox"]') as HTMLElement;
 			firstCheckbox?.click();
 
 			await vi.waitFor(() => {
@@ -180,7 +180,7 @@ describe('EventSelection.ee.vue', () => {
 				},
 			});
 
-			const firstCheckbox = container.querySelector('.el-checkbox input') as HTMLInputElement;
+			const firstCheckbox = container.querySelector('[role="checkbox"]') as HTMLElement;
 			firstCheckbox?.click();
 
 			await vi.waitFor(() => {
@@ -197,9 +197,9 @@ describe('EventSelection.ee.vue', () => {
 				},
 			});
 
-			const checkboxes = container.querySelectorAll('.el-checkbox');
+			const checkboxes = container.querySelectorAll('[role="checkbox"]');
 			// n8n.workflow.success is selected (4th checkbox)
-			expect(checkboxes[4]?.classList.contains('is-checked')).toBe(true);
+			expect(checkboxes[4]?.getAttribute('data-state')).toBe('checked');
 		});
 
 		it('should show child as selected when parent group is selected', () => {
@@ -210,7 +210,7 @@ describe('EventSelection.ee.vue', () => {
 			});
 
 			// Verify children of selected groups are rendered
-			const allCheckboxes = container.querySelectorAll('.el-checkbox');
+			const allCheckboxes = container.querySelectorAll('[role="checkbox"]');
 			expect(allCheckboxes.length).toBeGreaterThan(5); // At least 3 groups + children
 		});
 
@@ -221,7 +221,7 @@ describe('EventSelection.ee.vue', () => {
 				},
 			});
 
-			const childCheckbox = container.querySelectorAll('.el-checkbox input')[3] as HTMLInputElement;
+			const childCheckbox = container.querySelectorAll('[role="checkbox"]')[3] as HTMLElement;
 			childCheckbox?.click();
 
 			await vi.waitFor(() => {
@@ -246,22 +246,16 @@ describe('EventSelection.ee.vue', () => {
 		it('should reflect anonymizeAuditMessages value from store', () => {
 			logStreamingStore.items['test-destination-id'].destination.anonymizeAuditMessages = true;
 
-			const { container } = renderComponent({
+			const { getByRole } = renderComponent({
 				props: {
 					destinationId: 'test-destination-id',
 				},
 			});
 
-			// The anonymization checkbox should be checked
-			const checkboxes = container.querySelectorAll(
-				'.el-checkbox input',
-			) as NodeListOf<HTMLInputElement>;
-			const anonymizeCheckbox = Array.from(checkboxes).find((cb) => {
-				const parent = cb.closest('.el-checkbox');
-				return parent?.textContent?.includes('Anonymize');
-			});
-
-			expect(anonymizeCheckbox?.checked).toBe(true);
+			// Find the anonymization checkbox wrapper and check its checkbox state
+			expect(getByRole('checkbox', { name: /anonymize/i }).getAttribute('data-state')).toBe(
+				'checked',
+			);
 		});
 
 		it('should disable anonymization checkbox in readonly mode', () => {
@@ -272,30 +266,20 @@ describe('EventSelection.ee.vue', () => {
 				},
 			});
 
-			const checkboxes = container.querySelectorAll('.el-checkbox');
-			const anonymizeCheckbox = Array.from(checkboxes).find((cb) =>
-				cb.textContent?.includes('Anonymize'),
-			);
-
-			expect(anonymizeCheckbox?.classList.contains('is-disabled')).toBe(true);
+			const checkboxes = container.querySelectorAll('[role="checkbox"]');
+			checkboxes.forEach((checkbox) => {
+				expect(checkbox.getAttribute('data-disabled')).toBe('');
+			});
 		});
 
 		it('should emit input event when anonymization checkbox changes', async () => {
-			const { emitted, container } = renderComponent({
+			const { emitted, getByRole } = renderComponent({
 				props: {
 					destinationId: 'test-destination-id',
 				},
 			});
 
-			const checkboxes = container.querySelectorAll(
-				'.el-checkbox input',
-			) as NodeListOf<HTMLInputElement>;
-			const anonymizeCheckbox = Array.from(checkboxes).find((cb) => {
-				const parent = cb.closest('.el-checkbox');
-				return parent?.textContent?.includes('Anonymize');
-			});
-
-			anonymizeCheckbox?.click();
+			getByRole('checkbox', { name: /anonymize/i }).click();
 
 			await vi.waitFor(() => {
 				expect(emitted()).toHaveProperty('input');
@@ -303,21 +287,13 @@ describe('EventSelection.ee.vue', () => {
 		});
 
 		it('should emit change event with correct payload when anonymization changes', async () => {
-			const { emitted, container } = renderComponent({
+			const { emitted, getByRole } = renderComponent({
 				props: {
 					destinationId: 'test-destination-id',
 				},
 			});
 
-			const checkboxes = container.querySelectorAll(
-				'.el-checkbox input',
-			) as NodeListOf<HTMLInputElement>;
-			const anonymizeCheckbox = Array.from(checkboxes).find((cb) => {
-				const parent = cb.closest('.el-checkbox');
-				return parent?.textContent?.includes('Anonymize');
-			});
-
-			anonymizeCheckbox?.click();
+			getByRole('checkbox', { name: /anonymize/i }).click();
 
 			await vi.waitFor(() => {
 				expect(emitted()).toHaveProperty('change');
@@ -341,7 +317,7 @@ describe('EventSelection.ee.vue', () => {
 
 			// Group labels should be displayed (either translated or original)
 			expect(container.textContent).toBeTruthy();
-			expect(container.querySelectorAll('.el-checkbox').length).toBeGreaterThan(0);
+			expect(container.querySelectorAll('[role="checkbox"]').length).toBeGreaterThan(0);
 		});
 
 		it('should render help icons for tooltips', () => {
@@ -365,7 +341,7 @@ describe('EventSelection.ee.vue', () => {
 				},
 			});
 
-			const firstCheckbox = container.querySelector('.el-checkbox input') as HTMLInputElement;
+			const firstCheckbox = container.querySelector('[role="checkbox"]') as HTMLElement;
 			firstCheckbox?.click();
 
 			await vi.waitFor(() => {
@@ -378,24 +354,16 @@ describe('EventSelection.ee.vue', () => {
 		});
 
 		it('should update store destination when anonymization changes', async () => {
-			const { container } = renderComponent({
+			const { getByRole } = renderComponent({
 				props: {
 					destinationId: 'test-destination-id',
 				},
 			});
 
-			const checkboxes = container.querySelectorAll(
-				'.el-checkbox input',
-			) as NodeListOf<HTMLInputElement>;
-			const anonymizeCheckbox = Array.from(checkboxes).find((cb) => {
-				const parent = cb.closest('.el-checkbox');
-				return parent?.textContent?.includes('Anonymize');
-			});
-
 			const initialValue =
 				logStreamingStore.items['test-destination-id'].destination.anonymizeAuditMessages;
 
-			anonymizeCheckbox?.click();
+			getByRole('checkbox', { name: /anonymize/i }).click();
 
 			await vi.waitFor(() => {
 				// Store should be updated

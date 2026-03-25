@@ -59,7 +59,7 @@ const i18n = useI18n();
 const { isRagStarterCalloutVisible, openSampleWorkflowTemplate } = useCalloutHelpers();
 
 const { mergedNodes, actions, onSubcategorySelected } = useNodeCreatorStore();
-const { pushViewStack, popViewStack, isAiSubcategoryView } = useViewStacks();
+const { pushViewStack, popViewStack, isAiSubcategoryView, isHitlSubcategoryView } = useViewStacks();
 const { setAddedNodeActionParameters, nodeCreateElementToNodeTypeSelectedPayload } = useActions();
 
 const { registerKeyHook } = useKeyboardNavigation();
@@ -74,7 +74,7 @@ const moreFromCommunity = computed(() => {
 	return filterAndSearchNodes(
 		communityNodesAndActions.value.mergedNodes,
 		activeViewStack.value.search ?? '',
-		isAiSubcategoryView(activeViewStack.value),
+		isAiSubcategoryView(activeViewStack.value) || isHitlSubcategoryView(activeViewStack.value),
 	);
 });
 
@@ -127,6 +127,9 @@ function onSelected(item: INodeCreateElement) {
 			baseFilter: baseSubcategoriesFilter,
 			itemsMapper: subcategoriesMapper,
 			sections: item.properties.sections,
+			items: item.properties.items,
+			hideActions: item.properties.hideActions,
+			actionsFilter: item.properties.actionsFilter,
 		});
 
 		onSubcategorySelected({
@@ -135,9 +138,15 @@ function onSelected(item: INodeCreateElement) {
 	}
 
 	if (item.type === 'node') {
+		const payload = nodeCreateElementToNodeTypeSelectedPayload(item);
 		let nodeActions = getFilteredActions(item, actions);
+		const notInstalledCommunityNode =
+			isCommunityPackageName(item.key) && !useNodeTypesStore().getIsNodeInstalled(item.key);
 
-		if (shouldShowCommunityNodeDetails(isCommunityPackageName(item.key), activeViewStack.value)) {
+		if (
+			shouldShowCommunityNodeDetails(isCommunityPackageName(item.key), activeViewStack.value) ||
+			notInstalledCommunityNode
+		) {
 			if (!nodeActions.length) {
 				nodeActions = getFilteredActions(item, communityNodesAndActions.value.actions);
 			}
@@ -152,8 +161,6 @@ function onSelected(item: INodeCreateElement) {
 			pushViewStack(viewStack);
 			return;
 		}
-
-		const payload = nodeCreateElementToNodeTypeSelectedPayload(item);
 
 		// If there is only one action, use it
 		if (nodeActions.length === 1) {

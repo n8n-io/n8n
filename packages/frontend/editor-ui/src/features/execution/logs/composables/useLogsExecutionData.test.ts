@@ -4,6 +4,7 @@ import { waitFor } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { mockedStore, waitAllPromises } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { nodeTypes } from '../__test__/data';
 import {
@@ -13,7 +14,6 @@ import {
 	createTestWorkflowExecutionResponse,
 } from '@/__tests__/mocks';
 import { createRunExecutionData, type IRunExecutionData } from 'n8n-workflow';
-import { stringify } from 'flatted';
 import { useToast } from '@/app/composables/useToast';
 import {
 	injectWorkflowState,
@@ -36,12 +36,14 @@ let workflowState: WorkflowState;
 
 describe(useLogsExecutionData, () => {
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
+	let workflowsListStore: ReturnType<typeof mockedStore<typeof useWorkflowsListStore>>;
 	let nodeTypeStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
 
 	beforeEach(() => {
 		setActivePinia(createTestingPinia({ stubActions: false }));
 
 		workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsListStore = mockedStore(useWorkflowsListStore);
 
 		workflowState = useWorkflowState();
 		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
@@ -113,9 +115,9 @@ describe(useLogsExecutionData, () => {
 			workflowsStore.fetchExecutionDataById.mockResolvedValueOnce(
 				createTestWorkflowExecutionResponse({
 					id: 'e1',
-					data: stringify({
+					data: {
 						resultData: { runData: { C: [createTestTaskData()] } },
-					}) as unknown as IRunExecutionData, // Data is stringified in actual API response
+					} as unknown as IRunExecutionData,
 					workflowData: createTestWorkflow({ id: 'w1', nodes: [createTestNode({ name: 'C' })] }),
 				}),
 			);
@@ -146,7 +148,7 @@ describe(useLogsExecutionData, () => {
 				typeof useToastMock
 			>);
 
-			workflowsStore.fetchWorkflow.mockResolvedValueOnce(createTestWorkflow());
+			workflowsListStore.fetchWorkflow.mockResolvedValueOnce(createTestWorkflow());
 			workflowsStore.fetchExecutionDataById.mockRejectedValueOnce(
 				new Error('test execution fetch fail'),
 			);

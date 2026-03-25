@@ -48,6 +48,28 @@ assert.ok(
 	'No changes found since the last release',
 );
 
+// Propagate isDirty transitively: if a package's dependency will be bumped,
+// that package also needs a bump (e.g. design-system → editor-ui → cli).
+
+const depsByPackage = {};
+for (const packageName in packageMap) {
+	const packageFile = resolve(packageMap[packageName].path, 'package.json');
+	const packageJson = JSON.parse(await readFile(packageFile, 'utf-8'));
+	depsByPackage[packageName] = Object.keys(packageJson.dependencies || {});
+}
+
+let changed = true;
+while (changed) {
+	changed = false;
+	for (const packageName in packageMap) {
+		if (packageMap[packageName].isDirty) continue;
+		if (depsByPackage[packageName].some((dep) => packageMap[dep]?.isDirty)) {
+			packageMap[packageName].isDirty = true;
+			changed = true;
+		}
+	}
+}
+
 // Keep the monorepo version up to date with the released version
 packageMap['monorepo-root'].version = packageMap['n8n'].version;
 
@@ -56,17 +78,32 @@ for (const packageName in packageMap) {
 	const packageFile = resolve(path, 'package.json');
 	const packageJson = JSON.parse(await readFile(packageFile, 'utf-8'));
 
-	packageJson.version = packageMap[packageName].nextVersion =
-		isDirty ||
-		Object.keys(packageJson.dependencies || {}).some(
-			(dependencyName) => packageMap[dependencyName]?.isDirty,
-		)
-			? releaseType === 'experimental'
-				? generateExperimentalVersion(version)
-				: releaseType === 'premajor'
-				? semver.inc(version, version.includes('-rc.') ? 'prerelease' : 'premajor', undefined, 'rc')
-					: semver.inc(version, releaseType)
-			: version;
+	const dependencyIsDirty = Object.keys(packageJson.dependencies || {}).some(
+		(dependencyName) => packageMap[dependencyName]?.isDirty,
+	);
+
+	let newVersion = version;
+
+	if (isDirty || dependencyIsDirty) {
+		switch (releaseType) {
+			case 'experimental':
+				newVersion = generateExperimentalVersion(version);
+				break;
+			case 'premajor':
+				newVersion = semver.inc(
+					version,
+					version.includes('-rc.') ? 'prerelease' : 'premajor',
+					undefined,
+					'rc',
+				);
+				break;
+			default:
+				newVersion = semver.inc(version, releaseType);
+				break;
+		}
+	}
+
+	packageJson.version = packageMap[packageName].nextVersion = newVersion;
 
 	await writeFile(packageFile, JSON.stringify(packageJson, null, 2) + '\n');
 }

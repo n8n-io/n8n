@@ -11,7 +11,7 @@ import type {
 } from 'n8n-workflow';
 import { createResultError, createResultOk, NodeOperationError } from 'n8n-workflow';
 
-import { proxyFetch } from '@utils/httpProxyAgent';
+import { proxyFetch } from '@n8n/ai-utilities';
 
 import type { McpAuthenticationOption, McpServerTransport, McpTool } from './types';
 
@@ -84,11 +84,13 @@ export function mapToNodeOperationError(
 		case 'auth':
 			return new NodeOperationError(node, error.error, {
 				message: 'Could not connect to your MCP server. Authentication failed.',
+				description: error.error.message,
 			});
 		case 'connection':
 		default:
 			return new NodeOperationError(node, error.error, {
 				message: 'Could not connect to your MCP server',
+				description: error.error.message,
 			});
 	}
 }

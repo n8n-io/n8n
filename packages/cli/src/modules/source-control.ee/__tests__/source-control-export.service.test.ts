@@ -21,6 +21,7 @@ import { captor, mock } from 'jest-mock-extended';
 import { Cipher, type InstanceSettings } from 'n8n-core';
 import fsp from 'node:fs/promises';
 
+import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import type { VariablesService } from '../../../environments.ee/variables/variables.service.ee';
 import { SourceControlExportService } from '../source-control-export.service.ee';
 import type { SourceControlScopedService } from '../source-control-scoped.service';
@@ -43,6 +44,7 @@ describe('SourceControlExportService', () => {
 	const variablesService = mock<VariablesService>();
 	const folderRepository = mock<FolderRepository>();
 	const sourceControlScopedService = mock<SourceControlScopedService>();
+	const dataTableRepository = mock<DataTableRepository>();
 
 	const service = new SourceControlExportService(
 		mock(),
@@ -56,6 +58,7 @@ describe('SourceControlExportService', () => {
 		folderRepository,
 		sourceControlScopedService,
 		mock<InstanceSettings>({ n8nFolder: '/mock/n8n' }),
+		dataTableRepository,
 	);
 
 	const fsWriteFile = jest.spyOn(fsp, 'writeFile');
@@ -660,6 +663,155 @@ describe('SourceControlExportService', () => {
 					},
 				]),
 			);
+		});
+	});
+
+	describe('exportDataTablesToWorkFolder', () => {
+		it('should export data tables as individual files', async () => {
+			// Arrange
+			const mockDataTables = [
+				{
+					id: 'dt1',
+					name: 'Test Table 1',
+					projectId: 'project1',
+					columns: [
+						{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
+						{ id: 'col2', name: 'Column 2', type: 'number', index: 1 },
+					],
+					createdAt: new Date('2024-01-01'),
+					updatedAt: new Date('2024-01-02'),
+					project: {
+						id: 'project1',
+						name: 'Team Project 1',
+						type: 'team',
+						projectRelations: [],
+					},
+				},
+				{
+					id: 'dt2',
+					name: 'Test Table 2',
+					projectId: 'project2',
+					columns: [{ id: 'col3', name: 'Column 3', type: 'boolean', index: 0 }],
+					createdAt: new Date('2024-01-03'),
+					updatedAt: new Date('2024-01-04'),
+					project: {
+						id: 'project2',
+						name: 'Team Project 2',
+						type: 'team',
+						projectRelations: [],
+					},
+				},
+			];
+
+			const candidates = [
+				{
+					id: 'dt1',
+					name: 'Test Table 1',
+					type: 'datatable' as const,
+					status: 'created' as const,
+					file: '/mock/n8n/git/datatables/dt1.json',
+					location: 'local' as const,
+					conflict: false,
+					updatedAt: '2024-01-02T00:00:00.000Z',
+				},
+				{
+					id: 'dt2',
+					name: 'Test Table 2',
+					type: 'datatable' as const,
+					status: 'created' as const,
+					file: '/mock/n8n/git/datatables/dt2.json',
+					location: 'local' as const,
+					conflict: false,
+					updatedAt: '2024-01-04T00:00:00.000Z',
+				},
+			];
+
+			dataTableRepository.find.mockResolvedValue(mockDataTables as any);
+			sourceControlScopedService.getAuthorizedProjectsFromContext.mockResolvedValue([
+				mock<Project>({ id: 'project1' }),
+				mock<Project>({ id: 'project2' }),
+			]);
+
+			// Act
+			const result = await service.exportDataTablesToWorkFolder(candidates, globalAdminContext);
+
+			// Assert
+			expect(result.count).toBe(2);
+			expect(result.files).toHaveLength(2);
+			expect(result.files[0].name).toBe('/mock/n8n/git/datatables/dt1.json');
+			expect(result.files[1].name).toBe('/mock/n8n/git/datatables/dt2.json');
+
+			// Check first file
+			const dataCaptor1 = captor<string>();
+			expect(fsWriteFile).toHaveBeenCalledWith('/mock/n8n/git/datatables/dt1.json', dataCaptor1);
+			const exportedData1 = JSON.parse(dataCaptor1.value);
+			expect(exportedData1).toEqual({
+				id: 'dt1',
+				name: 'Test Table 1',
+				ownedBy: {
+					type: 'team',
+					teamId: 'project1',
+					teamName: 'Team Project 1',
+				},
+				columns: [
+					{ id: 'col1', name: 'Column 1', type: 'string', index: 0 },
+					{ id: 'col2', name: 'Column 2', type: 'number', index: 1 },
+				],
+				createdAt: '2024-01-01T00:00:00.000Z',
+				updatedAt: '2024-01-02T00:00:00.000Z',
+			});
+
+			// Check second file
+			const dataCaptor2 = captor<string>();
+			expect(fsWriteFile).toHaveBeenCalledWith('/mock/n8n/git/datatables/dt2.json', dataCaptor2);
+			const exportedData2 = JSON.parse(dataCaptor2.value);
+			expect(exportedData2).toEqual({
+				id: 'dt2',
+				name: 'Test Table 2',
+				ownedBy: {
+					type: 'team',
+					teamId: 'project2',
+					teamName: 'Team Project 2',
+				},
+				columns: [{ id: 'col3', name: 'Column 3', type: 'boolean', index: 0 }],
+				createdAt: '2024-01-03T00:00:00.000Z',
+				updatedAt: '2024-01-04T00:00:00.000Z',
+			});
+		});
+
+		it('should return empty result when no candidates provided', async () => {
+			// Arrange
+			const candidates: any[] = [];
+
+			// Act
+			const result = await service.exportDataTablesToWorkFolder(candidates, globalAdminContext);
+
+			// Assert
+			expect(result.count).toBe(0);
+			expect(result.files).toHaveLength(0);
+			expect(fsWriteFile).not.toHaveBeenCalled();
+		});
+
+		it('should handle export errors gracefully', async () => {
+			// Arrange
+			const candidates = [
+				{
+					id: 'dt1',
+					name: 'Test Table 1',
+					type: 'datatable' as const,
+					status: 'created' as const,
+					file: '/mock/n8n/git/datatables/dt1.json',
+					location: 'local' as const,
+					conflict: false,
+					updatedAt: '2024-01-02T00:00:00.000Z',
+				},
+			];
+			dataTableRepository.find.mockRejectedValue(new Error('Database error'));
+
+			// Act & Assert
+			await expect(
+				service.exportDataTablesToWorkFolder(candidates, globalAdminContext),
+			).rejects.toThrow('Failed to export data tables to work folder');
 		});
 	});
 });

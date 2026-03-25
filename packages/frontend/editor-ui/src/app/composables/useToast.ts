@@ -33,7 +33,7 @@ export function useToast() {
 			dangerouslyUseHTMLString: true,
 			position: 'bottom-right',
 			zIndex: APP_Z_INDEXES.TOASTS, // above NDV and modal overlays
-			appendTo: '#app-grid',
+			appendTo: '#n8n-app',
 			customClass: 'content-toast',
 		};
 		const { message, title } = messageData;

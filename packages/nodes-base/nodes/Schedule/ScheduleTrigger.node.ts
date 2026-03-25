@@ -62,6 +62,10 @@ export class ScheduleTrigger implements INodeType {
 					{
 						name: 'interval',
 						displayName: 'Trigger Interval',
+						builderHint: {
+							message:
+								'You can add multiple intervals to trigger at different times. Use "Custom (Cron)" for more specific scheduling patterns.',
+						},
 						values: [
 							{
 								displayName: 'Trigger Interval',

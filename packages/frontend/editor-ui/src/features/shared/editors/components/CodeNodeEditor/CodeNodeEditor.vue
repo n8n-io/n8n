@@ -18,6 +18,7 @@ import AskAI from './AskAI/AskAI.vue';
 import { CODE_PLACEHOLDERS } from './constants';
 import { useLinter } from './linter';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { dropInCodeEditor } from '../../plugins/codemirror/dragAndDrop';
 import type { TargetNodeParameterContext } from '@/Interface';
 import { valueToInsert } from './utils';
@@ -65,10 +66,12 @@ const rootStore = useRootStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const settingsStore = useSettingsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const linter = useLinter(
 	() => props.mode,
 	() => (props.language === 'pythonNative' ? 'python' : props.language),
+	() => workflowDocumentStore?.value?.settings?.binaryMode,
 );
 const extensions = computed(() => [linter.value]);
 const placeholder = computed(() => CODE_PLACEHOLDERS[props.language]?.[props.mode] ?? '');
@@ -207,7 +210,12 @@ async function onDrop(value: string, event: MouseEvent) {
 	await dropInCodeEditor(
 		toRaw(editor.value),
 		event,
-		valueToInsert(value, props.language, props.mode),
+		valueToInsert(
+			value,
+			props.language,
+			props.mode,
+			workflowDocumentStore?.value?.settings?.binaryMode,
+		),
 	);
 }
 

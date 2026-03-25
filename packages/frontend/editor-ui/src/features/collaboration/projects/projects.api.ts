@@ -1,11 +1,24 @@
 import type { IRestApiContext } from '@n8n/rest-api-client';
-import { makeRestApiRequest } from '@n8n/rest-api-client';
+import { getFullApiResponse, makeRestApiRequest } from '@n8n/rest-api-client';
 import type { Project, ProjectListItem, ProjectsCount } from './projects.types';
 import type { CreateProjectDto, UpdateProjectDto } from '@n8n/api-types';
 import type { AssignableProjectRole } from '@n8n/permissions';
 
 export const getAllProjects = async (context: IRestApiContext): Promise<ProjectListItem[]> => {
 	return await makeRestApiRequest(context, 'GET', '/projects');
+};
+
+export const searchProjects = async (
+	context: IRestApiContext,
+	params: {
+		search?: string;
+		take?: number;
+		skip?: number;
+		type?: 'personal' | 'team';
+		activated?: boolean;
+	},
+): Promise<{ count: number; data: ProjectListItem[] }> => {
+	return await getFullApiResponse<ProjectListItem[]>(context, 'GET', '/projects', params);
 };
 
 export const getMyProjects = async (context: IRestApiContext): Promise<ProjectListItem[]> => {

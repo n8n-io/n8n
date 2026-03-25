@@ -11,6 +11,7 @@ import { ActiveExecutions } from '@/active-executions';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
+import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
 import { ExternalHooks } from '@/external-hooks';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
@@ -35,6 +36,7 @@ const posthogClient = mockInstance(PostHogClient);
 const telemetryEventRelay = mockInstance(TelemetryEventRelay);
 const externalHooks = mockInstance(ExternalHooks);
 mockInstance(CommunityPackagesService);
+mockInstance(WorkflowFailureNotificationEventRelay);
 
 const dbConnection = mockInstance(DbConnection);
 dbConnection.init.mockResolvedValue(undefined);
@@ -42,7 +44,7 @@ dbConnection.migrate.mockResolvedValue(undefined);
 mockInstance(AuthRolesService);
 mockInstance(BinaryDataRepository);
 
-test('should start a task runner when task runners are enabled', async () => {
+test('should start a task runner', async () => {
 	// arrange
 
 	const workflow = mock<WorkflowEntity>({
@@ -72,7 +74,7 @@ test('should start a task runner when task runners are enabled', async () => {
 	Container.set(
 		GlobalConfig,
 		mock<GlobalConfig>({
-			taskRunners: { enabled: true },
+			taskRunners: {},
 			nodes: {},
 		}),
 	);

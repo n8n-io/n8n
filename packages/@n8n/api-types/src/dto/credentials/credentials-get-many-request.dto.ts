@@ -1,6 +1,7 @@
-import { Z } from 'zod-class';
+import z from 'zod';
 
 import { booleanFromString } from '../../schemas/boolean-from-string';
+import { Z } from '../../zod-class';
 
 export class CredentialsGetManyRequestQuery extends Z.class({
 	/**
@@ -27,4 +28,10 @@ export class CredentialsGetManyRequestQuery extends Z.class({
 	 * Defaults to false.
 	 */
 	includeGlobal: booleanFromString.optional().default('false'),
+
+	/**
+	 * Filters credentials to only include those that are using a specific external secrets provider.
+	 * The value should be the `providerKey` of the external secrets store.
+	 */
+	externalSecretsStore: z.string().optional(),
 }) {}
