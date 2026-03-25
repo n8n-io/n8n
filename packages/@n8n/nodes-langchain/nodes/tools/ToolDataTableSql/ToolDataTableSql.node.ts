@@ -18,7 +18,7 @@ import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 export class ToolDataTableSql implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Data Table SQL Tool',
+		displayName: 'Data Table SQL Read Tool',
 		name: 'toolDataTableSql',
 		icon: 'fa:database',
 		iconColor: 'orange-red',
@@ -26,7 +26,7 @@ export class ToolDataTableSql implements INodeType {
 		version: [1],
 		description: 'Let AI agents query data tables using SQL SELECT statements',
 		defaults: {
-			name: 'Data Table SQL',
+			name: 'Data Table SQL Read',
 		},
 		codex: {
 			categories: ['AI'],
