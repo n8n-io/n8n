@@ -396,6 +396,10 @@ export class InstanceAiService {
 		// merges them into the same assistant message bubble.
 		if (message !== AUTO_FOLLOW_UP_MESSAGE) {
 			this.resetChainDepths(threadId);
+			// Clean up the previous message group's run-ID list before replacing it,
+			// so it doesn't leak in runIdsByMessageGroup for the lifetime of the process.
+			const prevGroupId = this.threadMessageGroupId.get(threadId);
+			if (prevGroupId) this.runIdsByMessageGroup.delete(prevGroupId);
 			const newGroupId = `mg_${nanoid()}`;
 			this.threadMessageGroupId.set(threadId, newGroupId);
 			this.runIdsByMessageGroup.set(newGroupId, []);
@@ -600,6 +604,36 @@ export class InstanceAiService {
 	 * Must be called when a thread is deleted so the maps don't leak.
 	 */
 	async clearThreadState(threadId: string): Promise<void> {
+		// Abort any active run on this thread
+		const activeRun = this.activeRuns.get(threadId);
+		if (activeRun) {
+			activeRun.abortController.abort();
+			this.activeRuns.delete(threadId);
+		}
+
+		// Abort any suspended (HITL-waiting) run on this thread
+		const suspendedRun = this.suspendedRuns.get(threadId);
+		if (suspendedRun) {
+			suspendedRun.abortController.abort();
+			this.suspendedRuns.delete(threadId);
+		}
+
+		// Cancel background tasks belonging to this thread
+		for (const [taskId, task] of this.backgroundTasks) {
+			if (task.threadId === threadId) {
+				task.abortController.abort();
+				this.backgroundTasks.delete(taskId);
+			}
+		}
+
+		// Auto-reject pending confirmations for this thread
+		for (const [requestId, pending] of this.pendingSubAgentConfirmations) {
+			if (pending.threadId === threadId) {
+				pending.resolve({ approved: false });
+				this.pendingSubAgentConfirmations.delete(requestId);
+			}
+		}
+
 		this.threadUsers.delete(threadId);
 		this.threadResearchMode.delete(threadId);
 		this.threadTimeZone.delete(threadId);
