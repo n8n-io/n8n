@@ -69,9 +69,29 @@ describe('PostHog', () => {
 		expect(PostHog.prototype.capture).toHaveBeenCalledWith({
 			distinctId: userId,
 			event,
-			userId,
 			properties,
 			sendFeatureFlags: true,
+		});
+	});
+
+	it('sends $groupidentify event with instance group', async () => {
+		const properties = { name: 'test-instance' } as Record<string, string | number>;
+
+		const ph = new PostHogClient(instanceSettings, globalConfig);
+		await ph.init();
+
+		ph.groupIdentify({ instanceId, properties });
+
+		expect(PostHog.prototype.capture).toHaveBeenCalledWith({
+			distinctId: instanceId,
+			event: '$groupidentify',
+			sendFeatureFlags: true,
+			properties: {
+				$group_type: 'company',
+				$group_key: instanceId,
+				$group_set: properties,
+			},
+			groups: { company: instanceId },
 		});
 	});
 
@@ -112,7 +132,7 @@ describe('PostHog', () => {
 			(PostHog.prototype.getAllFlags as jest.Mock).mockResolvedValue(mockFlags);
 
 			const now = Date.now();
-			jest.spyOn(Date, 'now').mockReturnValue(now);
+			const spy = jest.spyOn(Date, 'now').mockReturnValue(now);
 
 			const ph = new PostHogClient(instanceSettings, globalConfig);
 			await ph.init();
@@ -120,10 +140,12 @@ describe('PostHog', () => {
 			await ph.getFeatureFlags({ id: userId, createdAt });
 			expect(PostHog.prototype.getAllFlags).toHaveBeenCalledTimes(1);
 
-			jest.spyOn(Date, 'now').mockReturnValue(now + 10 * 60 * 1000 + 1);
+			spy.mockReturnValue(now + 10 * 60 * 1000 + 1);
 
 			await ph.getFeatureFlags({ id: userId, createdAt });
 			expect(PostHog.prototype.getAllFlags).toHaveBeenCalledTimes(2);
+
+			spy.mockRestore();
 		});
 
 		it('does not cache empty results', async () => {
