@@ -293,6 +293,15 @@ onMounted(() => {
 	});
 
 	ndvEventBus.on('credential.createNew', onCreateAndAssignNewCredential);
+
+	// Clear stale gateway proxy credentials if the feature is disabled
+	if (!aiGateway.isEnabled.value) {
+		for (const [credType, credDetails] of Object.entries(props.node.credentials ?? {})) {
+			if (credDetails.__gatewayProxy) {
+				clearSelectedCredential(credType);
+			}
+		}
+	}
 });
 
 onBeforeUnmount(() => {
@@ -478,7 +487,7 @@ function onCredentialSelected(
 }
 
 function isCredentialProxied(credentialType: string): boolean {
-	return selected.value[credentialType]?.__gatewayProxy === true;
+	return aiGateway.isEnabled.value && selected.value[credentialType]?.__gatewayProxy === true;
 }
 
 function showAiGatewayToggle(credentialType: string): boolean {
