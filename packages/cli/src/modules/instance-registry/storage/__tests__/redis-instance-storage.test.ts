@@ -173,6 +173,25 @@ describe('RedisInstanceStorage', () => {
 			);
 		});
 
+		it('should skip malformed JSON entries without losing valid ones', async () => {
+			const valid = createRegistration();
+			client.eval.mockResolvedValueOnce([
+				jsonStringify(valid),
+				'not-json-at-all',
+				jsonStringify(createRegistration({ instanceKey: 'worker-1', instanceType: 'worker' })),
+			]);
+
+			const result = await storage.getAllRegistrations();
+
+			expect(result).toHaveLength(2);
+			expect(result[0].instanceKey).toBe(valid.instanceKey);
+			expect(result[1].instanceKey).toBe('worker-1');
+			expect(logger.scoped(['instance-registry', 'redis']).warn).toHaveBeenCalledWith(
+				'Skipping malformed registration entry',
+				expect.any(Object),
+			);
+		});
+
 		it('should return empty array on empty result', async () => {
 			client.eval.mockResolvedValueOnce([]);
 
@@ -230,6 +249,18 @@ describe('RedisInstanceStorage', () => {
 			expect(result).toBeNull();
 			expect(logger.scoped(['instance-registry', 'redis']).warn).toHaveBeenCalledWith(
 				'Invalid registration data',
+				expect.objectContaining({ instanceKey: 'bad-key' }),
+			);
+		});
+
+		it('should return null for malformed JSON', async () => {
+			client.get.mockResolvedValueOnce('not-valid-json');
+
+			const result = await storage.getRegistration('bad-key');
+
+			expect(result).toBeNull();
+			expect(logger.scoped(['instance-registry', 'redis']).warn).toHaveBeenCalledWith(
+				'Failed to get registration',
 				expect.objectContaining({ instanceKey: 'bad-key' }),
 			);
 		});
@@ -309,6 +340,14 @@ describe('RedisInstanceStorage', () => {
 				'Failed to save last known state',
 				expect.any(Object),
 			);
+		});
+	});
+
+	describe('destroy', () => {
+		it('should disconnect the Redis client', async () => {
+			await storage.destroy();
+
+			expect(client.disconnect).toHaveBeenCalled();
 		});
 	});
 

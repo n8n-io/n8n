@@ -16,5 +16,5 @@ export const REGISTRY_CONSTANTS = {
 export const REDIS_KEY_PATTERNS = {
 	instanceKey: (prefix: string, instanceKey: string) => `${prefix}:{instance:}${instanceKey}`,
 	membershipSet: (prefix: string) => `${prefix}:{instance:}members`,
-	stateKey: (prefix: string) => `${prefix}:{instance:}:state`,
+	stateKey: (prefix: string) => `${prefix}:{instance:}state`,
 } as const;

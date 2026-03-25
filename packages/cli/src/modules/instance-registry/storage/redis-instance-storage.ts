@@ -31,39 +31,11 @@ export class RedisInstanceStorage implements InstanceStorage {
 	}
 
 	async register(registration: InstanceRegistration): Promise<void> {
-		try {
-			await this.redisClient.eval(
-				REGISTER_SCRIPT,
-				2,
-				this.instanceKey(registration.instanceKey),
-				this.membershipSetKey(),
-				jsonStringify(registration),
-				String(REGISTRY_CONSTANTS.REGISTRATION_TTL_SECONDS),
-			);
-		} catch (error) {
-			this.logger.warn('Failed to register instance', {
-				instanceKey: registration.instanceKey,
-				error: ensureError(error).message,
-			});
-		}
+		await this.upsertRegistration(registration, 'register');
 	}
 
 	async heartbeat(registration: InstanceRegistration): Promise<void> {
-		try {
-			await this.redisClient.eval(
-				REGISTER_SCRIPT,
-				2,
-				this.instanceKey(registration.instanceKey),
-				this.membershipSetKey(),
-				jsonStringify(registration),
-				String(REGISTRY_CONSTANTS.REGISTRATION_TTL_SECONDS),
-			);
-		} catch (error) {
-			this.logger.warn('Failed to heartbeat instance', {
-				instanceKey: registration.instanceKey,
-				error: ensureError(error).message,
-			});
-		}
+		await this.upsertRegistration(registration, 'heartbeat');
 	}
 
 	async unregister(instanceKey: string): Promise<void> {
@@ -92,14 +64,21 @@ export class RedisInstanceStorage implements InstanceStorage {
 
 			return results
 				.map((json) => {
-					const parsed = instanceRegistrationSchema.safeParse(jsonParse(json));
-					if (!parsed.success) {
-						this.logger.warn('Skipping invalid registration entry', {
-							error: parsed.error.message,
+					try {
+						const parsed = instanceRegistrationSchema.safeParse(jsonParse(json));
+						if (!parsed.success) {
+							this.logger.warn('Skipping invalid registration entry', {
+								error: parsed.error.message,
+							});
+							return null;
+						}
+						return parsed.data;
+					} catch (error) {
+						this.logger.warn('Skipping malformed registration entry', {
+							error: ensureError(error).message,
 						});
 						return null;
 					}
-					return parsed.data;
 				})
 				.filter((r): r is InstanceRegistration => r !== null);
 		} catch (error) {
@@ -192,6 +171,31 @@ export class RedisInstanceStorage implements InstanceStorage {
 				error: ensureError(error).message,
 			});
 			return 0;
+		}
+	}
+
+	async destroy(): Promise<void> {
+		this.redisClient.disconnect();
+	}
+
+	private async upsertRegistration(
+		registration: InstanceRegistration,
+		operation: string,
+	): Promise<void> {
+		try {
+			await this.redisClient.eval(
+				REGISTER_SCRIPT,
+				2,
+				this.instanceKey(registration.instanceKey),
+				this.membershipSetKey(),
+				jsonStringify(registration),
+				String(REGISTRY_CONSTANTS.REGISTRATION_TTL_SECONDS),
+			);
+		} catch (error) {
+			this.logger.warn(`Failed to ${operation} instance`, {
+				instanceKey: registration.instanceKey,
+				error: ensureError(error).message,
+			});
 		}
 	}
 
