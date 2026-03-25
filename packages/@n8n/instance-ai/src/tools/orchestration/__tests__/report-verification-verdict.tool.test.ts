@@ -2,6 +2,15 @@ import type { OrchestrationContext, TaskStorage } from '../../../types';
 import type { WorkflowLoopAction } from '../../../workflow-loop/workflow-loop-state';
 import { createReportVerificationVerdictTool } from '../report-verification-verdict.tool';
 
+function createWorkflowTaskService(reportVerificationVerdict = jest.fn()) {
+	return {
+		reportBuildOutcome: jest.fn(),
+		reportVerificationVerdict,
+		getBuildOutcome: jest.fn(),
+		updateBuildOutcome: jest.fn(),
+	};
+}
+
 function createMockContext(overrides: Partial<OrchestrationContext> = {}): OrchestrationContext {
 	return {
 		threadId: 'test-thread',
@@ -38,7 +47,7 @@ const baseInput = {
 
 describe('report-verification-verdict tool', () => {
 	it('returns error when reportVerificationVerdict callback is not available', async () => {
-		const context = createMockContext({ reportVerificationVerdict: undefined });
+		const context = createMockContext({ workflowTaskService: undefined });
 		const tool = createReportVerificationVerdictTool(context);
 
 		const result = await tool.execute!(baseInput, {} as never);
@@ -53,7 +62,9 @@ describe('report-verification-verdict tool', () => {
 			summary: 'All good',
 		};
 		const reportVerificationVerdict = jest.fn().mockResolvedValue(doneAction);
-		const context = createMockContext({ reportVerificationVerdict });
+		const context = createMockContext({
+			workflowTaskService: createWorkflowTaskService(reportVerificationVerdict),
+		});
 		const tool = createReportVerificationVerdictTool(context);
 
 		const result = await tool.execute!(baseInput, {} as never);
@@ -72,7 +83,9 @@ describe('report-verification-verdict tool', () => {
 	it('returns verify guidance when action is verify', async () => {
 		const verifyAction: WorkflowLoopAction = { type: 'verify', workflowId: 'wf-123' };
 		const reportVerificationVerdict = jest.fn().mockResolvedValue(verifyAction);
-		const context = createMockContext({ reportVerificationVerdict });
+		const context = createMockContext({
+			workflowTaskService: createWorkflowTaskService(reportVerificationVerdict),
+		});
 		const tool = createReportVerificationVerdictTool(context);
 
 		const result = await tool.execute!(baseInput, {} as never);
@@ -90,7 +103,9 @@ describe('report-verification-verdict tool', () => {
 			patch: { url: 'https://example.com' },
 		};
 		const reportVerificationVerdict = jest.fn().mockResolvedValue(patchAction);
-		const context = createMockContext({ reportVerificationVerdict });
+		const context = createMockContext({
+			workflowTaskService: createWorkflowTaskService(reportVerificationVerdict),
+		});
 		const tool = createReportVerificationVerdictTool(context);
 
 		const result = await tool.execute!(
@@ -115,7 +130,9 @@ describe('report-verification-verdict tool', () => {
 			failureDetails: 'Missing connection between nodes',
 		};
 		const reportVerificationVerdict = jest.fn().mockResolvedValue(rebuildAction);
-		const context = createMockContext({ reportVerificationVerdict });
+		const context = createMockContext({
+			workflowTaskService: createWorkflowTaskService(reportVerificationVerdict),
+		});
 		const tool = createReportVerificationVerdictTool(context);
 
 		const result = await tool.execute!(
@@ -124,7 +141,8 @@ describe('report-verification-verdict tool', () => {
 		);
 
 		expect((result as { guidance: string }).guidance).toContain('REBUILD NEEDED');
-		expect((result as { guidance: string }).guidance).toContain('build-workflow-with-agent');
+		expect((result as { guidance: string }).guidance).toContain('plan');
+		expect((result as { guidance: string }).guidance).toContain('build-workflow');
 	});
 
 	it('returns blocked guidance when action is blocked', async () => {
@@ -133,7 +151,9 @@ describe('report-verification-verdict tool', () => {
 			reason: 'Repeated patch failure: TypeError',
 		};
 		const reportVerificationVerdict = jest.fn().mockResolvedValue(blockedAction);
-		const context = createMockContext({ reportVerificationVerdict });
+		const context = createMockContext({
+			workflowTaskService: createWorkflowTaskService(reportVerificationVerdict),
+		});
 		const tool = createReportVerificationVerdictTool(context);
 
 		const result = await tool.execute!(
@@ -152,7 +172,9 @@ describe('report-verification-verdict tool', () => {
 			summary: 'OK',
 		};
 		const reportVerificationVerdict = jest.fn().mockResolvedValue(doneAction);
-		const context = createMockContext({ reportVerificationVerdict });
+		const context = createMockContext({
+			workflowTaskService: createWorkflowTaskService(reportVerificationVerdict),
+		});
 		const tool = createReportVerificationVerdictTool(context);
 
 		await tool.execute!(

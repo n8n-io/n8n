@@ -519,8 +519,8 @@ onMounted(async () => {
 			credentialsStore.fetchCredentialTypes(false),
 			nodeTypesStore.getNodesInformation(nodeInfos),
 		]);
-	} catch {
-		// Credentials/node types may be unavailable but we continue.
+	} catch (error) {
+		console.warn('Failed to preload credentials/node types for Instance AI workflow setup', error);
 	}
 
 	// Load the AI-created workflow into workflowsStore so ParameterInputList
@@ -530,9 +530,8 @@ onMounted(async () => {
 		const workflowData = await fetchWorkflowApi(rootStore.restApiContext, props.workflowId);
 		previousWorkflow = { ...workflowsStore.workflow };
 		workflowsStore.setWorkflow(workflowData);
-	} catch {
-		// Workflow fetch failed — ParameterInputList won't have full context
-		// but basic credential selection still works.
+	} catch (error) {
+		console.warn('Failed to fetch workflow for Instance AI setup', error);
 	}
 
 	isStoreReady.value = true;

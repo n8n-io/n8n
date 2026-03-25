@@ -136,9 +136,8 @@ onMounted(async () => {
 			credentialsStore.fetchAllCredentials(),
 			credentialsStore.fetchCredentialTypes(false),
 		]);
-	} catch {
-		// Credentials will be unavailable in the dropdown but the user can
-		// still create new ones via the "Set up credential" button.
+	} catch (error) {
+		console.warn('Failed to preload credentials for Instance AI setup', error);
 	}
 
 	const firstIncomplete = props.credentialRequests.findIndex(

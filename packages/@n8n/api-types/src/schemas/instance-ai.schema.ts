@@ -93,7 +93,7 @@ export const runStartPayloadSchema = z.object({
 		.string()
 		.optional()
 		.describe(
-			'Stable ID across auto-follow-up runs within one user turn. When present, follow-up runs share this ID so the frontend merges them into one assistant message.',
+			'Stable ID for the assistant message group that owns this run. Used to reconnect live activity back to the correct assistant bubble.',
 		),
 });
 
@@ -228,6 +228,24 @@ export const workflowSetupNodeSchema = z.object({
 });
 export type InstanceAiWorkflowSetupNode = z.infer<typeof workflowSetupNodeSchema>;
 
+// ---------------------------------------------------------------------------
+// Task list schemas (lightweight checklist for multi-step work)
+// ---------------------------------------------------------------------------
+
+export const taskItemSchema = z.object({
+	id: z.string().describe('Unique task identifier'),
+	description: z.string().describe('What this task accomplishes'),
+	status: z.enum(['todo', 'in_progress', 'done', 'failed', 'cancelled']).describe('Current status'),
+});
+
+export type TaskItem = z.infer<typeof taskItemSchema>;
+
+export const taskListSchema = z.object({
+	tasks: z.array(taskItemSchema).describe('Ordered list of tasks'),
+});
+
+export type TaskList = z.infer<typeof taskListSchema>;
+
 export const confirmationRequestPayloadSchema = z.object({
 	requestId: z.string(),
 	toolCallId: z.string().describe('Correlates to the tool-call that needs approval'),
@@ -243,9 +261,27 @@ export const confirmationRequestPayloadSchema = z.object({
 			'Target project ID — used to scope actions (e.g. credential creation) to the correct project',
 		),
 	inputType: z
-		.enum(['approval', 'text'])
+		.enum(['approval', 'text', 'questions', 'plan-review'])
 		.optional()
-		.describe('UI mode: approval (default) shows approve/deny, text shows a text input'),
+		.describe(
+			'UI mode: approval (default) shows approve/deny, text shows a text input, ' +
+				'questions shows structured Q&A wizard, plan-review shows plan approval with feedback',
+		),
+	questions: z
+		.array(
+			z.object({
+				id: z.string(),
+				question: z.string(),
+				type: z.enum(['single', 'multi', 'text']),
+				options: z.array(z.string()).optional(),
+			}),
+		)
+		.optional()
+		.describe('Structured questions for the Q&A wizard (inputType=questions)'),
+	introMessage: z.string().optional().describe('Intro text shown above questions or plan review'),
+	tasks: taskListSchema
+		.optional()
+		.describe('Task checklist for plan review (inputType=plan-review)'),
 	domainAccess: domainAccessMetaSchema
 		.optional()
 		.describe('When present, renders domain-access approval UI instead of generic confirm'),
@@ -336,24 +372,6 @@ export const instanceAiFilesystemResponseSchema = z.object({
 	result: mcpToolCallResultSchema.optional(),
 	error: z.string().optional(),
 });
-
-// ---------------------------------------------------------------------------
-// Task list schemas (lightweight checklist for multi-step work)
-// ---------------------------------------------------------------------------
-
-export const taskItemSchema = z.object({
-	id: z.string().describe('Unique task identifier'),
-	description: z.string().describe('What this task accomplishes'),
-	status: z.enum(['todo', 'in_progress', 'done']).describe('Current status'),
-});
-
-export type TaskItem = z.infer<typeof taskItemSchema>;
-
-export const taskListSchema = z.object({
-	tasks: z.array(taskItemSchema).describe('Ordered list of tasks'),
-});
-
-export type TaskList = z.infer<typeof taskListSchema>;
 
 export const tasksUpdatePayloadSchema = z.object({
 	tasks: taskListSchema,
@@ -492,6 +510,12 @@ export interface InstanceAiConfirmResponse {
 	action?: 'apply' | 'test-trigger';
 	nodeParameters?: Record<string, Record<string, unknown>>;
 	testTriggerNode?: string;
+	answers?: Array<{
+		questionId: string;
+		selectedOptions: string[];
+		customText?: string;
+		skipped?: boolean;
+	}>;
 }
 
 // ---------------------------------------------------------------------------
@@ -512,11 +536,19 @@ export interface InstanceAiToolCallState {
 		message: string;
 		credentialRequests?: InstanceAiCredentialRequest[];
 		projectId?: string;
-		inputType?: 'approval' | 'text';
+		inputType?: 'approval' | 'text' | 'questions' | 'plan-review';
 		domainAccess?: DomainAccessMeta;
 		credentialFlow?: InstanceAiCredentialFlow;
 		setupRequests?: InstanceAiWorkflowSetupNode[];
 		workflowId?: string;
+		questions?: Array<{
+			id: string;
+			question: string;
+			type: 'single' | 'multi' | 'text';
+			options?: string[];
+		}>;
+		introMessage?: string;
+		tasks?: TaskList;
 	};
 	confirmationStatus?: 'pending' | 'approved' | 'denied';
 	startedAt?: string;
@@ -647,7 +679,7 @@ export interface InstanceAiRichMessagesResponse {
 }
 
 // ---------------------------------------------------------------------------
-// Thread status response (background task visibility)
+// Thread status response (detached task visibility)
 // ---------------------------------------------------------------------------
 
 export interface InstanceAiThreadStatusResponse {
@@ -779,11 +811,18 @@ export interface InstanceAiModelCredential {
 	provider: string;
 }
 
+const BUILDER_RENDER_HINT_TOOLS = new Set(['build-workflow-with-agent', 'workflow-build-flow']);
+const DATA_TABLE_RENDER_HINT_TOOLS = new Set([
+	'manage-data-tables-with-agent',
+	'agent-data-table-manager',
+]);
+const RESEARCH_RENDER_HINT_TOOLS = new Set(['research-with-agent']);
+
 export function getRenderHint(toolName: string): InstanceAiToolCallState['renderHint'] {
 	if (toolName === 'update-tasks') return 'tasks';
 	if (toolName === 'delegate') return 'delegate';
-	if (toolName === 'build-workflow-with-agent') return 'builder';
-	if (toolName === 'manage-data-tables-with-agent') return 'data-table';
-	if (toolName === 'research-with-agent') return 'researcher';
+	if (BUILDER_RENDER_HINT_TOOLS.has(toolName)) return 'builder';
+	if (DATA_TABLE_RENDER_HINT_TOOLS.has(toolName)) return 'data-table';
+	if (RESEARCH_RENDER_HINT_TOOLS.has(toolName)) return 'researcher';
 	return 'default';
 }

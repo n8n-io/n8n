@@ -5,7 +5,9 @@ import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { useInstanceAiStore } from '../instanceAi.store';
+import { getRenderableAgentResult } from '../agentResult';
 import AgentTimeline from './AgentTimeline.vue';
+import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 
 const props = defineProps<{
 	agentNode: InstanceAiAgentNode;
@@ -68,6 +70,7 @@ const isError = computed(() => props.agentNode.status === 'error');
 const isCompleted = computed(
 	() => props.agentNode.status === 'completed' || props.agentNode.status === 'cancelled',
 );
+const displayResult = computed(() => getRenderableAgentResult(props.agentNode));
 
 const allToolCallsDone = computed(
 	() =>
@@ -146,6 +149,10 @@ const headerTitle = computed(() => {
 		<div v-if="isCompleted && !isError" :class="$style.successResult">
 			<N8nIcon icon="check" size="small" :class="$style.successIcon" />
 			<span>{{ i18n.baseText('instanceAi.researchCard.complete') }}</span>
+		</div>
+
+		<div v-if="displayResult && !props.agentNode.error" :class="$style.resultBlock">
+			<InstanceAiMarkdown :content="displayResult" />
 		</div>
 
 		<!-- Error -->
@@ -269,6 +276,13 @@ const headerTitle = computed(() => {
 	background: color-mix(in srgb, var(--color--success) 10%, var(--color--background));
 	font-size: var(--font-size--2xs);
 	color: var(--color--success);
+}
+
+.resultBlock {
+	padding: var(--spacing--xs);
+	border-top: var(--border);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text);
 }
 
 .errorResult {

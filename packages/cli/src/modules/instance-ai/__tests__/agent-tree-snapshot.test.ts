@@ -1,6 +1,13 @@
 import type { InstanceAiAgentNode } from '@n8n/api-types';
 
-import { AgentTreeSnapshotStorage } from '../agent-tree-snapshot';
+const {
+	AgentTreeSnapshotStorage,
+} = require('../../../../../@n8n/instance-ai/src/storage/agent-tree-snapshot');
+
+interface MockMemory {
+	getThreadById: jest.Mock;
+	updateThread: jest.Mock;
+}
 
 function makeTree(overrides?: Partial<InstanceAiAgentNode>): InstanceAiAgentNode {
 	return {
@@ -18,29 +25,34 @@ function makeTree(overrides?: Partial<InstanceAiAgentNode>): InstanceAiAgentNode
 
 function createMockMemory(threadMetadata: Record<string, unknown> = {}) {
 	const storedMetadata: { current: Record<string, unknown> } = { current: { ...threadMetadata } };
+	const memory: MockMemory = {
+		getThreadById: jest.fn().mockImplementation(async () => ({
+			id: 'thread-1',
+			title: 'Test Thread',
+			resourceId: 'user-1',
+			metadata: storedMetadata.current,
+			createdAt: new Date(),
+			updatedAt: new Date(),
+		})),
+		updateThread: jest.fn().mockImplementation(async ({ metadata }) => {
+			storedMetadata.current = metadata;
+		}),
+	};
 	return {
-		memory: {
-			getThreadById: jest.fn().mockImplementation(async () => ({
-				id: 'thread-1',
-				title: 'Test Thread',
-				resourceId: 'user-1',
-				metadata: storedMetadata.current,
-				createdAt: new Date(),
-				updatedAt: new Date(),
-			})),
-			updateThread: jest.fn().mockImplementation(async ({ metadata }) => {
-				storedMetadata.current = metadata;
-			}),
-		} as unknown as ConstructorParameters<typeof AgentTreeSnapshotStorage>[0],
+		memory,
 		storedMetadata,
 	};
+}
+
+function createStorage(memory: MockMemory) {
+	return new AgentTreeSnapshotStorage(memory as never);
 }
 
 describe('AgentTreeSnapshotStorage', () => {
 	describe('save', () => {
 		it('should append a snapshot to thread metadata', async () => {
 			const { memory } = createMockMemory();
-			const storage = new AgentTreeSnapshotStorage(memory);
+			const storage = createStorage(memory);
 			const tree = makeTree();
 
 			await storage.save('thread-1', tree, 'run_1');
@@ -60,12 +72,12 @@ describe('AgentTreeSnapshotStorage', () => {
 			const { memory } = createMockMemory({
 				instanceAiRunSnapshots: [{ tree: existingTree, runId: 'run_1' }],
 			});
-			const storage = new AgentTreeSnapshotStorage(memory);
+			const storage = createStorage(memory);
 			const newTree = makeTree({ textContent: 'Second' });
 
 			await storage.save('thread-1', newTree, 'run_2');
 
-			const savedMetadata = (memory.updateThread as jest.Mock).mock.calls[0][0].metadata;
+			const savedMetadata = memory.updateThread.mock.calls[0][0].metadata;
 			expect(savedMetadata.instanceAiRunSnapshots).toHaveLength(2);
 			expect(savedMetadata.instanceAiRunSnapshots[0].runId).toBe('run_1');
 			expect(savedMetadata.instanceAiRunSnapshots[1].runId).toBe('run_2');
@@ -75,8 +87,8 @@ describe('AgentTreeSnapshotStorage', () => {
 			const memory = {
 				getThreadById: jest.fn().mockResolvedValue(null),
 				updateThread: jest.fn(),
-			} as unknown as ConstructorParameters<typeof AgentTreeSnapshotStorage>[0];
-			const storage = new AgentTreeSnapshotStorage(memory);
+			} as MockMemory;
+			const storage = createStorage(memory);
 
 			await storage.save('nonexistent', makeTree(), 'run_1');
 
@@ -89,12 +101,12 @@ describe('AgentTreeSnapshotStorage', () => {
 			const { memory } = createMockMemory({
 				instanceAiRunSnapshots: [{ tree: makeTree({ textContent: 'Old' }), runId: 'run_1' }],
 			});
-			const storage = new AgentTreeSnapshotStorage(memory);
+			const storage = createStorage(memory);
 			const updatedTree = makeTree({ textContent: 'Updated' });
 
 			await storage.updateLast('thread-1', updatedTree, 'run_1');
 
-			const savedMetadata = (memory.updateThread as jest.Mock).mock.calls[0][0].metadata;
+			const savedMetadata = memory.updateThread.mock.calls[0][0].metadata;
 			expect(savedMetadata.instanceAiRunSnapshots).toHaveLength(1);
 			expect(savedMetadata.instanceAiRunSnapshots[0].tree.textContent).toBe('Updated');
 		});
@@ -103,11 +115,11 @@ describe('AgentTreeSnapshotStorage', () => {
 			const { memory } = createMockMemory({
 				instanceAiRunSnapshots: [{ tree: makeTree(), runId: 'run_1' }],
 			});
-			const storage = new AgentTreeSnapshotStorage(memory);
+			const storage = createStorage(memory);
 
 			await storage.updateLast('thread-1', makeTree(), 'run_unknown');
 
-			const savedMetadata = (memory.updateThread as jest.Mock).mock.calls[0][0].metadata;
+			const savedMetadata = memory.updateThread.mock.calls[0][0].metadata;
 			expect(savedMetadata.instanceAiRunSnapshots).toHaveLength(2);
 			expect(savedMetadata.instanceAiRunSnapshots[1].runId).toBe('run_unknown');
 		});
@@ -119,7 +131,7 @@ describe('AgentTreeSnapshotStorage', () => {
 			const { memory } = createMockMemory({
 				instanceAiRunSnapshots: [{ tree, runId: 'run_1' }],
 			});
-			const storage = new AgentTreeSnapshotStorage(memory);
+			const storage = createStorage(memory);
 
 			const result = await storage.getAll('thread-1');
 
@@ -130,7 +142,7 @@ describe('AgentTreeSnapshotStorage', () => {
 
 		it('should return empty array when no snapshots exist', async () => {
 			const { memory } = createMockMemory({});
-			const storage = new AgentTreeSnapshotStorage(memory);
+			const storage = createStorage(memory);
 
 			const result = await storage.getAll('thread-1');
 
@@ -141,8 +153,8 @@ describe('AgentTreeSnapshotStorage', () => {
 			const memory = {
 				getThreadById: jest.fn().mockResolvedValue(null),
 				updateThread: jest.fn(),
-			} as unknown as ConstructorParameters<typeof AgentTreeSnapshotStorage>[0];
-			const storage = new AgentTreeSnapshotStorage(memory);
+			} as MockMemory;
+			const storage = createStorage(memory);
 
 			const result = await storage.getAll('nonexistent');
 
@@ -153,7 +165,7 @@ describe('AgentTreeSnapshotStorage', () => {
 			const { memory } = createMockMemory({
 				instanceAiRunSnapshots: 'not-an-array',
 			});
-			const storage = new AgentTreeSnapshotStorage(memory);
+			const storage = createStorage(memory);
 
 			const result = await storage.getAll('thread-1');
 
@@ -164,11 +176,11 @@ describe('AgentTreeSnapshotStorage', () => {
 	describe('messageGroupId and runIds persistence', () => {
 		it('save persists messageGroupId and runIds', async () => {
 			const { memory } = createMockMemory();
-			const storage = new AgentTreeSnapshotStorage(memory);
+			const storage = createStorage(memory);
 
 			await storage.save('thread-1', makeTree(), 'run_2', 'mg_1', ['run_1', 'run_2']);
 
-			const saved = (memory.updateThread as jest.Mock).mock.calls[0][0].metadata;
+			const saved = memory.updateThread.mock.calls[0][0].metadata;
 			expect(saved.instanceAiRunSnapshots[0].messageGroupId).toBe('mg_1');
 			expect(saved.instanceAiRunSnapshots[0].runIds).toEqual(['run_1', 'run_2']);
 		});
@@ -184,7 +196,7 @@ describe('AgentTreeSnapshotStorage', () => {
 					},
 				],
 			});
-			const storage = new AgentTreeSnapshotStorage(memory);
+			const storage = createStorage(memory);
 
 			// Follow-up run updates the snapshot — new runId but same messageGroupId
 			await storage.updateLast('thread-1', makeTree({ textContent: 'Updated' }), 'run_2', 'mg_1', [
@@ -192,7 +204,7 @@ describe('AgentTreeSnapshotStorage', () => {
 				'run_2',
 			]);
 
-			const saved = (memory.updateThread as jest.Mock).mock.calls[0][0].metadata;
+			const saved = memory.updateThread.mock.calls[0][0].metadata;
 			expect(saved.instanceAiRunSnapshots).toHaveLength(1);
 			expect(saved.instanceAiRunSnapshots[0].runId).toBe('run_2');
 			expect(saved.instanceAiRunSnapshots[0].messageGroupId).toBe('mg_1');
@@ -216,7 +228,7 @@ describe('AgentTreeSnapshotStorage', () => {
 					},
 				],
 			});
-			const storage = new AgentTreeSnapshotStorage(memory);
+			const storage = createStorage(memory);
 
 			await storage.updateLast(
 				'thread-1',
@@ -226,7 +238,7 @@ describe('AgentTreeSnapshotStorage', () => {
 				['run_1', 'run_2', 'run_3'],
 			);
 
-			const saved = (memory.updateThread as jest.Mock).mock.calls[0][0].metadata;
+			const saved = memory.updateThread.mock.calls[0][0].metadata;
 			expect(saved.instanceAiRunSnapshots).toHaveLength(2);
 			expect(saved.instanceAiRunSnapshots[0].tree.textContent).toBe('First');
 			expect(saved.instanceAiRunSnapshots[1].tree.textContent).toBe('Updated newest');
@@ -240,7 +252,7 @@ describe('AgentTreeSnapshotStorage', () => {
 					{ tree: makeTree(), runId: 'run_2', messageGroupId: 'mg_1', runIds: ['run_1', 'run_2'] },
 				],
 			});
-			const storage = new AgentTreeSnapshotStorage(memory);
+			const storage = createStorage(memory);
 
 			const result = await storage.getAll('thread-1');
 
