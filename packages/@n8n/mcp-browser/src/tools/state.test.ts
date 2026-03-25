@@ -417,38 +417,4 @@ describe('createStateTools', () => {
 			});
 		});
 	});
-
-	// -----------------------------------------------------------------------
-	// browser_set_device
-	// -----------------------------------------------------------------------
-
-	describe('browser_set_device', () => {
-		const getTool = () => findTool(tools, 'browser_set_device');
-
-		describe('metadata', () => {
-			it('has the correct name', () => {
-				expect(getTool().name).toBe('browser_set_device');
-			});
-		});
-
-		describe('inputSchema validation', () => {
-			it('requires device string', () => {
-				expect(() => getTool().inputSchema.parse({ device: 'iPhone 14' })).not.toThrow();
-			});
-
-			it('rejects missing device', () => {
-				expect(() => getTool().inputSchema.parse({})).toThrow();
-			});
-		});
-
-		describe('execute', () => {
-			it('sets device emulation', async () => {
-				const result = await getTool().execute({ device: 'Pixel 7' }, TOOL_CONTEXT);
-				const data = structuredOf(result);
-
-				expect(mockConnection.adapter.setDevice).toHaveBeenCalledWith('page1', { name: 'Pixel 7' });
-				expect(data.device).toBe('Pixel 7');
-			});
-		});
-	});
 });

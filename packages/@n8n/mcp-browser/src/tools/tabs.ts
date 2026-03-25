@@ -60,7 +60,9 @@ function tabList(connection: BrowserConnection): ToolDefinition {
 		'List all browser tabs currently controlled.',
 		tabListSchema,
 		async (state) => {
-			const pages = await state.adapter.listPages();
+			// Two-tier model: listTabs() returns metadata from the relay (all tabs,
+			// including those without Playwright page objects yet).
+			const pages = await state.adapter.listTabs();
 			return formatCallToolResult({
 				pages: pages.map((p) => ({
 					...p,
@@ -84,7 +86,7 @@ function tabFocus(connection: BrowserConnection): ToolDefinition {
 	return createConnectedTool(
 		connection,
 		'browser_tab_focus',
-		'Switch the active tab.',
+		'Switch the active tab. Note: focusing is not required to interact with a tab — you can interact with any tab regardless of focus.',
 		tabFocusSchema,
 		async (state, input) => {
 			// Verify page exists by listing
@@ -109,32 +111,28 @@ const tabCloseSchema = z.object({
 const tabCloseOutputSchema = z.object({
 	closed: z.boolean(),
 	pageId: z.string(),
-	disconnected: z.boolean(),
 });
 
 function tabClose(connection: BrowserConnection): ToolDefinition {
 	return createConnectedTool(
 		connection,
 		'browser_tab_close',
-		'Close a tab. If it is the last tab, the browser is also disconnected.',
+		'Close a tab.',
 		tabCloseSchema,
 		async (state, input) => {
 			await state.adapter.closePage(input.pageId);
 			state.pages.delete(input.pageId);
 
-			const remainingPages = await state.adapter.listPages();
-			let disconnected = false;
-
-			if (remainingPages.length === 0) {
-				await connection.disconnect();
-				disconnected = true;
-			} else if (state.activePageId === input.pageId) {
-				// Switch to most recently available page
-				state.activePageId = remainingPages[remainingPages.length - 1].id;
+			// Switch active page if we just closed the active one
+			if (state.activePageId === input.pageId) {
+				const remainingTabs = await state.adapter.listTabs();
+				state.activePageId =
+					remainingTabs.length > 0 ? remainingTabs[remainingTabs.length - 1].id : '';
 			}
 
-			return formatCallToolResult({ closed: true, pageId: input.pageId, disconnected });
+			return formatCallToolResult({ closed: true, pageId: input.pageId });
 		},
 		tabCloseOutputSchema,
+		{ skipEnrichment: true },
 	);
 }

@@ -9,7 +9,7 @@ import type {
 	Request,
 	Response,
 } from 'playwright-core';
-import { chromium, devices } from 'playwright-core';
+import { chromium } from 'playwright-core';
 
 import { CDPRelayServer } from '../cdp-relay';
 import {
@@ -24,7 +24,6 @@ import type {
 	ConnectConfig,
 	ConsoleEntry,
 	Cookie,
-	DeviceDescriptor,
 	ElementTarget,
 	ErrorEntry,
 	ModalState,
@@ -95,6 +94,8 @@ export class PlaywrightAdapter {
 	private context?: BrowserContext;
 	private pageStates = new Map<string, PageState>();
 	private relay?: CDPRelayServer;
+	/** Pending activation: set by ensurePage(), consumed by context.on('page'). */
+	private pendingActivation?: { id: string; resolve: (page: Page) => void };
 
 	constructor(config: ResolvedConfig) {
 		this.resolvedConfig = config;
@@ -146,28 +147,30 @@ export class PlaywrightAdapter {
 		this.browser = await chromium.connectOverCDP(cdpEndpoint);
 		const contexts = this.browser.contexts();
 		log.debug('browser contexts:', contexts.length);
-		this.context = contexts[0] ?? (await this.browser.newContext({ viewport: config.viewport }));
+		this.context = contexts[0] ?? (await this.browser.newContext());
 
-		// Set up initial pages
-		const pages = this.context.pages();
-		log.debug('initial pages:', pages.length);
-		if (pages.length > 0) {
-			for (const page of pages) {
-				this.trackPage(page);
-			}
-		} else {
-			const page = await this.context.newPage();
-			this.trackPage(page);
-		}
-
-		// Listen for new pages opened by the browser
+		// Two-tier model: pages are created lazily via ensurePage().
+		// When ensurePage() triggers activateTab(), it sets pendingActivation
+		// so we know which ID to assign to the incoming Page object.
 		this.context.on('page', (page: Page) => {
+			if (this.pendingActivation) {
+				const { id, resolve } = this.pendingActivation;
+				this.pendingActivation = undefined;
+				log.debug('page event: consumed pendingActivation, id =', id);
+				if (!this.pageStates.has(id)) {
+					this.trackPage(page, id);
+				}
+				resolve(page);
+				return;
+			}
+			// Fallback: page appeared without a pending activation (e.g. popup)
+			log.debug('page event: no pendingActivation, assigning random id');
 			if (!this.findPageState(page)) {
 				this.trackPage(page);
 			}
 		});
 
-		log.debug('launch complete, tracking', this.pageStates.size, 'pages');
+		log.debug('launch complete, context ready for lazy activation');
 	}
 
 	async close(): Promise<void> {
@@ -193,8 +196,12 @@ export class PlaywrightAdapter {
 	// =========================================================================
 
 	async newPage(url?: string): Promise<PageInfo> {
+		log.debug('newPage: creating page, url =', url ?? '(none)');
 		const page = await this.requireContext().newPage();
-		const state = this.trackPage(page);
+		// The relay assigned an ID during Target.createTarget → createTab()
+		const tabId = this.relay?.getLastCreatedTabId();
+		log.debug('newPage: relay tabId =', tabId);
+		const state = this.findPageState(page) ?? this.trackPage(page, tabId);
 
 		if (url) {
 			await page.goto(url, { waitUntil: 'load' });
@@ -206,13 +213,19 @@ export class PlaywrightAdapter {
 	}
 
 	async closePage(pageId: string): Promise<void> {
-		const state = this.requirePage(pageId);
+		// Clean up local Playwright state if tracked (may not be if never activated)
 		this.pageStates.delete(pageId);
-		await state.page.close();
+
+		// Close via relay → extension → chrome.tabs.remove.
+		// The relay sends Target.detachedFromTarget to Playwright, which internally
+		// cleans up the Page object and fires the 'close' event.
+		if (this.relay) {
+			await this.relay.closeTab(pageId);
+		}
 	}
 
 	async focusPage(pageId: string): Promise<void> {
-		const state = this.requirePage(pageId);
+		const state = await this.ensurePage(pageId);
 		await state.page.bringToFront();
 	}
 
@@ -232,24 +245,39 @@ export class PlaywrightAdapter {
 	}
 
 	/**
-	 * Two-tier model: listTabs() returns metadata from the relay (no debugger
+	 * Two-tier model: listTabs() returns metadata from the relay cache (no debugger
 	 * attachment). Falls back to listPages() when no relay is available.
 	 */
 	async listTabs(): Promise<PageInfo[]> {
 		if (this.relay) {
-			const tabs = await this.relay.listTabs();
-			return tabs.map((t) => ({
-				id: String(t.tabId),
+			const tabs = (await this.relay.listTabs()).map((t) => ({
+				id: t.id,
 				title: t.title,
 				url: t.url,
 			}));
+			log.debug('listTabs: relay returned', tabs.length, 'tabs');
+			return tabs;
 		}
-		return await this.listPages();
+		const pages = await this.listPages();
+		log.debug('listTabs: fallback to listPages, returned', pages.length, 'pages');
+		return pages;
 	}
 
 	/** Return the session IDs of all currently tracked pages. */
 	listTabSessionIds(): string[] {
 		return Array.from(this.pageStates.keys());
+	}
+
+	/** Return IDs of all known tabs (relay cache + local pages). */
+	async listTabIds(): Promise<string[]> {
+		if (this.relay) {
+			const tabs = await this.relay.listTabs();
+			log.debug(`listTabIds: relay returned ${tabs.length} tab(s)`);
+			return tabs.map((t) => t.id);
+		}
+		const ids = this.listTabSessionIds();
+		log.debug(`listTabIds: fallback to pageStates, ${ids.length} page(s)`);
+		return ids;
 	}
 
 	// =========================================================================
@@ -261,7 +289,7 @@ export class PlaywrightAdapter {
 		url: string,
 		waitUntil: 'load' | 'domcontentloaded' | 'networkidle' = 'load',
 	): Promise<NavigateResult> {
-		const { page } = this.requirePage(pageId);
+		const { page } = await this.ensurePage(pageId);
 		const response = await page.goto(url, { waitUntil });
 		return {
 			title: await page.title(),
@@ -271,13 +299,13 @@ export class PlaywrightAdapter {
 	}
 
 	async back(pageId: string): Promise<NavigateResult> {
-		const { page } = this.requirePage(pageId);
+		const { page } = await this.ensurePage(pageId);
 		await page.goBack({ waitUntil: 'load' });
 		return { title: await page.title(), url: page.url(), status: 0 };
 	}
 
 	async forward(pageId: string): Promise<NavigateResult> {
-		const { page } = this.requirePage(pageId);
+		const { page } = await this.ensurePage(pageId);
 		await page.goForward({ waitUntil: 'load' });
 		return { title: await page.title(), url: page.url(), status: 0 };
 	}
@@ -286,7 +314,7 @@ export class PlaywrightAdapter {
 		pageId: string,
 		waitUntil: 'load' | 'domcontentloaded' | 'networkidle' = 'load',
 	): Promise<NavigateResult> {
-		const { page } = this.requirePage(pageId);
+		const { page } = await this.ensurePage(pageId);
 		const response = await page.reload({ waitUntil });
 		return {
 			title: await page.title(),
@@ -300,6 +328,7 @@ export class PlaywrightAdapter {
 	// =========================================================================
 
 	async click(pageId: string, target: ElementTarget, options?: ClickOptions): Promise<void> {
+		await this.ensurePage(pageId);
 		const locator = await this.resolveLocator(pageId, target);
 		await locator.click({
 			button: options?.button,
@@ -314,6 +343,7 @@ export class PlaywrightAdapter {
 		text: string,
 		options?: TypeOptions,
 	): Promise<void> {
+		await this.ensurePage(pageId);
 		const locator = await this.resolveLocator(pageId, target);
 
 		if (options?.clear) {
@@ -328,28 +358,31 @@ export class PlaywrightAdapter {
 	}
 
 	async select(pageId: string, target: ElementTarget, values: string[]): Promise<string[]> {
+		await this.ensurePage(pageId);
 		const locator = await this.resolveLocator(pageId, target);
 		return await locator.selectOption(values);
 	}
 
 	async hover(pageId: string, target: ElementTarget): Promise<void> {
+		await this.ensurePage(pageId);
 		const locator = await this.resolveLocator(pageId, target);
 		await locator.hover();
 	}
 
 	async press(pageId: string, keys: string): Promise<void> {
-		const { page } = this.requirePage(pageId);
+		const { page } = await this.ensurePage(pageId);
 		await page.keyboard.press(keys);
 	}
 
 	async drag(pageId: string, from: ElementTarget, to: ElementTarget): Promise<void> {
+		await this.ensurePage(pageId);
 		const fromLocator = await this.resolveLocator(pageId, from);
 		const toLocator = await this.resolveLocator(pageId, to);
 		await fromLocator.dragTo(toLocator);
 	}
 
 	async scroll(pageId: string, target?: ElementTarget, options?: ScrollOptions): Promise<void> {
-		const { page } = this.requirePage(pageId);
+		const { page } = await this.ensurePage(pageId);
 
 		if (target) {
 			const locator = await this.resolveLocator(pageId, target);
@@ -362,7 +395,7 @@ export class PlaywrightAdapter {
 	}
 
 	async upload(pageId: string, target: ElementTarget | undefined, files: string[]): Promise<void> {
-		const state = this.requirePage(pageId);
+		const state = await this.ensurePage(pageId);
 
 		// If a file chooser dialog is pending, use it directly
 		if (state.pendingFileChooser) {
@@ -380,7 +413,7 @@ export class PlaywrightAdapter {
 	}
 
 	async dialog(pageId: string, action: 'accept' | 'dismiss', text?: string): Promise<string> {
-		const state = this.requirePage(pageId);
+		const state = await this.ensurePage(pageId);
 
 		// If a dialog is already pending, handle it immediately
 		if (state.pendingDialog) {
@@ -426,7 +459,7 @@ export class PlaywrightAdapter {
 		target?: ElementTarget,
 		options?: ScreenshotOptions,
 	): Promise<string> {
-		const { page } = this.requirePage(pageId);
+		const { page } = await this.ensurePage(pageId);
 
 		let buffer: Buffer;
 		if (target) {
@@ -443,7 +476,7 @@ export class PlaywrightAdapter {
 	}
 
 	async snapshot(pageId: string, target?: ElementTarget): Promise<SnapshotResult> {
-		const { page } = this.requirePage(pageId);
+		const { page } = await this.ensurePage(pageId);
 
 		// Use Playwright's internal _snapshotForAI API which returns a YAML
 		// accessibility tree with [ref=eN] annotations on interactive elements.
@@ -471,7 +504,7 @@ export class PlaywrightAdapter {
 	}
 
 	async getText(pageId: string, target?: ElementTarget): Promise<string> {
-		const { page } = this.requirePage(pageId);
+		const { page } = await this.ensurePage(pageId);
 
 		if (target) {
 			const locator = await this.resolveLocator(pageId, target);
@@ -482,13 +515,12 @@ export class PlaywrightAdapter {
 	}
 
 	async evaluate(pageId: string, script: string): Promise<unknown> {
-		const { page } = this.requirePage(pageId);
+		const { page } = await this.ensurePage(pageId);
 		return await page.evaluate(script);
 	}
 
-	// eslint-disable-next-line @typescript-eslint/require-await
 	async getConsole(pageId: string, level?: string, clear?: boolean): Promise<ConsoleEntry[]> {
-		const state = this.requirePage(pageId);
+		const state = await this.ensurePage(pageId);
 
 		// Merge page errors into console entries as level: 'error'
 		let entries: ConsoleEntry[] = [
@@ -516,7 +548,9 @@ export class PlaywrightAdapter {
 	}
 
 	getConsoleSummary(pageId: string): { errors: number; warnings: number } {
-		const state = this.requirePage(pageId);
+		// Sync — only works for already-activated pages. Returns zeros for unactivated tabs.
+		const state = this.pageStates.get(pageId);
+		if (!state) return { errors: 0, warnings: 0 };
 		const consoleErrors = state.consoleBuffer.filter((e) => e.level === 'error').length;
 		const pageErrors = state.errorBuffer.length;
 		const warnings = state.consoleBuffer.filter((e) => e.level === 'warning').length;
@@ -527,7 +561,7 @@ export class PlaywrightAdapter {
 		pageId: string,
 		options?: { format?: string; landscape?: boolean },
 	): Promise<{ data: string; pages: number }> {
-		const { page } = this.requirePage(pageId);
+		const { page } = await this.ensurePage(pageId);
 		const buffer = await page.pdf({
 			format: (options?.format as 'A4' | 'Letter' | 'Legal') ?? 'A4',
 			landscape: options?.landscape,
@@ -537,9 +571,8 @@ export class PlaywrightAdapter {
 		return { data, pages: 1 };
 	}
 
-	// eslint-disable-next-line @typescript-eslint/require-await
 	async getNetwork(pageId: string, filter?: string, clear?: boolean): Promise<NetworkEntry[]> {
-		const state = this.requirePage(pageId);
+		const state = await this.ensurePage(pageId);
 		let entries = [...state.networkBuffer];
 
 		if (filter) {
@@ -559,7 +592,7 @@ export class PlaywrightAdapter {
 	// =========================================================================
 
 	async wait(pageId: string, options: WaitOptions): Promise<number> {
-		const { page } = this.requirePage(pageId);
+		const { page } = await this.ensurePage(pageId);
 		const start = Date.now();
 		const timeout = options.timeoutMs ?? 30_000;
 
@@ -596,7 +629,7 @@ export class PlaywrightAdapter {
 	// =========================================================================
 
 	async getCookies(pageId: string, url?: string): Promise<Cookie[]> {
-		this.requirePage(pageId);
+		await this.ensurePage(pageId);
 		const context = this.requireContext();
 		const cookies = url ? await context.cookies(url) : await context.cookies();
 
@@ -613,7 +646,7 @@ export class PlaywrightAdapter {
 	}
 
 	async setCookies(pageId: string, cookies: Cookie[]): Promise<void> {
-		this.requirePage(pageId);
+		await this.ensurePage(pageId);
 		const context = this.requireContext();
 		await context.addCookies(
 			cookies.map((c) => ({
@@ -630,12 +663,12 @@ export class PlaywrightAdapter {
 	}
 
 	async clearCookies(pageId: string): Promise<void> {
-		this.requirePage(pageId);
+		await this.ensurePage(pageId);
 		await this.requireContext().clearCookies();
 	}
 
 	async getStorage(pageId: string, kind: 'local' | 'session'): Promise<Record<string, string>> {
-		const { page } = this.requirePage(pageId);
+		const { page } = await this.ensurePage(pageId);
 		const storageObj = kind === 'local' ? 'localStorage' : 'sessionStorage';
 		return await page.evaluate((s) => {
 			const storage = s === 'localStorage' ? localStorage : sessionStorage;
@@ -653,7 +686,7 @@ export class PlaywrightAdapter {
 		kind: 'local' | 'session',
 		data: Record<string, string>,
 	): Promise<void> {
-		const { page } = this.requirePage(pageId);
+		const { page } = await this.ensurePage(pageId);
 		await page.evaluate(
 			({ kind: k, data: d }) => {
 				const storage = k === 'local' ? localStorage : sessionStorage;
@@ -666,7 +699,7 @@ export class PlaywrightAdapter {
 	}
 
 	async clearStorage(pageId: string, kind: 'local' | 'session'): Promise<void> {
-		const { page } = this.requirePage(pageId);
+		const { page } = await this.ensurePage(pageId);
 		await page.evaluate((k) => {
 			const storage = k === 'local' ? localStorage : sessionStorage;
 			storage.clear();
@@ -674,12 +707,12 @@ export class PlaywrightAdapter {
 	}
 
 	async setOffline(pageId: string, offline: boolean): Promise<void> {
-		this.requirePage(pageId);
+		await this.ensurePage(pageId);
 		await this.requireContext().setOffline(offline);
 	}
 
 	async setHeaders(pageId: string, headers: Record<string, string>): Promise<void> {
-		this.requirePage(pageId);
+		await this.ensurePage(pageId);
 		await this.requireContext().setExtraHTTPHeaders(headers);
 	}
 
@@ -687,7 +720,7 @@ export class PlaywrightAdapter {
 		pageId: string,
 		geo: { latitude: number; longitude: number; accuracy?: number } | null,
 	): Promise<void> {
-		this.requirePage(pageId);
+		await this.ensurePage(pageId);
 		const context = this.requireContext();
 		if (geo) {
 			await context.grantPermissions(['geolocation']);
@@ -697,31 +730,16 @@ export class PlaywrightAdapter {
 		}
 	}
 
-	// eslint-disable-next-line @typescript-eslint/require-await
 	async setTimezone(pageId: string, _timezone: string): Promise<void> {
-		this.requirePage(pageId);
+		await this.ensurePage(pageId);
 		// Timezone can only be set at context creation time in Playwright.
 		// For existing contexts, we throw unsupported.
 		throw new UnsupportedOperationError('setTimezone (must be set at session creation)', this.name);
 	}
 
-	// eslint-disable-next-line @typescript-eslint/require-await
 	async setLocale(pageId: string, _locale: string): Promise<void> {
-		this.requirePage(pageId);
+		await this.ensurePage(pageId);
 		throw new UnsupportedOperationError('setLocale (must be set at session creation)', this.name);
-	}
-
-	// eslint-disable-next-line @typescript-eslint/require-await
-	async setDevice(pageId: string, device: DeviceDescriptor): Promise<void> {
-		this.requirePage(pageId);
-		const descriptor = devices[device.name];
-		if (!descriptor) {
-			throw new Error(
-				`Unknown device: ${device.name}. Use a Playwright device name like "iPhone 14" or "Pixel 7".`,
-			);
-		}
-		// Device emulation can only be set at context creation in Playwright.
-		throw new UnsupportedOperationError('setDevice (must be set at session creation)', this.name);
 	}
 
 	// =========================================================================
@@ -730,7 +748,13 @@ export class PlaywrightAdapter {
 	// =========================================================================
 
 	async waitForCompletion<T>(pageId: string, action: () => Promise<T>): Promise<T> {
-		const { page } = this.requirePage(pageId);
+		// Guard: if the page doesn't exist yet (e.g. tab_open before creation),
+		// just run the action without waiting for completion.
+		if (!this.pageStates.has(pageId) && (!this.relay || !this.relay.hasTab(pageId))) {
+			log.debug('waitForCompletion: page not found, running action directly:', pageId);
+			return await action();
+		}
+		const { page } = await this.ensurePage(pageId);
 		const requests: Request[] = [];
 
 		const requestListener = (request: Request) => requests.push(request);
@@ -781,7 +805,9 @@ export class PlaywrightAdapter {
 	// =========================================================================
 
 	getModalStates(pageId: string): ModalState[] {
-		const state = this.requirePage(pageId);
+		// Sync — only works for already-activated pages. Returns empty for unactivated tabs.
+		const state = this.pageStates.get(pageId);
+		if (!state) return [];
 		const modals: ModalState[] = [];
 
 		if (state.pendingDialog) {
@@ -810,7 +836,7 @@ export class PlaywrightAdapter {
 	// =========================================================================
 
 	async getContent(pageId: string, selector?: string): Promise<{ html: string; url: string }> {
-		const { page } = this.requirePage(pageId);
+		const { page } = await this.ensurePage(pageId);
 
 		if (selector) {
 			const locator = page.locator(selector);
@@ -826,7 +852,7 @@ export class PlaywrightAdapter {
 	// =========================================================================
 
 	async resolveRef(pageId: string, ref: string): Promise<unknown> {
-		const { page } = this.requirePage(pageId);
+		const { page } = await this.ensurePage(pageId);
 		const locator = page.locator(`aria-ref=${ref}`);
 
 		// Verify the element exists
@@ -856,6 +882,55 @@ export class PlaywrightAdapter {
 		return state;
 	}
 
+	/**
+	 * Lazy page activation: return the page if already tracked, otherwise
+	 * tell the relay to activate the tab (attach debugger + emit
+	 * Target.attachedToTarget) and wait for Playwright to create the Page.
+	 */
+	private async ensurePage(pageId: string): Promise<PageState> {
+		const existing = this.pageStates.get(pageId);
+		if (existing) {
+			log.debug('ensurePage: page already tracked:', pageId);
+			return existing;
+		}
+
+		if (!this.relay || !this.context) throw new PageNotFoundError(pageId);
+
+		log.debug('ensurePage: activating tab', pageId, 'current pages:', [...this.pageStates.keys()]);
+
+		const pagePromise = new Promise<Page>((resolve, reject) => {
+			const timeout = setTimeout(() => {
+				this.pendingActivation = undefined;
+				log.error('ensurePage: timed out waiting for page event after activateTab:', pageId);
+				reject(new Error(`Timed out waiting for page after activateTab (${pageId})`));
+			}, 10_000);
+			this.pendingActivation = {
+				id: pageId,
+				resolve: (page) => {
+					clearTimeout(timeout);
+					log.debug('ensurePage: page event received for', pageId);
+					resolve(page);
+				},
+			};
+		});
+
+		log.debug('ensurePage: calling activateTab for', pageId);
+		await this.relay.activateTab(pageId);
+		log.debug('ensurePage: activateTab completed for', pageId, '— waiting for page event');
+
+		const page = await pagePromise;
+
+		// Wait for page to be ready
+		log.debug('ensurePage: waiting for domcontentloaded on', pageId);
+		await page.waitForLoadState('domcontentloaded', { timeout: 5_000 }).catch(() => {
+			log.debug('ensurePage: domcontentloaded timeout (non-fatal) for', pageId);
+		});
+
+		log.debug('ensurePage: page ready:', pageId);
+		// The context.on('page') listener should have tracked it with the right ID
+		return this.pageStates.get(pageId) ?? this.trackPage(page, pageId);
+	}
+
 	private findPageState(page: Page): PageState | undefined {
 		for (const state of this.pageStates.values()) {
 			if (state.page === page) return state;
@@ -863,8 +938,9 @@ export class PlaywrightAdapter {
 		return undefined;
 	}
 
-	private trackPage(page: Page): PageState {
-		const id = generateId('page');
+	private trackPage(page: Page, explicitId?: string): PageState {
+		const id = explicitId ?? generateId('page');
+		log.debug('trackPage: id =', id, 'url =', page.url());
 		const state: PageState = {
 			page,
 			info: { id, title: '', url: page.url() },
@@ -912,9 +988,11 @@ export class PlaywrightAdapter {
 			state.pendingFileChooser = chooser;
 		});
 
-		// Clean up on page close
+		// Clean up on page close — also clear relay activation so re-activation works
 		page.on('close', () => {
+			log.debug('page closed:', id);
 			this.pageStates.delete(id);
+			this.relay?.deactivateTab(id);
 		});
 
 		this.pageStates.set(id, state);

@@ -1,8 +1,11 @@
 import type { z } from 'zod';
 
 import type { BrowserConnection } from '../connection';
+import { createLogger } from '../logger';
 import type { CallToolResult, ConnectionState, ToolContext, ToolDefinition } from '../types';
 import { buildErrorResponse, enrichResponse, resolvePageContext } from './response-envelope';
+
+const log = createLogger('connected-tool');
 
 // ---------------------------------------------------------------------------
 // Re-export schemas so existing tool files can keep importing from helpers
@@ -32,6 +35,8 @@ export interface ConnectedToolOptions {
 	autoSnapshot?: boolean;
 	/** Wrap the action in waitForCompletion (network/navigation settle). */
 	waitForCompletion?: boolean;
+	/** Skip post-action enrichment (snapshot, tab diff, etc.). Use for destructive actions like tab close. */
+	skipEnrichment?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -64,13 +69,19 @@ export function createConnectedTool<
 				const { state, pageId } = resolvePageContext(connection, args);
 
 				// Snapshot tab IDs before the action so we can detect new tabs
-				const tabsBefore = new Set(state.adapter.listTabSessionIds());
+				let tabsBefore: Set<string> | undefined;
+				if (!options?.skipEnrichment) {
+					tabsBefore = new Set(await state.adapter.listTabIds());
+					log.debug(`tabsBefore snapshot: ${tabsBefore.size} tab(s)`);
+				}
 
 				const result = options?.waitForCompletion
 					? await state.adapter.waitForCompletion(pageId, async () => await fn(state, args, pageId))
 					: await fn(state, args, pageId);
 
-				await enrichResponse(result, state, state.activePageId, options ?? {}, tabsBefore);
+				if (!options?.skipEnrichment) {
+					await enrichResponse(result, state, state.activePageId, options ?? {}, tabsBefore);
+				}
 				return result;
 			} catch (error) {
 				return await buildErrorResponse(error, connection, args, options ?? {});

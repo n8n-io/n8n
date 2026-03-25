@@ -1,15 +1,11 @@
 /**
  * WebSocket server that bridges Playwright MCP and the Chrome extension.
  *
- * Endpoints:
- *   /cdp/{uuid}       — Full CDP interface for Playwright (connectOverCDP)
- *   /extension/{uuid}  — Chrome extension connection for chrome.debugger forwarding
+ * Near-stateless pass-through: the extension owns all tab state.
+ * The relay only caches tab metadata (title/url) for Target.attachedToTarget
+ * messages and tracks which tabs have been activated.
  *
- * Controls all browser tabs by default. Each tab gets a unique CDP session ID
- * for Playwright to address individually. Tab lifecycle events (tabOpened/tabClosed)
- * from the extension enable dynamic tab tracking.
- *
- * Architecture modeled after Playwright MCP's CDPRelayServer.
+ * All tab IDs are CDP Target.targetId strings resolved by the extension.
  */
 
 import { randomUUID } from 'node:crypto';
@@ -44,12 +40,6 @@ export interface WaitForExtensionOptions {
 	browserWasLaunched?: boolean;
 }
 
-interface ConnectedTab {
-	tabId: number;
-	targetInfo: unknown;
-	sessionId: string;
-}
-
 export class CDPRelayServer {
 	private readonly httpServer: http.Server;
 	private readonly wss: WebSocketServer;
@@ -59,13 +49,17 @@ export class CDPRelayServer {
 	private playwrightWs: WebSocket | null = null;
 	private extensionConn: ExtensionConnection | null = null;
 
-	/** Maps sessionId → tab info. Primary tab is the first one attached. */
-	private readonly connectedTabs = new Map<string, ConnectedTab>();
-	/** Reverse lookup: tabId → sessionId */
-	private readonly tabIdToSessionId = new Map<number, string>();
-	/** The primary tab's sessionId (first attached, used as default). */
-	private primarySessionId: string | undefined;
-	private nextSessionId = 1;
+	// ---- Lightweight cache (populated from extension responses) ----
+	/** Cached tab metadata: CDP targetId → { title, url }. Source of truth is extension. */
+	private readonly tabCache = new Map<string, { title: string; url: string }>();
+	/** Tabs that have had Target.attachedToTarget sent to Playwright. */
+	private readonly activatedTabs = new Set<string>();
+	/** The primary tab ID (first seen). */
+	private primaryTabId: string | undefined;
+	/** The most recently created tab ID (for adapter.newPage() to pick up). */
+	private lastCreatedTabId: string | undefined;
+	/** Browser context ID returned to Playwright (required in targetInfo). */
+	private browserContextId = 'n8n-default-context';
 
 	private extensionConnectedResolve?: () => void;
 	private extensionConnectedReject?: (error: Error) => void;
@@ -84,7 +78,6 @@ export class CDPRelayServer {
 			this.extensionConnectedResolve = resolve;
 			this.extensionConnectedReject = reject;
 		});
-		// Prevent unhandled rejection if we never await it
 		this.extensionConnectedPromise.catch(() => {});
 
 		this.httpServer = http.createServer((_req, res) => {
@@ -148,11 +141,102 @@ export class CDPRelayServer {
 
 	/** Shut down the relay, closing all connections. */
 	stop(): void {
-		log.info('stopping relay server');
+		log.debug('stopping relay server');
 		this.closePlaywrightConnection('Server stopped');
 		this.closeExtensionConnection('Server stopped');
 		this.wss.close();
 		this.httpServer.close();
+	}
+
+	// =========================================================================
+	// Public helpers for the adapter
+	// =========================================================================
+
+	/** Get the ID of the most recently created tab (for adapter.newPage). */
+	getLastCreatedTabId(): string | undefined {
+		return this.lastCreatedTabId;
+	}
+
+	/** Check if a tab ID is known to the relay. */
+	hasTab(id: string): boolean {
+		return this.tabCache.has(id);
+	}
+
+	/** List all known tabs, fetching fresh metadata from the extension. */
+	async listTabs(): Promise<Array<{ id: string; title: string; url: string }>> {
+		if (this.extensionConn) {
+			const result = (await this.extensionConn.send('listTabs', {})) as {
+				tabs: Array<{ id: string; title: string; url: string }>;
+			};
+			// Refresh cache with fresh data from extension
+			for (const tab of result.tabs) {
+				const cached = this.tabCache.get(tab.id);
+				if (cached) {
+					cached.title = tab.title;
+					cached.url = tab.url;
+				}
+			}
+			return result.tabs;
+		}
+		// Fallback to cache if extension not connected
+		return [...this.tabCache.entries()].map(([id, meta]) => ({
+			id,
+			title: meta.title,
+			url: meta.url,
+		}));
+	}
+
+	/**
+	 * Activate a tab: tell the extension to ensure the debugger is attached and
+	 * notify Playwright via Target.attachedToTarget. Idempotent.
+	 */
+	async activateTab(id: string): Promise<void> {
+		if (this.activatedTabs.has(id)) {
+			log.debug('activateTab: already activated:', id);
+			return;
+		}
+		if (!this.extensionConn) {
+			log.debug('activateTab: no extension connection');
+			return;
+		}
+
+		const cached = this.tabCache.get(id);
+		log.debug('activateTab:', id, 'title:', cached?.title, 'url:', cached?.url);
+		this.activatedTabs.add(id);
+
+		// Tell extension to ensure debugger is attached (should be a no-op with eager attach)
+		log.debug('activateTab: sending attachTab to extension for', id);
+		await this.extensionConn.send('attachTab', { id });
+		log.debug('activateTab: extension confirmed attach for', id);
+
+		// Tell Playwright about the new target
+		log.debug('activateTab: sending Target.attachedToTarget to Playwright for', id);
+		this.sendToPlaywright({
+			method: 'Target.attachedToTarget',
+			params: {
+				sessionId: id,
+				targetInfo: {
+					targetId: id,
+					type: 'page',
+					title: cached?.title ?? '',
+					url: cached?.url ?? '',
+					attached: true,
+					browserContextId: this.browserContextId,
+				},
+				waitingForDebugger: false,
+			},
+		});
+	}
+
+	/**
+	 * Remove a tab from the activated set so it can be re-activated later.
+	 * Called by the adapter when Playwright loses a page (close event).
+	 */
+	deactivateTab(id: string): void {
+		const removed = this.activatedTabs.delete(id);
+		if (removed) {
+			log.debug('deactivateTab: cleared activation for', id);
+		}
 	}
 
 	// =========================================================================
@@ -239,82 +323,65 @@ export class CDPRelayServer {
 			case 'Browser.setDownloadBehavior':
 				return {};
 
+			case 'Target.createBrowserContext': {
+				this.browserContextId = 'context_' + Math.random().toString(36).slice(2, 8);
+				log.debug('Target.createBrowserContext:', this.browserContextId);
+				return { browserContextId: this.browserContextId };
+			}
+
+			case 'Target.disposeBrowserContext':
+				return {};
+
 			case 'Target.setAutoAttach': {
 				// Child session auto-attach: ack without forwarding
-				// (chrome.debugger doesn't support Target.setAutoAttach)
 				if (sessionId) return {};
 
-				log.debug('Target.setAutoAttach: listing registered tabs from extension');
+				log.debug('Target.setAutoAttach: listing tabs from extension');
 				const { tabs } = (await this.extensionConn!.send('listRegisteredTabs', {})) as {
-					tabs: Array<{ tabId: number; title: string; url: string }>;
+					tabs: Array<{ id: string; title: string; url: string }>;
 				};
 				log.debug('listRegisteredTabs result:', tabs.length, 'tabs');
 
+				// Cache metadata — don't activate (lazy)
 				for (const tab of tabs) {
-					const tabSessionId = `pw-tab-${this.nextSessionId++}`;
-					// Synthetic targetInfo — no debugger attachment needed.
-					// Same pattern as handleTabOpened().
-					const targetInfo = {
-						targetId: tabSessionId,
-						type: 'page',
-						title: tab.title,
-						url: tab.url,
-						attached: true,
-					};
-					const connectedTab: ConnectedTab = {
-						tabId: tab.tabId,
-						targetInfo,
-						sessionId: tabSessionId,
-					};
-					this.connectedTabs.set(tabSessionId, connectedTab);
-					this.tabIdToSessionId.set(tab.tabId, tabSessionId);
-					this.primarySessionId ??= tabSessionId;
-
-					this.sendToPlaywright({
-						method: 'Target.attachedToTarget',
-						params: {
-							sessionId: tabSessionId,
-							targetInfo,
-							waitingForDebugger: false,
-						},
-					});
+					this.tabCache.set(tab.id, { title: tab.title, url: tab.url });
+					this.primaryTabId ??= tab.id;
 				}
 				return {};
 			}
 
 			case 'Target.createTarget': {
-				// Playwright calls this for context.newPage(). Route to the extension's
-				// createTab command since chrome.debugger can't create targets directly.
 				const createParams = (params ?? {}) as Record<string, unknown>;
 				const url = (createParams.url as string) ?? undefined;
 				log.debug('Target.createTarget: url =', url);
 				const tab = await this.createTab(url);
-				// Return the sessionId as targetId — Playwright uses this to match
-				// with the Target.attachedToTarget event's targetInfo.targetId.
-				return { targetId: tab.sessionId };
+				return { targetId: tab.id };
 			}
 
 			case 'Target.closeTarget': {
-				// Playwright calls this for page.close(). Route to extension's closeTab.
 				const closeParams = (params ?? {}) as Record<string, unknown>;
-				const targetId = closeParams.targetId as string;
-				log.debug('Target.closeTarget: targetId =', targetId);
-				if (targetId && this.connectedTabs.has(targetId)) {
-					const tab = this.connectedTabs.get(targetId)!;
-					if (tab.tabId) {
-						await this.closeTab(tab.tabId);
-					}
+				const id = closeParams.targetId as string;
+				log.debug('Target.closeTarget: id =', id);
+				if (id && this.tabCache.has(id)) {
+					await this.closeTab(id);
 				}
 				return { success: true };
 			}
 
 			case 'Target.getTargetInfo': {
-				if (sessionId && this.connectedTabs.has(sessionId)) {
-					return this.connectedTabs.get(sessionId)!.targetInfo;
-				}
-				// Fall back to primary tab
-				if (this.primarySessionId && this.connectedTabs.has(this.primarySessionId)) {
-					return this.connectedTabs.get(this.primarySessionId)!.targetInfo;
+				const id = sessionId ?? this.primaryTabId;
+				if (id) {
+					const cached = this.tabCache.get(id);
+					if (cached) {
+						return {
+							targetId: id,
+							type: 'page',
+							title: cached.title,
+							url: cached.url,
+							attached: true,
+							browserContextId: this.browserContextId,
+						};
+					}
 				}
 				return undefined;
 			}
@@ -331,155 +398,112 @@ export class CDPRelayServer {
 	): Promise<unknown> {
 		if (!this.extensionConn) throw new Error('Extension not connected');
 
-		// Resolve sessionId to tabId for multi-tab routing
-		let tabId: number | undefined;
-		if (sessionId && this.connectedTabs.has(sessionId)) {
-			const tab = this.connectedTabs.get(sessionId)!;
-			tabId = tab.tabId !== 0 ? tab.tabId : undefined;
-		}
-
-		// Top-level sessionId is only between relay and Playwright — strip it
-		if (sessionId && this.connectedTabs.has(sessionId)) {
-			sessionId = undefined;
-		}
-
-		log.debug('→ EXT: forwardCDPCommand', method, tabId ? 'tabId=' + String(tabId) : '');
-		return await this.extensionConn.send('forwardCDPCommand', {
-			sessionId,
+		// sessionId IS the CDP targetId — pass it directly
+		log.debug('→ EXT: forwardCDPCommand', method, sessionId ? 'id=' + sessionId : '(primary)');
+		const result = await this.extensionConn.send('forwardCDPCommand', {
+			id: sessionId,
 			method,
 			params,
-			tabId,
 		});
+		log.debug(
+			'← EXT: forwardCDPCommand result for',
+			method,
+			sessionId ? 'id=' + sessionId : '(primary)',
+		);
+		return result;
 	}
 
 	// =========================================================================
 	// Tab management — forwarded to extension
 	// =========================================================================
 
-	/** Create a new tab via the extension and register it with Playwright. */
-	async createTab(url?: string): Promise<ConnectedTab> {
+	/** Create a new tab via the extension. */
+	private async createTab(url?: string): Promise<{ id: string; title: string; url: string }> {
 		if (!this.extensionConn) throw new Error('Extension not connected');
 
+		log.debug('createTab: requesting from extension, url =', url);
 		const result = (await this.extensionConn.send('createTab', { url })) as {
-			tabId: number;
+			id: string;
 			title: string;
 			url: string;
 		};
-		log.debug('createTab result: tabId =', result.tabId);
+		log.debug('createTab: result targetId =', result.id, 'url =', result.url);
 
-		const sessionId = `pw-tab-${this.nextSessionId++}`;
-		const targetInfo = {
-			targetId: sessionId,
-			type: 'page',
-			title: result.title,
-			url: result.url,
-			attached: true,
-		};
-		const tab: ConnectedTab = {
-			tabId: result.tabId,
-			targetInfo,
-			sessionId,
-		};
+		// Cache metadata
+		this.tabCache.set(result.id, { title: result.title, url: result.url });
+		this.lastCreatedTabId = result.id;
 
-		this.connectedTabs.set(sessionId, tab);
-		this.tabIdToSessionId.set(result.tabId, sessionId);
-
-		// Notify Playwright about the new target
+		// Agent-created tabs are eagerly activated
+		this.activatedTabs.add(result.id);
 		this.sendToPlaywright({
 			method: 'Target.attachedToTarget',
 			params: {
-				sessionId,
-				targetInfo,
+				sessionId: result.id,
+				targetInfo: {
+					targetId: result.id,
+					type: 'page',
+					title: result.title,
+					url: result.url,
+					attached: true,
+					browserContextId: this.browserContextId,
+				},
 				waitingForDebugger: false,
 			},
 		});
 
-		return tab;
+		return result;
 	}
 
-	/** Close a tab via the extension and deregister it from Playwright. */
-	async closeTab(tabId: number): Promise<void> {
+	/** Close a tab via the extension. */
+	async closeTab(id: string): Promise<void> {
 		if (!this.extensionConn) throw new Error('Extension not connected');
 
-		await this.extensionConn.send('closeTab', { tabId });
+		await this.extensionConn.send('closeTab', { id });
 
-		const sessionId = this.tabIdToSessionId.get(tabId);
-		if (sessionId) {
-			this.connectedTabs.delete(sessionId);
-			this.tabIdToSessionId.delete(tabId);
+		this.tabCache.delete(id);
+		const wasActivated = this.activatedTabs.delete(id);
 
-			// Update primary if needed
-			if (sessionId === this.primarySessionId) {
-				const remaining = [...this.connectedTabs.keys()];
-				this.primarySessionId = remaining.length > 0 ? remaining[0] : undefined;
-			}
+		if (id === this.primaryTabId) {
+			const remaining = [...this.tabCache.keys()];
+			this.primaryTabId = remaining.length > 0 ? remaining[0] : undefined;
+		}
 
-			// Notify Playwright about the detached target
+		if (wasActivated) {
 			this.sendToPlaywright({
 				method: 'Target.detachedFromTarget',
-				params: { sessionId },
+				params: { sessionId: id },
 			});
 		}
 	}
 
-	/** List controlled tabs via the extension. */
-	async listTabs(): Promise<Array<{ tabId: number; title: string; url: string }>> {
-		if (!this.extensionConn) throw new Error('Extension not connected');
+	/** Handle tabOpened event from extension. */
+	private handleTabOpened(id: string, title: string, url: string): void {
+		if (this.tabCache.has(id)) return;
 
-		const result = (await this.extensionConn.send('listTabs', {})) as {
-			tabs: Array<{ tabId: number; title: string; url: string }>;
-		};
-		return result.tabs;
+		log.debug('tabOpened:', id, url);
+		this.tabCache.set(id, { title, url });
+		this.primaryTabId ??= id;
+		// Don't activate — lazy
 	}
 
-	/** Handle a tab that was opened in the browser and auto-attached by the extension. */
-	private handleTabOpened(tabId: number, title: string, url: string): void {
-		// Skip if we already track this tab
-		if (this.tabIdToSessionId.has(tabId)) return;
+	/** Handle tabClosed event from extension. */
+	private handleTabClosed(id: string): void {
+		log.debug('tabClosed:', id);
 
-		log.debug('tabOpened:', tabId, url);
+		this.tabCache.delete(id);
+		const wasActivated = this.activatedTabs.delete(id);
 
-		const sessionId = `pw-tab-${this.nextSessionId++}`;
-		const targetInfo = {
-			targetId: sessionId,
-			type: 'page',
-			title,
-			url,
-			attached: true,
-		};
-
-		const tab: ConnectedTab = { tabId, targetInfo, sessionId };
-		this.connectedTabs.set(sessionId, tab);
-		this.tabIdToSessionId.set(tabId, sessionId);
-
-		this.primarySessionId ??= sessionId;
-
-		// Notify Playwright about the new target
-		this.sendToPlaywright({
-			method: 'Target.attachedToTarget',
-			params: { sessionId, targetInfo, waitingForDebugger: false },
-		});
-	}
-
-	/** Handle a tab that was closed in the browser. */
-	private handleTabClosed(tabId: number): void {
-		const sessionId = this.tabIdToSessionId.get(tabId);
-		if (!sessionId) return;
-
-		log.debug('tabClosed:', tabId, 'session:', sessionId);
-
-		this.connectedTabs.delete(sessionId);
-		this.tabIdToSessionId.delete(tabId);
-
-		if (sessionId === this.primarySessionId) {
-			const remaining = [...this.connectedTabs.keys()];
-			this.primarySessionId = remaining.length > 0 ? remaining[0] : undefined;
+		if (id === this.primaryTabId) {
+			const remaining = [...this.tabCache.keys()];
+			this.primaryTabId = remaining.length > 0 ? remaining[0] : undefined;
 		}
 
-		this.sendToPlaywright({
-			method: 'Target.detachedFromTarget',
-			params: { sessionId },
-		});
+		if (wasActivated) {
+			this.sendToPlaywright({
+				method: 'Target.detachedFromTarget',
+				params: { sessionId: id },
+			});
+		}
 	}
 
 	private sendToPlaywright(message: CDPResponse): void {
@@ -508,7 +532,7 @@ export class CDPRelayServer {
 
 		this.extensionConn.onclose = () => {
 			log.debug('extension disconnected');
-			this.resetExtensionConnection();
+			this.resetState();
 			this.closePlaywrightConnection('Extension disconnected');
 		};
 
@@ -520,12 +544,21 @@ export class CDPRelayServer {
 			if (method === 'forwardCDPEvent') {
 				const eventParams = params as ExtensionEvents['forwardCDPEvent']['params'];
 
-				// Route by tabId if available, otherwise use primary session
-				let sessionId: string | undefined;
-				if (eventParams.tabId && this.tabIdToSessionId.has(eventParams.tabId)) {
-					sessionId = this.tabIdToSessionId.get(eventParams.tabId);
-				} else {
-					sessionId = eventParams.sessionId ?? this.primarySessionId;
+				// Use the CDP targetId as Playwright's sessionId
+				const sessionId = eventParams.id ?? this.primaryTabId;
+
+				// Keep cached metadata fresh on navigation
+				if (eventParams.method === 'Page.frameNavigated' && sessionId) {
+					const frame = (eventParams.params as Record<string, unknown> | undefined)?.frame as
+						| Record<string, unknown>
+						| undefined;
+					if (frame?.url && !frame.parentId) {
+						const cached = this.tabCache.get(sessionId);
+						if (cached) {
+							cached.url = frame.url as string;
+							if (frame.title) cached.title = frame.title as string;
+						}
+					}
 				}
 
 				this.sendToPlaywright({
@@ -534,11 +567,11 @@ export class CDPRelayServer {
 					params: eventParams.params,
 				});
 			} else if (method === 'tabOpened') {
-				const { tabId, title, url } = params as ExtensionEvents['tabOpened']['params'];
-				this.handleTabOpened(tabId, title, url);
+				const p = params as ExtensionEvents['tabOpened']['params'];
+				this.handleTabOpened(p.id, p.title, p.url);
 			} else if (method === 'tabClosed') {
-				const { tabId } = params as ExtensionEvents['tabClosed']['params'];
-				this.handleTabClosed(tabId);
+				const p = params as ExtensionEvents['tabClosed']['params'];
+				this.handleTabClosed(p.id);
 			}
 		};
 
@@ -549,13 +582,15 @@ export class CDPRelayServer {
 		log.debug('closing extension connection:', reason);
 		this.extensionConn?.close(reason);
 		this.extensionConnectedReject?.(new Error(reason));
-		this.resetExtensionConnection();
+		this.resetState();
 	}
 
-	private resetExtensionConnection(): void {
-		this.connectedTabs.clear();
-		this.tabIdToSessionId.clear();
-		this.primarySessionId = undefined;
+	private resetState(): void {
+		this.tabCache.clear();
+		this.activatedTabs.clear();
+		this.primaryTabId = undefined;
+		this.lastCreatedTabId = undefined;
+		this.browserContextId = 'n8n-default-context';
 		this.extensionConn = null;
 		this.extensionConnectedPromise = new Promise((resolve, reject) => {
 			this.extensionConnectedResolve = resolve;
@@ -599,7 +634,7 @@ class ExtensionConnection {
 			this.handleClose();
 		});
 		this.ws.on('error', (error) => {
-			log.warn('ExtensionConnection WebSocket error:', error);
+			log.debug('ExtensionConnection WebSocket error:', error);
 			this.handleClose();
 		});
 	}
@@ -607,6 +642,7 @@ class ExtensionConnection {
 	async send<M extends keyof ExtensionCommands>(
 		method: M,
 		params: ExtensionCommands[M]['params'],
+		timeoutMs = 30_000,
 	): Promise<unknown> {
 		if (this.ws.readyState !== WebSocket.OPEN) {
 			throw new Error(`WebSocket not open (state=${this.ws.readyState})`);
@@ -618,7 +654,35 @@ class ExtensionConnection {
 		this.ws.send(payload);
 
 		return await new Promise((resolve, reject) => {
-			this.callbacks.set(id, { resolve, reject });
+			const timer = setTimeout(() => {
+				this.callbacks.delete(id);
+				log.error(
+					'→ EXT TIMEOUT:',
+					method,
+					'id=' + String(id),
+					'after',
+					timeoutMs,
+					'ms',
+					'pending:',
+					this.callbacks.size,
+				);
+				reject(
+					new Error(
+						`Extension command '${String(method)}' (id=${id}) timed out after ${timeoutMs}ms`,
+					),
+				);
+			}, timeoutMs);
+
+			this.callbacks.set(id, {
+				resolve: (value) => {
+					clearTimeout(timer);
+					resolve(value);
+				},
+				reject: (reason) => {
+					clearTimeout(timer);
+					reject(reason);
+				},
+			});
 		});
 	}
 

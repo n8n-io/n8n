@@ -47,8 +47,6 @@ export class BrowserConnection {
 
 		this.config = {
 			defaultBrowser: parsed.defaultBrowser,
-			headless: parsed.headless,
-			viewport: parsed.viewport,
 			browsers,
 		};
 	}
@@ -67,7 +65,6 @@ export class BrowserConnection {
 
 		const connectConfig: ConnectConfig = {
 			browser,
-			viewport: this.config.viewport,
 		};
 
 		const adapter = await this.createAdapter();

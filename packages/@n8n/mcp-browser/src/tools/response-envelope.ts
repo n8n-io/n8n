@@ -1,7 +1,10 @@
 import type { BrowserConnection } from '../connection';
 import { McpBrowserError } from '../errors';
+import { createLogger } from '../logger';
 import type { CallToolResult, ConnectionState, ModalState } from '../types';
 import type { ConnectedToolOptions } from './helpers';
+
+const log = createLogger('response-envelope');
 
 // ---------------------------------------------------------------------------
 // Page context resolution
@@ -65,11 +68,17 @@ export async function enrichResponse(
 	// Detect tabs opened as a result of this action
 	if (tabsBefore) {
 		try {
-			const tabsNow = await state.adapter.listPages();
+			const tabsNow = await state.adapter.listTabs();
+			log.debug(`tab diff: before=${tabsBefore.size}, now=${tabsNow.length}`);
 			const newTabs = tabsNow
 				.filter((t) => !tabsBefore.has(t.id))
 				.map((t) => ({ id: t.id, title: t.title, url: t.url }));
-			if (newTabs.length > 0) record.newTabs = newTabs;
+			if (newTabs.length > 0) {
+				log.debug(
+					`detected ${newTabs.length} new tab(s): ${JSON.stringify(newTabs.map((t) => t.url))}`,
+				);
+				record.newTabs = newTabs;
+			}
 		} catch {
 			// Tab diff failure shouldn't break the response
 		}

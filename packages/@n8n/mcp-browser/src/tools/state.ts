@@ -14,7 +14,6 @@ export function createStateTools(connection: BrowserConnection): ToolDefinition[
 		browserSetGeolocation(connection),
 		browserSetTimezone(connection),
 		browserSetLocale(connection),
-		browserSetDevice(connection),
 	];
 }
 
@@ -303,32 +302,5 @@ function browserSetLocale(connection: BrowserConnection): ToolDefinition {
 			return formatCallToolResult({ locale: input.locale });
 		},
 		browserSetLocaleOutputSchema,
-	);
-}
-
-// ---------------------------------------------------------------------------
-// browser_set_device
-// ---------------------------------------------------------------------------
-
-const browserSetDeviceSchema = z.object({
-	device: z.string().describe('Playwright device name (e.g. "iPhone 14")'),
-	pageId: pageIdField,
-});
-
-const browserSetDeviceOutputSchema = z.object({
-	device: z.string(),
-});
-
-function browserSetDevice(connection: BrowserConnection): ToolDefinition {
-	return createConnectedTool(
-		connection,
-		'browser_set_device',
-		'Emulate a device (viewport, user agent, touch, etc.). Examples: "iPhone 14", "Pixel 7".',
-		browserSetDeviceSchema,
-		async (state, input, pageId) => {
-			await state.adapter.setDevice(pageId, { name: input.device });
-			return formatCallToolResult({ device: input.device });
-		},
-		browserSetDeviceOutputSchema,
 	);
 }

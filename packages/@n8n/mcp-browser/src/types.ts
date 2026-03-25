@@ -15,13 +15,6 @@ export const browserNameSchema = z.enum(chromiumBrowsers);
 // Configuration
 // ---------------------------------------------------------------------------
 
-export const viewportSchema = z.object({
-	width: z.number().int().positive(),
-	height: z.number().int().positive(),
-});
-
-export type Viewport = z.infer<typeof viewportSchema>;
-
 const browserOverrideSchema = z.object({
 	executablePath: z.string().optional(),
 	profilePath: z.string().optional(),
@@ -29,8 +22,6 @@ const browserOverrideSchema = z.object({
 
 export const configSchema = z.object({
 	defaultBrowser: browserNameSchema.default('chrome'),
-	headless: z.boolean().default(false),
-	viewport: viewportSchema.default({ width: 1280, height: 720 }),
 	browsers: z.record(browserNameSchema, browserOverrideSchema).default({}),
 });
 
@@ -44,8 +35,6 @@ export interface ResolvedBrowserInfo {
 
 export interface ResolvedConfig {
 	defaultBrowser: BrowserName;
-	headless: boolean;
-	viewport: Viewport;
 	browsers: Map<BrowserName, ResolvedBrowserInfo>;
 }
 
@@ -55,7 +44,6 @@ export interface ResolvedConfig {
 
 export interface ConnectConfig {
 	browser: BrowserName;
-	viewport: Viewport;
 }
 
 export interface PageInfo {
@@ -137,10 +125,6 @@ export interface Cookie {
 	httpOnly?: boolean;
 	secure?: boolean;
 	sameSite?: 'Strict' | 'Lax' | 'None';
-}
-
-export interface DeviceDescriptor {
-	name: string;
 }
 
 // ---------------------------------------------------------------------------

@@ -95,7 +95,7 @@ describe('createTabTools', () => {
 			});
 
 			it('marks non-active pages correctly', async () => {
-				mockConnection.adapter.listPages.mockResolvedValue([
+				mockConnection.adapter.listTabs.mockResolvedValue([
 					{ id: 'page1', title: 'A', url: 'http://a.com' },
 					{ id: 'page2', title: 'B', url: 'http://b.com' },
 				]);
@@ -181,8 +181,8 @@ describe('createTabTools', () => {
 		});
 
 		describe('execute', () => {
-			it('closes page and returns disconnected false when pages remain', async () => {
-				mockConnection.adapter.listPages.mockResolvedValue([
+			it('closes page and returns result', async () => {
+				mockConnection.adapter.listTabs.mockResolvedValue([
 					{ id: 'page2', title: 'B', url: 'http://b.com' },
 				]);
 
@@ -192,21 +192,18 @@ describe('createTabTools', () => {
 				expect(mockConnection.adapter.closePage).toHaveBeenCalledWith('page1');
 				expect(data.closed).toBe(true);
 				expect(data.pageId).toBe('page1');
-				expect(data.disconnected).toBe(false);
 			});
 
-			it('disconnects when closing last tab', async () => {
-				mockConnection.adapter.listPages.mockResolvedValue([]);
+			it('does not disconnect when closing last tab', async () => {
+				mockConnection.adapter.listTabs.mockResolvedValue([]);
 
-				const result = await getTool().execute({ pageId: 'page1' }, TOOL_CONTEXT);
-				const data = structuredOf(result);
+				await getTool().execute({ pageId: 'page1' }, TOOL_CONTEXT);
 
-				expect(mockConnection.connection.disconnect).toHaveBeenCalled();
-				expect(data.disconnected).toBe(true);
+				expect(mockConnection.connection.disconnect).not.toHaveBeenCalled();
 			});
 
 			it('switches activePageId when closing the active tab', async () => {
-				mockConnection.adapter.listPages.mockResolvedValue([
+				mockConnection.adapter.listTabs.mockResolvedValue([
 					{ id: 'page2', title: 'B', url: 'http://b.com' },
 					{ id: 'page3', title: 'C', url: 'http://c.com' },
 				]);

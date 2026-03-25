@@ -1,30 +1,30 @@
 /**
  * Protocol types for communication between the CDP relay server and the Chrome extension.
  *
- * The relay server acts as a WebSocket bridge between Playwright (which speaks CDP)
- * and the Chrome extension (which uses chrome.debugger to forward CDP commands).
+ * All tab identifiers use CDP Target.targetId strings resolved by the extension
+ * via chrome.debugger + Target.getTargetInfo (e.g. "B4FE7A8D1C3E…").
+ * The extension is the only component that maps these to Chrome internals.
  */
 
 /** Version of the extension protocol. Bump when commands/events change. */
-export const PROTOCOL_VERSION = 3;
+export const PROTOCOL_VERSION = 1;
 
 // ---------------------------------------------------------------------------
 // Commands: relay → extension
 // ---------------------------------------------------------------------------
 
 export interface ExtensionCommands {
-	/** List all registered (user-selected) tabs without attaching debugger. */
+	/** List all registered (user-selected) tabs. */
 	listRegisteredTabs: {
 		params: Record<string, never>;
 	};
-	/** Forward a CDP command to a specific tab (or the first attached tab). */
+	/** Forward a CDP command to a specific tab. */
 	forwardCDPCommand: {
 		params: {
 			method: string;
-			sessionId?: string;
 			params?: unknown;
-			/** Target tab for multi-tab routing. Omit to use first attached tab. */
-			tabId?: number;
+			/** Target tab ID. Omit to use the primary tab. */
+			id?: string;
 		};
 	};
 	/** Create a new tab and attach debugger to it. */
@@ -33,10 +33,16 @@ export interface ExtensionCommands {
 			url?: string;
 		};
 	};
-	/** Close a shared tab (detach debugger + remove). */
+	/** Close a tab (detach debugger + remove). */
 	closeTab: {
 		params: {
-			tabId: number;
+			id: string;
+		};
+	};
+	/** Attach the debugger to a tab (lazy, on first interaction). */
+	attachTab: {
+		params: {
+			id: string;
 		};
 	};
 	/** List all currently controlled tabs. */
@@ -50,19 +56,19 @@ export interface ExtensionCommands {
 // ---------------------------------------------------------------------------
 
 export interface ExtensionEvents {
+	/** A CDP event forwarded from a tab. */
 	forwardCDPEvent: {
 		params: {
 			method: string;
-			sessionId?: string;
 			params?: unknown;
 			/** Tab that emitted this event. */
-			tabId?: number;
+			id?: string;
 		};
 	};
-	/** A new tab was opened and auto-attached. */
+	/** A new tab was opened. */
 	tabOpened: {
 		params: {
-			tabId: number;
+			id: string;
 			title: string;
 			url: string;
 		};
@@ -70,7 +76,7 @@ export interface ExtensionEvents {
 	/** A tab was closed. */
 	tabClosed: {
 		params: {
-			tabId: number;
+			id: string;
 		};
 	};
 }

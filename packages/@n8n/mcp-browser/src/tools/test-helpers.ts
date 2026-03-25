@@ -45,7 +45,11 @@ export function createMockAdapter() {
 		listPages: jest
 			.fn()
 			.mockResolvedValue([{ id: 'page1', title: 'Test Page', url: 'http://test.com' }]),
+		listTabs: jest
+			.fn()
+			.mockResolvedValue([{ id: 'page1', title: 'Test Page', url: 'http://test.com' }]),
 		listTabSessionIds: jest.fn().mockReturnValue(['page1']),
+		listTabIds: jest.fn().mockResolvedValue(['page1']),
 
 		// Navigation
 		navigate: jest
@@ -69,12 +73,10 @@ export function createMockAdapter() {
 		// Inspection
 		snapshot: jest.fn().mockResolvedValue({ tree: '', refCount: 0 }),
 		screenshot: jest.fn().mockResolvedValue('base64imagedata'),
-		getContent: jest
-			.fn()
-			.mockResolvedValue({
-				html: '<html><body><p>Hello world</p></body></html>',
-				url: 'http://test.com',
-			}),
+		getContent: jest.fn().mockResolvedValue({
+			html: '<html><body><p>Hello world</p></body></html>',
+			url: 'http://test.com',
+		}),
 		evaluate: jest.fn().mockResolvedValue(42),
 		getConsole: jest.fn().mockResolvedValue([]),
 		pdf: jest.fn().mockResolvedValue({ data: 'base64pdf', pages: 1 }),
@@ -96,7 +98,6 @@ export function createMockAdapter() {
 		setGeolocation: jest.fn().mockResolvedValue(undefined),
 		setTimezone: jest.fn().mockResolvedValue(undefined),
 		setLocale: jest.fn().mockResolvedValue(undefined),
-		setDevice: jest.fn().mockResolvedValue(undefined),
 
 		// Enrichment
 		getModalStates: jest.fn().mockReturnValue([]),
