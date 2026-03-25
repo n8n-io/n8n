@@ -1,4 +1,4 @@
-FROM node:23
+FROM node:24.13.1
 
 RUN apt-get update && apt-get install -y \
     python3 make g++ tini \
@@ -18,9 +18,7 @@ RUN rm -rf node_modules && CI=true pnpm install --no-frozen-lockfile --ignore-sc
 
 # 3. Selective Build 
 # Compile just with n8n direct dependencies, ignoring testing packages
-RUN pnpm --filter @n8n/core run build && \
-    pnpm --filter @n8n/cli run build && \
-    pnpm --filter n8n run build
+RUN pnpm  run build
 
 # 4. Create Tapis configuration
 RUN mkdir -p /app/packages/cli/bin && \
