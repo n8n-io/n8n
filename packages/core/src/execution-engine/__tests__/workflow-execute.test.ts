@@ -3396,12 +3396,16 @@ describe('WorkflowExecute', () => {
 		});
 	});
 
-	describe('Node Retry Logic (Error Coercion) (Issue #27439)', () => {
+	describe('Node Retry Logic (Error Coercion)', () => {
 		// Simulating the exact evaluation logic from workflow-execute.ts
 		// !!runNodeData.data?.[0]?.[0]?.json?.error;
-		const evaluateNodeFailed = (runNodeData: IRunNodeResponse | EngineRequest) => {
+		const evaluateNodeFailed = (
+			runNodeData: IRunNodeResponse | EngineRequest,
+			nodeType: string = 'someNode',
+		) => {
 			if (isEngineRequest(runNodeData)) return false;
-			return !!runNodeData.data?.[0]?.[0]?.json?.error;
+			const isTransportNode = nodeType.toLowerCase().includes('httprequest');
+			return !!runNodeData.data?.[0]?.[0]?.json?.error && !isTransportNode;
 		};
 
 		it('should NOT trigger retry when error is explicitly null (Issue Fix)', () => {
@@ -3434,6 +3438,38 @@ describe('WorkflowExecute', () => {
 			};
 			// Expected: true (retry on valid truthy error object)
 			expect(evaluateNodeFailed(runNodeData)).toBe(true);
+		});
+
+		it('should NOT trigger retry for httpRequest node even if error is present (Issue #27439)', () => {
+			const runNodeData = {
+				data: [[{ json: { error: 'Business Error Message' } }]],
+			};
+			// Expected: false (httpRequest nodes are excluded from this engine-level check)
+			expect(evaluateNodeFailed(runNodeData, 'httpRequest')).toBe(false);
+		});
+
+		it('should NOT trigger retry for toolHttpRequest node even if error is present (Issue #27439)', () => {
+			const runNodeData = {
+				data: [[{ json: { error: 'Some Tool Error' } }]],
+			};
+			// Expected: false
+			expect(evaluateNodeFailed(runNodeData, 'toolHttpRequest')).toBe(false);
+		});
+
+		it('should NOT trigger retry for namespaced and versioned httpRequest node (Issue #27439)', () => {
+			const runNodeData = {
+				data: [[{ json: { error: 'Business Error Message' } }]],
+			};
+			// Expected: false (case-insensitive substring check)
+			expect(evaluateNodeFailed(runNodeData, 'n8n-nodes-base.httpRequestV4')).toBe(false);
+		});
+
+		it('should NOT trigger retry for namespaced toolHttpRequest node (Issue #27439)', () => {
+			const runNodeData = {
+				data: [[{ json: { error: 'Tool error' } }]],
+			};
+			// Expected: false
+			expect(evaluateNodeFailed(runNodeData, 'n8n-nodes-langchain.toolHttpRequest')).toBe(false);
 		});
 
 		it('should NOT trigger retry for engine requests even if error is present', () => {
