@@ -269,7 +269,7 @@ export const nodeProperties: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: ['update', 'findOneAndReplace', 'findOneAndUpdate'],
+				operation: ['update'],
 				resource: ['document'],
 			},
 		},
