@@ -323,7 +323,7 @@ const statusEntry = computed(() => statusConfig[props.agentNode.status]);
 	font-size: var(--font-size--2xs);
 	color: var(--text-color--subtle);
 	font-style: italic;
-	border-left: 2px solid var(--color--foreground);
+	border-left: var(--border-width) var(--border-style) var(--color--foreground);
 	margin-left: var(--spacing--4xs);
 }
 
