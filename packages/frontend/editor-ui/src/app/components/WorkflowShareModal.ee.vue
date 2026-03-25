@@ -62,6 +62,11 @@ const workflow = ref(
 		? workflowsListStore.workflowsById[data.id]
 		: workflowsStore.workflow,
 );
+const workflowDocumentStore = computed(() =>
+	workflow.value.id
+		? useWorkflowDocumentStore(createWorkflowDocumentId(workflow.value.id))
+		: undefined,
+);
 const loading = ref(true);
 const isDirty = ref(false);
 const modalBus = createEventBus();
@@ -89,9 +94,7 @@ const modalTitle = computed(() => {
 			: (uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.title as BaseTextKey),
 		{
 			interpolate: {
-				name:
-					workflow.value.name ||
-					useWorkflowDocumentStore(createWorkflowDocumentId(workflow.value.id)).name,
+				name: workflow.value.name || workflowDocumentStore.value?.name || '',
 			},
 		},
 	);
@@ -100,9 +103,7 @@ const modalTitle = computed(() => {
 const workflowPermissions = computed(() => {
 	// For existing workflows, scopes come from the API response on the workflow object.
 	// For new unsaved workflows, scopes are only in the workflowDocument store.
-	const scopes =
-		workflow.value?.scopes ??
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflow.value.id)).scopes;
+	const scopes = workflow.value?.scopes ?? workflowDocumentStore.value?.scopes;
 	return getResourcePermissions(scopes).workflow;
 });
 
