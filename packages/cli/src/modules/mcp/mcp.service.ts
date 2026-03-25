@@ -24,8 +24,9 @@ import { createSearchProjectsTool } from './tools/search-projects.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
 import { createPublishWorkflowTool } from './tools/publish-workflow.tool';
 import { createSearchWorkflowsTool } from './tools/search-workflows.tool';
-import { createPrepareTestPinDataTool } from './tools/prepare-workflow-pin-data.tool';
-import { createTestWorkflowTool } from './tools/test-workflow.tool';
+// TODO: Re-enable when test workflow tools are uncommented
+// import { createPrepareTestPinDataTool } from './tools/prepare-workflow-pin-data.tool';
+// import { createTestWorkflowTool } from './tools/test-workflow.tool';
 import { createUnpublishWorkflowTool } from './tools/unpublish-workflow.tool';
 import { createCreateWorkflowFromCodeTool } from './tools/workflow-builder/create-workflow-from-code.tool';
 import { createArchiveWorkflowTool } from './tools/workflow-builder/delete-workflow.tool';
@@ -90,7 +91,7 @@ export class McpService {
 		private readonly folderRepository: FolderRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly executionRepository: ExecutionRepository,
-		private readonly executionService: ExecutionService,
+		_executionService: ExecutionService,
 	) {}
 
 	async getServer(user: User) {
@@ -187,7 +188,7 @@ export class McpService {
 		// const prepareTestPinDataTool = createPrepareTestPinDataTool(
 		// 	user,
 		// 	this.workflowFinderService,
-		// 	this.executionService,
+		// 	this._executionService,
 		// 	this.nodeTypes,
 		// 	this.telemetry,
 		// 	this.logger,
