@@ -97,12 +97,17 @@ export class N8nClient {
 
 	/**
 	 * Confirm or reject an action requested by the agent.
-	 * POST /rest/instance-ai/confirm/:requestId  body: { approved }
+	 * POST /rest/instance-ai/confirm/:requestId
+	 * body: { approved, mockCredentials?, credentialId?, ... }
 	 */
-	async confirmAction(requestId: string, approved: boolean): Promise<void> {
+	async confirmAction(
+		requestId: string,
+		approved: boolean,
+		options?: { mockCredentials?: boolean },
+	): Promise<void> {
 		await this.fetch(`/rest/instance-ai/confirm/${requestId}`, {
 			method: 'POST',
-			body: { approved },
+			body: { approved, ...options },
 		});
 	}
 
@@ -300,6 +305,44 @@ export class N8nClient {
 	 */
 	async deleteCredential(id: string): Promise<void> {
 		await this.fetch(`/rest/credentials/${id}`, { method: 'DELETE' });
+	}
+
+	// -- Data tables ---------------------------------------------------------
+
+	/**
+	 * Get the personal project ID for the authenticated user.
+	 * GET /rest/me  → user.personalProjectId (or similar)
+	 */
+	async getPersonalProjectId(): Promise<string> {
+		const result = (await this.fetch('/rest/me')) as {
+			data: { personalProjectId?: string; defaultPersonalProjectId?: string };
+		};
+		const projectId = result.data.personalProjectId ?? result.data.defaultPersonalProjectId ?? '';
+		if (!projectId) {
+			throw new Error('Could not determine personal project ID');
+		}
+		return projectId;
+	}
+
+	/**
+	 * List data tables in a project.
+	 * GET /rest/projects/:projectId/data-tables
+	 */
+	async listDataTables(projectId: string): Promise<Array<{ id: string; name: string }>> {
+		const result = (await this.fetch(`/rest/projects/${projectId}/data-tables`)) as {
+			data: Array<{ id: string; name: string }>;
+		};
+		return Array.isArray(result.data) ? result.data : [];
+	}
+
+	/**
+	 * Delete a data table by ID.
+	 * DELETE /rest/projects/:projectId/data-tables/:dataTableId
+	 */
+	async deleteDataTable(projectId: string, dataTableId: string): Promise<void> {
+		await this.fetch(`/rest/projects/${projectId}/data-tables/${dataTableId}`, {
+			method: 'DELETE',
+		});
 	}
 
 	// -- SSE helpers ---------------------------------------------------------

@@ -28,7 +28,7 @@ export interface CliArgs {
 	email?: string;
 	password?: string;
 	verbose: boolean;
-	command?: 'report' | 'upload-datasets';
+	command?: 'report' | 'upload-datasets' | 'workflows';
 }
 
 // ---------------------------------------------------------------------------
@@ -52,7 +52,7 @@ const cliArgsSchema = z.object({
 	email: z.string().optional(),
 	password: z.string().optional(),
 	verbose: z.boolean().default(false),
-	command: z.enum(['report', 'upload-datasets']).optional(),
+	command: z.enum(['report', 'upload-datasets', 'workflows']).optional(),
 });
 
 // ---------------------------------------------------------------------------
@@ -105,7 +105,7 @@ interface RawArgs {
 	email?: string;
 	password?: string;
 	verbose: boolean;
-	command?: 'report' | 'upload-datasets';
+	command?: 'report' | 'upload-datasets' | 'workflows';
 }
 
 function parseRawArgs(argv: string[]): RawArgs {
@@ -128,6 +128,10 @@ function parseRawArgs(argv: string[]): RawArgs {
 	if (firstArg === 'upload-datasets') {
 		result.command = 'upload-datasets';
 		// Continue parsing remaining args for upload-datasets
+	}
+	if (firstArg === 'workflows') {
+		result.command = 'workflows';
+		// Continue parsing remaining args for workflows
 	}
 
 	for (let i = 0; i < argv.length; i++) {

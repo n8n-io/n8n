@@ -1,5 +1,5 @@
 {
-	"prompt": "Every day, get the posts made in the past day on 3 different Slack channels, summarize them using AI and post the summary on a 4th Slack channel",
+	"prompt": "Every day, get the posts made in the past day on 3 different Slack channels, summarize them using AI and post the summary on a 4th Slack channel. Use mock data for any credentials, do not ask me to set up credentials.",
 	"complexity": "medium",
 	"tags": ["build", "slack", "ai", "schedule"],
 	"triggerType": "schedule",
