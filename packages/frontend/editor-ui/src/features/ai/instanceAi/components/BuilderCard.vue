@@ -10,7 +10,9 @@ import WorkflowPreview from '@/app/components/WorkflowPreview.vue';
 import ExecutionPreviewCard from './ExecutionPreviewCard.vue';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useInstanceAiStore } from '../instanceAi.store';
+import { getRenderableAgentResult } from '../agentResult';
 import AgentTimeline from './AgentTimeline.vue';
+import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 
 const props = defineProps<{
 	agentNode: InstanceAiAgentNode;
@@ -175,6 +177,7 @@ const isError = computed(
 	() =>
 		props.agentNode.status === 'error' || (lastBuildResult.value && !lastBuildResult.value.success),
 );
+const displayResult = computed(() => getRenderableAgentResult(props.agentNode));
 
 // Fetch workflow preview for every successful submit.
 // Keyed by toolCallId (not workflowId) so each submit gets its own snapshot —
@@ -339,6 +342,10 @@ watch(
 			<span>{{ props.agentNode.error }}</span>
 		</div>
 
+		<div v-if="displayResult && !props.agentNode.error" :class="$style.resultBlock">
+			<InstanceAiMarkdown :content="displayResult" />
+		</div>
+
 		<!-- Workflow detail modal (iframe-based, full NDV support) -->
 		<Teleport to="body">
 			<div
@@ -394,11 +401,11 @@ watch(
 
 .title {
 	font-weight: var(--font-weight--bold);
-	color: var(--color--text);
+	color: var(--text-color);
 }
 
 .subtitle {
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 	font-weight: var(--font-weight--regular);
 	max-width: 280px;
 	overflow: hidden;
@@ -418,7 +425,7 @@ watch(
 	align-items: center;
 	gap: var(--spacing--4xs);
 	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 }
 
 .phaseActive {
@@ -438,7 +445,7 @@ watch(
 }
 
 .phaseIconPending {
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 }
 
 .phaseLabel {
@@ -466,7 +473,7 @@ watch(
 	font-family: var(--font-family);
 	font-size: var(--font-size--3xs);
 	font-weight: var(--font-weight--bold);
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 	text-transform: uppercase;
 	letter-spacing: 0.05em;
 
@@ -569,6 +576,13 @@ watch(
 	gap: var(--spacing--4xs);
 }
 
+.resultBlock {
+	padding: var(--spacing--xs);
+	border-top: var(--border);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text);
+}
+
 .errorList {
 	margin: 0;
 	padding-left: var(--spacing--sm);
@@ -641,7 +655,7 @@ watch(
 .modalTitle {
 	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--bold);
-	color: var(--color--text);
+	color: var(--text-color);
 }
 
 .modalClose {
@@ -655,7 +669,7 @@ watch(
 	border: none;
 	border-radius: var(--radius);
 	cursor: pointer;
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 
 	&:hover {
 		background: var(--color--background--shade-1);

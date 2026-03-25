@@ -1,33 +1,35 @@
 import type { Memory } from '@mastra/memory';
-import type { IterationEntry, IterationLog } from '@n8n/instance-ai';
-import { iterationEntrySchema } from '@n8n/instance-ai';
 import { z } from 'zod';
+
+import { iterationEntrySchema } from './iteration-log';
+import type { IterationEntry, IterationLog } from './iteration-log';
+import { patchThread } from './thread-patch';
 
 const METADATA_KEY = 'instanceAiIterationLog';
 
-/** Thread-metadata schema: taskKey → IterationEntry[] */
 const logRecordSchema = z.record(z.string(), z.array(iterationEntrySchema));
 
 export class MastraIterationLogStorage implements IterationLog {
 	constructor(private readonly memory: Memory) {}
 
 	async append(threadId: string, taskKey: string, entry: IterationEntry): Promise<void> {
-		const thread = await this.memory.getThreadById({ threadId });
-		if (!thread) throw new Error(`Thread ${threadId} not found`);
-
-		const existing = this.parseLog(thread.metadata?.[METADATA_KEY]);
-		const entries = existing[taskKey] ?? [];
-		entries.push(entry);
-		existing[taskKey] = entries;
-
-		await this.memory.updateThread({
-			id: threadId,
-			title: thread.title ?? threadId,
-			metadata: {
-				...thread.metadata,
-				[METADATA_KEY]: existing,
+		const updated = await patchThread(this.memory, {
+			threadId,
+			update: ({ metadata = {} }) => {
+				const existing = this.parseLog(metadata[METADATA_KEY]);
+				const entries = [...(existing[taskKey] ?? []), entry];
+				return {
+					metadata: {
+						...metadata,
+						[METADATA_KEY]: {
+							...existing,
+							[taskKey]: entries,
+						},
+					},
+				};
 			},
 		});
+		if (!updated) throw new Error(`Thread ${threadId} not found`);
 	}
 
 	async getForTask(threadId: string, taskKey: string): Promise<IterationEntry[]> {
@@ -39,16 +41,13 @@ export class MastraIterationLogStorage implements IterationLog {
 	}
 
 	async clear(threadId: string): Promise<void> {
-		const thread = await this.memory.getThreadById({ threadId });
-		if (!thread) return;
-
-		const metadata = { ...thread.metadata };
-		delete metadata[METADATA_KEY];
-
-		await this.memory.updateThread({
-			id: threadId,
-			title: thread.title ?? threadId,
-			metadata,
+		await patchThread(this.memory, {
+			threadId,
+			update: ({ metadata = {} }) => {
+				const nextMetadata = { ...metadata };
+				delete nextMetadata[METADATA_KEY];
+				return { metadata: nextMetadata };
+			},
 		});
 	}
 

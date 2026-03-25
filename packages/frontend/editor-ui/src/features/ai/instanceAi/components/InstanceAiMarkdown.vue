@@ -14,11 +14,11 @@ const wrapperRef = ref<HTMLElement | null>(null);
 /** Icon SVG paths for each resource type — matches the n8n design system icons. */
 const ICON_SVGS: Record<string, string> = {
 	workflow:
-		'<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.17 8H7.83a1.83 1.83 0 1 0 0 3.66h8.34a1.83 1.83 0 0 1 0 3.66H2.83"/><path d="m18 2 4 4-4 4"/><path d="m6 20-4-4 4-4"/></svg>',
+		'<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.17 8H7.83a1.83 1.83 0 1 0 0 3.66h8.34a1.83 1.83 0 0 1 0 3.66H2.83"/><path d="m18 2 4 4-4 4"/><path d="m6 20-4-4 4-4"/></svg>',
 	credential:
-		'<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"/><path d="m21 2-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/></svg>',
+		'<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"/><path d="m21 2-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/></svg>',
 	'data-table':
-		'<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/></svg>',
+		'<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/></svg>',
 };
 
 /** URL builders for each resource type. */
@@ -127,24 +127,22 @@ onUpdated(enhanceResourceLinks);
 
 <style lang="scss" module>
 .resourceChip {
-	display: inline-flex !important;
-	align-items: center !important;
-	gap: 2px !important;
-	padding: 1px var(--spacing--4xs) !important;
-	font-size: var(--font-size--2xs) !important;
-	font-weight: var(--font-weight--bold) !important;
-	background: var(--color--background--shade-1) !important;
-	border: var(--border) !important;
-	border-radius: var(--radius) !important;
-	color: var(--color--primary) !important;
-	text-decoration: none !important;
+	display: inline !important;
+	padding: 0 !important;
+	font-size: inherit !important;
+	font-weight: var(--font-weight--regular) !important;
+	background: none !important;
+	border: none !important;
+	border-radius: 0 !important;
+	color: inherit !important;
+	text-decoration: underline !important;
+	text-decoration-color: var(--text-color--subtle) !important;
 	cursor: pointer !important;
 	vertical-align: baseline !important;
-	line-height: var(--line-height--md) !important;
+	line-height: inherit !important;
 
 	&:hover {
-		background: color-mix(in srgb, var(--color--primary) 12%, var(--color--background)) !important;
-		border-color: var(--color--primary) !important;
+		background: none !important;
 		color: var(--color--primary) !important;
 	}
 }
@@ -152,6 +150,7 @@ onUpdated(enhanceResourceLinks);
 .resourceChipIcon {
 	display: inline-flex;
 	align-items: center;
-	flex-shrink: 0;
+	vertical-align: middle;
+	margin-right: var(--spacing--5xs);
 }
 </style>

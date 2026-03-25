@@ -6,6 +6,10 @@ import { useInstanceAiStore, type PendingConfirmationItem } from '../instanceAi.
 import { useToolLabel } from '../toolLabels';
 import DomainAccessApproval from './DomainAccessApproval.vue';
 import InstanceAiCredentialSetup from './InstanceAiCredentialSetup.vue';
+import InstanceAiWorkflowSetup from './InstanceAiWorkflowSetup.vue';
+import InstanceAiQuestions from './InstanceAiQuestions.vue';
+import PlanReviewPanel, { type PlannedTaskArg } from './PlanReviewPanel.vue';
+import type { QuestionAnswer } from './InstanceAiQuestions.vue';
 
 const store = useInstanceAiStore();
 const i18n = useI18n();
@@ -77,7 +81,32 @@ function handleTextSkip(requestId: string) {
 	void store.confirmAction(requestId, false);
 }
 
-/** True when every item in the group is a generic approval (not domain/cred/text). */
+function handleQuestionsSubmit(requestId: string, answers: QuestionAnswer[]) {
+	store.resolveConfirmation(requestId, 'approved');
+	void store.confirmAction(
+		requestId,
+		true,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		answers,
+	);
+}
+
+function handlePlanApprove(requestId: string) {
+	store.resolveConfirmation(requestId, 'approved');
+	void store.confirmAction(requestId, true);
+}
+
+function handlePlanRequestChanges(requestId: string, feedback: string) {
+	store.resolveConfirmation(requestId, 'denied');
+	void store.confirmAction(requestId, false, undefined, undefined, undefined, feedback);
+}
+
+/** True when every item in the group is a generic approval (not domain/cred/text/setup). */
 function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 	return items.every(
 		(item) =>
@@ -86,7 +115,13 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 				item.toolCall.confirmation!.credentialRequests &&
 				item.toolCall.confirmation!.credentialRequests.length > 0
 			) &&
-			item.toolCall.confirmation!.inputType !== 'text',
+			!(
+				item.toolCall.confirmation!.setupRequests &&
+				item.toolCall.confirmation!.setupRequests.length > 0
+			) &&
+			item.toolCall.confirmation!.inputType !== 'text' &&
+			item.toolCall.confirmation!.inputType !== 'questions' &&
+			item.toolCall.confirmation!.inputType !== 'plan-review',
 	);
 }
 </script>
@@ -134,6 +169,20 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 						:host="item.toolCall.confirmation!.domainAccess!.host"
 					/>
 
+					<!-- Workflow setup (full node credential/parameter/trigger setup) -->
+					<InstanceAiWorkflowSetup
+						v-else-if="
+							item.toolCall.confirmation!.setupRequests &&
+							item.toolCall.confirmation!.setupRequests.length > 0
+						"
+						:request-id="item.toolCall.confirmation!.requestId"
+						:setup-requests="item.toolCall.confirmation!.setupRequests!"
+						:workflow-id="item.toolCall.confirmation!.workflowId ?? ''"
+						:message="item.toolCall.confirmation!.message"
+						:project-id="item.toolCall.confirmation!.projectId"
+						:credential-flow="item.toolCall.confirmation!.credentialFlow"
+					/>
+
 					<!-- Credential setup -->
 					<InstanceAiCredentialSetup
 						v-else-if="
@@ -145,6 +194,31 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 						:message="item.toolCall.confirmation!.message"
 						:project-id="item.toolCall.confirmation!.projectId"
 						:credential-flow="item.toolCall.confirmation!.credentialFlow"
+					/>
+
+					<!-- Structured questions (ask-user with questions) -->
+					<InstanceAiQuestions
+						v-else-if="
+							item.toolCall.confirmation!.inputType === 'questions' &&
+							item.toolCall.confirmation!.questions
+						"
+						:questions="item.toolCall.confirmation!.questions!"
+						:intro-message="item.toolCall.confirmation!.introMessage"
+						@submit="
+							(answers) => handleQuestionsSubmit(item.toolCall.confirmation!.requestId, answers)
+						"
+					/>
+
+					<!-- Plan review (plan tool approval) -->
+					<PlanReviewPanel
+						v-else-if="item.toolCall.confirmation!.inputType === 'plan-review'"
+						:planned-tasks="(item.toolCall.args?.tasks as PlannedTaskArg[] | undefined) ?? []"
+						:message="item.toolCall.confirmation!.message"
+						@approve="handlePlanApprove(item.toolCall.confirmation!.requestId)"
+						@request-changes="
+							(feedback) =>
+								handlePlanRequestChanges(item.toolCall.confirmation!.requestId, feedback)
+						"
 					/>
 
 					<!-- Text input (ask-user) -->

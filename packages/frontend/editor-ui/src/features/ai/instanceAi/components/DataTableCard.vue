@@ -6,7 +6,9 @@ import { useI18n } from '@n8n/i18n';
 import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { ref } from 'vue';
 import { useInstanceAiStore } from '../instanceAi.store';
+import { getRenderableAgentResult } from '../agentResult';
 import AgentTimeline from './AgentTimeline.vue';
+import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 
 const props = defineProps<{
 	agentNode: InstanceAiAgentNode;
@@ -92,6 +94,7 @@ const isError = computed(() => props.agentNode.status === 'error');
 const isCompleted = computed(
 	() => props.agentNode.status === 'completed' && !props.agentNode.error,
 );
+const displayResult = computed(() => getRenderableAgentResult(props.agentNode));
 </script>
 
 <template>
@@ -162,6 +165,10 @@ const isCompleted = computed(
 			<span>{{ i18n.baseText('instanceAi.dataTableCard.success') }}</span>
 		</div>
 
+		<div v-if="displayResult && !props.agentNode.error" :class="$style.resultBlock">
+			<InstanceAiMarkdown :content="displayResult" />
+		</div>
+
 		<!-- Error -->
 		<div v-if="props.agentNode.error" :class="$style.errorResult">
 			<N8nIcon icon="triangle-alert" size="small" :class="$style.errorIcon" />
@@ -195,11 +202,11 @@ const isCompleted = computed(
 
 .title {
 	font-weight: var(--font-weight--bold);
-	color: var(--color--text);
+	color: var(--text-color);
 }
 
 .subtitle {
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 	font-weight: var(--font-weight--regular);
 	max-width: 280px;
 	overflow: hidden;
@@ -219,7 +226,7 @@ const isCompleted = computed(
 	align-items: center;
 	gap: var(--spacing--4xs);
 	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 }
 
 .phaseActive {
@@ -239,7 +246,7 @@ const isCompleted = computed(
 }
 
 .phaseIconPending {
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 }
 
 .phaseLabel {
@@ -267,7 +274,7 @@ const isCompleted = computed(
 	font-family: var(--font-family);
 	font-size: var(--font-size--3xs);
 	font-weight: var(--font-weight--bold);
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 	text-transform: uppercase;
 	letter-spacing: 0.05em;
 
@@ -289,6 +296,13 @@ const isCompleted = computed(
 	background: color-mix(in srgb, var(--color--success) 10%, var(--color--background));
 	font-size: var(--font-size--2xs);
 	color: var(--color--success);
+}
+
+.resultBlock {
+	padding: var(--spacing--xs);
+	border-top: var(--border);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text);
 }
 
 .errorResult {

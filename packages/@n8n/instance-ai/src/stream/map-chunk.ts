@@ -1,5 +1,18 @@
-import { credentialRequestSchema } from '@n8n/api-types';
-import type { InstanceAiCredentialRequest, InstanceAiEvent } from '@n8n/api-types';
+import { credentialRequestSchema, workflowSetupNodeSchema, taskListSchema } from '@n8n/api-types';
+import type {
+	InstanceAiCredentialRequest,
+	InstanceAiEvent,
+	InstanceAiWorkflowSetupNode,
+	TaskList,
+} from '@n8n/api-types';
+import { z } from 'zod';
+
+const questionItemSchema = z.object({
+	id: z.string(),
+	question: z.string(),
+	type: z.enum(['single', 'multi', 'text']),
+	options: z.array(z.string()).optional(),
+});
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -170,15 +183,38 @@ export function mapMastraChunkToEvent(
 		const projectId =
 			typeof suspendPayload.projectId === 'string' ? suspendPayload.projectId : undefined;
 
-		// Extract optional inputType (e.g., 'text' for ask-user tool)
+		// Extract optional inputType (e.g., 'text' for ask-user, 'questions', 'plan-review')
 		const rawInputType =
 			typeof suspendPayload.inputType === 'string' ? suspendPayload.inputType : undefined;
-		const inputType =
-			rawInputType === 'text'
-				? ('text' as const)
-				: rawInputType === 'approval'
-					? ('approval' as const)
-					: undefined;
+		const validInputTypes = ['approval', 'text', 'questions', 'plan-review'] as const;
+		const inputType = (validInputTypes as readonly string[]).includes(rawInputType ?? '')
+			? (rawInputType as (typeof validInputTypes)[number])
+			: undefined;
+
+		// Extract optional structured questions (for ask-user tool with questions)
+		let questions: Array<z.infer<typeof questionItemSchema>> | undefined;
+		if (Array.isArray(suspendPayload.questions)) {
+			const parsed = suspendPayload.questions
+				.map((item) => questionItemSchema.safeParse(item))
+				.filter((r) => r.success)
+				.map((r) => r.data);
+			if (parsed.length > 0) {
+				questions = parsed;
+			}
+		}
+
+		// Extract optional intro message
+		const introMessage =
+			typeof suspendPayload.introMessage === 'string' ? suspendPayload.introMessage : undefined;
+
+		// Extract optional task list (for plan-review)
+		let tasks: TaskList | undefined;
+		if (isRecord(suspendPayload.tasks)) {
+			const parsed = taskListSchema.safeParse(suspendPayload.tasks);
+			if (parsed.success) {
+				tasks = parsed.data;
+			}
+		}
 
 		// Extract optional domainAccess metadata (for domain-gated tools like fetch-url)
 		const rawDomainAccess = isRecord(suspendPayload.domainAccess)
@@ -190,6 +226,36 @@ export function mapMastraChunkToEvent(
 			typeof rawDomainAccess.host === 'string'
 				? { url: rawDomainAccess.url, host: rawDomainAccess.host }
 				: undefined;
+
+		// Extract optional credentialFlow for credential setup stage
+		const rawCredentialFlow = isRecord(suspendPayload.credentialFlow)
+			? suspendPayload.credentialFlow
+			: undefined;
+		const validStages = new Set<'generic' | 'finalize'>(['generic', 'finalize']);
+		const rawStage =
+			rawCredentialFlow && typeof rawCredentialFlow.stage === 'string'
+				? rawCredentialFlow.stage
+				: undefined;
+		const credentialFlow =
+			rawStage !== undefined && validStages.has(rawStage as 'generic' | 'finalize')
+				? { stage: rawStage as 'generic' | 'finalize' }
+				: undefined;
+
+		// Extract and validate optional setupRequests for workflow setup HITL
+		let setupRequests: InstanceAiWorkflowSetupNode[] | undefined;
+		if (Array.isArray(suspendPayload.setupRequests)) {
+			const parsed = suspendPayload.setupRequests
+				.map((item) => workflowSetupNodeSchema.safeParse(item))
+				.filter((r) => r.success)
+				.map((r) => r.data);
+			if (parsed.length > 0) {
+				setupRequests = parsed;
+			}
+		}
+
+		// Extract optional workflowId for workflow setup tool
+		const workflowId =
+			typeof suspendPayload.workflowId === 'string' ? suspendPayload.workflowId : undefined;
 
 		return {
 			type: 'confirmation-request',
@@ -209,6 +275,12 @@ export function mapMastraChunkToEvent(
 				...(projectId ? { projectId } : {}),
 				...(inputType ? { inputType } : {}),
 				...(domainAccess ? { domainAccess } : {}),
+				...(credentialFlow ? { credentialFlow } : {}),
+				...(setupRequests ? { setupRequests } : {}),
+				...(workflowId ? { workflowId } : {}),
+				...(questions ? { questions } : {}),
+				...(introMessage ? { introMessage } : {}),
+				...(tasks ? { tasks } : {}),
 			},
 		};
 	}

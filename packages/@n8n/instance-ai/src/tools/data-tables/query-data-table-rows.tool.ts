@@ -50,7 +50,7 @@ export function createQueryDataTableRowsTool(context: InstanceAiContext) {
 			if (remaining > 0) {
 				return {
 					...result,
-					hint: `${remaining} more rows available. Use manage-data-tables-with-agent for bulk operations.`,
+					hint: `${remaining} more rows available. Use plan with a manage-data-tables task for bulk operations.`,
 				};
 			}
 

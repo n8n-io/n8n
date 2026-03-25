@@ -152,7 +152,7 @@ const resolvedAction = computed((): 'approved' | 'denied' | 'deferred' | null =>
 	cursor: pointer;
 	font-family: var(--font-family);
 	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 
 	&:hover {
 		background: var(--color--background--shade-1);
@@ -205,7 +205,7 @@ const resolvedAction = computed((): 'approved' | 'denied' | 'deferred' | null =>
 .sectionLabel {
 	font-size: var(--font-size--3xs);
 	font-weight: var(--font-weight--bold);
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 	text-transform: uppercase;
 	letter-spacing: 0.05em;
 	margin-bottom: var(--spacing--4xs);
@@ -218,7 +218,7 @@ const resolvedAction = computed((): 'approved' | 'denied' | 'deferred' | null =>
 	white-space: pre-wrap;
 	word-break: break-word;
 	margin: 0;
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 	max-height: 200px;
 	overflow-y: auto;
 }
@@ -243,7 +243,97 @@ const resolvedAction = computed((): 'approved' | 'denied' | 'deferred' | null =>
 }
 
 .deferredIcon {
-	color: var(--color--text--tint-2);
+	color: var(--text-color--subtler);
+}
+
+.confirmationMessage {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--spacing--3xs);
+	font-size: var(--font-size--2xs);
+	color: var(--text-color);
+	margin-bottom: var(--spacing--2xs);
+}
+
+.destructiveIcon {
+	color: var(--color--danger);
+}
+
+.warningIcon {
+	color: var(--color--warning);
+}
+
+.infoIcon {
+	color: var(--color--primary);
+}
+
+.confirmationActions {
+	display: flex;
+	gap: var(--spacing--2xs);
+	justify-content: flex-end;
+}
+
+.confirmButton {
+	padding: var(--spacing--4xs) var(--spacing--xs);
+	border-radius: var(--radius);
+	font-size: var(--font-size--2xs);
+	font-family: var(--font-family);
+	cursor: pointer;
+	border: var(--border);
+	background: var(--color--background);
+	color: var(--text-color);
+
+	&:hover {
+		background: var(--color--background--shade-1);
+	}
+}
+
+.denyButton {
+	color: var(--text-color--subtle);
+}
+
+.approveButton {
+	background: var(--color--primary);
+	color: var(--button--color--text--primary);
+	border-color: var(--color--primary);
+
+	&:hover {
+		background: var(--color--primary--shade-1);
+	}
+}
+
+.approveDestructive {
+	background: var(--color--danger);
+	color: var(--button--color--text--primary);
+	border-color: var(--color--danger);
+
+	&:hover {
+		background: var(--color--danger--shade-1);
+	}
+}
+
+.textInputWrapper {
+	margin-bottom: var(--spacing--2xs);
+}
+
+.textInput {
+	width: 100%;
+	padding: var(--spacing--4xs) var(--spacing--2xs);
+	border: var(--border);
+	border-radius: var(--radius);
+	font-size: var(--font-size--2xs);
+	font-family: var(--font-family);
+	background: var(--color--background);
+	color: var(--text-color);
+	outline: none;
+
+	&:focus {
+		border-color: var(--color--primary);
+	}
+
+	&::placeholder {
+		color: var(--text-color--subtle);
+	}
 }
 
 .confirmationStatus {
@@ -253,6 +343,6 @@ const resolvedAction = computed((): 'approved' | 'denied' | 'deferred' | null =>
 	align-items: center;
 	gap: var(--spacing--4xs);
 	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 }
 </style>
