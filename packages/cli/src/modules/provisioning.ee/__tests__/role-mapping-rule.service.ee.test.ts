@@ -2,6 +2,7 @@ import { mock } from 'jest-mock-extended';
 
 import { RoleMappingRuleService } from '@/modules/provisioning.ee/role-mapping-rule.service.ee';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type {
 	Project,
@@ -53,6 +54,7 @@ const projectRole: Role = {
 describe('RoleMappingRuleService', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
+		roleMappingRuleRepository.findOne.mockResolvedValue(null);
 	});
 
 	describe('create', () => {
@@ -127,6 +129,22 @@ describe('RoleMappingRuleService', () => {
 					projectIds: ['p1'],
 				}),
 			).rejects.toThrow(BadRequestError);
+		});
+
+		it('should reject when another rule already uses the same type and order', async () => {
+			roleRepository.findOne.mockResolvedValue(globalRole);
+			roleMappingRuleRepository.findOne.mockResolvedValue({
+				id: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+			} as RoleMappingRule);
+
+			await expect(
+				service.create({
+					expression: 'true',
+					role: globalRole.slug,
+					type: 'instance',
+					order: 2,
+				}),
+			).rejects.toThrow(ConflictError);
 		});
 
 		it('should reject when some project ids do not exist', async () => {
@@ -229,6 +247,40 @@ describe('RoleMappingRuleService', () => {
 			expect(result.projectIds).toHaveLength(2);
 			expect(result.type).toBe('project');
 			expect(projectRepository.findBy).toHaveBeenCalled();
+		});
+
+		it('should dedupe duplicate projectIds before loading projects', async () => {
+			roleRepository.findOne.mockResolvedValue(projectRole);
+
+			const projA = { id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' } as Project;
+			projectRepository.findBy.mockResolvedValue([projA]);
+
+			const savedRule = {
+				id: 'd0eebc99-9c0b-4ef8-bb6d-6bb9bd380a33',
+				expression: 'true',
+				role: projectRole,
+				type: 'project',
+				order: 1,
+				projects: [projA],
+				createdAt: new Date('2025-02-01T12:00:00.000Z'),
+				updatedAt: new Date('2025-02-01T12:00:00.000Z'),
+			} as unknown as RoleMappingRule;
+
+			roleMappingRuleRepository.save.mockResolvedValue({
+				...savedRule,
+			} as unknown as RoleMappingRule);
+			roleMappingRuleRepository.findOneOrFail.mockResolvedValue(savedRule);
+
+			const result = await service.create({
+				expression: 'true',
+				role: projectRole.slug,
+				type: 'project',
+				order: 1,
+				projectIds: [projA.id, projA.id],
+			});
+
+			expect(result.projectIds).toEqual([projA.id]);
+			expect(projectRepository.findBy).toHaveBeenCalledTimes(1);
 		});
 	});
 });

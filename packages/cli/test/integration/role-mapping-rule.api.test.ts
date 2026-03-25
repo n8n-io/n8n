@@ -124,6 +124,19 @@ describe('POST /role-mapping-rule', () => {
 		expect(stored!.projects).toHaveLength(0);
 	});
 
+	it('should return 409 when type and order match an existing rule', async () => {
+		await ownerAgent.post('/role-mapping-rule').send(validInstancePayload).expect(200);
+
+		const response = await ownerAgent.post('/role-mapping-rule').send({
+			...validInstancePayload,
+			expression: 'claims.other === true',
+		});
+
+		expect(response.status).toBe(409);
+		expect(response.body.message).toContain('already exists');
+		expect(response.body.message).toContain('order');
+	});
+
 	it('should create a project mapping rule linked to team projects', async () => {
 		const teamProject = await createTeamProject(undefined, owner);
 

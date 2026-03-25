@@ -10,6 +10,7 @@ import { Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 type CreateRoleMappingRuleInput = z.infer<(typeof CreateRoleMappingRuleDto)['schema']>;
@@ -55,11 +56,23 @@ export class RoleMappingRuleService {
 			throw new BadRequestError('Project mapping rules must use a project role');
 		}
 
-		const projectIds = dto.type === 'project' ? (dto.projectIds ?? []) : [];
-		const projects =
-			projectIds.length > 0 ? await this.projectRepository.findBy({ id: In(projectIds) }) : [];
+		const existingAtOrder = await this.roleMappingRuleRepository.findOne({
+			where: { type: dto.type, order: dto.order },
+		});
+		if (existingAtOrder) {
+			throw new ConflictError(
+				`A role mapping rule already exists with type "${dto.type}" and order ${dto.order}. Use a different order value.`,
+			);
+		}
 
-		if (projects.length !== projectIds.length) {
+		const projectIds = dto.type === 'project' ? (dto.projectIds ?? []) : [];
+		const uniqueProjectIds = [...new Set(projectIds)];
+		const projects =
+			uniqueProjectIds.length > 0
+				? await this.projectRepository.findBy({ id: In(uniqueProjectIds) })
+				: [];
+
+		if (projects.length !== uniqueProjectIds.length) {
 			throw new BadRequestError('One or more projects were not found');
 		}
 
