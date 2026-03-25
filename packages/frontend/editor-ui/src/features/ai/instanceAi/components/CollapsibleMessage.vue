@@ -102,7 +102,7 @@ onMounted(() => {
 	font-family: var(--font-family);
 	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--bold);
-	color: var(--text-color--subtle);
+	color: var(--color--text--tint-1);
 	background: var(--color--background);
 	border: var(--border);
 	border-radius: var(--radius--xl);

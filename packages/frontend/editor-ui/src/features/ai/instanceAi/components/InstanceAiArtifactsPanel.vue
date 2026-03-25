@@ -230,7 +230,7 @@ watch(
 }
 
 .chevron {
-	color: var(--text-color--subtle);
+	color: var(--color--text--tint-1);
 	flex-shrink: 0;
 	transition: transform 0.15s ease;
 }
@@ -249,14 +249,14 @@ watch(
 	background: var(--color--foreground);
 	border-radius: var(--radius--sm);
 	text-transform: uppercase;
-	color: var(--text-color);
+	color: var(--color--text);
 	flex-shrink: 0;
 }
 
 .progress {
 	margin-left: auto;
 	font-size: var(--font-size--3xs);
-	color: var(--text-color--subtle);
+	color: var(--color--text--tint-1);
 	flex-shrink: 0;
 }
 
@@ -312,13 +312,13 @@ watch(
 }
 
 .taskDescription {
-	color: var(--text-color);
+	color: var(--color--text);
 	flex: 1;
 	min-width: 0;
 }
 
 .todoIcon {
-	color: var(--text-color--subtle);
+	color: var(--color--text--tint-1);
 }
 
 .inProgressIcon {
@@ -341,6 +341,6 @@ watch(
 	padding: var(--spacing--lg) var(--spacing--sm);
 	text-align: center;
 	font-size: var(--font-size--2xs);
-	color: var(--text-color--subtle);
+	color: var(--color--text--tint-1);
 }
 </style>

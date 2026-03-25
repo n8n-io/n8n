@@ -68,7 +68,7 @@ const { store, getString, getNumber } = useSettingsField();
 	gap: var(--spacing--3xs);
 	font-size: var(--font-size--xs);
 	font-weight: var(--font-weight--bold);
-	color: var(--text-color);
+	color: var(--color--text);
 	padding-bottom: var(--spacing--4xs);
 	border-bottom: var(--border);
 }

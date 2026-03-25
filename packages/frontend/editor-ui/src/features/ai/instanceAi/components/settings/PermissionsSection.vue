@@ -94,14 +94,14 @@ const store = useInstanceAiSettingsStore();
 	gap: var(--spacing--3xs);
 	font-size: var(--font-size--xs);
 	font-weight: var(--font-weight--bold);
-	color: var(--text-color);
+	color: var(--color--text);
 	padding-bottom: var(--spacing--4xs);
 	border-bottom: var(--border);
 }
 
 .permissionDescription {
 	font-size: var(--font-size--2xs);
-	color: var(--text-color--subtle);
+	color: var(--color--text--tint-1);
 	line-height: var(--line-height--xl);
 }
 
@@ -114,6 +114,6 @@ const store = useInstanceAiSettingsStore();
 
 .switchLabel {
 	font-size: var(--font-size--2xs);
-	color: var(--text-color--subtle);
+	color: var(--color--text--tint-1);
 }
 </style>

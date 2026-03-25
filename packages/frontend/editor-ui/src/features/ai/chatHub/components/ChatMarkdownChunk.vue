@@ -105,7 +105,7 @@ defineExpose({
 	--markdown--spacing: var(--spacing--2xs);
 
 	display: block;
-	color: var(--text-color);
+	color: var(--color--text);
 
 	// Paragraphs and normal text
 	p,
