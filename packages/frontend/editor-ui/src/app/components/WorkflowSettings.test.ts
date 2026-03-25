@@ -721,40 +721,6 @@ describe('WorkflowSettingsVue', () => {
 			});
 		});
 
-		// TODO: Flaky in suite due to ElSwitch pointer interaction during userEvent.click.
-		// Passes in isolation. Same functionality covered by "should save workflow with selected resolver".
-		it.skip('should select a resolver from dropdown', async () => {
-			const { getByTestId, getByRole } = createComponent({ pinia });
-			await flushPromises();
-
-			await waitFor(() => {
-				expect(restApiClient.getCredentialResolvers).toHaveBeenCalled();
-			});
-
-			const dropdownItems = await getDropdownItems(
-				getByTestId('workflow-settings-credential-resolver'),
-			);
-
-			expect(dropdownItems).toHaveLength(3);
-			expect(dropdownItems[0]).toHaveTextContent('Test Resolver 1');
-			expect(dropdownItems[1]).toHaveTextContent('Test Resolver 2');
-			expect(dropdownItems[2]).toHaveTextContent('N8n Resolver');
-
-			// Select resolver and save — covered more thoroughly in
-			// "should save workflow with selected resolver" below.
-			await userEvent.click(dropdownItems[0]);
-			await flushPromises();
-
-			await userEvent.click(getByRole('button', { name: 'Save' }));
-
-			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
-				'1',
-				expect.objectContaining({
-					settings: expect.objectContaining({ credentialResolverId: 'resolver-1' }),
-				}),
-			);
-		});
-
 		it('should save workflow with selected resolver', async () => {
 			const { getByTestId, getByRole } = createComponent({ pinia });
 			await flushPromises();
@@ -1118,31 +1084,6 @@ describe('WorkflowSettingsVue', () => {
 					settings: expect.objectContaining({ redactionPolicy: 'all' }),
 				}),
 			);
-		});
-
-		// TODO: Fix test - credentialResolverId gets cleared during onMounted because
-		// loadCredentialResolvers resolves with an empty list (resolver not found),
-		// triggering the stale resolver clearing logic.
-		it.skip('should disable production redaction select and force "Redact" when dynamic credentials are configured', async () => {
-			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
-
-			const workflowWithRedactionScope = createTestWorkflow({
-				id: '1',
-				name: 'Test Workflow',
-				active: true,
-				scopes: ['workflow:update', 'workflow:updateRedactionSetting'],
-			});
-			workflowsListStore.workflowsById = { '1': workflowWithRedactionScope };
-			workflowsListStore.getWorkflowById.mockImplementation(() => workflowWithRedactionScope);
-
-			workflowDocumentStore.setSettings({ credentialResolverId: 'some-resolver-id' });
-
-			const { getByTestId } = createComponent({ pinia });
-			await flushPromises();
-
-			const productionSelect = getByTestId('workflow-settings-redact-production-select');
-			const input = productionSelect.querySelector('input');
-			expect(input).toBeDisabled();
 		});
 	});
 });
