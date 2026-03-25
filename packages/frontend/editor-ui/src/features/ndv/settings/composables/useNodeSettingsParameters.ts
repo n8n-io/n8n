@@ -1,6 +1,6 @@
 import get from 'lodash/get';
 import set from 'lodash/set';
-import type { Ref } from 'vue';
+import { computed, type Ref } from 'vue';
 import {
 	type INode,
 	type INodeParameters,
@@ -31,12 +31,19 @@ import {
 	getNodeAuthFields,
 	isAuthRelatedParameter,
 } from '@/app/utils/nodeTypesUtils';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 
 export function useNodeSettingsParameters() {
 	const workflowsStore = useWorkflowsStore();
-	const workflowState = injectWorkflowState();
+	const workflowDocumentStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
 	const nodeTypesStore = useNodeTypesStore();
 	const settingsStore = useSettingsStore();
 	const telemetry = useTelemetry();
@@ -125,15 +132,15 @@ export function useNodeSettingsParameters() {
 			value: nodeParameters,
 		};
 
-		const connections = workflowsStore.allConnections;
+		const connections = workflowDocumentStore.value?.connectionsBySourceNode ?? {};
 
 		const updatedConnections = updateDynamicConnections(node, connections, parameterData);
 
 		if (updatedConnections) {
-			workflowsStore.setConnections(updatedConnections);
+			workflowDocumentStore.value?.setConnections(updatedConnections);
 		}
 
-		workflowState.setNodeParameters(updateInformation);
+		workflowDocumentStore.value?.setNodeParameters(updateInformation);
 
 		void externalHooks.run('nodeSettings.valueChanged', {
 			parameterPath,
@@ -174,6 +181,11 @@ export function useNodeSettingsParameters() {
 	): Promise<boolean> {
 		// Fast path: hidden parameters are never displayed
 		if (parameter.type === 'hidden') {
+			return false;
+		}
+
+		// Fast path: hide parameters explicitly marked as cloud-only on cloud deployments
+		if (parameter.displayOptions?.hideOnCloud && settingsStore.isCloudDeployment) {
 			return false;
 		}
 

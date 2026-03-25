@@ -10,6 +10,10 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -39,7 +43,16 @@ export function useReviewChanges() {
 	const chatPanelStateStore = useChatPanelStateStore();
 	const posthogStore = usePostHog();
 	const i18n = useI18n();
+
+	const workflowDocumentStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
 	const isLoadingDiff = ref(false);
+	const cachedVersionNodes = ref<INode[]>([]);
+	const cachedVersionConnections = ref<IConnections>({});
+	const cachedVersionLoaded = ref(false);
 
 	// Cache for per-version node data: versionId → { nodes, connections }
 	const versionDataCache = ref<Map<string, { nodes: INode[]; connections: IConnections }>>(
@@ -177,8 +190,25 @@ export function useReviewChanges() {
 
 	/** Node changes for the latest version (used for canvas highlights and backward compat) */
 	const nodeChanges = computed<NodeChangeEntry[]>(() => {
-		if (!builderStore.latestRevertVersion) return [];
-		return versionNodeChangesMap.value.get(builderStore.latestRevertVersion.id) ?? [];
+		if (!cachedVersionLoaded.value || builderStore.streaming) return [];
+		const normalized = resolveNodeDefaults(cachedVersionNodes.value);
+		const currentNodes: INode[] = workflowDocumentStore.value?.allNodes ?? [];
+		const diff = compareWorkflowsNodes(normalized, currentNodes);
+		const currentNodesById = new Map(currentNodes.map((n) => [n.id, n]));
+		return [...diff.values()]
+			.filter((d) => d.status !== NodeDiffStatus.Eq)
+			.map((d) => {
+				// For Added/Modified nodes, use the current version; for Deleted, use the cached version
+				const node =
+					d.status === NodeDiffStatus.Deleted
+						? d.node
+						: (currentNodesById.get(d.node.id) ?? d.node);
+				return {
+					status: d.status,
+					node,
+					nodeType: nodeTypesStore.getNodeType(node.type, node.typeVersion),
+				};
+			});
 	});
 
 	const editedNodesCount = computed(() => nodeChanges.value.length);

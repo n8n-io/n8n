@@ -1,5 +1,4 @@
 import { test, expect, chatHubTestConfig } from './fixtures';
-import { ChatHubChatPage } from '../../../pages/ChatHubChatPage';
 import { CredentialModal } from '../../../pages/components/CredentialModal';
 
 test.use(chatHubTestConfig);
@@ -11,19 +10,21 @@ test.describe(
 	},
 	() => {
 		test('new chat with pre-configured credentials', async ({ n8n, anthropicCredential: _ }) => {
-			const page = new ChatHubChatPage(n8n.page);
-
 			await n8n.navigate.toChatHub();
-			await page.dismissWelcomeScreen();
+			await n8n.chatHubChat.dismissWelcomeScreen();
 
-			await expect(page.getGreetingMessage()).toContainText('Start a chat with');
-			await expect(page.getModelSelectorButton()).toContainText(/claude/i); // pre-selected
+			await expect(n8n.chatHubChat.getGreetingMessage()).toContainText('Start a chat with');
+			await expect(n8n.chatHubChat.getModelSelectorButton()).toContainText(/claude/i); // pre-selected
 
-			await page.getChatInput().fill('Hello');
-			await page.getSendButton().click();
-			await expect(page.getChatMessages().nth(0)).toContainText('Hello');
-			await expect(page.getChatMessages().nth(1)).toContainText('Hello! How can I help you today?');
-			await expect(page.sidebar.getConversations().first()).toHaveAccessibleName(/greeting/i); // verify auto-generated title
+			await n8n.chatHubChat.getChatInput().fill('Hello');
+			await n8n.chatHubChat.getSendButton().click();
+			await expect(n8n.chatHubChat.getChatMessages().nth(0)).toContainText('Hello');
+			await expect(n8n.chatHubChat.getChatMessages().nth(1)).toContainText(
+				'Hello! How can I help you today?',
+			);
+			await expect(n8n.chatHubChat.sidebar.getConversations().first()).toHaveAccessibleName(
+				/greeting/i,
+			); // verify auto-generated title
 		});
 
 		// Test with a different user to avoid race condition on credentials
@@ -31,79 +32,82 @@ test.describe(
 			n8n,
 			anthropicApiKey,
 		}) => {
-			const page = new ChatHubChatPage(n8n.page);
 			const credModal = new CredentialModal(n8n.page.getByTestId('editCredential-modal'));
 
 			await n8n.navigate.toChatHub();
-			await page.dismissWelcomeScreen();
+			await n8n.chatHubChat.dismissWelcomeScreen();
 
-			await expect(page.getGreetingMessage()).toContainText('Select a model to start chatting');
+			await expect(n8n.chatHubChat.getGreetingMessage()).toContainText(
+				'Select a model to start chatting',
+			);
 
-			await page.getModelSelectorButton().click();
+			await n8n.chatHubChat.getModelSelectorButton().click();
 			await n8n.page.waitForTimeout(500); // to reliably hover intended menu item
-			await page.getVisiblePopoverMenuItem('Anthropic').hover({ force: true });
-			await page.getVisiblePopoverMenuItem('Configure credentials', { exact: true }).click();
+			await n8n.chatHubChat.getVisiblePopoverMenuItem('Anthropic').hover({ force: true });
+			await n8n.chatHubChat
+				.getVisiblePopoverMenuItem('Configure credentials', { exact: true })
+				.click();
 
 			await credModal.fillField('apiKey', anthropicApiKey);
 			await credModal.save();
 			await credModal.close();
 
-			await expect(page.getModelSelectorButton()).toContainText(/claude/i); // auto-select a model
+			await expect(n8n.chatHubChat.getModelSelectorButton()).toContainText(/claude/i); // auto-select a model
 
-			await page.getChatInput().fill('Hello from e2e');
-			await page.getSendButton().click();
-			await expect(page.getChatMessages().nth(0)).toContainText('Hello from e2e');
-			await expect(page.getChatMessages().nth(1)).toContainText('Hello!');
-			await expect(page.sidebar.getConversations().first()).toHaveAccessibleName(/greeting/i); // verify auto-generated title
+			await n8n.chatHubChat.getChatInput().fill('Hello from e2e');
+			await n8n.chatHubChat.getSendButton().click();
+			await expect(n8n.chatHubChat.getChatMessages().nth(0)).toContainText('Hello from e2e');
+			await expect(n8n.chatHubChat.getChatMessages().nth(1)).toContainText('Hello!');
+			await expect(n8n.chatHubChat.sidebar.getConversations().first()).toHaveAccessibleName(
+				/greeting/i,
+			); // verify auto-generated title
 		});
 
 		test('conversation flow', async ({ n8n, anthropicCredential: _ }) => {
-			const page = new ChatHubChatPage(n8n.page);
-
 			await n8n.navigate.toChatHub();
-			await page.dismissWelcomeScreen();
-			await expect(page.getModelSelectorButton()).toContainText(/claude/i); // auto-select a model
+			await n8n.chatHubChat.dismissWelcomeScreen();
+			await expect(n8n.chatHubChat.getModelSelectorButton()).toContainText(/claude/i); // auto-select a model
 
 			// STEP: send first prompt
-			await page.getChatInput().fill('Hi');
-			await page.getSendButton().click();
-			await expect(page.getChatMessages().nth(0)).toHaveText('Hi');
-			await expect(page.getChatMessages().nth(1)).toContainText('Hi there!');
-			await expect(page.getChatMessages()).toHaveCount(2);
+			await n8n.chatHubChat.getChatInput().fill('Hi');
+			await n8n.chatHubChat.getSendButton().click();
+			await expect(n8n.chatHubChat.getChatMessages().nth(0)).toHaveText('Hi');
+			await expect(n8n.chatHubChat.getChatMessages().nth(1)).toContainText('Hi there!');
+			await expect(n8n.chatHubChat.getChatMessages()).toHaveCount(2);
 
 			// STEP: send 2nd prompt
-			await page.getChatInput().fill('How are you?');
-			await page.getSendButton().click();
-			await expect(page.getChatMessages().nth(0)).toContainText('Hi');
-			await expect(page.getChatMessages().nth(1)).toContainText('Hi there!');
-			await expect(page.getChatMessages().nth(2)).toContainText('How are you?');
-			await expect(page.getChatMessages().nth(3)).toContainText("I'm doing well");
-			await expect(page.getChatMessages()).toHaveCount(4);
+			await n8n.chatHubChat.getChatInput().fill('How are you?');
+			await n8n.chatHubChat.getSendButton().click();
+			await expect(n8n.chatHubChat.getChatMessages().nth(0)).toContainText('Hi');
+			await expect(n8n.chatHubChat.getChatMessages().nth(1)).toContainText('Hi there!');
+			await expect(n8n.chatHubChat.getChatMessages().nth(2)).toContainText('How are you?');
+			await expect(n8n.chatHubChat.getChatMessages().nth(3)).toContainText("I'm doing well");
+			await expect(n8n.chatHubChat.getChatMessages()).toHaveCount(4);
 
 			// STEP: regenerate response to first prompt
-			await page.clickRegenerateButtonAt(1);
-			await expect(page.getChatMessages().nth(1)).toContainText('Hello!');
-			await expect(page.getChatMessages()).toHaveCount(2);
+			await n8n.chatHubChat.clickRegenerateButtonAt(1);
+			await expect(n8n.chatHubChat.getChatMessages().nth(1)).toContainText('Hello!');
+			await expect(n8n.chatHubChat.getChatMessages()).toHaveCount(2);
 
 			// STEP: switch to previous alternative
-			await page.clickPrevAlternativeButtonAt(1);
-			await expect(page.getChatMessages().nth(1)).toContainText('Hi there!');
-			await expect(page.getChatMessages()).toHaveCount(4);
+			await n8n.chatHubChat.clickPrevAlternativeButtonAt(1);
+			await expect(n8n.chatHubChat.getChatMessages().nth(1)).toContainText('Hi there!');
+			await expect(n8n.chatHubChat.getChatMessages()).toHaveCount(4);
 
 			// STEP: edit 2nd prompt
-			await page.clickEditButtonAt(2);
-			await page.getEditorAt(2).fill('Hola');
-			await page.getSendButtonAt(2).click();
-			await expect(page.getChatMessages().nth(3)).toContainText('¡Hola!');
-			await expect(page.getChatMessages()).toHaveCount(4);
+			await n8n.chatHubChat.clickEditButtonAt(2);
+			await n8n.chatHubChat.getEditorAt(2).fill('Hola');
+			await n8n.chatHubChat.getSendButtonAt(2).click();
+			await expect(n8n.chatHubChat.getChatMessages().nth(3)).toContainText('¡Hola!');
+			await expect(n8n.chatHubChat.getChatMessages()).toHaveCount(4);
 
 			// STEP: reload page and verify persistence
 			await n8n.page.reload();
-			await expect(page.getChatMessages()).toHaveCount(4);
-			await expect(page.getChatMessages().nth(0)).toContainText('Hi');
-			await expect(page.getChatMessages().nth(1)).toContainText('Hi there!');
-			await expect(page.getChatMessages().nth(2)).toContainText('Hola');
-			await expect(page.getChatMessages().nth(3)).toContainText('¡Hola!');
+			await expect(n8n.chatHubChat.getChatMessages()).toHaveCount(4);
+			await expect(n8n.chatHubChat.getChatMessages().nth(0)).toContainText('Hi');
+			await expect(n8n.chatHubChat.getChatMessages().nth(1)).toContainText('Hi there!');
+			await expect(n8n.chatHubChat.getChatMessages().nth(2)).toContainText('Hola');
+			await expect(n8n.chatHubChat.getChatMessages().nth(3)).toContainText('¡Hola!');
 		});
 	},
 );

@@ -91,9 +91,16 @@ export type WorkflowBuilderJourneyEventType =
 	| 'user_closed_review_changes'
 	| 'user_expanded_review_changes'
 	| 'user_collapsed_review_changes'
+	| 'setup_wizard_shown'
+	| 'setup_wizard_step_navigated'
+	| 'setup_wizard_step_completed'
+	| 'setup_wizard_all_complete'
 	| 'web_fetch_approval_prompted'
 	| 'web_fetch_decision'
-	| 'web_fetch_completed';
+	| 'web_fetch_completed'
+	| 'qa_question_answered'
+	| 'qa_question_skipped'
+	| 'qa_answers_submitted';
 
 interface WorkflowBuilderJourneyEventProperties {
 	node_type?: string;
@@ -105,10 +112,18 @@ interface WorkflowBuilderJourneyEventProperties {
 	no_versions_reverted?: number;
 	completion_type?: 'workflow-ready' | 'input-needed';
 	mode?: 'plan' | 'build';
+	step?: number;
+	total?: number;
+	direction?: 'next' | 'prev';
 	domain?: string;
 	url?: string;
 	decision?: 'allow_once' | 'allow_domain' | 'allow_all' | 'deny';
 	status?: string;
+	question_type?: 'single' | 'multi' | 'text';
+	question_index?: number;
+	total_questions?: number;
+	input_method?: 'click' | 'keyboard_number' | 'keyboard_enter';
+	custom_answer_used?: boolean;
 }
 
 interface WorkflowBuilderJourneyPayload extends ITelemetryTrackProperties {
@@ -196,8 +211,19 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		);
 	});
 
-	// Track whether a successful full execution has occurred in this session
+	// Track whether any successful execution (full workflow or per-node) has occurred in this session
 	const hasHadSuccessfulExecution = ref(false);
+
+	// Setup wizard state
+	const wizardCurrentStep = ref(0);
+	const wizardClearedPlaceholders = ref(new Set<string>());
+	const wizardHasExecutedWorkflow = ref(false);
+
+	function resetWizardState() {
+		wizardCurrentStep.value = 0;
+		wizardClearedPlaceholders.value.clear();
+		wizardHasExecutedWorkflow.value = false;
+	}
 
 	// Track whether AI Builder made edits since last save (resets after each save)
 	const aiBuilderMadeEdits = ref(false);
@@ -220,6 +246,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const settings = useSettingsStore();
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
 	const workflowState = injectWorkflowState();
 	const ndvStore = useNDVStore();
 	const route = useRoute();
@@ -311,6 +342,22 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		return creditsRemaining.value !== undefined ? creditsRemaining.value === 0 : false;
 	});
 
+	const creditsPercentageRemaining = computed(() => {
+		if (
+			creditsQuota.value === undefined ||
+			creditsQuota.value === INFINITE_CREDITS ||
+			creditsRemaining.value === undefined
+		) {
+			return undefined;
+		}
+		if (creditsQuota.value === 0) return 0;
+		return (creditsRemaining.value / creditsQuota.value) * 100;
+	});
+
+	const isLowCredits = computed(() => {
+		return creditsPercentageRemaining.value !== undefined && creditsPercentageRemaining.value <= 10;
+	});
+
 	const hasMessages = computed(() => chatMessages.value.length > 0);
 
 	/** All version card messages in chat order */
@@ -385,6 +432,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		loadedSessionsForWorkflowId.value = undefined;
 		hasHadSuccessfulExecution.value = false;
 		builderMode.value = 'build';
+		resetWizardState();
 	}
 
 	/**
@@ -538,7 +586,12 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		const { revertVersion } = currentStreamingMessage.value ?? {};
 		currentStreamingMessage.value = undefined;
 
-		// Insert a version card after AI generation if a workflow modification happened.
+		// Reset wizard state when streaming ends with a workflow update (AI changed the workflow)
+		if (userMessageId && hasWorkflowUpdateInCurrentBatch(userMessageId)) {
+			resetWizardState();
+		}
+
+		// Only show "Restore version" on user messages that triggered a workflow modification.
 		// During planning or question phases no workflow changes happen, so skip it.
 		if (userMessageId && revertVersion && hasWorkflowUpdateInCurrentBatch(userMessageId)) {
 			// Save the post-modification state to create a new version entry.
@@ -782,6 +835,9 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		const versionId = workflowsStore.workflowVersionId;
 		if (!versionId) return undefined;
+		// Use workflow updatedAt as version timestamp
+		// might not be the same as "version.createdAt" but close enough
+		if (!workflowDocumentStore.value?.updatedAt) return undefined;
 
 		// Verify the versionId actually exists in workflow history.
 		// The backend only creates history entries when nodes/connections change,
@@ -928,10 +984,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				? mode
 				: (mode ?? (builderMode.value === 'plan' ? 'plan' : undefined));
 		const payload = await createBuilderPayload(text, userMessageId, {
+			workflowId: workflowsStore.workflowId,
 			quickReplyType,
 			workflow: workflowsStore.workflow,
 			executionData: executionResult,
-			nodesForSchema: Object.keys(workflowsStore.nodesByName),
+			nodesForSchema: Object.keys(workflowDocumentStore.value?.nodesByName ?? {}),
 			mode: modeForPayload,
 			isPlanModeEnabled: isPlanModeAvailable.value,
 			allowSendingParameterValues: settings.settings.ai.allowSendingParameterValues,
@@ -1298,13 +1355,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	}
 
 	function unpinAllNodes() {
-		const workflowDocumentStore = workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined;
-		const pinData = workflowDocumentStore?.pinData;
+		const pinData = workflowDocumentStore.value?.pinData;
 		if (!pinData) return;
 		for (const nodeName of Object.keys(pinData)) {
-			workflowDocumentStore?.unpinNodeData(nodeName);
+			workflowDocumentStore.value?.unpinNodeData(nodeName);
 			if (workflowsStore.nodeMetadata[nodeName]) {
 				workflowsStore.nodeMetadata[nodeName].pinnedDataLastRemovedAt = Date.now();
 			}
@@ -1314,7 +1368,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 	function clearExistingWorkflow() {
 		workflowState.removeAllConnections({ setStateDirty: false });
-		workflowState.removeAllNodes({ setStateDirty: false, removePinData: true });
+		workflowDocumentStore.value?.removeAllNodes();
 	}
 
 	function getWorkflowSnapshot() {
@@ -1398,7 +1452,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	// Only applies when the chat is fresh (no messages) so it doesn't interfere
 	// with an active conversation.
 	watch(
-		[() => workflowsStore.workflowId, () => workflowsStore.workflow.nodes?.length ?? 0],
+		[() => workflowsStore.workflowId, () => (workflowDocumentStore.value?.allNodes ?? []).length],
 		([, nodesCount]) => {
 			if (chatMessages.value.length > 0) return;
 			if (!isPlanModeAvailable.value) return;
@@ -1484,8 +1538,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		// version id is important to update, because otherwise the next time user saves,
 		// "overwrite" prevention modal shows, because the version id on the FE would be out of sync with latest on the backend
 		workflowState.setWorkflowProperty('versionId', updatedWorkflow.versionId);
-		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
-		workflowDocumentStore.setUpdatedAt(updatedWorkflow.updatedAt);
+		workflowDocumentStore.value?.setUpdatedAt(updatedWorkflow.updatedAt);
 
 		// 2. Find the next user message after the version card to truncate backend session
 		const versionCardIndex = chatMessages.value.findIndex((msg) => msg.id === versionCardId);
@@ -1564,6 +1617,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		creditsQuota: computed(() => creditsQuota.value),
 		creditsRemaining,
 		hasNoCreditsRemaining,
+		creditsPercentageRemaining,
+		isLowCredits,
 		hasMessages,
 		latestRevertVersion,
 		versionCardMessages,
@@ -1571,6 +1626,9 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		hasTodosHiddenByPinnedData,
 		hasHadSuccessfulExecution,
 		lastUserMessageId,
+		wizardCurrentStep,
+		wizardClearedPlaceholders,
+		wizardHasExecutedWorkflow,
 
 		// Methods
 		unpinAllNodes,

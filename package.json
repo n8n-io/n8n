@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "2.12.0",
+  "version": "2.14.0",
   "private": true,
   "engines": {
     "node": ">=22.16",
@@ -67,6 +67,7 @@
     "jest-junit": "^16.0.0",
     "jest-mock": "^29.6.2",
     "jest-mock-extended": "^3.0.4",
+    "@dotenvx/dotenvx": "^1.40.0",
     "lefthook": "^1.7.15",
     "license-checker": "^25.0.1",
     "nock": "^14.0.1",
@@ -90,6 +91,8 @@
     "overrides": {
       "@isaacs/brace-expansion": "5.0.1",
       "libphonenumber-js": "npm:empty-npm-package@1.0.0",
+      "@browserbasehq/stagehand": "npm:empty-npm-package@1.0.0",
+      "sharp": "npm:empty-npm-package@1.0.0",
       "ast-types": "0.16.1",
       "@azure/identity": "4.13.0",
       "@lezer/common": "^1.2.0",

@@ -146,6 +146,8 @@ import { AddSuggestedPromptsToAgentTable1772000000000 } from '../common/17720000
 import { AddRoleColumnToProjectSecretsProviderAccess1772619247761 } from '../common/1772619247761-AddRoleColumnToProjectSecretsProviderAccess';
 import { ChangeWorkflowPublishedVersionFKsToRestrict1772619247762 } from '../common/1772619247762-ChangeWorkflowPublishedVersionFKsToRestrict';
 import { AddRestoreFieldsToWorkflowBuilderSession1774280963551 } from '../common/1774280963551-AddRestoreFieldsToWorkflowBuilderSession';
+import { AddTypeToChatHubSessions1772700000000 } from '../common/1772700000000-AddTypeToChatHubSessions';
+import { CreateCredentialDependencyTable1773000000000 } from '../common/1773000000000-CreateCredentialDependencyTable';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -297,6 +299,8 @@ const sqliteMigrations: Migration[] = [
 	AddRoleColumnToProjectSecretsProviderAccess1772619247761,
 	ChangeWorkflowPublishedVersionFKsToRestrict1772619247762,
 	AddRestoreFieldsToWorkflowBuilderSession1774280963551,
+	AddTypeToChatHubSessions1772700000000,
+	CreateCredentialDependencyTable1773000000000,
 ];
 
 export { sqliteMigrations };
