@@ -78,7 +78,7 @@ async function selectTemplate(): Promise<ConfigTemplate> {
 	return await select({
 		message: 'No configuration found. Choose a starting template',
 		choices: CONFIG_TEMPLATES.map((template) => ({
-			name: template.name,
+			name: template.label,
 			description: template.description,
 			value: template,
 		})),
@@ -101,21 +101,23 @@ async function editPermissions(
 }
 
 async function promptFilesystemDir(currentDir: string): Promise<string> {
-	return await input({
+	const rawDir = await input({
 		message: 'Filesystem root directory',
 		default: currentDir,
 		validate: async (dir) => {
+			const resolved = nodePath.resolve(dir);
 			try {
-				const stat = await fs.stat(dir);
+				const stat = await fs.stat(resolved);
 				if (!stat.isDirectory()) {
-					return `'${dir}' is not a directory.`;
+					return `'${resolved}' is not a directory.`;
 				}
 				return true;
 			} catch {
-				return `Directory '${dir}' does not exist.`;
+				return `Directory '${resolved}' does not exist.`;
 			}
 		},
 	});
+	return nodePath.resolve(rawDir);
 }
 
 function isAllDeny(permissions: Record<ToolGroup, PermissionMode>): boolean {
