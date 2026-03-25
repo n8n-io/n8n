@@ -551,6 +551,11 @@ export class IsolatedVmBridge implements RuntimeBridge {
 				` __reportError.applySync(null, [e.name || "Error", e.message || "", e.stack || "", extra],` +
 				` { arguments: { copy: true } }); return { __isError: true }; } })()`;
 
+			// Cache key is `code` (tournament output), but the compiled script uses
+			// `wrappedCode` which adds the try-catch/reportError wrapper. This works
+			// because wrappedCode is a deterministic transform of code. If the wrapper
+			// ever becomes parameterized (e.g., different wrapping based on options),
+			// the cache key must include those parameters to avoid serving stale scripts.
 			let script = this.scriptCache.get(code);
 			if (!script) {
 				script = this.isolate.compileScriptSync(wrappedCode);
