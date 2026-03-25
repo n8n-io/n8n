@@ -126,7 +126,11 @@ export class WorkflowsController {
 			newWorkflow.tags = await this.tagRepository.findMany(tagIds);
 		}
 
-		await WorkflowHelpers.replaceInvalidCredentials(newWorkflow);
+		const { projectId } = req.body;
+
+		if (projectId) {
+			await WorkflowHelpers.replaceInvalidCredentials(newWorkflow, projectId);
+		}
 
 		WorkflowHelpers.addNodeIds(newWorkflow);
 

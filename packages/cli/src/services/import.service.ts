@@ -98,7 +98,7 @@ export class ImportService {
 
 			const hasInvalidCreds = workflow.nodes.some((node) => !node.credentials?.id);
 
-			if (hasInvalidCreds) await this.replaceInvalidCreds(workflow);
+			if (hasInvalidCreds) await this.replaceInvalidCreds(workflow, projectId);
 
 			// Remove workflows from ActiveWorkflowManager BEFORE transaction to prevent orphaned trigger listeners
 			// Only remove if the workflow already exists in the database and is active
@@ -190,9 +190,9 @@ export class ImportService {
 		}
 	}
 
-	async replaceInvalidCreds(workflow: IWorkflowBase) {
+	async replaceInvalidCreds(workflow: IWorkflowBase, projectId: string) {
 		try {
-			await replaceInvalidCredentials(workflow);
+			await replaceInvalidCredentials(workflow, projectId);
 		} catch (e) {
 			this.logger.error('Failed to replace invalid credential', { error: e });
 		}
