@@ -11,21 +11,40 @@
 const proxyPaths = new WeakMap<object, string[]>();
 
 /**
- * Reconstruct an Error from a serialized error sentinel returned by a host-side
- * callback. The bridge catches errors in callbacks and returns
- * { __isError, name, message, stack, extra } instead of letting them cross the
- * isolate boundary (which strips custom properties).
+ * Serialized error sentinel returned by host-side bridge callbacks.
+ * When a callback throws, the bridge catches the error and returns this
+ * sentinel instead of letting it cross the isolate boundary (which strips
+ * custom class identity and properties).
+ */
+interface ErrorSentinel {
+	__isError: true;
+	name: string;
+	message: string;
+	stack?: string;
+	extra?: Record<string, unknown>;
+}
+
+function isErrorSentinel(value: unknown): value is ErrorSentinel {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		(value as Record<string, unknown>).__isError === true
+	);
+}
+
+/**
+ * If `value` is an error sentinel from a host-side callback, reconstruct
+ * the Error with all properties and throw it. The isolate's outer try-catch
+ * will then serialize it back via __reportError.
  */
 function throwIfErrorSentinel(value: unknown): void {
-	if (value && typeof value === 'object' && (value as Record<string, unknown>).__isError) {
-		const sentinel = value as Record<string, unknown>;
-		const err = new Error(sentinel.message as string);
-		err.name = (sentinel.name as string) || 'Error';
-		if (sentinel.stack) err.stack = sentinel.stack as string;
-		const extra = sentinel.extra;
-		if (extra && typeof extra === 'object') {
-			for (const k of Object.keys(extra as Record<string, unknown>)) {
-				(err as unknown as Record<string, unknown>)[k] = (extra as Record<string, unknown>)[k];
+	if (isErrorSentinel(value)) {
+		const err = new Error(value.message);
+		err.name = value.name || 'Error';
+		if (value.stack) err.stack = value.stack;
+		if (value.extra) {
+			for (const [k, v] of Object.entries(value.extra)) {
+				(err as unknown as Record<string, unknown>)[k] = v;
 			}
 		}
 		throw err;
