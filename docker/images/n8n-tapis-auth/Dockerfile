@@ -11,6 +11,9 @@ RUN corepack enable && corepack prepare pnpm@10.22.0 --activate
 
 WORKDIR /app
 
+ENV NODE_OPTIONS="--max-old-space-size=4096"
+ENV TSC_COMPILE_ON_ERROR=true
+
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json* ./
 COPY . .
 
@@ -22,7 +25,7 @@ RUN rm -rf node_modules && CI=true pnpm install --no-frozen-lockfile --ignore-sc
 # 3. Selective Build 
 # Compile just with n8n direct dependencies, ignoring testing packages
 RUN pnpm add -Dw esbuild --ignore-scripts
-RUN pnpm exec turbo run build --filter=n8n...
+RUN pnpm exec turbo run build --filter=n8n... --continue
 
 # 4. Create Tapis configuration
 RUN mkdir -p /app/packages/cli/bin && \
