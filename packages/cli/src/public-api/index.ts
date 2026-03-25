@@ -11,7 +11,7 @@ import { License } from '@/license';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 import { UrlService } from '@/services/url.service';
 
-import { sendPublicApiErrorResponse } from './public-api-error-response';
+import { sendPublicApiErrorResponse } from './v1/public-api-error-response';
 
 function createLazySwaggerMiddleware(
 	openApiSpecPath: string,
@@ -156,7 +156,12 @@ function createApiRouter(
 		createLazyValidatorMiddleware(openApiSpecPath, handlersDirectory, version),
 	);
 
-	const publicApiErrorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
+	const publicApiErrorHandler: ErrorRequestHandler = (
+		error: Error,
+		_req: express.Request,
+		res: express.Response,
+		_next: express.NextFunction,
+	) => {
 		sendPublicApiErrorResponse(res, error);
 	};
 

@@ -1,6 +1,6 @@
 import { BadRequest } from 'express-openapi-validator/dist/framework/types';
 import type { Response } from 'express';
-import { UnexpectedError, UserError } from 'n8n-workflow';
+import { UnexpectedError, UserError, OperationalError } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -45,6 +45,13 @@ describe('sendPublicApiErrorResponse', () => {
 		sendPublicApiErrorResponse(res, new UserError('bad input'));
 		expect(res._payload.statusCode).toBe(400);
 		expect(res._payload.body).toEqual({ message: 'bad input' });
+	});
+
+	it('maps OperationalError to 500 with a generic message', () => {
+		const res = createMockRes();
+		sendPublicApiErrorResponse(res, new OperationalError('temporarily down'));
+		expect(res._payload.statusCode).toBe(500);
+		expect(res._payload.body).toEqual({ message: 'Internal server error' });
 	});
 
 	it('maps UnexpectedError to 500 with a generic message', () => {
