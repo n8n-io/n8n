@@ -324,6 +324,16 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 
 		expect(result).toBe(systemOffset);
 	});
+
+	it('should support Object.keys() on root proxy data', () => {
+		const data = {
+			$json: { name: 'Alice', age: 30, city: 'Berlin' },
+		};
+
+		const result = evaluator.evaluate('{{ Object.keys($json).join(",") }}', data);
+
+		expect(result).toBe('name,age,city');
+	});
 });
 
 describe('Integration: IsolatedVmBridge error handling', () => {
