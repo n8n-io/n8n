@@ -10,6 +10,28 @@
 // ---------------------------------------------------------------------------
 const proxyPaths = new WeakMap<object, string[]>();
 
+/**
+ * Reconstruct an Error from a serialized error sentinel returned by a host-side
+ * callback. The bridge catches errors in callbacks and returns
+ * { __isError, name, message, stack, extra } instead of letting them cross the
+ * isolate boundary (which strips custom properties).
+ */
+function throwIfErrorSentinel(value: unknown): void {
+	if (value && typeof value === 'object' && (value as Record<string, unknown>).__isError) {
+		const sentinel = value as Record<string, unknown>;
+		const err = new Error(sentinel.message as string);
+		err.name = (sentinel.name as string) || 'Error';
+		if (sentinel.stack) err.stack = sentinel.stack as string;
+		const extra = sentinel.extra;
+		if (extra && typeof extra === 'object') {
+			for (const k of Object.keys(extra as Record<string, unknown>)) {
+				(err as unknown as Record<string, unknown>)[k] = (extra as Record<string, unknown>)[k];
+			}
+		}
+		throw err;
+	}
+}
+
 /** Returns true if `obj` is a deep lazy proxy created by createDeepLazyProxy. */
 export function isLazyProxy(obj: unknown): boolean {
 	return typeof obj === 'object' && obj !== null && proxyPaths.has(obj as object);
@@ -101,18 +123,7 @@ export function createDeepLazyProxy(basePath: string[] = [], knownKeys?: string[
 
 			// Handle errors serialized by host-side callbacks — reconstruct and throw
 			// so the isolate's outer try-catch can serialize them back via __reportError
-			if (value && typeof value === 'object' && value.__isError) {
-				const err = new Error(value.message as string);
-				err.name = (value.name as string) || 'Error';
-				if (value.stack) err.stack = value.stack as string;
-				const extra = value.extra;
-				if (extra && typeof extra === 'object') {
-					for (const k of Object.keys(extra as Record<string, unknown>)) {
-						(err as any)[k] = (extra as Record<string, unknown>)[k];
-					}
-				}
-				throw err;
-			}
+			throwIfErrorSentinel(value);
 
 			// Handle functions - metadata: { __isFunction: true, __name: string }
 			if (value && typeof value === 'object' && value.__isFunction) {
@@ -123,18 +134,7 @@ export function createDeepLazyProxy(basePath: string[] = [], knownKeys?: string[
 						result: { copy: true },
 					});
 					// Check if the host-side function threw — reconstruct and throw
-					if (result && typeof result === 'object' && (result as any).__isError) {
-						const err = new Error((result as any).message);
-						err.name = (result as any).name || 'Error';
-						if ((result as any).stack) err.stack = (result as any).stack;
-						const extra = (result as any).extra;
-						if (extra && typeof extra === 'object') {
-							for (const k of Object.keys(extra)) {
-								(err as any)[k] = extra[k];
-							}
-						}
-						throw err;
-					}
+					throwIfErrorSentinel(result);
 					return result;
 				};
 				return target[prop];
