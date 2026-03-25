@@ -6,7 +6,7 @@ RUN corepack enable && corepack prepare pnpm@10.22.0 --activate
 
 COPY . .
 # Forzamos instalación limpia
-RUN pnpm install --no-frozen-lockfile
+# RUN pnpm install --no-frozen-lockfile
 RUN pnpm build
 
 # ETAPA 2: Producción
