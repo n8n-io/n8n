@@ -1,0 +1,232 @@
+import { mock } from 'jest-mock-extended';
+
+import { RoleMappingRuleService } from '@/modules/provisioning.ee/role-mapping-rule.service.ee';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type {
+	Project,
+	ProjectRepository,
+	Role,
+	RoleMappingRule,
+	RoleMappingRuleRepository,
+	RoleRepository,
+} from '@n8n/db';
+
+const roleMappingRuleRepository = mock<RoleMappingRuleRepository>();
+const roleRepository = mock<RoleRepository>();
+const projectRepository = mock<ProjectRepository>();
+
+const service = new RoleMappingRuleService(
+	roleMappingRuleRepository,
+	roleRepository,
+	projectRepository,
+);
+
+const globalRole: Role = {
+	slug: 'global:member',
+	displayName: 'Member',
+	description: null,
+	systemRole: true,
+	roleType: 'global',
+	projectRelations: [],
+	roleMappingRules: [],
+	scopes: [],
+	createdAt: new Date(),
+	updatedAt: new Date(),
+	setUpdateDate: () => {},
+};
+
+const projectRole: Role = {
+	slug: 'project:editor',
+	displayName: 'Editor',
+	description: null,
+	systemRole: true,
+	roleType: 'project',
+	projectRelations: [],
+	roleMappingRules: [],
+	scopes: [],
+	createdAt: new Date(),
+	updatedAt: new Date(),
+	setUpdateDate: () => {},
+};
+
+describe('RoleMappingRuleService', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
+	describe('create', () => {
+		it('should reject project type without projectIds', async () => {
+			await expect(
+				service.create({
+					expression: 'true',
+					role: 'project:editor',
+					type: 'project',
+					order: 0,
+				}),
+			).rejects.toThrow(BadRequestError);
+
+			await expect(
+				service.create({
+					expression: 'true',
+					role: 'project:editor',
+					type: 'project',
+					order: 0,
+					projectIds: [],
+				}),
+			).rejects.toThrow(BadRequestError);
+		});
+
+		it('should reject instance type with non-empty projectIds', async () => {
+			await expect(
+				service.create({
+					expression: 'true',
+					role: 'global:member',
+					type: 'instance',
+					order: 0,
+					projectIds: ['proj-1'],
+				}),
+			).rejects.toThrow(BadRequestError);
+		});
+
+		it('should reject when role slug is unknown', async () => {
+			roleRepository.findOne.mockResolvedValue(null);
+
+			await expect(
+				service.create({
+					expression: 'true',
+					role: 'global:missing',
+					type: 'instance',
+					order: 0,
+				}),
+			).rejects.toThrow(NotFoundError);
+		});
+
+		it('should reject instance rule with a non-global role', async () => {
+			roleRepository.findOne.mockResolvedValue(projectRole);
+
+			await expect(
+				service.create({
+					expression: 'true',
+					role: 'project:editor',
+					type: 'instance',
+					order: 0,
+				}),
+			).rejects.toThrow(BadRequestError);
+		});
+
+		it('should reject project rule with a non-project role', async () => {
+			roleRepository.findOne.mockResolvedValue(globalRole);
+
+			await expect(
+				service.create({
+					expression: 'true',
+					role: 'global:member',
+					type: 'project',
+					order: 0,
+					projectIds: ['p1'],
+				}),
+			).rejects.toThrow(BadRequestError);
+		});
+
+		it('should reject when some project ids do not exist', async () => {
+			roleRepository.findOne.mockResolvedValue(projectRole);
+			projectRepository.findBy.mockResolvedValue([{ id: 'p1' } as Project]);
+
+			await expect(
+				service.create({
+					expression: 'true',
+					role: 'project:editor',
+					type: 'project',
+					order: 0,
+					projectIds: ['p1', 'p2'],
+				}),
+			).rejects.toThrow(BadRequestError);
+		});
+
+		it('should create an instance rule and return a response DTO', async () => {
+			roleRepository.findOne.mockResolvedValue(globalRole);
+
+			const savedRule = {
+				id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+				expression: 'claims.group === "admins"',
+				role: globalRole,
+				type: 'instance',
+				order: 2,
+				projects: [],
+				createdAt: new Date('2025-01-01T00:00:00.000Z'),
+				updatedAt: new Date('2025-01-01T00:00:00.000Z'),
+			} as RoleMappingRule;
+
+			roleMappingRuleRepository.save.mockImplementation(async (r) => {
+				expect(r).toBeInstanceOf(Object);
+				return { ...savedRule };
+			});
+
+			const loadedRule = {
+				...savedRule,
+				role: globalRole,
+				projects: [],
+			} as RoleMappingRule;
+
+			roleMappingRuleRepository.findOneOrFail.mockResolvedValue(loadedRule);
+
+			const result = await service.create({
+				expression: savedRule.expression,
+				role: globalRole.slug,
+				type: 'instance',
+				order: 2,
+			});
+
+			expect(result).toEqual({
+				id: savedRule.id,
+				expression: savedRule.expression,
+				role: globalRole.slug,
+				type: 'instance',
+				order: 2,
+				projectIds: [],
+				createdAt: '2025-01-01T00:00:00.000Z',
+				updatedAt: '2025-01-01T00:00:00.000Z',
+			});
+
+			expect(roleMappingRuleRepository.save).toHaveBeenCalledTimes(1);
+			expect(projectRepository.findBy).not.toHaveBeenCalled();
+		});
+
+		it('should create a project rule linked to projects', async () => {
+			roleRepository.findOne.mockResolvedValue(projectRole);
+
+			const projA = { id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' } as Project;
+			const projB = { id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' } as Project;
+			projectRepository.findBy.mockResolvedValue([projA, projB]);
+
+			const savedRule = {
+				id: 'c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a22',
+				expression: 'true',
+				role: projectRole,
+				type: 'project',
+				order: 1,
+				projects: [projA, projB],
+				createdAt: new Date('2025-02-01T12:00:00.000Z'),
+				updatedAt: new Date('2025-02-01T12:00:00.000Z'),
+			} as RoleMappingRule;
+
+			roleMappingRuleRepository.save.mockResolvedValue({ ...savedRule });
+			roleMappingRuleRepository.findOneOrFail.mockResolvedValue(savedRule);
+
+			const projectIds = [projA.id, projB.id];
+			const result = await service.create({
+				expression: 'true',
+				role: projectRole.slug,
+				type: 'project',
+				order: 1,
+				projectIds,
+			});
+
+			expect(result.projectIds).toEqual(expect.arrayContaining(projectIds));
+			expect(result.projectIds).toHaveLength(2);
+			expect(result.type).toBe('project');
+			expect(projectRepository.findBy).toHaveBeenCalled();
+		});
+	});
+});
