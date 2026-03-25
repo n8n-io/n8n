@@ -1,7 +1,6 @@
+import { select, confirm, input } from '@inquirer/prompts';
 import * as fs from 'node:fs/promises';
 import * as nodePath from 'node:path';
-import type { Interface as ReadlineInterface } from 'node:readline';
-import readline from 'node:readline';
 
 import type { GatewayConfig, PermissionMode, ToolGroup } from './config';
 import { PERMISSION_MODES, getSettingsFilePath, TOOL_GROUP_DEFINITIONS } from './config';
@@ -19,10 +18,6 @@ const GROUP_LABELS: Record<ToolGroup, string> = {
 	computer: 'Computer Control',
 	browser: 'Browser Automation',
 };
-
-async function prompt(rl: ReadlineInterface, question: string): Promise<string> {
-	return await new Promise((resolve) => rl.question(question, resolve));
-}
 
 function printPermissionsTable(permissions: Record<ToolGroup, PermissionMode>): void {
 	console.log();
@@ -79,66 +74,48 @@ async function saveStartupConfig(
 // Interactive prompts
 // ---------------------------------------------------------------------------
 
-async function selectTemplate(rl: ReadlineInterface): Promise<ConfigTemplate> {
-	console.log('  No configuration found. Choose a starting template:\n');
-	CONFIG_TEMPLATES.forEach((tpl, i) => {
-		console.log(`    ${i + 1}. ${tpl.label}`);
-		console.log(`       ${tpl.description}`);
+async function selectTemplate(): Promise<ConfigTemplate> {
+	return await select({
+		message: 'No configuration found. Choose a starting template',
+		choices: CONFIG_TEMPLATES.map((template) => ({
+			name: template.name,
+			description: template.description,
+			value: template,
+		})),
 	});
-	console.log();
-
-	while (true) {
-		const answer = await prompt(rl, `  Template [1-${CONFIG_TEMPLATES.length}] (default: 1): `);
-		const trimmed = answer.trim();
-		const idx = trimmed === '' ? 0 : parseInt(trimmed, 10) - 1;
-		if (idx >= 0 && idx < CONFIG_TEMPLATES.length) {
-			return CONFIG_TEMPLATES[idx];
-		}
-		console.log(`  Invalid choice — enter a number between 1 and ${CONFIG_TEMPLATES.length}.`);
-	}
 }
 
-const PERMISSION_MODE_OPTIONS = PERMISSION_MODES.map((m, i) => `${i + 1}: ${m}`).join(', ');
-
 async function editPermissions(
-	rl: ReadlineInterface,
 	current: Record<ToolGroup, PermissionMode>,
 ): Promise<Record<ToolGroup, PermissionMode>> {
 	const result = { ...current };
-	console.log('  Edit permissions — press Enter to keep current value.\n');
+	console.log('Edit permissions');
 	for (const group of Object.keys(TOOL_GROUP_DEFINITIONS) as ToolGroup[]) {
-		while (true) {
-			const answer = await prompt(
-				rl,
-				`    ${GROUP_LABELS[group]} [${result[group]}] (${PERMISSION_MODE_OPTIONS}): `,
-			);
-			const trimmed = answer.trim();
-			if (trimmed === '') break;
-			const idx = parseInt(trimmed, 10) - 1;
-			if (idx >= 0 && idx < PERMISSION_MODES.length) {
-				result[group] = PERMISSION_MODES[idx];
-				break;
-			}
-			console.log(`    Invalid choice — enter a number (${PERMISSION_MODE_OPTIONS}).`);
-		}
+		result[group] = await select({
+			message: `    ${GROUP_LABELS[group]}`,
+			default: result[group],
+			choices: PERMISSION_MODES.map((mode) => ({ name: mode, value: mode })),
+		});
 	}
 	return result;
 }
 
-async function promptFilesystemDir(rl: ReadlineInterface, currentDir: string): Promise<string> {
-	console.log();
-	while (true) {
-		const answer = await prompt(rl, `  Filesystem root directory [${currentDir}]: `);
-		const trimmed = answer.trim();
-		const dir = trimmed === '' ? currentDir : nodePath.resolve(trimmed);
-		try {
-			const stat = await fs.stat(dir);
-			if (stat.isDirectory()) return dir;
-			console.log(`  '${dir}' is not a directory.`);
-		} catch {
-			console.log(`  Directory '${dir}' does not exist.`);
-		}
-	}
+async function promptFilesystemDir(currentDir: string): Promise<string> {
+	return await input({
+		message: 'Filesystem root directory',
+		default: currentDir,
+		validate: async (dir) => {
+			try {
+				const stat = await fs.stat(dir);
+				if (!stat.isDirectory()) {
+					return `'${dir}' is not a directory.`;
+				}
+				return true;
+			} catch {
+				return `Directory '${dir}' does not exist.`;
+			}
+		},
+	});
 }
 
 function isAllDeny(permissions: Record<ToolGroup, PermissionMode>): boolean {
@@ -157,69 +134,59 @@ function isAllDeny(permissions: Record<ToolGroup, PermissionMode>): boolean {
  * Persists the result to the settings file.
  */
 export async function runStartupConfigCli(config: GatewayConfig): Promise<GatewayConfig> {
-	const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+	const existing = await loadPersistedPermissions();
+	let permissions: Record<ToolGroup, PermissionMode>;
 
-	try {
-		const existing = await loadPersistedPermissions();
-		let permissions: Record<ToolGroup, PermissionMode>;
-
-		if (existing === null) {
-			// First run — show template selection
-			const tpl = await selectTemplate(rl);
-			// Merge startup CLI/ENV overrides on top of template
-			permissions = { ...tpl.permissions, ...config.permissions } as Record<
-				ToolGroup,
-				PermissionMode
-			>;
-			// Custom template: go straight to per-group editing
-			if (tpl.name === 'custom') {
-				permissions = await editPermissions(rl, permissions);
-			} else {
-				printPermissionsTable(permissions);
-				const answer = await prompt(rl, '  Confirm? [y/n (edit)] (default: y): ');
-				if (['n', 'edit'].includes(answer.trim().toLowerCase())) {
-					permissions = await editPermissions(rl, permissions);
-				}
-			}
+	if (existing === null) {
+		// First run — show template selection
+		const tpl = await selectTemplate();
+		// Merge startup CLI/ENV overrides on top of template
+		permissions = { ...tpl.permissions, ...config.permissions } as Record<
+			ToolGroup,
+			PermissionMode
+		>;
+		// Custom template: go straight to per-group editing
+		if (tpl.name === 'custom') {
+			permissions = await editPermissions(permissions);
 		} else {
-			// Existing config — merge file permissions and startup CLI/ENV overrides
-			const merged = Object.fromEntries(
-				(Object.keys(TOOL_GROUP_DEFINITIONS) as ToolGroup[]).map((g) => [
-					g,
-					config.permissions[g] ?? existing[g] ?? TOOL_GROUP_DEFINITIONS[g].default,
-				]),
-			) as Record<ToolGroup, PermissionMode>;
-
-			printPermissionsTable(merged);
-			const answer = await prompt(rl, '  Confirm? [y/n (edit)] (default: y): ');
-			if (['n', 'edit'].includes(answer.trim().toLowerCase())) {
-				permissions = await editPermissions(rl, merged);
-			} else {
-				permissions = merged;
+			printPermissionsTable(permissions);
+			if (!(await confirm({ message: 'Confirm?', default: true }))) {
+				permissions = await editPermissions(permissions);
 			}
 		}
+	} else {
+		// Existing config — merge file permissions and startup CLI/ENV overrides
+		const merged = Object.fromEntries(
+			(Object.keys(TOOL_GROUP_DEFINITIONS) as ToolGroup[]).map((g) => [
+				g,
+				config.permissions[g] ?? existing[g] ?? TOOL_GROUP_DEFINITIONS[g].default,
+			]),
+		) as Record<ToolGroup, PermissionMode>;
 
-		// At least one group must be Ask or Allow (spec: gateway will not start otherwise)
-		while (isAllDeny(permissions)) {
-			console.log(
-				'\n  At least one capability must be Ask or Allow. Please edit the permissions.\n',
-			);
-			permissions = await editPermissions(rl, permissions);
+		printPermissionsTable(merged);
+		if (!(await confirm({ message: 'Confirm?', default: true }))) {
+			permissions = await editPermissions(merged);
+		} else {
+			permissions = merged;
 		}
-
-		// Filesystem dir — required when any filesystem group is active
-		const filesystemActive =
-			permissions.filesystemRead !== 'deny' || permissions.filesystemWrite !== 'deny';
-		const filesystemDir = filesystemActive
-			? await promptFilesystemDir(rl, config.filesystem.dir)
-			: config.filesystem.dir;
-
-		await saveStartupConfig(permissions, filesystemDir);
-
-		return { ...config, permissions, filesystem: { ...config.filesystem, dir: filesystemDir } };
-	} finally {
-		rl.close();
 	}
+
+	// At least one group must be Ask or Allow (spec: gateway will not start otherwise)
+	while (isAllDeny(permissions)) {
+		console.log('\n  At least one capability must be Ask or Allow. Please edit the permissions.\n');
+		permissions = await editPermissions(permissions);
+	}
+
+	// Filesystem dir — required when any filesystem group is active
+	const filesystemActive =
+		permissions.filesystemRead !== 'deny' || permissions.filesystemWrite !== 'deny';
+	const filesystemDir = filesystemActive
+		? await promptFilesystemDir(config.filesystem.dir)
+		: config.filesystem.dir;
+
+	await saveStartupConfig(permissions, filesystemDir);
+
+	return { ...config, permissions, filesystem: { ...config.filesystem, dir: filesystemDir } };
 }
 
 /**

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { confirm } from '@inquirer/prompts';
 import * as fs from 'node:fs/promises';
 
 import { parseConfig } from './config';
@@ -23,14 +24,7 @@ import type { ConfirmResourceAccess } from './tools/types';
 // ---------------------------------------------------------------------------
 
 async function cliConfirmConnect(url: string): Promise<boolean> {
-	const readline = await import('node:readline');
-	const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-	return await new Promise((resolve) => {
-		rl.question(`\nAllow connection to ${sanitizeForTerminal(url)}? [y/N] `, (answer) => {
-			rl.close();
-			resolve(answer.trim().toLowerCase() === 'y');
-		});
-	});
+	return await confirm({ message: `Allow connection to ${sanitizeForTerminal(url)}?` });
 }
 
 function makeConfirmConnect(

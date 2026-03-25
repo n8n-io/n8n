@@ -1,3 +1,5 @@
+import { select } from '@inquirer/prompts';
+
 import type { AffectedResource, ResourceDecision } from './tools/types';
 
 /**
@@ -12,35 +14,26 @@ export function sanitizeForTerminal(value: string): string {
 	return value.replace(CONTROL_CHARS_RE, '');
 }
 
-export const RESOURCE_DECISIONS: ResourceDecision[] = [
-	'allowOnce',
-	'allowForSession',
-	'alwaysAllow',
-	'denyOnce',
-	'alwaysDeny',
-];
+export const RESOURCE_DECISIONS: Record<ResourceDecision, string> = {
+	allowOnce: 'Allow once',
+	allowForSession: 'Allow for session',
+	alwaysAllow: 'Always allow',
+	denyOnce: 'Deny once',
+	alwaysDeny: 'Always deny',
+} as const;
 
 export async function cliConfirmResourceAccess(
 	resource: AffectedResource,
 ): Promise<ResourceDecision> {
-	const readline = await import('node:readline');
-	const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-	const question = [
-		`\nPermission request — ${resource.toolGroup}: ${sanitizeForTerminal(resource.resource)}`,
-		`  ${sanitizeForTerminal(resource.description)}`,
-		'  1. Allow once',
-		'  2. Allow for session',
-		'  3. Always allow',
-		'  4. Deny once',
-		'  5. Always deny',
-		'Choice [1-5]: ',
-	].join('\n');
-
-	return await new Promise((resolve) => {
-		rl.question(question, (answer) => {
-			rl.close();
-			const idx = parseInt(answer.trim(), 10) - 1;
-			resolve(RESOURCE_DECISIONS[idx] ?? 'denyOnce');
-		});
+	const answer = await select({
+		message: `Grant permission — ${resource.toolGroup}: ${sanitizeForTerminal(resource.resource)}`,
+		choices: (Object.entries(RESOURCE_DECISIONS) as Array<[ResourceDecision, string]>).map(
+			([value, name]) => ({
+				name,
+				value,
+			}),
+		),
 	});
+
+	return answer;
 }

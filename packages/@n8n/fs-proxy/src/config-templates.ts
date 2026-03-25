@@ -35,7 +35,8 @@ export const CONFIG_TEMPLATES: readonly ConfigTemplate[] = [
 	{
 		name: 'default',
 		label: 'Recommended (default)',
-		description: 'Safe defaults — filesystem readable, writes require confirmation',
+		description:
+			'Safe defaults — filesystem readable, filesystem writes and browser automation require confirmation',
 		permissions: RECOMMENDED_PERMISSIONS,
 	},
 	{
