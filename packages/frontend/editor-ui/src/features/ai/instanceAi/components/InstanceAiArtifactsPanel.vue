@@ -48,6 +48,8 @@ const statusIconMap: Record<
 	todo: { icon: 'circle', spin: false, className: 'todoIcon' },
 	in_progress: { icon: 'spinner', spin: true, className: 'inProgressIcon' },
 	done: { icon: 'check', spin: false, className: 'doneIcon' },
+	failed: { icon: 'x-circle', spin: false, className: 'failedIcon' },
+	cancelled: { icon: 'ban', spin: false, className: 'cancelledIcon' },
 };
 
 // --- Artifacts ---
@@ -250,6 +252,14 @@ const artifactIconMap: Record<string, IconName> = {
 	text-decoration: line-through;
 }
 
+.failedTask {
+	color: var(--color--danger);
+}
+
+.cancelledTask {
+	opacity: 0.7;
+}
+
 .taskDescription {
 	color: var(--color--text--shade-1);
 	flex: 1;
@@ -272,5 +282,13 @@ const artifactIconMap: Record<string, IconName> = {
 	background: var(--color--success);
 	border-radius: 50%;
 	padding: 1px;
+}
+
+.failedIcon {
+	color: var(--color--danger);
+}
+
+.cancelledIcon {
+	color: var(--color--text--tint-1);
 }
 </style>

@@ -81,6 +81,13 @@ export async function postConfirmation(
 	autoSetup?: { credentialType: string },
 	userInput?: string,
 	domainAccessAction?: string,
+	setupWorkflowData?: {
+		action?: 'apply' | 'test-trigger';
+		nodeCredentials?: Record<string, Record<string, string>>;
+		nodeParameters?: Record<string, Record<string, unknown>>;
+		testTriggerNode?: string;
+	},
+	answers?: InstanceAiConfirmResponse['answers'],
 ): Promise<void> {
 	const payload: InstanceAiConfirmResponse = {
 		approved,
@@ -93,6 +100,17 @@ export async function postConfirmation(
 					domainAccessAction: domainAccessAction as InstanceAiConfirmResponse['domainAccessAction'],
 				}
 			: {}),
+		...(setupWorkflowData?.action ? { action: setupWorkflowData.action } : {}),
+		...(setupWorkflowData?.nodeCredentials
+			? { nodeCredentials: setupWorkflowData.nodeCredentials }
+			: {}),
+		...(setupWorkflowData?.nodeParameters
+			? { nodeParameters: setupWorkflowData.nodeParameters }
+			: {}),
+		...(setupWorkflowData?.testTriggerNode
+			? { testTriggerNode: setupWorkflowData.testTriggerNode }
+			: {}),
+		...(answers ? { answers } : {}),
 	};
 	await makeRestApiRequest(context, 'POST', `/instance-ai/confirm/${requestId}`, payload);
 }

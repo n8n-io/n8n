@@ -15,8 +15,10 @@ import { nanoid } from 'nanoid';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
+import { createBrowserCredentialSetupTool } from './browser-credential-setup.tool';
 import { BUILDER_AGENT_PROMPT, SANDBOX_BUILDER_AGENT_PROMPT } from './build-workflow-agent.prompt';
 import { truncateLabel } from './display-utils';
+import { createVerifyBuiltWorkflowTool } from './verify-built-workflow.tool';
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { createSubAgentMemory, subAgentResourceId } from '../../memory/sub-agent-memory';
 import { formatPreviousAttempts } from '../../storage/iteration-log';
@@ -27,24 +29,27 @@ import type { TriggerType, WorkflowBuildOutcome } from '../../workflow-loop';
 import type { BuilderWorkspace } from '../../workspace/builder-sandbox-factory';
 import { readFileViaSandbox } from '../../workspace/sandbox-fs';
 import { getWorkspaceRoot } from '../../workspace/sandbox-setup';
+import { createApplyWorkflowCredentialsTool } from '../workflows/apply-workflow-credentials.tool';
 import { buildCredentialMap, type CredentialMap } from '../workflows/resolve-credentials';
 import {
 	createSubmitWorkflowTool,
 	type SubmitWorkflowAttempt,
 } from '../workflows/submit-workflow.tool';
 
-/** Node types that can be tested via run-workflow with inputData. */
-const TESTABLE_TRIGGERS = new Set([
-	'n8n-nodes-base.manualTrigger',
-	'n8n-nodes-base.executeWorkflowTrigger',
+/** Trigger types that cannot be test-fired programmatically (need an external request). */
+const UNTESTABLE_TRIGGERS = new Set([
+	'n8n-nodes-base.webhook',
+	'n8n-nodes-base.formTrigger',
+	'@n8n/n8n-nodes-langchain.mcpTrigger',
+	'@n8n/n8n-nodes-langchain.chatTrigger',
 ]);
 
 function detectTriggerType(attempt: SubmitWorkflowAttempt | undefined): TriggerType {
 	if (!attempt?.triggerNodeTypes || attempt.triggerNodeTypes.length === 0) {
 		return 'manual_or_testable';
 	}
-	const hasTestable = attempt.triggerNodeTypes.some((t) => TESTABLE_TRIGGERS.has(t));
-	return hasTestable ? 'manual_or_testable' : 'trigger_only';
+	const allUntestable = attempt.triggerNodeTypes.every((t) => UNTESTABLE_TRIGGERS.has(t));
+	return allUntestable ? 'trigger_only' : 'manual_or_testable';
 }
 
 function buildOutcome(
@@ -80,10 +85,453 @@ function buildOutcome(
 }
 
 const BUILDER_MAX_STEPS = 30;
+
+const DETACHED_BUILDER_REQUIREMENTS = `## Detached Task Contract
+
+You are running as a detached background task. Do not stop after a successful submit — verify the workflow works.
+
+### Completion criteria
+
+Your job is done when ONE of these is true:
+- the workflow is verified (ran successfully or publish-workflow succeeded)
+- the workflow uses only event triggers (webhook, form, schedule) and cannot be runtime-tested — publish it and stop
+- you are blocked after one repair attempt per unique failure
+
+### Submit discipline
+
+**Every file edit MUST be followed by submit-workflow before you do anything else.**
+The system tracks file hashes. If you edit the code and then call publish-workflow, run-workflow, or finish without re-submitting, your work is discarded. The sequence is always: edit → submit → then verify/publish.
+
+### Verification
+
+- If submit-workflow returned mocked credentials, call verify-built-workflow with the workItemId
+- Otherwise call run-workflow to test (skip for trigger-only workflows)
+- If verification fails, call debug-execution, fix the code, re-submit, and retry once
+- If the same failure signature repeats, stop and explain the block
+
+### Credential finalization
+
+If verification succeeds with mocked credentials:
+1. call setup-credentials with credentialFlow stage "finalize"
+2. if it returns needsBrowserSetup=true, call browser-credential-setup then setup-credentials again
+3. call apply-workflow-credentials with the workItemId and selected credentials
+
+### Resource discovery
+
+Before writing code that uses external services, **resolve real resource IDs**:
+- Call explore-node-resources for any parameter with searchListMethod (calendars, spreadsheets, channels, models, etc.)
+- Do NOT use "primary", "default", or any assumed identifier — look up the actual value
+- Call get-suggested-nodes early if the workflow fits a known category (web_app, form_input, data_persistence, etc.) — the pattern hints prevent common mistakes
+- Check @builderHint annotations in node type definitions for critical configuration guidance
+
+### Publish validation errors
+
+If publish-workflow fails with node configuration issues, the error tells you which node and what's wrong. Fix the parameter, re-submit, then try publishing again. Common causes:
+- Resource list parameters (calendar, spreadsheet) need a real ID from explore-node-resources, not "primary"
+- Expression parameters need the correct n8n expression syntax
+- Required parameters missing from the node config
+`;
+
 function hashContent(content: string | null): string {
 	return createHash('sha256')
 		.update(content ?? '', 'utf8')
 		.digest('hex');
+}
+
+export interface StartBuildWorkflowAgentInput {
+	task: string;
+	workflowId?: string;
+	taskId?: string;
+	agentId?: string;
+	plannedTaskId?: string;
+}
+
+export interface StartedWorkflowBuildTask {
+	result: string;
+	taskId: string;
+	agentId: string;
+}
+
+export async function startBuildWorkflowAgentTask(
+	context: OrchestrationContext,
+	input: StartBuildWorkflowAgentInput,
+): Promise<StartedWorkflowBuildTask> {
+	if (!context.spawnBackgroundTask) {
+		return {
+			result: 'Error: background task support not available.',
+			taskId: '',
+			agentId: '',
+		};
+	}
+
+	const factory = context.builderSandboxFactory;
+	const domainContext = context.domainContext;
+	const useSandbox = !!factory && !!domainContext;
+
+	let builderTools: ToolsInput;
+	let prompt: string;
+	let credMap: CredentialMap | undefined;
+
+	if (useSandbox) {
+		credMap = await buildCredentialMap(domainContext.credentialService);
+
+		const toolNames = [
+			'search-nodes',
+			'get-suggested-nodes',
+			'get-workflow-as-code',
+			'get-node-type-definition',
+			'explore-node-resources',
+			'list-workflows',
+			'list-credentials',
+			'test-credential',
+			'setup-credentials',
+			'ask-user',
+			'run-workflow',
+			'get-execution',
+			'debug-execution',
+			'publish-workflow',
+			'unpublish-workflow',
+			'list-data-tables',
+			'create-data-table',
+			'get-data-table-schema',
+			'add-data-table-column',
+			'query-data-table-rows',
+			'insert-data-table-rows',
+		];
+
+		builderTools = {};
+		for (const name of toolNames) {
+			if (context.domainTools[name]) {
+				builderTools[name] = context.domainTools[name];
+			}
+		}
+		if (context.workflowTaskService && context.domainContext) {
+			builderTools['verify-built-workflow'] = createVerifyBuiltWorkflowTool(context);
+			builderTools['apply-workflow-credentials'] = createApplyWorkflowCredentialsTool(context);
+		}
+		if (context.browserMcpConfig) {
+			builderTools['browser-credential-setup'] = createBrowserCredentialSetupTool(context);
+		}
+		prompt = SANDBOX_BUILDER_AGENT_PROMPT;
+	} else {
+		builderTools = {};
+
+		const toolNames = [
+			'build-workflow',
+			'get-node-type-definition',
+			'get-workflow-as-code',
+			'list-workflows',
+			'search-nodes',
+			'get-suggested-nodes',
+			'ask-user',
+			'list-data-tables',
+			'create-data-table',
+			'get-data-table-schema',
+			'add-data-table-column',
+			'query-data-table-rows',
+			'insert-data-table-rows',
+			...(context.researchMode ? ['web-search', 'fetch-url'] : []),
+		];
+		for (const name of toolNames) {
+			if (name in context.domainTools) {
+				builderTools[name] = context.domainTools[name];
+			}
+		}
+
+		if (!builderTools['build-workflow']) {
+			return { result: 'Error: build-workflow tool not available.', taskId: '', agentId: '' };
+		}
+
+		prompt = BUILDER_AGENT_PROMPT;
+	}
+
+	const builderMemory = createSubAgentMemory(context.storage, 'workflow-builder');
+
+	const subAgentId = input.agentId ?? `agent-builder-${nanoid(6)}`;
+	const taskId = input.taskId ?? `build-${nanoid(8)}`;
+	const workItemId = `wi_${nanoid(8)}`;
+
+	context.eventBus.publish(context.threadId, {
+		type: 'agent-spawned',
+		runId: context.runId,
+		agentId: subAgentId,
+		payload: {
+			parentId: context.orchestratorAgentId,
+			role: 'workflow-builder',
+			tools: Object.keys(builderTools),
+			taskId,
+			kind: 'builder',
+			title: 'Building workflow',
+			subtitle: truncateLabel(input.task),
+			goal: input.task,
+			targetResource: input.workflowId
+				? { type: 'workflow' as const, id: input.workflowId }
+				: { type: 'workflow' as const },
+		},
+	});
+
+	const { workflowId } = input;
+
+	let iterationContext = '';
+	if (context.iterationLog) {
+		const taskKey = `build:${workflowId ?? 'new'}`;
+		try {
+			const entries = await context.iterationLog.getForTask(context.threadId, taskKey);
+			iterationContext = formatPreviousAttempts(entries);
+		} catch {
+			// Non-fatal — iteration log is best-effort
+		}
+	}
+
+	let briefing: string;
+	if (useSandbox) {
+		if (workflowId) {
+			briefing = `${input.task}\n\n[CONTEXT: Modifying existing workflow ${workflowId}. The current code is pre-loaded in ~/workspace/src/workflow.ts — read it first, then edit. Use workflowId "${workflowId}" when calling submit-workflow.]\n\n[WORK ITEM ID: ${workItemId}]\n\n${DETACHED_BUILDER_REQUIREMENTS}${iterationContext ? `\n\n${iterationContext}` : ''}`;
+		} else {
+			briefing = `${input.task}\n\n[WORK ITEM ID: ${workItemId}]\n\n${DETACHED_BUILDER_REQUIREMENTS}${iterationContext ? `\n\n${iterationContext}` : ''}`;
+		}
+	} else if (workflowId) {
+		briefing = `${input.task}\n\n[CONTEXT: Modifying existing workflow ${workflowId}. Use workflowId "${workflowId}" when calling build-workflow.]${iterationContext ? `\n\n${iterationContext}` : ''}`;
+	} else {
+		briefing = `${input.task}${iterationContext ? `\n\n${iterationContext}` : ''}`;
+	}
+
+	context.spawnBackgroundTask({
+		taskId,
+		threadId: context.threadId,
+		agentId: subAgentId,
+		role: 'workflow-builder',
+		plannedTaskId: input.plannedTaskId,
+		workItemId,
+		run: async (signal, drainCorrections): Promise<BackgroundTaskResult> => {
+			let builderWs: BuilderWorkspace | undefined;
+			const submitAttempts = new Map<string, SubmitWorkflowAttempt>();
+			try {
+				if (useSandbox) {
+					builderWs = await factory.create(subAgentId, domainContext);
+					const workspace = builderWs.workspace;
+					const root = await getWorkspaceRoot(workspace);
+
+					if (workflowId && domainContext) {
+						try {
+							const json = await domainContext.workflowService.getAsWorkflowJSON(workflowId);
+							let rawCode = generateWorkflowCode(json);
+							rawCode = rawCode.replace(
+								/newCredential\('([^']*)',\s*'[^']*'\)/g,
+								"newCredential('$1')",
+							);
+							const code = `${SDK_IMPORT_STATEMENT}\n\n${rawCode}`;
+							if (workspace.filesystem) {
+								await workspace.filesystem.writeFile(`${root}/src/workflow.ts`, code, {
+									recursive: true,
+								});
+							}
+						} catch {
+							// Non-fatal — agent can still build from scratch
+						}
+					}
+
+					const mainWorkflowPath = `${root}/src/workflow.ts`;
+					builderTools['submit-workflow'] = createSubmitWorkflowTool(
+						domainContext,
+						workspace,
+						credMap,
+						async (attempt) => {
+							submitAttempts.set(attempt.filePath, attempt);
+							if (attempt.filePath !== mainWorkflowPath || !context.workflowTaskService) {
+								return;
+							}
+
+							await context.workflowTaskService.reportBuildOutcome(
+								buildOutcome(
+									workItemId,
+									taskId,
+									attempt,
+									attempt.success
+										? 'Workflow submitted and ready for verification.'
+										: (attempt.errors?.join(' ') ?? 'Workflow submission failed.'),
+								),
+							);
+						},
+					);
+
+					const subAgent = new Agent({
+						id: subAgentId,
+						name: 'Workflow Builder Agent',
+						instructions: {
+							role: 'system' as const,
+							content: prompt,
+							providerOptions: {
+								anthropic: { cacheControl: { type: 'ephemeral' } },
+							},
+						},
+						model: context.modelId,
+						tools: builderTools,
+						workspace,
+						memory: builderMemory,
+					});
+
+					registerWithMastra(subAgentId, subAgent, context.storage);
+
+					const builderMemoryOpts = builderMemory
+						? {
+								resource: subAgentResourceId(context.userId, 'workflow-builder'),
+								thread: subAgentId,
+							}
+						: undefined;
+
+					const stream = await subAgent.stream(briefing, {
+						maxSteps: BUILDER_MAX_STEPS,
+						abortSignal: signal,
+						providerOptions: {
+							anthropic: { cacheControl: { type: 'ephemeral' } },
+						},
+						...(builderMemoryOpts ? { memory: builderMemoryOpts } : {}),
+					});
+
+					const hitlResult = await consumeStreamWithHitl({
+						agent: subAgent,
+						stream: stream as {
+							runId?: string;
+							fullStream: AsyncIterable<unknown>;
+							text: Promise<string>;
+						},
+						runId: context.runId,
+						agentId: subAgentId,
+						eventBus: context.eventBus,
+						threadId: context.threadId,
+						abortSignal: signal,
+						waitForConfirmation: context.waitForConfirmation,
+						drainCorrections,
+					});
+
+					const finalText = await hitlResult.text;
+
+					const mainWorkflowAttempt = submitAttempts.get(mainWorkflowPath);
+					const currentMainWorkflow = await readFileViaSandbox(workspace, mainWorkflowPath);
+					const currentMainWorkflowHash = hashContent(currentMainWorkflow);
+
+					if (!mainWorkflowAttempt) {
+						const text = 'Error: workflow builder finished without submitting /src/workflow.ts.';
+						return {
+							text,
+							outcome: buildOutcome(workItemId, taskId, undefined, text),
+						};
+					}
+
+					if (!mainWorkflowAttempt.success) {
+						const errorText =
+							mainWorkflowAttempt.errors?.join(' ') ?? 'Unknown submit-workflow failure.';
+						const text = `Error: workflow builder stopped after a failed submit-workflow for /src/workflow.ts. ${errorText}`;
+						return {
+							text,
+							outcome: buildOutcome(workItemId, taskId, mainWorkflowAttempt, text),
+						};
+					}
+
+					if (mainWorkflowAttempt.sourceHash !== currentMainWorkflowHash) {
+						// Builder edited the file after its last submit — auto-re-submit
+						// instead of discarding the agent's work.
+						const submitTool = builderTools['submit-workflow'];
+						if (submitTool && 'execute' in submitTool) {
+							const resubmit = await (
+								submitTool as {
+									execute: (args: Record<string, unknown>) => Promise<Record<string, unknown>>;
+								}
+							).execute({
+								filePath: mainWorkflowPath,
+								workflowId: mainWorkflowAttempt.workflowId,
+							});
+
+							// Refresh attempt after re-submit
+							const refreshedAttempt = submitAttempts.get(mainWorkflowPath);
+							if (refreshedAttempt?.success) {
+								return {
+									text: finalText,
+									outcome: buildOutcome(workItemId, taskId, refreshedAttempt, finalText),
+								};
+							}
+
+							// Re-submit failed — report the failure
+							const resubmitErrors =
+								refreshedAttempt?.errors?.join(' ') ??
+								(typeof resubmit?.errors === 'string' ? resubmit.errors : 'Auto-re-submit failed.');
+							const text = `Error: auto-re-submit of edited /src/workflow.ts failed. ${resubmitErrors}`;
+							return {
+								text,
+								outcome: buildOutcome(workItemId, taskId, refreshedAttempt ?? undefined, text),
+							};
+						}
+					}
+
+					return {
+						text: finalText,
+						outcome: buildOutcome(workItemId, taskId, mainWorkflowAttempt, finalText),
+					};
+				}
+
+				const subAgent = new Agent({
+					id: subAgentId,
+					name: 'Workflow Builder Agent',
+					instructions: {
+						role: 'system' as const,
+						content: prompt,
+						providerOptions: {
+							anthropic: { cacheControl: { type: 'ephemeral' } },
+						},
+					},
+					model: context.modelId,
+					tools: builderTools,
+					memory: builderMemory,
+				});
+
+				registerWithMastra(subAgentId, subAgent, context.storage);
+
+				const toolMemoryOpts = builderMemory
+					? {
+							resource: subAgentResourceId(context.userId, 'workflow-builder'),
+							thread: subAgentId,
+						}
+					: undefined;
+
+				const stream = await subAgent.stream(briefing, {
+					maxSteps: BUILDER_MAX_STEPS,
+					abortSignal: signal,
+					providerOptions: {
+						anthropic: { cacheControl: { type: 'ephemeral' } },
+					},
+					...(toolMemoryOpts ? { memory: toolMemoryOpts } : {}),
+				});
+
+				const hitlResult = await consumeStreamWithHitl({
+					agent: subAgent,
+					stream: stream as {
+						runId?: string;
+						fullStream: AsyncIterable<unknown>;
+						text: Promise<string>;
+					},
+					runId: context.runId,
+					agentId: subAgentId,
+					eventBus: context.eventBus,
+					threadId: context.threadId,
+					abortSignal: signal,
+					waitForConfirmation: context.waitForConfirmation,
+					drainCorrections,
+				});
+
+				const toolFinalText = await hitlResult.text;
+				return { text: toolFinalText };
+			} finally {
+				await builderWs?.cleanup();
+			}
+		},
+	});
+
+	return {
+		result: `Workflow build started (task: ${taskId}). Acknowledge briefly and move on.`,
+		taskId,
+		agentId: subAgentId,
+	};
 }
 
 export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
@@ -108,350 +556,11 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 		}),
 		outputSchema: z.object({
 			result: z.string(),
+			taskId: z.string(),
 		}),
 		execute: async (input) => {
-			if (!context.spawnBackgroundTask) {
-				return { result: 'Error: background task support not available.' };
-			}
-
-			const factory = context.builderSandboxFactory;
-			const domainContext = context.domainContext;
-			const useSandbox = !!factory && !!domainContext;
-
-			// Build the appropriate tool set based on mode
-			let builderTools: ToolsInput;
-			let prompt: string;
-
-			// Build credential map outside run: (doesn't need sandbox)
-			let credMap: CredentialMap | undefined;
-
-			if (useSandbox) {
-				credMap = await buildCredentialMap(domainContext.credentialService);
-
-				const toolNames = [
-					// Full build/rebuild mode: node discovery, credential/execution tools
-					// submit-workflow is created per-builder inside run: (needs the builder's workspace)
-					'search-nodes',
-					'get-suggested-nodes',
-					'get-workflow-as-code',
-					'get-node-type-definition',
-					'explore-node-resources',
-					'list-workflows',
-					'list-credentials',
-					'test-credential',
-					'run-workflow',
-					'get-execution',
-					'debug-execution',
-					'publish-workflow',
-					'unpublish-workflow',
-					'list-data-tables',
-					'create-data-table',
-					'get-data-table-schema',
-					'add-data-table-column',
-					'query-data-table-rows',
-					'insert-data-table-rows',
-				];
-
-				builderTools = {};
-				for (const name of toolNames) {
-					if (context.domainTools[name]) {
-						builderTools[name] = context.domainTools[name];
-					}
-				}
-				prompt = SANDBOX_BUILDER_AGENT_PROMPT;
-			} else {
-				// Tool mode: original approach (no sandbox)
-				builderTools = {};
-
-				const toolNames = [
-					'build-workflow',
-					'get-node-type-definition',
-					'get-workflow-as-code',
-					'list-workflows',
-					'search-nodes',
-					'get-suggested-nodes',
-					'list-data-tables',
-					'create-data-table',
-					'get-data-table-schema',
-					'add-data-table-column',
-					'query-data-table-rows',
-					'insert-data-table-rows',
-					...(context.researchMode ? ['web-search', 'fetch-url'] : []),
-				];
-				for (const name of toolNames) {
-					if (name in context.domainTools) {
-						builderTools[name] = context.domainTools[name];
-					}
-				}
-
-				if (!builderTools['build-workflow']) {
-					return { result: 'Error: build-workflow tool not available.' };
-				}
-
-				prompt = BUILDER_AGENT_PROMPT;
-			}
-
-			const builderMemory = createSubAgentMemory(context.storage, 'workflow-builder');
-
-			const subAgentId = `agent-builder-${nanoid(6)}`;
-			const taskId = `build-${nanoid(8)}`;
-			const workItemId = `wi_${nanoid(8)}`;
-
-			// Publish agent-spawned so the UI shows the builder agent immediately
-			context.eventBus.publish(context.threadId, {
-				type: 'agent-spawned',
-				runId: context.runId,
-				agentId: subAgentId,
-				payload: {
-					parentId: context.orchestratorAgentId,
-					role: 'workflow-builder',
-					tools: Object.keys(builderTools),
-					taskId,
-					kind: 'builder',
-					title: 'Building workflow',
-					subtitle: truncateLabel(input.task),
-					goal: input.task,
-					targetResource: input.workflowId
-						? { type: 'workflow' as const, id: input.workflowId }
-						: { type: 'workflow' as const },
-				},
-			});
-
-			const { workflowId } = input;
-
-			// Inject iteration history so retries are informed by previous attempts
-			let iterationContext = '';
-			if (context.iterationLog) {
-				const taskKey = `build:${workflowId ?? 'new'}`;
-				try {
-					const entries = await context.iterationLog.getForTask(context.threadId, taskKey);
-					iterationContext = formatPreviousAttempts(entries);
-				} catch {
-					// Non-fatal — iteration log is best-effort
-				}
-			}
-
-			let briefing: string;
-			if (workflowId) {
-				briefing = `${input.task}\n\n[CONTEXT: Modifying existing workflow ${workflowId}. The current code is pre-loaded in ~/workspace/src/workflow.ts — read it first, then edit. Use workflowId "${workflowId}" when calling submit-workflow.]${iterationContext ? `\n\n${iterationContext}` : ''}`;
-			} else {
-				briefing = `${input.task}${iterationContext ? `\n\n${iterationContext}` : ''}`;
-			}
-
-			// Spawn builder as a background task — returns immediately
-			context.spawnBackgroundTask({
-				taskId,
-				threadId: context.threadId,
-				agentId: subAgentId,
-				role: 'workflow-builder',
-				workItemId,
-				run: async (signal, drainCorrections): Promise<BackgroundTaskResult> => {
-					let builderWs: BuilderWorkspace | undefined;
-					const submitAttempts = new Map<string, SubmitWorkflowAttempt>();
-					try {
-						// Per-builder sandbox: each builder gets its own isolated workspace
-						if (useSandbox) {
-							const tFactory = performance.now();
-							builderWs = await factory.create(subAgentId, domainContext);
-							console.log(
-								`[build-workflow-agent] factory.create took ${(performance.now() - tFactory).toFixed(0)}ms (${subAgentId})`,
-							);
-							const workspace = builderWs.workspace;
-
-							// Pre-load existing workflow code into this builder's workspace
-							if (workflowId && domainContext) {
-								const tPreload = performance.now();
-								try {
-									const json = await domainContext.workflowService.getAsWorkflowJSON(workflowId);
-									let rawCode = generateWorkflowCode(json);
-									// Strip credential IDs from roundtripped code: newCredential('name', 'id') → newCredential('name')
-									rawCode = rawCode.replace(
-										/newCredential\('([^']*)',\s*'[^']*'\)/g,
-										"newCredential('$1')",
-									);
-									// generateWorkflowCode omits imports — prepend the SDK import statement
-									const code = `${SDK_IMPORT_STATEMENT}\n\n${rawCode}`;
-									const root = await getWorkspaceRoot(workspace);
-									if (workspace.filesystem) {
-										await workspace.filesystem.writeFile(`${root}/src/workflow.ts`, code, {
-											recursive: true,
-										});
-									}
-									console.log(
-										`[build-workflow-agent] pre-load workflow code took ${(performance.now() - tPreload).toFixed(0)}ms (${subAgentId})`,
-									);
-								} catch {
-									// Non-fatal — agent can still build from scratch
-								}
-							}
-
-							builderTools['submit-workflow'] = createSubmitWorkflowTool(
-								domainContext,
-								workspace,
-								credMap,
-								(attempt) => {
-									submitAttempts.set(attempt.filePath, attempt);
-								},
-							);
-
-							const subAgent = new Agent({
-								id: subAgentId,
-								name: 'Workflow Builder Agent',
-								instructions: {
-									role: 'system' as const,
-									content: prompt,
-									providerOptions: {
-										anthropic: { cacheControl: { type: 'ephemeral' } },
-									},
-								},
-								model: context.modelId,
-								tools: builderTools,
-								workspace,
-								memory: builderMemory,
-							});
-
-							registerWithMastra(subAgentId, subAgent, context.storage);
-
-							const builderMemoryOpts = builderMemory
-								? {
-										resource: subAgentResourceId(context.userId, 'workflow-builder'),
-										thread: subAgentId,
-									}
-								: undefined;
-
-							const maxSteps = BUILDER_MAX_STEPS;
-
-							const stream = await subAgent.stream(briefing, {
-								maxSteps,
-								abortSignal: signal,
-								providerOptions: {
-									anthropic: { cacheControl: { type: 'ephemeral' } },
-								},
-								...(builderMemoryOpts ? { memory: builderMemoryOpts } : {}),
-							});
-
-							const hitlResult = await consumeStreamWithHitl({
-								agent: subAgent,
-								stream: stream as {
-									runId?: string;
-									fullStream: AsyncIterable<unknown>;
-									text: Promise<string>;
-								},
-								runId: context.runId,
-								agentId: subAgentId,
-								eventBus: context.eventBus,
-								threadId: context.threadId,
-								abortSignal: signal,
-								waitForConfirmation: context.waitForConfirmation,
-								drainCorrections,
-							});
-
-							const finalText = await hitlResult.text;
-
-							const root = await getWorkspaceRoot(workspace);
-							const mainWorkflowPath = `${root}/src/workflow.ts`;
-							const mainWorkflowAttempt = submitAttempts.get(mainWorkflowPath);
-							const currentMainWorkflow = await readFileViaSandbox(workspace, mainWorkflowPath);
-							const currentMainWorkflowHash = hashContent(currentMainWorkflow);
-
-							if (!mainWorkflowAttempt) {
-								const text =
-									'Error: workflow builder finished without submitting /src/workflow.ts.';
-								return {
-									text,
-									outcome: buildOutcome(workItemId, taskId, undefined, text),
-								};
-							}
-
-							if (!mainWorkflowAttempt.success) {
-								const errorText =
-									mainWorkflowAttempt.errors?.join(' ') ?? 'Unknown submit-workflow failure.';
-								const text = `Error: workflow builder stopped after a failed submit-workflow for /src/workflow.ts. ${errorText}`;
-								return {
-									text,
-									outcome: buildOutcome(workItemId, taskId, mainWorkflowAttempt, text),
-								};
-							}
-
-							if (mainWorkflowAttempt.sourceHash !== currentMainWorkflowHash) {
-								const text =
-									'Error: workflow builder edited /src/workflow.ts after the last submit-workflow call. It must re-submit the workflow before finishing.';
-								return {
-									text,
-									outcome: buildOutcome(workItemId, taskId, undefined, text),
-								};
-							}
-
-							return {
-								text: finalText,
-								outcome: buildOutcome(workItemId, taskId, mainWorkflowAttempt, finalText),
-							};
-						}
-
-						// Tool mode (no sandbox) — original approach
-						const subAgent = new Agent({
-							id: subAgentId,
-							name: 'Workflow Builder Agent',
-							instructions: {
-								role: 'system' as const,
-								content: prompt,
-								providerOptions: {
-									anthropic: { cacheControl: { type: 'ephemeral' } },
-								},
-							},
-							model: context.modelId,
-							tools: builderTools,
-							memory: builderMemory,
-						});
-
-						registerWithMastra(subAgentId, subAgent, context.storage);
-
-						const toolMemoryOpts = builderMemory
-							? {
-									resource: subAgentResourceId(context.userId, 'workflow-builder'),
-									thread: subAgentId,
-								}
-							: undefined;
-
-						const maxSteps = BUILDER_MAX_STEPS;
-
-						const stream = await subAgent.stream(briefing, {
-							maxSteps,
-							abortSignal: signal,
-							providerOptions: {
-								anthropic: { cacheControl: { type: 'ephemeral' } },
-							},
-							...(toolMemoryOpts ? { memory: toolMemoryOpts } : {}),
-						});
-
-						const hitlResult = await consumeStreamWithHitl({
-							agent: subAgent,
-							stream: stream as {
-								runId?: string;
-								fullStream: AsyncIterable<unknown>;
-								text: Promise<string>;
-							},
-							runId: context.runId,
-							agentId: subAgentId,
-							eventBus: context.eventBus,
-							threadId: context.threadId,
-							abortSignal: signal,
-							waitForConfirmation: context.waitForConfirmation,
-							drainCorrections,
-						});
-
-						const toolFinalText = await hitlResult.text;
-						// Tool mode has no submit tracking — return text only
-						return { text: toolFinalText };
-					} finally {
-						await builderWs?.cleanup();
-					}
-				},
-			});
-
-			return {
-				result: `Workflow build started (task: ${taskId}). Acknowledge briefly and move on.`,
-			};
+			const result = await startBuildWorkflowAgentTask(context, input);
+			return { result: result.result, taskId: result.taskId };
 		},
 	});
 }

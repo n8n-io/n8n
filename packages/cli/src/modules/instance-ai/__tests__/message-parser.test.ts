@@ -317,6 +317,48 @@ describe('parseStoredMessages', () => {
 			expect(toolCalls[1].renderHint).toBe('builder');
 			expect(toolCalls[2].renderHint).toBe('data-table');
 		});
+
+		it('should apply renderHint correctly for workflow flow aliases in stored messages', () => {
+			const messages: MastraDBMessage[] = [
+				{
+					id: 'msg-u',
+					role: 'user',
+					content: 'Go',
+					createdAt: makeDate(),
+				},
+				{
+					id: 'msg-a',
+					role: 'assistant',
+					content: {
+						format: 2,
+						content: '',
+						toolInvocations: [
+							{
+								state: 'result',
+								toolCallId: 'tc-1',
+								toolName: 'workflow-build-flow',
+								args: {},
+								result: { ok: true },
+							},
+							{
+								state: 'result',
+								toolCallId: 'tc-2',
+								toolName: 'agent-data-table-manager',
+								args: {},
+								result: { ok: true },
+							},
+						],
+					},
+					createdAt: makeDate(1),
+				},
+			];
+
+			const result = parseStoredMessages(messages);
+
+			const toolCalls = result[1].agentTree?.toolCalls ?? [];
+			expect(toolCalls[0].renderHint).toBe('builder');
+			expect(toolCalls[1].renderHint).toBe('data-table');
+		});
 	});
 
 	describe('internal enrichment stripping', () => {
@@ -388,6 +430,23 @@ describe('parseStoredMessages', () => {
 
 			expect(result).toHaveLength(1);
 			expect(result[0].content).toBe('Now add error handling');
+		});
+
+		it('should strip running-tasks enrichment from real user messages', () => {
+			const messages: MastraDBMessage[] = [
+				{
+					id: 'msg-u',
+					role: 'user',
+					content:
+						'<running-tasks>\n[Running task — workflow-builder]: taskId=build-1234\n</running-tasks>\n\nUse the Redis credential instead',
+					createdAt: makeDate(),
+				},
+			];
+
+			const result = parseStoredMessages(messages);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].content).toBe('Use the Redis credential instead');
 		});
 
 		it('should not strip background-tasks text that appears mid-message', () => {

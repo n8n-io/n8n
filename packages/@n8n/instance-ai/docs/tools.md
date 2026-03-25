@@ -82,7 +82,7 @@ fixed taxonomy of sub-agent types.
 
 Cancel a running background task by its ID. Used when the user asks to stop a
 background agent (e.g., "stop building that workflow"). The orchestrator sees
-running task IDs via the `<background-tasks>` section injected into each message.
+running task IDs via the `<running-tasks>` section injected into each message.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|

@@ -10,6 +10,11 @@ import AgentSection from './AgentSection.vue';
 import ArtifactCard from './ArtifactCard.vue';
 import ToolResultRenderer from './ToolResultRenderer.vue';
 import ToolResultJson from './ToolResultJson.vue';
+import DelegateCard from './DelegateCard.vue';
+import TaskChecklist from './TaskChecklist.vue';
+import AnsweredQuestions from './AnsweredQuestions.vue';
+import PlanReviewPanel, { type PlannedTaskArg } from './PlanReviewPanel.vue';
+import { useInstanceAiStore } from '../instanceAi.store';
 
 const i18n = useI18n();
 const { getToolLabel, getToggleLabel, getHideLabel } = useToolLabel();
@@ -239,6 +244,15 @@ const childrenById = computed(() => {
 	}
 	return map;
 });
+
+const store = useInstanceAiStore();
+
+function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedback?: string) {
+	const requestId = tc.confirmation?.requestId;
+	if (!requestId) return;
+	store.resolveConfirmation(requestId, approved ? 'approved' : 'denied');
+	void store.confirmAction(requestId, approved, undefined, undefined, undefined, feedback);
+}
 </script>
 
 <template>
@@ -254,17 +268,46 @@ const childrenById = computed(() => {
 
 			<!-- Tool call — flat timeline step -->
 			<template v-else-if="entry.type === 'tool-call' && toolCallsById[entry.toolCallId]">
-				<!-- Hidden tool calls (tasks, builder/data-table/researcher handled by child agent) -->
+				<TaskChecklist
+					v-if="toolCallsById[entry.toolCallId].renderHint === 'tasks'"
+					:tasks="props.agentNode.tasks"
+				/>
+				<DelegateCard
+					v-else-if="toolCallsById[entry.toolCallId].renderHint === 'delegate'"
+					:args="toolCallsById[entry.toolCallId].args"
+					:result="toolCallsById[entry.toolCallId].result"
+					:is-loading="toolCallsById[entry.toolCallId].isLoading"
+					:tool-call-id="toolCallsById[entry.toolCallId].toolCallId"
+				/>
+				<!-- Hidden tool calls (builder/data-table/researcher handled by child agent via AgentSection) -->
+				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'builder'" />
+				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'data-table'" />
+				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'researcher'" />
+				<!-- Answered questions (read-only after resolution) -->
+				<AnsweredQuestions
+					v-else-if="
+						toolCallsById[entry.toolCallId].confirmation?.inputType === 'questions' &&
+						!toolCallsById[entry.toolCallId].isLoading
+					"
+					:tool-call="toolCallsById[entry.toolCallId]"
+				/>
+				<!-- Plan review: always render inline (interactive while pending, read-only after) -->
+				<PlanReviewPanel
+					v-else-if="toolCallsById[entry.toolCallId].confirmation?.inputType === 'plan-review'"
+					:planned-tasks="
+						(toolCallsById[entry.toolCallId].args?.tasks as PlannedTaskArg[] | undefined) ?? []
+					"
+					:read-only="!toolCallsById[entry.toolCallId].isLoading"
+					@approve="handlePlanConfirm(toolCallsById[entry.toolCallId], true)"
+					@request-changes="(fb) => handlePlanConfirm(toolCallsById[entry.toolCallId], false, fb)"
+				/>
+				<!-- Suppress default tool call while questions are pending -->
 				<template
-					v-if="
-						toolCallsById[entry.toolCallId].renderHint === 'tasks' ||
-						toolCallsById[entry.toolCallId].renderHint === 'builder' ||
-						toolCallsById[entry.toolCallId].renderHint === 'data-table' ||
-						toolCallsById[entry.toolCallId].renderHint === 'researcher'
+					v-else-if="
+						toolCallsById[entry.toolCallId].confirmation?.inputType === 'questions' &&
+						toolCallsById[entry.toolCallId].isLoading
 					"
 				/>
-
-				<!-- Visible tool call — rendered as flat timeline step -->
 				<template v-else>
 					<div :class="$style.step">
 						<div :class="$style.iconColumn">

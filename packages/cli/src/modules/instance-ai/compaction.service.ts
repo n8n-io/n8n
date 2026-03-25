@@ -1,11 +1,11 @@
+import type { MastraMessageContentV2 } from '@mastra/core/agent';
+import type { MastraDBMessage } from '@mastra/core/memory';
+import type { Memory } from '@mastra/memory';
 import type { ChatHubLLMProvider } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { generateCompactionSummary } from '@n8n/instance-ai';
+import { generateCompactionSummary, patchThread } from '@n8n/instance-ai';
 import type { ModelConfig } from '@n8n/instance-ai';
-import type { Memory } from '@mastra/memory';
-import type { MastraMessageContentV2 } from '@mastra/core/agent';
-import type { MastraDBMessage } from '@mastra/core/memory';
 
 import { maxContextWindowTokens } from '@/modules/chat-hub/context-limits';
 
@@ -281,16 +281,14 @@ export class InstanceAiCompactionService {
 		memory: Memory,
 		metadata: ConversationSummaryMetadata,
 	): Promise<void> {
-		const thread = await memory.getThreadById({ threadId });
-		if (!thread) return;
-
-		await memory.updateThread({
-			id: threadId,
-			title: thread.title ?? threadId,
-			metadata: {
-				...thread.metadata,
-				[METADATA_KEY]: metadata,
-			},
+		await patchThread(memory, {
+			threadId,
+			update: ({ metadata: currentMetadata }) => ({
+				metadata: {
+					...currentMetadata,
+					[METADATA_KEY]: metadata,
+				},
+			}),
 		});
 	}
 }
