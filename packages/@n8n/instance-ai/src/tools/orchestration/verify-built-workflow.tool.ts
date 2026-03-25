@@ -40,11 +40,11 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 			error: z.string().optional(),
 		}),
 		execute: async (input) => {
-			if (!context.getWorkItemBuildOutcome || !context.domainContext) {
+			if (!context.workflowTaskService || !context.domainContext) {
 				return { success: false, error: 'Verification support not available.' };
 			}
 
-			const buildOutcome = await context.getWorkItemBuildOutcome(input.workItemId);
+			const buildOutcome = await context.workflowTaskService.getBuildOutcome(input.workItemId);
 			if (!buildOutcome) {
 				return {
 					success: false,

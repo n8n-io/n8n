@@ -258,6 +258,7 @@ export {
 	toolErrorPayloadSchema,
 	confirmationRequestPayloadSchema,
 	credentialRequestSchema,
+	workflowSetupNodeSchema,
 	errorPayloadSchema,
 	filesystemRequestPayloadSchema,
 	instanceAiFilesystemResponseSchema,
@@ -341,6 +342,7 @@ export type {
 	DomainAccessMeta,
 	InstanceAiCredentialFlow,
 	ToolCategory,
+	InstanceAiWorkflowSetupNode,
 } from './schemas/instance-ai.schema';
 
 export {

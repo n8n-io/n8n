@@ -6,9 +6,8 @@ import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { registerWithMastra } from '../../agent/register-with-mastra';
-import { mapMastraChunkToEvent } from '../../stream/map-chunk';
+import { executeResumableStream } from '../../runtime/resumable-stream-executor';
 import type { OrchestrationContext } from '../../types';
-import { parseSuspension, asResumable } from '../../utils/stream-helpers';
 import { createToolsFromLocalMcpServer } from '../filesystem/create-tools-from-mcp-server';
 
 const BROWSER_AGENT_MAX_STEPS = 300;
@@ -336,45 +335,47 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 					},
 				});
 
-				let subAgentStream: AsyncIterable<unknown> = stream.fullStream;
-				let subMastraRunId = (stream as { runId?: string }).runId ?? '';
-				let streamCompleted = false;
+				let activeStream = {
+					runId: (stream as { runId?: string }).runId,
+					fullStream: stream.fullStream,
+					text: stream.text,
+				};
 				let lastSuspendedToolName = '';
 				const MAX_NUDGES = 3;
 				let nudgeCount = 0;
 
-				while (!streamCompleted) {
-					let suspended: { toolCallId: string; requestId: string } | null = null;
-					let suspendedToolName = '';
+				while (true) {
+					const result = await executeResumableStream({
+						agent: subAgent,
+						stream: activeStream,
+						context: {
+							threadId: context.threadId,
+							runId: context.runId,
+							agentId: subAgentId,
+							eventBus: context.eventBus,
+							signal: context.abortSignal,
+						},
+						control: {
+							mode: 'auto',
+							waitForConfirmation: async (requestId) => {
+								if (!context.waitForConfirmation) {
+									throw new Error(
+										'Browser agent requires user interaction but no HITL handler is available',
+									);
+								}
+								return await context.waitForConfirmation(requestId);
+							},
+							onSuspension: (suspension) => {
+								lastSuspendedToolName = suspension.toolName ?? '';
+							},
+						},
+					});
 
-					for await (const chunk of subAgentStream) {
-						const suspension = parseSuspension(chunk);
-						if (suspension) {
-							suspended = suspension;
-							suspendedToolName = suspension.toolName ?? '';
-						}
-						const event = mapMastraChunkToEvent(context.runId, subAgentId, chunk);
-						if (event) {
-							context.eventBus.publish(context.threadId, event);
-						}
+					if (result.status === 'cancelled') {
+						throw new Error('Run cancelled while waiting for confirmation');
 					}
 
-					if (suspended) {
-						if (!context.waitForConfirmation) {
-							throw new Error(
-								'Browser agent requires user interaction but no HITL handler is available',
-							);
-						}
-						lastSuspendedToolName = suspendedToolName;
-						const confirmResult = await context.waitForConfirmation(suspended.requestId);
-						const resumed = await asResumable(subAgent).resumeStream(confirmResult, {
-							runId: subMastraRunId,
-							toolCallId: suspended.toolCallId,
-						});
-						subMastraRunId =
-							(typeof resumed.runId === 'string' ? resumed.runId : '') || subMastraRunId;
-						subAgentStream = resumed.fullStream;
-					} else if (lastSuspendedToolName !== 'pause-for-user' && nudgeCount < MAX_NUDGES) {
+					if (lastSuspendedToolName !== 'pause-for-user' && nudgeCount < MAX_NUDGES) {
 						// Agent ended without a final pause-for-user confirmation.
 						// Re-invoke with a nudge to call pause-for-user.
 						nudgeCount++;
@@ -388,26 +389,29 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 								},
 							},
 						);
-						subMastraRunId = (nudge as { runId?: string }).runId ?? subMastraRunId;
-						subAgentStream = nudge.fullStream;
-					} else {
-						streamCompleted = true;
+						activeStream = {
+							runId:
+								(nudge as { runId?: string }).runId ?? (result.mastraRunId || activeStream.runId),
+							fullStream: nudge.fullStream,
+							text: nudge.text,
+						};
+						continue;
 					}
+
+					const resultText = await (result.text ?? activeStream.text ?? Promise.resolve(''));
+
+					context.eventBus.publish(context.threadId, {
+						type: 'agent-completed',
+						runId: context.runId,
+						agentId: subAgentId,
+						payload: {
+							role: 'credential-setup-browser-agent',
+							result: resultText,
+						},
+					});
+
+					return { result: resultText };
 				}
-
-				const resultText = await stream.text;
-
-				context.eventBus.publish(context.threadId, {
-					type: 'agent-completed',
-					runId: context.runId,
-					agentId: subAgentId,
-					payload: {
-						role: 'credential-setup-browser-agent',
-						result: resultText,
-					},
-				});
-
-				return { result: resultText };
 			} catch (error) {
 				const errorMessage = error instanceof Error ? error.message : String(error);
 

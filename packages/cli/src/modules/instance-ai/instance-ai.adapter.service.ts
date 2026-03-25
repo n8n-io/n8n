@@ -65,6 +65,7 @@ import {
 	type IDataObject,
 	type INode,
 	type INodeParameters,
+	type INodeTypeDescription,
 	type IConnections,
 	type IWorkflowSettings,
 	type IPinData,
@@ -73,6 +74,7 @@ import {
 	type DataTableRow,
 	type DataTableRows,
 	type WorkflowExecuteMode,
+	NodeHelpers,
 	createRunExecutionData,
 	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
@@ -533,9 +535,12 @@ export class InstanceAiAdapterService {
 
 				const nodes = workflow.nodes ?? [];
 
-				// Find trigger node using known trigger type constants first,
+				// Use the explicitly requested trigger node when provided,
+				// otherwise auto-detect using known trigger type constants
 				// then fall back to naive string matching for unknown trigger types
-				const triggerNode = findTriggerNode(nodes);
+				const triggerNode = options?.triggerNodeName
+					? (nodes.find((n) => n.name === options.triggerNodeName) ?? findTriggerNode(nodes))
+					: findTriggerNode(nodes);
 
 				const runData: IWorkflowExecutionDataProcess = {
 					executionMode: triggerNode
@@ -768,6 +773,36 @@ export class InstanceAiAdapterService {
 					success: result.status === 'OK',
 					message: result.message,
 				};
+			},
+
+			async isTestable(credentialType: string) {
+				try {
+					const credClass = loadNodesAndCredentials.getCredential(credentialType);
+					if (credClass.type.test) return true;
+
+					const known = loadNodesAndCredentials.knownCredentials;
+					const supportedNodes = known[credentialType]?.supportedNodes ?? [];
+					for (const nodeName of supportedNodes) {
+						try {
+							const loaded = loadNodesAndCredentials.getNode(nodeName);
+							const nodeInstance = loaded.type;
+							const nodeDesc =
+								'nodeVersions' in nodeInstance
+									? Object.values(nodeInstance.nodeVersions).pop()?.description
+									: nodeInstance.description;
+							const hasTestedBy = nodeDesc?.credentials?.some(
+								(cred: { name: string; testedBy?: unknown }) =>
+									cred.name === credentialType && cred.testedBy,
+							);
+							if (hasTestedBy) return true;
+						} catch {
+							continue;
+						}
+					}
+					return false;
+				} catch {
+					return false;
+				}
 			},
 
 			async getDocumentationUrl(credentialType: string) {
@@ -1121,6 +1156,23 @@ export class InstanceAiAdapterService {
 		// This avoids each run retaining its own ~31 MB copy of node descriptions.
 		const getNodes = async () => await this.getNodesFromCache();
 
+		/** Find a node description matching type and optionally version. Falls back to any version. */
+		const findNodeByVersion = (
+			nodes: Awaited<ReturnType<typeof getNodes>>,
+			nodeType: string,
+			version?: number,
+		) => {
+			if (version !== undefined) {
+				const exact = nodes.find((n) => {
+					if (n.name !== nodeType) return false;
+					if (Array.isArray(n.version)) return n.version.includes(version);
+					return n.version === version;
+				});
+				if (exact) return exact;
+			}
+			return nodes.find((n) => n.name === nodeType);
+		};
+
 		return {
 			async listAvailable(options) {
 				const nodes = await getNodes();
@@ -1194,9 +1246,20 @@ export class InstanceAiAdapterService {
 				});
 			},
 
-			async getDescription(nodeType: string) {
+			async getDescription(nodeType: string, version?: number) {
 				const nodes = await getNodes();
-				const desc = nodes.find((n) => n.name === nodeType);
+				let desc =
+					version !== undefined
+						? nodes.find((n) => {
+								if (n.name !== nodeType) return false;
+								if (Array.isArray(n.version)) return n.version.includes(version);
+								return n.version === version;
+							})
+						: undefined;
+				// Fallback to any version if exact match not found
+				if (!desc) {
+					desc = nodes.find((n) => n.name === nodeType);
+				}
 
 				if (!desc) {
 					throw new Error(`Node type ${nodeType} not found`);
@@ -1233,6 +1296,9 @@ export class InstanceAiAdapterService {
 					})),
 					inputs: Array.isArray(desc.inputs) ? desc.inputs.map(String) : [],
 					outputs: Array.isArray(desc.outputs) ? desc.outputs.map(String) : [],
+					...(desc.webhooks ? { webhooks: desc.webhooks as unknown[] } : {}),
+					...(desc.polling ? { polling: desc.polling } : {}),
+					...(desc.triggerPanel !== undefined ? { triggerPanel: desc.triggerPanel } : {}),
 				} satisfies NodeDescription;
 			},
 
@@ -1248,6 +1314,151 @@ export class InstanceAiAdapterService {
 
 			listDiscriminators: async (nodeType) => {
 				return listNodeDiscriminators(nodeType, this.getNodeDefinitionDirs());
+			},
+
+			getParameterIssues: async (nodeType, typeVersion, parameters) => {
+				const nodes = await getNodes();
+				const desc = findNodeByVersion(nodes, nodeType, typeVersion);
+				if (!desc) return {};
+
+				const nodeProperties = desc.properties;
+
+				// Fill in default values for parameters not explicitly set
+				const paramsWithDefaults: Record<string, unknown> = { ...parameters };
+				for (const prop of nodeProperties) {
+					if (!(prop.name in paramsWithDefaults) && prop.default !== undefined) {
+						paramsWithDefaults[prop.name] = prop.default;
+					}
+				}
+
+				const minimalNode: INode = {
+					id: '',
+					name: '',
+					type: nodeType,
+					typeVersion,
+					parameters: paramsWithDefaults as INodeParameters,
+					position: [0, 0],
+				};
+
+				const issues = NodeHelpers.getNodeParametersIssues(
+					nodeProperties,
+					minimalNode,
+					desc as unknown as INodeTypeDescription,
+				);
+				const allIssues = issues?.parameters ?? {};
+
+				// Filter to top-level visible parameters only (mirrors setupPanel.utils.ts logic)
+				const topLevelPropsByName = new Map<string, typeof nodeProperties>();
+				for (const prop of nodeProperties) {
+					const existing = topLevelPropsByName.get(prop.name);
+					if (existing) {
+						existing.push(prop);
+					} else {
+						topLevelPropsByName.set(prop.name, [prop]);
+					}
+				}
+
+				const filteredIssues: Record<string, string[]> = {};
+				for (const [key, value] of Object.entries(allIssues)) {
+					const props = topLevelPropsByName.get(key);
+					if (!props) continue;
+
+					const isDisplayed = props.some((prop) => {
+						if (prop.type === 'hidden') return false;
+						if (
+							prop.displayOptions &&
+							!NodeHelpers.displayParameter(
+								paramsWithDefaults as INodeParameters,
+								prop,
+								minimalNode,
+								desc as unknown as INodeTypeDescription,
+							)
+						) {
+							return false;
+						}
+						return true;
+					});
+					if (!isDisplayed) continue;
+
+					filteredIssues[key] = value;
+				}
+				return filteredIssues;
+			},
+
+			getNodeCredentialTypes: async (nodeType, typeVersion, parameters, existingCredentials) => {
+				const nodes = await getNodes();
+				const desc = findNodeByVersion(nodes, nodeType, typeVersion);
+				if (!desc) return [];
+
+				const credentialTypes = new Set<string>();
+
+				// 1. Displayable credentials from node type description
+				const nodeCredentials = desc.credentials ?? [];
+				// Fill defaults before evaluating display options
+				const paramsWithDefaultsForCreds: Record<string, unknown> = { ...parameters };
+				for (const prop of desc.properties) {
+					if (!(prop.name in paramsWithDefaultsForCreds) && prop.default !== undefined) {
+						paramsWithDefaultsForCreds[prop.name] = prop.default;
+					}
+				}
+				const credCheckNode: INode = {
+					id: '',
+					name: '',
+					type: nodeType,
+					typeVersion,
+					parameters: paramsWithDefaultsForCreds as INodeParameters,
+					position: [0, 0],
+				};
+				for (const cred of nodeCredentials) {
+					// Check if credential is displayable given current parameters
+					if (cred.displayOptions) {
+						if (
+							!NodeHelpers.displayParameter(
+								paramsWithDefaultsForCreds as INodeParameters,
+								cred,
+								credCheckNode,
+								desc as unknown as INodeTypeDescription,
+							)
+						) {
+							continue;
+						}
+					}
+					credentialTypes.add(cred.name);
+				}
+
+				// 2. Node issues for dynamic credentials (e.g. HTTP Request missing auth)
+				const paramsWithDefaults: Record<string, unknown> = { ...parameters };
+				for (const prop of desc.properties) {
+					if (!(prop.name in paramsWithDefaults) && prop.default !== undefined) {
+						paramsWithDefaults[prop.name] = prop.default;
+					}
+				}
+				const minimalNode: INode = {
+					id: '',
+					name: '',
+					type: nodeType,
+					typeVersion,
+					parameters: paramsWithDefaults as INodeParameters,
+					position: [0, 0],
+				};
+				const issues = NodeHelpers.getNodeParametersIssues(
+					desc.properties,
+					minimalNode,
+					desc as unknown as INodeTypeDescription,
+				);
+				const credentialIssues = issues?.credentials ?? {};
+				for (const credType of Object.keys(credentialIssues)) {
+					credentialTypes.add(credType);
+				}
+
+				// 3. Already-assigned credentials
+				if (existingCredentials) {
+					for (const credType of Object.keys(existingCredentials)) {
+						credentialTypes.add(credType);
+					}
+				}
+
+				return Array.from(credentialTypes);
 			},
 
 			exploreResources: async (params: ExploreResourcesParams): Promise<ExploreResourcesResult> => {
