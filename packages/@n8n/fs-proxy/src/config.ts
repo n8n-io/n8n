@@ -26,12 +26,6 @@ function envNumber(name: string): number | undefined {
 	return Number.isNaN(n) ? undefined : n;
 }
 
-function parseViewport(raw: string): { width: number; height: number } | undefined {
-	const match = /^(\d+)x(\d+)$/i.exec(raw);
-	if (!match) return undefined;
-	return { width: Number(match[1]), height: Number(match[2]) };
-}
-
 // ---------------------------------------------------------------------------
 // Zod schemas
 // ---------------------------------------------------------------------------
@@ -58,15 +52,8 @@ const computerConfigSchema = z.object({
 	mouseKeyboard: z.union([z.literal(false), mouseKeyboardConfigSchema]).default({}),
 });
 
-const viewportSchema = z.object({
-	width: z.number().int().positive(),
-	height: z.number().int().positive(),
-});
-
 const browserConfigSchema = z.object({
-	headless: z.boolean().default(false),
 	defaultBrowser: z.string().default('chrome'),
-	viewport: viewportSchema.default({ width: 1280, height: 720 }),
 });
 
 export const gatewayConfigSchema = z.object({
@@ -146,12 +133,8 @@ function buildEnvConfig(): Partial<GatewayConfig> {
 		config.browser = false;
 	} else {
 		const browser: Record<string, unknown> = {};
-		const headless = envBoolean('BROWSER_HEADLESS');
-		if (headless !== undefined) browser.headless = headless;
 		const defaultBrowser = envString('BROWSER_DEFAULT');
 		if (defaultBrowser) browser.defaultBrowser = defaultBrowser;
-		const viewport = envString('BROWSER_VIEWPORT');
-		if (viewport) browser.viewport = parseViewport(viewport);
 		if (Object.keys(browser).length > 0) {
 			config.browser = browser;
 		}
@@ -211,11 +194,7 @@ function buildCliConfig(args: yargsParser.Arguments): Partial<GatewayConfig> {
 		config.browser = false;
 	} else {
 		const browser: Record<string, unknown> = {};
-		if (args['browser-headless'] !== undefined) browser.headless = args['browser-headless'];
-		if (args['no-browser-headless'] === true) browser.headless = false;
 		if (args['browser-default']) browser.defaultBrowser = args['browser-default'];
-		if (args['browser-viewport'])
-			browser.viewport = parseViewport(args['browser-viewport'] as string);
 		if (Object.keys(browser).length > 0) {
 			config.browser = browser;
 		}
@@ -275,7 +254,7 @@ export function parseConfig(argv = process.argv.slice(2)): ParsedArgs {
 	const rawArgs = isServe ? argv.slice(1) : argv;
 
 	const args = yargsParser(rawArgs, {
-		string: ['log-level', 'filesystem-dir', 'browser-default', 'browser-viewport', 'allow-origin'],
+		string: ['log-level', 'filesystem-dir', 'browser-default', 'allow-origin'],
 		boolean: [
 			'no-filesystem',
 			'filesystem-write-access',
@@ -283,8 +262,6 @@ export function parseConfig(argv = process.argv.slice(2)): ParsedArgs {
 			'no-computer-screenshot',
 			'no-computer-mouse-keyboard',
 			'no-browser',
-			'browser-headless',
-			'no-browser-headless',
 			'help',
 		],
 		number: ['port', 'computer-shell-timeout', 'browser-session-ttl-ms', 'browser-max-sessions'],

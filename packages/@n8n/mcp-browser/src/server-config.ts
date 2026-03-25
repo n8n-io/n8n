@@ -14,12 +14,6 @@ function envString(envKey: string): string | undefined {
 	return process.env[`${ENV_PREFIX}${envKey}`];
 }
 
-function envBoolean(envKey: string): boolean | undefined {
-	const raw = envString(envKey);
-	if (raw === undefined) return undefined;
-	return raw === 'true' || raw === '1';
-}
-
 function envNumber(envKey: string): number | undefined {
 	const raw = envString(envKey);
 	if (raw === undefined) return undefined;
@@ -27,17 +21,9 @@ function envNumber(envKey: string): number | undefined {
 	return Number.isNaN(n) ? undefined : n;
 }
 
-function parseViewport(raw: string): { width: number; height: number } | undefined {
-	const match = /^(\d+)x(\d+)$/i.exec(raw);
-	if (!match) return undefined;
-	return { width: Number(match[1]), height: Number(match[2]) };
-}
-
 /* eslint-disable @typescript-eslint/naming-convention -- kebab-case keys from yargs CLI parsing */
 interface ParsedArgs {
 	browser?: string;
-	headless?: boolean;
-	viewport?: string;
 	transport?: string;
 	port?: number;
 	_: string[];
@@ -47,9 +33,7 @@ interface ParsedArgs {
 export function parseServerOptions(argv = process.argv.slice(2)): ServerOptions {
 	const args = yargsParser(argv, {
 		// eslint-disable-next-line id-denylist
-		string: ['browser', 'viewport', 'transport'],
-		// eslint-disable-next-line id-denylist
-		boolean: ['headless'],
+		string: ['browser', 'transport'],
 		// eslint-disable-next-line id-denylist
 		number: ['port'],
 		alias: {
@@ -65,18 +49,10 @@ export function parseServerOptions(argv = process.argv.slice(2)): ServerOptions 
 	const envBrowser = envString('DEFAULT_BROWSER');
 	if (envBrowser) envConfig.defaultBrowser = envBrowser as Config['defaultBrowser'];
 
-	const envHeadless = envBoolean('HEADLESS');
-	if (envHeadless !== undefined) envConfig.headless = envHeadless;
-
-	const envViewport = envString('VIEWPORT');
-	if (envViewport) envConfig.viewport = parseViewport(envViewport);
-
 	// Build config from CLI flags (higher priority)
 	const cliConfig: Partial<Config> = {};
 
 	if (args.browser) cliConfig.defaultBrowser = args.browser as Config['defaultBrowser'];
-	if (args.headless !== undefined) cliConfig.headless = args.headless;
-	if (args.viewport) cliConfig.viewport = parseViewport(args.viewport);
 
 	// Merge: env ← cli (CLI wins)
 	const config: Partial<Config> = { ...envConfig, ...cliConfig };

@@ -99,7 +99,7 @@ async function main() {
 		});
 
 		httpServer.listen(port, () => {
-			console.error(`n8n-browser MCP server listening on http://localhost:${port}`);
+			console.debug(`n8n-browser MCP server listening on http://localhost:${port}`);
 		});
 	} else {
 		const server = new McpServer({ name: 'n8n-browser', version: '1.0.0' });

@@ -4,21 +4,14 @@ import { logger, type LogLevel } from '../../logger';
 import type { ToolDefinition, ToolModule } from '../types';
 
 export interface BrowserModuleConfig {
-	headless?: boolean;
 	defaultBrowser?: string;
-	viewport?: { width: number; height: number };
 	logLevel?: LogLevel;
 }
 
 function toBrowserConfig(config: BrowserModuleConfig): Partial<BrowserConfig> {
-	const browserConfig: Partial<BrowserConfig> = {
-		headless: config.headless ?? false,
-	};
+	const browserConfig: Partial<BrowserConfig> = {};
 	if (config.defaultBrowser) {
 		browserConfig.defaultBrowser = config.defaultBrowser as BrowserConfig['defaultBrowser'];
-	}
-	if (config.viewport) {
-		browserConfig.viewport = config.viewport;
 	}
 	return browserConfig;
 }

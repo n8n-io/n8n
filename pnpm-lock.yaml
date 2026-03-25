@@ -1576,6 +1576,9 @@ importers:
       nanoid:
         specifier: 'catalog:'
         version: 3.3.8
+      picocolors:
+        specifier: 'catalog:'
+        version: 1.0.1
       playwright-core:
         specifier: 'catalog:'
         version: 1.58.0

@@ -35,6 +35,7 @@
 		"selenium-webdriver": "4.39.0",
 		"turndown": "^7.2.0",
 		"ws": "8.17.1",
+		"picocolors": "catalog:",
 		"yargs-parser": "21.1.1",
 		"zod": "catalog:"
 	},

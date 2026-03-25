@@ -66,16 +66,13 @@ Computer use:
 
 Browser:
   --no-browser                       Disable browser tools
-  --browser-headless                 Run browser in headless mode (default: false)
-  --no-browser-headless              Run browser with visible window
-  --browser-default <name>           Default browser (default: chromium)
-  --browser-viewport <WxH>           Viewport size (default: 1280x720)
+  --browser-default <name>           Default browser (default: chrome)
   --browser-session-ttl-ms <ms>      Session idle timeout (default: 1800000)
   --browser-max-sessions <n>         Max concurrent sessions (default: 5)
 
 Environment variables:
   All options can be set via N8N_GATEWAY_* environment variables.
-  Example: N8N_GATEWAY_BROWSER_HEADLESS=false
+  Example: N8N_GATEWAY_BROWSER_DEFAULT=chrome
   See README.md for the full list.
 `);
 }
