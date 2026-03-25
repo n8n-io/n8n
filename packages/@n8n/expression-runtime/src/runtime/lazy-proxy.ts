@@ -94,7 +94,7 @@ export function createDeepLazyProxy(basePath: string[] = [], knownKeys?: string[
 		getOwnPropertyDescriptor(_target: any, prop: string | symbol): PropertyDescriptor | undefined {
 			if (typeof prop === 'symbol') return undefined;
 			if (knownKeys?.includes(prop as string)) {
-				return { configurable: true, enumerable: true, writable: true };
+				return { configurable: true, enumerable: true, writable: false };
 			}
 			return undefined;
 		},
