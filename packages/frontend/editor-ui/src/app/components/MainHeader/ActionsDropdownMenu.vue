@@ -152,6 +152,14 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 		});
 	}
 
+	actions.push({
+		id: WORKFLOW_MENU_ACTIONS.FAVORITE,
+		label: favoritesStore.isFavorite(props.id, 'workflow')
+			? locale.baseText('favorites.remove')
+			: locale.baseText('favorites.add'),
+		disabled: !onWorkflowPage.value || props.isNewWorkflow,
+	});
+
 	if (
 		(props.workflowPermissions.update === true &&
 			!collaborationReadOnly.value &&
@@ -199,14 +207,6 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 	actions.push({
 		id: WORKFLOW_MENU_ACTIONS.SETTINGS,
 		label: locale.baseText('generic.settings'),
-		disabled: !onWorkflowPage.value || props.isNewWorkflow,
-	});
-
-	actions.push({
-		id: WORKFLOW_MENU_ACTIONS.FAVORITE,
-		label: favoritesStore.isFavorite(props.id, 'workflow')
-			? locale.baseText('favorites.remove')
-			: locale.baseText('favorites.add'),
 		disabled: !onWorkflowPage.value || props.isNewWorkflow,
 	});
 
