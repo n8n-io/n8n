@@ -87,7 +87,7 @@ function handleAction(approved: boolean, domainAccessAction?: string) {
 	align-items: flex-start;
 	gap: var(--spacing--3xs);
 	font-size: var(--font-size--2xs);
-	color: var(--color--text);
+	color: var(--text-color);
 	margin-bottom: var(--spacing--2xs);
 }
 
@@ -100,7 +100,7 @@ function handleAction(approved: boolean, domainAccessAction?: string) {
 .urlPreview {
 	font-family: monospace;
 	font-size: var(--font-size--3xs);
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 	word-break: break-all;
 	margin-bottom: var(--spacing--2xs);
 	padding: var(--spacing--4xs) var(--spacing--2xs);
@@ -124,7 +124,7 @@ function handleAction(approved: boolean, domainAccessAction?: string) {
 	cursor: pointer;
 	border: var(--border);
 	background: var(--color--background);
-	color: var(--color--text);
+	color: var(--text-color);
 
 	&:hover {
 		background: var(--color--background--shade-1);
@@ -132,11 +132,11 @@ function handleAction(approved: boolean, domainAccessAction?: string) {
 }
 
 .denyBtn {
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 }
 
 .secondaryBtn {
-	color: var(--color--text);
+	color: var(--text-color);
 }
 
 .primaryBtn {

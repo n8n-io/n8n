@@ -182,7 +182,7 @@ const statusEntry = computed(() => statusConfig[props.agentNode.status]);
 	cursor: pointer;
 	font-family: var(--font-family);
 	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 
 	&:hover {
 		background: var(--color--foreground--tint-1);
@@ -235,7 +235,7 @@ const statusEntry = computed(() => statusConfig[props.agentNode.status]);
 	background: var(--color--foreground);
 	border-radius: var(--radius--sm);
 	white-space: nowrap;
-	color: var(--color--text);
+	color: var(--text-color);
 }
 
 .goalBlock {
@@ -306,7 +306,7 @@ const statusEntry = computed(() => statusConfig[props.agentNode.status]);
 	align-items: center;
 	gap: var(--spacing--4xs);
 	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 	background: none;
 	border: none;
 	cursor: pointer;
@@ -314,14 +314,14 @@ const statusEntry = computed(() => statusConfig[props.agentNode.status]);
 	font-family: var(--font-family);
 
 	&:hover {
-		color: var(--color--text--tint-1);
+		color: var(--text-color--subtle);
 	}
 }
 
 .reasoningContent {
 	padding: var(--spacing--4xs) var(--spacing--xs);
 	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 	font-style: italic;
 	border-left: var(--border-width) var(--border-style) var(--color--foreground);
 	margin-left: var(--spacing--4xs);
@@ -330,7 +330,7 @@ const statusEntry = computed(() => statusConfig[props.agentNode.status]);
 .textContent {
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
-	color: var(--color--text);
+	color: var(--text-color);
 	margin-top: var(--spacing--2xs);
 }
 
@@ -380,7 +380,7 @@ const statusEntry = computed(() => statusConfig[props.agentNode.status]);
 }
 
 .cancelledIcon {
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 }
 
 .errorIcon {

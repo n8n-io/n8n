@@ -136,7 +136,7 @@ onUpdated(enhanceResourceLinks);
 	border-radius: 0 !important;
 	color: inherit !important;
 	text-decoration: underline !important;
-	text-decoration-color: var(--color--text--tint-1) !important;
+	text-decoration-color: var(--text-color--subtle) !important;
 	cursor: pointer !important;
 	vertical-align: baseline !important;
 	line-height: inherit !important;

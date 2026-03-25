@@ -171,12 +171,12 @@ function handleLater() {
 .credentialName {
 	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--bold);
-	color: var(--color--text);
+	color: var(--text-color);
 }
 
 .credentialReason {
 	font-size: var(--font-size--3xs);
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 }
 
 .picker {
@@ -204,10 +204,10 @@ function handleLater() {
 	cursor: pointer;
 	border: none;
 	background: none;
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 
 	&:hover {
-		color: var(--color--text);
+		color: var(--text-color);
 		text-decoration: underline;
 	}
 }
@@ -217,7 +217,7 @@ function handleLater() {
 	align-items: center;
 	gap: var(--spacing--4xs);
 	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 }
 
 .successIcon {
@@ -225,6 +225,6 @@ function handleLater() {
 }
 
 .skippedIcon {
-	color: var(--color--text--tint-2);
+	color: var(--text-color--subtler);
 }
 </style>

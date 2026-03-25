@@ -146,7 +146,7 @@ function handleFileRemove(file: File) {
 	border: var(--border);
 	border-radius: var(--radius--lg);
 	background: transparent;
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 	font-size: var(--font-size--2xs);
 	font-family: var(--font-family);
 	cursor: pointer;
@@ -157,7 +157,7 @@ function handleFileRemove(file: File) {
 	user-select: none;
 
 	&:hover {
-		color: var(--color--text);
+		color: var(--text-color);
 		border-color: var(--color--foreground--shade-1);
 	}
 

@@ -152,7 +152,7 @@ const resolvedAction = computed((): 'approved' | 'denied' | 'deferred' | null =>
 	cursor: pointer;
 	font-family: var(--font-family);
 	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 
 	&:hover {
 		background: var(--color--background--shade-1);
@@ -205,7 +205,7 @@ const resolvedAction = computed((): 'approved' | 'denied' | 'deferred' | null =>
 .sectionLabel {
 	font-size: var(--font-size--3xs);
 	font-weight: var(--font-weight--bold);
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 	text-transform: uppercase;
 	letter-spacing: 0.05em;
 	margin-bottom: var(--spacing--4xs);
@@ -218,7 +218,7 @@ const resolvedAction = computed((): 'approved' | 'denied' | 'deferred' | null =>
 	white-space: pre-wrap;
 	word-break: break-word;
 	margin: 0;
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 	max-height: 200px;
 	overflow-y: auto;
 }
@@ -243,7 +243,7 @@ const resolvedAction = computed((): 'approved' | 'denied' | 'deferred' | null =>
 }
 
 .deferredIcon {
-	color: var(--color--text--tint-2);
+	color: var(--text-color--subtler);
 }
 
 .confirmationMessage {
@@ -251,7 +251,7 @@ const resolvedAction = computed((): 'approved' | 'denied' | 'deferred' | null =>
 	align-items: flex-start;
 	gap: var(--spacing--3xs);
 	font-size: var(--font-size--2xs);
-	color: var(--color--text);
+	color: var(--text-color);
 	margin-bottom: var(--spacing--2xs);
 }
 
@@ -281,7 +281,7 @@ const resolvedAction = computed((): 'approved' | 'denied' | 'deferred' | null =>
 	cursor: pointer;
 	border: var(--border);
 	background: var(--color--background);
-	color: var(--color--text);
+	color: var(--text-color);
 
 	&:hover {
 		background: var(--color--background--shade-1);
@@ -289,7 +289,7 @@ const resolvedAction = computed((): 'approved' | 'denied' | 'deferred' | null =>
 }
 
 .denyButton {
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 }
 
 .approveButton {
@@ -324,7 +324,7 @@ const resolvedAction = computed((): 'approved' | 'denied' | 'deferred' | null =>
 	font-size: var(--font-size--2xs);
 	font-family: var(--font-family);
 	background: var(--color--background);
-	color: var(--color--text);
+	color: var(--text-color);
 	outline: none;
 
 	&:focus {
@@ -332,7 +332,7 @@ const resolvedAction = computed((): 'approved' | 'denied' | 'deferred' | null =>
 	}
 
 	&::placeholder {
-		color: var(--color--text--tint-1);
+		color: var(--text-color--subtle);
 	}
 }
 
@@ -343,6 +343,6 @@ const resolvedAction = computed((): 'approved' | 'denied' | 'deferred' | null =>
 	align-items: center;
 	gap: var(--spacing--4xs);
 	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 }
 </style>
