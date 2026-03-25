@@ -1987,6 +1987,8 @@
 	"nodeCredentials.emptyState.noCredentials": "No credentials yet",
 	"nodeCredentials.emptyState.setupCredential": "Set up credential",
 	"nodeCredentials.oauth.accountConnected": "Account connected successfully",
+	"aiGateway.toggle.label": "Use n8n Managed Credentials",
+	"aiGateway.toggle.description": "No API key needed. Uses your n8n token quota.",
 	"nodeCredentials.oauth.accountConnectionFailed": "Account connection failed",
 	"nodeErrorView.cause": "Cause",
 	"nodeErrorView.copyToClipboard": "Copy to Clipboard",

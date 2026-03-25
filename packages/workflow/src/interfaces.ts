@@ -1317,6 +1317,7 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 export interface INodeCredentialsDetails {
 	id: string | null;
 	name: string;
+	__gatewayProxy?: boolean;
 }
 
 export interface INodeCredentials {

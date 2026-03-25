@@ -122,6 +122,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		() => settings.value.ai?.allowSendingParameterValues ?? true,
 	);
 
+	const isAiGatewayEnabled = computed(() => settings.value.aiGateway?.enabled ?? true); //TODO: false is default
+
+	const aiGatewayCreditsQuota = computed(() => settings.value.aiGateway?.creditsQuota ?? 42); //TODO: 0 is default
+
 	const isSmtpSetup = computed(() => userManagement.value.smtpSetup);
 
 	const isPersonalizationSurveyEnabled = computed(
@@ -410,6 +414,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isAiCreditsEnabled,
 		aiCreditsQuota,
 		isAiDataSharingEnabled,
+		isAiGatewayEnabled,
+		aiGatewayCreditsQuota,
 		reset,
 		getTimezones,
 		testTemplatesEndpoint,
