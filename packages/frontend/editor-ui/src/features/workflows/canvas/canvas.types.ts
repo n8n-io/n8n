@@ -1,4 +1,9 @@
-import type { ExecutionStatus, INodeConnections, NodeConnectionType } from 'n8n-workflow';
+import type {
+	ExecutionStatus,
+	IConnections,
+	INodeConnections,
+	NodeConnectionType,
+} from 'n8n-workflow';
 import type {
 	DefaultEdge,
 	Node,
@@ -180,6 +185,8 @@ export type CanvasEventBusEvents = {
 	fitView: never;
 	/** Deferred fitView — waits for VueFlow's onNodesInitialized before fitting. */
 	'fitView:onNodesInit': never;
+	/** Deferred setConnections — waits for VueFlow's onNodesInitialized so handles exist. */
+	'setConnections:onNodesInit': IConnections;
 	'saved:workflow': { isFirstSave: boolean };
 	'open:execution': IExecutionResponse;
 	'nodes:select': { ids: string[]; panIntoView?: boolean };
