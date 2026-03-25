@@ -90,7 +90,6 @@ function handleQuestionsSubmit(requestId: string, answers: QuestionAnswer[]) {
 		undefined,
 		undefined,
 		undefined,
-		undefined,
 		answers,
 	);
 }
