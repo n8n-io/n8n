@@ -4,12 +4,19 @@ import { Response } from 'express';
 
 import { JwtService } from '@/services/jwt.service';
 
+export interface OAuthSessionMetadata {
+	deviceName?: string;
+	os?: string;
+	ip?: string;
+}
+
 export interface OAuthSessionPayload {
 	clientId: string;
 	redirectUri: string;
 	codeChallenge: string;
 	state: string | null;
 	scopes?: string[];
+	metadata?: OAuthSessionMetadata;
 }
 
 const COOKIE_NAME = 'n8n-oauth-session';

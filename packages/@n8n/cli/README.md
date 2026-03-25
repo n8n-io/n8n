@@ -14,19 +14,30 @@ npx @n8n/cli workflow list
 npm install -g @n8n/cli
 ```
 
-## Configuration
+## Authentication
 
-The CLI needs your n8n instance URL and an API key.
-
-### Config file (recommended)
+### OAuth login (recommended)
 
 ```bash
-n8n-cli config set-url https://my-n8n.app.n8n.cloud
-n8n-cli config set-api-key n8n_api_xxxxx
-n8n-cli config show
+# Interactive — prompts for URL and context name, opens browser
+n8n-cli login
+
+# Non-interactive — all flags provided
+n8n-cli login --url https://my-n8n.example.com --name production
 ```
 
-Configuration is saved to `~/.n8n-cli/config.json` with restricted file permissions (`0600`).
+The CLI opens your browser for OAuth authorization. After approving, tokens are saved locally and refreshed automatically.
+
+### API key
+
+```bash
+# Pass API key directly
+n8n-cli login --url https://my-n8n.example.com --api-key n8n_api_xxxxx --name prod
+
+# Or configure manually
+n8n-cli config set-url https://my-n8n.app.n8n.cloud
+n8n-cli config set-api-key n8n_api_xxxxx
+```
 
 ### Environment variables
 
@@ -35,17 +46,40 @@ export N8N_URL=https://my-n8n.app.n8n.cloud
 export N8N_API_KEY=n8n_api_xxxxx
 ```
 
-### Inline flags
-
-```bash
-n8n-cli --url=https://my-n8n.app.n8n.cloud --api-key=n8n_api_xxxxx workflow list
-```
-
 ### Resolution order
 
 1. Command-line flags (`--url`, `--api-key`)
 2. Environment variables (`N8N_URL`, `N8N_API_KEY`)
-3. Config file (`~/.n8n-cli/config.json`)
+3. Active context config (`~/.n8n-cli/config.json`)
+
+## Contexts (Multi-Instance)
+
+The CLI supports named contexts for working with multiple n8n instances:
+
+```bash
+# Login creates a context (prompts for name, or use --name)
+n8n-cli login                                    # prompts for URL and context name
+n8n-cli login --url https://prod.example.com     # prompts for context name
+n8n-cli login --name production                  # auto-detects URL default
+
+# List all contexts (* marks active)
+n8n-cli context list
+
+# Switch active context
+n8n-cli context use staging
+
+# Show current context details
+n8n-cli context show
+
+# Rename / delete contexts
+n8n-cli context rename old-name new-name
+n8n-cli context delete staging
+
+# Logout
+n8n-cli logout                    # current context
+n8n-cli logout --name staging     # specific context
+n8n-cli logout --all              # all contexts
+```
 
 ## Commands
 

@@ -10,13 +10,33 @@ npx @n8n/cli workflow list
 npm install -g @n8n/cli
 ```
 
-## Configuration
+## Authentication
 
-The CLI needs two things: your n8n instance URL and an API key.
-
-### Option 1: Config file (recommended)
+### OAuth login (recommended)
 
 ```bash
+# Interactive — prompts for URL and context name, opens browser
+n8n-cli login
+```
+
+The CLI will prompt for:
+1. **Instance URL** — defaults to `http://localhost:5678`
+2. **Context name** — defaults to the URL hostname (e.g. `localhost`)
+
+Then it opens your browser for OAuth authorization. After approving, tokens are saved and refreshed automatically.
+
+```bash
+# Non-interactive — provide all flags
+n8n-cli login --url https://my-n8n.example.com --name production
+```
+
+### API key
+
+```bash
+# Pass API key via flag
+n8n-cli login --api-key n8n_api_xxxxx
+
+# Or configure manually
 n8n-cli config set-url https://my-n8n.app.n8n.cloud
 n8n-cli config set-api-key n8n_api_xxxxx
 
@@ -26,17 +46,11 @@ n8n-cli config show
 
 Configuration is saved to `~/.n8n-cli/config.json` with restricted file permissions (`0600`).
 
-### Option 2: Environment variables
+### Environment variables
 
 ```bash
 export N8N_URL=https://my-n8n.app.n8n.cloud
 export N8N_API_KEY=n8n_api_xxxxx
-```
-
-### Option 3: Inline flags
-
-```bash
-n8n-cli --url=https://my-n8n.app.n8n.cloud --api-key=n8n_api_xxxxx workflow list
 ```
 
 ### Resolution order
@@ -45,7 +59,7 @@ The CLI resolves configuration in this priority order:
 
 1. Command-line flags (`--url`, `--api-key`)
 2. Environment variables (`N8N_URL`, `N8N_API_KEY`)
-3. Config file (`~/.n8n-cli/config.json`)
+3. Active context config (`~/.n8n-cli/config.json`)
 
 ## Your first commands
 

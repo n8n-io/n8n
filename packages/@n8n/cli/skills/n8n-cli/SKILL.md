@@ -12,17 +12,16 @@ It auto-detects piped output and switches to JSON, making it composable for scri
 ## Setup
 
 ```bash
-# Interactive login (saves to ~/.n8n-cli/config.json)
+# OAuth login (recommended) — opens browser, prompts for URL and context name
 n8n-cli login
 
-# Login with a named context
-n8n-cli login --name production
+# Login with flags (non-interactive, for CI/scripts)
+n8n-cli login --url https://my-instance.n8n.cloud --name production
 
-# Or configure directly
-n8n-cli config set-url https://my-instance.n8n.cloud
-n8n-cli config set-api-key n8n_api_...
+# Login with API key instead of OAuth
+n8n-cli login --api-key n8n_api_... --url https://my-instance.n8n.cloud --name prod
 
-# Or use environment variables (no config file needed)
+# Or use environment variables (no login needed)
 export N8N_URL=https://my-instance.n8n.cloud
 export N8N_API_KEY=n8n_api_...
 ```
@@ -196,9 +195,9 @@ n8n-cli user get <id>
 The CLI supports named contexts for working with multiple n8n instances:
 
 ```bash
-# Login creates a context (auto-named from hostname, or use --name)
-n8n-cli login                         # auto-names from URL, e.g. "localhost"
-n8n-cli login --name production       # explicit name
+# Login creates a context (prompts for name interactively, or use --name)
+n8n-cli login                         # prompts: URL, context name
+n8n-cli login --name production       # explicit name, prompts for URL
 
 # List all contexts (* marks active)
 n8n-cli context list

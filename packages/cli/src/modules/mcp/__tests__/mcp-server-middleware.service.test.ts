@@ -8,7 +8,7 @@ import { JwtService } from '@/services/jwt.service';
 import { Telemetry } from '@/telemetry';
 
 import { McpServerApiKeyService } from '../mcp-api-key.service';
-import { McpOAuthTokenService } from '../mcp-oauth-token.service';
+import { OAuthTokenService } from '@/modules/oauth/oauth-token.service';
 import { McpServerMiddlewareService } from '../mcp-server-middleware.service';
 
 const mockReqWith = (authHeader: string | undefined, body?: any) => {
@@ -25,7 +25,7 @@ const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-key' });
 const jwtService = new JwtService(instanceSettings, mock());
 
 let mcpServerApiKeyService: jest.Mocked<McpServerApiKeyService>;
-let oauthTokenService: jest.Mocked<McpOAuthTokenService>;
+let oauthTokenService: jest.Mocked<OAuthTokenService>;
 let telemetry: jest.Mocked<Telemetry>;
 let service: McpServerMiddlewareService;
 
@@ -34,7 +34,7 @@ describe('McpServerMiddlewareService', () => {
 		mcpServerApiKeyService = mockInstance(
 			McpServerApiKeyService,
 		) as jest.Mocked<McpServerApiKeyService>;
-		oauthTokenService = mockInstance(McpOAuthTokenService) as jest.Mocked<McpOAuthTokenService>;
+		oauthTokenService = mockInstance(OAuthTokenService) as jest.Mocked<OAuthTokenService>;
 		telemetry = mockInstance(Telemetry);
 
 		service = new McpServerMiddlewareService(

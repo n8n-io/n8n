@@ -1,7 +1,7 @@
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { McpOAuthTokenService } from '@/modules/mcp/mcp-oauth-token.service';
+import { OAuthTokenService } from '@/modules/oauth/oauth-token.service';
 
 import { EventService } from '@/events/event.service';
 import { LastActiveAtService } from './last-active-at.service';
@@ -11,7 +11,7 @@ const CLI_AUDIENCE = 'public-api';
 @Service()
 export class PublicApiBearerAuthService {
 	constructor(
-		private readonly tokenService: McpOAuthTokenService,
+		private readonly tokenService: OAuthTokenService,
 		private readonly eventService: EventService,
 		private readonly lastActiveAtService: LastActiveAtService,
 	) {}

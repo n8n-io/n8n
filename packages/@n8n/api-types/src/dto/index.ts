@@ -153,6 +153,11 @@ export { DownloadDataTableCsvQueryDto } from './data-table/download-data-table-c
 export { ImportCsvToDataTableDto } from './data-table/import-csv-to-data-table.dto';
 
 export {
+	CliSessionResponseDto,
+	ListCliSessionsResponseDto,
+	DeleteCliSessionResponseDto,
+} from './oauth/cli-session.dto';
+export {
 	OAuthClientResponseDto,
 	ListOAuthClientsResponseDto,
 	DeleteOAuthClientResponseDto,

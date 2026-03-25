@@ -1,17 +1,17 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { mock } from 'jest-mock-extended';
 
-import type { AuthorizationCode } from '../database/entities/oauth-authorization-code.entity';
-import { AuthorizationCodeRepository } from '../database/repositories/oauth-authorization-code.repository';
-import { McpOAuthAuthorizationCodeService } from '../mcp-oauth-authorization-code.service';
+import type { AuthorizationCode } from '@/modules/oauth/database/entities/oauth-authorization-code.entity';
+import { AuthorizationCodeRepository } from '@/modules/oauth/database/repositories/oauth-authorization-code.repository';
+import { OAuthAuthorizationCodeService } from '@/modules/oauth/oauth-authorization-code.service';
 
 let authorizationCodeRepository: jest.Mocked<AuthorizationCodeRepository>;
-let service: McpOAuthAuthorizationCodeService;
+let service: OAuthAuthorizationCodeService;
 
-describe('McpOAuthAuthorizationCodeService', () => {
+describe('OAuthAuthorizationCodeService', () => {
 	beforeAll(() => {
 		authorizationCodeRepository = mockInstance(AuthorizationCodeRepository);
-		service = new McpOAuthAuthorizationCodeService(authorizationCodeRepository);
+		service = new OAuthAuthorizationCodeService(authorizationCodeRepository);
 	});
 
 	beforeEach(() => {
@@ -48,6 +48,7 @@ describe('McpOAuthAuthorizationCodeService', () => {
 				expiresAt: expect.any(Number),
 				used: false,
 				scopes: null,
+				metadata: null,
 			});
 		});
 

@@ -3,11 +3,11 @@ import { Time } from '@n8n/constants';
 import { Get, Post, RootLevelController } from '@n8n/decorators';
 import type { Request, Response } from 'express';
 
-import { McpOAuthAuthorizationCodeService } from './mcp-oauth-authorization-code.service';
-import { McpOAuthTokenService } from './mcp-oauth-token.service';
-import { McpOAuthHelpers } from './mcp-oauth.helpers';
-import { OAuthSessionService } from './oauth-session.service';
-import { OAuthClientRepository } from './database/repositories/oauth-client.repository';
+import { OAuthAuthorizationCodeService } from '@/modules/oauth/oauth-authorization-code.service';
+import { OAuthTokenService } from '@/modules/oauth/oauth-token.service';
+import { OAuthHelpers } from '@/modules/oauth/oauth.helpers';
+import { OAuthSessionService } from '@/modules/oauth/oauth-session.service';
+import { OAuthClientRepository } from '@/modules/oauth/database/repositories/oauth-client.repository';
 
 const CLI_AUDIENCE = 'public-api';
 
@@ -32,8 +32,8 @@ export class CliOAuthController {
 		private readonly logger: Logger,
 		private readonly oauthSessionService: OAuthSessionService,
 		private readonly oauthClientRepository: OAuthClientRepository,
-		private readonly authorizationCodeService: McpOAuthAuthorizationCodeService,
-		private readonly tokenService: McpOAuthTokenService,
+		private readonly authorizationCodeService: OAuthAuthorizationCodeService,
+		private readonly tokenService: OAuthTokenService,
 	) {}
 
 	/**
@@ -54,6 +54,8 @@ export class CliOAuthController {
 			code_challenge_method: codeChallengeMethod,
 			state,
 			scope,
+			device_name: deviceName,
+			os: osName,
 		} = req.query as Record<string, string | undefined>;
 
 		// Validate required params
@@ -103,6 +105,15 @@ export class CliOAuthController {
 		// Parse requested scopes
 		const scopes = scope ? scope.split(' ').filter(Boolean) : [];
 
+		// Capture device metadata from query params
+		const ip = req.ip ?? req.socket.remoteAddress ?? undefined;
+
+		const metadata = {
+			deviceName: deviceName ?? undefined,
+			os: osName ?? undefined,
+			ip,
+		};
+
 		try {
 			this.oauthSessionService.createSession(res, {
 				clientId,
@@ -110,6 +121,7 @@ export class CliOAuthController {
 				codeChallenge,
 				state: state ?? null,
 				scopes,
+				metadata,
 			});
 
 			res.redirect('/oauth/cli-consent');
@@ -223,7 +235,7 @@ export class CliOAuthController {
 
 			// Step 2: Verify PKCE BEFORE consuming the code
 			// If PKCE fails, the code is NOT consumed and can be retried
-			if (!McpOAuthHelpers.verifyPkceS256(codeVerifier, authRecord.codeChallenge)) {
+			if (!OAuthHelpers.verifyPkceS256(codeVerifier, authRecord.codeChallenge)) {
 				res.status(400).json({
 					error: 'invalid_grant',
 					error_description: 'PKCE verification failed',
@@ -266,6 +278,7 @@ export class CliOAuthController {
 				clientId,
 				authRecord.userId,
 				approvedScopes,
+				authRecord.metadata,
 			);
 
 			this.logger.info('CLI OAuth authorization code exchanged for tokens', {

@@ -7,11 +7,11 @@ import type { InstanceSettings } from 'n8n-core';
 
 import { JwtService } from '@/services/jwt.service';
 
-import type { AccessToken } from '../database/entities/oauth-access-token.entity';
-import type { RefreshToken } from '../database/entities/oauth-refresh-token.entity';
-import { AccessTokenRepository } from '../database/repositories/oauth-access-token.repository';
-import { RefreshTokenRepository } from '../database/repositories/oauth-refresh-token.repository';
-import { McpOAuthTokenService } from '../mcp-oauth-token.service';
+import type { AccessToken } from '@/modules/oauth/database/entities/oauth-access-token.entity';
+import type { RefreshToken } from '@/modules/oauth/database/entities/oauth-refresh-token.entity';
+import { AccessTokenRepository } from '@/modules/oauth/database/repositories/oauth-access-token.repository';
+import { RefreshTokenRepository } from '@/modules/oauth/database/repositories/oauth-refresh-token.repository';
+import { OAuthTokenService } from '@/modules/oauth/oauth-token.service';
 
 const instanceSettings = mock<InstanceSettings>({ encryptionKey: 'test-key' });
 const jwtService = new JwtService(instanceSettings, mock());
@@ -20,10 +20,10 @@ let logger: jest.Mocked<Logger>;
 let userRepository: jest.Mocked<UserRepository>;
 let accessTokenRepository: jest.Mocked<AccessTokenRepository>;
 let refreshTokenRepository: jest.Mocked<RefreshTokenRepository>;
-let service: McpOAuthTokenService;
+let service: OAuthTokenService;
 let mockTransactionManager: any;
 
-describe('McpOAuthTokenService', () => {
+describe('OAuthTokenService', () => {
 	beforeAll(() => {
 		logger = mockInstance(Logger);
 		userRepository = mockInstance(UserRepository);
@@ -50,7 +50,7 @@ describe('McpOAuthTokenService', () => {
 		(refreshTokenRepository as any).manager = mockManager;
 		(refreshTokenRepository as any).target = 'RefreshToken';
 
-		service = new McpOAuthTokenService(
+		service = new OAuthTokenService(
 			logger,
 			jwtService,
 			userRepository,
@@ -122,6 +122,7 @@ describe('McpOAuthTokenService', () => {
 				userId,
 				expiresAt: expect.any(Number),
 				scopes: null,
+				metadata: null,
 			});
 		});
 	});

@@ -2,6 +2,7 @@ import { Command, Flags } from '@oclif/core';
 import { exec } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
 import * as http from 'node:http';
+import * as os from 'node:os';
 import * as readline from 'node:readline';
 
 import { N8nClient, ApiError } from '../client';
@@ -13,6 +14,8 @@ import {
 	getCurrentContext,
 } from '../config';
 import type { ContextConfig } from '../config';
+
+const DEFAULT_URL = 'http://localhost:5678';
 
 function generatePkce(): { codeVerifier: string; codeChallenge: string } {
 	// 32 bytes = 43 chars in base64url (RFC 7636 recommends 43-128)
@@ -113,11 +116,17 @@ export default class Login extends Command {
 
 	static override examples = [
 		'<%= config.bin %> login',
+		'<%= config.bin %> login --url https://my-n8n.example.com',
 		'<%= config.bin %> login --name production',
 		'<%= config.bin %> login --api-key <key>',
+		'<%= config.bin %> login --url https://my-n8n.example.com --api-key <key> --name prod',
 	];
 
 	static override flags = {
+		url: Flags.string({
+			char: 'u',
+			description: 'n8n instance URL',
+		}),
 		apiKey: Flags.string({
 			char: 'k',
 			description: 'Use API key authentication instead of OAuth',
@@ -125,27 +134,49 @@ export default class Login extends Command {
 		}),
 		name: Flags.string({
 			char: 'n',
-			description: 'Context name for this connection (auto-generated from URL hostname if omitted)',
+			description: 'Context name for this connection (default: derived from URL)',
 		}),
 	};
 
 	async run(): Promise<void> {
 		const { flags } = await this.parse(Login);
+		const isTTY = Boolean(process.stdin.isTTY);
 
+		// Resolve URL: flag > interactive prompt > default
+		const url = flags.url ?? (isTTY ? await this.promptUrl() : this.getDefaultUrl());
+
+		// Resolve context name: flag > interactive prompt > auto-generated from URL
+		const contextName =
+			flags.name ?? (isTTY ? await this.promptContextName(url) : this.resolveContextName(url));
+
+		// API key auth only via explicit flag, otherwise OAuth
 		if (flags.apiKey) {
-			await this.loginWithApiKey(flags.apiKey, flags.name);
-			return;
+			await this.loginWithApiKey(url, flags.apiKey, contextName);
+		} else {
+			await this.loginWithOAuth(url, contextName);
 		}
-
-		await this.loginWithOAuth(flags.name);
 	}
 
-	private resolveContextName(url: string, explicitName?: string): string {
-		if (explicitName) return explicitName;
+	private getDefaultUrl(): string {
+		return getCurrentContext()?.config.url ?? DEFAULT_URL;
+	}
 
+	private async promptUrl(): Promise<string> {
+		const defaultUrl = this.getDefaultUrl();
+		const answer = await prompt(`n8n instance URL (${defaultUrl}): `);
+		return answer || defaultUrl;
+	}
+
+	private resolveContextName(url: string): string {
 		const baseName = contextNameFromUrl(url);
 		const multi = readMultiConfig();
 		return uniqueContextName(baseName, Object.keys(multi.contexts));
+	}
+
+	private async promptContextName(url: string): Promise<string> {
+		const defaultName = this.resolveContextName(url);
+		const answer = await prompt(`Context name (${defaultName}): `);
+		return answer || defaultName;
 	}
 
 	private async revokeExistingTokens(contextName: string): Promise<void> {
@@ -168,21 +199,19 @@ export default class Login extends Command {
 		writeMultiConfig(multi);
 	}
 
-	private async loginWithApiKey(apiKeyFlag?: string, explicitName?: string): Promise<void> {
+	private async loginWithApiKey(
+		url: string,
+		apiKeyFlag?: string,
+		contextName: string = 'default',
+	): Promise<void> {
 		const current = getCurrentContext();
-		const urlDefault = current?.config.url ? ` (${current.config.url})` : '';
 		const keyHint = apiKeyFlag
 			? ''
 			: current?.config.apiKey
 				? ` (${current.config.apiKey.slice(0, 12)}...${current.config.apiKey.slice(-4)})`
 				: '';
 
-		const url = (await prompt(`n8n instance URL${urlDefault}: `)) || current?.config.url;
 		const apiKey = apiKeyFlag ?? ((await prompt(`API key${keyHint}: `)) || current?.config.apiKey);
-
-		if (!url) {
-			this.error('URL is required.');
-		}
 
 		if (!apiKey) {
 			this.error('API key is required.');
@@ -201,22 +230,12 @@ export default class Login extends Command {
 			this.error(`Could not connect to ${url}: ${msg}`);
 		}
 
-		const contextName = this.resolveContextName(url, explicitName);
 		await this.revokeExistingTokens(contextName);
 		this.saveContext(contextName, { url, apiKey });
 		this.log(`Logged in successfully as context "${contextName}".`);
 	}
 
-	private async loginWithOAuth(explicitName?: string): Promise<void> {
-		const current = getCurrentContext();
-		const urlDefault = current?.config.url ? ` (${current.config.url})` : '';
-
-		const url = (await prompt(`n8n instance URL${urlDefault}: `)) || current?.config.url;
-
-		if (!url) {
-			this.error('URL is required.');
-		}
-
+	private async loginWithOAuth(url: string, contextName: string = 'default'): Promise<void> {
 		// Generate PKCE
 		const { codeVerifier, codeChallenge } = generatePkce();
 
@@ -228,6 +247,18 @@ export default class Login extends Command {
 
 		const redirectUri = `http://127.0.0.1:${callbackServer.port}/callback`;
 
+		// Build a friendly device name: strip .local/.lan suffixes from hostname
+		const rawHostname = os.hostname();
+		const deviceName = rawHostname.replace(/\.(local|lan|localdomain|home)$/i, '');
+
+		const osNames: Record<string, string> = {
+			darwin: 'macOS',
+			win32: 'Windows',
+			linux: 'Linux',
+			freebsd: 'FreeBSD',
+		};
+		const osName = osNames[os.platform()] ?? os.platform();
+
 		// Don't specify scopes — the server resolves available scopes
 		// based on the authenticated user's role via getApiKeyScopesForRole()
 		const authUrl =
@@ -237,7 +268,9 @@ export default class Login extends Command {
 			`&redirect_uri=${encodeURIComponent(redirectUri)}` +
 			`&code_challenge=${encodeURIComponent(codeChallenge)}` +
 			'&code_challenge_method=S256' +
-			`&state=${encodeURIComponent(state)}`;
+			`&state=${encodeURIComponent(state)}` +
+			`&device_name=${encodeURIComponent(deviceName)}` +
+			`&os=${encodeURIComponent(osName)}`;
 
 		this.log('Opening browser for authorization...');
 		this.log(`If the browser doesn't open, visit:\n${authUrl}\n`);
@@ -261,7 +294,6 @@ export default class Login extends Command {
 				redirectUri,
 			);
 
-			const contextName = this.resolveContextName(url, explicitName);
 			await this.revokeExistingTokens(contextName);
 			this.saveContext(contextName, {
 				url,

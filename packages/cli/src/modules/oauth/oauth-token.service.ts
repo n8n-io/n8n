@@ -12,8 +12,8 @@ import { AccessToken } from './database/entities/oauth-access-token.entity';
 import { RefreshToken } from './database/entities/oauth-refresh-token.entity';
 import { AccessTokenRepository } from './database/repositories/oauth-access-token.repository';
 import { RefreshTokenRepository } from './database/repositories/oauth-refresh-token.repository';
-import { AccessTokenNotFoundError, JWTVerificationError } from './mcp.errors';
-import { UserWithContext } from './mcp.types';
+import { AccessTokenNotFoundError, JWTVerificationError } from './oauth.errors';
+import type { UserWithContext } from './oauth.types';
 
 import { JwtService } from '@/services/jwt.service';
 
@@ -22,7 +22,7 @@ import { JwtService } from '@/services/jwt.service';
  * Generates, validates, rotates, and revokes access and refresh tokens
  */
 @Service()
-export class McpOAuthTokenService {
+export class OAuthTokenService {
 	private readonly MCP_AUDIENCE = 'mcp-server-api';
 	private readonly ACCESS_TOKEN_EXPIRY_SECONDS = 1 * Time.hours.toSeconds;
 	private readonly REFRESH_TOKEN_EXPIRY_MS = 30 * Time.days.toMilliseconds;
@@ -70,6 +70,7 @@ export class McpOAuthTokenService {
 		clientId: string,
 		userId: string,
 		scopes?: string[],
+		metadata?: string | null,
 	): Promise<void> {
 		await this.accessTokenRepository.manager.transaction(async (transactionManager) => {
 			await transactionManager.insert(this.accessTokenRepository.target, {
@@ -84,6 +85,7 @@ export class McpOAuthTokenService {
 				userId,
 				expiresAt: Date.now() + this.REFRESH_TOKEN_EXPIRY_MS,
 				scopes: scopes ? JSON.stringify(scopes) : null,
+				metadata: metadata ?? null,
 			});
 		});
 	}
@@ -142,6 +144,7 @@ export class McpOAuthTokenService {
 				userId: refreshTokenRecord.userId,
 				expiresAt: now + this.REFRESH_TOKEN_EXPIRY_MS,
 				scopes: refreshTokenRecord.scopes,
+				metadata: refreshTokenRecord.metadata,
 			});
 
 			this.logger.info('Refresh token rotated and new access token issued', {

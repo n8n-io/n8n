@@ -4,22 +4,22 @@ import { UserError } from 'n8n-workflow';
 
 import { OAuthClientRepository } from './database/repositories/oauth-client.repository';
 import { UserConsentRepository } from './database/repositories/oauth-user-consent.repository';
-import { McpOAuthAuthorizationCodeService } from './mcp-oauth-authorization-code.service';
-import { McpOAuthHelpers } from './mcp-oauth.helpers';
+import { OAuthAuthorizationCodeService } from './oauth-authorization-code.service';
+import { OAuthHelpers } from './oauth.helpers';
 import { OAuthSessionService, type OAuthSessionPayload } from './oauth-session.service';
 
 /**
- * Manages OAuth consent flow for MCP server
+ * Manages OAuth consent flow
  * Handles user authorization decisions and generates authorization codes
  */
 @Service()
-export class McpOAuthConsentService {
+export class OAuthConsentService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly oauthSessionService: OAuthSessionService,
 		private readonly oauthClientRepository: OAuthClientRepository,
 		private readonly userConsentRepository: UserConsentRepository,
-		private readonly authorizationCodeService: McpOAuthAuthorizationCodeService,
+		private readonly authorizationCodeService: OAuthAuthorizationCodeService,
 	) {}
 
 	/**
@@ -71,7 +71,7 @@ export class McpOAuthConsentService {
 		}
 
 		if (!approved) {
-			const redirectUrl = McpOAuthHelpers.buildErrorRedirectUrl(
+			const redirectUrl = OAuthHelpers.buildErrorRedirectUrl(
 				sessionPayload.redirectUri,
 				'access_denied',
 				'User denied the authorization request',
@@ -102,9 +102,10 @@ export class McpOAuthConsentService {
 			sessionPayload.codeChallenge,
 			sessionPayload.state,
 			approvedScopes,
+			sessionPayload.metadata,
 		);
 
-		const successRedirectUrl = McpOAuthHelpers.buildSuccessRedirectUrl(
+		const successRedirectUrl = OAuthHelpers.buildSuccessRedirectUrl(
 			sessionPayload.redirectUri,
 			code,
 			sessionPayload.state,

@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 /**
  * Static utility functions for OAuth URL building and PKCE verification
  */
-export class McpOAuthHelpers {
+export class OAuthHelpers {
 	/**
 	 * Verify PKCE S256 code challenge
 	 * Returns true if SHA256(codeVerifier) matches codeChallenge

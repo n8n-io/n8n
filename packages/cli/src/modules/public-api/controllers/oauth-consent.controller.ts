@@ -4,17 +4,18 @@ import { Body, Get, Post, RestController } from '@n8n/decorators';
 import { getApiKeyScopesForRole } from '@n8n/permissions';
 import type { Response } from 'express';
 
-import { ApproveConsentRequestDto } from './dto/approve-consent-request.dto';
-import { McpOAuthConsentService } from './mcp-oauth-consent.service';
-import { OAuthSessionService } from './oauth-session.service';
+import { OAuthConsentService } from '@/modules/oauth/oauth-consent.service';
+import { OAuthSessionService } from '@/modules/oauth/oauth-session.service';
+
+import { ApproveConsentRequestDto } from '../dto/approve-consent-request.dto';
 
 const CLI_CLIENT_ID = 'n8n-cli';
 
 @RestController('/consent')
-export class McpConsentController {
+export class OAuthConsentController {
 	constructor(
 		private readonly logger: Logger,
-		private readonly consentService: McpOAuthConsentService,
+		private readonly consentService: OAuthConsentService,
 		private readonly oauthSessionService: OAuthSessionService,
 	) {}
 
