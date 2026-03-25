@@ -213,7 +213,7 @@ export class DataTableRowsRepository {
 		return await withTransaction(this.dataSource.manager, trx, async (em) => {
 			const inserted: Array<Pick<DataTableRowReturn, 'id'>> = [];
 			const dbType = this.dataSource.options.type;
-			const useReturning = dbType === 'postgres' || dbType === 'mariadb';
+			const useReturning = dbType === 'postgres';
 
 			const table = toTableName(dataTableId);
 			const escapedColumns = columns.map((c) => this.dataSource.driver.escape(c.name));

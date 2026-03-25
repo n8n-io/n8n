@@ -215,6 +215,10 @@ export class GlobalConfig {
 	@Env('N8N_SSL_CERT')
 	ssl_cert: string = '';
 
+	/** Whether to enable canvas-only mode, hiding the chrome UI. */
+	@Env('N8N_CANVAS_ONLY')
+	canvasOnly: boolean = false;
+
 	/** Public URL where the editor is accessible. Also used for emails sent from n8n. */
 	@Env('N8N_EDITOR_BASE_URL')
 	editorBaseUrl: string = '';

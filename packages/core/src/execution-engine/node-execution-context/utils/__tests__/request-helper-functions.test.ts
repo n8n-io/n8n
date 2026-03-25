@@ -22,7 +22,6 @@ import type { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifec
 import {
 	applyPaginationRequestData,
 	convertN8nRequestToAxios,
-	createFormDataObject,
 	httpRequest,
 	invokeAxios,
 	parseRequestObject,
@@ -490,45 +489,6 @@ describe('Request Helper Functions', () => {
 					expect(axiosOptions.maxRedirects).toEqual(1234);
 				},
 			);
-		});
-	});
-
-	describe('createFormDataObject', () => {
-		test('should create FormData with simple key-value pairs', () => {
-			const data = { key1: 'value1', key2: 'value2' };
-			const formData = createFormDataObject(data);
-
-			expect(formData).toBeInstanceOf(FormData);
-
-			const formDataEntries: string[] = [];
-			formData.getHeaders(); // Ensures form data is processed
-
-			formData.on('data', (chunk) => {
-				formDataEntries.push(chunk.toString());
-			});
-		});
-
-		test('should handle array values', () => {
-			const data = { files: ['file1.txt', 'file2.txt'] };
-			const formData = createFormDataObject(data);
-
-			expect(formData).toBeInstanceOf(FormData);
-		});
-
-		test('should handle complex form data with options', () => {
-			const data = {
-				file: {
-					value: Buffer.from('test content'),
-					options: {
-						filename: 'test.txt',
-						contentType: 'text/plain',
-					},
-				},
-			};
-
-			const formData = createFormDataObject(data);
-
-			expect(formData).toBeInstanceOf(FormData);
 		});
 	});
 
