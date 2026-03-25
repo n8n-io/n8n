@@ -90,6 +90,7 @@ describe('update-workflow MCP tool', () => {
 	const mockExistingWorkflow = Object.assign(new WorkflowEntity(), {
 		id: 'wf-1',
 		name: 'Existing Workflow',
+		nodes: [] as INode[],
 		settings: { availableInMCP: true },
 	});
 
@@ -120,7 +121,9 @@ describe('update-workflow MCP tool', () => {
 		});
 		nodeTypes = mockInstance(NodeTypes);
 
-		mockParseAndValidate.mockResolvedValue({ workflow: mockWorkflowJson });
+		mockParseAndValidate.mockImplementation(async () => ({
+			workflow: { ...mockWorkflowJson, nodes: mockNodes.map((n) => ({ ...n })) },
+		}));
 		mockStripImportStatements.mockImplementation((code: string) => code);
 		mockAutoPopulateNodeCredentials.mockResolvedValue({ assignments: [], skippedHttpNodes: [] });
 	});
@@ -367,6 +370,108 @@ describe('update-workflow MCP tool', () => {
 			expect(response.note).toBe(
 				'HTTP Request nodes (HTTP Request, HTTP Request1) were skipped during credential auto-assignment. Their credentials must be configured manually.',
 			);
+		});
+
+		describe('credential preservation from existing workflow', () => {
+			test('copies credentials from existing node when name and type match and updated node has none', async () => {
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(new WorkflowEntity(), {
+						id: 'wf-1',
+						name: 'Existing Workflow',
+						settings: { availableInMCP: true },
+						nodes: [
+							{
+								id: 'node-2',
+								name: 'Set',
+								type: 'n8n-nodes-base.set',
+								typeVersion: 1,
+								position: [200, 0] as [number, number],
+								parameters: {},
+								credentials: { setApi: { id: 'cred-1', name: 'My Set Cred' } },
+							},
+						] as INode[],
+					}),
+				);
+
+				await callHandler({ workflowId: 'wf-1', code: 'const wf = ...' });
+
+				const savedWorkflow = updateMock.mock.calls[0][1] as WorkflowEntity;
+				const setNode = savedWorkflow.nodes.find((n: INode) => n.name === 'Set');
+				expect(setNode!.credentials).toEqual({ setApi: { id: 'cred-1', name: 'My Set Cred' } });
+			});
+
+			test('does not copy credentials when node type differs', async () => {
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(new WorkflowEntity(), {
+						id: 'wf-1',
+						name: 'Existing Workflow',
+						settings: { availableInMCP: true },
+						nodes: [
+							{
+								id: 'node-2',
+								name: 'Set',
+								type: 'n8n-nodes-base.differentType',
+								typeVersion: 1,
+								position: [200, 0] as [number, number],
+								parameters: {},
+								credentials: { setApi: { id: 'cred-1', name: 'My Set Cred' } },
+							},
+						] as INode[],
+					}),
+				);
+
+				await callHandler({ workflowId: 'wf-1', code: 'const wf = ...' });
+
+				const savedWorkflow = updateMock.mock.calls[0][1] as WorkflowEntity;
+				const setNode = savedWorkflow.nodes.find((n: INode) => n.name === 'Set');
+				expect(setNode!.credentials).toBeUndefined();
+			});
+
+			test('does not overwrite credentials already set on the updated node', async () => {
+				const newNodeCredentials = { setApi: { id: 'cred-new', name: 'New Cred' } };
+				mockParseAndValidate.mockResolvedValue({
+					workflow: {
+						...mockWorkflowJson,
+						nodes: mockNodes.map((n) =>
+							n.name === 'Set' ? { ...n, credentials: newNodeCredentials } : n,
+						),
+					},
+				});
+				findWorkflowMock.mockResolvedValue(
+					Object.assign(new WorkflowEntity(), {
+						id: 'wf-1',
+						name: 'Existing Workflow',
+						settings: { availableInMCP: true },
+						nodes: [
+							{
+								id: 'node-2',
+								name: 'Set',
+								type: 'n8n-nodes-base.set',
+								typeVersion: 1,
+								position: [200, 0] as [number, number],
+								parameters: {},
+								credentials: { setApi: { id: 'cred-old', name: 'Old Cred' } },
+							},
+						] as INode[],
+					}),
+				);
+
+				await callHandler({ workflowId: 'wf-1', code: 'const wf = ...' });
+
+				const savedWorkflow = updateMock.mock.calls[0][1] as WorkflowEntity;
+				const setNode = savedWorkflow.nodes.find((n: INode) => n.name === 'Set');
+				expect(setNode!.credentials).toEqual(newNodeCredentials);
+			});
+
+			test('handles existing workflow with no nodes without error', async () => {
+				// mockExistingWorkflow already has nodes: [] — verify no crash and no credentials copied
+				await callHandler({ workflowId: 'wf-1', code: 'const wf = ...' });
+
+				const savedWorkflow = updateMock.mock.calls[0][1] as WorkflowEntity;
+				for (const node of savedWorkflow.nodes) {
+					expect(node.credentials).toBeUndefined();
+				}
+			});
 		});
 	});
 });

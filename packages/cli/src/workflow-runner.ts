@@ -147,6 +147,7 @@ export class WorkflowRunner {
 		const executionId = await this.activeExecutions.add(data, restartExecutionId);
 
 		const { id: workflowId, nodes } = data.workflowData;
+
 		try {
 			await this.credentialsPermissionChecker.check(workflowId, nodes);
 		} catch (error) {
@@ -205,6 +206,9 @@ export class WorkflowRunner {
 					error,
 					executionId,
 					workflowId,
+					workflowName: data.workflowData.name,
+					...(data.projectId && { projectId: data.projectId }),
+					...(data.projectName && { projectName: data.projectName }),
 				});
 			});
 		}
@@ -390,6 +394,8 @@ export class WorkflowRunner {
 			pushRef: data.pushRef,
 			streamingEnabled: data.streamingEnabled,
 			restartExecutionId,
+			projectId: data.projectId,
+			projectName: data.projectName,
 			// MCP-specific fields for queue mode support
 			isMcpExecution: data.isMcpExecution,
 			mcpType: data.mcpType,
@@ -483,7 +489,10 @@ export class WorkflowRunner {
 
 				let runData: IRun;
 
-				if (!jobResult || this.needsFullExecutionData(data.executionMode, executionId)) {
+				if (
+					!jobResult ||
+					this.needsFullExecutionData(data.executionMode, executionId, data.forceFullExecutionData)
+				) {
 					const fullExecutionData = await this.executionRepository.findSingleExecution(
 						executionId,
 						{
@@ -555,7 +564,12 @@ export class WorkflowRunner {
 	 * In all other cases we can skip the DB fetch and use the lightweight
 	 * result summary sent by the worker via the job progress message.
 	 */
-	private needsFullExecutionData(executionMode: WorkflowExecuteMode, executionId: string): boolean {
+	private needsFullExecutionData(
+		executionMode: WorkflowExecuteMode,
+		executionId: string,
+		forceFullExecutionData?: boolean,
+	): boolean {
+		if (forceFullExecutionData) return true;
 		if (!process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING) return true;
 
 		return (

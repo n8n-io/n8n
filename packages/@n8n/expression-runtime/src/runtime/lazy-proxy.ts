@@ -95,6 +95,14 @@ export function createDeepLazyProxy(basePath: string[] = []): any {
 			// Handle arrays - metadata: { __isArray: true, __length: number }
 			if (value && typeof value === 'object' && value.__isArray) {
 				const arrayProxy = new Proxy([] as any[], {
+					has(arrTarget: any, arrProp: string | symbol): boolean {
+						if (typeof arrProp === 'symbol') return arrProp in arrTarget;
+						const index = Number(arrProp);
+						if (!isNaN(index) && index >= 0 && index < value.__length) {
+							return true;
+						}
+						return arrProp in arrTarget;
+					},
 					get(arrTarget: any, arrProp: string | symbol): unknown {
 						// Symbols can't be transferred via isolated-vm; return undefined
 						if (typeof arrProp === 'symbol') {
