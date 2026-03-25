@@ -63,6 +63,11 @@ const isPreviewVisible = computed(
 	() => activeWorkflowId.value !== null || activeDataTableId.value !== null,
 );
 
+// Tracks whether the user sent a message in the current thread session.
+// Used to distinguish live operations (should auto-open preview) from
+// historical data being loaded (should not).
+const userSentMessage = ref(false);
+
 // Tracks whether the canvas was open before the most recent thread switch,
 // so we can restore it when the new thread has a build result.
 const wasCanvasOpenBeforeSwitch = ref(false);
@@ -89,6 +94,7 @@ watch(
 		activeExecutionId.value = null;
 		activeDataTableId.value = null;
 		activeDataTableProjectId.value = null;
+		userSentMessage.value = false;
 	},
 );
 
@@ -119,7 +125,12 @@ watch(
 			return;
 		}
 
-		if (!isPreviewVisible.value && !store.isStreaming && !wasCanvasOpenBeforeSwitch.value) {
+		if (
+			!isPreviewVisible.value &&
+			!store.isStreaming &&
+			!userSentMessage.value &&
+			!wasCanvasOpenBeforeSwitch.value
+		) {
 			wasCanvasOpenBeforeSwitch.value = false;
 			return;
 		}
@@ -145,7 +156,7 @@ const latestExecutionId = computed(() => {
 
 watch(latestExecutionId, (execId) => {
 	if (!execId) return;
-	if (!isPreviewVisible.value && !store.isStreaming) return;
+	if (!isPreviewVisible.value && !store.isStreaming && !userSentMessage.value) return;
 
 	activeExecutionId.value = execId;
 
@@ -176,7 +187,12 @@ watch(
 			return;
 		}
 
-		if (!isPreviewVisible.value && !store.isStreaming && !wasCanvasOpenBeforeSwitch.value) {
+		if (
+			!isPreviewVisible.value &&
+			!store.isStreaming &&
+			!userSentMessage.value &&
+			!wasCanvasOpenBeforeSwitch.value
+		) {
 			wasCanvasOpenBeforeSwitch.value = false;
 			return;
 		}
@@ -415,6 +431,7 @@ watch(
 async function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 	// Reset scroll on new user message
 	userScrolledUp.value = false;
+	userSentMessage.value = true;
 	await store.sendMessage(message, attachments, iframePushRef.value ?? undefined);
 }
 
