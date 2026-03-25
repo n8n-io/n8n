@@ -82,6 +82,22 @@ describe('ExpressionEvaluator cache', () => {
 		}).not.toThrow();
 	});
 
+	it('should emit cache size gauge on cache miss', async () => {
+		const evaluator = new ExpressionEvaluator({ bridge, observability, maxCodeCacheSize: 1024 });
+		await evaluator.initialize();
+		evaluator.evaluate('={{ $json.email }}', {});
+		expect(observability.metrics.gauge).toHaveBeenCalledWith('expression.code_cache.size', 1);
+	});
+
+	it('should emit cache size gauge of 0 on dispose', async () => {
+		const evaluator = new ExpressionEvaluator({ bridge, observability, maxCodeCacheSize: 1024 });
+		await evaluator.initialize();
+		evaluator.evaluate('={{ $json.email }}', {});
+		vi.clearAllMocks();
+		await evaluator.dispose();
+		expect(observability.metrics.gauge).toHaveBeenCalledWith('expression.code_cache.size', 0);
+	});
+
 	it('should evict least recently used and report miss on re-access', async () => {
 		const evaluator = new ExpressionEvaluator({ bridge, observability, maxCodeCacheSize: 2 });
 		await evaluator.initialize();
