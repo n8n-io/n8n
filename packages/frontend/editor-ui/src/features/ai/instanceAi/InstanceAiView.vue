@@ -622,6 +622,10 @@ function handleStop() {
 	background: linear-gradient(transparent 0%, var(--color--background--light-1) 30%);
 	pointer-events: none;
 	z-index: 2;
+
+	& > * {
+		pointer-events: auto;
+	}
 }
 </style>
 
