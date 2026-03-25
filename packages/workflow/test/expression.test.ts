@@ -2,7 +2,7 @@
 
 import { DateTime, Duration, Interval } from 'luxon';
 
-import { workflow } from './ExpressionExtensions/helpers';
+import { workflow, asDuration, asInterval } from './ExpressionExtensions/helpers';
 import { baseFixtures } from './ExpressionFixtures/base';
 import type { ExpressionTestEvaluation, ExpressionTestTransform } from './ExpressionFixtures/base';
 import * as Helpers from './helpers';
@@ -88,12 +88,14 @@ describe('Expression', () => {
 			);
 
 			vi.useFakeTimers({ now: new Date() });
-			expect(evaluate('={{Interval.after(new Date(), 100)}}')).toEqual(
-				Interval.after(new Date(), 100),
-			);
+			const intervalResult = asInterval(evaluate('={{Interval.after(new Date(), 100)}}'));
+			expect(intervalResult).toBeInstanceOf(Interval);
+			expect(intervalResult.length('milliseconds')).toEqual(100);
 			vi.useRealTimers();
 
-			expect(evaluate('={{Duration.fromMillis(100)}}')).toEqual(Duration.fromMillis(100));
+			const durationResult = asDuration(evaluate('={{Duration.fromMillis(100)}}'));
+			expect(durationResult).toBeInstanceOf(Duration);
+			expect(durationResult.toMillis()).toEqual(100);
 
 			expect(evaluate('={{new Object()}}')).toEqual(new Object());
 
@@ -161,6 +163,13 @@ describe('Expression', () => {
 
 			expect(evaluate('={{Boolean(1)}}')).toEqual(Boolean(1));
 			expect(evaluate('={{Symbol(1).toString()}}')).toEqual(Symbol(1).toString());
+		});
+
+		it('should expose correct process properties in sandbox', () => {
+			expect(evaluate('={{process.version}}')).toMatch(/^v\d+\.\d+\.\d+/);
+			expect(evaluate('={{typeof process.pid}}')).toBe('number');
+			expect(evaluate('={{process.version}}')).not.toBe(process.pid);
+			expect(evaluate('={{process.version}}')).toBe(process.version);
 		});
 
 		it('should not able to do arbitrary code execution', () => {

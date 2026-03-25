@@ -38,6 +38,8 @@ describe('eligibleModules', () => {
 			'workflow-builder',
 			'favorites',
 			'redaction',
+			'instance-registry',
+			'otel',
 		]);
 	});
 
@@ -62,6 +64,8 @@ describe('eligibleModules', () => {
 			'workflow-builder',
 			'favorites',
 			'redaction',
+			'instance-registry',
+			'otel',
 		]);
 	});
 

@@ -48,6 +48,8 @@ export class ModuleRegistry {
 		'workflow-builder',
 		'favorites',
 		'redaction',
+		'instance-registry',
+		'otel',
 	];
 
 	private readonly activeModules: string[] = [];

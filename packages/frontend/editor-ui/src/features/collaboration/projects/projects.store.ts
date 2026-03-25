@@ -116,6 +116,16 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		}
 	};
 
+	const searchProjects = async (params: {
+		search?: string;
+		take?: number;
+		skip?: number;
+		type?: 'personal' | 'team';
+		activated?: boolean;
+	}) => {
+		return await projectsApi.searchProjects(rootStore.restApiContext, params);
+	};
+
 	const fetchProject = async (id: string) =>
 		await projectsApi.getProject(rootStore.restApiContext, id);
 
@@ -238,7 +248,7 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 	};
 
 	const moveResourceToProject = async (
-		resourceType: 'workflow' | 'credential',
+		resourceType: 'workflow' | 'credential' | 'dataTable',
 		resourceId: string,
 		projectId: string,
 		parentFolderId?: string,
@@ -331,8 +341,10 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		canViewProjects,
 		hasPermissionToCreateProjects,
 		isTeamProjectFeatureEnabled,
+		globalProjectPermissions,
 		projectNavActiveId,
 		setCurrentProject,
+		searchProjects,
 		getAllProjects,
 		getMyProjects,
 		getPersonalProject,

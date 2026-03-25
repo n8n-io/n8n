@@ -5,8 +5,20 @@ import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useWorkflowDocumentActive } from './workflowDocument/useWorkflowDocumentActive';
 import { useWorkflowDocumentHomeProject } from './workflowDocument/useWorkflowDocumentHomeProject';
 import { useWorkflowDocumentChecksum } from './workflowDocument/useWorkflowDocumentChecksum';
+import { useWorkflowDocumentMeta } from './workflowDocument/useWorkflowDocumentMeta';
 import { useWorkflowDocumentPinData } from './workflowDocument/useWorkflowDocumentPinData';
+import { useWorkflowDocumentScopes } from './workflowDocument/useWorkflowDocumentScopes';
+import { useWorkflowDocumentSettings } from './workflowDocument/useWorkflowDocumentSettings';
 import { useWorkflowDocumentTags } from './workflowDocument/useWorkflowDocumentTags';
+import { useWorkflowDocumentIsArchived } from './workflowDocument/useWorkflowDocumentIsArchived';
+import { useWorkflowDocumentTimestamps } from './workflowDocument/useWorkflowDocumentTimestamps';
+import { useWorkflowDocumentParentFolder } from './workflowDocument/useWorkflowDocumentParentFolder';
+import { useWorkflowDocumentUsedCredentials } from './workflowDocument/useWorkflowDocumentUsedCredentials';
+import { useWorkflowDocumentNodes } from './workflowDocument/useWorkflowDocumentNodes';
+import { useWorkflowDocumentViewport } from './workflowDocument/useWorkflowDocumentViewport';
+import { useWorkflowDocumentConnections } from './workflowDocument/useWorkflowDocumentConnections';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
 export {
 	getPinDataSize,
@@ -51,8 +63,40 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		const workflowDocumentActive = useWorkflowDocumentActive();
 		const workflowDocumentHomeProject = useWorkflowDocumentHomeProject();
 		const workflowDocumentChecksum = useWorkflowDocumentChecksum();
+		const workflowDocumentMeta = useWorkflowDocumentMeta();
 		const workflowDocumentTags = useWorkflowDocumentTags();
+		const workflowDocumentIsArchived = useWorkflowDocumentIsArchived();
 		const workflowDocumentPinData = useWorkflowDocumentPinData();
+		const workflowDocumentScopes = useWorkflowDocumentScopes();
+		const workflowDocumentTimestamps = useWorkflowDocumentTimestamps();
+		const workflowDocumentSettings = useWorkflowDocumentSettings();
+		const workflowDocumentParentFolder = useWorkflowDocumentParentFolder();
+		const workflowDocumentUsedCredentials = useWorkflowDocumentUsedCredentials();
+		const workflowDocumentViewport = useWorkflowDocumentViewport();
+		const nodeTypesStore = useNodeTypesStore();
+		const { onStateDirty: onNodesStateDirty, ...workflowDocumentNodes } = useWorkflowDocumentNodes({
+			getNodeType: (typeName, version) => nodeTypesStore.getNodeType(typeName, version),
+		});
+		const { onStateDirty: onConnectionsStateDirty, ...workflowDocumentConnections } =
+			useWorkflowDocumentConnections({
+				getNodeById: (id) => workflowDocumentNodes.getNodeById(id),
+			});
+
+		// --- Cross-cut orchestration ---
+		// Each composable is self-contained and unaware of its siblings. This
+		// store is where cross-concern side effects are wired. When adding new
+		// composables, check workflowsStore for hidden cross-cuts that need to
+		// surface here. Known future ones:
+		//   - removeNode → unpinNodeData (currently in workflowsStore.removeNode)
+
+		onNodesStateDirty(() => useUIStore().markStateDirty());
+		onConnectionsStateDirty(() => useUIStore().markStateDirty());
+
+		function removeAllNodes() {
+			workflowDocumentNodes.removeAllNodes();
+			workflowDocumentConnections.removeAllConnections();
+			workflowDocumentPinData.setPinData({});
+		}
 
 		return {
 			workflowId,
@@ -60,8 +104,19 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			...workflowDocumentActive,
 			...workflowDocumentHomeProject,
 			...workflowDocumentChecksum,
+			...workflowDocumentIsArchived,
+			...workflowDocumentMeta,
+			...workflowDocumentSettings,
 			...workflowDocumentTags,
 			...workflowDocumentPinData,
+			...workflowDocumentScopes,
+			...workflowDocumentTimestamps,
+			...workflowDocumentParentFolder,
+			...workflowDocumentUsedCredentials,
+			...workflowDocumentViewport,
+			...workflowDocumentNodes,
+			...workflowDocumentConnections,
+			removeAllNodes,
 		};
 	})();
 }

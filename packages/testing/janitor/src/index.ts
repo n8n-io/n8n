@@ -163,6 +163,8 @@ export {
 	formatImpactJSON,
 	formatTestList,
 	type ImpactResult,
+	type AnalyzeOptions,
+	type ResolutionStrategy,
 } from './core/impact-analyzer.js';
 
 export {

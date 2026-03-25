@@ -363,6 +363,7 @@ export class TaskBroker {
 		status: RequesterMessage.ToBroker.RPCResponse['status'],
 		data: unknown,
 	) {
+		if (!this.tasks.has(taskId)) return;
 		const runner = await this.getRunnerOrFailTask(taskId);
 		await this.messageRunner(runner.id, {
 			type: 'broker:rpcresponse',
@@ -374,6 +375,7 @@ export class TaskBroker {
 	}
 
 	async handleRequesterDataResponse(taskId: Task['id'], requestId: string, data: unknown) {
+		if (!this.tasks.has(taskId)) return;
 		const runner = await this.getRunnerOrFailTask(taskId);
 
 		await this.messageRunner(runner.id, {
@@ -389,6 +391,7 @@ export class TaskBroker {
 		requestId: RequesterMessage.ToBroker.NodeTypesResponse['requestId'],
 		nodeTypes: RequesterMessage.ToBroker.NodeTypesResponse['nodeTypes'],
 	) {
+		if (!this.tasks.has(taskId)) return;
 		const runner = await this.getRunnerOrFailTask(taskId);
 
 		await this.messageRunner(runner.id, {
@@ -463,6 +466,7 @@ export class TaskBroker {
 	}
 
 	async sendTaskSettings(taskId: Task['id'], settings: unknown) {
+		if (!this.tasks.has(taskId)) return;
 		const runner = await this.getRunnerOrFailTask(taskId);
 
 		const task = this.tasks.get(taskId);

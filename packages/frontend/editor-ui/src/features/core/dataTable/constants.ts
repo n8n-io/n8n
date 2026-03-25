@@ -10,6 +10,8 @@ export const DEFAULT_DATA_TABLE_PAGE_SIZE = 10;
 
 export const DATA_TABLE_ID_COLUMN_WIDTH = 60;
 
+export const MIN_ADD_COLUMN_BUTTON_COLUMN_WIDTH = 50;
+
 export const DEFAULT_COLUMN_WIDTH = 250;
 
 export const DATA_TABLE_HEADER_HEIGHT = 36;
@@ -23,10 +25,12 @@ export const DATA_TABLE_CARD_ACTIONS = {
 	CLEAR: 'clear',
 	DOWNLOAD_CSV: 'download-csv',
 	FAVORITE: 'favorite',
+	IMPORT_CSV: 'import-csv',
 };
 
 export const ADD_DATA_TABLE_MODAL_KEY = 'addDataTableModal';
 export const DOWNLOAD_DATA_TABLE_MODAL_KEY = 'downloadDataTableModal';
+export const IMPORT_CSV_MODAL_KEY = 'importCsvModal';
 
 export const DEFAULT_ID_COLUMN_NAME = 'id';
 

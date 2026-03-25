@@ -17,6 +17,7 @@ import {
 	deleteDataTableRowsApi,
 	fetchDataTableGlobalLimitInBytes,
 	downloadDataTableCsvApi,
+	importCsvToDataTableApi,
 	uploadCsvFileApi,
 } from '@/features/core/dataTable/dataTable.api';
 import type {
@@ -31,6 +32,7 @@ import { type DataTableSizeStatus } from 'n8n-workflow';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import { hasPermission } from '@/app/utils/rbac/permissions';
+import type { DataTableListSortBy } from '@n8n/api-types';
 
 export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 	const rootStore = useRootStore();
@@ -71,11 +73,27 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		hasPermission(['rbac'], { rbac: { scope: 'dataTable:list' } }),
 	);
 
-	const fetchDataTables = async (projectId: string, page: number, pageSize: number) => {
-		const response = await fetchDataTablesApi(rootStore.restApiContext, projectId, {
-			skip: (page - 1) * pageSize,
-			take: pageSize,
-		});
+	const fetchDataTables = async (
+		projectId: string,
+		page: number,
+		pageSize: number,
+		filter?: {
+			id?: string | string[];
+			name?: string | string[];
+			projectId?: string | string[];
+		},
+		sortBy?: DataTableListSortBy,
+	) => {
+		const response = await fetchDataTablesApi(
+			rootStore.restApiContext,
+			projectId,
+			{
+				skip: (page - 1) * pageSize,
+				take: pageSize,
+			},
+			filter,
+			sortBy,
+		);
 		dataTables.value = response.data;
 		totalCount.value = response.count;
 	};
@@ -108,6 +126,10 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 
 	const uploadCsvFile = async (file: File, hasHeaders: boolean = true) => {
 		return await uploadCsvFileApi(rootStore.restApiContext, file, hasHeaders);
+	};
+
+	const importCsvToDataTable = async (dataTableId: string, projectId: string, fileId: string) => {
+		return await importCsvToDataTableApi(rootStore.restApiContext, dataTableId, projectId, fileId);
 	};
 
 	const deleteDataTable = async (dataTableId: string, projectId: string) => {
@@ -363,6 +385,7 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		maxSizeMB,
 		createDataTable,
 		uploadCsvFile,
+		importCsvToDataTable,
 		deleteDataTable,
 		updateDataTable,
 		fetchDataTableDetails,

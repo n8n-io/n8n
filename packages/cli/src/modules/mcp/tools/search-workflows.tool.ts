@@ -1,5 +1,4 @@
 import { type User, type WorkflowEntity } from '@n8n/db';
-import type { INode } from 'n8n-workflow';
 import z from 'zod';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
@@ -10,7 +9,6 @@ import type {
 	SearchWorkflowsItem,
 	UserCalledMCPToolEventPayload,
 } from '../mcp.types';
-import { nodeSchema } from './schemas';
 
 import type { ListQuery } from '@/requests';
 import type { Telemetry } from '@/telemetry';
@@ -50,11 +48,11 @@ const outputSchema = {
 					.number()
 					.nullable()
 					.describe('The number of triggers associated with the workflow'),
-				nodes: z.array(nodeSchema).describe('List of nodes in the workflow'),
 				scopes: z.array(z.string()).describe('User permissions for this workflow'),
 				canExecute: z
 					.boolean()
 					.describe('Whether the user has permission to execute this workflow'),
+				availableInMCP: z.boolean().describe('Whether the workflow is visible to MCP tools'),
 			}),
 		)
 		.describe('List of workflows matching the query'),
@@ -63,7 +61,7 @@ const outputSchema = {
 
 /**
  * 	Creates mcp tool definition for searching workflows with optional filters. Workflows can be filtered by name, active status, and project ID.
- * Returns a preview of each workflow including id, name, active status, creation and update timestamps, trigger count, and nodes.
+ * Returns a preview of each workflow including id, name, active status, creation and update timestamps, and trigger count.
  */
 export const createSearchWorkflowsTool = (
 	user: User,
@@ -151,8 +149,6 @@ export async function searchWorkflows(
 		take: safeLimit,
 		filter: {
 			isArchived: false,
-			availableInMCP: true,
-			active: true,
 			...(query ? { query } : {}),
 			...(projectId ? { projectId } : {}),
 		},
@@ -161,12 +157,11 @@ export async function searchWorkflows(
 			activeVersionId: true,
 			name: true,
 			description: true,
-			active: true,
 			createdAt: true,
 			updatedAt: true,
 			triggerCount: true,
-			activeVersion: true,
 			ownedBy: true, // Required for loading 'shared' relation used in scope computation
+			settings: true,
 		},
 	};
 
@@ -179,16 +174,8 @@ export async function searchWorkflows(
 	);
 
 	const formattedWorkflows: SearchWorkflowsItem[] = workflows.map((workflow) => {
-		const {
-			id,
-			name,
-			description,
-			activeVersionId,
-			createdAt,
-			updatedAt,
-			triggerCount,
-			activeVersion,
-		} = workflow as WorkflowEntity;
+		const { id, name, description, activeVersionId, createdAt, updatedAt, triggerCount, settings } =
+			workflow as WorkflowEntity;
 		const scopes = ('scopes' in workflow ? (workflow.scopes as string[]) : undefined) ?? [];
 
 		return {
@@ -199,12 +186,9 @@ export async function searchWorkflows(
 			createdAt: createdAt.toISOString(),
 			updatedAt: updatedAt.toISOString(),
 			triggerCount,
-			nodes: (activeVersion?.nodes ?? []).map((node: INode) => ({
-				name: node.name,
-				type: node.type,
-			})),
 			scopes,
 			canExecute: scopes.includes('workflow:execute'),
+			availableInMCP: settings?.availableInMCP ?? false,
 		};
 	});
 

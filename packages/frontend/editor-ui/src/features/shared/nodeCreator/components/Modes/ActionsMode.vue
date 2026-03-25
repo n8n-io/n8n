@@ -44,7 +44,7 @@ const emit = defineEmits<{
 const telemetry = useTelemetry();
 const i18n = useI18n();
 
-const { userActivated, isInstanceOwner } = useUsersStore();
+const usersStore = useUsersStore();
 const { popViewStack, updateCurrentViewStack } = useViewStacks();
 const { registerKeyHook } = useKeyboardNavigation();
 const {
@@ -327,7 +327,7 @@ const callouts = computed<INodeCreateElement[]>(() => []);
 					@selected="onSelected"
 				>
 					<N8nCallout
-						v-if="!userActivated && isTriggerRootView"
+						v-if="!usersStore.userActivated && isTriggerRootView"
 						theme="info"
 						iconless
 						slim
@@ -371,7 +371,7 @@ const callouts = computed<INodeCreateElement[]>(() => []);
 			v-if="communityNodeDetails"
 			:class="$style.communityNodeFooter"
 			:package-name="communityNodeDetails.packageName"
-			:show-manage="communityNodeDetails.installed && isInstanceOwner"
+			:show-manage="communityNodeDetails.installed && usersStore.isAdminOrOwner"
 		/>
 	</div>
 </template>

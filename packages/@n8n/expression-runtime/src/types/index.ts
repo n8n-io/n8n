@@ -5,7 +5,8 @@
  */
 
 // Bridge types
-export type { RuntimeBridge, BridgeConfig } from './bridge';
+export type { RuntimeBridge, BridgeConfig, ExecuteOptions } from './bridge';
+export { DEFAULT_BRIDGE_CONFIG } from './bridge';
 
 // Runtime types
 export { RuntimeError } from './runtime';
@@ -21,7 +22,6 @@ export type {
 	TracesAPI,
 	Span,
 	LogsAPI,
-	TournamentHooks,
 } from './evaluator';
 
 export {

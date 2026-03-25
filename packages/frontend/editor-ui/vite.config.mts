@@ -27,6 +27,11 @@ const packagesDir = resolve(__dirname, '..', '..');
 const alias = [
 	{ find: '@', replacement: resolve(__dirname, 'src') },
 	{ find: 'stream', replacement: 'stream-browserify' },
+	// Stub out @n8n/expression-runtime for browser build (it pulls in isolated-vm, a Node.js-only native module)
+	{
+		find: '@n8n/expression-runtime',
+		replacement: resolve(__dirname, 'vite/expression-runtime-stub.ts'),
+	},
 	// Ensure bare imports resolve to sources (not dist)
 	{ find: '@n8n/i18n', replacement: resolve(packagesDir, 'frontend', '@n8n', 'i18n', 'src') },
 	{ find: '@n8n/stores', replacement: resolve(packagesDir, 'frontend', '@n8n', 'stores', 'src') },
@@ -199,7 +204,8 @@ const plugins: UserConfig['plugins'] = [
 				}),
 			]
 		: []),
-	...(process.env.CODECOV_TOKEN
+	// Only run on non-release builds to prevent double upload from @vitejs/plugin-legacy
+	...(process.env.CODECOV_TOKEN && !release
 		? [
 				codecovVitePlugin({
 					enableBundleAnalysis: true,

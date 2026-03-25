@@ -41,6 +41,7 @@ export const RESOURCES = {
 		'deactivate',
 		'publish',
 		'unpublish',
+		'updateRedactionSetting',
 		...DEFAULT_OPERATIONS,
 	] as const,
 	folder: [...DEFAULT_OPERATIONS, 'move'] as const,
@@ -58,6 +59,7 @@ export const RESOURCES = {
 	breakingChanges: ['list'] as const,
 	apiKey: ['manage'] as const,
 	credentialResolver: [...DEFAULT_OPERATIONS] as const,
+	roleMappingRule: [...DEFAULT_OPERATIONS] as const,
 } as const;
 
 export const API_KEY_RESOURCES = {
@@ -88,4 +90,24 @@ export const PERSONAL_SPACE_PUBLISHING_SETTING = {
 export const PERSONAL_SPACE_SHARING_SETTING = {
 	key: 'security.personalSpaceSharing',
 	scopes: ['workflow:share', 'credential:share'],
+};
+
+export const EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING = {
+	key: 'externalSecrets.systemRolesEnabled',
+	roleScopeMap: {
+		[PROJECT_ADMIN_ROLE_SLUG]: [
+			'externalSecretsProvider:create',
+			'externalSecretsProvider:read',
+			'externalSecretsProvider:update',
+			'externalSecretsProvider:delete',
+			'externalSecretsProvider:list',
+			'externalSecretsProvider:sync',
+			'externalSecret:list',
+		],
+		[PROJECT_EDITOR_ROLE_SLUG]: [
+			'externalSecretsProvider:read',
+			'externalSecretsProvider:list',
+			'externalSecret:list',
+		],
+	} as Record<string, string[]>,
 };

@@ -57,7 +57,7 @@ function goToUpgrade() {
 	void pageRedirectionHelper.goToUpgrade('settings-users', 'upgrade-users');
 }
 
-const { state, isLoading } = useAsyncState(async () => {
+const { state } = useAsyncState(async () => {
 	const settings = await securitySettingsApi.getSecuritySettings(rootStore.restApiContext);
 	return {
 		personalSpacePublishing: settings.personalSpacePublishing,
@@ -234,15 +234,16 @@ const sharingCountText = computed(() => {
 				<div :class="$style.settingsContainerAction">
 					<EnterpriseEdition :features="[EnterpriseEditionFeature.PersonalSpacePolicy]">
 						<ElSwitch
+							v-if="state !== undefined"
 							v-model="personalSpaceSharing"
-							:loading="isLoading"
 							size="large"
 							data-test-id="security-personal-space-sharing-toggle"
 						/>
 						<template #fallback>
 							<N8nTooltip>
 								<ElSwitch
-									:model-value="false"
+									v-if="state !== undefined"
+									:model-value="personalSpaceSharing"
 									size="large"
 									:disabled="true"
 									data-test-id="security-personal-space-sharing-toggle"
@@ -289,15 +290,16 @@ const sharingCountText = computed(() => {
 				<div :class="$style.settingsContainerAction">
 					<EnterpriseEdition :features="[EnterpriseEditionFeature.PersonalSpacePolicy]">
 						<ElSwitch
+							v-if="state !== undefined"
 							v-model="personalSpacePublishing"
-							:loading="isLoading"
 							size="large"
 							data-test-id="security-personal-space-publishing-toggle"
 						/>
 						<template #fallback>
 							<N8nTooltip>
 								<ElSwitch
-									:model-value="false"
+									v-if="state !== undefined"
+									:model-value="personalSpacePublishing"
 									size="large"
 									:disabled="true"
 									data-test-id="security-personal-space-publishing-toggle"
