@@ -1,4 +1,4 @@
-import type { INode, NodeApiError, Workflow } from 'n8n-workflow';
+import type { INode, NodeApiError, Workflow, IPinData } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
 import type { Ref } from 'vue';
@@ -25,7 +25,6 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
-import type { IPinData } from 'n8n-workflow';
 import {
 	CanvasConnectionMode,
 	CanvasNodeRenderType,

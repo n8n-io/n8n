@@ -5,7 +5,7 @@ import { computed, ref, shallowRef } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 
 vi.mock('vue-router', async (importOriginal) => {
-	const actual = (await importOriginal()) as object;
+	const actual = await importOriginal();
 	return {
 		...actual,
 		useRoute: () => ({

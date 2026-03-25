@@ -118,7 +118,7 @@ const workflowVersionRoute = computed(() => {
 const executionMetaText = computed(() => {
 	if (!executionUIDetails.value) return null;
 
-	if (executionUIDetails.value.showTimestamp === false) {
+	if (!executionUIDetails.value.showTimestamp) {
 		return null;
 	}
 

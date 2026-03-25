@@ -453,8 +453,8 @@ const redirectToDataTables = () => {
 		<template #footer>
 			<div :class="$style.footer">
 				<N8nButton
-					variant="subtle"
 					v-if="creationMode === 'select'"
+					variant="subtle"
 					size="large"
 					:label="i18n.baseText('generic.cancel')"
 					data-test-id="cancel-select-button"
@@ -473,8 +473,8 @@ const redirectToDataTables = () => {
 				/>
 
 				<N8nButton
-					variant="subtle"
 					v-if="creationMode === 'import'"
+					variant="subtle"
 					size="large"
 					:label="i18n.baseText('generic.back')"
 					data-test-id="back-button"

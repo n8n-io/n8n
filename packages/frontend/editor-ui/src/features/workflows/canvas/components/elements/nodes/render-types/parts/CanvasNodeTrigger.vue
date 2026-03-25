@@ -94,8 +94,8 @@ async function handleClickExecute() {
 			<template v-if="!readOnly">
 				<template v-if="type === CHAT_TRIGGER_NODE_TYPE">
 					<N8nButton
-						variant="subtle"
 						v-if="isChatOpen"
+						variant="subtle"
 						icon="message-circle"
 						size="large"
 						:disabled="isExecuting"
@@ -120,8 +120,8 @@ async function handleClickExecute() {
 					</KeyboardShortcutTooltip>
 				</template>
 				<N8nButton
-					variant="solid"
 					v-else
+					variant="solid"
 					icon="flask-conical"
 					size="large"
 					:disabled="isExecuting"

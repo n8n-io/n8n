@@ -50,13 +50,14 @@ describe('CreateWorkflowBuilderSessionTable Migration', () => {
 	async function insertWorkflow(ctx: TestMigrationContext, id: string): Promise<void> {
 		const table = ctx.escape.tableName('workflow_entity');
 		await ctx.runQuery(
-			`INSERT INTO ${table} ("id", "name", "active", "nodes", "connections", "createdAt", "updatedAt") VALUES (:id, :name, :active, :nodes, :connections, :createdAt, :updatedAt)`,
+			`INSERT INTO ${table} ("id", "name", "active", "nodes", "connections", "versionId", "createdAt", "updatedAt") VALUES (:id, :name, :active, :nodes, :connections, :versionId, :createdAt, :updatedAt)`,
 			{
 				id,
 				name: `Workflow ${id}`,
 				active: false,
 				nodes: '[]',
 				connections: '{}',
+				versionId: randomUUID(),
 				createdAt: new Date(),
 				updatedAt: new Date(),
 			},
@@ -215,7 +216,7 @@ describe('CreateWorkflowBuilderSessionTable Migration', () => {
 
 			if (ctx.isSqlite) {
 				const tables = await ctx.runQuery<Array<{ name: string }>>(
-					`SELECT name FROM sqlite_master WHERE type='table' AND name LIKE '%workflow_builder_session'`,
+					"SELECT name FROM sqlite_master WHERE type='table' AND name LIKE '%workflow_builder_session'",
 				);
 				expect(tables).toHaveLength(0);
 			}

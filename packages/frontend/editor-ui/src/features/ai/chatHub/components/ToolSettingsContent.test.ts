@@ -237,7 +237,7 @@ describe('ToolSettingsContent', () => {
 
 		await waitFor(() => {
 			expect(emitted('update:node-name')).toBeDefined();
-			const nameEmissions = emitted('update:node-name') as string[][];
+			const nameEmissions = emitted('update:node-name');
 			expect(nameEmissions[0][0]).toBe('My Tool');
 		});
 	});
@@ -283,7 +283,7 @@ describe('ToolSettingsContent', () => {
 				},
 			});
 
-			const nameEmissions = emitted('update:node-name') as string[][];
+			const nameEmissions = emitted('update:node-name');
 			expect(nameEmissions).toBeDefined();
 			const emittedName = nameEmissions[0][0];
 			expect(emittedName).toBe('Create contact (1)');
@@ -297,7 +297,7 @@ describe('ToolSettingsContent', () => {
 				},
 			});
 
-			const nameEmissions = emitted('update:node-name') as string[][];
+			const nameEmissions = emitted('update:node-name');
 			expect(nameEmissions).toBeDefined();
 			const emittedName = nameEmissions[0][0];
 			expect(emittedName).toBe('Create contact (2)');
@@ -312,7 +312,7 @@ describe('ToolSettingsContent', () => {
 				},
 			});
 
-			const nameEmissions = emitted('update:node-name') as string[][];
+			const nameEmissions = emitted('update:node-name');
 			expect(nameEmissions).toBeDefined();
 			expect(nameEmissions[0][0]).toBe('My Unique Tool');
 		});
@@ -341,7 +341,7 @@ describe('ToolSettingsContent', () => {
 			});
 
 			await waitFor(() => {
-				const validEmissions = emitted('update:valid') as boolean[][];
+				const validEmissions = emitted('update:valid');
 				expect(validEmissions).toBeDefined();
 				// The last emission should be true (valid)
 				const lastEmission = validEmissions[validEmissions.length - 1];
@@ -359,7 +359,7 @@ describe('ToolSettingsContent', () => {
 			});
 
 			await waitFor(() => {
-				const validEmissions = emitted('update:valid') as boolean[][];
+				const validEmissions = emitted('update:valid');
 				expect(validEmissions).toBeDefined();
 				const lastEmission = validEmissions[validEmissions.length - 1];
 				expect(lastEmission[0]).toBe(false);
@@ -395,7 +395,7 @@ describe('ToolSettingsContent', () => {
 			await rerender({ initialNode: createMockNode({ name: 'Second Tool' }) });
 
 			await waitFor(() => {
-				const nameEmissions = emitted('update:node-name') as string[][];
+				const nameEmissions = emitted('update:node-name');
 				const lastEmission = nameEmissions[nameEmissions.length - 1];
 				expect(lastEmission[0]).toBe('Second Tool');
 			});

@@ -1,9 +1,8 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { queryTooltip, getTooltip, hoverTooltipTrigger } from '@/__tests__/utils';
-import { waitFor } from '@testing-library/vue';
+import { waitFor, fireEvent } from '@testing-library/vue';
 import CanvasRunWorkflowButton from './CanvasRunWorkflowButton.vue';
 import userEvent from '@testing-library/user-event';
-import { fireEvent } from '@testing-library/vue';
 import { createTestNode } from '@/__tests__/mocks';
 import {
 	CHAT_TRIGGER_NODE_TYPE,

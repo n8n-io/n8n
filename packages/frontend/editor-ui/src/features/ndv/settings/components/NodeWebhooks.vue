@@ -110,7 +110,7 @@ const visibleWebhookUrls = computedAsync(async () => {
 		let httpMethod = '';
 		try {
 			const method = await workflowHelpers.getWebhookExpressionValue(webhook, 'httpMethod', false);
-			httpMethod = Array.isArray(method) ? method[0] : (method as string);
+			httpMethod = Array.isArray(method) ? method[0] : method;
 		} catch {
 			// Keep empty
 		}

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
-import { defineComponent, h } from 'vue';
+import { defineComponent, h, computed } from 'vue';
 
 // Type for Vue component instance with setup state
 interface VueComponentInstance {
@@ -144,7 +144,6 @@ import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { flushPromises } from '@vue/test-utils';
 import { fireEvent } from '@testing-library/vue';
-import { computed } from 'vue';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 import { faker } from '@faker-js/faker';

@@ -272,7 +272,7 @@ const callouts = computed<INodeCreateElement[]>(() => []);
 		<ItemsRenderer :elements="callouts" :class="$style.items" @selected="onSelected" />
 
 		<CommunityNodeInfo v-if="communityNodeDetails" />
-		<div :class="$style.banner" v-if="quickConnect">
+		<div v-if="quickConnect" :class="$style.banner">
 			<QuickConnectBanner :text="quickConnect.text" />
 		</div>
 		<OrderSwitcher v-if="rootView" :root-view="rootView">

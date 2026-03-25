@@ -50,9 +50,16 @@ export function useReviewChanges() {
 			: undefined,
 	);
 	const isLoadingDiff = ref(false);
-	const cachedVersionNodes = ref<INode[]>([]);
-	const cachedVersionConnections = ref<IConnections>({});
-	const cachedVersionLoaded = ref(false);
+	const cachedVersionNodes = computed<INode[]>(() => {
+		const version = builderStore.latestRevertVersion;
+		if (!version) return [];
+		return versionDataCache.value.get(version.id)?.nodes ?? [];
+	});
+	const cachedVersionLoaded = computed(() => {
+		const version = builderStore.latestRevertVersion;
+		if (!version) return false;
+		return versionDataCache.value.has(version.id);
+	});
 
 	// Cache for per-version node data: versionId → { nodes, connections }
 	const versionDataCache = ref<Map<string, { nodes: INode[]; connections: IConnections }>>(

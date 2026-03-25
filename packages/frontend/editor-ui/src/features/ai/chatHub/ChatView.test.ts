@@ -662,7 +662,7 @@ describe('ChatView', () => {
 
 			const rendered = renderComponent({ pinia });
 
-			const textarea = (await rendered.findByRole('textbox')) as HTMLTextAreaElement;
+			const textarea = await rendered.findByRole('textbox');
 			await user.click(textarea);
 			await user.type(textarea, 'Hello, AI!{Enter}');
 

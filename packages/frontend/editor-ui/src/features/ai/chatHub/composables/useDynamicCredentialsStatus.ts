@@ -1,4 +1,4 @@
-import { computed, ref, watch, type ComputedRef, type Ref } from 'vue';
+import { computed, ref, watch, type Ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import {
 	fetchWorkflowExecutionStatus,
@@ -180,11 +180,11 @@ export function useDynamicCredentialsStatus(workflowId: Ref<string | null>) {
 
 	return {
 		credentials: credentials as Ref<DynamicCredentialItem[]>,
-		hasDynamicCredentials: hasDynamicCredentials as ComputedRef<boolean>,
-		allAuthenticated: allAuthenticated as ComputedRef<boolean>,
-		connectedCount: connectedCount as ComputedRef<number>,
-		totalCount: totalCount as ComputedRef<number>,
-		isLoading: isLoading as Ref<boolean>,
+		hasDynamicCredentials,
+		allAuthenticated,
+		connectedCount,
+		totalCount,
+		isLoading,
 		fetchStatus,
 		authorize,
 		revoke,

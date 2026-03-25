@@ -233,7 +233,7 @@ onBeforeMount(() => {
 		<template #trigger>
 			<N8nButton
 				variant="subtle"
-				iconOnly
+				icon-only
 				icon="funnel"
 				size="medium"
 				:aria-label="locale.baseText('forms.resourceFiltersDropdown.filters')"
@@ -492,8 +492,8 @@ onBeforeMount(() => {
 					</div>
 				</div>
 				<N8nButton
-					variant="ghost"
 					v-if="!!countSelectedFilterProps"
+					variant="ghost"
 					:class="$style.resetBtn"
 					size="large"
 					data-test-id="executions-filter-reset-button"

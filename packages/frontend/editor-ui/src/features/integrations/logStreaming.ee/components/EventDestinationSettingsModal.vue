@@ -440,8 +440,8 @@ const { width } = useElementSize(defNameRef);
 					</div>
 					<div :class="$style.destinationActions">
 						<N8nButton
-							variant="subtle"
 							v-if="nodeParameters && hasOnceBeenSaved && unchanged"
+							variant="subtle"
 							:icon="testMessageSent ? (testMessageResult ? 'check' : 'triangle-alert') : undefined"
 							:title="
 								testMessageSent && testMessageResult
@@ -455,8 +455,8 @@ const { width } = useElementSize(defNameRef);
 						/>
 						<template v-if="canManageLogStreaming">
 							<N8nIconButton
-								variant="subtle"
 								v-if="nodeParameters && hasOnceBeenSaved"
+								variant="subtle"
 								:title="i18n.baseText('settings.log-streaming.delete')"
 								icon="trash-2"
 								:disabled="isSaving"

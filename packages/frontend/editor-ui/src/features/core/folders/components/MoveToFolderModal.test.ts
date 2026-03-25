@@ -22,7 +22,7 @@ import type {
 	ICredentialsResponse,
 	IUsedCredential,
 } from '@/features/credentials/credentials.types';
-import type { ChangeLocationSearchResult } from '../folders.types';
+import type { ChangeLocationSearchResult, WorkflowListEventMap } from '../folders.types';
 import { getTruncatedProjectName } from '@/features/collaboration/projects/projects.utils';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
@@ -31,7 +31,6 @@ import { useFoldersStore } from '../folders.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import MoveToFolderModal from './MoveToFolderModal.vue';
 import type { EventBus } from '@n8n/utils/event-bus';
-import type { WorkflowListEventMap } from '../folders.types';
 
 vi.mock('vue-router', () => {
 	const push = vi.fn();

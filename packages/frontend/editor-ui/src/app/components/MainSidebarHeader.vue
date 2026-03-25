@@ -148,8 +148,8 @@ const {
 						size="xsmall"
 					/>
 					<N8nButton
-						variant="subtle"
 						v-else
+						variant="subtle"
 						:size="'mini'"
 						:class="$style.upgradeButton"
 						@click="handleMenuSelect(item.id)"

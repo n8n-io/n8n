@@ -64,7 +64,7 @@ const mockBuildExecutionResponseFromSchema = vi.hoisted(() =>
 	vi.fn().mockReturnValue({ workflowData: { id: 'w1' } } as unknown as IExecutionResponse),
 );
 vi.mock('@/features/execution/executions/executions.utils', async (importOriginal) => {
-	const actual = (await importOriginal()) as object;
+	const actual = await importOriginal();
 	return {
 		...actual,
 		buildExecutionResponseFromSchema: mockBuildExecutionResponseFromSchema,
@@ -72,7 +72,7 @@ vi.mock('@/features/execution/executions/executions.utils', async (importOrigina
 });
 
 vi.mock('vue-router', async (importOriginal) => {
-	const actual = (await importOriginal()) as object;
+	const actual = await importOriginal();
 	return {
 		...actual,
 		useRoute: vi.fn(() => ({ name: 'workflow' })),

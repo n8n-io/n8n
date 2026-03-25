@@ -58,7 +58,7 @@ const showDisconnectedBadge = computed(() => {
 	return provider.value.state === 'error';
 });
 
-const isDisabled = computed(() => provider.value.isEnabled === false);
+const isDisabled = computed(() => !provider.value.isEnabled);
 
 const canDelete = computed(() => {
 	if (rbacStore.hasScope('externalSecretsProvider:delete')) return true;

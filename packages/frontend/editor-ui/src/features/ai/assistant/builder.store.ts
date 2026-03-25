@@ -47,8 +47,9 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useBrowserNotifications } from '@/app/composables/useBrowserNotifications';
 import { AI_BUILDER_PLAN_MODE_EXPERIMENT } from '@/app/constants/experiments';
-import { isVersionCardMessage, type PlanMode } from '@/features/ai/assistant/assistant.types';
 import {
+	isVersionCardMessage,
+	type PlanMode,
 	type ChatRequest,
 	isPlanModePlanMessage,
 	isPlanModeQuestionsMessage,

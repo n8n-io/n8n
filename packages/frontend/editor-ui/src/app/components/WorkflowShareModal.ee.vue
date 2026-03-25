@@ -17,10 +17,13 @@ import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import type { BaseTextKey } from '@n8n/i18n';
 import ProjectSharing from '@/features/collaboration/projects/components/ProjectSharing.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import type { ProjectSharingData, Project } from '@/features/collaboration/projects/projects.types';
+import type {
+	ProjectSharingData,
+	Project,
+	ProjectListItem,
+} from '@/features/collaboration/projects/projects.types';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { useRemoteProjectSearch } from '@/features/collaboration/projects/projects.utils';
-import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { useRolesStore } from '@/app/stores/roles.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useI18n } from '@n8n/i18n';
@@ -359,7 +362,7 @@ watch(
 				<N8nText v-show="isDirty" color="text-light" size="small" class="mr-xs">
 					{{ i18n.baseText('workflows.shareModal.changesHint') }}
 				</N8nText>
-				<N8nButton variant="subtle" v-if="isHomeTeamProject" @click="modalBus.emit('close')">
+				<N8nButton v-if="isHomeTeamProject" variant="subtle" @click="modalBus.emit('close')">
 					{{ i18n.baseText('generic.close') }}
 				</N8nButton>
 				<N8nButton

@@ -153,7 +153,7 @@ watch(
 						<div v-for="value in 11" :key="value - 1" :class="$style.container">
 							<N8nButton
 								variant="subtle"
-								iconOnly
+								icon-only
 								:aria-label="(value - 1).toString()"
 								:label="(value - 1).toString()"
 								@click="selectSurveyValue((value - 1).toString())"

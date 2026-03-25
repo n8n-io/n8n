@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import ProjectSharing from '@/features/collaboration/projects/components/ProjectSharing.vue';
-import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
-import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
+import type {
+	ProjectSharingData,
+	ProjectListItem,
+} from '@/features/collaboration/projects/projects.types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useAvailableProjectSearch } from '@/features/collaboration/projects/projects.utils';
 import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';

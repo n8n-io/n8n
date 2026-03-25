@@ -3,7 +3,12 @@ import { computed, onBeforeUnmount, onMounted, ref, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { N8nScrollArea, N8nResizeWrapper, type IMenuItem } from '@n8n/design-system';
-import { ABOUT_MODAL_KEY, VIEWS, WHATS_NEW_MODAL_KEY } from '@/app/constants';
+import {
+	ABOUT_MODAL_KEY,
+	VIEWS,
+	WHATS_NEW_MODAL_KEY,
+	RESOURCE_CENTER_EXPERIMENT,
+} from '@/app/constants';
 import { EXTERNAL_LINKS } from '@/app/constants/externalLinks';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -25,7 +30,6 @@ import MainSidebarSourceControl from '@/app/components/MainSidebarSourceControl.
 import ProjectNavigation from '@/features/collaboration/projects/components/ProjectNavigation.vue';
 import ResourceCenterTooltip from '@/experiments/resourceCenter/components/ResourceCenterTooltip.vue';
 import { useResourceCenterStore } from '@/experiments/resourceCenter/stores/resourceCenter.store';
-import { RESOURCE_CENTER_EXPERIMENT } from '@/app/constants';
 import { useSidebarExpandedExperiment } from '@/experiments/sidebarExpanded';
 
 const cloudPlanStore = useCloudPlanStore();

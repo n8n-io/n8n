@@ -191,7 +191,7 @@ describe('SetupWorkflowCredentialsModal', () => {
 			},
 		});
 
-		const button = getByTestId('continue-button') as HTMLButtonElement;
+		const button = getByTestId('continue-button');
 		expect(button.disabled).toBe(true);
 	});
 
@@ -205,7 +205,7 @@ describe('SetupWorkflowCredentialsModal', () => {
 			},
 		});
 
-		const button = getByTestId('continue-button') as HTMLButtonElement;
+		const button = getByTestId('continue-button');
 		expect(button.disabled).toBe(false);
 	});
 

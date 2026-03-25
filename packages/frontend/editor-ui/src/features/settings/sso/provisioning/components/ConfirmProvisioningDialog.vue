@@ -119,8 +119,8 @@ const onConfirmProvisioningSetting = () => {
 						locale.baseText('settings.provisioningConfirmDialog.button.downloadInstanceRolesCsv')
 					}}</N8nText>
 					<N8nButton
-						variant="ghost"
 						v-if="!hasDownloadedInstanceRoleCsv"
+						variant="ghost"
 						native-type="button"
 						:icon="'file-download' as any"
 						data-test-id="provisioning-download-instance-roles-csv-button"
@@ -136,8 +136,8 @@ const onConfirmProvisioningSetting = () => {
 						locale.baseText('settings.provisioningConfirmDialog.button.downloadProjectRolesCsv')
 					}}</N8nText>
 					<N8nButton
-						variant="ghost"
 						v-if="!hasDownloadedProjectRoleCsv"
+						variant="ghost"
 						native-type="button"
 						:icon="'file-download' as any"
 						data-test-id="provisioning-download-project-roles-csv-button"

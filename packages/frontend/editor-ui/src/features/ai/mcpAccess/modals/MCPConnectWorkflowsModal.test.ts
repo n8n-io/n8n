@@ -34,18 +34,18 @@ vi.mock('@/app/router', () => ({
 }));
 
 const ModalStub = defineComponent({
-	template: `
-		<div>
-			<slot name="content" />
-			<slot name="footer" v-bind="{ close: closeFn }" />
-		</div>
-	`,
 	emits: ['closed'],
 	methods: {
 		closeFn() {
 			this.$emit('closed');
 		},
 	},
+	template: `
+		<div>
+			<slot name="content" />
+			<slot name="footer" v-bind="{ close: closeFn }" />
+		</div>
+	`,
 });
 
 const initialState = {

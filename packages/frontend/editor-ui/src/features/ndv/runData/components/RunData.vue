@@ -1524,8 +1524,8 @@ defineExpose({ enterEditMode });
 				</Suspense>
 
 				<N8nIconButton
-					variant="ghost"
 					v-if="displayMode === 'table' && collapsingTableColumnName !== null"
+					variant="ghost"
 					:class="$style.resetCollapseButton"
 					icon="chevrons-up-down"
 					size="xsmall"
@@ -1545,8 +1545,6 @@ defineExpose({ enterEditMode });
 				/>
 
 				<N8nIconButton
-					variant="subtle"
-					size="small"
 					v-if="
 						!props.disableEdit &&
 						canPinData &&
@@ -1555,6 +1553,8 @@ defineExpose({ enterEditMode });
 						!isExecutionRedacted
 					"
 					v-show="!editMode.enabled"
+					variant="subtle"
+					size="small"
 					:title="i18n.baseText('runData.editOutput')"
 					:circle="false"
 					:disabled="node?.disabled"

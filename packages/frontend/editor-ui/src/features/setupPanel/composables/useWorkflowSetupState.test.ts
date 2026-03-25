@@ -30,8 +30,8 @@ const mockUpdateNodesCredentialsIssues = vi.fn();
 
 const mockWorkflowDocumentStore = {
 	allNodes: [] as INodeUi[],
-	getNodeByName: vi.fn() as ReturnType<typeof vi.fn>,
-	getNodes: vi.fn() as ReturnType<typeof vi.fn>,
+	getNodeByName: vi.fn(),
+	getNodes: vi.fn(),
 	updateNodeProperties: mockUpdateNodeProperties,
 };
 

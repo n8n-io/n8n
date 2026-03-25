@@ -1,4 +1,3 @@
-/* eslint-disable import-x/extensions */
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { useRoute } from 'vue-router';

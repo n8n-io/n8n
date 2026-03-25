@@ -166,8 +166,8 @@ onClickOutside(
 	<div>
 		<aside :class="$style.nodeCreatorScrim" />
 		<N8nIconButton
-			variant="subtle"
 			v-if="active"
+			variant="subtle"
 			:class="$style.close"
 			icon="x"
 			aria-label="Close Node Creator"

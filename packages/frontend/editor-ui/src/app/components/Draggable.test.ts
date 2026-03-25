@@ -193,7 +193,7 @@ describe('Draggable', () => {
 
 			// drag events should be emitted
 			expect(emitted().drag).toBeDefined();
-			expect(emitted().drag!.length).toBeGreaterThanOrEqual(1);
+			expect(emitted().drag.length).toBeGreaterThanOrEqual(1);
 
 			simulateMouseUp();
 		});

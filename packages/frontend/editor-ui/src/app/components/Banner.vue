@@ -60,8 +60,8 @@ const onClick = () => {
 
 			<slot v-if="$slots.button" name="button" />
 			<N8nButton
-				variant="outline"
 				v-else-if="buttonLabel"
+				variant="outline"
 				:label="buttonLoading && buttonLoadingLabel ? buttonLoadingLabel : buttonLabel"
 				:title="buttonTitle"
 				:loading="buttonLoading"

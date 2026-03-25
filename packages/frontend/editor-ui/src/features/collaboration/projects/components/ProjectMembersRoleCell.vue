@@ -141,7 +141,7 @@ const onRoleSelect = (value: SelectValue | undefined) => {
 	}
 
 	emit('update:role', {
-		role: value as Role['slug'],
+		role: value,
 		userId: props.data.id,
 	});
 };

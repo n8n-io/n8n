@@ -233,8 +233,8 @@ onUnmounted(() => {
 		</div>
 
 		<N8nIconButton
-			variant="ghost"
 			v-show="isFilterButtonVisible"
+			variant="ghost"
 			data-test-id="data-table-column-header-filter-button"
 			icon="funnel"
 			:aria-label="i18n.baseText('dataTable.filterColumn')"

@@ -50,13 +50,14 @@ describe('AddRestoreFieldsToWorkflowBuilderSession Migration', () => {
 		);
 
 		await ctx.runQuery(
-			`INSERT INTO ${workflowTable} ("id", "name", "active", "nodes", "connections", "createdAt", "updatedAt") VALUES (:id, :name, :active, :nodes, :connections, :createdAt, :updatedAt)`,
+			`INSERT INTO ${workflowTable} ("id", "name", "active", "nodes", "connections", "versionId", "createdAt", "updatedAt") VALUES (:id, :name, :active, :nodes, :connections, :versionId, :createdAt, :updatedAt)`,
 			{
 				id: workflowId,
 				name: `Workflow ${workflowId}`,
 				active: false,
 				nodes: '[]',
 				connections: '{}',
+				versionId: randomUUID(),
 				createdAt: now,
 				updatedAt: now,
 			},

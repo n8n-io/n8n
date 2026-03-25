@@ -14,7 +14,10 @@ import type {
 	ProjectListItem,
 	ProjectSharingData,
 } from '@/features/collaboration/projects/projects.types';
-import { ResourceType } from '@/features/collaboration/projects/projects.utils';
+import {
+	ResourceType,
+	useAvailableProjectSearch,
+} from '@/features/collaboration/projects/projects.utils';
 import { useRevealWorkflowInScroller } from '../composables/useRevealWorkflowInScroller';
 import { useSourceControlFileList } from '../composables/useSourceControlFileList';
 import { useWorkflowTreeRows } from '../composables/useWorkflowTreeRows';
@@ -42,7 +45,6 @@ import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
 import Modal from '@/app/components/Modal.vue';
 import ProjectSharing from '@/features/collaboration/projects/components/ProjectSharing.vue';
-import { useAvailableProjectSearch } from '@/features/collaboration/projects/projects.utils';
 import {
 	N8nBadge,
 	N8nButton,

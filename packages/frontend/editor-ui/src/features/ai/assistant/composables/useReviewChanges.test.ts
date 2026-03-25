@@ -50,7 +50,7 @@ vi.mock('@n8n/i18n', () => {
 const mockBuilderStore = reactive({
 	streaming: false,
 	latestRevertVersion: null as { id: string } | null,
-	trackWorkflowBuilderJourney: vi.fn() as ReturnType<typeof vi.fn>,
+	trackWorkflowBuilderJourney: vi.fn(),
 	versionCardMessages: [] as Array<{ id?: string; data: { versionId: string } }>,
 	collapsedMessageIds: new Set<string>(),
 });
@@ -61,19 +61,19 @@ const mockWorkflowsStore = reactive({
 });
 
 const mockWorkflowHistoryStore = reactive({
-	getWorkflowVersion: vi.fn() as ReturnType<typeof vi.fn>,
+	getWorkflowVersion: vi.fn(),
 });
 
 const mockNodeTypesStore = reactive({
-	getNodeType: vi.fn().mockReturnValue(null) as ReturnType<typeof vi.fn>,
+	getNodeType: vi.fn().mockReturnValue(null),
 });
 
 const mockUIStore = reactive({
-	openModalWithData: vi.fn() as ReturnType<typeof vi.fn>,
+	openModalWithData: vi.fn(),
 });
 
 const mockPosthogStore = reactive({
-	isFeatureEnabled: vi.fn().mockReturnValue(false) as ReturnType<typeof vi.fn>,
+	isFeatureEnabled: vi.fn().mockReturnValue(false),
 });
 
 const mockChatPanelStateStore = reactive({
@@ -1092,12 +1092,7 @@ describe('useReviewChanges', () => {
 				nodes: [makeNode({ id: 'n1' })],
 				connections: {},
 			};
-			// First card has no predecessor, so source=[] and target=[node].
-			// Verify the target nodes have resolved parameters.
-			compareWorkflowsNodesMock.mockImplementation((_base: INode[], target: INode[]) => {
-				expect(target[0].parameters).toEqual(resolvedParams);
-				return new Map([['n1', { status: 'added', node: target[0] }]]);
-			});
+			compareWorkflowsNodesMock.mockReturnValue(new Map([['n1', { status: 'added', node }]]));
 
 			const { result, unmount } = withSetup();
 			await flushPromises();
@@ -1105,6 +1100,14 @@ describe('useReviewChanges', () => {
 			expect(result.nodeChanges.value).toHaveLength(1);
 			expect(compareWorkflowsNodesMock).toHaveBeenCalled();
 			expect(getNodeParametersMock).toHaveBeenCalled();
+			// Verify resolveNodeDefaults was applied: the nodeChanges computed
+			// normalizes the cached version nodes (source) before comparing.
+			const nodeChangesCall = compareWorkflowsNodesMock.mock.calls.find((args: unknown[]) => {
+				const base = args[0] as INode[];
+				return base.length > 0 && base[0].id === 'n1';
+			});
+			expect(nodeChangesCall).toBeDefined();
+			expect(nodeChangesCall![0][0].parameters).toEqual(resolvedParams);
 			unmount();
 		});
 
@@ -1127,17 +1130,21 @@ describe('useReviewChanges', () => {
 				nodes: [makeNode({ id: 'n1' })],
 				connections: {},
 			};
-			// First card: source=[], target=[node]. Parameters should be unchanged.
-			compareWorkflowsNodesMock.mockImplementation((_base: INode[], target: INode[]) => {
-				expect(target[0].parameters).toEqual({ original: true });
-				return new Map([['n1', { status: 'added', node: target[0] }]]);
-			});
+			compareWorkflowsNodesMock.mockReturnValue(new Map([['n1', { status: 'added', node }]]));
 
 			const { result, unmount } = withSetup();
 			await flushPromises();
 
 			expect(getNodeParametersMock).not.toHaveBeenCalled();
 			expect(result.nodeChanges.value).toHaveLength(1);
+			// Verify parameters were passed through unchanged (no nodeType = no resolution).
+			// The nodeChanges computed normalizes the cached version nodes (source).
+			const nodeChangesCall = compareWorkflowsNodesMock.mock.calls.find((args: unknown[]) => {
+				const base = args[0] as INode[];
+				return base.length > 0 && base[0].id === 'n1';
+			});
+			expect(nodeChangesCall).toBeDefined();
+			expect(nodeChangesCall![0][0].parameters).toEqual({ original: true });
 			unmount();
 		});
 	});

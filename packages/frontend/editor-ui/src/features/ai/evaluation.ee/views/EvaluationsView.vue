@@ -75,8 +75,8 @@ watch(runningTestRun, (run) => {
 	<div :class="$style.evaluationsView">
 		<div :class="$style.header">
 			<N8nButton
-				variant="subtle"
 				v-if="runningTestRun"
+				variant="subtle"
 				:disabled="cancellingTestRun"
 				:class="$style.runOrStopTestButton"
 				size="small"
@@ -85,8 +85,8 @@ watch(runningTestRun, (run) => {
 				@click="stopTest"
 			/>
 			<N8nButton
-				variant="solid"
 				v-else
+				variant="solid"
 				:class="$style.runOrStopTestButton"
 				size="small"
 				data-test-id="run-test-button"

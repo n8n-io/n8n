@@ -44,7 +44,7 @@ onClickOutside(restoreConfirmRef, () => {
 
 const menuButtonElement = computed(() => {
 	if (!menuButtonRef.value?.$el) return null;
-	return menuButtonRef.value.$el as HTMLElement;
+	return menuButtonRef.value.$el;
 });
 const menuButtonBounding = useElementBounding(menuButtonElement);
 
@@ -60,7 +60,7 @@ const confirmModalStyle = computed(() => {
 
 const menuItems = computed<Array<ActionDropdownItem<VersionCardAction>>>(() => {
 	// When version has been pruned from history, no menu actions are available
-	if (props.versionExists === false) return [];
+	if (!props.versionExists) return [];
 
 	const items: Array<ActionDropdownItem<VersionCardAction>> = [
 		{

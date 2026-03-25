@@ -1277,7 +1277,7 @@ describe('useRunWorkflow({ router })', () => {
 
 			const { useWorkflowsListStore } = await import('@/app/stores/workflowsList.store');
 			const workflowsListStore = useWorkflowsListStore();
-			(workflowsListStore.activeWorkflows as string[]).splice(
+			workflowsListStore.activeWorkflows.splice(
 				0,
 				workflowsListStore.activeWorkflows.length,
 				'test-wf-id',

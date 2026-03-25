@@ -1809,7 +1809,7 @@ const onNameSubmit = async (name: string) => {
 				<N8nButton
 					variant="outline"
 					size="medium"
-					iconOnly
+					icon-only
 					icon="folder-plus"
 					:aria-label="i18n.baseText('workflows.addFolder')"
 					data-test-id="add-folder-button"

@@ -96,8 +96,8 @@ defineExpose({
 		</div>
 		<div :class="$style.buttons">
 			<N8nButton
-				variant="subtle"
 				v-if="selectedModel?.model.provider === 'custom-agent'"
+				variant="subtle"
 				size="small"
 				icon="settings"
 				:label="i18n.baseText('chatHub.chat.header.button.editAgent')"
