@@ -19,18 +19,13 @@ ENV SHELL=/bin/sh
 
 WORKDIR /home/node
 
-COPY ./packages /usr/local/lib/node_modules/n8n
-COPY ./docker/images/n8n/docker-entrypoint.sh /
-RUN chmod +x /docker-entrypoint.sh
+COPY --from=builder /usr/local/lib/node_modules/n8n /usr/local/lib/node_modules/n8n
+COPY docker/images/n8n/docker-entrypoint.sh /
 
-RUN cd /usr/local/lib/node_modules/n8n/packages/cli && \
-    npm rebuild sqlite3 && \
-    # Corregimos el symlink a la ruta real del monorepo
-    ln -sf /usr/local/lib/node_modules/n8n/packages/cli/bin/n8n /usr/local/bin/n8n && \
+RUN ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n && \
     mkdir -p /home/node/.n8n && \
     chown -R node:node /home/node && \
     rm -rf /root/.npm /tmp/*
-
 
 EXPOSE 5678/tcp
 USER node
