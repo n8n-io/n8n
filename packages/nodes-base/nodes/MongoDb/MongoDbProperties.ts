@@ -315,9 +315,23 @@ export const nodeProperties: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: ['update', 'findOneAndReplace', 'findOneAndUpdate'],
+				operation: ['update'],
 				resource: ['document'],
 				jsonMode: [false],
+			},
+		},
+		default: '',
+		placeholder: 'name,description',
+		description: 'Comma-separated list of the fields to be included into the new document',
+	},
+	{
+		displayName: 'Fields',
+		name: 'fields',
+		type: 'string',
+		displayOptions: {
+			show: {
+				operation: ['findOneAndReplace', 'findOneAndUpdate'],
+				resource: ['document'],
 			},
 		},
 		default: '',
@@ -344,7 +358,7 @@ export const nodeProperties: INodeProperties[] = [
 		type: 'json',
 		displayOptions: {
 			show: {
-				operation: ['update', 'findOneAndReplace', 'findOneAndUpdate'],
+				operation: ['update'],
 				resource: ['document'],
 				jsonMode: [true],
 			},
@@ -371,7 +385,37 @@ export const nodeProperties: INodeProperties[] = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				operation: ['update', 'insert', 'findOneAndReplace', 'findOneAndUpdate'],
+				operation: ['update'],
+				resource: ['document'],
+				jsonMode: [false],
+			},
+		},
+		placeholder: 'Add option',
+		default: {},
+		options: [
+			{
+				displayName: 'Date Fields',
+				name: 'dateFields',
+				type: 'string',
+				default: '',
+				description: 'Comma-separated list of fields that will be parsed as Mongo Date type',
+			},
+			{
+				displayName: 'Use Dot Notation',
+				name: 'useDotNotation',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to use dot notation to access date fields',
+			},
+		],
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				operation: ['insert', 'findOneAndReplace', 'findOneAndUpdate'],
 				resource: ['document'],
 			},
 		},
