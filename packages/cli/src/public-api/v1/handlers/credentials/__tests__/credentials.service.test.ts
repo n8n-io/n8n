@@ -491,7 +491,7 @@ describe('CredentialsService', () => {
 				jest.mocked(credentialsService.decrypt).mockReturnValue({ apiKey: 'regular-secret' });
 
 				await expect(
-					updateCredential('cred-id', memberUser, {
+					updateCredential(existingCredential, memberUser, {
 						data: { apiKey: '{{ $secrets.myKey }}' },
 					}),
 				).rejects.toThrow('Lacking permissions to reference external secrets in credentials');
@@ -516,7 +516,7 @@ describe('CredentialsService', () => {
 					.mockReturnValue({ apiKey: '{{ $secrets.oldKey }}' });
 
 				await expect(
-					updateCredential('cred-id', memberUser, {
+					updateCredential(existingCredential, memberUser, {
 						data: { apiKey: '{{ $secrets.newKey }}' },
 					}),
 				).rejects.toThrow('Lacking permissions to reference external secrets in credentials');
@@ -545,7 +545,7 @@ describe('CredentialsService', () => {
 				mockExternalSecretsConfig.externalSecretsForProjects = true;
 
 				await expect(
-					updateCredential(existingCredential.id, ownerUser, {
+					updateCredential(existingCredential, ownerUser, {
 						data: { apiKey: secretExpression },
 					}),
 				).rejects.toThrow(
@@ -570,7 +570,7 @@ describe('CredentialsService', () => {
 
 				credentialsRepository.update = jest.fn().mockResolvedValue(undefined);
 
-				await updateCredential('cred-id', memberUser, {
+				await updateCredential(existingCredential, memberUser, {
 					name: 'Updated Name',
 				});
 			});
@@ -592,7 +592,7 @@ describe('CredentialsService', () => {
 
 				credentialsRepository.update = jest.fn().mockResolvedValue(undefined);
 
-				await updateCredential('cred-id', memberUser, {
+				await updateCredential(existingCredential, memberUser, {
 					data: { apiKey: 'another-regular-key' },
 				});
 			});
@@ -614,7 +614,7 @@ describe('CredentialsService', () => {
 					.mockResolvedValue(true);
 				credentialsRepository.update = jest.fn().mockResolvedValue(undefined);
 
-				await updateCredential('cred-id', ownerUser, {
+				await updateCredential(existingCredential, ownerUser, {
 					data: { apiKey: '{{ $secrets.myKey }}' },
 				});
 			});
