@@ -571,8 +571,8 @@ importers:
         specifier: ^8.15.6
         version: 8.15.6
       testcontainers:
-        specifier: ^11.11.0
-        version: 11.12.0
+        specifier: 11.11.0
+        version: 11.11.0
 
   packages/@n8n/ai-node-sdk:
     dependencies:
@@ -12246,10 +12246,6 @@ packages:
 
   dlv@1.1.3:
     resolution: {integrity: sha512-+HlytyjlPKnIG8XuRG8WvmBP8xs8P71y+SKKS6ZXWoEgLuePxtDoUEiH7WkdePWrQ5JBpE6aoVqfZfJUQkjXwA==}
-
-  docker-compose@1.3.0:
-    resolution: {integrity: sha512-7Gevk/5eGD50+eMD+XDnFnOrruFkL0kSd7jEG4cjmqweDSUhB7i0g8is/nBdVpl+Bx338SqIB2GLKm32M+Vs6g==}
-    engines: {node: '>= 6.0.0'}
 
   docker-compose@1.3.1:
     resolution: {integrity: sha512-rF0wH69G3CCcmkN9J1RVMQBaKe8o77LT/3XmqcLIltWWVxcWAzp2TnO7wS3n/umZHN3/EVrlT3exSBMal+Ou1w==}
@@ -27246,25 +27242,25 @@ snapshots:
   '@testcontainers/kafka@11.11.0':
     dependencies:
       compare-versions: 6.1.1
-      testcontainers: 11.12.0
+      testcontainers: 11.11.0
     transitivePeerDependencies:
       - supports-color
 
   '@testcontainers/mysql@11.11.0':
     dependencies:
-      testcontainers: 11.12.0
+      testcontainers: 11.11.0
     transitivePeerDependencies:
       - supports-color
 
   '@testcontainers/postgresql@11.0.3':
     dependencies:
-      testcontainers: 11.12.0
+      testcontainers: 11.11.0
     transitivePeerDependencies:
       - supports-color
 
   '@testcontainers/redis@11.0.3':
     dependencies:
-      testcontainers: 11.12.0
+      testcontainers: 11.11.0
     transitivePeerDependencies:
       - supports-color
 
@@ -30681,10 +30677,6 @@ snapshots:
       path-type: 4.0.0
 
   dlv@1.1.3: {}
-
-  docker-compose@1.3.0:
-    dependencies:
-      yaml: 2.3.4
 
   docker-compose@1.3.1:
     dependencies:
@@ -38486,7 +38478,7 @@ snapshots:
       async-lock: 1.4.1
       byline: 5.0.0
       debug: 4.4.3(supports-color@8.1.1)
-      docker-compose: 1.3.0
+      docker-compose: 1.3.1
       dockerode: 4.0.9
       get-port: 7.1.0
       proper-lockfile: 4.1.2
