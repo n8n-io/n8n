@@ -650,6 +650,7 @@ Supported input types: \`string\`, \`number\`, \`boolean\`, \`array\`, \`object\
 1. Write the chunk file, then submit it: \`submit-workflow\` with the chunk file path.
    - Sub-workflows with \`executeWorkflowTrigger\` can be tested immediately via \`run-workflow\` without publishing. However, they must be **published** via \`publish-workflow\` before the parent workflow can call them in production (trigger-based) executions.
 2. Run the chunk: \`run-workflow\` with \`inputData\` matching the trigger schema.
+   - **Webhook workflows**: \`inputData\` IS the request body — do NOT wrap it in \`{ body: ... }\`. The system automatically places \`inputData\` into \`{ headers, query, body: inputData }\`. So to test a webhook expecting \`{ title: "Hello" }\`, pass \`inputData: { title: "Hello" }\`. Inside the workflow, the data arrives at \`$json.body.title\`.
 3. If it fails, use \`debug-execution\` to investigate, fix, and re-submit.
 
 ### Step 3: Compose chunks in the main workflow

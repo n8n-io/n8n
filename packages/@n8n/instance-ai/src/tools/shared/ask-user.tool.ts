@@ -28,9 +28,12 @@ export function createAskUserTool() {
 			'Ask the user one or more structured questions. Each question can be ' +
 			'single-select (pick one), multi-select (pick many), or free-text. ' +
 			'The agent is suspended until the user responds. ' +
-			'IMPORTANT: Every question already has a built-in "Something else" free-text ' +
-			'input, so NEVER add a separate follow-up question asking the user to elaborate ' +
-			'on a previous "other" choice — it is redundant. Keep questions concise and ' +
+			'IMPORTANT: The UI already provides a built-in "Something else" free-text ' +
+			'input for every single/multi question, so NEVER include generic catch-all ' +
+			'options like "Something else", "Other", "None of the above", or similar in ' +
+			'the options array — they duplicate the built-in input and confuse users. ' +
+			'Also NEVER add a separate follow-up question asking the user to elaborate ' +
+			'on a previous "other" choice. Keep questions concise and ' +
 			'avoid questions that reference answers to previous questions.',
 		inputSchema: z.object({
 			questions: z
