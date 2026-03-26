@@ -66,6 +66,24 @@ export class DynamicCredentialApiHelper {
 		return result.data ?? result;
 	}
 
+	async deleteResolver(resolverId: string): Promise<void> {
+		const response = await this.api.request.delete(`/rest/credential-resolvers/${resolverId}`);
+		if (!response.ok()) {
+			throw new TestError(`Failed to delete credential resolver: ${await response.text()}`);
+		}
+	}
+
+	async getAffectedWorkflows(resolverId: string): Promise<Array<{ id: string; name: string }>> {
+		const response = await this.api.request.get(
+			`/rest/credential-resolvers/${resolverId}/workflows`,
+		);
+		if (!response.ok()) {
+			throw new TestError(`Failed to get affected workflows: ${await response.text()}`);
+		}
+		const result = await response.json();
+		return result.data ?? result;
+	}
+
 	// ===== Execution status =====
 
 	/**

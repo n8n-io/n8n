@@ -23,6 +23,7 @@ import type {
 } from 'n8n-workflow';
 import {
 	BINARY_ENCODING,
+	ManualExecutionCancelledError,
 	NodeConnectionTypes,
 	Workflow,
 	UnexpectedError,
@@ -292,6 +293,10 @@ export class JobProcessor {
 		const run = await workflowRun;
 
 		delete this.runningJobs[job.id];
+
+		if (run?.status === 'canceled') {
+			throw new ManualExecutionCancelledError(executionId);
+		}
 
 		const props = process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING
 			? this.deriveJobFinishedProps(run, startedAt)
