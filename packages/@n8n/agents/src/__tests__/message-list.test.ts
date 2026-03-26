@@ -1,5 +1,6 @@
 import { AgentMessageList } from '../runtime/message-list';
-import type { AgentDbMessage, AgentMessage } from '../types/sdk/message';
+import { isLlmMessage } from '../sdk/message';
+import type { AgentDbMessage, AgentMessage, Message } from '../types/sdk/message';
 
 function makeUserMsg(text: string): AgentMessage {
 	return { role: 'user', content: [{ type: 'text', text }] };
@@ -66,6 +67,24 @@ describe('AgentMessageList — monotonic timestamps', () => {
 		const [inputMsg] = list.turnDelta();
 		expect(inputMsg.createdAt).toBeInstanceOf(Date);
 		expect(inputMsg.createdAt.getTime()).toBeGreaterThan(futureTs.getTime());
+	});
+});
+
+// ---------------------------------------------------------------------------
+// History messages keep their DB-sourced createdAt
+// ---------------------------------------------------------------------------
+
+describe('AgentMessageList — chronological order', () => {
+	it('reorders addHistory when the batch is not in createdAt order', () => {
+		const list = new AgentMessageList();
+		const t1 = new Date('2024-01-01T00:00:01.000Z');
+		const t2 = new Date('2024-01-01T00:00:02.000Z');
+		list.addHistory([makeDbMsg('second', t2), makeDbMsg('first', t1)]);
+
+		const msgs = list.serialize().messages.filter(isLlmMessage) as Message[];
+		expect(msgs).toHaveLength(2);
+		expect(msgs[0].content[0]).toMatchObject({ type: 'text', text: 'first' });
+		expect(msgs[1].content[0]).toMatchObject({ type: 'text', text: 'second' });
 	});
 });
 

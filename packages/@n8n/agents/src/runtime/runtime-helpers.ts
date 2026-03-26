@@ -7,7 +7,10 @@ import { toTokenUsage } from './stream';
 import type { AgentMessage, ContentToolResult } from '../types/sdk/message';
 import type { JSONValue } from '../types/utils/json';
 
-/** Normalize a string input to an AgentDbMessage array, assigning ids where missing. */
+/**
+ * Normalize caller input to `AgentMessage[]` for the runtime. String input becomes a
+ * single user message.
+ */
 export function normalizeInput(input: AgentMessage[] | string): AgentMessage[] {
 	if (typeof input === 'string') {
 		return [{ role: 'user', content: [{ type: 'text', text: input }] }];

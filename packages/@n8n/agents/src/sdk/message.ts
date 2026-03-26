@@ -8,7 +8,6 @@ export function getCreatedAt(message: AgentMessage): Date | null {
 		if (typeof message.createdAt === 'string' || typeof message.createdAt === 'number') {
 			return new Date(message.createdAt);
 		}
-		throw new Error('createdAt must be a Date, string, or number');
 	}
 	return null;
 }

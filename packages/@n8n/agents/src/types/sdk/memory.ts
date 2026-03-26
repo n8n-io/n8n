@@ -25,6 +25,14 @@ export interface BuiltMemory {
 			before?: Date; // pagination cursor
 		},
 	): Promise<AgentDbMessage[]>;
+	/**
+	 * Append messages to a thread. Each entry must be a full {@link AgentDbMessage}:
+	 * stable string `id` and `createdAt` (the runtime sets both when messages pass through
+	 * its internal list). Custom backends must persist and return those fields from
+	 * `getMessages` so ordering, pagination (`before` / limit), and filters stay consistent;
+	 * when both a column and serialized JSON exist, treat the stored sort key / column as
+	 * authoritative for `createdAt` on load.
+	 */
 	saveMessages(args: {
 		threadId: string;
 		resourceId: string;

@@ -20,13 +20,16 @@ export interface WorkingMemoryContext {
 }
 
 /**
- * Append-only message container with Set-based source tracking.
+ * Message container with Set-based source tracking.
  *
  * Three named sources:
  *   history   — messages loaded from memory at the start of the turn.
  *               Never included in turnDelta(); already persisted.
  *   input     — the caller's raw input for this turn (custom messages preserved).
  *   response  — LLM replies, tool results, and custom tool messages from this turn.
+ *
+ * After each `addHistory` / `addInput` / `addResponse` batch, `all` is sorted by
+ * `createdAt` ascending, then `id`, so transcript order matches timestamps.
  *
  * Serialization stores the flat message array plus the IDs of each set so
  * the full three-way source distinction survives a round-trip.
@@ -79,28 +82,54 @@ export class AgentMessageList {
 		return dbMsg;
 	}
 
+	/** Sort key for chronological ordering; non-finite times sort last. */
+	private createdAtSortKey(m: AgentDbMessage): number {
+		const t = m.createdAt instanceof Date ? m.createdAt.getTime() : new Date(m.createdAt).getTime();
+		return Number.isFinite(t) ? t : Number.POSITIVE_INFINITY;
+	}
+
+	/** Stable sort by `createdAt`, then `id`; refreshes `lastCreatedAt` from `all`. */
+	private sortAllByCreatedAt(): void {
+		this.all.sort((a, b) => {
+			const ta = this.createdAtSortKey(a);
+			const tb = this.createdAtSortKey(b);
+			if (ta !== tb) return ta < tb ? -1 : 1;
+			return a.id.localeCompare(b.id);
+		});
+		let max = 0;
+		for (const m of this.all) {
+			const t =
+				m.createdAt instanceof Date ? m.createdAt.getTime() : new Date(m.createdAt).getTime();
+			if (Number.isFinite(t) && t > max) max = t;
+		}
+		this.lastCreatedAt = max;
+	}
+
 	/** Working memory context for this run. Set by buildMessageList / resume. */
 	workingMemory: WorkingMemoryContext | undefined;
 
-	addHistory(messages: AgentMessage[]): void {
+	addHistory(messages: AgentMessage[] | AgentDbMessage[]): void {
 		for (const m of messages) {
 			const dbMsg = this.addMessage(m, 'history');
 			this.historySet.add(dbMsg);
 		}
+		this.sortAllByCreatedAt();
 	}
 
-	addInput(messages: AgentMessage[]): void {
+	addInput(messages: AgentMessage[] | AgentDbMessage[]): void {
 		for (const m of messages) {
 			const dbMsg = this.addMessage(m, 'input');
 			this.inputSet.add(dbMsg);
 		}
+		this.sortAllByCreatedAt();
 	}
 
-	addResponse(messages: AgentMessage[]): void {
+	addResponse(messages: AgentMessage[] | AgentDbMessage[]): void {
 		for (const m of messages) {
 			const dbMsg = this.addMessage(m, 'response');
 			this.responseSet.add(dbMsg);
 		}
+		this.sortAllByCreatedAt();
 	}
 
 	/**
@@ -163,11 +192,8 @@ export class AgentMessageList {
 			if (historyIdSet.has(m.id)) list.historySet.add(m);
 			if (inputIdSet.has(m.id)) list.inputSet.add(m);
 			if (responseIdSet.has(m.id)) list.responseSet.add(m);
-			// Restore lastCreatedAt so new messages after resume stay strictly later
-			const ts =
-				m.createdAt instanceof Date ? m.createdAt.getTime() : new Date(m.createdAt).getTime();
-			if (ts > list.lastCreatedAt) list.lastCreatedAt = ts;
 		}
+		list.sortAllByCreatedAt();
 		return list;
 	}
 }
