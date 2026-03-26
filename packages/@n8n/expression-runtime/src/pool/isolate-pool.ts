@@ -53,8 +53,7 @@ export class IsolatePool {
 
 		return new Promise<RuntimeBridge>((resolve, reject) => {
 			const timer = setTimeout(() => {
-				const index = this.waiters.findIndex((w) => w.resolve === resolve);
-				if (index !== -1) this.waiters.splice(index, 1);
+				this.removeWaiter(resolve);
 				reject(new Error(`Timed out waiting for isolate (${this.acquireTimeoutMs}ms)`));
 			}, this.acquireTimeoutMs);
 
@@ -91,6 +90,11 @@ export class IsolatePool {
 		this.waiters = [];
 		await Promise.all(this.bridges.map((b) => b.dispose()));
 		this.bridges = [];
+	}
+
+	private removeWaiter(resolve: Waiter['resolve']) {
+		const index = this.waiters.findIndex((w) => w.resolve === resolve);
+		if (index !== -1) this.waiters.splice(index, 1);
 	}
 
 	private static readonly MAX_REPLENISH_RETRIES = 3;
