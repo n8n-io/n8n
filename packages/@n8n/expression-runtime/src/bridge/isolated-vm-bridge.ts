@@ -20,6 +20,15 @@ function getIvm(): IsolatedVm {
 
 const BUNDLE_RELATIVE_PATH = path.join('dist', 'bundle', 'runtime.iife.js');
 
+/** Check if a value is an error sentinel returned by serializeError. */
+function isErrorSentinel(value: unknown): value is Record<string, unknown> & { __isError: true } {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		(value as Record<string, unknown>).__isError === true
+	);
+}
+
 /**
  * Serialize an error into a transferable metadata object.
  *
@@ -557,8 +566,8 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			});
 
 			// Step 6: If the result is an error sentinel, reconstruct and throw
-			if (result && typeof result === 'object' && (result as Record<string, unknown>).__isError) {
-				throw this.reconstructError(result as Record<string, unknown>);
+			if (isErrorSentinel(result)) {
+				throw this.reconstructError(result);
 			}
 
 			if (this.config.debug) {
