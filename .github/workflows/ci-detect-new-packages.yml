@@ -1,0 +1,47 @@
+name: 'CI: Detect New Packages on Master'
+
+on:
+  pull_request:
+    types:
+      - closed
+    branches:
+      - master
+
+jobs:
+  detect-new-packages:
+    name: Check for new unpublished packages
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ''
+          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+
+      - name: Check for new unpublished packages
+        id: detect
+        continue-on-error: true
+        run: node .github/scripts/detect-new-packages.mjs
+
+      - name: Notify Slack about new packages
+        if: steps.detect.outcome == 'failure' && steps.detect.outputs.packages != ''
+        uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a # v2.1.1
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.RELEASE_HELPER_SLACK_TOKEN }}
+          payload: |
+            channel: C036AELNMV0
+            text: |-
+              :warning: *New unpublished packages detected* after merging <${{ github.event.pull_request.html_url }}|PR #${{ github.event.pull_request.number }}: ${{ github.event.pull_request.title }}>
+
+              The following packages do not exist on npm yet: `${{ steps.detect.outputs.packages }}`
+
+              *If a package is not intended for npm*, set `"private": true` in its `package.json` to exclude it from future checks.
+
+              *Otherwise, to unblock the next release:*
+              1. Run the <${{ github.server_url }}/${{ github.repository }}/actions/workflows/release-publish-new-package.yml|Release: Publish New Package> workflow for each package
+              2. Configure Trusted Publishing on npmjs.com (owner: `n8n-io`, repo: `n8n`, workflow: `release-publish.yml`)
