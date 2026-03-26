@@ -50,7 +50,6 @@ const MAX_OUTPUT_ITEMS_PER_NODE = 5;
 // ---------------------------------------------------------------------------
 
 export interface EvalExecutionOptions {
-	triggerData?: Record<string, unknown>;
 	scenarioHints?: string;
 }
 
@@ -115,17 +114,7 @@ export class EvalExecutionService {
 
 		const hints = await this.analyzeWorkflow(workflowEntity, options.scenarioHints);
 
-		// Use explicitly provided trigger data if present, otherwise use LLM-generated data
-		const triggerData = options.triggerData !== undefined ? options.triggerData : hints.triggerData;
-
-		return await this.execute(
-			workflowEntity,
-			user,
-			executionId,
-			hints,
-			triggerData,
-			options.scenarioHints,
-		);
+		return await this.execute(workflowEntity, user, executionId, hints, options.scenarioHints);
 	}
 
 	// ── Phase 1: Workflow analysis ─────────────────────────────────────────
@@ -163,7 +152,6 @@ export class EvalExecutionService {
 		user: User,
 		executionId: string,
 		hints: MockHints,
-		triggerData: Record<string, unknown>,
 		scenarioHints?: string,
 	): Promise<EvalExecutionResult> {
 		const nodeResults: Record<string, NodeResult> = {};
@@ -189,8 +177,8 @@ export class EvalExecutionService {
 		additionalData.evalLlmMockHandler = this.createSanitizingHandler(mockHandler, nodeResults);
 		additionalData.hooks = new ExecutionLifecycleHooks('evaluation', executionId, workflowEntity);
 
-		const pinData = this.buildPinData(startNode, triggerData);
-		const executionData = this.buildExecutionData(startNode, triggerData, pinData);
+		const pinData = this.buildTriggerPinData(startNode, hints.triggerContent);
+		const executionData = this.buildExecutionData(startNode, pinData);
 
 		const result = await this.runWorkflow(workflow, additionalData, executionData);
 		return this.buildResult(executionId, result, nodeResults);
@@ -230,22 +218,24 @@ export class EvalExecutionService {
 
 	// ── Execution data ────────────────────────────────────────────────────
 
-	private buildPinData(startNode: INode, triggerData: Record<string, unknown>): IPinData {
-		if (Object.keys(triggerData).length === 0) return {};
-		return { [startNode.name]: [{ json: triggerData as IDataObject }] };
+	/**
+	 * Build pin data for the trigger/start node from LLM-generated content.
+	 * Pin data provides the trigger's output — the node doesn't execute,
+	 * since trigger nodes receive external events that don't fire in eval mode.
+	 */
+	private buildTriggerPinData(startNode: INode, triggerContent: Record<string, unknown>): IPinData {
+		if (Object.keys(triggerContent).length === 0) return {};
+		return { [startNode.name]: [{ json: triggerContent as IDataObject }] };
 	}
 
 	/**
-	 * Build execution data with the trigger node explicitly on the execution stack.
+	 * Build execution data with the trigger node on the execution stack.
 	 * We use processRunExecutionData() instead of run() because run() relies on
 	 * getStartNode() which doesn't find webhook nodes (they define `webhook`,
 	 * not `trigger`). This follows the same pattern as InstanceAiAdapterService.
+	 * Pin data carries the trigger's output; the execution stack just marks where to start.
 	 */
-	private buildExecutionData(
-		startNode: INode,
-		triggerData: Record<string, unknown>,
-		pinData: IPinData,
-	): IRunExecutionData {
+	private buildExecutionData(startNode: INode, pinData: IPinData): IRunExecutionData {
 		return createRunExecutionData({
 			startData: {},
 			resultData: { pinData, runData: {} },
@@ -255,7 +245,7 @@ export class EvalExecutionService {
 				nodeExecutionStack: [
 					{
 						node: startNode,
-						data: { main: [[{ json: triggerData as IDataObject }]] },
+						data: { main: [[{ json: {} }]] },
 						source: null,
 					},
 				],
