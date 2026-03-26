@@ -48,6 +48,8 @@ export class InstanceAiModule implements ModuleInterface {
 		const { InstanceAiWorkflowSnapshot } = await import(
 			'./entities/instance-ai-workflow-snapshot.entity'
 		);
+		const { InstanceAiRunSnapshot } = await import('./entities/instance-ai-run-snapshot.entity');
+		const { InstanceAiIterationLog } = await import('./entities/instance-ai-iteration-log.entity');
 
 		return [
 			InstanceAiThread,
@@ -55,6 +57,8 @@ export class InstanceAiModule implements ModuleInterface {
 			InstanceAiResource,
 			InstanceAiObservationalMemory,
 			InstanceAiWorkflowSnapshot,
+			InstanceAiRunSnapshot,
+			InstanceAiIterationLog,
 		];
 	}
 
