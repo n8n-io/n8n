@@ -27,10 +27,7 @@ import { assertValidLoadPreviousSessionOption } from './types';
 
 const CHAT_TRIGGER_PATH_IDENTIFIER = 'chat';
 
-const isEnvFeatureEnabled = (value: string | undefined) => value !== undefined && value !== 'false';
-
-const isPublicChatTriggerDisabled = () =>
-	isEnvFeatureEnabled(process.env.N8N_DISABLE_PUBLIC_CHAT_TRIGGER);
+const isPublicChatTriggerDisabled = () => process.env.N8N_DISABLE_PUBLIC_CHAT_TRIGGER === 'true';
 const allowFileUploadsOption: INodeProperties = {
 	displayName: 'Allow File Uploads',
 	name: 'allowFileUploads',
