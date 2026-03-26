@@ -14,8 +14,12 @@ COPY package.json pnpm-lock.yaml turbo.json ./
 COPY . .
 
 # 2. Install and Build
-RUN npm pkg delete scripts.prepare && \
-    pnpm install --no-frozen-lockfile
+RUN npm pkg delete scripts.prepare
+
+# 3. Instalación con "Fuerza Bruta" para Esbuild
+# Añadimos esbuild explícitamente al workspace para que esté disponible globalmente
+RUN pnpm install --no-frozen-lockfile && \
+    pnpm add -w esbuild@0.25.0 @esbuild/linux-x64
 
 
 ENV NODE_OPTIONS="--max-old-space-size=8192"
