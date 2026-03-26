@@ -234,6 +234,10 @@ watch(sortBy, (newValue) => {
 	max-width: 100%;
 	overflow: hidden;
 	min-width: 0;
+	& > * {
+		min-width: 0;
+		overflow: hidden;
+	}
 	&:hover {
 		color: var(--color--text--shade-1);
 	}
