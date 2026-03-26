@@ -31,14 +31,14 @@ export class FacebookGraphApiOAuth2Api implements ICredentialType {
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'hidden',
-			default: 'https://www.facebook.com/v19.0/dialog/oauth',
+			default: 'https://www.facebook.com/v25.0/dialog/oauth',
 			required: true,
 		},
 		{
 			displayName: 'Access Token URL',
 			name: 'accessTokenUrl',
 			type: 'hidden',
-			default: 'https://graph.facebook.com/v19.0/oauth/access_token',
+			default: 'https://graph.facebook.com/v25.0/oauth/access_token',
 			required: true,
 		},
 		{

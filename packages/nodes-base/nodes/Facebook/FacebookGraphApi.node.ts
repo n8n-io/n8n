@@ -113,6 +113,14 @@ export class FacebookGraphApi implements INodeType {
 						value: '',
 					},
 					{
+						name: 'v25.0',
+						value: 'v25.0',
+					},
+					{
+						name: 'v24.0',
+						value: 'v24.0',
+					},
+					{
 						name: 'v23.0',
 						value: 'v23.0',
 					},
@@ -362,11 +370,13 @@ export class FacebookGraphApi implements INodeType {
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			const authType = this.getNodeParameter('authType', itemIndex, 'accessToken') as string;
+			const qs: IDataObject = {};
 
 			let graphApiAccessToken: string | undefined;
 			if (authType === 'accessToken') {
 				const graphApiCredentials = await this.getCredentials('facebookGraphApi');
 				graphApiAccessToken = graphApiCredentials.accessToken as string;
+				qs.access_token = graphApiAccessToken;
 			}
 			// OAuth2: token is injected automatically via requestWithAuthentication
 
@@ -387,11 +397,6 @@ export class FacebookGraphApi implements INodeType {
 			let uri = `https://${hostUrl}/${graphApiVersion}${node}`;
 			if (edge) {
 				uri = `${uri}/${edge}`;
-			}
-
-			const qs: IDataObject = {};
-			if (authType === 'accessToken') {
-				qs.access_token = graphApiAccessToken;
 			}
 			const requestOptions: IRequestOptions = {
 				headers: {
