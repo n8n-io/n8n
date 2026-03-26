@@ -1,5 +1,6 @@
 import type { RuntimeBridge } from '../types';
 
+/** A queued caller waiting for a bridge when the pool is exhausted. */
 interface Waiter {
 	resolve: (bridge: RuntimeBridge) => void;
 	reject: (error: Error) => void;
