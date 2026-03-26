@@ -115,16 +115,18 @@ test.describe(
 
 				const toolNames = tools.map((t) => t.name).sort();
 
-				// Verify known built-in tools are present (subset check so new tools don't break the test)
-				// Verify structural properties rather than an exact tool list,
-				// so adding/removing tools doesn't break this test.
-				expect(toolNames.length).toBeGreaterThan(0);
+				// Guard against major regressions (e.g. half the tools disappearing)
+				// without coupling to an exact list that breaks on every add/remove.
+				expect(toolNames.length).toBeGreaterThanOrEqual(10);
+
+				// Every tool must have the required MCP structure
 				for (const tool of tools) {
 					expect(tool.name).toBeTruthy();
-					expect(typeof tool.name).toBe('string');
+					expect(tool.description).toBeTruthy();
+					expect(tool.inputSchema).toBeDefined();
 				}
 
-				// Spot-check a few stable core tools are present
+				// Spot-check a few stable core tools
 				expect(toolNames).toContain('search_workflows');
 				expect(toolNames).toContain('execute_workflow');
 				expect(toolNames).toContain('get_workflow_details');
