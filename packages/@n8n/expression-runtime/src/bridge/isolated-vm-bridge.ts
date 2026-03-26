@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import * as path from 'node:path';
 import type { RuntimeBridge, BridgeConfig, ExecuteOptions } from '../types';
 import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
+import type { ErrorSentinel } from '../runtime/lazy-proxy';
 
 // Lazy-loaded isolated-vm — avoids loading the native binary when the barrel
 // file is statically imported (e.g. for error classes). The native module is
@@ -21,7 +22,7 @@ function getIvm(): IsolatedVm {
 const BUNDLE_RELATIVE_PATH = path.join('dist', 'bundle', 'runtime.iife.js');
 
 /** Check if a value is an error sentinel returned by serializeError. */
-function isErrorSentinel(value: unknown): value is Record<string, unknown> & { __isError: true } {
+function isErrorSentinel(value: unknown): value is ErrorSentinel {
 	return (
 		typeof value === 'object' &&
 		value !== null &&
@@ -37,7 +38,7 @@ function isErrorSentinel(value: unknown): value is Record<string, unknown> & { _
  * strips custom class identity and properties). The isolate-side proxy
  * detects __isError and reconstructs a proper Error to throw.
  */
-function serializeError(err: unknown): Record<string, unknown> {
+function serializeError(err: unknown): ErrorSentinel {
 	if (err instanceof Error) {
 		const extra = Object.fromEntries(
 			Object.entries(err).filter(([key]) => key !== 'name' && key !== 'message' && key !== 'stack'),
@@ -623,17 +624,16 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * Maps error names back to their host-side classes and restores
 	 * custom properties that would otherwise be lost crossing the boundary.
 	 */
-	private reconstructError(data: Record<string, unknown>): Error {
-		const error = new Error(data.message as string);
-		error.name = (data.name as string) || 'Error';
+	private reconstructError(data: ErrorSentinel): Error {
+		const error = new Error(data.message);
+		error.name = data.name || 'Error';
 		if (data.stack) {
-			error.stack = data.stack as string;
+			error.stack = data.stack;
 		}
 
 		// Restore custom properties transferred via copy: true
-		const extra = data.extra;
-		if (extra && typeof extra === 'object') {
-			Object.assign(error, extra);
+		if (data.extra) {
+			Object.assign(error, data.extra);
 		}
 
 		return error;

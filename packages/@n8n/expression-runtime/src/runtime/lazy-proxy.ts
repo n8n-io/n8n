@@ -16,7 +16,7 @@ const proxyPaths = new WeakMap<object, string[]>();
  * sentinel instead of letting it cross the isolate boundary (which strips
  * custom class identity and properties).
  */
-interface ErrorSentinel {
+export interface ErrorSentinel {
 	__isError: true;
 	name: string;
 	message: string;
