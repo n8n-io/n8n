@@ -78,8 +78,8 @@ export interface MockHints {
 	globalContext: string;
 	/** Per-node hints describing what data to return for each service node */
 	nodeHints: Record<string, string>;
-	/** Generated trigger/input data matching the workflow's start node expectations */
-	triggerData: Record<string, unknown>;
+	/** Generated trigger output matching what the start node would produce */
+	triggerContent: Record<string, unknown>;
 }
 
 export interface GenerateMockHintsOptions {
@@ -88,15 +88,17 @@ export interface GenerateMockHintsOptions {
 	scenarioHints?: string;
 }
 
-const SYSTEM_PROMPT = `You are a test data planner for n8n workflow automation. Your job is to create a consistent data context, trigger input data, and per-node hints that will guide an API mock server to generate realistic, coherent responses across all service nodes in a workflow.
+const SYSTEM_PROMPT = `You are a test data planner for n8n workflow automation. Your job is to create a consistent data context, trigger output data, and per-node hints that will guide an API mock server to generate realistic, coherent responses across all nodes in a workflow.
 
 RULES:
 1. Create a "globalContext" that defines the shared world — user IDs, entity names, channel names, email addresses, and relationships that ALL nodes should reference consistently.
-2. Create a "triggerData" object with realistic input data for the workflow's trigger/start node. Match the trigger type:
-   - Webhook/Form triggers: include headers, query, and body fields matching what the workflow expects
-   - Schedule triggers: include a timestamp
-   - Manual triggers: include data that downstream nodes will process
-   - Look at what downstream nodes reference (e.g., $json.email, $json.message) and ensure triggerData contains those fields
+2. Create a "triggerContent" object that represents the exact output the workflow's trigger/start node would produce. This is used as pin data (the node's output), so it must match what downstream nodes reference:
+   - Look at the trigger node's type to determine the output structure
+   - For webhook triggers: include { headers: {}, query: {}, body: { ...fields } } since downstream nodes reference $json.body.fieldName
+   - For service-specific triggers (Gmail Trigger, Slack Trigger, etc.): match the service's real event/message output format
+   - For schedule triggers: include timestamp fields
+   - For manual triggers: include the fields that downstream nodes reference
+   - CRITICAL: check what downstream nodes reference (e.g., $json.body.email, $json.subject, $json.text) and ensure those paths exist in triggerContent
 3. Create a "nodeHints" object with one entry per node. Each hint describes what data that specific node's API response should contain, referencing entities from the global context.
 4. Hints should describe the DATA CONTENT, not the API response format. The mock server already knows the API schema.
 5. Ensure data flows logically through the workflow. If node A fetches items that node B processes, the items in A's hint should match what B expects.
@@ -145,7 +147,7 @@ function buildUserPrompt(
 
 	sections.push('', '## Expected Output', '', '```json', '{');
 	sections.push('  "globalContext": "Shared entities: ...",');
-	sections.push('  "triggerData": { "...fields matching what the workflow expects..." },');
+	sections.push('  "triggerContent": { "...exact output the trigger node would produce..." },');
 	sections.push('  "nodeHints": {');
 	for (let i = 0; i < Math.min(nodeNames.length, 3); i++) {
 		const comma = i < Math.min(nodeNames.length, 3) - 1 ? ',' : '';
@@ -163,7 +165,7 @@ function buildUserPrompt(
  */
 export async function generateMockHints(options: GenerateMockHintsOptions): Promise<MockHints> {
 	const { workflow, nodeNames, scenarioHints } = options;
-	const emptyHints: MockHints = { globalContext: '', nodeHints: {}, triggerData: {} };
+	const emptyHints: MockHints = { globalContext: '', nodeHints: {}, triggerContent: {} };
 
 	if (nodeNames.length === 0) return emptyHints;
 
@@ -195,9 +197,9 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 		return {
 			globalContext: parsed.globalContext,
 			nodeHints: parsed.nodeHints,
-			triggerData:
-				typeof parsed.triggerData === 'object' && parsed.triggerData !== null
-					? parsed.triggerData
+			triggerContent:
+				typeof parsed.triggerContent === 'object' && parsed.triggerContent !== null
+					? parsed.triggerContent
 					: {},
 		};
 	} catch {

@@ -16,7 +16,7 @@ import type { Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
 
 import { buildAgentTreeFromEvents } from './agent-tree-builder';
-import { EvalExecutionService } from './eval-execution.service';
+import { EvalExecutionService, type EvalExecutionOptions } from './eval-execution.service';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
@@ -394,15 +394,9 @@ export class InstanceAiController {
 		_res: Response,
 		@Param('workflowId') workflowId: string,
 	) {
-		const { triggerData, scenarioHints } = req.body as {
-			triggerData?: Record<string, unknown>;
-			scenarioHints?: string;
-		};
+		const options = req.body as EvalExecutionOptions;
 
-		return await this.evalExecutionService.executeWithLlmMock(workflowId, req.user, {
-			triggerData,
-			scenarioHints,
-		});
+		return await this.evalExecutionService.executeWithLlmMock(workflowId, req.user, options);
 	}
 
 	// ── Gateway endpoints (daemon ↔ server) ──────────────────────────────────
