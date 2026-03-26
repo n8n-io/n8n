@@ -5,6 +5,8 @@ packages:
   - packages/extensions/**
   - packages/testing/**
 
+catalogMode: strict
+
 catalog:
   '@azure/identity': 4.13.0
   '@codemirror/autocomplete': 6.20.0
