@@ -275,7 +275,7 @@ describe('useCanvasPreview', () => {
 			expect(ctx.isPreviewVisible.value).toBe(false);
 		});
 
-		test('clears data table state when switching to workflow preview', async () => {
+		test('does not auto-switch when a panel is already open', async () => {
 			const ctx = setup();
 			ctx.openDataTablePreview('dt-1', 'proj-1');
 			ctx.store.isStreaming = true;
@@ -295,9 +295,10 @@ describe('useCanvasPreview', () => {
 			];
 			await nextTick();
 
-			expect(ctx.activeDataTableId.value).toBeNull();
-			expect(ctx.activeDataTableProjectId.value).toBeNull();
-			expect(ctx.activeWorkflowId.value).toBe('wf-1');
+			// Panel already had a data table open — build should not auto-switch
+			expect(ctx.activeDataTableId.value).toBe('dt-1');
+			expect(ctx.activeDataTableProjectId.value).toBe('proj-1');
+			expect(ctx.activeWorkflowId.value).toBeNull();
 		});
 
 		test('increments workflowRefreshKey on each build', async () => {

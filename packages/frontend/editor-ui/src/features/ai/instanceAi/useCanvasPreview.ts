@@ -95,12 +95,10 @@ export function useCanvasPreview({ store, route }: UseCanvasPreviewOptions) {
 		(toolCallId) => {
 			if (!toolCallId || !latestBuildResult.value) return;
 
-			if (
-				!isPreviewVisible.value &&
-				!store.isStreaming &&
-				!userSentMessage.value &&
-				!wasCanvasOpenBeforeSwitch.value
-			) {
+			// If a panel is already open, don't auto-switch to a different artifact
+			if (isPreviewVisible.value) return;
+
+			if (!store.isStreaming && !userSentMessage.value && !wasCanvasOpenBeforeSwitch.value) {
 				return;
 			}
 
@@ -128,7 +126,11 @@ export function useCanvasPreview({ store, route }: UseCanvasPreviewOptions) {
 
 	watch(latestExecutionId, (execId) => {
 		if (!execId) return;
-		if (!isPreviewVisible.value && !store.isStreaming && !userSentMessage.value) return;
+
+		// If a panel is already open, don't auto-switch to a different artifact
+		if (isPreviewVisible.value) return;
+
+		if (!store.isStreaming && !userSentMessage.value) return;
 
 		activeDataTableId.value = null;
 		activeDataTableProjectId.value = null;
@@ -159,12 +161,10 @@ export function useCanvasPreview({ store, route }: UseCanvasPreviewOptions) {
 		(toolCallId) => {
 			if (!toolCallId || !latestDataTableResult.value) return;
 
-			if (
-				!isPreviewVisible.value &&
-				!store.isStreaming &&
-				!userSentMessage.value &&
-				!wasCanvasOpenBeforeSwitch.value
-			) {
+			// If a panel is already open, don't auto-switch to a different artifact
+			if (isPreviewVisible.value) return;
+
+			if (!store.isStreaming && !userSentMessage.value && !wasCanvasOpenBeforeSwitch.value) {
 				return;
 			}
 
