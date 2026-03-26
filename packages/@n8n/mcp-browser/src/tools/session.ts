@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import type { BrowserConnection } from '../connection';
 import { McpBrowserError } from '../errors';
-import type { ToolContext, ToolDefinition } from '../types';
+import type { AffectedResource, ToolContext, ToolDefinition } from '../types';
 import { browserNameSchema } from '../types';
 import { formatErrorResponse, formatCallToolResult } from '../utils';
 
@@ -60,6 +60,9 @@ function browserConnect(
 				);
 			}
 		},
+		getAffectedResources(_args, _context: ToolContext): AffectedResource[] {
+			return [{ toolGroup: 'browser', resource: 'browser', description: 'Connect to browser' }];
+		},
 	};
 }
 
@@ -91,6 +94,9 @@ function browserDisconnect(
 					new McpBrowserError(error instanceof Error ? error.message : String(error)),
 				);
 			}
+		},
+		getAffectedResources(_args, _context: ToolContext): AffectedResource[] {
+			return [{ toolGroup: 'browser', resource: 'browser', description: 'Disconnect from browser' }];
 		},
 	};
 }

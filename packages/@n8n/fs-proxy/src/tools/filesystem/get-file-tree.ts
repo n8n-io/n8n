@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import type { ToolDefinition } from '../types';
-import { resolveSafePath, scanDirectory } from './fs-utils';
+import { buildFilesystemResource, resolveSafePath, scanDirectory } from './fs-utils';
 
 const inputSchema = z.object({
 	dirPath: z.string().describe('Directory path relative to root (use "." for root)'),
@@ -13,6 +13,16 @@ export const getFileTreeTool: ToolDefinition<typeof inputSchema> = {
 	description: 'Get an indented directory tree',
 	inputSchema,
 	annotations: { defaultPermission: 'allow', readOnlyHint: true },
+	async getAffectedResources({ dirPath }, { dir }) {
+		return [
+			await buildFilesystemResource(
+				dir,
+				dirPath ?? '.',
+				'filesystemRead',
+				`List directory tree: ${dirPath ?? '.'}`,
+			),
+		];
+	},
 	async execute({ dirPath, maxDepth }, { dir }) {
 		const resolvedDir = await resolveSafePath(dir, dirPath || '.');
 		const depth = maxDepth ?? 2;

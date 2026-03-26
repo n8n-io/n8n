@@ -3,7 +3,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import pc from 'picocolors';
 
-import type { ResolvedGatewayConfig } from './config';
+import type { GatewayConfig, PermissionMode } from './config';
 import type { ToolDefinition } from './tools/types';
 
 // ── Logger core ──────────────────────────────────────────────────────────────
@@ -160,60 +160,58 @@ export function printBanner(): void {
 
 // ── Pretty output functions ──────────────────────────────────────────────────
 
-export function printModuleStatus(config: ResolvedGatewayConfig): void {
-	// Filesystem
-	if (config.filesystem !== false) {
-		const dir = formatPath(config.filesystem.dir);
-		const writeAccess = config.filesystem.writeAccess ? ', write access' : '';
-		logger.info(`  ${pc.green('✓')} Filesystem    ${pc.dim(dir + writeAccess)}`, {
-			module: 'Filesystem',
-			dir,
-			writeAccess: config.filesystem.writeAccess,
-		});
-		if (writeAccess) {
-			logger.info(`  ${pc.green('✓')} Filesystem write access`);
-		} else {
-			logger.info(pc.dim('  ✗ Filesystem write access'));
-		}
-	} else {
-		logger.info(pc.dim('  ✗ Filesystem'), { module: 'Filesystem', enabled: false });
-	}
+function permissionIcon(mode: PermissionMode): string {
+	if (mode === 'allow') return pc.green('✓');
+	if (mode === 'ask') return pc.yellow('?');
+	return pc.dim('✗');
+}
+
+export function printModuleStatus(config: GatewayConfig): void {
+	const { permissions } = config;
+
+	// Filesystem — read and write are separate permission groups
+	const fsRead = permissions.filesystemRead ?? 'deny';
+	const fsWrite: PermissionMode =
+		fsRead === 'deny' ? 'deny' : (permissions.filesystemWrite ?? 'deny');
+	const dir = pc.dim(formatPath(config.filesystem.dir));
+	logger.info(
+		`  ${permissionIcon(fsRead)} Filesystem read  ${fsRead !== 'deny' ? dir : pc.dim('(disabled)')}`,
+		{ module: 'FilesystemRead' },
+	);
+	logger.info(
+		`  ${permissionIcon(fsWrite)} Filesystem write ${fsWrite !== 'deny' ? dir : pc.dim('(disabled)')}`,
+		{ module: 'FilesystemWrite' },
+	);
 
 	// Shell
-	if (config.computer.shell !== false) {
-		const timeout = `timeout: ${config.computer.shell.timeout / 1000}s`;
-		logger.info(`  ${pc.green('✓')} Shell         ${pc.dim(timeout)}`, {
-			module: 'Shell',
-			timeout,
-		});
-	} else {
-		logger.info(pc.dim('  ✗ Shell'), { module: 'Shell', enabled: false });
-	}
+	const shellMode = permissions.shell ?? 'deny';
+	const shellDetail =
+		shellMode === 'deny'
+			? pc.dim('(disabled)')
+			: pc.dim(`timeout: ${config.computer.shell.timeout / 1000}s`);
+	logger.info(`  ${permissionIcon(shellMode)} Shell         ${shellDetail}`, { module: 'Shell' });
 
-	// Screenshot
-	if (config.computer.screenshot !== false) {
-		logger.info(`  ${pc.green('✓')} Screenshot`, { module: 'Screenshot' });
-	} else {
-		logger.info(pc.dim('  ✗ Screenshot'), { module: 'Screenshot', enabled: false });
-	}
-
-	// Mouse/keyboard
-	if (config.computer.mouseKeyboard !== false) {
-		logger.info(`  ${pc.green('✓')} Mouse/keyboard`, { module: 'MouseKeyboard' });
-	} else {
-		logger.info(pc.dim('  ✗ Mouse/keyboard'), { module: 'MouseKeyboard', enabled: false });
-	}
+	// Computer — Screenshot + Mouse/keyboard share the same group
+	const computerMode = permissions.computer ?? 'deny';
+	const computerDisabled = pc.dim('(disabled)');
+	logger.info(
+		`  ${permissionIcon(computerMode)} Screenshot    ${computerMode === 'deny' ? computerDisabled : ''}`,
+		{ module: 'Screenshot' },
+	);
+	logger.info(
+		`  ${permissionIcon(computerMode)} Mouse/keyboard ${computerMode === 'deny' ? computerDisabled : ''}`,
+		{ module: 'MouseKeyboard' },
+	);
 
 	// Browser
-	if (config.browser !== false) {
-		const { defaultBrowser } = config.browser;
-		logger.info(`  ${pc.green('✓')} Browser       ${pc.dim(defaultBrowser)}`, {
-			module: 'Browser',
-			detail: defaultBrowser,
-		});
-	} else {
-		logger.info(pc.dim('  ✗ Browser'), { module: 'Browser', enabled: false });
-	}
+	const browserMode = permissions.browser ?? 'deny';
+	const browserDetail =
+		browserMode === 'deny'
+			? pc.dim('(disabled)')
+			: pc.dim(config.browser.defaultBrowser);
+	logger.info(`  ${permissionIcon(browserMode)} Browser       ${browserDetail}`, {
+		module: 'Browser',
+	});
 
 	logger.info('');
 }

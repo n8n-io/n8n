@@ -1,6 +1,8 @@
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import type { z } from 'zod';
 
+import type { ToolGroup } from '../config';
+
 export type { CallToolResult };
 
 export interface McpTool {
@@ -34,12 +36,33 @@ export interface ToolAnnotations {
 	openWorldHint?: boolean;
 }
 
+export interface AffectedResource {
+	toolGroup: ToolGroup;
+	resource: string;
+	description: string;
+}
+
+export type ResourceDecision =
+	| 'allowOnce'
+	| 'allowForSession'
+	| 'alwaysAllow'
+	| 'denyOnce'
+	| 'alwaysDeny';
+
+export type ConfirmResourceAccess = (
+	resource: AffectedResource,
+) => ResourceDecision | Promise<ResourceDecision>;
+
 export interface ToolDefinition<TSchema extends z.ZodType = z.ZodType> {
 	name: string;
 	description: string;
 	inputSchema: TSchema;
 	annotations?: ToolAnnotations;
 	execute(args: z.infer<TSchema>, context: ToolContext): CallToolResult | Promise<CallToolResult>;
+	getAffectedResources(
+		args: z.infer<TSchema>,
+		context: ToolContext,
+	): AffectedResource[] | Promise<AffectedResource[]>;
 }
 
 export interface ToolModule {

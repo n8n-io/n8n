@@ -1,4 +1,5 @@
-import type { ResolvedGatewayConfig } from '@n8n/fs-proxy/config';
+import type { GatewayConfig } from '@n8n/fs-proxy/config';
+import type { DaemonOptions } from '@n8n/fs-proxy/daemon';
 import { startDaemon } from '@n8n/fs-proxy/daemon';
 import { logger } from '@n8n/fs-proxy/logger';
 import { EventEmitter } from 'node:events';
@@ -31,7 +32,7 @@ export class DaemonController extends EventEmitter<DaemonControllerEvents> {
 		return this._status !== 'stopped';
 	}
 
-	start(config: ResolvedGatewayConfig, confirmConnect: (url: string) => boolean): void {
+	start(config: GatewayConfig, confirmConnect: (url: string) => boolean): void {
 		if (this.server) {
 			logger.debug('Daemon start requested but already running — ignoring');
 			return;
@@ -42,10 +43,11 @@ export class DaemonController extends EventEmitter<DaemonControllerEvents> {
 
 		this.setStatus('starting');
 
-		this.server = startDaemon(config, {
+		const options: DaemonOptions = {
 			managedMode: true,
 			approvalMethod: 'app',
 			confirmConnect,
+			confirmResourceAccess: () => 'denyOnce' as const,
 			onStatusChange: (status, url) => {
 				if (status === 'connected') {
 					logger.info('Daemon connected', { url });
@@ -59,7 +61,8 @@ export class DaemonController extends EventEmitter<DaemonControllerEvents> {
 					this.setStatus('disconnected');
 				}
 			},
-		});
+		};
+		this.server = startDaemon(config, options);
 
 		// Server is now listening (or will be shortly) — mark as waiting
 		this.server.once('listening', () => {

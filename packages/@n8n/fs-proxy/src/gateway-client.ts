@@ -2,7 +2,7 @@ import { EventSource } from 'eventsource';
 import * as os from 'node:os';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
-import type { ResolvedGatewayConfig } from './config';
+import type { GatewayConfig } from './config';
 import {
 	logger,
 	printAuthFailure,
@@ -13,12 +13,19 @@ import {
 	printToolCall,
 	printToolResult,
 } from './logger';
+import type { SettingsStore } from './settings-store';
 import type { BrowserModule } from './tools/browser';
 import { filesystemReadTools, filesystemWriteTools } from './tools/filesystem';
 import { MouseKeyboardModule } from './tools/mouse-keyboard';
 import { ScreenshotModule } from './tools/screenshot';
 import { ShellModule } from './tools/shell';
-import type { CallToolResult, McpTool, ToolDefinition } from './tools/types';
+import type {
+	AffectedResource,
+	CallToolResult,
+	ConfirmResourceAccess,
+	McpTool,
+	ToolDefinition,
+} from './tools/types';
 import { formatErrorResult } from './tools/utils';
 
 const MAX_RECONNECT_DELAY_MS = 30_000;
@@ -35,7 +42,9 @@ function tagCategory(defs: ToolDefinition[], category: string): ToolDefinition[]
 export interface GatewayClientOptions {
 	url: string;
 	apiKey: string;
-	config: ResolvedGatewayConfig;
+	config: GatewayConfig;
+	settingsStore: SettingsStore;
+	confirmResourceAccess: ConfirmResourceAccess;
 	/** Called when the client gives up reconnecting after persistent auth failures. */
 	onPersistentFailure?: () => void;
 }
@@ -86,10 +95,8 @@ export class GatewayClient {
 		return this.sessionKey ?? this.options.apiKey;
 	}
 
-	/** Resolved filesystem directory, or cwd as fallback. */
 	private get dir(): string {
-		const fs = this.options.config.filesystem;
-		return fs !== false ? fs.dir : process.cwd();
+		return this.options.config.filesystem.dir;
 	}
 
 	/** Start the client: upload capabilities, connect SSE, handle requests. */
@@ -111,6 +118,8 @@ export class GatewayClient {
 	/** Notify the server we're disconnecting, then close the SSE connection. */
 	async disconnect(): Promise<void> {
 		this.shouldReconnect = false;
+		this.options.settingsStore.clearSessionRules();
+
 		// POST the disconnect notification BEFORE closing EventSource.
 		// The EventSource keeps the Node.js event loop alive — if we close it
 		// first, Node may exit before the fetch completes.
@@ -145,23 +154,26 @@ export class GatewayClient {
 	private async getAllDefinitions(): Promise<ToolDefinition[]> {
 		if (this.allDefinitions) return this.allDefinitions;
 
-		const { config } = this.options;
+		const { config, settingsStore } = this.options;
 		const defs: ToolDefinition[] = [];
 		const categories: Array<{ name: string; enabled: boolean; writeAccess?: boolean }> = [];
 
-		// Filesystem — always report
-		if (config.filesystem !== false) {
+		// Filesystem
+		const fsReadEnabled = settingsStore.getGroupMode('filesystemRead') !== 'deny';
+		const fsWriteEnabled = settingsStore.getGroupMode('filesystemWrite') !== 'deny';
+		if (fsReadEnabled) {
 			defs.push(...tagCategory(filesystemReadTools, 'filesystem'));
-			const hasWrite = config.filesystem.writeAccess;
-			if (hasWrite) {
-				defs.push(...tagCategory(filesystemWriteTools, 'filesystem'));
-			}
-			categories.push({ name: 'filesystem', enabled: true, writeAccess: hasWrite });
-		} else {
-			categories.push({ name: 'filesystem', enabled: false });
 		}
+		if (fsWriteEnabled) {
+			defs.push(...tagCategory(filesystemWriteTools, 'filesystem'));
+		}
+		categories.push({
+			name: 'filesystem',
+			enabled: fsReadEnabled || fsWriteEnabled,
+			writeAccess: fsWriteEnabled,
+		});
 
-		// Computer use modules — always report all
+		// Computer use modules — check permission mode and platform support
 		const computerModules: Array<{
 			name: string;
 			category: string;
@@ -171,37 +183,40 @@ export class GatewayClient {
 			{
 				name: 'Shell',
 				category: 'shell',
-				enabled: config.computer.shell !== false,
+				enabled: settingsStore.getGroupMode('shell') !== 'deny',
 				module: ShellModule,
 			},
 			{
 				name: 'Screenshot',
 				category: 'screenshot',
-				enabled: config.computer.screenshot !== false,
+				enabled: settingsStore.getGroupMode('computer') !== 'deny',
 				module: ScreenshotModule,
 			},
 			{
 				name: 'MouseKeyboard',
 				category: 'mouse-keyboard',
-				enabled: config.computer.mouseKeyboard !== false,
+				enabled: settingsStore.getGroupMode('computer') !== 'deny',
 				module: MouseKeyboardModule,
 			},
 		];
 
 		for (const { name, category, enabled, module } of computerModules) {
-			if (enabled && (await module.isSupported())) {
+			if (!enabled) {
+				logger.debug('Module denied by permission, skipping', { module: name });
+				categories.push({ name: category, enabled: false });
+				continue;
+			}
+			if (await module.isSupported()) {
 				defs.push(...tagCategory(module.definitions, category));
 				categories.push({ name: category, enabled: true });
 			} else {
-				if (enabled) {
-					logger.debug('Module not supported on this platform, skipping', { module: name });
-				}
+				logger.debug('Module not supported on this platform, skipping', { module: name });
 				categories.push({ name: category, enabled: false });
 			}
 		}
 
-		// Browser — always report
-		if (config.browser !== false) {
+		// Browser
+		if (settingsStore.getGroupMode('browser') !== 'deny') {
 			const { BrowserModule: BrowserModuleClass } = await import('./tools/browser');
 			this.browserModule = await BrowserModuleClass.create({
 				...config.browser,
@@ -217,6 +232,7 @@ export class GatewayClient {
 				categories.push({ name: 'browser', enabled: false });
 			}
 		} else {
+			logger.debug('Module denied by permission, skipping', { module: 'Browser' });
 			categories.push({ name: 'browser', enabled: false });
 		}
 
@@ -367,12 +383,51 @@ export class GatewayClient {
 		name: string,
 		args: Record<string, unknown>,
 	): Promise<CallToolResult> {
-		// Ensure definitions are initialized (getAllDefinitions is idempotent)
 		await this.getAllDefinitions();
 		const def = this.definitionMap.get(name);
 		if (!def) throw new Error(`Unknown tool: ${name}`);
 		const typedArgs: unknown = def.inputSchema.parse(args);
-		return await def.execute(typedArgs, { dir: this.dir });
+		const context = { dir: this.dir };
+
+		const resources = await def.getAffectedResources(typedArgs, context);
+		await this.checkPermissions(resources);
+
+		return await def.execute(typedArgs, context);
+	}
+
+	private async checkPermissions(resources: AffectedResource[]): Promise<void> {
+		const { settingsStore, confirmResourceAccess } = this.options;
+
+		for (const resource of resources) {
+			const rule = settingsStore.check(resource.toolGroup, resource.resource);
+
+			if (rule === 'deny') {
+				throw new Error(`User denied access to ${resource.toolGroup}: ${resource.resource}`);
+			}
+
+			if (rule === 'allow') continue;
+
+			const decision = await confirmResourceAccess(resource);
+
+			switch (decision) {
+				case 'allowOnce':
+					break;
+				case 'allowForSession':
+					settingsStore.allowForSession(resource.toolGroup, resource.resource);
+					break;
+				case 'alwaysAllow':
+					settingsStore.alwaysAllow(resource.toolGroup, resource.resource);
+					break;
+				case 'alwaysDeny':
+					settingsStore.alwaysDeny(resource.toolGroup, resource.resource);
+					throw new Error(
+						`User permanently denied access to ${resource.toolGroup}: ${resource.resource}`,
+					);
+				default:
+				case 'denyOnce':
+					throw new Error(`User denied access to ${resource.toolGroup}: ${resource.resource}`);
+			}
+		}
 	}
 
 	private async postResponse(requestId: string, result: CallToolResult): Promise<void> {

@@ -27,6 +27,9 @@ defineSlots<{
 	'after-tool-call'?: (props: { toolCall: InstanceAiToolCallState }) => unknown;
 }>();
 
+/** Tool calls that are internal bookkeeping and should not be shown to the user. */
+const HIDDEN_TOOLS = new Set(['updateWorkingMemory']);
+
 /** Index tool calls by ID for O(1) lookup and proper reactivity tracking. */
 const toolCallsById = computed(() => {
 	const map: Record<string, InstanceAiToolCallState> = {};
@@ -66,8 +69,14 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 				<InstanceAiMarkdown :content="entry.content" />
 			</div>
 
-			<!-- Tool call -->
-			<template v-else-if="entry.type === 'tool-call' && toolCallsById[entry.toolCallId]">
+			<!-- Tool call (skip internal tools like updateWorkingMemory) -->
+			<template
+				v-else-if="
+					entry.type === 'tool-call' &&
+					toolCallsById[entry.toolCallId] &&
+					!HIDDEN_TOOLS.has(toolCallsById[entry.toolCallId].toolName)
+				"
+			>
 				<TaskChecklist
 					v-if="toolCallsById[entry.toolCallId].renderHint === 'tasks'"
 					:tasks="props.agentNode.tasks"

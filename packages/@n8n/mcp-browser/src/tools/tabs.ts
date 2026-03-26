@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { BrowserConnection } from '../connection';
 import type { ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
-import { createConnectedTool, withSnapshotEnvelope } from './helpers';
+import { createConnectedTool, extractDomain, withSnapshotEnvelope } from './helpers';
 
 export function createTabTools(connection: BrowserConnection): ToolDefinition[] {
 	return [tabOpen(connection), tabList(connection), tabFocus(connection), tabClose(connection)];
@@ -37,6 +37,7 @@ function tabOpen(connection: BrowserConnection): ToolDefinition {
 		},
 		tabOpenOutputSchema,
 		{ autoSnapshot: true, waitForCompletion: true },
+		(args) => (args.url ? extractDomain(args.url) : 'browser'),
 	);
 }
 

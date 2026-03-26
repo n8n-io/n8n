@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { BrowserConnection } from '../connection';
 import type { ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
-import { createConnectedTool, pageIdField, withSnapshotEnvelope } from './helpers';
+import { createConnectedTool, extractDomain, pageIdField, withSnapshotEnvelope } from './helpers';
 
 const waitUntilField = z
 	.enum(['load', 'domcontentloaded', 'networkidle'])
@@ -43,6 +43,7 @@ function browserNavigate(connection: BrowserConnection): ToolDefinition {
 		},
 		browserNavigateOutputSchema,
 		{ autoSnapshot: true, waitForCompletion: true },
+		(args) => extractDomain(args.url),
 	);
 }
 

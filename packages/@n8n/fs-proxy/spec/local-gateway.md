@@ -179,9 +179,153 @@ are independent — read-only mode remains the default.
 
 ---
 
-## Human-in-the-Loop (HITL)
+## Permission Management
 
-> **Work in progress.** This section will define how the AI requests user
-> confirmation before performing sensitive or destructive local operations
-> (e.g. executing a shell command, clicking a UI element). Details to be
-> specified.
+The Local Gateway uses a two-tier permission model: **tool group permission
+modes** (coarse-grained, configured at startup) and **resource-level rules**
+(fine-grained, confirmed at runtime during tool execution).
+
+### Tool Group Permission Modes
+
+Each tool group has an independent permission mode, configured before the
+gateway connects and stored in the gateway configuration file.
+
+| Tool Group | Available Modes |
+|---|---|
+| Filesystem Access | Deny / Ask / Allow |
+| Filesystem Write Access | Deny / Ask / Allow |
+| Shell Execution | Deny / Ask / Allow |
+| Computer Control | Deny / Ask / Allow |
+| Browser Automation | Deny / Ask / Allow |
+
+**Deny** — The tool group is disabled. Its tools are not registered with the
+n8n instance; the AI has no knowledge of them.
+
+**Ask** — The tool group is enabled. Before each tool execution the user is
+prompted to confirm. Confirmation is scoped to a resource (see below).
+Existing resource-level rules are applied automatically without prompting.
+
+**Allow** — The tool group is enabled. All tool calls execute without user
+confirmation. Resource-level `always allow` rules have no effect in this mode.
+Permanently stored `always deny` rules still take precedence and will block
+the matching resources.
+
+**Constraints:**
+
+- The gateway cannot start unless at least one tool group is set to `Ask` or
+  `Allow`.
+- If Filesystem Access is set to `Deny`, Filesystem Write Access is also
+  disabled regardless of its own mode.
+
+---
+
+### Resource-Level Rules
+
+When a tool group operates in `Ask` mode, confirmation is scoped to a
+**resource**. The resource is defined by the tool itself. For Browser
+Automation the resource is the **domain** (e.g. `github.com`). For Shell
+Execution the resource is the **normalized command**: wrapper commands
+(`sudo`, `env`, etc.) and environment variable assignments are stripped, and
+the executable basename replaces an absolute path (e.g. `sudo apt install foo`
+→ `apt install foo`). Compound or otherwise unrecognizable commands (chained
+operators, command substitution, variable-indirect execution, relative paths)
+are returned as-is so the full command is visible in the confirmation prompt.
+For other tool groups the resource is determined by the respective tool.
+
+Resource-level `always deny` rules take precedence over the tool group
+permission mode. A resource with a stored `always deny` rule is blocked
+regardless of whether the tool group is set to `Ask` or `Allow`. All
+other resource-level rules (`allow once`, `allow for session`, `always allow`)
+apply only when the tool group is in `Ask` mode.
+
+#### Rule Types
+
+| Rule | Effect | Persistence |
+|---|---|---|
+| Allow once | Execute this specific invocation only | Not stored |
+| Allow for session | Execute all invocations of this resource until the session ends | In-memory, cleared on session end |
+| Always allow | Execute all future invocations of this resource | Stored permanently in config |
+| Deny once | Block this specific invocation only | Not stored |
+| Always deny | Block all future invocations of this resource | Stored permanently in config |
+
+Permanently stored resource-level rules (`always allow`, `always deny`) are
+stored in the gateway configuration file, separately from the tool group
+permission modes.
+
+---
+
+### Runtime Confirmation Prompt
+
+When a tool group is in `Ask` mode and no stored rule applies to the resource,
+the user is presented with a confirmation prompt. The prompt shows:
+
+- The tool group being used
+- The resource being accessed (domain, command, path, etc.)
+- A description of the action the AI intends to perform
+- The confirmation options: `Allow once`, `Allow for session`, `Always allow`,
+  `Deny once`, `Always deny`
+
+---
+
+### Session
+
+A session is defined as a single active connection between the Local Gateway
+and the n8n instance. A session ends when the user explicitly disconnects or
+the n8n instance terminates the connection. A temporary network interruption
+followed by automatic reconnection is considered part of the same session.
+
+`Allow for session` rules persist across such re-connections and are cleared
+only when the session ends.
+
+---
+
+## Startup Configuration
+
+### Permission Setup
+
+Before the gateway connects, the user must configure the permission mode for
+each tool group. The gateway will not start unless at least one tool group is
+enabled (`Ask` or `Allow`).
+
+**CLI** — An interactive prompt lists each tool group with its current mode.
+If a valid configuration already exists the user can confirm it with `y` or
+edit individual modes before proceeding.
+
+**Native application** — The user sees an equivalent configuration UI.
+
+### Filesystem Root Directory
+
+When any filesystem tool group (Filesystem Access or Filesystem Write Access)
+is enabled, the user must specify a root directory. The AI can only access
+paths within this directory — all operations on paths outside are rejected.
+This applies to both read and write operations.
+
+### Configuration Templates
+
+To simplify first-time setup, three templates are available. When no
+configuration file exists the user selects a template before editing
+individual modes.
+
+| Template | Filesystem Access | Filesystem Write Access | Shell Execution | Computer Control | Browser Automation |
+|---|---|---|---|---|---|
+| **Recommended** (default) | Allow | Ask | Deny | Deny | Ask |
+| **Yolo** | Allow | Allow | Allow | Allow | Allow |
+| **Custom** | User-defined | User-defined | User-defined | User-defined | User-defined |
+
+Regardless of template, the filesystem root directory must always be provided
+when any filesystem capability is enabled.
+
+### Configuration File
+
+The gateway configuration is stored in a file managed by the Local Gateway
+application. Whether the configuration persists across restarts depends on
+whether the process has OS-level write access to that file — this is
+independent of the permission model for tools. If write access is unavailable
+the configuration is active only for the lifetime of the current process.
+
+The configuration file stores:
+
+- Permission mode per tool group
+- Filesystem root directory (required when any filesystem capability is
+  enabled)
+- Permanently stored resource-level rules (`always allow` / `always deny`)

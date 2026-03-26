@@ -781,7 +781,10 @@ export interface OrchestrationContext {
 	/** Thread-scoped iteration log for accumulating attempt history across retries */
 	iterationLog?: IterationLog;
 	/** Send a correction message to a running background task */
-	sendCorrectionToTask?: (taskId: string, correction: string) => void;
+	sendCorrectionToTask?: (
+		taskId: string,
+		correction: string,
+	) => 'queued' | 'task-completed' | 'task-not-found';
 	/** Shared workflow-task state service for build / verify / credential-finalize flows */
 	workflowTaskService?: WorkflowTaskService;
 }

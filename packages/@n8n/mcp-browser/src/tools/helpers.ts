@@ -2,7 +2,13 @@ import type { z } from 'zod';
 
 import type { BrowserConnection } from '../connection';
 import { createLogger } from '../logger';
-import type { CallToolResult, ConnectionState, ToolContext, ToolDefinition } from '../types';
+import type {
+	AffectedResource,
+	CallToolResult,
+	ConnectionState,
+	ToolContext,
+	ToolDefinition,
+} from '../types';
 import { buildErrorResponse, enrichResponse, resolvePageContext } from './response-envelope';
 
 const log = createLogger('connected-tool');
@@ -40,6 +46,18 @@ export interface ConnectedToolOptions {
 }
 
 // ---------------------------------------------------------------------------
+// Domain extraction helper
+// ---------------------------------------------------------------------------
+
+export function extractDomain(url: string): string {
+	try {
+		return new URL(url).hostname || 'browser';
+	} catch {
+		return 'browser';
+	}
+}
+
+// ---------------------------------------------------------------------------
 // Tool factory: connection-scoped tool with automatic page resolution
 // ---------------------------------------------------------------------------
 
@@ -58,6 +76,7 @@ export function createConnectedTool<
 	fn: (state: ConnectionState, input: z.infer<TSchema>, pageId: string) => Promise<CallToolResult>,
 	outputSchema?: z.ZodObject<z.ZodRawShape>,
 	options?: ConnectedToolOptions,
+	getResourceFromArgs?: (args: z.infer<TSchema>) => string,
 ): ToolDefinition<TSchema> {
 	return {
 		name,
@@ -89,5 +108,22 @@ export function createConnectedTool<
 				return await buildErrorResponse(error, connection, args, options ?? {});
 			}
 		},
+		getAffectedResources(args: z.infer<TSchema>, _context: ToolContext): AffectedResource[] {
+			const resource = getResourceFromArgs
+				? getResourceFromArgs(args)
+				: getConnectionResource(connection);
+			return [{ toolGroup: 'browser', resource, description: `Browser: ${resource}` }];
+		},
 	};
+}
+
+function getConnectionResource(connection: BrowserConnection): string {
+	try {
+		const state = connection.getConnection();
+		const activePage = state.pages.get(state.activePageId);
+		return activePage?.url ? extractDomain(activePage.url) : 'browser';
+	} catch {
+		// Not connected or other error — use generic resource
+		return 'browser';
+	}
 }

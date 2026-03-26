@@ -178,6 +178,16 @@ export interface ToolDefinition<TSchema extends z.ZodType = z.ZodType> {
 	inputSchema: TSchema;
 	outputSchema?: z.ZodObject<z.ZodRawShape>;
 	execute(args: z.infer<TSchema>, context: ToolContext): CallToolResult | Promise<CallToolResult>;
+	getAffectedResources(
+		args: z.infer<TSchema>,
+		context: ToolContext,
+	): AffectedResource[] | Promise<AffectedResource[]>;
+}
+
+export interface AffectedResource {
+	toolGroup: 'browser';
+	resource: string;
+	description: string;
 }
 
 export interface BrowserToolkit {
