@@ -67,18 +67,23 @@ export interface GetChatPayloadOptions {
 	message: string;
 	workflowId: string;
 	featureFlags?: BuilderFeatureFlags;
+	/** Full workflowContext from dataset (overrides default empty context) */
+	workflowContext?: ChatPayload['workflowContext'];
+	/** Builder mode from dataset */
+	mode?: 'build' | 'plan';
 }
 
 export function getChatPayload(options: GetChatPayloadOptions): ChatPayload {
-	const { evalType, message, workflowId, featureFlags } = options;
+	const { evalType, message, workflowId, featureFlags, workflowContext, mode } = options;
 
 	return {
 		id: `${evalType}-${uuid()}`,
 		featureFlags: featureFlags ?? DEFAULTS.FEATURE_FLAGS,
 		message,
-		workflowContext: {
+		workflowContext: workflowContext ?? {
 			currentWorkflow: { id: workflowId, nodes: [], connections: {} },
 		},
+		...(mode ? { mode } : {}),
 	};
 }
 
