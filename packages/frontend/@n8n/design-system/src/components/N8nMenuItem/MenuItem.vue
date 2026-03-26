@@ -1,16 +1,15 @@
 <script lang="ts" setup>
+import type { IMenuItem } from '@n8n/design-system/types';
 import { computed } from 'vue';
 
-import type { IMenuItem } from '@n8n/design-system/types';
-
 import BetaTag from '../BetaTag/BetaTag.vue';
-import PreviewTag from '../PreviewTag/PreviewTag.vue';
 import N8nIcon from '../N8nIcon';
 import type { IconName } from '../N8nIcon/icons';
 import N8nRoute from '../N8nRoute';
 import N8nTag from '../N8nTag';
 import N8nText from '../N8nText';
 import N8nTooltip from '../N8nTooltip';
+import PreviewTag from '../PreviewTag/PreviewTag.vue';
 
 const props = defineProps<{
 	item: IMenuItem;
