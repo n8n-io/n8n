@@ -14,7 +14,11 @@ COPY package.json pnpm-lock.yaml turbo.json ./
 COPY . .
 
 # 2. Install and Build
-RUN pnpm install
+RUN npm pkg delete scripts.prepare && \
+    pnpm install --no-frozen-lockfile
+
+
+ENV NODE_OPTIONS="--max-old-space-size=8192"
 RUN pnpm build
 
 # 3. Create Tapis configuration
