@@ -64,7 +64,8 @@ afterAll(async () => {
 
 async function executeWorkflow(
 	workflow: WorkflowEntity,
-	mode: 'webhook' | 'trigger' | 'manual' = 'webhook',
+	mode: 'webhook' | 'trigger' | 'manual' | 'retry' = 'webhook',
+	retryOf?: string,
 ): Promise<string> {
 	const executionData = createRunExecutionData({});
 	return await workflowRunner.run(
@@ -73,6 +74,7 @@ async function executeWorkflow(
 			userId: project.id,
 			executionMode: mode,
 			executionData,
+			retryOf,
 		},
 		true,
 	);
@@ -180,6 +182,32 @@ describe('Workflow tracing', () => {
 			[ATTR.EXECUTION_ID]: executionId,
 			[ATTR.EXECUTION_STATUS]: 'error',
 			[ATTR.EXECUTION_IS_RETRY]: false,
+		});
+		expect(spans[0].attributes[ATTR.EXECUTION_ERROR_TYPE]).toBe('UnknownError');
+	});
+
+	it('should set retry span attributes for retried executions', async () => {
+		const workflow = await createWorkflow(
+			{ name: 'Retried Workflow', ...createSimpleWorkflowFixture() },
+			project,
+		);
+
+		const originalExecutionId = await executeWorkflow(workflow, 'webhook');
+		await waitForExecution(originalExecutionId);
+
+		const retriedExecutionId = await executeWorkflow(workflow, 'retry', originalExecutionId);
+		await waitForExecution(retriedExecutionId);
+
+		const spans = otel.getFinishedSpans();
+		const retrySpan = spans.find(
+			(span) => span.attributes[ATTR.EXECUTION_ID] === retriedExecutionId,
+		);
+
+		expect(retrySpan).toBeDefined();
+		expect(retrySpan!.attributes).toMatchObject({
+			[ATTR.EXECUTION_MODE]: 'retry',
+			[ATTR.EXECUTION_IS_RETRY]: true,
+			[ATTR.EXECUTION_RETRY_OF]: originalExecutionId,
 		});
 	});
 
