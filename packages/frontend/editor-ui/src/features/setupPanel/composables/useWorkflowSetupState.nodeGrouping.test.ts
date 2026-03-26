@@ -10,7 +10,6 @@ import type { INodeUi } from '@/Interface';
 
 import { useWorkflowSetupState } from '@/features/setupPanel/composables/useWorkflowSetupState';
 
-let mockOnCredentialDeleted: ((credentialId: string) => void) | undefined;
 const mockProjectsStore = {
 	currentProjectId: undefined as string | undefined,
 	personalProject: null as { id: string } | null,
@@ -24,10 +23,7 @@ vi.mock('@/features/credentials/credentials.store', async () => {
 	const actual = await vi.importActual('@/features/credentials/credentials.store');
 	return {
 		...actual,
-		listenForCredentialChanges: vi.fn((opts: { onCredentialDeleted?: (id: string) => void }) => {
-			mockOnCredentialDeleted = opts.onCredentialDeleted;
-			return vi.fn();
-		}),
+		listenForCredentialChanges: vi.fn(() => vi.fn()),
 	};
 });
 
@@ -136,7 +132,6 @@ describe('useWorkflowSetupState – node grouping', () => {
 		mockUpdateNodeCredentialIssuesByName.mockReset();
 		mockUpdateNodesCredentialsIssues.mockReset();
 		mockGetNodeParametersIssues.mockReset().mockReturnValue({});
-		mockOnCredentialDeleted = undefined;
 		mockProjectsStore.currentProjectId = undefined;
 		mockProjectsStore.personalProject = null;
 		mockRoute.params = {};
