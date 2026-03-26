@@ -2,6 +2,7 @@ import type { StartedNetwork } from 'testcontainers';
 import { GenericContainer, Wait } from 'testcontainers';
 
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
+import { EXPORTER_PORT } from './postgres-exporter';
 import type { HelperContext, Service, ServiceResult, StartContext } from './types';
 
 const VICTORIA_METRICS_HTTP_PORT = 8428;
@@ -47,12 +48,12 @@ function generateScrapeConfig(targets: ScrapeTarget[]): string {
     static_configs:
 ${targetConfigs}
     metrics_path: '/metrics'
-    scrape_interval: '5s'`);
+    scrape_interval: '2s'`);
 	}
 
 	return `
 global:
-  scrape_interval: 15s
+  scrape_interval: 2s
 
 scrape_configs:
 ${scrapeConfigs.join('\n')}
@@ -81,6 +82,17 @@ export const victoriaMetrics: Service<VictoriaMetricsResult> = {
 				instance: `n8n-worker-${i}`,
 				host: `${projectName}-n8n-worker-${i}`,
 				port: 5678,
+			});
+		}
+
+		// Add postgres-exporter scrape target when it will be started
+		const services = ctx.config.services ?? [];
+		if (ctx.usePostgres && services.includes('victoriaMetrics')) {
+			scrapeTargets.push({
+				job: 'postgres',
+				instance: 'postgres',
+				host: 'postgres-exporter',
+				port: EXPORTER_PORT,
 			});
 		}
 
@@ -154,6 +166,21 @@ export interface WaitForMetricOptions {
 
 export class MetricsHelper {
 	constructor(private readonly endpoint: string) {}
+
+	async exportAll(options: { start?: string; end?: string } = {}): Promise<string> {
+		const params = new URLSearchParams({
+			'match[]': '{__name__=~".+"}',
+		});
+		if (options.start) params.set('start', options.start);
+		if (options.end) params.set('end', options.end);
+
+		const response = await fetch(`${this.endpoint}/api/v1/export?${params}`);
+		if (!response.ok) {
+			throw new Error(`VictoriaMetrics export failed: ${response.status}`);
+		}
+
+		return await response.text();
+	}
 
 	async query(query: string): Promise<MetricResult[]> {
 		const response = await fetch(`${this.endpoint}/api/v1/query?${new URLSearchParams({ query })}`);

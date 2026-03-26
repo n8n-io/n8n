@@ -3,6 +3,7 @@ import type { GlobalConfig, SecurityConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { BinaryDataConfig, InstanceSettings } from 'n8n-core';
+import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsOverwrites } from '@/credentials-overwrites';
@@ -11,6 +12,7 @@ import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { MfaService } from '@/mfa/mfa.service';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import type { PushConfig } from '@/push/push.config';
+import type { AiUsageService } from '@/services/ai-usage.service';
 import { FrontendService, type PublicFrontendSettings } from '@/services/frontend.service';
 import type { UrlService } from '@/services/url.service';
 import type { UserManagementMailer } from '@/user-management/email';
@@ -58,6 +60,9 @@ describe('FrontendService', () => {
 			saml: { loginEnabled: false },
 			oidc: { loginEnabled: false },
 		},
+		credentials: {
+			overwrite: { skipTypes: [] },
+		},
 	});
 
 	const instanceSettings = mock<InstanceSettings>({
@@ -72,6 +77,10 @@ describe('FrontendService', () => {
 
 	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>({
 		addPostProcessor: jest.fn(),
+		collectTypes: jest.fn().mockResolvedValue({
+			credentials: [],
+			nodes: [],
+		}),
 		types: {
 			credentials: [],
 			nodes: [],
@@ -107,7 +116,7 @@ describe('FrontendService', () => {
 		isDebugInEditorLicensed: jest.fn().mockReturnValue(false),
 		isWorkerViewLicensed: jest.fn().mockReturnValue(false),
 		isAdvancedPermissionsLicensed: jest.fn().mockReturnValue(false),
-		isApiKeyScopesEnabled: jest.fn().mockReturnValue(false),
+
 		getVariablesLimit: jest.fn().mockReturnValue(0),
 		getTeamProjectLimit: jest.fn().mockReturnValue(0),
 		isBinaryDataS3Licensed: jest.fn().mockReturnValue(false),
@@ -153,6 +162,10 @@ describe('FrontendService', () => {
 		hasInstanceOwner: jest.fn().mockReturnValue(false),
 	});
 
+	const aiUsageService = mock<AiUsageService>({
+		getAiUsageSettings: jest.fn().mockResolvedValue(true),
+	});
+
 	const createMockService = () => {
 		Container.set(
 			CommunityPackagesConfig,
@@ -179,6 +192,7 @@ describe('FrontendService', () => {
 				moduleRegistry,
 				mfaService,
 				ownershipService,
+				aiUsageService,
 			),
 			license,
 		};
@@ -225,6 +239,7 @@ describe('FrontendService', () => {
 					},
 				},
 				authCookie: { secure: false },
+				communityNodesEnabled: false,
 				previewMode: false,
 				enterprise: { saml: false, ldap: false, oidc: false },
 			};
@@ -253,6 +268,7 @@ describe('FrontendService', () => {
 					},
 				},
 				authCookie: { secure: false },
+				communityNodesEnabled: false,
 				previewMode: false,
 				enterprise: { saml: false, ldap: false, oidc: false },
 				mfa: {
@@ -265,6 +281,20 @@ describe('FrontendService', () => {
 			const settings = await service.getPublicSettings(true);
 
 			expect(settings).toEqual(expectedPublicSettings);
+		});
+
+		it('should set showSetupOnFirstLoad to false in preview mode', async () => {
+			process.env.N8N_PREVIEW_MODE = 'true';
+
+			const { service } = createMockService();
+			const publicSettings = await service.getPublicSettings(false);
+
+			expect(publicSettings.previewMode).toBe(true);
+			expect(publicSettings.userManagement.showSetupOnFirstLoad).toBe(false);
+
+			const settings = await service.getSettings();
+			expect(settings.previewMode).toBe(true);
+			expect(settings.userManagement.showSetupOnFirstLoad).toBe(false);
 		});
 	});
 
@@ -396,6 +426,176 @@ describe('FrontendService', () => {
 			const settings = await service.getSettings();
 
 			expect(settings.aiBuilder.enabled).toBe(false);
+		});
+	});
+
+	describe('node version identifiers', () => {
+		it('should create type@version identifiers for single and multi-version nodes', () => {
+			const { service } = createMockService();
+			const getNodeVersionIdentifiers = service.getNodeVersionIdentifiers.bind(service);
+
+			const nodes = [
+				{
+					name: 'n8n-nodes-base.single',
+					version: 1,
+				},
+				{
+					name: 'n8n-nodes-base.multi',
+					version: [1, 2],
+				},
+			] as unknown as INodeTypeDescription[];
+
+			const identifiers = getNodeVersionIdentifiers(nodes);
+
+			expect(identifiers).toEqual(
+				expect.arrayContaining([
+					'n8n-nodes-base.single@1',
+					'n8n-nodes-base.multi@1',
+					'n8n-nodes-base.multi@2',
+				]),
+			);
+			expect(identifiers).toHaveLength(3);
+		});
+
+		it('should ignore invalid entries and deduplicate identifiers', () => {
+			const { service } = createMockService();
+			const getNodeVersionIdentifiers = service.getNodeVersionIdentifiers.bind(service);
+
+			const nodes = [
+				{
+					name: 'n8n-nodes-base.duplicate',
+					version: [1, 1, 2],
+				},
+				{
+					name: 'n8n-nodes-base.duplicate',
+					version: 2,
+				},
+				{
+					name: undefined as unknown as string,
+					version: 3,
+				},
+				{
+					name: 'n8n-nodes-base.invalidVersion',
+				},
+			] as unknown as INodeTypeDescription[];
+
+			const identifiers = getNodeVersionIdentifiers(nodes);
+
+			expect(identifiers).toEqual(
+				expect.arrayContaining(['n8n-nodes-base.duplicate@1', 'n8n-nodes-base.duplicate@2']),
+			);
+			expect(identifiers).toHaveLength(2);
+		});
+	});
+
+	describe('overwriteCredentialsProperties', () => {
+		afterEach(() => {
+			// Restore globalConfig.credentials to the default so other tests are unaffected
+			(globalConfig as any).credentials = { overwrite: { skipTypes: [] } };
+			loadNodesAndCredentials.types = { credentials: [], nodes: [] };
+		});
+
+		it('should set __skipManagedCreation for types in the skip list', () => {
+			const skipCredential = {
+				name: 'googleSheetsOAuth2Api',
+				displayName: 'Google Sheets OAuth2 API',
+				properties: [],
+			} as ICredentialType;
+			const normalCredential = {
+				name: 'slackOAuth2Api',
+				displayName: 'Slack OAuth2 API',
+				properties: [],
+			} as ICredentialType;
+
+			loadNodesAndCredentials.types = {
+				credentials: [skipCredential, normalCredential],
+				nodes: [],
+			};
+			(globalConfig as any).credentials = {
+				overwrite: { skipTypes: ['googleSheetsOAuth2Api'] },
+			};
+
+			const { service } = createMockService();
+			(service as any).overwriteCredentialsProperties();
+
+			expect(skipCredential.__skipManagedCreation).toBe(true);
+			expect(normalCredential.__skipManagedCreation).toBeUndefined();
+		});
+
+		it('should not set __skipManagedCreation when skip list is empty', () => {
+			const credential = {
+				name: 'googleSheetsOAuth2Api',
+				displayName: 'Google Sheets OAuth2 API',
+				properties: [],
+			} as ICredentialType;
+
+			loadNodesAndCredentials.types = { credentials: [credential], nodes: [] };
+			(globalConfig as any).credentials = { overwrite: { skipTypes: [] } };
+
+			const { service } = createMockService();
+			(service as any).overwriteCredentialsProperties();
+
+			expect(credential.__skipManagedCreation).toBeUndefined();
+		});
+
+		it('should clear stale __skipManagedCreation when type is removed from skip list', () => {
+			const credential = {
+				name: 'googleSheetsOAuth2Api',
+				displayName: 'Google Sheets OAuth2 API',
+				properties: [],
+				__skipManagedCreation: true, // Previously set
+			} as ICredentialType;
+
+			loadNodesAndCredentials.types = { credentials: [credential], nodes: [] };
+			(globalConfig as any).credentials = { overwrite: { skipTypes: [] } };
+
+			const { service } = createMockService();
+			(service as any).overwriteCredentialsProperties();
+
+			expect(credential.__skipManagedCreation).toBeUndefined();
+		});
+	});
+
+	describe('generateTypes', () => {
+		it('should write node versions file with generated identifiers', async () => {
+			const testNodes = [
+				{ name: 'n8n-nodes-base.single', version: 1 },
+				{ name: 'n8n-nodes-base.multi', version: [1, 2] },
+			];
+
+			(loadNodesAndCredentials.collectTypes as jest.Mock).mockResolvedValue({
+				nodes: testNodes,
+				credentials: [],
+			});
+
+			const { service } = createMockService();
+
+			const writeStaticJSONSpy = jest
+				.spyOn(service as any, 'writeStaticJSON')
+				.mockImplementation(() => {});
+
+			try {
+				await (service as any).generateTypes();
+
+				const nodeVersionCall = writeStaticJSONSpy.mock.calls.find(
+					([name]) => name === 'node-versions',
+				);
+
+				expect(nodeVersionCall).toBeDefined();
+
+				const [, identifiers] = nodeVersionCall as [string, string[]];
+
+				expect(identifiers).toEqual(
+					expect.arrayContaining([
+						'n8n-nodes-base.single@1',
+						'n8n-nodes-base.multi@1',
+						'n8n-nodes-base.multi@2',
+					]),
+				);
+				expect(identifiers).toHaveLength(3);
+			} finally {
+				writeStaticJSONSpy.mockRestore();
+			}
 		});
 	});
 });

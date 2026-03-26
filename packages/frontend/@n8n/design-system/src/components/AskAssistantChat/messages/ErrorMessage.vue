@@ -26,9 +26,9 @@ const { t } = useI18n();
 				{{ message.content }}
 			</p>
 			<N8nButton
+				variant="subtle"
 				v-if="message.retry"
-				type="secondary"
-				size="mini"
+				size="xsmall"
 				:class="$style.retryButton"
 				data-test-id="error-retry-button"
 				@click="() => message.retry?.()"

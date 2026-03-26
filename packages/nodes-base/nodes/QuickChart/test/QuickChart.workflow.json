@@ -13,11 +13,26 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "return [\n  {\n    label: 'Free Users',\n    labels: [\"Berlin\", \"Paris\", \"Rome\", \"New York\"],\n    data: [50, 60, 70, 180],\n    backgroundColor: '#121d6d77',\n    chartType: 'line'\n  },\n  {\n    label: 'Paid Users',\n    labels: [\"Berlin\", \"Paris\", \"Rome\", \"New York\"],\n    data: [30, 10, 14, 25],\n    backgroundColor: '#0c0d0d96',\n    chartType: 'bar'\n  },\n]"
+				"data": [
+					{
+						"label": "Free Users",
+						"labels": ["Berlin", "Paris", "Rome", "New York"],
+						"data": [50, 60, 70, 180],
+						"backgroundColor": "#121d6d77",
+						"chartType": "line"
+					},
+					{
+						"label": "Paid Users",
+						"labels": ["Berlin", "Paris", "Rome", "New York"],
+						"data": [30, 10, 14, 25],
+						"backgroundColor": "#0c0d0d96",
+						"chartType": "bar"
+					}
+				]
 			},
 			"id": "2e81f78c-41a5-48de-80c4-74abf163cd57",
 			"name": "Code",
-			"type": "n8n-nodes-base.code",
+			"type": "n8n-nodes-testing.testData",
 			"typeVersion": 1,
 			"position": [980, 320]
 		},

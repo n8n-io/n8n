@@ -16,16 +16,32 @@ import type {
 	IWorkflowBase,
 	IDestinationNode,
 } from 'n8n-workflow';
-import { createRunExecutionData, NodeConnectionTypes, TelemetryHelpers } from 'n8n-workflow';
+import {
+	createRunExecutionData,
+	NodeConnectionTypes,
+	TelemetryHelpers,
+	BINARY_MODE_COMBINED,
+} from 'n8n-workflow';
 import { retry } from '@n8n/utils/retry';
 
 import { useToast } from '@/app/composables/useToast';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 
-import { CHAT_TRIGGER_NODE_TYPE, IN_PROGRESS_EXECUTION_ID } from '@/app/constants';
+import {
+	CHAT_NODE_TYPE,
+	CHAT_TOOL_NODE_TYPE,
+	CHAT_HITL_TOOL_NODE_TYPE,
+	CHAT_TRIGGER_NODE_TYPE,
+	IN_PROGRESS_EXECUTION_ID,
+	RESPOND_TO_WEBHOOK_NODE_TYPE,
+} from '@/app/constants';
 
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { displayForm } from '@/features/execution/executions/executions.utils';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
@@ -36,14 +52,17 @@ import get from 'lodash/get';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { useTelemetry } from './useTelemetry';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useNodeDirtiness } from '@/app/composables/useNodeDirtiness';
 import { useCanvasOperations } from './useCanvasOperations';
+import { chatEventBus } from '@n8n/chat/event-buses';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { useWorkflowSaving } from './useWorkflowSaving';
 import { computed } from 'vue';
 import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
 import { useDocumentTitle } from './useDocumentTitle';
+import { useChat } from '@n8n/chat/composables';
 
 export function useRunWorkflow(useRunWorkflowOpts: {
 	router: ReturnType<typeof useRouter>;
@@ -55,13 +74,21 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	const telemetry = useTelemetry();
 	const externalHooks = useExternalHooks();
 	const settingsStore = useSettingsStore();
+	const uiStore = useUIStore();
 	const agentRequestStore = useAgentRequestStore();
 
 	const rootStore = useRootStore();
 	const pushConnectionStore = usePushConnectionStore();
 	const workflowsStore = useWorkflowsStore();
 	const workflowState = useRunWorkflowOpts.workflowState ?? injectWorkflowState();
-	const nodeHelpers = useNodeHelpers({ workflowState });
+
+	const workflowDocumentStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
+
+	const nodeHelpers = useNodeHelpers();
 	const workflowSaving = useWorkflowSaving({
 		router: useRunWorkflowOpts.router,
 		workflowState,
@@ -69,13 +96,14 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	const executionsStore = useExecutionsStore();
 	const { dirtinessByName } = useNodeDirtiness();
 	const { startChat } = useCanvasOperations();
+	const chatStore = useChat();
 
 	const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
 
 	function sortNodesByYPosition(nodes: string[]) {
 		return [...nodes].sort((a, b) => {
-			const nodeA = workflowsStore.getNodeByName(a)?.position ?? [0, 0];
-			const nodeB = workflowsStore.getNodeByName(b)?.position ?? [0, 0];
+			const nodeA = workflowDocumentStore.value?.getNodeByName(a)?.position ?? [0, 0];
+			const nodeB = workflowDocumentStore.value?.getNodeByName(b)?.position ?? [0, 0];
 
 			const nodeAYPosition = nodeA[1];
 			const nodeBYPosition = nodeB[1];
@@ -124,6 +152,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 		rerunTriggerNode?: boolean;
 		nodeData?: ITaskData;
 		source?: string;
+		sessionId?: string;
 	}): Promise<IExecutionPushResponse | undefined> {
 		if (workflowsStore.activeExecutionId) {
 			return;
@@ -144,11 +173,23 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 
 			const runData = workflowsStore.getWorkflowRunData;
 
-			if (!workflowsStore.isWorkflowSaved[workflowsStore.workflowId]) {
+			if (uiStore.stateIsDirty || !workflowsStore.isWorkflowSaved[workflowsStore.workflowId]) {
 				await workflowSaving.saveCurrentWorkflow();
 			}
 
 			const workflowData = await workflowHelpers.getWorkflowDataToSave();
+
+			if (
+				rootStore.binaryDataMode === 'default' &&
+				workflowData.settings?.binaryMode === BINARY_MODE_COMBINED
+			) {
+				toast.showMessage({
+					title: i18n.baseText('workflowRun.showError.unsupportedExecutionLogic.title'),
+					message: i18n.baseText('workflowRun.showError.unsupportedExecutionLogic.description'),
+					type: 'error',
+				});
+				return undefined;
+			}
 
 			const consolidatedData = consolidateRunDataAndStartNodes(
 				directParentNodes,
@@ -159,7 +200,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 
 			const { startNodeNames } = consolidatedData;
 			const destinationNodeType = options.destinationNode
-				? workflowsStore.getNodeByName(options.destinationNode.nodeName)?.type
+				? (workflowDocumentStore.value?.getNodeByName(options.destinationNode.nodeName)?.type ?? '')
 				: '';
 
 			let executedNode: string | undefined;
@@ -188,12 +229,14 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				};
 			}
 
-			// If the destination node is specified, check if it is a chat node or has a chat parent
+			// If the destination node is specified, check if it is a chat trigger node or has a chat parent
 			if (
 				options.destinationNode &&
 				(workflowsStore.checkIfNodeHasChatParent(options.destinationNode.nodeName) ||
+					workflowsStore.checkIfToolNodeHasChatParent(options.destinationNode.nodeName) ||
 					destinationNodeType === CHAT_TRIGGER_NODE_TYPE) &&
-				options.source !== 'RunData.ManualChatMessage'
+				options.source !== 'RunData.ManualChatMessage' &&
+				options.source !== 'RunData.ManualChatTrigger'
 			) {
 				const startNode = workflowObject.value.getStartNode(options.destinationNode.nodeName);
 				if (startNode && startNode.type === CHAT_TRIGGER_NODE_TYPE) {
@@ -210,11 +253,35 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 						return;
 					}
 				}
+
+				startChat();
 			}
 
 			const triggers = workflowData.nodes.filter(
-				(node) => node.type.toLowerCase().includes('trigger') && !node.disabled,
+				(node) => !node.disabled && node.type.toLowerCase().includes('trigger'),
 			);
+			const chatTriggerNode = triggers.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
+			const chatTriggerNodeOptions = chatTriggerNode?.parameters?.options as IDataObject;
+			if (
+				options.triggerNode === chatTriggerNode?.name &&
+				chatTriggerNodeOptions?.responseMode === 'responseNodes'
+			) {
+				const responseNodes = workflowData.nodes.filter(
+					(node) =>
+						!node.disabled &&
+						(node.type === CHAT_NODE_TYPE ||
+							node.type === CHAT_TOOL_NODE_TYPE ||
+							node.type === CHAT_HITL_TOOL_NODE_TYPE ||
+							node.type === RESPOND_TO_WEBHOOK_NODE_TYPE),
+				);
+				if (!responseNodes?.length) {
+					toast.showMessage({
+						title: i18n.baseText('workflowRun.showWarning.noChatResponseNodes.title'),
+						message: i18n.baseText('workflowRun.showWarning.noChatResponseNodes.description'),
+						type: 'warning',
+					});
+				}
+			}
 
 			//if no destination node is specified
 			//and execution is not triggered from chat
@@ -223,17 +290,11 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			if (
 				!options.destinationNode &&
 				options.source !== 'RunData.ManualChatMessage' &&
-				workflowData.nodes.some((node) => node.type === CHAT_TRIGGER_NODE_TYPE)
+				chatTriggerNode
 			) {
 				const otherTriggers = triggers.filter((node) => node.type !== CHAT_TRIGGER_NODE_TYPE);
-
 				if (otherTriggers.length) {
-					const chatTriggerNode = workflowData.nodes.find(
-						(node) => node.type === CHAT_TRIGGER_NODE_TYPE,
-					);
-					if (chatTriggerNode) {
-						chatTriggerNode.disabled = true;
-					}
+					chatTriggerNode.disabled = true;
 				}
 			}
 
@@ -277,17 +338,20 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				});
 
 			const startRunData: IStartRunData = {
-				workflowData,
+				workflowId: workflowData.id!,
 				runData: isPartialExecution
 					? (runData ?? undefined) // For partial execution, backend decides what run data to use and what to ignore.
 					: undefined, // if it's a full execution we don't want to send any run data
 				startNodes,
 				triggerToStartFrom,
+				chatSessionId: options.sessionId,
 			};
 
 			if ('destinationNode' in options) {
 				startRunData.destinationNode = options.destinationNode;
-				const nodeId = workflowsStore.getNodeByName(options.destinationNode?.nodeName ?? '')?.id;
+				const nodeId = workflowDocumentStore.value?.getNodeByName(
+					options.destinationNode?.nodeName ?? '',
+				)?.id;
 				if (workflowObject.value.id && nodeId) {
 					const agentRequest = agentRequestStore.getAgentRequest(workflowObject.value.id, nodeId);
 
@@ -344,6 +408,16 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 
 			useDocumentTitle().setDocumentTitle(workflowObject.value.name as string, 'EXECUTING');
 			const runWorkflowApiResponse = await runWorkflowApi(startRunData);
+
+			if (
+				!chatStore?.ws &&
+				chatTriggerNodeOptions?.responseMode === 'responseNodes' &&
+				options.source !== 'RunData.ManualChatMessage' &&
+				options.source !== 'RunData.ManualChatTrigger' &&
+				runWorkflowApiResponse.executionId
+			) {
+				chatEventBus.emit('setupWebsocket', runWorkflowApiResponse.executionId);
+			}
 			const pinData = workflowData.pinData ?? {};
 
 			const getTestUrl = (() => {
@@ -523,8 +597,21 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			void externalHooks.run('nodeView.onRunWorkflow', telemetryPayload);
 		});
 
+		let resolvedTriggerNode = triggerNode ?? workflowsStore.selectedTriggerNodeName;
+
+		// When no trigger is explicitly selected (e.g. chat trigger is the only trigger
+		// and the Run button doesn't offer it for selection), resolve it from the workflow.
+		if (!resolvedTriggerNode) {
+			const triggers = Object.values(workflowObject.value.nodes).filter(
+				(node) => !node.disabled && node.type.toLowerCase().includes('trigger'),
+			);
+			if (triggers.length === 1) {
+				resolvedTriggerNode = triggers[0].name;
+			}
+		}
+
 		void runWorkflow({
-			triggerNode: triggerNode ?? workflowsStore.selectedTriggerNodeName,
+			triggerNode: resolvedTriggerNode,
 		});
 	}
 

@@ -114,3 +114,25 @@ export const weaviateCollectionRLC: INodeProperties = {
 		},
 	],
 };
+export const chromaCollectionRLC: INodeProperties = {
+	displayName: 'Chroma Collection',
+	name: 'chromaCollection',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	required: true,
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			typeOptions: {
+				searchListMethod: 'chromaCollectionsSearch',
+			},
+		},
+		{
+			displayName: 'ID',
+			name: 'id',
+			type: 'string',
+		},
+	],
+};

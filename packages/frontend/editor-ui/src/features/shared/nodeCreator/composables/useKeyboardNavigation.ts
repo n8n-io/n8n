@@ -9,15 +9,7 @@ interface KeyHook {
 }
 
 export const KEYBOARD_ID_ATTR = 'data-keyboard-nav-id';
-export const WATCHED_KEYS = [
-	'ArrowUp',
-	'ArrowDown',
-	'ArrowLeft',
-	'ArrowRight',
-	'Enter',
-	'Escape',
-	'Tab',
-];
+export const WATCHED_KEYS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', 'Escape'];
 
 export const useKeyboardNavigation = defineStore('nodeCreatorKeyboardNavigation', () => {
 	const selectableItems = ref<Array<WeakRef<Element>>>([]);

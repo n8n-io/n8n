@@ -1,5 +1,8 @@
 import { z } from 'zod';
 
+import { FROM_AI_AUTO_GENERATED_MARKER } from './constants';
+import { isExpression } from './expressions/expression-helpers';
+import type { INodeProperties } from './interfaces';
 import { jsonParse } from './utils';
 
 /**
@@ -346,4 +349,192 @@ export function traverseNodeParametersWithParamNames(
 			traverseNodeParametersWithParamNames(value, collectedArgs, name ? name + '.' + key : key);
 		}
 	}
+}
+
+/**
+ * Checks whether an expression string contains only a single `$fromAI()` call
+ * with literal arguments and nothing else.
+ *
+ * Only `$fromAI()` expressions are supported in chat hub tool parameters.
+ * Arguments must be literals (strings, numbers, booleans) — nested function
+ * calls like `$fromAI(evil())` are not supported.
+ */
+export function isFromAIOnlyExpression(expr: string): boolean {
+	let str = expr;
+
+	// Strip leading `=` prefix
+	if (str.startsWith('=')) {
+		str = str.slice(1);
+	}
+
+	str = str.trim();
+
+	// Strip `{{ }}` delimiters if present
+	if (str.startsWith('{{') && str.endsWith('}}')) {
+		str = str.slice(2, -2).trim();
+	}
+
+	// Strip optional auto-generated marker comment
+	if (str.startsWith(FROM_AI_AUTO_GENERATED_MARKER)) {
+		str = str.slice(FROM_AI_AUTO_GENERATED_MARKER.length).trim();
+	}
+
+	// Must start with $fromAI( (case-insensitive)
+	const fromAIPattern = /^\$fromAI\s*\(/i;
+	const match = fromAIPattern.exec(str);
+	if (!match) {
+		return false;
+	}
+
+	// Walk character by character from after the opening `(` to find matching `)`
+	// Reject any nested parentheses outside quotes (indicates function calls)
+	const startIndex = match[0].length;
+	let current = startIndex;
+	let inQuotes = false;
+	let quoteChar = '';
+	let depth = 1;
+
+	let lastOutsideChar = '';
+
+	while (current < str.length && depth > 0) {
+		const char = str[current];
+
+		if (inQuotes) {
+			if (char === '\\' && current + 1 < str.length) {
+				// Skip escaped character
+				current += 2;
+				continue;
+			}
+			// Reject template literal interpolation `${...}` inside backtick strings
+			if (
+				quoteChar === '`' &&
+				char === '$' &&
+				current + 1 < str.length &&
+				str[current + 1] === '{'
+			) {
+				return false;
+			}
+			if (char === quoteChar) {
+				inQuotes = false;
+				quoteChar = '';
+			}
+		} else {
+			if (['"', "'", '`'].includes(char)) {
+				// Reject tagged template literals: identifier immediately before backtick
+				if (char === '`' && /[a-zA-Z0-9_]/.test(lastOutsideChar)) {
+					return false;
+				}
+				inQuotes = true;
+				quoteChar = char;
+			} else if (char === ')') {
+				depth--;
+			} else if (!/[a-zA-Z0-9.,\s-]/.test(char)) {
+				// Outside quotes, only allow literal-value characters:
+				// alphanumeric (true/false, numbers), decimal point, minus (negative numbers),
+				// comma (argument separator), and whitespace.
+				// This rejects operators (+, *, etc.), $ (variable references like $env),
+				// brackets, and other expression syntax.
+				return false;
+			}
+			if (!/\s/.test(char)) {
+				lastOutsideChar = char;
+			}
+		}
+
+		current++;
+	}
+
+	// Unbalanced parentheses
+	if (depth !== 0) {
+		return false;
+	}
+
+	// Everything after the closing `)` must be whitespace only
+	const remainder = str.slice(current).trim();
+	return remainder.length === 0;
+}
+
+/**
+ * Recursive helper function to collect default values from node properties and their nested options.
+ */
+function collectDefaults(props: INodeProperties[], defaults: Set<string>) {
+	for (const prop of props) {
+		if (typeof prop.default === 'string' && isExpression(prop.default)) {
+			defaults.add(prop.default);
+		}
+
+		if (prop.options) {
+			for (const option of prop.options) {
+				// INodePropertyCollection has `values: INodeProperties[]`
+				if ('values' in option && Array.isArray(option.values)) {
+					collectDefaults(option.values, defaults);
+				}
+				// INodeProperties has `options` and `default`
+				if ('type' in option && 'default' in option) {
+					const nested = option;
+					if (typeof nested.default === 'string' && isExpression(nested.default)) {
+						defaults.add(nested.default);
+					}
+					if (nested.options) {
+						collectDefaults([nested] as unknown as INodeProperties[], defaults);
+					}
+				}
+			}
+		}
+	}
+}
+
+/**
+ * Recursively collects all expression default values from node type properties.
+ * Recurses into `options` (which can be INodeProperties[] or INodePropertyCollection[]).
+ */
+export function collectExpressionDefaults(properties: INodeProperties[]): Set<string> {
+	const defaults = new Set<string>();
+	collectDefaults(properties, defaults);
+
+	return defaults;
+}
+
+export type ExpressionViolation = {
+	path: string;
+	value: string;
+};
+
+/**
+ * Recursively traverses node parameters and finds all string values that are
+ * expressions other than supported `$fromAI()`-only expressions supported on Chat hub.
+ * Returns an array of violations with their dot-notation paths.
+ *
+ * When `allowedExpressions` is provided, expressions matching a known node-description
+ * default are not flagged as violations.
+ */
+export function findDisallowedChatToolExpressions(
+	payload: unknown,
+	path = '',
+	allowedExpressions?: Set<string>,
+): ExpressionViolation[] {
+	const violations: ExpressionViolation[] = [];
+
+	if (typeof payload === 'string') {
+		if (
+			isExpression(payload) &&
+			!isFromAIOnlyExpression(payload) &&
+			!allowedExpressions?.has(payload)
+		) {
+			violations.push({ path, value: payload });
+		}
+	} else if (Array.isArray(payload)) {
+		payload.forEach((item: unknown, index: number) => {
+			violations.push(
+				...findDisallowedChatToolExpressions(item, `${path}[${index}]`, allowedExpressions),
+			);
+		});
+	} else if (typeof payload === 'object' && payload !== null) {
+		for (const [key, value] of Object.entries(payload)) {
+			const newPath = path ? `${path}.${key}` : key;
+			violations.push(...findDisallowedChatToolExpressions(value, newPath, allowedExpressions));
+		}
+	}
+
+	return violations;
 }

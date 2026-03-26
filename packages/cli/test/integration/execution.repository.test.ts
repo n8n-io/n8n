@@ -67,33 +67,61 @@ describe('UserRepository', () => {
 		});
 	});
 
-	describe('updateExistingExecution with requireStatus', () => {
+	describe('setRunning', () => {
+		test('should set startedAt when execution has no startedAt', async () => {
+			const workflow = await createWorkflow();
+			const execution = await createExecution({ status: 'new', startedAt: null }, workflow);
+
+			const result = await executionRepository.setRunning(execution.id);
+
+			expect(result).toBeInstanceOf(Date);
+
+			const row = await executionRepository.findOneBy({ id: execution.id });
+			expect(row?.status).toBe('running');
+			expect(row?.startedAt).toEqual(result);
+		});
+
+		test('should preserve original startedAt for resumed executions', async () => {
+			const originalStartedAt = new Date('2025-12-02T09:04:47.150Z');
+			const workflow = await createWorkflow();
+			const execution = await createExecution(
+				{ status: 'waiting', startedAt: originalStartedAt },
+				workflow,
+			);
+
+			const result = await executionRepository.setRunning(execution.id);
+
+			expect(result.getTime()).toBe(originalStartedAt.getTime());
+
+			const row = await executionRepository.findOneBy({ id: execution.id });
+			expect(row?.status).toBe('running');
+			expect(row?.startedAt?.getTime()).toBe(originalStartedAt.getTime());
+		});
+	});
+
+	describe('updateExistingExecution with conditions', () => {
 		test.each([
 			{
-				statusInDB: 'waiting',
-				statusUpdate: 'running',
-				requireStatus: 'waiting',
+				statusInDB: 'waiting' as ExecutionStatus,
+				statusUpdate: 'running' as ExecutionStatus,
+				conditions: { requireStatus: 'waiting' as ExecutionStatus },
 				updateExpected: true,
 			},
 			{
-				statusInDB: 'success',
-				statusUpdate: 'running',
-				requireStatus: 'waiting',
+				statusInDB: 'success' as ExecutionStatus,
+				statusUpdate: 'running' as ExecutionStatus,
+				conditions: { requireStatus: 'waiting' as ExecutionStatus },
 				updateExpected: false,
 			},
 			{
-				statusInDB: 'running',
-				statusUpdate: 'success',
+				statusInDB: 'running' as ExecutionStatus,
+				statusUpdate: 'success' as ExecutionStatus,
+				conditions: undefined,
 				updateExpected: true,
 			},
-		] satisfies Array<{
-			statusInDB: ExecutionStatus;
-			statusUpdate: ExecutionStatus;
-			requireStatus?: ExecutionStatus;
-			updateExpected: boolean;
-		}>)(
-			'should return $updateExpected with status before: "$statusInDB", status after: "$statusUpdate" and required status: "$requireStatus"',
-			async ({ statusInDB, statusUpdate, requireStatus, updateExpected }) => {
+		])(
+			'should return $updateExpected with status before: "$statusInDB", status after: "$statusUpdate" and conditions: $conditions',
+			async ({ statusInDB, statusUpdate, conditions, updateExpected }) => {
 				// ARRANGE
 
 				const workflow = await createWorkflow();
@@ -111,8 +139,7 @@ describe('UserRepository', () => {
 				const result = await executionRepository.updateExistingExecution(
 					execution.id,
 					{ status: statusUpdate, data: updatedExecutionData },
-					// Require current status to be 'waiting'
-					requireStatus,
+					conditions,
 				);
 
 				// ASSERT
@@ -134,9 +161,126 @@ describe('UserRepository', () => {
 
 			expect(result).toBe(false);
 
-			// Verify execution was updated regardless of previous status
 			const rowCount = await executionRepository.count();
 			expect(rowCount).toBe(0);
+		});
+
+		test('requireNotFinished: should update when finished is false', async () => {
+			const workflow = await createWorkflow();
+			const executionData = createEmptyRunExecutionData();
+			const execution = await createExecution(
+				{ status: 'running', finished: false, data: stringify(executionData) },
+				workflow,
+			);
+
+			const result = await executionRepository.updateExistingExecution(
+				execution.id,
+				{ status: 'running' },
+				{ requireNotFinished: true },
+			);
+
+			expect(result).toBe(true);
+		});
+
+		test('requireNotFinished: should not update when finished is true', async () => {
+			const workflow = await createWorkflow();
+			const executionData = createEmptyRunExecutionData();
+			const execution = await createExecution(
+				{ status: 'success', finished: true, data: stringify(executionData) },
+				workflow,
+			);
+
+			const result = await executionRepository.updateExistingExecution(
+				execution.id,
+				{ status: 'running' },
+				{ requireNotFinished: true },
+			);
+
+			expect(result).toBe(false);
+			const row = await executionRepository.findOne({ where: { id: execution.id } });
+			expect(row?.status).toBe('success');
+		});
+
+		test('requireNotCanceled: should update when status is not canceled', async () => {
+			const workflow = await createWorkflow();
+			const executionData = createEmptyRunExecutionData();
+			const execution = await createExecution(
+				{ status: 'running', data: stringify(executionData) },
+				workflow,
+			);
+
+			const result = await executionRepository.updateExistingExecution(
+				execution.id,
+				{ status: 'running' },
+				{ requireNotCanceled: true },
+			);
+
+			expect(result).toBe(true);
+		});
+
+		test('requireNotCanceled: should not update when status is canceled', async () => {
+			const workflow = await createWorkflow();
+			const executionData = createEmptyRunExecutionData();
+			const execution = await createExecution(
+				{ status: 'canceled', data: stringify(executionData) },
+				workflow,
+			);
+
+			const result = await executionRepository.updateExistingExecution(
+				execution.id,
+				{ status: 'running' },
+				{ requireNotCanceled: true },
+			);
+
+			expect(result).toBe(false);
+			const row = await executionRepository.findOne({ where: { id: execution.id } });
+			expect(row?.status).toBe('canceled');
+		});
+
+		test('requireNotFinished + requireNotCanceled: should update running unfinished execution', async () => {
+			const workflow = await createWorkflow();
+			const executionData = createEmptyRunExecutionData();
+			const execution = await createExecution(
+				{ status: 'running', finished: false, data: stringify(executionData) },
+				workflow,
+			);
+
+			const updatedData = createRunExecutionData({
+				resultData: { lastNodeExecuted: 'Node1' },
+			});
+
+			const result = await executionRepository.updateExistingExecution(
+				execution.id,
+				{ status: 'running', data: updatedData },
+				{ requireNotFinished: true, requireNotCanceled: true },
+			);
+
+			expect(result).toBe(true);
+
+			const row = await executionRepository.findOne({
+				where: { id: execution.id },
+				relations: { executionData: true },
+			});
+			expect(parse(row!.executionData.data)).toEqual(updatedData);
+		});
+
+		test('requireNotFinished + requireNotCanceled: should not update canceled execution', async () => {
+			const workflow = await createWorkflow();
+			const executionData = createEmptyRunExecutionData();
+			const execution = await createExecution(
+				{ status: 'canceled', finished: false, data: stringify(executionData) },
+				workflow,
+			);
+
+			const result = await executionRepository.updateExistingExecution(
+				execution.id,
+				{ status: 'running' },
+				{ requireNotFinished: true, requireNotCanceled: true },
+			);
+
+			expect(result).toBe(false);
+			const row = await executionRepository.findOne({ where: { id: execution.id } });
+			expect(row?.status).toBe('canceled');
 		});
 	});
 });

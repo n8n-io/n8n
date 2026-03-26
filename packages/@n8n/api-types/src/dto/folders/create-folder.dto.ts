@@ -1,6 +1,5 @@
-import { Z } from 'zod-class';
-
 import { folderNameSchema, folderIdSchema } from '../../schemas/folder.schema';
+import { Z } from '../../zod-class';
 
 export class CreateFolderDto extends Z.class({
 	name: folderNameSchema,

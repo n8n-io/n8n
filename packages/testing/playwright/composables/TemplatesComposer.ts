@@ -45,14 +45,21 @@ export class TemplatesComposer {
 	}
 
 	/**
-	 * Fill in dummy credentials for an app and handle confirmation dialog
-	 * @param appName - The name of the app
+	 * Fill in dummy credentials for an OAuth app.
+	 * OAuth credentials have no Save button — clicking Connect implicitly saves.
+	 * @param appName - The name of the app (e.g. 'X (Formerly Twitter)')
 	 */
-	async fillDummyCredentialForAppWithConfirm(
+	async fillDummyCredentialForOAuthApp(
 		appName: string,
 		{ fields }: { fields: Record<string, string> } = { fields: {} },
 	): Promise<void> {
-		await this.fillDummyCredentialForApp(appName, { fields });
+		await this.n8n.templateCredentialSetup.openCredentialCreation(appName);
+		await this.n8n.templateCredentialSetup.credentialModal.getCredentialName().click();
+		await this.n8n.templateCredentialSetup.credentialModal.getNameInput().fill('test');
+		await this.n8n.templateCredentialSetup.credentialModal.fillAllFields(fields);
+
+		await this.n8n.templateCredentialSetup.credentialModal.oauthConnectButton.click();
+		await this.n8n.templateCredentialSetup.credentialModal.close();
 		await this.n8n.templateCredentialSetup.dismissMessageBox();
 	}
 }

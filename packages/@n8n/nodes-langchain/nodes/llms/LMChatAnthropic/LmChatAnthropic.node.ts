@@ -1,19 +1,22 @@
 import { ChatAnthropic } from '@langchain/anthropic';
 import type { LLMResult } from '@langchain/core/outputs';
-import { getProxyAgent } from '@utils/httpProxyAgent';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import {
+	getProxyAgent,
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
 import {
 	NodeConnectionTypes,
-	type INodePropertyOptions,
+	NodeOperationError,
 	type INodeProperties,
-	type ISupplyDataFunctions,
+	type INodePropertyOptions,
 	type INodeType,
 	type INodeTypeDescription,
+	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
-import { N8nLlmTracing } from '../N8nLlmTracing';
 import { searchModels } from './methods/searchModels';
 
 const modelField: INodeProperties = {
@@ -278,6 +281,12 @@ export class LmChatAnthropic implements INodeType {
 				? (this.getNodeParameter('model.value', itemIndex) as string)
 				: (this.getNodeParameter('model', itemIndex) as string);
 
+		if (!modelName) {
+			throw new NodeOperationError(this.getNode(), 'No model selected. Please choose a model.', {
+				itemIndex,
+			});
+		}
+
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
 			maxTokensToSample?: number;
 			temperature: number;
@@ -324,7 +333,7 @@ export class LmChatAnthropic implements INodeType {
 		}
 
 		const clientOptions: {
-			fetchOptions?: { dispatcher: any };
+			fetchOptions?: { dispatcher: ReturnType<typeof getProxyAgent> };
 			defaultHeaders?: Record<string, string>;
 		} = {
 			fetchOptions: {
@@ -343,6 +352,22 @@ export class LmChatAnthropic implements INodeType {
 			};
 		}
 
+		const isUsingGateway = baseURL !== 'https://api.anthropic.com';
+		const gatewayErrorHandler = isUsingGateway
+			? (error: unknown) => {
+					const message = error instanceof Error ? error.message : String(error);
+					const isModelError =
+						/model.*not found|not found.*model|invalid model|does not exist/i.test(message);
+					if (isModelError) {
+						throw new NodeOperationError(
+							this.getNode(),
+							`The model "${modelName}" was not found at ${baseURL}. If you're using an AI gateway, select a model that your gateway supports.`,
+							{ itemIndex },
+						);
+					}
+				}
+			: undefined;
+
 		const model = new ChatAnthropic({
 			anthropicApiKey: credentials.apiKey,
 			model: modelName,
@@ -352,7 +377,7 @@ export class LmChatAnthropic implements INodeType {
 			topK: options.topK,
 			topP: options.topP,
 			callbacks: [new N8nLlmTracing(this, { tokensUsageParser })],
-			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
+			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, gatewayErrorHandler),
 			invocationKwargs,
 			clientOptions,
 		});

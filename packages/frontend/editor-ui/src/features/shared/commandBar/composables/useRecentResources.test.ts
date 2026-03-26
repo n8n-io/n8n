@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ref } from 'vue';
 import { useRecentResources } from './useRecentResources';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -59,6 +60,7 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 
 describe('useRecentResources', () => {
 	let mockWorkflowsStore: ReturnType<typeof useWorkflowsStore>;
+	let mockWorkflowsListStore: ReturnType<typeof useWorkflowsListStore>;
 	let mockNodeTypesStore: ReturnType<typeof useNodeTypesStore>;
 
 	beforeEach(() => {
@@ -69,6 +71,7 @@ describe('useRecentResources', () => {
 		recentNodesRef.value = {};
 
 		mockWorkflowsStore = useWorkflowsStore();
+		mockWorkflowsListStore = useWorkflowsListStore();
 		mockNodeTypesStore = useNodeTypesStore();
 
 		Object.defineProperty(mockWorkflowsStore, 'findNodeByPartialId', {
@@ -83,7 +86,7 @@ describe('useRecentResources', () => {
 			}),
 		});
 
-		Object.defineProperty(mockWorkflowsStore, 'getWorkflowById', {
+		Object.defineProperty(mockWorkflowsListStore, 'getWorkflowById', {
 			value: vi.fn((workflowId: string) => {
 				if (workflowId === 'workflow-1') {
 					return { id: 'workflow-1', name: 'Workflow 1' };
@@ -98,7 +101,7 @@ describe('useRecentResources', () => {
 			}),
 		});
 
-		Object.defineProperty(mockWorkflowsStore, 'fetchWorkflow', {
+		Object.defineProperty(mockWorkflowsListStore, 'fetchWorkflow', {
 			value: vi.fn(),
 		});
 
@@ -426,14 +429,14 @@ describe('useRecentResources', () => {
 		});
 
 		it('should use unnamed workflow text when workflow has no name', () => {
-			mockWorkflowsStore.getWorkflowById = vi.fn((workflowId: string) => {
+			mockWorkflowsListStore.getWorkflowById = vi.fn((workflowId: string) => {
 				if (workflowId === 'workflow-unnamed') {
 					return { id: 'workflow-unnamed', name: '' } as unknown as ReturnType<
-						typeof mockWorkflowsStore.getWorkflowById
+						typeof mockWorkflowsListStore.getWorkflowById
 					>;
 				}
-				return null as unknown as ReturnType<typeof mockWorkflowsStore.getWorkflowById>;
-			}) as typeof mockWorkflowsStore.getWorkflowById;
+				return null as unknown as ReturnType<typeof mockWorkflowsListStore.getWorkflowById>;
+			}) as typeof mockWorkflowsListStore.getWorkflowById;
 
 			const { trackResourceOpened, commands } = useRecentResources();
 
@@ -521,15 +524,15 @@ describe('useRecentResources', () => {
 			const { trackResourceOpened, initialize } = useRecentResources();
 
 			// Mock getWorkflowById to return null for workflow-4
-			mockWorkflowsStore.getWorkflowById = vi.fn((workflowId: string) => {
+			mockWorkflowsListStore.getWorkflowById = vi.fn((workflowId: string) => {
 				if (workflowId === 'workflow-1' || workflowId === 'workflow-2') {
 					return {
 						id: workflowId,
 						name: `Workflow ${workflowId.split('-')[1]}`,
-					} as unknown as ReturnType<typeof mockWorkflowsStore.getWorkflowById>;
+					} as unknown as ReturnType<typeof mockWorkflowsListStore.getWorkflowById>;
 				}
-				return null as unknown as ReturnType<typeof mockWorkflowsStore.getWorkflowById>;
-			}) as typeof mockWorkflowsStore.getWorkflowById;
+				return null as unknown as ReturnType<typeof mockWorkflowsListStore.getWorkflowById>;
+			}) as typeof mockWorkflowsListStore.getWorkflowById;
 
 			// Track workflows via trackResourceOpened
 			trackResourceOpened({
@@ -553,16 +556,16 @@ describe('useRecentResources', () => {
 			await initialize();
 
 			// Should only fetch workflow-4 since workflow-1 and workflow-2 are in store
-			expect(mockWorkflowsStore.fetchWorkflow).toHaveBeenCalledWith('workflow-4');
-			expect(mockWorkflowsStore.fetchWorkflow).toHaveBeenCalledTimes(1);
+			expect(mockWorkflowsListStore.fetchWorkflow).toHaveBeenCalledWith('workflow-4');
+			expect(mockWorkflowsListStore.fetchWorkflow).toHaveBeenCalledTimes(1);
 		});
 
 		it('should only fetch up to MAX_RECENT_WORKFLOWS_TO_DISPLAY (3) workflows', async () => {
 			const { trackResourceOpened, initialize } = useRecentResources();
 
-			mockWorkflowsStore.getWorkflowById = vi.fn(
-				() => null as unknown as ReturnType<typeof mockWorkflowsStore.getWorkflowById>,
-			) as typeof mockWorkflowsStore.getWorkflowById;
+			mockWorkflowsListStore.getWorkflowById = vi.fn(
+				() => null as unknown as ReturnType<typeof mockWorkflowsListStore.getWorkflowById>,
+			) as typeof mockWorkflowsListStore.getWorkflowById;
 
 			// Track 5 workflows
 			for (let i = 1; i <= 5; i++) {
@@ -576,19 +579,19 @@ describe('useRecentResources', () => {
 			await initialize();
 
 			// Should only try to fetch the first 3
-			expect(mockWorkflowsStore.fetchWorkflow).toHaveBeenCalledTimes(3);
-			expect(mockWorkflowsStore.fetchWorkflow).toHaveBeenCalledWith('workflow-5');
-			expect(mockWorkflowsStore.fetchWorkflow).toHaveBeenCalledWith('workflow-4');
-			expect(mockWorkflowsStore.fetchWorkflow).toHaveBeenCalledWith('workflow-3');
+			expect(mockWorkflowsListStore.fetchWorkflow).toHaveBeenCalledTimes(3);
+			expect(mockWorkflowsListStore.fetchWorkflow).toHaveBeenCalledWith('workflow-5');
+			expect(mockWorkflowsListStore.fetchWorkflow).toHaveBeenCalledWith('workflow-4');
+			expect(mockWorkflowsListStore.fetchWorkflow).toHaveBeenCalledWith('workflow-3');
 		});
 
 		it('should handle fetch errors gracefully', async () => {
 			const { trackResourceOpened, initialize } = useRecentResources();
 
-			mockWorkflowsStore.getWorkflowById = vi.fn(
-				() => null as unknown as ReturnType<typeof mockWorkflowsStore.getWorkflowById>,
-			) as typeof mockWorkflowsStore.getWorkflowById;
-			mockWorkflowsStore.fetchWorkflow = vi.fn().mockRejectedValue(new Error('Fetch failed'));
+			mockWorkflowsListStore.getWorkflowById = vi.fn(
+				() => null as unknown as ReturnType<typeof mockWorkflowsListStore.getWorkflowById>,
+			) as typeof mockWorkflowsListStore.getWorkflowById;
+			mockWorkflowsListStore.fetchWorkflow = vi.fn().mockRejectedValue(new Error('Fetch failed'));
 
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
@@ -617,7 +620,7 @@ describe('useRecentResources', () => {
 
 			await initialize();
 
-			expect(mockWorkflowsStore.fetchWorkflow).not.toHaveBeenCalled();
+			expect(mockWorkflowsListStore.fetchWorkflow).not.toHaveBeenCalled();
 		});
 	});
 });

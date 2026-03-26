@@ -3,7 +3,7 @@ import { useRouter, useRoute } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon } from '@n8n/design-system';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useToast } from '@/app/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
@@ -29,7 +29,7 @@ export function useExecutionCommands(): CommandGroup {
 	const router = useRouter();
 	const route = useRoute();
 	const executionsStore = useExecutionsStore();
-	const workflowsStore = useWorkflowsStore();
+	const workflowsListStore = useWorkflowsListStore();
 	const settingsStore = useSettingsStore();
 	const toast = useToast();
 	const message = useMessage();
@@ -44,7 +44,8 @@ export function useExecutionCommands(): CommandGroup {
 	});
 
 	const workflowPermissions = computed(
-		() => getResourcePermissions(workflowsStore.getWorkflowById(workflowId.value)?.scopes).workflow,
+		() =>
+			getResourcePermissions(workflowsListStore.getWorkflowById(workflowId.value)?.scopes).workflow,
 	);
 
 	const isAnnotationEnabled = computed(

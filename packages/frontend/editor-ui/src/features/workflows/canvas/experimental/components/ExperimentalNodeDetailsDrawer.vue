@@ -52,7 +52,7 @@ provide(ExpressionLocalResolveContextSymbol, expressionResolveCtx);
 			<ul :class="$style.multipleNodesActions">
 				<li v-for="action of contextMenuItems" :key="action.id" :class="$style.multipleNodesAction">
 					<N8nButton
-						type="secondary"
+						variant="subtle"
 						:disabled="action.disabled"
 						@click="emit('contextMenuAction', action.id, nodeIds)"
 					>

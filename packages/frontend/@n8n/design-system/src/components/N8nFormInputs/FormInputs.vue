@@ -40,6 +40,18 @@ const filteredInputs = computed(() => {
 	);
 });
 
+const metadataMap = computed(() => {
+	return props.inputs.reduce(
+		(acc, input) => {
+			if (input.metadata) {
+				acc[input.name] = input.metadata;
+			}
+			return acc;
+		},
+		{} as Record<string, unknown>,
+	);
+});
+
 const isReadyToSubmit = computed(() => {
 	return Object.values(validity.value).every((valid) => !!valid);
 });
@@ -48,9 +60,20 @@ watch(isReadyToSubmit, (ready) => {
 	emit('ready', ready);
 });
 
+watch(
+	() => props.inputs,
+	(newInputs, oldInputs) => {
+		// remove dangling field values that are no longer in the list of inputs
+		const newFields = new Set(newInputs.map((input) => input.name));
+		const oldFields = new Set(oldInputs.map((input) => input.name));
+		const fieldsToClear = Array.from(oldFields).filter((field) => !newFields.has(field));
+		clearValues(fieldsToClear);
+	},
+);
+
 function onUpdateModelValue(name: string, value: FormFieldValue) {
 	values[name] = value;
-	emit('update', { name, value });
+	emit('update', { name, value, metadata: metadataMap.value[name] as Record<string, unknown> });
 	emit('update:modelValue', values);
 }
 
@@ -65,7 +88,30 @@ function getValues() {
 	return { ...values };
 }
 
-defineExpose({ getValues });
+function getValuesWithMetadata<Metadata = Record<string, unknown>>(): Record<
+	string,
+	{ value: FormFieldValue; metadata: Metadata }
+> {
+	return filteredInputs.value.reduce(
+		(acc, input) => {
+			acc[input.name] = {
+				value: values[input.name],
+				metadata: metadataMap.value[input.name] as Metadata,
+			};
+			return acc;
+		},
+		{} as Record<string, { value: FormFieldValue; metadata: Metadata }>,
+	);
+}
+
+function clearValues(fieldNames: string[]) {
+	for (const fieldName of fieldNames) {
+		delete values[fieldName];
+	}
+	emit('update:modelValue', values);
+}
+
+defineExpose({ getValues, getValuesWithMetadata, clearValues });
 
 function onSubmit() {
 	showValidationWarnings.value = true;

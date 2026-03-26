@@ -2,12 +2,16 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
+import type { WorkflowsConfig } from '@n8n/config';
 import { WorkflowDependencyRepository, WorkflowEntity, WorkflowRepository } from '@n8n/db';
-import { ErrorReporter } from 'n8n-core';
+import { mock } from 'jest-mock-extended';
+import type { Span } from 'n8n-core';
+import { ErrorReporter, Tracing } from 'n8n-core';
 import type { INode, IWorkflowBase } from 'n8n-workflow';
 
-import { WorkflowIndexService } from '../workflow-index.service';
 import { EventService } from '@/events/event.service';
+
+import { WorkflowIndexService } from '../workflow-index.service';
 
 describe('WorkflowIndexService', () => {
 	let service: WorkflowIndexService;
@@ -16,9 +20,15 @@ describe('WorkflowIndexService', () => {
 	const mockLogger = mockInstance(Logger);
 	const mockErrorReporter = mockInstance(ErrorReporter);
 	const mockEventService = mockInstance(EventService);
+	const mockTracing = mockInstance(Tracing);
+
+	const createWorkflowsConfig = (overrides: Partial<WorkflowsConfig> = {}) =>
+		mock<WorkflowsConfig>({ indexingBatchSize: 10, ...overrides });
 
 	beforeEach(() => {
 		jest.resetAllMocks();
+
+		mockTracing.startSpan.mockImplementation(async (_opts, spanCb) => await spanCb(mock<Span>()));
 
 		service = new WorkflowIndexService(
 			mockWorkflowDependencyRepository,
@@ -26,6 +36,8 @@ describe('WorkflowIndexService', () => {
 			mockEventService,
 			mockLogger,
 			mockErrorReporter,
+			mockTracing,
+			createWorkflowsConfig(),
 		);
 	});
 
@@ -88,7 +100,7 @@ describe('WorkflowIndexService', () => {
 				}),
 			]);
 
-			await service.updateIndexFor(workflow);
+			await service.updateIndexForDraft(workflow);
 
 			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledWith(
 				'workflow-123',
@@ -159,10 +171,10 @@ describe('WorkflowIndexService', () => {
 				}),
 			]);
 
-			await service.updateIndexFor(workflow);
+			await service.updateIndexForDraft(workflow);
 
 			expect(mockLogger.error).toHaveBeenCalledWith(
-				'Failed to update workflow dependency index for workflow workflow-123: Database error',
+				'Failed to update workflow draft dependency index for workflow workflow-123: Database error',
 			);
 			expect(mockErrorReporter.error).toHaveBeenCalledWith(error);
 		});
@@ -188,7 +200,32 @@ describe('WorkflowIndexService', () => {
 				}),
 			]);
 
-			await service.updateIndexFor(workflow);
+			await service.updateIndexForDraft(workflow);
+
+			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledWith(
+				'workflow-123',
+				expect.objectContaining({
+					dependencies: expect.not.arrayContaining([
+						expect.objectContaining({
+							dependencyType: 'workflowCall',
+						}),
+					]),
+				}),
+			);
+		});
+
+		it('should not create workflowCall dependency when executeWorkflow node has no workflowId parameter', async () => {
+			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
+
+			const workflow = createWorkflow([
+				createNode({
+					id: 'node-1',
+					type: 'n8n-nodes-base.executeWorkflow',
+					parameters: {}, // No workflowId — node was just added to canvas
+				}),
+			]);
+
+			await service.updateIndexForDraft(workflow);
 
 			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledWith(
 				'workflow-123',
@@ -217,7 +254,7 @@ describe('WorkflowIndexService', () => {
 				}),
 			]);
 
-			await service.updateIndexFor(workflow);
+			await service.updateIndexForDraft(workflow);
 
 			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledWith(
 				'workflow-123',
@@ -258,7 +295,7 @@ describe('WorkflowIndexService', () => {
 				}),
 			]);
 
-			await service.updateIndexFor(workflow);
+			await service.updateIndexForDraft(workflow);
 
 			const call = mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mock.calls[0];
 			const dependencies = call[1].dependencies;
@@ -298,7 +335,7 @@ describe('WorkflowIndexService', () => {
 				} as INode,
 			]);
 
-			await service.updateIndexFor(workflow);
+			await service.updateIndexForDraft(workflow);
 
 			const call = mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mock.calls[0];
 			const dependencies = call[1].dependencies;
@@ -329,7 +366,7 @@ describe('WorkflowIndexService', () => {
 				}),
 			]);
 
-			await service.updateIndexFor(workflow);
+			await service.updateIndexForDraft(workflow);
 
 			const call = mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mock.calls[0];
 			const dependencies = call[1].dependencies;
@@ -355,21 +392,227 @@ describe('WorkflowIndexService', () => {
 				]),
 			);
 		});
+
+		it('should extract dataTableId from all data-table-related node types', async () => {
+			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
+
+			const workflow = createWorkflow([
+				createNode({
+					id: 'node-1',
+					type: 'n8n-nodes-base.dataTable',
+					parameters: { dataTableId: { mode: 'name', value: 'My Table 1' } },
+				}),
+				createNode({
+					id: 'node-2',
+					type: 'n8n-nodes-base.dataTableTool',
+					parameters: { dataTableId: { mode: 'id', value: 'table-2' } },
+				}),
+				createNode({
+					id: 'node-3',
+					type: 'n8n-nodes-base.evaluationTrigger',
+					parameters: { source: 'dataTable', dataTableId: { mode: 'list', value: 'table-3' } },
+				}),
+				createNode({
+					id: 'node-4',
+					type: 'n8n-nodes-base.evaluation',
+					parameters: { source: 'dataTable', dataTableId: { mode: 'list', value: 'table-4' } },
+				}),
+			]);
+
+			await service.updateIndexForDraft(workflow);
+
+			const call = mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mock.calls[0];
+			const dataTableDeps = call[1].dependencies.filter(
+				(d: { dependencyType: string }) => d.dependencyType === 'dataTableId',
+			);
+
+			expect(dataTableDeps).toHaveLength(4);
+			expect(dataTableDeps).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						dependencyType: 'dataTableId',
+						dependencyKey: 'My Table 1',
+						dependencyInfo: expect.objectContaining({ nodeId: 'node-1', mode: 'name' }),
+					}),
+					expect.objectContaining({
+						dependencyType: 'dataTableId',
+						dependencyKey: 'table-2',
+						dependencyInfo: expect.objectContaining({ nodeId: 'node-2', mode: 'id' }),
+					}),
+					expect.objectContaining({
+						dependencyType: 'dataTableId',
+						dependencyKey: 'table-3',
+						dependencyInfo: expect.objectContaining({ nodeId: 'node-3', mode: 'list' }),
+					}),
+					expect.objectContaining({
+						dependencyType: 'dataTableId',
+						dependencyKey: 'table-4',
+						dependencyInfo: expect.objectContaining({ nodeId: 'node-4', mode: 'list' }),
+					}),
+				]),
+			);
+		});
+
+		it('should insert placeholder for workflow with no nodes', async () => {
+			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
+
+			const workflow = createWorkflow([]);
+
+			await service.updateIndexForDraft(workflow);
+
+			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledWith(
+				'workflow-123',
+				expect.objectContaining({
+					dependencies: expect.arrayContaining([
+						expect.objectContaining({
+							dependencyType: 'workflowIndexed',
+							dependencyKey: '__INDEXED__',
+							dependencyInfo: null,
+						}),
+					]),
+				}),
+			);
+
+			// Verify only the placeholder exists (exactly 1 dependency)
+			const call = mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mock.calls[0];
+			expect(call[1].dependencies).toHaveLength(1);
+		});
+
+		it('should insert placeholder for workflow with nodes but no extractable dependencies', async () => {
+			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
+
+			// Node with empty type - no nodeType dependency will be created
+			const workflow = createWorkflow([
+				{
+					id: 'node-1',
+					name: 'EmptyNode',
+					type: '', // Empty type - no dependency extracted
+					typeVersion: 1,
+					position: [0, 0] as [number, number],
+					parameters: {},
+				} as INode,
+			]);
+
+			await service.updateIndexForDraft(workflow);
+
+			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledWith(
+				'workflow-123',
+				expect.objectContaining({
+					dependencies: expect.arrayContaining([
+						expect.objectContaining({
+							dependencyType: 'workflowIndexed',
+							dependencyKey: '__INDEXED__',
+							dependencyInfo: null,
+						}),
+					]),
+				}),
+			);
+
+			// Verify only the placeholder exists (exactly 1 dependency)
+			const call = mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mock.calls[0];
+			expect(call[1].dependencies).toHaveLength(1);
+		});
+
+		it('should index published nodes (not draft nodes) when calling updateIndexForPublished', async () => {
+			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
+
+			const draftNodes = [
+				createNode({
+					id: 'node-1',
+					type: 'n8n-nodes-base.manualTrigger',
+				}),
+			];
+			const publishedNodes = [
+				createNode({
+					id: 'node-2',
+					type: 'n8n-nodes-base.httpRequest',
+				}),
+			];
+			const workflow = createWorkflow(draftNodes);
+
+			const publishedVersionId = 'published-version-123';
+			await service.updateIndexForPublished(workflow, publishedVersionId, publishedNodes);
+
+			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledWith(
+				'workflow-123',
+				expect.objectContaining({
+					publishedVersionId: 'published-version-123',
+					dependencies: expect.arrayContaining([
+						expect.objectContaining({
+							dependencyType: 'nodeType',
+							dependencyKey: 'n8n-nodes-base.httpRequest',
+						}),
+					]),
+				}),
+			);
+			// Should NOT contain the draft node type
+			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledWith(
+				'workflow-123',
+				expect.objectContaining({
+					dependencies: expect.not.arrayContaining([
+						expect.objectContaining({
+							dependencyKey: 'n8n-nodes-base.manualTrigger',
+						}),
+					]),
+				}),
+			);
+		});
+
+		it('should pass null publishedVersionId when calling updateIndexForDraft', async () => {
+			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
+
+			const workflow = createWorkflow([
+				createNode({
+					id: 'node-1',
+					type: 'n8n-nodes-base.manualTrigger',
+				}),
+			]);
+
+			await service.updateIndexForDraft(workflow);
+
+			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledWith(
+				'workflow-123',
+				expect.objectContaining({
+					publishedVersionId: null,
+				}),
+			);
+		});
 	});
 
 	describe('init()', () => {
 		it('should register event listeners for workflow events', () => {
 			service.init();
 
-			expect(mockEventService.on).toHaveBeenCalledTimes(4);
+			expect(mockEventService.on).toHaveBeenCalledTimes(5);
 			expect(mockEventService.on).toHaveBeenCalledWith('server-started', expect.any(Function));
 			expect(mockEventService.on).toHaveBeenCalledWith('workflow-created', expect.any(Function));
 			expect(mockEventService.on).toHaveBeenCalledWith('workflow-saved', expect.any(Function));
 			expect(mockEventService.on).toHaveBeenCalledWith('workflow-deleted', expect.any(Function));
+			expect(mockEventService.on).toHaveBeenCalledWith('workflow-activated', expect.any(Function));
 		});
 	});
 
 	describe('buildIndex()', () => {
+		it('should skip published index when workflow has activeVersionId but no activeVersion nodes', async () => {
+			mockWorkflowRepository.findWorkflowsNeedingIndexing.mockResolvedValue([]);
+
+			const workflow = createWorkflowEntity([
+				createNode({ id: 'node-1', type: 'n8n-nodes-base.manualTrigger' }),
+			]);
+			workflow.activeVersionId = 'some-version-id';
+			workflow.activeVersion = null;
+
+			mockWorkflowRepository.findWorkflowsNeedingPublishedVersionIndexing
+				.mockResolvedValueOnce([workflow])
+				.mockResolvedValueOnce([]);
+
+			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
+
+			await service.buildIndex();
+
+			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).not.toHaveBeenCalled();
+		});
+
 		it('should retrieve unindexed workflows and update their dependencies', async () => {
 			const workflow1 = createWorkflowEntity([
 				createNode({ id: 'node-1', type: 'n8n-nodes-base.manualTrigger' }),
@@ -384,12 +627,15 @@ describe('WorkflowIndexService', () => {
 				.mockResolvedValueOnce([workflow1, workflow2])
 				.mockResolvedValueOnce([]);
 
+			// Mock findWorkflowsNeedingPublishedVersionIndexing to return empty (no published versions needing indexing)
+			mockWorkflowRepository.findWorkflowsNeedingPublishedVersionIndexing.mockResolvedValue([]);
+
 			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
 
 			await service.buildIndex();
 
 			// Verify findWorkflowsNeedingIndexing was called with correct pagination
-			expect(mockWorkflowRepository.findWorkflowsNeedingIndexing).toHaveBeenCalledWith(100); // default batch size
+			expect(mockWorkflowRepository.findWorkflowsNeedingIndexing).toHaveBeenCalledWith(10); // default batch size
 
 			// Verify updateDependenciesForWorkflow was called for each workflow
 			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledTimes(
@@ -414,7 +660,8 @@ describe('WorkflowIndexService', () => {
 				mockEventService,
 				mockLogger,
 				mockErrorReporter,
-				batchSize,
+				mockTracing,
+				createWorkflowsConfig({ indexingBatchSize: batchSize }),
 			);
 
 			// Create 5 workflows to test multiple batches
@@ -431,6 +678,9 @@ describe('WorkflowIndexService', () => {
 				.mockResolvedValueOnce([workflows[0], workflows[1]]) // First batch: 2 workflows
 				.mockResolvedValueOnce([workflows[2], workflows[3]]) // Second batch: 2 workflows
 				.mockResolvedValueOnce([workflows[4]]); // Third batch: 1 workflow (partial, should stop)
+
+			// Mock findWorkflowsNeedingPublishedVersionIndexing to return empty (no published versions needing indexing)
+			mockWorkflowRepository.findWorkflowsNeedingPublishedVersionIndexing.mockResolvedValue([]);
 
 			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
 

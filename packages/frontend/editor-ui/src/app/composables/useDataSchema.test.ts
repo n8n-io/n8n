@@ -1,6 +1,6 @@
-import jp from 'jsonpath';
+import { JSONPath } from 'jsonpath-plus';
 import { useDataSchema, useFlattenSchema, type SchemaNode } from './useDataSchema';
-import type { INodeUi, Schema } from '@/Interface';
+import type { INodeUi, Schema, IWorkflowDb } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
@@ -300,10 +300,10 @@ describe('useDataSchema', () => {
 		it('should return the correct data when using the generated json path on an object', () => {
 			const input = { people: ['Joe', 'John'] };
 			const schema = getSchema(input);
-			const pathData = jp.query(
-				input,
-				`$${((schema.value as Schema[])[0].value as Schema[])[0].path}`,
-			);
+			const pathData = JSONPath({
+				path: `$${((schema.value as Schema[])[0].value as Schema[])[0].path}`,
+				json: input,
+			});
 			expect(pathData).toEqual(['Joe']);
 		});
 
@@ -313,20 +313,20 @@ describe('useDataSchema', () => {
 				{ name: 'Joe', age: 33, hobbies: ['skateboarding', 'gaming'] },
 			];
 			const schema = getSchema(input);
-			const pathData = jp.query(
-				input,
-				`$${(((schema.value as Schema[])[0].value as Schema[])[2].value as Schema[])[1].path}`,
-			);
+			const pathData = JSONPath({
+				path: `$${(((schema.value as Schema[])[0].value as Schema[])[2].value as Schema[])[1].path}`,
+				json: input,
+			});
 			expect(pathData).toEqual(['traveling']);
 		});
 
 		it('should return the correct data when using the generated json path on a list of list', () => {
 			const input = [[1, 2]];
 			const schema = getSchema(input);
-			const pathData = jp.query(
-				input,
-				`$${((schema.value as Schema[])[0].value as Schema[])[1].path}`,
-			);
+			const pathData = JSONPath({
+				path: `$${((schema.value as Schema[])[0].value as Schema[])[1].path}`,
+				json: input,
+			});
 			expect(pathData).toEqual([2]);
 		});
 
@@ -338,10 +338,10 @@ describe('useDataSchema', () => {
 				],
 			];
 			const schema = getSchema(input);
-			const pathData = jp.query(
-				input,
-				`$${(((schema.value as Schema[])[0].value as Schema[])[1].value as Schema[])[1].path}`,
-			);
+			const pathData = JSONPath({
+				path: `$${(((schema.value as Schema[])[0].value as Schema[])[1].value as Schema[])[1].path}`,
+				json: input,
+			});
 			expect(pathData).toEqual([33]);
 		});
 
@@ -355,15 +355,15 @@ describe('useDataSchema', () => {
 				},
 			];
 			const schema = getSchema(input);
-			const pathData = jp.query(
-				input,
-				`$${
+			const pathData = JSONPath({
+				path: `$${
 					(
 						(((schema.value as Schema[])[0].value as Schema[])[0].value as Schema[])[0]
 							.value as Schema[]
 					)[0].path
 				}`,
-			);
+				json: input,
+			});
 			expect(pathData).toEqual([new Date('2022-11-22T00:00:00.000Z')]);
 		});
 
@@ -1165,6 +1165,28 @@ describe('useFlattenSchema', () => {
 		});
 
 		it('should flatten node schemas', () => {
+			vi.mocked(useWorkflowsStore).mockReturnValue({
+				...useWorkflowsStore(),
+				workflow: {
+					id: '1',
+					name: 'Test Workflow',
+					active: false,
+					activeVersionId: null,
+					isArchived: false,
+					createdAt: '2024-01-01',
+					updatedAt: '2024-01-01',
+					nodes: [],
+					connections: {},
+					settings: {
+						executionOrder: 'v1',
+						binaryMode: undefined,
+					},
+					tags: [],
+					pinData: {},
+					versionId: '',
+				} as IWorkflowDb,
+			});
+
 			const { flattenMultipleSchemas } = useFlattenSchema();
 			const schema: Schema = {
 				path: '',

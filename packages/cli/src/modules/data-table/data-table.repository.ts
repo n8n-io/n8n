@@ -250,6 +250,15 @@ export class DataTableRepository extends Repository<DataTable> {
 				.orderBy('datatable_name_lower', direction);
 		} else if (['createdAt', 'updatedAt'].includes(field)) {
 			query.orderBy(`dataTable.${field}`, direction);
+		} else if (field === 'size') {
+			query
+				.leftJoin(
+					`(${this.getDataTableSizeQuery()})`,
+					'size_data',
+					`size_data.table_name = '${toTableName('')}' || dataTable.id`,
+				)
+				.addSelect('size_data.table_bytes', 'size')
+				.orderBy('size', direction);
 		}
 	}
 
@@ -322,12 +331,11 @@ export class DataTableRepository extends Repository<DataTable> {
 		};
 	}
 
-	private async getAllDataTablesSizeMap(): Promise<Map<string, number>> {
+	private getDataTableSizeQuery() {
 		const dbType = this.globalConfig.database.type;
 		const tablePattern = toTableName('%');
 
 		let sql = '';
-
 		switch (dbType) {
 			case 'sqlite':
 				sql = `
@@ -353,42 +361,20 @@ export class DataTableRepository extends Repository<DataTable> {
       `;
 				break;
 			}
-
-			case 'mysqldb':
-			case 'mariadb': {
-				const databaseName = this.globalConfig.database.mysqldb.database;
-				const isMariaDb = dbType === 'mariadb';
-				const innodbTables = isMariaDb ? 'INNODB_SYS_TABLES' : 'INNODB_TABLES';
-				const innodbTablespaces = isMariaDb ? 'INNODB_SYS_TABLESPACES' : 'INNODB_TABLESPACES';
-				sql = `
-        SELECT t.TABLE_NAME AS table_name,
-            COALESCE(
-                (
-                  SELECT SUM(ists.ALLOCATED_SIZE)
-                    FROM information_schema.${innodbTables} ist
-                    JOIN information_schema.${innodbTablespaces} ists
-                      ON ists.SPACE = ist.SPACE
-                   WHERE ist.NAME = CONCAT(t.TABLE_SCHEMA, '/', t.TABLE_NAME)
-                ),
-                (t.DATA_LENGTH + t.INDEX_LENGTH)
-            ) AS table_bytes
-        FROM information_schema.TABLES t
-        WHERE t.TABLE_SCHEMA = '${databaseName}'
-          AND t.TABLE_NAME LIKE '${tablePattern}'
-    `;
-				break;
-			}
-
-			default:
-				return new Map<string, number>();
 		}
+
+		return sql;
+	}
+
+	private async getAllDataTablesSizeMap(): Promise<Map<string, number>> {
+		const sql = this.getDataTableSizeQuery();
+		const sizeMap = new Map<string, number>();
+		if (sql === '') return sizeMap;
 
 		const result = (await this.query(sql)) as Array<{
 			table_name: string;
 			table_bytes: number | string | null;
 		}>;
-
-		const sizeMap = new Map<string, number>();
 
 		for (const row of result) {
 			if (row.table_bytes !== null && row.table_name) {

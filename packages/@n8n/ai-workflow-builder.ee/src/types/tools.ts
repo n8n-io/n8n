@@ -1,7 +1,6 @@
 import type { INodeParameters } from 'n8n-workflow';
 import type { ZodIssue } from 'zod';
 
-import type { PromptCategorization } from './categorization';
 import type { AddedNode, NodeDetails, NodeSearchResult } from './nodes';
 import type { SimpleWorkflow } from './workflow';
 
@@ -49,6 +48,7 @@ export interface ProgressReporter {
 	progress: (message: string, data?: Record<string, unknown>) => void;
 	complete: <T>(output: T) => void;
 	error: (error: ToolError) => void;
+	setCustomTitle: (title: string) => void;
 	createBatchReporter: (scope: string) => BatchReporter;
 }
 
@@ -148,10 +148,13 @@ export interface RemoveConnectionOutput {
 }
 
 /**
- * Output type for categorize prompt tool
+ * Output type for rename node tool
  */
-export interface CategorizePromptOutput {
-	categorization: PromptCategorization;
+export interface RenameNodeOutput {
+	nodeId: string;
+	oldName: string;
+	newName: string;
+	message: string;
 }
 
 /**
@@ -197,5 +200,33 @@ export interface GetWorkflowExamplesOutput {
 export interface GetNodeConfigurationExamplesOutput {
 	nodeType: string;
 	totalFound: number;
+	message: string;
+}
+
+/**
+ * Output type for get execution schema tool
+ */
+export interface GetExecutionSchemaOutput {
+	found: boolean;
+	count: number;
+	message: string;
+}
+
+/**
+ * Output type for get execution logs tool
+ */
+export interface GetExecutionLogsOutput {
+	hasError: boolean;
+	lastNodeExecuted?: string;
+	nodesWithData: number;
+	message: string;
+}
+
+/**
+ * Output type for get expression data mapping tool
+ */
+export interface GetExpressionDataMappingOutput {
+	found: boolean;
+	nodesWithExpressions: number;
 	message: string;
 }

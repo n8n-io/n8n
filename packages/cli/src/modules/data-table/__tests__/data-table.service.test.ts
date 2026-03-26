@@ -1,12 +1,12 @@
 import { mockInstance, testModules } from '@n8n/backend-test-utils';
 import type { RenameDataTableColumnDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { ProjectRelationRepository } from '@n8n/db';
+import { ProjectRelationRepository, type User } from '@n8n/db';
+import type { DataTableInfoById } from 'n8n-workflow';
 
-import { CsvParserService } from '../csv-parser.service';
 import type { DataTableColumn } from '../data-table-column.entity';
 import { DataTableColumnRepository } from '../data-table-column.repository';
-import { DataTableFileCleanupService } from '../data-table-file-cleanup.service';
+import { DataTableCsvImportService } from '../data-table-csv-import.service';
 import { DataTableRowsRepository } from '../data-table-rows.repository';
 import { DataTableSizeValidator } from '../data-table-size-validator.service';
 import type { DataTable } from '../data-table.entity';
@@ -14,6 +14,7 @@ import { DataTableRepository } from '../data-table.repository';
 import { DataTableService } from '../data-table.service';
 import { DataTableColumnNotFoundError } from '../errors/data-table-column-not-found.error';
 import { DataTableNotFoundError } from '../errors/data-table-not-found.error';
+import { DataTableValidationError } from '../errors/data-table-validation.error';
 import { RoleService } from '@/services/role.service';
 
 describe('DataTableService', () => {
@@ -25,8 +26,7 @@ describe('DataTableService', () => {
 	let mockDataTableSizeValidator: jest.Mocked<DataTableSizeValidator>;
 	let mockProjectRelationRepository: jest.Mocked<ProjectRelationRepository>;
 	let mockRoleService: jest.Mocked<RoleService>;
-	let mockCsvParserService: jest.Mocked<CsvParserService>;
-	let mockFileCleanupService: jest.Mocked<DataTableFileCleanupService>;
+	let mockCsvImportService: jest.Mocked<DataTableCsvImportService>;
 
 	beforeAll(async () => {
 		await testModules.loadModules(['data-table']);
@@ -40,8 +40,7 @@ describe('DataTableService', () => {
 		mockDataTableSizeValidator = mockInstance(DataTableSizeValidator);
 		mockProjectRelationRepository = mockInstance(ProjectRelationRepository);
 		mockRoleService = mockInstance(RoleService);
-		mockCsvParserService = mockInstance(CsvParserService);
-		mockFileCleanupService = mockInstance(DataTableFileCleanupService);
+		mockCsvImportService = mockInstance(DataTableCsvImportService);
 
 		// Mock the logger.scoped method to return the logger itself
 		mockLogger.scoped = jest.fn().mockReturnValue(mockLogger);
@@ -54,8 +53,7 @@ describe('DataTableService', () => {
 			mockDataTableSizeValidator,
 			mockProjectRelationRepository,
 			mockRoleService,
-			mockCsvParserService,
-			mockFileCleanupService,
+			mockCsvImportService,
 		);
 
 		jest.clearAllMocks();
@@ -360,6 +358,244 @@ describe('DataTableService', () => {
 				);
 				expect(result.name).toBe(specialCharDto.name);
 			});
+		});
+	});
+
+	describe('getDataTablesSize', () => {
+		const projectId1 = 'project-1';
+		const projectId2 = 'project-2';
+
+		const allDataTables: DataTableInfoById = {
+			'dt-1': {
+				id: 'dt-1',
+				name: 'Table 1',
+				projectId: projectId1,
+				projectName: 'Project 1',
+				sizeBytes: 1024,
+			},
+			'dt-2': {
+				id: 'dt-2',
+				name: 'Table 2',
+				projectId: projectId2,
+				projectName: 'Project 2',
+				sizeBytes: 2048,
+			},
+		};
+
+		const cachedSizeData = {
+			totalBytes: 3072,
+			dataTables: allDataTables,
+		};
+
+		beforeEach(() => {
+			mockDataTableSizeValidator.getCachedSizeData.mockImplementation(async (fn) => {
+				await fn();
+				return cachedSizeData;
+			});
+			mockDataTableSizeValidator.sizeToState.mockReturnValue('ok');
+			mockRoleService.rolesWithScope.mockResolvedValue([]);
+		});
+
+		it('should return all data tables for a global admin', async () => {
+			// Arrange
+			const adminUser = {
+				id: 'user-admin',
+				role: { slug: 'global:owner', scopes: [{ slug: 'dataTable:listProject' }] },
+			} as unknown as User;
+			mockProjectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue([projectId1]);
+
+			// Act
+			const result = await dataTableService.getDataTablesSize(adminUser);
+
+			// Assert - admin receives the full unfiltered map
+			expect(result.dataTables).toEqual(allDataTables);
+			expect(result.totalBytes).toBe(3072);
+			expect(result.quotaStatus).toBe('ok');
+		});
+
+		it('should return only accessible data tables for a regular user', async () => {
+			// Arrange
+			const regularUser = {
+				id: 'user-regular',
+				role: { slug: 'global:member', scopes: [] },
+			} as unknown as User;
+			// User has access only to project-1
+			mockProjectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue([projectId1]);
+
+			// Act
+			const result = await dataTableService.getDataTablesSize(regularUser);
+
+			// Assert - only the data table belonging to project-1 is returned
+			expect(result.dataTables).toEqual({ 'dt-1': allDataTables['dt-1'] });
+			expect(result.totalBytes).toBe(3072);
+			expect(result.quotaStatus).toBe('ok');
+		});
+
+		it('should return no data tables when user has no accessible projects', async () => {
+			// Arrange
+			const regularUser = {
+				id: 'user-no-access',
+				role: { slug: 'global:member', scopes: [] },
+			} as unknown as User;
+			mockProjectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue([]);
+
+			// Act
+			const result = await dataTableService.getDataTablesSize(regularUser);
+
+			// Assert
+			expect(result.dataTables).toEqual({});
+		});
+
+		it('should query accessible projects using the correct role scope', async () => {
+			// Arrange
+			const mockRoles = [{ slug: 'project:member' }] as any[];
+			mockRoleService.rolesWithScope.mockResolvedValue(mockRoles);
+			const regularUser = {
+				id: 'user-regular',
+				role: { slug: 'global:member', scopes: [] },
+			} as unknown as User;
+			mockProjectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue([]);
+
+			// Act
+			await dataTableService.getDataTablesSize(regularUser);
+
+			// Assert
+			expect(mockRoleService.rolesWithScope).toHaveBeenCalledWith('project', [
+				'dataTable:listProject',
+			]);
+			expect(mockProjectRelationRepository.getAccessibleProjectsByRoles).toHaveBeenCalledWith(
+				regularUser.id,
+				mockRoles,
+			);
+		});
+	});
+
+	describe('importCsvToExistingTable', () => {
+		const projectId = 'test-project-id';
+		const dataTableId = 'test-data-table-id';
+		const fileId = 'test-file-id';
+
+		const mockDataTable: DataTable = {
+			id: dataTableId,
+			name: 'Test Table',
+			projectId,
+		} as DataTable;
+
+		const tableColumns: DataTableColumn[] = [
+			{ id: 'col-1', name: 'name', type: 'string', index: 0, dataTableId } as DataTableColumn,
+			{ id: 'col-2', name: 'age', type: 'number', index: 1, dataTableId } as DataTableColumn,
+			{ id: 'col-3', name: 'email', type: 'string', index: 2, dataTableId } as DataTableColumn,
+		];
+
+		beforeEach(() => {
+			mockDataTableSizeValidator.validateSize.mockResolvedValue(undefined);
+			mockDataTableRepository.findOneBy.mockResolvedValue(mockDataTable);
+			mockDataTableColumnRepository.getColumns.mockResolvedValue(tableColumns);
+			mockCsvImportService.cleanupFile.mockResolvedValue(undefined);
+			// Mock insertRows transaction
+			Object.defineProperty(mockDataTableColumnRepository, 'manager', {
+				value: {
+					transaction: jest.fn(async (fn) => fn({} as any)),
+				},
+				writable: true,
+				configurable: true,
+			});
+			mockDataTableRowsRepository.insertRows.mockResolvedValue({
+				success: true,
+				insertedRows: 2,
+			});
+			mockDataTableSizeValidator.reset = jest.fn();
+			mockDataTableRepository.touchUpdatedAt.mockResolvedValue(undefined);
+		});
+
+		it('should import rows returned by csv import service', async () => {
+			mockCsvImportService.validateAndBuildRowsForExistingTable.mockResolvedValue({
+				rows: [
+					{ name: 'Alice', age: '30', email: 'alice@test.com' },
+					{ name: 'Bob', age: '25', email: 'bob@test.com' },
+				],
+				systemColumnsIgnored: [],
+			});
+
+			const result = await dataTableService.importCsvToExistingTable(
+				dataTableId,
+				projectId,
+				fileId,
+			);
+
+			expect(result.importedRowCount).toBe(2);
+			expect(result.systemColumnsIgnored).toEqual([]);
+			expect(mockCsvImportService.validateAndBuildRowsForExistingTable).toHaveBeenCalledWith(
+				fileId,
+				tableColumns,
+			);
+		});
+
+		it('should pass through systemColumnsIgnored from csv import service', async () => {
+			mockCsvImportService.validateAndBuildRowsForExistingTable.mockResolvedValue({
+				rows: [{ name: 'Alice' }],
+				systemColumnsIgnored: ['id', 'createdAt', 'updatedAt'],
+			});
+
+			const result = await dataTableService.importCsvToExistingTable(
+				dataTableId,
+				projectId,
+				fileId,
+			);
+
+			expect(result.importedRowCount).toBe(1);
+			expect(result.systemColumnsIgnored).toEqual(['id', 'createdAt', 'updatedAt']);
+		});
+
+		it('should propagate validation errors from csv import service', async () => {
+			mockCsvImportService.validateAndBuildRowsForExistingTable.mockRejectedValue(
+				new DataTableValidationError('CSV contains columns not found in the data table'),
+			);
+
+			await expect(
+				dataTableService.importCsvToExistingTable(dataTableId, projectId, fileId),
+			).rejects.toThrow(DataTableValidationError);
+
+			expect(mockCsvImportService.cleanupFile).toHaveBeenCalledWith(fileId);
+		});
+
+		it('should skip insertRows when csv import service returns 0 rows', async () => {
+			mockCsvImportService.validateAndBuildRowsForExistingTable.mockResolvedValue({
+				rows: [],
+				systemColumnsIgnored: [],
+			});
+
+			const result = await dataTableService.importCsvToExistingTable(
+				dataTableId,
+				projectId,
+				fileId,
+			);
+
+			expect(result.importedRowCount).toBe(0);
+			expect(mockDataTableRowsRepository.insertRows).not.toHaveBeenCalled();
+		});
+
+		it('should clean up file after successful import', async () => {
+			mockCsvImportService.validateAndBuildRowsForExistingTable.mockResolvedValue({
+				rows: [{ name: 'Alice' }],
+				systemColumnsIgnored: [],
+			});
+
+			await dataTableService.importCsvToExistingTable(dataTableId, projectId, fileId);
+
+			expect(mockCsvImportService.cleanupFile).toHaveBeenCalledWith(fileId);
+		});
+
+		it('should clean up file even when import fails', async () => {
+			mockCsvImportService.validateAndBuildRowsForExistingTable.mockRejectedValue(
+				new Error('parse error'),
+			);
+
+			await expect(
+				dataTableService.importCsvToExistingTable(dataTableId, projectId, fileId),
+			).rejects.toThrow();
+
+			expect(mockCsvImportService.cleanupFile).toHaveBeenCalledWith(fileId);
 		});
 	});
 });

@@ -1,5 +1,9 @@
 import { i18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import type { ResolvableState } from '@/app/types/expressions';
 import { ExpressionError, ExpressionParser, isExpression, type Result } from 'n8n-workflow';
 
@@ -96,7 +100,11 @@ export const getExpressionErrorMessage = (error: Error, nodeHasRunData = false):
 
 	if (isInvalidPairedItemError(error) || isNoPairedItemError(error)) {
 		const nodeCause = error.context.nodeCause as string;
-		const isPinned = !!useWorkflowsStore().pinDataByNodeName(nodeCause);
+		const workflowsStore = useWorkflowsStore();
+		const workflowDocumentStore = workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined;
+		const isPinned = !!workflowDocumentStore?.pinData?.[nodeCause];
 
 		if (isPinned) {
 			return i18n.baseText('expressionModalInput.pairedItemInvalidPinnedError', {

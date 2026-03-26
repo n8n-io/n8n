@@ -8,6 +8,7 @@ import * as interaction from './actions/interaction/Interaction.resource';
 import { router } from './actions/router';
 import * as session from './actions/session/Session.resource';
 import * as window from './actions/window/Window.resource';
+import { agentsResourceMapping, listSearchAgents } from './methods';
 
 export class Airtop implements INodeType {
 	description: INodeTypeDescription = {
@@ -72,6 +73,15 @@ export class Airtop implements INodeType {
 			...extraction.description,
 			...interaction.description,
 		],
+	};
+
+	methods = {
+		listSearch: {
+			listSearchAgents,
+		},
+		resourceMapping: {
+			agentsResourceMapping,
+		},
 	};
 
 	async execute(this: IExecuteFunctions) {

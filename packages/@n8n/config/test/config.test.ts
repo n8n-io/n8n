@@ -4,15 +4,29 @@ import { mock } from 'jest-mock-extended';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import type { UserManagementConfig } from '../src/configs/user-management.config';
 import type { DatabaseConfig } from '../src/index';
-import { GlobalConfig } from '../src/index';
+import { GlobalConfig, SSRF_DEFAULT_BLOCKED_IP_RANGES } from '../src/index';
 
 jest.mock('fs');
 const mockFs = mock<typeof fs>();
 fs.readFileSync = mockFs.readFileSync;
 
 const consoleWarnMock = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+// Ignore the sanitize function from the GlobalConfig nested types
+type ConfigShape<T> = T extends ReadonlyArray<infer U>
+	? Array<ConfigShape<U>>
+	: T extends object
+		? {
+				[K in keyof T as K extends 'sanitize'
+					? never
+					: T[K] extends (...args: unknown[]) => unknown
+						? never
+						: K]: ConfigShape<T[K]>;
+			}
+		: T;
+
+type GlobalConfigShape = ConfigShape<GlobalConfig>;
 
 describe('GlobalConfig', () => {
 	beforeEach(() => {
@@ -25,7 +39,7 @@ describe('GlobalConfig', () => {
 		process.env = originalEnv;
 	});
 
-	const defaultConfig: GlobalConfig = {
+	const defaultConfig = {
 		path: '/',
 		host: 'localhost',
 		port: 5678,
@@ -54,6 +68,7 @@ describe('GlobalConfig', () => {
 		proxy_hops: 0,
 		ssl_key: '',
 		ssl_cert: '',
+		canvasOnly: false,
 		editorBaseUrl: '',
 		dataTable: {
 			maxSize: 50 * 1024 * 1024,
@@ -68,14 +83,6 @@ describe('GlobalConfig', () => {
 				maxQueryExecutionTime: 0,
 				options: 'error',
 			},
-			mysqldb: {
-				database: 'n8n',
-				host: 'localhost',
-				password: '',
-				port: 3306,
-				user: 'root',
-				poolSize: 10,
-			},
 			postgresdb: {
 				database: 'n8n',
 				host: 'localhost',
@@ -84,6 +91,8 @@ describe('GlobalConfig', () => {
 				port: 5432,
 				schema: 'public',
 				connectionTimeoutMs: 20_000,
+				idleTimeoutMs: 30_000,
+				statementTimeoutMs: 5 * 60 * 1000,
 				ssl: {
 					ca: '',
 					cert: '',
@@ -92,17 +101,14 @@ describe('GlobalConfig', () => {
 					rejectUnauthorized: true,
 				},
 				user: 'postgres',
-				idleTimeoutMs: 30_000,
 			},
 			sqlite: {
 				database: 'database.sqlite',
-				enableWAL: true,
 				executeVacuumOnStartup: false,
 				poolSize: 3,
 			},
 			tablePrefix: '',
 			type: 'sqlite',
-			isLegacySqlite: false,
 			pingIntervalSeconds: 2,
 		} as DatabaseConfig,
 		credentials: {
@@ -112,6 +118,7 @@ describe('GlobalConfig', () => {
 				endpoint: '',
 				endpointAuthToken: '',
 				persistence: false,
+				skipTypes: [],
 			},
 		},
 		userManagement: {
@@ -139,11 +146,12 @@ describe('GlobalConfig', () => {
 					'user-invited': '',
 					'password-reset-requested': '',
 					'workflow-deactivated': '',
+					'workflow-failure': '',
 					'workflow-shared': '',
 					'project-shared': '',
 				},
 			},
-		} as UserManagementConfig,
+		},
 		eventBus: {
 			checkUnsentInterval: 0,
 			crashRecoveryMode: 'extensive',
@@ -154,6 +162,7 @@ describe('GlobalConfig', () => {
 			},
 		},
 		externalHooks: {
+			separator: ':',
 			files: [],
 		},
 		nodes: {
@@ -170,6 +179,7 @@ describe('GlobalConfig', () => {
 		templates: {
 			enabled: true,
 			host: 'https://api.n8n.io/api/',
+			dynamicTemplatesHost: 'https://dynamic-templates.n8n.io/templates',
 		},
 		versionNotifications: {
 			enabled: true,
@@ -186,7 +196,9 @@ describe('GlobalConfig', () => {
 			defaultName: 'My workflow',
 			callerPolicyDefaultOption: 'workflowsFromSameOwner',
 			activationBatchSize: 1,
-			indexingEnabled: false,
+			indexingEnabled: true,
+			indexingBatchSize: 10,
+			useWorkflowPublicationService: false,
 		},
 		endpoints: {
 			metrics: {
@@ -204,6 +216,7 @@ describe('GlobalConfig', () => {
 				includeCredentialTypeLabel: false,
 				includeApiStatusCodeLabel: false,
 				includeQueueMetrics: false,
+				includeWorkflowExecutionDuration: true,
 				queueMetricsInterval: 20,
 				activeWorkflowCountInterval: 60,
 				includeWorkflowStatistics: false,
@@ -216,6 +229,8 @@ describe('GlobalConfig', () => {
 			formTest: 'form-test',
 			formWaiting: 'form-waiting',
 			mcp: 'mcp',
+			mcpBuilderEnabled: true,
+			mcpMaxRegisteredClients: 200,
 			mcpTest: 'mcp-test',
 			payloadSizeMax: 16,
 			formDataFileSizeMax: 200,
@@ -223,6 +238,7 @@ describe('GlobalConfig', () => {
 			webhook: 'webhook',
 			webhookTest: 'webhook-test',
 			webhookWaiting: 'webhook-waiting',
+			health: '/healthz',
 		},
 		cache: {
 			backend: 'auto',
@@ -234,6 +250,11 @@ describe('GlobalConfig', () => {
 				prefix: 'cache',
 				ttl: 3600000,
 			},
+		},
+		chatHub: {
+			executionContextTtl: 3600,
+			maxBufferedChunks: 1000,
+			streamStateTtl: 300,
 		},
 		queue: {
 			health: {
@@ -255,6 +276,10 @@ describe('GlobalConfig', () => {
 					slotsRefreshInterval: 5_000,
 					slotsRefreshTimeout: 1_000,
 					dnsResolveStrategy: 'LOOKUP',
+					keepAlive: false,
+					keepAliveDelay: 5000,
+					keepAliveInterval: 5000,
+					reconnectOnFailover: true,
 				},
 				gracefulShutdownTimeout: 30,
 				prefix: 'bull',
@@ -266,7 +291,6 @@ describe('GlobalConfig', () => {
 			},
 		},
 		taskRunners: {
-			enabled: true,
 			mode: 'internal',
 			path: '/runners',
 			authToken: '',
@@ -285,6 +309,9 @@ describe('GlobalConfig', () => {
 			frontendDsn: '',
 			environment: '',
 			deploymentName: '',
+			profilesSampleRate: 0,
+			tracesSampleRate: 0,
+			eventLoopBlockThreshold: 500,
 		},
 		logging: {
 			level: 'info',
@@ -325,6 +352,7 @@ describe('GlobalConfig', () => {
 			daysAbandonedWorkflow: 90,
 			contentSecurityPolicy: '{}',
 			contentSecurityPolicyReportOnly: false,
+			crossOriginOpenerPolicy: 'same-origin',
 			disableWebhookHtmlSandboxing: false,
 			disableBareRepos: true,
 			awsSystemCredentialsAccess: false,
@@ -403,6 +431,13 @@ describe('GlobalConfig', () => {
 				scopesProjectsRolesClaimName: 'n8n_projects',
 			},
 		},
+		ssrfProtection: {
+			enabled: false,
+			blockedIpRanges: [...SSRF_DEFAULT_BLOCKED_IP_RANGES],
+			allowedIpRanges: [],
+			allowedHostnames: [],
+			dnsCacheMaxSize: 1024 * 1024,
+		},
 		redis: {
 			prefix: 'n8n',
 		},
@@ -410,16 +445,20 @@ describe('GlobalConfig', () => {
 		// @ts-expect-error structuredClone ignores properties defined as a getter
 		ai: {
 			enabled: false,
+			persistBuilderSessions: false,
+			timeout: 3600000,
+			allowSendingParameterValues: true,
 		},
 		workflowHistoryCompaction: {
 			batchDelayMs: 1_000,
 			batchSize: 100,
-			compactingMinimumAgeHours: 3,
-			compactingTimeWindowHours: 2,
-			compactOnStartUp: false,
-			minimumTimeBetweenSessionsMs: 20 * 60 * 1000,
+			optimizingMinimumAgeHours: 0.25,
+			optimizingTimeWindowHours: 2,
+			trimmingMinimumAgeDays: 7,
+			trimmingTimeWindowDays: 2,
+			trimOnStartUp: false,
 		},
-	};
+	} satisfies GlobalConfigShape;
 
 	it('should use all default values when no env variables are defined', () => {
 		process.env = {};
@@ -451,7 +490,6 @@ describe('GlobalConfig', () => {
 			...defaultConfig,
 			database: {
 				logging: defaultConfig.database.logging,
-				mysqldb: defaultConfig.database.mysqldb,
 				postgresdb: {
 					...defaultConfig.database.postgresdb,
 					host: 'some-host',
@@ -511,6 +549,24 @@ describe('GlobalConfig', () => {
 		expect(mockFs.readFileSync).toHaveBeenCalled();
 	});
 
+	it('should warn when _FILE env variable value contains whitespace', () => {
+		const passwordFile = '/path/to/postgres/password';
+		process.env = {
+			DB_POSTGRESDB_PASSWORD_FILE: passwordFile,
+		};
+		mockFs.readFileSync
+			.calledWith(passwordFile, 'utf8')
+			.mockReturnValueOnce('password-from-file\n');
+
+		const config = Container.get(GlobalConfig);
+		expect(config.database.postgresdb.password).toBe('password-from-file');
+		expect(consoleWarnMock).toHaveBeenCalledWith(
+			expect.stringContaining(
+				'DB_POSTGRESDB_PASSWORD_FILE contains leading or trailing whitespace',
+			),
+		);
+	});
+
 	it('should handle invalid numbers', () => {
 		process.env = {
 			DB_LOGGING_MAX_EXECUTION_TIME: 'abcd',
@@ -526,7 +582,6 @@ describe('GlobalConfig', () => {
 		it('on invalid value, should warn and fall back to default value', () => {
 			process.env = {
 				N8N_RUNNERS_MODE: 'non-existing-mode',
-				N8N_RUNNERS_ENABLED: 'true',
 				DB_TYPE: 'postgresdb',
 			};
 
@@ -538,8 +593,54 @@ describe('GlobalConfig', () => {
 				),
 			);
 
-			expect(globalConfig.taskRunners.enabled).toEqual(true);
 			expect(globalConfig.database.type).toEqual('postgresdb');
+		});
+
+		it('should validate crossOriginOpenerPolicy enum values', () => {
+			process.env = {
+				N8N_CROSS_ORIGIN_OPENER_POLICY: 'same-origin-allow-popups',
+			};
+
+			const globalConfig = Container.get(GlobalConfig);
+			expect(globalConfig.security.crossOriginOpenerPolicy).toEqual('same-origin-allow-popups');
+		});
+
+		it('should warn and fall back to default for invalid crossOriginOpenerPolicy', () => {
+			process.env = {
+				N8N_CROSS_ORIGIN_OPENER_POLICY: 'invalid-policy',
+			};
+
+			const globalConfig = Container.get(GlobalConfig);
+			expect(globalConfig.security.crossOriginOpenerPolicy).toEqual('same-origin');
+		});
+	});
+
+	describe('health endpoint transformation', () => {
+		it('should add leading slash if not present', () => {
+			process.env = {
+				N8N_ENDPOINT_HEALTH: 'healthz',
+			};
+
+			const config = Container.get(GlobalConfig);
+			expect(config.endpoints.health).toEqual('/healthz');
+		});
+
+		it('should keep leading slash if already present', () => {
+			process.env = {
+				N8N_ENDPOINT_HEALTH: '/custom-health',
+			};
+
+			const config = Container.get(GlobalConfig);
+			expect(config.endpoints.health).toEqual('/custom-health');
+		});
+
+		it('should add leading slash to paths with multiple segments', () => {
+			process.env = {
+				N8N_ENDPOINT_HEALTH: 'api/v1/health',
+			};
+
+			const config = Container.get(GlobalConfig);
+			expect(config.endpoints.health).toEqual('/api/v1/health');
 		});
 	});
 });

@@ -1,5 +1,5 @@
 import { DynamicTool, type Tool } from '@langchain/core/tools';
-import { Toolkit } from '@langchain/classic/agents';
+import { StructuredToolkit } from 'n8n-core';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import { NodeOperationError } from 'n8n-workflow';
 import type { ISupplyDataFunctions, IExecuteFunctions, INode } from 'n8n-workflow';
@@ -8,7 +8,7 @@ import { z } from 'zod';
 import {
 	escapeSingleCurlyBrackets,
 	getConnectedTools,
-	hasLongSequentialRepeat,
+	mergeCustomHeaders,
 	unwrapNestedOutput,
 	getSessionId,
 } from '../helpers';
@@ -253,21 +253,13 @@ describe('getConnectedTools', () => {
 	});
 
 	it('should flatten tools from a toolkit', async () => {
-		class MockToolkit extends Toolkit {
-			tools: Tool[];
-
-			constructor(tools: unknown[]) {
-				super();
-				this.tools = tools as Tool[];
-			}
-		}
 		const mockTools = [
 			{ name: 'tool1', description: 'desc1' },
 
-			new MockToolkit([
+			new StructuredToolkit([
 				{ name: 'toolkitTool1', description: 'toolkitToolDesc1' },
 				{ name: 'toolkitTool2', description: 'toolkitToolDesc2' },
-			]),
+			] as any),
 		];
 
 		mockExecuteFunctions.getInputConnectionData = jest.fn().mockResolvedValue(mockTools);
@@ -293,21 +285,13 @@ describe('getConnectedTools', () => {
 	});
 
 	it('should add metadata to all tools with source node information', async () => {
-		class MockToolkit extends Toolkit {
-			tools: Tool[];
-
-			constructor(tools: unknown[]) {
-				super();
-				this.tools = tools as Tool[];
-			}
-		}
 		const mockParentNodes = [{ name: 'RegularTool' }, { name: 'MCP Client Tool' }];
 		const mockTools = [
 			{ name: 'tool1', description: 'desc1' },
-			new MockToolkit([
+			new StructuredToolkit([
 				{ name: 'toolkitTool1', description: 'toolkitToolDesc1' },
 				{ name: 'toolkitTool2', description: 'toolkitToolDesc2' },
-			]),
+			] as any),
 		];
 
 		mockExecuteFunctions.getInputConnectionData = jest.fn().mockResolvedValue(mockTools);
@@ -339,19 +323,11 @@ describe('getConnectedTools', () => {
 	});
 
 	it('should preserve existing metadata when adding toolkit metadata', async () => {
-		class MockToolkit extends Toolkit {
-			tools: Tool[];
-
-			constructor(tools: unknown[]) {
-				super();
-				this.tools = tools as Tool[];
-			}
-		}
 		const mockParentNodes = [{ name: 'MCP Client Tool' }];
 		const mockTools = [
-			new MockToolkit([
+			new StructuredToolkit([
 				{ name: 'toolkitTool1', description: 'desc1', metadata: { customField: 'value' } },
-			]),
+			] as any),
 		];
 
 		mockExecuteFunctions.getInputConnectionData = jest.fn().mockResolvedValue(mockTools);
@@ -511,106 +487,115 @@ describe('getSessionId', () => {
 	});
 });
 
-describe('hasLongSequentialRepeat', () => {
-	it('should return false for text shorter than threshold', () => {
-		const text = 'a'.repeat(99);
-		expect(hasLongSequentialRepeat(text, 100)).toBe(false);
-	});
+describe('mergeCustomHeaders', () => {
+	it('should merge custom header when credential has header enabled', () => {
+		const credentials = {
+			apiKey: 'test-key',
+			header: true,
+			headerName: 'X-Custom-Header',
+			headerValue: 'custom-value',
+		};
+		const defaultHeaders = { 'Content-Type': 'application/json' };
 
-	it('should return false for normal text without repeats', () => {
-		const text = 'This is a normal text without many sequential repeating characters.';
-		expect(hasLongSequentialRepeat(text)).toBe(false);
-	});
+		const result = mergeCustomHeaders(credentials, defaultHeaders);
 
-	it('should return true for text with exactly threshold repeats', () => {
-		const text = 'a'.repeat(100);
-		expect(hasLongSequentialRepeat(text, 100)).toBe(true);
-	});
-
-	it('should return true for text with more than threshold repeats', () => {
-		const text = 'b'.repeat(150);
-		expect(hasLongSequentialRepeat(text, 100)).toBe(true);
-	});
-
-	it('should detect repeats in the middle of text', () => {
-		const text = 'Normal text ' + 'x'.repeat(100) + ' more normal text';
-		expect(hasLongSequentialRepeat(text, 100)).toBe(true);
-	});
-
-	it('should detect repeats at the end of text', () => {
-		const text = 'Normal text at the beginning' + 'z'.repeat(100);
-		expect(hasLongSequentialRepeat(text, 100)).toBe(true);
-	});
-
-	it('should work with different thresholds', () => {
-		const text = 'a'.repeat(50);
-		expect(hasLongSequentialRepeat(text, 30)).toBe(true);
-		expect(hasLongSequentialRepeat(text, 60)).toBe(false);
-	});
-
-	it('should handle special characters', () => {
-		const text = '.'.repeat(100);
-		expect(hasLongSequentialRepeat(text, 100)).toBe(true);
-	});
-
-	it('should handle spaces', () => {
-		const text = ' '.repeat(100);
-		expect(hasLongSequentialRepeat(text, 100)).toBe(true);
-	});
-
-	it('should handle newlines', () => {
-		const text = '\n'.repeat(100);
-		expect(hasLongSequentialRepeat(text, 100)).toBe(true);
-	});
-
-	it('should not detect non-sequential repeats', () => {
-		const text = 'ababab'.repeat(50); // 300 chars but no sequential repeats
-		expect(hasLongSequentialRepeat(text, 100)).toBe(false);
-	});
-
-	it('should handle mixed content with repeats below threshold', () => {
-		const text = 'aaa' + 'b'.repeat(50) + 'ccc' + 'd'.repeat(40) + 'eee';
-		expect(hasLongSequentialRepeat(text, 100)).toBe(false);
-	});
-
-	it('should handle empty string', () => {
-		expect(hasLongSequentialRepeat('', 100)).toBe(false);
-	});
-
-	it('should work with very large texts', () => {
-		const normalText = 'Lorem ipsum dolor sit amet '.repeat(1000);
-		const textWithRepeat = normalText + 'A'.repeat(100) + normalText;
-		expect(hasLongSequentialRepeat(textWithRepeat, 100)).toBe(true);
-	});
-
-	it('should detect unicode character repeats', () => {
-		const text = '😀'.repeat(100);
-		expect(hasLongSequentialRepeat(text, 100)).toBe(true);
-	});
-
-	describe('error handling', () => {
-		it('should handle null input', () => {
-			expect(hasLongSequentialRepeat(null as any)).toBe(false);
+		expect(result).toEqual({
+			'Content-Type': 'application/json',
+			'X-Custom-Header': 'custom-value',
 		});
+	});
 
-		it('should handle undefined input', () => {
-			expect(hasLongSequentialRepeat(undefined as any)).toBe(false);
-		});
+	it('should return original headers when header option is disabled', () => {
+		const credentials = {
+			apiKey: 'test-key',
+			header: false,
+			headerName: 'X-Custom-Header',
+			headerValue: 'custom-value',
+		};
+		const defaultHeaders = { 'Content-Type': 'application/json' };
 
-		it('should handle non-string input', () => {
-			expect(hasLongSequentialRepeat(123 as any)).toBe(false);
-			expect(hasLongSequentialRepeat({} as any)).toBe(false);
-			expect(hasLongSequentialRepeat([] as any)).toBe(false);
-		});
+		const result = mergeCustomHeaders(credentials, defaultHeaders);
 
-		it('should handle zero or negative threshold', () => {
-			const text = 'a'.repeat(100);
-			expect(hasLongSequentialRepeat(text, 0)).toBe(false);
-			expect(hasLongSequentialRepeat(text, -1)).toBe(false);
-		});
+		expect(result).toEqual({ 'Content-Type': 'application/json' });
+	});
 
-		it('should handle empty string', () => {
-			expect(hasLongSequentialRepeat('', 100)).toBe(false);
-		});
+	it('should return original headers when headerName is empty', () => {
+		const credentials = {
+			apiKey: 'test-key',
+			header: true,
+			headerName: '',
+			headerValue: 'custom-value',
+		};
+		const defaultHeaders = { 'Content-Type': 'application/json' };
+
+		const result = mergeCustomHeaders(credentials, defaultHeaders);
+
+		expect(result).toEqual({ 'Content-Type': 'application/json' });
+	});
+
+	it('should return original headers when headerName is not a string', () => {
+		const credentials = {
+			apiKey: 'test-key',
+			header: true,
+			headerName: 123,
+			headerValue: 'custom-value',
+		};
+		const defaultHeaders = { 'Content-Type': 'application/json' };
+
+		const result = mergeCustomHeaders(credentials, defaultHeaders);
+
+		expect(result).toEqual({ 'Content-Type': 'application/json' });
+	});
+
+	it('should return original headers when headerValue is not a string', () => {
+		const credentials = {
+			apiKey: 'test-key',
+			header: true,
+			headerName: 'X-Custom-Header',
+			headerValue: 123,
+		};
+		const defaultHeaders = { 'Content-Type': 'application/json' };
+
+		const result = mergeCustomHeaders(credentials, defaultHeaders);
+
+		expect(result).toEqual({ 'Content-Type': 'application/json' });
+	});
+
+	it('should return original headers when credential has no header properties', () => {
+		const credentials = {
+			apiKey: 'test-key',
+		};
+		const defaultHeaders = { 'Content-Type': 'application/json' };
+
+		const result = mergeCustomHeaders(credentials, defaultHeaders);
+
+		expect(result).toEqual({ 'Content-Type': 'application/json' });
+	});
+
+	it('should handle empty defaultHeaders', () => {
+		const credentials = {
+			apiKey: 'test-key',
+			header: true,
+			headerName: 'X-Api-Key',
+			headerValue: 'my-api-key',
+		};
+
+		const result = mergeCustomHeaders(credentials, {});
+
+		expect(result).toEqual({ 'X-Api-Key': 'my-api-key' });
+	});
+
+	it('should override existing header with same name', () => {
+		const credentials = {
+			apiKey: 'test-key',
+			header: true,
+			headerName: 'Authorization',
+			headerValue: 'Bearer new-token',
+		};
+		const defaultHeaders = { Authorization: 'Bearer old-token' };
+
+		const result = mergeCustomHeaders(credentials, defaultHeaders);
+
+		expect(result).toEqual({ Authorization: 'Bearer new-token' });
 	});
 });

@@ -4,7 +4,6 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -204,7 +203,7 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(this: IExecuteFunctions, index: number, items: INodeExecutionData[]) {
+export async function execute(this: IExecuteFunctions, index: number, _: INodeExecutionData[]) {
 	const additionalFields = this.getNodeParameter('additionalFields', index);
 	const subject = this.getNodeParameter('subject', index) as string;
 	const bodyContent = this.getNodeParameter('bodyContent', index, '') as string;
@@ -220,33 +219,29 @@ export async function execute(this: IExecuteFunctions, index: number, items: INo
 		const attachments = (additionalFields.attachments as IDataObject).attachments as IDataObject[];
 
 		// // Handle attachments
-		body.attachments = attachments.map((attachment) => {
-			const binaryPropertyName = attachment.binaryPropertyName as string;
+		body.attachments = await Promise.all(
+			attachments.map(async (attachment) => {
+				const binaryPropertyName = attachment.binaryPropertyName as string;
 
-			if (items[index].binary === undefined) {
-				throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
-					itemIndex: index,
-				});
-			}
+				const binaryData = this.helpers.assertBinaryData(index, binaryPropertyName);
 
-			if (
-				items[index].binary &&
-				(items[index].binary as IDataObject)[binaryPropertyName] === undefined
-			) {
-				throw new NodeOperationError(
-					this.getNode(),
-					`No binary data property "${binaryPropertyName}" does not exists on item!`,
-					{ itemIndex: index },
-				);
-			}
+				let fileBase64;
+				if (binaryData.id) {
+					const chunkSize = 256 * 1024;
+					const stream = await this.helpers.getBinaryStream(binaryData.id, chunkSize);
+					const buffer = await this.helpers.binaryToBuffer(stream);
+					fileBase64 = buffer.toString('base64');
+				} else {
+					fileBase64 = binaryData.data;
+				}
 
-			const binaryData = items[index].binary[binaryPropertyName];
-			return {
-				'@odata.type': '#microsoft.graph.fileAttachment',
-				name: binaryData.fileName,
-				contentBytes: binaryData.data,
-			};
-		});
+				return {
+					'@odata.type': '#microsoft.graph.fileAttachment',
+					name: binaryData.fileName,
+					contentBytes: fileBase64,
+				};
+			}),
+		);
 	}
 
 	const responseData = await microsoftApiRequest.call(this, 'POST', '/messages', body, {});

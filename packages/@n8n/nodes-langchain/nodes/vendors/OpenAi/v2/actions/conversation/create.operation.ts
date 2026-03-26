@@ -23,7 +23,7 @@ const properties: INodeProperties[] = [
 		default: { values: [{ type: 'text' }] },
 		options: [
 			{
-				displayName: 'Values',
+				displayName: 'Message',
 				name: 'values',
 				values: [
 					{
