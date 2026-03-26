@@ -25,7 +25,7 @@ export class DemoPage extends BasePage {
 	 */
 	async dispatchPushEvent(event: Record<string, unknown>) {
 		await this.page.evaluate((evt) => {
-			// eslint-disable-next-line @typescript-eslint/naming-convention
+			/* eslint-disable @typescript-eslint/naming-convention */
 			const app = document.querySelector('#n8n-app') as HTMLElement & {
 				__vue_app__?: { config: { globalProperties: { $pinia: { _s: Map<string, unknown> } } } };
 			};
@@ -36,6 +36,7 @@ export class DemoPage extends BasePage {
 			};
 			if (!pushStore) throw new Error('Push store not found');
 			pushStore.onMessageReceivedHandlers.forEach((h) => h(evt));
+			/* eslint-enable @typescript-eslint/naming-convention */
 		}, event);
 	}
 
