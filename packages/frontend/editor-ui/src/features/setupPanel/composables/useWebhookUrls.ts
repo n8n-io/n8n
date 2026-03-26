@@ -67,7 +67,7 @@ export function useWebhookUrls(node: MaybeRef<INodeUi | null>) {
 			if (Array.isArray(method) && method.length !== 1) {
 				isMethodVisible = false;
 			} else {
-				httpMethod = Array.isArray(method) ? method[0] : method;
+				httpMethod = Array.isArray(method) ? method[0] : (method as string);
 				if (typeof webhook.ndvHideMethod === 'string') {
 					isMethodVisible = !(await resolveHideFlag(webhook, 'ndvHideMethod', nodeName));
 				}

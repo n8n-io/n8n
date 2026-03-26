@@ -133,8 +133,8 @@ onMounted(async () => {
 
 <template>
 	<N8nButton
-		v-if="showButton"
 		variant="subtle"
+		v-if="showButton"
 		:label="i18n.baseText('nodeView.setupTemplate')"
 		:disabled="isButtonDisabled"
 		data-test-id="setup-credentials-button"

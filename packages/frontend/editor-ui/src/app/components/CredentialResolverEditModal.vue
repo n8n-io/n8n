@@ -416,8 +416,8 @@ onMounted(async () => {
 				</div>
 				<div :class="$style.resolverActions">
 					<N8nIconButton
-						v-if="isEditMode"
 						variant="subtle"
+						v-if="isEditMode"
 						:title="i18n.baseText('credentialResolverEdit.delete')"
 						icon="trash-2"
 						:disabled="isSaving"

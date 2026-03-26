@@ -222,7 +222,7 @@ const conflictedDataTables = computed(() => {
 	return sortedDataTables.value.filter((dt) => {
 		// For pull operations, show warning for modified data tables with conflicts
 		// (schema changes) not for deleted data tables (entire table removed)
-		return dt.conflict && dt.status === 'modified';
+		return dt.conflict === true && dt.status === 'modified';
 	});
 });
 

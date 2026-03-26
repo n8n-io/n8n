@@ -78,12 +78,12 @@ export function useResolvedExpression({
 		};
 
 		try {
-			const resolvedValue = await resolveExpression(
+			const resolvedValue = (await resolveExpression(
 				expressionString,
 				undefined,
 				options,
 				toValue(stringifyObject) ?? true,
-			);
+			)) as unknown;
 
 			return createResultOk(resolvedValue);
 		} catch (error) {

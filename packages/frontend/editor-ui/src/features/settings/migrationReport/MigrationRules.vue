@@ -149,8 +149,8 @@ const sortedInstanceResults = computed(() => {
 		<div :class="$style.ActionBar">
 			<N8nTabs v-model="currentTab" :options="tabs" variant="modern" />
 			<N8nButton
-				v-if="shouldShowRefreshButton"
 				variant="subtle"
+				v-if="shouldShowRefreshButton"
 				:label="i18n.baseText('settings.migrationReport.refreshButton')"
 				icon="refresh-cw"
 				:loading="isLoading"

@@ -15,7 +15,7 @@ withDefaults(defineProps<Props>(), {
 <template>
 	<div :class="[$style.template, { [$style.fullWidth]: fullWidth }]">
 		<div :class="$style.container">
-			<div v-if="goBackEnabled" :class="$style.header">
+			<div :class="$style.header" v-if="goBackEnabled">
 				<div :class="$style.goBack">
 					<GoBackButton />
 				</div>

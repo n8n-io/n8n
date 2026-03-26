@@ -159,15 +159,15 @@ const onValueDrop = async (droppedExpression: string) => {
 		data-test-id="assignment"
 	>
 		<N8nIconButton
-			v-if="!isReadOnly"
 			variant="ghost"
+			v-if="!isReadOnly"
 			size="small"
 			icon="grip-vertical"
 			:class="[$style.iconButton, $style.defaultTopPadding, 'drag-handle']"
 		/>
 		<N8nIconButton
-			v-if="!isReadOnly"
 			variant="ghost"
+			v-if="!isReadOnly"
 			size="small"
 			icon="trash-2"
 			data-test-id="assignment-remove"

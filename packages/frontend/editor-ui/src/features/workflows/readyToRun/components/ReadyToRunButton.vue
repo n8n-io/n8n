@@ -57,8 +57,8 @@ const handleClick = async () => {
 
 <template>
 	<N8nButton
-		v-if="showButton"
 		variant="subtle"
+		v-if="showButton"
 		data-test-id="ready-to-run-button"
 		icon="zap"
 		:loading="readyToRunStore.claimingCredits"

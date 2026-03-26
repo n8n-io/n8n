@@ -141,7 +141,7 @@ describe('CanvasNodeStickyColorSelector', () => {
 				},
 			});
 
-			const nativeInput = getByTestId('native-color-input');
+			const nativeInput = getByTestId('native-color-input') as HTMLInputElement;
 			await fireEvent.update(nativeInput, '#ff5733');
 			await fireEvent.change(nativeInput);
 

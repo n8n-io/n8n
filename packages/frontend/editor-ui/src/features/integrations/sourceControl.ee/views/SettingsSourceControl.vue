@@ -326,8 +326,8 @@ watch(connectionType, () => {
 						@validate="(value: boolean) => onValidate('repoUrl', value)"
 					/>
 					<N8nButton
-						v-if="isConnected"
 						variant="subtle"
+						v-if="isConnected"
 						:class="$style.disconnectButton"
 						size="large"
 						icon="trash-2"
@@ -424,8 +424,8 @@ watch(connectionType, () => {
 						:copy-button-text="locale.baseText('generic.clickToCopy')"
 					/>
 					<N8nButton
-						v-if="!isConnected"
 						variant="subtle"
+						v-if="!isConnected"
 						size="large"
 						icon="refresh-cw"
 						data-test-id="source-control-refresh-ssh-key-button"
@@ -486,7 +486,7 @@ watch(connectionType, () => {
 							</template>
 							<N8nButton
 								variant="subtle"
-								icon-only
+								iconOnly
 								size="xlarge"
 								icon="refresh-cw"
 								:aria-label="locale.baseText('generic.refresh')"

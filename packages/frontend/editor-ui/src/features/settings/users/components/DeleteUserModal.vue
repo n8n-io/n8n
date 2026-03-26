@@ -5,10 +5,8 @@ import Modal from '@/app/components/Modal.vue';
 import ProjectSharing from '@/features/collaboration/projects/components/ProjectSharing.vue';
 import { useUsersStore } from '../users.store';
 import { createEventBus } from '@n8n/utils/event-bus';
-import type {
-	ProjectSharingData,
-	ProjectListItem,
-} from '@/features/collaboration/projects/projects.types';
+import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
+import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { useRemoteProjectSearch } from '@/features/collaboration/projects/projects.utils';
 import { useI18n } from '@n8n/i18n';
 

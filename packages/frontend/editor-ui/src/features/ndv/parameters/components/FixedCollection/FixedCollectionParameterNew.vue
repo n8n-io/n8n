@@ -669,9 +669,9 @@ const onAddButtonClick = () => {
 
 			<div v-if="shouldShowAddAtBottom" :class="$style.controls">
 				<N8nButton
-					v-if="hasSingleOption"
 					class="n8n-button--highlightFill"
 					variant="subtle"
+					v-if="hasSingleOption"
 					icon="plus"
 					size="small"
 					:data-test-id="`fixed-collection-add-top-level-button`"
@@ -771,9 +771,9 @@ const onAddButtonClick = () => {
 
 					<div v-if="shouldShowAddAtBottom" :class="$style.controls">
 						<N8nButton
-							v-if="hasSingleOption"
 							class="n8n-button--highlightFill"
 							variant="subtle"
+							v-if="hasSingleOption"
 							icon="plus"
 							size="small"
 							:data-test-id="`fixed-collection-add-nested-button`"

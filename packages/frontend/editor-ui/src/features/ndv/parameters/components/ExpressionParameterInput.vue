@@ -220,9 +220,9 @@ defineExpose({ focus, select });
 				</template>
 			</DraggableTarget>
 			<N8nButton
-				v-if="!isDragging"
 				variant="outline"
-				icon-only
+				iconOnly
+				v-if="!isDragging"
 				icon="external-link"
 				size="xsmall"
 				:aria-label="i18n.baseText('expressionEdit.editExpression')"

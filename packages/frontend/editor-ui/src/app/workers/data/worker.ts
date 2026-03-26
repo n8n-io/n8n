@@ -30,7 +30,7 @@ import {
 	storeVersion as storeVersionOp,
 	getStoredVersion as getStoredVersionOp,
 } from './operations/storeVersion';
-import type { DataWorkerState, QueryResult, SQLiteParam } from './types';
+import type { DataWorkerState, QueryResult, SQLiteAPI, SQLiteParam } from './types';
 
 export type { DataWorkerState, QueryResult, SQLiteAPI, SQLiteParam } from './types';
 
@@ -120,7 +120,7 @@ async function initialize({ version }: { version: string }): Promise<void> {
 		}
 
 		const module = await SQLiteESMFactory();
-		state.sqlite3 = SQLite.Factory(module);
+		state.sqlite3 = SQLite.Factory(module) as SQLiteAPI;
 
 		console.log('[DataWorker] Creating AccessHandlePoolVFS...');
 		state.vfs = await AccessHandlePoolVFS.create(VFS_NAME, module);

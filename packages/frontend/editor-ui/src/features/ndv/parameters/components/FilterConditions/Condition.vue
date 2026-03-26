@@ -226,16 +226,16 @@ watch(
 		data-test-id="filter-condition"
 	>
 		<N8nIconButton
-			v-if="canDrag && !readOnly"
 			variant="ghost"
+			v-if="canDrag && !readOnly"
 			size="small"
 			icon="grip-vertical"
 			:title="i18n.baseText('filter.dragCondition')"
 			:class="[$style.iconButton, $style.defaultTopPadding, 'drag-handle']"
 		/>
 		<N8nIconButton
-			v-if="canRemove && !readOnly"
 			variant="ghost"
+			v-if="canRemove && !readOnly"
 			size="small"
 			icon="trash-2"
 			data-test-id="filter-remove-condition"

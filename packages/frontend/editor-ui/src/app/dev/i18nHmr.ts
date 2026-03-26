@@ -59,7 +59,7 @@ if (hot) {
 		async (payload: { updates?: Array<{ path?: string; acceptedPath?: string }> }) => {
 			const updates = payload?.updates ?? [];
 			const files = updates
-				.map((u) => u.path ?? u.acceptedPath ?? '')
+				.map((u) => (u.path ?? u.acceptedPath ?? '') as string)
 				.filter((p) => p.includes('/locales/') && p.endsWith('.json'));
 			if (files.length === 0) return;
 			for (const file of files) await fetchAndApply(file);

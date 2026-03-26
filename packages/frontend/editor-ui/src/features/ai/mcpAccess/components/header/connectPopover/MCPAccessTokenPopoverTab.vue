@@ -144,7 +144,7 @@ onMounted(async () => {
 					>
 						<N8nButton
 							variant="subtle"
-							icon-only
+							iconOnly
 							icon="refresh-cw"
 							:disabled="keyRotating"
 							@click="rotateKey"
@@ -168,7 +168,7 @@ onMounted(async () => {
 					<N8nButton
 						v-if="isSupported && !loadingApiKey && !keyRotating"
 						variant="subtle"
-						icon-only
+						iconOnly
 						:icon="copied ? 'check' : 'copy'"
 						:class="$style['copy-json-button']"
 						data-test-id="mcp-json-copy-button"

@@ -196,8 +196,8 @@ function handleCopyClick(commandData: { command: string }) {
 <template>
 	<div :class="$style.actionsGroup" data-test-id="ndv-json-actions">
 		<N8nIconButton
-			v-if="noSelection"
 			variant="subtle"
+			v-if="noSelection"
 			:title="i18n.baseText('runData.copyToClipboard')"
 			icon="files"
 			:circle="false"

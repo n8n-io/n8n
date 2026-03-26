@@ -19,7 +19,6 @@ import {
 	type ChatModelDto,
 	type ChatHubAgentKnowledgeItem,
 } from '@n8n/api-types';
-import type { SuggestedPrompt } from '@n8n/api-types';
 import {
 	N8nButton,
 	N8nHeading,
@@ -34,6 +33,7 @@ import { useI18n } from '@n8n/i18n';
 import { assert } from '@n8n/utils/assert';
 import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { useDocumentVisibility, useTimeoutPoll } from '@vueuse/core';
+import type { SuggestedPrompt } from '@n8n/api-types';
 import type { CredentialsMap } from '../chat.types';
 import SuggestedPromptsEditor from './SuggestedPromptsEditor.vue';
 import ToolsSelector from './ToolsSelector.vue';

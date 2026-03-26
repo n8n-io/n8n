@@ -210,7 +210,7 @@ function openCommandBar(event: MouseEvent) {
 			<template #content> {{ i18n.baseText('aiAssistant.tooltip') }}</template>
 			<N8nButton
 				variant="subtle"
-				icon-only
+				iconOnly
 				size="large"
 				:aria-label="i18n.baseText('aiAssistant.tooltip')"
 				:class="$style.icon"

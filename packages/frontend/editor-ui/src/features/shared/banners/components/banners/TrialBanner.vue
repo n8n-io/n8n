@@ -82,9 +82,9 @@ const showExecutions = computed(() => cloudPlanStore.showExecutions);
 const bannerCta = computed(() => ({
 	text: cloudPlanStore.bannerCta.text,
 	icon: cloudPlanStore.bannerCta.icon as IconName | undefined,
-	size: cloudPlanStore.bannerCta.size,
+	size: cloudPlanStore.bannerCta.size as 'small' | 'medium',
 	style: cloudPlanStore.bannerCta.style,
-	variant: cloudPlanStore.bannerCta.variant,
+	variant: cloudPlanStore.bannerCta.variant as ButtonVariant | undefined,
 	href: cloudPlanStore.bannerCta.href,
 }));
 const bannerIcon = computed(() => cloudPlanStore.bannerIcon as IconName | undefined);

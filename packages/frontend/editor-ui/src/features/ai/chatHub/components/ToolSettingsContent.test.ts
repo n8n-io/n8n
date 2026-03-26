@@ -395,7 +395,7 @@ describe('ToolSettingsContent', () => {
 			await rerender({ initialNode: createMockNode({ name: 'Second Tool' }) });
 
 			await waitFor(() => {
-				const nameEmissions = emitted('update:node-name') as string[][][];
+				const nameEmissions = emitted('update:node-name') as string[][];
 				const lastEmission = nameEmissions[nameEmissions.length - 1];
 				expect(lastEmission[0]).toBe('Second Tool');
 			});

@@ -535,8 +535,8 @@ watch(
 							:hide-after="0"
 						>
 							<N8nIconButton
-								v-show="showExecutionLink(index1)"
 								variant="subtle"
+								v-show="showExecutionLink(index1)"
 								icon="external-link"
 								data-test-id="debug-sub-execution"
 								size="xsmall"
@@ -699,8 +699,8 @@ watch(
 							:hide-after="0"
 						>
 							<N8nIconButton
-								v-show="showExecutionLink(index1)"
 								variant="subtle"
+								v-show="showExecutionLink(index1)"
 								icon="external-link"
 								data-test-id="debug-sub-execution"
 								size="xsmall"

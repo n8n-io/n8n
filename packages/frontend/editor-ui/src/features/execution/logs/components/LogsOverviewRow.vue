@@ -193,8 +193,8 @@ watch(
 			:class="$style.compactErrorIcon"
 		/>
 		<N8nIconButton
-			v-if="canOpenNdv && (!isCompact || !props.latestInfo?.deleted)"
 			variant="ghost"
+			v-if="canOpenNdv && (!isCompact || !props.latestInfo?.deleted)"
 			size="small"
 			icon="square-pen"
 			icon-size="medium"
@@ -207,11 +207,11 @@ watch(
 			@click.stop="emit('openNdv')"
 		/>
 		<N8nIconButton
+			variant="ghost"
 			v-if="
 				!isCompact ||
 				(!props.isReadOnly && !props.latestInfo?.deleted && !props.latestInfo?.disabled)
 			"
-			variant="ghost"
 			size="small"
 			icon="play"
 			:aria-label="locale.baseText('logs.overview.body.run')"
@@ -226,7 +226,7 @@ watch(
 		<N8nButton
 			v-if="!isCompact || hasChildren"
 			variant="ghost"
-			icon-only
+			iconOnly
 			size="small"
 			:icon="props.expanded ? 'chevron-down' : 'chevron-up'"
 			icon-size="medium"

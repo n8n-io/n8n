@@ -18,10 +18,12 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { createFormEventBus } from '@n8n/design-system/utils';
-import type { MfaModalEvents, ConfirmPasswordModalEvents } from '../auth.eventBus';
-import { promptMfaCodeBus, confirmPasswordEventBus } from '../auth.eventBus';
+import type { MfaModalEvents } from '../auth.eventBus';
+import { promptMfaCodeBus } from '../auth.eventBus';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
+import type { ConfirmPasswordModalEvents } from '../auth.eventBus';
+import { confirmPasswordEventBus } from '../auth.eventBus';
 
 import {
 	N8nAvatar,
@@ -408,16 +410,16 @@ onBeforeUnmount(() => {
 				/>
 
 				<N8nButton
-					v-if="mfaDisabled"
 					variant="subtle"
+					v-if="mfaDisabled"
 					:class="$style.button"
 					:label="i18n.baseText('settings.personal.mfa.button.enabled')"
 					data-test-id="enable-mfa-button"
 					@click="onMfaEnableClick"
 				/>
 				<N8nButton
-					v-else
 					variant="subtle"
+					v-else
 					:class="$style.disableMfaButton"
 					:label="i18n.baseText('settings.personal.mfa.button.disabled')"
 					data-test-id="disable-mfa-button"

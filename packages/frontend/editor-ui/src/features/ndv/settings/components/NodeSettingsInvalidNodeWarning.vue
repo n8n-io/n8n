@@ -116,8 +116,8 @@ watch(isNodeDefined, () => {
 			</I18nT>
 			<div v-if="isAdminOrOwner" :class="$style.communityNodeActionsContainer">
 				<N8nButton
-					v-if="isAdminOrOwner"
 					variant="solid"
+					v-if="isAdminOrOwner"
 					icon="hard-drive-download"
 					data-test-id="install-community-node-button"
 					:loading="loading"
@@ -129,8 +129,8 @@ watch(isNodeDefined, () => {
 				<N8nButton
 					variant="subtle"
 					icon="external-link"
-					data-test-id="view-details-button"
 					@click="onViewDetailsClick"
+					data-test-id="view-details-button"
 				>
 					{{ i18n.baseText('nodeSettings.communityNodeUnknown.viewDetailsButton.label') }}
 				</N8nButton>

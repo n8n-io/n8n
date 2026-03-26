@@ -272,8 +272,8 @@ async function handleActionItemClick(commandData: Command) {
 		</td>
 		<td>
 			<N8nButton
-				v-if="!execution.stoppedAt || execution.waitTill"
 				variant="ghost"
+				v-if="!execution.stoppedAt || execution.waitTill"
 				data-test-id="stop-execution-button"
 				:loading="isStopping"
 				:disabled="isStopping"

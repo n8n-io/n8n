@@ -59,8 +59,8 @@ function handleSelectMenu(action: MenuAction) {
 
 		<div :class="$style.actions">
 			<N8nIconButton
-				v-if="canEdit"
 				variant="subtle"
+				v-if="canEdit"
 				icon="pen"
 				size="medium"
 				:title="i18n.baseText('chatHub.agent.card.button.edit')"

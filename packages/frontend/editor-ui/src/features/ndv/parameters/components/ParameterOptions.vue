@@ -192,8 +192,8 @@ const onViewSelected = (selected: string) => {
 		</div>
 		<div v-else :class="$style.controlsContainer">
 			<N8nIconButton
-				v-if="canBeOpenedInFocusPanel"
 				variant="ghost"
+				v-if="canBeOpenedInFocusPanel"
 				size="small"
 				icon-size="large"
 				icon="panel-right"
@@ -231,8 +231,8 @@ const onViewSelected = (selected: string) => {
 			/>
 
 			<N8nIconButton
-				v-if="showDelete && onDelete"
 				variant="ghost"
+				v-if="showDelete && onDelete"
 				size="small"
 				icon-size="large"
 				icon="trash-2"

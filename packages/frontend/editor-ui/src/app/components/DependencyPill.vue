@@ -95,7 +95,7 @@ const menuItems = computed(() => {
 		workflowParent: [],
 	};
 	for (const dep of filtered) {
-		const key = dep.type;
+		const key = dep.type as DependencyType;
 		if (groups[key]) {
 			groups[key].push(dep);
 		}

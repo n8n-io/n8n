@@ -100,7 +100,7 @@ function onTidyUp() {
 		>
 			<N8nIconButton
 				variant="subtle"
-				icon-only
+				iconOnly
 				size="large"
 				:class="$style.iconButton"
 				:icon="isExperimentalNdvActive ? 'undo-2' : 'crosshair'"
@@ -133,7 +133,7 @@ function onTidyUp() {
 		>
 			<N8nButton
 				variant="subtle"
-				icon-only
+				iconOnly
 				size="large"
 				:aria-label="i18n.baseText('nodeView.tidyUp')"
 				data-test-id="tidy-up-button"

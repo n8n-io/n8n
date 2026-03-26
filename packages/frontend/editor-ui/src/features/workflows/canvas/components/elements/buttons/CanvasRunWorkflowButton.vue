@@ -90,7 +90,7 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 				variant="solid"
 				:class="$style.button"
 				:loading="executing"
-				:icon-only="executing"
+				:iconOnly="executing"
 				:aria-label="i18n.baseText('nodeView.runButtonText.executeWorkflow')"
 				:disabled="disabled"
 				:size="size ?? 'large'"

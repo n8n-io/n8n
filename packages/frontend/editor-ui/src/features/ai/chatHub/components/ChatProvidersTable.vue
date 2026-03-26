@@ -139,7 +139,7 @@ const onTableAction = (action: string, settings: ChatProviderSettingsDto) => {
 					<N8nTooltip :content="i18n.baseText('settings.chatHub.providers.table.refresh.tooltip')">
 						<N8nButton
 							variant="subtle"
-							icon-only
+							iconOnly
 							size="small"
 							icon="refresh-cw"
 							:aria-label="i18n.baseText('generic.refresh')"

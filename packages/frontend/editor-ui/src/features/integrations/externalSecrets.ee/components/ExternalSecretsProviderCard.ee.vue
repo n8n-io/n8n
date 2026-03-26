@@ -161,7 +161,7 @@ async function onActionDropdownClick(id: string) {
 					@action="onActionDropdownClick"
 				/>
 			</div>
-			<N8nButton v-else variant="subtle" @click="openExternalSecretProvider()">
+			<N8nButton variant="subtle" v-else @click="openExternalSecretProvider()">
 				{{ i18n.baseText('settings.externalSecrets.card.setUp') }}
 			</N8nButton>
 		</div>

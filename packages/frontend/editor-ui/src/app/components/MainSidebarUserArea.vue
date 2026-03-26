@@ -93,7 +93,7 @@ const onUserActionToggle = (action: string) => {
 					>
 						<N8nIconButton
 							variant="ghost"
-							icon-only
+							iconOnly
 							icon="ellipsis"
 							square
 							:aria-label="i18n.baseText('mainSidebar.userMenu')"

@@ -152,8 +152,8 @@ function onAddToAi() {
 				/>
 			</N8nTooltip>
 			<N8nIconButton
-				v-if="isDisableNodeVisible"
 				variant="ghost"
+				v-if="isDisableNodeVisible"
 				data-test-id="disable-node-button"
 				size="small"
 				icon="node-power"
@@ -161,8 +161,8 @@ function onAddToAi() {
 				@click.stop="onToggleNode"
 			/>
 			<N8nIconButton
-				v-if="isDeleteNodeVisible"
 				variant="ghost"
+				v-if="isDeleteNodeVisible"
 				data-test-id="delete-node-button"
 				size="small"
 				icon="node-trash"
@@ -170,8 +170,8 @@ function onAddToAi() {
 				@click.stop="onDeleteNode"
 			/>
 			<N8nIconButton
-				v-if="isFocusNodeVisible"
 				variant="ghost"
+				v-if="isFocusNodeVisible"
 				size="small"
 				icon="crosshair"
 				:aria-label="i18n.baseText('node.focusNode')"

@@ -1,4 +1,4 @@
-import { computed, nextTick } from 'vue';
+import { computed } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import ParameterInput from './ParameterInput.vue';
@@ -24,6 +24,7 @@ import { NodeConnectionTypes, type INodeParameterResourceLocator } from 'n8n-wor
 import type { IWorkflowDb, WorkflowListResource } from '@/Interface';
 import { mock } from 'vitest-mock-extended';
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
+import { nextTick } from 'vue';
 
 function getNdvStateMock(): Partial<ReturnType<typeof useNDVStore>> {
 	return {
