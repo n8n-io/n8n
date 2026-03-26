@@ -52,6 +52,8 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 	const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
 	const telemetry = useTelemetry();
 
+	const DEMO_ROUTES: RouteRecordNameGeneric[] = [VIEWS.DEMO, VIEWS.DEMO_DIFF];
+
 	const {
 		resetWorkspace,
 		initializeWorkspace,
@@ -85,7 +87,7 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 	}
 
 	const isNewWorkflowRoute = computed(() => route.query.new === 'true');
-	const isDemoRoute = computed(() => route.name === VIEWS.DEMO);
+	const isDemoRoute = computed(() => DEMO_ROUTES.includes(route.name));
 	const isTemplateRoute = computed(() => route.name === VIEWS.TEMPLATE_IMPORT);
 	const isOnboardingRoute = computed(() => route.name === VIEWS.WORKFLOW_ONBOARDING);
 	const isDebugRoute = computed(() => route.name === VIEWS.EXECUTION_DEBUG);
