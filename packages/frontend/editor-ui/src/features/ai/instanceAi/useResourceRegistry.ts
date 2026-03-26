@@ -32,26 +32,21 @@ function registerResource(
 	}
 }
 
-/** Tools that only read/list resources — their results should not appear as artifacts. */
-const READ_ONLY_TOOLS = new Set([
-	'list-workflows',
-	'get-workflow-as-code',
-	'list-credentials',
-	'list-data-tables',
-	'list-executions',
-	'get-execution',
-	'debug-execution',
-	'search-nodes',
-	'get-node-type-definition',
-	'list-nodes',
-	'explore-node-resources',
-	'get-suggested-nodes',
-	'web-search',
-	'fetch-url',
+/** Tools whose results may contain resource info (workflows, credentials, data tables). */
+const ARTIFACT_TOOLS = new Set([
+	'build-workflow',
+	'build-workflow-with-agent',
+	'submit-workflow',
+	'setup-workflow',
+	'publish-workflow',
+	'apply-workflow-credentials',
+	'setup-credentials',
+	'create-data-table',
+	'data-table-agent',
 ]);
 
 function extractFromToolCall(tc: InstanceAiToolCallState, map: Map<string, ResourceEntry>): void {
-	if (READ_ONLY_TOOLS.has(tc.toolName)) return;
+	if (!ARTIFACT_TOOLS.has(tc.toolName)) return;
 	if (!tc.result || typeof tc.result !== 'object') return;
 	const result = tc.result as Record<string, unknown>;
 
