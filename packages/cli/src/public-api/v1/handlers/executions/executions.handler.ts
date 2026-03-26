@@ -4,7 +4,7 @@ import { Container } from '@n8n/di';
 import type express from 'express';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { QueryFailedError } from '@n8n/typeorm';
-import { type ExecutionStatus, replaceCircularReferences, UnexpectedError } from 'n8n-workflow';
+import { type ExecutionStatus, replaceCircularReferences } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
@@ -17,7 +17,6 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { RedactableExecution } from '@/executions/execution-redaction';
 import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import { ExecutionService } from '@/executions/execution.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 function isRedactableExecution(
 	execution: IExecutionBase,
@@ -218,8 +217,6 @@ export = {
 					return res.status(409).json({ message: error.message });
 				} else if (error instanceof NotFoundError) {
 					return res.status(404).json({ message: error.message });
-				} else if (error instanceof UnexpectedError) {
-					throw new BadRequestError(error.message);
 				} else {
 					throw error;
 				}

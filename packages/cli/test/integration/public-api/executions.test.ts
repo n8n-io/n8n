@@ -319,7 +319,7 @@ describe('POST /executions/:id/retry', () => {
 		executionServiceSpy.mockRestore();
 	});
 
-	test('should return 400 when trying to retry a finished execution', async () => {
+	test('should return 500 when trying to retry a finished execution', async () => {
 		const executionServiceSpy = jest
 			.spyOn(Container.get(ExecutionService), 'retry')
 			.mockRejectedValue(new UnexpectedError('The execution succeeded, so it cannot be retried.'));
@@ -336,8 +336,8 @@ describe('POST /executions/:id/retry', () => {
 
 		const response = await authUser1Agent.post(`/executions/${execution.id}/retry`);
 
-		expect(response.statusCode).toBe(400);
-		expect(response.body.message).toBe('The execution succeeded, so it cannot be retried.');
+		expect(response.statusCode).toBe(500);
+		expect(response.body.message).toBe('Internal server error');
 
 		executionServiceSpy.mockRestore();
 	});
