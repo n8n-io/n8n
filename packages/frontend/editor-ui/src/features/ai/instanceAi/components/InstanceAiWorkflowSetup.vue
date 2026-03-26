@@ -25,6 +25,7 @@ import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { useExpressionResolveCtx } from '@/features/workflows/canvas/experimental/composables/useExpressionResolveCtx';
 import { getWorkflow as fetchWorkflowApi } from '@/app/api/workflows';
 import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
+import { useUIStore } from '@/app/stores/ui.store';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
@@ -62,6 +63,7 @@ const props = defineProps<{
 const i18n = useI18n();
 const store = useInstanceAiStore();
 const credentialsStore = useCredentialsStore();
+const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
 const nodeHelpers = useNodeHelpers();
@@ -496,8 +498,38 @@ const stopDeleteListener = credentialsStore.$onAction(({ name, after, args }) =>
 	});
 });
 
+// Listen for credential creation to auto-select newly created credentials
+// when using the setup button path (no NodeCredentials dropdown rendered)
+const stopCreateListener = credentialsStore.$onAction(({ name, after }) => {
+	if (name !== 'createNewCredential') return;
+	after((newCred) => {
+		if (!newCred || typeof newCred !== 'object' || !('id' in newCred)) return;
+		const card = currentCard.value;
+		if (!card?.credentialType) return;
+		const cred = newCred as { id: string; type: string };
+		if (cred.type === card.credentialType) {
+			selections.value[card.id] = cred.id;
+		}
+	});
+});
+
+function cardHasExistingCredentials(card: SetupCard): boolean {
+	if (!card.credentialType) return false;
+	const firstReq = card.nodes[0];
+	return (
+		(firstReq?.existingCredentials?.length ?? 0) > 0 ||
+		(credentialsStore.getUsableCredentialByType(card.credentialType)?.length ?? 0) > 0
+	);
+}
+
+function openNewCredentialForCard(card: SetupCard) {
+	if (!card.credentialType) return;
+	uiStore.openNewCredential(card.credentialType, false, false, props.projectId);
+}
+
 onUnmounted(() => {
 	stopDeleteListener();
+	stopCreateListener();
 	if (previousWorkflow) {
 		workflowsStore.setWorkflow(previousWorkflow);
 	}
@@ -1039,6 +1071,7 @@ function handleLater() {
 						:class="$style.credentialContainer"
 					>
 						<NodeCredentials
+							v-if="cardHasExistingCredentials(currentCard)"
 							:node="cardNodeUi(currentCard)"
 							:override-cred-type="currentCard.credentialType"
 							:project-id="projectId"
@@ -1065,6 +1098,12 @@ function handleLater() {
 								</N8nTooltip>
 							</template>
 						</NodeCredentials>
+						<N8nButton
+							v-else
+							:label="i18n.baseText('instanceAi.credential.setupButton')"
+							data-test-id="instance-ai-workflow-setup-credential-button"
+							@click="openNewCredentialForCard(currentCard)"
+						/>
 					</div>
 
 					<!-- Parameter editing via ParameterInputList -->
