@@ -258,17 +258,9 @@ function createCodeWorkflowBuilderGenerator(
 	llms: ResolvedStageLLMs,
 	timeoutMs?: number,
 	nodeDefinitionDirs?: string[],
-): (
-	prompt: string,
-	collectors?: GenerationCollectors,
-	datasetInputContext?: DatasetInputContext,
-) => Promise<GenerationResult> {
+): (prompt: string, collectors?: GenerationCollectors) => Promise<GenerationResult> {
 	// Subgraph metrics are not applicable since CodeWorkflowBuilder doesn't use coordination logs.
-	return async (
-		prompt: string,
-		collectors?: GenerationCollectors,
-		datasetInputContext?: DatasetInputContext,
-	): Promise<GenerationResult> => {
+	return async (prompt: string, collectors?: GenerationCollectors): Promise<GenerationResult> => {
 		const runId = generateRunId();
 
 		// Accumulate token usage across all LLM calls
@@ -292,8 +284,6 @@ function createCodeWorkflowBuilderGenerator(
 			message: prompt,
 			workflowId: runId,
 			featureFlags: { codeBuilder: true },
-			workflowContext: datasetInputContext?.workflowContext,
-			mode: datasetInputContext?.mode,
 		});
 
 		let workflow: SimpleWorkflow | null = null;
