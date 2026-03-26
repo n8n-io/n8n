@@ -44,9 +44,13 @@ export interface BuiltMemory {
 		},
 	): Promise<AgentMessage[]>;
 	// --- Working memory (optional) ---
-	getWorkingMemory?(params: { threadId: string; resourceId: string }): Promise<string | null>;
+	getWorkingMemory?(params: {
+		threadId: string;
+		resourceId: string;
+		scope: 'resource' | 'thread';
+	}): Promise<string | null>;
 	saveWorkingMemory?(
-		params: { threadId: string; resourceId: string },
+		params: { threadId: string; resourceId: string; scope: 'resource' | 'thread' },
 		content: string,
 	): Promise<void>;
 	// --- Tier 3: Vector operations (optional — runtime handles embeddings) ---

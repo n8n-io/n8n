@@ -79,17 +79,23 @@ class CustomMapMemory implements BuiltMemory {
 
 	// --- Working memory (Tier 2) ---
 
-	async getWorkingMemory(params: { threadId: string; resourceId?: string }): Promise<
-		string | null
-	> {
-		return this.workingMemory.get(params.resourceId ?? params.threadId) ?? null;
+	async getWorkingMemory(params: {
+		threadId: string;
+		resourceId: string;
+		scope: 'resource' | 'thread';
+	}): Promise<string | null> {
+		return (
+			this.workingMemory.get(params.scope === 'resource' ? params.resourceId : params.threadId) ??
+			null
+		);
 	}
 
 	async saveWorkingMemory(
-		params: { threadId: string; resourceId?: string },
+		params: { threadId: string; resourceId: string; scope: 'resource' | 'thread' },
 		content: string,
 	): Promise<void> {
-		this.workingMemory.set(params.resourceId ?? params.threadId, content);
+		const id = params.scope === 'resource' ? params.resourceId : params.threadId;
+		this.workingMemory.set(id, content);
 	}
 }
 

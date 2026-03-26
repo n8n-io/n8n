@@ -384,15 +384,16 @@ export class PostgresMemory implements BuiltMemory {
 
 	// ── Working memory ───────────────────────────────────────────────────
 
-	async getWorkingMemory(params: { threadId: string; resourceId?: string }): Promise<
-		string | null
-	> {
+	async getWorkingMemory(params: {
+		threadId: string;
+		resourceId: string;
+		scope: 'resource' | 'thread';
+	}): Promise<string | null> {
 		const pool = await this.ensureInitialized();
-		const key = params.resourceId ?? params.threadId;
-		const scope: 'resource' | 'thread' = params.resourceId !== undefined ? 'resource' : 'thread';
+		const key = params.scope === 'resource' ? params.resourceId : params.threadId;
 		const result = await pool.query<{ content: string }>(
 			`SELECT content FROM ${this.ns}working_memory WHERE key = $1 AND scope = $2`,
-			[key, scope],
+			[key, params.scope],
 		);
 
 		if (result.rows.length === 0) return null;
@@ -400,12 +401,11 @@ export class PostgresMemory implements BuiltMemory {
 	}
 
 	async saveWorkingMemory(
-		params: { threadId: string; resourceId?: string },
+		params: { threadId: string; resourceId: string; scope: 'resource' | 'thread' },
 		content: string,
 	): Promise<void> {
 		const pool = await this.ensureInitialized();
-		const key = params.resourceId ?? params.threadId;
-		const scope: 'resource' | 'thread' = params.resourceId !== undefined ? 'resource' : 'thread';
+		const key = params.scope === 'resource' ? params.resourceId : params.threadId;
 		const now = new Date().toISOString();
 
 		await pool.query(
@@ -414,7 +414,7 @@ export class PostgresMemory implements BuiltMemory {
 			 ON CONFLICT (key, scope) DO UPDATE SET
 				content = EXCLUDED.content,
 				"updatedAt" = EXCLUDED."updatedAt"`,
-			[key, scope, content, now],
+			[key, params.scope, content, now],
 		);
 	}
 

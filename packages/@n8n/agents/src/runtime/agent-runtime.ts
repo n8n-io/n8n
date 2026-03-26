@@ -771,6 +771,7 @@ export class AgentRuntime {
 			this.extractAndPersistWorkingMemory(list, {
 				threadId: options.persistence.threadId,
 				resourceId: options.persistence.resourceId,
+				scope: this.config.workingMemory?.scope ?? 'resource',
 			});
 		}
 
@@ -1093,6 +1094,7 @@ export class AgentRuntime {
 				this.extractAndPersistWorkingMemory(list, {
 					threadId: options.persistence.threadId,
 					resourceId: options.persistence.resourceId,
+					scope: this.config.workingMemory?.scope ?? 'resource',
 				});
 			}
 
@@ -1193,13 +1195,12 @@ export class AgentRuntime {
 	 */
 	private extractAndPersistWorkingMemory(
 		list: AgentMessageList,
-		params: { threadId: string; resourceId: string },
+		params: { threadId: string; resourceId: string; scope: 'resource' | 'thread' },
 	): void {
 		const delta = list.responseDelta();
 		for (let i = delta.length - 1; i >= 0; i--) {
 			const msg = delta[i];
-			if (!('role' in msg) || msg.role !== 'assistant') continue;
-			if (!('content' in msg) || !Array.isArray(msg.content)) continue;
+			if (!isLlmMessage(msg) || msg.role !== 'assistant') continue;
 			for (const part of msg.content) {
 				if (!isTextPart(part)) continue;
 				const { cleanText, workingMemory } = parseWorkingMemory(part.text);
@@ -1821,16 +1822,17 @@ export class AgentRuntime {
 			);
 		}
 		if (!options) return null;
+		const memoryParams = { ...options, scope };
 		const persistFn =
 			this.config.workingMemory && this.config.memory?.saveWorkingMemory && options
 				? async (content: string) => {
-						await this.config.memory!.saveWorkingMemory!(options, content);
+						await this.config.memory!.saveWorkingMemory!(memoryParams, content);
 					}
 				: undefined;
 		if (!persistFn) return null;
 		return {
 			persistFn,
-			memoryParams: options,
+			memoryParams,
 			template: this.config.workingMemory.template,
 			structured: this.config.workingMemory.structured,
 			schema: this.config.workingMemory.schema,

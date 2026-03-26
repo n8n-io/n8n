@@ -53,7 +53,11 @@ beforeAll(async () => {
 }, 60_000);
 
 afterAll(async () => {
-	if (container) await container.stop();
+	try {
+		if (container) await container.stop();
+	} catch (error) {
+		console.error('Error stopping container:', error);
+	}
 }, 30_000);
 
 /** describe that requires Docker — tests are no-ops without it. */
@@ -162,24 +166,26 @@ describeWithDocker('PostgresMemory unit tests', () => {
 	it('saves and retrieves working memory keyed by resourceId', async () => {
 		const mem = new PostgresMemory({ connection: connectionString, namespace: 'wm_test' });
 
-		expect(await mem.getWorkingMemory({ threadId: 'thread-1', resourceId: 'user-1' })).toBeNull();
+		expect(
+			await mem.getWorkingMemory({ threadId: 'thread-1', resourceId: 'user-1', scope: 'resource' }),
+		).toBeNull();
 
 		await mem.saveWorkingMemory(
-			{ threadId: 'thread-1', resourceId: 'user-1' },
+			{ threadId: 'thread-1', resourceId: 'user-1', scope: 'resource' },
 			'# Profile\n- Name: Alice',
 		);
-		expect(await mem.getWorkingMemory({ threadId: 'thread-1', resourceId: 'user-1' })).toBe(
-			'# Profile\n- Name: Alice',
-		);
+		expect(
+			await mem.getWorkingMemory({ threadId: 'thread-1', resourceId: 'user-1', scope: 'resource' }),
+		).toBe('# Profile\n- Name: Alice');
 
 		// Overwrite
 		await mem.saveWorkingMemory(
-			{ threadId: 'thread-1', resourceId: 'user-1' },
+			{ threadId: 'thread-1', resourceId: 'user-1', scope: 'resource' },
 			'# Profile\n- Name: Alice\n- Role: Engineer',
 		);
-		expect(await mem.getWorkingMemory({ threadId: 'thread-1', resourceId: 'user-1' })).toContain(
-			'Engineer',
-		);
+		expect(
+			await mem.getWorkingMemory({ threadId: 'thread-1', resourceId: 'user-1', scope: 'resource' }),
+		).toContain('Engineer');
 
 		await mem.close();
 	});
@@ -187,10 +193,17 @@ describeWithDocker('PostgresMemory unit tests', () => {
 	it('saves and retrieves working memory keyed by threadId (no resourceId)', async () => {
 		const mem = new PostgresMemory({ connection: connectionString, namespace: 'wm_thread_test' });
 
-		expect(await mem.getWorkingMemory({ threadId: 'thread-1' })).toBeNull();
+		expect(
+			await mem.getWorkingMemory({ threadId: 'thread-1', resourceId: 'user-1', scope: 'thread' }),
+		).toBeNull();
 
-		await mem.saveWorkingMemory({ threadId: 'thread-1' }, 'thread context');
-		expect(await mem.getWorkingMemory({ threadId: 'thread-1' })).toBe('thread context');
+		await mem.saveWorkingMemory(
+			{ threadId: 'thread-1', resourceId: 'user-1', scope: 'thread' },
+			'thread context',
+		);
+		expect(
+			await mem.getWorkingMemory({ threadId: 'thread-1', resourceId: 'user-1', scope: 'thread' }),
+		).toBe('thread context');
 
 		await mem.close();
 	});
@@ -198,15 +211,21 @@ describeWithDocker('PostgresMemory unit tests', () => {
 	it('isolates working memory by resourceId', async () => {
 		const mem = new PostgresMemory({ connection: connectionString, namespace: 'wm_iso_test' });
 
-		await mem.saveWorkingMemory({ threadId: 'thread-a', resourceId: 'user-a' }, 'data for user-a');
-		await mem.saveWorkingMemory({ threadId: 'thread-b', resourceId: 'user-b' }, 'data for user-b');
-
-		expect(await mem.getWorkingMemory({ threadId: 'thread-a', resourceId: 'user-a' })).toBe(
+		await mem.saveWorkingMemory(
+			{ threadId: 'thread-a', resourceId: 'user-a', scope: 'resource' },
 			'data for user-a',
 		);
-		expect(await mem.getWorkingMemory({ threadId: 'thread-b', resourceId: 'user-b' })).toBe(
+		await mem.saveWorkingMemory(
+			{ threadId: 'thread-b', resourceId: 'user-b', scope: 'resource' },
 			'data for user-b',
 		);
+
+		expect(
+			await mem.getWorkingMemory({ threadId: 'thread-a', resourceId: 'user-a', scope: 'resource' }),
+		).toBe('data for user-a');
+		expect(
+			await mem.getWorkingMemory({ threadId: 'thread-b', resourceId: 'user-b', scope: 'resource' }),
+		).toBe('data for user-b');
 
 		await mem.close();
 	});
@@ -214,7 +233,10 @@ describeWithDocker('PostgresMemory unit tests', () => {
 	it('stores scope=resource when resourceId is provided', async () => {
 		const mem = new PostgresMemory({ connection: connectionString, namespace: 'wm_scope_test' });
 
-		await mem.saveWorkingMemory({ threadId: 'thread-1', resourceId: 'res-1' }, 'resource content');
+		await mem.saveWorkingMemory(
+			{ threadId: 'thread-1', resourceId: 'res-1', scope: 'resource' },
+			'resource content',
+		);
 
 		const pool = new Pool({ connectionString });
 		const result = await pool.query<{ scope: string }>(
@@ -233,7 +255,10 @@ describeWithDocker('PostgresMemory unit tests', () => {
 			namespace: 'wm_scope_thread_test',
 		});
 
-		await mem.saveWorkingMemory({ threadId: 'thread-1' }, 'thread content');
+		await mem.saveWorkingMemory(
+			{ threadId: 'thread-1', resourceId: 'user-1', scope: 'thread' },
+			'thread content',
+		);
 
 		const pool = new Pool({ connectionString });
 		const result = await pool.query<{ scope: string }>(
@@ -253,13 +278,25 @@ describeWithDocker('PostgresMemory unit tests', () => {
 		});
 		const sharedKey = 'same-id';
 
-		await mem.saveWorkingMemory({ threadId: 'thread-1', resourceId: sharedKey }, 'resource data');
-		await mem.saveWorkingMemory({ threadId: sharedKey }, 'thread data');
-
-		expect(await mem.getWorkingMemory({ threadId: 'thread-1', resourceId: sharedKey })).toBe(
+		await mem.saveWorkingMemory(
+			{ threadId: 'thread-1', resourceId: sharedKey, scope: 'resource' },
 			'resource data',
 		);
-		expect(await mem.getWorkingMemory({ threadId: sharedKey })).toBe('thread data');
+		await mem.saveWorkingMemory(
+			{ threadId: sharedKey, resourceId: sharedKey, scope: 'thread' },
+			'thread data',
+		);
+
+		expect(
+			await mem.getWorkingMemory({
+				threadId: 'thread-1',
+				resourceId: sharedKey,
+				scope: 'resource',
+			}),
+		).toBe('resource data');
+		expect(
+			await mem.getWorkingMemory({ threadId: sharedKey, resourceId: sharedKey, scope: 'thread' }),
+		).toBe('thread data');
 
 		await mem.close();
 	});
@@ -500,7 +537,7 @@ describeWithDockerAndApi('PostgresMemory agent integration', () => {
 		});
 
 		// Working memory should be persisted in Postgres (keyed by resourceId)
-		const wm = await store.getWorkingMemory({ threadId, resourceId });
+		const wm = await store.getWorkingMemory({ threadId, resourceId, scope: 'resource' });
 		expect(wm).toBeDefined();
 		expect(wm!.toLowerCase()).toContain('hiro');
 
@@ -537,12 +574,12 @@ describeWithDockerAndApi('PostgresMemory agent integration', () => {
 		});
 
 		// Working memory should be stored keyed by threadId
-		const wmByThread = await store.getWorkingMemory({ threadId });
+		const wmByThread = await store.getWorkingMemory({ threadId, resourceId, scope: 'thread' });
 		expect(wmByThread).toBeDefined();
 		expect(wmByThread!.toLowerCase()).toContain('helios');
 
 		// resourceId key should be empty — nothing stored there
-		const wmByResource = await store.getWorkingMemory({ threadId, resourceId });
+		const wmByResource = await store.getWorkingMemory({ threadId, resourceId, scope: 'resource' });
 		expect(wmByResource).toBeNull();
 
 		// New thread for same resource — should NOT carry over thread-scoped working memory
