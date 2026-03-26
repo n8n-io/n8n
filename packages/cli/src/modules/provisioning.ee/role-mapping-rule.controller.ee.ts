@@ -12,6 +12,13 @@ import type {
 	RoleMappingRuleListResponse,
 	RoleMappingRuleResponse,
 } from './role-mapping-rule.service.ee';
+import { CreateRoleMappingRuleDto, PatchRoleMappingRuleDto } from '@n8n/api-types';
+import { LicenseState } from '@n8n/backend-common';
+import { AuthenticatedRequest } from '@n8n/db';
+import { Body, GlobalScope, Param, Patch, Post, RestController } from '@n8n/decorators';
+import type { Response } from 'express';
+
+import type { RoleMappingRuleResponse } from './role-mapping-rule.service.ee';
 import { RoleMappingRuleService } from './role-mapping-rule.service.ee';
 
 @RestController('/role-mapping-rule')

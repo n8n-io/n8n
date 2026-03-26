@@ -3,6 +3,7 @@ import {
 	type ListRoleMappingRuleQueryInput,
 	type PatchRoleMappingRuleInput,
 } from '@n8n/api-types';
+import { CreateRoleMappingRuleDto, type PatchRoleMappingRuleInput } from '@n8n/api-types';
 import {
 	ProjectRepository,
 	RoleMappingRule,
@@ -10,6 +11,7 @@ import {
 	RoleRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+
 import { type FindOptionsOrder, In } from '@n8n/typeorm';
 import type { z } from 'zod';
 
