@@ -1315,6 +1315,13 @@ export class WorkflowExecute {
 			this.additionalData,
 			this.mode,
 		);
+
+		// In evaluation mode with LLM mock handler, skip issue checks — missing
+		// credentials and similar issues are handled by the mock infrastructure.
+		if (this.mode === 'evaluation' && this.additionalData.evalLlmMockHandler) {
+			return;
+		}
+
 		// Node execution stack will be empty for an execution containing only Chat
 		// Trigger.
 		const startNode = this.runExecutionData.executionData.nodeExecutionStack.at(0)?.node.name;

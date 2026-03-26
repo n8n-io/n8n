@@ -67,7 +67,7 @@ import clientOAuth1 from 'oauth-1.0a';
 import { stringify } from 'qs';
 import { Readable } from 'stream';
 
-import type { SsrfBridge } from '@/execution-engine';
+import type { EvalMockHttpResponse, SsrfBridge } from '@/execution-engine';
 import { createHttpProxyAgent, createHttpsProxyAgent } from '@/http-proxy';
 import type { IResponseError } from '@/interfaces';
 
@@ -841,6 +841,40 @@ export const removeEmptyBody = (requestOptions: IHttpRequestOptions | IRequestOp
 	}
 };
 
+/**
+ * Convert an EvalMockHttpResponse into the full-response shape that callers expect
+ * when `returnFullResponse` / `resolveWithFullResponse` is true.
+ * Body is serialized to a Buffer so downstream processing (binary detection,
+ * encoding detection, stream handling) works exactly as with a real HTTP response.
+ */
+function serializeMockToHttpResponse(mock: EvalMockHttpResponse) {
+	const body = mock.body instanceof Buffer ? mock.body : Buffer.from(JSON.stringify(mock.body));
+	return { body, headers: mock.headers, statusCode: mock.statusCode, statusMessage: 'OK' };
+}
+
+/** Normalize legacy IRequestOptions or (uri, options) args into IHttpRequestOptions for the eval mock handler. */
+function normalizeLegacyRequest(
+	uriOrObject: string | IRequestOptions,
+	options?: IRequestOptions,
+): IHttpRequestOptions {
+	if (typeof uriOrObject === 'string') {
+		return {
+			url: uriOrObject,
+			method: options?.method,
+			headers: options?.headers as IHttpRequestOptions['headers'],
+			body: options?.body,
+			qs: options?.qs,
+		};
+	}
+	return {
+		url: uriOrObject.uri ?? uriOrObject.url ?? '',
+		method: uriOrObject.method,
+		headers: uriOrObject.headers as IHttpRequestOptions['headers'],
+		body: uriOrObject.body,
+		qs: uriOrObject.qs,
+	};
+}
+
 export async function httpRequest(
 	requestOptions: IHttpRequestOptions,
 	ssrfBridge?: SsrfBridge,
@@ -1242,6 +1276,18 @@ export async function httpRequestWithAuthentication(
 	}
 
 	let credentialsDecrypted: ICredentialDataDecryptedObject | undefined;
+
+	// Eval LLM mock: intercept before credential auth and OAuth signing —
+	// there's no point resolving credentials for a request the mock handler will handle.
+	if (additionalData.evalLlmMockHandler) {
+		const mockResponse = await additionalData.evalLlmMockHandler(requestOptions, node);
+		if (mockResponse) {
+			return requestOptions.returnFullResponse
+				? serializeMockToHttpResponse(mockResponse)
+				: mockResponse.body;
+		}
+	}
+
 	try {
 		const parentTypes = additionalData.credentialsHelper.getParentTypes(credentialsType);
 
@@ -1329,7 +1375,6 @@ export async function httpRequestWithAuthentication(
 						node,
 					);
 				}
-				// retry the request
 				return await httpRequest(requestOptions, additionalData.ssrfBridge);
 			} catch (error) {
 				throw new NodeApiError(this.getNode(), error);
@@ -1354,6 +1399,19 @@ export async function requestWithAuthentication(
 	removeEmptyBody(requestOptions);
 
 	let credentialsDecrypted: ICredentialDataDecryptedObject | undefined;
+
+	// Eval LLM mock: intercept before credential auth and OAuth signing (legacy path)
+	if (additionalData.evalLlmMockHandler) {
+		const mockResponse = await additionalData.evalLlmMockHandler(
+			normalizeLegacyRequest(requestOptions),
+			node,
+		);
+		if (mockResponse) {
+			return requestOptions.resolveWithFullResponse
+				? serializeMockToHttpResponse(mockResponse)
+				: mockResponse.body;
+		}
+	}
 
 	try {
 		const parentTypes = additionalData.credentialsHelper.getParentTypes(credentialsType);
@@ -1435,7 +1493,6 @@ export async function requestWithAuthentication(
 						workflow,
 						node,
 					)) as IRequestOptions;
-					// retry the request
 					return await proxyRequestToAxios(workflow, additionalData, node, requestOptions);
 				}
 			}
@@ -1699,9 +1756,21 @@ export const getRequestHelperFunctions = (
 		return responseData;
 	}
 
+	// Eval LLM mock handler: extract once for use in direct helpers below
+	const evalLlmMock = additionalData.evalLlmMockHandler;
+
 	return {
-		httpRequest: async (requestOptions: IHttpRequestOptions) =>
-			await httpRequest(requestOptions, additionalData.ssrfBridge),
+		httpRequest: async (requestOptions: IHttpRequestOptions) => {
+			if (evalLlmMock) {
+				const mockResponse = await evalLlmMock(requestOptions, node);
+				if (mockResponse) {
+					return requestOptions.returnFullResponse
+						? serializeMockToHttpResponse(mockResponse)
+						: mockResponse.body;
+				}
+			}
+			return await httpRequest(requestOptions, additionalData.ssrfBridge);
+		},
 		requestWithAuthenticationPaginated,
 		async httpRequestWithAuthentication(
 			this,
@@ -1734,8 +1803,16 @@ export const getRequestHelperFunctions = (
 			);
 		},
 
-		request: async (uriOrObject, options) =>
-			await proxyRequestToAxios(workflow, additionalData, node, uriOrObject, options),
+		request: async (uriOrObject, options) => {
+			if (evalLlmMock) {
+				const mockResponse = await evalLlmMock(normalizeLegacyRequest(uriOrObject, options), node);
+				if (mockResponse) {
+					const wantsFull = typeof uriOrObject !== 'string' && uriOrObject.resolveWithFullResponse;
+					return wantsFull ? serializeMockToHttpResponse(mockResponse) : mockResponse.body;
+				}
+			}
+			return await proxyRequestToAxios(workflow, additionalData, node, uriOrObject, options);
+		},
 
 		async requestWithAuthentication(
 			this,
