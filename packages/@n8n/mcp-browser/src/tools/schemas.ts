@@ -9,12 +9,16 @@ export const pageIdField = z
 	.optional()
 	.describe('Target page/tab ID. Defaults to active page');
 
-const refTargetSchema = z.object({
-	ref: z.string().describe('Element ref from browser_snapshot (preferred)'),
-});
-const selectorTargetSchema = z.object({
-	selector: z.string().describe('CSS/text/role/XPath selector (fallback — prefer ref)'),
-});
+const refTargetSchema = z
+	.object({
+		ref: z.string().describe('Element ref from browser_snapshot (preferred)'),
+	})
+	.strict();
+const selectorTargetSchema = z
+	.object({
+		selector: z.string().describe('CSS/text/role/XPath selector (fallback — prefer ref)'),
+	})
+	.strict();
 
 /** Element target: exactly one of ref or selector. Prefer ref from browser_snapshot. */
 export const elementTargetSchema = z.union([refTargetSchema, selectorTargetSchema]);

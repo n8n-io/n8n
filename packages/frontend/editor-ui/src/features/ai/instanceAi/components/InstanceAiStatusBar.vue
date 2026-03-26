@@ -12,6 +12,7 @@ const i18n = useI18n();
 const { getToolLabel } = useToolLabel();
 
 const showApprovalHint = computed(() => settingsStore.isPendingApproval && !store.isStreaming);
+const showConnectedHint = computed(() => settingsStore.isJustApproved && !store.isStreaming);
 
 const elapsed = ref(0);
 let timer: ReturnType<typeof setInterval> | null = null;
@@ -83,24 +84,32 @@ onUnmounted(() => {
 </script>
 
 <template>
-	<Transition name="status-bar">
-		<div v-if="isVisible && activity" :class="$style.bar" data-test-id="instance-ai-status-bar">
-			<span :class="$style.dot" />
-			<span :class="$style.label">{{ activity.label }}</span>
-			<span v-if="activity.detail" :class="$style.separator">&middot;</span>
-			<span v-if="activity.detail" :class="$style.detail">{{ activity.detail }}</span>
-			<span :class="$style.separator">&middot;</span>
-			<span :class="$style.elapsed">{{ formattedElapsed }}</span>
-		</div>
-	</Transition>
-	<Transition name="status-bar">
-		<div v-if="showApprovalHint" :class="$style.bar" data-test-id="instance-ai-approval-hint">
-			<span :class="[$style.dot, $style.dotWarning]" />
-			<span :class="$style.label">{{
-				i18n.baseText(`instanceAi.approvalHint.${settingsStore.approvalMethod}`)
-			}}</span>
-		</div>
-	</Transition>
+	<div>
+		<Transition name="status-bar">
+			<div v-if="isVisible && activity" :class="$style.bar" data-test-id="instance-ai-status-bar">
+				<span :class="$style.dot" />
+				<span :class="$style.label">{{ activity.label }}</span>
+				<span v-if="activity.detail" :class="$style.separator">&middot;</span>
+				<span v-if="activity.detail" :class="$style.detail">{{ activity.detail }}</span>
+				<span :class="$style.separator">&middot;</span>
+				<span :class="$style.elapsed">{{ formattedElapsed }}</span>
+			</div>
+		</Transition>
+		<Transition name="status-bar">
+			<div v-if="showApprovalHint" :class="$style.bar" data-test-id="instance-ai-approval-hint">
+				<span :class="[$style.dot, $style.dotWarning]" />
+				<span :class="$style.label">{{
+					i18n.baseText(`instanceAi.approvalHint.${settingsStore.approvalMethod}`)
+				}}</span>
+			</div>
+		</Transition>
+		<Transition name="status-bar">
+			<div v-if="showConnectedHint" :class="$style.bar" data-test-id="instance-ai-connected-hint">
+				<span :class="[$style.dot, $style.dotSuccess]" />
+				<span :class="$style.label">{{ i18n.baseText('instanceAi.approvalHint.connected') }}</span>
+			</div>
+		</Transition>
+	</div>
 </template>
 
 <style lang="scss" module>
@@ -154,6 +163,11 @@ onUnmounted(() => {
 
 .dotWarning {
 	background: var(--color--warning);
+}
+
+.dotSuccess {
+	background: var(--color--success);
+	animation: none;
 }
 </style>
 

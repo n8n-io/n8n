@@ -107,15 +107,7 @@ function getBrowserSection(browserAvailable: boolean | undefined): string {
 
 ## Browser Automation
 
-You can control the user's local browser via the local gateway. Since this is their real browser, you share it with them.
-
-### Prerequisites
-
-Browser automation requires the user's machine to be set up:
-1. **A Chrome/Chromium browser must be open** on the user's machine
-2. **The n8n AI Browser Bridge extension must be installed** in the browser
-
-If a browser tool fails because the extension is not connected, guide the user through these steps.
+You can control the user's browser using the browser_* tools. Since this is their real browser, you share it with them.
 
 ### Handing control to the user
 

@@ -136,7 +136,7 @@ describe('createTabTools', () => {
 
 		describe('execute', () => {
 			it('calls adapter.focusPage and updates activePageId', async () => {
-				mockConnection.adapter.listPages.mockResolvedValue([
+				mockConnection.adapter.listTabs.mockResolvedValue([
 					{ id: 'page1', title: 'A', url: 'http://a.com' },
 					{ id: 'page2', title: 'B', url: 'http://b.com' },
 				]);
@@ -150,7 +150,7 @@ describe('createTabTools', () => {
 			});
 
 			it('returns error when page not found', async () => {
-				mockConnection.adapter.listPages.mockResolvedValue([
+				mockConnection.adapter.listTabs.mockResolvedValue([
 					{ id: 'page1', title: 'A', url: 'http://a.com' },
 				]);
 

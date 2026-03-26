@@ -8,10 +8,10 @@ import { useSettingsField } from './useSettingsField';
 const i18n = useI18n();
 const { store } = useSettingsField();
 
-const isFilesystemDisabled = computed(() => {
-	if (store.preferencesDraft.filesystemDisabled !== undefined)
-		return store.preferencesDraft.filesystemDisabled;
-	return store.preferences?.filesystemDisabled ?? false;
+const isLocalGatewayDisabled = computed(() => {
+	if (store.preferencesDraft.localGatewayDisabled !== undefined)
+		return store.preferencesDraft.localGatewayDisabled;
+	return store.preferences?.localGatewayDisabled ?? false;
 });
 
 const copied = ref(false);
@@ -98,12 +98,13 @@ onMounted(() => {
 		<div :class="$style.switchRow">
 			<span :class="$style.switchLabel">{{ i18n.baseText('instanceAi.filesystem.label') }}</span>
 			<ElSwitch
-				:model-value="!isFilesystemDisabled"
-				@update:model-value="store.setPreferenceField('filesystemDisabled', !$event)"
+				:model-value="!isLocalGatewayDisabled"
+				:disabled="store.isLocalGatewayDisabled"
+				@update:model-value="store.setPreferenceField('localGatewayDisabled', !$event)"
 			/>
 		</div>
 
-		<template v-if="!isFilesystemDisabled">
+		<template v-if="!isLocalGatewayDisabled">
 			<!-- Gateway connected -->
 			<div v-if="store.isGatewayConnected" :class="$style.connectedBlock">
 				<div :class="$style.statusRow">

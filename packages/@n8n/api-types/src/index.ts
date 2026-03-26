@@ -282,6 +282,7 @@ export {
 	InstanceAiThreadMessagesQuery,
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiUserPreferencesUpdateRequest,
+	InstanceAiGatewayPendingApprovalRequest,
 } from './schemas/instance-ai.schema';
 
 export type {
@@ -312,6 +313,7 @@ export type {
 	InstanceAiFilesystemResponse,
 	InstanceAiGatewayCapabilities,
 	McpTool,
+	McpToolAnnotations,
 	McpToolCallRequest,
 	McpToolCallResult,
 	InstanceAiEvent,

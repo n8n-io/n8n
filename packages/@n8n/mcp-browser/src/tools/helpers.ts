@@ -80,7 +80,9 @@ export function createConnectedTool<
 					: await fn(state, args, pageId);
 
 				if (!options?.skipEnrichment) {
-					await enrichResponse(result, state, state.activePageId, options ?? {}, tabsBefore);
+					// Re-resolve: tab-creating actions (tab_open) update activePageId
+					const enrichPageId = state.activePageId || pageId;
+					await enrichResponse(result, state, enrichPageId, options ?? {}, tabsBefore);
 				}
 				return result;
 			} catch (error) {

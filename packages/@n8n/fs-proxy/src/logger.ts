@@ -45,7 +45,7 @@ function toPrintable(metadata: Record<string, unknown>): string {
 	return JSON.stringify(metadata)
 		.replace(/{"/g, '{ "')
 		.replace(/,"/g, ', "')
-		.replace(/:/g, ': ')
+		.replace(/":/g, '": ')
 		.replace(/}/g, ' }');
 }
 

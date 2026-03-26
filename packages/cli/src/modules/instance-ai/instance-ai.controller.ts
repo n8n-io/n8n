@@ -13,6 +13,7 @@ import {
 	InstanceAiThreadMessagesQuery,
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiUserPreferencesUpdateRequest,
+	InstanceAiGatewayPendingApprovalRequest,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -308,7 +309,7 @@ export class InstanceAiController {
 		@Body payload: InstanceAiUserPreferencesUpdateRequest,
 	) {
 		const result = await this.settingsService.updateUserPreferences(req.user, payload);
-		if (payload.filesystemDisabled !== undefined) {
+		if (payload.localGatewayDisabled !== undefined) {
 			await this.moduleRegistry.refreshModuleSettings('instance-ai');
 		}
 		return result;
@@ -571,9 +572,13 @@ export class InstanceAiController {
 	}
 
 	@Post('/gateway/pending-approval')
-	async gatewayPendingApproval(req: AuthenticatedRequest) {
-		const { pending, method } = req.body as { pending: boolean; method?: 'cli' | 'app' };
-		this.instanceAiService.setGatewayPendingApproval(req.user.id, pending, method);
+	@GlobalScope('instanceAi:gateway')
+	async gatewayPendingApproval(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: InstanceAiGatewayPendingApprovalRequest,
+	) {
+		this.instanceAiService.setGatewayPendingApproval(req.user.id, payload.pending, payload.method);
 		return { ok: true };
 	}
 

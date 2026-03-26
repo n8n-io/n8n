@@ -89,8 +89,9 @@ function tabFocus(connection: BrowserConnection): ToolDefinition {
 		'Switch the active tab. Note: focusing is not required to interact with a tab — you can interact with any tab regardless of focus.',
 		tabFocusSchema,
 		async (state, input) => {
-			// Verify page exists by listing
-			const pages = await state.adapter.listPages();
+			// Verify page exists — use listTabs() to include relay-known tabs
+			// that may not have Playwright page objects yet
+			const pages = await state.adapter.listTabs();
 			const target = pages.find((p) => p.id === input.pageId);
 			if (!target) {
 				const { PageNotFoundError } = await import('../errors');

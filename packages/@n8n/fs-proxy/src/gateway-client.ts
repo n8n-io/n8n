@@ -24,6 +24,14 @@ import { formatErrorResult } from './tools/utils';
 const MAX_RECONNECT_DELAY_MS = 30_000;
 const MAX_AUTH_RETRIES = 5;
 
+/** Tag tool definitions with a category annotation (mutates in place for efficiency). */
+function tagCategory(defs: ToolDefinition[], category: string): ToolDefinition[] {
+	for (const def of defs) {
+		def.annotations = { ...def.annotations, category };
+	}
+	return defs;
+}
+
 export interface GatewayClientOptions {
 	url: string;
 	apiKey: string;
@@ -143,10 +151,10 @@ export class GatewayClient {
 
 		// Filesystem — always report
 		if (config.filesystem !== false) {
-			defs.push(...filesystemReadTools);
+			defs.push(...tagCategory(filesystemReadTools, 'filesystem'));
 			const hasWrite = config.filesystem.writeAccess;
 			if (hasWrite) {
-				defs.push(...filesystemWriteTools);
+				defs.push(...tagCategory(filesystemWriteTools, 'filesystem'));
 			}
 			categories.push({ name: 'filesystem', enabled: true, writeAccess: hasWrite });
 		} else {
@@ -182,7 +190,7 @@ export class GatewayClient {
 
 		for (const { name, category, enabled, module } of computerModules) {
 			if (enabled && (await module.isSupported())) {
-				defs.push(...module.definitions);
+				defs.push(...tagCategory(module.definitions, category));
 				categories.push({ name: category, enabled: true });
 			} else {
 				if (enabled) {
@@ -200,7 +208,7 @@ export class GatewayClient {
 				logLevel: config.logLevel,
 			});
 			if (this.browserModule) {
-				defs.push(...this.browserModule.definitions);
+				defs.push(...tagCategory(this.browserModule.definitions, 'browser'));
 				categories.push({ name: 'browser', enabled: true });
 			} else {
 				logger.debug('Module not supported on this platform, skipping', {
@@ -227,6 +235,7 @@ export class GatewayClient {
 			name: d.name,
 			description: d.description,
 			inputSchema: zodToJsonSchema(d.inputSchema) as McpTool['inputSchema'],
+			...(d.annotations ? { annotations: d.annotations } : {}),
 		}));
 		const url = `${this.options.url}/rest/instance-ai/gateway/init`;
 		const headers = new Headers();

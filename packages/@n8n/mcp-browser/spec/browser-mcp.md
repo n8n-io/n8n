@@ -127,7 +127,6 @@ tab; the default is the active page.
 | `browser_set_geolocation` | Override geolocation |
 | `browser_set_timezone` | Override timezone |
 | `browser_set_locale` | Override locale |
-| `browser_set_device` | Emulate a device viewport and user agent |
 
 ---
 
@@ -153,8 +152,6 @@ and resilient to CSS changes.
 ```typescript
 const { tools, connection } = createBrowserTools({
   defaultBrowser: 'chrome',   // 'chrome' | 'chromium' | 'brave' | 'edge'
-  headless: false,             // headless mode (default: false)
-  viewport: { width: 1280, height: 720 },
   browsers: {                  // optional executable/profile overrides
     chrome: { executablePath: '/path/to/chrome' },
   },
@@ -166,19 +163,14 @@ const { tools, connection } = createBrowserTools({
 | Flag | Alias | Default | Description |
 |------|-------|---------|-------------|
 | `--browser` | `-b` | `chrome` | Default browser to launch |
-| `--headless` | | `false` | Run in headless mode |
-| `--viewport` | | `1280x720` | Viewport size (WxH) |
 | `--transport` | `-t` | `http` | MCP transport (`http` or `stdio`) |
-| `--port` | `-p` | `3100` | HTTP server port |
 
 ### Environment Variables
 
 All CLI flags can be set via `N8N_MCP_BROWSER_` prefixed env vars:
 
 - `N8N_MCP_BROWSER_DEFAULT_BROWSER`
-- `N8N_MCP_BROWSER_HEADLESS`
 - `N8N_MCP_BROWSER_TRANSPORT`
-- `N8N_MCP_BROWSER_PORT`
 
 CLI flags take precedence over environment variables.
 

@@ -28,7 +28,7 @@ export class InstanceAiModule implements ModuleInterface {
 		const settingsService = Container.get(InstanceAiSettingsService);
 		const enabled = service.isEnabled();
 		const localGateway = service.isLocalFilesystemAvailable();
-		const localGatewayDisabled = settingsService.isFilesystemDisabled();
+		const localGatewayDisabled = settingsService.isLocalGatewayDisabled();
 		const localGatewayFallbackDirectory = service.getLocalFilesystemDirectory();
 		return {
 			enabled,

@@ -492,6 +492,8 @@ export interface InstanceAiFilesystemService {
  */
 export interface LocalMcpServer {
 	getAvailableTools(): McpTool[];
+	/** Return tools that belong to the given category (based on annotations.category). */
+	getToolsByCategory(category: string): McpTool[];
 	callTool(req: McpToolCallRequest): Promise<McpToolCallResult>;
 }
 

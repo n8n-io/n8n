@@ -896,6 +896,11 @@ export class PlaywrightAdapter {
 
 		if (!this.relay || !this.context) throw new PageNotFoundError(pageId);
 
+		// Guard: don't attempt lazy activation for unknown/empty tab IDs
+		if (!pageId || !this.relay.hasTab(pageId)) {
+			throw new PageNotFoundError(pageId);
+		}
+
 		log.debug('ensurePage: activating tab', pageId, 'current pages:', [...this.pageStates.keys()]);
 
 		const pagePromise = new Promise<Page>((resolve, reject) => {

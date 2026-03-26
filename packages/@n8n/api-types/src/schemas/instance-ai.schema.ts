@@ -325,10 +325,27 @@ const mcpOneOfInputSchema = z.object({ oneOf: z.array(mcpObjectInputSchema) });
 
 const mcpInputSchema = z.union([mcpObjectInputSchema, mcpAnyOfInputSchema, mcpOneOfInputSchema]);
 
+export const mcpToolAnnotationsSchema = z.object({
+	/** Tool category — used to route tools to the correct sub-agent (e.g. 'browser', 'filesystem') */
+	category: z.string().optional(),
+	/** Default permission level for this tool (n8n-specific) */
+	defaultPermission: z.enum(['allow', 'confirm', 'block']).optional(),
+	/** If true, the tool does not modify its environment */
+	readOnlyHint: z.boolean().optional(),
+	/** If true, the tool may perform destructive updates */
+	destructiveHint: z.boolean().optional(),
+	/** If true, repeated calls with same args have no additional effect */
+	idempotentHint: z.boolean().optional(),
+	/** If true, tool interacts with external entities */
+	openWorldHint: z.boolean().optional(),
+});
+export type McpToolAnnotations = z.infer<typeof mcpToolAnnotationsSchema>;
+
 export const mcpToolSchema = z.object({
 	name: z.string(),
 	description: z.string().optional(),
 	inputSchema: mcpInputSchema,
+	annotations: mcpToolAnnotationsSchema.optional(),
 });
 export type McpTool = z.infer<typeof mcpToolSchema>;
 
@@ -806,13 +823,18 @@ export interface InstanceAiUserPreferencesResponse {
 	credentialType: string | null;
 	credentialName: string | null;
 	modelName: string;
-	filesystemDisabled: boolean;
+	localGatewayDisabled: boolean;
 }
 
 export class InstanceAiUserPreferencesUpdateRequest extends Z.class({
 	credentialId: z.string().nullable().optional(),
 	modelName: z.string().optional(),
-	filesystemDisabled: z.boolean().optional(),
+	localGatewayDisabled: z.boolean().optional(),
+}) {}
+
+export class InstanceAiGatewayPendingApprovalRequest extends Z.class({
+	pending: z.boolean(),
+	method: z.enum(['cli', 'app']).optional(),
 }) {}
 
 export interface InstanceAiModelCredential {

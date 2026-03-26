@@ -196,7 +196,5 @@ export function createOrchestrationTools(context: OrchestrationContext) {
 }
 
 function hasGatewayBrowserTools(context: OrchestrationContext): boolean {
-	return (
-		context.localMcpServer?.getAvailableTools().some((t) => t.name.startsWith('browser_')) ?? false
-	);
+	return (context.localMcpServer?.getToolsByCategory('browser').length ?? 0) > 0;
 }

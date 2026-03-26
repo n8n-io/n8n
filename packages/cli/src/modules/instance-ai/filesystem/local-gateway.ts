@@ -91,6 +91,11 @@ export class LocalGateway {
 		return this._availableTools;
 	}
 
+	/** Return tools that belong to the given category (based on annotations.category). */
+	getToolsByCategory(category: string): McpTool[] {
+		return this._availableTools.filter((t) => t.annotations?.category === category);
+	}
+
 	/** Subscribe to outbound tool call events (consumed by the SSE endpoint). */
 	onRequest(listener: (event: LocalGatewayEvent) => void): () => void {
 		this.emitter.on('filesystem-request', listener);

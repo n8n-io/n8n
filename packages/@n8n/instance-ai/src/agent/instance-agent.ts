@@ -182,8 +182,16 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	const mcpTools = await getMcpTools(mcpServers);
 	const browserMcpTools = await getBrowserMcpTools(orchestrationContext?.browserMcpConfig);
 
-	// Make ALL MCP tools available for sub-agents (browser agent, delegate),
-	// excluding any that collide with domain tool names
+	// Browser tool names — used to exclude them from the orchestrator's direct toolset.
+	// Browser tools are only accessible via browser-credential-setup (sub-agent) to prevent
+	// 200KB+ screenshots/snapshots from bloating the orchestrator's context.
+	const browserToolNames = new Set([
+		...Object.keys(browserMcpTools),
+		...(context.localMcpServer?.getToolsByCategory('browser').map((t) => t.name) ?? []),
+	]);
+
+	// Store ALL MCP tools (external + browser) on orchestrationContext for sub-agents
+	// (browser-credential-setup, delegate). NOT given to the orchestrator directly.
 	const allMcpTools: ToolsInput = {};
 	const domainToolNames = new Set(Object.keys(domainTools));
 	for (const [name, tool] of Object.entries({ ...mcpTools, ...browserMcpTools })) {
@@ -214,23 +222,13 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		safeMcpTools[name] = tool;
 	}
 
-	// Orchestrator only gets non-browser MCP tools directly.
-	// Browser tools are accessed via browser-credential-setup (which creates its own agent).
-	// This prevents the orchestrator from calling take_screenshot/take_snapshot directly,
-	// which would add 200KB+ images to the orchestrator's context.
-	const orchestratorMcpTools: ToolsInput = { ...safeMcpTools };
-
 	// ── Tool search: split tools into always-loaded core vs deferred ────────
 	// Anthropic guidance: "Keep your 3-5 most-used tools always loaded, defer the rest."
 	// Tool selection accuracy degrades past 10+ tools; tool search improves it significantly.
-	// Orchestrator gets local MCP tools EXCEPT browser_* — those are accessed via
-	// browser-credential-setup (which creates its own sub-agent). This prevents the
-	// orchestrator from calling browser_screenshot/browser_snapshot directly, which
-	// would add 200KB+ images to the orchestrator's context.
 	const localMcpTools = context.localMcpServer
 		? Object.fromEntries(
 				Object.entries(createToolsFromLocalMcpServer(context.localMcpServer)).filter(
-					([name]) => !name.startsWith('browser_'),
+					([name]) => !browserToolNames.has(name),
 				),
 			)
 		: {};
@@ -238,8 +236,8 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	const allOrchestratorTools: ToolsInput = {
 		...orchestratorDomainTools,
 		...orchestrationTools,
-		...orchestratorMcpTools,
-		...localMcpTools,
+		...safeMcpTools, // external MCP only — browser tools excluded
+		...localMcpTools, // gateway tools — browser tools excluded via browserToolNames
 	};
 
 	const coreTools: ToolsInput = {};
@@ -273,10 +271,7 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 				toolSearchEnabled: hasDeferrableTools,
 				licenseHints: context.licenseHints,
 				timeZone: options.timeZone,
-				browserAvailable: !!(
-					orchestrationContext?.browserMcpConfig ??
-					context.localMcpServer?.getAvailableTools().some((t) => t.name.startsWith('browser_'))
-				),
+				browserAvailable: browserToolNames.size > 0,
 			}),
 			providerOptions: {
 				anthropic: { cacheControl: { type: 'ephemeral' } },

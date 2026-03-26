@@ -1,7 +1,3 @@
-import { gfm } from '@joplin/turndown-plugin-gfm';
-import { Readability } from '@mozilla/readability';
-import { JSDOM, VirtualConsole } from 'jsdom';
-import TurndownService from 'turndown';
 import { z } from 'zod';
 
 import type { BrowserConnection } from '../connection';
@@ -114,6 +110,16 @@ function browserContent(connection: BrowserConnection): ToolDefinition {
 		browserContentSchema,
 		async (state, input, pageId) => {
 			const { html, url } = await state.adapter.getContent(pageId, input.selector);
+
+			const [{ JSDOM, VirtualConsole }, { Readability }, TurndownModule, { gfm }] =
+				await Promise.all([
+					import('jsdom'),
+					import('@mozilla/readability'),
+					import('turndown'),
+					import('@joplin/turndown-plugin-gfm'),
+				]);
+
+			const TurndownService = TurndownModule.default;
 
 			const virtualConsole = new VirtualConsole();
 			const dom = new JSDOM(html, { url, virtualConsole });

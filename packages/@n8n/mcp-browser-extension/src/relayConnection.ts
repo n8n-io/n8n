@@ -241,9 +241,10 @@ export class RelayConnection {
 	private async resolveTargetIds(chromeTabIds: number[]): Promise<Map<number, string>> {
 		const targets = await chrome.debugger.getTargets();
 		const result = new Map<number, string>();
+		const tabIdSet = new Set(chromeTabIds);
 
 		for (const target of targets) {
-			if (target.tabId !== undefined && chromeTabIds.includes(target.tabId)) {
+			if (target.tabId !== undefined && tabIdSet.has(target.tabId)) {
 				result.set(target.tabId, target.id);
 			}
 		}
@@ -349,6 +350,7 @@ export class RelayConnection {
 		}
 
 		log.debug(`debuggerDetach: ${id} reason=${reason}`);
+		this.sendMessage({ method: 'tabClosed', params: { id } });
 
 		if (this.tabs.size === 0) {
 			this.close(`Debugger detached: ${reason}`);
@@ -515,6 +517,10 @@ export class RelayConnection {
 		if (id === this.primaryId) {
 			const remaining = [...this.tabs.keys()];
 			this.primaryId = remaining.length > 0 ? remaining[0] : undefined;
+		}
+
+		if (this.tabs.size === 0) {
+			this.close('All tabs closed');
 		}
 
 		return { closed: true, id };

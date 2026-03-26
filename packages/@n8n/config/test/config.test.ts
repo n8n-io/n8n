@@ -259,6 +259,7 @@ describe('GlobalConfig', () => {
 			modelUrl: '',
 			modelApiKey: '',
 			mcpServers: '',
+			localGatewayDisabled: false,
 			browserMcp: false,
 			lastMessages: 20,
 			embedderModel: '',

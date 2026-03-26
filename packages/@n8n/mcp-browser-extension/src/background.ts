@@ -316,25 +316,36 @@ async function connectToRelay(
 		const ws = new WebSocket(relayUrl);
 
 		await new Promise<void>((resolve, reject) => {
+			const timeout = setTimeout(() => {
+				ws.close();
+				reject(new Error('Connection timeout'));
+			}, 10_000);
 			ws.onopen = () => {
+				clearTimeout(timeout);
 				log.debug('WebSocket open');
 				resolve();
 			};
 			ws.onerror = (event) => {
+				clearTimeout(timeout);
+				ws.close();
 				log.error('WebSocket error:', event);
 				reject(new Error('WebSocket connection failed'));
 			};
-			setTimeout(() => reject(new Error('Connection timeout')), 10_000);
 		});
 
 		const relay = new RelayConnection(ws);
 
-		// Eagerly attach debugger to selected tabs and resolve CDP targetIds
-		await relay.registerSelectedTabs(selectedTabIds);
+		try {
+			// Eagerly attach debugger to selected tabs and resolve CDP targetIds
+			await relay.registerSelectedTabs(selectedTabIds);
 
-		// Load and apply settings
-		const settings = await loadSettings();
-		relay.setSettings(settings);
+			// Load and apply settings
+			const settings = await loadSettings();
+			relay.setSettings(settings);
+		} catch (error) {
+			relay.close('Setup failed');
+			throw error;
+		}
 
 		activeConnection = { relay };
 
