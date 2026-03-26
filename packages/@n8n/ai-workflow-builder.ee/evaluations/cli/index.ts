@@ -508,6 +508,12 @@ export async function runV2Evaluation(): Promise<void> {
 	const logger = createLogger(args.verbose);
 	const lifecycle = createConsoleLifecycle({ verbose: args.verbose, logger });
 	const stageModels = argsToStageModels(args);
+
+	// Override LangSmith API key if provided via CLI
+	if (args.langsmithApiKey) {
+		process.env.LANGSMITH_API_KEY = args.langsmithApiKey;
+	}
+
 	const env = await setupTestEnvironment(stageModels, logger);
 
 	// Validate LangSmith client early if langsmith backend is requested
