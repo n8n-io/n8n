@@ -13,6 +13,11 @@ export class InsightsModule implements ModuleInterface {
 
 		const { InsightsService } = await import('./insights.service');
 		await Container.get(InsightsService).init();
+
+		const { ExecutionDataReportingService } = await import(
+			'./instance-monitoring/execution-data-reporting.service'
+		);
+		Container.get(ExecutionDataReportingService).startReporting();
 	}
 
 	async entities() {
@@ -32,7 +37,11 @@ export class InsightsModule implements ModuleInterface {
 	@OnShutdown()
 	async shutdown() {
 		const { InsightsService } = await import('./insights.service');
-
 		await Container.get(InsightsService).shutdown();
+
+		const { ExecutionDataReportingService } = await import(
+			'./instance-monitoring/execution-data-reporting.service'
+		);
+		Container.get(ExecutionDataReportingService).stopReporting();
 	}
 }
