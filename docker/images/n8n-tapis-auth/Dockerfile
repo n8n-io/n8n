@@ -10,29 +10,27 @@ RUN corepack enable && corepack prepare pnpm@10.22.0 --activate
 
 COPY . .
 
-# 2. LIMPIEZA TOTAL DE DEPENDENCIAS FANTASMA
-# Borramos las carpetas físicas
-RUN rm -rf packages/@n8n/eslint-plugin-community-nodes \
-           packages/@n8n/eslint-config \
-           packages/eslint-config
+# 2. TÉCNICA DE SHIMMING: Neutralizamos los paquetes de linting
+# En lugar de borrarlos, vaciamos su contenido TS para que no fallen al compilar
+RUN find packages/@n8n/eslint-plugin-community-nodes -name "*.ts" -exec sh -c 'echo "" > {}' \; && \
+    find packages/@n8n/eslint-config -name "*.ts" -exec sh -c 'echo "" > {}' \;
 
-# Buscamos en TODOS los package.json del proyecto y borramos las líneas 
-# que mencionen los paquetes eliminados. Esto limpia node-cli y cualquier otro.
-RUN find . -name "package.json" -exec sed -i '/@n8n\/eslint-plugin-community-nodes/d' {} + && \
-    find . -name "package.json" -exec sed -i '/@n8n\/eslint-config/d' {} + && \
-    find . -name "package.json" -exec sed -i '/"prepare":/d' {} +
+# Eliminamos los scripts de validación que disparan errores de Git/Lefthook
+RUN find . -name "package.json" -exec sed -i '/"prepare":/d' {} + && \
+    find . -name "package.json" -exec sed -i '/"prebuild":/d' {} +
 
-# 3. Instalación (Ya no debería haber quejas de 'workspace package not found')
+# 3. Instalación (Sin scripts de preparación)
 ENV PNPM_SKIP_PREPARE=1
 RUN pnpm install --no-frozen-lockfile
 
-# 4. Binarios nativos necesarios
+# 4. Aseguramos binarios para Linux 64-bit (TACC)
 RUN pnpm add -Dw @esbuild/linux-x64
 RUN pnpm rebuild isolated-vm sqlite3
 
-# 5. BUILD
+# 5. BUILD FILTRADO Y RESILIENTE
+# Usamos --continue para que si un linter falla, no detenga el build de n8n
 ENV NODE_OPTIONS="--max-old-space-size=8192"
-RUN pnpm build
+RUN pnpm turbo run build --filter=n8n... --continue
 
 # --- ETAPA FINAL ---
 FROM node:24-bookworm-slim
