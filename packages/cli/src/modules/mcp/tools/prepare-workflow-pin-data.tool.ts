@@ -101,7 +101,7 @@ export const createPrepareTestPinDataTool = (
 
 			return {
 				content: [{ type: 'text', text: jsonStringify(result) }],
-				structuredContent: result,
+				structuredContent: { ...result },
 			};
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
@@ -122,7 +122,6 @@ export const createPrepareTestPinDataTool = (
 // =============================================================================
 
 interface PreparePinDataResult {
-	[key: string]: unknown;
 	nodeSchemasToGenerate: Record<string, JsonSchema>;
 	nodesWithoutSchema: string[];
 	nodesSkipped: string[];
