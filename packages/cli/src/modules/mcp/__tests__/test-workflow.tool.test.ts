@@ -8,10 +8,7 @@ import {
 	UnexpectedError,
 } from 'n8n-workflow';
 
-// eslint-disable-next-line @typescript-eslint/consistent-type-imports
-jest.mock('@n8n/workflow-sdk', () =>
-	jest.requireActual<typeof import('@n8n/workflow-sdk')>('@n8n/workflow-sdk'),
-);
+jest.mock('@n8n/workflow-sdk', () => jest.requireActual('@n8n/workflow-sdk'));
 
 import { createWorkflow } from './mock.utils';
 import { McpExecutionTimeoutError, WorkflowAccessError } from '../mcp.errors';
