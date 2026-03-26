@@ -24,9 +24,6 @@ import { createSearchProjectsTool } from './tools/search-projects.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
 import { createPublishWorkflowTool } from './tools/publish-workflow.tool';
 import { createSearchWorkflowsTool } from './tools/search-workflows.tool';
-// TODO: Re-enable when test workflow tools are uncommented
-// import { createPrepareTestPinDataTool } from './tools/prepare-workflow-pin-data.tool';
-// import { createTestWorkflowTool } from './tools/test-workflow.tool';
 import { createUnpublishWorkflowTool } from './tools/unpublish-workflow.tool';
 import { createCreateWorkflowFromCodeTool } from './tools/workflow-builder/create-workflow-from-code.tool';
 import { createArchiveWorkflowTool } from './tools/workflow-builder/delete-workflow.tool';
@@ -42,7 +39,6 @@ import { WorkflowBuilderToolsService } from './tools/workflow-builder/workflow-b
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { ExecutionService } from '@/executions/execution.service';
 import { NodeTypes } from '@/node-types';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
@@ -91,7 +87,6 @@ export class McpService {
 		private readonly folderRepository: FolderRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly executionRepository: ExecutionRepository,
-		_executionService: ExecutionService,
 	) {}
 
 	async getServer(user: User) {
@@ -184,11 +179,13 @@ export class McpService {
 			unpublishWorkflowTool.handler,
 		);
 
-		// TODO: We are currently disabling the tools
+		// TODO: Re-enable these tools. When doing so, also:
+		// 1. Import createPrepareTestPinDataTool and createTestWorkflowTool
+		// 2. Inject ExecutionService into the constructor
 		// const prepareTestPinDataTool = createPrepareTestPinDataTool(
 		// 	user,
 		// 	this.workflowFinderService,
-		// 	this._executionService,
+		// 	this.executionService,
 		// 	this.nodeTypes,
 		// 	this.telemetry,
 		// 	this.logger,
