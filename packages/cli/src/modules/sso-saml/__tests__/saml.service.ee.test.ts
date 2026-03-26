@@ -9,7 +9,8 @@ import type express from 'express';
 import type { HttpProxyAgent } from 'http-proxy-agent';
 import type { HttpsProxyAgent } from 'https-proxy-agent';
 import { mock } from 'jest-mock-extended';
-import type { InstanceSettings } from 'n8n-core';
+import type { Cipher, InstanceSettings } from 'n8n-core';
+import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
 import type { IdentityProviderInstance, ServiceProviderInstance } from 'samlify';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -146,6 +147,17 @@ const SamlSettingWithValidUrl: Settings = {
 	}),
 };
 
+import {
+	EC_MISMATCHED_CERTIFICATE,
+	EC_SEC1_CERTIFICATE,
+	EC_SEC1_PRIVATE_KEY,
+	EC_TEST_CERTIFICATE,
+	EC_TEST_PRIVATE_KEY,
+	RSA_MISMATCHED_CERTIFICATE,
+	RSA_TEST_CERTIFICATE,
+	RSA_TEST_PRIVATE_KEY,
+} from './saml-signing-test-fixtures';
+
 describe('SamlService', () => {
 	let samlService: SamlService;
 	let settingsRepository: SettingsRepository;
@@ -153,6 +165,7 @@ describe('SamlService', () => {
 	let globalConfig: GlobalConfig;
 	let userRepository: UserRepository;
 	let provisioningService: ProvisioningService;
+	let cipher: Cipher;
 	const validator = new SamlValidator(mock());
 	const logger = mockLogger();
 
@@ -200,6 +213,9 @@ describe('SamlService', () => {
 			sso: { saml: { loginEnabled: false } },
 		});
 		provisioningService = mock<ProvisioningService>();
+		cipher = mock<Cipher>();
+		cipher.encrypt = jest.fn((data: string) => `encrypted:${data}`) as Cipher['encrypt'];
+		cipher.decrypt = jest.fn((data: string) => data.replace('encrypted:', ''));
 
 		jest
 			.spyOn(ssoHelpers, 'reloadAuthenticationMethod')
@@ -214,6 +230,7 @@ describe('SamlService', () => {
 			settingsRepository,
 			instanceSettings,
 			provisioningService,
+			cipher,
 		);
 		// Mock GlobalConfig container access
 		Container.set(require('@n8n/config').GlobalConfig, globalConfig);
@@ -718,6 +735,498 @@ describe('SamlService', () => {
 		});
 	});
 
+	describe('signing key configuration', () => {
+		beforeEach(() => {
+			jest.spyOn(samlService, 'loadSamlify').mockResolvedValue(undefined);
+			jest.spyOn(validator, 'validateMetadata').mockResolvedValue(true);
+			jest.spyOn(samlService, 'getIdentityProviderInstance').mockReturnValue({} as any);
+			jest
+				.spyOn(samlService, 'saveSamlPreferencesToDb')
+				.mockResolvedValue(mockSamlConfig as SamlPreferences);
+			jest.spyOn(ssoHelpers, 'isSamlLoginEnabled').mockReturnValue(false);
+			jest
+				.spyOn(samlService as any, 'broadcastReloadSAMLConfigurationCommand')
+				.mockResolvedValue(undefined);
+		});
+
+		describe('feature flag gate', () => {
+			it('should throw BadRequestError when setting signingPrivateKey with feature flag disabled', async () => {
+				delete process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS;
+
+				await expect(
+					samlService.setSamlPreferences({
+						signingPrivateKey: RSA_TEST_PRIVATE_KEY,
+						metadata: mockSamlConfig.metadata,
+					}),
+				).rejects.toThrow(BadRequestError);
+			});
+
+			it('should throw BadRequestError when setting signingCertificate with feature flag disabled', async () => {
+				delete process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS;
+
+				await expect(
+					samlService.setSamlPreferences({
+						signingCertificate: RSA_TEST_CERTIFICATE,
+						metadata: mockSamlConfig.metadata,
+					}),
+				).rejects.toThrow(BadRequestError);
+			});
+		});
+
+		describe('PEM format validation', () => {
+			beforeEach(() => {
+				process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
+			});
+
+			it('should throw BadRequestError for invalid private key PEM format', async () => {
+				await expect(
+					samlService.setSamlPreferences({
+						signingPrivateKey: 'not-a-pem-key',
+						metadata: mockSamlConfig.metadata,
+					}),
+				).rejects.toThrow('Invalid signing private key format');
+			});
+
+			it('should throw BadRequestError for invalid certificate PEM format', async () => {
+				await expect(
+					samlService.setSamlPreferences({
+						signingCertificate: 'not-a-pem-cert',
+						metadata: mockSamlConfig.metadata,
+					}),
+				).rejects.toThrow('Invalid signing certificate format');
+			});
+		});
+
+		describe('key/cert completeness', () => {
+			beforeEach(() => {
+				process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
+			});
+
+			it('should throw BadRequestError when authnRequestsSigned=true but signingPrivateKey missing', async () => {
+				await expect(
+					samlService.setSamlPreferences({
+						authnRequestsSigned: true,
+						signingCertificate: RSA_TEST_CERTIFICATE,
+						metadata: mockSamlConfig.metadata,
+					}),
+				).rejects.toThrow(
+					'Both signingPrivateKey and signingCertificate are required when authnRequestsSigned is enabled',
+				);
+			});
+
+			it('should throw BadRequestError when authnRequestsSigned=true but signingCertificate missing', async () => {
+				await expect(
+					samlService.setSamlPreferences({
+						authnRequestsSigned: true,
+						signingPrivateKey: RSA_TEST_PRIVATE_KEY,
+						metadata: mockSamlConfig.metadata,
+					}),
+				).rejects.toThrow(
+					'Both signingPrivateKey and signingCertificate are required when authnRequestsSigned is enabled',
+				);
+			});
+		});
+
+		describe('key/cert pair matching', () => {
+			beforeEach(() => {
+				process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
+			});
+
+			it('should throw BadRequestError when key and cert do not match', async () => {
+				await expect(
+					samlService.setSamlPreferences({
+						authnRequestsSigned: true,
+						signingPrivateKey: RSA_TEST_PRIVATE_KEY,
+						signingCertificate: RSA_MISMATCHED_CERTIFICATE,
+						metadata: mockSamlConfig.metadata,
+					}),
+				).rejects.toThrow('The signing private key and certificate do not match');
+			});
+
+			it('should accept matching key and cert pair', async () => {
+				await expect(
+					samlService.setSamlPreferences({
+						authnRequestsSigned: true,
+						signingPrivateKey: RSA_TEST_PRIVATE_KEY,
+						signingCertificate: RSA_TEST_CERTIFICATE,
+						metadata: mockSamlConfig.metadata,
+					}),
+				).resolves.not.toThrow();
+			});
+		});
+
+		describe('encryption', () => {
+			beforeEach(() => {
+				process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
+			});
+
+			it('should encrypt signingPrivateKey when storing', async () => {
+				await samlService.setSamlPreferences({
+					signingPrivateKey: RSA_TEST_PRIVATE_KEY,
+					signingCertificate: RSA_TEST_CERTIFICATE,
+					metadata: mockSamlConfig.metadata,
+				});
+
+				expect(cipher.encrypt).toHaveBeenCalledWith(RSA_TEST_PRIVATE_KEY);
+			});
+
+			it('should not expose plaintext private key via getter', async () => {
+				await samlService.setSamlPreferences({
+					signingPrivateKey: RSA_TEST_PRIVATE_KEY,
+					signingCertificate: RSA_TEST_CERTIFICATE,
+					metadata: mockSamlConfig.metadata,
+				});
+
+				const prefs = samlService.samlPreferences;
+				expect(prefs.signingPrivateKey).toBe(`encrypted:${RSA_TEST_PRIVATE_KEY}`);
+				expect(prefs.signingPrivateKey).not.toBe(RSA_TEST_PRIVATE_KEY);
+			});
+
+			it('should store certificate in plaintext', async () => {
+				await samlService.setSamlPreferences({
+					signingPrivateKey: RSA_TEST_PRIVATE_KEY,
+					signingCertificate: RSA_TEST_CERTIFICATE,
+					metadata: mockSamlConfig.metadata,
+				});
+
+				expect(samlService.samlPreferences.signingCertificate).toBe(RSA_TEST_CERTIFICATE);
+			});
+		});
+
+		describe('decryption', () => {
+			beforeEach(() => {
+				process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
+			});
+
+			it('should decrypt stored private key via getDecryptedSigningPrivateKey', async () => {
+				await samlService.setSamlPreferences({
+					signingPrivateKey: RSA_TEST_PRIVATE_KEY,
+					signingCertificate: RSA_TEST_CERTIFICATE,
+					metadata: mockSamlConfig.metadata,
+				});
+
+				// @ts-expect-error -- accessing private method for testing
+				const decrypted = samlService.getDecryptedSigningPrivateKey();
+				expect(decrypted).toBe(RSA_TEST_PRIVATE_KEY);
+			});
+
+			it('should return undefined when no signing key is stored', () => {
+				// @ts-expect-error -- accessing private method for testing
+				expect(samlService.getDecryptedSigningPrivateKey()).toBeUndefined();
+			});
+
+			it('should return undefined when feature flag is disabled', async () => {
+				delete process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS;
+				await samlService.loadPreferencesWithoutValidation({
+					signingPrivateKey: 'encrypted:some-key',
+				});
+
+				// @ts-expect-error -- accessing private method for testing
+				expect(samlService.getDecryptedSigningPrivateKey()).toBeUndefined();
+			});
+
+			it('should throw BadRequestError when decryption fails', async () => {
+				// Manually set an encrypted key that will fail to decrypt
+				await samlService.loadPreferencesWithoutValidation({
+					signingPrivateKey: 'corrupted-encrypted-data',
+				});
+				cipher.decrypt = jest.fn(() => {
+					throw new Error('Decryption failed');
+				});
+
+				// @ts-expect-error -- accessing private method for testing
+				expect(() => samlService.getDecryptedSigningPrivateKey()).toThrow(
+					'Failed to decrypt SAML signing private key',
+				);
+			});
+		});
+
+		describe('backward compatibility', () => {
+			it('should load preferences without signing fields successfully', async () => {
+				await expect(
+					samlService.loadPreferencesWithoutValidation({
+						metadata: mockSamlConfig.metadata,
+						loginBinding: 'redirect',
+					}),
+				).resolves.not.toThrow();
+
+				expect(samlService.samlPreferences.signingPrivateKey).toBeUndefined();
+				expect(samlService.samlPreferences.signingCertificate).toBeUndefined();
+			});
+		});
+
+		describe('DB round-trip', () => {
+			beforeEach(() => {
+				process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
+			});
+
+			it('should not double-encrypt when loading already-encrypted key from DB', async () => {
+				const encryptedKey = 'encrypted:some-key-data';
+
+				// Simulate loading from DB where key is already encrypted (not PEM format)
+				await samlService.loadPreferencesWithoutValidation({
+					signingPrivateKey: encryptedKey,
+				});
+
+				// The encrypted key should be stored as-is (not re-encrypted)
+				expect(samlService.samlPreferences.signingPrivateKey).toBe(encryptedKey);
+				expect(cipher.encrypt).not.toHaveBeenCalled();
+			});
+
+			it('should survive loadFromDbAndApplySamlPreferences after saving encrypted key', async () => {
+				// Mock methods needed for setSamlPreferences and loadFromDbAndApplySamlPreferences
+				jest.spyOn(samlService, 'loadSamlify').mockResolvedValue(undefined);
+				jest.spyOn(samlService, 'getIdentityProviderInstance').mockReturnValue({} as any);
+				jest
+					.spyOn(samlService, 'saveSamlPreferencesToDb')
+					.mockResolvedValue(mockSamlConfig as SamlPreferences);
+
+				// Step 1: Save preferences with a valid PEM key+cert (simulating API call)
+				await samlService.setSamlPreferences({
+					authnRequestsSigned: true,
+					signingPrivateKey: RSA_TEST_PRIVATE_KEY,
+					signingCertificate: RSA_TEST_CERTIFICATE,
+					metadata: mockSamlConfig.metadata,
+				});
+
+				// Step 2: Capture what would be stored in DB (encrypted key, plaintext cert)
+				const storedPrefs = samlService.samlPreferences;
+				expect(storedPrefs.signingPrivateKey).toContain('encrypted:');
+
+				// Step 3: Mock DB to return the stored (encrypted) preferences
+				settingsRepository.findOne = jest.fn().mockResolvedValue({
+					key: SAML_PREFERENCES_DB_KEY,
+					value: JSON.stringify(storedPrefs),
+					loadOnStartup: true,
+				});
+
+				// Step 4: Simulate server restart — loadFromDbAndApplySamlPreferences(true)
+				// This should NOT throw even though the key in DB is encrypted (not PEM)
+				await expect(samlService.loadFromDbAndApplySamlPreferences(true)).resolves.not.toThrow();
+
+				// Step 5: Verify the key can still be decrypted back to the original PEM
+				// @ts-expect-error -- accessing private method for testing
+				expect(samlService.getDecryptedSigningPrivateKey()).toBe(RSA_TEST_PRIVATE_KEY);
+			});
+		});
+
+		describe('EC key support', () => {
+			beforeEach(() => {
+				process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
+			});
+
+			it('should accept matching EC key (PKCS#8) and cert pair', async () => {
+				await expect(
+					samlService.setSamlPreferences({
+						authnRequestsSigned: true,
+						signingPrivateKey: EC_TEST_PRIVATE_KEY,
+						signingCertificate: EC_TEST_CERTIFICATE,
+						metadata: mockSamlConfig.metadata,
+					}),
+				).resolves.not.toThrow();
+			});
+
+			it('should accept matching EC key (SEC1) and cert pair', async () => {
+				await expect(
+					samlService.setSamlPreferences({
+						authnRequestsSigned: true,
+						signingPrivateKey: EC_SEC1_PRIVATE_KEY,
+						signingCertificate: EC_SEC1_CERTIFICATE,
+						metadata: mockSamlConfig.metadata,
+					}),
+				).resolves.not.toThrow();
+			});
+
+			it('should reject mismatched EC key and cert pair', async () => {
+				await expect(
+					samlService.setSamlPreferences({
+						authnRequestsSigned: true,
+						signingPrivateKey: EC_TEST_PRIVATE_KEY,
+						signingCertificate: EC_MISMATCHED_CERTIFICATE,
+						metadata: mockSamlConfig.metadata,
+					}),
+				).rejects.toThrow('The signing private key and certificate do not match');
+			});
+
+			it('should reject EC key with RSA cert', async () => {
+				await expect(
+					samlService.setSamlPreferences({
+						authnRequestsSigned: true,
+						signingPrivateKey: EC_TEST_PRIVATE_KEY,
+						signingCertificate: RSA_TEST_CERTIFICATE,
+						metadata: mockSamlConfig.metadata,
+					}),
+				).rejects.toThrow('The signing private key and certificate do not match');
+			});
+
+			it('should reject RSA key with EC cert', async () => {
+				await expect(
+					samlService.setSamlPreferences({
+						authnRequestsSigned: true,
+						signingPrivateKey: RSA_TEST_PRIVATE_KEY,
+						signingCertificate: EC_TEST_CERTIFICATE,
+						metadata: mockSamlConfig.metadata,
+					}),
+				).rejects.toThrow('The signing private key and certificate do not match');
+			});
+
+			it('should encrypt EC private key when storing', async () => {
+				await samlService.setSamlPreferences({
+					signingPrivateKey: EC_TEST_PRIVATE_KEY,
+					signingCertificate: EC_TEST_CERTIFICATE,
+					metadata: mockSamlConfig.metadata,
+				});
+
+				expect(cipher.encrypt).toHaveBeenCalledWith(EC_TEST_PRIVATE_KEY);
+				expect(samlService.samlPreferences.signingPrivateKey).toBe(
+					`encrypted:${EC_TEST_PRIVATE_KEY}`,
+				);
+			});
+
+			it('should decrypt EC private key via getDecryptedSigningPrivateKey', async () => {
+				await samlService.setSamlPreferences({
+					signingPrivateKey: EC_TEST_PRIVATE_KEY,
+					signingCertificate: EC_TEST_CERTIFICATE,
+					metadata: mockSamlConfig.metadata,
+				});
+
+				// @ts-expect-error -- accessing private method for testing
+				const decrypted = samlService.getDecryptedSigningPrivateKey();
+				expect(decrypted).toBe(EC_TEST_PRIVATE_KEY);
+			});
+		});
+
+		describe('blanking value (redaction marker)', () => {
+			beforeEach(() => {
+				process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
+			});
+
+			it('should not update signing key when blanking value is received', async () => {
+				// First, store a real key
+				await samlService.setSamlPreferences({
+					signingPrivateKey: RSA_TEST_PRIVATE_KEY,
+					signingCertificate: RSA_TEST_CERTIFICATE,
+					metadata: mockSamlConfig.metadata,
+				});
+
+				const encryptedBefore = samlService.samlPreferences.signingPrivateKey;
+
+				// Send the blanking value (simulating UI round-trip)
+				await samlService.setSamlPreferences({
+					signingPrivateKey: CREDENTIAL_BLANKING_VALUE,
+					metadata: mockSamlConfig.metadata,
+				});
+
+				// Key should remain unchanged
+				expect(samlService.samlPreferences.signingPrivateKey).toBe(encryptedBefore);
+				// @ts-expect-error -- accessing private method for testing
+				expect(samlService.getDecryptedSigningPrivateKey()).toBe(RSA_TEST_PRIVATE_KEY);
+			});
+
+			it('should not trigger feature flag check for blanking value', async () => {
+				delete process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS;
+
+				// Blanking value should be silently ignored, not rejected
+				await expect(
+					samlService.setSamlPreferences({
+						signingPrivateKey: CREDENTIAL_BLANKING_VALUE,
+						metadata: mockSamlConfig.metadata,
+					}),
+				).resolves.not.toThrow();
+			});
+
+			it('should not validate PEM format for blanking value', async () => {
+				// Blanking value is not valid PEM, but should not trigger validation error
+				await expect(
+					samlService.setSamlPreferences({
+						signingPrivateKey: CREDENTIAL_BLANKING_VALUE,
+						metadata: mockSamlConfig.metadata,
+					}),
+				).resolves.not.toThrow();
+			});
+		});
+
+		describe('clearing signing keys', () => {
+			beforeEach(() => {
+				process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS = 'true';
+			});
+
+			it('should clear signing private key when empty string is sent', async () => {
+				// First, store a real key
+				await samlService.setSamlPreferences({
+					signingPrivateKey: RSA_TEST_PRIVATE_KEY,
+					signingCertificate: RSA_TEST_CERTIFICATE,
+					metadata: mockSamlConfig.metadata,
+				});
+
+				// @ts-expect-error -- accessing private method for testing
+				expect(samlService.getDecryptedSigningPrivateKey()).toBe(RSA_TEST_PRIVATE_KEY);
+
+				// Clear the key
+				await samlService.setSamlPreferences({
+					signingPrivateKey: '',
+					metadata: mockSamlConfig.metadata,
+				});
+
+				expect(samlService.samlPreferences.signingPrivateKey).toBeUndefined();
+				// @ts-expect-error -- accessing private method for testing
+				expect(samlService.getDecryptedSigningPrivateKey()).toBeUndefined();
+			});
+
+			it('should clear signing certificate when empty string is sent', async () => {
+				await samlService.setSamlPreferences({
+					signingPrivateKey: RSA_TEST_PRIVATE_KEY,
+					signingCertificate: RSA_TEST_CERTIFICATE,
+					metadata: mockSamlConfig.metadata,
+				});
+
+				expect(samlService.samlPreferences.signingCertificate).toBe(RSA_TEST_CERTIFICATE);
+
+				await samlService.setSamlPreferences({
+					signingCertificate: '',
+					metadata: mockSamlConfig.metadata,
+				});
+
+				expect(samlService.samlPreferences.signingCertificate).toBeUndefined();
+			});
+
+			it('should reject clearing key when authnRequestsSigned is true', async () => {
+				await samlService.setSamlPreferences({
+					authnRequestsSigned: true,
+					signingPrivateKey: RSA_TEST_PRIVATE_KEY,
+					signingCertificate: RSA_TEST_CERTIFICATE,
+					metadata: mockSamlConfig.metadata,
+				});
+
+				await expect(
+					samlService.setSamlPreferences({
+						signingPrivateKey: '',
+						metadata: mockSamlConfig.metadata,
+					}),
+				).rejects.toThrow('Both signingPrivateKey and signingCertificate are required');
+			});
+
+			it('should allow clearing key when authnRequestsSigned is false', async () => {
+				await samlService.setSamlPreferences({
+					signingPrivateKey: RSA_TEST_PRIVATE_KEY,
+					signingCertificate: RSA_TEST_CERTIFICATE,
+					metadata: mockSamlConfig.metadata,
+				});
+
+				await expect(
+					samlService.setSamlPreferences({
+						signingPrivateKey: '',
+						signingCertificate: '',
+						metadata: mockSamlConfig.metadata,
+					}),
+				).resolves.not.toThrow();
+
+				expect(samlService.samlPreferences.signingPrivateKey).toBeUndefined();
+				expect(samlService.samlPreferences.signingCertificate).toBeUndefined();
+			});
+		});
+	});
+
 	describe('getIdentityProviderInstance', () => {
 		test('does throw `InvalidSamlMetadataError` when metadata is empty', async () => {
 			await samlService.loadPreferencesWithoutValidation({
@@ -875,22 +1384,20 @@ describe('SamlService', () => {
 				.mockResolvedValue(undefined);
 		});
 
-		test('should call setSamlPreferences with broadcastReload=true by default', async () => {
+		test('should broadcast reload by default', async () => {
 			settingsRepository.findOne = jest.fn().mockResolvedValue(mockConfigFromDB);
-			jest.spyOn(samlService, 'setSamlPreferences');
 
 			await samlService.loadFromDbAndApplySamlPreferences(true);
 
-			expect(samlService.setSamlPreferences).toHaveBeenCalledWith(mockSamlConfig, true, true);
+			expect((samlService as any).broadcastReloadSAMLConfigurationCommand).toHaveBeenCalledTimes(1);
 		});
 
-		test('should call setSamlPreferences with broadcastReload=false when specified', async () => {
+		test('should not broadcast reload when broadcastReload=false', async () => {
 			settingsRepository.findOne = jest.fn().mockResolvedValue(mockConfigFromDB);
-			jest.spyOn(samlService, 'setSamlPreferences');
 
 			await samlService.loadFromDbAndApplySamlPreferences(true, false);
 
-			expect(samlService.setSamlPreferences).toHaveBeenCalledWith(mockSamlConfig, true, false);
+			expect((samlService as any).broadcastReloadSAMLConfigurationCommand).not.toHaveBeenCalled();
 		});
 	});
 

@@ -1,5 +1,6 @@
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
+import { DynamicTool } from '@langchain/core/tools';
 import type { DataSource } from '@n8n/typeorm';
 import type { SqlCreatePromptArgs } from '@langchain/classic/agents/toolkits/sql';
 import { SqlToolkit, createSqlAgent } from '@langchain/classic/agents/toolkits/sql';
@@ -26,6 +27,30 @@ const parseTablesString = (tablesString: string) =>
 		.split(',')
 		.map((table) => table.trim())
 		.filter((table) => table.length > 0);
+
+const BLOCKED_SQL_OPERATIONS = new Set([
+	'INSERT',
+	'UPDATE',
+	'DELETE',
+	'DROP',
+	'TRUNCATE',
+	'ALTER',
+	'CREATE',
+	'REPLACE',
+	'MERGE',
+]);
+
+export function detectBlockedSqlKeyword(sql: string): string | undefined {
+	const stripped = sql
+		.replace(/--[^\n]*/g, '')
+		.replace(/\/\*[\s\S]*?\*\//g, '')
+		.replace(/'(?:[^'\\]|\\.)*'/g, "''")
+		.replace(/"(?:[^"\\]|\\.)*"/g, '""');
+
+	const pattern = new RegExp(`\\b(${[...BLOCKED_SQL_OPERATIONS].join('|')})\\b`, 'i');
+	const match = stripped.match(pattern);
+	return match ? match[1].toUpperCase() : undefined;
+}
 
 export async function sqlAgentAgentExecute(
 	this: IExecuteFunctions,
@@ -115,6 +140,26 @@ export async function sqlAgentAgentExecute(
 
 			const toolkit = new SqlToolkit(dbInstance, model);
 			const agentExecutor = createSqlAgent(model, toolkit, agentOptions);
+
+			agentExecutor.tools = agentExecutor.tools.map((tool) => {
+				if (tool.name !== 'query-sql') return tool;
+
+				return new DynamicTool({
+					name: tool.name,
+					description: tool.description,
+					func: async (sqlInput: string) => {
+						const blockedKeyword = detectBlockedSqlKeyword(sqlInput);
+						if (blockedKeyword) {
+							throw new NodeOperationError(
+								this.getNode(),
+								`SQL operation "${blockedKeyword}" is not allowed`,
+								{ itemIndex: i },
+							);
+						}
+						return String(await tool.invoke(sqlInput));
+					},
+				});
+			});
 
 			const memory = (await this.getInputConnectionData(NodeConnectionTypes.AiMemory, 0)) as
 				| BaseChatMemory

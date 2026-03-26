@@ -183,6 +183,8 @@ defineSlots<{
 	'node-not-run': {};
 	'no-output-data': {};
 	'recovered-artificial-output-data': {};
+	'data-redacted': {};
+	'redacted-error': {};
 }>();
 
 const emit = defineEmits<{
@@ -390,8 +392,17 @@ const workflowRunErrorAsNodeError = computed(() => {
 	return selfTaskData?.error as NodeError;
 });
 
+const hasRedactedError = computed(() => {
+	if (!node.value) return false;
+	const selfTaskData = workflowRunData.value?.[node.value.name]?.[props.runIndex];
+	return !!selfTaskData?.redactedError;
+});
+
 const hasRunError = computed(
-	() => node.value && !isPaneTypeInput.value && !!workflowRunErrorAsNodeError.value,
+	() =>
+		node.value &&
+		!isPaneTypeInput.value &&
+		(!!workflowRunErrorAsNodeError.value || hasRedactedError.value),
 );
 
 const executionHints = computed(() => {
@@ -423,6 +434,14 @@ const dataCount = computed(() =>
 
 const isTrimmedManualExecutionDataItem = computed(() =>
 	workflowRunData.value ? hasTrimmedRunData(workflowRunData.value) : false,
+);
+
+const isExecutionRedacted = computed(
+	() =>
+		hasNodeRun.value &&
+		workflowExecution.value?.redactionInfo?.isRedacted === true &&
+		!pinnedData.hasData.value &&
+		!hasRunError.value,
 );
 
 const unfilteredDataCount = computed(() =>
@@ -600,6 +619,7 @@ const showPinButton = computed(
 		!props.disablePin &&
 		!hasNoData.value &&
 		!editMode.value.enabled &&
+		!isExecutionRedacted.value &&
 		(hasBinaryData.value ? isPaneTypeOutput.value : canPinData.value),
 );
 
@@ -1527,7 +1547,13 @@ defineExpose({ enterEditMode });
 				<N8nIconButton
 					variant="subtle"
 					size="small"
-					v-if="!props.disableEdit && canPinData && !isReadOnlyRoute && !readOnlyEnv"
+					v-if="
+						!props.disableEdit &&
+						canPinData &&
+						!isReadOnlyRoute &&
+						!readOnlyEnv &&
+						!isExecutionRedacted
+					"
 					v-show="!editMode.enabled"
 					:title="i18n.baseText('runData.editOutput')"
 					:circle="false"
@@ -1574,7 +1600,12 @@ defineExpose({ enterEditMode });
 			</div>
 
 			<div
-				v-if="maxRunIndex > 0 && !displaysMultipleNodes && !props.disableRunIndexSelection"
+				v-if="
+					maxRunIndex > 0 &&
+					!displaysMultipleNodes &&
+					!props.disableRunIndexSelection &&
+					!isExecutionRedacted
+				"
 				v-show="!editMode.enabled"
 				:class="$style.runSelector"
 			>
@@ -1646,7 +1677,11 @@ defineExpose({ enterEditMode });
 				<N8nText v-n8n-html="hint.message" size="small"></N8nText>
 			</N8nCallout>
 
-			<div v-if="showBranchSwitch" :class="$style.outputs" data-test-id="branches">
+			<div
+				v-if="showBranchSwitch && !isExecutionRedacted"
+				:class="$style.outputs"
+				data-test-id="branches"
+			>
 				<slot v-if="inputSelectLocation === 'outputs'" name="input-select"></slot>
 				<ViewSubExecution
 					v-if="activeTaskMetadata && !(paneType === 'input' && hasInputOverwrite)"
@@ -1671,7 +1706,8 @@ defineExpose({ enterEditMode });
 					!isSearchInSchemaView &&
 					((dataCount > 0 && maxRunIndex === 0) || search) &&
 					!isArtificialRecoveredEventItem &&
-					!displaysMultipleNodes
+					!displaysMultipleNodes &&
+					!isExecutionRedacted
 				"
 				v-show="!editMode.enabled"
 				:class="$style.itemsCount"
@@ -1749,6 +1785,180 @@ defineExpose({ enterEditMode });
 				<slot name="node-waiting">xxx</slot>
 			</div>
 
+			<div v-else-if="isExecutionRedacted" :class="$style.redactedContainer">
+				<div :class="$style.redactedFakeData">
+					<!-- Text-like fake content for AI / text output -->
+					<div
+						v-if="displayMode === 'ai' || node?.type?.includes('langchain')"
+						:class="$style.redactedText"
+					>
+						<p>
+							The process completed successfully and generated the following results based on the
+							provided input parameters. The analysis identified several key patterns in the dataset
+							that are worth highlighting.
+						</p>
+						<p>
+							First, the primary metrics showed a consistent upward trend across all measured
+							dimensions. The correlation between input variables and output quality remained strong
+							throughout the evaluation period, with confidence intervals well within acceptable
+							ranges.
+						</p>
+						<p>
+							Additionally, the secondary analysis revealed three distinct clusters within the data,
+							each exhibiting unique characteristics that align with the expected theoretical
+							framework. These findings suggest that the underlying model is performing as intended.
+						</p>
+					</div>
+					<!-- JSON-like fake content -->
+					<pre v-else-if="displayMode === 'json'" :class="$style.redactedJson">
+[
+  {
+    "id": 1007,
+    "name": "John Smith",
+    "email": "john@example.com",
+    "status": "active",
+    "created_at": "2024-01-15"
+  },
+  {
+    "id": 1014,
+    "name": "Jane Doe",
+    "email": "jane@company.com",
+    "status": "pending",
+    "created_at": "2024-02-20"
+  },
+  {
+    "id": 1021,
+    "name": "Alex Johnson",
+    "email": "alex@mail.com",
+    "status": "active",
+    "created_at": "2024-03-10"
+  },
+  {
+    "id": 1028,
+    "name": "Maria Garcia",
+    "email": "maria@org.com",
+    "status": "inactive",
+    "created_at": "2024-04-05"
+  },
+  {
+    "id": 1035,
+    "name": "Chris Lee",
+    "email": "chris@test.com",
+    "status": "active",
+    "created_at": "2024-05-18"
+  }
+]</pre
+					>
+					<!-- Schema-like fake content -->
+					<div v-else-if="displayMode === 'schema'" :class="$style.redactedSchema">
+						<div :class="$style.redactedSchemaField">
+							<span :class="$style.redactedSchemaKey">id</span>
+							<span :class="$style.redactedSchemaType">number</span>
+						</div>
+						<div :class="$style.redactedSchemaField">
+							<span :class="$style.redactedSchemaKey">name</span>
+							<span :class="$style.redactedSchemaType">string</span>
+						</div>
+						<div :class="$style.redactedSchemaField">
+							<span :class="$style.redactedSchemaKey">email</span>
+							<span :class="$style.redactedSchemaType">string</span>
+						</div>
+						<div :class="$style.redactedSchemaField">
+							<span :class="$style.redactedSchemaKey">status</span>
+							<span :class="$style.redactedSchemaType">string</span>
+						</div>
+						<div :class="$style.redactedSchemaField">
+							<span :class="$style.redactedSchemaKey">created_at</span>
+							<span :class="$style.redactedSchemaType">string</span>
+						</div>
+						<div :class="$style.redactedSchemaField">
+							<span :class="$style.redactedSchemaKey">metadata</span>
+							<span :class="$style.redactedSchemaType">object</span>
+						</div>
+						<div :class="$style.redactedSchemaField">
+							<span :class="$style.redactedSchemaKey">tags</span>
+							<span :class="$style.redactedSchemaType">array</span>
+						</div>
+					</div>
+					<!-- Table-like fake content for structured data (default) -->
+					<table v-else :class="$style.redactedTable">
+						<thead>
+							<tr>
+								<th>id</th>
+								<th>name</th>
+								<th>email</th>
+								<th>status</th>
+								<th>created_at</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr v-for="row in 8" :key="row">
+								<td>{{ 1000 + row * 7 }}</td>
+								<td>
+									{{
+										[
+											'John Smith',
+											'Jane Doe',
+											'Alex Johnson',
+											'Maria Garcia',
+											'Chris Lee',
+											'Pat Taylor',
+											'Sam Wilson',
+											'Robin Brown',
+										][row - 1]
+									}}
+								</td>
+								<td>
+									{{
+										[
+											'john@example',
+											'jane@company',
+											'alex@mail',
+											'maria@org',
+											'chris@test',
+											'pat@demo',
+											'sam@site',
+											'robin@web',
+										][row - 1]
+									}}.com
+								</td>
+								<td>
+									{{
+										[
+											'active',
+											'pending',
+											'active',
+											'inactive',
+											'active',
+											'pending',
+											'active',
+											'inactive',
+										][row - 1]
+									}}
+								</td>
+								<td>
+									{{
+										[
+											'2024-01-15',
+											'2024-02-20',
+											'2024-03-10',
+											'2024-04-05',
+											'2024-05-18',
+											'2024-06-22',
+											'2024-07-30',
+											'2024-08-12',
+										][row - 1]
+									}}
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+				<div v-if="$slots['data-redacted']" :class="$style.redactedOverlay">
+					<slot name="data-redacted"></slot>
+				</div>
+			</div>
+
 			<div v-else-if="shouldShowNodeNotRunState" :class="$style.center">
 				<slot name="node-not-run"></slot>
 			</div>
@@ -1792,6 +2002,9 @@ defineExpose({ enterEditMode });
 					:compact="compact"
 					show-details
 				/>
+				<div v-else-if="hasRedactedError" :class="$style.center" data-test-id="ndv-redacted-error">
+					<slot name="redacted-error"></slot>
+				</div>
 			</div>
 
 			<div v-else-if="shouldShowNoDataInBranch" :class="$style.center">
@@ -2332,6 +2545,109 @@ defineExpose({ enterEditMode });
 	gap: var(--spacing--2xs);
 	width: 100%;
 	align-items: center;
+}
+
+.redactedContainer {
+	position: relative;
+	height: 100%;
+	overflow: hidden;
+}
+
+.redactedFakeData {
+	padding: var(--spacing--sm);
+	opacity: 0.6;
+	pointer-events: none;
+	user-select: none;
+	filter: blur(3px);
+}
+
+.redactedText {
+	font-size: var(--font-size--sm);
+	color: var(--color--text);
+	line-height: var(--line-height--xl);
+
+	p {
+		margin-bottom: var(--spacing--sm);
+	}
+}
+
+.redactedTable {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: var(--font-size--2xs);
+	color: var(--color--text);
+
+	th,
+	td {
+		padding: var(--spacing--3xs) var(--spacing--xs);
+		text-align: left;
+		border-bottom: 1px solid var(--color--foreground);
+	}
+
+	th {
+		font-weight: var(--font-weight--bold);
+	}
+}
+
+.redactedJson {
+	font-family: var(--font-family--monospace, 'Courier New', monospace);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text);
+	line-height: var(--line-height--xl);
+	margin: 0;
+	white-space: pre;
+}
+
+.redactedSchema {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+	padding-top: var(--spacing--2xs);
+}
+
+.redactedSchemaField {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+	padding: var(--spacing--3xs) var(--spacing--xs);
+	border-bottom: 1px solid var(--color--foreground);
+}
+
+.redactedSchemaKey {
+	font-size: var(--font-size--sm);
+	color: var(--color--text);
+	font-weight: var(--font-weight--bold);
+}
+
+.redactedSchemaType {
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-2);
+}
+
+.redactedOverlay {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	display: flex;
+	justify-content: center;
+	align-items: flex-start;
+	padding-top: var(--spacing--3xl);
+	z-index: 1;
+	backdrop-filter: blur(2px);
+
+	&::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
+		background: var(--color--foreground--tint-2);
+		opacity: 0.5;
+		z-index: -1;
+	}
 }
 </style>
 
