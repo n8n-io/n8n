@@ -1,5 +1,6 @@
 import { describe, it, mock, before } from 'node:test';
 import assert from 'node:assert/strict';
+import { RELEASE_CANDIDATE_BRANCH_PREFIX } from './github-helpers.mjs';
 
 /**
  * Run these tests by running
@@ -7,12 +8,19 @@ import assert from 'node:assert/strict';
  * node --test --experimental-test-module-mocks ./.github/scripts/ensure-release-candidate-branches.test.mjs
  * */
 
+let tagVersionInfoToReleaseCandidateBranchName;
+before(async () => {
+	({ tagVersionInfoToReleaseCandidateBranchName } = await import('./github-helpers.mjs'));
+});
+
 // mock.module must be called before the module under test is imported,
 // because static imports are hoisted and resolve before any code runs.
 mock.module('./github-helpers.mjs', {
 	namedExports: {
 		RELEASE_TRACKS: ['stable', 'beta', 'v1'],
 		RELEASE_PREFIX: 'n8n@',
+		RELEASE_CANDIDATE_BRANCH_PREFIX: RELEASE_CANDIDATE_BRANCH_PREFIX,
+		tagVersionInfoToReleaseCandidateBranchName,
 		resolveReleaseTagForTrack: (track) => {
 			// Always return deterministic data
 			if (track === 'stable') return { version: '2.9.2', tag: 'n8n@2.9.2' };
@@ -27,11 +35,9 @@ mock.module('./github-helpers.mjs', {
 	},
 });
 
-let determineBranchChanges, tagVersionInfoToReleaseCandidateBranchName;
+let determineBranchChanges;
 before(async () => {
-	({ determineBranchChanges, tagVersionInfoToReleaseCandidateBranchName } = await import(
-		'./ensure-release-candidate-branches.mjs'
-	));
+	({ determineBranchChanges } = await import('./ensure-release-candidate-branches.mjs'));
 });
 
 describe('Determine branch changes', () => {

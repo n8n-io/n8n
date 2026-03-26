@@ -86,9 +86,11 @@ describe('CreateDestinationDto', () => {
 					url: 'https://example.com/webhook',
 					options: {
 						proxy: {
-							protocol: 'http',
-							host: '127.0.0.1',
-							port: 3128,
+							proxy: {
+								protocol: 'http',
+								host: '127.0.0.1',
+								port: 3128,
+							},
 						},
 					},
 				},
@@ -112,8 +114,10 @@ describe('CreateDestinationDto', () => {
 					url: 'https://example.com/webhook',
 					options: {
 						redirect: {
-							followRedirects: true,
-							maxRedirects: 10,
+							redirect: {
+								followRedirects: true,
+								maxRedirects: 10,
+							},
 						},
 					},
 				},

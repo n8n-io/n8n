@@ -133,6 +133,14 @@ const messageChunks = computed(() =>
 			return [{ type: 'text', content: i18n.baseText('chatHub.message.error.unknown') }];
 		}
 
+		// Footnote references ([^1]) and definitions ([^1]: ...) must stay in the same
+		// markdown-it instance to resolve correctly. Chunking splits them across instances,
+		// breaking the reference. Skip chunking when footnotes are present.
+		const hasFootnotes = /\[\^[^\]]+\]/.test(chunk.content);
+		if (hasFootnotes) {
+			return [{ type: 'text', content: chunk.content }];
+		}
+
 		return splitMarkdownIntoChunks(chunk.content).flatMap((content) =>
 			content.trim() === '' ? [] : [{ type: 'text', content }],
 		);

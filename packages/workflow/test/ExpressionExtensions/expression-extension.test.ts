@@ -164,7 +164,9 @@ describe('Expression Parser', () => {
 );`);
 		});
 
-		expect(evaluate('={{ [1, 2, 3, 4]?.sum((undefined)?.test) }}')).toBe(10);
+		test('Optional chaining with undefined argument', () => {
+			expect(evaluate('={{ [1, 2, 3, 4]?.sum((undefined)?.test) }}')).toBe(10);
+		});
 	});
 
 	describe('Non dot extensions', () => {
