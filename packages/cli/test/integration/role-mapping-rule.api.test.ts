@@ -283,3 +283,67 @@ describe('PATCH /role-mapping-rule/:id', () => {
 		expect(response.body.message).toContain('already exists');
 	});
 });
+
+describe('DELETE /role-mapping-rule/:id', () => {
+	const validInstancePayload = {
+		expression: 'claims.group === "admins"',
+		role: 'global:member',
+		type: 'instance' as const,
+		order: 0,
+	};
+
+	it('should return 401 when unauthenticated', async () => {
+		await authlessAgent
+			.delete('/role-mapping-rule/00000000-0000-4000-8000-000000000001')
+			.expect(401);
+	});
+
+	it('should return 403 when user lacks roleMappingRule:delete', async () => {
+		const createRes = await ownerAgent
+			.post('/role-mapping-rule')
+			.send(validInstancePayload)
+			.expect(200);
+		const ruleId = createRes.body.data.id as string;
+
+		const response = await memberAgent.delete(`/role-mapping-rule/${ruleId}`);
+
+		expect(response.status).toBe(403);
+		expect(response.body.message).toBe(RESPONSE_ERROR_MESSAGES.MISSING_SCOPE);
+	});
+
+	it('should return 403 when provisioning is not licensed', async () => {
+		const createRes = await ownerAgent
+			.post('/role-mapping-rule')
+			.send(validInstancePayload)
+			.expect(200);
+		const ruleId = createRes.body.data.id as string;
+
+		testServer.license.disable('feat:saml');
+		testServer.license.disable('feat:oidc');
+
+		const response = await ownerAgent.delete(`/role-mapping-rule/${ruleId}`);
+
+		expect(response.status).toBe(403);
+		expect(response.body).toEqual({ message: 'Provisioning is not licensed' });
+	});
+
+	it('should return 404 when rule id does not exist', async () => {
+		await ownerAgent.delete('/role-mapping-rule/0000000000000099').expect(404);
+	});
+
+	it('should delete a rule and remove it from the database', async () => {
+		const createRes = await ownerAgent
+			.post('/role-mapping-rule')
+			.send(validInstancePayload)
+			.expect(200);
+		const ruleId = createRes.body.data.id as string;
+
+		const response = await ownerAgent.delete(`/role-mapping-rule/${ruleId}`).expect(200);
+
+		expect(response.body.data).toEqual({ success: true });
+
+		const repo = Container.get(RoleMappingRuleRepository);
+		const stored = await repo.findOne({ where: { id: ruleId } });
+		expect(stored).toBeNull();
+	});
+});

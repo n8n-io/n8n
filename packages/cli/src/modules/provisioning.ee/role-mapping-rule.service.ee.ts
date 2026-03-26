@@ -145,6 +145,20 @@ export class RoleMappingRuleService {
 		return this.toResponse(loaded);
 	}
 
+	async delete(id: string): Promise<void> {
+		if (typeof id !== 'string' || id.length === 0) {
+			throw new BadRequestError('Rule id is required');
+		}
+
+		const rule = await this.roleMappingRuleRepository.findOne({ where: { id } });
+
+		if (!rule) {
+			throw new NotFoundError('Could not find role mapping rule');
+		}
+
+		await this.roleMappingRuleRepository.remove(rule);
+	}
+
 	private async assertOrderAvailable(
 		type: 'instance' | 'project',
 		order: number,

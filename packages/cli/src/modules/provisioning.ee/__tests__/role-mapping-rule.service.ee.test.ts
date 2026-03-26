@@ -414,4 +414,39 @@ describe('RoleMappingRuleService', () => {
 			).resolves.toMatchObject({ order: 0, type: 'instance' });
 		});
 	});
+
+	describe('delete', () => {
+		const rule = {
+			id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+			expression: 'true',
+			role: globalRole,
+			type: 'instance',
+			order: 0,
+			projects: [],
+			createdAt: new Date('2025-01-01T00:00:00.000Z'),
+			updatedAt: new Date('2025-01-01T00:00:00.000Z'),
+		} as unknown as RoleMappingRule;
+
+		it('should reject an empty id', async () => {
+			await expect(service.delete('')).rejects.toThrow(BadRequestError);
+		});
+
+		it('should return 404 when rule id is unknown', async () => {
+			roleMappingRuleRepository.findOne.mockResolvedValue(null);
+
+			await expect(service.delete('00000000-0000-4000-8000-000000000000')).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(roleMappingRuleRepository.remove).not.toHaveBeenCalled();
+		});
+
+		it('should remove the rule when it exists', async () => {
+			roleMappingRuleRepository.findOne.mockResolvedValue(rule);
+			roleMappingRuleRepository.remove.mockResolvedValue(rule);
+
+			await service.delete(rule.id);
+
+			expect(roleMappingRuleRepository.remove).toHaveBeenCalledWith(rule);
+		});
+	});
 });
