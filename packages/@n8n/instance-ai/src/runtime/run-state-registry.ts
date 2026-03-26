@@ -90,6 +90,16 @@ export class RunStateRegistry<TUser = unknown> {
 		}
 
 		const messageGroupId = options.messageGroupId ?? `mg_${nanoid()}`;
+
+		// When creating a fresh message group (no reuse), clean up the previous
+		// one so runIdsByMessageGroup doesn't leak entries indefinitely.
+		if (!options.messageGroupId) {
+			const prevGroupId = this.threadMessageGroupId.get(options.threadId);
+			if (prevGroupId && prevGroupId !== messageGroupId) {
+				this.runIdsByMessageGroup.delete(prevGroupId);
+			}
+		}
+
 		this.threadMessageGroupId.set(options.threadId, messageGroupId);
 		if (!this.runIdsByMessageGroup.has(messageGroupId)) {
 			this.runIdsByMessageGroup.set(messageGroupId, []);
@@ -274,6 +284,37 @@ export class RunStateRegistry<TUser = unknown> {
 		this.pendingConfirmations.delete(requestId);
 		pending.resolve({ approved: false });
 		return true;
+	}
+
+	/** Remove a message-group entry from runIdsByMessageGroup. */
+	deleteMessageGroup(groupId: string): void {
+		this.runIdsByMessageGroup.delete(groupId);
+	}
+
+	/**
+	 * Remove all per-thread state: active/suspended runs, confirmations,
+	 * user, research mode, and message-group mappings.
+	 * Returns the cancelled active/suspended runs so the caller can abort them.
+	 */
+	clearThread(
+		threadId: string,
+		cancelledConfirmation: ConfirmationData = { approved: false },
+	): {
+		active?: ActiveRunState;
+		suspended?: SuspendedRunState<TUser>;
+	} {
+		const { active, suspended } = this.cancelThread(threadId, cancelledConfirmation);
+
+		if (active) this.activeRuns.delete(threadId);
+
+		this.threadUsers.delete(threadId);
+		this.threadResearchMode.delete(threadId);
+
+		const groupId = this.threadMessageGroupId.get(threadId);
+		if (groupId) this.runIdsByMessageGroup.delete(groupId);
+		this.threadMessageGroupId.delete(threadId);
+
+		return { ...(active ? { active } : {}), ...(suspended ? { suspended } : {}) };
 	}
 
 	shutdown(cancelledConfirmation: ConfirmationData = { approved: false }): {

@@ -26,7 +26,19 @@ export function createCorrectBackgroundTaskTool(context: OrchestrationContext) {
 			if (!context.sendCorrectionToTask) {
 				return await Promise.resolve({ result: 'Error: correction delivery not available.' });
 			}
-			context.sendCorrectionToTask(input.taskId, input.correction);
+			const status = context.sendCorrectionToTask(input.taskId, input.correction);
+			if (status === 'task-not-found') {
+				return await Promise.resolve({
+					result: `Task ${input.taskId} not found. It may have already been cleaned up.`,
+				});
+			}
+			if (status === 'task-completed') {
+				return await Promise.resolve({
+					result:
+						`Task ${input.taskId} has already completed. The correction was not delivered. ` +
+						`Incorporate "${input.correction}" into a new follow-up task instead.`,
+				});
+			}
 			return await Promise.resolve({
 				result: `Correction sent to task ${input.taskId}: "${input.correction}". The builder will see this on its next step.`,
 			});
