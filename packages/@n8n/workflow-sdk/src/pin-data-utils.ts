@@ -148,6 +148,9 @@ export function normalizePinData(pinData: IPinData): IPinData {
 	const normalized: IPinData = {};
 	for (const [nodeName, items] of Object.entries(pinData)) {
 		normalized[nodeName] = items.map((item) => {
+			// Items with a valid json property (must be an object/IDataObject) pass through.
+			// Malformed items (e.g. { json: "string" }) are treated as flat objects and wrapped,
+			// since INodeExecutionData.json must be a Record, not a primitive.
 			if ('json' in item && typeof item.json === 'object' && item.json !== null) {
 				return item;
 			}
