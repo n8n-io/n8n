@@ -90,7 +90,7 @@ onBeforeUnmount(() => {
 	<div :class="$style.container">
 		<!-- Header -->
 		<div :class="$style.header">
-			<N8nText size="small" bold :class="$style.headerTitle">
+			<N8nText size="medium" :class="$style.headerTitle">
 				{{ workflowName || i18n.baseText('instanceAi.workflowPreview.title') }}
 			</N8nText>
 			<div :class="$style.headerActions">

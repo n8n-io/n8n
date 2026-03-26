@@ -73,7 +73,7 @@ watch(
 	<div :class="$style.container">
 		<!-- Header -->
 		<div :class="$style.header">
-			<N8nText size="small" bold :class="$style.headerTitle">
+			<N8nText size="medium" :class="$style.headerTitle">
 				{{ tableName || i18n.baseText('instanceAi.dataTablePreview.title') }}
 			</N8nText>
 			<div :class="$style.headerActions">

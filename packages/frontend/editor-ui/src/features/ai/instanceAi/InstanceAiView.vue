@@ -2,7 +2,7 @@
 import { computed, onMounted, onUnmounted, provide, ref, useTemplateRef, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { N8nIconButton, N8nResizeWrapper, N8nScrollArea, N8nText } from '@n8n/design-system';
-import { useScroll } from '@vueuse/core';
+import { useScroll, useWindowSize } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiAttachment } from '@n8n/api-types';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
@@ -33,7 +33,7 @@ const i18n = useI18n();
 const route = useRoute();
 const documentTitle = useDocumentTitle();
 
-documentTitle.set('n8n Uberagent');
+documentTitle.set('n8n Agent');
 
 // --- Header title ---
 const currentThreadTitle = computed(() => {
@@ -271,23 +271,29 @@ function handleSidebarResize({ width }: { width: number }) {
 	sidebarWidth.value = width;
 }
 
-// --- Chat area resize (when canvas is visible) ---
-const chatAreaWidth = ref(Math.round((window.innerWidth - sidebarWidth.value) / 2));
-const isResizingChat = ref(false);
-function handleChatAreaResize({ width }: { width: number }) {
-	chatAreaWidth.value = width;
+// --- Preview panel resize (when canvas is visible) ---
+const { width: windowWidth } = useWindowSize();
+const previewPanelWidth = ref(Math.round((windowWidth.value - sidebarWidth.value) / 2));
+const isResizingPreview = ref(false);
+const previewMaxWidth = computed(() => Math.round((windowWidth.value - sidebarWidth.value) / 2));
+
+// Clamp preview width when the window shrinks
+watch(previewMaxWidth, (max) => {
+	if (previewPanelWidth.value > max) {
+		previewPanelWidth.value = max;
+	}
+});
+
+function handlePreviewResize({ width }: { width: number }) {
+	previewPanelWidth.value = width;
 }
 
 // Re-compute default width when preview opens so it starts at 50%
 watch(isPreviewVisible, (visible) => {
 	if (visible) {
-		chatAreaWidth.value = Math.round((window.innerWidth - sidebarWidth.value) / 2);
+		previewPanelWidth.value = Math.round((windowWidth.value - sidebarWidth.value) / 2);
 	}
 });
-
-const chatAreaStyle = computed(() =>
-	isPreviewVisible.value ? { width: `${chatAreaWidth.value}px`, flex: 'none' } : {},
-);
 
 // --- Scroll management ---
 const scrollableRef = useTemplateRef<HTMLElement>('scrollable');
@@ -457,28 +463,8 @@ function handleStop() {
 			<InstanceAiThreadList />
 		</N8nResizeWrapper>
 
-		<!-- Main chat area (resizable when canvas is visible) -->
-		<component
-			:is="isPreviewVisible ? N8nResizeWrapper : 'div'"
-			:class="$style.chatArea"
-			:style="chatAreaStyle"
-			v-bind="
-				isPreviewVisible
-					? {
-							width: chatAreaWidth,
-							minWidth: 300,
-							maxWidth: 700,
-							supportedDirections: ['right'],
-							isResizingEnabled: true,
-							gridSize: 8,
-							outset: true,
-						}
-					: {}
-			"
-			@resize="handleChatAreaResize"
-			@resizestart="isResizingChat = true"
-			@resizeend="isResizingChat = false"
-		>
+		<!-- Main chat area -->
+		<div :class="$style.chatArea">
 			<!-- Header -->
 			<div :class="$style.header">
 				<N8nText tag="h2" size="large" bold :class="$style.headerTitle">
@@ -602,13 +588,23 @@ function handleStop() {
 					"
 				/>
 			</div>
-		</component>
+		</div>
 
-		<!-- Preview panel (workflow OR datatable) -->
-		<div
+		<!-- Resizable preview panel (workflow OR datatable) -->
+		<N8nResizeWrapper
 			v-show="isPreviewVisible"
 			:class="$style.canvasArea"
-			:style="isResizingChat ? { pointerEvents: 'none' } : {}"
+			:width="previewPanelWidth"
+			:style="{ width: `${previewPanelWidth}px` }"
+			:min-width="400"
+			:max-width="previewMaxWidth"
+			:supported-directions="['left']"
+			:is-resizing-enabled="true"
+			:grid-size="8"
+			:outset="true"
+			@resize="handlePreviewResize"
+			@resizestart="isResizingPreview = true"
+			@resizeend="isResizingPreview = false"
 		>
 			<InstanceAiWorkflowPreview
 				v-if="activeWorkflowId"
@@ -628,7 +624,7 @@ function handleStop() {
 					activeDataTableProjectId = null;
 				"
 			/>
-		</div>
+		</N8nResizeWrapper>
 	</div>
 </template>
 
@@ -655,11 +651,17 @@ function handleStop() {
 	overflow: hidden;
 	position: relative;
 	background-color: var(--color--background--light-1);
+}
+
+.canvasArea {
+	flex-shrink: 0;
+	min-width: 0;
+	border-left: var(--border);
 
 	// Widen the resize handle hit area for easier grabbing
 	:global([data-test-id='resize-handle']) {
 		width: 12px !important;
-		right: -6px !important;
+		left: -6px !important;
 
 		// Visible drag indicator line
 		&::after {
@@ -680,12 +682,6 @@ function handleStop() {
 			opacity: 1;
 		}
 	}
-}
-
-.canvasArea {
-	flex: 1;
-	min-width: 0;
-	border-left: var(--border);
 }
 
 .header {
