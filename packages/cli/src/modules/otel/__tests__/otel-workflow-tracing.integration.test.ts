@@ -113,6 +113,7 @@ describe('Workflow tracing', () => {
 			[ATTR.EXECUTION_STATUS]: 'success',
 			[ATTR.EXECUTION_IS_RETRY]: false,
 		});
+		expect(spans[0].attributes[ATTR.EXECUTION_RETRY_OF]).toBeUndefined();
 	});
 
 	it('should set execution mode to manual', async () => {
