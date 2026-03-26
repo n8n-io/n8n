@@ -315,8 +315,6 @@ export class PostgresMemory implements BuiltMemory {
 				if (!content || typeof content !== 'object') return undefined;
 				const msg = content as AgentMessage & { id?: string; createdAt?: Date };
 				msg.id = row.id;
-				// Always use the DB column as the authoritative timestamp so that the
-				// monotonic ordering assigned at save time is preserved on load.
 				msg.createdAt = new Date(row.createdAt);
 				return msg as AgentDbMessage;
 			})

@@ -72,9 +72,6 @@ export class InMemoryMemory implements BuiltMemory {
 			stored = stored.filter((s) => s.createdAt.getTime() < cutoff);
 		}
 		if (opts?.limit) stored = stored.slice(-opts.limit);
-		// Return createdAt from the storage record so it matches the value used
-		// for the before-filter, and so addHistory re-establishes lastCreatedAt
-		// correctly on the next turn.
 		return stored.map((s) => ({ ...s.message, createdAt: s.createdAt }));
 	}
 
@@ -90,8 +87,6 @@ export class InMemoryMemory implements BuiltMemory {
 	}): Promise<void> {
 		const existing = this.messagesByThread.get(args.threadId) ?? [];
 		for (const msg of args.messages) {
-			// Use the message's own createdAt (assigned monotonically by AgentMessageList)
-			// as the storage timestamp so the before-filter stays consistent.
 			existing.push({ message: msg, createdAt: msg.createdAt });
 		}
 		this.messagesByThread.set(args.threadId, existing);

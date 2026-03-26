@@ -210,8 +210,6 @@ export class SqliteMemory implements BuiltMemory {
 				};
 				if (!msg) return undefined;
 				msg.id = row.id as string;
-				// Always use the DB column as the authoritative timestamp so that the
-				// monotonic ordering assigned at save time is preserved on load.
 				msg.createdAt = new Date(row.createdAt as string);
 				return msg as AgentDbMessage;
 			})

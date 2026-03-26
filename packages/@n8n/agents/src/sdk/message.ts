@@ -6,7 +6,11 @@ export function getCreatedAt(message: AgentMessage): Date | null {
 			return message.createdAt;
 		}
 		if (typeof message.createdAt === 'string' || typeof message.createdAt === 'number') {
-			return new Date(message.createdAt);
+			const date = new Date(message.createdAt);
+			if (isNaN(date.getTime())) {
+				return null;
+			}
+			return date;
 		}
 	}
 	return null;
