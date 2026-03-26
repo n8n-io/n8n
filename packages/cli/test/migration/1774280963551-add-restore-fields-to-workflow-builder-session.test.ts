@@ -83,8 +83,8 @@ describe('AddRestoreFieldsToWorkflowBuilderSession Migration', () => {
 			} else {
 				for (const columnName of ['activeVersionCardId', 'resumeAfterRestoreMessageId']) {
 					const result = await ctx.runQuery<Array<{ column_name: string }>>(
-						'SELECT column_name FROM information_schema.columns WHERE table_name = $1 AND column_name = $2',
-						[`${ctx.tablePrefix}workflow_builder_session`, columnName],
+						'SELECT column_name FROM information_schema.columns WHERE table_name = :tableName AND column_name = :columnName',
+						{ tableName: `${ctx.tablePrefix}workflow_builder_session`, columnName },
 					);
 					expect(result).toHaveLength(1);
 				}
@@ -201,16 +201,16 @@ describe('AddRestoreFieldsToWorkflowBuilderSession Migration', () => {
 			} else {
 				for (const columnName of ['activeVersionCardId', 'resumeAfterRestoreMessageId']) {
 					const result = await ctx.runQuery<Array<{ column_name: string }>>(
-						'SELECT column_name FROM information_schema.columns WHERE table_name = $1 AND column_name = $2',
-						[`${ctx.tablePrefix}workflow_builder_session`, columnName],
+						'SELECT column_name FROM information_schema.columns WHERE table_name = :tableName AND column_name = :columnName',
+						{ tableName: `${ctx.tablePrefix}workflow_builder_session`, columnName },
 					);
 					expect(result).toHaveLength(0);
 				}
 				// Original columns should still exist
 				for (const columnName of ['id', 'workflowId', 'messages']) {
 					const result = await ctx.runQuery<Array<{ column_name: string }>>(
-						'SELECT column_name FROM information_schema.columns WHERE table_name = $1 AND column_name = $2',
-						[`${ctx.tablePrefix}workflow_builder_session`, columnName],
+						'SELECT column_name FROM information_schema.columns WHERE table_name = :tableName AND column_name = :columnName',
+						{ tableName: `${ctx.tablePrefix}workflow_builder_session`, columnName },
 					);
 					expect(result).toHaveLength(1);
 				}
