@@ -5007,6 +5007,7 @@
 	"instanceAi.credential.finalize.applied": "Credentials applied",
 	"instanceAi.credential.finalize.deferred": "Skipped — add credentials later",
 	"instanceAi.credential.setupButton": "Set up credentials",
+	"instanceAi.credential.setupTitle": "Set up {name}",
 	"instanceAi.credential.continueButton": "Continue",
 	"instanceAi.credential.modal.title": "Set up credentials",
 	"instanceAi.workflowSetup.usedByNodes": "Used by {count} nodes",

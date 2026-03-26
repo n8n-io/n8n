@@ -140,6 +140,7 @@ export type {
 	ExecutionSummary,
 	CredentialSummary,
 	CredentialDetail,
+	CredentialTypeSearchResult,
 	NodeSummary,
 	NodeDescription,
 	SearchableNodeDescription,

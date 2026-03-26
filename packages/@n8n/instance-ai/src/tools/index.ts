@@ -3,6 +3,7 @@ import { createGetBestPracticesTool } from './best-practices/get-best-practices.
 import { createDeleteCredentialTool } from './credentials/delete-credential.tool';
 import { createGetCredentialTool } from './credentials/get-credential.tool';
 import { createListCredentialsTool } from './credentials/list-credentials.tool';
+import { createSearchCredentialTypesTool } from './credentials/search-credential-types.tool';
 import { createSetupCredentialsTool } from './credentials/setup-credentials.tool';
 import { createTestCredentialTool } from './credentials/test-credential.tool';
 import { createAddDataTableColumnTool } from './data-tables/add-data-table-column.tool';
@@ -92,6 +93,7 @@ export function createAllTools(context: InstanceAiContext) {
 		'list-credentials': createListCredentialsTool(context),
 		'get-credential': createGetCredentialTool(context),
 		'delete-credential': createDeleteCredentialTool(context),
+		'search-credential-types': createSearchCredentialTypesTool(context),
 		'setup-credentials': createSetupCredentialsTool(context),
 		'test-credential': createTestCredentialTool(context),
 		'list-nodes': createListNodesTool(context),

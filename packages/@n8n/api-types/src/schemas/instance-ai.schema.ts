@@ -161,6 +161,7 @@ export const credentialRequestSchema = z.object({
 	credentialType: z.string(),
 	reason: z.string(),
 	existingCredentials: z.array(z.object({ id: z.string(), name: z.string() })),
+	suggestedName: z.string().optional(),
 });
 
 export type InstanceAiCredentialRequest = z.infer<typeof credentialRequestSchema>;

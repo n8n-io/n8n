@@ -24,6 +24,7 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { useExpressionResolveCtx } from '@/features/workflows/canvas/experimental/composables/useExpressionResolveCtx';
 import { getWorkflow as fetchWorkflowApi } from '@/app/api/workflows';
+import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
@@ -547,7 +548,10 @@ onMounted(async () => {
 // ---------------------------------------------------------------------------
 
 function getDisplayName(credentialType: string): string {
-	return credentialsStore.getCredentialTypeByName(credentialType)?.displayName ?? credentialType;
+	const raw =
+		credentialsStore.getCredentialTypeByName(credentialType)?.displayName ?? credentialType;
+	const appName = getAppNameFromCredType(raw);
+	return i18n.baseText('instanceAi.credential.setupTitle', { interpolate: { name: appName } });
 }
 
 function getCardTitle(card: SetupCard): string {

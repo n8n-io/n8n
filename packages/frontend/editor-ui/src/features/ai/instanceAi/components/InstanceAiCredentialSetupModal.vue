@@ -88,6 +88,7 @@ function handleContinue() {
 								:credential-type="req.credentialType"
 								:selected-credential-id="selections[req.credentialType]"
 								:project-id="props.data.projectId"
+								:suggested-credential-name="req.suggestedName"
 								@credential-selected="handleCredentialSelected(req.credentialType, $event)"
 								@credential-deselected="handleCredentialDeselected(req.credentialType)"
 							/>
