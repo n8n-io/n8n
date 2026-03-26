@@ -28,24 +28,20 @@ COPY . .
 
 
 RUN rm -rf packages/@n8n/eslint-plugin-community-nodes && \
-    sed -i '/packages\/@n8n\/eslint-plugin-community-nodes/d' pnpm-workspace.yaml
+    sed -i '/packages\/@n8n\/eslint-plugin-community-nodes/d' pnpm-workspace.yaml && \
+    find . -name "package.json" -exec sed -i '/@n8n\/eslint-plugin-community-nodes/d' {} +
 
-# 3. Bypass de scripts de Git en el package.json principal
+# 3. Bypass de scripts problemáticos (Git/Prepare)
 RUN sed -i '/"prepare":/d' package.json
 
-RUN npm pkg delete scripts.prepare
-
-
-# 4. Instalación limpia
-# Al haberlo borrado del workspace, pnpm install ya no lo verá
+# 4. Instalación
+# Ahora pnpm no encontrará ninguna mención al paquete y no lanzará el ERR_PNPM_WORKSPACE_PKG_NOT_FOUND
 RUN pnpm install --no-frozen-lockfile && \
     pnpm add -w esbuild@0.25.0 @esbuild/linux-x64
 
-# 5. BUILD FINAL
-# Ahora n8n... solo construirá lo que realmente existe y es necesario
+# 5. BUILD
 ENV NODE_OPTIONS="--max-old-space-size=8192"
 RUN pnpm turbo run build --filter=n8n...
-
 
 
 
