@@ -4,6 +4,7 @@ import { computed } from 'vue';
 import type { IMenuItem } from '@n8n/design-system/types';
 
 import BetaTag from '../BetaTag/BetaTag.vue';
+import PreviewTag from '../PreviewTag/PreviewTag.vue';
 import N8nIcon from '../N8nIcon';
 import type { IconName } from '../N8nIcon/icons';
 import N8nRoute from '../N8nRoute';
@@ -135,6 +136,7 @@ const tooltipPlacement = computed(() => {
 						{{ item.label }}
 					</N8nText>
 					<BetaTag v-if="!compact && item.beta" />
+					<PreviewTag v-if="!compact && item.preview" />
 					<N8nTag
 						v-if="!compact && item.new"
 						:clickable="false"

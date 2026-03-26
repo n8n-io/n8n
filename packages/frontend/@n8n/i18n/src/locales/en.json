@@ -2746,6 +2746,7 @@
 	"settings.communityNodes.confirmModal.cancel": "Cancel",
 	"settings.mcp": "Instance-level MCP",
 	"settings.mcp.description": "Let MCP clients like Claude, Lovable, and other AI tools discover and execute your n8n workflows",
+	"settings.mcp.preview.tooltip": "This feature is in research preview. Expect improvements and changes over time.",
 	"settings.mcp.header.toggle.enabled": "Enabled",
 	"settings.mcp.header.toggle.disabled": "Disabled",
 	"settings.mcp.actionBox.heading": "Connect AI assistants to your workflows",
