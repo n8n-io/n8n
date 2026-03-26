@@ -1,5 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
+import type { DiagLogger } from '@opentelemetry/api';
+import { DiagLogLevel, diag } from '@opentelemetry/api';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import { NodeSDK } from '@opentelemetry/sdk-node';
@@ -13,7 +15,9 @@ import { ATTR } from './otel.constants';
 
 @Service()
 export class OtelService {
+	private static isDiagnosticsLoggerConfigured = false;
 	private sdk?: NodeSDK;
+	private hasLoggedStartupConnectivityFailure = false;
 
 	constructor(
 		private readonly config: OtelConfig,
@@ -24,6 +28,11 @@ export class OtelService {
 	init() {
 		if (!this.config.enabled) return;
 
+		this.configureDiagnosticsLogger();
+
+		const otlpTracesUrl = this.buildOtlpTracesUrl();
+		const otlpHeaders = this.parseOtlpHeaders();
+
 		this.sdk = new NodeSDK({
 			resource: resourceFromAttributes({
 				[ATTR.OTEL_SERVICE_NAME]: this.config.exporterServiceName,
@@ -32,20 +41,37 @@ export class OtelService {
 				[ATTR.INSTANCE_ROLE]: this.instanceSettings.instanceType,
 			}),
 			traceExporter: new OTLPTraceExporter({
-				url: `${this.config.exporterEndpoint}${this.config.exporterTracingPath}`,
-				headers: this.config.exporterHeaders ? this.parseHeaders(this.config.exporterHeaders) : {},
+				url: otlpTracesUrl,
+				headers: otlpHeaders,
 			}),
 			sampler: new TraceIdRatioBasedSampler(this.config.tracesSampleRate),
 		});
 
 		this.sdk.start();
+		void this.checkEndpointReachability(otlpTracesUrl);
 	}
 
 	async shutdown(): Promise<void> {
 		await this.sdk?.shutdown();
 	}
 
-	parseHeaders(exporterHeaders: string): Record<string, string> {
+	private configureDiagnosticsLogger() {
+		if (OtelService.isDiagnosticsLoggerConfigured) return;
+
+		const diagnosticsLogger: DiagLogger = {
+			error: (...args: unknown[]) => this.logger.error('OpenTelemetry diagnostics error', { args }),
+			warn: (...args: unknown[]) => this.logger.warn('OpenTelemetry diagnostics warning', { args }),
+			info: (...args: unknown[]) => this.logger.info('OpenTelemetry diagnostics info', { args }),
+			debug: (...args: unknown[]) => this.logger.debug('OpenTelemetry diagnostics debug', { args }),
+			verbose: (...args: unknown[]) =>
+				this.logger.debug('OpenTelemetry diagnostics verbose', { args }),
+		};
+		diag.setLogger(diagnosticsLogger, DiagLogLevel.WARN);
+		OtelService.isDiagnosticsLoggerConfigured = true;
+	}
+
+	private parseOtlpHeaders(): Record<string, string> {
+		const exporterHeaders = this.config.exporterHeaders;
 		const headers: Record<string, string> = {};
 		for (const pair of exporterHeaders.split(',')) {
 			const trimmedPair = pair.trim();
@@ -70,5 +96,32 @@ export class OtelService {
 			headers[trimmedKey] = rest.join('=').trim();
 		}
 		return headers;
+	}
+
+	private buildOtlpTracesUrl(): string {
+		const exporterEndpoint = this.config.exporterEndpoint;
+		const exporterTracingPath = this.config.exporterTracingPath;
+		const exporterEndpointWithoutTrailingSlash = exporterEndpoint.replace(/\/+$/, '');
+		return `${exporterEndpointWithoutTrailingSlash}${exporterTracingPath}`;
+	}
+
+	private async checkEndpointReachability(url: string): Promise<void> {
+		try {
+			// HEAD is used for a cheap connectivity check (no request/response body).
+			// OTLP endpoints are POST-only, so this will often return 4xx, but any
+			// HTTP response means the server is reachable. We only catch network errors.
+			await fetch(url, {
+				method: 'HEAD',
+				signal: AbortSignal.timeout(this.config.startupConnectivityTimeoutMs),
+			});
+		} catch (error) {
+			if (this.hasLoggedStartupConnectivityFailure) return;
+			this.hasLoggedStartupConnectivityFailure = true;
+
+			this.logger.error('Failed to connect to OpenTelemetry OTLP endpoint during startup', {
+				endpoint: url,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
 	}
 }

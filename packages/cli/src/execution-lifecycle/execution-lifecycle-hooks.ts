@@ -11,8 +11,6 @@ import {
 	InstanceSettings,
 	ExecutionLifecycleHooks,
 } from 'n8n-core';
-
-import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type {
 	IRun,
 	IRunData,
@@ -24,12 +22,15 @@ import type {
 } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { RedactableExecution } from '@/executions/execution-redaction';
 import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import { ExternalHooks } from '@/external-hooks';
 import { Push } from '@/push';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { isWorkflowIdValid } from '@/utils';
+import { getItemCountByConnectionType } from '@/utils/get-item-count-by-connection-type';
+import { getDataLastExecutedNodeData } from '@/workflow-helpers';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 // eslint-disable-next-line import-x/no-cycle
@@ -43,8 +44,6 @@ import {
 	updateExistingExecutionMetadata,
 } from './shared/shared-hook-functions';
 import { type ExecutionSaveSettings, toSaveSettings } from './to-save-settings';
-import { getItemCountByConnectionType } from '@/utils/get-item-count-by-connection-type';
-import { getDataLastExecutedNodeData } from '@/workflow-helpers';
 
 @Service()
 class ModulesHooksRegistry {
@@ -63,6 +62,7 @@ class ModulesHooksRegistry {
 							runData,
 							newStaticData,
 							executionId: this.executionId,
+							retryOf: this.retryOf,
 						};
 						// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 						return await instance[methodName].call(instance, context);
@@ -682,7 +682,12 @@ export function getLifecycleHooksForScalingWorker(
 	executionId: string,
 ): ExecutionLifecycleHooks {
 	const { pushRef, retryOf, executionMode, workflowData } = data;
-	const hooks = new ExecutionLifecycleHooks(executionMode, executionId, workflowData);
+	const hooks = new ExecutionLifecycleHooks(
+		executionMode,
+		executionId,
+		workflowData,
+		retryOf ?? undefined,
+	);
 	const saveSettings = toSaveSettings(workflowData.settings);
 	const optionalParameters = { pushRef, retryOf: retryOf ?? undefined, saveSettings };
 	hookFunctionsNodeEvents(hooks);
@@ -709,7 +714,12 @@ export function getLifecycleHooksForScalingMain(
 	executionId: string,
 ): ExecutionLifecycleHooks {
 	const { pushRef, retryOf, executionMode, workflowData, userId } = data;
-	const hooks = new ExecutionLifecycleHooks(executionMode, executionId, workflowData);
+	const hooks = new ExecutionLifecycleHooks(
+		executionMode,
+		executionId,
+		workflowData,
+		retryOf ?? undefined,
+	);
 	const saveSettings = toSaveSettings(workflowData.settings);
 	const optionalParameters = { pushRef, retryOf: retryOf ?? undefined, saveSettings };
 	const executionRepository = Container.get(ExecutionRepository);
@@ -779,7 +789,12 @@ export function getLifecycleHooksForRegularMain(
 	executionId: string,
 ): ExecutionLifecycleHooks {
 	const { pushRef, retryOf, executionMode, workflowData, userId } = data;
-	const hooks = new ExecutionLifecycleHooks(executionMode, executionId, workflowData);
+	const hooks = new ExecutionLifecycleHooks(
+		executionMode,
+		executionId,
+		workflowData,
+		retryOf ?? undefined,
+	);
 	const saveSettings = toSaveSettings(workflowData.settings);
 	const optionalParameters = { pushRef, retryOf: retryOf ?? undefined, saveSettings };
 	hookFunctionsWorkflowEvents(hooks, userId);
