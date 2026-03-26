@@ -5,7 +5,7 @@ import { ExecutionRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings, StorageConfig } from 'n8n-core';
-import { ensureError, sleep } from 'n8n-workflow';
+import { ensureError } from 'n8n-workflow';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
@@ -13,25 +13,21 @@ import { EventService } from '@/events/event.service';
 
 /**
  * Reclaims disk space by deleting binary data from completed executions
- * when filesystem usage exceeds a configurable threshold.
+ * when the binary data storage directory exceeds a configurable size limit.
  *
- * Uses a high/low watermark approach:
- * - Starts deleting when usage exceeds `highWatermark * maxStorageBytes`
- * - Stops deleting when usage drops below `lowWatermark * maxStorageBytes`
- *
- * Only targets binary data on the filesystem; execution records are untouched.
- * Measures total filesystem usage (not just n8n's data) since the goal is
- * preventing the disk from filling up regardless of what's consuming space.
+ * Checks on a rolling schedule. When the directory exceeds `maxStorageBytes`,
+ * deletes oldest execution binary data until size drops below
+ * `targetRatio * maxStorageBytes`. Execution records are untouched.
  */
 @Service()
 export class BinaryFileReclamationService {
-	private checkInterval: NodeJS.Timeout | undefined;
+	private checkTimeout: NodeJS.Timeout | undefined;
 
 	private isShuttingDown = false;
 
-	private isReclaiming = false;
-
 	private lastReclaimedAt: Date | null = null;
+
+	private readonly checkRate: number;
 
 	private readonly storagePath: string;
 
@@ -45,6 +41,7 @@ export class BinaryFileReclamationService {
 	) {
 		this.logger = this.logger.scoped('binary-file-reclamation');
 		this.storagePath = this.storageConfig.storagePath;
+		this.checkRate = this.config.checkIntervalMinutes * Time.minutes.toMilliseconds;
 	}
 
 	init() {
@@ -64,22 +61,19 @@ export class BinaryFileReclamationService {
 	startReclamation() {
 		if (!this.isEnabled || this.isShuttingDown) return;
 
-		this.checkInterval = setInterval(
-			async () => await this.safeCheckAndReclaim(),
-			this.config.checkIntervalMinutes * Time.minutes.toMilliseconds,
-		);
+		this.scheduleNextCheck();
 
 		this.logger.debug(
-			`Started binary file reclamation timer, checking every ${this.config.checkIntervalMinutes} minutes`,
+			`Started binary file reclamation, checking every ${this.config.checkIntervalMinutes} minutes`,
 		);
 	}
 
 	@OnLeaderStepdown()
 	stopReclamation() {
-		const hadTimer = this.checkInterval;
+		const hadTimer = this.checkTimeout;
 
-		clearInterval(this.checkInterval);
-		this.checkInterval = undefined;
+		clearTimeout(this.checkTimeout);
+		this.checkTimeout = undefined;
 
 		if (hadTimer) this.logger.debug('Stopped binary file reclamation timer');
 	}
@@ -90,36 +84,31 @@ export class BinaryFileReclamationService {
 		this.stopReclamation();
 	}
 
-	private async safeCheckAndReclaim() {
-		if (this.isReclaiming) return;
-
-		try {
-			this.isReclaiming = true;
-			await this.checkAndReclaim();
-		} catch (error) {
-			this.logger.error('Binary file reclamation failed', { error: ensureError(error) });
-		} finally {
-			this.isReclaiming = false;
-		}
+	private scheduleNextCheck(rateMs = this.checkRate) {
+		this.checkTimeout = setTimeout(() => {
+			this.checkAndReclaim()
+				.then(() => this.scheduleNextCheck())
+				.catch((error) => {
+					this.scheduleNextCheck();
+					this.logger.error('Binary file reclamation failed', { error: ensureError(error) });
+				});
+		}, rateMs);
 	}
 
 	private async checkAndReclaim() {
-		let totalBytes = await this.measureFilesystemUsage();
-		const highThreshold = this.config.maxStorageBytes * this.config.highWatermark;
-		const lowThreshold = this.config.maxStorageBytes * this.config.lowWatermark;
+		let currentSize = await this.getDirectorySize(this.storagePath);
+		const threshold = this.config.maxStorageBytes;
+		const target = this.config.maxStorageBytes * this.config.targetRatio;
 
-		if (totalBytes < highThreshold) {
-			this.logger.debug('Storage usage within limits', {
-				totalBytes,
-				highThreshold,
-			});
+		if (currentSize < threshold) {
+			this.logger.debug('Binary data storage within limits', { currentSize, threshold });
 			return;
 		}
 
-		this.logger.info('Storage usage exceeds high watermark, starting reclamation', {
-			totalBytes,
-			highThreshold,
-			lowThreshold,
+		this.logger.info('Binary data storage exceeds threshold, starting reclamation', {
+			currentSize,
+			threshold,
+			target,
 		});
 
 		let totalBytesReclaimed = 0;
@@ -137,10 +126,14 @@ export class BinaryFileReclamationService {
 				break;
 			}
 
+			let batchBytesReclaimed = 0;
+
 			for (const execution of executions) {
 				const binaryPath = this.getBinaryDataPath(execution.id, execution.workflowId);
+				const dirSize = await this.getDirectorySize(binaryPath);
 				try {
 					await fs.rm(binaryPath, { recursive: true, force: true });
+					batchBytesReclaimed += dirSize;
 				} catch (error) {
 					this.logger.debug('Failed to remove binary data', {
 						executionId: execution.id,
@@ -156,36 +149,42 @@ export class BinaryFileReclamationService {
 				this.lastReclaimedAt = newestExecution.stoppedAt;
 			}
 
-			const newTotalBytes = await this.measureFilesystemUsage();
-			totalBytesReclaimed += Math.max(0, totalBytes - newTotalBytes);
-			totalBytes = newTotalBytes;
+			totalBytesReclaimed += batchBytesReclaimed;
+			currentSize -= batchBytesReclaimed;
 
-			if (totalBytes < lowThreshold) {
-				this.logger.info('Storage usage below low watermark, stopping reclamation');
+			if (currentSize < target) {
+				this.logger.info('Binary data storage below target, stopping reclamation');
 				break;
 			}
-
-			await sleep(this.config.batchDelayMs);
 		}
-
-		const durationMs = Date.now() - startTime;
-
-		this.logger.info('Binary file reclamation complete', {
-			totalBytesReclaimed,
-			totalExecutionsProcessed,
-			durationMs,
-		});
 
 		this.eventService.emit('binary-files-reclaimed', {
 			totalBytesReclaimed,
 			totalExecutionsProcessed,
-			durationMs,
+			durationMs: Date.now() - startTime,
 		});
 	}
 
-	private async measureFilesystemUsage(): Promise<number> {
-		const stats = await fs.statfs(this.instanceSettings.n8nFolder);
-		return (stats.blocks - stats.bfree) * stats.bsize;
+	private async getDirectorySize(dirPath: string): Promise<number> {
+		let entries;
+		try {
+			entries = await fs.readdir(dirPath, { withFileTypes: true });
+		} catch (error) {
+			if ((error as NodeJS.ErrnoException).code === 'ENOENT') return 0;
+			throw error;
+		}
+
+		let totalSize = 0;
+		for (const entry of entries) {
+			const fullPath = path.join(dirPath, entry.name);
+			if (entry.isDirectory()) {
+				totalSize += await this.getDirectorySize(fullPath);
+			} else {
+				const stats = await fs.stat(fullPath);
+				totalSize += stats.size;
+			}
+		}
+		return totalSize;
 	}
 
 	private getBinaryDataPath(executionId: string, workflowId: string): string {

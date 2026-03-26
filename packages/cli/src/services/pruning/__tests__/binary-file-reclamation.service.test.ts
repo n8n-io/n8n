@@ -3,7 +3,6 @@ import type { BinaryFileReclamationConfig } from '@n8n/config';
 import type { ExecutionRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings, StorageConfig } from 'n8n-core';
-import { promises as fs } from 'node:fs';
 
 import type { EventService } from '@/events/event.service';
 
@@ -11,17 +10,14 @@ import { BinaryFileReclamationService } from '../binary-file-reclamation.service
 
 jest.mock('node:fs', () => ({
 	promises: {
-		statfs: jest.fn(),
-		rm: jest.fn(),
+		rm: jest.fn().mockResolvedValue(undefined),
 	},
 }));
 
-jest.mock('n8n-workflow', () => ({
-	...jest.requireActual('n8n-workflow'),
-	sleep: jest.fn().mockResolvedValue(undefined),
-}));
-
-const mockedFs = jest.mocked(fs);
+type ServiceWithPrivates = BinaryFileReclamationService & {
+	checkAndReclaim: () => Promise<void>;
+	getDirectorySize: (dirPath: string) => Promise<number>;
+};
 
 describe('BinaryFileReclamationService', () => {
 	const n8nFolder = '/tmp/n8n-test';
@@ -30,10 +26,8 @@ describe('BinaryFileReclamationService', () => {
 	function createService({
 		enabled = true,
 		maxStorageBytes = 1_000_000,
-		highWatermark = 0.8,
-		lowWatermark = 0.6,
+		targetRatio = 0.6,
 		batchSize = 100,
-		batchDelayMs = 0,
 		checkIntervalMinutes = 30,
 		isLeader = true,
 		instanceType = 'main' as const,
@@ -43,10 +37,8 @@ describe('BinaryFileReclamationService', () => {
 		const config = mock<BinaryFileReclamationConfig>({
 			enabled,
 			maxStorageBytes,
-			highWatermark,
-			lowWatermark,
+			targetRatio,
 			batchSize,
-			batchDelayMs,
 			checkIntervalMinutes,
 		});
 
@@ -67,26 +59,13 @@ describe('BinaryFileReclamationService', () => {
 			config,
 			storageConfig,
 			eventService,
-		);
+		) as ServiceWithPrivates;
 
 		return { service, executionRepository, eventService, config, instanceSettings };
 	}
 
-	function mockStorageUsage(usedBytes: number, totalBlocks = 1_000_000) {
-		mockedFs.statfs.mockResolvedValueOnce({
-			blocks: totalBlocks,
-			bfree: totalBlocks - usedBytes,
-			bsize: 1,
-		} as unknown as ReturnType<typeof fs.statfs> extends Promise<infer T> ? T : never);
-	}
-
 	beforeEach(() => {
 		jest.clearAllMocks();
-		jest.useFakeTimers();
-	});
-
-	afterEach(() => {
-		jest.useRealTimers();
 	});
 
 	describe('init', () => {
@@ -123,149 +102,87 @@ describe('BinaryFileReclamationService', () => {
 
 		it('should return false when config.enabled is false', () => {
 			const { service } = createService({ enabled: false });
-
 			expect(service.isEnabled).toBe(false);
 		});
 
 		it('should return false when maxStorageBytes is 0', () => {
 			const { service } = createService({ maxStorageBytes: 0 });
-
 			expect(service.isEnabled).toBe(false);
 		});
 
 		it('should return false when not a leader', () => {
 			const { service } = createService({ isLeader: false });
-
 			expect(service.isEnabled).toBe(false);
 		});
 	});
 
 	describe('checkAndReclaim', () => {
-		it('should do nothing when disabled', () => {
-			const { service, executionRepository } = createService({ enabled: false });
-
-			service.startReclamation();
-
-			expect(executionRepository.findCompletedExecutionsOldestFirst).not.toHaveBeenCalled();
-		});
-
-		it('should do nothing when storage is below high watermark', async () => {
+		it('should do nothing when binary data size is below threshold', async () => {
 			const { service, executionRepository } = createService({
 				maxStorageBytes: 1_000_000,
-				highWatermark: 0.8,
 			});
 
-			// 500_000 used bytes < 800_000 high threshold
-			mockStorageUsage(500_000);
+			jest.spyOn(service, 'getDirectorySize').mockResolvedValueOnce(500_000);
 
-			service.startReclamation();
-			jest.advanceTimersByTime(30 * 60 * 1000);
-			await jest.advanceTimersToNextTimerAsync();
+			await service.checkAndReclaim();
 
 			expect(executionRepository.findCompletedExecutionsOldestFirst).not.toHaveBeenCalled();
 		});
 
-		it('should stop reclaiming when storage drops below low watermark', async () => {
+		it('should stop reclaiming when binary data size drops below target', async () => {
 			const executionRepository = mock<ExecutionRepository>();
 			const eventService = mock<EventService>();
 			const { service } = createService({
 				maxStorageBytes: 1_000_000,
-				highWatermark: 0.8,
-				lowWatermark: 0.6,
+				targetRatio: 0.6,
 				batchSize: 2,
-				batchDelayMs: 0,
 				executionRepository,
 				eventService,
 			});
 
-			// First call: above high watermark (900_000 used > 800_000 threshold)
-			mockStorageUsage(900_000);
+			const sizeSpy = jest.spyOn(service, 'getDirectorySize');
+			sizeSpy
+				.mockResolvedValueOnce(1_100_000) // initial: above 1M threshold
+				.mockResolvedValueOnce(300_000) // exec1 dir size
+				.mockResolvedValueOnce(300_000); // exec2 dir size
 
 			executionRepository.findCompletedExecutionsOldestFirst.mockResolvedValueOnce([
 				{ id: 'exec1', workflowId: 'wf1', stoppedAt: new Date('2024-01-01') },
 				{ id: 'exec2', workflowId: 'wf1', stoppedAt: new Date('2024-01-02') },
 			]);
 
-			// After deletion: below low watermark (500_000 used < 600_000 threshold)
-			mockStorageUsage(500_000);
+			await service.checkAndReclaim();
 
-			service.startReclamation();
-			jest.advanceTimersByTime(30 * 60 * 1000);
-			await jest.advanceTimersToNextTimerAsync();
-
+			// 1_100_000 - 300_000 - 300_000 = 500_000 < 600_000 target
 			expect(executionRepository.findCompletedExecutionsOldestFirst).toHaveBeenCalledTimes(1);
-			expect(mockedFs.rm).toHaveBeenCalledTimes(2);
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'binary-files-reclaimed',
-				expect.objectContaining({
-					totalExecutionsProcessed: 2,
-				}),
+				expect.objectContaining({ totalExecutionsProcessed: 2 }),
 			);
 		});
 
 		it('should respect isShuttingDown flag and exit loop early', async () => {
-			jest.useRealTimers();
-
 			const executionRepository = mock<ExecutionRepository>();
 			const { service } = createService({
 				maxStorageBytes: 1_000_000,
-				highWatermark: 0.8,
-				lowWatermark: 0.6,
+				targetRatio: 0.6,
 				batchSize: 2,
-				batchDelayMs: 0,
 				executionRepository,
 			});
 
-			// Above high watermark
-			mockStorageUsage(900_000);
+			const sizeSpy = jest.spyOn(service, 'getDirectorySize');
+			sizeSpy
+				.mockResolvedValueOnce(1_100_000) // initial: above threshold
+				.mockResolvedValueOnce(50_000); // exec1 dir size
 
 			executionRepository.findCompletedExecutionsOldestFirst.mockImplementationOnce(async () => {
 				service.shutdown();
 				return [{ id: 'exec1', workflowId: 'wf1', stoppedAt: new Date('2024-01-01') }];
 			});
 
-			// After first batch deletion, still above low watermark
-			mockStorageUsage(850_000);
-
-			// @ts-expect-error Accessing private method for testing
-			await service.safeCheckAndReclaim();
+			await service.checkAndReclaim();
 
 			expect(executionRepository.findCompletedExecutionsOldestFirst).toHaveBeenCalledTimes(1);
-			expect(mockedFs.rm).toHaveBeenCalledTimes(1);
-		});
-
-		it('should prevent overlapping runs via concurrency guard', async () => {
-			const executionRepository = mock<ExecutionRepository>();
-			const { service } = createService({
-				maxStorageBytes: 1_000_000,
-				highWatermark: 0.8,
-				batchDelayMs: 0,
-				executionRepository,
-			});
-
-			let resolveFirst: () => void;
-			const firstCallPromise = new Promise<void>((resolve) => {
-				resolveFirst = resolve;
-			});
-
-			mockStorageUsage(900_000);
-			mockStorageUsage(900_000);
-
-			executionRepository.findCompletedExecutionsOldestFirst.mockImplementation(async () => {
-				await firstCallPromise;
-				return [];
-			});
-
-			// @ts-expect-error Accessing private method for testing
-			const firstRun = service.safeCheckAndReclaim();
-			// @ts-expect-error Accessing private method for testing
-			const secondRun = service.safeCheckAndReclaim();
-
-			resolveFirst!();
-			await firstRun;
-			await secondRun;
-
-			expect(mockedFs.statfs).toHaveBeenCalledTimes(1);
 		});
 
 		it('should do nothing when no prunable executions exist', async () => {
@@ -273,22 +190,17 @@ describe('BinaryFileReclamationService', () => {
 			const eventService = mock<EventService>();
 			const { service } = createService({
 				maxStorageBytes: 1_000_000,
-				highWatermark: 0.8,
-				batchDelayMs: 0,
 				executionRepository,
 				eventService,
 			});
 
-			// Above high watermark
-			mockStorageUsage(900_000);
+			jest.spyOn(service, 'getDirectorySize').mockResolvedValueOnce(1_100_000);
 
 			executionRepository.findCompletedExecutionsOldestFirst.mockResolvedValueOnce([]);
 
-			// @ts-expect-error Accessing private method for testing
-			await service.safeCheckAndReclaim();
+			await service.checkAndReclaim();
 
 			expect(executionRepository.findCompletedExecutionsOldestFirst).toHaveBeenCalledTimes(1);
-			expect(mockedFs.rm).not.toHaveBeenCalled();
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'binary-files-reclaimed',
 				expect.objectContaining({
@@ -296,6 +208,57 @@ describe('BinaryFileReclamationService', () => {
 					totalBytesReclaimed: 0,
 				}),
 			);
+		});
+
+		it('should terminate when executions are exhausted even if still above target', async () => {
+			const executionRepository = mock<ExecutionRepository>();
+			const eventService = mock<EventService>();
+			const { service } = createService({
+				maxStorageBytes: 1_000_000,
+				targetRatio: 0.6,
+				batchSize: 2,
+				executionRepository,
+				eventService,
+			});
+
+			const sizeSpy = jest.spyOn(service, 'getDirectorySize');
+			sizeSpy
+				.mockResolvedValueOnce(1_100_000) // initial: above threshold
+				.mockResolvedValueOnce(100_000) // exec1 dir size
+				.mockResolvedValueOnce(100_000); // exec2 dir size
+
+			executionRepository.findCompletedExecutionsOldestFirst
+				.mockResolvedValueOnce([
+					{ id: 'exec1', workflowId: 'wf1', stoppedAt: new Date('2024-01-01') },
+					{ id: 'exec2', workflowId: 'wf1', stoppedAt: new Date('2024-01-02') },
+				])
+				.mockResolvedValueOnce([]); // no more executions
+
+			await service.checkAndReclaim();
+
+			// 1_100_000 - 100_000 - 100_000 = 900_000 > 600_000 target, but no more executions
+			expect(executionRepository.findCompletedExecutionsOldestFirst).toHaveBeenCalledTimes(2);
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'binary-files-reclaimed',
+				expect.objectContaining({
+					totalExecutionsProcessed: 2,
+					totalBytesReclaimed: 200_000,
+				}),
+			);
+		});
+
+		it('should not reclaim when binary data directory is empty', async () => {
+			const executionRepository = mock<ExecutionRepository>();
+			const { service } = createService({
+				maxStorageBytes: 1_000_000,
+				executionRepository,
+			});
+
+			jest.spyOn(service, 'getDirectorySize').mockResolvedValueOnce(0);
+
+			await service.checkAndReclaim();
+
+			expect(executionRepository.findCompletedExecutionsOldestFirst).not.toHaveBeenCalled();
 		});
 	});
 });
