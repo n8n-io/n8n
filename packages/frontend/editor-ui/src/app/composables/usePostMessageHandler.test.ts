@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { shallowRef } from 'vue';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
+import { jsonParse } from 'n8n-workflow';
 import { usePostMessageHandler } from './usePostMessageHandler';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
@@ -154,7 +155,7 @@ describe('usePostMessageHandler', () => {
 				([data]) => typeof data === 'string' && data.includes('"n8nReady"'),
 			);
 			expect(call).toBeDefined();
-			const parsed = JSON.parse(call![0] as string);
+			const parsed = jsonParse(call![0] as string);
 			expect(parsed).toHaveProperty('pushRef');
 
 			cleanup();

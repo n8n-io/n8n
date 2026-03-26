@@ -126,7 +126,7 @@ describe('BuilderCard', () => {
 			});
 
 			const openButton = getByText('Open workflow');
-			await openButton.dispatchEvent(new MouseEvent('click', { bubbles: true, ctrlKey: true }));
+			openButton.dispatchEvent(new MouseEvent('click', { bubbles: true, ctrlKey: true }));
 
 			expect(windowOpenSpy).toHaveBeenCalledWith('/workflow/wf-1', '_blank');
 			expect(openPreviewMock).not.toHaveBeenCalled();

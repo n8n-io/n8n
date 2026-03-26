@@ -79,7 +79,8 @@ const DATA_TABLE_TOOL_NAMES = new Set([
 const RESULT_VALIDATORS: Record<string, (result: Record<string, unknown>) => boolean> = {
 	'insert-data-table-rows': (r) => typeof r.insertedCount === 'number',
 	'update-data-table-rows': (r) => typeof r.updatedCount === 'number',
-	'add-data-table-column': (r) => r.column != null && typeof r.column === 'object',
+	'add-data-table-column': (r) =>
+		r.column !== null && r.column !== undefined && typeof r.column === 'object',
 	'delete-data-table-rows': (r) => r.success === true,
 	'delete-data-table-column': (r) => r.success === true,
 	'rename-data-table-column': (r) => r.success === true,

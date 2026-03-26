@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
-import userEvent from '@testing-library/user-event';
 import ToolCallStep from '../components/ToolCallStep.vue';
 import type { InstanceAiToolCallState } from '@n8n/api-types';
 
