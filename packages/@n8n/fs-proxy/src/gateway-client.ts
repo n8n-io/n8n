@@ -380,7 +380,9 @@ export class GatewayClient {
 					break;
 				case 'alwaysDeny':
 					settingsStore.alwaysDeny(resource.toolGroup, resource.resource);
-					throw new Error(`User denied access to ${resource.toolGroup}: ${resource.resource}`);
+					throw new Error(
+						`User permanently denied access to ${resource.toolGroup}: ${resource.resource}`,
+					);
 				default:
 				case 'denyOnce':
 					throw new Error(`User denied access to ${resource.toolGroup}: ${resource.resource}`);
