@@ -1042,6 +1042,10 @@ export class InstanceAiService {
 					});
 				}
 
+				// Persist the agent tree so the confirmation UI survives page refresh.
+				// The tree is rebuilt from in-memory events and includes the
+				// confirmation-request data that the frontend needs.
+				await this.saveAgentTreeSnapshot(threadId, runId, snapshotStorage);
 				return;
 			}
 
