@@ -1009,7 +1009,7 @@ function handleLater() {
 						<N8nButton
 							size="small"
 							:class="$style.actionButton"
-							:label="i18n.baseText('instanceAi.workflowSetup.apply')"
+							:label="i18n.baseText('instanceAi.credential.continueButton')"
 							data-test-id="instance-ai-workflow-setup-apply-button"
 							@click="handleApply"
 						/>
@@ -1214,11 +1214,7 @@ function handleLater() {
 							size="small"
 							:class="$style.actionButton"
 							:disabled="!anyCardComplete"
-							:label="
-								isPartialApply
-									? i18n.baseText('instanceAi.workflowSetup.applyCompleted')
-									: i18n.baseText('instanceAi.workflowSetup.apply')
-							"
+							:label="i18n.baseText('instanceAi.credential.continueButton')"
 							data-test-id="instance-ai-workflow-setup-apply-button"
 							@click="handleApply"
 						/>
