@@ -30,20 +30,17 @@ export class RoleMappingRuleController {
 
 	@Patch('/:id')
 	@GlobalScope('roleMappingRule:update')
+	// @Body at param index 2 (same as `create`) so controller-registry applies Zod to PatchRoleMappingRuleDto; @Param before @Body skips body validation.
 	async patch(
 		_req: AuthenticatedRequest,
 		res: Response,
+		@Body body: PatchRoleMappingRuleDto,
 		@Param('id') id: string,
 	): Promise<RoleMappingRuleResponse | Response> {
 		if (!this.licenseState.isProvisioningLicensed()) {
 			return res.status(403).json({ message: 'Provisioning is not licensed' });
 		}
 
-		const parsed = PatchRoleMappingRuleDto.safeParse(_req.body);
-		if (!parsed.success) {
-			return res.status(400).json(parsed.error.errors[0]);
-		}
-
-		return await this.roleMappingRuleService.patch(id, parsed.data);
+		return await this.roleMappingRuleService.patch(id, body);
 	}
 }

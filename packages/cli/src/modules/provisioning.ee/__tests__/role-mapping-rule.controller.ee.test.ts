@@ -75,7 +75,7 @@ describe('RoleMappingRuleController', () => {
 
 		it('should return 403 if provisioning is not licensed', async () => {
 			licenseState.isProvisioningLicensed.mockReturnValue(false);
-			await controller.patch(req, res, ruleId);
+			await controller.patch(req, res, patchBody, ruleId);
 
 			expect(res.status).toHaveBeenCalledWith(403);
 		});
@@ -95,7 +95,7 @@ describe('RoleMappingRuleController', () => {
 			licenseState.isProvisioningLicensed.mockReturnValue(true);
 			roleMappingRuleService.patch.mockResolvedValue(updated);
 
-			const result = await controller.patch(req, res, ruleId);
+			const result = await controller.patch(req, res, patchBody, ruleId);
 
 			expect(result).toEqual(updated);
 			expect(roleMappingRuleService.patch).toHaveBeenCalledWith(ruleId, patchBody);
