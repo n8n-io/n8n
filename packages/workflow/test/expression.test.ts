@@ -165,6 +165,13 @@ describe('Expression', () => {
 			expect(evaluate('={{Symbol(1).toString()}}')).toEqual(Symbol(1).toString());
 		});
 
+		it('should expose correct process properties in sandbox', () => {
+			expect(evaluate('={{process.version}}')).toMatch(/^v\d+\.\d+\.\d+/);
+			expect(evaluate('={{typeof process.pid}}')).toBe('number');
+			expect(evaluate('={{process.version}}')).not.toBe(process.pid);
+			expect(evaluate('={{process.version}}')).toBe(process.version);
+		});
+
 		it('should not able to do arbitrary code execution', () => {
 			const testFn = vi.fn();
 			Object.assign(global, { testFn });

@@ -1,5 +1,4 @@
 import { type User, type ProjectRepository, WorkflowEntity } from '@n8n/db';
-import { resolveNodeWebhookId } from 'n8n-workflow';
 import z from 'zod';
 
 import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL, CODE_BUILDER_VALIDATE_TOOL } from './constants';
@@ -11,6 +10,7 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import type { NodeTypes } from '@/node-types';
 import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
+import { resolveNodeWebhookIds } from '@/workflow-helpers';
 import type { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 
 const inputSchema = {
@@ -148,14 +148,7 @@ export const createCreateWorkflowFromCodeTool = (
 				meta: { ...workflowJson.meta, aiBuilderAssisted: true },
 			});
 
-			for (const node of newWorkflow.nodes) {
-				try {
-					const desc = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-					resolveNodeWebhookId(node, desc.description);
-				} catch {
-					// Node type not found, skip
-				}
-			}
+			resolveNodeWebhookIds(newWorkflow, nodeTypes);
 
 			// Resolve the effective project ID — default to the user's personal project
 			let effectiveProjectId = projectId;
