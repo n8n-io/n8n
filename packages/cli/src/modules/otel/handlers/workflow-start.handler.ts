@@ -1,10 +1,10 @@
 import type { WorkflowExecuteBeforeContext } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import type { Tracer } from '@opentelemetry/api';
 
 import { ATTR } from '../otel.constants';
 import type { SpanHandler } from './interfaces';
 import type { SpanRegistry } from '../span-registry';
-import type { Tracer } from '@opentelemetry/api';
 
 @Service()
 export class WorkflowStartHandler implements SpanHandler<WorkflowExecuteBeforeContext> {

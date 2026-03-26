@@ -4,54 +4,53 @@ import type { WorkflowExecuteBeforeContext, WorkflowExecuteAfterContext } from '
 import { Service } from '@n8n/di';
 import { trace } from '@opentelemetry/api';
 
-import type { SpanHandler } from './handlers/interfaces';
 import { WorkflowEndHandler } from './handlers/workflow-end.handler';
 import { WorkflowStartHandler } from './handlers/workflow-start.handler';
 import { SpanRegistry } from './span-registry';
 
 const TRACER_NAME = 'n8n-workflow';
-type OtelLifecycleHandlers = {
-	workflowExecuteBefore: SpanHandler<WorkflowExecuteBeforeContext>;
-	workflowExecuteAfter: SpanHandler<WorkflowExecuteAfterContext>;
+type OtelLifecycleContexts = {
+	workflowExecuteBefore: WorkflowExecuteBeforeContext;
+	workflowExecuteAfter: WorkflowExecuteAfterContext;
+};
+type OtelLifecycleDispatchers = {
+	[K in keyof OtelLifecycleContexts]: (ctx: OtelLifecycleContexts[K]) => void;
 };
 
 @Service()
 export class N8nInstrumentation {
 	private readonly spans = new SpanRegistry();
 	private readonly tracer = trace.getTracer(TRACER_NAME);
-	private readonly lifecycleHandlers: OtelLifecycleHandlers;
-	private readonly loggedFailureEvents = new Set<keyof OtelLifecycleHandlers>();
+	private readonly lifecycleDispatchers: OtelLifecycleDispatchers;
+	private readonly loggedFailureEvents = new Set<keyof OtelLifecycleDispatchers>();
 
 	constructor(
 		workflowStartHandler: WorkflowStartHandler,
 		workflowEndHandler: WorkflowEndHandler,
 		private readonly logger: Logger,
 	) {
-		this.lifecycleHandlers = {
-			workflowExecuteBefore: workflowStartHandler,
-			workflowExecuteAfter: workflowEndHandler,
+		this.lifecycleDispatchers = {
+			workflowExecuteBefore: (ctx) => workflowStartHandler.handle(ctx, this.spans, this.tracer),
+			workflowExecuteAfter: (ctx) => workflowEndHandler.handle(ctx, this.spans),
 		};
 	}
 
 	@OnLifecycleEvent('workflowExecuteBefore')
 	onWorkflowStart(ctx: WorkflowExecuteBeforeContext) {
-		this.executeLifecycleHandler(
-			() => this.lifecycleHandlers.workflowExecuteBefore.handle(ctx, this.spans, this.tracer),
-			'workflowExecuteBefore',
-		);
+		this.executeLifecycleHandler('workflowExecuteBefore', ctx);
 	}
 
 	@OnLifecycleEvent('workflowExecuteAfter')
 	onWorkflowEnd(ctx: WorkflowExecuteAfterContext) {
-		this.executeLifecycleHandler(
-			() => this.lifecycleHandlers.workflowExecuteAfter.handle(ctx, this.spans, this.tracer),
-			'workflowExecuteAfter',
-		);
+		this.executeLifecycleHandler('workflowExecuteAfter', ctx);
 	}
 
-	private executeLifecycleHandler(handler: () => void, event: keyof OtelLifecycleHandlers): void {
+	private executeLifecycleHandler<K extends keyof OtelLifecycleContexts>(
+		event: K,
+		ctx: OtelLifecycleContexts[K],
+	): void {
 		try {
-			handler();
+			this.lifecycleDispatchers[event](ctx);
 		} catch (error) {
 			if (this.loggedFailureEvents.has(event)) return;
 
