@@ -83,3 +83,25 @@ jobs:
 
           git reset --hard public-1.x
           git push origin 1.x --force-with-lease
+
+      - name: Ensure bundle/2.x exists
+        run: |
+          if git ls-remote --exit-code origin refs/heads/bundle/2.x; then
+            echo "bundle/2.x already exists, skipping"
+          else
+            echo "bundle/2.x not found, creating from master"
+            git checkout master
+            git checkout -b bundle/2.x
+            git push origin bundle/2.x
+          fi
+
+      - name: Ensure bundle/1.x exists
+        run: |
+          if git ls-remote --exit-code origin refs/heads/bundle/1.x; then
+            echo "bundle/1.x already exists, skipping"
+          else
+            echo "bundle/1.x not found, creating from 1.x"
+            git checkout 1.x
+            git checkout -b bundle/1.x
+            git push origin bundle/1.x
+          fi

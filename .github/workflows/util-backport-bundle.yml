@@ -1,4 +1,4 @@
-name: 'Util: Backport bundle PR to 1.x'
+name: 'Util: Backport bundle PR to bundle/1.x'
 
 run-name: Backport pull request ${{ github.event.pull_request.number || inputs.pull-request-id }}
 
