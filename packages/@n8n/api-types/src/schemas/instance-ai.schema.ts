@@ -29,6 +29,7 @@ export const instanceAiEventTypeSchema = z.enum([
 	'confirmation-request',
 	'tasks-update',
 	'filesystem-request',
+	'thread-title-updated',
 	'status',
 	'error',
 ]);
@@ -377,6 +378,10 @@ export const tasksUpdatePayloadSchema = z.object({
 	tasks: taskListSchema,
 });
 
+export const threadTitleUpdatedPayloadSchema = z.object({
+	title: z.string(),
+});
+
 // ---------------------------------------------------------------------------
 // Event schema (Zod discriminated union — single source of truth)
 // ---------------------------------------------------------------------------
@@ -414,6 +419,11 @@ export const instanceAiEventSchema = z.discriminatedUnion('type', [
 		...eventBase,
 		payload: filesystemRequestPayloadSchema,
 	}),
+	z.object({
+		type: z.literal('thread-title-updated'),
+		...eventBase,
+		payload: threadTitleUpdatedPayloadSchema,
+	}),
 ]);
 
 // ---------------------------------------------------------------------------
@@ -442,6 +452,10 @@ export type InstanceAiErrorEvent = Extract<InstanceAiEvent, { type: 'error' }>;
 export type InstanceAiFilesystemRequestEvent = Extract<
 	InstanceAiEvent,
 	{ type: 'filesystem-request' }
+>;
+export type InstanceAiThreadTitleUpdatedEvent = Extract<
+	InstanceAiEvent,
+	{ type: 'thread-title-updated' }
 >;
 
 export type InstanceAiFilesystemResponse = z.infer<typeof instanceAiFilesystemResponseSchema>;

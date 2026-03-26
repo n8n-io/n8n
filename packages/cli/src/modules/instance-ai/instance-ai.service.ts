@@ -36,6 +36,9 @@ import {
 	startDetachedDelegateTask,
 	startResearchAgentTask,
 	streamAgentRun,
+	truncateToTitle,
+	generateThreadTitle,
+	patchThread,
 	type ConfirmationData,
 	type DomainAccessTracker,
 	type ManagedBackgroundTask,
@@ -514,13 +517,12 @@ export class InstanceAiService {
 		this.logger.debug('Instance AI service shut down');
 	}
 
-	private createMemoryConfig(titleModel?: string) {
+	private createMemoryConfig() {
 		return {
 			storage: this.compositeStore,
 			embedderModel: this.instanceAiConfig.embedderModel || undefined,
 			lastMessages: this.instanceAiConfig.lastMessages,
 			semanticRecallTopK: this.instanceAiConfig.semanticRecallTopK,
-			titleModel,
 		};
 	}
 
@@ -591,8 +593,8 @@ export class InstanceAiService {
 		return `<planned-task-follow-up type="${type}">\n${JSON.stringify(payload, null, 2)}\n</planned-task-follow-up>\n\n${AUTO_FOLLOW_UP_MESSAGE}`;
 	}
 
-	private async createPlannedTaskState(titleModel?: string) {
-		const memory = createMemory(this.createMemoryConfig(titleModel));
+	private async createPlannedTaskState() {
+		const memory = createMemory(this.createMemoryConfig());
 		const taskStorage = new MastraTaskStorage(memory);
 		const plannedTaskStorage = new PlannedTaskStorage(memory);
 		const plannedTaskService = new PlannedTaskCoordinator(plannedTaskStorage);
@@ -641,8 +643,7 @@ export class InstanceAiService {
 		context.runId = runId;
 
 		const modelId = await this.resolveModel(user);
-		const titleModel = typeof modelId === 'string' ? modelId : modelId.id;
-		const memory = createMemory(this.createMemoryConfig(titleModel));
+		const memory = createMemory(this.createMemoryConfig());
 		await this.ensureThreadExists(memory, threadId, user.id);
 
 		const taskStorage = new MastraTaskStorage(memory);
@@ -936,9 +937,16 @@ export class InstanceAiService {
 					messageGroupId,
 					executionPushRef,
 				);
-			const memoryConfig = this.createMemoryConfig(
-				typeof modelId === 'string' ? modelId : modelId.id,
-			);
+			const memoryConfig = this.createMemoryConfig();
+
+			// Set heuristic title before agent starts — thread always has a title
+			const thread = await memory.getThreadById({ threadId });
+			if (thread && !thread.title) {
+				await patchThread(memory, {
+					threadId,
+					update: () => ({ title: truncateToTitle(message) }),
+				});
+			}
 
 			const existingTasks = await taskStorage.get(threadId);
 			if (existingTasks) {
@@ -1047,7 +1055,10 @@ export class InstanceAiService {
 				return;
 			}
 
-			await this.finalizeRun(threadId, runId, result.status, snapshotStorage);
+			await this.finalizeRun(threadId, runId, result.status, snapshotStorage, {
+				userId: user.id,
+				modelId,
+			});
 		} catch (error) {
 			if (signal.aborted) {
 				this.publishRunFinish(threadId, runId, 'cancelled', 'user_cancelled');
@@ -1343,10 +1354,67 @@ export class InstanceAiService {
 		runId: string,
 		status: 'completed' | 'cancelled',
 		snapshotStorage: DbSnapshotStorage,
+		options?: { userId?: string; modelId?: ModelConfig },
 	): Promise<void> {
 		this.publishRunFinish(threadId, runId, status);
 		if (status === 'completed') {
 			await this.saveAgentTreeSnapshot(threadId, runId, snapshotStorage);
+			if (options?.userId && options?.modelId) {
+				void this.refineTitleIfNeeded(threadId, options.userId, options.modelId);
+			}
+		}
+	}
+
+	/**
+	 * Refine the thread title with an LLM-generated version after a run completes.
+	 * Fires asynchronously and is best-effort — the heuristic title remains if this fails.
+	 */
+	private async refineTitleIfNeeded(
+		threadId: string,
+		userId: string,
+		modelId: ModelConfig,
+	): Promise<void> {
+		try {
+			const memory = createMemory(this.createMemoryConfig());
+			const thread = await memory.getThreadById({ threadId });
+			if (!thread?.title) return;
+
+			// Skip if thread already has an LLM-refined title
+			if (thread.metadata?.titleRefined) return;
+
+			// Get first user message
+			const result = await memory.recall({ threadId, resourceId: userId, perPage: 5 });
+			const firstUserMsg = result.messages.find((m) => m.role === 'user');
+			if (!firstUserMsg) return;
+			const userText =
+				typeof firstUserMsg.content === 'string'
+					? firstUserMsg.content
+					: JSON.stringify(firstUserMsg.content);
+
+			const llmTitle = await generateThreadTitle(modelId, userText);
+			if (!llmTitle) return;
+
+			await patchThread(memory, {
+				threadId,
+				update: ({ metadata }) => ({
+					title: llmTitle,
+					metadata: { ...metadata, titleRefined: true },
+				}),
+			});
+
+			// Push SSE event so frontend updates immediately
+			this.eventBus.publish(threadId, {
+				type: 'thread-title-updated',
+				runId: '',
+				agentId: ORCHESTRATOR_AGENT_ID,
+				payload: { title: llmTitle },
+			});
+		} catch (error) {
+			this.logger.warn('Failed to refine thread title', {
+				threadId,
+				error: getErrorMessage(error),
+			});
+			// Non-fatal — heuristic title remains
 		}
 	}
 
