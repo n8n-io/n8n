@@ -36,7 +36,7 @@ const scheduleTriggerNode = {
 };
 
 /**
- * Agent node definition reused across agent group fixtures.
+ * Agent node definition reused across node group fixtures.
  */
 const agentNode = {
 	id: 'agent-1',
@@ -379,14 +379,14 @@ export function createBuilderResponseBranchingWorkflow(): string {
 	return createBuilderStreamingResponse(workflow);
 }
 
-// #region Agent Group Fixtures
+// #region Node Group Fixtures
 
 /**
  * Agent workflow: Schedule Trigger → Agent with OpenAI Chat Model sub-node.
- * The model requires openAiApi credential → creates an agent group card with 1 section.
- * After trigger filter: 1 card (agent group).
+ * The model requires openAiApi credential → creates a node group card with 1 section.
+ * After trigger filter: 1 card (node group).
  */
-export function createBuilderResponseAgentGroup(): string {
+export function createBuilderResponseNodeGroup(): string {
 	const workflow = {
 		nodes: [scheduleTriggerNode, agentNode, openAiModelNode],
 		connections: {
@@ -403,10 +403,10 @@ export function createBuilderResponseAgentGroup(): string {
 
 /**
  * Agent + Slack: Schedule Trigger → Agent (with OpenAI model) → Slack.
- * Creates 2 wizard cards: agent group card (model section) + Slack (regular card).
- * Tests navigation between agent group and regular cards.
+ * Creates 2 wizard cards: node group card (model section) + Slack (regular card).
+ * Tests navigation between node group and regular cards.
  */
-export function createBuilderResponseAgentGroupWithSlack(): string {
+export function createBuilderResponseNodeGroupWithSlack(): string {
 	const workflow = {
 		nodes: [
 			scheduleTriggerNode,

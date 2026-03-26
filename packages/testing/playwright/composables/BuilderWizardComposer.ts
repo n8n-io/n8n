@@ -87,7 +87,7 @@ export class BuilderWizardComposer {
 
 	/**
 	 * Navigate to the card showing the given node name.
-	 * Handles both regular and agent group card types.
+	 * Handles both regular and node group card types.
 	 * Clicks next first, then prev if needed — avoids brittle position-based navigation.
 	 */
 	async navigateToCard(nodeName: string) {
@@ -103,7 +103,7 @@ export class BuilderWizardComposer {
 
 		if (await isTargetVisible()) return;
 
-		// Try clicking next (works with both regular and agent group card buttons)
+		// Try clicking next (works with both regular and node group card buttons)
 		for (let i = 0; i < 10; i++) {
 			if (!(await this.clickAnyNavButton('next'))) break;
 			if (await isTargetVisible()) return;
@@ -119,14 +119,14 @@ export class BuilderWizardComposer {
 	}
 
 	/**
-	 * Click whichever navigation button is visible and enabled (regular or agent group).
+	 * Click whichever navigation button is visible and enabled (regular or node group).
 	 */
 	private async clickAnyNavButton(direction: 'next' | 'prev'): Promise<boolean> {
 		const wizard = this.n8n.aiBuilder.wizard;
 		const buttons =
 			direction === 'next'
-				? [wizard.getNextButton(), wizard.getAgentGroupNextButton()]
-				: [wizard.getPrevButton(), wizard.getAgentGroupPrevButton()];
+				? [wizard.getNextButton(), wizard.getNodeGroupNextButton()]
+				: [wizard.getPrevButton(), wizard.getNodeGroupPrevButton()];
 
 		for (const btn of buttons) {
 			try {
