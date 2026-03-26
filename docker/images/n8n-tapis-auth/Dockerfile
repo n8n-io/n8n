@@ -33,6 +33,9 @@ RUN rm -rf packages/@n8n/eslint-plugin-community-nodes && \
 # 3. Bypass de scripts de Git en el package.json principal
 RUN sed -i '/"prepare":/d' package.json
 
+RUN npm pkg delete scripts.prepare
+
+
 # 4. Instalación limpia
 # Al haberlo borrado del workspace, pnpm install ya no lo verá
 RUN pnpm install --no-frozen-lockfile && \
