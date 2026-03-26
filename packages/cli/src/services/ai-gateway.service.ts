@@ -1,5 +1,6 @@
 import { AI_GATEWAY_CREDENTIAL_TYPES } from '@n8n/constants';
 import { GlobalConfig } from '@n8n/config';
+import { LicenseState } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
@@ -33,10 +34,12 @@ const GATEWAY_PROVIDER_CONFIG: Record<
 @Service()
 export class AiGatewayService {
 	private readonly tokenCache = new Map<string, { token: string; expiresAt: number }>();
+	private readonly TOKEN_CACHE_MAX_SIZE = 500;
 
 	constructor(
 		private readonly globalConfig: GlobalConfig,
 		private readonly license: License,
+		private readonly licenseState: LicenseState,
 		private readonly instanceSettings: InstanceSettings,
 	) {}
 
@@ -49,6 +52,11 @@ export class AiGatewayService {
 		credentialType: string,
 		userId: string,
 	): Promise<ICredentialDataDecryptedObject> {
+		// TODO: enforce license before shipping — throw FeatureNotLicensedError when not licensed
+		if (!this.licenseState.isAiCreditsLicensed()) {
+			console.warn('AI Gateway: license check failed (feat:aiCredits not licensed)');
+		}
+
 		const baseUrl = this.globalConfig.aiAssistant.baseUrl;
 		if (!baseUrl) {
 			throw new UserError('AI Gateway is not configured. Set the AI assistant base URL.');
@@ -89,6 +97,9 @@ export class AiGatewayService {
 		}
 
 		const { token, expiresIn } = (await response.json()) as GatewayTokenResponse;
+		if (this.tokenCache.size >= this.TOKEN_CACHE_MAX_SIZE) {
+			this.tokenCache.delete(this.tokenCache.keys().next().value as string);
+		}
 		this.tokenCache.set(key, { token, expiresAt: Date.now() + expiresIn * 1000 });
 		return token;
 	}

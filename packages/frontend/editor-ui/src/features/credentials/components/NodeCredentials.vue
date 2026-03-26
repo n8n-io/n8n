@@ -296,10 +296,16 @@ onMounted(() => {
 
 	// Clear stale gateway proxy credentials if the feature is disabled
 	if (!aiGateway.isEnabled.value) {
-		for (const [credType, credDetails] of Object.entries(props.node.credentials ?? {})) {
+		const credentials = { ...(props.node.credentials ?? {}) };
+		let hasProxied = false;
+		for (const [credType, credDetails] of Object.entries(credentials)) {
 			if (credDetails.__gatewayProxy) {
-				clearSelectedCredential(credType);
+				delete credentials[credType];
+				hasProxied = true;
 			}
+		}
+		if (hasProxied) {
+			emit('credentialSelected', { name: props.node.name, properties: { credentials } });
 		}
 	}
 });
