@@ -33,21 +33,14 @@ function isErrorSentinel(value: unknown): value is ErrorSentinel {
 }
 
 /**
- * If `value` is an error sentinel from a host-side callback, reconstruct
- * the Error with all properties and throw it. The isolate's outer try-catch
- * will then serialize it back via __reportError.
+ * If `value` is an error sentinel from a host-side callback, throw it
+ * directly. The isolate's outer try-catch will detect __isError and
+ * return it as the result. Error reconstruction happens on the host only.
  */
 function throwIfErrorSentinel(value: unknown): void {
 	if (isErrorSentinel(value)) {
-		const err = new Error(value.message);
-		err.name = value.name || 'Error';
-		if (value.stack) err.stack = value.stack;
-		if (value.extra) {
-			for (const [k, v] of Object.entries(value.extra)) {
-				(err as unknown as Record<string, unknown>)[k] = v;
-			}
-		}
-		throw err;
+		// eslint-disable-next-line @typescript-eslint/no-throw-literal -- sentinel is reconstructed on the host
+		throw value;
 	}
 }
 

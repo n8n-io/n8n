@@ -522,34 +522,18 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			// This initializes $json, $binary, etc. as lazy proxies
 			this.resetDataProxies(options?.timezone);
 
-			// Step 3: Register error reporting callback.
-			// Errors thrown inside the isolate lose their class and custom properties
-			// when crossing the boundary. Instead we catch them inside the isolate,
-			// serialize them via this callback (which runs on the host), and return
-			// a sentinel so the host can reconstruct the original error type.
-			let capturedError: {
-				name: string;
-				message: string;
-				stack?: string;
-				extra?: Record<string, unknown>;
-			} | null = null;
-			const reportError = new (getIvm().Reference)(
-				(name: string, message: string, stack: string, extra: Record<string, unknown>) => {
-					capturedError = { name, message, stack, extra };
-				},
-			);
-			this.context.global.setSync('__reportError', reportError);
-
-			// Step 4: Wrap transformed code so 'this' === __data in the isolate.
+			// Step 3: Wrap transformed code so 'this' === __data in the isolate.
 			// Tournament generates: this.$json.email, this.$items(), etc.
 			// __data has $json, $items, etc. as lazy proxies (set in resetDataProxies).
-			// The outer try-catch serializes errors via __reportError and returns a
-			// sentinel object instead of letting the error cross the isolate boundary.
+			// The outer try-catch serializes errors into a sentinel object and returns
+			// it as the result. Errors from host callbacks arrive as sentinels already
+			// (via serializeError), so we pass them through. This avoids a round-trip
+			// callback and keeps Error reconstruction on the host side only.
 			const wrappedCode =
 				`(function() { try { var __result = (function() {\n${code}\n}).call(__data); return __prepareForTransfer(__result); }` +
-				` catch(e) { var extra = {}; for (var k in e) { if (e.hasOwnProperty(k)) extra[k] = e[k]; }` +
-				` __reportError.applySync(null, [e.name || "Error", e.message || "", e.stack || "", extra],` +
-				` { arguments: { copy: true } }); return { __isError: true }; } })()`;
+				` catch(e) { if (e && e.__isError) return e;` +
+				` var extra = {}; for (var k in e) { if (e.hasOwnProperty(k)) extra[k] = e[k]; }` +
+				` return { __isError: true, name: e.name || "Error", message: e.message || "", stack: e.stack || "", extra: extra }; } })()`;
 
 			// Cache key is `code` (tournament output), but the compiled script uses
 			// `wrappedCode` which adds the try-catch/reportError wrapper. This works
@@ -572,14 +556,9 @@ export class IsolatedVmBridge implements RuntimeBridge {
 				copy: true,
 			});
 
-			// Step 6: If the isolate caught an error, reconstruct and throw it
-			if (capturedError) {
-				throw this.reconstructError(capturedError);
-			}
-
+			// Step 6: If the result is an error sentinel, reconstruct and throw
 			if (result && typeof result === 'object' && (result as Record<string, unknown>).__isError) {
-				// Fallback if capturedError wasn't set (shouldn't happen, but be safe)
-				throw new Error('Expression evaluation failed: unknown error');
+				throw this.reconstructError(result as Record<string, unknown>);
 			}
 
 			if (this.config.debug) {
@@ -619,21 +598,17 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * Maps error names back to their host-side classes and restores
 	 * custom properties that would otherwise be lost crossing the boundary.
 	 */
-	private reconstructError(data: {
-		name: string;
-		message: string;
-		stack?: string;
-		extra?: Record<string, unknown>;
-	}): Error {
-		const error = new Error(data.message);
-		error.name = data.name;
+	private reconstructError(data: Record<string, unknown>): Error {
+		const error = new Error(data.message as string);
+		error.name = (data.name as string) || 'Error';
 		if (data.stack) {
-			error.stack = data.stack;
+			error.stack = data.stack as string;
 		}
 
 		// Restore custom properties transferred via copy: true
-		if (data.extra) {
-			for (const [key, value] of Object.entries(data.extra)) {
+		const extra = data.extra;
+		if (extra && typeof extra === 'object') {
+			for (const [key, value] of Object.entries(extra as Record<string, unknown>)) {
 				(error as unknown as Record<string, unknown>)[key] = value;
 			}
 		}
