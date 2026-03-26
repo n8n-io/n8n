@@ -34,6 +34,7 @@ export const LOG_SCOPES = [
 	'workflow-history-compaction',
 	'data-table-csv-import',
 	'ssrf-protection',
+	'binary-file-reclamation',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];

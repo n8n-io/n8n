@@ -29,6 +29,7 @@ import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { Server } from '@/server';
 import { OwnershipService } from '@/services/ownership.service';
 import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service';
+import { BinaryFileReclamationService } from '@/services/pruning/binary-file-reclamation.service';
 import { UrlService } from '@/services/url.service';
 import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -359,6 +360,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		Container.get(ExecutionsPruningService).init();
 		Container.get(WorkflowHistoryCompactionService).init();
+		Container.get(BinaryFileReclamationService).init();
 
 		if (this.globalConfig.executions.mode === 'regular') {
 			await this.runEnqueuedExecutions();

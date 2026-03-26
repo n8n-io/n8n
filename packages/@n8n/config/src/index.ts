@@ -30,6 +30,7 @@ import { TaskRunnersConfig } from './configs/runners.config';
 import { ScalingModeConfig } from './configs/scaling-mode.config';
 import { SecurityConfig } from './configs/security.config';
 import { SentryConfig } from './configs/sentry.config';
+import { BinaryFileReclamationConfig } from './configs/binary-file-reclamation.config';
 import { SsoConfig } from './configs/sso.config';
 import { SsrfProtectionConfig } from './configs/ssrf-protection.config';
 import { TagsConfig } from './configs/tags.config';
@@ -66,6 +67,7 @@ export { NodesConfig } from './configs/nodes.config';
 export { CronLoggingConfig } from './configs/logging.config';
 export { WorkflowHistoryCompactionConfig } from './configs/workflow-history-compaction.config';
 export { ChatHubConfig } from './configs/chat-hub.config';
+export { BinaryFileReclamationConfig } from './configs/binary-file-reclamation.config';
 
 const protocolSchema = z.enum(['http', 'https']);
 
@@ -241,4 +243,7 @@ export class GlobalConfig {
 
 	@Nested
 	chatHub: ChatHubConfig;
+
+	@Nested
+	binaryFileReclamation: BinaryFileReclamationConfig;
 }

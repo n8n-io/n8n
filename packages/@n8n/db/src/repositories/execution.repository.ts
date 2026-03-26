@@ -15,6 +15,7 @@ import {
 	IsNull,
 	LessThan,
 	LessThanOrEqual,
+	MoreThan,
 	MoreThanOrEqual,
 	Not,
 	Repository,
@@ -593,6 +594,22 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			executionId,
 			storedAt,
 		}));
+	}
+
+	async findCompletedExecutionsOldestFirst(
+		batchSize: number,
+		afterDate?: Date,
+	): Promise<Pick<ExecutionEntity, 'id' | 'workflowId' | 'stoppedAt'>[]> {
+		return await this.find({
+			select: ['id', 'workflowId', 'stoppedAt'],
+			where: {
+				status: In(['success', 'error', 'canceled', 'crashed']),
+				deletedAt: IsNull(),
+				...(afterDate ? { stoppedAt: MoreThan(afterDate) } : {}),
+			},
+			order: { stoppedAt: 'ASC' },
+			take: batchSize,
+		});
 	}
 
 	async deleteByIds(executionIds: string[]) {

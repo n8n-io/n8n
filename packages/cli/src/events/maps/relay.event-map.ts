@@ -750,6 +750,14 @@ export type RelayEventMap = {
 	};
 	// #endregion
 
+	// #region Binary file reclamation
+	'binary-files-reclaimed': {
+		totalBytesReclaimed: number;
+		totalExecutionsProcessed: number;
+		durationMs: number;
+	};
+	// #endregion
+
 	// #region Instance Policies
 
 	'instance-policies-updated': {
