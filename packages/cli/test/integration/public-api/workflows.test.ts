@@ -1326,6 +1326,32 @@ describe('POST /workflows', () => {
 		expect(sharedWorkflow?.role).toEqual('workflow:owner');
 	});
 
+	test('should assign webhookId to webhook nodes created via public API', async () => {
+		const payload = {
+			name: 'webhook-test',
+			nodes: [
+				{
+					id: 'uuid-1234',
+					parameters: { path: 'test-hook', httpMethod: 'POST' },
+					name: 'Webhook',
+					type: 'n8n-nodes-base.webhook',
+					typeVersion: 2,
+					position: [250, 300],
+				},
+			],
+			connections: {},
+			settings: {
+				executionOrder: 'v1',
+			},
+		};
+
+		const response = await authOwnerAgent.post('/workflows').send(payload);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.nodes[0].webhookId).toBeDefined();
+		expect(typeof response.body.nodes[0].webhookId).toBe('string');
+	});
+
 	test('should always create workflow history version', async () => {
 		const payload = {
 			name: 'testing',

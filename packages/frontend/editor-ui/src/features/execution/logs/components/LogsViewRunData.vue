@@ -6,21 +6,32 @@ import type { IRunDataDisplayMode } from '@/Interface';
 import type { NodePanelType } from '@/features/ndv/shared/ndv.types';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { waitingNodeTooltip } from '@/features/execution/executions/executions.utils';
+import { useExecutionRedaction } from '@/features/execution/executions/composables/useExecutionRedaction';
 import { computed, inject, ref } from 'vue';
 import { I18nT } from 'vue-i18n';
 import { PopOutWindowKey } from '@/app/constants';
+import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants/modals';
+import { useUIStore } from '@/app/stores/ui.store';
 import { isSubNodeLog } from '../logs.utils';
 import RunDataItemCount from '@/features/ndv/runData/components/RunDataItemCount.vue';
+import RedactedDataState from '@/features/ndv/panel/components/RedactedDataState.vue';
 import { type SearchShortcut } from '@/features/workflows/canvas/canvas.types';
 import NDVEmptyState from '@/features/ndv/panel/components/NDVEmptyState.vue';
 
 import { N8nLink, N8nText } from '@n8n/design-system';
-const { title, logEntry, paneType, collapsingTableColumnName } = defineProps<{
+const {
+	title,
+	logEntry,
+	paneType,
+	collapsingTableColumnName,
+	showRedactedOverlay = true,
+} = defineProps<{
 	title: string;
 	paneType: NodePanelType;
 	logEntry: LogEntry;
 	collapsingTableColumnName: string | null;
 	searchShortcut?: SearchShortcut;
+	showRedactedOverlay?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -29,6 +40,8 @@ const emit = defineEmits<{
 
 const locale = useI18n();
 const ndvStore = useNDVStore();
+const uiStore = useUIStore();
+const { canReveal, isDynamicCredentials, revealData } = useExecutionRedaction();
 
 const popOutWindow = inject(PopOutWindowKey, ref<Window | undefined>());
 
@@ -121,8 +134,26 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 
 		<template #node-waiting>
 			<NDVEmptyState :title="locale.baseText('ndv.output.waitNodeWaiting.title')" wide>
-				<span v-n8n-html="waitingNodeTooltip(logEntry.node, logEntry.workflow)" />
+				<span
+					v-n8n-html="
+						waitingNodeTooltip(logEntry.node, logEntry.workflow, logEntry.runData?.metadata)
+					"
+				/>
 			</NDVEmptyState>
+		</template>
+
+		<template v-if="showRedactedOverlay" #data-redacted>
+			<RedactedDataState
+				:title="
+					locale.baseText(
+						paneType === 'output' ? 'ndv.output.redacted.title' : 'ndv.input.redacted.title',
+					)
+				"
+				:is-dynamic-credentials="isDynamicCredentials"
+				:can-reveal="canReveal"
+				@open-settings="uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY)"
+				@reveal="revealData"
+			/>
 		</template>
 
 		<template v-if="isMultipleInput" #content>
