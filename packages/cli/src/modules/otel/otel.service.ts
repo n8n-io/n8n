@@ -96,7 +96,7 @@ export class OtelService {
 			// HTTP response means the server is reachable. We only catch network errors.
 			await fetch(url, {
 				method: 'HEAD',
-				signal: AbortSignal.timeout(2_000),
+				signal: AbortSignal.timeout(this.config.startupConnectivityTimeoutMs),
 			});
 		} catch (error) {
 			if (this.hasLoggedStartupConnectivityFailure) return;
