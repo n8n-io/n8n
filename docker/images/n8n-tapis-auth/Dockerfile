@@ -27,22 +27,22 @@ COPY . .
 
 
 
-RUN rm -rf packages/@n8n/eslint-plugin-community-nodes/src && \
-    mkdir -p packages/@n8n/eslint-plugin-community-nodes/src && \
-    touch packages/@n8n/eslint-plugin-community-nodes/src/index.ts && \
-    npm pkg set scripts.build="echo 'Skipping broken build'" --workspace=@n8n/eslint-plugin-community-nodes
+RUN rm -rf packages/@n8n/eslint-plugin-community-nodes && \
+    sed -i '/packages\/@n8n\/eslint-plugin-community-nodes/d' pnpm-workspace.yaml
 
-# 3. Bypass de scripts de preparación de Git
-RUN npm pkg delete scripts.prepare
+# 3. Bypass de scripts de Git en el package.json principal
+RUN sed -i '/"prepare":/d' package.json
 
-# 4. Instalación y adición de Esbuild
+# 4. Instalación limpia
+# Al haberlo borrado del workspace, pnpm install ya no lo verá
 RUN pnpm install --no-frozen-lockfile && \
     pnpm add -w esbuild@0.25.0 @esbuild/linux-x64
 
-# 5. BUILD FILTRADO Y EXCLUYENTE
-# Usamos el filtro de exclusión (!) para asegurar que Turbo ni lo mire
+# 5. BUILD FINAL
+# Ahora n8n... solo construirá lo que realmente existe y es necesario
 ENV NODE_OPTIONS="--max-old-space-size=8192"
-RUN pnpm turbo run build --filter=n8n... --filter=!@n8n/eslint-plugin-community-nodes
+RUN pnpm turbo run build --filter=n8n...
+
 
 
 
