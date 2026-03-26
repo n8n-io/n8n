@@ -1044,6 +1044,7 @@ export class InstanceAiService {
 			});
 		} finally {
 			this.runState.clearActiveRun(threadId);
+			this.threadPushRef.delete(threadId);
 			this.domainAccessTrackersByThread.get(threadId)?.clearRun(runId);
 			// Clean up Mastra workflow snapshots unless the run is suspended (needed for resume).
 			// Mastra only persists snapshots on suspension and never deletes them on completion.
@@ -1193,6 +1194,7 @@ export class InstanceAiService {
 			});
 		} finally {
 			this.runState.clearActiveRun(opts.threadId);
+			this.threadPushRef.delete(opts.threadId);
 		}
 	}
 

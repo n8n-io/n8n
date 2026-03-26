@@ -1,6 +1,7 @@
 import type { ExecutionStarted } from '@n8n/api-types/push/execution';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { parse } from 'flatted';
+import { createRunExecutionData } from 'n8n-workflow';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
 
 /**
@@ -39,18 +40,22 @@ export async function executionStarted(
 			finished: false,
 			mode: 'manual',
 			status: 'running',
+			createdAt: new Date(),
 			startedAt: new Date(),
 			workflowData: {
 				id: wf.id,
 				name: wf.name,
+				active: wf.active,
+				isArchived: wf.isArchived,
 				nodes: wf.nodes,
 				connections: wf.connections,
 				createdAt: wf.createdAt,
 				updatedAt: wf.updatedAt,
 				versionId: wf.versionId ?? '',
+				activeVersionId: wf.activeVersionId ?? null,
 			},
-			data: { resultData: { runData: {}, lastNodeExecuted: '' } },
-		} as never);
+			data: createRunExecutionData(),
+		});
 	}
 
 	if (workflowsStore.workflowExecutionData?.data && data.flattedRunData) {

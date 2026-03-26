@@ -80,17 +80,16 @@ describe('InstanceAiWorkflowPreview', () => {
 		});
 	});
 
-	it('should show "Open in editor" link when workflow is loaded', async () => {
+	it('should show external-link button when workflow is loaded', async () => {
 		mockFetchWorkflow.mockResolvedValue(fakeWorkflow);
 
-		const { getByText } = renderComponent({
+		const { container } = renderComponent({
 			props: { workflowId: 'wf-123', executionId: null },
 		});
 
 		await waitFor(() => {
-			const link = getByText('Open in editor');
+			const link = container.querySelector('a[href="/workflow/wf-123"]');
 			expect(link).toBeInTheDocument();
-			expect(link.closest('a')).toHaveAttribute('href', '/workflow/wf-123');
 		});
 	});
 

@@ -1,8 +1,6 @@
-import { useI18n } from '@n8n/i18n';
+import { i18n } from '@n8n/i18n';
 import type { FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
 import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_SETTINGS_VIEW } from './constants';
-
-const i18n = useI18n();
 
 const InstanceAiView = async () => await import('./InstanceAiView.vue');
 const SettingsInstanceAiView = async () => await import('./views/SettingsInstanceAiView.vue');

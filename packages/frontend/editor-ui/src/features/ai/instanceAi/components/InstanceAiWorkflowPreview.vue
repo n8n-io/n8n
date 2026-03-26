@@ -164,18 +164,6 @@ onBeforeUnmount(() => {
 	flex-shrink: 0;
 }
 
-.openLink {
-	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
-	color: var(--color--primary);
-	text-decoration: none;
-	white-space: nowrap;
-
-	&:hover {
-		text-decoration: underline;
-	}
-}
-
 .content {
 	flex: 1;
 	min-height: 0;

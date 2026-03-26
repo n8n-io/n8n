@@ -83,7 +83,11 @@ watch(
 					variant="ghost"
 					size="medium"
 					tag="a"
-					:href="props.projectId ? `/projects/${props.projectId}/datatables/${dataTable.id}` : '/home/datatables'"
+					:href="
+						props.projectId
+							? `/projects/${props.projectId}/datatables/${dataTable.id}`
+							: '/home/datatables'
+					"
 					target="_blank"
 				/>
 				<N8nIconButton icon="x" variant="ghost" size="medium" @click="emit('close')" />
@@ -100,11 +104,11 @@ watch(
 
 			<!-- Data table grid -->
 			<DataTableTable
-			v-if="dataTable"
-			:key="props.refreshKey"
-			:data-table="dataTable"
-			:read-only="true"
-		/>
+				v-if="dataTable"
+				:key="props.refreshKey"
+				:data-table="dataTable"
+				:read-only="true"
+			/>
 
 			<!-- Loading overlay (shown during initial load or when no data table yet) -->
 			<div v-if="isLoading && !dataTable" :class="$style.centerState">
@@ -142,18 +146,6 @@ watch(
 	align-items: center;
 	gap: var(--spacing--4xs);
 	flex-shrink: 0;
-}
-
-.openLink {
-	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
-	color: var(--color--primary);
-	text-decoration: none;
-	white-space: nowrap;
-
-	&:hover {
-		text-decoration: underline;
-	}
 }
 
 .content {
