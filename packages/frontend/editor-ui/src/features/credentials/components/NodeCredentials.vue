@@ -654,7 +654,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 						data-test-id="node-credentials-select"
 					/>
 				</div>
-				<template v-else-if="!isCredentialProxied(type.name)">
+				<div v-else v-show="!isCredentialProxied(type.name)">
 					<div
 						v-if="
 							options.length === 0 && showQuickConnectEmptyState(type) && quickConnectCredentialType
@@ -812,7 +812,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 							/>
 						</div>
 					</div>
-				</template>
+				</div>
 				<N8nNotice
 					v-if="showResolvableWarning(type.name)"
 					theme="warning"
