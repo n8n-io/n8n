@@ -537,11 +537,28 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			// it as the result. Errors from host callbacks arrive as sentinels already
 			// (via serializeError), so we pass them through. This avoids a round-trip
 			// callback and keeps Error reconstruction on the host side only.
-			const wrappedCode =
-				`(function() { try { var __result = (function() {\n${code}\n}).call(__data); return __prepareForTransfer(__result); }` +
-				` catch(e) { if (e && e.__isError) return e;` +
-				` var extra = {}; for (var k in e) { if (e.hasOwnProperty(k)) extra[k] = e[k]; }` +
-				` return { __isError: true, name: e.name || "Error", message: e.message || "", stack: e.stack || "", extra: extra }; } })()`;
+			const wrappedCode = `
+(function() {
+  try {
+    var __result = (function() {
+      ${code}
+    }).call(__data);
+    return __prepareForTransfer(__result);
+  } catch(e) {
+    if (e && e.__isError) return e;
+    var extra = {};
+    for (var k in e) {
+      if (e.hasOwnProperty(k)) extra[k] = e[k];
+    }
+    return {
+      __isError: true,
+      name: e.name || "Error",
+      message: e.message || "",
+      stack: e.stack || "",
+      extra: extra
+    };
+  }
+})()`;
 
 			// Cache key is `code` (tournament output), but the compiled script uses
 			// `wrappedCode` which adds the try-catch/reportError wrapper. This works
