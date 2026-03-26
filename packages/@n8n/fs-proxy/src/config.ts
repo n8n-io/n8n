@@ -45,7 +45,7 @@ export const TOOL_GROUP_DEFINITIONS = {
 export type ToolGroup = keyof typeof TOOL_GROUP_DEFINITIONS;
 
 export const PERMISSION_MODES = ['deny', 'ask', 'allow'] as const;
-const permissionModeSchema = z.enum(PERMISSION_MODES);
+export const permissionModeSchema = z.enum(PERMISSION_MODES);
 export type PermissionMode = z.infer<typeof permissionModeSchema>;
 
 // ---------------------------------------------------------------------------
@@ -102,12 +102,13 @@ function parseViewport(raw: string): { width: number; height: number } | undefin
 // Zod schemas (internal — used only in parseConfig)
 // ---------------------------------------------------------------------------
 
-const logLevelSchema = z.enum(['silent', 'error', 'warn', 'info', 'debug']);
+export const logLevelSchema = z.enum(['silent', 'error', 'warn', 'info', 'debug']).default('info');
 export type LogLevel = z.infer<typeof logLevelSchema>;
+export const portSchema = z.number().int().positive().default(7655);
 
 const structuralConfigSchema = z.object({
-	logLevel: logLevelSchema.default('info'),
-	port: z.number().int().positive().default(7655),
+	logLevel: logLevelSchema,
+	port: portSchema,
 	allowedOrigins: z.array(z.string()).default([]),
 	filesystem: z.object({ dir: z.string().default('.') }).default({}),
 	computer: z

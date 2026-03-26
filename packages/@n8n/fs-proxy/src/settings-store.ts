@@ -2,8 +2,15 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 
 import type { GatewayConfig, PermissionMode, ToolGroup } from './config';
-import { getSettingsFilePath, TOOL_GROUP_DEFINITIONS } from './config';
+import {
+	getSettingsFilePath,
+	logLevelSchema,
+	permissionModeSchema,
+	portSchema,
+	TOOL_GROUP_DEFINITIONS,
+} from './config';
 import { logger } from './logger';
+import z from 'zod';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -21,25 +28,36 @@ interface ResourcePermissions {
 	deny: string[];
 }
 
-interface PersistentSettings {
-	logLevel?: string;
-	port?: number;
-	permissions: Partial<Record<ToolGroup, PermissionMode>>;
-	filesystemDir?: string;
-	resourcePermissions: Partial<Record<ToolGroup, ResourcePermissions>>;
-}
+const persistentSettingsSchema = z.object({
+	logLevel: logLevelSchema.optional(),
+	port: portSchema.optional(),
+	permissions: z
+		.object(
+			Object.fromEntries(
+				Object.keys(TOOL_GROUP_DEFINITIONS).map((key) => [key, permissionModeSchema]),
+			),
+		)
+		.partial(), //Partial<Record<ToolGroup, PermissionMode>>,
+	filesystemDir: z.string().optional(),
+	resourcePermissions: z
+		.object(
+			Object.fromEntries(
+				Object.keys(TOOL_GROUP_DEFINITIONS).map((key) => [
+					key,
+					z.object({
+						allow: z.array(z.string()),
+						deny: z.array(z.string()),
+					}),
+				]),
+			),
+		)
+		.partial(), // Partial<Record<ToolGroup, ResourcePermissions>>,
+});
+
+type PersistentSettings = z.infer<typeof persistentSettingsSchema>;
 
 function isValidPersistentSettings(raw: unknown): raw is PersistentSettings {
-	if (typeof raw !== 'object' || raw === null) return false;
-	const r = raw as Record<string, unknown>;
-	if (r.permissions !== undefined && (typeof r.permissions !== 'object' || r.permissions === null))
-		return false;
-	if (
-		r.resourcePermissions !== undefined &&
-		(typeof r.resourcePermissions !== 'object' || r.resourcePermissions === null)
-	)
-		return false;
-	return true;
+	return persistentSettingsSchema.safeParse(raw).success;
 }
 
 function emptySettings(): PersistentSettings {
