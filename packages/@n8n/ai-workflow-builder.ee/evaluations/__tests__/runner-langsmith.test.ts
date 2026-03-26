@@ -180,6 +180,7 @@ describe('Runner - LangSmith Mode', () => {
 					tokenUsage: expect.any(Function),
 					subgraphMetrics: expect.any(Function),
 				}),
+				undefined,
 			);
 			expect(evaluator.evaluate).toHaveBeenCalledWith(
 				workflow,

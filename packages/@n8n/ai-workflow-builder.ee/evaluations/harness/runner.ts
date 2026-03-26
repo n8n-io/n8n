@@ -9,6 +9,7 @@ import { runWithOptionalLimiter, withTimeout } from './evaluation-helpers';
 import { toLangsmithEvaluationResult } from './feedback';
 import {
 	isGenerationResult,
+	type DatasetInputContext,
 	type Evaluator,
 	type TestCase,
 	type EvaluationContext,
@@ -34,6 +35,7 @@ import {
 } from './score-calculator';
 import type { IntrospectionEvent } from '../../src/tools/introspect.tool.js';
 import type { SimpleWorkflow } from '../../src/types/workflow';
+import type { ChatPayload } from '../../src/workflow-builder-agent';
 import { extractMessageContent } from '../langsmith/types';
 
 const DEFAULT_PASS_THRESHOLD = 0.7;
@@ -201,9 +203,17 @@ function buildContext(args: {
 	referenceWorkflows?: SimpleWorkflow[];
 	generatedCode?: string;
 	pinData?: IPinData;
+	datasetInputContext?: DatasetInputContext;
 }): EvaluationContext {
-	const { prompt, globalContext, testCaseContext, referenceWorkflows, generatedCode, pinData } =
-		args;
+	const {
+		prompt,
+		globalContext,
+		testCaseContext,
+		referenceWorkflows,
+		generatedCode,
+		pinData,
+		datasetInputContext,
+	} = args;
 
 	return {
 		prompt,
@@ -212,6 +222,7 @@ function buildContext(args: {
 		...(referenceWorkflows?.length ? { referenceWorkflows } : {}),
 		...(generatedCode ? { generatedCode } : {}),
 		...(pinData ? { pinData } : {}),
+		...(datasetInputContext ? { datasetInputContext } : {}),
 	};
 }
 
@@ -544,6 +555,7 @@ async function runLocalExampleSuccess(args: {
 	generateWorkflow: (
 		prompt: string,
 		collectors?: GenerationCollectors,
+		datasetInputContext?: DatasetInputContext,
 	) => Promise<SimpleWorkflow | GenerationResult>;
 	evaluators: Array<Evaluator<EvaluationContext>>;
 	globalContext?: GlobalRunContext;
@@ -571,7 +583,7 @@ async function runLocalExampleSuccess(args: {
 
 	const genResult = await runWithOptionalLimiter(async () => {
 		return await withTimeout({
-			promise: generateWorkflow(testCase.prompt, collectors),
+			promise: generateWorkflow(testCase.prompt, collectors, testCase.context?.datasetInputContext),
 			timeoutMs,
 			label: 'workflow_generation',
 		});
@@ -604,6 +616,7 @@ async function runLocalExampleSuccess(args: {
 		referenceWorkflows: testCase.referenceWorkflows,
 		generatedCode,
 		pinData,
+		datasetInputContext: testCase.context?.datasetInputContext,
 	});
 
 	// Run evaluators in parallel
@@ -642,6 +655,7 @@ async function runLocalExample(args: {
 	generateWorkflow: (
 		prompt: string,
 		collectors?: GenerationCollectors,
+		datasetInputContext?: DatasetInputContext,
 	) => Promise<SimpleWorkflow | GenerationResult>;
 	evaluators: Array<Evaluator<EvaluationContext>>;
 	globalContext?: GlobalRunContext;
@@ -721,6 +735,7 @@ async function runLocalDataset(params: {
 	generateWorkflow: (
 		prompt: string,
 		collectors?: GenerationCollectors,
+		datasetInputContext?: DatasetInputContext,
 	) => Promise<SimpleWorkflow | GenerationResult>;
 	evaluators: Array<Evaluator<EvaluationContext>>;
 	globalContext?: GlobalRunContext;
@@ -954,6 +969,10 @@ interface LangsmithDatasetInput {
 	prompt?: string;
 	messages?: BaseMessage[];
 	evals?: Record<string, unknown>;
+	workflowJSON?: unknown;
+	workflowContext?: unknown;
+	workflowOperations?: unknown[];
+	mode?: string;
 	[key: string]: unknown;
 }
 
@@ -973,6 +992,34 @@ function extractPrompt(inputs: LangsmithDatasetInput): string {
 	}
 
 	throw new Error('No prompt found in inputs - expected "prompt" string or "messages" array');
+}
+
+/**
+ * Extract DatasetInputContext from LangSmith dataset inputs.
+ * Captures the full agent context (workflowContext, existing workflow, mode)
+ * needed to replay the generation realistically.
+ */
+function extractDatasetInputContext(
+	inputs: LangsmithDatasetInput,
+): DatasetInputContext | undefined {
+	const hasContext = inputs.workflowContext || inputs.workflowJSON || inputs.mode;
+	if (!hasContext) return undefined;
+
+	const context: DatasetInputContext = {};
+
+	if (isUnknownRecord(inputs.workflowContext)) {
+		context.workflowContext = inputs.workflowContext as ChatPayload['workflowContext'];
+	}
+
+	if (isSimpleWorkflow(inputs.workflowJSON)) {
+		context.existingWorkflow = inputs.workflowJSON;
+	}
+
+	if (inputs.mode === 'build' || inputs.mode === 'plan') {
+		context.mode = inputs.mode;
+	}
+
+	return Object.keys(context).length > 0 ? context : undefined;
 }
 
 function createLangsmithFeedbackExtractor(): (
@@ -1216,14 +1263,16 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 			genFn: (
 				prompt: string,
 				collectors?: GenerationCollectors,
+				datasetInputContext?: DatasetInputContext,
 			) => Promise<SimpleWorkflow | GenerationResult>;
 			collectors?: GenerationCollectors;
 			limiter?: LlmCallLimiter;
 			genTimeoutMs?: number;
+			datasetInputContext?: DatasetInputContext;
 		}): Promise<SimpleWorkflow | GenerationResult> => {
 			return await runWithOptionalLimiter(async () => {
 				return await withTimeout({
-					promise: args.genFn(args.prompt, args.collectors),
+					promise: args.genFn(args.prompt, args.collectors, args.datasetInputContext),
 					timeoutMs: args.genTimeoutMs,
 					label: 'workflow_generation',
 				});
@@ -1278,6 +1327,7 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 		const index = targetCallCount;
 		// Extract prompt from inputs (supports both direct prompt and messages array)
 		const prompt = extractPrompt(inputs);
+		const datasetInputContext = extractDatasetInputContext(inputs);
 		const { evals: datasetContext, ...rest } = inputs;
 
 		lifecycle?.onExampleStart?.(index, totalExamples, prompt);
@@ -1292,6 +1342,7 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 				collectors,
 				limiter: effectiveGlobalContext.llmCallLimiter,
 				genTimeoutMs: timeoutMs,
+				datasetInputContext,
 			});
 			const genDurationMs = Date.now() - genStart;
 
@@ -1321,6 +1372,7 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 				testCaseContext: extracted,
 				generatedCode,
 				pinData,
+				datasetInputContext,
 			});
 
 			// Run all evaluators in parallel (wrapped in traceable so it appears
