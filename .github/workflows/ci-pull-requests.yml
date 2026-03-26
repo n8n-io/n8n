@@ -15,9 +15,9 @@ jobs:
     env:
       NODE_OPTIONS: '--max-old-space-size=6144'
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-      BUILD_STATS_WEBHOOK_URL: ${{ secrets.BUILD_STATS_WEBHOOK_URL }}
-      BUILD_STATS_WEBHOOK_USER: ${{ secrets.BUILD_STATS_WEBHOOK_USER }}
-      BUILD_STATS_WEBHOOK_PASSWORD: ${{ secrets.BUILD_STATS_WEBHOOK_PASSWORD }}
+      QA_METRICS_WEBHOOK_URL: ${{ secrets.QA_METRICS_WEBHOOK_URL }}
+      QA_METRICS_WEBHOOK_USER: ${{ secrets.QA_METRICS_WEBHOOK_USER }}
+      QA_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_METRICS_WEBHOOK_PASSWORD }}
     outputs:
       ci: ${{ fromJSON(steps.ci-filter.outputs.results).ci == true }}
       unit: ${{ fromJSON(steps.ci-filter.outputs.results).unit == true }}
@@ -98,11 +98,7 @@ jobs:
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
       collectCoverage: true
-    secrets:
-      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-      BUILD_STATS_WEBHOOK_URL: ${{ secrets.BUILD_STATS_WEBHOOK_URL }}
-      BUILD_STATS_WEBHOOK_USER: ${{ secrets.BUILD_STATS_WEBHOOK_USER }}
-      BUILD_STATS_WEBHOOK_PASSWORD: ${{ secrets.BUILD_STATS_WEBHOOK_PASSWORD }}
+    secrets: inherit
 
   typecheck:
     name: Typecheck
@@ -126,6 +122,24 @@ jobs:
     needs: install-and-build
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
+
+  check-packaging:
+    name: Check packaging
+    if: needs.install-and-build.outputs.ci == 'true'
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    needs: install-and-build
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ needs.install-and-build.outputs.commit_sha }}
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+
+      - name: Check packaging
+        shell: bash
+        run: |
+          pnpm -r pack --dry-run
 
   e2e-tests:
     name: E2E Tests
@@ -174,7 +188,7 @@ jobs:
   chromatic:
     name: Chromatic
     needs: install-and-build
-    if: needs.install-and-build.outputs.design_system == 'true'
+    if: needs.install-and-build.outputs.design_system == 'true' && github.event_name == 'pull_request'
     uses: ./.github/workflows/test-visual-chromatic.yml
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
@@ -190,6 +204,7 @@ jobs:
         unit-test,
         typecheck,
         lint,
+        check-packaging,
         e2e-tests,
         db-tests,
         performance,

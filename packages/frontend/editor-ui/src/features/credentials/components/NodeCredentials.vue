@@ -52,7 +52,6 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 type Props = {
 	node: INodeUi;
@@ -87,14 +86,12 @@ const ndvStore = useNDVStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
-const workflowState = injectWorkflowState();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
 
 // Quick connect
 const {
 	loading: quickConnectLoading,
-	isQuickConnectEnabled,
 	getQuickConnectOption,
 	connect,
 	cancelConnect,
@@ -450,7 +447,7 @@ function onCredentialSelected(
 		);
 		const authOption = getAuthTypeForNodeCredential(nodeType.value, nodeCredentialDescription);
 		if (authOption) {
-			updateNodeAuthType(workflowState, props.node, authOption.value);
+			updateNodeAuthType(workflowsStore.workflowId, props.node, authOption.value);
 			const parameterData = {
 				name: `parameters.${mainNodeAuthField.value.name}`,
 				value: authOption.value,
@@ -520,11 +517,7 @@ function getCredentialsFieldLabel(credentialType: INodeCredentialDescription): s
 			interpolate: { credentialType: credentialTypeName },
 		});
 	}
-	return i18n.baseText(
-		isQuickConnectEnabled.value
-			? 'nodeCredentials.credentialsLabelShort'
-			: 'nodeCredentials.credentialsLabel',
-	);
+	return i18n.baseText('nodeCredentials.credentialsLabelShort');
 }
 
 function setFilter(newFilter = '') {
@@ -547,7 +540,6 @@ function getServiceName(credentialTypeName: string): string {
 }
 
 const quickConnectCredentialType = computed(() => {
-	if (!isQuickConnectEnabled.value) return undefined;
 	return credentialTypesNodeDescriptions.value.find(
 		(t) => !!getQuickConnectOption(t.name, props.node.type) || hasManagedOAuthCredentials(t.name),
 	)?.name;
@@ -642,9 +634,9 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 				</div>
 
 				<div
-					v-else-if="isQuickConnectEnabled && showStandardEmptyState(type)"
+					v-else-if="showStandardEmptyState(type)"
 					:class="$style.standardEmptyContainer"
-					data-test-id="standard-empty-state"
+					data-test-id="node-credentials-empty-state"
 				>
 					<N8nSelect
 						:class="$style.emptySelect"

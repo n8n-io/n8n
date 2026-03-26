@@ -3,6 +3,10 @@ import type { Locator } from '@playwright/test';
 import { BasePage } from './BasePage';
 
 export class CommunityNodesPage extends BasePage {
+	async goto(): Promise<void> {
+		await this.page.goto('/settings/community-nodes');
+	}
+
 	// Element getters
 	getCommunityCards(): Locator {
 		return this.page.getByTestId('community-package-card');

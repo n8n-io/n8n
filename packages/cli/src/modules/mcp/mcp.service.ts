@@ -1,7 +1,13 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
-import { ExecutionRepository, ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
+import {
+	ExecutionRepository,
+	FolderRepository,
+	ProjectRepository,
+	SharedWorkflowRepository,
+	User,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import {
@@ -13,6 +19,8 @@ import {
 
 import { createExecuteWorkflowTool } from './tools/execute-workflow.tool';
 import { createGetExecutionTool } from './tools/get-execution.tool';
+import { createSearchFoldersTool } from './tools/search-folders.tool';
+import { createSearchProjectsTool } from './tools/search-projects.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
 import { createPublishWorkflowTool } from './tools/publish-workflow.tool';
 import { createSearchWorkflowsTool } from './tools/search-workflows.tool';
@@ -76,6 +84,7 @@ export class McpService {
 		private readonly workflowCreationService: WorkflowCreationService,
 		private readonly nodeTypes: NodeTypes,
 		private readonly projectRepository: ProjectRepository,
+		private readonly folderRepository: FolderRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly executionRepository: ExecutionRepository,
 	) {}
@@ -220,6 +229,29 @@ export class McpService {
 		);
 		server.registerTool(createTool.name, createTool.config, createTool.handler);
 
+		const searchProjectsTool = createSearchProjectsTool(
+			user,
+			this.projectRepository,
+			this.telemetry,
+		);
+		server.registerTool(
+			searchProjectsTool.name,
+			searchProjectsTool.config,
+			searchProjectsTool.handler,
+		);
+
+		const searchFoldersTool = createSearchFoldersTool(
+			user,
+			this.folderRepository,
+			this.projectService,
+			this.telemetry,
+		);
+		server.registerTool(
+			searchFoldersTool.name,
+			searchFoldersTool.config,
+			searchFoldersTool.handler,
+		);
+
 		const archiveTool = createArchiveWorkflowTool(user, this.workflowService, this.telemetry);
 		server.registerTool(archiveTool.name, archiveTool.config, archiveTool.handler);
 
@@ -235,13 +267,13 @@ export class McpService {
 		);
 		server.registerTool(updateTool.name, updateTool.config, updateTool.handler);
 
-		// SDK reference as MCP resource — preferred over the tool for clients that support resources.
+		// SDK reference as MCP resource — for clients that support resources.
 		server.resource(
 			'workflow-sdk-reference',
 			'n8n://workflow-sdk/reference',
 			{
 				description:
-					'n8n Workflow SDK reference — patterns, expressions, and rules for building workflows',
+					'n8n Workflow SDK reference — patterns, expressions, and rules for building workflows. Get this FIRST before building workflows to learn the SDK.',
 			},
 			async () => ({
 				contents: [
@@ -254,25 +286,10 @@ export class McpService {
 			}),
 		);
 
-		// SDK reference tool — serves as a fallback for clients that don't support MCP resources.
-		// Registered as disabled; enabled after initialization only if the client lacks resource support.
+		// SDK reference tool — always registered alongside the MCP resource above,
+		// so all clients can access the SDK reference regardless of resource support.
 		const sdkRefTool = createGetWorkflowSdkReferenceTool(user, this.telemetry);
-		const registeredSdkRefTool = server.registerTool(
-			sdkRefTool.name,
-			sdkRefTool.config,
-			sdkRefTool.handler,
-		);
-		registeredSdkRefTool.disable();
-
-		// After initialization, enable the SDK reference tool only if the client
-		// does not support resources. Clients with resource support get the same
-		// content via the MCP resource registered above, making the tool redundant.
-		server.server.oninitialized = () => {
-			const capabilities = server.server.getClientCapabilities();
-			if (!capabilities || !('resources' in capabilities)) {
-				registeredSdkRefTool.enable();
-			}
-		};
+		server.registerTool(sdkRefTool.name, sdkRefTool.config, sdkRefTool.handler);
 	}
 
 	// #region Queue Mode Support
