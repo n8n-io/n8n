@@ -109,10 +109,6 @@ function extractDataTableId(
 
 /**
  * Walks an agent tree depth-first (most recent last) and returns the dataTableId
- * and toolCallId from the latest successful data-table tool result.
- */
-/**
- * Walks an agent tree depth-first (most recent last) and returns the dataTableId
  * from the latest successful delete-data-table tool result.
  */
 export function getLatestDeletedDataTableId(node: InstanceAiAgentNode): string | undefined {

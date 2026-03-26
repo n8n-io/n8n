@@ -73,7 +73,13 @@ watch(
 <template>
 	<div :class="$style.root">
 		<!-- Section header -->
-		<button :class="$style.header" @click="toggleExpanded">
+		<div
+			:class="$style.header"
+			role="button"
+			tabindex="0"
+			@click="toggleExpanded"
+			@keydown.enter="toggleExpanded"
+		>
 			<N8nIcon
 				:icon="isExpanded ? 'chevron-down' : 'chevron-right'"
 				size="small"
@@ -84,7 +90,7 @@ watch(
 				<N8nIcon icon="square" size="small" />
 				{{ i18n.baseText('instanceAi.agent.stop') }}
 			</button>
-		</button>
+		</div>
 
 		<!-- Expanded: full timeline -->
 		<div v-if="isExpanded" :class="$style.content">

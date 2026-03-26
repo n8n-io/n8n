@@ -27,6 +27,7 @@ const workflowsListStore = useWorkflowsListStore();
 const workflow = ref<IWorkflowDb | null>(null);
 const isLoading = ref(false);
 const fetchError = ref<string | null>(null);
+let fetchGeneration = 0;
 
 const workflowName = computed(() => workflow.value?.name ?? '');
 
@@ -47,6 +48,7 @@ function handleIframeMessage(event: MessageEvent) {
 
 async function fetchWorkflow(id: string) {
 	const isRefresh = workflow.value?.id === id;
+	const generation = ++fetchGeneration;
 
 	fetchError.value = null;
 	if (!isRefresh) {
@@ -55,12 +57,17 @@ async function fetchWorkflow(id: string) {
 	}
 
 	try {
-		workflow.value = await workflowsListStore.fetchWorkflow(id);
+		const result = await workflowsListStore.fetchWorkflow(id);
+		if (generation !== fetchGeneration) return; // Stale response — discard
+		workflow.value = result;
 	} catch {
+		if (generation !== fetchGeneration) return;
 		workflow.value = null;
 		fetchError.value = i18n.baseText('instanceAi.workflowPreview.fetchError');
 	} finally {
-		isLoading.value = false;
+		if (generation === fetchGeneration) {
+			isLoading.value = false;
+		}
 	}
 }
 

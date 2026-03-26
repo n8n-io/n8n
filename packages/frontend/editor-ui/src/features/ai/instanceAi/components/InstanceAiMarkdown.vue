@@ -152,13 +152,17 @@ function enhanceResourceLinks(): void {
 			link.addEventListener('click', (e: MouseEvent) => {
 				if (e.metaKey || e.ctrlKey) return; // Let browser handle new-tab
 
+				const canPreview =
+					(type === 'workflow' && openWorkflowPreview) ||
+					(type === 'data-table' && registryEntry?.projectId && openDataTablePreview);
+
+				if (!canPreview) return; // Let browser navigate normally
+
 				e.preventDefault();
 				if (type === 'workflow') {
 					openWorkflowPreview?.(id);
-				} else if (type === 'data-table') {
-					if (registryEntry?.projectId) {
-						openDataTablePreview?.(id, registryEntry.projectId);
-					}
+				} else if (type === 'data-table' && registryEntry?.projectId) {
+					openDataTablePreview?.(id, registryEntry.projectId);
 				}
 			});
 

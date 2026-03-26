@@ -949,10 +949,18 @@ let pendingFitViewOnInit = false;
 let pendingConnections: IConnections | null = null;
 
 function onRequestFitViewOnInit() {
+	if (initialized.value) {
+		void onFitView();
+		return;
+	}
 	pendingFitViewOnInit = true;
 }
 
 function onRequestSetConnectionsOnInit(connections: IConnections) {
+	if (initialized.value) {
+		useWorkflowsStore().setConnections(connections);
+		return;
+	}
 	pendingConnections = connections;
 }
 

@@ -480,6 +480,7 @@ export class InstanceAiService {
 		}
 
 		this.domainAccessTrackersByThread.delete(threadId);
+		this.threadPushRef.delete(threadId);
 		await this.destroySandbox(threadId);
 		this.eventBus.clearThread(threadId);
 	}
