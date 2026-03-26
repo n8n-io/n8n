@@ -33,12 +33,13 @@
     "dist/**/*"
   ],
   "dependencies": {
+    "@inquirer/prompts": "^8.3.2",
     "@jitsi/robotjs": "^0.6.21",
     "@modelcontextprotocol/sdk": "1.26.0",
     "@n8n/mcp-browser": "workspace:*",
     "eventsource": "^3.0.6",
-    "picocolors": "catalog:",
     "node-screenshots": "^0.2.8",
+    "picocolors": "catalog:",
     "sharp": "^0.34.5",
     "yargs-parser": "21.1.1",
     "zod": "catalog:",

@@ -5,7 +5,7 @@ import { z } from 'zod';
 import type { ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
 import { MAX_FILE_SIZE } from './constants';
-import { resolveSafePath } from './fs-utils';
+import { buildFilesystemResource, resolveSafePath } from './fs-utils';
 
 const inputSchema = z.object({
 	filePath: z.string().describe('File path relative to root'),
@@ -18,6 +18,11 @@ export const writeFileTool: ToolDefinition<typeof inputSchema> = {
 		'Create a new file with the given content. Overwrites if the file already exists. Content must not exceed 512 KB.',
 	inputSchema,
 	annotations: { defaultPermission: 'confirm' },
+	async getAffectedResources({ filePath }, { dir }) {
+		return [
+			await buildFilesystemResource(dir, filePath, 'filesystemWrite', `Write file: ${filePath}`),
+		];
+	},
 	async execute({ filePath, content }, { dir }) {
 		const resolvedPath = await resolveSafePath(dir, filePath);
 

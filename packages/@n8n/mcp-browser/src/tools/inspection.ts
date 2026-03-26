@@ -5,16 +5,19 @@ import type { ToolDefinition } from '../types';
 import { formatCallToolResult, formatImageResponse } from '../utils';
 import { createSessionTool, elementTargetSchema, pageIdField, sessionIdField } from './helpers';
 
-export function createInspectionTools(sessionManager: SessionManager): ToolDefinition[] {
+export function createInspectionTools(
+	sessionManager: SessionManager,
+	toolGroupId: string,
+): ToolDefinition[] {
 	return [
-		browserSnapshot(sessionManager),
-		browserScreenshot(sessionManager),
-		browserText(sessionManager),
-		browserEvaluate(sessionManager),
-		browserConsole(sessionManager),
-		browserErrors(sessionManager),
-		browserPdf(sessionManager),
-		browserNetwork(sessionManager),
+		browserSnapshot(sessionManager, toolGroupId),
+		browserScreenshot(sessionManager, toolGroupId),
+		browserText(sessionManager, toolGroupId),
+		browserEvaluate(sessionManager, toolGroupId),
+		browserConsole(sessionManager, toolGroupId),
+		browserErrors(sessionManager, toolGroupId),
+		browserPdf(sessionManager, toolGroupId),
+		browserNetwork(sessionManager, toolGroupId),
 	];
 }
 
@@ -36,7 +39,7 @@ const browserSnapshotOutputSchema = z.object({
 	snapshot: z.string(),
 });
 
-function browserSnapshot(sessionManager: SessionManager): ToolDefinition {
+function browserSnapshot(sessionManager: SessionManager, toolGroupId: string): ToolDefinition {
 	return createSessionTool(
 		sessionManager,
 		'browser_snapshot',
@@ -47,6 +50,7 @@ function browserSnapshot(sessionManager: SessionManager): ToolDefinition {
 			return formatCallToolResult({ snapshot: result.tree });
 		},
 		browserSnapshotOutputSchema,
+		toolGroupId,
 	);
 }
 
@@ -65,7 +69,7 @@ const browserScreenshotSchema = z
 	})
 	.describe('Take a screenshot of the page or a specific element');
 
-function browserScreenshot(sessionManager: SessionManager): ToolDefinition {
+function browserScreenshot(sessionManager: SessionManager, toolGroupId: string): ToolDefinition {
 	return createSessionTool(
 		sessionManager,
 		'browser_screenshot',
@@ -80,6 +84,8 @@ function browserScreenshot(sessionManager: SessionManager): ToolDefinition {
 				hint: 'Prefer browser_snapshot for element discovery and interaction — it returns refs and uses less context.',
 			});
 		},
+		undefined,
+		toolGroupId,
 	);
 }
 
@@ -102,7 +108,7 @@ const browserTextOutputSchema = z.object({
 	text: z.string(),
 });
 
-function browserText(sessionManager: SessionManager): ToolDefinition {
+function browserText(sessionManager: SessionManager, toolGroupId: string): ToolDefinition {
 	return createSessionTool(
 		sessionManager,
 		'browser_text',
@@ -114,6 +120,7 @@ function browserText(sessionManager: SessionManager): ToolDefinition {
 			return formatCallToolResult({ text });
 		},
 		browserTextOutputSchema,
+		toolGroupId,
 	);
 }
 
@@ -133,7 +140,7 @@ const browserEvaluateOutputSchema = z.object({
 	result: z.unknown(),
 });
 
-function browserEvaluate(sessionManager: SessionManager): ToolDefinition {
+function browserEvaluate(sessionManager: SessionManager, toolGroupId: string): ToolDefinition {
 	return createSessionTool(
 		sessionManager,
 		'browser_evaluate',
@@ -144,6 +151,7 @@ function browserEvaluate(sessionManager: SessionManager): ToolDefinition {
 			return formatCallToolResult({ result });
 		},
 		browserEvaluateOutputSchema,
+		toolGroupId,
 	);
 }
 
@@ -173,7 +181,7 @@ const browserConsoleOutputSchema = z.object({
 	),
 });
 
-function browserConsole(sessionManager: SessionManager): ToolDefinition {
+function browserConsole(sessionManager: SessionManager, toolGroupId: string): ToolDefinition {
 	return createSessionTool(
 		sessionManager,
 		'browser_console',
@@ -184,6 +192,7 @@ function browserConsole(sessionManager: SessionManager): ToolDefinition {
 			return formatCallToolResult({ entries });
 		},
 		browserConsoleOutputSchema,
+		toolGroupId,
 	);
 }
 
@@ -209,7 +218,7 @@ const browserErrorsOutputSchema = z.object({
 	),
 });
 
-function browserErrors(sessionManager: SessionManager): ToolDefinition {
+function browserErrors(sessionManager: SessionManager, toolGroupId: string): ToolDefinition {
 	return createSessionTool(
 		sessionManager,
 		'browser_errors',
@@ -220,6 +229,7 @@ function browserErrors(sessionManager: SessionManager): ToolDefinition {
 			return formatCallToolResult({ errors });
 		},
 		browserErrorsOutputSchema,
+		toolGroupId,
 	);
 }
 
@@ -241,7 +251,7 @@ const browserPdfOutputSchema = z.object({
 	pages: z.number(),
 });
 
-function browserPdf(sessionManager: SessionManager): ToolDefinition {
+function browserPdf(sessionManager: SessionManager, toolGroupId: string): ToolDefinition {
 	return createSessionTool(
 		sessionManager,
 		'browser_pdf',
@@ -255,6 +265,7 @@ function browserPdf(sessionManager: SessionManager): ToolDefinition {
 			return formatCallToolResult({ pdf: result.data, pages: result.pages });
 		},
 		browserPdfOutputSchema,
+		toolGroupId,
 	);
 }
 
@@ -283,7 +294,7 @@ const browserNetworkOutputSchema = z.object({
 	),
 });
 
-function browserNetwork(sessionManager: SessionManager): ToolDefinition {
+function browserNetwork(sessionManager: SessionManager, toolGroupId: string): ToolDefinition {
 	return createSessionTool(
 		sessionManager,
 		'browser_network',
@@ -294,5 +305,6 @@ function browserNetwork(sessionManager: SessionManager): ToolDefinition {
 			return formatCallToolResult({ requests });
 		},
 		browserNetworkOutputSchema,
+		toolGroupId,
 	);
 }

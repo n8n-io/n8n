@@ -99,11 +99,20 @@ const mouseMoveSchema = z.object({
 	...screenSizeParams,
 });
 
+const COMPUTER_RESOURCE = {
+	toolGroup: 'computer' as const,
+	resource: '*',
+	description: 'Access screen/input devices',
+};
+
 export const mouseMoveTool: ToolDefinition<typeof mouseMoveSchema> = {
 	name: 'mouse_move',
 	description: 'Move the mouse cursor to the specified screen coordinates',
 	inputSchema: mouseMoveSchema,
 	annotations: { defaultPermission: 'confirm' },
+	getAffectedResources() {
+		return [COMPUTER_RESOURCE];
+	},
 	execute({ x, y, screenWidth, screenHeight }) {
 		const scaled = scaleCoord(x, y, screenWidth, screenHeight);
 		robot.moveMouse(scaled.x, scaled.y);
@@ -123,6 +132,9 @@ export const mouseClickTool: ToolDefinition<typeof mouseClickSchema> = {
 	description: 'Move the mouse to the specified coordinates and click',
 	inputSchema: mouseClickSchema,
 	annotations: { defaultPermission: 'confirm' },
+	getAffectedResources() {
+		return [COMPUTER_RESOURCE];
+	},
 	execute({ x, y, button = 'left', screenWidth, screenHeight }) {
 		const scaled = scaleCoord(x, y, screenWidth, screenHeight);
 		robot.moveMouse(scaled.x, scaled.y);
@@ -142,6 +154,9 @@ export const mouseDoubleClickTool: ToolDefinition<typeof mouseDoubleClickSchema>
 	description: 'Move the mouse to the specified coordinates and double-click',
 	inputSchema: mouseDoubleClickSchema,
 	annotations: { defaultPermission: 'confirm' },
+	getAffectedResources() {
+		return [COMPUTER_RESOURCE];
+	},
 	execute({ x, y, screenWidth, screenHeight }) {
 		const scaled = scaleCoord(x, y, screenWidth, screenHeight);
 		robot.moveMouse(scaled.x, scaled.y);
@@ -163,6 +178,9 @@ export const mouseDragTool: ToolDefinition<typeof mouseDragSchema> = {
 	description: 'Click-drag from one coordinate to another',
 	inputSchema: mouseDragSchema,
 	annotations: { defaultPermission: 'confirm' },
+	getAffectedResources() {
+		return [COMPUTER_RESOURCE];
+	},
 	execute({ fromX, fromY, toX, toY, screenWidth, screenHeight }) {
 		const scaledFrom = scaleCoord(fromX, fromY, screenWidth, screenHeight);
 		const scaledTo = scaleCoord(toX, toY, screenWidth, screenHeight);
@@ -187,6 +205,9 @@ export const mouseScrollTool: ToolDefinition<typeof mouseScrollSchema> = {
 	description: 'Scroll at the specified screen coordinates',
 	inputSchema: mouseScrollSchema,
 	annotations: { defaultPermission: 'confirm' },
+	getAffectedResources() {
+		return [COMPUTER_RESOURCE];
+	},
 	execute({ x, y, direction, amount, screenWidth, screenHeight }) {
 		const scaled = scaleCoord(x, y, screenWidth, screenHeight);
 		robot.moveMouse(scaled.x, scaled.y);
@@ -217,6 +238,9 @@ export const keyboardTypeTool: ToolDefinition<typeof keyboardTypeSchema> = {
 	description: 'Type a string of text using the keyboard',
 	inputSchema: keyboardTypeSchema,
 	annotations: { defaultPermission: 'confirm' },
+	getAffectedResources() {
+		return [COMPUTER_RESOURCE];
+	},
 	async execute({ text, delayMs }) {
 		if (delayMs) {
 			await new Promise((resolve) => setTimeout(resolve, delayMs));
@@ -245,6 +269,9 @@ export const keyboardKeyTapTool: ToolDefinition<typeof keyboardKeyTapSchema> = {
 	description: 'Press and release a single key. Use keyboard_shortcut for key combinations.',
 	inputSchema: keyboardKeyTapSchema,
 	annotations: { defaultPermission: 'confirm' },
+	getAffectedResources() {
+		return [COMPUTER_RESOURCE];
+	},
 	execute({ key }) {
 		robot.keyTap(normalizeKey(key));
 		return { content: [{ type: 'text', text: 'ok' }] };
@@ -267,6 +294,9 @@ export const keyboardShortcutTool: ToolDefinition<typeof keyboardShortcutSchema>
 	description: `Press a keyboard shortcut (e.g. ${IS_MACOS ? '⌘C, ⌘⇧Z' : 'Ctrl+C, Ctrl+Shift+Z'})`,
 	inputSchema: keyboardShortcutSchema,
 	annotations: { defaultPermission: 'confirm' },
+	getAffectedResources() {
+		return [COMPUTER_RESOURCE];
+	},
 	execute({ keys }) {
 		const modifiers = keys.slice(0, -1).map(normalizeKey);
 		const key = normalizeKey(keys.at(-1)!);

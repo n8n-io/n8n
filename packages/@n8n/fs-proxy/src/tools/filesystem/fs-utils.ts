@@ -1,6 +1,8 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 
+import type { AffectedResource } from '../types';
+
 const MAX_ENTRIES = 10_000;
 const DEFAULT_MAX_DEPTH = 8;
 
@@ -190,4 +192,19 @@ export async function resolveSafePath(basePath: string, relativePath: string): P
 		throw new Error(`Path "${relativePath}" escapes the base directory`);
 	}
 	return absolute;
+}
+
+/**
+ * Resolve a path safely within the base directory and return an AffectedResource.
+ * Throws if the path escapes the base directory — propagates as a tool failure
+ * before any permission prompt is shown.
+ */
+export async function buildFilesystemResource(
+	dir: string,
+	inputPath: string,
+	toolGroup: 'filesystemRead' | 'filesystemWrite',
+	description: string,
+): Promise<AffectedResource> {
+	const absolutePath = await resolveSafePath(dir, inputPath);
+	return { toolGroup, resource: absolutePath, description };
 }
