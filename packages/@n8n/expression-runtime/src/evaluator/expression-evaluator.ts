@@ -57,20 +57,18 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 
 		const metrics = this.config.observability?.metrics;
 
-		// Try synchronous acquire first
-		const immediate = this.pool.tryAcquire();
-		if (immediate) {
+		let bridge = this.pool.acquireImmediately();
+		if (bridge) {
 			metrics?.counter('expression.pool.acquired', 1);
-			this.bridges.set(executionId, immediate);
+			this.bridges.set(executionId, bridge);
 			return;
 		}
 
-		// Pool exhausted — wait in queue
 		metrics?.counter('expression.pool.wait', 1);
 		const waitStart = performance.now();
 
 		try {
-			const bridge = await this.pool.acquire();
+			bridge = await this.pool.acquireOrWait();
 			metrics?.histogram('expression.pool.wait_time_ms', performance.now() - waitStart);
 			metrics?.counter('expression.pool.acquired', 1);
 			this.bridges.set(executionId, bridge);
@@ -111,7 +109,7 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 
 	private getBridge(executionId?: string): RuntimeBridge {
 		if (!executionId) {
-			const bridge = this.pool.tryAcquire();
+			const bridge = this.pool.acquireImmediately();
 			if (!bridge) throw new Error('No isolate bridge available in pool');
 			return bridge;
 		}

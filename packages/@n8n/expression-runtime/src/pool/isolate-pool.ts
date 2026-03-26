@@ -38,12 +38,14 @@ export class IsolatePool {
 		}
 	}
 
-	tryAcquire() {
+	/** Returns a bridge immediately or `undefined` if pool is empty. Non-blocking. */
+	acquireImmediately() {
 		if (this.disposed) throw new Error('Pool is disposed');
 		return this.bridges.shift();
 	}
 
-	async acquire(): Promise<RuntimeBridge> {
+	/** Returns a bridge, waiting in a FIFO queue if pool is empty. */
+	async acquireOrWait(): Promise<RuntimeBridge> {
 		if (this.disposed) throw new Error('Pool is disposed');
 
 		const bridge = this.bridges.shift();

@@ -28,18 +28,18 @@ describe('IsolatePool', () => {
 		const factory = createFactory();
 		const pool = new IsolatePool(factory, 2, 5000);
 		await pool.initialize();
-		const bridge = pool.tryAcquire();
+		const bridge = pool.acquireImmediately();
 		expect(bridge).toBeDefined();
 		expect(bridge!.execute).toBeDefined();
 		await pool.dispose();
 	});
 
-	it('should return undefined from tryAcquire when exhausted', async () => {
+	it('should return undefined from acquireImmediately when exhausted', async () => {
 		const factory = createFactory();
 		const pool = new IsolatePool(factory, 1, 5000);
 		await pool.initialize();
-		expect(pool.tryAcquire()).toBeDefined();
-		expect(pool.tryAcquire()).toBeUndefined();
+		expect(pool.acquireImmediately()).toBeDefined();
+		expect(pool.acquireImmediately()).toBeUndefined();
 		await pool.dispose();
 	});
 
@@ -48,8 +48,8 @@ describe('IsolatePool', () => {
 		const pool = new IsolatePool(factory, 1, 1000);
 		await pool.initialize();
 
-		const bridge = pool.tryAcquire()!;
-		const acquirePromise = pool.acquire();
+		const bridge = pool.acquireImmediately()!;
+		const acquirePromise = pool.acquireOrWait();
 
 		// Return the bridge — should resolve the waiter
 		pool.returnToPool(bridge);
@@ -64,8 +64,8 @@ describe('IsolatePool', () => {
 		const pool = new IsolatePool(factory, 1, 1000);
 		await pool.initialize();
 
-		const bridge = pool.tryAcquire()!;
-		const acquirePromise = pool.acquire();
+		const bridge = pool.acquireImmediately()!;
+		const acquirePromise = pool.acquireOrWait();
 
 		// Release (dispose + replenish) — new bridge should go to waiter
 		await pool.release(bridge);
@@ -81,9 +81,9 @@ describe('IsolatePool', () => {
 		const pool = new IsolatePool(factory, 1, 50);
 		await pool.initialize();
 
-		pool.tryAcquire();
+		pool.acquireImmediately();
 
-		await expect(pool.acquire()).rejects.toThrow('Timed out waiting for isolate');
+		await expect(pool.acquireOrWait()).rejects.toThrow('Timed out waiting for isolate');
 		await pool.dispose();
 	});
 
@@ -92,11 +92,11 @@ describe('IsolatePool', () => {
 		const pool = new IsolatePool(factory, 1, 5000);
 		await pool.initialize();
 
-		const bridge = pool.tryAcquire()!;
+		const bridge = pool.acquireImmediately()!;
 		pool.returnToPool(bridge);
 		expect(bridge.dispose).not.toHaveBeenCalled();
 
-		const same = pool.tryAcquire();
+		const same = pool.acquireImmediately();
 		expect(same).toBe(bridge);
 		await pool.dispose();
 	});
@@ -106,13 +106,13 @@ describe('IsolatePool', () => {
 		const pool = new IsolatePool(factory, 1, 5000);
 		await pool.initialize();
 
-		const bridge = pool.tryAcquire()!;
+		const bridge = pool.acquireImmediately()!;
 		await pool.release(bridge);
 		expect(bridge.dispose).toHaveBeenCalled();
 
 		await new Promise((resolve) => setTimeout(resolve, 50));
 
-		const newBridge = pool.tryAcquire();
+		const newBridge = pool.acquireImmediately();
 		expect(newBridge).toBeDefined();
 		expect(newBridge).not.toBe(bridge);
 		await pool.dispose();
@@ -136,19 +136,19 @@ describe('IsolatePool', () => {
 		const pool = new IsolatePool(factory, 1, 5000);
 		await pool.initialize();
 
-		pool.tryAcquire();
-		const acquirePromise = pool.acquire();
+		pool.acquireImmediately();
+		const acquirePromise = pool.acquireOrWait();
 
 		await pool.dispose();
 		await expect(acquirePromise).rejects.toThrow('Pool is being disposed');
 	});
 
-	it('should throw on tryAcquire after disposal', async () => {
+	it('should throw on acquireImmediately after disposal', async () => {
 		const factory = createFactory();
 		const pool = new IsolatePool(factory, 1, 5000);
 		await pool.initialize();
 		await pool.dispose();
-		expect(() => pool.tryAcquire()).toThrow('Pool is disposed');
+		expect(() => pool.acquireImmediately()).toThrow('Pool is disposed');
 	});
 
 	it('should replenish when a disposed bridge is returned to pool', async () => {
@@ -156,7 +156,7 @@ describe('IsolatePool', () => {
 		const pool = new IsolatePool(factory, 1, 5000);
 		await pool.initialize();
 
-		const bridge = pool.tryAcquire()!;
+		const bridge = pool.acquireImmediately()!;
 		(bridge.isDisposed as ReturnType<typeof vi.fn>).mockReturnValue(true);
 
 		pool.returnToPool(bridge);
@@ -164,7 +164,7 @@ describe('IsolatePool', () => {
 		// Wait for async replenishment
 		await new Promise((resolve) => setTimeout(resolve, 50));
 
-		const newBridge = pool.tryAcquire();
+		const newBridge = pool.acquireImmediately();
 		expect(newBridge).toBeDefined();
 		expect(newBridge).not.toBe(bridge);
 		await pool.dispose();
@@ -182,9 +182,9 @@ describe('IsolatePool', () => {
 		await pool.initialize();
 
 		// 2 of 3 succeeded
-		expect(pool.tryAcquire()).toBeDefined();
-		expect(pool.tryAcquire()).toBeDefined();
-		expect(pool.tryAcquire()).toBeUndefined();
+		expect(pool.acquireImmediately()).toBeDefined();
+		expect(pool.acquireImmediately()).toBeDefined();
+		expect(pool.acquireImmediately()).toBeUndefined();
 		await pool.dispose();
 	});
 
