@@ -24,11 +24,23 @@ export interface ErrorSentinel {
 	extra?: Record<string, unknown>;
 }
 
-function isErrorSentinel(value: unknown): value is ErrorSentinel {
+interface ObjectMetadata {
+	__isObject: true;
+	__keys: string[];
+}
+
+function isObjectMetadata(value: unknown): value is ObjectMetadata {
 	return (
 		typeof value === 'object' &&
 		value !== null &&
-		(value as Record<string, unknown>).__isError === true
+		'__isObject' in value &&
+		value.__isObject === true
+	);
+}
+
+function isErrorSentinel(value: unknown): value is ErrorSentinel {
+	return (
+		typeof value === 'object' && value !== null && '__isError' in value && value.__isError === true
 	);
 }
 
@@ -46,7 +58,7 @@ function throwIfErrorSentinel(value: unknown): void {
 
 /** Returns true if `obj` is a deep lazy proxy created by createDeepLazyProxy. */
 export function isLazyProxy(obj: unknown): boolean {
-	return typeof obj === 'object' && obj !== null && proxyPaths.has(obj as object);
+	return typeof obj === 'object' && obj !== null && proxyPaths.has(obj);
 }
 
 /** Returns the basePath the proxy was created with, or undefined if not a proxy. */
@@ -82,8 +94,8 @@ export function createDeepLazyProxy(basePath: string[] = [], knownKeys?: string[
 			arguments: { copy: true },
 			result: { copy: true },
 		});
-		if (value && typeof value === 'object' && value.__isObject) {
-			fetchedKeys = value.__keys as string[];
+		if (isObjectMetadata(value)) {
+			fetchedKeys = value.__keys;
 			return fetchedKeys;
 		}
 		return [];
@@ -95,7 +107,7 @@ export function createDeepLazyProxy(basePath: string[] = [], knownKeys?: string[
 		},
 		getOwnPropertyDescriptor(_target: any, prop: string | symbol): PropertyDescriptor | undefined {
 			if (typeof prop === 'symbol') return undefined;
-			if (resolveKeys().includes(prop as string)) {
+			if (resolveKeys().includes(prop)) {
 				return { configurable: true, enumerable: true, writable: false };
 			}
 			return undefined;
@@ -127,7 +139,7 @@ export function createDeepLazyProxy(basePath: string[] = [], knownKeys?: string[
 			}
 
 			// Build path for this property
-			const path = [...basePath, prop as string];
+			const path = [...basePath, prop];
 
 			// Call back to parent to get metadata/value
 			// Note: __getValueAtPath is an ivm.Reference set by bridge
@@ -220,9 +232,9 @@ export function createDeepLazyProxy(basePath: string[] = [], knownKeys?: string[
 			}
 
 			// Handle objects - metadata: { __isObject: true, __keys: string[] }
-			if (value && typeof value === 'object' && value.__isObject) {
+			if (isObjectMetadata(value)) {
 				// Create nested proxy for recursive lazy loading, passing known keys
-				target[prop] = createDeepLazyProxy(path, value.__keys as string[]);
+				target[prop] = createDeepLazyProxy(path, value.__keys);
 				return target[prop];
 			}
 
@@ -243,7 +255,7 @@ export function createDeepLazyProxy(basePath: string[] = [], knownKeys?: string[
 			}
 
 			// Build path and check existence via callback
-			const path = [...basePath, prop as string];
+			const path = [...basePath, prop];
 			const value = globalThis.__getValueAtPath.applySync(null, [path], {
 				arguments: { copy: true },
 				result: { copy: true },
