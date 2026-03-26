@@ -1,6 +1,7 @@
 <script lang="ts" setup>
-import type { IMenuItem } from '@n8n/design-system/types';
 import { computed } from 'vue';
+
+import type { IMenuItem } from '@n8n/design-system/types';
 
 import BetaTag from '../BetaTag/BetaTag.vue';
 import N8nIcon from '../N8nIcon';
