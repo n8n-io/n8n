@@ -220,8 +220,8 @@ export class WorkflowBuilderService {
 			workflowId,
 			user,
 			messageId,
-			codeBuilder,
 			versionCardId,
+			codeBuilder,
 		);
 	}
 }
