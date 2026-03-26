@@ -599,7 +599,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	async findCompletedExecutionsOldestFirst(
 		batchSize: number,
 		afterDate?: Date,
-	): Promise<Pick<ExecutionEntity, 'id' | 'workflowId' | 'stoppedAt'>[]> {
+	): Promise<Array<Pick<ExecutionEntity, 'id' | 'workflowId' | 'stoppedAt'>>> {
 		return await this.find({
 			select: ['id', 'workflowId', 'stoppedAt'],
 			where: {

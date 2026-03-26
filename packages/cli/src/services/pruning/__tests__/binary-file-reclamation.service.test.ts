@@ -14,11 +14,6 @@ jest.mock('node:fs', () => ({
 	},
 }));
 
-type ServiceWithPrivates = BinaryFileReclamationService & {
-	checkAndReclaim: () => Promise<void>;
-	getDirectorySize: (dirPath: string) => Promise<number>;
-};
-
 describe('BinaryFileReclamationService', () => {
 	const n8nFolder = '/tmp/n8n-test';
 	const storagePath = '/tmp/n8n-test/storage';
@@ -59,9 +54,17 @@ describe('BinaryFileReclamationService', () => {
 			config,
 			storageConfig,
 			eventService,
-		) as ServiceWithPrivates;
+		);
 
 		return { service, executionRepository, eventService, config, instanceSettings };
+	}
+
+	// Helper to access private methods for testing
+	function getPrivate(service: BinaryFileReclamationService) {
+		return service as unknown as {
+			checkAndReclaim: () => Promise<void>;
+			getDirectorySize: (dirPath: string) => Promise<number>;
+		};
 	}
 
 	beforeEach(() => {
@@ -122,9 +125,10 @@ describe('BinaryFileReclamationService', () => {
 				maxStorageBytes: 1_000_000,
 			});
 
-			jest.spyOn(service, 'getDirectorySize').mockResolvedValueOnce(500_000);
+			const priv = getPrivate(service);
+			jest.spyOn(priv, 'getDirectorySize').mockResolvedValueOnce(500_000);
 
-			await service.checkAndReclaim();
+			await priv.checkAndReclaim();
 
 			expect(executionRepository.findCompletedExecutionsOldestFirst).not.toHaveBeenCalled();
 		});
@@ -140,7 +144,8 @@ describe('BinaryFileReclamationService', () => {
 				eventService,
 			});
 
-			const sizeSpy = jest.spyOn(service, 'getDirectorySize');
+			const priv = getPrivate(service);
+			const sizeSpy = jest.spyOn(priv, 'getDirectorySize');
 			sizeSpy
 				.mockResolvedValueOnce(1_100_000) // initial: above 1M threshold
 				.mockResolvedValueOnce(300_000) // exec1 dir size
@@ -151,7 +156,7 @@ describe('BinaryFileReclamationService', () => {
 				{ id: 'exec2', workflowId: 'wf1', stoppedAt: new Date('2024-01-02') },
 			]);
 
-			await service.checkAndReclaim();
+			await priv.checkAndReclaim();
 
 			// 1_100_000 - 300_000 - 300_000 = 500_000 < 600_000 target
 			expect(executionRepository.findCompletedExecutionsOldestFirst).toHaveBeenCalledTimes(1);
@@ -170,7 +175,8 @@ describe('BinaryFileReclamationService', () => {
 				executionRepository,
 			});
 
-			const sizeSpy = jest.spyOn(service, 'getDirectorySize');
+			const priv = getPrivate(service);
+			const sizeSpy = jest.spyOn(priv, 'getDirectorySize');
 			sizeSpy
 				.mockResolvedValueOnce(1_100_000) // initial: above threshold
 				.mockResolvedValueOnce(50_000); // exec1 dir size
@@ -180,7 +186,7 @@ describe('BinaryFileReclamationService', () => {
 				return [{ id: 'exec1', workflowId: 'wf1', stoppedAt: new Date('2024-01-01') }];
 			});
 
-			await service.checkAndReclaim();
+			await priv.checkAndReclaim();
 
 			expect(executionRepository.findCompletedExecutionsOldestFirst).toHaveBeenCalledTimes(1);
 		});
@@ -194,11 +200,12 @@ describe('BinaryFileReclamationService', () => {
 				eventService,
 			});
 
-			jest.spyOn(service, 'getDirectorySize').mockResolvedValueOnce(1_100_000);
+			const priv = getPrivate(service);
+			jest.spyOn(priv, 'getDirectorySize').mockResolvedValueOnce(1_100_000);
 
 			executionRepository.findCompletedExecutionsOldestFirst.mockResolvedValueOnce([]);
 
-			await service.checkAndReclaim();
+			await priv.checkAndReclaim();
 
 			expect(executionRepository.findCompletedExecutionsOldestFirst).toHaveBeenCalledTimes(1);
 			expect(eventService.emit).toHaveBeenCalledWith(
@@ -221,7 +228,8 @@ describe('BinaryFileReclamationService', () => {
 				eventService,
 			});
 
-			const sizeSpy = jest.spyOn(service, 'getDirectorySize');
+			const priv = getPrivate(service);
+			const sizeSpy = jest.spyOn(priv, 'getDirectorySize');
 			sizeSpy
 				.mockResolvedValueOnce(1_100_000) // initial: above threshold
 				.mockResolvedValueOnce(100_000) // exec1 dir size
@@ -234,7 +242,7 @@ describe('BinaryFileReclamationService', () => {
 				])
 				.mockResolvedValueOnce([]); // no more executions
 
-			await service.checkAndReclaim();
+			await priv.checkAndReclaim();
 
 			// 1_100_000 - 100_000 - 100_000 = 900_000 > 600_000 target, but no more executions
 			expect(executionRepository.findCompletedExecutionsOldestFirst).toHaveBeenCalledTimes(2);
@@ -254,9 +262,10 @@ describe('BinaryFileReclamationService', () => {
 				executionRepository,
 			});
 
-			jest.spyOn(service, 'getDirectorySize').mockResolvedValueOnce(0);
+			const priv = getPrivate(service);
+			jest.spyOn(priv, 'getDirectorySize').mockResolvedValueOnce(0);
 
-			await service.checkAndReclaim();
+			await priv.checkAndReclaim();
 
 			expect(executionRepository.findCompletedExecutionsOldestFirst).not.toHaveBeenCalled();
 		});
