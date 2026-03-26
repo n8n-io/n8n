@@ -7,7 +7,10 @@ import type { WorkflowStartHandler } from '../handlers/workflow-start.handler';
 import { N8nInstrumentation } from '../n8n-instrumentation';
 
 describe('N8nInstrumentation', () => {
-	it('should log span-processing failures only once', async () => {
+	const workflowStartContext = { type: 'workflowExecuteBefore' } as WorkflowExecuteBeforeContext;
+	const workflowEndContext = { type: 'workflowExecuteAfter' } as WorkflowExecuteAfterContext;
+
+	it('should log a span-processing failure once per event type', () => {
 		const workflowStartHandler = mock<WorkflowStartHandler>({
 			handle: jest.fn(() => {
 				throw new Error('start failure');
@@ -18,27 +21,30 @@ describe('N8nInstrumentation', () => {
 				throw new Error('end failure');
 			}),
 		});
-		const logger = mock<Logger>();
+		const logError = jest.fn();
+		const logger = mock<Logger>({
+			error: logError,
+		});
 		const instrumentation = new N8nInstrumentation(
 			workflowStartHandler,
 			workflowEndHandler,
 			logger,
 		);
 
-		const workflowStartContext = {
-			type: 'workflowExecuteBefore',
-		} as WorkflowExecuteBeforeContext;
-		const workflowEndContext = {
-			type: 'workflowExecuteAfter',
-		} as WorkflowExecuteAfterContext;
+		// Two start failures — only one log for that event
+		instrumentation.onWorkflowStart(workflowStartContext);
+		instrumentation.onWorkflowStart(workflowStartContext);
+		// One end failure — logged separately
+		instrumentation.onWorkflowEnd(workflowEndContext);
 
-		await instrumentation.onWorkflowStart(workflowStartContext);
-		await instrumentation.onWorkflowEnd(workflowEndContext);
-
-		expect(logger.error).toHaveBeenCalledTimes(1);
-		expect(logger.error).toHaveBeenCalledWith(
-			'Failed to process OpenTelemetry span data',
-			expect.any(Object),
-		);
+		expect(logError).toHaveBeenCalledTimes(2);
+		expect(logError).toHaveBeenCalledWith('Failed to process OpenTelemetry span data', {
+			event: 'workflowExecuteBefore',
+			error: 'start failure',
+		});
+		expect(logError).toHaveBeenCalledWith('Failed to process OpenTelemetry span data', {
+			event: 'workflowExecuteAfter',
+			error: 'end failure',
+		});
 	});
 });

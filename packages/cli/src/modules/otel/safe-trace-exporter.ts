@@ -2,8 +2,10 @@ import type { Logger } from '@n8n/backend-common';
 import { ExportResultCode } from '@opentelemetry/core';
 import type { ReadableSpan, SpanExporter } from '@opentelemetry/sdk-trace-base';
 
+type LogFailureAction = 'export' | 'shutdown' | 'forceFlush';
+
 export class SafeTraceExporter implements SpanExporter {
-	private hasLoggedExportFailure = false;
+	private loggedFailures = new Set<LogFailureAction>();
 
 	constructor(
 		private readonly wrappedExporter: SpanExporter,
@@ -14,13 +16,13 @@ export class SafeTraceExporter implements SpanExporter {
 		try {
 			this.wrappedExporter.export(spans, (result) => {
 				if (result.code !== ExportResultCode.SUCCESS) {
-					this.logExportFailure(result.error);
+					this.logFailure('export', result.error);
 				}
 
 				resultCallback(result);
 			});
 		} catch (error) {
-			this.logExportFailure(error);
+			this.logFailure('export', error);
 			resultCallback({ code: ExportResultCode.FAILED, error: toError(error) });
 		}
 	}
@@ -29,7 +31,7 @@ export class SafeTraceExporter implements SpanExporter {
 		try {
 			await this.wrappedExporter.shutdown();
 		} catch (error) {
-			this.logExportFailure(error);
+			this.logFailure('shutdown', error);
 		}
 	}
 
@@ -39,17 +41,24 @@ export class SafeTraceExporter implements SpanExporter {
 				await this.wrappedExporter.forceFlush();
 			}
 		} catch (error) {
-			this.logExportFailure(error);
+			this.logFailure('forceFlush', error);
 		}
 	}
 
-	private logExportFailure(error: unknown) {
-		if (this.hasLoggedExportFailure) return;
+	private logFailure(action: LogFailureAction, error: unknown) {
+		if (this.loggedFailures.has(action)) {
+			return;
+		}
 
-		this.hasLoggedExportFailure = true;
-		this.logger.error('Failed to export OpenTelemetry spans to OTLP endpoint', {
-			error: toError(error).message,
-		});
+		this.loggedFailures.add(action);
+
+		const messages: Record<LogFailureAction, string> = {
+			export: 'Failed to export OpenTelemetry spans to OTLP endpoint',
+			shutdown: 'Failed to shut down OpenTelemetry trace exporter',
+			forceFlush: 'Failed to flush OpenTelemetry trace exporter',
+		};
+
+		this.logger.error(messages[action], { error: toError(error).message });
 	}
 }
 

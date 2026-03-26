@@ -54,7 +54,7 @@ export class OtelService {
 		await this.sdk?.shutdown();
 	}
 
-	parseOtlpHeaders(): Record<string, string> {
+	private parseOtlpHeaders(): Record<string, string> {
 		const exporterHeaders = this.config.exporterHeaders;
 		const headers: Record<string, string> = {};
 		for (const pair of exporterHeaders.split(',')) {
@@ -91,6 +91,9 @@ export class OtelService {
 
 	private async checkEndpointReachability(url: string): Promise<void> {
 		try {
+			// HEAD is used for a cheap connectivity check (no request/response body).
+			// OTLP endpoints are POST-only, so this will often return 4xx, but any
+			// HTTP response means the server is reachable. We only catch network errors.
 			await fetch(url, {
 				method: 'HEAD',
 				signal: AbortSignal.timeout(2_000),

@@ -19,9 +19,8 @@ type OtelLifecycleHandlers = {
 export class N8nInstrumentation {
 	private readonly spans = new SpanRegistry();
 	private readonly tracer = trace.getTracer(TRACER_NAME);
-	private hasLoggedSpanProcessingFailure = false;
-
 	private readonly lifecycleHandlers: OtelLifecycleHandlers;
+	private readonly loggedFailureEvents = new Set<keyof OtelLifecycleHandlers>();
 
 	constructor(
 		workflowStartHandler: WorkflowStartHandler,
@@ -54,11 +53,9 @@ export class N8nInstrumentation {
 		try {
 			handler();
 		} catch (error) {
-			if (this.hasLoggedSpanProcessingFailure) {
-				return;
-			}
-			this.hasLoggedSpanProcessingFailure = true;
+			if (this.loggedFailureEvents.has(event)) return;
 
+			this.loggedFailureEvents.add(event);
 			this.logger.error('Failed to process OpenTelemetry span data', {
 				event,
 				error: error instanceof Error ? error.message : String(error),
