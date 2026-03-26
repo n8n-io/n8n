@@ -2,7 +2,7 @@ FROM node:22-bookworm AS builder
 
 WORKDIR /app
 
-# 1. Herramientas de sistema
+# 1. Dependencias esenciales
 RUN apt-get update && apt-get install -y build-essential python3 git && \
     rm -rf /var/lib/apt/lists/*
 
@@ -10,27 +10,29 @@ RUN corepack enable && corepack prepare pnpm@10.22.0 --activate
 
 COPY . .
 
-# 2. EL FIX CRUCIAL: Anulamos los scripts que buscan Git
-# En lugar de borrarlos del JSON, los sobrescribimos con comandos que no hacen nada.
-# Esto evita que 'pnpm install' falle al intentar inicializar hooks de Git inexistentes.
-RUN pnpm config set side-effects-cache false && \
-    pnpm config set shell-emulator true
+# 2. Neutralización total de scripts de Git/Hooks
+RUN npm pkg set scripts.prepare="echo 'Bypassing'" && \
+    npm pkg set scripts.prebuild="echo 'Bypassing'" && \
+    find . -name "package.json" -exec sed -i '/"prepare":/d' {} +
 
-# Sobrescribimos el script de prepare para que sea un éxito instantáneo
-RUN npm pkg set scripts.prepare="echo 'Bypassing prepare script'"
-
-# 3. Instalación (Ahora sí pasará el prepare)
+# 3. Instalación de dependencias
 ENV PNPM_SKIP_PREPARE=1
 RUN pnpm install --no-frozen-lockfile
 
-# 4. Forzamos arquitectura de esbuild
-RUN pnpm add -Dw @esbuild/linux-x64
+# 4. PARCHE PARA BUILD: Aseguramos esbuild y tipos de Node
+# A veces los sub-paquetes pierden el acceso a los tipos globales en el contenedor
+RUN pnpm add -Dw @esbuild/linux-x64 @types/node
 
-# 5. Compilamos módulos nativos
-RUN pnpm rebuild isolated-vm sqlite3
-
-# 6. BUILD FINAL
+# 5. CONSTRUCCIÓN PASO A PASO (Evita el colapso de Turbo)
+# Primero los paquetes base de los que todos dependen
 ENV NODE_OPTIONS="--max-old-space-size=8192"
+
+# Construimos en orden de jerarquía para asegurar que 'expression-runtime' tenga sus dependencias listas
+RUN pnpm turbo run build --filter=@n8n/utils... && \
+    pnpm turbo run build --filter=@n8n/workflow... && \
+    pnpm turbo run build --filter=@n8n/expression-runtime...
+
+# Finalmente, intentamos el build general para los paquetes restantes (CLI y Editor)
 RUN pnpm build
 
 # --- ETAPA FINAL ---
