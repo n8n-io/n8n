@@ -174,6 +174,8 @@ const createSafeErrorSubclass = <T extends ErrorConstructor>(ErrorClass: T): T =
 	});
 };
 
+const envInt = (key: string, fallback: number) => parseInt(process.env[key] ?? '', 10) || fallback;
+
 export class Expression {
 	// Feature gate for expression engine selection
 	private static expressionEngine: 'current' | 'vm' = (() => {
@@ -211,18 +213,11 @@ export class Expression {
 		if (!this.vmEvaluator) {
 			// Dynamic import to avoid loading expression-runtime in browser environments
 			const { ExpressionEvaluator, IsolatedVmBridge } = await import('@n8n/expression-runtime');
-			const DEFAULT_MAX_CODE_CACHE_SIZE = 1024;
-			const maxCodeCacheSize =
-				parseInt(process.env.N8N_EXPRESSION_ENGINE_MAX_CODE_CACHE_SIZE ?? '', 10) ||
-				DEFAULT_MAX_CODE_CACHE_SIZE;
-			const isolatePoolSize = parseInt(process.env.N8N_EXPRESSION_ISOLATE_POOL_SIZE ?? '', 10) || 1;
-			const acquireTimeoutMs =
-				parseInt(process.env.N8N_EXPRESSION_ISOLATE_ACQUIRE_TIMEOUT_MS ?? '', 10) || 5000;
 			this.vmEvaluator = new ExpressionEvaluator({
 				createBridge: () => new IsolatedVmBridge({ timeout: options?.timeout ?? 5000 }),
-				maxCodeCacheSize,
-				isolatePoolSize,
-				acquireTimeoutMs,
+				maxCodeCacheSize: envInt('N8N_EXPRESSION_ENGINE_MAX_CODE_CACHE_SIZE', 1024),
+				isolatePoolSize: envInt('N8N_EXPRESSION_ISOLATE_POOL_SIZE', 1),
+				acquireTimeoutMs: envInt('N8N_EXPRESSION_ISOLATE_ACQUIRE_TIMEOUT_MS', 5000),
 				hooks: {
 					before: [ThisSanitizer],
 					after: [PrototypeSanitizer, DollarSignValidator],
