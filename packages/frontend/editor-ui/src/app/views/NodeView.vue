@@ -1674,6 +1674,7 @@ onBeforeRouteLeave(async (to, from, next) => {
 
 	const shouldSkipPrompt =
 		toNodeViewTab === MAIN_HEADER_TABS.EXECUTIONS ||
+		toNodeViewTab === MAIN_HEADER_TABS.EVALUATION ||
 		from.name === VIEWS.TEMPLATE_IMPORT ||
 		(toNodeViewTab === MAIN_HEADER_TABS.WORKFLOW && from.name === VIEWS.EXECUTION_DEBUG);
 
