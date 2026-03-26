@@ -23,6 +23,7 @@ mock.module('./github-helpers.mjs', {
 		localRefExists: () => {}, // no-op
 		remoteBranchExists: () => {}, // no-op
 		sh: () => {}, // no-op
+		trySh: () => {}, // no-op
 	},
 });
 
