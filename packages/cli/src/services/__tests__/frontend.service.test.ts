@@ -116,7 +116,7 @@ describe('FrontendService', () => {
 		isDebugInEditorLicensed: jest.fn().mockReturnValue(false),
 		isWorkerViewLicensed: jest.fn().mockReturnValue(false),
 		isAdvancedPermissionsLicensed: jest.fn().mockReturnValue(false),
-		isApiKeyScopesEnabled: jest.fn().mockReturnValue(false),
+
 		getVariablesLimit: jest.fn().mockReturnValue(0),
 		getTeamProjectLimit: jest.fn().mockReturnValue(0),
 		isBinaryDataS3Licensed: jest.fn().mockReturnValue(false),

@@ -340,6 +340,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			...rest,
 			data,
 			workflowData: executionData.workflowData,
+			workflowVersionId: executionData.workflowVersionId ?? null,
 			customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
 			...(options?.includeAnnotation &&
 				serializedAnnotation && { annotation: serializedAnnotation }),
@@ -368,9 +369,20 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	async setRunning(executionId: string) {
 		const startedAt = new Date();
 
-		await this.update({ id: executionId }, { status: 'running', startedAt });
+		return await this.manager.transaction(async (manager) => {
+			const existing = await manager.findOneBy(ExecutionEntity, { id: executionId });
 
-		return startedAt;
+			// Preserve original startedAt for resumed executions
+			const effectiveStartedAt = existing?.startedAt ?? startedAt;
+
+			await manager.update(
+				ExecutionEntity,
+				{ id: executionId },
+				{ status: 'running', startedAt: effectiveStartedAt },
+			);
+
+			return effectiveStartedAt;
+		});
 	}
 
 	/**
@@ -396,6 +408,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			data,
 			workflowId,
 			workflowData,
+			workflowVersionId, // must never change
 			createdAt, // must never change
 			startedAt, // must never change
 			customData,
@@ -972,6 +985,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			annotationTags,
 			vote,
 			projectId,
+			workflowVersionId,
 		} = query;
 
 		const fields = Object.keys(this.summaryFields)
@@ -1020,6 +1034,15 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 			qb.setParameter('key', key);
 			qb.setParameter('value', exactMatch ? value : `%${value}%`);
+		}
+
+		if (workflowVersionId) {
+			qb.innerJoin(
+				'execution.executionData',
+				'executionData',
+				'executionData.workflowVersionId = :workflowVersionId',
+			);
+			qb.setParameter('workflowVersionId', workflowVersionId);
 		}
 
 		if (annotationTags?.length || vote) {
@@ -1101,6 +1124,17 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		}
 
 		return qb;
+	}
+
+	async getDistinctVersionIds(workflowId: string): Promise<string[]> {
+		const result = await this.createQueryBuilder('execution')
+			.innerJoin('execution.executionData', 'ed')
+			.select('DISTINCT ed.workflowVersionId', 'workflowVersionId')
+			.where('execution.workflowId = :workflowId', { workflowId })
+			.andWhere('ed.workflowVersionId IS NOT NULL')
+			.getRawMany<{ workflowVersionId: string }>();
+
+		return result.map((r) => r.workflowVersionId);
 	}
 
 	async getAllIds() {

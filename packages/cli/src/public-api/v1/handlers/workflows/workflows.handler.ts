@@ -12,7 +12,8 @@ import { z } from 'zod';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
-import { addNodeIds, replaceInvalidCredentials } from '@/workflow-helpers';
+import { NodeTypes } from '@/node-types';
+import { addNodeIds, replaceInvalidCredentials, resolveNodeWebhookIds } from '@/workflow-helpers';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -36,13 +37,16 @@ export = {
 			workflow.active = false;
 			workflow.versionId = uuid();
 
-			await replaceInvalidCredentials(workflow);
-
-			addNodeIds(workflow);
-
 			const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 				req.user.id,
 			);
+
+			await replaceInvalidCredentials(workflow, project.id);
+
+			addNodeIds(workflow);
+			resolveNodeWebhookIds(workflow, Container.get(NodeTypes));
+
+			addNodeIds(workflow);
 			const createdWorkflow = await createWorkflow(workflow, req.user, project, 'workflow:owner');
 
 			await Container.get(WorkflowHistoryService).saveVersion(

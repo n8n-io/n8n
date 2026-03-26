@@ -8,7 +8,7 @@ import type {
 export class HuggingFaceApi implements ICredentialType {
 	name = 'huggingFaceApi';
 
-	displayName = 'HuggingFaceApi';
+	displayName = 'Hugging Face API';
 
 	documentationUrl = 'huggingface';
 

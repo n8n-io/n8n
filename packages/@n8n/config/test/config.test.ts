@@ -68,6 +68,7 @@ describe('GlobalConfig', () => {
 		proxy_hops: 0,
 		ssl_key: '',
 		ssl_cert: '',
+		canvasOnly: false,
 		editorBaseUrl: '',
 		dataTable: {
 			maxSize: 50 * 1024 * 1024,
@@ -161,6 +162,7 @@ describe('GlobalConfig', () => {
 			},
 		},
 		externalHooks: {
+			separator: ':',
 			files: [],
 		},
 		nodes: {
@@ -227,7 +229,8 @@ describe('GlobalConfig', () => {
 			formTest: 'form-test',
 			formWaiting: 'form-waiting',
 			mcp: 'mcp',
-			mcpBuilderEnabled: false,
+			mcpBuilderEnabled: true,
+			mcpMaxRegisteredClients: 200,
 			mcpTest: 'mcp-test',
 			payloadSizeMax: 16,
 			formDataFileSizeMax: 200,

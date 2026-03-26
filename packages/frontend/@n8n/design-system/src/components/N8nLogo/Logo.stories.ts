@@ -23,6 +23,12 @@ export default {
 			},
 		},
 	},
+
+	parameters: {
+		docs: {
+			description: { component: 'The n8n logo component in icon and wordmark variants.' },
+		},
+	},
 };
 
 const Template: StoryFn = (args, { argTypes }) => ({

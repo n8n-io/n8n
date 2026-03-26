@@ -181,6 +181,7 @@ export class WorkflowExecute {
 			resultData: {
 				pinData,
 			},
+			resumeToken: this.runExecutionData.resumeToken,
 		});
 
 		return this.processRunExecutionData(workflow);
@@ -295,6 +296,7 @@ export class WorkflowExecute {
 				waitingExecution,
 				waitingExecutionSource,
 			},
+			resumeToken: this.runExecutionData.resumeToken,
 		});
 
 		// Still passing the original workflow here, because the WorkflowDataProxy
