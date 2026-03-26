@@ -343,8 +343,6 @@ function handleLater() {
 
 <style lang="scss" module>
 .root {
-	border-top: var(--border);
-	background: var(--color--background--shade-1);
 	padding: var(--spacing--xs);
 }
 

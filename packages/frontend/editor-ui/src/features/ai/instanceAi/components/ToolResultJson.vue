@@ -45,7 +45,7 @@ const highlighted = computed(() => highlightJson(props.value));
 	margin: 0;
 	max-height: 200px;
 	overflow-y: auto;
-	color: var(--text-color--subtle);
+	color: var(--color--text--tint-1);
 }
 </style>
 
@@ -63,7 +63,7 @@ const highlighted = computed(() => highlightJson(props.value));
 }
 
 .json-bool {
-	color: var(--text-color--subtle);
+	color: var(--color--text--tint-1);
 	font-style: italic;
 }
 </style>

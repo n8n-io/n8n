@@ -107,6 +107,9 @@ export class InstanceAiService {
 	/** Domain-access trackers per thread — persists approvals across runs within a conversation. */
 	private readonly domainAccessTrackersByThread = new Map<string, DomainAccessTracker>();
 
+	/** Tracks the iframe pushRef per thread for live execution push events. */
+	private readonly threadPushRef = new Map<string, string>();
+
 	/** Pre-warmed image manager for builder sandboxes (Daytona only). */
 	private snapshotManager?: SnapshotManager;
 
@@ -277,12 +280,17 @@ export class InstanceAiService {
 		researchMode?: boolean,
 		attachments?: InstanceAiAttachment[],
 		timeZone?: string,
+		pushRef?: string,
 	): string {
 		const { runId, abortController, messageGroupId } = this.runState.startRun({
 			threadId,
 			user,
 			researchMode,
 		});
+
+		if (pushRef !== undefined) {
+			this.threadPushRef.set(threadId, pushRef);
+		}
 
 		void this.executeRun(
 			user,
@@ -472,6 +480,7 @@ export class InstanceAiService {
 		}
 
 		this.domainAccessTrackersByThread.delete(threadId);
+		this.threadPushRef.delete(threadId);
 		await this.destroySandbox(threadId);
 		this.eventBus.clearThread(threadId);
 	}
@@ -607,6 +616,7 @@ export class InstanceAiService {
 		abortSignal: AbortSignal,
 		researchMode?: boolean,
 		messageGroupId?: string,
+		pushRef?: string,
 	) {
 		const localGatewayDisabled = this.settingsService.isFilesystemDisabled();
 		const userGateway = this.gatewayRegistry.findGateway(user.id);
@@ -614,7 +624,7 @@ export class InstanceAiService {
 			!localGatewayDisabled && !userGateway?.isConnected && this.isLocalFilesystemAvailable()
 				? this.getLocalFsProvider()
 				: undefined;
-		const context = this.adapterService.createContext(user, localFilesystemService);
+		const context = this.adapterService.createContext(user, localFilesystemService, pushRef);
 		if (!localGatewayDisabled && userGateway?.isConnected) {
 			context.localMcpServer = userGateway;
 		}
@@ -913,6 +923,7 @@ export class InstanceAiService {
 
 			const mcpServers = this.parseMcpServers(this.instanceAiConfig.mcpServers);
 
+			const executionPushRef = this.threadPushRef.get(threadId);
 			const { context, memory, taskStorage, snapshotStorage, modelId, orchestrationContext } =
 				await this.createExecutionEnvironment(
 					user,
@@ -921,6 +932,7 @@ export class InstanceAiService {
 					signal,
 					researchMode,
 					messageGroupId,
+					executionPushRef,
 				);
 			const memoryConfig = this.createMemoryConfig(
 				typeof modelId === 'string' ? modelId : modelId.id,
@@ -1059,6 +1071,7 @@ export class InstanceAiService {
 			});
 		} finally {
 			this.runState.clearActiveRun(threadId);
+			this.threadPushRef.delete(threadId);
 			this.domainAccessTrackersByThread.get(threadId)?.clearRun(runId);
 			// Clean up Mastra workflow snapshots unless the run is suspended (needed for resume).
 			// Mastra only persists snapshots on suspension and never deletes them on completion.
@@ -1208,6 +1221,7 @@ export class InstanceAiService {
 			});
 		} finally {
 			this.runState.clearActiveRun(opts.threadId);
+			this.threadPushRef.delete(opts.threadId);
 		}
 	}
 

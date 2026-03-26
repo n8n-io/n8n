@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref, onMounted, onUpdated, useCssModule } from 'vue';
+import { computed, inject, ref, onMounted, onUpdated, useCssModule } from 'vue';
 import ChatMarkdownChunk from '@/features/ai/chatHub/components/ChatMarkdownChunk.vue';
 import { useInstanceAiStore } from '../instanceAi.store';
 
@@ -10,6 +10,15 @@ const props = defineProps<{
 const store = useInstanceAiStore();
 const styles = useCssModule();
 const wrapperRef = ref<HTMLElement | null>(null);
+
+const openWorkflowPreview = inject<((id: string) => void) | undefined>(
+	'openWorkflowPreview',
+	undefined,
+);
+const openDataTablePreview = inject<((id: string, projectId: string) => void) | undefined>(
+	'openDataTablePreview',
+	undefined,
+);
 
 /** Icon SVG paths for each resource type — matches the n8n design system icons. */
 const ICON_SVGS: Record<string, string> = {
@@ -123,9 +132,40 @@ function enhanceResourceLinks(): void {
 		const resourceMatch = /^n8n-resource:\/\/(workflow|credential|data-table)\/(.+)$/.exec(href);
 		if (resourceMatch) {
 			const [, type, id] = resourceMatch;
-			link.href = URL_BUILDERS[type]?.(id) ?? '#';
+
+			// Look up registry entry (needed for projectId on data-table links)
+			const registryEntry =
+				type === 'data-table'
+					? [...store.resourceRegistry.values()].find((r) => r.type === 'data-table' && r.id === id)
+					: undefined;
+
+			// Swap href to the real app URL (used for Cmd+click / new tab)
+			link.href =
+				type === 'data-table' && registryEntry?.projectId
+					? `/projects/${registryEntry.projectId}/datatables/${id}`
+					: (URL_BUILDERS[type]?.(id) ?? '#');
 			link.target = '_blank';
+			link.dataset.resourceId = id;
 			applyResourceChip(link, type);
+
+			// Regular click opens preview; Cmd/Ctrl+click falls through to default (new tab)
+			link.addEventListener('click', (e: MouseEvent) => {
+				if (e.metaKey || e.ctrlKey) return; // Let browser handle new-tab
+
+				const canPreview =
+					(type === 'workflow' && openWorkflowPreview) ||
+					(type === 'data-table' && registryEntry?.projectId && openDataTablePreview);
+
+				if (!canPreview) return; // Let browser navigate normally
+
+				e.preventDefault();
+				if (type === 'workflow') {
+					openWorkflowPreview?.(id);
+				} else if (type === 'data-table' && registryEntry?.projectId) {
+					openDataTablePreview?.(id, registryEntry.projectId);
+				}
+			});
+
 			continue;
 		}
 
@@ -161,7 +201,7 @@ onUpdated(enhanceResourceLinks);
 	border-radius: 0 !important;
 	color: inherit !important;
 	text-decoration: underline !important;
-	text-decoration-color: var(--text-color--subtle) !important;
+	text-decoration-color: var(--color--text--tint-1) !important;
 	cursor: pointer !important;
 	vertical-align: baseline !important;
 	line-height: inherit !important;

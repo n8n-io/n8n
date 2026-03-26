@@ -90,6 +90,7 @@ export class InstanceAiController {
 			payload.researchMode,
 			payload.attachments,
 			payload.timeZone,
+			payload.pushRef,
 		);
 		return { runId };
 	}

@@ -44,7 +44,11 @@ export function usePostMessageHandler({
 	function emitPostMessageReady() {
 		if (window.parent) {
 			window.parent.postMessage(
-				JSON.stringify({ command: 'n8nReady', version: rootStore.versionCli }),
+				JSON.stringify({
+					command: 'n8nReady',
+					version: rootStore.versionCli,
+					pushRef: rootStore.pushRef,
+				}),
 				'*',
 			);
 		}
@@ -65,6 +69,13 @@ export function usePostMessageHandler({
 			await projectsStore.fetchAndSetProject(json.projectId);
 		}
 		await importWorkflowExact(json);
+
+		// importWorkflowExact → resetWorkspace resets activeExecutionId to undefined,
+		// which causes the iframe to reject push execution events. Re-set to null so
+		// the iframe stays receptive to incoming execution push events.
+		if (window !== window.parent) {
+			workflowState.setActiveExecutionId(null);
+		}
 
 		if (json.tidyUp === true) {
 			canvasEventBus.emit('tidyUp', { source: 'import-workflow-data' });

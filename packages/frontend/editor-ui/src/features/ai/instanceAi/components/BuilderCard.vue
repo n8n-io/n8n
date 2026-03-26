@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, inject } from 'vue';
 import { CollapsibleRoot, CollapsibleTrigger, CollapsibleContent } from 'reka-ui';
 import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -19,6 +19,19 @@ const props = defineProps<{
 }>();
 
 const instanceAiStore = useInstanceAiStore();
+const openWorkflowPreview = inject<((workflowId: string) => void) | undefined>(
+	'openWorkflowPreview',
+	undefined,
+);
+
+function handleOpenWorkflow(event: MouseEvent, workflowId: string) {
+	event.preventDefault();
+	if (event.ctrlKey || event.metaKey) {
+		window.open(`/workflow/${workflowId}`, '_blank');
+	} else if (openWorkflowPreview) {
+		openWorkflowPreview(workflowId);
+	}
+}
 
 function handleStop() {
 	instanceAiStore.amendAgent(props.agentNode.agentId, props.agentNode.role, props.agentNode.taskId);
@@ -317,6 +330,7 @@ watch(
 						v-if="build.workflowId"
 						:href="`/workflow/${build.workflowId}`"
 						:class="$style.workflowLink"
+						@click="handleOpenWorkflow($event, build.workflowId)"
 					>
 						{{ i18n.baseText('instanceAi.builderCard.openWorkflow') }}
 						<N8nIcon icon="external-link" size="small" />
