@@ -32,20 +32,17 @@ RUN rm -rf packages/@n8n/eslint-plugin-community-nodes && \
     find . -name "package.json" -exec sed -i '/@n8n\/eslint-plugin-community-nodes/d' {} + && \
     sed -i '/"prepare":/d' package.json
 
-# 3. INSTALACIÓN + PARCHE DE TIPOS
-# Instalamos @lezer/common y otros tipos en la raíz para que CodeMirror no llore
+# 3. INSTALACIÓN + PARCHE DE DEPENDENCIAS FALTANTES
 RUN pnpm install --no-frozen-lockfile && \
     pnpm add -w esbuild@0.25.0 @esbuild/linux-x64 @lezer/common @types/node
 
-# 4. BUILD FINAL (Con el "Cheat Code" de TypeScript)
-# Usamos --no-verify si estuviera disponible, pero lo más efectivo es 
-# pasarle la instrucción a Turbo de ignorar errores de tipos si es necesario.
+# 4. BUILD ESTRATÉGICO
+# Usamos NODE_OPTIONS para el espacio de memoria
+# NO pasamos flags extras a Turbo para no romper herramientas como cm-buildhelper
 ENV NODE_OPTIONS="--max-old-space-size=8192"
 
-# Intentamos el build saltándonos la validación de tipos si falla
-RUN pnpm turbo run build --filter=n8n... -- --skipLibCheck || \
-    (echo "Falling back to unsafe build" && pnpm turbo run build --filter=n8n... -- --force)
-
+# Ejecutamos el build limpio. Turbo gestionará el orden de los 41 paquetes.
+RUN pnpm turbo run build --filter=n8n...
 
 
 # 3. Create Tapis configuration
