@@ -3,7 +3,6 @@ import {
 	type ListRoleMappingRuleQueryInput,
 	type PatchRoleMappingRuleInput,
 } from '@n8n/api-types';
-import { CreateRoleMappingRuleDto, type PatchRoleMappingRuleInput } from '@n8n/api-types';
 import {
 	ProjectRepository,
 	RoleMappingRule,
