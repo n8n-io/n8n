@@ -61,4 +61,44 @@ describe('RoleMappingRuleController', () => {
 			expect(roleMappingRuleService.create).toHaveBeenCalledWith(body);
 		});
 	});
+
+	describe('patch', () => {
+		const ruleId = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
+		const patchBody = { expression: 'claims.updated === true' };
+		const req = mock<AuthenticatedRequest>();
+		req.params = { id: ruleId };
+		req.body = patchBody;
+		const res = mock<Response>({
+			json: jest.fn().mockReturnThis(),
+			status: jest.fn().mockReturnThis(),
+		});
+
+		it('should return 403 if provisioning is not licensed', async () => {
+			licenseState.isProvisioningLicensed.mockReturnValue(false);
+			await controller.patch(req, res, ruleId);
+
+			expect(res.status).toHaveBeenCalledWith(403);
+		});
+
+		it('should patch a role mapping rule when provisioning is licensed', async () => {
+			const updated: RoleMappingRuleResponse = {
+				id: ruleId,
+				expression: patchBody.expression,
+				role: 'global:admin',
+				type: 'instance',
+				order: 0,
+				projectIds: [],
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+			};
+
+			licenseState.isProvisioningLicensed.mockReturnValue(true);
+			roleMappingRuleService.patch.mockResolvedValue(updated);
+
+			const result = await controller.patch(req, res, ruleId);
+
+			expect(result).toEqual(updated);
+			expect(roleMappingRuleService.patch).toHaveBeenCalledWith(ruleId, patchBody);
+		});
+	});
 });

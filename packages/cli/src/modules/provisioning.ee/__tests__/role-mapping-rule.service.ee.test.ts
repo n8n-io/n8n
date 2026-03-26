@@ -283,4 +283,135 @@ describe('RoleMappingRuleService', () => {
 			expect(projectRepository.findBy).toHaveBeenCalledTimes(1);
 		});
 	});
+
+	describe('patch', () => {
+		const existingInstanceRule = {
+			id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+			expression: 'claims.group === "admins"',
+			role: globalRole,
+			type: 'instance',
+			order: 0,
+			projects: [],
+			createdAt: new Date('2025-01-01T00:00:00.000Z'),
+			updatedAt: new Date('2025-01-01T00:00:00.000Z'),
+		} as unknown as RoleMappingRule;
+
+		beforeEach(() => {
+			roleMappingRuleRepository.findOne.mockImplementation(async (options) => {
+				if (
+					options?.where &&
+					'id' in options.where &&
+					options.where.id === existingInstanceRule.id
+				) {
+					return {
+						...existingInstanceRule,
+						role: globalRole,
+						projects: [],
+					} as unknown as RoleMappingRule;
+				}
+				return null;
+			});
+		});
+
+		it('should return 404 when rule id is unknown', async () => {
+			await expect(
+				service.patch('00000000-0000-4000-8000-000000000000', { expression: 'true' }),
+			).rejects.toThrow(NotFoundError);
+		});
+
+		it('should reject an empty patch payload', async () => {
+			await expect(service.patch(existingInstanceRule.id, {})).rejects.toThrow(BadRequestError);
+		});
+
+		it('should update expression and return loaded rule', async () => {
+			const updatedRule = {
+				...existingInstanceRule,
+				expression: 'claims.new === 1',
+				role: globalRole,
+				projects: [],
+				updatedAt: new Date('2025-06-01T00:00:00.000Z'),
+			} as unknown as RoleMappingRule;
+
+			roleMappingRuleRepository.save.mockImplementation(async (r) => r as RoleMappingRule);
+			roleMappingRuleRepository.findOneOrFail.mockResolvedValue(updatedRule);
+
+			const result = await service.patch(existingInstanceRule.id, {
+				expression: 'claims.new === 1',
+			});
+
+			expect(result.expression).toBe('claims.new === 1');
+			expect(result.role).toBe(globalRole.slug);
+			expect(roleMappingRuleRepository.save).toHaveBeenCalledTimes(1);
+		});
+
+		it('should return 409 when order collides with another rule', async () => {
+			const otherId = 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a22';
+			roleMappingRuleRepository.findOne.mockImplementation(async (options) => {
+				if (
+					options?.where &&
+					'id' in options.where &&
+					options.where.id === existingInstanceRule.id
+				) {
+					return {
+						...existingInstanceRule,
+						role: globalRole,
+						projects: [],
+					} as unknown as RoleMappingRule;
+				}
+				if (
+					options?.where &&
+					'type' in options.where &&
+					options.where.type === 'instance' &&
+					options.where.order === 5
+				) {
+					return { id: otherId } as unknown as RoleMappingRule;
+				}
+				return null;
+			});
+
+			await expect(service.patch(existingInstanceRule.id, { order: 5 })).rejects.toThrow(
+				ConflictError,
+			);
+		});
+
+		it('should allow patch that keeps the same type and order', async () => {
+			roleMappingRuleRepository.findOne.mockImplementation(async (options) => {
+				if (
+					options?.where &&
+					'id' in options.where &&
+					options.where.id === existingInstanceRule.id
+				) {
+					return {
+						...existingInstanceRule,
+						role: globalRole,
+						projects: [],
+					} as unknown as RoleMappingRule;
+				}
+				if (
+					options?.where &&
+					'type' in options.where &&
+					'order' in options.where &&
+					options.where.type === 'instance' &&
+					options.where.order === 0
+				) {
+					return { ...existingInstanceRule } as unknown as RoleMappingRule;
+				}
+				return null;
+			});
+
+			const updatedRule = {
+				...existingInstanceRule,
+				expression: 'true',
+				role: globalRole,
+				projects: [],
+			} as unknown as RoleMappingRule;
+
+			roleMappingRuleRepository.save.mockImplementation(async (r) => r as RoleMappingRule);
+			roleMappingRuleRepository.findOneOrFail.mockResolvedValue(updatedRule);
+
+			await expect(
+				service.patch(existingInstanceRule.id, { expression: 'true' }),
+			).resolves.toMatchObject({ order: 0, type: 'instance' });
+		});
+	});
 });
