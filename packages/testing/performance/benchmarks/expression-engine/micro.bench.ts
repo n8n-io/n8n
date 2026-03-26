@@ -23,6 +23,7 @@ const evaluator = new ExpressionEvaluator({
 	createBridge: () => new IsolatedVmBridge({ timeout: 5000 }),
 	isolatePoolSize: 1,
 	acquireTimeoutMs: 5000,
+	maxCodeCacheSize: 1024,
 	hooks: {
 		before: [ThisSanitizer],
 		after: [PrototypeSanitizer, DollarSignValidator],
