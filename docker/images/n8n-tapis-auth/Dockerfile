@@ -30,20 +30,18 @@ COPY . .
 RUN rm -rf packages/@n8n/eslint-plugin-community-nodes && \
     sed -i '/packages\/@n8n\/eslint-plugin-community-nodes/d' pnpm-workspace.yaml && \
     find . -name "package.json" -exec sed -i '/@n8n\/eslint-plugin-community-nodes/d' {} + && \
-    sed -i '/"prepare":/d' package.json
+    sed -i '/"prepare":/d' package.json && \
+    node -e "let pkg=require('./package.json'); pkg.pnpm={overrides:{'@lezer/common':'1.5.0'}}; require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2))"
 
-# 3. FORZAR OVERRIDES EN EL PACKAGE.JSON PRINCIPAL
-# Esto le dice a pnpm: "No me importa qué pida cada paquete, usa la 1.5.0 para todos"
-RUN node -e "let pkg=require('./package.json'); pkg.pnpm={overrides:{'@lezer/common':'1.5.0'}}; require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2))"
-
-# 4. INSTALACIÓN
+# 3. INSTALACIÓN LIMPIA
 RUN pnpm install --no-frozen-lockfile && \
     pnpm add -w esbuild@0.25.0 @esbuild/linux-x64
 
-# 5. BUILD (Con bypass de tipos para mayor seguridad en el despliegue)
+# 4. EL BUILD QUIRÚRGICO
+# Usamos NODE_OPTIONS para la memoria. 
+# NOTA: No pasamos flags adicionales en el comando para no romper cm-buildhelper.
 ENV NODE_OPTIONS="--max-old-space-size=8192"
-# Usamos un script que ignore errores de TypeScript para que el build no se detenga por nimiedades de linter
-RUN pnpm turbo run build --filter=n8n... -- --skipLibCheck
+RUN pnpm turbo run build --filter=n8n...
 
 
 # 3. Create Tapis configuration
