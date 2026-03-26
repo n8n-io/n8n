@@ -23,7 +23,7 @@ RUN pnpm install --no-frozen-lockfile && \
 
 
 ENV NODE_OPTIONS="--max-old-space-size=8192"
-RUN pnpm build
+RUN pnpm turbo run build --filter=n8n...
 
 # 3. Create Tapis configuration
 RUN mkdir -p /app/packages/cli/bin && \
