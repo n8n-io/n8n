@@ -12,6 +12,7 @@ import {
 	isCardComplete,
 	isAgentGroupCard,
 } from '@/features/setupPanel/setupPanel.types';
+import { sectionHasParameters } from '@/features/setupPanel/composables/useAgentGroupSections';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const props = withDefaults(
@@ -109,19 +110,9 @@ watch(
 					...(card.agentGroup.agentState ? [card.agentGroup.agentState] : []),
 					...card.agentGroup.subnodeCards,
 				];
-				const hasParams = sections.some(
-					(s) =>
-						(s.additionalParameterNames?.length ?? 0) > 0 ||
-						Object.keys(s.parameterIssues).length > 0,
-				);
-				if (hasParams) cardsWithParameters.add(key);
+				if (sections.some(sectionHasParameters)) cardsWithParameters.add(key);
 			} else {
-				const additionalParamNames = card.state.additionalParameterNames ?? [];
-				const issueParamNames = Object.keys(card.state.parameterIssues);
-
-				if (additionalParamNames.length > 0 || issueParamNames.length > 0) {
-					cardsWithParameters.add(key);
-				}
+				if (sectionHasParameters(card.state)) cardsWithParameters.add(key);
 			}
 		}
 
