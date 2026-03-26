@@ -26,6 +26,14 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.page.getByTestId('node-credentials-select');
 	}
 
+	getNodeCredentialsEmptyState() {
+		return this.page.getByTestId('node-credentials-empty-state');
+	}
+
+	getQuickConnectEmptyState() {
+		return this.page.getByTestId('quick-connect-empty-state');
+	}
+
 	credentialDropdownCreateNewCredential() {
 		return this.page.getByText('Create new credential');
 	}
@@ -537,8 +545,25 @@ export class NodeDetailsViewPage extends BasePage {
 
 	// Credentials modal helpers
 	async clickCreateNewCredential(eq: number = 0): Promise<void> {
-		await this.page.getByTestId('node-credentials-select').nth(eq).click();
-		await this.page.getByTestId('node-credentials-select-item-new').nth(eq).click();
+		const setupManually = this.page.getByTestId('setup-manually-link').nth(eq);
+		const setupCredential = this.page.getByTestId('setup-credential-button').nth(eq);
+		const credentialSelect = this.page.getByTestId('node-credentials-select').nth(eq);
+
+		// Wait for one of the three credential UI states to appear
+		await Promise.race([
+			setupManually.waitFor({ state: 'visible', timeout: 10_000 }),
+			setupCredential.waitFor({ state: 'visible', timeout: 10_000 }),
+			credentialSelect.waitFor({ state: 'visible', timeout: 10_000 }),
+		]);
+
+		if (await setupManually.isVisible()) {
+			await setupManually.click();
+		} else if (await setupCredential.isVisible()) {
+			await setupCredential.click();
+		} else {
+			await credentialSelect.click();
+			await this.page.getByTestId('node-credentials-select-item-new').nth(eq).click();
+		}
 	}
 
 	// Run selector and linking helpers

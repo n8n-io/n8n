@@ -50,6 +50,22 @@ const versionId = faker.string.nanoid();
 const renderComponent = createComponentRenderer(WorkflowHistoryPage, {
 	global: {
 		stubs: {
+			Modal: defineComponent({
+				template: '<div><slot name="content" /></div>',
+			}),
+			WorkflowHistoryDiff: defineComponent({
+				emits: ['versionsChange', 'close'],
+				template: `<div>
+					<button
+						data-test-id="stub-diff-emit-same"
+						@click="$emit('versionsChange', { sourceVersionId: 'v-source', targetVersionId: 'v-target' })"
+					/>
+					<button
+						data-test-id="stub-diff-emit-other"
+						@click="$emit('versionsChange', { sourceVersionId: 'v-other-source', targetVersionId: 'v-other-target' })"
+					/>
+				</div>`,
+			}),
 			WorkflowHistoryContent: true,
 			WorkflowHistoryList: defineComponent({
 				props: {
@@ -287,6 +303,48 @@ describe('WorkflowHistory', () => {
 				query: expect.objectContaining({ diffWith: expect.anything() }),
 			}),
 		);
+	});
+
+	describe('diff versions route sync', () => {
+		const setupDiffRouteSyncState = () => {
+			Object.keys(route.params).forEach((key) => delete route.params[key]);
+			Object.keys(route.query).forEach((key) => delete route.query[key]);
+			settingsStore.settings.enterprise.workflowDiffs = true;
+			route.params.workflowId = workflowId;
+			route.params.versionId = 'v-target';
+			route.query.diffWith = 'v-source';
+		};
+
+		it('should not push route when emitted diff versions already match current URL', async () => {
+			setupDiffRouteSyncState();
+
+			const { getByTestId } = renderComponent({ pinia });
+			await flushPromises();
+			await userEvent.click(getByTestId('stub-diff-emit-same'));
+
+			expect(router.push).not.toHaveBeenCalled();
+		});
+
+		it('should push route when emitted diff versions differ from current URL', async () => {
+			setupDiffRouteSyncState();
+			route.query.preserve = 'yes';
+
+			const { getByTestId } = renderComponent({ pinia });
+			await flushPromises();
+			await userEvent.click(getByTestId('stub-diff-emit-other'));
+
+			expect(router.push).toHaveBeenCalledWith({
+				name: VIEWS.WORKFLOW_HISTORY,
+				params: {
+					workflowId,
+					versionId: 'v-other-target',
+				},
+				query: {
+					diffWith: 'v-other-source',
+					preserve: 'yes',
+				},
+			});
+		});
 	});
 
 	it('should display archived tag on header if workflow is archived', async () => {

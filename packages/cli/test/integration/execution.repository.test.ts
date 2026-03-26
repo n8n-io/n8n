@@ -67,6 +67,38 @@ describe('UserRepository', () => {
 		});
 	});
 
+	describe('setRunning', () => {
+		test('should set startedAt when execution has no startedAt', async () => {
+			const workflow = await createWorkflow();
+			const execution = await createExecution({ status: 'new', startedAt: null }, workflow);
+
+			const result = await executionRepository.setRunning(execution.id);
+
+			expect(result).toBeInstanceOf(Date);
+
+			const row = await executionRepository.findOneBy({ id: execution.id });
+			expect(row?.status).toBe('running');
+			expect(row?.startedAt).toEqual(result);
+		});
+
+		test('should preserve original startedAt for resumed executions', async () => {
+			const originalStartedAt = new Date('2025-12-02T09:04:47.150Z');
+			const workflow = await createWorkflow();
+			const execution = await createExecution(
+				{ status: 'waiting', startedAt: originalStartedAt },
+				workflow,
+			);
+
+			const result = await executionRepository.setRunning(execution.id);
+
+			expect(result.getTime()).toBe(originalStartedAt.getTime());
+
+			const row = await executionRepository.findOneBy({ id: execution.id });
+			expect(row?.status).toBe('running');
+			expect(row?.startedAt?.getTime()).toBe(originalStartedAt.getTime());
+		});
+	});
+
 	describe('updateExistingExecution with conditions', () => {
 		test.each([
 			{

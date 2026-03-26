@@ -30,6 +30,11 @@ export interface EvaluatorConfig {
 	 * If omitted, expressions are transformed with no security hooks (dev/testing use).
 	 */
 	hooks?: TournamentHooks;
+
+	/**
+	 * Maximum number of tournament-transformed expressions to cache (LRU).
+	 */
+	maxCodeCacheSize: number;
 }
 
 /**

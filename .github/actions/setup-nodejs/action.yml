@@ -72,11 +72,11 @@ runs:
       uses: rharkor/caching-for-turbo@0abc2381e688c4d2832f0665a68a01c6e82f0d6c # v2.3.11
 
     - name: Setup Docker Builder for Docker Cache (Blacksmith)
-      if: ${{ inputs.enable-docker-cache == 'true' && vars.RUNNER_PROVIDER != 'github' }}
+      if: ${{ inputs.enable-docker-cache == 'true' && contains(runner.name, 'blacksmith') }}
       uses: useblacksmith/setup-docker-builder@ef12d5b165b596e3aa44ea8198d8fde563eab402 # v1.4.0
 
     - name: Setup Docker Builder (GitHub fallback)
-      if: ${{ inputs.enable-docker-cache == 'true' && vars.RUNNER_PROVIDER == 'github' }}
+      if: ${{ inputs.enable-docker-cache == 'true' && !contains(runner.name, 'blacksmith') }}
       uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
 
     - name: Build Project

@@ -144,5 +144,8 @@ export async function useCurrentEngine(): Promise<void> {
 
 export async function useVmEngine(): Promise<void> {
 	Expression.setExpressionEngine('vm');
-	await Expression.initializeVmEvaluator();
+	// Use a higher timeout for benchmarks — CodSpeed's instruction-counting
+	// instrumentation adds significant wall-clock overhead that can cause the
+	// default 5s timeout to fire on larger data set benchmarks (e.g. 10k items).
+	await Expression.initializeVmEvaluator({ timeout: 60_000 });
 }

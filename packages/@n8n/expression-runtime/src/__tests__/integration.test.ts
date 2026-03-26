@@ -9,7 +9,7 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 
 	beforeAll(async () => {
 		const bridge = new IsolatedVmBridge({ timeout: 5000 });
-		evaluator = new ExpressionEvaluator({ bridge });
+		evaluator = new ExpressionEvaluator({ bridge, maxCodeCacheSize: 1024 });
 		await evaluator.initialize();
 	});
 

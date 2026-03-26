@@ -235,7 +235,6 @@ describe('WorkflowCreationService', () => {
 			 */
 			expect(projectRepositoryMock.getPersonalProjectForUserOrFail).toHaveBeenCalledWith(
 				'user-456',
-				expect.anything(),
 			);
 			expect(userHasScopesMock).toHaveBeenCalledWith(
 				user,
