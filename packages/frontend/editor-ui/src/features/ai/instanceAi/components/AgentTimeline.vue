@@ -19,130 +19,105 @@ import { useInstanceAiStore } from '../instanceAi.store';
 const i18n = useI18n();
 const { getToolLabel, getToggleLabel, getHideLabel } = useToolLabel();
 
-function extractResourceId(node: InstanceAiAgentNode): string | undefined {
-	if (node.targetResource?.id) return node.targetResource.id;
+interface ArtifactInfo {
+	type: 'workflow' | 'data-table';
+	resourceId: string;
+	name: string;
+	projectId?: string;
+	/** ISO timestamp of the tool call that produced this artifact. */
+	completedAt?: string;
+}
+
+/** Extract all artifacts (workflows and data tables) from a node's tool calls. */
+function extractArtifacts(node: InstanceAiAgentNode): ArtifactInfo[] {
+	if (node.status !== 'completed') return [];
+
+	const artifacts: ArtifactInfo[] = [];
+	const seenIds = new Set<string>();
+
+	// Check targetResource first (single-workflow agents)
+	if (node.targetResource?.id && node.targetResource.type) {
+		const type = node.targetResource.type;
+		if (type === 'workflow' || type === 'data-table') {
+			seenIds.add(node.targetResource.id);
+			artifacts.push({
+				type,
+				resourceId: node.targetResource.id,
+				name: node.targetResource.name ?? node.subtitle ?? 'Untitled',
+				completedAt: undefined,
+			});
+		}
+	}
+
+	// Scan tool calls for additional artifacts
 	for (const tc of node.toolCalls) {
 		if (!tc.result || typeof tc.result !== 'object') continue;
 		const result = tc.result as Record<string, unknown>;
-		if (typeof result.workflowId === 'string') return result.workflowId;
-		if (typeof result.tableId === 'string') return result.tableId;
-		if (typeof result.dataTableId === 'string') return result.dataTableId;
-		// create-data-table returns { table: { id, projectId, ... } }
-		const table = result.table;
+
+		// Workflow artifacts from build-workflow / submit-workflow
 		if (
-			table &&
-			typeof table === 'object' &&
-			typeof (table as Record<string, unknown>).id === 'string'
+			(tc.toolName === 'build-workflow' || tc.toolName === 'submit-workflow') &&
+			typeof result.workflowId === 'string' &&
+			!seenIds.has(result.workflowId)
 		) {
-			return (table as Record<string, unknown>).id as string;
+			seenIds.add(result.workflowId);
+			const name =
+				(typeof result.workflowName === 'string' ? result.workflowName : undefined) ??
+				(typeof (tc.args as Record<string, unknown>)?.name === 'string'
+					? ((tc.args as Record<string, unknown>).name as string)
+					: undefined) ??
+				'Untitled';
+			artifacts.push({
+				type: 'workflow',
+				resourceId: result.workflowId,
+				name,
+				completedAt: tc.completedAt,
+			});
+			continue;
 		}
-	}
-	for (const child of node.children) {
-		const id = extractResourceId(child);
-		if (id !== undefined) return id;
-	}
-	return undefined;
-}
 
-function getArtifactType(node: InstanceAiAgentNode): 'workflow' | 'data-table' | undefined {
-	if (node.targetResource?.type === 'workflow' || node.targetResource?.type === 'data-table') {
-		return node.targetResource.type;
-	}
-	if (node.kind === 'builder') return 'workflow';
-	if (node.kind === 'data-table') return 'data-table';
-	return undefined;
-}
+		// Data table artifacts
+		let tableId: string | undefined;
+		let tableName: string | undefined;
+		let tableProjectId: string | undefined;
 
-function shouldShowArtifact(node: InstanceAiAgentNode): boolean {
-	return (
-		node.status === 'completed' &&
-		getArtifactType(node) !== undefined &&
-		extractResourceId(node) !== undefined
-	);
-}
+		if (typeof result.tableId === 'string') tableId = result.tableId;
+		if (typeof result.dataTableId === 'string') tableId = result.dataTableId;
+		if (typeof result.name === 'string') tableName = result.name;
+		if (typeof result.tableName === 'string') tableName = result.tableName;
+		if (typeof result.projectId === 'string') tableProjectId = result.projectId;
 
-function extractWorkflowName(node: InstanceAiAgentNode): string | undefined {
-	for (const tc of node.toolCalls) {
-		if (tc.toolName === 'build-workflow' || tc.toolName === 'submit-workflow') {
-			if (tc.result && typeof tc.result === 'object') {
-				const result = tc.result as Record<string, unknown>;
-				if (typeof result.workflowName === 'string') return result.workflowName;
-			}
-			if (tc.args && typeof tc.args === 'object') {
-				const args = tc.args as Record<string, unknown>;
-				if (typeof args.name === 'string') return args.name;
-			}
-		}
-	}
-	for (const tc of node.toolCalls) {
-		if (tc.toolName === 'get-workflow-as-code' && tc.result && typeof tc.result === 'object') {
-			const result = tc.result as Record<string, unknown>;
-			if (typeof result.name === 'string') return result.name;
-		}
-	}
-	for (const child of node.children) {
-		const name = extractWorkflowName(child);
-		if (name !== undefined) return name;
-	}
-	return undefined;
-}
-
-function extractDataTableName(node: InstanceAiAgentNode): string | undefined {
-	for (const tc of node.toolCalls) {
-		if (tc.toolName === 'create-data-table' && tc.result && typeof tc.result === 'object') {
-			const result = tc.result as Record<string, unknown>;
-			if (typeof result.name === 'string') return result.name;
-			if (typeof result.tableName === 'string') return result.tableName;
-			const table = result.table;
-			if (
-				table &&
-				typeof table === 'object' &&
-				typeof (table as Record<string, unknown>).name === 'string'
-			) {
-				return (table as Record<string, unknown>).name as string;
-			}
-		}
-	}
-	for (const child of node.children) {
-		const name = extractDataTableName(child);
-		if (name !== undefined) return name;
-	}
-	return undefined;
-}
-
-function getArtifactName(node: InstanceAiAgentNode): string {
-	const type = getArtifactType(node);
-	if (type === 'workflow') {
-		const name = extractWorkflowName(node);
-		if (name) return name;
-	}
-	if (type === 'data-table') {
-		const name = extractDataTableName(node);
-		if (name) return name;
-	}
-	return node.subtitle ?? node.targetResource?.name ?? 'Untitled';
-}
-
-function extractProjectId(node: InstanceAiAgentNode): string | undefined {
-	for (const tc of node.toolCalls) {
-		if (!tc.result || typeof tc.result !== 'object') continue;
-		const result = tc.result as Record<string, unknown>;
-		if (typeof result.projectId === 'string') return result.projectId;
-		// create-data-table returns { table: { projectId, ... } }
 		const table = result.table;
-		if (
-			table &&
-			typeof table === 'object' &&
-			typeof (table as Record<string, unknown>).projectId === 'string'
-		) {
-			return (table as Record<string, unknown>).projectId as string;
+		if (table && typeof table === 'object') {
+			const t = table as Record<string, unknown>;
+			if (typeof t.id === 'string') tableId = t.id;
+			if (typeof t.name === 'string') tableName = t.name;
+			if (typeof t.projectId === 'string') tableProjectId = t.projectId;
+		}
+
+		if (tableId && !seenIds.has(tableId)) {
+			seenIds.add(tableId);
+			artifacts.push({
+				type: 'data-table',
+				resourceId: tableId,
+				name: tableName ?? 'Untitled',
+				projectId: tableProjectId,
+				completedAt: tc.completedAt,
+			});
 		}
 	}
+
+	// Recurse into children
 	for (const child of node.children) {
-		const pid = extractProjectId(child);
-		if (pid !== undefined) return pid;
+		for (const artifact of extractArtifacts(child)) {
+			if (!seenIds.has(artifact.resourceId)) {
+				seenIds.add(artifact.resourceId);
+				artifacts.push(artifact);
+			}
+		}
 	}
-	return undefined;
+
+	return artifacts;
 }
 
 function formatRelativeTime(isoTime: string): string {
@@ -171,27 +146,14 @@ function formatCreatedDate(isoTime: string): string {
 	});
 }
 
-function formatArtifactMetadata(node: InstanceAiAgentNode): string {
+function formatArtifactMetadata(artifact: ArtifactInfo): string {
 	const parts: string[] = [];
 
-	// Find latest and earliest times from tool calls
-	let latestTime: string | undefined;
-	let earliestTime: string | undefined;
-	for (const tc of node.toolCalls) {
-		if (tc.completedAt) {
-			if (!latestTime || tc.completedAt > latestTime) latestTime = tc.completedAt;
-			if (!earliestTime || tc.completedAt < earliestTime) earliestTime = tc.completedAt;
-		}
-	}
-
-	if (latestTime) {
-		parts.push(formatRelativeTime(latestTime));
+	if (artifact.completedAt) {
+		parts.push(formatRelativeTime(artifact.completedAt));
+		parts.push(formatCreatedDate(artifact.completedAt));
 	} else {
 		parts.push(i18n.baseText('instanceAi.artifactCard.updatedJustNow'));
-	}
-
-	if (earliestTime) {
-		parts.push(formatCreatedDate(earliestTime));
 	}
 
 	return parts.join(' \u2502 ');
@@ -373,14 +335,15 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 			<template v-else-if="entry.type === 'child' && childrenById[entry.agentId]">
 				<AgentSection :agent-node="childrenById[entry.agentId]" />
 
-				<!-- Artifact card for completed subagents with a target resource -->
+				<!-- Artifact cards for completed subagents (one per workflow/data-table) -->
 				<ArtifactCard
-					v-if="shouldShowArtifact(childrenById[entry.agentId])"
-					:type="getArtifactType(childrenById[entry.agentId])!"
-					:name="getArtifactName(childrenById[entry.agentId])"
-					:resource-id="extractResourceId(childrenById[entry.agentId]) ?? ''"
-					:project-id="extractProjectId(childrenById[entry.agentId])"
-					:metadata="formatArtifactMetadata(childrenById[entry.agentId])"
+					v-for="artifact in extractArtifacts(childrenById[entry.agentId])"
+					:key="artifact.resourceId"
+					:type="artifact.type"
+					:name="artifact.name"
+					:resource-id="artifact.resourceId"
+					:project-id="artifact.projectId"
+					:metadata="formatArtifactMetadata(artifact)"
 				/>
 			</template>
 		</template>
