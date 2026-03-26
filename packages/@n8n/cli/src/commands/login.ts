@@ -57,6 +57,8 @@ async function startCallbackServer(): Promise<{
 		rejectCallback = reject;
 	});
 
+	const openSockets = new Set<import('node:net').Socket>();
+
 	const server = http.createServer((req, res) => {
 		const url = new URL(req.url ?? '/', 'http://127.0.0.1');
 		if (url.pathname !== '/callback') {
@@ -93,6 +95,11 @@ async function startCallbackServer(): Promise<{
 		resolveCallback({ code, state });
 	});
 
+	server.on('connection', (socket) => {
+		openSockets.add(socket);
+		socket.on('close', () => openSockets.delete(socket));
+	});
+
 	// Wait for server to start listening before reading the assigned port
 	const port = await new Promise<number>((resolve, reject) => {
 		server.listen(0, '127.0.0.1', () => {
@@ -106,7 +113,10 @@ async function startCallbackServer(): Promise<{
 	return {
 		port,
 		waitForCallback: async () => await callbackPromise,
-		close: () => server.close(),
+		close: () => {
+			for (const socket of openSockets) socket.destroy();
+			server.close();
+		},
 	};
 }
 
