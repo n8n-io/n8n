@@ -1,5 +1,5 @@
 import { ref, computed, shallowRef } from 'vue';
-import { RouteRecordNameGeneric, useRoute, useRouter } from 'vue-router';
+import { type RouteRecordNameGeneric, useRoute, useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
