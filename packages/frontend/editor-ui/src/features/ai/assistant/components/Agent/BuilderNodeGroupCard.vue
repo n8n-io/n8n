@@ -8,16 +8,16 @@ import TriggerExecuteButton from '@/features/setupPanel/components/TriggerExecut
 import SetupCardSection from '@/features/setupPanel/components/cards/SetupCardSection.vue';
 import SetupCardBody from '@/features/setupPanel/components/cards/SetupCardBody.vue';
 
-import type { AgentGroupItem } from '@/features/setupPanel/setupPanel.types';
+import type { NodeGroupItem } from '@/features/setupPanel/setupPanel.types';
 import { isCardComplete } from '@/features/setupPanel/setupPanel.types';
 import type { INodeUi } from '@/Interface';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useTriggerExecution } from '@/features/setupPanel/composables/useTriggerExecution';
-import { useAgentGroupSections } from '@/features/setupPanel/composables/useAgentGroupSections';
+import { useNodeGroupSections } from '@/features/setupPanel/composables/useNodeGroupSections';
 
 const props = defineProps<{
-	agentGroup: AgentGroupItem;
+	nodeGroup: NodeGroupItem;
 	stepIndex: number;
 	totalCards: number;
 	firstTriggerName: string | null;
@@ -37,7 +37,7 @@ const workflowsStore = useWorkflowsStore();
 const credentialsStore = useCredentialsStore();
 
 const {
-	agentNodeType,
+	parentNodeType,
 	subnodeSections,
 	allSections,
 	getStickyParameters,
@@ -47,10 +47,10 @@ const {
 	onSectionMouseEnter,
 	onSectionMouseLeave,
 	getSectionNodeType,
-} = useAgentGroupSections(toRef(props, 'agentGroup'));
+} = useNodeGroupSections(toRef(props, 'nodeGroup'));
 
-// Execute button always targets the agent node
-const executableNode = computed<INodeUi | null>(() => props.agentGroup.agentNode);
+// Execute button always targets the parent node
+const executableNode = computed<INodeUi | null>(() => props.nodeGroup.parentNode);
 
 const {
 	isExecuting,
@@ -64,7 +64,7 @@ const {
 
 const isActive = computed(() => isExecuting.value || isInListeningState.value);
 
-const isGroupComplete = computed(() => isCardComplete({ agentGroup: props.agentGroup }));
+const isGroupComplete = computed(() => isCardComplete({ nodeGroup: props.nodeGroup }));
 
 const isAnyCredentialTesting = computed(() =>
 	allSections.value.some((s) => {
@@ -82,7 +82,7 @@ const isNextDisabled = computed(() => isLastCard.value);
 // Notify parent on execution finish
 watch(isActive, (active, wasActive) => {
 	if (wasActive && !active) {
-		const runData = workflowsStore.getWorkflowResultDataByNodeName(props.agentGroup.agentNode.name);
+		const runData = workflowsStore.getWorkflowResultDataByNodeName(props.nodeGroup.parentNode.name);
 		const lastRun = runData?.[runData.length - 1];
 		if (!lastRun?.error) {
 			emit('stepExecuted');
@@ -102,18 +102,18 @@ watch(hoveredSection, (section) => {
 
 <template>
 	<div
-		data-test-id="builder-agent-group-card"
+		data-test-id="builder-node-group-card"
 		:class="[$style.card, { [$style.completed]: isGroupComplete }]"
 	>
-		<!-- Agent header -->
+		<!-- Parent header -->
 		<header :class="$style.header">
-			<NodeIcon :node-type="agentNodeType" :size="16" />
+			<NodeIcon :node-type="parentNodeType" :size="16" />
 			<N8nText :class="$style.title" size="medium" color="text-dark" bold>
-				{{ agentGroup.agentNode.name }}
+				{{ nodeGroup.parentNode.name }}
 			</N8nText>
 			<N8nText
 				v-if="isGroupComplete"
-				data-test-id="builder-agent-group-card-check"
+				data-test-id="builder-node-group-card-check"
 				:class="$style.completeLabel"
 				size="medium"
 				color="success"
@@ -123,22 +123,22 @@ watch(hoveredSection, (section) => {
 			</N8nText>
 		</header>
 
-		<!-- Agent's own credentials/parameters -->
+		<!-- Parent node's own credentials/parameters -->
 		<div
-			v-if="agentGroup.agentState"
-			:class="$style.agentBody"
-			@mouseenter="onSectionMouseEnter(agentGroup.agentState)"
+			v-if="nodeGroup.parentState"
+			:class="$style.parentBody"
+			@mouseenter="onSectionMouseEnter(nodeGroup.parentState)"
 			@mouseleave="onSectionMouseLeave"
 		>
-			<SetupCardSection :state="agentGroup.agentState">
+			<SetupCardSection :state="nodeGroup.parentState">
 				<SetupCardBody
-					:state="agentGroup.agentState"
-					:sticky-parameters="getStickyParameters(agentGroup.agentState.node.id)"
+					:state="nodeGroup.parentState"
+					:sticky-parameters="getStickyParameters(nodeGroup.parentState.node.id)"
 					:is-wizard="true"
 					@credential-selected="(p) => emit('credentialSelected', p)"
 					@credential-deselected="(p) => emit('credentialDeselected', p)"
 					@parameters-discovered="
-						(params) => getStickyParameters(agentGroup.agentState!.node.id).push(...params)
+						(params) => getStickyParameters(nodeGroup.parentState!.node.id).push(...params)
 					"
 				/>
 			</SetupCardSection>
@@ -150,13 +150,13 @@ watch(hoveredSection, (section) => {
 				v-for="section in subnodeSections"
 				:key="section.node.id"
 				:class="$style.section"
-				data-test-id="builder-agent-group-section"
+				data-test-id="builder-node-group-section"
 				@mouseenter="onSectionMouseEnter(section)"
 				@mouseleave="onSectionMouseLeave"
 			>
 				<div
 					:class="$style.sectionHeader"
-					data-test-id="builder-agent-group-section-header"
+					data-test-id="builder-node-group-section-header"
 					@click="toggleSection(section.node.id)"
 				>
 					<N8nIcon
@@ -202,7 +202,7 @@ watch(hoveredSection, (section) => {
 					size="xsmall"
 					icon-only
 					:disabled="isPrevDisabled"
-					data-test-id="builder-agent-group-card-prev"
+					data-test-id="builder-node-group-card-prev"
 					aria-label="Previous step"
 					@click="emit('goToPrev')"
 				>
@@ -215,7 +215,7 @@ watch(hoveredSection, (section) => {
 					size="xsmall"
 					icon-only
 					:disabled="isNextDisabled"
-					data-test-id="builder-agent-group-card-next"
+					data-test-id="builder-node-group-card-next"
 					aria-label="Next step"
 					@click="emit('goToNext')"
 				>
@@ -259,7 +259,7 @@ watch(hoveredSection, (section) => {
 	padding: var(--spacing--sm);
 }
 
-.agentBody {
+.parentBody {
 	padding: 0 var(--spacing--sm);
 }
 

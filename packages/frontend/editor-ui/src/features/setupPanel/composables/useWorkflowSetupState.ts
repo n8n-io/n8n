@@ -9,7 +9,7 @@ import {
 import type {
 	SetupCardItem,
 	NodeSetupState,
-	AgentGroupItem,
+	NodeGroupItem,
 } from '@/features/setupPanel/setupPanel.types';
 import { isCardComplete } from '@/features/setupPanel/setupPanel.types';
 
@@ -702,18 +702,18 @@ export const useWorkflowSetupState = (
 				executionOrder.indexOf(a.state!.node.name) - executionOrder.indexOf(b.state!.node.name),
 		);
 
-		// --- Agent grouping ---
+		// --- Node grouping ---
 		const connByDest = workflowsStore.connectionsByDestinationNode;
 		const agentNodes = sourceNodes.value.filter((n) => n.type === AGENT_NODE_TYPE);
 
 		if (agentNodes.length === 0) return flatCards;
 
 		const claimedNodeNames = new Set<string>();
-		const agentGroups = new Map<string, AgentGroupItem>();
+		const nodeGroups = new Map<string, NodeGroupItem>();
 
-		for (const agentNode of agentNodes) {
+		for (const parentNode of agentNodes) {
 			// Find subnodes connected via AI connection types
-			const destConns = connByDest[agentNode.name];
+			const destConns = connByDest[parentNode.name];
 			if (!destConns) continue;
 
 			const subnodeNames = new Set<string>();
@@ -730,7 +730,7 @@ export const useWorkflowSetupState = (
 
 			// Collect subnode cards from the flat list
 			const subnodeCards: NodeSetupState[] = [];
-			let agentState: NodeSetupState | undefined;
+			let parentState: NodeSetupState | undefined;
 
 			for (const card of flatCards) {
 				if (!card.state) continue;
@@ -738,8 +738,8 @@ export const useWorkflowSetupState = (
 				if (subnodeNames.has(nodeName) && !claimedNodeNames.has(nodeName)) {
 					subnodeCards.push(card.state);
 				}
-				if (nodeName === agentNode.name && !claimedNodeNames.has(nodeName)) {
-					agentState = card.state;
+				if (nodeName === parentNode.name && !claimedNodeNames.has(nodeName)) {
+					parentState = card.state;
 				}
 			}
 
@@ -748,42 +748,42 @@ export const useWorkflowSetupState = (
 
 			// Claim all grouped node names
 			for (const s of subnodeCards) claimedNodeNames.add(s.node.name);
-			if (agentState) claimedNodeNames.add(agentNode.name);
+			if (parentState) claimedNodeNames.add(parentNode.name);
 
-			agentGroups.set(agentNode.name, {
-				agentNode,
-				agentState,
+			nodeGroups.set(parentNode.name, {
+				parentNode,
+				parentState,
 				subnodeCards,
 			});
 		}
 
-		if (agentGroups.size === 0) return flatCards;
+		if (nodeGroups.size === 0) return flatCards;
 
-		// Build final list: replace claimed cards with agent group entries
+		// Build final list: replace claimed cards with node group entries
 		const result: SetupCardItem[] = [];
-		const insertedAgentGroups = new Set<string>();
+		const insertedNodeGroups = new Set<string>();
 
 		for (const card of flatCards) {
 			const nodeName = card.state!.node.name;
 
 			if (claimedNodeNames.has(nodeName)) {
-				// Check if this is an agent that owns a group
-				const group = agentGroups.get(nodeName);
-				if (group && !insertedAgentGroups.has(nodeName)) {
-					result.push({ agentGroup: group });
-					insertedAgentGroups.add(nodeName);
+				// Check if this node owns a group
+				const group = nodeGroups.get(nodeName);
+				if (group && !insertedNodeGroups.has(nodeName)) {
+					result.push({ nodeGroup: group });
+					insertedNodeGroups.add(nodeName);
 				}
-				// For subnode cards that appear before their agent in execution order,
+				// For subnode cards that appear before their parent in execution order,
 				// insert the group at the first subnode position
 				if (!group) {
-					for (const [agentName, agentGroup] of agentGroups) {
+					for (const [parentName, nodeGroup] of nodeGroups) {
 						if (
-							!insertedAgentGroups.has(agentName) &&
-							(agentGroup.subnodeCards.some((s) => s.node.name === nodeName) ||
-								agentGroup.agentState?.node.name === nodeName)
+							!insertedNodeGroups.has(parentName) &&
+							(nodeGroup.subnodeCards.some((s) => s.node.name === nodeName) ||
+								nodeGroup.parentState?.node.name === nodeName)
 						) {
-							result.push({ agentGroup });
-							insertedAgentGroups.add(agentName);
+							result.push({ nodeGroup });
+							insertedNodeGroups.add(parentName);
 							break;
 						}
 					}

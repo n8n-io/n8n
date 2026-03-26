@@ -42,30 +42,30 @@ export interface NodeSetupState {
 	isAutoApplied?: boolean;
 }
 
-/** Groups an agent node with its subnode setup cards */
-export interface AgentGroupItem {
-	agentNode: INodeUi;
-	/** Agent's own setup state, if it has credentials/params needing setup */
-	agentState?: NodeSetupState;
+/** Groups a parent node with its subnode setup cards */
+export interface NodeGroupItem {
+	parentNode: INodeUi;
+	/** Parent node's own setup state, if it has credentials/params needing setup */
+	parentState?: NodeSetupState;
 	/** Subnode cards pulled from the flat list, in execution order */
 	subnodeCards: NodeSetupState[];
 }
 
-/** A card is either a single-node card or an agent group */
+/** A card is either a single-node card or a node group */
 export type SetupCardItem =
-	| { state: NodeSetupState; agentGroup?: undefined }
-	| { agentGroup: AgentGroupItem; state?: undefined };
+	| { state: NodeSetupState; nodeGroup?: undefined }
+	| { nodeGroup: NodeGroupItem; state?: undefined };
 
 export function isCardComplete(card: SetupCardItem): boolean {
-	if (card.agentGroup) {
-		const { agentState, subnodeCards } = card.agentGroup;
-		return (!agentState || agentState.isComplete) && subnodeCards.every((c) => c.isComplete);
+	if (card.nodeGroup) {
+		const { parentState, subnodeCards } = card.nodeGroup;
+		return (!parentState || parentState.isComplete) && subnodeCards.every((c) => c.isComplete);
 	}
 	return card.state.isComplete;
 }
 
-export function isAgentGroupCard(
+export function isNodeGroupCard(
 	card: SetupCardItem,
-): card is { agentGroup: AgentGroupItem; state?: undefined } {
-	return !!card.agentGroup;
+): card is { nodeGroup: NodeGroupItem; state?: undefined } {
+	return !!card.nodeGroup;
 }

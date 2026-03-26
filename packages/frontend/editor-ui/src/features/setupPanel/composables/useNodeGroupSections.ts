@@ -1,7 +1,7 @@
 import { computed, reactive, ref, watch, type Ref } from 'vue';
 import type { INodeProperties } from 'n8n-workflow';
 
-import type { AgentGroupItem, NodeSetupState } from '@/features/setupPanel/setupPanel.types';
+import type { NodeGroupItem, NodeSetupState } from '@/features/setupPanel/setupPanel.types';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
 /**
@@ -13,27 +13,27 @@ export const sectionHasParameters = (section: NodeSetupState) =>
 	(section.additionalParameterNames?.length ?? 0) > 0;
 
 /**
- * Shared composable for agent-group section management.
- * Used by both `BuilderAgentGroupCard` (wizard) and `AgentGroupSetupCard` (panel).
+ * Shared composable for node-group section management.
+ * Used by both `BuilderNodeGroupCard` (wizard) and `NodeGroupSetupCard` (panel).
  */
-export function useAgentGroupSections(agentGroup: Ref<AgentGroupItem>) {
+export function useNodeGroupSections(nodeGroup: Ref<NodeGroupItem>) {
 	const nodeTypesStore = useNodeTypesStore();
 
 	// ── Computed sections ───────────────────────────────────────────────
 
-	const agentNodeType = computed(() =>
+	const parentNodeType = computed(() =>
 		nodeTypesStore.getNodeType(
-			agentGroup.value.agentNode.type,
-			agentGroup.value.agentNode.typeVersion,
+			nodeGroup.value.parentNode.type,
+			nodeGroup.value.parentNode.typeVersion,
 		),
 	);
 
-	const subnodeSections = computed<NodeSetupState[]>(() => agentGroup.value.subnodeCards);
+	const subnodeSections = computed<NodeSetupState[]>(() => nodeGroup.value.subnodeCards);
 
-	/** All sections including agent state — used for completion tracking */
+	/** All sections including parent state — used for completion tracking */
 	const allSections = computed<NodeSetupState[]>(() => {
 		const sections: NodeSetupState[] = [];
-		if (agentGroup.value.agentState) sections.push(agentGroup.value.agentState);
+		if (nodeGroup.value.parentState) sections.push(nodeGroup.value.parentState);
 		sections.push(...subnodeSections.value);
 		return sections;
 	});
@@ -115,7 +115,7 @@ export function useAgentGroupSections(agentGroup: Ref<AgentGroupItem>) {
 	}
 
 	return {
-		agentNodeType,
+		parentNodeType,
 		subnodeSections,
 		allSections,
 		stickyParametersMap,

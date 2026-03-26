@@ -127,7 +127,7 @@ export function useBuilderSetupCards() {
 
 	function continueCurrent() {
 		const card = currentCard.value;
-		const nodeType = card?.agentGroup ? card.agentGroup.agentNode.type : card?.state?.node.type;
+		const nodeType = card?.nodeGroup ? card.nodeGroup.parentNode.type : card?.state?.node.type;
 		builderStore.trackWorkflowBuilderJourney('setup_wizard_step_completed', {
 			step: currentStepIndex.value + 1,
 			total: totalCards.value,

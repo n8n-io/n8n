@@ -4,11 +4,11 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 
 import BuilderSetupCard from './BuilderSetupCard.vue';
-import BuilderAgentGroupCard from './BuilderAgentGroupCard.vue';
+import BuilderNodeGroupCard from './BuilderNodeGroupCard.vue';
 import { useBuilderSetupCards } from '@/features/ai/assistant/composables/useBuilderSetupCards';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
-import { isAgentGroupCard } from '@/features/setupPanel/setupPanel.types';
+import { isNodeGroupCard } from '@/features/setupPanel/setupPanel.types';
 
 const emit = defineEmits<{
 	workflowExecuted: [];
@@ -73,10 +73,10 @@ function onSectionHighlight(nodeIds: string[] | null) {
 const cardHighlightNodeIds = computed(() => {
 	const card = currentCard.value;
 	if (!card) return [];
-	if (isAgentGroupCard(card)) {
-		const ids = new Set<string>([card.agentGroup.agentNode.id]);
-		if (card.agentGroup.agentState) ids.add(card.agentGroup.agentState.node.id);
-		for (const sub of card.agentGroup.subnodeCards) {
+	if (isNodeGroupCard(card)) {
+		const ids = new Set<string>([card.nodeGroup.parentNode.id]);
+		if (card.nodeGroup.parentState) ids.add(card.nodeGroup.parentState.node.id);
+		for (const sub of card.nodeGroup.subnodeCards) {
 			ids.add(sub.node.id);
 		}
 		return [...ids];
@@ -203,10 +203,10 @@ watch(
 			</N8nText>
 
 			<template v-if="showCard">
-				<BuilderAgentGroupCard
-					v-if="currentCard!.agentGroup"
-					:key="`agent-${currentStepIndex}`"
-					:agent-group="currentCard!.agentGroup"
+				<BuilderNodeGroupCard
+					v-if="currentCard!.nodeGroup"
+					:key="`group-${currentStepIndex}`"
+					:node-group="currentCard!.nodeGroup"
 					:step-index="currentStepIndex"
 					:total-cards="totalCards"
 					:first-trigger-name="firstTriggerName"

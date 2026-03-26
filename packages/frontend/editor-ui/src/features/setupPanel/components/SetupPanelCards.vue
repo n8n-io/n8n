@@ -2,7 +2,7 @@
 import { computed, reactive, watch } from 'vue';
 import { useWorkflowSetupState } from '@/features/setupPanel/composables/useWorkflowSetupState';
 import NodeSetupCard from '@/features/setupPanel/components/cards/NodeSetupCard.vue';
-import AgentGroupSetupCard from '@/features/setupPanel/components/cards/AgentGroupSetupCard.vue';
+import NodeGroupSetupCard from '@/features/setupPanel/components/cards/NodeGroupSetupCard.vue';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
@@ -10,9 +10,9 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import {
 	type SetupCardItem,
 	isCardComplete,
-	isAgentGroupCard,
+	isNodeGroupCard,
 } from '@/features/setupPanel/setupPanel.types';
-import { sectionHasParameters } from '@/features/setupPanel/composables/useAgentGroupSections';
+import { sectionHasParameters } from '@/features/setupPanel/composables/useNodeGroupSections';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const props = withDefaults(
@@ -58,8 +58,8 @@ const visibleCards = computed(() => {
 });
 
 const cardKey = (card: SetupCardItem): string => {
-	if (isAgentGroupCard(card)) {
-		return `agent-${card.agentGroup.agentNode.id}`;
+	if (isNodeGroupCard(card)) {
+		return `group-${card.nodeGroup.parentNode.id}`;
 	}
 	return card.state.credentialType
 		? `${card.state.credentialType}-${card.state.node.id}`
@@ -105,10 +105,10 @@ watch(
 			const key = cardKey(card);
 			if (cardsWithParameters.has(key)) continue;
 
-			if (isAgentGroupCard(card)) {
+			if (isNodeGroupCard(card)) {
 				const sections = [
-					...(card.agentGroup.agentState ? [card.agentGroup.agentState] : []),
-					...card.agentGroup.subnodeCards,
+					...(card.nodeGroup.parentState ? [card.nodeGroup.parentState] : []),
+					...card.nodeGroup.subnodeCards,
 				];
 				if (sections.some(sectionHasParameters)) cardsWithParameters.add(key);
 			} else {
@@ -149,10 +149,10 @@ watch(
 				const wasComplete = prevCompleteStates.get(key) ?? false;
 
 				const cardIsComplete = isCardComplete(card);
-				const cardIsAutoApplied = isAgentGroupCard(card)
+				const cardIsAutoApplied = isNodeGroupCard(card)
 					? [
-							...(card.agentGroup.agentState ? [card.agentGroup.agentState] : []),
-							...card.agentGroup.subnodeCards,
+							...(card.nodeGroup.parentState ? [card.nodeGroup.parentState] : []),
+							...card.nodeGroup.subnodeCards,
 						].some((s) => s.isAutoApplied)
 					: card.state.isAutoApplied;
 
@@ -208,9 +208,9 @@ watch(
 		</div>
 		<div v-else :class="$style['card-list']" data-test-id="setup-cards-list">
 			<template v-for="card in visibleCards" :key="cardKey(card)">
-				<AgentGroupSetupCard
-					v-if="card.agentGroup"
-					:agent-group="card.agentGroup"
+				<NodeGroupSetupCard
+					v-if="card.nodeGroup"
+					:node-group="card.nodeGroup"
 					:first-trigger-name="firstTriggerName"
 					:expanded="isCardExpanded(cardKey(card))"
 					@update:expanded="(val: boolean) => setCardExpanded(cardKey(card), val)"

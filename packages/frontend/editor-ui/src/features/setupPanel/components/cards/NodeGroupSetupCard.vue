@@ -7,19 +7,19 @@ import SetupCard from '@/features/setupPanel/components/cards/SetupCard.vue';
 import SetupCardSection from '@/features/setupPanel/components/cards/SetupCardSection.vue';
 import SetupCardBody from '@/features/setupPanel/components/cards/SetupCardBody.vue';
 
-import type { AgentGroupItem } from '@/features/setupPanel/setupPanel.types';
+import type { NodeGroupItem } from '@/features/setupPanel/setupPanel.types';
 import { isCardComplete } from '@/features/setupPanel/setupPanel.types';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import {
-	useAgentGroupSections,
+	useNodeGroupSections,
 	sectionHasParameters,
-} from '@/features/setupPanel/composables/useAgentGroupSections';
+} from '@/features/setupPanel/composables/useNodeGroupSections';
 
 const props = defineProps<{
-	agentGroup: AgentGroupItem;
+	nodeGroup: NodeGroupItem;
 	firstTriggerName?: string | null;
 }>();
 
@@ -38,7 +38,7 @@ const setupPanelStore = useSetupPanelStore();
 const setupCard = ref<InstanceType<typeof SetupCard> | null>(null);
 
 const {
-	agentNodeType,
+	parentNodeType,
 	subnodeSections,
 	allSections,
 	getStickyParameters,
@@ -48,19 +48,19 @@ const {
 	onSectionMouseEnter,
 	onSectionMouseLeave,
 	getSectionNodeType,
-} = useAgentGroupSections(toRef(props, 'agentGroup'));
+} = useNodeGroupSections(toRef(props, 'nodeGroup'));
 
-// Executable node for the agent card
+// Executable node for the parent card
 const executableNode = computed(() => {
-	const node = props.agentGroup.agentNode;
+	const node = props.nodeGroup.parentNode;
 	if (!nodeHelpers.isNodeExecutable(node, true, [])) return null;
 	return node;
 });
 
-const groupComplete = computed(() => isCardComplete({ agentGroup: props.agentGroup }));
+const groupComplete = computed(() => isCardComplete({ nodeGroup: props.nodeGroup }));
 
 const cardHighlightNodeIds = computed(() => {
-	const ids = new Set<string>([props.agentGroup.agentNode.id]);
+	const ids = new Set<string>([props.nodeGroup.parentNode.id]);
 	for (const section of allSections.value) {
 		ids.add(section.node.id);
 	}
@@ -93,7 +93,7 @@ watch(expanded, (value, oldValue) => {
 const hasParameters = computed(() => allSections.value.some(sectionHasParameters));
 
 const telemetryPayload = computed(() => ({
-	type: ['agent-group'],
+	type: ['node-group'],
 	template_id: workflowDocumentStore?.value?.meta?.templateId,
 	workflow_id: workflowsStore.workflow.id,
 	node_types: allSections.value.map((s) => s.node.type),
@@ -112,28 +112,28 @@ const onBodyInteracted = () => {
 		ref="setupCard"
 		v-model:expanded="expanded"
 		:is-complete="groupComplete"
-		:title="agentGroup.agentNode.name"
+		:title="nodeGroup.parentNode.name"
 		:show-footer="showFooter"
 		:executable-node="executableNode"
 		:telemetry-payload="telemetryPayload"
 		:highlight-node-ids="highlightNodeIds"
-		card-test-id="agent-group-setup-card"
+		card-test-id="node-group-setup-card"
 	>
 		<template #icon>
-			<NodeIcon :node-type="agentNodeType" :size="16" />
+			<NodeIcon :node-type="parentNodeType" :size="16" />
 		</template>
 
-		<!-- Agent's own credentials/parameters -->
+		<!-- Parent node's own credentials/parameters -->
 		<div
-			v-if="agentGroup.agentState"
-			:class="$style.agentBody"
-			@mouseenter="onSectionMouseEnter(agentGroup.agentState)"
+			v-if="nodeGroup.parentState"
+			:class="$style.parentBody"
+			@mouseenter="onSectionMouseEnter(nodeGroup.parentState)"
 			@mouseleave="onSectionMouseLeave"
 		>
-			<SetupCardSection :state="agentGroup.agentState">
+			<SetupCardSection :state="nodeGroup.parentState">
 				<SetupCardBody
-					:state="agentGroup.agentState"
-					:sticky-parameters="getStickyParameters(agentGroup.agentState.node.id)"
+					:state="nodeGroup.parentState"
+					:sticky-parameters="getStickyParameters(nodeGroup.parentState.node.id)"
 					@credential-selected="
 						(p) => {
 							onBodyInteracted();
@@ -148,25 +148,25 @@ const onBodyInteracted = () => {
 					"
 					@interacted="onBodyInteracted"
 					@parameters-discovered="
-						(params) => getStickyParameters(agentGroup.agentState!.node.id).push(...params)
+						(params) => getStickyParameters(nodeGroup.parentState!.node.id).push(...params)
 					"
 				/>
 			</SetupCardSection>
 		</div>
 
 		<!-- Subnode sections -->
-		<div :class="$style.sections" data-test-id="agent-group-sections">
+		<div :class="$style.sections" data-test-id="node-group-sections">
 			<div
 				v-for="section in subnodeSections"
 				:key="section.node.id"
 				:class="$style.section"
-				data-test-id="agent-group-section"
+				data-test-id="node-group-section"
 				@mouseenter="onSectionMouseEnter(section)"
 				@mouseleave="onSectionMouseLeave"
 			>
 				<div
 					:class="$style.sectionHeader"
-					data-test-id="agent-group-section-header"
+					data-test-id="node-group-section-header"
 					@click="toggleSection(section.node.id)"
 				>
 					<N8nIcon
@@ -216,7 +216,7 @@ const onBodyInteracted = () => {
 </template>
 
 <style module lang="scss">
-.agentBody {
+.parentBody {
 	padding: 0 var(--spacing--xs) var(--spacing--xs);
 }
 
