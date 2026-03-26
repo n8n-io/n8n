@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 import type { ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
-import { resolveSafePath } from './fs-utils';
+import { buildFilesystemResource, resolveSafePath } from './fs-utils';
 
 const inputSchema = z.object({
 	sourcePath: z.string().describe('Source file path relative to root'),
@@ -17,6 +17,22 @@ export const copyFileTool: ToolDefinition<typeof inputSchema> = {
 		'Copy a file to a new path. Overwrites the destination if it already exists. Parent directories at the destination are created automatically.',
 	inputSchema,
 	annotations: { defaultPermission: 'confirm' },
+	async getAffectedResources({ sourcePath, destinationPath }, { dir }) {
+		return [
+			await buildFilesystemResource(
+				dir,
+				sourcePath,
+				'filesystemRead',
+				`Copy source: ${sourcePath}`,
+			),
+			await buildFilesystemResource(
+				dir,
+				destinationPath,
+				'filesystemWrite',
+				`Copy destination: ${destinationPath}`,
+			),
+		];
+	},
 	async execute({ sourcePath, destinationPath }, { dir }) {
 		const resolvedSrc = await resolveSafePath(dir, sourcePath);
 		const resolvedDest = await resolveSafePath(dir, destinationPath);

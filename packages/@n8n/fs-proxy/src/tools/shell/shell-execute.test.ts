@@ -2,6 +2,8 @@ import { spawn } from 'child_process';
 import { EventEmitter } from 'events';
 
 import { textOf } from '../test-utils';
+import type { AffectedResource } from '../types';
+import { buildShellResource } from './build-shell-resource';
 import { ShellModule } from './index';
 import { shellExecuteTool } from './shell-execute';
 
@@ -263,5 +265,19 @@ describe('shell_execute tool', () => {
 describe('ShellModule', () => {
 	it('isSupported returns true', () => {
 		expect(ShellModule.isSupported()).toBe(true);
+	});
+});
+
+describe('getAffectedResources', () => {
+	it('uses buildShellResource for the resource and includes the full command in description', () => {
+		const resources = shellExecuteTool.getAffectedResources(
+			{ command: 'git status' },
+			{ dir: '/tmp' },
+		);
+		expect(resources).toHaveLength(1);
+		const [resource] = resources as AffectedResource[];
+		expect(resource.toolGroup).toBe('shell');
+		expect(resource.resource).toBe(buildShellResource('git status'));
+		expect(resource.description).toContain('git status');
 	});
 });
