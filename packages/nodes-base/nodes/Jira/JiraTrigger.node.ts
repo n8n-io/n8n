@@ -63,6 +63,16 @@ export class JiraTrigger implements INodeType {
 				},
 			},
 			{
+				displayName: 'Credentials to Connect to Jira',
+				name: 'jiraSoftwareCloudOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						jiraVersion: ['cloudOAuth2'],
+					},
+				},
+			},
+			{
 				// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed
 				name: 'httpQueryAuth',
 				displayName: 'Credentials to Authenticate Webhook',
@@ -99,6 +109,10 @@ export class JiraTrigger implements INodeType {
 					{
 						name: 'Cloud',
 						value: 'cloud',
+					},
+					{
+						name: 'Cloud (OAuth2)',
+						value: 'cloudOAuth2',
 					},
 					{
 						name: 'Server (Self Hosted)',
