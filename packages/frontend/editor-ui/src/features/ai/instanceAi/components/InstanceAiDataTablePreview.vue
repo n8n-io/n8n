@@ -81,12 +81,12 @@ watch(
 					v-if="dataTable"
 					icon="external-link"
 					variant="ghost"
-					size="small"
+					size="medium"
 					tag="a"
 					:href="props.projectId ? `/projects/${props.projectId}/datatables/${dataTable.id}` : '/home/datatables'"
 					target="_blank"
 				/>
-				<N8nIconButton icon="x" variant="ghost" size="small" @click="emit('close')" />
+				<N8nIconButton icon="x" variant="ghost" size="medium" @click="emit('close')" />
 			</div>
 		</div>
 

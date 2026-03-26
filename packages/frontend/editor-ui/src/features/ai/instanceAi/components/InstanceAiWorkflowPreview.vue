@@ -98,12 +98,12 @@ onBeforeUnmount(() => {
 					v-if="workflow"
 					icon="external-link"
 					variant="ghost"
-					size="small"
+					size="medium"
 					tag="a"
 					:href="`/workflow/${workflow.id}`"
 					target="_blank"
 				/>
-				<N8nIconButton icon="x" variant="ghost" size="small" @click="emit('close')" />
+				<N8nIconButton icon="x" variant="ghost" size="medium" @click="emit('close')" />
 			</div>
 		</div>
 

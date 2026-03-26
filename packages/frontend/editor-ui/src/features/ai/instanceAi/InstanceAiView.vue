@@ -496,7 +496,7 @@ function handleStop() {
 					<N8nIconButton
 						icon="brain"
 						variant="ghost"
-						size="small"
+						size="medium"
 						:class="{ [$style.activeButton]: showMemoryPanel }"
 						@click="showMemoryPanel = !showMemoryPanel"
 					/>
@@ -504,7 +504,7 @@ function handleStop() {
 						v-if="isDebugEnabled"
 						icon="bug"
 						variant="ghost"
-						size="small"
+						size="medium"
 						:class="{ [$style.activeButton]: showDebugPanel }"
 						@click="
 							showDebugPanel = !showDebugPanel;
@@ -515,7 +515,7 @@ function handleStop() {
 						v-if="!isPreviewVisible"
 						icon="panel-right"
 						variant="ghost"
-						size="small"
+						size="medium"
 						@click="showArtifactsPanel = !showArtifactsPanel"
 					/>
 				</div>
