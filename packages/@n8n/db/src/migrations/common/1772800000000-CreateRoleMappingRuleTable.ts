@@ -12,7 +12,7 @@ export class CreateRoleMappingRuleTable1772800000000 implements ReversibleMigrat
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
 		await createTable(ruleTable)
 			.withColumns(
-				column('id').uuid.primary.notNull,
+				column('id').varchar(16).primary.notNull,
 				column('expression').text.notNull,
 				column('role').varchar(128).notNull, // matches slug length of role table
 				column('type')
@@ -33,7 +33,7 @@ export class CreateRoleMappingRuleTable1772800000000 implements ReversibleMigrat
 
 		await createTable(joinTable)
 			.withColumns(
-				column('roleMappingRuleId').uuid.primary.notNull,
+				column('roleMappingRuleId').varchar(16).primary.notNull,
 				column('projectId').varchar(36).primary.notNull,
 			)
 			.withIndexOn('projectId')
