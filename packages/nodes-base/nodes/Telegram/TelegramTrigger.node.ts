@@ -294,7 +294,7 @@ export class TelegramTrigger implements INodeType {
 					bodyData.channel_post?.chat?.id ??
 					bodyData.edited_channel_post?.chat?.id ??
 					bodyData.callback_query?.message?.chat?.id;
-				if (chatId && !splitIds.includes(String(chatId))) {
+				if (!chatId || !splitIds.includes(String(chatId))) {
 					return {};
 				}
 			}
@@ -311,7 +311,7 @@ export class TelegramTrigger implements INodeType {
 					bodyData.inline_query?.from?.id ??
 					bodyData.pre_checkout_query?.from?.id ??
 					bodyData.shipping_query?.from?.id;
-				if (userId && !splitIds.includes(String(userId))) {
+				if (!userId || !splitIds.includes(String(userId))) {
 					return {};
 				}
 			}

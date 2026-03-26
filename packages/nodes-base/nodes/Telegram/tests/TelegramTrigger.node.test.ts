@@ -276,11 +276,7 @@ describe('TelegramTrigger', () => {
 			expect(responseData).toEqual({});
 		});
 
-		test('should pass through events without chat ID when chatIds filter is active', async () => {
-			mockResult.inline_query = {
-				from: { id: 777 },
-			};
-
+		test('should reject events without chat ID when chatIds filter is active', async () => {
 			const { responseData } = await testWebhookTriggerNode(TelegramTrigger, {
 				workflow: mock<Workflow>({ id: '1', active: true }),
 				node: mock<INode>({
@@ -302,7 +298,7 @@ describe('TelegramTrigger', () => {
 				},
 			});
 
-			expect(responseData).toEqual({ workflowData: [[{ json: mockResult }]] });
+			expect(responseData).toEqual({});
 		});
 
 		test('should pass chatIds filter for edited_message events', async () => {
