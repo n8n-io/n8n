@@ -1,5 +1,6 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
+import z from 'zod';
 
 import type { GatewayConfig, PermissionMode, ToolGroup } from './config';
 import {
@@ -10,7 +11,6 @@ import {
 	TOOL_GROUP_DEFINITIONS,
 } from './config';
 import { logger } from './logger';
-import z from 'zod';
 
 // ---------------------------------------------------------------------------
 // Constants
