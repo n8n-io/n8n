@@ -26,6 +26,9 @@
 		"PUT /credentials/{id}/transfer": {
 			"status": "gap"
 		},
+		"GET /discover": {
+			"status": "gap"
+		},
 		"GET /executions": {
 			"status": "covered",
 			"nodeOperation": "execution:getAll"

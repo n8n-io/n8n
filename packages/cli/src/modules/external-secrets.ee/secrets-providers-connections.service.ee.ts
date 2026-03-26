@@ -21,6 +21,12 @@ import { Cipher } from 'n8n-core';
 import type { IDataObject } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 
+import { ExternalSecretsProviderRegistry } from './provider-registry.service';
+
+import {
+	CredentialDependencyService,
+	EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
+} from '@/credentials/credential-dependency.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
@@ -28,14 +34,13 @@ import type { ProjectSummary } from '@/events/maps/relay.event-map';
 import { ExternalSecretsManager } from '@/modules/external-secrets.ee/external-secrets-manager.ee';
 import { RedactionService } from '@/modules/external-secrets.ee/redaction.service.ee';
 
-import { ExternalSecretsProviderRegistry } from './provider-registry.service';
-
 @Service()
 export class SecretsProvidersConnectionsService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly repository: SecretsProviderConnectionRepository,
 		private readonly projectAccessRepository: ProjectSecretsProviderAccessRepository,
+		private readonly credentialDependencyService: CredentialDependencyService,
 		private readonly providerRegistry: ExternalSecretsProviderRegistry,
 		private readonly cipher: Cipher,
 		private readonly externalSecretsManager: ExternalSecretsManager,
@@ -201,9 +206,17 @@ export class SecretsProvidersConnectionsService {
 	async deleteConnection(providerKey: string, userId: string): Promise<SecretsProviderConnection> {
 		const connection = await this.findConnectionOrFail(providerKey);
 		const projectInfo = this.extractProjectInfo(connection);
+		const dependencyId = connection.id.toString();
 
-		await this.projectAccessRepository.deleteByConnectionId(connection.id);
-		await this.repository.remove(connection);
+		await this.repository.manager.transaction(async (entityManager) => {
+			await this.projectAccessRepository.deleteByConnectionId(connection.id, entityManager);
+			await this.credentialDependencyService.deleteDependencyById({
+				dependencyType: EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
+				dependencyId,
+				entityManager,
+			});
+			await entityManager.delete(this.repository.target, { id: connection.id });
+		});
 
 		await this.externalSecretsManager.syncProviderConnection(providerKey);
 
@@ -406,6 +419,12 @@ export class SecretsProvidersConnectionsService {
 		// Wrap deletion + update ops in a transaction for consistency
 		await this.repository.manager.transaction(async (entityManager) => {
 			if (ownerConnectionIds.size > 0) {
+				await this.credentialDependencyService.deleteDependenciesByIds({
+					dependencyType: EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
+					dependencyIds: [...ownerConnectionIds].map((id) => id.toString()),
+					entityManager,
+				});
+
 				// Delete owned connections entirely; DB cascade removes access entries
 				await entityManager.delete(this.repository.target, { id: In([...ownerConnectionIds]) });
 			}
@@ -466,16 +485,19 @@ export class SecretsProvidersConnectionsService {
 		providerKey: string,
 		projectId: string,
 	): Promise<SecretsProviderConnection> {
-		const connection = await this.repository.removeByProviderKeyAndProjectId(
-			providerKey,
-			projectId,
-		);
+		const connection = await this.repository.findByProviderKeyAndProjectId(providerKey, projectId);
 
 		if (!connection) {
 			throw new NotFoundError(`Connection with key "${providerKey}" not found`);
 		}
 
-		await this.projectAccessRepository.deleteByConnectionId(connection.id);
+		const connectionId = connection.id;
+		await this.credentialDependencyService.deleteDependencyById({
+			dependencyType: EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
+			dependencyId: connectionId.toString(),
+		});
+		await this.projectAccessRepository.deleteByConnectionId(connectionId);
+		await this.repository.delete({ id: connectionId });
 		await this.externalSecretsManager.syncProviderConnection(providerKey);
 
 		return connection;
