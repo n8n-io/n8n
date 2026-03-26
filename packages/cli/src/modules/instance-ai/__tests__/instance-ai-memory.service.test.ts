@@ -51,7 +51,13 @@ function createService(): InstanceAiMemoryService {
 	};
 	const mockLogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() };
 	const mockCompositeStore = {} as never;
-	return new InstanceAiMemoryService(mockLogger as never, mockConfig as never, mockCompositeStore);
+	const mockDbSnapshotStorage = {} as never;
+	return new InstanceAiMemoryService(
+		mockLogger as never,
+		mockConfig as never,
+		mockCompositeStore,
+		mockDbSnapshotStorage,
+	);
 }
 
 function makeTree(overrides?: Partial<InstanceAiAgentNode>): InstanceAiAgentNode {

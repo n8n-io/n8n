@@ -24,7 +24,7 @@ Do NOT produce visible output until the final summary. All reasoning happens int
 
 ## Column Rules
 
-- System columns (\`id\`, \`createdAt\`, \`updatedAt\`) are automatic — never create them manually.
+- System columns (\`id\`, \`createdAt\`, \`updatedAt\`) are automatic and RESERVED — the API will reject any column with these names. If a spec asks for an \`id\` column, prefix it with a context-appropriate name before calling \`create-data-table\`.
 
 ## Destructive Operations
 
