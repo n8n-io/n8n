@@ -62,11 +62,13 @@ jobs:
           node .github/scripts/docker/docker-config.mjs \
             --event "${{ github.event_name }}" \
             --pr "${{ github.event.pull_request.number }}" \
-            --branch "${{ github.ref_name }}" \
+            --branch "${REF_NAME}" \
             --version "${{ inputs.n8n_version }}" \
             --release-type "${{ inputs.release_type }}" \
             --push-enabled "${{ inputs.push_enabled }}"
 
+        env:
+          REF_NAME: ${{ github.ref_name }}
   build-and-push-docker:
     name: Build App, then Build and Push Docker Image (${{ matrix.platform }})
     needs: determine-build-context
@@ -232,7 +234,7 @@ jobs:
         if: needs.determine-build-context.outputs.push_to_docker == 'true'
         run: |
           VERSION="${{ needs.determine-build-context.outputs.n8n_version }}"
-          DOCKER_BASE="${{ secrets.DOCKER_USERNAME }}"
+          DOCKER_BASE="${DOCKER_USERNAME}"
 
           # Create manifests for each image type
           declare -A images=(
@@ -252,6 +254,8 @@ jobs:
               "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}-arm64"
           done
 
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       - name: Get manifest digests for attestation
         id: get-digests
         env:
@@ -286,7 +290,7 @@ jobs:
       id-token: write
       packages: write
       actions: read
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.1.0
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@f7dd8c54c2067bafc12ca7a55595d5ee9b75204a # v2.1.0
     with:
       image: ${{ needs.create_multi_arch_manifest.outputs.n8n_image }}
       digest: ${{ needs.create_multi_arch_manifest.outputs.n8n_digest }}
@@ -304,7 +308,7 @@ jobs:
       id-token: write
       packages: write
       actions: read
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.1.0
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@f7dd8c54c2067bafc12ca7a55595d5ee9b75204a # v2.1.0
     with:
       image: ${{ needs.create_multi_arch_manifest.outputs.runners_image }}
       digest: ${{ needs.create_multi_arch_manifest.outputs.runners_digest }}
@@ -322,7 +326,7 @@ jobs:
       id-token: write
       packages: write
       actions: read
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.1.0
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@f7dd8c54c2067bafc12ca7a55595d5ee9b75204a # v2.1.0
     with:
       image: ${{ needs.create_multi_arch_manifest.outputs.runners_distroless_image }}
       digest: ${{ needs.create_multi_arch_manifest.outputs.runners_distroless_digest }}

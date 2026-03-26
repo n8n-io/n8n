@@ -116,7 +116,7 @@ jobs:
           if [ "$EVENT_NAME" = "push" ]; then
             # Merge to master: spec evals use 1 rep, 1 judge
             {
-              echo "branch=${{ github.ref_name }}"
+              echo "branch=${REF_NAME}"
               echo "spec_repetitions=1"
               echo "spec_judges=1"
               echo "experiment_prefix="
@@ -131,6 +131,8 @@ jobs:
             } >> "$GITHUB_OUTPUT"
           fi
 
+        env:
+          REF_NAME: ${{ github.ref_name }}
   run-pairwise-evals:
     name: Run Pairwise (Spec) Evaluations
     needs: determine-config

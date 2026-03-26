@@ -82,11 +82,12 @@ jobs:
         if: steps.verify_file.outputs.file_exists == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
           echo "Finding last successful workflow run..."
           LAST_SUCCESS_SHA=$(gh run list \
             --workflow "${{ github.workflow }}" \
-            --branch "${{ github.ref_name }}" \
+            --branch "${REF_NAME}" \
             --status "success" \
             --json "headSha" \
             --jq '.[0].headSha // empty' \
