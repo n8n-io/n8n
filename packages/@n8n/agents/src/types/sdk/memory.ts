@@ -1,7 +1,7 @@
 import type { z } from 'zod';
 
 import type { ModelConfig, SerializableAgentState } from './agent';
-import type { AgentDbMessage, AgentMessage } from './message';
+import type { AgentDbMessage } from './message';
 
 export interface Thread {
 	id: string;
@@ -28,7 +28,7 @@ export interface BuiltMemory {
 	saveMessages(args: {
 		threadId: string;
 		resourceId: string;
-		messages: AgentMessage[];
+		messages: AgentDbMessage[];
 	}): Promise<void>;
 	deleteMessages(messageIds: string[]): Promise<void>;
 	// --- Semantic recall (optional) ---
@@ -42,7 +42,7 @@ export interface BuiltMemory {
 			topK?: number;
 			messageRange?: { before: number; after: number };
 		},
-	): Promise<AgentMessage[]>;
+	): Promise<AgentDbMessage[]>;
 	// --- Working memory (optional) ---
 	getWorkingMemory?(params: {
 		threadId: string;

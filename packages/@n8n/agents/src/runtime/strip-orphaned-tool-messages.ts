@@ -1,5 +1,5 @@
 import { isLlmMessage } from '../sdk/message';
-import type { AgentDbMessage, MessageContent } from '../types/sdk/message';
+import type { AgentMessage, MessageContent } from '../types/sdk/message';
 
 /**
  * Strip orphaned tool-call and tool-result content from a message list.
@@ -17,7 +17,7 @@ import type { AgentDbMessage, MessageContent } from '../types/sdk/message';
  *     whose only content was the orphaned result).
  *  5. Preserves non-tool content (text, reasoning, files) in mixed messages.
  */
-export function stripOrphanedToolMessages(messages: AgentDbMessage[]): AgentDbMessage[] {
+export function stripOrphanedToolMessages<T extends AgentMessage>(messages: T[]): T[] {
 	const callIds = new Set<string>();
 	const resultIds = new Set<string>();
 
@@ -39,7 +39,7 @@ export function stripOrphanedToolMessages(messages: AgentDbMessage[]): AgentDbMe
 		return messages;
 	}
 
-	const result: AgentDbMessage[] = [];
+	const result: T[] = [];
 
 	for (const msg of messages) {
 		if (!isLlmMessage(msg)) {

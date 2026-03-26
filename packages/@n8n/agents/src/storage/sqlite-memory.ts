@@ -1,6 +1,5 @@
 import type { Client, InArgs } from '@libsql/client';
 
-import { toDbMessage } from '../sdk/message';
 import type { BuiltMemory, Thread } from '../types/sdk/memory';
 import type { AgentDbMessage, AgentMessage } from '../types/sdk/message';
 
@@ -205,9 +204,15 @@ export class SqliteMemory implements BuiltMemory {
 
 		return result.rows
 			.map((row) => {
-				const msg = parseJsonSafe(row.content as string) as AgentMessage & { id?: string };
+				const msg = parseJsonSafe(row.content as string) as AgentMessage & {
+					id?: string;
+					createdAt?: Date;
+				};
 				if (!msg) return undefined;
 				msg.id = row.id as string;
+				// Always use the DB column as the authoritative timestamp so that the
+				// monotonic ordering assigned at save time is preserved on load.
+				msg.createdAt = new Date(row.createdAt as string);
 				return msg as AgentDbMessage;
 			})
 			.filter((m): m is AgentDbMessage => m !== undefined);
@@ -216,20 +221,22 @@ export class SqliteMemory implements BuiltMemory {
 	async saveMessages(args: {
 		threadId: string;
 		resourceId?: string;
-		messages: AgentMessage[];
+		messages: AgentDbMessage[];
 	}): Promise<void> {
 		const db = await this.ensureInitialized();
 
 		if (args.messages.length === 0) return;
 
-		const dbMessages = args.messages.map(toDbMessage);
-		const statements = dbMessages.map((msg) => {
-			const now = new Date().toISOString();
+		const statements = args.messages.map((msg) => {
+			// Use the message's own createdAt (assigned monotonically by AgentMessageList)
+			// so the DB column reflects the authoritative insertion order.
+			const createdAt =
+				msg.createdAt instanceof Date ? msg.createdAt.toISOString() : new Date().toISOString();
 			const role = 'role' in msg ? (msg.role as string) : 'custom';
 			return {
 				sql: `INSERT OR REPLACE INTO ${this.ns}messages (id, threadId, role, content, createdAt)
 					  VALUES (?, ?, ?, ?, ?)`,
-				args: [msg.id, args.threadId, role, JSON.stringify(msg), now],
+				args: [msg.id, args.threadId, role, JSON.stringify(msg), createdAt],
 			};
 		});
 

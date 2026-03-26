@@ -4,11 +4,13 @@ import type { ModelMessage } from 'ai';
 import { toAiMessages } from './messages';
 import { stripOrphanedToolMessages } from './strip-orphaned-tool-messages';
 import { buildWorkingMemoryInstruction } from './working-memory';
-import { filterLlmMessages } from '../sdk/message';
+import { filterLlmMessages, getCreatedAt } from '../sdk/message';
 import type { SerializedMessageList } from '../types/runtime/message-list';
-import type { AgentDbMessage } from '../types/sdk/message';
+import type { AgentDbMessage, AgentMessage } from '../types/sdk/message';
 
 export type { SerializedMessageList };
+
+type MessageSource = 'history' | 'input' | 'response';
 
 export interface WorkingMemoryContext {
 	template: string;
@@ -38,27 +40,66 @@ export class AgentMessageList {
 
 	private responseSet = new Set<AgentDbMessage>();
 
+	private lastCreatedAt: number = 0;
+
+	/**
+	 * Normalize an AgentMessage into an AgentDbMessage and push it onto `this.all`,
+	 * enforcing monotonically increasing createdAt across the list.
+	 *
+	 * source === 'history':
+	 *   The message is loaded from the database and already carries the authoritative
+	 *   createdAt.  It is preserved exactly; lastCreatedAt is updated to the max so
+	 *   that subsequent live messages stay strictly later.
+	 *
+	 * source === 'input' | 'response':
+	 *   The message is a live, in-flight message.  Its existing createdAt (if any)
+	 *   is used as a hint, but it is bumped to max(hint, lastCreatedAt + 1) so
+	 *   every message in the list has a unique, ordered timestamp.
+	 *   If no createdAt is present, Date.now() is used as the hint.
+	 */
+	private addMessage(message: AgentMessage, source: MessageSource): AgentDbMessage {
+		const id = 'id' in message && typeof message.id === 'string' ? message.id : crypto.randomUUID();
+		const existing = getCreatedAt(message);
+
+		let createdAt: Date;
+		if (existing !== null && source === 'history') {
+			// DB-loaded history message — keep the original timestamp exactly
+			createdAt = existing;
+			this.lastCreatedAt = Math.max(this.lastCreatedAt, createdAt.getTime());
+		} else {
+			// Live message — use any existing createdAt as a hint, then ensure monotonicity
+			const hint = existing !== null ? existing.getTime() : Date.now();
+			const ts = Math.max(hint, this.lastCreatedAt + 1);
+			createdAt = new Date(ts);
+			this.lastCreatedAt = ts;
+		}
+
+		const dbMsg: AgentDbMessage = { ...message, id, createdAt };
+		this.all.push(dbMsg);
+		return dbMsg;
+	}
+
 	/** Working memory context for this run. Set by buildMessageList / resume. */
 	workingMemory: WorkingMemoryContext | undefined;
 
-	addHistory(messages: AgentDbMessage[]): void {
+	addHistory(messages: AgentMessage[]): void {
 		for (const m of messages) {
-			this.all.push(m);
-			this.historySet.add(m);
+			const dbMsg = this.addMessage(m, 'history');
+			this.historySet.add(dbMsg);
 		}
 	}
 
-	addInput(messages: AgentDbMessage[]): void {
+	addInput(messages: AgentMessage[]): void {
 		for (const m of messages) {
-			this.all.push(m);
-			this.inputSet.add(m);
+			const dbMsg = this.addMessage(m, 'input');
+			this.inputSet.add(dbMsg);
 		}
 	}
 
-	addResponse(messages: AgentDbMessage[]): void {
+	addResponse(messages: AgentMessage[]): void {
 		for (const m of messages) {
-			this.all.push(m);
-			this.responseSet.add(m);
+			const dbMsg = this.addMessage(m, 'response');
+			this.responseSet.add(dbMsg);
 		}
 	}
 
@@ -122,6 +163,10 @@ export class AgentMessageList {
 			if (historyIdSet.has(m.id)) list.historySet.add(m);
 			if (inputIdSet.has(m.id)) list.inputSet.add(m);
 			if (responseIdSet.has(m.id)) list.responseSet.add(m);
+			// Restore lastCreatedAt so new messages after resume stay strictly later
+			const ts =
+				m.createdAt instanceof Date ? m.createdAt.getTime() : new Date(m.createdAt).getTime();
+			if (ts > list.lastCreatedAt) list.lastCreatedAt = ts;
 		}
 		return list;
 	}

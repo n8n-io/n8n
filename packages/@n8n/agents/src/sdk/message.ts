@@ -1,14 +1,16 @@
-import type { AgentDbMessage, AgentMessage, Message } from '../types/sdk/message';
+import type { AgentMessage, Message } from '../types/sdk/message';
 
-/**
- * Wrap an AgentMessage with a stable id. If the message already carries an id
- * (i.e. it is already an AgentDbMessage), it is returned unchanged.
- */
-export function toDbMessage(message: AgentMessage): AgentDbMessage {
-	if ('id' in message && typeof message.id === 'string') {
-		return message as AgentDbMessage;
+export function getCreatedAt(message: AgentMessage): Date | null {
+	if ('createdAt' in message) {
+		if (message.createdAt instanceof Date) {
+			return message.createdAt;
+		}
+		if (typeof message.createdAt === 'string' || typeof message.createdAt === 'number') {
+			return new Date(message.createdAt);
+		}
+		throw new Error('createdAt must be a Date, string, or number');
 	}
-	return { ...message, id: crypto.randomUUID() };
+	return null;
 }
 
 export function isLlmMessage(message: AgentMessage): message is Message {
