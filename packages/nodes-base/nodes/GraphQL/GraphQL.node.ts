@@ -17,23 +17,34 @@ export const getGraphQlErrorMessage = (errors: unknown): string => {
 		return errors;
 	}
 
-	if (Array.isArray(errors)) {
-		const messages: string[] = [];
-
-		for (const error of errors) {
-			if (typeof error === 'string' && error.trim() !== '') {
-				messages.push(error);
-			} else if (error !== null && typeof error === 'object') {
-				const errObj = error as Record<string, unknown>;
-				if (typeof errObj.message === 'string' && errObj.message.trim() !== '') {
-					messages.push(errObj.message);
-				} else if (errObj.extensions && typeof (errObj.extensions as any).code === 'string') {
-					messages.push(`Error code: ${(errObj.extensions as any).code}`);
-				}
+	const extract = (error: unknown): string | undefined => {
+		if (typeof error === 'string' && error.trim() !== '') {
+			return error;
+		}
+		if (error !== null && typeof error === 'object') {
+			const errObj = error as Record<string, unknown>;
+			if (typeof errObj.message === 'string' && errObj.message.trim() !== '') {
+				return errObj.message;
+			}
+			if (errObj.extensions && typeof (errObj.extensions as any).code === 'string') {
+				return `Error code: ${(errObj.extensions as any).code}`;
 			}
 		}
+		return undefined;
+	};
 
-		if (messages.length > 0) return messages.join(', ');
+	if (errors !== null && typeof errors === 'object') {
+		if (Array.isArray(errors)) {
+			const messages: string[] = [];
+			for (const error of errors) {
+				const msg = extract(error);
+				if (msg) messages.push(msg);
+			}
+			if (messages.length > 0) return messages.join(', ');
+		} else {
+			const msg = extract(errors);
+			if (msg) return msg;
+		}
 	}
 
 	return 'Unexpected error';

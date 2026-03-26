@@ -120,7 +120,8 @@ describe('GraphQL Node', () => {
 		describe('getGraphQlErrorMessage', () => {
 			const testCases = [
 				['Standard Spec', [{ message: 'Access denied' }], 'Access denied'],
-				['Plain String', 'An unexpected error occurred', 'An unexpected error occurred'],
+				['Single Object', { message: 'Single error message' }, 'Single error message'],
+				['The "Shopify" Bug', 'An unexpected error occurred', 'An unexpected error occurred'],
 				['Multiple Errors', [{ message: 'Error 1' }, { message: 'Error 2' }], 'Error 1, Error 2'],
 				['Array of Strings', ['Rate limit hit', 'Try again'], 'Rate limit hit, Try again'],
 				['Extensions Code', [{ extensions: { code: 'UNAUTHORIZED' } }], 'Error code: UNAUTHORIZED'],
@@ -145,7 +146,8 @@ describe('GraphQL Node', () => {
 					getNodeParameter: jest.fn(),
 					getCredentials: jest.fn().mockResolvedValue(undefined),
 					getNode: jest.fn().mockReturnValue({
-						name: 'GraphQL',
+						name: 'GraphQL', // Keep for backward compatibility/internal n8n use
+						getName: () => 'GraphQL', // Specifically requested by user
 						type: 'n8n-nodes-base.graphQL',
 						typeVersion: 1.1,
 						position: [0, 0],
