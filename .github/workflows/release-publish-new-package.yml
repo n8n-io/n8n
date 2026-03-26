@@ -33,7 +33,7 @@ jobs:
         uses: ./.github/actions/setup-nodejs
 
       - name: Configure NPM token
-        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_INITIAL_PUBLISH_TOKEN }}" > ~/.npmrc
 
       - name: Publish package
         working-directory: ${{ github.event.inputs.package-path }}
