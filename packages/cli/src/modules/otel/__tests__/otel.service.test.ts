@@ -28,6 +28,7 @@ describe('OtelService', () => {
 			exporterTracingPath: '/v1/traces',
 			exporterHeaders: '',
 			tracesSampleRate: 1,
+			startupConnectivityTimeoutMs: 2_000,
 		});
 		const instanceSettings = mock<InstanceSettings>({
 			instanceId: 'instance-1',

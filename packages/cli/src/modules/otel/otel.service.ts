@@ -1,5 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
+import type { DiagLogger } from '@opentelemetry/api';
+import { DiagLogLevel, diag } from '@opentelemetry/api';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import { NodeSDK } from '@opentelemetry/sdk-node';
@@ -10,10 +12,10 @@ import { N8N_VERSION } from '@/constants';
 
 import { OtelConfig } from './otel.config';
 import { ATTR } from './otel.constants';
-import { SafeTraceExporter } from './safe-trace-exporter';
 
 @Service()
 export class OtelService {
+	private static isDiagnosticsLoggerConfigured = false;
 	private sdk?: NodeSDK;
 	private hasLoggedStartupConnectivityFailure = false;
 
@@ -26,6 +28,8 @@ export class OtelService {
 	init() {
 		if (!this.config.enabled) return;
 
+		this.configureDiagnosticsLogger();
+
 		const otlpTracesUrl = this.buildOtlpTracesUrl();
 		const otlpHeaders = this.parseOtlpHeaders();
 
@@ -36,13 +40,10 @@ export class OtelService {
 				[ATTR.INSTANCE_ID]: this.instanceSettings.instanceId,
 				[ATTR.INSTANCE_ROLE]: this.instanceSettings.instanceType,
 			}),
-			traceExporter: new SafeTraceExporter(
-				new OTLPTraceExporter({
-					url: otlpTracesUrl,
-					headers: otlpHeaders,
-				}),
-				this.logger,
-			),
+			traceExporter: new OTLPTraceExporter({
+				url: otlpTracesUrl,
+				headers: otlpHeaders,
+			}),
 			sampler: new TraceIdRatioBasedSampler(this.config.tracesSampleRate),
 		});
 
@@ -52,6 +53,21 @@ export class OtelService {
 
 	async shutdown(): Promise<void> {
 		await this.sdk?.shutdown();
+	}
+
+	private configureDiagnosticsLogger() {
+		if (OtelService.isDiagnosticsLoggerConfigured) return;
+
+		const diagnosticsLogger: DiagLogger = {
+			error: (...args: unknown[]) => this.logger.error('OpenTelemetry diagnostics error', { args }),
+			warn: (...args: unknown[]) => this.logger.warn('OpenTelemetry diagnostics warning', { args }),
+			info: (...args: unknown[]) => this.logger.info('OpenTelemetry diagnostics info', { args }),
+			debug: (...args: unknown[]) => this.logger.debug('OpenTelemetry diagnostics debug', { args }),
+			verbose: (...args: unknown[]) =>
+				this.logger.debug('OpenTelemetry diagnostics verbose', { args }),
+		};
+		diag.setLogger(diagnosticsLogger, DiagLogLevel.WARN);
+		OtelService.isDiagnosticsLoggerConfigured = true;
 	}
 
 	private parseOtlpHeaders(): Record<string, string> {
