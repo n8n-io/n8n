@@ -5,7 +5,7 @@ import { Container } from '@n8n/di';
 import * as BullModule from 'bull';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
-import { ApplicationError, ManualExecutionCancelledError } from 'n8n-workflow';
+import { ApplicationError } from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
 
@@ -288,15 +288,15 @@ describe('ScalingService', () => {
 	});
 
 	describe('stopJob', () => {
-		it('should stop an active job', async () => {
+		it('should stop an active job by sending abort signal only', async () => {
 			await scalingService.setupQueue();
 			const job = mock<Job>({ isActive: jest.fn().mockResolvedValue(true) });
 
 			const result = await scalingService.stopJob(job);
 
 			expect(job.progress).toHaveBeenCalledWith({ kind: 'abort-job' });
-			expect(job.discard).toHaveBeenCalled();
-			expect(job.moveToFailed).toHaveBeenCalledWith(new ManualExecutionCancelledError('123'), true);
+			expect(job.discard).not.toHaveBeenCalled();
+			expect(job.moveToFailed).not.toHaveBeenCalled();
 			expect(result).toBe(true);
 		});
 

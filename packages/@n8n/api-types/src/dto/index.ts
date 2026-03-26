@@ -116,6 +116,11 @@ export {
 
 export { UpdateRoleDto } from './roles/update-role.dto';
 export { CreateRoleDto } from './roles/create-role.dto';
+export { CreateRoleMappingRuleDto } from './roles/create-role-mapping-rule.dto';
+export {
+	PatchRoleMappingRuleDto,
+	type PatchRoleMappingRuleInput,
+} from './roles/patch-role-mapping-rule.dto';
 export { RoleListQueryDto } from './roles/role-list-query.dto';
 export { RoleGetQueryDto } from './roles/role-get-query.dto';
 export {
