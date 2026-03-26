@@ -322,7 +322,7 @@ function getSectionNodeType(section: NodeSetupState) {
 
 <style module lang="scss">
 .agentBody {
-	padding: 0 var(--spacing--xs);
+	padding: 0 var(--spacing--xs) var(--spacing--xs);
 }
 
 .sections {
