@@ -1,17 +1,21 @@
 import { testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
+import { Container } from '@n8n/di';
 
 import { createOwner } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
 import { SUPPORTED_SCOPES } from '../mcp-oauth-service';
+import { McpSettingsService } from '../mcp.settings.service';
 
 const testServer = setupTestServer({ modules: ['mcp'], endpointGroups: ['mcp'] });
 
 let owner: User;
+let mcpSettingsService: McpSettingsService;
 
 beforeAll(async () => {
 	owner = await createOwner();
+	mcpSettingsService = Container.get(McpSettingsService);
 });
 
 afterEach(async () => {
@@ -138,6 +142,14 @@ describe('GET /.well-known/oauth-protected-resource/mcp-server/http', () => {
 });
 
 describe('POST /mcp-oauth/register', () => {
+	beforeEach(async () => {
+		await mcpSettingsService.setEnabled(true);
+	});
+
+	afterEach(async () => {
+		await mcpSettingsService.setEnabled(false);
+	});
+
 	test('should register a new OAuth client with dynamic registration', async () => {
 		const clientData = {
 			client_name: 'Test MCP Client',
@@ -194,9 +206,45 @@ describe('POST /mcp-oauth/register', () => {
 
 		expect(response.statusCode).toBeGreaterThanOrEqual(400);
 	});
+
+	test('should reject registration when MCP access is disabled', async () => {
+		await mcpSettingsService.setEnabled(false);
+
+		const clientData = {
+			client_name: 'Test Client',
+			redirect_uris: ['https://example.com/callback'],
+			grant_types: ['authorization_code'],
+			token_endpoint_auth_method: 'none',
+		};
+
+		const response = await testServer.restlessAgent.post('/mcp-oauth/register').send(clientData);
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should reject registration with too many redirect URIs', async () => {
+		const clientData = {
+			client_name: 'Test Client',
+			redirect_uris: Array.from({ length: 11 }, (_, i) => `https://example${i}.com/callback`),
+			grant_types: ['authorization_code'],
+			token_endpoint_auth_method: 'none',
+		};
+
+		const response = await testServer.restlessAgent.post('/mcp-oauth/register').send(clientData);
+
+		expect(response.statusCode).toBeGreaterThanOrEqual(400);
+	});
 });
 
 describe('GET /mcp-oauth/authorize', () => {
+	beforeEach(async () => {
+		await mcpSettingsService.setEnabled(true);
+	});
+
+	afterEach(async () => {
+		await mcpSettingsService.setEnabled(false);
+	});
+
 	test('should require authentication for authorization endpoint', async () => {
 		const response = await testServer.restlessAgent.get('/mcp-oauth/authorize').query({
 			client_id: 'test-client',
@@ -230,9 +278,31 @@ describe('GET /mcp-oauth/authorize', () => {
 
 		expect(response.statusCode).toBeGreaterThanOrEqual(200);
 	});
+
+	test('should reject authorization when MCP access is disabled', async () => {
+		await mcpSettingsService.setEnabled(false);
+
+		const response = await testServer.restlessAgent.get('/mcp-oauth/authorize').query({
+			client_id: 'test-client',
+			redirect_uri: 'https://example.com/callback',
+			response_type: 'code',
+			code_challenge: 'challenge',
+			code_challenge_method: 'S256',
+		});
+
+		expect(response.statusCode).toBe(403);
+	});
 });
 
 describe('POST /mcp-oauth/token', () => {
+	beforeEach(async () => {
+		await mcpSettingsService.setEnabled(true);
+	});
+
+	afterEach(async () => {
+		await mcpSettingsService.setEnabled(false);
+	});
+
 	test('should be accessible without authentication', async () => {
 		const response = await testServer.restlessAgent.post('/mcp-oauth/token').send({
 			grant_type: 'authorization_code',
@@ -266,9 +336,29 @@ describe('POST /mcp-oauth/token', () => {
 		expect(response.statusCode).toBeGreaterThanOrEqual(400);
 		expect(response.body.error).toBeDefined();
 	});
+
+	test('should reject token request when MCP access is disabled', async () => {
+		await mcpSettingsService.setEnabled(false);
+
+		const response = await testServer.restlessAgent.post('/mcp-oauth/token').send({
+			grant_type: 'authorization_code',
+			code: 'test-code',
+			client_id: 'test-client',
+		});
+
+		expect(response.statusCode).toBe(403);
+	});
 });
 
 describe('POST /mcp-oauth/revoke', () => {
+	beforeEach(async () => {
+		await mcpSettingsService.setEnabled(true);
+	});
+
+	afterEach(async () => {
+		await mcpSettingsService.setEnabled(false);
+	});
+
 	test('should be accessible without authentication', async () => {
 		const response = await testServer.restlessAgent.post('/mcp-oauth/revoke').send({
 			token: 'test-token',
@@ -295,6 +385,17 @@ describe('POST /mcp-oauth/revoke', () => {
 		});
 
 		expect(response.statusCode).toBeGreaterThanOrEqual(200);
+	});
+
+	test('should reject revocation when MCP access is disabled', async () => {
+		await mcpSettingsService.setEnabled(false);
+
+		const response = await testServer.restlessAgent.post('/mcp-oauth/revoke').send({
+			token: 'test-token',
+			client_id: 'test-client',
+		});
+
+		expect(response.statusCode).toBe(403);
 	});
 });
 
