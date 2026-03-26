@@ -6,8 +6,26 @@ import type { EvalLogger } from './logger';
 import type { GenerationCollectors } from './runner';
 import type { IntrospectionEvent } from '../../src/tools/introspect.tool.js';
 import type { SimpleWorkflow } from '../../src/types/workflow';
+import type { ChatPayload } from '../../src/workflow-builder-agent';
 
 export type LlmCallLimiter = ReturnType<typeof pLimit>;
+
+/**
+ * Full dataset input context from a LangSmith example.
+ * Contains all the context fields the agent needs for realistic generation.
+ */
+export interface DatasetInputContext {
+	/** The complete workflowContext from the dataset (executionSchema, executionData, etc.) */
+	workflowContext?: ChatPayload['workflowContext'];
+	/** The existing workflow JSON before this turn */
+	existingWorkflow?: SimpleWorkflow;
+	/** Historical messages from prior conversation turns (LangChain serialized) */
+	historicalMessages?: unknown[];
+	/** Builder mode from dataset */
+	mode?: 'build' | 'plan';
+	/** Feature flags from dataset metadata */
+	featureFlags?: Record<string, unknown>;
+}
 
 /**
  * Shared context passed to all evaluators.
@@ -43,6 +61,8 @@ export interface EvaluationContext {
 	pinData?: IPinData;
 	/** Per-example annotations (e.g., code_necessary) from CSV or LangSmith dataset */
 	annotations?: Record<string, unknown>;
+	/** Full dataset input context for trace-based evaluation */
+	datasetInputContext?: DatasetInputContext;
 }
 
 /** Context attached to an individual test case (prompt is provided separately). */
@@ -124,6 +144,7 @@ export interface RunConfigBase {
 	generateWorkflow: (
 		prompt: string,
 		collectors?: GenerationCollectors,
+		datasetInputContext?: DatasetInputContext,
 	) => Promise<SimpleWorkflow | GenerationResult>;
 	/** Evaluators to run on each generated workflow */
 	evaluators: Array<Evaluator<EvaluationContext>>;
@@ -248,7 +269,7 @@ export interface SubgraphExampleOutput {
 	response?: string;
 	/** The workflow produced by the subgraph (for builder/configurator) */
 	workflow?: SimpleWorkflow;
-};
+}
 
 /**
  * Result from workflow generation that may include source code.
