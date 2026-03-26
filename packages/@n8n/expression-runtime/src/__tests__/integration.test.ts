@@ -334,6 +334,42 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 
 		expect(result).toBe('name,age,city');
 	});
+
+	it('should preserve error name, message, and custom properties across isolate boundary', () => {
+		const data = { $json: {} };
+
+		// Throw a plain Error with a name the bridge recognizes and custom
+		// properties. The bridge serializes via __reportError, reconstructs
+		// on the host, and re-throws — name, message, and extra properties
+		// should survive the round-trip.
+		const expression =
+			'{{ (() => {' +
+			'  const e = new Error("test error");' +
+			'  e.name = "ExpressionExtensionError";' +
+			'  e.customProp = "hello";' +
+			'  e.context = { foo: "bar" };' +
+			'  throw e;' +
+			'})() }}';
+
+		expect(() => evaluator.evaluate(expression, data)).toThrow(
+			expect.objectContaining({
+				name: 'ExpressionExtensionError',
+				message: 'test error',
+				customProp: 'hello',
+				context: { foo: 'bar' },
+			}),
+		);
+	});
+
+	it('should swallow TypeError and return undefined', () => {
+		const data = { $json: {} };
+
+		// E() inside the isolate swallows TypeErrors (failed attack attempts).
+		// The expression should return undefined, not throw.
+		const result = evaluator.evaluate('{{ (() => { throw new TypeError("test") })() }}', data);
+
+		expect(result).toBeUndefined();
+	});
 });
 
 describe('Integration: IsolatedVmBridge error handling', () => {
