@@ -39,10 +39,9 @@ function isErrorSentinel(value: unknown): value is Record<string, unknown> & { _
  */
 function serializeError(err: unknown): Record<string, unknown> {
 	if (err instanceof Error) {
-		const extra: Record<string, unknown> = {};
-		for (const key of Object.keys(err)) {
-			extra[key] = (err as unknown as Record<string, unknown>)[key];
-		}
+		const extra = Object.fromEntries(
+			Object.entries(err).filter(([key]) => key !== 'name' && key !== 'message' && key !== 'stack'),
+		);
 		return {
 			__isError: true,
 			name: err.name,
@@ -617,9 +616,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		// Restore custom properties transferred via copy: true
 		const extra = data.extra;
 		if (extra && typeof extra === 'object') {
-			for (const [key, value] of Object.entries(extra as Record<string, unknown>)) {
-				(error as unknown as Record<string, unknown>)[key] = value;
-			}
+			Object.assign(error, extra);
 		}
 
 		return error;
