@@ -1,13 +1,16 @@
+import { AI_GATEWAY_CREDENTIAL_TYPES } from '@n8n/constants';
 import { computed } from 'vue';
+import { useRouter } from 'vue-router';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { AI_GATEWAY_EXPERIMENT } from '@/app/constants';
-
-const MANAGED_CREDENTIAL_TYPES = ['googlePalmApi', 'anthropicApi'] as const;
+import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 
 export function useAiGateway() {
 	const settingsStore = useSettingsStore();
 	const postHogStore = usePostHog();
+	const router = useRouter();
+	const { saveCurrentWorkflow } = useWorkflowSaving({ router });
 
 	const isEnabled = computed(
 		() =>
@@ -17,7 +20,11 @@ export function useAiGateway() {
 	const creditsQuota = computed(() => settingsStore.aiGatewayCreditsQuota);
 
 	const isNodeSupported = (credentialType: string): boolean =>
-		(MANAGED_CREDENTIAL_TYPES as readonly string[]).includes(credentialType);
+		(AI_GATEWAY_CREDENTIAL_TYPES as readonly string[]).includes(credentialType);
 
-	return { isEnabled, creditsQuota, isNodeSupported };
+	async function saveAfterToggle(): Promise<void> {
+		await saveCurrentWorkflow({}, false, false, true);
+	}
+
+	return { isEnabled, creditsQuota, isNodeSupported, saveAfterToggle };
 }

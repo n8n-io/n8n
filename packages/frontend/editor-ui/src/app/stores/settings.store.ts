@@ -122,9 +122,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		() => settings.value.ai?.allowSendingParameterValues ?? true,
 	);
 
-	const isAiGatewayEnabled = computed(() => settings.value.aiGateway?.enabled ?? true); //TODO: false is default
+	const isAiGatewayEnabled = computed(() => settings.value.aiGateway?.enabled ?? false);
 
-	const aiGatewayCreditsQuota = computed(() => settings.value.aiGateway?.creditsQuota ?? 42); //TODO: 0 is default
+	const aiGatewayCreditsQuota = computed(() => settings.value.aiGateway?.creditsQuota ?? 0);
 
 	const isSmtpSetup = computed(() => userManagement.value.smtpSetup);
 

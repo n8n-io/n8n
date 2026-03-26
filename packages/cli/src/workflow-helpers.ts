@@ -155,6 +155,9 @@ export async function replaceInvalidCredentials<T extends IWorkflowBase>(workflo
 			if (nodeCredentials === null || nodeCredentials === undefined) {
 				continue;
 			}
+			// Gateway proxy credentials have no real DB record — skip, handled at execution time
+			if (nodeCredentials.__gatewayProxy) continue;
+
 			// Check if Node applies old credentials style
 			if (typeof nodeCredentials === 'string' || nodeCredentials.id === null) {
 				const name = typeof nodeCredentials === 'string' ? nodeCredentials : nodeCredentials.name;

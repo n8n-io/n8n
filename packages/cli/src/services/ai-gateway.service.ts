@@ -1,0 +1,95 @@
+import { AI_GATEWAY_CREDENTIAL_TYPES } from '@n8n/constants';
+import { GlobalConfig } from '@n8n/config';
+import { Service } from '@n8n/di';
+import { InstanceSettings } from 'n8n-core';
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
+
+import { License } from '@/license';
+
+type AiGatewayCredentialType = (typeof AI_GATEWAY_CREDENTIAL_TYPES)[number];
+
+interface GatewayTokenResponse {
+	token: string;
+	expiresIn: number;
+}
+
+/**
+ * Per-provider routing config.
+ *
+ * - `gatewayPath`  — path appended to `aiAssistant.baseUrl` in the synthetic credential
+ * - `urlField`     — credential field the node reads for the base URL (`url` for most, `host` for googlePalmApi)
+ * - `apiKeyField`  — credential field the node reads for the API key (`apiKey` for most)
+ *
+ * To add a provider: add an entry here + add its type to `AI_GATEWAY_CREDENTIAL_TYPES` in `@n8n/constants`.
+ */
+const GATEWAY_PROVIDER_CONFIG: Record<
+	AiGatewayCredentialType,
+	{ gatewayPath: string; urlField: string; apiKeyField: string }
+> = {
+	googlePalmApi: { gatewayPath: '/v1/gateway/google', urlField: 'host', apiKeyField: 'apiKey' },
+};
+
+@Service()
+export class AiGatewayService {
+	private readonly tokenCache = new Map<string, { token: string; expiresAt: number }>();
+
+	constructor(
+		private readonly globalConfig: GlobalConfig,
+		private readonly license: License,
+		private readonly instanceSettings: InstanceSettings,
+	) {}
+
+	/**
+	 * Returns a synthetic credential for the given type, pointing the node at the gateway
+	 * instead of the real provider. Called from `CredentialsHelper.getDecrypted` when
+	 * `nodeCredentials.__gatewayProxy` is set.
+	 */
+	async getSyntheticCredential(
+		credentialType: string,
+		userId: string,
+	): Promise<ICredentialDataDecryptedObject> {
+		const baseUrl = this.globalConfig.aiAssistant.baseUrl;
+		if (!baseUrl) {
+			throw new UserError('AI Gateway is not configured. Set the AI assistant base URL.');
+		}
+
+		const config = GATEWAY_PROVIDER_CONFIG[credentialType as AiGatewayCredentialType];
+		if (!config) {
+			throw new UserError(`Credential type "${credentialType}" is not supported by AI Gateway.`);
+		}
+
+		const jwt = await this.getOrFetchToken(userId);
+		return { [config.apiKeyField]: jwt, [config.urlField]: `${baseUrl}${config.gatewayPath}` };
+	}
+
+	/**
+	 * Returns a cached JWT for `instanceId:userId`, fetching a fresh one from the gateway
+	 * if missing or within 1 minute of expiry.
+	 */
+	private async getOrFetchToken(userId: string): Promise<string> {
+		const key = `${this.instanceSettings.instanceId}:${userId}`;
+		const cached = this.tokenCache.get(key);
+
+		if (cached && cached.expiresAt > Date.now() + 60_000) {
+			return cached.token;
+		}
+
+		const baseUrl = this.globalConfig.aiAssistant.baseUrl;
+		const licenseCert = await this.license.loadCertStr();
+
+		const response = await fetch(`${baseUrl}/v1/gateway/credentials`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ licenseCert }),
+		});
+
+		if (!response.ok) {
+			throw new UserError(`Failed to fetch AI Gateway token: HTTP ${response.status}`);
+		}
+
+		const { token, expiresIn } = (await response.json()) as GatewayTokenResponse;
+		this.tokenCache.set(key, { token, expiresAt: Date.now() + expiresIn * 1000 });
+		return token;
+	}
+}

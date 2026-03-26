@@ -502,6 +502,7 @@ function onAiGatewayToggle(credentialType: string, enable: boolean): void {
 			name: props.node.name,
 			properties: { credentials },
 		});
+		void aiGateway.saveAfterToggle();
 		return;
 	}
 
@@ -516,6 +517,7 @@ function onAiGatewayToggle(credentialType: string, enable: boolean): void {
 	} else {
 		clearSelectedCredential(credentialType);
 	}
+	void aiGateway.saveAfterToggle();
 }
 
 function getIssues(credentialTypeName: string): string[] {
