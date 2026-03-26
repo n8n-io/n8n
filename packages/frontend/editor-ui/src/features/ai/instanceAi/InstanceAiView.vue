@@ -577,12 +577,14 @@ function handleStop() {
 
 						<!-- Floating input -->
 						<div ref="inputContainer" :class="$style.inputContainer">
-							<InstanceAiStatusBar />
-							<InstanceAiInput
-								:is-streaming="store.isStreaming"
-								@submit="handleSubmit"
-								@stop="handleStop"
-							/>
+							<div :class="$style.inputConstraint">
+								<InstanceAiStatusBar />
+								<InstanceAiInput
+									:is-streaming="store.isStreaming"
+									@submit="handleSubmit"
+									@stop="handleStop"
+								/>
+							</div>
 						</div>
 					</template>
 				</div>
@@ -794,6 +796,11 @@ function handleStop() {
 	& > * {
 		pointer-events: auto;
 	}
+}
+
+.inputConstraint {
+	max-width: 750px;
+	margin: 0 auto;
 }
 </style>
 

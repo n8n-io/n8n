@@ -185,12 +185,21 @@ const artifactIconMap: Record<string, IconName> = {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);
-	padding: var(--spacing--2xs) 0;
+	padding: var(--spacing--2xs) var(--spacing--2xs);
 	cursor: pointer;
 	border-radius: var(--radius);
+	transition: background-color 0.2s ease;
 
-	&:hover .artifactName {
-		color: var(--color--primary);
+	&:hover {
+		background: var(--color--foreground--tint-2);
+
+		.artifactName {
+			color: var(--color--primary);
+		}
+
+		.artifactIcon {
+			color: var(--color--primary);
+		}
 	}
 }
 
