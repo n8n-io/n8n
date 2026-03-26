@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, toRef, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 
@@ -8,14 +8,13 @@ import TriggerExecuteButton from '@/features/setupPanel/components/TriggerExecut
 import SetupCardSection from '@/features/setupPanel/components/cards/SetupCardSection.vue';
 import SetupCardBody from '@/features/setupPanel/components/cards/SetupCardBody.vue';
 
-import type { AgentGroupItem, NodeSetupState } from '@/features/setupPanel/setupPanel.types';
+import type { AgentGroupItem } from '@/features/setupPanel/setupPanel.types';
 import { isCardComplete } from '@/features/setupPanel/setupPanel.types';
 import type { INodeUi } from '@/Interface';
-import type { INodeProperties } from 'n8n-workflow';
-import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useTriggerExecution } from '@/features/setupPanel/composables/useTriggerExecution';
+import { useAgentGroupSections } from '@/features/setupPanel/composables/useAgentGroupSections';
 
 const props = defineProps<{
 	agentGroup: AgentGroupItem;
@@ -34,25 +33,21 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
 const credentialsStore = useCredentialsStore();
 
-const agentNodeType = computed(() =>
-	nodeTypesStore.getNodeType(
-		props.agentGroup.agentNode.type,
-		props.agentGroup.agentNode.typeVersion,
-	),
-);
-
-// Per-section sticky parameter tracking (same pattern as AgentGroupSetupCard)
-const stickyParametersMap = reactive<Record<string, INodeProperties[]>>({});
-function getStickyParameters(nodeId: string): INodeProperties[] {
-	if (!stickyParametersMap[nodeId]) {
-		stickyParametersMap[nodeId] = [];
-	}
-	return stickyParametersMap[nodeId];
-}
+const {
+	agentNodeType,
+	subnodeSections,
+	allSections,
+	getStickyParameters,
+	expandedSections,
+	toggleSection,
+	hoveredSection,
+	onSectionMouseEnter,
+	onSectionMouseLeave,
+	getSectionNodeType,
+} = useAgentGroupSections(toRef(props, 'agentGroup'));
 
 // Execute button always targets the agent node
 const executableNode = computed<INodeUi | null>(() => props.agentGroup.agentNode);
@@ -69,67 +64,7 @@ const {
 
 const isActive = computed(() => isExecuting.value || isInListeningState.value);
 
-const subnodeSections = computed<NodeSetupState[]>(() => props.agentGroup.subnodeCards);
-
-/** All sections including agent state — used for completion tracking */
-const allSections = computed<NodeSetupState[]>(() => {
-	const sections: NodeSetupState[] = [];
-	if (props.agentGroup.agentState) sections.push(props.agentGroup.agentState);
-	sections.push(...subnodeSections.value);
-	return sections;
-});
-
 const isGroupComplete = computed(() => isCardComplete({ agentGroup: props.agentGroup }));
-
-// Section expand/collapse state
-const expandedSections = reactive<Record<string, boolean>>({});
-
-function initExpandState() {
-	for (const section of allSections.value) {
-		const key = section.node.id;
-		if (!(key in expandedSections)) {
-			expandedSections[key] = false;
-		}
-	}
-	// Expand first incomplete
-	const firstIncomplete = allSections.value.find((s) => !s.isComplete);
-	if (firstIncomplete) {
-		expandedSections[firstIncomplete.node.id] = true;
-	}
-}
-initExpandState();
-
-function toggleSection(nodeId: string) {
-	expandedSections[nodeId] = !expandedSections[nodeId];
-}
-
-const sectionHasParameters = (section: NodeSetupState) =>
-	Object.keys(section.parameterIssues).length > 0 ||
-	(section.additionalParameterNames?.length ?? 0) > 0;
-
-// Auto-expand next incomplete when a credential-only section completes.
-// Sections with parameters stay open so the user isn't interrupted mid-input.
-const prevSectionComplete = new Map<string, boolean>();
-watch(
-	allSections,
-	(sections) => {
-		for (const section of sections) {
-			const wasComplete = prevSectionComplete.get(section.node.id) ?? false;
-			if (section.isComplete && !wasComplete && !sectionHasParameters(section)) {
-				expandedSections[section.node.id] = false;
-				const nextIncomplete = sections.find((s) => !s.isComplete && s.node.id !== section.node.id);
-				if (nextIncomplete) {
-					expandedSections[nextIncomplete.node.id] = true;
-				}
-			}
-		}
-		prevSectionComplete.clear();
-		for (const section of sections) {
-			prevSectionComplete.set(section.node.id, section.isComplete);
-		}
-	},
-	{ deep: true },
-);
 
 const isAnyCredentialTesting = computed(() =>
 	allSections.value.some((s) => {
@@ -155,16 +90,6 @@ watch(isActive, (active, wasActive) => {
 	}
 });
 
-const hoveredSection = ref<NodeSetupState | null>(null);
-
-function onSectionMouseEnter(section: NodeSetupState) {
-	hoveredSection.value = section;
-}
-
-function onSectionMouseLeave() {
-	hoveredSection.value = null;
-}
-
 watch(hoveredSection, (section) => {
 	if (section) {
 		const ids = (section.allNodesUsingCredential ?? [section.node]).map((n) => n.id);
@@ -173,10 +98,6 @@ watch(hoveredSection, (section) => {
 		emit('sectionHighlight', null);
 	}
 });
-
-function getSectionNodeType(section: NodeSetupState) {
-	return nodeTypesStore.getNodeType(section.node.type, section.node.typeVersion);
-}
 </script>
 
 <template>
@@ -389,7 +310,7 @@ function getSectionNodeType(section: NodeSetupState) {
 }
 
 .sectionContent {
-	padding: var(--spacing--xs);
+	padding-top: var(--spacing--xs);
 }
 
 .footer {
