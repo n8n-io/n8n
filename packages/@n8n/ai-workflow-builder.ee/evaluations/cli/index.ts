@@ -5,6 +5,7 @@
  * Can be run directly or used as a reference for custom setups.
  */
 
+import type { BaseMessage } from '@langchain/core/messages';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import pLimit from 'p-limit';
 
@@ -46,8 +47,8 @@ import {
 	extractSubgraphMetrics,
 	getChatPayload,
 } from '../harness/evaluation-helpers';
-import { createLogger } from '../harness/logger';
 import type { DatasetInputContext } from '../harness/harness-types';
+import { createLogger } from '../harness/logger';
 import type { GenerationCollectors, SubgraphMetricsCollector } from '../harness/runner';
 import { TokenUsageTrackingHandler } from '../harness/token-tracking-handler';
 import {
@@ -168,9 +169,7 @@ function createWorkflowGenerator(
 				EVAL_USERS.LANGSMITH,
 				undefined, // abortSignal
 				tokenTracker ? [tokenTracker] : undefined, // externalCallbacks
-				datasetInputContext?.historicalMessages as
-					| import('@langchain/core/messages').BaseMessage[]
-					| undefined,
+				datasetInputContext?.historicalMessages as BaseMessage[] | undefined,
 			),
 		);
 

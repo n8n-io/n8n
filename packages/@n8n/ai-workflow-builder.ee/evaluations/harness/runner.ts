@@ -1008,12 +1008,12 @@ function extractPrompt(inputs: LangsmithDatasetInput): string {
  */
 function enrichExamplesWithHistory(examples: Example[]): Example[] {
 	return examples.map((example) => {
-		const outputMessages = example.outputs?.messages;
+		const outputMessages = (example.outputs as Record<string, unknown> | undefined)?.messages;
 		if (!Array.isArray(outputMessages) || outputMessages.length <= 1) {
 			return example; // No history to extract
 		}
 
-		const inputMessages = example.inputs?.messages;
+		const inputMessages = (example.inputs as Record<string, unknown> | undefined)?.messages;
 		if (!Array.isArray(inputMessages) || inputMessages.length === 0) {
 			return example;
 		}
@@ -1055,7 +1055,7 @@ function extractDatasetInputContext(
 	inputs: LangsmithDatasetInput,
 ): DatasetInputContext | undefined {
 	const hasContext =
-		inputs.workflowContext || inputs.workflowJSON || inputs.mode || inputs._historicalMessages;
+		inputs.workflowContext ?? inputs.workflowJSON ?? inputs.mode ?? inputs._historicalMessages;
 	if (!hasContext) return undefined;
 
 	const context: DatasetInputContext = {};
@@ -1073,7 +1073,7 @@ function extractDatasetInputContext(
 	}
 
 	if (Array.isArray(inputs._historicalMessages) && inputs._historicalMessages.length > 0) {
-		context.historicalMessages = inputs._historicalMessages as unknown[];
+		context.historicalMessages = inputs._historicalMessages;
 	}
 
 	return Object.keys(context).length > 0 ? context : undefined;
@@ -1273,6 +1273,35 @@ function updateStats(
 	if (status === 'pass') stats.passed++;
 	else if (status === 'fail') stats.failed++;
 	else stats.errors++;
+}
+
+/**
+ * Resolve LangSmith dataset examples and enrich them with conversation history.
+ * Handles fallback preloading when filters/maxExamples are requested on a string dataset.
+ */
+async function resolveAndEnrichLangsmithData(params: {
+	dataset: string;
+	langsmithOptions: LangsmithRunConfig['langsmithOptions'];
+	lsClient: LangsmithRunConfig['langsmithClient'];
+	logger: EvalLogger;
+}): Promise<string | Example[]> {
+	const { dataset, langsmithOptions, lsClient, logger } = params;
+	let data = await resolveLangsmithData({ dataset, langsmithOptions, lsClient, logger });
+	// Defensive: if maxExamples/filters were requested but we still got a dataset name,
+	// fall back to preloading so we can honor limits instead of streaming everything.
+	if (
+		typeof data === 'string' &&
+		((langsmithOptions.maxExamples ?? 0) > 0 || langsmithOptions.filters !== undefined)
+	) {
+		data = await loadExamplesFromDataset({
+			lsClient,
+			datasetName: data,
+			maxExamples: langsmithOptions.maxExamples,
+			filters: langsmithOptions.filters,
+		});
+	}
+	// Enrich pre-loaded examples with conversation history from outputs
+	return Array.isArray(data) ? enrichExamplesWithHistory(data) : data;
 }
 
 /**
@@ -1520,30 +1549,11 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 
 	const feedbackExtractor = createLangsmithFeedbackExtractor();
 
-	// Load examples if maxExamples is set
 	if (typeof dataset !== 'string') {
 		throw new Error('LangSmith mode requires dataset to be a dataset name string');
 	}
 
-	let data = await resolveLangsmithData({ dataset, langsmithOptions, lsClient, logger });
-	// Defensive: if maxExamples/filters were requested but we still got a dataset name,
-	// fall back to preloading so we can honor limits instead of streaming everything.
-	if (
-		typeof data === 'string' &&
-		((langsmithOptions.maxExamples ?? 0) > 0 || langsmithOptions.filters !== undefined)
-	) {
-		data = await loadExamplesFromDataset({
-			lsClient,
-			datasetName: data,
-			maxExamples: langsmithOptions.maxExamples,
-			filters: langsmithOptions.filters,
-		});
-	}
-
-	// Enrich pre-loaded examples with conversation history from outputs
-	if (Array.isArray(data)) {
-		data = enrichExamplesWithHistory(data);
-	}
+	const data = await resolveAndEnrichLangsmithData({ dataset, langsmithOptions, lsClient, logger });
 
 	const effectiveData = applyRepetitions(data, langsmithOptions.repetitions);
 
