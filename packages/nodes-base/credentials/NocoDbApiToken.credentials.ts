@@ -19,6 +19,7 @@ export class NocoDbApiToken implements ICredentialType {
 			type: 'string',
 			typeOptions: { password: true },
 			default: '',
+			required: true,
 		},
 		{
 			displayName: 'Host',
@@ -26,6 +27,7 @@ export class NocoDbApiToken implements ICredentialType {
 			type: 'string',
 			default: '',
 			placeholder: 'https://app.nocodb.com',
+			required: true,
 		},
 	];
 
