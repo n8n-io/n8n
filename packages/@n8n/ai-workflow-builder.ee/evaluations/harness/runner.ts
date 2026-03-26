@@ -973,6 +973,8 @@ interface LangsmithDatasetInput {
 	workflowContext?: unknown;
 	workflowOperations?: unknown[];
 	mode?: string;
+	/** Injected by enrichExamplesWithHistory - historical messages from outputs */
+	_historicalMessages?: unknown[];
 	[key: string]: unknown;
 }
 
@@ -995,6 +997,56 @@ function extractPrompt(inputs: LangsmithDatasetInput): string {
 }
 
 /**
+ * Pre-process LangSmith examples to extract conversation history from outputs
+ * and inject it into inputs for the target function.
+ *
+ * The dataset format has:
+ * - inputs.messages[0]: The latest user turn
+ * - outputs.messages: The FULL conversation (all prior turns + latest + AI response)
+ *
+ * We find the latest turn in outputs and extract everything before it as historical.
+ */
+function enrichExamplesWithHistory(examples: Example[]): Example[] {
+	return examples.map((example) => {
+		const outputMessages = example.outputs?.messages;
+		if (!Array.isArray(outputMessages) || outputMessages.length <= 1) {
+			return example; // No history to extract
+		}
+
+		const inputMessages = example.inputs?.messages;
+		if (!Array.isArray(inputMessages) || inputMessages.length === 0) {
+			return example;
+		}
+
+		// Get the content of the latest turn from inputs
+		const inputMsg = inputMessages[0] as Record<string, unknown> | undefined;
+		const inputContent = (inputMsg?.kwargs as Record<string, unknown> | undefined)?.content;
+		if (typeof inputContent !== 'string') return example;
+
+		// Find the index of the latest turn in output messages by matching content
+		const latestTurnIndex = outputMessages.findIndex((msg: unknown) => {
+			if (!isUnknownRecord(msg)) return false;
+			const kwargs = msg.kwargs;
+			if (!isUnknownRecord(kwargs)) return false;
+			return kwargs.content === inputContent;
+		});
+
+		if (latestTurnIndex <= 0) return example; // No history before the latest turn
+
+		// Extract all messages before the latest turn as historical
+		const historicalMessages = outputMessages.slice(0, latestTurnIndex);
+
+		return {
+			...example,
+			inputs: {
+				...example.inputs,
+				_historicalMessages: historicalMessages,
+			},
+		};
+	});
+}
+
+/**
  * Extract DatasetInputContext from LangSmith dataset inputs.
  * Captures the full agent context (workflowContext, existing workflow, mode)
  * needed to replay the generation realistically.
@@ -1002,7 +1054,8 @@ function extractPrompt(inputs: LangsmithDatasetInput): string {
 function extractDatasetInputContext(
 	inputs: LangsmithDatasetInput,
 ): DatasetInputContext | undefined {
-	const hasContext = inputs.workflowContext || inputs.workflowJSON || inputs.mode;
+	const hasContext =
+		inputs.workflowContext || inputs.workflowJSON || inputs.mode || inputs._historicalMessages;
 	if (!hasContext) return undefined;
 
 	const context: DatasetInputContext = {};
@@ -1017,6 +1070,10 @@ function extractDatasetInputContext(
 
 	if (inputs.mode === 'build' || inputs.mode === 'plan') {
 		context.mode = inputs.mode;
+	}
+
+	if (Array.isArray(inputs._historicalMessages) && inputs._historicalMessages.length > 0) {
+		context.historicalMessages = inputs._historicalMessages as unknown[];
 	}
 
 	return Object.keys(context).length > 0 ? context : undefined;
@@ -1481,6 +1538,11 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 			maxExamples: langsmithOptions.maxExamples,
 			filters: langsmithOptions.filters,
 		});
+	}
+
+	// Enrich pre-loaded examples with conversation history from outputs
+	if (Array.isArray(data)) {
+		data = enrichExamplesWithHistory(data);
 	}
 
 	const effectiveData = applyRepetitions(data, langsmithOptions.repetitions);
