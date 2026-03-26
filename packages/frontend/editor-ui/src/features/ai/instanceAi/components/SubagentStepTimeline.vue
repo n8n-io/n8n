@@ -5,8 +5,7 @@ import { N8nIcon, type IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiAgentNode, InstanceAiToolCallState } from '@n8n/api-types';
 import { useToolLabel, getToolIcon } from '../toolLabels';
-import ToolResultRenderer from './ToolResultRenderer.vue';
-import ToolResultJson from './ToolResultJson.vue';
+import ToolCallStep from './ToolCallStep.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 
 const props = defineProps<{
@@ -101,74 +100,58 @@ const steps = computed((): TimelineStep[] => {
 
 <template>
 	<div :class="$style.timeline">
-		<div v-for="(step, idx) in steps" :key="idx" :class="$style.step">
-			<div :class="$style.iconColumn">
-				<N8nIcon
-					:icon="step.icon"
-					size="small"
-					:spin="step.isLoading"
-					:class="[
-						$style.stepIcon,
-						step.type === 'done' && $style.doneIcon,
-						step.isLoading && $style.loadingIcon,
-					]"
-				/>
-				<div v-if="idx < steps.length - 1" :class="$style.connector" />
-			</div>
-			<div :class="$style.content">
-				<!-- Text segment: short inline or long behind toggle -->
-				<template v-if="step.type === 'text'">
-					<template v-if="step.isLongText">
-						<span :class="$style.textLabel">{{ step.shortLabel }}</span>
-						<CollapsibleRoot v-slot="{ open: textOpen }" :class="$style.toggleBlock">
-							<CollapsibleTrigger :class="$style.toggleButton">
-								{{ i18n.baseText(textOpen ? 'instanceAi.stepTimeline.hideData' : 'instanceAi.stepTimeline.showData') }}
-							</CollapsibleTrigger>
-							<CollapsibleContent :class="$style.toggleContent">
-								<div :class="$style.dataSection">
-									<InstanceAiMarkdown :content="step.textContent!" />
-								</div>
-							</CollapsibleContent>
-						</CollapsibleRoot>
+		<template v-for="(step, idx) in steps" :key="idx">
+			<!-- Tool call: rendered via ToolCallStep (has its own icon column) -->
+			<ToolCallStep
+				v-if="step.type === 'tool-call' && step.toolCall"
+				:tool-call="step.toolCall"
+				:label="step.label"
+				:show-connector="idx < steps.length - 1"
+			/>
+
+			<!-- Text and done steps: use shared icon column layout -->
+			<div v-else :class="$style.step">
+				<div :class="$style.iconColumn">
+					<N8nIcon
+						:icon="step.icon"
+						size="small"
+						:spin="step.isLoading"
+						:class="[
+							$style.stepIcon,
+							step.type === 'done' && $style.doneIcon,
+							step.isLoading && $style.loadingIcon,
+						]"
+					/>
+					<div v-if="idx < steps.length - 1" :class="$style.connector" />
+				</div>
+				<div :class="$style.content">
+					<!-- Text segment: short inline or long behind toggle -->
+					<template v-if="step.type === 'text'">
+						<template v-if="step.isLongText">
+							<span :class="$style.textLabel">{{ step.shortLabel }}</span>
+							<CollapsibleRoot v-slot="{ open: textOpen }" :class="$style.toggleBlock">
+								<CollapsibleTrigger :class="$style.toggleButton">
+									{{ i18n.baseText(textOpen ? 'instanceAi.stepTimeline.hideData' : 'instanceAi.stepTimeline.showData') }}
+								</CollapsibleTrigger>
+								<CollapsibleContent :class="$style.toggleContent">
+									<div :class="$style.dataSection">
+										<InstanceAiMarkdown :content="step.textContent!" />
+									</div>
+								</CollapsibleContent>
+							</CollapsibleRoot>
+						</template>
+						<div v-else :class="$style.textLabel">
+							<InstanceAiMarkdown :content="step.textContent!" />
+						</div>
 					</template>
-					<div v-else :class="$style.textLabel">
-						<InstanceAiMarkdown :content="step.textContent!" />
-					</div>
-				</template>
 
-				<!-- Tool call: label + optional toggle -->
-				<template v-else-if="step.type === 'tool-call'">
-					<span :class="$style.label">{{ step.label }}</span>
-					<CollapsibleRoot v-if="step.toggleLabel" v-slot="{ open: toolOpen }" :class="$style.toggleBlock">
-						<CollapsibleTrigger :class="$style.toggleButton">
-							{{ toolOpen ? step.hideLabel : step.toggleLabel }}
-						</CollapsibleTrigger>
-						<CollapsibleContent :class="$style.toggleContent">
-							<div v-if="step.toolCall?.args" :class="$style.dataSection">
-								<ToolResultJson :value="step.toolCall.args" />
-							</div>
-							<div v-if="step.toolCall?.result !== undefined" :class="$style.dataSection">
-								<ToolResultRenderer
-									:result="step.toolCall.result"
-									:tool-name="step.toolCall.toolName"
-								/>
-							</div>
-							<div
-								v-if="step.toolCall?.error !== undefined"
-								:class="[$style.dataSection, $style.errorText]"
-							>
-								{{ step.toolCall.error }}
-							</div>
-						</CollapsibleContent>
-					</CollapsibleRoot>
-				</template>
-
-				<!-- Done marker -->
-				<template v-else-if="step.type === 'done'">
-					<span :class="$style.doneLabel">{{ step.label }}</span>
-				</template>
+					<!-- Done marker -->
+					<template v-else-if="step.type === 'done'">
+						<span :class="$style.doneLabel">{{ step.label }}</span>
+					</template>
+				</div>
 			</div>
-		</div>
+		</template>
 	</div>
 </template>
 
@@ -218,12 +201,6 @@ const steps = computed((): TimelineStep[] => {
 	min-width: 0;
 	flex: 1;
 	padding-bottom: var(--spacing--2xs);
-}
-
-.label {
-	font-size: var(--font-size--sm);
-	color: var(--color--text);
-	line-height: var(--line-height--lg);
 }
 
 .textLabel {
@@ -282,12 +259,5 @@ const steps = computed((): TimelineStep[] => {
 	& + & {
 		margin-top: var(--spacing--4xs);
 	}
-}
-
-.errorText {
-	color: var(--color--danger);
-	font-family: monospace;
-	white-space: pre-wrap;
-	word-break: break-word;
 }
 </style>

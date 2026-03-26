@@ -1,15 +1,11 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import { CollapsibleRoot, CollapsibleTrigger, CollapsibleContent } from 'reka-ui';
-import { N8nIcon } from '@n8n/design-system';
 import type { InstanceAiAgentNode, InstanceAiToolCallState } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
-import { useToolLabel, getToolIcon } from '../toolLabels';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 import AgentSection from './AgentSection.vue';
 import ArtifactCard from './ArtifactCard.vue';
-import ToolResultRenderer from './ToolResultRenderer.vue';
-import ToolResultJson from './ToolResultJson.vue';
+import ToolCallStep from './ToolCallStep.vue';
 import DelegateCard from './DelegateCard.vue';
 import TaskChecklist from './TaskChecklist.vue';
 import AnsweredQuestions from './AnsweredQuestions.vue';
@@ -17,7 +13,6 @@ import PlanReviewPanel, { type PlannedTaskArg } from './PlanReviewPanel.vue';
 import { useInstanceAiStore } from '../instanceAi.store';
 
 const i18n = useI18n();
-const { getToolLabel, getToggleLabel, getHideLabel } = useToolLabel();
 
 interface ArtifactInfo {
 	type: 'workflow' | 'data-table';
@@ -159,22 +154,6 @@ function formatArtifactMetadata(artifact: ArtifactInfo): string {
 	return parts.join(' \u2502 ');
 }
 
-/** Display label for a tool call, with contextual info for search/fetch. */
-function getToolDisplayName(tc: InstanceAiToolCallState): string {
-	const label = getToolLabel(tc.toolName) || tc.toolName;
-	if (tc.toolName === 'delegate') {
-		const role = typeof tc.args?.role === 'string' ? tc.args.role : '';
-		return role ? `${label} (${role})` : label;
-	}
-	if (tc.toolName === 'web-search' && typeof tc.args?.query === 'string') {
-		return `${label}: "${tc.args.query}"`;
-	}
-	if (tc.toolName === 'fetch-url' && typeof tc.args?.url === 'string') {
-		return `${label}: ${tc.args.url}`;
-	}
-	return label;
-}
-
 const props = withDefaults(
 	defineProps<{
 		agentNode: InstanceAiAgentNode;
@@ -270,65 +249,13 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 						toolCallsById[entry.toolCallId].isLoading
 					"
 				/>
-				<template v-else>
-					<div :class="$style.step">
-						<div :class="$style.iconColumn">
-							<N8nIcon
-								:icon="
-									toolCallsById[entry.toolCallId].isLoading
-										? 'spinner'
-										: getToolIcon(toolCallsById[entry.toolCallId].toolName)
-								"
-								size="small"
-								:spin="toolCallsById[entry.toolCallId].isLoading"
-								:class="[
-									$style.stepIcon,
-									toolCallsById[entry.toolCallId].isLoading && $style.loadingIcon,
-								]"
-							/>
-							<div :class="$style.connector" />
-						</div>
-						<div :class="$style.stepContent">
-							<span :class="$style.stepLabel">{{
-								getToolDisplayName(toolCallsById[entry.toolCallId])
-							}}</span>
-							<CollapsibleRoot
-								v-if="getToggleLabel(toolCallsById[entry.toolCallId])"
-								v-slot="{ open: toolOpen }"
-								:class="$style.toggleBlock"
-							>
-								<CollapsibleTrigger :class="$style.toggleButton">
-									{{
-										toolOpen
-											? getHideLabel(toolCallsById[entry.toolCallId])
-											: getToggleLabel(toolCallsById[entry.toolCallId])
-									}}
-								</CollapsibleTrigger>
-								<CollapsibleContent :class="$style.toggleContent">
-									<div v-if="toolCallsById[entry.toolCallId].args" :class="$style.dataSection">
-										<ToolResultJson :value="toolCallsById[entry.toolCallId].args" />
-									</div>
-									<div
-										v-if="toolCallsById[entry.toolCallId].result !== undefined"
-										:class="$style.dataSection"
-									>
-										<ToolResultRenderer
-											:result="toolCallsById[entry.toolCallId].result"
-											:tool-name="toolCallsById[entry.toolCallId].toolName"
-										/>
-									</div>
-									<div
-										v-if="toolCallsById[entry.toolCallId].error !== undefined"
-										:class="[$style.dataSection, $style.errorText]"
-									>
-										{{ toolCallsById[entry.toolCallId].error }}
-									</div>
-								</CollapsibleContent>
-							</CollapsibleRoot>
-							<slot name="after-tool-call" :tool-call="toolCallsById[entry.toolCallId]" />
-						</div>
-					</div>
-				</template>
+				<ToolCallStep
+					v-else
+					:tool-call="toolCallsById[entry.toolCallId]"
+					:show-connector="true"
+				>
+					<slot name="after-tool-call" :tool-call="toolCallsById[entry.toolCallId]" />
+				</ToolCallStep>
 			</template>
 
 			<!-- Child agent — flat section -->
@@ -365,103 +292,5 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 .compactText {
 	font-size: var(--font-size--2xs);
 	color: var(--color--text--tint-1);
-}
-
-/* Flat timeline step styles (matching SubagentStepTimeline) */
-.step {
-	display: flex;
-	gap: var(--spacing--xs);
-}
-
-.iconColumn {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	width: 20px;
-	flex-shrink: 0;
-	padding-top: 2px;
-}
-
-.connector {
-	width: 1px;
-	flex: 1;
-	background: var(--color--foreground--shade-1);
-	min-height: 12px;
-}
-
-.stepIcon {
-	color: var(--color--text--tint-1);
-	flex-shrink: 0;
-}
-
-.loadingIcon {
-	color: var(--color--primary);
-}
-
-.stepContent {
-	display: flex;
-	flex-direction: column;
-	min-width: 0;
-	flex: 1;
-	padding-bottom: var(--spacing--2xs);
-}
-
-.stepLabel {
-	font-size: var(--font-size--sm);
-	color: var(--color--text);
-	line-height: var(--line-height--lg);
-}
-
-.toggleBlock {
-	margin-top: var(--spacing--4xs);
-}
-
-.toggleButton {
-	display: inline-flex;
-	align-items: center;
-	padding: var(--spacing--5xs) var(--spacing--2xs);
-	font-family: var(--font-family);
-	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--regular);
-	color: var(--color--text--tint-1);
-	background: var(--color--background--light-2);
-	border: var(--border);
-	border-radius: var(--radius);
-	cursor: pointer;
-
-	&:hover {
-		background: var(--color--foreground--tint-2);
-	}
-}
-
-.toggleContent {
-	margin-top: var(--spacing--4xs);
-	max-height: 300px;
-	overflow-y: auto;
-}
-
-.dataSection {
-	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
-	background: var(--color--foreground--tint-2);
-	border-radius: var(--radius);
-	padding: var(--spacing--2xs);
-
-	:global(pre) {
-		background: transparent;
-		margin: 0;
-		padding: 0;
-	}
-
-	& + & {
-		margin-top: var(--spacing--4xs);
-	}
-}
-
-.errorText {
-	color: var(--color--danger);
-	font-family: monospace;
-	white-space: pre-wrap;
-	word-break: break-word;
 }
 </style>
