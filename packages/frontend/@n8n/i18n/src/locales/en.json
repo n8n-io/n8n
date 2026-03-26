@@ -5112,6 +5112,8 @@
 	"instanceAi.dataTableCard.failed": "Data table operation failed",
 	"instanceAi.artifactCard.updatedJustNow": "Last updated just now",
 	"instanceAi.artifactCard.updatedAgo": "Last updated {time} ago",
+	"instanceAi.artifactCard.minutes": "{count} minutes",
+	"instanceAi.artifactCard.hours": "{count} hours",
 	"instanceAi.artifactCard.createdAt": "Created {date}",
 	"instanceAi.artifactCard.columns": "{count} columns",
 	"instanceAi.researchCard.title": "Researching",

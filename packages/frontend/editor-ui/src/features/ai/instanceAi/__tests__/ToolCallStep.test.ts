@@ -33,9 +33,7 @@ describe('ToolCallStep', () => {
 	});
 
 	it('should render without throwing', () => {
-		expect(() =>
-			renderComponent({ props: { toolCall: makeToolCall() } }),
-		).not.toThrow();
+		expect(() => renderComponent({ props: { toolCall: makeToolCall() } })).not.toThrow();
 	});
 
 	it('should display the tool label', () => {
@@ -62,9 +60,7 @@ describe('ToolCallStep', () => {
 		});
 
 		const connectors = container.querySelectorAll('div');
-		const hasConnector = Array.from(connectors).some((el) =>
-			el.className.includes('connector'),
-		);
+		const hasConnector = Array.from(connectors).some((el) => el.className.includes('connector'));
 		expect(hasConnector).toBe(true);
 	});
 

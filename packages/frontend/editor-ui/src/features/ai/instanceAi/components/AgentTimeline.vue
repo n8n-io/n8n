@@ -23,13 +23,15 @@ function formatRelativeTime(isoTime: string): string {
 	}
 	const diffHours = Math.floor(diffMin / 60);
 	if (diffHours < 1) {
-		return i18n.baseText('instanceAi.artifactCard.updatedAgo', {
-			interpolate: { time: `${diffMin} minutes` },
+		const time = i18n.baseText('instanceAi.artifactCard.minutes', {
+			interpolate: { count: `${diffMin}` },
 		});
+		return i18n.baseText('instanceAi.artifactCard.updatedAgo', { interpolate: { time } });
 	}
-	return i18n.baseText('instanceAi.artifactCard.updatedAgo', {
-		interpolate: { time: `${diffHours} hours` },
+	const time = i18n.baseText('instanceAi.artifactCard.hours', {
+		interpolate: { count: `${diffHours}` },
 	});
+	return i18n.baseText('instanceAi.artifactCard.updatedAgo', { interpolate: { time } });
 }
 
 function formatCreatedDate(isoTime: string): string {

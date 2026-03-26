@@ -48,9 +48,7 @@ function getDisplayLabel(tc: InstanceAiToolCallState): string {
 			<div v-if="props.showConnector" :class="$style.connector" />
 		</div>
 		<div :class="$style.stepContent">
-			<span :class="$style.stepLabel">{{
-				props.label ?? getDisplayLabel(props.toolCall)
-			}}</span>
+			<span :class="$style.stepLabel">{{ props.label ?? getDisplayLabel(props.toolCall) }}</span>
 			<CollapsibleRoot
 				v-if="getToggleLabel(props.toolCall)"
 				v-slot="{ open: toolOpen }"

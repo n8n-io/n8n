@@ -136,9 +136,7 @@ function enhanceResourceLinks(): void {
 			// Look up registry entry (needed for projectId on data-table links)
 			const registryEntry =
 				type === 'data-table'
-					? [...store.resourceRegistry.values()].find(
-							(r) => r.type === 'data-table' && r.id === id,
-						)
+					? [...store.resourceRegistry.values()].find((r) => r.type === 'data-table' && r.id === id)
 					: undefined;
 
 			// Swap href to the real app URL (used for Cmd+click / new tab)

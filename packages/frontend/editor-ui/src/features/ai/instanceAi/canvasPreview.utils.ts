@@ -75,6 +75,17 @@ const DATA_TABLE_TOOL_NAMES = new Set([
 	'move-data-table-column',
 ]);
 
+/** Per-tool check that the result indicates a successful mutation. */
+const RESULT_VALIDATORS: Record<string, (result: Record<string, unknown>) => boolean> = {
+	'insert-data-table-rows': (r) => typeof r.insertedCount === 'number',
+	'update-data-table-rows': (r) => typeof r.updatedCount === 'number',
+	'add-data-table-column': (r) => r.column != null && typeof r.column === 'object',
+	'delete-data-table-rows': (r) => r.success === true,
+	'delete-data-table-column': (r) => r.success === true,
+	'rename-data-table-column': (r) => r.success === true,
+	'move-data-table-column': (r) => r.success === true,
+};
+
 function extractDataTableId(
 	toolName: string,
 	result: Record<string, unknown>,
@@ -88,32 +99,9 @@ function extractDataTableId(
 		return undefined;
 	}
 
-	if (toolName === 'insert-data-table-rows' && typeof result.insertedCount === 'number') {
-		return typeof args?.dataTableId === 'string' ? args.dataTableId : undefined;
-	}
-
-	if (toolName === 'update-data-table-rows' && typeof result.updatedCount === 'number') {
-		return typeof args?.dataTableId === 'string' ? args.dataTableId : undefined;
-	}
-
-	if (toolName === 'add-data-table-column' && result.column && typeof result.column === 'object') {
-		return typeof args?.dataTableId === 'string' ? args.dataTableId : undefined;
-	}
-
-	if (toolName === 'delete-data-table-rows' && result.success === true) {
-		return typeof args?.dataTableId === 'string' ? args.dataTableId : undefined;
-	}
-
-	if (toolName === 'delete-data-table-column' && result.success === true) {
-		return typeof args?.dataTableId === 'string' ? args.dataTableId : undefined;
-	}
-
-	if (toolName === 'rename-data-table-column' && result.success === true) {
-		return typeof args?.dataTableId === 'string' ? args.dataTableId : undefined;
-	}
-
-	if (toolName === 'move-data-table-column' && result.success === true) {
-		return typeof args?.dataTableId === 'string' ? args.dataTableId : undefined;
+	const isValid = RESULT_VALIDATORS[toolName];
+	if (isValid?.(result) && typeof args?.dataTableId === 'string') {
+		return args.dataTableId;
 	}
 
 	return undefined;

@@ -131,7 +131,13 @@ const steps = computed((): TimelineStep[] => {
 							<span :class="$style.textLabel">{{ step.shortLabel }}</span>
 							<CollapsibleRoot v-slot="{ open: textOpen }" :class="$style.toggleBlock">
 								<CollapsibleTrigger :class="$style.toggleButton">
-									{{ i18n.baseText(textOpen ? 'instanceAi.stepTimeline.hideData' : 'instanceAi.stepTimeline.showData') }}
+									{{
+										i18n.baseText(
+											textOpen
+												? 'instanceAi.stepTimeline.hideData'
+												: 'instanceAi.stepTimeline.showData',
+										)
+									}}
 								</CollapsibleTrigger>
 								<CollapsibleContent :class="$style.toggleContent">
 									<div :class="$style.dataSection">
