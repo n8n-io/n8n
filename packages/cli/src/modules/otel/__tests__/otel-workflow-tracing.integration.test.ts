@@ -3,30 +3,32 @@ import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/bac
 import type { Project, WorkflowEntity } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { SpanStatusCode } from '@opentelemetry/api';
 import { InstanceSettings } from 'n8n-core';
 import { DebugHelper } from 'n8n-nodes-base/nodes/DebugHelper/DebugHelper.node';
 import { ManualTrigger } from 'n8n-nodes-base/nodes/ManualTrigger/ManualTrigger.node';
 import { createRunExecutionData } from 'n8n-workflow';
-import { SpanStatusCode } from '@opentelemetry/api';
 
-import { WorkflowRunner } from '@/workflow-runner';
 import { ATTR } from '@/modules/otel/otel.constants';
-
+import { WorkflowRunner } from '@/workflow-runner';
 import * as utils from '@test-integration/utils';
 import {
 	createSimpleWorkflowFixture,
 	createFailingWorkflowFixture,
 } from '@test-integration/workflow-fixtures';
+
 import { OtelTestProvider } from './otel-test-provider';
 
 let otel: OtelTestProvider;
 let workflowRunner: WorkflowRunner;
 let executionRepository: ExecutionRepository;
 let project: Project;
+let previousOtelEnabled: string | undefined;
 
 beforeAll(async () => {
 	otel = OtelTestProvider.create();
 
+	previousOtelEnabled = process.env.N8N_OTEL_ENABLED;
 	process.env.N8N_OTEL_ENABLED = 'true';
 
 	await testModules.loadModules(['otel']);
@@ -51,7 +53,11 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
-	delete process.env.N8N_OTEL_ENABLED;
+	if (previousOtelEnabled === undefined) {
+		delete process.env.N8N_OTEL_ENABLED;
+	} else {
+		process.env.N8N_OTEL_ENABLED = previousOtelEnabled;
+	}
 	await otel.shutdown();
 	await testDb.terminate();
 });
