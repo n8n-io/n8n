@@ -26,6 +26,16 @@ function isDnsError(error: unknown): boolean {
 	return message.includes('getaddrinfo') || message.includes('ENOTFOUND');
 }
 
+/**
+ * Type guard for errors thrown by `executeNpmCommand` with `doNotHandleError: true`
+ * (e.g. npm outdated exits with code 1 when updates exist).
+ */
+export function isNpmExecErrorWithStdout(
+	error: unknown,
+): error is { code: number; stdout: string } {
+	return typeof error === 'object' && error !== null && 'code' in error && 'stdout' in error;
+}
+
 function isNpmError(error: unknown): boolean {
 	const message = error instanceof Error ? error.message : String(error);
 	return (
