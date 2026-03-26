@@ -23,7 +23,6 @@ import {
 	jsonParse,
 	removeCircularRefs,
 	sleep,
-	isDomainAllowed,
 	ensureError,
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
@@ -34,6 +33,7 @@ import { mainProperties } from './Description';
 import type { BodyParameter, IAuthDataSanitizeKeys } from '../GenericFunctions';
 import {
 	binaryContentTypes,
+	getAllowedDomains,
 	getOAuth2AdditionalParameters,
 	getSecrets,
 	prepareRequestBody,
@@ -165,28 +165,47 @@ export class HttpRequestV3 implements INodeType {
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
+				let allowedDomains: string | undefined;
 				if (authentication === 'genericCredentialType') {
 					genericCredentialType = this.getNodeParameter('genericAuthType', 0) as string;
 
 					if (genericCredentialType === 'httpBasicAuth') {
 						httpBasicAuth = await this.getCredentials('httpBasicAuth', itemIndex);
+						allowedDomains = getAllowedDomains(this.getNode(), httpBasicAuth);
 					} else if (genericCredentialType === 'httpBearerAuth') {
 						httpBearerAuth = await this.getCredentials('httpBearerAuth', itemIndex);
+						allowedDomains = getAllowedDomains(this.getNode(), httpBearerAuth);
 					} else if (genericCredentialType === 'httpDigestAuth') {
 						httpDigestAuth = await this.getCredentials('httpDigestAuth', itemIndex);
+						allowedDomains = getAllowedDomains(this.getNode(), httpDigestAuth);
 					} else if (genericCredentialType === 'httpHeaderAuth') {
 						httpHeaderAuth = await this.getCredentials('httpHeaderAuth', itemIndex);
+						allowedDomains = getAllowedDomains(this.getNode(), httpHeaderAuth);
 					} else if (genericCredentialType === 'httpQueryAuth') {
 						httpQueryAuth = await this.getCredentials('httpQueryAuth', itemIndex);
+						allowedDomains = getAllowedDomains(this.getNode(), httpQueryAuth);
 					} else if (genericCredentialType === 'httpCustomAuth') {
 						httpCustomAuth = await this.getCredentials('httpCustomAuth', itemIndex);
+						allowedDomains = getAllowedDomains(this.getNode(), httpCustomAuth);
 					} else if (genericCredentialType === 'oAuth1Api') {
 						oAuth1Api = await this.getCredentials('oAuth1Api', itemIndex);
+						allowedDomains = getAllowedDomains(this.getNode(), oAuth1Api);
 					} else if (genericCredentialType === 'oAuth2Api') {
 						oAuth2Api = await this.getCredentials('oAuth2Api', itemIndex);
+						allowedDomains = getAllowedDomains(this.getNode(), oAuth2Api);
 					}
 				} else if (authentication === 'predefinedCredentialType') {
 					nodeCredentialType = this.getNodeParameter('nodeCredentialType', itemIndex) as string;
+					let nodeCredentialData: ICredentialDataDecryptedObject | undefined;
+					try {
+						nodeCredentialData = await this.getCredentials<ICredentialDataDecryptedObject>(
+							nodeCredentialType,
+							itemIndex,
+						);
+					} catch {}
+					if (nodeCredentialData) {
+						allowedDomains = getAllowedDomains(this.getNode(), nodeCredentialData);
+					}
 				}
 
 				const url = this.getNodeParameter('url', itemIndex);
@@ -204,61 +223,6 @@ export class HttpRequestV3 implements INodeType {
 						this.getNode(),
 						`Invalid URL: ${url}. URL must start with "http" or "https".`,
 					);
-				}
-
-				const checkDomainRestrictions = async (
-					credentialData: ICredentialDataDecryptedObject,
-					url: string,
-					credentialType?: string,
-				) => {
-					if (credentialData.allowedHttpRequestDomains === 'domains') {
-						const allowedDomains = credentialData.allowedDomains as string;
-
-						if (!allowedDomains || allowedDomains.trim() === '') {
-							throw new NodeOperationError(
-								this.getNode(),
-								'No allowed domains specified. Configure allowed domains or change restriction setting.',
-							);
-						}
-
-						if (!isDomainAllowed(url, { allowedDomains })) {
-							const credentialInfo = credentialType ? ` (${credentialType})` : '';
-							throw new NodeOperationError(
-								this.getNode(),
-								`Domain not allowed: This credential${credentialInfo} is restricted from accessing ${url}. ` +
-									`Only the following domains are allowed: ${allowedDomains}`,
-							);
-						}
-					} else if (credentialData.allowedHttpRequestDomains === 'none') {
-						throw new NodeOperationError(
-							this.getNode(),
-							'This credential is configured to prevent use within an HTTP Request node',
-						);
-					}
-				};
-
-				if (httpBasicAuth) await checkDomainRestrictions(httpBasicAuth, url);
-				if (httpBearerAuth) await checkDomainRestrictions(httpBearerAuth, url);
-				if (httpDigestAuth) await checkDomainRestrictions(httpDigestAuth, url);
-				if (httpHeaderAuth) await checkDomainRestrictions(httpHeaderAuth, url);
-				if (httpQueryAuth) await checkDomainRestrictions(httpQueryAuth, url);
-				if (httpCustomAuth) await checkDomainRestrictions(httpCustomAuth, url);
-				if (oAuth1Api) await checkDomainRestrictions(oAuth1Api, url);
-				if (oAuth2Api) await checkDomainRestrictions(oAuth2Api, url);
-
-				if (nodeCredentialType) {
-					try {
-						const credentialData = await this.getCredentials(nodeCredentialType, itemIndex);
-						await checkDomainRestrictions(credentialData, url, nodeCredentialType);
-					} catch (error) {
-						if (
-							error.message?.includes('Domain not allowed') ||
-							error.message?.includes('configured to prevent') ||
-							error.message?.includes('No allowed domains specified')
-						) {
-							throw error;
-						}
-					}
 				}
 
 				const provideSslCertificates = this.getNodeParameter(
@@ -367,6 +331,7 @@ export class HttpRequestV3 implements INodeType {
 					resolveWithFullResponse: true,
 					sendCredentialsOnCrossOriginRedirect:
 						sendCredentialsOnCrossOriginRedirect ?? defaultSendCredentialsOnCrossOriginRedirect,
+					allowedDomains,
 				};
 
 				if (requestOptions.method !== 'GET' && nodeVersion >= 4.1) {
@@ -631,7 +596,7 @@ export class HttpRequestV3 implements INodeType {
 				requests.push({
 					options: requestOptions,
 					authKeys: authDataKeys,
-					credentialType: nodeCredentialType,
+					credentialType: nodeCredentialType ?? genericCredentialType,
 				});
 
 				if (pagination && pagination.paginationMode !== 'off') {
@@ -803,9 +768,8 @@ export class HttpRequestV3 implements INodeType {
 								const { options, authKeys, credentialType } = requests[itemIndex];
 								let secrets: string[] = [];
 								if (credentialType) {
-									const properties = this.getCredentialsProperties(credentialType);
 									const credentials = await this.getCredentials(credentialType, itemIndex);
-									secrets = getSecrets(properties, credentials);
+									secrets = getSecrets(credentials);
 								}
 								const sanitizedRequestOptions = sanitizeUiMessage(options, authKeys, secrets);
 								sanitizedRequests.push(sanitizedRequestOptions);

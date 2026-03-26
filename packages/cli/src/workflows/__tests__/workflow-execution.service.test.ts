@@ -772,39 +772,42 @@ describe('WorkflowExecutionService', () => {
 			expect(workflowRunnerMock.run).toHaveBeenCalledTimes(1);
 			expect(workflowRunnerMock.run).toHaveBeenCalledWith({
 				executionMode: 'error',
-				executionData: createRunExecutionData({
-					executionData: {
-						contextData: {},
-						metadata: {},
-						nodeExecutionStack: [
-							{
-								node: errorTriggerNode,
-								data: {
-									main: [
-										[
-											{
-												json: workflowErrorData,
-											},
+				executionData: {
+					...createRunExecutionData({
+						executionData: {
+							contextData: {},
+							metadata: {},
+							nodeExecutionStack: [
+								{
+									node: errorTriggerNode,
+									data: {
+										main: [
+											[
+												{
+													json: workflowErrorData,
+												},
+											],
 										],
-									],
-								},
-								source: null,
-								metadata: {
-									parentExecution: {
-										executionId: 'execution-id',
-										workflowId: 'workflow-id',
+									},
+									source: null,
+									metadata: {
+										parentExecution: {
+											executionId: 'execution-id',
+											workflowId: 'workflow-id',
+										},
 									},
 								},
-							},
-						],
-						waitingExecution: {},
-						waitingExecutionSource: {},
-					},
-					resultData: {
-						runData: {},
-					},
-					startData: {},
-				}),
+							],
+							waitingExecution: {},
+							waitingExecutionSource: {},
+						},
+						resultData: {
+							runData: {},
+						},
+						startData: {},
+					}),
+					resumeToken: expect.any(String),
+				},
 				workflowData: errorWorkflow,
 				projectId: 'project-id',
 				projectName: 'Error Project',
