@@ -10,9 +10,13 @@
 import { Daytona } from '@daytonaio/sdk';
 import { Workspace, LocalFilesystem, LocalSandbox } from '@mastra/core/workspace';
 import { DaytonaSandbox } from '@mastra/daytona';
+import assert from 'node:assert/strict';
 
 import type { SandboxConfig } from './create-workspace';
 import { DaytonaFilesystem } from './daytona-filesystem';
+import { N8nSandboxFilesystem } from './n8n-sandbox-filesystem';
+import { N8nSandboxImageManager } from './n8n-sandbox-image-manager';
+import { N8nSandboxServiceSandbox } from './n8n-sandbox-sandbox';
 import { writeFileViaSandbox } from './sandbox-fs';
 import type { SnapshotManager } from './snapshot-manager';
 import type { InstanceAiContext } from '../types';
@@ -52,6 +56,8 @@ async function cleanupTrackedSandboxProcesses(workspace: Workspace): Promise<voi
 export class BuilderSandboxFactory {
 	private daytona: Daytona | null = null;
 
+	private n8nSandboxImageManager: N8nSandboxImageManager | null = null;
+
 	constructor(
 		private readonly config: SandboxConfig,
 		private readonly imageManager?: SnapshotManager,
@@ -61,15 +67,31 @@ export class BuilderSandboxFactory {
 		if (this.config.provider === 'local') {
 			return await this.createLocal(builderId, context);
 		}
+		if (this.config.provider === 'n8n-sandbox') {
+			return await this.createN8nSandbox(builderId, context);
+		}
 		return await this.createDaytona(builderId, context);
 	}
 
 	private getDaytona(): Daytona {
+		const config = this.assertIsDaytona();
+
 		this.daytona ??= new Daytona({
-			apiKey: this.config.daytonaApiKey,
-			apiUrl: this.config.daytonaApiUrl,
+			apiKey: config.daytonaApiKey,
+			apiUrl: config.daytonaApiUrl,
 		});
 		return this.daytona;
+	}
+
+	private getN8nSandboxImageManager(): N8nSandboxImageManager {
+		const config = this.assertIsN8nSandbox();
+
+		this.n8nSandboxImageManager ??= new N8nSandboxImageManager({
+			apiKey: config.apiKey,
+			serviceUrl: config.serviceUrl,
+		});
+
+		return this.n8nSandboxImageManager;
 	}
 
 	/** Cached node-types catalog string — generated once, reused across builders. */
@@ -86,34 +108,36 @@ export class BuilderSandboxFactory {
 		builderId: string,
 		context: InstanceAiContext,
 	): Promise<BuilderWorkspace> {
+		const config = this.assertIsDaytona();
+		assert(this.imageManager, 'Daytona snapshot manager required');
+
 		// Get pre-warmed image (config + deps, no catalog — catalog is too large for API body)
-		const image = this.imageManager!.ensureImage();
+		const image = this.imageManager.ensureImage();
 
 		// Start sandbox creation AND catalog generation in parallel
 		const daytona = this.getDaytona();
-		const [sandbox, catalog] = await Promise.all([
-			daytona.create(
-				{
-					image,
-					language: 'typescript',
-					ephemeral: true,
-					labels: { 'n8n-builder': builderId },
-				},
-				{
-					timeout: 300,
-				},
-			),
-			this.getNodeCatalog(context),
-		]);
+		const sandboxPromise = daytona.create(
+			{
+				image,
+				language: 'typescript',
+				ephemeral: true,
+				labels: { 'n8n-builder': builderId },
+			},
+			{
+				timeout: 300,
+			},
+		);
+		const catalogPromise = this.getNodeCatalog(context);
+		const [sandbox, catalog] = await Promise.all([sandboxPromise, catalogPromise] as const);
 
 		// Wrap raw Sandbox in DaytonaSandbox for Mastra Workspace compatibility.
 		// DaytonaSandbox.start() reconnects to the existing sandbox by ID.
 		const daytonaSandbox = new DaytonaSandbox({
 			id: sandbox.id,
-			apiKey: this.config.daytonaApiKey,
-			apiUrl: this.config.daytonaApiUrl,
+			apiKey: config.daytonaApiKey,
+			apiUrl: config.daytonaApiUrl,
 			language: 'typescript',
-			timeout: this.config.timeout ?? 300_000,
+			timeout: config.timeout ?? 300_000,
 		});
 
 		const workspace = new Workspace({
@@ -142,6 +166,65 @@ export class BuilderSandboxFactory {
 				}
 			},
 		};
+	}
+
+	private async createN8nSandbox(
+		_builderId: string,
+		context: InstanceAiContext,
+	): Promise<BuilderWorkspace> {
+		const config = this.assertIsN8nSandbox();
+
+		const image = this.getN8nSandboxImageManager().ensureImage();
+		const catalog = await this.getNodeCatalog(context);
+
+		const sandbox = new N8nSandboxServiceSandbox({
+			apiKey: config.apiKey,
+			serviceUrl: config.serviceUrl,
+			timeout: config.timeout ?? 300_000,
+			image,
+		});
+
+		const workspace = new Workspace({
+			sandbox,
+			filesystem: new N8nSandboxFilesystem(sandbox),
+		});
+
+		await workspace.init();
+
+		const root = await getWorkspaceRoot(workspace);
+		if (workspace.filesystem) {
+			await workspace.filesystem.writeFile(`${root}/node-types/index.txt`, catalog);
+		} else {
+			await writeFileViaSandbox(workspace, `${root}/node-types/index.txt`, catalog);
+		}
+
+		return {
+			workspace,
+			cleanup: async () => {
+				await cleanupTrackedSandboxProcesses(workspace);
+				try {
+					await sandbox.destroy();
+				} catch {
+					// Best-effort cleanup
+				}
+			},
+		};
+	}
+
+	private assertIsDaytona(): Extract<SandboxConfig, { enabled: true; provider: 'daytona' }> {
+		assert(
+			this.config.enabled && this.config.provider === 'daytona',
+			'Daytona sandbox config required',
+		);
+		return this.config;
+	}
+
+	private assertIsN8nSandbox(): Extract<SandboxConfig, { enabled: true; provider: 'n8n-sandbox' }> {
+		assert(
+			this.config.enabled && this.config.provider === 'n8n-sandbox',
+			'n8n sandbox config required',
+		);
+		return this.config;
 	}
 
 	private async createLocal(

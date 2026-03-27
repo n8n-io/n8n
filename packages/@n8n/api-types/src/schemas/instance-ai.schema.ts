@@ -782,6 +782,7 @@ export interface InstanceAiAdminSettingsResponse {
 	sandboxImage: string;
 	sandboxTimeout: number;
 	daytonaCredentialId: string | null;
+	n8nSandboxCredentialId: string | null;
 	searchCredentialId: string | null;
 }
 
@@ -799,6 +800,7 @@ export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	sandboxImage: z.string().optional(),
 	sandboxTimeout: z.number().int().positive().optional(),
 	daytonaCredentialId: z.string().nullable().optional(),
+	n8nSandboxCredentialId: z.string().nullable().optional(),
 	searchCredentialId: z.string().nullable().optional(),
 }) {}
 

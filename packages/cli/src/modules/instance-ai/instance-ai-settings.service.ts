@@ -50,7 +50,7 @@ const URL_FIELD_MAP: Record<string, string> = {
 // ---------------------------------------------------------------------------
 
 /** Credential types for sandbox and search services. */
-const SANDBOX_CREDENTIAL_TYPES = ['daytonaApi'];
+const SANDBOX_CREDENTIAL_TYPES = ['daytonaApi', 'httpHeaderAuth'];
 const SEARCH_CREDENTIAL_TYPES = ['braveSearchApi', 'searXngApi'];
 const SERVICE_CREDENTIAL_TYPES = [...SANDBOX_CREDENTIAL_TYPES, ...SEARCH_CREDENTIAL_TYPES];
 
@@ -69,6 +69,7 @@ interface PersistedAdminSettings {
 	sandboxImage?: string;
 	sandboxTimeout?: number;
 	daytonaCredentialId?: string | null;
+	n8nSandboxCredentialId?: string | null;
 	searchCredentialId?: string | null;
 }
 
@@ -88,6 +89,8 @@ export class InstanceAiSettingsService {
 
 	/** Admin-level credential IDs for sandbox and search services. */
 	private adminDaytonaCredentialId: string | null = null;
+
+	private adminN8nSandboxCredentialId: string | null = null;
 
 	private adminSearchCredentialId: string | null = null;
 
@@ -147,6 +150,7 @@ export class InstanceAiSettingsService {
 			sandboxImage: c.sandboxImage,
 			sandboxTimeout: c.sandboxTimeout,
 			daytonaCredentialId: this.adminDaytonaCredentialId,
+			n8nSandboxCredentialId: this.adminN8nSandboxCredentialId,
 			searchCredentialId: this.adminSearchCredentialId,
 		};
 	}
@@ -171,6 +175,8 @@ export class InstanceAiSettingsService {
 		if (update.sandboxTimeout !== undefined) c.sandboxTimeout = update.sandboxTimeout;
 		if (update.daytonaCredentialId !== undefined)
 			this.adminDaytonaCredentialId = update.daytonaCredentialId;
+		if (update.n8nSandboxCredentialId !== undefined)
+			this.adminN8nSandboxCredentialId = update.n8nSandboxCredentialId;
 		if (update.searchCredentialId !== undefined)
 			this.adminSearchCredentialId = update.searchCredentialId;
 		await this.persistAdminSettings();
@@ -274,6 +280,37 @@ export class InstanceAiSettingsService {
 		return {
 			apiUrl: typeof data.apiUrl === 'string' ? data.apiUrl : undefined,
 			apiKey: typeof data.apiKey === 'string' ? data.apiKey : undefined,
+		};
+	}
+
+	async resolveN8nSandboxConfig(user: User): Promise<{ serviceUrl?: string; apiKey?: string }> {
+		const { n8nSandboxServiceUrl, n8nSandboxServiceApiKey } = this.config;
+		const credentialId = this.adminN8nSandboxCredentialId;
+		if (!credentialId) {
+			return {
+				serviceUrl: n8nSandboxServiceUrl || undefined,
+				apiKey: n8nSandboxServiceApiKey || undefined,
+			};
+		}
+
+		const credential = await this.credentialsFinderService.findCredentialForUser(
+			credentialId,
+			user,
+			['credential:read'],
+		);
+		if (!credential) {
+			return {
+				serviceUrl: n8nSandboxServiceUrl || undefined,
+				apiKey: n8nSandboxServiceApiKey || undefined,
+			};
+		}
+
+		const data = this.credentialsService.decrypt(credential, true);
+		const headerName = typeof data.name === 'string' ? data.name.trim().toLowerCase() : '';
+		const apiKey = typeof data.value === 'string' ? data.value : undefined;
+		return {
+			serviceUrl: n8nSandboxServiceUrl || undefined,
+			apiKey: headerName === 'x-api-key' ? apiKey : n8nSandboxServiceApiKey || undefined,
 		};
 	}
 
@@ -419,6 +456,8 @@ export class InstanceAiSettingsService {
 		if (persisted.sandboxTimeout !== undefined) c.sandboxTimeout = persisted.sandboxTimeout;
 		if (persisted.daytonaCredentialId !== undefined)
 			this.adminDaytonaCredentialId = persisted.daytonaCredentialId;
+		if (persisted.n8nSandboxCredentialId !== undefined)
+			this.adminN8nSandboxCredentialId = persisted.n8nSandboxCredentialId;
 		if (persisted.searchCredentialId !== undefined)
 			this.adminSearchCredentialId = persisted.searchCredentialId;
 	}
@@ -455,6 +494,7 @@ export class InstanceAiSettingsService {
 			sandboxImage: c.sandboxImage,
 			sandboxTimeout: c.sandboxTimeout,
 			daytonaCredentialId: this.adminDaytonaCredentialId,
+			n8nSandboxCredentialId: this.adminN8nSandboxCredentialId,
 			searchCredentialId: this.adminSearchCredentialId,
 		};
 

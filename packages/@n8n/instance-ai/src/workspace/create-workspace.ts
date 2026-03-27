@@ -2,15 +2,45 @@ import { Workspace, LocalFilesystem, LocalSandbox } from '@mastra/core/workspace
 import { DaytonaSandbox } from '@mastra/daytona';
 
 import { DaytonaFilesystem } from './daytona-filesystem';
+import { N8nSandboxFilesystem } from './n8n-sandbox-filesystem';
+import { N8nSandboxServiceSandbox } from './n8n-sandbox-sandbox';
 
-export interface SandboxConfig {
-	enabled: boolean;
-	provider: 'daytona' | 'local';
+export type SandboxProvider = 'daytona' | 'local' | 'n8n-sandbox';
+
+interface SandboxConfigBase {
+	provider: SandboxProvider;
+	timeout?: number;
+}
+
+interface DisabledSandboxConfig extends SandboxConfigBase {
+	enabled: false;
+}
+
+interface DaytonaSandboxConfig extends SandboxConfigBase {
+	enabled: true;
+	provider: 'daytona';
 	daytonaApiUrl?: string;
 	daytonaApiKey?: string;
 	image?: string;
-	timeout?: number;
 }
+
+interface LocalSandboxConfig extends SandboxConfigBase {
+	enabled: true;
+	provider: 'local';
+}
+
+interface N8nSandboxConfig extends SandboxConfigBase {
+	enabled: true;
+	provider: 'n8n-sandbox';
+	serviceUrl?: string;
+	apiKey?: string;
+}
+
+export type SandboxConfig =
+	| DisabledSandboxConfig
+	| DaytonaSandboxConfig
+	| LocalSandboxConfig
+	| N8nSandboxConfig;
 
 /**
  * Create a sandbox instance based on config.
@@ -19,7 +49,9 @@ export interface SandboxConfig {
  * - 'daytona': Isolated Docker container via Daytona API (production)
  * - 'local': Direct host execution via LocalSandbox (development only, no isolation)
  */
-export function createSandbox(config: SandboxConfig): DaytonaSandbox | LocalSandbox | undefined {
+export function createSandbox(
+	config: SandboxConfig,
+): DaytonaSandbox | LocalSandbox | N8nSandboxServiceSandbox | undefined {
 	if (!config.enabled) return undefined;
 
 	if (config.provider === 'daytona') {
@@ -28,6 +60,14 @@ export function createSandbox(config: SandboxConfig): DaytonaSandbox | LocalSand
 			apiUrl: config.daytonaApiUrl,
 			...(config.image ? { image: config.image } : {}),
 			language: 'typescript',
+			timeout: config.timeout ?? 300_000,
+		});
+	}
+
+	if (config.provider === 'n8n-sandbox') {
+		return new N8nSandboxServiceSandbox({
+			apiKey: config.apiKey,
+			serviceUrl: config.serviceUrl,
 			timeout: config.timeout ?? 300_000,
 		});
 	}
@@ -50,7 +90,7 @@ export function createSandbox(config: SandboxConfig): DaytonaSandbox | LocalSand
  * When sandbox is a LocalSandbox, also provides a local filesystem.
  */
 export function createWorkspace(
-	sandbox: DaytonaSandbox | LocalSandbox | undefined,
+	sandbox: DaytonaSandbox | LocalSandbox | N8nSandboxServiceSandbox | undefined,
 ): Workspace | undefined {
 	if (!sandbox) return undefined;
 
@@ -58,6 +98,13 @@ export function createWorkspace(
 		return new Workspace({
 			sandbox,
 			filesystem: new LocalFilesystem({ basePath: './workspace' }),
+		});
+	}
+
+	if (sandbox instanceof N8nSandboxServiceSandbox) {
+		return new Workspace({
+			sandbox,
+			filesystem: new N8nSandboxFilesystem(sandbox),
 		});
 	}
 

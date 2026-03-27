@@ -272,6 +272,8 @@ describe('GlobalConfig', () => {
 			sandboxImage: 'daytonaio/sandbox:0.5.0',
 			daytonaApiUrl: '',
 			daytonaApiKey: '',
+			n8nSandboxServiceUrl: '',
+			n8nSandboxServiceApiKey: '',
 			sandboxTimeout: 300000,
 			braveSearchApiKey: '',
 			searxngUrl: '',

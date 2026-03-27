@@ -1,0 +1,608 @@
+import type { FileContent } from '@mastra/core/workspace';
+
+/** Error payload returned by the sandbox service. */
+export interface N8nSandboxServiceErrorPayload {
+	error: string;
+	code: number;
+}
+
+export class N8nSandboxServiceError extends Error {
+	constructor(
+		message: string,
+		readonly status: number,
+		readonly code?: number,
+	) {
+		super(message);
+		this.name = 'N8nSandboxServiceError';
+	}
+}
+
+/** Sandbox metadata exposed by the service API. */
+export interface N8nSandboxRecord {
+	id: string;
+	status: string;
+	provider: string;
+	imageId: string;
+	createdAt: number;
+	lastActiveAt: number;
+}
+
+/** Directory entry returned by the service file listing API. */
+export interface N8nSandboxFileEntry {
+	name: string;
+	size: number;
+	isDir: boolean;
+	type: 'file' | 'directory';
+	modTime: string;
+}
+
+/** File stat payload mapped into Mastra-friendly shape. */
+export interface N8nSandboxFileStat {
+	name: string;
+	path: string;
+	type: 'file' | 'directory';
+	size: number;
+	createdAt: string;
+	modifiedAt: string;
+}
+
+/** Aggregated result of an execute-to-completion shell command. */
+export interface N8nSandboxExecResult {
+	exitCode: number;
+	stdout: string;
+	stderr: string;
+	executionTimeMs: number;
+	timedOut: boolean;
+	killed: boolean;
+	success: boolean;
+}
+
+/** Streaming stdout event emitted by `/exec`. */
+interface ExecEventStdout {
+	type: 'stdout';
+	data: string;
+}
+
+/** Streaming stderr event emitted by `/exec`. */
+interface ExecEventStderr {
+	type: 'stderr';
+	data: string;
+}
+
+/** Final exit event emitted by `/exec`. */
+interface ExecEventExit {
+	type: 'exit';
+	exit_code: number;
+	success: boolean;
+	execution_time_ms: number;
+	timed_out: boolean;
+	killed: boolean;
+}
+
+/** Error event emitted by `/exec`. */
+interface ExecEventError {
+	type: 'error';
+	error: string;
+}
+
+type ExecEvent = ExecEventStdout | ExecEventStderr | ExecEventExit | ExecEventError;
+
+/** Sandbox creation response returned by the service. */
+interface CreateSandboxResponse {
+	id: string;
+	status: string;
+	provider: string;
+	image_id?: string;
+	created_at: number;
+	last_active_at: number;
+}
+
+/** Raw directory entry payload returned by the service. */
+interface FileEntryResponse {
+	name: string;
+	size: number;
+	is_dir: boolean;
+	type: 'file' | 'directory';
+	mod_time: string;
+}
+
+/** Raw stat payload returned by the service. */
+interface FileStatResponse {
+	name: string;
+	path: string;
+	type: 'file' | 'directory';
+	size: number;
+	created_at: string;
+	modified_at: string;
+}
+
+/** Client configuration for talking to the sandbox service. */
+export interface N8nSandboxClientOptions {
+	apiKey?: string;
+	baseUrl?: string;
+}
+
+/** Lazy image placeholder that caches the first resolved service image id. */
+export class N8nSandboxInstantiatedImage {
+	imageId?: string;
+
+	constructor(readonly setupCommands: string[]) {}
+}
+
+/** Options used when creating a sandbox instance. */
+interface CreateSandboxOptions {
+	image?: N8nSandboxInstantiatedImage | string;
+}
+
+/** Command execution request sent to `/exec`. */
+interface N8nSandboxExecRequest {
+	command: string;
+	env?: Record<string, string | undefined>;
+	workdir?: string;
+	timeoutMs?: number;
+	abortSignal?: AbortSignal;
+	onStdout?: (data: string) => void;
+	onStderr?: (data: string) => void;
+}
+
+/** Exit metadata captured from the final `/exec` event. */
+interface ExecExitMeta {
+	exitCode: number;
+	executionTimeMs: number;
+	timedOut: boolean;
+	killed: boolean;
+	success: boolean;
+}
+
+function normalizeBaseUrl(baseUrl?: string): string {
+	return (baseUrl ?? '').replace(/\/+$/, '');
+}
+
+function mapSandboxRecord(payload: CreateSandboxResponse): N8nSandboxRecord {
+	return {
+		id: payload.id,
+		status: payload.status,
+		provider: payload.provider,
+		imageId: payload.image_id ?? '',
+		createdAt: payload.created_at,
+		lastActiveAt: payload.last_active_at,
+	};
+}
+
+function asBuffer(content: FileContent): Buffer {
+	return typeof content === 'string' ? Buffer.from(content, 'utf-8') : Buffer.from(content);
+}
+
+function safeJsonParse(raw: string): unknown {
+	try {
+		return JSON.parse(raw) as unknown;
+	} catch {
+		return null;
+	}
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null;
+}
+
+function parseExecEvent(line: string): ExecEvent {
+	const parsed = safeJsonParse(line);
+	if (!isRecord(parsed) || typeof parsed.type !== 'string') {
+		return { type: 'error', error: 'Invalid exec event payload' };
+	}
+
+	if (parsed.type === 'stdout' && typeof parsed.data === 'string') {
+		return { type: 'stdout', data: parsed.data };
+	}
+
+	if (parsed.type === 'stderr' && typeof parsed.data === 'string') {
+		return { type: 'stderr', data: parsed.data };
+	}
+
+	if (
+		parsed.type === 'exit' &&
+		typeof parsed.exit_code === 'number' &&
+		typeof parsed.success === 'boolean' &&
+		typeof parsed.execution_time_ms === 'number' &&
+		typeof parsed.timed_out === 'boolean' &&
+		typeof parsed.killed === 'boolean'
+	) {
+		return {
+			type: 'exit',
+			exit_code: parsed.exit_code,
+			success: parsed.success,
+			execution_time_ms: parsed.execution_time_ms,
+			timed_out: parsed.timed_out,
+			killed: parsed.killed,
+		};
+	}
+
+	if (parsed.type === 'error' && typeof parsed.error === 'string') {
+		return { type: 'error', error: parsed.error };
+	}
+
+	return { type: 'error', error: 'Invalid exec event payload' };
+}
+
+/**
+ * Thin HTTP client for the n8n sandbox service.
+ *
+ * It handles sandbox lifecycle, file operations, streamed command execution,
+ * and lazy image instantiation for builder prewarming.
+ */
+export class N8nSandboxClient {
+	private readonly baseUrl: string;
+
+	constructor(private readonly options: N8nSandboxClientOptions) {
+		this.baseUrl = normalizeBaseUrl(options.baseUrl);
+	}
+
+	/** Creates a lazily-resolved image placeholder from setup commands. */
+	instantiateImage(setupCommands: string[]): N8nSandboxInstantiatedImage {
+		return new N8nSandboxInstantiatedImage([...setupCommands]);
+	}
+
+	async createSandbox(options: CreateSandboxOptions = {}): Promise<N8nSandboxRecord> {
+		const body: Record<string, unknown> = {};
+
+		if (options.image instanceof N8nSandboxInstantiatedImage) {
+			if (options.image.imageId) {
+				body.image = options.image.imageId;
+			} else {
+				body.setup_commands = options.image.setupCommands;
+			}
+		} else if (typeof options.image === 'string' && options.image.length > 0) {
+			body.image = options.image;
+		}
+
+		const payload = await this.requestJson<CreateSandboxResponse>('POST', '/sandboxes', {
+			body: Object.keys(body).length > 0 ? JSON.stringify(body) : undefined,
+		});
+		const sandbox = mapSandboxRecord(payload);
+
+		if (options.image instanceof N8nSandboxInstantiatedImage && !options.image.imageId) {
+			options.image.imageId = sandbox.imageId || undefined;
+		}
+
+		return sandbox;
+	}
+
+	async getSandbox(id: string): Promise<N8nSandboxRecord> {
+		return mapSandboxRecord(
+			await this.requestJson<CreateSandboxResponse>('GET', `/sandboxes/${id}`),
+		);
+	}
+
+	async deleteSandbox(id: string): Promise<void> {
+		await this.expectSuccess(this.request('DELETE', `/sandboxes/${id}`));
+	}
+
+	async deleteImage(id: string): Promise<void> {
+		await this.expectSuccess(this.request('DELETE', `/images/${id}`));
+	}
+
+	async exec(id: string, request: N8nSandboxExecRequest): Promise<N8nSandboxExecResult> {
+		const response = await this.request('POST', `/sandboxes/${id}/exec`, {
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				command: request.command,
+				env: request.env,
+				workdir: request.workdir,
+				timeout_ms: request.timeoutMs,
+			}),
+			signal: request.abortSignal,
+		});
+
+		if (!response.ok) {
+			throw await this.toError(response);
+		}
+
+		return await this.readExecResult(response, request);
+	}
+
+	async readFile(id: string, path: string): Promise<Buffer> {
+		const response = await this.request('GET', `/sandboxes/${id}/files/content`, {
+			query: { path },
+		});
+		if (!response.ok) {
+			throw await this.toError(response);
+		}
+
+		return Buffer.from(await response.arrayBuffer());
+	}
+
+	async writeFile(id: string, path: string, content: FileContent, overwrite = true): Promise<void> {
+		await this.expectSuccess(
+			this.request('PUT', `/sandboxes/${id}/files`, {
+				query: { path, overwrite: String(overwrite) },
+				headers: { 'Content-Type': 'application/octet-stream' },
+				body: asBuffer(content),
+			}),
+		);
+	}
+
+	async appendFile(id: string, path: string, content: FileContent): Promise<void> {
+		await this.expectSuccess(
+			this.request('POST', `/sandboxes/${id}/files`, {
+				query: { path },
+				headers: { 'Content-Type': 'application/octet-stream' },
+				body: asBuffer(content),
+			}),
+		);
+	}
+
+	async deleteFile(
+		id: string,
+		path: string,
+		options?: { recursive?: boolean; force?: boolean },
+	): Promise<void> {
+		await this.expectSuccess(
+			this.request('DELETE', `/sandboxes/${id}/files`, {
+				query: {
+					path,
+					recursive: String(options?.recursive ?? false),
+					force: String(options?.force ?? false),
+				},
+			}),
+		);
+	}
+
+	async copyFile(
+		id: string,
+		request: { src: string; dest: string; recursive?: boolean; overwrite?: boolean },
+	): Promise<void> {
+		await this.expectSuccess(
+			this.request('POST', `/sandboxes/${id}/files/copy`, {
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					src: request.src,
+					dest: request.dest,
+					recursive: request.recursive ?? false,
+					overwrite: request.overwrite ?? false,
+				}),
+			}),
+		);
+	}
+
+	async moveFile(
+		id: string,
+		request: { src: string; dest: string; overwrite?: boolean },
+	): Promise<void> {
+		await this.expectSuccess(
+			this.request('POST', `/sandboxes/${id}/files/move`, {
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					src: request.src,
+					dest: request.dest,
+					overwrite: request.overwrite ?? false,
+				}),
+			}),
+		);
+	}
+
+	async mkdir(id: string, path: string, recursive = false): Promise<void> {
+		await this.expectSuccess(
+			this.request('POST', `/sandboxes/${id}/mkdir`, {
+				query: { path, recursive: String(recursive) },
+			}),
+		);
+	}
+
+	async listFiles(
+		id: string,
+		request: { path?: string; recursive?: boolean; extension?: string } = {},
+	): Promise<N8nSandboxFileEntry[]> {
+		const payload = await this.requestJson<FileEntryResponse[]>('GET', `/sandboxes/${id}/files`, {
+			query: {
+				...(request.path ? { path: request.path } : {}),
+				...(request.recursive !== undefined ? { recursive: String(request.recursive) } : {}),
+				...(request.extension ? { extension: request.extension } : {}),
+			},
+		});
+
+		return payload.map((entry) => ({
+			name: entry.name,
+			size: entry.size,
+			isDir: entry.is_dir,
+			type: entry.type,
+			modTime: entry.mod_time,
+		}));
+	}
+
+	async stat(id: string, path: string): Promise<N8nSandboxFileStat> {
+		const payload = await this.requestJson<FileStatResponse>('GET', `/sandboxes/${id}/stat`, {
+			query: { path },
+		});
+
+		return {
+			name: payload.name,
+			path: payload.path,
+			type: payload.type,
+			size: payload.size,
+			createdAt: payload.created_at,
+			modifiedAt: payload.modified_at,
+		};
+	}
+
+	private async readExecResult(
+		response: Response,
+		request: Pick<N8nSandboxExecRequest, 'onStdout' | 'onStderr'>,
+	): Promise<N8nSandboxExecResult> {
+		if (!response.body) {
+			throw new Error('Sandbox exec response body is not readable');
+		}
+
+		const reader = response.body.getReader();
+		const decoder = new TextDecoder();
+		let pendingLine = '';
+		let stdout = '';
+		let stderr = '';
+		let exitMeta: ExecExitMeta | null = null;
+
+		const processLine = (rawLine: string) => {
+			const line = rawLine.trim();
+			if (line.length === 0) {
+				return;
+			}
+
+			const event = parseExecEvent(line);
+			if (event.type === 'stdout') {
+				stdout += event.data;
+				request.onStdout?.(event.data);
+				return;
+			}
+
+			if (event.type === 'stderr') {
+				stderr += event.data;
+				request.onStderr?.(event.data);
+				return;
+			}
+
+			if (event.type === 'error') {
+				throw new Error(event.error);
+			}
+
+			const exitEvent: ExecEventExit = event;
+			exitMeta = {
+				exitCode: exitEvent.exit_code,
+				executionTimeMs: exitEvent.execution_time_ms,
+				timedOut: exitEvent.timed_out,
+				killed: exitEvent.killed,
+				success: exitEvent.success,
+			};
+		};
+
+		while (true) {
+			const chunk = await this.readExecChunk(reader);
+			if (chunk === null) {
+				break;
+			}
+
+			pendingLine += decoder.decode(chunk, { stream: true });
+			let newlineIndex = pendingLine.indexOf('\n');
+			while (newlineIndex !== -1) {
+				processLine(pendingLine.slice(0, newlineIndex));
+				pendingLine = pendingLine.slice(newlineIndex + 1);
+				newlineIndex = pendingLine.indexOf('\n');
+			}
+		}
+
+		pendingLine += decoder.decode();
+		if (pendingLine.length > 0) {
+			processLine(pendingLine);
+		}
+
+		const finalExitMeta = this.requireExecExitMeta(exitMeta);
+		return {
+			exitCode: finalExitMeta.exitCode,
+			stdout,
+			stderr,
+			executionTimeMs: finalExitMeta.executionTimeMs,
+			timedOut: finalExitMeta.timedOut,
+			killed: finalExitMeta.killed,
+			success: finalExitMeta.success,
+		};
+	}
+
+	private async readExecChunk(reader: {
+		read: () => Promise<unknown>;
+	}): Promise<Uint8Array | null> {
+		const chunk = await reader.read();
+		if (!isRecord(chunk) || typeof chunk.done !== 'boolean') {
+			throw new Error('Sandbox exec stream returned an invalid chunk');
+		}
+
+		if (chunk.done) {
+			return null;
+		}
+
+		if (!(chunk.value instanceof Uint8Array)) {
+			throw new Error('Sandbox exec stream returned a non-binary chunk');
+		}
+
+		return chunk.value;
+	}
+
+	private requireExecExitMeta(exitMeta: ExecExitMeta | null): ExecExitMeta {
+		if (!exitMeta) {
+			throw new Error('Sandbox exec stream ended without an exit event');
+		}
+
+		return exitMeta;
+	}
+
+	private async expectSuccess(responsePromise: Promise<Response>): Promise<void> {
+		const response = await responsePromise;
+		if (!response.ok) {
+			throw await this.toError(response);
+		}
+	}
+
+	private async requestJson<T>(
+		method: string,
+		path: string,
+		options: {
+			body?: string | Buffer;
+			headers?: Record<string, string>;
+			query?: Record<string, string>;
+			signal?: AbortSignal;
+		} = {},
+	): Promise<T> {
+		const response = await this.request(method, path, options);
+		if (!response.ok) {
+			throw await this.toError(response);
+		}
+
+		return (await response.json()) as T;
+	}
+
+	private async request(
+		method: string,
+		path: string,
+		options: {
+			body?: string | Buffer;
+			headers?: Record<string, string>;
+			query?: Record<string, string>;
+			signal?: AbortSignal;
+		} = {},
+	): Promise<Response> {
+		if (!this.baseUrl) {
+			throw new Error('n8n sandbox service URL is not configured');
+		}
+
+		const url = new URL(`${this.baseUrl}${path}`);
+		for (const [key, value] of Object.entries(options.query ?? {})) {
+			url.searchParams.set(key, value);
+		}
+
+		const headers = new Headers(options.headers);
+		if (this.options.apiKey) {
+			headers.set('X-Api-Key', this.options.apiKey);
+		}
+
+		return await fetch(url, {
+			method,
+			headers,
+			body: options.body,
+			signal: options.signal,
+		});
+	}
+
+	private async toError(response: Response): Promise<Error> {
+		const contentType = response.headers.get('content-type') ?? '';
+		if (contentType.includes('application/json')) {
+			const payload = (await response.json()) as Partial<N8nSandboxServiceErrorPayload>;
+			return new N8nSandboxServiceError(
+				payload.error ?? `Sandbox service request failed with status ${response.status}`,
+				response.status,
+				payload.code,
+			);
+		}
+
+		const text = await response.text();
+		return new N8nSandboxServiceError(
+			text || `Sandbox service request failed with status ${response.status}`,
+			response.status,
+		);
+	}
+}
