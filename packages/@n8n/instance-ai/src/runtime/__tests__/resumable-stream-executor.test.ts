@@ -1473,6 +1473,112 @@ describe('executeResumableStream', () => {
 				cache_creation: 10,
 			},
 		});
+		expect(llmRun?.outputs?.usage_debug).toMatchObject({
+			record_usage: {
+				inputTokens: 120,
+				inputTokenDetails: {
+					noCacheTokens: 90,
+					cacheReadTokens: 20,
+					cacheWriteTokens: 10,
+				},
+				outputTokens: 5,
+				totalTokens: 125,
+			},
+		});
+	});
+
+	it('fills cache creation from Anthropic provider metadata when usage omits it', async () => {
+		const parentRun = new RunTree({
+			name: 'orchestrator',
+			run_type: 'chain',
+			project_name: 'instance-ai',
+			metadata: {
+				model_id: 'anthropic/claude-sonnet-4-6',
+				agent_role: 'orchestrator',
+			},
+		});
+
+		await withRunTree(parentRun, async () => {
+			const hooks = createLlmStepTraceHooks();
+			const prepareStep =
+				hooks?.executionOptions.prepareStep ?? hooks?.executionOptions.experimental_prepareStep;
+
+			await prepareStep?.({
+				stepNumber: 0,
+				model: {
+					provider: 'anthropic',
+					modelId: 'claude-sonnet-4-6',
+				},
+				messages: [{ role: 'user', content: 'Build the weather workflow' }],
+			});
+			hooks?.onStreamChunk({ type: 'text-delta', payload: { text: 'Done.' } });
+
+			await hooks?.executionOptions.onStepFinish({
+				stepNumber: 0,
+				text: 'Done.',
+				reasoning: [],
+				toolCalls: [],
+				toolResults: [],
+				finishReason: 'stop',
+				usage: {
+					inputTokens: 90,
+					outputTokens: 5,
+					totalTokens: 95,
+					cachedInputTokens: 20,
+				},
+				request: {
+					body: {
+						messages: [{ role: 'user', content: 'Build the weather workflow' }],
+					},
+				},
+				response: {
+					modelId: 'claude-sonnet-4-6',
+					messages: [
+						{
+							id: 'assistant-provider-fallback',
+							role: 'assistant',
+							content: 'Done.',
+						},
+					],
+				},
+				providerMetadata: {
+					anthropic: {
+						cacheCreationInputTokens: 10,
+						usage: {
+							input_tokens: 90,
+							output_tokens: 5,
+							cache_read_input_tokens: 20,
+							cache_creation_input_tokens: 10,
+						},
+					},
+				},
+			});
+		});
+
+		const llmRun = langsmithMock
+			.getCreatedRuns()
+			.find((run) => run.name === 'llm:anthropic/claude-sonnet-4-6');
+		expect(llmRun?.outputs?.usage_metadata).toMatchObject({
+			input_tokens: 90,
+			output_tokens: 5,
+			total_tokens: 95,
+			input_token_details: {
+				cache_read: 20,
+				cache_creation: 10,
+			},
+		});
+		expect(llmRun?.outputs?.usage_debug).toMatchObject({
+			step_provider_metadata: {
+				anthropic: {
+					usage: {
+						cache_creation_input_tokens: 10,
+						cache_read_input_tokens: 20,
+						input_tokens: 90,
+						output_tokens: 5,
+					},
+				},
+			},
+		});
 	});
 
 	it('backfills suspended tool-calling llm usage from the stream usage promise', async () => {
@@ -1605,6 +1711,28 @@ describe('executeResumableStream', () => {
 			input_token_details: {
 				cache_read: 20,
 				cache_creation: 10,
+			},
+		});
+		expect(llmRun?.outputs?.usage_debug).toMatchObject({
+			record_usage: {
+				inputTokens: 120,
+				inputTokenDetails: {
+					noCacheTokens: 90,
+					cacheReadTokens: 20,
+					cacheWriteTokens: 10,
+				},
+				outputTokens: 5,
+				totalTokens: 125,
+			},
+			stream_usage: {
+				inputTokens: 120,
+				inputTokenDetails: {
+					noCacheTokens: 90,
+					cacheReadTokens: 20,
+					cacheWriteTokens: 10,
+				},
+				outputTokens: 5,
+				totalTokens: 125,
 			},
 		});
 	});

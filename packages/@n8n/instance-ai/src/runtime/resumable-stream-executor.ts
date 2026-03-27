@@ -103,6 +103,8 @@ interface LlmStepTraceRecord {
 	response?: unknown;
 	request?: unknown;
 	providerMetadata?: unknown;
+	sourceUsage?: unknown;
+	sourceTotalUsage?: unknown;
 	warnings?: unknown;
 	isContinued?: boolean;
 	recordedFirstToken: boolean;
@@ -415,22 +417,109 @@ function extractCacheReadTokens(raw: unknown): number | undefined {
 	);
 }
 
-function buildUsageMetadata(usage: unknown): Record<string, unknown> | undefined {
-	if (!isRecord(usage)) return undefined;
+function extractUsageFromProviderMetadata(
+	providerMetadata: unknown,
+): Record<string, unknown> | undefined {
+	if (!isRecord(providerMetadata)) {
+		return undefined;
+	}
 
-	const inputTokens = extractInputTokenCount(usage);
-	const outputTokens = extractOutputTokenCount(usage);
+	if (isRecord(providerMetadata.usage)) {
+		return providerMetadata.usage;
+	}
+
+	for (const value of Object.values(providerMetadata)) {
+		if (!isRecord(value)) {
+			continue;
+		}
+
+		if (isRecord(value.usage)) {
+			return value.usage;
+		}
+	}
+
+	return undefined;
+}
+
+function mergeUsageMetadata(
+	primary: Record<string, unknown> | undefined,
+	fallback: Record<string, unknown> | undefined,
+): Record<string, unknown> | undefined {
+	if (!primary) {
+		return fallback;
+	}
+
+	if (!fallback) {
+		return primary;
+	}
+
+	const merged: Record<string, unknown> = { ...primary };
+	for (const key of ['input_tokens', 'output_tokens', 'total_tokens']) {
+		if (merged[key] === undefined && fallback[key] !== undefined) {
+			merged[key] = fallback[key];
+		}
+	}
+
+	const mergedInputTokenDetails: Record<string, unknown> = {};
+	if (isRecord(fallback.input_token_details)) {
+		Object.assign(mergedInputTokenDetails, fallback.input_token_details);
+	}
+	if (isRecord(primary.input_token_details)) {
+		Object.assign(mergedInputTokenDetails, primary.input_token_details);
+	}
+	if (Object.keys(mergedInputTokenDetails).length > 0) {
+		merged.input_token_details = mergedInputTokenDetails;
+	}
+
+	const mergedOutputTokenDetails: Record<string, unknown> = {};
+	if (isRecord(fallback.output_token_details)) {
+		Object.assign(mergedOutputTokenDetails, fallback.output_token_details);
+	}
+	if (isRecord(primary.output_token_details)) {
+		Object.assign(mergedOutputTokenDetails, primary.output_token_details);
+	}
+	if (Object.keys(mergedOutputTokenDetails).length > 0) {
+		merged.output_token_details = mergedOutputTokenDetails;
+	}
+
+	return merged;
+}
+
+function buildUsageMetadata(
+	usage: unknown,
+	providerMetadata?: unknown,
+): Record<string, unknown> | undefined {
+	const usageRecord = isRecord(usage) ? usage : undefined;
+	const providerUsage = extractUsageFromProviderMetadata(providerMetadata);
+	if (!usageRecord && !providerUsage) {
+		return undefined;
+	}
+
+	const inputTokens =
+		(usageRecord ? extractInputTokenCount(usageRecord) : undefined) ??
+		(providerUsage ? extractInputTokenCount(providerUsage) : undefined);
+	const outputTokens =
+		(usageRecord ? extractOutputTokenCount(usageRecord) : undefined) ??
+		(providerUsage ? extractOutputTokenCount(providerUsage) : undefined);
 	const totalTokens =
 		inputTokens !== undefined || outputTokens !== undefined
 			? (inputTokens ?? 0) + (outputTokens ?? 0)
-			: getFiniteNumber(usage.totalTokens);
+			: ((usageRecord ? getFiniteNumber(usageRecord.totalTokens) : undefined) ??
+				(providerUsage ? getFiniteNumber(providerUsage.totalTokens) : undefined));
 	const cachedInputTokens =
-		getFiniteNumber(usage.cachedInputTokens) ??
-		extractCacheReadTokens(usage) ??
-		extractCacheReadTokens(usage.raw);
+		(usageRecord ? getFiniteNumber(usageRecord.cachedInputTokens) : undefined) ??
+		(usageRecord ? extractCacheReadTokens(usageRecord) : undefined) ??
+		(usageRecord ? extractCacheReadTokens(usageRecord.raw) : undefined) ??
+		(providerUsage ? extractCacheReadTokens(providerUsage) : undefined) ??
+		(providerUsage ? extractCacheReadTokens(providerUsage.raw) : undefined);
 	const cacheCreationTokens =
-		extractCacheCreationTokens(usage) ?? extractCacheCreationTokens(usage.raw);
-	const reasoningTokens = extractReasoningTokenCount(usage);
+		(usageRecord ? extractCacheCreationTokens(usageRecord) : undefined) ??
+		(usageRecord ? extractCacheCreationTokens(usageRecord.raw) : undefined) ??
+		(providerUsage ? extractCacheCreationTokens(providerUsage) : undefined) ??
+		(providerUsage ? extractCacheCreationTokens(providerUsage.raw) : undefined);
+	const reasoningTokens =
+		(usageRecord ? extractReasoningTokenCount(usageRecord) : undefined) ??
+		(providerUsage ? extractReasoningTokenCount(providerUsage) : undefined);
 
 	const usageMetadata: Record<string, unknown> = {};
 	if (inputTokens !== undefined) {
@@ -458,7 +547,102 @@ function buildUsageMetadata(usage: unknown): Record<string, unknown> | undefined
 		usageMetadata.output_token_details = { reasoning: reasoningTokens };
 	}
 
-	return Object.keys(usageMetadata).length > 0 ? usageMetadata : undefined;
+	return Object.keys(usageMetadata).length > 0
+		? mergeUsageMetadata(
+				usageMetadata,
+				providerUsage ? buildUsageMetadata(providerUsage) : undefined,
+			)
+		: providerUsage
+			? buildUsageMetadata(providerUsage)
+			: undefined;
+}
+
+function summarizeUsageLikeValue(value: unknown): Record<string, unknown> | undefined {
+	if (!isRecord(value)) {
+		return undefined;
+	}
+
+	const summary: Record<string, unknown> = {};
+	for (const key of [
+		'promptTokens',
+		'completionTokens',
+		'totalTokens',
+		'cachedInputTokens',
+		'reasoningTokens',
+		'inputTokens',
+		'outputTokens',
+		'inputTokenDetails',
+		'outputTokenDetails',
+		'input_tokens',
+		'output_tokens',
+		'cache_creation_input_tokens',
+		'cache_read_input_tokens',
+		'cacheCreationInputTokens',
+		'cacheReadInputTokens',
+		'iterations',
+	]) {
+		if (value[key] !== undefined) {
+			summary[key] = sanitizeTraceValue(value[key]);
+		}
+	}
+
+	for (const nestedKey of ['usage', 'raw', 'rawUsage', 'anthropic', 'openai']) {
+		const nestedSummary = summarizeUsageLikeValue(value[nestedKey]);
+		if (nestedSummary) {
+			summary[nestedKey] = nestedSummary;
+		}
+	}
+
+	return Object.keys(summary).length > 0 ? summary : undefined;
+}
+
+function buildLlmUsageDebug(
+	record: LlmStepTraceRecord,
+	stepResult?: StepResultLike,
+): Record<string, unknown> | undefined {
+	const usageDebug: Record<string, unknown> = {};
+
+	const stepUsage = summarizeUsageLikeValue(stepResult?.usage);
+	if (stepUsage) {
+		usageDebug.step_usage = stepUsage;
+	}
+
+	const recordUsage = summarizeUsageLikeValue(record.usage);
+	if (recordUsage) {
+		usageDebug.record_usage = recordUsage;
+	}
+
+	const streamUsage = summarizeUsageLikeValue(record.sourceUsage);
+	if (streamUsage) {
+		usageDebug.stream_usage = streamUsage;
+	}
+
+	const streamTotalUsage = summarizeUsageLikeValue(record.sourceTotalUsage);
+	if (streamTotalUsage) {
+		usageDebug.stream_total_usage = streamTotalUsage;
+	}
+
+	const stepProviderMetadata = summarizeUsageLikeValue(stepResult?.providerMetadata);
+	if (stepProviderMetadata) {
+		usageDebug.step_provider_metadata = stepProviderMetadata;
+	}
+
+	const providerMetadata = summarizeUsageLikeValue(record.providerMetadata);
+	if (providerMetadata) {
+		usageDebug.provider_metadata = providerMetadata;
+	}
+
+	const stepResponse = summarizeUsageLikeValue(stepResult?.response);
+	if (stepResponse) {
+		usageDebug.step_response = stepResponse;
+	}
+
+	const response = summarizeUsageLikeValue(record.response);
+	if (response) {
+		usageDebug.response = response;
+	}
+
+	return Object.keys(usageDebug).length > 0 ? sanitizeTracePayload(usageDebug) : undefined;
 }
 
 async function resolveUsagePromise(usage: Promise<unknown> | undefined): Promise<unknown> {
@@ -492,6 +676,14 @@ function maybeBackfillRecordUsageFromSegment(
 		totalUsage?: unknown;
 	},
 ): void {
+	if (usage.lastStepUsage !== undefined) {
+		record.sourceUsage = usage.lastStepUsage;
+	}
+
+	if (usage.totalUsage !== undefined) {
+		record.sourceTotalUsage = usage.totalUsage;
+	}
+
 	if (record.usage !== undefined) {
 		return;
 	}
@@ -712,7 +904,11 @@ function buildLlmOutputs(
 	const rawResponseMessages =
 		extractResponseMessages(stepResult?.response) ?? extractResponseMessages(record.response);
 	const responseMessages = normalizeTraceMessages(rawResponseMessages);
-	const usageMetadata = buildUsageMetadata(stepResult?.usage ?? record.usage);
+	const usageMetadata = buildUsageMetadata(
+		stepResult?.usage ?? record.usage,
+		stepResult?.providerMetadata ?? record.providerMetadata,
+	);
+	const usageDebug = buildLlmUsageDebug(record, stepResult);
 	const outputs: Record<string, unknown> = {};
 	const choice = buildAssistantChoice(responseMessages, record);
 	const messages =
@@ -752,6 +948,9 @@ function buildLlmOutputs(
 	if (usageMetadata) {
 		outputs.usage_metadata = usageMetadata;
 	}
+	if (usageDebug) {
+		outputs.usage_debug = usageDebug;
+	}
 
 	return outputs;
 }
@@ -770,7 +969,10 @@ function buildLlmMetadata(
 			: {}),
 	};
 
-	const usageMetadata = buildUsageMetadata(stepResult?.usage ?? record.usage);
+	const usageMetadata = buildUsageMetadata(
+		stepResult?.usage ?? record.usage,
+		stepResult?.providerMetadata ?? record.providerMetadata,
+	);
 	if (usageMetadata) {
 		metadata.usage_metadata = usageMetadata;
 	}
@@ -1460,7 +1662,10 @@ export function createLlmStepTraceHooks(): LlmStepTraceHooks | undefined {
 					(typeof record.stepNumber === 'number'
 						? stepResultsByStepNumber.get(record.stepNumber)
 						: undefined) ?? stepResults[records.indexOf(record)];
-				const hadUsageMetadata = buildUsageMetadata(record.usage) !== undefined;
+				const hadUsageMetadata = buildUsageMetadata(record.usage, record.providerMetadata);
+				const hadUsageMetadataJson = hadUsageMetadata
+					? JSON.stringify(hadUsageMetadata)
+					: undefined;
 				const hadResponse = record.response !== undefined;
 				const hadFinishReason = record.finishReason !== undefined;
 				if (stepResult) {
@@ -1469,11 +1674,14 @@ export function createLlmStepTraceHooks(): LlmStepTraceHooks | undefined {
 				maybeBackfillRecordUsageFromSegment(record, records, segmentUsage);
 
 				if (record.finished) {
-					const hasUsageMetadata = buildUsageMetadata(record.usage) !== undefined;
+					const hasUsageMetadata = buildUsageMetadata(record.usage, record.providerMetadata);
+					const hasUsageMetadataJson = hasUsageMetadata
+						? JSON.stringify(hasUsageMetadata)
+						: undefined;
 					const hasResponse = record.response !== undefined;
 					const hasFinishReason = record.finishReason !== undefined;
 					if (
-						(!hadUsageMetadata && hasUsageMetadata) ||
+						hadUsageMetadataJson !== hasUsageMetadataJson ||
 						(!hadResponse && hasResponse) ||
 						(!hadFinishReason && hasFinishReason)
 					) {
