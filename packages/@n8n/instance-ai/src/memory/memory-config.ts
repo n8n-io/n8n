@@ -22,7 +22,7 @@ export function createMemory(config: InstanceAiMemoryConfig): Memory {
 		storage: config.storage,
 		options: {
 			lastMessages: config.lastMessages ?? 20,
-			generateTitle: true,
+			generateTitle: false,
 			workingMemory: {
 				enabled: true,
 				template: WORKING_MEMORY_TEMPLATE,

@@ -37,6 +37,7 @@ const DATA_TABLE_TOOL_NAMES = [
 
 export interface StartDataTableAgentInput {
 	task: string;
+	conversationContext?: string;
 	taskId?: string;
 	agentId?: string;
 	plannedTaskId?: string;
@@ -121,7 +122,12 @@ export function startDataTableAgentTask(
 					}
 				: undefined;
 
-			const stream = await subAgent.stream(input.task, {
+			const conversationCtx = input.conversationContext
+				? `\n\n[CONVERSATION CONTEXT: ${input.conversationContext}]`
+				: '';
+			const briefing = `${input.task}${conversationCtx}`;
+
+			const stream = await subAgent.stream(briefing, {
 				maxSteps: DATA_TABLE_MAX_STEPS,
 				abortSignal: signal,
 				providerOptions: {
@@ -150,7 +156,7 @@ export function startDataTableAgentTask(
 	});
 
 	return {
-		result: `Data table operation started (task: ${taskId}). Acknowledge briefly and move on.`,
+		result: `Data table operation started (task: ${taskId}). Reply with one short sentence. Do NOT summarize the plan or list details.`,
 		taskId,
 		agentId: subAgentId,
 	};
@@ -168,6 +174,12 @@ export function createDataTableAgentTool(context: OrchestrationContext) {
 				.string()
 				.describe(
 					'What to do: describe the data table operation. Include table names, column details, data to insert, or query criteria.',
+				),
+			conversationContext: z
+				.string()
+				.optional()
+				.describe(
+					'Brief summary of the conversation so far — what was discussed, decisions made, and information gathered. The agent uses this to avoid repeating information the user already knows.',
 				),
 		}),
 		outputSchema: z.object({

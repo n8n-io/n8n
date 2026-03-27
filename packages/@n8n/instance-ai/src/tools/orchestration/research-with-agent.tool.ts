@@ -22,6 +22,7 @@ const RESEARCH_MAX_STEPS = 25;
 export interface StartResearchAgentInput {
 	goal: string;
 	constraints?: string;
+	conversationContext?: string;
 	taskId?: string;
 	agentId?: string;
 	plannedTaskId?: string;
@@ -72,9 +73,12 @@ export function startResearchAgentTask(
 		},
 	});
 
+	const conversationCtx = input.conversationContext
+		? `\n\n[CONVERSATION CONTEXT: ${input.conversationContext}]`
+		: '';
 	const briefing = input.constraints
-		? `${input.goal}\n\nConstraints: ${input.constraints}`
-		: input.goal;
+		? `${input.goal}${conversationCtx}\n\nConstraints: ${input.constraints}`
+		: `${input.goal}${conversationCtx}`;
 
 	context.spawnBackgroundTask({
 		taskId,
@@ -124,7 +128,7 @@ export function startResearchAgentTask(
 	});
 
 	return {
-		result: `Research started (task: ${taskId}). Acknowledge briefly and move on.`,
+		result: `Research started (task: ${taskId}). Reply with one short sentence. Do NOT summarize the plan or list details.`,
 		taskId,
 		agentId: subAgentId,
 	};
@@ -149,6 +153,12 @@ export function createResearchWithAgentTool(context: OrchestrationContext) {
 				.string()
 				.optional()
 				.describe('Optional constraints, e.g. "Focus on REST API, not GraphQL"'),
+			conversationContext: z
+				.string()
+				.optional()
+				.describe(
+					'Brief summary of the conversation so far — what was discussed, decisions made, and information gathered. The agent uses this to avoid repeating information the user already knows.',
+				),
 		}),
 		outputSchema: z.object({
 			result: z.string(),

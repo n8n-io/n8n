@@ -1,14 +1,17 @@
 import { Monitor } from 'node-screenshots';
-import sharp from 'sharp';
 
 import { ScreenshotModule } from './index';
 import { screenshotTool, screenshotRegionTool } from './screenshot';
 
 jest.mock('node-screenshots');
-jest.mock('sharp');
+
+const mockSharp = jest.fn();
+jest.mock('sharp', () => ({
+	__esModule: true,
+	default: (...args: unknown[]) => mockSharp(...args),
+}));
 
 const MockMonitor = Monitor as jest.MockedClass<typeof Monitor>;
-const mockSharp = sharp as unknown as jest.Mock;
 
 const DUMMY_CONTEXT = { dir: '/test/base' };
 

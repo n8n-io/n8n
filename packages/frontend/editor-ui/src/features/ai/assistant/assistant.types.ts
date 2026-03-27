@@ -209,6 +209,8 @@ export namespace ChatRequest {
 			id: string;
 			createdAt: string;
 		};
+		/** Short AI-generated title summarising the user's prompt (5-7 words) */
+		versionTitle?: string;
 	}
 
 	export interface SummaryMessage {
@@ -400,6 +402,58 @@ export namespace WebFetchApproval {
 	export type Message = ChatUI.CustomMessage & {
 		customType: 'web_fetch_approval';
 		data: MessageData;
+	};
+}
+
+// ============================================================================
+// Version Card Types
+// ============================================================================
+
+export interface VersionCardMessageData {
+	versionId: string;
+	/** Absent when the version has been pruned from history */
+	createdAt?: string;
+	/** Truncated AI summary describing what changed in this generation */
+	title?: string;
+}
+
+export type VersionCardMessage = ChatUI.CustomMessage & {
+	customType: 'version_card';
+	data: VersionCardMessageData;
+};
+
+export function isVersionCardMessage(msg: ChatUI.AssistantMessage): msg is VersionCardMessage {
+	return msg.type === 'custom' && 'customType' in msg && msg.customType === 'version_card';
+}
+
+// ============================================================================
+// Collapsed Group Types (for non-destructive version restore)
+// ============================================================================
+
+export interface CollapsedGroupMessageData {
+	collapsedMessages: ChatUI.AssistantMessage[];
+}
+
+export type CollapsedGroupMessage = ChatUI.CustomMessage & {
+	customType: 'collapsed_group';
+	data: CollapsedGroupMessageData;
+};
+
+export function isCollapsedGroupMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is CollapsedGroupMessage {
+	return msg.type === 'custom' && 'customType' in msg && msg.customType === 'collapsed_group';
+}
+
+export function createCollapsedGroupMessage(
+	messages: ChatUI.AssistantMessage[],
+): CollapsedGroupMessage {
+	return {
+		id: `collapsed-group-${messages[0]?.id ?? 'unknown'}`,
+		role: 'assistant',
+		type: 'custom',
+		customType: 'collapsed_group',
+		data: { collapsedMessages: messages },
 	};
 }
 

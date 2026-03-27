@@ -217,6 +217,11 @@ export interface InstanceAiExecutionService {
 	): Promise<NodeOutputResult>;
 }
 
+export interface CredentialTypeSearchResult {
+	type: string;
+	displayName: string;
+}
+
 export interface InstanceAiCredentialService {
 	list(options?: { type?: string }): Promise<CredentialSummary[]>;
 	get(credentialId: string): Promise<CredentialDetail>;
@@ -228,6 +233,8 @@ export interface InstanceAiCredentialService {
 	getCredentialFields?(
 		credentialType: string,
 	): CredentialFieldInfo[] | Promise<CredentialFieldInfo[]>;
+	/** Search available credential types by keyword. Returns matching types with display names. */
+	searchCredentialTypes?(query: string): Promise<CredentialTypeSearchResult[]>;
 }
 
 export interface CredentialFieldInfo {

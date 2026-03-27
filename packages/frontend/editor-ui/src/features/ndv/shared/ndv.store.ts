@@ -157,7 +157,7 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 	const ndvNodeInputNumber = computed(() => {
 		const returnData: { [nodeName: string]: number[] } = {};
 		const activeNodeConections = (
-			workflowsStore.connectionsByDestinationNode[activeNode.value?.name || ''] ?? {}
+			workflowDocumentStore.value?.connectionsByDestinationNode[activeNode.value?.name || ''] ?? {}
 		).main;
 
 		if (!activeNodeConections || activeNodeConections.length < 2) return returnData;

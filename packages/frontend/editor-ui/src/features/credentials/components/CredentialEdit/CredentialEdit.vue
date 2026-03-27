@@ -413,9 +413,14 @@ onMounted(async () => {
 	}
 
 	if (props.mode === 'new' && credentialTypeName.value) {
-		credentialName.value = await credentialsStore.getNewCredentialName({
-			credentialTypeName: defaultCredentialTypeName.value,
-		});
+		const modalSuggestedName = isCredentialModalState(modalState)
+			? modalState.suggestedName
+			: undefined;
+		credentialName.value = modalSuggestedName
+			? modalSuggestedName
+			: await credentialsStore.getNewCredentialName({
+					credentialTypeName: defaultCredentialTypeName.value,
+				});
 
 		credentialData.value = {
 			...credentialData.value,
@@ -1269,9 +1274,7 @@ async function onAuthTypeChanged(payload: CredentialModeOption): Promise<void> {
 async function onQuickConnect(): Promise<void> {
 	if (!credentialTypeName.value || !ndvStore.activeNode) return;
 
-	const serviceName =
-		getAppNameFromCredType(credentialType.value?.displayName ?? '') ||
-		i18n.baseText('credentialEdit.credentialConfig.theServiceYouReConnectingTo');
+	const serviceName = getAppNameFromCredType(credentialType.value?.displayName ?? '');
 
 	const credential = await quickConnect({
 		credentialTypeName: credentialTypeName.value,

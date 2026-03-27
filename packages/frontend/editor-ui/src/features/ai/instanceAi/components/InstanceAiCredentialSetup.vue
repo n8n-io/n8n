@@ -1,11 +1,13 @@
 <script lang="ts" setup>
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiCredentialRequest, InstanceAiCredentialFlow } from '@n8n/api-types';
 import type { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
 import { useWizardNavigation } from '@/features/ai/shared/composables/useWizardNavigation';
@@ -21,6 +23,7 @@ const props = defineProps<{
 const i18n = useI18n();
 const store = useInstanceAiStore();
 const credentialsStore = useCredentialsStore();
+const uiStore = useUIStore();
 
 // ---------------------------------------------------------------------------
 // Navigation
@@ -75,8 +78,24 @@ const stopDeleteListener = credentialsStore.$onAction(({ name, after, args }) =>
 	});
 });
 
+// Listen for credential creation to auto-select newly created credentials
+// when using the button path (no NodeCredentials rendered)
+const stopCreateListener = credentialsStore.$onAction(({ name, after }) => {
+	if (name !== 'createNewCredential') return;
+	after((newCred) => {
+		if (!newCred || typeof newCred !== 'object' || !('id' in newCred)) return;
+		const req = currentRequest.value;
+		if (!req) return;
+		const cred = newCred as { id: string; type: string };
+		if (cred.type === req.credentialType) {
+			selections.value[req.credentialType] = cred.id;
+		}
+	});
+});
+
 onBeforeUnmount(() => {
 	stopDeleteListener();
+	stopCreateListener();
 });
 
 // ---------------------------------------------------------------------------
@@ -127,6 +146,14 @@ watch(
 	},
 );
 
+// Auto-continue when all credentials have been selected
+watch(allSelected, async (nowComplete, wasComplete) => {
+	if (nowComplete && !wasComplete) {
+		await nextTick();
+		await handleContinue();
+	}
+});
+
 onMounted(async () => {
 	// Ensure the credentials store is populated so NodeCredentials can show
 	// existing credentials in the dropdown. The Instance AI page may not have
@@ -153,7 +180,25 @@ onMounted(async () => {
 // ---------------------------------------------------------------------------
 
 function getDisplayName(credentialType: string): string {
-	return credentialsStore.getCredentialTypeByName(credentialType)?.displayName ?? credentialType;
+	const raw =
+		credentialsStore.getCredentialTypeByName(credentialType)?.displayName ?? credentialType;
+	const appName = getAppNameFromCredType(raw);
+	return i18n.baseText('instanceAi.credential.setupTitle', { interpolate: { name: appName } });
+}
+
+const hasExistingCredentials = computed(() => {
+	if (!currentRequest.value) return false;
+	const credType = currentRequest.value.credentialType;
+	return (
+		(currentRequest.value.existingCredentials?.length ?? 0) > 0 ||
+		(credentialsStore.getUsableCredentialByType(credType)?.length ?? 0) > 0
+	);
+});
+
+function openNewCredentialModal() {
+	const req = currentRequest.value;
+	if (!req) return;
+	uiStore.openNewCredential(req.credentialType, false, false, props.projectId, req.suggestedName);
 }
 
 /** Build a minimal synthetic INodeUi so NodeCredentials can render in standalone mode. */
@@ -252,12 +297,20 @@ function handleLater() {
 
 					<div :class="$style.credentialContainer">
 						<NodeCredentials
+							v-if="hasExistingCredentials"
 							:node="syntheticNodeUi(currentRequest)"
 							:override-cred-type="currentRequest.credentialType"
 							:project-id="projectId"
+							:suggested-credential-name="currentRequest.suggestedName"
 							standalone
 							hide-issues
 							@credential-selected="onCredentialSelected(currentRequest.credentialType, $event)"
+						/>
+						<N8nButton
+							v-else
+							:label="i18n.baseText('instanceAi.credential.setupButton')"
+							data-test-id="instance-ai-credential-setup-button"
+							@click="openNewCredentialModal"
 						/>
 					</div>
 				</div>

@@ -361,7 +361,8 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			break;
 		}
 
-		case 'filesystem-request': {
+		case 'filesystem-request':
+		case 'thread-title-updated': {
 			// Handled externally — no state change
 			break;
 		}

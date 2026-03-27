@@ -61,6 +61,7 @@ import {
 	DELETE_FOLDER_MODAL_KEY,
 	MOVE_FOLDER_MODAL_KEY,
 } from '@/features/core/folders/folders.constants';
+import type { WorkflowListEventMap } from '@/features/core/folders/folders.types';
 import {
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
 	SOURCE_CONTROL_PULL_MODAL_KEY,
@@ -540,6 +541,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		showAuthOptions = false,
 		forceManualMode = false,
 		projectId?: string,
+		suggestedName?: string,
 	) => {
 		setActiveId(CREDENTIAL_EDIT_MODAL_KEY, type);
 		setShowAuthSelector(CREDENTIAL_EDIT_MODAL_KEY, showAuthOptions);
@@ -547,6 +549,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			...modalsById.value[CREDENTIAL_EDIT_MODAL_KEY],
 			forceManualMode,
 			projectId,
+			suggestedName,
 		} as NewCredentialsModal;
 		setMode(CREDENTIAL_EDIT_MODAL_KEY, 'new');
 		openModal(CREDENTIAL_EDIT_MODAL_KEY);
@@ -570,7 +573,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 
 	const openDeleteFolderModal = (
 		id: string,
-		workflowListEventBus: EventBus,
+		workflowListEventBus: EventBus<WorkflowListEventMap>,
 		content: { workflowCount: number; subFolderCount: number },
 	) => {
 		setActiveId(DELETE_FOLDER_MODAL_KEY, id);
@@ -586,7 +589,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			sharedWithProjects?: ProjectSharingData[];
 			homeProjectId?: string;
 		},
-		workflowListEventBus: EventBus,
+		workflowListEventBus: EventBus<WorkflowListEventMap>,
 	) => {
 		openModalWithData({
 			name: MOVE_FOLDER_MODAL_KEY,
