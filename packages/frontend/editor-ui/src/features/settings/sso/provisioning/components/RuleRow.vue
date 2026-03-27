@@ -1,5 +1,6 @@
 <script lang="ts" setup>
-import { N8nButton, N8nIcon, N8nInput, N8nOption, N8nSelect, N8nSwitch } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nInput, N8nOption, N8nSelect } from '@n8n/design-system';
+import { ElSwitch } from 'element-plus';
 import { useI18n } from '@n8n/i18n';
 import type { RoleMappingRuleResponse } from '../types';
 
@@ -24,10 +25,10 @@ const instanceRoleOptions = [
 		<div :class="$style.dragHandle" class="drag-handle">
 			<N8nIcon icon="grip-vertical" size="small" color="text-light" />
 		</div>
-		<N8nSwitch
+		<ElSwitch
 			:model-value="props.rule.enabled"
 			data-test-id="rule-toggle"
-			@update:model-value="emit('update', props.rule.id, { enabled: $event })"
+			@update:model-value="emit('update', props.rule.id, { enabled: $event as boolean })"
 		/>
 		<div :class="$style.expression">
 			<N8nInput
