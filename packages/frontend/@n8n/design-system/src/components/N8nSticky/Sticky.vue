@@ -3,7 +3,7 @@ import { computed, ref, watch } from 'vue';
 
 import { defaultStickyProps } from './constants';
 import type { StickyProps } from './types';
-import { useI18n } from '../../composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import {
 	isValidHexColor,
 	adjustColorLightness,

@@ -1,11 +1,11 @@
 <script lang="ts" setup>
-import { useI18n } from '../../composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 const { t } = useI18n();
 </script>
 
 <template>
-	<div :class="$style.beta">{{ t('betaTag.beta') }}</div>
+	<div :class="$style.beta">{{ t('generic.beta') }}</div>
 </template>
 
 <style lang="scss" module>

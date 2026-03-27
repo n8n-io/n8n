@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useCssModule } from 'vue';
 
-import { useI18n } from '../../composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
 import N8nCanvasPill from '../CanvasPill';
 import N8nButton from '../N8nButton';

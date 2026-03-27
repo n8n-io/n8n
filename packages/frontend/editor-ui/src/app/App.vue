@@ -15,7 +15,6 @@ import { CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID, HIRING_BANNER, VIEWS } from '@
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import LoadingView from '@/app/views/LoadingView.vue';
-import { locale } from '@n8n/design-system';
 import { setLanguage } from '@n8n/i18n';
 // Note: no need to import en.json here; default 'en' is handled via setLanguage
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -76,8 +75,6 @@ watch(
 		setLanguage(newLocale);
 
 		axios.defaults.headers.common['Accept-Language'] = newLocale;
-
-		void locale.use(newLocale);
 	},
 	{ immediate: true },
 );

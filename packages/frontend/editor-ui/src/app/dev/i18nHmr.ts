@@ -1,6 +1,5 @@
 import { i18n, i18nInstance, setLanguage, updateLocaleMessages } from '@n8n/i18n';
 import type { LocaleMessages } from '@n8n/i18n/types';
-import { locale as designLocale } from '@n8n/design-system';
 
 const hot = import.meta.hot;
 const DEFAULT_LOCALE = 'en';
@@ -27,7 +26,6 @@ if (hot) {
 		const current = (i18nInstance.global.locale.value as string) || DEFAULT_LOCALE;
 		i18n.clearCache();
 		setLanguage(current);
-		void designLocale.use(current);
 	};
 	// Fetch with cache-buster to avoid stale content (one-update-behind);
 	// falls back to the eager map if network fetch is unavailable.

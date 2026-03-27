@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 
 import BaseMessage from './BaseMessage.vue';
-import { useI18n } from '../../../composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import type { ChatUI } from '../../../types/assistant';
 import N8nIcon from '../../N8nIcon';
 import N8nText from '../../N8nText';
@@ -36,9 +36,9 @@ const toolDisplayName = computed(() => {
 const statusMessage = computed(() => {
 	switch (props.message.status) {
 		case 'running':
-			return t('assistantChat.builder.toolRunning');
+			return t('aiAssistant.builder.toolRunning');
 		case 'error':
-			return t('assistantChat.builder.toolError');
+			return t('aiAssistant.builder.toolError');
 		default:
 			return '';
 	}

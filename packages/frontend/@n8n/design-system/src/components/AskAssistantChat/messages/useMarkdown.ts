@@ -1,7 +1,7 @@
 import Markdown from 'markdown-it';
 import markdownLink from 'markdown-it-link-attributes';
 
-import { useI18n } from '../../../composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 
 export function useMarkdown() {
 	const { t } = useI18n();
@@ -22,7 +22,7 @@ export function useMarkdown() {
 			return md.render(content);
 		} catch (e) {
 			console.error(`Error parsing markdown content ${content}`);
-			return `<p>${t('assistantChat.errorParsingMarkdown')}</p>`;
+			return `<p>${t('aiAssistant.builder.error.parsingMarkdown')}</p>`;
 		}
 	}
 

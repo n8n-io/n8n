@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router';
 
 import AuthView from './AuthView.vue';
 
-import { useI18n } from '@n8n/i18n';
+import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
 import { useUsersStore } from '@/features/settings/users/users.store';
 
@@ -28,7 +28,7 @@ const passwordsMatch = (value: string | number | boolean | null | undefined) => 
 
 	if (value !== password.value) {
 		return {
-			messageKey: 'auth.changePassword.passwordsMustMatchError',
+			messageKey: 'auth.changePassword.passwordsMustMatchError' as BaseTextKey,
 		};
 	}
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 
-import { useI18n } from '../../composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import N8nCallout from '../N8nCallout';
 import N8nHeading from '../N8nHeading';
 import N8nIcon from '../N8nIcon';

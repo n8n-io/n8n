@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 
-import { useI18n } from '../../composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
 import AssistantText from '../AskAssistantText/AssistantText.vue';
 
@@ -40,11 +40,7 @@ function onMouseLeave() {
 		<div v-show="hovering" :class="$style.text">
 			<div>
 				<AssistantText
-					:text="
-						type === 'builder'
-							? t('assistantChat.builder.name')
-							: t('askAssistantButton.askAssistant')
-					"
+					:text="type === 'builder' ? t('aiAssistant.builder.mode') : t('aiAssistant.name')"
 				/>
 			</div>
 		</div>

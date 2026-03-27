@@ -6,7 +6,7 @@ import ToolMessage from './ToolMessage.vue';
 import type { ChatUI } from '../../../types/assistant';
 
 // Mock i18n to return keys instead of translated text
-vi.mock('@n8n/design-system/composables/useI18n', () => ({
+vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
 		t: (key: string) => key,
 	}),

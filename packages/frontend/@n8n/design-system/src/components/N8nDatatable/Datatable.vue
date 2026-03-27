@@ -1,7 +1,7 @@
 <script lang="ts" setup generic="Item extends DatatableRow">
 import { computed, ref } from 'vue';
 
-import { useI18n } from '../../composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import type { DatatableColumn, DatatableRow, DatatableRowDataType } from '../../types';
 import { getValueByPath } from '../../utils';
 import N8nOption from '../N8nOption';

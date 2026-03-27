@@ -4,7 +4,7 @@ import { nextTick } from 'vue';
 import RestoreVersionConfirm from './RestoreVersionConfirm.vue';
 
 // Mock i18n to return keys with interpolation for testing
-vi.mock('@n8n/design-system/composables/useI18n', () => ({
+vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
 		t: (key: string, params?: Record<string, string>) => {
 			if (params) {

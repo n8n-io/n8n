@@ -1,4 +1,4 @@
-import type { N8nLocaleTranslateFnOptions } from '@n8n/design-system/types/i18n';
+import type { BaseTextKey, BaseTextOptions } from '@n8n/i18n';
 
 export type FormFieldValue = string | number | boolean | null | undefined;
 
@@ -16,7 +16,10 @@ export type Rule = { name: string; config?: unknown };
 
 export type RuleGroup = {
 	rules: Array<Rule | RuleGroup>;
-	defaultError?: { messageKey: string; options?: N8nLocaleTranslateFnOptions };
+	defaultError?: {
+		messageKey: BaseTextKey;
+		options?: BaseTextOptions;
+	};
 };
 
 export type Validatable = string | number | boolean | null | undefined;
@@ -27,8 +30,8 @@ export type IValidator<T = unknown> = {
 		config: T,
 	) =>
 		| false
-		| { message: string; options?: N8nLocaleTranslateFnOptions }
-		| { messageKey: string; options?: N8nLocaleTranslateFnOptions }
+		| { message: string; options?: BaseTextOptions }
+		| { messageKey: BaseTextKey; options?: BaseTextOptions }
 		| null;
 };
 

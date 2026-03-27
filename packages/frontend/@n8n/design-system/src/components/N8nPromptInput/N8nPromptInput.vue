@@ -2,7 +2,7 @@
 import { computed, nextTick, onMounted, ref, toRef, watch } from 'vue';
 
 import { useCharacterLimit } from '../../composables/useCharacterLimit';
-import { useI18n } from '../../composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import N8nCallout from '../N8nCallout/Callout.vue';
 import N8nScrollArea from '../N8nScrollArea/N8nScrollArea.vue';
 import N8nSendStopButton from '../N8nSendStopButton';
@@ -312,7 +312,11 @@ defineExpose({
 					theme="warning"
 					:class="$style.warningCallout"
 				>
-					{{ t('assistantChat.characterLimit', { limit: maxLength.toString() }) }}
+					{{
+						t('aiAssistant.builder.characterLimit', {
+							interpolate: { limit: maxLength.toString() },
+						})
+					}}
 				</N8nCallout>
 
 				<!-- Use ScrollArea when content exceeds max height -->

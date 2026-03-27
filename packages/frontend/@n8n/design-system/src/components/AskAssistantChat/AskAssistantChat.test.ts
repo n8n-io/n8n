@@ -8,7 +8,7 @@ import type { Props as MessageWrapperProps } from './messages/MessageWrapper.vue
 import type { ChatUI } from '../../types/assistant';
 
 // Mock useI18n
-vi.mock('../../composables/useI18n', () => ({
+vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
 		t: (key: string) => key,
 	}),
@@ -692,7 +692,7 @@ describe('AskAssistantChat', () => {
 
 			const props = getThinkingMessageProps();
 			// Should use the default i18n key (mocked to return the key itself)
-			expect(props.latestStatusText).toBe('assistantChat.thinking.workflowGenerated');
+			expect(props.latestStatusText).toBe('aiAssistant.builder.thinking.workflowGenerated');
 		});
 
 		it('should show "Thinking" for non-last completed tool group', () => {
@@ -728,11 +728,11 @@ describe('AskAssistantChat', () => {
 
 			// First group (non-last) should show "Thinking", not "Workflow generated"
 			const firstProps = getThinkingMessageProps(0);
-			expect(firstProps.latestStatusText).toBe('assistantChat.thinking.thinking');
+			expect(firstProps.latestStatusText).toBe('aiAssistant.thinkingSteps.thinking');
 
 			// Last group should also show "Thinking" (no workflow-updated messages)
 			const secondProps = getThinkingMessageProps(1);
-			expect(secondProps.latestStatusText).toBe('assistantChat.thinking.thinking');
+			expect(secondProps.latestStatusText).toBe('aiAssistant.thinkingSteps.thinking');
 		});
 
 		it('should show "Workflow generated" for build group and "Thinking" for plan group', () => {
@@ -788,11 +788,11 @@ describe('AskAssistantChat', () => {
 
 			// First group (plan): "Thinking" (no workflow-updated in its region)
 			const firstProps = getThinkingMessageProps(0);
-			expect(firstProps.latestStatusText).toBe('assistantChat.thinking.thinking');
+			expect(firstProps.latestStatusText).toBe('aiAssistant.thinkingSteps.thinking');
 
 			// Second group (build): "Workflow generated" (workflow-updated interleaved with its tools)
 			const secondProps = getThinkingMessageProps(1);
-			expect(secondProps.latestStatusText).toBe('assistantChat.thinking.workflowGenerated');
+			expect(secondProps.latestStatusText).toBe('aiAssistant.builder.thinking.workflowGenerated');
 		});
 
 		it('should not show "Workflow generated" when workflow-updated precedes tools (naming-only)', () => {
@@ -831,7 +831,7 @@ describe('AskAssistantChat', () => {
 			// Tool group should show "Thinking" (not "Workflow generated") since
 			// the workflow-updated was a naming-only update before any tools
 			const props = getThinkingMessageProps(0);
-			expect(props.latestStatusText).toBe('assistantChat.thinking.thinking');
+			expect(props.latestStatusText).toBe('aiAssistant.thinkingSteps.thinking');
 		});
 
 		it('should preserve "Workflow generated" on first build group when second build group appears', () => {
@@ -913,11 +913,11 @@ describe('AskAssistantChat', () => {
 
 			// First build group: "Workflow generated" (has workflow-updated in its region)
 			const firstProps = getThinkingMessageProps(0);
-			expect(firstProps.latestStatusText).toBe('assistantChat.thinking.workflowGenerated');
+			expect(firstProps.latestStatusText).toBe('aiAssistant.builder.thinking.workflowGenerated');
 
 			// Second build group: "Workflow generated" (also has workflow-updated in its region)
 			const secondProps = getThinkingMessageProps(1);
-			expect(secondProps.latestStatusText).toBe('assistantChat.thinking.workflowGenerated');
+			expect(secondProps.latestStatusText).toBe('aiAssistant.builder.thinking.workflowGenerated');
 		});
 
 		it('should show mixed titles: plan then build then plan', () => {
@@ -987,13 +987,17 @@ describe('AskAssistantChat', () => {
 			expect(thinkingMessageCallCount).toBe(3);
 
 			// Group 1 (plan): "Thinking"
-			expect(getThinkingMessageProps(0).latestStatusText).toBe('assistantChat.thinking.thinking');
+			expect(getThinkingMessageProps(0).latestStatusText).toBe(
+				'aiAssistant.thinkingSteps.thinking',
+			);
 			// Group 2 (build): "Workflow generated"
 			expect(getThinkingMessageProps(1).latestStatusText).toBe(
-				'assistantChat.thinking.workflowGenerated',
+				'aiAssistant.builder.thinking.workflowGenerated',
 			);
 			// Group 3 (plan follow-up): "Thinking"
-			expect(getThinkingMessageProps(2).latestStatusText).toBe('assistantChat.thinking.thinking');
+			expect(getThinkingMessageProps(2).latestStatusText).toBe(
+				'aiAssistant.thinkingSteps.thinking',
+			);
 		});
 
 		it('should show "Thinking" in plan mode (no workflow-updated messages)', () => {
@@ -1023,7 +1027,7 @@ describe('AskAssistantChat', () => {
 
 			// No workflow-updated, so should show "Thinking" not "Workflow generated"
 			const props = getThinkingMessageProps(0);
-			expect(props.latestStatusText).toBe('assistantChat.thinking.thinking');
+			expect(props.latestStatusText).toBe('aiAssistant.thinkingSteps.thinking');
 		});
 
 		it('should give each thinking group a unique ID', () => {
@@ -1091,7 +1095,7 @@ describe('AskAssistantChat', () => {
 			expect(oldGroupProps.items).toHaveLength(1);
 			expect(oldGroupProps.items[0].displayTitle).toBe('Search Results');
 			expect(oldGroupProps.items[0].status).toBe('completed');
-			expect(oldGroupProps.latestStatusText).toBe('assistantChat.thinking.thinking');
+			expect(oldGroupProps.latestStatusText).toBe('aiAssistant.thinkingSteps.thinking');
 
 			// New turn's placeholder should show the loading message
 			const placeholderProps = getThinkingMessageProps(1);
@@ -1153,7 +1157,7 @@ describe('AskAssistantChat', () => {
 			// Quick replies should be rendered (2 buttons found)
 			expect(wrapper.queryAllByTestId('quick-replies')).toHaveLength(2);
 			// Quick reply title should be visible (checking for i18n key since we're mocking i18n)
-			expect(wrapper.container.textContent).toContain('assistantChat.quickRepliesTitle');
+			expect(wrapper.container.textContent).toContain('aiAssistant.quickRepliesTitle');
 			expect(wrapper.container).toHaveTextContent('Give me another solution');
 			expect(wrapper.container).toHaveTextContent('All good');
 		});
@@ -1187,7 +1191,7 @@ describe('AskAssistantChat', () => {
 			// Quick replies should still be rendered even though agent-suggestion is filtered out
 			expect(wrapper.queryAllByTestId('quick-replies')).toHaveLength(2);
 			// Quick reply title should be visible (checking for i18n key since we're mocking i18n)
-			expect(wrapper.container.textContent).toContain('assistantChat.quickRepliesTitle');
+			expect(wrapper.container.textContent).toContain('aiAssistant.quickRepliesTitle');
 
 			expect(wrapper.container).toHaveTextContent('Accept suggestion');
 			expect(wrapper.container).toHaveTextContent('Reject suggestion');
@@ -1210,7 +1214,7 @@ describe('AskAssistantChat', () => {
 			const wrapper = renderWithQuickReplies(messages, true);
 
 			expect(wrapper.queryAllByTestId('quick-replies')).toHaveLength(0);
-			expect(wrapper.container.textContent).not.toContain('assistantChat.quickRepliesTitle');
+			expect(wrapper.container.textContent).not.toContain('aiAssistant.quickRepliesTitle');
 			// The message with quick replies should be in the JSON but not rendered as buttons
 			const messageWrapperStub = wrapper.getByTestId('message-wrapper-stub');
 			expect(messageWrapperStub.textContent).toContain('Give me another solution');
@@ -1242,7 +1246,7 @@ describe('AskAssistantChat', () => {
 
 			// Quick replies should not be rendered since the message with quick replies is not last
 			expect(wrapper.queryAllByTestId('quick-replies')).toHaveLength(0);
-			expect(wrapper.container.textContent).not.toContain('assistantChat.quickRepliesTitle');
+			expect(wrapper.container.textContent).not.toContain('aiAssistant.quickRepliesTitle');
 			// The messages with quick replies should be in the JSON but not rendered as buttons
 			const messageWrapperStubs = wrapper.getAllByTestId('message-wrapper-stub');
 			expect(messageWrapperStubs[0].textContent).toContain('Give me another solution');
@@ -1264,7 +1268,7 @@ describe('AskAssistantChat', () => {
 			const wrapper = renderWithQuickReplies(messages);
 
 			expect(wrapper.queryAllByTestId('quick-replies')).toHaveLength(0);
-			expect(wrapper.container.textContent).not.toContain('assistantChat.quickRepliesTitle');
+			expect(wrapper.container.textContent).not.toContain('aiAssistant.quickRepliesTitle');
 		});
 
 		it('should not render quick replies when last message has empty quickReplies array', () => {
@@ -1284,7 +1288,7 @@ describe('AskAssistantChat', () => {
 			const wrapper = renderWithQuickReplies(messages);
 
 			expect(wrapper.queryAllByTestId('quick-replies')).toHaveLength(0);
-			expect(wrapper.container.textContent).not.toContain('assistantChat.quickRepliesTitle');
+			expect(wrapper.container.textContent).not.toContain('aiAssistant.quickRepliesTitle');
 		});
 	});
 
