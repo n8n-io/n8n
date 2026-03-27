@@ -204,8 +204,24 @@ export class InstanceAiController {
 			res.flush?.();
 		}, KEEP_ALIVE_INTERVAL_MS);
 
+		const sseId = `sse_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+		console.warn('[DIAG] SSE connected', {
+			sseId,
+			threadId,
+			userId: req.user.id,
+			cursor,
+			missedCount: missed.length,
+			isReconnect: cursor > 0,
+			pid: process.pid,
+		});
+
 		// 6. Cleanup on disconnect
 		const cleanup = () => {
+			console.warn('[DIAG] SSE disconnected', {
+				sseId,
+				threadId,
+				pid: process.pid,
+			});
 			unsubscribe();
 			clearInterval(keepAlive);
 		};
