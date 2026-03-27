@@ -444,7 +444,6 @@ function isCardComplete(card: SetupCard): boolean {
 	return true;
 }
 
-const allCardsComplete = computed(() => cards.value.every((c) => isCardComplete(c)));
 const anyCardComplete = computed(() => cards.value.some((c) => isCardComplete(c)));
 
 const allPreResolved = computed(() => props.setupRequests.every((r) => !r.needsAction));
