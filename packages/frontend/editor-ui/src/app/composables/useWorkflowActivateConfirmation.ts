@@ -22,7 +22,7 @@ const pendingConfirmations = new Map<string, PendingConfirmation>();
  * arrives. Falls back to `true` after a timeout (e.g. if the push connection
  * drops).
  */
-export function waitForActivationConfirmation(workflowId: string): Promise<boolean> {
+export async function waitForActivationConfirmation(workflowId: string): Promise<boolean> {
 	// Clean up any existing confirmation for this workflow
 	const existing = pendingConfirmations.get(workflowId);
 	if (existing) {
