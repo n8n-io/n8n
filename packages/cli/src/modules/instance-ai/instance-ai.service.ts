@@ -51,6 +51,7 @@ import {
 	WorkflowTaskCoordinator,
 	WorkflowLoopStorage,
 } from '@n8n/instance-ai';
+import { createAnthropic } from '@ai-sdk/anthropic';
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 
@@ -271,20 +272,25 @@ export class InstanceAiService {
 	}
 
 	/**
-	 * Build model config. When the AI service proxy is enabled, returns a config
-	 * that routes LLM calls through the proxy with fresh auth headers.
-	 * Otherwise returns the direct model config from user/admin settings.
+	 * Build model config. When the AI service proxy is enabled, returns a native
+	 * Anthropic LanguageModelV2 instance pointing at the proxy.
+	 *
+	 * We use `@ai-sdk/anthropic` directly instead of returning a `{ url }` config
+	 * object because Mastra's model router forces all configs with a `url` through
+	 * `createOpenAICompatible`, which sends requests to `/chat/completions`.
+	 * The proxy may forward to Vertex AI, which only supports the native Anthropic
+	 * Messages API (`/v1/messages`), not the OpenAI-compatible endpoint.
 	 */
 	private async resolveModel(user: User): Promise<ModelConfig> {
 		if (this.aiService.isProxyEnabled()) {
 			const { client, headers } = await this.getProxyAuth(user);
 			const modelName = await this.settingsService.resolveModelName(user);
-			return {
-				id: `anthropic/${modelName}` as `${string}/${string}`,
-				url: client.getApiProxyBaseUrl() + '/anthropic',
+			const provider = createAnthropic({
+				baseURL: client.getApiProxyBaseUrl() + '/anthropic',
 				apiKey: 'proxy-managed',
 				headers,
-			};
+			});
+			return provider(modelName);
 		}
 		return await this.settingsService.resolveModelConfig(user);
 	}
@@ -618,7 +624,7 @@ export class InstanceAiService {
 		this.logger.debug('Instance AI service shut down');
 	}
 
-	private createMemoryConfig(titleModel?: string) {
+	private createMemoryConfig(titleModel?: ModelConfig) {
 		return {
 			storage: this.compositeStore,
 			embedderModel: this.instanceAiConfig.embedderModel || undefined,
@@ -695,7 +701,7 @@ export class InstanceAiService {
 		return `<planned-task-follow-up type="${type}">\n${JSON.stringify(payload, null, 2)}\n</planned-task-follow-up>\n\n${AUTO_FOLLOW_UP_MESSAGE}`;
 	}
 
-	private async createPlannedTaskState(titleModel?: string) {
+	private async createPlannedTaskState(titleModel?: ModelConfig) {
 		const memory = createMemory(this.createMemoryConfig(titleModel));
 		const taskStorage = new MastraTaskStorage(memory);
 		const plannedTaskStorage = new PlannedTaskStorage(memory);
@@ -731,7 +737,12 @@ export class InstanceAiService {
 				? this.getLocalFsProvider()
 				: undefined;
 		const searchProxyConfig = await this.resolveSearchProxyConfig(user);
-		const context = this.adapterService.createContext(user, localFilesystemService, searchProxyConfig, pushRef);
+		const context = this.adapterService.createContext(
+			user,
+			localFilesystemService,
+			searchProxyConfig,
+			pushRef,
+		);
 		if (!localGatewayDisabled && userGateway?.isConnected) {
 			context.localMcpServer = userGateway;
 		}
@@ -746,8 +757,7 @@ export class InstanceAiService {
 		context.runId = runId;
 
 		const modelId = await this.resolveModel(user);
-		const titleModel = typeof modelId === 'string' ? modelId : modelId.id;
-		const memory = createMemory(this.createMemoryConfig(titleModel));
+		const memory = createMemory(this.createMemoryConfig(modelId));
 		await this.ensureThreadExists(memory, threadId, user.id);
 
 		const taskStorage = new MastraTaskStorage(memory);
@@ -1043,9 +1053,7 @@ export class InstanceAiService {
 				);
 			const tracingConfig = await this.resolveTracingConfig(user);
 			orchestrationContext.tracingConfig = tracingConfig;
-			const memoryConfig = this.createMemoryConfig(
-				typeof modelId === 'string' ? modelId : modelId.id,
-			);
+			const memoryConfig = this.createMemoryConfig(modelId);
 
 			const existingTasks = await taskStorage.get(threadId);
 			if (existingTasks) {

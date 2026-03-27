@@ -3,7 +3,7 @@ import { Agent } from '@mastra/core/agent';
 import { Mastra } from '@mastra/core/mastra';
 import { ToolSearchProcessor, type ToolSearchProcessorOptions } from '@mastra/core/processors';
 import type { MastraCompositeStore } from '@mastra/core/storage';
-import { withLangsmithMetadata, LangSmithExporter } from '@mastra/langsmith';
+import { withLangsmithMetadata } from '@mastra/langsmith';
 import { MCPClient } from '@mastra/mcp';
 import { buildTracingOptions, Observability } from '@mastra/observability';
 import { nanoid } from 'nanoid';

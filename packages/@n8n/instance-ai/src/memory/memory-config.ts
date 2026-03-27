@@ -43,9 +43,10 @@ export function createMemory(config: InstanceAiMemoryConfig): Memory {
 		(memoryOptions as Record<string, unknown>).embedder = config.embedderModel;
 	}
 
-	// Mastra's MemoryConfig type requires DynamicArgument<MastraModelConfig> for model,
-	// but at runtime it accepts a plain model ID string (e.g. "anthropic/claude-sonnet-4-5").
-	// Override the generateTitle config after construction to inject custom title instructions.
+	// Override the generateTitle config to inject custom title instructions.
+	// The model can be a string ID (e.g. "anthropic/claude-sonnet-4-5") resolved by Mastra's
+	// model router, or a pre-built LanguageModelV2 instance (used when routing through a proxy
+	// that requires the native Anthropic provider instead of OpenAI-compatible).
 	if (config.titleModel && memoryOptions.options) {
 		(memoryOptions.options as Record<string, unknown>).generateTitle = {
 			model: config.titleModel,

@@ -1,3 +1,4 @@
+import type { LanguageModelV2 } from '@ai-sdk/provider-v5';
 import type { ToolsInput } from '@mastra/core/agent';
 import type { MastraCompositeStore } from '@mastra/core/storage';
 import type { Workspace } from '@mastra/core/workspace';
@@ -664,18 +665,27 @@ export interface InstanceAiMemoryConfig {
 	embedderModel?: string;
 	lastMessages?: number;
 	semanticRecallTopK?: number;
-	/** Model ID for title generation (e.g. "anthropic/claude-sonnet-4-5"). When set, custom title instructions are used. */
-	titleModel?: string;
+	/** Model for title generation — accepts any ModelConfig variant (string ID, object config,
+	 *  or pre-built LanguageModelV2 instance). When set, custom title instructions are used. */
+	titleModel?: ModelConfig;
 	/** Thread TTL in days. Threads older than this are auto-expired on cleanup. 0 = no expiration. */
 	threadTtlDays?: number;
 }
 
 // ── Model configuration ─────────────────────────────────────────────────────
 
-/** Model identifier: plain string for built-in providers, or object for OpenAI-compatible endpoints. */
+/** Model identifier: plain string for built-in providers, object for OpenAI-compatible endpoints,
+ *  or a pre-built LanguageModelV2 instance (e.g. from @ai-sdk/anthropic with a custom baseURL).
+ *
+ *  The LanguageModelV2 variant exists because Mastra's model router forces all object configs
+ *  with a `url` field through `createOpenAICompatible`, which calls `/chat/completions`.
+ *  When routing through a proxy that forwards to Vertex AI (which only supports the native
+ *  Anthropic Messages API at `/v1/messages`), we must use `@ai-sdk/anthropic` directly to
+ *  produce a model instance that speaks the correct protocol. */
 export type ModelConfig =
 	| string
-	| { id: `${string}/${string}`; url: string; apiKey?: string; headers?: Record<string, string> };
+	| { id: `${string}/${string}`; url: string; apiKey?: string; headers?: Record<string, string> }
+	| LanguageModelV2;
 
 /** Configuration for routing requests through an AI service proxy (LangSmith tracing, Brave Search, etc.). */
 export interface ServiceProxyConfig {
