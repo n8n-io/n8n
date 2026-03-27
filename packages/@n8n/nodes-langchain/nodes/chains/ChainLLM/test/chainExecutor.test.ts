@@ -67,7 +67,7 @@ describe('chainExecutor', () => {
 			expect(parser).toBeInstanceOf(StringOutputParser);
 		});
 
-		it('should return NaiveJsonOutputParser for Anthropic models in thinking mode', () => {
+		it('should return StringOutputParser for Anthropic models in thinking mode', () => {
 			const model = {
 				lc_kwargs: {
 					invocationKwargs: {
@@ -78,7 +78,7 @@ describe('chainExecutor', () => {
 				},
 			};
 			const parser = chainExecutor.getOutputParserForLLM(model as unknown as BaseChatModel);
-			expect(parser).toBeInstanceOf(NaiveJsonOutputParser);
+			expect(parser).toBeInstanceOf(StringOutputParser);
 		});
 
 		it('should return NaiveJsonOutputParser for models with metadata output_format set to json', () => {
@@ -99,6 +99,33 @@ describe('chainExecutor', () => {
 			});
 			const parser = chainExecutor.getOutputParserForLLM(model);
 			expect(parser).toBeInstanceOf(StringOutputParser);
+		});
+	});
+
+	describe('StringOutputParser with thinking content blocks', () => {
+		it('should skip thinking blocks and extract only text content', () => {
+			const parser = new StringOutputParser();
+			const contentBlocks = [
+				{ type: 'thinking', thinking: 'Let me analyze this request...' },
+				{ type: 'text', text: 'Here is the generated prompt.' },
+			];
+
+			// Access the protected method that handles content block arrays
+			// This is the exact code path that failed with "Cannot coerce 'thinking' message part"
+			// before @langchain/core added native thinking block support
+			const result = (parser as any)._baseMessageContentToString(contentBlocks);
+			expect(result).toBe('Here is the generated prompt.');
+		});
+
+		it('should handle redacted_thinking blocks', () => {
+			const parser = new StringOutputParser();
+			const contentBlocks = [
+				{ type: 'redacted_thinking', data: 'REDACTED' },
+				{ type: 'text', text: 'Final answer.' },
+			];
+
+			const result = (parser as any)._baseMessageContentToString(contentBlocks);
+			expect(result).toBe('Final answer.');
 		});
 	});
 
@@ -587,6 +614,45 @@ describe('chainExecutor', () => {
 			expect(promptUtils.getAgentStepsParser).not.toHaveBeenCalled();
 			expect(pipeMock).toHaveBeenCalledWith(fakeLLM);
 			expect(pipeOutputParserMock).toHaveBeenCalledWith(mockOutputParser);
+		});
+
+		it('should use StringOutputParser for thinking mode models returning plain text', async () => {
+			const fakeThinkingModel = new FakeChatModel({});
+			(fakeThinkingModel as unknown as { lc_kwargs: Record<string, unknown> }).lc_kwargs = {
+				invocationKwargs: {
+					thinking: { type: 'enabled' },
+				},
+			};
+
+			const mockPromptTemplate = new PromptTemplate({
+				template: '{query}',
+				inputVariables: ['query'],
+			});
+
+			const mockChain = {
+				invoke: jest.fn().mockResolvedValue('This is plain text, not JSON'),
+			};
+
+			const withConfigMock = jest.fn().mockReturnValue(mockChain);
+			const pipeOutputParserMock = jest.fn().mockReturnValue({
+				withConfig: withConfigMock,
+			});
+
+			mockPromptTemplate.pipe = jest.fn().mockReturnValue({
+				pipe: pipeOutputParserMock,
+			});
+
+			(promptUtils.createPromptTemplate as jest.Mock).mockResolvedValue(mockPromptTemplate);
+
+			const result = await executeChain({
+				context: mockContext,
+				itemIndex: 0,
+				query: 'Hello',
+				llm: fakeThinkingModel,
+			});
+
+			expect(pipeOutputParserMock).toHaveBeenCalledWith(expect.any(StringOutputParser));
+			expect(result).toEqual(['This is plain text, not JSON']);
 		});
 
 		it('should handle fallback LLM with built-in tools', async () => {
