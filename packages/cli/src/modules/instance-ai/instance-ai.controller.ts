@@ -234,8 +234,11 @@ export class InstanceAiController {
 			testTriggerNode: body.testTriggerNode,
 			answers: body.answers,
 		});
-		if (!resolved) {
-			throw new NotFoundError('Confirmation request not found or not authorized');
+		if (resolved !== true) {
+			const diag = typeof resolved === 'object' ? resolved : {};
+			throw new NotFoundError(
+				`Confirmation not found: ${'reason' in diag ? diag.reason : 'unknown'} | ${JSON.stringify('detail' in diag ? diag.detail : {})}`,
+			);
 		}
 		return { ok: true };
 	}
