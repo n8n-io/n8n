@@ -3,6 +3,8 @@ jest.mock('langsmith', () => {
 	const createdRunTrees: Array<{
 		id: string;
 		dotted_order: string;
+		name: string;
+		run_type: string;
 		parent_run_id?: string;
 	}> = [];
 
@@ -22,6 +24,7 @@ jest.mock('langsmith', () => {
 		serialized: Record<string, never>;
 		inputs: Record<string, unknown>;
 		outputs?: Record<string, unknown>;
+		events?: Array<Record<string, unknown>>;
 		trace_id: string;
 		dotted_order: string;
 		execution_order: number;
@@ -63,6 +66,7 @@ jest.mock('langsmith', () => {
 			this.serialized = config.serialized ?? {};
 			this.inputs = config.inputs ?? {};
 			this.outputs = config.outputs;
+			this.events = [];
 			this.execution_order = config.execution_order ?? 1;
 			this.child_execution_order = config.child_execution_order ?? this.execution_order;
 			this.trace_id = config.trace_id ?? this.parent_run?.trace_id ?? this.id;
@@ -73,6 +77,8 @@ jest.mock('langsmith', () => {
 			createdRunTrees.push({
 				id: this.id,
 				dotted_order: this.dotted_order,
+				name: this.name,
+				run_type: this.run_type,
 				...(this.parent_run_id ? { parent_run_id: this.parent_run_id } : {}),
 			});
 		}
@@ -139,6 +145,10 @@ jest.mock('langsmith', () => {
 			await Promise.resolve();
 		}
 
+		addEvent(event: Record<string, unknown> | string): void {
+			this.events?.push(typeof event === 'string' ? { message: event } : event);
+		}
+
 		toHeaders(): { 'langsmith-trace': string; baggage: string } {
 			return {
 				'langsmith-trace': this.dotted_order,
@@ -159,10 +169,23 @@ jest.mock('langsmith', () => {
 	};
 });
 
-jest.mock('langsmith/traceable', () => ({
-	traceable: <T extends (...args: unknown[]) => unknown>(fn: T) => fn,
-	withRunTree: async <T>(_: unknown, fn: () => Promise<T>): Promise<T> => await fn(),
-}));
+jest.mock('langsmith/traceable', () => {
+	let currentRunTree: unknown;
+
+	return {
+		traceable: <T extends (...args: unknown[]) => unknown>(fn: T) => fn,
+		getCurrentRunTree: () => currentRunTree,
+		withRunTree: async <T>(runTree: unknown, fn: () => Promise<T>): Promise<T> => {
+			const previous = currentRunTree;
+			currentRunTree = runTree;
+			try {
+				return await fn();
+			} finally {
+				currentRunTree = previous;
+			}
+		},
+	};
+});
 
 type LangSmithMockModule = {
 	__mock: {
@@ -170,14 +193,32 @@ type LangSmithMockModule = {
 		getCreatedRunTrees: () => Array<{
 			id: string;
 			dotted_order: string;
+			name: string;
+			run_type: string;
 			parent_run_id?: string;
 		}>;
 	};
 };
 
-const { createInstanceAiTraceContext, continueInstanceAiTraceContext } =
+interface ExecutableTool {
+	execute: (input: unknown, context: unknown) => Promise<unknown>;
+}
+
+function isExecutableTool(value: unknown): value is ExecutableTool {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'execute' in value &&
+		typeof value.execute === 'function'
+	);
+}
+
+const { createInstanceAiTraceContext, continueInstanceAiTraceContext, withCurrentTraceSpan } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
 	require('../langsmith-tracing') as typeof import('../langsmith-tracing');
+const { createAskUserTool } =
+	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
+	require('../../tools/shared/ask-user.tool') as typeof import('../../tools/shared/ask-user.tool');
 const { __mock: langsmithMock } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports
 	require('langsmith') as LangSmithMockModule;
@@ -267,5 +308,180 @@ describe('createInstanceAiTraceContext', () => {
 		expect(continuedTracing.messageRun.id).toBe(tracing?.messageRun.id);
 		expect(continuedTracing.orchestratorRun.id).not.toBe(tracing?.orchestratorRun.id);
 		expect(continuedTracing.orchestratorRun.parentRunId).toBe(tracing?.messageRun.id);
+	});
+
+	it('redacts model secrets from trace metadata', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			messageId: 'message-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			modelId: {
+				id: 'anthropic/claude-sonnet-4-6',
+				url: 'https://api.anthropic.com/v1/messages',
+				apiKey: 'sk-ant-secret',
+			},
+			input: { message: 'What workflows do I have?' },
+		});
+
+		expect(tracing?.messageRun.metadata).toEqual(
+			expect.objectContaining({
+				model_id: 'anthropic/claude-sonnet-4-6',
+			}),
+		);
+		expect(JSON.stringify(tracing?.messageRun.metadata)).not.toContain('sk-ant-secret');
+		expect(JSON.stringify(tracing?.orchestratorRun.metadata)).not.toContain('apiKey');
+
+		await tracing?.finishRun(tracing.orchestratorRun, {
+			outputs: { result: 'done' },
+			metadata: {
+				model_id: {
+					id: 'anthropic/claude-sonnet-4-6',
+					url: 'https://api.anthropic.com/v1/messages',
+					apiKey: 'sk-ant-secret',
+				},
+			},
+		});
+
+		expect(tracing?.orchestratorRun.metadata).toEqual(
+			expect.objectContaining({
+				model_id: 'anthropic/claude-sonnet-4-6',
+			}),
+		);
+		expect(JSON.stringify(tracing?.orchestratorRun.metadata)).not.toContain('sk-ant-secret');
+	});
+
+	it('traces suspendable tools and HITL suspension spans', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			messageId: 'message-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			input: { message: 'Ask me a question' },
+		});
+
+		expect(tracing).toBeDefined();
+
+		const wrappedTools = tracing!.wrapTools(
+			{ 'ask-user': createAskUserTool() },
+			{ agentRole: 'orchestrator', tags: ['orchestrator'] },
+		);
+		const wrappedAskUser = wrappedTools['ask-user'];
+		expect(wrappedAskUser).toBeDefined();
+		if (!isExecutableTool(wrappedAskUser)) {
+			throw new Error('Wrapped ask-user tool is not executable');
+		}
+
+		await tracing!.withRunTree(tracing!.orchestratorRun, async () => {
+			await wrappedAskUser.execute(
+				{
+					questions: [{ id: 'q1', question: 'What do you want?', type: 'text' }],
+				},
+				{
+					agent: {
+						suspend: async () => {
+							await Promise.resolve();
+							return undefined;
+						},
+					},
+				},
+			);
+		});
+
+		const createdRunNames = langsmithMock.getCreatedRunTrees().map((run) => run.name);
+		expect(createdRunNames).toContain('tool:ask-user');
+		expect(createdRunNames).toContain('hitl:suspend');
+	});
+
+	it('traces resumed suspendable tools without extra HITL child span spam', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			messageId: 'message-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			input: { message: 'Resume question flow' },
+		});
+
+		expect(tracing).toBeDefined();
+
+		const wrappedTools = tracing!.wrapTools(
+			{ 'ask-user': createAskUserTool() },
+			{ agentRole: 'orchestrator', tags: ['orchestrator'] },
+		);
+		const wrappedAskUser = wrappedTools['ask-user'];
+		expect(wrappedAskUser).toBeDefined();
+		if (!isExecutableTool(wrappedAskUser)) {
+			throw new Error('Wrapped ask-user tool is not executable');
+		}
+
+		const result = await tracing!.withRunTree(tracing!.orchestratorRun, async () => {
+			return await wrappedAskUser.execute(
+				{
+					questions: [{ id: 'q1', question: 'What do you want?', type: 'text' }],
+				},
+				{
+					agent: {
+						resumeData: {
+							approved: true,
+							answers: [
+								{
+									questionId: 'q1',
+									selectedOptions: [],
+									customText: 'Need Slack notifications',
+								},
+							],
+						},
+						suspend: async () => {
+							await Promise.resolve();
+							return undefined;
+						},
+					},
+				},
+			);
+		});
+
+		expect(result).toEqual({
+			answered: true,
+			answers: [
+				{
+					questionId: 'q1',
+					question: 'What do you want?',
+					selectedOptions: [],
+					customText: 'Need Slack notifications',
+				},
+			],
+		});
+
+		const createdRunNames = langsmithMock.getCreatedRunTrees().map((run) => run.name);
+		expect(createdRunNames).toContain('tool:ask-user:resume');
+		expect(createdRunNames).not.toContain('hitl:resume');
+		expect(createdRunNames).not.toContain('hitl:approval');
+	});
+
+	it('creates ad-hoc child spans under the current run tree', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			messageId: 'message-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			input: { message: 'hello' },
+		});
+
+		await tracing!.withRunTree(tracing!.orchestratorRun, async () => {
+			const result = await withCurrentTraceSpan(
+				{
+					name: 'working_memory_context',
+					tags: ['memory'],
+					inputs: { thread_id: 'thread-1' },
+					processOutputs: (value: number) => ({ value }),
+				},
+				async () => await Promise.resolve(42),
+			);
+
+			expect(result).toBe(42);
+		});
+
+		const createdRunNames = langsmithMock.getCreatedRunTrees().map((run) => run.name);
+		expect(createdRunNames).toContain('working_memory_context');
 	});
 });

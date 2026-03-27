@@ -15,6 +15,7 @@ import { truncateLabel } from './display-utils';
 import { RESEARCH_AGENT_PROMPT } from './research-agent-prompt';
 import { startSubAgentTrace, traceSubAgentTools, withTraceRun } from './tracing-utils';
 import { registerWithMastra } from '../../agent/register-with-mastra';
+import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
 import type { OrchestrationContext } from '../../types';
 
@@ -119,12 +120,14 @@ export async function startResearchAgentTask(
 
 				registerWithMastra(subAgentId, subAgent, context.storage);
 
+				const llmStepTraceHooks = createLlmStepTraceHooks();
 				const stream = await subAgent.stream(briefing, {
 					maxSteps: RESEARCH_MAX_STEPS,
 					abortSignal: signal,
 					providerOptions: {
 						anthropic: { cacheControl: { type: 'ephemeral' } },
 					},
+					...(llmStepTraceHooks?.executionOptions ?? {}),
 				});
 
 				const { text } = await consumeStreamWithHitl({
@@ -137,6 +140,7 @@ export async function startResearchAgentTask(
 					abortSignal: signal,
 					waitForConfirmation: context.waitForConfirmation,
 					drainCorrections,
+					llmStepTraceHooks,
 				});
 
 				return await text;

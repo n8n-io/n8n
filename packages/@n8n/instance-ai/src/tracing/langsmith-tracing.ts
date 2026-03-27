@@ -2,7 +2,11 @@ import type { ToolsInput } from '@mastra/core/agent';
 import { createTool } from '@mastra/core/tools';
 import type { ToolAction, ToolExecutionContext } from '@mastra/core/tools';
 import { RunTree } from 'langsmith';
-import { traceable, withRunTree as withLangSmithRunTree } from 'langsmith/traceable';
+import {
+	getCurrentRunTree,
+	traceable,
+	withRunTree as withLangSmithRunTree,
+} from 'langsmith/traceable';
 
 import type {
 	InstanceAiToolTraceOptions,
@@ -33,6 +37,15 @@ interface CreateInstanceAiTraceContextOptions {
 	metadata?: Record<string, unknown>;
 }
 
+interface CurrentTraceSpanOptions<T = unknown> {
+	name: string;
+	runType?: string;
+	tags?: string[];
+	metadata?: Record<string, unknown>;
+	inputs?: unknown;
+	processOutputs?: (result: T) => unknown;
+}
+
 type TraceableMastraTool = ToolAction<
 	unknown,
 	unknown,
@@ -42,6 +55,11 @@ type TraceableMastraTool = ToolAction<
 	string,
 	unknown
 >;
+
+interface NormalizedModelMetadata {
+	provider?: string;
+	modelName?: string;
+}
 
 function isLangSmithTracingEnabled(): boolean {
 	const tracingFlag =
@@ -82,7 +100,8 @@ function mergeMetadata(
 		if (!record) continue;
 		for (const [key, value] of Object.entries(record)) {
 			if (value !== undefined) {
-				merged[key] = value;
+				merged[key] =
+					key === 'model_id' ? serializeModelIdForTrace(value) : sanitizeTraceValue(value);
 			}
 		}
 	}
@@ -180,6 +199,227 @@ function sanitizeTracePayload(value: unknown): Record<string, unknown> {
 	}
 
 	return { value: sanitizeTraceValue(value) };
+}
+
+function normalizeModelMetadata(modelId: unknown): NormalizedModelMetadata {
+	if (typeof modelId === 'string' && modelId.length > 0) {
+		const [provider, ...modelParts] = modelId.split('/');
+		return modelParts.length > 0
+			? { provider, modelName: modelParts.join('/') }
+			: { modelName: modelId };
+	}
+
+	if (isRecord(modelId) && typeof modelId.id === 'string') {
+		return normalizeModelMetadata(modelId.id);
+	}
+
+	return {};
+}
+
+export function serializeModelIdForTrace(modelId: unknown): unknown {
+	if (typeof modelId === 'string' && modelId.length > 0) {
+		return truncateString(modelId);
+	}
+
+	if (isRecord(modelId) && typeof modelId.id === 'string') {
+		return truncateString(modelId.id);
+	}
+
+	return sanitizeTraceValue(modelId);
+}
+
+function mergeRunTreeMetadata(
+	baseMetadata: Record<string, unknown> | undefined,
+	metadata: Record<string, unknown> | undefined,
+): Record<string, unknown> | undefined {
+	return mergeMetadata(baseMetadata, metadata);
+}
+
+async function postChildRun(
+	parentRun: RunTree,
+	options: InstanceAiTraceRunInit & { tags?: string[] },
+): Promise<RunTree> {
+	const childRun = parentRun.createChild({
+		name: options.name,
+		run_type: options.runType ?? 'chain',
+		tags: normalizeTags(DEFAULT_TAGS, parentRun.tags, options.tags),
+		metadata: mergeRunTreeMetadata(parentRun.metadata, options.metadata),
+		inputs: sanitizeTracePayload(options.inputs),
+	});
+	childRun.parent_run_id ??= parentRun.id;
+	await childRun.postRun();
+	return childRun;
+}
+
+async function finishRunTree(
+	runTree: RunTree,
+	options?: InstanceAiTraceRunFinishOptions,
+): Promise<void> {
+	await runTree.end(
+		options?.outputs !== undefined ? sanitizeTracePayload(options.outputs) : undefined,
+		options?.error,
+		Date.now(),
+		mergeMetadata(options?.metadata),
+	);
+	await runTree.patchRun();
+}
+
+export async function withCurrentTraceSpan<T>(
+	options: CurrentTraceSpanOptions<T>,
+	fn: () => Promise<T>,
+): Promise<T> {
+	const parentRun = getCurrentRunTree();
+	if (!parentRun) {
+		return await fn();
+	}
+
+	const spanRun = await postChildRun(parentRun, {
+		name: options.name,
+		runType: options.runType ?? 'chain',
+		tags: options.tags,
+		metadata: options.metadata,
+		inputs: options.inputs,
+	});
+
+	try {
+		const result = await withLangSmithRunTree(spanRun, fn);
+		await finishRunTree(spanRun, {
+			...(options.processOutputs ? { outputs: options.processOutputs(result) } : {}),
+			metadata: { final_status: 'completed' },
+		});
+		return result;
+	} catch (error) {
+		await finishRunTree(spanRun, {
+			error: normalizeErrorMessage(error),
+			metadata: { final_status: 'error' },
+		});
+		throw error;
+	}
+}
+
+async function startHitlChildRun(
+	parentRun: RunTree,
+	name: string,
+	inputs: unknown,
+	metadata?: Record<string, unknown>,
+): Promise<void> {
+	const hitlRun = await postChildRun(parentRun, {
+		name,
+		runType: 'chain',
+		tags: ['hitl'],
+		metadata,
+		inputs,
+	});
+	await finishRunTree(hitlRun, {
+		outputs: inputs,
+		metadata: { final_status: 'completed' },
+	});
+}
+
+function buildSuspendMetadata(
+	toolName: string,
+	suspendPayload: unknown,
+): Record<string, unknown> | undefined {
+	if (!isRecord(suspendPayload)) {
+		return { tool_name: toolName };
+	}
+
+	return {
+		tool_name: toolName,
+		...(typeof suspendPayload.requestId === 'string'
+			? { request_id: suspendPayload.requestId }
+			: {}),
+		...(typeof suspendPayload.inputType === 'string'
+			? { input_type: suspendPayload.inputType }
+			: {}),
+		...(typeof suspendPayload.severity === 'string' ? { severity: suspendPayload.severity } : {}),
+	};
+}
+
+async function traceSuspendableToolExecute(
+	tool: TraceableMastraTool,
+	options: InstanceAiToolTraceOptions | undefined,
+	input: unknown,
+	context: ToolExecutionContext<unknown, unknown, unknown>,
+): Promise<unknown> {
+	const parentRun = getCurrentRunTree();
+	if (!parentRun || typeof tool.execute !== 'function') {
+		return await tool.execute?.(input, context);
+	}
+
+	const resumeData = context.agent?.resumeData;
+	const toolRun = await postChildRun(parentRun, {
+		name:
+			resumeData !== undefined && resumeData !== null
+				? `tool:${tool.id}:resume`
+				: `tool:${tool.id}`,
+		runType: 'tool',
+		tags: normalizeTags(['tool'], options?.tags),
+		metadata: mergeMetadata(options?.metadata, {
+			tool_name: tool.id,
+			...(options?.agentRole ? { agent_role: options.agentRole } : {}),
+			phase: resumeData !== undefined && resumeData !== null ? 'resume' : 'initial',
+			...(resumeData !== undefined && resumeData !== null
+				? mergeMetadata(buildSuspendMetadata(tool.id, resumeData), {
+						approved: isRecord(resumeData) ? resumeData.approved : undefined,
+					})
+				: {}),
+		}),
+		inputs: { input },
+	});
+
+	let toolRunFinished = false;
+	const finishToolRun = async (finishOptions?: InstanceAiTraceRunFinishOptions) => {
+		if (toolRunFinished) return;
+		toolRunFinished = true;
+		await finishRunTree(toolRun, finishOptions);
+	};
+
+	const originalSuspend = context.agent?.suspend;
+	const wrappedContext =
+		context.agent && typeof originalSuspend === 'function'
+			? {
+					...context,
+					agent: {
+						...context.agent,
+						suspend: async (suspendPayload: unknown) => {
+							await startHitlChildRun(
+								toolRun,
+								'hitl:suspend',
+								suspendPayload,
+								buildSuspendMetadata(tool.id, suspendPayload),
+							);
+							await finishToolRun({
+								outputs: {
+									status: 'suspended',
+									suspendPayload,
+								},
+								metadata: mergeMetadata(buildSuspendMetadata(tool.id, suspendPayload), {
+									final_status: 'suspended',
+								}),
+							});
+							return await originalSuspend(suspendPayload);
+						},
+					},
+				}
+			: context;
+
+	try {
+		const result = await withLangSmithRunTree(toolRun, async () => {
+			return await tool.execute!(input, wrappedContext);
+		});
+		await finishToolRun({
+			outputs: result,
+			metadata: { final_status: 'completed' },
+		});
+		return result;
+	} catch (error) {
+		await finishToolRun({
+			error: normalizeErrorMessage(error),
+			metadata: { final_status: 'error' },
+		});
+		throw error;
+	}
 }
 
 function createTraceContext(
@@ -285,12 +525,31 @@ function wrapToolExecute(
 	tool: TraceableMastraTool,
 	options: InstanceAiToolTraceOptions | undefined,
 ): TraceableMastraTool {
-	if (
-		typeof tool.execute !== 'function' ||
-		tool.suspendSchema !== undefined ||
-		tool.resumeSchema !== undefined
-	) {
+	if (typeof tool.execute !== 'function') {
 		return tool;
+	}
+
+	if (tool.suspendSchema !== undefined || tool.resumeSchema !== undefined) {
+		return createTool({
+			id: tool.id,
+			description: tool.description,
+			inputSchema: tool.inputSchema,
+			outputSchema: tool.outputSchema,
+			suspendSchema: tool.suspendSchema,
+			resumeSchema: tool.resumeSchema,
+			requestContextSchema: tool.requestContextSchema,
+			execute: async (input, context) =>
+				await traceSuspendableToolExecute(tool, options, input, context),
+			mastra: tool.mastra,
+			requireApproval: tool.requireApproval,
+			providerOptions: tool.providerOptions,
+			toModelOutput: tool.toModelOutput,
+			mcp: tool.mcp,
+			onInputStart: tool.onInputStart,
+			onInputDelta: tool.onInputDelta,
+			onInputAvailable: tool.onInputAvailable,
+			onOutput: tool.onOutput,
+		});
 	}
 
 	const tracedExecute = traceable(tool.execute, {
@@ -300,6 +559,7 @@ function wrapToolExecute(
 		metadata: mergeMetadata(options?.metadata, {
 			tool_name: tool.id,
 			...(options?.agentRole ? { agent_role: options.agentRole } : {}),
+			...normalizeModelMetadata(options?.metadata?.model_id),
 		}),
 		processInputs: (inputs) => sanitizeTracePayload(inputs),
 		processOutputs: (outputs) => sanitizeTracePayload(outputs),
@@ -351,7 +611,7 @@ async function createRun(options: {
 		run_type: options.runType ?? 'chain',
 		project_name: options.projectName,
 		tags: normalizeTags(DEFAULT_TAGS, options.tags),
-		metadata: options.metadata,
+		metadata: mergeMetadata(options.metadata),
 		inputs: sanitizeTracePayload(options.inputs),
 	});
 	await runTree.postRun();
@@ -384,7 +644,7 @@ async function finishTraceRun(
 		options?.outputs !== undefined ? sanitizeTracePayload(options.outputs) : undefined,
 		options?.error,
 		Date.now(),
-		options?.metadata,
+		mergeMetadata(options?.metadata),
 	);
 	await runTree.patchRun();
 	syncRunState(runState, runTree);
@@ -410,7 +670,9 @@ function buildBaseMetadata(options: CreateInstanceAiTraceContextOptions): Record
 		message_id: options.messageId,
 		run_id: options.runId,
 		user_id: options.userId,
-		...(options.modelId !== undefined ? { model_id: sanitizeTraceValue(options.modelId) } : {}),
+		...(options.modelId !== undefined
+			? { model_id: serializeModelIdForTrace(options.modelId) }
+			: {}),
 		...options.metadata,
 	};
 }

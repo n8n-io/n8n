@@ -5,6 +5,7 @@ export type { DomainAccessTracker } from './domain-access';
 export {
 	createInstanceAiTraceContext,
 	continueInstanceAiTraceContext,
+	withCurrentTraceSpan,
 } from './tracing/langsmith-tracing';
 export { createInstanceAgent } from './agent/instance-agent';
 export { createAllTools, createOrchestrationTools } from './tools';

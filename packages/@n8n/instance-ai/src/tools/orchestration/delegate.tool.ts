@@ -15,6 +15,8 @@ import { registerWithMastra } from '../../agent/register-with-mastra';
 import { createSubAgent, SUB_AGENT_PROTOCOL } from '../../agent/sub-agent-factory';
 import { createSubAgentMemory, subAgentResourceId } from '../../memory/sub-agent-memory';
 import { MEMORY_ENABLED_ROLES } from '../../memory/sub-agent-memory-templates';
+import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
+import { traceWorkingMemoryContext } from '../../runtime/working-memory-tracing';
 import { formatPreviousAttempts } from '../../storage/iteration-log';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
 import type { OrchestrationContext } from '../../types';
@@ -199,14 +201,27 @@ export async function startDetachedDelegateTask(
 				const memoryOpts = memory
 					? { resource: subAgentResourceId(context.userId, role), thread: subAgentId }
 					: undefined;
-				const stream = await subAgent.stream(briefingMessage, {
-					maxSteps: context.subAgentMaxSteps ?? FALLBACK_MAX_STEPS,
-					abortSignal: signal,
-					providerOptions: {
-						anthropic: { cacheControl: { type: 'ephemeral' } },
+				const llmStepTraceHooks = createLlmStepTraceHooks();
+				const stream = await traceWorkingMemoryContext(
+					{
+						phase: 'initial',
+						agentId: subAgentId,
+						agentRole: role,
+						threadId: context.threadId,
+						input: briefingMessage,
+						memory: memoryOpts,
 					},
-					...(memoryOpts ? { memory: memoryOpts } : {}),
-				});
+					async () =>
+						await subAgent.stream(briefingMessage, {
+							maxSteps: context.subAgentMaxSteps ?? FALLBACK_MAX_STEPS,
+							abortSignal: signal,
+							providerOptions: {
+								anthropic: { cacheControl: { type: 'ephemeral' } },
+							},
+							...(llmStepTraceHooks?.executionOptions ?? {}),
+							...(memoryOpts ? { memory: memoryOpts } : {}),
+						}),
+				);
 
 				const result = await consumeStreamWithHitl({
 					agent: subAgent,
@@ -222,6 +237,8 @@ export async function startDetachedDelegateTask(
 					abortSignal: signal,
 					waitForConfirmation: context.waitForConfirmation,
 					drainCorrections,
+					llmStepTraceHooks,
+					workingMemoryEnabled: Boolean(memoryOpts),
 				});
 
 				return await result.text;
@@ -318,14 +335,27 @@ export function createDelegateTool(context: OrchestrationContext) {
 					? { resource: subAgentResourceId(context.userId, input.role), thread: subAgentId }
 					: undefined;
 				const resultText = await withTraceRun(context, traceRun, async () => {
-					const stream = await subAgent.stream(briefingMessage, {
-						maxSteps: context.subAgentMaxSteps ?? FALLBACK_MAX_STEPS,
-						abortSignal: context.abortSignal,
-						providerOptions: {
-							anthropic: { cacheControl: { type: 'ephemeral' } },
+					const llmStepTraceHooks = createLlmStepTraceHooks();
+					const stream = await traceWorkingMemoryContext(
+						{
+							phase: 'initial',
+							agentId: subAgentId,
+							agentRole: input.role,
+							threadId: context.threadId,
+							input: briefingMessage,
+							memory: memoryOpts,
 						},
-						...(memoryOpts ? { memory: memoryOpts } : {}),
-					});
+						async () =>
+							await subAgent.stream(briefingMessage, {
+								maxSteps: context.subAgentMaxSteps ?? FALLBACK_MAX_STEPS,
+								abortSignal: context.abortSignal,
+								providerOptions: {
+									anthropic: { cacheControl: { type: 'ephemeral' } },
+								},
+								...(llmStepTraceHooks?.executionOptions ?? {}),
+								...(memoryOpts ? { memory: memoryOpts } : {}),
+							}),
+					);
 
 					const result = await consumeStreamWithHitl({
 						agent: subAgent,
@@ -340,6 +370,8 @@ export function createDelegateTool(context: OrchestrationContext) {
 						threadId: context.threadId,
 						abortSignal: context.abortSignal,
 						waitForConfirmation: context.waitForConfirmation,
+						llmStepTraceHooks,
+						workingMemoryEnabled: Boolean(memoryOpts),
 					});
 
 					return await result.text;

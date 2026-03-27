@@ -22,6 +22,7 @@ import type {
 } from '@mastra/core/storage';
 import { MemoryStorage } from '@mastra/core/storage';
 import { Service } from '@n8n/di';
+import { withCurrentTraceSpan } from '@n8n/instance-ai';
 import { In } from '@n8n/typeorm';
 import { generateNanoId } from '@n8n/utils';
 import { jsonParse } from 'n8n-workflow';
@@ -36,6 +37,34 @@ import { InstanceAiThreadRepository } from '../repositories/instance-ai-thread.r
 
 /** Metadata keys that must only be mutated via patchThread (atomic read-modify-write). */
 const PATCH_ONLY_METADATA_KEYS = ['instanceAiPlannedTasks'] as const;
+
+function countLines(value: string): number {
+	return value === '' ? 0 : value.split(/\r?\n/u).length;
+}
+
+function buildResourceTraceMetadata(resourceId: string): Record<string, unknown> {
+	const separatorIndex = resourceId.indexOf(':');
+
+	return {
+		resource_id: resourceId,
+		memory_scope: separatorIndex === -1 ? 'user' : 'user-role',
+		...(separatorIndex !== -1 && separatorIndex < resourceId.length - 1
+			? { memory_role: resourceId.slice(separatorIndex + 1) }
+			: {}),
+	};
+}
+
+function summarizeLoadedResource(resource: StorageResourceType | null): Record<string, unknown> {
+	const workingMemory = resource?.workingMemory;
+
+	return {
+		found: resource !== null,
+		has_working_memory: typeof workingMemory === 'string' && workingMemory.length > 0,
+		working_memory_chars: typeof workingMemory === 'string' ? workingMemory.length : 0,
+		working_memory_lines: typeof workingMemory === 'string' ? countLines(workingMemory) : 0,
+		metadata_keys: resource?.metadata ? Object.keys(resource.metadata).length : 0,
+	};
+}
 
 @Service()
 export class TypeORMMemoryStorage extends MemoryStorage {
@@ -524,15 +553,26 @@ export class TypeORMMemoryStorage extends MemoryStorage {
 	}: {
 		resourceId: string;
 	}): Promise<StorageResourceType | null> {
-		const entity = await this.resourceRepo.findOneBy({ id: resourceId });
-		if (!entity) return null;
-		return {
-			id: entity.id,
-			workingMemory: entity.workingMemory ?? undefined,
-			metadata: entity.metadata ?? undefined,
-			createdAt: entity.createdAt,
-			updatedAt: entity.updatedAt,
-		};
+		return await withCurrentTraceSpan(
+			{
+				name: 'memory_load',
+				tags: ['memory'],
+				metadata: buildResourceTraceMetadata(resourceId),
+				inputs: { resource_id: resourceId },
+				processOutputs: summarizeLoadedResource,
+			},
+			async () => {
+				const entity = await this.resourceRepo.findOneBy({ id: resourceId });
+				if (!entity) return null;
+				return {
+					id: entity.id,
+					workingMemory: entity.workingMemory ?? undefined,
+					metadata: entity.metadata ?? undefined,
+					createdAt: entity.createdAt,
+					updatedAt: entity.updatedAt,
+				};
+			},
+		);
 	}
 
 	async saveResource({

@@ -1334,12 +1334,42 @@ export class InstanceAiService {
 				agentId: ORCHESTRATOR_AGENT_ID,
 				payload: { message: 'Recalling conversation...' },
 			});
-			const conversationSummary = await this.compactionService.prepareCompactedContext(
-				threadId,
-				memory,
-				modelId,
-				this.instanceAiConfig.lastMessages ?? 20,
-			);
+			const contextCompactionRun = tracing
+				? await tracing.startChildRun(tracing.orchestratorRun, {
+						name: 'context_compaction',
+						tags: ['context'],
+						metadata: { agent_role: 'context_compaction' },
+						inputs: {
+							threadId,
+							lastMessages: this.instanceAiConfig.lastMessages ?? 20,
+						},
+					})
+				: undefined;
+			let conversationSummary: string | null | undefined;
+			try {
+				conversationSummary = await this.compactionService.prepareCompactedContext(
+					threadId,
+					memory,
+					modelId,
+					this.instanceAiConfig.lastMessages ?? 20,
+				);
+				if (contextCompactionRun && tracing) {
+					await tracing.finishRun(contextCompactionRun, {
+						outputs: {
+							summarized: Boolean(conversationSummary),
+							summary: conversationSummary ?? '',
+						},
+						metadata: { final_status: 'completed' },
+					});
+				}
+			} catch (error) {
+				if (contextCompactionRun && tracing) {
+					await tracing.failRun(contextCompactionRun, error, {
+						final_status: 'error',
+					});
+				}
+				throw error;
+			}
 			this.eventBus.publish(threadId, {
 				type: 'status',
 				runId,
@@ -1347,30 +1377,69 @@ export class InstanceAiService {
 				payload: { message: '' },
 			});
 
-			const enrichedMessage = await this.buildMessageWithRunningTasks(threadId, message);
+			const promptBuildRun = tracing
+				? await tracing.startChildRun(tracing.orchestratorRun, {
+						name: 'prompt_build',
+						tags: ['prompt'],
+						metadata: { agent_role: 'prompt_build' },
+						inputs: {
+							message,
+							hasConversationSummary: Boolean(conversationSummary),
+							attachmentCount: attachments?.length ?? 0,
+						},
+					})
+				: undefined;
+			let streamInput:
+				| string
+				| Array<{
+						role: 'user';
+						content: Array<
+							{ type: 'text'; text: string } | { type: 'file'; data: string; mimeType: string }
+						>;
+				  }>;
+			try {
+				const enrichedMessage = await this.buildMessageWithRunningTasks(threadId, message);
 
-			// Compose runtime input: conversation summary → background tasks → user message
-			const fullMessage = conversationSummary
-				? `${conversationSummary}\n\n${enrichedMessage}`
-				: enrichedMessage;
+				// Compose runtime input: conversation summary → background tasks → user message
+				const fullMessage = conversationSummary
+					? `${conversationSummary}\n\n${enrichedMessage}`
+					: enrichedMessage;
 
-			// Build multimodal message when attachments are present
-			const streamInput =
-				attachments && attachments.length > 0
-					? [
-							{
-								role: 'user' as const,
-								content: [
-									{ type: 'text' as const, text: fullMessage },
-									...attachments.map((a) => ({
-										type: 'file' as const,
-										data: a.data,
-										mimeType: a.mimeType,
-									})),
-								],
-							},
-						]
-					: fullMessage;
+				// Build multimodal message when attachments are present
+				streamInput =
+					attachments && attachments.length > 0
+						? [
+								{
+									role: 'user' as const,
+									content: [
+										{ type: 'text' as const, text: fullMessage },
+										...attachments.map((a) => ({
+											type: 'file' as const,
+											data: a.data,
+											mimeType: a.mimeType,
+										})),
+									],
+								},
+							]
+						: fullMessage;
+
+				if (promptBuildRun && tracing) {
+					await tracing.finishRun(promptBuildRun, {
+						outputs: {
+							fullMessage,
+							streamInput,
+						},
+						metadata: { final_status: 'completed' },
+					});
+				}
+			} catch (error) {
+				if (promptBuildRun && tracing) {
+					await tracing.failRun(promptBuildRun, error, {
+						final_status: 'error',
+					});
+				}
+				throw error;
+			}
 
 			const result = tracing
 				? await tracing.withRunTree(tracing.orchestratorRun, async () => {

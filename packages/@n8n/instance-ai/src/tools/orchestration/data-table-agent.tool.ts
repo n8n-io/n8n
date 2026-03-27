@@ -17,6 +17,8 @@ import { truncateLabel } from './display-utils';
 import { startSubAgentTrace, traceSubAgentTools, withTraceRun } from './tracing-utils';
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { createSubAgentMemory, subAgentResourceId } from '../../memory/sub-agent-memory';
+import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
+import { traceWorkingMemoryContext } from '../../runtime/working-memory-tracing';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
 import type { OrchestrationContext } from '../../types';
 
@@ -142,14 +144,27 @@ export async function startDataTableAgentTask(
 					: '';
 				const briefing = `${input.task}${conversationCtx}`;
 
-				const stream = await subAgent.stream(briefing, {
-					maxSteps: DATA_TABLE_MAX_STEPS,
-					abortSignal: signal,
-					providerOptions: {
-						anthropic: { cacheControl: { type: 'ephemeral' } },
+				const llmStepTraceHooks = createLlmStepTraceHooks();
+				const stream = await traceWorkingMemoryContext(
+					{
+						phase: 'initial',
+						agentId: subAgentId,
+						agentRole: 'data-table-manager',
+						threadId: context.threadId,
+						input: briefing,
+						memory: dtMemoryOpts,
 					},
-					...(dtMemoryOpts ? { memory: dtMemoryOpts } : {}),
-				});
+					async () =>
+						await subAgent.stream(briefing, {
+							maxSteps: DATA_TABLE_MAX_STEPS,
+							abortSignal: signal,
+							providerOptions: {
+								anthropic: { cacheControl: { type: 'ephemeral' } },
+							},
+							...(llmStepTraceHooks?.executionOptions ?? {}),
+							...(dtMemoryOpts ? { memory: dtMemoryOpts } : {}),
+						}),
+				);
 
 				const hitlResult = await consumeStreamWithHitl({
 					agent: subAgent,
@@ -164,6 +179,8 @@ export async function startDataTableAgentTask(
 					threadId: context.threadId,
 					abortSignal: signal,
 					waitForConfirmation: context.waitForConfirmation,
+					llmStepTraceHooks,
+					workingMemoryEnabled: Boolean(dtMemoryOpts),
 				});
 
 				return await hitlResult.text;

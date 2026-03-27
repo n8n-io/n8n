@@ -13,7 +13,10 @@ import {
 	withTraceRun,
 } from './tracing-utils';
 import { registerWithMastra } from '../../agent/register-with-mastra';
-import { executeResumableStream } from '../../runtime/resumable-stream-executor';
+import {
+	createLlmStepTraceHooks,
+	executeResumableStream,
+} from '../../runtime/resumable-stream-executor';
 import type { OrchestrationContext } from '../../types';
 
 const BROWSER_AGENT_MAX_STEPS = 300;
@@ -251,19 +254,18 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 						'Everything before that is an intermediate step — keep going.';
 
 					// Stream the sub-agent
+					const llmStepTraceHooks = createLlmStepTraceHooks();
 					const stream = await subAgent.stream(briefing, {
 						maxSteps: BROWSER_AGENT_MAX_STEPS,
 						abortSignal: context.abortSignal,
 						providerOptions: {
 							anthropic: { cacheControl: { type: 'ephemeral' } },
 						},
+						...(llmStepTraceHooks?.executionOptions ?? {}),
 					});
 
-					let activeStream = {
-						runId: (stream as { runId?: string }).runId,
-						fullStream: stream.fullStream,
-						text: stream.text,
-					};
+					let activeStream = stream;
+					let activeMastraRunId = typeof stream.runId === 'string' ? stream.runId : '';
 					let lastSuspendedToolName = '';
 					const MAX_NUDGES = 3;
 					let nudgeCount = 0;
@@ -272,6 +274,7 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 						const result = await executeResumableStream({
 							agent: subAgent,
 							stream: activeStream,
+							initialMastraRunId: activeMastraRunId,
 							context: {
 								threadId: context.threadId,
 								runId: context.runId,
@@ -293,6 +296,7 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 									lastSuspendedToolName = suspension.toolName ?? '';
 								},
 							},
+							llmStepTraceHooks,
 						});
 
 						if (result.status === 'cancelled') {
@@ -311,14 +315,14 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 									providerOptions: {
 										anthropic: { cacheControl: { type: 'ephemeral' } },
 									},
+									...(llmStepTraceHooks?.executionOptions ?? {}),
 								},
 							);
-							activeStream = {
-								runId:
-									(nudge as { runId?: string }).runId ?? (result.mastraRunId || activeStream.runId),
-								fullStream: nudge.fullStream,
-								text: nudge.text,
-							};
+							activeStream = nudge;
+							activeMastraRunId =
+								(typeof nudge.runId === 'string' && nudge.runId) ||
+								result.mastraRunId ||
+								activeMastraRunId;
 							continue;
 						}
 
