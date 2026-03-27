@@ -7,6 +7,7 @@ import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useCanvasStore } from '@/app/stores/canvas.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -31,6 +32,7 @@ export function usePostMessageHandler({
 	const i18n = useI18n();
 	const toast = useToast();
 	const canvasStore = useCanvasStore();
+	const uiStore = useUIStore();
 	const projectsStore = useProjectsStore();
 	const executionsStore = useExecutionsStore();
 	const rootStore = useRootStore();
@@ -64,7 +66,12 @@ export function usePostMessageHandler({
 		workflow: WorkflowDataUpdate;
 		projectId?: string;
 		tidyUp?: boolean;
+		suppressNotifications?: boolean;
 	}) {
+		if (json.suppressNotifications) {
+			uiStore.setNotificationsSuppressed(true);
+		}
+
 		if (json.projectId) {
 			await projectsStore.fetchAndSetProject(json.projectId);
 		}

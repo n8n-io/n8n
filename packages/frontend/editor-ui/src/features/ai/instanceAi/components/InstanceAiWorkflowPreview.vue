@@ -130,6 +130,7 @@ onBeforeUnmount(() => {
 				:execution-id="props.executionId ?? undefined"
 				:can-open-ndv="true"
 				:hide-controls="false"
+				:suppress-notifications="true"
 				loader-type="spinner"
 			/>
 

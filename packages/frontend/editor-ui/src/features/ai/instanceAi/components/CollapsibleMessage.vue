@@ -21,7 +21,6 @@ const needsCollapse = ref(false);
 function checkHeight() {
 	if (contentRef.value && contentRef.value.scrollHeight > props.maxHeight) {
 		needsCollapse.value = true;
-		isExpanded.value = false;
 	}
 }
 
