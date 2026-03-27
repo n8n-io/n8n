@@ -547,6 +547,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
     return __prepareForTransfer(__result);
   } catch(e) {
     if (e && e.__isError) return e;
+    if (e == null) return { __isError: true, name: "Error", message: String(e), stack: "", extra: {} };
     var extra = {};
     for (var k in e) {
       if (e.hasOwnProperty(k)) extra[k] = e[k];
