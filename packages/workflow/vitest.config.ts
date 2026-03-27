@@ -1,13 +1,15 @@
 import { defineConfig } from 'vitest/config';
 import { createBaseInlineConfig } from '@n8n/vitest-config/node';
 
-const sharedTestConfig = createBaseInlineConfig({
+const { reporters, outputFile, ...sharedTestConfig } = createBaseInlineConfig({
 	include: ['test/**/*.test.ts'],
 	setupFiles: ['./test/setup-vm-evaluator.ts'],
 });
 
 export default defineConfig({
 	test: {
+		reporters,
+		outputFile,
 		workspace: [
 			{
 				test: {
