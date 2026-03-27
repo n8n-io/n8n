@@ -96,6 +96,7 @@ export const GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE = [
 	'mcpOAuth2Api',
 	'facebookGraphApiOAuth2Api',
 	'facebookGraphAppOAuth2Api',
+	'wordpressOAuth2Api',
 ];
 
 export const ARTIFICIAL_TASK_DATA = {

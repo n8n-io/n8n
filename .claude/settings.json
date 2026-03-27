@@ -12,5 +12,16 @@
 			"Bash(popd)",
 			"Bash(pushd:*)"
 		]
+	},
+	"extraKnownMarketplaces": {
+		"n8n": {
+			"source": {
+				"source": "directory",
+				"path": "./.claude/plugins/n8n"
+			}
+		}
+	},
+	"enabledPlugins": {
+		"n8n@n8n": true
 	}
 }
