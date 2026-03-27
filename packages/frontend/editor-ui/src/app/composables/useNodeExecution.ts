@@ -1,4 +1,4 @@
-import { computed, ref, toValue, type ComputedRef, type MaybeRef } from 'vue';
+import { computed, ref, toValue, watch, type ComputedRef, type MaybeRef } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
@@ -151,7 +151,19 @@ export function useNodeExecution(
 		);
 	});
 
+	const isWaitingForChatInput = ref(false);
+
+	// Clear chat waiting state when execution finishes (user sent a message and it completed)
+	watch(
+		() => workflowsStore.isWorkflowRunning,
+		(running, wasRunning) => {
+			if (!running && wasRunning) isWaitingForChatInput.value = false;
+		},
+	);
+
 	const isListening = computed(() => {
+		if (isWaitingForChatInput.value) return true;
+
 		const waitingOnWebhook = workflowsStore.executionWaitingForWebhook;
 		const executedNode = workflowsStore.executedNode;
 
@@ -350,9 +362,13 @@ export function useNodeExecution(
 			if (!success) return 'cancelled';
 		}
 
-		// Stop webhook listening
+		// Stop listening for chat input or webhook
 		if (isListening.value) {
-			await stopWaitingForWebhook();
+			if (isWaitingForChatInput.value) {
+				isWaitingForChatInput.value = false;
+			} else {
+				await stopWaitingForWebhook();
+			}
 			return 'stopped-webhook';
 		}
 
@@ -405,7 +421,8 @@ export function useNodeExecution(
 
 			// Close NDV before running workflow if chat will open,
 			// otherwise the NDV blocks the chat panel
-			if (isChatNode.value || (isChatChild.value && ndvStore.isInputPanelEmpty)) {
+			const willOpenChat = isChatNode.value || (isChatChild.value && ndvStore.isInputPanelEmpty);
+			if (willOpenChat) {
 				ndvStore.unsetActiveNodeName();
 			}
 
@@ -413,6 +430,10 @@ export function useNodeExecution(
 				destinationNode: { nodeName, mode: toValue(executionMode) },
 				source,
 			});
+
+			if (willOpenChat) {
+				isWaitingForChatInput.value = true;
+			}
 
 			return 'executed';
 		}
