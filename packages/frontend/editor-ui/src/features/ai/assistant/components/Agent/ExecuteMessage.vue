@@ -223,114 +223,117 @@ watch(hasValidationIssues, (hasIssues, hadIssues) => {
 </script>
 
 <template>
-	<BuilderSetupWizard
-		v-if="showWizard"
-		@workflow-executed="emit('workflowExecuted')"
-		@no-setup-needed="wizardFallback = true"
-	/>
 	<div
-		v-else
 		ref="containerRef"
 		:class="$style.container"
 		role="region"
 		aria-label="Workflow execution panel"
 	>
-		<!-- Validation Issues Section -->
-		<template v-if="hasValidationIssues">
-			<p :class="$style.description">
-				{{ i18n.baseText('aiAssistant.builder.executeMessage.description') }}
-			</p>
-			<div :class="$style.issuesBox">
-				<CredentialsSetupCard
-					v-if="issuesByType.credentials.length > 0"
-					:issues="issuesByType.credentials"
-					:get-node-type="getNodeTypeByName"
-					@click="openCredentialsModal"
-				/>
-
-				<TransitionGroup
-					v-if="issuesByType.other.length > 0"
-					name="fade"
-					tag="ul"
-					:class="$style.issuesList"
-					role="list"
-					aria-label="Workflow validation issues"
-				>
-					<NodeIssueItem
-						v-for="issue in issuesByType.other"
-						:key="`${formatIssueMessage(issue.value)}_${issue.node}`"
-						:issue="issue"
+		<BuilderSetupWizard
+			v-if="showWizard"
+			@workflow-executed="emit('workflowExecuted')"
+			@no-setup-needed="wizardFallback = true"
+		/>
+		<template v-else>
+			<!-- Validation Issues Section -->
+			<template v-if="hasValidationIssues">
+				<p :class="$style.description">
+					{{ i18n.baseText('aiAssistant.builder.executeMessage.description') }}
+				</p>
+				<div :class="$style.issuesBox">
+					<CredentialsSetupCard
+						v-if="issuesByType.credentials.length > 0"
+						:issues="issuesByType.credentials"
 						:get-node-type="getNodeTypeByName"
-						:format-issue-message="formatIssueMessage"
-						@click="() => trackBuilderPlaceholders(issue)"
+						@click="openCredentialsModal"
 					/>
-				</TransitionGroup>
+
+					<TransitionGroup
+						v-if="issuesByType.other.length > 0"
+						name="fade"
+						tag="ul"
+						:class="$style.issuesList"
+						role="list"
+						aria-label="Workflow validation issues"
+					>
+						<NodeIssueItem
+							v-for="issue in issuesByType.other"
+							:key="`${formatIssueMessage(issue.value)}_${issue.node}`"
+							:issue="issue"
+							:get-node-type="getNodeTypeByName"
+							:format-issue-message="formatIssueMessage"
+							@click="() => trackBuilderPlaceholders(issue)"
+						/>
+					</TransitionGroup>
+				</div>
+			</template>
+
+			<!-- No Issues Section -->
+			<template v-else-if="triggerNodes.length > 0">
+				<p :class="$style.noIssuesMessage">
+					{{
+						builderStore.hasTodosHiddenByPinnedData || builderStore.pinDataApplied
+							? i18n.baseText('aiAssistant.builder.executeMessage.noIssuesWithPinData')
+							: i18n.baseText('aiAssistant.builder.executeMessage.noIssues')
+					}}
+					<N8nTooltip
+						v-if="builderStore.hasTodosHiddenByPinnedData || builderStore.pinDataApplied"
+						placement="top"
+					>
+						<template #content>
+							{{ i18n.baseText('aiAssistant.builder.executeMessage.unpinTooltip') }}
+						</template>
+						<N8nIcon icon="circle-help" size="small" :class="$style.infoIcon" />
+					</N8nTooltip>
+				</p>
+			</template>
+
+			<!-- Execution Button (hidden when follow-ups are shown instead) -->
+			<N8nTooltip
+				v-if="triggerNodes.length > 0 && !showFollowUps && !showPostExecutionFollowUps"
+				:disabled="!hasValidationIssues"
+				:content="executeButtonTooltip"
+				placement="left"
+			>
+				<CanvasRunWorkflowButton
+					:class="$style.runButton"
+					:disabled="hasValidationIssues || builderStore.hasNoCreditsRemaining"
+					:waiting-for-webhook="isExecutionWaitingForWebhook"
+					:hide-tooltip="true"
+					:label="i18n.baseText('aiAssistant.builder.executeMessage.execute')"
+					:executing="isWorkflowRunning"
+					:include-chat-trigger="true"
+					size="medium"
+					:trigger-nodes="availableTriggerNodes"
+					:get-node-type="nodeTypesStore.getNodeType"
+					:selected-trigger-node-name="workflowsStore.selectedTriggerNodeName"
+					@execute="onExecute"
+					@select-trigger-node="workflowsStore.setSelectedTriggerNodeName"
+				/>
+			</N8nTooltip>
+
+			<!-- Unpin All Section (hidden when post-execution follow-ups provide the same actions) -->
+			<div v-if="showUnpinSection && !showPostExecutionFollowUps" :class="$style.unpinSection">
+				<N8nButton
+					type="secondary"
+					size="medium"
+					icon="pin"
+					:label="i18n.baseText('aiAssistant.builder.executeMessage.unpinAll')"
+					@click="onUnpinAll"
+				/>
+				<span :class="$style.unpinIndividuallyText">
+					{{ i18n.baseText('aiAssistant.builder.executeMessage.unpinIndividually') }}
+					<N8nTooltip placement="top">
+						<template #content>
+							{{ i18n.baseText('aiAssistant.builder.executeMessage.unpinTooltip') }}
+						</template>
+						<N8nIcon icon="circle-help" size="small" :class="$style.infoIcon" />
+					</N8nTooltip>
+				</span>
 			</div>
 		</template>
 
-		<!-- No Issues Section -->
-		<template v-else-if="triggerNodes.length > 0">
-			<p :class="$style.noIssuesMessage">
-				{{
-					builderStore.hasTodosHiddenByPinnedData || builderStore.pinDataApplied
-						? i18n.baseText('aiAssistant.builder.executeMessage.noIssuesWithPinData')
-						: i18n.baseText('aiAssistant.builder.executeMessage.noIssues')
-				}}
-				<N8nTooltip
-					v-if="builderStore.hasTodosHiddenByPinnedData || builderStore.pinDataApplied"
-					placement="top"
-				>
-					<template #content>
-						{{ i18n.baseText('aiAssistant.builder.executeMessage.unpinTooltip') }}
-					</template>
-					<N8nIcon icon="circle-help" size="small" :class="$style.infoIcon" />
-				</N8nTooltip>
-			</p>
-		</template>
-
-		<!-- Execution Button (hidden when follow-ups are shown instead) -->
-		<N8nTooltip
-			v-if="triggerNodes.length > 0 && !showFollowUps && !showPostExecutionFollowUps"
-			:disabled="!hasValidationIssues"
-			:content="executeButtonTooltip"
-			placement="left"
-		>
-			<CanvasRunWorkflowButton
-				:class="$style.runButton"
-				:disabled="hasValidationIssues || builderStore.hasNoCreditsRemaining"
-				:waiting-for-webhook="isExecutionWaitingForWebhook"
-				:hide-tooltip="true"
-				:label="i18n.baseText('aiAssistant.builder.executeMessage.execute')"
-				:executing="isWorkflowRunning"
-				:include-chat-trigger="true"
-				size="medium"
-				:trigger-nodes="availableTriggerNodes"
-				:get-node-type="nodeTypesStore.getNodeType"
-				:selected-trigger-node-name="workflowsStore.selectedTriggerNodeName"
-				@execute="onExecute"
-				@select-trigger-node="workflowsStore.setSelectedTriggerNodeName"
-			/>
-		</N8nTooltip>
-
-		<!-- Unpin All Section (hidden when post-execution follow-ups provide the same actions) -->
-		<div v-if="showUnpinSection && !showPostExecutionFollowUps" :class="$style.unpinSection">
-			<N8nButton
-				type="secondary"
-				size="medium"
-				icon="pin"
-				:label="i18n.baseText('aiAssistant.builder.executeMessage.unpinAll')"
-				@click="onUnpinAll"
-			/>
-			<span :class="$style.unpinIndividuallyText">
-				{{ i18n.baseText('aiAssistant.builder.executeMessage.unpinIndividually') }}
-				<N8nTooltip placement="top">
-					<template #content>
-						{{ i18n.baseText('aiAssistant.builder.executeMessage.unpinTooltip') }}
-					</template>
-					<N8nIcon icon="circle-help" size="small" :class="$style.infoIcon" />
-				</N8nTooltip>
-			</span>
-		</div>
+		<!-- Follow-up sections (render below both wizard and fallback paths) -->
 
 		<!-- Pre-execution Follow-ups -->
 		<div v-if="showFollowUps" :class="$style.followUpsSection">
