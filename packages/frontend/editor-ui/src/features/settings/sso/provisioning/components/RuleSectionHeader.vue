@@ -1,5 +1,8 @@
 <script lang="ts" setup>
 import { N8nButton } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+
+const i18n = useI18n();
 
 defineProps<{
 	title: string;
@@ -23,7 +26,7 @@ const emit = defineEmits<{
 			data-test-id="add-rule-button"
 			@click="emit('add')"
 		>
-			{{ $t('settings.sso.settings.roleMappingRules.addRule') }}
+			{{ i18n.baseText('settings.sso.settings.roleMappingRules.addRule') }}
 		</N8nButton>
 	</div>
 </template>
