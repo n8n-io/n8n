@@ -13,7 +13,7 @@ export class CommunityPackagesController {
 	async installPackage(req: NodeRequest.Post) {
 		const { name, verify, version } = req.body;
 
-		return await this.communityPackagesLifecycle.installWithSideEffects(
+		return await this.communityPackagesLifecycle.install(
 			{ name, verify, version },
 			req.user,
 			'ui',
@@ -23,7 +23,7 @@ export class CommunityPackagesController {
 	@Get('/')
 	@GlobalScope('communityPackage:list')
 	async getInstalledPackages() {
-		return await this.communityPackagesLifecycle.listInstalledPackagesHydrated();
+		return await this.communityPackagesLifecycle.listInstalledPackages();
 	}
 
 	@Delete('/')
@@ -31,7 +31,7 @@ export class CommunityPackagesController {
 	async uninstallPackage(req: NodeRequest.Delete) {
 		const { name } = req.query;
 
-		await this.communityPackagesLifecycle.uninstallWithSideEffects(name, req.user, 'badRequest');
+		await this.communityPackagesLifecycle.uninstall(name, req.user, 'badRequest');
 	}
 
 	@Patch('/')
@@ -39,7 +39,7 @@ export class CommunityPackagesController {
 	async updatePackage(req: NodeRequest.Update) {
 		const { name, version, checksum } = req.body;
 
-		return await this.communityPackagesLifecycle.updateWithSideEffects(
+		return await this.communityPackagesLifecycle.update(
 			{ name, version, checksum },
 			req.user,
 			'badRequest',

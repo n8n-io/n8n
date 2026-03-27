@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import {
 	RESPONSE_ERROR_MESSAGES,
@@ -12,7 +13,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { Push } from '@/push';
 import { InstanceSettings } from 'n8n-core';
 import { valid } from 'semver';
-import type { PublicInstalledPackage } from 'n8n-workflow';
+import { ensureError, jsonParse, type PublicInstalledPackage } from 'n8n-workflow';
 
 import { CommunityNodeTypesService } from './community-node-types.service';
 import { CommunityPackagesService } from './community-packages.service';
@@ -40,6 +41,7 @@ export type MissingInstalledPackageBehavior = 'badRequest' | 'notFound';
 @Service()
 export class CommunityPackagesLifecycleService {
 	constructor(
+		private readonly logger: Logger,
 		private readonly push: Push,
 		private readonly communityPackagesService: CommunityPackagesService,
 		private readonly eventService: EventService,
@@ -47,7 +49,7 @@ export class CommunityPackagesLifecycleService {
 		private readonly instanceSettings: InstanceSettings,
 	) {}
 
-	async listInstalledPackagesHydrated(): Promise<PublicInstalledPackage[] | InstalledPackages[]> {
+	async listInstalledPackages(): Promise<PublicInstalledPackage[] | InstalledPackages[]> {
 		const installedPackages = await this.communityPackagesService.getAllInstalledPackages();
 
 		if (installedPackages.length === 0) return [];
@@ -61,27 +63,33 @@ export class CommunityPackagesLifecycleService {
 			});
 		} catch (error) {
 			if (isNpmExecErrorWithStdout(error) && error.code === 1) {
-				pendingUpdates = JSON.parse(error.stdout) as CommunityPackages.AvailableUpdates;
+				try {
+					pendingUpdates = jsonParse<CommunityPackages.AvailableUpdates>(error.stdout.trim());
+				} catch (parseError) {
+					this.logger.warn('Failed to parse npm outdated output', {
+						error: ensureError(parseError),
+					});
+				}
 			}
 		}
 
-		let hydratedPackages = this.communityPackagesService.matchPackagesWithUpdates(
+		let packages = this.communityPackagesService.matchPackagesWithUpdates(
 			installedPackages,
 			pendingUpdates,
 		);
 
 		try {
 			if (this.communityPackagesService.hasMissingPackages) {
-				hydratedPackages = this.communityPackagesService.matchMissingPackages(hydratedPackages);
+				packages = this.communityPackagesService.matchMissingPackages(packages);
 			}
 		} catch {
 			// Ignore errors when matching missing packages
 		}
 
-		return hydratedPackages;
+		return packages;
 	}
 
-	async installWithSideEffects(
+	async install(
 		args: { name: string | undefined; version?: string; verify?: boolean },
 		user: UserLike,
 		presentation: CommunityPackageInstallPresentation,
@@ -203,7 +211,7 @@ export class CommunityPackagesLifecycleService {
 		return installedPackage;
 	}
 
-	async updateWithSideEffects(
+	async update(
 		args: { name: string | undefined; version?: string; checksum?: string },
 		user: UserLike,
 		whenMissing: MissingInstalledPackageBehavior,
@@ -287,7 +295,7 @@ export class CommunityPackagesLifecycleService {
 		}
 	}
 
-	async uninstallWithSideEffects(
+	async uninstall(
 		packageName: string | undefined,
 		user: UserLike,
 		whenMissing: MissingInstalledPackageBehavior,

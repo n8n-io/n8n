@@ -1,5 +1,6 @@
-import type { InstanceSettings } from 'n8n-core';
 import type { CommunityNodeType } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
+import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'jest-mock-extended';
 
 import type { EventService } from '@/events/event.service';
@@ -13,6 +14,7 @@ import type { CommunityPackagesService } from '../community-packages.service';
 import type { InstalledPackages } from '../installed-packages.entity';
 
 describe('CommunityPackagesController', () => {
+	const logger = mock<Logger>();
 	const push = mock<Push>();
 	const communityPackagesService = mock<CommunityPackagesService>();
 	const eventService = mock<EventService>();
@@ -21,6 +23,7 @@ describe('CommunityPackagesController', () => {
 	(instanceSettings as any).nodesDownloadDir = '/tmp/n8n-nodes-download';
 
 	const lifecycle = new CommunityPackagesLifecycleService(
+		logger,
 		push,
 		communityPackagesService,
 		eventService,

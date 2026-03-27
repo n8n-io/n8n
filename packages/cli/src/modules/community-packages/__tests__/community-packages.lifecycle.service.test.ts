@@ -1,4 +1,5 @@
 import type { CommunityNodeType } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
 import { mock } from 'jest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -11,6 +12,7 @@ import type { CommunityPackagesService } from '../community-packages.service';
 import type { InstalledPackages } from '../installed-packages.entity';
 
 describe('CommunityPackagesLifecycleService', () => {
+	const logger = mock<Logger>();
 	const push = mock<Push>();
 	const communityPackagesService = mock<CommunityPackagesService>();
 	const eventService = mock<EventService>();
@@ -20,6 +22,7 @@ describe('CommunityPackagesLifecycleService', () => {
 	});
 
 	const lifecycle = new CommunityPackagesLifecycleService(
+		logger,
 		push,
 		communityPackagesService,
 		eventService,
@@ -33,12 +36,12 @@ describe('CommunityPackagesLifecycleService', () => {
 		jest.clearAllMocks();
 	});
 
-	describe('installWithSideEffects', () => {
+	describe('install', () => {
 		it('should throw error if verify in options but no checksum', async () => {
 			communityNodeTypesService.findVetted.mockReturnValue(undefined);
 
 			await expect(
-				lifecycle.installWithSideEffects(
+				lifecycle.install(
 					{ name: 'n8n-nodes-test', verify: true, version: '1.0.0' },
 					user,
 					'ui',
@@ -52,7 +55,7 @@ describe('CommunityPackagesLifecycleService', () => {
 			'should throw error if version is invalid',
 			async (version) => {
 				await expect(
-					lifecycle.installWithSideEffects(
+					lifecycle.install(
 						{ name: 'n8n-nodes-test', verify: true, version },
 						user,
 						'ui',
@@ -83,7 +86,7 @@ describe('CommunityPackagesLifecycleService', () => {
 				}),
 			);
 
-			await lifecycle.installWithSideEffects(
+			await lifecycle.install(
 				{ name: 'n8n-nodes-test', verify: true, version: '1.0.0' },
 				user,
 				'ui',
@@ -103,7 +106,7 @@ describe('CommunityPackagesLifecycleService', () => {
 		});
 	});
 
-	describe('updateWithSideEffects', () => {
+	describe('update', () => {
 		it('should use the version from the request when updating a package', async () => {
 			const previouslyInstalledPackage = mock<InstalledPackages>({
 				installedNodes: [{ type: 'testNode', latestVersion: 1, name: 'testNode' }],
@@ -126,7 +129,7 @@ describe('CommunityPackagesLifecycleService', () => {
 				version: undefined,
 			});
 
-			const result = await lifecycle.updateWithSideEffects(
+			const result = await lifecycle.update(
 				{
 					name: 'n8n-nodes-test',
 					version: '2.0.0',
@@ -150,7 +153,7 @@ describe('CommunityPackagesLifecycleService', () => {
 			'should throw error if version is invalid',
 			async (version) => {
 				await expect(
-					lifecycle.updateWithSideEffects(
+					lifecycle.update(
 						{ name: 'n8n-nodes-test', version, checksum: 'a893hfdsy7399' },
 						user,
 						'badRequest',
@@ -163,7 +166,7 @@ describe('CommunityPackagesLifecycleService', () => {
 			communityPackagesService.findInstalledPackage.mockResolvedValue(null);
 
 			await expect(
-				lifecycle.updateWithSideEffects(
+				lifecycle.update(
 					{ name: 'n8n-nodes-missing', version: '1.0.0' },
 					user,
 					'notFound',
@@ -175,7 +178,7 @@ describe('CommunityPackagesLifecycleService', () => {
 			communityPackagesService.findInstalledPackage.mockResolvedValue(null);
 
 			await expect(
-				lifecycle.updateWithSideEffects(
+				lifecycle.update(
 					{ name: 'n8n-nodes-missing', version: '1.0.0' },
 					user,
 					'badRequest',
