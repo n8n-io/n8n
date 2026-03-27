@@ -149,6 +149,7 @@ function hashContent(content: string | null): string {
 export interface StartBuildWorkflowAgentInput {
 	task: string;
 	workflowId?: string;
+	conversationContext?: string;
 	taskId?: string;
 	agentId?: string;
 	plannedTaskId?: string;
@@ -291,17 +292,21 @@ export async function startBuildWorkflowAgentTask(
 		}
 	}
 
+	const conversationCtx = input.conversationContext
+		? `\n\n[CONVERSATION CONTEXT: ${input.conversationContext}]`
+		: '';
+
 	let briefing: string;
 	if (useSandbox) {
 		if (workflowId) {
-			briefing = `${input.task}\n\n[CONTEXT: Modifying existing workflow ${workflowId}. The current code is pre-loaded in ~/workspace/src/workflow.ts — read it first, then edit. Use workflowId "${workflowId}" when calling submit-workflow.]\n\n[WORK ITEM ID: ${workItemId}]\n\n${DETACHED_BUILDER_REQUIREMENTS}${iterationContext ? `\n\n${iterationContext}` : ''}`;
+			briefing = `${input.task}${conversationCtx}\n\n[CONTEXT: Modifying existing workflow ${workflowId}. The current code is pre-loaded in ~/workspace/src/workflow.ts — read it first, then edit. Use workflowId "${workflowId}" when calling submit-workflow.]\n\n[WORK ITEM ID: ${workItemId}]\n\n${DETACHED_BUILDER_REQUIREMENTS}${iterationContext ? `\n\n${iterationContext}` : ''}`;
 		} else {
-			briefing = `${input.task}\n\n[WORK ITEM ID: ${workItemId}]\n\n${DETACHED_BUILDER_REQUIREMENTS}${iterationContext ? `\n\n${iterationContext}` : ''}`;
+			briefing = `${input.task}${conversationCtx}\n\n[WORK ITEM ID: ${workItemId}]\n\n${DETACHED_BUILDER_REQUIREMENTS}${iterationContext ? `\n\n${iterationContext}` : ''}`;
 		}
 	} else if (workflowId) {
-		briefing = `${input.task}\n\n[CONTEXT: Modifying existing workflow ${workflowId}. Use workflowId "${workflowId}" when calling build-workflow.]${iterationContext ? `\n\n${iterationContext}` : ''}`;
+		briefing = `${input.task}${conversationCtx}\n\n[CONTEXT: Modifying existing workflow ${workflowId}. Use workflowId "${workflowId}" when calling build-workflow.]${iterationContext ? `\n\n${iterationContext}` : ''}`;
 	} else {
-		briefing = `${input.task}${iterationContext ? `\n\n${iterationContext}` : ''}`;
+		briefing = `${input.task}${conversationCtx}${iterationContext ? `\n\n${iterationContext}` : ''}`;
 	}
 
 	context.spawnBackgroundTask({
@@ -536,7 +541,7 @@ export async function startBuildWorkflowAgentTask(
 	});
 
 	return {
-		result: `Workflow build started (task: ${taskId}). Acknowledge briefly and move on.`,
+		result: `Workflow build started (task: ${taskId}). Reply with one short sentence — e.g. name what's being built. Do NOT summarize the plan or list details.`,
 		taskId,
 		agentId: subAgentId,
 	};
@@ -560,6 +565,12 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 				.optional()
 				.describe(
 					'Existing workflow ID to modify. When provided, the agent starts with the current workflow code pre-loaded.',
+				),
+			conversationContext: z
+				.string()
+				.optional()
+				.describe(
+					'Brief summary of the conversation so far — what was discussed, decisions made, and information gathered (e.g., which credentials are available). The builder uses this to avoid repeating information the user already knows.',
 				),
 		}),
 		outputSchema: z.object({

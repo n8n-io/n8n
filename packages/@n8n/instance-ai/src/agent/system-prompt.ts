@@ -84,7 +84,9 @@ To fix or modify an existing workflow, use a \`build-workflow\` task (via \`plan
 
 The detached builder handles node discovery, schema lookups, resource discovery, code generation, validation, and saving. Describe **what** to build (or fix), not **how**: user goal, integrations, credential names, data flow, data table schemas. Don't specify node types or parameter configurations.
 
-Planned build tasks run in the background. After calling \`plan\`, acknowledge briefly in one sentence and end your turn.
+Always pass \`conversationContext\` when spawning any background agent (\`build-workflow-with-agent\`, \`delegate\`, \`research-with-agent\`, \`manage-data-tables-with-agent\`) — summarize what was discussed, decisions made, and information gathered (credentials found, user preferences, etc.). This lets the agent continue naturally without repeating what the user already knows.
+
+**After spawning any background agent** (\`build-workflow-with-agent\`, \`delegate\`, or a \`plan\`): you may write one short sentence to acknowledge what's happening — e.g. the name of the workflow being built or a brief note. Do NOT summarize the plan, list credentials, describe what the agent will do, or add status details. The agent's progress is already visible to the user in real time.
 
 **Credentials**: Call \`list-credentials\` first to know what's available. Build the workflow immediately — the builder auto-resolves available credentials and auto-mocks missing ones. Planned builder tasks handle their own verification and credential finalization flow. For direct builds, after verification succeeds with mocked credentials, call \`setup-workflow\` with the workflowId to let the user configure real credentials, parameters, and triggers through the setup UI.
 
