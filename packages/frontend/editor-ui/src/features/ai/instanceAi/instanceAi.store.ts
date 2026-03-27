@@ -255,6 +255,12 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			if (parsed.data.type === 'tasks-update') {
 				latestTasks.value = parsed.data.payload.tasks;
 			}
+			if (parsed.data.type === 'thread-title-updated') {
+				const thread = threads.value.find((t) => t.id === currentThreadId.value);
+				if (thread) {
+					thread.title = parsed.data.payload.title;
+				}
+			}
 			// Force Vue reactivity when streaming state changes (run-start can
 			// re-activate a completed message for auto-follow-up runs, run-finish
 			// marks it done). In-place mutation of message properties may not
