@@ -11,6 +11,7 @@ import { mock } from 'jest-mock-extended';
 import { AiController, type FlushableResponse } from '../ai.controller';
 
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { AiUsageService } from '@/services/ai-usage.service';
 import type { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
 import type { AiService } from '@/services/ai.service';
@@ -25,6 +26,7 @@ describe('AiController', () => {
 		mock(),
 		mock(),
 		aiUsageService,
+		mock<AiGatewayService>(),
 	);
 
 	const request = mock<AuthenticatedRequest>({

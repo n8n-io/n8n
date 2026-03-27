@@ -27,6 +27,7 @@ import { CredentialsHelper } from '@/credentials-helper';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
 
 describe('CredentialsHelper', () => {
 	const nodeTypes = mock<INodeTypes>();
@@ -51,6 +52,7 @@ describe('CredentialsHelper', () => {
 		secretsProviderRepository,
 		licenseState,
 		externalSecretsConfig,
+		mock<AiGatewayService>(),
 	);
 
 	describe('getCredentials', () => {
@@ -776,6 +778,7 @@ describe('CredentialsHelper', () => {
 				secretsProviderRepository,
 				licenseState,
 				externalSecretsConfig,
+				mock<AiGatewayService>(),
 			);
 
 			const result = await helperWithoutProvider.getDecrypted(
