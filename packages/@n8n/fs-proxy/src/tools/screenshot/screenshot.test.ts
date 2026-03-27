@@ -8,6 +8,7 @@ jest.mock('node-screenshots');
 const mockSharp = jest.fn();
 jest.mock('sharp', () => ({
 	__esModule: true,
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 	default: (...args: unknown[]) => mockSharp(...args),
 }));
 
