@@ -49,6 +49,10 @@ export function useNodeGroupSections(nodeGroup: Ref<NodeGroupItem>) {
 		return stickyParametersMap[nodeId];
 	}
 
+	function addStickyParameters(nodeId: string, params: INodeProperties[]) {
+		getStickyParameters(nodeId).push(...params);
+	}
+
 	// ── Section expand/collapse ─────────────────────────────────────────
 
 	const expandedSections = reactive<Record<string, boolean>>({});
@@ -118,8 +122,8 @@ export function useNodeGroupSections(nodeGroup: Ref<NodeGroupItem>) {
 		parentNodeType,
 		subnodeSections,
 		allSections,
-		stickyParametersMap,
 		getStickyParameters,
+		addStickyParameters,
 		expandedSections,
 		toggleSection,
 		hoveredSection,

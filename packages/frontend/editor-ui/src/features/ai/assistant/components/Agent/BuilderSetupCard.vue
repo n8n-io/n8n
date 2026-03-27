@@ -10,7 +10,11 @@ import WebhookUrlPreview from '@/features/setupPanel/components/WebhookUrlPrevie
 import SetupCardSection from '@/features/setupPanel/components/cards/SetupCardSection.vue';
 import SetupCardBody from '@/features/setupPanel/components/cards/SetupCardBody.vue';
 
-import type { NodeSetupState } from '@/features/setupPanel/setupPanel.types';
+import type {
+	NodeSetupState,
+	CredentialSelectedPayload,
+	CredentialDeselectedPayload,
+} from '@/features/setupPanel/setupPanel.types';
 import type { INodeUi } from '@/Interface';
 import type { INodeProperties } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -32,8 +36,8 @@ const emit = defineEmits<{
 	goToPrev: [];
 	continueCurrent: [];
 	stepExecuted: [];
-	credentialSelected: [payload: { credentialType: string; credentialId: string; nodeName: string }];
-	credentialDeselected: [payload: { credentialType: string; nodeName: string }];
+	credentialSelected: [payload: CredentialSelectedPayload];
+	credentialDeselected: [payload: CredentialDeselectedPayload];
 }>();
 
 const i18n = useI18n();
@@ -98,16 +102,15 @@ const useCredentialIcon = computed(
 const isComplete = computed(() => props.state.isComplete);
 const isExecutable = computed(() => executableNode.value !== null);
 const isLastCard = computed(() => props.stepIndex === props.totalCards - 1);
+const showArrows = computed(() => props.totalCards > 1);
+const isPrevDisabled = computed(() => props.stepIndex === 0);
+const isNextDisabled = computed(() => isLastCard.value);
 
 const showContinue = computed(
 	() => !isExecutable.value && props.totalCards > 1 && !isLastCard.value,
 );
 
 const isContinueDisabled = computed(() => hasCredential.value && !props.state.selectedCredentialId);
-
-const showArrows = computed(() => props.totalCards > 1);
-const isPrevDisabled = computed(() => props.stepIndex === 0);
-const isNextDisabled = computed(() => isLastCard.value);
 
 const showTriggerCallout = computed(() => props.state.isTrigger && isInListeningState.value);
 
@@ -192,7 +195,7 @@ watch(isActive, (active, wasActive) => {
 					size="xsmall"
 					icon-only
 					:disabled="isPrevDisabled"
-					data-test-id="builder-setup-card-prev"
+					data-test-id="wizard-card-footer-prev"
 					aria-label="Previous step"
 					@click="emit('goToPrev')"
 				>
@@ -205,7 +208,7 @@ watch(isActive, (active, wasActive) => {
 					size="xsmall"
 					icon-only
 					:disabled="isNextDisabled"
-					data-test-id="builder-setup-card-next"
+					data-test-id="wizard-card-footer-next"
 					aria-label="Next step"
 					@click="emit('goToNext')"
 				>

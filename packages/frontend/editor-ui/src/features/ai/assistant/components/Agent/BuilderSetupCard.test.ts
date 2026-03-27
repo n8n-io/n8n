@@ -170,26 +170,26 @@ describe('BuilderSetupCard', () => {
 	describe('navigation arrows', () => {
 		it('hides arrows when single card', () => {
 			const { queryByTestId } = render({ isComplete: true }, { totalCards: 1 });
-			expect(queryByTestId('builder-setup-card-prev')).not.toBeInTheDocument();
-			expect(queryByTestId('builder-setup-card-next')).not.toBeInTheDocument();
+			expect(queryByTestId('wizard-card-footer-prev')).not.toBeInTheDocument();
+			expect(queryByTestId('wizard-card-footer-next')).not.toBeInTheDocument();
 		});
 
 		it('shows arrows when multiple cards', () => {
 			const { getByTestId } = render({}, { totalCards: 3, stepIndex: 1 });
-			expect(getByTestId('builder-setup-card-prev')).toBeInTheDocument();
-			expect(getByTestId('builder-setup-card-next')).toBeInTheDocument();
+			expect(getByTestId('wizard-card-footer-prev')).toBeInTheDocument();
+			expect(getByTestId('wizard-card-footer-next')).toBeInTheDocument();
 		});
 
 		it('disables prev arrow at first step but shows next arrow enabled', () => {
 			const { getByTestId } = render({}, { totalCards: 3, stepIndex: 0 });
-			expect(getByTestId('builder-setup-card-prev')).toBeDisabled();
-			expect(getByTestId('builder-setup-card-next')).not.toBeDisabled();
+			expect(getByTestId('wizard-card-footer-prev')).toBeDisabled();
+			expect(getByTestId('wizard-card-footer-next')).not.toBeDisabled();
 		});
 
 		it('disables next arrow at last step but shows prev arrow enabled', () => {
 			const { getByTestId } = render({}, { totalCards: 3, stepIndex: 2 });
-			expect(getByTestId('builder-setup-card-next')).toBeDisabled();
-			expect(getByTestId('builder-setup-card-prev')).not.toBeDisabled();
+			expect(getByTestId('wizard-card-footer-next')).toBeDisabled();
+			expect(getByTestId('wizard-card-footer-prev')).not.toBeDisabled();
 		});
 	});
 

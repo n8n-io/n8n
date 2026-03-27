@@ -25,12 +25,12 @@ export class BuilderSetupWizardPage {
 
 	/** Previous-step arrow inside the card footer */
 	getPrevButton(): Locator {
-		return this.page.getByTestId('builder-setup-card-prev');
+		return this.page.getByTestId('wizard-card-footer-prev');
 	}
 
 	/** Next-step arrow inside the card footer */
 	getNextButton(): Locator {
-		return this.page.getByTestId('builder-setup-card-next');
+		return this.page.getByTestId('wizard-card-footer-next');
 	}
 
 	/** The trigger / node execute button inside the card */
@@ -93,16 +93,6 @@ export class BuilderSetupWizardPage {
 			.getByTestId('builder-node-group-section')
 			.filter({ hasText: name })
 			.getByTestId('builder-node-group-section-header');
-	}
-
-	/** Previous-step arrow inside the node group card footer */
-	getNodeGroupPrevButton(): Locator {
-		return this.page.getByTestId('builder-node-group-card-prev');
-	}
-
-	/** Next-step arrow inside the node group card footer */
-	getNodeGroupNextButton(): Locator {
-		return this.page.getByTestId('builder-node-group-card-next');
 	}
 
 	// #endregion

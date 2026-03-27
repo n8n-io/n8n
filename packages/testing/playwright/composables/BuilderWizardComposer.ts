@@ -123,10 +123,7 @@ export class BuilderWizardComposer {
 	 */
 	private async clickAnyNavButton(direction: 'next' | 'prev'): Promise<boolean> {
 		const wizard = this.n8n.aiBuilder.wizard;
-		const buttons =
-			direction === 'next'
-				? [wizard.getNextButton(), wizard.getNodeGroupNextButton()]
-				: [wizard.getPrevButton(), wizard.getNodeGroupPrevButton()];
+		const buttons = direction === 'next' ? [wizard.getNextButton()] : [wizard.getPrevButton()];
 
 		for (const btn of buttons) {
 			try {

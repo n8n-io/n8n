@@ -8,7 +8,11 @@ import NodeIcon from '@/app/components/NodeIcon.vue';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import SetupCardSection from '@/features/setupPanel/components/cards/SetupCardSection.vue';
 import SetupCardBody from '@/features/setupPanel/components/cards/SetupCardBody.vue';
-import type { NodeSetupState } from '@/features/setupPanel/setupPanel.types';
+import type {
+	NodeSetupState,
+	CredentialSelectedPayload,
+	CredentialDeselectedPayload,
+} from '@/features/setupPanel/setupPanel.types';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
@@ -24,8 +28,8 @@ const props = defineProps<{
 const expanded = defineModel<boolean>('expanded', { default: false });
 
 const emit = defineEmits<{
-	credentialSelected: [payload: { credentialType: string; credentialId: string; nodeName: string }];
-	credentialDeselected: [payload: { credentialType: string; nodeName: string }];
+	credentialSelected: [payload: CredentialSelectedPayload];
+	credentialDeselected: [payload: CredentialDeselectedPayload];
 }>();
 
 const i18n = useI18n();

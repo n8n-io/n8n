@@ -211,7 +211,6 @@ watch(
 				<NodeGroupSetupCard
 					v-if="card.nodeGroup"
 					:node-group="card.nodeGroup"
-					:first-trigger-name="firstTriggerName"
 					:expanded="isCardExpanded(cardKey(card))"
 					@update:expanded="(val: boolean) => setCardExpanded(cardKey(card), val)"
 					@credential-selected="onCredentialSelected"

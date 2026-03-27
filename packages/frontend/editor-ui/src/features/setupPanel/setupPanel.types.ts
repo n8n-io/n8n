@@ -56,6 +56,19 @@ export type SetupCardItem =
 	| { state: NodeSetupState; nodeGroup?: undefined }
 	| { nodeGroup: NodeGroupItem; state?: undefined };
 
+/** Payload emitted when a credential is selected on a setup card */
+export interface CredentialSelectedPayload {
+	credentialType: string;
+	credentialId: string;
+	nodeName: string;
+}
+
+/** Payload emitted when a credential is deselected on a setup card */
+export interface CredentialDeselectedPayload {
+	credentialType: string;
+	nodeName: string;
+}
+
 export function isCardComplete(card: SetupCardItem): boolean {
 	if (card.nodeGroup) {
 		const { parentState, subnodeCards } = card.nodeGroup;

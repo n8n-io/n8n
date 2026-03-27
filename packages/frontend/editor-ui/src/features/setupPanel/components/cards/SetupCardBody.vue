@@ -7,7 +7,11 @@ import { type INodeProperties, NodeHelpers } from 'n8n-workflow';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
 
-import type { NodeSetupState } from '@/features/setupPanel/setupPanel.types';
+import type {
+	NodeSetupState,
+	CredentialSelectedPayload,
+	CredentialDeselectedPayload,
+} from '@/features/setupPanel/setupPanel.types';
 import type { INodeUpdatePropertiesInformation, IUpdateInformation } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
@@ -36,8 +40,8 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-	credentialSelected: [payload: { credentialType: string; credentialId: string; nodeName: string }];
-	credentialDeselected: [payload: { credentialType: string; nodeName: string }];
+	credentialSelected: [payload: CredentialSelectedPayload];
+	credentialDeselected: [payload: CredentialDeselectedPayload];
 	valueChanged: [parameterData: IUpdateInformation];
 	interacted: [];
 	/** Emitted when new parameters are discovered that should be persisted in the sticky list */
