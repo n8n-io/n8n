@@ -16,14 +16,16 @@ function targetIdForTab(chromeTabId: number): string {
  * Mock sendCommand: returns Target.getTargetInfo result when called with
  * that method (used for agent-created tabs), otherwise returns a generic result.
  */
-const mockSendCommand = jest.fn(async (debuggee: { tabId: number }, method: string, _params?: object) => {
-	if (method === 'Target.getTargetInfo') {
-		return await Promise.resolve({
-			targetInfo: { targetId: targetIdForTab(debuggee.tabId) },
-		});
-	}
-	return await Promise.resolve({});
-});
+const mockSendCommand = jest.fn(
+	async (debuggee: { tabId: number }, method: string, _params?: object) => {
+		if (method === 'Target.getTargetInfo') {
+			return await Promise.resolve({
+				targetInfo: { targetId: targetIdForTab(debuggee.tabId) },
+			});
+		}
+		return await Promise.resolve({});
+	},
+);
 
 /**
  * Mock getTargets: returns TargetInfo[] for all known tabs.
@@ -185,7 +187,11 @@ describe('RelayConnection', () => {
 			await relay.registerSelectedTabs([1, 2, 3]);
 			const ids = relay.getControlledIds();
 			expect(ids).toHaveLength(3);
-			expect(ids).toEqual([targetIdForTab(1), targetIdForTab(2), targetIdForTab(3)]);
+			expect(ids).toEqual([
+				{ targetId: targetIdForTab(1), chromeTabId: 1 },
+				{ targetId: targetIdForTab(2), chromeTabId: 2 },
+				{ targetId: targetIdForTab(3), chromeTabId: 3 },
+			]);
 
 			// Should NOT attach any debuggers (lazy)
 			expect(mockAttach).not.toHaveBeenCalled();
@@ -220,7 +226,10 @@ describe('RelayConnection', () => {
 			await relay.registerSelectedTabs([1, 2, 3]);
 			const ids = relay.getControlledIds();
 			expect(ids).toHaveLength(2);
-			expect(ids).toEqual([targetIdForTab(1), targetIdForTab(3)]);
+			expect(ids).toEqual([
+				{ targetId: targetIdForTab(1), chromeTabId: 1 },
+				{ targetId: targetIdForTab(3), chromeTabId: 3 },
+			]);
 		});
 	});
 
@@ -230,7 +239,10 @@ describe('RelayConnection', () => {
 
 			await relay.addTab(42, 'Test', 'https://test.com');
 			expect(relay.getControlledIds()).toHaveLength(1);
-			expect(relay.getControlledIds()[0]).toBe(targetIdForTab(42));
+			expect(relay.getControlledIds()[0]).toEqual({
+				targetId: targetIdForTab(42),
+				chromeTabId: 42,
+			});
 
 			// Should NOT attach (lazy)
 			expect(mockAttach).not.toHaveBeenCalled();
@@ -333,7 +345,7 @@ describe('RelayConnection', () => {
 		it('should lazy-attach debugger on first CDP command', async () => {
 			mockGetTargets.mockResolvedValueOnce([mockTarget(123)]);
 			await relay.registerSelectedTabs([123]);
-			const tabId = relay.getControlledIds()[0];
+			const tabId = relay.getControlledIds()[0].targetId;
 			ws.sent.length = 0;
 			mockSendCommand.mockResolvedValueOnce({ data: 'test-result' });
 
@@ -356,7 +368,7 @@ describe('RelayConnection', () => {
 		it('should not re-attach on subsequent commands', async () => {
 			mockGetTargets.mockResolvedValueOnce([mockTarget(123)]);
 			await relay.registerSelectedTabs([123]);
-			const tabId = relay.getControlledIds()[0];
+			const tabId = relay.getControlledIds()[0].targetId;
 			ws.sent.length = 0;
 			mockSendCommand.mockResolvedValue({ data: 'result' });
 
@@ -394,7 +406,11 @@ describe('RelayConnection', () => {
 				data: JSON.stringify({
 					id: 3,
 					method: 'forwardCDPCommand',
-					params: { method: 'Page.navigate', params: { url: 'https://example.com' }, id: ids[1] },
+					params: {
+						method: 'Page.navigate',
+						params: { url: 'https://example.com' },
+						id: ids[1].targetId,
+					},
 				}),
 			});
 			await tick();
@@ -475,7 +491,7 @@ describe('RelayConnection', () => {
 			data: JSON.stringify({
 				id: 1,
 				method: 'forwardCDPCommand',
-				params: { method: 'Runtime.evaluate', params: {}, id: ids[0] },
+				params: { method: 'Runtime.evaluate', params: {}, id: ids[0].targetId },
 			}),
 		});
 		await tick();
@@ -563,7 +579,7 @@ describe('RelayConnection', () => {
 	it('should reject closeTab when tab closing is disabled', async () => {
 		mockGetTargets.mockResolvedValueOnce([mockTarget(42)]);
 		await relay.addTab(42, 'Test', 'https://test.com');
-		const addedId = relay.getControlledIds()[0];
+		const addedId = relay.getControlledIds()[0].targetId;
 		relay.setSettings({ allowTabCreation: true, allowTabClosing: false });
 		ws.sent.length = 0;
 

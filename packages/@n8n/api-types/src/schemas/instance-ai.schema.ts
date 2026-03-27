@@ -328,8 +328,6 @@ const mcpInputSchema = z.union([mcpObjectInputSchema, mcpAnyOfInputSchema, mcpOn
 export const mcpToolAnnotationsSchema = z.object({
 	/** Tool category — used to route tools to the correct sub-agent (e.g. 'browser', 'filesystem') */
 	category: z.string().optional(),
-	/** Default permission level for this tool (n8n-specific) */
-	defaultPermission: z.enum(['allow', 'confirm', 'block']).optional(),
 	/** If true, the tool does not modify its environment */
 	readOnlyHint: z.boolean().optional(),
 	/** If true, the tool may perform destructive updates */
@@ -830,11 +828,6 @@ export class InstanceAiUserPreferencesUpdateRequest extends Z.class({
 	credentialId: z.string().nullable().optional(),
 	modelName: z.string().optional(),
 	localGatewayDisabled: z.boolean().optional(),
-}) {}
-
-export class InstanceAiGatewayPendingApprovalRequest extends Z.class({
-	pending: z.boolean(),
-	method: z.enum(['cli', 'app']).optional(),
 }) {}
 
 export interface InstanceAiModelCredential {

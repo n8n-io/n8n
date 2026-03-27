@@ -196,7 +196,8 @@ function buildCliConfig(args: yargsParser.Arguments): PartialStructural {
 	const timeout = args['computer-shell-timeout'] as number;
 	if (timeout !== undefined) config.computer = { shell: { timeout } };
 
-	if (args['browser-default']) config.browser = { defaultBrowser: args['browser-default'] as string };
+	if (args['browser-default'])
+		config.browser = { defaultBrowser: args['browser-default'] as string };
 
 	return config as PartialStructural;
 }
@@ -272,13 +273,7 @@ export function parseConfig(argv = process.argv.slice(2)): ParsedArgs {
 	const permissionFlags = Object.values(TOOL_GROUP_DEFINITIONS).map((o) => o.cliFlag);
 
 	const args = yargsParser(rawArgs, {
-		string: [
-			'log-level',
-			'filesystem-dir',
-			'browser-default',
-			'allow-origin',
-			...permissionFlags,
-		],
+		string: ['log-level', 'filesystem-dir', 'browser-default', 'allow-origin', ...permissionFlags],
 		boolean: ['auto-confirm', 'non-interactive', 'help'],
 		number: ['port', 'computer-shell-timeout'],
 		alias: { h: 'help', p: 'port' },

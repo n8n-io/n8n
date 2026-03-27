@@ -177,9 +177,12 @@ export class RelayConnection {
 		this.settings = settings;
 	}
 
-	/** Return CDP targetIds for all controlled tabs. */
-	getControlledIds(): string[] {
-		return [...this.tabs.keys()];
+	/** Return controlled tab identifiers (both CDP targetId and Chrome tab ID). */
+	getControlledIds(): Array<{ targetId: string; chromeTabId: number }> {
+		return [...this.tabs.entries()].map(([targetId, entry]) => ({
+			targetId,
+			chromeTabId: entry.chromeTabId,
+		}));
 	}
 
 	/** Check whether a chrome tab ID is controlled by this relay. */

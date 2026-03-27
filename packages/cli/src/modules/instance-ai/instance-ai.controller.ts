@@ -13,7 +13,6 @@ import {
 	InstanceAiThreadMessagesQuery,
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiUserPreferencesUpdateRequest,
-	InstanceAiGatewayPendingApprovalRequest,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -569,17 +568,6 @@ export class InstanceAiController {
 	@GlobalScope('instanceAi:gateway')
 	async gatewayStatus(req: AuthenticatedRequest) {
 		return this.instanceAiService.getGatewayStatus(req.user.id);
-	}
-
-	@Post('/gateway/pending-approval')
-	@GlobalScope('instanceAi:gateway')
-	async gatewayPendingApproval(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Body payload: InstanceAiGatewayPendingApprovalRequest,
-	) {
-		this.instanceAiService.setGatewayPendingApproval(req.user.id, payload.pending, payload.method);
-		return { ok: true };
 	}
 
 	// ── Helpers ──────────────────────────────────────────────────────────────

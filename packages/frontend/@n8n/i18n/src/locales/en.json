@@ -5235,17 +5235,12 @@
 	"instanceAi.filesystem.setupCommand": "Run in your terminal to connect:",
 	"projects.menu.instanceAi": "Instance AI",
 	"chatInputBase.button.attach": "Attach files",
-	"instanceAi.approvalHint.app": "Approve Local Gateway connection in the app",
-	"instanceAi.approvalHint.cli": "Approve Local Gateway connection in your terminal",
-	"instanceAi.approvalHint.connected": "Local Gateway connected",
 	"instanceAi.filesystem.access.read": "Read only",
 	"instanceAi.filesystem.access.readWrite": "Read & Write",
 	"instanceAi.filesystem.category.browser": "Browser",
 	"instanceAi.filesystem.category.computerUse": "Computer",
 	"instanceAi.filesystem.category.filesystem": "Files",
 	"instanceAi.filesystem.category.shell": "Shell",
-	"instanceAi.filesystem.pendingApproval.app": "Approve connection in the Local Gateway app",
-	"instanceAi.filesystem.pendingApproval.cli": "Approve connection in your terminal",
 	"instanceAi.settings.permissions.activateWorkflow.label": "Activate workflow without approval",
 	"instanceAi.tools.patch-workflow": "Updating workflow"
 }

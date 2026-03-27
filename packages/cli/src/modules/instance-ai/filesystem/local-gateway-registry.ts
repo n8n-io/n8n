@@ -196,11 +196,6 @@ export class LocalGatewayRegistry {
 		state.disconnectTimer = null;
 	}
 
-	/** Update the pending-approval flag on a user's gateway. */
-	setGatewayPendingApproval(userId: string, pending: boolean, method?: 'cli' | 'app'): void {
-		this.getOrCreate(userId).gateway.setPendingApproval(pending, method);
-	}
-
 	/** Disconnect all gateways and clear all state (called on service shutdown). */
 	disconnectAll(): void {
 		for (const state of this.userGateways.values()) {

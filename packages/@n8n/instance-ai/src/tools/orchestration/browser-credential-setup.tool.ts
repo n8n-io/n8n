@@ -85,7 +85,12 @@ Use \`${t.evaluate}\` with this function to get a compact list of clickable elem
 2. Read n8n credential docs with \`fetch-url\`. Follow any linked sub-pages for additional setup details.`
 		: '1. Read n8n credential docs with `fetch-url`. Follow any linked sub-pages for additional setup details.';
 
-	const processStepFinal = isGateway ? `\n10. Call \`${t.close}\` to end the session.` : '';
+	// Gateway has 2 initial steps (open + read docs), non-gateway has 1 (read docs only)
+	const nextStep = isGateway ? 3 : 2;
+
+	const processStepFinal = isGateway
+		? `\n${nextStep + 7}. Call \`${t.close}\` to end the session.`
+		: '';
 
 	const browserDescription = isGateway
 		? "The browser is the user's real Chrome browser (their profile, cookies, sessions)."
@@ -122,13 +127,13 @@ These are ALL intermediate steps — keep going until the credential values are 
 ${sessionLifecycle}
 ## Process
 ${processStep1}
-3. Navigate the browser to the external service's console/dashboard.
-4. Follow the documentation steps on the service website.
-5. When the user needs to make a choice (app name, project, description, scopes), use \`ask-user\` to get their preference — do NOT guess.
-6. When the user needs to act (sign in, complete 2FA, copy values, download files), call \`pause-for-user\` with a clear message.
-7. After each pause, take a snapshot to verify the action was completed.
-8. Continue until all credential values are available to the user.
-9. Your FINAL action must be \`pause-for-user\` telling the user exactly what to copy and where to find it.${processStepFinal}
+${nextStep}. Navigate the browser to the external service's console/dashboard.
+${nextStep + 1}. Follow the documentation steps on the service website.
+${nextStep + 2}. When the user needs to make a choice (app name, project, description, scopes), use \`ask-user\` to get their preference — do NOT guess.
+${nextStep + 3}. When the user needs to act (sign in, complete 2FA, copy values, download files), call \`pause-for-user\` with a clear message.
+${nextStep + 4}. After each pause, take a snapshot to verify the action was completed.
+${nextStep + 5}. Continue until all credential values are available to the user.
+${nextStep + 6}. Your FINAL action must be \`pause-for-user\` telling the user exactly what to copy and where to find it.${processStepFinal}
 
 ## Reading docs vs driving the service
 

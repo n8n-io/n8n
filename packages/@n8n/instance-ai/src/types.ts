@@ -543,7 +543,6 @@ export interface InstanceAiWorkspaceService {
 export type LocalGatewayStatus =
 	| { status: 'connected' }
 	| { status: 'disconnected'; capabilities: string[] }
-	| { status: 'pending_approval'; approvalMethod: 'cli' | 'app' }
 	| { status: 'disabled' };
 
 // ── Context bundle ───────────────────────────────────────────────────────────

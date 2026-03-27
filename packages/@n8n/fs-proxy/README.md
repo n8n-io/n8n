@@ -211,14 +211,8 @@ complete tool reference.
 
 ## Permissions (upcoming)
 
-Each tool definition includes permission metadata (`defaultPermission`,
-`readOnly`, `destructive`) that classifies tools by risk level:
-
-| Level | Meaning | Example tools |
-|-------|---------|---------------|
-| `allow` | Executes without confirmation | `read_file`, `screen_screenshot`, `browser_snapshot` |
-| `confirm` | Requires human approval (HITL) | `shell_execute`, `mouse_click`, `browser_navigate` |
-| `block` | Not available | (none by default) |
+Each tool definition includes annotation metadata (`readOnlyHint`,
+`destructiveHint`) that classifies tools by risk level.
 
 Permission enforcement and granular per-tool/per-argument rules are planned
 for a future release.

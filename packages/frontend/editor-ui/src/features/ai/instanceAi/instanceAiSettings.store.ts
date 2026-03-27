@@ -12,7 +12,7 @@ import {
 	fetchModelCredentials,
 	fetchServiceCredentials,
 } from './instanceAi.settings.api';
-import { createGatewayLink, getGatewayStatus, setGatewayPendingApproval } from './instanceAi.api';
+import { createGatewayLink, getGatewayStatus } from './instanceAi.api';
 import type {
 	InstanceAiAdminSettingsResponse,
 	InstanceAiAdminSettingsUpdateRequest,
@@ -42,10 +42,6 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const isDaemonConnecting = ref(false);
 	const setupCommand = ref<string | null>(null);
 	const isGatewayPolling = ref(false);
-	const isPendingApproval = ref(false);
-	const approvalMethod = ref<'cli' | 'app'>('cli');
-	const isJustApproved = ref(false);
-	let justApprovedTimer: ReturnType<typeof setTimeout> | null = null;
 
 	const isLocalGatewayEnabled = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.localGateway === true,
@@ -244,7 +240,6 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			toast.showError(new Error(message), 'Daemon connection failed');
 		} finally {
 			isDaemonConnecting.value = false;
-			isPendingApproval.value = false;
 			stopDaemonProbing();
 		}
 	}
@@ -255,31 +250,6 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		daemonEventSource = new EventSource(`${DAEMON_BASE}/events`);
 		daemonEventSource.addEventListener('ready', () => {
 			void connectDaemon();
-		});
-		daemonEventSource.addEventListener('pending_approval', (event: MessageEvent) => {
-			let data: { method?: 'cli' | 'app' };
-			try {
-				data = JSON.parse(event.data as string) as { method?: 'cli' | 'app' };
-			} catch {
-				data = {};
-			}
-			isPendingApproval.value = true;
-			approvalMethod.value = data.method ?? 'cli';
-			if (justApprovedTimer) {
-				clearTimeout(justApprovedTimer);
-				justApprovedTimer = null;
-			}
-			isJustApproved.value = false;
-			void setGatewayPendingApproval(rootStore.restApiContext, true, approvalMethod.value);
-		});
-		daemonEventSource.addEventListener('approval_resolved', () => {
-			isPendingApproval.value = false;
-			isJustApproved.value = true;
-			justApprovedTimer = setTimeout(() => {
-				isJustApproved.value = false;
-				justApprovedTimer = null;
-			}, 5000);
-			void setGatewayPendingApproval(rootStore.restApiContext, false, approvalMethod.value);
 		});
 	}
 
@@ -364,9 +334,6 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		isDaemonConnecting,
 		setupCommand,
 		isGatewayPolling,
-		isPendingApproval,
-		approvalMethod,
-		isJustApproved,
 		isLocalGatewayEnabled,
 		isGatewayConnected,
 		gatewayDirectory,

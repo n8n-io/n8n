@@ -96,7 +96,9 @@ function browserDisconnect(
 			}
 		},
 		getAffectedResources(_args, _context: ToolContext): AffectedResource[] {
-			return [{ toolGroup: 'browser', resource: 'browser', description: 'Disconnect from browser' }];
+			return [
+				{ toolGroup: 'browser', resource: 'browser', description: 'Disconnect from browser' },
+			];
 		},
 	};
 }

@@ -93,11 +93,9 @@ export function createMockAdapter() {
 		getStorage: jest.fn().mockResolvedValue({}),
 		setStorage: jest.fn().mockResolvedValue(undefined),
 		clearStorage: jest.fn().mockResolvedValue(undefined),
-		setOffline: jest.fn().mockResolvedValue(undefined),
-		setHeaders: jest.fn().mockResolvedValue(undefined),
-		setGeolocation: jest.fn().mockResolvedValue(undefined),
-		setTimezone: jest.fn().mockResolvedValue(undefined),
-		setLocale: jest.fn().mockResolvedValue(undefined),
+
+		// URL lookup
+		getPageUrl: jest.fn().mockReturnValue('http://test.com'),
 
 		// Enrichment
 		getModalStates: jest.fn().mockReturnValue([]),

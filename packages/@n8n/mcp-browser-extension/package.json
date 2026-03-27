@@ -10,7 +10,9 @@
 		"lint": "eslint . --quiet",
 		"lint:fix": "eslint . --fix",
 		"test": "jest",
-		"test:unit": "jest"
+		"test:unit": "jest",
+		"format": "biome format --write src",
+		"format:check": "biome ci src"
 	},
 	"dependencies": {
 		"vue": "catalog:frontend"

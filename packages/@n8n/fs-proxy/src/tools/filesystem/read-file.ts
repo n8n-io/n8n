@@ -18,7 +18,7 @@ export const readFileTool: ToolDefinition<typeof inputSchema> = {
 	name: 'read_file',
 	description: 'Read the contents of a file',
 	inputSchema,
-	annotations: { defaultPermission: 'allow', readOnlyHint: true },
+	annotations: { readOnlyHint: true },
 	async getAffectedResources({ filePath }, { dir }) {
 		return [
 			await buildFilesystemResource(dir, filePath, 'filesystemRead', `Read file: ${filePath}`),

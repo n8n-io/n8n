@@ -24,8 +24,6 @@ export interface ToolContext {
 export interface ToolAnnotations {
 	/** Tool category — used to route tools to the correct sub-agent (e.g. 'browser', 'filesystem') */
 	category?: string;
-	/** Default permission level for this tool (n8n-specific, not part of MCP spec) */
-	defaultPermission?: 'allow' | 'confirm' | 'block';
 	/** If true, tool does not modify its environment (default: false) */
 	readOnlyHint?: boolean;
 	/** If true, tool may perform destructive updates (default: true) */

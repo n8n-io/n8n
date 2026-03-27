@@ -17,7 +17,7 @@ export const editFileTool: ToolDefinition<typeof inputSchema> = {
 	description:
 		'Apply a targeted search-and-replace to a file. Replaces the first occurrence of oldString with newString. Fails if oldString is not found.',
 	inputSchema,
-	annotations: { defaultPermission: 'confirm' },
+	annotations: {},
 	async getAffectedResources({ filePath }, { dir }) {
 		return [
 			await buildFilesystemResource(dir, filePath, 'filesystemWrite', `Edit file: ${filePath}`),

@@ -12,7 +12,7 @@ export const getFileTreeTool: ToolDefinition<typeof inputSchema> = {
 	name: 'get_file_tree',
 	description: 'Get an indented directory tree',
 	inputSchema,
-	annotations: { defaultPermission: 'allow', readOnlyHint: true },
+	annotations: { readOnlyHint: true },
 	async getAffectedResources({ dirPath }, { dir }) {
 		return [
 			await buildFilesystemResource(

@@ -29,8 +29,6 @@ export interface DaemonOptions {
 	 * Use this when the host process (e.g. Electron) manages its own shutdown.
 	 */
 	managedMode?: boolean;
-	/** Identifies the approval method so the frontend can guide the user. Defaults to 'cli'. */
-	approvalMethod?: 'cli' | 'app';
 }
 
 // Populated by startDaemon before the server handles any requests
@@ -51,17 +49,6 @@ const state: DaemonState = {
 	connectedAt: null,
 	connectedUrl: null,
 };
-
-// ── SSE client tracking ─────────────────────────────────────────────────────
-
-const sseClients = new Set<http.ServerResponse>();
-
-function broadcastSSE(event: string, data: Record<string, unknown>): void {
-	const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
-	for (const client of sseClients) {
-		client.write(payload);
-	}
-}
 
 // HTTP header names don't follow JS naming conventions — build them dynamically
 // to satisfy the @typescript-eslint/naming-convention rule.
@@ -135,12 +122,7 @@ async function handleConnect(req: http.IncomingMessage, res: http.ServerResponse
 	const isAllowed = state.config.allowedOrigins.some((origin) => url.startsWith(origin));
 
 	if (!isAllowed) {
-		broadcastSSE('pending_approval', {
-			method: daemonOptions.approvalMethod ?? 'cli',
-			url,
-		});
 		const approved = await daemonOptions.confirmConnect(url);
-		broadcastSSE('approval_resolved', { approved });
 		if (!approved) {
 			jsonResponse(res, 403, { error: 'Connection rejected by user.' });
 			return;
@@ -215,9 +197,6 @@ function handleEvents(res: http.ServerResponse): void {
 	});
 	// Send ready event immediately — the daemon is up
 	res.write('event: ready\ndata: {}\n\n');
-
-	sseClients.add(res);
-	res.on('close', () => sseClients.delete(res));
 }
 
 function handleCors(res: http.ServerResponse): void {

@@ -122,11 +122,6 @@ tab; the default is the active page.
 |------|-------------|
 | `browser_cookies` | Read or set cookies |
 | `browser_storage` | Read or modify localStorage/sessionStorage |
-| `browser_set_offline` | Toggle offline mode |
-| `browser_set_headers` | Set custom HTTP headers |
-| `browser_set_geolocation` | Override geolocation |
-| `browser_set_timezone` | Override timezone |
-| `browser_set_locale` | Override locale |
 
 ---
 

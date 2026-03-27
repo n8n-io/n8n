@@ -206,9 +206,7 @@ export function printModuleStatus(config: GatewayConfig): void {
 	// Browser
 	const browserMode = permissions.browser ?? 'deny';
 	const browserDetail =
-		browserMode === 'deny'
-			? pc.dim('(disabled)')
-			: pc.dim(config.browser.defaultBrowser);
+		browserMode === 'deny' ? pc.dim('(disabled)') : pc.dim(config.browser.defaultBrowser);
 	logger.info(`  ${permissionIcon(browserMode)} Browser       ${browserDetail}`, {
 		module: 'Browser',
 	});

@@ -45,7 +45,6 @@ export class DaemonController extends EventEmitter<DaemonControllerEvents> {
 
 		const options: DaemonOptions = {
 			managedMode: true,
-			approvalMethod: 'app',
 			confirmConnect,
 			confirmResourceAccess: () => 'denyOnce' as const,
 			onStatusChange: (status, url) => {

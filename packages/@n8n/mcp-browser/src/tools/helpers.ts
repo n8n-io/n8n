@@ -103,6 +103,13 @@ export function createConnectedTool<
 					const enrichPageId = state.activePageId || pageId;
 					await enrichResponse(result, state, enrichPageId, options ?? {}, tabsBefore);
 				}
+				// Sync live URL back to state.pages so the cache stays fresh
+				const currentUrl = state.adapter.getPageUrl(pageId);
+				if (currentUrl) {
+					const pageInfo = state.pages.get(pageId);
+					if (pageInfo) pageInfo.url = currentUrl;
+				}
+
 				return result;
 			} catch (error) {
 				return await buildErrorResponse(error, connection, args, options ?? {});
@@ -120,6 +127,10 @@ export function createConnectedTool<
 function getConnectionResource(connection: BrowserConnection): string {
 	try {
 		const state = connection.getConnection();
+		// Get live URL from Playwright (not the stale pages map)
+		const liveUrl = state.adapter.getPageUrl(state.activePageId);
+		if (liveUrl) return extractDomain(liveUrl);
+		// Fallback to cached pages map
 		const activePage = state.pages.get(state.activePageId);
 		return activePage?.url ? extractDomain(activePage.url) : 'browser';
 	} catch {

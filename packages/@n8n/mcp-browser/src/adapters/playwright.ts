@@ -12,12 +12,7 @@ import type {
 import { chromium } from 'playwright-core';
 
 import { CDPRelayServer } from '../cdp-relay';
-import {
-	BrowserExecutableNotFoundError,
-	PageNotFoundError,
-	StaleRefError,
-	UnsupportedOperationError,
-} from '../errors';
+import { BrowserExecutableNotFoundError, PageNotFoundError, StaleRefError } from '../errors';
 import { createLogger } from '../logger';
 import type {
 	ClickOptions,
@@ -706,42 +701,6 @@ export class PlaywrightAdapter {
 		}, kind);
 	}
 
-	async setOffline(pageId: string, offline: boolean): Promise<void> {
-		await this.ensurePage(pageId);
-		await this.requireContext().setOffline(offline);
-	}
-
-	async setHeaders(pageId: string, headers: Record<string, string>): Promise<void> {
-		await this.ensurePage(pageId);
-		await this.requireContext().setExtraHTTPHeaders(headers);
-	}
-
-	async setGeolocation(
-		pageId: string,
-		geo: { latitude: number; longitude: number; accuracy?: number } | null,
-	): Promise<void> {
-		await this.ensurePage(pageId);
-		const context = this.requireContext();
-		if (geo) {
-			await context.grantPermissions(['geolocation']);
-			await context.setGeolocation(geo);
-		} else {
-			await context.setGeolocation(null as unknown as { latitude: number; longitude: number });
-		}
-	}
-
-	async setTimezone(pageId: string, _timezone: string): Promise<void> {
-		await this.ensurePage(pageId);
-		// Timezone can only be set at context creation time in Playwright.
-		// For existing contexts, we throw unsupported.
-		throw new UnsupportedOperationError('setTimezone (must be set at session creation)', this.name);
-	}
-
-	async setLocale(pageId: string, _locale: string): Promise<void> {
-		await this.ensurePage(pageId);
-		throw new UnsupportedOperationError('setLocale (must be set at session creation)', this.name);
-	}
-
 	// =========================================================================
 	// Post-action settling — waits for network/navigation to complete
 	// Matches Playwright MCP's waitForCompletion() behavior.
@@ -1002,6 +961,17 @@ export class PlaywrightAdapter {
 
 		this.pageStates.set(id, state);
 		return state;
+	}
+
+	/** Get the live URL for a tracked page (synchronous, from Playwright's page.url()). */
+	getPageUrl(pageId: string): string | undefined {
+		const state = this.pageStates.get(pageId);
+		if (!state) return undefined;
+		try {
+			return state.page.url();
+		} catch {
+			return undefined;
+		}
 	}
 
 	private async resolveLocator(pageId: string, target: ElementTarget): Promise<Locator> {

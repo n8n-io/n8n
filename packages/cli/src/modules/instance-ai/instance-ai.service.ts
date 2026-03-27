@@ -419,10 +419,6 @@ export class InstanceAiService {
 		return this.gatewayRegistry.getGateway(userId);
 	}
 
-	setGatewayPendingApproval(userId: string, pending: boolean, method?: 'cli' | 'app'): void {
-		this.gatewayRegistry.setGatewayPendingApproval(userId, pending, method);
-	}
-
 	initGateway(userId: string, data: InstanceAiGatewayCapabilities): void {
 		this.gatewayRegistry.initGateway(userId, data);
 	}
@@ -640,11 +636,6 @@ export class InstanceAiService {
 			context.localGatewayStatus = { status: 'disabled' };
 		} else if (userGateway?.isConnected) {
 			context.localGatewayStatus = { status: 'connected' };
-		} else if (userGateway?.isPendingApproval) {
-			context.localGatewayStatus = {
-				status: 'pending_approval',
-				approvalMethod: userGateway.approvalMethod,
-			};
 		} else {
 			context.localGatewayStatus = {
 				status: 'disconnected',

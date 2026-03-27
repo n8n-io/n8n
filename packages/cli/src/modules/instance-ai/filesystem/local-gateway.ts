@@ -57,10 +57,6 @@ export class LocalGateway {
 
 	private _availableTools: McpTool[] = [];
 
-	private _pendingApproval = false;
-
-	private _approvalMethod: 'cli' | 'app' = 'cli';
-
 	get isConnected(): boolean {
 		return this._connected;
 	}
@@ -71,19 +67,6 @@ export class LocalGateway {
 
 	get rootPath(): string | null {
 		return this._rootPath;
-	}
-
-	get isPendingApproval(): boolean {
-		return this._pendingApproval;
-	}
-
-	get approvalMethod(): 'cli' | 'app' {
-		return this._approvalMethod;
-	}
-
-	setPendingApproval(pending: boolean, method?: 'cli' | 'app'): void {
-		this._pendingApproval = pending;
-		if (method) this._approvalMethod = method;
 	}
 
 	/** The MCP tools advertised by the client on connect. */
@@ -108,7 +91,6 @@ export class LocalGateway {
 		this._hostIdentifier = data.hostIdentifier ?? null;
 		this._toolCategories = data.toolCategories ?? [];
 		this._availableTools = data.tools;
-		this._pendingApproval = false;
 		this._connected = true;
 		this._connectedAt = new Date().toISOString();
 	}
@@ -146,7 +128,6 @@ export class LocalGateway {
 		this._hostIdentifier = null;
 		this._toolCategories = [];
 		this._availableTools = [];
-		this._pendingApproval = false;
 
 		for (const [id, pending] of this.pendingRequests) {
 			clearTimeout(pending.timer);

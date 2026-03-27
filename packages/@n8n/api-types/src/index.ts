@@ -282,7 +282,6 @@ export {
 	InstanceAiThreadMessagesQuery,
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiUserPreferencesUpdateRequest,
-	InstanceAiGatewayPendingApprovalRequest,
 } from './schemas/instance-ai.schema';
 
 export type {
