@@ -16,5 +16,7 @@ provide(ExpressionLocalResolveContextSymbol, expressionResolveCtx);
 </script>
 
 <template>
-	<slot />
+	<div>
+		<slot />
+	</div>
 </template>
