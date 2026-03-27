@@ -898,7 +898,8 @@ export class CredentialsService {
 		const jsonStr = String(data.json ?? '');
 		if (!jsonStr) return { ...data, json: CREDENTIAL_EMPTY_VALUE };
 		try {
-			const parsed: unknown = JSON.parse(jsonStr);
+			const parsed = jsonParse<unknown>(jsonStr);
+			// JSON.stringify with indentation for readability in the frontend editor
 			return { ...data, json: JSON.stringify(this.redactJsonLeaves(parsed), null, 2) };
 		} catch {
 			// Fallback for non-parseable JSON
