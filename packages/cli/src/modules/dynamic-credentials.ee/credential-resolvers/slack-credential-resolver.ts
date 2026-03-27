@@ -147,12 +147,7 @@ export class SlackCredentialResolver implements ICredentialResolver {
 	}
 
 	async validateOptions(options: CredentialResolverConfiguration): Promise<void> {
-		const result = SlackCredentialResolverOptionsSchema.safeParse(options);
-		if (!result.success) {
-			throw new CredentialResolverValidationError(
-				`Invalid Slack resolver options: ${result.error.message}`,
-			);
-		}
+		this.parseOptions(options);
 	}
 
 	async validateIdentity(
