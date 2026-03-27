@@ -53,17 +53,20 @@ Creates GitHub PRs with titles that pass n8n's `check-pr-title` CI validation.
    git log origin/master..HEAD --oneline
    ```
 
-2. **Analyze changes** to determine:
+2. **If this is a security fix**, audit every public-facing artifact before
+   proceeding (see Security Fixes below).
+
+3. **Analyze changes** to determine:
    - Type: What kind of change is this?
    - Scope: Which package/area is affected?
    - Summary: What does the change do?
 
-3. **Push branch if needed**:
+4. **Push branch if needed**:
    ```bash
    git push -u origin HEAD
    ```
 
-4. **Create PR** using gh CLI with the template from `.github/pull_request_template.md`:
+5. **Create PR** using gh CLI with the template from `.github/pull_request_template.md`:
    ```bash
    gh pr create --draft --title "<type>(<scope>): <summary>" --body "$(cat <<'EOF'
    ## Summary
@@ -152,3 +155,20 @@ Key validation rules:
 - Exclamation mark for breaking changes goes before the colon
 - Summary must start with capital letter
 - Summary must not end with a period
+
+## Security Fixes
+
+**This repo is public.** Never expose the attack vector in any public artifact.
+Describe **what the code does**, not what threat it prevents.
+
+| Artifact | BAD | GOOD |
+|---|---|---|
+| Branch | `fix-sql-injection-in-webhook` | `fix-webhook-input-validation` |
+| PR title | `fix(core): Prevent SSRF` | `fix(core): Validate outgoing URLs` |
+| Commit msg | `fix: prevent denial of service` | `fix: add payload size validation` |
+| PR body | *"attacker could trigger SSRF…"* | *"validates URL protocol and host"* |
+| Linear ref | URL with slug (leaks title) | URL without slug or ticket ID only |
+| Test name | `'should prevent SQL injection'` | `'should sanitize query parameters'` |
+
+**Before pushing a security fix, verify:** no branch name, commit, PR title,
+PR body, Linear URL, test name, or code comment hints at the vulnerability.

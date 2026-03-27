@@ -306,7 +306,8 @@ const featureRequestUrl = computed(() => {
 
 const hasOutputConnection = computed(() => {
 	if (!node.value) return false;
-	const outgoingConnections = workflowsStore.outgoingConnectionsByNodeName(node.value.name);
+	const outgoingConnections =
+		workflowDocumentStore?.value?.outgoingConnectionsByNodeName(node.value.name) ?? {};
 
 	// Check if there's at-least one output connection
 	return (Object.values(outgoingConnections)?.[0]?.[0] ?? []).length > 0;
