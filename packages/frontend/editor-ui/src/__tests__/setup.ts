@@ -86,16 +86,27 @@ configure({ testIdAttribute: 'data-test-id' });
  */
 class JsonDomPointerEvent extends MouseEvent implements PointerEvent {
 	readonly pointerId: number;
+
 	readonly pointerType: string;
+
 	readonly pressure: number;
+
 	readonly tangentialPressure: number;
+
 	readonly tiltX: number;
+
 	readonly tiltY: number;
+
 	readonly twist: number;
+
 	readonly width: number;
+
 	readonly height: number;
+
 	readonly isPrimary: boolean;
+
 	readonly altitudeAngle: number;
+
 	readonly azimuthAngle: number;
 	readonly persistentDeviceId: number;
 
@@ -119,6 +130,7 @@ class JsonDomPointerEvent extends MouseEvent implements PointerEvent {
 	getCoalescedEvents(): PointerEvent[] {
 		return [];
 	}
+
 	getPredictedEvents(): PointerEvent[] {
 		return [];
 	}
@@ -340,17 +352,29 @@ Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
 
 class SpeechSynthesisUtterance {
 	text = '';
+
 	lang = '';
+
 	voice = null;
+
 	volume = 1;
+
 	rate = 1;
+
 	pitch = 1;
+
 	onstart = null;
+
 	onend = null;
+
 	onerror = null;
+
 	onpause = null;
+
 	onresume = null;
+
 	onmark = null;
+
 	onboundary = null;
 
 	constructor(text?: string) {
@@ -360,7 +384,9 @@ class SpeechSynthesisUtterance {
 	}
 
 	addEventListener = vi.fn();
+
 	removeEventListener = vi.fn();
+
 	dispatchEvent = vi.fn(() => true);
 }
 
