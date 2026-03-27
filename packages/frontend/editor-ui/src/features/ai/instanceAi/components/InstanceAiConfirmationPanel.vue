@@ -506,7 +506,6 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 	}
 }
 
-
 .approveBtn {
 	background: var(--color--primary);
 	color: var(--button--color--text--primary);
@@ -516,7 +515,6 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 		background: var(--color--primary--shade-1);
 	}
 }
-
 
 .batchBtn {
 	margin-left: auto;
