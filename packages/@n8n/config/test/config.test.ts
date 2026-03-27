@@ -256,6 +256,11 @@ describe('GlobalConfig', () => {
 			maxBufferedChunks: 1000,
 			streamStateTtl: 300,
 		},
+		binaryDataPruning: {
+			quotaMiB: 0,
+			intervalMinutes: 60,
+			batchSize: 100,
+		},
 		queue: {
 			health: {
 				active: false,
