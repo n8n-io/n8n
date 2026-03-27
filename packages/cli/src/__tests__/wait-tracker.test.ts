@@ -154,7 +154,7 @@ describe('WaitTracker', () => {
 			);
 		});
 
-	it('should emit execution-resumed after run() succeeds', async () => {
+		it('should emit execution-resumed after run() succeeds', async () => {
 			await waitTracker.startExecution(execution.id);
 
 			expect(eventService.emit).toHaveBeenCalledWith(
@@ -175,7 +175,6 @@ describe('WaitTracker', () => {
 
 			expect(eventService.emit).not.toHaveBeenCalledWith('execution-resumed', expect.anything());
 		});
-
 
 		it('should preserve original startedAt timestamp when resuming execution', async () => {
 			const originalStartedAt = new Date('2025-12-02T09:04:47.150Z');
