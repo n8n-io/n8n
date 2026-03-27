@@ -943,6 +943,10 @@ export class CredentialsService {
 		if (Array.isArray(newVal) && Array.isArray(savedVal)) {
 			return newVal.map((item, i) => this.mergeRedactedJsonLeaves(item, savedVal[i]));
 		}
+		// Type mismatch involving arrays: user made a structural change — preserve new value as-is
+		if (Array.isArray(newVal) || Array.isArray(savedVal)) {
+			return newVal;
+		}
 		if (
 			typeof newVal === 'object' &&
 			newVal !== null &&

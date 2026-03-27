@@ -2337,25 +2337,24 @@ describe('CredentialsService', () => {
 			expect(p(result.json)).toEqual({ auth: 'new-plain-string' });
 		});
 
-		it('should coerce a new array to an object when the saved value was an object (type mismatch, no *** sentinels)', () => {
-			// Both are "objects" in JS so the object-merge branch fires; array indices become string keys
+		it('should preserve the new array when the user changes a key from object to array', () => {
+			// Type mismatch (array vs object): user made a structural change — new value is preserved as-is
 			const result = service.unredact(
 				{ json: s({ auth: ['new-item-1', 'new-item-2'] }) },
 				{ json: s({ auth: { token: 'secret' } }) },
 				true,
 			);
-			expect(p(result.json)).toEqual({ auth: { '0': 'new-item-1', '1': 'new-item-2' } });
+			expect(p(result.json)).toEqual({ auth: ['new-item-1', 'new-item-2'] });
 		});
 
-		it('should drop a *** value when type mismatch makes the saved counterpart unresolvable', () => {
-			// Saved was array; user changed to object with *** — saved[key] is undefined so key is dropped
+		it('should preserve the new object when the user changes a key from array to object (even with *** sentinels)', () => {
+			// Type mismatch (object vs array): structural change — new object is preserved as-is, *** unresolved
 			const result = service.unredact(
 				{ json: s({ data: { key: '***' } }) },
 				{ json: s({ data: ['secret1', 'secret2'] }) },
 				true,
 			);
-			// key: '***' → savedVal['key'] = undefined → key dropped from output
-			expect(p(result.json)).toEqual({ data: {} });
+			expect(p(result.json)).toEqual({ data: { key: '***' } });
 		});
 	});
 
