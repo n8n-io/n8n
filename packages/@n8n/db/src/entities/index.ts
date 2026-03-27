@@ -4,6 +4,10 @@ import { ApiKey } from './api-key';
 import { AuthIdentity } from './auth-identity';
 import { AuthProviderSyncHistory } from './auth-provider-sync-history';
 import { BinaryDataFile, SourceTypeSchema, type SourceType } from './binary-data-file';
+import {
+	CredentialDependency,
+	type CredentialDependencyType,
+} from './credential-dependency-entity';
 import { CredentialsEntity } from './credentials-entity';
 import { ExecutionAnnotation } from './execution-annotation.ee';
 import { ExecutionData } from './execution-data';
@@ -19,6 +23,7 @@ import { ProjectRelation } from './project-relation';
 import { ProjectSecretsProviderAccess } from './project-secrets-provider-access';
 import type { SecretsProviderAccessRole } from './project-secrets-provider-access';
 import { Role } from './role';
+import { RoleMappingRule } from './role-mapping-rule';
 import { Scope } from './scope';
 import { SecretsProviderConnection } from './secrets-provider-connection';
 import { Settings } from './settings';
@@ -34,6 +39,7 @@ import { WorkflowDependency } from './workflow-dependency-entity';
 import { WorkflowEntity } from './workflow-entity';
 import { WorkflowHistory } from './workflow-history';
 import { WorkflowPublishHistory } from './workflow-publish-history';
+import { WorkflowPublishedVersion } from './workflow-published-version';
 import { WorkflowStatistics } from './workflow-statistics';
 import { WorkflowTagMapping } from './workflow-tag-mapping';
 
@@ -50,9 +56,12 @@ export {
 	WebhookEntity,
 	AuthIdentity,
 	CredentialsEntity,
+	CredentialDependency,
+	type CredentialDependencyType,
 	Folder,
 	Project,
 	ProjectRelation,
+	RoleMappingRule,
 	Role,
 	Scope,
 	SharedCredentials,
@@ -66,6 +75,7 @@ export {
 	FolderTagMapping,
 	AuthProviderSyncHistory,
 	WorkflowHistory,
+	WorkflowPublishedVersion,
 	WorkflowPublishHistory,
 	ExecutionData,
 	ExecutionMetadata,
@@ -90,9 +100,11 @@ export const entities = {
 	WebhookEntity,
 	AuthIdentity,
 	CredentialsEntity,
+	CredentialDependency,
 	Folder,
 	Project,
 	ProjectRelation,
+	RoleMappingRule,
 	Scope,
 	SharedCredentials,
 	SharedWorkflow,
@@ -105,6 +117,7 @@ export const entities = {
 	FolderTagMapping,
 	AuthProviderSyncHistory,
 	WorkflowHistory,
+	WorkflowPublishedVersion,
 	WorkflowPublishHistory,
 	ExecutionData,
 	ExecutionMetadata,

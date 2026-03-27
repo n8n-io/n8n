@@ -6,7 +6,7 @@ import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { fetchChatModelsApi } from '@/features/ai/chatHub/chat.api';
+import { fetchChatModelsApi, fetchAgentApi } from '@/features/ai/chatHub/chat.api';
 import Modal from '@/app/components/Modal.vue';
 import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
 import {
@@ -32,6 +32,7 @@ import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/ty
 import { useI18n } from '@n8n/i18n';
 import { assert } from '@n8n/utils/assert';
 import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { useDocumentVisibility, useTimeoutPoll } from '@vueuse/core';
 import type { SuggestedPrompt } from '@n8n/api-types';
 import type { CredentialsMap } from '../chat.types';
 import SuggestedPromptsEditor from './SuggestedPromptsEditor.vue';
@@ -47,6 +48,7 @@ import { useFileDrop } from '@/features/ai/chatHub/composables/useFileDrop';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { CHAT_HUB_SEMANTIC_SEARCH_EXPERIMENT } from '@/app/constants';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 
 const props = defineProps<{
 	modalName: string;
@@ -61,6 +63,7 @@ const props = defineProps<{
 const chatStore = useChatStore();
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
+const credentialsStore = useCredentialsStore();
 const i18n = useI18n();
 
 const canConfigureVectorStore = computed(() => usersStore.isInstanceOwner);
@@ -68,6 +71,7 @@ const canUploadFiles = computed(() => chatStore.semanticSearchReadiness.isReadyF
 const toast = useToast();
 const message = useMessage();
 const uiStore = useUIStore();
+const documentVisibility = useDocumentVisibility();
 
 const { customAgent, isLoading: isLoadingCustomAgent } = useCustomAgent(props.data.agentId);
 
@@ -91,22 +95,19 @@ const currentEmbeddingProvider = computed(
 	() => settingsStore.moduleSettings['chat-hub']?.semanticSearch.embeddingModel.provider ?? null,
 );
 
+const agentUploadMaxSizeMb = computed(
+	() => settingsStore.moduleSettings['chat-hub']?.agentUploadMaxSizeMb ?? 20,
+);
+
 const allFiles = computed<FileRow[]>(() => [
-	...savedFiles.value.map((file, index) => ({
-		id: `saved-${index}`,
-		name: file.fileName,
-		mimeType: file.mimeType,
-		isNew: false,
-		embeddingProvider: file.provider,
-		index,
-	})),
+	...savedFiles.value.map((file) => ({ ...file, isNew: false })),
 	...newFiles.value.map((file, index) => ({
 		id: `new-${index}`,
-		name: file.name,
+		type: 'embedding' as const,
+		provider: currentEmbeddingProvider.value!,
+		fileName: file.name,
 		mimeType: file.type,
 		isNew: true,
-		embeddingProvider: null,
-		index,
 	})),
 ]);
 const suggestedPrompts = ref<SuggestedPrompt[]>([]);
@@ -260,6 +261,7 @@ async function onSave() {
 			suggestedPrompts: filteredPrompts.length > 0 ? filteredPrompts : undefined,
 		};
 
+		const hasNewFiles = newFiles.value.length > 0;
 		// Capture before async calls — the customAgent watcher resets newFiles mid-await
 		const addedFiles = [...newFiles.value];
 
@@ -281,6 +283,7 @@ async function onSave() {
 			}
 			toast.showMessage({
 				title: i18n.baseText('chatHub.agent.editor.success.update'),
+				message: hasNewFiles ? i18n.baseText('chatHub.agent.editor.success.withFiles') : undefined,
 				type: 'success',
 			});
 		} else {
@@ -297,6 +300,7 @@ async function onSave() {
 
 			toast.showMessage({
 				title: i18n.baseText('chatHub.agent.editor.success.create'),
+				message: hasNewFiles ? i18n.baseText('chatHub.agent.editor.success.withFiles') : undefined,
 				type: 'success',
 			});
 		}
@@ -346,10 +350,30 @@ function isFileTypeAccepted(file: File): boolean {
 	return file.type === 'application/pdf';
 }
 
+function validateFileSizes(files: File[]): boolean {
+	const maxSizeBytes = agentUploadMaxSizeMb.value * 1024 * 1024;
+	for (const file of files) {
+		if (file.size > maxSizeBytes) {
+			toast.showMessage({
+				title: i18n.baseText('chatHub.agent.editor.files.tooLarge', {
+					interpolate: { fileName: file.name, maxSizeMb: agentUploadMaxSizeMb.value },
+				}),
+				type: 'error',
+			});
+			return false;
+		}
+	}
+	return true;
+}
+
 function onFilesDropped(droppedFiles: File[]) {
 	const acceptedFiles = droppedFiles.filter((file) => isFileTypeAccepted(file));
 
 	if (acceptedFiles.length === 0) {
+		return;
+	}
+
+	if (!validateFileSizes(acceptedFiles)) {
 		return;
 	}
 
@@ -369,22 +393,15 @@ function handleFileSelect(event: Event) {
 		return;
 	}
 
+	if (!validateFileSizes(acceptedFiles)) {
+		target.value = '';
+		return;
+	}
+
 	newFiles.value = [...newFiles.value, ...acceptedFiles];
 
 	// Reset input value to allow selecting the same file again
 	target.value = '';
-}
-
-function removeExistingFile(index: number) {
-	const file = savedFiles.value[index];
-	if (file) {
-		removedFileKnowledgeIds.value = [...removedFileKnowledgeIds.value, file.id];
-	}
-	savedFiles.value = savedFiles.value.filter((_, i) => i !== index);
-}
-
-function removeNewFile(index: number) {
-	newFiles.value = newFiles.value.filter((_, i) => i !== index);
 }
 
 function handleClickUploadArea() {
@@ -393,9 +410,10 @@ function handleClickUploadArea() {
 
 function removeFile(row: FileRow) {
 	if (row.isNew) {
-		removeNewFile(row.index);
+		newFiles.value = newFiles.value.filter((_, i) => `new-${i}` !== row.id);
 	} else {
-		removeExistingFile(row.index);
+		removedFileKnowledgeIds.value = [...removedFileKnowledgeIds.value, row.id];
+		savedFiles.value = savedFiles.value.filter((f) => f.id !== row.id);
 	}
 }
 
@@ -409,6 +427,39 @@ const isSemanticSearchEnabled = computed(() =>
 );
 
 const fileDrop = useFileDrop(true, onFilesDropped, ['application/pdf']);
+
+const hasIndexingFiles = computed(() => savedFiles.value.some((f) => f.status === 'indexing'));
+
+const { pause, resume } = useTimeoutPoll(async () => {
+	if (!props.data.agentId) return;
+	try {
+		const agent = await fetchAgentApi(useRootStore().restApiContext, props.data.agentId);
+		savedFiles.value = agent.files;
+	} catch {
+		// ignore polling errors
+	}
+}, 5000);
+
+// Poll indexing status while there's a file in indexing state
+watch(
+	hasIndexingFiles,
+	(hasIndexing) => {
+		if (hasIndexing && props.data.agentId) {
+			resume();
+		} else {
+			pause();
+		}
+	},
+	{ immediate: true },
+);
+
+// refresh semantic search readiness
+watch(documentVisibility, (visibility) => {
+	if (visibility === 'visible' && !canUploadFiles.value) {
+		void settingsStore.getModuleSettings();
+		void credentialsStore.fetchAllCredentials();
+	}
+});
 </script>
 
 <template>

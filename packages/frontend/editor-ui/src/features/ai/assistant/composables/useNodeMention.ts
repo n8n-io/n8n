@@ -2,6 +2,10 @@ import { ref, computed, watch, type Ref } from 'vue';
 import type { INodeUi } from '@/Interface';
 import { useFocusedNodesStore } from '../focusedNodes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 export interface UseNodeMentionOptions {
 	maxResults?: number;
@@ -34,6 +38,11 @@ export function useNodeMention(options: UseNodeMentionOptions = {}): UseNodeMent
 
 	const focusedNodesStore = useFocusedNodesStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = computed(() =>
+		workflowsStore.workflowId
+			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: undefined,
+	);
 
 	const showDropdown = ref(false);
 	const searchQuery = ref('');
@@ -45,7 +54,7 @@ export function useNodeMention(options: UseNodeMentionOptions = {}): UseNodeMent
 
 	const filteredNodes = computed(() => {
 		const query = searchQuery.value.toLowerCase();
-		const allNodes = workflowsStore.allNodes;
+		const allNodes = workflowDocumentStore.value?.allNodes ?? [];
 		const confirmedIds = new Set(focusedNodesStore.confirmedNodeIds);
 
 		let result = allNodes.filter((node) => !confirmedIds.has(node.id));
@@ -59,7 +68,7 @@ export function useNodeMention(options: UseNodeMentionOptions = {}): UseNodeMent
 
 	// Close dropdown when workflow nodes change (e.g. paste, import) to ensure fresh data
 	watch(
-		() => workflowsStore.allNodes.length,
+		() => (workflowDocumentStore.value?.allNodes ?? []).length,
 		() => {
 			if (showDropdown.value) {
 				closeDropdown();

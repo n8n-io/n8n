@@ -2,19 +2,39 @@ import type { QdrantLibArgs } from '@langchain/qdrant';
 import { QdrantVectorStore } from '@langchain/qdrant';
 import {
 	jsonParse,
+	type INodeProperties,
+	type ICredentialsDecrypted,
+	type ICredentialTestFunctions,
 	type IDataObject,
 	type ILoadOptionsFunctions,
+	type INodeCredentialTestResult,
 	type NodeParameterValueType,
 } from 'n8n-workflow';
 
 import type { Callbacks } from '@langchain/core/callbacks/manager';
 import { createQdrantClient, type QdrantCredential } from '../VectorStoreQdrant/Qdrant.utils';
 import { ensureUserId } from '../shared/userScoped';
-import { createVectorStoreNode } from '@n8n/ai-utilities';
+import { createVectorStoreNode, metadataFilterField } from '@n8n/ai-utilities';
+import {
+	filterChatHubMetadata,
+	filterChatHubInsertDocuments,
+	CHAT_HUB_RETRIEVE_METADATA_KEYS,
+} from '../shared/chatHub';
 
 type ChatHubVectorStoreQdrantApiCredentials = QdrantCredential & {
 	collectionName: string;
 };
+
+const retrieveFields: INodeProperties[] = [
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		options: [metadataFilterField],
+	},
+];
 
 type Filter = QdrantVectorStore['FilterType'];
 
@@ -34,6 +54,28 @@ async function ensurePayloadIndexes(
 			field_schema: 'keyword',
 		});
 	}
+}
+
+async function chatHubVectorStoreQdrantApiConnectionTest(
+	this: ICredentialTestFunctions,
+	credential: ICredentialsDecrypted,
+): Promise<INodeCredentialTestResult> {
+	const credentials = credential.data as ChatHubVectorStoreQdrantApiCredentials;
+
+	try {
+		const client = createQdrantClient(credentials);
+		await client.getCollections();
+	} catch (error) {
+		return {
+			status: 'Error',
+			message: error.message as string,
+		};
+	}
+
+	return {
+		status: 'OK',
+		message: 'Connection successful',
+	};
 }
 
 async function deleteDocuments(
@@ -80,17 +122,21 @@ export class ChatHubVectorStoreQdrant extends createVectorStoreNode<QdrantVector
 			{
 				name: 'chatHubVectorStoreQdrantApi',
 				required: true,
+				testedBy: 'chatHubVectorStoreQdrantApiConnectionTest',
 			},
 		],
 		operationModes: ['load', 'insert', 'retrieve', 'retrieve-as-tool'],
 	},
 	hidden: true,
-	methods: { actionHandler: { deleteDocuments } },
+	methods: {
+		credentialTest: { chatHubVectorStoreQdrantApiConnectionTest },
+		actionHandler: { deleteDocuments },
+	},
 	sharedFields: [],
 	insertFields: [],
-	loadFields: [],
-	retrieveFields: [],
-	async getVectorStoreClient(context, filter, embeddings) {
+	loadFields: retrieveFields,
+	retrieveFields,
+	async getVectorStoreClient(context, _filter, embeddings) {
 		const credentials = await context.getCredentials<ChatHubVectorStoreQdrantApiCredentials>(
 			'chatHubVectorStoreQdrantApi',
 		);
@@ -105,18 +151,19 @@ export class ChatHubVectorStoreQdrant extends createVectorStoreNode<QdrantVector
 		const originalSearchWithScore = store.similaritySearchWithScore.bind(store);
 		const originalSearchVectorWithScore = store.similaritySearchVectorWithScore.bind(store);
 
+		// In ChatHub, getVectorStoreClient is always called with filter=undefined.
+		// The flat metadata filter (e.g. { agentId }) is passed directly to
+		// similaritySearch* methods as anotherFilter instead (see retrieveAsToolOperation).
 		function createFinalFilter(anotherFilter?: Filter): Filter {
-			const originalMust = anotherFilter
-				? Array.isArray(anotherFilter.must)
-					? anotherFilter.must
-					: [anotherFilter.must ?? {}]
+			const anotherFilterMust = anotherFilter
+				? Object.entries(anotherFilter).map(([key, value]) => ({
+						key: `metadata.${key}`,
+						match: { value },
+					}))
 				: [];
-			const must = filter ? (Array.isArray(filter.must) ? filter.must : [filter.must ?? {}]) : [];
 
 			const final = {
-				...anotherFilter,
-				...filter,
-				must: [...originalMust, ...must, { key: 'metadata.userId', match: { value: userId } }],
+				must: [...anotherFilterMust, { key: 'metadata.userId', match: { value: userId } }],
 			};
 
 			context.logger.debug(`Querying Qdrant vector store... Filter: ${JSON.stringify(final)}`);
@@ -124,18 +171,39 @@ export class ChatHubVectorStoreQdrant extends createVectorStoreNode<QdrantVector
 			return final;
 		}
 
-		store.similaritySearch = async (query: string, k?: number, f?: Filter, callbacks?: Callbacks) =>
-			await originalSearch(query, k, createFinalFilter(f), callbacks);
+		store.similaritySearch = async (
+			query: string,
+			k?: number,
+			f?: Filter,
+			callbacks?: Callbacks,
+		) => {
+			const results = await originalSearch(query, k, createFinalFilter(f), callbacks);
+			return results.map((doc) => ({
+				...doc,
+				metadata: filterChatHubMetadata(doc.metadata, CHAT_HUB_RETRIEVE_METADATA_KEYS),
+			}));
+		};
 
 		store.similaritySearchWithScore = async (
 			query: string,
 			k?: number,
 			f?: Filter,
 			callbacks?: Callbacks,
-		) => await originalSearchWithScore(query, k, createFinalFilter(f), callbacks);
+		) => {
+			const results = await originalSearchWithScore(query, k, createFinalFilter(f), callbacks);
+			return results.map(([doc, score]) => [
+				{ ...doc, metadata: filterChatHubMetadata(doc.metadata, CHAT_HUB_RETRIEVE_METADATA_KEYS) },
+				score,
+			]);
+		};
 
-		store.similaritySearchVectorWithScore = async (query: number[], k?: number, f?: Filter) =>
-			await originalSearchVectorWithScore(query, k, createFinalFilter(f));
+		store.similaritySearchVectorWithScore = async (query: number[], k?: number, f?: Filter) => {
+			const results = await originalSearchVectorWithScore(query, k, createFinalFilter(f));
+			return results.map(([doc, score]) => [
+				{ ...doc, metadata: filterChatHubMetadata(doc.metadata, CHAT_HUB_RETRIEVE_METADATA_KEYS) },
+				score,
+			]);
+		};
 
 		return store;
 	},
@@ -148,7 +216,10 @@ export class ChatHubVectorStoreQdrant extends createVectorStoreNode<QdrantVector
 		const config: QdrantLibArgs = { client, collectionName: credentials.collectionName };
 
 		await QdrantVectorStore.fromDocuments(
-			documents.map((d) => ({ ...d, metadata: { ...d.metadata, userId } })),
+			filterChatHubInsertDocuments(documents).map((d) => ({
+				...d,
+				metadata: { ...d.metadata, userId },
+			})),
 			embeddings,
 			config,
 		);

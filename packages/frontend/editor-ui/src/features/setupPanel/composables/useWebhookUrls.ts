@@ -83,6 +83,12 @@ export function useWebhookUrls(node: MaybeRef<INodeUi | null>) {
 		const currentNode = nodeValue.value;
 		if (!currentNode || webhooks.value.length === 0) return [];
 
+		// Access parameters synchronously so Vue tracks it as a dependency.
+		// Without this, changing a node parameter (e.g. webhook path) won't
+		// trigger a URL recomputation because the node object reference itself
+		// doesn't change — only its `parameters` property does.
+		void currentNode.parameters;
+
 		const result: WebhookDisplayData[] = [];
 
 		for (const webhook of webhooks.value) {

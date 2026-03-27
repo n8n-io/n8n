@@ -1,0 +1,61 @@
+name: 'Security: Publish fix (1.x)'
+
+on:
+  pull_request:
+    types: [closed]
+    branches: ['1.x']
+
+jobs:
+  sync-security-fix:
+    if: github.repository == 'n8n-io/n8n-private' && github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Generate GitHub App Token
+        id: generate_token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+          owner: n8n-io
+          repositories: n8n,n8n-private
+
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          token: ${{ steps.generate_token.outputs.token }}
+
+      - name: Open PR to public repo
+        run: |
+          COMMIT_TO_PUBLISH=$(git rev-parse HEAD)
+          BRANCH_NAME="private-1x-$(date +%Y%m%d-%H%M%S)"
+
+          git remote add public-repo https://x-access-token:${{ steps.generate_token.outputs.token }}@github.com/n8n-io/n8n.git
+          git fetch public-repo 1.x
+          git checkout -b "$BRANCH_NAME" public-repo/1.x
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git cherry-pick "$COMMIT_TO_PUBLISH"
+          git push public-repo "$BRANCH_NAME"
+          gh pr create \
+            --repo n8n-io/n8n \
+            --base 1.x \
+            --head "$BRANCH_NAME" \
+            --title "$PR_TITLE" \
+            --body "Cherry-picked from n8n-private. Original PR: $PR_URL"
+        env:
+          GH_TOKEN: ${{ steps.generate_token.outputs.token }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+
+      - name: Notify on failure
+        if: failure()
+        uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
+        with:
+          status: ${{ job.status }}
+          channel: '#alerts-security'
+          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          message: 'Security fix PR creation failed (1.x). Run "Security: Sync from Public" workflow, rebase your branch, reopen PR. (${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})'
