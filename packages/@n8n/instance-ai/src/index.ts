@@ -28,6 +28,7 @@ export type {
 	WorkflowLoopWorkItemRecord,
 } from './storage';
 export { WORKING_MEMORY_TEMPLATE } from './memory/working-memory-template';
+export { truncateToTitle, generateThreadTitle } from './memory/title-utils';
 export { createSubAgentMemory, subAgentResourceId } from './memory/sub-agent-memory';
 export {
 	MEMORY_ENABLED_ROLES,

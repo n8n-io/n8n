@@ -258,7 +258,7 @@ export class InstanceAiMemoryService {
 		const memory = this.createMemoryInstance();
 		const updated = await patchThread(memory, {
 			threadId,
-			update: ({ metadata }) => ({ title, metadata }),
+			update: ({ metadata }) => ({ title, metadata: { ...metadata, titleRefined: true } }),
 		});
 		if (!updated) {
 			throw new NotFoundError(`Thread ${threadId} not found`);

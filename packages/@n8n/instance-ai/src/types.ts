@@ -664,8 +664,6 @@ export interface InstanceAiMemoryConfig {
 	embedderModel?: string;
 	lastMessages?: number;
 	semanticRecallTopK?: number;
-	/** Model ID for title generation (e.g. "anthropic/claude-sonnet-4-5"). When set, custom title instructions are used. */
-	titleModel?: string;
 	/** Thread TTL in days. Threads older than this are auto-expired on cleanup. 0 = no expiration. */
 	threadTtlDays?: number;
 }
