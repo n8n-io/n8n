@@ -156,7 +156,7 @@ export function startDataTableAgentTask(
 	});
 
 	return {
-		result: `Data table operation started (task: ${taskId}). Do NOT write any text to the user — the agent is already visible. End your turn silently.`,
+		result: `Data table operation started (task: ${taskId}). Reply with ONE short sentence (max 15 words). Do NOT summarize the plan or list details.`,
 		taskId,
 		agentId: subAgentId,
 	};

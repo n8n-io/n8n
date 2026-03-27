@@ -206,7 +206,7 @@ export async function startDetachedDelegateTask(
 	});
 
 	return {
-		result: `Delegation started (task: ${taskId}). Do NOT write any text to the user — the agent is already visible. End your turn silently.`,
+		result: `Delegation started (task: ${taskId}). Reply with ONE short sentence (max 15 words). Do NOT summarize the plan or list details.`,
 		taskId,
 		agentId: subAgentId,
 	};
