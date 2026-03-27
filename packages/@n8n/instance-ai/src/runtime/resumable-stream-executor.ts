@@ -1,7 +1,11 @@
+import type { InstanceAiEvent } from '@n8n/api-types';
+
 import type { InstanceAiEventBus } from '../event-bus';
 import { mapMastraChunkToEvent } from '../stream/map-chunk';
 import { asResumable, parseSuspension } from '../utils/stream-helpers';
 import type { SuspensionInfo } from '../utils/stream-helpers';
+
+type ConfirmationRequestEvent = Extract<InstanceAiEvent, { type: 'confirmation-request' }>;
 
 export interface ResumableStreamSource {
 	runId?: string;
@@ -47,6 +51,7 @@ export interface ExecuteResumableStreamResult {
 	mastraRunId: string;
 	text?: Promise<string>;
 	suspension?: SuspensionInfo;
+	confirmationEvent?: ConfirmationRequestEvent;
 }
 
 export async function executeResumableStream(
@@ -58,6 +63,9 @@ export async function executeResumableStream(
 
 	while (true) {
 		let suspension: SuspensionInfo | undefined;
+		let pendingConfirmation: Promise<Record<string, unknown>> | undefined;
+		let confirmationEvent: ConfirmationRequestEvent | undefined;
+		let confirmationEventPublished = false;
 
 		for await (const chunk of activeStream) {
 			if (options.context.signal.aborted) {
@@ -66,15 +74,53 @@ export async function executeResumableStream(
 
 			const parsedSuspension = parseSuspension(chunk);
 			if (parsedSuspension) {
-				suspension = parsedSuspension;
 				if (options.control.mode === 'auto') {
 					options.control.onSuspension?.(parsedSuspension);
+				}
+
+				if (!suspension) {
+					suspension = parsedSuspension;
+					if (options.control.mode === 'auto') {
+						pendingConfirmation = options.control.waitForConfirmation(parsedSuspension.requestId);
+					}
+				} else if (!isSameSuspension(parsedSuspension, suspension)) {
+					console.warn('[HITL] additional suspension encountered before resume; deferring', {
+						threadId: options.context.threadId,
+						runId: options.context.runId,
+						activeRequestId: suspension.requestId,
+						deferredRequestId: parsedSuspension.requestId,
+						activeToolCallId: suspension.toolCallId,
+						deferredToolCallId: parsedSuspension.toolCallId,
+					});
 				}
 			}
 
 			const event = mapMastraChunkToEvent(options.context.runId, options.context.agentId, chunk);
 			if (event) {
-				options.context.eventBus.publish(options.context.threadId, event);
+				let shouldPublishEvent = true;
+
+				if (event.type === 'confirmation-request') {
+					const isPrimarySuspension =
+						suspension !== undefined &&
+						event.payload.requestId === suspension.requestId &&
+						event.payload.toolCallId === suspension.toolCallId;
+					if (!isPrimarySuspension || confirmationEventPublished || confirmationEvent) {
+						shouldPublishEvent = false;
+					}
+
+					if (shouldPublishEvent && options.control.mode === 'manual') {
+						confirmationEvent = event;
+						shouldPublishEvent = false;
+					}
+
+					if (shouldPublishEvent) {
+						confirmationEventPublished = true;
+					}
+				}
+
+				if (shouldPublishEvent) {
+					options.context.eventBus.publish(options.context.threadId, event);
+				}
 			}
 
 			if (options.control.mode === 'auto' && options.control.drainCorrections) {
@@ -96,13 +142,13 @@ export async function executeResumableStream(
 				mastraRunId: activeMastraRunId,
 				text,
 				suspension,
+				...(confirmationEvent ? { confirmationEvent } : {}),
 			};
 		}
 
 		const resumeData = await waitForConfirmation(
 			options.context.signal,
-			options.control.waitForConfirmation,
-			suspension.requestId,
+			pendingConfirmation ?? options.control.waitForConfirmation(suspension.requestId),
 		);
 		const resumeOptions = options.control.buildResumeOptions?.({
 			mastraRunId: activeMastraRunId,
@@ -133,8 +179,7 @@ function publishCorrections(context: ResumableStreamContext, corrections: string
 
 async function waitForConfirmation(
 	signal: AbortSignal,
-	waitForConfirmation: (requestId: string) => Promise<Record<string, unknown>>,
-	requestId: string,
+	confirmationPromise: Promise<Record<string, unknown>>,
 ): Promise<Record<string, unknown>> {
 	if (signal.aborted) {
 		throw new Error('Run cancelled while waiting for confirmation');
@@ -144,7 +189,7 @@ async function waitForConfirmation(
 
 	try {
 		return await Promise.race([
-			waitForConfirmation(requestId),
+			confirmationPromise,
 			new Promise<never>((_, reject) => {
 				abortHandler = () => reject(new Error('Run cancelled while waiting for confirmation'));
 				signal.addEventListener('abort', abortHandler, { once: true });
@@ -155,4 +200,8 @@ async function waitForConfirmation(
 			signal.removeEventListener('abort', abortHandler);
 		}
 	}
+}
+
+function isSameSuspension(left: SuspensionInfo, right: SuspensionInfo): boolean {
+	return left.requestId === right.requestId && left.toolCallId === right.toolCallId;
 }

@@ -252,8 +252,11 @@ export class InstanceAiController {
 		});
 		if (resolved !== true) {
 			const diag = typeof resolved === 'object' ? resolved : {};
+			const reason =
+				'reason' in diag && typeof diag.reason === 'string' ? diag.reason : 'unknown';
+			const detail = JSON.stringify('detail' in diag ? diag.detail : {});
 			throw new NotFoundError(
-				`Confirmation not found: ${'reason' in diag ? diag.reason : 'unknown'} | ${JSON.stringify('detail' in diag ? diag.detail : {})}`,
+				`Confirmation not found: ${reason} | ${detail}`,
 			);
 		}
 		return { ok: true };

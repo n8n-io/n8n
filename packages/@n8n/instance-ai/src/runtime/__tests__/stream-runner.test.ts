@@ -1,0 +1,77 @@
+import { executeResumableStream } from '../resumable-stream-executor';
+import { streamAgentRun } from '../stream-runner';
+
+jest.mock('../resumable-stream-executor', () => ({
+	executeResumableStream: jest.fn(),
+}));
+
+function createEventBus() {
+	return {
+		publish: jest.fn(),
+		subscribe: jest.fn(),
+		getEventsAfter: jest.fn(),
+		getNextEventId: jest.fn(),
+		getEventsForRun: jest.fn().mockReturnValue([]),
+		getEventsForRuns: jest.fn().mockReturnValue([]),
+	};
+}
+
+async function* emptyStream() {
+	await Promise.resolve();
+	yield* [];
+}
+
+describe('streamAgentRun', () => {
+	it('passes through the buffered manual confirmation event', async () => {
+		const mockedExecuteResumableStream = jest.mocked(executeResumableStream);
+		const agent = {
+			stream: jest.fn().mockResolvedValue({
+				runId: 'mastra-run-1',
+				fullStream: emptyStream(),
+			}),
+		};
+		const eventBus = createEventBus();
+
+		mockedExecuteResumableStream.mockResolvedValue({
+			status: 'suspended',
+			mastraRunId: 'mastra-run-1',
+			suspension: {
+				requestId: 'request-1',
+				toolCallId: 'tool-call-1',
+				toolName: 'pause-for-user',
+			},
+			confirmationEvent: {
+				type: 'confirmation-request',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				payload: {
+					requestId: 'request-1',
+					toolCallId: 'tool-call-1',
+					toolName: 'pause-for-user',
+					args: {},
+					severity: 'warning',
+					message: 'Please confirm',
+				},
+			},
+		});
+
+		const result = await streamAgentRun(agent, 'hello', {}, {
+			threadId: 'thread-1',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			signal: new AbortController().signal,
+			eventBus,
+		});
+
+		expect(result.status).toBe('suspended');
+		expect(result.mastraRunId).toBe('mastra-run-1');
+		expect(result.suspension?.requestId).toBe('request-1');
+		expect(result.confirmationEvent?.type).toBe('confirmation-request');
+		expect(result.confirmationEvent?.payload.requestId).toBe('request-1');
+		expect(mockedExecuteResumableStream).toHaveBeenCalledWith(
+			expect.objectContaining({
+				control: { mode: 'manual' },
+			}),
+		);
+	});
+});
