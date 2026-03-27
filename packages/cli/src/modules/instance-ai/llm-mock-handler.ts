@@ -17,28 +17,35 @@
 
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
-import Anthropic from '@anthropic-ai/sdk';
 import type { EvalLlmMockHandler, EvalMockHttpResponse } from 'n8n-core';
 
-// ---------------------------------------------------------------------------
-// Config
-// ---------------------------------------------------------------------------
-
-/** Model used for per-request mock generation (needs speed, not deep reasoning) */
-const MOCK_RESPONSE_MODEL = 'claude-haiku-4-5-20251001';
+import { createEvalAgent, extractText, HAIKU_MODEL } from '@n8n/instance-ai';
 
 // ---------------------------------------------------------------------------
-// Anthropic client (lazy singleton, reuses eval key)
+// System prompt (static — extracted to module level for agent singleton)
 // ---------------------------------------------------------------------------
 
-let _client: Anthropic | undefined;
+const MOCK_SYSTEM_PROMPT = `You are an API mock server. You generate realistic mock responses as structured JSON specs.
 
-function getClient(): Anthropic {
-	_client ??= new Anthropic({
-		apiKey: process.env.N8N_AI_ANTHROPIC_KEY ?? process.env.ANTHROPIC_API_KEY,
-	});
-	return _client;
-}
+Return a JSON object with one of these formats:
+
+For standard API responses (most common):
+{ "type": "json", "body": { ...the realistic API response... } }
+
+For file/binary download endpoints (e.g. file downloads, image exports, attachments):
+{ "type": "binary", "contentType": "application/pdf", "filename": "document.pdf" }
+
+For error responses:
+{ "type": "error", "statusCode": 404, "body": { ...the service's real error format... } }
+
+Rules:
+- Return ONLY the spec JSON — no markdown, no code fences, no explanation
+- Match the real API's response schema as closely as possible
+- Use realistic but fake data (IDs, names, timestamps, emails)
+- For read operations, return 2-3 representative items in the body
+- For write operations, return the service's standard success/confirmation in the body
+- Choose "binary" only for endpoints that genuinely return file content (downloads, exports)
+- IMPORTANT: Always indicate there are NO more pages — set has_more=false, next_cursor="", nextPageToken=null, or equivalent. Do not trigger pagination`;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -104,28 +111,6 @@ async function generateMockResponse(
 	const serviceName = extractServiceName(request.url);
 	const endpoint = extractEndpoint(request.url);
 
-	const systemPrompt = `You are an API mock server. You generate realistic mock responses as structured JSON specs.
-
-Return a JSON object with one of these formats:
-
-For standard API responses (most common):
-{ "type": "json", "body": { ...the realistic API response... } }
-
-For file/binary download endpoints (e.g. file downloads, image exports, attachments):
-{ "type": "binary", "contentType": "application/pdf", "filename": "document.pdf" }
-
-For error responses:
-{ "type": "error", "statusCode": 404, "body": { ...the service's real error format... } }
-
-Rules:
-- Return ONLY the spec JSON — no markdown, no code fences, no explanation
-- Match the real API's response schema as closely as possible
-- Use realistic but fake data (IDs, names, timestamps, emails)
-- For read operations, return 2-3 representative items in the body
-- For write operations, return the service's standard success/confirmation in the body
-- Choose "binary" only for endpoints that genuinely return file content (downloads, exports)
-- IMPORTANT: Always indicate there are NO more pages — set has_more=false, next_cursor="", nextPageToken=null, or equivalent. Do not trigger pagination`;
-
 	// Build context blocks from pre-generated hints + scenario
 	const contextBlocks: string[] = [];
 	if (context?.globalContext) {
@@ -150,7 +135,7 @@ Request: ${request.method ?? 'GET'} ${endpoint}${request.body ? `\nBody: ${JSON.
 Response spec:`;
 
 	try {
-		const spec = await callLlm(systemPrompt, userPrompt);
+		const spec = await callLlm(userPrompt);
 		return materializeSpec(spec);
 	} catch (error) {
 		Container.get(Logger).error(
@@ -168,16 +153,17 @@ Response spec:`;
 // LLM call
 // ---------------------------------------------------------------------------
 
-async function callLlm(systemPrompt: string, userPrompt: string): Promise<MockResponseSpec> {
-	const client = getClient();
-	const response = await client.messages.create({
-		model: MOCK_RESPONSE_MODEL,
-		max_tokens: 4096,
-		system: systemPrompt,
-		messages: [{ role: 'user', content: userPrompt }],
+async function callLlm(userPrompt: string): Promise<MockResponseSpec> {
+	const agent = createEvalAgent('eval-mock-responder', {
+		model: HAIKU_MODEL,
+		instructions: MOCK_SYSTEM_PROMPT,
 	});
 
-	let text = response.content[0].type === 'text' ? response.content[0].text : '';
+	const result = await agent.generate(userPrompt, {
+		providerOptions: { anthropic: { maxTokens: 4096 } },
+	});
+
+	let text = extractText(result);
 
 	// Strip markdown code fences if the LLM wraps the response
 	text = text
