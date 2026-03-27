@@ -53,7 +53,7 @@ const hasReasoning = computed(() => props.agentNode.reasoning.length > 0);
 	align-items: center;
 	gap: var(--spacing--4xs);
 	font-size: var(--font-size--2xs);
-	color: var(--text-color--subtle);
+	color: var(--color--text--tint-1);
 	background: none;
 	border: none;
 	cursor: pointer;
@@ -61,14 +61,14 @@ const hasReasoning = computed(() => props.agentNode.reasoning.length > 0);
 	font-family: var(--font-family);
 
 	&:hover {
-		color: var(--text-color--subtle);
+		color: var(--color--text--tint-1);
 	}
 }
 
 .reasoningContent {
 	padding: var(--spacing--4xs) var(--spacing--xs);
 	font-size: var(--font-size--2xs);
-	color: var(--text-color--subtle);
+	color: var(--color--text--tint-1);
 	font-style: italic;
 	border-left: 2px solid var(--color--foreground);
 	margin-left: var(--spacing--4xs);

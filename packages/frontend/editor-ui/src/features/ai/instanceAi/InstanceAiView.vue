@@ -1,13 +1,14 @@
 <script lang="ts" setup>
-import { computed, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, onMounted, onUnmounted, provide, ref, useTemplateRef, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { N8nIconButton, N8nResizeWrapper, N8nScrollArea, N8nText } from '@n8n/design-system';
-import { useScroll } from '@vueuse/core';
+import { useScroll, useWindowSize } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiAttachment } from '@n8n/api-types';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useInstanceAiStore } from './instanceAi.store';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
+import { useCanvasPreview } from './useCanvasPreview';
 import { NEW_CONVERSATION_TITLE } from './constants';
 import InstanceAiMessage from './components/InstanceAiMessage.vue';
 import InstanceAiInput from './components/InstanceAiInput.vue';
@@ -16,9 +17,10 @@ import InstanceAiThreadList from './components/InstanceAiThreadList.vue';
 import InstanceAiMemoryPanel from './components/InstanceAiMemoryPanel.vue';
 import InstanceAiDebugPanel from './components/InstanceAiDebugPanel.vue';
 import InstanceAiArtifactsPanel from './components/InstanceAiArtifactsPanel.vue';
-import InstanceAiSettingsPanel from './components/settings/InstanceAiSettingsPanel.vue';
 import InstanceAiStatusBar from './components/InstanceAiStatusBar.vue';
 import InstanceAiConfirmationPanel from './components/InstanceAiConfirmationPanel.vue';
+import InstanceAiWorkflowPreview from './components/InstanceAiWorkflowPreview.vue';
+import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
 
 const store = useInstanceAiStore();
 const settingsStore = useInstanceAiSettingsStore();
@@ -26,7 +28,27 @@ const i18n = useI18n();
 const route = useRoute();
 const documentTitle = useDocumentTitle();
 
-documentTitle.set('Instance AI');
+documentTitle.set('n8n Agent');
+
+// --- Header title ---
+const currentThreadTitle = computed(() => {
+	const thread = store.threads.find((t) => t.id === store.currentThreadId);
+	if (!thread || thread.title === NEW_CONVERSATION_TITLE) {
+		const firstUserMsg = store.messages.find((m) => m.role === 'user');
+		if (firstUserMsg?.content) {
+			const text = firstUserMsg.content.trim();
+			return text.length > 60 ? text.slice(0, 60) + '\u2026' : text;
+		}
+		return NEW_CONVERSATION_TITLE;
+	}
+	return thread.title;
+});
+
+// --- Canvas / data table preview ---
+const preview = useCanvasPreview({ store, route });
+
+provide('openWorkflowPreview', preview.openWorkflowPreview);
+provide('openDataTablePreview', preview.openDataTablePreview);
 
 // Load persisted threads from Mastra storage on mount
 onMounted(() => {
@@ -62,16 +84,40 @@ watch(
 );
 
 // --- Side panels ---
-const showArtifactsPanel = ref(false);
+const showArtifactsPanel = ref(true);
 const showMemoryPanel = ref(false);
 const showDebugPanel = ref(false);
-const showSettingsPanel = ref(false);
+const isDebugEnabled = computed(() => localStorage.getItem('instanceAi.debugMode') === 'true');
 
 // --- Sidebar resize ---
 const sidebarWidth = ref(260);
 function handleSidebarResize({ width }: { width: number }) {
 	sidebarWidth.value = width;
 }
+
+// --- Preview panel resize (when canvas is visible) ---
+const { width: windowWidth } = useWindowSize();
+const previewPanelWidth = ref(Math.round((windowWidth.value - sidebarWidth.value) / 2));
+const isResizingPreview = ref(false);
+const previewMaxWidth = computed(() => Math.round((windowWidth.value - sidebarWidth.value) / 2));
+
+// Clamp preview width when the window shrinks
+watch(previewMaxWidth, (max) => {
+	if (previewPanelWidth.value > max) {
+		previewPanelWidth.value = max;
+	}
+});
+
+function handlePreviewResize({ width }: { width: number }) {
+	previewPanelWidth.value = width;
+}
+
+// Re-compute default width when preview opens so it starts at 50%
+watch(preview.isPreviewVisible, (visible) => {
+	if (visible) {
+		previewPanelWidth.value = Math.round((windowWidth.value - sidebarWidth.value) / 2);
+	}
+});
 
 // --- Scroll management ---
 const scrollableRef = useTemplateRef<HTMLElement>('scrollable');
@@ -218,11 +264,8 @@ watch(
 async function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 	// Reset scroll on new user message
 	userScrolledUp.value = false;
-	await store.sendMessage(message, attachments);
-}
-
-function handleSuggestionSelect(prompt: string) {
-	void handleSubmit(prompt);
+	preview.markUserSentMessage();
+	await store.sendMessage(message, attachments, preview.iframePushRef.value ?? undefined);
 }
 
 function handleStop() {
@@ -248,9 +291,9 @@ function handleStop() {
 		<div :class="$style.chatArea">
 			<!-- Header -->
 			<div :class="$style.header">
-				<N8nText tag="h2" size="large" bold>
-					{{ i18n.baseText('instanceAi.view.title') }}
-				</N8nText>
+				<N8nHeading tag="h2" size="small" :class="$style.headerTitle">
+					{{ currentThreadTitle }}
+				</N8nHeading>
 				<N8nText
 					v-if="store.sseState === 'reconnecting'"
 					size="small"
@@ -261,98 +304,151 @@ function handleStop() {
 				</N8nText>
 				<div :class="$style.headerActions">
 					<N8nIconButton
-						icon="layers"
-						variant="ghost"
-						size="small"
-						:class="{ [$style.activeButton]: showArtifactsPanel }"
-						@click="showArtifactsPanel = !showArtifactsPanel"
-					/>
-					<N8nIconButton
-						icon="cog"
-						variant="ghost"
-						size="small"
-						:class="{ [$style.activeButton]: showSettingsPanel }"
-						@click="showSettingsPanel = !showSettingsPanel"
-					/>
-					<N8nIconButton
 						icon="brain"
 						variant="ghost"
-						size="small"
+						size="medium"
 						:class="{ [$style.activeButton]: showMemoryPanel }"
 						@click="showMemoryPanel = !showMemoryPanel"
 					/>
 					<N8nIconButton
+						v-if="isDebugEnabled"
 						icon="bug"
 						variant="ghost"
-						size="small"
+						size="medium"
 						:class="{ [$style.activeButton]: showDebugPanel }"
 						@click="
 							showDebugPanel = !showDebugPanel;
 							store.debugMode = showDebugPanel;
 						"
 					/>
-				</div>
-			</div>
-
-			<!-- Messages -->
-			<N8nScrollArea :class="$style.scrollArea">
-				<div
-					ref="scrollable"
-					:class="$style.messageList"
-					:style="{ paddingBottom: `${inputAreaHeight}px` }"
-				>
-					<InstanceAiEmptyState v-if="!store.hasMessages" @select="handleSuggestionSelect" />
-					<TransitionGroup name="message-slide">
-						<InstanceAiMessage
-							v-for="message in store.messages"
-							:key="message.id"
-							:message="message"
-						/>
-					</TransitionGroup>
-					<InstanceAiConfirmationPanel />
-				</div>
-			</N8nScrollArea>
-
-			<!-- Scroll to bottom button -->
-			<div :class="$style.scrollButtonContainer" :style="{ bottom: `${inputAreaHeight + 8}px` }">
-				<Transition name="fade">
 					<N8nIconButton
-						v-if="userScrolledUp && store.hasMessages"
-						variant="outline"
-						icon="arrow-down"
-						:class="$style.scrollToBottomButton"
-						@click="
-							scrollToBottom(true);
-							userScrolledUp = false;
-						"
-					/>
-				</Transition>
-			</div>
-
-			<!-- Floating input -->
-			<div ref="inputContainer" :class="$style.inputContainer">
-				<div :class="$style.inputInner">
-					<InstanceAiStatusBar />
-					<InstanceAiInput
-						:is-streaming="store.isStreaming"
-						@submit="handleSubmit"
-						@stop="handleStop"
+						v-if="!preview.isPreviewVisible.value"
+						icon="panel-right"
+						variant="ghost"
+						size="medium"
+						@click="showArtifactsPanel = !showArtifactsPanel"
 					/>
 				</div>
 			</div>
 
-			<!-- Side panels -->
-			<InstanceAiArtifactsPanel v-if="showArtifactsPanel" @close="showArtifactsPanel = false" />
-			<InstanceAiSettingsPanel v-if="showSettingsPanel" @close="showSettingsPanel = false" />
-			<InstanceAiMemoryPanel v-if="showMemoryPanel" @close="showMemoryPanel = false" />
-			<InstanceAiDebugPanel
-				v-if="showDebugPanel"
+			<!-- Content area: chat + artifacts side by side below header -->
+			<div :class="$style.contentArea">
+				<div :class="$style.chatContent">
+					<!-- Empty state: centered layout -->
+					<div v-if="!store.hasMessages" :class="$style.emptyLayout">
+						<InstanceAiEmptyState />
+						<div :class="$style.centeredInput">
+							<InstanceAiStatusBar />
+							<InstanceAiInput
+								:is-streaming="store.isStreaming"
+								@submit="handleSubmit"
+								@stop="handleStop"
+							/>
+						</div>
+					</div>
+
+					<!-- Messages: scroll + floating input layout -->
+					<template v-else>
+						<N8nScrollArea :class="$style.scrollArea">
+							<div
+								ref="scrollable"
+								:class="$style.messageList"
+								:style="{ paddingBottom: `${inputAreaHeight}px` }"
+							>
+								<TransitionGroup name="message-slide">
+									<InstanceAiMessage
+										v-for="message in store.messages"
+										:key="message.id"
+										:message="message"
+									/>
+								</TransitionGroup>
+								<InstanceAiConfirmationPanel />
+							</div>
+						</N8nScrollArea>
+
+						<!-- Scroll to bottom button -->
+						<div
+							:class="$style.scrollButtonContainer"
+							:style="{ bottom: `${inputAreaHeight + 8}px` }"
+						>
+							<Transition name="fade">
+								<N8nIconButton
+									v-if="userScrolledUp && store.hasMessages"
+									variant="outline"
+									icon="arrow-down"
+									:class="$style.scrollToBottomButton"
+									@click="
+										scrollToBottom(true);
+										userScrolledUp = false;
+									"
+								/>
+							</Transition>
+						</div>
+
+						<!-- Floating input -->
+						<div ref="inputContainer" :class="$style.inputContainer">
+							<div :class="$style.inputConstraint">
+								<InstanceAiStatusBar />
+								<InstanceAiInput
+									:is-streaming="store.isStreaming"
+									@submit="handleSubmit"
+									@stop="handleStop"
+								/>
+							</div>
+						</div>
+					</template>
+				</div>
+
+				<!-- Artifacts panel (below header, beside chat) -->
+				<InstanceAiArtifactsPanel v-if="showArtifactsPanel && !preview.isPreviewVisible.value" />
+
+				<!-- Overlay panels -->
+				<InstanceAiMemoryPanel v-if="showMemoryPanel" @close="showMemoryPanel = false" />
+				<InstanceAiDebugPanel
+					v-if="showDebugPanel"
+					@close="
+						showDebugPanel = false;
+						store.debugMode = false;
+					"
+				/>
+			</div>
+		</div>
+
+		<!-- Resizable preview panel (workflow OR datatable) -->
+		<N8nResizeWrapper
+			v-show="preview.isPreviewVisible.value"
+			:class="$style.canvasArea"
+			:width="previewPanelWidth"
+			:style="{ width: `${previewPanelWidth}px` }"
+			:min-width="400"
+			:max-width="previewMaxWidth"
+			:supported-directions="['left']"
+			:is-resizing-enabled="true"
+			:grid-size="8"
+			:outset="true"
+			@resize="handlePreviewResize"
+			@resizestart="isResizingPreview = true"
+			@resizeend="isResizingPreview = false"
+		>
+			<InstanceAiWorkflowPreview
+				v-if="preview.activeWorkflowId.value"
+				:workflow-id="preview.activeWorkflowId.value"
+				:execution-id="preview.activeExecutionId.value"
+				:refresh-key="preview.workflowRefreshKey.value"
+				@close="preview.activeWorkflowId.value = null"
+				@push-ref-ready="preview.iframePushRef.value = $event"
+			/>
+			<InstanceAiDataTablePreview
+				v-else-if="preview.activeDataTableId.value"
+				:data-table-id="preview.activeDataTableId.value"
+				:project-id="preview.activeDataTableProjectId.value"
+				:refresh-key="preview.dataTableRefreshKey.value"
 				@close="
-					showDebugPanel = false;
-					store.debugMode = false;
+					preview.activeDataTableId.value = null;
+					preview.activeDataTableProjectId.value = null;
 				"
 			/>
-		</div>
+		</N8nResizeWrapper>
 	</div>
 </template>
 
@@ -361,6 +457,7 @@ function handleStop() {
 	display: flex;
 	height: 100%;
 	width: 100%;
+	min-width: 900px;
 	overflow: hidden;
 }
 
@@ -377,16 +474,54 @@ function handleStop() {
 	min-width: 0;
 	overflow: hidden;
 	position: relative;
-	background-color: var(--color--background--light-2);
+	background-color: var(--color--background--light-1);
+}
+
+.canvasArea {
+	flex-shrink: 0;
+	min-width: 0;
+	border-left: var(--border);
+
+	// Widen the resize handle hit area for easier grabbing
+	:global([data-test-id='resize-handle']) {
+		width: 12px !important;
+		left: -6px !important;
+
+		// Visible drag indicator line
+		&::after {
+			content: '';
+			position: absolute;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			width: 2px;
+			height: 32px;
+			border-radius: 1px;
+			background: var(--color--foreground);
+			opacity: 0;
+			transition: opacity 0.15s ease;
+		}
+
+		&:hover::after {
+			opacity: 1;
+		}
+	}
 }
 
 .header {
 	padding: var(--spacing--sm) var(--spacing--lg);
-	border-bottom: var(--border);
 	flex-shrink: 0;
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);
+}
+
+.headerTitle {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	min-width: 0;
+	color: var(--color--text);
 }
 
 .headerActions {
@@ -402,6 +537,36 @@ function handleStop() {
 
 .reconnecting {
 	font-style: italic;
+}
+
+.contentArea {
+	display: flex;
+	flex: 1;
+	min-height: 0;
+	position: relative;
+}
+
+.chatContent {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	position: relative;
+}
+
+.emptyLayout {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: var(--spacing--lg);
+	padding: var(--spacing--lg);
+}
+
+.centeredInput {
+	width: 100%;
+	max-width: 680px;
 }
 
 .scrollArea {
@@ -428,6 +593,14 @@ function handleStop() {
 
 .scrollToBottomButton {
 	pointer-events: auto;
+	background: var(--color--background--light-2);
+	border: var(--border);
+	border-radius: var(--radius);
+	color: var(--color--text--tint-1);
+
+	&:hover {
+		background: var(--color--foreground--tint-2);
+	}
 }
 
 .inputContainer {
@@ -435,16 +608,19 @@ function handleStop() {
 	bottom: 0;
 	left: 0;
 	right: 0;
-	background: linear-gradient(transparent 0%, var(--color--background--light-2) 30%);
+	padding: 0 var(--spacing--lg) var(--spacing--sm);
+	background: linear-gradient(transparent 0%, var(--color--background--light-1) 30%);
 	pointer-events: none;
 	z-index: 2;
+
+	& > * {
+		pointer-events: auto;
+	}
 }
 
-.inputInner {
-	max-width: calc(750px + 2 * var(--spacing--lg));
+.inputConstraint {
+	max-width: 750px;
 	margin: 0 auto;
-	padding: 0 var(--spacing--lg) var(--spacing--sm);
-	pointer-events: auto;
 }
 </style>
 

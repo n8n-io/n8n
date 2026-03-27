@@ -114,6 +114,7 @@ describe('InstanceAiController', () => {
 				payload.researchMode,
 				payload.attachments,
 				payload.timeZone,
+				payload.pushRef,
 			);
 		});
 
@@ -125,6 +126,29 @@ describe('InstanceAiController', () => {
 			await expect(controller.chat(req, res, THREAD_ID, payload)).resolves.toEqual({
 				runId: 'run-1',
 			});
+		});
+
+		it('should forward pushRef to startRun', async () => {
+			const payloadWithPushRef = mock<InstanceAiSendMessageRequest>({
+				message: 'build me a workflow',
+				pushRef: 'iframe-push-ref-123',
+				timeZone: 'UTC',
+			});
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.hasActiveRun.mockReturnValue(false);
+			instanceAiService.startRun.mockReturnValue('run-2');
+
+			await controller.chat(req, res, THREAD_ID, payloadWithPushRef);
+
+			expect(instanceAiService.startRun).toHaveBeenCalledWith(
+				req.user,
+				THREAD_ID,
+				payloadWithPushRef.message,
+				payloadWithPushRef.researchMode,
+				payloadWithPushRef.attachments,
+				payloadWithPushRef.timeZone,
+				'iframe-push-ref-123',
+			);
 		});
 
 		it('should throw ConflictError when a run is already active', async () => {

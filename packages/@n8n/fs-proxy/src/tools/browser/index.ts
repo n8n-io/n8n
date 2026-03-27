@@ -56,8 +56,13 @@ export class BrowserModule implements ToolModule {
 	static async create(config: BrowserModuleConfig = {}): Promise<BrowserModule | null> {
 		try {
 			const { createBrowserTools } = await import('@n8n/mcp-browser');
-			const { tools, sessionManager } = createBrowserTools(toBrowserConfig(config));
-			return new BrowserModule(tools, sessionManager);
+			// Pass toolGroupId explicitly so getAffectedResources emits 'browser' (a valid ToolGroup).
+			// Cast required because mcp-browser types toolGroup as string, not the narrow ToolGroup union.
+			const { tools, sessionManager } = createBrowserTools({
+				...toBrowserConfig(config),
+				toolGroupId: 'browser',
+			});
+			return new BrowserModule(tools as unknown as ToolDefinition[], sessionManager);
 		} catch {
 			logger.info('Browser module not supported', { reason: '@n8n/mcp-browser not available' });
 			return null;

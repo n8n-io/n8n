@@ -7,6 +7,7 @@ import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useCanvasStore } from '@/app/stores/canvas.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -31,6 +32,7 @@ export function usePostMessageHandler({
 	const i18n = useI18n();
 	const toast = useToast();
 	const canvasStore = useCanvasStore();
+	const uiStore = useUIStore();
 	const projectsStore = useProjectsStore();
 	const executionsStore = useExecutionsStore();
 	const rootStore = useRootStore();
@@ -44,7 +46,11 @@ export function usePostMessageHandler({
 	function emitPostMessageReady() {
 		if (window.parent) {
 			window.parent.postMessage(
-				JSON.stringify({ command: 'n8nReady', version: rootStore.versionCli }),
+				JSON.stringify({
+					command: 'n8nReady',
+					version: rootStore.versionCli,
+					pushRef: rootStore.pushRef,
+				}),
 				'*',
 			);
 		}
@@ -60,11 +66,23 @@ export function usePostMessageHandler({
 		workflow: WorkflowDataUpdate;
 		projectId?: string;
 		tidyUp?: boolean;
+		suppressNotifications?: boolean;
 	}) {
+		if (json.suppressNotifications) {
+			uiStore.setNotificationsSuppressed(true);
+		}
+
 		if (json.projectId) {
 			await projectsStore.fetchAndSetProject(json.projectId);
 		}
 		await importWorkflowExact(json);
+
+		// importWorkflowExact → resetWorkspace resets activeExecutionId to undefined,
+		// which causes the iframe to reject push execution events. Re-set to null so
+		// the iframe stays receptive to incoming execution push events.
+		if (window !== window.parent) {
+			workflowState.setActiveExecutionId(null);
+		}
 
 		if (json.tidyUp === true) {
 			canvasEventBus.emit('tidyUp', { source: 'import-workflow-data' });

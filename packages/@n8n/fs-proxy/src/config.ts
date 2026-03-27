@@ -1,7 +1,73 @@
 /* eslint-disable id-denylist */
+import * as os from 'node:os';
 import * as path from 'node:path';
 import yargsParser from 'yargs-parser';
 import { z } from 'zod';
+
+// ---------------------------------------------------------------------------
+// Permission options — keys derive the ToolGroup union type
+// Defaults match the Recommended template from the spec.
+// ---------------------------------------------------------------------------
+
+export const TOOL_GROUP_DEFINITIONS = {
+	filesystemRead: {
+		envVar: 'PERMISSION_FILESYSTEM_READ',
+		cliFlag: 'permission-filesystem-read',
+		default: 'allow',
+		description: 'Filesystem read access mode: deny | ask | allow',
+	},
+	filesystemWrite: {
+		envVar: 'PERMISSION_FILESYSTEM_WRITE',
+		cliFlag: 'permission-filesystem-write',
+		default: 'ask',
+		description: 'Filesystem write access mode: deny | ask | allow',
+	},
+	shell: {
+		envVar: 'PERMISSION_SHELL',
+		cliFlag: 'permission-shell',
+		default: 'deny',
+		description: 'Shell execution mode: deny | ask | allow',
+	},
+	computer: {
+		envVar: 'PERMISSION_COMPUTER',
+		cliFlag: 'permission-computer',
+		default: 'deny',
+		description: 'Computer control (screenshot, mouse/keyboard) mode: deny | ask | allow',
+	},
+	browser: {
+		envVar: 'PERMISSION_BROWSER',
+		cliFlag: 'permission-browser',
+		default: 'ask',
+		description: 'Browser automation mode: deny | ask | allow',
+	},
+} as const;
+
+export type ToolGroup = keyof typeof TOOL_GROUP_DEFINITIONS;
+
+export const PERMISSION_MODES = ['deny', 'ask', 'allow'] as const;
+export const permissionModeSchema = z.enum(PERMISSION_MODES);
+export type PermissionMode = z.infer<typeof permissionModeSchema>;
+
+// ---------------------------------------------------------------------------
+// Unified config type — the single type passed to daemon, client, settings
+// ---------------------------------------------------------------------------
+
+export interface GatewayConfig {
+	logLevel: 'silent' | 'error' | 'warn' | 'info' | 'debug';
+	port: number;
+	allowedOrigins: string[];
+	filesystem: { dir: string };
+	computer: { shell: { timeout: number } };
+	browser: {
+		headless: boolean;
+		defaultBrowser: string;
+		viewport: { width: number; height: number };
+		sessionTtlMs: number;
+		maxConcurrentSessions: number;
+	};
+	/** Startup permission overrides (ENV/CLI). Merged with persistent settings in SettingsStore. */
+	permissions: Partial<Record<ToolGroup, PermissionMode>>;
+}
 
 // ---------------------------------------------------------------------------
 // Environment variable helpers
@@ -33,68 +99,83 @@ function parseViewport(raw: string): { width: number; height: number } | undefin
 }
 
 // ---------------------------------------------------------------------------
-// Zod schemas
+// Zod schemas (internal — used only in parseConfig)
 // ---------------------------------------------------------------------------
 
-const logLevelSchema = z.enum(['silent', 'error', 'warn', 'info', 'debug']);
+export const logLevelSchema = z.enum(['silent', 'error', 'warn', 'info', 'debug']).default('info');
 export type LogLevel = z.infer<typeof logLevelSchema>;
+export const portSchema = z.number().int().positive().default(7655);
 
-const filesystemConfigSchema = z.object({
-	dir: z.string().default('.'),
-	writeAccess: z.boolean().default(false),
-});
-
-const shellConfigSchema = z.object({
-	timeout: z.number().int().positive().default(30_000),
-});
-
-const screenshotConfigSchema = z.object({});
-
-const mouseKeyboardConfigSchema = z.object({});
-
-const computerConfigSchema = z.object({
-	shell: z.union([z.literal(false), shellConfigSchema]).default(false),
-	screenshot: z.union([z.literal(false), screenshotConfigSchema]).default({}),
-	mouseKeyboard: z.union([z.literal(false), mouseKeyboardConfigSchema]).default({}),
-});
-
-const viewportSchema = z.object({
-	width: z.number().int().positive(),
-	height: z.number().int().positive(),
-});
-
-const browserConfigSchema = z.object({
-	headless: z.boolean().default(false),
-	defaultBrowser: z.string().default('chromium'),
-	viewport: viewportSchema.default({ width: 1280, height: 720 }),
-	sessionTtlMs: z.number().positive().default(1_800_000),
-	maxConcurrentSessions: z.number().positive().default(5),
-});
-
-export const gatewayConfigSchema = z.object({
-	logLevel: logLevelSchema.default('info'),
-	port: z.number().int().positive().default(7655),
+const structuralConfigSchema = z.object({
+	logLevel: logLevelSchema,
+	port: portSchema,
 	allowedOrigins: z.array(z.string()).default([]),
-	filesystem: z.union([z.literal(false), filesystemConfigSchema]).default({}),
-	computer: computerConfigSchema.default({}),
-	browser: z.union([z.literal(false), browserConfigSchema]).default({}),
+	filesystem: z.object({ dir: z.string().default('.') }).default({}),
+	computer: z
+		.object({
+			shell: z.object({ timeout: z.number().int().positive().default(30_000) }).default({}),
+		})
+		.default({}),
+	browser: z
+		.object({
+			headless: z.boolean().default(false),
+			defaultBrowser: z.string().default('chromium'),
+			viewport: z
+				.object({ width: z.number().int().positive(), height: z.number().int().positive() })
+				.default({ width: 1280, height: 720 }),
+			sessionTtlMs: z.number().positive().default(1_800_000),
+			maxConcurrentSessions: z.number().positive().default(5),
+		})
+		.default({}),
 });
 
-export type GatewayConfig = z.input<typeof gatewayConfigSchema>;
-export type ResolvedGatewayConfig = z.output<typeof gatewayConfigSchema>;
-
 // ---------------------------------------------------------------------------
-// Config builder — merges env vars and CLI flags into a partial config
+// Read permission overrides from ENV and CLI
 // ---------------------------------------------------------------------------
 
-function buildEnvConfig(): Partial<GatewayConfig> {
+function readPermissionOverridesFromEnv(): Partial<Record<ToolGroup, PermissionMode>> {
+	const overrides: Partial<Record<ToolGroup, PermissionMode>> = {};
+	for (const [group, option] of Object.entries(TOOL_GROUP_DEFINITIONS) as Array<
+		[ToolGroup, (typeof TOOL_GROUP_DEFINITIONS)[ToolGroup]]
+	>) {
+		const raw = envString(option.envVar);
+		if (raw !== undefined) {
+			const result = permissionModeSchema.safeParse(raw);
+			if (result.success) overrides[group] = result.data;
+		}
+	}
+	return overrides;
+}
+
+function readPermissionOverridesFromCli(
+	args: yargsParser.Arguments,
+): Partial<Record<ToolGroup, PermissionMode>> {
+	const overrides: Partial<Record<ToolGroup, PermissionMode>> = {};
+	for (const [group, option] of Object.entries(TOOL_GROUP_DEFINITIONS) as Array<
+		[ToolGroup, (typeof TOOL_GROUP_DEFINITIONS)[ToolGroup]]
+	>) {
+		const cliKey = option.cliFlag.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
+		const raw = args[cliKey] as string | undefined;
+		if (raw !== undefined) {
+			const result = permissionModeSchema.safeParse(raw);
+			if (result.success) overrides[group] = result.data;
+		}
+	}
+	return overrides;
+}
+
+// ---------------------------------------------------------------------------
+// Config builder — merges env vars and CLI flags into a partial structural config
+// ---------------------------------------------------------------------------
+
+type PartialStructural = z.input<typeof structuralConfigSchema>;
+
+function buildEnvConfig(): PartialStructural {
 	const config: Record<string, unknown> = {};
 
-	// Global
 	const logLevel = envString('LOG_LEVEL') ?? process.env.LOG_LEVEL;
 	if (logLevel) config.logLevel = logLevel;
 
-	// Allowed origins (comma-separated)
 	const allowedOrigins = envString('ALLOWED_ORIGINS');
 	if (allowedOrigins) {
 		config.allowedOrigins = allowedOrigins
@@ -103,73 +184,31 @@ function buildEnvConfig(): Partial<GatewayConfig> {
 			.filter(Boolean);
 	}
 
-	// Filesystem
-	const fsEnabled = envBoolean('FILESYSTEM_ENABLED');
 	const fsDir = envString('FILESYSTEM_DIR');
-	const fsWriteAccess = envBoolean('FILESYSTEM_WRITE_ACCESS');
-	if (fsEnabled === false) {
-		config.filesystem = false;
-	} else {
-		const fsConfig: Record<string, unknown> = {};
-		if (fsDir) fsConfig.dir = fsDir;
-		if (fsWriteAccess !== undefined) fsConfig.writeAccess = fsWriteAccess;
-		if (Object.keys(fsConfig).length > 0) config.filesystem = fsConfig;
-	}
+	if (fsDir) config.filesystem = { dir: fsDir };
 
-	// Computer — shell
-	const shellEnabled = envBoolean('COMPUTER_SHELL_ENABLED');
 	const shellTimeout = envNumber('COMPUTER_SHELL_TIMEOUT');
-	const computer: Record<string, unknown> = {};
-	if (shellEnabled === false) {
-		computer.shell = false;
-	} else if (shellTimeout !== undefined) {
-		computer.shell = { timeout: shellTimeout };
-	}
+	if (shellTimeout !== undefined) config.computer = { shell: { timeout: shellTimeout } };
 
-	// Computer — screenshot
-	const screenshotEnabled = envBoolean('COMPUTER_SCREENSHOT_ENABLED');
-	if (screenshotEnabled === false) {
-		computer.screenshot = false;
-	}
+	const browser: Record<string, unknown> = {};
+	const headless = envBoolean('BROWSER_HEADLESS');
+	if (headless !== undefined) browser.headless = headless;
+	const defaultBrowser = envString('BROWSER_DEFAULT');
+	if (defaultBrowser) browser.defaultBrowser = defaultBrowser;
+	const viewport = envString('BROWSER_VIEWPORT');
+	if (viewport) browser.viewport = parseViewport(viewport);
+	const sessionTtlMs = envNumber('BROWSER_SESSION_TTL_MS');
+	if (sessionTtlMs !== undefined) browser.sessionTtlMs = sessionTtlMs;
+	const maxSessions = envNumber('BROWSER_MAX_SESSIONS');
+	if (maxSessions !== undefined) browser.maxConcurrentSessions = maxSessions;
+	if (Object.keys(browser).length > 0) config.browser = browser;
 
-	// Computer — mouse/keyboard
-	const mouseKeyboardEnabled = envBoolean('COMPUTER_MOUSE_KEYBOARD_ENABLED');
-	if (mouseKeyboardEnabled === false) {
-		computer.mouseKeyboard = false;
-	}
-
-	if (Object.keys(computer).length > 0) {
-		config.computer = computer;
-	}
-
-	// Browser
-	const browserEnabled = envBoolean('BROWSER_ENABLED');
-	if (browserEnabled === false) {
-		config.browser = false;
-	} else {
-		const browser: Record<string, unknown> = {};
-		const headless = envBoolean('BROWSER_HEADLESS');
-		if (headless !== undefined) browser.headless = headless;
-		const defaultBrowser = envString('BROWSER_DEFAULT');
-		if (defaultBrowser) browser.defaultBrowser = defaultBrowser;
-		const viewport = envString('BROWSER_VIEWPORT');
-		if (viewport) browser.viewport = parseViewport(viewport);
-		const sessionTtlMs = envNumber('BROWSER_SESSION_TTL_MS');
-		if (sessionTtlMs !== undefined) browser.sessionTtlMs = sessionTtlMs;
-		const maxSessions = envNumber('BROWSER_MAX_SESSIONS');
-		if (maxSessions !== undefined) browser.maxConcurrentSessions = maxSessions;
-		if (Object.keys(browser).length > 0) {
-			config.browser = browser;
-		}
-	}
-
-	return config as Partial<GatewayConfig>;
+	return config as PartialStructural;
 }
 
-function buildCliConfig(args: yargsParser.Arguments): Partial<GatewayConfig> {
+function buildCliConfig(args: yargsParser.Arguments): PartialStructural {
 	const config: Record<string, unknown> = {};
 
-	// Global
 	if (args['log-level']) config.logLevel = args['log-level'];
 	if (args.port !== undefined) config.port = args.port;
 	if (args['allow-origin']) {
@@ -177,61 +216,25 @@ function buildCliConfig(args: yargsParser.Arguments): Partial<GatewayConfig> {
 		config.allowedOrigins = Array.isArray(raw) ? raw.map(String) : [String(raw)];
 	}
 
-	// Filesystem
-	if (args['no-filesystem'] === true) {
-		config.filesystem = false;
-	} else {
-		const fsConfig: Record<string, unknown> = {};
-		const dir = args['filesystem-dir'] as string;
-		if (dir) fsConfig.dir = dir;
-		if (args['filesystem-write-access'] !== undefined)
-			fsConfig.writeAccess = args['filesystem-write-access'] as boolean;
-		if (Object.keys(fsConfig).length > 0) config.filesystem = fsConfig;
-	}
+	const dir = args['filesystem-dir'] as string;
+	if (dir) config.filesystem = { dir };
 
-	// Computer — shell
-	const computer: Record<string, unknown> = {};
-	if (args['no-computer-shell'] === true) {
-		computer.shell = false;
-	} else {
-		const timeout = args['computer-shell-timeout'] as number;
-		if (timeout !== undefined) computer.shell = { timeout };
-	}
+	const timeout = args['computer-shell-timeout'] as number;
+	if (timeout !== undefined) config.computer = { shell: { timeout } };
 
-	// Computer — screenshot
-	if (args['no-computer-screenshot'] === true) {
-		computer.screenshot = false;
-	}
+	const browser: Record<string, unknown> = {};
+	if (args['browser-headless'] !== undefined) browser.headless = args['browser-headless'];
+	if (args['no-browser-headless'] === true) browser.headless = false;
+	if (args['browser-default']) browser.defaultBrowser = args['browser-default'];
+	if (args['browser-viewport'])
+		browser.viewport = parseViewport(args['browser-viewport'] as string);
+	if (args['browser-session-ttl-ms'] !== undefined)
+		browser.sessionTtlMs = args['browser-session-ttl-ms'];
+	if (args['browser-max-sessions'] !== undefined)
+		browser.maxConcurrentSessions = args['browser-max-sessions'];
+	if (Object.keys(browser).length > 0) config.browser = browser;
 
-	// Computer — mouse/keyboard
-	if (args['no-computer-mouse-keyboard'] === true) {
-		computer.mouseKeyboard = false;
-	}
-
-	if (Object.keys(computer).length > 0) {
-		config.computer = computer;
-	}
-
-	// Browser
-	if (args['no-browser'] === true) {
-		config.browser = false;
-	} else {
-		const browser: Record<string, unknown> = {};
-		if (args['browser-headless'] !== undefined) browser.headless = args['browser-headless'];
-		if (args['no-browser-headless'] === true) browser.headless = false;
-		if (args['browser-default']) browser.defaultBrowser = args['browser-default'];
-		if (args['browser-viewport'])
-			browser.viewport = parseViewport(args['browser-viewport'] as string);
-		if (args['browser-session-ttl-ms'] !== undefined)
-			browser.sessionTtlMs = args['browser-session-ttl-ms'];
-		if (args['browser-max-sessions'] !== undefined)
-			browser.maxConcurrentSessions = args['browser-max-sessions'];
-		if (Object.keys(browser).length > 0) {
-			config.browser = browser;
-		}
-	}
-
-	return config as Partial<GatewayConfig>;
+	return config as PartialStructural;
 }
 
 // ---------------------------------------------------------------------------
@@ -266,6 +269,14 @@ function deepMerge(
 }
 
 // ---------------------------------------------------------------------------
+// Settings file path
+// ---------------------------------------------------------------------------
+
+export function getSettingsFilePath(): string {
+	return path.join(os.homedir(), '.n8n-gateway', 'settings.json');
+}
+
+// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
@@ -276,27 +287,36 @@ export interface ParsedArgs {
 	url?: string;
 	/** Gateway API key (direct mode) */
 	apiKey?: string;
-	/** Resolved gateway config */
-	config: ResolvedGatewayConfig;
+	/** Complete resolved config, ready to pass to startDaemon / GatewayClient */
+	config: GatewayConfig;
+	/**
+	 * When true, all permission prompts are auto-granted as "allow once".
+	 * CLI-only — handle in cli.ts by passing confirmResourceAccess: () => 'allowOnce'.
+	 */
+	autoConfirm: boolean;
+	/**
+	 * When true, skip all interactive prompts (startup config + resource access).
+	 * Resource access falls back to denyOnce, or allowOnce when autoConfirm is also set.
+	 */
+	nonInteractive: boolean;
 }
 
 export function parseConfig(argv = process.argv.slice(2)): ParsedArgs {
 	const isServe = argv[0] === 'serve';
 	const rawArgs = isServe ? argv.slice(1) : argv;
 
+	const permissionFlags = Object.values(TOOL_GROUP_DEFINITIONS).map((o) => o.cliFlag);
+
 	const args = yargsParser(rawArgs, {
-		string: ['log-level', 'filesystem-dir', 'browser-default', 'browser-viewport', 'allow-origin'],
-		boolean: [
-			'no-filesystem',
-			'filesystem-write-access',
-			'no-computer-shell',
-			'no-computer-screenshot',
-			'no-computer-mouse-keyboard',
-			'no-browser',
-			'browser-headless',
-			'no-browser-headless',
-			'help',
+		string: [
+			'log-level',
+			'filesystem-dir',
+			'browser-default',
+			'browser-viewport',
+			'allow-origin',
+			...permissionFlags,
 		],
+		boolean: ['browser-headless', 'no-browser-headless', 'auto-confirm', 'non-interactive', 'help'],
 		number: ['port', 'computer-shell-timeout', 'browser-session-ttl-ms', 'browser-max-sessions'],
 		alias: { h: 'help', p: 'port' },
 	});
@@ -309,12 +329,11 @@ export function parseConfig(argv = process.argv.slice(2)): ParsedArgs {
 		cliConfig as Record<string, unknown>,
 	);
 
-	// Handle backwards-compatible positional args
+	// Handle positional args
 	let url: string | undefined;
 	let apiKey: string | undefined;
 
 	if (isServe) {
-		// serve [directory]
 		const positional = args._;
 		if (positional.length > 0 && typeof positional[0] === 'string') {
 			const dir = String(positional[0]);
@@ -325,7 +344,6 @@ export function parseConfig(argv = process.argv.slice(2)): ParsedArgs {
 			}
 		}
 	} else {
-		// Direct mode: <url> <token> [directory]
 		const positional = args._;
 		if (positional.length >= 2) {
 			url = String(positional[0]);
@@ -339,7 +357,6 @@ export function parseConfig(argv = process.argv.slice(2)): ParsedArgs {
 				}
 			}
 		} else if (!args.help) {
-			// Flag-based: --url, --api-key are still separate from config
 			url = args.url as string | undefined;
 			apiKey = args['api-key'] as string | undefined;
 			if (args.dir) {
@@ -358,20 +375,35 @@ export function parseConfig(argv = process.argv.slice(2)): ParsedArgs {
 		}
 	}
 
-	const config = gatewayConfigSchema.parse(merged);
+	const structural = structuralConfigSchema.parse(merged);
 
 	// Resolve dir to absolute path (post-parse, for Zod defaults like '.')
-	if (config.filesystem !== false) {
-		config.filesystem.dir = path.resolve(config.filesystem.dir);
-	}
+	structural.filesystem.dir = path.resolve(structural.filesystem.dir);
 
-	// Resolve url
 	if (url) url = url.replace(/\/$/, '');
+
+	// Collect permission overrides from ENV and CLI (not persisted to settings file)
+	const envPermissions = readPermissionOverridesFromEnv();
+	const cliPermissions = readPermissionOverridesFromCli(args);
+	const permissions: Partial<Record<ToolGroup, PermissionMode>> = {
+		...envPermissions,
+		...cliPermissions, // CLI wins over ENV
+	};
+
+	const autoConfirm =
+		(args['auto-confirm'] as boolean | undefined) ?? envBoolean('AUTO_CONFIRM') ?? false;
+
+	const nonInteractive =
+		(args['non-interactive'] as boolean | undefined) ?? envBoolean('NON_INTERACTIVE') ?? false;
+
+	const config: GatewayConfig = { ...structural, permissions };
 
 	return {
 		command: isServe ? 'serve' : undefined,
 		url,
 		apiKey,
 		config,
+		autoConfirm,
+		nonInteractive,
 	};
 }

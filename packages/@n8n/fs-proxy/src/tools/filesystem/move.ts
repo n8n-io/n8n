@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 import type { ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
-import { resolveSafePath } from './fs-utils';
+import { buildFilesystemResource, resolveSafePath } from './fs-utils';
 
 const inputSchema = z.object({
 	sourcePath: z.string().describe('Source path relative to root (file or directory)'),
@@ -17,6 +17,22 @@ export const moveFileTool: ToolDefinition<typeof inputSchema> = {
 		'Move or rename a file or directory. Overwrites the destination if it already exists. Parent directories at the destination are created automatically.',
 	inputSchema,
 	annotations: { defaultPermission: 'confirm', destructiveHint: true },
+	async getAffectedResources({ sourcePath, destinationPath }, { dir }) {
+		return [
+			await buildFilesystemResource(
+				dir,
+				sourcePath,
+				'filesystemRead',
+				`Move source: ${sourcePath}`,
+			),
+			await buildFilesystemResource(
+				dir,
+				destinationPath,
+				'filesystemWrite',
+				`Move destination: ${destinationPath}`,
+			),
+		];
+	},
 	async execute({ sourcePath, destinationPath }, { dir }) {
 		const resolvedSrc = await resolveSafePath(dir, sourcePath);
 		const resolvedDest = await resolveSafePath(dir, destinationPath);

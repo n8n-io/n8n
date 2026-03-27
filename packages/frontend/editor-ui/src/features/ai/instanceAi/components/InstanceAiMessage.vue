@@ -223,7 +223,7 @@ function formatJson(value: unknown): string {
 
 .userBubble {
 	background: var(--color--background);
-	color: var(--text-color);
+	color: var(--color--text);
 	padding: var(--spacing--xs) var(--spacing--sm);
 	border-radius: var(--radius--xl);
 	max-width: 80%;
@@ -250,7 +250,7 @@ function formatJson(value: unknown): string {
 .textContent {
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
-	color: var(--text-color);
+	color: var(--color--text);
 }
 
 .actionButtons {
@@ -271,7 +271,7 @@ function formatJson(value: unknown): string {
 }
 
 .feedbackSuccess {
-	color: var(--text-color--subtle);
+	color: var(--color--text--tint-1);
 	font-size: var(--font-size--2xs);
 	margin: var(--spacing--2xs) 0 0;
 }
@@ -283,7 +283,7 @@ function formatJson(value: unknown): string {
 	padding: var(--spacing--3xs) 0;
 	margin-top: var(--spacing--4xs);
 	font-size: var(--font-size--2xs);
-	color: var(--text-color);
+	color: var(--color--text);
 }
 
 .statusIndicator {
@@ -291,7 +291,7 @@ function formatJson(value: unknown): string {
 	align-items: center;
 	gap: var(--spacing--3xs);
 	font-size: var(--font-size--2xs);
-	color: var(--text-color--subtle);
+	color: var(--color--text--tint-1);
 	padding: var(--spacing--4xs) 0;
 	animation: status-fade-in 0.2s ease;
 }
@@ -327,7 +327,7 @@ function formatJson(value: unknown): string {
 	display: inline-block;
 	width: 2px;
 	height: 1.2em;
-	background: var(--text-color);
+	background: var(--color--text);
 	animation: cursor-blink 1s step-end infinite;
 	vertical-align: text-bottom;
 }
@@ -429,6 +429,6 @@ function formatJson(value: unknown): string {
 	word-break: break-word;
 	max-height: 300px;
 	overflow-y: auto;
-	color: var(--text-color--subtle);
+	color: var(--color--text--tint-1);
 }
 </style>

@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 import type { ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
-import { resolveSafePath } from './fs-utils';
+import { buildFilesystemResource, resolveSafePath } from './fs-utils';
 
 const inputSchema = z.object({
 	path: z.string().describe('Path relative to root (file or directory)'),
@@ -15,6 +15,9 @@ export const deleteTool: ToolDefinition<typeof inputSchema> = {
 		'Delete a file or directory. Deleting a directory removes it and all of its contents recursively.',
 	inputSchema,
 	annotations: { defaultPermission: 'confirm', destructiveHint: true },
+	async getAffectedResources({ path: relPath }, { dir }) {
+		return [await buildFilesystemResource(dir, relPath, 'filesystemWrite', `Delete: ${relPath}`)];
+	},
 	async execute({ path: relPath }, { dir }) {
 		const resolvedPath = await resolveSafePath(dir, relPath);
 

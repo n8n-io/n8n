@@ -81,7 +81,7 @@ onMounted(() => {
 	left: 0;
 	right: 0;
 	height: 80px;
-	background: linear-gradient(transparent, var(--color--background));
+	background: linear-gradient(transparent, var(--color--background--light-1));
 	display: flex;
 	align-items: flex-end;
 	justify-content: center;
@@ -101,16 +101,15 @@ onMounted(() => {
 	padding: var(--spacing--4xs) var(--spacing--xs);
 	font-family: var(--font-family);
 	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
-	color: var(--text-color--subtle);
-	background: var(--color--background);
+	font-weight: var(--font-weight--regular);
+	color: var(--color--text--tint-1);
+	background: var(--color--background--light-2);
 	border: var(--border);
 	border-radius: var(--radius--xl);
 	cursor: pointer;
 
 	&:hover {
-		color: var(--color--primary);
-		border-color: var(--color--primary);
+		background: var(--color--foreground--tint-1);
 	}
 }
 </style>

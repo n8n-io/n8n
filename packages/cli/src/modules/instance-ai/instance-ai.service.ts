@@ -27,11 +27,9 @@ import {
 	BuilderSandboxFactory,
 	SnapshotManager,
 	createDomainAccessTracker,
-	AgentTreeSnapshotStorage,
 	BackgroundTaskManager,
 	buildAgentTreeFromEvents,
 	enrichMessageWithBackgroundTasks,
-	MastraIterationLogStorage,
 	MastraTaskStorage,
 	PlannedTaskCoordinator,
 	PlannedTaskStorage,
@@ -67,6 +65,8 @@ import { InstanceAiAdapterService } from './instance-ai.adapter.service';
 import { AUTO_FOLLOW_UP_MESSAGE } from './internal-messages';
 import { TypeORMCompositeStore } from './storage/typeorm-composite-store';
 import type { TypeORMWorkflowsStorage } from './storage/typeorm-workflows-storage';
+import { DbSnapshotStorage } from './storage/db-snapshot-storage';
+import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
 import { InstanceAiCompactionService } from './compaction.service';
 
 function getErrorMessage(error: unknown): string {
@@ -111,6 +111,9 @@ export class InstanceAiService {
 	/** Domain-access trackers per thread — persists approvals across runs within a conversation. */
 	private readonly domainAccessTrackersByThread = new Map<string, DomainAccessTracker>();
 
+	/** Tracks the iframe pushRef per thread for live execution push events. */
+	private readonly threadPushRef = new Map<string, string>();
+
 	/** Pre-warmed image manager for builder sandboxes (Daytona only). */
 	private snapshotManager?: SnapshotManager;
 
@@ -137,6 +140,8 @@ export class InstanceAiService {
 		private readonly urlService: UrlService,
 		private readonly license: License,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly dbSnapshotStorage: DbSnapshotStorage,
+		private readonly dbIterationLogStorage: DbIterationLogStorage,
 	) {
 		this.instanceAiConfig = globalConfig.instanceAi;
 		this.defaultTimeZone = globalConfig.generic.timezone;
@@ -342,12 +347,17 @@ export class InstanceAiService {
 		researchMode?: boolean,
 		attachments?: InstanceAiAttachment[],
 		timeZone?: string,
+		pushRef?: string,
 	): string {
 		const { runId, abortController, messageGroupId } = this.runState.startRun({
 			threadId,
 			user,
 			researchMode,
 		});
+
+		if (pushRef !== undefined) {
+			this.threadPushRef.set(threadId, pushRef);
+		}
 
 		void this.executeRun(
 			user,
@@ -428,8 +438,11 @@ export class InstanceAiService {
 	}
 
 	/** Send a correction message to a running background task. */
-	sendCorrectionToTask(taskId: string, correction: string): void {
-		this.backgroundTasks.queueCorrection(taskId, correction);
+	sendCorrectionToTask(
+		taskId: string,
+		correction: string,
+	): 'queued' | 'task-completed' | 'task-not-found' {
+		return this.backgroundTasks.queueCorrection(taskId, correction);
 	}
 
 	/** Cancel a single background task by ID. */
@@ -534,6 +547,7 @@ export class InstanceAiService {
 		}
 
 		this.domainAccessTrackersByThread.delete(threadId);
+		this.threadPushRef.delete(threadId);
 		await this.destroySandbox(threadId);
 		this.eventBus.clearThread(threadId);
 	}
@@ -669,6 +683,7 @@ export class InstanceAiService {
 		abortSignal: AbortSignal,
 		researchMode?: boolean,
 		messageGroupId?: string,
+		pushRef?: string,
 	) {
 		const localGatewayDisabled = this.settingsService.isFilesystemDisabled();
 		const userGateway = this.gatewayRegistry.findGateway(user.id);
@@ -676,7 +691,7 @@ export class InstanceAiService {
 			!localGatewayDisabled && !userGateway?.isConnected && this.isLocalFilesystemAvailable()
 				? this.getLocalFsProvider()
 				: undefined;
-		const context = this.adapterService.createContext(user, localFilesystemService);
+		const context = this.adapterService.createContext(user, localFilesystemService, pushRef);
 		if (!localGatewayDisabled && userGateway?.isConnected) {
 			context.localMcpServer = userGateway;
 		}
@@ -696,8 +711,8 @@ export class InstanceAiService {
 		await this.ensureThreadExists(memory, threadId, user.id);
 
 		const taskStorage = new MastraTaskStorage(memory);
-		const iterationLog = new MastraIterationLogStorage(memory);
-		const snapshotStorage = new AgentTreeSnapshotStorage(memory);
+		const iterationLog = this.dbIterationLogStorage;
+		const snapshotStorage = this.dbSnapshotStorage;
 		const workflowLoopStorage = new WorkflowLoopStorage(memory);
 		const workflowTasks = new WorkflowTaskCoordinator(threadId, workflowLoopStorage);
 		const plannedTaskStorage = new PlannedTaskStorage(memory);
@@ -975,6 +990,7 @@ export class InstanceAiService {
 
 			const mcpServers = this.parseMcpServers(this.instanceAiConfig.mcpServers);
 
+			const executionPushRef = this.threadPushRef.get(threadId);
 			const { context, memory, taskStorage, snapshotStorage, modelId, orchestrationContext } =
 				await this.createExecutionEnvironment(
 					user,
@@ -983,6 +999,7 @@ export class InstanceAiService {
 					signal,
 					researchMode,
 					messageGroupId,
+					executionPushRef,
 				);
 			const memoryConfig = this.createMemoryConfig(
 				typeof modelId === 'string' ? modelId : modelId.id,
@@ -1121,6 +1138,7 @@ export class InstanceAiService {
 			});
 		} finally {
 			this.runState.clearActiveRun(threadId);
+			this.threadPushRef.delete(threadId);
 			this.domainAccessTrackersByThread.get(threadId)?.clearRun(runId);
 			// Clean up Mastra workflow snapshots unless the run is suspended (needed for resume).
 			// Mastra only persists snapshots on suspension and never deletes them on completion.
@@ -1171,15 +1189,6 @@ export class InstanceAiService {
 			...(data.answers ? { answers: data.answers } : {}),
 		};
 
-		// Create snapshot storage for saving agent tree after resumed run completes
-		const memory = createMemory({
-			storage: this.compositeStore,
-			embedderModel: this.instanceAiConfig.embedderModel || undefined,
-			lastMessages: this.instanceAiConfig.lastMessages,
-			semanticRecallTopK: this.instanceAiConfig.semanticRecallTopK,
-		});
-		const snapshotStorage = new AgentTreeSnapshotStorage(memory);
-
 		void this.processResumedStream(agent, resumeData, {
 			runId,
 			mastraRunId,
@@ -1188,7 +1197,7 @@ export class InstanceAiService {
 			toolCallId,
 			signal: abortController.signal,
 			abortController,
-			snapshotStorage,
+			snapshotStorage: this.dbSnapshotStorage,
 		});
 		return true;
 	}
@@ -1204,7 +1213,7 @@ export class InstanceAiService {
 			toolCallId: string;
 			signal: AbortSignal;
 			abortController: AbortController;
-			snapshotStorage: AgentTreeSnapshotStorage;
+			snapshotStorage: DbSnapshotStorage;
 		},
 	): Promise<void> {
 		try {
@@ -1270,6 +1279,7 @@ export class InstanceAiService {
 			});
 		} finally {
 			this.runState.clearActiveRun(opts.threadId);
+			this.threadPushRef.delete(opts.threadId);
 		}
 	}
 
@@ -1278,7 +1288,7 @@ export class InstanceAiService {
 	private spawnBackgroundTask(
 		runId: string,
 		opts: SpawnBackgroundTaskOptions,
-		snapshotStorage: AgentTreeSnapshotStorage,
+		snapshotStorage: DbSnapshotStorage,
 		messageGroupIdOverride?: string,
 	): void {
 		this.backgroundTasks.spawn({
@@ -1397,7 +1407,7 @@ export class InstanceAiService {
 		threadId: string,
 		runId: string,
 		status: 'completed' | 'cancelled',
-		snapshotStorage: AgentTreeSnapshotStorage,
+		snapshotStorage: DbSnapshotStorage,
 	): Promise<void> {
 		this.publishRunFinish(threadId, runId, status);
 		if (status === 'completed') {
@@ -1432,7 +1442,7 @@ export class InstanceAiService {
 	private async saveAgentTreeSnapshot(
 		threadId: string,
 		runId: string,
-		snapshotStorage: AgentTreeSnapshotStorage,
+		snapshotStorage: DbSnapshotStorage,
 		isUpdate = false,
 		overrideMessageGroupId?: string,
 	): Promise<void> {

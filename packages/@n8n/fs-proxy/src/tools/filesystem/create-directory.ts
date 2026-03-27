@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 import type { ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
-import { resolveSafePath } from './fs-utils';
+import { buildFilesystemResource, resolveSafePath } from './fs-utils';
 
 const inputSchema = z.object({
 	dirPath: z.string().describe('Directory path relative to root'),
@@ -15,6 +15,16 @@ export const createDirectoryTool: ToolDefinition<typeof inputSchema> = {
 		'Create a new directory. Idempotent: does nothing if the directory already exists. Parent directories are created automatically.',
 	inputSchema,
 	annotations: { defaultPermission: 'confirm' },
+	async getAffectedResources({ dirPath }, { dir }) {
+		return [
+			await buildFilesystemResource(
+				dir,
+				dirPath,
+				'filesystemWrite',
+				`Create directory: ${dirPath}`,
+			),
+		];
+	},
 	async execute({ dirPath }, { dir }) {
 		const resolvedPath = await resolveSafePath(dir, dirPath);
 

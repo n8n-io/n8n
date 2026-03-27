@@ -60,10 +60,15 @@ export class BackgroundTaskManager {
 		);
 	}
 
-	queueCorrection(taskId: string, correction: string): void {
+	queueCorrection(
+		taskId: string,
+		correction: string,
+	): 'queued' | 'task-completed' | 'task-not-found' {
 		const task = this.tasks.get(taskId);
-		if (!task || task.status !== 'running') return;
+		if (!task) return 'task-not-found';
+		if (task.status !== 'running') return 'task-completed';
 		task.corrections.push(correction);
+		return 'queued';
 	}
 
 	cancelTask(threadId: string, taskId: string): ManagedBackgroundTask | undefined {

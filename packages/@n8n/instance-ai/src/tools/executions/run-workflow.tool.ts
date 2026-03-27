@@ -17,7 +17,12 @@ export function createRunWorkflowTool(context: InstanceAiContext) {
 			inputData: z
 				.record(z.unknown())
 				.optional()
-				.describe('Input data passed to the workflow trigger'),
+				.describe(
+					'Input data passed to the workflow trigger. ' +
+						'For webhook-triggered workflows, inputData IS the request body — ' +
+						'do NOT wrap it in { body: ... }. ' +
+						'Example: to send { title: "Hello" } as POST body, pass inputData: { title: "Hello" }.',
+				),
 			timeout: z
 				.number()
 				.int()

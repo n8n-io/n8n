@@ -5,8 +5,11 @@ import type { ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
 import { createSessionTool, pageIdField, sessionIdField } from './helpers';
 
-export function createWaitTools(sessionManager: SessionManager): ToolDefinition[] {
-	return [browserWait(sessionManager)];
+export function createWaitTools(
+	sessionManager: SessionManager,
+	toolGroupId: string,
+): ToolDefinition[] {
+	return [browserWait(sessionManager, toolGroupId)];
 }
 
 const browserWaitSchema = z.object({
@@ -28,7 +31,7 @@ const browserWaitOutputSchema = z.object({
 	elapsedMs: z.number(),
 });
 
-function browserWait(sessionManager: SessionManager): ToolDefinition {
+function browserWait(sessionManager: SessionManager, toolGroupId: string): ToolDefinition {
 	return createSessionTool(
 		sessionManager,
 		'browser_wait',
@@ -46,5 +49,6 @@ function browserWait(sessionManager: SessionManager): ToolDefinition {
 			return formatCallToolResult({ waited: true, elapsedMs });
 		},
 		browserWaitOutputSchema,
+		toolGroupId,
 	);
 }

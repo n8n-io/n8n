@@ -17,6 +17,8 @@ import {
 	WORKING_MEMORY_TEMPLATE,
 } from '@n8n/instance-ai';
 
+import { DbSnapshotStorage } from './storage/db-snapshot-storage';
+
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { parseStoredMessages } from './message-parser';
@@ -31,6 +33,7 @@ export class InstanceAiMemoryService {
 		private readonly logger: Logger,
 		globalConfig: GlobalConfig,
 		private readonly compositeStore: TypeORMCompositeStore,
+		private readonly dbSnapshotStorage: DbSnapshotStorage,
 	) {
 		this.instanceAiConfig = globalConfig.instanceAi;
 	}
@@ -188,9 +191,22 @@ export class InstanceAiMemoryService {
 			throw error;
 		}
 
-		// Fetch agent tree snapshots from thread metadata
-		const snapshotStorage = new AgentTreeSnapshotStorage(memory);
-		const snapshots = await snapshotStorage.getAll(threadId);
+		// Fetch agent tree snapshots: DB table (new) + legacy metadata fallback
+		const dbSnapshots = await this.dbSnapshotStorage.getAll(threadId).catch((error) => {
+			this.logger.warn('Failed to load DB snapshots, falling back to metadata', {
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return [];
+		});
+
+		// Legacy metadata snapshots for threads created before the table migration
+		const legacyStorage = new AgentTreeSnapshotStorage(memory);
+		const legacySnapshots = await legacyStorage.getAll(threadId);
+
+		// Merge: deduplicate by runId (prefer DB version), maintain chronological order
+		const dbRunIds = new Set(dbSnapshots.map((s) => s.runId));
+		const snapshots = [...legacySnapshots.filter((s) => !dbRunIds.has(s.runId)), ...dbSnapshots];
 
 		// Parse into rich messages with agent trees
 		const mastraMessages: MastraDBMessage[] = result.messages.map((m) => ({
