@@ -225,26 +225,6 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 								:placeholder="i18n.baseText('instanceAi.askUser.placeholder')"
 								@keydown.enter="handleTextSubmit(chunk.item.toolCall.confirmation!.requestId)"
 							/>
-							<!-- <N8nButton
-										data-test-id="instance-ai-panel-confirm-deny"
-										size="small"
-										variant="outline"
-										@click="handleConfirm(item.toolCall.confirmation!.requestId, false)"
-									>
-										{{ i18n.baseText('instanceAi.confirmation.deny') }}
-									</N8nButton>
-									<N8nButton
-										:variant="
-											item.toolCall.confirmation!.severity === 'destructive'
-												? 'destructive'
-												: 'solid'
-										"
-										data-test-id="instance-ai-panel-confirm-approve"
-										size="small"
-										@click="handleConfirm(item.toolCall.confirmation!.requestId, true)"
-									>
-										{{ i18n.baseText('instanceAi.confirmation.approve') }}
-									</N8nButton> -->
 							<N8nButton
 								v-if="!(textInputValues[chunk.item.toolCall.confirmation!.requestId] ?? '').trim()"
 								size="small"
@@ -278,7 +258,6 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 				<!-- Group header -->
 				<template v-if="isAllGenericApproval(chunk.items) && chunk.items.length > 1">
 					<div style="margin-bottom: 10px">
-						<!-- <N8nIcon icon="circle-pause" size="small" :class="$style.headerIcon" /> -->
 						<span :class="$style.headerLabel">
 							{{
 								i18n.baseText('instanceAi.confirmation.agentContext', {
@@ -353,12 +332,6 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 </template>
 
 <style lang="scss" module>
-// .standalone {
-// 	margin-top: var(--spacing--xs);
-// 	margin-bottom: var(--spacing--sm);
-// 	max-width: 90%;
-// }
-
 .confirmation {
 	margin-top: var(--spacing--xs);
 	margin-bottom: var(--spacing--sm);
@@ -367,26 +340,8 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 }
 
 .root {
-	// margin-top: var(--spacing--xs);
-	// margin-bottom: var(--spacing--sm);
-	// max-width: 90%;
-	// width: 90%;
 	border: var(--border);
-	// padding: var(--spacing--xs) var(--spacing--sm);
 	border-radius: var(--radius--lg);
-	// // border: 1px solid var(--color--warning--tint-1);
-	// // border-radius: var(--radius--lg);
-	// // background: var(--color--background);
-
-	// border-radius: var(--radius--lg);
-	// border: var(--border);
-	// background-color: var(--color--background--light-3);
-	// padding: var(--card--padding, var(--spacing--sm));
-	// display: flex;
-	// width: 100%;
-	// align-items: center;
-
-	// overflow: hidden;
 }
 
 .header {
@@ -423,10 +378,6 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 
 .itemBordered {
 	// Only applies when there are multiple items — visual grouping
-}
-
-.confirmBody {
-	// padding: var(--spacing--2xs) var(--spacing--xs);
 }
 
 .confirmMessage {
@@ -510,7 +461,6 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 .textInputContainer {
 	padding: var(--spacing--xs) var(--spacing--sm);
 	border: var(--border);
-	// padding: var(--spacing--xs) var(--spacing--sm);
 	border-radius: var(--radius--lg);
 }
 
@@ -556,15 +506,6 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 	}
 }
 
-.secondaryBtn {
-	color: var(--color--text--tint-1);
-	border-color: transparent;
-	background: none;
-
-	&:hover {
-		background: var(--color--background--shade-1);
-	}
-}
 
 .approveBtn {
 	background: var(--color--primary);
@@ -576,15 +517,6 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 	}
 }
 
-.approveDestructiveBtn {
-	background: var(--color--danger);
-	color: var(--button--color--text--primary);
-	border-color: var(--color--danger);
-
-	&:hover {
-		background: var(--color--danger--shade-1);
-	}
-}
 
 .batchBtn {
 	margin-left: auto;
