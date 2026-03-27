@@ -7,6 +7,7 @@ import type {
 } from '@n8n/api-types';
 import { useCanvasPreview } from '../useCanvasPreview';
 import type { ResourceEntry } from '../useResourceRegistry';
+import type { ExecutionStatus } from '../useExecutionPushEvents';
 
 // ---------------------------------------------------------------------------
 // Factories
@@ -65,6 +66,23 @@ function createMockStore() {
 type MockStore = ReturnType<typeof createMockStore>;
 
 // ---------------------------------------------------------------------------
+// Registry helpers — populate the store's resourceRegistry so computed
+// activeWorkflowId / activeDataTableId can derive values from tabs.
+// ---------------------------------------------------------------------------
+
+function registerWorkflow(store: MockStore, id: string, name = `Workflow ${id}`) {
+	const next = new Map(store.resourceRegistry);
+	next.set(name.toLowerCase(), { type: 'workflow', id, name });
+	store.resourceRegistry = next;
+}
+
+function registerDataTable(store: MockStore, id: string, name = `Table ${id}`, projectId?: string) {
+	const next = new Map(store.resourceRegistry);
+	next.set(name.toLowerCase(), { type: 'data-table', id, name, projectId });
+	store.resourceRegistry = next;
+}
+
+// ---------------------------------------------------------------------------
 // Route mock
 // ---------------------------------------------------------------------------
 
@@ -86,13 +104,21 @@ function createMockRoute(threadId = 'thread-1') {
 // Test helper — create composable + flush
 // ---------------------------------------------------------------------------
 
-function setup(storeOverrides?: Partial<MockStore>) {
+function setup(options?: {
+	storeOverrides?: Partial<MockStore>;
+	getExecutionStatus?: (workflowId: string) => ExecutionStatus | undefined;
+}) {
 	const store = createMockStore();
-	if (storeOverrides) Object.assign(store, storeOverrides);
+	if (options?.storeOverrides) Object.assign(store, options.storeOverrides);
 	const route = createMockRoute();
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const result = useCanvasPreview({ store: store as any, route: route as any });
+	const result = useCanvasPreview({
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		store: store as any,
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		route: route as any,
+		getExecutionStatus: options?.getExecutionStatus,
+	});
 
 	return { ...result, store, route };
 }
@@ -106,9 +132,77 @@ describe('useCanvasPreview', () => {
 		vi.restoreAllMocks();
 	});
 
+	describe('allArtifactTabs', () => {
+		test('derives tabs from resource registry', () => {
+			const ctx = setup();
+			registerWorkflow(ctx.store, 'wf-1', 'My Workflow');
+			registerDataTable(ctx.store, 'dt-1', 'My Table', 'proj-1');
+
+			expect(ctx.allArtifactTabs.value).toEqual([
+				{
+					id: 'wf-1',
+					type: 'workflow',
+					name: 'My Workflow',
+					icon: 'workflow',
+					projectId: undefined,
+				},
+				{ id: 'dt-1', type: 'data-table', name: 'My Table', icon: 'table', projectId: 'proj-1' },
+			]);
+		});
+
+		test('includes executionStatus from getExecutionStatus callback', () => {
+			const ctx = setup({
+				getExecutionStatus: (id) => (id === 'wf-1' ? 'running' : undefined),
+			});
+			registerWorkflow(ctx.store, 'wf-1', 'My Workflow');
+			registerDataTable(ctx.store, 'dt-1', 'My Table', 'proj-1');
+
+			const tabs = ctx.allArtifactTabs.value;
+			expect(tabs[0].executionStatus).toBe('running');
+			expect(tabs[1].executionStatus).toBeUndefined();
+		});
+
+		test('excludes credential entries', () => {
+			const ctx = setup();
+			const registry = new Map<string, ResourceEntry>();
+			registry.set('wf', { type: 'workflow', id: 'wf-1', name: 'WF' });
+			registry.set('cred', { type: 'credential', id: 'cred-1', name: 'Cred' });
+			ctx.store.resourceRegistry = registry;
+
+			expect(ctx.allArtifactTabs.value).toHaveLength(1);
+			expect(ctx.allArtifactTabs.value[0].type).toBe('workflow');
+		});
+	});
+
+	describe('selectTab / closePreview', () => {
+		test('selectTab sets activeTabId', () => {
+			const ctx = setup();
+			registerWorkflow(ctx.store, 'wf-1');
+
+			ctx.selectTab('wf-1');
+
+			expect(ctx.activeTabId.value).toBe('wf-1');
+			expect(ctx.activeWorkflowId.value).toBe('wf-1');
+			expect(ctx.isPreviewVisible.value).toBe(true);
+		});
+
+		test('closePreview clears activeTabId', () => {
+			const ctx = setup();
+			registerWorkflow(ctx.store, 'wf-1');
+			ctx.selectTab('wf-1');
+
+			ctx.closePreview();
+
+			expect(ctx.activeTabId.value).toBeNull();
+			expect(ctx.isPreviewVisible.value).toBe(false);
+		});
+	});
+
 	describe('openWorkflowPreview', () => {
 		test('sets activeWorkflowId and clears data table state', () => {
 			const ctx = setup();
+			registerDataTable(ctx.store, 'dt-1', 'Table', 'proj-1');
+			registerWorkflow(ctx.store, 'wf-1');
 			ctx.openDataTablePreview('dt-1', 'proj-1');
 
 			ctx.openWorkflowPreview('wf-1');
@@ -120,6 +214,7 @@ describe('useCanvasPreview', () => {
 
 		test('makes isPreviewVisible true', () => {
 			const ctx = setup();
+			registerWorkflow(ctx.store, 'wf-1');
 			expect(ctx.isPreviewVisible.value).toBe(false);
 
 			ctx.openWorkflowPreview('wf-1');
@@ -130,6 +225,8 @@ describe('useCanvasPreview', () => {
 	describe('openDataTablePreview', () => {
 		test('sets data table state and clears workflow state', () => {
 			const ctx = setup();
+			registerWorkflow(ctx.store, 'wf-1');
+			registerDataTable(ctx.store, 'dt-1', 'Table', 'proj-1');
 			ctx.openWorkflowPreview('wf-1');
 
 			ctx.openDataTablePreview('dt-1', 'proj-1');
@@ -142,6 +239,7 @@ describe('useCanvasPreview', () => {
 
 		test('makes isPreviewVisible true', () => {
 			const ctx = setup();
+			registerDataTable(ctx.store, 'dt-1', 'Table', 'proj-1');
 			expect(ctx.isPreviewVisible.value).toBe(false);
 
 			ctx.openDataTablePreview('dt-1', 'proj-1');
@@ -162,12 +260,14 @@ describe('useCanvasPreview', () => {
 	describe('thread switch (route.params.threadId change)', () => {
 		test('resets all preview state on thread switch', async () => {
 			const ctx = setup();
+			registerWorkflow(ctx.store, 'wf-1');
 			ctx.openWorkflowPreview('wf-1');
 			ctx.markUserSentMessage();
 
 			ctx.route.params.threadId = 'thread-2';
 			await nextTick();
 
+			expect(ctx.activeTabId.value).toBeNull();
 			expect(ctx.activeWorkflowId.value).toBeNull();
 			expect(ctx.activeExecutionId.value).toBeNull();
 			expect(ctx.activeDataTableId.value).toBeNull();
@@ -177,6 +277,7 @@ describe('useCanvasPreview', () => {
 
 		test('preserves wasCanvasOpenBeforeSwitch when preview was visible', async () => {
 			const ctx = setup();
+			registerWorkflow(ctx.store, 'wf-1');
 			ctx.openWorkflowPreview('wf-1');
 			expect(ctx.isPreviewVisible.value).toBe(true);
 
@@ -185,6 +286,9 @@ describe('useCanvasPreview', () => {
 
 			// Preview was cleared by thread switch
 			expect(ctx.isPreviewVisible.value).toBe(false);
+
+			// Register the restored workflow so activeWorkflowId can derive
+			registerWorkflow(ctx.store, 'wf-restored');
 
 			// But if a build result appears, it should auto-open because canvas was open before
 			ctx.store.messages = [
@@ -210,6 +314,7 @@ describe('useCanvasPreview', () => {
 		test('auto-opens canvas when streaming and build result appears', async () => {
 			const ctx = setup();
 			ctx.store.isStreaming = true;
+			registerWorkflow(ctx.store, 'wf-new');
 
 			ctx.store.messages = [
 				makeMessage({
@@ -233,6 +338,7 @@ describe('useCanvasPreview', () => {
 		test('auto-opens canvas when user sent a message', async () => {
 			const ctx = setup();
 			ctx.markUserSentMessage();
+			registerWorkflow(ctx.store, 'wf-new');
 
 			ctx.store.messages = [
 				makeMessage({
@@ -271,12 +377,14 @@ describe('useCanvasPreview', () => {
 			];
 			await nextTick();
 
-			expect(ctx.activeWorkflowId.value).toBeNull();
+			expect(ctx.activeTabId.value).toBeNull();
 			expect(ctx.isPreviewVisible.value).toBe(false);
 		});
 
-		test('clears data table state when switching to workflow preview', async () => {
+		test('switches tab when switching from data table to workflow preview', async () => {
 			const ctx = setup();
+			registerDataTable(ctx.store, 'dt-1', 'Table', 'proj-1');
+			registerWorkflow(ctx.store, 'wf-1');
 			ctx.openDataTablePreview('dt-1', 'proj-1');
 			ctx.store.isStreaming = true;
 
@@ -303,6 +411,7 @@ describe('useCanvasPreview', () => {
 		test('increments workflowRefreshKey on each build', async () => {
 			const ctx = setup();
 			ctx.store.isStreaming = true;
+			registerWorkflow(ctx.store, 'wf-1');
 			const initialKey = ctx.workflowRefreshKey.value;
 
 			ctx.store.messages = [
@@ -328,6 +437,8 @@ describe('useCanvasPreview', () => {
 		test('sets activeExecutionId when run-workflow completes during streaming', async () => {
 			const ctx = setup();
 			ctx.store.isStreaming = true;
+			registerWorkflow(ctx.store, 'wf-1');
+			ctx.openWorkflowPreview('wf-1');
 
 			ctx.store.messages = [
 				makeMessage({
@@ -371,6 +482,7 @@ describe('useCanvasPreview', () => {
 		test('opens canvas with latest build when execution arrives and canvas is closed', async () => {
 			const ctx = setup();
 			ctx.store.isStreaming = true;
+			registerWorkflow(ctx.store, 'wf-1');
 
 			// First add a build result
 			ctx.store.messages = [
@@ -389,7 +501,7 @@ describe('useCanvasPreview', () => {
 			await nextTick();
 
 			// Close the preview manually
-			ctx.activeWorkflowId.value = null;
+			ctx.closePreview();
 			expect(ctx.isPreviewVisible.value).toBe(false);
 
 			// Now add an execution result to the same message
@@ -422,6 +534,7 @@ describe('useCanvasPreview', () => {
 		test('auto-opens data table preview when streaming', async () => {
 			const ctx = setup();
 			ctx.store.isStreaming = true;
+			registerDataTable(ctx.store, 'dt-1', 'Test Table');
 
 			ctx.store.messages = [
 				makeMessage({
@@ -466,12 +579,7 @@ describe('useCanvasPreview', () => {
 		test('looks up projectId from resourceRegistry', async () => {
 			const ctx = setup();
 			ctx.store.isStreaming = true;
-			ctx.store.resourceRegistry = new Map([
-				[
-					'test table',
-					{ type: 'data-table', id: 'dt-1', name: 'Test Table', projectId: 'proj-42' },
-				],
-			]);
+			registerDataTable(ctx.store, 'dt-1', 'Test Table', 'proj-42');
 
 			ctx.store.messages = [
 				makeMessage({
@@ -518,6 +626,7 @@ describe('useCanvasPreview', () => {
 	describe('close data table on delete', () => {
 		test('closes data table preview when active table is deleted', async () => {
 			const ctx = setup();
+			registerDataTable(ctx.store, 'dt-1', 'Table', 'proj-1');
 			ctx.openDataTablePreview('dt-1', 'proj-1');
 			expect(ctx.activeDataTableId.value).toBe('dt-1');
 
@@ -537,11 +646,11 @@ describe('useCanvasPreview', () => {
 			await nextTick();
 
 			expect(ctx.activeDataTableId.value).toBeNull();
-			expect(ctx.activeDataTableProjectId.value).toBeNull();
 		});
 
 		test('does not close preview when a different table is deleted', async () => {
 			const ctx = setup();
+			registerDataTable(ctx.store, 'dt-1', 'Table 1', 'proj-1');
 			ctx.openDataTablePreview('dt-1', 'proj-1');
 
 			ctx.store.messages = [
@@ -561,17 +670,45 @@ describe('useCanvasPreview', () => {
 
 			expect(ctx.activeDataTableId.value).toBe('dt-1');
 		});
+
+		test('falls back to first remaining tab when active table is deleted', async () => {
+			const ctx = setup();
+			registerWorkflow(ctx.store, 'wf-1');
+			registerDataTable(ctx.store, 'dt-1', 'Table', 'proj-1');
+			ctx.openDataTablePreview('dt-1', 'proj-1');
+
+			ctx.store.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'delete-data-table',
+								args: { dataTableId: 'dt-1' },
+								result: { success: true },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			// Should fall back to the remaining workflow tab
+			expect(ctx.activeTabId.value).toBe('wf-1');
+			expect(ctx.activeWorkflowId.value).toBe('wf-1');
+		});
 	});
 
 	describe('isPreviewVisible', () => {
 		test('is true when workflow is active', () => {
 			const ctx = setup();
+			registerWorkflow(ctx.store, 'wf-1');
 			ctx.openWorkflowPreview('wf-1');
 			expect(ctx.isPreviewVisible.value).toBe(true);
 		});
 
 		test('is true when data table is active', () => {
 			const ctx = setup();
+			registerDataTable(ctx.store, 'dt-1', 'Table', 'proj-1');
 			ctx.openDataTablePreview('dt-1', 'proj-1');
 			expect(ctx.isPreviewVisible.value).toBe(true);
 		});
@@ -579,6 +716,40 @@ describe('useCanvasPreview', () => {
 		test('is false when nothing is active', () => {
 			const ctx = setup();
 			expect(ctx.isPreviewVisible.value).toBe(false);
+		});
+	});
+
+	describe('tab guard', () => {
+		test('falls back to first tab when active tab is removed from registry', async () => {
+			const ctx = setup();
+			registerWorkflow(ctx.store, 'wf-1');
+			registerWorkflow(ctx.store, 'wf-2', 'Second Workflow');
+			ctx.selectTab('wf-2');
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('wf-2');
+
+			// Remove wf-2 from registry, keeping wf-1
+			const next = new Map<string, ResourceEntry>();
+			next.set('workflow wf-1', { type: 'workflow', id: 'wf-1', name: 'Workflow wf-1' });
+			ctx.store.resourceRegistry = next;
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('wf-1');
+		});
+
+		test('does not clear activeTabId when registry is empty (race condition)', async () => {
+			const ctx = setup();
+			registerWorkflow(ctx.store, 'wf-1');
+			ctx.selectTab('wf-1');
+			await nextTick();
+
+			// Temporarily empty registry (simulates race where registry hasn't been populated yet)
+			ctx.store.resourceRegistry = new Map();
+			await nextTick();
+
+			// Tab should remain set — guard skips when tabs are empty
+			expect(ctx.activeTabId.value).toBe('wf-1');
 		});
 	});
 });

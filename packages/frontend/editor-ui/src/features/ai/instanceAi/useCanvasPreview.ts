@@ -1,5 +1,6 @@
 import { computed, ref, watch } from 'vue';
 import type { RouteLocationNormalizedLoadedGeneric } from 'vue-router';
+import type { IconName } from '@n8n/design-system';
 import {
 	getLatestBuildResult,
 	getLatestExecutionId,
@@ -7,26 +8,70 @@ import {
 	getLatestDeletedDataTableId,
 } from './canvasPreview.utils';
 import type { useInstanceAiStore } from './instanceAi.store';
+import type { ExecutionStatus } from './useExecutionPushEvents';
+
+export interface ArtifactTab {
+	id: string;
+	type: 'workflow' | 'data-table';
+	name: string;
+	icon: IconName;
+	projectId?: string;
+	executionStatus?: ExecutionStatus;
+}
+
+const ARTIFACT_ICON_MAP: Record<string, IconName> = {
+	workflow: 'workflow',
+	'data-table': 'table',
+};
 
 interface UseCanvasPreviewOptions {
 	store: ReturnType<typeof useInstanceAiStore>;
 	route: RouteLocationNormalizedLoadedGeneric;
+	getExecutionStatus?: (workflowId: string) => ExecutionStatus | undefined;
 }
 
-export function useCanvasPreview({ store, route }: UseCanvasPreviewOptions) {
-	// --- Canvas preview state ---
-	const activeWorkflowId = ref<string | null>(null);
+export function useCanvasPreview({ store, route, getExecutionStatus }: UseCanvasPreviewOptions) {
+	// --- Tab state ---
+	const activeTabId = ref<string | null>(null);
 	const activeExecutionId = ref<string | null>(null);
-	const iframePushRef = ref<string | null>(null);
 
-	// --- Data table preview state ---
-	const activeDataTableId = ref<string | null>(null);
-	const activeDataTableProjectId = ref<string | null>(null);
+	// All artifacts (workflows + data tables) in the current thread, derived from resource registry
+	const allArtifactTabs = computed((): ArtifactTab[] => {
+		const result: ArtifactTab[] = [];
+		for (const entry of store.resourceRegistry.values()) {
+			if (entry.type === 'workflow' || entry.type === 'data-table') {
+				result.push({
+					id: entry.id,
+					type: entry.type,
+					name: entry.name,
+					icon: ARTIFACT_ICON_MAP[entry.type] ?? 'file',
+					projectId: entry.projectId,
+					executionStatus: entry.type === 'workflow' ? getExecutionStatus?.(entry.id) : undefined,
+				});
+			}
+		}
+		return result;
+	});
+
+	// Derived preview state from active tab
+	const activeWorkflowId = computed(() => {
+		const tab = allArtifactTabs.value.find((t) => t.id === activeTabId.value);
+		return tab?.type === 'workflow' ? tab.id : null;
+	});
+
+	const activeDataTableId = computed(() => {
+		const tab = allArtifactTabs.value.find((t) => t.id === activeTabId.value);
+		return tab?.type === 'data-table' ? tab.id : null;
+	});
+
+	const activeDataTableProjectId = computed(() => {
+		const tab = allArtifactTabs.value.find((t) => t.id === activeTabId.value);
+		return tab?.type === 'data-table' ? (tab.projectId ?? null) : null;
+	});
+
 	const dataTableRefreshKey = ref(0);
 
-	const isPreviewVisible = computed(
-		() => activeWorkflowId.value !== null || activeDataTableId.value !== null,
-	);
+	const isPreviewVisible = computed(() => activeTabId.value !== null);
 
 	// Tracks whether the user sent a message in the current thread session.
 	// Used to distinguish live operations (should auto-open preview) from
@@ -39,22 +84,39 @@ export function useCanvasPreview({ store, route }: UseCanvasPreviewOptions) {
 
 	// --- Actions ---
 
-	function openWorkflowPreview(workflowId: string) {
-		activeDataTableId.value = null;
-		activeDataTableProjectId.value = null;
-		activeWorkflowId.value = workflowId;
+	function selectTab(tabId: string) {
+		activeTabId.value = tabId;
 	}
 
-	function openDataTablePreview(dataTableId: string, projectId: string) {
-		activeWorkflowId.value = null;
+	function closePreview() {
+		activeTabId.value = null;
 		activeExecutionId.value = null;
-		activeDataTableId.value = dataTableId;
-		activeDataTableProjectId.value = projectId;
+	}
+
+	function openWorkflowPreview(workflowId: string) {
+		activeTabId.value = workflowId;
+	}
+
+	function openDataTablePreview(dataTableId: string, _projectId: string) {
+		activeExecutionId.value = null;
+		activeTabId.value = dataTableId;
 	}
 
 	function markUserSentMessage() {
 		userSentMessage.value = true;
 	}
+
+	// --- Guard: fall back if active tab is removed from registry ---
+	// Only acts when there ARE tabs but the selected one is missing (i.e. it was removed).
+	// Skips when tabs are empty to avoid a race where the registry hasn't been populated yet.
+
+	watch(allArtifactTabs, (tabs) => {
+		if (activeTabId.value === null || tabs.length === 0) return;
+		const stillExists = tabs.some((t) => t.id === activeTabId.value);
+		if (!stillExists) {
+			activeTabId.value = tabs[0].id;
+		}
+	});
 
 	// --- Preserve canvas intent when switching threads ---
 
@@ -62,10 +124,8 @@ export function useCanvasPreview({ store, route }: UseCanvasPreviewOptions) {
 		() => route.params.threadId,
 		() => {
 			wasCanvasOpenBeforeSwitch.value = isPreviewVisible.value;
-			activeWorkflowId.value = null;
+			activeTabId.value = null;
 			activeExecutionId.value = null;
-			activeDataTableId.value = null;
-			activeDataTableProjectId.value = null;
 			userSentMessage.value = false;
 		},
 	);
@@ -105,10 +165,8 @@ export function useCanvasPreview({ store, route }: UseCanvasPreviewOptions) {
 			}
 
 			wasCanvasOpenBeforeSwitch.value = false;
-			activeDataTableId.value = null;
-			activeDataTableProjectId.value = null;
 			activeExecutionId.value = null;
-			activeWorkflowId.value = latestBuildResult.value.workflowId;
+			activeTabId.value = latestBuildResult.value.workflowId;
 			workflowRefreshKey.value++;
 		},
 	);
@@ -131,13 +189,11 @@ export function useCanvasPreview({ store, route }: UseCanvasPreviewOptions) {
 
 		if (!isPreviewVisible.value && !store.isStreaming && !userSentMessage.value) return;
 
-		activeDataTableId.value = null;
-		activeDataTableProjectId.value = null;
 		activeExecutionId.value = execId;
 
 		// Open the canvas if it's not visible yet (e.g. user closed it, then asked to re-execute)
 		if (!isPreviewVisible.value && latestBuildResult.value) {
-			activeWorkflowId.value = latestBuildResult.value.workflowId;
+			activeTabId.value = latestBuildResult.value.workflowId;
 			workflowRefreshKey.value++;
 		}
 	});
@@ -170,15 +226,8 @@ export function useCanvasPreview({ store, route }: UseCanvasPreviewOptions) {
 			}
 
 			wasCanvasOpenBeforeSwitch.value = false;
-			const dataTableId = latestDataTableResult.value.dataTableId;
-			const registryEntry = [...store.resourceRegistry.values()].find(
-				(e) => e.type === 'data-table' && e.id === dataTableId,
-			);
-
-			activeWorkflowId.value = null;
 			activeExecutionId.value = null;
-			activeDataTableId.value = dataTableId;
-			activeDataTableProjectId.value = registryEntry?.projectId ?? null;
+			activeTabId.value = latestDataTableResult.value.dataTableId;
 			dataTableRefreshKey.value++;
 		},
 	);
@@ -197,22 +246,25 @@ export function useCanvasPreview({ store, route }: UseCanvasPreviewOptions) {
 	});
 
 	watch(latestDeletedDataTableId, (deletedId) => {
-		if (deletedId && deletedId === activeDataTableId.value) {
-			activeDataTableId.value = null;
-			activeDataTableProjectId.value = null;
+		if (deletedId && deletedId === activeTabId.value) {
+			const remaining = allArtifactTabs.value.filter((t) => t.id !== deletedId);
+			activeTabId.value = remaining.length > 0 ? remaining[0].id : null;
 		}
 	});
 
 	return {
+		activeTabId,
+		allArtifactTabs,
 		activeWorkflowId,
 		activeExecutionId,
-		iframePushRef,
 		activeDataTableId,
 		activeDataTableProjectId,
 		dataTableRefreshKey,
 		isPreviewVisible,
 		userSentMessage,
 		workflowRefreshKey,
+		selectTab,
+		closePreview,
 		openWorkflowPreview,
 		openDataTablePreview,
 		markUserSentMessage,
