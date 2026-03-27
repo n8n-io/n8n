@@ -1,5 +1,6 @@
 {
 	"compilerOptions": {
+		"ignoreDeprecations": "6.0",
 		"target": "ES2015",
 		"module": "ESNext",
 		"moduleResolution": "node",
