@@ -1,4 +1,4 @@
-import { AIMessage, HumanMessage, SystemMessage, type BaseMessage } from '@langchain/core/messages';
+import { AIMessage, HumanMessage, type BaseMessage } from '@langchain/core/messages';
 import { evaluate } from 'langsmith/evaluation';
 import type { Run, Example } from 'langsmith/schemas';
 import { traceable } from 'langsmith/traceable';
@@ -1050,26 +1050,26 @@ function enrichExamplesWithHistory(examples: Example[]): Example[] {
  * Deserialize raw LangChain `lc` serialization format messages into BaseMessage instances.
  * Dataset messages use the format: {id, lc: 1, type: "constructor", kwargs: {content, ...}}
  * with the class ID in `id` array (e.g. ["langchain_core", "messages", "HumanMessage"]).
+ *
+ * Only keeps HumanMessage and AIMessage — tool calls/results are stripped
+ * to simplify the context passed to the code builder.
  */
 function deserializeLcMessages(rawMessages: unknown[]): BaseMessage[] {
 	return rawMessages
-		.filter((msg): msg is Record<string, unknown> => isUnknownRecord(msg))
+		.filter((msg): msg is Record<string, unknown> => {
+			if (!isUnknownRecord(msg)) return false;
+			const id = Array.isArray(msg.id) ? (msg.id as unknown[]) : [];
+			const last: unknown = id[id.length - 1];
+			return last === 'HumanMessage' || last === 'AIMessage';
+		})
 		.map((msg) => {
 			const kwargs = isUnknownRecord(msg.kwargs) ? msg.kwargs : {};
 			const content = typeof kwargs.content === 'string' ? kwargs.content : '';
-			const id = Array.isArray(msg.id) ? msg.id : [];
-			const className = typeof id[id.length - 1] === 'string' ? (id[id.length - 1] as string) : '';
+			const id = Array.isArray(msg.id) ? (msg.id as unknown[]) : [];
 
-			switch (className) {
-				case 'HumanMessage':
-					return new HumanMessage(content);
-				case 'AIMessage':
-					return new AIMessage(content);
-				case 'SystemMessage':
-					return new SystemMessage(content);
-				default:
-					return new HumanMessage(content);
-			}
+			return id[id.length - 1] === 'HumanMessage'
+				? new HumanMessage(content)
+				: new AIMessage(content);
 		});
 }
 
