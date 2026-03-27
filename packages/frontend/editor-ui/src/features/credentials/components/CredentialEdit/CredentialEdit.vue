@@ -413,9 +413,14 @@ onMounted(async () => {
 	}
 
 	if (props.mode === 'new' && credentialTypeName.value) {
-		credentialName.value = await credentialsStore.getNewCredentialName({
-			credentialTypeName: defaultCredentialTypeName.value,
-		});
+		const modalSuggestedName = isCredentialModalState(modalState)
+			? modalState.suggestedName
+			: undefined;
+		credentialName.value = modalSuggestedName
+			? modalSuggestedName
+			: await credentialsStore.getNewCredentialName({
+					credentialTypeName: defaultCredentialTypeName.value,
+				});
 
 		credentialData.value = {
 			...credentialData.value,

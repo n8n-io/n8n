@@ -204,7 +204,7 @@ const apiCall = node({
   }
 });
 \`\`\`
-**Rule**: If \`list-credentials\` returns a credential with a specific type (e.g., \`serpApi\`, \`notionApi\`), use \`predefinedCredentialType\` with \`nodeCredentialType\` matching that type. Only use \`genericCredentialType\` + \`httpQueryAuth\` for truly custom/unknown APIs where no predefined credential type exists.
+**Rule**: If \`list-credentials\` returns a credential with a specific type (e.g., \`serpApi\`, \`notionApi\`), use \`predefinedCredentialType\` with \`nodeCredentialType\` matching that type. Before using \`genericCredentialType\` with ANY generic auth type (\`httpHeaderAuth\`, \`httpBearerAuth\`, \`httpQueryAuth\`, \`httpBasicAuth\`, \`httpCustomAuth\`), call \`search-credential-types\` with the service name to check if a dedicated credential type exists. Only use \`genericCredentialType\` for truly custom/unknown APIs where no predefined credential type exists. When generic auth is truly needed, prefer \`httpBearerAuth\` (single "Bearer Token" field) over \`httpHeaderAuth\` (requires knowing the header name and format). Also prefer dedicated n8n nodes (e.g., \`n8n-nodes-base.linear\`) over HTTP Request when they exist — use \`search-nodes\` to check.
 
 ### Google Sheets — Column Mapping
 The \`columns\` parameter requires a schema object, never a string:
@@ -745,6 +745,8 @@ credentials: {
 \`\`\`
 
 The key (\`openWeatherMapApi\`) is the credential **type** from the node type definition. The \`id\` and \`name\` come from \`list-credentials\`.
+
+If the required credential type is not in \`list-credentials\` results, call \`search-credential-types\` with the service name (e.g. "linear", "notion") to discover available dedicated credential types. Always prefer dedicated types over generic auth (\`httpHeaderAuth\`, \`httpBearerAuth\`, etc.). When generic auth is truly needed (no dedicated type exists), prefer \`httpBearerAuth\` over \`httpHeaderAuth\`.
 
 ## Data Tables
 

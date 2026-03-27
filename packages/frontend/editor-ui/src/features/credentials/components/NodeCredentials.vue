@@ -65,6 +65,8 @@ type Props = {
 	standalone?: boolean;
 	/** Project ID to scope new credential creation to the correct project. */
 	projectId?: string;
+	/** Pre-fill the credential name when creating a new credential. */
+	suggestedCredentialName?: string;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -354,7 +356,13 @@ function createNewCredential(
 		subscribedToCredentialType.value = credentialType;
 	}
 
-	uiStore.openNewCredential(credentialType, showAuthOptions, forceManualMode, props.projectId);
+	uiStore.openNewCredential(
+		credentialType,
+		showAuthOptions,
+		forceManualMode,
+		props.projectId,
+		props.suggestedCredentialName,
+	);
 	telemetry.track('User opened Credential modal', {
 		credential_type: credentialType,
 		source: 'node',
