@@ -313,19 +313,25 @@ export function useReviewChanges() {
 		);
 	});
 
-	function openDiffView() {
+	function openDiffView(versionId?: string) {
 		const cards = builderStore.versionCardMessages;
 		if (cards.length === 0) return;
 
-		const latestCard = cards[cards.length - 1];
-		const latestCached = versionDataCache.value.get(latestCard.data.versionId);
-		if (!latestCached) return;
+		// Find the target card: use provided versionId or fall back to the latest
+		const targetIndex = versionId
+			? cards.findIndex((c) => c.data.versionId === versionId)
+			: cards.length - 1;
+		if (targetIndex === -1) return;
+
+		const targetCard = cards[targetIndex];
+		const targetCached = versionDataCache.value.get(targetCard.data.versionId);
+		if (!targetCached) return;
 
 		// Source: previous version's data (or empty workflow for the first card)
 		let sourceNodes: INode[] = [];
 		let sourceConnections: IConnections = {};
-		if (cards.length > 1) {
-			const prevCard = cards[cards.length - 2];
+		if (targetIndex > 0) {
+			const prevCard = cards[targetIndex - 1];
 			const prevCached = versionDataCache.value.get(prevCard.data.versionId);
 			if (prevCached) {
 				sourceNodes = prevCached.nodes;
@@ -340,8 +346,8 @@ export function useReviewChanges() {
 		};
 		const targetWorkflow = {
 			...workflowsStore.workflow,
-			nodes: latestCached.nodes,
-			connections: latestCached.connections,
+			nodes: targetCached.nodes,
+			connections: targetCached.connections,
 		};
 
 		uiStore.openModalWithData({

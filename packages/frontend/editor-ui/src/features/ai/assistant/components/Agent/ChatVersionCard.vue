@@ -24,7 +24,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-	openDiff: [];
+	openDiff: [versionId: string];
 	restore: [versionId: string];
 	showInHistory: [versionId: string];
 	selectNode: [nodeId: string];
@@ -94,7 +94,7 @@ function toggleExpanded() {
 function onMenuSelect(action: VersionCardAction) {
 	switch (action) {
 		case 'openDiff':
-			emit('openDiff');
+			emit('openDiff', props.versionId);
 			break;
 		case 'restore':
 			showRestoreConfirm.value = true;

@@ -19,6 +19,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
+	'open-diff': [versionId: string];
 	restore: [versionId: string, versionCardId: string];
 	'show-in-history': [versionId: string];
 	'select-node': [nodeId: string];
@@ -148,6 +149,7 @@ function toggleExpanded() {
 					:title="asVersionCard(msg).data.title"
 					:version-index="getVersionIndex(msg)"
 					:version-exists="!!asVersionCard(msg).data.createdAt"
+					@open-diff="(versionId) => emit('open-diff', versionId)"
 					@restore="(versionId) => emit('restore', versionId, msg.id!)"
 					@show-in-history="emit('show-in-history', $event)"
 					@select-node="emit('select-node', $event)"

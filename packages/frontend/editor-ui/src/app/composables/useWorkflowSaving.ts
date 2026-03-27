@@ -221,14 +221,6 @@ export function useWorkflowSaving({
 				workflowDataRequest.expectedChecksum = workflowDocumentStore.checksum;
 				workflowDataRequest.autosaved = autosaved;
 
-				console.debug('[saveCurrentWorkflow] sending update', {
-					workflowId: currentWorkflow,
-					autosaved,
-					nodeCount: workflowDataRequest.nodes?.length ?? 0,
-					connectionKeys: Object.keys(workflowDataRequest.connections ?? {}),
-					versionId: workflowDataRequest.versionId,
-				});
-
 				const workflowData = await workflowsStore.updateWorkflow(
 					currentWorkflow,
 					workflowDataRequest,
