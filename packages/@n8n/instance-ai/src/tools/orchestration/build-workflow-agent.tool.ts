@@ -44,6 +44,14 @@ const UNTESTABLE_TRIGGERS = new Set([
 	'@n8n/n8n-nodes-langchain.chatTrigger',
 ]);
 
+/** Human-readable label derived from a node type string, e.g. "n8n-nodes-base.formTrigger" → "form" */
+function triggerLabel(nodeType: string): string {
+	const short = nodeType.split('.').pop() ?? nodeType;
+	return short.replace(/Trigger$/i, '').toLowerCase() || short.toLowerCase();
+}
+
+const UNTESTABLE_TRIGGER_LABELS = [...UNTESTABLE_TRIGGERS].map(triggerLabel).join(', ');
+
 function detectTriggerType(attempt: SubmitWorkflowAttempt | undefined): TriggerType {
 	if (!attempt?.triggerNodeTypes || attempt.triggerNodeTypes.length === 0) {
 		return 'manual_or_testable';
@@ -94,7 +102,7 @@ You are running as a detached background task. Do not stop after a successful su
 
 Your job is done when ONE of these is true:
 - the workflow is verified (ran successfully or publish-workflow succeeded)
-- the workflow uses only event triggers (webhook, form, schedule) and cannot be runtime-tested — publish it and stop
+- the workflow uses only event triggers (${UNTESTABLE_TRIGGER_LABELS}) and cannot be runtime-tested — publish it and stop
 - you are blocked after one repair attempt per unique failure
 
 ### Submit discipline
