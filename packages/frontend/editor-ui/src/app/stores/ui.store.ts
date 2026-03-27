@@ -293,6 +293,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const nodeViewInitialized = ref<boolean>(false);
 	const addFirstStepOnLoad = ref<boolean>(false);
 	const pendingNotificationsForViews = ref<{ [key in VIEWS]?: NotificationOptions[] }>({});
+	const areNotificationsSuppressed = ref(false);
 	const processingExecutionResults = ref<boolean>(false);
 	const isBlankRedirect = ref<boolean>(false);
 
@@ -619,6 +620,10 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		pendingNotificationsForViews.value[view] = notifications;
 	};
 
+	const setNotificationsSuppressed = (suppressed: boolean) => {
+		areNotificationsSuppressed.value = suppressed;
+	};
+
 	function resetLastInteractedWith() {
 		lastInteractedWithNodeConnection.value = undefined;
 		lastInteractedWithNodeHandle.value = null;
@@ -740,6 +745,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		currentView,
 		isAnyModalOpen,
 		pendingNotificationsForViews,
+		areNotificationsSuppressed,
 		activeModals,
 		isProcessingExecutionResults,
 		setTheme,
@@ -756,6 +762,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		removeActiveAction,
 		toggleSidebarMenuCollapse,
 		setNotificationsForView,
+		setNotificationsSuppressed,
 		resetLastInteractedWith,
 		setProcessingExecutionResults,
 		markStateDirty,
