@@ -44,7 +44,7 @@ export class SeaTableTriggerV1 implements INodeType {
 					},
 					default: '',
 					description:
-						'The name of SeaTable table to access. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+						'The name of SeaTable table to access. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>.',
 				},
 				{
 					displayName: 'Event',

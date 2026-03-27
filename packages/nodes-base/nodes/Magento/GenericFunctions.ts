@@ -115,7 +115,7 @@ export function getAddressesUi(): INodeProperties {
 						name: 'country_id',
 						type: 'options',
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getCountries',
 						},
@@ -557,7 +557,7 @@ export function getCustomerOptionalFields(): INodeProperties[] {
 							name: 'attribute_code',
 							type: 'options',
 							description:
-								'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+								'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>',
 							typeOptions: {
 								loadOptionsMethod: 'getCustomAttributes',
 							},
@@ -616,7 +616,7 @@ export function getCustomerOptionalFields(): INodeProperties[] {
 			name: 'group_id',
 			type: 'options',
 			description:
-				'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+				'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>',
 			typeOptions: {
 				loadOptionsMethod: 'getGroups',
 			},
@@ -652,7 +652,7 @@ export function getCustomerOptionalFields(): INodeProperties[] {
 			name: 'store_id',
 			type: 'options',
 			description:
-				'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+				'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>',
 			typeOptions: {
 				loadOptionsMethod: 'getStores',
 			},
@@ -681,7 +681,7 @@ export function getCustomerOptionalFields(): INodeProperties[] {
 			name: 'website_id',
 			type: 'options',
 			description:
-				'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+				'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>',
 			displayOptions: {
 				show: {
 					'/operation': ['create'],
@@ -702,7 +702,7 @@ export function getProductOptionalFields(): INodeProperties[] {
 			name: 'attribute_set_id',
 			type: 'options',
 			description:
-				'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+				'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>',
 			displayOptions: {
 				show: {
 					'/operation': ['update'],
@@ -798,7 +798,7 @@ export function getProductOptionalFields(): INodeProperties[] {
 			name: 'type_id',
 			type: 'options',
 			description:
-				'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+				'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>',
 			typeOptions: {
 				loadOptionsMethod: 'getProductTypes',
 			},

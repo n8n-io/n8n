@@ -285,7 +285,7 @@ export class GoogleSlides implements INodeType {
 									loadOptionsDependsOn: ['presentationId'],
 								},
 								description:
-									'If non-empty, limits the matches to slide elements only on the given slides. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+									'If non-empty, limits the matches to slide elements only on the given slides. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/data/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Search For',

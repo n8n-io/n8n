@@ -58,7 +58,7 @@ export const rowFields: INodeProperties[] = [
 		name: 'tableId',
 		type: 'options',
 		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsDependsOn: ['useCustomSchema', 'schema'],
 			loadOptionsMethod: 'getTables',
@@ -154,7 +154,7 @@ export const rowFields: INodeProperties[] = [
 						name: 'fieldId',
 						type: 'options',
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsDependsOn: ['tableId'],
 							loadOptionsMethod: 'getTableColumns',
@@ -222,7 +222,7 @@ export const rowFields: INodeProperties[] = [
 						},
 						default: '',
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>',
 					},
 					{
 						displayName: 'Value',

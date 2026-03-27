@@ -59,7 +59,7 @@ export class E2eTest implements INodeType {
 				displayName: 'Remote Options Name or ID',
 				name: 'remoteOptions',
 				description:
-					'Remote options to load. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'Remote options to load. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>.',
 				type: 'options',
 				typeOptions: {
 					loadOptionsDependsOn: ['fieldId'],

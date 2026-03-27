@@ -180,7 +180,7 @@ export const deviceFields: INodeProperties[] = [
 				},
 				default: [],
 				description:
-					'Specify the organizational unit name or ID. Choose from the list or use an expression. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'Specify the organizational unit name or ID. Choose from the list or use an expression. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Query',
@@ -290,7 +290,7 @@ export const deviceFields: INodeProperties[] = [
 				},
 				default: [],
 				description:
-					'The full path to the organizational unit. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'The full path to the organizational unit. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Annotated User',

@@ -62,7 +62,7 @@ export const description: INodeProperties[] = [
 		type: 'options',
 		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 		description:
-			'Choose from the list, or specify using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+			'Choose from the list, or specify using an <a href="https://docs.n8n.io/data/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsDependsOn: ['dataTableId.value'],
 			loadOptionsMethod: 'getDataTableColumns',

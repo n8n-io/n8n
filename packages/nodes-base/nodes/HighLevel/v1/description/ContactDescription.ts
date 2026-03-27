@@ -181,7 +181,7 @@ const customFields: INodeProperties = {
 					required: true,
 					default: '',
 					description:
-						'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+						'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>',
 					typeOptions: {
 						loadOptions: {
 							routing: {
@@ -423,7 +423,7 @@ const createProperties: INodeProperties[] = [
 				type: 'options',
 				default: '',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getTimezones',
 				},
@@ -626,7 +626,7 @@ const updateProperties: INodeProperties[] = [
 				type: 'options',
 				default: '',
 				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getTimezones',
 				},

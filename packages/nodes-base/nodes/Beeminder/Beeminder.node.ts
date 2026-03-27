@@ -300,7 +300,7 @@ export class Beeminder implements INodeType {
 				},
 				default: '',
 				description:
-					'The name of the goal. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'The name of the goal. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>.',
 				required: true,
 			},
 			{
@@ -318,7 +318,7 @@ export class Beeminder implements INodeType {
 				},
 				default: '',
 				description:
-					'The name of the goal to derail. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'The name of the goal to derail. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>.',
 				required: true,
 			},
 			{
@@ -336,7 +336,7 @@ export class Beeminder implements INodeType {
 				},
 				default: '',
 				description:
-					'The name of the goal. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'The name of the goal. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>.',
 				required: true,
 			},
 			{

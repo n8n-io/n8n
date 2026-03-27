@@ -213,7 +213,7 @@ export const databasePageFields: INodeProperties[] = [
 						name: 'key',
 						type: 'options',
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getDatabaseProperties',
 							loadOptionsDependsOn: ['databaseId'],
@@ -292,7 +292,7 @@ export const databasePageFields: INodeProperties[] = [
 						},
 						default: [],
 						description:
-							'Name of the options you want to set. Multiples can be defined separated by comma. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+							'Name of the options you want to set. Multiples can be defined separated by comma. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/data/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Option Name or ID',
@@ -308,7 +308,7 @@ export const databasePageFields: INodeProperties[] = [
 						},
 						default: '',
 						description:
-							'Name of the option you want to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+							'Name of the option you want to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Status Name or ID',
@@ -324,7 +324,7 @@ export const databasePageFields: INodeProperties[] = [
 						},
 						default: '',
 						description:
-							'Name of the option you want to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+							'Name of the option you want to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Email',
@@ -375,7 +375,7 @@ export const databasePageFields: INodeProperties[] = [
 						},
 						default: [],
 						description:
-							'List of users. Multiples can be defined separated by comma. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+							'List of users. Multiples can be defined separated by comma. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/data/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Relation IDs',
@@ -496,7 +496,7 @@ export const databasePageFields: INodeProperties[] = [
 						},
 						default: 'default',
 						description:
-							'Time zone to use. By default n8n timezone is used. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+							'Time zone to use. By default n8n timezone is used. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'File URLs',
@@ -680,7 +680,7 @@ export const databasePageFields: INodeProperties[] = [
 						name: 'key',
 						type: 'options',
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getDatabaseIdFromPage',
 							loadOptionsDependsOn: ['pageId'],
@@ -750,7 +750,7 @@ export const databasePageFields: INodeProperties[] = [
 						name: 'multiSelectValue',
 						type: 'multiOptions',
 						description:
-							'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+							'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/data/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getDatabaseOptionsFromPage',
 						},
@@ -766,7 +766,7 @@ export const databasePageFields: INodeProperties[] = [
 						name: 'selectValue',
 						type: 'options',
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getDatabaseOptionsFromPage',
 						},
@@ -791,7 +791,7 @@ export const databasePageFields: INodeProperties[] = [
 						},
 						default: '',
 						description:
-							'Name of the option you want to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+							'Name of the option you want to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Email',
@@ -841,7 +841,7 @@ export const databasePageFields: INodeProperties[] = [
 						},
 						default: [],
 						description:
-							'List of users. Multiples can be defined separated by comma. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+							'List of users. Multiples can be defined separated by comma. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/data/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Relation IDs',
@@ -962,7 +962,7 @@ export const databasePageFields: INodeProperties[] = [
 						},
 						default: 'default',
 						description:
-							'Time zone to use. By default n8n timezone is used. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+							'Time zone to use. By default n8n timezone is used. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'File URLs',
@@ -1356,7 +1356,7 @@ export const databasePageFields: INodeProperties[] = [
 								},
 								default: '',
 								description:
-									'The name of the property to filter by. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+									'The name of the property to filter by. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Property Name',

@@ -57,7 +57,7 @@ export const spaceIdProperty: INodeProperties = {
 	},
 	default: '',
 	description:
-		'Space resource name, in the form "spaces/*". Example: spaces/AAAAMpdlehY. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+		'Space resource name, in the form "spaces/*". Example: spaces/AAAAMpdlehY. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/data/expressions/">expression</a>.',
 };
 
 export const messageFields: INodeProperties[] = [
