@@ -2,14 +2,22 @@ import type { PineconeStoreParams } from '@langchain/pinecone';
 import { PineconeStore } from '@langchain/pinecone';
 import { Pinecone } from '@pinecone-database/pinecone';
 import type {
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodeCredentialTestResult,
 	INodeProperties,
 	NodeParameterValueType,
 } from 'n8n-workflow';
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
 import { getUserScopedSlot } from '../shared/userScoped';
 import { createVectorStoreNode, metadataFilterField } from '@n8n/ai-utilities';
+import {
+	filterChatHubMetadata,
+	filterChatHubInsertDocuments,
+	CHAT_HUB_RETRIEVE_METADATA_KEYS,
+} from '../shared/chatHub';
 
 type ChatHubVectorStorePineconeApiCredentials = {
 	apiKey: string;
@@ -38,6 +46,35 @@ const insertFields: INodeProperties[] = [
 		options: [],
 	},
 ];
+
+async function chatHubVectorStorePineconeApiConnectionTest(
+	this: ICredentialTestFunctions,
+	credential: ICredentialsDecrypted,
+): Promise<INodeCredentialTestResult> {
+	const credentials = credential.data as ChatHubVectorStorePineconeApiCredentials;
+
+	try {
+		const client = new Pinecone({ apiKey: credentials.apiKey });
+		const indexes = ((await client.listIndexes()).indexes ?? []).map((i) => i.name);
+
+		if (!indexes.includes(credentials.pineconeIndex)) {
+			return {
+				status: 'Error',
+				message: `Index "${credentials.pineconeIndex}" not found. Please create the index first or check the index name.`,
+			};
+		}
+	} catch (error) {
+		return {
+			status: 'Error',
+			message: error.message as string,
+		};
+	}
+
+	return {
+		status: 'OK',
+		message: 'Connection successful',
+	};
+}
 
 async function deleteDocuments(
 	this: ILoadOptionsFunctions,
@@ -72,18 +109,25 @@ export class ChatHubVectorStorePinecone extends createVectorStoreNode<PineconeSt
 		displayName: 'ChatHub Pinecone Vector Store',
 		name: 'chatHubVectorStorePinecone',
 		description: 'Internal-use vector store for ChatHub',
-		icon: { light: 'file:../VectorStorePinecone/pinecone.svg', dark: 'file:pinecone.dark.svg' },
+		icon: {
+			light: 'file:../VectorStorePinecone/pinecone.svg',
+			dark: 'file:../VectorStorePinecone/pinecone.dark.svg',
+		},
 		docsUrl: 'https://docs.n8n.io',
 		credentials: [
 			{
 				name: 'chatHubVectorStorePineconeApi',
 				required: true,
+				testedBy: 'chatHubVectorStorePineconeApiConnectionTest',
 			},
 		],
 		operationModes: ['load', 'insert', 'retrieve', 'retrieve-as-tool'],
 	},
 	hidden: true,
-	methods: { actionHandler: { deleteDocuments } },
+	methods: {
+		credentialTest: { chatHubVectorStorePineconeApiConnectionTest },
+		actionHandler: { deleteDocuments },
+	},
 	sharedFields: [],
 	retrieveFields,
 	loadFields: retrieveFields,
@@ -103,7 +147,18 @@ export class ChatHubVectorStorePinecone extends createVectorStoreNode<PineconeSt
 			filter,
 		};
 
-		return await PineconeStore.fromExistingIndex(embeddings, config);
+		const store = await PineconeStore.fromExistingIndex(embeddings, config);
+
+		const originalSearch = store.similaritySearchVectorWithScore.bind(store);
+		store.similaritySearchVectorWithScore = async (...args) => {
+			const results = await originalSearch(...args);
+			return results.map(([doc, score]) => [
+				{ ...doc, metadata: filterChatHubMetadata(doc.metadata, CHAT_HUB_RETRIEVE_METADATA_KEYS) },
+				score,
+			]);
+		};
+
+		return store;
 	},
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
 		const credentials = await context.getCredentials<ChatHubVectorStorePineconeApiCredentials>(
@@ -127,7 +182,7 @@ export class ChatHubVectorStorePinecone extends createVectorStoreNode<PineconeSt
 
 		const pineconeIndex = client.Index(credentials.pineconeIndex);
 
-		await PineconeStore.fromDocuments(documents, embeddings, {
+		await PineconeStore.fromDocuments(filterChatHubInsertDocuments(documents), embeddings, {
 			namespace: namespaceName,
 			pineconeIndex,
 		});

@@ -26,6 +26,14 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.page.getByTestId('node-credentials-select');
 	}
 
+	getNodeCredentialsEmptyState() {
+		return this.page.getByTestId('node-credentials-empty-state');
+	}
+
+	getQuickConnectEmptyState() {
+		return this.page.getByTestId('quick-connect-empty-state');
+	}
+
 	credentialDropdownCreateNewCredential() {
 		return this.page.getByText('Create new credential');
 	}
@@ -127,6 +135,10 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.page.getByTestId('run-data-pane-header');
 	}
 
+	getEditOutputButton() {
+		return this.getRunDataPaneHeader().getByRole('button', { name: 'Edit Output' });
+	}
+
 	getOutputDataContainer() {
 		return this.getOutputPanel().getByTestId('ndv-data-container');
 	}
@@ -167,6 +179,10 @@ export class NodeDetailsViewPage extends BasePage {
 			.getByTestId('assignment-value');
 	}
 
+	async clickAssignmentExpressionToggle(paramName: string) {
+		await this.getAssignmentValue(paramName).getByText('Expression').click();
+	}
+
 	/**
 	 * Get the inline expression editor input
 	 * @param parameterName - The name of the parameter to get the inline expression editor input for. If not set, gets the first inline expression editor input on page
@@ -186,6 +202,10 @@ export class NodeDetailsViewPage extends BasePage {
 
 	getParameterInputHint() {
 		return this.page.getByTestId('parameter-input-hint');
+	}
+
+	getParameterInputHintWithText(text: string) {
+		return this.getParameterInputHint().getByText(text);
 	}
 
 	getInputLabel() {
@@ -219,6 +239,10 @@ export class NodeDetailsViewPage extends BasePage {
 
 	getParameterInput(parameterName: string, index?: number) {
 		return locatorByIndex(this.page.getByTestId(`parameter-input-${parameterName}`), index);
+	}
+
+	getParameterInputTextbox(parameterName: string, index?: number) {
+		return this.getParameterInput(parameterName, index).getByRole('textbox');
 	}
 
 	getParameterInputField(parameterName: string, index?: number) {
@@ -481,6 +505,10 @@ export class NodeDetailsViewPage extends BasePage {
 		await this.page.waitForTimeout(2500);
 	}
 
+	getCopyInputButton() {
+		return this.page.getByTestId('copy-input');
+	}
+
 	getOutputPagination() {
 		return this.outputPanel.get().getByTestId('ndv-data-pagination');
 	}
@@ -517,8 +545,25 @@ export class NodeDetailsViewPage extends BasePage {
 
 	// Credentials modal helpers
 	async clickCreateNewCredential(eq: number = 0): Promise<void> {
-		await this.page.getByTestId('node-credentials-select').nth(eq).click();
-		await this.page.getByTestId('node-credentials-select-item-new').nth(eq).click();
+		const setupManually = this.page.getByTestId('setup-manually-link').nth(eq);
+		const setupCredential = this.page.getByTestId('setup-credential-button').nth(eq);
+		const credentialSelect = this.page.getByTestId('node-credentials-select').nth(eq);
+
+		// Wait for one of the three credential UI states to appear
+		await Promise.race([
+			setupManually.waitFor({ state: 'visible', timeout: 10_000 }),
+			setupCredential.waitFor({ state: 'visible', timeout: 10_000 }),
+			credentialSelect.waitFor({ state: 'visible', timeout: 10_000 }),
+		]);
+
+		if (await setupManually.isVisible()) {
+			await setupManually.click();
+		} else if (await setupCredential.isVisible()) {
+			await setupCredential.click();
+		} else {
+			await credentialSelect.click();
+			await this.page.getByTestId('node-credentials-select-item-new').nth(eq).click();
+		}
 	}
 
 	// Run selector and linking helpers

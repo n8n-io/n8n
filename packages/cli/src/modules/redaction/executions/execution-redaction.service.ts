@@ -8,6 +8,7 @@ import type {
 	RedactableExecution,
 } from '@/executions/execution-redaction';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ScopeForbiddenError } from '@/errors/response-errors/scope-forbidden.error';
 import { EventService } from '@/events/event.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -48,13 +49,19 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 
 	/**
 	 * Thin wrapper around `processExecutions` for single-execution callers.
+	 *
+	 * With `keepOriginal: true`, the original execution is never mutated. Returns
+	 * either the original (if no redaction needed) or a structuredClone with
+	 * redaction applied. Callers can check referential equality to determine
+	 * whether redaction occurred.
 	 */
 	async processExecution(
 		execution: RedactableExecution,
 		options: ExecutionRedactionOptions,
 	): Promise<RedactableExecution> {
-		await this.processExecutions([execution], options);
-		return execution;
+		const executions = [execution];
+		await this.processExecutions(executions, options);
+		return executions[0];
 	}
 
 	/**
@@ -86,9 +93,30 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 
 		// Reveal path: validate all permissions atomically before any processing.
 		if (options.redactExecutionData === false) {
+			// Dynamic credential executions can never be revealed
+			for (const execution of executions) {
+				if (this.hasDynamicCredentials(execution)) {
+					throw new ForbiddenError();
+				}
+			}
+
 			for (const execution of needsCheck) {
 				if (!revealableIds.has(execution.workflowId)) {
-					throw new ForbiddenError();
+					// Emit audit event before throwing error
+					this.eventService.emit('execution-data-reveal-failure', {
+						user: options.user,
+						executionId: execution.id ?? '',
+						workflowId: execution.workflowId,
+						ipAddress: options.ipAddress ?? '',
+						userAgent: options.userAgent ?? '',
+						redactionPolicy: this.resolvePolicy(execution),
+						rejectionReason: 'User lacks execution:reveal scope for this workflow',
+					});
+					throw new ScopeForbiddenError(
+						"You do not have permission to reveal execution data. The 'execution:reveal' scope is required.",
+						{ errorCode: 'EXECUTION_REVEAL_FORBIDDEN', requiredScope: 'execution:reveal' },
+						'Contact a project admin to request the required scope.',
+					);
 				}
 			}
 		}
@@ -96,17 +124,40 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 		// Unified pipeline execution. buildPipeline excludes FullItemRedactionStrategy on the
 		// reveal path (redactExecutionData === false). NodeDefinedFieldRedactionStrategy
 		// always runs — node-declared sensitive fields are never revealable.
-		for (const execution of executions) {
+
+		for (let i = 0; i < executions.length; i++) {
+			const execution = executions[i];
+			const hasDynCreds = this.hasDynamicCredentials(execution);
 			const policyAllowsReveal = this.policyAllowsReveal(execution);
-			const userCanReveal = policyAllowsReveal || revealableIds.has(execution.workflowId);
+			// Dynamic credential executions can never be revealed regardless of permissions
+			const userCanReveal = hasDynCreds
+				? false
+				: policyAllowsReveal || revealableIds.has(execution.workflowId);
 			const context: RedactionContext = {
 				user: options.user,
 				redactExecutionData: options.redactExecutionData,
 				userCanReveal,
+				hasDynamicCredentials: hasDynCreds,
+				memo: new Map(),
 			};
-			const pipeline = this.buildPipeline(execution, context, policyAllowsReveal);
+			const pipeline = this.buildPipeline(execution, context, policyAllowsReveal, hasDynCreds);
+
+			let target = execution;
+			if (options.keepOriginal) {
+				const needsClone = pipeline.some((s) => s.requiresRedaction(execution, context));
+				if (!needsClone) continue;
+				target = structuredClone(execution);
+				executions[i] = target;
+			}
+
 			for (const strategy of pipeline) {
-				await strategy.apply(execution, context);
+				await strategy.apply(target, context);
+			}
+
+			// runtimeData.credentials contains encrypted credential context that
+			// must never be exposed in API responses
+			if (hasDynCreds && target.data.executionData?.runtimeData) {
+				delete target.data.executionData.runtimeData.credentials;
 			}
 		}
 
@@ -130,7 +181,7 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 	 *
 	 * - `FullItemRedactionStrategy` is included when items should be cleared:
 	 *   explicit redact (`redactExecutionData === true`), policy=all, or
-	 *   policy=non-manual on a non-manual execution mode.
+	 *   policy=non-manual on a non-manual execution mode, or dynamic credentials.
 	 *   It is never included on the reveal path (`redactExecutionData === false`).
 	 * - `NodeDefinedFieldRedactionStrategy` is always appended last — node-declared
 	 *   sensitive fields are never revealable.
@@ -139,6 +190,7 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 		execution: RedactableExecution,
 		context: RedactionContext,
 		policyAllowsReveal: boolean,
+		hasDynamicCredentials: boolean,
 	): IExecutionRedactionStrategy[] {
 		const pipeline: IExecutionRedactionStrategy[] = [];
 
@@ -146,8 +198,11 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 		const shouldClearItems =
 			context.redactExecutionData !== false &&
 			(context.redactExecutionData === true ||
+				hasDynamicCredentials ||
 				(!policyAllowsReveal &&
-					(policy === 'all' || (policy === 'non-manual' && !MANUAL_MODES.has(execution.mode)))));
+					(policy === 'all' ||
+						(policy === 'non-manual' && !MANUAL_MODES.has(execution.mode)) ||
+						(policy === 'manual-only' && MANUAL_MODES.has(execution.mode)))));
 
 		if (shouldClearItems) {
 			pipeline.push(this.fullItemRedactionStrategy);
@@ -156,6 +211,20 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 		pipeline.push(this.nodeDefinedFieldRedactionStrategy);
 
 		return pipeline;
+	}
+
+	/**
+	 * Returns true when the execution used dynamic credential resolution.
+	 * Such executions must always be redacted with canReveal = false.
+	 *
+	 * Checks per-node `usedDynamicCredentials` flag which is only set when
+	 * resolution actually happened at runtime, rather than checking for the
+	 * mere presence of credential context infrastructure.
+	 */
+	private hasDynamicCredentials(execution: RedactableExecution): boolean {
+		return Object.values(execution.data.resultData?.runData ?? {}).some((taskDataList) =>
+			taskDataList.some((taskData) => taskData.usedDynamicCredentials),
+		);
 	}
 
 	/**
@@ -168,7 +237,11 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 	 */
 	private policyAllowsReveal(execution: RedactableExecution): boolean {
 		const policy = this.resolvePolicy(execution);
-		return policy === 'none' || (policy === 'non-manual' && MANUAL_MODES.has(execution.mode));
+		return (
+			policy === 'none' ||
+			(policy === 'non-manual' && MANUAL_MODES.has(execution.mode)) ||
+			(policy === 'manual-only' && !MANUAL_MODES.has(execution.mode))
+		);
 	}
 
 	/**

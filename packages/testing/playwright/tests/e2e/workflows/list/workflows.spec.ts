@@ -67,6 +67,33 @@ test.describe(
 			await expect(n8n.workflows.getNoWorkflowsFoundMessage()).toBeVisible();
 		});
 
+		test('should search workflows in command bar', async ({ n8n }) => {
+			const uniqueId = nanoid(8);
+			const firstWorkflowName = `Command Bar Alpha ${uniqueId}`;
+			const secondWorkflowName = `Command Bar Beta ${uniqueId}`;
+
+			const firstWorkflow = await n8n.api.workflows.createWorkflow({
+				name: firstWorkflowName,
+				nodes: [],
+				connections: {},
+			});
+			await n8n.api.workflows.createWorkflow({
+				name: secondWorkflowName,
+				nodes: [],
+				connections: {},
+			});
+
+			await n8n.goHome();
+			await n8n.commandBar.search(firstWorkflowName);
+			await n8n.commandBar.waitForLoadingToFinish();
+
+			await expect(n8n.commandBar.getItem(firstWorkflowName)).toBeVisible();
+			await expect(n8n.commandBar.getItem(secondWorkflowName)).toBeHidden();
+
+			await n8n.commandBar.selectItem(firstWorkflowName);
+			await expect(n8n.page).toHaveURL(new RegExp(`/workflow/${firstWorkflow.id}(\\?.*)?$`));
+		});
+
 		test('should archive and unarchive a workflow', async ({ n8n }) => {
 			const uniqueIdForArchive = nanoid(8);
 			const workflowName = `Archive Test ${uniqueIdForArchive}`;

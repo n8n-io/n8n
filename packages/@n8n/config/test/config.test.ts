@@ -68,6 +68,7 @@ describe('GlobalConfig', () => {
 		proxy_hops: 0,
 		ssl_key: '',
 		ssl_cert: '',
+		canvasOnly: false,
 		editorBaseUrl: '',
 		dataTable: {
 			maxSize: 50 * 1024 * 1024,
@@ -161,6 +162,7 @@ describe('GlobalConfig', () => {
 			},
 		},
 		externalHooks: {
+			separator: ':',
 			files: [],
 		},
 		nodes: {
@@ -195,6 +197,7 @@ describe('GlobalConfig', () => {
 			callerPolicyDefaultOption: 'workflowsFromSameOwner',
 			activationBatchSize: 1,
 			indexingEnabled: true,
+			indexingBatchSize: 10,
 			useWorkflowPublicationService: false,
 		},
 		endpoints: {
@@ -213,6 +216,7 @@ describe('GlobalConfig', () => {
 				includeCredentialTypeLabel: false,
 				includeApiStatusCodeLabel: false,
 				includeQueueMetrics: false,
+				includeWorkflowExecutionDuration: true,
 				queueMetricsInterval: 20,
 				activeWorkflowCountInterval: 60,
 				includeWorkflowStatistics: false,
@@ -225,7 +229,8 @@ describe('GlobalConfig', () => {
 			formTest: 'form-test',
 			formWaiting: 'form-waiting',
 			mcp: 'mcp',
-			mcpBuilderEnabled: false,
+			mcpBuilderEnabled: true,
+			mcpMaxRegisteredClients: 200,
 			mcpTest: 'mcp-test',
 			payloadSizeMax: 16,
 			formDataFileSizeMax: 200,
@@ -349,6 +354,7 @@ describe('GlobalConfig', () => {
 			contentSecurityPolicyReportOnly: false,
 			crossOriginOpenerPolicy: 'same-origin',
 			disableWebhookHtmlSandboxing: false,
+			disableFormHtmlSandboxing: false,
 			disableBareRepos: true,
 			awsSystemCredentialsAccess: false,
 			enableGitNodeHooks: false,

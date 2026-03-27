@@ -345,6 +345,7 @@ export type RelayEventMap = {
 		path: string;
 		method: string;
 		apiVersion: string;
+		userAgent?: string;
 	};
 
 	// #endregion
@@ -469,6 +470,16 @@ export type RelayEventMap = {
 		ipAddress: string;
 		userAgent: string;
 		redactionPolicy: WorkflowSettings.RedactionPolicy;
+	};
+
+	'execution-data-reveal-failure': {
+		user: UserLike;
+		executionId: string;
+		workflowId: string;
+		ipAddress: string;
+		userAgent: string;
+		redactionPolicy: WorkflowSettings.RedactionPolicy;
+		rejectionReason: string;
 	};
 
 	// #endregion

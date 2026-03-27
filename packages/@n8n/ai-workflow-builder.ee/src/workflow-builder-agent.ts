@@ -340,6 +340,9 @@ export class WorkflowBuilderAgent {
 		userId: string | undefined,
 		abortSignal: AbortSignal | undefined,
 	) {
+		const workflowId = payload.workflowContext?.currentWorkflow?.id;
+		const threadId = SessionManagerService.generateThreadId(workflowId, userId);
+
 		const codeWorkflowBuilder = new CodeWorkflowBuilder({
 			llm: this.stageLLMs.builder,
 			nodeTypes: this.parsedNodeTypes,
@@ -351,7 +354,8 @@ export class WorkflowBuilderAgent {
 			runMetadata: {
 				...this.runMetadata,
 				userMessageId: payload.id,
-				workflowId: payload.workflowContext?.currentWorkflow?.id,
+				workflowId,
+				ls_thread_id: threadId,
 			},
 			onTelemetryEvent: this.onTelemetryEvent,
 			generatePinData: payload.featureFlags?.pinData ?? true,

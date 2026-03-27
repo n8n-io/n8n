@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { useBuilderStore } from '../../builder.store';
+import { useBuilderStore, type WorkflowBuilderJourneyEventType } from '../../builder.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
 import { useHistoryStore } from '@/app/stores/history.store';
@@ -11,14 +11,25 @@ import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useRoute, useRouter } from 'vue-router';
-import type { RatingFeedback, WorkflowSuggestion } from '@n8n/design-system/types/assistant';
+import type {
+	ChatUI,
+	RatingFeedback,
+	WorkflowSuggestion,
+} from '@n8n/design-system/types/assistant';
 import { isTaskAbortedMessage, isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
 import { nodeViewEventBus } from '@/app/event-bus';
 import { jsonParse } from 'n8n-workflow';
 import ExecuteMessage from './ExecuteMessage.vue';
 import NotificationPermissionBanner from './NotificationPermissionBanner.vue';
+import ChatVersionCard from './ChatVersionCard.vue';
 import ReviewChangesBanner from './ReviewChangesBanner.vue';
+import CreditsSettingsDropdown from './CreditsSettingsDropdown.vue';
+import CreditWarningBanner from './CreditWarningBanner.vue';
 import ChatInputWithMention from '../FocusedNodes/ChatInputWithMention.vue';
 import MessageFocusedNodesChips from '../FocusedNodes/MessageFocusedNodesChips.vue';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
@@ -35,7 +46,6 @@ import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useChatPanelStateStore } from '@/features/ai/assistant/chatPanelState.store';
 import { useReviewChanges } from '@/features/ai/assistant/composables/useReviewChanges';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 
 import { N8nAskAssistantChat, N8nInfoTip } from '@n8n/design-system';
 import BuildModeEmptyState from './BuildModeEmptyState.vue';
@@ -43,9 +53,13 @@ import {
 	isPlanModePlanMessage,
 	isPlanModeQuestionsMessage,
 	isPlanModeUserAnswersMessage,
+	isVersionCardMessage,
 	isWebFetchApprovalCustomMessage,
+	isCollapsedGroupMessage,
+	createCollapsedGroupMessage,
 	type PlanMode,
 } from '../../assistant.types';
+import CollapsedMessagesGroup from './CollapsedMessagesGroup.vue';
 import PlanDisplayMessage from './PlanDisplayMessage.vue';
 import PlanModeSelector from './PlanModeSelector.vue';
 import PlanQuestionsMessage from './PlanQuestionsMessage.vue';
@@ -66,6 +80,11 @@ const workflowId = useInjectWorkflowId();
 const telemetry = useTelemetry();
 const slots = useSlots();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = computed(() =>
+	workflowId.value
+		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value))
+		: undefined,
+);
 const assistantStore = useAssistantStore();
 const settingsStore = useSettingsStore();
 const chatPanelStateStore = useChatPanelStateStore();
@@ -94,16 +113,18 @@ const chatInputRef = ref<InstanceType<typeof ChatInputWithMention>>();
 const suggestionsInputRef = ref<InstanceType<typeof ChatInputWithMention>>();
 const inputText = ref('');
 
-const notificationsPermissionsBannerTriggered = ref(false);
+const creditBannerDismissed = ref(false);
 
 watch(
-	() => builderStore.streaming,
-	(isStreaming) => {
-		if (isStreaming && canPrompt.value) {
-			notificationsPermissionsBannerTriggered.value = true;
-		}
+	() => builderStore.creditsRemaining,
+	() => {
+		creditBannerDismissed.value = false;
 	},
 );
+
+const showCreditBanner = computed(() => {
+	return builderStore.isLowCredits && !creditBannerDismissed.value;
+});
 
 const showUsabilityNotice = computed(
 	() =>
@@ -111,7 +132,7 @@ const showUsabilityNotice = computed(
 );
 
 const shouldShowNotificationBanner = computed(() => {
-	return notificationsPermissionsBannerTriggered.value && canPrompt.value;
+	return builderStore.streaming && canPrompt.value;
 });
 
 watch(shouldShowNotificationBanner, (isShown) => {
@@ -160,8 +181,8 @@ const showExecuteMessage = computed(() => {
 
 	return (
 		!builderStore.streaming &&
-		workflowsStore.workflow.nodes.length > 0 &&
-		builderUpdatedWorkflowMessageIndex > -1 &&
+		(workflowDocumentStore.value?.allNodes ?? []).length > 0 &&
+		builderStore.hasMessages &&
 		!hasErrorAfterUpdate &&
 		!hasTaskAbortedAfterUpdate &&
 		!hasPendingInteraction
@@ -179,7 +200,7 @@ const thinkingCompletionMessage = computed(() =>
 );
 
 const workflowSuggestions = computed<WorkflowSuggestion[] | undefined>(() => {
-	if (builderStore.hasMessages || workflowsStore.workflow.nodes.length > 0) {
+	if (builderStore.hasMessages || (workflowDocumentStore.value?.allNodes ?? []).length > 0) {
 		return undefined;
 	}
 	return shuffle(WORKFLOW_SUGGESTIONS);
@@ -200,21 +221,84 @@ const isChatInputDisabled = computed(() => {
 	return isInputDisabled.value || builderStore.shouldDisableChatInput;
 });
 
-const { showReviewChanges, nodeChanges, isExpanded, toggleExpanded, openDiffView } =
-	useReviewChanges();
+const {
+	versionNodeChangesMap,
+	showReviewChanges,
+	nodeChanges,
+	isExpanded,
+	toggleExpanded,
+	openDiffView,
+} = useReviewChanges();
 
 function onSelectChangedNode(nodeId: string) {
 	canvasEventBus.emit('nodes:select', { ids: [nodeId], panIntoView: true });
 }
 
-const codeDiffWorkflowState = injectWorkflowState();
+/** Returns true if the version card has at least one node change */
+function isNonEmptyVersionCard(message: ChatUI.AssistantMessage): boolean {
+	if (!isVersionCardMessage(message)) return false;
+	return (versionNodeChangesMap.value.get(message.data.versionId) ?? []).length > 0;
+}
+
+function isCurrentVersionCard(message: ChatUI.AssistantMessage): boolean {
+	if (!isNonEmptyVersionCard(message)) return false;
+	// If restore happened but no new messages sent yet, the restored card is current
+	if (builderStore.activeVersionCardId && !builderStore.resumeAfterRestoreMessageId) {
+		return message.id === builderStore.activeVersionCardId;
+	}
+	// Default (including after resume): last non-empty, non-collapsed version card
+	const collapsed = builderStore.collapsedMessageIds;
+	const nonEmptyVisibleCards = builderStore.chatMessages.filter(
+		(msg) =>
+			isVersionCardMessage(msg) &&
+			isNonEmptyVersionCard(msg) &&
+			(!msg.id || !collapsed.has(msg.id)),
+	);
+	return nonEmptyVisibleCards[nonEmptyVisibleCards.length - 1]?.id === message.id;
+}
+
+function getVersionIndex(message: ChatUI.AssistantMessage): number {
+	let count = 0;
+	for (const msg of builderStore.chatMessages) {
+		if (isVersionCardMessage(msg) && isNonEmptyVersionCard(msg)) {
+			count++;
+			if (msg.id === message.id) return count;
+		}
+	}
+	return count + 1;
+}
+
+/** Messages with collapsed groups substituted for collapsed message ranges */
+const displayMessages = computed(() => {
+	const collapsed = builderStore.collapsedMessageIds;
+	if (!collapsed.size) return builderStore.chatMessages;
+
+	const result: ChatUI.AssistantMessage[] = [];
+	const group: ChatUI.AssistantMessage[] = [];
+
+	for (const msg of builderStore.chatMessages) {
+		if (msg.id && collapsed.has(msg.id)) {
+			group.push(msg);
+		} else {
+			if (group.length > 0) {
+				result.push(createCollapsedGroupMessage([...group]));
+				group.length = 0;
+			}
+			result.push(msg);
+		}
+	}
+	if (group.length > 0) {
+		result.push(createCollapsedGroupMessage(group));
+	}
+	return result;
+});
 
 async function onCodeReplace(index: number) {
-	await builderStore.applyCodeDiff(codeDiffWorkflowState, index);
+	await builderStore.applyCodeDiff(workflowId.value, index);
 }
 
 async function onCodeUndo(index: number) {
-	await builderStore.undoCodeDiff(codeDiffWorkflowState, index);
+	await builderStore.undoCodeDiff(workflowId.value, index);
 }
 
 const disabledTooltip = computed(() => {
@@ -245,6 +329,17 @@ function isQuestionsAnswered(questionsMessage: { id?: string }): boolean {
 	}
 	return false;
 }
+
+/**
+ * The last unanswered questions message (if any) — to render in the input slot.
+ */
+const activeQuestionsMessage = computed(() => {
+	const messages = builderStore.chatMessages;
+	const lastQuestions = messages.findLast((m) => isPlanModeQuestionsMessage(m));
+	if (!lastQuestions || !isPlanModeQuestionsMessage(lastQuestions)) return undefined;
+	if (isQuestionsAnswered(lastQuestions)) return undefined;
+	return lastQuestions;
+});
 
 /**
  * Check if this plan message is the last one and nothing has been sent after it.
@@ -295,7 +390,7 @@ async function onUserMessage(content: string) {
 	accumulatedNodeIdsToTidyUp.value = [];
 
 	// If the workflow is empty, set the initial generation flag
-	const isInitialGeneration = workflowsStore.workflow.nodes.length === 0;
+	const isInitialGeneration = (workflowDocumentStore.value?.allNodes ?? []).length === 0;
 
 	await builderStore.sendChatMessage({
 		text: content,
@@ -314,7 +409,6 @@ function onNewWorkflow() {
 	builderStore.resetBuilderChat();
 	processedWorkflowUpdates.value.clear();
 	accumulatedNodeIdsToTidyUp.value = [];
-	notificationsPermissionsBannerTriggered.value = false;
 }
 
 function onFeedback(feedback: RatingFeedback) {
@@ -336,11 +430,22 @@ function onFeedback(feedback: RatingFeedback) {
 }
 
 async function onWorkflowExecuted() {
+	// The wizard executes individual nodes, not the full workflow,
+	// so there's no full execution data to inspect — just send success.
+	if (builderStore.wizardHasExecutedWorkflow) {
+		await builderStore.sendChatMessage({
+			text: i18n.baseText('aiAssistant.builder.executeMessage.wizardSetupSuccess'),
+			type: 'execution',
+			executionStatus: 'success',
+		});
+		return;
+	}
+
 	const executionData = workflowsStore.workflowExecutionData;
 	const executionStatus = executionData?.status ?? 'unknown';
 	const errorNodeName = executionData?.data?.resultData.lastNodeExecuted;
 	const errorNodeType = errorNodeName
-		? workflowsStore.workflow.nodes.find((node) => node.name === errorNodeName)?.type
+		? workflowDocumentStore.value?.getNodeByName(errorNodeName)?.type
 		: undefined;
 
 	if (!executionData) {
@@ -457,7 +562,10 @@ watch(
 			return;
 		}
 
-		if (builderStore.initialGeneration && workflowsStore.workflow.nodes.length > 0) {
+		if (
+			builderStore.initialGeneration &&
+			(workflowDocumentStore.value?.allNodes ?? []).length > 0
+		) {
 			builderStore.initialGeneration = false;
 		}
 
@@ -478,11 +586,11 @@ watch(
 );
 
 /**
- * Handle restore confirmation
+ * Handle restore confirmation from a version card
  */
-async function onRestoreConfirm(versionId: string, messageId: string) {
+async function onRestoreConfirm(versionId: string, versionCardId: string) {
 	try {
-		const updatedWorkflow = await builderStore.restoreToVersion(versionId, messageId);
+		const updatedWorkflow = await builderStore.restoreToVersion(versionId, versionCardId);
 		if (!updatedWorkflow) {
 			return;
 		}
@@ -558,7 +666,7 @@ defineExpose({
 		<N8nAskAssistantChat
 			ref="n8nChatRef"
 			:user="user"
-			:messages="builderStore.chatMessages"
+			:messages="displayMessages"
 			:streaming="builderStore.streaming"
 			:loading-message="loadingMessage"
 			:thinking-completion-message="thinkingCompletionMessage"
@@ -571,7 +679,6 @@ defineExpose({
 			:suggestions="workflowSuggestions"
 			:input-placeholder="i18n.baseText('aiAssistant.builder.assistantPlaceholder')"
 			:workflow-id="workflowId"
-			:prune-time-hours="workflowHistoryStore.evaluatedPruneTime"
 			:disabled="isChatInputDisabled"
 			:disabled-tooltip="disabledTooltip"
 			@close="emit('close')"
@@ -579,8 +686,6 @@ defineExpose({
 			@upgrade-click="() => goToUpgrade('ai-builder-sidebar', 'upgrade-builder')"
 			@feedback="onFeedback"
 			@stop="builderStore.abortStreaming"
-			@restore-confirm="onRestoreConfirm"
-			@show-version="onShowVersion"
 			@code-replace="onCodeReplace"
 			@code-undo="onCodeUndo"
 		>
@@ -593,6 +698,14 @@ defineExpose({
 					<span>{{ i18n.baseText('aiAssistant.reducedHelp.chat.notice') }}</span>
 				</N8nInfoTip>
 			</template>
+			<template v-if="creditsQuota !== undefined && creditsRemaining !== undefined" #headerActions>
+				<CreditsSettingsDropdown
+					:credits-remaining="creditsRemaining"
+					:credits-quota="creditsQuota"
+					:is-low-credits="builderStore.isLowCredits"
+					@upgrade-click="() => goToUpgrade('ai-builder-sidebar', 'upgrade-builder')"
+				/>
+			</template>
 			<template #inputHeader>
 				<ReviewChangesBanner
 					v-if="showReviewChanges"
@@ -602,8 +715,17 @@ defineExpose({
 					@open-diff="openDiffView"
 					@select-node="onSelectChangedNode"
 				/>
+				<CreditWarningBanner
+					v-else-if="showCreditBanner"
+					:credits-remaining="creditsRemaining"
+					:credits-quota="creditsQuota"
+					@upgrade-click="() => goToUpgrade('ai-builder-sidebar', 'upgrade-builder')"
+					@dismiss="creditBannerDismissed = true"
+				/>
 				<Transition v-else name="slide">
-					<NotificationPermissionBanner v-if="shouldShowNotificationBanner" />
+					<NotificationPermissionBanner
+						v-if="shouldShowNotificationBanner && !activeQuestionsMessage"
+					/>
 				</Transition>
 			</template>
 			<template #messagesFooter>
@@ -613,14 +735,37 @@ defineExpose({
 				<BuildModeEmptyState />
 			</template>
 			<template #custom-message="{ message }">
+				<CollapsedMessagesGroup
+					v-if="isCollapsedGroupMessage(message)"
+					:messages="message.data.collapsedMessages"
+					:version-node-changes-map="versionNodeChangesMap"
+					:get-version-index="getVersionIndex"
+					@open-diff="(versionId) => openDiffView(versionId)"
+					@restore="onRestoreConfirm"
+					@show-in-history="onShowVersion"
+					@select-node="onSelectChangedNode"
+				/>
+				<ChatVersionCard
+					v-else-if="isVersionCardMessage(message) && isNonEmptyVersionCard(message)"
+					:version-id="message.data.versionId"
+					:is-current="isCurrentVersionCard(message)"
+					:node-changes="versionNodeChangesMap.get(message.data.versionId) ?? []"
+					:prune-time-hours="workflowHistoryStore.evaluatedPruneTime"
+					:title="message.data.title"
+					:version-index="getVersionIndex(message)"
+					:version-exists="!!message.data.createdAt"
+					@open-diff="(versionId) => openDiffView(versionId)"
+					@restore="(versionId) => onRestoreConfirm(versionId, message.id!)"
+					@show-in-history="onShowVersion"
+					@select-node="onSelectChangedNode"
+				/>
 				<!-- Always render questions message; when answered, collapse to intro text only -->
 				<PlanQuestionsMessage
 					v-if="isPlanModeQuestionsMessage(message)"
 					:questions="message.data.questions"
 					:intro-message="message.data.introMessage"
-					:disabled="builderStore.streaming"
-					:answered="isQuestionsAnswered(message)"
-					@submit="builderStore.resumeWithQuestionsAnswers"
+					:disabled="true"
+					:answered="true"
 				/>
 				<PlanDisplayMessage
 					v-else-if="isPlanModePlanMessage(message)"
@@ -682,7 +827,22 @@ defineExpose({
 				</ChatInputWithMention>
 			</template>
 			<template #inputPlaceholder>
+				<PlanQuestionsMessage
+					v-if="activeQuestionsMessage"
+					:questions="activeQuestionsMessage.data.questions"
+					:disabled="builderStore.streaming"
+					:answered="false"
+					@submit="builderStore.resumeWithQuestionsAnswers"
+					@telemetry="
+						(event, properties) =>
+							builderStore.trackWorkflowBuilderJourney(
+								event as WorkflowBuilderJourneyEventType,
+								properties,
+							)
+					"
+				/>
 				<ChatInputWithMention
+					v-else
 					ref="chatInputRef"
 					v-model="inputText"
 					:placeholder="i18n.baseText('aiAssistant.builder.assistantPlaceholder')"

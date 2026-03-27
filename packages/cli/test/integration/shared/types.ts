@@ -37,6 +37,7 @@ type EndpointGroup =
 	| 'debug'
 	| 'project'
 	| 'role'
+	| 'roleMappingRule'
 	| 'dynamic-node-parameters'
 	| 'apiKeys'
 	| 'evaluation'
@@ -47,7 +48,8 @@ type EndpointGroup =
 	| 'security-settings'
 	| 'data-table'
 	| 'third-party-licenses'
-	| 'mcp';
+	| 'mcp'
+	| 'workflowDependencies';
 
 type ModuleName =
 	| 'insights'
