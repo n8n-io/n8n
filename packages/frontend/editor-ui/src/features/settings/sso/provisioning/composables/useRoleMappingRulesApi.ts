@@ -7,8 +7,8 @@ import type {
 
 const MOCK_DELAY_MS = 200;
 
-function delay(): Promise<void> {
-	return new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS));
+async function delay(): Promise<void> {
+	return await new Promise((resolve) => setTimeout(resolve, MOCK_DELAY_MS));
 }
 
 function generateId(): string {
