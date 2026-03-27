@@ -106,7 +106,10 @@ watch(hoveredSection, (section) => {
 		:class="[$style.card, { [$style.completed]: isGroupComplete }]"
 	>
 		<!-- Parent header -->
-		<header :class="$style.header">
+		<header
+			:class="[$style.header, { [$style.headerClickable]: !!nodeGroup.parentState }]"
+			@click="nodeGroup.parentState && toggleSection(nodeGroup.parentState.node.id)"
+		>
 			<NodeIcon :node-type="parentNodeType" :size="16" />
 			<N8nText :class="$style.title" size="medium" color="text-dark" bold>
 				{{ nodeGroup.parentNode.name }}
@@ -121,11 +124,20 @@ watch(hoveredSection, (section) => {
 				<N8nIcon icon="check" size="large" />
 				{{ i18n.baseText('generic.complete') }}
 			</N8nText>
+			<N8nIcon
+				v-if="nodeGroup.parentState"
+				:class="$style.headerChevron"
+				:icon="
+					expandedSections[nodeGroup.parentState.node.id] ? 'chevrons-down-up' : 'chevrons-up-down'
+				"
+				size="large"
+				color="text-light"
+			/>
 		</header>
 
 		<!-- Parent node's own credentials/parameters -->
 		<div
-			v-if="nodeGroup.parentState"
+			v-if="nodeGroup.parentState && expandedSections[nodeGroup.parentState.node.id]"
 			:class="$style.parentBody"
 			@mouseenter="onSectionMouseEnter(nodeGroup.parentState)"
 			@mouseleave="onSectionMouseLeave"
@@ -257,6 +269,19 @@ watch(hoveredSection, (section) => {
 	align-items: center;
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--sm);
+
+	&.headerClickable {
+		cursor: pointer;
+		user-select: none;
+	}
+
+	.headerChevron {
+		display: none;
+	}
+
+	&:hover .headerChevron {
+		display: block;
+	}
 }
 
 .parentBody {
