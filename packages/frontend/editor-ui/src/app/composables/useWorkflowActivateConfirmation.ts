@@ -56,6 +56,18 @@ export function resolveActivationConfirmation(workflowId: string): boolean {
 }
 
 /**
+ * Cancels a pending confirmation without resolving or rejecting it.
+ * Used when the API call itself fails and no push event will arrive.
+ */
+export function cancelActivationConfirmation(workflowId: string): void {
+	const pending = pendingConfirmations.get(workflowId);
+	if (pending) {
+		clearTimeout(pending.timeoutId);
+		pendingConfirmations.delete(workflowId);
+	}
+}
+
+/**
  * Called by the `workflowFailedToActivate` push handler to signal that
  * activation failed.
  */
