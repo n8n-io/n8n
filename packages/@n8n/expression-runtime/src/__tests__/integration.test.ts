@@ -385,6 +385,33 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 		expect(error?.message).not.toContain('Cannot read properties');
 	});
 
+	it('should handle throw of null-prototype object with properties without crashing', () => {
+		const data = { $json: {} };
+		let error: Error | undefined;
+		try {
+			evaluator.evaluate(
+				'{{ (() => { var e = Object.create(null); e.foo = "bar"; throw e; })() }}',
+				data,
+			);
+		} catch (e) {
+			error = e as Error;
+		}
+		expect(error).toBeDefined();
+		expect(error?.message).not.toContain('hasOwnProperty is not a function');
+	});
+
+	it('should handle throw of object with hasOwnProperty shadowed by null without crashing', () => {
+		const data = { $json: {} };
+		let error: Error | undefined;
+		try {
+			evaluator.evaluate('{{ (() => { throw { hasOwnProperty: null, foo: "bar" }; })() }}', data);
+		} catch (e) {
+			error = e as Error;
+		}
+		expect(error).toBeDefined();
+		expect(error?.message).not.toContain('hasOwnProperty is not a function');
+	});
+
 	it('should swallow TypeError and return undefined', () => {
 		const data = { $json: {} };
 
