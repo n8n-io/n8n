@@ -118,7 +118,7 @@ function toggleExpanded() {
 </script>
 
 <template>
-	<div v-if="versionCount > 0" :class="$style.container">
+	<div :class="$style.container">
 		<div :class="$style.collapsedHeader" :aria-expanded="isExpanded" @click="toggleExpanded">
 			<div :class="$style.dividerLine" />
 			<button :class="$style.toggleButton" type="button">
