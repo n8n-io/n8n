@@ -26,7 +26,6 @@ function getRoleLabel(role: string): string {
 	return ROLE_LABELS[role] ?? role;
 }
 
-
 interface ApprovalWrappedGroup {
 	type: 'approvalWrapped';
 	agentId: string;
@@ -281,7 +280,6 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 					<div style="margin-bottom: 10px">
 						<!-- <N8nIcon icon="circle-pause" size="small" :class="$style.headerIcon" /> -->
 						<span :class="$style.headerLabel">
-							asdasdasda
 							{{
 								i18n.baseText('instanceAi.confirmation.agentContext', {
 									interpolate: { agent: getRoleLabel(chunk.role) },
