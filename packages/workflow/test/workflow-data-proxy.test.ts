@@ -875,6 +875,77 @@ describe('WorkflowDataProxy', () => {
 			expect(() => getFromAIProxy().$fromAI('invalid!')).toThrow(ExpressionError);
 		});
 
+		test('Returns JSON string when type is "json" for array values (GHC-6827)', () => {
+			// Create a workflow with array and object values
+			const workflowWithJsonData: IWorkflowBase = {
+				id: '123',
+				name: 'test workflow',
+				nodes: [
+					{
+						id: 'aiNode',
+						name: 'AI Node',
+						type: 'n8n-nodes-base.aiAgent',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				active: false,
+				activeVersionId: null,
+				isArchived: false,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			};
+
+			// Create connection input data with array and object values
+			const connectionInputData = [
+				{
+					json: {
+						array_value: ['foo', 'bar'],
+						object_value: { key: 'value', nested: { data: 123 } },
+						string_value: 'test',
+					},
+					pairedItem: { item: 0 },
+				},
+			];
+
+			const dataProxy = new WorkflowDataProxy(
+				new Workflow({
+					id: '123',
+					name: 'test workflow',
+					nodes: workflowWithJsonData.nodes,
+					connections: workflowWithJsonData.connections,
+					active: false,
+					nodeTypes: Helpers.NodeTypes(),
+				}),
+				null,
+				0,
+				0,
+				'AI Node',
+				connectionInputData,
+				{},
+				'manual',
+				{},
+				undefined,
+			);
+
+			const proxy = dataProxy.getDataProxy();
+
+			// When type is 'json', it should return a JSON string, not the raw object/array
+			const arrayResult = proxy.$fromAI('array_value', 'An array', 'json');
+			expect(typeof arrayResult).toBe('string');
+			expect(arrayResult).toBe('["foo","bar"]');
+
+			const objectResult = proxy.$fromAI('object_value', 'An object', 'json');
+			expect(typeof objectResult).toBe('string');
+			expect(objectResult).toBe('{"key":"value","nested":{"data":123}}');
+
+			// String type should still return string as-is
+			const stringResult = proxy.$fromAI('string_value', 'A string', 'string');
+			expect(stringResult).toBe('test');
+		});
+
 		test('Falls back to connectionInputData when no resultData exists', () => {
 			// Create a workflow with connectionInputData but no resultData
 			const workflowWithoutResultData: IWorkflowBase = {
