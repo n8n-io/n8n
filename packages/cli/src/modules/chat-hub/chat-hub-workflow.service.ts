@@ -868,6 +868,15 @@ ${this.getSystemMessageMetadata(timeZone) + artifactContext}`;
 					},
 				};
 			}
+			case 'miniMax': {
+				return {
+					...common,
+					parameters: {
+						model,
+						options: {},
+					},
+				};
+			}
 			case 'cohere': {
 				return {
 					...common,
