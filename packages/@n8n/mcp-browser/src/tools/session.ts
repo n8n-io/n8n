@@ -7,8 +7,11 @@ import { browserNameSchema, sessionModeSchema, viewportSchema } from '../types';
 import { formatErrorResponse, formatCallToolResult } from '../utils';
 import { sessionIdField } from './helpers';
 
-export function createSessionTools(sessionManager: SessionManager): ToolDefinition[] {
-	return [browserOpen(sessionManager), browserClose(sessionManager)];
+export function createSessionTools(
+	sessionManager: SessionManager,
+	toolGroupId: string,
+): ToolDefinition[] {
+	return [browserOpen(sessionManager, toolGroupId), browserClose(sessionManager, toolGroupId)];
 }
 
 // ---------------------------------------------------------------------------
@@ -46,7 +49,10 @@ const browserOpenOutputSchema = z.object({
 	),
 });
 
-function browserOpen(sessionManager: SessionManager): ToolDefinition<typeof browserOpenSchema> {
+function browserOpen(
+	sessionManager: SessionManager,
+	toolGroupId: string,
+): ToolDefinition<typeof browserOpenSchema> {
 	return {
 		name: 'browser_open',
 		description:
@@ -69,6 +75,9 @@ function browserOpen(sessionManager: SessionManager): ToolDefinition<typeof brow
 				);
 			}
 		},
+		getAffectedResources(_args, _context: ToolContext) {
+			return [{ toolGroup: toolGroupId, resource: 'browser', description: 'Open browser session' }];
+		},
 	};
 }
 
@@ -85,7 +94,10 @@ const browserCloseOutputSchema = z.object({
 	sessionId: z.string(),
 });
 
-function browserClose(sessionManager: SessionManager): ToolDefinition<typeof browserCloseSchema> {
+function browserClose(
+	sessionManager: SessionManager,
+	toolGroupId: string,
+): ToolDefinition<typeof browserCloseSchema> {
 	return {
 		name: 'browser_close',
 		description: 'Close a browser session and release all resources.',
@@ -101,6 +113,11 @@ function browserClose(sessionManager: SessionManager): ToolDefinition<typeof bro
 					new McpBrowserError(error instanceof Error ? error.message : String(error)),
 				);
 			}
+		},
+		getAffectedResources(_args, _context: ToolContext) {
+			return [
+				{ toolGroup: toolGroupId, resource: 'browser', description: 'Close browser session' },
+			];
 		},
 	};
 }

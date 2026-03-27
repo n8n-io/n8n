@@ -1,13 +1,63 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import type { InstanceAiAgentNode, InstanceAiToolCallState } from '@n8n/api-types';
-import InstanceAiToolCall from './InstanceAiToolCall.vue';
+import { useI18n } from '@n8n/i18n';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
-import BuilderCard from './BuilderCard.vue';
-import DataTableCard from './DataTableCard.vue';
-import ResearchCard from './ResearchCard.vue';
-import AgentNodeSection from './AgentNodeSection.vue';
+import AgentSection from './AgentSection.vue';
+import ArtifactCard from './ArtifactCard.vue';
+import ToolCallStep from './ToolCallStep.vue';
 import DelegateCard from './DelegateCard.vue';
+import TaskChecklist from './TaskChecklist.vue';
+import AnsweredQuestions from './AnsweredQuestions.vue';
+import PlanReviewPanel, { type PlannedTaskArg } from './PlanReviewPanel.vue';
+import { useInstanceAiStore } from '../instanceAi.store';
+import { extractArtifacts, type ArtifactInfo } from '../agentTimeline.utils';
+
+const i18n = useI18n();
+
+function formatRelativeTime(isoTime: string): string {
+	const diffMs = Date.now() - new Date(isoTime).getTime();
+	const diffMin = Math.floor(diffMs / 60_000);
+	if (diffMin < 1) {
+		return i18n.baseText('instanceAi.artifactCard.updatedJustNow');
+	}
+	const diffHours = Math.floor(diffMin / 60);
+	if (diffHours < 1) {
+		const key =
+			diffMin === 1 ? 'instanceAi.artifactCard.minute' : 'instanceAi.artifactCard.minutes';
+		const time = i18n.baseText(key, {
+			interpolate: { count: `${diffMin}` },
+		});
+		return i18n.baseText('instanceAi.artifactCard.updatedAgo', { interpolate: { time } });
+	}
+	const key = diffHours === 1 ? 'instanceAi.artifactCard.hour' : 'instanceAi.artifactCard.hours';
+	const time = i18n.baseText(key, {
+		interpolate: { count: `${diffHours}` },
+	});
+	return i18n.baseText('instanceAi.artifactCard.updatedAgo', { interpolate: { time } });
+}
+
+function formatCreatedDate(isoTime: string): string {
+	const date = new Date(isoTime);
+	const day = date.getDate();
+	const month = date.toLocaleString('en', { month: 'long' });
+	return i18n.baseText('instanceAi.artifactCard.createdAt', {
+		interpolate: { date: `${day} ${month}` },
+	});
+}
+
+function formatArtifactMetadata(artifact: ArtifactInfo): string {
+	const parts: string[] = [];
+
+	if (artifact.completedAt) {
+		parts.push(formatRelativeTime(artifact.completedAt));
+		parts.push(formatCreatedDate(artifact.completedAt));
+	} else {
+		parts.push(i18n.baseText('instanceAi.artifactCard.updatedJustNow'));
+	}
+
+	return parts.join(' \u2502 ');
+}
 
 const props = withDefaults(
 	defineProps<{
@@ -22,6 +72,9 @@ const props = withDefaults(
 defineSlots<{
 	'after-tool-call'?: (props: { toolCall: InstanceAiToolCallState }) => unknown;
 }>();
+
+/** Tool calls that are internal bookkeeping and should not be shown to the user. */
+const HIDDEN_TOOLS = new Set(['updateWorkingMemory']);
 
 /** Index tool calls by ID for O(1) lookup and proper reactivity tracking. */
 const toolCallsById = computed(() => {
@@ -40,6 +93,15 @@ const childrenById = computed(() => {
 	}
 	return map;
 });
+
+const store = useInstanceAiStore();
+
+function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedback?: string) {
+	const requestId = tc.confirmation?.requestId;
+	if (!requestId) return;
+	store.resolveConfirmation(requestId, approved ? 'approved' : 'denied');
+	void store.confirmAction(requestId, approved, undefined, undefined, undefined, feedback);
+}
 </script>
 
 <template>
@@ -53,9 +115,18 @@ const childrenById = computed(() => {
 				<InstanceAiMarkdown :content="entry.content" />
 			</div>
 
-			<!-- Tool call -->
-			<template v-else-if="entry.type === 'tool-call' && toolCallsById[entry.toolCallId]">
-				<template v-if="toolCallsById[entry.toolCallId].renderHint === 'tasks'" />
+			<!-- Tool call (skip internal tools like updateWorkingMemory) -->
+			<template
+				v-else-if="
+					entry.type === 'tool-call' &&
+					toolCallsById[entry.toolCallId] &&
+					!HIDDEN_TOOLS.has(toolCallsById[entry.toolCallId].toolName)
+				"
+			>
+				<TaskChecklist
+					v-if="toolCallsById[entry.toolCallId].renderHint === 'tasks'"
+					:tasks="props.agentNode.tasks"
+				/>
 				<DelegateCard
 					v-else-if="toolCallsById[entry.toolCallId].renderHint === 'delegate'"
 					:args="toolCallsById[entry.toolCallId].args"
@@ -63,39 +134,54 @@ const childrenById = computed(() => {
 					:is-loading="toolCallsById[entry.toolCallId].isLoading"
 					:tool-call-id="toolCallsById[entry.toolCallId].toolCallId"
 				/>
+				<!-- Hidden tool calls (builder/data-table/researcher handled by child agent via AgentSection) -->
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'builder'" />
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'data-table'" />
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'researcher'" />
-				<template v-else>
-					<InstanceAiToolCall :tool-call="toolCallsById[entry.toolCallId]" />
+				<!-- Answered questions (read-only after resolution) -->
+				<AnsweredQuestions
+					v-else-if="
+						toolCallsById[entry.toolCallId].confirmation?.inputType === 'questions' &&
+						!toolCallsById[entry.toolCallId].isLoading
+					"
+					:tool-call="toolCallsById[entry.toolCallId]"
+				/>
+				<!-- Plan review: always render inline (interactive while pending, read-only after) -->
+				<PlanReviewPanel
+					v-else-if="toolCallsById[entry.toolCallId].confirmation?.inputType === 'plan-review'"
+					:planned-tasks="
+						(toolCallsById[entry.toolCallId].args?.tasks as PlannedTaskArg[] | undefined) ?? []
+					"
+					:read-only="!toolCallsById[entry.toolCallId].isLoading"
+					@approve="handlePlanConfirm(toolCallsById[entry.toolCallId], true)"
+					@request-changes="(fb) => handlePlanConfirm(toolCallsById[entry.toolCallId], false, fb)"
+				/>
+				<!-- Suppress default tool call while questions are pending -->
+				<template
+					v-else-if="
+						toolCallsById[entry.toolCallId].confirmation?.inputType === 'questions' &&
+						toolCallsById[entry.toolCallId].isLoading
+					"
+				/>
+				<ToolCallStep v-else :tool-call="toolCallsById[entry.toolCallId]" :show-connector="true">
 					<slot name="after-tool-call" :tool-call="toolCallsById[entry.toolCallId]" />
-				</template>
+				</ToolCallStep>
 			</template>
 
-			<!-- Child agent -->
+			<!-- Child agent — flat section -->
 			<template v-else-if="entry.type === 'child' && childrenById[entry.agentId]">
-				<BuilderCard
-					v-if="
-						childrenById[entry.agentId].kind === 'builder' ||
-						childrenById[entry.agentId].role === 'workflow-builder'
-					"
-					:agent-node="childrenById[entry.agentId]"
+				<AgentSection :agent-node="childrenById[entry.agentId]" />
+
+				<!-- Artifact cards for completed subagents (one per workflow/data-table) -->
+				<ArtifactCard
+					v-for="artifact in extractArtifacts(childrenById[entry.agentId])"
+					:key="artifact.resourceId"
+					:type="artifact.type"
+					:name="artifact.name"
+					:resource-id="artifact.resourceId"
+					:project-id="artifact.projectId"
+					:metadata="formatArtifactMetadata(artifact)"
 				/>
-				<DataTableCard
-					v-else-if="
-						childrenById[entry.agentId].kind === 'data-table' ||
-						childrenById[entry.agentId].role === 'data-table-manager'
-					"
-					:agent-node="childrenById[entry.agentId]"
-				/>
-				<ResearchCard
-					v-else-if="
-						childrenById[entry.agentId].kind === 'researcher' ||
-						childrenById[entry.agentId].role === 'web-researcher'
-					"
-					:agent-node="childrenById[entry.agentId]"
-				/>
-				<AgentNodeSection v-else :agent-node="childrenById[entry.agentId]" />
 			</template>
 		</template>
 	</div>
@@ -107,9 +193,10 @@ const childrenById = computed(() => {
 }
 
 .textContent {
-	font-size: var(--font-size--sm);
+	font-size: var(--font-size--md);
 	line-height: var(--line-height--xl);
-	color: var(--color--text);
+	color: var(--color--text--shade-1);
+	margin-bottom: var(--spacing--xs);
 }
 
 .compactText {

@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed, watch } from 'vue';
 import {
-	N8nIcon,
+	N8nHeading,
 	N8nInput,
 	N8nInputNumber,
 	N8nSelect,
@@ -65,10 +65,9 @@ watch(
 
 <template>
 	<div :class="$style.section">
-		<div :class="$style.sectionHeader">
-			<N8nIcon icon="box" size="small" />
+		<N8nHeading tag="h2" size="small">
 			{{ i18n.baseText('instanceAi.settings.section.sandbox') }}
-		</div>
+		</N8nHeading>
 
 		<div :class="$style.switchRow">
 			<span :class="$style.switchLabel">{{
@@ -140,6 +139,7 @@ watch(
 			size="small"
 		>
 			<N8nInputNumber
+				:class="$style.numberInput"
 				:model-value="getNumber('sandboxTimeout') ?? 300000"
 				size="small"
 				:min="0"
@@ -157,15 +157,8 @@ watch(
 	gap: var(--spacing--xs);
 }
 
-.sectionHeader {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	font-size: var(--font-size--xs);
-	font-weight: var(--font-weight--bold);
-	color: var(--color--text);
-	padding-bottom: var(--spacing--4xs);
-	border-bottom: var(--border);
+.numberInput {
+	max-width: 140px;
 }
 
 .switchRow {

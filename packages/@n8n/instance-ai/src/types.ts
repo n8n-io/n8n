@@ -47,6 +47,7 @@ export interface WorkflowNode {
 	type: string;
 	parameters?: Record<string, unknown>;
 	position: number[];
+	webhookId?: string;
 }
 
 export interface ExecutionResult {
@@ -115,6 +116,9 @@ export interface NodeDescription extends NodeSummary {
 	credentials?: Array<{ name: string; required?: boolean }>;
 	inputs: string[];
 	outputs: string[];
+	webhooks?: unknown[];
+	polling?: boolean;
+	triggerPanel?: unknown;
 }
 
 // ── Service interfaces ───────────────────────────────────────────────────────
@@ -194,7 +198,12 @@ export interface InstanceAiExecutionService {
 	run(
 		workflowId: string,
 		inputData?: Record<string, unknown>,
-		options?: { timeout?: number; pinData?: Record<string, unknown[]> },
+		options?: {
+			timeout?: number;
+			pinData?: Record<string, unknown[]>;
+			/** When set, execute this specific trigger node instead of auto-detecting. */
+			triggerNodeName?: string;
+		},
 	): Promise<ExecutionResult>;
 	getStatus(executionId: string): Promise<ExecutionResult>;
 	getResult(executionId: string): Promise<ExecutionResult>;
@@ -212,6 +221,8 @@ export interface InstanceAiCredentialService {
 	get(credentialId: string): Promise<CredentialDetail>;
 	delete(credentialId: string): Promise<void>;
 	test(credentialId: string): Promise<{ success: boolean; message?: string }>;
+	/** Whether a credential type has a test function. When false, skip testing. */
+	isTestable?(credentialType: string): Promise<boolean>;
 	getDocumentationUrl?(credentialType: string): Promise<string | null>;
 	getCredentialFields?(
 		credentialType: string,
@@ -250,7 +261,7 @@ export interface ExploreResourcesResult {
 
 export interface InstanceAiNodeService {
 	listAvailable(options?: { query?: string }): Promise<NodeSummary[]>;
-	getDescription(nodeType: string): Promise<NodeDescription>;
+	getDescription(nodeType: string, version?: number): Promise<NodeDescription>;
 	/** Return all node types with the richer fields needed by NodeSearchEngine. */
 	listSearchable(): Promise<SearchableNodeDescription[]>;
 	/** Return the TypeScript type definition for a node (from dist/node-definitions/). */
@@ -269,6 +280,19 @@ export interface InstanceAiNodeService {
 	): Promise<{ resources: Array<{ name: string; operations: string[] }> } | null>;
 	/** Query real resources via a node's listSearch or loadOptions methods (e.g. list spreadsheets, models). */
 	exploreResources?(params: ExploreResourcesParams): Promise<ExploreResourcesResult>;
+	/** Compute parameter issues for a node (mirrors builder's NodeHelpers.getNodeParametersIssues). */
+	getParameterIssues?(
+		nodeType: string,
+		typeVersion: number,
+		parameters: Record<string, unknown>,
+	): Promise<Record<string, string[]>>;
+	/** Return all credential types a node requires (displayable + dynamic + assigned). */
+	getNodeCredentialTypes?(
+		nodeType: string,
+		typeVersion: number,
+		parameters: Record<string, unknown>,
+		existingCredentials?: Record<string, unknown>,
+	): Promise<string[]>;
 }
 
 /** Richer node type shape that includes inputs, outputs, codex, and builderHint.
@@ -546,6 +570,83 @@ export interface TaskStorage {
 	save(threadId: string, tasks: TaskList): Promise<void>;
 }
 
+// ── Planned task graphs ─────────────────────────────────────────────────────
+
+export type PlannedTaskKind = 'delegate' | 'build-workflow' | 'manage-data-tables' | 'research';
+
+export interface PlannedTask {
+	id: string;
+	title: string;
+	kind: PlannedTaskKind;
+	spec: string;
+	deps: string[];
+	tools?: string[];
+	/** Existing workflow ID for build-workflow tasks that modify an existing workflow. */
+	workflowId?: string;
+}
+
+export type PlannedTaskStatus = 'planned' | 'running' | 'succeeded' | 'failed' | 'cancelled';
+
+export interface PlannedTaskRecord extends PlannedTask {
+	status: PlannedTaskStatus;
+	agentId?: string;
+	backgroundTaskId?: string;
+	result?: string;
+	error?: string;
+	outcome?: Record<string, unknown>;
+	startedAt?: number;
+	finishedAt?: number;
+}
+
+export type PlannedTaskGraphStatus = 'active' | 'awaiting_replan' | 'completed' | 'cancelled';
+
+export interface PlannedTaskGraph {
+	planRunId: string;
+	messageGroupId?: string;
+	status: PlannedTaskGraphStatus;
+	tasks: PlannedTaskRecord[];
+}
+
+export type PlannedTaskSchedulerAction =
+	| { type: 'none'; graph: PlannedTaskGraph | null }
+	| { type: 'dispatch'; graph: PlannedTaskGraph; tasks: PlannedTaskRecord[] }
+	| { type: 'replan'; graph: PlannedTaskGraph; failedTask: PlannedTaskRecord }
+	| { type: 'synthesize'; graph: PlannedTaskGraph };
+
+export interface PlannedTaskService {
+	createPlan(
+		threadId: string,
+		tasks: PlannedTask[],
+		metadata: { planRunId: string; messageGroupId?: string },
+	): Promise<PlannedTaskGraph>;
+	getGraph(threadId: string): Promise<PlannedTaskGraph | null>;
+	markRunning(
+		threadId: string,
+		taskId: string,
+		update: { agentId?: string; backgroundTaskId?: string; startedAt?: number },
+	): Promise<PlannedTaskGraph | null>;
+	markSucceeded(
+		threadId: string,
+		taskId: string,
+		update: { result?: string; outcome?: Record<string, unknown>; finishedAt?: number },
+	): Promise<PlannedTaskGraph | null>;
+	markFailed(
+		threadId: string,
+		taskId: string,
+		update: { error?: string; finishedAt?: number },
+	): Promise<PlannedTaskGraph | null>;
+	markCancelled(
+		threadId: string,
+		taskId: string,
+		update?: { error?: string; finishedAt?: number },
+	): Promise<PlannedTaskGraph | null>;
+	tick(
+		threadId: string,
+		options?: { availableSlots?: number },
+	): Promise<PlannedTaskSchedulerAction>;
+	clear(threadId: string): Promise<void>;
+}
+
 // ── MCP ──────────────────────────────────────────────────────────────────────
 
 export interface McpServerConfig {
@@ -599,6 +700,8 @@ export interface SpawnBackgroundTaskOptions {
 	threadId: string;
 	agentId: string;
 	role: string;
+	/** When set, links the background task back to a planned task in the scheduler. */
+	plannedTaskId?: string;
 	/** Unique work item ID for workflow loop tracking. When set, the service
 	 *  uses the workflow loop controller to manage verify/repair transitions. */
 	workItemId?: string;
@@ -608,11 +711,19 @@ export interface SpawnBackgroundTaskOptions {
 	) => Promise<string | BackgroundTaskResult>;
 }
 
+export interface WorkflowTaskService {
+	reportBuildOutcome(outcome: WorkflowBuildOutcome): Promise<WorkflowLoopAction>;
+	reportVerificationVerdict(verdict: VerificationResult): Promise<WorkflowLoopAction>;
+	getBuildOutcome(workItemId: string): Promise<WorkflowBuildOutcome | undefined>;
+	updateBuildOutcome(workItemId: string, update: Partial<WorkflowBuildOutcome>): Promise<void>;
+}
+
 // ── Orchestration context (plan + delegate tools) ───────────────────────────
 
 export interface OrchestrationContext {
 	threadId: string;
 	runId: string;
+	messageGroupId?: string;
 	userId: string;
 	orchestratorAgentId: string;
 	modelId: ModelConfig;
@@ -627,6 +738,14 @@ export interface OrchestrationContext {
 		credentialId?: string;
 		credentials?: Record<string, string>;
 		autoSetup?: { credentialType: string };
+		userInput?: string;
+		domainAccessAction?: string;
+		answers?: Array<{
+			questionId: string;
+			selectedOptions: string[];
+			customText?: string;
+			skipped?: boolean;
+		}>;
 	}>;
 	/** Chrome DevTools MCP config — only present when browser automation is enabled */
 	browserMcpConfig?: McpServerConfig;
@@ -640,6 +759,10 @@ export interface OrchestrationContext {
 	spawnBackgroundTask?: (opts: SpawnBackgroundTaskOptions) => void;
 	/** Cancel a running background task by its ID */
 	cancelBackgroundTask?: (taskId: string) => Promise<void>;
+	/** Persist and inspect dependency-aware planned tasks for this thread. */
+	plannedTaskService?: PlannedTaskService;
+	/** Run one scheduler pass after plan/task state changes. */
+	schedulePlannedTasks?: () => Promise<void>;
 	/** Sandbox workspace — when present, enables sandbox-based workflow building */
 	workspace?: Workspace;
 	/** Factory for creating per-builder ephemeral sandboxes from a pre-warmed snapshot */
@@ -648,23 +771,19 @@ export interface OrchestrationContext {
 	nodeDefinitionDirs?: string[];
 	/** The domain context — gives sub-agent tools access to n8n services */
 	domainContext?: InstanceAiContext;
-	/** When true, the research-with-agent tool is available and the builder gets web-search/fetch-url */
+	/** When true, research guidance may suggest planned research tasks and the builder gets web-search/fetch-url */
 	researchMode?: boolean;
 	/** Thread-scoped iteration log for accumulating attempt history across retries */
 	iterationLog?: IterationLog;
 	/** Send a correction message to a running background task */
-	sendCorrectionToTask?: (taskId: string, correction: string) => void;
-	/** Report a verification verdict to the deterministic workflow loop controller */
-	reportVerificationVerdict?: (verdict: VerificationResult) => Promise<WorkflowLoopAction>;
+	sendCorrectionToTask?: (
+		taskId: string,
+		correction: string,
+	) => 'queued' | 'task-completed' | 'task-not-found';
+	/** Shared workflow-task state service for build / verify / credential-finalize flows */
+	workflowTaskService?: WorkflowTaskService;
 	/** When provided, LangSmith traces are routed through a proxy instead of direct */
 	tracingConfig?: ServiceProxyConfig;
-	/** Read a work item's build outcome from workflow loop storage */
-	getWorkItemBuildOutcome?: (workItemId: string) => Promise<WorkflowBuildOutcome | undefined>;
-	/** Update a work item's build outcome in workflow loop storage */
-	updateWorkItemBuildOutcome?: (
-		workItemId: string,
-		update: Partial<WorkflowBuildOutcome>,
-	) => Promise<void>;
 }
 
 // ── Agent factory options ────────────────────────────────────────────────────
@@ -683,4 +802,6 @@ export interface CreateInstanceAgentOptions {
 	disableDeferredTools?: boolean;
 	/** When provided, LangSmith traces are routed through a proxy instead of direct. */
 	tracingConfig?: ServiceProxyConfig;
+	/** IANA time zone for the current user (e.g. "Europe/Helsinki"). Falls back to instance default. */
+	timeZone?: string;
 }

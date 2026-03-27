@@ -432,6 +432,58 @@ describe('useInstanceAiStore - onSSEMessage', () => {
 		);
 		expect(mockPostMessage).toHaveBeenCalledTimes(2);
 	});
+
+	test('sendMessage forwards pushRef to postMessage', async () => {
+		mockEnsureThread.mockResolvedValueOnce({
+			thread: {
+				id: store.currentThreadId,
+				title: '',
+				resourceId: 'user-1',
+				createdAt: '2026-01-01T00:00:00.000Z',
+				updatedAt: '2026-01-01T00:00:00.000Z',
+			},
+			created: true,
+		});
+		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+
+		await store.sendMessage('hello', undefined, 'iframe-push-ref-123');
+
+		expect(mockPostMessage).toHaveBeenCalledWith(
+			expect.anything(),
+			store.currentThreadId,
+			'hello',
+			undefined,
+			undefined,
+			expect.any(String),
+			'iframe-push-ref-123',
+		);
+	});
+
+	test('sendMessage omits pushRef when not provided', async () => {
+		mockEnsureThread.mockResolvedValueOnce({
+			thread: {
+				id: store.currentThreadId,
+				title: '',
+				resourceId: 'user-1',
+				createdAt: '2026-01-01T00:00:00.000Z',
+				updatedAt: '2026-01-01T00:00:00.000Z',
+			},
+			created: true,
+		});
+		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+
+		await store.sendMessage('hello');
+
+		expect(mockPostMessage).toHaveBeenCalledWith(
+			expect.anything(),
+			store.currentThreadId,
+			'hello',
+			undefined,
+			undefined,
+			expect.any(String),
+			undefined,
+		);
+	});
 });
 
 // ---------------------------------------------------------------------------

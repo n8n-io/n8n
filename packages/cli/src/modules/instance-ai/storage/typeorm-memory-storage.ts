@@ -1,41 +1,46 @@
-import { Service } from '@n8n/di';
 import type { MastraMessageContentV2 } from '@mastra/core/agent';
 import type { MastraDBMessage, StorageThreadType } from '@mastra/core/memory';
-import { MemoryStorage } from '@mastra/core/storage';
 import type {
-	StorageResourceType,
-	StorageListMessagesInput,
+	BufferedObservationChunk,
+	CreateObservationalMemoryInput,
+	CreateReflectionGenerationInput,
+	ObservationalMemoryRecord,
+	StorageCloneThreadInput,
+	StorageCloneThreadOutput,
 	StorageListMessagesByResourceIdInput,
+	StorageListMessagesInput,
 	StorageListMessagesOutput,
 	StorageListThreadsInput,
 	StorageListThreadsOutput,
-	StorageCloneThreadInput,
-	StorageCloneThreadOutput,
-	ObservationalMemoryRecord,
-	CreateObservationalMemoryInput,
-	UpdateActiveObservationsInput,
-	UpdateBufferedObservationsInput,
+	StorageResourceType,
+	SwapBufferedReflectionToActiveInput,
 	SwapBufferedToActiveInput,
 	SwapBufferedToActiveResult,
 	UpdateBufferedReflectionInput,
-	SwapBufferedReflectionToActiveInput,
-	CreateReflectionGenerationInput,
-	BufferedObservationChunk,
+	UpdateBufferedObservationsInput,
+	UpdateActiveObservationsInput,
 } from '@mastra/core/storage';
-import { generateNanoId } from '@n8n/utils';
+import { MemoryStorage } from '@mastra/core/storage';
+import { Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
+import { generateNanoId } from '@n8n/utils';
 import { jsonParse } from 'n8n-workflow';
 
-import { InstanceAiThreadRepository } from '../repositories/instance-ai-thread.repository';
-import { InstanceAiMessageRepository } from '../repositories/instance-ai-message.repository';
-import { InstanceAiResourceRepository } from '../repositories/instance-ai-resource.repository';
-import { InstanceAiObservationalMemoryRepository } from '../repositories/instance-ai-observational-memory.repository';
 import type { InstanceAiMessage } from '../entities/instance-ai-message.entity';
 import type { InstanceAiObservationalMemory } from '../entities/instance-ai-observational-memory.entity';
+import type { InstanceAiThread } from '../entities/instance-ai-thread.entity';
+import { InstanceAiMessageRepository } from '../repositories/instance-ai-message.repository';
+import { InstanceAiObservationalMemoryRepository } from '../repositories/instance-ai-observational-memory.repository';
+import { InstanceAiResourceRepository } from '../repositories/instance-ai-resource.repository';
+import { InstanceAiThreadRepository } from '../repositories/instance-ai-thread.repository';
+
+/** Metadata keys that must only be mutated via patchThread (atomic read-modify-write). */
+const PATCH_ONLY_METADATA_KEYS = ['instanceAiPlannedTasks'] as const;
 
 @Service()
 export class TypeORMMemoryStorage extends MemoryStorage {
 	readonly supportsObservationalMemory = true;
+	private static readonly threadMutationQueues = new Map<string, Promise<void>>();
 
 	constructor(
 		private readonly threadRepo: InstanceAiThreadRepository,
@@ -58,14 +63,7 @@ export class TypeORMMemoryStorage extends MemoryStorage {
 	async getThreadById({ threadId }: { threadId: string }): Promise<StorageThreadType | null> {
 		const entity = await this.threadRepo.findOneBy({ id: threadId });
 		if (!entity) return null;
-		return {
-			id: entity.id,
-			title: entity.title,
-			resourceId: entity.resourceId,
-			metadata: entity.metadata ?? undefined,
-			createdAt: entity.createdAt,
-			updatedAt: entity.updatedAt,
-		};
+		return this.toStorageThread(entity);
 	}
 
 	async listThreads(args: StorageListThreadsInput): Promise<StorageListThreadsOutput> {
@@ -147,21 +145,36 @@ export class TypeORMMemoryStorage extends MemoryStorage {
 	}: {
 		thread: StorageThreadType;
 	}): Promise<StorageThreadType> {
-		const entity = this.threadRepo.create({
-			id: thread.id,
-			resourceId: thread.resourceId,
-			title: thread.title ?? '',
-			metadata: thread.metadata ?? null,
+		return await this.serializeThreadMutation(thread.id, async () => {
+			const existing = await this.threadRepo.findOneBy({ id: thread.id });
+
+			if (existing) {
+				// Strip patch-only keys so stale caller snapshots can't clobber
+				// state that must only be mutated through patchThread.
+				const safeIncoming = { ...(thread.metadata ?? {}) };
+				for (const key of PATCH_ONLY_METADATA_KEYS) {
+					delete safeIncoming[key];
+				}
+
+				existing.title = thread.title ?? existing.title;
+				existing.resourceId = thread.resourceId ?? existing.resourceId;
+				existing.metadata = {
+					...(existing.metadata ?? {}),
+					...safeIncoming,
+				};
+				const saved = await this.threadRepo.save(existing);
+				return this.toStorageThread(saved);
+			}
+
+			const entity = this.threadRepo.create({
+				id: thread.id,
+				resourceId: thread.resourceId,
+				title: thread.title ?? '',
+				metadata: thread.metadata ?? null,
+			});
+			const saved = await this.threadRepo.save(entity);
+			return this.toStorageThread(saved);
 		});
-		const saved = await this.threadRepo.save(entity);
-		return {
-			id: saved.id,
-			title: saved.title,
-			resourceId: saved.resourceId,
-			metadata: saved.metadata ?? undefined,
-			createdAt: saved.createdAt,
-			updatedAt: saved.updatedAt,
-		};
 	}
 
 	async updateThread({
@@ -173,23 +186,98 @@ export class TypeORMMemoryStorage extends MemoryStorage {
 		title: string;
 		metadata: Record<string, unknown>;
 	}): Promise<StorageThreadType> {
-		const entity = await this.threadRepo.findOneByOrFail({ id });
-		entity.title = title;
-		entity.metadata = metadata;
-		const updated = await this.threadRepo.save(entity);
-		return {
-			id: updated.id,
-			title: updated.title,
-			resourceId: updated.resourceId,
-			metadata: updated.metadata ?? undefined,
-			createdAt: updated.createdAt,
-			updatedAt: updated.updatedAt,
-		};
+		return await this.serializeThreadMutation(id, async () => {
+			const entity = await this.threadRepo.findOneByOrFail({ id });
+
+			// Strip patch-only keys so stale caller snapshots can't clobber
+			// state that must only be mutated through patchThread.
+			const safeIncoming = { ...metadata };
+			for (const key of PATCH_ONLY_METADATA_KEYS) {
+				delete safeIncoming[key];
+			}
+
+			entity.title = title;
+			entity.metadata = {
+				...(entity.metadata ?? {}),
+				...safeIncoming,
+			};
+			const updated = await this.threadRepo.save(entity);
+			return this.toStorageThread(updated);
+		});
+	}
+
+	async patchThread({
+		threadId,
+		update,
+	}: {
+		threadId: string;
+		update: (
+			current: StorageThreadType,
+		) => { title?: string; metadata?: Record<string, unknown> } | null | undefined;
+	}): Promise<StorageThreadType | null> {
+		return await this.serializeThreadMutation(threadId, async () => {
+			const entity = await this.threadRepo.findOneBy({ id: threadId });
+			if (!entity) return null;
+
+			const current = this.toStorageThread(entity);
+			const patch = update({
+				...current,
+				metadata: { ...(current.metadata ?? {}) },
+			});
+			if (!patch) return current;
+
+			if (patch.title !== undefined) {
+				entity.title = patch.title;
+			}
+			if (patch.metadata !== undefined) {
+				entity.metadata = patch.metadata;
+			}
+
+			const updated = await this.threadRepo.save(entity);
+			return this.toStorageThread(updated);
+		});
 	}
 
 	async deleteThread({ threadId }: { threadId: string }): Promise<void> {
 		await this.threadRepo.delete(threadId);
 		// Messages cascade via FK
+	}
+
+	private toStorageThread(entity: InstanceAiThread): StorageThreadType {
+		return {
+			id: entity.id,
+			title: entity.title,
+			resourceId: entity.resourceId,
+			metadata: entity.metadata ?? undefined,
+			createdAt: entity.createdAt,
+			updatedAt: entity.updatedAt,
+		};
+	}
+
+	private async serializeThreadMutation<T>(
+		threadId: string,
+		mutation: () => Promise<T>,
+	): Promise<T> {
+		const queues = TypeORMMemoryStorage.threadMutationQueues;
+		const previous = queues.get(threadId) ?? Promise.resolve();
+		const previousSettled = previous.catch(() => {});
+		let releaseCurrent!: () => void;
+		const current = new Promise<void>((resolve) => {
+			releaseCurrent = resolve;
+		});
+		const queued = previousSettled.then(async () => await current);
+		queues.set(threadId, queued);
+
+		await previousSettled;
+
+		try {
+			return await mutation();
+		} finally {
+			releaseCurrent();
+			if (queues.get(threadId) === queued) {
+				queues.delete(threadId);
+			}
+		}
 	}
 
 	// Message operations
@@ -387,13 +475,15 @@ export class TypeORMMemoryStorage extends MemoryStorage {
 	async updateMessages({
 		messages,
 	}: {
-		messages: (Partial<Omit<MastraDBMessage, 'createdAt'>> & {
-			id: string;
-			content?: {
-				metadata?: MastraMessageContentV2['metadata'];
-				content?: MastraMessageContentV2['content'];
-			};
-		})[];
+		messages: Array<
+			Partial<Omit<MastraDBMessage, 'createdAt'>> & {
+				id: string;
+				content?: {
+					metadata?: MastraMessageContentV2['metadata'];
+					content?: MastraMessageContentV2['content'];
+				};
+			}
+		>;
 	}): Promise<MastraDBMessage[]> {
 		const result: MastraDBMessage[] = [];
 		for (const msg of messages) {

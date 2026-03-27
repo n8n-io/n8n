@@ -12,51 +12,8 @@ import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 
 import type { OrchestrationContext } from '../../types';
+import { formatWorkflowLoopGuidance } from '../../workflow-loop/guidance';
 import { verificationVerdictSchema } from '../../workflow-loop/workflow-loop-state';
-import type { WorkflowLoopAction } from '../../workflow-loop/workflow-loop-state';
-
-function actionToGuidance(action: WorkflowLoopAction): string {
-	switch (action.type) {
-		case 'done': {
-			if (action.mockedCredentialTypes?.length) {
-				const types = action.mockedCredentialTypes.join(', ');
-				return (
-					'Workflow verified successfully with temporary mock data. ' +
-					'Call `setup-credentials` with types [' +
-					types +
-					'] and ' +
-					'credentialFlow stage "finalize" to let the user add real credentials. ' +
-					'After the user selects credentials, call `apply-workflow-credentials` to apply them.'
-				);
-			}
-			return `Workflow verified successfully. Report completion to the user.${action.workflowId ? ` Workflow ID: ${action.workflowId}` : ''}`;
-		}
-		case 'verify':
-			return (
-				`VERIFY: Run workflow ${action.workflowId}. ` +
-				'If the build had mocked credentials, use `verify-built-workflow` with the workItemId. ' +
-				'Otherwise use `run-workflow`. ' +
-				'If it fails, use `debug-execution` to diagnose. ' +
-				'Then call `report-verification-verdict` with your findings.'
-			);
-		case 'blocked':
-			return `BUILD BLOCKED: ${action.reason}. Explain this to the user and ask how to proceed.`;
-		case 'rebuild':
-			return (
-				`REBUILD NEEDED: The workflow at ${action.workflowId} needs structural repair. ` +
-				`Call \`build-workflow-with-agent\` again with these details: ${action.failureDetails}. ` +
-				'The build outcome will trigger verification automatically.'
-			);
-		case 'patch':
-			return (
-				`FIX NEEDED: Node "${action.failedNodeName}" in workflow ${action.workflowId} needs a targeted fix. ` +
-				`Diagnosis: ${action.diagnosis}. ` +
-				(action.patch ? `Suggested fix: ${JSON.stringify(action.patch)}. ` : '') +
-				`Call \`build-workflow-with-agent\` with workflowId "${action.workflowId}" and these details in the task. ` +
-				'The build outcome will trigger verification automatically.'
-			);
-	}
-}
 
 export function createReportVerificationVerdictTool(context: OrchestrationContext) {
 	return createTool({
@@ -103,11 +60,11 @@ export function createReportVerificationVerdictTool(context: OrchestrationContex
 			guidance: z.string(),
 		}),
 		execute: async (input) => {
-			if (!context.reportVerificationVerdict) {
+			if (!context.workflowTaskService) {
 				return { guidance: 'Error: verification verdict reporting not available.' };
 			}
 
-			const action = await context.reportVerificationVerdict({
+			const action = await context.workflowTaskService.reportVerificationVerdict({
 				workItemId: input.workItemId,
 				workflowId: input.workflowId,
 				executionId: input.executionId,
@@ -119,7 +76,9 @@ export function createReportVerificationVerdictTool(context: OrchestrationContex
 				summary: input.summary,
 			});
 
-			return { guidance: actionToGuidance(action) };
+			return {
+				guidance: formatWorkflowLoopGuidance(action, { workItemId: input.workItemId }),
+			};
 		},
 	});
 }

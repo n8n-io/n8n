@@ -1,9 +1,10 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { N8nActionDropdown, N8nButton, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
+import { N8nActionDropdown, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system/types';
 import { useI18n } from '@n8n/i18n';
+import { VIEWS } from '@/app/constants';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { INSTANCE_AI_THREAD_VIEW } from '../constants';
 import { getRelativeDate } from '@/features/ai/chatHub/chat.utils';
@@ -55,6 +56,10 @@ const groupedThreads = computed(() => {
 	});
 });
 
+function handleBack() {
+	void router.push({ name: VIEWS.HOMEPAGE });
+}
+
 function handleNewThread() {
 	const threadId = store.newThread();
 	void router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId } });
@@ -104,17 +109,27 @@ function handleThreadAction(action: string, threadId: string) {
 
 <template>
 	<div :class="$style.container" data-test-id="instance-ai-thread-list">
-		<div :class="$style.header">
-			<N8nButton
-				:label="i18n.baseText('instanceAi.thread.new')"
-				type="secondary"
-				size="small"
-				icon="plus"
-				block
-				data-test-id="instance-ai-new-thread-button"
-				@click="handleNewThread"
-			/>
-		</div>
+		<!-- Back button -->
+		<button :class="$style.backButton" @click="handleBack">
+			<N8nIcon icon="chevron-left" size="small" />
+			{{ i18n.baseText('instanceAi.sidebar.back') }}
+		</button>
+
+		<div :class="$style.separator" />
+
+		<!-- New chat button -->
+		<button
+			:class="$style.newChatButton"
+			data-test-id="instance-ai-new-thread-button"
+			@click="handleNewThread"
+		>
+			<div :class="$style.newChatIcon">
+				<N8nIcon icon="plus" size="medium" />
+			</div>
+			{{ i18n.baseText('instanceAi.thread.new') }}
+		</button>
+
+		<!-- Thread list -->
 		<div :class="$style.threadList">
 			<template v-if="groupedThreads.length > 0">
 				<div v-for="group in groupedThreads" :key="group.label" :class="$style.group">
@@ -147,7 +162,6 @@ function handleThreadAction(action: string, threadId: string) {
 								:title="thread.title"
 								@dblclick.prevent="startRename(thread.id, thread.title)"
 							>
-								<N8nIcon icon="message-square" size="small" :class="$style.threadIcon" />
 								<span :class="$style.threadTitle">{{ thread.title }}</span>
 							</RouterLink>
 							<N8nActionDropdown
@@ -187,9 +201,59 @@ function handleThreadAction(action: string, threadId: string) {
 	background: var(--color--background--light-2);
 }
 
-.header {
-	padding: var(--spacing--xs);
+.backButton {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	padding: var(--spacing--xs) var(--spacing--sm);
+	background: none;
+	border: none;
+	cursor: pointer;
+	font-family: var(--font-family);
+	font-size: var(--font-size--sm);
+	color: var(--color--text);
+	outline: none;
+
+	&:hover,
+	&:focus,
+	&:active {
+		color: var(--color--text) !important;
+	}
+}
+
+.separator {
 	border-bottom: var(--border);
+	margin: 0 var(--spacing--sm);
+}
+
+.newChatButton {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+	padding: var(--spacing--sm);
+	background: none;
+	border: none;
+	cursor: pointer;
+	font-family: var(--font-family);
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--bold);
+	color: var(--color--text);
+	width: 100%;
+
+	&:hover {
+		background: var(--color--background--light-1);
+	}
+}
+
+.newChatIcon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	border-radius: 50%;
+	background: var(--color--primary);
+	color: white;
 }
 
 .threadList {
@@ -221,14 +285,14 @@ function handleThreadAction(action: string, threadId: string) {
 	&:hover,
 	&:focus-within,
 	&:has([aria-expanded='true']) {
-		background-color: var(--color--background--shade-1);
+		background-color: var(--color--background--light-1);
 	}
 
 	&.active {
-		background-color: var(--color--background);
+		background-color: var(--color--background--light-1);
 
 		&:hover {
-			background-color: var(--color--background--shade-1);
+			background-color: var(--color--background--light-1);
 		}
 	}
 }
@@ -240,10 +304,18 @@ function handleThreadAction(action: string, threadId: string) {
 	flex: 1;
 	min-width: 0;
 	padding: var(--spacing--2xs) var(--spacing--xs);
-	color: var(--color--text);
-	text-decoration: none;
+	color: var(--color--text) !important;
+	text-decoration: none !important;
 	outline: none;
 	cursor: pointer;
+
+	&:hover,
+	&:focus,
+	&:active,
+	&:visited {
+		color: var(--color--text) !important;
+		text-decoration: none !important;
+	}
 }
 
 .threadIcon {

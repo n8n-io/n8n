@@ -20,6 +20,187 @@ function generateAgentId(): string {
 	return `agent-${nanoid(6)}`;
 }
 
+function buildRoleKey(role: string): string {
+	return role
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-+|-+$/g, '');
+}
+
+function resolveDelegateTools(
+	context: OrchestrationContext,
+	toolNames: string[],
+): { validTools: ToolsInput; errors: string[] } {
+	const errors: string[] = [];
+	const validTools: ToolsInput = {};
+	const availableMcpTools = context.mcpTools ?? {};
+
+	for (const name of toolNames) {
+		if (FORBIDDEN_TOOL_NAMES.has(name)) {
+			errors.push(`"${name}" is an orchestration tool and cannot be delegated`);
+		} else if (name in context.domainTools) {
+			validTools[name] = context.domainTools[name];
+		} else if (name in availableMcpTools) {
+			validTools[name] = availableMcpTools[name];
+		} else {
+			errors.push(`"${name}" is not a registered domain tool`);
+		}
+	}
+
+	return { validTools, errors };
+}
+
+async function buildDelegateBriefing(
+	context: OrchestrationContext,
+	role: string,
+	briefing: string,
+	artifacts?: unknown,
+): Promise<string> {
+	const serializedArtifacts = artifacts ? `\n\nArtifacts: ${JSON.stringify(artifacts)}` : '';
+
+	let iterationContext = '';
+	if (context.iterationLog) {
+		const taskKey = `delegate:${role}`;
+		try {
+			const entries = await context.iterationLog.getForTask(context.threadId, taskKey);
+			iterationContext = formatPreviousAttempts(entries);
+		} catch {
+			// Non-fatal — iteration log is best-effort
+		}
+	}
+
+	return `${briefing}${serializedArtifacts}${iterationContext ? `\n\n${iterationContext}` : ''}\n\nRemember: ${SUB_AGENT_PROTOCOL}`;
+}
+
+export interface DetachedDelegateTaskInput {
+	title: string;
+	spec: string;
+	tools: string[];
+	artifacts?: unknown;
+	taskId?: string;
+	agentId?: string;
+	plannedTaskId?: string;
+}
+
+export interface DetachedDelegateTaskResult {
+	result: string;
+	taskId: string;
+	agentId: string;
+}
+
+export async function startDetachedDelegateTask(
+	context: OrchestrationContext,
+	input: DetachedDelegateTaskInput,
+): Promise<DetachedDelegateTaskResult> {
+	if (input.tools.length === 0) {
+		return {
+			result: 'Delegation failed: "tools" must contain at least one tool name',
+			taskId: '',
+			agentId: '',
+		};
+	}
+
+	const { validTools, errors } = resolveDelegateTools(context, input.tools);
+	if (errors.length > 0) {
+		return {
+			result: `Delegation failed: ${errors.join('; ')}`,
+			taskId: '',
+			agentId: '',
+		};
+	}
+
+	if (!context.spawnBackgroundTask) {
+		return {
+			result: 'Delegation failed: background task support not available.',
+			taskId: '',
+			agentId: '',
+		};
+	}
+
+	const role = buildRoleKey(input.title) || 'delegate-worker';
+	const subAgentId = input.agentId ?? `agent-delegate-${nanoid(6)}`;
+	const taskId = input.taskId ?? `delegate-${nanoid(8)}`;
+
+	context.eventBus.publish(context.threadId, {
+		type: 'agent-spawned',
+		runId: context.runId,
+		agentId: subAgentId,
+		payload: {
+			parentId: context.orchestratorAgentId,
+			role,
+			tools: input.tools,
+			taskId,
+			kind: 'delegate',
+			title: input.title,
+			subtitle: truncateLabel(input.spec),
+			goal: input.spec,
+		},
+	});
+
+	const briefingMessage = await buildDelegateBriefing(context, role, input.spec, input.artifacts);
+
+	context.spawnBackgroundTask({
+		taskId,
+		threadId: context.threadId,
+		agentId: subAgentId,
+		role,
+		plannedTaskId: input.plannedTaskId,
+		run: async (signal, drainCorrections) => {
+			const memory = MEMORY_ENABLED_ROLES.has(role)
+				? createSubAgentMemory(context.storage, role)
+				: undefined;
+
+			const subAgent = createSubAgent({
+				agentId: subAgentId,
+				role,
+				instructions:
+					'Complete the delegated task using the provided tools. Return concrete results only.',
+				tools: validTools,
+				modelId: context.modelId,
+				memory,
+			});
+
+			registerWithMastra(subAgentId, subAgent, context.storage);
+
+			const memoryOpts = memory
+				? { resource: subAgentResourceId(context.userId, role), thread: subAgentId }
+				: undefined;
+			const stream = await subAgent.stream(briefingMessage, {
+				maxSteps: context.subAgentMaxSteps ?? FALLBACK_MAX_STEPS,
+				abortSignal: signal,
+				providerOptions: {
+					anthropic: { cacheControl: { type: 'ephemeral' } },
+				},
+				...(memoryOpts ? { memory: memoryOpts } : {}),
+			});
+
+			const result = await consumeStreamWithHitl({
+				agent: subAgent,
+				stream: stream as {
+					runId?: string;
+					fullStream: AsyncIterable<unknown>;
+					text: Promise<string>;
+				},
+				runId: context.runId,
+				agentId: subAgentId,
+				eventBus: context.eventBus,
+				threadId: context.threadId,
+				abortSignal: signal,
+				waitForConfirmation: context.waitForConfirmation,
+				drainCorrections,
+			});
+
+			return await result.text;
+		},
+	});
+
+	return {
+		result: `Delegation started (task: ${taskId}). Acknowledge briefly and move on.`,
+		taskId,
+		agentId: subAgentId,
+	};
+}
+
 export function createDelegateTool(context: OrchestrationContext) {
 	return createTool({
 		id: 'delegate',
@@ -36,22 +217,7 @@ export function createDelegateTool(context: OrchestrationContext) {
 				return { result: 'Delegation failed: "tools" must contain at least one tool name' };
 			}
 
-			// 1. Validate tools — check both domain tools and MCP tools
-			const errors: string[] = [];
-			const validTools: ToolsInput = {};
-			const availableMcpTools = context.mcpTools ?? {};
-
-			for (const name of input.tools) {
-				if (FORBIDDEN_TOOL_NAMES.has(name)) {
-					errors.push(`"${name}" is an orchestration tool and cannot be delegated`);
-				} else if (name in context.domainTools) {
-					validTools[name] = context.domainTools[name];
-				} else if (name in availableMcpTools) {
-					validTools[name] = availableMcpTools[name];
-				} else {
-					errors.push(`"${name}" is not a registered domain tool`);
-				}
-			}
+			const { validTools, errors } = resolveDelegateTools(context, input.tools);
 
 			if (errors.length > 0) {
 				return { result: `Delegation failed: ${errors.join('; ')}` };
@@ -92,24 +258,12 @@ export function createDelegateTool(context: OrchestrationContext) {
 
 				registerWithMastra(subAgentId, subAgent, context.storage, context.tracingConfig);
 
-				// 4. Build briefing message — protocol reminder at the end (strongest position)
-				const artifacts = input.artifacts
-					? `\n\nArtifacts: ${JSON.stringify(input.artifacts)}`
-					: '';
-
-				// Inject iteration history so retries are informed by previous attempts
-				let iterationContext = '';
-				if (context.iterationLog) {
-					const taskKey = `delegate:${input.role}`;
-					try {
-						const entries = await context.iterationLog.getForTask(context.threadId, taskKey);
-						iterationContext = formatPreviousAttempts(entries);
-					} catch {
-						// Non-fatal — iteration log is best-effort
-					}
-				}
-
-				const briefingMessage = `${input.briefing}${artifacts}${iterationContext ? `\n\n${iterationContext}` : ''}\n\nRemember: ${SUB_AGENT_PROTOCOL}`;
+				const briefingMessage = await buildDelegateBriefing(
+					context,
+					input.role,
+					input.briefing,
+					input.artifacts,
+				);
 
 				// 5. Stream sub-agent with HITL support
 				const memoryOpts = memory

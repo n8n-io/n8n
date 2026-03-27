@@ -12,7 +12,9 @@ export function createCreateDataTableTool(context: InstanceAiContext) {
 		id: 'create-data-table',
 		description:
 			'Create a new data table with typed columns. ' +
-			'Column names must be alphanumeric with underscores, no leading numbers.',
+			'Column names must be alphanumeric with underscores, no leading numbers. ' +
+			'RESERVED names: "id", "createdAt", "updatedAt" — these are system columns ' +
+			'and will be rejected. Prefix with a context-appropriate name instead.',
 		inputSchema: z.object({
 			name: z.string().min(1).max(128).describe('Table name'),
 			projectId: z

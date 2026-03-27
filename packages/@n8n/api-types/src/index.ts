@@ -84,6 +84,8 @@ export {
 	VECTOR_STORE_PROVIDER_CREDENTIAL_TYPE_MAP,
 } from './chat-hub';
 
+export { isValidTimeZone, StrictTimeZoneSchema, TimeZoneSchema } from './schemas/timezone.schema';
+
 export type {
 	ChatHubPushMessage,
 	ChatHubStreamEvent,
@@ -256,6 +258,7 @@ export {
 	toolErrorPayloadSchema,
 	confirmationRequestPayloadSchema,
 	credentialRequestSchema,
+	workflowSetupNodeSchema,
 	errorPayloadSchema,
 	filesystemRequestPayloadSchema,
 	instanceAiFilesystemResponseSchema,
@@ -269,6 +272,16 @@ export {
 	domainAccessActionSchema,
 	domainAccessMetaSchema,
 	credentialFlowSchema,
+	InstanceAiSendMessageRequest,
+	instanceAiGatewayKeySchema,
+	InstanceAiGatewayEventsQuery,
+	InstanceAiEventsQuery,
+	InstanceAiCorrectTaskRequest,
+	InstanceAiUpdateMemoryRequest,
+	InstanceAiEnsureThreadRequest,
+	InstanceAiThreadMessagesQuery,
+	InstanceAiAdminSettingsUpdateRequest,
+	InstanceAiUserPreferencesUpdateRequest,
 } from './schemas/instance-ai.schema';
 
 export type {
@@ -303,7 +316,6 @@ export type {
 	McpToolCallResult,
 	InstanceAiEvent,
 	InstanceAiAttachment,
-	InstanceAiSendMessageRequest,
 	InstanceAiSendMessageResponse,
 	InstanceAiConfirmResponse,
 	InstanceAiToolCallState,
@@ -321,9 +333,7 @@ export type {
 	InstanceAiRichMessagesResponse,
 	InstanceAiThreadStatusResponse,
 	InstanceAiAdminSettingsResponse,
-	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiUserPreferencesResponse,
-	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiModelCredential,
 	InstanceAiPermissionMode,
 	InstanceAiPermissions,
@@ -331,6 +341,7 @@ export type {
 	DomainAccessAction,
 	DomainAccessMeta,
 	InstanceAiCredentialFlow,
+	InstanceAiWorkflowSetupNode,
 } from './schemas/instance-ai.schema';
 
 export {

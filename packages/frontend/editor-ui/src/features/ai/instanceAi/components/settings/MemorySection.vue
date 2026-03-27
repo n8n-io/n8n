@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { N8nIcon, N8nInput, N8nInputNumber, N8nInputLabel } from '@n8n/design-system';
+import { N8nHeading, N8nInput, N8nInputNumber, N8nInputLabel } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useSettingsField } from './useSettingsField';
 
@@ -9,10 +9,9 @@ const { store, getString, getNumber } = useSettingsField();
 
 <template>
 	<div :class="$style.section">
-		<div :class="$style.sectionHeader">
-			<N8nIcon icon="brain" size="small" />
+		<N8nHeading tag="h2" size="small">
 			{{ i18n.baseText('instanceAi.settings.section.memory') }}
-		</div>
+		</N8nHeading>
 
 		<N8nInputLabel
 			:label="i18n.baseText('instanceAi.settings.lastMessages.label')"
@@ -20,6 +19,7 @@ const { store, getString, getNumber } = useSettingsField();
 			size="small"
 		>
 			<N8nInputNumber
+				:class="$style.numberInput"
 				:model-value="getNumber('lastMessages') ?? 20"
 				size="small"
 				:min="1"
@@ -46,6 +46,7 @@ const { store, getString, getNumber } = useSettingsField();
 			size="small"
 		>
 			<N8nInputNumber
+				:class="$style.numberInput"
 				:model-value="getNumber('semanticRecallTopK') ?? 5"
 				size="small"
 				:min="0"
@@ -62,14 +63,7 @@ const { store, getString, getNumber } = useSettingsField();
 	gap: var(--spacing--xs);
 }
 
-.sectionHeader {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	font-size: var(--font-size--xs);
-	font-weight: var(--font-weight--bold);
-	color: var(--color--text);
-	padding-bottom: var(--spacing--4xs);
-	border-bottom: var(--border);
+.numberInput {
+	max-width: 140px;
 }
 </style>

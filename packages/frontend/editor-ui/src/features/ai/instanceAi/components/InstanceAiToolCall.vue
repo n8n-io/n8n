@@ -246,6 +246,96 @@ const resolvedAction = computed((): 'approved' | 'denied' | 'deferred' | null =>
 	color: var(--color--text--tint-2);
 }
 
+.confirmationMessage {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--spacing--3xs);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text);
+	margin-bottom: var(--spacing--2xs);
+}
+
+.destructiveIcon {
+	color: var(--color--danger);
+}
+
+.warningIcon {
+	color: var(--color--warning);
+}
+
+.infoIcon {
+	color: var(--color--primary);
+}
+
+.confirmationActions {
+	display: flex;
+	gap: var(--spacing--2xs);
+	justify-content: flex-end;
+}
+
+.confirmButton {
+	padding: var(--spacing--4xs) var(--spacing--xs);
+	border-radius: var(--radius);
+	font-size: var(--font-size--2xs);
+	font-family: var(--font-family);
+	cursor: pointer;
+	border: var(--border);
+	background: var(--color--background);
+	color: var(--color--text);
+
+	&:hover {
+		background: var(--color--background--shade-1);
+	}
+}
+
+.denyButton {
+	color: var(--color--text--tint-1);
+}
+
+.approveButton {
+	background: var(--color--primary);
+	color: var(--button--color--text--primary);
+	border-color: var(--color--primary);
+
+	&:hover {
+		background: var(--color--primary--shade-1);
+	}
+}
+
+.approveDestructive {
+	background: var(--color--danger);
+	color: var(--button--color--text--primary);
+	border-color: var(--color--danger);
+
+	&:hover {
+		background: var(--color--danger--shade-1);
+	}
+}
+
+.textInputWrapper {
+	margin-bottom: var(--spacing--2xs);
+}
+
+.textInput {
+	width: 100%;
+	padding: var(--spacing--4xs) var(--spacing--2xs);
+	border: var(--border);
+	border-radius: var(--radius);
+	font-size: var(--font-size--2xs);
+	font-family: var(--font-family);
+	background: var(--color--background);
+	color: var(--color--text);
+	outline: none;
+
+	&:focus {
+		border-color: var(--color--primary);
+	}
+
+	&::placeholder {
+		color: var(--color--text--tint-1);
+	}
+}
+
 .confirmationStatus {
 	border-top: var(--border);
 	padding: var(--spacing--2xs) var(--spacing--xs);

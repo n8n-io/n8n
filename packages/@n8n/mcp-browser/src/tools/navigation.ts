@@ -3,19 +3,22 @@ import { z } from 'zod';
 import type { SessionManager } from '../session-manager';
 import type { ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
-import { createSessionTool, pageIdField, sessionIdField } from './helpers';
+import { createSessionTool, extractDomain, pageIdField, sessionIdField } from './helpers';
 
 const waitUntilField = z
 	.enum(['load', 'domcontentloaded', 'networkidle'])
 	.optional()
 	.describe('When to consider navigation done (default: "load")');
 
-export function createNavigationTools(sessionManager: SessionManager): ToolDefinition[] {
+export function createNavigationTools(
+	sessionManager: SessionManager,
+	toolGroupId: string,
+): ToolDefinition[] {
 	return [
-		browserNavigate(sessionManager),
-		browserBack(sessionManager),
-		browserForward(sessionManager),
-		browserReload(sessionManager),
+		browserNavigate(sessionManager, toolGroupId),
+		browserBack(sessionManager, toolGroupId),
+		browserForward(sessionManager, toolGroupId),
+		browserReload(sessionManager, toolGroupId),
 	];
 }
 
@@ -32,7 +35,7 @@ const browserNavigateOutputSchema = z.object({
 	status: z.number(),
 });
 
-function browserNavigate(sessionManager: SessionManager): ToolDefinition {
+function browserNavigate(sessionManager: SessionManager, toolGroupId: string): ToolDefinition {
 	return createSessionTool(
 		sessionManager,
 		'browser_navigate',
@@ -43,6 +46,8 @@ function browserNavigate(sessionManager: SessionManager): ToolDefinition {
 			return formatCallToolResult({ title: result.title, url: result.url, status: result.status });
 		},
 		browserNavigateOutputSchema,
+		toolGroupId,
+		(args) => extractDomain(args.url),
 	);
 }
 
@@ -56,7 +61,7 @@ const browserBackOutputSchema = z.object({
 	url: z.string(),
 });
 
-function browserBack(sessionManager: SessionManager): ToolDefinition {
+function browserBack(sessionManager: SessionManager, toolGroupId: string): ToolDefinition {
 	return createSessionTool(
 		sessionManager,
 		'browser_back',
@@ -67,6 +72,7 @@ function browserBack(sessionManager: SessionManager): ToolDefinition {
 			return formatCallToolResult({ title: result.title, url: result.url });
 		},
 		browserBackOutputSchema,
+		toolGroupId,
 	);
 }
 
@@ -80,7 +86,7 @@ const browserForwardOutputSchema = z.object({
 	url: z.string(),
 });
 
-function browserForward(sessionManager: SessionManager): ToolDefinition {
+function browserForward(sessionManager: SessionManager, toolGroupId: string): ToolDefinition {
 	return createSessionTool(
 		sessionManager,
 		'browser_forward',
@@ -91,6 +97,7 @@ function browserForward(sessionManager: SessionManager): ToolDefinition {
 			return formatCallToolResult({ title: result.title, url: result.url });
 		},
 		browserForwardOutputSchema,
+		toolGroupId,
 	);
 }
 
@@ -105,7 +112,7 @@ const browserReloadOutputSchema = z.object({
 	url: z.string(),
 });
 
-function browserReload(sessionManager: SessionManager): ToolDefinition {
+function browserReload(sessionManager: SessionManager, toolGroupId: string): ToolDefinition {
 	return createSessionTool(
 		sessionManager,
 		'browser_reload',
@@ -116,5 +123,6 @@ function browserReload(sessionManager: SessionManager): ToolDefinition {
 			return formatCallToolResult({ title: result.title, url: result.url });
 		},
 		browserReloadOutputSchema,
+		toolGroupId,
 	);
 }

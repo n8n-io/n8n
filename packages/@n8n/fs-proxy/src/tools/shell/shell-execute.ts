@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import type { CallToolResult, ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
+import { buildShellResource } from './build-shell-resource';
 
 const inputSchema = z.object({
 	command: z.string().describe('Shell command to execute'),
@@ -15,6 +16,15 @@ export const shellExecuteTool: ToolDefinition<typeof inputSchema> = {
 	description: 'Execute a shell command and return stdout, stderr, and exit code',
 	inputSchema,
 	annotations: { defaultPermission: 'confirm', destructiveHint: true },
+	getAffectedResources({ command }) {
+		return [
+			{
+				toolGroup: 'shell' as const,
+				resource: buildShellResource(command),
+				description: `Execute shell command: ${command}`,
+			},
+		];
+	},
 	async execute({ command, timeout = 30_000, cwd }) {
 		return await runCommand(command, { timeout, cwd });
 	},

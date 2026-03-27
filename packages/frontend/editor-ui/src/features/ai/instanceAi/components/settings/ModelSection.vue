@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import { N8nIcon, N8nInput, N8nSelect, N8nOption, N8nInputLabel } from '@n8n/design-system';
+import { N8nHeading, N8nInput, N8nSelect, N8nOption, N8nInputLabel } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useSettingsField } from './useSettingsField';
 
@@ -20,10 +20,9 @@ function handleCredentialChange(value: string | number | boolean | null) {
 
 <template>
 	<div :class="$style.section">
-		<div :class="$style.sectionHeader">
-			<N8nIcon icon="robot" size="small" />
+		<N8nHeading tag="h2" size="small">
 			{{ i18n.baseText('instanceAi.settings.section.model') }}
-		</div>
+		</N8nHeading>
 
 		<N8nInputLabel
 			:label="i18n.baseText('instanceAi.settings.credential.label')"
@@ -66,16 +65,5 @@ function handleCredentialChange(value: string | number | boolean | null) {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
-}
-
-.sectionHeader {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	font-size: var(--font-size--xs);
-	font-weight: var(--font-weight--bold);
-	color: var(--color--text);
-	padding-bottom: var(--spacing--4xs);
-	border-bottom: var(--border);
 }
 </style>

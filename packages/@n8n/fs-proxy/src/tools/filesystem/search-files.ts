@@ -5,7 +5,7 @@ import { z } from 'zod';
 import type { ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
 import { MAX_FILE_SIZE } from './constants';
-import { EXCLUDED_DIRS, resolveSafePath } from './fs-utils';
+import { EXCLUDED_DIRS, buildFilesystemResource, resolveSafePath } from './fs-utils';
 
 const inputSchema = z.object({
 	dirPath: z.string().describe('Directory to search in'),
@@ -20,6 +20,11 @@ export const searchFilesTool: ToolDefinition<typeof inputSchema> = {
 	description: 'Search for text patterns across files using a regex query',
 	inputSchema,
 	annotations: { defaultPermission: 'allow', readOnlyHint: true },
+	async getAffectedResources({ dirPath }, { dir }) {
+		return [
+			await buildFilesystemResource(dir, dirPath, 'filesystemRead', `Search files in: ${dirPath}`),
+		];
+	},
 	async execute({ dirPath, query, filePattern, ignoreCase, maxResults }, { dir }) {
 		const resolvedDir = await resolveSafePath(dir, dirPath);
 		const limit = maxResults ?? 50;

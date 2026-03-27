@@ -232,6 +232,7 @@ defineExpose({
 	:global(.n8n-input__wrapper) {
 		box-shadow: none !important;
 		outline: none !important;
+		background-color: transparent !important;
 	}
 }
 

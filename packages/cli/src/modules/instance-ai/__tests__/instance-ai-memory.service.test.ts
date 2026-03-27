@@ -15,6 +15,19 @@ const mockMemory = {
 jest.mock('@n8n/instance-ai', () => ({
 	createMemory: () => mockMemory,
 	WORKING_MEMORY_TEMPLATE: 'template',
+	AgentTreeSnapshotStorage: class MockAgentTreeSnapshotStorage {
+		private memory: typeof mockMemory;
+
+		constructor(memory: typeof mockMemory) {
+			this.memory = memory;
+		}
+
+		async getAll(threadId: string) {
+			const thread = await this.memory.getThreadById({ threadId });
+			const raw = thread?.metadata?.instanceAiRunSnapshots;
+			return Array.isArray(raw) ? raw : [];
+		}
+	},
 }));
 
 // Mock GlobalConfig
@@ -38,7 +51,13 @@ function createService(): InstanceAiMemoryService {
 	};
 	const mockLogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() };
 	const mockCompositeStore = {} as never;
-	return new InstanceAiMemoryService(mockLogger as never, mockConfig as never, mockCompositeStore);
+	const mockDbSnapshotStorage = {} as never;
+	return new InstanceAiMemoryService(
+		mockLogger as never,
+		mockConfig as never,
+		mockCompositeStore,
+		mockDbSnapshotStorage,
+	);
 }
 
 function makeTree(overrides?: Partial<InstanceAiAgentNode>): InstanceAiAgentNode {

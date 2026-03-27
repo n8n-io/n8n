@@ -11,9 +11,14 @@ export class InstanceAiModule implements ModuleInterface {
 
 		// Fire-and-forget: clean up expired conversation threads on startup
 		const { InstanceAiMemoryService } = await import('./instance-ai-memory.service');
+		const { InstanceAiService } = await import('./instance-ai.service');
+		const aiService = Container.get(InstanceAiService);
 		void Container.get(InstanceAiMemoryService)
-			.cleanupExpiredThreads()
+			.cleanupExpiredThreads(async (threadId) => await aiService.clearThreadState(threadId))
 			.catch(() => undefined);
+
+		// Register snapshot pruning — lifecycle decorators handle start/stop
+		await import('./snapshot-pruning.service');
 	}
 
 	async settings() {
@@ -43,6 +48,8 @@ export class InstanceAiModule implements ModuleInterface {
 		const { InstanceAiWorkflowSnapshot } = await import(
 			'./entities/instance-ai-workflow-snapshot.entity'
 		);
+		const { InstanceAiRunSnapshot } = await import('./entities/instance-ai-run-snapshot.entity');
+		const { InstanceAiIterationLog } = await import('./entities/instance-ai-iteration-log.entity');
 
 		return [
 			InstanceAiThread,
@@ -50,6 +57,8 @@ export class InstanceAiModule implements ModuleInterface {
 			InstanceAiResource,
 			InstanceAiObservationalMemory,
 			InstanceAiWorkflowSnapshot,
+			InstanceAiRunSnapshot,
+			InstanceAiIterationLog,
 		];
 	}
 

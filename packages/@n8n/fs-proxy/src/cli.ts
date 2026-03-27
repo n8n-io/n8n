@@ -1,30 +1,85 @@
 #!/usr/bin/env node
 
+import { confirm } from '@inquirer/prompts';
 import * as fs from 'node:fs/promises';
-import type { Server } from 'node:http';
 
 import { parseConfig } from './config';
+import { cliConfirmResourceAccess, sanitizeForTerminal } from './confirm-resource-cli';
+import { startDaemon } from './daemon';
 import { GatewayClient } from './gateway-client';
-import { configure, logger, printBanner, printConnected, printToolList } from './logger';
+import {
+	configure,
+	logger,
+	printBanner,
+	printConnected,
+	printModuleStatus,
+	printToolList,
+} from './logger';
+import { SettingsStore } from './settings-store';
+import { applyTemplate, runStartupConfigCli } from './startup-config-cli';
+import type { ConfirmResourceAccess } from './tools/types';
 
-// ── Serve (daemon) mode ─────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
+// Shared helpers
+// ---------------------------------------------------------------------------
 
-function tryServe(): boolean {
+async function cliConfirmConnect(url: string): Promise<boolean> {
+	return await confirm({ message: `Allow connection to ${sanitizeForTerminal(url)}?` });
+}
+
+function makeConfirmConnect(
+	nonInteractive: boolean,
+	autoConfirm: boolean,
+): (url: string) => Promise<boolean> | boolean {
+	if (autoConfirm) return () => true;
+	if (nonInteractive) return () => false;
+	return cliConfirmConnect;
+}
+
+/**
+ * Select the confirmResourceAccess callback based on the interactive/auto-confirm flags.
+ *
+ *   nonInteractive=false, autoConfirm=false → interactive readline prompt
+ *   nonInteractive=false, autoConfirm=true  → silent allowOnce
+ *   nonInteractive=true,  autoConfirm=false → silent denyOnce  (safe unattended default)
+ *   nonInteractive=true,  autoConfirm=true  → silent allowOnce
+ */
+function makeConfirmResourceAccess(
+	nonInteractive: boolean,
+	autoConfirm: boolean,
+): ConfirmResourceAccess {
+	if (autoConfirm) return () => 'allowOnce';
+	if (nonInteractive) return () => 'denyOnce';
+	return cliConfirmResourceAccess;
+}
+
+// ---------------------------------------------------------------------------
+// Serve (daemon) mode
+// ---------------------------------------------------------------------------
+
+async function tryServe(): Promise<boolean> {
 	const parsed = parseConfig();
-
 	if (parsed.command !== 'serve') return false;
 
 	configure({ level: parsed.config.logLevel });
+	printBanner();
 
-	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	const { startDaemon } = require('./daemon') as {
-		startDaemon: (config: typeof parsed.config) => Server;
-	};
-	startDaemon(parsed.config);
+	// Non-interactive: apply recommended template as explicit defaults (shell/computer stay deny
+	// unless overridden via --permission-* flags), then skip all interactive prompts.
+	const config = parsed.nonInteractive
+		? applyTemplate(parsed.config, 'default')
+		: await runStartupConfigCli(parsed.config);
+
+	startDaemon(config, {
+		confirmConnect: makeConfirmConnect(parsed.nonInteractive, parsed.autoConfirm),
+		confirmResourceAccess: makeConfirmResourceAccess(parsed.nonInteractive, parsed.autoConfirm),
+	});
 	return true;
 }
 
-// ── Help ────────────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
+// Help
+// ---------------------------------------------------------------------------
 
 function shouldShowHelp(): boolean {
 	const args = process.argv.slice(2);
@@ -41,7 +96,7 @@ Usage:
   npx @n8n/fs-proxy --url <url> --api-key <token> [options]
 
 Commands:
-  serve      Start a local daemon that n8n auto-detects (zero-click mode)
+  serve      Start a local daemon that n8n auto-detects
 
 Positional arguments:
   url        n8n instance URL (e.g. https://my-n8n.com)
@@ -50,22 +105,26 @@ Positional arguments:
 
 Global options:
   --log-level <level>       Log level: silent, error, warn, info, debug (default: info)
-  --allow-origin <url>          Allow connections from this URL without confirmation (repeatable)
+  --allow-origin <url>      Allow connections from this URL without confirmation (repeatable)
   -p, --port <port>         Daemon port (default: 7655, serve mode only)
+  --non-interactive         Skip all prompts (deny per default); use defaults + env/cli overrides
+  --auto-confirm            Auto-confirm all prompts (no readline)
   -h, --help                Show this help message
 
 Filesystem:
   --filesystem-dir <path>   Root directory for filesystem tools (default: .)
-  --no-filesystem           Disable filesystem tools
+
+Permissions (deny | ask | allow):
+  --permission-filesystem-read   (default: allow)
+  --permission-filesystem-write  (default: ask)
+  --permission-shell             (default: deny)
+  --permission-computer          (default: deny)
+  --permission-browser           (default: ask)
 
 Computer use:
-  --no-computer-shell                Disable shell tool
   --computer-shell-timeout <ms>      Shell command timeout (default: 30000)
-  --no-computer-screenshot           Disable screenshot tools
-  --no-computer-mouse-keyboard       Disable mouse/keyboard tools
 
 Browser:
-  --no-browser                       Disable browser tools
   --browser-headless                 Run browser in headless mode (default: false)
   --no-browser-headless              Run browser with visible window
   --browser-default <name>           Default browser (default: chromium)
@@ -75,29 +134,14 @@ Browser:
 
 Environment variables:
   All options can be set via N8N_GATEWAY_* environment variables.
-  Example: N8N_GATEWAY_BROWSER_HEADLESS=false
+  Example: N8N_GATEWAY_NON_INTERACTIVE=true
   See README.md for the full list.
 `);
 }
 
-// ── Main ────────────────────────────────────────────────────────────────────
-
-if (shouldShowHelp()) {
-	printUsage();
-	process.exit(0);
-}
-
-// Daemon mode — process stays alive via the HTTP server. Skip main().
-if (tryServe()) {
-	// noop — server is running
-} else {
-	void main().catch((error) => {
-		logger.error('Fatal error', {
-			error: error instanceof Error ? error.message : String(error),
-		});
-		process.exit(1);
-	});
-}
+// ---------------------------------------------------------------------------
+// Main (direct connection mode)
+// ---------------------------------------------------------------------------
 
 async function main(): Promise<void> {
 	const parsed = parseConfig();
@@ -111,31 +155,38 @@ async function main(): Promise<void> {
 		process.exit(1);
 	}
 
-	// Validate filesystem directory exists (if filesystem is enabled)
-	if (parsed.config.filesystem !== false) {
-		const dir = parsed.config.filesystem.dir;
-		try {
-			const stat = await fs.stat(dir);
-			if (!stat.isDirectory()) {
-				logger.error('Path is not a directory', { dir });
-				process.exit(1);
-			}
-		} catch {
-			logger.error('Directory does not exist', { dir });
+	const config = parsed.nonInteractive
+		? applyTemplate(parsed.config, 'default')
+		: await runStartupConfigCli(parsed.config);
+
+	// Validate filesystem directory exists
+	const dir = config.filesystem.dir;
+	try {
+		const stat = await fs.stat(dir);
+		if (!stat.isDirectory()) {
+			logger.error('Path is not a directory', { dir });
 			process.exit(1);
 		}
+	} catch {
+		logger.error('Directory does not exist', { dir });
+		process.exit(1);
 	}
+
+	printModuleStatus(config);
+
+	const settingsStore = await SettingsStore.create(config);
 
 	const client = new GatewayClient({
 		url: parsed.url,
 		apiKey: parsed.apiKey,
-		config: parsed.config,
+		config,
+		settingsStore,
+		confirmResourceAccess: makeConfirmResourceAccess(parsed.nonInteractive, parsed.autoConfirm),
 	});
 
-	// Graceful shutdown
 	const shutdown = () => {
 		logger.info('Shutting down');
-		void client.disconnect().finally(() => {
+		void Promise.all([client.disconnect(), settingsStore.flush()]).finally(() => {
 			process.exit(0);
 		});
 	};
@@ -147,3 +198,23 @@ async function main(): Promise<void> {
 	printConnected(parsed.url);
 	printToolList(client.tools);
 }
+
+// ---------------------------------------------------------------------------
+// Entry point
+// ---------------------------------------------------------------------------
+
+void (async () => {
+	if (shouldShowHelp()) {
+		printUsage();
+		process.exit(0);
+	}
+
+	if (await tryServe()) return;
+
+	await main();
+})().catch((error: unknown) => {
+	logger.error('Fatal error', {
+		error: error instanceof Error ? error.message : String(error),
+	});
+	process.exit(1);
+});

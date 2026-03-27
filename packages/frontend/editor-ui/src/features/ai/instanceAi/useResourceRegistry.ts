@@ -9,6 +9,9 @@ export interface ResourceEntry {
 	type: 'workflow' | 'credential' | 'data-table';
 	id: string;
 	name: string;
+	createdAt?: string;
+	updatedAt?: string;
+	projectId?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -21,11 +24,29 @@ function registerResource(
 	obj: Record<string, unknown>,
 ): void {
 	if (typeof obj.name === 'string' && typeof obj.id === 'string') {
-		map.set(obj.name.toLowerCase(), { type, id: obj.id, name: obj.name });
+		const entry: ResourceEntry = { type, id: obj.id, name: obj.name };
+		if (typeof obj.createdAt === 'string') entry.createdAt = obj.createdAt;
+		if (typeof obj.updatedAt === 'string') entry.updatedAt = obj.updatedAt;
+		if (typeof obj.projectId === 'string') entry.projectId = obj.projectId;
+		map.set(obj.name.toLowerCase(), entry);
 	}
 }
 
+/** Tools whose results may contain resource info (workflows, credentials, data tables). */
+const ARTIFACT_TOOLS = new Set([
+	'build-workflow',
+	'build-workflow-with-agent',
+	'submit-workflow',
+	'setup-workflow',
+	'publish-workflow',
+	'apply-workflow-credentials',
+	'setup-credentials',
+	'create-data-table',
+	'data-table-agent',
+]);
+
 function extractFromToolCall(tc: InstanceAiToolCallState, map: Map<string, ResourceEntry>): void {
+	if (!ARTIFACT_TOOLS.has(tc.toolName)) return;
 	if (!tc.result || typeof tc.result !== 'object') return;
 	const result = tc.result as Record<string, unknown>;
 
@@ -74,6 +95,11 @@ function extractFromToolCall(tc: InstanceAiToolCallState, map: Map<string, Resou
 		for (const table of result.dataTables as Array<Record<string, unknown>>) {
 			registerResource(map, 'data-table', table);
 		}
+	}
+
+	// Singular data table (e.g. create-data-table result)
+	if (result.table && typeof result.table === 'object') {
+		registerResource(map, 'data-table', result.table as Record<string, unknown>);
 	}
 }
 

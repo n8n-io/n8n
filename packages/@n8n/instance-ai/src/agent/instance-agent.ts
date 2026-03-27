@@ -3,7 +3,7 @@ import { Agent } from '@mastra/core/agent';
 import { Mastra } from '@mastra/core/mastra';
 import { ToolSearchProcessor, type ToolSearchProcessorOptions } from '@mastra/core/processors';
 import type { MastraCompositeStore } from '@mastra/core/storage';
-import { withLangsmithMetadata } from '@mastra/langsmith';
+import { withLangsmithMetadata, LangSmithExporter } from '@mastra/langsmith';
 import { MCPClient } from '@mastra/mcp';
 import { buildTracingOptions, Observability } from '@mastra/observability';
 import { nanoid } from 'nanoid';
@@ -53,14 +53,7 @@ let cachedMastraStorageKey = '';
 // Tools that are always loaded into the orchestrator's context (no search required).
 // These are used in nearly every conversation per system prompt analysis.
 // All other tools are deferred behind ToolSearchProcessor for on-demand discovery.
-const ALWAYS_LOADED_TOOLS = new Set([
-	'plan',
-	'delegate',
-	'build-workflow-with-agent',
-	'ask-user',
-	'web-search',
-	'fetch-url',
-]);
+const ALWAYS_LOADED_TOOLS = new Set(['plan', 'delegate', 'ask-user', 'web-search', 'fetch-url']);
 
 function getOrCreateToolSearchProcessor(tools: ToolsInput): ToolSearchProcessor {
 	const key = JSON.stringify(Object.keys(tools).sort());
@@ -154,7 +147,7 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	const domainTools = createAllTools(context);
 
 	// Tools that only the builder sub-agent should use (not the orchestrator).
-	// The orchestrator should call build-workflow-with-agent for all workflow work.
+	// The orchestrator should submit planned build-workflow tasks instead.
 	const BUILDER_ONLY_TOOLS = new Set([
 		'search-nodes',
 		'list-nodes',
@@ -167,8 +160,9 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		'get-workflow-as-code',
 	]);
 
-	// Write/mutate data-table tools stay behind manage-data-tables-with-agent.
-	// Read tools (list, schema, query) are available directly to the orchestrator.
+	// Write/mutate data-table tools are not exposed directly to the orchestrator.
+	// Read tools (list, schema, query) remain directly available.
+	// Detached table changes should go through planned manage-data-tables tasks.
 	const DATA_TABLE_WRITE_TOOLS = new Set([
 		'create-data-table',
 		'delete-data-table',
@@ -275,6 +269,7 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 				filesystemAccess: !!(context.localMcpServer ?? context.filesystemService),
 				toolSearchEnabled: hasDeferrableTools,
 				licenseHints: context.licenseHints,
+				timeZone: options.timeZone,
 			}),
 			providerOptions: {
 				anthropic: { cacheControl: { type: 'ephemeral' } },
@@ -286,10 +281,6 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		defaultOptions: {
 			tracingOptions: buildTracingOptions(
 				withLangsmithMetadata({ projectName: 'instance-ai' }),
-				// Prevent full request/response bodies from being retained in RunTree
-				// trace nodes.  LangSmith's RunTree stores inputs/outputs in memory for
-				// the lifetime of the trace — with a 106KB system prompt this causes
-				// ~25MB+ of retained heap per long conversation.
 				(opts) => ({ ...opts, recordInputs: false, recordOutputs: false }),
 			),
 		},

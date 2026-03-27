@@ -4,7 +4,7 @@ import { z } from 'zod';
 import type { ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
 import { MAX_FILE_SIZE } from './constants';
-import { resolveSafePath } from './fs-utils';
+import { buildFilesystemResource, resolveSafePath } from './fs-utils';
 
 const inputSchema = z.object({
 	filePath: z.string().describe('File path relative to root'),
@@ -18,6 +18,11 @@ export const editFileTool: ToolDefinition<typeof inputSchema> = {
 		'Apply a targeted search-and-replace to a file. Replaces the first occurrence of oldString with newString. Fails if oldString is not found.',
 	inputSchema,
 	annotations: { defaultPermission: 'confirm' },
+	async getAffectedResources({ filePath }, { dir }) {
+		return [
+			await buildFilesystemResource(dir, filePath, 'filesystemWrite', `Edit file: ${filePath}`),
+		];
+	},
 	async execute({ filePath, oldString, newString }, { dir }) {
 		const resolvedPath = await resolveSafePath(dir, filePath);
 

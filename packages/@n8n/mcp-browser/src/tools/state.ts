@@ -5,16 +5,19 @@ import type { ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
 import { createSessionTool, pageIdField, sessionIdField } from './helpers';
 
-export function createStateTools(sessionManager: SessionManager): ToolDefinition[] {
+export function createStateTools(
+	sessionManager: SessionManager,
+	toolGroupId: string,
+): ToolDefinition[] {
 	return [
-		browserCookies(sessionManager),
-		browserStorage(sessionManager),
-		browserSetOffline(sessionManager),
-		browserSetHeaders(sessionManager),
-		browserSetGeolocation(sessionManager),
-		browserSetTimezone(sessionManager),
-		browserSetLocale(sessionManager),
-		browserSetDevice(sessionManager),
+		browserCookies(sessionManager, toolGroupId),
+		browserStorage(sessionManager, toolGroupId),
+		browserSetOffline(sessionManager, toolGroupId),
+		browserSetHeaders(sessionManager, toolGroupId),
+		browserSetGeolocation(sessionManager, toolGroupId),
+		browserSetTimezone(sessionManager, toolGroupId),
+		browserSetLocale(sessionManager, toolGroupId),
+		browserSetDevice(sessionManager, toolGroupId),
 	];
 }
 
@@ -66,7 +69,7 @@ const browserCookiesOutputSchema = z.object({
 	cleared: z.boolean().optional(),
 });
 
-function browserCookies(sessionManager: SessionManager): ToolDefinition {
+function browserCookies(sessionManager: SessionManager, toolGroupId: string): ToolDefinition {
 	return createSessionTool(
 		sessionManager,
 		'browser_cookies',
@@ -89,6 +92,7 @@ function browserCookies(sessionManager: SessionManager): ToolDefinition {
 			}
 		},
 		browserCookiesOutputSchema,
+		toolGroupId,
 	);
 }
 
@@ -132,7 +136,7 @@ const browserStorageOutputSchema = z.object({
 	cleared: z.boolean().optional(),
 });
 
-function browserStorage(sessionManager: SessionManager): ToolDefinition {
+function browserStorage(sessionManager: SessionManager, toolGroupId: string): ToolDefinition {
 	return createSessionTool(
 		sessionManager,
 		'browser_storage',
@@ -155,6 +159,7 @@ function browserStorage(sessionManager: SessionManager): ToolDefinition {
 			}
 		},
 		browserStorageOutputSchema,
+		toolGroupId,
 	);
 }
 
@@ -172,7 +177,7 @@ const browserSetOfflineOutputSchema = z.object({
 	offline: z.boolean(),
 });
 
-function browserSetOffline(sessionManager: SessionManager): ToolDefinition {
+function browserSetOffline(sessionManager: SessionManager, toolGroupId: string): ToolDefinition {
 	return createSessionTool(
 		sessionManager,
 		'browser_set_offline',
@@ -183,6 +188,7 @@ function browserSetOffline(sessionManager: SessionManager): ToolDefinition {
 			return formatCallToolResult({ offline: input.offline });
 		},
 		browserSetOfflineOutputSchema,
+		toolGroupId,
 	);
 }
 
@@ -200,7 +206,7 @@ const browserSetHeadersOutputSchema = z.object({
 	headers: z.record(z.unknown()),
 });
 
-function browserSetHeaders(sessionManager: SessionManager): ToolDefinition {
+function browserSetHeaders(sessionManager: SessionManager, toolGroupId: string): ToolDefinition {
 	return createSessionTool(
 		sessionManager,
 		'browser_set_headers',
@@ -211,6 +217,7 @@ function browserSetHeaders(sessionManager: SessionManager): ToolDefinition {
 			return formatCallToolResult({ headers: input.headers });
 		},
 		browserSetHeadersOutputSchema,
+		toolGroupId,
 	);
 }
 
@@ -239,7 +246,10 @@ const browserSetGeolocationOutputSchema = z.object({
 	geolocation: z.record(z.unknown()).nullable(),
 });
 
-function browserSetGeolocation(sessionManager: SessionManager): ToolDefinition {
+function browserSetGeolocation(
+	sessionManager: SessionManager,
+	toolGroupId: string,
+): ToolDefinition {
 	return createSessionTool(
 		sessionManager,
 		'browser_set_geolocation',
@@ -259,6 +269,7 @@ function browserSetGeolocation(sessionManager: SessionManager): ToolDefinition {
 			return formatCallToolResult({ geolocation: geo });
 		},
 		browserSetGeolocationOutputSchema,
+		toolGroupId,
 	);
 }
 
@@ -276,7 +287,7 @@ const browserSetTimezoneOutputSchema = z.object({
 	timezone: z.string(),
 });
 
-function browserSetTimezone(sessionManager: SessionManager): ToolDefinition {
+function browserSetTimezone(sessionManager: SessionManager, toolGroupId: string): ToolDefinition {
 	return createSessionTool(
 		sessionManager,
 		'browser_set_timezone',
@@ -287,6 +298,7 @@ function browserSetTimezone(sessionManager: SessionManager): ToolDefinition {
 			return formatCallToolResult({ timezone: input.timezone });
 		},
 		browserSetTimezoneOutputSchema,
+		toolGroupId,
 	);
 }
 
@@ -304,7 +316,7 @@ const browserSetLocaleOutputSchema = z.object({
 	locale: z.string(),
 });
 
-function browserSetLocale(sessionManager: SessionManager): ToolDefinition {
+function browserSetLocale(sessionManager: SessionManager, toolGroupId: string): ToolDefinition {
 	return createSessionTool(
 		sessionManager,
 		'browser_set_locale',
@@ -315,6 +327,7 @@ function browserSetLocale(sessionManager: SessionManager): ToolDefinition {
 			return formatCallToolResult({ locale: input.locale });
 		},
 		browserSetLocaleOutputSchema,
+		toolGroupId,
 	);
 }
 
@@ -332,7 +345,7 @@ const browserSetDeviceOutputSchema = z.object({
 	device: z.string(),
 });
 
-function browserSetDevice(sessionManager: SessionManager): ToolDefinition {
+function browserSetDevice(sessionManager: SessionManager, toolGroupId: string): ToolDefinition {
 	return createSessionTool(
 		sessionManager,
 		'browser_set_device',
@@ -343,5 +356,6 @@ function browserSetDevice(sessionManager: SessionManager): ToolDefinition {
 			return formatCallToolResult({ device: input.device });
 		},
 		browserSetDeviceOutputSchema,
+		toolGroupId,
 	);
 }

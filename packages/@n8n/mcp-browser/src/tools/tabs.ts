@@ -5,12 +5,15 @@ import type { ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
 import { createSessionTool, sessionIdField } from './helpers';
 
-export function createTabTools(sessionManager: SessionManager): ToolDefinition[] {
+export function createTabTools(
+	sessionManager: SessionManager,
+	toolGroupId: string,
+): ToolDefinition[] {
 	return [
-		tabOpen(sessionManager),
-		tabList(sessionManager),
-		tabFocus(sessionManager),
-		tabClose(sessionManager),
+		tabOpen(sessionManager, toolGroupId),
+		tabList(sessionManager, toolGroupId),
+		tabFocus(sessionManager, toolGroupId),
+		tabClose(sessionManager, toolGroupId),
 	];
 }
 
@@ -25,7 +28,7 @@ const tabOpenOutputSchema = z.object({
 	url: z.string(),
 });
 
-function tabOpen(sessionManager: SessionManager): ToolDefinition {
+function tabOpen(sessionManager: SessionManager, toolGroupId: string): ToolDefinition {
 	return createSessionTool(
 		sessionManager,
 		'browser_tab_open',
@@ -42,6 +45,15 @@ function tabOpen(sessionManager: SessionManager): ToolDefinition {
 			});
 		},
 		tabOpenOutputSchema,
+		toolGroupId,
+		(args: z.infer<typeof tabOpenSchema>) => {
+			if (!args.url) return 'browser';
+			try {
+				return new URL(args.url).hostname || 'browser';
+			} catch {
+				return 'browser';
+			}
+		},
 	);
 }
 
@@ -60,7 +72,7 @@ const tabListOutputSchema = z.object({
 	),
 });
 
-function tabList(sessionManager: SessionManager): ToolDefinition {
+function tabList(sessionManager: SessionManager, toolGroupId: string): ToolDefinition {
 	return createSessionTool(
 		sessionManager,
 		'browser_tab_list',
@@ -76,6 +88,7 @@ function tabList(sessionManager: SessionManager): ToolDefinition {
 			});
 		},
 		tabListOutputSchema,
+		toolGroupId,
 	);
 }
 
@@ -88,7 +101,7 @@ const tabFocusOutputSchema = z.object({
 	activePageId: z.string(),
 });
 
-function tabFocus(sessionManager: SessionManager): ToolDefinition {
+function tabFocus(sessionManager: SessionManager, toolGroupId: string): ToolDefinition {
 	return createSessionTool(
 		sessionManager,
 		'browser_tab_focus',
@@ -106,6 +119,7 @@ function tabFocus(sessionManager: SessionManager): ToolDefinition {
 			return formatCallToolResult({ activePageId: input.pageId });
 		},
 		tabFocusOutputSchema,
+		toolGroupId,
 	);
 }
 
@@ -120,7 +134,7 @@ const tabCloseOutputSchema = z.object({
 	sessionClosed: z.boolean(),
 });
 
-function tabClose(sessionManager: SessionManager): ToolDefinition {
+function tabClose(sessionManager: SessionManager, toolGroupId: string): ToolDefinition {
 	return createSessionTool(
 		sessionManager,
 		'browser_tab_close',
@@ -144,5 +158,6 @@ function tabClose(sessionManager: SessionManager): ToolDefinition {
 			return formatCallToolResult({ closed: true, pageId: input.pageId, sessionClosed });
 		},
 		tabCloseOutputSchema,
+		toolGroupId,
 	);
 }

@@ -1,20 +1,26 @@
+import type {
+	InstanceAiEnsureThreadResponse,
+	InstanceAiRichMessagesResponse,
+	InstanceAiThreadContextResponse,
+	InstanceAiThreadInfo,
+	InstanceAiThreadListResponse,
+	InstanceAiThreadMessagesResponse,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { InstanceAiConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { createMemory, WORKING_MEMORY_TEMPLATE } from '@n8n/instance-ai';
-import type {
-	InstanceAiEnsureThreadResponse,
-	InstanceAiThreadListResponse,
-	InstanceAiThreadMessagesResponse,
-	InstanceAiThreadContextResponse,
-	InstanceAiRichMessagesResponse,
-	InstanceAiThreadInfo,
-} from '@n8n/api-types';
+import {
+	AgentTreeSnapshotStorage,
+	createMemory,
+	patchThread,
+	WORKING_MEMORY_TEMPLATE,
+} from '@n8n/instance-ai';
+
+import { DbSnapshotStorage } from './storage/db-snapshot-storage';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import { AgentTreeSnapshotStorage } from './agent-tree-snapshot';
 import { parseStoredMessages } from './message-parser';
 import type { MastraDBMessage } from './message-parser';
 import { TypeORMCompositeStore } from './storage/typeorm-composite-store';
@@ -27,6 +33,7 @@ export class InstanceAiMemoryService {
 		private readonly logger: Logger,
 		globalConfig: GlobalConfig,
 		private readonly compositeStore: TypeORMCompositeStore,
+		private readonly dbSnapshotStorage: DbSnapshotStorage,
 	) {
 		this.instanceAiConfig = globalConfig.instanceAi;
 	}
@@ -184,9 +191,22 @@ export class InstanceAiMemoryService {
 			throw error;
 		}
 
-		// Fetch agent tree snapshots from thread metadata
-		const snapshotStorage = new AgentTreeSnapshotStorage(memory);
-		const snapshots = await snapshotStorage.getAll(threadId);
+		// Fetch agent tree snapshots: DB table (new) + legacy metadata fallback
+		const dbSnapshots = await this.dbSnapshotStorage.getAll(threadId).catch((error) => {
+			this.logger.warn('Failed to load DB snapshots, falling back to metadata', {
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return [];
+		});
+
+		// Legacy metadata snapshots for threads created before the table migration
+		const legacyStorage = new AgentTreeSnapshotStorage(memory);
+		const legacySnapshots = await legacyStorage.getAll(threadId);
+
+		// Merge: deduplicate by runId (prefer DB version), maintain chronological order
+		const dbRunIds = new Set(dbSnapshots.map((s) => s.runId));
+		const snapshots = [...legacySnapshots.filter((s) => !dbRunIds.has(s.runId)), ...dbSnapshots];
 
 		// Parse into rich messages with agent trees
 		const mastraMessages: MastraDBMessage[] = result.messages.map((m) => ({
@@ -236,15 +256,13 @@ export class InstanceAiMemoryService {
 		title: string,
 	): Promise<InstanceAiThreadInfo> {
 		const memory = this.createMemoryInstance();
-		const thread = await memory.getThreadById({ threadId });
-		if (!thread) {
+		const updated = await patchThread(memory, {
+			threadId,
+			update: ({ metadata }) => ({ title, metadata }),
+		});
+		if (!updated) {
 			throw new NotFoundError(`Thread ${threadId} not found`);
 		}
-		const updated = await memory.updateThread({
-			id: threadId,
-			title,
-			metadata: thread.metadata ?? {},
-		});
 		return this.toThreadInfo(updated);
 	}
 
@@ -262,7 +280,9 @@ export class InstanceAiMemoryService {
 	 * Delete conversation threads older than the configured TTL.
 	 * Safe to call on startup — no-op if threadTtlDays is 0 (disabled).
 	 */
-	async cleanupExpiredThreads(): Promise<number> {
+	async cleanupExpiredThreads(
+		onThreadDeleted?: (threadId: string) => Promise<void>,
+	): Promise<number> {
 		const ttlDays = this.instanceAiConfig.threadTtlDays;
 		if (!ttlDays || ttlDays <= 0) return 0;
 
@@ -282,6 +302,7 @@ export class InstanceAiMemoryService {
 			for (const thread of result.threads) {
 				if (thread.updatedAt < cutoff) {
 					try {
+						await onThreadDeleted?.(thread.id);
 						await memory.deleteThread(thread.id);
 						deletedCount++;
 						deletedInPage++;
