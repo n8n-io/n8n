@@ -94,6 +94,7 @@ export function createDeepLazyProxy(basePath: string[] = [], knownKeys?: string[
 			arguments: { copy: true },
 			result: { copy: true },
 		});
+		throwIfErrorSentinel(value);
 		if (isObjectMetadata(value)) {
 			fetchedKeys = value.__keys;
 			return fetchedKeys;
@@ -205,6 +206,7 @@ export function createDeepLazyProxy(basePath: string[] = [], knownKeys?: string[
 									arguments: { copy: true },
 									result: { copy: true },
 								});
+								throwIfErrorSentinel(element);
 								// Handle element metadata (arrays and objects need proxies)
 								if (element && typeof element === 'object' && element.__isArray) {
 									const elementPath = [...path, String(index)];

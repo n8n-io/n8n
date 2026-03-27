@@ -388,6 +388,24 @@ describe('createDeepLazyProxy', () => {
 	});
 
 	// -----------------------------------------------------------------------
+	// 10b. Error sentinel propagation
+	// -----------------------------------------------------------------------
+
+	describe('error sentinel propagation', () => {
+		const sentinel = { __isError: true, name: 'TypeError', message: 'boom' };
+
+		it('does not cache the sentinel when __getArrayElement returns an error', () => {
+			mocks.getValueAtPath.mockReturnValue({ __isArray: true, __length: 3 });
+			mocks.getArrayElement.mockReturnValue(sentinel);
+			const proxy = createDeepLazyProxy();
+			expect(() => proxy.arr[0]).toThrow();
+			// Should call again on second access (not cached as a value)
+			expect(() => proxy.arr[0]).toThrow();
+			expect(mocks.getArrayElement).toHaveBeenCalledTimes(2);
+		});
+	});
+
+	// -----------------------------------------------------------------------
 	// 11. Edge cases
 	// -----------------------------------------------------------------------
 
