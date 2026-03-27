@@ -167,10 +167,13 @@ export class InstanceAiAdapterService {
 
 	createContext(
 		user: User,
-		filesystemService?: InstanceAiFilesystemService,
-		searchProxyConfig?: ServiceProxyConfig,
-		pushRef?: string,
+		options?: {
+			filesystemService?: InstanceAiFilesystemService;
+			searchProxyConfig?: ServiceProxyConfig;
+			pushRef?: string;
+		},
 	): InstanceAiContext {
+		const { filesystemService, searchProxyConfig, pushRef } = options ?? {};
 		return {
 			userId: user.id,
 			workflowService: this.createWorkflowAdapter(user),

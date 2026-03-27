@@ -1,10 +1,11 @@
-import type {
-	InstanceAiAttachment,
-	InstanceAiEvent,
-	InstanceAiThreadStatusResponse,
-	InstanceAiGatewayCapabilities,
-	McpToolCallResult,
-	TaskList,
+import {
+	UNLIMITED_CREDITS,
+	type InstanceAiAttachment,
+	type InstanceAiEvent,
+	type InstanceAiThreadStatusResponse,
+	type InstanceAiGatewayCapabilities,
+	type McpToolCallResult,
+	type TaskList,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -123,6 +124,9 @@ export class InstanceAiService {
 
 	/** Periodic sweep that auto-rejects timed-out HITL confirmations. */
 	private confirmationTimeoutInterval?: NodeJS.Timeout;
+
+	/** In-memory guard to prevent double credit counting within the same process. */
+	private readonly creditedThreads = new Set<string>();
 
 	/** Default IANA timezone for the instance (from GENERIC_TIMEZONE env var). */
 	private readonly defaultTimeZone: string;
@@ -312,20 +316,29 @@ export class InstanceAiService {
 	/**
 	 * Count one credit for the first completed orchestrator run in a thread.
 	 * Subsequent messages in the same thread are free.
-	 * The flag is persisted in the thread's metadata column so it survives restarts.
 	 *
-	 * Note: There is a small theoretical race window between reading the thread
-	 * and saving creditCounted=true. Given same-thread concurrent completions are
-	 * extremely unlikely, this is acceptable without an atomic DB update.
+	 * Race-condition mitigation strategy:
+	 * - In-memory Set (`creditedThreads`) prevents concurrent calls within
+	 *   the same process from both passing the check.
+	 * - DB metadata (`creditCounted: true`) survives process restarts.
+	 * - markBuilderSuccess is idempotent on the proxy side, so a theoretical
+	 *   double-count after a crash mid-save is harmless.
 	 */
 	private async countCreditsIfFirst(user: User, threadId: string, runId: string): Promise<void> {
 		if (!this.aiService.isProxyEnabled()) return;
 
+		// Fast in-memory check — prevents the read-then-write race within a single process.
+		if (this.creditedThreads.has(threadId)) return;
+
 		const thread = await this.threadRepo.findOneBy({ id: threadId });
 		if (!thread) return;
-		if (thread.metadata?.creditCounted) return;
+		if (thread.metadata?.creditCounted) {
+			this.creditedThreads.add(threadId); // Sync in-memory with DB state
+			return;
+		}
 
 		try {
+			this.creditedThreads.add(threadId); // Claim before async work
 			const { client, headers: authHeaders } = await this.getProxyAuth(user);
 			const info = await client.markBuilderSuccess({ id: user.id }, authHeaders);
 			if (info) {
@@ -340,6 +353,7 @@ export class InstanceAiService {
 				);
 			}
 		} catch (err) {
+			this.creditedThreads.delete(threadId); // Allow retry on failure
 			this.logger.warn('Failed to count Instance AI credits', {
 				error: getErrorMessage(err),
 				threadId,
@@ -356,7 +370,7 @@ export class InstanceAiService {
 	/** Get current credit usage from the AI service proxy. */
 	async getCredits(user: User): Promise<{ creditsQuota: number; creditsClaimed: number }> {
 		if (!this.aiService.isProxyEnabled()) {
-			return { creditsQuota: -1, creditsClaimed: 0 };
+			return { creditsQuota: UNLIMITED_CREDITS, creditsClaimed: 0 };
 		}
 		const client = await this.aiService.getClient();
 		return await client.getBuilderInstanceCredits({ id: user.id });
@@ -736,13 +750,13 @@ export class InstanceAiService {
 			!localGatewayDisabled && !userGateway?.isConnected && this.isLocalFilesystemAvailable()
 				? this.getLocalFsProvider()
 				: undefined;
+		// Each resolve*() call fetches a separate proxy token for audit tracking (see getProxyAuth)
 		const searchProxyConfig = await this.resolveSearchProxyConfig(user);
-		const context = this.adapterService.createContext(
-			user,
-			localFilesystemService,
+		const context = this.adapterService.createContext(user, {
+			filesystemService: localFilesystemService,
 			searchProxyConfig,
 			pushRef,
-		);
+		});
 		if (!localGatewayDisabled && userGateway?.isConnected) {
 			context.localMcpServer = userGateway;
 		}
@@ -756,7 +770,7 @@ export class InstanceAiService {
 		context.domainAccessTracker = domainTracker;
 		context.runId = runId;
 
-		const modelId = await this.resolveModel(user);
+		const modelId = await this.resolveModel(user); // separate proxy token — see getProxyAuth
 		const memory = createMemory(this.createMemoryConfig(modelId));
 		await this.ensureThreadExists(memory, threadId, user.id);
 
@@ -1051,7 +1065,7 @@ export class InstanceAiService {
 					messageGroupId,
 					executionPushRef,
 				);
-			const tracingConfig = await this.resolveTracingConfig(user);
+			const tracingConfig = await this.resolveTracingConfig(user); // separate proxy token — see getProxyAuth
 			orchestrationContext.tracingConfig = tracingConfig;
 			const memoryConfig = this.createMemoryConfig(modelId);
 

@@ -9,6 +9,7 @@ import { ResponseError } from '@n8n/rest-api-client';
 import {
 	instanceAiEventSchema,
 	isSafeObjectKey,
+	UNLIMITED_CREDITS,
 	type InstanceAiConfirmResponse,
 } from '@n8n/api-types';
 import {
@@ -131,6 +132,9 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const debugMode = ref(false);
 	const researchMode = ref(localStorage.getItem('instanceAi.researchMode') === 'true');
 	const amendContext = ref<{ agentId: string; role: string } | null>(null);
+	// Credits are instance-level state (not per-thread). Re-fetched on mount via fetchCredits(),
+	// and updated in real-time via the 'updateInstanceAiCredits' push event.
+	// No reset needed on thread switch — login/logout reloads the page.
 	const creditsQuota = ref<number | undefined>(undefined);
 	const creditsClaimed = ref<number | undefined>(undefined);
 	const resolvedConfirmationIds = ref<Map<string, 'approved' | 'denied' | 'deferred'>>(new Map());
@@ -194,13 +198,11 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		return null;
 	});
 
-	const INFINITE_CREDITS = -1;
-
 	const creditsRemaining = computed(() => {
 		if (
 			creditsQuota.value === undefined ||
 			creditsClaimed.value === undefined ||
-			creditsQuota.value === INFINITE_CREDITS
+			creditsQuota.value === UNLIMITED_CREDITS
 		) {
 			return undefined;
 		}
@@ -210,7 +212,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const creditsPercentageRemaining = computed(() => {
 		if (
 			creditsQuota.value === undefined ||
-			creditsQuota.value === INFINITE_CREDITS ||
+			creditsQuota.value === UNLIMITED_CREDITS ||
 			creditsRemaining.value === undefined
 		) {
 			return undefined;

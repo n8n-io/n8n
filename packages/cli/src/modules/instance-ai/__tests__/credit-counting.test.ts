@@ -53,6 +53,7 @@ function createService(deps: {
 		threadRepo: deps.threadRepo,
 		aiService: deps.aiService,
 		push: deps.push,
+		creditedThreads: new Set<string>(),
 		logger: { warn: jest.fn(), debug: jest.fn() },
 	});
 	return service;
@@ -171,5 +172,18 @@ describe('countCreditsIfFirst', () => {
 
 		expect(threadRepo.findOneBy).not.toHaveBeenCalled();
 		expect(ai.getClient).not.toHaveBeenCalled();
+	});
+
+	it('should skip markBuilderSuccess on second call for the same thread (in-memory guard)', async () => {
+		const threadRepo = createMockThreadRepo({ id: 't1', metadata: {} });
+		const ai = createMockAiService();
+		const push = { sendToUsers: jest.fn() };
+
+		const service = createService({ threadRepo, aiService: ai, push });
+		await callCountCredits(service);
+		await callCountCredits(service);
+
+		const client = await ai.getClient();
+		expect(client.markBuilderSuccess).toHaveBeenCalledTimes(1);
 	});
 });
