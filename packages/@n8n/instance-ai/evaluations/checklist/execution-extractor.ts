@@ -1,29 +1,6 @@
-import Anthropic from '@anthropic-ai/sdk';
-
 import type { ChecklistItem, ExecutionChecklist } from '../types';
 import { EXECUTION_CHECKLIST_EXTRACT_PROMPT } from '../system-prompts/execution-extract';
-
-// ---------------------------------------------------------------------------
-// Config
-// ---------------------------------------------------------------------------
-
-const EVAL_MODEL = 'claude-sonnet-4-6';
-const MAX_TOKENS = 16_384;
-
-// ---------------------------------------------------------------------------
-// Anthropic client (lazy singleton)
-// ---------------------------------------------------------------------------
-
-let _client: Anthropic | undefined;
-
-function getClient(): Anthropic {
-	if (!_client) {
-		_client = new Anthropic({
-			apiKey: process.env.N8N_AI_ANTHROPIC_KEY ?? process.env.ANTHROPIC_API_KEY,
-		});
-	}
-	return _client;
-}
+import { createEvalAgent, extractText } from '../../src/utils/eval-agents';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -100,25 +77,16 @@ ${prompt}
 
 ${workflowSummary}${seededSection}${executionSection}`;
 
-	const client = getClient();
-
-	const response = await client.messages.create({
-		model: EVAL_MODEL,
-		max_tokens: MAX_TOKENS,
-		system: [
-			{
-				type: 'text',
-				text: EXECUTION_CHECKLIST_EXTRACT_PROMPT,
-				cache_control: { type: 'ephemeral' },
-			},
-		],
-		messages: [{ role: 'user', content: userMessage }],
+	const agent = createEvalAgent('eval-execution-checklist-extractor', {
+		instructions: EXECUTION_CHECKLIST_EXTRACT_PROMPT,
+		cache: true,
 	});
 
-	const content = response.content
-		.filter((block): block is Anthropic.TextBlock => block.type === 'text')
-		.map((block) => block.text)
-		.join('');
+	const result = await agent.generate(userMessage, {
+		providerOptions: { anthropic: { maxTokens: 16_384 } },
+	});
+
+	const content = extractText(result);
 
 	const parsed = parseJsonObject(content);
 	if (!parsed || !Array.isArray(parsed.items) || !Array.isArray(parsed.testInputs)) {
