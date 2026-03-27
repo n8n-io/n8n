@@ -110,6 +110,8 @@ export class RoleMappingRuleService {
 
 		const saved = await this.roleMappingRuleRepository.save(rule);
 
+		await this.normalizeOrderForType(dto.type);
+
 		const loaded = await this.roleMappingRuleRepository.findOneOrFail({
 			where: { id: saved.id },
 			relations: ['projects', 'role'],
@@ -136,7 +138,8 @@ export class RoleMappingRuleService {
 			throw new NotFoundError('Could not find role mapping rule');
 		}
 
-		const mergedType = dto.type ?? (rule.type as 'instance' | 'project');
+		const originalType = rule.type as 'instance' | 'project';
+		const mergedType = dto.type ?? originalType;
 		const mergedOrder = dto.order ?? rule.order;
 		const mergedExpression = dto.expression ?? rule.expression;
 		const mergedRoleSlug = dto.role ?? rule.role.slug;
@@ -178,6 +181,11 @@ export class RoleMappingRuleService {
 
 		await this.roleMappingRuleRepository.save(rule);
 
+		await this.normalizeOrderForType(mergedType);
+		if (originalType !== mergedType) {
+			await this.normalizeOrderForType(originalType);
+		}
+
 		const loaded = await this.roleMappingRuleRepository.findOneOrFail({
 			where: { id: rule.id },
 			relations: ['projects', 'role'],
@@ -197,7 +205,36 @@ export class RoleMappingRuleService {
 			throw new NotFoundError('Could not find role mapping rule');
 		}
 
+		const ruleType = rule.type as 'instance' | 'project';
 		await this.roleMappingRuleRepository.remove(rule);
+		await this.normalizeOrderForType(ruleType);
+	}
+
+	private async normalizeOrderForType(type: 'instance' | 'project'): Promise<void> {
+		const rules = await this.roleMappingRuleRepository.find({
+			where: { type },
+			select: ['id', 'order'],
+			order: { order: 'ASC' },
+		});
+
+		if (rules.length === 0) return;
+
+		// Early exit: already a contiguous sequence starting at 0
+		if (rules.every((r, i) => r.order === i)) return;
+
+		await this.roleMappingRuleRepository.manager.transaction(async (tx) => {
+			// Phase 1 — move all to a safe high offset to avoid unique constraint
+			// conflicts during resequencing (checked per-statement in SQLite/Postgres)
+			const offset = rules.length + 1000;
+			for (let i = 0; i < rules.length; i++) {
+				await tx.update(RoleMappingRule, { id: rules[i].id }, { order: offset + i });
+			}
+
+			// Phase 2 — assign final 0-based contiguous orders
+			for (let i = 0; i < rules.length; i++) {
+				await tx.update(RoleMappingRule, { id: rules[i].id }, { order: i });
+			}
+		});
 	}
 
 	private async assertOrderAvailable(
