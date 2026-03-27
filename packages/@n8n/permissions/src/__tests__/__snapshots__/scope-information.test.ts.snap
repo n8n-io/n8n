@@ -179,6 +179,12 @@ exports[`Scope Information ensure scopes are defined correctly 1`] = `
   "credentialResolver:delete",
   "credentialResolver:list",
   "credentialResolver:*",
+  "roleMappingRule:create",
+  "roleMappingRule:read",
+  "roleMappingRule:update",
+  "roleMappingRule:delete",
+  "roleMappingRule:list",
+  "roleMappingRule:*",
   "*",
 ]
 `;
