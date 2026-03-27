@@ -32,9 +32,7 @@ export function useRoleMappingRulesApi() {
 		return [...store].sort((a, b) => a.order - b.order);
 	}
 
-	async function createRule(
-		input: CreateRoleMappingRuleInput,
-	): Promise<RoleMappingRuleResponse> {
+	async function createRule(input: CreateRoleMappingRuleInput): Promise<RoleMappingRuleResponse> {
 		await delay();
 		const now = nowIso();
 		const rule: RoleMappingRuleResponse = {
