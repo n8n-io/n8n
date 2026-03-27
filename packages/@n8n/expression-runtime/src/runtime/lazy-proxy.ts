@@ -263,6 +263,10 @@ export function createDeepLazyProxy(basePath: string[] = [], knownKeys?: string[
 				result: { copy: true },
 			});
 
+			// Handle errors serialized by host-side callbacks — reconstruct and throw
+			// so the isolate's outer try-catch can serialize them back via __reportError
+			throwIfErrorSentinel(value);
+
 			// Property exists if value is not undefined
 			// Note: null values mean property exists but is null
 			return value !== undefined;
