@@ -319,6 +319,91 @@ describe('McpServer', () => {
 	});
 
 	describe('handleWorkerResponse', () => {
+		it('should set isError on error results sent via SSE transport', async () => {
+			const sessionId = 'test-session';
+			const transport = createMockTransport(sessionId, 'sse');
+			const server = createMockServer();
+
+			const sessionManager = (
+				mcpServer as unknown as {
+					sessionManager: {
+						registerSession: (
+							s: string,
+							srv: unknown,
+							tr: unknown,
+							tools?: unknown[],
+						) => Promise<void>;
+					};
+				}
+			).sessionManager;
+			await sessionManager.registerSession(sessionId, server, transport, [
+				createMockTool('test-tool'),
+			]);
+
+			// Set up queue mode so handleWorkerResponse uses SSE fallback path
+			const queuedStrategy = new QueuedExecutionStrategy(mcpServer.getPendingCallsManager());
+			mcpServer.setExecutionStrategy(queuedStrategy);
+
+			// Worker returns an error result (queue mode error format)
+			const errorResult = { error: { message: 'Bad request', name: 'NodeApiError' } };
+			mcpServer.handleWorkerResponse(sessionId, 'msg-1', errorResult);
+
+			expect(transport.send).toHaveBeenCalledWith(
+				expect.objectContaining({
+					jsonrpc: '2.0',
+					id: 'msg-1',
+					result: expect.objectContaining({
+						isError: true,
+						content: [{ type: 'text', text: JSON.stringify(errorResult) }],
+					}),
+				}),
+			);
+		});
+
+		it('should not set isError on successful results sent via SSE transport', async () => {
+			const sessionId = 'test-session';
+			const transport = createMockTransport(sessionId, 'sse');
+			const server = createMockServer();
+
+			const sessionManager = (
+				mcpServer as unknown as {
+					sessionManager: {
+						registerSession: (
+							s: string,
+							srv: unknown,
+							tr: unknown,
+							tools?: unknown[],
+						) => Promise<void>;
+					};
+				}
+			).sessionManager;
+			await sessionManager.registerSession(sessionId, server, transport, [
+				createMockTool('test-tool'),
+			]);
+
+			const queuedStrategy = new QueuedExecutionStrategy(mcpServer.getPendingCallsManager());
+			mcpServer.setExecutionStrategy(queuedStrategy);
+
+			// Worker returns a successful result
+			const successResult = { data: 'value', count: 42 };
+			mcpServer.handleWorkerResponse(sessionId, 'msg-1', successResult);
+
+			expect(transport.send).toHaveBeenCalledWith(
+				expect.objectContaining({
+					jsonrpc: '2.0',
+					id: 'msg-1',
+					result: expect.objectContaining({
+						content: [{ type: 'text', text: JSON.stringify(successResult) }],
+					}),
+				}),
+			);
+			// Verify isError is NOT present
+			const sentMessage = (transport.send as jest.Mock).mock.calls[0][0] as {
+				result: { isError?: boolean };
+			};
+			expect(sentMessage.result.isError).toBeUndefined();
+		});
+
 		it('should handle list tools request marker', async () => {
 			const sessionId = 'test-session';
 			const transport = createMockTransport(sessionId, 'sse');

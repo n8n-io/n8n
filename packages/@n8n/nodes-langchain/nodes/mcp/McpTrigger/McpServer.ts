@@ -303,7 +303,10 @@ export class McpServer {
 						`SSE queue mode: sending response directly via transport for session ${sessionId}`,
 					);
 
-					const formattedResult = MessageFormatter.formatToolResult(result);
+					const formattedResult = MessageFormatter.formatToolResult(
+						result,
+						MessageFormatter.isErrorResult(result),
+					);
 					const response: JSONRPCMessage = {
 						jsonrpc: '2.0',
 						id: messageId,
@@ -489,7 +492,7 @@ export class McpServer {
 						messageId: requestId,
 					});
 
-					return MessageFormatter.formatToolResult(result);
+					return MessageFormatter.formatToolResult(result, MessageFormatter.isErrorResult(result));
 				}
 
 				const result = await this.executionCoordinator.executeTool(requestedTool, toolArguments, {
@@ -503,7 +506,7 @@ export class McpServer {
 					this.logger.warn(`No resolve function found for ${callId}`);
 				}
 
-				return MessageFormatter.formatToolResult(result);
+				return MessageFormatter.formatToolResult(result, MessageFormatter.isErrorResult(result));
 			} catch (error) {
 				this.logger.error(
 					`Error while executing Tool ${toolName}: ${error instanceof Error ? error.message : String(error)}`,

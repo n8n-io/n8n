@@ -113,6 +113,86 @@ describe('MessageFormatter', () => {
 		});
 	});
 
+	describe('isErrorResult', () => {
+		it('should detect queue mode error objects with error.message', () => {
+			expect(
+				MessageFormatter.isErrorResult({ error: { message: 'Bad request', name: 'NodeApiError' } }),
+			).toBe(true);
+		});
+
+		it('should detect queue mode error objects with just error.message', () => {
+			expect(MessageFormatter.isErrorResult({ error: { message: 'something failed' } })).toBe(true);
+		});
+
+		it('should detect direct mode error strings from N8nTool toString()', () => {
+			expect(
+				MessageFormatter.isErrorResult('NodeApiError: Bad request - please check your parameters'),
+			).toBe(true);
+		});
+
+		it('should detect HTTP error strings from ToolHttpRequest', () => {
+			expect(MessageFormatter.isErrorResult('HTTP 401 There was an error: "Unauthorized"')).toBe(
+				true,
+			);
+		});
+
+		it('should detect generic error strings from ToolHttpRequest', () => {
+			expect(MessageFormatter.isErrorResult('There was an error: "Token not found"')).toBe(true);
+		});
+
+		it('should detect TypeError strings', () => {
+			expect(MessageFormatter.isErrorResult('TypeError: Cannot read property of undefined')).toBe(
+				true,
+			);
+		});
+
+		it('should not flag normal string results as errors', () => {
+			expect(MessageFormatter.isErrorResult('Hello world')).toBe(false);
+		});
+
+		it('should not flag normal object results as errors', () => {
+			expect(MessageFormatter.isErrorResult({ data: 'value', count: 42 })).toBe(false);
+		});
+
+		it('should not flag null/undefined as errors', () => {
+			expect(MessageFormatter.isErrorResult(null)).toBe(false);
+			expect(MessageFormatter.isErrorResult(undefined)).toBe(false);
+		});
+
+		it('should not flag numbers as errors', () => {
+			expect(MessageFormatter.isErrorResult(42)).toBe(false);
+		});
+
+		it('should not flag empty string as error', () => {
+			expect(MessageFormatter.isErrorResult('')).toBe(false);
+		});
+	});
+
+	describe('formatToolResult with isError flag', () => {
+		it('should set isError when flag is true', () => {
+			const result = MessageFormatter.formatToolResult('There was an error: "Unauthorized"', true);
+			expect(result.isError).toBe(true);
+			expect(result.content[0].text).toBe('There was an error: "Unauthorized"');
+		});
+
+		it('should not set isError when flag is false', () => {
+			const result = MessageFormatter.formatToolResult('hello world', false);
+			expect(result.isError).toBeUndefined();
+		});
+
+		it('should not set isError by default', () => {
+			const result = MessageFormatter.formatToolResult('hello world');
+			expect(result.isError).toBeUndefined();
+		});
+
+		it('should set isError for object results', () => {
+			const errorObj = { error: { message: 'Bad request', name: 'NodeApiError' } };
+			const result = MessageFormatter.formatToolResult(errorObj, true);
+			expect(result.isError).toBe(true);
+			expect(result.content[0].text).toBe(JSON.stringify(errorObj));
+		});
+	});
+
 	describe('formatError', () => {
 		it('should format error with isError flag set to true', () => {
 			const error = new Error('Something went wrong');
