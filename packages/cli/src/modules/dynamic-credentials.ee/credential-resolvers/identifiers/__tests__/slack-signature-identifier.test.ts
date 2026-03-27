@@ -80,7 +80,6 @@ describe('SlackSignatureIdentifier', () => {
 						source: 'slack-signature',
 						timestamp,
 						signature,
-						contentType: 'application/x-www-form-urlencoded',
 					},
 				};
 
@@ -104,7 +103,6 @@ describe('SlackSignatureIdentifier', () => {
 						source: 'slack-signature',
 						timestamp,
 						signature,
-						contentType: 'application/x-www-form-urlencoded',
 					},
 				};
 
@@ -127,7 +125,6 @@ describe('SlackSignatureIdentifier', () => {
 						source: 'slack-signature',
 						timestamp,
 						signature,
-						contentType: 'application/x-www-form-urlencoded',
 					},
 				};
 
@@ -151,7 +148,6 @@ describe('SlackSignatureIdentifier', () => {
 						source: 'slack-signature',
 						timestamp,
 						signature,
-						contentType: 'application/x-www-form-urlencoded',
 					},
 				};
 
@@ -164,10 +160,10 @@ describe('SlackSignatureIdentifier', () => {
 			});
 		});
 
-		describe('with JSON payload (interactive messages)', () => {
-			it('should extract user_id from nested user object', async () => {
+		describe('when user_id is absent (flat schema does not match)', () => {
+			it('should throw when body has no user_id field', async () => {
 				const timestamp = Math.floor(Date.now() / 1000).toString();
-				const rawBody = JSON.stringify({ user: { id: 'U12345' }, team: { id: 'T67890' } });
+				const rawBody = 'team_id=T67890&command=%2Fconnect';
 				const signature = computeSlackSignature(TEST_SIGNING_SECRET, timestamp, rawBody);
 
 				const context = {
@@ -177,21 +173,20 @@ describe('SlackSignatureIdentifier', () => {
 						source: 'slack-signature',
 						timestamp,
 						signature,
-						contentType: 'application/json',
 					},
 				};
 
-				const result = await identifier.resolve(context, {
-					signingSecret: TEST_SIGNING_SECRET,
-					subjectClaim: 'user_id',
-				});
-
-				expect(result).toBe('U12345');
+				await expect(
+					identifier.resolve(context, {
+						signingSecret: TEST_SIGNING_SECRET,
+						subjectClaim: 'user_id',
+					}),
+				).rejects.toThrow(IdentifierValidationError);
 			});
 
-			it('should return team_id:user_id from nested interactive payload for team_user', async () => {
+			it('should throw when body is empty', async () => {
 				const timestamp = Math.floor(Date.now() / 1000).toString();
-				const rawBody = JSON.stringify({ user: { id: 'U12345' }, team: { id: 'T67890' } });
+				const rawBody = '';
 				const signature = computeSlackSignature(TEST_SIGNING_SECRET, timestamp, rawBody);
 
 				const context = {
@@ -201,42 +196,15 @@ describe('SlackSignatureIdentifier', () => {
 						source: 'slack-signature',
 						timestamp,
 						signature,
-						contentType: 'application/json',
 					},
 				};
 
-				const result = await identifier.resolve(context, {
-					signingSecret: TEST_SIGNING_SECRET,
-					subjectClaim: 'team_user',
-				});
-
-				expect(result).toBe('T67890:U12345');
-			});
-		});
-
-		describe('with JSON payload (event callbacks)', () => {
-			it('should extract user_id from event.user field', async () => {
-				const timestamp = Math.floor(Date.now() / 1000).toString();
-				const rawBody = JSON.stringify({ event: { user: 'U12345' }, team_id: 'T67890' });
-				const signature = computeSlackSignature(TEST_SIGNING_SECRET, timestamp, rawBody);
-
-				const context = {
-					identity: rawBody,
-					version: 1 as const,
-					metadata: {
-						source: 'slack-signature',
-						timestamp,
-						signature,
-						contentType: 'application/json',
-					},
-				};
-
-				const result = await identifier.resolve(context, {
-					signingSecret: TEST_SIGNING_SECRET,
-					subjectClaim: 'user_id',
-				});
-
-				expect(result).toBe('U12345');
+				await expect(
+					identifier.resolve(context, {
+						signingSecret: TEST_SIGNING_SECRET,
+						subjectClaim: 'user_id',
+					}),
+				).rejects.toThrow(IdentifierValidationError);
 			});
 		});
 
@@ -253,7 +221,6 @@ describe('SlackSignatureIdentifier', () => {
 						source: 'slack-signature',
 						timestamp,
 						signature,
-						contentType: 'application/x-www-form-urlencoded',
 					},
 				};
 
@@ -277,7 +244,6 @@ describe('SlackSignatureIdentifier', () => {
 						source: 'slack-signature',
 						timestamp,
 						signature,
-						contentType: 'application/x-www-form-urlencoded',
 					},
 				};
 
@@ -301,7 +267,6 @@ describe('SlackSignatureIdentifier', () => {
 						source: 'slack-signature',
 						timestamp: oldTimestamp,
 						signature,
-						contentType: 'application/x-www-form-urlencoded',
 					},
 				};
 
@@ -324,7 +289,6 @@ describe('SlackSignatureIdentifier', () => {
 						source: 'slack-signature',
 						timestamp: 'not-a-number',
 						signature,
-						contentType: 'application/x-www-form-urlencoded',
 					},
 				};
 
@@ -364,30 +328,6 @@ describe('SlackSignatureIdentifier', () => {
 					}),
 				).rejects.toThrow(IdentifierValidationError);
 			});
-
-			it('should throw for unsupported content type', async () => {
-				const timestamp = Math.floor(Date.now() / 1000).toString();
-				const rawBody = 'user_id=U12345';
-				const signature = computeSlackSignature(TEST_SIGNING_SECRET, timestamp, rawBody);
-
-				const context = {
-					identity: rawBody,
-					version: 1 as const,
-					metadata: {
-						source: 'slack-signature',
-						timestamp,
-						signature,
-						contentType: 'text/plain',
-					},
-				};
-
-				await expect(
-					identifier.resolve(context, {
-						signingSecret: TEST_SIGNING_SECRET,
-						subjectClaim: 'user_id',
-					}),
-				).rejects.toThrow(IdentifierValidationError);
-			});
 		});
 
 		it('should throw when identity is empty', async () => {
@@ -417,7 +357,6 @@ describe('SlackSignatureIdentifier', () => {
 					source: 'slack-signature',
 					timestamp,
 					signature,
-					contentType: 'application/x-www-form-urlencoded',
 				},
 			};
 
@@ -441,7 +380,6 @@ describe('SlackSignatureIdentifier', () => {
 					source: 'slack-signature',
 					timestamp: '1234567890',
 					signature: fakeSignature,
-					contentType: 'application/x-www-form-urlencoded',
 				},
 			};
 
@@ -463,7 +401,6 @@ describe('SlackSignatureIdentifier', () => {
 					source: 'slack-signature',
 					timestamp: '1234567890',
 					signature: fakeSignature,
-					contentType: 'application/x-www-form-urlencoded',
 				},
 			};
 
@@ -484,7 +421,6 @@ describe('SlackSignatureIdentifier', () => {
 					source: 'slack-signature',
 					timestamp: '1234567890',
 					signature: fakeSignature,
-					contentType: 'application/x-www-form-urlencoded',
 				},
 			};
 
@@ -519,7 +455,6 @@ describe('SlackSignatureIdentifier', () => {
 					source: 'slack-signature',
 					timestamp: '1234567890',
 					signature: fakeSignature,
-					contentType: 'application/x-www-form-urlencoded',
 				},
 			};
 

@@ -15,7 +15,6 @@ function createSlackTriggerItem(
 			headers: {
 				'x-slack-request-timestamp': '1234567890',
 				'x-slack-signature': 'v0=somesignature',
-				'content-type': 'application/x-www-form-urlencoded',
 				...overrides.headers,
 			},
 			body: overrides.body ?? {
@@ -85,7 +84,6 @@ describe('SlackSignatureExtractor', () => {
 				headers: {
 					'x-slack-request-timestamp': '1700000000',
 					'x-slack-signature': 'v0=abc123',
-					'content-type': 'application/x-www-form-urlencoded',
 				},
 				body: { user_id: 'U12345', team_id: 'T67890' },
 			});
@@ -96,9 +94,6 @@ describe('SlackSignatureExtractor', () => {
 			expect(result.contextUpdate?.credentials?.identity).toBe('user_id=U12345&team_id=T67890');
 			expect(result.contextUpdate?.credentials?.metadata?.timestamp).toBe('1700000000');
 			expect(result.contextUpdate?.credentials?.metadata?.signature).toBe('v0=abc123');
-			expect(result.contextUpdate?.credentials?.metadata?.contentType).toBe(
-				'application/x-www-form-urlencoded',
-			);
 		});
 
 		it('should mask signature headers in trigger items', async () => {
@@ -158,7 +153,6 @@ describe('SlackSignatureExtractor', () => {
 					headers: {
 						'x-slack-request-timestamp': '1234567890',
 						'x-slack-signature': 'v0=somesignature',
-						'content-type': 'application/x-www-form-urlencoded',
 					},
 				},
 				pairedItem: { item: 0 },
@@ -168,23 +162,6 @@ describe('SlackSignatureExtractor', () => {
 			await expect(extractor.execute(options)).rejects.toThrow(
 				'Could not retrieve raw body for Slack signature verification',
 			);
-		});
-
-		it('should throw when content-type header is missing', async () => {
-			const triggerItem: INodeExecutionData = {
-				json: {
-					headers: {
-						'x-slack-request-timestamp': '1234567890',
-						'x-slack-signature': 'v0=somesignature',
-						// no content-type
-					},
-					body: { user_id: 'U12345' },
-				},
-				pairedItem: { item: 0 },
-			};
-
-			const options = createOptions({ triggerItems: [triggerItem] });
-			await expect(extractor.execute(options)).rejects.toThrow('Missing Content-Type header');
 		});
 
 		it('should throw when headers are missing entirely', async () => {

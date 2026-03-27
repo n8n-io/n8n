@@ -57,7 +57,6 @@ export class SlackSignatureExtractor implements IContextEstablishmentHook {
 		// Extract Slack-specific headers
 		const timestamp = this.getHeader(headers, 'x-slack-request-timestamp');
 		const signature = this.getHeader(headers, 'x-slack-signature');
-		const contentType = this.getHeader(headers, 'content-type');
 
 		if (!timestamp) {
 			this.logger.error('Missing X-Slack-Request-Timestamp header');
@@ -66,10 +65,6 @@ export class SlackSignatureExtractor implements IContextEstablishmentHook {
 		if (!signature) {
 			this.logger.error('Missing X-Slack-Signature header');
 			throw new Error('Missing X-Slack-Signature header');
-		}
-		if (!contentType) {
-			this.logger.error('Missing Content-Type header');
-			throw new Error('Missing Content-Type header');
 		}
 
 		// Get the raw body — needed by the resolver for signature verification
@@ -89,7 +84,6 @@ export class SlackSignatureExtractor implements IContextEstablishmentHook {
 						source: 'slack-signature',
 						timestamp,
 						signature,
-						contentType,
 					},
 				},
 			},

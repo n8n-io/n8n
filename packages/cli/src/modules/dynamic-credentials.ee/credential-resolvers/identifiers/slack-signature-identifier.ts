@@ -5,7 +5,6 @@ import { Service } from '@n8n/di';
 import type { ICredentialContext } from 'n8n-workflow';
 import { z } from 'zod';
 import { IdentifierValidationError, type ITokenIdentifier } from './identifier-interface';
-import { jsonParse } from 'n8n-workflow';
 import { parse as parseQueryString } from 'querystring';
 
 const MAX_TIMESTAMP_AGE_SECONDS = 300; // 5 minutes — Slack's recommended window
@@ -17,7 +16,6 @@ const SlackIdentitySchema = z.object({
 		source: z.literal('slack-signature'),
 		timestamp: z.string(),
 		signature: z.string(),
-		contentType: z.string(),
 	}),
 });
 
@@ -89,7 +87,7 @@ export class SlackSignatureIdentifier implements ITokenIdentifier {
 		);
 		this.logger.debug('Slack signature verified');
 
-		return this.deriveKey(result.data.identity, result.data.metadata.contentType, options);
+		return this.deriveKey(result.data.identity, options);
 	}
 
 	/**
@@ -105,11 +103,11 @@ export class SlackSignatureIdentifier implements ITokenIdentifier {
 		if (!result.success) {
 			throw new IdentifierValidationError('Missing Slack signature verification data');
 		}
-		return this.deriveKey(result.data.identity, result.data.metadata.contentType, options);
+		return this.deriveKey(result.data.identity, options);
 	}
 
-	private deriveKey(identity: string, contentType: string, options: SlackSignatureOptions): string {
-		const { userId, teamId } = this.extractSlackIdentity(identity, contentType);
+	private deriveKey(identity: string, options: SlackSignatureOptions): string {
+		const { userId, teamId } = this.extractSlackIdentity(identity);
 		if (!userId) {
 			throw new IdentifierValidationError('Slack user_id not found in identity');
 		}
@@ -175,22 +173,11 @@ export class SlackSignatureIdentifier implements ITokenIdentifier {
 	 * - Interactive messages (JSON: user.id, team.id)
 	 * - Events (JSON: event.user, team_id)
 	 */
-	private extractSlackIdentity(
-		body: string,
-		contentType: string,
-	): {
+	private extractSlackIdentity(body: string): {
 		userId: string | undefined;
 		teamId: string | undefined;
 	} {
-		let parsedBody: unknown;
-		if (contentType === 'application/json') {
-			parsedBody = jsonParse(body);
-		} else if (contentType === 'application/x-www-form-urlencoded') {
-			parsedBody = parseQueryString(body);
-		} else {
-			this.logger.error('Unsupported Slack content type', { contentType });
-			throw new IdentifierValidationError('Unsupported Slack content type');
-		}
+		const parsedBody = parseQueryString(body);
 		return (
 			this.extractFlatFieldBody(parsedBody) ??
 			this.extractInteractivePayloadBody(parsedBody) ??
