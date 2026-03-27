@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { z } from 'zod';
 import {
 	ContextEstablishmentHook,
 	type ContextEstablishmentOptions,
@@ -107,13 +108,13 @@ export class SlackSignatureExtractor implements IContextEstablishmentHook {
 	 * to use as the HMAC input for Slack signature verification.
 	 */
 	private getRawBody(triggerItem: { json: Record<string, unknown> }): string {
-		const body = triggerItem.json['body'];
+		const result = z.record(z.string(), z.string()).safeParse(triggerItem.json['body']);
 
-		if (body !== null && body !== undefined && typeof body === 'object') {
-			return new URLSearchParams(body as Record<string, string>).toString();
+		if (!result.success) {
+			this.logger.error('Could not retrieve raw body for Slack signature verification');
+			throw new Error('Could not retrieve raw body for Slack signature verification.');
 		}
 
-		this.logger.error('Could not retrieve raw body for Slack signature verification');
-		throw new Error('Could not retrieve raw body for Slack signature verification.');
+		return new URLSearchParams(result.data).toString();
 	}
 }
