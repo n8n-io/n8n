@@ -14,6 +14,7 @@ import { useUserRoleProvisioningForm } from '../provisioning/composables/useUser
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import ConfirmProvisioningDialog from '../provisioning/components/ConfirmProvisioningDialog.vue';
+import RoleMappingRuleEditor from '../provisioning/components/RoleMappingRuleEditor.vue';
 import { MODAL_CONFIRM } from '@/app/constants/modals';
 
 const i18n = useI18n();
@@ -329,6 +330,10 @@ onMounted(async () => {
 				<small>{{ i18n.baseText('settings.sso.settings.ips.xml.help') }}</small>
 			</div>
 			<UserRoleProvisioningDropdown v-model="userRoleProvisioning" auth-protocol="saml" />
+			<RoleMappingRuleEditor
+				v-if="userRoleProvisioning === 'expression_based'"
+				ref="roleMappingRuleEditorRef"
+			/>
 			<ConfirmProvisioningDialog
 				v-model="showUserRoleProvisioningDialog"
 				:new-provisioning-setting="userRoleProvisioning"
