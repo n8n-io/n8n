@@ -1,3 +1,4 @@
+import type { SuspensionInfo } from '../../utils/stream-helpers';
 import { executeResumableStream } from '../resumable-stream-executor';
 
 function createEventBus() {
@@ -237,6 +238,7 @@ describe('executeResumableStream', () => {
 			text: Promise.resolve('Done.'),
 		});
 		const waitForConfirmation = jest.fn().mockResolvedValue({ approved: true });
+		const onSuspension = jest.fn((_: SuspensionInfo) => undefined);
 
 		try {
 			await executeResumableStream({
@@ -280,12 +282,19 @@ describe('executeResumableStream', () => {
 				control: {
 					mode: 'auto',
 					waitForConfirmation,
+					onSuspension,
 				},
 			});
 		} finally {
 			warnSpy.mockRestore();
 		}
 
+		expect(onSuspension).toHaveBeenCalledTimes(1);
+		expect(onSuspension).toHaveBeenCalledWith({
+			requestId: 'request-1',
+			toolCallId: 'tool-call-1',
+			toolName: 'pause-for-user',
+		});
 		expect(waitForConfirmation).toHaveBeenCalledTimes(1);
 		expect(waitForConfirmation).toHaveBeenCalledWith('request-1');
 		expect(resumeStream).toHaveBeenCalledWith(

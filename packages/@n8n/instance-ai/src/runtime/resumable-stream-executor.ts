@@ -74,13 +74,10 @@ export async function executeResumableStream(
 
 			const parsedSuspension = parseSuspension(chunk);
 			if (parsedSuspension) {
-				if (options.control.mode === 'auto') {
-					options.control.onSuspension?.(parsedSuspension);
-				}
-
 				if (!suspension) {
 					suspension = parsedSuspension;
 					if (options.control.mode === 'auto') {
+						options.control.onSuspension?.(parsedSuspension);
 						pendingConfirmation = options.control.waitForConfirmation(parsedSuspension.requestId);
 					}
 				} else if (!isSameSuspension(parsedSuspension, suspension)) {
