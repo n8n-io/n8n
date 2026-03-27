@@ -361,6 +361,30 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 		);
 	});
 
+	it('should handle throw null without crashing', () => {
+		const data = { $json: {} };
+		let error: Error | undefined;
+		try {
+			evaluator.evaluate('{{ (() => { throw null })() }}', data);
+		} catch (e) {
+			error = e as Error;
+		}
+		expect(error).toBeDefined();
+		expect(error?.message).not.toContain('Cannot read properties');
+	});
+
+	it('should handle throw undefined without crashing', () => {
+		const data = { $json: {} };
+		let error: Error | undefined;
+		try {
+			evaluator.evaluate('{{ (() => { throw undefined })() }}', data);
+		} catch (e) {
+			error = e as Error;
+		}
+		expect(error).toBeDefined();
+		expect(error?.message).not.toContain('Cannot read properties');
+	});
+
 	it('should swallow TypeError and return undefined', () => {
 		const data = { $json: {} };
 
