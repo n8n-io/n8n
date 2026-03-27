@@ -433,6 +433,22 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 
 		expect(() => evaluator.evaluate('{{ $json.items[0] }}', data)).toThrow('element access failed');
 	});
+
+	it('should propagate errors thrown during an "in" operator check across the isolate boundary', () => {
+		const json = {
+			get brokenProp() {
+				throw new Error('in-check access failed');
+			},
+		};
+
+		// The 'in' operator triggers the has trap on $json proxy.
+		// The bridge calls __getValueAtPath(['$json', 'brokenProp']) which throws.
+		// Without throwIfErrorSentinel in the has trap, the sentinel is returned
+		// as a non-undefined value so 'brokenProp' in $json incorrectly returns true.
+		expect(() => evaluator.evaluate('{{ "brokenProp" in $json }}', { $json: json })).toThrow(
+			'in-check access failed',
+		);
+	});
 });
 
 describe('Integration: IsolatedVmBridge error handling', () => {
