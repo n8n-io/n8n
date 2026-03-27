@@ -284,6 +284,61 @@ describe('RoleMappingRuleService', () => {
 		});
 	});
 
+	describe('list', () => {
+		it('should return paginated rules with default order sort', async () => {
+			const ruleA = {
+				id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+				expression: 'a',
+				role: globalRole,
+				type: 'instance',
+				order: 0,
+				projects: [],
+				createdAt: new Date('2025-01-01T00:00:00.000Z'),
+				updatedAt: new Date('2025-01-01T00:00:00.000Z'),
+			} as unknown as RoleMappingRule;
+
+			roleMappingRuleRepository.findAndCount.mockResolvedValue([[ruleA], 1]);
+
+			const result = await service.list({ skip: 0, take: 10 });
+
+			expect(result.count).toBe(1);
+			expect(result.items).toHaveLength(1);
+			expect(result.items[0]).toMatchObject({
+				id: ruleA.id,
+				expression: 'a',
+				order: 0,
+				type: 'instance',
+			});
+
+			expect(roleMappingRuleRepository.findAndCount).toHaveBeenCalledWith({
+				where: {},
+				relations: ['projects', 'role'],
+				order: { order: 'ASC', id: 'ASC' },
+				skip: 0,
+				take: 10,
+			});
+		});
+
+		it('should filter by type and apply sortBy', async () => {
+			roleMappingRuleRepository.findAndCount.mockResolvedValue([[], 0]);
+
+			await service.list({
+				skip: 0,
+				take: 5,
+				type: 'project',
+				sortBy: 'createdAt:desc',
+			});
+
+			expect(roleMappingRuleRepository.findAndCount).toHaveBeenCalledWith({
+				where: { type: 'project' },
+				relations: ['projects', 'role'],
+				order: { createdAt: 'DESC', id: 'ASC' },
+				skip: 0,
+				take: 5,
+			});
+		});
+	});
+
 	describe('patch', () => {
 		const existingInstanceRule = {
 			id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
@@ -412,6 +467,41 @@ describe('RoleMappingRuleService', () => {
 			await expect(
 				service.patch(existingInstanceRule.id, { expression: 'true' }),
 			).resolves.toMatchObject({ order: 0, type: 'instance' });
+		});
+	});
+
+	describe('delete', () => {
+		const rule = {
+			id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+			expression: 'true',
+			role: globalRole,
+			type: 'instance',
+			order: 0,
+			projects: [],
+			createdAt: new Date('2025-01-01T00:00:00.000Z'),
+			updatedAt: new Date('2025-01-01T00:00:00.000Z'),
+		} as unknown as RoleMappingRule;
+
+		it('should reject an empty id', async () => {
+			await expect(service.delete('')).rejects.toThrow(BadRequestError);
+		});
+
+		it('should return 404 when rule id is unknown', async () => {
+			roleMappingRuleRepository.findOne.mockResolvedValue(null);
+
+			await expect(service.delete('00000000-0000-4000-8000-000000000000')).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(roleMappingRuleRepository.remove).not.toHaveBeenCalled();
+		});
+
+		it('should remove the rule when it exists', async () => {
+			roleMappingRuleRepository.findOne.mockResolvedValue(rule);
+			roleMappingRuleRepository.remove.mockResolvedValue(rule);
+
+			await service.delete(rule.id);
+
+			expect(roleMappingRuleRepository.remove).toHaveBeenCalledWith(rule);
 		});
 	});
 });

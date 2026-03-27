@@ -3,6 +3,7 @@ import { mock } from 'jest-mock-extended';
 
 import { RoleMappingRuleController } from '../role-mapping-rule.controller.ee';
 import type {
+	RoleMappingRuleListResponse,
 	RoleMappingRuleResponse,
 	RoleMappingRuleService,
 } from '../role-mapping-rule.service.ee';
@@ -17,6 +18,49 @@ const controller = new RoleMappingRuleController(roleMappingRuleService, license
 describe('RoleMappingRuleController', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
+	});
+
+	describe('list', () => {
+		const req = mock<AuthenticatedRequest>();
+		const res = mock<Response>({
+			json: jest.fn().mockReturnThis(),
+			status: jest.fn().mockReturnThis(),
+		});
+
+		const query = { skip: 0, take: 10 };
+
+		it('should return 403 if provisioning is not licensed', async () => {
+			licenseState.isProvisioningLicensed.mockReturnValue(false);
+			await controller.list(req, res, query);
+
+			expect(res.status).toHaveBeenCalledWith(403);
+		});
+
+		it('should list role mapping rules when provisioning is licensed', async () => {
+			const payload: RoleMappingRuleListResponse = {
+				count: 1,
+				items: [
+					{
+						id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+						expression: 'true',
+						role: 'global:member',
+						type: 'instance',
+						order: 0,
+						projectIds: [],
+						createdAt: new Date().toISOString(),
+						updatedAt: new Date().toISOString(),
+					},
+				],
+			};
+
+			licenseState.isProvisioningLicensed.mockReturnValue(true);
+			roleMappingRuleService.list.mockResolvedValue(payload);
+
+			const result = await controller.list(req, res, query);
+
+			expect(result).toEqual(payload);
+			expect(roleMappingRuleService.list).toHaveBeenCalledWith(query);
+		});
 	});
 
 	describe('create', () => {
@@ -99,6 +143,33 @@ describe('RoleMappingRuleController', () => {
 
 			expect(result).toEqual(updated);
 			expect(roleMappingRuleService.patch).toHaveBeenCalledWith(ruleId, patchBody);
+		});
+	});
+
+	describe('delete', () => {
+		const ruleId = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
+		const req = mock<AuthenticatedRequest>();
+		req.params = { id: ruleId };
+		const res = mock<Response>({
+			json: jest.fn().mockReturnThis(),
+			status: jest.fn().mockReturnThis(),
+		});
+
+		it('should return 403 if provisioning is not licensed', async () => {
+			licenseState.isProvisioningLicensed.mockReturnValue(false);
+			await controller.delete(req, res, ruleId);
+
+			expect(res.status).toHaveBeenCalledWith(403);
+		});
+
+		it('should delete a role mapping rule when provisioning is licensed', async () => {
+			licenseState.isProvisioningLicensed.mockReturnValue(true);
+			roleMappingRuleService.delete.mockResolvedValue(undefined);
+
+			const result = await controller.delete(req, res, ruleId);
+
+			expect(result).toEqual({ success: true });
+			expect(roleMappingRuleService.delete).toHaveBeenCalledWith(ruleId);
 		});
 	});
 });
