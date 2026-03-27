@@ -27,6 +27,8 @@ import {
 	N8nIcon,
 	N8nTooltip,
 } from '@n8n/design-system';
+import DependencyPill from '@/app/components/DependencyPill.vue';
+import { useDependencies } from '@/app/composables/useDependencies';
 
 type Props = {
 	id: string;
@@ -42,8 +44,11 @@ const documentTitle = useDocumentTitle();
 
 const dataTableStore = useDataTableStore();
 const sourceControlStore = useSourceControlStore();
+const { fetchDependencyCounts, hasDependencies } = useDependencies();
 
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
+
+const dataTableHasDependents = computed(() => hasDependencies(props.id));
 
 const loading = ref(false);
 const saving = ref(false);
@@ -75,6 +80,7 @@ const initialize = async () => {
 		await showErrorAndGoBackToList(error);
 	} finally {
 		loading.value = false;
+		void fetchDependencyCounts([props.id], 'dataTable');
 	}
 };
 
@@ -170,6 +176,13 @@ onBeforeUnmount(() => {
 					<N8nText>{{ i18n.baseText('generic.saving') }}...</N8nText>
 				</div>
 				<div :class="$style.actions">
+					<DependencyPill
+						v-if="dataTableHasDependents"
+						resource-type="dataTable"
+						:resource-id="id"
+						source="data_table_card"
+						data-test-id="data-table-details-dependents"
+					/>
 					<N8nInput
 						v-model="searchQuery"
 						data-test-id="data-table-search-input"

@@ -344,7 +344,7 @@ export type WorkflowListItem = Omit<
 	IWorkflowDb,
 	'nodes' | 'connections' | 'pinData' | 'usedCredentials' | 'meta'
 > & {
-	resource: 'workflow';
+	resource?: 'workflow'; // only included if list may contain folders
 	description?: string;
 	hasResolvableCredentials?: boolean;
 };
@@ -946,7 +946,6 @@ export type EnterpriseEditionFeatureKey =
 	| 'DebugInEditor'
 	| 'WorkerView'
 	| 'AdvancedPermissions'
-	| 'ApiKeyScopes'
 	| 'EnforceMFA'
 	| 'NamedVersions'
 	| 'Provisioning'

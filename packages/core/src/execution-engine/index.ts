@@ -1,5 +1,6 @@
 import type {
 	DataTableProxyProvider,
+	DynamicCredentialCheckProxyProvider,
 	IExecutionContext,
 	IHttpRequestOptions,
 	INode,
@@ -61,6 +62,7 @@ declare module 'n8n-workflow' {
 		 */
 		evalLlmMockHandler?: EvalLlmMockHandler;
 		'data-table'?: { dataTableProxyProvider: DataTableProxyProvider };
+		'dynamic-credentials'?: { credentialCheckProxy: DynamicCredentialCheckProxyProvider };
 		// Project ID is currently only added on the additionalData if the user
 		// has data table listing permission for that project. We should consider
 		// that only data tables belonging to their respective projects are shown.
@@ -88,4 +90,5 @@ export * from './workflow-execute';
 export * from './execution-context-hook-registry.service';
 export { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
 export { ExternalSecretsProxy, type IExternalSecretsManager } from './external-secrets-proxy';
+export { ExecutionContextService } from './execution-context.service';
 export { isEngineRequest } from './requests-response';
