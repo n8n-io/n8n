@@ -1,5 +1,5 @@
 import { type Response } from 'express';
-import { getWebhookSandboxCSP, isFormHtmlSandboxingDisabled } from 'n8n-core';
+import { getHtmlSandboxCSP, isFormHtmlSandboxingDisabled } from 'n8n-core';
 import {
 	type NodeTypeAndVersion,
 	type IWebhookFunctions,
@@ -72,7 +72,7 @@ export const renderFormCompletion = async (
 	) as boolean;
 
 	if (respondWith !== 'redirect' && !isFormHtmlSandboxingDisabled()) {
-		res.setHeader('Content-Security-Policy', getWebhookSandboxCSP());
+		res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
 	}
 
 	res.render('form-trigger-completion', {

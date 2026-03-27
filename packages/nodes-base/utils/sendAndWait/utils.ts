@@ -1,5 +1,5 @@
 import isbot from 'isbot';
-import { getWebhookSandboxCSP, isFormHtmlSandboxingDisabled } from 'n8n-core';
+import { getHtmlSandboxCSP, isFormHtmlSandboxingDisabled } from 'n8n-core';
 import type {
 	FormFieldsParameter,
 	IDataObject,
@@ -380,7 +380,7 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 			});
 
 			if (!isFormHtmlSandboxingDisabled()) {
-				res.setHeader('Content-Security-Policy', getWebhookSandboxCSP());
+				res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
 			}
 			res.render('form-trigger', data);
 
@@ -434,7 +434,7 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 			});
 
 			if (!isFormHtmlSandboxingDisabled()) {
-				res.setHeader('Content-Security-Policy', getWebhookSandboxCSP());
+				res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
 			}
 			res.render('form-trigger', data);
 

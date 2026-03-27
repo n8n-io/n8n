@@ -1,5 +1,5 @@
 jest.mock('n8n-core', () => ({
-	getWebhookSandboxCSP: jest.fn(
+	getHtmlSandboxCSP: jest.fn(
 		() =>
 			'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
 	),
@@ -8,7 +8,7 @@ jest.mock('n8n-core', () => ({
 
 import { type Response } from 'express';
 import { type MockProxy, mock } from 'jest-mock-extended';
-import { getWebhookSandboxCSP, isFormHtmlSandboxingDisabled } from 'n8n-core';
+import { getHtmlSandboxCSP, isFormHtmlSandboxingDisabled } from 'n8n-core';
 import { type INode, type IWebhookFunctions } from 'n8n-workflow';
 
 import { binaryResponse, renderFormCompletion } from '../utils/formCompletionUtils';
@@ -99,7 +99,7 @@ describe('formCompletionUtils', () => {
 
 		beforeEach(() => {
 			jest
-				.mocked(getWebhookSandboxCSP)
+				.mocked(getHtmlSandboxCSP)
 				.mockReturnValue(
 					'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
 				);

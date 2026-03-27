@@ -1,5 +1,5 @@
 jest.mock('n8n-core', () => ({
-	getWebhookSandboxCSP: jest.fn(
+	getHtmlSandboxCSP: jest.fn(
 		() =>
 			'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
 	),

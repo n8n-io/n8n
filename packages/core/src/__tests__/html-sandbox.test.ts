@@ -5,7 +5,7 @@ import { mock } from 'jest-mock-extended';
 import {
 	isWebhookHtmlSandboxingDisabled,
 	isFormHtmlSandboxingDisabled,
-	getWebhookSandboxCSP,
+	getHtmlSandboxCSP,
 } from '@/html-sandbox';
 
 const securityConfig = mock<SecurityConfig>();
@@ -48,16 +48,16 @@ describe('isFormHtmlSandboxingDisabled', () => {
 	});
 });
 
-describe('getWebhookSandboxCSP', () => {
+describe('getHtmlSandboxCSP', () => {
 	it('should return correct CSP sandbox directive', () => {
-		const csp = getWebhookSandboxCSP();
+		const csp = getHtmlSandboxCSP();
 		expect(csp).toBe(
 			'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
 		);
 	});
 
 	it('should not include allow-same-origin', () => {
-		const csp = getWebhookSandboxCSP();
+		const csp = getHtmlSandboxCSP();
 		expect(csp).not.toContain('allow-same-origin');
 	});
 });
