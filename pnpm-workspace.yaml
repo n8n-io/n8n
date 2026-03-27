@@ -48,6 +48,7 @@ catalog:
   '@types/express': ^5.0.1
   '@types/jsonwebtoken': 9.0.10
   '@types/lodash': 4.17.17
+  '@types/node': 24.10.1
   '@types/mime-types': 3.0.1
   '@types/uuid': ^10.0.0
   '@types/xml2js': ^0.4.14
