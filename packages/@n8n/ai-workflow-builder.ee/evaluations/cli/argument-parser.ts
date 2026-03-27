@@ -58,9 +58,6 @@ export interface EvaluationArgs {
 	/** Write regenerated state back to the dataset source */
 	writeBack?: boolean;
 
-	/** LangSmith API key (overrides LANGSMITH_API_KEY env var) */
-	langsmithApiKey?: string;
-
 	/** URL to POST evaluation results to when complete */
 	webhookUrl?: string;
 	/** Secret for HMAC-SHA256 signature of webhook payload */
@@ -146,7 +143,6 @@ const cliSchema = z
 		numJudges: z.coerce.number().int().positive().default(DEFAULTS.NUM_JUDGES),
 
 		checks: z.string().min(1).optional(),
-		langsmithApiKey: z.string().min(1).optional(),
 		langsmith: z.boolean().optional(),
 		templateExamples: z.boolean().default(false),
 		webhookUrl: z.string().url().optional(),
@@ -279,12 +275,6 @@ const FLAG_DEFS: Record<string, FlagDef> = {
 		kind: 'boolean',
 		group: 'langsmith',
 		desc: 'Shorthand for --backend langsmith',
-	},
-	'--langsmith-api-key': {
-		key: 'langsmithApiKey',
-		kind: 'string',
-		group: 'langsmith',
-		desc: 'LangSmith API key (overrides LANGSMITH_API_KEY env var)',
 	},
 	'--name': { key: 'experimentName', kind: 'string', group: 'langsmith', desc: 'Experiment name' },
 	'--filter': {
@@ -688,7 +678,6 @@ export function parseEvaluationArgs(argv: string[] = process.argv.slice(2)): Eva
 		webhookUrl: parsed.webhookUrl,
 		webhookSecret: parsed.webhookSecret,
 		checks: parsed.checks?.split(',').map((s) => s.trim()),
-		langsmithApiKey: parsed.langsmithApiKey,
 		// Model configuration
 		model: parsed.model,
 		judgeModel: parsed.judgeModel,
