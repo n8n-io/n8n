@@ -225,7 +225,11 @@ describe('InstanceAiController', () => {
 			const result = await controller.correctTask(req, res, THREAD_ID, 'task-1', payload);
 
 			expect(result).toEqual({ ok: true });
-			expect(instanceAiService.sendCorrectionToTask).toHaveBeenCalledWith('task-1', 'fix this');
+			expect(instanceAiService.sendCorrectionToTask).toHaveBeenCalledWith(
+				THREAD_ID,
+				'task-1',
+				'fix this',
+			);
 		});
 	});
 
