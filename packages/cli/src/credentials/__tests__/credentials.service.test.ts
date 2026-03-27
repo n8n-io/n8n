@@ -13,6 +13,7 @@ import { CREDENTIAL_ERRORS, CredentialDataError, Credentials, type ErrorReporter
 import {
 	CREDENTIAL_BLANKING_VALUE,
 	CREDENTIAL_EMPTY_VALUE,
+	jsonParse,
 	type ICredentialDataDecryptedObject,
 	type ICredentialType,
 } from 'n8n-workflow';
@@ -472,7 +473,7 @@ describe('CredentialsService', () => {
 			const redactedData = service.redact(decryptedData, credential);
 
 			expect(redactedData).toEqual({
-				json: CREDENTIAL_BLANKING_VALUE,
+				json: JSON.stringify({ key: '***' }, null, 2),
 				otherField: 'not-redacted',
 			});
 		});
@@ -507,6 +508,153 @@ describe('CredentialsService', () => {
 			expect(redactedData).toEqual({
 				json: CREDENTIAL_EMPTY_VALUE,
 				otherField: 'not-redacted',
+			});
+		});
+
+		describe('httpCustomAuth redactJsonLeaves (via service.redact)', () => {
+			const makeHttpCustomAuthCredential = () =>
+				mock<CredentialsEntity>({ id: '123', name: 'Test', type: 'httpCustomAuth' });
+
+			const makeCredType = () => ({ properties: [] }) as unknown as ICredentialType;
+
+			it('should redact string leaf values', () => {
+				credentialTypes.getByName.calledWith('httpCustomAuth').mockReturnValueOnce(makeCredType());
+
+				const result = service.redact(
+					{ json: '{"token": "secret", "key": "abc"}' },
+					makeHttpCustomAuthCredential(),
+				);
+
+				expect(result.json).toEqual(JSON.stringify({ token: '***', key: '***' }, null, 2));
+			});
+
+			it('should redact numeric leaf values', () => {
+				credentialTypes.getByName.calledWith('httpCustomAuth').mockReturnValueOnce(makeCredType());
+
+				const result = service.redact(
+					{ json: '{"port": 8080, "timeout": 30}' },
+					makeHttpCustomAuthCredential(),
+				);
+
+				expect(result.json).toEqual(JSON.stringify({ port: '***', timeout: '***' }, null, 2));
+			});
+
+			it('should redact boolean leaf values', () => {
+				credentialTypes.getByName.calledWith('httpCustomAuth').mockReturnValueOnce(makeCredType());
+
+				const result = service.redact(
+					{ json: '{"enabled": true, "debug": false}' },
+					makeHttpCustomAuthCredential(),
+				);
+
+				expect(result.json).toEqual(JSON.stringify({ enabled: '***', debug: '***' }, null, 2));
+			});
+
+			it('should redact leaves of nested objects recursively', () => {
+				credentialTypes.getByName.calledWith('httpCustomAuth').mockReturnValueOnce(makeCredType());
+
+				const result = service.redact(
+					{
+						json: '{"headers": {"Authorization": "Bearer token", "X-Api-Key": "key"}, "url": "https://example.com"}',
+					},
+					makeHttpCustomAuthCredential(),
+				);
+
+				expect(result.json).toEqual(
+					JSON.stringify(
+						{ headers: { Authorization: '***', 'X-Api-Key': '***' }, url: '***' },
+						null,
+						2,
+					),
+				);
+			});
+
+			it('should redact leaves inside arrays', () => {
+				credentialTypes.getByName.calledWith('httpCustomAuth').mockReturnValueOnce(makeCredType());
+
+				const result = service.redact(
+					{ json: '{"scopes": ["read", "write"], "tags": ["prod"]}' },
+					makeHttpCustomAuthCredential(),
+				);
+
+				expect(result.json).toEqual(
+					JSON.stringify({ scopes: ['***', '***'], tags: ['***'] }, null, 2),
+				);
+			});
+
+			it('should redact leaves in deeply mixed nesting (array of objects)', () => {
+				credentialTypes.getByName.calledWith('httpCustomAuth').mockReturnValueOnce(makeCredType());
+
+				const result = service.redact(
+					{ json: '{"rules": [{"key": "a", "val": 1}, {"key": "b", "val": 2}]}' },
+					makeHttpCustomAuthCredential(),
+				);
+
+				expect(result.json).toEqual(
+					JSON.stringify(
+						{
+							rules: [
+								{ key: '***', val: '***' },
+								{ key: '***', val: '***' },
+							],
+						},
+						null,
+						2,
+					),
+				);
+			});
+
+			it('should fall back to CREDENTIAL_BLANKING_VALUE for non-parseable JSON', () => {
+				credentialTypes.getByName.calledWith('httpCustomAuth').mockReturnValueOnce(makeCredType());
+
+				const result = service.redact({ json: 'not-valid-json' }, makeHttpCustomAuthCredential());
+
+				expect(result.json).toEqual(CREDENTIAL_BLANKING_VALUE);
+			});
+
+			it('should redact leaves in a deeply nested object', () => {
+				credentialTypes.getByName.calledWith('httpCustomAuth').mockReturnValueOnce(makeCredType());
+
+				const result = service.redact(
+					{ json: '{"a":{"b":{"c":{"d":"deep-secret"}}}}' },
+					makeHttpCustomAuthCredential(),
+				);
+
+				expect(result.json).toEqual(JSON.stringify({ a: { b: { c: { d: '***' } } } }, null, 2));
+			});
+
+			it('should redact leaves inside an array nested inside a deep object', () => {
+				credentialTypes.getByName.calledWith('httpCustomAuth').mockReturnValueOnce(makeCredType());
+
+				const result = service.redact(
+					{
+						json: '{"auth":{"headers":[{"name":"Authorization","value":"Bearer s"},{"name":"X-Key","value":"abc"}]}}',
+					},
+					makeHttpCustomAuthCredential(),
+				);
+
+				expect(result.json).toEqual(
+					JSON.stringify(
+						{
+							auth: {
+								headers: [
+									{ name: '***', value: '***' },
+									{ name: '***', value: '***' },
+								],
+							},
+						},
+						null,
+						2,
+					),
+				);
+			});
+
+			it('should redact null leaf values', () => {
+				credentialTypes.getByName.calledWith('httpCustomAuth').mockReturnValueOnce(makeCredType());
+
+				const result = service.redact({ json: '{"token":null}' }, makeHttpCustomAuthCredential());
+
+				expect(result.json).toEqual(JSON.stringify({ token: '***' }, null, 2));
 			});
 		});
 
@@ -2034,6 +2182,180 @@ describe('CredentialsService', () => {
 
 				await service.prepareUpdateData(ownerUser, payload, existingCredential);
 			});
+		});
+	});
+
+	describe('unredact (httpCustomAuth JSON shape merging)', () => {
+		const s = (v: unknown) => JSON.stringify(v);
+		const p = (v: unknown) => jsonParse(String(v));
+
+		it('should restore all *** leaves from saved JSON when all are redacted', () => {
+			const saved = { token: 'real-token', key: 'real-key' };
+			const result = service.unredact(
+				{ json: s({ token: '***', key: '***' }) },
+				{ json: s(saved) },
+				true,
+			);
+			expect(p(result.json)).toEqual(saved);
+		});
+
+		it('should keep new value for changed leaf and restore *** leaf from saved', () => {
+			const result = service.unredact(
+				{ json: s({ token: 'new-token', key: '***' }) },
+				{ json: s({ token: 'old-token', key: 'old-key' }) },
+				true,
+			);
+			expect(p(result.json)).toEqual({ token: 'new-token', key: 'old-key' });
+		});
+
+		it('should merge *** leaves recursively in nested objects', () => {
+			const result = service.unredact(
+				{ json: s({ headers: { Authorization: 'Bearer new', 'X-Api-Key': '***' } }) },
+				{ json: s({ headers: { Authorization: 'Bearer secret', 'X-Api-Key': 'key123' } }) },
+				true,
+			);
+			expect(p(result.json)).toEqual({
+				headers: { Authorization: 'Bearer new', 'X-Api-Key': 'key123' },
+			});
+		});
+
+		it('should merge *** elements in arrays by position', () => {
+			const result = service.unredact(
+				{ json: s({ scopes: ['***', 'new-write', '***'] }) },
+				{ json: s({ scopes: ['read', 'write', 'admin'] }) },
+				true,
+			);
+			expect(p(result.json)).toEqual({ scopes: ['read', 'new-write', 'admin'] });
+		});
+
+		it('should save all leaves as-is when none are redacted', () => {
+			const result = service.unredact(
+				{ json: s({ token: 'completely-new', extra: 'new-field' }) },
+				{ json: s({ token: 'old-token' }) },
+				true,
+			);
+			expect(p(result.json)).toEqual({ token: 'completely-new', extra: 'new-field' });
+		});
+
+		it('should leave json unchanged when it is not valid JSON', () => {
+			const result = service.unredact(
+				{ json: 'not-valid-json' },
+				{ json: s({ token: 'saved' }) },
+				true,
+			);
+			expect(result.json).toEqual('not-valid-json');
+		});
+
+		it('should not apply JSON leaf merge when unredactJsonLeaves is false', () => {
+			const result = service.unredact(
+				{ json: s({ token: '***' }) },
+				{ json: s({ token: 'saved' }) },
+				false,
+			);
+			// *** is not a standard sentinel so it stays as-is
+			expect(p(result.json)).toEqual({ token: '***' });
+		});
+
+		it('should not apply JSON leaf merge when no credentialType is given', () => {
+			const result = service.unredact(
+				{ json: s({ token: '***' }) },
+				{ json: s({ token: 'saved' }) },
+			);
+			expect(p(result.json)).toEqual({ token: '***' });
+		});
+
+		it('should restore *** leaves in a deeply nested object', () => {
+			const result = service.unredact(
+				{ json: s({ a: { b: { c: { d: '***' } } } }) },
+				{ json: s({ a: { b: { c: { d: 'deep-secret' } } } }) },
+				true,
+			);
+			expect(p(result.json)).toEqual({ a: { b: { c: { d: 'deep-secret' } } } });
+		});
+
+		it('should restore *** leaves inside arrays nested inside deep objects', () => {
+			const result = service.unredact(
+				{
+					json: s({
+						auth: {
+							headers: [
+								{ name: '***', value: '***' },
+								{ name: '***', value: 'new-value' },
+							],
+						},
+					}),
+				},
+				{
+					json: s({
+						auth: {
+							headers: [
+								{ name: 'Authorization', value: 'Bearer secret' },
+								{ name: 'X-Api-Key', value: 'key123' },
+							],
+						},
+					}),
+				},
+				true,
+			);
+			expect(p(result.json)).toEqual({
+				auth: {
+					headers: [
+						{ name: 'Authorization', value: 'Bearer secret' },
+						{ name: 'X-Api-Key', value: 'new-value' },
+					],
+				},
+			});
+		});
+
+		it('should drop a key the user removed from the JSON', () => {
+			// When the user removes a key, it simply won't be in newVal — it is not re-added from saved
+			const result = service.unredact(
+				{ json: s({ token: '***' }) },
+				{ json: s({ token: 'secret', removedKey: 'data' }) },
+				true,
+			);
+			expect(p(result.json)).toEqual({ token: 'secret' });
+			expect(p(result.json)).not.toHaveProperty('removedKey');
+		});
+
+		it('should save a new key the user added to the JSON', () => {
+			const result = service.unredact(
+				{ json: s({ token: '***', newHeader: 'X-Custom-Value' }) },
+				{ json: s({ token: 'secret' }) },
+				true,
+			);
+			expect(p(result.json)).toEqual({ token: 'secret', newHeader: 'X-Custom-Value' });
+		});
+
+		it('should use the new scalar value when the user changes a key from object to scalar', () => {
+			// Type change: saved was an object, user replaced it with a plain string — new value wins
+			const result = service.unredact(
+				{ json: s({ auth: 'new-plain-string' }) },
+				{ json: s({ auth: { token: 'secret', key: 'abc' } }) },
+				true,
+			);
+			expect(p(result.json)).toEqual({ auth: 'new-plain-string' });
+		});
+
+		it('should coerce a new array to an object when the saved value was an object (type mismatch, no *** sentinels)', () => {
+			// Both are "objects" in JS so the object-merge branch fires; array indices become string keys
+			const result = service.unredact(
+				{ json: s({ auth: ['new-item-1', 'new-item-2'] }) },
+				{ json: s({ auth: { token: 'secret' } }) },
+				true,
+			);
+			expect(p(result.json)).toEqual({ auth: { '0': 'new-item-1', '1': 'new-item-2' } });
+		});
+
+		it('should drop a *** value when type mismatch makes the saved counterpart unresolvable', () => {
+			// Saved was array; user changed to object with *** — saved[key] is undefined so key is dropped
+			const result = service.unredact(
+				{ json: s({ data: { key: '***' } }) },
+				{ json: s({ data: ['secret1', 'secret2'] }) },
+				true,
+			);
+			// key: '***' → savedVal['key'] = undefined → key dropped from output
+			expect(p(result.json)).toEqual({ data: {} });
 		});
 	});
 

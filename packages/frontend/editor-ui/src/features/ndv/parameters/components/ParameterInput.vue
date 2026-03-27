@@ -270,23 +270,46 @@ const isJsonPasswordField = computed<boolean>(() => {
 	return props.parameter.type === 'json' && isSecretParameter.value;
 });
 
+function hasRedactedLeaf(obj: unknown): boolean {
+	if (obj === '***') return true;
+	if (Array.isArray(obj)) return obj.some(hasRedactedLeaf);
+	if (typeof obj === 'object' && obj !== null) {
+		return Object.values(obj as Record<string, unknown>).some(hasRedactedLeaf);
+	}
+	return false;
+}
+
 // Custom Auth: only credential with top-level "json" field; mask after save (backend redacts by type, not secret flag)
 const isCustomAuthJsonField = computed<boolean>(() => {
 	return props.eventSource === 'credentials' && props.parameter.name === 'json';
 });
 const isCredentialJsonValueRedacted = computed<boolean>(() => {
-	return (
-		props.modelValue === CREDENTIAL_BLANKING_VALUE || props.modelValue === CREDENTIAL_EMPTY_VALUE
-	);
+	const val = props.modelValue;
+	if (val === CREDENTIAL_BLANKING_VALUE || val === CREDENTIAL_EMPTY_VALUE) return true;
+	// New: detect shaped-redacted JSON (backend replaces leaf values with ***)
+	if (isCustomAuthJsonField.value) {
+		try {
+			return hasRedactedLeaf(JSON.parse(String(val)));
+		} catch {
+			return false;
+		}
+	}
+	return false;
 });
 const isRedactedCustomAuthJson = computed<boolean>(
 	() => isCustomAuthJsonField.value && isCredentialJsonValueRedacted.value,
 );
 
 const credentialJsonEditorValue = computed<string>(() => {
-	if (isRedactedCustomAuthJson.value) {
+	if (!isRedactedCustomAuthJson.value) return modelValueString.value;
+	// Fallback for non-parseable / empty JSON
+	if (
+		props.modelValue === CREDENTIAL_BLANKING_VALUE ||
+		props.modelValue === CREDENTIAL_EMPTY_VALUE
+	) {
 		return '***\n***\n***';
 	}
+	// Shaped-redacted JSON: backend already formatted with *** leaves — show as-is
 	return modelValueString.value;
 });
 
