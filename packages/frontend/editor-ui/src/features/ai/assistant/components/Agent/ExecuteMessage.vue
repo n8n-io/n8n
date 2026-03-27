@@ -335,6 +335,20 @@ watch(hasValidationIssues, (hasIssues, hadIssues) => {
 
 		<!-- Follow-up sections (render below both wizard and fallback paths) -->
 
+		<!-- Pin data info message (visible when wizard is active and pin data is applied) -->
+		<p
+			v-if="showWizard && (builderStore.hasTodosHiddenByPinnedData || builderStore.pinDataApplied)"
+			:class="$style.noIssuesMessage"
+		>
+			{{ i18n.baseText('aiAssistant.builder.executeMessage.noIssuesWithPinData') }}
+			<N8nTooltip placement="top">
+				<template #content>
+					{{ i18n.baseText('aiAssistant.builder.executeMessage.unpinTooltip') }}
+				</template>
+				<N8nIcon icon="circle-help" size="small" :class="$style.infoIcon" />
+			</N8nTooltip>
+		</p>
+
 		<!-- Pre-execution Follow-ups -->
 		<div v-if="showFollowUps" :class="$style.followUpsSection">
 			<span :class="$style.followUpsTitle">
