@@ -109,6 +109,44 @@ let groupIdByRunId: Record<string, string> = {};
 // Stale EventSource instances from previous threads discard events.
 let sseGeneration = 0;
 
+// --- HMR: preserve module-level state across hot reloads ---
+// During HMR the module is re-evaluated, resetting the variables above while
+// the browser's EventSource connection stays alive. The orphaned connection's
+// closures still reference the OLD module scope, so the generation guard
+// (`gen !== sseGeneration`) passes against the old variable — events keep
+// processing. When the component remounts and creates a second EventSource
+// both connections deliver events to the reducer, producing duplicate messages.
+//
+// Fix: close the orphaned EventSource and carry forward the generation counter
+// and reducer routing maps so a single, consistent SSE lifecycle is maintained.
+if (import.meta.hot) {
+	const prev = import.meta.hot.data as {
+		eventSource?: EventSource | null;
+		sseGeneration?: number;
+		runStateByGroupId?: Record<string, AgentRunState>;
+		groupIdByRunId?: Record<string, string>;
+	};
+	if (prev.eventSource) {
+		prev.eventSource.close();
+	}
+	if (prev.sseGeneration !== undefined) {
+		sseGeneration = prev.sseGeneration;
+	}
+	if (prev.runStateByGroupId) {
+		runStateByGroupId = prev.runStateByGroupId;
+	}
+	if (prev.groupIdByRunId) {
+		groupIdByRunId = prev.groupIdByRunId;
+	}
+
+	import.meta.hot.dispose((data: Record<string, unknown>) => {
+		data.eventSource = eventSource;
+		data.sseGeneration = sseGeneration;
+		data.runStateByGroupId = runStateByGroupId;
+		data.groupIdByRunId = groupIdByRunId;
+	});
+}
+
 export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
