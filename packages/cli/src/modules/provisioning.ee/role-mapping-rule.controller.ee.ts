@@ -1,10 +1,27 @@
-import { CreateRoleMappingRuleDto, PatchRoleMappingRuleDto } from '@n8n/api-types';
+import {
+	CreateRoleMappingRuleDto,
+	ListRoleMappingRuleQueryDto,
+	PatchRoleMappingRuleDto,
+} from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Body, GlobalScope, Param, Patch, Post, RestController } from '@n8n/decorators';
+import {
+	Body,
+	Delete,
+	Get,
+	GlobalScope,
+	Param,
+	Patch,
+	Post,
+	Query,
+	RestController,
+} from '@n8n/decorators';
 import type { Response } from 'express';
 
-import type { RoleMappingRuleResponse } from './role-mapping-rule.service.ee';
+import type {
+	RoleMappingRuleListResponse,
+	RoleMappingRuleResponse,
+} from './role-mapping-rule.service.ee';
 import { RoleMappingRuleService } from './role-mapping-rule.service.ee';
 
 @RestController('/role-mapping-rule')
@@ -13,6 +30,20 @@ export class RoleMappingRuleController {
 		private readonly roleMappingRuleService: RoleMappingRuleService,
 		private readonly licenseState: LicenseState,
 	) {}
+
+	@Get('/')
+	@GlobalScope('roleMappingRule:list')
+	async list(
+		_req: AuthenticatedRequest,
+		res: Response,
+		@Query query: ListRoleMappingRuleQueryDto,
+	): Promise<RoleMappingRuleListResponse | Response> {
+		if (!this.licenseState.isProvisioningLicensed()) {
+			return res.status(403).json({ message: 'Provisioning is not licensed' });
+		}
+
+		return await this.roleMappingRuleService.list(query);
+	}
 
 	@Post('/')
 	@GlobalScope('roleMappingRule:create')
@@ -42,5 +73,21 @@ export class RoleMappingRuleController {
 		}
 
 		return await this.roleMappingRuleService.patch(id, body);
+	}
+
+	@Delete('/:id')
+	@GlobalScope('roleMappingRule:delete')
+	async delete(
+		_req: AuthenticatedRequest,
+		res: Response,
+		@Param('id') id: string,
+	): Promise<{ success: true } | Response> {
+		if (!this.licenseState.isProvisioningLicensed()) {
+			return res.status(403).json({ message: 'Provisioning is not licensed' });
+		}
+
+		await this.roleMappingRuleService.delete(id);
+
+		return { success: true };
 	}
 }
