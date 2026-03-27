@@ -2344,7 +2344,7 @@ export function useCanvasOperations() {
 		});
 
 		initializedDocumentStore.setNodes(data.nodes);
-		workflowDocumentStore?.value?.setConnections(data.connections);
+		initializedDocumentStore.setConnections(data.connections);
 
 		return { workflowDocumentStore: initializedDocumentStore };
 	}
