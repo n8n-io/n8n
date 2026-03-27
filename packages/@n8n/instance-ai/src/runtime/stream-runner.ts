@@ -19,7 +19,7 @@ export interface StreamRunOptions {
 }
 
 export interface StreamRunResult {
-	status: 'completed' | 'cancelled' | 'suspended';
+	status: 'completed' | 'cancelled' | 'suspended' | 'errored';
 	mastraRunId: string;
 	suspension?: SuspensionInfo;
 }
@@ -82,7 +82,7 @@ async function consumeStream(
 	}
 
 	return {
-		status: result.status === 'cancelled' ? 'cancelled' : 'completed',
+		status: result.status === 'cancelled' ? 'cancelled' : result.status === 'errored' ? 'errored' : 'completed',
 		mastraRunId: result.mastraRunId,
 	};
 }

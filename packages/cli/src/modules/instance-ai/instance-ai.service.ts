@@ -1462,21 +1462,25 @@ export class InstanceAiService {
 	private publishRunFinish(
 		threadId: string,
 		runId: string,
-		status: 'completed' | 'cancelled',
+		status: 'completed' | 'cancelled' | 'errored',
 		reason?: string,
 	): void {
+		const effectiveStatus = status === 'errored' ? 'error' : status;
 		this.eventBus.publish(threadId, {
 			type: 'run-finish',
 			runId,
 			agentId: ORCHESTRATOR_AGENT_ID,
-			payload: status === 'cancelled' ? { status, reason: reason ?? 'user_cancelled' } : { status },
+			payload:
+				status === 'cancelled'
+					? { status: effectiveStatus, reason: reason ?? 'user_cancelled' }
+					: { status: effectiveStatus },
 		});
 	}
 
 	private async finalizeRun(
 		threadId: string,
 		runId: string,
-		status: 'completed' | 'cancelled',
+		status: 'completed' | 'cancelled' | 'errored',
 		snapshotStorage: DbSnapshotStorage,
 	): Promise<void> {
 		this.publishRunFinish(threadId, runId, status);
