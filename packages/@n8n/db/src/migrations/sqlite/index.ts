@@ -150,6 +150,7 @@ import { CreateRoleMappingRuleTable1772800000000 } from '../common/1772800000000
 import { CreateCredentialDependencyTable1773000000000 } from '../common/1773000000000-CreateCredentialDependencyTable';
 import { CreateInstanceAiTables1773000000000 } from '../common/1773000000000-CreateInstanceAiTables';
 import { CreateInstanceAiSnapshotAndLogTables1774000000000 } from '../common/1774000000000-CreateInstanceAiSnapshotAndLogTables';
+import { AddRestoreFieldsToWorkflowBuilderSession1774280963551 } from '../common/1774280963551-AddRestoreFieldsToWorkflowBuilderSession';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -305,6 +306,7 @@ const sqliteMigrations: Migration[] = [
 	CreateInstanceAiTables1773000000000,
 	CreateCredentialDependencyTable1773000000000,
 	CreateInstanceAiSnapshotAndLogTables1774000000000,
+	AddRestoreFieldsToWorkflowBuilderSession1774280963551,
 ];
 
 export { sqliteMigrations };
