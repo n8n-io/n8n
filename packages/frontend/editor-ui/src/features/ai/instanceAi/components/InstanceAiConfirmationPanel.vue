@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { N8nButton, type IconName } from '@n8n/design-system';
+import { N8nButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 import { useInstanceAiStore, type PendingConfirmationItem } from '../instanceAi.store';
@@ -26,11 +26,6 @@ function getRoleLabel(role: string): string {
 	return ROLE_LABELS[role] ?? role;
 }
 
-function getSeverityIcon(severity?: string): IconName {
-	if (severity === 'destructive') return 'triangle-alert';
-	if (severity === 'warning') return 'triangle-alert';
-	return 'info';
-}
 
 interface ApprovalWrappedGroup {
 	type: 'approvalWrapped';

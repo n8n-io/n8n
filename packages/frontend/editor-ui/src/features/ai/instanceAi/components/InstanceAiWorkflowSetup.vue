@@ -446,7 +446,6 @@ function isCardComplete(card: SetupCard): boolean {
 
 const allCardsComplete = computed(() => cards.value.every((c) => isCardComplete(c)));
 const anyCardComplete = computed(() => cards.value.some((c) => isCardComplete(c)));
-const isPartialApply = computed(() => anyCardComplete.value && !allCardsComplete.value);
 
 const allPreResolved = computed(() => props.setupRequests.every((r) => !r.needsAction));
 
