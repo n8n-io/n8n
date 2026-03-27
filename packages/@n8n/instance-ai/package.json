@@ -45,7 +45,6 @@
     "pdf-parse": "^1.1.1",
     "zod-from-json-schema-v3": "npm:zod-from-json-schema@^0.0.5",
     "@n8n/agents": "workspace:*",
-    "@anthropic-ai/sdk": "^0.39.0",
     "flatted": "catalog:",
     "langsmith": "^0.4.6"
   },
