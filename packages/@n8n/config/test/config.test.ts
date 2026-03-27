@@ -328,7 +328,12 @@ describe('GlobalConfig', () => {
 			contentSecurityPolicy: '{}',
 			contentSecurityPolicyReportOnly: false,
 			disableWebhookHtmlSandboxing: false,
+<<<<<<< HEAD
 			disableBareRepos: false,
+=======
+			disableFormHtmlSandboxing: false,
+			disableBareRepos: true,
+>>>>>>> 4d356c36d6 (feat: Environment var to disable forms pages sandboxing (#27409))
 			awsSystemCredentialsAccess: false,
 			enableGitNodeHooks: false,
 			enableGitNodeAllConfigKeys: false,
