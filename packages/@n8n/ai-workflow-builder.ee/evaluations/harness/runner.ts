@@ -1,4 +1,4 @@
-import type { BaseMessage } from '@langchain/core/messages';
+import { AIMessage, HumanMessage, SystemMessage, type BaseMessage } from '@langchain/core/messages';
 import { evaluate } from 'langsmith/evaluation';
 import type { Run, Example } from 'langsmith/schemas';
 import { traceable } from 'langsmith/traceable';
@@ -1047,6 +1047,33 @@ function enrichExamplesWithHistory(examples: Example[]): Example[] {
 }
 
 /**
+ * Deserialize raw LangChain `lc` serialization format messages into BaseMessage instances.
+ * Dataset messages use the format: {id, lc: 1, type: "constructor", kwargs: {content, ...}}
+ * with the class ID in `id` array (e.g. ["langchain_core", "messages", "HumanMessage"]).
+ */
+function deserializeLcMessages(rawMessages: unknown[]): BaseMessage[] {
+	return rawMessages
+		.filter((msg): msg is Record<string, unknown> => isUnknownRecord(msg))
+		.map((msg) => {
+			const kwargs = isUnknownRecord(msg.kwargs) ? msg.kwargs : {};
+			const content = typeof kwargs.content === 'string' ? kwargs.content : '';
+			const id = Array.isArray(msg.id) ? msg.id : [];
+			const className = typeof id[id.length - 1] === 'string' ? (id[id.length - 1] as string) : '';
+
+			switch (className) {
+				case 'HumanMessage':
+					return new HumanMessage(content);
+				case 'AIMessage':
+					return new AIMessage(content);
+				case 'SystemMessage':
+					return new SystemMessage(content);
+				default:
+					return new HumanMessage(content);
+			}
+		});
+}
+
+/**
  * Extract DatasetInputContext from LangSmith dataset inputs.
  * Captures the full agent context (workflowContext, existing workflow, mode)
  * needed to replay the generation realistically.
@@ -1073,7 +1100,7 @@ function extractDatasetInputContext(
 	}
 
 	if (Array.isArray(inputs._historicalMessages) && inputs._historicalMessages.length > 0) {
-		context.historicalMessages = inputs._historicalMessages;
+		context.historicalMessages = deserializeLcMessages(inputs._historicalMessages);
 	}
 
 	return Object.keys(context).length > 0 ? context : undefined;

@@ -1,3 +1,4 @@
+import type { BaseMessage } from '@langchain/core/messages';
 import type { Client as LangsmithClient } from 'langsmith/client';
 import type { IPinData } from 'n8n-workflow';
 import type pLimit from 'p-limit';
@@ -19,8 +20,8 @@ export interface DatasetInputContext {
 	workflowContext?: ChatPayload['workflowContext'];
 	/** The existing workflow JSON before this turn */
 	existingWorkflow?: SimpleWorkflow;
-	/** Historical messages from prior conversation turns (LangChain serialized) */
-	historicalMessages?: unknown[];
+	/** Historical messages from prior conversation turns (deserialized BaseMessage instances) */
+	historicalMessages?: BaseMessage[];
 	/** Builder mode from dataset */
 	mode?: 'build' | 'plan';
 	/** Feature flags from dataset metadata */

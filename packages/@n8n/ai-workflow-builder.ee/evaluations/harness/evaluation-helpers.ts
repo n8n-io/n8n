@@ -76,13 +76,23 @@ export interface GetChatPayloadOptions {
 export function getChatPayload(options: GetChatPayloadOptions): ChatPayload {
 	const { evalType, message, workflowId, featureFlags, workflowContext, mode } = options;
 
+	// Always use the eval runId as currentWorkflow.id so getState() can find the thread.
+	// When workflowContext is provided from a dataset, override its currentWorkflow.id.
+	const resolvedContext = workflowContext
+		? {
+				...workflowContext,
+				currentWorkflow: {
+					...((workflowContext.currentWorkflow as Record<string, unknown>) ?? {}),
+					id: workflowId,
+				},
+			}
+		: { currentWorkflow: { id: workflowId, nodes: [], connections: {} } };
+
 	return {
 		id: `${evalType}-${uuid()}`,
 		featureFlags: featureFlags ?? DEFAULTS.FEATURE_FLAGS,
 		message,
-		workflowContext: workflowContext ?? {
-			currentWorkflow: { id: workflowId, nodes: [], connections: {} },
-		},
+		workflowContext: resolvedContext,
 		...(mode ? { mode } : {}),
 	};
 }

@@ -5,7 +5,6 @@
  * Can be run directly or used as a reference for custom setups.
  */
 
-import type { BaseMessage } from '@langchain/core/messages';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import pLimit from 'p-limit';
 
@@ -171,7 +170,7 @@ function createWorkflowGenerator(
 				EVAL_USERS.LANGSMITH,
 				undefined, // abortSignal
 				tokenTracker ? [tokenTracker] : undefined, // externalCallbacks
-				datasetInputContext?.historicalMessages as BaseMessage[] | undefined,
+				datasetInputContext?.historicalMessages,
 			),
 		);
 
