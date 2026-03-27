@@ -1,7 +1,13 @@
 <script lang="ts" setup>
 import { computed, onMounted, onUnmounted, provide, ref, useTemplateRef, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { N8nIconButton, N8nResizeWrapper, N8nScrollArea, N8nText } from '@n8n/design-system';
+import {
+	N8nHeading,
+	N8nIconButton,
+	N8nResizeWrapper,
+	N8nScrollArea,
+	N8nText,
+} from '@n8n/design-system';
 import { useScroll, useWindowSize } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiAttachment } from '@n8n/api-types';
