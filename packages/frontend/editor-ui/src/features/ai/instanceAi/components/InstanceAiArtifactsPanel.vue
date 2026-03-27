@@ -1,19 +1,39 @@
 <script lang="ts" setup>
-import { computed, ref, watch } from 'vue';
-import { N8nIcon, N8nIconButton } from '@n8n/design-system';
+import { computed, inject } from 'vue';
+import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useInstanceAiStore } from '../instanceAi.store';
-import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import WorkflowMiniCanvas from './WorkflowMiniCanvas.vue';
 import type { TaskItem } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
-import type { IWorkflowDb } from '@/Interface';
+import type { ResourceEntry } from '../useResourceRegistry';
 
-const emit = defineEmits<{ close: [] }>();
 const i18n = useI18n();
 const store = useInstanceAiStore();
-const workflowsListStore = useWorkflowsListStore();
+const openPreview = inject<((id: string) => void) | undefined>('openWorkflowPreview', undefined);
+const openDataTablePreview = inject<((id: string, projectId: string) => void) | undefined>(
+	'openDataTablePreview',
+	undefined,
+);
 
+function handleArtifactClick(artifact: ResourceEntry, e: MouseEvent) {
+	if (artifact.type === 'workflow' && artifact.id) {
+		if (e.metaKey || e.ctrlKey) {
+			window.open(`/workflow/${artifact.id}`, '_blank');
+			return;
+		}
+		openPreview?.(artifact.id);
+	} else if (artifact.type === 'data-table' && artifact.id) {
+		if (e.metaKey || e.ctrlKey) {
+			window.open('/data-tables', '_blank');
+			return;
+		}
+		if (artifact.projectId) {
+			openDataTablePreview?.(artifact.id, artifact.projectId);
+		}
+	}
+}
+
+// --- Tasks ---
 const tasks = computed(() => store.currentTasks);
 
 const doneCount = computed(() => {
@@ -32,275 +52,220 @@ const statusIconMap: Record<
 	cancelled: { icon: 'ban', spin: false, className: 'cancelledIcon' },
 };
 
-const workflowArtifacts = computed(() => {
-	const result: Array<{ id: string; name: string }> = [];
+// --- Artifacts ---
+const artifacts = computed((): ResourceEntry[] => {
+	const result: ResourceEntry[] = [];
 	for (const entry of store.resourceRegistry.values()) {
-		if (entry.type === 'workflow') {
-			result.push({ id: entry.id, name: entry.name });
+		if (entry.type === 'workflow' || entry.type === 'data-table') {
+			result.push(entry);
 		}
 	}
 	return result;
 });
 
-const hasArtifacts = computed(() => tasks.value !== null || workflowArtifacts.value.length > 0);
-
-const expandedCards = ref<Set<string>>(new Set());
-
-function toggleCard(key: string) {
-	if (expandedCards.value.has(key)) {
-		expandedCards.value.delete(key);
-	} else {
-		expandedCards.value.add(key);
-	}
-}
-
-// Auto-expand tasks card when it first appears
-watch(tasks, (newTasks, oldTasks) => {
-	if (newTasks && !oldTasks) {
-		expandedCards.value.add('tasks');
-	}
-});
-
-const previewWorkflows = ref<Map<string, IWorkflowDb>>(new Map());
-
-watch(
-	() => workflowArtifacts.value.length,
-	async () => {
-		for (const wf of workflowArtifacts.value) {
-			if (previewWorkflows.value.has(wf.id)) continue;
-			try {
-				const full = await workflowsListStore.fetchWorkflow(wf.id);
-				previewWorkflows.value.set(wf.id, full);
-			} catch {
-				/* non-critical */
-			}
-		}
-	},
-	{ immediate: true },
-);
+const artifactIconMap: Record<string, IconName> = {
+	workflow: 'workflow',
+	'data-table': 'table',
+};
 </script>
 
 <template>
 	<div :class="$style.panel">
-		<div :class="$style.header">
-			<div :class="$style.headerTitle">
-				<N8nIcon icon="layers" size="small" />
-				<span>{{ i18n.baseText('instanceAi.artifactsPanel.title') }}</span>
-			</div>
-			<N8nIconButton icon="x" variant="ghost" size="small" @click="emit('close')" />
-		</div>
-
-		<div v-if="hasArtifacts" :class="$style.cardList">
-			<!-- Tasks card -->
-			<div v-if="tasks" :class="$style.artifactCard" @click="toggleCard('tasks')">
-				<div :class="$style.cardHeader">
-					<N8nIcon
-						:icon="expandedCards.has('tasks') ? 'chevron-down' : 'chevron-right'"
-						:class="$style.chevron"
-						size="small"
-					/>
-					<N8nIcon icon="list-checks" size="small" />
-					<span :class="$style.artifactName">{{
-						i18n.baseText('instanceAi.artifactsPanel.tasks')
-					}}</span>
-					<span :class="$style.progress"> {{ doneCount }}/{{ tasks.tasks.length }} </span>
-				</div>
-				<div v-if="expandedCards.has('tasks')" :class="$style.expandedContent">
-					<div :class="$style.taskList">
-						<div
-							v-for="task in tasks.tasks"
-							:key="task.id"
-							:class="[
-								$style.task,
-								task.status === 'done' ? $style.doneTask : '',
-								task.status === 'failed' ? $style.failedTask : '',
-								task.status === 'cancelled' ? $style.cancelledTask : '',
-							]"
-						>
-							<N8nIcon
-								:icon="statusIconMap[task.status].icon as IconName"
-								:class="$style[statusIconMap[task.status].className]"
-								:spin="statusIconMap[task.status].spin"
-								size="small"
-							/>
-							<span :class="$style.taskDescription">{{ task.description }}</span>
-						</div>
-					</div>
-				</div>
+		<!-- Artifacts section -->
+		<div :class="[$style.section, $style.card]">
+			<div :class="$style.sectionTitle">
+				{{ i18n.baseText('instanceAi.artifactsPanel.title') }}
 			</div>
 
-			<!-- Workflow cards -->
-			<div
-				v-for="wf in workflowArtifacts"
-				:key="wf.id"
-				:class="$style.artifactCard"
-				@click="toggleCard(wf.id)"
-			>
-				<div :class="$style.cardHeader">
-					<N8nIcon
-						:icon="expandedCards.has(wf.id) ? 'chevron-down' : 'chevron-right'"
-						:class="$style.chevron"
-						size="small"
-					/>
-					<N8nIcon icon="workflow" size="small" />
-					<span :class="$style.artifactName">{{ wf.name }}</span>
-					<span :class="$style.typeBadge">Workflow</span>
-					<RouterLink
-						:to="`/workflow/${wf.id}`"
-						target="_blank"
-						:class="$style.openLink"
-						@click.stop
-					>
-						{{ i18n.baseText('instanceAi.artifactsPanel.openWorkflow') }}
-					</RouterLink>
-				</div>
-				<div v-if="expandedCards.has(wf.id)" :class="$style.expandedContent">
-					<div v-if="previewWorkflows.has(wf.id)" :class="$style.previewContainer">
-						<WorkflowMiniCanvas
-							:workflow="previewWorkflows.get(wf.id)!"
-							:canvas-id="`artifact-${wf.id}`"
+			<div v-if="artifacts.length > 0" :class="$style.artifactList">
+				<div
+					v-for="artifact in artifacts"
+					:key="artifact.id"
+					:class="$style.artifactRow"
+					@click="handleArtifactClick(artifact, $event)"
+				>
+					<span :class="$style.artifactIconWrap">
+						<N8nIcon
+							:icon="artifactIconMap[artifact.type] ?? 'file'"
+							size="large"
+							:class="$style.artifactIcon"
 						/>
-					</div>
+					</span>
+					<span :class="$style.artifactName">{{ artifact.name }}</span>
 				</div>
+			</div>
+
+			<div v-else :class="$style.emptyState">
+				<div :class="$style.emptyIcons">
+					<N8nIcon icon="workflow" :size="30" :class="$style.emptyIcon" />
+					<N8nIcon icon="table" :size="30" :class="$style.emptyIcon" />
+				</div>
+				<span>{{ i18n.baseText('instanceAi.artifactsPanel.noArtifacts') }}</span>
 			</div>
 		</div>
 
-		<div v-else :class="$style.emptyState">
-			{{ i18n.baseText('instanceAi.artifactsPanel.noArtifacts') }}
+		<!-- Tasks section -->
+		<div v-if="tasks" :class="[$style.section, $style.card]">
+			<div :class="$style.sectionTitle">
+				{{ i18n.baseText('instanceAi.artifactsPanel.tasks') }}
+				<span :class="$style.progress">{{ doneCount }}/{{ tasks.tasks.length }}</span>
+			</div>
+
+			<div :class="$style.taskList">
+				<div
+					v-for="task in tasks.tasks"
+					:key="task.id"
+					:class="[
+						$style.task,
+						task.status === 'done' ? $style.doneTask : '',
+						task.status === 'failed' ? $style.failedTask : '',
+						task.status === 'cancelled' ? $style.cancelledTask : '',
+					]"
+				>
+					<N8nIcon
+						:icon="statusIconMap[task.status].icon as IconName"
+						:class="$style[statusIconMap[task.status].className]"
+						:spin="statusIconMap[task.status].spin"
+						size="medium"
+					/>
+					<span :class="$style.taskDescription" :title="task.description">{{
+						task.description
+					}}</span>
+				</div>
+			</div>
 		</div>
 	</div>
 </template>
 
 <style lang="scss" module>
 .panel {
-	position: absolute;
-	top: 0;
-	right: 0;
-	bottom: 0;
-	width: 360px;
-	background: var(--color--background);
-	border-left: var(--border);
-	display: flex;
-	flex-direction: column;
-	z-index: 10;
-	overflow: hidden;
-}
-
-.header {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: var(--spacing--2xs) var(--spacing--sm);
-	border-bottom: var(--border);
+	width: 280px;
 	flex-shrink: 0;
-}
-
-.headerTitle {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--bold);
-}
-
-.cardList {
-	padding: var(--spacing--sm);
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
-	flex: 1;
-	min-height: 0;
+	gap: var(--spacing--sm);
+	padding: var(--spacing--sm);
 	overflow-y: auto;
 }
 
-.artifactCard {
-	border: var(--border);
-	border-radius: var(--radius--lg);
-	overflow: hidden;
-	cursor: pointer;
-	flex-shrink: 0;
+.section {
+	display: flex;
+	flex-direction: column;
 }
 
-.cardHeader {
+.card {
+	border: var(--border);
+	border-radius: var(--radius--lg);
+	padding: var(--spacing--sm);
+	background: var(--color--background--light-2);
+}
+
+.sectionTitle {
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--bold);
+	margin-bottom: var(--spacing--2xs);
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
-	padding: var(--spacing--2xs) var(--spacing--sm);
-	font-size: var(--font-size--2xs);
 }
 
-.chevron {
-	color: var(--text-color--subtle);
+.progress {
+	font-size: var(--font-size--3xs);
+	color: var(--color--text--tint-1);
+	font-weight: var(--font-weight--regular);
+}
+
+/* Artifact list */
+.artifactList {
+	display: flex;
+	flex-direction: column;
+}
+
+.artifactRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+	padding: var(--spacing--2xs) var(--spacing--2xs);
+	cursor: pointer;
+	border-radius: var(--radius);
+	transition: background-color 0.2s ease;
+
+	&:hover {
+		background: var(--color--foreground--tint-2);
+
+		.artifactName {
+			color: var(--color--primary);
+		}
+
+		.artifactIcon {
+			color: var(--color--primary);
+		}
+	}
+}
+
+.artifactIconWrap {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: var(--spacing--4xs);
+	background: var(--color--foreground--tint-1);
+	border-radius: var(--radius);
 	flex-shrink: 0;
-	transition: transform 0.15s ease;
+}
+
+.artifactIcon {
+	color: var(--color--text--tint-1);
 }
 
 .artifactName {
-	font-weight: var(--font-weight--bold);
-	flex: 1;
+	font-size: var(--font-size--sm);
+	color: var(--color--text);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
 
-.typeBadge {
-	font-size: var(--font-size--3xs);
-	padding: 1px var(--spacing--3xs);
-	background: var(--color--foreground);
-	border-radius: var(--radius--sm);
-	text-transform: uppercase;
-	color: var(--text-color);
-	flex-shrink: 0;
+/* Empty state */
+.emptyState {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--sm) 0;
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-1);
 }
 
-.progress {
-	margin-left: auto;
-	font-size: var(--font-size--3xs);
-	color: var(--text-color--subtle);
-	flex-shrink: 0;
+.emptyIcons {
+	display: flex;
+	gap: var(--spacing--2xs);
 }
 
-.openLink {
-	font-size: var(--font-size--3xs);
-	color: var(--color--primary);
-	text-decoration: none;
-	flex-shrink: 0;
+.emptyIcon {
+	color: var(--color--text--tint-1);
+	padding: var(--spacing--4xs);
+	background: var(--color--foreground--tint-1);
+	border-radius: var(--radius--lg);
 }
 
-.expandedContent {
-	padding: 0 var(--spacing--sm) var(--spacing--2xs);
-	border-top: 1px solid var(--color--foreground--tint-2);
-	max-height: 300px;
-	overflow-y: auto;
-}
-
-.previewContainer {
-	height: 120px;
-	border-radius: var(--radius);
-	overflow: hidden;
-	margin-top: var(--spacing--4xs);
-}
-
-/* Task list styles */
+/* Task list */
 .taskList {
-	padding: var(--spacing--2xs) 0;
+	display: flex;
+	flex-direction: column;
 }
 
 .task {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--3xs);
-	padding: var(--spacing--3xs) 0;
-	font-size: var(--font-size--2xs);
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--2xs) 0;
+	font-size: var(--font-size--sm);
 	line-height: var(--line-height--lg);
-
-	& + & {
-		border-top: 1px solid var(--color--foreground--tint-2);
-	}
 }
 
 .doneTask {
 	opacity: 0.6;
+	text-decoration: line-through;
 }
 
 .failedTask {
@@ -312,13 +277,16 @@ watch(
 }
 
 .taskDescription {
-	color: var(--text-color);
+	color: var(--color--text--shade-1);
 	flex: 1;
 	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .todoIcon {
-	color: var(--text-color--subtle);
+	color: var(--color--text--tint-2);
 }
 
 .inProgressIcon {
@@ -326,7 +294,10 @@ watch(
 }
 
 .doneIcon {
-	color: var(--color--success);
+	color: white;
+	background: var(--color--success);
+	border-radius: 50%;
+	padding: 1px;
 }
 
 .failedIcon {
@@ -335,12 +306,5 @@ watch(
 
 .cancelledIcon {
 	color: var(--color--text--tint-1);
-}
-
-.emptyState {
-	padding: var(--spacing--lg) var(--spacing--sm);
-	text-align: center;
-	font-size: var(--font-size--2xs);
-	color: var(--text-color--subtle);
 }
 </style>

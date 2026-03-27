@@ -1,0 +1,54 @@
+name: 'Release: Publish New Package'
+
+on:
+  workflow_dispatch:
+    inputs:
+      package-path:
+        description: 'Path to the package to publish (e.g. packages/@n8n/my-new-package)'
+        required: true
+        type: string
+
+concurrency:
+  group: release-new-package-${{ github.event.inputs.package-path }}
+  cancel-in-progress: false
+
+jobs:
+  publish-to-npm:
+    name: Publish to NPM
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: release
+
+    steps:
+      - name: Check branch
+        if: github.ref != 'refs/heads/master'
+        run: |
+          echo "::error::This workflow can only be run from the master branch"
+          exit 1
+
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup and Build
+        uses: ./.github/actions/setup-nodejs
+
+      - name: Check package does not already exist on NPM
+        working-directory: ${{ github.event.inputs.package-path }}
+        run: |
+          PACKAGE_NAME=$(node -p "require('./package.json').name")
+          if [ "$PACKAGE_NAME" = "n8n-monorepo" ]; then
+            echo "::error::Package 'n8n-monorepo' cannot be published."
+            exit 1
+          fi
+          if npm view "$PACKAGE_NAME" > /dev/null 2>&1; then
+            echo "::error::Package '$PACKAGE_NAME' already exists on NPM. Use the regular release workflow for updates."
+            exit 1
+          fi
+          echo "Package '$PACKAGE_NAME' does not exist on NPM yet. Proceeding with publish."
+
+      - name: Configure NPM token
+        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_INITIAL_PUBLISH_TOKEN }}" > ~/.npmrc
+
+      - name: Publish package
+        working-directory: ${{ github.event.inputs.package-path }}
+        run: pnpm publish --access public --no-git-checks

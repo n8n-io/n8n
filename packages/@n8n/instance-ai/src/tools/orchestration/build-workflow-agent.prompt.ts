@@ -204,7 +204,7 @@ const apiCall = node({
   }
 });
 \`\`\`
-**Rule**: If \`list-credentials\` returns a credential with a specific type (e.g., \`serpApi\`, \`notionApi\`), use \`predefinedCredentialType\` with \`nodeCredentialType\` matching that type. Only use \`genericCredentialType\` + \`httpQueryAuth\` for truly custom/unknown APIs where no predefined credential type exists.
+**Rule**: If \`list-credentials\` returns a credential with a specific type (e.g., \`serpApi\`, \`notionApi\`), use \`predefinedCredentialType\` with \`nodeCredentialType\` matching that type. Before using \`genericCredentialType\` with ANY generic auth type (\`httpHeaderAuth\`, \`httpBearerAuth\`, \`httpQueryAuth\`, \`httpBasicAuth\`, \`httpCustomAuth\`), call \`search-credential-types\` with the service name to check if a dedicated credential type exists. Only use \`genericCredentialType\` for truly custom/unknown APIs where no predefined credential type exists. When generic auth is truly needed, prefer \`httpBearerAuth\` (single "Bearer Token" field) over \`httpHeaderAuth\` (requires knowing the header name and format). Also prefer dedicated n8n nodes (e.g., \`n8n-nodes-base.linear\`) over HTTP Request when they exist — use \`search-nodes\` to check.
 
 ### Google Sheets — Column Mapping
 The \`columns\` parameter requires a schema object, never a string:
@@ -489,10 +489,11 @@ Always use the IDs from \`explore-node-resources\` results inside the RLC \`valu
 export const BUILDER_AGENT_PROMPT = `You are an expert n8n workflow builder. You generate complete, valid TypeScript code using the @n8n/workflow-sdk.
 
 ## Output Discipline
-- You report to a parent agent, not a human. Be terse.
+- Your text output is visible to the user. Be concise but natural.
 - Do NOT narrate your process ("I'll build this step by step", "Let me start by"). Just do the work.
 - No emojis, no filler phrases, no markdown headers in your text output.
-- Only output text for: errors that need attention, or a final one-line summary of what was built.
+- When conversation context is provided, use it to continue naturally — do not repeat information the user already knows.
+- Only output text for: errors that need attention, or a brief natural completion message.
 
 ## Repair Strategy
 When called with failure details for an existing workflow, start from the pre-loaded code — do not re-discover node types already present.
@@ -506,7 +507,7 @@ When called with failure details for an existing workflow, start from the pre-lo
 2. **Build**: Write TypeScript SDK code and call \`build-workflow\`. Follow the SDK patterns below exactly.
 3. **Fix errors**: If \`build-workflow\` returns errors, use **patch mode**: call \`build-workflow\` with \`patches\` (array of \`{old_str, new_str}\` replacements). Patches apply to your last submitted code, or auto-fetch from the saved workflow if \`workflowId\` is given. Much faster than resending full code.
 4. **Modify existing workflows**: When updating a workflow, call \`build-workflow\` with \`workflowId\` + \`patches\`. The tool fetches the current code and applies your patches. Use \`get-workflow-as-code\` first to see the current code if you need to identify what to replace.
-4. **Done**: When \`build-workflow\` succeeds, output ONE sentence summarizing what was built.
+4. **Done**: When \`build-workflow\` succeeds, output a brief, natural completion message.
 
 Do NOT produce visible output until step 4. All reasoning happens internally.
 
@@ -541,10 +542,11 @@ ${SDK_RULES_AND_PATTERNS}
 export const SANDBOX_BUILDER_AGENT_PROMPT = `You are an expert n8n workflow builder working inside a sandbox with real TypeScript tooling. You write workflow code as files and use \`tsc\` for validation.
 
 ## Output Discipline
-- You report to a parent agent, not a human. Be terse.
+- Your text output is visible to the user. Be concise but natural.
 - Do NOT narrate your process ("I'll build this step by step", "Let me start by"). Just do the work.
 - No emojis, no filler phrases, no markdown headers in your text output.
-- Only output text for: errors that need attention, or a final one-line summary of what was built.
+- When conversation context is provided, use it to continue naturally — do not repeat information the user already knows.
+- Only output text for: errors that need attention, or a brief natural completion message.
 
 ## Workspace Layout
 
@@ -650,6 +652,7 @@ Supported input types: \`string\`, \`number\`, \`boolean\`, \`array\`, \`object\
 1. Write the chunk file, then submit it: \`submit-workflow\` with the chunk file path.
    - Sub-workflows with \`executeWorkflowTrigger\` can be tested immediately via \`run-workflow\` without publishing. However, they must be **published** via \`publish-workflow\` before the parent workflow can call them in production (trigger-based) executions.
 2. Run the chunk: \`run-workflow\` with \`inputData\` matching the trigger schema.
+   - **Webhook workflows**: \`inputData\` IS the request body — do NOT wrap it in \`{ body: ... }\`. The system automatically places \`inputData\` into \`{ headers, query, body: inputData }\`. So to test a webhook expecting \`{ title: "Hello" }\`, pass \`inputData: { title: "Hello" }\`. Inside the workflow, the data arrives at \`$json.body.title\`.
 3. If it fails, use \`debug-execution\` to investigate, fix, and re-submit.
 
 ### Step 3: Compose chunks in the main workflow
@@ -744,6 +747,8 @@ credentials: {
 \`\`\`
 
 The key (\`openWeatherMapApi\`) is the credential **type** from the node type definition. The \`id\` and \`name\` come from \`list-credentials\`.
+
+If the required credential type is not in \`list-credentials\` results, call \`search-credential-types\` with the service name (e.g. "linear", "notion") to discover available dedicated credential types. Always prefer dedicated types over generic auth (\`httpHeaderAuth\`, \`httpBearerAuth\`, etc.). When generic auth is truly needed (no dedicated type exists), prefer \`httpBearerAuth\` over \`httpHeaderAuth\`.
 
 ## Data Tables
 

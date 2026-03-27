@@ -286,7 +286,7 @@ jobs:
       id-token: write
       packages: write
       actions: read
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.1.0
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@f7dd8c54c2067bafc12ca7a55595d5ee9b75204a
     with:
       image: ${{ needs.create_multi_arch_manifest.outputs.n8n_image }}
       digest: ${{ needs.create_multi_arch_manifest.outputs.n8n_digest }}
@@ -304,7 +304,7 @@ jobs:
       id-token: write
       packages: write
       actions: read
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.1.0
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@f7dd8c54c2067bafc12ca7a55595d5ee9b75204a
     with:
       image: ${{ needs.create_multi_arch_manifest.outputs.runners_image }}
       digest: ${{ needs.create_multi_arch_manifest.outputs.runners_digest }}
@@ -322,7 +322,7 @@ jobs:
       id-token: write
       packages: write
       actions: read
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.1.0
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@f7dd8c54c2067bafc12ca7a55595d5ee9b75204a
     with:
       image: ${{ needs.create_multi_arch_manifest.outputs.runners_distroless_image }}
       digest: ${{ needs.create_multi_arch_manifest.outputs.runners_distroless_digest }}
@@ -333,7 +333,15 @@ jobs:
   # VEX Attestation - Documents which CVEs affect us (security/vex.openvex.json)
   vex-attestation:
     name: VEX Attestation
-    needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest, provenance-n8n, provenance-runners, provenance-runners-distroless]
+    needs:
+      [
+        determine-build-context,
+        build-and-push-docker,
+        create_multi_arch_manifest,
+        provenance-n8n,
+        provenance-runners,
+        provenance-runners-distroless,
+      ]
     if: |
       always() &&
       needs.create_multi_arch_manifest.result == 'success' &&

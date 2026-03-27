@@ -61,6 +61,7 @@ import {
 	DELETE_FOLDER_MODAL_KEY,
 	MOVE_FOLDER_MODAL_KEY,
 } from '@/features/core/folders/folders.constants';
+import type { WorkflowListEventMap } from '@/features/core/folders/folders.types';
 import {
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
 	SOURCE_CONTROL_PULL_MODAL_KEY,
@@ -293,6 +294,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const nodeViewInitialized = ref<boolean>(false);
 	const addFirstStepOnLoad = ref<boolean>(false);
 	const pendingNotificationsForViews = ref<{ [key in VIEWS]?: NotificationOptions[] }>({});
+	const areNotificationsSuppressed = ref(false);
 	const processingExecutionResults = ref<boolean>(false);
 	const isBlankRedirect = ref<boolean>(false);
 
@@ -539,6 +541,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		showAuthOptions = false,
 		forceManualMode = false,
 		projectId?: string,
+		suggestedName?: string,
 	) => {
 		setActiveId(CREDENTIAL_EDIT_MODAL_KEY, type);
 		setShowAuthSelector(CREDENTIAL_EDIT_MODAL_KEY, showAuthOptions);
@@ -546,6 +549,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			...modalsById.value[CREDENTIAL_EDIT_MODAL_KEY],
 			forceManualMode,
 			projectId,
+			suggestedName,
 		} as NewCredentialsModal;
 		setMode(CREDENTIAL_EDIT_MODAL_KEY, 'new');
 		openModal(CREDENTIAL_EDIT_MODAL_KEY);
@@ -569,7 +573,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 
 	const openDeleteFolderModal = (
 		id: string,
-		workflowListEventBus: EventBus,
+		workflowListEventBus: EventBus<WorkflowListEventMap>,
 		content: { workflowCount: number; subFolderCount: number },
 	) => {
 		setActiveId(DELETE_FOLDER_MODAL_KEY, id);
@@ -585,7 +589,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			sharedWithProjects?: ProjectSharingData[];
 			homeProjectId?: string;
 		},
-		workflowListEventBus: EventBus,
+		workflowListEventBus: EventBus<WorkflowListEventMap>,
 	) => {
 		openModalWithData({
 			name: MOVE_FOLDER_MODAL_KEY,
@@ -615,6 +619,10 @@ export const useUIStore = defineStore(STORES.UI, () => {
 
 	const setNotificationsForView = (view: VIEWS, notifications: NotificationOptions[]) => {
 		pendingNotificationsForViews.value[view] = notifications;
+	};
+
+	const setNotificationsSuppressed = (suppressed: boolean) => {
+		areNotificationsSuppressed.value = suppressed;
 	};
 
 	function resetLastInteractedWith() {
@@ -738,6 +746,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		currentView,
 		isAnyModalOpen,
 		pendingNotificationsForViews,
+		areNotificationsSuppressed,
 		activeModals,
 		isProcessingExecutionResults,
 		setTheme,
@@ -754,6 +763,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		removeActiveAction,
 		toggleSidebarMenuCollapse,
 		setNotificationsForView,
+		setNotificationsSuppressed,
 		resetLastInteractedWith,
 		setProcessingExecutionResults,
 		markStateDirty,

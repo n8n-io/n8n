@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, ref, onMounted } from 'vue';
-import { N8nIcon, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nHeading, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { ElSwitch } from 'element-plus';
 import { useI18n } from '@n8n/i18n';
 import { useSettingsField } from './useSettingsField';
@@ -90,10 +90,9 @@ onMounted(() => {
 
 <template>
 	<div :class="$style.section">
-		<div :class="$style.sectionHeader">
-			<N8nIcon icon="plug" size="small" />
+		<N8nHeading tag="h2" size="small">
 			{{ i18n.baseText('instanceAi.filesystem.label') }}
-		</div>
+		</N8nHeading>
 
 		<div :class="$style.switchRow">
 			<span :class="$style.switchLabel">{{ i18n.baseText('instanceAi.filesystem.label') }}</span>
@@ -186,17 +185,6 @@ onMounted(() => {
 	gap: var(--spacing--xs);
 }
 
-.sectionHeader {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	font-size: var(--font-size--xs);
-	font-weight: var(--font-weight--bold);
-	color: var(--text-color);
-	padding-bottom: var(--spacing--4xs);
-	border-bottom: var(--border);
-}
-
 .switchRow {
 	display: flex;
 	align-items: center;
@@ -206,7 +194,7 @@ onMounted(() => {
 
 .switchLabel {
 	font-size: var(--font-size--2xs);
-	color: var(--text-color--subtle);
+	color: var(--color--text--tint-1);
 }
 
 .connectedBlock {
@@ -326,6 +314,6 @@ onMounted(() => {
 	font-size: var(--font-size--3xs);
 	font-family: monospace;
 	word-break: break-all;
-	color: var(--text-color);
+	color: var(--color--text);
 }
 </style>

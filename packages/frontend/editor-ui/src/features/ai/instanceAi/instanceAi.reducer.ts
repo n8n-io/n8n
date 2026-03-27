@@ -488,6 +488,7 @@ export function handleEvent(state: InstanceAiReducerState, event: InstanceAiEven
 		}
 
 		case 'filesystem-request':
+		case 'thread-title-updated':
 			return state.activeRunId;
 
 		case 'run-finish': {

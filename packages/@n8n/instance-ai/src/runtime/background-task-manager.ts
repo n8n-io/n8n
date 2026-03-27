@@ -61,11 +61,12 @@ export class BackgroundTaskManager {
 	}
 
 	queueCorrection(
+		threadId: string,
 		taskId: string,
 		correction: string,
 	): 'queued' | 'task-completed' | 'task-not-found' {
 		const task = this.tasks.get(taskId);
-		if (!task) return 'task-not-found';
+		if (!task || task.threadId !== threadId) return 'task-not-found';
 		if (task.status !== 'running') return 'task-completed';
 		task.corrections.push(correction);
 		return 'queued';

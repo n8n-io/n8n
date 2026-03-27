@@ -255,6 +255,12 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			if (parsed.data.type === 'tasks-update') {
 				latestTasks.value = parsed.data.payload.tasks;
 			}
+			if (parsed.data.type === 'thread-title-updated') {
+				const thread = threads.value.find((t) => t.id === currentThreadId.value);
+				if (thread) {
+					thread.title = parsed.data.payload.title;
+				}
+			}
 			// Force Vue reactivity when streaming state changes (run-start can
 			// re-activate a completed message for auto-follow-up runs, run-finish
 			// marks it done). In-place mutation of message properties may not
@@ -605,7 +611,11 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		}
 	}
 
-	async function sendMessage(message: string, attachments?: InstanceAiAttachment[]): Promise<void> {
+	async function sendMessage(
+		message: string,
+		attachments?: InstanceAiAttachment[],
+		pushRef?: string,
+	): Promise<void> {
 		// Clear amend context on new message
 		amendContext.value = null;
 
@@ -639,6 +649,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				researchMode.value || undefined,
 				attachments,
 				Intl.DateTimeFormat().resolvedOptions().timeZone,
+				pushRef,
 			);
 		} catch (error: unknown) {
 			const status = error instanceof ResponseError ? error.httpStatusCode : undefined;

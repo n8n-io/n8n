@@ -95,12 +95,12 @@ const briefing = computed(() => {
 }
 
 .delegatingLabel {
-	color: var(--text-color--subtle);
+	color: var(--color--text--tint-1);
 }
 
 .role {
 	font-weight: var(--font-weight--bold);
-	color: var(--text-color);
+	color: var(--color--text);
 }
 
 .spinner {
@@ -122,7 +122,7 @@ const briefing = computed(() => {
 .toolsLabel {
 	font-size: var(--font-size--3xs);
 	font-weight: var(--font-weight--bold);
-	color: var(--text-color--subtle);
+	color: var(--color--text--tint-1);
 	text-transform: uppercase;
 	letter-spacing: 0.05em;
 	margin-right: var(--spacing--4xs);
@@ -136,7 +136,7 @@ const briefing = computed(() => {
 	background: var(--color--foreground);
 	border: var(--border);
 	border-radius: var(--radius--sm);
-	color: var(--text-color);
+	color: var(--color--text);
 }
 
 .briefingBlock {
@@ -155,7 +155,7 @@ const briefing = computed(() => {
 	font-family: var(--font-family);
 	font-size: var(--font-size--3xs);
 	font-weight: var(--font-weight--bold);
-	color: var(--text-color--subtle);
+	color: var(--color--text--tint-1);
 	text-transform: uppercase;
 	letter-spacing: 0.05em;
 
@@ -167,7 +167,7 @@ const briefing = computed(() => {
 .briefingContent {
 	padding: var(--spacing--4xs) var(--spacing--xs) var(--spacing--2xs);
 	font-size: var(--font-size--2xs);
-	color: var(--text-color--subtle);
+	color: var(--color--text--tint-1);
 	line-height: var(--line-height--xl);
 
 	p {

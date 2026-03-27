@@ -216,6 +216,11 @@ export interface InstanceAiExecutionService {
 	): Promise<NodeOutputResult>;
 }
 
+export interface CredentialTypeSearchResult {
+	type: string;
+	displayName: string;
+}
+
 export interface InstanceAiCredentialService {
 	list(options?: { type?: string }): Promise<CredentialSummary[]>;
 	get(credentialId: string): Promise<CredentialDetail>;
@@ -227,6 +232,8 @@ export interface InstanceAiCredentialService {
 	getCredentialFields?(
 		credentialType: string,
 	): CredentialFieldInfo[] | Promise<CredentialFieldInfo[]>;
+	/** Search available credential types by keyword. Returns matching types with display names. */
+	searchCredentialTypes?(query: string): Promise<CredentialTypeSearchResult[]>;
 }
 
 export interface CredentialFieldInfo {
@@ -675,8 +682,6 @@ export interface InstanceAiMemoryConfig {
 	embedderModel?: string;
 	lastMessages?: number;
 	semanticRecallTopK?: number;
-	/** Model ID for title generation (e.g. "anthropic/claude-sonnet-4-5"). When set, custom title instructions are used. */
-	titleModel?: string;
 	/** Thread TTL in days. Threads older than this are auto-expired on cleanup. 0 = no expiration. */
 	threadTtlDays?: number;
 }

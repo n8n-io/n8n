@@ -18,6 +18,7 @@ export async function postMessage(
 	researchMode?: boolean,
 	attachments?: InstanceAiAttachment[],
 	timeZone?: string,
+	pushRef?: string,
 ): Promise<InstanceAiSendMessageResponse> {
 	return await makeRestApiRequest<InstanceAiSendMessageResponse>(
 		context,
@@ -28,6 +29,7 @@ export async function postMessage(
 			...(researchMode ? { researchMode } : {}),
 			...(attachments && attachments.length > 0 ? { attachments } : {}),
 			...(timeZone ? { timeZone } : {}),
+			...(pushRef ? { pushRef } : {}),
 		},
 	);
 }

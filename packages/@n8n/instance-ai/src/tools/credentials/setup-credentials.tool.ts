@@ -26,6 +26,12 @@ export function createSetupCredentialsTool(context: InstanceAiContext) {
 							.string()
 							.describe('n8n credential type name (e.g. "slackApi", "gmailOAuth2Api")'),
 						reason: z.string().optional().describe('Why this credential is needed (shown to user)'),
+						suggestedName: z
+							.string()
+							.optional()
+							.describe(
+								'Suggested display name for the credential (e.g. "Linear API key"). Pre-fills the name field when creating a new credential.',
+							),
 					}),
 				)
 				.describe('List of credentials to set up'),
@@ -71,6 +77,7 @@ export function createSetupCredentialsTool(context: InstanceAiContext) {
 					credentialType: z.string(),
 					reason: z.string(),
 					existingCredentials: z.array(z.object({ id: z.string(), name: z.string() })),
+					suggestedName: z.string().optional(),
 				}),
 			),
 			projectId: z.string().optional(),
@@ -94,6 +101,7 @@ export function createSetupCredentialsTool(context: InstanceAiContext) {
 							credentialType: req.credentialType,
 							reason: req.reason ?? `Required for ${req.credentialType}`,
 							existingCredentials: existing.map((c) => ({ id: c.id, name: c.name })),
+							...(req.suggestedName ? { suggestedName: req.suggestedName } : {}),
 						};
 					}),
 				);

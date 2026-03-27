@@ -7,11 +7,20 @@ import type { InstanceAiCredentialRequest } from '@n8n/api-types';
 import InstanceAiCredentialSetup from '../components/InstanceAiCredentialSetup.vue';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useUIStore } from '@/app/stores/ui.store';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
 	useI18n: () => ({
-		baseText: (key: string) => key,
+		baseText: (key: string, opts?: { interpolate?: Record<string, string> }) => {
+			if (opts?.interpolate) {
+				return Object.entries(opts.interpolate).reduce(
+					(str, [k, v]) => str.replace(`{${k}}`, v),
+					key,
+				);
+			}
+			return key;
+		},
 	}),
 }));
 
@@ -42,11 +51,24 @@ vi.mock('@/features/credentials/components/NodeCredentials.vue', () => ({
 
 const renderComponent = createComponentRenderer(InstanceAiCredentialSetup);
 
+/** Creates requests with no existing credentials (shows setup button) */
 function makeCredentialRequests(count: number): InstanceAiCredentialRequest[] {
 	return Array.from({ length: count }, (_, i) => ({
 		credentialType: `type${i + 1}`,
 		reason: `Reason for type ${i + 1}`,
 		existingCredentials: [],
+	}));
+}
+
+/** Creates requests with existing credentials (shows dropdown picker) */
+function makeCredentialRequestsWithExisting(count: number): InstanceAiCredentialRequest[] {
+	return Array.from({ length: count }, (_, i) => ({
+		credentialType: `type${i + 1}`,
+		reason: `Reason for type ${i + 1}`,
+		existingCredentials: [
+			{ id: `existing-${i + 1}`, name: `Existing Cred ${i + 1}` },
+			{ id: `existing-${i + 1}-b`, name: `Existing Cred ${i + 1} B` },
+		],
 	}));
 }
 
@@ -86,8 +108,8 @@ describe('InstanceAiCredentialSetup', () => {
 			expect(getByText('3 of 3')).toBeTruthy();
 		});
 
-		it('renders a credential picker on each wizard step', async () => {
-			const requests = makeCredentialRequests(3);
+		it('renders a credential picker when existing credentials exist', async () => {
+			const requests = makeCredentialRequestsWithExisting(3);
 			const { getAllByTestId, getByTestId } = renderComponent({
 				props: {
 					requestId: 'req-1',
@@ -105,8 +127,39 @@ describe('InstanceAiCredentialSetup', () => {
 			expect(getAllByTestId('credential-picker')).toHaveLength(1);
 		});
 
-		it('renders a single credential without extra pickers', () => {
+		it('renders a setup button when no existing credentials', () => {
 			const requests = makeCredentialRequests(1);
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: {
+					requestId: 'req-1',
+					credentialRequests: requests,
+					message: 'Set up credentials',
+				},
+			});
+
+			expect(getByTestId('instance-ai-credential-setup-button')).toBeTruthy();
+			expect(queryByTestId('credential-picker')).toBeNull();
+		});
+
+		it('opens credential modal when setup button is clicked', async () => {
+			const requests = makeCredentialRequests(1);
+			const uiStore = useUIStore();
+			const openNewCredSpy = vi.spyOn(uiStore, 'openNewCredential');
+
+			const { getByTestId } = renderComponent({
+				props: {
+					requestId: 'req-1',
+					credentialRequests: requests,
+					message: 'Set up credentials',
+				},
+			});
+
+			await userEvent.click(getByTestId('instance-ai-credential-setup-button'));
+			expect(openNewCredSpy).toHaveBeenCalledWith('type1', false, false, undefined, undefined);
+		});
+
+		it('renders a single credential with picker when existing credentials', () => {
+			const requests = makeCredentialRequestsWithExisting(1);
 			const { getAllByTestId, getByText } = renderComponent({
 				props: {
 					requestId: 'req-1',
@@ -122,7 +175,8 @@ describe('InstanceAiCredentialSetup', () => {
 
 	describe('credential selection', () => {
 		it('shows check icon when credential is selected', async () => {
-			const requests = makeCredentialRequests(1);
+			// Use multi-step to prevent auto-continue on first selection
+			const requests = makeCredentialRequestsWithExisting(2);
 			const { getByTestId, container } = renderComponent({
 				props: {
 					requestId: 'req-1',
@@ -134,14 +188,17 @@ describe('InstanceAiCredentialSetup', () => {
 			// No check icon before selection
 			expect(container.querySelector('[data-icon="check"]')).toBeNull();
 
+			// Select on step 1 — auto-advance moves to step 2
 			await userEvent.click(getByTestId('credential-picker'));
 
-			// Check icon appears after selection
-			expect(container.querySelector('[data-icon="check"]')).toBeTruthy();
+			// Navigate back to step 1 to verify check icon
+			await userEvent.click(getByTestId('instance-ai-credential-prev'));
+			expect(getByTestId('instance-ai-credential-step-check')).toBeTruthy();
 		});
 
-		it('enables continue button when all credentials are selected', async () => {
-			const requests = makeCredentialRequests(1);
+		it('enables continue button when at least one credential is selected', async () => {
+			// Use multi-step to prevent auto-continue
+			const requests = makeCredentialRequestsWithExisting(2);
 			const { getByTestId } = renderComponent({
 				props: {
 					requestId: 'req-1',
@@ -158,7 +215,7 @@ describe('InstanceAiCredentialSetup', () => {
 		});
 
 		it('disables continue button when not all credentials are selected', () => {
-			const requests = makeCredentialRequests(2);
+			const requests = makeCredentialRequestsWithExisting(2);
 			const { getByTestId } = renderComponent({
 				props: {
 					requestId: 'req-1',
@@ -174,7 +231,7 @@ describe('InstanceAiCredentialSetup', () => {
 
 	describe('submit actions', () => {
 		it('calls confirmAction with credential map on continue', async () => {
-			const requests = makeCredentialRequests(1);
+			const requests = makeCredentialRequestsWithExisting(2);
 			const confirmSpy = vi.spyOn(store, 'confirmAction').mockResolvedValue(true);
 			const resolveSpy = vi.spyOn(store, 'resolveConfirmation');
 
@@ -186,14 +243,19 @@ describe('InstanceAiCredentialSetup', () => {
 				},
 			});
 
-			// Select credential
+			// Select first credential
 			await userEvent.click(getByTestId('credential-picker'));
 
-			// Click continue
-			await userEvent.click(getByTestId('instance-ai-credential-continue-button'));
+			// Navigate to second step and select
+			await userEvent.click(getByTestId('instance-ai-credential-next'));
+			await userEvent.click(getByTestId('credential-picker'));
 
+			// Auto-continue fires since all are selected
 			expect(resolveSpy).toHaveBeenCalledWith('req-1', 'approved');
-			expect(confirmSpy).toHaveBeenCalledWith('req-1', true, undefined, { type1: 'cred-123' });
+			expect(confirmSpy).toHaveBeenCalledWith('req-1', true, undefined, {
+				type1: 'cred-123',
+				type2: 'cred-123',
+			});
 		});
 
 		it('calls confirmAction with false on defer', async () => {
@@ -216,9 +278,9 @@ describe('InstanceAiCredentialSetup', () => {
 			expect(confirmSpy).toHaveBeenCalledWith('req-1', false);
 		});
 
-		it('shows submitted success state after continue', async () => {
-			const requests = makeCredentialRequests(1);
-			vi.spyOn(store, 'confirmAction').mockResolvedValue(true);
+		it('auto-continues when single credential is selected', async () => {
+			const requests = makeCredentialRequestsWithExisting(1);
+			const confirmSpy = vi.spyOn(store, 'confirmAction').mockResolvedValue(true);
 
 			const { getByTestId, getByText } = renderComponent({
 				props: {
@@ -228,9 +290,10 @@ describe('InstanceAiCredentialSetup', () => {
 				},
 			});
 
+			// Select credential — auto-continue should fire
 			await userEvent.click(getByTestId('credential-picker'));
-			await userEvent.click(getByTestId('instance-ai-credential-continue-button'));
 
+			expect(confirmSpy).toHaveBeenCalledWith('req-1', true, undefined, { type1: 'cred-123' });
 			expect(getByText('instanceAi.credential.allSelected')).toBeTruthy();
 		});
 
@@ -268,7 +331,7 @@ describe('InstanceAiCredentialSetup', () => {
 		});
 
 		it('shows finalize applied state after submit', async () => {
-			const requests = makeCredentialRequests(1);
+			const requests = makeCredentialRequestsWithExisting(1);
 			vi.spyOn(store, 'confirmAction').mockResolvedValue(true);
 
 			const { getByTestId, getByText } = renderComponent({
@@ -280,8 +343,8 @@ describe('InstanceAiCredentialSetup', () => {
 				},
 			});
 
+			// Select credential — auto-continue fires
 			await userEvent.click(getByTestId('credential-picker'));
-			await userEvent.click(getByTestId('instance-ai-credential-continue-button'));
 
 			expect(getByText('instanceAi.credential.finalize.applied')).toBeTruthy();
 		});

@@ -55,8 +55,12 @@ async function buildDelegateBriefing(
 	role: string,
 	briefing: string,
 	artifacts?: unknown,
+	conversationContext?: string,
 ): Promise<string> {
 	const serializedArtifacts = artifacts ? `\n\nArtifacts: ${JSON.stringify(artifacts)}` : '';
+	const conversationCtx = conversationContext
+		? `\n\n[CONVERSATION CONTEXT: ${conversationContext}]`
+		: '';
 
 	let iterationContext = '';
 	if (context.iterationLog) {
@@ -69,7 +73,7 @@ async function buildDelegateBriefing(
 		}
 	}
 
-	return `${briefing}${serializedArtifacts}${iterationContext ? `\n\n${iterationContext}` : ''}\n\nRemember: ${SUB_AGENT_PROTOCOL}`;
+	return `${briefing}${conversationCtx}${serializedArtifacts}${iterationContext ? `\n\n${iterationContext}` : ''}\n\nRemember: ${SUB_AGENT_PROTOCOL}`;
 }
 
 export interface DetachedDelegateTaskInput {
@@ -77,6 +81,7 @@ export interface DetachedDelegateTaskInput {
 	spec: string;
 	tools: string[];
 	artifacts?: unknown;
+	conversationContext?: string;
 	taskId?: string;
 	agentId?: string;
 	plannedTaskId?: string;
@@ -137,7 +142,13 @@ export async function startDetachedDelegateTask(
 		},
 	});
 
-	const briefingMessage = await buildDelegateBriefing(context, role, input.spec, input.artifacts);
+	const briefingMessage = await buildDelegateBriefing(
+		context,
+		role,
+		input.spec,
+		input.artifacts,
+		input.conversationContext,
+	);
 
 	context.spawnBackgroundTask({
 		taskId,
@@ -195,7 +206,7 @@ export async function startDetachedDelegateTask(
 	});
 
 	return {
-		result: `Delegation started (task: ${taskId}). Acknowledge briefly and move on.`,
+		result: `Delegation started (task: ${taskId}). Reply with one short sentence. Do NOT summarize the plan or list details.`,
 		taskId,
 		agentId: subAgentId,
 	};
@@ -263,6 +274,7 @@ export function createDelegateTool(context: OrchestrationContext) {
 					input.role,
 					input.briefing,
 					input.artifacts,
+					input.conversationContext,
 				);
 
 				// 5. Stream sub-agent with HITL support

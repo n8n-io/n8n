@@ -268,5 +268,19 @@ export function parseStoredMessages(
 		// in the assistant message's content
 	}
 
+	// Deduplicate assistant messages by messageGroupId.
+	// Follow-up runs in the same group produce separate DB rows; keep only
+	// the latest (which carries the full runIds array and complete tree).
+	const seen = new Set<string>();
+	for (let i = messages.length - 1; i >= 0; i--) {
+		const gid = messages[i].messageGroupId;
+		if (!gid) continue;
+		if (seen.has(gid)) {
+			messages.splice(i, 1);
+		} else {
+			seen.add(gid);
+		}
+	}
+
 	return messages;
 }

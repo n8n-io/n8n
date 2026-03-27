@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { N8nIcon } from '@n8n/design-system';
+import { N8nHeading } from '@n8n/design-system';
 import { ElSwitch } from 'element-plus';
 import { useI18n } from '@n8n/i18n';
 import { useInstanceAiSettingsStore } from '../../instanceAiSettings.store';
@@ -10,10 +10,9 @@ const store = useInstanceAiSettingsStore();
 
 <template>
 	<div :class="$style.section">
-		<div :class="$style.sectionHeader">
-			<N8nIcon icon="shield" size="small" />
+		<N8nHeading tag="h2" size="small">
 			{{ i18n.baseText('instanceAi.settings.section.permissions') }}
-		</div>
+		</N8nHeading>
 
 		<div :class="$style.permissionDescription">
 			{{ i18n.baseText('instanceAi.settings.permissions.description') }}
@@ -88,20 +87,9 @@ const store = useInstanceAiSettingsStore();
 	gap: var(--spacing--xs);
 }
 
-.sectionHeader {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	font-size: var(--font-size--xs);
-	font-weight: var(--font-weight--bold);
-	color: var(--text-color);
-	padding-bottom: var(--spacing--4xs);
-	border-bottom: var(--border);
-}
-
 .permissionDescription {
 	font-size: var(--font-size--2xs);
-	color: var(--text-color--subtle);
+	color: var(--color--text--tint-1);
 	line-height: var(--line-height--xl);
 }
 
@@ -114,6 +102,6 @@ const store = useInstanceAiSettingsStore();
 
 .switchLabel {
 	font-size: var(--font-size--2xs);
-	color: var(--text-color--subtle);
+	color: var(--color--text--tint-1);
 }
 </style>

@@ -100,7 +100,7 @@ onUnmounted(() => {
 	gap: var(--spacing--3xs);
 	padding: var(--spacing--4xs) var(--spacing--2xs) var(--spacing--2xs) 0;
 	font-size: var(--font-size--2xs);
-	color: var(--text-color--subtle);
+	color: var(--color--text--tint-1);
 	pointer-events: none;
 }
 
@@ -126,20 +126,20 @@ onUnmounted(() => {
 
 .label {
 	font-weight: var(--font-weight--bold);
-	color: var(--text-color--subtle);
+	color: var(--color--text--tint-1);
 }
 
 .separator {
-	color: var(--text-color--subtle);
+	color: var(--color--text--tint-1);
 }
 
 .detail {
-	color: var(--text-color--subtle);
+	color: var(--color--text--tint-1);
 }
 
 .elapsed {
 	font-variant-numeric: tabular-nums;
-	color: var(--text-color--subtle);
+	color: var(--color--text--tint-1);
 }
 </style>
 

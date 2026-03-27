@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, watch } from 'vue';
-import { N8nIcon, N8nSelect, N8nOption, N8nInputLabel } from '@n8n/design-system';
+import { N8nHeading, N8nSelect, N8nOption, N8nInputLabel } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
@@ -57,10 +57,9 @@ watch(
 
 <template>
 	<div :class="$style.section">
-		<div :class="$style.sectionHeader">
-			<N8nIcon icon="search" size="small" />
+		<N8nHeading tag="h2" size="small">
 			{{ i18n.baseText('instanceAi.settings.section.search') }}
-		</div>
+		</N8nHeading>
 
 		<N8nInputLabel
 			:label="i18n.baseText('instanceAi.settings.searchCredential.label')"
@@ -98,16 +97,5 @@ watch(
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
-}
-
-.sectionHeader {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	font-size: var(--font-size--xs);
-	font-weight: var(--font-weight--bold);
-	color: var(--text-color);
-	padding-bottom: var(--spacing--4xs);
-	border-bottom: var(--border);
 }
 </style>
