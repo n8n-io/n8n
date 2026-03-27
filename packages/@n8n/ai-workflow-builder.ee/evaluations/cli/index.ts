@@ -5,6 +5,7 @@
  * Can be run directly or used as a reference for custom setups.
  */
 
+import type { BaseMessage } from '@langchain/core/messages';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import pLimit from 'p-limit';
 
@@ -135,8 +136,16 @@ function createWorkflowGenerator(
 	parsedNodeTypes: INodeTypeDescription[],
 	llms: ResolvedStageLLMs,
 	featureFlags?: BuilderFeatureFlags,
-): (prompt: string, collectors?: GenerationCollectors) => Promise<SimpleWorkflow> {
-	return async (prompt: string, collectors?: GenerationCollectors): Promise<SimpleWorkflow> => {
+): (
+	prompt: string,
+	collectors?: GenerationCollectors,
+	datasetInputContext?: DatasetInputContext,
+) => Promise<SimpleWorkflow> {
+	return async (
+		prompt: string,
+		collectors?: GenerationCollectors,
+		datasetInputContext?: DatasetInputContext,
+	): Promise<SimpleWorkflow> => {
 		const runId = generateRunId();
 
 		const agent = createAgent({
@@ -156,10 +165,13 @@ function createWorkflowGenerator(
 					message: prompt,
 					workflowId: runId,
 					featureFlags,
+					workflowContext: datasetInputContext?.workflowContext,
+					mode: datasetInputContext?.mode,
 				}),
 				EVAL_USERS.LANGSMITH,
 				undefined, // abortSignal
 				tokenTracker ? [tokenTracker] : undefined, // externalCallbacks
+				datasetInputContext?.historicalMessages as BaseMessage[] | undefined,
 			),
 		);
 
@@ -366,6 +378,7 @@ function createCodeWorkflowBuilderGenerator(
 				historyContext,
 			)) {
 				for (const message of output.messages) {
+					console.log(`Received message chunk: ${JSON.stringify(message)}`);
 					if (isWorkflowUpdateChunk(message)) {
 						const parsed: unknown = JSON.parse(message.codeSnippet);
 						if (isSimpleWorkflow(parsed)) {
