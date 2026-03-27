@@ -28,13 +28,17 @@ describe('registerWithMastra', () => {
 
 		registerWithMastra('test-agent', mockAgent, mockStorage);
 
-		expect(mockLangSmithExporter).toHaveBeenCalledWith({ projectName: 'instance-ai' });
+		expect(mockLangSmithExporter).toHaveBeenCalledWith({
+			projectName: 'instance-ai',
+			autoBatchTracing: false,
+			traceBatchConcurrency: 1,
+		});
 		expect(mockMastra).toHaveBeenCalledTimes(1);
 	});
 
 	it('should create LangSmithExporter with proxy config when tracingConfig provided', () => {
-		const mockAgent = {} as never;
-		const mockStorage = {} as never;
+		const mockAgent = { __registerMastra: jest.fn() } as never;
+		const mockStorage = { id: 'proxy-test' } as never;
 		const tracingConfig = {
 			apiUrl: 'https://proxy.example.com/langsmith',
 			headers: { Authorization: 'Bearer test-token' },
