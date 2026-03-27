@@ -55,13 +55,18 @@ describe('streamAgentRun', () => {
 			},
 		});
 
-		const result = await streamAgentRun(agent, 'hello', {}, {
-			threadId: 'thread-1',
-			runId: 'run-1',
-			agentId: 'agent-1',
-			signal: new AbortController().signal,
-			eventBus,
-		});
+		const result = await streamAgentRun(
+			agent,
+			'hello',
+			{},
+			{
+				threadId: 'thread-1',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				signal: new AbortController().signal,
+				eventBus,
+			},
+		);
 
 		expect(result.status).toBe('suspended');
 		expect(result.mastraRunId).toBe('mastra-run-1');

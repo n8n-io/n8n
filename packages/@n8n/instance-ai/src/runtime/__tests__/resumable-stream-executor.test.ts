@@ -210,7 +210,9 @@ describe('executeResumableStream', () => {
 		expect(waitForConfirmation).toHaveBeenCalledWith('request-1');
 		expect(resumeStream).not.toHaveBeenCalled();
 		const publishCalls = eventBus.publish.mock.calls as Array<[string, PublishedEvent]>;
-		const confirmationEvent = publishCalls.find(([, event]) => event.type === 'confirmation-request');
+		const confirmationEvent = publishCalls.find(
+			([, event]) => event.type === 'confirmation-request',
+		);
 		expect(confirmationEvent?.[0]).toBe('thread-1');
 		expect(confirmationEvent?.[1].payload?.requestId).toBe('request-1');
 
