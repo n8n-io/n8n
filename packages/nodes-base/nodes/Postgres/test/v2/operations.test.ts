@@ -190,6 +190,43 @@ describe('Test PostgresV2, deleteTable operation', () => {
 			nodeOptions,
 		);
 	});
+
+	it('deleteCommand: delete, should throw on invalid where clause', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'deleteTable',
+			schema: {
+				__rl: true,
+				mode: 'list',
+				value: 'public',
+			},
+			table: {
+				__rl: true,
+				value: 'my_table',
+				mode: 'list',
+				cachedResultName: 'my_table',
+			},
+			deleteCommand: 'delete',
+			where: {
+				values: [
+					{
+						column: 'id',
+						condition: '=1; select 1,2; -- -',
+						value: '1',
+					},
+				],
+			},
+			options: { nodeVersion: 2.1 },
+		};
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		const promise = deleteTable.execute.call(
+			createMockExecuteFunction(nodeParameters),
+			runQueries,
+			items,
+			nodeOptions,
+		);
+		await expect(promise).rejects.toThrow('Invalid where clause');
+	});
 });
 
 describe('Test PostgresV2, executeQuery operation', () => {
@@ -908,12 +945,63 @@ describe('Test PostgresV2, select operation', () => {
 			[
 				{
 					query:
-						'SELECT $3:name FROM $1:name.$2:name WHERE $4:name >= $5 AND $6:name = $7 ORDER BY $8:name ASC LIMIT 5',
-					values: ['public', 'my_table', ['json', 'id'], 'id', 2, 'foo', 'data 2', 'id'],
+						'SELECT $3:name FROM $1:name.$2:name WHERE $4:name >= $5 AND $6:name = $7 ORDER BY $8:name ASC LIMIT $9',
+					values: ['public', 'my_table', ['json', 'id'], 'id', 2, 'foo', 'data 2', 'id', 5],
 				},
 			],
 			nodeOptions,
 		);
+	});
+
+	it('limit, throw on invalid value', async () => {
+		const nodeParameters: IDataObject = {
+			operation: 'select',
+			schema: {
+				__rl: true,
+				mode: 'list',
+				value: 'public',
+			},
+			table: {
+				__rl: true,
+				value: 'my_table',
+				mode: 'list',
+				cachedResultName: 'my_table',
+			},
+			limit: '2; select 1,2;',
+			where: {
+				values: [
+					{
+						column: 'id',
+						condition: '>=',
+						value: 2,
+					},
+					{
+						column: 'foo',
+						condition: 'equal',
+						value: 'data 2',
+					},
+				],
+			},
+			sort: {
+				values: [
+					{
+						column: 'id',
+					},
+				],
+			},
+			options: {
+				outputColumns: ['json', 'id'],
+			},
+		};
+		const nodeOptions = nodeParameters.options as IDataObject;
+
+		const promise = select.execute.call(
+			createMockExecuteFunction(nodeParameters),
+			runQueries,
+			items,
+			nodeOptions,
+		);
+		await expect(promise).rejects.toThrow('Failed to parse value to number');
 	});
 });
 

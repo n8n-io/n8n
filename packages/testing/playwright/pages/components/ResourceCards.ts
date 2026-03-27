@@ -7,10 +7,6 @@ import type { Locator, Page } from '@playwright/test';
 export class ResourceCards {
 	constructor(private page: Page) {}
 
-	getResourcesListWrapper(): Locator {
-		return this.page.getByTestId('resources-list-wrapper');
-	}
-
 	getFolders(): Locator {
 		return this.page.getByTestId('folder-card');
 	}
@@ -69,5 +65,9 @@ export class ResourceCards {
 
 	async clickWorkflowCard(workflowName: string): Promise<void> {
 		await this.getWorkflow(workflowName).getByTestId('card-content').click();
+	}
+
+	async clickCredentialCard(credentialName: string): Promise<void> {
+		await this.getCredential(credentialName).getByTestId('card-content').click();
 	}
 }

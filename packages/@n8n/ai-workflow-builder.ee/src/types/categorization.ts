@@ -26,6 +26,8 @@ export const WorkflowTechnique = {
 	DATA_ANALYSIS: 'data_analysis',
 	/** Cleaning, formatting, or restructuring data (including summarization) */
 	DATA_TRANSFORMATION: 'data_transformation',
+	/** Storing, updating, or retrieving records from persistent storage (Google Sheets, Airtable, built-in Data Tables) */
+	DATA_PERSISTENCE: 'data_persistence',
 	/** Sending alerts or updates via email, chat, SMS when events occur */
 	NOTIFICATION: 'notification',
 	/** Building or using a centralized information collection (usually vector database for LLM use) */
@@ -60,6 +62,8 @@ export const TechniqueDescription: Record<WorkflowTechniqueType, string> = {
 		'Examining data to find patterns, trends, anomalies, or insights',
 	[WorkflowTechnique.DATA_TRANSFORMATION]:
 		'Cleaning, formatting, or restructuring data (including summarization)',
+	[WorkflowTechnique.DATA_PERSISTENCE]:
+		'Storing, updating, or retrieving records from persistent storage (Google Sheets, Airtable, built-in Data Tables)',
 	[WorkflowTechnique.NOTIFICATION]:
 		'Sending alerts or updates via email, chat, SMS when events occur',
 	[WorkflowTechnique.KNOWLEDGE_BASE]:

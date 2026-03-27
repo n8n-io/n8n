@@ -19,7 +19,7 @@ import type { OracleDBNodeCredentials, QueryWithValues } from '../helpers/interf
 import { configureQueryRunner } from '../helpers/utils';
 import { configureOracleDB } from '../transport';
 
-const fakeConnection = {
+const mockConnection = {
 	execute: jest.fn((_query = '') => {
 		const result = {} as { rows: any[] };
 		result.rows = [
@@ -142,6 +142,10 @@ const fakeConnection = {
 	commit: jest.fn(),
 	rollback: jest.fn(),
 };
+
+Object.defineProperty(mockConnection, 'oracleServerVersion', {
+	get: () => 2305000000, // mimic server is 23ai
+});
 
 const createFakePool = (connection: IDataObject) => {
 	return {
@@ -530,7 +534,7 @@ VALUES (
 			pool = await configureOracleDB.call(mockThisDef, credentials, {});
 			await setup();
 		} else {
-			pool = createFakePool(fakeConnection);
+			pool = createFakePool(mockConnection);
 		}
 	});
 
@@ -905,6 +909,344 @@ VALUES (
 			expect(expectedArgs).toHaveLength(1);
 			expect(expectedArgs[0].query).toMatch(expectedRegex);
 			expect(normalizeParams(expectedArgs[0].values)).toEqual(normalizeParams(expectedVal));
+		});
+
+		it('should call runQueries with out binds in plsql using bindInfo and multiple items', async () => {
+			const expectedQuery = `
+			BEGIN
+				:out_value1 := :in_value * 2;
+				:out_value2 := :in_value + 10;
+				:out_value3 := :in_value * :in_value;
+			END;`;
+			const makeItem = (i: number) => ({
+				json: { in_value: 10 },
+				pairedItem: { item: i, input: undefined },
+			});
+			const items = [makeItem(0), makeItem(1)];
+			const outParams = ['out_value1', 'out_value2', 'out_value3'];
+			const nodeParameters: IDataObject = {
+				operation: 'execute',
+				query: expectedQuery,
+				isBindInfo: true,
+				resource: 'database',
+				options: {
+					params: {
+						values: [
+							{
+								name: 'in_value',
+								valueNumber: 10,
+								datatype: 'number',
+								parseInStatement: false,
+							},
+							...outParams.map((name) => ({
+								name,
+								datatype: 'number',
+								parseInStatement: false,
+								bindDirection: 'out',
+							})),
+						],
+					},
+				},
+			};
+
+			const mockThis = createMockExecuteFunction(nodeParameters);
+			const runQueries = getRunQueriesFn(mockThis, pool);
+			const nodeOptions = nodeParameters.options as IDataObject;
+			const result = await executeSQL.execute.call(mockThis, runQueries, items, nodeOptions, pool);
+
+			if (integratedTests) {
+				for (const r of result) {
+					expect(r.json).toMatchObject({
+						out_value1: 20,
+						out_value2: 20,
+						out_value3: 100,
+					});
+				}
+			}
+
+			expect(runQueries).toHaveBeenCalledTimes(1);
+
+			const [calls] = runQueries.mock.calls[0] as [QueryWithValues[], unknown, unknown];
+			expect(calls).toHaveLength(2);
+
+			const expectedValues = {
+				in_value: { type: oracleDBTypes.NUMBER, val: 10, dir: 3002 },
+				out_value1: { type: oracleDBTypes.NUMBER, dir: 3003 },
+				out_value2: { type: oracleDBTypes.NUMBER, dir: 3003 },
+				out_value3: { type: oracleDBTypes.NUMBER, dir: 3003 },
+			};
+
+			calls.forEach((arg) => {
+				expect(arg.query).toBe(expectedQuery);
+				expect(arg.values).toEqual(expectedValues);
+			});
+		});
+
+		it('should call runQueries with binds passed in sql using bindInfo and single item', async () => {
+			const expectedQuery = `INSERT INTO ${deptTable} (DEPTNO, EMPNAME) VALUES(:DNO, :ENAME) RETURNING EMPNAME INTO :OUTENAME`;
+			const items = [
+				{
+					json: {
+						DEPTNO: 100,
+						EMPNAME: 'ALICE',
+					},
+					pairedItem: {
+						item: 0,
+						input: undefined,
+					},
+				},
+			];
+			const nodeParameters: IDataObject = {
+				operation: 'execute',
+				query: expectedQuery,
+				isBindInfo: true,
+				resource: 'database',
+				options: {
+					params: {
+						values: [
+							{
+								name: 'DNO',
+								valueNumber: 100,
+								datatype: 'number',
+								parseInStatement: false,
+							},
+							{
+								name: 'ENAME',
+								valueString: 'ALICE',
+								datatype: 'string',
+								parseInStatement: false,
+							},
+							{
+								name: 'OUTENAME',
+								datatype: 'string',
+								bindDirection: 'out',
+								parseInStatement: false,
+							},
+						],
+					},
+				},
+			};
+			const mockThis = createMockExecuteFunction(nodeParameters);
+			const runQueries = getRunQueriesFn(mockThis, pool);
+
+			const nodeOptions = nodeParameters.options as IDataObject;
+
+			const result = await executeSQL.execute.call(mockThis, runQueries, items, nodeOptions, pool);
+			if (integratedTests) {
+				for (const r of result) {
+					expect(r.json).toMatchObject({
+						DNO: 100,
+						ENAME: 'ALICE',
+						OUTENAME: 'ALICE',
+					});
+				}
+			}
+
+			// Assert that runQueries was called with expected query and bind values
+			expect(runQueries).toHaveBeenCalledTimes(1);
+			const callArgs = runQueries.mock.calls[0] as [QueryWithValues[], unknown, unknown];
+			const [expectedArgs] = callArgs;
+			const val = {
+				DNO: {
+					type: oracleDBTypes.NUMBER,
+					val: 100,
+					dir: 3002,
+				},
+				ENAME: {
+					type: oracleDBTypes.DB_TYPE_VARCHAR,
+					val: 'ALICE',
+					dir: 3002,
+				},
+				OUTENAME: {
+					type: oracleDBTypes.STRING,
+					dir: 3003,
+					val: undefined,
+				},
+			};
+
+			expect(expectedArgs).toHaveLength(1);
+			expect(expectedArgs[0].query).toBe(expectedQuery);
+			expect(expectedArgs[0].values).toEqual(val);
+		});
+
+		it('should bind NULL, valid, and mixed values correctly for all supported column types', async () => {
+			const expectedQuery = `INSERT INTO ${table} (
+		id, name, age, salary, join_date, is_active, meta_data, embedding, picture) VALUES (
+		:ID, :NAME, :AGE, :SALARY, :JOIN_DATE, :IS_ACTIVE, :META_DATA, :EMBEDDING, :PICTURE)`;
+
+			const DOJ = '2024-01-15T00:00:00.000Z';
+
+			const inputs = [
+				{
+					label: 'non-null values',
+					expectedId: 1,
+					items: [
+						{
+							json: {
+								ID: 1,
+								NAME: 'Alice',
+								AGE: 30,
+								SALARY: 75000.5,
+								JOIN_DATE: DOJ,
+								IS_ACTIVE: true,
+								META_DATA: { team: 'AI', level: 5 },
+								EMBEDDING: [0.1, 0.2, 0.3],
+								PICTURE: Buffer.from('hello world'),
+							},
+						},
+					],
+					params: [
+						{ name: 'ID', valueNumber: 1, datatype: 'number' },
+						{ name: 'NAME', valueString: 'Alice', datatype: 'string' },
+						{ name: 'AGE', valueNumber: 30, datatype: 'number' },
+						{ name: 'SALARY', valueNumber: 75000.5, datatype: 'number' },
+						{ name: 'JOIN_DATE', valueDate: DOJ, datatype: 'date' },
+						{ name: 'IS_ACTIVE', valueBoolean: true, datatype: 'boolean' },
+						{ name: 'META_DATA', valueJson: { team: 'AI', level: 5 }, datatype: 'json' },
+						{ name: 'EMBEDDING', valueVector: [0.1, 0.2, 0.3], datatype: 'vector' },
+						{ name: 'PICTURE', valueBlob: Buffer.from('hello world'), datatype: 'blob' },
+					],
+				},
+				{
+					label: 'null values',
+					expectedId: 2,
+					items: [
+						{
+							json: {
+								ID: 2,
+								NAME: null,
+								AGE: null,
+								SALARY: null,
+								JOIN_DATE: null,
+								IS_ACTIVE: null,
+								META_DATA: null,
+								EMBEDDING: null,
+								PICTURE: null,
+							},
+						},
+					],
+					params: [
+						{ name: 'ID', valueNumber: 2, datatype: 'number' },
+						{ name: 'NAME', valueString: null, datatype: 'string' },
+						{ name: 'AGE', valueNumber: null, datatype: 'number' },
+						{ name: 'SALARY', valueNumber: null, datatype: 'number' },
+						{ name: 'JOIN_DATE', valueDate: null, datatype: 'date' },
+						{ name: 'IS_ACTIVE', valueBoolean: null, datatype: 'boolean' },
+						{ name: 'META_DATA', valueJson: null, datatype: 'json' },
+						{ name: 'EMBEDDING', valueVector: null, datatype: 'vector' },
+						{ name: 'PICTURE', valueBlob: null, datatype: 'blob' },
+					],
+				},
+				{
+					label: 'mixed values',
+					expectedId: 3,
+					items: [
+						{
+							json: {
+								ID: 3,
+								NAME: null, // mix of null + valid
+								AGE: 45,
+								SALARY: null,
+								JOIN_DATE: DOJ,
+								IS_ACTIVE: false,
+								META_DATA: null,
+								EMBEDDING: [0.5, 0.6, 3.4],
+								PICTURE: { type: 'Buffer', data: [14, 15, 16] },
+							},
+						},
+					],
+					params: [
+						{ name: 'ID', valueNumber: 3, datatype: 'number' },
+						{ name: 'NAME', valueString: null, datatype: 'string' },
+						{ name: 'AGE', valueNumber: 45, datatype: 'number' },
+						{ name: 'SALARY', valueNumber: null, datatype: 'number' },
+						{ name: 'JOIN_DATE', valueDate: DOJ, datatype: 'date' },
+						{ name: 'IS_ACTIVE', valueBoolean: false, datatype: 'boolean' },
+						{ name: 'META_DATA', valueJson: null, datatype: 'json' },
+						{ name: 'EMBEDDING', valueVector: [0.5, 0.6, 3.4], datatype: 'vector' },
+						{
+							name: 'PICTURE',
+							valueBlob: { type: 'Buffer', data: [14, 15, 16] },
+							datatype: 'blob',
+						},
+					],
+				},
+			];
+
+			for (const input of inputs) {
+				const nodeParameters: IDataObject = {
+					operation: 'execute',
+					query: expectedQuery,
+					isBindInfo: true,
+					resource: 'database',
+					options: {
+						params: {
+							values: input.params,
+						},
+					},
+				};
+
+				const mockThis = createMockExecuteFunction(nodeParameters);
+				const runQueries = getRunQueriesFn(mockThis, pool);
+				const nodeOptions = nodeParameters.options as IDataObject;
+
+				const result = await executeSQL.execute.call(
+					mockThis,
+					runQueries,
+					input.items,
+					nodeOptions,
+					pool,
+				);
+
+				expect(runQueries).toHaveBeenCalled();
+
+				const [expectedArgs] = runQueries.mock.calls.pop() as [QueryWithValues[], unknown, unknown];
+				expect(expectedArgs).toHaveLength(1);
+				expect(expectedArgs[0].query).toBe(expectedQuery);
+
+				const binds = expectedArgs[0].values;
+
+				// Dynamic assertions per input type
+				for (const [key, bind] of Object.entries(binds as Record<string, { val: any }>)) {
+					if (key === 'ID') {
+						expect(bind.val).toBe(input.expectedId);
+					} else {
+						const original = (input.items[0].json as Record<string, any>)[key];
+						if (original === null || original === undefined) {
+							expect(bind.val).toBeNull();
+						} else if (key === 'JOIN_DATE') {
+							expect(bind.val instanceof Date).toBe(true);
+							expect((bind.val as Date).toISOString()).toBe(DOJ);
+						} else if (key === 'PICTURE' && original.type === 'Buffer') {
+							// serialized form
+							expect(bind.val).toEqual(Buffer.from(original));
+						} else {
+							expect(bind.val).toEqual(original);
+						}
+					}
+				}
+
+				// Optional integrated check
+				if (integratedTests) {
+					const row = result[0].json;
+					expect(row.ID).toBe(input.expectedId);
+					for (const [key, val] of Object.entries(row)) {
+						if (key === 'ID' || key === 'PICTURE') continue;
+						const original = (input.items[0].json as Record<string, any>)[key];
+						if (original === null || original === undefined) {
+							expect(val === null || val === undefined).toBe(true);
+						} else if (key === 'JOIN_DATE') {
+							expect((val as Date).toISOString()).toBe(DOJ);
+						} else if (key === 'META_DATA') {
+							continue;
+						} else if (key === 'EMBEDDING') {
+							expect(Array.from(val as Float64Array)).toEqual(original);
+						} else {
+							expect(val).toEqual(original);
+						}
+					}
+				}
+			}
 		});
 	});
 

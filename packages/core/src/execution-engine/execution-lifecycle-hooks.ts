@@ -38,6 +38,14 @@ export type ExecutionLifecycleHookHandlers = {
 		) => Promise<void> | void
 	>;
 
+	workflowExecuteResume: Array<
+		(
+			this: ExecutionLifecycleHooks,
+			workflow: Workflow,
+			data?: IRunExecutionData,
+		) => Promise<void> | void
+	>;
+
 	workflowExecuteAfter: Array<
 		(this: ExecutionLifecycleHooks, data: IRun, newStaticData: IDataObject) => Promise<void> | void
 	>;
@@ -88,6 +96,7 @@ export class ExecutionLifecycleHooks {
 		sendResponse: [],
 		workflowExecuteAfter: [],
 		workflowExecuteBefore: [],
+		workflowExecuteResume: [],
 		sendChunk: [],
 	};
 
@@ -95,6 +104,7 @@ export class ExecutionLifecycleHooks {
 		readonly mode: WorkflowExecuteMode,
 		readonly executionId: string,
 		readonly workflowData: IWorkflowBase,
+		readonly retryOf?: string,
 	) {}
 
 	addHandler<Hook extends keyof ExecutionLifecycleHookHandlers>(

@@ -22,6 +22,7 @@ function renderMenuItem<T = string>(
 				<DropdownMenuContent>
 					<DropdownMenuItem v-bind="itemProps">
 						${options.slots?.['item-leading'] ? `<template #item-leading="slotProps">${options.slots['item-leading']}</template>` : ''}
+						${options.slots?.['item-label'] ? `<template #item-label="slotProps">${options.slots['item-label']}</template>` : ''}
 						${options.slots?.['item-trailing'] ? `<template #item-trailing="slotProps">${options.slots['item-trailing']}</template>` : ''}
 					</DropdownMenuItem>
 				</DropdownMenuContent>

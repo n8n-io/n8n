@@ -180,6 +180,7 @@ export async function executeSelectMany(
 	dataTableProxy: IDataTableProjectService,
 	rejectEmpty = false,
 	limit?: number,
+	sortBy?: [string, 'ASC' | 'DESC'],
 ): Promise<Array<{ json: DataTableRowReturn }>> {
 	const filter = await getSelectFilter(ctx, index);
 
@@ -205,6 +206,7 @@ export async function executeSelectMany(
 			skip,
 			take: limit ? Math.min(take, limit - result.length) : take,
 			filter,
+			sortBy,
 		});
 		const wrapped = data.map((json) => ({
 			json: shouldConvertDates ? convertDatesToIsoStrings(json) : json,

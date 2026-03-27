@@ -4,7 +4,6 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 	ListDataTableOptions,
-	ListDataTableOptionsSortByKey,
 } from 'n8n-workflow';
 
 import { ROWS_LIMIT_DEFAULT } from '../../common/constants';
@@ -67,9 +66,8 @@ export const description: INodeProperties[] = [
 				options: [
 					{ name: 'Created', value: 'createdAt' },
 					{ name: 'Name', value: 'name' },
-					{ name: 'Size', value: 'sizeBytes' },
 					{ name: 'Updated', value: 'updatedAt' },
-				] satisfies Array<{ name: string; value: ListDataTableOptionsSortByKey }>,
+				],
 				description: 'Field to sort by',
 			},
 			{

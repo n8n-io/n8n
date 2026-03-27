@@ -26,7 +26,8 @@ export async function todoistApiRequest(
 ): Promise<any> {
 	const authentication = this.getNodeParameter('authentication', 0) as string;
 
-	const endpoint = 'api.todoist.com/rest/v2';
+	const nodeVersion = this.getNode().typeVersion;
+	const endpoint = nodeVersion >= 2.2 ? 'api.todoist.com/api/v1' : 'api.todoist.com/rest/v2';
 
 	const options: IRequestOptions = {
 		method,
@@ -73,4 +74,56 @@ export async function todoistSyncRequest(
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
+}
+
+export async function todoistApiGetAllRequest(
+	ctx: Context,
+	resource: string,
+	qs: IDataObject = {},
+	limit?: number,
+) {
+	const nodeVersion = ctx.getNode().typeVersion;
+
+	if (nodeVersion < 2.2) {
+		let response = await todoistApiRequest.call(ctx, 'GET', resource, {}, qs);
+		if (limit) response = response.splice(0, limit);
+		return response;
+	}
+
+	if (limit !== undefined && limit <= 0) return [];
+
+	const results: IDataObject[] = [];
+	let nextCursor: string | null = null;
+
+	do {
+		const requestQs = { ...qs };
+		if (nextCursor) requestQs.cursor = nextCursor;
+
+		if (limit !== undefined && limit > 0) {
+			const remainingItems = limit - results.length;
+			if (remainingItems <= 0) break;
+
+			requestQs.limit = Math.min(remainingItems, 200);
+		}
+
+		const response = await todoistApiRequest.call(ctx, 'GET', resource, {}, requestQs);
+
+		if (response?.results && Array.isArray(response.results)) {
+			if (limit !== undefined && limit > 0) {
+				const remainingItems = limit - results.length;
+				const itemsToAdd = response.results.slice(0, remainingItems);
+				results.push(...itemsToAdd);
+
+				if (results.length >= limit) break;
+			} else {
+				results.push(...response.results);
+			}
+
+			nextCursor = response.next_cursor ?? null;
+		} else {
+			break;
+		}
+	} while (nextCursor !== null);
+
+	return results;
 }

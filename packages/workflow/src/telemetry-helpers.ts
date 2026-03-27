@@ -1,7 +1,10 @@
+import { ApplicationError } from '@n8n/errors';
+
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
 	AGENT_TOOL_LANGCHAIN_NODE_TYPE,
 	AI_TRANSFORM_NODE_TYPE,
+	AI_VENDOR_NODE_TYPES,
 	CHAIN_LLM_LANGCHAIN_NODE_TYPE,
 	CHAIN_SUMMARIZATION_LANGCHAIN_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
@@ -16,6 +19,9 @@ import {
 	HTTP_REQUEST_NODE_TYPE,
 	HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE,
 	LANGCHAIN_CUSTOM_TOOLS,
+	LANGCHAIN_LM_NODE_TYPE_PREFIX,
+	MCP_CLIENT_NODE_TYPE,
+	MCP_CLIENT_TOOL_NODE_TYPE,
 	MERGE_NODE_TYPE,
 	OPEN_AI_API_CREDENTIAL_TYPE,
 	OPENAI_CHAT_LANGCHAIN_NODE_TYPE,
@@ -24,8 +30,8 @@ import {
 	WEBHOOK_NODE_TYPE,
 	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
 } from './constants';
-import { ApplicationError } from '@n8n/errors';
 import type { NodeApiError } from './errors/node-api.error';
+import { DEFAULT_EVALUATION_METRIC } from './evaluation-helpers';
 import type {
 	IConnection,
 	IConnections,
@@ -40,12 +46,10 @@ import type {
 	IRunData,
 	ITaskData,
 	IRun,
-	INodeParameterResourceLocator,
 } from './interfaces';
 import { NodeConnectionTypes } from './interfaces';
 import { getNodeParameters, isSubNodeType } from './node-helpers';
 import { jsonParse } from './utils';
-import { DEFAULT_EVALUATION_METRIC } from './evaluation-helpers';
 
 const isNodeApiError = (error: unknown): error is NodeApiError =>
 	typeof error === 'object' && error !== null && 'name' in error && error?.name === 'NodeApiError';
@@ -56,6 +60,18 @@ export function getNodeTypeForName(workflow: IWorkflowBase, nodeName: string): I
 
 export function isNumber(value: unknown): value is number {
 	return typeof value === 'number';
+}
+
+function resolveParameterValue(value: unknown): string | undefined {
+	if (typeof value === 'string') {
+		return value;
+	}
+
+	if (typeof value === 'object' && value && 'value' in value && typeof value.value === 'string') {
+		return value.value;
+	}
+
+	return undefined;
 }
 
 const countPlaceholders = (text: string) => {
@@ -103,18 +119,103 @@ function areOverlapping(
 
 const URL_PARTS_REGEX = /(?<protocolPlusDomain>.*?\..*?)(?<pathname>\/.*)/;
 
+// List of common multi-level TLDs (public suffixes)
+// Covers 95%+ of real-world domains for telemetry privacy purposes
+const MULTI_LEVEL_TLDS = new Set([
+	// UK
+	'co.uk',
+	'gov.uk',
+	'org.uk',
+	'ac.uk',
+	'sch.uk',
+	// Australia
+	'com.au',
+	'gov.au',
+	'edu.au',
+	'org.au',
+	'net.au',
+	// New Zealand
+	'co.nz',
+	'org.nz',
+	'net.nz',
+	'govt.nz',
+	'ac.nz',
+	// Japan
+	'co.jp',
+	'or.jp',
+	'ne.jp',
+	'ac.jp',
+	'go.jp',
+	// Brazil
+	'com.br',
+	'gov.br',
+	'org.br',
+	'edu.br',
+	// India
+	'co.in',
+	'org.in',
+	'net.in',
+	'gov.in',
+	'edu.in',
+	// South Africa
+	'co.za',
+	'org.za',
+	'gov.za',
+	'ac.za',
+	// AWS S3 (special case for cloud services)
+	's3.amazonaws.com',
+]);
+
 export function getDomainBase(raw: string, urlParts = URL_PARTS_REGEX): string {
+	let hostname: string;
+
 	try {
 		const url = new URL(raw);
-
-		return [url.protocol, url.hostname].join('//');
+		hostname = url.hostname;
 	} catch {
 		const match = urlParts.exec(raw);
-
 		if (!match?.groups?.protocolPlusDomain) return '';
 
-		return match.groups.protocolPlusDomain;
+		// Extract hostname from malformed URL
+		hostname = match.groups.protocolPlusDomain.replace(/^https?:\/\//, '');
 	}
+
+	// Handle edge cases
+	if (!hostname || hostname === 'localhost') return hostname;
+
+	// Handle IP addresses (v4 and v6) - return as-is
+	if (/^(\d{1,3}\.){3}\d{1,3}$/.test(hostname) || hostname.includes(':')) {
+		return hostname;
+	}
+
+	const parts = hostname.split('.');
+
+	// Single-word domain (e.g., "localhost", "example")
+	if (parts.length === 1) {
+		return hostname;
+	}
+
+	// Check for multi-level TLDs (e.g., co.uk, com.au)
+	if (parts.length >= 3) {
+		const lastTwoParts = `${parts[parts.length - 2]}.${parts[parts.length - 1]}`;
+
+		if (MULTI_LEVEL_TLDS.has(lastTwoParts)) {
+			// Return last 3 parts for multi-level TLD
+			return parts.slice(-3).join('.');
+		}
+
+		// Check for 3-level TLDs (e.g., s3.amazonaws.com)
+		if (parts.length >= 4) {
+			const lastThreeParts = `${parts[parts.length - 3]}.${parts[parts.length - 2]}.${parts[parts.length - 1]}`;
+			if (MULTI_LEVEL_TLDS.has(lastThreeParts)) {
+				// Return last 4 parts for 3-level TLD
+				return parts.slice(-4).join('.');
+			}
+		}
+	}
+
+	// Default: return last 2 parts (standard TLD like .com, .org, .net)
+	return parts.slice(-2).join('.');
 }
 
 function isSensitive(segment: string) {
@@ -306,7 +407,6 @@ export function generateNodesGraph(
 			const { url } = node.parameters as { url: string };
 
 			nodeItem.domain_base = getDomainBase(url);
-			nodeItem.domain_path = getDomainPath(url);
 			nodeItem.method = node.parameters.requestMethod as string;
 		} else if (HTTP_REQUEST_TOOL_LANGCHAIN_NODE_TYPE === node.type) {
 			if (!nodeItem.toolSettings) nodeItem.toolSettings = {};
@@ -440,11 +540,9 @@ export function generateNodesGraph(
 			nodeItem.language =
 				language === undefined
 					? 'javascript'
-					: language === 'python'
+					: language === 'python' || language === 'pythonNative'
 						? 'python'
-						: language === 'pythonNative'
-							? 'pythonNative'
-							: 'unknown';
+						: 'unknown';
 		} else if (node.type === GUARDRAILS_NODE_TYPE) {
 			nodeItem.operation = node.parameters.operation as string;
 			const usedGuardrails = Object.keys(node.parameters?.guardrails ?? {});
@@ -454,6 +552,8 @@ export function generateNodesGraph(
 			// For 1.3+ node version by default it is true and isn't stored in parameters
 			nodeItem.use_responses_api = (node.parameters?.responsesApiEnabled ??
 				enabledDefault) as boolean;
+		} else if (node.type === MCP_CLIENT_TOOL_NODE_TYPE || node.type === MCP_CLIENT_NODE_TYPE) {
+			nodeItem.mcp_client_auth_method = (node.parameters?.authentication ?? 'none') as string;
 		} else {
 			try {
 				const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
@@ -490,6 +590,26 @@ export function generateNodesGraph(
 				) {
 					throw e;
 				}
+			}
+		}
+
+		// Capture ai_model for Language Model nodes
+		if (node.type.startsWith(LANGCHAIN_LM_NODE_TYPE_PREFIX)) {
+			const modelNameKeys = ['model', 'modelName'] as const;
+			for (const key of modelNameKeys) {
+				const resolved = resolveParameterValue(node.parameters?.[key]);
+				if (resolved) {
+					nodeItem.ai_model = resolved;
+					break;
+				}
+			}
+		}
+
+		// Capture ai_model for vendor/standalone AI nodes
+		if (AI_VENDOR_NODE_TYPES.includes(node.type)) {
+			const resolved = resolveParameterValue(node.parameters?.modelId);
+			if (resolved) {
+				nodeItem.ai_model = resolved;
 			}
 		}
 
@@ -788,15 +908,10 @@ export function extractLastExecutedNodeStructuredOutputErrorInfo(
 
 								const modelNameKeys = ['model', 'modelName'] as const;
 								for (const key of modelNameKeys) {
-									if (nodeParameters?.[key]) {
-										info.model_name =
-											typeof nodeParameters[key] === 'string'
-												? nodeParameters[key]
-												: ((nodeParameters[key] as INodeParameterResourceLocator).value as string);
-
-										if (info.model_name) {
-											break;
-										}
+									const resolved = resolveParameterValue(nodeParameters?.[key]);
+									if (resolved) {
+										info.model_name = resolved;
+										break;
 									}
 								}
 							}

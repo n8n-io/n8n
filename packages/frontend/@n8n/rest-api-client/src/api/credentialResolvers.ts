@@ -1,4 +1,8 @@
-import type { CredentialResolver, CredentialResolverType } from '@n8n/api-types';
+import type {
+	CredentialResolver,
+	CredentialResolverAffectedWorkflow,
+	CredentialResolverType,
+} from '@n8n/api-types';
 
 import type { IRestApiContext } from '../types';
 import { makeRestApiRequest } from '../utils';
@@ -32,9 +36,21 @@ export async function createCredentialResolver(
 export async function updateCredentialResolver(
 	context: IRestApiContext,
 	resolverId: string,
-	payload: { name: string; type: string; config: Record<string, unknown> },
+	payload: {
+		name: string;
+		type: string;
+		config: Record<string, unknown>;
+		clearCredentials?: boolean;
+	},
 ): Promise<CredentialResolver> {
 	return await makeRestApiRequest(context, 'PATCH', `/credential-resolvers/${resolverId}`, payload);
+}
+
+export async function getCredentialResolverWorkflows(
+	context: IRestApiContext,
+	resolverId: string,
+): Promise<CredentialResolverAffectedWorkflow[]> {
+	return await makeRestApiRequest(context, 'GET', `/credential-resolvers/${resolverId}/workflows`);
 }
 
 export async function deleteCredentialResolver(

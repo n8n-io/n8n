@@ -1,4 +1,4 @@
-<script setup lang="ts" generic="T = string">
+<script setup lang="ts" generic="T = string, D = never">
 import {
 	DropdownMenuItem,
 	DropdownMenuSeparator,
@@ -7,24 +7,28 @@ import {
 	DropdownMenuSubContent,
 	DropdownMenuPortal,
 } from 'reka-ui';
-import { computed, ref, useCssModule, watch, toRef } from 'vue';
+import { computed, inject, ref, useCssModule, watch, toRef } from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 import N8nText from '@n8n/design-system/components/N8nText/Text.vue';
 import N8nLoading from '@n8n/design-system/v2/components/Loading/Loading.vue';
 
 import { useMenuKeyboardNavigation } from './composables/useMenuKeyboardNavigation';
-import type { DropdownMenuItemProps, DropdownMenuItemSlots } from './DropdownMenu.types';
+import {
+	DropdownMenuPortalTargetKey,
+	type DropdownMenuItemProps,
+	type DropdownMenuItemSlots,
+} from './DropdownMenu.types';
 import N8nDropdownMenuSearch from './DropdownMenuSearch.vue';
 
 const SUBMENU_FOCUS_DELAY = 100;
 
 defineOptions({ name: 'N8nDropdownMenuItem', inheritAttrs: false });
 
-const props = withDefaults(defineProps<DropdownMenuItemProps<T>>(), {
+const props = withDefaults(defineProps<DropdownMenuItemProps<T, D>>(), {
 	loadingItemCount: 3,
 });
-defineSlots<DropdownMenuItemSlots<T>>();
+defineSlots<DropdownMenuItemSlots<T, D>>();
 
 const emit = defineEmits<{
 	select: [value: T];
@@ -33,6 +37,7 @@ const emit = defineEmits<{
 }>();
 
 const $style = useCssModule();
+const portalTarget = inject(DropdownMenuPortalTargetKey, ref(undefined));
 
 const searchTerm = ref('');
 const internalSubMenuOpen = ref(false);
@@ -106,6 +111,10 @@ const leadingProps = computed(() => ({
 	class: $style['item-leading'],
 }));
 
+const labelProps = computed(() => ({
+	class: $style['item-label'],
+}));
+
 const trailingProps = computed(() => ({
 	class: $style['item-trailing'],
 }));
@@ -170,13 +179,15 @@ watch(
 						{{ icon.value }}
 					</span>
 				</slot>
-				<N8nText
-					:class="$style['item-label']"
-					size="medium"
-					:color="disabled ? 'text-light' : 'text-dark'"
-				>
-					{{ label }}
-				</N8nText>
+				<slot name="item-label" :item="props" :ui="labelProps">
+					<N8nText
+						:class="$style['item-label']"
+						size="medium"
+						:color="disabled ? 'text-light' : 'text-dark'"
+					>
+						{{ label }}
+					</N8nText>
+				</slot>
 				<Icon
 					icon="chevron-right"
 					:class="$style['sub-indicator']"
@@ -185,7 +196,7 @@ watch(
 				/>
 			</DropdownMenuSubTrigger>
 
-			<DropdownMenuPortal>
+			<DropdownMenuPortal v-bind="portalTarget ? { to: portalTarget } : {}">
 				<DropdownMenuSubContent
 					ref="subContentRef"
 					:class="$style['sub-content']"
@@ -225,9 +236,20 @@ watch(
 								<N8nDropdownMenuItem
 									v-bind="child"
 									:highlighted="searchable && subMenuHighlightedIndex === childIndex"
+									:divided="child.divided && childIndex > 0"
 									@select="handleSelect"
 									@search="handleChildSearch"
-								/>
+								>
+									<template #item-leading="leadingProps">
+										<slot name="item-leading" v-bind="leadingProps" />
+									</template>
+									<template #item-label="bodyProps">
+										<slot name="item-label" v-bind="bodyProps" />
+									</template>
+									<template #item-trailing="trailingProps">
+										<slot name="item-trailing" v-bind="trailingProps" />
+									</template>
+								</N8nDropdownMenuItem>
 							</template>
 						</div>
 					</template>
@@ -257,13 +279,15 @@ watch(
 					{{ icon.value }}
 				</span>
 			</slot>
-			<N8nText
-				:class="$style['item-label']"
-				size="medium"
-				:color="disabled ? 'text-light' : 'text-dark'"
-			>
-				{{ label }}
-			</N8nText>
+			<slot name="item-label" :item="props" :ui="labelProps">
+				<N8nText
+					:class="$style['item-label']"
+					size="medium"
+					:color="disabled ? 'text-light' : 'text-dark'"
+				>
+					{{ label }}
+				</N8nText>
+			</slot>
 			<slot name="item-trailing" :item="props" :ui="trailingProps" />
 			<Icon
 				v-if="checked"

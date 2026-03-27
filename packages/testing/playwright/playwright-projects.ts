@@ -1,37 +1,103 @@
 import type { Project } from '@playwright/test';
-import type { N8NConfig } from 'n8n-containers/n8n-test-container-creation';
+import type { N8NConfig } from 'n8n-containers/stack';
 
+import {
+	CONTAINER_ONLY_CAPABILITIES,
+	CONTAINER_ONLY_MODES,
+	LICENSED_TAG,
+} from './fixtures/capabilities';
 import { getBackendUrl, getFrontendUrl } from './utils/url-helper';
 
-// Tags that require test containers environment
-// These tests won't be run against local
-const CONTAINER_ONLY_TAGS = [
-	'proxy',
-	'postgres',
-	'queue',
-	'multi-main',
-	'task-runner',
-	'source-control',
-	'email',
-	'oidc',
-	'observability',
-];
-const CONTAINER_ONLY = new RegExp(`@capability:(${CONTAINER_ONLY_TAGS.join('|')})`);
-
-// Tags that need serial execution
-// These tests will be run AFTER the first run of the E2E tests
-// In local run they are a "dependency" which means they will be skipped if earlier tests fail, not ideal but needed for isolation
-const SERIAL_EXECUTION = /@db:reset/;
-
-// Routes tests to isolated worker without triggering automatic database resets in fixtures
-// Use when tests need worker isolation but have intentional state dependencies (e.g., serial tests sharing data)
-const ISOLATED_ONLY = /@isolated/;
+// Tests that require container environment (won't run against local n8n).
+// Matches:
+// - @capability:X - add-on features (email, proxy, source-control, etc.)
+// - @mode:X - infrastructure modes (postgres, queue, multi-main)
+// - @licensed - enterprise license features (log streaming, SSO, etc.)
+// - @db:reset - tests needing per-test database reset (requires isolated containers)
+const CONTAINER_ONLY = new RegExp(
+	[
+		`@capability:(${CONTAINER_ONLY_CAPABILITIES.join('|')})`,
+		`@mode:(${CONTAINER_ONLY_MODES.join('|')})`,
+		`@${LICENSED_TAG}`,
+		'@db:reset',
+	].join('|'),
+);
 
 const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
-	{ name: 'standard', config: {} },
+	{ name: 'sqlite', config: {} },
 	{ name: 'postgres', config: { postgres: true } },
-	{ name: 'queue', config: { queueMode: true } },
-	{ name: 'multi-main', config: { queueMode: { mains: 2, workers: 1 }, observability: true } },
+	{ name: 'queue', config: { workers: 1 } },
+	{
+		name: 'multi-main',
+		config: { mains: 2, workers: 1, services: ['victoriaLogs', 'victoriaMetrics', 'vector'] },
+	},
+];
+
+// --- Benchmark profiles ---
+// Each profile represents a real-world n8n deployment configuration.
+// ONE test file runs in ALL profiles — adding a profile auto-expands coverage.
+
+const BENCHMARK_WORKER_COUNT = parseInt(process.env.KAFKA_LOAD_WORKERS ?? '3', 10);
+
+// Resource profiles matching realistic AWS instance types:
+// Main: m5.large (2 vCPU, 8GB RAM) — matches staging main
+// Workers: t3.medium (2 vCPU, 4GB RAM) — matches staging worker limits
+export const BENCHMARK_MAIN_RESOURCES = { memory: 8, cpu: 2 };
+export const BENCHMARK_WORKER_RESOURCES = { memory: 4, cpu: 2 };
+
+export const OBSERVABILITY_SERVICES = ['victoriaLogs', 'victoriaMetrics', 'vector'] as const;
+
+const BENCHMARK_BASE_CONFIG: N8NConfig = {
+	services: [...OBSERVABILITY_SERVICES],
+	postgres: true,
+	resourceQuota: BENCHMARK_MAIN_RESOURCES,
+	workerResourceQuota: BENCHMARK_WORKER_RESOURCES,
+	env: {
+		N8N_METRICS_INCLUDE_MESSAGE_EVENT_BUS_METRICS: 'true',
+	},
+};
+
+const BENCHMARK_PROFILES: Array<{ name: string; config: N8NConfig }> = [
+	{
+		name: 'direct',
+		config: {
+			...BENCHMARK_BASE_CONFIG,
+			services: [...BENCHMARK_BASE_CONFIG.services!, 'kafka'],
+			env: {
+				...BENCHMARK_BASE_CONFIG.env,
+				DB_POSTGRESDB_POOL_SIZE: '20',
+			},
+		},
+	},
+	{
+		name: 'queue',
+		config: {
+			...BENCHMARK_BASE_CONFIG,
+			services: [...BENCHMARK_BASE_CONFIG.services!, 'kafka'],
+			workers: BENCHMARK_WORKER_COUNT,
+			env: {
+				...BENCHMARK_BASE_CONFIG.env,
+				N8N_METRICS_INCLUDE_QUEUE_METRICS: 'true',
+			},
+		},
+	},
+	{
+		name: 'queue-tuned',
+		config: {
+			...BENCHMARK_BASE_CONFIG,
+			services: [...BENCHMARK_BASE_CONFIG.services!, 'kafka'],
+			workers: BENCHMARK_WORKER_COUNT,
+			env: {
+				...BENCHMARK_BASE_CONFIG.env,
+				N8N_METRICS_INCLUDE_QUEUE_METRICS: 'true',
+				N8N_LOG_LEVEL: 'info',
+				DB_POSTGRESDB_POOL_SIZE: '30',
+				DB_POSTGRESDB_CONNECTION_TIMEOUT: '60000',
+				N8N_CONCURRENCY_PRODUCTION_LIMIT: '20',
+				EXECUTIONS_DATA_SAVE_ON_SUCCESS: 'none',
+			},
+		},
+	},
 ];
 
 export function getProjects(): Project[] {
@@ -39,41 +105,21 @@ export function getProjects(): Project[] {
 	const projects: Project[] = [];
 
 	if (isLocal) {
-		projects.push(
-			{
-				name: 'e2e',
-				testDir: './tests/e2e',
-				grepInvert: new RegExp(
-					[CONTAINER_ONLY.source, SERIAL_EXECUTION.source, ISOLATED_ONLY.source].join('|'),
-				),
-				fullyParallel: true,
-				use: { baseURL: getFrontendUrl() },
-			},
-			{
-				name: 'e2e:isolated',
-				testDir: './tests/e2e',
-				grep: new RegExp([SERIAL_EXECUTION.source, ISOLATED_ONLY.source].join('|')),
-				workers: 1,
-				use: { baseURL: getFrontendUrl() },
-			},
-		);
+		projects.push({
+			name: 'e2e',
+			testDir: './tests/e2e',
+			grepInvert: CONTAINER_ONLY,
+			fullyParallel: true,
+			use: { baseURL: getFrontendUrl() },
+		});
 	} else {
 		for (const { name, config } of CONTAINER_CONFIGS) {
-			const grepInvertPatterns = [SERIAL_EXECUTION.source, ISOLATED_ONLY.source];
 			projects.push(
 				{
 					name: `${name}:e2e`,
 					testDir: './tests/e2e',
-					grepInvert: new RegExp(grepInvertPatterns.join('|')),
-					timeout: name === 'standard' ? 60000 : 180000, // 60 seconds for standard container test, 180 for containers to allow startup etc
+					timeout: name === 'sqlite' ? 60000 : 180000, // 60 seconds for sqlite container test, 180 for other modes to allow startup
 					fullyParallel: true,
-					use: { containerConfig: config },
-				},
-				{
-					name: `${name}:e2e:isolated`,
-					testDir: './tests/e2e',
-					grep: new RegExp([SERIAL_EXECUTION.source, ISOLATED_ONLY.source].join('|')),
-					workers: 1,
 					use: { containerConfig: config },
 				},
 				{
@@ -85,6 +131,17 @@ export function getProjects(): Project[] {
 					use: { containerConfig: config },
 				},
 			);
+		}
+
+		for (const { name, config } of BENCHMARK_PROFILES) {
+			projects.push({
+				name: `benchmark-${name}:infrastructure`,
+				testDir: './tests/infrastructure/benchmarks',
+				workers: 1,
+				timeout: 600_000,
+				retries: 0,
+				use: { containerConfig: config },
+			});
 		}
 	}
 

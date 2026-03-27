@@ -1,7 +1,7 @@
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {
 	INodeInputConfiguration,
-	INodeInputFilter,
+	INodeFilter,
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
@@ -33,6 +33,7 @@ import { toolsAgentExecute } from '../agents/ToolsAgent/V1/execute';
 
 // Function used in the inputs expression to figure out which inputs to
 // display based on the agent type
+/* istanbul ignore next */
 function getInputs(
 	agent:
 		| 'toolsAgent'
@@ -45,7 +46,7 @@ function getInputs(
 ): Array<NodeConnectionType | INodeInputConfiguration> {
 	interface SpecialInput {
 		type: NodeConnectionType;
-		filter?: INodeInputFilter;
+		filter?: INodeFilter;
 		required?: boolean;
 	}
 
@@ -283,6 +284,18 @@ export class AgentV1 implements INodeType {
 				})($parameter.agent, $parameter.hasOutputParser === undefined || $parameter.hasOutputParser === true)
 			}}`,
 			outputs: [NodeConnectionTypes.Main],
+			builderHint: {
+				...baseDescription.builderHint,
+				inputs: {
+					ai_languageModel: { required: true },
+					ai_memory: { required: false },
+					ai_tool: { required: false },
+					ai_outputParser: {
+						required: false,
+						displayOptions: { show: { hasOutputParser: [true] } },
+					},
+				},
+			},
 			credentials: [
 				{
 					name: 'mySql',
@@ -318,20 +331,6 @@ export class AgentV1 implements INodeType {
 							agent: ['conversationalAgent', 'toolsAgent'],
 						},
 					},
-				},
-				{
-					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-					displayName: 'Get started faster with our',
-					name: 'preBuiltAgentsCallout',
-					type: 'callout',
-					typeOptions: {
-						calloutAction: {
-							label: 'pre-built agents',
-							icon: 'bot',
-							type: 'openPreBuiltAgentsCollection',
-						},
-					},
-					default: '',
 				},
 				{
 					displayName:

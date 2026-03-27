@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import { RoleRepository } from '@n8n/db';
+import type { EntityManager } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { staticRolesWithScope, type Scope } from '@n8n/permissions';
 
@@ -23,6 +24,9 @@ interface RoleScopeMap {
 	workflow?: {
 		[roleSlug: string]: RoleInfo;
 	};
+	secretsProviderConnection?: {
+		[roleSlug: string]: RoleInfo;
+	};
 }
 
 @Service()
@@ -38,10 +42,10 @@ export class RoleCacheService {
 	/**
 	 * Get all roles from database and build scope map
 	 */
-	private async buildRoleScopeMap(): Promise<RoleScopeMap> {
+	private async buildRoleScopeMap(trx?: EntityManager): Promise<RoleScopeMap> {
 		try {
 			const roleRepository = Container.get(RoleRepository);
-			const roles = await roleRepository.findAll();
+			const roles = await roleRepository.findAll(trx);
 
 			const roleScopeMap: RoleScopeMap = {};
 			for (const role of roles) {
@@ -62,14 +66,15 @@ export class RoleCacheService {
 	 * Get roles with all specified scopes (with caching)
 	 */
 	async getRolesWithAllScopes(
-		namespace: 'global' | 'project' | 'credential' | 'workflow',
+		namespace: 'global' | 'project' | 'credential' | 'workflow' | 'secretsProviderConnection',
 		requiredScopes: Scope[],
+		em?: EntityManager,
 	): Promise<string[]> {
 		if (requiredScopes.length === 0) return [];
 
 		// Get cached role map with refresh function
 		const roleScopeMap = await this.cacheService.get<RoleScopeMap>(RoleCacheService.CACHE_KEY, {
-			refreshFn: async () => await this.buildRoleScopeMap(),
+			refreshFn: async () => await this.buildRoleScopeMap(em),
 			fallbackValue: undefined,
 		});
 

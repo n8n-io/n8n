@@ -27,12 +27,6 @@ vi.mock('vue-router', () => ({
 	RouterLink: vi.fn(),
 }));
 
-vi.mock('@/app/composables/useCanvasOperations', () => ({
-	useCanvasOperations: () => ({
-		initializeWorkspace: vi.fn(),
-	}),
-}));
-
 vi.mock('@/app/composables/useTelemetry', () => {
 	const track = vi.fn();
 	return {
@@ -108,35 +102,22 @@ describe('EvaluationsRootView', () => {
 		});
 	});
 
-	it('should initialize workflow on mount if not already initialized', async () => {
+	it('should not fetch workflow since WorkflowLayout handles initialization', async () => {
 		const workflowsStore = mockedStore(useWorkflowsStore);
 		const usageStore = mockedStore(useUsageStore);
 		const evaluationStore = mockedStore(useEvaluationStore);
 
-		// Set workflow id to empty to simulate uninitialized state
-		workflowsStore.workflow = { ...mockWorkflow, id: '' };
-		const newWorkflowId = 'workflow123';
-
-		// Mock the async operations that run before fetchWorkflow
+		workflowsStore.workflow = mockWorkflow;
 		usageStore.getLicenseInfo.mockResolvedValue(undefined);
 		evaluationStore.fetchTestRuns.mockResolvedValue([]);
-		workflowsStore.fetchWorkflow.mockResolvedValue(mockWorkflow);
-		workflowsStore.isWorkflowSaved = { workflow123: true };
-
-		renderComponent({ props: { name: newWorkflowId } });
-
-		// Wait for async operation to complete
-		await flushPromises();
-		await waitFor(() => expect(workflowsStore.fetchWorkflow).toHaveBeenCalledWith(newWorkflowId));
-	});
-
-	it('should not initialize workflow if already loaded', async () => {
-		const workflowsStore = mockedStore(useWorkflowsStore);
-		workflowsStore.workflow = mockWorkflow;
 
 		renderComponent({ props: { name: mockWorkflow.id } });
 
-		expect(workflowsStore.fetchWorkflow).not.toHaveBeenCalled();
+		await flushPromises();
+
+		// Verify that evaluation-specific data is loaded
+		expect(usageStore.getLicenseInfo).toHaveBeenCalled();
+		expect(evaluationStore.fetchTestRuns).toHaveBeenCalledWith(mockWorkflow.id);
 	});
 
 	it('should load test data', async () => {
@@ -151,8 +132,6 @@ describe('EvaluationsRootView', () => {
 	});
 
 	it('should not render setup wizard when there are test runs', async () => {
-		const workflowsStore = mockedStore(useWorkflowsStore);
-		workflowsStore.fetchWorkflow.mockResolvedValue(mockWorkflow);
 		const evaluationStore = mockedStore(useEvaluationStore);
 		evaluationStore.testRunsById = { foo: mock<TestRunRecord>({ workflowId: mockWorkflow.id }) };
 
@@ -168,7 +147,6 @@ describe('EvaluationsRootView', () => {
 		const evaluationStore = mockedStore(useEvaluationStore);
 
 		workflowsStore.workflow = mockWorkflow;
-		workflowsStore.fetchWorkflow.mockResolvedValue(mockWorkflow);
 		usageStore.getLicenseInfo.mockResolvedValue(undefined);
 		evaluationStore.fetchTestRuns.mockResolvedValue([]);
 		evaluationStore.testRunsById = {};
@@ -186,7 +164,6 @@ describe('EvaluationsRootView', () => {
 		const sourceControlStore = mockedStore(useSourceControlStore);
 
 		workflowsStore.workflow = mockWorkflow;
-		workflowsStore.fetchWorkflow.mockResolvedValue(mockWorkflow);
 		usageStore.getLicenseInfo.mockResolvedValue(undefined);
 		evaluationStore.fetchTestRuns.mockResolvedValue([]);
 		evaluationStore.testRunsById = {};

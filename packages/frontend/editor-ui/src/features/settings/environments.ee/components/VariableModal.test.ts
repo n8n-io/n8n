@@ -226,6 +226,29 @@ describe('VariableModal', () => {
 			expect(saveButton).toBeDisabled();
 		});
 
+		it('should show error when key starts with number', async () => {
+			const { getByTestId } = renderModal({
+				props: {
+					mode: 'new',
+				},
+				global,
+				pinia,
+			});
+
+			const keyInputContainer = getByTestId('variable-modal-key-input');
+			const saveButton = getByTestId('variable-modal-save-button');
+
+			const keyInput = keyInputContainer.querySelector('input');
+			if (!keyInput) throw new Error('Input not found');
+
+			// Enter key that starts with number
+			await userEvent.type(keyInput, '1startswithnumber');
+			await userEvent.click(saveButton); // simulate blur on input
+
+			expect(saveButton).toBeDisabled();
+			expect(keyInputContainer).toHaveTextContent('The key cannot start with a number');
+		});
+
 		it('should show warning overriding global variable in project context', async () => {
 			projectsStore.currentProjectId = 'project-1';
 			const { getByTestId, queryByTestId } = renderModal({

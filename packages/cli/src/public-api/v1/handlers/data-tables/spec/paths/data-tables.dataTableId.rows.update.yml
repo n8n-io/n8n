@@ -1,0 +1,49 @@
+patch:
+  x-eov-operation-id: updateDataTableRows
+  x-eov-operation-handler: v1/handlers/data-tables/data-tables.rows.handler
+  tags:
+    - DataTable
+  summary: Update rows in a data table
+  description: Update rows matching filter conditions in a data table.
+  operationId: update-data-table-rows
+  parameters:
+    - $ref: '../schemas/parameters/dataTableId.yml'
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../schemas/updateRowsRequest.yml'
+        example:
+          filter:
+            type: 'and'
+            filters:
+              - columnName: 'status'
+                condition: 'eq'
+                value: 'pending'
+          data:
+            status: 'completed'
+            updatedBy: 'admin'
+          returnData: false
+          dryRun: false
+  responses:
+    '200':
+      description: Rows updated successfully
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - type: boolean
+                description: True when returnData is false
+              - type: array
+                items:
+                  $ref: '../schemas/dataTableRow.yml'
+                description: Updated rows when returnData is true
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'
+  security:
+    - ApiKeyAuth: []

@@ -20,6 +20,7 @@ export class GoogleSlides implements INodeType {
 		version: [1, 2],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume the Google Slides API',
+		schemaPath: 'Google/Slides',
 		defaults: {
 			name: 'Google Slides',
 		},

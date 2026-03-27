@@ -6,7 +6,7 @@ import {
 } from '@n8n/backend-test-utils';
 import { WorkflowHistoryRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { type INode } from 'n8n-workflow';
+import { RULES, type INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 describe('WorkflowHistoryRepository', () => {
@@ -18,6 +18,8 @@ describe('WorkflowHistoryRepository', () => {
 		typeVersion: 1,
 		position: [0, 0],
 	} satisfies INode;
+
+	const alwaysMergeRule = () => true;
 
 	beforeAll(async () => {
 		await testDb.init();
@@ -59,21 +61,23 @@ describe('WorkflowHistoryRepository', () => {
 			// ACT
 			const repository = Container.get(WorkflowHistoryRepository);
 
-			const tenDaysAgo = new Date();
-			tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+			const tenMinsAgo = new Date();
+			tenMinsAgo.setMinutes(tenMinsAgo.getMinutes() - 10);
 
-			const aDayAgo = new Date();
-			aDayAgo.setDate(aDayAgo.getDate() - 1);
+			const aMinAgo = new Date();
+			aMinAgo.setMinutes(aMinAgo.getMinutes() - 1);
 
-			const nextDay = new Date();
-			nextDay.setDate(nextDay.getDate() + 1);
+			const nextMin = new Date();
+			nextMin.setMinutes(nextMin.getMinutes() + 1);
 
-			const inTenDays = new Date();
-			inTenDays.setDate(inTenDays.getDate() + 10);
+			const inTenMins = new Date();
+			inTenMins.setMinutes(inTenMins.getMinutes() + 10);
 
 			{
 				// Don't touch workflows younger than range
-				const { deleted, seen } = await repository.pruneHistory(workflow.id, tenDaysAgo, aDayAgo);
+				const { deleted, seen } = await repository.pruneHistory(workflow.id, tenMinsAgo, aMinAgo, [
+					RULES.mergeAdditiveChanges,
+				]);
 				expect(deleted).toBe(0);
 				expect(seen).toBe(0);
 
@@ -83,7 +87,9 @@ describe('WorkflowHistoryRepository', () => {
 
 			{
 				// Don't touch workflows older
-				const { deleted, seen } = await repository.pruneHistory(workflow.id, nextDay, inTenDays);
+				const { deleted, seen } = await repository.pruneHistory(workflow.id, nextMin, inTenMins, [
+					RULES.mergeAdditiveChanges,
+				]);
 				expect(deleted).toBe(0);
 				expect(seen).toBe(0);
 
@@ -92,9 +98,62 @@ describe('WorkflowHistoryRepository', () => {
 			}
 
 			{
-				const { deleted, seen } = await repository.pruneHistory(workflow.id, aDayAgo, nextDay);
-				expect(deleted).toBe(2);
+				const { deleted, seen } = await repository.pruneHistory(workflow.id, aMinAgo, nextMin, [
+					RULES.mergeAdditiveChanges,
+				]);
 				expect(seen).toBe(4);
+				expect(deleted).toBe(3);
+
+				const history = await repository.find();
+				expect(history.length).toBe(1);
+				expect(history).toEqual([expect.objectContaining({ versionId: id2 })]);
+			}
+		});
+		it('should not prune non-additive version', async () => {
+			const id1 = uuid();
+			const id2 = uuid();
+
+			const workflow = await createWorkflowWithHistory({
+				versionId: id1,
+				nodes: [{ ...testNode1, parameters: { a: 'abcde' } }],
+			});
+			await createWorkflowHistory({
+				...workflow,
+				versionId: uuid(),
+				nodes: [{ ...testNode1, parameters: { a: 'ab' } }],
+			});
+			await createWorkflowHistory({
+				...workflow,
+				versionId: uuid(),
+				nodes: [{ ...testNode1, parameters: { a: 'abc' } }],
+			});
+			await createWorkflowHistory({
+				...workflow,
+				versionId: id2,
+				nodes: [{ ...testNode1, parameters: { a: 'abcd' } }],
+			});
+
+			// ACT
+			const repository = Container.get(WorkflowHistoryRepository);
+
+			const tenMinsAgo = new Date();
+			tenMinsAgo.setMinutes(tenMinsAgo.getMinutes() - 10);
+
+			const aMinAgo = new Date();
+			aMinAgo.setMinutes(aMinAgo.getMinutes() - 1);
+
+			const nextMin = new Date();
+			nextMin.setMinutes(nextMin.getMinutes() + 1);
+
+			const inTenMins = new Date();
+			inTenMins.setMinutes(inTenMins.getMinutes() + 10);
+
+			{
+				const { deleted, seen } = await repository.pruneHistory(workflow.id, aMinAgo, nextMin, [
+					RULES.mergeAdditiveChanges,
+				]);
+				expect(seen).toBe(4);
+				expect(deleted).toBe(2);
 
 				const history = await repository.find();
 				expect(history.length).toBe(2);
@@ -156,26 +215,26 @@ describe('WorkflowHistoryRepository', () => {
 			const nextDay = new Date();
 			nextDay.setDate(nextDay.getDate() + 1);
 
-			const { deleted, seen } = await repository.pruneHistory(workflow.id, aDayAgo, nextDay);
+			const { deleted, seen } = await repository.pruneHistory(workflow.id, aDayAgo, nextDay, [
+				alwaysMergeRule,
+			]);
 
 			// ASSERT
-			expect(deleted).toBe(1);
 			expect(seen).toBe(5);
+			expect(deleted).toBe(2);
 
 			const history = await repository.find();
-			expect(history.length).toBe(4);
 			expect(history).toEqual([
-				expect.objectContaining({ versionId: id1 }),
 				expect.objectContaining({ versionId: id2 }),
 				expect.objectContaining({ versionId: id4 }),
 				expect.objectContaining({ versionId: id5 }),
 			]);
 
-			const redo = await repository.pruneHistory(workflow.id, aDayAgo, nextDay);
+			const redo = await repository.pruneHistory(workflow.id, aDayAgo, nextDay, [alwaysMergeRule]);
 
 			// ASSERT
 			expect(redo.deleted).toBe(0);
-			expect(redo.seen).toBe(4);
+			expect(redo.seen).toBe(3);
 		});
 	});
 	describe('getWorkflowIdsInRange', () => {

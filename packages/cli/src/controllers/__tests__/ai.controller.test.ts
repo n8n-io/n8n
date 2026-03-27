@@ -3,23 +3,29 @@ import type {
 	AiApplySuggestionRequestDto,
 	AiChatRequestDto,
 	AiBuilderChatRequestDto,
-	AiSessionRetrievalRequestDto,
-	AiSessionMetadataResponseDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import type { AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
 import { mock } from 'jest-mock-extended';
 
+import { AiController, type FlushableResponse } from '../ai.controller';
+
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import type { AiUsageService } from '@/services/ai-usage.service';
 import type { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
 import type { AiService } from '@/services/ai.service';
-
-import { AiController, type FlushableResponse } from '../ai.controller';
 
 describe('AiController', () => {
 	const aiService = mock<AiService>();
 	const workflowBuilderService = mock<WorkflowBuilderService>();
-	const controller = new AiController(aiService, workflowBuilderService, mock(), mock());
+	const aiUsageService = mock<AiUsageService>();
+	const controller = new AiController(
+		aiService,
+		workflowBuilderService,
+		mock(),
+		mock(),
+		aiUsageService,
+	);
 
 	const request = mock<AuthenticatedRequest>({
 		user: { id: 'user123' },
@@ -66,6 +72,69 @@ describe('AiController', () => {
 			await expect(controller.chat(request, response, payload)).rejects.toThrow(
 				InternalServerError,
 			);
+		});
+
+		it('should register a close handler on the response for abort', async () => {
+			aiService.chat.mockResolvedValue(
+				mock<Response>({
+					body: mock({
+						pipeTo: jest.fn().mockResolvedValue(undefined),
+					}),
+				}),
+			);
+
+			await controller.chat(request, response, payload);
+
+			expect(response.on).toHaveBeenCalledWith('close', expect.any(Function));
+		});
+
+		it('should remove close handler after streaming completes', async () => {
+			aiService.chat.mockResolvedValue(
+				mock<Response>({
+					body: mock({
+						pipeTo: jest.fn().mockResolvedValue(undefined),
+					}),
+				}),
+			);
+
+			await controller.chat(request, response, payload);
+
+			expect(response.off).toHaveBeenCalledWith('close', expect.any(Function));
+		});
+
+		it('should silently return when pipeTo throws an AbortError', async () => {
+			const abortError = new DOMException('The operation was aborted', 'AbortError');
+
+			aiService.chat.mockResolvedValue(
+				mock<Response>({
+					body: mock({
+						pipeTo: jest.fn().mockRejectedValue(abortError),
+					}),
+				}),
+			);
+
+			// Should not throw
+			await controller.chat(request, response, payload);
+
+			expect(response.end).not.toHaveBeenCalled();
+		});
+
+		it('should pass abort signal to pipeTo', async () => {
+			const pipeToMock = jest.fn().mockResolvedValue(undefined);
+
+			aiService.chat.mockResolvedValue(
+				mock<Response>({
+					body: mock({
+						pipeTo: pipeToMock,
+					}),
+				}),
+			);
+
+			await controller.chat(request, response, payload);
+
+			expect(pipeToMock).toHaveBeenCalledWith(expect.any(WritableStream), {
+				signal: expect.any(AbortSignal),
+			});
 		});
 	});
 
@@ -427,53 +496,33 @@ describe('AiController', () => {
 		});
 	});
 
-	describe('getSessionsMetadata', () => {
-		const payload: AiSessionRetrievalRequestDto = {
-			workflowId: 'workflow123',
-		};
-
-		it('should return sessions metadata successfully when messages exist', async () => {
-			const expectedMetadata: AiSessionMetadataResponseDto = {
-				hasMessages: true,
+	describe('clearSession', () => {
+		it('should call workflowBuilderService.clearSession with correct parameters', async () => {
+			const payload = {
+				workflowId: 'workflow123',
 			};
 
-			workflowBuilderService.getSessionsMetadata.mockResolvedValue(expectedMetadata);
+			workflowBuilderService.clearSession.mockResolvedValue(undefined);
 
-			const result = await controller.getSessionsMetadata(request, response, payload);
+			const result = await controller.clearSession(request, response, payload);
 
-			expect(workflowBuilderService.getSessionsMetadata).toHaveBeenCalledWith(
+			expect(workflowBuilderService.clearSession).toHaveBeenCalledWith(
 				payload.workflowId,
 				request.user,
 			);
-			expect(result).toEqual(expectedMetadata);
+			expect(result).toEqual({ success: true });
 		});
 
-		it('should return sessions metadata successfully when no messages exist', async () => {
-			const expectedMetadata: AiSessionMetadataResponseDto = {
-				hasMessages: false,
+		it('should throw InternalServerError when service throws an error', async () => {
+			const payload = {
+				workflowId: 'workflow123',
 			};
 
-			workflowBuilderService.getSessionsMetadata.mockResolvedValue(expectedMetadata);
+			const mockError = new Error('Database error');
+			workflowBuilderService.clearSession.mockRejectedValue(mockError);
 
-			const result = await controller.getSessionsMetadata(request, response, payload);
-
-			expect(workflowBuilderService.getSessionsMetadata).toHaveBeenCalledWith(
-				payload.workflowId,
-				request.user,
-			);
-			expect(result).toEqual(expectedMetadata);
-		});
-
-		it('should throw InternalServerError if getting sessions metadata fails', async () => {
-			const mockError = new Error('Failed to get sessions metadata');
-			workflowBuilderService.getSessionsMetadata.mockRejectedValue(mockError);
-
-			await expect(controller.getSessionsMetadata(request, response, payload)).rejects.toThrow(
+			await expect(controller.clearSession(request, response, payload)).rejects.toThrow(
 				InternalServerError,
-			);
-			expect(workflowBuilderService.getSessionsMetadata).toHaveBeenCalledWith(
-				payload.workflowId,
-				request.user,
 			);
 		});
 	});
@@ -483,6 +532,7 @@ describe('AiController', () => {
 			const payload = {
 				workflowId: 'workflow123',
 				messageId: 'message456',
+				codeBuilder: true,
 			};
 
 			workflowBuilderService.truncateMessagesAfter.mockResolvedValue(true);
@@ -493,6 +543,7 @@ describe('AiController', () => {
 				payload.workflowId,
 				request.user,
 				payload.messageId,
+				payload.codeBuilder,
 			);
 			expect(result).toEqual({ success: true });
 		});
@@ -539,6 +590,7 @@ describe('AiController', () => {
 				payload.workflowId,
 				request.user,
 				payload.messageId,
+				undefined,
 			);
 		});
 	});

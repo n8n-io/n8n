@@ -1,34 +1,53 @@
+import type { N8NConfig } from 'n8n-containers/stack';
+
 /**
- * Shared container capability configurations.
+ * Capability definitions for `test.use({ capability: 'email' })`.
+ * Add `@capability:X` tag to tests for orchestration grouping.
  *
- * IMPORTANT: Import these instead of defining inline objects in test.use().
- * Using the same object reference enables Playwright worker reuse across
- * test files with identical configurations, avoiding redundant container creation.
- *
- * @example
- * ```ts
- * import { capabilities } from '../fixtures/capabilities';
- * test.use({ addContainerCapability: capabilities.email });
- * ```
+ * Maps capability names to service registry keys.
+ * Note: task-runner is always enabled, no capability needed.
  */
-export const capabilities = {
-	/** Email testing with Mailpit SMTP server */
-	email: { email: true },
+export const CAPABILITIES = {
+	email: { services: ['mailpit'] },
+	proxy: { services: ['proxy'] },
+	'source-control': { services: ['gitea'] },
+	oidc: { services: ['keycloak'] },
+	observability: { services: ['victoriaLogs', 'victoriaMetrics', 'vector'] },
+	kafka: { services: ['kafka'] },
+	'external-secrets': {
+		services: ['localstack'],
+		env: {
+			// Enable project-scoped external secrets feature at startup
+			// (required for secret-providers-connections API)
+			N8N_ENV_FEAT_EXTERNAL_SECRETS_FOR_PROJECTS: 'true',
+		},
+	},
+	kent: { services: ['kent'] },
+	'dynamic-credentials': {
+		services: ['keycloak'],
+		env: {
+			N8N_ENV_FEAT_DYNAMIC_CREDENTIALS: 'true',
+			// Static token required to allow unauthenticated (external) requests to dynamic credential endpoints
+			N8N_DYNAMIC_CREDENTIALS_ENDPOINT_AUTH_TOKEN: 'e2e-test-endpoint-token',
+		},
+	},
+} as const satisfies Record<string, Partial<N8NConfig>>;
 
-	/** Mock HTTP server for external API testing */
-	proxy: { proxyServerEnabled: true },
+export type Capability = keyof typeof CAPABILITIES;
 
-	/** Git-based source control testing */
-	sourceControl: { sourceControl: true },
+/**
+ * Infrastructure modes (`@mode:X` tags). Most tests run against ALL modes via projects.
+ * Use @mode:X only for tests requiring specific infrastructure.
+ */
+export const INFRASTRUCTURE_MODES = ['postgres', 'queue', 'multi-main'] as const;
 
-	/** External task runner container */
-	taskRunner: { taskRunner: true },
+/**
+ * Tests requiring enterprise license features (`@licensed` tag).
+ * These tests only run in container mode where a license file is available.
+ * Use for tests that interact with enterprise-only API endpoints (log streaming, SSO, etc.)
+ */
+export const LICENSED_TAG = 'licensed';
 
-	/** OIDC/SSO testing with Keycloak (includes postgres) */
-	oidc: { oidc: true },
-
-	/** Observability stack (VictoriaLogs + VictoriaMetrics) */
-	observability: { observability: true },
-} as const;
-
-export type CapabilityName = keyof typeof capabilities;
+// Used by playwright-projects.ts to filter container-only tests in local mode
+export const CONTAINER_ONLY_CAPABILITIES = Object.keys(CAPABILITIES) as Capability[];
+export const CONTAINER_ONLY_MODES = INFRASTRUCTURE_MODES;

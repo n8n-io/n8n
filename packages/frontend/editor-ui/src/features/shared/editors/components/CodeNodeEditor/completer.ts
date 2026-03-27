@@ -25,7 +25,7 @@ export const useCompleter = (
 	editor: MaybeRefOrGetter<EditorView | null>,
 ) => {
 	function autocompletionExtension(language: 'javaScript' | 'python' | 'pythonNative'): Extension {
-		if (language === 'pythonNative') {
+		if (language === 'python' || language === 'pythonNative') {
 			const completions = (context: CompletionContext): CompletionResult | null => {
 				const word = context.matchBefore(/\w*/);
 				if (!word) return null;

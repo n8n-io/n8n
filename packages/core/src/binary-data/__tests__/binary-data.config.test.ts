@@ -1,9 +1,15 @@
 import { Container } from '@n8n/di';
+import { existsSync } from 'node:fs';
 
 import { InstanceSettings } from '@/instance-settings';
 import { mockInstance } from '@test/utils';
 
 import { BinaryDataConfig } from '../binary-data.config';
+
+jest.mock('node:fs', () => ({
+	existsSync: jest.fn().mockReturnValue(false),
+	renameSync: jest.fn(),
+}));
 
 describe('BinaryDataConfig', () => {
 	const n8nFolder = '/test/n8n';
@@ -18,6 +24,7 @@ describe('BinaryDataConfig', () => {
 		jest.resetAllMocks();
 		Container.reset();
 		mockInstance(InstanceSettings, { encryptionKey, n8nFolder });
+		(existsSync as jest.Mock).mockReturnValue(false);
 	});
 
 	it('should use default values when no env variables are defined', () => {
@@ -25,7 +32,7 @@ describe('BinaryDataConfig', () => {
 
 		expect(config.availableModes).toEqual(['filesystem', 's3', 'database']);
 		expect(config.mode).toBe('filesystem');
-		expect(config.localStoragePath).toBe('/test/n8n/binaryData');
+		expect(config.localStoragePath).toBe('/test/n8n/storage');
 	});
 
 	it('should use values from env variables when defined', () => {
@@ -56,5 +63,43 @@ describe('BinaryDataConfig', () => {
 		expect(console.warn).toHaveBeenCalledWith(
 			expect.stringContaining('Invalid value for N8N_DEFAULT_BINARY_DATA_MODE'),
 		);
+	});
+
+	describe('dbMaxFileSize', () => {
+		it('should coerce string env variable to number', () => {
+			process.env.N8N_BINARY_DATA_DATABASE_MAX_FILE_SIZE = '1024';
+
+			const config = Container.get(BinaryDataConfig);
+
+			expect(config.dbMaxFileSize).toBe(1024);
+		});
+
+		it('should use default value when env variable is not set', () => {
+			const config = Container.get(BinaryDataConfig);
+
+			expect(config.dbMaxFileSize).toBe(512);
+		});
+
+		it('should fallback to default for invalid value', () => {
+			process.env.N8N_BINARY_DATA_DATABASE_MAX_FILE_SIZE = 'not-a-number';
+
+			const config = Container.get(BinaryDataConfig);
+
+			expect(config.dbMaxFileSize).toBe(512);
+			expect(console.warn).toHaveBeenCalledWith(
+				expect.stringContaining('Invalid value for N8N_BINARY_DATA_DATABASE_MAX_FILE_SIZE'),
+			);
+		});
+
+		it('should fallback to default when value exceeds maximum', () => {
+			process.env.N8N_BINARY_DATA_DATABASE_MAX_FILE_SIZE = '2048';
+
+			const config = Container.get(BinaryDataConfig);
+
+			expect(config.dbMaxFileSize).toBe(512);
+			expect(console.warn).toHaveBeenCalledWith(
+				expect.stringContaining('Invalid value for N8N_BINARY_DATA_DATABASE_MAX_FILE_SIZE'),
+			);
+		});
 	});
 });

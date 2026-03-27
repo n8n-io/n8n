@@ -4,7 +4,7 @@ import { action } from 'storybook/actions';
 import N8nColorPicker from './ColorPicker.vue';
 
 export default {
-	title: 'Atoms/ColorPicker',
+	title: 'Core/ColorPicker',
 	component: N8nColorPicker,
 	argTypes: {
 		disabled: {
@@ -26,6 +26,12 @@ export default {
 		},
 		predefine: {
 			control: 'array',
+		},
+	},
+
+	parameters: {
+		docs: {
+			description: { component: 'A color selection control for choosing and previewing colors.' },
 		},
 	},
 };

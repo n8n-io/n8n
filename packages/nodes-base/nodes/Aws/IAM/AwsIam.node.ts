@@ -15,6 +15,7 @@ export class AwsIam implements INodeType {
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Interacts with Amazon IAM',
+		schemaPath: 'Aws/IAM',
 		defaults: { name: 'AWS IAM' },
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],

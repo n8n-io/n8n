@@ -5,8 +5,7 @@ import { SupportedProtocols, useSSOStore } from '../sso.store';
 import { useI18n } from '@n8n/i18n';
 import { captureMessage } from '@sentry/vue';
 
-import { ElCheckbox } from 'element-plus';
-import { N8nButton, N8nInput, N8nRadioButtons } from '@n8n/design-system';
+import { N8nButton, N8nCheckbox, N8nInput, N8nRadioButtons } from '@n8n/design-system';
 import { useToast } from '@/app/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
 import { computed, onMounted, ref } from 'vue';
@@ -242,7 +241,11 @@ const onSave = async (provisioningChangesConfirmed: boolean = false) => {
 
 const onTest = async () => {
 	try {
-		const url = await ssoStore.testSamlConfig();
+		const metaDataConfig: Partial<SamlPreferences> =
+			ipsType.value === IdentityProviderSettingsType.URL
+				? { metadataUrl: metadataUrl.value }
+				: { metadata: metadata.value };
+		const url = await ssoStore.testSamlConfig(metaDataConfig);
 
 		if (typeof window !== 'undefined') {
 			window.open(url, '_blank');
@@ -270,6 +273,10 @@ const validateSamlInput = () => {
 		}
 	}
 };
+
+const hasUnsavedChanges = computed(() => isSaveEnabled.value);
+
+defineExpose({ hasUnsavedChanges, onSave });
 
 onMounted(async () => {
 	await loadSamlConfig();
@@ -330,9 +337,11 @@ onMounted(async () => {
 				@cancel="showUserRoleProvisioningDialog = false"
 			/>
 			<div :class="[$style.group, $style.checkboxGroup]">
-				<ElCheckbox v-model="samlLoginEnabled" data-test-id="sso-toggle">{{
-					i18n.baseText('settings.sso.activated')
-				}}</ElCheckbox>
+				<N8nCheckbox
+					v-model="samlLoginEnabled"
+					data-test-id="sso-toggle"
+					:label="i18n.baseText('settings.sso.activated')"
+				/>
 			</div>
 		</div>
 		<div :class="$style.buttons">
@@ -346,9 +355,9 @@ onMounted(async () => {
 				{{ i18n.baseText('settings.sso.settings.save') }}
 			</N8nButton>
 			<N8nButton
+				variant="subtle"
 				:disabled="!isTestEnabled"
 				size="large"
-				type="tertiary"
 				data-test-id="sso-test"
 				@click="onTest"
 			>

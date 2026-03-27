@@ -13,7 +13,7 @@ import {
 	type IParameterLabel,
 	type NodeParameterValueType,
 } from 'n8n-workflow';
-import { computed, defineAsyncComponent, ref } from 'vue';
+import { computed, defineAsyncComponent, ref, useTemplateRef, type ComputedRef } from 'vue';
 import ParameterInputWrapper from './ParameterInputWrapper.vue';
 import ParameterOptions from './ParameterOptions.vue';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -22,7 +22,7 @@ import { storeToRefs } from 'pinia';
 import { N8nInputLabel, N8nLink, N8nText } from '@n8n/design-system';
 
 const LazyFixedCollectionParameter = defineAsyncComponent(
-	async () => await import('./FixedCollectionParameter.vue'),
+	async () => await import('./FixedCollection/FixedCollectionParameter.vue'),
 );
 
 type Props = {
@@ -163,6 +163,11 @@ function onDocumentationUrlClick(): void {
 		workflow_id: workflowsStore.workflowId,
 	});
 }
+const param = useTemplateRef<{ displaysIssues?: ComputedRef<boolean> }>('param');
+
+defineExpose({
+	displaysIssues: computed(() => param.value?.displaysIssues),
+});
 </script>
 
 <template>

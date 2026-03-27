@@ -13,21 +13,12 @@ import {
 	NodeHelpers,
 	resolveRelativePath,
 } from 'n8n-workflow';
-import { computed, defineAsyncComponent, onErrorCaptured, ref } from 'vue';
+import { computed, defineAsyncComponent, nextTick, onErrorCaptured, ref, watch } from 'vue';
 
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 
-import AssignmentCollection from './AssignmentCollection/AssignmentCollection.vue';
-import ButtonParameter from './ButtonParameter/ButtonParameter.vue';
-import FilterConditions from './FilterConditions/FilterConditions.vue';
-import ImportCurlParameter from './ImportCurlParameter.vue';
-import MultipleParameter from './MultipleParameter.vue';
-import ParameterInputFull from './ParameterInputFull.vue';
-import ResourceMapper from './ResourceMapper/ResourceMapper.vue';
-import { useI18n } from '@n8n/i18n';
-import { useNodeSettingsParameters } from '@/features/ndv/settings/composables/useNodeSettingsParameters';
-import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useMessage } from '@/app/composables/useMessage';
+import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import {
 	FORM_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
@@ -35,17 +26,30 @@ import {
 	MODAL_CONFIRM,
 	WAIT_NODE_TYPE,
 } from '@/app/constants';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useNodeSettingsParameters } from '@/features/ndv/settings/composables/useNodeSettingsParameters';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useI18n } from '@n8n/i18n';
+import AssignmentCollection from './AssignmentCollection/AssignmentCollection.vue';
+import ButtonParameter from './ButtonParameter/ButtonParameter.vue';
+import FilterConditions from './FilterConditions/FilterConditions.vue';
+import ImportCurlParameter from './ImportCurlParameter.vue';
+import MultipleParameter from './MultipleParameter.vue';
+import ParameterInputFull from './ParameterInputFull.vue';
+import ResourceMapper from './ResourceMapper/ResourceMapper.vue';
 
+import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
+import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	getParameterTypeOption,
+	type ParameterOptionsOverrides,
+} from '@/features/ndv/shared/ndv.utils';
+import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { captureException } from '@sentry/vue';
 import { throttledWatch } from '@vueuse/core';
 import get from 'lodash/get';
 import { storeToRefs } from 'pinia';
-import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
-import { getParameterTypeOption } from '@/features/ndv/shared/ndv.utils';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
 import {
 	N8nCallout,
@@ -58,10 +62,10 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 const LazyFixedCollectionParameter = defineAsyncComponent(
-	async () => await import('./FixedCollectionParameter.vue'),
+	async () => await import('./FixedCollection/FixedCollectionParameter.vue'),
 );
 const LazyCollectionParameter = defineAsyncComponent(
-	async () => await import('./CollectionParameter.vue'),
+	async () => await import('./Collection/CollectionParameter.vue'),
 );
 
 // Parameter issues are displayed within the inputs themselves, but some parameters need to show them in the label UI
@@ -77,9 +81,19 @@ type Props = {
 	isReadOnly?: boolean;
 	hiddenIssuesInputs?: string[];
 	entryIndex?: number;
+	isNested?: boolean;
+	removeFirstParameterMargin?: boolean;
+	removeLastParameterMargin?: boolean;
+	newlyAddedParameters?: Set<string>;
+	optionsOverrides?: ParameterOptionsOverrides;
+	layout?: 'inline';
 };
 
-const props = withDefaults(defineProps<Props>(), { path: '', hiddenIssuesInputs: () => [] });
+const props = withDefaults(defineProps<Props>(), {
+	path: '',
+	hiddenIssuesInputs: () => [],
+	newlyAddedParameters: () => new Set(),
+});
 const emit = defineEmits<{
 	activate: [];
 	valueChanged: [value: IUpdateInformation];
@@ -95,13 +109,12 @@ const nodeSettingsParameters = useNodeSettingsParameters();
 const asyncLoadingError = ref(false);
 const workflowHelpers = useWorkflowHelpers();
 const i18n = useI18n();
+const { isEnabled: isCollectionOverhaulEnabled } = useCollectionOverhaul();
 const {
 	dismissCallout,
 	isCalloutDismissed,
-	openPreBuiltAgentsCollection,
 	openSampleWorkflowTemplate,
 	isRagStarterCalloutVisible,
-	isPreBuiltAgentsCalloutVisible,
 } = useCalloutHelpers();
 
 const { activeNode } = storeToRefs(ndvStore);
@@ -156,21 +169,27 @@ let previousParameterNames: string[] = [];
 
 throttledWatch(
 	[() => props.parameters, () => props.nodeValues, node],
-	() => {
+	async () => {
 		// Pre-calculate disabled state map
 		const disabledMap: Record<string, boolean> = {};
 		for (const parameter of props.parameters) {
 			const parameterPath = getPath(parameter.name);
 			// Pre-calculate disabled state
 			if (parameter.disabledOptions) {
-				disabledMap[parameterPath] = shouldDisplayNodeParameter(parameter, 'disabledOptions');
+				disabledMap[parameterPath] = await shouldDisplayNodeParameter(parameter, 'disabledOptions');
 			}
 		}
 
 		// Filter parameters that should be displayed
-		const parameters = props.parameters.filter((parameter: INodeProperties) =>
-			shouldDisplayNodeParameter(parameter),
+		const displayChecks = await Promise.all(
+			props.parameters.map(async (parameter: INodeProperties) => ({
+				parameter,
+				shouldDisplay: await shouldDisplayNodeParameter(parameter),
+			})),
 		);
+		const parameters = displayChecks
+			.filter((check) => check.shouldDisplay)
+			.map((check) => check.parameter);
 
 		// Apply node-specific parameter transformations
 		let filteredParameters: INodeProperties[];
@@ -191,26 +210,29 @@ throttledWatch(
 		// Compute all parameter data for template usage
 		// Note: `value` is intentionally NOT included to prevent re-renders when values change
 		// Values are fetched via getParameterValue() in the template instead
-		parameterItems.value = filteredParameters.map((parameter) => {
-			const parameterPath = getPath(parameter.name);
-			const isMultipleValues = multipleValues(parameter);
-			const isDisabled = disabledMap[parameterPath] ?? false;
-			const showOptions = shouldShowOptions(parameter);
-			const dependentParametersValues = getDependentParametersValues(parameter);
-			const issues = getParameterIssues(parameter);
-			const calloutVisible = parameter.type === 'callout' ? isCalloutVisible(parameter) : false;
+		const items = await Promise.all(
+			filteredParameters.map(async (parameter) => {
+				const parameterPath = getPath(parameter.name);
+				const isMultipleValues = multipleValues(parameter);
+				const isDisabled = disabledMap[parameterPath] ?? false;
+				const showOptions = shouldShowOptions(parameter);
+				const dependentParametersValues = await getDependentParametersValues(parameter);
+				const issues = getParameterIssues(parameter);
+				const calloutVisible = parameter.type === 'callout' ? isCalloutVisible(parameter) : false;
 
-			return {
-				parameter,
-				path: parameterPath,
-				isMultipleValues,
-				isDisabled,
-				showOptions,
-				dependentParametersValues,
-				issues,
-				isCalloutVisible: calloutVisible,
-			};
-		});
+				return {
+					parameter,
+					path: parameterPath,
+					isMultipleValues,
+					isDisabled,
+					showOptions,
+					dependentParametersValues,
+					issues,
+					isCalloutVisible: calloutVisible,
+				};
+			}),
+		);
+		parameterItems.value = items;
 
 		// Get new parameter names
 		const newParameterNames = parameterItems.value.map((paramData) => paramData.parameter.name);
@@ -232,6 +254,20 @@ throttledWatch(
 	},
 	{ throttle: 200, immediate: true },
 );
+
+// When the active node changes (e.g. via floating node navigation arrows),
+// immediately nullify dependentParametersValues in the cached items.
+// The throttledWatch above will recompute them asynchronously, but until then
+// the ResourceMapper component would see stale dep values from the previous node.
+// By setting them to null, the ResourceMapper's dependency watcher sees a
+// null → correctValue transition which is naturally ignored (oldValue !== null guard),
+// preventing it from incorrectly clearing the new node's field values.
+watch(node, () => {
+	parameterItems.value = parameterItems.value.map((item) => ({
+		...item,
+		dependentParametersValues: null,
+	}));
+});
 
 const credentialsParameterIndex = computed(() => {
 	return parameterItems.value.findIndex((paramData) => paramData.parameter.type === 'credentials');
@@ -401,11 +437,11 @@ function deleteOption(optionName: string): void {
 	emit('valueChanged', parameterData);
 }
 
-function shouldDisplayNodeParameter(
+async function shouldDisplayNodeParameter(
 	parameter: INodeProperties,
 	displayKey: 'displayOptions' | 'disabledOptions' = 'displayOptions',
-): boolean {
-	return nodeSettingsParameters.shouldDisplayNodeParameter(
+): Promise<boolean> {
+	return await nodeSettingsParameters.shouldDisplayNodeParameter(
 		props.nodeValues,
 		node.value,
 		parameter,
@@ -443,7 +479,7 @@ function shouldShowOptions(parameter: INodeProperties): boolean {
 	return parameter.type !== 'resourceMapper';
 }
 
-function getDependentParametersValues(parameter: INodeProperties): string | null {
+async function getDependentParametersValues(parameter: INodeProperties): Promise<string | null> {
 	const loadOptionsDependsOn = getParameterTypeOption(parameter, 'loadOptionsDependsOn');
 
 	if (loadOptionsDependsOn === undefined) {
@@ -453,7 +489,7 @@ function getDependentParametersValues(parameter: INodeProperties): string | null
 	// Get the resolved parameter values of the current node
 	const currentNodeParameters = ndvStore.activeNode?.parameters;
 	try {
-		const resolvedNodeParameters = workflowHelpers.resolveParameter(currentNodeParameters);
+		const resolvedNodeParameters = await workflowHelpers.resolveParameter(currentNodeParameters);
 
 		const returnValues: string[] = [];
 		for (let parameterPath of loadOptionsDependsOn) {
@@ -478,14 +514,6 @@ function isRagStarterCallout(parameter: INodeProperties): boolean {
 	return parameter.type === 'callout' && parameter.name === 'ragStarterCallout';
 }
 
-function isAgentDefaultCallout(parameter: INodeProperties): boolean {
-	return parameter.type === 'callout' && parameter.name === 'aiAgentStarterCallout';
-}
-
-function isPreBuiltAgentsCallout(parameter: INodeProperties): boolean {
-	return parameter.type === 'callout' && parameter.name.startsWith('preBuiltAgentsCallout');
-}
-
 function isCalloutVisible(parameter: INodeProperties): boolean {
 	if (isCalloutDismissed(parameter.name)) return false;
 
@@ -493,28 +521,11 @@ function isCalloutVisible(parameter: INodeProperties): boolean {
 		return isRagStarterCalloutVisible.value;
 	}
 
-	if (isAgentDefaultCallout(parameter)) {
-		return !isPreBuiltAgentsCalloutVisible.value;
-	}
-
-	if (isPreBuiltAgentsCallout(parameter)) {
-		return isPreBuiltAgentsCalloutVisible.value;
-	}
-
 	return true;
 }
 
 function onCalloutAction(action: CalloutAction) {
 	switch (action.type) {
-		case 'openPreBuiltAgentsCollection':
-			void openPreBuiltAgentsCollection({
-				telemetry: {
-					source: 'ndv',
-					nodeType: activeNode.value?.type,
-				},
-				resetStacks: false,
-			});
-			break;
 		case 'openSampleWorkflowTemplate':
 			void openSampleWorkflowTemplate(action.templateId, {
 				telemetry: {
@@ -547,15 +558,57 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 	}
 
 	await dismissCallout(parameter.name);
+
+	const item = parameterItems.value.find((i) => i.parameter.name === parameter.name);
+	if (item) {
+		item.isCalloutVisible = false;
+	}
 }
+
+const parameterRefItems = ref<Map<string, HTMLElement>>(new Map());
+
+watch(
+	() => Array.from(props.newlyAddedParameters),
+	async (newlyAddedArray) => {
+		if (newlyAddedArray.length > 0) {
+			await nextTick();
+			const lastAdded = newlyAddedArray[newlyAddedArray.length - 1];
+
+			const element = parameterRefItems.value.get(lastAdded);
+			if (element) {
+				element.scrollIntoView({
+					behavior: 'smooth',
+					inline: 'center',
+					block: 'nearest',
+				});
+			}
+		}
+	},
+);
 </script>
 
 <template>
-	<div class="parameter-input-list-wrapper">
+	<div :class="['parameter-input-list-wrapper', { [$style.inlineLayout]: layout === 'inline' }]">
 		<div
 			v-for="(item, index) in parameterItems"
 			:key="item.parameter.name"
-			:class="{ indent }"
+			:ref="
+				(el) => {
+					if (el && newlyAddedParameters.has(item.parameter.name)) {
+						parameterRefItems.set(item.parameter.name, el as HTMLElement);
+					} else {
+						parameterRefItems.delete(item.parameter.name);
+					}
+				}
+			"
+			:class="[
+				$style.parameterContainer,
+				{
+					indent,
+					[$style.firstParameter]: index === 0 && removeFirstParameterMargin,
+					[$style.lastParameter]: index === parameterItems.length - 1 && removeLastParameterMargin,
+				},
+			]"
 			data-test-id="parameter-item"
 		>
 			<slot v-if="indexToShowSlotAt === index" />
@@ -646,6 +699,7 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 				class="multi-parameter"
 			>
 				<N8nInputLabel
+					v-if="!isCollectionOverhaulEnabled"
 					:label="i18n.nodeText(activeNode?.type).inputLabelDisplayName(item.parameter, path)"
 					:tooltip-text="
 						i18n.nodeText(activeNode?.type).inputLabelDescription(item.parameter, path)
@@ -667,7 +721,7 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 						</N8nTooltip>
 					</template>
 				</N8nInputLabel>
-				<Suspense v-if="!asyncLoadingError">
+				<Suspense v-if="!asyncLoadingError && !isCollectionOverhaulEnabled">
 					<template #default>
 						<LazyCollectionParameter
 							v-if="item.parameter.type === 'collection'"
@@ -676,6 +730,7 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 							:node-values="nodeValues"
 							:path="item.path"
 							:is-read-only="isReadOnly"
+							:is-nested="isNested"
 							@value-changed="valueChanged"
 						/>
 						<LazyFixedCollectionParameter
@@ -685,6 +740,8 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 							:node-values="nodeValues"
 							:path="item.path"
 							:is-read-only="isReadOnly"
+							:is-nested="isNested"
+							:is-newly-added="newlyAddedParameters.has(item.parameter.name)"
 							@value-changed="valueChanged"
 						/>
 					</template>
@@ -695,14 +752,45 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 						</N8nText>
 					</template>
 				</Suspense>
+				<template v-else-if="!asyncLoadingError && isCollectionOverhaulEnabled">
+					<LazyCollectionParameter
+						v-if="item.parameter.type === 'collection'"
+						:parameter="item.parameter"
+						:values="getParameterValue(item.parameter.name)"
+						:node-values="nodeValues"
+						:path="getPath(item.parameter.name)"
+						:is-read-only="isReadOnly"
+						:is-nested="isNested"
+						:is-newly-added="newlyAddedParameters.has(item.parameter.name)"
+						@value-changed="valueChanged"
+						@delete="deleteOption(item.parameter.name)"
+					/>
+					<LazyFixedCollectionParameter
+						v-else-if="item.parameter.type === 'fixedCollection'"
+						:parameter="item.parameter"
+						:values="getParameterValue(item.parameter.name)"
+						:node-values="nodeValues"
+						:path="getPath(item.parameter.name)"
+						:is-read-only="isReadOnly"
+						:is-nested="isNested"
+						:is-newly-added="newlyAddedParameters.has(item.parameter.name)"
+						:can-delete="!hideDelete"
+						@value-changed="valueChanged"
+						@delete="deleteOption(item.parameter.name)"
+					/>
+				</template>
 				<N8nText v-else size="small" color="danger" class="async-notice">
 					<N8nIcon icon="triangle-alert" size="xsmall" />
 					{{ i18n.baseText('parameterInputList.loadingError') }}
 				</N8nText>
 				<N8nIconButton
-					v-if="hideDelete !== true && !isReadOnly && !item.parameter.isNodeSetting"
-					type="tertiary"
-					text
+					variant="ghost"
+					v-if="
+						hideDelete !== true &&
+						!isReadOnly &&
+						!item.parameter.isNodeSetting &&
+						!isCollectionOverhaulEnabled
+					"
 					size="small"
 					icon="trash-2"
 					class="icon-button"
@@ -712,6 +800,7 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 			</div>
 			<ResourceMapper
 				v-else-if="item.parameter.type === 'resourceMapper'"
+				:key="node?.name"
 				:parameter="item.parameter"
 				:node="node"
 				:path="item.path"
@@ -729,6 +818,8 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 				:path="item.path"
 				:node="node"
 				:read-only="isReadOnly"
+				:remove-first-margin="index === 0 && removeFirstParameterMargin"
+				:remove-last-margin="index === parameterItems.length - 1 && removeLastParameterMargin"
 				@value-changed="valueChanged"
 			/>
 			<AssignmentCollection
@@ -744,9 +835,13 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 			/>
 			<div v-else-if="credentialsParameterIndex !== index" class="parameter-item">
 				<N8nIconButton
-					v-if="hideDelete !== true && !isReadOnly && !item.parameter.isNodeSetting"
-					type="tertiary"
-					text
+					variant="ghost"
+					v-if="
+						hideDelete !== true &&
+						!isReadOnly &&
+						!item.parameter.isNodeSetting &&
+						!isCollectionOverhaulEnabled
+					"
 					size="small"
 					icon="trash-2"
 					class="icon-button"
@@ -759,10 +854,18 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 					:hide-issues="hiddenIssuesInputs.includes(item.parameter.name)"
 					:value="getParameterValue(item.parameter.name)"
 					:display-options="item.showOptions"
+					:options-overrides="optionsOverrides"
 					:path="item.path"
 					:is-read-only="isReadOnly || item.isDisabled"
-					:hide-label="false"
+					:hide-label="layout === 'inline'"
 					:node-values="nodeValues"
+					:show-delete="
+						!isReadOnly &&
+						!item.parameter.isNodeSetting &&
+						!hideDelete &&
+						isCollectionOverhaulEnabled
+					"
+					:on-delete="() => deleteOption(item.parameter.name)"
 					@update="valueChanged"
 					@blur="onParameterBlur(item.parameter.name)"
 				/>
@@ -807,6 +910,7 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 	.parameter-item {
 		position: relative;
 		margin: var(--spacing--xs) 0;
+		scroll-margin: var(--spacing--lg);
 	}
 	.parameter-item:hover > .icon-button,
 	.multi-parameter:hover > .icon-button {
@@ -836,6 +940,45 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 	}
 	.callout-dismiss:hover {
 		color: var(--icon--color--hover);
+	}
+}
+</style>
+
+<style lang="scss" module>
+.parameterContainer {
+	scroll-margin: var(--spacing--xl);
+}
+
+.firstParameter {
+	> :global(.parameter-item),
+	> :global(.multi-parameter) {
+		margin-top: 0;
+	}
+}
+
+.lastParameter {
+	> :global(.parameter-item),
+	> :global(.multi-parameter) {
+		margin-bottom: 0;
+	}
+}
+
+.inlineLayout {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+
+	.parameterContainer {
+		flex: 1;
+		min-width: 0;
+
+		&:first-child {
+			flex: 0 0 auto;
+		}
+	}
+
+	:global(.parameter-item) {
+		margin: 0;
 	}
 }
 </style>

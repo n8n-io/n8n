@@ -1,10 +1,7 @@
 /**
  * Builds the WHERE clause and parameters for a query to find workflows by node types
  */
-export function buildWorkflowsByNodesQuery(
-	nodeTypes: string[],
-	dbType: 'postgresdb' | 'mysqldb' | 'mariadb' | 'sqlite',
-) {
+export function buildWorkflowsByNodesQuery(nodeTypes: string[], dbType: 'postgresdb' | 'sqlite') {
 	let whereClause: string;
 
 	const parameters: Record<string, string | string[]> = { nodeTypes };
@@ -17,22 +14,6 @@ export function buildWorkflowsByNodesQuery(
 					WHERE node->>'type' = ANY(:nodeTypes)
 				)`;
 			break;
-		case 'mysqldb':
-		case 'mariadb': {
-			const conditions = nodeTypes
-				.map(
-					(_, i) =>
-						`JSON_SEARCH(JSON_EXTRACT(workflow.nodes, '$[*].type'), 'one', :nodeType${i}) IS NOT NULL`,
-				)
-				.join(' OR ');
-
-			whereClause = `(${conditions})`;
-
-			nodeTypes.forEach((nodeType, index) => {
-				parameters[`nodeType${index}`] = nodeType;
-			});
-			break;
-		}
 		case 'sqlite': {
 			const conditions = nodeTypes
 				.map(

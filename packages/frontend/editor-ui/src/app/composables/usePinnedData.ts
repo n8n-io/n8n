@@ -1,6 +1,6 @@
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
-import type { INodeExecutionData, IPinData, Workflow } from 'n8n-workflow';
+import type { IDataObject, INodeExecutionData, IPinData, Workflow } from 'n8n-workflow';
 import { jsonParse, jsonStringify, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import {
 	MAX_EXPECTED_REQUEST_SIZE,
@@ -10,11 +10,19 @@ import {
 } from '@/app/constants';
 import { stringSizeInBytes, toMegaBytes } from '@/app/utils/typesUtils';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import {
+	injectWorkflowDocumentStore,
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+	getPinDataSize,
+	pinDataToExecutionData,
+} from '@/app/stores/workflowDocument.store';
 import type { INodeUi, IRunDataDisplayMode } from '@/Interface';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import type { MaybeRef } from 'vue';
-import { computed, unref } from 'vue';
+import { computed, shallowRef, unref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useNodeType } from '@/app/composables/useNodeType';
 import { useDataSchema } from './useDataSchema';
@@ -45,6 +53,12 @@ export function usePinnedData(
 ) {
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
+	const uiStore = useUIStore();
+	const workflowDocumentStore =
+		injectWorkflowDocumentStore() ??
+		(workflowsStore.workflowId
+			? shallowRef(useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)))
+			: null);
 	const toast = useToast();
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
@@ -57,9 +71,10 @@ export function usePinnedData(
 		node,
 	});
 
-	const data = computed<IPinData[string] | undefined>(() => {
+	const data = computed<IDataObject[] | undefined>(() => {
 		const targetNode = unref(node);
-		return targetNode ? workflowsStore.pinDataByNodeName(targetNode.name) : undefined;
+		if (!targetNode || !workflowDocumentStore?.value) return undefined;
+		return pinDataToExecutionData(workflowDocumentStore.value.pinData)[targetNode.name];
 	});
 
 	const hasData = computed<boolean>(() => {
@@ -164,11 +179,12 @@ export function usePinnedData(
 
 		if (typeof data === 'object') data = JSON.stringify(data);
 
-		const { pinData: currentPinData, ...workflowObjectWithoutPinData } = workflowObject.value;
+		const { pinData: _pinData, ...workflowObjectWithoutPinData } = workflowObject.value;
+		const currentPinData = (workflowDocumentStore?.value?.pinData ?? {}) as IPinData;
 		const workflowJson = jsonStringify(workflowObjectWithoutPinData, { replaceCircularRefs: true });
 
 		const newPinData = { ...currentPinData, [targetNode.name]: data };
-		const newPinDataSize = workflowsStore.getPinDataSize(newPinData);
+		const newPinDataSize = getPinDataSize(newPinData);
 
 		if (newPinDataSize > getMaxPinnedDataSize()) {
 			toast.showError(
@@ -265,7 +281,18 @@ export function usePinnedData(
 			throw new Error('Data too large');
 		}
 
-		workflowsStore.pinData({ node: targetNode, data: data as INodeExecutionData[] });
+		if (workflowDocumentStore?.value) {
+			const nodeName = targetNode.name;
+			// Update metadata timestamp for existing pinned data
+			if (
+				(workflowDocumentStore.value.pinData[nodeName] ?? []).length > 0 &&
+				workflowsStore.nodeMetadata[nodeName]
+			) {
+				workflowsStore.nodeMetadata[nodeName].pinnedDataLastUpdatedAt = Date.now();
+			}
+			workflowDocumentStore.value.pinNodeData(nodeName, data as INodeExecutionData[]);
+			uiStore.markStateDirty();
+		}
 		onSetDataSuccess({ source });
 	}
 
@@ -289,7 +316,13 @@ export function usePinnedData(
 		}
 
 		onUnsetData({ source });
-		workflowsStore.unpinData({ node: targetNode });
+		if (workflowDocumentStore?.value) {
+			workflowDocumentStore.value.unpinNodeData(targetNode.name);
+			if (workflowsStore.nodeMetadata[targetNode.name]) {
+				workflowsStore.nodeMetadata[targetNode.name].pinnedDataLastRemovedAt = Date.now();
+			}
+			uiStore.markStateDirty();
+		}
 	}
 
 	return {
