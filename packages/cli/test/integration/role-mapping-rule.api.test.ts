@@ -166,6 +166,158 @@ describe('POST /role-mapping-rule', () => {
 	});
 });
 
+describe('GET /role-mapping-rule', () => {
+	it('should return 401 when unauthenticated', async () => {
+		await authlessAgent.get('/role-mapping-rule').expect(401);
+	});
+
+	it('should return 403 when user lacks roleMappingRule:list', async () => {
+		const response = await memberAgent.get('/role-mapping-rule');
+
+		expect(response.status).toBe(403);
+		expect(response.body.message).toBe(RESPONSE_ERROR_MESSAGES.MISSING_SCOPE);
+	});
+
+	it('should return 403 when provisioning is not licensed', async () => {
+		testServer.license.disable('feat:saml');
+		testServer.license.disable('feat:oidc');
+
+		const response = await ownerAgent.get('/role-mapping-rule');
+
+		expect(response.status).toBe(403);
+		expect(response.body).toEqual({ message: 'Provisioning is not licensed' });
+	});
+
+	it('should return 400 when sortBy is invalid', async () => {
+		const response = await ownerAgent.get('/role-mapping-rule').query({ sortBy: 'expression:asc' });
+
+		expect(response.status).toBe(400);
+	});
+
+	it('should return an empty list when there are no rules', async () => {
+		const response = await ownerAgent.get('/role-mapping-rule').expect(200);
+
+		expect(response.body.data).toEqual({ count: 0, items: [] });
+	});
+
+	it('should return rules ordered by order ascending by default', async () => {
+		await ownerAgent
+			.post('/role-mapping-rule')
+			.send({
+				expression: 'claims.second',
+				role: 'global:member',
+				type: 'instance',
+				order: 1,
+			})
+			.expect(200);
+		await ownerAgent
+			.post('/role-mapping-rule')
+			.send({
+				expression: 'claims.first',
+				role: 'global:member',
+				type: 'instance',
+				order: 0,
+			})
+			.expect(200);
+
+		const response = await ownerAgent.get('/role-mapping-rule').expect(200);
+
+		expect(response.body.data.count).toBe(2);
+		expect(response.body.data.items.map((r: { order: number }) => r.order)).toEqual([0, 1]);
+		expect(response.body.data.items[0].expression).toBe('claims.first');
+	});
+
+	it('should filter by type', async () => {
+		const teamProject = await createTeamProject(undefined, owner);
+
+		await ownerAgent
+			.post('/role-mapping-rule')
+			.send({
+				expression: 'claims.instance',
+				role: 'global:member',
+				type: 'instance',
+				order: 0,
+			})
+			.expect(200);
+		await ownerAgent
+			.post('/role-mapping-rule')
+			.send({
+				expression: 'claims.project',
+				role: 'project:editor',
+				type: 'project',
+				order: 0,
+				projectIds: [teamProject.id],
+			})
+			.expect(200);
+
+		const response = await ownerAgent
+			.get('/role-mapping-rule')
+			.query({ type: 'project' })
+			.expect(200);
+
+		expect(response.body.data.count).toBe(1);
+		expect(response.body.data.items[0].type).toBe('project');
+	});
+
+	it('should paginate with skip and take', async () => {
+		await ownerAgent
+			.post('/role-mapping-rule')
+			.send({
+				expression: 'claims.a',
+				role: 'global:member',
+				type: 'instance',
+				order: 0,
+			})
+			.expect(200);
+		await ownerAgent
+			.post('/role-mapping-rule')
+			.send({
+				expression: 'claims.b',
+				role: 'global:member',
+				type: 'instance',
+				order: 1,
+			})
+			.expect(200);
+
+		const page = await ownerAgent
+			.get('/role-mapping-rule')
+			.query({ skip: '1', take: '1' })
+			.expect(200);
+
+		expect(page.body.data.count).toBe(2);
+		expect(page.body.data.items).toHaveLength(1);
+		expect(page.body.data.items[0].order).toBe(1);
+	});
+
+	it('should order by sortBy when provided', async () => {
+		await ownerAgent
+			.post('/role-mapping-rule')
+			.send({
+				expression: 'claims.low',
+				role: 'global:member',
+				type: 'instance',
+				order: 0,
+			})
+			.expect(200);
+		await ownerAgent
+			.post('/role-mapping-rule')
+			.send({
+				expression: 'claims.high',
+				role: 'global:member',
+				type: 'instance',
+				order: 1,
+			})
+			.expect(200);
+
+		const response = await ownerAgent
+			.get('/role-mapping-rule')
+			.query({ sortBy: 'order:desc' })
+			.expect(200);
+
+		expect(response.body.data.items.map((r: { order: number }) => r.order)).toEqual([1, 0]);
+	});
+});
+
 describe('PATCH /role-mapping-rule/:id', () => {
 	const validInstancePayload = {
 		expression: 'claims.group === "admins"',
@@ -281,5 +433,69 @@ describe('PATCH /role-mapping-rule/:id', () => {
 
 		expect(response.status).toBe(409);
 		expect(response.body.message).toContain('already exists');
+	});
+});
+
+describe('DELETE /role-mapping-rule/:id', () => {
+	const validInstancePayload = {
+		expression: 'claims.group === "admins"',
+		role: 'global:member',
+		type: 'instance' as const,
+		order: 0,
+	};
+
+	it('should return 401 when unauthenticated', async () => {
+		await authlessAgent
+			.delete('/role-mapping-rule/00000000-0000-4000-8000-000000000001')
+			.expect(401);
+	});
+
+	it('should return 403 when user lacks roleMappingRule:delete', async () => {
+		const createRes = await ownerAgent
+			.post('/role-mapping-rule')
+			.send(validInstancePayload)
+			.expect(200);
+		const ruleId = createRes.body.data.id as string;
+
+		const response = await memberAgent.delete(`/role-mapping-rule/${ruleId}`);
+
+		expect(response.status).toBe(403);
+		expect(response.body.message).toBe(RESPONSE_ERROR_MESSAGES.MISSING_SCOPE);
+	});
+
+	it('should return 403 when provisioning is not licensed', async () => {
+		const createRes = await ownerAgent
+			.post('/role-mapping-rule')
+			.send(validInstancePayload)
+			.expect(200);
+		const ruleId = createRes.body.data.id as string;
+
+		testServer.license.disable('feat:saml');
+		testServer.license.disable('feat:oidc');
+
+		const response = await ownerAgent.delete(`/role-mapping-rule/${ruleId}`);
+
+		expect(response.status).toBe(403);
+		expect(response.body).toEqual({ message: 'Provisioning is not licensed' });
+	});
+
+	it('should return 404 when rule id does not exist', async () => {
+		await ownerAgent.delete('/role-mapping-rule/0000000000000099').expect(404);
+	});
+
+	it('should delete a rule and remove it from the database', async () => {
+		const createRes = await ownerAgent
+			.post('/role-mapping-rule')
+			.send(validInstancePayload)
+			.expect(200);
+		const ruleId = createRes.body.data.id as string;
+
+		const response = await ownerAgent.delete(`/role-mapping-rule/${ruleId}`).expect(200);
+
+		expect(response.body.data).toEqual({ success: true });
+
+		const repo = Container.get(RoleMappingRuleRepository);
+		const stored = await repo.findOne({ where: { id: ruleId } });
+		expect(stored).toBeNull();
 	});
 });

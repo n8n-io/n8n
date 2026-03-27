@@ -124,6 +124,10 @@ export {
 	PatchRoleMappingRuleDto,
 	type PatchRoleMappingRuleInput,
 } from './roles/patch-role-mapping-rule.dto';
+export {
+	ListRoleMappingRuleQueryDto,
+	type ListRoleMappingRuleQueryInput,
+} from './roles/list-role-mapping-rule-query.dto';
 export { RoleListQueryDto } from './roles/role-list-query.dto';
 export { RoleGetQueryDto } from './roles/role-get-query.dto';
 export {
