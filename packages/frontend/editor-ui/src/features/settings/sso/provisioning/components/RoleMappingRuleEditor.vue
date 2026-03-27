@@ -7,17 +7,8 @@ import RuleList from './RuleList.vue';
 
 const i18n = useI18n();
 
-const {
-	instanceRules,
-	isLoading,
-	isDirty,
-	addRule,
-	updateRule,
-	deleteRule,
-	reorder,
-	loadRules,
-	save,
-} = useRoleMappingRules();
+const { instanceRules, isDirty, addRule, updateRule, deleteRule, reorder, loadRules, save } =
+	useRoleMappingRules();
 
 onMounted(() => {
 	void loadRules();

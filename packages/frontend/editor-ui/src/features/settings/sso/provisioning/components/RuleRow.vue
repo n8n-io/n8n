@@ -61,7 +61,7 @@ const instanceRoleOptions = [
 		<N8nButton
 			type="tertiary"
 			size="small"
-			icon="trash"
+			icon="trash-2"
 			data-test-id="rule-delete-button"
 			@click="emit('delete', props.rule.id)"
 		/>
