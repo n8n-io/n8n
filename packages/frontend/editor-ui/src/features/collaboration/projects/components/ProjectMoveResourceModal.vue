@@ -1,11 +1,10 @@
 <script lang="ts" setup>
 import Modal from '@/app/components/Modal.vue';
 import ProjectMoveResourceModalCredentialsList from './ProjectMoveResourceModalCredentialsList.vue';
-import ProjectMoveSuccessToastMessage from './ProjectMoveSuccessToastMessage.vue';
 import ProjectSharing from './ProjectSharing.vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
-import { VIEWS } from '@/app/constants';
+import { useMoveResourceToProjectToast } from '../composables/useMoveResourceToProjectToast';
 import type {
 	ICredentialsResponse,
 	IUsedCredential,
@@ -18,8 +17,6 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { ProjectTypes } from '../projects.types';
 import type { ProjectListItem, ProjectSharingData } from '../projects.types';
-// ProjectListItem extends ProjectSharingData with `role` - the toast component types
-// expect ProjectListItem but only uses fields from ProjectSharingData (name, type).
 import {
 	useAvailableProjectSearch,
 	getTruncatedProjectName,
@@ -30,9 +27,8 @@ import {
 import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { truncate } from '@n8n/utils/string/truncate';
-import { computed, h, onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { I18nT } from 'vue-i18n';
-import { useRouter } from 'vue-router';
 
 import {
 	N8nButton,
@@ -55,12 +51,12 @@ const props = defineProps<{
 const i18n = useI18n();
 const uiStore = useUIStore();
 const toast = useToast();
-const router = useRouter();
 const projectsStore = useProjectsStore();
 const searchFn = useAvailableProjectSearch();
 const workflowsListStore = useWorkflowsListStore();
 const credentialsStore = useCredentialsStore();
 const telemetry = useTelemetry();
+const { showMoveToProjectToast } = useMoveResourceToProjectToast();
 
 const selectedProject = ref<ProjectSharingData | null>(null);
 const shareUsedCredentials = ref(false);
@@ -142,33 +138,15 @@ const moveResource = async () => {
 			[`${props.data.resourceType}_id`]: props.data.resource.id,
 			project_from_type: projectsStore.currentProject?.type ?? projectsStore.personalProject?.type,
 		});
-		toast.showToast({
-			title: i18n.baseText('projects.move.resource.success.title', {
-				interpolate: {
-					resourceTypeLabel: props.data.resourceTypeLabel,
-					resourceName: resourceName.value,
-					targetProjectName: targetProjectName.value,
-				},
-			}),
-			message: h(ProjectMoveSuccessToastMessage, {
-				routeName: isResourceWorkflow.value ? VIEWS.PROJECTS_WORKFLOWS : VIEWS.PROJECTS_CREDENTIALS,
-				resourceType: props.data.resourceType,
-				targetProject: selectedProject.value as ProjectListItem,
-				isShareCredentialsChecked: shareUsedCredentials.value,
-				areAllUsedCredentialsShareable:
-					shareableCredentials.value.length === usedCredentials.value.length,
-			}),
-			onClick: (event: MouseEvent | undefined) => {
-				if (event?.target instanceof HTMLAnchorElement && selectedProject.value) {
-					event.preventDefault();
-					void router.push({
-						name: isResourceWorkflow.value ? VIEWS.PROJECTS_WORKFLOWS : VIEWS.PROJECTS_CREDENTIALS,
-						params: { projectId: selectedProject.value.id },
-					});
-				}
-			},
-			type: 'success',
-			duration: 8000,
+		showMoveToProjectToast({
+			resourceType: props.data.resourceType,
+			resourceTypeLabel: props.data.resourceTypeLabel,
+			resourceName: resourceName.value,
+			targetProject: selectedProject.value,
+			targetProjectName: targetProjectName.value,
+			shareUsedCredentials: shareUsedCredentials.value,
+			areAllUsedCredentialsShareable:
+				shareableCredentials.value.length === usedCredentials.value.length,
 		});
 		if (props.data.eventBus) {
 			props.data.eventBus.emit('resource-moved', {

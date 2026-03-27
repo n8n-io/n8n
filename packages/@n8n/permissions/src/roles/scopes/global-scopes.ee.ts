@@ -130,6 +130,11 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'instanceAi:message',
 	'instanceAi:manage',
 	'instanceAi:gateway',
+	'roleMappingRule:create',
+	'roleMappingRule:read',
+	'roleMappingRule:update',
+	'roleMappingRule:delete',
+	'roleMappingRule:list',
 ];
 
 export const GLOBAL_ADMIN_SCOPES = GLOBAL_OWNER_SCOPES.concat();

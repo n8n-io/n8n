@@ -20,14 +20,52 @@ describe('eligibleModules', () => {
 
 	it('should consider a module ineligible if it was disabled via env var', () => {
 		process.env.N8N_DISABLED_MODULES = 'insights';
-		const eligible = Container.get(ModuleRegistry).eligibleModules;
-		expect(eligible).not.toContain('insights');
+		expect(Container.get(ModuleRegistry).eligibleModules).toEqual([
+			'external-secrets',
+			'community-packages',
+			'data-table',
+			'mcp',
+			'provisioning',
+			'breaking-changes',
+			'source-control',
+			'dynamic-credentials',
+			'chat-hub',
+			'sso-oidc',
+			'sso-saml',
+			'log-streaming',
+			'ldap',
+			'quick-connect',
+			'workflow-builder',
+			'redaction',
+			'instance-registry',
+			'otel',
+		]);
 	});
 
 	it('should consider a module eligible if it was enabled via env var', () => {
 		process.env.N8N_ENABLED_MODULES = 'instance-ai';
-		const eligible = Container.get(ModuleRegistry).eligibleModules;
-		expect(eligible).toContain('instance-ai');
+		expect(Container.get(ModuleRegistry).eligibleModules).toEqual([
+			'insights',
+			'external-secrets',
+			'community-packages',
+			'data-table',
+			'mcp',
+			'provisioning',
+			'breaking-changes',
+			'source-control',
+			'dynamic-credentials',
+			'chat-hub',
+			'sso-oidc',
+			'sso-saml',
+			'log-streaming',
+			'ldap',
+			'quick-connect',
+			'workflow-builder',
+			'redaction',
+			'instance-registry',
+			'instance-ai',
+			'otel',
+		]);
 	});
 
 	it('should throw `ModuleConfusionError` if a module is both enabled and disabled', () => {

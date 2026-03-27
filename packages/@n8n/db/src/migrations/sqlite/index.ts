@@ -146,7 +146,9 @@ import { AddSuggestedPromptsToAgentTable1772000000000 } from '../common/17720000
 import { AddRoleColumnToProjectSecretsProviderAccess1772619247761 } from '../common/1772619247761-AddRoleColumnToProjectSecretsProviderAccess';
 import { ChangeWorkflowPublishedVersionFKsToRestrict1772619247762 } from '../common/1772619247762-ChangeWorkflowPublishedVersionFKsToRestrict';
 import { AddTypeToChatHubSessions1772700000000 } from '../common/1772700000000-AddTypeToChatHubSessions';
+import { CreateRoleMappingRuleTable1772800000000 } from '../common/1772800000000-CreateRoleMappingRuleTable';
 import { CreateInstanceAiTables1773000000000 } from '../common/1773000000000-CreateInstanceAiTables';
+import { CreateCredentialDependencyTable1773000000000 } from '../common/1773000000000-CreateCredentialDependencyTable';
 import { CreateInstanceAiSnapshotAndLogTables1774000000000 } from '../common/1774000000000-CreateInstanceAiSnapshotAndLogTables';
 import type { Migration } from '../migration-types';
 
@@ -299,7 +301,9 @@ const sqliteMigrations: Migration[] = [
 	AddRoleColumnToProjectSecretsProviderAccess1772619247761,
 	ChangeWorkflowPublishedVersionFKsToRestrict1772619247762,
 	AddTypeToChatHubSessions1772700000000,
+	CreateRoleMappingRuleTable1772800000000,
 	CreateInstanceAiTables1773000000000,
+	CreateCredentialDependencyTable1773000000000,
 	CreateInstanceAiSnapshotAndLogTables1774000000000,
 ];
 

@@ -2,6 +2,7 @@ import type { AxiosRequestConfig } from 'axios';
 import axios from 'axios';
 import jwt from 'jsonwebtoken';
 import moment from 'moment-timezone';
+import { formatPrivateKey } from '@utils/utilities';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
@@ -55,6 +56,7 @@ export class SalesforceJwtApi implements ICredentialType {
 			type: 'string',
 			typeOptions: {
 				password: true,
+				rows: 4,
 			},
 			default: '',
 			required: true,
@@ -72,6 +74,7 @@ export class SalesforceJwtApi implements ICredentialType {
 			credentials.environment === 'sandbox'
 				? 'https://test.salesforce.com'
 				: 'https://login.salesforce.com';
+		const privateKey = formatPrivateKey(credentials.privateKey as string);
 		const signature = jwt.sign(
 			{
 				iss: credentials.clientId as string,
@@ -79,7 +82,7 @@ export class SalesforceJwtApi implements ICredentialType {
 				aud: authUrl,
 				exp: now + 3 * 60,
 			},
-			credentials.privateKey as string,
+			privateKey,
 			{
 				algorithm: 'RS256',
 				header: {
