@@ -121,6 +121,26 @@ describe('Expression VM error handling', () => {
 		expect((caught as ExpressionError).cause).toBe(securityError);
 	});
 
+	it('should preserve description when reconstructing ExpressionError across isolate boundary', () => {
+		setVmEvaluator({
+			evaluate: () => {
+				throw new ExpressionError('something went wrong', {
+					description: 'A human-readable description',
+				});
+			},
+		});
+
+		let caught: unknown;
+		try {
+			evaluate('={{ $json.id }}');
+		} catch (error) {
+			caught = error;
+		}
+
+		expect(caught).toBeInstanceOf(ExpressionError);
+		expect((caught as ExpressionError).description).toBe('A human-readable description');
+	});
+
 	it('should convert built-in SyntaxError to ExpressionError', () => {
 		setVmEvaluator({
 			evaluate: () => {

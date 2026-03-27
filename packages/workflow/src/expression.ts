@@ -83,16 +83,9 @@ function mapVmError(error: unknown): Error {
 		return new ExpressionExtensionError(error.message);
 	}
 	if (error instanceof Error && error.name === 'ExpressionError') {
-		const err = error as unknown as Record<string, unknown>;
-		const context = err.context;
-		const options: ExpressionErrorOptions =
-			typeof context === 'object' && context !== null
-				? { ...(context as ExpressionErrorOptions) }
-				: {};
-		if (err.functionality === 'pairedItem') {
-			options.functionality = 'pairedItem';
-		}
-		return new ExpressionError(error.message, options);
+		const reconstructed = new ExpressionError(error.message);
+		Object.assign(reconstructed, error);
+		return reconstructed;
 	}
 
 	if (isSyntaxError(error)) return new ExpressionError('invalid syntax');
