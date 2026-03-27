@@ -57,6 +57,7 @@ import {
 import { completeExpressionSyntax } from '@/app/utils/expressions';
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import FromAiOverrideButton from '../ParameterInputOverrides/FromAiOverrideButton.vue';
 import FromAiOverrideField from '../ParameterInputOverrides/FromAiOverrideField.vue';
 import ParameterOverrideSelectableList from '../ParameterInputOverrides/ParameterOverrideSelectableList.vue';
@@ -161,6 +162,7 @@ const rootStore = useRootStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
 
 const appName = computed(() => {
@@ -412,10 +414,12 @@ const handleAddResourceClick = async () => {
 		let resolvedUrl = redirectUrl;
 
 		if (resolvedUrl.includes('{{$projectId}}')) {
-			resolvedUrl = resolvedUrl.replace(
-				/\{\{\$projectId\}\}/g,
-				projectsStore.currentProjectId ?? '',
-			);
+			const projectId =
+				projectsStore.currentProjectId ??
+				workflowDocumentStore?.value?.homeProject?.id ??
+				projectsStore.personalProject?.id ??
+				'';
+			resolvedUrl = resolvedUrl.replace(/\{\{\$projectId\}\}/g, projectId);
 		}
 
 		hideResourceDropdown();

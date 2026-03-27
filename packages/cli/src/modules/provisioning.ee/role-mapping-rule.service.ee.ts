@@ -1,4 +1,8 @@
-import { CreateRoleMappingRuleDto, type PatchRoleMappingRuleInput } from '@n8n/api-types';
+import {
+	CreateRoleMappingRuleDto,
+	type ListRoleMappingRuleQueryInput,
+	type PatchRoleMappingRuleInput,
+} from '@n8n/api-types';
 import {
 	ProjectRepository,
 	RoleMappingRule,
@@ -6,7 +10,8 @@ import {
 	RoleRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { In } from '@n8n/typeorm';
+
+import { type FindOptionsOrder, In } from '@n8n/typeorm';
 import type { z } from 'zod';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -31,6 +36,11 @@ export type RoleMappingRuleResponse = {
 	updatedAt: string;
 };
 
+export type RoleMappingRuleListResponse = {
+	count: number;
+	items: RoleMappingRuleResponse[];
+};
+
 @Service()
 export class RoleMappingRuleService {
 	constructor(
@@ -38,6 +48,37 @@ export class RoleMappingRuleService {
 		private readonly roleRepository: RoleRepository,
 		private readonly projectRepository: ProjectRepository,
 	) {}
+
+	async list(query: ListRoleMappingRuleQueryInput): Promise<RoleMappingRuleListResponse> {
+		const sortBy = query.sortBy ?? 'order:asc';
+		const [sortField, sortDir] = sortBy.split(':') as [
+			'order' | 'createdAt' | 'updatedAt',
+			'asc' | 'desc',
+		];
+		const direction: 'ASC' | 'DESC' = sortDir === 'desc' ? 'DESC' : 'ASC';
+
+		const order: FindOptionsOrder<RoleMappingRule> =
+			sortField === 'createdAt'
+				? { createdAt: direction, id: 'ASC' }
+				: sortField === 'updatedAt'
+					? { updatedAt: direction, id: 'ASC' }
+					: { order: direction, id: 'ASC' };
+
+		const where = query.type ? { type: query.type } : {};
+
+		const [entities, count] = await this.roleMappingRuleRepository.findAndCount({
+			where,
+			relations: ['projects', 'role'],
+			order,
+			skip: query.skip,
+			take: query.take,
+		});
+
+		return {
+			count,
+			items: entities.map((entity) => this.toResponse(entity)),
+		};
+	}
 
 	async create(dto: CreateRoleMappingRuleInput): Promise<RoleMappingRuleResponse> {
 		const uniqueProjectIds = assertAndNormalizeProjectIdsForRuleType(dto.type, dto.projectIds, []);
@@ -143,6 +184,20 @@ export class RoleMappingRuleService {
 		});
 
 		return this.toResponse(loaded);
+	}
+
+	async delete(id: string): Promise<void> {
+		if (typeof id !== 'string' || id.length === 0) {
+			throw new BadRequestError('Rule id is required');
+		}
+
+		const rule = await this.roleMappingRuleRepository.findOne({ where: { id } });
+
+		if (!rule) {
+			throw new NotFoundError('Could not find role mapping rule');
+		}
+
+		await this.roleMappingRuleRepository.remove(rule);
 	}
 
 	private async assertOrderAvailable(
