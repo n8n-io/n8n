@@ -21,6 +21,13 @@ vi.mock('vue-router', async () => ({
 	}),
 }));
 
+vi.mock('@/app/composables/useToast', () => ({
+	useToast: () => ({
+		showError: vi.fn(),
+		showMessage: vi.fn(),
+	}),
+}));
+
 const oAuth2Api: ICredentialType = {
 	name: 'oAuth2Api',
 	displayName: 'OAuth2 API',
@@ -381,9 +388,12 @@ describe('CredentialEdit', () => {
 		await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
 		await retry(() => expect(getByTestId('credential-edit-dialog')).toBeInTheDocument());
 
-		expect(
-			within(getByTestId('credential-edit-dialog')).getByTestId('oauth-connect-button'),
-		).toBeInTheDocument();
+		await retry(() =>
+			expect(
+				within(getByTestId('credential-edit-dialog')).getAllByLabelText('Sign in with Google')
+					.length,
+			).toBeGreaterThan(0),
+		);
 	});
 
 	describe('external secrets', () => {

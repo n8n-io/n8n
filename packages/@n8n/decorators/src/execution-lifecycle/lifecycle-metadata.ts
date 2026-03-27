@@ -44,6 +44,7 @@ export type WorkflowExecuteAfterContext = {
 	runData: IRun;
 	newStaticData: IDataObject;
 	executionId: string;
+	retryOf?: string;
 };
 
 export type WorkflowExecuteResumeContext = {

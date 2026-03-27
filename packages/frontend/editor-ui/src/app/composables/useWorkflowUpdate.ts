@@ -68,12 +68,11 @@ export function useWorkflowUpdate() {
 	 * triggering maxNodes validation errors for nodes like ChatTrigger.
 	 */
 	function categorizeNodes(workflowData: WorkflowDataUpdate) {
-		const existingNodesById = new Map(workflowsStore.allNodes.map((n) => [n.id, n]));
+		const allNodes = workflowDocumentStore.value?.allNodes ?? [];
+		const existingNodesById = new Map(allNodes.map((n) => [n.id, n]));
 
 		// Add name+type index for fallback matching when IDs differ
-		const existingNodesByNameType = new Map(
-			workflowsStore.allNodes.map((n) => [`${n.type}::${n.name}`, n]),
-		);
+		const existingNodesByNameType = new Map(allNodes.map((n) => [`${n.type}::${n.name}`, n]));
 
 		const nodesToUpdate: Array<{ existing: INodeUi; updated: INode }> = [];
 		const nodesToAdd: INode[] = [];
@@ -173,13 +172,13 @@ export function useWorkflowUpdate() {
 
 			// Mark node as dirty if parameters changed
 			if (!isEqual(existing.parameters, updated.parameters)) {
-				workflowState.resetParametersLastUpdatedAt(nodeName);
+				workflowDocumentStore.value?.resetParametersLastUpdatedAt(nodeName);
 				hasChanges = true;
 			}
 		}
 
 		// Sync state back to store
-		workflowsStore.setNodes(Object.values(workflow.nodes));
+		workflowDocumentStore.value?.setNodes(Object.values(workflow.nodes));
 		workflowDocumentStore.value?.setConnections(workflow.connectionsBySourceNode);
 		// Revalidate updated nodes to refresh error indicators on canvas
 		for (const { existing } of nodesToUpdate) {
@@ -250,14 +249,12 @@ export function useWorkflowUpdate() {
 		const existingConnections = workflowDocumentStore.value?.connectionsBySourceNode ?? {};
 
 		// Convert to canvas format for comparison
+		const allNodes = workflowDocumentStore.value?.allNodes ?? [];
 		const existingCanvasConnections = mapLegacyConnectionsToCanvasConnections(
 			existingConnections,
-			workflowsStore.allNodes,
+			allNodes,
 		);
-		const newCanvasConnections = mapLegacyConnectionsToCanvasConnections(
-			newConnections,
-			workflowsStore.allNodes,
-		);
+		const newCanvasConnections = mapLegacyConnectionsToCanvasConnections(newConnections, allNodes);
 
 		// Find connections to remove (exist in current but not in new)
 		const connectionsToRemove = existingCanvasConnections.filter(

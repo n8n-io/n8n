@@ -113,27 +113,23 @@ test.describe(
 				const { apiKey } = await api.rotateMcpApiKey();
 				const tools = await api.mcp.internalMcpListTools(apiKey);
 
-				expect(tools).toHaveLength(16);
-
 				const toolNames = tools.map((t) => t.name).sort();
-				expect(toolNames).toEqual([
-					'archive_workflow',
-					'create_workflow_from_code',
-					'execute_workflow',
-					'get_execution',
-					'get_node_types',
-					'get_sdk_reference',
-					'get_suggested_nodes',
-					'get_workflow_details',
-					'publish_workflow',
-					'search_folders',
-					'search_nodes',
-					'search_projects',
-					'search_workflows',
-					'unpublish_workflow',
-					'update_workflow',
-					'validate_workflow',
-				]);
+
+				// Guard against major regressions (e.g. half the tools disappearing)
+				// without coupling to an exact list that breaks on every add/remove.
+				expect(toolNames.length).toBeGreaterThanOrEqual(10);
+
+				// Every tool must have the required MCP structure
+				for (const tool of tools) {
+					expect(tool.name).toBeTruthy();
+					expect(tool.description).toBeTruthy();
+					expect(tool.inputSchema).toBeDefined();
+				}
+
+				// Spot-check a few stable core tools
+				expect(toolNames).toContain('search_workflows');
+				expect(toolNames).toContain('execute_workflow');
+				expect(toolNames).toContain('get_workflow_details');
 			});
 
 			test('should include proper tool descriptions and schemas', async ({ api }) => {

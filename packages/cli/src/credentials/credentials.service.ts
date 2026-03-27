@@ -37,6 +37,16 @@ import {
 	NodeHelpers,
 } from 'n8n-workflow';
 
+import {
+	CredentialDependencyService,
+	type CredentialDependencyFilter,
+} from './credential-dependency.service';
+import { CredentialsFinderService } from './credentials-finder.service';
+import {
+	validateAccessToReferencedSecretProviders,
+	validateExternalSecretsPermissions,
+} from './validation';
+
 import { CredentialTypes } from '@/credential-types';
 import { createCredentialsFromCredentialsEntity, CredentialsHelper } from '@/credentials-helper';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -53,13 +63,6 @@ import { CredentialsTester } from '@/services/credentials-tester.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
-import { getAllKeyPaths } from '@/utils';
-
-import { CredentialsFinderService } from './credentials-finder.service';
-import {
-	validateAccessToReferencedSecretProviders,
-	validateExternalSecretsPermissions,
-} from './validation';
 
 export type CredentialsGetSharedOptions =
 	| { allowGlobalScope: true; globalScope: Scope }
@@ -69,10 +72,21 @@ type CreateCredentialOptions = CreateCredentialDto & {
 	isManaged: boolean;
 };
 
+type GetManyCredentialsOptions = {
+	listQueryOptions: ListQuery.Options;
+	includeGlobal: boolean;
+	includeData: boolean;
+	onlySharedWithMe: boolean;
+	filters?: {
+		dependency?: CredentialDependencyFilter;
+	};
+};
+
 @Service()
 export class CredentialsService {
 	constructor(
 		private readonly credentialsRepository: CredentialsRepository,
+		private readonly credentialDependencyService: CredentialDependencyService,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly ownershipService: OwnershipService,
 		private readonly logger: Logger,
@@ -93,9 +107,12 @@ export class CredentialsService {
 	private async addGlobalCredentials(
 		credentials: CredentialsEntity[],
 		includeData: boolean,
+		dependencyFilter?: CredentialDependencyFilter,
 	): Promise<CredentialsEntity[]> {
-		const globalCredentials =
-			await this.credentialsRepository.findAllGlobalCredentials(includeData);
+		const globalCredentials = await this.credentialsRepository.findAllGlobalCredentials({
+			includeData,
+			filters: { dependency: dependencyFilter },
+		});
 
 		// Merge and deduplicate based on credential ID
 		const credentialIds = new Set(credentials.map((c) => c.id));
@@ -107,23 +124,27 @@ export class CredentialsService {
 	async getMany(
 		user: User,
 		options: {
-			listQueryOptions?: ListQuery.Options & { includeData?: boolean };
+			listQueryOptions?: ListQuery.Options;
 			includeScopes?: boolean;
 			includeData: true;
 			onlySharedWithMe?: boolean;
 			includeGlobal?: boolean;
-			externalSecretsStore?: string;
+			filters?: {
+				externalSecretsStore?: string;
+			};
 		},
 	): Promise<Array<ICredentialsDecrypted<ICredentialDataDecryptedObject>>>;
 	async getMany(
 		user: User,
 		options?: {
-			listQueryOptions?: ListQuery.Options & { includeData?: boolean };
+			listQueryOptions?: ListQuery.Options;
 			includeScopes?: boolean;
 			includeData?: boolean;
 			onlySharedWithMe?: boolean;
 			includeGlobal?: boolean;
-			externalSecretsStore?: string;
+			filters?: {
+				externalSecretsStore?: string;
+			};
 		},
 	): Promise<CredentialsEntity[]>;
 	async getMany(
@@ -134,47 +155,54 @@ export class CredentialsService {
 			includeData = false,
 			onlySharedWithMe = false,
 			includeGlobal = false,
-			externalSecretsStore,
+			filters = {},
 		}: {
-			listQueryOptions?: ListQuery.Options & { includeData?: boolean };
+			listQueryOptions?: ListQuery.Options;
 			includeScopes?: boolean;
 			includeData?: boolean;
 			onlySharedWithMe?: boolean;
 			includeGlobal?: boolean;
-			externalSecretsStore?: string;
+			filters?: {
+				externalSecretsStore?: string;
+			};
 		} = {},
 	): Promise<Array<ICredentialsDecrypted<ICredentialDataDecryptedObject>> | CredentialsEntity[]> {
+		const { externalSecretsStore } = filters;
 		const returnAll = hasGlobalScope(user, 'credential:list');
 		const isDefaultSelect = !listQueryOptions.select;
+		const dependencyFilter = externalSecretsStore
+			? await this.credentialDependencyService.resolveExternalSecretsStoreDependencyFilter(
+					externalSecretsStore,
+				)
+			: undefined;
+
+		if (externalSecretsStore && !dependencyFilter) {
+			return [];
+		}
 
 		// Auto-enable includeScopes when includeData is requested
 		if (includeData) {
 			includeScopes = true;
-			listQueryOptions.includeData = true;
 		}
 
 		let credentials: CredentialsEntity[];
 
 		if (returnAll) {
-			credentials = await this.getManyForAdminUser(
-				user,
+			credentials = await this.getManyForAdminUser(user, {
 				listQueryOptions,
 				includeGlobal,
 				includeData,
 				onlySharedWithMe,
-			);
+				filters: { dependency: dependencyFilter },
+			});
 		} else {
-			credentials = await this.getManyForMemberUser(
-				user,
+			credentials = await this.getManyForMemberUser(user, {
 				listQueryOptions,
 				includeGlobal,
 				includeData,
 				onlySharedWithMe,
-			);
-		}
-
-		if (externalSecretsStore) {
-			credentials = this.filterByExternalSecretsStore(credentials, externalSecretsStore);
+				filters: { dependency: dependencyFilter },
+			});
 		}
 
 		return await this.enrichCredentials(
@@ -188,55 +216,37 @@ export class CredentialsService {
 		);
 	}
 
-	private filterByExternalSecretsStore(
-		credentials: CredentialsEntity[],
-		externalSecretsStore: string,
-	): CredentialsEntity[] {
-		// matches either dot notation ($secrets.providerKey) or square bracket notation ($secrets['providerKey'])
-		const providerRegex = /\$secrets(?:\.([A-Za-z0-9_-]+)|\[['"]([^'"]+)['"]\])/g;
-		credentials = credentials.filter((credential) => {
-			const decryptedData = this.decrypt(credential, true);
-			const matchingSecretPaths = getAllKeyPaths(decryptedData, '', [], (value) => {
-				if (!value.includes('$secrets')) {
-					return false;
-				}
-
-				let match: RegExpExecArray | null;
-				while ((match = providerRegex.exec(value)) !== null) {
-					const providerKey = match[1] ?? match[2];
-					if (providerKey === externalSecretsStore) {
-						return true;
-					}
-				}
-
-				return false;
-			});
-
-			return matchingSecretPaths.length > 0;
-		});
-		return credentials;
-	}
-
 	private async getManyForAdminUser(
 		user: User,
-		listQueryOptions: ListQuery.Options & { includeData?: boolean },
-		includeGlobal: boolean,
-		includeData: boolean,
-		onlySharedWithMe: boolean,
+		{
+			listQueryOptions,
+			includeGlobal,
+			includeData,
+			onlySharedWithMe,
+			filters,
+		}: GetManyCredentialsOptions,
 	): Promise<CredentialsEntity[]> {
-		// If onlySharedWithMe is requested, use the subquery approach even for admin users
-		if (onlySharedWithMe) {
+		const { dependency: dependencyFilter } = filters ?? {};
+
+		// If onlySharedWithMe or dependency filtering is requested, use subquery approach.
+		if (onlySharedWithMe || dependencyFilter) {
 			const sharingOptions = {
-				onlySharedWithMe: true,
+				...(onlySharedWithMe ? { onlySharedWithMe: true } : {}),
 			};
 			const { credentials } = await this.credentialsRepository.getManyAndCountWithSharingSubquery(
 				user,
 				sharingOptions,
-				listQueryOptions,
+				{
+					...listQueryOptions,
+					...(includeData ? { includeData: true } : {}),
+					filters: {
+						dependency: dependencyFilter,
+					},
+				},
 			);
 
 			if (includeGlobal) {
-				return await this.addGlobalCredentials(credentials, includeData);
+				return await this.addGlobalCredentials(credentials, includeData, dependencyFilter);
 			}
 
 			return credentials;
@@ -244,10 +254,13 @@ export class CredentialsService {
 
 		await this.applyPersonalProjectFilter(listQueryOptions);
 
-		let credentials = await this.credentialsRepository.findMany(listQueryOptions);
+		let credentials = await this.credentialsRepository.findMany({
+			...listQueryOptions,
+			...(includeData ? { includeData: true } : {}),
+		});
 
 		if (includeGlobal) {
-			credentials = await this.addGlobalCredentials(credentials, includeData);
+			credentials = await this.addGlobalCredentials(credentials, includeData, dependencyFilter);
 		}
 
 		return credentials;
@@ -255,11 +268,16 @@ export class CredentialsService {
 
 	private async getManyForMemberUser(
 		user: User,
-		listQueryOptions: ListQuery.Options & { includeData?: boolean },
-		includeGlobal: boolean,
-		includeData: boolean,
-		onlySharedWithMe: boolean,
+		{
+			listQueryOptions,
+			includeGlobal,
+			includeData,
+			onlySharedWithMe,
+			filters,
+		}: GetManyCredentialsOptions,
 	): Promise<CredentialsEntity[]> {
+		const { dependency: dependencyFilter } = filters ?? {};
+
 		let isPersonalProject = false;
 		let personalProjectOwnerId: string | null = null;
 
@@ -309,19 +327,23 @@ export class CredentialsService {
 		const { credentials } = await this.credentialsRepository.getManyAndCountWithSharingSubquery(
 			user,
 			sharingOptions,
-			listQueryOptions,
+			{
+				...listQueryOptions,
+				...(includeData ? { includeData: true } : {}),
+				filters: {
+					dependency: dependencyFilter,
+				},
+			},
 		);
 
 		if (includeGlobal) {
-			return await this.addGlobalCredentials(credentials, includeData);
+			return await this.addGlobalCredentials(credentials, includeData, dependencyFilter);
 		}
 
 		return credentials;
 	}
 
-	private async applyPersonalProjectFilter(
-		listQueryOptions: ListQuery.Options & { includeData?: boolean },
-	): Promise<void> {
+	private async applyPersonalProjectFilter(listQueryOptions: ListQuery.Options): Promise<void> {
 		const projectId =
 			typeof listQueryOptions.filter?.projectId === 'string'
 				? listQueryOptions.filter.projectId
@@ -350,7 +372,7 @@ export class CredentialsService {
 		isDefaultSelect: boolean,
 		includeScopes: boolean,
 		includeData: true,
-		listQueryOptions: ListQuery.Options & { includeData?: boolean },
+		listQueryOptions: ListQuery.Options,
 		onlySharedWithMe: boolean,
 	): Promise<Array<ICredentialsDecrypted<ICredentialDataDecryptedObject>>>;
 	private async enrichCredentials(
@@ -359,7 +381,7 @@ export class CredentialsService {
 		isDefaultSelect: boolean,
 		includeScopes: boolean,
 		includeData: boolean,
-		listQueryOptions: ListQuery.Options & { includeData?: boolean },
+		listQueryOptions: ListQuery.Options,
 		onlySharedWithMe: boolean,
 	): Promise<CredentialsEntity[]>;
 	private async enrichCredentials(
@@ -368,7 +390,7 @@ export class CredentialsService {
 		isDefaultSelect: boolean,
 		includeScopes: boolean,
 		includeData: boolean,
-		listQueryOptions: ListQuery.Options & { includeData?: boolean },
+		listQueryOptions: ListQuery.Options,
 		onlySharedWithMe: boolean,
 	): Promise<Array<ICredentialsDecrypted<ICredentialDataDecryptedObject>> | CredentialsEntity[]> {
 		if (isDefaultSelect) {
@@ -397,7 +419,7 @@ export class CredentialsService {
 
 	private async populateSharedRelations(
 		credentials: CredentialsEntity[],
-		listQueryOptions: ListQuery.Options & { includeData?: boolean },
+		listQueryOptions: ListQuery.Options,
 		onlySharedWithMe: boolean,
 	): Promise<CredentialsEntity[]> {
 		const needsRelations =
@@ -494,8 +516,9 @@ export class CredentialsService {
 	}
 
 	async findAllGlobalCredentialIds(includeData: boolean = false): Promise<CredentialsEntity[]> {
-		const globalCredentials =
-			await this.credentialsRepository.findAllGlobalCredentials(includeData);
+		const globalCredentials = await this.credentialsRepository.findAllGlobalCredentials({
+			includeData,
+		});
 		return globalCredentials;
 	}
 
@@ -656,15 +679,29 @@ export class CredentialsService {
 		}
 	}
 
-	async update(credentialId: string, newCredentialData: ICredentialsDb) {
+	async update(
+		credentialId: string,
+		newCredentialData: ICredentialsDb,
+		decryptedCredentialData?: ICredentialDataDecryptedObject,
+	) {
 		await this.externalHooks.run('credentials.update', [newCredentialData]);
 
-		// Update the credentials in DB
-		await this.credentialsRepository.update(credentialId, newCredentialData);
+		return await this.credentialsRepository.manager.transaction(async (transactionManager) => {
+			// Update the credentials in DB
+			await transactionManager.update(CredentialsEntity, credentialId, newCredentialData);
 
-		// We sadly get nothing back from "update". Neither if it updated a record
-		// nor the new value. So query now the updated entry.
-		return await this.credentialsRepository.findOneBy({ id: credentialId });
+			if (decryptedCredentialData) {
+				await this.credentialDependencyService.syncExternalSecretProviderDependenciesForCredential({
+					credentialId,
+					decryptedCredentialData,
+					entityManager: transactionManager,
+				});
+			}
+
+			// We sadly get nothing back from "update". Neither if it updated a record
+			// nor the new value. So query now the updated entry.
+			return await transactionManager.findOneBy(CredentialsEntity, { id: credentialId });
+		});
 	}
 
 	async save(
@@ -672,6 +709,7 @@ export class CredentialsService {
 		encryptedData: ICredentialsDb,
 		user: User,
 		projectId?: string,
+		decryptedCredentialData?: ICredentialDataDecryptedObject,
 	) {
 		// To avoid side effects
 		const newCredential = new CredentialsEntity();
@@ -715,6 +753,16 @@ export class CredentialsService {
 			});
 
 			await transactionManager.save<SharedCredentials>(newSharedCredential);
+
+			if (decryptedCredentialData) {
+				await this.credentialDependencyService.upsertExternalSecretProviderDependenciesForCredential(
+					{
+						credentialId: savedCredential.id,
+						decryptedCredentialData,
+						entityManager: transactionManager,
+					},
+				);
+			}
 
 			return savedCredential;
 		});
@@ -1143,6 +1191,7 @@ export class CredentialsService {
 			encryptedCredential,
 			user,
 			opts.projectId,
+			opts.data as ICredentialDataDecryptedObject,
 		);
 
 		const scopes = await this.getCredentialScopes(user, credential.id);
