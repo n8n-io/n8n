@@ -648,7 +648,7 @@ describe('useNodeExecution', () => {
 			expect(result).toBe('noop');
 		});
 
-		it('should call runWorkflow for chat trigger nodes instead of opening chat directly', async () => {
+		it('should close NDV and call runWorkflow for chat trigger nodes', async () => {
 			mockNodeTypesStore.getNodeType.mockReturnValue({
 				name: CHAT_TRIGGER_NODE_TYPE,
 				group: ['trigger'],
@@ -659,14 +659,14 @@ describe('useNodeExecution', () => {
 			const result = await execute();
 
 			expect(result).toBe('executed');
+			expect(mockNdvStore.unsetActiveNodeName).toHaveBeenCalled();
 			expect(mockRunWorkflow.runWorkflow).toHaveBeenCalledWith({
 				destinationNode: { nodeName: 'Chat Node', mode: 'inclusive' },
 				source: 'SetupPanel.ExecuteNodeButton',
 			});
-			expect(nodeViewEventBus.emit).not.toHaveBeenCalledWith('openChat');
 		});
 
-		it('should call runWorkflow for chat child nodes instead of opening chat', async () => {
+		it('should close NDV and call runWorkflow for chat child nodes with empty input', async () => {
 			mockWorkflowsStore.checkIfNodeHasChatParent.mockReturnValue(true);
 			mockNdvStore.isInputPanelEmpty = true;
 			const node = ref(createTestNode({ name: 'Child Node' }));
@@ -675,11 +675,23 @@ describe('useNodeExecution', () => {
 			const result = await execute();
 
 			expect(result).toBe('executed');
+			expect(mockNdvStore.unsetActiveNodeName).toHaveBeenCalled();
 			expect(mockRunWorkflow.runWorkflow).toHaveBeenCalledWith({
 				destinationNode: { nodeName: 'Child Node', mode: 'inclusive' },
 				source: 'SetupPanel.ExecuteNodeButton',
 			});
-			expect(nodeViewEventBus.emit).not.toHaveBeenCalledWith('openChat');
+		});
+
+		it('should not close NDV for chat child nodes when input panel has data', async () => {
+			mockWorkflowsStore.checkIfNodeHasChatParent.mockReturnValue(true);
+			mockNdvStore.isInputPanelEmpty = false;
+			const node = ref(createTestNode({ name: 'Child Node' }));
+
+			const { execute } = useNodeExecution(node);
+			const result = await execute();
+
+			expect(result).toBe('executed');
+			expect(mockNdvStore.unsetActiveNodeName).not.toHaveBeenCalled();
 		});
 
 		it('should stop webhook when listening', async () => {

@@ -130,6 +130,10 @@ export function useNodeExecution(
 
 	const isChatNode = computed(() => nodeType.value?.name === CHAT_TRIGGER_NODE_TYPE);
 
+	const isChatChild = computed(() =>
+		nodeRef.value ? workflowsStore.checkIfNodeHasChatParent(nodeRef.value.name) : false,
+	);
+
 	const isFormTriggerNode = computed(() => nodeType.value?.name === FORM_TRIGGER_NODE_TYPE);
 
 	const isPollingTypeNode = computed(() => !!nodeType.value?.polling);
@@ -398,6 +402,12 @@ export function useNodeExecution(
 
 			telemetry.track('User clicked execute node button', telemetryPayload);
 			await externalHooks.run('nodeExecuteButton.onClick', telemetryPayload);
+
+			// Close NDV before running workflow if chat will open,
+			// otherwise the NDV blocks the chat panel
+			if (isChatNode.value || (isChatChild.value && ndvStore.isInputPanelEmpty)) {
+				ndvStore.unsetActiveNodeName();
+			}
 
 			await runWorkflow({
 				destinationNode: { nodeName, mode: toValue(executionMode) },
