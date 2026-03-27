@@ -6,7 +6,7 @@
     "node": ">=22.16",
     "pnpm": ">=10.22.0"
   },
-  "packageManager": "pnpm@10.22.0",
+  "packageManager": "pnpm@10.32.1",
   "scripts": {
     "prepare": "node scripts/prepare.mjs",
     "preinstall": "node scripts/block-npm-install.js",
@@ -54,6 +54,7 @@
   "devDependencies": {
     "@babel/preset-env": "^7.26.0",
     "@biomejs/biome": "^1.9.0",
+    "@dotenvx/dotenvx": "^1.40.0",
     "@n8n/eslint-config": "workspace:*",
     "@types/jest": "^29.5.3",
     "@types/node": "*",
@@ -67,7 +68,6 @@
     "jest-junit": "^16.0.0",
     "jest-mock": "^29.6.2",
     "jest-mock-extended": "^3.0.4",
-    "@dotenvx/dotenvx": "^1.40.0",
     "lefthook": "^1.7.15",
     "license-checker": "^25.0.1",
     "nock": "^14.0.1",
