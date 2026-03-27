@@ -711,10 +711,9 @@ export class ActiveWorkflowManager {
 		await this.workflowStaticDataService.saveStaticData(workflow);
 
 		// Broadcast activation confirmation so the frontend can show the
-		// success modal. In multi-main mode where a follower delegates via
-		// PubSub, the leader's handleAddWebhooksTriggersAndPollers already
-		// sends this event. This covers the single-main and leader-direct cases.
-		if (dbWorkflow.activeVersionId) {
+		// success modal. Skip when called from handleAddWebhooksTriggersAndPollers
+		// (shouldPublish === false) because that handler broadcasts the event itself.
+		if (shouldPublish && dbWorkflow.activeVersionId) {
 			this.push.broadcast({
 				type: 'workflowActivated',
 				data: { workflowId, activeVersionId: dbWorkflow.activeVersionId },
