@@ -1,11 +1,19 @@
 <script lang="ts" setup>
 import Draggable from 'vuedraggable';
-import type { RoleMappingRuleResponse } from '../types';
+import type { RoleMappingRuleResponse, RoleMappingRuleType } from '../types';
 import RuleRow from './RuleRow.vue';
 
-const props = defineProps<{
-	rules: RoleMappingRuleResponse[];
-}>();
+const props = withDefaults(
+	defineProps<{
+		rules: RoleMappingRuleResponse[];
+		type?: RoleMappingRuleType;
+		projects?: Array<{ id: string; name: string }>;
+	}>(),
+	{
+		type: 'instance',
+		projects: () => [],
+	},
+);
 
 const emit = defineEmits<{
 	reorder: [fromIndex: number, toIndex: number];
@@ -35,6 +43,8 @@ function onDragEnd(event: { oldIndex?: number; newIndex?: number }) {
 			<template #item="{ element }">
 				<RuleRow
 					:rule="element"
+					:type="props.type"
+					:projects="props.projects"
 					@update="(id, patch) => emit('update', id, patch)"
 					@delete="(id) => emit('delete', id)"
 				/>

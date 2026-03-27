@@ -51,6 +51,7 @@ const metadata = ref();
 const entityId = ref();
 
 const showUserRoleProvisioningDialog = ref(false);
+const roleMappingRuleEditorRef = ref<InstanceType<typeof RoleMappingRuleEditor> | null>(null);
 
 const {
 	formValue: userRoleProvisioning,
@@ -101,7 +102,10 @@ const isSaveEnabled = computed(() => {
 	};
 	const isSamlLoginEnabledChanged = ssoStore.isSamlLoginEnabled !== samlLoginEnabled.value;
 	return (
-		isUserRoleProvisioningChanged.value || isIdentityProviderChanged() || isSamlLoginEnabledChanged
+		isUserRoleProvisioningChanged.value ||
+		isIdentityProviderChanged() ||
+		isSamlLoginEnabledChanged ||
+		!!roleMappingRuleEditorRef.value?.isDirty
 	);
 });
 
@@ -227,6 +231,10 @@ const onSave = async (provisioningChangesConfirmed: boolean = false) => {
 
 		await saveProvisioningConfig(isDisablingSamlLogin);
 
+		if (userRoleProvisioning.value === 'expression_based' && roleMappingRuleEditorRef.value) {
+			await roleMappingRuleEditorRef.value.save();
+		}
+
 		// Update store with saved protocol selection
 		ssoStore.selectedAuthProtocol = SupportedProtocols.SAML;
 
@@ -333,6 +341,7 @@ onMounted(async () => {
 			<RoleMappingRuleEditor
 				v-if="userRoleProvisioning === 'expression_based'"
 				ref="roleMappingRuleEditorRef"
+				@remove-mapping="userRoleProvisioning = 'disabled'"
 			/>
 			<ConfirmProvisioningDialog
 				v-model="showUserRoleProvisioningDialog"
