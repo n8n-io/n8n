@@ -31,12 +31,14 @@ import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { CollaborationService } from '@/collaboration/collaboration.service';
 import { STARTING_NODES } from '@/constants';
 import { ExecutionService } from '@/executions/execution.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { Telemetry } from '@/telemetry';
 
 mockInstance(Telemetry);
+const collaborationService = mockInstance(CollaborationService);
 
 let ownerPersonalProject: Project;
 let owner: User;
@@ -119,6 +121,9 @@ beforeEach(async () => {
 	authMemberAgent = testServer.publicApiAgentFor(member);
 
 	globalConfig.tags.disabled = false;
+
+	// Reset mocks to track calls in each test
+	collaborationService.broadcastWorkflowUpdate.mockClear();
 });
 
 afterEach(async () => {
@@ -1564,6 +1569,126 @@ describe('PUT /workflows/:id', () => {
 		expect(sharedWorkflow?.workflow.updatedAt.getTime()).toBeGreaterThan(
 			workflow.updatedAt.getTime(),
 		);
+	});
+
+	test('should broadcast workflow update to connected clients', async () => {
+		/**
+		 * REGRESSION TEST for GitHub issue #25482
+		 *
+		 * Bug: When a workflow is updated via the public API (PUT /api/v1/workflows/:id),
+		 * the changes (especially node notes/version metadata) are not reflected in open
+		 * editors until manual refresh, even though websocket push is active.
+		 *
+		 * Root cause: The public API workflow update handler did not call
+		 * collaborationService.broadcastWorkflowUpdate(), while the internal REST API
+		 * (PATCH /rest/workflows/:workflowId) did.
+		 *
+		 * This test verifies that:
+		 * 1. Updating a workflow via public API triggers broadcastWorkflowUpdate
+		 * 2. The broadcast includes the correct workflow ID and user ID
+		 * 3. This enables connected clients to receive push notifications and refresh
+		 *
+		 * Without the fix, this test FAILS because broadcastWorkflowUpdate is never called.
+		 */
+		const workflow = await createWorkflowWithHistory({}, member);
+
+		// Update workflow with node notes (simulating version metadata use case)
+		const payload = {
+			name: 'name updated with broadcast',
+			nodes: [
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [240, 300],
+					notes: '📌 Version 1.0.1\n📅 Modified: 2026-02-11\n🔒 Hash: abc123',
+				},
+			],
+			connections: {},
+			staticData: '{"id":1}',
+			settings: {
+				saveExecutionProgress: false,
+				saveManualExecutions: false,
+				saveDataErrorExecution: 'all',
+				saveDataSuccessExecution: 'all',
+				executionTimeout: 3600,
+				timezone: 'America/New_York',
+			},
+		};
+
+		// Verify broadcast was NOT called before the update
+		expect(collaborationService.broadcastWorkflowUpdate).not.toHaveBeenCalled();
+
+		const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send(payload);
+
+		expect(response.statusCode).toBe(200);
+
+		// CRITICAL ASSERTION: Verify that broadcastWorkflowUpdate was called
+		// This is the core of the regression - without the fix, this fails
+		expect(collaborationService.broadcastWorkflowUpdate).toHaveBeenCalledTimes(1);
+		expect(collaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith(
+			workflow.id,
+			member.id,
+		);
+
+		// Verify the workflow was actually updated
+		expect(response.body.nodes[0].notes).toContain('Version 1.0.1');
+	});
+
+	test('should broadcast even when only node notes are updated', async () => {
+		/**
+		 * REGRESSION TEST - Specific scenario from bug report
+		 *
+		 * Users reported that updating ONLY node notes (version metadata) via API
+		 * did not trigger editor refresh. This test ensures that even minimal
+		 * changes to node properties trigger the broadcast.
+		 */
+		const workflow = await createWorkflowWithHistory(
+			{
+				nodes: [
+					{
+						id: 'node-1',
+						parameters: {},
+						name: 'Start',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [240, 300],
+						notes: 'Version 1.0.0',
+					},
+				],
+				connections: {},
+			},
+			member,
+		);
+
+		// Update ONLY the node notes (no structural changes)
+		const payload = {
+			name: workflow.name,
+			nodes: [
+				{
+					id: 'node-1',
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [240, 300],
+					notes: 'Version 1.0.1\nModified: 2026-02-11',
+				},
+			],
+			connections: {},
+		};
+
+		collaborationService.broadcastWorkflowUpdate.mockClear();
+
+		const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send(payload);
+
+		expect(response.statusCode).toBe(200);
+
+		// Even for note-only updates, broadcast must be called
+		expect(collaborationService.broadcastWorkflowUpdate).toHaveBeenCalledTimes(1);
+		expect(response.body.nodes[0].notes).toContain('Version 1.0.1');
 	});
 
 	test('should update active version if workflow is published', async () => {

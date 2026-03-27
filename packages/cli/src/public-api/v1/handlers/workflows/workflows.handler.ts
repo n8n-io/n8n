@@ -9,6 +9,7 @@ import type express from 'express';
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
+import { CollaborationService } from '@/collaboration/collaboration.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
@@ -319,6 +320,9 @@ export = {
 						publishIfActive: true,
 					},
 				);
+
+				// Broadcast workflow update to all connected clients viewing this workflow
+				await Container.get(CollaborationService).broadcastWorkflowUpdate(id, req.user.id);
 
 				return res.json(updatedWorkflow);
 			} catch (error) {
