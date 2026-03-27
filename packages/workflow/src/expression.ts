@@ -5,7 +5,7 @@ import { DateTime, Duration, Interval } from 'luxon';
 
 import { UnexpectedError } from './errors';
 import { ExpressionExtensionError } from './errors/expression-extension.error';
-import { ExpressionError, type ExpressionErrorOptions } from './errors/expression.error';
+import { ExpressionError } from './errors/expression.error';
 import { evaluateExpression, setErrorHandler } from './expression-evaluator-proxy';
 import {
 	DollarSignValidator,
