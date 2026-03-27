@@ -358,9 +358,10 @@ function handleStop() {
 					</CreditsSettingsDropdown>
 					<N8nIconButton
 						v-else-if="store.creditsQuota !== undefined"
-						icon="settings-2"
+						icon="settings2"
 						variant="ghost"
 						size="medium"
+						:class="$style.settingsButton"
 						data-test-id="instance-ai-settings-button"
 						@click="goToSettings"
 					/>
@@ -400,6 +401,13 @@ function handleStop() {
 						<InstanceAiEmptyState />
 						<div :class="$style.centeredInput">
 							<InstanceAiStatusBar />
+							<CreditWarningBanner
+								v-if="showCreditBanner"
+								:credits-remaining="store.creditsRemaining"
+								:credits-quota="store.creditsQuota"
+								@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
+								@dismiss="creditBannerDismissed = true"
+							/>
 							<InstanceAiInput
 								:is-streaming="store.isStreaming"
 								@submit="handleSubmit"
@@ -449,6 +457,7 @@ function handleStop() {
 						<!-- Floating input -->
 						<div ref="inputContainer" :class="$style.inputContainer">
 							<div :class="$style.inputConstraint">
+								<InstanceAiStatusBar />
 								<CreditWarningBanner
 									v-if="showCreditBanner"
 									:credits-remaining="store.creditsRemaining"
@@ -456,7 +465,6 @@ function handleStop() {
 									@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 									@dismiss="creditBannerDismissed = true"
 								/>
-								<InstanceAiStatusBar />
 								<InstanceAiInput
 									:is-streaming="store.isStreaming"
 									@submit="handleSubmit"
@@ -597,6 +605,10 @@ function handleStop() {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
+}
+
+.settingsButton {
+	padding: var(--spacing--xs);
 }
 
 .activeButton {

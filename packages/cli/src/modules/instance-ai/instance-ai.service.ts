@@ -290,7 +290,7 @@ export class InstanceAiService {
 			const { client, headers } = await this.getProxyAuth(user);
 			const modelName = await this.settingsService.resolveModelName(user);
 			const provider = createAnthropic({
-				baseURL: client.getApiProxyBaseUrl() + '/anthropic',
+				baseURL: client.getApiProxyBaseUrl() + '/anthropic/v1',
 				apiKey: 'proxy-managed',
 				headers,
 			});
