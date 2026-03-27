@@ -9,6 +9,8 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import pLimit from 'p-limit';
 
 import { CodeWorkflowBuilder } from '@/code-builder';
+import type { HistoryContext } from '@/code-builder';
+import type { ConversationEntry } from '@/code-builder/utils/code-builder-session';
 import type { CoordinationLogEntry } from '@/types/coordination';
 import type { StreamChunk, WorkflowUpdateChunk } from '@/types/streaming';
 import type { SimpleWorkflow } from '@/types/workflow';
@@ -232,6 +234,58 @@ function createEvaluators(params: {
 }
 
 /**
+ * Convert raw LangChain messages from dataset into HistoryContext for the code builder.
+ * Pairs up human/AI messages as conversation entries.
+ */
+function buildHistoryContextFromMessages(messages: unknown[]): HistoryContext | undefined {
+	if (messages.length === 0) return undefined;
+
+	const entries: ConversationEntry[] = [];
+
+	for (let i = 0; i < messages.length; i++) {
+		const msg = messages[i];
+		if (!isUnknownRecord(msg)) continue;
+
+		const msgId = msg.id;
+		const isHuman = Array.isArray(msgId) && msgId.includes('HumanMessage');
+
+		if (!isHuman) continue;
+
+		const kwargs = msg.kwargs;
+		if (!isUnknownRecord(kwargs) || typeof kwargs.content !== 'string') continue;
+
+		const userContent = kwargs.content;
+
+		// Look for a following AI message to pair with
+		const nextMsg = i + 1 < messages.length ? messages[i + 1] : undefined;
+		const nextIsAI =
+			isUnknownRecord(nextMsg) && Array.isArray(nextMsg.id) && nextMsg.id.includes('AIMessage');
+
+		if (nextIsAI && isUnknownRecord(nextMsg)) {
+			const nextKwargs = nextMsg.kwargs;
+			const aiContent =
+				isUnknownRecord(nextKwargs) && typeof nextKwargs.content === 'string'
+					? nextKwargs.content
+					: '';
+			entries.push({
+				type: 'assistant-exchange',
+				userQuery: userContent,
+				assistantSummary: aiContent,
+			});
+			i++; // Skip the AI message
+		} else {
+			entries.push({ type: 'build-request', message: userContent });
+		}
+	}
+
+	return entries.length > 0 ? { conversationEntries: entries } : undefined;
+}
+
+function isUnknownRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/**
  * Create a CodeWorkflowBuilder generator function.
  * Uses the CodeWorkflowBuilder which coordinates planning and coding agents to generate
  * workflows via TypeScript SDK code and emits workflow JSON directly in the stream.
@@ -284,6 +338,11 @@ function createCodeWorkflowBuilderGenerator(
 			mode: datasetInputContext?.mode,
 		});
 
+		// Build history context from dataset messages if available
+		const historyContext = datasetInputContext?.historicalMessages
+			? buildHistoryContextFromMessages(datasetInputContext.historicalMessages)
+			: undefined;
+
 		let workflow: SimpleWorkflow | null = null;
 		let generatedCode: string | undefined;
 
@@ -304,6 +363,7 @@ function createCodeWorkflowBuilderGenerator(
 				payload,
 				EVAL_USERS.LANGSMITH,
 				abortController.signal,
+				historyContext,
 			)) {
 				for (const message of output.messages) {
 					if (isWorkflowUpdateChunk(message)) {
