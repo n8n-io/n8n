@@ -69,19 +69,7 @@ export class RunStateRegistry<TUser = unknown> {
 
 	private readonly suspendedRuns = new Map<string, SuspendedRunState<TUser>>();
 
-	private readonly pendingConfirmations = (() => {
-		const map = new Map<string, PendingConfirmation>();
-		const origDelete = map.delete.bind(map);
-		map.delete = (key: string) => {
-			console.warn('[DIAG] pendingConfirmations.delete called', {
-				key,
-				existed: map.has(key),
-				stack: new Error().stack?.split('\n').slice(1, 6).join(' | '),
-			});
-			return origDelete(key);
-		};
-		return map;
-	})();
+	private readonly pendingConfirmations = new Map<string, PendingConfirmation>();
 
 	private readonly threadUsers = new Map<string, TUser>();
 
@@ -215,13 +203,6 @@ export class RunStateRegistry<TUser = unknown> {
 	}
 
 	registerPendingConfirmation(requestId: string, pending: PendingConfirmation): void {
-		console.warn('[DIAG] registerPendingConfirmation', {
-			requestId,
-			userId: pending.userId,
-			threadId: pending.threadId,
-			mapSizeBefore: this.pendingConfirmations.size,
-			pid: process.pid,
-		});
 		this.pendingConfirmations.set(requestId, pending);
 	}
 
@@ -231,67 +212,11 @@ export class RunStateRegistry<TUser = unknown> {
 		data: ConfirmationData,
 	): boolean {
 		const pending = this.pendingConfirmations.get(requestId);
-		if (!pending) {
-			// [DIAG] requestId not in pendingConfirmations map
-			console.warn('[DIAG] resolvePending: requestId not found', {
-				requestId,
-				requestingUserId,
-				mapSize: this.pendingConfirmations.size,
-				keys: [...this.pendingConfirmations.keys()],
-			});
-			return false;
-		}
-		if (pending.userId !== requestingUserId) {
-			// [DIAG] userId mismatch
-			console.warn('[DIAG] resolvePending: userId mismatch', {
-				requestId,
-				requestingUserId,
-				pendingUserId: pending.userId,
-			});
-			return false;
-		}
+		if (!pending || pending.userId !== requestingUserId) return false;
 
-		console.warn('[DIAG] resolvePending: SUCCESS', {
-			requestId,
-			requestingUserId,
-			approved: data.approved,
-			mapSizeAfter: this.pendingConfirmations.size - 1,
-			stack: new Error().stack?.split('\n').slice(1, 5).join(' | '),
-		});
 		this.pendingConfirmations.delete(requestId);
 		pending.resolve(data);
 		return true;
-	}
-
-	/** Diagnostic: expose pending confirmation keys for debugging. */
-	debugPendingConfirmationKeys(): string[] {
-		return [...this.pendingConfirmations.keys()];
-	}
-
-	/** Diagnostic: expose suspended run threadId→requestId for debugging. */
-	debugSuspendedRunKeys(): Array<{ threadId: string; requestId: string }> {
-		return [...this.suspendedRuns.entries()].map(([threadId, run]) => ({
-			threadId,
-			requestId: run.requestId,
-		}));
-	}
-
-	/** Diagnostic: explain why a requestId wasn't resolved. */
-	diagnosePendingMiss(requestId: string, requestingUserId: string): string {
-		const pending = this.pendingConfirmations.get(requestId);
-		if (pending && pending.userId !== requestingUserId) {
-			return `userId_mismatch(pending=${pending.userId},requesting=${requestingUserId})`;
-		}
-		if (pending) {
-			return 'pending_exists_but_resolve_failed_unexpectedly';
-		}
-
-		const suspended = this.findSuspendedByRequestId(requestId);
-		if (suspended) {
-			return `suspended_exists_but_resume_failed(user=${(suspended.user as { id?: string })?.id})`;
-		}
-
-		return `not_in_any_map(pendingSize=${this.pendingConfirmations.size},suspendedSize=${this.suspendedRuns.size})`;
 	}
 
 	cancelThread(
@@ -303,11 +228,6 @@ export class RunStateRegistry<TUser = unknown> {
 	} {
 		for (const [requestId, pending] of this.pendingConfirmations) {
 			if (pending.threadId !== threadId) continue;
-			console.warn('[DIAG] cancelThread removing pending confirmation', {
-				requestId,
-				threadId,
-				stack: new Error().stack,
-			});
 			pending.resolve(cancelledConfirmation);
 			this.pendingConfirmations.delete(requestId);
 		}
@@ -361,11 +281,6 @@ export class RunStateRegistry<TUser = unknown> {
 	rejectPendingConfirmation(requestId: string): boolean {
 		const pending = this.pendingConfirmations.get(requestId);
 		if (!pending) return false;
-		console.warn('[DIAG] rejectPendingConfirmation', {
-			requestId,
-			threadId: pending.threadId,
-			stack: new Error().stack,
-		});
 		this.pendingConfirmations.delete(requestId);
 		pending.resolve({ approved: false });
 		return true;

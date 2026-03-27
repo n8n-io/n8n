@@ -204,24 +204,8 @@ export class InstanceAiController {
 			res.flush?.();
 		}, KEEP_ALIVE_INTERVAL_MS);
 
-		const sseId = `sse_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-		console.warn('[DIAG] SSE connected', {
-			sseId,
-			threadId,
-			userId: req.user.id,
-			cursor,
-			missedCount: missed.length,
-			isReconnect: cursor > 0,
-			pid: process.pid,
-		});
-
 		// 6. Cleanup on disconnect
 		const cleanup = () => {
-			console.warn('[DIAG] SSE disconnected', {
-				sseId,
-				threadId,
-				pid: process.pid,
-			});
 			unsubscribe();
 			clearInterval(keepAlive);
 		};
@@ -250,14 +234,8 @@ export class InstanceAiController {
 			testTriggerNode: body.testTriggerNode,
 			answers: body.answers,
 		});
-		if (resolved !== true) {
-			const diag = typeof resolved === 'object' ? resolved : {};
-			const reason =
-				'reason' in diag && typeof diag.reason === 'string' ? diag.reason : 'unknown';
-			const detail = JSON.stringify('detail' in diag ? diag.detail : {});
-			throw new NotFoundError(
-				`Confirmation not found: ${reason} | ${detail}`,
-			);
+		if (!resolved) {
+			throw new NotFoundError('Confirmation request not found or not authorized');
 		}
 		return { ok: true };
 	}

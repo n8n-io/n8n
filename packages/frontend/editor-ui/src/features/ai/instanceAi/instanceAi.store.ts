@@ -730,21 +730,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				answers,
 			);
 			return true;
-		} catch (error) {
-			const status = (error as { httpStatusCode?: number })?.httpStatusCode;
-			const msg = (error as { message?: string })?.message ?? String(error);
-			console.error('[DIAG] confirmAction failed', {
-				requestId,
-				approved,
-				status,
-				message: msg,
-				sseState: sseState.value,
-				currentThreadId: currentThreadId.value,
-			});
-			toast.showError(
-				new Error(`Failed to send confirmation (${status ?? 'unknown'}): ${msg}`),
-				'Confirmation failed',
-			);
+		} catch {
+			toast.showError(new Error('Failed to send confirmation. Try again.'), 'Confirmation failed');
 			return false;
 		}
 	}

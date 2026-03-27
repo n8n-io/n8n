@@ -1107,26 +1107,12 @@ export class InstanceAiService {
 		requestingUserId: string,
 		requestId: string,
 		data: ConfirmationData,
-	): Promise<true | { reason: string; detail: Record<string, unknown> }> {
+	): Promise<boolean> {
 		if (this.runState.resolvePendingConfirmation(requestingUserId, requestId, data)) {
 			return true;
 		}
 
-		if (await this.resumeSuspendedRun(requestingUserId, requestId, data)) {
-			return true;
-		}
-
-		return {
-			reason: this.runState.diagnosePendingMiss(requestId, requestingUserId),
-			detail: {
-				requestId,
-				requestingUserId,
-				pendingKeys: this.runState.debugPendingConfirmationKeys(),
-				suspendedKeys: this.runState.debugSuspendedRunKeys(),
-				pid: process.pid,
-				uptime: Math.round(process.uptime()),
-			},
-		};
+		return await this.resumeSuspendedRun(requestingUserId, requestId, data);
 	}
 
 	private async resumeSuspendedRun(

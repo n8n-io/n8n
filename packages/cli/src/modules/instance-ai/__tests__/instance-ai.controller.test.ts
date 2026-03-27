@@ -253,10 +253,7 @@ describe('InstanceAiController', () => {
 		});
 
 		it('should throw NotFoundError when confirmation not found', async () => {
-			instanceAiService.resolveConfirmation.mockResolvedValue({
-				reason: 'not_found',
-				detail: {},
-			});
+			instanceAiService.resolveConfirmation.mockResolvedValue(false);
 			const body = mock<InstanceAiConfirmRequestDto>({ approved: false });
 
 			await expect(controller.confirm(req, res, 'req-1', body)).rejects.toThrow(NotFoundError);
