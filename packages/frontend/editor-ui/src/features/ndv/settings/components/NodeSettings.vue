@@ -184,6 +184,8 @@ const isTriggerNode = computed(() => !!node.value && nodeTypesStore.isTriggerNod
 
 const isToolNode = computed(() => !!node.value && nodeTypesStore.isToolNode(node.value.type));
 
+const isModelNode = computed(() => !!node.value && nodeTypesStore.isModelNode(node.value.type));
+
 const isExecutable = computed(() =>
 	nodeHelpers.isNodeExecutable(node.value, props.executable, props.foreignCredentials),
 );
@@ -306,7 +308,8 @@ const featureRequestUrl = computed(() => {
 
 const hasOutputConnection = computed(() => {
 	if (!node.value) return false;
-	const outgoingConnections = workflowsStore.outgoingConnectionsByNodeName(node.value.name);
+	const outgoingConnections =
+		workflowDocumentStore?.value?.outgoingConnectionsByNodeName(node.value.name) ?? {};
 
 	// Check if there's at-least one output connection
 	return (Object.values(outgoingConnections)?.[0]?.[0] ?? []).length > 0;
@@ -482,7 +485,7 @@ const populateHiddenIssuesSet = () => {
 };
 
 const nodeSettings = computed(() =>
-	createCommonNodeSettings(isToolNode.value, i18n.baseText.bind(i18n)),
+	createCommonNodeSettings(isToolNode.value || isModelNode.value, i18n.baseText.bind(i18n)),
 );
 
 const iconSource = computed(() =>

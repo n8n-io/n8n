@@ -154,7 +154,7 @@ describe('WaitTracker', () => {
 			);
 		});
 
-		it('should emit execution-resumed after run() succeeds', async () => {
+	it('should emit execution-resumed after run() succeeds', async () => {
 			await waitTracker.startExecution(execution.id);
 
 			expect(eventService.emit).toHaveBeenCalledWith(
@@ -174,6 +174,30 @@ describe('WaitTracker', () => {
 			await waitTracker.startExecution(execution.id);
 
 			expect(eventService.emit).not.toHaveBeenCalledWith('execution-resumed', expect.anything());
+		});
+
+
+		it('should preserve original startedAt timestamp when resuming execution', async () => {
+			const originalStartedAt = new Date('2025-12-02T09:04:47.150Z');
+			const executionWithStartedAt = {
+				...execution,
+				startedAt: originalStartedAt,
+			};
+
+			executionRepository.findSingleExecution
+				.calledWith(execution.id)
+				.mockResolvedValue(executionWithStartedAt);
+
+			await waitTracker.startExecution(execution.id);
+
+			expect(workflowRunner.run).toHaveBeenCalledWith(
+				expect.objectContaining({
+					startedAt: originalStartedAt,
+				}),
+				false,
+				false,
+				execution.id,
+			);
 		});
 
 		describe('parent execution with waiting sub-workflow', () => {

@@ -157,7 +157,7 @@ export async function saveCredential(
 }
 
 export async function updateCredential(
-	credentialId: string,
+	existingCredential: ICredentialsDb,
 	user: User,
 	updateData: {
 		type?: string;
@@ -167,15 +167,12 @@ export async function updateCredential(
 		isResolvable?: boolean;
 		isPartialData?: boolean;
 	},
-): Promise<ICredentialsDb | null> {
-	const existingCredential = await getCredential(credentialId);
-	if (!existingCredential) {
-		return null;
-	}
-
+): Promise<ICredentialsDb> {
 	if (existingCredential.isManaged) {
 		throw new CredentialsIsNotUpdatableError('Managed credentials cannot be updated.');
 	}
+
+	const credentialId = existingCredential.id;
 
 	// Merge the update data with existing credential
 	const credentialData: Partial<CredentialsEntity> = {};
@@ -258,7 +255,8 @@ export async function updateCredential(
 
 	await Container.get(CredentialsRepository).update(credentialId, credentialData);
 
-	return await getCredential(credentialId);
+	// credential exists since we just updated it
+	return (await getCredential(credentialId))!;
 }
 
 export async function removeCredential(
