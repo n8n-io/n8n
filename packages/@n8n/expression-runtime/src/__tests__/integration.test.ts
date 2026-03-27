@@ -370,6 +370,45 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 
 		expect(result).toBeUndefined();
 	});
+
+	it('should propagate errors thrown when reading a property across the isolate boundary', () => {
+		const json = {
+			get brokenProp() {
+				throw new Error('property access failed');
+			},
+		};
+
+		expect(() => evaluator.evaluate('{{ $json.brokenProp }}', { $json: json })).toThrow(
+			'property access failed',
+		);
+	});
+
+	it('should propagate errors thrown by functions accessed via the lazy proxy', () => {
+		const data = {
+			$json: {
+				myFn() {
+					throw new Error('function threw');
+				},
+			},
+		};
+
+		expect(() => evaluator.evaluate('{{ $json.myFn() }}', data)).toThrow('function threw');
+	});
+
+	it('should propagate errors thrown during array element access across the isolate boundary', () => {
+		const items = [1, 2, 3];
+		Object.defineProperty(items, '0', {
+			get() {
+				throw new Error('element access failed');
+			},
+			configurable: true,
+			enumerable: true,
+		});
+
+		const data = { $json: { items } };
+
+		expect(() => evaluator.evaluate('{{ $json.items[0] }}', data)).toThrow('element access failed');
+	});
 });
 
 describe('Integration: IsolatedVmBridge error handling', () => {
