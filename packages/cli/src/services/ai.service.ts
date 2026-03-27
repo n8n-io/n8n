@@ -43,7 +43,7 @@ export class AiService {
 			instanceId: this.instanceSettings.instanceId,
 		});
 
-		// Register for license certificate updates
+		// Register for license certificate updates.....
 		this.licenseService.onCertRefresh((cert) => {
 			this.client?.updateLicenseCert(cert);
 		});
