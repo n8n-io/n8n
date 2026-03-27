@@ -1280,6 +1280,26 @@ describe('POST /workflows/:id/archive', () => {
 		expect(second.statusCode).toBe(200);
 		expect(second.body.isArchived).toBe(true);
 	});
+
+	test('should return 403 when user lacks workflow:delete permission', async () => {
+		const customRole = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:update'], {
+			roleType: 'project',
+			displayName: 'Custom Workflow Editor No Delete',
+			description: 'Can read and update workflows but not delete or archive them',
+		});
+
+		const teamProject = await createTeamProject('Test Project', owner);
+		await linkUserToProject(member, teamProject, customRole.slug);
+
+		const workflow = await createWorkflowWithTriggerAndHistory({}, teamProject);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/archive`);
+
+		expect(response.statusCode).toBe(403);
+
+		const workflowAfter = await workflowRepository.findOne({ where: { id: workflow.id } });
+		expect(workflowAfter?.isArchived).toBe(false);
+	});
 });
 
 describe('POST /workflows/:id/unarchive', () => {
@@ -1306,6 +1326,28 @@ describe('POST /workflows/:id/unarchive', () => {
 		const response = await authMemberAgent.post(`/workflows/${workflow.id}/unarchive`);
 
 		expect(response.statusCode).toBe(400);
+	});
+
+	test('should return 403 when user lacks workflow:delete permission', async () => {
+		const customRole = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:update'], {
+			roleType: 'project',
+			displayName: 'Custom Workflow Editor No Delete',
+			description: 'Can read and update workflows but not delete or archive them',
+		});
+
+		const teamProject = await createTeamProject('Test Project Unarchive', owner);
+		await linkUserToProject(member, teamProject, customRole.slug);
+
+		const workflow = await createWorkflowWithTriggerAndHistory({}, teamProject);
+
+		await authOwnerAgent.post(`/workflows/${workflow.id}/archive`);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/unarchive`);
+
+		expect(response.statusCode).toBe(403);
+
+		const workflowAfter = await workflowRepository.findOne({ where: { id: workflow.id } });
+		expect(workflowAfter?.isArchived).toBe(true);
 	});
 
 	test('should unarchive workflow and return 200', async () => {

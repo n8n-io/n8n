@@ -9,6 +9,7 @@ import type express from 'express';
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
@@ -479,6 +480,9 @@ export = {
 			} catch (error) {
 				if (error instanceof NotFoundError) {
 					return res.status(404).json({ message: 'Workflow Not Found' });
+				}
+				if (error instanceof BadRequestError) {
+					return res.status(error.httpStatusCode).json({ message: error.message });
 				}
 				throw error;
 			}
