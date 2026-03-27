@@ -57,17 +57,17 @@ onMounted(async () => {
 <template>
 	<span>
 		<div v-if="isLoading">Loading binary data...</div>
-		<div v-else-if="error">Error loading binary data</div>
+		<div v-else-if="error">{{ i18n.baseText('binaryDataDisplay.noDataFoundToDisplay') }}</div>
 		<span v-else>
-			<video v-if="binaryData.fileType === 'video'" controls autoplay>
+			<video v-if="binaryData.fileType === 'video'" controls autoplay @error="error = true">
 				<source :src="embedSource" :type="binaryData.mimeType" />
 				{{ i18n.baseText('binaryDataDisplay.yourBrowserDoesNotSupport') }}
 			</video>
-			<audio v-else-if="binaryData.fileType === 'audio'" controls autoplay>
+			<audio v-else-if="binaryData.fileType === 'audio'" controls autoplay @error="error = true">
 				<source :src="embedSource" :type="binaryData.mimeType" />
 				{{ i18n.baseText('binaryDataDisplay.yourBrowserDoesNotSupport') }}
 			</audio>
-			<img v-else-if="binaryData.fileType === 'image'" :src="embedSource" />
+			<img v-else-if="binaryData.fileType === 'image'" :src="embedSource" @error="error = true" />
 			<VueJsonPretty
 				v-else-if="binaryData.fileType === 'json'"
 				:data="data"
