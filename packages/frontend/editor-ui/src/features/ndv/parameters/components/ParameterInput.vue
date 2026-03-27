@@ -103,7 +103,6 @@ import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 
 import { ElColorPicker, ElDatePicker, ElDialog, ElSwitch } from 'element-plus';
 import {
-	N8nButton,
 	N8nIcon,
 	N8nIconPicker,
 	N8nInput,
@@ -280,13 +279,13 @@ const isCredentialJsonValueRedacted = computed<boolean>(() => {
 		props.modelValue === CREDENTIAL_BLANKING_VALUE || props.modelValue === CREDENTIAL_EMPTY_VALUE
 	);
 });
-const showCredentialJsonOverlay = computed<boolean>(() => {
-	return isCustomAuthJsonField.value && isCredentialJsonValueRedacted.value;
-});
-// In dialog, when Custom Auth json is redacted show blank (never show placeholder)
+const isRedactedCustomAuthJson = computed<boolean>(
+	() => isCustomAuthJsonField.value && isCredentialJsonValueRedacted.value,
+);
+
 const credentialJsonEditorValue = computed<string>(() => {
-	if (isCustomAuthJsonField.value && isCredentialJsonValueRedacted.value) {
-		return '';
+	if (isRedactedCustomAuthJson.value) {
+		return '***\n***\n***';
 	}
 	return modelValueString.value;
 });
@@ -1694,38 +1693,9 @@ onUpdated(async () => {
 					</template>
 				</JsEditor>
 
-				<div
-					v-else-if="showCredentialJsonOverlay"
-					:class="$style.credentialJsonOverlay"
-					data-test-id="credential-json-overlay"
-				>
-					<JsonEditor
-						:model-value="'***\n***\n***'"
-						:is-read-only="true"
-						:rows="editorRows"
-						:class="$style.credentialJsonEditor"
-					/>
-					<div :class="$style.credentialJsonOverlayButton">
-						<N8nButton
-							size="small"
-							secondary
-							icon="pencil"
-							data-test-id="credential-json-edit-button"
-							@click="valueChanged('')"
-						>
-							{{ i18n.baseText('parameterInput.edit') }}
-						</N8nButton>
-					</div>
-				</div>
-
 				<JsonEditor
-					v-else-if="
-						parameter.type === 'json' &&
-						!codeEditDialogVisible &&
-						!showCredentialJsonOverlay &&
-						!isSecretParameter
-					"
-					:model-value="modelValueString"
+					v-else-if="parameter.type === 'json' && !codeEditDialogVisible && !isSecretParameter"
+					:model-value="credentialJsonEditorValue"
 					:is-read-only="isReadOnly"
 					:rows="editorRows"
 					@update:model-value="valueChangedDebounced"
@@ -2288,31 +2258,5 @@ onUpdated(async () => {
 		border-top-left-radius: 0;
 		border-bottom-left-radius: 0;
 	}
-}
-
-.credentialJsonOverlay {
-	position: relative;
-}
-
-.credentialJsonTextarea {
-	pointer-events: none;
-}
-
-.credentialJsonTextarea :global(.input) {
-	color: var(--color--text--tint-2);
-	letter-spacing: 0.05em;
-}
-
-.credentialJsonOverlayButton {
-	position: absolute;
-	inset: 0;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	pointer-events: none;
-}
-
-.credentialJsonOverlayButton > * {
-	pointer-events: auto;
 }
 </style>

@@ -856,6 +856,9 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 		credentialId.value = credential.id;
 		currentCredential.value = credential;
 
+		// Re-fetch to get redacted credential data (e.g. custom auth JSON masking)
+		await loadCurrentCredential(credential.id);
+
 		if (isCredentialTestable.value) {
 			isTesting.value = true;
 			// Add the full data including defaults for testing
