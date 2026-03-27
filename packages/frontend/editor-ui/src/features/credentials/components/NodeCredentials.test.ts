@@ -288,7 +288,13 @@ describe('NodeCredentials', () => {
 		await userEvent.click(credentialsSelect);
 		await userEvent.click(screen.getByTestId('node-credentials-select-item-new'));
 
-		expect(uiStore.openNewCredential).toHaveBeenCalledWith('openAiApi', true, false, undefined);
+		expect(uiStore.openNewCredential).toHaveBeenCalledWith(
+			'openAiApi',
+			true,
+			false,
+			undefined,
+			undefined,
+		);
 	});
 
 	describe('onCredentialSelected', () => {
@@ -614,6 +620,7 @@ describe('NodeCredentials', () => {
 				'slackOAuth2Api',
 				expect.any(Boolean),
 				true,
+				undefined,
 				undefined,
 			);
 		});

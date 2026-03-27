@@ -51,7 +51,7 @@ function createService(): InstanceAiMemoryService {
 	};
 	const mockLogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() };
 	const mockCompositeStore = {} as never;
-	const mockDbSnapshotStorage = {} as never;
+	const mockDbSnapshotStorage = { getAll: jest.fn().mockResolvedValue([]) } as never;
 	return new InstanceAiMemoryService(
 		mockLogger as never,
 		mockConfig as never,
