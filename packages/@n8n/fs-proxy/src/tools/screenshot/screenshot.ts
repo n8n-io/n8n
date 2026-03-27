@@ -1,5 +1,6 @@
-import sharp from 'sharp';
 import { z } from 'zod';
+
+import sharp from 'sharp';
 
 import { getPrimaryMonitor } from '../monitor-utils';
 import type { ToolContext, ToolDefinition } from '../types';

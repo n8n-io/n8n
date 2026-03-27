@@ -1,4 +1,5 @@
 import { Monitor } from 'node-screenshots';
+
 import sharp from 'sharp';
 
 import { ScreenshotModule } from './index';
