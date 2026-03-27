@@ -16,12 +16,17 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { useRoute, useRouter } from 'vue-router';
-import type { RatingFeedback, WorkflowSuggestion } from '@n8n/design-system/types/assistant';
+import type {
+	ChatUI,
+	RatingFeedback,
+	WorkflowSuggestion,
+} from '@n8n/design-system/types/assistant';
 import { isTaskAbortedMessage, isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
 import { nodeViewEventBus } from '@/app/event-bus';
 import { jsonParse } from 'n8n-workflow';
 import ExecuteMessage from './ExecuteMessage.vue';
 import NotificationPermissionBanner from './NotificationPermissionBanner.vue';
+import ChatVersionCard from './ChatVersionCard.vue';
 import ReviewChangesBanner from './ReviewChangesBanner.vue';
 import CreditsSettingsDropdown from './CreditsSettingsDropdown.vue';
 import CreditWarningBanner from './CreditWarningBanner.vue';
@@ -48,9 +53,13 @@ import {
 	isPlanModePlanMessage,
 	isPlanModeQuestionsMessage,
 	isPlanModeUserAnswersMessage,
+	isVersionCardMessage,
 	isWebFetchApprovalCustomMessage,
+	isCollapsedGroupMessage,
+	createCollapsedGroupMessage,
 	type PlanMode,
 } from '../../assistant.types';
+import CollapsedMessagesGroup from './CollapsedMessagesGroup.vue';
 import PlanDisplayMessage from './PlanDisplayMessage.vue';
 import PlanModeSelector from './PlanModeSelector.vue';
 import PlanQuestionsMessage from './PlanQuestionsMessage.vue';
@@ -212,12 +221,77 @@ const isChatInputDisabled = computed(() => {
 	return isInputDisabled.value || builderStore.shouldDisableChatInput;
 });
 
-const { showReviewChanges, nodeChanges, isExpanded, toggleExpanded, openDiffView } =
-	useReviewChanges();
+const {
+	versionNodeChangesMap,
+	showReviewChanges,
+	nodeChanges,
+	isExpanded,
+	toggleExpanded,
+	openDiffView,
+} = useReviewChanges();
 
 function onSelectChangedNode(nodeId: string) {
 	canvasEventBus.emit('nodes:select', { ids: [nodeId], panIntoView: true });
 }
+
+/** Returns true if the version card has at least one node change */
+function isNonEmptyVersionCard(message: ChatUI.AssistantMessage): boolean {
+	if (!isVersionCardMessage(message)) return false;
+	return (versionNodeChangesMap.value.get(message.data.versionId) ?? []).length > 0;
+}
+
+function isCurrentVersionCard(message: ChatUI.AssistantMessage): boolean {
+	if (!isNonEmptyVersionCard(message)) return false;
+	// If restore happened but no new messages sent yet, the restored card is current
+	if (builderStore.activeVersionCardId && !builderStore.resumeAfterRestoreMessageId) {
+		return message.id === builderStore.activeVersionCardId;
+	}
+	// Default (including after resume): last non-empty, non-collapsed version card
+	const collapsed = builderStore.collapsedMessageIds;
+	const nonEmptyVisibleCards = builderStore.chatMessages.filter(
+		(msg) =>
+			isVersionCardMessage(msg) &&
+			isNonEmptyVersionCard(msg) &&
+			(!msg.id || !collapsed.has(msg.id)),
+	);
+	return nonEmptyVisibleCards[nonEmptyVisibleCards.length - 1]?.id === message.id;
+}
+
+function getVersionIndex(message: ChatUI.AssistantMessage): number {
+	let count = 0;
+	for (const msg of builderStore.chatMessages) {
+		if (isVersionCardMessage(msg) && isNonEmptyVersionCard(msg)) {
+			count++;
+			if (msg.id === message.id) return count;
+		}
+	}
+	return count + 1;
+}
+
+/** Messages with collapsed groups substituted for collapsed message ranges */
+const displayMessages = computed(() => {
+	const collapsed = builderStore.collapsedMessageIds;
+	if (!collapsed.size) return builderStore.chatMessages;
+
+	const result: ChatUI.AssistantMessage[] = [];
+	const group: ChatUI.AssistantMessage[] = [];
+
+	for (const msg of builderStore.chatMessages) {
+		if (msg.id && collapsed.has(msg.id)) {
+			group.push(msg);
+		} else {
+			if (group.length > 0) {
+				result.push(createCollapsedGroupMessage([...group]));
+				group.length = 0;
+			}
+			result.push(msg);
+		}
+	}
+	if (group.length > 0) {
+		result.push(createCollapsedGroupMessage(group));
+	}
+	return result;
+});
 
 async function onCodeReplace(index: number) {
 	await builderStore.applyCodeDiff(workflowId.value, index);
@@ -512,11 +586,11 @@ watch(
 );
 
 /**
- * Handle restore confirmation
+ * Handle restore confirmation from a version card
  */
-async function onRestoreConfirm(versionId: string, messageId: string) {
+async function onRestoreConfirm(versionId: string, versionCardId: string) {
 	try {
-		const updatedWorkflow = await builderStore.restoreToVersion(versionId, messageId);
+		const updatedWorkflow = await builderStore.restoreToVersion(versionId, versionCardId);
 		if (!updatedWorkflow) {
 			return;
 		}
@@ -592,7 +666,7 @@ defineExpose({
 		<N8nAskAssistantChat
 			ref="n8nChatRef"
 			:user="user"
-			:messages="builderStore.chatMessages"
+			:messages="displayMessages"
 			:streaming="builderStore.streaming"
 			:loading-message="loadingMessage"
 			:thinking-completion-message="thinkingCompletionMessage"
@@ -605,7 +679,6 @@ defineExpose({
 			:suggestions="workflowSuggestions"
 			:input-placeholder="i18n.baseText('aiAssistant.builder.assistantPlaceholder')"
 			:workflow-id="workflowId"
-			:prune-time-hours="workflowHistoryStore.evaluatedPruneTime"
 			:disabled="isChatInputDisabled"
 			:disabled-tooltip="disabledTooltip"
 			@close="emit('close')"
@@ -613,8 +686,6 @@ defineExpose({
 			@upgrade-click="() => goToUpgrade('ai-builder-sidebar', 'upgrade-builder')"
 			@feedback="onFeedback"
 			@stop="builderStore.abortStreaming"
-			@restore-confirm="onRestoreConfirm"
-			@show-version="onShowVersion"
 			@code-replace="onCodeReplace"
 			@code-undo="onCodeUndo"
 		>
@@ -664,7 +735,31 @@ defineExpose({
 				<BuildModeEmptyState />
 			</template>
 			<template #custom-message="{ message }">
-				<!-- Questions intro text only — interactive Q&A is rendered in the input slot -->
+				<CollapsedMessagesGroup
+					v-if="isCollapsedGroupMessage(message)"
+					:messages="message.data.collapsedMessages"
+					:version-node-changes-map="versionNodeChangesMap"
+					:get-version-index="getVersionIndex"
+					@open-diff="(versionId) => openDiffView(versionId)"
+					@restore="onRestoreConfirm"
+					@show-in-history="onShowVersion"
+					@select-node="onSelectChangedNode"
+				/>
+				<ChatVersionCard
+					v-else-if="isVersionCardMessage(message) && isNonEmptyVersionCard(message)"
+					:version-id="message.data.versionId"
+					:is-current="isCurrentVersionCard(message)"
+					:node-changes="versionNodeChangesMap.get(message.data.versionId) ?? []"
+					:prune-time-hours="workflowHistoryStore.evaluatedPruneTime"
+					:title="message.data.title"
+					:version-index="getVersionIndex(message)"
+					:version-exists="!!message.data.createdAt"
+					@open-diff="(versionId) => openDiffView(versionId)"
+					@restore="(versionId) => onRestoreConfirm(versionId, message.id!)"
+					@show-in-history="onShowVersion"
+					@select-node="onSelectChangedNode"
+				/>
+				<!-- Always render questions message; when answered, collapse to intro text only -->
 				<PlanQuestionsMessage
 					v-if="isPlanModeQuestionsMessage(message)"
 					:questions="message.data.questions"
