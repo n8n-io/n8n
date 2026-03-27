@@ -4,6 +4,13 @@ import { nanoid } from 'nanoid';
 
 import { delegateInputSchema, delegateOutputSchema } from './delegate.schemas';
 import { truncateLabel } from './display-utils';
+import {
+	failTraceRun,
+	finishTraceRun,
+	startSubAgentTrace,
+	traceSubAgentTools,
+	withTraceRun,
+} from './tracing-utils';
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { createSubAgent, SUB_AGENT_PROTOCOL } from '../../agent/sub-agent-factory';
 import { createSubAgentMemory, subAgentResourceId } from '../../memory/sub-agent-memory';
@@ -149,59 +156,76 @@ export async function startDetachedDelegateTask(
 		input.artifacts,
 		input.conversationContext,
 	);
+	const traceRun = await startSubAgentTrace(context, {
+		agentId: subAgentId,
+		role,
+		kind: 'delegate',
+		taskId,
+		plannedTaskId: input.plannedTaskId,
+		inputs: {
+			title: input.title,
+			briefing: input.spec,
+			tools: input.tools,
+			conversationContext: input.conversationContext,
+		},
+	});
+	const tracedTools = traceSubAgentTools(context, validTools, role);
 
 	context.spawnBackgroundTask({
 		taskId,
 		threadId: context.threadId,
 		agentId: subAgentId,
 		role,
+		traceRun,
 		plannedTaskId: input.plannedTaskId,
 		run: async (signal, drainCorrections) => {
-			const memory = MEMORY_ENABLED_ROLES.has(role)
-				? createSubAgentMemory(context.storage, role)
-				: undefined;
+			return await withTraceRun(context, traceRun, async () => {
+				const memory = MEMORY_ENABLED_ROLES.has(role)
+					? createSubAgentMemory(context.storage, role)
+					: undefined;
 
-			const subAgent = createSubAgent({
-				agentId: subAgentId,
-				role,
-				instructions:
-					'Complete the delegated task using the provided tools. Return concrete results only.',
-				tools: validTools,
-				modelId: context.modelId,
-				memory,
+				const subAgent = createSubAgent({
+					agentId: subAgentId,
+					role,
+					instructions:
+						'Complete the delegated task using the provided tools. Return concrete results only.',
+					tools: tracedTools,
+					modelId: context.modelId,
+					memory,
+				});
+
+				registerWithMastra(subAgentId, subAgent, context.storage);
+
+				const memoryOpts = memory
+					? { resource: subAgentResourceId(context.userId, role), thread: subAgentId }
+					: undefined;
+				const stream = await subAgent.stream(briefingMessage, {
+					maxSteps: context.subAgentMaxSteps ?? FALLBACK_MAX_STEPS,
+					abortSignal: signal,
+					providerOptions: {
+						anthropic: { cacheControl: { type: 'ephemeral' } },
+					},
+					...(memoryOpts ? { memory: memoryOpts } : {}),
+				});
+
+				const result = await consumeStreamWithHitl({
+					agent: subAgent,
+					stream: stream as {
+						runId?: string;
+						fullStream: AsyncIterable<unknown>;
+						text: Promise<string>;
+					},
+					runId: context.runId,
+					agentId: subAgentId,
+					eventBus: context.eventBus,
+					threadId: context.threadId,
+					abortSignal: signal,
+					waitForConfirmation: context.waitForConfirmation,
+					drainCorrections,
+				});
+
+				return await result.text;
 			});
-
-			registerWithMastra(subAgentId, subAgent, context.storage);
-
-			const memoryOpts = memory
-				? { resource: subAgentResourceId(context.userId, role), thread: subAgentId }
-				: undefined;
-			const stream = await subAgent.stream(briefingMessage, {
-				maxSteps: context.subAgentMaxSteps ?? FALLBACK_MAX_STEPS,
-				abortSignal: signal,
-				providerOptions: {
-					anthropic: { cacheControl: { type: 'ephemeral' } },
-				},
-				...(memoryOpts ? { memory: memoryOpts } : {}),
-			});
-
-			const result = await consumeStreamWithHitl({
-				agent: subAgent,
-				stream: stream as {
-					runId?: string;
-					fullStream: AsyncIterable<unknown>;
-					text: Promise<string>;
-				},
-				runId: context.runId,
-				agentId: subAgentId,
-				eventBus: context.eventBus,
-				threadId: context.threadId,
-				abortSignal: signal,
-				waitForConfirmation: context.waitForConfirmation,
-				drainCorrections,
-			});
-
-			return await result.text;
 		},
 	});
 
@@ -250,6 +274,18 @@ export function createDelegateTool(context: OrchestrationContext) {
 					goal: input.briefing,
 				},
 			});
+			const traceRun = await startSubAgentTrace(context, {
+				agentId: subAgentId,
+				role: input.role,
+				kind: 'delegate',
+				inputs: {
+					briefing: input.briefing,
+					instructions: input.instructions,
+					tools: input.tools,
+					conversationContext: input.conversationContext,
+				},
+			});
+			const tracedTools = traceSubAgentTools(context, validTools, input.role);
 
 			try {
 				// 3. Create Mastra Memory for this role (if memory-enabled)
@@ -262,7 +298,7 @@ export function createDelegateTool(context: OrchestrationContext) {
 					agentId: subAgentId,
 					role: input.role,
 					instructions: input.instructions,
-					tools: validTools,
+					tools: tracedTools,
 					modelId: context.modelId,
 					memory,
 				});
@@ -281,31 +317,40 @@ export function createDelegateTool(context: OrchestrationContext) {
 				const memoryOpts = memory
 					? { resource: subAgentResourceId(context.userId, input.role), thread: subAgentId }
 					: undefined;
-				const stream = await subAgent.stream(briefingMessage, {
-					maxSteps: context.subAgentMaxSteps ?? FALLBACK_MAX_STEPS,
-					abortSignal: context.abortSignal,
-					providerOptions: {
-						anthropic: { cacheControl: { type: 'ephemeral' } },
-					},
-					...(memoryOpts ? { memory: memoryOpts } : {}),
-				});
+				const resultText = await withTraceRun(context, traceRun, async () => {
+					const stream = await subAgent.stream(briefingMessage, {
+						maxSteps: context.subAgentMaxSteps ?? FALLBACK_MAX_STEPS,
+						abortSignal: context.abortSignal,
+						providerOptions: {
+							anthropic: { cacheControl: { type: 'ephemeral' } },
+						},
+						...(memoryOpts ? { memory: memoryOpts } : {}),
+					});
 
-				const result = await consumeStreamWithHitl({
-					agent: subAgent,
-					stream: stream as {
-						runId?: string;
-						fullStream: AsyncIterable<unknown>;
-						text: Promise<string>;
-					},
-					runId: context.runId,
-					agentId: subAgentId,
-					eventBus: context.eventBus,
-					threadId: context.threadId,
-					abortSignal: context.abortSignal,
-					waitForConfirmation: context.waitForConfirmation,
-				});
+					const result = await consumeStreamWithHitl({
+						agent: subAgent,
+						stream: stream as {
+							runId?: string;
+							fullStream: AsyncIterable<unknown>;
+							text: Promise<string>;
+						},
+						runId: context.runId,
+						agentId: subAgentId,
+						eventBus: context.eventBus,
+						threadId: context.threadId,
+						abortSignal: context.abortSignal,
+						waitForConfirmation: context.waitForConfirmation,
+					});
 
-				const resultText = await result.text;
+					return await result.text;
+				});
+				await finishTraceRun(context, traceRun, {
+					outputs: {
+						result: resultText,
+						agentId: subAgentId,
+						role: input.role,
+					},
+				});
 
 				// 7. Publish agent-completed
 				context.eventBus.publish(context.threadId, {
@@ -322,6 +367,10 @@ export function createDelegateTool(context: OrchestrationContext) {
 			} catch (error) {
 				// 8. Publish agent-completed with error
 				const errorMessage = error instanceof Error ? error.message : String(error);
+				await failTraceRun(context, traceRun, error, {
+					agent_id: subAgentId,
+					agent_role: input.role,
+				});
 
 				context.eventBus.publish(context.threadId, {
 					type: 'agent-completed',

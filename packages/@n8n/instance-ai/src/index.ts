@@ -2,6 +2,10 @@ export { generateCompactionSummary } from './compaction';
 export type { CompactionInput } from './compaction';
 export { createDomainAccessTracker } from './domain-access';
 export type { DomainAccessTracker } from './domain-access';
+export {
+	createInstanceAiTraceContext,
+	continueInstanceAiTraceContext,
+} from './tracing/langsmith-tracing';
 export { createInstanceAgent } from './agent/instance-agent';
 export { createAllTools, createOrchestrationTools } from './tools';
 export { startBuildWorkflowAgentTask } from './tools/orchestration/build-workflow-agent.tool';
@@ -129,6 +133,11 @@ export type {
 	OrchestrationContext,
 	SpawnBackgroundTaskOptions,
 	BackgroundTaskResult,
+	InstanceAiToolTraceOptions,
+	InstanceAiTraceContext,
+	InstanceAiTraceRun,
+	InstanceAiTraceRunFinishOptions,
+	InstanceAiTraceRunInit,
 	WorkflowTaskService,
 	WorkflowSummary,
 	WorkflowDetail,

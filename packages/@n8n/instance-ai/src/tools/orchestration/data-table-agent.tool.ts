@@ -14,6 +14,7 @@ import { z } from 'zod';
 
 import { DATA_TABLE_AGENT_PROMPT } from './data-table-agent.prompt';
 import { truncateLabel } from './display-utils';
+import { startSubAgentTrace, traceSubAgentTools, withTraceRun } from './tracing-utils';
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { createSubAgentMemory, subAgentResourceId } from '../../memory/sub-agent-memory';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
@@ -49,10 +50,10 @@ export interface StartedBackgroundAgentTask {
 	agentId: string;
 }
 
-export function startDataTableAgentTask(
+export async function startDataTableAgentTask(
 	context: OrchestrationContext,
 	input: StartDataTableAgentInput,
-): StartedBackgroundAgentTask {
+): Promise<StartedBackgroundAgentTask> {
 	// Collect data table tools from the domain tools
 	const dataTableTools: ToolsInput = {};
 	for (const name of DATA_TABLE_TOOL_NAMES) {
@@ -88,70 +89,85 @@ export function startDataTableAgentTask(
 			targetResource: { type: 'data-table' as const },
 		},
 	});
+	const traceRun = await startSubAgentTrace(context, {
+		agentId: subAgentId,
+		role: 'data-table-manager',
+		kind: 'data-table',
+		taskId,
+		plannedTaskId: input.plannedTaskId,
+		inputs: {
+			task: input.task,
+			conversationContext: input.conversationContext,
+		},
+	});
+	const tracedDataTableTools = traceSubAgentTools(context, dataTableTools, 'data-table-manager');
 
 	context.spawnBackgroundTask({
 		taskId,
 		threadId: context.threadId,
 		agentId: subAgentId,
 		role: 'data-table-manager',
+		traceRun,
 		plannedTaskId: input.plannedTaskId,
 		run: async (signal, _drainCorrections) => {
-			const dataTableMemory = createSubAgentMemory(context.storage, 'data-table-manager');
+			return await withTraceRun(context, traceRun, async () => {
+				const dataTableMemory = createSubAgentMemory(context.storage, 'data-table-manager');
 
-			const subAgent = new Agent({
-				id: subAgentId,
-				name: 'Data Table Agent',
-				instructions: {
-					role: 'system' as const,
-					content: DATA_TABLE_AGENT_PROMPT,
+				const subAgent = new Agent({
+					id: subAgentId,
+					name: 'Data Table Agent',
+					instructions: {
+						role: 'system' as const,
+						content: DATA_TABLE_AGENT_PROMPT,
+						providerOptions: {
+							anthropic: { cacheControl: { type: 'ephemeral' } },
+						},
+					},
+					model: context.modelId,
+					tools: tracedDataTableTools,
+					memory: dataTableMemory,
+				});
+
+				registerWithMastra(subAgentId, subAgent, context.storage);
+
+				const dtMemoryOpts = dataTableMemory
+					? {
+							resource: subAgentResourceId(context.userId, 'data-table-manager'),
+							thread: subAgentId,
+						}
+					: undefined;
+
+				const conversationCtx = input.conversationContext
+					? `\n\n[CONVERSATION CONTEXT: ${input.conversationContext}]`
+					: '';
+				const briefing = `${input.task}${conversationCtx}`;
+
+				const stream = await subAgent.stream(briefing, {
+					maxSteps: DATA_TABLE_MAX_STEPS,
+					abortSignal: signal,
 					providerOptions: {
 						anthropic: { cacheControl: { type: 'ephemeral' } },
 					},
-				},
-				model: context.modelId,
-				tools: dataTableTools,
-				memory: dataTableMemory,
+					...(dtMemoryOpts ? { memory: dtMemoryOpts } : {}),
+				});
+
+				const hitlResult = await consumeStreamWithHitl({
+					agent: subAgent,
+					stream: stream as {
+						runId?: string;
+						fullStream: AsyncIterable<unknown>;
+						text: Promise<string>;
+					},
+					runId: context.runId,
+					agentId: subAgentId,
+					eventBus: context.eventBus,
+					threadId: context.threadId,
+					abortSignal: signal,
+					waitForConfirmation: context.waitForConfirmation,
+				});
+
+				return await hitlResult.text;
 			});
-
-			registerWithMastra(subAgentId, subAgent, context.storage);
-
-			const dtMemoryOpts = dataTableMemory
-				? {
-						resource: subAgentResourceId(context.userId, 'data-table-manager'),
-						thread: subAgentId,
-					}
-				: undefined;
-
-			const conversationCtx = input.conversationContext
-				? `\n\n[CONVERSATION CONTEXT: ${input.conversationContext}]`
-				: '';
-			const briefing = `${input.task}${conversationCtx}`;
-
-			const stream = await subAgent.stream(briefing, {
-				maxSteps: DATA_TABLE_MAX_STEPS,
-				abortSignal: signal,
-				providerOptions: {
-					anthropic: { cacheControl: { type: 'ephemeral' } },
-				},
-				...(dtMemoryOpts ? { memory: dtMemoryOpts } : {}),
-			});
-
-			const hitlResult = await consumeStreamWithHitl({
-				agent: subAgent,
-				stream: stream as {
-					runId?: string;
-					fullStream: AsyncIterable<unknown>;
-					text: Promise<string>;
-				},
-				runId: context.runId,
-				agentId: subAgentId,
-				eventBus: context.eventBus,
-				threadId: context.threadId,
-				abortSignal: signal,
-				waitForConfirmation: context.waitForConfirmation,
-			});
-
-			return await hitlResult.text;
 		},
 	});
 
@@ -187,7 +203,7 @@ export function createDataTableAgentTool(context: OrchestrationContext) {
 			taskId: z.string(),
 		}),
 		execute: async (input) => {
-			const result = startDataTableAgentTask(context, input);
+			const result = await startDataTableAgentTask(context, input);
 			return await Promise.resolve({ result: result.result, taskId: result.taskId });
 		},
 	});

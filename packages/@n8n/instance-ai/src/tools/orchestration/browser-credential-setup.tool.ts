@@ -5,6 +5,13 @@ import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
+import {
+	failTraceRun,
+	finishTraceRun,
+	startSubAgentTrace,
+	traceSubAgentTools,
+	withTraceRun,
+} from './tracing-utils';
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { executeResumableStream } from '../../runtime/resumable-stream-executor';
 import type { OrchestrationContext } from '../../types';
@@ -173,144 +180,176 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 					tools: Object.keys(browserTools),
 				},
 			});
+			const traceRun = await startSubAgentTrace(context, {
+				agentId: subAgentId,
+				role: 'credential-setup-browser-agent',
+				kind: 'browser-credential-setup',
+				inputs: {
+					credentialType: input.credentialType,
+					docsUrl: input.docsUrl,
+					requiredFields: input.requiredFields?.map((field) => ({
+						name: field.name,
+						type: field.type,
+						required: field.required,
+					})),
+				},
+			});
+			const tracedBrowserTools = traceSubAgentTools(
+				context,
+				browserTools,
+				'credential-setup-browser-agent',
+			);
 
 			try {
-				const subAgent = new Agent({
-					id: subAgentId,
-					name: 'Browser Credential Setup Agent',
-					instructions: {
-						role: 'system' as const,
-						content: BROWSER_AGENT_PROMPT,
+				const resultText = await withTraceRun(context, traceRun, async () => {
+					const subAgent = new Agent({
+						id: subAgentId,
+						name: 'Browser Credential Setup Agent',
+						instructions: {
+							role: 'system' as const,
+							content: BROWSER_AGENT_PROMPT,
+							providerOptions: {
+								anthropic: { cacheControl: { type: 'ephemeral' } },
+							},
+						},
+						model: context.modelId,
+						tools: tracedBrowserTools,
+					});
+
+					registerWithMastra(subAgentId, subAgent, context.storage);
+
+					// Build the briefing
+					const docsInfo = input.docsUrl
+						? `Documentation URL: ${input.docsUrl}`
+						: 'No documentation URL available — search for setup instructions online.';
+
+					// Build fields context so the agent knows exactly what to look for
+					let fieldsInfo = '';
+					if (input.requiredFields && input.requiredFields.length > 0) {
+						const fieldLines = input.requiredFields.map(
+							(f) =>
+								`- ${f.displayName} (${f.name})${f.required ? ' [REQUIRED]' : ''}${f.description ? ': ' + f.description : ''}`,
+						);
+						fieldsInfo = '\n\nCREDENTIAL FIELDS THE USER NEEDS:\n' + fieldLines.join('\n');
+					}
+
+					// For OAuth2 credentials, include the redirect URL so the agent can
+					// paste it directly into the "Authorized redirect URIs" field
+					const isOAuth = input.credentialType.toLowerCase().includes('oauth');
+					const oauthInfo =
+						isOAuth && context.oauth2CallbackUrl
+							? `\n\nOAUTH REDIRECT URL: ${context.oauth2CallbackUrl}\n` +
+								'When creating OAuth client credentials, paste this URL into the "Authorized redirect URIs" field. ' +
+								'Do NOT navigate to the n8n instance to find it — use this URL directly.'
+							: '';
+
+					const briefing =
+						`Set up a credential of type: ${input.credentialType}\n\n` +
+						`${docsInfo}${fieldsInfo}${oauthInfo}\n\n` +
+						'COMPLETION CRITERIA: You are done ONLY when the required credential values ' +
+						'are visible on screen and the user has been told to copy them. ' +
+						'Everything before that is an intermediate step — keep going.';
+
+					// Stream the sub-agent
+					const stream = await subAgent.stream(briefing, {
+						maxSteps: BROWSER_AGENT_MAX_STEPS,
+						abortSignal: context.abortSignal,
 						providerOptions: {
 							anthropic: { cacheControl: { type: 'ephemeral' } },
 						},
-					},
-					model: context.modelId,
-					tools: browserTools,
-				});
-
-				registerWithMastra(subAgentId, subAgent, context.storage);
-
-				// Build the briefing
-				const docsInfo = input.docsUrl
-					? `Documentation URL: ${input.docsUrl}`
-					: 'No documentation URL available — search for setup instructions online.';
-
-				// Build fields context so the agent knows exactly what to look for
-				let fieldsInfo = '';
-				if (input.requiredFields && input.requiredFields.length > 0) {
-					const fieldLines = input.requiredFields.map(
-						(f) =>
-							`- ${f.displayName} (${f.name})${f.required ? ' [REQUIRED]' : ''}${f.description ? ': ' + f.description : ''}`,
-					);
-					fieldsInfo = '\n\nCREDENTIAL FIELDS THE USER NEEDS:\n' + fieldLines.join('\n');
-				}
-
-				// For OAuth2 credentials, include the redirect URL so the agent can
-				// paste it directly into the "Authorized redirect URIs" field
-				const isOAuth = input.credentialType.toLowerCase().includes('oauth');
-				const oauthInfo =
-					isOAuth && context.oauth2CallbackUrl
-						? `\n\nOAUTH REDIRECT URL: ${context.oauth2CallbackUrl}\n` +
-							'When creating OAuth client credentials, paste this URL into the "Authorized redirect URIs" field. ' +
-							'Do NOT navigate to the n8n instance to find it — use this URL directly.'
-						: '';
-
-				const briefing =
-					`Set up a credential of type: ${input.credentialType}\n\n` +
-					`${docsInfo}${fieldsInfo}${oauthInfo}\n\n` +
-					'COMPLETION CRITERIA: You are done ONLY when the required credential values ' +
-					'are visible on screen and the user has been told to copy them. ' +
-					'Everything before that is an intermediate step — keep going.';
-
-				// Stream the sub-agent
-				const stream = await subAgent.stream(briefing, {
-					maxSteps: BROWSER_AGENT_MAX_STEPS,
-					abortSignal: context.abortSignal,
-					providerOptions: {
-						anthropic: { cacheControl: { type: 'ephemeral' } },
-					},
-				});
-
-				let activeStream = {
-					runId: (stream as { runId?: string }).runId,
-					fullStream: stream.fullStream,
-					text: stream.text,
-				};
-				let lastSuspendedToolName = '';
-				const MAX_NUDGES = 3;
-				let nudgeCount = 0;
-
-				while (true) {
-					const result = await executeResumableStream({
-						agent: subAgent,
-						stream: activeStream,
-						context: {
-							threadId: context.threadId,
-							runId: context.runId,
-							agentId: subAgentId,
-							eventBus: context.eventBus,
-							signal: context.abortSignal,
-						},
-						control: {
-							mode: 'auto',
-							waitForConfirmation: async (requestId) => {
-								if (!context.waitForConfirmation) {
-									throw new Error(
-										'Browser agent requires user interaction but no HITL handler is available',
-									);
-								}
-								return await context.waitForConfirmation(requestId);
-							},
-							onSuspension: (suspension) => {
-								lastSuspendedToolName = suspension.toolName ?? '';
-							},
-						},
 					});
 
-					if (result.status === 'cancelled') {
-						throw new Error('Run cancelled while waiting for confirmation');
-					}
+					let activeStream = {
+						runId: (stream as { runId?: string }).runId,
+						fullStream: stream.fullStream,
+						text: stream.text,
+					};
+					let lastSuspendedToolName = '';
+					const MAX_NUDGES = 3;
+					let nudgeCount = 0;
 
-					if (lastSuspendedToolName !== 'pause-for-user' && nudgeCount < MAX_NUDGES) {
-						// Agent ended without a final pause-for-user confirmation.
-						// Re-invoke with a nudge to call pause-for-user.
-						nudgeCount++;
-						const nudge = await subAgent.stream(
-							'You stopped without confirming with the user. Call pause-for-user NOW to ask the user if they have the credential values (Client ID, Client Secret, API Key, etc.) copied and ready to paste into n8n.',
-							{
-								maxSteps: BROWSER_AGENT_MAX_STEPS,
-								abortSignal: context.abortSignal,
-								providerOptions: {
-									anthropic: { cacheControl: { type: 'ephemeral' } },
+					while (true) {
+						const result = await executeResumableStream({
+							agent: subAgent,
+							stream: activeStream,
+							context: {
+								threadId: context.threadId,
+								runId: context.runId,
+								agentId: subAgentId,
+								eventBus: context.eventBus,
+								signal: context.abortSignal,
+							},
+							control: {
+								mode: 'auto',
+								waitForConfirmation: async (requestId) => {
+									if (!context.waitForConfirmation) {
+										throw new Error(
+											'Browser agent requires user interaction but no HITL handler is available',
+										);
+									}
+									return await context.waitForConfirmation(requestId);
+								},
+								onSuspension: (suspension) => {
+									lastSuspendedToolName = suspension.toolName ?? '';
 								},
 							},
-						);
-						activeStream = {
-							runId:
-								(nudge as { runId?: string }).runId ?? (result.mastraRunId || activeStream.runId),
-							fullStream: nudge.fullStream,
-							text: nudge.text,
-						};
-						continue;
+						});
+
+						if (result.status === 'cancelled') {
+							throw new Error('Run cancelled while waiting for confirmation');
+						}
+
+						if (lastSuspendedToolName !== 'pause-for-user' && nudgeCount < MAX_NUDGES) {
+							// Agent ended without a final pause-for-user confirmation.
+							// Re-invoke with a nudge to call pause-for-user.
+							nudgeCount++;
+							const nudge = await subAgent.stream(
+								'You stopped without confirming with the user. Call pause-for-user NOW to ask the user if they have the credential values (Client ID, Client Secret, API Key, etc.) copied and ready to paste into n8n.',
+								{
+									maxSteps: BROWSER_AGENT_MAX_STEPS,
+									abortSignal: context.abortSignal,
+									providerOptions: {
+										anthropic: { cacheControl: { type: 'ephemeral' } },
+									},
+								},
+							);
+							activeStream = {
+								runId:
+									(nudge as { runId?: string }).runId ?? (result.mastraRunId || activeStream.runId),
+								fullStream: nudge.fullStream,
+								text: nudge.text,
+							};
+							continue;
+						}
+
+						return await (result.text ?? activeStream.text ?? Promise.resolve(''));
 					}
-
-					const resultText = await (result.text ?? activeStream.text ?? Promise.resolve(''));
-
-					context.eventBus.publish(context.threadId, {
-						type: 'agent-completed',
-						runId: context.runId,
+				});
+				await finishTraceRun(context, traceRun, {
+					outputs: {
+						result: resultText,
 						agentId: subAgentId,
-						payload: {
-							role: 'credential-setup-browser-agent',
-							result: resultText,
-						},
-					});
+						role: 'credential-setup-browser-agent',
+					},
+				});
 
-					return { result: resultText };
-				}
+				context.eventBus.publish(context.threadId, {
+					type: 'agent-completed',
+					runId: context.runId,
+					agentId: subAgentId,
+					payload: {
+						role: 'credential-setup-browser-agent',
+						result: resultText,
+					},
+				});
+
+				return { result: resultText };
 			} catch (error) {
 				const errorMessage = error instanceof Error ? error.message : String(error);
+				await failTraceRun(context, traceRun, error, {
+					agent_id: subAgentId,
+					agent_role: 'credential-setup-browser-agent',
+				});
 
 				context.eventBus.publish(context.threadId, {
 					type: 'agent-completed',

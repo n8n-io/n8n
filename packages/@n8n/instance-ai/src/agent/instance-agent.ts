@@ -3,9 +3,7 @@ import { Agent } from '@mastra/core/agent';
 import { Mastra } from '@mastra/core/mastra';
 import { ToolSearchProcessor, type ToolSearchProcessorOptions } from '@mastra/core/processors';
 import type { MastraCompositeStore } from '@mastra/core/storage';
-import { withLangsmithMetadata, LangSmithExporter } from '@mastra/langsmith';
 import { MCPClient } from '@mastra/mcp';
-import { buildTracingOptions, Observability } from '@mastra/observability';
 import { nanoid } from 'nanoid';
 
 import { createMemory } from '../memory/memory-config';
@@ -113,14 +111,6 @@ function ensureMastraRegistered(agent: Agent, storage: MastraCompositeStore): vo
 	cachedMastra = new Mastra({
 		agents: { 'n8n-instance-agent': agent },
 		storage,
-		observability: new Observability({
-			configs: {
-				langsmith: {
-					serviceName: 'my-service',
-					exporters: [new LangSmithExporter({ projectName: 'instance-ai' })],
-				},
-			},
-		}),
 	});
 	cachedMastraStorageKey = key;
 }
@@ -233,10 +223,15 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		...orchestratorMcpTools,
 		...localMcpTools,
 	};
+	const tracedOrchestratorTools =
+		orchestrationContext?.tracing?.wrapTools(allOrchestratorTools, {
+			agentRole: 'orchestrator',
+			tags: ['orchestrator'],
+		}) ?? allOrchestratorTools;
 
 	const coreTools: ToolsInput = {};
 	const deferrableTools: ToolsInput = {};
-	for (const [name, tool] of Object.entries(allOrchestratorTools)) {
+	for (const [name, tool] of Object.entries(tracedOrchestratorTools)) {
 		if (ALWAYS_LOADED_TOOLS.has(name)) {
 			coreTools[name] = tool;
 		} else {
@@ -270,14 +265,8 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 			},
 		},
 		model: modelId,
-		tools: hasDeferrableTools ? coreTools : allOrchestratorTools,
+		tools: hasDeferrableTools ? coreTools : tracedOrchestratorTools,
 		inputProcessors: toolSearchProcessor ? [toolSearchProcessor] : undefined,
-		defaultOptions: {
-			tracingOptions: buildTracingOptions(
-				withLangsmithMetadata({ projectName: 'instance-ai' }),
-				(opts) => ({ ...opts, recordInputs: false, recordOutputs: false }),
-			),
-		},
 		memory,
 		workspace: options.workspace,
 	});

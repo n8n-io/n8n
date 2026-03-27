@@ -13,6 +13,7 @@ import { z } from 'zod';
 
 import { truncateLabel } from './display-utils';
 import { RESEARCH_AGENT_PROMPT } from './research-agent-prompt';
+import { startSubAgentTrace, traceSubAgentTools, withTraceRun } from './tracing-utils';
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
 import type { OrchestrationContext } from '../../types';
@@ -34,10 +35,10 @@ export interface StartedResearchAgentTask {
 	agentId: string;
 }
 
-export function startResearchAgentTask(
+export async function startResearchAgentTask(
 	context: OrchestrationContext,
 	input: StartResearchAgentInput,
-): StartedResearchAgentTask {
+): Promise<StartedResearchAgentTask> {
 	const researchTools: ToolsInput = {};
 	const toolNames = ['web-search', 'fetch-url'];
 	for (const name of toolNames) {
@@ -79,51 +80,67 @@ export function startResearchAgentTask(
 	const briefing = input.constraints
 		? `${input.goal}${conversationCtx}\n\nConstraints: ${input.constraints}`
 		: `${input.goal}${conversationCtx}`;
+	const traceRun = await startSubAgentTrace(context, {
+		agentId: subAgentId,
+		role: 'web-researcher',
+		kind: 'research',
+		taskId,
+		plannedTaskId: input.plannedTaskId,
+		inputs: {
+			goal: input.goal,
+			constraints: input.constraints,
+			conversationContext: input.conversationContext,
+		},
+	});
+	const tracedResearchTools = traceSubAgentTools(context, researchTools, 'web-researcher');
 
 	context.spawnBackgroundTask({
 		taskId,
 		threadId: context.threadId,
 		agentId: subAgentId,
 		role: 'web-researcher',
+		traceRun,
 		plannedTaskId: input.plannedTaskId,
 		run: async (signal, drainCorrections) => {
-			const subAgent = new Agent({
-				id: subAgentId,
-				name: 'Web Research Agent',
-				instructions: {
-					role: 'system' as const,
-					content: RESEARCH_AGENT_PROMPT,
+			return await withTraceRun(context, traceRun, async () => {
+				const subAgent = new Agent({
+					id: subAgentId,
+					name: 'Web Research Agent',
+					instructions: {
+						role: 'system' as const,
+						content: RESEARCH_AGENT_PROMPT,
+						providerOptions: {
+							anthropic: { cacheControl: { type: 'ephemeral' } },
+						},
+					},
+					model: context.modelId,
+					tools: tracedResearchTools,
+				});
+
+				registerWithMastra(subAgentId, subAgent, context.storage);
+
+				const stream = await subAgent.stream(briefing, {
+					maxSteps: RESEARCH_MAX_STEPS,
+					abortSignal: signal,
 					providerOptions: {
 						anthropic: { cacheControl: { type: 'ephemeral' } },
 					},
-				},
-				model: context.modelId,
-				tools: researchTools,
+				});
+
+				const { text } = await consumeStreamWithHitl({
+					agent: subAgent,
+					stream,
+					runId: context.runId,
+					agentId: subAgentId,
+					eventBus: context.eventBus,
+					threadId: context.threadId,
+					abortSignal: signal,
+					waitForConfirmation: context.waitForConfirmation,
+					drainCorrections,
+				});
+
+				return await text;
 			});
-
-			registerWithMastra(subAgentId, subAgent, context.storage);
-
-			const stream = await subAgent.stream(briefing, {
-				maxSteps: RESEARCH_MAX_STEPS,
-				abortSignal: signal,
-				providerOptions: {
-					anthropic: { cacheControl: { type: 'ephemeral' } },
-				},
-			});
-
-			const { text } = await consumeStreamWithHitl({
-				agent: subAgent,
-				stream,
-				runId: context.runId,
-				agentId: subAgentId,
-				eventBus: context.eventBus,
-				threadId: context.threadId,
-				abortSignal: signal,
-				waitForConfirmation: context.waitForConfirmation,
-				drainCorrections,
-			});
-
-			return await text;
 		},
 	});
 
@@ -165,7 +182,7 @@ export function createResearchWithAgentTool(context: OrchestrationContext) {
 			taskId: z.string(),
 		}),
 		execute: async (input) => {
-			const result = startResearchAgentTask(context, input);
+			const result = await startResearchAgentTask(context, input);
 			return await Promise.resolve({ result: result.result, taskId: result.taskId });
 		},
 	});

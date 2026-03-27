@@ -23,6 +23,7 @@ export interface StreamRunOptions {
 export interface StreamRunResult {
 	status: 'completed' | 'cancelled' | 'suspended';
 	mastraRunId: string;
+	text?: Promise<string>;
 	suspension?: SuspensionInfo;
 	confirmationEvent?: Extract<InstanceAiEvent, { type: 'confirmation-request' }>;
 }
@@ -80,6 +81,7 @@ async function consumeStream(
 		return {
 			status: 'suspended',
 			mastraRunId: result.mastraRunId,
+			text: result.text,
 			suspension: result.suspension,
 			...(result.confirmationEvent ? { confirmationEvent: result.confirmationEvent } : {}),
 		};
@@ -88,5 +90,6 @@ async function consumeStream(
 	return {
 		status: result.status === 'cancelled' ? 'cancelled' : 'completed',
 		mastraRunId: result.mastraRunId,
+		text: result.text,
 	};
 }
