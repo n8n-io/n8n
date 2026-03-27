@@ -1,6 +1,7 @@
 import type { WebSearchResponse } from '@n8n/instance-ai';
 
-const BRAVE_SEARCH_URL = 'https://api.search.brave.com/res/v1/web/search';
+const BRAVE_SEARCH_PATH = '/res/v1/web/search';
+const BRAVE_SEARCH_URL = `https://api.search.brave.com${BRAVE_SEARCH_PATH}`;
 
 interface BraveWebResult {
 	title: string;
@@ -49,7 +50,9 @@ export async function braveSearch(
 	});
 
 	const useProxy = !!options.proxyConfig;
-	const baseUrl = useProxy ? options.proxyConfig!.apiUrl : BRAVE_SEARCH_URL;
+	const baseUrl = useProxy
+		? `${options.proxyConfig!.apiUrl}${BRAVE_SEARCH_PATH}`
+		: BRAVE_SEARCH_URL;
 	const headers: Record<string, string> = {
 		Accept: 'application/json',
 		'Accept-Encoding': 'gzip',

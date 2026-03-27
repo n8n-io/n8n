@@ -172,7 +172,7 @@ describe('braveSearch', () => {
 
 			expect(mockFetch).toHaveBeenCalledTimes(1);
 			const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit];
-			expect(url).toContain('https://proxy.example.com/brave-search');
+			expect(url).toContain('https://proxy.example.com/brave-search/res/v1/web/search');
 			expect(url).not.toContain('api.search.brave.com');
 			const headers = init.headers as Record<string, string>;
 			expect(headers.Authorization).toBe('Bearer proxy-token');
