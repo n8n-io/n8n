@@ -198,6 +198,7 @@ const onValueChanged = (parameterData: IUpdateInformation) => {
 			:parameters="simpleParameters"
 			:node-values="isWizard ? { parameters: state.node.parameters } : state.node.parameters"
 			:remove-first-parameter-margin="true"
+			:remove-last-parameter-margin="true"
 			:node="state.node"
 			:hide-delete="true"
 			:path="isWizard ? 'parameters' : undefined"
@@ -227,7 +228,7 @@ const onValueChanged = (parameterData: IUpdateInformation) => {
 .body {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--sm);
+	gap: var(--spacing--2xs);
 }
 
 .credentialContainer {
