@@ -7,7 +7,7 @@ import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { userHasScopes } from '@/permissions.ee/check-access';
+import { getUserProjectIdsWithScope } from '@/permissions.ee/check-access';
 import { TypeToNumber } from '../database/entities/insights-shared';
 import type { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
 import type { InsightsCompactionService } from '../insights-compaction.service';
@@ -21,7 +21,7 @@ jest.mock('@n8n/permissions', () => ({
 }));
 
 jest.mock('@/permissions.ee/check-access', () => ({
-	userHasScopes: jest.fn().mockResolvedValue(true),
+	getUserProjectIdsWithScope: jest.fn().mockResolvedValue(['project-1']),
 }));
 
 // Shared user passed to all service method calls
@@ -844,7 +844,7 @@ describe('InsightsService', () => {
 		});
 	});
 
-	describe('authorization', () => {
+	describe('authorization (getEffectiveProjectIds)', () => {
 		const startDate = new Date('2024-01-01');
 		const endDate = new Date('2024-01-07');
 
@@ -854,17 +854,65 @@ describe('InsightsService', () => {
 			);
 		});
 
-		it('should allow access when user has global insights:list scope', async () => {
+		it('global user with no projectId: passes undefined to repository (no filter)', async () => {
 			jest.mocked(hasGlobalScope).mockReturnValue(true);
 
-			await expect(
-				insightsService.getInsightsSummary({ user: anyUser, startDate, endDate }),
-			).resolves.not.toThrow();
+			await insightsService.getInsightsSummary({ user: anyUser, startDate, endDate });
+
+			expect(
+				mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates,
+			).toHaveBeenCalledWith(expect.objectContaining({ projectIds: undefined }));
 		});
 
-		it('should allow access when user has project-level insights:list scope', async () => {
+		it('global user with specific projectId: filters to that project only', async () => {
+			jest.mocked(hasGlobalScope).mockReturnValue(true);
+
+			await insightsService.getInsightsSummary({
+				user: anyUser,
+				startDate,
+				endDate,
+				projectId: 'project-1',
+			});
+
+			expect(
+				mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates,
+			).toHaveBeenCalledWith(expect.objectContaining({ projectIds: ['project-1'] }));
+		});
+
+		it('project user with no projectId: aggregates across all accessible projects', async () => {
 			jest.mocked(hasGlobalScope).mockReturnValue(false);
-			jest.mocked(userHasScopes).mockResolvedValue(true);
+			jest
+				.mocked(getUserProjectIdsWithScope)
+				.mockResolvedValue(['project-1', 'project-2', 'project-3']);
+
+			await insightsService.getInsightsSummary({ user: anyUser, startDate, endDate });
+
+			expect(
+				mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates,
+			).toHaveBeenCalledWith(
+				expect.objectContaining({ projectIds: ['project-1', 'project-2', 'project-3'] }),
+			);
+		});
+
+		it('project user with accessible projectId: filters to that project', async () => {
+			jest.mocked(hasGlobalScope).mockReturnValue(false);
+			jest.mocked(getUserProjectIdsWithScope).mockResolvedValue(['project-1', 'project-2']);
+
+			await insightsService.getInsightsSummary({
+				user: anyUser,
+				startDate,
+				endDate,
+				projectId: 'project-1',
+			});
+
+			expect(
+				mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates,
+			).toHaveBeenCalledWith(expect.objectContaining({ projectIds: ['project-1'] }));
+		});
+
+		it('project user requesting a project they lack access to: throws ForbiddenError', async () => {
+			jest.mocked(hasGlobalScope).mockReturnValue(false);
+			jest.mocked(getUserProjectIdsWithScope).mockResolvedValue(['project-2']);
 
 			await expect(
 				insightsService.getInsightsSummary({
@@ -873,32 +921,15 @@ describe('InsightsService', () => {
 					endDate,
 					projectId: 'project-1',
 				}),
-			).resolves.not.toThrow();
-
-			expect(userHasScopes).toHaveBeenCalledWith(anyUser, ['insights:list'], false, {
-				projectId: 'project-1',
-			});
-		});
-
-		it('should throw ForbiddenError when user lacks global scope and no projectId provided', async () => {
-			jest.mocked(hasGlobalScope).mockReturnValue(false);
-
-			await expect(
-				insightsService.getInsightsSummary({ user: anyUser, startDate, endDate }),
 			).rejects.toThrow(ForbiddenError);
 		});
 
-		it('should throw ForbiddenError when user lacks project-level insights:list scope', async () => {
+		it('project user with no accessible projects: throws ForbiddenError', async () => {
 			jest.mocked(hasGlobalScope).mockReturnValue(false);
-			jest.mocked(userHasScopes).mockResolvedValue(false);
+			jest.mocked(getUserProjectIdsWithScope).mockResolvedValue([]);
 
 			await expect(
-				insightsService.getInsightsSummary({
-					user: anyUser,
-					startDate,
-					endDate,
-					projectId: 'project-1',
-				}),
+				insightsService.getInsightsSummary({ user: anyUser, startDate, endDate }),
 			).rejects.toThrow(ForbiddenError);
 		});
 	});

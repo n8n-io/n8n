@@ -6,15 +6,15 @@ import * as insightsApi from '@/features/execution/insights/insights.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useRBACStore } from '@/app/stores/rbac.store';
 import { transformInsightsSummary } from '@/features/execution/insights/insights.utils';
 import { getResourcePermissions } from '@n8n/permissions';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
 export const useInsightsStore = defineStore('insights', () => {
 	const rootStore = useRootStore();
 	const usersStore = useUsersStore();
 	const settingsStore = useSettingsStore();
-	const rbacStore = useRBACStore();
+	const projectsStore = useProjectsStore();
 
 	const globalInsightsPermissions = computed(
 		() => getResourcePermissions(usersStore.currentUser?.globalScopes).insights,
@@ -60,8 +60,20 @@ export const useInsightsStore = defineStore('insights', () => {
 	}
 
 	function hasProjectInsightsAccess(projectId: string): boolean {
-		return rbacStore.hasScope('insights:list', { projectId });
+		if (globalInsightsPermissions.value.list) return true;
+		const project = projectsStore.myProjects.find((p) => p.id === projectId);
+		return !!getResourcePermissions(project?.scopes).insights.list;
 	}
+
+	// True when the current user can see any insights at all — either via global
+	// access (owner/admin) or via project-level access on at least one project.
+	// Used by both the route guard and the dashboard component.
+	const canViewInsights = computed(
+		() =>
+			isInsightsEnabled.value &&
+			(globalInsightsPermissions.value.list ||
+				projectsStore.myProjects.some((p) => hasProjectInsightsAccess(p.id))),
+	);
 
 	const charts = useAsyncState(
 		async (filter?: InsightsDateFilterDto) => {
@@ -92,6 +104,7 @@ export const useInsightsStore = defineStore('insights', () => {
 		isInsightsEnabled,
 		isSummaryEnabled,
 		isDashboardEnabled,
+		canViewInsights,
 		weeklySummary,
 		projectSummary,
 		fetchProjectSummary,

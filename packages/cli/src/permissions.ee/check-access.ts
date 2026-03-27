@@ -10,6 +10,25 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { RoleService } from '@/services/role.service';
 
 /**
+ * Returns all project IDs where the user has a role containing all of the given scopes.
+ */
+export async function getUserProjectIdsWithScope(user: User, scopes: Scope[]): Promise<string[]> {
+	return (
+		await Container.get(ProjectRepository)
+			.createQueryBuilder('project')
+			.innerJoin('project.projectRelations', 'relation')
+			.innerJoin('relation.role', 'role')
+			.innerJoin('role.scopes', 'scope')
+			.where('relation.userId = :userId', { userId: user.id })
+			.andWhere('scope.slug IN (:...scopes)', { scopes })
+			.groupBy('project.id')
+			.having('COUNT(DISTINCT scope.slug) = :scopeCount', { scopeCount: scopes.length })
+			.select(['project.id AS id'])
+			.getRawMany()
+	).map((row: { id: string }) => row.id);
+}
+
+/**
  * Check if a user has the required scopes. The check can be:
  *
  * - only for scopes in the user's global role, or
@@ -38,20 +57,7 @@ export async function userHasScopes(
 	if (globalOnly) return false;
 
 	// Find which projects the user has access to with the required scopes.
-	// This is done by finding the projects where the user has a role with at least the required scopes
-	const userProjectIds = (
-		await Container.get(ProjectRepository)
-			.createQueryBuilder('project')
-			.innerJoin('project.projectRelations', 'relation')
-			.innerJoin('relation.role', 'role')
-			.innerJoin('role.scopes', 'scope')
-			.where('relation.userId = :userId', { userId: user.id })
-			.andWhere('scope.slug IN (:...scopes)', { scopes })
-			.groupBy('project.id')
-			.having('COUNT(DISTINCT scope.slug) = :scopeCount', { scopeCount: scopes.length })
-			.select(['project.id AS id'])
-			.getRawMany()
-	).map((row: { id: string }) => row.id);
+	const userProjectIds = await getUserProjectIdsWithScope(user, scopes);
 
 	// Find which resource roles are defined to contain the required scopes.
 	// Then find at least one of the above qualifying projects having one of

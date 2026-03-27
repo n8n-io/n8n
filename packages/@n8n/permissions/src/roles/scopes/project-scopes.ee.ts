@@ -88,8 +88,13 @@ export const PERSONAL_PROJECT_OWNER_SCOPES: Scope[] = [
 	'dataTable:listProject',
 	'dataTable:readRow',
 	'dataTable:writeRow',
+	'insights:list',
 ];
 
+// Note: insights:list is intentionally NOT included here. Editors can read and
+// run workflows but do not have access to project-level analytics. Only project
+// admins (REGULAR_PROJECT_ADMIN_SCOPES / PERSONAL_PROJECT_OWNER_SCOPES) and
+// instance owners/admins (global scope) can view insights.
 export const PROJECT_EDITOR_SCOPES: Scope[] = [
 	'workflow:create',
 	'workflow:read',

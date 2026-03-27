@@ -20,11 +20,12 @@ export const InsightsModule: FrontendModuleDescription = {
 			},
 			component: RouterView,
 			meta: {
-				middleware: ['authenticated', 'rbac'],
+				// `rbac` middleware only checks global scopes. Insights also allows access
+				// via project-level insights:list, so we use `custom` to check canViewInsights
+				// which covers both global and project-scoped access.
+				middleware: ['authenticated', 'custom'],
 				middlewareOptions: {
-					rbac: {
-						scope: ['insights:list'],
-					},
+					custom: () => useInsightsStore().canViewInsights,
 				},
 			},
 			children: [
