@@ -1,4 +1,8 @@
-import { N8nSandboxClient, N8nSandboxServiceError } from '../n8n-sandbox-client';
+import {
+	DockerfileStepsBuilder,
+	N8nSandboxClient,
+	N8nSandboxServiceError,
+} from '../n8n-sandbox-client';
 
 function createJsonResponse(body: unknown, init?: ResponseInit): Response {
 	return new Response(JSON.stringify(body), {
@@ -28,49 +32,55 @@ describe('N8nSandboxClient', () => {
 		jest.restoreAllMocks();
 	});
 
-	it('should cache image ids on instantiated images', async () => {
-		const fetchMock = jest
-			.fn()
-			.mockResolvedValueOnce(
-				createJsonResponse({
-					id: 'sandbox-1',
-					status: 'running',
-					provider: 'n8n-sandbox',
-					image_id: 'img-123',
-					created_at: 1,
-					last_active_at: 2,
-				}),
-			)
-			.mockResolvedValueOnce(
-				createJsonResponse({
-					id: 'sandbox-2',
-					status: 'running',
-					provider: 'n8n-sandbox',
-					image_id: 'img-123',
-					created_at: 3,
-					last_active_at: 4,
-				}),
-			) as jest.MockedFunction<typeof fetch>;
+	it('should send dockerfile_steps when DockerfileStepsBuilder is provided', async () => {
+		const fetchMock = jest.fn().mockResolvedValueOnce(
+			createJsonResponse({
+				id: 'sandbox-1',
+				status: 'running',
+				provider: 'n8n-sandbox',
+				image_id: 'img-123',
+				created_at: 1,
+				last_active_at: 2,
+			}),
+		) as jest.MockedFunction<typeof fetch>;
 		global.fetch = fetchMock;
 
 		const client = new N8nSandboxClient({
 			baseUrl: 'https://sandbox.example.com',
 			apiKey: 'sandbox-key',
 		});
-		const image = client.instantiateImage(['echo setup']);
 
-		await client.createSandbox({ image });
-		await client.createSandbox({ image });
+		const dockerfile = new DockerfileStepsBuilder()
+			.run('apt-get update')
+			.run('apt-get install -y git');
 
-		expect(image.imageId).toBe('img-123');
+		await client.createSandbox({ dockerfile });
 
-		const firstBody = bodyToRecord(fetchMock.mock.calls[0]?.[1]?.body);
-		expect(firstBody.setup_commands).toEqual(['echo setup']);
-		expect(firstBody.image).toBeUndefined();
+		const body = bodyToRecord(fetchMock.mock.calls[0]?.[1]?.body);
+		expect(body.dockerfile_steps).toEqual(['RUN apt-get update', 'RUN apt-get install -y git']);
+	});
 
-		const secondBody = bodyToRecord(fetchMock.mock.calls[1]?.[1]?.body);
-		expect(secondBody.image).toBe('img-123');
-		expect(secondBody.setup_commands).toBeUndefined();
+	it('should send no body when no options are provided', async () => {
+		const fetchMock = jest.fn().mockResolvedValueOnce(
+			createJsonResponse({
+				id: 'sandbox-1',
+				status: 'running',
+				provider: 'n8n-sandbox',
+				image_id: '',
+				created_at: 1,
+				last_active_at: 2,
+			}),
+		) as jest.MockedFunction<typeof fetch>;
+		global.fetch = fetchMock;
+
+		const client = new N8nSandboxClient({
+			baseUrl: 'https://sandbox.example.com',
+			apiKey: 'sandbox-key',
+		});
+
+		await client.createSandbox();
+
+		expect(fetchMock.mock.calls[0]?.[1]?.body).toBeUndefined();
 	});
 
 	it('should parse streamed exec output', async () => {

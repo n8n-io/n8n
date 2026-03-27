@@ -122,16 +122,27 @@ export interface N8nSandboxClientOptions {
 	baseUrl?: string;
 }
 
-/** Lazy image placeholder that caches the first resolved service image id. */
-export class N8nSandboxInstantiatedImage {
-	imageId?: string;
+/** Fluent builder for constructing Dockerfile instructions sent at sandbox creation. */
+export class DockerfileStepsBuilder {
+	private readonly steps: string[] = [];
 
-	constructor(readonly setupCommands: string[]) {}
+	/** Append one or more RUN instructions. */
+	run(command: string | string[]): this {
+		const commands = Array.isArray(command) ? command : [command];
+		for (const cmd of commands) {
+			this.steps.push(`RUN ${cmd}`);
+		}
+		return this;
+	}
+
+	build(): string[] {
+		return [...this.steps];
+	}
 }
 
 /** Options used when creating a sandbox instance. */
 interface CreateSandboxOptions {
-	image?: N8nSandboxInstantiatedImage | string;
+	dockerfile?: DockerfileStepsBuilder;
 }
 
 /** Command execution request sent to `/exec`. */
@@ -237,34 +248,19 @@ export class N8nSandboxClient {
 		this.baseUrl = normalizeBaseUrl(options.baseUrl);
 	}
 
-	/** Creates a lazily-resolved image placeholder from setup commands. */
-	instantiateImage(setupCommands: string[]): N8nSandboxInstantiatedImage {
-		return new N8nSandboxInstantiatedImage([...setupCommands]);
-	}
-
 	async createSandbox(options: CreateSandboxOptions = {}): Promise<N8nSandboxRecord> {
 		const body: Record<string, unknown> = {};
 
-		if (options.image instanceof N8nSandboxInstantiatedImage) {
-			if (options.image.imageId) {
-				body.image = options.image.imageId;
-			} else {
-				body.setup_commands = options.image.setupCommands;
-			}
-		} else if (typeof options.image === 'string' && options.image.length > 0) {
-			body.image = options.image;
+		const steps = options.dockerfile?.build();
+		if (steps?.length) {
+			body.dockerfile_steps = steps;
 		}
 
-		const payload = await this.requestJson<CreateSandboxResponse>('POST', '/sandboxes', {
-			body: Object.keys(body).length > 0 ? JSON.stringify(body) : undefined,
-		});
-		const sandbox = mapSandboxRecord(payload);
-
-		if (options.image instanceof N8nSandboxInstantiatedImage && !options.image.imageId) {
-			options.image.imageId = sandbox.imageId || undefined;
-		}
-
-		return sandbox;
+		return mapSandboxRecord(
+			await this.requestJson<CreateSandboxResponse>('POST', '/sandboxes', {
+				body: Object.keys(body).length > 0 ? JSON.stringify(body) : undefined,
+			}),
+		);
 	}
 
 	async getSandbox(id: string): Promise<N8nSandboxRecord> {

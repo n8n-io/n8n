@@ -8,14 +8,14 @@ import type {
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 
-import { N8nSandboxClient, type N8nSandboxInstantiatedImage } from './n8n-sandbox-client';
+import { N8nSandboxClient, type DockerfileStepsBuilder } from './n8n-sandbox-client';
 
 export interface N8nSandboxServiceSandboxOptions {
 	id?: string;
 	apiKey?: string;
 	serviceUrl?: string;
 	timeout?: number;
-	image?: N8nSandboxInstantiatedImage;
+	dockerfile?: DockerfileStepsBuilder;
 }
 
 function shellEscape(value: string): string {
@@ -61,7 +61,7 @@ export class N8nSandboxServiceSandbox extends MastraSandbox {
 		}
 
 		const sandbox = await this.client.createSandbox({
-			image: this.options.image,
+			dockerfile: this.options.dockerfile,
 		});
 		this.sandboxId = sandbox.id;
 	}

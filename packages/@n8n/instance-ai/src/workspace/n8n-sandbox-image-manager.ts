@@ -1,5 +1,4 @@
-import { N8nSandboxClient } from './n8n-sandbox-client';
-import type { N8nSandboxInstantiatedImage } from './n8n-sandbox-client';
+import { DockerfileStepsBuilder } from './n8n-sandbox-client';
 import { BUILD_MJS, PACKAGE_JSON, TSCONFIG_JSON } from './sandbox-setup';
 
 function b64(content: string): string {
@@ -7,32 +6,20 @@ function b64(content: string): string {
 }
 
 export class N8nSandboxImageManager {
-	private readonly client: N8nSandboxClient;
+	private cachedDockerfile: DockerfileStepsBuilder | null = null;
 
-	private cachedImage: N8nSandboxInstantiatedImage | null = null;
+	getDockerfile(): DockerfileStepsBuilder {
+		if (this.cachedDockerfile) return this.cachedDockerfile;
 
-	constructor(config: { serviceUrl?: string; apiKey?: string }) {
-		this.client = new N8nSandboxClient({
-			baseUrl: config.serviceUrl,
-			apiKey: config.apiKey,
-		});
-	}
+		this.cachedDockerfile = new DockerfileStepsBuilder()
+			.run(
+				'mkdir -p /home/user/workspace/src /home/user/workspace/chunks /home/user/workspace/node-types',
+			)
+			.run(`echo '${b64(PACKAGE_JSON)}' | base64 -d > /home/user/workspace/package.json`)
+			.run(`echo '${b64(TSCONFIG_JSON)}' | base64 -d > /home/user/workspace/tsconfig.json`)
+			.run(`echo '${b64(BUILD_MJS)}' | base64 -d > /home/user/workspace/build.mjs`)
+			.run('cd /home/user/workspace && npm install --ignore-scripts');
 
-	ensureImage(): N8nSandboxInstantiatedImage {
-		if (this.cachedImage) return this.cachedImage;
-
-		this.cachedImage = this.client.instantiateImage([
-			'mkdir -p /home/user/workspace/src /home/user/workspace/chunks /home/user/workspace/node-types',
-			`echo '${b64(PACKAGE_JSON)}' | base64 -d > /home/user/workspace/package.json`,
-			`echo '${b64(TSCONFIG_JSON)}' | base64 -d > /home/user/workspace/tsconfig.json`,
-			`echo '${b64(BUILD_MJS)}' | base64 -d > /home/user/workspace/build.mjs`,
-			'cd /home/user/workspace && npm install --ignore-scripts',
-		]);
-
-		return this.cachedImage;
-	}
-
-	invalidate(): void {
-		this.cachedImage = null;
+		return this.cachedDockerfile;
 	}
 }

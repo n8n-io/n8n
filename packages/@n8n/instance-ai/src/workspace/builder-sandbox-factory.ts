@@ -84,13 +84,7 @@ export class BuilderSandboxFactory {
 	}
 
 	private getN8nSandboxImageManager(): N8nSandboxImageManager {
-		const config = this.assertIsN8nSandbox();
-
-		this.n8nSandboxImageManager ??= new N8nSandboxImageManager({
-			apiKey: config.apiKey,
-			serviceUrl: config.serviceUrl,
-		});
-
+		this.n8nSandboxImageManager ??= new N8nSandboxImageManager();
 		return this.n8nSandboxImageManager;
 	}
 
@@ -174,14 +168,14 @@ export class BuilderSandboxFactory {
 	): Promise<BuilderWorkspace> {
 		const config = this.assertIsN8nSandbox();
 
-		const image = this.getN8nSandboxImageManager().ensureImage();
+		const dockerfile = this.getN8nSandboxImageManager().getDockerfile();
 		const catalog = await this.getNodeCatalog(context);
 
 		const sandbox = new N8nSandboxServiceSandbox({
 			apiKey: config.apiKey,
 			serviceUrl: config.serviceUrl,
 			timeout: config.timeout ?? 300_000,
-			image,
+			dockerfile,
 		});
 
 		const workspace = new Workspace({
