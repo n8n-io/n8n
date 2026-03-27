@@ -8,10 +8,6 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-/**
- * Make an API request to Dropbox
- *
- */
 export async function dropboxApiRequest(
 	this: IHookFunctions | IExecuteFunctions,
 	method: IHttpRequestMethods,
@@ -95,6 +91,8 @@ export async function getRootDirectory(this: IHookFunctions | IExecuteFunctions)
 		'POST',
 		'https://api.dropboxapi.com/2/users/get_current_account',
 		{},
+		{},
+		{ 'Content-Type': 'application/json' },
 	);
 }
 
