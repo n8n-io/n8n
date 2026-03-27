@@ -16,7 +16,6 @@ import {
 	type WorkflowState,
 } from '@/app/composables/useWorkflowState';
 import { useUIStore } from '@/app/stores/ui.store';
-import { nodeViewEventBus } from '@/app/event-bus';
 import { needsAgentInput } from '@/app/utils/nodes/nodeTransforms';
 import { generateCodeForAiTransform } from '@/features/ndv/parameters/utils/buttonParameter.utils';
 import type { INodeUi } from '@/Interface';
@@ -159,10 +158,6 @@ vi.mock('@/app/utils/nodes/nodeTransforms', () => ({
 
 vi.mock('@/features/ndv/parameters/utils/buttonParameter.utils', () => ({
 	generateCodeForAiTransform: vi.fn(),
-}));
-
-vi.mock('@/app/event-bus', () => ({
-	nodeViewEventBus: { emit: vi.fn() },
 }));
 
 function createTestNode(overrides: Partial<INodeUi> = {}): INodeUi {

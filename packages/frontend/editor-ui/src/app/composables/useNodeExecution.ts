@@ -44,7 +44,6 @@ export type ExecuteAction =
 	| 'executed'
 	| 'stopped-webhook'
 	| 'stopped-execution'
-	| 'opened-chat'
 	| 'opened-modal'
 	| 'cancelled'
 	| 'noop';
