@@ -81,9 +81,6 @@ catalogs:
     '@types/mime-types':
       specifier: 3.0.1
       version: 3.0.1
-    '@types/node':
-      specifier: ^20.19.21
-      version: 20.19.21
     '@types/uuid':
       specifier: ^10.0.0
       version: 10.0.0
@@ -1240,7 +1237,7 @@ importers:
         specifier: ^9.6.1
         version: 9.6.1
       '@types/node':
-        specifier: 'catalog:'
+        specifier: ^20.17.50
         version: 20.19.21
       '@typescript-eslint/eslint-plugin':
         specifier: ^8.35.0
