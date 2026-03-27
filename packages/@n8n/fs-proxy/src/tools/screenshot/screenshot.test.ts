@@ -5,10 +5,10 @@ import { screenshotTool, screenshotRegionTool } from './screenshot';
 
 jest.mock('node-screenshots');
 
-const mockSharp = jest.fn();
+const mockSharp = jest.fn<unknown, unknown[]>();
 jest.mock('sharp', () => ({
 	__esModule: true,
-	default: (...args: unknown[]) => mockSharp(...args),
+	default: (...args: unknown[]): unknown => mockSharp(...args),
 }));
 
 const MockMonitor = Monitor as jest.MockedClass<typeof Monitor>;
