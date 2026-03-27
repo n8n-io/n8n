@@ -377,10 +377,11 @@ export class InstanceAiService {
 
 	/** Send a correction message to a running background task. */
 	sendCorrectionToTask(
+		threadId: string,
 		taskId: string,
 		correction: string,
 	): 'queued' | 'task-completed' | 'task-not-found' {
-		return this.backgroundTasks.queueCorrection(taskId, correction);
+		return this.backgroundTasks.queueCorrection(threadId, taskId, correction);
 	}
 
 	/** Cancel a single background task by ID. */
@@ -697,7 +698,8 @@ export class InstanceAiService {
 			plannedTaskService,
 			schedulePlannedTasks: async () => await this.schedulePlannedTasks(user, threadId),
 			iterationLog,
-			sendCorrectionToTask: (taskId, correction) => this.sendCorrectionToTask(taskId, correction),
+			sendCorrectionToTask: (taskId, correction) =>
+				this.sendCorrectionToTask(threadId, taskId, correction),
 			workflowTaskService: workflowTasks,
 			workspace: sandboxEntry?.workspace,
 			builderSandboxFactory: this.builderSandboxFactory,

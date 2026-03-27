@@ -232,8 +232,10 @@ export class InstanceAiAdapterService {
 			workflowRepository,
 			sharedWorkflowRepository,
 			workflowHistoryService,
+			allowSendingParameterValues,
 		} = this;
 		const { resolveProjectId } = this.createProjectScopeHelpers(user);
+		const redactParameters = !allowSendingParameterValues;
 
 		return {
 			async list(options) {
@@ -268,7 +270,7 @@ export class InstanceAiAdapterService {
 					throw new Error(`Workflow ${workflowId} not found or not accessible`);
 				}
 
-				return toWorkflowDetail(workflow);
+				return toWorkflowDetail(workflow, { redactParameters });
 			},
 
 			async archive(workflowId: string) {
@@ -303,7 +305,7 @@ export class InstanceAiAdapterService {
 					'workflow:read',
 				]);
 				if (!wf) throw new Error(`Workflow ${workflowId} not found or not accessible`);
-				return toWorkflowJSON(wf);
+				return toWorkflowJSON(wf, { redactParameters });
 			},
 
 			async createFromWorkflowJSON(json: WorkflowJSON, options?: { projectId?: string }) {
@@ -343,7 +345,7 @@ export class InstanceAiAdapterService {
 				} as Partial<WorkflowEntity>);
 				const updated = await workflowService.update(user, updateData, saved.id);
 
-				return toWorkflowDetail(updated);
+				return toWorkflowDetail(updated, { redactParameters });
 			},
 
 			async updateFromWorkflowJSON(
@@ -360,7 +362,7 @@ export class InstanceAiAdapterService {
 				} as Partial<WorkflowEntity>);
 
 				const updated = await workflowService.update(user, updateData, workflowId);
-				return toWorkflowDetail(updated);
+				return toWorkflowDetail(updated, { redactParameters });
 			},
 
 			async listVersions(workflowId, options) {
@@ -412,7 +414,7 @@ export class InstanceAiAdapterService {
 						(n): WorkflowNode => ({
 							name: n.name,
 							type: n.type,
-							parameters: n.parameters as Record<string, unknown>,
+							parameters: redactParameters ? undefined : (n.parameters as Record<string, unknown>),
 							position: n.position,
 						}),
 					),
@@ -2157,7 +2159,11 @@ function sdkPinDataToRuntime(pinData: Record<string, unknown[]> | undefined): IP
 	return result;
 }
 
-function toWorkflowJSON(workflow: WorkflowEntity): WorkflowJSON {
+function toWorkflowJSON(
+	workflow: WorkflowEntity,
+	options?: { redactParameters?: boolean },
+): WorkflowJSON {
+	const redact = options?.redactParameters ?? false;
 	return {
 		id: workflow.id,
 		name: workflow.name,
@@ -2167,7 +2173,7 @@ function toWorkflowJSON(workflow: WorkflowEntity): WorkflowJSON {
 			type: n.type,
 			typeVersion: n.typeVersion,
 			position: n.position,
-			parameters: n.parameters,
+			parameters: redact ? {} : n.parameters,
 			credentials: n.credentials as Record<string, { id?: string; name: string }> | undefined,
 			webhookId: n.webhookId,
 			disabled: n.disabled,
@@ -2178,7 +2184,11 @@ function toWorkflowJSON(workflow: WorkflowEntity): WorkflowJSON {
 	};
 }
 
-function toWorkflowDetail(workflow: WorkflowEntity): WorkflowDetail {
+function toWorkflowDetail(
+	workflow: WorkflowEntity,
+	options?: { redactParameters?: boolean },
+): WorkflowDetail {
+	const redact = options?.redactParameters ?? false;
 	return {
 		id: workflow.id,
 		name: workflow.name,
@@ -2190,7 +2200,7 @@ function toWorkflowDetail(workflow: WorkflowEntity): WorkflowDetail {
 			(n): WorkflowNode => ({
 				name: n.name,
 				type: n.type,
-				parameters: n.parameters,
+				parameters: redact ? undefined : n.parameters,
 				position: n.position,
 				webhookId: n.webhookId,
 			}),

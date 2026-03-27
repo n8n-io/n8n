@@ -271,7 +271,7 @@ export class InstanceAiController {
 		@Body payload: InstanceAiCorrectTaskRequest,
 	) {
 		await this.assertThreadAccess(req.user.id, threadId);
-		this.instanceAiService.sendCorrectionToTask(taskId, payload.message);
+		this.instanceAiService.sendCorrectionToTask(threadId, taskId, payload.message);
 		return { ok: true };
 	}
 
