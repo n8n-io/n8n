@@ -276,7 +276,7 @@ export function assert<T>(condition: T, msg?: string): asserts condition {
 		if (Error.hasOwnProperty('captureStackTrace')) {
 			// V8 only - https://nodejs.org/api/errors.html#errors_error_capturestacktrace_targetobject_constructoropt
 			Error.captureStackTrace(error, assert);
-		} else if (error.stack) {
+		} else if (error.stack && typeof error.stack === 'string') {
 			// fallback for IE and Firefox
 			error.stack = error.stack
 				.split('\n')

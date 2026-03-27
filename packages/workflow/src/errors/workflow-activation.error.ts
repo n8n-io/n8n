@@ -26,7 +26,7 @@ export class WorkflowActivationError extends ExecutionBaseError {
 			error = new Error(cause.message);
 			error.constructor = cause.constructor;
 			error.name = cause.name;
-			error.stack = cause.stack;
+			error.stack = cause.stack ?? '';
 		}
 		super(message, { cause: error });
 		this.node = node;
