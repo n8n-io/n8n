@@ -682,7 +682,9 @@ namespace ExecuteFunctions {
 		[K in NumberReturning.NodeParameter]: number;
 	};
 
-	type NodeParamToReturn<P, Fallback> = P extends keyof NodeParamMap ? NodeParamMap[P] : Fallback;
+	type NodeParamToReturn<P, Fallback = any> = P extends keyof NodeParamMap
+		? NodeParamMap[P]
+		: Fallback;
 
 	export type GetNodeParameterFn = {
 		// @TECH_DEBT: Refactor to remove this barely used overload - N8N-5632
@@ -694,7 +696,7 @@ namespace ExecuteFunctions {
 		getNodeParameter<P extends string>(
 			parameterName: P,
 			itemIndex: number,
-			fallbackValue?: NodeParamToReturn<P, any>,
+			fallbackValue?: NodeParamToReturn<P>,
 			options?: IGetNodeParameterOptions,
 		): NodeParamToReturn<P, NodeParameterValueType | object>;
 	};
