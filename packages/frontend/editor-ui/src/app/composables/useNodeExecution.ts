@@ -31,8 +31,6 @@ import {
 import { needsAgentInput } from '@/app/utils/nodes/nodeTransforms';
 import { generateCodeForAiTransform } from '@/features/ndv/parameters/utils/buttonParameter.utils';
 
-import { nodeViewEventBus } from '@/app/event-bus';
-
 import {
 	WEBHOOK_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
@@ -131,10 +129,6 @@ export function useNodeExecution(
 	const isManualTriggerNode = computed(() => nodeType.value?.name === MANUAL_TRIGGER_NODE_TYPE);
 
 	const isChatNode = computed(() => nodeType.value?.name === CHAT_TRIGGER_NODE_TYPE);
-
-	const isChatChild = computed(() =>
-		nodeRef.value ? workflowsStore.checkIfNodeHasChatParent(nodeRef.value.name) : false,
-	);
 
 	const isFormTriggerNode = computed(() => nodeType.value?.name === FORM_TRIGGER_NODE_TYPE);
 
@@ -350,14 +344,6 @@ export function useNodeExecution(
 		if (shouldGenerateCode.value) {
 			const success = await handleCodeGeneration();
 			if (!success) return 'cancelled';
-		}
-
-		// Chat nodes
-		if (isChatNode.value || (isChatChild.value && ndvStore.isInputPanelEmpty)) {
-			ndvStore.unsetActiveNodeName();
-			workflowsStore.chatPartialExecutionDestinationNode = nodeName;
-			nodeViewEventBus.emit('openChat');
-			return 'opened-chat';
 		}
 
 		// Stop webhook listening

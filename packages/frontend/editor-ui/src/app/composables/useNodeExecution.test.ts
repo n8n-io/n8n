@@ -648,7 +648,7 @@ describe('useNodeExecution', () => {
 			expect(result).toBe('noop');
 		});
 
-		it('should open chat for chat trigger nodes', async () => {
+		it('should call runWorkflow for chat trigger nodes instead of opening chat directly', async () => {
 			mockNodeTypesStore.getNodeType.mockReturnValue({
 				name: CHAT_TRIGGER_NODE_TYPE,
 				group: ['trigger'],
@@ -658,13 +658,15 @@ describe('useNodeExecution', () => {
 			const { execute } = useNodeExecution(node);
 			const result = await execute();
 
-			expect(result).toBe('opened-chat');
-			expect(mockNdvStore.unsetActiveNodeName).toHaveBeenCalled();
-			expect(nodeViewEventBus.emit).toHaveBeenCalledWith('openChat');
-			expect(mockWorkflowsStore.chatPartialExecutionDestinationNode).toBe('Chat Node');
+			expect(result).toBe('executed');
+			expect(mockRunWorkflow.runWorkflow).toHaveBeenCalledWith({
+				destinationNode: { nodeName: 'Chat Node', mode: 'inclusive' },
+				source: 'SetupPanel.ExecuteNodeButton',
+			});
+			expect(nodeViewEventBus.emit).not.toHaveBeenCalledWith('openChat');
 		});
 
-		it('should open chat for chat child nodes when input panel is empty', async () => {
+		it('should call runWorkflow for chat child nodes instead of opening chat', async () => {
 			mockWorkflowsStore.checkIfNodeHasChatParent.mockReturnValue(true);
 			mockNdvStore.isInputPanelEmpty = true;
 			const node = ref(createTestNode({ name: 'Child Node' }));
@@ -672,7 +674,12 @@ describe('useNodeExecution', () => {
 			const { execute } = useNodeExecution(node);
 			const result = await execute();
 
-			expect(result).toBe('opened-chat');
+			expect(result).toBe('executed');
+			expect(mockRunWorkflow.runWorkflow).toHaveBeenCalledWith({
+				destinationNode: { nodeName: 'Child Node', mode: 'inclusive' },
+				source: 'SetupPanel.ExecuteNodeButton',
+			});
+			expect(nodeViewEventBus.emit).not.toHaveBeenCalledWith('openChat');
 		});
 
 		it('should stop webhook when listening', async () => {
