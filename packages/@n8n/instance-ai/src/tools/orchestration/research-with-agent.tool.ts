@@ -128,7 +128,7 @@ export function startResearchAgentTask(
 	});
 
 	return {
-		result: `Research started (task: ${taskId}). Reply with ONE short sentence (max 15 words). Do NOT summarize the plan or list details.`,
+		result: `Research started (task: ${taskId}). Reply with one short sentence. Do NOT summarize the plan or list details.`,
 		taskId,
 		agentId: subAgentId,
 	};

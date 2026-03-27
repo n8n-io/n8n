@@ -533,7 +533,7 @@ export async function startBuildWorkflowAgentTask(
 	});
 
 	return {
-		result: `Workflow build started (task: ${taskId}). Reply with ONE short sentence (max 15 words) — e.g. name what's being built. Do NOT summarize the plan or list details.`,
+		result: `Workflow build started (task: ${taskId}). Reply with one short sentence — e.g. name what's being built. Do NOT summarize the plan or list details.`,
 		taskId,
 		agentId: subAgentId,
 	};
