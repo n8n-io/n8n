@@ -32,6 +32,7 @@ export const providerDisplayNames: Record<ChatHubProvider, string> = {
 	deepSeek: 'DeepSeek',
 	cohere: 'Cohere',
 	mistralCloud: 'Mistral Cloud',
+	miniMax: 'MiniMax',
 	n8n: 'Workflow agent',
 	'custom-agent': 'Personal agent',
 };
