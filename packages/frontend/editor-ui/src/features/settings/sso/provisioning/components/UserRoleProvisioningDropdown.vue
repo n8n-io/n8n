@@ -4,7 +4,7 @@ import { N8nOption, N8nSelect } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { type SupportedProtocolType } from '../../sso.store';
 import { useRBACStore } from '@/app/stores/rbac.store';
-import { usePostHog } from '@/app/stores/posthog.store';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 
 export type UserRoleProvisioningSetting =
 	| 'disabled'
@@ -20,7 +20,7 @@ const { authProtocol } = defineProps<{
 
 const i18n = useI18n();
 const canManageUserProvisioning = useRBACStore().hasScope('provisioning:manage');
-const posthogStore = usePostHog();
+const { check: isEnvFeatEnabled } = useEnvFeatureFlag();
 
 const handleUserRoleProvisioningChange = (newValue: UserRoleProvisioningSetting) => {
 	value.value = newValue;
@@ -49,7 +49,7 @@ const baseOptions: UserRoleProvisioningDescription[] = [
 ];
 
 const userRoleProvisioningDescriptions = computed<UserRoleProvisioningDescription[]>(() => {
-	if (posthogStore.isFeatureEnabled('expression_based_role_mapping')) {
+	if (isEnvFeatEnabled.value('ROLE_MAPPING_RULES')) {
 		return [
 			...baseOptions,
 			{
