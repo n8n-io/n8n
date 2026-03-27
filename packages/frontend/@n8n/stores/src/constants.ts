@@ -52,4 +52,5 @@ export const STORES = {
 	EXPERIMENT_CREDENTIALS_APP_SELECTION: 'credentialsAppSelection',
 	SETUP_PANEL: 'setupPanel',
 	FOCUSED_NODES: 'focusedNodes',
+	FAVORITES: 'favorites',
 } as const;

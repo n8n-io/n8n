@@ -46,6 +46,7 @@ export class ModuleRegistry {
 		'ldap',
 		'quick-connect',
 		'workflow-builder',
+		'favorites',
 		'redaction',
 		'instance-registry',
 		'otel',

@@ -34,6 +34,7 @@ const alias = [
 	},
 	// Ensure bare imports resolve to sources (not dist)
 	{ find: '@n8n/i18n', replacement: resolve(packagesDir, 'frontend', '@n8n', 'i18n', 'src') },
+	{ find: '@n8n/stores', replacement: resolve(packagesDir, 'frontend', '@n8n', 'stores', 'src') },
 	{ find: '@n8n/chat-hub', replacement: resolve(packagesDir, '@n8n', 'chat-hub', 'src') },
 	{
 		find: /^@n8n\/chat(.+)$/,
