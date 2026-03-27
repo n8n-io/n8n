@@ -1,15 +1,15 @@
 <script lang="ts" setup>
-import { ref, computed } from 'vue';
-import { N8nIcon, type IconName } from '@n8n/design-system';
+import { N8nButton, type IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { computed, ref } from 'vue';
 import { useInstanceAiStore, type PendingConfirmationItem } from '../instanceAi.store';
 import { useToolLabel } from '../toolLabels';
 import DomainAccessApproval from './DomainAccessApproval.vue';
 import InstanceAiCredentialSetup from './InstanceAiCredentialSetup.vue';
-import InstanceAiWorkflowSetup from './InstanceAiWorkflowSetup.vue';
-import InstanceAiQuestions from './InstanceAiQuestions.vue';
-import PlanReviewPanel, { type PlannedTaskArg } from './PlanReviewPanel.vue';
 import type { QuestionAnswer } from './InstanceAiQuestions.vue';
+import InstanceAiQuestions from './InstanceAiQuestions.vue';
+import InstanceAiWorkflowSetup from './InstanceAiWorkflowSetup.vue';
+import PlanReviewPanel, { type PlannedTaskArg } from './PlanReviewPanel.vue';
 
 const store = useInstanceAiStore();
 const i18n = useI18n();
@@ -160,79 +160,66 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 			<!-- ============ Standalone items (no approval wrapper) ============ -->
 			<template v-if="chunk.type === 'standalone'">
 				<!-- Workflow setup -->
-				<div
+				<InstanceAiWorkflowSetup
 					v-if="chunk.item.toolCall.confirmation!.setupRequests?.length"
 					:key="'setup-' + chunk.item.toolCall.confirmation!.requestId"
-					:class="$style.standalone"
-				>
-					<InstanceAiWorkflowSetup
-						:request-id="chunk.item.toolCall.confirmation!.requestId"
-						:setup-requests="chunk.item.toolCall.confirmation!.setupRequests!"
-						:workflow-id="chunk.item.toolCall.confirmation!.workflowId ?? ''"
-						:message="chunk.item.toolCall.confirmation!.message"
-						:project-id="chunk.item.toolCall.confirmation!.projectId"
-						:credential-flow="chunk.item.toolCall.confirmation!.credentialFlow"
-					/>
-				</div>
+					:class="$style.confirmation"
+					:request-id="chunk.item.toolCall.confirmation!.requestId"
+					:setup-requests="chunk.item.toolCall.confirmation!.setupRequests!"
+					:workflow-id="chunk.item.toolCall.confirmation!.workflowId ?? ''"
+					:message="chunk.item.toolCall.confirmation!.message"
+					:project-id="chunk.item.toolCall.confirmation!.projectId"
+					:credential-flow="chunk.item.toolCall.confirmation!.credentialFlow"
+				/>
 
 				<!-- Credential setup -->
-				<div
+				<InstanceAiCredentialSetup
 					v-else-if="chunk.item.toolCall.confirmation!.credentialRequests?.length"
 					:key="'cred-' + chunk.item.toolCall.confirmation!.requestId"
-					:class="$style.standalone"
-				>
-					<InstanceAiCredentialSetup
-						:request-id="chunk.item.toolCall.confirmation!.requestId"
-						:credential-requests="chunk.item.toolCall.confirmation!.credentialRequests!"
-						:message="chunk.item.toolCall.confirmation!.message"
-						:project-id="chunk.item.toolCall.confirmation!.projectId"
-						:credential-flow="chunk.item.toolCall.confirmation!.credentialFlow"
-					/>
-				</div>
+					:class="$style.confirmation"
+					:request-id="chunk.item.toolCall.confirmation!.requestId"
+					:credential-requests="chunk.item.toolCall.confirmation!.credentialRequests!"
+					:message="chunk.item.toolCall.confirmation!.message"
+					:project-id="chunk.item.toolCall.confirmation!.projectId"
+					:credential-flow="chunk.item.toolCall.confirmation!.credentialFlow"
+				/>
 
 				<!-- Structured questions -->
-				<div
+				<InstanceAiQuestions
 					v-else-if="
 						chunk.item.toolCall.confirmation!.inputType === 'questions' &&
 						chunk.item.toolCall.confirmation!.questions
 					"
 					:key="'q-' + chunk.item.toolCall.confirmation!.requestId"
-					:class="$style.standalone"
-				>
-					<InstanceAiQuestions
-						:questions="chunk.item.toolCall.confirmation!.questions!"
-						:intro-message="chunk.item.toolCall.confirmation!.introMessage"
-						@submit="
-							(answers) =>
-								handleQuestionsSubmit(chunk.item.toolCall.confirmation!.requestId, answers)
-						"
-					/>
-				</div>
+					:class="$style.confirmation"
+					:questions="chunk.item.toolCall.confirmation!.questions!"
+					:intro-message="chunk.item.toolCall.confirmation!.introMessage"
+					@submit="
+						(answers) => handleQuestionsSubmit(chunk.item.toolCall.confirmation!.requestId, answers)
+					"
+				/>
 
 				<!-- Plan review -->
-				<div
+				<PlanReviewPanel
 					v-else-if="chunk.item.toolCall.confirmation!.inputType === 'plan-review'"
 					:key="'plan-' + chunk.item.toolCall.confirmation!.requestId"
-					:class="$style.standalone"
-				>
-					<PlanReviewPanel
-						:planned-tasks="(chunk.item.toolCall.args?.tasks as PlannedTaskArg[] | undefined) ?? []"
-						:message="chunk.item.toolCall.confirmation!.message"
-						@approve="handlePlanApprove(chunk.item.toolCall.confirmation!.requestId)"
-						@request-changes="
-							(feedback) =>
-								handlePlanRequestChanges(chunk.item.toolCall.confirmation!.requestId, feedback)
-						"
-					/>
-				</div>
+					:class="$style.confirmation"
+					:planned-tasks="(chunk.item.toolCall.args?.tasks as PlannedTaskArg[] | undefined) ?? []"
+					:message="chunk.item.toolCall.confirmation!.message"
+					@approve="handlePlanApprove(chunk.item.toolCall.confirmation!.requestId)"
+					@request-changes="
+						(feedback) =>
+							handlePlanRequestChanges(chunk.item.toolCall.confirmation!.requestId, feedback)
+					"
+				/>
 
 				<!-- Text input (ask-user) -->
 				<div
 					v-else-if="chunk.item.toolCall.confirmation!.inputType === 'text'"
 					:key="'text-' + chunk.item.toolCall.confirmation!.requestId"
-					:class="$style.standalone"
+					:class="$style.confirmation"
 				>
-					<div :class="$style.confirmBody">
+					<div :class="$style.textInputContainer">
 						<div :class="$style.confirmMessage">
 							{{ chunk.item.toolCall.confirmation!.message }}
 						</div>
@@ -244,22 +231,44 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 								:placeholder="i18n.baseText('instanceAi.askUser.placeholder')"
 								@keydown.enter="handleTextSubmit(chunk.item.toolCall.confirmation!.requestId)"
 							/>
-							<button
+							<!-- <N8nButton
+										data-test-id="instance-ai-panel-confirm-deny"
+										size="small"
+										variant="outline"
+										@click="handleConfirm(item.toolCall.confirmation!.requestId, false)"
+									>
+										{{ i18n.baseText('instanceAi.confirmation.deny') }}
+									</N8nButton>
+									<N8nButton
+										:variant="
+											item.toolCall.confirmation!.severity === 'destructive'
+												? 'destructive'
+												: 'solid'
+										"
+										data-test-id="instance-ai-panel-confirm-approve"
+										size="small"
+										@click="handleConfirm(item.toolCall.confirmation!.requestId, true)"
+									>
+										{{ i18n.baseText('instanceAi.confirmation.approve') }}
+									</N8nButton> -->
+							<N8nButton
 								v-if="!(textInputValues[chunk.item.toolCall.confirmation!.requestId] ?? '').trim()"
-								:class="[$style.btn, $style.secondaryBtn]"
+								size="small"
+								variant="outline"
 								@click="handleTextSkip(chunk.item.toolCall.confirmation!.requestId)"
 							>
 								{{ i18n.baseText('instanceAi.askUser.skip') }}
-							</button>
-							<button
-								:class="[$style.btn, $style.approveBtn]"
+							</N8nButton>
+							<N8nButton
+								size="small"
+								variant="solid"
 								:disabled="
 									!(textInputValues[chunk.item.toolCall.confirmation!.requestId] ?? '').trim()
 								"
 								@click="handleTextSubmit(chunk.item.toolCall.confirmation!.requestId)"
 							>
 								{{ i18n.baseText('instanceAi.askUser.submit') }}
-							</button>
+							</N8nButton>
 						</div>
 					</div>
 				</div>
@@ -269,27 +278,29 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 			<div
 				v-else
 				:key="'group-' + chunk.agentId"
-				:class="$style.root"
+				:class="[$style.root, $style.confirmation]"
 				data-test-id="instance-ai-confirmation-panel"
 			>
 				<!-- Group header -->
-				<div :class="$style.header">
-					<N8nIcon icon="circle-pause" size="small" :class="$style.headerIcon" />
-					<span :class="$style.headerLabel">
-						{{
-							i18n.baseText('instanceAi.confirmation.agentContext', {
-								interpolate: { agent: getRoleLabel(chunk.role) },
-							})
-						}}
-					</span>
-					<button
-						v-if="isAllGenericApproval(chunk.items) && chunk.items.length > 1"
-						:class="[$style.btn, $style.approveBtn, $style.batchBtn]"
-						@click="handleApproveAll(chunk.items)"
-					>
-						{{ i18n.baseText('instanceAi.confirmation.approveAll') }}
-					</button>
-				</div>
+				<template v-if="isAllGenericApproval(chunk.items) && chunk.items.length > 1">
+					<div style="margin-bottom: 10px">
+						<!-- <N8nIcon icon="circle-pause" size="small" :class="$style.headerIcon" /> -->
+						<span :class="$style.headerLabel">
+							asdasdasda
+							{{
+								i18n.baseText('instanceAi.confirmation.agentContext', {
+									interpolate: { agent: getRoleLabel(chunk.role) },
+								})
+							}}
+						</span>
+						<button
+							:class="[$style.btn, $style.approveBtn, $style.batchBtn]"
+							@click="handleApproveAll(chunk.items)"
+						>
+							{{ i18n.baseText('instanceAi.confirmation.approveAll') }}
+						</button>
+					</div>
+				</template>
 
 				<!-- Items -->
 				<div :class="$style.items">
@@ -304,48 +315,40 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 							:request-id="item.toolCall.confirmation!.requestId"
 							:url="item.toolCall.confirmation!.domainAccess!.url"
 							:host="item.toolCall.confirmation!.domainAccess!.host"
+							:severity="item.toolCall.confirmation!.severity"
 						/>
 
 						<!-- Generic approval -->
 						<div v-else :class="$style.confirmBody">
 							<div :class="$style.approvalRow">
-								<span :class="$style.toolLabel">
-									<N8nIcon
-										:icon="getSeverityIcon(item.toolCall.confirmation!.severity)"
-										size="small"
-										:class="[
-											item.toolCall.confirmation!.severity === 'destructive'
-												? $style.destructiveIcon
-												: '',
-											item.toolCall.confirmation!.severity === 'warning' ? $style.warningIcon : '',
-											item.toolCall.confirmation!.severity === 'info' ? $style.infoIcon : '',
-										]"
-									/>
-									{{ getToolLabel(item.toolCall.toolName) }}
-								</span>
-								<span :class="$style.approvalMessage">{{
-									item.toolCall.confirmation!.message
-								}}</span>
+								<div :class="$style.approvalRowBody">
+									<span :class="$style.toolLabel">
+										{{ getToolLabel(item.toolCall.toolName) }}
+									</span>
+									<span :class="$style.preview">{{ item.toolCall.confirmation!.message }}</span>
+								</div>
+
 								<div :class="$style.approvalActions">
-									<button
-										:class="[$style.btn, $style.secondaryBtn]"
+									<N8nButton
 										data-test-id="instance-ai-panel-confirm-deny"
+										size="small"
+										variant="outline"
 										@click="handleConfirm(item.toolCall.confirmation!.requestId, false)"
 									>
 										{{ i18n.baseText('instanceAi.confirmation.deny') }}
-									</button>
-									<button
-										:class="[
-											$style.btn,
+									</N8nButton>
+									<N8nButton
+										:variant="
 											item.toolCall.confirmation!.severity === 'destructive'
-												? $style.approveDestructiveBtn
-												: $style.approveBtn,
-										]"
+												? 'destructive'
+												: 'solid'
+										"
 										data-test-id="instance-ai-panel-confirm-approve"
+										size="small"
 										@click="handleConfirm(item.toolCall.confirmation!.requestId, true)"
 									>
 										{{ i18n.baseText('instanceAi.confirmation.approve') }}
-									</button>
+									</N8nButton>
 								</div>
 							</div>
 						</div>
@@ -357,20 +360,40 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 </template>
 
 <style lang="scss" module>
-.standalone {
+// .standalone {
+// 	margin-top: var(--spacing--xs);
+// 	margin-bottom: var(--spacing--sm);
+// 	max-width: 90%;
+// }
+
+.confirmation {
 	margin-top: var(--spacing--xs);
 	margin-bottom: var(--spacing--sm);
 	max-width: 90%;
+	width: 90%;
 }
 
 .root {
-	margin-top: var(--spacing--xs);
-	margin-bottom: var(--spacing--sm);
-	max-width: 90%;
-	border: 1px solid var(--color--warning--tint-1);
+	// margin-top: var(--spacing--xs);
+	// margin-bottom: var(--spacing--sm);
+	// max-width: 90%;
+	// width: 90%;
+	border: var(--border);
+	// padding: var(--spacing--xs) var(--spacing--sm);
 	border-radius: var(--radius--lg);
-	background: var(--color--background);
-	overflow: hidden;
+	// // border: 1px solid var(--color--warning--tint-1);
+	// // border-radius: var(--radius--lg);
+	// // background: var(--color--background);
+
+	// border-radius: var(--radius--lg);
+	// border: var(--border);
+	// background-color: var(--color--background--light-3);
+	// padding: var(--card--padding, var(--spacing--sm));
+	// display: flex;
+	// width: 100%;
+	// align-items: center;
+
+	// overflow: hidden;
 }
 
 .header {
@@ -389,7 +412,7 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 }
 
 .headerLabel {
-	font-weight: var(--font-weight--bold);
+	// font-weight: var(--font-weight--bold);
 	flex: 1;
 	min-width: 0;
 }
@@ -410,7 +433,7 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 }
 
 .confirmBody {
-	padding: var(--spacing--2xs) var(--spacing--xs);
+	// padding: var(--spacing--2xs) var(--spacing--xs);
 }
 
 .confirmMessage {
@@ -429,13 +452,13 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 
 .toolLabel {
 	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	font-weight: var(--font-weight--bold);
-	font-family: var(--font-family--monospace);
-	font-size: var(--font-size--3xs);
-	color: var(--color--text);
 	white-space: nowrap;
+	align-items: flex-start;
+	gap: var(--spacing--3xs);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text);
+	margin-bottom: var(--spacing--xs);
+	font-weight: var(--font-weight--medium);
 }
 
 .approvalMessage {
@@ -443,10 +466,31 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 	word-break: break-word;
 }
 
+.approvalRowBody {
+	padding: var(--spacing--sm) var(--spacing--sm);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
+}
+
 .approvalActions {
 	display: flex;
-	gap: var(--spacing--4xs);
+	gap: var(--spacing--2xs);
 	justify-content: flex-end;
+	border-top: var(--border);
+	padding: var(--spacing--xs) var(--spacing--sm);
+}
+
+.preview {
+	font-family: monospace;
+	font-size: var(--font-size--3xs);
+	color: var(--color--text--tint-1);
+	word-break: break-all;
+	margin-bottom: var(--spacing--xs);
+	padding: var(--spacing--2xs);
+	background: var(--color--background);
+	border-radius: var(--radius);
+	border: var(--border);
 }
 
 .destructiveIcon {
@@ -468,6 +512,13 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+}
+
+.textInputContainer {
+	padding: var(--spacing--xs) var(--spacing--sm);
+	border: var(--border);
+	// padding: var(--spacing--xs) var(--spacing--sm);
+	border-radius: var(--radius--lg);
 }
 
 .textInput {
