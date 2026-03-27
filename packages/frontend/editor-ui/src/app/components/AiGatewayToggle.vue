@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { watch } from 'vue';
 import { N8nCallout, N8nSwitch2, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useAiGateway } from '@/app/composables/useAiGateway';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 const props = defineProps<{
 	aiGatewayEnabled: boolean;
@@ -12,7 +14,25 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const { creditsQuota } = useAiGateway();
+const workflowsStore = useWorkflowsStore();
+const { creditsRemaining, fetchCredits } = useAiGateway();
+
+// Fetch when enabled (on mount if already enabled, or when toggled on)
+watch(
+	() => props.aiGatewayEnabled,
+	(enabled) => {
+		if (enabled) void fetchCredits();
+	},
+	{ immediate: true },
+);
+
+// Refresh after each execution so the badge reflects consumed credits
+watch(
+	() => workflowsStore.workflowExecutionData,
+	() => {
+		if (props.aiGatewayEnabled) void fetchCredits();
+	},
+);
 </script>
 
 <template>
@@ -29,11 +49,11 @@ const { creditsQuota } = useAiGateway();
 		</div>
 		<N8nCallout v-if="props.aiGatewayEnabled" theme="success" iconless>
 			{{ i18n.baseText('aiGateway.toggle.description') }}
-			<template #trailingContent>
+			<template v-if="creditsRemaining !== undefined" #trailingContent>
 				<span :class="$style.tokensBadge">
 					{{
 						i18n.baseText('aiGateway.toggle.tokensRemaining', {
-							interpolate: { count: String(creditsQuota) },
+							interpolate: { count: String(creditsRemaining) },
 						})
 					}}
 				</span>

@@ -15,6 +15,11 @@ interface GatewayTokenResponse {
 	expiresIn: number;
 }
 
+interface GatewayCreditsResponse {
+	creditsQuota: number;
+	creditsRemaining: number;
+}
+
 /**
  * Per-provider routing config.
  *
@@ -70,6 +75,34 @@ export class AiGatewayService {
 
 		const jwt = await this.getOrFetchToken(userId);
 		return { [config.apiKeyField]: jwt, [config.urlField]: `${baseUrl}${config.gatewayPath}` };
+	}
+
+	/**
+	 * Returns the current credits quota and remaining credits for the given user.
+	 */
+	async getCreditsRemaining(userId: string): Promise<GatewayCreditsResponse> {
+		const baseUrl = this.globalConfig.aiAssistant.baseUrl;
+		if (!baseUrl) {
+			throw new UserError('AI Gateway is not configured. Set the AI assistant base URL.');
+		}
+
+		const licenseCert = await this.license.loadCertStr();
+		const response = await fetch(`${baseUrl}/v1/gateway/credits`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ licenseCert, instanceId: this.instanceSettings.instanceId, userId }),
+		});
+
+		if (!response.ok) {
+			throw new UserError(`Failed to fetch AI Gateway credits: HTTP ${response.status}`);
+		}
+
+		const data = (await response.json()) as GatewayCreditsResponse;
+		if (typeof data.creditsQuota !== 'number' || typeof data.creditsRemaining !== 'number') {
+			throw new UserError('AI Gateway returned an invalid credits response.');
+		}
+
+		return data;
 	}
 
 	/**

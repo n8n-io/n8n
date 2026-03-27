@@ -24,6 +24,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ContentTooLargeError } from '@/errors/response-errors/content-too-large.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { TooManyRequestsError } from '@/errors/response-errors/too-many-requests.error';
+import { AiGatewayService } from '@/services/ai-gateway.service';
 import { AiUsageService } from '@/services/ai-usage.service';
 import { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
 import { AiService } from '@/services/ai.service';
@@ -39,6 +40,7 @@ export class AiController {
 		private readonly credentialsService: CredentialsService,
 		private readonly userService: UserService,
 		private readonly aiUsageService: AiUsageService,
+		private readonly aiGatewayService: AiGatewayService,
 	) {}
 
 	// Use usesTemplates flag to bypass the send() wrapper which would cause
@@ -250,6 +252,18 @@ export class AiController {
 				payload.codeBuilder,
 			);
 			return sessions;
+		} catch (e) {
+			assert(e instanceof Error);
+			throw new InternalServerError(e.message, e);
+		}
+	}
+
+	@Get('/gateway/credits')
+	async getGatewayCredits(
+		req: AuthenticatedRequest,
+	): Promise<{ creditsQuota: number; creditsRemaining: number }> {
+		try {
+			return await this.aiGatewayService.getCreditsRemaining(req.user.id);
 		} catch (e) {
 			assert(e instanceof Error);
 			throw new InternalServerError(e.message, e);
