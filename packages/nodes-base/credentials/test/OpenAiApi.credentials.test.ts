@@ -9,9 +9,24 @@ describe('OpenAiApi Credential', () => {
 		expect(openAiApi.name).toBe('openAiApi');
 		expect(openAiApi.displayName).toBe('OpenAi');
 		expect(openAiApi.documentationUrl).toBe('openai');
-		expect(openAiApi.properties).toHaveLength(6);
+		expect(openAiApi.properties).toHaveLength(11);
 		expect(openAiApi.test.request.baseURL).toBe('={{$credentials?.url}}');
 		expect(openAiApi.test.request.url).toBe('/models');
+	});
+
+	it('should have SSL certificate fields hidden behind the sslCertificatesEnabled toggle', () => {
+		const sslToggle = openAiApi.properties.find((p) => p.name === 'sslCertificatesEnabled');
+		expect(sslToggle).toBeDefined();
+		expect(sslToggle?.type).toBe('boolean');
+		expect(sslToggle?.default).toBe(false);
+
+		const sslFields = ['ca', 'cert', 'key', 'passphrase'];
+		for (const fieldName of sslFields) {
+			const field = openAiApi.properties.find((p) => p.name === fieldName);
+			expect(field).toBeDefined();
+			expect(field?.displayOptions).toEqual({ show: { sslCertificatesEnabled: [true] } });
+			expect(field?.typeOptions).toEqual({ password: true });
+		}
 	});
 
 	describe('authenticate', () => {
