@@ -225,11 +225,12 @@ export class Zammad implements INodeType {
 
 			/**
 			 * PUT /tickets requires customer ID instead of customer email.
+			 * Zammad API constraint: Any listings will return users own information only. -> https://docs.zammad.org/en/latest/api/user.html
 			 */
 			async loadCustomerIds(this: ILoadOptionsFunctions) {
 				const users = (await zammadApiRequest.call(this, 'GET', '/users')) as ZammadTypes.User[];
 
-				return users.filter(isCustomer).map((i) => ({ name: `${i.email}`, value: i.id }));
+				return users.filter(isCustomer).map((i) => ({ name: i.email, value: i.id }));
 			},
 
 			async loadGroups(this: ILoadOptionsFunctions) {
@@ -247,7 +248,7 @@ export class Zammad implements INodeType {
 
 				return orgs.filter(isNotZammadFoundation).map((i) => ({ name: i.name, value: i.id }));
 			},
-			// Zammad API constraint: Any listings will return users own information only. -> https://docs.zammad.org/en/latest/api/user.html
+
 			async loadUsers(this: ILoadOptionsFunctions) {
 				const users = (await zammadApiRequest.call(this, 'GET', '/users')) as ZammadTypes.User[];
 

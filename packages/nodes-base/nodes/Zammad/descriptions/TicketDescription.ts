@@ -406,6 +406,7 @@ export const ticketDescription: INodeProperties[] = [
 				description: 'Internal note for the ticket',
 			},
 			{
+				/* eslint-disable n8n-nodes-base/node-param-description-wrong-for-dynamic-options, n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options */
 				displayName: 'Custom Fields',
 				name: 'customFieldsUi',
 				type: 'fixedCollection',
