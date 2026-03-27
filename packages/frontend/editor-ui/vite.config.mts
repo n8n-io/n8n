@@ -92,7 +92,7 @@ const plugins: UserConfig['plugins'] = [
 	nodePopularityPlugin(),
 	icons({
 		compiler: 'vue3',
-		autoInstall: true,
+		autoInstall: NODE_ENV === 'development',
 	}),
 	// Add istanbul coverage plugin for E2E tests
 	...(process.env.BUILD_WITH_COVERAGE === 'true'
@@ -231,6 +231,7 @@ export default mergeConfig(
 		base: publicPath,
 		envPrefix: ['VUE', 'N8N_ENV_FEAT'],
 		css: {
+			preprocessorMaxWorkers: true,
 			preprocessorOptions: {
 				scss: {
 					additionalData: [
@@ -248,9 +249,7 @@ export default mergeConfig(
 		},
 		optimizeDeps: {
 			exclude: ['wa-sqlite'],
-			esbuildOptions: {
-				target,
-			},
+			rolldownOptions: {},
 		},
 		worker: {
 			format: 'es',

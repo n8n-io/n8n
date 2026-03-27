@@ -137,6 +137,7 @@
     "browserslist-to-esbuild": "^2.1.1",
     "fake-indexeddb": "^6.0.0",
     "miragejs": "^0.1.48",
+    "sass-embedded": "catalog:",
     "unplugin-icons": "catalog:frontend",
     "vite": "catalog:",
     "vite-plugin-istanbul": "^7.2.0",
