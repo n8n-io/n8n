@@ -211,10 +211,11 @@ export function createDeepLazyProxy(basePath: string[] = [], knownKeys?: string[
 								if (element && typeof element === 'object' && element.__isArray) {
 									const elementPath = [...path, String(index)];
 									arrTarget[arrProp] = createDeepLazyProxy(elementPath);
-								} else if (element && typeof element === 'object' && element.__isObject) {
-									// Object metadata: create nested proxy
+								} else if (isObjectMetadata(element)) {
+									// Object metadata: create nested proxy, passing known keys to
+									// avoid an extra __getValueAtPath round-trip for ownKeys/Object.keys()
 									const elementPath = [...path, String(index)];
-									arrTarget[arrProp] = createDeepLazyProxy(elementPath);
+									arrTarget[arrProp] = createDeepLazyProxy(elementPath, element.__keys);
 								} else {
 									// Primitive element
 									arrTarget[arrProp] = element;

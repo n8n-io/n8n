@@ -232,6 +232,20 @@ describe('createDeepLazyProxy', () => {
 			expect(getProxyPath(element)).toEqual(['items', '0']);
 		});
 
+		it('does not make an extra __getValueAtPath call when Object.keys() is used on an object element', () => {
+			const proxy = proxyWithLargeArray();
+			mocks.getArrayElement.mockReturnValue({ __isObject: true, __keys: ['a', 'b'] });
+			const element = proxy.items[0];
+			expect(isLazyProxy(element)).toBe(true);
+			// Reset call counts after element access
+			mocks.getValueAtPath.mockClear();
+			// Object.keys() triggers ownKeys trap — should NOT call __getValueAtPath
+			// because the keys were already returned by __getArrayElement
+			const keys = Object.keys(element);
+			expect(keys).toEqual(['a', 'b']);
+			expect(mocks.getValueAtPath).not.toHaveBeenCalled();
+		});
+
 		it('caches elements after first access', () => {
 			const proxy = proxyWithLargeArray();
 			mocks.getArrayElement.mockReturnValue('val');
