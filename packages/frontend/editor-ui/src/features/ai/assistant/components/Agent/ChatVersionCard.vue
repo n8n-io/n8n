@@ -15,7 +15,6 @@ const props = defineProps<{
 	versionId: string;
 	isCurrent: boolean;
 	nodeChanges: NodeChangeEntry[];
-	streaming?: boolean;
 	pruneTimeHours?: number;
 	title?: string;
 	versionIndex: number;

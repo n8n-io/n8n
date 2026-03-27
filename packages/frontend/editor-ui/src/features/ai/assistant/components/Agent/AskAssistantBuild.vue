@@ -750,7 +750,6 @@ defineExpose({
 					:version-id="message.data.versionId"
 					:is-current="isCurrentVersionCard(message)"
 					:node-changes="versionNodeChangesMap.get(message.data.versionId) ?? []"
-					:streaming="builderStore.streaming"
 					:prune-time-hours="workflowHistoryStore.evaluatedPruneTime"
 					:title="message.data.title"
 					:version-index="getVersionIndex(message)"

@@ -67,9 +67,13 @@ export function useReviewChanges() {
 	);
 	// Tracks which version IDs we've already started fetching
 	const fetchingVersionIds = ref<Set<string>>(new Set());
+	// Tracks fetch failure counts per version ID for retry logic (max 3 attempts)
+	const fetchRetryCounts = ref<Map<string, number>>(new Map());
+	const MAX_FETCH_RETRIES = 3;
 
 	/**
 	 * Fetch version data for all version cards, skipping already-cached entries.
+	 * Failed fetches are retried up to MAX_FETCH_RETRIES times before caching empty data.
 	 */
 	watch(
 		() => builderStore.versionCardMessages,
@@ -83,8 +87,16 @@ export function useReviewChanges() {
 				try {
 					const v = await workflowHistoryStore.getWorkflowVersion(workflowId, vid);
 					versionDataCache.value.set(vid, { nodes: v.nodes, connections: v.connections });
+					fetchRetryCounts.value.delete(vid);
 				} catch (err) {
-					versionDataCache.value.set(vid, { nodes: [], connections: {} });
+					const retryCount = (fetchRetryCounts.value.get(vid) ?? 0) + 1;
+					fetchRetryCounts.value.set(vid, retryCount);
+					if (retryCount >= MAX_FETCH_RETRIES) {
+						// Exhausted retries — cache empty to prevent further attempts
+						versionDataCache.value.set(vid, { nodes: [], connections: {} });
+					}
+					// Allow retry on next watcher trigger
+					fetchingVersionIds.value.delete(vid);
 				}
 			}
 		},
@@ -98,6 +110,7 @@ export function useReviewChanges() {
 			if (!version) {
 				versionDataCache.value = new Map();
 				fetchingVersionIds.value = new Set();
+				fetchRetryCounts.value = new Map();
 			}
 		},
 	);

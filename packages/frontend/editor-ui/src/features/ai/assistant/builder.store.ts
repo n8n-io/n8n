@@ -1341,6 +1341,11 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 					convertedMessages.some((m) => m.id === latestSession.activeVersionCardId)
 				) {
 					activeVersionCardId.value = latestSession.activeVersionCardId;
+				} else if (latestSession.activeVersionCardId) {
+					console.warn(
+						'[builder] activeVersionCardId not found in loaded messages — collapse state lost',
+						latestSession.activeVersionCardId,
+					);
 				}
 				if (
 					latestSession.resumeAfterRestoreMessageId &&

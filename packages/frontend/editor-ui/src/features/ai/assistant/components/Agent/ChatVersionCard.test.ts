@@ -46,7 +46,6 @@ function render(
 		versionId: string;
 		isCurrent: boolean;
 		nodeChanges: NodeChangeEntry[];
-		streaming: boolean;
 		pruneTimeHours: number;
 		versionIndex: number;
 		versionExists: boolean;
@@ -57,7 +56,6 @@ function render(
 			versionId: overrides.versionId ?? 'version-1',
 			isCurrent: overrides.isCurrent ?? false,
 			nodeChanges: overrides.nodeChanges ?? sampleNodeChanges,
-			streaming: overrides.streaming,
 			pruneTimeHours: overrides.pruneTimeHours,
 			versionIndex: overrides.versionIndex ?? 1,
 			versionExists: overrides.versionExists ?? true,

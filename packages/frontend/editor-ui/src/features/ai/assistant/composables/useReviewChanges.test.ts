@@ -786,6 +786,70 @@ describe('useReviewChanges', () => {
 			unmount();
 		});
 
+		it('should retry failed fetches on next watcher trigger', async () => {
+			const versionNodes = [makeNode({ id: 'v-node' })];
+			mockBuilderStore.latestRevertVersion = { id: 'v-1' };
+			mockBuilderStore.versionCardMessages = [{ data: { versionId: 'v-1' } }];
+			mockWorkflowsStore.workflow = {
+				id: 'wf-1',
+				nodes: [makeNode()],
+				connections: {},
+			};
+			compareWorkflowsNodesMock.mockReturnValue(new Map());
+
+			// First attempt fails
+			mockWorkflowHistoryStore.getWorkflowVersion.mockRejectedValueOnce(new Error('network error'));
+
+			const { unmount } = withSetup();
+			await flushPromises();
+
+			// Should have been called once (failed)
+			expect(mockWorkflowHistoryStore.getWorkflowVersion).toHaveBeenCalledTimes(1);
+
+			// Second attempt succeeds — trigger watcher by reassigning versionCardMessages
+			mockWorkflowHistoryStore.getWorkflowVersion.mockResolvedValueOnce({
+				nodes: versionNodes,
+				connections: {},
+			});
+			mockBuilderStore.versionCardMessages = [{ data: { versionId: 'v-1' } }];
+			await flushPromises();
+
+			// Should have retried
+			expect(mockWorkflowHistoryStore.getWorkflowVersion).toHaveBeenCalledTimes(2);
+			unmount();
+		});
+
+		it('should stop retrying after max attempts and cache empty data', async () => {
+			mockBuilderStore.latestRevertVersion = { id: 'v-1' };
+			mockBuilderStore.versionCardMessages = [{ data: { versionId: 'v-1' } }];
+			mockWorkflowsStore.workflow = {
+				id: 'wf-1',
+				nodes: [makeNode()],
+				connections: {},
+			};
+			compareWorkflowsNodesMock.mockReturnValue(new Map());
+
+			// All attempts fail
+			mockWorkflowHistoryStore.getWorkflowVersion.mockRejectedValue(new Error('persistent error'));
+
+			const { unmount } = withSetup();
+
+			// Trigger 3 retry cycles
+			for (let i = 0; i < 3; i++) {
+				await flushPromises();
+				mockBuilderStore.versionCardMessages = [{ data: { versionId: 'v-1' } }];
+			}
+			await flushPromises();
+
+			// After 3 failures, a 4th trigger should NOT call getWorkflowVersion again
+			const callCount = mockWorkflowHistoryStore.getWorkflowVersion.mock.calls.length;
+			mockBuilderStore.versionCardMessages = [{ data: { versionId: 'v-1' } }];
+			await flushPromises();
+
+			expect(mockWorkflowHistoryStore.getWorkflowVersion).toHaveBeenCalledTimes(callCount);
+			unmount();
+		});
+
 		it('should discard stale version responses', async () => {
 			let resolveFirst: ((value: unknown) => void) | undefined;
 			const firstPromise = new Promise((r) => {
