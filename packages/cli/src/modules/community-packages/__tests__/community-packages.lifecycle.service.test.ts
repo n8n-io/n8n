@@ -41,11 +41,7 @@ describe('CommunityPackagesLifecycleService', () => {
 			communityNodeTypesService.findVetted.mockReturnValue(undefined);
 
 			await expect(
-				lifecycle.install(
-					{ name: 'n8n-nodes-test', verify: true, version: '1.0.0' },
-					user,
-					'ui',
-				),
+				lifecycle.install({ name: 'n8n-nodes-test', verify: true, version: '1.0.0' }, user, 'ui'),
 			).rejects.toThrow('Package n8n-nodes-test is not vetted for installation');
 
 			expect(communityNodeTypesService.findVetted).toHaveBeenCalledWith('n8n-nodes-test');
@@ -55,11 +51,7 @@ describe('CommunityPackagesLifecycleService', () => {
 			'should throw error if version is invalid',
 			async (version) => {
 				await expect(
-					lifecycle.install(
-						{ name: 'n8n-nodes-test', verify: true, version },
-						user,
-						'ui',
-					),
+					lifecycle.install({ name: 'n8n-nodes-test', verify: true, version }, user, 'ui'),
 				).rejects.toThrow(`Invalid version: ${version}`);
 			},
 		);
@@ -166,11 +158,7 @@ describe('CommunityPackagesLifecycleService', () => {
 			communityPackagesService.findInstalledPackage.mockResolvedValue(null);
 
 			await expect(
-				lifecycle.update(
-					{ name: 'n8n-nodes-missing', version: '1.0.0' },
-					user,
-					'notFound',
-				),
+				lifecycle.update({ name: 'n8n-nodes-missing', version: '1.0.0' }, user, 'notFound'),
 			).rejects.toMatchObject({ httpStatusCode: 404 });
 		});
 
@@ -178,11 +166,7 @@ describe('CommunityPackagesLifecycleService', () => {
 			communityPackagesService.findInstalledPackage.mockResolvedValue(null);
 
 			await expect(
-				lifecycle.update(
-					{ name: 'n8n-nodes-missing', version: '1.0.0' },
-					user,
-					'badRequest',
-				),
+				lifecycle.update({ name: 'n8n-nodes-missing', version: '1.0.0' }, user, 'badRequest'),
 			).rejects.toBeInstanceOf(BadRequestError);
 		});
 	});

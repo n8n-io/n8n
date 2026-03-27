@@ -13,11 +13,7 @@ export class CommunityPackagesController {
 	async installPackage(req: NodeRequest.Post) {
 		const { name, verify, version } = req.body;
 
-		return await this.communityPackagesLifecycle.install(
-			{ name, verify, version },
-			req.user,
-			'ui',
-		);
+		return await this.communityPackagesLifecycle.install({ name, verify, version }, req.user, 'ui');
 	}
 
 	@Get('/')
