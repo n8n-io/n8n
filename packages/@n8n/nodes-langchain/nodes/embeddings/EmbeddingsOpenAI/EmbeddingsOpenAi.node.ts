@@ -12,8 +12,13 @@ import {
 import type { ClientOptions } from 'openai';
 
 import { checkDomainRestrictions } from '@utils/checkDomainRestrictions';
-import { mergeCustomHeaders } from '@utils/helpers';
-import { getProxyAgent, logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
+import { mergeCustomHeaders, normalizePem } from '@utils/helpers';
+import {
+	getProxyAgent,
+	logWrapper,
+	getConnectionHintNoticeField,
+	type TlsOptions,
+} from '@n8n/ai-utilities';
 
 const modelParameter: INodeProperties = {
 	displayName: 'Model',
@@ -233,6 +238,30 @@ export class EmbeddingsOpenAi implements INodeType {
 		this.logger.debug('Supply data for embeddings');
 		const credentials = await this.getCredentials('openAiApi');
 
+		let tlsOptions: TlsOptions | undefined;
+		if (credentials.sslCertificatesEnabled) {
+			if (credentials.cert || credentials.key || credentials.ca) {
+				tlsOptions = {
+					ca:
+						typeof credentials.ca === 'string' && credentials.ca
+							? normalizePem(credentials.ca)
+							: undefined,
+					cert:
+						typeof credentials.cert === 'string' && credentials.cert
+							? normalizePem(credentials.cert)
+							: undefined,
+					key:
+						typeof credentials.key === 'string' && credentials.key
+							? normalizePem(credentials.key)
+							: undefined,
+					passphrase:
+						typeof credentials.passphrase === 'string' && credentials.passphrase
+							? credentials.passphrase
+							: undefined,
+				};
+			}
+		}
+
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
 			baseURL?: string;
 			batchSize?: number;
@@ -259,7 +288,11 @@ export class EmbeddingsOpenAi implements INodeType {
 		}
 
 		configuration.fetchOptions = {
-			dispatcher: getProxyAgent(configuration.baseURL ?? 'https://api.openai.com/v1', {}),
+			dispatcher: getProxyAgent(
+				configuration.baseURL ?? 'https://api.openai.com/v1',
+				{},
+				tlsOptions,
+			),
 		};
 
 		configuration.defaultHeaders = mergeCustomHeaders(
@@ -267,9 +300,11 @@ export class EmbeddingsOpenAi implements INodeType {
 			(configuration.defaultHeaders ?? {}) as Record<string, string>,
 		);
 
+		const apiKey = typeof credentials.apiKey === 'string' ? credentials.apiKey : '';
+
 		const embeddings = new OpenAIEmbeddings({
 			model: this.getNodeParameter('model', itemIndex, 'text-embedding-3-small') as string,
-			apiKey: credentials.apiKey as string,
+			apiKey,
 			...options,
 			configuration,
 		});

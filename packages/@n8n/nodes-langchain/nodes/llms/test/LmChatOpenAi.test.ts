@@ -593,5 +593,87 @@ describe('LmChatOpenAi', () => {
 			expect((instance as { metadata?: { tools?: unknown } }).metadata).toBeDefined();
 			expect((instance as { metadata?: { tools?: unknown } }).metadata?.tools).toEqual(mockTools);
 		});
+
+		it('should pass TLS options to getProxyAgent when TLS is configured in openAiApi credential', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.2 });
+			const tlsCreds = {
+				ca: '-----BEGIN CERTIFICATE-----\nCA\n-----END CERTIFICATE-----',
+				cert: '-----BEGIN CERTIFICATE-----\nCERT\n-----END CERTIFICATE-----',
+				key: '-----BEGIN PRIVATE KEY-----\nKEY\n-----END PRIVATE KEY-----',
+				passphrase: 'secret',
+			};
+
+			mockContext.getCredentials = jest.fn().mockResolvedValue({
+				apiKey: 'test-api-key',
+				sslCertificatesEnabled: true,
+				...tlsCreds,
+			});
+
+			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'gpt-4o-mini';
+				if (paramName === 'responsesApiEnabled') return false;
+				if (paramName === 'options') return { timeout: 30000 };
+				return undefined;
+			});
+
+			await lmChatOpenAi.supplyData.call(mockContext, 0);
+
+			expect(mockedGetProxyAgent).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({ headersTimeout: 30000, bodyTimeout: 30000 }),
+				expect.objectContaining({
+					ca: tlsCreds.ca,
+					cert: tlsCreds.cert,
+					key: tlsCreds.key,
+					passphrase: tlsCreds.passphrase,
+				}),
+			);
+		});
+
+		it('should use empty string apiKey when apiKey is empty and TLS is configured', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.2 });
+
+			mockContext.getCredentials = jest.fn().mockResolvedValue({
+				apiKey: '',
+				sslCertificatesEnabled: true,
+				cert: '-----BEGIN CERTIFICATE-----\nCERT\n-----END CERTIFICATE-----',
+				key: '-----BEGIN PRIVATE KEY-----\nKEY\n-----END PRIVATE KEY-----',
+			});
+
+			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'gpt-4o-mini';
+				if (paramName === 'responsesApiEnabled') return false;
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+
+			await lmChatOpenAi.supplyData.call(mockContext, 0);
+
+			expect(MockedChatOpenAI).toHaveBeenCalledWith(expect.objectContaining({ apiKey: '' }));
+		});
+
+		it('should not pass TLS options when sslCertificatesEnabled is false', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.2 });
+
+			mockContext.getCredentials = jest.fn().mockResolvedValue({
+				apiKey: 'test-api-key',
+				sslCertificatesEnabled: false,
+			});
+
+			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'gpt-4o-mini';
+				if (paramName === 'responsesApiEnabled') return false;
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+
+			await lmChatOpenAi.supplyData.call(mockContext, 0);
+
+			expect(mockedGetProxyAgent).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.any(Object),
+				undefined,
+			);
+		});
 	});
 });

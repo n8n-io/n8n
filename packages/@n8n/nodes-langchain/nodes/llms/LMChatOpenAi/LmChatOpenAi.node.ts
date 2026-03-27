@@ -11,7 +11,7 @@ import {
 } from 'n8n-workflow';
 
 import { checkDomainRestrictions } from '@utils/checkDomainRestrictions';
-import { mergeCustomHeaders } from '@utils/helpers';
+import { mergeCustomHeaders, normalizePem } from '@utils/helpers';
 
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
 import {
@@ -19,6 +19,7 @@ import {
 	N8nLlmTracing,
 	getProxyAgent,
 	getConnectionHintNoticeField,
+	type TlsOptions,
 } from '@n8n/ai-utilities';
 import { formatBuiltInTools, prepareAdditionalResponsesParams } from './common';
 import { searchModels } from './methods/loadModels';
@@ -737,6 +738,30 @@ export class LmChatOpenAi implements INodeType {
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('openAiApi');
 
+		let tlsOptions: TlsOptions | undefined;
+		if (credentials.sslCertificatesEnabled) {
+			if (credentials.cert || credentials.key || credentials.ca) {
+				tlsOptions = {
+					ca:
+						typeof credentials.ca === 'string' && credentials.ca
+							? normalizePem(credentials.ca)
+							: undefined,
+					cert:
+						typeof credentials.cert === 'string' && credentials.cert
+							? normalizePem(credentials.cert)
+							: undefined,
+					key:
+						typeof credentials.key === 'string' && credentials.key
+							? normalizePem(credentials.key)
+							: undefined,
+					passphrase:
+						typeof credentials.passphrase === 'string' && credentials.passphrase
+							? credentials.passphrase
+							: undefined,
+				};
+			}
+		}
+
 		const version = this.getNode().typeVersion;
 		const modelName =
 			version >= 1.2
@@ -761,11 +786,16 @@ export class LmChatOpenAi implements INodeType {
 		}
 
 		const timeout = options.timeout;
-		configuration.fetchOptions = {
-			dispatcher: getProxyAgent(configuration.baseURL ?? 'https://api.openai.com/v1', {
+		const dispatcher = getProxyAgent(
+			configuration.baseURL ?? 'https://api.openai.com/v1',
+			{
 				headersTimeout: timeout,
 				bodyTimeout: timeout,
-			}),
+			},
+			tlsOptions,
+		);
+		configuration.fetchOptions = {
+			dispatcher,
 		};
 		configuration.defaultHeaders = mergeCustomHeaders(
 			credentials,
@@ -793,8 +823,10 @@ export class LmChatOpenAi implements INodeType {
 			'baseURL',
 		]);
 
+		const apiKey = typeof credentials.apiKey === 'string' ? credentials.apiKey : '';
+
 		const fields: ChatOpenAIFields = {
-			apiKey: credentials.apiKey as string,
+			apiKey,
 			model: modelName,
 			...includedOptions,
 			timeout,

@@ -2,8 +2,9 @@ import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import path from 'node:path';
 import type { WorkflowTestData } from 'n8n-workflow';
 
-// CI has cold-start overhead on the first test (coverage instrumentation, module loading)
-jest.setTimeout(10_000);
+// CI has cold-start overhead on the first test (coverage instrumentation, module loading,
+// tiktoken WASM initialisation). 10 s was not enough; 30 s matches the beforeAll budget.
+jest.setTimeout(30_000);
 
 /**
  * Helper to create a standard OpenAI chat completion response.
