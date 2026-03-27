@@ -1,7 +1,13 @@
 <script lang="ts" setup>
 import { computed, onMounted, onUnmounted, provide, ref, useTemplateRef, watch } from 'vue';
-import { useRoute } from 'vue-router';
-import { N8nIconButton, N8nResizeWrapper, N8nScrollArea, N8nText } from '@n8n/design-system';
+import { useRoute, useRouter } from 'vue-router';
+import {
+	N8nButton,
+	N8nIconButton,
+	N8nResizeWrapper,
+	N8nScrollArea,
+	N8nText,
+} from '@n8n/design-system';
 import { useScroll, useWindowSize } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiAttachment } from '@n8n/api-types';
@@ -9,7 +15,7 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useInstanceAiStore } from './instanceAi.store';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { useCanvasPreview } from './useCanvasPreview';
-import { NEW_CONVERSATION_TITLE } from './constants';
+import { INSTANCE_AI_SETTINGS_VIEW, NEW_CONVERSATION_TITLE } from './constants';
 import InstanceAiMessage from './components/InstanceAiMessage.vue';
 import InstanceAiInput from './components/InstanceAiInput.vue';
 import InstanceAiEmptyState from './components/InstanceAiEmptyState.vue';
@@ -20,6 +26,7 @@ import InstanceAiArtifactsPanel from './components/InstanceAiArtifactsPanel.vue'
 import InstanceAiStatusBar from './components/InstanceAiStatusBar.vue';
 import InstanceAiConfirmationPanel from './components/InstanceAiConfirmationPanel.vue';
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
+import CreditsSettingsDropdown from '@/features/ai/assistant/components/Agent/CreditsSettingsDropdown.vue';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import InstanceAiWorkflowPreview from './components/InstanceAiWorkflowPreview.vue';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
@@ -28,8 +35,13 @@ const store = useInstanceAiStore();
 const settingsStore = useInstanceAiSettingsStore();
 const i18n = useI18n();
 const route = useRoute();
+const router = useRouter();
 const documentTitle = useDocumentTitle();
 const { goToUpgrade } = usePageRedirectionHelper();
+
+function goToSettings() {
+	router.push({ name: INSTANCE_AI_SETTINGS_VIEW });
+}
 
 documentTitle.set('n8n Agent');
 
@@ -324,6 +336,34 @@ function handleStop() {
 					{{ i18n.baseText('instanceAi.view.reconnecting') }}
 				</N8nText>
 				<div :class="$style.headerActions">
+					<CreditsSettingsDropdown
+						v-if="store.creditsRemaining !== undefined"
+						:credits-remaining="store.creditsRemaining"
+						:credits-quota="store.creditsQuota"
+						:is-low-credits="store.isLowCredits"
+						@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
+					>
+						<template #actions>
+							<div :class="$style.dropdownDivider">
+								<N8nButton
+									icon="settings"
+									variant="ghost"
+									size="small"
+									:label="i18n.baseText('generic.settings')"
+									data-test-id="instance-ai-settings-button"
+									@click="goToSettings"
+								/>
+							</div>
+						</template>
+					</CreditsSettingsDropdown>
+					<N8nIconButton
+						v-else-if="store.creditsQuota !== undefined"
+						icon="settings-2"
+						variant="ghost"
+						size="medium"
+						data-test-id="instance-ai-settings-button"
+						@click="goToSettings"
+					/>
 					<N8nIconButton
 						icon="brain"
 						variant="ghost"
@@ -561,6 +601,17 @@ function handleStop() {
 
 .activeButton {
 	color: var(--color--primary);
+}
+
+.dropdownDivider {
+	border-top: var(--border);
+
+	button {
+		width: 100%;
+		justify-content: flex-start;
+		padding-inline: var(--spacing--sm);
+		min-height: 36px;
+	}
 }
 
 .reconnecting {

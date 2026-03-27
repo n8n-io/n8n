@@ -111,6 +111,7 @@ function onGetMoreCredits() {
 						{{ i18n.baseText('aiAssistant.builder.settings.getMoreCredits') }}
 					</N8nButton>
 				</div>
+				<slot name="actions" />
 			</div>
 		</Transition>
 	</div>
