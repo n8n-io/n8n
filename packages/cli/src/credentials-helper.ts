@@ -348,7 +348,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): Promise<ICredentialDataDecryptedObject> {
-		if (nodeCredentials.__gatewayProxy) {
+		if (nodeCredentials.__aiGatewayManaged) {
 			return await this.aiGatewayService.getSyntheticCredential(type, additionalData.userId ?? '');
 		}
 

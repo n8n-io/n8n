@@ -294,17 +294,17 @@ onMounted(() => {
 
 	ndvEventBus.on('credential.createNew', onCreateAndAssignNewCredential);
 
-	// Clear stale gateway proxy credentials if the feature is disabled
+	// Clear stale AI Gateway managed credentials if the feature is disabled
 	if (!aiGateway.isEnabled.value) {
 		const credentials = { ...(props.node.credentials ?? {}) };
-		let hasProxied = false;
+		let hasGatewayManaged = false;
 		for (const [credType, credDetails] of Object.entries(credentials)) {
-			if (credDetails.__gatewayProxy) {
+			if (credDetails.__aiGatewayManaged) {
 				delete credentials[credType];
-				hasProxied = true;
+				hasGatewayManaged = true;
 			}
 		}
-		if (hasProxied) {
+		if (hasGatewayManaged) {
 			emit('credentialSelected', { name: props.node.name, properties: { credentials } });
 		}
 	}
@@ -492,8 +492,8 @@ function onCredentialSelected(
 	emit('credentialSelected', updateInformation);
 }
 
-function isCredentialProxied(credentialType: string): boolean {
-	return aiGateway.isEnabled.value && selected.value[credentialType]?.__gatewayProxy === true;
+function isAiGatewayManaged(credentialType: string): boolean {
+	return aiGateway.isEnabled.value && selected.value[credentialType]?.__aiGatewayManaged === true;
 }
 
 function showAiGatewayToggle(credentialType: string): boolean {
@@ -501,28 +501,31 @@ function showAiGatewayToggle(credentialType: string): boolean {
 }
 
 function onAiGatewayToggle(credentialType: string, enable: boolean): void {
+	const credentials = { ...(props.node.credentials ?? {}) };
+
 	if (enable) {
-		const credentials = { ...(props.node.credentials ?? {}) };
-		credentials[credentialType] = { id: null, name: '', __gatewayProxy: true };
-		emit('credentialSelected', {
-			name: props.node.name,
-			properties: { credentials },
-		});
-		void aiGateway.saveAfterToggle();
-		return;
-	}
-
-	// Toggle OFF: restore the most recent available credential, or clear if none exist
-	const typeEntry = credentialTypesNodeDescriptionDisplayed.value.find(
-		({ type }) => type.name === credentialType,
-	);
-
-	if (typeEntry && typeEntry.options.length > 0) {
-		const mostRecent = typeEntry.options.reduce((a, b) => (a.updatedAt > b.updatedAt ? a : b));
-		onCredentialSelected(credentialType, mostRecent.id, false, false);
+		credentials[credentialType] = { id: null, name: '', __aiGatewayManaged: true };
 	} else {
-		clearSelectedCredential(credentialType);
+		// Toggle OFF: restore the most recent available credential for THIS node only.
+		// Avoid onCredentialSelected which calls replaceInvalidWorkflowCredentials and
+		// would affect other nodes that also have gateway-managed credentials (id: null, name: '').
+		const typeEntry = credentialTypesNodeDescriptionDisplayed.value.find(
+			({ type }) => type.name === credentialType,
+		);
+
+		if (typeEntry && typeEntry.options.length > 0) {
+			const mostRecent = typeEntry.options.reduce((a, b) => (a.updatedAt > b.updatedAt ? a : b));
+			const restoredCredential = credentialsStore.getCredentialById(mostRecent.id);
+			credentials[credentialType] = { id: restoredCredential.id, name: restoredCredential.name };
+		} else {
+			delete credentials[credentialType];
+		}
 	}
+
+	emit('credentialSelected', {
+		name: props.node.name,
+		properties: { credentials },
+	});
 	void aiGateway.saveAfterToggle();
 }
 
@@ -655,7 +658,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 						data-test-id="node-credentials-select"
 					/>
 				</div>
-				<template v-else-if="!isCredentialProxied(type.name)">
+				<template v-else-if="!isAiGatewayManaged(type.name)">
 					<div
 						v-if="
 							options.length === 0 && showQuickConnectEmptyState(type) && quickConnectCredentialType
@@ -836,7 +839,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 			</N8nInputLabel>
 			<AiGatewayToggle
 				v-if="showAiGatewayToggle(type.name)"
-				:is-proxied="isCredentialProxied(type.name)"
+				:ai-gateway-enabled="isAiGatewayManaged(type.name)"
 				@toggle="onAiGatewayToggle(type.name, $event)"
 			/>
 		</div>

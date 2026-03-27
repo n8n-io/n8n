@@ -1,6 +1,6 @@
 import { AI_GATEWAY_CREDENTIAL_TYPES } from '@n8n/constants';
 import { GlobalConfig } from '@n8n/config';
-import { LicenseState } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
@@ -41,12 +41,13 @@ export class AiGatewayService {
 		private readonly license: License,
 		private readonly licenseState: LicenseState,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly logger: Logger,
 	) {}
 
 	/**
 	 * Returns a synthetic credential for the given type, pointing the node at the gateway
 	 * instead of the real provider. Called from `CredentialsHelper.getDecrypted` when
-	 * `nodeCredentials.__gatewayProxy` is set.
+	 * `nodeCredentials.__aiGatewayManaged` is set.
 	 */
 	async getSyntheticCredential(
 		credentialType: string,
@@ -54,7 +55,7 @@ export class AiGatewayService {
 	): Promise<ICredentialDataDecryptedObject> {
 		// TODO: enforce license before shipping — throw FeatureNotLicensedError when not licensed
 		if (!this.licenseState.isAiCreditsLicensed()) {
-			console.warn('AI Gateway: license check failed (feat:aiCredits not licensed)');
+			this.logger.error('AI Gateway: license check failed (feat:aiCredits not licensed)');
 		}
 
 		const baseUrl = this.globalConfig.aiAssistant.baseUrl;
@@ -89,7 +90,7 @@ export class AiGatewayService {
 		const response = await fetch(`${baseUrl}/v1/gateway/credentials`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ licenseCert }),
+			body: JSON.stringify({ licenseCert, instanceId: this.instanceSettings.instanceId, userId }),
 		});
 
 		if (!response.ok) {
@@ -97,6 +98,9 @@ export class AiGatewayService {
 		}
 
 		const { token, expiresIn } = (await response.json()) as GatewayTokenResponse;
+		if (!token || typeof expiresIn !== 'number') {
+			throw new UserError('AI Gateway returned an invalid token response.');
+		}
 		if (this.tokenCache.size >= this.TOKEN_CACHE_MAX_SIZE) {
 			this.tokenCache.delete(this.tokenCache.keys().next().value as string);
 		}

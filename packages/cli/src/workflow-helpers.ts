@@ -158,8 +158,8 @@ export async function replaceInvalidCredentials<T extends IWorkflowBase>(
 			if (nodeCredentials === null || nodeCredentials === undefined) {
 				continue;
 			}
-			// Gateway proxy credentials have no real DB record — skip, handled at execution time
-			if (nodeCredentials.__gatewayProxy) continue;
+			// AI Gateway managed credentials have no real DB record — skip, handled at execution time
+			if (nodeCredentials.__aiGatewayManaged) continue;
 
 			// Check if Node applies old credentials style
 			if (typeof nodeCredentials === 'string' || nodeCredentials.id === null) {

@@ -4,7 +4,7 @@ import { useI18n } from '@n8n/i18n';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 
 const props = defineProps<{
-	isProxied: boolean;
+	aiGatewayEnabled: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -19,7 +19,7 @@ const { creditsQuota } = useAiGateway();
 	<div :class="$style.wrapper" data-test-id="ai-gateway-toggle">
 		<div :class="$style.toggleRow">
 			<N8nSwitch2
-				:model-value="props.isProxied"
+				:model-value="props.aiGatewayEnabled"
 				data-test-id="ai-gateway-toggle-switch"
 				@update:model-value="(val) => emit('toggle', Boolean(val))"
 			/>
@@ -27,7 +27,7 @@ const { creditsQuota } = useAiGateway();
 				{{ i18n.baseText('aiGateway.toggle.label') }}
 			</N8nText>
 		</div>
-		<N8nCallout v-if="props.isProxied" theme="success" iconless>
+		<N8nCallout v-if="props.aiGatewayEnabled" theme="success" iconless>
 			{{ i18n.baseText('aiGateway.toggle.description') }}
 			<template #trailingContent>
 				<span :class="$style.tokensBadge">
