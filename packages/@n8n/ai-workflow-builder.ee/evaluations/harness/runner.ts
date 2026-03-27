@@ -554,8 +554,8 @@ async function runLocalExampleSuccess(args: {
 	testCase: TestCase;
 	generateWorkflow: (
 		prompt: string,
-		collectors?: GenerationCollectors,
 		datasetInputContext?: DatasetInputContext,
+		collectors?: GenerationCollectors,
 	) => Promise<SimpleWorkflow | GenerationResult>;
 	evaluators: Array<Evaluator<EvaluationContext>>;
 	globalContext?: GlobalRunContext;
@@ -583,7 +583,7 @@ async function runLocalExampleSuccess(args: {
 
 	const genResult = await runWithOptionalLimiter(async () => {
 		return await withTimeout({
-			promise: generateWorkflow(testCase.prompt, collectors, testCase.context?.datasetInputContext),
+			promise: generateWorkflow(testCase.prompt, testCase.context?.datasetInputContext, collectors),
 			timeoutMs,
 			label: 'workflow_generation',
 		});
@@ -654,8 +654,8 @@ async function runLocalExample(args: {
 	testCase: TestCase;
 	generateWorkflow: (
 		prompt: string,
-		collectors?: GenerationCollectors,
 		datasetInputContext?: DatasetInputContext,
+		collectors?: GenerationCollectors,
 	) => Promise<SimpleWorkflow | GenerationResult>;
 	evaluators: Array<Evaluator<EvaluationContext>>;
 	globalContext?: GlobalRunContext;
@@ -734,8 +734,8 @@ async function runLocalDataset(params: {
 	testCases: TestCase[];
 	generateWorkflow: (
 		prompt: string,
-		collectors?: GenerationCollectors,
 		datasetInputContext?: DatasetInputContext,
+		collectors?: GenerationCollectors,
 	) => Promise<SimpleWorkflow | GenerationResult>;
 	evaluators: Array<Evaluator<EvaluationContext>>;
 	globalContext?: GlobalRunContext;
@@ -1375,8 +1375,8 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 			prompt: string;
 			genFn: (
 				prompt: string,
-				collectors?: GenerationCollectors,
 				datasetInputContext?: DatasetInputContext,
+				collectors?: GenerationCollectors,
 			) => Promise<SimpleWorkflow | GenerationResult>;
 			collectors?: GenerationCollectors;
 			limiter?: LlmCallLimiter;
@@ -1385,7 +1385,7 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 		}): Promise<SimpleWorkflow | GenerationResult> => {
 			return await runWithOptionalLimiter(async () => {
 				return await withTimeout({
-					promise: args.genFn(args.prompt, args.collectors, args.datasetInputContext),
+					promise: args.genFn(args.prompt, args.datasetInputContext, args.collectors),
 					timeoutMs: args.genTimeoutMs,
 					label: 'workflow_generation',
 				});

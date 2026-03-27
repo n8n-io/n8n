@@ -144,8 +144,8 @@ export interface RunConfigBase {
 	/** Function to generate workflow from prompt. May return GenerationResult with source code. Optional collectors receive metrics. */
 	generateWorkflow: (
 		prompt: string,
-		collectors?: GenerationCollectors,
 		datasetInputContext?: DatasetInputContext,
+		collectors?: GenerationCollectors,
 	) => Promise<SimpleWorkflow | GenerationResult>;
 	/** Evaluators to run on each generated workflow */
 	evaluators: Array<Evaluator<EvaluationContext>>;

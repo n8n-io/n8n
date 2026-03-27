@@ -137,13 +137,13 @@ function createWorkflowGenerator(
 	featureFlags?: BuilderFeatureFlags,
 ): (
 	prompt: string,
-	collectors?: GenerationCollectors,
 	datasetInputContext?: DatasetInputContext,
+	collectors?: GenerationCollectors,
 ) => Promise<SimpleWorkflow> {
 	return async (
 		prompt: string,
-		collectors?: GenerationCollectors,
 		datasetInputContext?: DatasetInputContext,
+		collectors?: GenerationCollectors,
 	): Promise<SimpleWorkflow> => {
 		const runId = generateRunId();
 
@@ -313,14 +313,14 @@ function createCodeWorkflowBuilderGenerator(
 	nodeDefinitionDirs?: string[],
 ): (
 	prompt: string,
-	collectors?: GenerationCollectors,
 	datasetInputContext?: DatasetInputContext,
+	collectors?: GenerationCollectors,
 ) => Promise<GenerationResult> {
 	// Subgraph metrics are not applicable since CodeWorkflowBuilder doesn't use coordination logs.
 	return async (
 		prompt: string,
-		collectors?: GenerationCollectors,
 		datasetInputContext?: DatasetInputContext,
+		collectors?: GenerationCollectors,
 	): Promise<GenerationResult> => {
 		const runId = generateRunId();
 
