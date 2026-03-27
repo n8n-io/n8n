@@ -9,6 +9,10 @@ import SetupCardSection from '@/features/setupPanel/components/cards/SetupCardSe
 import SetupCardBody from '@/features/setupPanel/components/cards/SetupCardBody.vue';
 
 import type { NodeGroupItem } from '@/features/setupPanel/setupPanel.types';
+import type {
+	CredentialSelectedPayload,
+	CredentialDeselectedPayload,
+} from '@/features/setupPanel/setupPanel.types';
 import { isCardComplete } from '@/features/setupPanel/setupPanel.types';
 import type { INodeUi } from '@/Interface';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -20,15 +24,14 @@ const props = defineProps<{
 	nodeGroup: NodeGroupItem;
 	stepIndex: number;
 	totalCards: number;
-	firstTriggerName: string | null;
 }>();
 
 const emit = defineEmits<{
 	goToNext: [];
 	goToPrev: [];
 	stepExecuted: [];
-	credentialSelected: [payload: { credentialType: string; credentialId: string; nodeName: string }];
-	credentialDeselected: [payload: { credentialType: string; nodeName: string }];
+	credentialSelected: [payload: CredentialSelectedPayload];
+	credentialDeselected: [payload: CredentialDeselectedPayload];
 	sectionHighlight: [nodeIds: string[] | null];
 }>();
 
@@ -41,6 +44,7 @@ const {
 	subnodeSections,
 	allSections,
 	getStickyParameters,
+	addStickyParameters,
 	expandedSections,
 	toggleSection,
 	hoveredSection,
@@ -64,6 +68,11 @@ const {
 
 const isActive = computed(() => isExecuting.value || isInListeningState.value);
 
+const isLastCard = computed(() => props.stepIndex === props.totalCards - 1);
+const showArrows = computed(() => props.totalCards > 1);
+const isPrevDisabled = computed(() => props.stepIndex === 0);
+const isNextDisabled = computed(() => isLastCard.value);
+
 const isGroupComplete = computed(() => isCardComplete({ nodeGroup: props.nodeGroup }));
 
 const isAnyCredentialTesting = computed(() =>
@@ -72,12 +81,6 @@ const isAnyCredentialTesting = computed(() =>
 		return !!id && credentialsStore.isCredentialTestPending(id);
 	}),
 );
-
-const isLastCard = computed(() => props.stepIndex === props.totalCards - 1);
-
-const showArrows = computed(() => props.totalCards > 1);
-const isPrevDisabled = computed(() => props.stepIndex === 0);
-const isNextDisabled = computed(() => isLastCard.value);
 
 // Notify parent on execution finish
 watch(isActive, (active, wasActive) => {
@@ -150,7 +153,7 @@ watch(hoveredSection, (section) => {
 					@credential-selected="(p) => emit('credentialSelected', p)"
 					@credential-deselected="(p) => emit('credentialDeselected', p)"
 					@parameters-discovered="
-						(params) => getStickyParameters(nodeGroup.parentState!.node.id).push(...params)
+						(params) => addStickyParameters(nodeGroup.parentState!.node.id, params)
 					"
 				/>
 			</SetupCardSection>
@@ -196,9 +199,7 @@ watch(hoveredSection, (section) => {
 							:is-wizard="true"
 							@credential-selected="(p) => emit('credentialSelected', p)"
 							@credential-deselected="(p) => emit('credentialDeselected', p)"
-							@parameters-discovered="
-								(params) => getStickyParameters(section.node.id).push(...params)
-							"
+							@parameters-discovered="(params) => addStickyParameters(section.node.id, params)"
 						/>
 					</SetupCardSection>
 				</div>
@@ -214,7 +215,7 @@ watch(hoveredSection, (section) => {
 					size="xsmall"
 					icon-only
 					:disabled="isPrevDisabled"
-					data-test-id="builder-node-group-card-prev"
+					data-test-id="wizard-card-footer-prev"
 					aria-label="Previous step"
 					@click="emit('goToPrev')"
 				>
@@ -227,7 +228,7 @@ watch(hoveredSection, (section) => {
 					size="xsmall"
 					icon-only
 					:disabled="isNextDisabled"
-					data-test-id="builder-node-group-card-next"
+					data-test-id="wizard-card-footer-next"
 					aria-label="Next step"
 					@click="emit('goToNext')"
 				>

@@ -8,6 +8,10 @@ import SetupCardSection from '@/features/setupPanel/components/cards/SetupCardSe
 import SetupCardBody from '@/features/setupPanel/components/cards/SetupCardBody.vue';
 
 import type { NodeGroupItem } from '@/features/setupPanel/setupPanel.types';
+import type {
+	CredentialSelectedPayload,
+	CredentialDeselectedPayload,
+} from '@/features/setupPanel/setupPanel.types';
 import { isCardComplete } from '@/features/setupPanel/setupPanel.types';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -20,14 +24,13 @@ import {
 
 const props = defineProps<{
 	nodeGroup: NodeGroupItem;
-	firstTriggerName?: string | null;
 }>();
 
 const expanded = defineModel<boolean>('expanded', { default: false });
 
 const emit = defineEmits<{
-	credentialSelected: [payload: { credentialType: string; credentialId: string; nodeName: string }];
-	credentialDeselected: [payload: { credentialType: string; nodeName: string }];
+	credentialSelected: [payload: CredentialSelectedPayload];
+	credentialDeselected: [payload: CredentialDeselectedPayload];
 }>();
 
 const nodeHelpers = useNodeHelpers();
@@ -42,6 +45,7 @@ const {
 	subnodeSections,
 	allSections,
 	getStickyParameters,
+	addStickyParameters,
 	expandedSections,
 	toggleSection,
 	hoveredSection,
@@ -148,7 +152,7 @@ const onBodyInteracted = () => {
 					"
 					@interacted="onBodyInteracted"
 					@parameters-discovered="
-						(params) => getStickyParameters(nodeGroup.parentState!.node.id).push(...params)
+						(params) => addStickyParameters(nodeGroup.parentState!.node.id, params)
 					"
 				/>
 			</SetupCardSection>
@@ -204,9 +208,7 @@ const onBodyInteracted = () => {
 								}
 							"
 							@interacted="onBodyInteracted"
-							@parameters-discovered="
-								(params) => getStickyParameters(section.node.id).push(...params)
-							"
+							@parameters-discovered="(params) => addStickyParameters(section.node.id, params)"
 						/>
 					</SetupCardSection>
 				</div>

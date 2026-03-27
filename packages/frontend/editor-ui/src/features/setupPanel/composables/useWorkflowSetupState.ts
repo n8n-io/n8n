@@ -6,11 +6,7 @@ import {
 	type INode,
 	isResourceLocatorValue,
 } from 'n8n-workflow';
-import type {
-	SetupCardItem,
-	NodeSetupState,
-	NodeGroupItem,
-} from '@/features/setupPanel/setupPanel.types';
+import type { SetupCardItem, NodeSetupState } from '@/features/setupPanel/setupPanel.types';
 import { isCardComplete } from '@/features/setupPanel/setupPanel.types';
 
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -41,11 +37,11 @@ import {
 	findPlaceholderDetails,
 } from '@/features/ai/assistant/composables/useBuilderTodos';
 import { PLACEHOLDER_FILLED_AT_EXECUTION_TIME, MANUAL_TRIGGER_NODE_TYPE } from '@/app/constants';
-import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { sortNodesByExecutionOrder } from '@/app/utils/workflowUtils';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
+import { groupSetupCards } from '@/features/setupPanel/composables/groupSetupCards';
 
 /**
  * Composable that manages workflow setup state for credential configuration.
@@ -701,153 +697,12 @@ export const useWorkflowSetupState = (
 				executionOrder.indexOf(a.state!.node.name) - executionOrder.indexOf(b.state!.node.name),
 		);
 
-		// --- Node grouping (generic: any node with AI sub-nodes) ---
-		const connByDest = workflowsStore.connectionsByDestinationNode;
-
-		// Step 1: Build direct sub-node map for every node that has non-Main AI inputs
-		// parentName → Set<subnodeName>
-		const directSubnodes = new Map<string, Set<string>>();
-		for (const node of sourceNodes.value) {
-			const destConns = connByDest[node.name];
-			if (!destConns) continue;
-
-			const subs = new Set<string>();
-			for (const connType of Object.keys(destConns)) {
-				if (connType === NodeConnectionTypes.Main) continue;
-				for (const inputSlot of destConns[connType as keyof typeof destConns] ?? []) {
-					for (const conn of inputSlot ?? []) {
-						subs.add(conn.node);
-					}
-				}
-			}
-			if (subs.size > 0) {
-				directSubnodes.set(node.name, subs);
-			}
-		}
-
-		if (directSubnodes.size === 0) return flatCards;
-
-		// Step 2: Find all sub-node names (union of all direct sub-node sets)
-		const allSubnodeNames = new Set<string>();
-		for (const subs of directSubnodes.values()) {
-			for (const name of subs) allSubnodeNames.add(name);
-		}
-
-		// Step 3: Root parents = nodes that have sub-nodes but are NOT themselves sub-nodes
-		const rootParentNames: string[] = [];
-		for (const parentName of directSubnodes.keys()) {
-			if (!allSubnodeNames.has(parentName)) {
-				rootParentNames.push(parentName);
-			}
-		}
-
-		if (rootParentNames.length === 0) return flatCards;
-
-		// Step 4: For each root parent, recursively collect ALL transitive sub-nodes
-		function collectTransitiveSubnodes(parentName: string, visited: Set<string>): Set<string> {
-			const result = new Set<string>();
-			const direct = directSubnodes.get(parentName);
-			if (!direct) return result;
-
-			for (const subName of direct) {
-				if (visited.has(subName)) continue;
-				visited.add(subName);
-				result.add(subName);
-				// Recurse: if this sub-node is also a parent, collect its sub-nodes too
-				const nested = collectTransitiveSubnodes(subName, visited);
-				for (const n of nested) result.add(n);
-			}
-			return result;
-		}
-
-		// Step 5: Build node groups
-		const claimedNodeNames = new Set<string>();
-		const nodeGroups = new Map<string, NodeGroupItem>();
-
-		// Process root parents in execution order
-		const sortedRootParents = [...rootParentNames].sort(
-			(a, b) => executionOrder.indexOf(a) - executionOrder.indexOf(b),
+		return groupSetupCards(
+			flatCards,
+			sourceNodes.value,
+			workflowsStore.connectionsByDestinationNode,
+			executionOrder,
 		);
-
-		for (const rootParentName of sortedRootParents) {
-			const rootParentNode = sourceNodes.value.find((n) => n.name === rootParentName);
-			if (!rootParentNode) continue;
-
-			const visited = new Set<string>();
-			const subnodeNames = collectTransitiveSubnodes(rootParentName, visited);
-
-			// Remove already-claimed nodes
-			for (const name of [...subnodeNames]) {
-				if (claimedNodeNames.has(name)) subnodeNames.delete(name);
-			}
-
-			// Collect subnode cards from the flat list
-			const subnodeCards: NodeSetupState[] = [];
-			let parentState: NodeSetupState | undefined;
-
-			for (const card of flatCards) {
-				if (!card.state) continue;
-				const nodeName = card.state.node.name;
-				if (subnodeNames.has(nodeName) && !claimedNodeNames.has(nodeName)) {
-					subnodeCards.push(card.state);
-				}
-				if (nodeName === rootParentName && !claimedNodeNames.has(nodeName)) {
-					parentState = card.state;
-				}
-			}
-
-			// Only create group if at least one subnode has a card
-			if (subnodeCards.length === 0) continue;
-
-			// Claim all grouped node names
-			for (const s of subnodeCards) claimedNodeNames.add(s.node.name);
-			if (parentState) claimedNodeNames.add(rootParentNode.name);
-
-			nodeGroups.set(rootParentName, {
-				parentNode: rootParentNode,
-				parentState,
-				subnodeCards,
-			});
-		}
-
-		if (nodeGroups.size === 0) return flatCards;
-
-		// Step 6: Build final list — replace claimed cards with node group entries
-		const result: SetupCardItem[] = [];
-		const insertedNodeGroups = new Set<string>();
-
-		for (const card of flatCards) {
-			const nodeName = card.state!.node.name;
-
-			if (claimedNodeNames.has(nodeName)) {
-				// Check if this node owns a group
-				const group = nodeGroups.get(nodeName);
-				if (group && !insertedNodeGroups.has(nodeName)) {
-					result.push({ nodeGroup: group });
-					insertedNodeGroups.add(nodeName);
-				}
-				// For subnode cards that appear before their parent in execution order,
-				// insert the group at the first subnode position
-				if (!group) {
-					for (const [parentName, nodeGroup] of nodeGroups) {
-						if (
-							!insertedNodeGroups.has(parentName) &&
-							(nodeGroup.subnodeCards.some((s) => s.node.name === nodeName) ||
-								nodeGroup.parentState?.node.name === nodeName)
-						) {
-							result.push({ nodeGroup });
-							insertedNodeGroups.add(parentName);
-							break;
-						}
-					}
-				}
-				continue;
-			}
-
-			result.push(card);
-		}
-
-		return result;
 	});
 
 	const totalCredentialsMissing = computed(() => {

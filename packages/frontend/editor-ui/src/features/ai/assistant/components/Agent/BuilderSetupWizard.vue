@@ -75,7 +75,6 @@ const cardHighlightNodeIds = computed(() => {
 	if (!card) return [];
 	if (isNodeGroupCard(card)) {
 		const ids = new Set<string>([card.nodeGroup.parentNode.id]);
-		if (card.nodeGroup.parentState) ids.add(card.nodeGroup.parentState.node.id);
 		for (const sub of card.nodeGroup.subnodeCards) {
 			ids.add(sub.node.id);
 		}
@@ -209,7 +208,6 @@ watch(
 					:node-group="currentCard!.nodeGroup"
 					:step-index="currentStepIndex"
 					:total-cards="totalCards"
-					:first-trigger-name="firstTriggerName"
 					@go-to-next="onGoToNext"
 					@go-to-prev="onGoToPrev"
 					@step-executed="handleStepExecuted"
