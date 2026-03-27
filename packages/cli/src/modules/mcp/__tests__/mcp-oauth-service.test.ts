@@ -11,6 +11,7 @@ import { UserConsentRepository } from '../database/repositories/oauth-user-conse
 import { McpOAuthAuthorizationCodeService } from '../mcp-oauth-authorization-code.service';
 import { McpOAuthService, SUPPORTED_SCOPES } from '../mcp-oauth-service';
 import { McpOAuthTokenService } from '../mcp-oauth-token.service';
+import { McpSettingsService } from '../mcp.settings.service';
 import { OAuthSessionService } from '../oauth-session.service';
 
 let logger: jest.Mocked<Logger>;
@@ -20,6 +21,7 @@ let tokenService: jest.Mocked<McpOAuthTokenService>;
 let authorizationCodeService: jest.Mocked<McpOAuthAuthorizationCodeService>;
 let service: McpOAuthService;
 let userConsentRepository: jest.Mocked<UserConsentRepository>;
+let mcpSettingsService: jest.Mocked<McpSettingsService>;
 
 describe('McpOAuthService', () => {
 	beforeAll(() => {
@@ -29,6 +31,7 @@ describe('McpOAuthService', () => {
 		tokenService = mockInstance(McpOAuthTokenService);
 		authorizationCodeService = mockInstance(McpOAuthAuthorizationCodeService);
 		userConsentRepository = mockInstance(UserConsentRepository);
+		mcpSettingsService = mockInstance(McpSettingsService);
 
 		service = new McpOAuthService(
 			logger,
@@ -38,6 +41,7 @@ describe('McpOAuthService', () => {
 			tokenService,
 			authorizationCodeService,
 			userConsentRepository,
+			mcpSettingsService,
 		);
 	});
 
@@ -210,6 +214,8 @@ describe('McpOAuthService', () => {
 
 			const res = mock<Response>();
 
+			mcpSettingsService.getAllowedRedirectUris.mockResolvedValue(['https://example.com/callback']);
+
 			await service.authorize(client, params, res);
 
 			expect(oauthSessionService.createSession).toHaveBeenCalledWith(res, {
@@ -241,6 +247,8 @@ describe('McpOAuthService', () => {
 
 			const res = mock<Response>();
 
+			mcpSettingsService.getAllowedRedirectUris.mockResolvedValue(['https://example.com/callback']);
+
 			await service.authorize(client, params, res);
 
 			expect(oauthSessionService.createSession).toHaveBeenCalledWith(res, {
@@ -249,6 +257,79 @@ describe('McpOAuthService', () => {
 				codeChallenge: 'challenge-123',
 				state: null,
 			});
+		});
+
+		it('should reject invalid redirect URI', async () => {
+			const client = {
+				client_id: 'client-123',
+				client_name: 'Test Client',
+				redirect_uris: ['https://example.com/callback'],
+				grant_types: ['authorization_code'],
+				token_endpoint_auth_method: 'none',
+				response_types: ['code'],
+				scope: 'read',
+				logo_uri: undefined,
+				tos_uri: undefined,
+			};
+
+			const params = {
+				redirectUri: 'https://attacker.com/callback',
+				codeChallenge: 'challenge-123',
+			};
+
+			const res = mock<Response>();
+			res.status.mockReturnThis();
+			res.json.mockReturnThis();
+
+			mcpSettingsService.getAllowedRedirectUris.mockResolvedValue(['https://example.com/callback']);
+
+			await service.authorize(client, params, res);
+
+			expect(logger.warn).toHaveBeenCalledWith('Invalid redirect URI attempted', {
+				clientId: 'client-123',
+				attemptedUri: 'https://attacker.com/callback',
+			});
+			expect(res.status).toHaveBeenCalledWith(400);
+			expect(res.json).toHaveBeenCalledWith({
+				error: 'invalid_request',
+				error_description: 'Redirect URI not in allowed list',
+			});
+			expect(oauthSessionService.createSession).not.toHaveBeenCalled();
+		});
+
+		it('should allow any redirect URI when whitelist is empty', async () => {
+			const client = {
+				client_id: 'client-123',
+				client_name: 'Test Client',
+				redirect_uris: ['https://example.com/callback'],
+				grant_types: ['authorization_code'],
+				token_endpoint_auth_method: 'none',
+				response_types: ['code'],
+				scope: 'read',
+				logo_uri: undefined,
+				tos_uri: undefined,
+			};
+
+			const params = {
+				redirectUri: 'https://any-domain.com/callback',
+				codeChallenge: 'challenge-123',
+				state: 'state-xyz',
+			};
+
+			const res = mock<Response>();
+
+			mcpSettingsService.getAllowedRedirectUris.mockResolvedValue([]);
+
+			await service.authorize(client, params, res);
+
+			expect(oauthSessionService.createSession).toHaveBeenCalledWith(res, {
+				clientId: 'client-123',
+				redirectUri: 'https://any-domain.com/callback',
+				codeChallenge: 'challenge-123',
+				state: 'state-xyz',
+			});
+			expect(res.redirect).toHaveBeenCalledWith('/oauth/consent');
+			expect(logger.warn).not.toHaveBeenCalled();
 		});
 
 		it('should handle errors and clear session', async () => {
@@ -272,6 +353,8 @@ describe('McpOAuthService', () => {
 			const res = mock<Response>();
 			res.status.mockReturnThis();
 			res.json.mockReturnThis();
+
+			mcpSettingsService.getAllowedRedirectUris.mockResolvedValue(['https://example.com/callback']);
 
 			const error = new Error('Session creation failed');
 			oauthSessionService.createSession.mockImplementation(() => {
