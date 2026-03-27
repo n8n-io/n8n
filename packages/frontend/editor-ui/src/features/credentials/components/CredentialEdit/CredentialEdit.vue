@@ -143,6 +143,13 @@ const selectedCredentialType = computed(() => {
 	if (selectedCredential.value !== '') {
 		return credentialsStore.getCredentialTypeByName(selectedCredential.value) ?? null;
 	} else if (requiredCredentials.value) {
+		// If a specific credential type was requested via activeId, honor it
+		if (props.activeId) {
+			const requestedType = credentialsStore.getCredentialTypeByName(props.activeId);
+			if (requestedType) {
+				return requestedType;
+			}
+		}
 		// Otherwise, use credential type that corresponds to the first auth option in the node definition
 		const nodeAuthOptions = getNodeAuthOptions(activeNodeType.value);
 		// But only if there is zero or one auth options available
