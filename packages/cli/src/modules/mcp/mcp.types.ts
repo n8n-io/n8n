@@ -1,10 +1,16 @@
 import { type ToolCallback } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { User } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 import type z from 'zod';
 
 import type { SUPPORTED_PRODUCTION_MCP_TRIGGERS } from './mcp.constants';
 import type { WorkflowDetailsOutputSchema } from './tools/get-workflow-details.tool';
+
+export type {
+	AuthFailureReason,
+	OAuthAuthType,
+	TelemetryAuthContext,
+	UserWithContext,
+} from '@/modules/oauth/oauth.types';
 
 export type ToolDefinition<InputArgs extends z.ZodRawShape = z.ZodRawShape> = {
 	name: string;
@@ -106,25 +112,7 @@ export type MCPTriggersMap = {
 	[K in keyof typeof SUPPORTED_PRODUCTION_MCP_TRIGGERS]: INode[];
 };
 
-export type AuthFailureReason =
-	| 'missing_authorization_header'
-	| 'invalid_bearer_format'
-	| 'jwt_decode_failed'
-	| 'invalid_token'
-	| 'token_not_found_in_db'
-	| 'user_not_found'
-	| 'user_id_not_in_auth_info'
-	| 'unknown_error';
-
+/**
+ * @deprecated Use OAuthAuthType from @/modules/oauth/oauth.types instead
+ */
 export type Mcpauth_type = 'oauth' | 'api_key' | 'unknown';
-
-export type TelemetryAuthContext = {
-	reason: AuthFailureReason;
-	auth_type: Mcpauth_type;
-	error_details?: string;
-};
-
-export type UserWithContext = {
-	user: User | null;
-	context?: TelemetryAuthContext;
-};

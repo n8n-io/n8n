@@ -2,7 +2,7 @@ import { Command, Flags } from '@oclif/core';
 import * as fs from 'node:fs';
 
 import { N8nClient, ApiError } from './client';
-import { resolveConnection } from './config';
+import { resolveConnection, getCurrentContext, setContext } from './config';
 import { formatOutput, applyJqFilter, type OutputFormat, type OutputOptions } from './output';
 
 /** Exit codes following the RFC spec. */
@@ -68,18 +68,23 @@ export abstract class BaseCommand extends Command {
 	}
 
 	protected getClient(flags: { url?: string; apiKey?: string; debug?: boolean }): N8nClient {
-		const { url, apiKey } = resolveConnection(flags);
+		const connection = resolveConnection(flags);
 
-		if (!url) {
+		if (!connection.url) {
 			this.error(
-				"No n8n URL configured.\nHint: Run 'n8n-cli config set-url <url>' or set N8N_URL.",
+				"No n8n URL configured.\nHint: Run 'n8n-cli login' or 'n8n-cli config set-url <url>' or set N8N_URL.",
 				{ exit: EXIT_ERROR },
 			);
 		}
 
-		if (!apiKey) {
+		// Priority: explicit --api-key flag > OAuth accessToken > config apiKey
+		const hasExplicitApiKey = Boolean(flags.apiKey);
+		const hasOAuthToken = Boolean(connection.accessToken);
+		const hasConfigApiKey = Boolean(connection.apiKey);
+
+		if (!hasExplicitApiKey && !hasOAuthToken && !hasConfigApiKey) {
 			this.error(
-				"No API key configured.\nHint: Run 'n8n-cli config set-api-key <key>' or set N8N_API_KEY.",
+				"No credentials configured.\nHint: Run 'n8n-cli login' to authenticate via OAuth, or set N8N_API_KEY.",
 				{ exit: EXIT_AUTH },
 			);
 		}
@@ -88,7 +93,19 @@ export abstract class BaseCommand extends Command {
 			? (msg: string) => process.stderr.write(`[debug] ${msg}\n`)
 			: undefined;
 
-		return new N8nClient({ baseUrl: url, apiKey, debug });
+		if (hasExplicitApiKey) {
+			return new N8nClient({ baseUrl: connection.url, apiKey: flags.apiKey, debug });
+		}
+
+		if (hasOAuthToken) {
+			return new N8nClient({
+				baseUrl: connection.url,
+				accessToken: connection.accessToken,
+				debug,
+			});
+		}
+
+		return new N8nClient({ baseUrl: connection.url, apiKey: connection.apiKey, debug });
 	}
 
 	protected output(
@@ -116,11 +133,32 @@ export abstract class BaseCommand extends Command {
 		this.log(text);
 	}
 
-	/** Wrap execution with consistent error handling. */
+	/** Wrap execution with consistent error handling and automatic token refresh. */
 	protected async execute(fn: () => Promise<void>): Promise<void> {
 		try {
 			await fn();
 		} catch (error) {
+			if (error instanceof ApiError && error.statusCode === 401) {
+				// Attempt automatic token refresh using current context
+				const ctx = getCurrentContext();
+				if (ctx?.config.refreshToken && ctx.config.url) {
+					try {
+						const tempClient = new N8nClient({ baseUrl: ctx.config.url });
+						const tokens = await tempClient.refreshAccessToken(ctx.config.refreshToken);
+						setContext(ctx.name, {
+							...ctx.config,
+							accessToken: tokens.access_token,
+							refreshToken: tokens.refresh_token,
+							tokenExpiresAt: Math.floor(Date.now() / 1000) + tokens.expires_in,
+						});
+						// Retry the original operation
+						await fn();
+						return;
+					} catch {
+						// Refresh failed — fall through to original error
+					}
+				}
+			}
 			if (error instanceof ApiError) {
 				const exitCode = error.statusCode === 401 ? EXIT_AUTH : EXIT_ERROR;
 				const message = error.hint

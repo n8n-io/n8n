@@ -1,17 +1,21 @@
 import { Logger } from '@n8n/backend-common';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Post, RestController } from '@n8n/decorators';
+import { getApiKeyScopesForRole } from '@n8n/permissions';
 import type { Response } from 'express';
 
-import { ApproveConsentRequestDto } from './dto/approve-consent-request.dto';
-import { McpOAuthConsentService } from './mcp-oauth-consent.service';
-import { OAuthSessionService } from './oauth-session.service';
+import { OAuthConsentService } from '@/modules/oauth/oauth-consent.service';
+import { OAuthSessionService } from '@/modules/oauth/oauth-session.service';
+
+import { ApproveConsentRequestDto } from '../dto/approve-consent-request.dto';
+
+const CLI_CLIENT_ID = 'n8n-cli';
 
 @RestController('/consent')
-export class McpConsentController {
+export class OAuthConsentController {
 	constructor(
 		private readonly logger: Logger,
-		private readonly consentService: McpOAuthConsentService,
+		private readonly consentService: OAuthConsentService,
 		private readonly oauthSessionService: OAuthSessionService,
 	) {}
 
@@ -28,10 +32,20 @@ export class McpConsentController {
 				return;
 			}
 
+			// For CLI clients: if no scopes were requested, resolve from user role
+			let { requestedScopes } = consentDetails;
+			if (
+				consentDetails.clientId === CLI_CLIENT_ID &&
+				(!requestedScopes || requestedScopes.length === 0)
+			) {
+				requestedScopes = getApiKeyScopesForRole(req.user);
+			}
+
 			res.json({
 				data: {
 					clientName: consentDetails.clientName,
 					clientId: consentDetails.clientId,
+					requestedScopes,
 				},
 			});
 		} catch (error) {
@@ -55,6 +69,7 @@ export class McpConsentController {
 				sessionToken,
 				req.user.id,
 				payload.approved,
+				payload.approvedScopes,
 			);
 
 			this.oauthSessionService.clearSession(res);

@@ -3,13 +3,16 @@ import { defineStore } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import * as publicApiApi from '@n8n/rest-api-client/api/api-keys';
+import * as oauthClientsApi from '@n8n/rest-api-client/api/oauth-clients';
 import { computed, ref } from 'vue';
 import type { ApiKey, CreateApiKeyRequestDto, UpdateApiKeyRequestDto } from '@n8n/api-types';
+import type { CliSessionResponseDto } from '@n8n/api-types';
 import type { ApiKeyScope } from '@n8n/permissions';
 
 export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 	const apiKeys = ref<ApiKey[]>([]);
 	const availableScopes = ref<ApiKeyScope[]>([]);
+	const cliSessions = ref<CliSessionResponseDto[]>([]);
 
 	const rootStore = useRootStore();
 
@@ -56,6 +59,17 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 		apiKeysById.value[id].scopes = payload.scopes;
 	};
 
+	const fetchCliSessions = async () => {
+		const response = await oauthClientsApi.fetchCliSessions(rootStore.restApiContext);
+		cliSessions.value = response.data;
+		return cliSessions.value;
+	};
+
+	const revokeCliSession = async (sessionId: string) => {
+		await oauthClientsApi.revokeCliSession(rootStore.restApiContext, sessionId);
+		cliSessions.value = cliSessions.value.filter((s) => s.id !== sessionId);
+	};
+
 	return {
 		getAndCacheApiKeys,
 		createApiKey,
@@ -66,5 +80,8 @@ export const useApiKeysStore = defineStore(STORES.API_KEYS, () => {
 		apiKeysById,
 		apiKeys,
 		availableScopes,
+		cliSessions,
+		fetchCliSessions,
+		revokeCliSession,
 	};
 });

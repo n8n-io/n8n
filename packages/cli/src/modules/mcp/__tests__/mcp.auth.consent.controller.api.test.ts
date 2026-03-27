@@ -6,11 +6,14 @@ import { JwtService } from '@/services/jwt.service';
 import { createOwner, createMember } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
-import type { OAuthClient } from '../database/entities/oauth-client.entity';
-import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
-import type { OAuthSessionPayload } from '../oauth-session.service';
+import type { OAuthClient } from '@/modules/oauth/database/entities/oauth-client.entity';
+import { OAuthClientRepository } from '@/modules/oauth/database/repositories/oauth-client.repository';
+import type { OAuthSessionPayload } from '@/modules/oauth/oauth-session.service';
 
-const testServer = setupTestServer({ endpointGroups: ['mcp'], modules: ['mcp'] });
+const testServer = setupTestServer({
+	endpointGroups: ['mcp'],
+	modules: ['oauth', 'public-api', 'mcp'],
+});
 
 let owner: User;
 let member: User;
@@ -326,7 +329,7 @@ describe('POST /rest/consent/approve', () => {
 		expect(response.statusCode).toBe(200);
 
 		const { UserConsentRepository } = await import(
-			'../database/repositories/oauth-user-consent.repository'
+			'@/modules/oauth/database/repositories/oauth-user-consent.repository'
 		);
 		const userConsentRepository = Container.get(UserConsentRepository);
 		const consent = await userConsentRepository.findOne({
@@ -349,7 +352,7 @@ describe('POST /rest/consent/approve', () => {
 		expect(response.statusCode).toBe(200);
 
 		const { UserConsentRepository } = await import(
-			'../database/repositories/oauth-user-consent.repository'
+			'@/modules/oauth/database/repositories/oauth-user-consent.repository'
 		);
 		const userConsentRepository = Container.get(UserConsentRepository);
 		const consent = await userConsentRepository.findOne({

@@ -72,7 +72,10 @@ import {
 	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
 	COMMUNITY_PACKAGE_MANAGE_ACTIONS,
 } from '@/features/settings/communityNodes/communityNodes.constants';
-import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '@/features/settings/apiKeys/apiKeys.constants';
+import {
+	API_KEY_CREATE_OR_EDIT_MODAL_KEY,
+	CLI_SESSION_DETAIL_MODAL_KEY,
+} from '@/features/settings/apiKeys/apiKeys.constants';
 import { STORES } from '@n8n/stores';
 import type {
 	XYPosition,
@@ -198,6 +201,9 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				activeId: null,
 				mode: '',
 			},
+		},
+		[CLI_SESSION_DETAIL_MODAL_KEY]: {
+			open: false,
 		},
 		[CREDENTIAL_EDIT_MODAL_KEY]: {
 			open: false,

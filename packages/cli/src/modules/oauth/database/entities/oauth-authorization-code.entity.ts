@@ -44,4 +44,11 @@ export class AuthorizationCode extends WithTimestamps {
 
 	@Column({ type: Boolean, default: false })
 	used: boolean;
+
+	@Column({ type: 'text', nullable: true })
+	scopes: string | null;
+
+	/** JSON-encoded metadata: deviceName, os, cliVersion */
+	@Column({ type: 'text', nullable: true })
+	metadata: string | null;
 }

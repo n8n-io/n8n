@@ -5,10 +5,10 @@ import { Container } from '@n8n/di';
 import { createOwner, createMember } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
-import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
-import { UserConsentRepository } from '../database/repositories/oauth-user-consent.repository';
+import { OAuthClientRepository } from '@/modules/oauth/database/repositories/oauth-client.repository';
+import { UserConsentRepository } from '@/modules/oauth/database/repositories/oauth-user-consent.repository';
 
-const testServer = setupTestServer({ endpointGroups: ['mcp'], modules: ['mcp'] });
+const testServer = setupTestServer({ endpointGroups: ['mcp'], modules: ['oauth', 'mcp'] });
 
 let owner: User;
 let member: User;

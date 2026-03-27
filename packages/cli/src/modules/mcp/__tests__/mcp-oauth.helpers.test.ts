@@ -1,13 +1,13 @@
-import { McpOAuthHelpers } from '../mcp-oauth.helpers';
+import { OAuthHelpers } from '@/modules/oauth/oauth.helpers';
 
-describe('McpOAuthHelpers', () => {
+describe('OAuthHelpers', () => {
 	describe('buildSuccessRedirectUrl', () => {
 		it('should build redirect URL with authorization code', () => {
 			const redirectUri = 'https://example.com/callback';
 			const code = 'auth-code-123';
 			const state = null;
 
-			const result = McpOAuthHelpers.buildSuccessRedirectUrl(redirectUri, code, state);
+			const result = OAuthHelpers.buildSuccessRedirectUrl(redirectUri, code, state);
 
 			expect(result).toBe('https://example.com/callback?code=auth-code-123');
 		});
@@ -17,7 +17,7 @@ describe('McpOAuthHelpers', () => {
 			const code = 'auth-code-123';
 			const state = 'state-xyz';
 
-			const result = McpOAuthHelpers.buildSuccessRedirectUrl(redirectUri, code, state);
+			const result = OAuthHelpers.buildSuccessRedirectUrl(redirectUri, code, state);
 
 			expect(result).toBe('https://example.com/callback?code=auth-code-123&state=state-xyz');
 		});
@@ -27,7 +27,7 @@ describe('McpOAuthHelpers', () => {
 			const code = 'auth-code-123';
 			const state = 'state-xyz';
 
-			const result = McpOAuthHelpers.buildSuccessRedirectUrl(redirectUri, code, state);
+			const result = OAuthHelpers.buildSuccessRedirectUrl(redirectUri, code, state);
 
 			expect(result).toContain('foo=bar');
 			expect(result).toContain('code=auth-code-123');
@@ -39,7 +39,7 @@ describe('McpOAuthHelpers', () => {
 			const code = 'auth-code-123';
 			const state = null;
 
-			const result = McpOAuthHelpers.buildSuccessRedirectUrl(redirectUri, code, state);
+			const result = OAuthHelpers.buildSuccessRedirectUrl(redirectUri, code, state);
 
 			expect(result).toBe('http://localhost:3000/callback?code=auth-code-123');
 		});
@@ -49,7 +49,7 @@ describe('McpOAuthHelpers', () => {
 			const code = 'code+with/special=chars';
 			const state = null;
 
-			const result = McpOAuthHelpers.buildSuccessRedirectUrl(redirectUri, code, state);
+			const result = OAuthHelpers.buildSuccessRedirectUrl(redirectUri, code, state);
 
 			expect(result).toContain('code=code%2Bwith%2Fspecial%3Dchars');
 		});
@@ -62,7 +62,7 @@ describe('McpOAuthHelpers', () => {
 			const errorDescription = 'User denied the authorization request';
 			const state = null;
 
-			const result = McpOAuthHelpers.buildErrorRedirectUrl(
+			const result = OAuthHelpers.buildErrorRedirectUrl(
 				redirectUri,
 				error,
 				errorDescription,
@@ -79,7 +79,7 @@ describe('McpOAuthHelpers', () => {
 			const errorDescription = 'Missing required parameter';
 			const state = 'state-xyz';
 
-			const result = McpOAuthHelpers.buildErrorRedirectUrl(
+			const result = OAuthHelpers.buildErrorRedirectUrl(
 				redirectUri,
 				error,
 				errorDescription,
@@ -96,7 +96,7 @@ describe('McpOAuthHelpers', () => {
 			const errorDescription = 'Internal server error';
 			const state = 'state-xyz';
 
-			const result = McpOAuthHelpers.buildErrorRedirectUrl(
+			const result = OAuthHelpers.buildErrorRedirectUrl(
 				redirectUri,
 				error,
 				errorDescription,
@@ -119,7 +119,7 @@ describe('McpOAuthHelpers', () => {
 			];
 
 			testCases.forEach(({ error, description }) => {
-				const result = McpOAuthHelpers.buildErrorRedirectUrl(
+				const result = OAuthHelpers.buildErrorRedirectUrl(
 					'https://example.com/callback',
 					error,
 					description,
@@ -137,7 +137,7 @@ describe('McpOAuthHelpers', () => {
 			const errorDescription = 'User said "no thanks!"';
 			const state = null;
 
-			const result = McpOAuthHelpers.buildErrorRedirectUrl(
+			const result = OAuthHelpers.buildErrorRedirectUrl(
 				redirectUri,
 				error,
 				errorDescription,

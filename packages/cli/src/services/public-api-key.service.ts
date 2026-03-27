@@ -200,6 +200,18 @@ export class PublicApiKeyService {
 
 	getApiKeyScopeMiddleware(endpointScope: ApiKeyScope) {
 		return async (req: Request, res: Response, next: NextFunction) => {
+			// OAuth Bearer: scopes set by auth handler after JWT signature verification
+			const oauthScopes = (req as Request & { oauthScopes?: string[] }).oauthScopes;
+			if (oauthScopes) {
+				if (!oauthScopes.includes(endpointScope)) {
+					res.status(403).json({ message: 'Forbidden: insufficient scope' });
+					return;
+				}
+				next();
+				return;
+			}
+
+			// API key auth
 			const apiKey = req.headers['x-n8n-api-key'];
 
 			if (apiKey === undefined || typeof apiKey !== 'string') {

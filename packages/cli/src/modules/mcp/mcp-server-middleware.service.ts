@@ -4,9 +4,9 @@ import { NextFunction, Response, Request } from 'express';
 import { ensureError } from 'n8n-workflow';
 
 import { McpServerApiKeyService } from './mcp-api-key.service';
-import { McpOAuthTokenService } from './mcp-oauth-token.service';
+import { OAuthTokenService } from '@/modules/oauth/oauth-token.service';
 import { USER_CONNECTED_TO_MCP_EVENT, UNAUTHORIZED_ERROR_MESSAGE } from './mcp.constants';
-import type { TelemetryAuthContext, UserWithContext } from './mcp.types';
+import type { TelemetryAuthContext, UserWithContext } from '@/modules/oauth/oauth.types';
 import { getClientInfo } from './mcp.utils';
 
 import { AuthError } from '@/errors/response-errors/auth.error';
@@ -22,7 +22,7 @@ import { Telemetry } from '@/telemetry';
 export class McpServerMiddlewareService {
 	constructor(
 		private readonly mcpServerApiKeyService: McpServerApiKeyService,
-		private readonly mcpAuthTokenService: McpOAuthTokenService,
+		private readonly mcpAuthTokenService: OAuthTokenService,
 		private readonly jwtService: JwtService,
 		private readonly telemetry: Telemetry,
 	) {}

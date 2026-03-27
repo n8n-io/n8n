@@ -4,31 +4,40 @@ import { GlobalConfig } from '@n8n/config';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
-import type { AuthorizationCode } from '../database/entities/oauth-authorization-code.entity';
-import type { OAuthClient } from '../database/entities/oauth-client.entity';
-import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
-import { UserConsentRepository } from '../database/repositories/oauth-user-consent.repository';
-import { McpOAuthAuthorizationCodeService } from '../mcp-oauth-authorization-code.service';
+import type { AuthorizationCode } from '@/modules/oauth/database/entities/oauth-authorization-code.entity';
+import type { OAuthClient } from '@/modules/oauth/database/entities/oauth-client.entity';
+import { AccessTokenRepository } from '@/modules/oauth/database/repositories/oauth-access-token.repository';
+import { AuthorizationCodeRepository } from '@/modules/oauth/database/repositories/oauth-authorization-code.repository';
+import { OAuthClientRepository } from '@/modules/oauth/database/repositories/oauth-client.repository';
+import { RefreshTokenRepository } from '@/modules/oauth/database/repositories/oauth-refresh-token.repository';
+import { UserConsentRepository } from '@/modules/oauth/database/repositories/oauth-user-consent.repository';
+import { OAuthAuthorizationCodeService } from '@/modules/oauth/oauth-authorization-code.service';
 import { McpOAuthService, SUPPORTED_SCOPES } from '../mcp-oauth-service';
-import { McpOAuthTokenService } from '../mcp-oauth-token.service';
-import { OAuthSessionService } from '../oauth-session.service';
+import { OAuthTokenService } from '@/modules/oauth/oauth-token.service';
+import { OAuthSessionService } from '@/modules/oauth/oauth-session.service';
 
 let logger: jest.Mocked<Logger>;
 let oauthSessionService: jest.Mocked<OAuthSessionService>;
 let oauthClientRepository: jest.Mocked<OAuthClientRepository>;
-let tokenService: jest.Mocked<McpOAuthTokenService>;
-let authorizationCodeService: jest.Mocked<McpOAuthAuthorizationCodeService>;
+let tokenService: jest.Mocked<OAuthTokenService>;
+let authorizationCodeService: jest.Mocked<OAuthAuthorizationCodeService>;
 let service: McpOAuthService;
 let userConsentRepository: jest.Mocked<UserConsentRepository>;
+let accessTokenRepository: jest.Mocked<AccessTokenRepository>;
+let refreshTokenRepository: jest.Mocked<RefreshTokenRepository>;
+let authorizationCodeRepository: jest.Mocked<AuthorizationCodeRepository>;
 
 describe('McpOAuthService', () => {
 	beforeAll(() => {
 		logger = mockInstance(Logger);
 		oauthSessionService = mockInstance(OAuthSessionService);
 		oauthClientRepository = mockInstance(OAuthClientRepository);
-		tokenService = mockInstance(McpOAuthTokenService);
-		authorizationCodeService = mockInstance(McpOAuthAuthorizationCodeService);
+		tokenService = mockInstance(OAuthTokenService);
+		authorizationCodeService = mockInstance(OAuthAuthorizationCodeService);
 		userConsentRepository = mockInstance(UserConsentRepository);
+		accessTokenRepository = mockInstance(AccessTokenRepository);
+		refreshTokenRepository = mockInstance(RefreshTokenRepository);
+		authorizationCodeRepository = mockInstance(AuthorizationCodeRepository);
 
 		service = new McpOAuthService(
 			logger,
@@ -38,6 +47,9 @@ describe('McpOAuthService', () => {
 			tokenService,
 			authorizationCodeService,
 			userConsentRepository,
+			accessTokenRepository,
+			refreshTokenRepository,
+			authorizationCodeRepository,
 		);
 	});
 
@@ -357,7 +369,11 @@ describe('McpOAuthService', () => {
 				'client-123',
 				'https://example.com/callback',
 			);
-			expect(tokenService.generateTokenPair).toHaveBeenCalledWith('user-456', 'client-123');
+			expect(tokenService.generateTokenPair).toHaveBeenCalledWith(
+				'user-456',
+				'client-123',
+				'mcp-server-api',
+			);
 			expect(tokenService.saveTokenPair).toHaveBeenCalledWith(
 				'access-token-123',
 				'refresh-token-456',
@@ -434,6 +450,7 @@ describe('McpOAuthService', () => {
 			expect(tokenService.validateAndRotateRefreshToken).toHaveBeenCalledWith(
 				'old-refresh-token',
 				'client-123',
+				'mcp-server-api',
 			);
 			expect(result).toEqual(newTokens);
 		});
@@ -452,7 +469,10 @@ describe('McpOAuthService', () => {
 
 			const result = await service.verifyAccessToken('access-token-123');
 
-			expect(tokenService.verifyAccessToken).toHaveBeenCalledWith('access-token-123');
+			expect(tokenService.verifyAccessToken).toHaveBeenCalledWith(
+				'access-token-123',
+				'mcp-server-api',
+			);
 			expect(result).toEqual(authInfo);
 		});
 	});

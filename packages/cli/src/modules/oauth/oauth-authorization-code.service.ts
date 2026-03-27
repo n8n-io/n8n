@@ -6,11 +6,11 @@ import type { AuthorizationCode } from './database/entities/oauth-authorization-
 import { AuthorizationCodeRepository } from './database/repositories/oauth-authorization-code.repository';
 
 /**
- * Handles OAuth 2.1 authorization code lifecycle for MCP server
+ * Handles OAuth 2.1 authorization code lifecycle
  * Generates, validates, and consumes authorization codes with PKCE support
  */
 @Service()
-export class McpOAuthAuthorizationCodeService {
+export class OAuthAuthorizationCodeService {
 	private readonly AUTHORIZATION_CODE_EXPIRY_MS = 10 * Time.minutes.toMilliseconds;
 
 	constructor(private readonly authorizationCodeRepository: AuthorizationCodeRepository) {}
@@ -25,6 +25,8 @@ export class McpOAuthAuthorizationCodeService {
 		redirectUri: string,
 		codeChallenge: string,
 		state: string | null,
+		scopes?: string[],
+		metadata?: { deviceName?: string; os?: string; ip?: string },
 	): Promise<string> {
 		const code = randomBytes(32).toString('hex');
 
@@ -38,6 +40,8 @@ export class McpOAuthAuthorizationCodeService {
 			state,
 			expiresAt: Date.now() + this.AUTHORIZATION_CODE_EXPIRY_MS,
 			used: false,
+			scopes: scopes ? JSON.stringify(scopes) : null,
+			metadata: metadata ? JSON.stringify(metadata) : null,
 		});
 
 		return code;

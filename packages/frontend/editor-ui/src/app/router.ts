@@ -31,6 +31,7 @@ const ErrorView = async () => await import('@/app/views/ErrorView.vue');
 const EntityNotFound = async () => await import('@/app/views/EntityNotFound.vue');
 const EntityUnAuthorised = async () => await import('@/app/views/EntityUnAuthorised.vue');
 const OAuthConsentView = async () => await import('@/app/views/OAuthConsentView.vue');
+const CliOAuthConsentView = async () => await import('@/app/views/CliOAuthConsentView.vue');
 const ForgotMyPasswordView = async () =>
 	await import('@/features/core/auth/views/ForgotMyPasswordView.vue');
 
@@ -476,6 +477,14 @@ export const routes: RouteRecordRaw[] = [
 		path: '/oauth/consent',
 		name: VIEWS.OAUTH_CONSENT,
 		component: OAuthConsentView,
+		meta: {
+			middleware: ['authenticated'],
+		},
+	},
+	{
+		path: '/oauth/cli-consent',
+		name: VIEWS.CLI_OAUTH_CONSENT,
+		component: CliOAuthConsentView,
 		meta: {
 			middleware: ['authenticated'],
 		},

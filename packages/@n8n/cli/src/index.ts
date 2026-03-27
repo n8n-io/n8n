@@ -2,6 +2,11 @@ import Audit from './commands/audit/index';
 import ConfigSetApiKey from './commands/config/set-api-key';
 import ConfigSetUrl from './commands/config/set-url';
 import ConfigShow from './commands/config/show';
+import ContextDelete from './commands/context/delete';
+import ContextList from './commands/context/list';
+import ContextRename from './commands/context/rename';
+import ContextShow from './commands/context/show';
+import ContextUse from './commands/context/use';
 import CredentialCreate from './commands/credential/create';
 import CredentialDelete from './commands/credential/delete';
 import CredentialGet from './commands/credential/get';
@@ -61,6 +66,12 @@ export const commands = {
 	'config:set-url': ConfigSetUrl,
 	'config:set-api-key': ConfigSetApiKey,
 	'config:show': ConfigShow,
+
+	'context:list': ContextList,
+	'context:use': ContextUse,
+	'context:delete': ContextDelete,
+	'context:show': ContextShow,
+	'context:rename': ContextRename,
 
 	'workflow:list': WorkflowList,
 	'workflow:get': WorkflowGet,

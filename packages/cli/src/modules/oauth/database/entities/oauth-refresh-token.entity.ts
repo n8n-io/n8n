@@ -29,4 +29,11 @@ export class RefreshToken extends WithTimestamps {
 	@Index()
 	@Column({ type: 'int' })
 	expiresAt: number;
+
+	@Column({ type: 'text', nullable: true })
+	scopes: string | null;
+
+	/** JSON-encoded metadata: deviceName, os, cliVersion */
+	@Column({ type: 'text', nullable: true })
+	metadata: string | null;
 }

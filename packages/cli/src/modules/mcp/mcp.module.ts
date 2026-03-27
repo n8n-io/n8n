@@ -6,6 +6,9 @@ import { Container } from '@n8n/di';
  * Handles instance-level MCP access.
  * Runs MCP server and exposes endpoints for MCP clients to connect to.
  * Requires MCP access to be enabled in settings and a valid API key.
+ *
+ * OAuth entities and shared services live in the `oauth` module.
+ * CLI OAuth flow controllers live in the `public-api` module.
  */
 @BackendModule({ name: 'mcp', instanceTypes: ['main'] })
 export class McpModule implements ModuleInterface {
@@ -13,7 +16,6 @@ export class McpModule implements ModuleInterface {
 		await import('./mcp.controller');
 		await import('./mcp.settings.controller');
 		await import('./mcp.oauth.controller');
-		await import('./mcp.auth.consent.controller');
 		await import('./mcp.oauth-clients.controller');
 	}
 
@@ -26,18 +28,6 @@ export class McpModule implements ModuleInterface {
 		const { McpSettingsService } = await import('./mcp.settings.service');
 		const mcpAccessEnabled = await Container.get(McpSettingsService).getEnabled();
 		return { mcpAccessEnabled };
-	}
-
-	async entities() {
-		const { OAuthClient } = await import('./database/entities/oauth-client.entity');
-		const { AuthorizationCode } = await import(
-			'./database/entities/oauth-authorization-code.entity'
-		);
-		const { AccessToken } = await import('./database/entities/oauth-access-token.entity');
-		const { RefreshToken } = await import('./database/entities/oauth-refresh-token.entity');
-		const { UserConsent } = await import('./database/entities/oauth-user-consent.entity');
-
-		return [OAuthClient, AuthorizationCode, AccessToken, RefreshToken, UserConsent] as never;
 	}
 
 	@OnShutdown()

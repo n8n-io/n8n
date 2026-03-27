@@ -51,8 +51,8 @@ export class McpOAuthClientsController {
 	}
 
 	/**
-	 * Delete an OAuth client by ID
-	 * This will cascade delete all related tokens, authorization codes, and user consents
+	 * Revoke the current user's access to an OAuth client.
+	 * Deletes the user's consent and tokens, but not the client itself.
 	 */
 	@GlobalScope('mcp:oauth')
 	@Delete('/:clientId')
@@ -61,27 +61,27 @@ export class McpOAuthClientsController {
 		_res: Response,
 		@Param('clientId') clientId: string,
 	): Promise<DeleteOAuthClientResponseDto> {
-		this.logger.info('Deleting OAuth client', {
+		this.logger.info('Revoking OAuth client access', {
 			clientId,
 			userId: req.user.id,
 			userEmail: req.user.email,
 		});
 
 		try {
-			await this.mcpOAuthService.deleteClient(clientId, req.user.id);
+			await this.mcpOAuthService.revokeClientAccess(clientId, req.user.id);
 
-			this.logger.info('OAuth client deleted successfully', {
+			this.logger.info('OAuth client access revoked successfully', {
 				clientId,
 				userId: req.user.id,
 			});
 
 			return {
 				success: true,
-				message: `OAuth client ${clientId} has been deleted successfully`,
+				message: `OAuth client ${clientId} access has been revoked successfully`,
 			};
 		} catch (error) {
 			if (error instanceof Error && error.message.includes('not found')) {
-				this.logger.warn('Attempted to delete non-existent OAuth client', {
+				this.logger.warn('Attempted to revoke non-existent OAuth client', {
 					clientId,
 					userId: req.user.id,
 				});

@@ -4,8 +4,8 @@ import { EntityManager } from '@n8n/typeorm';
 import { randomUUID } from 'crypto';
 import { ApiKeyAudience, ensureError } from 'n8n-workflow';
 
-import { AccessTokenRepository } from './database/repositories/oauth-access-token.repository';
-import { UserWithContext } from './mcp.types';
+import { AccessTokenRepository } from '@/modules/oauth/database/repositories/oauth-access-token.repository';
+import type { UserWithContext } from '@/modules/oauth/oauth.types';
 
 import { JwtService } from '@/services/jwt.service';
 
