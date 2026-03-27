@@ -291,9 +291,9 @@ function handleStop() {
 		<div :class="$style.chatArea">
 			<!-- Header -->
 			<div :class="$style.header">
-				<N8nText tag="h2" size="large" bold :class="$style.headerTitle">
+				<N8nHeading tag="h2" size="small" :class="$style.headerTitle">
 					{{ currentThreadTitle }}
-				</N8nText>
+				</N8nHeading>
 				<N8nText
 					v-if="store.sseState === 'reconnecting'"
 					size="small"
