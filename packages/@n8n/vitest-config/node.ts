@@ -15,7 +15,7 @@ export const createVitestConfig = (options: InlineConfig = {}) => {
 							enabled: true,
 							provider: 'v8',
 							reporter: process.env.CI === 'true' ? 'cobertura' : 'text-summary',
-							all: true,
+							include: ['src/**'],
 						},
 					}
 				: {}),

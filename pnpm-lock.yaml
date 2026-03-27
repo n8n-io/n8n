@@ -81,6 +81,9 @@ catalogs:
     '@types/mime-types':
       specifier: 3.0.1
       version: 3.0.1
+    '@types/node':
+      specifier: ^20.19.21
+      version: 20.19.21
     '@types/uuid':
       specifier: ^10.0.0
       version: 10.0.0
@@ -1236,6 +1239,9 @@ importers:
       '@types/eslint':
         specifier: ^9.6.1
         version: 9.6.1
+      '@types/node':
+        specifier: 'catalog:'
+        version: 20.19.21
       '@typescript-eslint/eslint-plugin':
         specifier: ^8.35.0
         version: 8.35.0(@typescript-eslint/parser@8.35.0(eslint@9.29.0(jiti@2.6.1))(typescript@5.9.2))(eslint@9.29.0(jiti@2.6.1))(typescript@5.9.2)
@@ -1300,6 +1306,9 @@ importers:
       '@n8n/vitest-config':
         specifier: workspace:*
         version: link:../vitest-config
+      '@types/node':
+        specifier: ^20.17.50
+        version: 20.19.21
       '@typescript-eslint/rule-tester':
         specifier: ^8.35.0
         version: 8.35.0(eslint@9.29.0(jiti@2.6.1))(typescript@5.9.2)
@@ -9742,9 +9751,6 @@ packages:
 
   '@types/node@20.17.57':
     resolution: {integrity: sha512-f3T4y6VU4fVQDKVqJV4Uppy8c1p/sVvS3peyqxyWnzkqXFJLRU7Y1Bl7rMS1Qe9z0v4M6McY0Fp9yBsgHJUsWQ==}
-
-  '@types/node@20.19.1':
-    resolution: {integrity: sha512-jJD50LtlD2dodAEO653i3YF04NWak6jN3ky+Ri3Em3mGR39/glWiboM/IePaRbgwSfqM1TpGXfAg8ohn/4dTgA==}
 
   '@types/node@20.19.21':
     resolution: {integrity: sha512-CsGG2P3I5y48RPMfprQGfy4JPRZ6csfC3ltBZSRItG3ngggmNY/qs2uZKp4p9VbrpqNNSMzUZNFZKzgOGnd/VA==}
@@ -27543,7 +27549,7 @@ snapshots:
 
   '@types/cli-progress@3.11.6':
     dependencies:
-      '@types/node': 20.19.1
+      '@types/node': 20.19.21
 
   '@types/compression@1.7.5':
     dependencies:
@@ -27786,10 +27792,6 @@ snapshots:
   '@types/node@20.17.57':
     dependencies:
       undici-types: 6.19.8
-
-  '@types/node@20.19.1':
-    dependencies:
-      undici-types: 6.21.0
 
   '@types/node@20.19.21':
     dependencies:

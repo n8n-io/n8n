@@ -37,6 +37,7 @@ catalog:
   '@types/jsonwebtoken': 9.0.10
   '@types/lodash': 4.17.17
   '@types/mime-types': 3.0.1
+  '@types/node': ^20.19.21
   '@types/uuid': ^10.0.0
   '@types/xml2js': ^0.4.14
   '@vitest/coverage-v8': 3.2.4
