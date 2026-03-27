@@ -10,6 +10,7 @@ export interface ResourceItem {
 	type: ResourceType;
 	title: string;
 	description: string;
+	section?: 'quick-start' | 'inspiration' | 'learn';
 	// Template-specific
 	templateId?: number;
 	nodeTypes?: string[];

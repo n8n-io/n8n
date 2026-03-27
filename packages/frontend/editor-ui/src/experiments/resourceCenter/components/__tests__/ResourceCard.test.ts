@@ -1,9 +1,9 @@
-import { describe, it, expect, vi } from 'vitest';
+/* eslint-disable import-x/no-extraneous-dependencies */
+import { describe, expect, it, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import ResourceCard from '../ResourceCard.vue';
 import type { ResourceItem } from '../../data/resourceCenterData';
-import type { CardVariant } from '../ResourceCard.vue';
 
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: () => ({ getNodeType: vi.fn(() => null) }),
@@ -30,56 +30,53 @@ const videoItem: ResourceItem = {
 	level: 'Beginner',
 };
 
-const readyToRunItem: ResourceItem = {
-	id: 'summarize-the-news',
-	type: 'ready-to-run',
-	title: 'Summarize the news',
-	description: 'Get AI-powered news summaries',
-	quickStartId: 'summarize-the-news',
-	nodeCount: 4,
-};
-
-function mountCard(item: ResourceItem, variant: CardVariant = 'header') {
+function mountCard(item: ResourceItem) {
 	return mount(ResourceCard, {
-		props: { item, variant },
+		props: { item },
 		global: {
 			plugins: [createTestingPinia({ createSpy: vi.fn })],
 		},
 	});
 }
 
-const variants: CardVariant[] = ['header', 'accent', 'spotlight'];
-
 describe('ResourceCard', () => {
-	describe.each(variants)('variant "%s"', (variant) => {
-		it('renders badge for each type', () => {
-			const items = [
-				{ item: templateItem, expected: 'Template' },
-				{ item: videoItem, expected: 'Video' },
-				{ item: readyToRunItem, expected: 'Ready to Run' },
-			];
-			for (const { item, expected } of items) {
-				const wrapper = mountCard(item, variant);
-				expect(wrapper.find('[data-testid="resource-card-badge"]').text()).toContain(expected);
-			}
-		});
+	it('renders badge for template and video cards', () => {
+		const items = [
+			{ item: templateItem, expected: 'Template' },
+			{ item: videoItem, expected: 'Video' },
+		];
 
-		it('renders title', () => {
-			const wrapper = mountCard(templateItem, variant);
-			expect(wrapper.find('[data-testid="resource-card-title"]').text()).toBe(templateItem.title);
-		});
+		for (const { item, expected } of items) {
+			const wrapper = mountCard(item);
+			expect(wrapper.find('[data-testid="resource-card-badge"]').text()).toContain(expected);
+		}
+	});
 
-		it('renders metadata', () => {
-			const wrapper = mountCard(videoItem, variant);
-			const cardText = wrapper.find('[data-testid="resource-card"]').text();
-			expect(cardText).toContain('15 min');
-			expect(cardText).toContain('Beginner');
-		});
+	it('renders the title', () => {
+		const wrapper = mountCard(templateItem);
 
-		it('emits click event when clicked', async () => {
-			const wrapper = mountCard(templateItem, variant);
-			await wrapper.find('[data-testid="resource-card"]').trigger('click');
-			expect(wrapper.emitted('click')).toHaveLength(1);
-		});
+		expect(wrapper.find('[data-testid="resource-card-title"]').text()).toBe(templateItem.title);
+	});
+
+	it('renders template metadata', () => {
+		const wrapper = mountCard(templateItem);
+		const cardText = wrapper.find('[data-testid="resource-card"]').text();
+
+		expect(cardText).toContain('5 min');
+		expect(cardText).toContain('5 nodes');
+	});
+
+	it('renders a source label for videos', () => {
+		const wrapper = mountCard(videoItem);
+
+		expect(wrapper.find('[data-testid="resource-card"]').text()).toContain('youtube.com');
+	});
+
+	it('emits click when the card is clicked', async () => {
+		const wrapper = mountCard(templateItem);
+
+		await wrapper.find('[data-testid="resource-card"]').trigger('click');
+
+		expect(wrapper.emitted('click')).toHaveLength(1);
 	});
 });

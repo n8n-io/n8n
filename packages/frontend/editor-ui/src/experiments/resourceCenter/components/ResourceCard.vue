@@ -1,20 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { ResourceItem } from '../data/resourceCenterData';
-import { N8nIcon } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useI18n } from '@n8n/i18n';
+import type { ResourceItem } from '../data/resourceCenterData';
 
-export type CardVariant = 'header' | 'accent' | 'spotlight';
-
-const props = withDefaults(
-	defineProps<{
-		item: ResourceItem;
-		variant?: CardVariant;
-	}>(),
-	{ variant: 'header' },
-);
+const props = defineProps<{
+	item: ResourceItem;
+}>();
 
 defineEmits<{
 	click: [];
@@ -23,301 +16,141 @@ defineEmits<{
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
 
-const badgeConfig = computed(
-	() =>
-		({
-			template: {
-				label: i18n.baseText('experiments.resourceCenter.badge.template'),
-				icon: undefined,
-				colorClass: 'badgeTemplate',
-			},
-			video: {
-				label: i18n.baseText('experiments.resourceCenter.badge.video'),
-				icon: 'youtube',
-				colorClass: 'badgeVideo',
-			},
-			'ready-to-run': {
-				label: i18n.baseText('experiments.resourceCenter.badge.readyToRun'),
-				icon: 'zap',
-				colorClass: 'badgeReadyToRun',
-			},
-		}) as const,
+const tagLabel = computed(() =>
+	props.item.type === 'video'
+		? i18n.baseText('experiments.resourceCenter.badge.video')
+		: i18n.baseText('experiments.resourceCenter.badge.template'),
 );
 
-const resolvedNodeTypes = computed(() => {
-	if (!props.item.nodeTypes?.length) return [];
-	return props.item.nodeTypes
+const resolvedTemplateNodeTypes = computed(() => {
+	if (props.item.type !== 'template' || !props.item.nodeTypes?.length) {
+		return [];
+	}
+
+	const allResolved = props.item.nodeTypes
 		.map((type) => nodeTypesStore.getNodeType(type))
-		.filter(Boolean)
-		.slice(0, 4);
+		.filter(
+			(nodeType): nodeType is NonNullable<typeof nodeType> =>
+				nodeType !== null && nodeType !== undefined,
+		);
+
+	const seenNodeNames = new Set<string>();
+
+	return allResolved.filter((nodeType) => {
+		if (seenNodeNames.has(nodeType.name)) {
+			return false;
+		}
+
+		seenNodeNames.add(nodeType.name);
+		return true;
+	});
 });
 
-const typeIcon = computed(
-	() =>
-		({
-			template: 'file-text',
-			video: 'youtube',
-			'ready-to-run': 'zap',
-		}) as const,
+const visibleNodeTypes = computed(() => resolvedTemplateNodeTypes.value.slice(0, 3));
+
+const remainingNodeTypeCount = computed(() =>
+	Math.max(0, resolvedTemplateNodeTypes.value.length - visibleNodeTypes.value.length),
 );
+
+const videoSourceLabel = computed(() => {
+	if (props.item.type !== 'video') {
+		return '';
+	}
+
+	if (!props.item.url) {
+		return 'youtube.com';
+	}
+
+	try {
+		return new URL(props.item.url).hostname.replace(/^www\./, '');
+	} catch {
+		return props.item.url;
+	}
+});
 </script>
 
 <template>
-	<!-- ============ VARIANT A: Header Strip ============ -->
-	<div
-		v-if="variant === 'header'"
+	<article
 		:class="$style.card"
 		role="button"
 		tabindex="0"
 		data-testid="resource-card"
 		@click="$emit('click')"
 		@keydown.enter="$emit('click')"
+		@keydown.space.prevent="$emit('click')"
 	>
-		<!-- Video Header -->
-		<div v-if="item.type === 'video'" :class="$style.videoHeader">
-			<div :class="$style.playCircle">
-				<N8nIcon icon="youtube" size="small" />
-			</div>
-			<span v-if="item.duration" :class="$style.videoDuration">{{ item.duration }}</span>
+		<div :class="$style.tag" data-testid="resource-card-badge">
+			{{ tagLabel }}
 		</div>
 
-		<!-- Node Icons Header (template / ready-to-run) -->
-		<div
-			v-else-if="resolvedNodeTypes.length > 0"
-			:class="[$style.nodeIconsHeader, $style[`nodeIconsBg_${item.type}`]]"
-		>
-			<NodeIcon
-				v-for="nodeType in resolvedNodeTypes"
-				:key="nodeType!.name"
-				:node-type="nodeType"
-				:size="28"
-				:show-tooltip="true"
-			/>
-		</div>
+		<h3 :class="$style.title" data-testid="resource-card-title">
+			{{ item.title }}
+		</h3>
 
-		<!-- Card Body -->
-		<div :class="$style.body">
-			<div
-				:class="[$style.badge, $style[badgeConfig[item.type].colorClass]]"
-				data-testid="resource-card-badge"
-			>
-				<N8nIcon
-					v-if="badgeConfig[item.type].icon"
-					:icon="badgeConfig[item.type].icon!"
-					size="xsmall"
-				/>
-				{{ badgeConfig[item.type].label }}
-			</div>
-
-			<div :class="$style.title" data-testid="resource-card-title">
-				{{ item.title }}
-			</div>
-
-			<div :class="$style.metadata" data-testid="resource-card-metadata">
+		<div :class="$style.footer" data-testid="resource-card-metadata">
+			<p :class="$style.meta">
 				<template v-if="item.type === 'video'">
-					<span v-if="item.duration">{{ item.duration }}</span>
-					<span v-if="item.duration && item.level" :class="$style.separator">&middot;</span>
-					<span v-if="item.level">{{ item.level }}</span>
+					{{ videoSourceLabel }}
 				</template>
-				<template v-else-if="item.type === 'ready-to-run'">
-					<N8nIcon icon="circle-check" size="xsmall" />
-					<span>No setup needed</span>
-				</template>
-				<template v-else-if="item.type === 'template'">
+				<template v-else>
 					<span v-if="item.setupTime">{{ item.setupTime }}</span>
-					<span v-if="item.setupTime && item.nodeCount" :class="$style.separator">&middot;</span>
+					<span v-if="item.setupTime && item.nodeCount" :class="$style.separator">&bull;</span>
 					<span v-if="item.nodeCount">{{
 						i18n.baseText('experiments.resourceCenter.sandbox.nodes', {
 							interpolate: { count: String(item.nodeCount) },
 						})
 					}}</span>
 				</template>
+			</p>
+
+			<div v-if="visibleNodeTypes.length > 0" :class="$style.iconStack">
+				<span
+					v-for="(nodeType, index) in visibleNodeTypes"
+					:key="nodeType.name"
+					:class="$style.iconBubble"
+					:style="{ zIndex: String(visibleNodeTypes.length - index + 1) }"
+				>
+					<NodeIcon :node-type="nodeType" :size="12" :circle="true" />
+				</span>
+				<span
+					v-if="remainingNodeTypeCount > 0"
+					:class="$style.countBubble"
+					:style="{ zIndex: '1' }"
+				>
+					+{{ remainingNodeTypeCount }}
+				</span>
 			</div>
 		</div>
-	</div>
-
-	<!-- ============ VARIANT B: Accent Border ============ -->
-	<div
-		v-else-if="variant === 'accent'"
-		:class="[$style.accentCard, $style[`accent_${item.type}`]]"
-		role="button"
-		tabindex="0"
-		data-testid="resource-card"
-		@click="$emit('click')"
-		@keydown.enter="$emit('click')"
-	>
-		<div :class="$style.accentTop">
-			<div
-				:class="[$style.badge, $style[badgeConfig[item.type].colorClass]]"
-				data-testid="resource-card-badge"
-			>
-				<N8nIcon
-					v-if="badgeConfig[item.type].icon"
-					:icon="badgeConfig[item.type].icon!"
-					size="xsmall"
-				/>
-				{{ badgeConfig[item.type].label }}
-			</div>
-		</div>
-
-		<div :class="$style.accentTitle" data-testid="resource-card-title">
-			{{ item.title }}
-		</div>
-
-		<div :class="$style.accentBottom" data-testid="resource-card-metadata">
-			<div :class="$style.accentMeta">
-				<template v-if="item.type === 'video'">
-					<span v-if="item.duration">{{ item.duration }}</span>
-					<span v-if="item.duration && item.level" :class="$style.separator">&middot;</span>
-					<span v-if="item.level">{{ item.level }}</span>
-				</template>
-				<template v-else-if="item.type === 'ready-to-run'">
-					<N8nIcon icon="circle-check" size="xsmall" />
-					<span>No setup needed</span>
-				</template>
-				<template v-else-if="item.type === 'template'">
-					<span v-if="item.setupTime">{{ item.setupTime }}</span>
-					<span v-if="item.setupTime && item.nodeCount" :class="$style.separator">&middot;</span>
-					<span v-if="item.nodeCount">{{
-						i18n.baseText('experiments.resourceCenter.sandbox.nodes', {
-							interpolate: { count: String(item.nodeCount) },
-						})
-					}}</span>
-				</template>
-			</div>
-			<div v-if="resolvedNodeTypes.length > 0" :class="$style.accentIcons">
-				<NodeIcon
-					v-for="nodeType in resolvedNodeTypes"
-					:key="nodeType!.name"
-					:node-type="nodeType"
-					:size="18"
-				/>
-			</div>
-		</div>
-	</div>
-
-	<!-- ============ VARIANT C: Spotlight ============ -->
-	<div
-		v-else
-		:class="[$style.spotCard, $style[`spotAccent_${item.type}`]]"
-		role="button"
-		tabindex="0"
-		data-testid="resource-card"
-		@click="$emit('click')"
-		@keydown.enter="$emit('click')"
-	>
-		<!-- Row 1: Type icon + badge -->
-		<div :class="$style.spotHeader">
-			<div :class="[$style.spotIcon, $style[`spotIconColor_${item.type}`]]">
-				<N8nIcon :icon="typeIcon[item.type]" size="small" />
-			</div>
-			<div
-				:class="[$style.badge, $style[badgeConfig[item.type].colorClass]]"
-				data-testid="resource-card-badge"
-			>
-				{{ badgeConfig[item.type].label }}
-			</div>
-		</div>
-
-		<!-- Row 2: Title -->
-		<div :class="$style.spotTitle" data-testid="resource-card-title">
-			{{ item.title }}
-		</div>
-
-		<!-- Row 3: Node icons (if available) -->
-		<div v-if="resolvedNodeTypes.length > 0" :class="$style.spotNodes">
-			<NodeIcon
-				v-for="nodeType in resolvedNodeTypes"
-				:key="nodeType!.name"
-				:node-type="nodeType"
-				:size="20"
-			/>
-		</div>
-
-		<!-- Row 4: Metadata -->
-		<div :class="$style.spotMeta" data-testid="resource-card-metadata">
-			<template v-if="item.type === 'video'">
-				<span v-if="item.duration">{{ item.duration }}</span>
-				<span v-if="item.duration && item.level" :class="$style.separator">&middot;</span>
-				<span v-if="item.level">{{ item.level }}</span>
-			</template>
-			<template v-else-if="item.type === 'ready-to-run'">
-				<N8nIcon icon="circle-check" size="xsmall" />
-				<span>No setup needed</span>
-			</template>
-			<template v-else-if="item.type === 'template'">
-				<span v-if="item.setupTime">{{ item.setupTime }}</span>
-				<span v-if="item.setupTime && item.nodeCount" :class="$style.separator">&middot;</span>
-				<span v-if="item.nodeCount">{{
-					i18n.baseText('experiments.resourceCenter.sandbox.nodes', {
-						interpolate: { count: String(item.nodeCount) },
-					})
-				}}</span>
-			</template>
-		</div>
-	</div>
+	</article>
 </template>
 
 <style lang="scss" module>
-/* ──────────────────────────────────
-   Shared
-   ────────────────────────────────── */
-
-.badge {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	font-size: var(--font-size--3xs);
-	font-weight: var(--font-weight--bold);
-	text-transform: uppercase;
-	letter-spacing: 0.04em;
-	padding: 2px var(--spacing--4xs);
-	border-radius: var(--radius--sm);
-	width: fit-content;
-}
-
-.badgeTemplate {
-	background: color-mix(in srgb, var(--color--warning) 18%, transparent);
-	color: var(--color--warning);
-}
-
-.badgeVideo {
-	background: color-mix(in srgb, var(--color--primary) 18%, transparent);
-	color: var(--color--primary);
-}
-
-.badgeReadyToRun {
-	background: color-mix(in srgb, var(--color--success) 18%, transparent);
-	color: var(--color--success);
-}
-
-.separator {
-	color: var(--color--text--tint-2);
-}
-
-/* ──────────────────────────────────
-   Variant A: Header Strip
-   ────────────────────────────────── */
-
 .card {
 	display: flex;
 	flex-direction: column;
-	border: var(--border);
-	border-radius: var(--radius--lg);
+	min-height: 7.25rem;
+	padding: var(--spacing--sm);
+	gap: var(--spacing--xs);
+	border-radius: 8px;
+	background: var(--resource-center--color--background--card, white);
+	border: 0.5px solid var(--resource-center--border-color--card, rgba(0, 0, 0, 0.1));
+	box-shadow: var(
+		--resource-center--shadow--card,
+		0 0 0 0.5px rgba(0, 0, 0, 0.1),
+		0 1px 3px -1px rgba(0, 0, 0, 0.1)
+	);
 	cursor: pointer;
 	transition:
-		border-color 0.15s ease,
-		box-shadow 0.15s ease;
-	background: var(--color--background--light-3);
-	overflow: hidden;
+		transform 0.18s ease,
+		box-shadow 0.18s ease,
+		border-color 0.18s ease;
 
 	&:hover {
-		border-color: var(--color--primary--tint-1);
-		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-
-		.title {
-			color: var(--color--primary);
-		}
+		transform: translateY(-1px);
+		border-color: color-mix(in srgb, var(--color--primary) 24%, transparent);
+		box-shadow:
+			0 0 0 0.5px color-mix(in srgb, var(--color--primary) 14%, transparent),
+			0 0.875rem 1.75rem -1.25rem color-mix(in srgb, var(--color--text--shade-1) 22%, transparent);
 	}
 
 	&:focus-visible {
@@ -326,264 +159,93 @@ const typeIcon = computed(
 	}
 }
 
-.videoHeader {
-	display: flex;
+.tag {
+	display: inline-flex;
 	align-items: center;
-	gap: var(--spacing--xs);
-	padding: var(--spacing--md) var(--spacing--sm);
-	border-bottom: var(--border);
-	background: color-mix(in srgb, var(--color--primary) 12%, transparent);
-}
-
-.playCircle {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 28px;
-	height: 28px;
-	border-radius: 50%;
-	background: var(--color--primary);
-	color: #fff;
-}
-
-.videoDuration {
+	min-height: 1.5rem;
+	padding: 0 var(--spacing--2xs);
+	border-radius: 999px;
+	width: fit-content;
+	background: var(--resource-center--color--background--card-tag);
+	border: 1px solid var(--resource-center--border-color--card-tag);
+	color: var(--resource-center--color--text--card-tag);
 	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
-	color: var(--color--primary);
-}
-
-.nodeIconsHeader {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--xs);
-	padding: var(--spacing--md) var(--spacing--sm);
-	border-bottom: var(--border);
-}
-
-.nodeIconsBg_template {
-	background: color-mix(in srgb, var(--color--warning) 12%, transparent);
-}
-
-// stylelint-disable-next-line selector-class-pattern
-.nodeIconsBg_ready-to-run {
-	background: color-mix(in srgb, var(--color--success) 12%, transparent);
-}
-
-.body {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
-	padding: var(--spacing--sm);
-	flex: 1;
+	font-weight: 500;
+	line-height: 1;
 }
 
 .title {
+	margin: 0;
+	color: var(--resource-center--color--text, var(--color--text--shade-1));
 	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--bold);
-	color: var(--color--text--shade-1);
+	font-weight: 500;
+	line-height: var(--line-height--lg);
+	min-height: 2.375rem;
 	display: -webkit-box;
-	-webkit-line-clamp: 2;
 	-webkit-box-orient: vertical;
-	overflow: hidden;
-	line-height: var(--line-height--md);
-	transition: color 0.15s ease;
-}
-
-.metadata {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	font-size: var(--font-size--3xs);
-	color: var(--color--text--tint-1);
-	margin-top: auto;
-	padding-top: var(--spacing--4xs);
-}
-
-/* ──────────────────────────────────
-   Variant B: Accent Border
-   ────────────────────────────────── */
-
-.accentCard {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--3xs);
-	padding: var(--spacing--xs) var(--spacing--sm);
-	border-radius: var(--radius--lg);
-	cursor: pointer;
-	background: var(--color--background--light-3);
-	border: var(--border);
-	border-left: 4px solid transparent;
-	transition:
-		border-color 0.15s ease,
-		box-shadow 0.15s ease;
-
-	&:hover {
-		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-
-		.accentTitle {
-			color: var(--color--primary);
-		}
-	}
-
-	&:focus-visible {
-		outline: 2px solid var(--color--primary);
-		outline-offset: 2px;
-	}
-}
-
-.accent_template {
-	border-left-color: var(--color--warning);
-}
-
-.accent_video {
-	border-left-color: var(--color--primary);
-}
-
-// stylelint-disable-next-line selector-class-pattern
-.accent_ready-to-run {
-	border-left-color: var(--color--success);
-}
-
-.accentTop {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-}
-
-.accentTitle {
-	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--bold);
-	color: var(--color--text--shade-1);
-	display: -webkit-box;
 	-webkit-line-clamp: 2;
-	-webkit-box-orient: vertical;
 	overflow: hidden;
-	line-height: var(--line-height--md);
-	transition: color 0.15s ease;
 }
 
-.accentBottom {
+.footer {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+	gap: var(--spacing--xs);
 	margin-top: auto;
 }
 
-.accentMeta {
+.meta {
+	margin: 0;
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-	font-size: var(--font-size--3xs);
-	color: var(--color--text--tint-1);
+	color: var(--resource-center--color--text--muted, var(--color--text--tint-1));
+	font-size: var(--font-size--2xs);
+	line-height: 1.2;
+	min-width: 0;
 }
 
-.accentIcons {
+.separator {
+	color: var(--resource-center--color--text--subtle, var(--color--text--tint-2));
+}
+
+.iconStack {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--4xs);
+	isolation: isolate;
+	padding-right: var(--spacing--4xs);
+	flex-shrink: 0;
 }
 
-/* ──────────────────────────────────
-   Variant C: Spotlight
-   ────────────────────────────────── */
-
-.spotCard {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--xs);
-	padding: var(--spacing--md);
-	border-radius: var(--radius--xl);
-	cursor: pointer;
-	background: var(--color--background--light-3);
-	border: var(--border);
-	border-top: 3px solid transparent;
-	transition:
-		box-shadow 0.2s ease,
-		transform 0.2s ease;
-
-	&:hover {
-		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-		transform: translateY(-2px);
-
-		.spotTitle {
-			color: var(--color--primary);
-		}
-	}
-
-	&:focus-visible {
-		outline: 2px solid var(--color--primary);
-		outline-offset: 2px;
-	}
-}
-
-.spotAccent_template {
-	border-top-color: var(--color--warning);
-}
-
-.spotAccent_video {
-	border-top-color: var(--color--primary);
-}
-
-// stylelint-disable-next-line selector-class-pattern
-.spotAccent_ready-to-run {
-	border-top-color: var(--color--success);
-}
-
-.spotHeader {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-}
-
-.spotIcon {
-	display: flex;
+.iconBubble,
+.countBubble {
+	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	width: 28px;
-	height: 28px;
-	border-radius: var(--radius);
+	position: relative;
+	width: var(--spacing--md);
+	height: var(--spacing--md);
+	margin-right: calc(var(--spacing--xs) * -0.5);
+	flex-shrink: 0;
+	box-sizing: border-box;
 }
 
-.spotIconColor_template {
-	background: color-mix(in srgb, var(--color--warning) 18%, transparent);
-	color: var(--color--warning);
+.iconBubble {
+	padding: var(--spacing--4xs);
+	border-radius: 999px;
+	background: var(--resource-center--color--background--icon-token);
+	border: 0.5px solid var(--resource-center--border-color--icon-token);
+	box-shadow: var(--resource-center--shadow--icon-token);
 }
 
-.spotIconColor_video {
-	background: color-mix(in srgb, var(--color--primary) 18%, transparent);
-	color: var(--color--primary);
-}
-
-// stylelint-disable-next-line selector-class-pattern
-.spotIconColor_ready-to-run {
-	background: color-mix(in srgb, var(--color--success) 18%, transparent);
-	color: var(--color--success);
-}
-
-.spotTitle {
-	font-size: var(--font-size--md);
-	font-weight: var(--font-weight--bold);
-	color: var(--color--text--shade-1);
-	display: -webkit-box;
-	-webkit-line-clamp: 2;
-	-webkit-box-orient: vertical;
-	overflow: hidden;
-	line-height: var(--line-height--lg);
-	transition: color 0.15s ease;
-}
-
-.spotNodes {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-}
-
-.spotMeta {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
-	margin-top: auto;
+.countBubble {
+	border-radius: 999px;
+	background: var(--resource-center--color--background--count-bubble);
+	color: var(--resource-center--color--text--count-bubble);
+	font-size: var(--font-size--3xs);
+	font-weight: 500;
+	line-height: 1;
+	border: 0.5px solid var(--resource-center--border-color--count-bubble);
 }
 </style>

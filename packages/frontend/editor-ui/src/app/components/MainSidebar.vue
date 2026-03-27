@@ -101,7 +101,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 	{
 		// Resource Center - replaces Templates when experiment is enabled
 		id: 'resource-center',
-		icon: 'lightbulb',
+		icon: { type: 'icon', value: 'lightbulb', color: 'primary' },
 		label: resourceCenterLabel.value,
 		position: 'bottom',
 		available: isResourceCenterEnabled.value,
