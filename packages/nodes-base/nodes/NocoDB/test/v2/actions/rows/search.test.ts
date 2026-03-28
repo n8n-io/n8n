@@ -58,7 +58,6 @@ describe('NocoDB Rows Search Action', () => {
 
 			const result = await execute.call(mockExecuteFunctions);
 
-			expect(mockExecuteFunctions.getNodeParameter).toHaveBeenCalledWith('version', 0);
 			expect(mockExecuteFunctions.getNodeParameter).toHaveBeenCalledWith(
 				'projectId',
 				0,
@@ -115,7 +114,6 @@ describe('NocoDB Rows Search Action', () => {
 
 			const result = await execute.call(mockExecuteFunctions);
 
-			expect(mockExecuteFunctions.getNodeParameter).toHaveBeenCalledWith('version', 0);
 			expect(mockExecuteFunctions.getNodeParameter).toHaveBeenCalledWith(
 				'projectId',
 				0,
@@ -174,7 +172,6 @@ describe('NocoDB Rows Search Action', () => {
 
 			const result = await execute.call(mockExecuteFunctions);
 
-			expect(mockExecuteFunctions.getNodeParameter).toHaveBeenCalledWith('version', 0);
 			expect(mockExecuteFunctions.getNodeParameter).toHaveBeenCalledWith(
 				'projectId',
 				0,

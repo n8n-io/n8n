@@ -80,10 +80,9 @@ describe('NocoDB List Search Methods', () => {
 	});
 
 	describe('getBases', () => {
-		it('should return a list of bases for a given workspace (v4)', async () => {
+		it('should return a list of bases for a given workspace', async () => {
 			(mockThis.getCredentials as jest.Mock).mockResolvedValue({ host: 'http://localhost:8080' });
 			(mockThis.getNodeParameter as jest.Mock).mockImplementation((name: string) => {
-				if (name === 'version') return 4;
 				if (name === 'workspaceId') return 'ws1';
 				return undefined;
 			});
@@ -96,7 +95,6 @@ describe('NocoDB List Search Methods', () => {
 
 			const result = await getBases.call(mockThis);
 
-			expect(mockThis.getNodeParameter).toHaveBeenCalledWith('version', 0);
 			expect(mockThis.getNodeParameter).toHaveBeenCalledWith('workspaceId', 0, {
 				extractValue: true,
 			});
@@ -114,102 +112,9 @@ describe('NocoDB List Search Methods', () => {
 			});
 		});
 
-		it('should return a list of bases for a given workspace (v2)', async () => {
-			(mockThis.getCredentials as jest.Mock).mockResolvedValue({ host: 'http://localhost:8080' });
-			(mockThis.getNodeParameter as jest.Mock).mockImplementation((name: string) => {
-				if (name === 'version') return 2;
-				if (name === 'workspaceId') return 'ws1';
-				return undefined;
-			});
-			apiRequestSpy.mockResolvedValue({
-				list: [
-					{ id: 'baseA', title: 'Base A' },
-					{ id: 'baseB', title: 'Base B' },
-				],
-			});
-
-			const result = await getBases.call(mockThis);
-
-			expect(mockThis.getNodeParameter).toHaveBeenCalledWith('version', 0);
-			expect(mockThis.getNodeParameter).toHaveBeenCalledWith('workspaceId', 0, {
-				extractValue: true,
-			});
-			expect(apiRequestSpy).toHaveBeenCalledWith(
-				'GET',
-				'/api/v2/meta/workspaces/ws1/bases',
-				{},
-				{},
-			);
-			expect(result).toEqual({
-				results: [
-					{ name: 'Base A', value: 'baseA', url: 'http://localhost:8080/#/ws1/baseA' },
-					{ name: 'Base B', value: 'baseB', url: 'http://localhost:8080/#/ws1/baseB' },
-				],
-			});
-		});
-
-		it('should return a list of bases without workspace (v3)', async () => {
-			(mockThis.getCredentials as jest.Mock).mockResolvedValue({ host: 'http://localhost:8080' });
-			(mockThis.getNodeParameter as jest.Mock).mockImplementation((name: string) => {
-				if (name === 'version') return 3;
-				if (name === 'workspaceId') return 'none';
-				return undefined;
-			});
-			apiRequestSpy.mockResolvedValue({
-				list: [
-					{ id: 'baseX', title: 'Base X' },
-					{ id: 'baseY', title: 'Base Y' },
-				],
-			});
-
-			const result = await getBases.call(mockThis);
-
-			expect(mockThis.getNodeParameter).toHaveBeenCalledWith('version', 0);
-			expect(mockThis.getNodeParameter).toHaveBeenCalledWith('workspaceId', 0, {
-				extractValue: true,
-			});
-			expect(apiRequestSpy).toHaveBeenCalledWith('GET', '/api/v2/meta/bases/', {}, {});
-			expect(result).toEqual({
-				results: [
-					{ name: 'Base X', value: 'baseX', url: 'http://localhost:8080/#/nc/baseX' },
-					{ name: 'Base Y', value: 'baseY', url: 'http://localhost:8080/#/nc/baseY' },
-				],
-			});
-		});
-
-		it('should return a list of bases without workspace (v1)', async () => {
-			(mockThis.getCredentials as jest.Mock).mockResolvedValue({ host: 'http://localhost:8080' });
-			(mockThis.getNodeParameter as jest.Mock).mockImplementation((name: string) => {
-				if (name === 'version') return 1;
-				if (name === 'workspaceId') return 'none';
-				return undefined;
-			});
-			apiRequestSpy.mockResolvedValue({
-				list: [
-					{ id: 'baseP', title: 'Base P' },
-					{ id: 'baseQ', title: 'Base Q' },
-				],
-			});
-
-			const result = await getBases.call(mockThis);
-
-			expect(mockThis.getNodeParameter).toHaveBeenCalledWith('version', 0);
-			expect(mockThis.getNodeParameter).toHaveBeenCalledWith('workspaceId', 0, {
-				extractValue: true,
-			});
-			expect(apiRequestSpy).toHaveBeenCalledWith('GET', '/api/v1/db/meta/projects/', {}, {});
-			expect(result).toEqual({
-				results: [
-					{ name: 'Base P', value: 'baseP', url: 'http://localhost:8080/#/nc/baseP' },
-					{ name: 'Base Q', value: 'baseQ', url: 'http://localhost:8080/#/nc/baseQ' },
-				],
-			});
-		});
-
 		it('should filter bases based on the provided filter', async () => {
 			(mockThis.getCredentials as jest.Mock).mockResolvedValue({ host: 'http://localhost:8080' });
 			(mockThis.getNodeParameter as jest.Mock).mockImplementation((name: string) => {
-				if (name === 'version') return 4;
 				if (name === 'workspaceId') return 'ws1';
 				return undefined;
 			});
@@ -248,17 +153,6 @@ describe('NocoDB List Search Methods', () => {
 	});
 
 	describe('getRelatedTableFields', () => {
-		it('should return an empty array for version 3', async () => {
-			(mockThis.getNodeParameter as jest.Mock).mockImplementation((name: string) => {
-				if (name === 'version') return 3;
-				return undefined;
-			});
-
-			const result = await getRelatedTableFields.call(mockThis);
-
-			expect(result).toEqual({ results: [] });
-		});
-
 		it('should throw an error if no link field is selected', async () => {
 			(mockThis.getNodeParameter as jest.Mock).mockImplementation((name: string) => {
 				if (name === 'version') return 4;
