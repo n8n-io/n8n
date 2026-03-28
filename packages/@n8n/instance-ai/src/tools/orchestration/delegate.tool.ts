@@ -15,8 +15,6 @@ import {
 } from './tracing-utils';
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { createSubAgent, SUB_AGENT_PROTOCOL } from '../../agent/sub-agent-factory';
-import { createSubAgentMemory, subAgentResourceId } from '../../memory/sub-agent-memory';
-import { MEMORY_ENABLED_ROLES } from '../../memory/sub-agent-memory-templates';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
 import { traceWorkingMemoryContext } from '../../runtime/working-memory-tracing';
 import { formatPreviousAttempts } from '../../storage/iteration-log';
@@ -185,10 +183,6 @@ export async function startDetachedDelegateTask(
 		plannedTaskId: input.plannedTaskId,
 		run: async (signal, drainCorrections) => {
 			return await withTraceContextActor(traceContext, async () => {
-				const memory = MEMORY_ENABLED_ROLES.has(role)
-					? createSubAgentMemory(context.storage, role)
-					: undefined;
-
 				const subAgent = createSubAgent({
 					agentId: subAgentId,
 					role,
@@ -196,14 +190,10 @@ export async function startDetachedDelegateTask(
 						'Complete the delegated task using the provided tools. Return concrete results only.',
 					tools: tracedTools,
 					modelId: context.modelId,
-					memory,
 				});
 
 				registerWithMastra(subAgentId, subAgent, context.storage);
 
-				const memoryOpts = memory
-					? { resource: subAgentResourceId(context.userId, role), thread: subAgentId }
-					: undefined;
 				return await withTraceParentContext(getTraceParentRun(), async () => {
 					const llmStepTraceHooks = createLlmStepTraceHooks();
 					const stream = await traceWorkingMemoryContext(
@@ -213,7 +203,6 @@ export async function startDetachedDelegateTask(
 							agentRole: role,
 							threadId: context.threadId,
 							input: briefingMessage,
-							memory: memoryOpts,
 						},
 						async () =>
 							await subAgent.stream(briefingMessage, {
@@ -223,7 +212,6 @@ export async function startDetachedDelegateTask(
 									anthropic: { cacheControl: { type: 'ephemeral' } },
 								},
 								...(llmStepTraceHooks?.executionOptions ?? {}),
-								...(memoryOpts ? { memory: memoryOpts } : {}),
 							}),
 					);
 
@@ -242,7 +230,7 @@ export async function startDetachedDelegateTask(
 						waitForConfirmation: context.waitForConfirmation,
 						drainCorrections,
 						llmStepTraceHooks,
-						workingMemoryEnabled: Boolean(memoryOpts),
+						workingMemoryEnabled: false,
 					});
 
 					return await result.text;
@@ -310,19 +298,13 @@ export function createDelegateTool(context: OrchestrationContext) {
 			const tracedTools = traceSubAgentTools(context, validTools, input.role);
 
 			try {
-				// 3. Create Mastra Memory for this role (if memory-enabled)
-				const memory = MEMORY_ENABLED_ROLES.has(input.role)
-					? createSubAgentMemory(context.storage, input.role)
-					: undefined;
-
-				// 4. Create sub-agent
+				// 3. Create sub-agent
 				const subAgent = createSubAgent({
 					agentId: subAgentId,
 					role: input.role,
 					instructions: input.instructions,
 					tools: tracedTools,
 					modelId: context.modelId,
-					memory,
 				});
 
 				registerWithMastra(subAgentId, subAgent, context.storage);
@@ -335,10 +317,7 @@ export function createDelegateTool(context: OrchestrationContext) {
 					input.conversationContext,
 				);
 
-				// 5. Stream sub-agent with HITL support
-				const memoryOpts = memory
-					? { resource: subAgentResourceId(context.userId, input.role), thread: subAgentId }
-					: undefined;
+				// 4. Stream sub-agent with HITL support
 				const resultText = await withTraceRun(context, traceRun, async () => {
 					return await withTraceParentContext(getTraceParentRun(), async () => {
 						const llmStepTraceHooks = createLlmStepTraceHooks();
@@ -349,7 +328,6 @@ export function createDelegateTool(context: OrchestrationContext) {
 								agentRole: input.role,
 								threadId: context.threadId,
 								input: briefingMessage,
-								memory: memoryOpts,
 							},
 							async () =>
 								await subAgent.stream(briefingMessage, {
@@ -359,7 +337,6 @@ export function createDelegateTool(context: OrchestrationContext) {
 										anthropic: { cacheControl: { type: 'ephemeral' } },
 									},
 									...(llmStepTraceHooks?.executionOptions ?? {}),
-									...(memoryOpts ? { memory: memoryOpts } : {}),
 								}),
 						);
 
@@ -377,7 +354,7 @@ export function createDelegateTool(context: OrchestrationContext) {
 							abortSignal: context.abortSignal,
 							waitForConfirmation: context.waitForConfirmation,
 							llmStepTraceHooks,
-							workingMemoryEnabled: Boolean(memoryOpts),
+							workingMemoryEnabled: false,
 						});
 
 						return await result.text;

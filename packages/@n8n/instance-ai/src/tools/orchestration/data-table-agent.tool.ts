@@ -20,7 +20,6 @@ import {
 	withTraceContextActor,
 } from './tracing-utils';
 import { registerWithMastra } from '../../agent/register-with-mastra';
-import { createSubAgentMemory, subAgentResourceId } from '../../memory/sub-agent-memory';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
 import { traceWorkingMemoryContext } from '../../runtime/working-memory-tracing';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
@@ -118,8 +117,6 @@ export async function startDataTableAgentTask(
 		plannedTaskId: input.plannedTaskId,
 		run: async (signal, _drainCorrections) => {
 			return await withTraceContextActor(traceContext, async () => {
-				const dataTableMemory = createSubAgentMemory(context.storage, 'data-table-manager');
-
 				const subAgent = new Agent({
 					id: subAgentId,
 					name: 'Data Table Agent',
@@ -132,17 +129,9 @@ export async function startDataTableAgentTask(
 					},
 					model: context.modelId,
 					tools: tracedDataTableTools,
-					memory: dataTableMemory,
 				});
 
 				registerWithMastra(subAgentId, subAgent, context.storage);
-
-				const dtMemoryOpts = dataTableMemory
-					? {
-							resource: subAgentResourceId(context.userId, 'data-table-manager'),
-							thread: subAgentId,
-						}
-					: undefined;
 
 				const conversationCtx = input.conversationContext
 					? `\n\n[CONVERSATION CONTEXT: ${input.conversationContext}]`
@@ -158,7 +147,6 @@ export async function startDataTableAgentTask(
 							agentRole: 'data-table-manager',
 							threadId: context.threadId,
 							input: briefing,
-							memory: dtMemoryOpts,
 						},
 						async () =>
 							await subAgent.stream(briefing, {
@@ -168,7 +156,6 @@ export async function startDataTableAgentTask(
 									anthropic: { cacheControl: { type: 'ephemeral' } },
 								},
 								...(llmStepTraceHooks?.executionOptions ?? {}),
-								...(dtMemoryOpts ? { memory: dtMemoryOpts } : {}),
 							}),
 					);
 
@@ -186,7 +173,7 @@ export async function startDataTableAgentTask(
 						abortSignal: signal,
 						waitForConfirmation: context.waitForConfirmation,
 						llmStepTraceHooks,
-						workingMemoryEnabled: Boolean(dtMemoryOpts),
+						workingMemoryEnabled: false,
 					});
 
 					return await hitlResult.text;

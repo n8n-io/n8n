@@ -25,7 +25,6 @@ import {
 } from './tracing-utils';
 import { createVerifyBuiltWorkflowTool } from './verify-built-workflow.tool';
 import { registerWithMastra } from '../../agent/register-with-mastra';
-import { createSubAgentMemory, subAgentResourceId } from '../../memory/sub-agent-memory';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
 import { traceWorkingMemoryContext } from '../../runtime/working-memory-tracing';
 import { formatPreviousAttempts } from '../../storage/iteration-log';
@@ -262,8 +261,6 @@ export async function startBuildWorkflowAgentTask(
 		prompt = BUILDER_AGENT_PROMPT;
 	}
 
-	const builderMemory = createSubAgentMemory(context.storage, 'workflow-builder');
-
 	const subAgentId = input.agentId ?? `agent-builder-${nanoid(6)}`;
 	const taskId = input.taskId ?? `build-${nanoid(8)}`;
 	const workItemId = `wi_${nanoid(8)}`;
@@ -410,17 +407,9 @@ export async function startBuildWorkflowAgentTask(
 							model: context.modelId,
 							tools: tracedBuilderTools,
 							workspace,
-							memory: builderMemory,
 						});
 
 						registerWithMastra(subAgentId, subAgent, context.storage);
-
-						const builderMemoryOpts = builderMemory
-							? {
-									resource: subAgentResourceId(context.userId, 'workflow-builder'),
-									thread: subAgentId,
-								}
-							: undefined;
 
 						const hitlResult = await withTraceParentContext(getTraceParentRun(), async () => {
 							const llmStepTraceHooks = createLlmStepTraceHooks();
@@ -431,7 +420,6 @@ export async function startBuildWorkflowAgentTask(
 									agentRole: 'workflow-builder',
 									threadId: context.threadId,
 									input: briefing,
-									memory: builderMemoryOpts,
 								},
 								async () =>
 									await subAgent.stream(briefing, {
@@ -441,7 +429,6 @@ export async function startBuildWorkflowAgentTask(
 											anthropic: { cacheControl: { type: 'ephemeral' } },
 										},
 										...(llmStepTraceHooks?.executionOptions ?? {}),
-										...(builderMemoryOpts ? { memory: builderMemoryOpts } : {}),
 									}),
 							);
 
@@ -460,7 +447,7 @@ export async function startBuildWorkflowAgentTask(
 								waitForConfirmation: context.waitForConfirmation,
 								drainCorrections,
 								llmStepTraceHooks,
-								workingMemoryEnabled: Boolean(builderMemoryOpts),
+								workingMemoryEnabled: false,
 							});
 						});
 
@@ -543,17 +530,9 @@ export async function startBuildWorkflowAgentTask(
 						},
 						model: context.modelId,
 						tools: tracedBuilderTools,
-						memory: builderMemory,
 					});
 
 					registerWithMastra(subAgentId, subAgent, context.storage);
-
-					const toolMemoryOpts = builderMemory
-						? {
-								resource: subAgentResourceId(context.userId, 'workflow-builder'),
-								thread: subAgentId,
-							}
-						: undefined;
 
 					const hitlResult = await withTraceParentContext(getTraceParentRun(), async () => {
 						const llmStepTraceHooks = createLlmStepTraceHooks();
@@ -564,7 +543,6 @@ export async function startBuildWorkflowAgentTask(
 								agentRole: 'workflow-builder',
 								threadId: context.threadId,
 								input: briefing,
-								memory: toolMemoryOpts,
 							},
 							async () =>
 								await subAgent.stream(briefing, {
@@ -574,7 +552,6 @@ export async function startBuildWorkflowAgentTask(
 										anthropic: { cacheControl: { type: 'ephemeral' } },
 									},
 									...(llmStepTraceHooks?.executionOptions ?? {}),
-									...(toolMemoryOpts ? { memory: toolMemoryOpts } : {}),
 								}),
 						);
 
@@ -593,7 +570,7 @@ export async function startBuildWorkflowAgentTask(
 							waitForConfirmation: context.waitForConfirmation,
 							drainCorrections,
 							llmStepTraceHooks,
-							workingMemoryEnabled: Boolean(toolMemoryOpts),
+							workingMemoryEnabled: false,
 						});
 					});
 

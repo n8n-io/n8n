@@ -34,11 +34,6 @@ export type {
 } from './storage';
 export { WORKING_MEMORY_TEMPLATE } from './memory/working-memory-template';
 export { truncateToTitle, generateThreadTitle } from './memory/title-utils';
-export { createSubAgentMemory, subAgentResourceId } from './memory/sub-agent-memory';
-export {
-	MEMORY_ENABLED_ROLES,
-	getSubAgentMemoryTemplate,
-} from './memory/sub-agent-memory-templates';
 export { McpClientManager } from './mcp/mcp-client-manager';
 export { mapMastraChunkToEvent } from './stream/map-chunk';
 export { isRecord, parseSuspension, asResumable } from './utils/stream-helpers';
