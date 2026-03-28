@@ -260,7 +260,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			if (returnAll) {
 				responseData = await apiRequestAllItems.call(this, requestMethod, endPoint, {}, qs);
 			} else {
-				qs.limit = this.getNodeParameter('limit', 0);
+				qs.limit = this.getNodeParameter('limit', i);
 				responseData = await apiRequest.call(this, requestMethod, endPoint, {}, qs);
 				responseData = responseData.records;
 			}

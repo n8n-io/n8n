@@ -28,7 +28,6 @@ export const versionDescription: INodeTypeDescription = {
 	name: 'nocoDb',
 	icon: 'file:nocodb.svg',
 	group: ['input'],
-	defaultVersion: 4,
 	subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 	description: 'Read, update, write and delete data from NocoDB',
 	usableAsTool: true,
