@@ -20,6 +20,7 @@ import { createSubAgentMemory, subAgentResourceId } from '../../memory/sub-agent
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
 import { traceWorkingMemoryContext } from '../../runtime/working-memory-tracing';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
+import { getTraceParentRun, withTraceParentContext } from '../../tracing/langsmith-tracing';
 import type { OrchestrationContext } from '../../types';
 
 const DATA_TABLE_MAX_STEPS = 15;
@@ -144,46 +145,48 @@ export async function startDataTableAgentTask(
 					: '';
 				const briefing = `${input.task}${conversationCtx}`;
 
-				const llmStepTraceHooks = createLlmStepTraceHooks();
-				const stream = await traceWorkingMemoryContext(
-					{
-						phase: 'initial',
+				return await withTraceParentContext(getTraceParentRun(), async () => {
+					const llmStepTraceHooks = createLlmStepTraceHooks();
+					const stream = await traceWorkingMemoryContext(
+						{
+							phase: 'initial',
+							agentId: subAgentId,
+							agentRole: 'data-table-manager',
+							threadId: context.threadId,
+							input: briefing,
+							memory: dtMemoryOpts,
+						},
+						async () =>
+							await subAgent.stream(briefing, {
+								maxSteps: DATA_TABLE_MAX_STEPS,
+								abortSignal: signal,
+								providerOptions: {
+									anthropic: { cacheControl: { type: 'ephemeral' } },
+								},
+								...(llmStepTraceHooks?.executionOptions ?? {}),
+								...(dtMemoryOpts ? { memory: dtMemoryOpts } : {}),
+							}),
+					);
+
+					const hitlResult = await consumeStreamWithHitl({
+						agent: subAgent,
+						stream: stream as {
+							runId?: string;
+							fullStream: AsyncIterable<unknown>;
+							text: Promise<string>;
+						},
+						runId: context.runId,
 						agentId: subAgentId,
-						agentRole: 'data-table-manager',
+						eventBus: context.eventBus,
 						threadId: context.threadId,
-						input: briefing,
-						memory: dtMemoryOpts,
-					},
-					async () =>
-						await subAgent.stream(briefing, {
-							maxSteps: DATA_TABLE_MAX_STEPS,
-							abortSignal: signal,
-							providerOptions: {
-								anthropic: { cacheControl: { type: 'ephemeral' } },
-							},
-							...(llmStepTraceHooks?.executionOptions ?? {}),
-							...(dtMemoryOpts ? { memory: dtMemoryOpts } : {}),
-						}),
-				);
+						abortSignal: signal,
+						waitForConfirmation: context.waitForConfirmation,
+						llmStepTraceHooks,
+						workingMemoryEnabled: Boolean(dtMemoryOpts),
+					});
 
-				const hitlResult = await consumeStreamWithHitl({
-					agent: subAgent,
-					stream: stream as {
-						runId?: string;
-						fullStream: AsyncIterable<unknown>;
-						text: Promise<string>;
-					},
-					runId: context.runId,
-					agentId: subAgentId,
-					eventBus: context.eventBus,
-					threadId: context.threadId,
-					abortSignal: signal,
-					waitForConfirmation: context.waitForConfirmation,
-					llmStepTraceHooks,
-					workingMemoryEnabled: Boolean(dtMemoryOpts),
+					return await hitlResult.text;
 				});
-
-				return await hitlResult.text;
 			});
 		},
 	});

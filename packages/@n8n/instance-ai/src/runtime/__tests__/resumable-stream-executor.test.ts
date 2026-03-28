@@ -1097,6 +1097,115 @@ describe('executeResumableStream', () => {
 		});
 	});
 
+	it('groups synthetic tool spans under the active llm run', async () => {
+		const eventBus = createEventBus();
+		const parentRun = new RunTree({
+			name: 'orchestrator',
+			run_type: 'chain',
+			project_name: 'instance-ai',
+			metadata: {
+				model_id: 'anthropic/claude-sonnet-4-6',
+				agent_role: 'orchestrator',
+			},
+		});
+
+		await withRunTree(parentRun, async () => {
+			const hooks = createLlmStepTraceHooks();
+			const prepareStep =
+				hooks?.executionOptions.prepareStep ?? hooks?.executionOptions.experimental_prepareStep;
+
+			await prepareStep?.({
+				stepNumber: 0,
+				model: {
+					provider: 'anthropic',
+					modelId: 'claude-sonnet-4-6',
+				},
+				messages: [{ role: 'user', content: 'Build the weather workflow' }],
+			});
+
+			async function* streamWithToolCall() {
+				yield {
+					type: 'tool-call',
+					payload: {
+						toolCallId: 'native-tool-turn-1',
+						toolName: 'mastra_workspace_execute_command',
+						args: { command: 'echo hello' },
+					},
+				};
+				yield {
+					type: 'tool-result',
+					payload: {
+						toolCallId: 'native-tool-turn-1',
+						toolName: 'mastra_workspace_execute_command',
+						result: 'hello',
+					},
+				};
+				await hooks?.executionOptions.onStepFinish({
+					stepNumber: 0,
+					text: 'Done.',
+					reasoning: [],
+					toolCalls: [
+						{
+							toolCallId: 'native-tool-turn-1',
+							toolName: 'mastra_workspace_execute_command',
+						},
+					],
+					toolResults: [
+						{
+							toolCallId: 'native-tool-turn-1',
+							toolName: 'mastra_workspace_execute_command',
+							result: 'hello',
+						},
+					],
+					finishReason: 'stop',
+					usage: {
+						inputTokens: 12,
+						outputTokens: 3,
+						totalTokens: 15,
+					},
+					response: {
+						modelId: 'claude-sonnet-4-6',
+						messages: [
+							{
+								id: 'assistant-turn-1',
+								role: 'assistant',
+								content: 'Done.',
+							},
+						],
+					},
+				});
+				yield { type: 'finish', finishReason: 'stop' };
+			}
+
+			await executeResumableStream({
+				agent: {},
+				stream: {
+					runId: 'mastra-run-turn-1',
+					fullStream: streamWithToolCall(),
+				},
+				context: {
+					threadId: 'thread-1',
+					runId: 'run-turn-1',
+					agentId: 'agent-turn-1',
+					eventBus,
+					signal: new AbortController().signal,
+				},
+				control: { mode: 'manual' },
+				llmStepTraceHooks: hooks,
+			});
+		});
+
+		const llmRun = langsmithMock
+			.getCreatedRuns()
+			.find((run) => run.name === 'llm:anthropic/claude-sonnet-4-6');
+		const toolRun = langsmithMock
+			.getCreatedRuns()
+			.find((run) => run.name === 'tool:mastra_workspace_execute_command');
+
+		expect(llmRun?.parent_run_id).toBe(parentRun.id);
+		expect(toolRun?.parent_run_id).toBe(llmRun?.id);
+	});
+
 	it('creates synthetic tool spans for auto-injected working memory updates', async () => {
 		const eventBus = createEventBus();
 		const parentRun = new RunTree({
@@ -1151,7 +1260,13 @@ describe('executeResumableStream', () => {
 		const toolRun = langsmithMock
 			.getCreatedRuns()
 			.find((run) => run.name === 'tool:updateWorkingMemory');
+		const internalStateRun = langsmithMock
+			.getCreatedRuns()
+			.find((run) => run.name === 'internal_state');
 		expect(toolRun).toBeDefined();
+		expect(internalStateRun).toBeDefined();
+		expect(internalStateRun?.parent_run_id).toBe(parentRun.id);
+		expect(toolRun?.parent_run_id).toBe(internalStateRun?.id);
 		expect(toolRun?.metadata).toEqual(
 			expect.objectContaining({
 				synthetic_tool_trace: true,
@@ -1170,6 +1285,121 @@ describe('executeResumableStream', () => {
 		expect(toolRun?.outputs).toEqual({
 			result: { success: true },
 		});
+	});
+
+	it('roots internal_state memory spans under the actor even when an llm run is active', async () => {
+		const eventBus = createEventBus();
+		const parentRun = new RunTree({
+			name: 'subagent:data-table-manager',
+			run_type: 'chain',
+			project_name: 'instance-ai',
+			metadata: {
+				model_id: 'anthropic/claude-sonnet-4-6',
+				agent_role: 'data-table-manager',
+			},
+		});
+
+		await withRunTree(parentRun, async () => {
+			const hooks = createLlmStepTraceHooks();
+			const prepareStep =
+				hooks?.executionOptions.prepareStep ?? hooks?.executionOptions.experimental_prepareStep;
+
+			await prepareStep?.({
+				stepNumber: 0,
+				model: {
+					provider: 'anthropic',
+					modelId: 'claude-sonnet-4-6',
+				},
+				messages: [{ role: 'user', content: 'Update the working memory' }],
+			});
+
+			async function* streamWithMemoryTool() {
+				yield {
+					type: 'tool-call',
+					payload: {
+						toolCallId: 'memory-tool-active-llm',
+						toolName: 'updateWorkingMemory',
+						args: {
+							memory: '# Table Inventory\n- work_sessions',
+						},
+					},
+				};
+				yield {
+					type: 'tool-result',
+					payload: {
+						toolCallId: 'memory-tool-active-llm',
+						toolName: 'updateWorkingMemory',
+						result: { success: true },
+					},
+				};
+				await hooks?.executionOptions.onStepFinish({
+					stepNumber: 0,
+					text: 'Done.',
+					reasoning: [],
+					toolCalls: [
+						{
+							toolCallId: 'memory-tool-active-llm',
+							toolName: 'updateWorkingMemory',
+						},
+					],
+					toolResults: [
+						{
+							toolCallId: 'memory-tool-active-llm',
+							toolName: 'updateWorkingMemory',
+							result: { success: true },
+						},
+					],
+					finishReason: 'stop',
+					usage: {
+						inputTokens: 12,
+						outputTokens: 3,
+						totalTokens: 15,
+					},
+					response: {
+						modelId: 'claude-sonnet-4-6',
+						messages: [
+							{
+								id: 'assistant-memory-active-llm',
+								role: 'assistant',
+								content: 'Done.',
+							},
+						],
+					},
+				});
+				yield { type: 'finish', finishReason: 'stop' };
+			}
+
+			await executeResumableStream({
+				agent: {},
+				stream: {
+					runId: 'mastra-run-memory-active-llm',
+					fullStream: streamWithMemoryTool(),
+				},
+				context: {
+					threadId: 'thread-memory-active-llm',
+					runId: 'run-memory-active-llm',
+					agentId: 'agent-memory-active-llm',
+					eventBus,
+					signal: new AbortController().signal,
+				},
+				control: { mode: 'manual' },
+				llmStepTraceHooks: hooks,
+			});
+		});
+
+		const llmRun = langsmithMock
+			.getCreatedRuns()
+			.find((run) => run.name === 'llm:anthropic/claude-sonnet-4-6');
+		const internalStateRun = langsmithMock
+			.getCreatedRuns()
+			.find((run) => run.name === 'internal_state');
+		const toolRun = langsmithMock
+			.getCreatedRuns()
+			.find((run) => run.name === 'tool:updateWorkingMemory');
+
+		expect(llmRun?.parent_run_id).toBe(parentRun.id);
+		expect(internalStateRun?.parent_run_id).toBe(parentRun.id);
+		expect(toolRun?.parent_run_id).toBe(internalStateRun?.id);
 	});
 
 	it('creates llm child spans from resolved steps when step-start chunks are missing', async () => {

@@ -17,6 +17,7 @@ import { startSubAgentTrace, traceSubAgentTools, withTraceRun } from './tracing-
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
+import { getTraceParentRun, withTraceParentContext } from '../../tracing/langsmith-tracing';
 import type { OrchestrationContext } from '../../types';
 
 const RESEARCH_MAX_STEPS = 25;
@@ -120,30 +121,32 @@ export async function startResearchAgentTask(
 
 				registerWithMastra(subAgentId, subAgent, context.storage);
 
-				const llmStepTraceHooks = createLlmStepTraceHooks();
-				const stream = await subAgent.stream(briefing, {
-					maxSteps: RESEARCH_MAX_STEPS,
-					abortSignal: signal,
-					providerOptions: {
-						anthropic: { cacheControl: { type: 'ephemeral' } },
-					},
-					...(llmStepTraceHooks?.executionOptions ?? {}),
-				});
+				return await withTraceParentContext(getTraceParentRun(), async () => {
+					const llmStepTraceHooks = createLlmStepTraceHooks();
+					const stream = await subAgent.stream(briefing, {
+						maxSteps: RESEARCH_MAX_STEPS,
+						abortSignal: signal,
+						providerOptions: {
+							anthropic: { cacheControl: { type: 'ephemeral' } },
+						},
+						...(llmStepTraceHooks?.executionOptions ?? {}),
+					});
 
-				const { text } = await consumeStreamWithHitl({
-					agent: subAgent,
-					stream,
-					runId: context.runId,
-					agentId: subAgentId,
-					eventBus: context.eventBus,
-					threadId: context.threadId,
-					abortSignal: signal,
-					waitForConfirmation: context.waitForConfirmation,
-					drainCorrections,
-					llmStepTraceHooks,
-				});
+					const { text } = await consumeStreamWithHitl({
+						agent: subAgent,
+						stream,
+						runId: context.runId,
+						agentId: subAgentId,
+						eventBus: context.eventBus,
+						threadId: context.threadId,
+						abortSignal: signal,
+						waitForConfirmation: context.waitForConfirmation,
+						drainCorrections,
+						llmStepTraceHooks,
+					});
 
-				return await text;
+					return await text;
+				});
 			});
 		},
 	});

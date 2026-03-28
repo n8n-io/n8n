@@ -556,7 +556,7 @@ export class TypeORMMemoryStorage extends MemoryStorage {
 		return await withCurrentTraceSpan(
 			{
 				name: 'memory_load',
-				tags: ['memory'],
+				tags: ['memory', 'internal'],
 				metadata: buildResourceTraceMetadata(resourceId),
 				inputs: { resource_id: resourceId },
 				processOutputs: summarizeLoadedResource,

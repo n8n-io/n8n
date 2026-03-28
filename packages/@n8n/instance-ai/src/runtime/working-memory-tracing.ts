@@ -122,13 +122,14 @@ export async function traceWorkingMemoryContext<T extends StreamHandleLike>(
 
 	return await withCurrentTraceSpan<T>(
 		{
-			name: 'working_memory_context',
-			tags: ['memory', 'prompt'],
+			name: 'prepare_context',
+			tags: ['memory', 'prompt', 'internal'],
 			metadata: {
 				agent_id: options.agentId,
 				...(options.agentRole ? { agent_role: options.agentRole } : {}),
 				phase: options.phase,
 				memory_enabled: true,
+				prepare_context: 'working_memory',
 				...(binding?.resourceId ? { resource_id: binding.resourceId } : {}),
 				...(binding?.threadId ? { memory_thread_id: binding.threadId } : {}),
 				...(getWorkingMemoryRole(binding?.resourceId)

@@ -1,10 +1,10 @@
 import type { InstanceAiEvent } from '@n8n/api-types';
 import type { RunTree } from 'langsmith';
-import { getCurrentRunTree } from 'langsmith/traceable';
 
 import type { InstanceAiEventBus } from '../event-bus';
 import { traceWorkingMemoryContext } from './working-memory-tracing';
 import { mapMastraChunkToEvent } from '../stream/map-chunk';
+import { getTraceParentRun, setTraceParentOverride } from '../tracing/langsmith-tracing';
 import { asResumable, parseSuspension } from '../utils/stream-helpers';
 import type { SuspensionInfo } from '../utils/stream-helpers';
 
@@ -143,6 +143,7 @@ interface StepStartLike {
 interface SyntheticToolTraceRecord {
 	toolCallId: string;
 	toolName: string;
+	groupRunTree?: RunTree;
 	runTree: RunTree;
 	finished: boolean;
 }
@@ -1046,6 +1047,47 @@ function shouldCreateSyntheticToolTrace(payload: Record<string, unknown>): boole
 	);
 }
 
+function resolveActorParentRun(parentRun: RunTree): RunTree {
+	let current: RunTree | undefined = parentRun;
+
+	while (current) {
+		if (current.run_type !== 'llm' && current.run_type !== 'tool') {
+			return current;
+		}
+
+		const next: unknown = Reflect.get(current, 'parent_run');
+		current = next instanceof Object ? (next as RunTree) : undefined;
+	}
+
+	return parentRun;
+}
+
+async function startSyntheticToolGroupRun(
+	parentRun: RunTree,
+	toolName: string,
+): Promise<RunTree | undefined> {
+	if (!isMemoryToolTrace(toolName)) {
+		return undefined;
+	}
+
+	const actorParentRun = resolveActorParentRun(parentRun);
+	const groupRunTree = actorParentRun.createChild({
+		name: 'internal_state',
+		run_type: 'chain',
+		tags: dedupeTags([...(actorParentRun.tags ?? []), 'internal', 'memory']),
+		metadata: {
+			...(actorParentRun.metadata ?? {}),
+			internal_state: true,
+			tool_name: toolName,
+		},
+		inputs: sanitizeTracePayload({
+			tool_name: toolName,
+		}),
+	});
+	await groupRunTree.postRun();
+	return groupRunTree;
+}
+
 async function startSyntheticToolTrace(
 	chunk: unknown,
 	records: Map<string, SyntheticToolTraceRecord>,
@@ -1065,22 +1107,24 @@ async function startSyntheticToolTrace(
 		return;
 	}
 
-	const parentRun = getCurrentRunTree();
+	const parentRun = getTraceParentRun();
 	if (!parentRun) {
 		return;
 	}
 
-	const runTree = parentRun.createChild({
+	const groupRunTree = await startSyntheticToolGroupRun(parentRun, toolName);
+	const toolParentRun = groupRunTree ?? parentRun;
+	const runTree = toolParentRun.createChild({
 		name: `tool:${toolName}`,
 		run_type: 'tool',
 		tags: dedupeTags([
-			...(parentRun.tags ?? []),
+			...(toolParentRun.tags ?? []),
 			'tool',
 			...(toolName.startsWith('mastra_') ? ['native-tool'] : []),
-			...(isMemoryToolTrace(toolName) ? ['memory'] : []),
+			...(isMemoryToolTrace(toolName) ? ['memory', 'internal'] : []),
 		]),
 		metadata: {
-			...(parentRun.metadata ?? {}),
+			...(toolParentRun.metadata ?? {}),
 			tool_name: toolName,
 			synthetic_tool_trace: true,
 			...(isMemoryToolTrace(toolName) ? { memory_tool: true } : {}),
@@ -1094,6 +1138,7 @@ async function startSyntheticToolTrace(
 	records.set(toolCallId, {
 		toolCallId,
 		toolName,
+		groupRunTree,
 		runTree,
 		finished: false,
 	});
@@ -1155,6 +1200,27 @@ async function finishSyntheticToolTrace(
 			final_status: payload.isError === true ? 'error' : 'completed',
 		},
 	});
+	if (record.groupRunTree) {
+		await finishRunTree(record.groupRunTree, {
+			outputs: sanitizeTracePayload({
+				tool_name: record.toolName,
+			}),
+			...(payload.isError === true
+				? {
+						error:
+							typeof payload.result === 'string'
+								? payload.result
+								: typeof payload.error === 'string'
+									? payload.error
+									: 'Tool execution failed',
+					}
+				: {}),
+			metadata: {
+				final_status: payload.isError === true ? 'error' : 'completed',
+				internal_state: true,
+			},
+		});
+	}
 }
 
 async function finalizeSyntheticToolTraces(
@@ -1176,38 +1242,56 @@ async function finalizeSyntheticToolTraces(
 				final_status: options?.status ?? 'completed',
 			},
 		});
+		if (record.groupRunTree) {
+			await finishRunTree(record.groupRunTree, {
+				outputs: sanitizeTracePayload({
+					tool_name: record.toolName,
+					status: options?.status ?? 'completed',
+				}),
+				...(options?.error ? { error: options.error } : {}),
+				metadata: {
+					final_status: options?.status ?? 'completed',
+					internal_state: true,
+				},
+			});
+		}
 	}
 }
 
 async function startLlmStepTrace(
+	parentRun: RunTree | undefined,
 	messageId: string,
 	request: unknown,
+	stepNumber?: number,
 ): Promise<LlmStepTraceRecord | undefined> {
-	const parentRun = getCurrentRunTree();
-	if (!parentRun) {
+	const resolvedParentRun = parentRun ?? getTraceParentRun();
+	if (!resolvedParentRun) {
 		return undefined;
 	}
 
-	const model = normalizeModelMetadata(parentRun.metadata?.model_id);
-	const runTree = parentRun.createChild({
+	const inputs = buildLlmInputPayload(request);
+	const model = normalizeModelMetadata(resolvedParentRun.metadata?.model_id);
+	const runTree = resolvedParentRun.createChild({
 		name: formatLlmRunName(model),
 		run_type: 'llm',
-		tags: dedupeTags([...(parentRun.tags ?? []), 'llm']),
+		tags: dedupeTags([...(resolvedParentRun.tags ?? []), 'llm']),
 		metadata: {
-			...(parentRun.metadata ?? {}),
+			...(resolvedParentRun.metadata ?? {}),
 			step_message_id: messageId,
+			...(typeof stepNumber === 'number' ? { step_number: stepNumber + 1 } : {}),
 			...(model.provider ? { ls_provider: model.provider } : {}),
 			...(model.modelName ? { ls_model_name: model.modelName } : {}),
 		},
-		inputs: buildLlmInputPayload(request),
+		inputs,
 	});
 	await runTree.postRun();
 
 	return {
 		messageId,
+		stepNumber,
 		runTree,
 		model,
-		inputs: buildLlmInputPayload(request),
+		inputs,
 		textParts: [],
 		reasoningParts: [],
 		toolCalls: [],
@@ -1386,12 +1470,15 @@ function getSyntheticStepMessageId(stepResult: StepResultLike, index: number): s
 }
 
 async function createFallbackStepTrace(
+	parentRun: RunTree | undefined,
 	stepResult: StepResultLike,
 	index: number,
 ): Promise<LlmStepTraceRecord | undefined> {
 	const record = await startLlmStepTrace(
+		parentRun,
 		getSyntheticStepMessageId(stepResult, index),
 		stepResult.request,
+		stepResult.stepNumber ?? index,
 	);
 	if (!record) {
 		return undefined;
@@ -1504,13 +1591,27 @@ function applyStepResultToRecord(record: LlmStepTraceRecord, stepResult: StepRes
 }
 
 export function createLlmStepTraceHooks(): LlmStepTraceHooks | undefined {
-	const activeParentRun = getCurrentRunTree();
+	const activeParentRun = getTraceParentRun();
 	if (!activeParentRun) {
 		return undefined;
 	}
 
 	const records: LlmStepTraceRecord[] = [];
 	const recordsByStepNumber = new Map<number, LlmStepTraceRecord>();
+	const getActiveRecord = (): LlmStepTraceRecord | undefined => {
+		for (let index = records.length - 1; index >= 0; index--) {
+			const record = records[index];
+			if (!record.finished) {
+				return record;
+			}
+		}
+
+		return undefined;
+	};
+	const restoreTraceParent = () => {
+		setTraceParentOverride(activeParentRun);
+	};
+	restoreTraceParent();
 
 	const patchFinishedRecordIfNeeded = async (
 		record: LlmStepTraceRecord,
@@ -1547,16 +1648,21 @@ export function createLlmStepTraceHooks(): LlmStepTraceHooks | undefined {
 
 		const existingRecord = recordsByStepNumber.get(stepStart.stepNumber);
 		if (existingRecord && !existingRecord.finished) {
+			setTraceParentOverride(existingRecord.runTree);
 			return existingRecord;
 		}
 
-		const record = await startLlmStepTrace(`step-${stepStart.stepNumber + 1}`, {
-			messages: Array.isArray(stepStart.messages) ? stepStart.messages : [],
-		});
+		const record = await startLlmStepTrace(
+			activeParentRun,
+			`step-${stepStart.stepNumber + 1}`,
+			{
+				messages: Array.isArray(stepStart.messages) ? stepStart.messages : [],
+			},
+			stepStart.stepNumber,
+		);
 		if (!record) {
 			return undefined;
 		}
-		record.stepNumber = stepStart.stepNumber;
 
 		const stepModelId = stepStart.model?.modelId;
 		if (typeof stepModelId === 'string' && stepModelId.length > 0) {
@@ -1574,6 +1680,7 @@ export function createLlmStepTraceHooks(): LlmStepTraceHooks | undefined {
 
 		recordsByStepNumber.set(stepStart.stepNumber, record);
 		records.push(record);
+		setTraceParentOverride(record.runTree);
 		return record;
 	};
 
@@ -1604,10 +1711,6 @@ export function createLlmStepTraceHooks(): LlmStepTraceHooks | undefined {
 
 		applyStepResultToRecord(record, stepResult);
 
-		if (record.finished) {
-			return;
-		}
-
 		record.runTree.inputs = record.inputs;
 		record.runTree.name = formatLlmRunName(record.model);
 		record.runTree.metadata = {
@@ -1623,6 +1726,7 @@ export function createLlmStepTraceHooks(): LlmStepTraceHooks | undefined {
 		if (stepNumber !== undefined) {
 			recordsByStepNumber.delete(stepNumber);
 		}
+		restoreTraceParent();
 	};
 
 	return {
@@ -1637,7 +1741,19 @@ export function createLlmStepTraceHooks(): LlmStepTraceHooks | undefined {
 			applyStepFinishChunk(chunk, records);
 		},
 		startSegment: () => {
-			recordsByStepNumber.clear();
+			for (const [stepNumber, record] of recordsByStepNumber.entries()) {
+				if (record.finished) {
+					recordsByStepNumber.delete(stepNumber);
+				}
+			}
+
+			const activeRecord = getActiveRecord();
+			if (activeRecord) {
+				setTraceParentOverride(activeRecord.runTree);
+				return;
+			}
+
+			restoreTraceParent();
 		},
 		finalize: async (source, options) => {
 			const resolvedSteps = await source.steps?.then(
@@ -1657,17 +1773,18 @@ export function createLlmStepTraceHooks(): LlmStepTraceHooks | undefined {
 				}
 			}
 
-			for (const record of records) {
+			for (const [index, record] of records.entries()) {
 				const stepResult =
 					(typeof record.stepNumber === 'number'
 						? stepResultsByStepNumber.get(record.stepNumber)
-						: undefined) ?? stepResults[records.indexOf(record)];
+						: undefined) ?? stepResults[index];
 				const hadUsageMetadata = buildUsageMetadata(record.usage, record.providerMetadata);
 				const hadUsageMetadataJson = hadUsageMetadata
 					? JSON.stringify(hadUsageMetadata)
 					: undefined;
 				const hadResponse = record.response !== undefined;
 				const hadFinishReason = record.finishReason !== undefined;
+
 				if (stepResult) {
 					applyStepResultToRecord(record, stepResult);
 				}
@@ -1680,6 +1797,7 @@ export function createLlmStepTraceHooks(): LlmStepTraceHooks | undefined {
 						: undefined;
 					const hasResponse = record.response !== undefined;
 					const hasFinishReason = record.finishReason !== undefined;
+
 					if (
 						hadUsageMetadataJson !== hasUsageMetadataJson ||
 						(!hadResponse && hasResponse) ||
@@ -1707,6 +1825,9 @@ export function createLlmStepTraceHooks(): LlmStepTraceHooks | undefined {
 				});
 				record.finished = true;
 			}
+
+			restoreTraceParent();
+			recordsByStepNumber.clear();
 		},
 	};
 }
@@ -1716,20 +1837,27 @@ async function finalizeLlmStepTraces(
 	records: LlmStepTraceRecord[],
 	options?: { status?: 'completed' | 'cancelled' | 'suspended'; error?: string },
 ): Promise<void> {
+	const parentRun = getTraceParentRun();
 	const resolvedSteps = await source.steps?.then(
 		(steps) => steps,
 		() => undefined,
 	);
 	const segmentUsage = await resolveSegmentUsage(source);
-	const stepResults = Array.isArray(resolvedSteps) ? resolvedSteps : [];
-	if (records.length === 0 && stepResults.length > 0) {
-		for (const [index, stepValue] of stepResults.entries()) {
-			const stepResult = toStepResultLike(stepValue);
-			if (!stepResult) {
-				continue;
-			}
+	const stepResults = Array.isArray(resolvedSteps)
+		? resolvedSteps
+				.map((stepValue) => toStepResultLike(stepValue))
+				.filter((stepResult): stepResult is StepResultLike => stepResult !== undefined)
+		: [];
+	const stepResultsByStepNumber = new Map<number, StepResultLike>();
+	for (const stepResult of stepResults) {
+		if (typeof stepResult.stepNumber === 'number') {
+			stepResultsByStepNumber.set(stepResult.stepNumber, stepResult);
+		}
+	}
 
-			const fallbackRecord = await createFallbackStepTrace(stepResult, index);
+	if (records.length === 0 && stepResults.length > 0) {
+		for (const [index, stepResult] of stepResults.entries()) {
+			const fallbackRecord = await createFallbackStepTrace(parentRun, stepResult, index);
 			if (fallbackRecord) {
 				records.push(fallbackRecord);
 			}
@@ -1745,7 +1873,10 @@ async function finalizeLlmStepTraces(
 			continue;
 		}
 
-		const stepResult = toStepResultLike(stepResults[index]);
+		const stepResult =
+			(typeof record.stepNumber === 'number'
+				? stepResultsByStepNumber.get(record.stepNumber)
+				: undefined) ?? stepResults[index];
 		if (stepResult) {
 			applyStepResultToRecord(record, stepResult);
 		}
@@ -1818,7 +1949,9 @@ export async function executeResumableStream(
 				const messageId = typeof payload?.messageId === 'string' ? payload.messageId : undefined;
 				const request = payload?.request;
 				const stepTrace =
-					typeof messageId === 'string' ? await startLlmStepTrace(messageId, request) : undefined;
+					typeof messageId === 'string'
+						? await startLlmStepTrace(undefined, messageId, request)
+						: undefined;
 				if (stepTrace) {
 					llmStepRecords.push(stepTrace);
 				}

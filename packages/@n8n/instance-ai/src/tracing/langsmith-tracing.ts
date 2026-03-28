@@ -2,11 +2,8 @@ import type { ToolsInput } from '@mastra/core/agent';
 import { createTool } from '@mastra/core/tools';
 import type { ToolAction, ToolExecutionContext } from '@mastra/core/tools';
 import { RunTree } from 'langsmith';
-import {
-	getCurrentRunTree,
-	traceable,
-	withRunTree as withLangSmithRunTree,
-} from 'langsmith/traceable';
+import { getCurrentRunTree, withRunTree as withLangSmithRunTree } from 'langsmith/traceable';
+import { AsyncLocalStorage } from 'node:async_hooks';
 
 import type {
 	InstanceAiToolTraceOptions,
@@ -23,6 +20,8 @@ const MAX_TRACE_DEPTH = 4;
 const MAX_TRACE_STRING_LENGTH = 2_000;
 const MAX_TRACE_ARRAY_ITEMS = 20;
 const MAX_TRACE_OBJECT_KEYS = 30;
+const traceParentOverrideStorage = new AsyncLocalStorage<{ current: RunTree | null }>();
+let traceParentOverrideFallback: RunTree | null = null;
 
 interface CreateInstanceAiTraceContextOptions {
 	projectName?: string;
@@ -59,6 +58,10 @@ type TraceableMastraTool = ToolAction<
 interface NormalizedModelMetadata {
 	provider?: string;
 	modelName?: string;
+}
+
+function isInternalStateTool(toolId: string): boolean {
+	return toolId === 'updateWorkingMemory';
 }
 
 function isLangSmithTracingEnabled(): boolean {
@@ -235,6 +238,55 @@ function mergeRunTreeMetadata(
 	return mergeMetadata(baseMetadata, metadata);
 }
 
+export function getTraceParentRun(): RunTree | undefined {
+	const overrideRun = traceParentOverrideStorage.getStore()?.current ?? traceParentOverrideFallback;
+	if (overrideRun) {
+		return overrideRun;
+	}
+
+	try {
+		return getCurrentRunTree() ?? undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+export function setTraceParentOverride(parentRun: RunTree | null | undefined): void {
+	const store = traceParentOverrideStorage.getStore();
+	if (store) {
+		store.current = parentRun ?? null;
+		return;
+	}
+
+	traceParentOverrideFallback = parentRun ?? null;
+}
+
+export async function withTraceParentContext<T>(
+	parentRun: RunTree | undefined,
+	fn: () => Promise<T>,
+): Promise<T> {
+	const existingStore = traceParentOverrideStorage.getStore();
+	if (existingStore) {
+		const previous = existingStore.current;
+		existingStore.current = parentRun ?? null;
+		try {
+			return await fn();
+		} finally {
+			existingStore.current = previous;
+		}
+	}
+
+	const previousFallback = traceParentOverrideFallback;
+	return await traceParentOverrideStorage.run({ current: parentRun ?? null }, async () => {
+		traceParentOverrideFallback = parentRun ?? null;
+		try {
+			return await fn();
+		} finally {
+			traceParentOverrideFallback = previousFallback;
+		}
+	});
+}
+
 async function postChildRun(
 	parentRun: RunTree,
 	options: InstanceAiTraceRunInit & { tags?: string[] },
@@ -268,7 +320,7 @@ export async function withCurrentTraceSpan<T>(
 	options: CurrentTraceSpanOptions<T>,
 	fn: () => Promise<T>,
 ): Promise<T> {
-	const parentRun = getCurrentRunTree();
+	const parentRun = getTraceParentRun();
 	if (!parentRun) {
 		return await fn();
 	}
@@ -336,13 +388,27 @@ function buildSuspendMetadata(
 	};
 }
 
+function resolveActorParentRun(parentRun: RunTree): RunTree {
+	let current: RunTree | undefined = parentRun;
+
+	while (current) {
+		if (current.run_type !== 'llm' && current.run_type !== 'tool') {
+			return current;
+		}
+
+		current = current.parent_run;
+	}
+
+	return parentRun;
+}
+
 async function traceSuspendableToolExecute(
 	tool: TraceableMastraTool,
 	options: InstanceAiToolTraceOptions | undefined,
 	input: unknown,
 	context: ToolExecutionContext<unknown, unknown, unknown>,
 ): Promise<unknown> {
-	const parentRun = getCurrentRunTree();
+	const parentRun = getTraceParentRun();
 	if (!parentRun || typeof tool.execute !== 'function') {
 		return await tool.execute?.(input, context);
 	}
@@ -418,6 +484,81 @@ async function traceSuspendableToolExecute(
 			error: normalizeErrorMessage(error),
 			metadata: { final_status: 'error' },
 		});
+		throw error;
+	}
+}
+
+async function traceToolExecute(
+	tool: TraceableMastraTool,
+	options: InstanceAiToolTraceOptions | undefined,
+	input: unknown,
+	context: ToolExecutionContext<unknown, unknown, unknown>,
+): Promise<unknown> {
+	const parentRun = getTraceParentRun();
+	if (!parentRun || typeof tool.execute !== 'function') {
+		return await tool.execute?.(input, context);
+	}
+
+	const actorParentRun = isInternalStateTool(tool.id)
+		? resolveActorParentRun(parentRun)
+		: parentRun;
+	const internalStateRun = isInternalStateTool(tool.id)
+		? await postChildRun(actorParentRun, {
+				name: 'internal_state',
+				runType: 'chain',
+				tags: ['internal', 'memory'],
+				metadata: {
+					internal_state: true,
+					tool_name: tool.id,
+				},
+				inputs: { tool_name: tool.id },
+			})
+		: undefined;
+	const toolParentRun = internalStateRun ?? parentRun;
+	const toolRun = await postChildRun(toolParentRun, {
+		name: `tool:${tool.id}`,
+		runType: 'tool',
+		tags: normalizeTags(
+			['tool'],
+			isInternalStateTool(tool.id) ? ['internal', 'memory'] : undefined,
+			options?.tags,
+		),
+		metadata: mergeMetadata(options?.metadata, {
+			tool_name: tool.id,
+			...(isInternalStateTool(tool.id) ? { memory_tool: true } : {}),
+			...(options?.agentRole ? { agent_role: options.agentRole } : {}),
+			...normalizeModelMetadata(options?.metadata?.model_id),
+		}),
+		inputs: { input },
+	});
+
+	try {
+		const result = await withLangSmithRunTree(
+			toolRun,
+			async () => await tool.execute!(input, context),
+		);
+		await finishRunTree(toolRun, {
+			outputs: result,
+			metadata: { final_status: 'completed' },
+		});
+		if (internalStateRun) {
+			await finishRunTree(internalStateRun, {
+				outputs: { tool_name: tool.id },
+				metadata: { final_status: 'completed', internal_state: true },
+			});
+		}
+		return result;
+	} catch (error) {
+		await finishRunTree(toolRun, {
+			error: normalizeErrorMessage(error),
+			metadata: { final_status: 'error' },
+		});
+		if (internalStateRun) {
+			await finishRunTree(internalStateRun, {
+				error: normalizeErrorMessage(error),
+				metadata: { final_status: 'error', internal_state: true },
+			});
+		}
 		throw error;
 	}
 }
@@ -552,19 +693,6 @@ function wrapToolExecute(
 		});
 	}
 
-	const tracedExecute = traceable(tool.execute, {
-		name: `tool:${tool.id}`,
-		run_type: 'tool',
-		tags: normalizeTags(DEFAULT_TAGS, ['tool'], options?.tags),
-		metadata: mergeMetadata(options?.metadata, {
-			tool_name: tool.id,
-			...(options?.agentRole ? { agent_role: options.agentRole } : {}),
-			...normalizeModelMetadata(options?.metadata?.model_id),
-		}),
-		processInputs: (inputs) => sanitizeTracePayload(inputs),
-		processOutputs: (outputs) => sanitizeTracePayload(outputs),
-	});
-
 	return createTool({
 		id: tool.id,
 		description: tool.description,
@@ -573,7 +701,7 @@ function wrapToolExecute(
 		suspendSchema: tool.suspendSchema,
 		resumeSchema: tool.resumeSchema,
 		requestContextSchema: tool.requestContextSchema,
-		execute: async (input, context) => await tracedExecute(input, context),
+		execute: async (input, context) => await traceToolExecute(tool, options, input, context),
 		mastra: tool.mastra,
 		requireApproval: tool.requireApproval,
 		providerOptions: tool.providerOptions,
@@ -656,7 +784,10 @@ async function withSerializedRunTree<T>(
 ): Promise<T> {
 	const runTree = hydrateRunTree(runState);
 	try {
-		return await withLangSmithRunTree(runTree, fn);
+		return await withTraceParentContext(
+			runTree,
+			async () => await withLangSmithRunTree(runTree, fn),
+		);
 	} finally {
 		syncRunState(runState, runTree);
 	}

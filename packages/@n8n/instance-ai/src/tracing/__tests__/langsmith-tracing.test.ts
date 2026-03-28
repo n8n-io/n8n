@@ -102,6 +102,7 @@ jest.mock('langsmith', () => {
 			const child = new MockRunTree({
 				...config,
 				parent_run: this,
+				parent_run_id: this.id,
 				project_name: this.project_name,
 				execution_order: childExecutionOrder,
 				child_execution_order: childExecutionOrder,
@@ -393,6 +394,43 @@ describe('createInstanceAiTraceContext', () => {
 		expect(createdRunNames).toContain('hitl:suspend');
 	});
 
+	it('keeps ad-hoc child spans rooted under the active sub-agent run', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			messageId: 'message-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			input: { message: 'Build a workflow' },
+		});
+
+		expect(tracing).toBeDefined();
+
+		const subAgentRun = await tracing!.startChildRun(tracing!.orchestratorRun, {
+			name: 'subagent:workflow-builder',
+			tags: ['sub-agent'],
+			metadata: { agent_role: 'workflow-builder' },
+			inputs: { task: 'Build a workflow' },
+		});
+
+		await tracing!.withRunTree(subAgentRun, async () => {
+			await withCurrentTraceSpan(
+				{
+					name: 'llm:anthropic/claude-sonnet-4-6',
+					runType: 'llm',
+				},
+				async () => {
+					await Promise.resolve();
+					return 'done';
+				},
+			);
+		});
+
+		const llmRun = langsmithMock
+			.getCreatedRunTrees()
+			.find((run) => run.name === 'llm:anthropic/claude-sonnet-4-6');
+		expect(llmRun?.parent_run_id).toBe(subAgentRun.id);
+	});
+
 	it('traces resumed suspendable tools without extra HITL child span spam', async () => {
 		const tracing = await createInstanceAiTraceContext({
 			threadId: 'thread-1',
@@ -470,7 +508,7 @@ describe('createInstanceAiTraceContext', () => {
 		await tracing!.withRunTree(tracing!.orchestratorRun, async () => {
 			const result = await withCurrentTraceSpan(
 				{
-					name: 'working_memory_context',
+					name: 'prepare_context',
 					tags: ['memory'],
 					inputs: { thread_id: 'thread-1' },
 					processOutputs: (value: number) => ({ value }),
@@ -482,6 +520,6 @@ describe('createInstanceAiTraceContext', () => {
 		});
 
 		const createdRunNames = langsmithMock.getCreatedRunTrees().map((run) => run.name);
-		expect(createdRunNames).toContain('working_memory_context');
+		expect(createdRunNames).toContain('prepare_context');
 	});
 });

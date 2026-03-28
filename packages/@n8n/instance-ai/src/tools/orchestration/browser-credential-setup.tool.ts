@@ -17,6 +17,7 @@ import {
 	createLlmStepTraceHooks,
 	executeResumableStream,
 } from '../../runtime/resumable-stream-executor';
+import { getTraceParentRun, withTraceParentContext } from '../../tracing/langsmith-tracing';
 import type { OrchestrationContext } from '../../types';
 
 const BROWSER_AGENT_MAX_STEPS = 300;
@@ -253,81 +254,83 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 						'are visible on screen and the user has been told to copy them. ' +
 						'Everything before that is an intermediate step — keep going.';
 
-					// Stream the sub-agent
-					const llmStepTraceHooks = createLlmStepTraceHooks();
-					const stream = await subAgent.stream(briefing, {
-						maxSteps: BROWSER_AGENT_MAX_STEPS,
-						abortSignal: context.abortSignal,
-						providerOptions: {
-							anthropic: { cacheControl: { type: 'ephemeral' } },
-						},
-						...(llmStepTraceHooks?.executionOptions ?? {}),
-					});
-
-					let activeStream = stream;
-					let activeMastraRunId = typeof stream.runId === 'string' ? stream.runId : '';
-					let lastSuspendedToolName = '';
-					const MAX_NUDGES = 3;
-					let nudgeCount = 0;
-
-					while (true) {
-						const result = await executeResumableStream({
-							agent: subAgent,
-							stream: activeStream,
-							initialMastraRunId: activeMastraRunId,
-							context: {
-								threadId: context.threadId,
-								runId: context.runId,
-								agentId: subAgentId,
-								eventBus: context.eventBus,
-								signal: context.abortSignal,
+					return await withTraceParentContext(getTraceParentRun(), async () => {
+						// Stream the sub-agent
+						const llmStepTraceHooks = createLlmStepTraceHooks();
+						const stream = await subAgent.stream(briefing, {
+							maxSteps: BROWSER_AGENT_MAX_STEPS,
+							abortSignal: context.abortSignal,
+							providerOptions: {
+								anthropic: { cacheControl: { type: 'ephemeral' } },
 							},
-							control: {
-								mode: 'auto',
-								waitForConfirmation: async (requestId) => {
-									if (!context.waitForConfirmation) {
-										throw new Error(
-											'Browser agent requires user interaction but no HITL handler is available',
-										);
-									}
-									return await context.waitForConfirmation(requestId);
-								},
-								onSuspension: (suspension) => {
-									lastSuspendedToolName = suspension.toolName ?? '';
-								},
-							},
-							llmStepTraceHooks,
+							...(llmStepTraceHooks?.executionOptions ?? {}),
 						});
 
-						if (result.status === 'cancelled') {
-							throw new Error('Run cancelled while waiting for confirmation');
-						}
+						let activeStream = stream;
+						let activeMastraRunId = typeof stream.runId === 'string' ? stream.runId : '';
+						let lastSuspendedToolName = '';
+						const MAX_NUDGES = 3;
+						let nudgeCount = 0;
 
-						if (lastSuspendedToolName !== 'pause-for-user' && nudgeCount < MAX_NUDGES) {
-							// Agent ended without a final pause-for-user confirmation.
-							// Re-invoke with a nudge to call pause-for-user.
-							nudgeCount++;
-							const nudge = await subAgent.stream(
-								'You stopped without confirming with the user. Call pause-for-user NOW to ask the user if they have the credential values (Client ID, Client Secret, API Key, etc.) copied and ready to paste into n8n.',
-								{
-									maxSteps: BROWSER_AGENT_MAX_STEPS,
-									abortSignal: context.abortSignal,
-									providerOptions: {
-										anthropic: { cacheControl: { type: 'ephemeral' } },
-									},
-									...(llmStepTraceHooks?.executionOptions ?? {}),
+						while (true) {
+							const result = await executeResumableStream({
+								agent: subAgent,
+								stream: activeStream,
+								initialMastraRunId: activeMastraRunId,
+								context: {
+									threadId: context.threadId,
+									runId: context.runId,
+									agentId: subAgentId,
+									eventBus: context.eventBus,
+									signal: context.abortSignal,
 								},
-							);
-							activeStream = nudge;
-							activeMastraRunId =
-								(typeof nudge.runId === 'string' && nudge.runId) ||
-								result.mastraRunId ||
-								activeMastraRunId;
-							continue;
-						}
+								control: {
+									mode: 'auto',
+									waitForConfirmation: async (requestId) => {
+										if (!context.waitForConfirmation) {
+											throw new Error(
+												'Browser agent requires user interaction but no HITL handler is available',
+											);
+										}
+										return await context.waitForConfirmation(requestId);
+									},
+									onSuspension: (suspension) => {
+										lastSuspendedToolName = suspension.toolName ?? '';
+									},
+								},
+								llmStepTraceHooks,
+							});
 
-						return await (result.text ?? activeStream.text ?? Promise.resolve(''));
-					}
+							if (result.status === 'cancelled') {
+								throw new Error('Run cancelled while waiting for confirmation');
+							}
+
+							if (lastSuspendedToolName !== 'pause-for-user' && nudgeCount < MAX_NUDGES) {
+								// Agent ended without a final pause-for-user confirmation.
+								// Re-invoke with a nudge to call pause-for-user.
+								nudgeCount++;
+								const nudge = await subAgent.stream(
+									'You stopped without confirming with the user. Call pause-for-user NOW to ask the user if they have the credential values (Client ID, Client Secret, API Key, etc.) copied and ready to paste into n8n.',
+									{
+										maxSteps: BROWSER_AGENT_MAX_STEPS,
+										abortSignal: context.abortSignal,
+										providerOptions: {
+											anthropic: { cacheControl: { type: 'ephemeral' } },
+										},
+										...(llmStepTraceHooks?.executionOptions ?? {}),
+									},
+								);
+								activeStream = nudge;
+								activeMastraRunId =
+									(typeof nudge.runId === 'string' && nudge.runId) ||
+									result.mastraRunId ||
+									activeMastraRunId;
+								continue;
+							}
+
+							return await (result.text ?? activeStream.text ?? Promise.resolve(''));
+						}
+					});
 				});
 				await finishTraceRun(context, traceRun, {
 					outputs: {

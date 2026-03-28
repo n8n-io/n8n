@@ -26,6 +26,7 @@ import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor
 import { traceWorkingMemoryContext } from '../../runtime/working-memory-tracing';
 import { formatPreviousAttempts } from '../../storage/iteration-log';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
+import { getTraceParentRun, withTraceParentContext } from '../../tracing/langsmith-tracing';
 import type { BackgroundTaskResult, OrchestrationContext } from '../../types';
 import { SDK_IMPORT_STATEMENT } from '../../workflow-builder/extract-code';
 import type { TriggerType, WorkflowBuildOutcome } from '../../workflow-loop';
@@ -417,44 +418,46 @@ export async function startBuildWorkflowAgentTask(
 								}
 							: undefined;
 
-						const llmStepTraceHooks = createLlmStepTraceHooks();
-						const stream = await traceWorkingMemoryContext(
-							{
-								phase: 'initial',
-								agentId: subAgentId,
-								agentRole: 'workflow-builder',
-								threadId: context.threadId,
-								input: briefing,
-								memory: builderMemoryOpts,
-							},
-							async () =>
-								await subAgent.stream(briefing, {
-									maxSteps: BUILDER_MAX_STEPS,
-									abortSignal: signal,
-									providerOptions: {
-										anthropic: { cacheControl: { type: 'ephemeral' } },
-									},
-									...(llmStepTraceHooks?.executionOptions ?? {}),
-									...(builderMemoryOpts ? { memory: builderMemoryOpts } : {}),
-								}),
-						);
+						const hitlResult = await withTraceParentContext(getTraceParentRun(), async () => {
+							const llmStepTraceHooks = createLlmStepTraceHooks();
+							const stream = await traceWorkingMemoryContext(
+								{
+									phase: 'initial',
+									agentId: subAgentId,
+									agentRole: 'workflow-builder',
+									threadId: context.threadId,
+									input: briefing,
+									memory: builderMemoryOpts,
+								},
+								async () =>
+									await subAgent.stream(briefing, {
+										maxSteps: BUILDER_MAX_STEPS,
+										abortSignal: signal,
+										providerOptions: {
+											anthropic: { cacheControl: { type: 'ephemeral' } },
+										},
+										...(llmStepTraceHooks?.executionOptions ?? {}),
+										...(builderMemoryOpts ? { memory: builderMemoryOpts } : {}),
+									}),
+							);
 
-						const hitlResult = await consumeStreamWithHitl({
-							agent: subAgent,
-							stream: stream as {
-								runId?: string;
-								fullStream: AsyncIterable<unknown>;
-								text: Promise<string>;
-							},
-							runId: context.runId,
-							agentId: subAgentId,
-							eventBus: context.eventBus,
-							threadId: context.threadId,
-							abortSignal: signal,
-							waitForConfirmation: context.waitForConfirmation,
-							drainCorrections,
-							llmStepTraceHooks,
-							workingMemoryEnabled: Boolean(builderMemoryOpts),
+							return await consumeStreamWithHitl({
+								agent: subAgent,
+								stream: stream as {
+									runId?: string;
+									fullStream: AsyncIterable<unknown>;
+									text: Promise<string>;
+								},
+								runId: context.runId,
+								agentId: subAgentId,
+								eventBus: context.eventBus,
+								threadId: context.threadId,
+								abortSignal: signal,
+								waitForConfirmation: context.waitForConfirmation,
+								drainCorrections,
+								llmStepTraceHooks,
+								workingMemoryEnabled: Boolean(builderMemoryOpts),
+							});
 						});
 
 						const finalText = await hitlResult.text;
@@ -548,44 +551,46 @@ export async function startBuildWorkflowAgentTask(
 							}
 						: undefined;
 
-					const llmStepTraceHooks = createLlmStepTraceHooks();
-					const stream = await traceWorkingMemoryContext(
-						{
-							phase: 'initial',
-							agentId: subAgentId,
-							agentRole: 'workflow-builder',
-							threadId: context.threadId,
-							input: briefing,
-							memory: toolMemoryOpts,
-						},
-						async () =>
-							await subAgent.stream(briefing, {
-								maxSteps: BUILDER_MAX_STEPS,
-								abortSignal: signal,
-								providerOptions: {
-									anthropic: { cacheControl: { type: 'ephemeral' } },
-								},
-								...(llmStepTraceHooks?.executionOptions ?? {}),
-								...(toolMemoryOpts ? { memory: toolMemoryOpts } : {}),
-							}),
-					);
+					const hitlResult = await withTraceParentContext(getTraceParentRun(), async () => {
+						const llmStepTraceHooks = createLlmStepTraceHooks();
+						const stream = await traceWorkingMemoryContext(
+							{
+								phase: 'initial',
+								agentId: subAgentId,
+								agentRole: 'workflow-builder',
+								threadId: context.threadId,
+								input: briefing,
+								memory: toolMemoryOpts,
+							},
+							async () =>
+								await subAgent.stream(briefing, {
+									maxSteps: BUILDER_MAX_STEPS,
+									abortSignal: signal,
+									providerOptions: {
+										anthropic: { cacheControl: { type: 'ephemeral' } },
+									},
+									...(llmStepTraceHooks?.executionOptions ?? {}),
+									...(toolMemoryOpts ? { memory: toolMemoryOpts } : {}),
+								}),
+						);
 
-					const hitlResult = await consumeStreamWithHitl({
-						agent: subAgent,
-						stream: stream as {
-							runId?: string;
-							fullStream: AsyncIterable<unknown>;
-							text: Promise<string>;
-						},
-						runId: context.runId,
-						agentId: subAgentId,
-						eventBus: context.eventBus,
-						threadId: context.threadId,
-						abortSignal: signal,
-						waitForConfirmation: context.waitForConfirmation,
-						drainCorrections,
-						llmStepTraceHooks,
-						workingMemoryEnabled: Boolean(toolMemoryOpts),
+						return await consumeStreamWithHitl({
+							agent: subAgent,
+							stream: stream as {
+								runId?: string;
+								fullStream: AsyncIterable<unknown>;
+								text: Promise<string>;
+							},
+							runId: context.runId,
+							agentId: subAgentId,
+							eventBus: context.eventBus,
+							threadId: context.threadId,
+							abortSignal: signal,
+							waitForConfirmation: context.waitForConfirmation,
+							drainCorrections,
+							llmStepTraceHooks,
+							workingMemoryEnabled: Boolean(toolMemoryOpts),
+						});
 					});
 
 					const toolFinalText = await hitlResult.text;

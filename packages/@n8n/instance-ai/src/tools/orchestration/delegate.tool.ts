@@ -19,6 +19,7 @@ import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor
 import { traceWorkingMemoryContext } from '../../runtime/working-memory-tracing';
 import { formatPreviousAttempts } from '../../storage/iteration-log';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
+import { getTraceParentRun, withTraceParentContext } from '../../tracing/langsmith-tracing';
 import type { OrchestrationContext } from '../../types';
 
 const FORBIDDEN_TOOL_NAMES = new Set(['plan', 'delegate']);
@@ -201,47 +202,49 @@ export async function startDetachedDelegateTask(
 				const memoryOpts = memory
 					? { resource: subAgentResourceId(context.userId, role), thread: subAgentId }
 					: undefined;
-				const llmStepTraceHooks = createLlmStepTraceHooks();
-				const stream = await traceWorkingMemoryContext(
-					{
-						phase: 'initial',
+				return await withTraceParentContext(getTraceParentRun(), async () => {
+					const llmStepTraceHooks = createLlmStepTraceHooks();
+					const stream = await traceWorkingMemoryContext(
+						{
+							phase: 'initial',
+							agentId: subAgentId,
+							agentRole: role,
+							threadId: context.threadId,
+							input: briefingMessage,
+							memory: memoryOpts,
+						},
+						async () =>
+							await subAgent.stream(briefingMessage, {
+								maxSteps: context.subAgentMaxSteps ?? FALLBACK_MAX_STEPS,
+								abortSignal: signal,
+								providerOptions: {
+									anthropic: { cacheControl: { type: 'ephemeral' } },
+								},
+								...(llmStepTraceHooks?.executionOptions ?? {}),
+								...(memoryOpts ? { memory: memoryOpts } : {}),
+							}),
+					);
+
+					const result = await consumeStreamWithHitl({
+						agent: subAgent,
+						stream: stream as {
+							runId?: string;
+							fullStream: AsyncIterable<unknown>;
+							text: Promise<string>;
+						},
+						runId: context.runId,
 						agentId: subAgentId,
-						agentRole: role,
+						eventBus: context.eventBus,
 						threadId: context.threadId,
-						input: briefingMessage,
-						memory: memoryOpts,
-					},
-					async () =>
-						await subAgent.stream(briefingMessage, {
-							maxSteps: context.subAgentMaxSteps ?? FALLBACK_MAX_STEPS,
-							abortSignal: signal,
-							providerOptions: {
-								anthropic: { cacheControl: { type: 'ephemeral' } },
-							},
-							...(llmStepTraceHooks?.executionOptions ?? {}),
-							...(memoryOpts ? { memory: memoryOpts } : {}),
-						}),
-				);
+						abortSignal: signal,
+						waitForConfirmation: context.waitForConfirmation,
+						drainCorrections,
+						llmStepTraceHooks,
+						workingMemoryEnabled: Boolean(memoryOpts),
+					});
 
-				const result = await consumeStreamWithHitl({
-					agent: subAgent,
-					stream: stream as {
-						runId?: string;
-						fullStream: AsyncIterable<unknown>;
-						text: Promise<string>;
-					},
-					runId: context.runId,
-					agentId: subAgentId,
-					eventBus: context.eventBus,
-					threadId: context.threadId,
-					abortSignal: signal,
-					waitForConfirmation: context.waitForConfirmation,
-					drainCorrections,
-					llmStepTraceHooks,
-					workingMemoryEnabled: Boolean(memoryOpts),
+					return await result.text;
 				});
-
-				return await result.text;
 			});
 		},
 	});
@@ -335,46 +338,48 @@ export function createDelegateTool(context: OrchestrationContext) {
 					? { resource: subAgentResourceId(context.userId, input.role), thread: subAgentId }
 					: undefined;
 				const resultText = await withTraceRun(context, traceRun, async () => {
-					const llmStepTraceHooks = createLlmStepTraceHooks();
-					const stream = await traceWorkingMemoryContext(
-						{
-							phase: 'initial',
+					return await withTraceParentContext(getTraceParentRun(), async () => {
+						const llmStepTraceHooks = createLlmStepTraceHooks();
+						const stream = await traceWorkingMemoryContext(
+							{
+								phase: 'initial',
+								agentId: subAgentId,
+								agentRole: input.role,
+								threadId: context.threadId,
+								input: briefingMessage,
+								memory: memoryOpts,
+							},
+							async () =>
+								await subAgent.stream(briefingMessage, {
+									maxSteps: context.subAgentMaxSteps ?? FALLBACK_MAX_STEPS,
+									abortSignal: context.abortSignal,
+									providerOptions: {
+										anthropic: { cacheControl: { type: 'ephemeral' } },
+									},
+									...(llmStepTraceHooks?.executionOptions ?? {}),
+									...(memoryOpts ? { memory: memoryOpts } : {}),
+								}),
+						);
+
+						const result = await consumeStreamWithHitl({
+							agent: subAgent,
+							stream: stream as {
+								runId?: string;
+								fullStream: AsyncIterable<unknown>;
+								text: Promise<string>;
+							},
+							runId: context.runId,
 							agentId: subAgentId,
-							agentRole: input.role,
+							eventBus: context.eventBus,
 							threadId: context.threadId,
-							input: briefingMessage,
-							memory: memoryOpts,
-						},
-						async () =>
-							await subAgent.stream(briefingMessage, {
-								maxSteps: context.subAgentMaxSteps ?? FALLBACK_MAX_STEPS,
-								abortSignal: context.abortSignal,
-								providerOptions: {
-									anthropic: { cacheControl: { type: 'ephemeral' } },
-								},
-								...(llmStepTraceHooks?.executionOptions ?? {}),
-								...(memoryOpts ? { memory: memoryOpts } : {}),
-							}),
-					);
+							abortSignal: context.abortSignal,
+							waitForConfirmation: context.waitForConfirmation,
+							llmStepTraceHooks,
+							workingMemoryEnabled: Boolean(memoryOpts),
+						});
 
-					const result = await consumeStreamWithHitl({
-						agent: subAgent,
-						stream: stream as {
-							runId?: string;
-							fullStream: AsyncIterable<unknown>;
-							text: Promise<string>;
-						},
-						runId: context.runId,
-						agentId: subAgentId,
-						eventBus: context.eventBus,
-						threadId: context.threadId,
-						abortSignal: context.abortSignal,
-						waitForConfirmation: context.waitForConfirmation,
-						llmStepTraceHooks,
-						workingMemoryEnabled: Boolean(memoryOpts),
+						return await result.text;
 					});
-
-					return await result.text;
 				});
 				await finishTraceRun(context, traceRun, {
 					outputs: {
