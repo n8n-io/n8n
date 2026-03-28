@@ -18,7 +18,11 @@ import { z } from 'zod';
 import { createBrowserCredentialSetupTool } from './browser-credential-setup.tool';
 import { BUILDER_AGENT_PROMPT, SANDBOX_BUILDER_AGENT_PROMPT } from './build-workflow-agent.prompt';
 import { truncateLabel } from './display-utils';
-import { startSubAgentTrace, traceSubAgentTools, withTraceRun } from './tracing-utils';
+import {
+	createDetachedSubAgentTracing,
+	traceSubAgentTools,
+	withTraceContextActor,
+} from './tracing-utils';
 import { createVerifyBuiltWorkflowTool } from './verify-built-workflow.tool';
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { createSubAgentMemory, subAgentResourceId } from '../../memory/sub-agent-memory';
@@ -312,7 +316,7 @@ export async function startBuildWorkflowAgentTask(
 	} else {
 		briefing = `${input.task}${conversationCtx}${iterationContext ? `\n\n${iterationContext}` : ''}`;
 	}
-	const traceRun = await startSubAgentTrace(context, {
+	const traceContext = await createDetachedSubAgentTracing(context, {
 		agentId: subAgentId,
 		role: 'workflow-builder',
 		kind: 'builder',
@@ -331,11 +335,11 @@ export async function startBuildWorkflowAgentTask(
 		threadId: context.threadId,
 		agentId: subAgentId,
 		role: 'workflow-builder',
-		traceRun,
+		traceContext,
 		plannedTaskId: input.plannedTaskId,
 		workItemId,
 		run: async (signal, drainCorrections): Promise<BackgroundTaskResult> =>
-			await withTraceRun(context, traceRun, async () => {
+			await withTraceContextActor(traceContext, async () => {
 				let builderWs: BuilderWorkspace | undefined;
 				const submitAttempts = new Map<string, SubmitWorkflowAttempt>();
 				try {

@@ -1,6 +1,11 @@
 import type { ToolsInput } from '@mastra/core/agent';
 
+import {
+	createDetachedSubAgentTraceContext,
+	mergeCurrentTraceMetadata,
+} from '../../tracing/langsmith-tracing';
 import type {
+	InstanceAiTraceContext,
 	InstanceAiTraceRun,
 	InstanceAiTraceRunFinishOptions,
 	OrchestrationContext,
@@ -23,7 +28,7 @@ export async function startSubAgentTrace(
 ): Promise<InstanceAiTraceRun | undefined> {
 	if (!context.tracing) return undefined;
 
-	return await context.tracing.startChildRun(context.tracing.orchestratorRun, {
+	return await context.tracing.startChildRun(context.tracing.actorRun, {
 		name: `subagent:${options.role}`,
 		tags: ['sub-agent'],
 		metadata: {
@@ -37,6 +42,59 @@ export async function startSubAgentTrace(
 		},
 		inputs: options.inputs,
 	});
+}
+
+export async function createDetachedSubAgentTracing(
+	context: OrchestrationContext,
+	options: StartSubAgentTraceOptions,
+): Promise<InstanceAiTraceContext | undefined> {
+	if (!context.tracing) return undefined;
+
+	const messageId =
+		typeof context.tracing.actorRun.metadata?.message_id === 'string'
+			? context.tracing.actorRun.metadata.message_id
+			: context.runId;
+	const conversationId =
+		typeof context.tracing.actorRun.metadata?.conversation_id === 'string'
+			? context.tracing.actorRun.metadata.conversation_id
+			: context.threadId;
+	const spawnedByAgentId =
+		typeof context.tracing.actorRun.metadata?.agent_id === 'string'
+			? context.tracing.actorRun.metadata.agent_id
+			: context.orchestratorAgentId;
+	const tracing = await createDetachedSubAgentTraceContext({
+		projectName: context.tracing.projectName,
+		threadId: context.threadId,
+		conversationId,
+		messageGroupId: context.messageGroupId,
+		messageId,
+		runId: context.runId,
+		userId: context.userId,
+		modelId: context.modelId,
+		input: options.inputs,
+		metadata: options.metadata,
+		agentId: options.agentId,
+		role: options.role,
+		kind: options.kind,
+		taskId: options.taskId,
+		plannedTaskId: options.plannedTaskId,
+		workItemId: options.workItemId,
+		spawnedByTraceId: context.tracing.rootRun.traceId,
+		spawnedByRunId: context.tracing.actorRun.id,
+		spawnedByAgentId,
+	});
+
+	if (tracing) {
+		mergeCurrentTraceMetadata({
+			detached_trace: true,
+			spawned_role: options.role,
+			...(options.taskId ? { spawned_task_id: options.taskId } : {}),
+			spawned_trace_id: tracing.rootRun.traceId,
+			spawned_root_run_id: tracing.rootRun.id,
+		});
+	}
+
+	return tracing;
 }
 
 export function traceSubAgentTools(
@@ -62,6 +120,17 @@ export async function withTraceRun<T>(
 	}
 
 	return await context.tracing.withRunTree(traceRun, fn);
+}
+
+export async function withTraceContextActor<T>(
+	tracing: InstanceAiTraceContext | undefined,
+	fn: () => Promise<T>,
+): Promise<T> {
+	if (!tracing) {
+		return await fn();
+	}
+
+	return await tracing.withRunTree(tracing.actorRun, fn);
 }
 
 export async function finishTraceRun(

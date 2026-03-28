@@ -36,6 +36,18 @@ interface CreateInstanceAiTraceContextOptions {
 	metadata?: Record<string, unknown>;
 }
 
+interface CreateDetachedSubAgentTraceContextOptions extends CreateInstanceAiTraceContextOptions {
+	agentId: string;
+	role: string;
+	kind: string;
+	taskId?: string;
+	plannedTaskId?: string;
+	workItemId?: string;
+	spawnedByTraceId?: string;
+	spawnedByRunId?: string;
+	spawnedByAgentId?: string;
+}
+
 interface CurrentTraceSpanOptions<T = unknown> {
 	name: string;
 	runType?: string;
@@ -259,6 +271,18 @@ export function setTraceParentOverride(parentRun: RunTree | null | undefined): v
 	}
 
 	traceParentOverrideFallback = parentRun ?? null;
+}
+
+export function mergeCurrentTraceMetadata(metadata: Record<string, unknown>): void {
+	const currentRun = getTraceParentRun();
+	if (!currentRun) {
+		return;
+	}
+
+	const mergedMetadata = mergeRunTreeMetadata(currentRun.metadata, metadata);
+	if (mergedMetadata) {
+		currentRun.metadata = mergedMetadata;
+	}
 }
 
 export async function withTraceParentContext<T>(
@@ -565,8 +589,9 @@ async function traceToolExecute(
 
 function createTraceContext(
 	projectName: string,
-	messageRun: InstanceAiTraceRun,
-	orchestratorRun: InstanceAiTraceRun,
+	traceKind: InstanceAiTraceContext['traceKind'],
+	rootRun: InstanceAiTraceRun,
+	actorRun: InstanceAiTraceRun,
 ): InstanceAiTraceContext {
 	const startChildRun = async (
 		parentRun: InstanceAiTraceRun,
@@ -593,8 +618,11 @@ function createTraceContext(
 
 	return {
 		projectName,
-		messageRun,
-		orchestratorRun,
+		traceKind,
+		rootRun,
+		actorRun,
+		messageRun: rootRun,
+		orchestratorRun: actorRun,
 		startChildRun,
 		withRunTree,
 		finishRun,
@@ -833,7 +861,7 @@ export async function createInstanceAiTraceContext(
 		inputs: options.input,
 	});
 
-	return createTraceContext(projectName, messageRun, orchestratorRun);
+	return createTraceContext(projectName, 'message_turn', messageRun, orchestratorRun);
 }
 
 export async function continueInstanceAiTraceContext(
@@ -850,7 +878,43 @@ export async function continueInstanceAiTraceContext(
 
 	return createTraceContext(
 		existingContext.projectName,
-		existingContext.messageRun,
+		'message_turn',
+		existingContext.rootRun,
 		orchestratorRun,
 	);
+}
+
+export async function createDetachedSubAgentTraceContext(
+	options: CreateDetachedSubAgentTraceContextOptions,
+): Promise<InstanceAiTraceContext | undefined> {
+	if (!isLangSmithTracingEnabled()) {
+		return undefined;
+	}
+
+	ensureLangSmithTracingEnv();
+
+	const projectName = options.projectName ?? DEFAULT_PROJECT_NAME;
+	const baseMetadata = buildBaseMetadata(options);
+	const rootRun = await createRun({
+		projectName,
+		name: `subagent:${options.role}`,
+		tags: normalizeTags(
+			['sub-agent', 'background'],
+			options.plannedTaskId ? ['planned'] : undefined,
+		),
+		metadata: mergeMetadata(baseMetadata, {
+			agent_role: options.role,
+			agent_id: options.agentId,
+			task_kind: options.kind,
+			...(options.taskId ? { task_id: options.taskId } : {}),
+			...(options.plannedTaskId ? { planned_task_id: options.plannedTaskId } : {}),
+			...(options.workItemId ? { work_item_id: options.workItemId } : {}),
+			...(options.spawnedByTraceId ? { spawned_by_trace_id: options.spawnedByTraceId } : {}),
+			...(options.spawnedByRunId ? { spawned_by_run_id: options.spawnedByRunId } : {}),
+			...(options.spawnedByAgentId ? { spawned_by_agent_id: options.spawnedByAgentId } : {}),
+		}),
+		inputs: options.input,
+	});
+
+	return createTraceContext(projectName, 'detached_subagent', rootRun, rootRun);
 }

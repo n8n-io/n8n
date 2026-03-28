@@ -214,7 +214,12 @@ function isExecutableTool(value: unknown): value is ExecutableTool {
 	);
 }
 
-const { createInstanceAiTraceContext, continueInstanceAiTraceContext, withCurrentTraceSpan } =
+const {
+	createDetachedSubAgentTraceContext,
+	createInstanceAiTraceContext,
+	continueInstanceAiTraceContext,
+	withCurrentTraceSpan,
+} =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
 	require('../langsmith-tracing') as typeof import('../langsmith-tracing');
 const { createAskUserTool } =
@@ -309,6 +314,43 @@ describe('createInstanceAiTraceContext', () => {
 		expect(continuedTracing.messageRun.id).toBe(tracing?.messageRun.id);
 		expect(continuedTracing.orchestratorRun.id).not.toBe(tracing?.orchestratorRun.id);
 		expect(continuedTracing.orchestratorRun.parentRunId).toBe(tracing?.messageRun.id);
+	});
+
+	it('creates detached sub-agent traces as separate root traces', async () => {
+		const tracing = await createDetachedSubAgentTraceContext({
+			threadId: 'thread-1',
+			conversationId: 'thread-1',
+			messageGroupId: 'group-1',
+			messageId: 'message-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			agentId: 'agent-builder-1',
+			role: 'workflow-builder',
+			kind: 'builder',
+			taskId: 'build-1',
+			spawnedByTraceId: 'trace-parent-1',
+			spawnedByRunId: 'run-parent-1',
+			spawnedByAgentId: 'agent-001',
+			input: { task: 'Build a workflow' },
+		});
+
+		expect(tracing).toBeDefined();
+		expect(tracing?.traceKind).toBe('detached_subagent');
+		expect(tracing?.rootRun.id).toBe(tracing?.actorRun.id);
+		expect(tracing?.rootRun.parentRunId).toBeUndefined();
+		expect(tracing?.rootRun.name).toBe('subagent:workflow-builder');
+		expect(tracing?.rootRun.metadata).toEqual(
+			expect.objectContaining({
+				thread_id: 'thread-1',
+				message_group_id: 'group-1',
+				task_id: 'build-1',
+				task_kind: 'builder',
+				agent_id: 'agent-builder-1',
+				spawned_by_trace_id: 'trace-parent-1',
+				spawned_by_run_id: 'run-parent-1',
+				spawned_by_agent_id: 'agent-001',
+			}),
+		);
 	});
 
 	it('redacts model secrets from trace metadata', async () => {

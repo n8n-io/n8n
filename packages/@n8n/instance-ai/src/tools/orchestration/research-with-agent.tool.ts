@@ -13,7 +13,11 @@ import { z } from 'zod';
 
 import { truncateLabel } from './display-utils';
 import { RESEARCH_AGENT_PROMPT } from './research-agent-prompt';
-import { startSubAgentTrace, traceSubAgentTools, withTraceRun } from './tracing-utils';
+import {
+	createDetachedSubAgentTracing,
+	traceSubAgentTools,
+	withTraceContextActor,
+} from './tracing-utils';
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
@@ -82,7 +86,7 @@ export async function startResearchAgentTask(
 	const briefing = input.constraints
 		? `${input.goal}${conversationCtx}\n\nConstraints: ${input.constraints}`
 		: `${input.goal}${conversationCtx}`;
-	const traceRun = await startSubAgentTrace(context, {
+	const traceContext = await createDetachedSubAgentTracing(context, {
 		agentId: subAgentId,
 		role: 'web-researcher',
 		kind: 'research',
@@ -101,10 +105,10 @@ export async function startResearchAgentTask(
 		threadId: context.threadId,
 		agentId: subAgentId,
 		role: 'web-researcher',
-		traceRun,
+		traceContext,
 		plannedTaskId: input.plannedTaskId,
 		run: async (signal, drainCorrections) => {
-			return await withTraceRun(context, traceRun, async () => {
+			return await withTraceContextActor(traceContext, async () => {
 				const subAgent = new Agent({
 					id: subAgentId,
 					name: 'Web Research Agent',

@@ -5,10 +5,12 @@ import { nanoid } from 'nanoid';
 import { delegateInputSchema, delegateOutputSchema } from './delegate.schemas';
 import { truncateLabel } from './display-utils';
 import {
+	createDetachedSubAgentTracing,
 	failTraceRun,
 	finishTraceRun,
 	startSubAgentTrace,
 	traceSubAgentTools,
+	withTraceContextActor,
 	withTraceRun,
 } from './tracing-utils';
 import { registerWithMastra } from '../../agent/register-with-mastra';
@@ -159,7 +161,7 @@ export async function startDetachedDelegateTask(
 		input.artifacts,
 		input.conversationContext,
 	);
-	const traceRun = await startSubAgentTrace(context, {
+	const traceContext = await createDetachedSubAgentTracing(context, {
 		agentId: subAgentId,
 		role,
 		kind: 'delegate',
@@ -179,10 +181,10 @@ export async function startDetachedDelegateTask(
 		threadId: context.threadId,
 		agentId: subAgentId,
 		role,
-		traceRun,
+		traceContext,
 		plannedTaskId: input.plannedTaskId,
 		run: async (signal, drainCorrections) => {
-			return await withTraceRun(context, traceRun, async () => {
+			return await withTraceContextActor(traceContext, async () => {
 				const memory = MEMORY_ENABLED_ROLES.has(role)
 					? createSubAgentMemory(context.storage, role)
 					: undefined;

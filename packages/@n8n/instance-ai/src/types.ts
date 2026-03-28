@@ -723,7 +723,12 @@ export interface InstanceAiToolTraceOptions {
 
 export interface InstanceAiTraceContext {
 	projectName: string;
+	traceKind: 'message_turn' | 'detached_subagent';
+	rootRun: InstanceAiTraceRun;
+	actorRun: InstanceAiTraceRun;
+	/** Compatibility alias for existing foreground-trace call sites. */
 	messageRun: InstanceAiTraceRun;
+	/** Compatibility alias for existing foreground-trace call sites. */
 	orchestratorRun: InstanceAiTraceRun;
 	startChildRun: (
 		parentRun: InstanceAiTraceRun,
@@ -755,7 +760,7 @@ export interface SpawnBackgroundTaskOptions {
 	threadId: string;
 	agentId: string;
 	role: string;
-	traceRun?: InstanceAiTraceRun;
+	traceContext?: InstanceAiTraceContext;
 	/** When set, links the background task back to a planned task in the scheduler. */
 	plannedTaskId?: string;
 	/** Unique work item ID for workflow loop tracking. When set, the service

@@ -14,7 +14,11 @@ import { z } from 'zod';
 
 import { DATA_TABLE_AGENT_PROMPT } from './data-table-agent.prompt';
 import { truncateLabel } from './display-utils';
-import { startSubAgentTrace, traceSubAgentTools, withTraceRun } from './tracing-utils';
+import {
+	createDetachedSubAgentTracing,
+	traceSubAgentTools,
+	withTraceContextActor,
+} from './tracing-utils';
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { createSubAgentMemory, subAgentResourceId } from '../../memory/sub-agent-memory';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
@@ -92,7 +96,7 @@ export async function startDataTableAgentTask(
 			targetResource: { type: 'data-table' as const },
 		},
 	});
-	const traceRun = await startSubAgentTrace(context, {
+	const traceContext = await createDetachedSubAgentTracing(context, {
 		agentId: subAgentId,
 		role: 'data-table-manager',
 		kind: 'data-table',
@@ -110,10 +114,10 @@ export async function startDataTableAgentTask(
 		threadId: context.threadId,
 		agentId: subAgentId,
 		role: 'data-table-manager',
-		traceRun,
+		traceContext,
 		plannedTaskId: input.plannedTaskId,
 		run: async (signal, _drainCorrections) => {
-			return await withTraceRun(context, traceRun, async () => {
+			return await withTraceContextActor(traceContext, async () => {
 				const dataTableMemory = createSubAgentMemory(context.storage, 'data-table-manager');
 
 				const subAgent = new Agent({

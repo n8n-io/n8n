@@ -1,4 +1,4 @@
-import type { BackgroundTaskResult, InstanceAiTraceRun } from '../types';
+import type { BackgroundTaskResult, InstanceAiTraceContext } from '../types';
 
 export type BackgroundTaskStatus = 'running' | 'completed' | 'failed' | 'cancelled';
 
@@ -18,7 +18,7 @@ export interface ManagedBackgroundTask {
 	outcome?: Record<string, unknown>;
 	plannedTaskId?: string;
 	workItemId?: string;
-	traceRun?: InstanceAiTraceRun;
+	traceContext?: InstanceAiTraceContext;
 }
 
 export interface SpawnManagedBackgroundTaskOptions {
@@ -30,7 +30,7 @@ export interface SpawnManagedBackgroundTaskOptions {
 	messageGroupId?: string;
 	plannedTaskId?: string;
 	workItemId?: string;
-	traceRun?: InstanceAiTraceRun;
+	traceContext?: InstanceAiTraceContext;
 	run: (
 		signal: AbortSignal,
 		drainCorrections: () => string[],
@@ -128,7 +128,7 @@ export class BackgroundTaskManager {
 			messageGroupId: options.messageGroupId,
 			plannedTaskId: options.plannedTaskId,
 			workItemId: options.workItemId,
-			traceRun: options.traceRun,
+			traceContext: options.traceContext,
 		};
 
 		this.tasks.set(options.taskId, task);
