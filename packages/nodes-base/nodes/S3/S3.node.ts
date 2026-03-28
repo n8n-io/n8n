@@ -23,7 +23,7 @@ export class S3 implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:s3.png',
 		group: ['output'],
-		version: 1,
+		version: [1, 1.1],
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Sends data to any S3-compatible service',
 		defaults: {
@@ -558,10 +558,13 @@ export class S3 implements INodeType {
 							).toUpperCase();
 						}
 
-						// Normalize: ensure destinationPath starts with '/' (e.g. '/bucket/key')
-						const normalizedDestination = destinationPath.startsWith('/')
-							? destinationPath
-							: `/${destinationPath}`;
+						// v1.1+: Normalize destinationPath to accept paths without a leading slash.
+						// Previously, omitting '/' caused the bucket name to be parsed as the file key.
+						const nodeVersion = this.getNode().typeVersion;
+						const normalizedDestination =
+							nodeVersion >= 1.1 && !destinationPath.startsWith('/')
+								? `/${destinationPath}`
+								: destinationPath;
 						const destinationParts = normalizedDestination.split('/');
 
 						const bucketName = destinationParts[1];

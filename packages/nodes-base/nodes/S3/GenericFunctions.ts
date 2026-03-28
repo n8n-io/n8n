@@ -144,9 +144,11 @@ export async function s3ApiRequestSOAP(
 		option,
 		region,
 	);
-	// Empty responses (e.g. HTTP 204 No Content) are valid and should return undefined,
+	const nodeVersion = this.getNode().typeVersion ?? 1;
+
+	// v1.1+: Empty responses (e.g. HTTP 204 No Content) are valid and should return undefined,
 	// not swallow a parse error silently.
-	if (!response) return undefined;
+	if (nodeVersion >= 1.1 && !response) return undefined;
 
 	try {
 		return await new Promise((resolve, reject) => {
@@ -158,7 +160,9 @@ export async function s3ApiRequestSOAP(
 			});
 		});
 	} catch (error) {
-		throw error;
+		// v1.1+: Re-throw parse errors instead of silently returning them as data.
+		if (nodeVersion >= 1.1) throw error;
+		return error;
 	}
 }
 
