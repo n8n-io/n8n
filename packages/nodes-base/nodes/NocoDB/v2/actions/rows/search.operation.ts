@@ -187,9 +187,9 @@ export const description: INodeProperties[] = updateDisplayOptions(
 			description: "Whether the attachment fields defined in 'Download Fields' will be downloaded",
 		},
 		{
-			displayName: 'Download Field Name or ID',
+			displayName: 'Download Field Names or IDs',
 			name: 'downloadFieldNames',
-			type: 'options',
+			type: 'multiOptions',
 			typeOptions: {
 				loadOptionsMethod: 'getDownloadFields',
 			},
@@ -199,9 +199,9 @@ export const description: INodeProperties[] = updateDisplayOptions(
 					downloadAttachments: [true],
 				},
 			},
-			default: '',
+			default: [],
 			description:
-				'Name of the fields of type \'attachment\' that should be downloaded. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+				'Names of the fields of type \'attachment\' that should be downloaded. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		},
 		searchOptions,
 	],
@@ -268,9 +268,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			const downloadAttachments = this.getNodeParameter('downloadAttachments', i) as boolean;
 
 			if (downloadAttachments) {
-				const downloadFieldNames = (this.getNodeParameter('downloadFieldNames', i) as string).split(
-					',',
-				);
+				const downloadFieldNames = this.getNodeParameter('downloadFieldNames', i) as string[];
 				const response = await downloadRecordAttachments.call(
 					this,
 					responseData as IDataObject[],

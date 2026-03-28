@@ -93,7 +93,7 @@ export async function apiRequestAllItems(
 		responseData = await apiRequest.call(this, method, endpoint, body, query);
 		query.offset += QUERY_LIMIT;
 		returnData.push.apply(returnData, responseData.records);
-	} while (!!responseData.next);
+	} while (responseData.next);
 
 	return returnData;
 }
@@ -127,6 +127,7 @@ export async function downloadRecordAttachments(
 						json: false,
 						encoding: null,
 					});
+					console.log(file);
 					element.binary![`${fieldName}_${index}`] = await this.helpers.prepareBinaryData(
 						Buffer.from(file),
 						attachment.title,

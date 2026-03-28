@@ -58,7 +58,7 @@ describe('NocoDB Rows Get Action', () => {
 				if (name === 'table') return 'table1';
 				if (name === 'id') return 'row1';
 				if (name === 'downloadAttachments') return true;
-				if (name === 'downloadFieldNames') return 'attachmentField';
+				if (name === 'downloadFieldNames') return ['attachmentField'];
 				return undefined;
 			});
 			(apiRequest.call as jest.Mock).mockResolvedValue({
