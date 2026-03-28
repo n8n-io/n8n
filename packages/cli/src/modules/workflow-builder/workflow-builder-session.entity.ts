@@ -19,6 +19,10 @@ export interface IWorkflowBuilderSession {
 	/** Serialized LangChain messages in StoredMessage format */
 	messages: StoredMessage[];
 	previousSummary: string | null;
+	/** Version card message ID that the user restored to (null if no restore) */
+	activeVersionCardId: string | null;
+	/** First user message ID sent after a restore (null if no new message yet) */
+	resumeAfterRestoreMessageId: string | null;
 	createdAt: Date;
 	updatedAt: Date;
 }
@@ -56,4 +60,12 @@ export class WorkflowBuilderSession extends WithTimestamps implements IWorkflowB
 
 	@Column({ type: 'text', nullable: true, default: null })
 	previousSummary: string | null;
+
+	/** Version card message ID that the user restored to (null if no restore) */
+	@Column({ type: 'varchar', length: 255, nullable: true, default: null })
+	activeVersionCardId: string | null;
+
+	/** First user message ID sent after a restore (null if no new message yet) */
+	@Column({ type: 'varchar', length: 255, nullable: true, default: null })
+	resumeAfterRestoreMessageId: string | null;
 }

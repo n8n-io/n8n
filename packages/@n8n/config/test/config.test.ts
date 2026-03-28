@@ -354,6 +354,7 @@ describe('GlobalConfig', () => {
 			contentSecurityPolicyReportOnly: false,
 			crossOriginOpenerPolicy: 'same-origin',
 			disableWebhookHtmlSandboxing: false,
+			disableFormHtmlSandboxing: false,
 			disableBareRepos: true,
 			awsSystemCredentialsAccess: false,
 			enableGitNodeHooks: false,
