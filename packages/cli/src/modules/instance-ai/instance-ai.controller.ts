@@ -397,6 +397,8 @@ export class InstanceAiController {
 		@Param('threadId') threadId: string,
 		@Query query: InstanceAiThreadMessagesQuery,
 	) {
+		await this.assertThreadAccess(req.user.id, threadId);
+
 		// ?raw=true returns the old format for the thread inspector
 		if (query.raw === 'true') {
 			return await this.memoryService.getThreadMessages(req.user.id, threadId, {

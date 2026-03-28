@@ -28,6 +28,7 @@ import type { TagService } from '@/services/tag.service';
 import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
 import type { License } from '@/license';
+import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { EventService } from '@/events/event.service';
 
@@ -66,6 +67,7 @@ const tagService = mock<TagService>();
 const sourceControlPreferencesService = mock<SourceControlPreferencesService>();
 const settingsService = mock<InstanceAiSettingsService>();
 const workflowHistoryService = mock<WorkflowHistoryService>();
+const enterpriseWorkflowService = mock<EnterpriseWorkflowService>();
 const license = mock<License>();
 const executionPersistence = mock<ExecutionPersistence>();
 const eventService = mock<EventService>();
@@ -93,6 +95,7 @@ const service = new InstanceAiAdapterService(
 	sourceControlPreferencesService,
 	settingsService,
 	workflowHistoryService,
+	enterpriseWorkflowService,
 	license,
 	executionPersistence,
 	eventService,

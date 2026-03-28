@@ -449,8 +449,8 @@ export class InstanceAiService {
 		this.gatewayRegistry.disconnectGateway(userId);
 	}
 
-	isLocalGatewayDisabled(): boolean {
-		return this.settingsService.isFilesystemDisabled();
+	isLocalGatewayDisabled(userId: string): boolean {
+		return this.settingsService.isFilesystemDisabledForUser(userId);
 	}
 
 	getGatewayStatus(userId: string): {
@@ -623,7 +623,7 @@ export class InstanceAiService {
 		messageGroupId?: string,
 		pushRef?: string,
 	) {
-		const localGatewayDisabled = this.settingsService.isFilesystemDisabled();
+		const localGatewayDisabled = this.settingsService.isFilesystemDisabledForUser(user.id);
 		const userGateway = this.gatewayRegistry.findGateway(user.id);
 		const localFilesystemService =
 			!localGatewayDisabled && !userGateway?.isConnected && this.isLocalFilesystemAvailable()
