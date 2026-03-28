@@ -127,7 +127,6 @@ export async function downloadRecordAttachments(
 						json: false,
 						encoding: null,
 					});
-					console.log(file);
 					element.binary![`${fieldName}_${index}`] = await this.helpers.prepareBinaryData(
 						Buffer.from(file),
 						attachment.title,
