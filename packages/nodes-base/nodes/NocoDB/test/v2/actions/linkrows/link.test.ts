@@ -51,7 +51,8 @@ describe('NocoDB Linkrows Link Node', () => {
 			},
 			continueOnFail: () => false,
 			helpers: {
-				returnJsonArray: jest.fn((data) => data),
+				returnJsonArray: jest.fn((data) => (Array.isArray(data) ? data : [data])),
+				constructExecutionMetaData: jest.fn((items) => items),
 			},
 			getNode: () => ({ name: 'NocoDB', type: 'nocoDb', id: '1', parameters: {} }) as INode,
 		} as unknown as IExecuteFunctions;

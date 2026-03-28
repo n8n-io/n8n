@@ -21,7 +21,8 @@ describe('NocoDB base getAll action', () => {
 			getInputData: jest.fn(() => [{ json: {} }]),
 			continueOnFail: jest.fn(() => false),
 			helpers: {
-				returnJsonArray: jest.fn((data) => [data]),
+				returnJsonArray: jest.fn((data) => (Array.isArray(data) ? data : [data])),
+				constructExecutionMetaData: jest.fn((items) => items),
 			},
 			getNode: jest.fn(() => {}),
 		} as unknown as IExecuteFunctions;
@@ -43,7 +44,7 @@ describe('NocoDB base getAll action', () => {
 			{},
 			{},
 		);
-		expect(result).toEqual([[[{ id: 'base1' }, { id: 'base2' }]]]);
+		expect(result).toEqual([[{ id: 'base1' }, { id: 'base2' }]]);
 	});
 
 	// Test case 2: workspaceId is not provided (or 'none')
@@ -62,7 +63,7 @@ describe('NocoDB base getAll action', () => {
 			{},
 			{},
 		);
-		expect(result).toEqual([[[{ id: 'baseA' }, { id: 'baseB' }]]]);
+		expect(result).toEqual([[{ id: 'baseA' }, { id: 'baseB' }]]);
 	});
 
 	// Test case 3: Error handling with continueOnFail = true
@@ -73,8 +74,8 @@ describe('NocoDB base getAll action', () => {
 
 		const result = await execute.call(mockExecuteFunctions);
 
-		expect(result[0][0][0]).toHaveProperty('error');
-		expect((result[0][0][0] as any).error).toContain('API Error');
+		expect(result[0][0]).toHaveProperty('error');
+		expect((result[0][0] as any).error).toContain('API Error');
 	});
 
 	// Test case 4: Error handling with continueOnFail = false

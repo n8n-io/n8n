@@ -21,7 +21,8 @@ describe('NocoDB Rows Upload Action', () => {
 			getInputData: jest.fn(() => [{ json: {} }]),
 			continueOnFail: jest.fn(() => false),
 			helpers: {
-				returnJsonArray: jest.fn((data) => [data]),
+				returnJsonArray: jest.fn((data) => (Array.isArray(data) ? data : [data])),
+				constructExecutionMetaData: jest.fn((items) => items),
 			},
 			getNode: jest.fn(() => {}),
 		} as unknown as IExecuteFunctions;
@@ -99,8 +100,8 @@ describe('NocoDB Rows Upload Action', () => {
 				},
 				{},
 			);
-			expect(mockExecuteFunctions.helpers.returnJsonArray).toHaveBeenCalledWith([mockReturnValue]);
-			expect(result).toEqual([[[mockReturnValue]]]);
+			expect(mockExecuteFunctions.helpers.returnJsonArray).toHaveBeenCalledWith(mockReturnValue);
+			expect(result).toEqual([[mockReturnValue]]);
 		});
 	});
 
@@ -169,7 +170,7 @@ describe('NocoDB Rows Upload Action', () => {
 				{},
 			);
 			expect(mockExecuteFunctions.helpers.returnJsonArray).toHaveBeenCalledWith([mockReturnValue]);
-			expect(result).toEqual([[[mockReturnValue]]]);
+			expect(result).toEqual([[mockReturnValue]]);
 		});
 
 		it('should upload a file successfully in url mode when existing field is an array', async () => {
@@ -219,7 +220,7 @@ describe('NocoDB Rows Upload Action', () => {
 				{},
 			);
 			expect(mockExecuteFunctions.helpers.returnJsonArray).toHaveBeenCalledWith([mockReturnValue]);
-			expect(result).toEqual([[[mockReturnValue]]]);
+			expect(result).toEqual([[mockReturnValue]]);
 		});
 
 		it('should upload a file successfully in url mode when existing field is a string', async () => {
@@ -269,7 +270,7 @@ describe('NocoDB Rows Upload Action', () => {
 				{},
 			);
 			expect(mockExecuteFunctions.helpers.returnJsonArray).toHaveBeenCalledWith([mockReturnValue]);
-			expect(result).toEqual([[[mockReturnValue]]]);
+			expect(result).toEqual([[mockReturnValue]]);
 		});
 	});
 
@@ -297,7 +298,7 @@ describe('NocoDB Rows Upload Action', () => {
 
 			// Assertions
 			expect(mockExecuteFunctions.continueOnFail).toHaveBeenCalled();
-			expect(result).toEqual([[[{ error: apiError.toString() }]]]);
+			expect(result).toEqual([[{ error: apiError.toString() }]]);
 		});
 
 		it('should throw NodeApiError when API request fails and continueOnFail is false', async () => {

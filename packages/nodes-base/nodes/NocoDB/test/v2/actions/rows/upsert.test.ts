@@ -21,7 +21,8 @@ describe('NocoDB Rows Upsert Action', () => {
 			getInputData: jest.fn(() => [{ json: {} }]),
 			continueOnFail: jest.fn(() => false),
 			helpers: {
-				returnJsonArray: jest.fn((data) => [data]),
+				returnJsonArray: jest.fn((data) => (Array.isArray(data) ? data : [data])),
+				constructExecutionMetaData: jest.fn((items) => items),
 			},
 			getNode: jest.fn(() => {}),
 		} as unknown as IExecuteFunctions;
@@ -86,7 +87,7 @@ describe('NocoDB Rows Upsert Action', () => {
 				],
 				{},
 			);
-			expect(result).toEqual([[[mockResponseData]]]);
+			expect(result).toEqual([[mockResponseData]]);
 		});
 
 		it('should create a row with defineBelow and fieldsMapper', async () => {
@@ -225,7 +226,7 @@ describe('NocoDB Rows Upsert Action', () => {
 				],
 				{},
 			);
-			expect(result).toEqual([[[mockResponseData]]]);
+			expect(result).toEqual([[mockResponseData]]);
 		});
 
 		it('should create a row with defineBelow and fieldsMapper', async () => {

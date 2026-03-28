@@ -22,7 +22,8 @@ describe('NocoDB Link Rows List Action', () => {
 			getInputData: jest.fn(() => [{ json: {} }]),
 			continueOnFail: jest.fn(() => false),
 			helpers: {
-				returnJsonArray: jest.fn((data) => [data]),
+				returnJsonArray: jest.fn((data) => (Array.isArray(data) ? data : [data])),
+				constructExecutionMetaData: jest.fn((items) => items),
 			},
 			getNode: jest.fn(() => mockNode),
 		} as unknown as IExecuteFunctions;
@@ -57,7 +58,7 @@ describe('NocoDB Link Rows List Action', () => {
 
 			const result = await execute.call(mockExecuteFunctions);
 
-			expect(result).toEqual([[[{ id: 'row1' }, { id: 'row2' }]]]);
+			expect(result).toEqual([[{ id: 'row1' }, { id: 'row2' }]]);
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				mockExecuteFunctions,
 				'GET',
@@ -82,7 +83,7 @@ describe('NocoDB Link Rows List Action', () => {
 
 			const result = await execute.call(mockExecuteFunctions);
 
-			expect(result).toEqual([[[{ id: 'row1' }, { id: 'row2' }, { id: 'row3' }]]]);
+			expect(result).toEqual([[{ id: 'row1' }, { id: 'row2' }, { id: 'row3' }]]);
 			expect(apiRequestAllItems.call).toHaveBeenCalledWith(
 				mockExecuteFunctions,
 				'GET',
@@ -108,7 +109,7 @@ describe('NocoDB Link Rows List Action', () => {
 
 			const result = await execute.call(mockExecuteFunctions);
 
-			expect(result).toEqual([[[{ id: 'row1' }, { id: 'row2' }]]]);
+			expect(result).toEqual([[{ id: 'row1' }, { id: 'row2' }]]);
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				mockExecuteFunctions,
 				'GET',
@@ -139,7 +140,7 @@ describe('NocoDB Link Rows List Action', () => {
 
 			const result = await execute.call(mockExecuteFunctions);
 
-			expect(result).toEqual([[[{ id: 'row1', name: 'test1' }]]]);
+			expect(result).toEqual([[{ id: 'row1', name: 'test1' }]]);
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				mockExecuteFunctions,
 				'GET',
@@ -170,7 +171,7 @@ describe('NocoDB Link Rows List Action', () => {
 
 			const result = await execute.call(mockExecuteFunctions);
 
-			expect(result).toEqual([[[{ id: 'row2' }, { id: 'row1' }]]]);
+			expect(result).toEqual([[{ id: 'row2' }, { id: 'row1' }]]);
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				mockExecuteFunctions,
 				'GET',
@@ -199,7 +200,7 @@ describe('NocoDB Link Rows List Action', () => {
 
 			const result = await execute.call(mockExecuteFunctions);
 
-			expect(result).toEqual([[[{ id: 'row1', name: 'example' }]]]);
+			expect(result).toEqual([[{ id: 'row1', name: 'example' }]]);
 			expect(apiRequest.call).toHaveBeenCalledWith(
 				mockExecuteFunctions,
 				'GET',
@@ -226,7 +227,7 @@ describe('NocoDB Link Rows List Action', () => {
 
 			const result = await execute.call(mockExecuteFunctions);
 
-			expect(result).toEqual([[[{ error: `Error: ${errorMessage}` }]]]);
+			expect(result).toEqual([[{ error: `Error: ${errorMessage}` }]]);
 		});
 
 		it('should throw NodeApiError when continueOnFail is false', async () => {

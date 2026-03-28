@@ -21,7 +21,8 @@ describe('NocoDB Rows Get Action', () => {
 			getInputData: jest.fn(() => [{ json: {} }]),
 			continueOnFail: jest.fn(() => false),
 			helpers: {
-				returnJsonArray: jest.fn((data) => [data]),
+				returnJsonArray: jest.fn((data) => (Array.isArray(data) ? data : [data])),
+				constructExecutionMetaData: jest.fn((items) => items),
 			},
 			getNode: jest.fn(() => {}),
 		} as unknown as IExecuteFunctions;
@@ -49,7 +50,7 @@ describe('NocoDB Rows Get Action', () => {
 				{},
 				{},
 			);
-			expect(result).toEqual([[[{ id: 'row1', name: 'Test Row' }]]]);
+			expect(result).toEqual([[{ id: 'row1', name: 'Test Row' }]]);
 		});
 
 		it('should return data for a single row with attachments', async () => {
@@ -86,7 +87,7 @@ describe('NocoDB Rows Get Action', () => {
 				[{ item: 0 }],
 			);
 			expect(result).toEqual([
-				[[{ binary: { attachmentField: { data: 'binaryData' } }, json: expect.anything() }]],
+				[{ binary: { attachmentField: { data: 'binaryData' } }, json: expect.anything() }],
 			]);
 		});
 
@@ -103,7 +104,7 @@ describe('NocoDB Rows Get Action', () => {
 
 			const result = await execute.call(mockExecuteFunctions);
 
-			expect(result).toEqual([[[{ error: 'Error: API Error' }]]]);
+			expect(result).toEqual([[{ error: 'Error: API Error' }]]);
 		});
 
 		it('should throw NodeApiError when continueOnFail is false', async () => {

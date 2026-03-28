@@ -182,7 +182,7 @@ describe('NocoDB Transport API', () => {
 				url: 'http://localhost:8080/file1.jpg',
 				json: false,
 				qs: {},
-				encoding: null,
+				encoding: 'arraybuffer',
 			});
 			expect(mockThis.helpers.prepareBinaryData).toHaveBeenCalledWith(
 				mockFileBuffer,
@@ -254,7 +254,7 @@ describe('NocoDB Transport API', () => {
 				url: 'http://localhost:8080/file3.pdf',
 				json: false,
 				qs: {},
-				encoding: null,
+				encoding: 'arraybuffer',
 			});
 			expect(mockThis.helpers.prepareBinaryData).toHaveBeenCalledWith(
 				mockFileBuffer,

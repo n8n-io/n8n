@@ -21,7 +21,8 @@ describe('NocoDB Rows Count Action', () => {
 			getInputData: jest.fn(() => [{ json: {} }]),
 			continueOnFail: jest.fn(() => false),
 			helpers: {
-				returnJsonArray: jest.fn((data) => [data]),
+				returnJsonArray: jest.fn((data) => (Array.isArray(data) ? data : [data])),
+				constructExecutionMetaData: jest.fn((items) => items),
 			},
 			getNode: jest.fn(() => {}),
 		} as unknown as IExecuteFunctions;
@@ -54,7 +55,7 @@ describe('NocoDB Rows Count Action', () => {
 			{},
 			{},
 		);
-		expect(result).toEqual([[[{ count: 10 }]]]);
+		expect(result).toEqual([[{ count: 10 }]]);
 	});
 
 	it('should return the count of rows successfully with where option', async () => {
@@ -83,7 +84,7 @@ describe('NocoDB Rows Count Action', () => {
 			{},
 			options,
 		);
-		expect(result).toEqual([[[{ count: 5 }]]]);
+		expect(result).toEqual([[{ count: 5 }]]);
 	});
 
 	it('should throw NodeApiError when apiRequest fails and continueOnFail is false', async () => {
@@ -115,6 +116,6 @@ describe('NocoDB Rows Count Action', () => {
 		const result = await execute.call(mockExecuteFunctions);
 
 		expect(mockExecuteFunctions.continueOnFail).toHaveBeenCalled();
-		expect(result).toEqual([[[{ error: 'Error: API Error' }]]]);
+		expect(result).toEqual([[{ error: 'Error: API Error' }]]);
 	});
 });

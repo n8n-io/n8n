@@ -21,7 +21,8 @@ describe('NocoDB  base get action', () => {
 			getInputData: jest.fn(() => [{ json: {} }]),
 			continueOnFail: jest.fn(() => false),
 			helpers: {
-				returnJsonArray: jest.fn((data) => [data]),
+				returnJsonArray: jest.fn((data) => (Array.isArray(data) ? data : [data])),
+				constructExecutionMetaData: jest.fn((items) => items),
 			},
 			getNode: jest.fn(() => {}),
 		} as unknown as IExecuteFunctions;
@@ -84,16 +85,14 @@ describe('NocoDB  base get action', () => {
 			);
 			expect(result).toEqual([
 				[
-					[
-						{
-							id: mockBaseId,
-							title: 'Test Base',
-							tables: [
-								{ id: 'table1', title: 'Table 1' },
-								{ id: 'table2', title: 'Table 2' },
-							],
-						},
-					],
+					{
+						id: mockBaseId,
+						title: 'Test Base',
+						tables: [
+							{ id: 'table1', title: 'Table 1' },
+							{ id: 'table2', title: 'Table 2' },
+						],
+					},
 				],
 			]);
 		});
@@ -108,7 +107,7 @@ describe('NocoDB  base get action', () => {
 
 			const result = await execute.call(mockExecuteFunctions);
 
-			expect(result).toEqual([[[{ error: `Error: ${errorMessage}` }]]]);
+			expect(result).toEqual([[{ error: `Error: ${errorMessage}` }]]);
 		});
 
 		it('should throw NodeApiError when continueOnFail is false', async () => {

@@ -54,7 +54,7 @@ export const description: INodeProperties[] = updateDisplayOptions(
 
 export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const items = this.getInputData();
-	const returnData: IDataObject[] = [];
+	const returnData: INodeExecutionData[] = [];
 	let responseData;
 
 	let requestMethod: IHttpRequestMethods;
@@ -90,18 +90,30 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 					binary: data[0].binary,
 					json: responseData as IDataObject,
 				};
-				returnData.push(newItem);
+				const executionData = this.helpers.constructExecutionMetaData(
+					[newItem] as INodeExecutionData[],
+					{ itemData: { item: i } },
+				);
+				returnData.push.apply(returnData, executionData);
 			} else {
-				returnData.push(responseData as IDataObject);
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData as IDataObject),
+					{ itemData: { item: i } },
+				);
+				returnData.push.apply(returnData, executionData);
 			}
 		} catch (error) {
 			if (this.continueOnFail()) {
-				returnData.push({ error: error.toString() });
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray({ error: error.toString() }),
+					{ itemData: { item: i } },
+				);
+				returnData.push.apply(returnData, executionData);
 			} else {
 				throw new NodeApiError(this.getNode(), error as JsonObject);
 			}
 		}
 	}
 
-	return [this.helpers.returnJsonArray(returnData)];
+	return [returnData];
 }
