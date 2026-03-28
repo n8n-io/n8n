@@ -55,6 +55,9 @@ describe('RoleMappingRuleService', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		roleMappingRuleRepository.findOne.mockResolvedValue(null);
+		// normalizeOrderForType calls find after every mutation; default to empty
+		// so existing tests hit the early-exit path and require no transaction mock.
+		roleMappingRuleRepository.find.mockResolvedValue([]);
 	});
 
 	describe('create', () => {
@@ -502,6 +505,140 @@ describe('RoleMappingRuleService', () => {
 			await service.delete(rule.id);
 
 			expect(roleMappingRuleRepository.remove).toHaveBeenCalledWith(rule);
+		});
+	});
+
+	describe('normalizeOrderForType', () => {
+		const makeRule = (id: string, order: number, type = 'instance') =>
+			({ id, order, type }) as unknown as RoleMappingRule;
+
+		const updateSpy = jest.fn().mockResolvedValue(undefined);
+		const transactionSpy = jest.fn();
+
+		beforeEach(() => {
+			updateSpy.mockClear();
+			transactionSpy.mockImplementation(
+				async (cb: (tx: { update: typeof updateSpy }) => Promise<void>) => {
+					await cb({ update: updateSpy });
+				},
+			);
+			// jest-mock-extended creates a Proxy; assigning manager directly
+			// is the reliable way to inject the transaction mock.
+			(roleMappingRuleRepository as unknown as Record<string, unknown>).manager = {
+				transaction: transactionSpy,
+			};
+		});
+
+		it('should not call transaction when sequence has no gaps', async () => {
+			roleMappingRuleRepository.find.mockResolvedValue([
+				makeRule('a', 0),
+				makeRule('b', 1),
+				makeRule('c', 2),
+			]);
+
+			roleMappingRuleRepository.findOne.mockResolvedValue(makeRule('a', 0));
+			roleMappingRuleRepository.remove.mockResolvedValue(makeRule('a', 0));
+
+			await service.delete('a');
+
+			expect(transactionSpy).not.toHaveBeenCalled();
+		});
+
+		it('should renumber rules to close a gap after delete', async () => {
+			// Simulates [0, 2, 3] after deleting the rule at order 1
+			roleMappingRuleRepository.find.mockResolvedValue([
+				makeRule('a', 0),
+				makeRule('b', 2),
+				makeRule('c', 3),
+			]);
+
+			roleMappingRuleRepository.findOne.mockResolvedValue(makeRule('x', 0));
+			roleMappingRuleRepository.remove.mockResolvedValue(makeRule('x', 0));
+
+			await service.delete('x');
+
+			expect(transactionSpy).toHaveBeenCalledTimes(1);
+
+			// Phase 2 should assign contiguous orders 0, 1, 2
+			expect(updateSpy).toHaveBeenCalledWith(expect.anything(), { id: 'a' }, { order: 0 });
+			expect(updateSpy).toHaveBeenCalledWith(expect.anything(), { id: 'b' }, { order: 1 });
+			expect(updateSpy).toHaveBeenCalledWith(expect.anything(), { id: 'c' }, { order: 2 });
+		});
+
+		it('should compact a large gap after create', async () => {
+			// Simulates [0, 1, 100] after creating a rule at order 100
+			roleMappingRuleRepository.find.mockResolvedValue([
+				makeRule('a', 0),
+				makeRule('b', 1),
+				makeRule('c', 100),
+			]);
+
+			roleRepository.findOne.mockResolvedValue(globalRole);
+			roleMappingRuleRepository.save.mockResolvedValue(makeRule('c', 100));
+			roleMappingRuleRepository.findOneOrFail.mockResolvedValue({
+				...makeRule('c', 2),
+				role: globalRole,
+				projects: [],
+				createdAt: new Date('2025-01-01T00:00:00.000Z'),
+				updatedAt: new Date('2025-01-01T00:00:00.000Z'),
+			} as unknown as RoleMappingRule);
+
+			await service.create({
+				expression: 'true',
+				role: globalRole.slug,
+				type: 'instance',
+				order: 100,
+			});
+
+			expect(transactionSpy).toHaveBeenCalledTimes(1);
+			expect(updateSpy).toHaveBeenCalledWith(expect.anything(), { id: 'c' }, { order: 2 });
+		});
+
+		it('should normalize both types when type changes during patch', async () => {
+			const existingRule = {
+				id: 'rule-1',
+				expression: 'true',
+				role: globalRole,
+				type: 'instance',
+				order: 1,
+				projects: [],
+			} as unknown as RoleMappingRule;
+
+			roleMappingRuleRepository.findOne.mockImplementation(async (opts) => {
+				if (opts?.where && 'id' in opts.where) return existingRule;
+				return null;
+			});
+			roleMappingRuleRepository.save.mockResolvedValue(existingRule);
+			roleMappingRuleRepository.findOneOrFail.mockResolvedValue({
+				...existingRule,
+				type: 'project',
+				role: projectRole,
+				projects: [{ id: 'p1' } as Project],
+				createdAt: new Date('2025-01-01T00:00:00.000Z'),
+				updatedAt: new Date('2025-01-01T00:00:00.000Z'),
+			} as unknown as RoleMappingRule);
+			projectRepository.findBy.mockResolvedValue([{ id: 'p1' } as Project]);
+			roleRepository.findOne.mockResolvedValue(projectRole);
+
+			roleMappingRuleRepository.find
+				.mockResolvedValueOnce([makeRule('rule-1', 0, 'project')]) // new type: project — no gap
+				.mockResolvedValueOnce([
+					makeRule('rule-2', 0, 'instance'),
+					makeRule('rule-3', 2, 'instance'),
+				]); // old type: instance has gap
+
+			await service.patch('rule-1', {
+				type: 'project',
+				role: projectRole.slug,
+				projectIds: ['p1'],
+				order: 0,
+			});
+
+			// Called twice: once for new type (project), once for old type (instance)
+			expect(roleMappingRuleRepository.find).toHaveBeenCalledTimes(2);
+			// Project sequence has no gap — no transaction needed for it
+			// Instance sequence has gap [0, 2] — transaction called once
+			expect(transactionSpy).toHaveBeenCalledTimes(1);
 		});
 	});
 });
