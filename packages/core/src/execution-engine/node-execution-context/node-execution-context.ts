@@ -48,6 +48,7 @@ import { ensureType } from './utils/ensure-type';
 import { extractValue } from './utils/extract-value';
 import { getAdditionalKeys } from './utils/get-additional-keys';
 import { validateValueAgainstSchema } from './utils/validate-value-against-schema';
+import { buildEvalMockCredentials } from '../eval-mock-helpers';
 
 export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCredentials'> {
 	protected readonly instanceSettings = Container.get(InstanceSettings);
@@ -295,12 +296,9 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		// This allows the node to execute (build requests, parse responses) without real credentials.
 		// Triple-gated: evaluation mode + mock handler present + credentials actually missing.
 		if (mode === 'evaluation' && additionalData.evalLlmMockHandler && !node.credentials?.[type]) {
-			const properties = additionalData.credentialsHelper.getCredentialsProperties(type);
-			const mockCredentials: Record<string, unknown> = {};
-			for (const prop of properties) {
-				mockCredentials[prop.name] = 'eval-mock-value';
-			}
-			return mockCredentials as T;
+			return buildEvalMockCredentials(
+				additionalData.credentialsHelper.getCredentialsProperties(type),
+			) as T;
 		}
 
 		// Get the NodeType as it has the information if the credentials are required

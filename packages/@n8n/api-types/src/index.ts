@@ -245,6 +245,7 @@ export {
 	instanceAiAgentStatusSchema,
 	instanceAiAgentKindSchema,
 	instanceAiEventSchema,
+	instanceAiEvalExecutionRequestSchema,
 	taskItemSchema,
 	taskListSchema,
 	runStartPayloadSchema,
@@ -331,6 +332,12 @@ export type {
 	InstanceAiTargetResource,
 	DomainAccessAction,
 	DomainAccessMeta,
+	InstanceAiEvalNodeExecutionMode,
+	InstanceAiEvalInterceptedRequest,
+	InstanceAiEvalNodeResult,
+	InstanceAiEvalMockHints,
+	InstanceAiEvalExecutionResult,
+	InstanceAiEvalExecutionRequest,
 } from './schemas/instance-ai.schema';
 
 export {

@@ -17,8 +17,10 @@
 
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
-import Anthropic from '@anthropic-ai/sdk';
 import type { EvalLlmMockHandler, EvalMockHttpResponse } from 'n8n-core';
+import { jsonParse } from 'n8n-workflow';
+
+import { getEvalAnthropicClient } from './eval-anthropic-client';
 
 // ---------------------------------------------------------------------------
 // Config
@@ -26,19 +28,6 @@ import type { EvalLlmMockHandler, EvalMockHttpResponse } from 'n8n-core';
 
 /** Model used for per-request mock generation (needs speed, not deep reasoning) */
 const MOCK_RESPONSE_MODEL = 'claude-haiku-4-5-20251001';
-
-// ---------------------------------------------------------------------------
-// Anthropic client (lazy singleton, reuses eval key)
-// ---------------------------------------------------------------------------
-
-let _client: Anthropic | undefined;
-
-function getClient(): Anthropic {
-	_client ??= new Anthropic({
-		apiKey: process.env.N8N_AI_ANTHROPIC_KEY ?? process.env.ANTHROPIC_API_KEY,
-	});
-	return _client;
-}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -119,12 +108,13 @@ For error responses:
 
 Rules:
 - Return ONLY the spec JSON — no markdown, no code fences, no explanation
-- Match the real API's response schema as closely as possible
+- Match the EXACT endpoint's response schema — a GET to /spreadsheets/{id} returns spreadsheet metadata, NOT an append result. Always match the HTTP method and URL path to determine the correct response shape.
 - Use realistic but fake data (IDs, names, timestamps, emails)
 - For read operations, return 2-3 representative items in the body
 - For write operations, return the service's standard success/confirmation in the body
 - Choose "binary" only for endpoints that genuinely return file content (downloads, exports)
-- IMPORTANT: Always indicate there are NO more pages — set has_more=false, next_cursor="", nextPageToken=null, or equivalent. Do not trigger pagination`;
+- IMPORTANT: Always indicate there are NO more pages — set has_more=false, next_cursor="", nextPageToken=null, or equivalent. Do not trigger pagination
+- A node may make multiple HTTP requests (e.g., fetch metadata first, then perform the operation). Each request is independent — match the response to the specific URL and method, not the node's overall purpose described in hints.`;
 
 	// Build context blocks from pre-generated hints + scenario
 	const contextBlocks: string[] = [];
@@ -157,7 +147,7 @@ Response spec:`;
 			`[EvalMock] Mock generation failed for ${request.method ?? 'GET'} ${request.url}: ${error instanceof Error ? error.message : String(error)}`,
 		);
 		return {
-			body: { ok: true, _evalMockFallback: true },
+			body: { _evalMockError: true, message: 'LLM mock generation failed' },
 			headers: { 'content-type': 'application/json' },
 			statusCode: 200,
 		};
@@ -169,7 +159,7 @@ Response spec:`;
 // ---------------------------------------------------------------------------
 
 async function callLlm(systemPrompt: string, userPrompt: string): Promise<MockResponseSpec> {
-	const client = getClient();
+	const client = getEvalAnthropicClient();
 	const response = await client.messages.create({
 		model: MOCK_RESPONSE_MODEL,
 		max_tokens: 4096,
@@ -177,7 +167,8 @@ async function callLlm(systemPrompt: string, userPrompt: string): Promise<MockRe
 		messages: [{ role: 'user', content: userPrompt }],
 	});
 
-	let text = response.content[0].type === 'text' ? response.content[0].text : '';
+	const firstBlock = response.content[0];
+	let text = firstBlock?.type === 'text' ? firstBlock.text : '';
 
 	// Strip markdown code fences if the LLM wraps the response
 	text = text
@@ -185,7 +176,7 @@ async function callLlm(systemPrompt: string, userPrompt: string): Promise<MockRe
 		.replace(/\n?\s*```\s*$/i, '')
 		.trim();
 
-	const parsed = JSON.parse(text) as MockResponseSpec;
+	const parsed = jsonParse<MockResponseSpec>(text);
 
 	// Validate the spec has the required shape
 	if (!parsed.type || !['json', 'binary', 'error'].includes(parsed.type)) {
@@ -244,7 +235,10 @@ function extractServiceName(url: string): string {
 	try {
 		const hostname = new URL(url).hostname;
 		// "api.slack.com" → "Slack", "www.googleapis.com" → "Google APIs"
-		const parts = hostname.replace('api.', '').replace('www.', '').split('.');
+		const parts = hostname
+			.replace(/^api\./, '')
+			.replace(/^www\./, '')
+			.split('.');
 		return parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
 	} catch {
 		return 'Unknown';

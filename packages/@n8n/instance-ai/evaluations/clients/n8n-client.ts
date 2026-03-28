@@ -6,7 +6,7 @@
 // for post-run verification.
 // ---------------------------------------------------------------------------
 
-import type { InstanceAiRichMessagesResponse } from '@n8n/api-types';
+import type { InstanceAiRichMessagesResponse, InstanceAiEvalExecutionResult } from '@n8n/api-types';
 
 // ---------------------------------------------------------------------------
 // Response shapes from the n8n REST API (wrapped in { data: ... })
@@ -37,6 +37,8 @@ export interface ExecutionDetail {
 	/** Flatted-serialized execution data (contains error details, run data per node) */
 	data: string;
 }
+
+// -- Thread types ------------------------------------------------------------
 
 interface ThreadStatus {
 	hasActiveRun: boolean;
@@ -345,6 +347,25 @@ export class N8nClient {
 		});
 	}
 
+	// -- Eval mock execution -------------------------------------------------
+
+	/**
+	 * Execute a workflow with LLM-based HTTP mocking.
+	 * The server handles hint generation and mock execution in a single synchronous call.
+	 */
+	async executeWithLlmMock(
+		workflowId: string,
+		scenarioHints?: string,
+		timeoutMs: number = 120_000,
+	): Promise<InstanceAiEvalExecutionResult> {
+		const result = (await this.fetch(`/rest/instance-ai/eval/execute-with-llm-mock/${workflowId}`, {
+			method: 'POST',
+			body: scenarioHints ? { scenarioHints } : {},
+			timeoutMs,
+		})) as { data: InstanceAiEvalExecutionResult };
+		return result.data;
+	}
+
 	// -- SSE helpers ---------------------------------------------------------
 
 	/**
@@ -369,7 +390,7 @@ export class N8nClient {
 
 	private async fetch(
 		path: string,
-		options: { method?: string; body?: unknown } = {},
+		options: { method?: string; body?: unknown; timeoutMs?: number } = {},
 	): Promise<unknown> {
 		const headers: Record<string, string> = { 'Content-Type': 'application/json' };
 
@@ -383,6 +404,7 @@ export class N8nClient {
 			method,
 			headers,
 			body: options.body ? JSON.stringify(options.body) : undefined,
+			...(options.timeoutMs ? { signal: AbortSignal.timeout(options.timeoutMs) } : {}),
 		});
 
 		if (!res.ok) {
@@ -399,6 +421,6 @@ export class N8nClient {
 			}
 		}
 
-		return res.json() as Promise<unknown>;
+		return await res.json();
 	}
 }
