@@ -10,7 +10,7 @@ describe('NocoDB Transport API', () => {
 			getNodeParameter: jest.fn(),
 			getCredentials: jest.fn(),
 			helpers: {
-				requestWithAuthentication: jest.fn(),
+				httpRequestWithAuthentication: jest.fn(),
 				prepareBinaryData: jest.fn(),
 			},
 			getNode: jest.fn(() => ({ id: 'node1' })),
@@ -24,7 +24,7 @@ describe('NocoDB Transport API', () => {
 				host: 'http://localhost:8080',
 				apiKey: 'test-api-key',
 			});
-			mockThis.helpers.requestWithAuthentication.mockResolvedValue({ success: true });
+			mockThis.helpers.httpRequestWithAuthentication.mockResolvedValue({ success: true });
 
 			const method: IHttpRequestMethods = 'GET';
 			const endpoint = '/api/v2/test';
@@ -35,7 +35,7 @@ describe('NocoDB Transport API', () => {
 
 			expect(mockThis.getNodeParameter).toHaveBeenCalledWith('authentication', 0);
 			expect(mockThis.getCredentials).toHaveBeenCalledWith('nocodbApi');
-			expect(mockThis.helpers.requestWithAuthentication).toHaveBeenCalledWith('nocodbApi', {
+			expect(mockThis.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith('nocodbApi', {
 				method: 'GET',
 				qs: { param: 'value' },
 				url: 'http://localhost:8080/api/v2/test',
@@ -50,7 +50,7 @@ describe('NocoDB Transport API', () => {
 				host: 'http://localhost:8080',
 				apiKey: 'test-api-key',
 			});
-			mockThis.helpers.requestWithAuthentication.mockResolvedValue({ success: true });
+			mockThis.helpers.httpRequestWithAuthentication.mockResolvedValue({ success: true });
 
 			const method: IHttpRequestMethods = 'POST';
 			const endpoint = '/api/v2/test';
@@ -59,7 +59,7 @@ describe('NocoDB Transport API', () => {
 
 			await apiRequest.call(mockThis, method, endpoint, body, query);
 
-			expect(mockThis.helpers.requestWithAuthentication).toHaveBeenCalledWith('nocodbApi', {
+			expect(mockThis.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith('nocodbApi', {
 				method: 'POST',
 				qs: {},
 				url: 'http://localhost:8080/api/v2/test',
@@ -73,7 +73,7 @@ describe('NocoDB Transport API', () => {
 				host: 'http://localhost:8080',
 				apiKey: 'test-api-key',
 			});
-			mockThis.helpers.requestWithAuthentication.mockResolvedValue({ success: true });
+			mockThis.helpers.httpRequestWithAuthentication.mockResolvedValue({ success: true });
 
 			const method: IHttpRequestMethods = 'GET';
 			const endpoint = '/api/v2/test';
@@ -83,7 +83,7 @@ describe('NocoDB Transport API', () => {
 
 			await apiRequest.call(mockThis, method, endpoint, body, query, customUri);
 
-			expect(mockThis.helpers.requestWithAuthentication).toHaveBeenCalledWith('nocodbApi', {
+			expect(mockThis.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith('nocodbApi', {
 				method: 'GET',
 				qs: {},
 				url: customUri,
@@ -97,7 +97,7 @@ describe('NocoDB Transport API', () => {
 				host: 'http://localhost:8080',
 				apiKey: 'test-api-key',
 			});
-			mockThis.helpers.requestWithAuthentication.mockResolvedValue({ success: true });
+			mockThis.helpers.httpRequestWithAuthentication.mockResolvedValue({ success: true });
 
 			const method: IHttpRequestMethods = 'GET';
 			const endpoint = '/api/v2/test';
@@ -107,7 +107,7 @@ describe('NocoDB Transport API', () => {
 
 			await apiRequest.call(mockThis, method, endpoint, body, query, undefined, option);
 
-			expect(mockThis.helpers.requestWithAuthentication).toHaveBeenCalledWith('nocodbApi', {
+			expect(mockThis.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith('nocodbApi', {
 				method: 'GET',
 				qs: {},
 				url: 'http://localhost:8080/api/v2/test',
@@ -127,7 +127,7 @@ describe('NocoDB Transport API', () => {
 			});
 
 			// Mock apiRequest to simulate pagination
-			mockThis.helpers.requestWithAuthentication
+			mockThis.helpers.httpRequestWithAuthentication
 				.mockResolvedValueOnce({ records: [{ id: 1 }, { id: 2 }], next: 'next-page-url' })
 				.mockResolvedValueOnce({ records: [{ id: 3 }], next: null });
 
@@ -139,7 +139,7 @@ describe('NocoDB Transport API', () => {
 			const result = await apiRequestAllItems.call(mockThis, method, endpoint, body, query);
 
 			expect(mockThis.getNodeParameter).toHaveBeenCalledWith('version', 0);
-			expect(mockThis.helpers.requestWithAuthentication).toHaveBeenCalledTimes(2);
+			expect(mockThis.helpers.httpRequestWithAuthentication).toHaveBeenCalledTimes(2);
 			expect(result).toEqual([{ id: 1 }, { id: 2 }, { id: 3 }]);
 		});
 
@@ -152,7 +152,7 @@ describe('NocoDB Transport API', () => {
 			});
 
 			// Mock apiRequest to simulate pagination
-			mockThis.helpers.requestWithAuthentication
+			mockThis.helpers.httpRequestWithAuthentication
 				.mockResolvedValueOnce({ list: [{ id: 1 }, { id: 2 }], pageInfo: { isLastPage: false } })
 				.mockResolvedValueOnce({ list: [{ id: 3 }], pageInfo: { isLastPage: true } });
 
@@ -164,7 +164,7 @@ describe('NocoDB Transport API', () => {
 			const result = await apiRequestAllItems.call(mockThis, method, endpoint, body, query);
 
 			expect(mockThis.getNodeParameter).toHaveBeenCalledWith('version', 0);
-			expect(mockThis.helpers.requestWithAuthentication).toHaveBeenCalledTimes(2);
+			expect(mockThis.helpers.httpRequestWithAuthentication).toHaveBeenCalledTimes(2);
 			expect(result).toEqual([{ id: 1 }, { id: 2 }, { id: 3 }]);
 		});
 	});
@@ -179,7 +179,7 @@ describe('NocoDB Transport API', () => {
 			});
 
 			const mockFileBuffer = Buffer.from('test file content');
-			mockThis.helpers.requestWithAuthentication.mockResolvedValue(mockFileBuffer);
+			mockThis.helpers.httpRequestWithAuthentication.mockResolvedValue(mockFileBuffer);
 			mockThis.helpers.prepareBinaryData.mockResolvedValue({
 				data: mockFileBuffer.toString('base64'),
 				mimeType: 'image/jpeg',
@@ -206,7 +206,7 @@ describe('NocoDB Transport API', () => {
 			const result = await downloadRecordAttachments.call(mockThis, records, fieldNames);
 
 			expect(mockThis.getNodeParameter).toHaveBeenCalledWith('version', 0);
-			expect(mockThis.helpers.requestWithAuthentication).toHaveBeenCalledWith('nocodbApi', {
+			expect(mockThis.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith('nocodbApi', {
 				method: 'GET',
 				url: 'http://localhost:8080/file1.jpg',
 				json: false,
@@ -253,7 +253,7 @@ describe('NocoDB Transport API', () => {
 			});
 
 			const mockFileBuffer = Buffer.from('test file content');
-			mockThis.helpers.requestWithAuthentication.mockResolvedValue(mockFileBuffer);
+			mockThis.helpers.httpRequestWithAuthentication.mockResolvedValue(mockFileBuffer);
 			mockThis.helpers.prepareBinaryData.mockResolvedValue({
 				data: mockFileBuffer.toString('base64'),
 				mimeType: 'image/png',
@@ -278,7 +278,7 @@ describe('NocoDB Transport API', () => {
 			const result = await downloadRecordAttachments.call(mockThis, records, fieldNames);
 
 			expect(mockThis.getNodeParameter).toHaveBeenCalledWith('version', 0);
-			expect(mockThis.helpers.requestWithAuthentication).toHaveBeenCalledWith('nocodbApi', {
+			expect(mockThis.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith('nocodbApi', {
 				method: 'GET',
 				url: 'http://localhost:8080/file2.png',
 				json: false,
@@ -323,7 +323,7 @@ describe('NocoDB Transport API', () => {
 			});
 
 			const mockFileBuffer = Buffer.from('another file content');
-			mockThis.helpers.requestWithAuthentication.mockResolvedValue(mockFileBuffer);
+			mockThis.helpers.httpRequestWithAuthentication.mockResolvedValue(mockFileBuffer);
 			mockThis.helpers.prepareBinaryData.mockResolvedValue({
 				data: mockFileBuffer.toString('base64'),
 				mimeType: 'application/pdf',
@@ -347,7 +347,7 @@ describe('NocoDB Transport API', () => {
 
 			const result = await downloadRecordAttachments.call(mockThis, records, fieldNames);
 
-			expect(mockThis.helpers.requestWithAuthentication).toHaveBeenCalledWith('nocodbApi', {
+			expect(mockThis.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith('nocodbApi', {
 				method: 'GET',
 				url: 'http://localhost:8080/file3.pdf',
 				json: false,
@@ -396,7 +396,7 @@ describe('NocoDB Transport API', () => {
 
 			const result = await downloadRecordAttachments.call(mockThis, records, fieldNames);
 
-			expect(mockThis.helpers.requestWithAuthentication).not.toHaveBeenCalled();
+			expect(mockThis.helpers.httpRequestWithAuthentication).not.toHaveBeenCalled();
 			expect(mockThis.helpers.prepareBinaryData).not.toHaveBeenCalled();
 			expect(result).toEqual([{ json: { id: 1, attachments: [] } }]);
 		});
