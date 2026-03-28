@@ -125,7 +125,7 @@ export async function downloadRecordAttachments(
 					const attachmentUrl = attachment.signedUrl || attachment.url;
 					const file: Buffer = await apiRequest.call(this, 'GET', '', {}, {}, attachmentUrl, {
 						json: false,
-						encoding: null,
+						encoding: 'arraybuffer',
 					});
 					element.binary![`${fieldName}_${index}`] = await this.helpers.prepareBinaryData(
 						Buffer.from(file),
