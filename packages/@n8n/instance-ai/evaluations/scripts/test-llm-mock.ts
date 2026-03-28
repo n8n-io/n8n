@@ -12,9 +12,18 @@
 import { N8nClient } from '../clients/n8n-client';
 
 const BASE_URL = process.env.N8N_BASE_URL ?? 'http://localhost:5678';
-const EMAIL = process.env.N8N_EVAL_EMAIL ?? 'jose.gonzalez@n8n.io';
-const PASSWORD = process.env.N8N_EVAL_PASSWORD ?? 'Fake12345%';
-const WORKFLOW_ID = process.argv[2] ?? '98GCfc4fDIvaOj8l';
+const EMAIL = process.env.N8N_EVAL_EMAIL;
+const PASSWORD = process.env.N8N_EVAL_PASSWORD;
+const WORKFLOW_ID = process.argv[2];
+
+if (!EMAIL || !PASSWORD) {
+	console.error('Set N8N_EVAL_EMAIL and N8N_EVAL_PASSWORD environment variables');
+	process.exit(1);
+}
+if (!WORKFLOW_ID) {
+	console.error('Usage: test-llm-mock.ts <workflowId> [scenarioHints]');
+	process.exit(1);
+}
 
 async function main() {
 	console.log(`\nTesting eval LLM mock endpoint against ${BASE_URL}`);
@@ -33,59 +42,35 @@ async function main() {
 		console.log(`  Scenario: "${scenarioHints}"\n`);
 	}
 
-	// Use the client's fetch directly — the endpoint is on the instance-ai controller
-	const evalResult = (await (client as any).fetch(
-		`/rest/instance-ai/eval/execute-with-llm-mock/${WORKFLOW_ID}`,
-		{
-			method: 'POST',
-			body: {
-				...(scenarioHints ? { scenarioHints } : {}),
-			},
-		},
-	)) as { data: Record<string, unknown> };
-
-	const result = evalResult.data as {
-		executionId: string;
-		success: boolean;
-		nodeResults: Record<
-			string,
-			{
-				output: unknown;
-				interceptedRequests: Array<{
-					url: string;
-					method: string;
-					headers: Record<string, string>;
-					body: unknown;
-					nodeType: string;
-				}>;
-			}
-		>;
-		errors: string[];
-	};
+	const result = await client.executeWithLlmMock(WORKFLOW_ID, scenarioHints);
 
 	// Print summary
 	console.log(`\n  Execution: ${result.executionId}`);
 	console.log(`  Success: ${result.success}\n`);
 
-	// Show intercepted requests per node
+	// Show per-node results grouped by execution mode
 	for (const [nodeName, data] of Object.entries(result.nodeResults)) {
+		const tag = data.executionMode.toUpperCase();
 		if (data.interceptedRequests.length > 0) {
-			console.log(`  [INTERCEPTED] "${nodeName}" — ${data.interceptedRequests.length} request(s):`);
+			console.log(`  [${tag}] "${nodeName}" — ${data.interceptedRequests.length} request(s):`);
 			for (const req of data.interceptedRequests) {
-				console.log(`    ${req.method} ${req.url}`);
-				console.log(`    type: ${req.nodeType}`);
-				if (Object.keys(req.headers).length > 0) {
-					console.log(`    headers: ${JSON.stringify(req.headers)}`);
+				console.log(`    ${req.method} ${req.url} (${req.nodeType})`);
+				if (req.mockResponse) {
+					const responseStr = JSON.stringify(req.mockResponse, null, 2);
+					const truncated =
+						responseStr.length > 500 ? responseStr.slice(0, 500) + '\n    ...' : responseStr;
+					console.log(`    Mock response: ${truncated.split('\n').join('\n    ')}`);
 				}
-				if (req.body) {
-					console.log(`    body: ${JSON.stringify(req.body).slice(0, 300)}`);
-				}
-				console.log();
 			}
 		} else if (data.output !== null) {
-			console.log(`  [EXECUTED] "${nodeName}" — produced output`);
+			console.log(`  [${tag}] "${nodeName}" — produced output`);
 		} else {
-			console.log(`  [NO OUTPUT] "${nodeName}"`);
+			console.log(`  [${tag}] "${nodeName}" — no output`);
+		}
+		if (data.configIssues && Object.keys(data.configIssues).length > 0) {
+			for (const [param, messages] of Object.entries(data.configIssues)) {
+				console.log(`    ⚠ ${param}: ${(messages as string[]).join(', ')}`);
+			}
 		}
 	}
 
@@ -93,6 +78,18 @@ async function main() {
 		console.log('\n  Errors:');
 		for (const error of result.errors) {
 			console.log(`    - ${error}`);
+		}
+	}
+
+	// Show Phase 1 hints
+	if (result.hints) {
+		console.log('\n  Phase 1 Hints:');
+		console.log(`    Global context: ${result.hints.globalContext}`);
+		console.log(
+			`    Trigger content: ${JSON.stringify(result.hints.triggerContent, null, 2).split('\n').join('\n    ')}`,
+		);
+		for (const [nodeName, hint] of Object.entries(result.hints.nodeHints)) {
+			console.log(`    "${nodeName}": ${hint}`);
 		}
 	}
 

@@ -38,24 +38,87 @@ function renderScenario(sr: ScenarioResult, index: number): string {
 		detailHtml += `<div class="scenario-reasoning">${escapeHtml(sr.reasoning)}</div>`;
 	}
 
-	if (sr.executionSummary) {
-		const exec = sr.executionSummary;
-		detailHtml += `<div class="scenario-exec-status">Execution: <span class="badge badge-${exec.status === 'success' ? 'pass' : 'fail'}">${escapeHtml(exec.status)}</span></div>`;
+	if (sr.evalResult) {
+		const statusLabel = sr.evalResult.success ? 'success' : 'error';
+		detailHtml += `<div class="scenario-exec-status">Execution: <span class="badge badge-${sr.evalResult.success ? 'pass' : 'fail'}">${escapeHtml(statusLabel)}</span></div>`;
 
-		if (exec.error) {
-			detailHtml += `<div class="scenario-error">${escapeHtml(exec.error)}</div>`;
+		if (sr.evalResult.errors.length > 0) {
+			detailHtml += `<div class="scenario-error">${escapeHtml(sr.evalResult.errors.join('; '))}</div>`;
 		}
 
-		if (exec.outputData && exec.outputData.length > 0) {
-			detailHtml += '<details class="node-outputs"><summary>Node outputs</summary>';
-			for (const nodeOutput of exec.outputData) {
-				const jsonStr = JSON.stringify(nodeOutput.data, null, 2);
-				const truncated =
-					jsonStr.length > 2000 ? jsonStr.slice(0, 2000) + '\n... (truncated)' : jsonStr;
+		// Show Phase 1 warnings prominently if present
+		const warnings = sr.evalResult.hints?.warnings ?? [];
+		if (warnings.length > 0) {
+			detailHtml += `<div class="scenario-error" style="background:#d2992222;color:#d29922;">${escapeHtml(warnings.join('; '))}</div>`;
+		}
+
+		// Show Phase 1 hints (trigger content + global context)
+		if (sr.evalResult.hints) {
+			const triggerKeys = Object.keys(sr.evalResult.hints.triggerContent ?? {});
+			const triggerLabel =
+				triggerKeys.length > 0
+					? `triggerContent: {${triggerKeys.join(', ')}}`
+					: 'triggerContent: EMPTY';
+			const globalLabel = sr.evalResult.hints.globalContext
+				? `globalContext: "${sr.evalResult.hints.globalContext.slice(0, 120)}..."`
+				: 'globalContext: EMPTY';
+			detailHtml += `<details style="margin:6px 0;"><summary style="cursor:pointer;color:#58a6ff;font-size:12px;font-weight:600;">Phase 1 hints</summary>`;
+			detailHtml += `<div style="font-size:11px;color:#8b949e;margin:4px 0;">${escapeHtml(triggerLabel)}</div>`;
+			detailHtml += `<div style="font-size:11px;color:#8b949e;margin:4px 0;">${escapeHtml(globalLabel)}</div>`;
+			const triggerJson = JSON.stringify(sr.evalResult.hints.triggerContent, null, 2);
+			detailHtml += `<pre class="node-output-json" style="font-size:11px;"><code>${escapeHtml(triggerJson)}</code></pre>`;
+			detailHtml += `</details>`;
+		}
+
+		const nodeEntries = Object.entries(sr.evalResult.nodeResults);
+		if (nodeEntries.length > 0) {
+			detailHtml += '<details class="node-outputs"><summary>Node results</summary>';
+			for (const [nodeName, nr] of nodeEntries) {
+				const modeLabel = `[${nr.executionMode}]`;
+				const configWarning =
+					nr.configIssues && Object.keys(nr.configIssues).length > 0
+						? ` ⚠ missing: ${Object.values(nr.configIssues).flat().join('; ')}`
+						: '';
+
 				detailHtml += `<div class="node-output">
-					<div class="node-output-name">${escapeHtml(nodeOutput.nodeName)}</div>
-					<pre class="node-output-json"><code>${escapeHtml(truncated)}</code></pre>
-				</div>`;
+					<div class="node-output-name">${modeLabel} ${escapeHtml(nodeName)}${escapeHtml(configWarning)}</div>`;
+
+				// Show intercepted requests and their mock responses
+				if (nr.interceptedRequests.length > 0) {
+					detailHtml += `<div class="intercepted-requests">`;
+					for (const req of nr.interceptedRequests) {
+						detailHtml += `<div class="request-pair">`;
+						detailHtml += `<div class="request-label">REQUEST</div>`;
+						detailHtml += `<div class="request-url">${escapeHtml(req.method)} ${escapeHtml(req.url)}</div>`;
+						if (req.requestBody) {
+							const bodyStr = JSON.stringify(req.requestBody, null, 2);
+							const truncBody = bodyStr.length > 500 ? bodyStr.slice(0, 500) + '\n...' : bodyStr;
+							detailHtml += `<pre class="node-output-json" style="font-size:10px;"><code>${escapeHtml(truncBody)}</code></pre>`;
+						}
+						detailHtml += `<div class="response-label">MOCK RESPONSE</div>`;
+						if (req.mockResponse) {
+							const mockStr = JSON.stringify(req.mockResponse, null, 2);
+							const truncated = mockStr.length > 1000 ? mockStr.slice(0, 1000) + '\n...' : mockStr;
+							detailHtml += `<pre class="node-output-json" style="font-size:10px;"><code>${escapeHtml(truncated)}</code></pre>`;
+						} else {
+							detailHtml += `<div style="color:#8b949e;font-size:11px;">no mock response</div>`;
+						}
+						detailHtml += `</div>`;
+					}
+					detailHtml += `</div>`;
+				}
+
+				// Show node output
+				if (nr.output !== null && nr.output !== undefined) {
+					const jsonStr = JSON.stringify(nr.output, null, 2);
+					const truncated =
+						jsonStr.length > 2000 ? jsonStr.slice(0, 2000) + '\n... (truncated)' : jsonStr;
+					detailHtml += `<pre class="node-output-json"><code>${escapeHtml(truncated)}</code></pre>`;
+				} else {
+					detailHtml += `<div style="color:#8b949e;font-size:12px;">no output</div>`;
+				}
+
+				detailHtml += '</div>';
 			}
 			detailHtml += '</details>';
 		}
@@ -107,12 +170,6 @@ function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string
 		scenariosHtml = `<div class="no-scenarios">Workflow failed to build — no scenarios executed</div>${errorDetail}`;
 	}
 
-	const skippedScenarios = result.testCase.scenarios.filter((s) => s.requires === 'mock-server');
-	const skippedHtml =
-		skippedScenarios.length > 0
-			? `<div class="skipped-scenarios">${String(skippedScenarios.length)} scenario(s) skipped (requires mock-server): ${skippedScenarios.map((s) => s.name).join(', ')}</div>`
-			: '';
-
 	return `<div class="test-case ${statusClass}">
 		<div class="test-case-header" onclick="this.parentElement.classList.toggle('expanded')">
 			<div class="test-case-title">
@@ -128,7 +185,6 @@ function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string
 		<div class="test-case-detail">
 			<div class="test-case-full-prompt">${escapeHtml(prompt)}</div>
 			${scenariosHtml}
-			${skippedHtml}
 		</div>
 	</div>`;
 }
@@ -216,6 +272,13 @@ export function generateWorkflowReport(results: WorkflowTestCaseResult[]): strin
 	.node-output-json { font-size: 11px; max-height: 200px; overflow-y: auto; margin: 0; padding: 8px; background: #161b22; border: 1px solid #21262d; border-radius: 4px; }
 	pre { overflow-x: auto; }
 	code { color: #c9d1d9; }
+
+	/* Intercepted requests */
+	.intercepted-requests { margin: 6px 0; }
+	.request-pair { border: 1px solid #21262d; border-radius: 4px; margin-bottom: 6px; overflow: hidden; }
+	.request-label { background: #1c3a5e; color: #58a6ff; font-size: 10px; font-weight: 700; padding: 2px 8px; letter-spacing: 0.5px; }
+	.response-label { background: #2a1f3e; color: #bc8cff; font-size: 10px; font-weight: 700; padding: 2px 8px; letter-spacing: 0.5px; }
+	.request-url { font-size: 11px; color: #c9d1d9; padding: 4px 8px; font-family: monospace; background: #0d1117; }
 </style>
 </head>
 <body>

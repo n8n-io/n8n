@@ -1,5 +1,5 @@
 {
-	"prompt": "Get all the Linear issues created in the last 2 weeks. Filter them for issues created for a different team than the one the creator is in. I have this team mapping to use: Alice (alice@company.com) belongs to Frontend, Bob (bob@company.com) to Backend, Carol (carol@company.com) to Backend. Store this mapping in the workflow and use it to filter cross-team issues. Then calculate the number of tickets per creator and post the list (ordered descending) to Slack. Use mock data for any credentials, do not ask me to set up credentials.",
+	"prompt": "Get all the Linear issues created in the last 2 weeks. Filter them for issues created for a different team than the one the creator is in. I have this team mapping to use: Alice (alice@company.com) belongs to Frontend, Bob (bob@company.com) to Backend, Carol (carol@company.com) to Backend. Store this mapping in the workflow and use it to filter cross-team issues. Then calculate the number of tickets per creator and post the list (ordered descending) to a Slack channel called #cross-team-reports. Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later.",
 	"complexity": "complex",
 	"tags": ["build", "linear", "slack", "schedule", "data-processing"],
 	"triggerType": "schedule",
@@ -8,7 +8,7 @@
 			"name": "happy-path",
 			"description": "Multiple issues from different creators, some cross-team, some same-team",
 			"dataSetup": "The data source returns 8 issues total. Within the last 2 weeks: Alice (alice@company.com) created 3 issues for team 'Backend' and 1 for team 'Frontend', Bob (bob@company.com) created 1 issue for team 'Frontend', Carol (carol@company.com) created 1 issue for team 'Backend'. Outside the 2-week window (3 weeks ago): Alice created 1 issue for team 'Backend', Bob created 1 issue for team 'Frontend'. The people/teams data maps Alice to team 'Frontend', Bob to team 'Backend', and Carol to team 'Backend'. The Slack post node returns a success response.",
-			"successCriteria": "The workflow executes without errors. Only the 6 issues from the last 2 weeks are processed — the 2 older issues are excluded. The cross-team filter correctly identifies Alice's 3 Backend issues and Bob's 1 Frontend issue as cross-team. Carol's issue is filtered out (same team). The count per creator shows Alice: 3, Bob: 1. The list is sorted descending by count. The result is posted to Slack."
+			"successCriteria": "The workflow executes without errors. Only the 6 issues from the last 2 weeks are processed \u2014 the 2 older issues are excluded. The cross-team filter correctly identifies Alice's 3 Backend issues and Bob's 1 Frontend issue as cross-team. Carol's issue is filtered out (same team). The count per creator shows Alice: 3, Bob: 1. The list is sorted descending by count. The result is posted to Slack."
 		},
 		{
 			"name": "multi-team-creator",
@@ -20,13 +20,7 @@
 			"name": "no-cross-team-issues",
 			"description": "All issues are created for the creator's own team",
 			"dataSetup": "The data source returns 4 issues from the last 2 weeks: Alice (alice@company.com) created 2 issues for team 'Frontend', Bob (bob@company.com) created 2 issues for team 'Backend'. The people/teams data maps Alice to 'Frontend' and Bob to 'Backend'. All issues match the creator's team. The Slack post node returns a success response.",
-			"successCriteria": "The workflow executes without errors. The cross-team filter removes all issues. The workflow handles the empty result gracefully — either posting a 'no cross-team issues' message or completing without error."
-		},
-		{
-			"name": "large-dataset",
-			"description": "Many issues to process, testing that all data is fetched and processed completely",
-			"dataSetup": "The data source returns 60 issues from the last 2 weeks across 5 creators and 4 teams. A mix of cross-team and same-team issues. The people/teams data includes all 5 creators. The Slack post node returns a success response.",
-			"successCriteria": "The workflow processes all 60 issues without data loss. All issues are fetched regardless of how the data source handles large result sets. The cross-team filtering, counting, and sorting produce correct results for the full dataset."
+			"successCriteria": "The workflow executes without errors. The cross-team filter removes all issues. The workflow handles the empty result gracefully \u2014 either posting a 'no cross-team issues' message or completing without error."
 		},
 		{
 			"name": "unknown-creator",

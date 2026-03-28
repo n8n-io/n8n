@@ -1,7 +1,17 @@
-import { randomUUID } from 'node:crypto';
+import type {
+	InstanceAiEvalExecutionRequest,
+	InstanceAiEvalNodeResult,
+	InstanceAiEvalExecutionResult,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { Service } from '@n8n/di';
 import type { User } from '@n8n/db';
+import { Service } from '@n8n/di';
+import {
+	type EvalLlmMockHandler,
+	type EvalMockHttpResponse,
+	ExecutionLifecycleHooks,
+	WorkflowExecute,
+} from 'n8n-core';
 import {
 	type IDataObject,
 	type IHttpRequestOptions,
@@ -12,66 +22,24 @@ import {
 	type IWorkflowBase,
 	type IWorkflowExecuteAdditionalData,
 	createRunExecutionData,
+	NodeHelpers,
 	Workflow,
 } from 'n8n-workflow';
-import {
-	type EvalLlmMockHandler,
-	type EvalMockHttpResponse,
-	ExecutionLifecycleHooks,
-	WorkflowExecute,
-} from 'n8n-core';
+import { randomUUID } from 'node:crypto';
 
 import { NodeTypes } from '@/node-types';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { getBase } from '@/workflow-execute-additional-data';
-import { createLlmMockHandler } from './llm-mock-handler';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+
 import { generateMockHints, identifyNodesForHints, type MockHints } from './eval-workflow-analysis';
+import { createLlmMockHandler } from './llm-mock-handler';
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-/** Headers that should never be forwarded to the LLM mock handler */
-const SENSITIVE_HEADERS = new Set([
-	'authorization',
-	'cookie',
-	'proxy-authorization',
-	'x-api-key',
-	'x-auth-token',
-	'x-access-token',
-	'api-key',
-]);
-
 /** Maximum number of output items to include per node in the result */
 const MAX_OUTPUT_ITEMS_PER_NODE = 5;
-
-// ---------------------------------------------------------------------------
-// Public types
-// ---------------------------------------------------------------------------
-
-export interface EvalExecutionOptions {
-	scenarioHints?: string;
-}
-
-export interface InterceptedRequest {
-	url: string;
-	method: string;
-	headers?: Record<string, string>;
-	body?: unknown;
-	nodeType: string;
-}
-
-export interface NodeResult {
-	output: unknown;
-	interceptedRequests: InterceptedRequest[];
-}
-
-export interface EvalExecutionResult {
-	executionId: string;
-	success: boolean;
-	nodeResults: Record<string, NodeResult>;
-	errors: string[];
-}
 
 // ---------------------------------------------------------------------------
 // Service
@@ -100,8 +68,8 @@ export class EvalExecutionService {
 	async executeWithLlmMock(
 		workflowId: string,
 		user: User,
-		options: EvalExecutionOptions = {},
-	): Promise<EvalExecutionResult> {
+		options: InstanceAiEvalExecutionRequest = {},
+	): Promise<InstanceAiEvalExecutionResult> {
 		const executionId = randomUUID();
 
 		const workflowEntity = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
@@ -142,6 +110,10 @@ export class EvalExecutionService {
 			);
 		}
 
+		this.logger.debug(
+			`[EvalMock] Phase 1 result — globalContext: ${hints.globalContext ? 'present' : 'EMPTY'}, triggerContent keys: ${JSON.stringify(Object.keys(hints.triggerContent))}, nodeHints: ${Object.keys(hints.nodeHints).join(', ')}`,
+		);
+
 		return hints;
 	}
 
@@ -153,8 +125,8 @@ export class EvalExecutionService {
 		executionId: string,
 		hints: MockHints,
 		scenarioHints?: string,
-	): Promise<EvalExecutionResult> {
-		const nodeResults: Record<string, NodeResult> = {};
+	): Promise<InstanceAiEvalExecutionResult> {
+		const nodeResults: Record<string, InstanceAiEvalNodeResult> = {};
 
 		const workflow = this.buildWorkflow(workflowEntity);
 		const startNode = this.findStartNode(workflow);
@@ -174,14 +146,29 @@ export class EvalExecutionService {
 			workflowId: workflowEntity.id,
 			workflowSettings: workflowEntity.settings ?? {},
 		});
-		additionalData.evalLlmMockHandler = this.createSanitizingHandler(mockHandler, nodeResults);
+		additionalData.evalLlmMockHandler = this.createInterceptingHandler(mockHandler, nodeResults);
 		additionalData.hooks = new ExecutionLifecycleHooks('evaluation', executionId, workflowEntity);
+
+		// Check config completeness before execution — detect missing required parameters
+		this.checkNodeConfig(workflow, nodeResults);
 
 		const pinData = this.buildTriggerPinData(startNode, hints.triggerContent);
 		const executionData = this.buildExecutionData(startNode, pinData);
 
+		// Mark the trigger node as pinned (it gets its output from pin data, not execution)
+		// Preserve any configIssues that checkNodeConfig may have already recorded.
+		if (Object.keys(pinData).length > 0) {
+			const existing = nodeResults[startNode.name];
+			nodeResults[startNode.name] = {
+				output: null,
+				interceptedRequests: [],
+				executionMode: 'pinned',
+				...(existing?.configIssues ? { configIssues: existing.configIssues } : {}),
+			};
+		}
+
 		const result = await this.runWorkflow(workflow, additionalData, executionData);
-		return this.buildResult(executionId, result, nodeResults);
+		return this.buildResult(executionId, result, nodeResults, hints);
 	}
 
 	// ── Workflow construction ──────────────────────────────────────────────
@@ -214,6 +201,37 @@ export class EvalExecutionService {
 			const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 			return nodeType !== undefined && 'webhook' in nodeType;
 		});
+	}
+
+	/**
+	 * Check each node for missing required parameters and record issues
+	 * in nodeResults. This runs before execution so the report shows
+	 * configuration completeness regardless of whether the node crashes.
+	 */
+	private checkNodeConfig(
+		workflow: Workflow,
+		nodeResults: Record<string, InstanceAiEvalNodeResult>,
+	): void {
+		for (const node of Object.values(workflow.nodes)) {
+			if (node.disabled) continue;
+			const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+			if (!nodeType) continue;
+
+			const issues = NodeHelpers.getNodeParametersIssues(
+				nodeType.description.properties,
+				node,
+				nodeType.description,
+			);
+
+			if (issues?.parameters && Object.keys(issues.parameters).length > 0) {
+				const entry = (nodeResults[node.name] ??= {
+					output: null,
+					interceptedRequests: [],
+					executionMode: 'real',
+				});
+				entry.configIssues = issues.parameters;
+			}
+		}
 	}
 
 	// ── Execution data ────────────────────────────────────────────────────
@@ -264,37 +282,41 @@ export class EvalExecutionService {
 		return await workflowExecute.processRunExecutionData(workflow);
 	}
 
-	// ── Request sanitization ──────────────────────────────────────────────
+	// ── Request interception ─────────────────────────────────────────────
 
 	/**
-	 * Wraps the mock handler to strip sensitive headers and collect
-	 * intercepted request metadata for diagnostics.
+	 * Wraps the mock handler to collect intercepted request metadata for diagnostics.
 	 */
-	private createSanitizingHandler(
+	private createInterceptingHandler(
 		mockHandler: EvalLlmMockHandler,
-		nodeResults: Record<string, NodeResult>,
+		nodeResults: Record<string, InstanceAiEvalNodeResult>,
 	): EvalLlmMockHandler {
 		return async (
 			requestOptions: IHttpRequestOptions,
 			node: INode,
 		): Promise<EvalMockHttpResponse | undefined> => {
-			const safeHeaders = redactHeaders(requestOptions.headers);
-			const sanitizedOptions = { ...requestOptions, headers: safeHeaders };
+			// A node may make multiple HTTP requests — ensure it's marked as mocked
+			// regardless of whether this is the first or subsequent interception.
+			const entry = (nodeResults[node.name] ??= {
+				output: null,
+				interceptedRequests: [],
+				executionMode: 'mocked',
+			});
+			const response = await mockHandler(requestOptions, node);
 
-			const entry = (nodeResults[node.name] ??= { output: null, interceptedRequests: [] });
 			entry.interceptedRequests.push({
 				url: requestOptions.url,
 				method: requestOptions.method ?? 'GET',
-				headers: safeHeaders,
-				body: requestOptions.body,
 				nodeType: node.type,
+				requestBody: requestOptions.body,
+				mockResponse: response?.body,
 			});
 
 			this.logger.debug(
 				`[EvalMock] Intercepted ${requestOptions.method ?? 'GET'} ${requestOptions.url} from "${node.name}" (${node.type})`,
 			);
 
-			return await mockHandler(sanitizedOptions, node);
+			return response;
 		};
 	}
 
@@ -303,13 +325,20 @@ export class EvalExecutionService {
 	private buildResult(
 		executionId: string,
 		result: IRun,
-		nodeResults: Record<string, NodeResult>,
-	): EvalExecutionResult {
+		nodeResults: Record<string, InstanceAiEvalNodeResult>,
+		hints: MockHints,
+	): InstanceAiEvalExecutionResult {
 		const errors: string[] = [];
 
 		const runData = result.data?.resultData?.runData ?? {};
 		for (const [nodeName, nodeRuns] of Object.entries(runData)) {
-			const entry = (nodeResults[nodeName] ??= { output: null, interceptedRequests: [] });
+			// Nodes already in nodeResults were intercepted (mocked) or pinned.
+			// Nodes appearing here for the first time executed for real (logic nodes).
+			const entry = (nodeResults[nodeName] ??= {
+				output: null,
+				interceptedRequests: [],
+				executionMode: 'real',
+			});
 			const lastRun = nodeRuns[nodeRuns.length - 1];
 			if (lastRun?.data?.main?.[0]) {
 				entry.output = lastRun.data.main[0].slice(0, MAX_OUTPUT_ITEMS_PER_NODE);
@@ -329,25 +358,17 @@ export class EvalExecutionService {
 			success: executionError === undefined && errors.length === 0,
 			nodeResults,
 			errors,
+			hints: { ...hints, warnings: hints.warnings ?? [] },
 		};
 	}
 
-	private errorResult(executionId: string, message: string): EvalExecutionResult {
-		return { executionId, success: false, nodeResults: {}, errors: [message] };
+	private errorResult(executionId: string, message: string): InstanceAiEvalExecutionResult {
+		return {
+			executionId,
+			success: false,
+			nodeResults: {},
+			errors: [message],
+			hints: { globalContext: '', triggerContent: {}, nodeHints: {}, warnings: [] },
+		};
 	}
-}
-
-// ---------------------------------------------------------------------------
-// Pure helpers (no service dependency)
-// ---------------------------------------------------------------------------
-
-function redactHeaders(
-	headers?: Record<string, string | string[]> | IDataObject,
-): Record<string, string> {
-	const safe: Record<string, string> = {};
-	if (!headers) return safe;
-	for (const [key, value] of Object.entries(headers)) {
-		safe[key] = SENSITIVE_HEADERS.has(key.toLowerCase()) ? '[REDACTED]' : String(value);
-	}
-	return safe;
 }

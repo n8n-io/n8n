@@ -2,6 +2,7 @@
 // Shared types for the instance-ai checklist evaluator
 // ---------------------------------------------------------------------------
 
+import type { InstanceAiEvalExecutionResult } from '@n8n/api-types';
 import { z } from 'zod';
 
 // ---------------------------------------------------------------------------
@@ -269,9 +270,10 @@ export interface DatasetExample {
 export interface TestScenario {
 	name: string;
 	description: string;
+	/** Instructions for mock data generation — passed as scenario hints to the LLM mock endpoint */
 	dataSetup: string;
+	/** Criteria the LLM verifier checks against the execution result */
 	successCriteria: string;
-	requires?: 'pin-data' | 'mock-server';
 }
 
 export interface WorkflowTestCase {
@@ -306,7 +308,7 @@ export interface PinDataGenerationInstructions {
 export interface ScenarioResult {
 	scenario: TestScenario;
 	success: boolean;
-	executionSummary?: ExecutionSummary;
+	evalResult?: InstanceAiEvalExecutionResult;
 	score: number;
 	reasoning: string;
 }

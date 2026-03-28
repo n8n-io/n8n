@@ -6,6 +6,7 @@ import type {
 import {
 	instanceAiGatewayCapabilitiesSchema,
 	instanceAiFilesystemResponseSchema,
+	instanceAiEvalExecutionRequestSchema,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -16,7 +17,7 @@ import type { Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
 
 import { buildAgentTreeFromEvents } from './agent-tree-builder';
-import { EvalExecutionService, type EvalExecutionOptions } from './eval-execution.service';
+import { EvalExecutionService } from './eval-execution.service';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
@@ -394,9 +395,12 @@ export class InstanceAiController {
 		_res: Response,
 		@Param('workflowId') workflowId: string,
 	) {
-		const options = req.body as EvalExecutionOptions;
+		const parsed = instanceAiEvalExecutionRequestSchema.safeParse(req.body ?? {});
+		if (!parsed.success) {
+			throw new BadRequestError(parsed.error.message);
+		}
 
-		return await this.evalExecutionService.executeWithLlmMock(workflowId, req.user, options);
+		return await this.evalExecutionService.executeWithLlmMock(workflowId, req.user, parsed.data);
 	}
 
 	// ── Gateway endpoints (daemon ↔ server) ──────────────────────────────────

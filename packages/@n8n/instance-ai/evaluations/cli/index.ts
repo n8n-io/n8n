@@ -48,16 +48,13 @@ async function main(): Promise<void> {
 
 	// Workflow test case mode
 	if (args.command === 'workflows') {
-		const testCases = loadWorkflowTestCases();
+		const testCases = loadWorkflowTestCases(args.filter);
 		if (testCases.length === 0) {
 			console.log('No workflow test cases found in evaluations/data/workflows/');
 			return;
 		}
 
-		const totalScenarios = testCases.reduce(
-			(sum, tc) => sum + tc.scenarios.filter((s) => s.requires !== 'mock-server').length,
-			0,
-		);
+		const totalScenarios = testCases.reduce((sum, tc) => sum + tc.scenarios.length, 0);
 		console.log(
 			`Running ${String(testCases.length)} workflow test case(s) with ${String(totalScenarios)} scenario(s)\n`,
 		);
@@ -77,21 +74,20 @@ async function main(): Promise<void> {
 		const preRunWorkflowIds = await snapshotWorkflowIds(client);
 		const claimedWorkflowIds = new Set<string>();
 
-		// Run each test case
-		const results: WorkflowTestCaseResult[] = [];
-
-		for (const testCase of testCases) {
-			const tcResult = await runWorkflowTestCase({
-				client,
-				testCase,
-				timeoutMs: args.timeoutMs,
-				seededCredentialTypes: seedResult.seededTypes,
-				preRunWorkflowIds,
-				claimedWorkflowIds,
-				logger,
-			});
-			results.push(tcResult);
-		}
+		// Run all test cases in parallel — each uses its own thread and SSE connection
+		const results = await Promise.all(
+			testCases.map((testCase) =>
+				runWorkflowTestCase({
+					client,
+					testCase,
+					timeoutMs: args.timeoutMs,
+					seededCredentialTypes: seedResult.seededTypes,
+					preRunWorkflowIds,
+					claimedWorkflowIds,
+					logger,
+				}),
+			),
+		);
 
 		// Cleanup credentials
 		await cleanupCredentials(client, seedResult.credentialIds).catch(() => {});
