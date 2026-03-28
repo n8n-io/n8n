@@ -5,6 +5,7 @@ import type {
 	WorkflowData,
 	EvaluateOptions,
 } from '../types';
+import { LruCache } from './lru-cache';
 
 export class ExpressionEvaluator implements IExpressionEvaluator {
 	private config: EvaluatorConfig;
@@ -16,10 +17,13 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 
 	// Cache: template expression → tournament-transformed JavaScript code
 	// Cache hit rate in production: ~99.9% (same expressions repeat within a workflow)
-	private codeCache = new Map<string, string>();
+	private codeCache: LruCache<string, string>;
 
 	constructor(config: EvaluatorConfig) {
 		this.config = config;
+		this.codeCache = new LruCache<string, string>(config.maxCodeCacheSize, () => {
+			this.config.observability?.metrics.counter('expression.code_cache.eviction', 1);
+		});
 	}
 
 	async initialize(): Promise<void> {
@@ -62,8 +66,11 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 	private getTransformedCode(expression: string): string {
 		const cached = this.codeCache.get(expression);
 		if (cached !== undefined) {
+			this.config.observability?.metrics.counter('expression.code_cache.hit', 1);
 			return cached;
 		}
+
+		this.config.observability?.metrics.counter('expression.code_cache.miss', 1);
 
 		if (!this.tournament) {
 			// Tournament requires an errorHandler but we only use getExpressionCode()
@@ -79,12 +86,14 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 
 		const [transformedCode] = this.tournament.getExpressionCode(expression);
 		this.codeCache.set(expression, transformedCode);
+		this.config.observability?.metrics.gauge('expression.code_cache.size', this.codeCache.size);
 		return transformedCode;
 	}
 
 	async dispose(): Promise<void> {
 		this.disposed = true;
 		this.codeCache.clear();
+		this.config.observability?.metrics.gauge('expression.code_cache.size', 0);
 		await this.config.bridge.dispose();
 	}
 
