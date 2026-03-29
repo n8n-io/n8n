@@ -25,15 +25,34 @@ import type {
 	WebhookOptionsRequest,
 	WebhookRequest,
 } from '@/webhooks/webhook.types';
+import { CorsPolicy } from './cors-policy';
+import type { IWebhookMethodResolver } from './webhook-method-resolver.types';
 
 const WEBHOOK_METHODS: IHttpRequestMethods[] = ['DELETE', 'GET', 'HEAD', 'PATCH', 'POST', 'PUT'];
 
 class WebhookRequestHandler {
-	constructor(private readonly webhookManager: IWebhookManager) {}
+	private readonly corsPolicy: CorsPolicy;
+
+	constructor(private readonly webhookManager: IWebhookManager) {
+		this.corsPolicy = new CorsPolicy();
+	}
 
 	/**
 	 * Handles an incoming webhook request. Handles CORS and delegates the
 	 * request to the webhook manager to execute the webhook.
+	 *
+	 * **CORS Preflight Invariants (OPTIONS requests):**
+	 * - CORS headers MUST be set for all OPTIONS requests (even without Origin header)
+	 * - Access-Control-Allow-Methods MUST be set if webhook manager supports it
+	 * - Access-Control-Allow-Origin MUST be set (handles null origin explicitly)
+	 * - Access-Control-Max-Age MUST be set for preflight caching
+	 * - Access-Control-Allow-Headers MUST echo requested headers if present
+	 *
+	 * **Why OPTIONS always needs CORS headers:**
+	 * - Browsers send OPTIONS preflight before POST/PUT/PATCH with custom headers
+	 * - Browsers from `file://` URLs send `Origin: null` (string "null")
+	 * - Some browsers may omit Origin header in edge cases
+	 * - Preflight MUST succeed for actual request to proceed
 	 */
 	async handleRequest(req: WebhookRequest | WebhookOptionsRequest, res: express.Response) {
 		const method = req.method;
@@ -45,14 +64,18 @@ class WebhookRequestHandler {
 			);
 		}
 
-		// Setup CORS headers only if the incoming request has an `origin` header
-		if ('origin' in req.headers) {
+		// **INVARIANT:** OPTIONS requests ALWAYS need CORS headers, even without Origin header
+		// This ensures browser preflight requests succeed regardless of origin (including null origin)
+		const needsCorsHeaders = method === 'OPTIONS' || 'origin' in req.headers;
+
+		if (needsCorsHeaders) {
 			const corsSetupError = await this.setupCorsHeaders(req, res);
 			if (corsSetupError) {
 				return ResponseHelper.sendErrorResponse(res, corsSetupError);
 			}
 		}
 
+		// **INVARIANT:** OPTIONS requests return 204 No Content after CORS headers are set
 		if (method === 'OPTIONS') {
 			return ResponseHelper.sendSuccessResponse(res, {}, true, 204);
 		}
@@ -177,54 +200,99 @@ class WebhookRequestHandler {
 		}
 	}
 
+	/**
+	 * Sets up CORS headers for webhook requests using the CORS policy module.
+	 *
+	 * This method delegates to the CorsPolicy service, which handles:
+	 * - Method resolution via IWebhookMethodResolver interface
+	 * - Origin policy application
+	 * - Preflight header generation
+	 *
+	 * **Invariants for OPTIONS (preflight) requests:**
+	 * 1. Access-Control-Allow-Methods MUST be set if methods are resolved
+	 * 2. Access-Control-Allow-Origin MUST always be set (handles null origin explicitly)
+	 * 3. Access-Control-Max-Age MUST be set (300 seconds for preflight caching)
+	 * 4. Access-Control-Allow-Headers MUST echo requested headers if present
+	 *
+	 * **Null Origin Handling:**
+	 * - Browsers from `file://` URLs send `Origin: null` (literal string "null")
+	 * - Some browsers may omit Origin header entirely
+	 * - The CorsPolicy service handles normalization and policy application
+	 *
+	 * @param req - Webhook request (may be OPTIONS preflight)
+	 * @param res - Express response object
+	 * @returns Error if CORS setup fails, null otherwise
+	 */
 	private async setupCorsHeaders(
 		req: WebhookRequest | WebhookOptionsRequest,
 		res: express.Response,
 	): Promise<Error | null> {
 		const method = req.method;
 		const { path } = req.params;
+		const isPreflight = method === 'OPTIONS';
 
-		if (this.webhookManager.getWebhookMethods) {
+		// Resolve allowed methods using the method resolver interface
+		let allowedMethods: IHttpRequestMethods[] | undefined;
+		const methodResolver = this.getMethodResolver();
+		if (methodResolver) {
 			try {
-				const allowedMethods = await this.webhookManager.getWebhookMethods(path);
-				res.header('Access-Control-Allow-Methods', ['OPTIONS', ...allowedMethods].join(', '));
+				allowedMethods = await methodResolver.resolveMethods(path);
 			} catch (error) {
+				// If getting methods fails, return error (don't proceed with incomplete CORS headers)
 				return error as Error;
 			}
 		}
 
-		const requestedMethod =
-			method === 'OPTIONS'
-				? (req.headers['access-control-request-method'] as IHttpRequestMethods)
-				: method;
+		// Determine the HTTP method being requested (for preflight, use Access-Control-Request-Method)
+		const requestedMethod = isPreflight
+			? (req.headers['access-control-request-method'] as IHttpRequestMethods)
+			: method;
+
+		// Get CORS origin policy from webhook manager
+		let originPolicy;
 		if (this.webhookManager.findAccessControlOptions && requestedMethod) {
-			const options = await this.webhookManager.findAccessControlOptions(path, requestedMethod);
-			const { allowedOrigins } = options ?? {};
+			originPolicy = await this.webhookManager.findAccessControlOptions(path, requestedMethod);
+		}
 
-			if (allowedOrigins && allowedOrigins !== '*' && allowedOrigins !== req.headers.origin) {
-				const originsList = allowedOrigins.split(',');
-				const defaultOrigin = originsList[0];
+		// Apply CORS headers using the policy service
+		const config = {
+			allowedMethods,
+			originPolicy,
+			isPreflight,
+			requestedMethod,
+		};
 
-				if (originsList.length === 1) {
-					res.header('Access-Control-Allow-Origin', defaultOrigin);
-				}
+		const corsError = this.corsPolicy.applyCorsHeaders(req, res, config);
+		if (corsError) {
+			return corsError;
+		}
 
-				if (originsList.includes(req.headers.origin as string)) {
-					res.header('Access-Control-Allow-Origin', req.headers.origin);
-				} else {
-					res.header('Access-Control-Allow-Origin', defaultOrigin);
-				}
-			} else {
-				res.header('Access-Control-Allow-Origin', req.headers.origin);
-			}
+		// Fallback: If webhook manager doesn't support CORS config, still set basic headers
+		// This ensures OPTIONS requests don't fail even for webhook managers without CORS support
+		if (!originPolicy && isPreflight) {
+			this.corsPolicy.applyFallbackCorsHeaders(req, res, allowedMethods);
+		}
 
-			if (method === 'OPTIONS') {
-				res.header('Access-Control-Max-Age', '300');
-				const requestedHeaders = req.headers['access-control-request-headers'];
-				if (requestedHeaders?.length) {
-					res.header('Access-Control-Allow-Headers', requestedHeaders);
-				}
-			}
+		return null;
+	}
+
+	/**
+	 * Gets the method resolver from the webhook manager if it implements IWebhookMethodResolver.
+	 *
+	 * This allows webhook managers to optionally implement the interface for explicit method resolution.
+	 * Falls back to the legacy getWebhookMethods method for backward compatibility.
+	 */
+	private getMethodResolver(): IWebhookMethodResolver | null {
+		// Check if webhook manager implements IWebhookMethodResolver
+		if ('resolveMethods' in this.webhookManager && typeof this.webhookManager.resolveMethods === 'function') {
+			return this.webhookManager as IWebhookMethodResolver;
+		}
+
+		// Fallback to legacy getWebhookMethods for backward compatibility
+		if (this.webhookManager.getWebhookMethods) {
+			return {
+				resolveMethods: (path: string) => this.webhookManager.getWebhookMethods!(path),
+			};
 		}
 
 		return null;
