@@ -344,8 +344,15 @@ export class EvalExecutionService {
 				executionMode: 'real',
 			});
 			const lastRun = nodeRuns[nodeRuns.length - 1];
-			if (lastRun?.data?.main?.[0]) {
-				entry.output = lastRun.data.main[0].slice(0, MAX_OUTPUT_ITEMS_PER_NODE);
+			if (lastRun?.data?.main) {
+				// Capture output from all branches (Switch/IF nodes have multiple outputs)
+				const allOutputs = lastRun.data.main
+					.flat()
+					.filter(Boolean)
+					.slice(0, MAX_OUTPUT_ITEMS_PER_NODE);
+				if (allOutputs.length > 0) {
+					entry.output = allOutputs;
+				}
 			}
 			if (lastRun?.error) {
 				errors.push(`Node "${nodeName}": ${lastRun.error.message}`);
