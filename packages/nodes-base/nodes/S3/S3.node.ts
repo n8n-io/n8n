@@ -271,6 +271,35 @@ export class S3 implements INodeType {
 						// 	returnData.push(responseData);
 						// }
 					}
+
+					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_DeleteBucket.html
+					if (operation === 'delete') {
+						const name = this.getNodeParameter('name', i) as string;
+
+						responseData = await s3ApiRequestSOAP.call(this, name, 'GET', '', '', {
+							location: '',
+						});
+
+						const region = responseData.LocationConstraint?._ as string | undefined;
+
+						await s3ApiRequestSOAP.call(
+							this,
+							name,
+							'DELETE',
+							'',
+							'',
+							{},
+							{},
+							{},
+							region as string,
+						);
+
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ deleted: true }),
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionData);
+					}
 				}
 				if (resource === 'folder') {
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html
