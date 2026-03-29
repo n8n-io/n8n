@@ -465,7 +465,7 @@ export class ScheduleTrigger implements INodeType {
 
 		const rules = intervals.map((interval, i) => ({
 			interval,
-			cronExpression: toCronExpression(interval),
+			cronExpression: toCronExpression(interval, `${this.getNode().id}-${i}`),
 			recurrence: intervalToRecurrence(interval, i),
 		}));
 
