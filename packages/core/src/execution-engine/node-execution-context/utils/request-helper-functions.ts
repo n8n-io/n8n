@@ -1193,6 +1193,7 @@ export async function requestWithAuthentication(
 			normalizeLegacyRequest(requestOptions),
 			node,
 			requestOptions.resolveWithFullResponse,
+			'legacy',
 		);
 		if (evalMockResponse !== undefined) return evalMockResponse;
 	}
@@ -1596,6 +1597,7 @@ export const getRequestHelperFunctions = (
 					normalizeLegacyRequest(uriOrObject, options),
 					node,
 					wantsFull,
+					'legacy',
 				);
 				if (evalMockResponse !== undefined) return evalMockResponse;
 			}
@@ -1632,6 +1634,7 @@ export const getRequestHelperFunctions = (
 					normalizeLegacyRequest(requestOptions),
 					node,
 					requestOptions.resolveWithFullResponse,
+					'legacy',
 				);
 				if (evalMockResponse !== undefined) return evalMockResponse;
 			}
@@ -1650,6 +1653,7 @@ export const getRequestHelperFunctions = (
 					normalizeLegacyRequest(requestOptions),
 					node,
 					requestOptions.resolveWithFullResponse,
+					'legacy',
 				);
 				if (evalMockResponse !== undefined) return evalMockResponse;
 			}

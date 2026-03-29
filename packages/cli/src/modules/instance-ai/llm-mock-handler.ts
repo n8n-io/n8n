@@ -110,9 +110,9 @@ You have two tools. Call them before generating your response:
 "lookup_api_docs" — Fetches real API documentation for a service endpoint. Use this to learn the correct response STRUCTURE (what fields, what nesting, what types the real API returns).
 
 "get_node_config" — Returns the n8n node's configuration parameters. This tells you what the node is set up to work with. The configuration contains the values the node expects to find in API responses — resource IDs, field names, column names, etc. Every node type has different parameters, so you need to interpret the config intelligently. Key patterns:
-  - Objects with "__rl" are resource selectors — "value" is the selected resource (a sheet name, document ID, channel ID, etc.)
-  - "schema" arrays list the exact field/column names the node expects in data
-  - "operation" and "resource" describe what the node does (e.g. "append" to a "sheet")
+  - Objects with "__rl" are resource selectors — "value" is the selected resource (a document ID, channel, project, etc.)
+  - "schema" arrays list the exact field names the node expects in data
+  - "operation" and "resource" describe what the node does (e.g. "send" a "message", "create" an "issue")
   - Strings starting with "=" are expressions (ignore these) — all other strings are literal values
 
 ## How to combine them
@@ -205,7 +205,7 @@ const API_DOCS_TOOL: Anthropic.Tool = {
 const NODE_CONFIG_TOOL: Anthropic.Tool = {
 	name: 'get_node_config',
 	description:
-		'Get the n8n node configuration parameters — resource IDs, field names, column names, etc. Your mock data must match these exact values.',
+		'Get the n8n node configuration parameters — resource IDs, field names, settings, etc. Your mock data must match these exact values.',
 	input_schema: {
 		type: 'object' as const,
 		properties: {},

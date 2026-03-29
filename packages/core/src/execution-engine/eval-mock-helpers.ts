@@ -98,6 +98,8 @@ export function normalizeLegacyRequest(
  * Call the eval mock handler and format its response for the calling helper.
  * When `returnFullResponse` is true, serializes to `{ body: Buffer, headers, statusCode }`
  * matching the shape that nodes expect from real HTTP responses.
+ * For error responses (status >= 400), throws an error matching the HTTP library's
+ * error shape so nodes handle it identically to real HTTP failures.
  * Returns `undefined` if the handler did not produce a response.
  */
 export async function callEvalMockHandler(
@@ -105,8 +107,45 @@ export async function callEvalMockHandler(
 	requestOptions: IHttpRequestOptions,
 	node: INode,
 	returnFullResponse?: boolean,
+	httpLibrary: 'axios' | 'legacy' = 'axios',
 ): Promise<unknown> {
 	const response = await handler(requestOptions, node);
 	if (!response) return undefined;
+
+	if (response.statusCode >= 400) {
+		throwHttpError(response, httpLibrary);
+	}
+
 	return returnFullResponse ? serializeMockToHttpResponse(response) : response.body;
+}
+
+/**
+ * Throw an error matching what the real HTTP library would throw,
+ * so node error handling (retries, continueOnFail, NodeApiError) works identically.
+ */
+function throwHttpError(response: EvalMockHttpResponse, library: 'axios' | 'legacy'): never {
+	const message = `Request failed with status code ${response.statusCode}`;
+
+	if (library === 'axios') {
+		// Match AxiosError shape: error.response.{status, data, headers}, error.isAxiosError
+		throw Object.assign(new Error(message), {
+			isAxiosError: true,
+			response: {
+				status: response.statusCode,
+				statusText: message,
+				data: response.body,
+				headers: response.headers,
+			},
+		});
+	}
+
+	// Match legacy request-promise error shape: error.statusCode, error.response.body
+	throw Object.assign(new Error(message), {
+		statusCode: response.statusCode,
+		response: {
+			statusCode: response.statusCode,
+			body: response.body,
+			headers: response.headers,
+		},
+	});
 }
