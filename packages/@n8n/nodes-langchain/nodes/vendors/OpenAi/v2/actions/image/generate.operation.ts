@@ -28,6 +28,10 @@ const properties: INodeProperties[] = [
 				name: 'GPT Image 1',
 				value: 'gpt-image-1',
 			},
+			{
+				name: 'GPT Image 1.5',
+				value: 'gpt-image-1.5',
+			},
 		],
 	},
 	{
@@ -94,7 +98,12 @@ const properties: INodeProperties[] = [
 				type: 'options',
 				description:
 					'The quality of the image that will be generated, High creates images with finer details and greater consistency across the image',
+				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
+					{
+						name: 'Auto',
+						value: 'auto',
+					},
 					{
 						name: 'High',
 						value: 'high',
@@ -110,10 +119,10 @@ const properties: INodeProperties[] = [
 				],
 				displayOptions: {
 					show: {
-						'/model': ['gpt-image-1'],
+						'/model': ['gpt-image-1', 'gpt-image-1.5'],
 					},
 				},
-				default: 'medium',
+				default: 'auto',
 			},
 
 			{
@@ -170,26 +179,31 @@ const properties: INodeProperties[] = [
 				displayName: 'Resolution',
 				name: 'size',
 				type: 'options',
+				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
+					{
+						name: 'Auto',
+						value: 'auto',
+					},
 					{
 						name: '1024x1024',
 						value: '1024x1024',
 					},
 					{
-						name: '1024x1536',
+						name: '1024x1536 (Portrait)',
 						value: '1024x1536',
 					},
 					{
-						name: '1536x1024',
+						name: '1536x1024 (Landscape)',
 						value: '1536x1024',
 					},
 				],
 				displayOptions: {
 					show: {
-						'/model': ['gpt-image-1'],
+						'/model': ['gpt-image-1', 'gpt-image-1.5'],
 					},
 				},
-				default: '1024x1024',
+				default: 'auto',
 			},
 
 			{
@@ -223,7 +237,7 @@ const properties: INodeProperties[] = [
 				description: 'Whether to return image URL(s) instead of binary file(s)',
 				displayOptions: {
 					hide: {
-						'/model': ['gpt-image-1'],
+						'/model': ['gpt-image-1', 'gpt-image-1.5'],
 					},
 				},
 			},
@@ -277,7 +291,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const body: IDataObject = {
 		prompt,
 		model,
-		response_format: model !== 'gpt-image-1' ? response_format : undefined, // gpt-image-1 does not support response_format
+		response_format: !model.startsWith('gpt-image-1') ? response_format : undefined, // gpt-image-1* models do not support response_format
 		...options,
 	};
 
