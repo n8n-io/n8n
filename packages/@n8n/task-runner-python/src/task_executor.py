@@ -50,6 +50,21 @@ MAX_PRINT_ARGS_ALLOWED = 100
 type PipeConnection = Connection
 
 
+class StringIOWithFileno(io.StringIO):
+    """
+    StringIO subclass that provides a fileno() method to prevent errors
+    when external libraries (e.g., database drivers, Prisma) attempt to
+    call fileno() on sys.stderr.
+
+    Returns stderr's file descriptor (2) to maintain compatibility with
+    code expecting a real file-like object with a file descriptor.
+    """
+
+    def fileno(self) -> int:
+        """Return stderr's file descriptor."""
+        return 2
+
+
 class TaskExecutor:
     """Responsible for executing Python code tasks in isolated subprocesses."""
 
@@ -197,7 +212,7 @@ class TaskExecutor:
         TaskExecutor._sanitize_sys_modules(security_config)
 
         print_args: PrintArgs = []
-        sys.stderr = stderr_capture = io.StringIO()
+        sys.stderr = stderr_capture = StringIOWithFileno()
 
         try:
             wrapped_code = TaskExecutor._wrap_code(raw_code)
@@ -236,7 +251,7 @@ class TaskExecutor:
         TaskExecutor._sanitize_sys_modules(security_config)
 
         print_args: PrintArgs = []
-        sys.stderr = stderr_capture = io.StringIO()
+        sys.stderr = stderr_capture = StringIOWithFileno()
 
         try:
             wrapped_code = TaskExecutor._wrap_code(raw_code)
