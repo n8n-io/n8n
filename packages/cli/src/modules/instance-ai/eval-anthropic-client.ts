@@ -10,8 +10,14 @@ import Anthropic from '@anthropic-ai/sdk';
 let _client: Anthropic | undefined;
 
 export function getEvalAnthropicClient(): Anthropic {
-	_client ??= new Anthropic({
-		apiKey: process.env.N8N_AI_ANTHROPIC_KEY ?? process.env.ANTHROPIC_API_KEY,
-	});
+	if (!_client) {
+		const apiKey = process.env.N8N_AI_ANTHROPIC_KEY ?? process.env.ANTHROPIC_API_KEY;
+		if (!apiKey) {
+			throw new Error(
+				'Eval mock execution requires an Anthropic API key. Set N8N_AI_ANTHROPIC_KEY or ANTHROPIC_API_KEY.',
+			);
+		}
+		_client = new Anthropic({ apiKey });
+	}
 	return _client;
 }
