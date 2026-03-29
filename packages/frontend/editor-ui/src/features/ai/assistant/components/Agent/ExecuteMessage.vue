@@ -379,7 +379,7 @@ watch(hasValidationIssues, (hasIssues, hadIssues) => {
 				>
 					<N8nIcon :class="$style.followUpIcon" icon="play" :size="14" />
 					<span :class="$style.followUpText">
-						{{ executeAndRefineLabel }}
+						{{ executeWithConfiguredDataLabel }}
 					</span>
 				</div>
 			</N8nTooltip>
