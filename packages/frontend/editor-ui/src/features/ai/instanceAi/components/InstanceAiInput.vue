@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, computed } from 'vue';
+import { computed, ref, useTemplateRef } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nTooltip } from '@n8n/design-system';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
@@ -19,6 +19,15 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const store = useInstanceAiStore();
+
+// Onboarding-related element refs for focusing
+const chatInputBaseRef = ref<{ getRootEl?: () => HTMLElement | null } | null>(null);
+const researchToggleRef = useTemplateRef<HTMLButtonElement>('researchToggleRef');
+
+defineExpose({
+	getChatInputHighlightEl: () => chatInputBaseRef.value?.getRootEl?.() ?? null,
+	getResearchToggleEl: () => researchToggleRef.value ?? null,
+});
 const inputText = ref('');
 const attachedFiles = ref<File[]>([]);
 
@@ -81,6 +90,7 @@ function handleFileRemove(file: File) {
 
 <template>
 	<ChatInputBase
+		ref="chatInputBaseRef"
 		v-model="inputText"
 		:placeholder="placeholder"
 		:is-streaming="props.isStreaming"
@@ -110,6 +120,7 @@ function handleFileRemove(file: File) {
 				:show-after="300"
 			>
 				<button
+					ref="researchToggleRef"
 					:class="[$style.researchToggle, { [$style.active]: store.researchMode }]"
 					data-test-id="instance-ai-research-toggle"
 					@click="store.toggleResearchMode()"

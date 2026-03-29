@@ -1,12 +1,24 @@
 <script lang="ts" setup>
-import { computed, onMounted, onUnmounted, provide, ref, useTemplateRef, watch } from 'vue';
+import {
+	computed,
+	onMounted,
+	onUnmounted,
+	provide,
+	reactive,
+	ref,
+	useTemplateRef,
+	watch,
+	watchEffect,
+} from 'vue';
 import { useRoute } from 'vue-router';
 import {
+	N8nButton,
 	N8nHeading,
 	N8nIconButton,
 	N8nResizeWrapper,
 	N8nScrollArea,
 	N8nText,
+	N8nTooltip,
 } from '@n8n/design-system';
 import { useScroll, useWindowSize } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
@@ -27,6 +39,13 @@ import InstanceAiStatusBar from './components/InstanceAiStatusBar.vue';
 import InstanceAiConfirmationPanel from './components/InstanceAiConfirmationPanel.vue';
 import InstanceAiWorkflowPreview from './components/InstanceAiWorkflowPreview.vue';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
+import InstanceAiDiscoverWalkthrough from './components/InstanceAiDiscoverWalkthrough.vue';
+import type { InstanceAiDiscoverHighlightTargets } from './components/instanceAiDiscoverWalkthrough.types';
+
+type InstanceAiInputExposed = {
+	getChatInputHighlightEl?: () => HTMLElement | null;
+	getResearchToggleEl?: () => HTMLElement | null;
+};
 
 const store = useInstanceAiStore();
 const settingsStore = useInstanceAiSettingsStore();
@@ -58,6 +77,13 @@ provide('openDataTablePreview', preview.openDataTablePreview);
 
 // Load persisted threads from Mastra storage on mount
 onMounted(() => {
+	try {
+		showInstanceAiOnboardingButton.value =
+			localStorage.getItem(INSTANCE_AI_ONBOARDING_ENABLED_KEY) === 'true';
+	} catch {
+		showInstanceAiOnboardingButton.value = false;
+	}
+
 	void store.loadThreads();
 
 	// Auto-connect local gateway if enabled
@@ -93,7 +119,42 @@ watch(
 const showArtifactsPanel = ref(true);
 const showMemoryPanel = ref(false);
 const showDebugPanel = ref(false);
+const showDiscoverWalkthrough = ref(false);
+const INSTANCE_AI_ONBOARDING_ENABLED_KEY = 'instance-ai-onboarding-enabled';
+const showInstanceAiOnboardingButton = ref(false);
 const isDebugEnabled = computed(() => localStorage.getItem('instanceAi.debugMode') === 'true');
+
+/** Onboarding-related element refs for focusing */
+const sidebarHighlightRef = ref<HTMLElement | null>(null);
+const instanceAiInputEmptyRef = ref<InstanceAiInputExposed | null>(null);
+const instanceAiInputFloatingRef = ref<InstanceAiInputExposed | null>(null);
+const memoryButtonRef = ref<unknown>(null);
+
+const discoverHighlightTargets = reactive<InstanceAiDiscoverHighlightTargets>({
+	sidebar: null,
+	chatInput: null,
+	researchToggle: null,
+	memoryButton: null,
+});
+
+function unwrapComponentRoot(target: unknown): HTMLElement | null {
+	if (!target || typeof target !== 'object') return null;
+	if ('$el' in target) {
+		const el = (target as { $el: unknown }).$el;
+		return el instanceof HTMLElement ? el : null;
+	}
+	return null;
+}
+
+watchEffect(() => {
+	discoverHighlightTargets.sidebar = sidebarHighlightRef.value;
+	discoverHighlightTargets.memoryButton = unwrapComponentRoot(memoryButtonRef.value);
+	const inputInst = store.hasMessages
+		? instanceAiInputFloatingRef.value
+		: instanceAiInputEmptyRef.value;
+	discoverHighlightTargets.chatInput = inputInst?.getChatInputHighlightEl?.() ?? null;
+	discoverHighlightTargets.researchToggle = inputInst?.getResearchToggleEl?.() ?? null;
+});
 
 // --- Sidebar resize ---
 const sidebarWidth = ref(260);
@@ -282,16 +343,22 @@ function handleStop() {
 <template>
 	<div :class="$style.container" data-test-id="instance-ai-container">
 		<!-- Resizable sidebar -->
-		<N8nResizeWrapper
-			:class="$style.sidebar"
-			:width="sidebarWidth"
+		<div
+			ref="sidebarHighlightRef"
+			:class="[$style.sidebarColumn, $style.sidebar]"
 			:style="{ width: `${sidebarWidth}px` }"
-			:supported-directions="['right']"
-			:is-resizing-enabled="true"
-			@resize="handleSidebarResize"
 		>
-			<InstanceAiThreadList />
-		</N8nResizeWrapper>
+			<N8nResizeWrapper
+				:class="$style.sidebarResizeInner"
+				:width="sidebarWidth"
+				:style="{ width: '100%', height: '100%' }"
+				:supported-directions="['right']"
+				:is-resizing-enabled="true"
+				@resize="handleSidebarResize"
+			>
+				<InstanceAiThreadList />
+			</N8nResizeWrapper>
+		</div>
 
 		<!-- Main chat area -->
 		<div :class="$style.chatArea">
@@ -310,6 +377,7 @@ function handleStop() {
 				</N8nText>
 				<div :class="$style.headerActions">
 					<N8nIconButton
+						ref="memoryButtonRef"
 						icon="brain"
 						variant="ghost"
 						size="medium"
@@ -334,6 +402,24 @@ function handleStop() {
 						size="medium"
 						@click="showArtifactsPanel = !showArtifactsPanel"
 					/>
+
+					<!-- Onboarding button (gated by localStorage `instance-ai-onboarding-enabled` === "true") -->
+					<N8nTooltip v-if="showInstanceAiOnboardingButton" placement="bottom">
+						<template #content>
+							{{ i18n.baseText('instanceAi.discover.button.tooltip') }}
+						</template>
+						<template #default>
+							<N8nButton
+								variant="outline"
+								size="small"
+								:class="$style.discoverButton"
+								data-test-id="instance-ai-discover-trigger"
+								@click="showDiscoverWalkthrough = true"
+							>
+								{{ i18n.baseText('instanceAi.discover.button') }}
+							</N8nButton>
+						</template>
+					</N8nTooltip>
 				</div>
 			</div>
 
@@ -346,6 +432,7 @@ function handleStop() {
 						<div :class="$style.centeredInput">
 							<InstanceAiStatusBar />
 							<InstanceAiInput
+								ref="instanceAiInputEmptyRef"
 								:is-streaming="store.isStreaming"
 								@submit="handleSubmit"
 								@stop="handleStop"
@@ -396,6 +483,7 @@ function handleStop() {
 							<div :class="$style.inputConstraint">
 								<InstanceAiStatusBar />
 								<InstanceAiInput
+									ref="instanceAiInputFloatingRef"
 									:is-streaming="store.isStreaming"
 									@submit="handleSubmit"
 									@stop="handleStop"
@@ -455,6 +543,11 @@ function handleStop() {
 				"
 			/>
 		</N8nResizeWrapper>
+
+		<InstanceAiDiscoverWalkthrough
+			v-model="showDiscoverWalkthrough"
+			:highlight-targets="discoverHighlightTargets"
+		/>
 	</div>
 </template>
 
@@ -471,6 +564,19 @@ function handleStop() {
 	min-width: 200px;
 	max-width: 400px;
 	flex-shrink: 0;
+}
+
+.sidebarColumn {
+	display: flex;
+	flex-direction: column;
+	align-self: stretch;
+	min-height: 0;
+	height: 100%;
+}
+
+.sidebarResizeInner {
+	min-height: 0;
+	flex: 1;
 }
 
 .chatArea {
@@ -534,7 +640,12 @@ function handleStop() {
 	margin-left: auto;
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--4xs);
+	gap: var(--spacing--xs);
+	flex-shrink: 0;
+}
+
+.discoverButton {
+	white-space: nowrap;
 }
 
 .activeButton {

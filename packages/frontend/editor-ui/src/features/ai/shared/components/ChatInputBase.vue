@@ -24,6 +24,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const rootRef = useTemplateRef<HTMLElement>('rootRef');
 const inputRef = useTemplateRef<HTMLElement>('inputRef');
 const fileInputRef = useTemplateRef<HTMLInputElement>('fileInputRef');
 const isFocused = ref(false);
@@ -105,11 +106,13 @@ function handleClickWrapper() {
 
 defineExpose({
 	focus: () => inputRef.value?.focus(),
+	getRootEl: () => rootRef.value ?? null,
 });
 </script>
 
 <template>
 	<div
+		ref="rootRef"
 		:class="[$style.inputWrapper, { [$style.focused]: isFocused }]"
 		@click="handleClickWrapper"
 		@paste="handlePaste"
