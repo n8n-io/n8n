@@ -16,6 +16,7 @@ import type Anthropic from '@anthropic-ai/sdk';
 import { type INode, type IWorkflowBase, jsonParse } from 'n8n-workflow';
 
 import { getEvalAnthropicClient } from './eval-anthropic-client';
+import { extractNodeConfig } from './eval-node-config';
 
 // ---------------------------------------------------------------------------
 // Config
@@ -34,10 +35,16 @@ const HINTS_MODEL = 'claude-sonnet-4-6';
  */
 function findAiSubNodeNames(workflow: IWorkflowBase): Set<string> {
 	const subNodes = new Set<string>();
-	for (const [sourceName, nodeConns] of Object.entries(workflow.connections)) {
-		for (const connType of Object.keys(nodeConns)) {
-			if (connType.startsWith('ai_')) {
-				subNodes.add(sourceName);
+	for (const [, nodeConns] of Object.entries(workflow.connections)) {
+		for (const [connType, outputs] of Object.entries(nodeConns)) {
+			if (!connType.startsWith('ai_') || !Array.isArray(outputs)) continue;
+			for (const group of outputs) {
+				if (!Array.isArray(group)) continue;
+				for (const conn of group) {
+					if (typeof conn === 'object' && conn !== null && 'node' in conn) {
+						subNodes.add((conn as { node: string }).node);
+					}
+				}
 			}
 		}
 	}
@@ -113,34 +120,10 @@ function buildUserPrompt(
 
 	sections.push('', '## Workflow Nodes', '');
 	for (const node of workflow.nodes) {
-		const params = node.parameters as Record<string, unknown> | undefined;
-
 		let line = `- ${node.name} (${node.type})`;
-		if (params) {
-			// Include key config values so the LLM uses actual names, not invented ones
-			const configEntries: string[] = [];
-			for (const [key, value] of Object.entries(params)) {
-				if (
-					typeof value === 'string' &&
-					value.length > 0 &&
-					value.length < 100 &&
-					!value.startsWith('=')
-				) {
-					configEntries.push(`${key}=${value}`);
-				} else if (
-					typeof value === 'object' &&
-					value !== null &&
-					'__rl' in (value as Record<string, unknown>)
-				) {
-					const rl = value as { value?: string; mode?: string };
-					if (typeof rl.value === 'string' && rl.value.length > 0) {
-						configEntries.push(`${key}=${rl.value}`);
-					}
-				}
-			}
-			if (configEntries.length > 0) {
-				line += ` [${configEntries.join(', ')}]`;
-			}
+		const config = extractNodeConfig(node);
+		if (config) {
+			line += ` ${config}`;
 		}
 		sections.push(line);
 	}
@@ -234,7 +217,9 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 
 		const warnings: string[] = [];
 		const triggerContent =
-			typeof parsed.triggerContent === 'object' && parsed.triggerContent !== null
+			typeof parsed.triggerContent === 'object' &&
+			parsed.triggerContent !== null &&
+			!Array.isArray(parsed.triggerContent)
 				? parsed.triggerContent
 				: {};
 		if (Object.keys(triggerContent).length === 0) {

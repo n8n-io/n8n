@@ -149,10 +149,11 @@ export class EvalExecutionService {
 		additionalData.evalLlmMockHandler = this.createInterceptingHandler(mockHandler, nodeResults);
 		additionalData.hooks = new ExecutionLifecycleHooks('evaluation', executionId, workflowEntity);
 
-		// Check config completeness before execution — detect missing required parameters
-		this.checkNodeConfig(workflow, nodeResults);
-
 		const pinData = this.buildTriggerPinData(startNode, hints.triggerContent);
+		const pinDataNodeNames = Object.keys(pinData);
+
+		// Check config completeness before execution — detect missing required parameters
+		this.checkNodeConfig(workflow, nodeResults, pinDataNodeNames);
 		const executionData = this.buildExecutionData(startNode, pinData);
 
 		// Mark the trigger node as pinned (it gets its output from pin data, not execution)
@@ -211,6 +212,7 @@ export class EvalExecutionService {
 	private checkNodeConfig(
 		workflow: Workflow,
 		nodeResults: Record<string, InstanceAiEvalNodeResult>,
+		pinDataNodeNames: string[],
 	): void {
 		for (const node of Object.values(workflow.nodes)) {
 			if (node.disabled) continue;
@@ -221,6 +223,7 @@ export class EvalExecutionService {
 				nodeType.description.properties,
 				node,
 				nodeType.description,
+				pinDataNodeNames,
 			);
 
 			if (issues?.parameters && Object.keys(issues.parameters).length > 0) {
@@ -295,13 +298,14 @@ export class EvalExecutionService {
 			requestOptions: IHttpRequestOptions,
 			node: INode,
 		): Promise<EvalMockHttpResponse | undefined> => {
-			// A node may make multiple HTTP requests — ensure it's marked as mocked
-			// regardless of whether this is the first or subsequent interception.
+			// A node may make multiple HTTP requests — ensure it's marked as mocked.
+			// checkNodeConfig may have pre-created the entry as 'real', so always override.
 			const entry = (nodeResults[node.name] ??= {
 				output: null,
 				interceptedRequests: [],
 				executionMode: 'mocked',
 			});
+			entry.executionMode = 'mocked';
 			const response = await mockHandler(requestOptions, node);
 
 			entry.interceptedRequests.push({
@@ -358,7 +362,7 @@ export class EvalExecutionService {
 			success: executionError === undefined && errors.length === 0,
 			nodeResults,
 			errors,
-			hints: { ...hints, warnings: hints.warnings ?? [] },
+			hints,
 		};
 	}
 
