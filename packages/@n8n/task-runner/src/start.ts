@@ -88,8 +88,9 @@ void (async function start() {
 		await healthCheckServer.start(host, port);
 	}
 
-	process.on('SIGINT', createSignalHandler('SIGINT'));
-	process.on('SIGTERM', createSignalHandler('SIGTERM'));
+	const { gracefulShutdownTimeout } = config.baseRunnerConfig;
+	process.on('SIGINT', createSignalHandler('SIGINT', gracefulShutdownTimeout));
+	process.on('SIGTERM', createSignalHandler('SIGTERM', gracefulShutdownTimeout));
 })().catch((e) => {
 	const error = ensureError(e);
 	console.error('Task runner failed to start', { error });
