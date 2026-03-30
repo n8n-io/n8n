@@ -1,22 +1,35 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-
 /* eslint-disable @typescript-eslint/unbound-method */
+
 import { ChatOpenAI } from '@langchain/openai';
-import { makeN8nLlmFailedAttemptHandler, N8nLlmTracing, getProxyAgent } from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 
 import { LmChatOpenRouter } from '../LmChatOpenRouter.node';
 
 jest.mock('@langchain/openai');
-jest.mock('@n8n/ai-utilities');
+
+jest.mock(
+	'@n8n/ai-utilities',
+	() => ({
+		makeN8nLlmFailedAttemptHandler: jest.fn(),
+		N8nLlmTracing: jest.fn(),
+		getProxyAgent: jest.fn(),
+	}),
+	{ virtual: true },
+);
 
 const MockedChatOpenAI = jest.mocked(ChatOpenAI);
-const MockedN8nLlmTracing = jest.mocked(N8nLlmTracing);
-const mockedMakeN8nLlmFailedAttemptHandler = jest.mocked(makeN8nLlmFailedAttemptHandler);
-const mockedGetProxyAgent = jest.mocked(getProxyAgent);
+const aiUtilitiesMock = jest.requireMock('@n8n/ai-utilities') as {
+	makeN8nLlmFailedAttemptHandler: jest.Mock;
+	N8nLlmTracing: jest.Mock;
+	getProxyAgent: jest.Mock;
+};
+const mockMakeN8nLlmFailedAttemptHandler = aiUtilitiesMock.makeN8nLlmFailedAttemptHandler;
+const mockN8nLlmTracing = aiUtilitiesMock.N8nLlmTracing;
+const mockGetProxyAgent = aiUtilitiesMock.getProxyAgent;
 
 describe('LmChatOpenRouter', () => {
 	let node: LmChatOpenRouter;
@@ -43,14 +56,15 @@ describe('LmChatOpenRouter', () => {
 		});
 		ctx.getNode = jest.fn().mockReturnValue(nodeDef);
 		ctx.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
-			if (paramName === 'model') return 'anthropic/claude-sonnet-4-20250514';
+			if (paramName === 'model') return 'openai/gpt-4.1-mini';
 			if (paramName === 'options') return {};
 			return undefined;
 		});
 
-		MockedN8nLlmTracing.mockImplementation(() => ({}) as unknown as N8nLlmTracing);
-		mockedMakeN8nLlmFailedAttemptHandler.mockReturnValue(jest.fn());
-		mockedGetProxyAgent.mockReturnValue({} as any);
+		mockN8nLlmTracing.mockImplementation(() => ({}));
+		mockMakeN8nLlmFailedAttemptHandler.mockReturnValue(jest.fn());
+		mockGetProxyAgent.mockReturnValue({});
+
 		return ctx;
 	};
 
@@ -66,6 +80,7 @@ describe('LmChatOpenRouter', () => {
 				name: 'lmChatOpenRouter',
 				group: ['transform'],
 				version: [1],
+				description: 'For advanced usage with an AI chain',
 			});
 		});
 
@@ -77,95 +92,268 @@ describe('LmChatOpenRouter', () => {
 			expect(node.description.outputs).toEqual(['ai_languageModel']);
 			expect(node.description.outputNames).toEqual(['Model']);
 		});
+
+		it('should have expected key parameters', () => {
+			expect(node.description.inputs).toEqual([]);
+
+			const modelParam = node.description.properties.find((p) => p.name === 'model');
+			expect(modelParam?.type).toBe('options');
+
+			const optionsParam = node.description.properties.find((p) => p.name === 'options');
+			expect(optionsParam?.type).toBe('collection');
+		});
 	});
 
 	describe('supplyData', () => {
-		it('should create ChatOpenAI with basic configuration', async () => {
-			const ctx = setupMockContext();
+		describe('basic configuration', () => {
+			it('should create ChatOpenAI with basic configuration', async () => {
+				const ctx = setupMockContext();
 
-			const result = await node.supplyData.call(ctx, 0);
+				const result = await node.supplyData.call(ctx, 0);
 
-			expect(ctx.getCredentials).toHaveBeenCalledWith('openRouterApi');
-			expect(MockedChatOpenAI).toHaveBeenCalledWith(
-				expect.objectContaining({
+				expect(ctx.getCredentials).toHaveBeenCalledWith('openRouterApi');
+				expect(MockedChatOpenAI).toHaveBeenCalledWith(
+					expect.objectContaining({
+						apiKey: 'test-key',
+						model: 'openai/gpt-4.1-mini',
+						maxRetries: 2,
+						timeout: undefined,
+						callbacks: expect.arrayContaining([expect.any(Object)]),
+						onFailedAttempt: expect.any(Function),
+					}),
+				);
+				expect(result).toEqual({ response: expect.any(Object) });
+			});
+
+			it('should use baseURL from credentials', async () => {
+				const ctx = setupMockContext();
+				ctx.getCredentials = jest.fn().mockResolvedValue({
 					apiKey: 'test-key',
-					model: 'anthropic/claude-sonnet-4-20250514',
-					maxRetries: 2,
-					callbacks: expect.arrayContaining([expect.any(Object)]),
-					onFailedAttempt: expect.any(Function),
-				}),
-			);
-			expect(result).toEqual({ response: expect.any(Object) });
+					url: 'https://custom-openrouter.example.com/v1',
+				});
+
+				await node.supplyData.call(ctx, 0);
+
+				expect(MockedChatOpenAI).toHaveBeenCalledWith(
+					expect.objectContaining({
+						configuration: expect.objectContaining({
+							baseURL: 'https://custom-openrouter.example.com/v1',
+						}),
+					}),
+				);
+			});
+
+			it('should create tracing callback and failed attempt handler', async () => {
+				const ctx = setupMockContext();
+
+				await node.supplyData.call(ctx, 0);
+
+				expect(mockN8nLlmTracing).toHaveBeenCalledWith(ctx);
+				expect(mockMakeN8nLlmFailedAttemptHandler).toHaveBeenCalledWith(ctx, expect.any(Function));
+			});
+
+			it('should pass a custom fetch wrapper in configuration', async () => {
+				const ctx = setupMockContext();
+
+				await node.supplyData.call(ctx, 0);
+
+				const callArgs = MockedChatOpenAI.mock.calls[0][0];
+				expect(callArgs?.configuration?.fetch).toEqual(expect.any(Function));
+			});
 		});
 
-		it('should pass options to ChatOpenAI', async () => {
-			const ctx = setupMockContext();
-			ctx.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
-				if (paramName === 'model') return 'anthropic/claude-sonnet-4-20250514';
-				if (paramName === 'options')
-					return {
-						temperature: 0.5,
-						maxTokens: 2000,
+		describe('standard LLM options', () => {
+			it('should pass all standard options', async () => {
+				const ctx = setupMockContext();
+				ctx.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'model') return 'openai/gpt-4.1-mini';
+					if (paramName === 'options') {
+						return {
+							frequencyPenalty: 0.5,
+							maxTokens: 1000,
+							presencePenalty: 0.3,
+							temperature: 0.8,
+							topP: 0.9,
+							timeout: 45000,
+							maxRetries: 3,
+						};
+					}
+					return undefined;
+				});
+
+				await node.supplyData.call(ctx, 0);
+
+				expect(MockedChatOpenAI).toHaveBeenCalledWith(
+					expect.objectContaining({
+						frequencyPenalty: 0.5,
+						maxTokens: 1000,
+						presencePenalty: 0.3,
+						temperature: 0.8,
 						topP: 0.9,
-						frequencyPenalty: 0.3,
-						presencePenalty: 0.2,
-						timeout: 60000,
-						maxRetries: 5,
-					};
-				return undefined;
+						timeout: 45000,
+						maxRetries: 3,
+					}),
+				);
 			});
 
-			await node.supplyData.call(ctx, 0);
+			it('should use default maxRetries when not provided', async () => {
+				const ctx = setupMockContext();
 
-			expect(MockedChatOpenAI).toHaveBeenCalledWith(
-				expect.objectContaining({
-					temperature: 0.5,
-					maxTokens: 2000,
-					topP: 0.9,
-					frequencyPenalty: 0.3,
-					presencePenalty: 0.2,
-					timeout: 60000,
-					maxRetries: 5,
-				}),
-			);
+				await node.supplyData.call(ctx, 0);
+
+				expect(MockedChatOpenAI).toHaveBeenCalledWith(
+					expect.objectContaining({
+						maxRetries: 2,
+					}),
+				);
+			});
 		});
 
-		it('should set response_format in modelKwargs when responseFormat is provided', async () => {
-			const ctx = setupMockContext();
-			ctx.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
-				if (paramName === 'model') return 'anthropic/claude-sonnet-4-20250514';
-				if (paramName === 'options') return { responseFormat: 'json_object' };
-				return undefined;
+		describe('response format option', () => {
+			it.each(['text', 'json_object'] as const)(
+				'should handle %s response format',
+				async (responseFormat) => {
+					const ctx = setupMockContext();
+					ctx.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+						if (paramName === 'model') return 'openai/gpt-4.1-mini';
+						if (paramName === 'options') return { responseFormat };
+						return undefined;
+					});
+
+					await node.supplyData.call(ctx, 0);
+
+					expect(MockedChatOpenAI).toHaveBeenCalledWith(
+						expect.objectContaining({
+							modelKwargs: expect.objectContaining({
+								response_format: { type: responseFormat },
+							}),
+						}),
+					);
+				},
+			);
+
+			it('should not set modelKwargs when no responseFormat and no provider routing', async () => {
+				const ctx = setupMockContext();
+				ctx.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'model') return 'openai/gpt-4.1-mini';
+					if (paramName === 'options') return { temperature: 0.7 };
+					return undefined;
+				});
+
+				await node.supplyData.call(ctx, 0);
+
+				const callArgs = MockedChatOpenAI.mock.calls[0][0];
+				expect(callArgs.modelKwargs).toBeUndefined();
+			});
+		});
+
+		describe('provider routing options', () => {
+			it('should handle order option with comma-separated providers and spaces', async () => {
+				const ctx = setupMockContext();
+				ctx.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'model') return 'openai/gpt-4.1-mini';
+					if (paramName === 'options') {
+						return { providerRouting: { order: ' anthropic , openai ,, google ' } };
+					}
+					return undefined;
+				});
+
+				await node.supplyData.call(ctx, 0);
+
+				expect(MockedChatOpenAI).toHaveBeenCalledWith(
+					expect.objectContaining({
+						modelKwargs: expect.objectContaining({
+							provider: expect.objectContaining({
+								order: ['anthropic', 'openai', 'google'],
+							}),
+						}),
+					}),
+				);
 			});
 
-			await node.supplyData.call(ctx, 0);
+			it('should map provider routing fields to OpenRouter payload', async () => {
+				const ctx = setupMockContext();
+				ctx.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'model') return 'openai/gpt-4.1-mini';
+					if (paramName === 'options') {
+						return {
+							providerRouting: {
+								allowFallbacks: false,
+								requireParameters: true,
+								dataCollection: 'deny',
+								zdr: true,
+								only: 'azure,anthropic',
+								ignore: 'google',
+								sort: 'price',
+							},
+						};
+					}
+					return undefined;
+				});
 
-			expect(MockedChatOpenAI).toHaveBeenCalledWith(
-				expect.objectContaining({
-					modelKwargs: { response_format: { type: 'json_object' } },
-				}),
-			);
-		});
+				await node.supplyData.call(ctx, 0);
 
-		it('should not set modelKwargs when no responseFormat', async () => {
-			const ctx = setupMockContext();
+				expect(MockedChatOpenAI).toHaveBeenCalledWith(
+					expect.objectContaining({
+						modelKwargs: expect.objectContaining({
+							provider: expect.objectContaining({
+								allow_fallbacks: false,
+								require_parameters: true,
+								data_collection: 'deny',
+								zdr: true,
+								only: ['azure', 'anthropic'],
+								ignore: ['google'],
+								sort: 'price',
+							}),
+						}),
+					}),
+				);
+			});
 
-			await node.supplyData.call(ctx, 0);
+			it('should include response format and provider routing together', async () => {
+				const ctx = setupMockContext();
+				ctx.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'model') return 'openai/gpt-4.1-mini';
+					if (paramName === 'options') {
+						return {
+							responseFormat: 'json_object',
+							providerRouting: {
+								order: 'anthropic,openai',
+								sort: 'price',
+							},
+						};
+					}
+					return undefined;
+				});
 
-			expect(MockedChatOpenAI).toHaveBeenCalledWith(
-				expect.objectContaining({
-					modelKwargs: undefined,
-				}),
-			);
-		});
+				await node.supplyData.call(ctx, 0);
 
-		it('should pass a custom fetch wrapper in configuration', async () => {
-			const ctx = setupMockContext();
+				expect(MockedChatOpenAI).toHaveBeenCalledWith(
+					expect.objectContaining({
+						modelKwargs: expect.objectContaining({
+							response_format: { type: 'json_object' },
+							provider: expect.objectContaining({
+								order: ['anthropic', 'openai'],
+								sort: 'price',
+							}),
+						}),
+					}),
+				);
+			});
 
-			await node.supplyData.call(ctx, 0);
+			it('should not add provider to modelKwargs when providerRouting is empty', async () => {
+				const ctx = setupMockContext();
+				ctx.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'model') return 'openai/gpt-4.1-mini';
+					if (paramName === 'options') return { providerRouting: {} };
+					return undefined;
+				});
 
-			const callArgs = MockedChatOpenAI.mock.calls[0][0];
-			expect(callArgs?.configuration?.fetch).toEqual(expect.any(Function));
+				await node.supplyData.call(ctx, 0);
+
+				const callArgs = MockedChatOpenAI.mock.calls[0][0];
+				expect(callArgs.modelKwargs).toBeUndefined();
+			});
 		});
 	});
 
@@ -184,10 +372,6 @@ describe('LmChatOpenRouter', () => {
 			});
 		}
 
-		/**
-		 * Sets up a mock fetch, calls supplyData to capture it in the wrapper,
-		 * and returns the wrapper function from the ChatOpenAI constructor args.
-		 */
 		async function setupFetchWrapper(mockFetch: jest.Mock): Promise<typeof globalThis.fetch> {
 			globalThis.fetch = mockFetch;
 			const ctx = setupMockContext();
@@ -202,18 +386,14 @@ describe('LmChatOpenRouter', () => {
 			{ input: [], expected: '{}', label: 'empty array' },
 			{ input: [1, 2], expected: '{}', label: 'non-empty array' },
 			{ input: {}, expected: '{}', label: 'empty object (stringified)' },
-			{
-				input: { location: 'NYC' },
-				expected: '{"location":"NYC"}',
-				label: 'plain object (stringified)',
-			},
+			{ input: { location: 'NYC' }, expected: '{"location":"NYC"}', label: 'plain object' },
 			{
 				input: '{"location":"NYC"}',
 				expected: '{"location":"NYC"}',
-				label: 'valid JSON string (unchanged)',
+				label: 'valid JSON string',
 			},
-			{ input: '{}', expected: '{}', label: 'empty JSON object string (unchanged)' },
-		])('should normalize arguments: $label → $expected', async ({ input, expected }) => {
+			{ input: '{}', expected: '{}', label: 'empty JSON object string' },
+		])('should normalize arguments: $label', async ({ input, expected }) => {
 			const mockFetch = jest.fn().mockResolvedValue(
 				jsonResponse({
 					choices: [
@@ -277,15 +457,9 @@ describe('LmChatOpenRouter', () => {
 						{
 							message: {
 								tool_calls: [
-									{
-										id: 'call_1',
-										function: { name: 'get_weather', arguments: '{"city":"NYC"}' },
-									},
+									{ id: 'call_1', function: { name: 'get_weather', arguments: '{"city":"NYC"}' } },
 									{ id: 'call_2', function: { name: 'get_time', arguments: '' } },
-									{
-										id: 'call_3',
-										function: { name: 'get_date', arguments: '{"format":"iso"}' },
-									},
+									{ id: 'call_3', function: { name: 'get_date', arguments: '{"format":"iso"}' } },
 								],
 							},
 						},
@@ -320,7 +494,6 @@ describe('LmChatOpenRouter', () => {
 			const response = await wrappedFetch('https://openrouter.ai/api/v1/chat/completions');
 
 			expect(response.headers.get('content-type')).toBe('application/json');
-			// Stale metadata headers (content-length, etag, etc.) are not carried over
 			expect(response.headers.get('content-length')).toBeNull();
 		});
 	});
