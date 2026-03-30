@@ -57,7 +57,10 @@ describe('useBackendStatus', () => {
 	};
 
 	it('should check backend connection and set online status on mount', async () => {
-		mockFetch.mockResolvedValueOnce({ ok: true });
+		mockFetch.mockResolvedValueOnce({
+			ok: true,
+			json: () => Promise.resolve({ status: 'ok' }),
+		});
 
 		const wrapper = createWrapper();
 
