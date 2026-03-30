@@ -90,11 +90,9 @@ const loadWorkflow = () => {
 			'*',
 		);
 	} catch (error) {
-		toast.showError(
-			error,
-			i18n.baseText('workflowPreview.showError.previewError.title'),
-			i18n.baseText('workflowPreview.showError.previewError.message'),
-		);
+		toast.showError(error, i18n.baseText('workflowPreview.showError.previewError.title'), {
+			message: i18n.baseText('workflowPreview.showError.previewError.message'),
+		});
 	}
 };
 
@@ -125,11 +123,9 @@ const loadExecution = () => {
 			);
 		}
 	} catch (error) {
-		toast.showError(
-			error,
-			i18n.baseText('workflowPreview.showError.previewError.title'),
-			i18n.baseText('workflowPreview.executionMode.showError.previewError.message'),
-		);
+		toast.showError(error, i18n.baseText('workflowPreview.showError.previewError.title'), {
+			message: i18n.baseText('workflowPreview.executionMode.showError.previewError.message'),
+		});
 	}
 };
 

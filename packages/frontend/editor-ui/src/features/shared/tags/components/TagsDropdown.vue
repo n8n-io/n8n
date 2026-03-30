@@ -143,11 +143,9 @@ async function onCreate() {
 
 		filter.value = '';
 	} catch (error) {
-		showError(
-			error,
-			i18n.baseText('tagsDropdown.showError.title'),
-			i18n.baseText('tagsDropdown.showError.message', { interpolate: { name } }),
-		);
+		showError(error, i18n.baseText('tagsDropdown.showError.title'), {
+			message: i18n.baseText('tagsDropdown.showError.message', { interpolate: { name } }),
+		});
 	}
 }
 

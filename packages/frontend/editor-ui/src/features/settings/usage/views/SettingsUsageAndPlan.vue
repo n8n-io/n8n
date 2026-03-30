@@ -181,7 +181,7 @@ onMounted(async () => {
 		if (!error.name) {
 			error.name = locale.baseText('settings.usageAndPlan.error');
 		}
-		toast.showError(error, error.name, error.message);
+		toast.showError(error, error.name, { message: error.message });
 	}
 });
 
