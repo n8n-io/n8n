@@ -12,6 +12,35 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionTypes, NodeOperationError, jsonParse } from 'n8n-workflow';
 
+const hasErrorsProperty = (value: unknown): value is { errors: unknown } =>
+	typeof value === 'object' && value !== null && 'errors' in value;
+
+const extractGraphQlErrorMessage = (errors: unknown): string => {
+	if (Array.isArray(errors)) {
+		const messages = errors
+			.filter((error): error is IDataObject => typeof error === 'object' && error !== null)
+			.map((error) => error.message)
+			.filter((message): message is string => typeof message === 'string' && message.length > 0);
+
+		if (messages.length > 0) {
+			return messages.join(', ');
+		}
+	}
+
+	if (typeof errors === 'string' && errors.length > 0) {
+		return errors;
+	}
+
+	if (typeof errors === 'object' && errors !== null && 'message' in errors) {
+		const message = errors.message;
+		if (typeof message === 'string' && message.length > 0) {
+			return message;
+		}
+	}
+
+	return 'Unexpected error';
+};
+
 export class GraphQL implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'GraphQL',
@@ -551,10 +580,8 @@ export class GraphQL implements INodeType {
 					} catch (e) {}
 				}
 				// throw from response object.errors[]
-				if (typeof response === 'object' && response.errors) {
-					const message =
-						response.errors?.map((error: IDataObject) => error.message).join(', ') ||
-						'Unexpected error';
+				if (hasErrorsProperty(response) && response.errors) {
+					const message = extractGraphQlErrorMessage(response.errors);
 					throw new NodeApiError(this.getNode(), response.errors as JsonObject, { message });
 				}
 			} catch (error) {

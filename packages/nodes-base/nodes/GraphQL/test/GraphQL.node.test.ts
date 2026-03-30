@@ -65,6 +65,19 @@ describe('GraphQL Node', () => {
 		});
 	});
 
+	describe('error response with string errors field', () => {
+		const baseUrl = 'http://test';
+		nock(baseUrl)
+			.post('/graphql', '{"query":"query { foo }","variables":{},"operationName":null}')
+			.reply(200, {
+				errors: 'An unexpected error occurred',
+			});
+
+		new NodeTestHarness().setupTests({
+			workflowFiles: ['workflow.error_string_errors_field.json'],
+		});
+	});
+
 	describe('oauth2 refresh token', () => {
 		const credentials = {
 			oAuth2Api: {
