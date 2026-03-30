@@ -132,4 +132,25 @@ export class TestRunRepository extends Repository<TestRun> {
 
 		return testRun as TestRunSummary;
 	}
+
+	async getTestRunSummaryByIdWithAuthorization(
+		testRunId: string,
+		allowedWorkflowIds: string[],
+	): Promise<TestRunSummary | null> {
+		const testRun = await this.findOne({
+			where: { id: testRunId },
+			relations: ['testCaseExecutions'],
+		});
+
+		if (!testRun) return null;
+
+		if (!allowedWorkflowIds.includes(testRun.workflowId)) {
+			return null;
+		}
+
+		testRun.finalResult =
+			testRun.status === 'completed' ? getTestRunFinalResult(testRun.testCaseExecutions) : null;
+
+		return testRun as TestRunSummary;
+	}
 }
