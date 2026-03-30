@@ -86,6 +86,8 @@ export const checklistResultSchema = z.object({
 	pass: z.boolean(),
 	reasoning: z.string(),
 	strategy: verificationStrategySchema,
+	failureCategory: z.string().optional(),
+	rootCause: z.string().optional(),
 });
 
 export type ChecklistResult = z.infer<typeof checklistResultSchema>;
@@ -311,6 +313,10 @@ export interface ScenarioResult {
 	evalResult?: InstanceAiEvalExecutionResult;
 	score: number;
 	reasoning: string;
+	/** Root cause category when the scenario fails */
+	failureCategory?: string;
+	/** Detailed root cause explanation */
+	rootCause?: string;
 }
 
 export interface WorkflowTestCaseResult {

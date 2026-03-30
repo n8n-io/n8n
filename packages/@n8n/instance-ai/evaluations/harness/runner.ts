@@ -8,6 +8,8 @@
 
 import crypto from 'node:crypto';
 
+import type { InstanceAiEvalExecutionResult } from '@n8n/api-types';
+
 import { N8nClient } from '../clients/n8n-client';
 import { consumeSseStream } from '../clients/sse-client';
 import { extractBuildChecklist } from '../checklist/extractor';
@@ -645,55 +647,7 @@ async function runScenario(
 			` (${Object.keys(evalResult.nodeResults).length} nodes, ${evalResult.errors.length} errors)`,
 	);
 
-	// Build verification artifact from the execution result
-	const mockedNodes: string[] = [];
-	const pinnedNodes: string[] = [];
-	const realNodes: string[] = [];
-	const interceptedLines: string[] = [];
-
-	for (const [nodeName, nr] of Object.entries(evalResult.nodeResults)) {
-		if (nr.executionMode === 'mocked') mockedNodes.push(nodeName);
-		else if (nr.executionMode === 'pinned') pinnedNodes.push(nodeName);
-		else realNodes.push(nodeName);
-
-		for (const req of nr.interceptedRequests) {
-			interceptedLines.push(`  - ${nodeName}: ${req.method} ${req.url}`);
-		}
-	}
-
-	const scenarioContext = [
-		'### Evaluation Context',
-		'',
-		`**Scenario:** ${scenario.name} — ${scenario.description}`,
-		'',
-		`**Data setup:** ${scenario.dataSetup}`,
-		'',
-		`**Mocked nodes (HTTP intercepted by LLM):** ${mockedNodes.join(', ') || 'none'}`,
-		`**Pinned nodes (trigger data):** ${pinnedNodes.join(', ') || 'none'}`,
-		`**Real nodes (executed with actual logic):** ${realNodes.join(', ') || 'none'}`,
-		'',
-		...(interceptedLines.length > 0
-			? ['**Intercepted HTTP requests:**', ...interceptedLines, '']
-			: []),
-		...(evalResult.errors.length > 0
-			? ['**Errors:**', ...evalResult.errors.map((e) => `  - ${e}`), '']
-			: []),
-		'**What to verify:** Given the scenario above, did the workflow produce',
-		'the expected results? Focus on whether the data flowed correctly through',
-		'real logic nodes and whether service node responses were appropriate.',
-	].join('\n');
-
-	const nodeOutputLines: string[] = [];
-	for (const [nodeName, nr] of Object.entries(evalResult.nodeResults)) {
-		if (nr.output !== null && nr.output !== undefined) {
-			nodeOutputLines.push(`Node "${nodeName}" output:`);
-			nodeOutputLines.push(`\`\`\`json\n${JSON.stringify(nr.output, null, 2)}\n\`\`\``);
-		}
-	}
-	const outputSection =
-		nodeOutputLines.length > 0 ? `\n\n### Node Outputs\n\n${nodeOutputLines.join('\n')}` : '';
-
-	const verificationArtifact = `${scenarioContext}${outputSection}`;
+	const verificationArtifact = buildVerificationArtifact(scenario, evalResult);
 
 	const scenarioChecklist: ChecklistItem[] = [
 		{
@@ -708,15 +662,146 @@ async function runScenario(
 		scenarioChecklist,
 		verificationArtifact,
 		workflowJsons,
+		{ mockExecution: true },
 	);
 
 	const passed = verificationResults.length > 0 && verificationResults[0].pass;
-	const reasoning =
-		verificationResults.length > 0 ? verificationResults[0].reasoning : 'No verification result';
+	const result = verificationResults[0];
+	const reasoning = result?.reasoning ?? 'No verification result';
+	const failureCategory = result?.failureCategory;
+	const rootCause = result?.rootCause;
 
-	logger.info(`    [${scenario.name}] ${passed ? 'PASS' : 'FAIL'}: ${reasoning.slice(0, 100)}`);
+	const categoryLabel = failureCategory ? ` [${failureCategory}]` : '';
+	logger.info(
+		`    [${scenario.name}] ${passed ? 'PASS' : 'FAIL'}${categoryLabel}: ${reasoning.slice(0, 100)}`,
+	);
 
-	return { scenario, success: passed, evalResult, score: passed ? 1 : 0, reasoning };
+	return {
+		scenario,
+		success: passed,
+		evalResult,
+		score: passed ? 1 : 0,
+		reasoning,
+		failureCategory,
+		rootCause,
+	};
+}
+
+// ---------------------------------------------------------------------------
+// Verification artifact builder
+// ---------------------------------------------------------------------------
+
+/**
+ * Build a rich verification artifact from the execution result.
+ * Includes execution trace with mock responses, config issues,
+ * and pre-analysis flags so the verifier can diagnose root causes.
+ */
+function buildVerificationArtifact(
+	scenario: TestScenario,
+	evalResult: InstanceAiEvalExecutionResult,
+): string {
+	const sections: string[] = [];
+
+	// --- Scenario context ---
+	sections.push(
+		'## Scenario',
+		'',
+		`**Name:** ${scenario.name} — ${scenario.description}`,
+		`**Data setup:** ${scenario.dataSetup}`,
+		'',
+	);
+
+	// --- Pre-analysis: flag known issues programmatically ---
+	const preAnalysis: string[] = [];
+	let hasMockError = false;
+	let hasConfigIssue = false;
+
+	for (const [nodeName, nr] of Object.entries(evalResult.nodeResults)) {
+		if (nr.configIssues && Object.keys(nr.configIssues).length > 0) {
+			hasConfigIssue = true;
+			preAnalysis.push(
+				`⚠ BUILDER ISSUE: "${nodeName}" has missing config: ${Object.values(nr.configIssues).flat().join('; ')}`,
+			);
+		}
+		for (const req of nr.interceptedRequests) {
+			if (
+				typeof req.mockResponse === 'object' &&
+				req.mockResponse !== null &&
+				'_evalMockError' in (req.mockResponse as Record<string, unknown>)
+			) {
+				hasMockError = true;
+				const msg = (req.mockResponse as Record<string, unknown>).message ?? 'unknown';
+				preAnalysis.push(
+					`⚠ MOCK ISSUE: "${nodeName}" ${req.method} ${req.url} → mock generation failed: ${String(msg)}`,
+				);
+			}
+		}
+	}
+
+	if (preAnalysis.length > 0) {
+		sections.push('## Pre-analysis (automated flags)', '', ...preAnalysis, '');
+	}
+
+	// --- Execution summary ---
+	const mockedNodes: string[] = [];
+	const pinnedNodes: string[] = [];
+	const realNodes: string[] = [];
+
+	for (const [nodeName, nr] of Object.entries(evalResult.nodeResults)) {
+		if (nr.executionMode === 'mocked') mockedNodes.push(nodeName);
+		else if (nr.executionMode === 'pinned') pinnedNodes.push(nodeName);
+		else realNodes.push(nodeName);
+	}
+
+	sections.push(
+		'## Execution summary',
+		'',
+		`**Status:** ${evalResult.success ? 'success' : 'failed'}`,
+		`**Mocked nodes** (HTTP intercepted, responses generated by LLM): ${mockedNodes.join(', ') || 'none'}`,
+		`**Pinned nodes** (trigger data provided, not executed): ${pinnedNodes.join(', ') || 'none'}`,
+		`**Real nodes** (executed with actual logic on mock/pinned data): ${realNodes.join(', ') || 'none'}`,
+		'',
+	);
+
+	if (evalResult.errors.length > 0) {
+		sections.push('## Errors', '', ...evalResult.errors.map((e) => `- ${e}`), '');
+	}
+
+	// --- Execution trace: per-node detail ---
+	sections.push('## Execution trace', '');
+
+	for (const [nodeName, nr] of Object.entries(evalResult.nodeResults)) {
+		sections.push(`### ${nodeName} [${nr.executionMode}]`);
+
+		// Config issues
+		if (nr.configIssues && Object.keys(nr.configIssues).length > 0) {
+			sections.push(`**Config issues:** ${Object.values(nr.configIssues).flat().join('; ')}`);
+		}
+
+		// Intercepted requests + mock responses (for mocked nodes)
+		for (const req of nr.interceptedRequests) {
+			sections.push(`**Request:** ${req.method} ${req.url}`);
+			if (req.requestBody) {
+				sections.push('```json', JSON.stringify(req.requestBody, null, 2), '```');
+			}
+			if (req.mockResponse) {
+				sections.push('**Mock response:**');
+				sections.push('```json', JSON.stringify(req.mockResponse, null, 2), '```');
+			}
+		}
+
+		// Node output
+		if (nr.output !== null && nr.output !== undefined) {
+			sections.push('**Output:**');
+			sections.push('```json', JSON.stringify(nr.output, null, 2), '```');
+		} else {
+			sections.push('**Output:** none');
+		}
+
+		sections.push('');
+	}
+
+	return sections.join('\n');
 }
 
 // ---------------------------------------------------------------------------

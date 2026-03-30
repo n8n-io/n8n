@@ -1,6 +1,7 @@
 import { runProgrammaticCheck } from './programmatic-checks';
 import { createEvalAgent, extractText } from '../../src/utils/eval-agents';
 import { CHECKLIST_VERIFY_PROMPT } from '../system-prompts/checklist-verify';
+import { MOCK_EXECUTION_VERIFY_PROMPT } from '../system-prompts/mock-execution-verify';
 import type { ChecklistItem, ChecklistResult } from '../types';
 
 // ---------------------------------------------------------------------------
@@ -33,10 +34,16 @@ function parseJsonArray(text: string): unknown[] {
 // Public API
 // ---------------------------------------------------------------------------
 
+export interface VerifyOptions {
+	/** Use the mock execution prompt instead of the default builder prompt */
+	mockExecution?: boolean;
+}
+
 export async function verifyChecklist(
 	checklist: ChecklistItem[],
 	verificationArtifact: string,
 	workflowJsons: Array<Record<string, unknown>>,
+	options?: VerifyOptions,
 ): Promise<ChecklistResult[]> {
 	const programmaticItems = checklist.filter((i) => i.strategy === 'programmatic' && i.check);
 	const llmItems = checklist.filter((i) => i.strategy === 'llm');
@@ -76,8 +83,12 @@ ${verificationArtifact}
 
 Verify each checklist item against the artifact above.`;
 
+		const systemPrompt = options?.mockExecution
+			? MOCK_EXECUTION_VERIFY_PROMPT
+			: CHECKLIST_VERIFY_PROMPT;
+
 		const agent = createEvalAgent('eval-checklist-verifier', {
-			instructions: CHECKLIST_VERIFY_PROMPT,
+			instructions: systemPrompt,
 			cache: true,
 		});
 
@@ -97,6 +108,9 @@ Verify each checklist item against the artifact above.`;
 					pass: entry.pass,
 					reasoning: typeof entry.reasoning === 'string' ? entry.reasoning : '',
 					strategy: 'llm',
+					failureCategory:
+						typeof entry.failureCategory === 'string' ? entry.failureCategory : undefined,
+					rootCause: typeof entry.rootCause === 'string' ? entry.rootCause : undefined,
 				});
 			}
 		}
