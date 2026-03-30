@@ -1,24 +1,22 @@
 <script setup lang="ts">
-import { computed, ref, watch, provide } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { MANUAL_TRIGGER_NODE_TYPE, type INodeProperties } from 'n8n-workflow';
 
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
-import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
-import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
-import type { NodeSetupState } from '@/features/setupPanel/setupPanel.types';
-import type { INodeUi, INodeUpdatePropertiesInformation, IUpdateInformation } from '@/Interface';
+import SetupCardSection from '@/features/setupPanel/components/cards/SetupCardSection.vue';
+import SetupCardBody from '@/features/setupPanel/components/cards/SetupCardBody.vue';
+import type {
+	NodeSetupState,
+	CredentialSelectedPayload,
+	CredentialDeselectedPayload,
+} from '@/features/setupPanel/setupPanel.types';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
-import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import SetupCard from '@/features/setupPanel/components/cards/SetupCard.vue';
-import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
-import { isHttpRequestNodeType } from '@/features/setupPanel/setupPanel.utils';
-import { useExpressionResolveCtx } from '@/features/workflows/canvas/experimental/composables/useExpressionResolveCtx';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
@@ -30,30 +28,22 @@ const props = defineProps<{
 const expanded = defineModel<boolean>('expanded', { default: false });
 
 const emit = defineEmits<{
-	credentialSelected: [payload: { credentialType: string; credentialId: string; nodeName: string }];
-	credentialDeselected: [payload: { credentialType: string; nodeName: string }];
+	credentialSelected: [payload: CredentialSelectedPayload];
+	credentialDeselected: [payload: CredentialDeselectedPayload];
 }>();
 
 const i18n = useI18n();
-const setupPanelStore = useSetupPanelStore();
 const nodeTypesStore = useNodeTypesStore();
 const credentialsStore = useCredentialsStore();
 const nodeHelpers = useNodeHelpers();
-const workflowState = injectWorkflowState();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const setupCard = ref<InstanceType<typeof SetupCard> | null>(null);
 
-const node = computed<INodeUi | null>(() => props.state.node);
-const expressionResolveCtx = useExpressionResolveCtx(node);
-provide(ExpressionLocalResolveContextSymbol, expressionResolveCtx);
-
 const nodeType = computed(() =>
 	nodeTypesStore.getNodeType(props.state.node.type, props.state.node.typeVersion),
 );
-
-const isHttpRequestNode = computed(() => isHttpRequestNodeType(props.state.node.type));
 
 const hasCredential = computed(() => !!props.state.credentialType);
 
@@ -82,40 +72,10 @@ const hasParameters = computed(() => Object.keys(props.state.parameterIssues).le
 
 /**
  * Tracks which parameters have been shown to the user at least once.
- * This ref is used to persist parameters in the UI even after their issues are resolved,
- * preventing them from disappearing when the user fills them in.
+ * Passed to SetupCardBody as stickyParameters for persistence.
  */
 const shownParameters = ref<INodeProperties[]>([]);
 
-/**
- * Get parameters that should be displayed in the card.
- * Parameters are accumulated: once shown they persist (no disappearing on fill),
- * and new issues that appear dynamically (e.g. via displayOptions changes when
- * a resource locator is filled) are picked up on subsequent evaluations.
- *
- * Note: Uses a side effect (modifying shownParameters ref) to achieve persistence.
- * This is intentional - computed properties normally shouldn't have side effects,
- * but this pattern ensures parameters persist across reactivity updates.
- */
-const parameters = computed<INodeProperties[]>(() => {
-	if (!nodeType.value?.properties) return [];
-
-	const issueParamNames = Object.keys(props.state.parameterIssues);
-	const additionalParamNames = props.state.additionalParameterNames ?? [];
-	const allParamNames = new Set([...issueParamNames, ...additionalParamNames]);
-
-	for (const prop of nodeType.value.properties) {
-		if (allParamNames.has(prop.name) && !shownParameters.value.includes(prop)) {
-			shownParameters.value.push(prop);
-		}
-	}
-	return shownParameters.value;
-});
-
-/**
- * Check if we've ever shown parameters (persistent across parameter fills).
- * Used to keep the parameter description visible even after all issues are resolved.
- */
 const hasShownParameters = computed(() => shownParameters.value.length > 0);
 
 /** Trigger-only: no credentials, no parameters — standalone trigger card */
@@ -127,10 +87,6 @@ const isTriggerOnly = computed(
 const useCredentialIcon = computed(
 	() => hasCredential.value && !hasShownParameters.value && !isTriggerOnly.value,
 );
-
-const nodeNames = computed(() => (props.state.allNodesUsingCredential ?? []).map((n) => n.name));
-
-const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 
 const telemetryPayload = computed(() => {
 	const types: string[] = [];
@@ -149,50 +105,8 @@ const telemetryPayload = computed(() => {
 	};
 });
 
-const onCredentialSelected = (updateInfo: INodeUpdatePropertiesInformation) => {
-	if (!props.state.credentialType) throw new Error('Unexpected credential selection');
+const onBodyInteracted = () => {
 	setupCard.value?.markInteracted();
-
-	const credentialData = updateInfo.properties.credentials?.[props.state.credentialType];
-	const credentialId = typeof credentialData === 'string' ? undefined : credentialData?.id;
-
-	if (credentialId) {
-		emit('credentialSelected', {
-			credentialType: props.state.credentialType,
-			credentialId,
-			nodeName: props.state.node.name,
-		});
-	} else {
-		emit('credentialDeselected', {
-			credentialType: props.state.credentialType,
-			nodeName: props.state.node.name,
-		});
-	}
-};
-
-const onValueChanged = (parameterData: IUpdateInformation) => {
-	setupCard.value?.markInteracted();
-
-	workflowState.updateNodeProperties({
-		name: props.state.node.name,
-		properties: {
-			parameters: {
-				...props.state.node.parameters,
-				[parameterData.name]: parameterData.value,
-			},
-		},
-	});
-
-	// Update node issues after parameter change
-	nodeHelpers.updateNodesParameterIssues();
-};
-
-const onSharedNodesHintEnter = () => {
-	setupPanelStore.setHighlightedNodes((props.state.allNodesUsingCredential ?? []).map((n) => n.id));
-};
-
-const onSharedNodesHintLeave = () => {
-	setupPanelStore.setHighlightedNodes([props.state.node.id]);
 };
 
 const allNodeIssuesResolved = ref(Object.keys(props.state.parameterIssues).length === 0);
@@ -294,48 +208,28 @@ const highlightNodeIds = computed(() => {
 				{{ i18n.baseText('setupPanel.parameter.description') }}
 			</N8nText>
 		</template>
-		<div v-if="!isTriggerOnly" :class="$style.content">
-			<div v-if="state.showCredentialPicker" :class="$style['credential-container']">
-				<NodeCredentials
-					:node="state.node"
-					:override-cred-type="state.credentialType ?? ''"
-					:skip-auto-select="isHttpRequestNode"
-					hide-issues
-					@credential-selected="onCredentialSelected"
-				>
-					<template v-if="nodeNames.length > 1" #label-postfix>
-						<N8nTooltip placement="top">
-							<template #content>
-								{{ nodeNamesTooltip }}
-							</template>
-							<span
-								data-test-id="node-setup-card-nodes-hint"
-								:class="$style['nodes-hint']"
-								@mouseenter="onSharedNodesHintEnter"
-								@mouseleave="onSharedNodesHintLeave"
-							>
-								{{
-									i18n.baseText('setupPanel.usedInNodes', {
-										interpolate: { count: String(nodeNames.length) },
-									})
-								}}
-							</span>
-						</N8nTooltip>
-					</template>
-				</NodeCredentials>
+		<SetupCardSection v-if="!isTriggerOnly" :state="state">
+			<div :class="$style.content">
+				<SetupCardBody
+					:state="state"
+					:sticky-parameters="shownParameters"
+					@credential-selected="
+						(p) => {
+							onBodyInteracted();
+							emit('credentialSelected', p);
+						}
+					"
+					@credential-deselected="
+						(p) => {
+							onBodyInteracted();
+							emit('credentialDeselected', p);
+						}
+					"
+					@interacted="onBodyInteracted"
+					@parameters-discovered="(params) => shownParameters.push(...params)"
+				/>
 			</div>
-
-			<ParameterInputList
-				v-if="parameters.length > 0"
-				:parameters="parameters"
-				:node-values="state.node.parameters"
-				:remove-first-parameter-margin="true"
-				:node="state.node"
-				:hide-delete="true"
-				:options-overrides="{ hideExpressionSelector: true, hideFocusPanelButton: true }"
-				@value-changed="onValueChanged"
-			/>
-		</div>
+		</SetupCardSection>
 	</SetupCard>
 </template>
 
@@ -345,17 +239,5 @@ const highlightNodeIds = computed(() => {
 	flex-direction: column;
 	gap: var(--spacing--xs);
 	padding: 0 var(--spacing--xs);
-}
-
-.credential-container {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--3xs);
-}
-
-.nodes-hint {
-	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
-	cursor: default;
 }
 </style>
