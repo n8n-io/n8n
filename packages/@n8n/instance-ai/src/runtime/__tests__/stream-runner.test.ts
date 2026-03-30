@@ -30,6 +30,10 @@ async function* emptyStream() {
 
 describe('streamAgentRun', () => {
 	it('returns errored status when agent stream contains an error chunk', async () => {
+		jest.mocked(executeResumableStream).mockResolvedValue({
+			status: 'errored',
+			mastraRunId: 'mastra-run-1',
+		});
 		const eventBus = createEventBus();
 		const agent = {
 			stream: jest.fn().mockResolvedValue({
@@ -64,6 +68,10 @@ describe('streamAgentRun', () => {
 	});
 
 	it('returns completed status for successful streams', async () => {
+		jest.mocked(executeResumableStream).mockResolvedValue({
+			status: 'completed',
+			mastraRunId: 'mastra-run-1',
+		});
 		const eventBus = createEventBus();
 		const agent = {
 			stream: jest.fn().mockResolvedValue({

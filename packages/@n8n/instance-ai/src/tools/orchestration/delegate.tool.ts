@@ -171,7 +171,7 @@ export async function startDetachedDelegateTask(
 				memory,
 			});
 
-			registerWithMastra(subAgentId, subAgent, context.storage);
+			registerWithMastra(subAgentId, subAgent, context.storage, context.tracingConfig);
 
 			const memoryOpts = memory
 				? { resource: subAgentResourceId(context.userId, role), thread: subAgentId }

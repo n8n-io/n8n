@@ -16,6 +16,8 @@ import { License } from '../license';
 export class AiService {
 	private client: AiAssistantClient | undefined;
 
+	private initPromise: Promise<void> | undefined;
+
 	constructor(
 		private readonly licenseService: License,
 		private readonly globalConfig: GlobalConfig,
@@ -50,30 +52,18 @@ export class AiService {
 	}
 
 	async chat(payload: AiChatRequestDto, user: IUser) {
-		if (!this.client) {
-			await this.init();
-		}
-		assert(this.client, 'Assistant client not setup');
-
-		return await this.client.chat(payload, { id: user.id });
+		const client = await this.getClient();
+		return await client.chat(payload, { id: user.id });
 	}
 
 	async applySuggestion(payload: AiApplySuggestionRequestDto, user: IUser) {
-		if (!this.client) {
-			await this.init();
-		}
-		assert(this.client, 'Assistant client not setup');
-
-		return await this.client.applySuggestion(payload, { id: user.id });
+		const client = await this.getClient();
+		return await client.applySuggestion(payload, { id: user.id });
 	}
 
 	async askAi(payload: AiAskRequestDto, user: IUser) {
-		if (!this.client) {
-			await this.init();
-		}
-		assert(this.client, 'Assistant client not setup');
-
-		return await this.client.askAi(payload, { id: user.id });
+		const client = await this.getClient();
+		return await client.askAi(payload, { id: user.id });
 	}
 
 	/** Whether the AI service proxy is enabled (license + base URL configured). */
@@ -84,18 +74,15 @@ export class AiService {
 	/** Return the initialized AiAssistantClient. Initializes lazily if needed. */
 	async getClient(): Promise<AiAssistantClient> {
 		if (!this.client) {
-			await this.init();
+			this.initPromise ??= this.init();
+			await this.initPromise;
 		}
 		assert(this.client, 'AI Assistant client not initialized');
 		return this.client;
 	}
 
 	async createFreeAiCredits(user: IUser) {
-		if (!this.client) {
-			await this.init();
-		}
-		assert(this.client, 'Assistant client not setup');
-
-		return await this.client.generateAiCreditsCredentials(user);
+		const client = await this.getClient();
+		return await client.generateAiCreditsCredentials(user);
 	}
 }

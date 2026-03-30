@@ -1170,6 +1170,9 @@ export class InstanceAiAdapterService {
 			excludeDomains?: string[];
 		};
 
+		// When the AI service proxy is enabled (licensed instance), search always goes
+		// through the proxy which provides managed Brave Search with credit tracking.
+		// This intentionally takes priority over local SearXNG or API key configuration.
 		if (searchProxyConfig) {
 			return async (query: string, options?: SearchOptions) => {
 				const cacheKey = JSON.stringify([query, options ?? {}]);

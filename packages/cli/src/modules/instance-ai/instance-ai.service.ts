@@ -609,6 +609,7 @@ export class InstanceAiService {
 			task.abortController.abort();
 		}
 
+		this.creditedThreads.delete(threadId);
 		this.domainAccessTrackersByThread.delete(threadId);
 		this.threadPushRef.delete(threadId);
 		await this.destroySandbox(threadId);

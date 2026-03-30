@@ -278,6 +278,7 @@ export class InstanceAiController {
 	// ── Credits ──────────────────────────────────────────────────────────────
 
 	@Get('/credits')
+	@GlobalScope('instanceAi:message')
 	async getCredits(req: AuthenticatedRequest) {
 		return await this.instanceAiService.getCredits(req.user);
 	}

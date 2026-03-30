@@ -47,6 +47,7 @@
   },
   "devDependencies": {
     "@ai-sdk/anthropic": "2.0.61",
+    "@ai-sdk/provider-v5": "npm:@ai-sdk/provider@2.0.0",
     "@n8n/typescript-config": "workspace:*",
     "@types/luxon": "3.2.0",
     "@types/turndown": "^5.0.5"

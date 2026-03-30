@@ -623,7 +623,7 @@ function handleStop() {
 		width: 100%;
 		justify-content: flex-start;
 		padding-inline: var(--spacing--sm);
-		min-height: 36px;
+		min-height: var(--height--lg);
 	}
 }
 
