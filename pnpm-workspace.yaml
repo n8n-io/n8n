@@ -157,3 +157,5 @@ minimumReleaseAgeExclude:
   - multer
   - simple-git
   - underscore
+  # Renovate security update: undici@7@7.24.0
+  - undici@7@7.24.0
