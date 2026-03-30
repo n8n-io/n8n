@@ -3,7 +3,7 @@ import * as os from 'os';
 import * as path from 'path';
 
 import { SqliteMemory } from '../storage/sqlite-memory';
-import type { AgentMessage, Message } from '../types/sdk/message';
+import type { AgentDbMessage, AgentMessage, Message } from '../types/sdk/message';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -13,8 +13,13 @@ function makeTempDb(): string {
 	return path.join(os.tmpdir(), `test-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
 }
 
-function makeMsg(role: 'user' | 'assistant', text: string): Message {
-	return { role, content: [{ type: 'text', text }] };
+function makeMsg(role: 'user' | 'assistant', text: string): AgentDbMessage {
+	return {
+		id: crypto.randomUUID(),
+		createdAt: new Date(),
+		role,
+		content: [{ type: 'text', text }],
+	};
 }
 
 function textOf(msg: AgentMessage): string {
@@ -165,30 +170,10 @@ describe('SqliteMemory — messages', () => {
 		expect(textOf(msgsB[0])).toBe('thread-b');
 	});
 
-	it('assigns stable IDs — preserves existing, generates for missing', async () => {
-		const mem = makeMemory(dbPath);
-		const withId = { ...makeMsg('user', 'has-id'), id: 'custom-id-123' } as unknown as AgentMessage;
-		const withoutId = makeMsg('assistant', 'no-id');
-
-		await mem.saveMessages({ threadId: 't-1', messages: [withId, withoutId] });
-
-		const msgs = await mem.getMessages('t-1');
-		expect(msgs).toHaveLength(2);
-
-		// The message with a pre-existing id should keep it
-		const first = msgs[0] as unknown as { id: string };
-		expect(first.id).toBe('custom-id-123');
-
-		// The message without id should have gotten one assigned
-		const second = msgs[1] as unknown as { id: string };
-		expect(typeof second.id).toBe('string');
-		expect(second.id.length).toBeGreaterThan(0);
-	});
-
 	it('deletes specific messages', async () => {
 		const mem = makeMemory(dbPath);
-		const m1 = { ...makeMsg('user', 'keep'), id: 'keep-1' } as unknown as AgentMessage;
-		const m2 = { ...makeMsg('user', 'delete-me'), id: 'del-1' } as unknown as AgentMessage;
+		const m1 = { ...makeMsg('user', 'keep'), id: 'keep-1' };
+		const m2 = { ...makeMsg('user', 'delete-me'), id: 'del-1' };
 		await mem.saveMessages({ threadId: 't-1', messages: [m1, m2] });
 
 		await mem.deleteMessages(['del-1']);
@@ -196,6 +181,56 @@ describe('SqliteMemory — messages', () => {
 		const msgs = await mem.getMessages('t-1');
 		expect(msgs).toHaveLength(1);
 		expect((msgs[0] as unknown as { id: string }).id).toBe('keep-1');
+	});
+
+	it('createdAt round-trips: saved message createdAt is restored as a Date on load', async () => {
+		const mem = makeMemory(dbPath);
+		const fixedDate = new Date('2020-03-15T10:30:00.123Z');
+
+		const msg: AgentDbMessage = {
+			id: 'msg-round-trip',
+			createdAt: fixedDate,
+			role: 'user',
+			content: [{ type: 'text', text: 'hello' }],
+		};
+
+		await mem.saveMessages({ threadId: 't-1', messages: [msg] });
+		const [loaded] = await mem.getMessages('t-1');
+
+		// Pre-fix: saveMessages stores createdAt as new Date() (wall clock), not fixedDate.
+		// getMessages does not copy createdAt from the DB column back onto the message
+		// object, leaving it as a JSON string inside the content blob.
+		// So loaded.createdAt would be a string, failing the instanceof check.
+		// Post-fix: saveMessages uses msg.createdAt for the DB column, getMessages sets
+		// msg.createdAt = new Date(row.createdAt), restoring a proper Date.
+		expect(loaded.createdAt).toBeInstanceOf(Date);
+		expect(loaded.createdAt.getTime()).toBe(fixedDate.getTime());
+	});
+
+	it('before filter works correctly because saveMessages persists msg.createdAt to the DB column', async () => {
+		const mem = makeMemory(dbPath);
+
+		const t1 = new Date('2020-01-01T00:00:01.000Z');
+		const t2 = new Date('2020-01-01T00:00:02.000Z');
+		const t3 = new Date('2020-01-01T00:00:03.000Z');
+
+		const msgs: AgentDbMessage[] = [
+			{ id: 'm1', createdAt: t1, role: 'user', content: [{ type: 'text', text: 'first' }] },
+			{ id: 'm2', createdAt: t2, role: 'assistant', content: [{ type: 'text', text: 'second' }] },
+			{ id: 'm3', createdAt: t3, role: 'user', content: [{ type: 'text', text: 'third' }] },
+		];
+
+		await mem.saveMessages({ threadId: 't-1', messages: msgs });
+
+		// before: t3 should return the first two messages only
+		const result = await mem.getMessages('t-1', { before: t3 });
+
+		// Pre-fix: saveMessages stores each row with createdAt = new Date() (wall clock,
+		// much later than the 2020 dates), so the before: t3 filter returns nothing.
+		// Post-fix: each row gets createdAt from msg.createdAt, so t1 and t2 pass the filter.
+		expect(result).toHaveLength(2);
+		expect((result[0] as unknown as { id: string }).id).toBe('m1');
+		expect((result[1] as unknown as { id: string }).id).toBe('m2');
 	});
 });
 
