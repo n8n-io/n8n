@@ -75,7 +75,7 @@ catalog:
   ts-morph: ^27.0.2
   tsdown: ^0.16.5
   tsx: ^4.19.3
-  typescript: 5.9.2
+  typescript: 6.0.2
   uuid: 10.0.0
   vite: npm:rolldown-vite@latest
   vite-plugin-dts: ^4.5.4
