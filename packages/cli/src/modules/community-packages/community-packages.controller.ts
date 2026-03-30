@@ -328,7 +328,7 @@ export class CommunityPackagesController {
 			});
 
 			const message = [
-				`Error removing package "${name}"`,
+				`Error updating package "${name}"`,
 				error instanceof Error ? error.message : UNKNOWN_FAILURE_REASON,
 			].join(':');
 
