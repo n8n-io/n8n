@@ -71,6 +71,17 @@ function renderScenarioDetail(sr: ScenarioResult): string {
 		return html;
 	}
 
+	// Failure category badge
+	if (!sr.success && sr.failureCategory) {
+		const catClass =
+			sr.failureCategory === 'builder_issue'
+				? 'warn'
+				: sr.failureCategory === 'mock_issue'
+					? 'fail'
+					: 'info';
+		html += `<div class="category-badge category-${catClass}">${escapeHtml(sr.failureCategory)}${sr.rootCause ? ': ' + escapeHtml(sr.rootCause) : ''}</div>`;
+	}
+
 	// 1. Error — what broke
 	if (sr.evalResult.errors.length > 0) {
 		html += `<div class="error-box">${escapeHtml(sr.evalResult.errors.join('; '))}</div>`;
@@ -420,6 +431,12 @@ export function generateWorkflowReport(results: WorkflowTestCaseResult[]): strin
 	.node-hint > summary { cursor: pointer; color: var(--text-secondary); font-size: 11px; font-family: monospace; }
 	.hint-text { color: var(--text-muted); font-size: 11px; padding: 4px 0; line-height: 1.5; }
 	.subsection-label { color: var(--text-primary); font-size: 11px; font-weight: 600; margin-top: 8px; margin-bottom: 2px; }
+
+	/* Category badges */
+	.category-badge { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 4px; margin-bottom: 8px; }
+	.category-warn { background: var(--color-warn-bg); color: var(--color-warn); border-left: 3px solid var(--color-warn); }
+	.category-fail { background: var(--color-fail-bg); color: var(--color-fail); border-left: 3px solid var(--color-fail); }
+	.category-info { background: #1c3a5e33; color: var(--color-info); border-left: 3px solid var(--color-info); }
 
 	/* Utilities */
 	.muted { color: var(--text-muted); font-size: 12px; }
