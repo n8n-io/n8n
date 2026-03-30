@@ -71,6 +71,7 @@ export interface LlmStepTraceHooks {
 		experimental_prepareStep?: (options: unknown) => Promise<undefined>;
 		experimental_onStepStart?: (options: unknown) => Promise<void>;
 		onStepFinish: (stepResult: unknown) => Promise<void>;
+		experimental_telemetry?: { isEnabled: boolean };
 	};
 	onStreamChunk: (chunk: unknown) => void;
 	startSegment: () => void;
@@ -1590,8 +1591,10 @@ function applyStepResultToRecord(record: LlmStepTraceRecord, stepResult: StepRes
 	}
 }
 
-export function createLlmStepTraceHooks(): LlmStepTraceHooks | undefined {
-	const activeParentRun = getTraceParentRun();
+export function createLlmStepTraceHooks(
+	explicitParentRun?: RunTree,
+): LlmStepTraceHooks | undefined {
+	const activeParentRun = explicitParentRun ?? getTraceParentRun();
 	if (!activeParentRun) {
 		return undefined;
 	}
@@ -1735,6 +1738,8 @@ export function createLlmStepTraceHooks(): LlmStepTraceHooks | undefined {
 			experimental_prepareStep: prepareStep,
 			experimental_onStepStart: onStepStart,
 			onStepFinish,
+			// Disable Vercel AI SDK's built-in LangSmith tracing — we manage traces ourselves
+			experimental_telemetry: { isEnabled: false },
 		},
 		onStreamChunk: (chunk) => {
 			updateStepRecordFromChunk(chunk, records);

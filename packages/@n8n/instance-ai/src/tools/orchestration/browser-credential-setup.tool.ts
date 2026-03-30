@@ -395,9 +395,10 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 						.filter(Boolean)
 						.join('\n');
 
-					return await withTraceParentContext(getTraceParentRun(), async () => {
+					const traceParent = getTraceParentRun();
+					return await withTraceParentContext(traceParent, async () => {
 						// Stream the sub-agent
-						const llmStepTraceHooks = createLlmStepTraceHooks();
+						const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
 						const stream = await subAgent.stream(briefing, {
 							maxSteps: BROWSER_AGENT_MAX_STEPS,
 							abortSignal: context.abortSignal,

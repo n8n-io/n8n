@@ -195,8 +195,9 @@ export async function startDetachedDelegateTask(
 
 				registerWithMastra(subAgentId, subAgent, context.storage);
 
-				return await withTraceParentContext(getTraceParentRun(), async () => {
-					const llmStepTraceHooks = createLlmStepTraceHooks();
+				const traceParent = getTraceParentRun();
+				return await withTraceParentContext(traceParent, async () => {
+					const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
 					const stream = await traceWorkingMemoryContext(
 						{
 							phase: 'initial',
@@ -321,8 +322,9 @@ export function createDelegateTool(context: OrchestrationContext) {
 
 				// 4. Stream sub-agent with HITL support
 				const resultText = await withTraceRun(context, traceRun, async () => {
-					return await withTraceParentContext(getTraceParentRun(), async () => {
-						const llmStepTraceHooks = createLlmStepTraceHooks();
+					const traceParent = getTraceParentRun();
+					return await withTraceParentContext(traceParent, async () => {
+						const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
 						const stream = await traceWorkingMemoryContext(
 							{
 								phase: 'initial',
