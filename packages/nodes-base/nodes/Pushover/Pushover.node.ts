@@ -252,12 +252,15 @@ export class Pushover implements INodeType {
 						description: "Your message's title, otherwise your app's name is used",
 					},
 					{
-						displayName: 'Timestamp',
-						name: 'timestamp',
-						type: 'dateTime',
-						default: '',
+						displayName: 'TTL (Seconds)',
+						name: 'ttl',
+						type: 'number',
+						typeOptions: {
+							minValue: 1,
+						},
+						default: 0,
 						description:
-							"A Unix timestamp of your message's date and time to display to the user, rather than the time your message is received by our API",
+							'The number of seconds before the message is automatically deleted from the user\'s devices. Messages with emergency priority ignore this parameter.',
 					},
 					{
 						displayName: 'URL',
