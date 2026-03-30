@@ -73,7 +73,10 @@ describe('WorkflowExecute', () => {
 		// Test workflows are not fully configured and would fail validation.
 		// Mock out the check so execution tests can focus on execution logic.
 		jest
-			.spyOn(WorkflowExecute.prototype as never, 'checkForWorkflowIssues')
+			.spyOn(
+				WorkflowExecute.prototype as unknown as { checkForWorkflowIssues: () => void },
+				'checkForWorkflowIssues',
+			)
 			.mockImplementation(() => {});
 	});
 
