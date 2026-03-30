@@ -198,7 +198,7 @@ function createWorkflowGenerator(
 		// Report introspection events
 		collectors?.introspectionEvents?.(state.values.introspectionEvents ?? []);
 
-		return { workflow, agentTextResponse: agentTextResponse || undefined };
+		return { workflow, agentTextResponse };
 	};
 }
 
@@ -296,7 +296,7 @@ function isUnknownRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-/** Process a single stream message from CodeWorkflowBuilder, extracting workflow updates and text. */
+/** Process a single stream message from CodeWorkflowBuilder, extracting workflow updates and text response */
 function processCodeBuilderMessage(
 	message: StreamChunk,
 	state: { workflow: SimpleWorkflow | null; generatedCode?: string; textParts: string[] },
