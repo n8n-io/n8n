@@ -130,15 +130,21 @@ export async function createGatewayLink(
 }
 
 /**
- * GET /instance-ai/gateway/status -> { connected, connectedAt, directory }
+ * GET /instance-ai/gateway/status -> { connected, connectedAt, directory, hostIdentifier, toolCategories }
  * Check whether the gateway daemon is currently connected.
  */
-export async function getGatewayStatus(
-	context: IRestApiContext,
-): Promise<{ connected: boolean; connectedAt: string | null; directory: string | null }> {
+export async function getGatewayStatus(context: IRestApiContext): Promise<{
+	connected: boolean;
+	connectedAt: string | null;
+	directory: string | null;
+	hostIdentifier: string | null;
+	toolCategories: Array<{ name: string; enabled: boolean; writeAccess?: boolean }>;
+}> {
 	return await makeRestApiRequest<{
 		connected: boolean;
 		connectedAt: string | null;
 		directory: string | null;
+		hostIdentifier: string | null;
+		toolCategories: Array<{ name: string; enabled: boolean; writeAccess?: boolean }>;
 	}>(context, 'GET', '/instance-ai/gateway/status');
 }
