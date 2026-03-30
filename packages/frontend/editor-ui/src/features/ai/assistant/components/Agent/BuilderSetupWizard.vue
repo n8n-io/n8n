@@ -201,11 +201,11 @@ watch(
 				{{ descriptionText }}
 			</N8nText>
 
-			<template v-if="showCard">
+			<template v-if="showCard && currentCard">
 				<BuilderNodeGroupCard
-					v-if="currentCard!.nodeGroup"
+					v-if="isNodeGroupCard(currentCard)"
 					:key="`group-${currentStepIndex}`"
-					:node-group="currentCard!.nodeGroup"
+					:node-group="currentCard.nodeGroup"
 					:step-index="currentStepIndex"
 					:total-cards="totalCards"
 					@go-to-next="onGoToNext"
@@ -219,7 +219,7 @@ watch(
 				<BuilderSetupCard
 					v-else
 					:key="currentStepIndex"
-					:state="currentCard!.state"
+					:state="currentCard.state"
 					:step-index="currentStepIndex"
 					:total-cards="totalCards"
 					:first-trigger-name="firstTriggerName"
