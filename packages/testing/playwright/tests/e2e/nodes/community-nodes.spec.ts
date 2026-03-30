@@ -81,8 +81,7 @@ test.describe(
 			await n8n.canvas.clickNodeCreatorItemName(CUSTOM_NODE_WITH_N8N_CREDENTIAL);
 			await n8n.canvas.clickAddToWorkflowButton();
 
-			await n8n.page.getByTestId('credentials-label').click();
-			await n8n.page.getByTestId('node-credentials-select-item-new').click();
+			await n8n.ndv.clickCreateNewCredential();
 
 			await expect(n8n.page.getByTestId('editCredential-modal')).toContainText('Notion API');
 		});
@@ -96,8 +95,7 @@ test.describe(
 			await n8n.canvas.clickNodeCreatorItemName(CUSTOM_NODE_WITH_CUSTOM_CREDENTIAL);
 			await n8n.canvas.clickAddToWorkflowButton();
 
-			await n8n.page.getByTestId('credentials-label').click();
-			await n8n.page.getByTestId('node-credentials-select-item-new').click();
+			await n8n.ndv.clickCreateNewCredential();
 
 			await expect(n8n.page.getByTestId('editCredential-modal')).toContainText(
 				'Custom E2E Credential',

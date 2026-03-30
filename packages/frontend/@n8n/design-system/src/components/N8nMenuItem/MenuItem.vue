@@ -10,6 +10,7 @@ import N8nRoute from '../N8nRoute';
 import N8nTag from '../N8nTag';
 import N8nText from '../N8nText';
 import N8nTooltip from '../N8nTooltip';
+import PreviewTag from '../PreviewTag/PreviewTag.vue';
 
 const props = defineProps<{
 	item: IMenuItem;
@@ -135,6 +136,7 @@ const tooltipPlacement = computed(() => {
 						{{ item.label }}
 					</N8nText>
 					<BetaTag v-if="!compact && item.beta" />
+					<PreviewTag v-if="!compact && item.preview" />
 					<N8nTag
 						v-if="!compact && item.new"
 						:clickable="false"
