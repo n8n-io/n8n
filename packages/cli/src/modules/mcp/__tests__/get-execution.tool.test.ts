@@ -735,7 +735,7 @@ describe('get-execution MCP tool', () => {
 
 				const mockExecutionData = createEmptyRunExecutionData();
 				// Create circular reference in node output data
-				const circularObj: Record<string, unknown> = { value: 'test' };
+				const circularObj: Record<string, string | Record<string, unknown>> = { value: 'test' };
 				circularObj.self = circularObj;
 
 				mockExecutionData.resultData.runData = {
