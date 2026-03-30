@@ -24,6 +24,7 @@ if (Expression.getActiveImplementation() !== 'vm') {
 }
 
 const workflow = createWorkflow();
+await workflow.expression.acquireIsolate();
 
 definePatternBenchmarks(
 	'vm',

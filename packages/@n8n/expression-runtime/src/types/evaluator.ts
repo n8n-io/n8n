@@ -17,12 +17,6 @@ export interface EvaluatorConfig {
 	/** Factory function to create a bridge instance. */
 	createBridge: () => RuntimeBridge;
 
-	/** Number of isolates to keep in the pool. */
-	isolatePoolSize: number;
-
-	/** Max ms to wait for a bridge when pool is exhausted. */
-	acquireTimeoutMs: number;
-
 	/**
 	 * Observability provider for metrics, traces, and logs.
 	 */
@@ -39,6 +33,13 @@ export interface EvaluatorConfig {
 	 * Maximum number of tournament-transformed expressions to cache (LRU).
 	 */
 	maxCodeCacheSize: number;
+
+	/**
+	 * Number of bridges to pre-warm in the pool.
+	 * Should match the execution concurrency limit so each concurrent execution
+	 * gets a pre-warmed bridge. Defaults to 1 if not provided.
+	 */
+	poolSize?: number;
 }
 
 /**
@@ -58,23 +59,28 @@ export interface IExpressionEvaluator {
 	 *
 	 * @param expression - Expression string (e.g., "{{ $json.email }}")
 	 * @param data - Workflow data context
-	 * @param ctx - Evaluation context
+	 * @param caller - Owner object that acquired the bridge (same object passed to acquire())
+	 * @param options - Optional evaluation options (e.g. timezone)
 	 * @returns Result of the expression
-	 *
-	 * Note: Synchronous for Slice 1 (Node.js vm module).
-	 *       Will be async for Slice 2 (isolated-vm).
 	 */
-	evaluate(expression: string, data: WorkflowData, ctx?: EvaluateContext): unknown;
+	evaluate(
+		expression: string,
+		data: WorkflowData,
+		caller: object,
+		options?: EvaluateOptions,
+	): unknown;
 
 	/**
-	 * Acquire a bridge for an execution. Waits if pool is exhausted.
+	 * Acquire a bridge for an owner object (e.g. an Expression instance).
+	 * Must be called before evaluate(). The same object must be passed as
+	 * the caller argument to evaluate().
 	 */
-	acquireForExecution(executionId: string): Promise<void>;
+	acquire(owner: object): Promise<void>;
 
 	/**
-	 * Release the isolate held by an execution.
+	 * Release the bridge held for an owner object.
 	 */
-	releaseIsolate(executionId: string): Promise<void>;
+	release(owner: object): Promise<void>;
 
 	/**
 	 * Dispose of the evaluator and free resources.
@@ -100,27 +106,12 @@ export type WorkflowData = Record<string, unknown>;
  *
  * Note: Slice 1 is minimal. Tournament options will be added later.
  */
-export interface EvaluateContext {
-	/**
-	 * Custom timeout for this evaluation (in milliseconds).
-	 * Overrides the bridge's default timeout.
-	 */
-	timeout?: number;
-
+export interface EvaluateOptions {
 	/**
 	 * IANA timezone for this evaluation (e.g., 'America/New_York').
 	 * Sets luxon Settings.defaultZone inside the isolate before execution.
 	 */
 	timezone?: string;
-
-	/**
-	 * Execution ID for per-execution bridge holding.
-	 *
-	 * When present, the evaluator holds a bridge for this execution until
-	 * `releaseIsolate()` is called. When absent (e.g. expressions in credentials
-	 * parameters), the bridge is borrowed and returned per `evaluate()` call.
-	 */
-	executionId?: string;
 }
 
 // ============================================================================

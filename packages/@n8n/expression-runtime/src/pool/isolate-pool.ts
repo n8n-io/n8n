@@ -1,22 +1,27 @@
 import type { RuntimeBridge } from '../types';
 
-/** A queued caller waiting for a bridge when the pool is exhausted. */
-interface Waiter {
-	resolve: (bridge: RuntimeBridge) => void;
-	reject: (error: Error) => void;
-	timer: ReturnType<typeof setTimeout>;
+export class PoolDisposedError extends Error {
+	constructor() {
+		super('Pool is disposed');
+		this.name = 'PoolDisposedError';
+	}
+}
+
+export class PoolExhaustedError extends Error {
+	constructor() {
+		super('No isolate bridge available in pool');
+		this.name = 'PoolExhaustedError';
+	}
 }
 
 export class IsolatePool {
 	private bridges: RuntimeBridge[] = [];
-	private waiters: Waiter[] = [];
 	private disposed = false;
 	private warming = 0;
 
 	constructor(
 		private readonly createBridge: () => Promise<RuntimeBridge>,
 		private readonly size: number,
-		private readonly acquireTimeoutMs: number,
 		private readonly onReplenishFailed?: (error: unknown) => void,
 	) {}
 
@@ -38,42 +43,16 @@ export class IsolatePool {
 		}
 	}
 
-	/** Returns a bridge immediately or `undefined` if pool is empty. Non-blocking. */
-	acquireImmediately() {
-		if (this.disposed) throw new Error('Pool is disposed');
-		return this.bridges.shift();
-	}
-
-	/** Returns a bridge, waiting in a FIFO queue if pool is empty. */
-	async acquireOrWait(): Promise<RuntimeBridge> {
-		if (this.disposed) throw new Error('Pool is disposed');
-
+	/**
+	 * Pops a warm bridge from the pool. Kickstarts replenishment.
+	 * Throws if disposed or pool is empty. Callers are expected to handle the empty case by falling back to cold-start bridge creation.
+	 */
+	acquire(): RuntimeBridge {
+		if (this.disposed) throw new PoolDisposedError();
 		const bridge = this.bridges.shift();
-		if (bridge) return bridge;
-
-		return new Promise<RuntimeBridge>((resolve, reject) => {
-			const timer = setTimeout(() => {
-				this.removeWaiter(resolve);
-				reject(new Error(`Timed out waiting for isolate (${this.acquireTimeoutMs}ms)`));
-			}, this.acquireTimeoutMs);
-
-			this.waiters.push({ resolve, reject, timer });
-		});
-	}
-
-	returnToPool(bridge: RuntimeBridge) {
-		if (this.disposed) return;
-		if (bridge.isDisposed()) {
-			this.replenish();
-			return;
-		}
-		const waiter = this.waiters.shift();
-		if (waiter) {
-			clearTimeout(waiter.timer);
-			waiter.resolve(bridge);
-		} else {
-			this.bridges.push(bridge);
-		}
+		if (!bridge) throw new PoolExhaustedError();
+		void this.replenish();
+		return bridge;
 	}
 
 	async release(bridge: RuntimeBridge) {
@@ -81,20 +60,10 @@ export class IsolatePool {
 		this.replenish();
 	}
 
-	async dispose() {
+	async dispose(): Promise<void> {
 		this.disposed = true;
-		for (const waiter of this.waiters) {
-			clearTimeout(waiter.timer);
-			waiter.reject(new Error('Pool is being disposed'));
-		}
-		this.waiters = [];
 		await Promise.all(this.bridges.map((b) => b.dispose()));
 		this.bridges = [];
-	}
-
-	private removeWaiter(resolve: Waiter['resolve']) {
-		const index = this.waiters.findIndex((w) => w.resolve === resolve);
-		if (index !== -1) this.waiters.splice(index, 1);
 	}
 
 	private static readonly MAX_REPLENISH_RETRIES = 3;
@@ -112,13 +81,7 @@ export class IsolatePool {
 					void bridge.dispose();
 					return;
 				}
-				const waiter = this.waiters.shift();
-				if (waiter) {
-					clearTimeout(waiter.timer);
-					waiter.resolve(bridge);
-				} else {
-					this.bridges.push(bridge);
-				}
+				this.bridges.push(bridge);
 			})
 			.catch((error: unknown) => {
 				this.warming--;

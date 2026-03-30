@@ -14,7 +14,6 @@ import {
 	sanitizer,
 	sanitizerName,
 } from './expression-sandboxing';
-import { PLACEHOLDER_EMPTY_EXECUTION_ID } from './constants';
 import { isExpression } from './expressions/expression-helpers';
 import { extend, extendOptional } from './extensions';
 import { extendSyntax } from './extensions/expression-extension';
@@ -213,11 +212,11 @@ export class Expression {
 		if (!this.vmEvaluator) {
 			// Dynamic import to avoid loading expression-runtime in browser environments
 			const { ExpressionEvaluator, IsolatedVmBridge } = await import('@n8n/expression-runtime');
+			const concurrencyLimit = parseInt(process.env.N8N_CONCURRENCY_PRODUCTION_LIMIT ?? '', 10);
 			this.vmEvaluator = new ExpressionEvaluator({
 				createBridge: () => new IsolatedVmBridge({ timeout: options?.timeout ?? 5000 }),
 				maxCodeCacheSize: envInt('N8N_EXPRESSION_ENGINE_MAX_CODE_CACHE_SIZE', 1024),
-				isolatePoolSize: envInt('N8N_EXPRESSION_ISOLATE_POOL_SIZE', 1),
-				acquireTimeoutMs: envInt('N8N_EXPRESSION_ISOLATE_ACQUIRE_TIMEOUT_MS', 5000),
+				poolSize: concurrencyLimit > 0 ? concurrencyLimit : 1,
 				hooks: {
 					before: [ThisSanitizer],
 					after: [PrototypeSanitizer, DollarSignValidator],
@@ -227,12 +226,12 @@ export class Expression {
 		}
 	}
 
-	static async acquireIsolate(executionId: string): Promise<void> {
-		if (this.vmEvaluator) await this.vmEvaluator.acquireForExecution(executionId);
+	async acquireIsolate(): Promise<void> {
+		if (Expression.vmEvaluator) await Expression.vmEvaluator.acquire(this);
 	}
 
-	static async releaseIsolate(executionId: string): Promise<void> {
-		if (this.vmEvaluator) await this.vmEvaluator.releaseIsolate(executionId);
+	async releaseIsolate(): Promise<void> {
+		if (Expression.vmEvaluator) await Expression.vmEvaluator.release(this);
 	}
 
 	/**
@@ -544,11 +543,8 @@ export class Expression {
 			}
 
 			try {
-				const rawExecutionId = (data as { $execution?: { id: string } }).$execution?.id;
-				const result = Expression.vmEvaluator.evaluate(expression, data, {
+				const result = Expression.vmEvaluator.evaluate(expression, data, this, {
 					timezone: this.timezone,
-					executionId:
-						rawExecutionId === PLACEHOLDER_EMPTY_EXECUTION_ID ? undefined : rawExecutionId,
 				});
 				return result as string | null | (() => unknown);
 			} catch (error) {

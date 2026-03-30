@@ -10,7 +10,7 @@ export type {
 	IExpressionEvaluator,
 	EvaluatorConfig,
 	WorkflowData,
-	EvaluateContext,
+	EvaluateOptions,
 	ExecuteOptions,
 	RuntimeBridge,
 	BridgeConfig,
