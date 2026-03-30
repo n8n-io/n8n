@@ -446,6 +446,18 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 		expect(() => evaluator.evaluate('{{ $json.myFn() }}', data)).toThrow('function threw');
 	});
 
+	it('should propagate errors from $items() when result properties are accessed', () => {
+		const data = {
+			$items() {
+				throw new Error('items failed');
+			},
+		};
+
+		// Without throwIfErrorSentinel in the $items wrapper, the sentinel is
+		// returned as a value and .length reads undefined on it — silently swallowed
+		expect(() => evaluator.evaluate('{{ $items().length }}', data)).toThrow('items failed');
+	});
+
 	it('should propagate errors thrown during array element access across the isolate boundary', () => {
 		const items = [1, 2, 3];
 		Object.defineProperty(items, '0', {

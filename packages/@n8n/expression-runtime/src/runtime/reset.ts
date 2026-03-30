@@ -4,7 +4,7 @@ import { extend, extendOptional } from '../extensions/extend';
 import { extendedFunctions } from '../extensions/function-extensions';
 
 import { __sanitize, createSafeErrorSubclass, ExpressionError } from './safe-globals';
-import { createDeepLazyProxy } from './lazy-proxy';
+import { createDeepLazyProxy, throwIfErrorSentinel } from './lazy-proxy';
 
 // Pre-create safe error subclass wrappers (reused across evaluations)
 const SafeTypeError = createSafeErrorSubclass(TypeError);
@@ -144,10 +144,12 @@ export function resetDataProxies(timezone?: string): void {
 			// If it's function metadata, create wrapper
 			if (itemsValue && typeof itemsValue === 'object' && itemsValue.__isFunction) {
 				globalThis.$items = function (...args: unknown[]) {
-					return globalThis.__callFunctionAtPath.applySync(null, [['$items'], ...args], {
+					const result = globalThis.__callFunctionAtPath.applySync(null, [['$items'], ...args], {
 						arguments: { copy: true },
 						result: { copy: true },
 					});
+					throwIfErrorSentinel(result);
+					return result;
 				};
 				globalThis.__data.$items = globalThis.$items;
 			} else {

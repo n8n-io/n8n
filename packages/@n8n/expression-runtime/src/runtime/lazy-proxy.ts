@@ -49,7 +49,7 @@ function isErrorSentinel(value: unknown): value is ErrorSentinel {
  * directly. The isolate's outer try-catch will detect __isError and
  * return it as the result. Error reconstruction happens on the host only.
  */
-function throwIfErrorSentinel(value: unknown): void {
+export function throwIfErrorSentinel(value: unknown): void {
 	if (isErrorSentinel(value)) {
 		// eslint-disable-next-line @typescript-eslint/no-throw-literal -- sentinel is reconstructed on the host
 		throw value;
