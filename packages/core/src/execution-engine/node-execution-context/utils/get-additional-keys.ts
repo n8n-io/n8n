@@ -5,10 +5,16 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-import { PLACEHOLDER_EMPTY_EXECUTION_ID } from '@/constants';
+import { PLACEHOLDER_EMPTY_EXECUTION_ID, WAITING_TOKEN_QUERY_PARAM } from '@/constants';
 
 import { createExecutionCustomData } from './custom-data';
 import { getSecretsProxy } from './get-secrets-proxy';
+
+function appendResumeToken(url: string, token: string): string {
+	const urlObj = new URL(url);
+	urlObj.searchParams.set(WAITING_TOKEN_QUERY_PARAM, token);
+	return urlObj.toString();
+}
 
 /** Returns the additional keys for Expressions and Function-Nodes */
 export function getAdditionalKeys(
@@ -17,8 +23,13 @@ export function getAdditionalKeys(
 	runExecutionData: IRunExecutionData | null,
 ): IWorkflowDataProxyAdditionalKeys {
 	const executionId = additionalData.executionId ?? PLACEHOLDER_EMPTY_EXECUTION_ID;
-	const resumeUrl = `${additionalData.webhookWaitingBaseUrl}/${executionId}`;
-	const resumeFormUrl = `${additionalData.formWaitingBaseUrl}/${executionId}`;
+
+	let resumeUrl = `${additionalData.webhookWaitingBaseUrl}/${executionId}`;
+	let resumeFormUrl = `${additionalData.formWaitingBaseUrl}/${executionId}`;
+	if (runExecutionData?.resumeToken) {
+		resumeUrl = appendResumeToken(resumeUrl, runExecutionData.resumeToken);
+		resumeFormUrl = appendResumeToken(resumeFormUrl, runExecutionData.resumeToken);
+	}
 	return {
 		$execution: {
 			id: executionId,

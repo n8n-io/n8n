@@ -42,6 +42,7 @@ import {
 	WAITING_TOKEN_QUERY_PARAM,
 } from '@/constants';
 import { InstanceSettings } from '@/instance-settings';
+import { generateUrlSignature, prepareUrlForSigning } from '@/utils/signature-helpers';
 
 import { cleanupParameterData } from './utils/cleanup-parameter-data';
 import { createExecutionCustomData } from './utils/custom-data';
@@ -49,7 +50,6 @@ import { ensureType } from './utils/ensure-type';
 import { extractValue } from './utils/extract-value';
 import { getAdditionalKeys } from './utils/get-additional-keys';
 import { validateValueAgainstSchema } from './utils/validate-value-against-schema';
-import { generateUrlSignature, prepareUrlForSigning } from '../../utils/signature-helpers';
 
 export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCredentials'> {
 	protected readonly instanceSettings = Container.get(InstanceSettings);
@@ -263,10 +263,6 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		return this.instanceSettings.instanceId;
 	}
 
-	setSignatureValidationRequired() {
-		if (this.runExecutionData) this.runExecutionData.validateSignature = true;
-	}
-
 	getSignedResumeUrl(parameters: Record<string, string> = {}) {
 		const { webhookWaitingBaseUrl, executionId } = this.additionalData;
 
@@ -280,11 +276,14 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 			baseURL.searchParams.set(key, value);
 		}
 
+		// Sign the full URL (pathname + query params) using instance secret as HMAC key
+		// This ensures action parameters (like approved=true/false) cannot be tampered with
 		const urlForSigning = prepareUrlForSigning(baseURL);
-
-		const token = generateUrlSignature(urlForSigning, this.instanceSettings.hmacSignatureSecret);
-
-		baseURL.searchParams.set(WAITING_TOKEN_QUERY_PARAM, token);
+		const signature = generateUrlSignature(
+			urlForSigning,
+			this.instanceSettings.hmacSignatureSecret,
+		);
+		baseURL.searchParams.set(WAITING_TOKEN_QUERY_PARAM, signature);
 
 		return baseURL.toString();
 	}

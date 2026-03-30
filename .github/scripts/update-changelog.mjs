@@ -1,5 +1,5 @@
 import createTempFile from 'tempfile';
-import { ConventionalChangelog, packagePrefix } from 'conventional-changelog';
+import { ConventionalChangelog } from 'conventional-changelog';
 import { resolve } from 'path';
 import { createReadStream, createWriteStream } from 'fs';
 import { dirname } from 'path';
@@ -35,7 +35,15 @@ const changelogStream = new ConventionalChangelog()
 			// Strip backport information from commit subject, e.g.:
 			// "Fix something (backport to release-candidate/2.12.x) (#123)" → "Fix something (#123)"
 			if (commit.subject) {
-				commit.subject = commit.subject.replace(/\s*\(backport to [^)]+\)/g, '');
+				// The commit.subject is immutable so we need to recreate the commit object
+
+				/** @type { import("conventional-changelog").Commit } */
+				let newCommit = /** @type { any } */ ({
+					...commit,
+					subject: commit.subject.replace(/\s*\(backport to [^)]+\)/g, ''),
+				});
+
+				return newCommit;
 			}
 
 			return commit;

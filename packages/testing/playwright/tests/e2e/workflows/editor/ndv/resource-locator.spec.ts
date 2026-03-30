@@ -66,8 +66,7 @@ test.describe(
 			await n8n.canvas.addNode('Google Sheets', { closeNDV: false, action: 'Update row in sheet' });
 
 			// Add OAuth2 credentials without connecting
-			await n8n.ndv.getNodeCredentialsSelect().click();
-			await n8n.ndv.credentialDropdownCreateNewCredential().click();
+			await n8n.ndv.clickCreateNewCredential();
 
 			await expect(n8n.canvas.credentialModal.getModal()).toBeVisible();
 
