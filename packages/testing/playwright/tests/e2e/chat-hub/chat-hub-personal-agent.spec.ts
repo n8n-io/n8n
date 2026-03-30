@@ -16,8 +16,9 @@ test.describe(
 			await n8n.chatHubChat.dismissWelcomeScreen();
 
 			await n8n.chatHubChat.getModelSelectorButton().click();
-			await n8n.page.waitForTimeout(500); // to reliably hover intended menu item
-			await n8n.chatHubChat.getVisiblePopoverMenuItem('Personal agents').hover({ force: true });
+			const personalAgentsItem = n8n.chatHubChat.getVisiblePopoverMenuItem('Personal agents');
+			await personalAgentsItem.waitFor({ state: 'visible' });
+			await personalAgentsItem.hover();
 			await n8n.chatHubChat.getVisiblePopoverMenuItem('New Agent', { exact: true }).click();
 
 			await n8n.chatHubChat.personalAgentModal.getNameField().fill('e2e agent');
@@ -25,8 +26,9 @@ test.describe(
 			await n8n.chatHubChat.personalAgentModal.getSystemPromptField().fill('reply in Chinese');
 
 			await n8n.chatHubChat.personalAgentModal.getModelSelectorButton().click();
-			await n8n.page.waitForTimeout(500); // to reliably hover intended menu item
-			await n8n.chatHubChat.getVisiblePopoverMenuItem('Anthropic').hover({ force: true });
+			const anthropicItemModal = n8n.chatHubChat.getVisiblePopoverMenuItem('Anthropic');
+			await anthropicItemModal.waitFor({ state: 'visible' });
+			await anthropicItemModal.hover();
 			await n8n.chatHubChat.getVisiblePopoverMenuItem('Claude Opus 4.5', { exact: true }).click();
 
 			await n8n.chatHubChat.personalAgentModal.getSaveButton().click();
@@ -50,10 +52,10 @@ test.describe(
 			await n8n.chatHubPersonalAgents.editModal.getSystemPromptField().fill('reply in Chinese');
 
 			await n8n.chatHubPersonalAgents.editModal.getModelSelectorButton().click();
-			await n8n.page.waitForTimeout(500); // to reliably hover intended menu item
-			await n8n.chatHubPersonalAgents.editModal
-				.getVisiblePopoverMenuItem('Anthropic')
-				.hover({ force: true });
+			const anthropicItemEditModal =
+				n8n.chatHubPersonalAgents.editModal.getVisiblePopoverMenuItem('Anthropic');
+			await anthropicItemEditModal.waitFor({ state: 'visible' });
+			await anthropicItemEditModal.hover();
 			await n8n.chatHubPersonalAgents.editModal
 				.getVisiblePopoverMenuItem('Claude Opus 4.5', { exact: true })
 				.click();

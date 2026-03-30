@@ -42,8 +42,9 @@ test.describe(
 			);
 
 			await n8n.chatHubChat.getModelSelectorButton().click();
-			await n8n.page.waitForTimeout(500); // to reliably hover intended menu item
-			await n8n.chatHubChat.getVisiblePopoverMenuItem('Anthropic').hover({ force: true });
+			const anthropicItem = n8n.chatHubChat.getVisiblePopoverMenuItem('Anthropic');
+			await anthropicItem.waitFor({ state: 'visible' });
+			await anthropicItem.hover();
 			await n8n.chatHubChat
 				.getVisiblePopoverMenuItem('Configure credentials', { exact: true })
 				.click();
