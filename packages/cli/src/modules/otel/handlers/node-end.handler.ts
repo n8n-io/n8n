@@ -1,4 +1,5 @@
 import type { NodeExecuteAfterContext } from '@n8n/decorators';
+import { Service } from '@n8n/di';
 import { SpanStatusCode } from '@opentelemetry/api';
 import {
 	ATTR_EXCEPTION_MESSAGE,
@@ -10,6 +11,7 @@ import { ATTR } from '../otel.constants';
 import type { SpanHandler } from './interfaces';
 import type { SpanRegistry } from '../span-registry';
 
+@Service()
 export class NodeEndHandler implements SpanHandler<NodeExecuteAfterContext> {
 	handle(ctx: NodeExecuteAfterContext, spans: SpanRegistry) {
 		const node = ctx.workflow.nodes.find((n) => n.name === ctx.nodeName);

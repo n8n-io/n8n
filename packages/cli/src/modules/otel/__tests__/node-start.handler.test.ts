@@ -5,7 +5,7 @@ import { trace } from '@opentelemetry/api';
 import { ATTR } from '../otel.constants';
 import { SpanRegistry } from '../span-registry';
 import { NodeStartHandler } from '../handlers/node-start.handler';
-import { OtelTestProvider } from './otel-test-provider';
+import { OtelTestProvider } from './support/otel-test-provider';
 
 const TRACER_NAME = 'n8n-workflow';
 

@@ -1,49 +1,37 @@
-import { ModuleRegistry } from '@n8n/backend-common';
-import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
-import type { Project, WorkflowEntity } from '@n8n/db';
-import { ExecutionRepository } from '@n8n/db';
-import { Container } from '@n8n/di';
+import { createTeamProject, createWorkflow, testDb } from '@n8n/backend-test-utils';
+import type { Project } from '@n8n/db';
+import type { ExecutionRepository } from '@n8n/db';
 import { SpanStatusCode } from '@opentelemetry/api';
-import { InstanceSettings } from 'n8n-core';
-import { DebugHelper } from 'n8n-nodes-base/nodes/DebugHelper/DebugHelper.node';
-import { ManualTrigger } from 'n8n-nodes-base/nodes/ManualTrigger/ManualTrigger.node';
-import { createRunExecutionData } from 'n8n-workflow';
 
 import { ATTR } from '@/modules/otel/otel.constants';
-import { WorkflowRunner } from '@/workflow-runner';
-import * as utils from '@test-integration/utils';
+import type { WorkflowRunner } from '@/workflow-runner';
+
+import type { OtelTestProvider } from './support/otel-test-provider';
 import {
 	createSimpleWorkflowFixture,
 	createFailingWorkflowFixture,
-} from '@test-integration/workflow-fixtures';
-
-import { OtelTestProvider } from './otel-test-provider';
+} from './support/otel-workflow-fixtures';
+import {
+	initOtelTestEnvironment,
+	terminateOtelTestEnvironment,
+	saveAndSetEnv,
+	restoreEnv,
+	executeWorkflow,
+	waitForExecution,
+} from './support/otel-integration-utils';
 
 let otel: OtelTestProvider;
 let workflowRunner: WorkflowRunner;
 let executionRepository: ExecutionRepository;
 let project: Project;
-let previousOtelEnabled: string | undefined;
+let savedEnv: Record<string, string | undefined>;
 
 beforeAll(async () => {
-	otel = OtelTestProvider.create();
-
-	previousOtelEnabled = process.env.N8N_OTEL_ENABLED;
-	process.env.N8N_OTEL_ENABLED = 'true';
-
-	await testModules.loadModules(['otel']);
-	await testDb.init();
-	await Container.get(ModuleRegistry).initModules('main');
-	await utils.initNodeTypes({
-		'n8n-nodes-base.manualTrigger': { type: new ManualTrigger(), sourcePath: '' },
-		'n8n-nodes-base.debugHelper': { type: new DebugHelper(), sourcePath: '' },
+	savedEnv = saveAndSetEnv({
+		N8N_OTEL_ENABLED: 'true',
+		N8N_OTEL_TRACES_INCLUDE_NODE_SPANS: 'false',
 	});
-	await utils.initBinaryDataService();
-
-	Container.get(InstanceSettings).markAsLeader();
-
-	workflowRunner = Container.get(WorkflowRunner);
-	executionRepository = Container.get(ExecutionRepository);
+	({ otel, workflowRunner, executionRepository } = await initOtelTestEnvironment());
 });
 
 beforeEach(async () => {
@@ -53,42 +41,9 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
-	if (previousOtelEnabled === undefined) {
-		delete process.env.N8N_OTEL_ENABLED;
-	} else {
-		process.env.N8N_OTEL_ENABLED = previousOtelEnabled;
-	}
-	await otel.shutdown();
-	await testDb.terminate();
+	restoreEnv(savedEnv);
+	await terminateOtelTestEnvironment(otel);
 });
-
-async function executeWorkflow(
-	workflow: WorkflowEntity,
-	mode: 'webhook' | 'trigger' | 'manual' | 'retry' = 'webhook',
-	retryOf?: string,
-): Promise<string> {
-	const executionData = createRunExecutionData({});
-	return await workflowRunner.run(
-		{
-			workflowData: workflow,
-			userId: project.id,
-			executionMode: mode,
-			executionData,
-			retryOf,
-		},
-		true,
-	);
-}
-
-async function waitForExecution(executionId: string, timeout = 10_000): Promise<void> {
-	const start = Date.now();
-	while (Date.now() - start < timeout) {
-		const execution = await executionRepository.findOneBy({ id: executionId });
-		if (execution?.stoppedAt) return;
-		await new Promise((resolve) => setTimeout(resolve, 100));
-	}
-	throw new Error(`Execution ${executionId} did not complete within ${timeout}ms`);
-}
 
 describe('Workflow tracing', () => {
 	it('should produce a workflow.execute span for a successful execution', async () => {
@@ -97,14 +52,14 @@ describe('Workflow tracing', () => {
 			project,
 		);
 
-		const executionId = await executeWorkflow(workflow, 'webhook');
-		await waitForExecution(executionId);
+		const executionId = await executeWorkflow(workflowRunner, workflow, project.id, 'webhook');
+		await waitForExecution(executionRepository, executionId);
 
 		const spans = otel.getFinishedSpans();
-		expect(spans).toHaveLength(1);
-		expect(spans[0].name).toBe('workflow.execute');
-		expect(spans[0].status.code).not.toBe(SpanStatusCode.ERROR);
-		expect(spans[0].attributes).toMatchObject({
+		const workflowSpan = spans.find((s) => s.name === 'workflow.execute')!;
+		expect(workflowSpan).toBeDefined();
+		expect(workflowSpan.status.code).not.toBe(SpanStatusCode.ERROR);
+		expect(workflowSpan.attributes).toMatchObject({
 			[ATTR.WORKFLOW_ID]: workflow.id,
 			[ATTR.WORKFLOW_NAME]: 'Success Workflow',
 			[ATTR.WORKFLOW_NODE_COUNT]: workflow.nodes.length,
@@ -115,17 +70,35 @@ describe('Workflow tracing', () => {
 		});
 	});
 
+	it('should not produce node.execute spans when node tracing is disabled', async () => {
+		const workflow = await createWorkflow(
+			{ name: 'No Node Spans Workflow', ...createSimpleWorkflowFixture() },
+			project,
+		);
+
+		const executionId = await executeWorkflow(workflowRunner, workflow, project.id);
+		await waitForExecution(executionRepository, executionId);
+
+		const spans = otel.getFinishedSpans();
+		const workflowSpan = spans.find((s) => s.name === 'workflow.execute');
+		expect(workflowSpan).toBeDefined();
+
+		const nodeSpans = spans.filter((s) => s.name === 'node.execute');
+		expect(nodeSpans).toHaveLength(0);
+	});
+
 	it('should set execution mode to manual', async () => {
 		const workflow = await createWorkflow(
 			{ name: 'Manual Workflow', ...createSimpleWorkflowFixture() },
 			project,
 		);
 
-		const executionId = await executeWorkflow(workflow, 'manual');
-		await waitForExecution(executionId);
+		const executionId = await executeWorkflow(workflowRunner, workflow, project.id, 'manual');
+		await waitForExecution(executionRepository, executionId);
 
 		const spans = otel.getFinishedSpans();
-		expect(spans[0].attributes[ATTR.EXECUTION_MODE]).toBe('manual');
+		const workflowSpan = spans.find((s) => s.name === 'workflow.execute')!;
+		expect(workflowSpan.attributes[ATTR.EXECUTION_MODE]).toBe('manual');
 	});
 
 	it('should set execution mode to trigger', async () => {
@@ -134,56 +107,35 @@ describe('Workflow tracing', () => {
 			project,
 		);
 
-		const executionId = await executeWorkflow(workflow, 'trigger');
-		await waitForExecution(executionId);
+		const executionId = await executeWorkflow(workflowRunner, workflow, project.id, 'trigger');
+		await waitForExecution(executionRepository, executionId);
 
 		const spans = otel.getFinishedSpans();
-		expect(spans[0].attributes[ATTR.EXECUTION_MODE]).toBe('trigger');
+		const workflowSpan = spans.find((s) => s.name === 'workflow.execute')!;
+		expect(workflowSpan.attributes[ATTR.EXECUTION_MODE]).toBe('trigger');
 	});
 
 	it('should set span status to ERROR when a node error occurs', async () => {
-		const fixture = createFailingWorkflowFixture();
-		const workflow = await createWorkflow({ name: 'Failing Workflow', ...fixture }, project);
-
-		const triggerNode = workflow.nodes.find((n) => n.type === 'n8n-nodes-base.manualTrigger')!;
-		const executionData = createRunExecutionData({
-			executionData: {
-				nodeExecutionStack: [
-					{
-						node: triggerNode,
-						data: { main: [[{ json: {}, pairedItem: { item: 0 } }]] },
-						source: null,
-					},
-				],
-			},
-			startData: {
-				startNodes: [{ name: triggerNode.name, sourceData: null }],
-			},
-		});
-
-		const executionId = await workflowRunner.run(
-			{
-				workflowData: workflow,
-				userId: project.id,
-				executionMode: 'webhook',
-				executionData,
-			},
-			true,
+		const workflow = await createWorkflow(
+			{ name: 'Failing Workflow', ...createFailingWorkflowFixture() },
+			project,
 		);
-		await waitForExecution(executionId);
+
+		const executionId = await executeWorkflow(workflowRunner, workflow, project.id);
+		await waitForExecution(executionRepository, executionId);
 
 		const spans = otel.getFinishedSpans();
-		expect(spans).toHaveLength(1);
-		expect(spans[0].name).toBe('workflow.execute');
-		expect(spans[0].status.code).toBe(SpanStatusCode.ERROR);
-		expect(spans[0].attributes).toMatchObject({
+		const workflowSpan = spans.find((s) => s.name === 'workflow.execute')!;
+		expect(workflowSpan).toBeDefined();
+		expect(workflowSpan.status.code).toBe(SpanStatusCode.ERROR);
+		expect(workflowSpan.attributes).toMatchObject({
 			[ATTR.WORKFLOW_ID]: workflow.id,
 			[ATTR.WORKFLOW_NAME]: 'Failing Workflow',
 			[ATTR.EXECUTION_ID]: executionId,
 			[ATTR.EXECUTION_STATUS]: 'error',
 			[ATTR.EXECUTION_IS_RETRY]: false,
 		});
-		expect(spans[0].attributes[ATTR.EXECUTION_ERROR_TYPE]).toBe('UnknownError');
+		expect(workflowSpan.attributes[ATTR.EXECUTION_ERROR_TYPE]).toBe('UnknownError');
 	});
 
 	it('should set retry span attributes for retried executions', async () => {
@@ -192,11 +144,22 @@ describe('Workflow tracing', () => {
 			project,
 		);
 
-		const originalExecutionId = await executeWorkflow(workflow, 'webhook');
-		await waitForExecution(originalExecutionId);
+		const originalExecutionId = await executeWorkflow(
+			workflowRunner,
+			workflow,
+			project.id,
+			'webhook',
+		);
+		await waitForExecution(executionRepository, originalExecutionId);
 
-		const retriedExecutionId = await executeWorkflow(workflow, 'retry', originalExecutionId);
-		await waitForExecution(retriedExecutionId);
+		const retriedExecutionId = await executeWorkflow(
+			workflowRunner,
+			workflow,
+			project.id,
+			'retry',
+			originalExecutionId,
+		);
+		await waitForExecution(executionRepository, retriedExecutionId);
 
 		const spans = otel.getFinishedSpans();
 		const retrySpan = spans.find(
@@ -222,17 +185,21 @@ describe('Workflow tracing', () => {
 		);
 
 		const [execId1, execId2] = await Promise.all([
-			executeWorkflow(workflow1),
-			executeWorkflow(workflow2),
+			executeWorkflow(workflowRunner, workflow1, project.id),
+			executeWorkflow(workflowRunner, workflow2, project.id),
 		]);
 
-		await Promise.all([waitForExecution(execId1), waitForExecution(execId2)]);
+		await Promise.all([
+			waitForExecution(executionRepository, execId1),
+			waitForExecution(executionRepository, execId2),
+		]);
 
 		const spans = otel.getFinishedSpans();
-		expect(spans).toHaveLength(2);
+		const workflowSpans = spans.filter((s) => s.name === 'workflow.execute');
+		expect(workflowSpans).toHaveLength(2);
 
-		const spanA = spans.find((s) => s.attributes[ATTR.WORKFLOW_ID] === workflow1.id);
-		const spanB = spans.find((s) => s.attributes[ATTR.WORKFLOW_ID] === workflow2.id);
+		const spanA = workflowSpans.find((s) => s.attributes[ATTR.WORKFLOW_ID] === workflow1.id);
+		const spanB = workflowSpans.find((s) => s.attributes[ATTR.WORKFLOW_ID] === workflow2.id);
 
 		expect(spanA).toBeDefined();
 		expect(spanB).toBeDefined();
