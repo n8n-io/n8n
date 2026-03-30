@@ -142,9 +142,7 @@ export class BuilderSandboxFactory {
 			// Wrap raw Sandbox in DaytonaSandbox for Mastra Workspace compatibility.
 			// DaytonaSandbox.start() reconnects to the existing sandbox by ID.
 			// Use the same apiKey source as getDaytona() — fresh token in proxy mode, static key in direct mode.
-			const apiKey = config.getAuthToken
-				? await config.getAuthToken()
-				: config.daytonaApiKey;
+			const apiKey = config.getAuthToken ? await config.getAuthToken() : config.daytonaApiKey;
 			const daytonaSandbox = new DaytonaSandbox({
 				id: sandbox.id,
 				apiKey,
