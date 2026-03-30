@@ -30,10 +30,6 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_SEMANTIC_RECALL_TOP_K')
 	semanticRecallTopK: number = 5;
 
-	/** Agent response timeout in milliseconds. */
-	@Env('N8N_INSTANCE_AI_TIMEOUT')
-	timeout: number = 120_000;
-
 	/** Maximum LLM reasoning steps for sub-agents spawned via delegate tool. */
 	@Env('N8N_INSTANCE_AI_SUB_AGENT_MAX_STEPS')
 	subAgentMaxSteps: number = 100;
@@ -90,15 +86,15 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_THREAD_TTL_DAYS')
 	threadTtlDays: number = 90;
 
-	/** Interval in minutes between snapshot pruning runs. 0 = disabled. */
+	/** Interval in milliseconds between snapshot pruning runs. 0 = disabled. */
 	@Env('N8N_INSTANCE_AI_SNAPSHOT_PRUNE_INTERVAL')
-	snapshotPruneInterval: number = 60;
+	snapshotPruneInterval: number = 60 * 60 * 1000; // 1 hour
 
-	/** Retention period in minutes for orphaned workflow snapshots before pruning. */
+	/** Retention period in milliseconds for orphaned workflow snapshots before pruning. */
 	@Env('N8N_INSTANCE_AI_SNAPSHOT_RETENTION')
-	snapshotRetention: number = 1440;
+	snapshotRetention: number = 24 * 60 * 60 * 1000; // 24 hours
 
-	/** Timeout in minutes for HITL confirmation requests. 0 = no timeout. */
+	/** Timeout in milliseconds for HITL confirmation requests. 0 = no timeout. */
 	@Env('N8N_INSTANCE_AI_CONFIRMATION_TIMEOUT')
-	confirmationTimeout: number = 60;
+	confirmationTimeout: number = 10 * 60 * 1000; // 10 minutes
 }

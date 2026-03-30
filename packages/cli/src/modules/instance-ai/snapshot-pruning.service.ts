@@ -1,6 +1,5 @@
 import { Logger } from '@n8n/backend-common';
 import { InstanceAiConfig } from '@n8n/config';
-import { Time } from '@n8n/constants';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { LessThan } from '@n8n/typeorm';
@@ -23,8 +22,10 @@ export class SnapshotPruningService {
 	startPruning() {
 		if (this.config.snapshotPruneInterval <= 0) return;
 
-		const intervalMs = this.config.snapshotPruneInterval * Time.minutes.toMilliseconds;
-		this.pruningInterval = setInterval(async () => await this.prune(), intervalMs);
+		this.pruningInterval = setInterval(
+			async () => await this.prune(),
+			this.config.snapshotPruneInterval,
+		);
 		this.logger.debug('Started snapshot pruning timer');
 	}
 
@@ -43,8 +44,7 @@ export class SnapshotPruningService {
 	}
 
 	async prune() {
-		const retentionMs = this.config.snapshotRetention * Time.minutes.toMilliseconds;
-		const cutoff = new Date(Date.now() - retentionMs);
+		const cutoff = new Date(Date.now() - this.config.snapshotRetention);
 
 		const { affected } = await this.snapshotRepo.delete({
 			updatedAt: LessThan(cutoff),
