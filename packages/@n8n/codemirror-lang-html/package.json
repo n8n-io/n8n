@@ -5,7 +5,7 @@
   "scripts": {
     "test": "vitest run",
     "test:unit": "vitest run",
-    "build": "cm-buildhelper src/html.ts",
+    "build": "pnpm grammar:build && cm-buildhelper src/html.ts",
     "grammar:build": "lezer-generator src/grammar/html.grammar -o src/grammar/parser && rollup -c src/grammar/rollup.config.js",
     "grammar:build-debug": "lezer-generator src/grammar/html.grammar --names -o src/grammar/parser && rollup -c src/grammar/rollup.config.js",
     "grammar:test": "mocha src/grammar/test/test-*.js"
