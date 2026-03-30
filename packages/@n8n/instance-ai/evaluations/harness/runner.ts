@@ -10,26 +10,26 @@ import crypto from 'node:crypto';
 
 import type { InstanceAiEvalExecutionResult } from '@n8n/api-types';
 
-import { N8nClient } from '../clients/n8n-client';
-import { consumeSseStream } from '../clients/sse-client';
 import { extractBuildChecklist } from '../checklist/extractor';
 import { extractExecutionChecklist } from '../checklist/execution-extractor';
 import { verifyChecklist } from '../checklist/verifier';
+import { N8nClient } from '../clients/n8n-client';
+import { consumeSseStream } from '../clients/sse-client';
 import { seedCredentials, cleanupCredentials } from '../credentials/seeder';
+import { runPostBuildExecutions } from '../execution/tester';
+import {
+	buildVerificationArtifactFromMessages,
+	extractChatMessages,
+} from '../outcome/artifact-builder';
+import { cleanupAll } from '../outcome/cleanup';
 import { extractOutcomeFromEvents, buildMetrics } from '../outcome/event-parser';
 import {
 	snapshotWorkflowIds,
 	buildAgentOutcome,
 	extractWorkflowIdsFromMessages,
 } from '../outcome/workflow-discovery';
-import {
-	buildVerificationArtifactFromMessages,
-	extractChatMessages,
-} from '../outcome/artifact-builder';
-import { cleanupAll } from '../outcome/cleanup';
-import { runPostBuildExecutions } from '../execution/tester';
-import { saveRun } from '../report/storage';
 import { writeReport } from '../report/generator';
+import { saveRun } from '../report/storage';
 import { createLogger, type EvalLogger } from './logger';
 import type {
 	PromptConfig,

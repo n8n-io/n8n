@@ -37,7 +37,7 @@ async function resolveLibraryId(serviceName: string): Promise<string | undefined
 			if (body.includes('Quota') || body.includes('quota') || res.status === 429) {
 				if (!context7WarningLogged) {
 					Container.get(Logger).warn(
-						`[EvalMock] Context7 quota exceeded — mock responses will rely on LLM training data. Set CONTEXT7_API_KEY for higher limits.`,
+						'[EvalMock] Context7 quota exceeded — mock responses will rely on LLM training data. Set CONTEXT7_API_KEY for higher limits.',
 					);
 					context7WarningLogged = true;
 				}
@@ -84,7 +84,7 @@ export async function fetchApiDocs(serviceName: string, endpointQuery: string): 
 			if (res.status === 429) {
 				if (!context7WarningLogged) {
 					Container.get(Logger).warn(
-						`[EvalMock] Context7 quota exceeded — mock responses will rely on LLM training data. Set CONTEXT7_API_KEY for higher limits.`,
+						'[EvalMock] Context7 quota exceeded — mock responses will rely on LLM training data. Set CONTEXT7_API_KEY for higher limits.',
 					);
 					context7WarningLogged = true;
 				}
