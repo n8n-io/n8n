@@ -148,6 +148,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isChatFeatureEnabled = computed(() => isModuleActive('chat-hub'));
 
+	const isPublicChatTriggerDisabled = computed(
+		() => settings.value.chatTrigger?.disablePublicChat ?? false,
+	);
+
 	const isCustomRolesFeatureEnabled = computed(
 		() => settings.value.enterprise?.customRoles ?? false,
 	);
@@ -427,5 +431,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isModuleActive,
 		isDataTableFeatureEnabled,
 		isChatFeatureEnabled,
+		isPublicChatTriggerDisabled,
 	};
 });

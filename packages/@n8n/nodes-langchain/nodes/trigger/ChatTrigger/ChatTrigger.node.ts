@@ -19,6 +19,8 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
+import { ChatTriggerConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 
 import { cssVariables } from './constants';
 import { validateAuth } from './GenericFunctions';
@@ -27,7 +29,7 @@ import { assertValidLoadPreviousSessionOption } from './types';
 
 const CHAT_TRIGGER_PATH_IDENTIFIER = 'chat';
 
-const isPublicChatTriggerDisabled = () => process.env.N8N_DISABLE_PUBLIC_CHAT_TRIGGER === 'true';
+const isPublicChatTriggerDisabled = () => Container.get(ChatTriggerConfig).disablePublicChat;
 const allowFileUploadsOption: INodeProperties = {
 	displayName: 'Allow File Uploads',
 	name: 'allowFileUploads',

@@ -225,6 +225,9 @@ export interface FrontendSettings {
 	security: {
 		blockFileAccessToN8nFiles: boolean;
 	};
+	chatTrigger?: {
+		disablePublicChat: boolean;
+	};
 	easyAIWorkflowOnboarded: boolean;
 	evaluation: {
 		quota: number;

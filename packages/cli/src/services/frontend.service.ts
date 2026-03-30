@@ -12,7 +12,6 @@ import path from 'path';
 
 import config from '@/config';
 import { inE2ETests, N8N_VERSION } from '@/constants';
-import { applyPublicChatTriggerPolicy } from '@/utils/chat-trigger-policy.util';
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { License } from '@/license';
@@ -374,6 +373,9 @@ export class FrontendService {
 			security: {
 				blockFileAccessToN8nFiles: this.securityConfig.blockFileAccessToN8nFiles,
 			},
+			chatTrigger: {
+				disablePublicChat: this.globalConfig.chatTrigger.disablePublicChat,
+			},
 			easyAIWorkflowOnboarded: false,
 			folders: {
 				enabled: false,
@@ -391,13 +393,12 @@ export class FrontendService {
 		this.overwriteCredentialsProperties();
 
 		const { credentials, nodes } = await this.loadNodesAndCredentials.collectTypes();
-		const filteredNodes = nodes.map(applyPublicChatTriggerPolicy);
 
 		const { staticCacheDir } = this.instanceSettings;
 		// pre-render all the node and credential types as static json files
 		await mkdir(path.join(staticCacheDir, 'types'), { recursive: true });
-		await this.writeStaticJSON('nodes', filteredNodes);
-		const nodeVersionIdentifiers = this.getNodeVersionIdentifiers(filteredNodes);
+		await this.writeStaticJSON('nodes', nodes);
+		const nodeVersionIdentifiers = this.getNodeVersionIdentifiers(nodes);
 		await this.writeStaticJSON('node-versions', nodeVersionIdentifiers);
 		await this.writeStaticJSON('credentials', credentials);
 	}

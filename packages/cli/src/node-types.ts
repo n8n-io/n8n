@@ -10,7 +10,6 @@ import { join, dirname } from 'path';
 
 import { LoadNodesAndCredentials } from './load-nodes-and-credentials';
 import { convertNodeToAiTool, convertNodeToHitlTool } from './tool-generation';
-import { applyPublicChatTriggerPolicy } from './utils/chat-trigger-policy.util';
 import { shouldAssignExecuteMethod } from './utils';
 
 @Service()
@@ -184,7 +183,7 @@ export class NodeTypes implements INodeTypes {
 				? descriptionCopy.name
 				: `n8n-nodes-base.${descriptionCopy.name}`; // nodes-base nodes are unprefixed
 
-			return applyPublicChatTriggerPolicy(descriptionCopy);
+			return descriptionCopy;
 		});
 	}
 }
