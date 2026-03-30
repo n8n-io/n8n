@@ -1,0 +1,18 @@
+# Netlify Redirects for TaxFlow Enhanced
+# This file provides a backup to netlify.toml redirects configuration
+
+# SPA Fallback - redirect all routes to index.html
+# This ensures React Router handles all routing client-side
+/*    /index.html   200
+
+# Optional: Redirect www to non-www (uncomment if needed)
+# https://www.taxflow.example.com/*  https://taxflow.example.com/:splat  301!
+
+# Optional: Redirect non-www to www (uncomment if needed)
+# https://taxflow.example.com/*  https://www.taxflow.example.com/:splat  301!
+
+# Optional: Force HTTPS (Netlify does this automatically, but you can be explicit)
+# http://taxflow.example.com/*  https://taxflow.example.com/:splat  301!
+
+# Optional: Custom 404 page (if you create one)
+# /404  /index.html  404
