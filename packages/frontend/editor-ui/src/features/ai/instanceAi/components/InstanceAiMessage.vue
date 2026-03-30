@@ -34,12 +34,13 @@ const errorDetails = computed(() => {
 	return tree.errorDetails ?? null;
 });
 
+const hasProviderError = computed(() => !!errorDetails.value?.provider);
+
 const errorTitle = computed(() => {
-	const details = errorDetails.value;
-	if (details?.provider) {
-		return `${details.provider} ${i18n.baseText('instanceAi.agentTree.error')}`;
+	if (hasProviderError.value) {
+		return `${errorDetails.value!.provider} ${i18n.baseText('instanceAi.agentTree.error')}`;
 	}
-	return i18n.baseText('instanceAi.error.title');
+	return runError.value ?? i18n.baseText('instanceAi.error.title');
 });
 
 const formattedTechnicalDetails = computed(() => {
@@ -134,7 +135,7 @@ function formatJson(value: unknown): string {
 									errorDetails.statusCode
 								}}</span>
 							</div>
-							<p :class="$style.errorDescription">{{ runError }}</p>
+							<p v-if="hasProviderError" :class="$style.errorDescription">{{ runError }}</p>
 							<details v-if="formattedTechnicalDetails" :class="$style.errorDetailsCollapsible">
 								<summary :class="$style.errorDetailsSummary">
 									{{ i18n.baseText('instanceAi.error.technicalDetails') }}

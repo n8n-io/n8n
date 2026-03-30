@@ -29,7 +29,12 @@ function estimateTokens(text: string): number {
  * "claude-sonnet-4-5-20250929"), falling back to a conservative default.
  */
 function getContextWindowForModel(modelId: ModelConfig): number {
-	const raw = typeof modelId === 'string' ? modelId : modelId.id;
+	const raw =
+		typeof modelId === 'string'
+			? modelId
+			: 'specificationVersion' in modelId
+				? `${modelId.provider.split('.')[0]}/${modelId.modelId}`
+				: modelId.id;
 	const slashIndex = raw.indexOf('/');
 	if (slashIndex < 0) {
 		for (const providerModels of Object.values(maxContextWindowTokens)) {
