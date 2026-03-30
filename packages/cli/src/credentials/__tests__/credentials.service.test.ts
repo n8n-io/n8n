@@ -170,6 +170,33 @@ describe('CredentialsService', () => {
 			});
 		});
 
+		it('should redact non-string password field values without throwing', () => {
+			const credential = mock<CredentialsEntity>({
+				id: '123',
+				name: 'Test Credential',
+				type: 'oauth2',
+			});
+
+			const decryptedData = {
+				clientId: 'abc123',
+				clientSecret: 12345, // number, not a string
+				accessToken: '',
+			};
+
+			credentialTypes.getByName.calledWith(credential.type).mockReturnValueOnce(credType);
+
+			const redactedData = service.redact(
+				decryptedData as unknown as ICredentialDataDecryptedObject,
+				credential,
+			);
+
+			expect(redactedData).toEqual({
+				clientId: 'abc123',
+				clientSecret: CREDENTIAL_BLANKING_VALUE,
+				accessToken: CREDENTIAL_EMPTY_VALUE,
+			});
+		});
+
 		it('should redact sensitive values in a fixed collection with multiple values', () => {
 			const fixedCollectionCredType = {
 				properties: [
@@ -1642,6 +1669,7 @@ describe('CredentialsService', () => {
 			} as any);
 			projectService.getProjectRelationsForUser.mockResolvedValue([]);
 			credentialsHelper.getCredentialsProperties.mockReturnValue([]);
+			jest.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 		});
 
 		it('should allow owner to create global credential', async () => {
@@ -1940,6 +1968,7 @@ describe('CredentialsService', () => {
 		describe('external secrets', () => {
 			beforeEach(() => {
 				jest.spyOn(service, 'decrypt').mockReturnValue({});
+				jest.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 			});
 
 			it('should list all unavailable external secret providers in error message', async () => {

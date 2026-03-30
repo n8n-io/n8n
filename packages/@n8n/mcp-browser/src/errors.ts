@@ -8,20 +8,23 @@ export class McpBrowserError extends Error {
 	}
 }
 
-export class SessionNotFoundError extends McpBrowserError {
-	constructor(readonly sessionId: string) {
+export class NotConnectedError extends McpBrowserError {
+	constructor() {
+		super('Not connected to a browser', 'Call browser_connect first to connect to the browser.');
+	}
+}
+
+export class AlreadyConnectedError extends McpBrowserError {
+	constructor() {
 		super(
-			`Session not found: ${sessionId}`,
-			'The session may have expired or been closed. Create a new session with browser_open.',
+			'Already connected to a browser',
+			'Disconnect first with browser_disconnect before connecting again.',
 		);
 	}
 }
 
 export class PageNotFoundError extends McpBrowserError {
-	constructor(
-		readonly pageId: string,
-		readonly sessionId: string,
-	) {
+	constructor(readonly pageId: string) {
 		super(
 			`Page not found: ${pageId}`,
 			'The page may have been closed. List open pages with browser_tab_list.',
@@ -45,34 +48,55 @@ export class UnsupportedOperationError extends McpBrowserError {
 	) {
 		super(
 			`Operation not supported: ${operation}`,
-			`This operation is not available for ${adapterName} sessions. Use a Chromium or Firefox session instead.`,
-		);
-	}
-}
-
-export class MaxSessionsError extends McpBrowserError {
-	constructor(readonly max: number) {
-		super(
-			`Maximum concurrent sessions (${max}) reached`,
-			'Close an existing session with browser_close before opening a new one.',
+			`This operation is not available for ${adapterName} sessions.`,
 		);
 	}
 }
 
 export class BrowserNotAvailableError extends McpBrowserError {
+	constructor(
+		readonly browser: string,
+		readonly availableBrowsers: string[] = [],
+		readonly installInstructions?: string,
+	) {
+		const alternatives =
+			availableBrowsers.length > 0
+				? `Compatible Chromium-based browsers found: ${availableBrowsers.join(', ')}. ` +
+					`Call browser_connect with { "browser": "${availableBrowsers[0]}" } to use it instead.`
+				: 'No compatible Chromium-based browsers (Chrome, Brave, Edge, Chromium) were found on this system.';
+		const install = installInstructions ? `\n${installInstructions}` : '';
+		super(`Browser not available: ${browser}`, `${alternatives}${install}`);
+	}
+}
+
+export class BrowserExecutableNotFoundError extends McpBrowserError {
 	constructor(readonly browser: string) {
 		super(
-			`Browser not available: ${browser}`,
-			`${browser} was not found on this system. Install it or configure the executablePath.`,
+			`No executable path for ${browser}`,
+			`The browser "${browser}" was detected but has no executable path configured. ` +
+				'Verify the browser is properly installed or provide an explicit executablePath in the config.',
 		);
 	}
 }
 
-export class ProfileLockedError extends McpBrowserError {
-	constructor() {
+export type ExtensionNotConnectedPhase = 'browser_not_launched' | 'extension_missing' | 'unknown';
+
+export class ExtensionNotConnectedError extends McpBrowserError {
+	constructor(
+		readonly timeoutMs: number,
+		readonly phase: ExtensionNotConnectedPhase = 'unknown',
+		readonly extensionInstructions?: string,
+	) {
+		const phaseHint =
+			phase === 'browser_not_launched'
+				? 'The browser process may not have started.'
+				: phase === 'extension_missing'
+					? 'The browser opened but the n8n AI Browser Bridge extension did not connect.'
+					: 'The extension did not connect within the timeout period.';
+		const install = extensionInstructions ? `\n${extensionInstructions}` : '';
 		super(
-			'Firefox profile is locked',
-			'Close Firefox before opening a local Firefox session. The profile can only be used by one Firefox instance at a time.',
+			`Extension connection timed out after ${timeoutMs}ms`,
+			`${phaseHint}${install}\nThen retry browser_connect.`,
 		);
 	}
 }

@@ -1,43 +1,34 @@
 import { z } from 'zod';
 
-import type { SessionManager } from '../session-manager';
+import type { BrowserConnection } from '../connection';
 import type { ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
-import { createSessionTool, sessionIdField } from './helpers';
+import { createConnectedTool, extractDomain, withSnapshotEnvelope } from './helpers';
 
-export function createTabTools(
-	sessionManager: SessionManager,
-	toolGroupId: string,
-): ToolDefinition[] {
-	return [
-		tabOpen(sessionManager, toolGroupId),
-		tabList(sessionManager, toolGroupId),
-		tabFocus(sessionManager, toolGroupId),
-		tabClose(sessionManager, toolGroupId),
-	];
+export function createTabTools(connection: BrowserConnection): ToolDefinition[] {
+	return [tabOpen(connection), tabList(connection), tabFocus(connection), tabClose(connection)];
 }
 
 const tabOpenSchema = z.object({
-	sessionId: sessionIdField,
 	url: z.string().optional().describe('URL to navigate to (default: about:blank)'),
 });
 
-const tabOpenOutputSchema = z.object({
+const tabOpenOutputSchema = withSnapshotEnvelope({
 	pageId: z.string(),
 	title: z.string(),
 	url: z.string(),
 });
 
-function tabOpen(sessionManager: SessionManager, toolGroupId: string): ToolDefinition {
-	return createSessionTool(
-		sessionManager,
+function tabOpen(connection: BrowserConnection): ToolDefinition {
+	return createConnectedTool(
+		connection,
 		'browser_tab_open',
-		'Open a new tab in an existing session. Optionally navigate to a URL.',
+		'Open a new tab. Optionally navigate to a URL.',
 		tabOpenSchema,
-		async (session, input) => {
-			const pageInfo = await session.adapter.newPage(input.url);
-			session.pages.set(pageInfo.id, pageInfo);
-			session.activePageId = pageInfo.id;
+		async (state, input) => {
+			const pageInfo = await state.adapter.newPage(input.url);
+			state.pages.set(pageInfo.id, pageInfo);
+			state.activePageId = pageInfo.id;
 			return formatCallToolResult({
 				pageId: pageInfo.id,
 				title: pageInfo.title,
@@ -45,21 +36,12 @@ function tabOpen(sessionManager: SessionManager, toolGroupId: string): ToolDefin
 			});
 		},
 		tabOpenOutputSchema,
-		toolGroupId,
-		(args: z.infer<typeof tabOpenSchema>) => {
-			if (!args.url) return 'browser';
-			try {
-				return new URL(args.url).hostname || 'browser';
-			} catch {
-				return 'browser';
-			}
-		},
+		{ autoSnapshot: true, waitForCompletion: true },
+		(args) => (args.url ? extractDomain(args.url) : 'browser'),
 	);
 }
 
-const tabListSchema = z.object({
-	sessionId: sessionIdField,
-});
+const tabListSchema = z.object({});
 
 const tabListOutputSchema = z.object({
 	pages: z.array(
@@ -72,28 +54,28 @@ const tabListOutputSchema = z.object({
 	),
 });
 
-function tabList(sessionManager: SessionManager, toolGroupId: string): ToolDefinition {
-	return createSessionTool(
-		sessionManager,
+function tabList(connection: BrowserConnection): ToolDefinition {
+	return createConnectedTool(
+		connection,
 		'browser_tab_list',
-		'List all open tabs in a session.',
+		'List all browser tabs currently controlled.',
 		tabListSchema,
-		async (session) => {
-			const pages = await session.adapter.listPages();
+		async (state) => {
+			// Two-tier model: listTabs() returns metadata from the relay (all tabs,
+			// including those without Playwright page objects yet).
+			const pages = await state.adapter.listTabs();
 			return formatCallToolResult({
 				pages: pages.map((p) => ({
 					...p,
-					active: p.id === session.activePageId,
+					active: p.id === state.activePageId,
 				})),
 			});
 		},
 		tabListOutputSchema,
-		toolGroupId,
 	);
 }
 
 const tabFocusSchema = z.object({
-	sessionId: sessionIdField,
 	pageId: z.string().describe('Page ID to make active'),
 });
 
@@ -101,63 +83,58 @@ const tabFocusOutputSchema = z.object({
 	activePageId: z.string(),
 });
 
-function tabFocus(sessionManager: SessionManager, toolGroupId: string): ToolDefinition {
-	return createSessionTool(
-		sessionManager,
+function tabFocus(connection: BrowserConnection): ToolDefinition {
+	return createConnectedTool(
+		connection,
 		'browser_tab_focus',
-		'Switch the active tab in a session.',
+		'Switch the active tab. Note: focusing is not required to interact with a tab — you can interact with any tab regardless of focus.',
 		tabFocusSchema,
-		async (session, input) => {
-			// Verify page exists by listing
-			const pages = await session.adapter.listPages();
+		async (state, input) => {
+			// Verify page exists — use listTabs() to include relay-known tabs
+			// that may not have Playwright page objects yet
+			const pages = await state.adapter.listTabs();
 			const target = pages.find((p) => p.id === input.pageId);
 			if (!target) {
 				const { PageNotFoundError } = await import('../errors');
-				throw new PageNotFoundError(input.pageId, session.id);
+				throw new PageNotFoundError(input.pageId);
 			}
-			session.activePageId = input.pageId;
+			await state.adapter.focusPage(input.pageId);
+			state.activePageId = input.pageId;
 			return formatCallToolResult({ activePageId: input.pageId });
 		},
 		tabFocusOutputSchema,
-		toolGroupId,
 	);
 }
 
 const tabCloseSchema = z.object({
-	sessionId: sessionIdField,
 	pageId: z.string().describe('Page ID to close'),
 });
 
 const tabCloseOutputSchema = z.object({
 	closed: z.boolean(),
 	pageId: z.string(),
-	sessionClosed: z.boolean(),
 });
 
-function tabClose(sessionManager: SessionManager, toolGroupId: string): ToolDefinition {
-	return createSessionTool(
-		sessionManager,
+function tabClose(connection: BrowserConnection): ToolDefinition {
+	return createConnectedTool(
+		connection,
 		'browser_tab_close',
-		'Close a tab. If it is the last tab, the session is also closed.',
+		'Close a tab.',
 		tabCloseSchema,
-		async (session, input) => {
-			await session.adapter.closePage(input.pageId);
-			session.pages.delete(input.pageId);
+		async (state, input) => {
+			await state.adapter.closePage(input.pageId);
+			state.pages.delete(input.pageId);
 
-			const remainingPages = await session.adapter.listPages();
-			let sessionClosed = false;
-
-			if (remainingPages.length === 0) {
-				await sessionManager.close(session.id);
-				sessionClosed = true;
-			} else if (session.activePageId === input.pageId) {
-				// Switch to most recently available page
-				session.activePageId = remainingPages[remainingPages.length - 1].id;
+			// Switch active page if we just closed the active one
+			if (state.activePageId === input.pageId) {
+				const remainingTabs = await state.adapter.listTabs();
+				state.activePageId =
+					remainingTabs.length > 0 ? remainingTabs[remainingTabs.length - 1].id : '';
 			}
 
-			return formatCallToolResult({ closed: true, pageId: input.pageId, sessionClosed });
+			return formatCallToolResult({ closed: true, pageId: input.pageId });
 		},
 		tabCloseOutputSchema,
-		toolGroupId,
+		{ skipEnrichment: true },
 	);
 }

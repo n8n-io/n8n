@@ -3,16 +3,15 @@ import { Agent } from '@mastra/core/agent';
 import { Mastra } from '@mastra/core/mastra';
 import { ToolSearchProcessor, type ToolSearchProcessorOptions } from '@mastra/core/processors';
 import type { MastraCompositeStore } from '@mastra/core/storage';
-import { withLangsmithMetadata, LangSmithExporter } from '@mastra/langsmith';
 import { MCPClient } from '@mastra/mcp';
-import { buildTracingOptions, Observability } from '@mastra/observability';
 import { nanoid } from 'nanoid';
 
 import { createMemory } from '../memory/memory-config';
 import { createAllTools, createOrchestrationTools } from '../tools';
-import { sanitizeMcpToolSchemas } from './sanitize-mcp-schemas';
 import { createToolsFromLocalMcpServer } from '../tools/filesystem/create-tools-from-mcp-server';
+import { buildAgentTraceInputs, mergeTraceRunInputs } from '../tracing/langsmith-tracing';
 import type { CreateInstanceAgentOptions, McpServerConfig } from '../types';
+import { sanitizeMcpToolSchemas } from './sanitize-mcp-schemas';
 import { getSystemPrompt } from './system-prompt';
 
 function buildMcpServers(
@@ -113,14 +112,6 @@ function ensureMastraRegistered(agent: Agent, storage: MastraCompositeStore): vo
 	cachedMastra = new Mastra({
 		agents: { 'n8n-instance-agent': agent },
 		storage,
-		observability: new Observability({
-			configs: {
-				langsmith: {
-					serviceName: 'my-service',
-					exporters: [new LangSmithExporter({ projectName: 'instance-ai' })],
-				},
-			},
-		}),
 	});
 	cachedMastraStorageKey = key;
 }
@@ -182,8 +173,16 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	const mcpTools = await getMcpTools(mcpServers);
 	const browserMcpTools = await getBrowserMcpTools(orchestrationContext?.browserMcpConfig);
 
-	// Make ALL MCP tools available for sub-agents (browser agent, delegate),
-	// excluding any that collide with domain tool names
+	// Browser tool names — used to exclude them from the orchestrator's direct toolset.
+	// Browser tools are only accessible via browser-credential-setup (sub-agent) to prevent
+	// 200KB+ screenshots/snapshots from bloating the orchestrator's context.
+	const browserToolNames = new Set([
+		...Object.keys(browserMcpTools),
+		...(context.localMcpServer?.getToolsByCategory('browser').map((t) => t.name) ?? []),
+	]);
+
+	// Store ALL MCP tools (external + browser) on orchestrationContext for sub-agents
+	// (browser-credential-setup, delegate). NOT given to the orchestrator directly.
 	const allMcpTools: ToolsInput = {};
 	const domainToolNames = new Set(Object.keys(domainTools));
 	for (const [name, tool] of Object.entries({ ...mcpTools, ...browserMcpTools })) {
@@ -214,29 +213,32 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		safeMcpTools[name] = tool;
 	}
 
-	// Orchestrator only gets non-browser MCP tools directly.
-	// Browser tools are accessed via browser-credential-setup (which creates its own agent).
-	// This prevents the orchestrator from calling take_screenshot/take_snapshot directly,
-	// which would add 200KB+ images to the orchestrator's context.
-	const orchestratorMcpTools: ToolsInput = { ...safeMcpTools };
-
 	// ── Tool search: split tools into always-loaded core vs deferred ────────
 	// Anthropic guidance: "Keep your 3-5 most-used tools always loaded, defer the rest."
 	// Tool selection accuracy degrades past 10+ tools; tool search improves it significantly.
 	const localMcpTools = context.localMcpServer
-		? createToolsFromLocalMcpServer(context.localMcpServer)
+		? Object.fromEntries(
+				Object.entries(createToolsFromLocalMcpServer(context.localMcpServer)).filter(
+					([name]) => !browserToolNames.has(name),
+				),
+			)
 		: {};
 
 	const allOrchestratorTools: ToolsInput = {
 		...orchestratorDomainTools,
 		...orchestrationTools,
-		...orchestratorMcpTools,
-		...localMcpTools,
+		...safeMcpTools, // external MCP only — browser tools excluded
+		...localMcpTools, // gateway tools — browser tools excluded via browserToolNames
 	};
+	const tracedOrchestratorTools =
+		orchestrationContext?.tracing?.wrapTools(allOrchestratorTools, {
+			agentRole: 'orchestrator',
+			tags: ['orchestrator'],
+		}) ?? allOrchestratorTools;
 
 	const coreTools: ToolsInput = {};
 	const deferrableTools: ToolsInput = {};
-	for (const [name, tool] of Object.entries(allOrchestratorTools)) {
+	for (const [name, tool] of Object.entries(tracedOrchestratorTools)) {
 		if (ALWAYS_LOADED_TOOLS.has(name)) {
 			coreTools[name] = tool;
 		} else {
@@ -251,36 +253,46 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 
 	// Use pre-built memory if provided, otherwise create from config
 	const memory = options.memory ?? createMemory(memoryConfig);
+	const systemPrompt = getSystemPrompt({
+		researchMode: orchestrationContext?.researchMode,
+		webhookBaseUrl: orchestrationContext?.webhookBaseUrl,
+		filesystemAccess: !!(context.localMcpServer ?? context.filesystemService),
+		localGateway: context.localGatewayStatus,
+		toolSearchEnabled: hasDeferrableTools,
+		licenseHints: context.licenseHints,
+		timeZone: options.timeZone,
+		browserAvailable: browserToolNames.size > 0,
+	});
 
 	const agent = new Agent({
 		id: 'n8n-instance-agent',
 		name: 'n8n Instance Agent',
 		instructions: {
 			role: 'system' as const,
-			content: getSystemPrompt({
-				researchMode: orchestrationContext?.researchMode,
-				webhookBaseUrl: orchestrationContext?.webhookBaseUrl,
-				filesystemAccess: !!(context.localMcpServer ?? context.filesystemService),
-				toolSearchEnabled: hasDeferrableTools,
-				licenseHints: context.licenseHints,
-				timeZone: options.timeZone,
-			}),
+			content: systemPrompt,
 			providerOptions: {
 				anthropic: { cacheControl: { type: 'ephemeral' } },
 			},
 		},
 		model: modelId,
-		tools: hasDeferrableTools ? coreTools : allOrchestratorTools,
+		tools: hasDeferrableTools ? coreTools : tracedOrchestratorTools,
 		inputProcessors: toolSearchProcessor ? [toolSearchProcessor] : undefined,
-		defaultOptions: {
-			tracingOptions: buildTracingOptions(
-				withLangsmithMetadata({ projectName: 'instance-ai' }),
-				(opts) => ({ ...opts, recordInputs: false, recordOutputs: false }),
-			),
-		},
 		memory,
 		workspace: options.workspace,
 	});
+
+	mergeTraceRunInputs(
+		orchestrationContext?.tracing?.actorRun,
+		buildAgentTraceInputs({
+			systemPrompt,
+			tools: hasDeferrableTools ? coreTools : tracedOrchestratorTools,
+			deferredTools: hasDeferrableTools ? deferrableTools : undefined,
+			modelId,
+			memory,
+			toolSearchEnabled: hasDeferrableTools,
+			inputProcessors: toolSearchProcessor ? ['ToolSearchProcessor'] : undefined,
+		}),
+	);
 
 	// Register agent with Mastra for HITL suspend/resume snapshot storage
 	ensureMastraRegistered(agent, memoryConfig.storage);

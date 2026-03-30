@@ -71,13 +71,14 @@ interface PersistedAdminSettings {
 	daytonaCredentialId?: string | null;
 	n8nSandboxCredentialId?: string | null;
 	searchCredentialId?: string | null;
+	localGatewayDisabled?: boolean;
 }
 
 /** Per-user preferences stored under USER_PREFERENCES_KEY_PREFIX + userId. */
 interface PersistedUserPreferences {
 	credentialId?: string | null;
 	modelName?: string;
-	filesystemDisabled?: boolean;
+	localGatewayDisabled?: boolean;
 }
 
 @Service()
@@ -116,18 +117,13 @@ export class InstanceAiSettingsService {
 		});
 		this.applyAdminSettings(persisted);
 
-		// Migrate legacy user fields from admin settings (credentialId, modelName,
-		// filesystemDisabled) — these were previously stored in the shared settings blob.
+		// Migrate legacy user fields from admin settings (credentialId, modelName)
+		// — these were previously stored in the shared settings blob.
 		// They become defaults for users who haven't set their own preferences yet.
-		if (
-			persisted.credentialId !== undefined ||
-			persisted.modelName !== undefined ||
-			persisted.filesystemDisabled !== undefined
-		) {
+		if (persisted.credentialId !== undefined || persisted.modelName !== undefined) {
 			this.userPreferences.set('__legacy_default__', {
 				credentialId: persisted.credentialId,
 				modelName: persisted.modelName,
-				filesystemDisabled: persisted.filesystemDisabled,
 			});
 		}
 	}
@@ -152,6 +148,7 @@ export class InstanceAiSettingsService {
 			daytonaCredentialId: this.adminDaytonaCredentialId,
 			n8nSandboxCredentialId: this.adminN8nSandboxCredentialId,
 			searchCredentialId: this.adminSearchCredentialId,
+			localGatewayDisabled: this.isLocalGatewayDisabled(),
 		};
 	}
 
@@ -179,6 +176,8 @@ export class InstanceAiSettingsService {
 			this.adminN8nSandboxCredentialId = update.n8nSandboxCredentialId;
 		if (update.searchCredentialId !== undefined)
 			this.adminSearchCredentialId = update.searchCredentialId;
+		if (update.localGatewayDisabled !== undefined)
+			c.localGatewayDisabled = update.localGatewayDisabled;
 		await this.persistAdminSettings();
 		return this.getAdminSettings();
 	}
@@ -207,7 +206,8 @@ export class InstanceAiSettingsService {
 			credentialType,
 			credentialName,
 			modelName: prefs.modelName || this.extractModelName(this.config.model),
-			filesystemDisabled: prefs.filesystemDisabled ?? false,
+			localGatewayDisabled:
+				this.config.localGatewayDisabled || (prefs.localGatewayDisabled ?? false),
 		};
 	}
 
@@ -218,8 +218,8 @@ export class InstanceAiSettingsService {
 		const prefs = await this.loadUserPreferences(user.id);
 		if (update.credentialId !== undefined) prefs.credentialId = update.credentialId;
 		if (update.modelName !== undefined) prefs.modelName = update.modelName;
-		if (update.filesystemDisabled !== undefined)
-			prefs.filesystemDisabled = update.filesystemDisabled;
+		if (update.localGatewayDisabled !== undefined)
+			prefs.localGatewayDisabled = update.localGatewayDisabled;
 		this.userPreferences.set(user.id, prefs);
 		await this.persistUserPreferences(user.id, prefs);
 		return await this.getUserPreferences(user);
@@ -348,17 +348,16 @@ export class InstanceAiSettingsService {
 		return { ...this.permissions };
 	}
 
-	/** Whether filesystem access is disabled by a given user. */
-	isFilesystemDisabledForUser(userId: string): boolean {
+	/** Whether the local gateway is disabled for a given user (admin override OR user preference). */
+	isLocalGatewayDisabledForUser(userId: string): boolean {
+		if (this.config.localGatewayDisabled) return true;
 		const prefs = this.userPreferences.get(userId);
-		return prefs?.filesystemDisabled ?? false;
+		return prefs?.localGatewayDisabled ?? false;
 	}
 
-	/** Whether filesystem access is disabled (legacy — uses default preferences). */
-	isFilesystemDisabled(): boolean {
-		// Check legacy default first, then fall back to false
-		const legacy = this.userPreferences.get('__legacy_default__');
-		return legacy?.filesystemDisabled ?? false;
+	/** Whether the local gateway is disabled globally by the admin. */
+	isLocalGatewayDisabled(): boolean {
+		return this.config.localGatewayDisabled;
 	}
 
 	/** Resolve the current model configuration for an agent run. */
@@ -460,6 +459,8 @@ export class InstanceAiSettingsService {
 			this.adminN8nSandboxCredentialId = persisted.n8nSandboxCredentialId;
 		if (persisted.searchCredentialId !== undefined)
 			this.adminSearchCredentialId = persisted.searchCredentialId;
+		if (persisted.localGatewayDisabled !== undefined)
+			c.localGatewayDisabled = persisted.localGatewayDisabled;
 	}
 
 	private async loadUserPreferences(userId: string): Promise<PersistedUserPreferences> {
@@ -496,6 +497,7 @@ export class InstanceAiSettingsService {
 			daytonaCredentialId: this.adminDaytonaCredentialId,
 			n8nSandboxCredentialId: this.adminN8nSandboxCredentialId,
 			searchCredentialId: this.adminSearchCredentialId,
+			localGatewayDisabled: c.localGatewayDisabled,
 		};
 
 		await this.settingsRepository.upsert(

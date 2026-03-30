@@ -499,6 +499,8 @@ export interface InstanceAiFilesystemService {
  */
 export interface LocalMcpServer {
 	getAvailableTools(): McpTool[];
+	/** Return tools that belong to the given category (based on annotations.category). */
+	getToolsByCategory(category: string): McpTool[];
 	callTool(req: McpToolCallRequest): Promise<McpToolCallResult>;
 }
 
@@ -543,6 +545,13 @@ export interface InstanceAiWorkspaceService {
 	): Promise<{ deletedCount: number }>;
 }
 
+// ── Local gateway status ─────────────────────────────────────────────────────
+
+export type LocalGatewayStatus =
+	| { status: 'connected' }
+	| { status: 'disconnected'; capabilities: string[] }
+	| { status: 'disabled' };
+
 // ── Context bundle ───────────────────────────────────────────────────────────
 
 export interface InstanceAiContext {
@@ -559,6 +568,8 @@ export interface InstanceAiContext {
 	 * Connected remote MCP server (e.g. fs-proxy daemon). When set, dynamic tools are created from its advertised capabilities. Takes precedence over `filesystemService`.
 	 */
 	localMcpServer?: LocalMcpServer;
+	/** Connection state of the local gateway — drives system prompt guidance. */
+	localGatewayStatus?: LocalGatewayStatus;
 	/** Per-action HITL permission overrides. When absent, tools default to requiring approval. */
 	permissions?: InstanceAiPermissions;
 	/** Human-readable hints about licensed features that are NOT available on this instance.
@@ -680,6 +691,71 @@ export interface InstanceAiMemoryConfig {
 /** Model identifier: plain string for built-in providers, or object for OpenAI-compatible endpoints. */
 export type ModelConfig = string | { id: `${string}/${string}`; url: string; apiKey?: string };
 
+// ── LangSmith tracing ────────────────────────────────────────────────────────
+
+export interface InstanceAiTraceRun {
+	id: string;
+	name: string;
+	runType: string;
+	projectName: string;
+	startTime: number;
+	endTime?: number;
+	traceId: string;
+	dottedOrder: string;
+	executionOrder: number;
+	childExecutionOrder: number;
+	parentRunId?: string;
+	tags?: string[];
+	metadata?: Record<string, unknown>;
+	inputs?: Record<string, unknown>;
+	outputs?: Record<string, unknown>;
+	error?: string;
+}
+
+export interface InstanceAiTraceRunInit {
+	name: string;
+	runType?: string;
+	tags?: string[];
+	metadata?: Record<string, unknown>;
+	inputs?: unknown;
+}
+
+export interface InstanceAiTraceRunFinishOptions {
+	outputs?: unknown;
+	metadata?: Record<string, unknown>;
+	error?: string;
+}
+
+export interface InstanceAiToolTraceOptions {
+	agentRole?: string;
+	tags?: string[];
+	metadata?: Record<string, unknown>;
+}
+
+export interface InstanceAiTraceContext {
+	projectName: string;
+	traceKind: 'message_turn' | 'detached_subagent';
+	rootRun: InstanceAiTraceRun;
+	actorRun: InstanceAiTraceRun;
+	/** Compatibility alias for existing foreground-trace call sites. */
+	messageRun: InstanceAiTraceRun;
+	/** Compatibility alias for existing foreground-trace call sites. */
+	orchestratorRun: InstanceAiTraceRun;
+	startChildRun: (
+		parentRun: InstanceAiTraceRun,
+		options: InstanceAiTraceRunInit,
+	) => Promise<InstanceAiTraceRun>;
+	withRunTree: <T>(run: InstanceAiTraceRun, fn: () => Promise<T>) => Promise<T>;
+	finishRun: (run: InstanceAiTraceRun, options?: InstanceAiTraceRunFinishOptions) => Promise<void>;
+	failRun: (
+		run: InstanceAiTraceRun,
+		error: unknown,
+		metadata?: Record<string, unknown>,
+	) => Promise<void>;
+	toHeaders: (run: InstanceAiTraceRun) => Record<string, string>;
+	wrapTools: (tools: ToolsInput, options?: InstanceAiToolTraceOptions) => ToolsInput;
+}
+
 // ── Background task spawning ─────────────────────────────────────────────────
 
 /** Structured result from a background task. The `text` field is the human-readable
@@ -695,6 +771,7 @@ export interface SpawnBackgroundTaskOptions {
 	threadId: string;
 	agentId: string;
 	role: string;
+	traceContext?: InstanceAiTraceContext;
 	/** When set, links the background task back to a planned task in the scheduler. */
 	plannedTaskId?: string;
 	/** Unique work item ID for workflow loop tracking. When set, the service
@@ -728,6 +805,7 @@ export interface OrchestrationContext {
 	domainTools: ToolsInput;
 	abortSignal: AbortSignal;
 	taskStorage: TaskStorage;
+	tracing?: InstanceAiTraceContext;
 	waitForConfirmation?: (requestId: string) => Promise<{
 		approved: boolean;
 		credentialId?: string;
@@ -744,6 +822,9 @@ export interface OrchestrationContext {
 	}>;
 	/** Chrome DevTools MCP config — only present when browser automation is enabled */
 	browserMcpConfig?: McpServerConfig;
+	/** Local MCP server (fs-proxy daemon) — when connected and advertising browser_* tools,
+	 *  browser-credential-setup prefers these over chrome-devtools-mcp. */
+	localMcpServer?: LocalMcpServer;
 	/** MCP tools loaded from external servers — available for delegation to sub-agents */
 	mcpTools?: ToolsInput;
 	/** OAuth2 callback URL for the n8n instance (e.g. http://localhost:5678/rest/oauth2-credential/callback) */

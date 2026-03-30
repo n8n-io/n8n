@@ -38,6 +38,10 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_SUB_AGENT_MAX_STEPS')
 	subAgentMaxSteps: number = 100;
 
+	/** Disable the local gateway (filesystem, shell, browser, etc.) for all users. */
+	@Env('N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED')
+	localGatewayDisabled: boolean = false;
+
 	/** Enable Chrome DevTools MCP for browser-assisted credential setup. */
 	@Env('N8N_INSTANCE_AI_BROWSER_MCP')
 	browserMcp: boolean = false;

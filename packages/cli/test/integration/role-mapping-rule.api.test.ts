@@ -137,6 +137,28 @@ describe('POST /role-mapping-rule', () => {
 		expect(response.body.message).toContain('order');
 	});
 
+	it('should normalize order when created with an abnormally high order value', async () => {
+		await ownerAgent
+			.post('/role-mapping-rule')
+			.send({ ...validInstancePayload, order: 0 })
+			.expect(200);
+		await ownerAgent
+			.post('/role-mapping-rule')
+			.send({ ...validInstancePayload, expression: 'claims.b', order: 1 })
+			.expect(200);
+
+		const response = await ownerAgent
+			.post('/role-mapping-rule')
+			.send({ ...validInstancePayload, expression: 'claims.c', order: 100 })
+			.expect(200);
+
+		expect(response.body.data.order).toBe(2);
+
+		const repo = Container.get(RoleMappingRuleRepository);
+		const all = await repo.find({ where: { type: 'instance' }, order: { order: 'ASC' } });
+		expect(all.map((r) => r.order)).toEqual([0, 1, 2]);
+	});
+
 	it('should create a project mapping rule linked to team projects', async () => {
 		const teamProject = await createTeamProject(undefined, owner);
 
@@ -153,7 +175,7 @@ describe('POST /role-mapping-rule', () => {
 
 		expect(response.body.data).toMatchObject({
 			type: 'project',
-			order: 3,
+			order: 0,
 		});
 		expect(response.body.data.projectIds).toContain(teamProject.id);
 
@@ -204,19 +226,19 @@ describe('GET /role-mapping-rule', () => {
 		await ownerAgent
 			.post('/role-mapping-rule')
 			.send({
-				expression: 'claims.second',
+				expression: 'claims.first',
 				role: 'global:member',
 				type: 'instance',
-				order: 1,
+				order: 0,
 			})
 			.expect(200);
 		await ownerAgent
 			.post('/role-mapping-rule')
 			.send({
-				expression: 'claims.first',
+				expression: 'claims.second',
 				role: 'global:member',
 				type: 'instance',
-				order: 0,
+				order: 1,
 			})
 			.expect(200);
 
@@ -413,6 +435,32 @@ describe('PATCH /role-mapping-rule/:id', () => {
 		expect(stored?.expression).toBe('claims.patched === true');
 	});
 
+	it('should normalize order when patched to an abnormally high order value', async () => {
+		await ownerAgent
+			.post('/role-mapping-rule')
+			.send({ ...validInstancePayload, order: 0 })
+			.expect(200);
+		await ownerAgent
+			.post('/role-mapping-rule')
+			.send({ ...validInstancePayload, expression: 'claims.b', order: 1 })
+			.expect(200);
+		const third = await ownerAgent
+			.post('/role-mapping-rule')
+			.send({ ...validInstancePayload, expression: 'claims.c', order: 2 })
+			.expect(200);
+
+		const response = await ownerAgent
+			.patch(`/role-mapping-rule/${third.body.data.id}`)
+			.send({ order: 100 })
+			.expect(200);
+
+		expect(response.body.data.order).toBe(2);
+
+		const repo = Container.get(RoleMappingRuleRepository);
+		const all = await repo.find({ where: { type: 'instance' }, order: { order: 'ASC' } });
+		expect(all.map((r) => r.order)).toEqual([0, 1, 2]);
+	});
+
 	it('should return 409 when patch sets order used by another rule', async () => {
 		await ownerAgent
 			.post('/role-mapping-rule')
@@ -481,6 +529,28 @@ describe('DELETE /role-mapping-rule/:id', () => {
 
 	it('should return 404 when rule id does not exist', async () => {
 		await ownerAgent.delete('/role-mapping-rule/0000000000000099').expect(404);
+	});
+
+	it('should compact remaining rules after deleting a rule from the middle', async () => {
+		await ownerAgent
+			.post('/role-mapping-rule')
+			.send({ ...validInstancePayload, order: 0 })
+			.expect(200);
+		const second = await ownerAgent
+			.post('/role-mapping-rule')
+			.send({ ...validInstancePayload, expression: 'claims.b', order: 1 })
+			.expect(200);
+		await ownerAgent
+			.post('/role-mapping-rule')
+			.send({ ...validInstancePayload, expression: 'claims.c', order: 2 })
+			.expect(200);
+
+		await ownerAgent.delete(`/role-mapping-rule/${second.body.data.id}`).expect(200);
+
+		const repo = Container.get(RoleMappingRuleRepository);
+		const remaining = await repo.find({ where: { type: 'instance' }, order: { order: 'ASC' } });
+		expect(remaining).toHaveLength(2);
+		expect(remaining.map((r) => r.order)).toEqual([0, 1]);
 	});
 
 	it('should delete a rule and remove it from the database', async () => {

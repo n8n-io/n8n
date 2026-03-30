@@ -11,7 +11,15 @@ export function createMoveWorkflowToFolderTool(context: InstanceAiContext) {
 		description: 'Move a workflow into a folder. Non-destructive — the workflow is not modified.',
 		inputSchema: z.object({
 			workflowId: z.string().describe('ID of the workflow to move'),
+			workflowName: z
+				.string()
+				.optional()
+				.describe('Name of the workflow (for confirmation message)'),
 			folderId: z.string().describe('ID of the destination folder'),
+			folderName: z
+				.string()
+				.optional()
+				.describe('Name of the destination folder (for confirmation message)'),
 		}),
 		outputSchema: z.object({
 			success: z.boolean(),
@@ -35,7 +43,7 @@ export function createMoveWorkflowToFolderTool(context: InstanceAiContext) {
 			if (needsApproval && (resumeData === undefined || resumeData === null)) {
 				await suspend?.({
 					requestId: nanoid(),
-					message: `Move workflow "${input.workflowId}" to folder "${input.folderId}"?`,
+					message: `Move workflow "${input.workflowName ?? input.workflowId}" to folder "${input.folderName ?? input.folderId}"?`,
 					severity: 'info' as const,
 				});
 				// suspend() never resolves — this line is unreachable but satisfies the type checker

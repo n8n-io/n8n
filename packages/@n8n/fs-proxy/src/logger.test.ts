@@ -8,11 +8,7 @@ const BASE_CONFIG: GatewayConfig = {
 	filesystem: { dir: '/test' },
 	computer: { shell: { timeout: 30_000 } },
 	browser: {
-		headless: false,
-		defaultBrowser: 'chromium',
-		viewport: { width: 1280, height: 720 },
-		sessionTtlMs: 1_800_000,
-		maxConcurrentSessions: 5,
+		defaultBrowser: 'chrome',
 	},
 	permissions: {},
 };
@@ -177,37 +173,18 @@ describe('printModuleStatus', () => {
 	// ---------------------------------------------------------------------------
 
 	describe('Browser', () => {
-		it('shows ✓ and browser config detail when allow', () => {
+		it('shows ✓ and browser name when allow', () => {
 			printModuleStatus({ ...BASE_CONFIG, permissions: { browser: 'allow' } });
 			const msg = messageFor(infoSpy, 'Browser');
 			expect(msg).toContain('✓');
-			expect(msg).toContain('chromium');
-			expect(msg).toContain('1280x720');
+			expect(msg).toContain('chrome');
 		});
 
-		it('shows ? and browser config detail when ask', () => {
+		it('shows ? and browser name when ask', () => {
 			printModuleStatus({ ...BASE_CONFIG, permissions: { browser: 'ask' } });
 			const msg = messageFor(infoSpy, 'Browser');
 			expect(msg).toContain('?');
-			expect(msg).toContain('chromium');
-		});
-
-		it('shows headless in detail when headless mode is on', () => {
-			printModuleStatus({
-				...BASE_CONFIG,
-				browser: { ...BASE_CONFIG.browser, headless: true },
-				permissions: { browser: 'allow' },
-			});
-			expect(messageFor(infoSpy, 'Browser')).toContain('headless');
-		});
-
-		it('shows headed in detail when headless mode is off', () => {
-			printModuleStatus({
-				...BASE_CONFIG,
-				browser: { ...BASE_CONFIG.browser, headless: false },
-				permissions: { browser: 'allow' },
-			});
-			expect(messageFor(infoSpy, 'Browser')).toContain('headed');
+			expect(msg).toContain('chrome');
 		});
 
 		it('shows ✗ and (disabled) when deny', () => {

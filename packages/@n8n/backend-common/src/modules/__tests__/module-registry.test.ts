@@ -63,8 +63,8 @@ describe('eligibleModules', () => {
 			'workflow-builder',
 			'redaction',
 			'instance-registry',
-			'instance-ai',
 			'otel',
+			'instance-ai',
 		]);
 	});
 

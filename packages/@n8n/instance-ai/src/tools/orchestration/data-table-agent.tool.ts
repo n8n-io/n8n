@@ -14,9 +14,21 @@ import { z } from 'zod';
 
 import { DATA_TABLE_AGENT_PROMPT } from './data-table-agent.prompt';
 import { truncateLabel } from './display-utils';
+import {
+	createDetachedSubAgentTracing,
+	traceSubAgentTools,
+	withTraceContextActor,
+} from './tracing-utils';
 import { registerWithMastra } from '../../agent/register-with-mastra';
-import { createSubAgentMemory, subAgentResourceId } from '../../memory/sub-agent-memory';
+import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
+import { traceWorkingMemoryContext } from '../../runtime/working-memory-tracing';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
+import {
+	buildAgentTraceInputs,
+	getTraceParentRun,
+	mergeTraceRunInputs,
+	withTraceParentContext,
+} from '../../tracing/langsmith-tracing';
 import type { OrchestrationContext } from '../../types';
 
 const DATA_TABLE_MAX_STEPS = 15;
@@ -49,10 +61,10 @@ export interface StartedBackgroundAgentTask {
 	agentId: string;
 }
 
-export function startDataTableAgentTask(
+export async function startDataTableAgentTask(
 	context: OrchestrationContext,
 	input: StartDataTableAgentInput,
-): StartedBackgroundAgentTask {
+): Promise<StartedBackgroundAgentTask> {
 	// Collect data table tools from the domain tools
 	const dataTableTools: ToolsInput = {};
 	for (const name of DATA_TABLE_TOOL_NAMES) {
@@ -88,70 +100,98 @@ export function startDataTableAgentTask(
 			targetResource: { type: 'data-table' as const },
 		},
 	});
+	const traceContext = await createDetachedSubAgentTracing(context, {
+		agentId: subAgentId,
+		role: 'data-table-manager',
+		kind: 'data-table',
+		taskId,
+		plannedTaskId: input.plannedTaskId,
+		inputs: {
+			task: input.task,
+			conversationContext: input.conversationContext,
+		},
+	});
+	const tracedDataTableTools = traceSubAgentTools(context, dataTableTools, 'data-table-manager');
 
 	context.spawnBackgroundTask({
 		taskId,
 		threadId: context.threadId,
 		agentId: subAgentId,
 		role: 'data-table-manager',
+		traceContext,
 		plannedTaskId: input.plannedTaskId,
 		run: async (signal, _drainCorrections) => {
-			const dataTableMemory = createSubAgentMemory(context.storage, 'data-table-manager');
-
-			const subAgent = new Agent({
-				id: subAgentId,
-				name: 'Data Table Agent',
-				instructions: {
-					role: 'system' as const,
-					content: DATA_TABLE_AGENT_PROMPT,
-					providerOptions: {
-						anthropic: { cacheControl: { type: 'ephemeral' } },
+			return await withTraceContextActor(traceContext, async () => {
+				const subAgent = new Agent({
+					id: subAgentId,
+					name: 'Data Table Agent',
+					instructions: {
+						role: 'system' as const,
+						content: DATA_TABLE_AGENT_PROMPT,
+						providerOptions: {
+							anthropic: { cacheControl: { type: 'ephemeral' } },
+						},
 					},
-				},
-				model: context.modelId,
-				tools: dataTableTools,
-				memory: dataTableMemory,
+					model: context.modelId,
+					tools: tracedDataTableTools,
+				});
+				mergeTraceRunInputs(
+					traceContext?.actorRun,
+					buildAgentTraceInputs({
+						systemPrompt: DATA_TABLE_AGENT_PROMPT,
+						tools: tracedDataTableTools,
+						modelId: context.modelId,
+					}),
+				);
+
+				registerWithMastra(subAgentId, subAgent, context.storage);
+
+				const conversationCtx = input.conversationContext
+					? `\n\n[CONVERSATION CONTEXT: ${input.conversationContext}]`
+					: '';
+				const briefing = `${input.task}${conversationCtx}`;
+
+				return await withTraceParentContext(getTraceParentRun(), async () => {
+					const llmStepTraceHooks = createLlmStepTraceHooks();
+					const stream = await traceWorkingMemoryContext(
+						{
+							phase: 'initial',
+							agentId: subAgentId,
+							agentRole: 'data-table-manager',
+							threadId: context.threadId,
+							input: briefing,
+						},
+						async () =>
+							await subAgent.stream(briefing, {
+								maxSteps: DATA_TABLE_MAX_STEPS,
+								abortSignal: signal,
+								providerOptions: {
+									anthropic: { cacheControl: { type: 'ephemeral' } },
+								},
+								...(llmStepTraceHooks?.executionOptions ?? {}),
+							}),
+					);
+
+					const hitlResult = await consumeStreamWithHitl({
+						agent: subAgent,
+						stream: stream as {
+							runId?: string;
+							fullStream: AsyncIterable<unknown>;
+							text: Promise<string>;
+						},
+						runId: context.runId,
+						agentId: subAgentId,
+						eventBus: context.eventBus,
+						threadId: context.threadId,
+						abortSignal: signal,
+						waitForConfirmation: context.waitForConfirmation,
+						llmStepTraceHooks,
+						workingMemoryEnabled: false,
+					});
+
+					return await hitlResult.text;
+				});
 			});
-
-			registerWithMastra(subAgentId, subAgent, context.storage);
-
-			const dtMemoryOpts = dataTableMemory
-				? {
-						resource: subAgentResourceId(context.userId, 'data-table-manager'),
-						thread: subAgentId,
-					}
-				: undefined;
-
-			const conversationCtx = input.conversationContext
-				? `\n\n[CONVERSATION CONTEXT: ${input.conversationContext}]`
-				: '';
-			const briefing = `${input.task}${conversationCtx}`;
-
-			const stream = await subAgent.stream(briefing, {
-				maxSteps: DATA_TABLE_MAX_STEPS,
-				abortSignal: signal,
-				providerOptions: {
-					anthropic: { cacheControl: { type: 'ephemeral' } },
-				},
-				...(dtMemoryOpts ? { memory: dtMemoryOpts } : {}),
-			});
-
-			const hitlResult = await consumeStreamWithHitl({
-				agent: subAgent,
-				stream: stream as {
-					runId?: string;
-					fullStream: AsyncIterable<unknown>;
-					text: Promise<string>;
-				},
-				runId: context.runId,
-				agentId: subAgentId,
-				eventBus: context.eventBus,
-				threadId: context.threadId,
-				abortSignal: signal,
-				waitForConfirmation: context.waitForConfirmation,
-			});
-
-			return await hitlResult.text;
 		},
 	});
 
@@ -187,7 +227,7 @@ export function createDataTableAgentTool(context: OrchestrationContext) {
 			taskId: z.string(),
 		}),
 		execute: async (input) => {
-			const result = startDataTableAgentTask(context, input);
+			const result = await startDataTableAgentTask(context, input);
 			return await Promise.resolve({ result: result.result, taskId: result.taskId });
 		},
 	});

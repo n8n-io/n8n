@@ -110,18 +110,9 @@ export const createGetExecutionTool = (
 			}
 
 			if (!execution) {
-				// Check if execution exists at all
-				const executionExists = await executionRepository.existsBy({ id: executionId });
-				if (!executionExists) {
-					throw new WorkflowAccessError(
-						`Execution with ID '${executionId}' does not exist`,
-						'execution_does_not_exist',
-					);
-				}
-
 				throw new WorkflowAccessError(
-					`Execution '${executionId}' does not belong to workflow '${workflowId}'`,
-					'execution_workflow_mismatch',
+					`Execution '${executionId}' not found for workflow '${workflowId}'`,
+					'execution_not_found',
 				);
 			}
 

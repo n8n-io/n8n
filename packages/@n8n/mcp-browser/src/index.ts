@@ -1,19 +1,20 @@
-export { SessionManager } from './session-manager';
+export { BrowserConnection } from './connection';
 export { createBrowserTools } from './tools/index';
+export { configureLogger } from './logger';
+export type { LogLevel } from './logger';
 export { parseServerOptions } from './server-config';
 export type { ServerOptions } from './server-config';
-export type { BrowserAdapter } from './adapters/adapter';
 export type {
 	BrowserName,
-	BrowserSession,
 	BrowserToolkit,
 	Config,
+	ConnectConfig,
+	ConnectResult,
+	ConnectionState,
 	Cookie,
 	ElementTarget,
 	PageInfo,
 	ResolvedConfig,
-	SessionConfig,
-	SessionMode,
 	ToolContext,
 	ToolDefinition,
 	CallToolResult,

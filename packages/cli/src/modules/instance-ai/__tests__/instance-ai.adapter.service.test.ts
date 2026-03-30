@@ -749,9 +749,10 @@ function createDataTableAdapterForTests(overrides?: {
 		mockSourceControlPreferencesService as unknown as SourceControlPreferencesService,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[22],
 		{ isLicensed: jest.fn().mockReturnValue(false) } as unknown as License,
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[23],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[24],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[25],
 	);
 
 	const adapter = service.createContext(mockUser).dataTableService;
@@ -925,15 +926,17 @@ function createWorkflowAdapterForTests(overrides?: {
 		} as unknown as SourceControlPreferencesService,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[22],
 		{
 			isLicensed: jest.fn().mockImplementation((feat: string) => {
 				if (feat === 'feat:namedVersions') return overrides?.namedVersionsLicensed ?? false;
 				if (feat === 'feat:folders') return overrides?.foldersLicensed ?? false;
 				return false;
 			}),
+			isSharingEnabled: jest.fn().mockReturnValue(false),
 		} as unknown as License,
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[23],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[24],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[25],
 	);
 
 	const context = service.createContext(mockUser);

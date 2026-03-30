@@ -29,7 +29,7 @@ function registerTools(server: McpServer, tools: ReturnType<typeof createBrowser
 
 async function main() {
 	const { config, transport: transportType, port } = parseServerOptions();
-	const { tools, sessionManager } = createBrowserTools(config);
+	const { tools, connection } = createBrowserTools(config);
 
 	if (transportType === 'http') {
 		const sessions = new Map<string, StreamableHTTPServerTransport>();
@@ -99,7 +99,7 @@ async function main() {
 		});
 
 		httpServer.listen(port, () => {
-			console.error(`n8n-browser MCP server listening on http://localhost:${port}`);
+			console.debug(`n8n-browser MCP server listening on http://localhost:${port}`);
 		});
 	} else {
 		const server = new McpServer({ name: 'n8n-browser', version: '1.0.0' });
@@ -109,7 +109,7 @@ async function main() {
 	}
 
 	const shutdown = async () => {
-		await sessionManager.shutdown();
+		await connection.shutdown();
 		process.exit(0);
 	};
 
