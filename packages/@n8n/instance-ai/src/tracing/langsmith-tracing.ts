@@ -408,7 +408,7 @@ export function mergeTraceRunInputs(
 export function buildAgentTraceInputs(options: AgentTraceInputOptions): Record<string, unknown> {
 	return sanitizeTracePayload({
 		...(options.systemPrompt ? { system_prompt: serializeTraceText(options.systemPrompt) } : {}),
-		...(options.modelId !== undefined ? { model: options.modelId } : {}),
+		...(options.modelId !== undefined ? { model: serializeModelIdForTrace(options.modelId) } : {}),
 		...(options.toolSearchEnabled !== undefined
 			? { tool_search_enabled: options.toolSearchEnabled }
 			: {}),

@@ -444,6 +444,22 @@ describe('createInstanceAiTraceContext', () => {
 		expect(actorInputs.loaded_tool_count).toBe(1);
 	});
 
+	it('redacts model secrets from agent trace inputs', () => {
+		const inputs = buildAgentTraceInputs({
+			systemPrompt: 'You are a helpful agent.',
+			modelId: {
+				id: 'openai-compat/gpt-4o',
+				url: 'https://custom.endpoint/v1',
+				apiKey: 'sk-super-secret-key',
+			},
+			tools: {} as never,
+		});
+
+		expect(inputs.model).toBe('openai-compat/gpt-4o');
+		expect(JSON.stringify(inputs)).not.toContain('sk-super-secret-key');
+		expect(JSON.stringify(inputs)).not.toContain('custom.endpoint');
+	});
+
 	it('redacts model secrets from trace metadata', async () => {
 		const tracing = await createInstanceAiTraceContext({
 			threadId: 'thread-1',
