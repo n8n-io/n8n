@@ -296,6 +296,26 @@ function isUnknownRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+/** Process a single stream message from CodeWorkflowBuilder, extracting workflow updates and text. */
+function processCodeBuilderMessage(
+	message: { type: string; text?: string; codeSnippet?: string; sourceCode?: string },
+	state: { workflow: SimpleWorkflow | null; generatedCode?: string; textParts: string[] },
+) {
+	if (isWorkflowUpdateChunk(message)) {
+		try {
+			const parsed: unknown = JSON.parse(message.codeSnippet ?? '');
+			if (isSimpleWorkflow(parsed)) {
+				state.workflow = parsed;
+				state.generatedCode = message.sourceCode;
+			}
+		} catch {
+			// Invalid JSON in codeSnippet — skip this message
+		}
+	} else if (message.type === 'message' && typeof message.text === 'string') {
+		state.textParts.push(message.text);
+	}
+}
+
 /**
  * Create a CodeWorkflowBuilder generator function.
  * Uses the CodeWorkflowBuilder which coordinates planning and coding agents to generate
@@ -354,9 +374,11 @@ function createCodeWorkflowBuilderGenerator(
 			? buildHistoryContextFromMessages(datasetInputContext.historicalMessages)
 			: undefined;
 
-		let workflow: SimpleWorkflow | null = null;
-		let generatedCode: string | undefined;
-		const textParts: string[] = [];
+		const streamState: {
+			workflow: SimpleWorkflow | null;
+			generatedCode?: string;
+			textParts: string[];
+		} = { workflow: null, textParts: [] };
 
 		// Create an AbortController to properly cancel the agent on timeout or error.
 		// Without this, the agent continues running even after Promise.race rejects,
@@ -378,16 +400,7 @@ function createCodeWorkflowBuilderGenerator(
 				historyContext,
 			)) {
 				for (const message of output.messages) {
-					if (isWorkflowUpdateChunk(message)) {
-						const parsed: unknown = JSON.parse(message.codeSnippet);
-						if (isSimpleWorkflow(parsed)) {
-							workflow = parsed;
-							generatedCode = message.sourceCode;
-						}
-					}
-					if (message.type === 'message' && 'text' in message && typeof message.text === 'string') {
-						textParts.push(message.text);
-					}
+					processCodeBuilderMessage(message, streamState);
 				}
 			}
 		} finally {
@@ -396,7 +409,7 @@ function createCodeWorkflowBuilderGenerator(
 			}
 		}
 
-		if (!workflow) {
+		if (!streamState.workflow) {
 			throw new WorkflowGenerationError('CodeWorkflowBuilder did not produce a workflow');
 		}
 
@@ -405,7 +418,11 @@ function createCodeWorkflowBuilderGenerator(
 			collectors.tokenUsage({ inputTokens: totalInputTokens, outputTokens: totalOutputTokens });
 		}
 
-		return { workflow, generatedCode, agentTextResponse: textParts.join('') || undefined };
+		return {
+			workflow: streamState.workflow,
+			generatedCode: streamState.generatedCode,
+			agentTextResponse: streamState.textParts.join('') || undefined,
+		};
 	};
 }
 
