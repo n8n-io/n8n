@@ -49,7 +49,7 @@ export function getSpreadsheetId(
 
 export function getSheetId(value: string): number {
 	if (value === 'gid=0') return 0;
-	return parseInt(value);
+	return parseInt(value, 10);
 }
 
 // Convert number to Sheets / Excel column name

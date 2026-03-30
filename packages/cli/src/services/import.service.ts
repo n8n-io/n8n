@@ -631,8 +631,8 @@ export class ImportService {
 
 		// Find the latest migration in import data
 		const latestImportMigration = importMigrations.reduce((latest, current) => {
-			const currentTimestamp = parseInt(String(current.timestamp || current.id || '0'));
-			const latestTimestamp = parseInt(String(latest.timestamp || latest.id || '0'));
+			const currentTimestamp = parseInt(String(current.timestamp || current.id || '0'), 10);
+			const latestTimestamp = parseInt(String(latest.timestamp || latest.id || '0'), 10);
 			return currentTimestamp > latestTimestamp ? current : latest;
 		});
 
@@ -662,8 +662,9 @@ export class ImportService {
 		// Compare timestamps, names, and IDs for comprehensive validation
 		const importTimestamp = parseInt(
 			String(latestImportMigration.timestamp || latestImportMigration.id || '0'),
+			10,
 		);
-		const dbTimestamp = parseInt(String(latestDbMigration.timestamp || '0'));
+		const dbTimestamp = parseInt(String(latestDbMigration.timestamp || '0'), 10);
 		const importName = latestImportMigration.name;
 		const dbName = latestDbMigration.name;
 

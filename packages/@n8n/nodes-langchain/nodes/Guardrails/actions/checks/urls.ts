@@ -232,7 +232,7 @@ function isUrlAllowed(parsedUrl: URL, allowList: string[], allowSubdomains: bool
 				// Proper CIDR validation
 				if (entry.includes('/') && urlHost.match(/^\d+\.\d+\.\d+\.\d+$/)) {
 					const [network, prefixStr] = entry.split('/');
-					const prefix = parseInt(prefixStr);
+					const prefix = parseInt(prefixStr, 10);
 
 					if (prefix >= 0 && prefix <= 32) {
 						// Convert IPs to 32-bit integers for bitwise comparison
