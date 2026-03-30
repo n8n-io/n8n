@@ -2,7 +2,6 @@
 import { computed, onMounted, onUnmounted, provide, ref, useTemplateRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
-	N8nButton,
 	N8nHeading,
 	N8nIconButton,
 	N8nResizeWrapper,
