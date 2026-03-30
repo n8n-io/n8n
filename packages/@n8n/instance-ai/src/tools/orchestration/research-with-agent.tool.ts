@@ -138,8 +138,9 @@ export async function startResearchAgentTask(
 
 				registerWithMastra(subAgentId, subAgent, context.storage);
 
-				return await withTraceParentContext(getTraceParentRun(), async () => {
-					const llmStepTraceHooks = createLlmStepTraceHooks();
+				const traceParent = getTraceParentRun();
+				return await withTraceParentContext(traceParent, async () => {
+					const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
 					const stream = await subAgent.stream(briefing, {
 						maxSteps: RESEARCH_MAX_STEPS,
 						abortSignal: signal,

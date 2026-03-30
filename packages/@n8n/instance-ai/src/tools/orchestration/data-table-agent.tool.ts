@@ -151,8 +151,9 @@ export async function startDataTableAgentTask(
 					: '';
 				const briefing = `${input.task}${conversationCtx}`;
 
-				return await withTraceParentContext(getTraceParentRun(), async () => {
-					const llmStepTraceHooks = createLlmStepTraceHooks();
+				const traceParent = getTraceParentRun();
+				return await withTraceParentContext(traceParent, async () => {
+					const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
 					const stream = await traceWorkingMemoryContext(
 						{
 							phase: 'initial',
