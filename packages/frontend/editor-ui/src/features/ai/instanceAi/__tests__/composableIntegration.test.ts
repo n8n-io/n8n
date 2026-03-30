@@ -115,6 +115,46 @@ describe('composable integration', () => {
 			expect(h.activeExecutionId.value).toBeNull();
 			expect(h.allArtifactTabs.value[0].executionStatus).toBe('running');
 		});
+
+		test('re-execution relays events to iframe when execution results are already showing', async () => {
+			h.registerWorkflow('wf-1', 'My Workflow');
+			h.setStreaming(true);
+
+			// Build workflow
+			h.addBuildResult('wf-1', 'tc-build-1');
+			await h.flush();
+			expect(h.activeWorkflowId.value).toBe('wf-1');
+
+			// First execution completes via push events
+			h.simulatePushEvent(executionStartedEvent('exec-1', 'wf-1'));
+			h.simulatePushEvent(nodeExecuteBeforeEvent('exec-1', 'Start'));
+			h.simulatePushEvent(nodeExecuteAfterEvent('exec-1', 'Start'));
+			h.simulatePushEvent(executionFinishedEvent('exec-1', 'wf-1', 'success'));
+			await h.flush();
+
+			// Execution result added to messages — sets activeExecutionId (iframe shows results)
+			h.addExecutionResult('wf-1', 'exec-1');
+			await h.flush();
+			expect(h.activeExecutionId.value).toBe('exec-1');
+
+			// Re-execute — iframe must switch to running state
+			h.relayedEvents.length = 0;
+			h.simulatePushEvent(executionStartedEvent('exec-2', 'wf-1'));
+			await h.flush();
+
+			// Iframe should leave execution results view
+			expect(h.activeExecutionId.value).toBeNull();
+			// Tab should show running
+			expect(h.allArtifactTabs.value[0].executionStatus).toBe('running');
+			// executionStarted must be relayed so iframe shows running state
+			expect(h.relayedEvents.length).toBeGreaterThan(0);
+			expect(h.relayedEvents.some((e) => e.type === 'executionStarted')).toBe(true);
+
+			// Subsequent node events must also be relayed
+			h.simulatePushEvent(nodeExecuteBeforeEvent('exec-2', 'Start'));
+			await h.flush();
+			expect(h.relayedEvents[h.relayedEvents.length - 1].type).toBe('nodeExecuteBefore');
+		});
 	});
 
 	// -----------------------------------------------------------------------
@@ -314,8 +354,6 @@ describe('composable integration', () => {
 			h.simulatePushEvent(executionFinishedEvent('exec-1', 'wf-1', 'error'));
 			await h.flush();
 			expect(h.allArtifactTabs.value.find((t) => t.id === 'wf-1')?.executionStatus).toBe('error');
-			const afterFinish = h.relayedEvents.length;
-
 			// Switch to wf-2 (no execution) — no relay
 			const beforeSwitch = h.relayedEvents.length;
 			h.selectTab('wf-2');
@@ -368,12 +406,16 @@ describe('composable integration', () => {
 			await h.flush();
 			expect(h.relayedEvents.length).toBeGreaterThan(0);
 			// All relayed events belong to wf-1's execution
-			expect(h.relayedEvents.every((e) => e.data.executionId === 'exec-1')).toBe(true);
+			expect(
+				h.relayedEvents.every((e) => 'executionId' in e.data && e.data.executionId === 'exec-1'),
+			).toBe(true);
 
 			h.simulatePushEvent(executionStartedEvent('exec-2', 'wf-2'));
 			await h.flush();
 			// No wf-2 events relayed — all still belong to exec-1
-			expect(h.relayedEvents.every((e) => e.data.executionId === 'exec-1')).toBe(true);
+			expect(
+				h.relayedEvents.every((e) => 'executionId' in e.data && e.data.executionId === 'exec-1'),
+			).toBe(true);
 
 			expect(h.allArtifactTabs.value.find((t) => t.id === 'wf-1')?.executionStatus).toBe('running');
 			expect(h.allArtifactTabs.value.find((t) => t.id === 'wf-2')?.executionStatus).toBe('running');
@@ -741,6 +783,8 @@ describe('composable integration', () => {
 				id: 'msg-dt',
 				role: 'assistant',
 				content: '',
+				reasoning: '',
+				isStreaming: false,
 				createdAt: new Date().toISOString(),
 				agentTree: {
 					agentId: 'agent-1',
@@ -780,6 +824,8 @@ describe('composable integration', () => {
 				id: 'msg-del',
 				role: 'assistant',
 				content: '',
+				reasoning: '',
+				isStreaming: false,
 				createdAt: new Date().toISOString(),
 				agentTree: {
 					agentId: 'agent-1',

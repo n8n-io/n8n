@@ -108,9 +108,11 @@ function makeMessage(overrides: Partial<InstanceAiMessage> = {}): InstanceAiMess
 		id: `msg-${Date.now()}-${Math.random()}`,
 		role: 'assistant',
 		content: '',
+		reasoning: '',
+		isStreaming: false,
 		createdAt: new Date().toISOString(),
 		...overrides,
-	} as InstanceAiMessage;
+	};
 }
 
 // ---------------------------------------------------------------------------
@@ -266,7 +268,9 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 		// or create a new message with both build and execution
 		const existingIdx = store.messages.findIndex((m) =>
 			m.agentTree?.toolCalls?.some(
-				(tc) => tc.toolName === 'build-workflow' && tc.result?.workflowId === workflowId,
+				(tc) =>
+					tc.toolName === 'build-workflow' &&
+					(tc.result as Record<string, unknown> | undefined)?.workflowId === workflowId,
 			),
 		);
 

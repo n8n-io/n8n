@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { ref, computed, nextTick } from 'vue';
+import { ref, computed, nextTick, type Ref } from 'vue';
 import type { PushMessage } from '@n8n/api-types';
 import { useEventRelay } from '../useEventRelay';
 import type { WorkflowExecutionState } from '../useExecutionPushEvents';
@@ -50,8 +50,8 @@ function createExecState(
 
 describe('useEventRelay', () => {
 	let relay: ReturnType<typeof vi.fn>;
-	let workflowExecutions: ReturnType<typeof ref<Map<string, WorkflowExecutionState>>>;
-	let activeWorkflowId: ReturnType<typeof ref<string | null>>;
+	let workflowExecutions: Ref<Map<string, WorkflowExecutionState>>;
+	let activeWorkflowId: Ref<string | null>;
 	let bufferedEventsStore: Map<string, PushMessage[]>;
 
 	function setup(overrides?: { activeWfId?: string | null }) {
