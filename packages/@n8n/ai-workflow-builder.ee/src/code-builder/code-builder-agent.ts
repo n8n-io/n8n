@@ -17,6 +17,9 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 
+import { createLangGraphSecurityManagerFactory } from '@/tools/utils/web-fetch-security';
+import { createWebFetchTool } from '@/tools/web-fetch.tool';
+
 import type {
 	StreamOutput,
 	AgentMessageChunk,
@@ -46,8 +49,6 @@ import { WarningTracker } from './state/warning-tracker';
 import { createCodeBuilderGetTool } from './tools/code-builder-get.tool';
 import { createCodeBuilderSearchTool } from './tools/code-builder-search.tool';
 import { createGetSuggestedNodesTool } from './tools/get-suggested-nodes.tool';
-import { createWebFetchTool } from '@/tools/web-fetch.tool';
-import { createLangGraphSecurityManagerFactory } from '@/tools/utils/web-fetch-security';
 import type { CodeBuilderAgentConfig, TokenUsage } from './types';
 export type { CodeBuilderAgentConfig } from './types';
 import { sanitizeLlmErrorMessage } from '../utils/error-sanitizer';

@@ -30,7 +30,6 @@ import {
 	getDefaultDatasetName,
 	getDefaultExperimentName,
 	parseEvaluationArgs,
-	type EvaluationArgs,
 } from './argument-parser';
 import { buildCIMetadata } from './ci-metadata';
 import {
@@ -67,7 +66,6 @@ import {
 	setupTestEnvironment,
 	resolveNodesBasePath,
 	type ResolvedStageLLMs,
-	type TestEnvironment,
 } from '../support/environment';
 import { generateEvalPinData } from '../support/pin-data-generator';
 

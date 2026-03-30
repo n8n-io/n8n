@@ -192,6 +192,7 @@ describe('WorkflowBuilderAgent', () => {
 			const testError = new Error('CodeWorkflowBuilder error');
 
 			mockCodeWorkflowBuilderChat.mockImplementation(async function* () {
+				yield* []; // eslint requires yield in generator
 				throw testError;
 			});
 
