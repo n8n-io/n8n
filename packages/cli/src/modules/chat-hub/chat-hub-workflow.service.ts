@@ -788,6 +788,15 @@ ${this.getSystemMessageMetadata(timeZone) + artifactContext}`;
 						options: {},
 					},
 				};
+			case 'atlasCloud': {
+				return {
+					...common,
+					parameters: {
+						model,
+						options: {},
+					},
+				};
+			}
 			case 'google':
 				return {
 					...common,
