@@ -2,6 +2,11 @@ export { generateCompactionSummary } from './compaction';
 export type { CompactionInput } from './compaction';
 export { createDomainAccessTracker } from './domain-access';
 export type { DomainAccessTracker } from './domain-access';
+export {
+	createInstanceAiTraceContext,
+	continueInstanceAiTraceContext,
+	withCurrentTraceSpan,
+} from './tracing/langsmith-tracing';
 export { createInstanceAgent } from './agent/instance-agent';
 export { tracingHeaderStore } from './agent/build-langsmith-exporter';
 export { createAllTools, createOrchestrationTools } from './tools';
@@ -30,11 +35,6 @@ export type {
 } from './storage';
 export { WORKING_MEMORY_TEMPLATE } from './memory/working-memory-template';
 export { truncateToTitle, generateThreadTitle } from './memory/title-utils';
-export { createSubAgentMemory, subAgentResourceId } from './memory/sub-agent-memory';
-export {
-	MEMORY_ENABLED_ROLES,
-	getSubAgentMemoryTemplate,
-} from './memory/sub-agent-memory-templates';
 export { McpClientManager } from './mcp/mcp-client-manager';
 export { mapMastraChunkToEvent } from './stream/map-chunk';
 export { isRecord, parseSuspension, asResumable } from './utils/stream-helpers';
@@ -130,6 +130,11 @@ export type {
 	OrchestrationContext,
 	SpawnBackgroundTaskOptions,
 	BackgroundTaskResult,
+	InstanceAiToolTraceOptions,
+	InstanceAiTraceContext,
+	InstanceAiTraceRun,
+	InstanceAiTraceRunFinishOptions,
+	InstanceAiTraceRunInit,
 	WorkflowTaskService,
 	WorkflowSummary,
 	WorkflowDetail,

@@ -1,8 +1,8 @@
 import { Agent } from '@mastra/core/agent';
 import type { ToolsInput } from '@mastra/core/agent';
-import type { Memory } from '@mastra/memory';
 
-import type { ModelConfig } from '../types';
+import { buildAgentTraceInputs, mergeTraceRunInputs } from '../tracing/langsmith-tracing';
+import type { InstanceAiTraceRun, ModelConfig } from '../types';
 
 export interface SubAgentOptions {
 	/** Unique ID for this sub-agent instance (e.g., "agent-V1StGX") */
@@ -15,8 +15,8 @@ export interface SubAgentOptions {
 	tools: ToolsInput;
 	/** Model config (same as orchestrator) */
 	modelId: ModelConfig;
-	/** Mastra Memory instance — enables persistent working memory for this role */
-	memory?: Memory;
+	/** Optional trace run to annotate with the sub-agent's static config */
+	traceRun?: InstanceAiTraceRun;
 }
 
 /** Hard protocol injected into every sub-agent — cannot be overridden by orchestrator instructions. */
@@ -28,8 +28,7 @@ You are reporting to a parent agent, NOT a human user. Your output is machine-co
 - One tool call at a time unless truly independent. Minimum tool calls needed.
 - You cannot delegate to other agents or create plans.
 - If you are stuck or need information only a human can provide, use the ask-user tool.
-- Do NOT retry the same failing approach more than twice — ask the user instead.
-- When you discover durable patterns (credential quirks, node gotchas, error fixes), update your working memory so you remember them next time.`;
+- Do NOT retry the same failing approach more than twice — ask the user instead.`;
 
 export { SUB_AGENT_PROTOCOL };
 
@@ -43,11 +42,11 @@ ${instructions}`;
 }
 
 export function createSubAgent(options: SubAgentOptions): Agent {
-	const { agentId, role, instructions, tools, modelId, memory } = options;
+	const { agentId, role, instructions, tools, modelId, traceRun } = options;
 
 	const systemPrompt = buildSubAgentPrompt(role, instructions);
 
-	return new Agent({
+	const agent = new Agent({
 		id: agentId,
 		name: `Sub-Agent: ${role}`,
 		instructions: {
@@ -59,6 +58,16 @@ export function createSubAgent(options: SubAgentOptions): Agent {
 		},
 		model: modelId,
 		tools,
-		memory,
 	});
+
+	mergeTraceRunInputs(
+		traceRun,
+		buildAgentTraceInputs({
+			systemPrompt,
+			tools,
+			modelId,
+		}),
+	);
+
+	return agent;
 }
