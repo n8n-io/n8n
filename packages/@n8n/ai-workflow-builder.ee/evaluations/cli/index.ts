@@ -218,7 +218,7 @@ function createCodeWorkflowBuilderGenerator(
 			evalType: EVAL_TYPES.LANGSMITH,
 			message: prompt,
 			workflowId: runId,
-			featureFlags: { codeBuilder: true },
+			featureFlags: {},
 			workflowContext: datasetInputContext?.workflowContext,
 			mode: datasetInputContext?.mode,
 		});
@@ -342,7 +342,6 @@ export async function runV2Evaluation(): Promise<void> {
 
 	// Setup environment with per-stage model configuration
 	const logger = createLogger(args.verbose);
-	const lifecycle = createConsoleLifecycle({ verbose: args.verbose, logger });
 	const stageModels = argsToStageModels(args);
 
 	const env = await setupTestEnvironment(stageModels, logger);

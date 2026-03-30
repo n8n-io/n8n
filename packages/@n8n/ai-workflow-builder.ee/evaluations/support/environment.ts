@@ -275,7 +275,6 @@ export function createAgent(options: CreateAgentOptions): WorkflowBuilderAgent {
 		},
 		checkpointer: new MemorySaver(),
 		tracer,
-		featureFlags,
 		runMetadata: {
 			featureFlags: featureFlags ?? {},
 			experimentName,
