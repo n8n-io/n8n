@@ -81,6 +81,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'source-control-user-finished-pull-ui': (event) =>
 				this.sourceControlUserFinishedPullUi(event),
 			'source-control-user-pulled-api': (event) => this.sourceControlUserPulledApi(event),
+			'source-control-user-pushed-api': (event) => this.sourceControlUserPushedApi(event),
 			'source-control-user-started-push-ui': (event) => this.sourceControlUserStartedPushUi(event),
 			'source-control-user-finished-push-ui': (event) =>
 				this.sourceControlUserFinishedPushUi(event),
@@ -246,6 +247,22 @@ export class TelemetryEventRelay extends EventRelay {
 	}: RelayEventMap['source-control-user-pulled-api']) {
 		this.telemetry.track('User pulled via API', {
 			workflow_updates: workflowUpdates,
+			forced,
+		});
+	}
+
+	private sourceControlUserPushedApi({
+		workflowsPushed,
+		workflowsEligible,
+		credsPushed,
+		variablesPushed,
+		forced,
+	}: RelayEventMap['source-control-user-pushed-api']) {
+		this.telemetry.track('User pushed via API', {
+			workflows_pushed: workflowsPushed,
+			workflows_eligible: workflowsEligible,
+			creds_pushed: credsPushed,
+			variables_pushed: variablesPushed,
 			forced,
 		});
 	}

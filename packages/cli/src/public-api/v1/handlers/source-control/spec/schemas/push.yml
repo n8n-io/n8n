@@ -1,0 +1,45 @@
+type: object
+required:
+  - fileNames
+properties:
+  force:
+    type: boolean
+    example: true
+  commitMessage:
+    type: string
+    example: Updated workflows
+  fileNames:
+    type: array
+    items:
+      type: object
+      required:
+        - file
+        - id
+        - name
+        - type
+        - status
+        - location
+        - conflict
+        - updatedAt
+      properties:
+        file:
+          type: string
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+          enum: [credential, workflow, tags, variables, file, folders, project, datatable]
+        status:
+          type: string
+          enum: [new, modified, deleted, created, renamed, conflicted, ignored, staged, unknown]
+        location:
+          type: string
+          enum: [local, remote]
+        conflict:
+          type: boolean
+        updatedAt:
+          type: string
+        pushed:
+          type: boolean
