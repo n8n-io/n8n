@@ -297,13 +297,27 @@ describe('calculateNodePositions', () => {
 				createGraphNode('trigger', 'n8n-nodes-base.manualTrigger', triggerConns),
 			);
 			nodes.set('set', createGraphNode('set', 'n8n-nodes-base.set'));
+			// Sticky note behind the trigger and set nodes (covers them at origin)
 			nodes.set('note', createGraphNode('note', STICKY_NODE_TYPE));
 
 			const positions = calculateNodePositions(nodes);
 
-			// Non-sticky nodes get positions
+			// Non-sticky nodes get positions from dagre layout
 			expect(positions.has('trigger')).toBe(true);
 			expect(positions.has('set')).toBe(true);
+
+			// Sticky note is NOT in the dagre graph but gets repositioned
+			// to follow the nodes it covered
+			expect(positions.has('note')).toBe(true);
+
+			// Sticky note that doesn't cover any nodes is excluded entirely
+			const nodes2 = new Map(nodes);
+			nodes2.set(
+				'remote-note',
+				createGraphNode('remote-note', STICKY_NODE_TYPE, undefined, [5000, 5000]),
+			);
+			const positions2 = calculateNodePositions(nodes2);
+			expect(positions2.has('remote-note')).toBe(false);
 		});
 	});
 });
