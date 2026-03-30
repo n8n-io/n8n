@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
 import type { BaseTextKey } from '@n8n/i18n';
-import { N8nBadge, N8nIcon } from '@n8n/design-system';
+import { N8nBadge, N8nIcon, N8nTooltip } from '@n8n/design-system';
 import {
 	N8nDropdownMenu,
 	type DropdownMenuItemProps,
@@ -46,6 +46,10 @@ const effectiveCount = computed(() => {
 });
 
 const hasHiddenDeps = computed(() => (depsResult.value?.inaccessibleCount ?? 0) > 0);
+
+const tooltipText = computed(() =>
+	i18n.baseText(`workflows.dependencies.tooltip.${props.resourceType}` as BaseTextKey),
+);
 
 const hasFullDeps = computed(() => depsResult.value !== undefined);
 
@@ -194,40 +198,42 @@ async function onDropdownToggle(open: boolean) {
 </script>
 
 <template>
-	<N8nDropdownMenu
-		:items="menuItems"
-		trigger="hover"
-		placement="bottom"
-		:loading="isLoadingDetails"
-		:loading-item-count="1"
-		:searchable="showSearch"
-		extra-popper-class="dependency-pill-dropdown"
-		:search-placeholder="i18n.baseText('workflows.dependencies.search.placeholder')"
-		:max-height="280"
-		:data-test-id="dataTestId"
-		@select="onSelect"
-		@search="onSearch"
-		@update:model-value="onDropdownToggle"
-	>
-		<template #trigger>
-			<N8nBadge theme="tertiary" :class="$style.badge">
-				<span :class="$style.badgeText">
-					<N8nIcon icon="link" size="medium" />
-					{{ effectiveCount }}
-				</span>
-			</N8nBadge>
-		</template>
-		<template v-if="hasHiddenDeps" #footer>
-			<div :class="$style.hiddenNotice">
-				{{
-					i18n.baseText('workflows.dependencies.hiddenNotice', {
-						adjustToNumber: depsResult!.inaccessibleCount,
-						interpolate: { count: String(depsResult!.inaccessibleCount) },
-					})
-				}}
-			</div>
-		</template>
-	</N8nDropdownMenu>
+	<N8nTooltip :content="tooltipText" placement="left" :show-after="200">
+		<N8nDropdownMenu
+			:items="menuItems"
+			trigger="hover"
+			placement="bottom"
+			:loading="isLoadingDetails"
+			:loading-item-count="1"
+			:searchable="showSearch"
+			extra-popper-class="dependency-pill-dropdown"
+			:search-placeholder="i18n.baseText('workflows.dependencies.search.placeholder')"
+			:max-height="280"
+			:data-test-id="dataTestId"
+			@select="onSelect"
+			@search="onSearch"
+			@update:model-value="onDropdownToggle"
+		>
+			<template #trigger>
+				<N8nBadge theme="tertiary" :class="$style.badge">
+					<span :class="$style.badgeText">
+						<N8nIcon icon="link" size="medium" />
+						{{ effectiveCount }}
+					</span>
+				</N8nBadge>
+			</template>
+			<template v-if="hasHiddenDeps" #footer>
+				<div :class="$style.hiddenNotice">
+					{{
+						i18n.baseText('workflows.dependencies.hiddenNotice', {
+							adjustToNumber: depsResult!.inaccessibleCount,
+							interpolate: { count: String(depsResult!.inaccessibleCount) },
+						})
+					}}
+				</div>
+			</template>
+		</N8nDropdownMenu>
+	</N8nTooltip>
 </template>
 
 <style lang="scss" module>
