@@ -18,18 +18,6 @@ interface LlmCheckOptions {
 	skipIf?: (workflow: SimpleWorkflow, ctx: BinaryCheckContext) => string | undefined;
 }
 
-/**
- * Build extra template variables from BinaryCheckContext fields.
- */
-function buildExtraVars(ctx: BinaryCheckContext): Record<string, string> {
-	return {
-		agentTextResponse: ctx.agentTextResponse ?? '',
-		workflowBefore: ctx.existingWorkflow
-			? JSON.stringify(ctx.existingWorkflow, null, 2)
-			: '{"nodes": [], "connections": {}}',
-	};
-}
-
 export function createLlmCheck(options: LlmCheckOptions): BinaryCheck {
 	const systemPrompt = options.systemPrompt + REASONING_FIRST_SUFFIX;
 
@@ -60,7 +48,8 @@ export function createLlmCheck(options: LlmCheckOptions): BinaryCheck {
 					promise: invokeEvaluatorChain(chain, {
 						userPrompt: ctx.prompt,
 						generatedWorkflow: workflow,
-						extraVars: buildExtraVars(ctx),
+						agentTextResponse: ctx.agentTextResponse,
+						existingWorkflow: ctx.existingWorkflow,
 					}),
 					timeoutMs: ctx.timeoutMs,
 					label: `binary-checks:${options.name}`,

@@ -32,7 +32,7 @@ export function createEvaluatorChain<TResult extends Record<string, unknown>>(
 
 export async function invokeEvaluatorChain<TResult>(
 	chain: Runnable<EvaluatorChainInput, TResult>,
-	input: EvaluationInput & { extraVars?: Record<string, string> },
+	input: EvaluationInput,
 	config?: RunnableConfig,
 ): Promise<TResult> {
 	const referenceSection =
@@ -45,7 +45,10 @@ export async function invokeEvaluatorChain<TResult>(
 			userPrompt: input.userPrompt,
 			generatedWorkflow: JSON.stringify(input.generatedWorkflow, null, 2),
 			referenceSection,
-			...input.extraVars,
+			agentTextResponse: input.agentTextResponse ?? '',
+			workflowBefore: input.existingWorkflow
+				? JSON.stringify(input.existingWorkflow, null, 2)
+				: '{"nodes": [], "connections": {}}',
 		},
 		config,
 	);
