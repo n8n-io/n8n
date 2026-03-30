@@ -7,8 +7,6 @@ import type { CallToolResult, ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
 import { buildShellResource } from './build-shell-resource';
 
-let sandboxInitialized = false;
-
 async function initializeSandbox({ dir }: { dir: string }) {
 	const config: SandboxRuntimeConfig = {
 		ripgrep: {
@@ -26,8 +24,6 @@ async function initializeSandbox({ dir }: { dir: string }) {
 		},
 	};
 	await SandboxManager.initialize(config);
-
-	sandboxInitialized = true;
 }
 
 const inputSchema = z.object({
