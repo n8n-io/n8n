@@ -1,0 +1,40 @@
+name: 'Release: Publish New Package'
+
+on:
+  workflow_dispatch:
+    inputs:
+      package-path:
+        description: 'Path to the package to publish (e.g. packages/@n8n/my-new-package)'
+        required: true
+        type: string
+
+concurrency:
+  group: release-new-package-${{ github.event.inputs.package-path }}
+  cancel-in-progress: false
+
+jobs:
+  publish-to-npm:
+    name: Publish to NPM
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: release
+
+    steps:
+      - name: Check branch
+        if: github.ref != 'refs/heads/master'
+        run: |
+          echo "::error::This workflow can only be run from the master branch"
+          exit 1
+
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup and Build
+        uses: ./.github/actions/setup-nodejs
+
+      - name: Configure NPM token
+        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+
+      - name: Publish package
+        working-directory: ${{ github.event.inputs.package-path }}
+        run: pnpm publish --access public --no-git-checks

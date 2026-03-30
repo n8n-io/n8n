@@ -72,7 +72,14 @@ export class WorkflowCreationService {
 			newWorkflow.tags = await this.tagRepository.findMany(tagIds);
 		}
 
-		await WorkflowHelpers.replaceInvalidCredentials(newWorkflow);
+		// Resolve the effective project before credential replacement to scope lookups
+		let effectiveProjectId = projectId;
+		if (effectiveProjectId === undefined) {
+			const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(user.id);
+			effectiveProjectId = personalProject.id;
+		}
+
+		await WorkflowHelpers.replaceInvalidCredentials(newWorkflow, effectiveProjectId);
 
 		WorkflowHelpers.addNodeIds(newWorkflow);
 
@@ -100,18 +107,6 @@ export class WorkflowCreationService {
 
 		let project: Project | null = null;
 		const savedWorkflow = await dbManager.transaction(async (transactionManager) => {
-			let effectiveProjectId = projectId;
-
-			if (effectiveProjectId === undefined) {
-				const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(
-					user.id,
-					transactionManager,
-				);
-				// Chat users are not allowed to create workflows even within their personal project,
-				// so even though we found the project ensure it gets found via expected scope too.
-				effectiveProjectId = personalProject.id;
-			}
-
 			project = await this.projectService.getProjectWithScope(
 				user,
 				effectiveProjectId,

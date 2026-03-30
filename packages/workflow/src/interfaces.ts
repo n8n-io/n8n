@@ -508,6 +508,11 @@ export interface IHttpRequestOptions {
 	 * @default true - for backwards compatibility
 	 */
 	sendCredentialsOnCrossOriginRedirect?: boolean;
+	/**
+	 * Comma-separated list of allowed domains for credential requests.
+	 * If set, requests to domains not in this list will be blocked.
+	 */
+	allowedDomains?: string;
 }
 
 /**
@@ -561,6 +566,11 @@ export interface IRequestOptions {
 	 * @default true - for backwards compatibility
 	 */
 	sendCredentialsOnCrossOriginRedirect?: boolean;
+	/**
+	 * Comma-separated list of allowed domains for credential requests.
+	 * If set, requests to domains not in this list will be blocked.
+	 */
+	allowedDomains?: string;
 }
 
 export interface PaginationOptions {

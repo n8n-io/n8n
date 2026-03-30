@@ -16,8 +16,13 @@ import type { ExecutionPreviewNodeSchema } from '@/features/execution/executions
 import type { IWorkflowDb } from '@/Interface';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
-import type { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import {
+	type useWorkflowDocumentStore,
+	useWorkflowDocumentStore as createWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useWorkflowImport } from '@/app/composables/useWorkflowImport';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 interface PostMessageHandlerDeps {
 	workflowState: WorkflowState;
@@ -38,6 +43,7 @@ export function usePostMessageHandler({
 	const telemetry = useTelemetry();
 	const nodeHelpers = useNodeHelpers();
 
+	const workflowsStore = useWorkflowsStore();
 	const { resetWorkspace, openExecution, fitView } = useCanvasOperations();
 	const { importWorkflowExact } = useWorkflowImport(currentWorkflowDocumentStore);
 
@@ -90,6 +96,13 @@ export function usePostMessageHandler({
 		const data = await openExecution(json.executionId, json.nodeId);
 		if (!data) {
 			return;
+		}
+
+		const wfId = workflowsStore.workflowId;
+		if (wfId) {
+			currentWorkflowDocumentStore.value = createWorkflowDocumentStore(
+				createWorkflowDocumentId(wfId),
+			);
 		}
 
 		void nextTick(() => {

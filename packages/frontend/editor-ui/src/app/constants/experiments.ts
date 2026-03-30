@@ -97,8 +97,6 @@ export const CODE_WORKFLOW_BUILDER_EXPERIMENT = createExperiment('071_coding_wor
 	codePinData: 'code-pin-data',
 });
 
-export const QUICK_CONNECT_EXPERIMENT = createExperiment('073_quick_connect');
-
 export const AI_BUILDER_SETUP_WIZARD_EXPERIMENT = createExperiment('079_ai_builder_setup_wizard');
 export const AA_EXPERIMENT_CHECK = createExperiment('078_experiment_check_aa');
 
@@ -125,7 +123,6 @@ export const EXPERIMENTS_TO_TRACK = [
 	CODE_WORKFLOW_BUILDER_EXPERIMENT.name,
 	EMPTY_STATE_BUILDER_PROMPT_EXPERIMENT.name,
 	FOCUSED_NODES_EXPERIMENT.name,
-	QUICK_CONNECT_EXPERIMENT.name,
 	AI_BUILDER_REVIEW_CHANGES_EXPERIMENT.name,
 	MERGE_ASK_BUILD_EXPERIMENT.name,
 	AI_BUILDER_SETUP_WIZARD_EXPERIMENT.name,

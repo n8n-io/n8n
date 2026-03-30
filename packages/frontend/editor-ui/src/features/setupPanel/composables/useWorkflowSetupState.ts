@@ -343,8 +343,8 @@ export const useWorkflowSetupState = (
 
 		return sortNodesByExecutionOrder(
 			nodesForSetup,
-			workflowsStore.connectionsBySourceNode,
-			workflowsStore.connectionsByDestinationNode,
+			workflowDocumentStore.value?.connectionsBySourceNode ?? {},
+			workflowDocumentStore.value?.connectionsByDestinationNode ?? {},
 			allNodeTypes,
 		);
 	});

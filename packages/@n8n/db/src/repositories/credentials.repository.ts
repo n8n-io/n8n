@@ -276,6 +276,18 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 	}
 
 	/**
+	 * Find credentials by name and type, scoped to a specific project.
+	 * Used by replaceInvalidCredentials to prevent cross-project credential resolution.
+	 */
+	async findByNameAndTypeInProject(
+		name: string,
+		type: string,
+		projectId: string,
+	): Promise<CredentialsEntity[]> {
+		return await this.findBy({ name, type, shared: { projectId } });
+	}
+
+	/**
 	 * Get credentials with sharing permissions using a subquery instead of pre-fetched IDs.
 	 * This combines the credential and sharing queries into a single database query.
 	 */
