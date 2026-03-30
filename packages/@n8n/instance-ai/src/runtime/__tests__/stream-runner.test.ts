@@ -24,12 +24,86 @@ function createEventBus() {
 	};
 }
 
+async function* fromChunks(chunks: unknown[]) {
+	for (const chunk of chunks) {
+		await Promise.resolve();
+		yield chunk;
+	}
+}
+
 async function* emptyStream() {
 	await Promise.resolve();
 	yield* [];
 }
 
 describe('streamAgentRun', () => {
+	it('returns errored status when agent stream contains an error chunk', async () => {
+		jest.mocked(executeResumableStream).mockResolvedValue({
+			status: 'errored',
+			mastraRunId: 'mastra-run-1',
+		});
+		const eventBus = createEventBus();
+		const agent = {
+			stream: jest.fn().mockResolvedValue({
+				runId: 'mastra-run-1',
+				fullStream: fromChunks([
+					{ type: 'text-delta', payload: { text: 'Hello' } },
+					{
+						type: 'error',
+						runId: 'mastra-run-1',
+						from: 'AGENT',
+						payload: { error: new Error('Not Found') },
+					},
+				]),
+			}),
+		};
+
+		const result = await streamAgentRun(
+			agent,
+			'test input',
+			{},
+			{
+				threadId: 'thread-1',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				signal: new AbortController().signal,
+				eventBus,
+			},
+		);
+
+		expect(result.status).toBe('errored');
+		expect(result.mastraRunId).toBe('mastra-run-1');
+	});
+
+	it('returns completed status for successful streams', async () => {
+		jest.mocked(executeResumableStream).mockResolvedValue({
+			status: 'completed',
+			mastraRunId: 'mastra-run-1',
+		});
+		const eventBus = createEventBus();
+		const agent = {
+			stream: jest.fn().mockResolvedValue({
+				runId: 'mastra-run-1',
+				fullStream: fromChunks([{ type: 'text-delta', payload: { text: 'All good' } }]),
+			}),
+		};
+
+		const result = await streamAgentRun(
+			agent,
+			'test input',
+			{},
+			{
+				threadId: 'thread-1',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				signal: new AbortController().signal,
+				eventBus,
+			},
+		);
+
+		expect(result.status).toBe('completed');
+	});
+
 	it('passes through the buffered manual confirmation event', async () => {
 		const mockedExecuteResumableStream = jest.mocked(executeResumableStream);
 		const agent = {

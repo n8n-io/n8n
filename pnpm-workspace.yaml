@@ -23,11 +23,10 @@ catalog:
   '@mastra/core': 1.9.0
   '@mastra/daytona': 0.1.0
   '@mastra/evals': 1.1.0
-  '@mastra/langsmith': 1.1.2
   '@mastra/libsql': 1.6.3
   '@mastra/mcp': 1.0.3
   '@mastra/memory': 1.6.0
-  '@mastra/observability': 1.3.0
+  langsmith: 0.4.12
   '@mastra/pg': 1.7.1
   '@langchain/anthropic': 1.1.3
   '@langchain/community': 1.1.14

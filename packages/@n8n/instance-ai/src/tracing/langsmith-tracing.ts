@@ -1,7 +1,7 @@
 import type { ToolsInput } from '@mastra/core/agent';
 import { createTool } from '@mastra/core/tools';
 import type { ToolAction, ToolExecutionContext } from '@mastra/core/tools';
-import { RunTree } from 'langsmith';
+import { Client, RunTree } from 'langsmith';
 import { getCurrentRunTree, withRunTree as withLangSmithRunTree } from 'langsmith/traceable';
 import { AsyncLocalStorage } from 'node:async_hooks';
 
@@ -11,6 +11,7 @@ import type {
 	InstanceAiTraceRun,
 	InstanceAiTraceRunFinishOptions,
 	InstanceAiTraceRunInit,
+	ServiceProxyConfig,
 } from '../types';
 import { isRecord } from '../utils/stream-helpers';
 
@@ -23,6 +24,45 @@ const MAX_TRACE_OBJECT_KEYS = 30;
 const traceParentOverrideStorage = new AsyncLocalStorage<{ current: RunTree | null }>();
 let traceParentOverrideFallback: RunTree | null = null;
 
+// Per-request proxy auth headers, isolated via AsyncLocalStorage.
+// The proxy Client is cached per deployment URL; each concurrent request
+// wraps its agent execution in proxyHeaderStore.run(headers, fn) so
+// the shared Client's custom fetch reads the correct per-request
+// Authorization header without any shared mutable state.
+const proxyHeaderStore = new AsyncLocalStorage<Record<string, string>>();
+
+// Module-level map associating traceIds with proxy clients so that
+// hydrateRunTree() (which reconstructs RunTree from serialized state)
+// can use the correct proxy client for its HTTP calls.
+const traceClients = new Map<string, Client>();
+
+let cachedProxyClient: { client: Client; apiUrl: string } | null = null;
+
+function getOrCreateProxyClient(proxyConfig: ServiceProxyConfig): Client {
+	if (cachedProxyClient?.apiUrl === proxyConfig.apiUrl) return cachedProxyClient.client;
+
+	const proxyFetch: typeof globalThis.fetch = async (input, init) => {
+		const contextHeaders = proxyHeaderStore.getStore();
+		if (contextHeaders) {
+			const merged = new Headers(init?.headers);
+			for (const [key, value] of Object.entries(contextHeaders)) {
+				merged.set(key, value);
+			}
+			return await globalThis.fetch(input, { ...init, headers: merged });
+		}
+		return await globalThis.fetch(input, init);
+	};
+
+	const client = new Client({
+		apiUrl: proxyConfig.apiUrl,
+		apiKey: '-', // proxy manages auth
+		autoBatchTracing: false,
+		fetchImplementation: proxyFetch,
+	});
+	cachedProxyClient = { client, apiUrl: proxyConfig.apiUrl };
+	return client;
+}
+
 interface CreateInstanceAiTraceContextOptions {
 	projectName?: string;
 	threadId: string;
@@ -34,6 +74,8 @@ interface CreateInstanceAiTraceContextOptions {
 	modelId?: unknown;
 	input: unknown;
 	metadata?: Record<string, unknown>;
+	/** When set, traces are routed through the AI service proxy instead of directly to LangSmith. */
+	proxyConfig?: ServiceProxyConfig;
 }
 
 interface CreateDetachedSubAgentTraceContextOptions extends CreateInstanceAiTraceContextOptions {
@@ -86,11 +128,15 @@ function isInternalStateTool(toolId: string): boolean {
 	return toolId === 'updateWorkingMemory';
 }
 
-function isLangSmithTracingEnabled(): boolean {
+function isLangSmithTracingEnabled(proxyAvailable?: boolean): boolean {
 	const tracingFlag =
 		process.env.LANGCHAIN_TRACING_V2 ?? process.env.LANGSMITH_TRACING ?? undefined;
 	if (tracingFlag?.toLowerCase() === 'false') {
 		return false;
+	}
+
+	if (proxyAvailable) {
+		return true;
 	}
 
 	return Boolean(
@@ -726,29 +772,47 @@ function createTraceContext(
 	traceKind: InstanceAiTraceContext['traceKind'],
 	rootRun: InstanceAiTraceRun,
 	actorRun: InstanceAiTraceRun,
+	proxyHeaders?: Record<string, string>,
 ): InstanceAiTraceContext {
+	const withProxy = async <T>(fn: () => Promise<T>): Promise<T> =>
+		proxyHeaders ? await proxyHeaderStore.run(proxyHeaders, fn) : await fn();
+
 	const startChildRun = async (
 		parentRun: InstanceAiTraceRun,
 		init: InstanceAiTraceRunInit,
-	): Promise<InstanceAiTraceRun> => await createChildRun(parentRun, init);
+	): Promise<InstanceAiTraceRun> =>
+		await withProxy(async () => await createChildRun(parentRun, init));
 
 	const withRunTree = async <T>(run: InstanceAiTraceRun, fn: () => Promise<T>): Promise<T> =>
-		await withSerializedRunTree(run, fn);
+		await withProxy(async () => await withSerializedRunTree(run, fn));
 
 	const finishRun = async (
 		run: InstanceAiTraceRun,
 		finishOptions?: InstanceAiTraceRunFinishOptions,
-	): Promise<void> => await finishTraceRun(run, finishOptions);
+	): Promise<void> => {
+		await withProxy(async () => await finishTraceRun(run, finishOptions));
+		// Clean up traceClients when root run finishes
+		if (!run.parentRunId) {
+			traceClients.delete(run.traceId);
+		}
+	};
 
 	const failRun = async (
 		run: InstanceAiTraceRun,
 		error: unknown,
 		metadata?: Record<string, unknown>,
-	): Promise<void> =>
-		await finishTraceRun(run, {
-			error: normalizeErrorMessage(error),
-			metadata,
-		});
+	): Promise<void> => {
+		await withProxy(
+			async () =>
+				await finishTraceRun(run, {
+					error: normalizeErrorMessage(error),
+					metadata,
+				}),
+		);
+		if (!run.parentRunId) {
+			traceClients.delete(run.traceId);
+		}
+	};
 
 	return {
 		projectName,
@@ -794,6 +858,7 @@ function syncRunState(state: InstanceAiTraceRun, tree: RunTree): void {
 }
 
 function hydrateRunTree(state: InstanceAiTraceRun): RunTree {
+	const client = traceClients.get(state.traceId);
 	return new RunTree({
 		id: state.id,
 		name: state.name,
@@ -812,6 +877,7 @@ function hydrateRunTree(state: InstanceAiTraceRun): RunTree {
 		outputs: state.outputs,
 		error: state.error,
 		serialized: {},
+		...(client ? { client } : {}),
 	});
 }
 
@@ -895,6 +961,7 @@ async function createRun(options: {
 	tags?: string[];
 	metadata?: Record<string, unknown>;
 	inputs?: unknown;
+	client?: Client;
 }): Promise<InstanceAiTraceRun> {
 	const runTree = new RunTree({
 		name: options.name,
@@ -903,8 +970,14 @@ async function createRun(options: {
 		tags: normalizeTags(DEFAULT_TAGS, options.tags),
 		metadata: mergeMetadata(options.metadata),
 		inputs: sanitizeTracePayload(options.inputs),
+		...(options.client ? { client: options.client } : {}),
 	});
 	await runTree.postRun();
+
+	if (options.client) {
+		traceClients.set(runTree.trace_id, options.client);
+	}
+
 	return createRunStateFromTree(runTree);
 }
 
@@ -973,29 +1046,45 @@ function buildBaseMetadata(options: CreateInstanceAiTraceContextOptions): Record
 export async function createInstanceAiTraceContext(
 	options: CreateInstanceAiTraceContextOptions,
 ): Promise<InstanceAiTraceContext | undefined> {
-	if (!isLangSmithTracingEnabled()) {
+	if (!isLangSmithTracingEnabled(!!options.proxyConfig)) {
 		return undefined;
 	}
 
 	ensureLangSmithTracingEnv();
 
+	const client = options.proxyConfig ? getOrCreateProxyClient(options.proxyConfig) : undefined;
 	const projectName = options.projectName ?? DEFAULT_PROJECT_NAME;
 	const baseMetadata = buildBaseMetadata(options);
-	const messageRun = await createRun({
-		projectName,
-		name: 'message_turn',
-		tags: ['message-turn'],
-		metadata: mergeMetadata(baseMetadata, { agent_role: 'message_turn' }),
-		inputs: options.input,
-	});
-	const orchestratorRun = await createChildRun(messageRun, {
-		name: 'orchestrator',
-		tags: ['orchestrator'],
-		metadata: mergeMetadata(baseMetadata, { agent_role: 'orchestrator' }),
-		inputs: options.input,
-	});
 
-	return createTraceContext(projectName, 'message_turn', messageRun, orchestratorRun);
+	const createTraceRuns = async () => {
+		const messageRun = await createRun({
+			projectName,
+			name: 'message_turn',
+			tags: ['message-turn'],
+			metadata: mergeMetadata(baseMetadata, { agent_role: 'message_turn' }),
+			inputs: options.input,
+			client,
+		});
+		const orchestratorRun = await createChildRun(messageRun, {
+			name: 'orchestrator',
+			tags: ['orchestrator'],
+			metadata: mergeMetadata(baseMetadata, { agent_role: 'orchestrator' }),
+			inputs: options.input,
+		});
+
+		return createTraceContext(
+			projectName,
+			'message_turn',
+			messageRun,
+			orchestratorRun,
+			options.proxyConfig?.headers,
+		);
+	};
+
+	if (options.proxyConfig) {
+		return await proxyHeaderStore.run(options.proxyConfig.headers, createTraceRuns);
+	}
+	return await createTraceRuns();
 }
 
 export async function continueInstanceAiTraceContext(
@@ -1003,52 +1092,77 @@ export async function continueInstanceAiTraceContext(
 	options: CreateInstanceAiTraceContextOptions,
 ): Promise<InstanceAiTraceContext> {
 	const baseMetadata = buildBaseMetadata(options);
-	const orchestratorRun = await createChildRun(existingContext.messageRun, {
-		name: 'orchestrator',
-		tags: ['orchestrator'],
-		metadata: mergeMetadata(baseMetadata, { agent_role: 'orchestrator' }),
-		inputs: options.input,
-	});
 
-	return createTraceContext(
-		existingContext.projectName,
-		'message_turn',
-		existingContext.rootRun,
-		orchestratorRun,
-	);
+	const createContinuation = async () => {
+		const orchestratorRun = await createChildRun(existingContext.messageRun, {
+			name: 'orchestrator',
+			tags: ['orchestrator'],
+			metadata: mergeMetadata(baseMetadata, { agent_role: 'orchestrator' }),
+			inputs: options.input,
+		});
+
+		return createTraceContext(
+			existingContext.projectName,
+			'message_turn',
+			existingContext.rootRun,
+			orchestratorRun,
+			options.proxyConfig?.headers,
+		);
+	};
+
+	if (options.proxyConfig) {
+		return await proxyHeaderStore.run(options.proxyConfig.headers, createContinuation);
+	}
+	return await createContinuation();
 }
 
 export async function createDetachedSubAgentTraceContext(
 	options: CreateDetachedSubAgentTraceContextOptions,
 ): Promise<InstanceAiTraceContext | undefined> {
-	if (!isLangSmithTracingEnabled()) {
+	if (!isLangSmithTracingEnabled(!!options.proxyConfig)) {
 		return undefined;
 	}
 
 	ensureLangSmithTracingEnv();
 
+	const client = options.proxyConfig ? getOrCreateProxyClient(options.proxyConfig) : undefined;
 	const projectName = options.projectName ?? DEFAULT_PROJECT_NAME;
 	const baseMetadata = buildBaseMetadata(options);
-	const rootRun = await createRun({
-		projectName,
-		name: `subagent:${options.role}`,
-		tags: normalizeTags(
-			['sub-agent', 'background'],
-			options.plannedTaskId ? ['planned'] : undefined,
-		),
-		metadata: mergeMetadata(baseMetadata, {
-			agent_role: options.role,
-			agent_id: options.agentId,
-			task_kind: options.kind,
-			...(options.taskId ? { task_id: options.taskId } : {}),
-			...(options.plannedTaskId ? { planned_task_id: options.plannedTaskId } : {}),
-			...(options.workItemId ? { work_item_id: options.workItemId } : {}),
-			...(options.spawnedByTraceId ? { spawned_by_trace_id: options.spawnedByTraceId } : {}),
-			...(options.spawnedByRunId ? { spawned_by_run_id: options.spawnedByRunId } : {}),
-			...(options.spawnedByAgentId ? { spawned_by_agent_id: options.spawnedByAgentId } : {}),
-		}),
-		inputs: options.input,
-	});
 
-	return createTraceContext(projectName, 'detached_subagent', rootRun, rootRun);
+	const createDetachedRuns = async () => {
+		const rootRun = await createRun({
+			projectName,
+			name: `subagent:${options.role}`,
+			tags: normalizeTags(
+				['sub-agent', 'background'],
+				options.plannedTaskId ? ['planned'] : undefined,
+			),
+			metadata: mergeMetadata(baseMetadata, {
+				agent_role: options.role,
+				agent_id: options.agentId,
+				task_kind: options.kind,
+				...(options.taskId ? { task_id: options.taskId } : {}),
+				...(options.plannedTaskId ? { planned_task_id: options.plannedTaskId } : {}),
+				...(options.workItemId ? { work_item_id: options.workItemId } : {}),
+				...(options.spawnedByTraceId ? { spawned_by_trace_id: options.spawnedByTraceId } : {}),
+				...(options.spawnedByRunId ? { spawned_by_run_id: options.spawnedByRunId } : {}),
+				...(options.spawnedByAgentId ? { spawned_by_agent_id: options.spawnedByAgentId } : {}),
+			}),
+			inputs: options.input,
+			client,
+		});
+
+		return createTraceContext(
+			projectName,
+			'detached_subagent',
+			rootRun,
+			rootRun,
+			options.proxyConfig?.headers,
+		);
+	};
+
+	if (options.proxyConfig) {
+		return await proxyHeaderStore.run(options.proxyConfig.headers, createDetachedRuns);
+	}
+	return await createDetachedRuns();
 }

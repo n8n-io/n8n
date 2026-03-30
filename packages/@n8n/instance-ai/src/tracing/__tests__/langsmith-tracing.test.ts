@@ -6,6 +6,7 @@ jest.mock('langsmith', () => {
 		name: string;
 		run_type: string;
 		parent_run_id?: string;
+		client?: unknown;
 	}> = [];
 
 	class MockRunTree {
@@ -29,6 +30,7 @@ jest.mock('langsmith', () => {
 		dotted_order: string;
 		execution_order: number;
 		child_execution_order: number;
+		client?: unknown;
 
 		constructor(config: {
 			id?: string;
@@ -49,6 +51,7 @@ jest.mock('langsmith', () => {
 			trace_id?: string;
 			dotted_order?: string;
 			serialized?: Record<string, never>;
+			client?: unknown;
 		}) {
 			runCounter += 1;
 			this.id = config.id ?? `run-${runCounter}`;
@@ -73,6 +76,7 @@ jest.mock('langsmith', () => {
 			this.dotted_order =
 				config.dotted_order ??
 				(this.parent_run ? `${this.parent_run.dotted_order}.${this.id}` : this.id);
+			this.client = config.client;
 
 			createdRunTrees.push({
 				id: this.id,
@@ -80,6 +84,7 @@ jest.mock('langsmith', () => {
 				name: this.name,
 				run_type: this.run_type,
 				...(this.parent_run_id ? { parent_run_id: this.parent_run_id } : {}),
+				...(this.client ? { client: this.client } : {}),
 			});
 		}
 
@@ -158,7 +163,18 @@ jest.mock('langsmith', () => {
 		}
 	}
 
+	class MockClient {
+		apiUrl: string;
+		apiKey: string;
+
+		constructor(config: { apiUrl?: string; apiKey?: string }) {
+			this.apiUrl = config.apiUrl ?? '';
+			this.apiKey = config.apiKey ?? '';
+		}
+	}
+
 	return {
+		Client: MockClient,
 		RunTree: MockRunTree,
 		__mock: {
 			reset: () => {
@@ -197,6 +213,7 @@ type LangSmithMockModule = {
 			name: string;
 			run_type: string;
 			parent_run_id?: string;
+			client?: unknown;
 		}>;
 	};
 };
@@ -670,5 +687,86 @@ describe('createInstanceAiTraceContext', () => {
 
 		const createdRunNames = langsmithMock.getCreatedRunTrees().map((run) => run.name);
 		expect(createdRunNames).toContain('prepare_context');
+	});
+
+	it('creates trace context when proxyConfig is provided even without env vars', async () => {
+		delete process.env.LANGSMITH_API_KEY;
+		delete process.env.LANGCHAIN_API_KEY;
+		delete process.env.LANGSMITH_ENDPOINT;
+		delete process.env.LANGCHAIN_ENDPOINT;
+		delete process.env.LANGSMITH_TRACING;
+		delete process.env.LANGCHAIN_TRACING_V2;
+
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-proxy',
+			messageId: 'message-proxy',
+			runId: 'run-proxy',
+			userId: 'user-proxy',
+			input: { message: 'proxy test' },
+			proxyConfig: {
+				apiUrl: 'https://proxy.example.com/langsmith',
+				headers: { Authorization: 'Bearer proxy-token' },
+			},
+		});
+
+		expect(tracing).toBeDefined();
+		expect(tracing?.messageRun).toBeDefined();
+		expect(tracing?.orchestratorRun).toBeDefined();
+	});
+
+	it('passes client to RunTree when proxyConfig is provided', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-client',
+			messageId: 'message-client',
+			runId: 'run-client',
+			userId: 'user-client',
+			input: { message: 'client test' },
+			proxyConfig: {
+				apiUrl: 'https://proxy.example.com/langsmith',
+				headers: { Authorization: 'Bearer proxy-token' },
+			},
+		});
+
+		expect(tracing).toBeDefined();
+
+		const rootRunTree = langsmithMock
+			.getCreatedRunTrees()
+			.find((run) => run.name === 'message_turn' && run.client);
+		expect(rootRunTree).toBeDefined();
+		expect(rootRunTree?.client).toBeDefined();
+	});
+
+	it('does not pass client to RunTree without proxyConfig', async () => {
+		await createInstanceAiTraceContext({
+			threadId: 'thread-no-proxy',
+			messageId: 'message-no-proxy',
+			runId: 'run-no-proxy',
+			userId: 'user-no-proxy',
+			input: { message: 'no proxy test' },
+		});
+
+		const rootRunTree = langsmithMock
+			.getCreatedRunTrees()
+			.find((run) => run.name === 'message_turn');
+		expect(rootRunTree).toBeDefined();
+		expect(rootRunTree?.client).toBeUndefined();
+	});
+
+	it('returns undefined when tracing is explicitly disabled even with proxy', async () => {
+		process.env.LANGCHAIN_TRACING_V2 = 'false';
+
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-disabled',
+			messageId: 'message-disabled',
+			runId: 'run-disabled',
+			userId: 'user-disabled',
+			input: { message: 'disabled test' },
+			proxyConfig: {
+				apiUrl: 'https://proxy.example.com/langsmith',
+				headers: { Authorization: 'Bearer proxy-token' },
+			},
+		});
+
+		expect(tracing).toBeUndefined();
 	});
 });
