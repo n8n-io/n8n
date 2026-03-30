@@ -82,6 +82,8 @@ export function getChatPayload(options: GetChatPayloadOptions): ChatPayload {
 		? {
 				...workflowContext,
 				currentWorkflow: {
+					nodes: [],
+					connections: {},
 					...((workflowContext.currentWorkflow as Record<string, unknown>) ?? {}),
 					id: workflowId,
 				},
