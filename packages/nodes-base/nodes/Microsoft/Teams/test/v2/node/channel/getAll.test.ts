@@ -6,6 +6,7 @@ import { credentials } from '../../../credentials';
 describe('Test MicrosoftTeamsV2, channel => getAll', () => {
 	nock('https://graph.microsoft.com')
 		.get('/v1.0/teams/1111-2222-3333/channels')
+		.query({ $top: 100 })
 		.reply(200, {
 			value: [
 				{
