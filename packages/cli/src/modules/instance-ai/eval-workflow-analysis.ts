@@ -12,18 +12,10 @@
 
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
-import type Anthropic from '@anthropic-ai/sdk';
 import { type INode, type IWorkflowBase, jsonParse } from 'n8n-workflow';
 
-import { getEvalAnthropicClient } from './eval-anthropic-client';
+import { createEvalAgent, extractText } from '@n8n/instance-ai';
 import { extractNodeConfig } from './eval-node-config';
-
-// ---------------------------------------------------------------------------
-// Config
-// ---------------------------------------------------------------------------
-
-/** Model used for hint generation (needs good reasoning, not speed) */
-const HINTS_MODEL = 'claude-sonnet-4-6';
 
 // ---------------------------------------------------------------------------
 // Node classification
@@ -175,18 +167,15 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 	const userPrompt = buildUserPrompt(workflow, nodeNames, scenarioHints);
 
 	try {
-		const client = getEvalAnthropicClient();
-		const response = await client.messages.create({
-			model: HINTS_MODEL,
-			max_tokens: 4096,
-			system: SYSTEM_PROMPT,
-			messages: [{ role: 'user', content: userPrompt }],
+		const agent = createEvalAgent('eval-hint-generator', {
+			instructions: SYSTEM_PROMPT,
 		});
 
-		let text = response.content
-			.filter((block): block is Anthropic.TextBlock => block.type === 'text')
-			.map((block) => block.text)
-			.join('');
+		const result = await agent.generate(userPrompt, {
+			providerOptions: { anthropic: { maxTokens: 4096 } },
+		});
+
+		let text = extractText(result);
 
 		text = text
 			.replace(/^```(?:json)?\s*\n?/i, '')

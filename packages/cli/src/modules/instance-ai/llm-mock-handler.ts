@@ -17,20 +17,50 @@
 
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
-import type Anthropic from '@anthropic-ai/sdk';
 import type { EvalLlmMockHandler, EvalMockHttpResponse } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
+import { z } from 'zod';
 
-import { getEvalAnthropicClient } from './eval-anthropic-client';
+import { createEvalAgent, extractText, Tool } from '@n8n/instance-ai';
 import { fetchApiDocs } from './eval-api-docs';
 import { extractNodeConfig } from './eval-node-config';
 
 // ---------------------------------------------------------------------------
-// Config
+// System prompt
 // ---------------------------------------------------------------------------
 
-/** Model used for per-request mock generation — Sonnet needed for accurate API response shapes */
-const MOCK_RESPONSE_MODEL = 'claude-sonnet-4-6';
+const MOCK_SYSTEM_PROMPT = `You are an API mock server generating realistic HTTP responses for n8n workflow evaluation.
+
+## Your tools
+
+You have two tools. Call them before generating your response:
+
+"lookup_api_docs" — Fetches real API documentation for a service endpoint. Use this to learn the correct response STRUCTURE (what fields, what nesting, what types the real API returns). Pay special attention to what the real API returns for the exact HTTP method and URL path you're responding to.
+
+"get_node_config" — Returns the n8n node's configuration parameters. This tells you what the node is set up to work with. The configuration contains the values the node expects to find in API responses — resource IDs, field names, column names, etc. Every node type has different parameters, so you need to interpret the config intelligently. Key patterns:
+  - Objects with "__rl" are resource selectors — "value" is the selected resource (a document ID, channel, project, etc.)
+  - "schema" arrays list the exact field names the node expects in data
+  - "operation" and "resource" describe what the node does (e.g. "send" a "message", "create" an "issue")
+  - Strings starting with "=" are expressions (ignore these) — all other strings are literal values
+
+## How to combine them
+
+The API docs tell you the response SHAPE. The node config tells you the exact DATA VALUES to put in that shape. All names, IDs, and identifiers from the node config are case-sensitive — use them character-for-character.
+
+## Output format
+
+Respond with ONLY a JSON object. No explanation, no markdown, no prose.
+
+{ "type": "json", "body": { ...realistic API response... } }
+{ "type": "binary", "contentType": "application/pdf", "filename": "doc.pdf" }
+{ "type": "error", "statusCode": 404, "body": { ...service error format... } }
+
+## Rules
+
+- A node may make MULTIPLE sequential HTTP requests in a single execution (e.g., first GET metadata, then GET headers, then POST data). You are responding to ONE specific request. Match your response to the URL + method of THIS request only. A GET to a metadata endpoint must return metadata — not a write result — even if the node's overall purpose is to write data.
+- Echo request values faithfully. If the request contains an identifier, name, or reference value (even one that looks like a placeholder such as "YOUR_CHAT_ID" or "YOUR_API_KEY"), echo it back exactly in the corresponding response field. The real API would reflect the same value the client sent.
+- Some APIs return empty or minimal responses on success (204 with no body, 202 with empty body). If the API documentation indicates an empty response body, return { "type": "json", "body": {} }. Don't invent additional response fields.
+- No pagination — always indicate end of results (has_more=false, nextPageToken=null, etc.)`;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -101,39 +131,6 @@ async function generateMockResponse(
 	const serviceName = extractServiceName(request.url);
 	const endpoint = extractEndpoint(request.url);
 
-	const systemPrompt = `You are an API mock server generating realistic HTTP responses for n8n workflow evaluation.
-
-## Your tools
-
-You have two tools. Call them before generating your response:
-
-"lookup_api_docs" — Fetches real API documentation for a service endpoint. Use this to learn the correct response STRUCTURE (what fields, what nesting, what types the real API returns). Pay special attention to what the real API returns for the exact HTTP method and URL path you're responding to.
-
-"get_node_config" — Returns the n8n node's configuration parameters. This tells you what the node is set up to work with. The configuration contains the values the node expects to find in API responses — resource IDs, field names, column names, etc. Every node type has different parameters, so you need to interpret the config intelligently. Key patterns:
-  - Objects with "__rl" are resource selectors — "value" is the selected resource (a document ID, channel, project, etc.)
-  - "schema" arrays list the exact field names the node expects in data
-  - "operation" and "resource" describe what the node does (e.g. "send" a "message", "create" an "issue")
-  - Strings starting with "=" are expressions (ignore these) — all other strings are literal values
-
-## How to combine them
-
-The API docs tell you the response SHAPE. The node config tells you the exact DATA VALUES to put in that shape. All names, IDs, and identifiers from the node config are case-sensitive — use them character-for-character.
-
-## Output format
-
-Respond with ONLY a JSON object. No explanation, no markdown, no prose.
-
-{ "type": "json", "body": { ...realistic API response... } }
-{ "type": "binary", "contentType": "application/pdf", "filename": "doc.pdf" }
-{ "type": "error", "statusCode": 404, "body": { ...service error format... } }
-
-## Rules
-
-- A node may make MULTIPLE sequential HTTP requests in a single execution (e.g., first GET metadata, then GET headers, then POST data). You are responding to ONE specific request. Match your response to the URL + method of THIS request only. A GET to a metadata endpoint must return metadata — not a write result — even if the node's overall purpose is to write data.
-- Echo request values faithfully. If the request contains an identifier, name, or reference value (even one that looks like a placeholder such as "YOUR_CHAT_ID" or "YOUR_API_KEY"), echo it back exactly in the corresponding response field. The real API would reflect the same value the client sent.
-- Some APIs return empty or minimal responses on success (204 with no body, 202 with empty body). If the API documentation indicates an empty response body, return { "type": "json", "body": {} }. Don't invent additional response fields.
-- No pagination — always indicate end of results (has_more=false, nextPageToken=null, etc.)`;
-
 	// Build user prompt with clearly separated sections
 	const sections: string[] = [
 		'## Request',
@@ -186,7 +183,7 @@ Respond with ONLY a JSON object. No explanation, no markdown, no prose.
 	const userPrompt = sections.join('\n');
 
 	try {
-		const spec = await callLlm(systemPrompt, userPrompt, context.nodeConfig);
+		const spec = await callLlm(userPrompt, context.nodeConfig);
 		return materializeSpec(spec);
 	} catch (error) {
 		const errorMsg = error instanceof Error ? error.message : String(error);
@@ -202,87 +199,55 @@ Respond with ONLY a JSON object. No explanation, no markdown, no prose.
 }
 
 // ---------------------------------------------------------------------------
-// Tool definitions
+// Tool definitions (@n8n/agents)
 // ---------------------------------------------------------------------------
 
-const API_DOCS_TOOL: Anthropic.Tool = {
-	name: 'lookup_api_docs',
-	description:
+const apiDocsTool = new Tool('lookup_api_docs')
+	.description(
 		'Look up official API documentation for a specific REST endpoint to understand the exact response format.',
-	input_schema: {
-		type: 'object' as const,
-		properties: {
-			serviceName: {
-				type: 'string' as const,
-				description: 'The API service name (e.g. "Google Sheets", "Gmail", "Slack")',
-			},
-			endpointDescription: {
-				type: 'string' as const,
-				description: 'Description of the endpoint (e.g. "GET spreadsheets values response format")',
-			},
-		},
-		required: ['serviceName', 'endpointDescription'],
-	},
-};
+	)
+	.input(
+		z.object({
+			serviceName: z
+				.string()
+				.describe('The API service name (e.g. "Google Sheets", "Gmail", "Slack")'),
+			endpointDescription: z
+				.string()
+				.describe('Description of the endpoint (e.g. "GET spreadsheets values response format")'),
+		}),
+	)
+	.handler(async (input: { serviceName: string; endpointDescription: string }) => {
+		return await fetchApiDocs(input.serviceName, input.endpointDescription);
+	})
+	.build();
 
-const NODE_CONFIG_TOOL: Anthropic.Tool = {
-	name: 'get_node_config',
-	description:
-		'Get the n8n node configuration parameters — resource IDs, field names, settings, etc. Your mock data must match these exact values.',
-	input_schema: {
-		type: 'object' as const,
-		properties: {},
-	},
-};
-
-// ---------------------------------------------------------------------------
-// LLM call with tool use
-// ---------------------------------------------------------------------------
-
-async function executeToolCall(block: Anthropic.ToolUseBlock, nodeConfig: string): Promise<string> {
-	if (block.name === 'get_node_config') return nodeConfig;
-	const input = block.input as { serviceName?: string; endpointDescription?: string };
-	return await fetchApiDocs(input.serviceName ?? '', input.endpointDescription ?? '');
+function createNodeConfigTool(nodeConfig: string) {
+	return new Tool('get_node_config')
+		.description(
+			"Get the n8n node's configuration parameters — resource IDs, field names, settings, etc. Your mock data must match these exact values.",
+		)
+		.input(z.object({}))
+		.handler(async () => nodeConfig)
+		.build();
 }
 
-async function callLlm(
-	systemPrompt: string,
-	userPrompt: string,
-	nodeConfig: string,
-): Promise<MockResponseSpec> {
-	const client = getEvalAnthropicClient();
-	const messages: Anthropic.MessageParam[] = [{ role: 'user', content: userPrompt }];
+// ---------------------------------------------------------------------------
+// LLM call with tool use (agent handles multi-round loop automatically)
+// ---------------------------------------------------------------------------
 
-	for (let round = 0; round < 3; round++) {
-		const { content, stop_reason } = await client.messages.create({
-			model: MOCK_RESPONSE_MODEL,
-			max_tokens: 4096,
-			system: systemPrompt,
-			tools: [API_DOCS_TOOL, NODE_CONFIG_TOOL],
-			messages,
-		});
+async function callLlm(userPrompt: string, nodeConfig: string): Promise<MockResponseSpec> {
+	const agent = createEvalAgent('eval-mock-responder', {
+		instructions: MOCK_SYSTEM_PROMPT,
+	})
+		.tool(apiDocsTool)
+		.tool(createNodeConfigTool(nodeConfig));
 
-		if (stop_reason !== 'tool_use') {
-			const text = content.find((b): b is Anthropic.TextBlock => b.type === 'text')?.text ?? '';
-			return parseResponseText(text);
-		}
+	const result = await agent.generate(userPrompt, {
+		providerOptions: { anthropic: { maxTokens: 4096 } },
+	});
 
-		// Execute tool calls and continue
-		messages.push({ role: 'assistant', content });
-		const toolResults: Anthropic.ToolResultBlockParam[] = await Promise.all(
-			content
-				.filter((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use')
-				.map(async (b) => ({
-					type: 'tool_result' as const,
-					tool_use_id: b.id,
-					content: await executeToolCall(b, nodeConfig),
-				})),
-		);
-		messages.push({ role: 'user', content: toolResults });
-	}
-
-	Container.get(Logger).warn('[EvalMock] Tool use loop exhausted max rounds without text response');
-	return { type: 'json', body: { ok: true } };
+	const text = extractText(result);
+	return parseResponseText(text);
 }
 
 function parseResponseText(raw: string): MockResponseSpec {

@@ -10,35 +10,13 @@
  * by MCP, frontend, instance-ai evaluations, and other teams.
  */
 
-import Anthropic from '@anthropic-ai/sdk';
+import type { WorkflowJSON, NodeJSON } from '@n8n/workflow-sdk';
 import { existsSync, readFileSync, readdirSync } from 'fs';
 import { join } from 'path';
 
-import type { WorkflowJSON, NodeJSON } from '@n8n/workflow-sdk';
 
+import { createEvalAgent, extractText } from '../../src/utils/eval-agents';
 import type { PinData, PinDataGenerationInstructions } from '../types';
-
-// ---------------------------------------------------------------------------
-// Config
-// ---------------------------------------------------------------------------
-
-const EVAL_MODEL = 'claude-sonnet-4-6';
-const MAX_TOKENS = 16_384;
-
-// ---------------------------------------------------------------------------
-// Anthropic client (lazy singleton)
-// ---------------------------------------------------------------------------
-
-let _client: Anthropic | undefined;
-
-function getClient(): Anthropic {
-	if (!_client) {
-		_client = new Anthropic({
-			apiKey: process.env.N8N_AI_ANTHROPIC_KEY ?? process.env.ANTHROPIC_API_KEY,
-		});
-	}
-	return _client;
-}
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -448,19 +426,16 @@ export async function generatePinData(options: GeneratePinDataOptions): Promise<
 	const expectedNodeNames = contexts.map((c) => c.nodeName);
 
 	try {
-		const client = getClient();
-		const response = await client.messages.create({
-			model: EVAL_MODEL,
-			max_tokens: MAX_TOKENS,
-			system: [{ type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } }],
-			messages: [{ role: 'user', content: userPrompt }],
+		const agent = createEvalAgent('eval-pin-data-generator', {
+			instructions: SYSTEM_PROMPT,
+			cache: true,
 		});
 
-		const responseText = response.content
-			.filter((block): block is Anthropic.TextBlock => block.type === 'text')
-			.map((block) => block.text)
-			.join('');
+		const result = await agent.generate(userPrompt, {
+			providerOptions: { anthropic: { maxTokens: 16_384 } },
+		});
 
+		const responseText = extractText(result);
 		return parsePinDataResponse(responseText, expectedNodeNames);
 	} catch {
 		return {};

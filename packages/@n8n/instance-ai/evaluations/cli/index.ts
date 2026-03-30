@@ -10,7 +10,7 @@ import { seedCredentials, cleanupCredentials } from '../credentials/seeder';
 import { snapshotWorkflowIds } from '../outcome/workflow-discovery';
 import { createLogger } from '../harness/logger';
 import { writeWorkflowReport } from '../report/workflow-report';
-import type { PromptConfig, DatasetExample, WorkflowTestCaseResult } from '../types';
+import type { PromptConfig, DatasetExample } from '../types';
 
 async function main(): Promise<void> {
 	const args = parseCliArgs(process.argv.slice(2));
