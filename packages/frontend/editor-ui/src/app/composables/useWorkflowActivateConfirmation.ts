@@ -30,7 +30,7 @@ export async function waitForActivationConfirmation(workflowId: string): Promise
 		pendingConfirmations.delete(workflowId);
 	}
 
-	return new Promise<boolean>((resolve) => {
+	return await new Promise<boolean>((resolve) => {
 		const timeoutId = setTimeout(() => {
 			pendingConfirmations.delete(workflowId);
 			resolve(true); // Assume success on timeout
