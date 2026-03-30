@@ -145,18 +145,17 @@ describe('css-var-naming rule', () => {
 			});
 		});
 
-		it('should reject properties without values', async () => {
-			const invalidPattern = `
+		it('should accept standalone properties without values', async () => {
+			const validPattern = `
 				:root {
-					--color: #0d6efd;
-					--spacing: 4px;
+					--background: #fff;
+					--icon-color: #999;
+					--text-color: #222;
+					--border-color: #ddd;
 				}
 			`;
-			const result = await lintCSS(invalidPattern);
-			expect(result.warnings.length).toBeGreaterThan(0);
-			expect(result.warnings[0]).toMatchObject({
-				text: expect.stringContaining('Must have at least 2 groups'),
-			});
+			const result = await lintCSS(validPattern);
+			expect(result.warnings).toHaveLength(0);
 		});
 
 		it('should reject spacing property without value', async () => {
@@ -1028,13 +1027,13 @@ describe('css-var-naming rule', () => {
 		it('should reject invalid CSS variables in var() references', async () => {
 			const invalidVarReferences = `
 				.button {
-					background: var(--button-color--background);
+					background: var(--button-color);
 				}
 			`;
 			const result = await lintCSS(invalidVarReferences);
 			expect(result.warnings.length).toBeGreaterThan(0);
 			expect(result.warnings[0]).toMatchObject({
-				text: expect.stringContaining('Must include a valid property'),
+				text: expect.stringContaining('Must have at least 2 groups'),
 			});
 		});
 
