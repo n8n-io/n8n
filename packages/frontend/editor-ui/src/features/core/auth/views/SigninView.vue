@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import AuthView from './AuthView.vue';
@@ -12,6 +12,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
+import { N8nSpinner } from '@n8n/design-system';
 
 import type { IFormBoxConfig } from '@/Interface';
 import { MFA_AUTHENTICATION_REQUIRED_ERROR_CODE, VIEWS, MFA_FORM } from '@/app/constants';
@@ -37,6 +38,7 @@ const telemetry = useTelemetry();
 
 const loading = ref(false);
 const showMfaView = ref(false);
+const ssoRedirecting = ref(false);
 const emailOrLdapLoginId = ref('');
 const password = ref('');
 const reportError = ref(false);
@@ -196,24 +198,63 @@ const cacheCredentials = (form: EmailOrLdapLoginIdAndPassword) => {
 	emailOrLdapLoginId.value = form.emailOrLdapLoginId;
 	password.value = form.password;
 };
+
+onMounted(async () => {
+	if ('noSsoRedirect' in (route.query ?? {})) return;
+	if (!ssoStore.showSsoLoginButton) return;
+
+	ssoRedirecting.value = true;
+	try {
+		const redirectUrl = ssoStore.isDefaultAuthenticationSaml
+			? await ssoStore.getSSORedirectUrl(
+					typeof route.query?.redirect === 'string' ? route.query.redirect : '',
+				)
+			: ssoStore.oidc.loginUrl;
+		window.location.href = redirectUrl ?? '';
+	} catch {
+		ssoRedirecting.value = false;
+	}
+});
 </script>
 
 <template>
 	<div>
-		<AuthView
-			v-if="!showMfaView"
-			:form="formConfig"
-			:form-loading="loading"
-			:with-sso="true"
-			data-test-id="signin-form"
-			@submit="onEmailPasswordSubmitted"
-		/>
-		<MfaView
-			v-if="showMfaView"
-			:report-error="reportError"
-			@submit="onMFASubmitted"
-			@on-back-click="onBackClick"
-			@on-form-changed="onFormChanged"
-		/>
+		<div v-if="ssoRedirecting" :class="$style.ssoRedirecting" data-test-id="sso-redirecting">
+			<N8nSpinner type="dots" />
+			<span :class="$style.ssoRedirectingText">{{ locale.baseText('sso.login.redirecting') }}</span>
+		</div>
+		<template v-else>
+			<AuthView
+				v-if="!showMfaView"
+				:form="formConfig"
+				:form-loading="loading"
+				:with-sso="true"
+				data-test-id="signin-form"
+				@submit="onEmailPasswordSubmitted"
+			/>
+			<MfaView
+				v-if="showMfaView"
+				:report-error="reportError"
+				@submit="onMFASubmitted"
+				@on-back-click="onBackClick"
+				@on-form-changed="onFormChanged"
+			/>
+		</template>
 	</div>
 </template>
+
+<style lang="scss" module>
+.ssoRedirecting {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	min-height: 300px;
+	gap: var(--spacing--sm);
+}
+
+.ssoRedirectingText {
+	font-size: var(--font-size--sm);
+	color: var(--color--text--tint-1);
+}
+</style>
