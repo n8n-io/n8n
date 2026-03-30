@@ -152,6 +152,43 @@ const createSafeError = (): typeof Error => {
 };
 
 /**
+ * Creates a DateTime wrapper that makes fromISO() handle Date objects gracefully.
+ *
+ * During full workflow execution, node output data is passed by reference between nodes
+ * without serialization. This means Date objects from nodes like DataTable remain as
+ * Date instances. However, in editor "Test Step" execution, data goes through a
+ * JSON round-trip which converts Date objects to ISO strings.
+ *
+ * DateTime.fromISO() expects a string argument. When given a Date object, it internally
+ * calls String(date) which produces a non-ISO format like "Wed Dec 12 2025 ..."
+ * causing DateTime.fromISO() to return an invalid DateTime.
+ *
+ * This wrapper intercepts fromISO() calls and converts Date objects to ISO strings
+ * before passing them to the real fromISO(), ensuring consistent behavior between
+ * editor and full workflow execution.
+ *
+ * @see https://github.com/n8n-io/n8n/issues/25267
+ */
+const createSafeDateTime = (): typeof DateTime => {
+	const originalFromISO = DateTime.fromISO.bind(DateTime);
+
+	return new Proxy(DateTime, {
+		get(target, prop, receiver) {
+			if (prop === 'fromISO') {
+				return (value: unknown, opts?: Parameters<typeof DateTime.fromISO>[1]) => {
+					if (value instanceof Date) {
+						return originalFromISO(value.toISOString(), opts);
+					}
+					return originalFromISO(value as string, opts);
+				};
+			}
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+			return Reflect.get(target, prop, receiver);
+		},
+	});
+};
+
+/**
  * Creates a safe wrapper for Error subclasses (TypeError, SyntaxError, etc.)
  * While prepareStackTrace is only on Error in V8, we wrap subclasses for defense in depth.
  */
@@ -327,7 +364,7 @@ export class Expression {
 
 		// Dates
 		data.Date = Date;
-		data.DateTime = DateTime;
+		data.DateTime = createSafeDateTime();
 		data.Interval = Interval;
 		data.Duration = Duration;
 

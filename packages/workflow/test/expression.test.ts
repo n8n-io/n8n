@@ -759,6 +759,49 @@ describe('Expression', () => {
 				);
 			});
 		});
+
+		describe('SafeDateTime wrapper (issue #25267)', () => {
+			it('should handle DateTime.fromISO with a valid ISO string', () => {
+				const isoString = '2025-12-12T11:16:53.385Z';
+				const result = evaluate(`={{DateTime.fromISO("${isoString}").toFormat('dd/MM/yyyy')}}`);
+				expect(result).toEqual(DateTime.fromISO(isoString).toFormat('dd/MM/yyyy'));
+			});
+
+			it('should handle DateTime.fromISO with a Date object', () => {
+				// This is the core bug: during full workflow execution, nodes like DataTable
+				// pass Date objects by reference. DateTime.fromISO(dateObj) would fail because
+				// String(dateObj) produces a non-ISO format.
+				const result = evaluate(
+					"={{DateTime.fromISO(new Date('2025-12-12T11:16:53.385Z')).toFormat('dd/MM/yyyy')}}",
+				);
+				expect(result).toEqual('12/12/2025');
+			});
+
+			it('should handle DateTime.fromISO with a Date object and options', () => {
+				const result = evaluate(
+					"={{DateTime.fromISO(new Date('2025-12-12T11:16:53.385Z'), {zone: 'utc'}).toFormat('HH:mm:ss')}}",
+				);
+				expect(result).toEqual('11:16:53');
+			});
+
+			it('should return invalid DateTime for truly invalid input', () => {
+				const result = evaluate('={{DateTime.fromISO("not-a-date").isValid}}');
+				expect(result).toEqual(false);
+			});
+
+			it('should still allow other DateTime static methods', () => {
+				expect(evaluate('={{DateTime.now().isValid}}')).toEqual(true);
+				expect(evaluate('={{DateTime.fromMillis(0).isValid}}')).toEqual(true);
+				expect(evaluate('={{DateTime.local().isValid}}')).toEqual(true);
+			});
+
+			it('should produce the same result for ISO string and Date object with the same value', () => {
+				const isoStr = '2025-06-15T08:30:00.000Z';
+				const fromString = evaluate(`={{DateTime.fromISO("${isoStr}").toMillis()}}`);
+				const fromDate = evaluate(`={{DateTime.fromISO(new Date("${isoStr}")).toMillis()}}`);
+				expect(fromString).toEqual(fromDate);
+			});
+		});
 	});
 
 	describe('Test all expression value fixtures', () => {
