@@ -274,10 +274,8 @@ export function createSubmitWorkflowTool(
 			}
 
 			// Apply Dagre-based layout to produce positions matching the FE's tidy-up
-			layoutWorkflowJSON(buildOutput.workflow);
-
 			// Override name if provided
-			const json = buildOutput.workflow;
+			const json = layoutWorkflowJSON(buildOutput.workflow);
 			if (name) {
 				json.name = name;
 			} else if (!json.name && !workflowId) {

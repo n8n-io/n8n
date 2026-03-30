@@ -133,10 +133,8 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			}
 
 			// Apply Dagre-based layout to produce positions matching the FE's tidy-up
-			layoutWorkflowJSON(result.workflow);
-
 			// Override name if provided
-			const json = result.workflow;
+			const json = layoutWorkflowJSON(result.workflow);
 			if (name) {
 				json.name = name;
 			} else if (!json.name && !workflowId) {

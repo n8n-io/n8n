@@ -562,15 +562,17 @@ export function calculateNodePositions(
 // ---------------------------------------------------------------------------
 
 /**
- * Apply Dagre-based layout to a WorkflowJSON, mutating node positions in-place.
+ * Return a new WorkflowJSON with Dagre-computed node positions.
  * Builds a GraphNode map from the serialized JSON and delegates to calculateNodePositions.
+ *
+ * Pure function — does not mutate the input.
  *
  * This is the entry point for code paths that don't go through the builder
  * (e.g., sandbox-compiled workflows in instance-ai).
  */
-export function layoutWorkflowJSON(json: WorkflowJSON): void {
+export function layoutWorkflowJSON(json: WorkflowJSON): WorkflowJSON {
 	const jsonNodes = json.nodes;
-	if (!jsonNodes || jsonNodes.length === 0) return;
+	if (!jsonNodes || jsonNodes.length === 0) return json;
 
 	const connections = json.connections ?? {};
 
@@ -620,12 +622,12 @@ export function layoutWorkflowJSON(json: WorkflowJSON): void {
 	// Calculate positions using the existing Dagre layout
 	const positions = calculateNodePositions(graphNodes);
 
-	// Apply positions back to JSON nodes
-	for (const node of jsonNodes) {
-		if (!node.name) continue;
-		const pos = positions.get(node.name);
-		if (pos) {
-			node.position = pos;
-		}
-	}
+	// Return new WorkflowJSON with updated positions
+	return {
+		...json,
+		nodes: jsonNodes.map((node) => {
+			const pos = node.name ? positions.get(node.name) : undefined;
+			return pos ? { ...node, position: pos } : node;
+		}),
+	};
 }
