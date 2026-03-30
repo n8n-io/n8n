@@ -1,9 +1,30 @@
+import { SandboxManager, type SandboxRuntimeConfig } from '@anthropic-ai/sandbox-runtime';
+import { rgPath } from '@vscode/ripgrep';
 import { spawn } from 'child_process';
 import { z } from 'zod';
 
 import type { CallToolResult, ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
 import { buildShellResource } from './build-shell-resource';
+
+async function initializeSandbox({ dir }: { dir: string }) {
+	const config: SandboxRuntimeConfig = {
+		ripgrep: {
+			command: rgPath,
+		},
+		network: {
+			allowedDomains: [],
+			deniedDomains: [],
+		},
+		filesystem: {
+			denyRead: ['~/.ssh'],
+			allowRead: [],
+			allowWrite: [dir],
+			denyWrite: [],
+		},
+	};
+	await SandboxManager.initialize(config);
+}
 
 const inputSchema = z.object({
 	command: z.string().describe('Shell command to execute'),
@@ -25,41 +46,55 @@ export const shellExecuteTool: ToolDefinition<typeof inputSchema> = {
 			},
 		];
 	},
-	async execute({ command, timeout = 30_000, cwd }) {
-		return await runCommand(command, { timeout, cwd });
+	async execute({ command, timeout = 30_000, cwd }, { dir }) {
+		return await runCommand(command, { timeout, dir, cwd: cwd ?? dir });
 	},
 };
 
+async function spawnCommand(command: string, { dir, cwd }: { dir: string; cwd?: string }) {
+	const isWindows = process.platform === 'win32';
+	const isMac = process.platform === 'darwin';
+
+	if (isWindows) {
+		return spawn('cmd.exe', ['/C', command], { cwd });
+	}
+
+	if (isMac) {
+		await initializeSandbox({ dir });
+		const sandboxedCommand = await SandboxManager.wrapWithSandbox(command);
+		return spawn(sandboxedCommand, { shell: true, cwd });
+	}
+
+	return spawn('sh', ['-c', command], { cwd });
+}
+
 async function runCommand(
 	command: string,
-	options: { timeout: number; cwd?: string },
+	{ timeout, cwd, dir }: { timeout: number; dir: string; cwd?: string },
 ): Promise<CallToolResult> {
-	return await new Promise<CallToolResult>((resolve) => {
-		const isWindows = process.platform === 'win32';
-		const child = spawn(
-			isWindows ? 'cmd.exe' : 'sh',
-			isWindows ? ['/C', command] : ['-c', command],
-			{ cwd: options.cwd },
-		);
+	return await new Promise<CallToolResult>((resolve, reject) => {
+		spawnCommand(command, { dir, cwd })
+			.then((child) => {
+				let stdout = '';
+				let stderr = '';
 
-		let stdout = '';
-		let stderr = '';
+				child.stdout?.on('data', (chunk: Buffer) => {
+					stdout += String(chunk);
+				});
+				child.stderr?.on('data', (chunk: Buffer) => {
+					stderr += String(chunk);
+				});
 
-		child.stdout.on('data', (chunk: Buffer) => {
-			stdout += String(chunk);
-		});
-		child.stderr.on('data', (chunk: Buffer) => {
-			stderr += String(chunk);
-		});
+				const timer = setTimeout(() => {
+					child.kill();
+					resolve(formatCallToolResult({ stdout, stderr, exitCode: null, timedOut: true }));
+				}, timeout);
 
-		const timer = setTimeout(() => {
-			child.kill();
-			resolve(formatCallToolResult({ stdout, stderr, exitCode: null, timedOut: true }));
-		}, options.timeout);
-
-		child.on('close', (code) => {
-			clearTimeout(timer);
-			resolve(formatCallToolResult({ stdout, stderr, exitCode: code }));
-		});
+				child.on('close', (code) => {
+					clearTimeout(timer);
+					resolve(formatCallToolResult({ stdout, stderr, exitCode: code }));
+				});
+			})
+			.catch(reject);
 	});
 }
