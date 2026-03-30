@@ -51,7 +51,7 @@ import {
 	isValidResourceLocatorParameterValue,
 } from './type-guards';
 import { validateFieldType } from './type-validation';
-import { deepCopy } from './utils';
+import { deepCopy, isObject } from './utils';
 import type { Workflow } from './workflow';
 
 export const cronNodeOptions: INodePropertyCollection[] = [
@@ -869,7 +869,16 @@ export function getNodeParameters(
 
 			let propertyValues = deepCopy(nodeValues[nodeProperties.name]);
 			if (returnDefaults) {
-				if (propertyValues === undefined) {
+				const isEmptyFixedCollection =
+					nodeProperties.typeOptions?.multipleValues !== true &&
+					isObject(propertyValues) &&
+					Object.keys(propertyValues).length === 0 &&
+					isObject(nodeProperties.default) &&
+					Object.keys(nodeProperties.default).length > 0;
+
+				if (propertyValues === undefined || isEmptyFixedCollection) {
+					// Apply the default when there is no stored value, or when the stored value is
+					// an empty {} (only for multipleValues:false collections)
 					propertyValues = deepCopy(nodeProperties.default);
 				}
 			}
@@ -949,9 +958,10 @@ export function getNodeParameters(
 
 					if (nodePropertyOptions !== undefined) {
 						tempNodePropertiesArray = (nodePropertyOptions as INodePropertyCollection).values!;
-						const itemNodeValues = (nodeValues[nodeProperties.name] as INodeParameters)[
-							itemName
-						] as INodeParameters;
+						// Use propertyValues (already resolved to stored value or default) to avoid
+						// crashing when nodeValues[nodeProperties.name] is undefined for new nodes.
+						const itemNodeValues = ((propertyValues as INodeParameters | undefined)?.[itemName] ??
+							null) as INodeParameters | null;
 						tempValue = getNodeParameters(
 							tempNodePropertiesArray,
 							itemNodeValues,

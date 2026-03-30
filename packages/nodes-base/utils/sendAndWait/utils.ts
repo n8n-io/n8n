@@ -210,7 +210,15 @@ export function getSendAndWaitProperties(
 			name: 'approvalOptions',
 			type: 'fixedCollection',
 			placeholder: 'Add option',
-			default: {},
+			default: {
+				values: {
+					approvalType: 'double',
+					approveLabel: options?.defaultApproveLabel ?? 'Approve',
+					...(!options?.noButtonStyle && { buttonApprovalStyle: 'primary' as const }),
+					disapproveLabel: options?.defaultDisapproveLabel ?? 'Decline',
+					...(!options?.noButtonStyle && { buttonDisapprovalStyle: 'secondary' as const }),
+				},
+			},
 			options: [
 				{
 					displayName: 'Values',
