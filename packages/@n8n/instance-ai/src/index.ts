@@ -8,7 +8,6 @@ export {
 	withCurrentTraceSpan,
 } from './tracing/langsmith-tracing';
 export { createInstanceAgent } from './agent/instance-agent';
-export { tracingHeaderStore } from './agent/build-langsmith-exporter';
 export { createAllTools, createOrchestrationTools } from './tools';
 export { startBuildWorkflowAgentTask } from './tools/orchestration/build-workflow-agent.tool';
 export { startDataTableAgentTask } from './tools/orchestration/data-table-agent.tool';

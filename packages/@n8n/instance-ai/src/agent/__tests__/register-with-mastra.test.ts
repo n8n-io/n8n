@@ -1,16 +1,7 @@
-// Mock all heavy Mastra dependencies to avoid ESM issues in Jest
 const mockMastra = jest.fn();
-const mockLangSmithExporter = jest.fn();
-const mockObservability = jest.fn();
 
 jest.mock('@mastra/core/mastra', () => ({
 	Mastra: mockMastra,
-}));
-jest.mock('@mastra/langsmith', () => ({
-	LangSmithExporter: mockLangSmithExporter,
-}));
-jest.mock('@mastra/observability', () => ({
-	Observability: mockObservability,
 }));
 
 const { registerWithMastra } =
@@ -20,40 +11,6 @@ const { registerWithMastra } =
 describe('registerWithMastra', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
-	});
-
-	it('should create LangSmithExporter with default config when no tracingConfig', () => {
-		const mockAgent = {} as never;
-		const mockStorage = {} as never;
-
-		registerWithMastra('test-agent', mockAgent, mockStorage);
-
-		expect(mockLangSmithExporter).toHaveBeenCalledWith({
-			projectName: 'instance-ai',
-			autoBatchTracing: false,
-			traceBatchConcurrency: 1,
-		});
-		expect(mockMastra).toHaveBeenCalledTimes(1);
-	});
-
-	it('should create LangSmithExporter with proxy config when tracingConfig provided', () => {
-		const mockAgent = { __registerMastra: jest.fn() } as never;
-		const mockStorage = { id: 'proxy-test' } as never;
-		const tracingConfig = {
-			apiUrl: 'https://proxy.example.com/langsmith',
-			headers: { Authorization: 'Bearer test-token' },
-		};
-
-		registerWithMastra('test-agent', mockAgent, mockStorage, tracingConfig);
-
-		expect(mockLangSmithExporter).toHaveBeenCalledWith({
-			projectName: 'instance-ai',
-			apiUrl: 'https://proxy.example.com/langsmith',
-			apiKey: '-',
-			autoBatchTracing: false,
-			traceBatchConcurrency: 1,
-			fetchOptions: { headers: { Authorization: 'Bearer test-token' } },
-		});
 	});
 
 	it('should pass agent and storage to Mastra constructor', () => {
@@ -68,5 +25,17 @@ describe('registerWithMastra', () => {
 				storage: mockStorage,
 			}),
 		);
+	});
+
+	it('should reuse cached Mastra for same storage key', () => {
+		const mockAgent1 = { __registerMastra: jest.fn() } as never;
+		const mockAgent2 = { __registerMastra: jest.fn() } as never;
+		const mockStorage = { id: 'cached-test' } as never;
+
+		registerWithMastra('agent-1', mockAgent1, mockStorage);
+		registerWithMastra('agent-2', mockAgent2, mockStorage);
+
+		expect(mockMastra).toHaveBeenCalledTimes(1);
+		expect((mockAgent2 as { __registerMastra: jest.Mock }).__registerMastra).toHaveBeenCalled();
 	});
 });

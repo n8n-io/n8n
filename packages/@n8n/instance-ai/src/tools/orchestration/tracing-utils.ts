@@ -82,6 +82,7 @@ export async function createDetachedSubAgentTracing(
 		spawnedByTraceId: context.tracing.rootRun.traceId,
 		spawnedByRunId: context.tracing.actorRun.id,
 		spawnedByAgentId,
+		proxyConfig: context.tracingProxyConfig,
 	});
 
 	if (tracing) {

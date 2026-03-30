@@ -328,6 +328,13 @@ export class InstanceAiService {
 		return { apiUrl: client.getApiProxyBaseUrl() + '/brave-search', headers };
 	}
 
+	/** Build tracing proxy config when proxy is enabled. */
+	private async resolveTracingProxyConfig(user: User): Promise<ServiceProxyConfig | undefined> {
+		if (!this.aiService.isProxyEnabled()) return undefined;
+		const { client, headers } = await this.getProxyAuth(user);
+		return { apiUrl: client.getApiProxyBaseUrl() + '/langsmith', headers };
+	}
+
 	/**
 	 * Count one credit for the first completed orchestrator run in a thread.
 	 * Subsequent messages in the same thread are free.
@@ -997,6 +1004,7 @@ export class InstanceAiService {
 				: undefined;
 		// Each resolve*() call fetches a separate proxy token for audit tracking (see getProxyAuth)
 		const searchProxyConfig = await this.resolveSearchProxyConfig(user);
+		const tracingProxyConfig = await this.resolveTracingProxyConfig(user);
 		const context = this.adapterService.createContext(user, {
 			filesystemService: localFilesystemService,
 			searchProxyConfig,
@@ -1090,6 +1098,7 @@ export class InstanceAiService {
 			builderSandboxFactory: this.builderSandboxFactory,
 			nodeDefinitionDirs: nodeDefDirs.length > 0 ? nodeDefDirs : undefined,
 			domainContext: context,
+			tracingProxyConfig,
 		};
 
 		return {
@@ -1351,6 +1360,7 @@ export class InstanceAiService {
 				userId: user.id,
 				modelId,
 				input: traceInput,
+				proxyConfig: orchestrationContext.tracingProxyConfig,
 			});
 
 			if (tracing) {

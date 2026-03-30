@@ -877,6 +877,8 @@ export interface OrchestrationContext {
 	) => 'queued' | 'task-completed' | 'task-not-found';
 	/** Shared workflow-task state service for build / verify / credential-finalize flows */
 	workflowTaskService?: WorkflowTaskService;
+	/** When set, LangSmith traces are routed through the AI service proxy. */
+	tracingProxyConfig?: ServiceProxyConfig;
 }
 
 // ── Agent factory options ────────────────────────────────────────────────────
