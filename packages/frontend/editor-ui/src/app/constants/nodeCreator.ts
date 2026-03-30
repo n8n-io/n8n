@@ -62,5 +62,10 @@ export const REQUEST_NODE_FORM_URL = 'https://n8n-community.typeform.com/to/K1fB
 
 export const RECOMMENDED_NODES: string[] = [DATA_TABLE_NODE_TYPE, DATA_TABLE_TOOL_NODE_TYPE];
 export const BETA_NODES: string[] = ['@n8n/n8n-nodes-langchain.microsoftAgent365Trigger'];
+export const AI_GATEWAY_NODES: string[] = [
+	'@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+	'@n8n/n8n-nodes-langchain.embeddingsGoogleGemini',
+	'@n8n/n8n-nodes-langchain.googleGemini',
+];
 
 export const NEW_TOOL_CATEGORIES: string[] = [AI_CATEGORY_HUMAN_IN_THE_LOOP];
