@@ -1,3 +1,80 @@
+# [2.15.0](https://github.com/n8n-io/n8n/compare/n8n@2.14.0...n8n@2.15.0) (2026-03-30)
+
+
+### Bug Fixes
+
+* **API:** Skip sharing license check when isGlobal value is unchanged ([#27567](https://github.com/n8n-io/n8n/issues/27567)) ([5b4d5ce](https://github.com/n8n-io/n8n/commit/5b4d5ce64e949de317133a14b5b5cdbfb01b1bd8))
+* **Basic LLM Chain Node:** Fix abort signal handling ([#27520](https://github.com/n8n-io/n8n/issues/27520)) ([c683b65](https://github.com/n8n-io/n8n/commit/c683b6510cf198d7fc308f83018fcf9f0341fb76))
+* **core:** Add format validation to source control branch name ([#27518](https://github.com/n8n-io/n8n/issues/27518)) ([fb7788d](https://github.com/n8n-io/n8n/commit/fb7788d6c286f99126371a33b648c6def9541143))
+* **core:** Add ownership check to MCP OAuth client deletion ([#27446](https://github.com/n8n-io/n8n/issues/27446)) ([e638b3a](https://github.com/n8n-io/n8n/commit/e638b3ab7437b923e7dc5204d5fa41ae4da3ab53))
+* **core:** Correct `process.version` in expression sandbox ([#26550](https://github.com/n8n-io/n8n/issues/26550)) ([fc0f071](https://github.com/n8n-io/n8n/commit/fc0f0712d8ee07cc259c9757cde44df8da2efe26))
+* **core:** Fix `/healthz` endpoint when using `N8N_PATH` ([#27665](https://github.com/n8n-io/n8n/issues/27665)) ([4436e4b](https://github.com/n8n-io/n8n/commit/4436e4b71cc17b022cec1c5e03c0b5b7fdbafa8d))
+* **core:** Fix execution history when flow includes wait node ([#27357](https://github.com/n8n-io/n8n/issues/27357)) ([ad0a551](https://github.com/n8n-io/n8n/commit/ad0a5513261b6dfe1391955645226205cb1cba29))
+* **core:** Fix hard-coded path style in external storage configuration ([#27553](https://github.com/n8n-io/n8n/issues/27553)) ([ca3a957](https://github.com/n8n-io/n8n/commit/ca3a957c8edf16fe7fdfda4ae92050d6f3abd927))
+* **core:** Fix race condition when stopping jobs in queue mode ([#27211](https://github.com/n8n-io/n8n/issues/27211)) ([d3f40cd](https://github.com/n8n-io/n8n/commit/d3f40cd31dcb79a9515d2d00d6dc045008d4f7af))
+* **core:** Include custom headers when loading OpenAI models ([#27534](https://github.com/n8n-io/n8n/issues/27534)) ([f165f6c](https://github.com/n8n-io/n8n/commit/f165f6c5cc06ad52fe2a8da09123f71198538934))
+* **core:** Refresh OAuth2 tokens on 401 during MCP tool calls ([#26463](https://github.com/n8n-io/n8n/issues/26463)) ([88f170b](https://github.com/n8n-io/n8n/commit/88f170b95e53110e822318cb187e946d46e734d2))
+* **core:** Remaining VM test fixes — error propagation, proxy traps, and cross-realm assertions ([#27541](https://github.com/n8n-io/n8n/issues/27541)) ([769e28c](https://github.com/n8n-io/n8n/commit/769e28cb36ac6f3602b92325a2d88a4d0ce865ec))
+* **core:** Rename data table columns during source control pull ([#27746](https://github.com/n8n-io/n8n/issues/27746)) ([d9f8f04](https://github.com/n8n-io/n8n/commit/d9f8f04772541d0932ee80ab0b19b17610bbff95))
+* **core:** Resolve $().item expressions in partial executions ([#27338](https://github.com/n8n-io/n8n/issues/27338)) ([d3e45bc](https://github.com/n8n-io/n8n/commit/d3e45bc126258c86dfcf81282b0e28bc1088bf54))
+* **core:** Treat sub-node connections as non-blocking for partial execution root detection ([#27759](https://github.com/n8n-io/n8n/issues/27759)) ([de02036](https://github.com/n8n-io/n8n/commit/de02036f4713ec3bd317f262bdc5b1c825e33793))
+* **core:** Use toString() instead of type cast for password field check ([#27662](https://github.com/n8n-io/n8n/issues/27662)) ([a77aa6a](https://github.com/n8n-io/n8n/commit/a77aa6ad37c9c21b5dcf3a65864238d9b8084864))
+* **editor:** Avoid resource locator cache pollution ([#27493](https://github.com/n8n-io/n8n/issues/27493)) ([706fc43](https://github.com/n8n-io/n8n/commit/706fc4360e206c5fce7aa41dbb842fc33d224d7a))
+* **editor:** Clean up quick connect feature flag and fix first load ([#27286](https://github.com/n8n-io/n8n/issues/27286)) ([cfe1409](https://github.com/n8n-io/n8n/commit/cfe1409ededd959be873eec48bcfb043d679f009))
+* **editor:** Correct navigation to evaluation tab ([#27509](https://github.com/n8n-io/n8n/issues/27509)) ([87a9973](https://github.com/n8n-io/n8n/commit/87a99733906ee4772880c01c9b77ea8e761736fc))
+* **editor:** Fix `/diff` route loading in demo mode ([#27610](https://github.com/n8n-io/n8n/issues/27610)) ([197a431](https://github.com/n8n-io/n8n/commit/197a4314b39dc873c6e13fd9cd8164971d53023a))
+* **editor:** Fix callout dismiss action in NDV ([#27496](https://github.com/n8n-io/n8n/issues/27496)) ([ac65eb9](https://github.com/n8n-io/n8n/commit/ac65eb907730f59bdf2b7d716dbe50c11803b64d))
+* **editor:** Fix empty project ID when creating resources using RLC ([#27544](https://github.com/n8n-io/n8n/issues/27544)) ([0fd427d](https://github.com/n8n-io/n8n/commit/0fd427de9f21dda424f3b154ffa8cd9a25888586))
+* **editor:** Handle chat trigger waiting state in setup cards ([#27682](https://github.com/n8n-io/n8n/issues/27682)) ([21faa2e](https://github.com/n8n-io/n8n/commit/21faa2e1878c7d688ef5cc726945dde077d6d914))
+* **editor:** Improve workflow diff design feedback ([#27494](https://github.com/n8n-io/n8n/issues/27494)) ([c12ced7](https://github.com/n8n-io/n8n/commit/c12ced7f416b763c6ad945619e3a8d9e6541db72))
+* **editor:** Populate workflowDocumentStore in execution preview iframe ([#27540](https://github.com/n8n-io/n8n/issues/27540)) ([bf7379d](https://github.com/n8n-io/n8n/commit/bf7379d6e0722d3773e703b2930a0e80df2b5e0c))
+* **editor:** Remove unused options from NDV settings for agent model nodes ([#27364](https://github.com/n8n-io/n8n/issues/27364)) ([b4f0965](https://github.com/n8n-io/n8n/commit/b4f0965c9ca23e2a58d88af48c0f6aaae1360e6a))
+* **editor:** Restore templates sidebar click tracking                                                                                                                                   ([#27623](https://github.com/n8n-io/n8n/issues/27623)) ([6d6a10c](https://github.com/n8n-io/n8n/commit/6d6a10c55e50475a3cd600a80c90226c0066336a))
+* **editor:** Show tooltip on dependency pill ([#27545](https://github.com/n8n-io/n8n/issues/27545)) ([91d56d2](https://github.com/n8n-io/n8n/commit/91d56d2f6139a8645cbdb4fdff58a7be4ef0bebf))
+* **editor:** Truncate long workflow names in insights table ([#27631](https://github.com/n8n-io/n8n/issues/27631)) ([4f98ce4](https://github.com/n8n-io/n8n/commit/4f98ce43366b098f75c6cd0f6c132b930876b821))
+* **editor:** Use direct store reference for connections in initializeWorkspace ([#27552](https://github.com/n8n-io/n8n/issues/27552)) ([9736ce7](https://github.com/n8n-io/n8n/commit/9736ce7846e087a65bb6899bf826d372392b6651))
+* **editor:** Use execution data instead of stale NDV state for chat trigger check ([#27752](https://github.com/n8n-io/n8n/issues/27752)) ([dbe8cd1](https://github.com/n8n-io/n8n/commit/dbe8cd10fc1f2078a63e5303878ccba63f102392))
+* Fix issue preventing community nodes re-installing when using a custom registry ([#26599](https://github.com/n8n-io/n8n/issues/26599)) ([451d772](https://github.com/n8n-io/n8n/commit/451d77288885fe48127a759c06c9cdb3fda3eced))
+* Fix issue with multi line string handling ([#27176](https://github.com/n8n-io/n8n/issues/27176)) ([ef506be](https://github.com/n8n-io/n8n/commit/ef506be25937d9002cc8b98b09fb8b17ae200229))
+* Implement raw query parameters field for Microsoft SQL node ([#26355](https://github.com/n8n-io/n8n/issues/26355)) ([5229fa0](https://github.com/n8n-io/n8n/commit/5229fa08877150bca0ba508d359f4171a20b51bd))
+* **Microsoft Outlook Trigger Node:** Wrap folder filter in parentheses to ensure correct OData operator precedence ([#27605](https://github.com/n8n-io/n8n/issues/27605)) ([57179e3](https://github.com/n8n-io/n8n/commit/57179e3326d029b005a878e3305a8ed30d79e785))
+* **Salesforce Node:** Fix private key field stripping newlines in JWT credential ([#27517](https://github.com/n8n-io/n8n/issues/27517)) ([53f65ab](https://github.com/n8n-io/n8n/commit/53f65ab034b2c732cb18b10f0dbe5a455edd3a5d))
+* **Structured Output Parser Node:** Show descriptive error when structured output parser receives empty response ([#27443](https://github.com/n8n-io/n8n/issues/27443)) ([158e3bb](https://github.com/n8n-io/n8n/commit/158e3bb04254b91d53ae26e02971bc4331d84d97))
+* Track workflow archive/unarchive endpoints in API coverage manifest ([#27738](https://github.com/n8n-io/n8n/issues/27738)) ([bd0bc0c](https://github.com/n8n-io/n8n/commit/bd0bc0cbd629d33ac657c443dd3cbcc267d457e6))
+
+
+### Features
+
+* Add @n8n/agents package ([#27560](https://github.com/n8n-io/n8n/issues/27560)) ([58fbaf4](https://github.com/n8n-io/n8n/commit/58fbaf4a88c8432e6c5f12998b8ed0b5fef21eba))
+* Add normalization after create, update, delete ([#27669](https://github.com/n8n-io/n8n/issues/27669)) ([54deffc](https://github.com/n8n-io/n8n/commit/54deffcd6aa15996b2cf76b9e1a7b8448dec3e3b))
+* Add role mapping rule scopes ([#27476](https://github.com/n8n-io/n8n/issues/27476)) ([6cf30f3](https://github.com/n8n-io/n8n/commit/6cf30f30ca7486630e452803ecd6bb5aaa81400f))
+* **core:** Add configurable minimum password length via N8N_PASSWORD_MIN_LENGTH ([#26953](https://github.com/n8n-io/n8n/issues/26953)) ([a259295](https://github.com/n8n-io/n8n/commit/a259295e627c27da899740a26270faf89f39231a))
+* **core:** Add OTEL unhappy path handling and safe trace exporter ([#27568](https://github.com/n8n-io/n8n/issues/27568)) ([d8fc058](https://github.com/n8n-io/n8n/commit/d8fc058326580f05d95bd6c799eea4649968b004))
+* **core:** Add POST /role-mapping-rule/:id/move endpoint for reordering rules ([#27677](https://github.com/n8n-io/n8n/issues/27677)) ([af2af60](https://github.com/n8n-io/n8n/commit/af2af60a0f6105378cff920d8d348723a1b74c70))
+* **core:** Add public API endpoints for workflow archive and unarchive ([#27513](https://github.com/n8n-io/n8n/issues/27513)) ([d33334c](https://github.com/n8n-io/n8n/commit/d33334c5a250ddbc45a264a47e2f38fcd350bfdb))
+* **core:** Add RoleMappingRule entity and database tables ([#27440](https://github.com/n8n-io/n8n/issues/27440)) ([e0749a8](https://github.com/n8n-io/n8n/commit/e0749a8dc27700fb94d0381d959a748fe4b6c195))
+* **core:** Implement Test workflow MCP tool ([#27348](https://github.com/n8n-io/n8n/issues/27348)) ([8b9de31](https://github.com/n8n-io/n8n/commit/8b9de31d69edfacc0e4f973998284ceb0501ce89))
+* **core:** Replace unbounded expression code cache with LRU ([#27477](https://github.com/n8n-io/n8n/issues/27477)) ([b557292](https://github.com/n8n-io/n8n/commit/b55729280e4f102958f61b5ba0908da6f7f8a023))
+* **core:** Workflow level otel ([#27528](https://github.com/n8n-io/n8n/issues/27528)) ([42843d6](https://github.com/n8n-io/n8n/commit/42843d6c72f9e4c0fc3a3f4ab9d91c0b7d761e29))
+* DELETE /role-mapping-rule endpoint ([#27608](https://github.com/n8n-io/n8n/issues/27608)) ([3d04c50](https://github.com/n8n-io/n8n/commit/3d04c50342917be7c835aaccd9d172a3ca2e369e))
+* **editor:** Add canvas-only mode ([#27184](https://github.com/n8n-io/n8n/issues/27184)) ([f3b4069](https://github.com/n8n-io/n8n/commit/f3b4069a090d6bf5797991cbec717f522b0778dc))
+* **editor:** Group agent subnodes into multi-node setup cards ([#27570](https://github.com/n8n-io/n8n/issues/27570)) ([98d6851](https://github.com/n8n-io/n8n/commit/98d685111cb7d518df30f4ac99257d588c4160c8))
+* **editor:** Replace restore/changes UI with inline version cards ([#27522](https://github.com/n8n-io/n8n/issues/27522)) ([948f458](https://github.com/n8n-io/n8n/commit/948f4587763a31ca6092fa549ab2096c5b3cddae))
+* **editor:** Support error workflows in workflow dependency ([#27542](https://github.com/n8n-io/n8n/issues/27542)) ([5b98903](https://github.com/n8n-io/n8n/commit/5b989031c11c1d1cb7bc61d4c02c325cffa38e1e))
+* Environment var to disable forms pages sandboxing ([#27409](https://github.com/n8n-io/n8n/issues/27409)) ([4d356c3](https://github.com/n8n-io/n8n/commit/4d356c36d686cae69df22157d0374f3719aa7f5c))
+* GET /role-mapping-rule endpoint ([#27609](https://github.com/n8n-io/n8n/issues/27609)) ([1064f04](https://github.com/n8n-io/n8n/commit/1064f04b79d8f567b1b9bba95bb0bfcc340450cd))
+* POST / PATCH /role-mapping-rule endpoints ([#27569](https://github.com/n8n-io/n8n/issues/27569)) ([150067f](https://github.com/n8n-io/n8n/commit/150067fbbb19fe4fb866906fb07abc5ae89fa3b9))
+* PostHog feature flags resolution caching & group support ([#27525](https://github.com/n8n-io/n8n/issues/27525)) ([e79d8af](https://github.com/n8n-io/n8n/commit/e79d8af1bb30004d8fe1bfcee81c4f9d88784fde))
+* Type and order uniqueness ([#27600](https://github.com/n8n-io/n8n/issues/27600)) ([4cc9019](https://github.com/n8n-io/n8n/commit/4cc9019cb6f3cc6d4ed6256dc5feaf589a58d809))
+* **Wordpress Node:** Add support for OAuth2 ([#27113](https://github.com/n8n-io/n8n/issues/27113)) ([23f7ed8](https://github.com/n8n-io/n8n/commit/23f7ed8ef829a15dc150f18e5d7714b6b21139d4))
+* **Zammad Node:** Add support for updating tickets ([#16800](https://github.com/n8n-io/n8n/issues/16800)) ([1113cee](https://github.com/n8n-io/n8n/commit/1113cee1a482dd7f19c5060077ae5609424f543b))
+
+
+### Performance Improvements
+
+* **core:** Optimize execution deletions for throughput ([#27336](https://github.com/n8n-io/n8n/issues/27336)) ([65a5495](https://github.com/n8n-io/n8n/commit/65a5495cc93763f728b67822a331f1631faf9ef6))
+
+
 # [2.14.0](https://github.com/n8n-io/n8n/compare/n8n@2.13.0...n8n@2.14.0) (2026-03-24)
 
 
