@@ -64,6 +64,10 @@ export abstract class AbstractPush<Connection> extends TypedEmitter<AbstractPush
 		this.emit('message', { pushRef, userId, msg });
 	}
 
+	protected getConnection(pushRef: string): Connection | undefined {
+		return this.connections[pushRef];
+	}
+
 	protected remove(pushRef?: string) {
 		if (!pushRef) return;
 
