@@ -128,6 +128,13 @@ export async function getBuilderCredits(ctx: IRestApiContext): Promise<{
 	return await makeRestApiRequest(ctx, 'GET', '/ai/build/credits');
 }
 
+export async function getGatewayCredits(ctx: IRestApiContext): Promise<{
+	creditsQuota: number;
+	creditsRemaining: number;
+}> {
+	return await makeRestApiRequest(ctx, 'GET', '/ai/gateway/credits');
+}
+
 export async function clearBuilderSession(
 	ctx: IRestApiContext,
 	workflowId: string,

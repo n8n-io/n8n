@@ -44,6 +44,7 @@ import { CredentialNotFoundError } from './errors/credential-not-found.error';
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
+import { AiGatewayService } from '@/services/ai-gateway.service';
 
 const mockNode = {
 	name: '',
@@ -89,6 +90,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		private readonly secretsProviderConnectionRepository: SecretsProviderConnectionRepository,
 		private readonly licenseState: LicenseState,
 		private readonly externalSecretsConfig: ExternalSecretsConfig,
+		private readonly aiGatewayService: AiGatewayService,
 	) {
 		super();
 	}
@@ -346,6 +348,10 @@ export class CredentialsHelper extends ICredentialsHelper {
 		raw?: boolean,
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): Promise<ICredentialDataDecryptedObject> {
+		if (nodeCredentials.__aiGatewayManaged) {
+			return await this.aiGatewayService.getSyntheticCredential(type, additionalData.userId ?? '');
+		}
+
 		const credentialsEntity = await this.getCredentialsEntity(nodeCredentials, type);
 		const credentials = new Credentials(
 			{ id: credentialsEntity.id, name: credentialsEntity.name },

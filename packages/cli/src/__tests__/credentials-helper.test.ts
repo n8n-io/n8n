@@ -27,6 +27,7 @@ import { CredentialsHelper } from '@/credentials-helper';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
 
 describe('CredentialsHelper', () => {
 	const nodeTypes = mock<INodeTypes>();
@@ -51,6 +52,7 @@ describe('CredentialsHelper', () => {
 		secretsProviderRepository,
 		licenseState,
 		externalSecretsConfig,
+		mock<AiGatewayService>(),
 	);
 
 	describe('getCredentials', () => {
@@ -584,6 +586,51 @@ describe('CredentialsHelper', () => {
 		});
 	});
 
+	describe('getDecrypted - AI Gateway managed credentials', () => {
+		beforeEach(() => {
+			jest.clearAllMocks();
+		});
+
+		it('should call getSyntheticCredential and return its result when __aiGatewayManaged is true', async () => {
+			const aiGatewayService = mock<AiGatewayService>();
+			const helperWithGateway = new CredentialsHelper(
+				new CredentialTypes(mockNodesAndCredentials),
+				mock(),
+				credentialsRepository,
+				dynamicCredentialProxy,
+				secretsProviderRepository,
+				licenseState,
+				externalSecretsConfig,
+				aiGatewayService,
+			);
+
+			const syntheticCred = { apiKey: 'mock-jwt', host: 'http://gateway/v1/gateway/google' };
+			aiGatewayService.getSyntheticCredential.mockResolvedValue(syntheticCred);
+
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({ userId: 'user-123' });
+			const nodeCredentials: INodeCredentialsDetails = {
+				id: null,
+				name: '',
+				__aiGatewayManaged: true,
+			};
+
+			const result = await helperWithGateway.getDecrypted(
+				additionalData,
+				nodeCredentials,
+				'googlePalmApi',
+				'manual',
+			);
+
+			expect(aiGatewayService.getSyntheticCredential).toHaveBeenCalledWith(
+				'googlePalmApi',
+				'user-123',
+			);
+			expect(result).toEqual(syntheticCred);
+			// Should NOT attempt to look up a DB credential
+			expect(credentialsRepository.findOneByOrFail).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('getDecrypted - externalSecrets license check', () => {
 		const mockAdditionalDataForLicense = mock<IWorkflowExecuteAdditionalData>();
 
@@ -776,6 +823,7 @@ describe('CredentialsHelper', () => {
 				secretsProviderRepository,
 				licenseState,
 				externalSecretsConfig,
+				mock<AiGatewayService>(),
 			);
 
 			const result = await helperWithoutProvider.getDecrypted(
