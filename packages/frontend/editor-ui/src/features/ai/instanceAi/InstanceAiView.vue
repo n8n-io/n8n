@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, onMounted, onUnmounted, provide, ref, useTemplateRef, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import {
 	N8nHeading,
 	N8nIconButton,
@@ -12,10 +12,14 @@ import { useScroll, useWindowSize } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiAttachment } from '@n8n/api-types';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { useInstanceAiStore } from './instanceAi.store';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { useCanvasPreview } from './useCanvasPreview';
-import { NEW_CONVERSATION_TITLE } from './constants';
+import { useEventRelay } from './useEventRelay';
+import { useExecutionPushEvents } from './useExecutionPushEvents';
+import { INSTANCE_AI_SETTINGS_VIEW, NEW_CONVERSATION_TITLE } from './constants';
 import InstanceAiMessage from './components/InstanceAiMessage.vue';
 import InstanceAiInput from './components/InstanceAiInput.vue';
 import InstanceAiEmptyState from './components/InstanceAiEmptyState.vue';
@@ -25,16 +29,31 @@ import InstanceAiDebugPanel from './components/InstanceAiDebugPanel.vue';
 import InstanceAiArtifactsPanel from './components/InstanceAiArtifactsPanel.vue';
 import InstanceAiStatusBar from './components/InstanceAiStatusBar.vue';
 import InstanceAiConfirmationPanel from './components/InstanceAiConfirmationPanel.vue';
+import InstanceAiPreviewTabBar from './components/InstanceAiPreviewTabBar.vue';
+import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
+import CreditsSettingsDropdown from '@/features/ai/assistant/components/Agent/CreditsSettingsDropdown.vue';
+import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import InstanceAiWorkflowPreview from './components/InstanceAiWorkflowPreview.vue';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
 
 const store = useInstanceAiStore();
 const settingsStore = useInstanceAiSettingsStore();
+const pushConnectionStore = usePushConnectionStore();
+const rootStore = useRootStore();
 const i18n = useI18n();
 const route = useRoute();
+const router = useRouter();
 const documentTitle = useDocumentTitle();
+const { goToUpgrade } = usePageRedirectionHelper();
+
+function goToSettings() {
+	void router.push({ name: INSTANCE_AI_SETTINGS_VIEW });
+}
 
 documentTitle.set('n8n Agent');
+
+// --- Execution tracking via push events ---
+const executionTracking = useExecutionPushEvents();
 
 // --- Header title ---
 const currentThreadTitle = computed(() => {
@@ -51,14 +70,36 @@ const currentThreadTitle = computed(() => {
 });
 
 // --- Canvas / data table preview ---
-const preview = useCanvasPreview({ store, route });
+const preview = useCanvasPreview({
+	store,
+	route,
+	workflowExecutions: executionTracking.workflowExecutions,
+});
 
 provide('openWorkflowPreview', preview.openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
 
+// --- Credit warning banner ---
+const creditBannerDismissed = ref(false);
+watch(
+	() => store.isLowCredits,
+	(isLow, wasLow) => {
+		// Only reset dismissal when transitioning INTO low-credits state
+		// (e.g. from >10% to <=10%). Subsequent push updates within the
+		// low-credits zone should not re-show a dismissed banner.
+		if (isLow && !wasLow) {
+			creditBannerDismissed.value = false;
+		}
+	},
+);
+const showCreditBanner = computed(() => store.isLowCredits && !creditBannerDismissed.value);
+
 // Load persisted threads from Mastra storage on mount
 onMounted(() => {
+	pushConnectionStore.pushConnect();
 	void store.loadThreads();
+	void store.fetchCredits();
+	store.startCreditsPushListener();
 
 	// Auto-connect local gateway if enabled
 	void settingsStore
@@ -209,7 +250,10 @@ watch(
 onUnmounted(() => {
 	contentResizeObserver?.disconnect();
 	resizeObserver?.disconnect();
+	executionTracking.cleanup();
+	pushConnectionStore.pushDisconnect();
 	store.closeSSE();
+	store.stopCreditsPushListener();
 	settingsStore.stopDaemonProbing();
 	settingsStore.stopGatewayPolling();
 	settingsStore.stopGatewayPushListener();
@@ -252,6 +296,9 @@ watch(
 			return;
 		}
 
+		// Clear execution tracking for previous thread
+		executionTracking.clearAll();
+
 		// Deep-link hydration: ensure thread exists in sidebar
 		if (!store.threads.some((t) => t.id === threadId)) {
 			store.threads.push({
@@ -266,12 +313,23 @@ watch(
 	{ immediate: true },
 );
 
+// --- Workflow preview ref for iframe relay ---
+const workflowPreviewRef =
+	useTemplateRef<InstanceType<typeof InstanceAiWorkflowPreview>>('workflowPreview');
+
+const eventRelay = useEventRelay({
+	workflowExecutions: executionTracking.workflowExecutions,
+	activeWorkflowId: preview.activeWorkflowId,
+	getBufferedEvents: executionTracking.getBufferedEvents,
+	relay: (event) => workflowPreviewRef.value?.relayPushEvent(event),
+});
+
 // --- Message handlers ---
 async function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 	// Reset scroll on new user message
 	userScrolledUp.value = false;
 	preview.markUserSentMessage();
-	await store.sendMessage(message, attachments, preview.iframePushRef.value ?? undefined);
+	await store.sendMessage(message, attachments, rootStore.pushRef);
 }
 
 function handleStop() {
@@ -309,6 +367,21 @@ function handleStop() {
 					{{ i18n.baseText('instanceAi.view.reconnecting') }}
 				</N8nText>
 				<div :class="$style.headerActions">
+					<CreditsSettingsDropdown
+						v-if="store.creditsRemaining !== undefined"
+						:credits-remaining="store.creditsRemaining"
+						:credits-quota="store.creditsQuota"
+						:is-low-credits="store.isLowCredits"
+						@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
+					/>
+					<N8nIconButton
+						icon="cog"
+						variant="ghost"
+						size="medium"
+						:class="$style.settingsButton"
+						data-test-id="instance-ai-settings-button"
+						@click="goToSettings"
+					/>
 					<N8nIconButton
 						icon="brain"
 						variant="ghost"
@@ -345,6 +418,13 @@ function handleStop() {
 						<InstanceAiEmptyState />
 						<div :class="$style.centeredInput">
 							<InstanceAiStatusBar />
+							<CreditWarningBanner
+								v-if="showCreditBanner"
+								:credits-remaining="store.creditsRemaining"
+								:credits-quota="store.creditsQuota"
+								@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
+								@dismiss="creditBannerDismissed = true"
+							/>
 							<InstanceAiInput
 								:is-streaming="store.isStreaming"
 								@submit="handleSubmit"
@@ -395,6 +475,13 @@ function handleStop() {
 						<div ref="inputContainer" :class="$style.inputContainer">
 							<div :class="$style.inputConstraint">
 								<InstanceAiStatusBar />
+								<CreditWarningBanner
+									v-if="showCreditBanner"
+									:credits-remaining="store.creditsRemaining"
+									:credits-quota="store.creditsQuota"
+									@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
+									@dismiss="creditBannerDismissed = true"
+								/>
 								<InstanceAiInput
 									:is-streaming="store.isStreaming"
 									@submit="handleSubmit"
@@ -436,24 +523,30 @@ function handleStop() {
 			@resizestart="isResizingPreview = true"
 			@resizeend="isResizingPreview = false"
 		>
-			<InstanceAiWorkflowPreview
-				v-if="preview.activeWorkflowId.value"
-				:workflow-id="preview.activeWorkflowId.value"
-				:execution-id="preview.activeExecutionId.value"
-				:refresh-key="preview.workflowRefreshKey.value"
-				@close="preview.activeWorkflowId.value = null"
-				@push-ref-ready="preview.iframePushRef.value = $event"
-			/>
-			<InstanceAiDataTablePreview
-				v-else-if="preview.activeDataTableId.value"
-				:data-table-id="preview.activeDataTableId.value"
-				:project-id="preview.activeDataTableProjectId.value"
-				:refresh-key="preview.dataTableRefreshKey.value"
-				@close="
-					preview.activeDataTableId.value = null;
-					preview.activeDataTableProjectId.value = null;
-				"
-			/>
+			<div :class="$style.previewPanel">
+				<InstanceAiPreviewTabBar
+					:tabs="preview.allArtifactTabs.value"
+					:active-tab-id="preview.activeTabId.value"
+					@update:active-tab-id="preview.selectTab($event)"
+					@close="preview.closePreview()"
+				/>
+				<div :class="$style.previewContent">
+					<InstanceAiWorkflowPreview
+						v-if="preview.activeWorkflowId.value"
+						ref="workflowPreview"
+						:workflow-id="preview.activeWorkflowId.value"
+						:execution-id="preview.activeExecutionId.value"
+						:refresh-key="preview.workflowRefreshKey.value"
+						@iframe-ready="eventRelay.handleIframeReady"
+					/>
+					<InstanceAiDataTablePreview
+						v-else-if="preview.activeDataTableId.value"
+						:data-table-id="preview.activeDataTableId.value"
+						:project-id="preview.activeDataTableProjectId.value"
+						:refresh-key="preview.dataTableRefreshKey.value"
+					/>
+				</div>
+			</div>
 		</N8nResizeWrapper>
 	</div>
 </template>
@@ -535,6 +628,10 @@ function handleStop() {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
+}
+
+.settingsButton {
+	padding: var(--spacing--xs);
 }
 
 .activeButton {
@@ -627,6 +724,17 @@ function handleStop() {
 .inputConstraint {
 	max-width: 750px;
 	margin: 0 auto;
+}
+
+.previewPanel {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+}
+
+.previewContent {
+	flex: 1;
+	min-height: 0;
 }
 </style>
 

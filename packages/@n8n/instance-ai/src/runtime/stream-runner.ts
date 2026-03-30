@@ -25,7 +25,7 @@ export interface StreamRunOptions {
 }
 
 export interface StreamRunResult {
-	status: 'completed' | 'cancelled' | 'suspended';
+	status: 'completed' | 'cancelled' | 'suspended' | 'errored';
 	mastraRunId: string;
 	text?: Promise<string>;
 	suspension?: SuspensionInfo;
@@ -38,8 +38,9 @@ export async function streamAgentRun(
 	streamOptions: Record<string, unknown>,
 	options: StreamRunOptions,
 ): Promise<StreamRunResult> {
-	return await withTraceParentContext(getTraceParentRun(), async () => {
-		const llmStepTraceHooks = createLlmStepTraceHooks();
+	const traceParent = getTraceParentRun();
+	return await withTraceParentContext(traceParent, async () => {
+		const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
 		const result = await traceWorkingMemoryContext(
 			{
 				phase: 'initial',
@@ -65,8 +66,9 @@ export async function resumeAgentRun(
 	resumeOptions: Record<string, unknown>,
 	options: StreamRunOptions & { mastraRunId: string },
 ): Promise<StreamRunResult> {
-	return await withTraceParentContext(getTraceParentRun(), async () => {
-		const llmStepTraceHooks = createLlmStepTraceHooks();
+	const resumeTraceParent = getTraceParentRun();
+	return await withTraceParentContext(resumeTraceParent, async () => {
+		const llmStepTraceHooks = createLlmStepTraceHooks(resumeTraceParent);
 		const resumed = await traceWorkingMemoryContext(
 			{
 				phase: 'resume',
@@ -125,7 +127,12 @@ async function consumeStream(
 	}
 
 	return {
-		status: result.status === 'cancelled' ? 'cancelled' : 'completed',
+		status:
+			result.status === 'cancelled'
+				? 'cancelled'
+				: result.status === 'errored'
+					? 'errored'
+					: 'completed',
 		mastraRunId: result.mastraRunId,
 		text: result.text,
 	};

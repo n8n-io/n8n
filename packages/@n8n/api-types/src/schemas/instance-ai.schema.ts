@@ -4,6 +4,16 @@ import { Z } from '../zod-class';
 import { TimeZoneSchema } from './timezone.schema';
 
 // ---------------------------------------------------------------------------
+// Credits
+// ---------------------------------------------------------------------------
+
+/**
+ * Sentinel value returned by `GET /instance-ai/credits` when the AI service
+ * proxy is disabled (credits are not metered). Consumers should treat this as "unlimited".
+ */
+export const UNLIMITED_CREDITS = -1;
+
+// ---------------------------------------------------------------------------
 // Branded ID types — prevent swapping runId/agentId/threadId/toolCallId
 // ---------------------------------------------------------------------------
 

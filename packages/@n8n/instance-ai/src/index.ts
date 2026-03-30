@@ -164,6 +164,7 @@ export type {
 	InstanceAiWorkspaceService,
 	ProjectSummary,
 	FolderSummary,
+	ServiceProxyConfig,
 } from './types';
 export type { StartedWorkflowBuildTask } from './tools/orchestration/build-workflow-agent.tool';
 export type { StartedBackgroundAgentTask } from './tools/orchestration/data-table-agent.tool';

@@ -236,6 +236,8 @@ watch(
 		}
 	},
 );
+
+defineExpose({ iframeRef });
 </script>
 
 <template>

@@ -360,6 +360,12 @@ export class InstanceAiSettingsService {
 		return this.config.localGatewayDisabled;
 	}
 
+	/** Resolve just the model name (e.g. 'claude-sonnet-4-20250514') for proxy routing. */
+	async resolveModelName(user: User): Promise<string> {
+		const prefs = await this.loadUserPreferences(user.id);
+		return prefs.modelName || this.extractModelName(this.config.model);
+	}
+
 	/** Resolve the current model configuration for an agent run. */
 	async resolveModelConfig(user: User): Promise<ModelConfig> {
 		const prefs = await this.loadUserPreferences(user.id);

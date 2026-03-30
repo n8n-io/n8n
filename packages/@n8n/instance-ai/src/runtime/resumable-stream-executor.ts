@@ -58,7 +58,7 @@ export interface ExecuteResumableStreamOptions {
 }
 
 export interface ExecuteResumableStreamResult {
-	status: 'completed' | 'cancelled' | 'suspended';
+	status: 'completed' | 'cancelled' | 'suspended' | 'errored';
 	mastraRunId: string;
 	text?: Promise<string>;
 	suspension?: SuspensionInfo;
@@ -71,6 +71,7 @@ export interface LlmStepTraceHooks {
 		experimental_prepareStep?: (options: unknown) => Promise<undefined>;
 		experimental_onStepStart?: (options: unknown) => Promise<void>;
 		onStepFinish: (stepResult: unknown) => Promise<void>;
+		experimental_telemetry?: { isEnabled: boolean };
 	};
 	onStreamChunk: (chunk: unknown) => void;
 	startSegment: () => void;
@@ -1590,8 +1591,10 @@ function applyStepResultToRecord(record: LlmStepTraceRecord, stepResult: StepRes
 	}
 }
 
-export function createLlmStepTraceHooks(): LlmStepTraceHooks | undefined {
-	const activeParentRun = getTraceParentRun();
+export function createLlmStepTraceHooks(
+	explicitParentRun?: RunTree,
+): LlmStepTraceHooks | undefined {
+	const activeParentRun = explicitParentRun ?? getTraceParentRun();
 	if (!activeParentRun) {
 		return undefined;
 	}
@@ -1735,6 +1738,8 @@ export function createLlmStepTraceHooks(): LlmStepTraceHooks | undefined {
 			experimental_prepareStep: prepareStep,
 			experimental_onStepStart: onStepStart,
 			onStepFinish,
+			// Disable Vercel AI SDK's built-in LangSmith tracing — we manage traces ourselves
+			experimental_telemetry: { isEnabled: false },
 		},
 		onStreamChunk: (chunk) => {
 			updateStepRecordFromChunk(chunk, records);
@@ -1910,6 +1915,7 @@ export async function executeResumableStream(
 
 	while (true) {
 		let suspension: SuspensionInfo | undefined;
+		let hasError = false;
 		let pendingConfirmation: Promise<Record<string, unknown>> | undefined;
 		let confirmationEvent: ConfirmationRequestEvent | undefined;
 		let confirmationEventPublished = false;
@@ -1980,6 +1986,10 @@ export async function executeResumableStream(
 				}
 			}
 
+			if (isErrorChunk(chunk)) {
+				hasError = true;
+			}
+
 			const event = mapMastraChunkToEvent(options.context.runId, options.context.agentId, chunk);
 			if (event) {
 				let shouldPublishEvent = true;
@@ -2031,7 +2041,7 @@ export async function executeResumableStream(
 		}
 
 		if (!suspension) {
-			return { status: 'completed', mastraRunId: activeMastraRunId, text };
+			return { status: hasError ? 'errored' : 'completed', mastraRunId: activeMastraRunId, text };
 		}
 
 		if (options.control.mode === 'manual') {
@@ -2096,6 +2106,14 @@ function publishCorrections(context: ResumableStreamContext, corrections: string
 			payload: { text: `\n[USER CORRECTION]: ${correction}\n` },
 		});
 	}
+}
+
+function isErrorChunk(chunk: unknown): boolean {
+	return (
+		chunk !== null &&
+		typeof chunk === 'object' &&
+		(chunk as Record<string, unknown>).type === 'error'
+	);
 }
 
 async function waitForConfirmation(

@@ -157,10 +157,15 @@ export class BackgroundTaskManager {
 			task.status = 'failed';
 			task.error = error instanceof Error ? error.message : String(error);
 			await options.onFailed?.(task);
+		} finally {
+			try {
+				if (!task.abortController.signal.aborted) {
+					await options.onSettled?.(task);
+				}
+			} finally {
+				this.tasks.delete(task.taskId);
+			}
 		}
-
-		await options.onSettled?.(task);
-		this.tasks.delete(task.taskId);
 	}
 }
 

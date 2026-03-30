@@ -8,9 +8,7 @@ import { useProvideWorkflowId } from '@/app/composables/useProvideWorkflowId';
 import { useWorkflowState } from '@/app/composables/useWorkflowState';
 import { useWorkflowInitialization } from '@/app/composables/useWorkflowInitialization';
 import { usePostMessageHandler } from '@/app/composables/usePostMessageHandler';
-import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { usePushConnection } from '@/app/composables/usePushConnection/usePushConnection';
-import { useUsersStore } from '@/features/settings/users/users.store';
 
 const workflowState = useWorkflowState();
 provide(WorkflowStateKey, workflowState);
@@ -29,12 +27,13 @@ const { setup: setupPostMessages, cleanup: cleanupPostMessages } = usePostMessag
 	currentWorkflowDocumentStore,
 });
 
-const usersStore = useUsersStore();
-const pushConnectionStore = usePushConnectionStore();
+// Initialize push event handlers so relayed execution events (via postMessage
+// from the parent) are processed for node highlighting, execution state, etc.
+// No pushConnect() — the parent owns the WebSocket and relays events to us.
 const pushConnection = usePushConnection({ router: useRouter(), workflowState });
 
 // Set activeExecutionId to null (not undefined) eagerly so the iframe accepts
-// incoming execution push events. undefined means "no execution context, skip all".
+// incoming execution push events relayed from the parent via postMessage.
 workflowState.setActiveExecutionId(null);
 
 onBeforeMount(() => {
@@ -43,18 +42,11 @@ onBeforeMount(() => {
 
 onMounted(async () => {
 	await initializeData();
-
-	// Connect push only when authenticated (Instance AI iframe).
-	// In N8N_PREVIEW_MODE (external embeds), there's no user — skip to avoid failed requests.
-	if (usersStore.currentUser) {
-		pushConnectionStore.pushConnect();
-		pushConnection.initialize();
-	}
+	pushConnection.initialize();
 });
 
 onBeforeUnmount(() => {
 	pushConnection.terminate();
-	pushConnectionStore.pushDisconnect();
 	cleanupPostMessages();
 	cleanupInitialization();
 });

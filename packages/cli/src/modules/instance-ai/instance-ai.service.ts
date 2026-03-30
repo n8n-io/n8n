@@ -1,11 +1,12 @@
-import type {
-	InstanceAiAttachment,
-	InstanceAiEvent,
-	InstanceAiThreadStatusResponse,
-	InstanceAiGatewayCapabilities,
-	McpToolCallResult,
-	ToolCategory,
-	TaskList,
+import {
+	UNLIMITED_CREDITS,
+	type InstanceAiAttachment,
+	type InstanceAiEvent,
+	type InstanceAiThreadStatusResponse,
+	type InstanceAiGatewayCapabilities,
+	type McpToolCallResult,
+	type ToolCategory,
+	type TaskList,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -13,6 +14,10 @@ import { Time } from '@n8n/constants';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
+import { InstanceSettings } from 'n8n-core';
+import { N8N_VERSION } from '@/constants';
+import { License } from '@/license';
 import { UrlService } from '@/services/url.service';
 import {
 	createInstanceAgent,
@@ -52,13 +57,17 @@ import {
 	type PlannedTaskRecord,
 	type SandboxConfig,
 	type SpawnBackgroundTaskOptions,
+	type ServiceProxyConfig,
 	type StreamableAgent,
 	WorkflowTaskCoordinator,
 	WorkflowLoopStorage,
 } from '@n8n/instance-ai';
+import { createAnthropic } from '@ai-sdk/anthropic';
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 
+import { AiService } from '@/services/ai.service';
+import { Push } from '@/push';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import type { LocalGateway } from './filesystem';
 import { LocalGatewayRegistry, LocalFilesystemProvider } from './filesystem';
@@ -70,6 +79,7 @@ import type { TypeORMWorkflowsStorage } from './storage/typeorm-workflows-storag
 import { DbSnapshotStorage } from './storage/db-snapshot-storage';
 import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
 import { InstanceAiCompactionService } from './compaction.service';
+import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
 
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
@@ -132,27 +142,32 @@ export class InstanceAiService {
 	/** Tracks the iframe pushRef per thread for live execution push events. */
 	private readonly threadPushRef = new Map<string, string>();
 
-	/** Pre-warmed image manager for builder sandboxes (Daytona only). */
-	private snapshotManager?: SnapshotManager;
-
-	/** Factory for creating per-builder ephemeral sandboxes. */
-	private builderSandboxFactory?: BuilderSandboxFactory;
-
 	/** Periodic sweep that auto-rejects timed-out HITL confirmations. */
 	private confirmationTimeoutInterval?: NodeJS.Timeout;
+
+	/** In-memory guard to prevent double credit counting within the same process. */
+	private readonly creditedThreads = new Set<string>();
 
 	/** Default IANA timezone for the instance (from GENERIC_TIMEZONE env var). */
 	private readonly defaultTimeZone: string;
 
+	/** Lazily-initialized AI assistant client for sandbox proxy integration. */
+	private aiAssistantClient: AiAssistantClient | undefined;
+
 	constructor(
 		private readonly logger: Logger,
-		globalConfig: GlobalConfig,
+		private readonly globalConfig: GlobalConfig,
 		private readonly adapterService: InstanceAiAdapterService,
 		private readonly eventBus: InProcessEventBus,
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly compositeStore: TypeORMCompositeStore,
 		private readonly compactionService: InstanceAiCompactionService,
+		private readonly aiService: AiService,
+		private readonly push: Push,
+		private readonly threadRepo: InstanceAiThreadRepository,
 		private readonly urlService: UrlService,
+		private readonly license: License,
+		private readonly instanceSettings: InstanceSettings,
 		private readonly dbSnapshotStorage: DbSnapshotStorage,
 		private readonly dbIterationLogStorage: DbIterationLogStorage,
 	) {
@@ -162,15 +177,6 @@ export class InstanceAiService {
 		const restEndpoint = globalConfig.endpoints.rest;
 		this.oauth2CallbackUrl = `${editorBaseUrl.replace(/\/$/, '')}/${restEndpoint}/oauth2-credential/callback`;
 		this.webhookBaseUrl = `${this.urlService.getWebhookBaseUrl()}${globalConfig.endpoints.webhook}`;
-
-		// Initialize per-builder sandbox factory from env vars (credential-based config resolves at runtime)
-		const sbxConfig = this.getSandboxConfigFromEnv();
-		if (sbxConfig.enabled && sbxConfig.provider === 'daytona') {
-			this.snapshotManager = new SnapshotManager(sbxConfig.image);
-			this.builderSandboxFactory = new BuilderSandboxFactory(sbxConfig, this.snapshotManager);
-		} else if (sbxConfig.enabled) {
-			this.builderSandboxFactory = new BuilderSandboxFactory(sbxConfig);
-		}
 
 		this.startConfirmationTimeoutSweep();
 	}
@@ -247,10 +253,54 @@ export class InstanceAiService {
 		};
 	}
 
+	private async getAiAssistantClient(): Promise<AiAssistantClient | undefined> {
+		if (this.aiAssistantClient) return this.aiAssistantClient;
+
+		const baseUrl = this.globalConfig.aiAssistant.baseUrl;
+		if (!baseUrl) return undefined;
+
+		const licenseCert = await this.license.loadCertStr();
+		const consumerId = this.license.getConsumerId();
+
+		this.aiAssistantClient = new AiAssistantClient({
+			licenseCert,
+			consumerId,
+			baseUrl,
+			n8nVersion: N8N_VERSION,
+			instanceId: this.instanceSettings.instanceId,
+		});
+
+		this.license.onCertRefresh((cert) => {
+			this.aiAssistantClient?.updateLicenseCert(cert);
+		});
+
+		return this.aiAssistantClient;
+	}
+
 	private async resolveSandboxConfig(user: User): Promise<SandboxConfig> {
 		const base = this.getSandboxConfigFromEnv();
 		if (!base.enabled) return base;
 		if (base.provider === 'daytona') {
+			// If AI assistant service is available, route Daytona calls through its sandbox proxy
+			const client = await this.getAiAssistantClient();
+			if (client) {
+				const proxyConfig = await client.getSandboxProxyConfig();
+				return {
+					...base,
+					daytonaApiUrl: client.getSandboxProxyBaseUrl(),
+					image: proxyConfig.image,
+					getAuthToken: async () => {
+						const token = await client.getBuilderApiProxyToken(
+							{ id: user.id },
+							{ userMessageId: nanoid() },
+						);
+
+						return token.accessToken;
+					},
+				};
+			}
+
+			// Direct mode: Daytona credentials from env vars or admin credential
 			const daytona = await this.settingsService.resolveDaytonaConfig(user);
 			return {
 				...base,
@@ -267,6 +317,17 @@ export class InstanceAiService {
 			};
 		}
 		return base;
+	}
+
+	private async createBuilderFactory(user: User): Promise<BuilderSandboxFactory | undefined> {
+		const config = await this.resolveSandboxConfig(user);
+		if (!config.enabled) return undefined;
+
+		if (config.provider === 'daytona') {
+			return new BuilderSandboxFactory(config, new SnapshotManager(config.image));
+		}
+
+		return new BuilderSandboxFactory(config);
 	}
 
 	/** Lazily create the local filesystem provider (singleton). */
@@ -313,9 +374,121 @@ export class InstanceAiService {
 		}
 	}
 
-	/** Build model config: plain string for built-in providers, object for custom endpoints. */
+	/**
+	 * Fetch a fresh proxy auth token and return the client + Authorization headers.
+	 * Each caller gets a unique token (separate nanoid) for audit tracking.
+	 */
+	private async getProxyAuth(user: User) {
+		const client = await this.aiService.getClient();
+		const token = await client.getBuilderApiProxyToken(
+			{ id: user.id },
+			{ userMessageId: nanoid() },
+		);
+		return {
+			client,
+			headers: { Authorization: `${token.tokenType} ${token.accessToken}` },
+		};
+	}
+
+	/**
+	 * Build model config. When the AI service proxy is enabled, returns a native
+	 * Anthropic LanguageModelV2 instance pointing at the proxy.
+	 *
+	 * We use `@ai-sdk/anthropic` directly instead of returning a `{ url }` config
+	 * object because Mastra's model router forces all configs with a `url` through
+	 * `createOpenAICompatible`, which sends requests to `/chat/completions`.
+	 * The proxy may forward to Vertex AI, which only supports the native Anthropic
+	 * Messages API (`/v1/messages`), not the OpenAI-compatible endpoint.
+	 */
 	private async resolveModel(user: User): Promise<ModelConfig> {
+		if (this.aiService.isProxyEnabled()) {
+			const { client, headers } = await this.getProxyAuth(user);
+			const modelName = await this.settingsService.resolveModelName(user);
+			const provider = createAnthropic({
+				baseURL: client.getApiProxyBaseUrl() + '/anthropic/v1',
+				apiKey: 'proxy-managed',
+				headers,
+			});
+			return provider(modelName);
+		}
 		return await this.settingsService.resolveModelConfig(user);
+	}
+
+	/** Build search proxy config when proxy is enabled. */
+	private async resolveSearchProxyConfig(user: User): Promise<ServiceProxyConfig | undefined> {
+		if (!this.aiService.isProxyEnabled()) return undefined;
+		const { client, headers } = await this.getProxyAuth(user);
+		return { apiUrl: client.getApiProxyBaseUrl() + '/brave-search', headers };
+	}
+
+	/** Build tracing proxy config when proxy is enabled. */
+	private async resolveTracingProxyConfig(user: User): Promise<ServiceProxyConfig | undefined> {
+		if (!this.aiService.isProxyEnabled()) return undefined;
+		const { client, headers } = await this.getProxyAuth(user);
+		return { apiUrl: client.getApiProxyBaseUrl() + '/langsmith', headers };
+	}
+
+	/**
+	 * Count one credit for the first completed orchestrator run in a thread.
+	 * Subsequent messages in the same thread are free.
+	 *
+	 * Race-condition mitigation strategy:
+	 * - In-memory Set (`creditedThreads`) prevents concurrent calls within
+	 *   the same process from both passing the check.
+	 * - DB metadata (`creditCounted: true`) survives process restarts.
+	 * - markBuilderSuccess is idempotent on the proxy side, so a theoretical
+	 *   double-count after a crash mid-save is harmless.
+	 */
+	private async countCreditsIfFirst(user: User, threadId: string, runId: string): Promise<void> {
+		if (!this.aiService.isProxyEnabled()) return;
+
+		// Fast in-memory check — prevents the read-then-write race within a single process.
+		if (this.creditedThreads.has(threadId)) return;
+
+		const thread = await this.threadRepo.findOneBy({ id: threadId });
+		if (!thread) return;
+		if (thread.metadata?.creditCounted) {
+			this.creditedThreads.add(threadId); // Sync in-memory with DB state
+			return;
+		}
+
+		try {
+			this.creditedThreads.add(threadId); // Claim before async work
+			const { client, headers: authHeaders } = await this.getProxyAuth(user);
+			const info = await client.markBuilderSuccess({ id: user.id }, authHeaders);
+			if (info) {
+				thread.metadata = { ...thread.metadata, creditCounted: true };
+				await this.threadRepo.save(thread);
+				this.push.sendToUsers(
+					{
+						type: 'updateInstanceAiCredits',
+						data: { creditsQuota: info.creditsQuota, creditsClaimed: info.creditsClaimed },
+					},
+					[user.id],
+				);
+			}
+		} catch (error) {
+			this.creditedThreads.delete(threadId); // Allow retry on failure
+			this.logger.warn('[credits] Failed to count Instance AI credits', {
+				error: getErrorMessage(error),
+				threadId,
+				runId,
+			});
+		}
+	}
+
+	/** Whether the AI service proxy is enabled for credit counting. */
+	isProxyEnabled(): boolean {
+		return this.aiService.isProxyEnabled();
+	}
+
+	/** Get current credit usage from the AI service proxy. */
+	async getCredits(user: User): Promise<{ creditsQuota: number; creditsClaimed: number }> {
+		if (!this.aiService.isProxyEnabled()) {
+			return { creditsQuota: UNLIMITED_CREDITS, creditsClaimed: 0 };
+		}
+		const client = await this.aiService.getClient();
+		return await client.getBuilderInstanceCredits({ id: user.id });
 	}
 
 	isEnabled(): boolean {
@@ -750,6 +923,7 @@ export class InstanceAiService {
 			metadata: { completion_source: 'service_cleanup' },
 		});
 
+		this.creditedThreads.delete(threadId);
 		this.domainAccessTrackersByThread.delete(threadId);
 		this.threadPushRef.delete(threadId);
 		this.deleteTraceContextsForThread(threadId);
@@ -804,7 +978,6 @@ export class InstanceAiService {
 		this.domainAccessTrackersByThread.clear();
 		this.traceContextsByRunId.clear();
 
-		this.snapshotManager?.invalidate();
 		this.eventBus.clear();
 		await this.mcpClientManager.disconnect();
 		this.logger.debug('Instance AI service shut down');
@@ -921,7 +1094,14 @@ export class InstanceAiService {
 			!localGatewayDisabled && !userGateway?.isConnected && this.isLocalFilesystemAvailable()
 				? this.getLocalFsProvider()
 				: undefined;
-		const context = this.adapterService.createContext(user, localFilesystemService, pushRef);
+		// Each resolve*() call fetches a separate proxy token for audit tracking (see getProxyAuth)
+		const searchProxyConfig = await this.resolveSearchProxyConfig(user);
+		const tracingProxyConfig = await this.resolveTracingProxyConfig(user);
+		const context = this.adapterService.createContext(user, {
+			filesystemService: localFilesystemService,
+			searchProxyConfig,
+			pushRef,
+		});
 		if (!localGatewayDisabled && userGateway?.isConnected) {
 			context.localMcpServer = userGateway;
 		}
@@ -947,7 +1127,7 @@ export class InstanceAiService {
 			};
 		}
 
-		const modelId = await this.resolveModel(user);
+		const modelId = await this.resolveModel(user); // separate proxy token — see getProxyAuth
 		const memory = createMemory(this.createMemoryConfig());
 		await this.ensureThreadExists(memory, threadId, user.id);
 
@@ -1007,9 +1187,10 @@ export class InstanceAiService {
 				this.sendCorrectionToTask(threadId, taskId, correction),
 			workflowTaskService: workflowTasks,
 			workspace: sandboxEntry?.workspace,
-			builderSandboxFactory: this.builderSandboxFactory,
+			builderSandboxFactory: await this.createBuilderFactory(user),
 			nodeDefinitionDirs: nodeDefDirs.length > 0 ? nodeDefDirs : undefined,
 			domainContext: context,
+			tracingProxyConfig,
 		};
 
 		return {
@@ -1271,6 +1452,7 @@ export class InstanceAiService {
 				userId: user.id,
 				modelId,
 				input: traceInput,
+				proxyConfig: orchestrationContext.tracingProxyConfig,
 			});
 
 			if (tracing) {
@@ -1499,13 +1681,14 @@ export class InstanceAiService {
 			}
 
 			const outputText = await (result.text ?? Promise.resolve(''));
+			const finalStatus = result.status === 'errored' ? 'error' : result.status;
 			await this.finalizeRunTracing(runId, tracing, {
-				status: result.status,
+				status: finalStatus,
 				outputText,
 				modelId,
 			});
 			messageTraceFinalization = {
-				status: result.status,
+				status: finalStatus,
 				outputText,
 				modelId,
 				metadata: { completion_source: 'orchestrator' },
@@ -1514,6 +1697,11 @@ export class InstanceAiService {
 				userId: user.id,
 				modelId,
 			});
+
+			// Count credits on first completed run per thread
+			if (result.status === 'completed') {
+				await this.countCreditsIfFirst(user, threadId, runId);
+			}
 		} catch (error) {
 			if (signal.aborted) {
 				await this.finalizeRunTracing(runId, tracing, {
@@ -1706,12 +1894,13 @@ export class InstanceAiService {
 			}
 
 			const outputText = await (result.text ?? Promise.resolve(''));
+			const finalStatus = result.status === 'errored' ? 'error' : result.status;
 			await this.finalizeRunTracing(opts.runId, opts.tracing, {
-				status: result.status,
+				status: finalStatus,
 				outputText,
 			});
 			messageTraceFinalization = {
-				status: result.status,
+				status: finalStatus,
 				outputText,
 				metadata: { completion_source: 'orchestrator' },
 			};
@@ -1891,21 +2080,25 @@ export class InstanceAiService {
 	private publishRunFinish(
 		threadId: string,
 		runId: string,
-		status: 'completed' | 'cancelled',
+		status: 'completed' | 'cancelled' | 'errored',
 		reason?: string,
 	): void {
+		const effectiveStatus = status === 'errored' ? 'error' : status;
 		this.eventBus.publish(threadId, {
 			type: 'run-finish',
 			runId,
 			agentId: ORCHESTRATOR_AGENT_ID,
-			payload: status === 'cancelled' ? { status, reason: reason ?? 'user_cancelled' } : { status },
+			payload:
+				status === 'cancelled'
+					? { status: effectiveStatus, reason: reason ?? 'user_cancelled' }
+					: { status: effectiveStatus },
 		});
 	}
 
 	private async finalizeRun(
 		threadId: string,
 		runId: string,
-		status: 'completed' | 'cancelled',
+		status: 'completed' | 'cancelled' | 'errored',
 		snapshotStorage: DbSnapshotStorage,
 		options?: { userId?: string; modelId?: ModelConfig },
 	): Promise<void> {

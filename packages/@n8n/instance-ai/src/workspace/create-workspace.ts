@@ -22,6 +22,8 @@ interface DaytonaSandboxConfig extends SandboxConfigBase {
 	daytonaApiUrl?: string;
 	daytonaApiKey?: string;
 	image?: string;
+	/** When provided, called before each Daytona interaction to get a fresh auth token (e.g. a short-lived JWT for proxy mode). */
+	getAuthToken?: () => Promise<string>;
 }
 
 interface LocalSandboxConfig extends SandboxConfigBase {

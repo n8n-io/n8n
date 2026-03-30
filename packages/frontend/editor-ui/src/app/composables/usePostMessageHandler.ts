@@ -227,6 +227,15 @@ export function usePostMessageHandler({
 				executionsStore.activeExecution = (await executionsStore.fetchExecution(
 					json.executionId,
 				)) as ExecutionSummary;
+			} else if (json?.command === 'executionEvent') {
+				// Relay execution push events from parent into the iframe's push pipeline.
+				// Uses onMessageReceivedHandlers (part of the store's public API) to dispatch
+				// the event to all registered listeners — same pattern the store uses internally.
+				const { usePushConnectionStore } = await import('@/app/stores/pushConnection.store');
+				const pushStore = usePushConnectionStore();
+				for (const handler of pushStore.onMessageReceivedHandlers) {
+					handler(json.event);
+				}
 			}
 		} catch {
 			// Ignore parse errors

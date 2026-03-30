@@ -66,24 +66,18 @@ catalogs:
     '@mastra/daytona':
       specifier: 0.1.0
       version: 0.1.0
-    '@mastra/langsmith':
-      specifier: 1.1.2
-      version: 1.1.2
     '@mastra/mcp':
       specifier: 1.0.3
       version: 1.0.3
     '@mastra/memory':
       specifier: 1.6.0
       version: 1.6.0
-    '@mastra/observability':
-      specifier: 1.3.0
-      version: 1.3.0
     '@n8n/typeorm':
       specifier: 0.3.20-16
       version: 0.3.20-16
     '@n8n_io/ai-assistant-sdk':
-      specifier: 1.20.0
-      version: 1.20.0
+      specifier: 1.21.0
+      version: 1.21.0
     '@types/basic-auth':
       specifier: ^1.1.3
       version: 1.1.3
@@ -391,6 +385,7 @@ overrides:
   express-rate-limit: 8.2.2
   underscore: 1.13.8
   fast-xml-parser: 5.3.8
+  path-to-regexp@<0.1.13: 0.1.13
 
 patchedDependencies:
   '@lezer/highlight':
@@ -709,7 +704,7 @@ importers:
         version: link:../workflow-sdk
       '@n8n_io/ai-assistant-sdk':
         specifier: 'catalog:'
-        version: 1.20.0
+        version: 1.21.0
       csv-parse:
         specifier: 5.5.0
         version: 5.5.0
@@ -1428,6 +1423,9 @@ importers:
 
   packages/@n8n/fs-proxy:
     dependencies:
+      '@anthropic-ai/sandbox-runtime':
+        specifier: ^0.0.42
+        version: 0.0.42
       '@inquirer/prompts':
         specifier: ^8.3.2
         version: 8.3.2(@types/node@20.19.21)
@@ -1440,6 +1438,9 @@ importers:
       '@n8n/mcp-browser':
         specifier: workspace:*
         version: link:../mcp-browser
+      '@vscode/ripgrep':
+        specifier: ^1.17.1
+        version: 1.17.1
       eventsource:
         specifier: ^3.0.6
         version: 3.0.6
@@ -1514,6 +1515,9 @@ importers:
 
   packages/@n8n/instance-ai:
     dependencies:
+      '@ai-sdk/provider-v5':
+        specifier: npm:@ai-sdk/provider@2.0.0
+        version: '@ai-sdk/provider@2.0.0'
       '@daytonaio/sdk':
         specifier: 0.149.0
         version: 0.149.0(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))
@@ -1526,18 +1530,12 @@ importers:
       '@mastra/daytona':
         specifier: 'catalog:'
         version: 0.1.0(@mastra/core@1.9.0(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@3.25.67))(zod@3.25.67))(@standard-community/standard-openapi@0.2.9(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@3.25.67))(zod@3.25.67))(@standard-schema/spec@1.1.0)(openapi-types@12.1.3)(zod@3.25.67))(@types/json-schema@7.0.15)(bufferutil@4.0.9)(openapi-types@12.1.3)(utf-8-validate@5.0.10)(zod@3.25.67))(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))
-      '@mastra/langsmith':
-        specifier: 'catalog:'
-        version: 1.1.2(@mastra/core@1.9.0(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@3.25.67))(zod@3.25.67))(@standard-community/standard-openapi@0.2.9(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@3.25.67))(zod@3.25.67))(@standard-schema/spec@1.1.0)(openapi-types@12.1.3)(zod@3.25.67))(@types/json-schema@7.0.15)(bufferutil@4.0.9)(openapi-types@12.1.3)(utf-8-validate@5.0.10)(zod@3.25.67))(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.213.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.6.0(@opentelemetry/api@1.9.0))(openai@6.19.0(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
       '@mastra/mcp':
         specifier: 'catalog:'
         version: 1.0.3(@mastra/core@1.9.0(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@3.25.67))(zod@3.25.67))(@standard-community/standard-openapi@0.2.9(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@3.25.67))(zod@3.25.67))(@standard-schema/spec@1.1.0)(openapi-types@12.1.3)(zod@3.25.67))(@types/json-schema@7.0.15)(bufferutil@4.0.9)(openapi-types@12.1.3)(utf-8-validate@5.0.10)(zod@3.25.67))(@types/json-schema@7.0.15)(zod@3.25.67)
       '@mastra/memory':
         specifier: 'catalog:'
         version: 1.6.0(@mastra/core@1.9.0(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@3.25.67))(zod@3.25.67))(@standard-community/standard-openapi@0.2.9(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@3.25.67))(zod@3.25.67))(@standard-schema/spec@1.1.0)(openapi-types@12.1.3)(zod@3.25.67))(@types/json-schema@7.0.15)(bufferutil@4.0.9)(openapi-types@12.1.3)(utf-8-validate@5.0.10)(zod@3.25.67))(zod@3.25.67)
-      '@mastra/observability':
-        specifier: 'catalog:'
-        version: 1.3.0(@mastra/core@1.9.0(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@3.25.67))(zod@3.25.67))(@standard-community/standard-openapi@0.2.9(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@3.25.67))(zod@3.25.67))(@standard-schema/spec@1.1.0)(openapi-types@12.1.3)(zod@3.25.67))(@types/json-schema@7.0.15)(bufferutil@4.0.9)(openapi-types@12.1.3)(utf-8-validate@5.0.10)(zod@3.25.67))
       '@mozilla/readability':
         specifier: ^0.6.0
         version: 0.6.0
@@ -1550,6 +1548,9 @@ importers:
       '@n8n/workflow-sdk':
         specifier: workspace:*
         version: link:../workflow-sdk
+      langsmith:
+        specifier: '>=0.4.6'
+        version: 0.4.12(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.213.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.6.0(@opentelemetry/api@1.9.0))(openai@6.19.0(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
       linkedom:
         specifier: ^0.18.9
         version: 0.18.12
@@ -1572,6 +1573,9 @@ importers:
         specifier: npm:zod-from-json-schema@^0.0.5
         version: zod-from-json-schema@0.0.5
     devDependencies:
+      '@ai-sdk/anthropic':
+        specifier: 2.0.61
+        version: 2.0.61(zod@3.25.67)
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -2264,6 +2268,9 @@ importers:
       '@1password/connect':
         specifier: 1.4.2
         version: 1.4.2
+      '@ai-sdk/anthropic':
+        specifier: 2.0.61
+        version: 2.0.61(zod@3.25.67)
       '@apidevtools/json-schema-ref-parser':
         specifier: 12.0.2
         version: 12.0.2
@@ -2344,7 +2351,7 @@ importers:
         version: link:../@n8n/workflow-sdk
       '@n8n_io/ai-assistant-sdk':
         specifier: 'catalog:'
-        version: 1.20.0
+        version: 1.21.0
       '@n8n_io/license-sdk':
         specifier: 2.25.0
         version: 2.25.0
@@ -4432,6 +4439,12 @@ packages:
   '@adobe/css-tools@4.4.0':
     resolution: {integrity: sha512-Ff9+ksdQQB3rMncgqDK78uLznstjyfIf2Arnh22pW8kBpLs6rpKDwgnZT46hin5Hl1WzazzK64DOrhSwYpS7bQ==}
 
+  '@ai-sdk/anthropic@2.0.61':
+    resolution: {integrity: sha512-vJVXVlw+jvvh87ccUgEIJyQoO7+ERhkRyZ3e8NIhVQLHN+Xu5fGCm1/ewc8KCeoWFFh0GWDeN2MmB/cwCEYlbw==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      zod: 3.25.67
+
   '@ai-sdk/anthropic@3.0.63':
     resolution: {integrity: sha512-SiLosFr0FfKfrNpAAj8mD/i3S5YBB/z5orb1DH3pN1yATuBNjjPMLnRE4P3Dn7Y5cQsro0uzw5g5117hkShWoQ==}
     engines: {node: '>=18'}
@@ -4534,6 +4547,11 @@ packages:
 
   '@antfu/utils@0.7.10':
     resolution: {integrity: sha512-+562v9k4aI80m1+VuMHehNJWLOFjBnXn3tdOitzD0il5b7smkSBal4+a3oKiQTbrwMmN/TBUMDvbdoWDehgOww==}
+
+  '@anthropic-ai/sandbox-runtime@0.0.42':
+    resolution: {integrity: sha512-kJpuhU4hHMumeygIkKvNhscEsTtQK1sat1kZwhb6HLYBznwjMGOdnuBI/RM9HeFwxArn71/ciD2WJbxttXBMHw==}
+    engines: {node: '>=18.0.0'}
+    hasBin: true
 
   '@anthropic-ai/sdk@0.27.3':
     resolution: {integrity: sha512-IjLt0gd3L4jlOfilxVXTifn42FnVffMgDC04RJK1KDZpmkBWLv0XC92MVVmkxrFZNS/7l3xWgP/I3nqtX1sQHw==}
@@ -7352,12 +7370,6 @@ packages:
     peerDependencies:
       '@mastra/core': '>=1.3.0-0 <2.0.0-0'
 
-  '@mastra/langsmith@1.1.2':
-    resolution: {integrity: sha512-esSymom08KC1DhSfxhGrzoSoDnkX2SoCP45Zn4o5TEh1ZiuH9u7DuVFBMt/zL+lXes/0dlgFjpvOCE+WxfcDUw==}
-    engines: {node: '>=22.13.0'}
-    peerDependencies:
-      '@mastra/core': '>=1.0.0-0 <2.0.0-0'
-
   '@mastra/mcp@1.0.3':
     resolution: {integrity: sha512-tFzfzZtZOYOG0BbNAllIgSA6+Uly65sXIXFRFaKHYP1FXnzQ4We3u5a3IPchvdqk7wEeIU3hc4un7S0I5sOiuA==}
     engines: {node: '>=22.13.0'}
@@ -7371,12 +7383,6 @@ packages:
     peerDependencies:
       '@mastra/core': '>=1.4.1-0 <2.0.0-0'
       zod: 3.25.67
-
-  '@mastra/observability@1.3.0':
-    resolution: {integrity: sha512-1/3L0/6+oxLmiFSfCF07v6CP2E9KUTsEdB76MMQ6CdlEBuvoNiz2QXBgFV2XAeweRmzMWpWNNbXVood+4jzzfQ==}
-    engines: {node: '>=22.13.0'}
-    peerDependencies:
-      '@mastra/core': '>=1.1.0-0 <2.0.0-0'
 
   '@mastra/schema-compat@1.1.3':
     resolution: {integrity: sha512-szLMJhqfnEn4VctFLKRZ2NIpfg+3UTghQWgy8Fcdchj2HvHxB2uilJxRybM9ugMmvyE+W48tVdz4Xi2Z1P3pFA==}
@@ -7527,8 +7533,8 @@ packages:
       sqlite3:
         optional: true
 
-  '@n8n_io/ai-assistant-sdk@1.20.0':
-    resolution: {integrity: sha512-uXa6EDufQIV46tvqQ222441dWZYLnT219HC5H8grfAVd6Mpp2Rs4NoBM6YPWnGFWBp8XVsgXUud0EKRbJsw0eA==}
+  '@n8n_io/ai-assistant-sdk@1.21.0':
+    resolution: {integrity: sha512-reF4A3CvGw4hr61xss0gO9YXOs/c5O8nwmoL91Neu2j6aENtuqmYeZ7UT4v0IvjuiO/IJJtUsASWkVQJNCpN6A==}
     engines: {node: '>=20.15', pnpm: '>=8.14'}
 
   '@n8n_io/license-sdk@2.25.0':
@@ -8605,6 +8611,9 @@ packages:
 
   '@polka/url@1.0.0-next.29':
     resolution: {integrity: sha512-wwQAWhWSuHaag8c4q/KN/vCoeOJYshAIvMQwD4GpSb3OiZklFfvAgmj0VCBBImRpuF/aFgIRzllXlVX93Jevww==}
+
+  '@pondwader/socks5-server@1.0.10':
+    resolution: {integrity: sha512-bQY06wzzR8D2+vVCUoBsr5QS2U6UgPUQRmErNwtsuI6vLcyRKkafjkr3KxbtGFf9aBBIV2mcvlsKD1UYaIV+sg==}
 
   '@prisma/instrumentation@7.2.0':
     resolution: {integrity: sha512-Rh9Z4x5kEj1OdARd7U18AtVrnL6rmLSI0qYShaB4W7Wx5BKbgzndWF+QnuzMb7GLfVdlT5aYCXoPQVYuYtVu0g==}
@@ -10716,6 +10725,9 @@ packages:
 
   '@vscode/markdown-it-katex@1.1.2':
     resolution: {integrity: sha512-+4IIv5PgrmhKvW/3LpkpkGg257OViEhXkOOgCyj5KMsjsOfnRXkni8XAuuF9Ui5p3B8WnUovlDXAQNb8RJ/RaQ==}
+
+  '@vscode/ripgrep@1.17.1':
+    resolution: {integrity: sha512-xTs7DGyAO3IsJYOCTBP8LnTvPiYVKEuyv8s0xyJDBXfs8rhBfqnZPvb6xDT+RnwWzcXqW27xLS/aGrkjX7lNWw==}
 
   '@vue-flow/background@1.3.2':
     resolution: {integrity: sha512-eJPhDcLj1wEo45bBoqTXw1uhl0yK2RaQGnEINqvvBsAFKh/camHJd5NPmOdS1w+M9lggc9igUewxaEd3iCQX2w==}
@@ -16962,8 +16974,8 @@ packages:
     resolution: {integrity: sha512-oWyT4gICAu+kaA7QWk/jvCHWarMKNs6pXOGWKDTr7cw4IGcUbW+PeTfbaQiLGheFRpjo6O9J0PmyMfQPjH71oA==}
     engines: {node: 20 || >=22}
 
-  path-to-regexp@0.1.12:
-    resolution: {integrity: sha512-RA1GjUVMnvYFxuqovrEqZoxxW5NUZqbwKtYz/Tt7nXerk0LbLblQmrsgdeOxV5SFHf0UDggjS/bSeOZwt1pmEQ==}
+  path-to-regexp@0.1.13:
+    resolution: {integrity: sha512-A/AGNMFN3c8bOlvV9RreMdrv7jsmF9XIfDeCd87+I8RNg6s78BhJxMu69NEMHBSJFxKidViTEdruRwEk/WIKqA==}
 
   path-to-regexp@8.2.0:
     resolution: {integrity: sha512-TdrF7fW9Rphjq4RjrW0Kp2AW0Ahwu9sRGTkS6bvDi0SCwZlEZYmcfDbEsTz8RVk0EHIS/Vd1bv3JhG+1xZuAyQ==}
@@ -20394,6 +20406,12 @@ snapshots:
 
   '@adobe/css-tools@4.4.0': {}
 
+  '@ai-sdk/anthropic@2.0.61(zod@3.25.67)':
+    dependencies:
+      '@ai-sdk/provider': 2.0.1
+      '@ai-sdk/provider-utils': 3.0.20(zod@3.25.67)
+      zod: 3.25.67
+
   '@ai-sdk/anthropic@3.0.63(zod@3.25.67)':
     dependencies:
       '@ai-sdk/provider': 3.0.8
@@ -20504,6 +20522,15 @@ snapshots:
       '@jsdevtools/ez-spawn': 3.0.4
 
   '@antfu/utils@0.7.10': {}
+
+  '@anthropic-ai/sandbox-runtime@0.0.42':
+    dependencies:
+      '@pondwader/socks5-server': 1.0.10
+      '@types/lodash-es': 4.17.12
+      commander: 12.1.0
+      lodash-es: 4.17.23
+      shell-quote: 1.8.3
+      zod: 3.25.67
 
   '@anthropic-ai/sdk@0.27.3(encoding@0.1.13)':
     dependencies:
@@ -24831,17 +24858,6 @@ snapshots:
       - supports-color
       - ws
 
-  '@mastra/langsmith@1.1.2(@mastra/core@1.9.0(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@3.25.67))(zod@3.25.67))(@standard-community/standard-openapi@0.2.9(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@3.25.67))(zod@3.25.67))(@standard-schema/spec@1.1.0)(openapi-types@12.1.3)(zod@3.25.67))(@types/json-schema@7.0.15)(bufferutil@4.0.9)(openapi-types@12.1.3)(utf-8-validate@5.0.10)(zod@3.25.67))(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.213.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.6.0(@opentelemetry/api@1.9.0))(openai@6.19.0(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))':
-    dependencies:
-      '@mastra/core': 1.9.0(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@3.25.67))(zod@3.25.67))(@standard-community/standard-openapi@0.2.9(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@3.25.67))(zod@3.25.67))(@standard-schema/spec@1.1.0)(openapi-types@12.1.3)(zod@3.25.67))(@types/json-schema@7.0.15)(bufferutil@4.0.9)(openapi-types@12.1.3)(utf-8-validate@5.0.10)(zod@3.25.67)
-      '@mastra/observability': 1.3.0(@mastra/core@1.9.0(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@3.25.67))(zod@3.25.67))(@standard-community/standard-openapi@0.2.9(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@3.25.67))(zod@3.25.67))(@standard-schema/spec@1.1.0)(openapi-types@12.1.3)(zod@3.25.67))(@types/json-schema@7.0.15)(bufferutil@4.0.9)(openapi-types@12.1.3)(utf-8-validate@5.0.10)(zod@3.25.67))
-      langsmith: 0.4.12(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.213.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.6.0(@opentelemetry/api@1.9.0))(openai@6.19.0(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
-    transitivePeerDependencies:
-      - '@opentelemetry/api'
-      - '@opentelemetry/exporter-trace-otlp-proto'
-      - '@opentelemetry/sdk-trace-base'
-      - openai
-
   '@mastra/mcp@1.0.3(@mastra/core@1.9.0(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@3.25.67))(zod@3.25.67))(@standard-community/standard-openapi@0.2.9(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@3.25.67))(zod@3.25.67))(@standard-schema/spec@1.1.0)(openapi-types@12.1.3)(zod@3.25.67))(@types/json-schema@7.0.15)(bufferutil@4.0.9)(openapi-types@12.1.3)(utf-8-validate@5.0.10)(zod@3.25.67))(@types/json-schema@7.0.15)(zod@3.25.67)':
     dependencies:
       '@apidevtools/json-schema-ref-parser': 14.2.1(@types/json-schema@7.0.15)
@@ -24868,10 +24884,6 @@ snapshots:
       lru-cache: 11.2.7
       xxhash-wasm: 1.1.0
       zod: 3.25.67
-
-  '@mastra/observability@1.3.0(@mastra/core@1.9.0(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@3.25.67))(zod@3.25.67))(@standard-community/standard-openapi@0.2.9(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@3.25.67))(zod@3.25.67))(@standard-schema/spec@1.1.0)(openapi-types@12.1.3)(zod@3.25.67))(@types/json-schema@7.0.15)(bufferutil@4.0.9)(openapi-types@12.1.3)(utf-8-validate@5.0.10)(zod@3.25.67))':
-    dependencies:
-      '@mastra/core': 1.9.0(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@3.25.67))(zod@3.25.67))(@standard-community/standard-openapi@0.2.9(@standard-community/standard-json@0.3.5(@standard-schema/spec@1.1.0)(@types/json-schema@7.0.15)(quansync@0.2.11)(zod-to-json-schema@3.25.1(zod@3.25.67))(zod@3.25.67))(@standard-schema/spec@1.1.0)(openapi-types@12.1.3)(zod@3.25.67))(@types/json-schema@7.0.15)(bufferutil@4.0.9)(openapi-types@12.1.3)(utf-8-validate@5.0.10)(zod@3.25.67)
 
   '@mastra/schema-compat@1.1.3(zod@3.25.67)':
     dependencies:
@@ -25116,7 +25128,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@n8n_io/ai-assistant-sdk@1.20.0': {}
+  '@n8n_io/ai-assistant-sdk@1.21.0': {}
 
   '@n8n_io/license-sdk@2.25.0':
     dependencies:
@@ -26470,6 +26482,8 @@ snapshots:
       playwright: 1.58.0
 
   '@polka/url@1.0.0-next.29': {}
+
+  '@pondwader/socks5-server@1.0.10': {}
 
   '@prisma/instrumentation@7.2.0(@opentelemetry/api@1.9.0)':
     dependencies:
@@ -28918,6 +28932,14 @@ snapshots:
   '@vscode/markdown-it-katex@1.1.2':
     dependencies:
       katex: 0.16.27
+
+  '@vscode/ripgrep@1.17.1':
+    dependencies:
+      https-proxy-agent: 7.0.6
+      proxy-from-env: 1.1.0
+      yauzl: 2.10.0
+    transitivePeerDependencies:
+      - supports-color
 
   '@vue-flow/background@1.3.2(@vue-flow/core@1.48.0(vue@3.5.26(typescript@5.9.2)))(vue@3.5.26(typescript@5.9.2))':
     dependencies:
@@ -32280,7 +32302,7 @@ snapshots:
       methods: 1.1.2
       on-finished: 2.4.1
       parseurl: 1.3.3
-      path-to-regexp: 0.1.12
+      path-to-regexp: 0.1.13
       proxy-addr: 2.0.7
       qs: 6.14.2
       range-parser: 1.2.1
@@ -36586,7 +36608,7 @@ snapshots:
       lru-cache: 11.2.7
       minipass: 7.1.2
 
-  path-to-regexp@0.1.12: {}
+  path-to-regexp@0.1.13: {}
 
   path-to-regexp@8.2.0: {}
 
