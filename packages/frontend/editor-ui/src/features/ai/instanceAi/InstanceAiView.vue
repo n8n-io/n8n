@@ -40,7 +40,7 @@ const documentTitle = useDocumentTitle();
 const { goToUpgrade } = usePageRedirectionHelper();
 
 function goToSettings() {
-	router.push({ name: INSTANCE_AI_SETTINGS_VIEW });
+	void router.push({ name: INSTANCE_AI_SETTINGS_VIEW });
 }
 
 documentTitle.set('n8n Agent');
