@@ -2,6 +2,8 @@ import { SystemMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate, HumanMessagePromptTemplate } from '@langchain/core/prompts';
 import { RunnableSequence } from '@langchain/core/runnables';
 
+import { prompt } from '@/prompts/builder';
+
 import { runWithOptionalLimiter, withTimeout } from '../../../harness/evaluation-helpers';
 import type { BinaryCheck, BinaryCheckContext, SimpleWorkflow } from '../types';
 import { binaryJudgeResultSchema, type BinaryJudgeResult } from './schemas';
@@ -31,18 +33,18 @@ Rules:
 - If the agent's response contains NO specific claims about workflow changes, pass (nothing to verify).
 - A single verifiably false claim means fail.${REASONING_FIRST_SUFFIX}`;
 
-const HUMAN_TEMPLATE = `User Request: {userPrompt}
-
-Agent's Text Response:
-{agentTextResponse}
-
-Workflow BEFORE agent's turn:
-{workflowBefore}
-
-Workflow AFTER agent's turn:
-{workflowAfter}
-
-Compare the before and after workflows, then verify each specific claim the agent makes. If there are no specific claims, pass.`;
+function buildHumanTemplate() {
+	return prompt({ format: 'plain' })
+		.section('user_request', 'User Request: {userPrompt}')
+		.section('agent_response', "Agent's Text Response:\n{agentTextResponse}")
+		.section('workflow_before', "Workflow BEFORE agent's turn:\n{workflowBefore}")
+		.section('workflow_after', "Workflow AFTER agent's turn:\n{workflowAfter}")
+		.section(
+			'instructions',
+			'Compare the before and after workflows, then verify each specific claim the agent makes. If there are no specific claims, pass.',
+		)
+		.build();
+}
 
 export const responseMatchesWorkflowChanges: BinaryCheck = {
 	name: 'response_matches_workflow_changes',
@@ -62,7 +64,7 @@ export const responseMatchesWorkflowChanges: BinaryCheck = {
 
 		const chatPrompt = ChatPromptTemplate.fromMessages([
 			new SystemMessage(SYSTEM_PROMPT),
-			HumanMessagePromptTemplate.fromTemplate(HUMAN_TEMPLATE),
+			HumanMessagePromptTemplate.fromTemplate(buildHumanTemplate()),
 		]);
 		const llmWithStructuredOutput =
 			ctx.llm.withStructuredOutput<BinaryJudgeResult>(binaryJudgeResultSchema);
