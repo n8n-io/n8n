@@ -647,13 +647,12 @@ export class InstanceAiService {
 		this.logger.debug('Instance AI service shut down');
 	}
 
-	private createMemoryConfig(titleModel?: ModelConfig) {
+	private createMemoryConfig() {
 		return {
 			storage: this.compositeStore,
 			embedderModel: this.instanceAiConfig.embedderModel || undefined,
 			lastMessages: this.instanceAiConfig.lastMessages,
 			semanticRecallTopK: this.instanceAiConfig.semanticRecallTopK,
-			titleModel,
 		};
 	}
 
@@ -724,8 +723,8 @@ export class InstanceAiService {
 		return `<planned-task-follow-up type="${type}">\n${JSON.stringify(payload, null, 2)}\n</planned-task-follow-up>\n\n${AUTO_FOLLOW_UP_MESSAGE}`;
 	}
 
-	private async createPlannedTaskState(titleModel?: ModelConfig) {
-		const memory = createMemory(this.createMemoryConfig(titleModel));
+	private async createPlannedTaskState() {
+		const memory = createMemory(this.createMemoryConfig());
 		const taskStorage = new MastraTaskStorage(memory);
 		const plannedTaskStorage = new PlannedTaskStorage(memory);
 		const plannedTaskService = new PlannedTaskCoordinator(plannedTaskStorage);
@@ -792,7 +791,7 @@ export class InstanceAiService {
 		}
 
 		const modelId = await this.resolveModel(user); // separate proxy token — see getProxyAuth
-		const memory = createMemory(this.createMemoryConfig(modelId));
+		const memory = createMemory(this.createMemoryConfig());
 		await this.ensureThreadExists(memory, threadId, user.id);
 
 		const taskStorage = new MastraTaskStorage(memory);
@@ -1090,7 +1089,7 @@ export class InstanceAiService {
 				);
 			const tracingConfig = await this.resolveTracingConfig(user); // separate proxy token — see getProxyAuth
 			orchestrationContext.tracingConfig = tracingConfig;
-			const memoryConfig = this.createMemoryConfig(modelId);
+			const memoryConfig = this.createMemoryConfig();
 
 			// Set heuristic title before agent starts — thread always has a title
 			const thread = await memory.getThreadById({ threadId });
@@ -1114,21 +1113,19 @@ export class InstanceAiService {
 			// Wrap agent creation + execution in tracingHeaderStore so the shared
 			// LangSmith exporter's custom fetch reads per-request auth headers from
 			// this async context — no shared mutable state between concurrent runs.
-			const agent = await tracingHeaderStore.run(
-				tracingConfig?.headers ?? {},
-				() =>
-					createInstanceAgent({
-						modelId,
-						context,
-						orchestrationContext,
-						mcpServers,
-						memoryConfig,
-						memory,
-						workspace: orchestrationContext.workspace,
-						disableDeferredTools: true,
-						tracingConfig,
-						timeZone: timeZone ?? this.defaultTimeZone,
-					}),
+			const agent = await tracingHeaderStore.run(tracingConfig?.headers ?? {}, () =>
+				createInstanceAgent({
+					modelId,
+					context,
+					orchestrationContext,
+					mcpServers,
+					memoryConfig,
+					memory,
+					workspace: orchestrationContext.workspace,
+					disableDeferredTools: true,
+					tracingConfig,
+					timeZone: timeZone ?? this.defaultTimeZone,
+				}),
 			);
 
 			// Compact older conversation history into a summary (best-effort, non-blocking on failure)
@@ -1176,30 +1173,28 @@ export class InstanceAiService {
 						]
 					: fullMessage;
 
-			const result = await tracingHeaderStore.run(
-				tracingConfig?.headers ?? {},
-				() =>
-					streamAgentRun(
-						agent as StreamableAgent,
-						streamInput,
-						{
-							abortSignal: signal,
-							memory: {
-								resource: user.id,
-								thread: threadId,
-							},
-							providerOptions: {
-								anthropic: { cacheControl: { type: 'ephemeral' } },
-							},
+			const result = await tracingHeaderStore.run(tracingConfig?.headers ?? {}, () =>
+				streamAgentRun(
+					agent as StreamableAgent,
+					streamInput,
+					{
+						abortSignal: signal,
+						memory: {
+							resource: user.id,
+							thread: threadId,
 						},
-						{
-							threadId,
-							runId,
-							agentId: ORCHESTRATOR_AGENT_ID,
-							signal,
-							eventBus: this.eventBus,
+						providerOptions: {
+							anthropic: { cacheControl: { type: 'ephemeral' } },
 						},
-					),
+					},
+					{
+						threadId,
+						runId,
+						agentId: ORCHESTRATOR_AGENT_ID,
+						signal,
+						eventBus: this.eventBus,
+					},
+				),
 			);
 
 			if (result.status === 'suspended') {

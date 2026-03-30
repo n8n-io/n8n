@@ -11,13 +11,6 @@ import { WORKING_MEMORY_TEMPLATE } from './working-memory-template';
  * predictable in minimal deployments.
  */
 export function createMemory(config: InstanceAiMemoryConfig): Memory {
-	const TITLE_INSTRUCTIONS = [
-		'Generate a concise title (max 60 chars) summarizing what the user wants.',
-		'Return ONLY the title text. No quotes, colons, or explanation.',
-		'Focus on the user intent, not what the assistant might reply.',
-		'Examples: "Build Gmail to Slack workflow", "Debug failed execution", "Show project files"',
-	].join('\n');
-
 	const memoryOptions: ConstructorParameters<typeof Memory>[0] = {
 		storage: config.storage,
 		options: {
@@ -41,17 +34,6 @@ export function createMemory(config: InstanceAiMemoryConfig): Memory {
 			};
 		}
 		(memoryOptions as Record<string, unknown>).embedder = config.embedderModel;
-	}
-
-	// Override the generateTitle config to inject custom title instructions.
-	// The model can be a string ID (e.g. "anthropic/claude-sonnet-4-5") resolved by Mastra's
-	// model router, or a pre-built LanguageModelV2 instance (used when routing through a proxy
-	// that requires the native Anthropic provider instead of OpenAI-compatible).
-	if (config.titleModel && memoryOptions.options) {
-		(memoryOptions.options as Record<string, unknown>).generateTitle = {
-			model: config.titleModel,
-			instructions: TITLE_INSTRUCTIONS,
-		};
 	}
 
 	return new Memory(memoryOptions);

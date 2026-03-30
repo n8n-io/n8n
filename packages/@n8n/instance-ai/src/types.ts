@@ -683,9 +683,6 @@ export interface InstanceAiMemoryConfig {
 	embedderModel?: string;
 	lastMessages?: number;
 	semanticRecallTopK?: number;
-	/** Model for title generation — accepts any ModelConfig variant (string ID, object config,
-	 *  or pre-built LanguageModelV2 instance). When set, custom title instructions are used. */
-	titleModel?: ModelConfig;
 	/** Thread TTL in days. Threads older than this are auto-expired on cleanup. 0 = no expiration. */
 	threadTtlDays?: number;
 }
