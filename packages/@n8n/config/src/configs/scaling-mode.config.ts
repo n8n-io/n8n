@@ -75,6 +75,14 @@ class RedisConfig {
 	@Env('QUEUE_BULL_REDIS_DUALSTACK')
 	dualStack: boolean = false;
 
+	/** Redis sentinel startup nodes, as comma-separated list of `{host}:{port}` pairs. @example 'redis-1:26379,redis-2:26379' */
+	@Env('QUEUE_BULL_REDIS_SENTINEL_NODES')
+	sentinelNodes: string = '';
+
+	/** Redis identifies a group of Redis instances composed of a master and one or more slaves . */
+	@Env('QUEUE_BULL_REDIS_NAME')
+	name: string = '';
+
 	/** Whether to enable TCP keep-alive on Redis connections. */
 	@Env('QUEUE_BULL_REDIS_KEEP_ALIVE')
 	keepAlive: boolean = false;
