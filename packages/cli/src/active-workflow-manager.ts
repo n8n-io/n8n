@@ -62,6 +62,7 @@ import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 import { formatWorkflow } from '@/workflows/workflow.formatter';
 
@@ -96,6 +97,7 @@ export class ActiveWorkflowManager {
 		private readonly push: Push,
 		private readonly eventService: EventService,
 		private readonly storageConfig: StorageConfig,
+		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
 	) {
 		this.logger = this.logger.scoped(['workflow-activation']);
 	}
@@ -238,39 +240,25 @@ export class ActiveWorkflowManager {
 	 * deregister those webhooks from external services.
 	 */
 	async clearWebhooks(workflowId: WorkflowId) {
-		const workflowData = await this.workflowRepository.findOne({
-			where: { id: workflowId },
-			relations: { activeVersion: true },
-		});
-
-		if (workflowData === null) {
-			throw new UnexpectedError('Could not find workflow', { extra: { workflowId } });
-		}
-
-		if (!workflowData.activeVersion) {
-			throw new UnexpectedError('Active version not found for workflow', {
-				extra: { workflowId },
-			});
-		}
-
-		const { nodes, connections } = workflowData.activeVersion;
+		const { nodes, connections, name, staticData, settings } =
+			await this.loadWorkflowDataForCleanup(workflowId);
 
 		const workflow = new Workflow({
 			id: workflowId,
-			name: workflowData.name,
+			name,
 			nodes,
 			connections,
 			active: true,
 			nodeTypes: this.nodeTypes,
-			staticData: workflowData.staticData,
-			settings: workflowData.settings,
+			staticData,
+			settings,
 		});
 
 		const mode = 'internal';
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase({
 			workflowId: workflow.id,
-			workflowSettings: workflowData.settings,
+			workflowSettings: settings,
 		});
 
 		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true);
@@ -293,6 +281,11 @@ export class ActiveWorkflowManager {
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
+		// Temporary: this callback lets us switch between reading from
+		// the in-memory workflowData (flag off) and the workflow published data
+		// service (flag on). Once the feature flag is removed, we'll call the
+		// service directly and this parameter will go away.
+		resolveWorkflowData: () => Promise<IWorkflowBase>,
 	): IGetExecutePollFunctions {
 		return (workflow: Workflow, node: INode) => {
 			const __emit = (
@@ -302,13 +295,20 @@ export class ActiveWorkflowManager {
 			) => {
 				this.logger.debug(`Received event to trigger execution for workflow "${workflow.name}"`);
 				void this.workflowStaticDataService.saveStaticData(workflow);
-				const executePromise = this.workflowExecutionService.runWorkflow(
-					workflowData,
-					node,
-					data,
-					additionalData,
-					mode,
-					responsePromise,
+
+				// Temporary indirection: resolves workflow data via callback so we
+				// can feature-flag between in-memory data and the published data
+				// service. Once the flag is removed, we'll call the service directly.
+				const executePromise = resolveWorkflowData().then(
+					async (freshWorkflowData) =>
+						await this.workflowExecutionService.runWorkflow(
+							freshWorkflowData,
+							node,
+							data,
+							additionalData,
+							mode,
+							responsePromise,
+						),
 				);
 
 				if (donePromise) {
@@ -344,6 +344,11 @@ export class ActiveWorkflowManager {
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
+		// Temporary: this callback lets us switch between reading from
+		// the in-memory workflowData (flag off) and the workflow published data
+		// service (flag on). Once the feature flag is removed, we'll call the
+		// service directly and this parameter will go away.
+		resolveWorkflowData: () => Promise<IWorkflowBase>,
 	): IGetExecuteTriggerFunctions {
 		return (workflow: Workflow, node: INode) => {
 			const emit = (
@@ -354,13 +359,19 @@ export class ActiveWorkflowManager {
 				this.logger.debug(`Received trigger for workflow "${workflow.name}"`);
 				void this.workflowStaticDataService.saveStaticData(workflow);
 
-				const executePromise = this.workflowExecutionService.runWorkflow(
-					workflowData,
-					node,
-					data,
-					additionalData,
-					mode,
-					responsePromise,
+				// Temporary indirection: resolves workflow data via callback so we
+				// can feature-flag between in-memory data and the published data
+				// service. Once the flag is removed, we'll call the service directly.
+				const executePromise = resolveWorkflowData().then(
+					async (freshWorkflowData) =>
+						await this.workflowExecutionService.runWorkflow(
+							freshWorkflowData,
+							node,
+							data,
+							additionalData,
+							mode,
+							responsePromise,
+						),
 				);
 
 				void executePromise.then((executionId) => {
@@ -460,6 +471,107 @@ export class ActiveWorkflowManager {
 		executeErrorWorkflow(workflowData, fullRunData, mode);
 	}
 
+	/**
+	 * Load the published workflow nodes/connections from the
+	 * `workflow_published_version` table. The passed-in workflow is used
+	 * for all other fields (staticData, settings, etc.).
+	 *
+	 * TODO: Add error handling / fallback strategy for transient DB failures.
+	 */
+	private async loadPublishedWorkflowData(
+		initialWorkflowData: IWorkflowDb,
+	): Promise<IWorkflowBase> {
+		const publishedData = await this.workflowPublishedDataService.getPublishedWorkflowData(
+			initialWorkflowData.id,
+		);
+
+		if (!publishedData) {
+			throw new UnexpectedError('Published version not found for workflow', {
+				extra: { workflowId: initialWorkflowData.id },
+			});
+		}
+
+		return {
+			...initialWorkflowData,
+			nodes: publishedData.nodes,
+			connections: publishedData.connections,
+		};
+	}
+
+	/**
+	 * Load all workflow fields needed by `clearWebhooks` to tear down webhooks.
+	 * Reads from the published data service (flag on) or the active version
+	 * relation (flag off).
+	 */
+	private async loadWorkflowDataForCleanup(workflowId: WorkflowId): Promise<{
+		nodes: INode[];
+		connections: IWorkflowBase['connections'];
+		name: string;
+		staticData: IWorkflowBase['staticData'];
+		settings: IWorkflowBase['settings'];
+	}> {
+		if (this.workflowsConfig.useWorkflowPublicationService) {
+			const publishedData =
+				await this.workflowPublishedDataService.getPublishedWorkflowData(workflowId);
+			if (!publishedData) {
+				throw new UnexpectedError('Published version not found for workflow', {
+					extra: { workflowId },
+				});
+			}
+			return {
+				nodes: publishedData.nodes,
+				connections: publishedData.connections,
+				name: publishedData.name,
+				staticData: publishedData.staticData,
+				settings: publishedData.settings,
+			};
+		}
+
+		const workflowData = await this.workflowRepository.findOne({
+			where: { id: workflowId },
+			relations: { activeVersion: true },
+		});
+		if (workflowData === null) {
+			throw new UnexpectedError('Could not find workflow', { extra: { workflowId } });
+		}
+		if (!workflowData.activeVersion) {
+			throw new UnexpectedError('Active version not found for workflow', {
+				extra: { workflowId },
+			});
+		}
+		return {
+			nodes: workflowData.activeVersion.nodes,
+			connections: workflowData.activeVersion.connections,
+			name: workflowData.name,
+			staticData: workflowData.staticData,
+			settings: workflowData.settings,
+		};
+	}
+
+	/**
+	 * Resolve the active nodes and connections for a workflow.
+	 * Returns `null` when no published data / no active version exists
+	 * (i.e. the workflow was deactivated between the DB query and now).
+	 * Callers decide how to handle `null` -- skip or throw.
+	 */
+	private async resolveActiveNodesAndConnections(
+		dbWorkflow: WorkflowEntity,
+	): Promise<{ nodes: INode[]; connections: IWorkflowBase['connections'] } | null> {
+		if (this.workflowsConfig.useWorkflowPublicationService) {
+			const publishedData = await this.workflowPublishedDataService.getPublishedWorkflowData(
+				dbWorkflow.id,
+			);
+			if (!publishedData) return null;
+			return { nodes: publishedData.nodes, connections: publishedData.connections };
+		}
+
+		if (!dbWorkflow.activeVersion) return null;
+		return {
+			nodes: dbWorkflow.activeVersion.nodes,
+			connections: dbWorkflow.activeVersion.connections,
+		};
+	}
+
 	private isActivationInProgress = false;
 
 	/**
@@ -527,14 +639,19 @@ export class ActiveWorkflowManager {
 				},
 			);
 
-			if (!dbWorkflow.activeVersion) {
+			const resolved = await this.resolveActiveNodesAndConnections(dbWorkflow);
+
+			if (!resolved) {
 				throw new UnexpectedError('Active version not found for workflow', {
 					extra: { workflowId: dbWorkflow.id },
 				});
 			}
 
-			const { nodes, connections } = dbWorkflow.activeVersion;
-			const workflowForError = { ...dbWorkflow, nodes, connections };
+			const workflowForError = {
+				...dbWorkflow,
+				nodes: resolved.nodes,
+				connections: resolved.connections,
+			};
 
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			this.executeErrorWorkflow(error, workflowForError, 'internal');
@@ -622,23 +739,24 @@ export class ActiveWorkflowManager {
 		const shouldAddTriggersAndPollers = this.shouldAddTriggersAndPollers();
 
 		try {
-			if (['init', 'leadershipChange'].includes(activationMode) && !dbWorkflow.activeVersion) {
+			const resolved = await this.resolveActiveNodesAndConnections(dbWorkflow);
+
+			if (['init', 'leadershipChange'].includes(activationMode) && !resolved) {
 				this.logger.debug(
 					`Skipping workflow ${formatWorkflow(dbWorkflow)} as it is no longer active`,
 					{ workflowId: dbWorkflow.id },
 				);
-
 				return added;
 			}
 
-			// Get workflow data from the active version
-			if (!dbWorkflow.activeVersion) {
+			if (!resolved) {
 				throw new UnexpectedError('Active version not found for workflow', {
 					extra: { workflowId: dbWorkflow.id },
 				});
 			}
 
-			const { nodes, connections } = dbWorkflow.activeVersion;
+			const { nodes, connections } = resolved;
+
 			dbWorkflow.nodes = nodes;
 			dbWorkflow.connections = connections;
 
@@ -680,11 +798,25 @@ export class ActiveWorkflowManager {
 				);
 			}
 
+			// When the flag is on, trigger/poller emit callbacks re-read the published
+			// version from the DB so they pick up updates without deactivate/reactivate.
+			// When the flag is off, they use the in-memory workflowData (same as before).
+			//
+			// Note: we intentionally load the _latest_ published version at trigger/poll
+			// time rather than pinning to a specific version. The outbox consumer (future
+			// PR) atomically updates the published version and reconciles triggers, so
+			// by the time a trigger fires with a new version, the old triggers have
+			// already been removed.
+			const resolveWorkflowData = this.workflowsConfig.useWorkflowPublicationService
+				? async () => await this.loadPublishedWorkflowData(dbWorkflow)
+				: async () => dbWorkflow as IWorkflowBase;
+
 			if (shouldAddTriggersAndPollers) {
 				added.triggersAndPollers = await this.addTriggersAndPollers(dbWorkflow, workflow, {
 					activationMode,
 					executionMode: 'trigger',
 					additionalData,
+					resolveWorkflowData,
 				});
 			}
 
@@ -968,10 +1100,12 @@ export class ActiveWorkflowManager {
 			activationMode,
 			executionMode,
 			additionalData,
+			resolveWorkflowData,
 		}: {
 			activationMode: WorkflowActivateMode;
 			executionMode: WorkflowExecuteMode;
 			additionalData: IWorkflowExecuteAdditionalData;
+			resolveWorkflowData: () => Promise<IWorkflowBase>;
 		},
 	) {
 		const getTriggerFunctions = this.getExecuteTriggerFunctions(
@@ -979,6 +1113,7 @@ export class ActiveWorkflowManager {
 			additionalData,
 			executionMode,
 			activationMode,
+			resolveWorkflowData,
 		);
 
 		const getPollFunctions = this.getExecutePollFunctions(
@@ -986,6 +1121,7 @@ export class ActiveWorkflowManager {
 			additionalData,
 			executionMode,
 			activationMode,
+			resolveWorkflowData,
 		);
 
 		if (workflow.getTriggerNodes().length === 0 && workflow.getPollNodes().length === 0) {
