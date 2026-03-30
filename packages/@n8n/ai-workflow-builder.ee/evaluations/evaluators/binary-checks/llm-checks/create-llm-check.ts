@@ -1,10 +1,7 @@
-import { SystemMessage } from '@langchain/core/messages';
-import { ChatPromptTemplate, HumanMessagePromptTemplate } from '@langchain/core/prompts';
-import { RunnableSequence } from '@langchain/core/runnables';
-
 import { runWithOptionalLimiter, withTimeout } from '../../../harness/evaluation-helpers';
+import { createEvaluatorChain, invokeEvaluatorChain } from '../../llm-judge/evaluators/base';
 import type { BinaryCheck, BinaryCheckContext, SimpleWorkflow } from '../types';
-import { binaryJudgeResultSchema, type BinaryJudgeResult } from './schemas';
+import { binaryJudgeResultSchema } from './schemas';
 
 const REASONING_FIRST_SUFFIX = `
 
@@ -22,17 +19,10 @@ interface LlmCheckOptions {
 }
 
 /**
- * Build template variables from the BinaryCheckContext.
- * All fields are available as template placeholders in humanTemplate.
+ * Build extra template variables from BinaryCheckContext fields.
  */
-function buildTemplateVars(
-	workflow: SimpleWorkflow,
-	ctx: BinaryCheckContext,
-): Record<string, string> {
+function buildExtraVars(ctx: BinaryCheckContext): Record<string, string> {
 	return {
-		userPrompt: ctx.prompt,
-		generatedWorkflow: JSON.stringify(workflow, null, 2),
-		referenceSection: '',
 		agentTextResponse: ctx.agentTextResponse ?? '',
 		workflowBefore: ctx.existingWorkflow
 			? JSON.stringify(ctx.existingWorkflow, null, 2)
@@ -58,20 +48,20 @@ export function createLlmCheck(options: LlmCheckOptions): BinaryCheck {
 				}
 			}
 
-			const chatPrompt = ChatPromptTemplate.fromMessages([
-				new SystemMessage(systemPrompt),
-				HumanMessagePromptTemplate.fromTemplate(options.humanTemplate),
-			]);
-			const llmWithStructuredOutput =
-				ctx.llm.withStructuredOutput<BinaryJudgeResult>(binaryJudgeResultSchema);
-			const chain = RunnableSequence.from<Record<string, string>, BinaryJudgeResult>([
-				chatPrompt,
-				llmWithStructuredOutput,
-			]);
+			const chain = createEvaluatorChain(
+				ctx.llm,
+				binaryJudgeResultSchema,
+				systemPrompt,
+				options.humanTemplate,
+			);
 
 			const result = await runWithOptionalLimiter(async () => {
 				return await withTimeout({
-					promise: chain.invoke(buildTemplateVars(workflow, ctx)),
+					promise: invokeEvaluatorChain(chain, {
+						userPrompt: ctx.prompt,
+						generatedWorkflow: workflow,
+						extraVars: buildExtraVars(ctx),
+					}),
 					timeoutMs: ctx.timeoutMs,
 					label: `binary-checks:${options.name}`,
 				});

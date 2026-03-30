@@ -8,11 +8,7 @@ import type { z } from 'zod';
 
 import type { EvaluationInput } from '../evaluation';
 
-type EvaluatorChainInput = {
-	userPrompt: string;
-	generatedWorkflow: string;
-	referenceSection: string;
-};
+type EvaluatorChainInput = Record<string, string>;
 
 export function createEvaluatorChain<TResult extends Record<string, unknown>>(
 	llm: BaseChatModel,
@@ -36,7 +32,7 @@ export function createEvaluatorChain<TResult extends Record<string, unknown>>(
 
 export async function invokeEvaluatorChain<TResult>(
 	chain: Runnable<EvaluatorChainInput, TResult>,
-	input: EvaluationInput,
+	input: EvaluationInput & { extraVars?: Record<string, string> },
 	config?: RunnableConfig,
 ): Promise<TResult> {
 	const referenceSection =
@@ -49,6 +45,7 @@ export async function invokeEvaluatorChain<TResult>(
 			userPrompt: input.userPrompt,
 			generatedWorkflow: JSON.stringify(input.generatedWorkflow, null, 2),
 			referenceSection,
+			...input.extraVars,
 		},
 		config,
 	);
