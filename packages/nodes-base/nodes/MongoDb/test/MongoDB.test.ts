@@ -14,11 +14,13 @@ MongoClient.connect = async function () {
 function buildWorkflow({
 	parameters,
 	expectedResult,
-}: { parameters: INodeParameters; expectedResult: unknown[] }) {
+	pinData,
+}: { parameters: INodeParameters; expectedResult: unknown[]; pinData?: unknown }) {
 	const test: WorkflowTestData = {
 		description: 'should pass test',
 		input: {
 			workflowData: {
+				pinData,
 				nodes: [
 					{
 						parameters: {},
@@ -245,6 +247,61 @@ describe('MongoDB CRUD Node', () => {
 
 		it('calls the spy with the expected arguments', function () {
 			expect(spy).toBeCalledWith('my-index', { mappings: { dynamic: true } });
+		});
+	});
+	describe('update operation', () => {
+		describe('jsonMode: true', () => {
+			let spy: jest.SpyInstance;
+			afterAll(() => jest.restoreAllMocks());
+			beforeAll(() => {
+				spy = jest.spyOn(Collection.prototype, 'updateMany');
+				spy.mockResolvedValueOnce({ modifiedCount: 5 });
+			});
+
+			testHarness.setupTest(
+				buildWorkflow({
+					parameters: {
+						operation: 'update',
+						resource: 'document',
+						collection: 'foo',
+						jsonMode: true,
+						filterJson: '{"type": "old"}',
+						updateJson: '{"$set": {"type": "new"}}',
+					},
+					expectedResult: [{ json: { modifiedCount: 5 } }],
+				}),
+			);
+
+			it('calls updateMany with the expected arguments', function () {
+				expect(spy).toBeCalledWith({ type: 'old' }, { $set: { type: 'new' } }, undefined);
+			});
+		});
+
+		describe('jsonMode: false', () => {
+			let spy: jest.SpyInstance;
+			afterAll(() => jest.restoreAllMocks());
+			beforeAll(() => {
+				spy = jest.spyOn(Collection.prototype, 'updateOne');
+				spy.mockResolvedValueOnce({ modifiedCount: 1 });
+			});
+
+			testHarness.setupTest(
+				buildWorkflow({
+					parameters: {
+						operation: 'update',
+						resource: 'document',
+						collection: 'foo',
+						jsonMode: false,
+						updateKey: 'id',
+						fields: 'name',
+					},
+					expectedResult: [],
+				}),
+			);
+
+			it('does not call updateOne when items lack updateKey', function () {
+				expect(spy).not.toBeCalled();
+			});
 		});
 	});
 });
