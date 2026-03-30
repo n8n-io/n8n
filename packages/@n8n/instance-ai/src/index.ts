@@ -16,6 +16,7 @@ export {
 export { McpClientManager } from './mcp/mcp-client-manager';
 export { mapMastraChunkToEvent } from './stream/map-chunk';
 export { isRecord, parseSuspension, asResumable } from './utils/stream-helpers';
+export { createEvalAgent, extractText, Tool, SONNET_MODEL, HAIKU_MODEL } from './utils/eval-agents';
 export type { SuspensionInfo, Resumable } from './utils/stream-helpers';
 export { registerWithMastra } from './agent/register-with-mastra';
 export { createSandbox, createWorkspace } from './workspace/create-workspace';

@@ -1,31 +1,8 @@
 import crypto from 'node:crypto';
 
-import Anthropic from '@anthropic-ai/sdk';
-
-import { checklistItemSchema, type ChecklistItem } from '../types';
+import { createEvalAgent, extractText } from '../../src/utils/eval-agents';
 import { CHECKLIST_EXTRACT_PROMPT } from '../system-prompts/checklist-extract';
-
-// ---------------------------------------------------------------------------
-// Config
-// ---------------------------------------------------------------------------
-
-const EVAL_MODEL = 'claude-sonnet-4-6';
-const MAX_TOKENS = 16_384;
-
-// ---------------------------------------------------------------------------
-// Anthropic client (lazy singleton)
-// ---------------------------------------------------------------------------
-
-let _client: Anthropic | undefined;
-
-function getClient(): Anthropic {
-	if (!_client) {
-		_client = new Anthropic({
-			apiKey: process.env.N8N_AI_ANTHROPIC_KEY ?? process.env.ANTHROPIC_API_KEY,
-		});
-	}
-	return _client;
-}
+import { checklistItemSchema, type ChecklistItem } from '../types';
 
 // ---------------------------------------------------------------------------
 // In-memory cache keyed by SHA-256 of prompt
@@ -73,21 +50,16 @@ export async function extractBuildChecklist(prompt: string): Promise<ChecklistIt
 	const cached = cache.get(hash);
 	if (cached) return cached;
 
-	const client = getClient();
-
-	const response = await client.messages.create({
-		model: EVAL_MODEL,
-		max_tokens: MAX_TOKENS,
-		system: [
-			{ type: 'text', text: CHECKLIST_EXTRACT_PROMPT, cache_control: { type: 'ephemeral' } },
-		],
-		messages: [{ role: 'user', content: prompt }],
+	const agent = createEvalAgent('eval-checklist-extractor', {
+		instructions: CHECKLIST_EXTRACT_PROMPT,
+		cache: true,
 	});
 
-	const content = response.content
-		.filter((block): block is Anthropic.TextBlock => block.type === 'text')
-		.map((block) => block.text)
-		.join('');
+	const result = await agent.generate(prompt, {
+		providerOptions: { anthropic: { maxTokens: 16_384 } },
+	});
+
+	const content = extractText(result);
 
 	const rawItems = parseJsonArray(content);
 

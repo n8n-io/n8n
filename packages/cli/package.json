@@ -205,7 +205,6 @@
 		"xss": "catalog:",
 		"yamljs": "0.3.0",
 		"yargs-parser": "21.1.1",
-		"zod": "catalog:",
-		"@anthropic-ai/sdk": "^0.39.0"
+		"zod": "catalog:"
 	}
 }
