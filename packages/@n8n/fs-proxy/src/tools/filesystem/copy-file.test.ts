@@ -83,7 +83,7 @@ describe('copyFileTool', () => {
 					{ sourcePath: 'src/file.ts', destinationPath: 'existing.ts' },
 					CONTEXT,
 				),
-			).resolves.not.toThrow();
+			).resolves.toBeDefined();
 		});
 
 		it('returns a single text content block', async () => {

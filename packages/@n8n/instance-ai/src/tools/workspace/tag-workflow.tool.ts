@@ -40,7 +40,7 @@ export function createTagWorkflowTool(context: InstanceAiContext) {
 			if (needsApproval && (resumeData === undefined || resumeData === null)) {
 				await suspend?.({
 					requestId: nanoid(),
-					message: `Tag workflow "${input.workflowName ?? input.workflowId}" with [${input.tags.join(', ')}]?`,
+					message: `Tag workflow "${input.workflowName ?? input.workflowId}" (ID: ${input.workflowId}) with [${input.tags.join(', ')}]?`,
 					severity: 'info' as const,
 				});
 				// suspend() never resolves — this line is unreachable but satisfies the type checker

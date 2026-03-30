@@ -9,7 +9,7 @@ import { EXCLUDED_DIRS, buildFilesystemResource, resolveSafePath } from './fs-ut
 
 const inputSchema = z.object({
 	dirPath: z.string().describe('Directory to search in'),
-	query: z.string().describe('Regular expression pattern to search for'),
+	query: z.string().describe('Text pattern to search for (literal match, not regex)'),
 	filePattern: z.string().optional().describe('Glob pattern to filter files (e.g. "**/*.ts")'),
 	ignoreCase: z.boolean().optional().describe('Case-insensitive search (default: false)'),
 	maxResults: z.number().int().optional().describe('Maximum number of results (default: 50)'),
@@ -17,7 +17,7 @@ const inputSchema = z.object({
 
 export const searchFilesTool: ToolDefinition<typeof inputSchema> = {
 	name: 'search_files',
-	description: 'Search for text patterns across files using a regex query',
+	description: 'Search for text patterns across files using a literal text query',
 	inputSchema,
 	annotations: { readOnlyHint: true },
 	async getAffectedResources({ dirPath }, { dir }) {
@@ -103,8 +103,10 @@ function escapeRegex(str: string): string {
 function globToRegex(pattern: string): RegExp {
 	const escaped = pattern
 		.replace(/[.+^${}()|[\]\\]/g, '\\$&')
+		.replace(/\*\*\//g, '{{GLOBSTAR_SLASH}}')
 		.replace(/\*\*/g, '{{GLOBSTAR}}')
 		.replace(/\*/g, '[^/]*')
+		.replace(/\{\{GLOBSTAR_SLASH\}\}/g, '(.*/)?')
 		.replace(/\{\{GLOBSTAR\}\}/g, '.*');
 	return new RegExp(`^${escaped}$`);
 }

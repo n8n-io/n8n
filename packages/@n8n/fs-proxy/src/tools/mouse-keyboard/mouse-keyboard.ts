@@ -1,4 +1,3 @@
-import robot from '@jitsi/robotjs';
 import { z } from 'zod';
 
 import { getPrimaryMonitor } from '../monitor-utils';
@@ -79,14 +78,14 @@ const screenSizeParams = {
  * logical monitor resolution using the same primary-monitor dimensions
  * that the screenshot tool uses.
  */
-function scaleCoord(
+async function scaleCoord(
 	x: number,
 	y: number,
 	screenWidth: number | undefined,
 	screenHeight: number | undefined,
-): { x: number; y: number } {
+): Promise<{ x: number; y: number }> {
 	if (!screenWidth || !screenHeight) return { x, y };
-	const monitor = getPrimaryMonitor();
+	const monitor = await getPrimaryMonitor();
 	return {
 		x: Math.round((x * monitor.width()) / screenWidth),
 		y: Math.round((y * monitor.height()) / screenHeight),
@@ -113,8 +112,9 @@ export const mouseMoveTool: ToolDefinition<typeof mouseMoveSchema> = {
 	getAffectedResources() {
 		return [COMPUTER_RESOURCE];
 	},
-	execute({ x, y, screenWidth, screenHeight }) {
-		const scaled = scaleCoord(x, y, screenWidth, screenHeight);
+	async execute({ x, y, screenWidth, screenHeight }) {
+		const { default: robot } = await import('@jitsi/robotjs');
+		const scaled = await scaleCoord(x, y, screenWidth, screenHeight);
 		robot.moveMouse(scaled.x, scaled.y);
 		return { content: [{ type: 'text', text: 'ok' }] };
 	},
@@ -135,8 +135,9 @@ export const mouseClickTool: ToolDefinition<typeof mouseClickSchema> = {
 	getAffectedResources() {
 		return [COMPUTER_RESOURCE];
 	},
-	execute({ x, y, button = 'left', screenWidth, screenHeight }) {
-		const scaled = scaleCoord(x, y, screenWidth, screenHeight);
+	async execute({ x, y, button = 'left', screenWidth, screenHeight }) {
+		const { default: robot } = await import('@jitsi/robotjs');
+		const scaled = await scaleCoord(x, y, screenWidth, screenHeight);
 		robot.moveMouse(scaled.x, scaled.y);
 		robot.mouseClick(button);
 		return { content: [{ type: 'text', text: 'ok' }] };
@@ -157,8 +158,9 @@ export const mouseDoubleClickTool: ToolDefinition<typeof mouseDoubleClickSchema>
 	getAffectedResources() {
 		return [COMPUTER_RESOURCE];
 	},
-	execute({ x, y, screenWidth, screenHeight }) {
-		const scaled = scaleCoord(x, y, screenWidth, screenHeight);
+	async execute({ x, y, screenWidth, screenHeight }) {
+		const { default: robot } = await import('@jitsi/robotjs');
+		const scaled = await scaleCoord(x, y, screenWidth, screenHeight);
 		robot.moveMouse(scaled.x, scaled.y);
 		robot.mouseClick('left', true);
 		return { content: [{ type: 'text', text: 'ok' }] };
@@ -181,9 +183,10 @@ export const mouseDragTool: ToolDefinition<typeof mouseDragSchema> = {
 	getAffectedResources() {
 		return [COMPUTER_RESOURCE];
 	},
-	execute({ fromX, fromY, toX, toY, screenWidth, screenHeight }) {
-		const scaledFrom = scaleCoord(fromX, fromY, screenWidth, screenHeight);
-		const scaledTo = scaleCoord(toX, toY, screenWidth, screenHeight);
+	async execute({ fromX, fromY, toX, toY, screenWidth, screenHeight }) {
+		const { default: robot } = await import('@jitsi/robotjs');
+		const scaledFrom = await scaleCoord(fromX, fromY, screenWidth, screenHeight);
+		const scaledTo = await scaleCoord(toX, toY, screenWidth, screenHeight);
 		robot.moveMouse(scaledFrom.x, scaledFrom.y);
 		robot.mouseToggle('down');
 		robot.dragMouse(scaledTo.x, scaledTo.y);
@@ -208,8 +211,9 @@ export const mouseScrollTool: ToolDefinition<typeof mouseScrollSchema> = {
 	getAffectedResources() {
 		return [COMPUTER_RESOURCE];
 	},
-	execute({ x, y, direction, amount, screenWidth, screenHeight }) {
-		const scaled = scaleCoord(x, y, screenWidth, screenHeight);
+	async execute({ x, y, direction, amount, screenWidth, screenHeight }) {
+		const { default: robot } = await import('@jitsi/robotjs');
+		const scaled = await scaleCoord(x, y, screenWidth, screenHeight);
 		robot.moveMouse(scaled.x, scaled.y);
 		// robotjs scrollMouse(x, y): positive x = right, positive y = down
 		const dx = direction === 'right' ? amount : direction === 'left' ? -amount : 0;
@@ -242,6 +246,7 @@ export const keyboardTypeTool: ToolDefinition<typeof keyboardTypeSchema> = {
 		return [COMPUTER_RESOURCE];
 	},
 	async execute({ text, delayMs }) {
+		const { default: robot } = await import('@jitsi/robotjs');
 		if (delayMs) {
 			await new Promise((resolve) => setTimeout(resolve, delayMs));
 		}
@@ -272,7 +277,8 @@ export const keyboardKeyTapTool: ToolDefinition<typeof keyboardKeyTapSchema> = {
 	getAffectedResources() {
 		return [COMPUTER_RESOURCE];
 	},
-	execute({ key }) {
+	async execute({ key }) {
+		const { default: robot } = await import('@jitsi/robotjs');
 		robot.keyTap(normalizeKey(key));
 		return { content: [{ type: 'text', text: 'ok' }] };
 	},
@@ -297,7 +303,8 @@ export const keyboardShortcutTool: ToolDefinition<typeof keyboardShortcutSchema>
 	getAffectedResources() {
 		return [COMPUTER_RESOURCE];
 	},
-	execute({ keys }) {
+	async execute({ keys }) {
+		const { default: robot } = await import('@jitsi/robotjs');
 		const modifiers = keys.slice(0, -1).map(normalizeKey);
 		const key = normalizeKey(keys.at(-1)!);
 		robot.keyTap(key, modifiers);

@@ -4,7 +4,7 @@ import { spawn } from 'child_process';
 import { z } from 'zod';
 
 import type { CallToolResult, ToolDefinition } from '../types';
-import { formatCallToolResult } from '../utils';
+import { formatCallToolResult, formatErrorResult } from '../utils';
 import { buildShellResource } from './build-shell-resource';
 
 async function initializeSandbox({ dir }: { dir: string }) {
@@ -93,6 +93,11 @@ async function runCommand(
 				child.on('close', (code) => {
 					clearTimeout(timer);
 					resolve(formatCallToolResult({ stdout, stderr, exitCode: code }));
+				});
+
+				child.on('error', (error) => {
+					clearTimeout(timer);
+					resolve(formatErrorResult(`Failed to start process: ${error.message}`));
 				});
 			})
 			.catch(reject);

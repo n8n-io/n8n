@@ -5,7 +5,7 @@ import { buildFilesystemResource, resolveSafePath, scanDirectory } from './fs-ut
 
 const inputSchema = z.object({
 	dirPath: z.string().describe('Directory path relative to root (use "." for root)'),
-	maxDepth: z.number().int().optional().describe('Maximum depth to traverse (default: 2)'),
+	maxDepth: z.number().int().min(0).optional().describe('Maximum depth to traverse (default: 2)'),
 });
 
 export const getFileTreeTool: ToolDefinition<typeof inputSchema> = {
