@@ -521,9 +521,9 @@ export class FrontendService {
 			this.settings.aiCredits.setup = !!this.globalConfig.aiAssistant.baseUrl;
 		}
 
-		// TODO: restore `isAiCreditsEnabled &&` before shipping
-		// const isAiGatewayEnabled = isAiCreditsEnabled && !!this.globalConfig.aiAssistant.baseUrl;
-		const isAiGatewayEnabled = !!this.globalConfig.aiAssistant.baseUrl;
+		const isAiGatewayEnabled =
+			(this.globalConfig.aiAssistant.aiGatewayDevMode || this.licenseState.isAiGatewayLicensed()) &&
+			!!this.globalConfig.aiAssistant.baseUrl;
 		if (isAiGatewayEnabled) {
 			this.settings.aiGateway = {
 				enabled: true,

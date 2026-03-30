@@ -1,12 +1,13 @@
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { AI_GATEWAY_CREDENTIAL_TYPES } from '@n8n/constants';
+import { AI_GATEWAY_CREDENTIAL_TYPES, LICENSE_FEATURES } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
 
 import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
+import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { License } from '@/license';
 
 type AiGatewayCredentialType = (typeof AI_GATEWAY_CREDENTIAL_TYPES)[number];
@@ -62,9 +63,11 @@ export class AiGatewayService {
 		credentialType: string,
 		userId: string,
 	): Promise<ICredentialDataDecryptedObject> {
-		// TODO: enforce license before shipping — throw FeatureNotLicensedError when not licensed
-		if (!this.licenseState.isAiGatewayLicensed()) {
-			this.logger.error('AI Gateway: license check failed (feat:aiGateway not licensed)');
+		if (
+			!this.globalConfig.aiAssistant.aiGatewayDevMode &&
+			!this.licenseState.isAiGatewayLicensed()
+		) {
+			throw new FeatureNotLicensedError(LICENSE_FEATURES.AI_GATEWAY);
 		}
 
 		const baseUrl = this.globalConfig.aiAssistant.baseUrl;

@@ -5,6 +5,7 @@ import type { InstanceSettings } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 
 import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
+import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import type { License } from '@/license';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 
@@ -14,15 +15,21 @@ const USER_ID = 'user-abc';
 const LICENSE_CERT = 'cert-xyz';
 const CONSUMER_ID = 'consumer-test-uuid';
 
-function makeService(baseUrl: string | null = BASE_URL) {
+function makeService({
+	baseUrl = BASE_URL as string | null,
+	isAiGatewayLicensed = true,
+	aiGatewayDevMode = false,
+} = {}) {
 	const globalConfig = {
-		aiAssistant: { baseUrl: baseUrl ?? undefined },
+		aiAssistant: { baseUrl: baseUrl ?? undefined, aiGatewayDevMode },
 	} as unknown as GlobalConfig;
 	const license = mock<License>({
 		loadCertStr: jest.fn().mockResolvedValue(LICENSE_CERT),
 		getConsumerId: jest.fn().mockReturnValue(CONSUMER_ID),
 	});
-	const licenseState = mock<LicenseState>({ isAiCreditsLicensed: jest.fn().mockReturnValue(true) });
+	const licenseState = mock<LicenseState>({
+		isAiGatewayLicensed: jest.fn().mockReturnValue(isAiGatewayLicensed),
+	});
 	const instanceSettings = mock<InstanceSettings>({ instanceId: INSTANCE_ID });
 	const logger = mock<Logger>();
 	return new AiGatewayService(globalConfig, license, licenseState, instanceSettings, logger);
@@ -41,8 +48,24 @@ describe('AiGatewayService', () => {
 	});
 
 	describe('getSyntheticCredential()', () => {
+		it('throws FeatureNotLicensedError when not licensed and dev mode is off', async () => {
+			const service = makeService({ isAiGatewayLicensed: false });
+			await expect(service.getSyntheticCredential('googlePalmApi', USER_ID)).rejects.toThrow(
+				FeatureNotLicensedError,
+			);
+		});
+
+		it('allows access when dev mode is on regardless of license', async () => {
+			fetchMock.mockResolvedValue({
+				ok: true,
+				json: jest.fn().mockResolvedValue({ token: 'mock-jwt-token', expiresIn: 3600 }),
+			});
+			const service = makeService({ isAiGatewayLicensed: false, aiGatewayDevMode: true });
+			await expect(service.getSyntheticCredential('googlePalmApi', USER_ID)).resolves.toBeDefined();
+		});
+
 		it('throws UserError when baseUrl is not configured', async () => {
-			const service = makeService(null);
+			const service = makeService({ baseUrl: null });
 			await expect(service.getSyntheticCredential('googlePalmApi', USER_ID)).rejects.toThrow(
 				UserError,
 			);
@@ -134,7 +157,7 @@ describe('AiGatewayService', () => {
 
 	describe('getCreditsRemaining()', () => {
 		it('throws UserError when baseUrl is not configured', async () => {
-			const service = makeService(null);
+			const service = makeService({ baseUrl: null });
 			await expect(service.getCreditsRemaining(USER_ID)).rejects.toThrow(UserError);
 		});
 
