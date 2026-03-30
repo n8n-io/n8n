@@ -295,7 +295,7 @@ export class GatewayClient {
 			fetch: async (input, init) => {
 				const headers = new Headers(init?.headers);
 				headers.set('X-Gateway-Key', apiKey);
-				return fetch(input, { ...init, headers });
+				return await fetch(input, { ...init, headers });
 			},
 		});
 

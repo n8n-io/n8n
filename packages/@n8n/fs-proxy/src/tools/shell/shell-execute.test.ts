@@ -197,6 +197,8 @@ describe('shell_execute tool', () => {
 			DUMMY_CONTEXT,
 		);
 
+		await flushMicrotasks();
+
 		const errorHandler = getErrorHandler(child.on);
 		errorHandler?.(new Error('spawn sh ENOENT'));
 

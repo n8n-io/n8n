@@ -1,7 +1,8 @@
 <script lang="ts" setup>
-import { ref, watch, computed, onBeforeUnmount } from 'vue';
-import { N8nIconButton, N8nSpinner, N8nText } from '@n8n/design-system';
+import { ref, watch, computed, onBeforeUnmount, useTemplateRef } from 'vue';
+import { N8nSpinner, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import type { PushMessage } from '@n8n/api-types';
 import WorkflowPreview from '@/app/components/WorkflowPreview.vue';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { IWorkflowDb } from '@/Interface';
@@ -17,19 +18,17 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{
-	close: [];
-	'push-ref-ready': [pushRef: string];
+	'iframe-ready': [];
 }>();
 
 const i18n = useI18n();
 const workflowsListStore = useWorkflowsListStore();
+const previewRef = useTemplateRef<InstanceType<typeof WorkflowPreview>>('previewComponent');
 
 const workflow = ref<IWorkflowDb | null>(null);
 const isLoading = ref(false);
 const fetchError = ref<string | null>(null);
 let fetchGeneration = 0;
-
-const workflowName = computed(() => workflow.value?.name ?? '');
 
 // When executionId is set, switch WorkflowPreview to execution mode
 const previewMode = computed(() => (props.executionId ? 'execution' : 'workflow'));
@@ -38,18 +37,27 @@ function handleIframeMessage(event: MessageEvent) {
 	if (typeof event.data !== 'string' || !event.data.includes('"command"')) return;
 	try {
 		const json = JSON.parse(event.data);
-		if (json.command === 'n8nReady' && json.pushRef) {
-			emit('push-ref-ready', json.pushRef);
+		if (json.command === 'n8nReady') {
+			emit('iframe-ready');
 		}
 	} catch {
 		// Ignore parse errors
 	}
 }
 
+function relayPushEvent(event: PushMessage) {
+	const iframe = (previewRef.value as { iframeRef?: HTMLIFrameElement | null } | undefined)
+		?.iframeRef;
+	if (!iframe?.contentWindow) return;
+	iframe.contentWindow.postMessage(
+		JSON.stringify({ command: 'executionEvent', event }),
+		window.location.origin,
+	);
+}
+
 async function fetchWorkflow(id: string) {
 	const isRefresh = workflow.value?.id === id;
 	const generation = ++fetchGeneration;
-
 	fetchError.value = null;
 	if (!isRefresh) {
 		isLoading.value = true;
@@ -58,7 +66,7 @@ async function fetchWorkflow(id: string) {
 
 	try {
 		const result = await workflowsListStore.fetchWorkflow(id);
-		if (generation !== fetchGeneration) return; // Stale response — discard
+		if (generation !== fetchGeneration) return;
 		workflow.value = result;
 	} catch {
 		if (generation !== fetchGeneration) return;
@@ -85,97 +93,49 @@ watch(
 	{ immediate: true },
 );
 
-// Listen for pushRef from iframe's n8nReady message
+// Listen for iframe ready signal
 window.addEventListener('message', handleIframeMessage);
 
 onBeforeUnmount(() => {
 	window.removeEventListener('message', handleIframeMessage);
 });
+
+defineExpose({ relayPushEvent });
 </script>
 
 <template>
-	<div :class="$style.container">
-		<!-- Header -->
-		<div :class="$style.header">
-			<N8nText size="medium" :class="$style.headerTitle">
-				{{ workflowName || i18n.baseText('instanceAi.workflowPreview.title') }}
-			</N8nText>
-			<div :class="$style.headerActions">
-				<N8nIconButton
-					v-if="workflow"
-					icon="external-link"
-					variant="ghost"
-					size="medium"
-					tag="a"
-					:href="`/workflow/${workflow.id}`"
-					target="_blank"
-				/>
-				<N8nIconButton icon="x" variant="ghost" size="medium" @click="emit('close')" />
-			</div>
+	<div :class="$style.content">
+		<!-- Error (only when no workflow to show) -->
+		<div v-if="fetchError && !workflow" :class="$style.centerState">
+			<N8nText color="text-light">{{ fetchError }}</N8nText>
 		</div>
 
-		<!-- Content -->
-		<div :class="$style.content">
-			<!-- Error (only when no workflow to show) -->
-			<div v-if="fetchError && !workflow" :class="$style.centerState">
-				<N8nText color="text-light">{{ fetchError }}</N8nText>
-				<N8nIconButton icon="x" variant="outline" size="small" @click="emit('close')" />
-			</div>
+		<!-- Preview — stays mounted during re-fetch to keep iframe ready state -->
+		<WorkflowPreview
+			v-if="workflow"
+			ref="previewComponent"
+			:mode="previewMode"
+			:workflow="workflow"
+			:execution-id="props.executionId ?? undefined"
+			:can-open-ndv="true"
+			:hide-controls="false"
+			:suppress-notifications="true"
+			loader-type="spinner"
+		/>
 
-			<!-- Preview — stays mounted during re-fetch to keep iframe ready state -->
-			<WorkflowPreview
-				v-if="workflow"
-				:mode="previewMode"
-				:workflow="workflow"
-				:execution-id="props.executionId ?? undefined"
-				:can-open-ndv="true"
-				:hide-controls="false"
-				:suppress-notifications="true"
-				loader-type="spinner"
-			/>
-
-			<!-- Loading overlay (shown during initial load or when no workflow yet) -->
-			<div v-if="isLoading && !workflow" :class="$style.centerState">
-				<N8nSpinner type="dots" />
-			</div>
+		<!-- Loading overlay (shown during initial load or when no workflow yet) -->
+		<div v-if="isLoading && !workflow" :class="$style.centerState">
+			<N8nSpinner type="dots" />
 		</div>
 	</div>
 </template>
 
 <style lang="scss" module>
-.container {
-	display: flex;
-	flex-direction: column;
-	height: 100%;
-}
-
-.header {
-	display: flex;
-	align-items: center;
-	padding: var(--spacing--2xs) var(--spacing--xs);
-	border-bottom: var(--border);
-	flex-shrink: 0;
-	gap: var(--spacing--2xs);
-}
-
-.headerTitle {
-	flex: 1;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.headerActions {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	flex-shrink: 0;
-}
-
 .content {
 	flex: 1;
 	min-height: 0;
 	position: relative;
+	height: 100%;
 }
 
 .centerState {

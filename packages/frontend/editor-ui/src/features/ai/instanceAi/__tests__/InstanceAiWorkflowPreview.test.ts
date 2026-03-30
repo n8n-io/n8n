@@ -48,26 +48,6 @@ describe('InstanceAiWorkflowPreview', () => {
 		).not.toThrow();
 	});
 
-	it('should show default title when no workflow is loaded', () => {
-		const { getByText } = renderComponent({
-			props: { workflowId: null, executionId: null },
-		});
-		expect(getByText('Workflow preview')).toBeInTheDocument();
-	});
-
-	it('should fetch and display workflow when workflowId is set', async () => {
-		mockFetchWorkflow.mockResolvedValue(fakeWorkflow);
-
-		const { getByText } = renderComponent({
-			props: { workflowId: 'wf-123', executionId: null },
-		});
-
-		await waitFor(() => {
-			expect(mockFetchWorkflow).toHaveBeenCalledWith('wf-123');
-			expect(getByText('My Test Workflow')).toBeInTheDocument();
-		});
-	});
-
 	it('should show error when workflow fetch fails', async () => {
 		mockFetchWorkflow.mockRejectedValue(new Error('Not found'));
 
@@ -78,32 +58,6 @@ describe('InstanceAiWorkflowPreview', () => {
 		await waitFor(() => {
 			expect(getByText('Could not load workflow')).toBeInTheDocument();
 		});
-	});
-
-	it('should show external-link button when workflow is loaded', async () => {
-		mockFetchWorkflow.mockResolvedValue(fakeWorkflow);
-
-		const { container } = renderComponent({
-			props: { workflowId: 'wf-123', executionId: null },
-		});
-
-		await waitFor(() => {
-			const link = container.querySelector('a[href="/workflow/wf-123"]');
-			expect(link).toBeInTheDocument();
-		});
-	});
-
-	it('should emit close when close button is clicked', async () => {
-		const { emitted, container } = renderComponent({
-			props: { workflowId: null, executionId: null },
-		});
-
-		const closeButton = container.querySelector('button');
-		if (closeButton instanceof HTMLElement) {
-			closeButton.click();
-		}
-
-		expect(emitted('close')).toBeTruthy();
 	});
 
 	it('should render WorkflowPreview in workflow mode by default', async () => {
@@ -119,7 +73,7 @@ describe('InstanceAiWorkflowPreview', () => {
 		});
 	});
 
-	it('should emit push-ref-ready on n8nReady postMessage with pushRef', async () => {
+	it('should emit iframe-ready on n8nReady postMessage', async () => {
 		const { emitted } = renderComponent({
 			props: { workflowId: null, executionId: null },
 		});
@@ -134,12 +88,11 @@ describe('InstanceAiWorkflowPreview', () => {
 		);
 
 		await waitFor(() => {
-			expect(emitted('push-ref-ready')).toBeTruthy();
-			expect(emitted('push-ref-ready')[0]).toEqual(['iframe-push-ref-abc']);
+			expect(emitted('iframe-ready')).toBeTruthy();
 		});
 	});
 
-	it('should not emit push-ref-ready on n8nReady without pushRef', async () => {
+	it('should emit iframe-ready even when n8nReady has no pushRef', async () => {
 		const { emitted } = renderComponent({
 			props: { workflowId: null, executionId: null },
 		});
@@ -150,7 +103,8 @@ describe('InstanceAiWorkflowPreview', () => {
 			}),
 		);
 
-		await new Promise((r) => setTimeout(r, 10));
-		expect(emitted('push-ref-ready')).toBeFalsy();
+		await waitFor(() => {
+			expect(emitted('iframe-ready')).toBeTruthy();
+		});
 	});
 });
