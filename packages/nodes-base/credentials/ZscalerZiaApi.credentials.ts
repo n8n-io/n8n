@@ -117,7 +117,7 @@ export class ZscalerZiaApi implements ICredentialType {
 		const headers = response.headers;
 
 		const cookie = (headers['set-cookie'] as string[])
-			?.find((entrt) => entrt.includes('JSESSIONID'))
+			?.find((entry) => entry.includes('JSESSIONID'))
 			?.split(';')
 			?.find((entry) => entry.includes('JSESSIONID'));
 
