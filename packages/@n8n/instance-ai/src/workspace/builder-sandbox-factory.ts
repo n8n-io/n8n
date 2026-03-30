@@ -96,21 +96,20 @@ export class BuilderSandboxFactory {
 		const image = this.imageManager!.ensureImage();
 
 		// Start sandbox creation AND catalog generation in parallel
-		const daytona = await this.getDaytona();
-		const [sandbox, catalog] = await Promise.all([
-			daytona.create(
+		const createSandbox = async () => {
+			const daytona = await this.getDaytona();
+			return await daytona.create(
 				{
 					image,
 					language: 'typescript',
 					ephemeral: true,
 					labels: { 'n8n-builder': builderId },
 				},
-				{
-					timeout: 300,
-				},
-			),
-			this.getNodeCatalog(context),
-		]);
+				{ timeout: 300 },
+			);
+		};
+
+		const [sandbox, catalog] = await Promise.all([createSandbox(), this.getNodeCatalog(context)]);
 
 		// Wrap raw Sandbox in DaytonaSandbox for Mastra Workspace compatibility.
 		// DaytonaSandbox.start() reconnects to the existing sandbox by ID.
