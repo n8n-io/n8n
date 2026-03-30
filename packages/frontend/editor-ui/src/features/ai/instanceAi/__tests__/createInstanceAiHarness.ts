@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import { ref, reactive, computed, nextTick, type Ref } from 'vue';
+import { ref, reactive, nextTick, type Ref } from 'vue';
 import type {
 	PushMessage,
 	InstanceAiMessage,
@@ -8,8 +8,8 @@ import type {
 } from '@n8n/api-types';
 import { useCanvasPreview } from '../useCanvasPreview';
 import { useEventRelay } from '../useEventRelay';
+import type { useInstanceAiStore } from '../instanceAi.store';
 import type { ResourceEntry } from '../useResourceRegistry';
-import type { ExecutionStatus, WorkflowExecutionState } from '../useExecutionPushEvents';
 
 // ---------------------------------------------------------------------------
 // Mock push store — must be called before importing useExecutionPushEvents
@@ -180,9 +180,8 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 	// --- Wire real composables ---
 	const executionTracking = useExecutionPushEvents();
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const preview = useCanvasPreview({
-		store: store as ReturnType<typeof import('../instanceAi.store').useInstanceAiStore>,
+		store: store as unknown as ReturnType<typeof useInstanceAiStore>,
 		route: route as Parameters<typeof useCanvasPreview>[0]['route'],
 		workflowExecutions: executionTracking.workflowExecutions,
 	});

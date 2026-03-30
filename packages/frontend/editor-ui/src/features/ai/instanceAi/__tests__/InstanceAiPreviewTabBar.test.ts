@@ -64,7 +64,7 @@ describe('InstanceAiPreviewTabBar', () => {
 			props: { tabs: [workflowTab, dataTableTab], activeTabId: 'wf-1' },
 		});
 
-		await getByText('My Table').click();
+		getByText('My Table').click();
 
 		expect(emitted()['update:activeTabId']).toBeTruthy();
 		expect(emitted()['update:activeTabId'][0]).toEqual(['dt-1']);
@@ -78,7 +78,7 @@ describe('InstanceAiPreviewTabBar', () => {
 		// The close button is the last button in the actions area (icon="x")
 		const buttons = container.querySelectorAll('button');
 		const closeButton = buttons[buttons.length - 1];
-		await closeButton.click();
+		closeButton.click();
 
 		expect(emitted().close).toBeTruthy();
 	});
