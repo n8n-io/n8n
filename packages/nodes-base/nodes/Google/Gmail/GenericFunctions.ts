@@ -1,6 +1,7 @@
 import isEmpty from 'lodash/isEmpty';
 import { DateTime } from 'luxon';
-import { simpleParser } from 'mailparser';
+import { Readable } from 'stream';
+import PostalMime from 'postal-mime';
 import type {
 	IBinaryKeyData,
 	IDataObject,
@@ -20,6 +21,7 @@ import MailComposer from 'nodemailer/lib/mail-composer';
 import type { IEmail } from '../../../utils/sendAndWait/interfaces';
 import { createUtmCampaignLink, escapeHtml } from '../../../utils/utilities';
 import { getGoogleAccessToken } from '../GenericFunctions';
+import { toMailparserShape } from '../../../utils/postalMimeToMailparserShape';
 
 export interface IAttachments {
 	type: string;
@@ -143,62 +145,174 @@ export async function googleApiRequest(
 	}
 }
 
+type PostalMimeAddress = {
+	name?: string;
+	address?: string;
+	group?: Array<{ name?: string; address?: string }>;
+};
+
+/** Format a PostalMime Address (Mailbox or group) as a single string for text/html. */
+function formatAddress(addr: PostalMimeAddress | undefined): string {
+	if (!addr) return '';
+	if ('address' in addr && addr.address) return addr.address;
+	if ('group' in addr && Array.isArray(addr.group)) {
+		return addr.group
+			.map((m) => m.address)
+			.filter(Boolean)
+			.join(', ');
+	}
+	return '';
+}
+
+/** Map PostalMime Address to mailparser-like value array (name, address). */
+function addressToValue(
+	addr: PostalMimeAddress | undefined,
+): Array<{ name: string; address: string }> {
+	if (!addr) return [];
+	if ('address' in addr && addr.address) {
+		return [{ name: addr.name ?? '', address: addr.address }];
+	}
+	if ('group' in addr && Array.isArray(addr.group)) {
+		return addr.group.map((m) => ({ name: m.name ?? '', address: m.address ?? '' }));
+	}
+	return [];
+}
+
 export async function parseRawEmail(
 	this: IExecuteFunctions | IPollFunctions,
-
 	messageData: any,
 	dataPropertyNameDownload: string,
 ): Promise<INodeExecutionData> {
-	const messageEncoded = Buffer.from(messageData.raw as string, 'base64').toString('utf8');
-	const responseData = await simpleParser(messageEncoded);
+	const buffer = Buffer.from(messageData.raw as string, 'base64');
+	const CHUNK_SIZE = 64 * 1024;
+	function* chunkIterator() {
+		for (let i = 0; i < buffer.length; i += CHUNK_SIZE) {
+			yield buffer.subarray(i, Math.min(i + CHUNK_SIZE, buffer.length));
+		}
+	}
+	const nodeStream = Readable.from(chunkIterator());
+	const webStream = Readable.toWeb(nodeStream) as ReadableStream<Uint8Array>;
+	const email = await PostalMime.parse(webStream);
 
 	const headers: IDataObject = {};
-	for (const header of responseData.headerLines) {
-		headers[header.key] = header.line;
+	for (const h of email.headerLines ?? []) {
+		headers[h.key] = h.line;
 	}
 
 	const binaryData: IBinaryKeyData = {};
-	if (responseData.attachments) {
+	if (email.attachments?.length) {
 		const downloadAttachments = this.getNodeParameter(
 			'options.downloadAttachments',
 			0,
 			false,
 		) as boolean;
 		if (downloadAttachments) {
-			for (let i = 0; i < responseData.attachments.length; i++) {
-				const attachment = responseData.attachments[i];
+			for (let i = 0; i < email.attachments.length; i++) {
+				const att = email.attachments[i];
+				const content =
+					att.content instanceof ArrayBuffer
+						? Buffer.from(att.content)
+						: typeof att.content === 'string'
+							? Buffer.from(att.content, att.encoding === 'base64' ? 'base64' : 'utf8')
+							: Buffer.from(att.content as Uint8Array);
 				binaryData[`${dataPropertyNameDownload}${i}`] = await this.helpers.prepareBinaryData(
-					attachment.content,
-					attachment.filename,
-					attachment.contentType,
+					content,
+					att.filename ?? 'attachment',
+					att.mimeType,
 				);
 			}
 		}
 	}
 
 	const mailBaseData: IDataObject = {};
-
 	const resolvedModeAddProperties = ['id', 'threadId', 'labelIds', 'sizeEstimate'];
-
 	for (const key of resolvedModeAddProperties) {
-		mailBaseData[key] = messageData[key];
+		const value = messageData[key];
+		if (value !== undefined) mailBaseData[key] = value;
 	}
 
-	const json = Object.assign({}, mailBaseData, responseData, {
+	const fromFormatted = formatAddress(email.from);
+	const toFormatted =
+		email.to
+			?.map((a: PostalMimeAddress) => formatAddress(a))
+			.filter(Boolean)
+			.join(', ') ?? '';
+	const ccFormatted =
+		email.cc
+			?.map((a: PostalMimeAddress) => formatAddress(a))
+			.filter(Boolean)
+			.join(', ') ?? '';
+	const bccFormatted =
+		email.bcc
+			?.map((a: PostalMimeAddress) => formatAddress(a))
+			.filter(Boolean)
+			.join(', ') ?? '';
+	const replyToFormatted =
+		email.replyTo
+			?.map((a: PostalMimeAddress) => formatAddress(a))
+			.filter(Boolean)
+			.join(', ') ?? '';
+	const json: IDataObject = {
+		...mailBaseData,
 		headers,
-		headerLines: undefined,
-		attachments: undefined,
-		// Having data in IDataObjects that is not representable in JSON leads to
-		// inconsistencies between test executions and production executions.
-		// During a manual execution this would be stringified and during a
-		// production execution the next node would receive a date instance.
-		date: responseData.date ? responseData.date.toISOString() : responseData.date,
-	}) as IDataObject;
+		date: email.date ?? undefined,
+		from: {
+			text: fromFormatted,
+			value: addressToValue(email.from),
+			html: fromFormatted,
+		},
+		to: {
+			text: toFormatted,
+			value: (email.to ?? []).flatMap((a: PostalMimeAddress) => addressToValue(a)),
+			html: toFormatted,
+		},
+		html: email.html,
+		text: email.text,
+	};
+	if (email.subject !== undefined) json.subject = email.subject;
+	if (email.messageId !== undefined) json.messageId = email.messageId;
+	if (email.inReplyTo !== undefined) json.inReplyTo = email.inReplyTo;
+	if (email.references !== undefined) json.references = email.references;
 
-	return {
-		json,
-		binary: Object.keys(binaryData).length ? binaryData : undefined,
-	} as INodeExecutionData;
+	if (ccFormatted) {
+		json.cc = {
+			text: ccFormatted,
+			value: (email.cc ?? []).flatMap((a: PostalMimeAddress) => addressToValue(a)),
+			html: ccFormatted,
+		};
+	}
+	if (bccFormatted) {
+		json.bcc = {
+			text: bccFormatted,
+			value: (email.bcc ?? []).flatMap((a: PostalMimeAddress) => addressToValue(a)),
+			html: bccFormatted,
+		};
+	}
+	if (replyToFormatted) {
+		json.replyTo = {
+			text: replyToFormatted,
+			value: (email.replyTo ?? []).flatMap((a: PostalMimeAddress) => addressToValue(a)),
+			html: replyToFormatted,
+		};
+	}
+	if (email.deliveredTo !== undefined) json.deliveredTo = email.deliveredTo;
+	if (email.returnPath !== undefined) json.returnPath = email.returnPath;
+	if (email.sender !== undefined) {
+		const senderFormatted = formatAddress(email.sender);
+		if (senderFormatted) {
+			json.sender = {
+				text: senderFormatted,
+				value: addressToValue(email.sender),
+				html: senderFormatted,
+			};
+		}
+	}
+
+	const jsonOut = toMailparserShape(json);
+
+	const result: INodeExecutionData = { json: jsonOut };
+	if (Object.keys(binaryData).length) result.binary = binaryData;
+	return result;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
