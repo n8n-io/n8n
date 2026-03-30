@@ -17,7 +17,7 @@ describe('S3 Node Generic Functions', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		mockContext = {
-			getNode: jest.fn().mockReturnValue({ name: 'S3' }),
+			getNode: jest.fn().mockReturnValue({ name: 'S3', typeVersion: 1 }),
 			getCredentials: jest.fn().mockResolvedValue({
 				endpoint: 'https://s3.amazonaws.com',
 				accessKeyId: 'test-key',
@@ -114,14 +114,53 @@ describe('S3 Node Generic Functions', () => {
 			expect(result).toEqual(mockParsedResponse);
 		});
 
-		it('should handle XML parsing errors', async () => {
-			const mockError = new Error('XML Parse Error');
-			mockContext.helpers.request.mockResolvedValueOnce('<invalid>xml');
-			(parseString as jest.Mock).mockImplementation((_, __, callback) => callback(mockError));
+		describe('v1 (legacy behaviour)', () => {
+			it('should return parse error as data instead of throwing', async () => {
+				const mockError = new Error('XML Parse Error');
+				mockContext.helpers.request.mockResolvedValueOnce('<invalid>xml');
+				(parseString as jest.Mock).mockImplementation((_, __, callback) => callback(mockError));
 
-			const result = await s3ApiRequestSOAP.call(mockContext, 'test-bucket', 'GET', '/');
+				const result = await s3ApiRequestSOAP.call(mockContext, 'test-bucket', 'GET', '/');
 
-			expect(result).toEqual(mockError);
+				expect(result).toEqual(mockError);
+			});
+
+			it('should attempt to parse empty response instead of returning undefined', async () => {
+				mockContext.helpers.request.mockResolvedValueOnce('');
+				const mockParsed = {};
+				(parseString as jest.Mock).mockImplementation((_, __, callback) =>
+					callback(null, mockParsed),
+				);
+
+				const result = await s3ApiRequestSOAP.call(mockContext, 'test-bucket', 'DELETE', '/');
+
+				expect(result).toEqual(mockParsed);
+			});
+		});
+
+		describe('v1.1 (new behaviour)', () => {
+			beforeEach(() => {
+				mockContext.getNode.mockReturnValue({ name: 'S3', typeVersion: 1.1 });
+			});
+
+			it('should return undefined for empty response (HTTP 204)', async () => {
+				mockContext.helpers.request.mockResolvedValueOnce('');
+
+				const result = await s3ApiRequestSOAP.call(mockContext, 'test-bucket', 'DELETE', '/');
+
+				expect(result).toBeUndefined();
+				expect(parseString).not.toHaveBeenCalled();
+			});
+
+			it('should throw on XML parse error instead of returning it as data', async () => {
+				const mockError = new Error('XML Parse Error');
+				mockContext.helpers.request.mockResolvedValueOnce('<invalid>xml');
+				(parseString as jest.Mock).mockImplementation((_, __, callback) => callback(mockError));
+
+				await expect(
+					s3ApiRequestSOAP.call(mockContext, 'test-bucket', 'GET', '/'),
+				).rejects.toThrow('XML Parse Error');
+			});
 		});
 	});
 
