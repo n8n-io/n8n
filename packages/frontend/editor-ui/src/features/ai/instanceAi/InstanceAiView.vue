@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, nextTick, onMounted, onUnmounted, provide, ref, useTemplateRef, watch } from 'vue';
+import { computed, onMounted, onUnmounted, provide, ref, useTemplateRef, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import {
 	N8nHeading,
@@ -17,6 +17,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useInstanceAiStore } from './instanceAi.store';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { useCanvasPreview } from './useCanvasPreview';
+import { useEventRelay } from './useEventRelay';
 import { useExecutionPushEvents } from './useExecutionPushEvents';
 import { NEW_CONVERSATION_TITLE } from './constants';
 import InstanceAiMessage from './components/InstanceAiMessage.vue';
@@ -289,35 +290,12 @@ watch(
 const workflowPreviewRef =
 	useTemplateRef<InstanceType<typeof InstanceAiWorkflowPreview>>('workflowPreview');
 
-function handleIframeReady() {
-	// Replay buffered events to the iframe so it catches up.
-	// Use nextTick so WorkflowPreview's loadWorkflow (triggered by the same n8nReady
-	// signal) runs first — the iframe needs the workflow loaded before it can process
-	// execution events.
-	void nextTick(() => {
-		const wfId = preview.activeWorkflowId.value;
-		if (!wfId) return;
-		const buffered = executionTracking.getBufferedEvents(wfId);
-		for (const event of buffered) {
-			workflowPreviewRef.value?.relayPushEvent(event);
-		}
-	});
-}
-
-// Forward live execution events to the iframe in real-time
-watch(
-	() => executionTracking.workflowExecutions.value,
-	(executions) => {
-		const wfId = preview.activeWorkflowId.value;
-		if (!wfId || !workflowPreviewRef.value) return;
-		const entry = executions.get(wfId);
-		if (!entry || entry.status !== 'running') return;
-		const log = entry.eventLog;
-		if (log.length > 0) {
-			workflowPreviewRef.value.relayPushEvent(log[log.length - 1]);
-		}
-	},
-);
+const eventRelay = useEventRelay({
+	workflowExecutions: executionTracking.workflowExecutions,
+	activeWorkflowId: preview.activeWorkflowId,
+	getBufferedEvents: executionTracking.getBufferedEvents,
+	relay: (event) => workflowPreviewRef.value?.relayPushEvent(event),
+});
 
 // --- Message handlers ---
 async function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
@@ -503,7 +481,7 @@ function handleStop() {
 						:workflow-id="preview.activeWorkflowId.value"
 						:execution-id="preview.activeExecutionId.value"
 						:refresh-key="preview.workflowRefreshKey.value"
-						@iframe-ready="handleIframeReady"
+						@iframe-ready="eventRelay.handleIframeReady"
 					/>
 					<InstanceAiDataTablePreview
 						v-else-if="preview.activeDataTableId.value"
