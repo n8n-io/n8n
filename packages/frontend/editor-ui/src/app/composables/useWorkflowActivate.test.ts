@@ -120,14 +120,15 @@ describe('useWorkflowActivate', () => {
 			expect(mockOpenModal).not.toHaveBeenCalled();
 		});
 
-		it('should cancel confirmation listener when API call fails', async () => {
+		it('should cancel confirmation listener and return errorHandled when API call fails', async () => {
 			mockPublishWorkflow.mockRejectedValue(new Error('API error'));
 			vi.mocked(activationConfirmation.waitForActivationConfirmation).mockResolvedValue(true);
 
 			const { publishWorkflow } = useWorkflowActivate();
-			await publishWorkflow('wf-1', 'v-1');
+			const result = await publishWorkflow('wf-1', 'v-1');
 
 			expect(activationConfirmation.cancelActivationConfirmation).toHaveBeenCalledWith('wf-1');
+			expect(result).toEqual({ success: false, errorHandled: true });
 		});
 
 		it('should register confirmation listener before the API call', async () => {

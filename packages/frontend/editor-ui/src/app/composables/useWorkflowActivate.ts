@@ -186,7 +186,7 @@ export function useWorkflowActivate() {
 					});
 				}
 			}
-			return { success: false };
+			return { success: false, errorHandled: true };
 		} finally {
 			updatingWorkflowActivation.value = false;
 		}
