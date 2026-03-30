@@ -80,7 +80,9 @@ function mapVmError(error: unknown): Error {
 
 	// Name-based reconstruction for errors that crossed the isolate boundary
 	if (error instanceof Error && error.name === 'ExpressionExtensionError') {
-		return new ExpressionExtensionError(error.message);
+		const reconstructed = new ExpressionExtensionError(error.message);
+		Object.assign(reconstructed, error);
+		return reconstructed;
 	}
 	if (error instanceof Error && error.name === 'ExpressionError') {
 		const reconstructed = new ExpressionError(error.message);
