@@ -1,0 +1,31 @@
+services:
+  n8n:
+    image: ghcr.io/sethsterling22/n8n-tapis-auth:latest
+    container_name: n8n-tapis
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      - NODE_ENV=production
+      - N8N_PORT=5678
+      # Configure database (SQLite default)
+      - N8N_DATABASE_TYPE=sqlite
+      - N8N_METRICS=true
+      # Secret Key (Change for something more secure)
+      - N8N_ENCRYPTION_KEY=seth_tacc_secure_key_2026
+      - N8N_USER_MANAGEMENT_DISABLED=false
+      # Integration with tapis variables
+      - TAPIS_BASE_URL=https://portals.tapis.io
+      - NODE_OPTIONS=--max-old-space-size=4096
+    volumes:
+      # Data persistence for n8n (workflows, credentials, sqlite)
+      - n8n_data:/home/node/.n8n
+    # Correct signals management
+    stop_signal: SIGTERM
+
+volumes:
+  n8n_data:
+    driver: local
+
+# Run from root:
+# sudo docker compose build --no-cache && docker compose up

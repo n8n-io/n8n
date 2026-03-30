@@ -62,3 +62,6 @@ USER node
 # 5. Clean run command
 ENTRYPOINT ["tini", "--"]
 CMD ["pnpm", "start"]
+
+# Run from root:
+# sudo docker build -t n8n-tapis-auth:latest -f docker/images/n8n/Dockerfile .

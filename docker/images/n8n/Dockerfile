@@ -36,6 +36,3 @@ LABEL org.opencontainers.image.title="n8n" \
       org.opencontainers.image.source="https://github.com/n8n-io/n8n" \
       org.opencontainers.image.url="https://n8n.io" \
       org.opencontainers.image.version=${N8N_VERSION}
-
-# Run from root:
-# sudo docker build -t n8n-tapis-auth:latest -f docker/images/n8n/Dockerfile .
