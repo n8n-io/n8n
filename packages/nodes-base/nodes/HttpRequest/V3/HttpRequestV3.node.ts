@@ -885,11 +885,25 @@ export class HttpRequestV3 implements INodeType {
 									responseContentType,
 									this.helpers,
 								);
-								response.body = jsonParse(data, {
-									...(neverError
-										? { fallbackValue: {} }
-										: { errorMessage: 'Invalid JSON in response body' }),
-								});
+								const isEmptyResponse =
+									data === '' ||
+									data === null ||
+									data === undefined ||
+									(Buffer.isBuffer(data) && data.length === 0);
+
+								const contentLength = response.headers?.['content-length'];
+								const hasZeroLength = contentLength === '0';
+
+								if (isEmptyResponse || hasZeroLength) {
+									// For empty JSON responses, return empty object
+									response.body = {};
+								} else {
+									response.body = jsonParse(data, {
+										...(neverError
+											? { fallbackValue: {} }
+											: { errorMessage: 'Invalid JSON in response body' }),
+									});
+								}
 							}
 						} else if (binaryContentTypes.some((e) => responseContentType.includes(e))) {
 							responseFormat = 'file';
