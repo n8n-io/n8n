@@ -13,6 +13,10 @@ export function createUnpublishWorkflowTool(context: InstanceAiContext) {
 			'The draft is preserved and can be re-published later.',
 		inputSchema: z.object({
 			workflowId: z.string().describe('ID of the workflow to unpublish'),
+			workflowName: z
+				.string()
+				.optional()
+				.describe('Name of the workflow (for confirmation message)'),
 		}),
 		outputSchema: z.object({
 			success: z.boolean(),
@@ -36,7 +40,7 @@ export function createUnpublishWorkflowTool(context: InstanceAiContext) {
 			if (needsApproval && (resumeData === undefined || resumeData === null)) {
 				await suspend?.({
 					requestId: nanoid(),
-					message: `Unpublish workflow "${input.workflowId}"?`,
+					message: `Unpublish workflow "${input.workflowName ?? input.workflowId}"?`,
 					severity: 'warning' as const,
 				});
 				return { success: false };

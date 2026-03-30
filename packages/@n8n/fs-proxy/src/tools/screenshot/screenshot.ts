@@ -40,7 +40,7 @@ export const screenshotTool: ToolDefinition<typeof screenshotSchema> = {
 	name: 'screen_screenshot',
 	description: 'Capture a screenshot of the full screen and return it as a base64-encoded JPEG',
 	inputSchema: screenshotSchema,
-	annotations: { defaultPermission: 'allow', readOnlyHint: true },
+	annotations: { readOnlyHint: true },
 	getAffectedResources() {
 		return [{ toolGroup: 'computer' as const, resource: '*', description: 'Capture screenshot' }];
 	},
@@ -71,7 +71,7 @@ export const screenshotRegionTool: ToolDefinition<typeof screenshotRegionSchema>
 	name: 'screen_screenshot_region',
 	description: 'Capture a specific region of the screen and return it as a base64-encoded JPEG',
 	inputSchema: screenshotRegionSchema,
-	annotations: { defaultPermission: 'allow', readOnlyHint: true },
+	annotations: { readOnlyHint: true },
 	getAffectedResources() {
 		return [
 			{ toolGroup: 'computer' as const, resource: '*', description: 'Capture screenshot region' },
