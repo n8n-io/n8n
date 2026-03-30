@@ -1331,6 +1331,85 @@ describe('FilterParameter', () => {
 				});
 			});
 
+			describe('number equals with string coercion (loose validation)', () => {
+				it.each([
+					{ left: '200', right: 200, expected: true },
+					{ left: '0', right: 0, expected: true },
+					{ left: '15.5', right: 15.5, expected: true },
+					{ left: '-1', right: -1, expected: true },
+					{ left: '200', right: 201, expected: false },
+				])(
+					'number:equals(string "$left", $right) === $expected with loose validation',
+					({ left, right, expected }) => {
+						const result = executeFilter(
+							filterFactory({
+								conditions: [
+									{
+										id: '1',
+										leftValue: left,
+										rightValue: right,
+										operator: { operation: 'equals', type: 'number' },
+									},
+								],
+								options: { typeValidation: 'loose' },
+							}),
+						);
+						expect(result).toBe(expected);
+					},
+				);
+
+				it('should route HTTP status code 200 to true branch when comparing number equals', () => {
+					const result = executeFilter(
+						filterFactory({
+							conditions: [
+								{
+									id: '1',
+									leftValue: 200,
+									rightValue: 200,
+									operator: { operation: 'equals', type: 'number' },
+								},
+							],
+						}),
+					);
+					expect(result).toBe(true);
+				});
+
+				it('should route HTTP status code as string "200" to true branch with loose validation', () => {
+					const result = executeFilter(
+						filterFactory({
+							conditions: [
+								{
+									id: '1',
+									leftValue: '200',
+									rightValue: 200,
+									operator: { operation: 'equals', type: 'number' },
+								},
+							],
+							options: { typeValidation: 'loose' },
+						}),
+					);
+					expect(result).toBe(true);
+				});
+
+				it('should throw on string value with strict validation', () => {
+					expect(() =>
+						executeFilter(
+							filterFactory({
+								conditions: [
+									{
+										id: '1',
+										leftValue: '200',
+										rightValue: 200,
+										operator: { operation: 'equals', type: 'number' },
+									},
+								],
+								options: { typeValidation: 'strict' },
+							}),
+						),
+					).toThrowError();
+				});
+			});
+
 			describe('arrayContainsValue', () => {
 				test('should return true if the array contains the value', () => {
 					expect(arrayContainsValue([1, 2, 3], 2, false)).toBe(true);
