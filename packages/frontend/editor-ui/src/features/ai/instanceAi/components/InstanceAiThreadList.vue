@@ -289,10 +289,10 @@ function handleThreadAction(action: string, threadId: string) {
 	}
 
 	&.active {
-		background-color: var(--color--background--light-1);
+		background-color: var(--color--foreground--tint-2);
 
 		&:hover {
-			background-color: var(--color--background--light-1);
+			background-color: var(--color--foreground--tint-2);
 		}
 	}
 }
