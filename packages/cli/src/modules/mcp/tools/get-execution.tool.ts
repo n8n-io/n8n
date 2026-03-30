@@ -162,7 +162,7 @@ export const createGetExecutionTool = (
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
 			return {
-				content: [{ type: 'text', text: jsonStringify(output) }],
+				content: [{ type: 'text', text: jsonStringify(output, { replaceCircularRefs: true }) }],
 				structuredContent: output,
 			};
 		} catch (er) {
@@ -195,7 +195,7 @@ export const createGetExecutionTool = (
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
 			return {
-				content: [{ type: 'text', text: jsonStringify(output) }],
+				content: [{ type: 'text', text: jsonStringify(output, { replaceCircularRefs: true }) }],
 				structuredContent: output,
 			};
 		}
