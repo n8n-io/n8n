@@ -5,7 +5,17 @@ import {
 } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Body, Get, GlobalScope, Param, Patch, Post, Query, RestController } from '@n8n/decorators';
+import {
+	Body,
+	Delete,
+	Get,
+	GlobalScope,
+	Param,
+	Patch,
+	Post,
+	Query,
+	RestController,
+} from '@n8n/decorators';
 import type { Response } from 'express';
 
 import type {
@@ -63,5 +73,21 @@ export class RoleMappingRuleController {
 		}
 
 		return await this.roleMappingRuleService.patch(id, body);
+	}
+
+	@Delete('/:id')
+	@GlobalScope('roleMappingRule:delete')
+	async delete(
+		_req: AuthenticatedRequest,
+		res: Response,
+		@Param('id') id: string,
+	): Promise<{ success: true } | Response> {
+		if (!this.licenseState.isProvisioningLicensed()) {
+			return res.status(403).json({ message: 'Provisioning is not licensed' });
+		}
+
+		await this.roleMappingRuleService.delete(id);
+
+		return { success: true };
 	}
 }

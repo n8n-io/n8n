@@ -10,7 +10,9 @@
 			"Bash(pnpm test:*)",
 			"Bash(pnpm typecheck:*)",
 			"Bash(popd)",
-			"Bash(pushd:*)"
+			"Bash(pushd:*)",
+			"Bash(mkdir -p .claude/plans)",
+			"Write(.claude/plans/*)"
 		]
 	},
 	"extraKnownMarketplaces": {
