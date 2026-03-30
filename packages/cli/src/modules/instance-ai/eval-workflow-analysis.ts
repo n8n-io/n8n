@@ -10,9 +10,12 @@
  * the eval CLI, MCP, and other consumers.
  */
 
-import type { INode, IWorkflowBase } from 'n8n-workflow';
+import { Logger } from '@n8n/backend-common';
+import { Container } from '@n8n/di';
+import { type INode, type IWorkflowBase, jsonParse } from 'n8n-workflow';
 
 import { createEvalAgent, extractText } from '@n8n/instance-ai';
+import { extractNodeConfig } from './eval-node-config';
 
 // ---------------------------------------------------------------------------
 // Node classification
@@ -24,10 +27,16 @@ import { createEvalAgent, extractText } from '@n8n/instance-ai';
  */
 function findAiSubNodeNames(workflow: IWorkflowBase): Set<string> {
 	const subNodes = new Set<string>();
-	for (const [sourceName, nodeConns] of Object.entries(workflow.connections)) {
-		for (const connType of Object.keys(nodeConns)) {
-			if (connType.startsWith('ai_')) {
-				subNodes.add(sourceName);
+	for (const [, nodeConns] of Object.entries(workflow.connections)) {
+		for (const [connType, outputs] of Object.entries(nodeConns)) {
+			if (!connType.startsWith('ai_') || !Array.isArray(outputs)) continue;
+			for (const group of outputs) {
+				if (!Array.isArray(group)) continue;
+				for (const conn of group) {
+					if (typeof conn === 'object' && conn !== null && 'node' in conn) {
+						subNodes.add((conn as { node: string }).node);
+					}
+				}
 			}
 		}
 	}
@@ -61,6 +70,8 @@ export interface MockHints {
 	nodeHints: Record<string, string>;
 	/** Generated trigger output matching what the start node would produce */
 	triggerContent: Record<string, unknown>;
+	/** Errors encountered during hint generation or mock execution */
+	warnings: string[];
 }
 
 export interface GenerateMockHintsOptions {
@@ -101,13 +112,11 @@ function buildUserPrompt(
 
 	sections.push('', '## Workflow Nodes', '');
 	for (const node of workflow.nodes) {
-		const params = node.parameters as Record<string, unknown> | undefined;
-		const resource = typeof params?.resource === 'string' ? params.resource : undefined;
-		const operation = typeof params?.operation === 'string' ? params.operation : undefined;
-
 		let line = `- ${node.name} (${node.type})`;
-		if (resource) line += ` resource:${resource}`;
-		if (operation) line += ` op:${operation}`;
+		const config = extractNodeConfig(node);
+		if (config) {
+			line += ` ${config}`;
+		}
 		sections.push(line);
 	}
 
@@ -146,9 +155,14 @@ function buildUserPrompt(
  */
 export async function generateMockHints(options: GenerateMockHintsOptions): Promise<MockHints> {
 	const { workflow, nodeNames, scenarioHints } = options;
-	const emptyHints: MockHints = { globalContext: '', nodeHints: {}, triggerContent: {} };
+	const emptyResult: MockHints = {
+		globalContext: '',
+		nodeHints: {},
+		triggerContent: {},
+		warnings: [],
+	};
 
-	if (nodeNames.length === 0) return emptyHints;
+	if (nodeNames.length === 0) return emptyResult;
 
 	const userPrompt = buildUserPrompt(workflow, nodeNames, scenarioHints);
 
@@ -168,19 +182,54 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 			.replace(/\n?\s*```\s*$/i, '')
 			.trim();
 
-		const parsed = JSON.parse(text) as MockHints;
-		if (typeof parsed.globalContext !== 'string' || typeof parsed.nodeHints !== 'object') {
-			return emptyHints;
+		const parsed = jsonParse<Record<string, unknown>>(text);
+
+		// globalContext may come back as a string or object — normalize to string
+		let globalContext = '';
+		if (typeof parsed.globalContext === 'string') {
+			globalContext = parsed.globalContext;
+		} else if (typeof parsed.globalContext === 'object' && parsed.globalContext !== null) {
+			globalContext = JSON.stringify(parsed.globalContext);
 		}
+
+		if (
+			typeof parsed.nodeHints !== 'object' ||
+			parsed.nodeHints === null ||
+			Array.isArray(parsed.nodeHints)
+		) {
+			const preview = text.slice(0, 300);
+			return {
+				...emptyResult,
+				warnings: [`Phase 1: LLM returned invalid structure. Raw: ${preview}`],
+			};
+		}
+
+		const warnings: string[] = [];
+		const triggerContent =
+			typeof parsed.triggerContent === 'object' &&
+			parsed.triggerContent !== null &&
+			!Array.isArray(parsed.triggerContent)
+				? parsed.triggerContent
+				: {};
+		if (Object.keys(triggerContent).length === 0) {
+			warnings.push('Phase 1: LLM returned empty triggerContent — trigger node will have no data');
+		}
+
+		// Coerce nodeHints values to strings — LLM may return objects instead of strings
+		const nodeHints: Record<string, string> = {};
+		for (const [key, value] of Object.entries(parsed.nodeHints as Record<string, unknown>)) {
+			nodeHints[key] = typeof value === 'string' ? value : JSON.stringify(value);
+		}
+
 		return {
-			globalContext: parsed.globalContext,
-			nodeHints: parsed.nodeHints,
-			triggerContent:
-				typeof parsed.triggerContent === 'object' && parsed.triggerContent !== null
-					? parsed.triggerContent
-					: {},
+			globalContext,
+			nodeHints,
+			triggerContent: triggerContent as Record<string, unknown>,
+			warnings,
 		};
-	} catch {
-		return emptyHints;
+	} catch (error) {
+		const errorMsg = error instanceof Error ? error.message : String(error);
+		Container.get(Logger).error(`[EvalMock] Phase 1 hint generation failed: ${errorMsg}`);
+		return { ...emptyResult, warnings: [`Phase 1 error: ${errorMsg}`] };
 	}
 }

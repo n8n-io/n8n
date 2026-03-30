@@ -2,8 +2,8 @@
  * LLM-powered HTTP mock handler for evaluation.
  *
  * Generates realistic API responses on-the-fly based on the intercepted
- * request (URL, method, body) and optional scenario hints. Uses Claude Haiku
- * for speed — responses are small JSON objects.
+ * request (URL, method, body) and optional scenario hints. Uses Claude Sonnet
+ * with tool access to API documentation (Context7) and node configuration.
  *
  * The LLM returns a structured **response spec** (json, binary, or error)
  * which the handler materializes into the correct runtime format. This lets
@@ -18,34 +18,49 @@
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import type { EvalLlmMockHandler, EvalMockHttpResponse } from 'n8n-core';
+import { jsonParse } from 'n8n-workflow';
+import { z } from 'zod';
 
-import { createEvalAgent, extractText, HAIKU_MODEL } from '@n8n/instance-ai';
+import { createEvalAgent, extractText, Tool } from '@n8n/instance-ai';
+import { fetchApiDocs } from './eval-api-docs';
+import { extractNodeConfig } from './eval-node-config';
 
 // ---------------------------------------------------------------------------
-// System prompt (static — extracted to module level for agent singleton)
+// System prompt
 // ---------------------------------------------------------------------------
 
-const MOCK_SYSTEM_PROMPT = `You are an API mock server. You generate realistic mock responses as structured JSON specs.
+const MOCK_SYSTEM_PROMPT = `You are an API mock server generating realistic HTTP responses for n8n workflow evaluation.
 
-Return a JSON object with one of these formats:
+## Your tools
 
-For standard API responses (most common):
-{ "type": "json", "body": { ...the realistic API response... } }
+You have two tools. Call them before generating your response:
 
-For file/binary download endpoints (e.g. file downloads, image exports, attachments):
-{ "type": "binary", "contentType": "application/pdf", "filename": "document.pdf" }
+"lookup_api_docs" — Fetches real API documentation for a service endpoint. Use this to learn the correct response STRUCTURE (what fields, what nesting, what types the real API returns). Pay special attention to what the real API returns for the exact HTTP method and URL path you're responding to.
 
-For error responses:
-{ "type": "error", "statusCode": 404, "body": { ...the service's real error format... } }
+"get_node_config" — Returns the n8n node's configuration parameters. This tells you what the node is set up to work with. The configuration contains the values the node expects to find in API responses — resource IDs, field names, column names, etc. Every node type has different parameters, so you need to interpret the config intelligently. Key patterns:
+  - Objects with "__rl" are resource selectors — "value" is the selected resource (a document ID, channel, project, etc.)
+  - "schema" arrays list the exact field names the node expects in data
+  - "operation" and "resource" describe what the node does (e.g. "send" a "message", "create" an "issue")
+  - Strings starting with "=" are expressions (ignore these) — all other strings are literal values
 
-Rules:
-- Return ONLY the spec JSON — no markdown, no code fences, no explanation
-- Match the real API's response schema as closely as possible
-- Use realistic but fake data (IDs, names, timestamps, emails)
-- For read operations, return 2-3 representative items in the body
-- For write operations, return the service's standard success/confirmation in the body
-- Choose "binary" only for endpoints that genuinely return file content (downloads, exports)
-- IMPORTANT: Always indicate there are NO more pages — set has_more=false, next_cursor="", nextPageToken=null, or equivalent. Do not trigger pagination`;
+## How to combine them
+
+The API docs tell you the response SHAPE. The node config tells you the exact DATA VALUES to put in that shape. All names, IDs, and identifiers from the node config are case-sensitive — use them character-for-character.
+
+## Output format
+
+Respond with ONLY a JSON object. No explanation, no markdown, no prose.
+
+{ "type": "json", "body": { ...realistic API response... } }
+{ "type": "binary", "contentType": "application/pdf", "filename": "doc.pdf" }
+{ "type": "error", "statusCode": 404, "body": { ...service error format... } }
+
+## Rules
+
+- A node may make MULTIPLE sequential HTTP requests in a single execution (e.g., first GET metadata, then GET headers, then POST data). You are responding to ONE specific request. Match your response to the URL + method of THIS request only. A GET to a metadata endpoint must return metadata — not a write result — even if the node's overall purpose is to write data.
+- Echo request values faithfully. If the request contains an identifier, name, or reference value (even one that looks like a placeholder such as "YOUR_CHAT_ID" or "YOUR_API_KEY"), echo it back exactly in the corresponding response field. The real API would reflect the same value the client sent.
+- Some APIs return empty or minimal responses on success (204 with no body, 202 with empty body). If the API documentation indicates an empty response body, return { "type": "json", "body": {} }. Don't invent additional response fields.
+- No pagination — always indicate end of results (has_more=false, nextPageToken=null, etc.)`;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -63,13 +78,9 @@ interface MockHandlerOptions {
 /** Structured response spec returned by the LLM */
 interface MockResponseSpec {
 	type: 'json' | 'binary' | 'error';
-	/** The response body — present for json and error types */
 	body?: unknown;
-	/** HTTP status code — present for error type */
 	statusCode?: number;
-	/** MIME type — present for binary type */
 	contentType?: string;
-	/** Filename hint — present for binary type */
 	filename?: string;
 }
 
@@ -85,12 +96,20 @@ interface MockResponseSpec {
  * response spec, then materializes it into the correct format (JSON, Buffer, error).
  */
 export function createLlmMockHandler(options?: MockHandlerOptions): EvalLlmMockHandler {
-	return async (requestOptions, node) =>
-		await generateMockResponse(requestOptions, node, {
+	// Pre-compute node configs so we don't re-extract on every request
+	const nodeConfigCache = new Map<string, string>();
+
+	return async (requestOptions, node) => {
+		if (!nodeConfigCache.has(node.name)) {
+			nodeConfigCache.set(node.name, extractNodeConfig(node));
+		}
+		return await generateMockResponse(requestOptions, node, {
 			scenarioHints: options?.scenarioHints,
 			globalContext: options?.globalContext,
 			nodeHint: options?.nodeHints?.[node.name],
+			nodeConfig: nodeConfigCache.get(node.name) ?? '',
 		});
+	};
 }
 
 // ---------------------------------------------------------------------------
@@ -101,48 +120,78 @@ interface MockResponseContext {
 	scenarioHints?: string;
 	globalContext?: string;
 	nodeHint?: string;
+	nodeConfig: string;
 }
 
 async function generateMockResponse(
 	request: { url: string; method?: string; body?: unknown; qs?: Record<string, unknown> },
 	node: { name: string; type: string },
-	context?: MockResponseContext,
+	context: MockResponseContext,
 ): Promise<EvalMockHttpResponse> {
 	const serviceName = extractServiceName(request.url);
 	const endpoint = extractEndpoint(request.url);
 
-	// Build context blocks from pre-generated hints + scenario
-	const contextBlocks: string[] = [];
-	if (context?.globalContext) {
-		contextBlocks.push(`Data context: ${context.globalContext}`);
+	// Build user prompt with clearly separated sections
+	const sections: string[] = [
+		'## Request',
+		`Service: ${serviceName}`,
+		`Node: "${node.name}" (${node.type})`,
+		(request.method ?? 'GET') + ' ' + endpoint,
+		'Generate the response for this EXACT endpoint and method.',
+	];
+
+	if (request.body) {
+		sections.push(`Body: ${JSON.stringify(request.body)}`);
 	}
-	if (context?.nodeHint) {
-		contextBlocks.push(`Node hint: ${context.nodeHint}`);
+	if (request.qs && Object.keys(request.qs).length > 0) {
+		sections.push(`Query: ${JSON.stringify(request.qs)}`);
 	}
-	if (context?.scenarioHints) {
-		contextBlocks.push(
-			`Scenario: ${context.scenarioHints}\nUse the "error" type with the appropriate statusCode for error scenarios.`,
+
+	// Detect GraphQL and add format constraint
+	const isGraphQL =
+		endpoint.includes('/graphql') ||
+		(typeof request.body === 'object' && request.body !== null && 'query' in request.body);
+
+	if (isGraphQL) {
+		sections.push('', '## GraphQL format requirement');
+		sections.push(
+			'This is a GraphQL endpoint. ALL responses MUST use GraphQL response format:',
+			'- Success: { "data": { ...fields matching the query... } }',
+			'- Error: { "errors": [{ "message": "...", "extensions": { "code": "..." } }], "data": null }',
+			'Never return flat REST-style error objects.',
 		);
 	}
-	const contextBlock = contextBlocks.length > 0 ? '\n' + contextBlocks.join('\n') : '';
 
-	const userPrompt = `Generate a mock response spec for this API call:
+	if (context.nodeConfig) {
+		sections.push('', '## Node Configuration', context.nodeConfig);
+	}
 
-Service: ${serviceName}
-Node: "${node.name}" (${node.type})
-Request: ${request.method ?? 'GET'} ${endpoint}${request.body ? `\nBody: ${JSON.stringify(request.body)}` : ''}${request.qs ? `\nQuery: ${JSON.stringify(request.qs)}` : ''}${contextBlock}
+	if (context.globalContext || context.nodeHint || context.scenarioHints) {
+		sections.push('', '## Context');
+		if (context.globalContext) sections.push(`Data: ${context.globalContext}`);
+		if (context.nodeHint) sections.push(`Hint: ${context.nodeHint}`);
+		if (context.scenarioHints) {
+			sections.push(`Scenario: ${context.scenarioHints}`);
+			sections.push(
+				isGraphQL
+					? '(For error scenarios, use GraphQL error format with "data": null. Don\'t use "type": "error" wrapper.)'
+					: '(Use "error" type with appropriate statusCode for error scenarios.)',
+			);
+		}
+	}
 
-Response spec:`;
+	const userPrompt = sections.join('\n');
 
 	try {
-		const spec = await callLlm(userPrompt);
+		const spec = await callLlm(userPrompt, context.nodeConfig);
 		return materializeSpec(spec);
 	} catch (error) {
+		const errorMsg = error instanceof Error ? error.message : String(error);
 		Container.get(Logger).error(
-			`[EvalMock] Mock generation failed for ${request.method ?? 'GET'} ${request.url}: ${error instanceof Error ? error.message : String(error)}`,
+			`[EvalMock] Mock generation failed for ${request.method ?? 'GET'} ${request.url}: ${errorMsg}`,
 		);
 		return {
-			body: { ok: true, _evalMockFallback: true },
+			body: { _evalMockError: true, message: `Mock generation failed: ${errorMsg}` },
 			headers: { 'content-type': 'application/json' },
 			statusCode: 200,
 		};
@@ -150,32 +199,86 @@ Response spec:`;
 }
 
 // ---------------------------------------------------------------------------
-// LLM call
+// Tool definitions (@n8n/agents)
 // ---------------------------------------------------------------------------
 
-async function callLlm(userPrompt: string): Promise<MockResponseSpec> {
+const apiDocsTool = new Tool('lookup_api_docs')
+	.description(
+		'Look up official API documentation for a specific REST endpoint to understand the exact response format.',
+	)
+	.input(
+		z.object({
+			serviceName: z
+				.string()
+				.describe('The API service name (e.g. "Google Sheets", "Gmail", "Slack")'),
+			endpointDescription: z
+				.string()
+				.describe(
+					'Description of the endpoint (e.g. "GET spreadsheets values response format")',
+				),
+		}),
+	)
+	.handler(async (input: { serviceName: string; endpointDescription: string }) => {
+		return await fetchApiDocs(input.serviceName, input.endpointDescription);
+	})
+	.build();
+
+function createNodeConfigTool(nodeConfig: string) {
+	return new Tool('get_node_config')
+		.description(
+			"Get the n8n node's configuration parameters — resource IDs, field names, settings, etc. Your mock data must match these exact values.",
+		)
+		.input(z.object({}))
+		.handler(async () => nodeConfig)
+		.build();
+}
+
+// ---------------------------------------------------------------------------
+// LLM call with tool use (agent handles multi-round loop automatically)
+// ---------------------------------------------------------------------------
+
+async function callLlm(userPrompt: string, nodeConfig: string): Promise<MockResponseSpec> {
 	const agent = createEvalAgent('eval-mock-responder', {
-		model: HAIKU_MODEL,
 		instructions: MOCK_SYSTEM_PROMPT,
-	});
+	})
+		.tool(apiDocsTool)
+		.tool(createNodeConfigTool(nodeConfig));
 
 	const result = await agent.generate(userPrompt, {
 		providerOptions: { anthropic: { maxTokens: 4096 } },
 	});
 
-	let text = extractText(result);
+	const text = extractText(result);
+	return parseResponseText(text);
+}
 
-	// Strip markdown code fences if the LLM wraps the response
+function parseResponseText(raw: string): MockResponseSpec {
+	let text = raw.trim();
+
+	// Extract JSON from a ```json fenced block (anywhere in the text)
+	// Allow optional newline after opening fence — LLM sometimes omits it
+	const fencedMatch = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?\s*```/i);
+	if (fencedMatch) {
+		text = fencedMatch[1].trim();
+	}
+
+	// Strip any remaining fences at boundaries
 	text = text
 		.replace(/^```(?:json)?\s*\n?/i, '')
 		.replace(/\n?\s*```\s*$/i, '')
 		.trim();
 
-	const parsed = JSON.parse(text) as MockResponseSpec;
+	// If still starts with prose, extract the JSON object by finding balanced braces
+	if (text.length > 0 && !text.startsWith('{') && !text.startsWith('[')) {
+		const extracted = extractJsonObject(text);
+		if (extracted) {
+			text = extracted;
+		}
+	}
 
-	// Validate the spec has the required shape
+	const parsed = jsonParse<MockResponseSpec>(text);
+
 	if (!parsed.type || !['json', 'binary', 'error'].includes(parsed.type)) {
-		// LLM returned raw JSON without the spec wrapper — treat as json body
 		return { type: 'json', body: parsed };
 	}
 
@@ -226,11 +329,53 @@ function materializeSpec(spec: MockResponseSpec): EvalMockHttpResponse {
 // Helpers
 // ---------------------------------------------------------------------------
 
+/**
+ * Extract a JSON object from text by finding balanced braces.
+ * Handles the case where the LLM wraps JSON in prose.
+ */
+function extractJsonObject(text: string): string | undefined {
+	const start = text.indexOf('{');
+	if (start < 0) return undefined;
+
+	let depth = 0;
+	let inString = false;
+	let escape = false;
+
+	for (let i = start; i < text.length; i++) {
+		const ch = text[i];
+		if (escape) {
+			escape = false;
+			continue;
+		}
+		if (ch === '\\' && inString) {
+			escape = true;
+			continue;
+		}
+		if (ch === '"') {
+			inString = !inString;
+			continue;
+		}
+		if (inString) continue;
+		if (ch === '{') depth++;
+		if (ch === '}') {
+			depth--;
+			if (depth === 0) {
+				return text.slice(start, i + 1);
+			}
+		}
+	}
+	// Unbalanced — fall back to slice from start
+	return text.slice(start);
+}
+
 function extractServiceName(url: string): string {
 	try {
 		const hostname = new URL(url).hostname;
 		// "api.slack.com" → "Slack", "www.googleapis.com" → "Google APIs"
-		const parts = hostname.replace('api.', '').replace('www.', '').split('.');
+		const parts = hostname
+			.replace(/^api\./, '')
+			.replace(/^www\./, '')
+			.split('.');
 		return parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
 	} catch {
 		return 'Unknown';

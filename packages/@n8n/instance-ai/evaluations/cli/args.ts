@@ -29,6 +29,8 @@ export interface CliArgs {
 	password?: string;
 	verbose: boolean;
 	command?: 'report' | 'upload-datasets' | 'workflows';
+	/** Filter workflow test cases by filename substring (e.g. "contact-form") */
+	filter?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -53,6 +55,7 @@ const cliArgsSchema = z.object({
 	password: z.string().optional(),
 	verbose: z.boolean().default(false),
 	command: z.enum(['report', 'upload-datasets', 'workflows']).optional(),
+	filter: z.string().optional(),
 });
 
 // ---------------------------------------------------------------------------
@@ -81,6 +84,7 @@ export function parseCliArgs(argv: string[]): CliArgs {
 		password: validated.password,
 		verbose: validated.verbose,
 		command: validated.command,
+		filter: validated.filter,
 	};
 }
 
@@ -106,6 +110,7 @@ interface RawArgs {
 	password?: string;
 	verbose: boolean;
 	command?: 'report' | 'upload-datasets' | 'workflows';
+	filter?: string;
 }
 
 function parseRawArgs(argv: string[]): RawArgs {
@@ -212,6 +217,11 @@ function parseRawArgs(argv: string[]): RawArgs {
 
 			case '--verbose':
 				result.verbose = true;
+				break;
+
+			case '--filter':
+				result.filter = nextArg(argv, i, '--filter');
+				i++;
 				break;
 
 			default:

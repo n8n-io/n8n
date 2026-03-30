@@ -14,8 +14,11 @@ function parseTestCaseFile(filePath: string): WorkflowTestCase {
 	}
 }
 
-export function loadWorkflowTestCases(): WorkflowTestCase[] {
+export function loadWorkflowTestCases(filter?: string): WorkflowTestCase[] {
 	const dir = __dirname;
-	const files = readdirSync(dir).filter((f) => f.endsWith('.json'));
+	let files = readdirSync(dir).filter((f) => f.endsWith('.json'));
+	if (filter) {
+		files = files.filter((f) => f.toLowerCase().includes(filter.toLowerCase()));
+	}
 	return files.map((f) => parseTestCaseFile(join(dir, f)));
 }

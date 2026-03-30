@@ -1,8 +1,8 @@
 import crypto from 'node:crypto';
 
-import { checklistItemSchema, type ChecklistItem } from '../types';
-import { CHECKLIST_EXTRACT_PROMPT } from '../system-prompts/checklist-extract';
 import { createEvalAgent, extractText } from '../../src/utils/eval-agents';
+import { CHECKLIST_EXTRACT_PROMPT } from '../system-prompts/checklist-extract';
+import { checklistItemSchema, type ChecklistItem } from '../types';
 
 // ---------------------------------------------------------------------------
 // In-memory cache keyed by SHA-256 of prompt

@@ -66,7 +66,8 @@ import clientOAuth1 from 'oauth-1.0a';
 import { stringify } from 'qs';
 import { Readable } from 'stream';
 
-import type { EvalMockHttpResponse, SsrfBridge } from '@/execution-engine';
+import type { SsrfBridge } from '@/execution-engine';
+import { callEvalMockHandler, normalizeLegacyRequest } from '@/execution-engine/eval-mock-helpers';
 import type { IResponseError } from '@/interfaces';
 
 import { binaryToString } from './binary-helper-functions';
@@ -658,40 +659,6 @@ export const removeEmptyBody = (requestOptions: IHttpRequestOptions | IRequestOp
 	}
 };
 
-/**
- * Convert an EvalMockHttpResponse into the full-response shape that callers expect
- * when `returnFullResponse` / `resolveWithFullResponse` is true.
- * Body is serialized to a Buffer so downstream processing (binary detection,
- * encoding detection, stream handling) works exactly as with a real HTTP response.
- */
-function serializeMockToHttpResponse(mock: EvalMockHttpResponse) {
-	const body = mock.body instanceof Buffer ? mock.body : Buffer.from(JSON.stringify(mock.body));
-	return { body, headers: mock.headers, statusCode: mock.statusCode, statusMessage: 'OK' };
-}
-
-/** Normalize legacy IRequestOptions or (uri, options) args into IHttpRequestOptions for the eval mock handler. */
-function normalizeLegacyRequest(
-	uriOrObject: string | IRequestOptions,
-	options?: IRequestOptions,
-): IHttpRequestOptions {
-	if (typeof uriOrObject === 'string') {
-		return {
-			url: uriOrObject,
-			method: options?.method,
-			headers: options?.headers as IHttpRequestOptions['headers'],
-			body: options?.body,
-			qs: options?.qs,
-		};
-	}
-	return {
-		url: uriOrObject.uri ?? uriOrObject.url ?? '',
-		method: uriOrObject.method,
-		headers: uriOrObject.headers as IHttpRequestOptions['headers'],
-		body: uriOrObject.body,
-		qs: uriOrObject.qs,
-	};
-}
-
 export async function httpRequest(
 	requestOptions: IHttpRequestOptions,
 	ssrfBridge?: SsrfBridge,
@@ -1096,15 +1063,15 @@ export async function httpRequestWithAuthentication(
 
 	let credentialsDecrypted: ICredentialDataDecryptedObject | undefined;
 
-	// Eval LLM mock: intercept before credential auth and OAuth signing —
-	// there's no point resolving credentials for a request the mock handler will handle.
+	// Eval LLM mock: intercept before credential auth and OAuth signing
 	if (additionalData.evalLlmMockHandler) {
-		const mockResponse = await additionalData.evalLlmMockHandler(requestOptions, node);
-		if (mockResponse) {
-			return requestOptions.returnFullResponse
-				? serializeMockToHttpResponse(mockResponse)
-				: mockResponse.body;
-		}
+		const evalMockResponse = await callEvalMockHandler(
+			additionalData.evalLlmMockHandler,
+			requestOptions,
+			node,
+			requestOptions.returnFullResponse,
+		);
+		if (evalMockResponse !== undefined) return evalMockResponse;
 	}
 
 	try {
@@ -1221,15 +1188,14 @@ export async function requestWithAuthentication(
 
 	// Eval LLM mock: intercept before credential auth and OAuth signing (legacy path)
 	if (additionalData.evalLlmMockHandler) {
-		const mockResponse = await additionalData.evalLlmMockHandler(
+		const evalMockResponse = await callEvalMockHandler(
+			additionalData.evalLlmMockHandler,
 			normalizeLegacyRequest(requestOptions),
 			node,
+			requestOptions.resolveWithFullResponse,
+			'legacy',
 		);
-		if (mockResponse) {
-			return requestOptions.resolveWithFullResponse
-				? serializeMockToHttpResponse(mockResponse)
-				: mockResponse.body;
-		}
+		if (evalMockResponse !== undefined) return evalMockResponse;
 	}
 
 	try {
@@ -1581,12 +1547,13 @@ export const getRequestHelperFunctions = (
 	return {
 		httpRequest: async (requestOptions: IHttpRequestOptions) => {
 			if (evalLlmMock) {
-				const mockResponse = await evalLlmMock(requestOptions, node);
-				if (mockResponse) {
-					return requestOptions.returnFullResponse
-						? serializeMockToHttpResponse(mockResponse)
-						: mockResponse.body;
-				}
+				const evalMockResponse = await callEvalMockHandler(
+					evalLlmMock,
+					requestOptions,
+					node,
+					requestOptions.returnFullResponse,
+				);
+				if (evalMockResponse !== undefined) return evalMockResponse;
 			}
 			return await httpRequest(requestOptions, additionalData.ssrfBridge);
 		},
@@ -1624,11 +1591,15 @@ export const getRequestHelperFunctions = (
 
 		request: async (uriOrObject, options) => {
 			if (evalLlmMock) {
-				const mockResponse = await evalLlmMock(normalizeLegacyRequest(uriOrObject, options), node);
-				if (mockResponse) {
-					const wantsFull = typeof uriOrObject !== 'string' && uriOrObject.resolveWithFullResponse;
-					return wantsFull ? serializeMockToHttpResponse(mockResponse) : mockResponse.body;
-				}
+				const wantsFull = typeof uriOrObject !== 'string' && uriOrObject.resolveWithFullResponse;
+				const evalMockResponse = await callEvalMockHandler(
+					evalLlmMock,
+					normalizeLegacyRequest(uriOrObject, options),
+					node,
+					wantsFull,
+					'legacy',
+				);
+				if (evalMockResponse !== undefined) return evalMockResponse;
 			}
 			return await proxyRequestToAxios(workflow, additionalData, node, uriOrObject, options);
 		},
@@ -1657,6 +1628,16 @@ export const getRequestHelperFunctions = (
 			credentialsType: string,
 			requestOptions: IRequestOptions,
 		): Promise<any> {
+			if (evalLlmMock) {
+				const evalMockResponse = await callEvalMockHandler(
+					evalLlmMock,
+					normalizeLegacyRequest(requestOptions),
+					node,
+					requestOptions.resolveWithFullResponse,
+					'legacy',
+				);
+				if (evalMockResponse !== undefined) return evalMockResponse;
+			}
 			return await requestOAuth1.call(this, credentialsType, requestOptions);
 		},
 
@@ -1666,6 +1647,16 @@ export const getRequestHelperFunctions = (
 			requestOptions: IRequestOptions,
 			oAuth2Options?: IOAuth2Options,
 		): Promise<any> {
+			if (evalLlmMock) {
+				const evalMockResponse = await callEvalMockHandler(
+					evalLlmMock,
+					normalizeLegacyRequest(requestOptions),
+					node,
+					requestOptions.resolveWithFullResponse,
+					'legacy',
+				);
+				if (evalMockResponse !== undefined) return evalMockResponse;
+			}
 			return await requestOAuth2.call(
 				this,
 				credentialsType,

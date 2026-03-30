@@ -1,7 +1,7 @@
-import type { ChecklistItem, ChecklistResult } from '../types';
-import { CHECKLIST_VERIFY_PROMPT } from '../system-prompts/checklist-verify';
 import { runProgrammaticCheck } from './programmatic-checks';
 import { createEvalAgent, extractText } from '../../src/utils/eval-agents';
+import { CHECKLIST_VERIFY_PROMPT } from '../system-prompts/checklist-verify';
+import type { ChecklistItem, ChecklistResult } from '../types';
 
 // ---------------------------------------------------------------------------
 // JSON parsing helpers
@@ -36,7 +36,7 @@ function parseJsonArray(text: string): unknown[] {
 export async function verifyChecklist(
 	checklist: ChecklistItem[],
 	verificationArtifact: string,
-	workflowJsons: Record<string, unknown>[],
+	workflowJsons: Array<Record<string, unknown>>,
 ): Promise<ChecklistResult[]> {
 	const programmaticItems = checklist.filter((i) => i.strategy === 'programmatic' && i.check);
 	const llmItems = checklist.filter((i) => i.strategy === 'llm');

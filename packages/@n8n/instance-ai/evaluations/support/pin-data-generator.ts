@@ -10,13 +10,13 @@
  * by MCP, frontend, instance-ai evaluations, and other teams.
  */
 
+import type { WorkflowJSON, NodeJSON } from '@n8n/workflow-sdk';
 import { existsSync, readFileSync, readdirSync } from 'fs';
 import { join } from 'path';
 
-import type { WorkflowJSON, NodeJSON } from '@n8n/workflow-sdk';
 
-import type { PinData, PinDataGenerationInstructions } from '../types';
 import { createEvalAgent, extractText } from '../../src/utils/eval-agents';
+import type { PinData, PinDataGenerationInstructions } from '../types';
 
 // ---------------------------------------------------------------------------
 // Public types

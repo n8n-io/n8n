@@ -1,6 +1,6 @@
-import type { ChecklistItem, ExecutionChecklist } from '../types';
-import { EXECUTION_CHECKLIST_EXTRACT_PROMPT } from '../system-prompts/execution-extract';
 import { createEvalAgent, extractText } from '../../src/utils/eval-agents';
+import { EXECUTION_CHECKLIST_EXTRACT_PROMPT } from '../system-prompts/execution-extract';
+import type { ChecklistItem, ExecutionChecklist } from '../types';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -55,7 +55,7 @@ export async function extractExecutionChecklist(
 	prompt: string,
 	workflowJson: Record<string, unknown>,
 	seededCredentialTypes?: string[],
-	existingExecutionOutput?: Array<{ nodeName: string; data: Record<string, unknown>[] }>,
+	existingExecutionOutput?: Array<{ nodeName: string; data: Array<Record<string, unknown>> }>,
 ): Promise<ExecutionChecklist> {
 	const workflowSummary = simplifyWorkflowJson(workflowJson);
 

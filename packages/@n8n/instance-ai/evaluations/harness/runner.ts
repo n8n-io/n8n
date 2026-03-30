@@ -25,11 +25,9 @@ import {
 	extractChatMessages,
 } from '../outcome/artifact-builder';
 import { cleanupAll } from '../outcome/cleanup';
-import { runPostBuildExecutions, executeWithFullPinData } from '../execution/tester';
+import { runPostBuildExecutions } from '../execution/tester';
 import { saveRun } from '../report/storage';
 import { writeReport } from '../report/generator';
-import { generatePinData } from '../support/pin-data-generator';
-import { identifyServiceNodes } from '../support/service-node-classifier';
 import { createLogger, type EvalLogger } from './logger';
 import type {
 	PromptConfig,
@@ -38,12 +36,12 @@ import type {
 	InstanceAiResult,
 	CapturedEvent,
 	ExecutionChecklist,
-	PinData,
 	Run,
+	ScenarioResult,
+	TestScenario,
 	WorkflowTestCase,
 	WorkflowTestCaseResult,
 } from '../types';
-import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -77,6 +75,9 @@ const SSE_SETTLE_DELAY_MS = 200;
 const POLL_INTERVAL_MS = 500;
 const BACKGROUND_TASK_POLL_INTERVAL_MS = 2_000;
 const MAX_CONFIRMATION_RETRIES = 5;
+
+/** Max concurrent scenario executions per test case */
+const MAX_CONCURRENT_SCENARIOS = 99;
 
 // ---------------------------------------------------------------------------
 // Main entry point
@@ -445,7 +446,7 @@ async function runSingleExample(config: SingleExampleConfig): Promise<InstanceAi
 // Workflow test case runner — build once, run scenarios against it
 // ---------------------------------------------------------------------------
 
-const SCENARIO_BG_TASK_TIMEOUT_MS = 60_000;
+const SCENARIO_BG_TASK_TIMEOUT_MS = 120_000;
 
 interface WorkflowTestCaseConfig {
 	client: N8nClient;
@@ -565,115 +566,39 @@ export async function runWorkflowTestCase(
 
 		result.workflowBuildSuccess = true;
 		result.workflowId = outcome.workflowsCreated[0].id;
-		const workflowJson = outcome.workflowJsons[0] as unknown as WorkflowJSON;
+		result.workflowJson = outcome.workflowJsons[0] as Record<string, unknown> | undefined;
 
 		logger.info(
 			`  Workflow built: ${outcome.workflowsCreated[0].name} (${String(outcome.workflowsCreated[0].nodeCount)} nodes)`,
 		);
 
-		// 3. Identify service nodes that need pin data
-		const serviceNodes = identifyServiceNodes(workflowJson);
-		const nodeNames = serviceNodes.map((n) => n.name).filter(Boolean) as string[];
-		logger.verbose(`  Service nodes needing pin data: ${nodeNames.join(', ') || 'none'}`);
+		// 3. Run scenarios with bounded concurrency to avoid API rate limits
+		const workflowId = outcome.workflowsCreated[0].id;
 
-		// 4. Run each scenario against the same workflow
-		const runnableScenarios = testCase.scenarios.filter((s) => s.requires !== 'mock-server');
-
-		for (const scenario of runnableScenarios) {
+		for (const scenario of testCase.scenarios) {
 			logger.info(`    Scenario: ${scenario.name}`);
-
-			try {
-				// Generate pin data for all nodes (trigger + service) in one call
-				let pinData: PinData = {};
-				if (nodeNames.length > 0) {
-					pinData = await generatePinData({
-						workflow: workflowJson,
-						nodeNames,
-						instructions: { dataDescription: scenario.dataSetup },
-					});
-					logger.verbose(
-						`    Pin data generated for ${String(Object.keys(pinData).length)} node(s)`,
-					);
-				}
-
-				// Execute with the generated pin data
-				const executionSummary = await executeWithFullPinData(
-					client,
-					outcome.workflowsCreated[0].id,
-					pinData,
-					outcome.workflowJsons,
-				);
-
-				// Evaluate using scenario.successCriteria via LLM
-				const baseArtifact = buildVerificationArtifactFromMessages(threadMessages.messages, {
-					...outcome,
-					executionsRun: [executionSummary],
-				});
-
-				// Enrich artifact with scenario context so the verifier understands
-				// which nodes had mock data vs which ran for real
-				const pinnedNodesList = Object.keys(pinData).join(', ') || 'none';
-				const scenarioContext = [
-					'### Evaluation Context',
-					'',
-					`**Scenario:** ${scenario.name} — ${scenario.description}`,
-					'',
-					`**Data setup:** ${scenario.dataSetup}`,
-					'',
-					`**Pinned nodes (mock data):** ${pinnedNodesList}`,
-					'These nodes had mock data injected and did not call real services.',
-					'All other nodes executed for real with the mock data flowing through them.',
-					'',
-					'**What to verify:** Given the mock data was injected as described above,',
-					'did the workflow logic (routing, transformations, merging) process it correctly?',
-					'Focus on whether the non-pinned nodes produced correct output based on their inputs.',
-				].join('\n');
-
-				const verificationArtifact = `${scenarioContext}\n\n---\n\n${baseArtifact}`;
-
-				const scenarioChecklist: ChecklistItem[] = [
-					{
-						id: 1,
-						description: scenario.successCriteria,
-						category: 'execution',
-						strategy: 'llm',
-					},
-				];
-
-				const verificationResults = await verifyChecklist(
-					scenarioChecklist,
-					verificationArtifact,
-					outcome.workflowJsons,
-				);
-
-				const passed = verificationResults.length > 0 && verificationResults[0].pass;
-				const reasoning =
-					verificationResults.length > 0
-						? verificationResults[0].reasoning
-						: 'No verification result';
-
-				result.scenarioResults.push({
-					scenario,
-					success: passed,
-					executionSummary,
-					score: passed ? 1 : 0,
-					reasoning,
-				});
-
-				logger.info(`    ${passed ? 'PASS' : 'FAIL'}: ${reasoning.slice(0, 100)}`);
-			} catch (err: unknown) {
-				const errorMessage = err instanceof Error ? err.message : String(err);
-				result.scenarioResults.push({
-					scenario,
-					success: false,
-					score: 0,
-					reasoning: `Error: ${errorMessage}`,
-				});
-				logger.error(`    ERROR: ${errorMessage}`);
-			}
 		}
 
-		// 5. Cleanup — workflows, credentials, and data tables
+		result.scenarioResults = await runWithConcurrency(
+			testCase.scenarios,
+			async (scenario) => {
+				try {
+					return await runScenario(client, scenario, workflowId, outcome.workflowJsons, logger);
+				} catch (err: unknown) {
+					const errorMessage = err instanceof Error ? err.message : String(err);
+					logger.error(`    ERROR [${scenario.name}]: ${errorMessage}`);
+					return {
+						scenario,
+						success: false,
+						score: 0,
+						reasoning: `Error: ${errorMessage}`,
+					} satisfies ScenarioResult;
+				}
+			},
+			MAX_CONCURRENT_SCENARIOS,
+		);
+
+		// 4. Cleanup — workflows, credentials, and data tables
 		await cleanupAll(client, outcome, []).catch(() => {});
 
 		// Clean up data tables created during this run
@@ -700,6 +625,98 @@ export async function runWorkflowTestCase(
 	}
 
 	return result;
+}
+
+// ---------------------------------------------------------------------------
+// Scenario execution
+// ---------------------------------------------------------------------------
+
+async function runScenario(
+	client: N8nClient,
+	scenario: TestScenario,
+	workflowId: string,
+	workflowJsons: Record<string, unknown>[],
+	logger: EvalLogger,
+): Promise<ScenarioResult> {
+	const evalResult = await client.executeWithLlmMock(workflowId, scenario.dataSetup);
+
+	logger.verbose(
+		`    [${scenario.name}] Execution ${evalResult.executionId}: ${evalResult.success ? 'success' : 'failed'}` +
+			` (${Object.keys(evalResult.nodeResults).length} nodes, ${evalResult.errors.length} errors)`,
+	);
+
+	// Build verification artifact from the execution result
+	const mockedNodes: string[] = [];
+	const pinnedNodes: string[] = [];
+	const realNodes: string[] = [];
+	const interceptedLines: string[] = [];
+
+	for (const [nodeName, nr] of Object.entries(evalResult.nodeResults)) {
+		if (nr.executionMode === 'mocked') mockedNodes.push(nodeName);
+		else if (nr.executionMode === 'pinned') pinnedNodes.push(nodeName);
+		else realNodes.push(nodeName);
+
+		for (const req of nr.interceptedRequests) {
+			interceptedLines.push(`  - ${nodeName}: ${req.method} ${req.url}`);
+		}
+	}
+
+	const scenarioContext = [
+		'### Evaluation Context',
+		'',
+		`**Scenario:** ${scenario.name} — ${scenario.description}`,
+		'',
+		`**Data setup:** ${scenario.dataSetup}`,
+		'',
+		`**Mocked nodes (HTTP intercepted by LLM):** ${mockedNodes.join(', ') || 'none'}`,
+		`**Pinned nodes (trigger data):** ${pinnedNodes.join(', ') || 'none'}`,
+		`**Real nodes (executed with actual logic):** ${realNodes.join(', ') || 'none'}`,
+		'',
+		...(interceptedLines.length > 0
+			? ['**Intercepted HTTP requests:**', ...interceptedLines, '']
+			: []),
+		...(evalResult.errors.length > 0
+			? ['**Errors:**', ...evalResult.errors.map((e) => `  - ${e}`), '']
+			: []),
+		'**What to verify:** Given the scenario above, did the workflow produce',
+		'the expected results? Focus on whether the data flowed correctly through',
+		'real logic nodes and whether service node responses were appropriate.',
+	].join('\n');
+
+	const nodeOutputLines: string[] = [];
+	for (const [nodeName, nr] of Object.entries(evalResult.nodeResults)) {
+		if (nr.output !== null && nr.output !== undefined) {
+			nodeOutputLines.push(`Node "${nodeName}" output:`);
+			nodeOutputLines.push(`\`\`\`json\n${JSON.stringify(nr.output, null, 2)}\n\`\`\``);
+		}
+	}
+	const outputSection =
+		nodeOutputLines.length > 0 ? `\n\n### Node Outputs\n\n${nodeOutputLines.join('\n')}` : '';
+
+	const verificationArtifact = `${scenarioContext}${outputSection}`;
+
+	const scenarioChecklist: ChecklistItem[] = [
+		{
+			id: 1,
+			description: scenario.successCriteria,
+			category: 'execution',
+			strategy: 'llm',
+		},
+	];
+
+	const verificationResults = await verifyChecklist(
+		scenarioChecklist,
+		verificationArtifact,
+		workflowJsons,
+	);
+
+	const passed = verificationResults.length > 0 && verificationResults[0].pass;
+	const reasoning =
+		verificationResults.length > 0 ? verificationResults[0].reasoning : 'No verification result';
+
+	logger.info(`    [${scenario.name}] ${passed ? 'PASS' : 'FAIL'}: ${reasoning.slice(0, 100)}`);
+
+	return { scenario, success: passed, evalResult, score: passed ? 1 : 0, reasoning };
 }
 
 // ---------------------------------------------------------------------------
@@ -926,6 +943,34 @@ function getNestedRecord(
 		return value as Record<string, unknown>;
 	}
 	return undefined;
+}
+
+// ---------------------------------------------------------------------------
+// Concurrency control
+// ---------------------------------------------------------------------------
+
+/**
+ * Run tasks with bounded concurrency. Like Promise.all but limits how many
+ * tasks execute simultaneously to avoid API rate limits.
+ */
+export async function runWithConcurrency<T, R>(
+	items: T[],
+	fn: (item: T) => Promise<R>,
+	limit: number,
+): Promise<R[]> {
+	const results: R[] = new Array(items.length);
+	let nextIndex = 0;
+
+	async function worker(): Promise<void> {
+		while (nextIndex < items.length) {
+			const index = nextIndex++;
+			results[index] = await fn(items[index]);
+		}
+	}
+
+	const workers = Array.from({ length: Math.min(limit, items.length) }, () => worker());
+	await Promise.all(workers);
+	return results;
 }
 
 // ---------------------------------------------------------------------------

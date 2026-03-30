@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { parseCliArgs } from './args';
-import { runEvaluation, runWorkflowTestCase } from '../harness/runner';
+import { runEvaluation, runWorkflowTestCase, runWithConcurrency } from '../harness/runner';
 import { listRuns } from '../report/storage';
 import { writeReport as writeHtmlReport } from '../report/generator';
 import { PROMPTS } from '../data/prompts';
@@ -10,7 +10,7 @@ import { seedCredentials, cleanupCredentials } from '../credentials/seeder';
 import { snapshotWorkflowIds } from '../outcome/workflow-discovery';
 import { createLogger } from '../harness/logger';
 import { writeWorkflowReport } from '../report/workflow-report';
-import type { PromptConfig, DatasetExample, WorkflowTestCaseResult } from '../types';
+import type { PromptConfig, DatasetExample } from '../types';
 
 async function main(): Promise<void> {
 	const args = parseCliArgs(process.argv.slice(2));
@@ -48,16 +48,13 @@ async function main(): Promise<void> {
 
 	// Workflow test case mode
 	if (args.command === 'workflows') {
-		const testCases = loadWorkflowTestCases();
+		const testCases = loadWorkflowTestCases(args.filter);
 		if (testCases.length === 0) {
 			console.log('No workflow test cases found in evaluations/data/workflows/');
 			return;
 		}
 
-		const totalScenarios = testCases.reduce(
-			(sum, tc) => sum + tc.scenarios.filter((s) => s.requires !== 'mock-server').length,
-			0,
-		);
+		const totalScenarios = testCases.reduce((sum, tc) => sum + tc.scenarios.length, 0);
 		console.log(
 			`Running ${String(testCases.length)} workflow test case(s) with ${String(totalScenarios)} scenario(s)\n`,
 		);
@@ -77,28 +74,32 @@ async function main(): Promise<void> {
 		const preRunWorkflowIds = await snapshotWorkflowIds(client);
 		const claimedWorkflowIds = new Set<string>();
 
-		// Run each test case
-		const results: WorkflowTestCaseResult[] = [];
-
-		for (const testCase of testCases) {
-			const tcResult = await runWorkflowTestCase({
-				client,
-				testCase,
-				timeoutMs: args.timeoutMs,
-				seededCredentialTypes: seedResult.seededTypes,
-				preRunWorkflowIds,
-				claimedWorkflowIds,
-				logger,
-			});
-			results.push(tcResult);
-		}
+		// Run test cases with bounded concurrency.
+		// Each test case builds a workflow (uses n8n's agent) then runs scenarios
+		// (uses our Anthropic key for Phase 1 + Phase 2 mock generation).
+		// At Tier 4 (20K RPM) no practical limit is needed — set high to run all in parallel.
+		const MAX_CONCURRENT_TEST_CASES = 99;
+		const results = await runWithConcurrency(
+			testCases,
+			(testCase) =>
+				runWorkflowTestCase({
+					client,
+					testCase,
+					timeoutMs: args.timeoutMs,
+					seededCredentialTypes: seedResult.seededTypes,
+					preRunWorkflowIds,
+					claimedWorkflowIds,
+					logger,
+				}),
+			MAX_CONCURRENT_TEST_CASES,
+		);
 
 		// Cleanup credentials
 		await cleanupCredentials(client, seedResult.credentialIds).catch(() => {});
 
 		// Generate HTML report
-		writeWorkflowReport(results);
-		console.log('Report: evaluations/.data/workflow-eval-report.html');
+		const reportPath = writeWorkflowReport(results);
+		console.log(`Report: ${reportPath}`);
 
 		// Print summary
 		console.log('\n=== Workflow Test Case Results ===\n');
