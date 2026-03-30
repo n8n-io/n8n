@@ -230,3 +230,25 @@ export type AwsSecurityHeaders = {
 	secretAccessKey: string;
 	sessionToken: string | undefined;
 };
+
+/**
+ * Maps AWS service endpoint hostname prefixes to their correct SigV4 service names.
+ * Some AWS services use different names in their endpoint hostnames than what's required
+ * for Signature Version 4 signing.
+ *
+ * @example
+ * // Bedrock Runtime endpoint uses 'bedrock-runtime' in hostname but signs as 'bedrock'
+ * bedrock-runtime.us-east-1.amazonaws.com -> service name: 'bedrock'
+ *
+ * @example
+ * // IoT Data Plane endpoint uses 'iot-data' in hostname but signs as 'iotdevicegateway'
+ * iot-data.us-east-1.amazonaws.com -> service name: 'iotdevicegateway'
+ *
+ * @see {@link https://docs.aws.amazon.com/general/latest/gr/signing_aws_api_requests.html AWS Signature Version 4}
+ */
+export const AWS_SERVICE_NAME_MAPPING: Record<string, string> = {
+	'bedrock-runtime': 'bedrock',
+	'bedrock-agent-runtime': 'bedrock',
+	'bedrock-data-automation-runtime': 'bedrock',
+	'iot-data': 'iotdevicegateway',
+};
