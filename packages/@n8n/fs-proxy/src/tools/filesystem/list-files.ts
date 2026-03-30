@@ -17,7 +17,7 @@ export const listFilesTool: ToolDefinition<typeof inputSchema> = {
 	name: 'list_files',
 	description: 'List immediate children of a directory',
 	inputSchema,
-	annotations: { defaultPermission: 'allow', readOnlyHint: true },
+	annotations: { readOnlyHint: true },
 	async getAffectedResources({ dirPath }, { dir }) {
 		return [
 			await buildFilesystemResource(

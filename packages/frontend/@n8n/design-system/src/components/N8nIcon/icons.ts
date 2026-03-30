@@ -74,6 +74,7 @@ import IconLucideChevronsUpDown from '~icons/lucide/chevrons-up-down';
 import IconLucideCircle from '~icons/lucide/circle';
 import IconLucideCircleAlert from '~icons/lucide/circle-alert';
 import IconLucideCircleCheck from '~icons/lucide/circle-check';
+import IconLucideCircleDollarSign from '~icons/lucide/circle-dollar-sign';
 import IconLucideCircleDot from '~icons/lucide/circle-dot';
 import IconLucideCircleEllipsis from '~icons/lucide/circle-ellipsis';
 import IconLucideCircleHelp from '~icons/lucide/circle-help';
@@ -201,6 +202,7 @@ import IconLucideShare from '~icons/lucide/share';
 import IconLucideShield from '~icons/lucide/shield';
 import IconLucideShieldHalf from '~icons/lucide/shield-half';
 import IconLucideShieldUser from '~icons/lucide/shield-user';
+import IconLucideShredder from '~icons/lucide/shredder';
 import IconLucideSlidersHorizontal from '~icons/lucide/sliders-horizontal';
 import IconLucideSmile from '~icons/lucide/smile';
 import IconLucideSparkles from '~icons/lucide/sparkles';
@@ -538,6 +540,7 @@ export const updatedIconSet = {
 	circle: IconLucideCircle,
 	'circle-alert': IconLucideCircleAlert,
 	'circle-check': IconLucideCircleCheck,
+	'circle-dollar-sign': IconLucideCircleDollarSign,
 	'circle-dot': IconLucideCircleDot,
 	'circle-ellipsis': IconLucideCircleEllipsis,
 	'circle-help': IconLucideCircleHelp,
@@ -661,9 +664,10 @@ export const updatedIconSet = {
 	server: IconLucideServer,
 	share: IconLucideShare,
 	shield: IconLucideShield,
-	'sliders-horizontal': IconLucideSlidersHorizontal,
 	'shield-half': IconLucideShieldHalf,
 	'shield-user': IconLucideShieldUser,
+	shredder: IconLucideShredder,
+	'sliders-horizontal': IconLucideSlidersHorizontal,
 	smile: IconLucideSmile,
 	sparkles: IconLucideSparkles,
 	split: IconLucideSplit,

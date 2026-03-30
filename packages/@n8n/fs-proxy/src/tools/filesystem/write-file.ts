@@ -17,7 +17,7 @@ export const writeFileTool: ToolDefinition<typeof inputSchema> = {
 	description:
 		'Create a new file with the given content. Overwrites if the file already exists. Content must not exceed 512 KB.',
 	inputSchema,
-	annotations: { defaultPermission: 'confirm' },
+	annotations: {},
 	async getAffectedResources({ filePath }, { dir }) {
 		return [
 			await buildFilesystemResource(dir, filePath, 'filesystemWrite', `Write file: ${filePath}`),

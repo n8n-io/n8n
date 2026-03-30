@@ -19,6 +19,7 @@ on:
 jobs:
   bench:
     name: Benchmarks
+    if: github.repository == 'n8n-io/n8n'
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-ubuntu-2204' }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2

@@ -31,6 +31,7 @@ import type {
 	InstanceAiWorkspaceService,
 	ProjectSummary,
 	FolderSummary,
+	ServiceProxyConfig,
 	CredentialTypeSearchResult,
 } from '@n8n/instance-ai';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
@@ -58,7 +59,7 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { Scope } from '@n8n/permissions';
+import { hasGlobalScope, type Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { LessThan } from '@n8n/typeorm';
 import {
@@ -103,6 +104,7 @@ import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
+import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import { WorkflowRunner } from '@/workflow-runner';
 import { getBase } from '@/workflow-execute-additional-data';
 
@@ -158,6 +160,7 @@ export class InstanceAiAdapterService {
 		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly workflowHistoryService: WorkflowHistoryService,
+		private readonly enterpriseWorkflowService: EnterpriseWorkflowService,
 		private readonly license: License,
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly eventService: EventService,
@@ -167,9 +170,13 @@ export class InstanceAiAdapterService {
 
 	createContext(
 		user: User,
-		filesystemService?: InstanceAiFilesystemService,
-		pushRef?: string,
+		options?: {
+			filesystemService?: InstanceAiFilesystemService;
+			searchProxyConfig?: ServiceProxyConfig;
+			pushRef?: string;
+		},
 	): InstanceAiContext {
+		const { filesystemService, searchProxyConfig, pushRef } = options ?? {};
 		return {
 			userId: user.id,
 			workflowService: this.createWorkflowAdapter(user),
@@ -177,7 +184,7 @@ export class InstanceAiAdapterService {
 			credentialService: this.createCredentialAdapter(user),
 			nodeService: this.createNodeAdapter(user),
 			dataTableService: this.createDataTableAdapter(user),
-			webResearchService: this.createWebResearchAdapter(user),
+			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user),
 			licenseHints: this.buildLicenseHints(),
 			...(filesystemService ? { filesystemService } : {}),
@@ -233,6 +240,8 @@ export class InstanceAiAdapterService {
 			workflowRepository,
 			sharedWorkflowRepository,
 			workflowHistoryService,
+			enterpriseWorkflowService,
+			license,
 			allowSendingParameterValues,
 		} = this;
 		const { resolveProjectId } = this.createProjectScopeHelpers(user);
@@ -312,6 +321,21 @@ export class InstanceAiAdapterService {
 			async createFromWorkflowJSON(json: WorkflowJSON, options?: { projectId?: string }) {
 				const projectId = await resolveProjectId(['workflow:create'], options?.projectId);
 
+				// Strip redactionPolicy if the user lacks the required scope —
+				// mirrors the check in WorkflowCreationService.createWorkflow().
+				const settings = (json.settings ?? {}) as IWorkflowSettings;
+				if (settings.redactionPolicy !== undefined) {
+					const canUpdateRedaction = await userHasScopes(
+						user,
+						['workflow:updateRedactionSetting'],
+						false,
+						{ projectId },
+					);
+					if (!canUpdateRedaction) {
+						delete settings.redactionPolicy;
+					}
+				}
+
 				// Create the workflow shell WITHOUT nodes — so that the subsequent
 				// update() detects a real change and creates a WorkflowHistory entry.
 				// Without a history entry, activateWorkflow() fails with "Version not found"
@@ -320,7 +344,7 @@ export class InstanceAiAdapterService {
 					name: json.name,
 					nodes: [] as INode[],
 					connections: {} as IConnections,
-					settings: (json.settings ?? {}) as IWorkflowSettings,
+					settings,
 					active: false,
 					versionId: randomUUID(),
 				} as Partial<WorkflowEntity>);
@@ -337,13 +361,20 @@ export class InstanceAiAdapterService {
 
 				// Now update with actual nodes — this creates the WorkflowHistory entry
 				// needed for activation and publishing.
-				const updateData = workflowRepository.create({
+				let updateData = workflowRepository.create({
 					name: json.name,
 					nodes: json.nodes as unknown as INode[],
 					connections: json.connections as unknown as IConnections,
-					settings: (json.settings ?? {}) as IWorkflowSettings,
+					settings,
 					pinData: sdkPinDataToRuntime(json.pinData),
 				} as Partial<WorkflowEntity>);
+
+				// Enforce credential tamper protection — same guard as the
+				// REST controller (workflows.controller PATCH /:workflowId).
+				if (license.isSharingEnabled()) {
+					updateData = await enterpriseWorkflowService.preventTampering(updateData, saved.id, user);
+				}
+
 				const updated = await workflowService.update(user, updateData, saved.id);
 
 				return toWorkflowDetail(updated, { redactParameters });
@@ -354,13 +385,23 @@ export class InstanceAiAdapterService {
 				json: WorkflowJSON,
 				_options?: { projectId?: string },
 			) {
-				const updateData = workflowRepository.create({
+				let updateData = workflowRepository.create({
 					name: json.name,
 					nodes: json.nodes as unknown as INode[],
 					connections: json.connections as unknown as IConnections,
 					settings: (json.settings ?? {}) as IWorkflowSettings,
 					pinData: sdkPinDataToRuntime(json.pinData),
 				} as Partial<WorkflowEntity>);
+
+				// Enforce credential tamper protection — same guard as the
+				// REST controller (workflows.controller PATCH /:workflowId).
+				if (license.isSharingEnabled()) {
+					updateData = await enterpriseWorkflowService.preventTampering(
+						updateData,
+						workflowId,
+						user,
+					);
+				}
 
 				const updated = await workflowService.update(user, updateData, workflowId);
 				return toWorkflowDetail(updated, { redactParameters });
@@ -1073,7 +1114,10 @@ export class InstanceAiAdapterService {
 		ttlMs: 15 * 60 * 1000,
 	});
 
-	private createWebResearchAdapter(user: User): InstanceAiWebResearchService {
+	private createWebResearchAdapter(
+		user: User,
+		searchProxyConfig?: ServiceProxyConfig,
+	): InstanceAiWebResearchService {
 		const fetchCache = this.webResearchCache;
 		const searchCacheRef = this.searchCache;
 		const settingsService = this.settingsService;
@@ -1088,6 +1132,7 @@ export class InstanceAiAdapterService {
 					config.braveApiKey ?? '',
 					config.searxngUrl ?? '',
 					searchCacheRef,
+					searchProxyConfig,
 				);
 				searchResolved = true;
 			}
@@ -1153,12 +1198,31 @@ export class InstanceAiAdapterService {
 		apiKey: string,
 		searxngUrl: string,
 		cache: LRUCache<WebSearchResponse>,
+		searchProxyConfig?: ServiceProxyConfig,
 	) {
 		type SearchOptions = {
 			maxResults?: number;
 			includeDomains?: string[];
 			excludeDomains?: string[];
 		};
+
+		// When the AI service proxy is enabled (licensed instance), search always goes
+		// through the proxy which provides managed Brave Search with credit tracking.
+		// This intentionally takes priority over local SearXNG or API key configuration.
+		if (searchProxyConfig) {
+			return async (query: string, options?: SearchOptions) => {
+				const cacheKey = JSON.stringify([query, options ?? {}]);
+				const cached = cache.get(cacheKey);
+				if (cached) return cached;
+
+				const result = await braveSearch('', query, {
+					...options,
+					proxyConfig: searchProxyConfig,
+				});
+				cache.set(cacheKey, result);
+				return result;
+			};
+		}
 
 		if (apiKey) {
 			return async (query: string, options?: SearchOptions) => {
@@ -1709,6 +1773,9 @@ export class InstanceAiAdapterService {
 				}
 
 				// Resolve tag names to IDs, creating missing tags
+				if (!hasGlobalScope(user, 'tag:list')) {
+					throw new Error('User does not have permission to list tags');
+				}
 				const existingTags = await tagService.getAll();
 				const tagMap = new Map(existingTags.map((t) => [t.name.toLowerCase(), t]));
 				const tagIds: string[] = [];
@@ -1718,6 +1785,9 @@ export class InstanceAiAdapterService {
 					if (existing) {
 						tagIds.push(existing.id);
 					} else {
+						if (!hasGlobalScope(user, 'tag:create')) {
+							throw new Error('User does not have permission to create tags');
+						}
 						const entity = tagService.toEntity({ name: tagName });
 						const saved = await tagService.save(entity, 'create');
 						tagIds.push(saved.id);
@@ -1729,11 +1799,17 @@ export class InstanceAiAdapterService {
 			},
 
 			async listTags(): Promise<Array<{ id: string; name: string }>> {
+				if (!hasGlobalScope(user, 'tag:list')) {
+					throw new Error('User does not have permission to list tags');
+				}
 				const tags = await tagService.getAll();
 				return tags.map((t) => ({ id: t.id, name: t.name }));
 			},
 
 			async createTag(name: string): Promise<{ id: string; name: string }> {
+				if (!hasGlobalScope(user, 'tag:create')) {
+					throw new Error('User does not have permission to create tags');
+				}
 				const entity = tagService.toEntity({ name });
 				const saved = await tagService.save(entity, 'create');
 				return { id: saved.id, name: saved.name };

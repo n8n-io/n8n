@@ -109,14 +109,16 @@ export type { SendWorkerStatusMessage } from './push/worker';
 
 export type { BannerName } from './schemas/banner-name.schema';
 export { ViewableMimeTypes } from './schemas/binary-data.schema';
-export { passwordSchema } from './schemas/password.schema';
+export { passwordSchema, createPasswordSchema } from './schemas/password.schema';
 export {
 	credentialResolverSchema,
 	credentialResolversSchema,
 	credentialResolverTypeSchema,
 	credentialResolverTypesSchema,
+	credentialResolverAffectedWorkflowsSchema,
 	type CredentialResolver,
 	type CredentialResolverType,
+	type CredentialResolverAffectedWorkflow,
 } from './schemas/credential-resolver.schema';
 export {
 	WORKFLOW_VERSION_NAME_MAX_LENGTH,
@@ -269,6 +271,7 @@ export {
 	getRenderHint,
 	isSafeObjectKey,
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
+	UNLIMITED_CREDITS,
 	domainAccessActionSchema,
 	domainAccessMetaSchema,
 	credentialFlowSchema,
@@ -312,6 +315,7 @@ export type {
 	InstanceAiFilesystemResponse,
 	InstanceAiGatewayCapabilities,
 	McpTool,
+	McpToolAnnotations,
 	McpToolCallRequest,
 	McpToolCallResult,
 	InstanceAiEvent,
@@ -341,6 +345,7 @@ export type {
 	DomainAccessAction,
 	DomainAccessMeta,
 	InstanceAiCredentialFlow,
+	ToolCategory,
 	InstanceAiWorkflowSetupNode,
 } from './schemas/instance-ai.schema';
 

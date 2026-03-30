@@ -16,7 +16,7 @@ export const moveFileTool: ToolDefinition<typeof inputSchema> = {
 	description:
 		'Move or rename a file or directory. Overwrites the destination if it already exists. Parent directories at the destination are created automatically.',
 	inputSchema,
-	annotations: { defaultPermission: 'confirm', destructiveHint: true },
+	annotations: { destructiveHint: true },
 	async getAffectedResources({ sourcePath, destinationPath }, { dir }) {
 		return [
 			await buildFilesystemResource(

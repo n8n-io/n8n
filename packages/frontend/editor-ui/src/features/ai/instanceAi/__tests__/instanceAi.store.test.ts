@@ -526,4 +526,74 @@ describe('useInstanceAiStore - feedback integration', () => {
 
 		expect(Object.keys(store.feedbackByResponseId)).toHaveLength(0);
 	});
+
+	// -----------------------------------------------------------------
+	// Credits — isLowCredits / creditsPercentageRemaining
+	// -----------------------------------------------------------------
+
+	describe('isLowCredits', () => {
+		it('should return false when credits are undefined', () => {
+			expect(store.isLowCredits).toBe(false);
+		});
+
+		it('should return false when credits are above 10%', () => {
+			store.creditsQuota = 100;
+			store.creditsClaimed = 89;
+			expect(store.isLowCredits).toBe(false);
+		});
+
+		it('should return true when credits are exactly 10%', () => {
+			store.creditsQuota = 100;
+			store.creditsClaimed = 90;
+			expect(store.isLowCredits).toBe(true);
+		});
+
+		it('should return true when credits are below 10%', () => {
+			store.creditsQuota = 100;
+			store.creditsClaimed = 95;
+			expect(store.isLowCredits).toBe(true);
+		});
+
+		it('should return false when quota is unlimited (-1)', () => {
+			store.creditsQuota = -1;
+			store.creditsClaimed = 50;
+			expect(store.isLowCredits).toBe(false);
+		});
+
+		it('should return true when quota is 0', () => {
+			store.creditsQuota = 0;
+			store.creditsClaimed = 0;
+			expect(store.isLowCredits).toBe(true);
+		});
+
+		it('should return true when all credits are consumed', () => {
+			store.creditsQuota = 100;
+			store.creditsClaimed = 100;
+			expect(store.isLowCredits).toBe(true);
+		});
+	});
+
+	describe('creditsPercentageRemaining', () => {
+		it('should return undefined when credits are not initialized', () => {
+			expect(store.creditsPercentageRemaining).toBeUndefined();
+		});
+
+		it('should return undefined when quota is unlimited (-1)', () => {
+			store.creditsQuota = -1;
+			store.creditsClaimed = 50;
+			expect(store.creditsPercentageRemaining).toBeUndefined();
+		});
+
+		it('should return 0 when quota is 0', () => {
+			store.creditsQuota = 0;
+			store.creditsClaimed = 0;
+			expect(store.creditsPercentageRemaining).toBe(0);
+		});
+
+		it('should calculate percentage correctly', () => {
+			store.creditsQuota = 100;
+			store.creditsClaimed = 75;
+			expect(store.creditsPercentageRemaining).toBe(25);
+		});
+	});
 });

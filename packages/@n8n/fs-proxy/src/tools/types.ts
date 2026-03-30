@@ -13,6 +13,7 @@ export interface McpTool {
 		properties?: Record<string, unknown>;
 		required?: string[];
 	};
+	annotations?: ToolAnnotations;
 }
 
 export interface ToolContext {
@@ -21,8 +22,8 @@ export interface ToolContext {
 }
 
 export interface ToolAnnotations {
-	/** Default permission level for this tool (n8n-specific, not part of MCP spec) */
-	defaultPermission?: 'allow' | 'confirm' | 'block';
+	/** Tool category — used to route tools to the correct sub-agent (e.g. 'browser', 'filesystem') */
+	category?: string;
 	/** If true, tool does not modify its environment (default: false) */
 	readOnlyHint?: boolean;
 	/** If true, tool may perform destructive updates (default: true) */

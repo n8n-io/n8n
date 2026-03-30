@@ -247,7 +247,7 @@ async function navigateToEvaluationsView(openInNewTab: boolean) {
 	} else if (route.name !== routeToNavigateTo.name) {
 		dirtyState.value = uiStore.stateIsDirty;
 		workflowToReturnTo.value = workflowId.value;
-		activeHeaderTab.value = MAIN_HEADER_TABS.EXECUTIONS;
+		activeHeaderTab.value = MAIN_HEADER_TABS.EVALUATION;
 		await router.push(routeToNavigateTo);
 	}
 }
@@ -280,9 +280,13 @@ async function onWorkflowDeactivated() {
 <template>
 	<div :class="$style.container">
 		<div
-			:class="{ [$style['main-header']]: true, [$style.expanded]: !uiStore.sidebarMenuCollapsed }"
+			:class="{
+				[$style['main-header']]: true,
+				[$style.expanded]: !uiStore.sidebarMenuCollapsed,
+				[$style['canvas-only']]: settingsStore.isCanvasOnly,
+			}"
 		>
-			<div v-show="!hideMenuBar" :class="$style['top-menu']">
+			<div v-show="!hideMenuBar && !settingsStore.isCanvasOnly" :class="$style['top-menu']">
 				<WorkflowDetails
 					v-if="workflow?.name"
 					:id="workflow.id"
@@ -317,6 +321,7 @@ async function onWorkflowDeactivated() {
 				v-if="onWorkflowPage"
 				:items="tabBarItems"
 				:model-value="activeHeaderTab"
+				:floating="settingsStore.isCanvasOnly"
 				@update:model-value="onTabSelected"
 			/>
 		</div>
@@ -337,6 +342,12 @@ async function onWorkflowDeactivated() {
 	width: 100%;
 	box-sizing: border-box;
 	border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
+}
+
+.canvas-only {
+	min-height: 0;
+	border-bottom: none;
+	background-color: transparent;
 }
 
 .top-menu {

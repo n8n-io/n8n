@@ -10,6 +10,7 @@ export function createPublishWorkflowTool(context: InstanceAiContext) {
 
 	const baseSchema = z.object({
 		workflowId: z.string().describe('ID of the workflow'),
+		workflowName: z.string().optional().describe('Name of the workflow (for confirmation message)'),
 		versionId: z
 			.string()
 			.optional()
@@ -60,11 +61,13 @@ export function createPublishWorkflowTool(context: InstanceAiContext) {
 			const needsApproval = context.permissions?.publishWorkflow !== 'always_allow';
 
 			if (needsApproval && (resumeData === undefined || resumeData === null)) {
+				const label = input.workflowName ?? input.workflowId;
+
 				await suspend?.({
 					requestId: nanoid(),
 					message: input.versionId
-						? `Publish version "${input.versionId}" of workflow "${input.workflowId}"?`
-						: `Publish workflow "${input.workflowId}"?`,
+						? `Publish version "${input.versionId}" of workflow "${label}"?`
+						: `Publish workflow "${label}"?`,
 					severity: 'warning' as const,
 				});
 				return { success: false };

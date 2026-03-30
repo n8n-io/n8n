@@ -275,6 +275,14 @@ export class InstanceAiController {
 		return { ok: true };
 	}
 
+	// ── Credits ──────────────────────────────────────────────────────────────
+
+	@Get('/credits')
+	@GlobalScope('instanceAi:message')
+	async getCredits(req: AuthenticatedRequest) {
+		return await this.instanceAiService.getCredits(req.user);
+	}
+
 	// ── Admin settings (owner/admin only) ──────────────────────────────────
 
 	@Get('/settings')
@@ -309,7 +317,7 @@ export class InstanceAiController {
 		@Body payload: InstanceAiUserPreferencesUpdateRequest,
 	) {
 		const result = await this.settingsService.updateUserPreferences(req.user, payload);
-		if (payload.filesystemDisabled !== undefined) {
+		if (payload.localGatewayDisabled !== undefined) {
 			await this.moduleRegistry.refreshModuleSettings('instance-ai');
 		}
 		return result;
@@ -397,6 +405,8 @@ export class InstanceAiController {
 		@Param('threadId') threadId: string,
 		@Query query: InstanceAiThreadMessagesQuery,
 	) {
+		await this.assertThreadAccess(req.user.id, threadId);
+
 		// ?raw=true returns the old format for the thread inspector
 		if (query.raw === 'true') {
 			return await this.memoryService.getThreadMessages(req.user.id, threadId, {
@@ -479,7 +489,15 @@ export class InstanceAiController {
 			clearInterval(keepAlive);
 			this.instanceAiService.startDisconnectTimer(userId, () => {
 				this.push.sendToUsers(
-					{ type: 'instanceAiGatewayStateChanged', data: { connected: false, directory: null } },
+					{
+						type: 'instanceAiGatewayStateChanged',
+						data: {
+							connected: false,
+							directory: null,
+							hostIdentifier: null,
+							toolCategories: [],
+						},
+					},
 					[userId],
 				);
 			});
@@ -502,7 +520,12 @@ export class InstanceAiController {
 		this.push.sendToUsers(
 			{
 				type: 'instanceAiGatewayStateChanged',
-				data: { connected: true, directory: parsed.data.rootPath },
+				data: {
+					connected: true,
+					directory: parsed.data.rootPath,
+					hostIdentifier: parsed.data.hostIdentifier ?? null,
+					toolCategories: parsed.data.toolCategories ?? [],
+				},
 			},
 			[userId],
 		);
@@ -523,7 +546,10 @@ export class InstanceAiController {
 		this.instanceAiService.disconnectGateway(userId);
 		this.instanceAiService.clearActiveSessionKey(userId);
 		this.push.sendToUsers(
-			{ type: 'instanceAiGatewayStateChanged', data: { connected: false, directory: null } },
+			{
+				type: 'instanceAiGatewayStateChanged',
+				data: { connected: false, directory: null, hostIdentifier: null, toolCategories: [] },
+			},
 			[userId],
 		);
 		return { ok: true };

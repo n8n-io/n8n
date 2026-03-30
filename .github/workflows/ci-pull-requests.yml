@@ -123,6 +123,24 @@ jobs:
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
 
+  check-packaging:
+    name: Check packaging
+    if: needs.install-and-build.outputs.ci == 'true'
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    needs: install-and-build
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ needs.install-and-build.outputs.commit_sha }}
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+
+      - name: Check packaging
+        shell: bash
+        run: |
+          pnpm -r pack --dry-run
+
   e2e-tests:
     name: E2E Tests
     needs: install-and-build
@@ -186,6 +204,7 @@ jobs:
         unit-test,
         typecheck,
         lint,
+        check-packaging,
         e2e-tests,
         db-tests,
         performance,

@@ -9,7 +9,7 @@ bundle_analysis:
 comment:
   require_bundle_changes: bundle_increase
   bundle_change_threshold: 50Kb
-  require_changes: "coverage_drop OR uncovered_patch"
+  require_changes: 'coverage_drop OR uncovered_patch'
 
 coverage:
   status:

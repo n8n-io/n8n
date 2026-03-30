@@ -4,6 +4,16 @@ import { Z } from '../zod-class';
 import { TimeZoneSchema } from './timezone.schema';
 
 // ---------------------------------------------------------------------------
+// Credits
+// ---------------------------------------------------------------------------
+
+/**
+ * Sentinel value returned by `GET /instance-ai/credits` when the AI service
+ * proxy is disabled (credits are not metered). Consumers should treat this as "unlimited".
+ */
+export const UNLIMITED_CREDITS = -1;
+
+// ---------------------------------------------------------------------------
 // Branded ID types — prevent swapping runId/agentId/threadId/toolCallId
 // ---------------------------------------------------------------------------
 
@@ -327,10 +337,25 @@ const mcpOneOfInputSchema = z.object({ oneOf: z.array(mcpObjectInputSchema) });
 
 const mcpInputSchema = z.union([mcpObjectInputSchema, mcpAnyOfInputSchema, mcpOneOfInputSchema]);
 
+export const mcpToolAnnotationsSchema = z.object({
+	/** Tool category — used to route tools to the correct sub-agent (e.g. 'browser', 'filesystem') */
+	category: z.string().optional(),
+	/** If true, the tool does not modify its environment */
+	readOnlyHint: z.boolean().optional(),
+	/** If true, the tool may perform destructive updates */
+	destructiveHint: z.boolean().optional(),
+	/** If true, repeated calls with same args have no additional effect */
+	idempotentHint: z.boolean().optional(),
+	/** If true, tool interacts with external entities */
+	openWorldHint: z.boolean().optional(),
+});
+export type McpToolAnnotations = z.infer<typeof mcpToolAnnotationsSchema>;
+
 export const mcpToolSchema = z.object({
 	name: z.string(),
 	description: z.string().optional(),
 	inputSchema: mcpInputSchema,
+	annotations: mcpToolAnnotationsSchema.optional(),
 });
 export type McpTool = z.infer<typeof mcpToolSchema>;
 
@@ -355,9 +380,18 @@ export const mcpToolCallResultSchema = z.object({
 export type McpToolCallResult = z.infer<typeof mcpToolCallResultSchema>;
 
 // Sent by the daemon on connect — replaces the old file-tree upload
+export const toolCategorySchema = z.object({
+	name: z.string(),
+	enabled: z.boolean(),
+	writeAccess: z.boolean().optional(),
+});
+export type ToolCategory = z.infer<typeof toolCategorySchema>;
+
 export const instanceAiGatewayCapabilitiesSchema = z.object({
 	rootPath: z.string(),
 	tools: z.array(mcpToolSchema).default([]),
+	hostIdentifier: z.string().optional(),
+	toolCategories: z.array(toolCategorySchema).default([]),
 });
 export type InstanceAiGatewayCapabilities = z.infer<typeof instanceAiGatewayCapabilitiesSchema>;
 
@@ -783,6 +817,7 @@ export interface InstanceAiAdminSettingsResponse {
 	sandboxTimeout: number;
 	daytonaCredentialId: string | null;
 	searchCredentialId: string | null;
+	localGatewayDisabled: boolean;
 }
 
 export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
@@ -800,6 +835,7 @@ export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	sandboxTimeout: z.number().int().positive().optional(),
 	daytonaCredentialId: z.string().nullable().optional(),
 	searchCredentialId: z.string().nullable().optional(),
+	localGatewayDisabled: z.boolean().optional(),
 }) {}
 
 // ---------------------------------------------------------------------------
@@ -811,13 +847,13 @@ export interface InstanceAiUserPreferencesResponse {
 	credentialType: string | null;
 	credentialName: string | null;
 	modelName: string;
-	filesystemDisabled: boolean;
+	localGatewayDisabled: boolean;
 }
 
 export class InstanceAiUserPreferencesUpdateRequest extends Z.class({
 	credentialId: z.string().nullable().optional(),
 	modelName: z.string().optional(),
-	filesystemDisabled: z.boolean().optional(),
+	localGatewayDisabled: z.boolean().optional(),
 }) {}
 
 export interface InstanceAiModelCredential {

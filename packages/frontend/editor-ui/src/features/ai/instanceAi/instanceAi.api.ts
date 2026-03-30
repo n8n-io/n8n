@@ -116,6 +116,20 @@ export async function postConfirmation(
 }
 
 /**
+ * GET /instance-ai/credits -> { creditsQuota, creditsClaimed }
+ * Returns -1 quota when proxy is disabled.
+ */
+export async function getInstanceAiCredits(
+	context: IRestApiContext,
+): Promise<{ creditsQuota: number; creditsClaimed: number }> {
+	return await makeRestApiRequest<{ creditsQuota: number; creditsClaimed: number }>(
+		context,
+		'GET',
+		'/instance-ai/credits',
+	);
+}
+
+/**
  * POST /instance-ai/gateway/create-link -> { token, command }
  * Generate a dynamic gateway token and pre-built CLI command.
  */
@@ -130,15 +144,21 @@ export async function createGatewayLink(
 }
 
 /**
- * GET /instance-ai/gateway/status -> { connected, connectedAt, directory }
+ * GET /instance-ai/gateway/status -> { connected, connectedAt, directory, hostIdentifier, toolCategories }
  * Check whether the gateway daemon is currently connected.
  */
-export async function getGatewayStatus(
-	context: IRestApiContext,
-): Promise<{ connected: boolean; connectedAt: string | null; directory: string | null }> {
+export async function getGatewayStatus(context: IRestApiContext): Promise<{
+	connected: boolean;
+	connectedAt: string | null;
+	directory: string | null;
+	hostIdentifier: string | null;
+	toolCategories: Array<{ name: string; enabled: boolean; writeAccess?: boolean }>;
+}> {
 	return await makeRestApiRequest<{
 		connected: boolean;
 		connectedAt: string | null;
 		directory: string | null;
+		hostIdentifier: string | null;
+		toolCategories: Array<{ name: string; enabled: boolean; writeAccess?: boolean }>;
 	}>(context, 'GET', '/instance-ai/gateway/status');
 }

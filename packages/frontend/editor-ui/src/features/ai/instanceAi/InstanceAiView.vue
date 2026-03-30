@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, onMounted, onUnmounted, provide, ref, useTemplateRef, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import {
 	N8nHeading,
 	N8nIconButton,
@@ -19,7 +19,7 @@ import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { useCanvasPreview } from './useCanvasPreview';
 import { useEventRelay } from './useEventRelay';
 import { useExecutionPushEvents } from './useExecutionPushEvents';
-import { NEW_CONVERSATION_TITLE } from './constants';
+import { INSTANCE_AI_SETTINGS_VIEW, NEW_CONVERSATION_TITLE } from './constants';
 import InstanceAiMessage from './components/InstanceAiMessage.vue';
 import InstanceAiInput from './components/InstanceAiInput.vue';
 import InstanceAiEmptyState from './components/InstanceAiEmptyState.vue';
@@ -30,6 +30,9 @@ import InstanceAiArtifactsPanel from './components/InstanceAiArtifactsPanel.vue'
 import InstanceAiStatusBar from './components/InstanceAiStatusBar.vue';
 import InstanceAiConfirmationPanel from './components/InstanceAiConfirmationPanel.vue';
 import InstanceAiPreviewTabBar from './components/InstanceAiPreviewTabBar.vue';
+import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
+import CreditsSettingsDropdown from '@/features/ai/assistant/components/Agent/CreditsSettingsDropdown.vue';
+import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import InstanceAiWorkflowPreview from './components/InstanceAiWorkflowPreview.vue';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
 
@@ -39,7 +42,13 @@ const pushConnectionStore = usePushConnectionStore();
 const rootStore = useRootStore();
 const i18n = useI18n();
 const route = useRoute();
+const router = useRouter();
 const documentTitle = useDocumentTitle();
+const { goToUpgrade } = usePageRedirectionHelper();
+
+function goToSettings() {
+	void router.push({ name: INSTANCE_AI_SETTINGS_VIEW });
+}
 
 documentTitle.set('n8n Agent');
 
@@ -70,10 +79,27 @@ const preview = useCanvasPreview({
 provide('openWorkflowPreview', preview.openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
 
+// --- Credit warning banner ---
+const creditBannerDismissed = ref(false);
+watch(
+	() => store.isLowCredits,
+	(isLow, wasLow) => {
+		// Only reset dismissal when transitioning INTO low-credits state
+		// (e.g. from >10% to <=10%). Subsequent push updates within the
+		// low-credits zone should not re-show a dismissed banner.
+		if (isLow && !wasLow) {
+			creditBannerDismissed.value = false;
+		}
+	},
+);
+const showCreditBanner = computed(() => store.isLowCredits && !creditBannerDismissed.value);
+
 // Load persisted threads from Mastra storage on mount
 onMounted(() => {
 	pushConnectionStore.pushConnect();
 	void store.loadThreads();
+	void store.fetchCredits();
+	store.startCreditsPushListener();
 
 	// Auto-connect local gateway if enabled
 	void settingsStore
@@ -227,6 +253,7 @@ onUnmounted(() => {
 	executionTracking.cleanup();
 	pushConnectionStore.pushDisconnect();
 	store.closeSSE();
+	store.stopCreditsPushListener();
 	settingsStore.stopDaemonProbing();
 	settingsStore.stopGatewayPolling();
 	settingsStore.stopGatewayPushListener();
@@ -340,6 +367,21 @@ function handleStop() {
 					{{ i18n.baseText('instanceAi.view.reconnecting') }}
 				</N8nText>
 				<div :class="$style.headerActions">
+					<CreditsSettingsDropdown
+						v-if="store.creditsRemaining !== undefined"
+						:credits-remaining="store.creditsRemaining"
+						:credits-quota="store.creditsQuota"
+						:is-low-credits="store.isLowCredits"
+						@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
+					/>
+					<N8nIconButton
+						icon="cog"
+						variant="ghost"
+						size="medium"
+						:class="$style.settingsButton"
+						data-test-id="instance-ai-settings-button"
+						@click="goToSettings"
+					/>
 					<N8nIconButton
 						icon="brain"
 						variant="ghost"
@@ -376,6 +418,13 @@ function handleStop() {
 						<InstanceAiEmptyState />
 						<div :class="$style.centeredInput">
 							<InstanceAiStatusBar />
+							<CreditWarningBanner
+								v-if="showCreditBanner"
+								:credits-remaining="store.creditsRemaining"
+								:credits-quota="store.creditsQuota"
+								@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
+								@dismiss="creditBannerDismissed = true"
+							/>
 							<InstanceAiInput
 								:is-streaming="store.isStreaming"
 								@submit="handleSubmit"
@@ -426,6 +475,13 @@ function handleStop() {
 						<div ref="inputContainer" :class="$style.inputContainer">
 							<div :class="$style.inputConstraint">
 								<InstanceAiStatusBar />
+								<CreditWarningBanner
+									v-if="showCreditBanner"
+									:credits-remaining="store.creditsRemaining"
+									:credits-quota="store.creditsQuota"
+									@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
+									@dismiss="creditBannerDismissed = true"
+								/>
 								<InstanceAiInput
 									:is-streaming="store.isStreaming"
 									@submit="handleSubmit"
@@ -572,6 +628,10 @@ function handleStop() {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
+}
+
+.settingsButton {
+	padding: var(--spacing--xs);
 }
 
 .activeButton {

@@ -1,11 +1,15 @@
 import type { Agent } from '@mastra/core/agent';
 
 import type { InstanceAiEventBus } from '../event-bus/event-bus.interface';
-import { executeResumableStream } from '../runtime/resumable-stream-executor';
+import {
+	type LlmStepTraceHooks,
+	executeResumableStream,
+	type ResumableStreamSource,
+} from '../runtime/resumable-stream-executor';
 
 export interface ConsumeWithHitlOptions {
 	agent: Agent;
-	stream: { runId?: string; fullStream: AsyncIterable<unknown>; text: Promise<string> };
+	stream: ResumableStreamSource & { text: Promise<string> };
 	runId: string;
 	agentId: string;
 	eventBus: InstanceAiEventBus;
@@ -14,6 +18,8 @@ export interface ConsumeWithHitlOptions {
 	waitForConfirmation?: (requestId: string) => Promise<Record<string, unknown>>;
 	/** Drain queued user corrections (mid-flight steering for background tasks). */
 	drainCorrections?: () => string[];
+	llmStepTraceHooks?: LlmStepTraceHooks;
+	workingMemoryEnabled?: boolean;
 }
 
 export interface ConsumeWithHitlResult {
@@ -51,6 +57,8 @@ export async function consumeStreamWithHitl(
 			waitForConfirmation: options.waitForConfirmation,
 			drainCorrections: options.drainCorrections,
 		},
+		llmStepTraceHooks: options.llmStepTraceHooks,
+		workingMemoryEnabled: options.workingMemoryEnabled,
 	});
 
 	return { text: result.text ?? options.stream.text };

@@ -6,13 +6,13 @@ import { Cipher } from 'n8n-core';
 import type { InstanceSettings } from 'n8n-core';
 import type { GenericValue, IDataObject, INodeProperties } from 'n8n-workflow';
 
+import { buildSharedForCredential, toJsonSchema, updateCredential } from '../credentials.service';
+
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
 import * as checkAccess from '@/permissions.ee/check-access';
 import type { IDependency } from '@/public-api/types';
-
-import { buildSharedForCredential, toJsonSchema, updateCredential } from '../credentials.service';
 
 // Set up real Cipher with mocked InstanceSettings for encryption
 const cipher = new Cipher(mock<InstanceSettings>({ encryptionKey: 'test-encryption-key' }));
@@ -417,6 +417,7 @@ describe('CredentialsService', () => {
 
 		const credentialsService = new CredentialsService(
 			mock(), // credentialsRepository
+			mock(),
 			mock(), // sharedCredentialsRepository
 			mock(), // ownershipService
 			mock(), // logger
@@ -491,8 +492,8 @@ describe('CredentialsService', () => {
 				jest.mocked(credentialsService.decrypt).mockReturnValue({ apiKey: 'regular-secret' });
 
 				await expect(
-					updateCredential('cred-id', memberUser, {
-						data: { apiKey: '{{ $secrets.myKey }}' },
+					updateCredential(existingCredential, memberUser, {
+						data: { apiKey: '{{ $secrets.vault.myKey }}' },
 					}),
 				).rejects.toThrow('Lacking permissions to reference external secrets in credentials');
 			});
@@ -513,11 +514,11 @@ describe('CredentialsService', () => {
 				// Mock credential that already has secret expression
 				jest
 					.mocked(credentialsService.decrypt)
-					.mockReturnValue({ apiKey: '{{ $secrets.oldKey }}' });
+					.mockReturnValue({ apiKey: '{{ $secrets.vault.oldKey }}' });
 
 				await expect(
-					updateCredential('cred-id', memberUser, {
-						data: { apiKey: '{{ $secrets.newKey }}' },
+					updateCredential(existingCredential, memberUser, {
+						data: { apiKey: '{{ $secrets.vault.newKey }}' },
 					}),
 				).rejects.toThrow('Lacking permissions to reference external secrets in credentials');
 			});
@@ -545,7 +546,7 @@ describe('CredentialsService', () => {
 				mockExternalSecretsConfig.externalSecretsForProjects = true;
 
 				await expect(
-					updateCredential(existingCredential.id, ownerUser, {
+					updateCredential(existingCredential, ownerUser, {
 						data: { apiKey: secretExpression },
 					}),
 				).rejects.toThrow(
@@ -566,11 +567,13 @@ describe('CredentialsService', () => {
 				credentialsRepository.update = jest.fn().mockResolvedValue(undefined);
 
 				// Mock credential that has existing secret expression
-				jest.mocked(credentialsService.decrypt).mockReturnValue({ apiKey: '{{ $secrets.myKey }}' });
+				jest
+					.mocked(credentialsService.decrypt)
+					.mockReturnValue({ apiKey: '{{ $secrets.vault.myKey }}' });
 
 				credentialsRepository.update = jest.fn().mockResolvedValue(undefined);
 
-				await updateCredential('cred-id', memberUser, {
+				await updateCredential(existingCredential, memberUser, {
 					name: 'Updated Name',
 				});
 			});
@@ -592,7 +595,7 @@ describe('CredentialsService', () => {
 
 				credentialsRepository.update = jest.fn().mockResolvedValue(undefined);
 
-				await updateCredential('cred-id', memberUser, {
+				await updateCredential(existingCredential, memberUser, {
 					data: { apiKey: 'another-regular-key' },
 				});
 			});
@@ -614,8 +617,8 @@ describe('CredentialsService', () => {
 					.mockResolvedValue(true);
 				credentialsRepository.update = jest.fn().mockResolvedValue(undefined);
 
-				await updateCredential('cred-id', ownerUser, {
-					data: { apiKey: '{{ $secrets.myKey }}' },
+				await updateCredential(existingCredential, ownerUser, {
+					data: { apiKey: '{{ $secrets.vault.myKey }}' },
 				});
 			});
 		});

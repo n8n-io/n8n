@@ -295,9 +295,9 @@ describe('InstanceAiController', () => {
 			});
 		});
 
-		it('should refresh module settings when filesystemDisabled changes', async () => {
+		it('should refresh module settings when localGatewayDisabled changes', async () => {
 			const payload = mock<InstanceAiUserPreferencesUpdateRequest>({
-				filesystemDisabled: true,
+				localGatewayDisabled: true,
 			});
 			settingsService.updateUserPreferences.mockResolvedValue(
 				mock<InstanceAiUserPreferencesResponse>(),
@@ -308,9 +308,9 @@ describe('InstanceAiController', () => {
 			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('instance-ai');
 		});
 
-		it('should not refresh module settings when filesystemDisabled is not in payload', async () => {
+		it('should not refresh module settings when localGatewayDisabled is not in payload', async () => {
 			const payload = mock<InstanceAiUserPreferencesUpdateRequest>({
-				filesystemDisabled: undefined,
+				localGatewayDisabled: undefined,
 			});
 			settingsService.updateUserPreferences.mockResolvedValue(
 				mock<InstanceAiUserPreferencesResponse>(),
@@ -555,7 +555,12 @@ describe('InstanceAiController', () => {
 			expect(push.sendToUsers).toHaveBeenCalledWith(
 				expect.objectContaining({
 					type: 'instanceAiGatewayStateChanged',
-					data: { connected: true, directory: '/home/user' },
+					data: {
+						connected: true,
+						directory: '/home/user',
+						hostIdentifier: null,
+						toolCategories: [],
+					},
 				}),
 				[USER_ID],
 			);
@@ -666,7 +671,10 @@ describe('InstanceAiController', () => {
 			expect(instanceAiService.disconnectGateway).toHaveBeenCalledWith(USER_ID);
 			expect(instanceAiService.clearActiveSessionKey).toHaveBeenCalledWith(USER_ID);
 			expect(push.sendToUsers).toHaveBeenCalledWith(
-				{ type: 'instanceAiGatewayStateChanged', data: { connected: false, directory: null } },
+				{
+					type: 'instanceAiGatewayStateChanged',
+					data: { connected: false, directory: null, hostIdentifier: null, toolCategories: [] },
+				},
 				[USER_ID],
 			);
 		});
