@@ -41,7 +41,7 @@ let cachedProxyClient: { client: Client; apiUrl: string } | null = null;
 function getOrCreateProxyClient(proxyConfig: ServiceProxyConfig): Client {
 	if (cachedProxyClient?.apiUrl === proxyConfig.apiUrl) return cachedProxyClient.client;
 
-	const proxyFetch: typeof globalThis.fetch = (input, init) => {
+	const proxyFetch: typeof globalThis.fetch = async (input, init) => {
 		const contextHeaders = proxyHeaderStore.getStore();
 		if (contextHeaders) {
 			const merged = new Headers(init?.headers);
@@ -774,22 +774,22 @@ function createTraceContext(
 	actorRun: InstanceAiTraceRun,
 	proxyHeaders?: Record<string, string>,
 ): InstanceAiTraceContext {
-	const withProxy = <T>(fn: () => Promise<T>): Promise<T> =>
+	const withProxy = async <T>(fn: () => Promise<T>): Promise<T> =>
 		proxyHeaders ? proxyHeaderStore.run(proxyHeaders, fn) : fn();
 
 	const startChildRun = async (
 		parentRun: InstanceAiTraceRun,
 		init: InstanceAiTraceRunInit,
-	): Promise<InstanceAiTraceRun> => await withProxy(() => createChildRun(parentRun, init));
+	): Promise<InstanceAiTraceRun> => await withProxy(async () => createChildRun(parentRun, init));
 
 	const withRunTree = async <T>(run: InstanceAiTraceRun, fn: () => Promise<T>): Promise<T> =>
-		await withProxy(() => withSerializedRunTree(run, fn));
+		await withProxy(async () => withSerializedRunTree(run, fn));
 
 	const finishRun = async (
 		run: InstanceAiTraceRun,
 		finishOptions?: InstanceAiTraceRunFinishOptions,
 	): Promise<void> => {
-		await withProxy(() => finishTraceRun(run, finishOptions));
+		await withProxy(async () => finishTraceRun(run, finishOptions));
 		// Clean up traceClients when root run finishes
 		if (!run.parentRunId) {
 			traceClients.delete(run.traceId);
@@ -801,7 +801,7 @@ function createTraceContext(
 		error: unknown,
 		metadata?: Record<string, unknown>,
 	): Promise<void> => {
-		await withProxy(() =>
+		await withProxy(async () =>
 			finishTraceRun(run, {
 				error: normalizeErrorMessage(error),
 				metadata,
