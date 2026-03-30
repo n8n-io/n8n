@@ -238,90 +238,94 @@ export class McpClient implements INodeType {
 			throw mapToNodeOperationError(node, client.error);
 		}
 
-		const inputMode = this.getNodeParameter('inputMode', 0, 'manual') as 'manual' | 'json';
-		const items = this.getInputData();
-		const returnData: INodeExecutionData[] = [];
-		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-			try {
-				const tool = this.getNodeParameter('tool.value', itemIndex) as string;
-				const options = this.getNodeParameter('options', itemIndex);
-				let parameters: IDataObject = {};
-				if (inputMode === 'manual') {
-					parameters = this.getNodeParameter('parameters.value', itemIndex) as IDataObject;
-				} else {
-					parameters = this.getNodeParameter('jsonInput', itemIndex) as IDataObject;
-				}
-
-				const result = (await client.result.callTool(
-					{
-						name: tool,
-						arguments: parameters,
-					},
-					undefined,
-					{
-						timeout: options.timeout ? Number(options.timeout) : undefined,
-					},
-				)) as CallToolResult;
-
-				let binaryIndex = 0;
-				const binary: IBinaryKeyData = {};
-				const content: IDataObject[] = [];
-				const convertToBinary = options.convertToBinary ?? true;
-				for (const contentItem of result.content) {
-					if (contentItem.type === 'text') {
-						content.push({
-							...contentItem,
-							text: jsonParse(contentItem.text, { fallbackValue: contentItem.text }),
-						});
-						continue;
+		try {
+			const inputMode = this.getNodeParameter('inputMode', 0, 'manual') as 'manual' | 'json';
+			const items = this.getInputData();
+			const returnData: INodeExecutionData[] = [];
+			for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+				try {
+					const tool = this.getNodeParameter('tool.value', itemIndex) as string;
+					const options = this.getNodeParameter('options', itemIndex);
+					let parameters: IDataObject = {};
+					if (inputMode === 'manual') {
+						parameters = this.getNodeParameter('parameters.value', itemIndex) as IDataObject;
+					} else {
+						parameters = this.getNodeParameter('jsonInput', itemIndex) as IDataObject;
 					}
 
-					if (convertToBinary && (contentItem.type === 'image' || contentItem.type === 'audio')) {
-						binary[`data_${binaryIndex}`] = await this.helpers.prepareBinaryData(
-							Buffer.from(contentItem.data, 'base64'),
-							undefined,
-							contentItem.mimeType,
-						);
-						binaryIndex++;
-						continue;
+					const result = (await client.result.callTool(
+						{
+							name: tool,
+							arguments: parameters,
+						},
+						undefined,
+						{
+							timeout: options.timeout ? Number(options.timeout) : undefined,
+						},
+					)) as CallToolResult;
+
+					let binaryIndex = 0;
+					const binary: IBinaryKeyData = {};
+					const content: IDataObject[] = [];
+					const convertToBinary = options.convertToBinary ?? true;
+					for (const contentItem of result.content) {
+						if (contentItem.type === 'text') {
+							content.push({
+								...contentItem,
+								text: jsonParse(contentItem.text, { fallbackValue: contentItem.text }),
+							});
+							continue;
+						}
+
+						if (convertToBinary && (contentItem.type === 'image' || contentItem.type === 'audio')) {
+							binary[`data_${binaryIndex}`] = await this.helpers.prepareBinaryData(
+								Buffer.from(contentItem.data, 'base64'),
+								undefined,
+								contentItem.mimeType,
+							);
+							binaryIndex++;
+							continue;
+						}
+
+						content.push(contentItem as IDataObject);
 					}
 
-					content.push(contentItem as IDataObject);
-				}
-
-				returnData.push({
-					json: {
-						content: content.length > 0 ? content : undefined,
-					},
-					binary: Object.keys(binary).length > 0 ? binary : undefined,
-					pairedItem: {
-						item: itemIndex,
-					},
-				});
-			} catch (e) {
-				const errorMessage =
-					e instanceof ZodError ? prettifyError(e) : e instanceof Error ? e.message : String(e);
-				if (this.continueOnFail()) {
 					returnData.push({
 						json: {
-							error: {
-								message: errorMessage,
-								issues: e instanceof ZodError ? e.issues : undefined,
-							},
+							content: content.length > 0 ? content : undefined,
 						},
+						binary: Object.keys(binary).length > 0 ? binary : undefined,
 						pairedItem: {
 							item: itemIndex,
 						},
 					});
-					continue;
+				} catch (e) {
+					const errorMessage =
+						e instanceof ZodError ? prettifyError(e) : e instanceof Error ? e.message : String(e);
+					if (this.continueOnFail()) {
+						returnData.push({
+							json: {
+								error: {
+									message: errorMessage,
+									issues: e instanceof ZodError ? e.issues : undefined,
+								},
+							},
+							pairedItem: {
+								item: itemIndex,
+							},
+						});
+						continue;
+					}
+
+					throw new NodeOperationError(node, errorMessage, {
+						itemIndex,
+					});
 				}
-
-				throw new NodeOperationError(node, errorMessage, {
-					itemIndex,
-				});
 			}
-		}
 
-		return [returnData];
+			return [returnData];
+		} finally {
+			await client.result.close();
+		}
 	}
 }

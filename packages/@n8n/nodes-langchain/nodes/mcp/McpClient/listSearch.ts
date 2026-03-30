@@ -31,18 +31,22 @@ export async function getTools(
 		throw mapToNodeOperationError(node, client.error);
 	}
 
-	const result = await client.result.listTools({ cursor: paginationToken });
-	const tools = filter
-		? result.tools.filter((tool) => tool.name.toLowerCase().includes(filter.toLowerCase()))
-		: result.tools;
+	try {
+		const result = await client.result.listTools({ cursor: paginationToken });
+		const tools = filter
+			? result.tools.filter((tool) => tool.name.toLowerCase().includes(filter.toLowerCase()))
+			: result.tools;
 
-	return {
-		results: tools.map((tool) => ({
-			name: tool.name,
-			value: tool.name,
-			description: tool.description,
-			inputSchema: tool.inputSchema,
-		})),
-		paginationToken: result.nextCursor,
-	};
+		return {
+			results: tools.map((tool) => ({
+				name: tool.name,
+				value: tool.name,
+				description: tool.description,
+				inputSchema: tool.inputSchema,
+			})),
+			paginationToken: result.nextCursor,
+		};
+	} finally {
+		await client.result.close();
+	}
 }

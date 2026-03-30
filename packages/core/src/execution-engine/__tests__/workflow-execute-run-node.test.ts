@@ -557,6 +557,286 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			expect(closeFunction1).toHaveBeenCalled();
 			expect(closeFunction2).toHaveBeenCalled();
 		});
+
+		it('should call close functions when execute returns an EngineRequest', async () => {
+			const engineRequest = { actions: [{ type: 'test' }], metadata: {} };
+			const closeFunction1 = jest.fn().mockResolvedValue(undefined);
+			const closeFunction2 = jest.fn().mockResolvedValue(undefined);
+
+			mockNodeType.execute = jest.fn().mockResolvedValue(engineRequest);
+
+			const mockContextInstance = {
+				hints: [],
+			};
+
+			mockExecuteContext.mockImplementation(
+				(
+					_workflow,
+					_node,
+					_additionalData,
+					_mode,
+					_runExecutionData,
+					_runIndex,
+					_connectionInputData,
+					_inputData,
+					_executionData,
+					closeFunctions,
+				) => {
+					closeFunctions.push(closeFunction1, closeFunction2);
+					return mockContextInstance as unknown as ExecuteContext;
+				},
+			);
+
+			const result = await workflowExecute.runNode(
+				mockWorkflow,
+				mockExecutionData,
+				mockRunExecutionData,
+				0,
+				mockAdditionalData,
+				'manual',
+			);
+
+			expect(result).toEqual(engineRequest);
+			expect(closeFunction1).toHaveBeenCalled();
+			expect(closeFunction2).toHaveBeenCalled();
+		});
+
+		it('should call close functions when execute throws an error', async () => {
+			const closeFunction1 = jest.fn().mockResolvedValue(undefined);
+			const closeFunction2 = jest.fn().mockResolvedValue(undefined);
+
+			mockNodeType.execute = jest.fn().mockRejectedValue(new Error('Execution failed'));
+
+			const mockContextInstance = {
+				hints: [],
+			};
+
+			mockExecuteContext.mockImplementation(
+				(
+					_workflow,
+					_node,
+					_additionalData,
+					_mode,
+					_runExecutionData,
+					_runIndex,
+					_connectionInputData,
+					_inputData,
+					_executionData,
+					closeFunctions,
+				) => {
+					closeFunctions.push(closeFunction1, closeFunction2);
+					return mockContextInstance as unknown as ExecuteContext;
+				},
+			);
+
+			await expect(
+				workflowExecute.runNode(
+					mockWorkflow,
+					mockExecutionData,
+					mockRunExecutionData,
+					0,
+					mockAdditionalData,
+					'manual',
+				),
+			).rejects.toThrow('Execution failed');
+
+			expect(closeFunction1).toHaveBeenCalled();
+			expect(closeFunction2).toHaveBeenCalled();
+		});
+
+		it('should call all close functions via Promise.allSettled even when some fail', async () => {
+			const mockData = [[{ json: { result: 'test' } }]];
+			const closeFunction1 = jest.fn().mockResolvedValue(undefined);
+			const closeFunction2 = jest.fn().mockRejectedValue(new Error('Close error 1'));
+			const closeFunction3 = jest.fn().mockResolvedValue(undefined);
+
+			mockNodeType.execute = jest.fn().mockResolvedValue(mockData);
+
+			const mockContextInstance = {
+				hints: [],
+			};
+
+			mockExecuteContext.mockImplementation(
+				(
+					_workflow,
+					_node,
+					_additionalData,
+					_mode,
+					_runExecutionData,
+					_runIndex,
+					_connectionInputData,
+					_inputData,
+					_executionData,
+					closeFunctions,
+				) => {
+					closeFunctions.push(closeFunction1, closeFunction2, closeFunction3);
+					return mockContextInstance as unknown as ExecuteContext;
+				},
+			);
+
+			await expect(
+				workflowExecute.runNode(
+					mockWorkflow,
+					mockExecutionData,
+					mockRunExecutionData,
+					0,
+					mockAdditionalData,
+					'manual',
+				),
+			).rejects.toThrow('Close error 1');
+
+			expect(closeFunction1).toHaveBeenCalled();
+			expect(closeFunction2).toHaveBeenCalled();
+			expect(closeFunction3).toHaveBeenCalled();
+		});
+
+		it('should throw close function error when EngineRequest is returned', async () => {
+			const engineRequest = { actions: [{ type: 'test' }], metadata: {} };
+			const closeFunction1 = jest.fn().mockRejectedValue(new Error('Close error on EngineRequest'));
+
+			mockNodeType.execute = jest.fn().mockResolvedValue(engineRequest);
+
+			const mockContextInstance = {
+				hints: [],
+			};
+
+			mockExecuteContext.mockImplementation(
+				(
+					_workflow,
+					_node,
+					_additionalData,
+					_mode,
+					_runExecutionData,
+					_runIndex,
+					_connectionInputData,
+					_inputData,
+					_executionData,
+					closeFunctions,
+				) => {
+					closeFunctions.push(closeFunction1);
+					return mockContextInstance as unknown as ExecuteContext;
+				},
+			);
+
+			await expect(
+				workflowExecute.runNode(
+					mockWorkflow,
+					mockExecutionData,
+					mockRunExecutionData,
+					0,
+					mockAdditionalData,
+					'manual',
+				),
+			).rejects.toThrow('Close error on EngineRequest');
+
+			expect(closeFunction1).toHaveBeenCalled();
+		});
+
+		it('should call close functions after custom operation completes', async () => {
+			const mockData = [[{ json: { result: 'custom operation result' } }]];
+			const mockCustomOperation = jest.fn().mockResolvedValue(mockData);
+			const closeFunction1 = jest.fn().mockResolvedValue(undefined);
+			const closeFunction2 = jest.fn().mockResolvedValue(undefined);
+
+			const customOpNode = {
+				...mockNode,
+				parameters: {
+					resource: 'testResource',
+					operation: 'testOperation',
+				},
+			};
+
+			const customOpNodeType = {
+				...mockNodeType,
+				customOperations: {
+					testResource: {
+						testOperation: mockCustomOperation,
+					},
+				},
+				execute: undefined,
+			};
+
+			mockWorkflow.nodeTypes.getByNameAndVersion = jest.fn().mockReturnValue(customOpNodeType);
+
+			const customOpExecutionData = {
+				...mockExecutionData,
+				node: customOpNode,
+			};
+
+			const mockContextInstance = { hints: [] };
+			mockExecuteContext.mockImplementation(
+				(
+					_workflow,
+					_node,
+					_additionalData,
+					_mode,
+					_runExecutionData,
+					_runIndex,
+					_connectionInputData,
+					_inputData,
+					_executionData,
+					closeFunctions,
+				) => {
+					closeFunctions.push(closeFunction1, closeFunction2);
+					return mockContextInstance as unknown as ExecuteContext;
+				},
+			);
+
+			const result = await workflowExecute.runNode(
+				mockWorkflow,
+				customOpExecutionData,
+				mockRunExecutionData,
+				0,
+				mockAdditionalData,
+				'manual',
+			);
+
+			expect(mockCustomOperation).toHaveBeenCalled();
+			expect(result).toEqual({ data: mockData, hints: [] });
+			expect(closeFunction1).toHaveBeenCalled();
+			expect(closeFunction2).toHaveBeenCalled();
+		});
+
+		it('should not mask execution error with close function error', async () => {
+			const closeFunction1 = jest.fn().mockRejectedValue(new Error('Close error'));
+
+			mockNodeType.execute = jest.fn().mockRejectedValue(new Error('Execution failed'));
+
+			const mockContextInstance = {
+				hints: [],
+			};
+
+			mockExecuteContext.mockImplementation(
+				(
+					_workflow,
+					_node,
+					_additionalData,
+					_mode,
+					_runExecutionData,
+					_runIndex,
+					_connectionInputData,
+					_inputData,
+					_executionData,
+					closeFunctions,
+				) => {
+					closeFunctions.push(closeFunction1);
+					return mockContextInstance as unknown as ExecuteContext;
+				},
+			);
+
+			await expect(
+				workflowExecute.runNode(
+					mockWorkflow,
+					mockExecutionData,
+					mockRunExecutionData,
+					0,
+					mockAdditionalData,
+					'manual',
+				),
+			).rejects.toThrow('Execution failed');
+
+			expect(closeFunction1).toHaveBeenCalled();
+		});
 	});
 
 	describe('poll node type handling', () => {
