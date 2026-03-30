@@ -306,24 +306,42 @@ describe('useCredentialOAuth', () => {
 		};
 
 		let mockPopup: { closed: boolean; close: ReturnType<typeof vi.fn> };
-		let mockBroadcastChannel: {
-			close: ReturnType<typeof vi.fn>;
-			addEventListener: ReturnType<typeof vi.fn>;
-			postMessage: ReturnType<typeof vi.fn>;
-		};
+		class MockBroadcastChannel {
+			static failOauth = false;
+
+			static noopEventListener = false;
+
+			static closeCalled = false;
+
+			close = () => {
+				MockBroadcastChannel.closeCalled = true;
+			};
+
+			addEventListener = (event: string, handler: (e: MessageEvent) => void) => {
+				if (MockBroadcastChannel.noopEventListener) {
+					return;
+				}
+
+				if (MockBroadcastChannel.failOauth) {
+					if (event === 'message') {
+						setTimeout(() => handler({ data: 'error' } as MessageEvent), 0);
+					}
+				} else {
+					if (event === 'message') {
+						setTimeout(() => handler({ data: 'success' } as MessageEvent), 0);
+					}
+				}
+			};
+
+			removeEventListener = vi.fn();
+
+			postMessage = vi.fn();
+		}
 
 		beforeEach(() => {
 			mockPopup = { closed: false, close: vi.fn() };
-			mockBroadcastChannel = {
-				close: vi.fn(),
-				addEventListener: vi.fn(),
-				postMessage: vi.fn(),
-			};
 
-			vi.stubGlobal(
-				'BroadcastChannel',
-				vi.fn().mockImplementation(() => mockBroadcastChannel),
-			);
+			vi.stubGlobal('BroadcastChannel', MockBroadcastChannel);
 			vi.stubGlobal('open', vi.fn().mockReturnValue(mockPopup));
 		});
 
@@ -334,15 +352,6 @@ describe('useCredentialOAuth', () => {
 		it('should call oAuth2Authorize for OAuth2 types', async () => {
 			const credentialsStore = mockedStore(useCredentialsStore);
 			credentialsStore.oAuth2Authorize.mockResolvedValue('https://oauth.example.com/auth');
-
-			// Make the BroadcastChannel fire success immediately
-			mockBroadcastChannel.addEventListener.mockImplementation(
-				(event: string, handler: (e: MessageEvent) => void) => {
-					if (event === 'message') {
-						setTimeout(() => handler({ data: 'success' } as MessageEvent), 0);
-					}
-				},
-			);
 
 			const { authorize } = useCredentialOAuth();
 			const result = await authorize(mockCredential);
@@ -358,14 +367,6 @@ describe('useCredentialOAuth', () => {
 				type: 'oAuth1Api',
 			};
 			credentialsStore.oAuth1Authorize.mockResolvedValue('https://oauth1.example.com/auth');
-
-			mockBroadcastChannel.addEventListener.mockImplementation(
-				(event: string, handler: (e: MessageEvent) => void) => {
-					if (event === 'message') {
-						setTimeout(() => handler({ data: 'success' } as MessageEvent), 0);
-					}
-				},
-			);
 
 			const { authorize } = useCredentialOAuth();
 			const result = await authorize(oauth1Credential);
@@ -411,13 +412,7 @@ describe('useCredentialOAuth', () => {
 			const credentialsStore = mockedStore(useCredentialsStore);
 			credentialsStore.oAuth2Authorize.mockResolvedValue('https://oauth.example.com/auth');
 
-			mockBroadcastChannel.addEventListener.mockImplementation(
-				(event: string, handler: (e: MessageEvent) => void) => {
-					if (event === 'message') {
-						setTimeout(() => handler({ data: 'error' } as MessageEvent), 0);
-					}
-				},
-			);
+			MockBroadcastChannel.failOauth = true;
 
 			const { authorize } = useCredentialOAuth();
 			const result = await authorize(mockCredential);
@@ -430,18 +425,10 @@ describe('useCredentialOAuth', () => {
 			const credentialsStore = mockedStore(useCredentialsStore);
 			credentialsStore.oAuth2Authorize.mockResolvedValue('https://oauth.example.com/auth');
 
-			mockBroadcastChannel.addEventListener.mockImplementation(
-				(event: string, handler: (e: MessageEvent) => void) => {
-					if (event === 'message') {
-						setTimeout(() => handler({ data: 'success' } as MessageEvent), 0);
-					}
-				},
-			);
-
 			const { authorize } = useCredentialOAuth();
 			await authorize(mockCredential);
 
-			expect(mockBroadcastChannel.close).toHaveBeenCalled();
+			expect(MockBroadcastChannel.closeCalled).toBeTruthy();
 		});
 
 		it('should return false when aborted via signal', async () => {
@@ -449,9 +436,7 @@ describe('useCredentialOAuth', () => {
 			credentialsStore.oAuth2Authorize.mockResolvedValue('https://oauth.example.com/auth');
 
 			// Don't fire any BroadcastChannel message - instead simulate abort
-			mockBroadcastChannel.addEventListener.mockImplementation(() => {
-				// no-op: message handler never fires
-			});
+			MockBroadcastChannel.noopEventListener = true;
 
 			const originalAddEventListener = AbortSignal.prototype.addEventListener;
 			vi.spyOn(AbortSignal.prototype, 'addEventListener').mockImplementation(function (
@@ -487,27 +472,33 @@ describe('useCredentialOAuth', () => {
 		};
 
 		let mockPopup: { closed: boolean; close: ReturnType<typeof vi.fn> };
-		let mockBroadcastChannel: {
-			close: ReturnType<typeof vi.fn>;
-			addEventListener: ReturnType<typeof vi.fn>;
-			removeEventListener: ReturnType<typeof vi.fn>;
-			postMessage: ReturnType<typeof vi.fn>;
-		};
+
+		class MockBroadcastChannel {
+			static failOauth = false;
+
+			close = vi.fn();
+
+			addEventListener = (event: string, handler: (e: MessageEvent) => void) => {
+				if (MockBroadcastChannel.failOauth) {
+					if (event === 'message') {
+						setTimeout(() => handler({ data: 'error' } as MessageEvent), 0);
+					}
+				} else {
+					if (event === 'message') {
+						setTimeout(() => handler({ data: 'success' } as MessageEvent), 0);
+					}
+				}
+			};
+
+			removeEventListener = vi.fn();
+
+			postMessage = vi.fn();
+		}
 
 		beforeEach(() => {
 			mockTrack.mockClear();
 			mockPopup = { closed: false, close: vi.fn() };
-			mockBroadcastChannel = {
-				close: vi.fn(),
-				addEventListener: vi.fn(),
-				removeEventListener: vi.fn(),
-				postMessage: vi.fn(),
-			};
-
-			vi.stubGlobal(
-				'BroadcastChannel',
-				vi.fn().mockImplementation(() => mockBroadcastChannel),
-			);
+			vi.stubGlobal('BroadcastChannel', MockBroadcastChannel);
 			vi.stubGlobal('open', vi.fn().mockReturnValue(mockPopup));
 		});
 
@@ -520,14 +511,7 @@ describe('useCredentialOAuth', () => {
 			credentialsStore.createNewCredential.mockResolvedValue(createdCredential);
 			credentialsStore.oAuth2Authorize.mockResolvedValue('https://oauth.example.com/auth');
 
-			mockBroadcastChannel.addEventListener.mockImplementation(
-				(event: string, handler: (e: MessageEvent) => void) => {
-					if (event === 'message') {
-						setTimeout(() => handler({ data: 'success' } as MessageEvent), 0);
-					}
-				},
-			);
-
+			MockBroadcastChannel.failOauth = false;
 			return credentialsStore;
 		}
 
@@ -536,13 +520,7 @@ describe('useCredentialOAuth', () => {
 			credentialsStore.createNewCredential.mockResolvedValue(createdCredential);
 			credentialsStore.oAuth2Authorize.mockResolvedValue('https://oauth.example.com/auth');
 
-			mockBroadcastChannel.addEventListener.mockImplementation(
-				(event: string, handler: (e: MessageEvent) => void) => {
-					if (event === 'message') {
-						setTimeout(() => handler({ data: 'error' } as MessageEvent), 0);
-					}
-				},
-			);
+			MockBroadcastChannel.failOauth = true;
 
 			return credentialsStore;
 		}
