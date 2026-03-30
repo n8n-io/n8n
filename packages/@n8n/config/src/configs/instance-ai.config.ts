@@ -78,7 +78,7 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_SEARXNG_URL')
 	searxngUrl: string = '';
 
-	/** Restrict filesystem access to this directory path. Empty = full filesystem access (reads any path the n8n process can access). */
+	/** Base directory for server-side filesystem access. Empty = filesystem access disabled. */
 	@Env('N8N_INSTANCE_AI_FILESYSTEM_PATH')
 	filesystemPath: string = '';
 
