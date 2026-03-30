@@ -7,6 +7,8 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useAvailableProjectSearch } from '@/features/collaboration/projects/projects.utils';
 import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
+import { useRBACStore } from '@/app/stores/rbac.store';
+import { getResourcePermissions } from '@n8n/permissions';
 import type { DateValue } from '@internationalized/date';
 import { getLocalTimeZone, today } from '@internationalized/date';
 import type { InsightsSummaryType } from '@n8n/api-types';
@@ -63,6 +65,8 @@ const i18n = useI18n();
 
 const insightsStore = useInsightsStore();
 const projectsStore = useProjectsStore();
+const rbacStore = useRBACStore();
+
 const isTimeSavedRoute = computed(() => route.params.insightType === INSIGHT_TYPES.TIME_SAVED);
 
 const chartComponents = computed(() => ({
@@ -91,7 +95,18 @@ const granularity = computed(() => {
 	if (comparison <= 30) return 'day';
 	return 'week';
 });
-const selectedProject = ref<ProjectSharingData | null>(null);
+// Synchronously initialize from route query + already-loaded stores to avoid first-render flicker.
+// currentProject is set from the previous project page navigation — ideal for the common case.
+const initialProjectId = route.query.projectId as string | undefined;
+const selectedProject = ref<ProjectSharingData | null>(
+	initialProjectId
+		? (projectsStore.availableProjects.find((p) => p.id === initialProjectId) ??
+				projectsStore.myProjects.find((p) => p.id === initialProjectId) ??
+				(projectsStore.currentProject?.id === initialProjectId
+					? projectsStore.currentProject
+					: null))
+		: null,
+);
 
 const maxDate = today(getLocalTimeZone());
 
@@ -156,20 +171,17 @@ const fetchPaginatedTableData = ({
 	});
 };
 
-watch(
-	() => [props.insightType, selectedProject.value, range.value],
-	() => {
-		sortTableBy.value = [{ id: props.insightType, desc: true }];
+function fetchInsightsData() {
+	sortTableBy.value = [{ id: props.insightType, desc: true }];
 
-		const { startDate, endDate } = getFilteredRange();
+	const { startDate, endDate } = getFilteredRange();
 
-		if (insightsStore.isSummaryEnabled) {
-			void insightsStore.summary.execute(0, {
-				startDate,
-				endDate,
-				projectId: selectedProject.value?.id,
-			});
-		}
+	if (insightsStore.canViewInsights) {
+		void insightsStore.summary.execute(0, {
+			startDate,
+			endDate,
+			projectId: selectedProject.value?.id,
+		});
 
 		void insightsStore.charts.execute(0, {
 			startDate,
@@ -183,21 +195,39 @@ watch(
 				projectId: selectedProject.value?.id,
 			});
 		}
-	},
-	{
-		immediate: true,
+	}
+}
+
+// Suppress the watch during async initialization to avoid a double-fetch:
+// if selectedProject is set async in onBeforeMount, both the watch and the
+// explicit fetchInsightsData() call at the end would fire otherwise.
+let isInitializing = true;
+watch(
+	() => [props.insightType, selectedProject.value, range.value],
+	() => {
+		if (!isInitializing) fetchInsightsData();
 	},
 );
 
 onMounted(() => {
 	useDocumentTitle().set(i18n.baseText('insights.heading'));
 });
-// Must be *only* <email> — no extra text before or after
-const emailPattern = /^<([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})>$/;
+const hasGlobalInsightsAccess = computed(() => rbacStore.hasScope('insights:list'));
 
-const searchFn = useAvailableProjectSearch();
-const filterFn = (project: ProjectListItem) =>
-	!!project.name && !emailPattern.test(project.name.trim());
+const rawSearchFn = useAvailableProjectSearch();
+const searchFn = async (query: string) => {
+	const result = await rawSearchFn(query);
+	const sorted = [...result.data].sort((a, b) => {
+		if (a.type === 'team' && b.type !== 'team') return -1;
+		if (a.type !== 'team' && b.type === 'team') return 1;
+		return (a.name ?? '').localeCompare(b.name ?? '');
+	});
+	return { ...result, data: sorted };
+};
+const filterFn = (project: ProjectListItem) => {
+	if (hasGlobalInsightsAccess.value) return true;
+	return !!getResourcePermissions(project.scopes).insights.list;
+};
 
 onBeforeMount(async () => {
 	// Members filter locally over myProjects — preload them.
@@ -205,6 +235,20 @@ onBeforeMount(async () => {
 	if (!projectsStore.globalProjectPermissions.list) {
 		await projectsStore.getAvailableProjects();
 	}
+
+	// If synchronous init didn't find the project (store not yet loaded), fetch it now
+	if (initialProjectId && !selectedProject.value) {
+		const match =
+			projectsStore.availableProjects.find((p) => p.id === initialProjectId) ??
+			(await projectsStore.fetchProject(initialProjectId).catch(() => null));
+		if (match) {
+			selectedProject.value = match;
+		}
+	}
+
+	// Lift the suppression flag and do the single authoritative initial fetch.
+	isInitializing = false;
+	fetchInsightsData();
 });
 </script>
 
@@ -224,7 +268,7 @@ onBeforeMount(async () => {
 					:empty-options-text="i18n.baseText('projects.sharing.noMatchingProjects')"
 					size="mini"
 					:class="$style.projectSelect"
-					clearable
+					:clearable="true"
 					@clear="selectedProject = null"
 				/>
 
@@ -237,7 +281,7 @@ onBeforeMount(async () => {
 			</div>
 
 			<InsightsSummary
-				v-if="insightsStore.isSummaryEnabled"
+				v-if="insightsStore.canViewInsights"
 				:summary="insightsStore.summary.state"
 				:loading="insightsStore.summary.isLoading"
 				:start-date="range.start"
@@ -262,7 +306,6 @@ onBeforeMount(async () => {
 						<span>{{ i18n.baseText('insights.chart.loading') }}</span>
 					</div>
 					<div :class="$style.insightsChartWrapper">
-						{{ granularity }}
 						<component
 							:is="chartComponents[props.insightType]"
 							:type="props.insightType"
