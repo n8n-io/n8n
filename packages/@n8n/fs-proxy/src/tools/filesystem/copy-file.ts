@@ -16,7 +16,7 @@ export const copyFileTool: ToolDefinition<typeof inputSchema> = {
 	description:
 		'Copy a file to a new path. Overwrites the destination if it already exists. Parent directories at the destination are created automatically.',
 	inputSchema,
-	annotations: { defaultPermission: 'confirm' },
+	annotations: {},
 	async getAffectedResources({ sourcePath, destinationPath }, { dir }) {
 		return [
 			await buildFilesystemResource(

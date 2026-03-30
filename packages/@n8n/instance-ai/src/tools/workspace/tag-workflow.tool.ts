@@ -12,6 +12,10 @@ export function createTagWorkflowTool(context: InstanceAiContext) {
 			'Assign tags to a workflow by name. Creates tags that do not exist yet. Replaces all existing tags on the workflow.',
 		inputSchema: z.object({
 			workflowId: z.string().describe('ID of the workflow to tag'),
+			workflowName: z
+				.string()
+				.optional()
+				.describe('Name of the workflow (for confirmation message)'),
 			tags: z.array(z.string()).min(1).describe('Tag names to assign to the workflow'),
 		}),
 		outputSchema: z.object({
@@ -36,7 +40,7 @@ export function createTagWorkflowTool(context: InstanceAiContext) {
 			if (needsApproval && (resumeData === undefined || resumeData === null)) {
 				await suspend?.({
 					requestId: nanoid(),
-					message: `Tag workflow "${input.workflowId}" with [${input.tags.join(', ')}]?`,
+					message: `Tag workflow "${input.workflowName ?? input.workflowId}" with [${input.tags.join(', ')}]?`,
 					severity: 'info' as const,
 				});
 				// suspend() never resolves — this line is unreachable but satisfies the type checker

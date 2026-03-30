@@ -8,17 +8,109 @@ import { z } from 'zod';
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { executeResumableStream } from '../../runtime/resumable-stream-executor';
 import type { OrchestrationContext } from '../../types';
+import { createToolsFromLocalMcpServer } from '../filesystem/create-tools-from-mcp-server';
+import { createAskUserTool } from '../shared/ask-user.tool';
+import { createFetchUrlTool } from '../web-research/fetch-url.tool';
+import { createWebSearchTool } from '../web-research/web-search.tool';
 
 const BROWSER_AGENT_MAX_STEPS = 300;
 
-const BROWSER_AGENT_PROMPT = `You are a browser automation agent helping a user set up an n8n credential.
+type BrowserToolSource = 'gateway' | 'chrome-devtools-mcp';
+
+interface BrowserToolNames {
+	navigate: string;
+	snapshot: string;
+	content: string | null;
+	screenshot: string;
+	wait: string;
+	open: string | null;
+	close: string | null;
+	evaluate: string | null;
+}
+
+const TOOL_NAMES: Record<BrowserToolSource, BrowserToolNames> = {
+	gateway: {
+		navigate: 'browser_navigate',
+		snapshot: 'browser_snapshot',
+		content: 'browser_content',
+		screenshot: 'browser_screenshot',
+		wait: 'browser_wait',
+		open: 'browser_open',
+		close: 'browser_close',
+		evaluate: 'browser_evaluate',
+	},
+	'chrome-devtools-mcp': {
+		navigate: 'navigate_page',
+		snapshot: 'take_snapshot',
+		content: null,
+		screenshot: 'take_screenshot',
+		wait: 'wait_for',
+		open: null,
+		close: null,
+		evaluate: 'evaluate_script',
+	},
+};
+
+function buildBrowserAgentPrompt(source: BrowserToolSource): string {
+	const t = TOOL_NAMES[source];
+	const isGateway = source === 'gateway';
+
+	const sessionLifecycle = isGateway
+		? `
+## Browser Session
+You control the user's real Chrome browser via the browser_* tools. **Every browser_* call requires a sessionId.**
+
+1. First call \`${t.open}\` with \`{ "mode": "local", "browser": "chrome" }\` — this returns a \`sessionId\`.
+2. Pass that \`sessionId\` to EVERY subsequent browser_* call.
+3. When finished, call \`${t.close}\` with the \`sessionId\`.
+`
+		: '';
+
+	const readPageInstruction = isGateway
+		? `Use \`${t.content}\` to get the visible text content (~5KB). This is 50x smaller than ${t.snapshot}.`
+		: `Use \`${t.evaluate}\` with \`() => document.body.innerText\` to get the text content (~5KB). This is 50x smaller than ${t.snapshot}.`;
+
+	const findElementsInstruction = isGateway
+		? ''
+		: `
+**To FIND interactive elements** (buttons, links, forms):
+Use \`${t.evaluate}\` with this function to get a compact list of clickable elements:
+\`() => { const els = document.querySelectorAll('a[href], button, input, select, [role="button"], [role="link"]'); return [...els].filter(e => e.offsetParent !== null).slice(0, 100).map(e => ({ tag: e.tagName, text: (e.textContent||'').trim().slice(0,80), href: e.href||'', id: e.id||'', aria: e.getAttribute('aria-label')||'' })) }\`
+`;
+
+	const clickInstruction = isGateway ? 'click/type' : 'click/fill';
+
+	const processStep1 = isGateway
+		? `1. Call \`${t.open}\` with \`{ "mode": "local", "browser": "chrome" }\` to start a session.
+2. Read n8n credential docs with \`fetch-url\`. Follow any linked sub-pages for additional setup details.`
+		: '1. Read n8n credential docs with `fetch-url`. Follow any linked sub-pages for additional setup details.';
+
+	// Gateway has 2 initial steps (open + read docs), non-gateway has 1 (read docs only)
+	const nextStep = isGateway ? 3 : 2;
+
+	const processStepFinal = isGateway
+		? `\n${nextStep + 7}. Call \`${t.close}\` to end the session.`
+		: '';
+
+	const browserDescription = isGateway
+		? "The browser is the user's real Chrome browser (their profile, cookies, sessions)."
+		: 'The browser is visible to the user (headful mode).';
+
+	return `You are a browser automation agent helping a user set up an n8n credential.
 
 ## Your Goal
-Help the user obtain ALL required credential values (listed in the briefing). Your job is NOT done until the user has a Client ID, Client Secret, API Key, or whatever the credential requires — visible on screen and ready to copy.
+Help the user obtain ALL required credential values (listed in the briefing). Your job is NOT done until the user has the credential values — visible on screen, ready to copy, or downloaded as a file.
+
+## Tool Separation
+- **fetch-url**: Read n8n documentation pages and follow doc links. Returns clean markdown. NEVER use the browser for reading docs.
+- **web-search**: Research service-specific setup guides, troubleshoot errors, find information not covered in n8n docs.
+- **Browser tools**: Drive the external service UI. ONLY for the service where credentials are created/found.
+- **ask-user**: Ask the user for choices — app names, project selection, descriptions, scopes, or any decision that should not be guessed. Returns the user's actual answer.
+- **pause-for-user**: Hand control to the user for actions — sign-in, 2FA, copying secrets, downloading files. Returns only confirmed/not confirmed.
 
 ## CRITICAL: When to stop
 You may ONLY stop when ONE of these is true:
-- You have called pause-for-user telling the user to copy the ACTUAL credential values (Client ID, Client Secret, API Key, etc.) that are VISIBLE on screen
+- You have called pause-for-user telling the user to copy the ACTUAL credential values that are VISIBLE on screen or downloaded
 - An unrecoverable error occurred (e.g., the service is down)
 
 **If you have NOT yet called pause-for-user with the credential values, you are NOT done. Keep going.**
@@ -31,54 +123,56 @@ You must NOT stop just because you:
 - Clicked a menu item
 - Navigated to the credentials page
 - Enabled an API
-These are ALL intermediate steps — keep going until the credential values are on screen.
-
+These are ALL intermediate steps — keep going until the credential values are available.
+${sessionLifecycle}
 ## Process
-1. Navigate to the n8n documentation URL and read it using \`evaluate_script\` with \`() => document.body.innerText\` (NOT take_snapshot — docs pages have 250KB accessibility trees that fill up context).
-2. Follow the documentation step by step on the service's website.
-3. On service pages, first use \`evaluate_script\` to find interactive elements, then \`take_snapshot\` ONLY when you need UIDs for click/fill.
-4. For each required credential field, navigate to where the user can create/find that value.
-5. When the user needs to interact (sign in, complete 2FA, click buttons, copy values), call pause-for-user with a clear message.
-6. After each pause, take a snapshot to verify the action was completed.
-7. Continue until the credential values are visible on screen.
-8. Your FINAL action must be pause-for-user telling the user to copy the values. If you stop without this, the system will ask the user anyway — but it's better if you do it with specific instructions about what to copy.
+${processStep1}
+${nextStep}. Navigate the browser to the external service's console/dashboard.
+${nextStep + 1}. Follow the documentation steps on the service website.
+${nextStep + 2}. When the user needs to make a choice (app name, project, description, scopes), use \`ask-user\` to get their preference — do NOT guess.
+${nextStep + 3}. When the user needs to act (sign in, complete 2FA, copy values, download files), call \`pause-for-user\` with a clear message.
+${nextStep + 4}. After each pause, take a snapshot to verify the action was completed.
+${nextStep + 5}. Continue until all credential values are available to the user.
+${nextStep + 6}. Your FINAL action must be \`pause-for-user\` telling the user exactly what to copy and where to find it.${processStepFinal}
+
+## Reading docs vs driving the service
+
+**To READ documentation** (n8n docs, service API docs, setup guides):
+Use \`fetch-url\` — returns clean markdown, doesn't touch the browser. Follow links to sub-pages as needed.
+Use \`web-search\` when n8n docs are missing, outdated, or you need service-specific help.
+NEVER navigate the browser to documentation pages.
+
+**To READ a service page** (understanding what's on the current page):
+${readPageInstruction}
+${findElementsInstruction}
+**To CLICK or TYPE** (need element UIDs):
+Use \`${t.snapshot}\` — but ONLY when you've identified what to ${clickInstruction} and need the uid.
+
+**NEVER use \`${t.screenshot}\`** — screenshots are base64 images that consume enormous context.
 
 ## Resilience
 - Documentation may be outdated or the UI may have changed. Use your best judgment.
 - If a button or link from the docs doesn't exist, look at what IS on the page and adapt.
 - If something is already configured (e.g., consent screen exists, API is enabled), skip that step and move to the NEXT one.
 - If you see the values you need are already on screen, skip ahead to telling the user to copy them.
-- Always take a snapshot after clicking to see what actually loaded.
-
-## Reading pages vs interacting
-
-**To READ a page** (docs, instructions, any content page):
-Use \`evaluate_script\` with \`() => document.body.innerText\` to get the text content (~5KB). This is 50x smaller than take_snapshot on docs pages.
-
-**To FIND interactive elements** (buttons, links, forms):
-Use \`evaluate_script\` with this function to get a compact list of clickable elements:
-\`() => { const els = document.querySelectorAll('a[href], button, input, select, [role="button"], [role="link"]'); return [...els].filter(e => e.offsetParent !== null).slice(0, 100).map(e => ({ tag: e.tagName, text: (e.textContent||'').trim().slice(0,80), href: e.href||'', id: e.id||'', aria: e.getAttribute('aria-label')||'' })) }\`
-
-**To CLICK or FILL** (need element UIDs):
-Use \`take_snapshot\` — but ONLY when you've identified what to click and need the uid. Never snapshot docs pages.
-
-**NEVER use \`take_screenshot\`** — screenshots are base64 images that consume enormous context.
+- Always check page state after clicking (use \`${t.snapshot}\` or ${t.content ? `\`${t.content}\`` : `\`${t.evaluate}\``}).
 
 ## Rules
-- The browser is visible to the user (headful mode).
-- Use pause-for-user EVERY time the user needs to do something (sign in, click, copy values).
+- ${browserDescription}
 - Do NOT narrate what you plan to do — just DO it. Take action, check the result.
-- Do NOT try to read or extract secret values. Tell the user to copy them.
-- If a page takes time to load, use wait_for before taking a snapshot.
-- Be economical with snapshots — only take_snapshot when you need element UIDs to click/fill.
-- **CRITICAL: NEVER end your turn after navigate_page without a follow-up action.** After every navigation, you MUST either take_snapshot or evaluate_script to see what loaded, then continue working. Your turn should only end after calling pause-for-user.`;
+- Do NOT extract or repeat secret values in your messages. Tell the user WHERE to find them on screen.
+- Do NOT guess names or make choices for the user. When a name, label, or selection is needed (OAuth app name, project, description, scopes), use \`ask-user\` to get their preference.
+- Never guess or reuse element UIDs from a previous snapshot. Always take a fresh snapshot before clicking.
+- Be economical with snapshots — only \`${t.snapshot}\` when you need element UIDs to ${clickInstruction}.
+- **CRITICAL: NEVER end your turn after ${t.navigate} without a follow-up action.** After every navigation, you MUST either \`${t.snapshot}\` or ${t.content ? `\`${t.content}\`` : `\`${t.evaluate}\``} to see what loaded, then continue working. Your turn should only end after calling \`pause-for-user\`.`;
+}
 
 function createPauseForUserTool() {
 	return createTool({
 		id: 'pause-for-user',
 		description:
 			'Pause and wait for the user to complete an action in the browser (e.g., sign in, ' +
-			'complete 2FA, click a button). The user sees a message and confirms when done.',
+			'complete 2FA, click a button, copy values, download files). The user sees a message and confirms when done.',
 		inputSchema: z.object({
 			message: z.string().describe('What the user needs to do (shown in the chat UI)'),
 		}),
@@ -137,28 +231,56 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 			result: z.string(),
 		}),
 		execute: async (input) => {
-			if (!context.browserMcpConfig) {
-				return {
-					result: 'Browser automation is not configured. Set N8N_INSTANCE_AI_BROWSER_MCP=true.',
-				};
-			}
-
-			// Collect browser MCP tools from the orchestration context
+			// Determine tool source: prefer local gateway browser tools over chrome-devtools-mcp
 			const browserTools: ToolsInput = {};
-			const mcpTools = context.mcpTools ?? {};
-			for (const [name, tool] of Object.entries(mcpTools)) {
-				// Include all MCP tools — browser agent may need them all
-				browserTools[name] = tool;
+			let toolSource: BrowserToolSource;
+
+			const gatewayBrowserTools = context.localMcpServer?.getToolsByCategory('browser') ?? [];
+
+			if (gatewayBrowserTools.length > 0 && context.localMcpServer) {
+				// Gateway path: create Mastra tools from gateway, keep only browser category tools
+				const gatewayBrowserNames = new Set(gatewayBrowserTools.map((t) => t.name));
+				const allGatewayTools = createToolsFromLocalMcpServer(context.localMcpServer);
+				for (const [name, tool] of Object.entries(allGatewayTools)) {
+					if (gatewayBrowserNames.has(name)) {
+						browserTools[name] = tool;
+					}
+				}
+				toolSource = 'gateway';
+			} else if (context.browserMcpConfig) {
+				// Chrome DevTools MCP path: use tools from context.mcpTools
+				const mcpTools = context.mcpTools ?? {};
+				for (const [name, tool] of Object.entries(mcpTools)) {
+					browserTools[name] = tool;
+				}
+				toolSource = 'chrome-devtools-mcp';
+			} else {
+				return {
+					result:
+						'Browser automation is not available. Either connect a local gateway with browser tools or set N8N_INSTANCE_AI_BROWSER_MCP=true.',
+				};
 			}
 
 			if (Object.keys(browserTools).length === 0) {
 				return {
-					result: 'No browser MCP tools available. Chrome DevTools MCP may not be connected.',
+					result:
+						toolSource === 'gateway'
+							? 'Local gateway is connected but no browser_* tools are available. Ensure the browser module is enabled in the gateway.'
+							: 'No browser MCP tools available. Chrome DevTools MCP may not be connected.',
 				};
 			}
 
-			// Add the pause-for-user tool
+			// Add interaction tools
 			browserTools['pause-for-user'] = createPauseForUserTool();
+			browserTools['ask-user'] = createAskUserTool();
+
+			// Add research tools (fetch-url, web-search) from the domain context
+			if (context.domainContext) {
+				browserTools['fetch-url'] = createFetchUrlTool(context.domainContext);
+				if (context.domainContext.webResearchService?.search) {
+					browserTools['web-search'] = createWebSearchTool(context.domainContext);
+				}
+			}
 
 			const subAgentId = `agent-browser-${nanoid(6)}`;
 
@@ -180,7 +302,7 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 					name: 'Browser Credential Setup Agent',
 					instructions: {
 						role: 'system' as const,
-						content: BROWSER_AGENT_PROMPT,
+						content: buildBrowserAgentPrompt(toolSource),
 						providerOptions: {
 							anthropic: { cacheControl: { type: 'ephemeral' } },
 						},
@@ -192,36 +314,41 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 				registerWithMastra(subAgentId, subAgent, context.storage, context.tracingConfig);
 
 				// Build the briefing
-				const docsInfo = input.docsUrl
-					? `Documentation URL: ${input.docsUrl}`
-					: 'No documentation URL available — search for setup instructions online.';
+				const docsLine = input.docsUrl
+					? `**Documentation:** ${input.docsUrl}`
+					: '**Documentation:** No URL available — use `web-search` to find setup instructions.';
 
-				// Build fields context so the agent knows exactly what to look for
-				let fieldsInfo = '';
+				let fieldsSection = '';
 				if (input.requiredFields && input.requiredFields.length > 0) {
 					const fieldLines = input.requiredFields.map(
 						(f) =>
 							`- ${f.displayName} (${f.name})${f.required ? ' [REQUIRED]' : ''}${f.description ? ': ' + f.description : ''}`,
 					);
-					fieldsInfo = '\n\nCREDENTIAL FIELDS THE USER NEEDS:\n' + fieldLines.join('\n');
+					fieldsSection = `\n### Required Fields\n${fieldLines.join('\n')}`;
 				}
 
 				// For OAuth2 credentials, include the redirect URL so the agent can
 				// paste it directly into the "Authorized redirect URIs" field
 				const isOAuth = input.credentialType.toLowerCase().includes('oauth');
-				const oauthInfo =
+				const oauthSection =
 					isOAuth && context.oauth2CallbackUrl
-						? `\n\nOAUTH REDIRECT URL: ${context.oauth2CallbackUrl}\n` +
-							'When creating OAuth client credentials, paste this URL into the "Authorized redirect URIs" field. ' +
+						? `\n### OAuth Redirect URL\n${context.oauth2CallbackUrl}\n` +
+							'Paste this into the "Authorized redirect URIs" field. ' +
 							'Do NOT navigate to the n8n instance to find it — use this URL directly.'
 						: '';
 
-				const briefing =
-					`Set up a credential of type: ${input.credentialType}\n\n` +
-					`${docsInfo}${fieldsInfo}${oauthInfo}\n\n` +
-					'COMPLETION CRITERIA: You are done ONLY when the required credential values ' +
-					'are visible on screen and the user has been told to copy them. ' +
-					'Everything before that is an intermediate step — keep going.';
+				const briefing = [
+					`## Credential Setup: ${input.credentialType}`,
+					'',
+					docsLine,
+					fieldsSection,
+					oauthSection,
+					'',
+					'### Completion Criteria',
+					'Done ONLY when all required values are visible on screen or downloaded, and you have called `pause-for-user` telling the user what to copy.',
+				]
+					.filter(Boolean)
+					.join('\n');
 
 				// Stream the sub-agent
 				const stream = await subAgent.stream(briefing, {

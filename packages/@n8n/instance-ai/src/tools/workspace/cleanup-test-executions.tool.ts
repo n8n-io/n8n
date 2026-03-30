@@ -12,6 +12,10 @@ export function createCleanupTestExecutionsTool(context: InstanceAiContext) {
 			'Delete manual/test execution records for a workflow. Defaults to executions older than 1 hour. Requires confirmation.',
 		inputSchema: z.object({
 			workflowId: z.string().describe('ID of the workflow whose test executions to clean up'),
+			workflowName: z
+				.string()
+				.optional()
+				.describe('Name of the workflow (for confirmation message)'),
 			olderThanHours: z
 				.number()
 				.optional()
@@ -40,7 +44,7 @@ export function createCleanupTestExecutionsTool(context: InstanceAiContext) {
 				const hours = input.olderThanHours ?? 1;
 				await suspend?.({
 					requestId: nanoid(),
-					message: `Delete test executions for workflow "${input.workflowId}" older than ${hours} hour(s)?`,
+					message: `Delete test executions for workflow "${input.workflowName ?? input.workflowId}" older than ${hours} hour(s)?`,
 					severity: 'warning' as const,
 				});
 				return { deletedCount: 0 };

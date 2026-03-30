@@ -1,19 +1,15 @@
 import { z } from 'zod';
 
-import type { SessionManager } from '../session-manager';
+import type { BrowserConnection } from '../connection';
 import type { ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
-import { createSessionTool, pageIdField, sessionIdField } from './helpers';
+import { createConnectedTool, pageIdField, withSnapshotEnvelope } from './helpers';
 
-export function createWaitTools(
-	sessionManager: SessionManager,
-	toolGroupId: string,
-): ToolDefinition[] {
-	return [browserWait(sessionManager, toolGroupId)];
+export function createWaitTools(connection: BrowserConnection): ToolDefinition[] {
+	return [browserWait(connection)];
 }
 
 const browserWaitSchema = z.object({
-	sessionId: sessionIdField,
 	selector: z.string().optional().describe('CSS/text/role selector to wait for'),
 	url: z.string().optional().describe('URL pattern (glob) to wait for'),
 	loadState: z
@@ -26,19 +22,19 @@ const browserWaitSchema = z.object({
 	pageId: pageIdField,
 });
 
-const browserWaitOutputSchema = z.object({
+const browserWaitOutputSchema = withSnapshotEnvelope({
 	waited: z.boolean(),
 	elapsedMs: z.number(),
 });
 
-function browserWait(sessionManager: SessionManager, toolGroupId: string): ToolDefinition {
-	return createSessionTool(
-		sessionManager,
+function browserWait(connection: BrowserConnection): ToolDefinition {
+	return createConnectedTool(
+		connection,
 		'browser_wait',
 		'Wait for one or more conditions. Conditions can be combined — all must be satisfied.',
 		browserWaitSchema,
-		async (session, input, pageId) => {
-			const elapsedMs = await session.adapter.wait(pageId, {
+		async (state, input, pageId) => {
+			const elapsedMs = await state.adapter.wait(pageId, {
 				selector: input.selector,
 				url: input.url,
 				loadState: input.loadState,
@@ -49,6 +45,6 @@ function browserWait(sessionManager: SessionManager, toolGroupId: string): ToolD
 			return formatCallToolResult({ waited: true, elapsedMs });
 		},
 		browserWaitOutputSchema,
-		toolGroupId,
+		{ autoSnapshot: true },
 	);
 }

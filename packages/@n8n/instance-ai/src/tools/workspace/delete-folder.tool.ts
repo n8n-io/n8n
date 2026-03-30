@@ -12,6 +12,7 @@ export function createDeleteFolderTool(context: InstanceAiContext) {
 			'Delete a folder. Without transferToFolderId, contents are flattened to root and archived. With transferToFolderId, contents are moved first. Requires confirmation.',
 		inputSchema: z.object({
 			folderId: z.string().describe('ID of the folder to delete'),
+			folderName: z.string().optional().describe('Name of the folder (for confirmation message)'),
 			projectId: z.string().describe('ID of the project the folder belongs to'),
 			transferToFolderId: z
 				.string()
@@ -19,6 +20,10 @@ export function createDeleteFolderTool(context: InstanceAiContext) {
 				.describe(
 					'ID of a folder to move contents into before deletion. If omitted, contents are flattened to project root and archived.',
 				),
+			transferToFolderName: z
+				.string()
+				.optional()
+				.describe('Name of the transfer folder (for confirmation message)'),
 		}),
 		outputSchema: z.object({
 			success: z.boolean(),
@@ -41,11 +46,11 @@ export function createDeleteFolderTool(context: InstanceAiContext) {
 			// State 1: First call — suspend for confirmation (unless always_allow)
 			if (needsApproval && (resumeData === undefined || resumeData === null)) {
 				const transferNote = input.transferToFolderId
-					? ` Contents will be moved to folder "${input.transferToFolderId}".`
+					? ` Contents will be moved to folder "${input.transferToFolderName ?? input.transferToFolderId}".`
 					: ' Contents will be flattened to project root and archived.';
 				await suspend?.({
 					requestId: nanoid(),
-					message: `Delete folder "${input.folderId}"?${transferNote}`,
+					message: `Delete folder "${input.folderName ?? input.folderId}"?${transferNote}`,
 					severity: 'destructive' as const,
 				});
 				// suspend() never resolves — this line is unreachable but satisfies the type checker

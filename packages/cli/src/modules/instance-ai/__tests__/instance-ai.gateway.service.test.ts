@@ -5,6 +5,7 @@ import { LocalGatewayRegistry } from '../filesystem/local-gateway-registry';
 const CAPABILITIES: InstanceAiGatewayCapabilities = {
 	rootPath: '/home/user/project',
 	tools: [],
+	toolCategories: [],
 };
 
 describe('LocalGatewayRegistry — per-user gateway isolation', () => {
@@ -98,6 +99,8 @@ describe('LocalGatewayRegistry — per-user gateway isolation', () => {
 				connected: false,
 				connectedAt: null,
 				directory: null,
+				hostIdentifier: null,
+				toolCategories: [],
 			});
 		});
 

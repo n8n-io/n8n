@@ -5,9 +5,10 @@ import { screenshotTool, screenshotRegionTool } from './screenshot';
 
 jest.mock('node-screenshots');
 
-const mockSharp = jest.fn();
+const mockSharp = jest.fn<unknown, unknown[]>();
 jest.mock('sharp', () => ({
 	__esModule: true,
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 	default: (...args: unknown[]) => mockSharp(...args),
 }));
 

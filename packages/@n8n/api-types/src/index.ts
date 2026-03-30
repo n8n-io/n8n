@@ -315,6 +315,7 @@ export type {
 	InstanceAiFilesystemResponse,
 	InstanceAiGatewayCapabilities,
 	McpTool,
+	McpToolAnnotations,
 	McpToolCallRequest,
 	McpToolCallResult,
 	InstanceAiEvent,
@@ -344,6 +345,7 @@ export type {
 	DomainAccessAction,
 	DomainAccessMeta,
 	InstanceAiCredentialFlow,
+	ToolCategory,
 	InstanceAiWorkflowSetupNode,
 } from './schemas/instance-ai.schema';
 
