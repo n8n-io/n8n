@@ -24,7 +24,7 @@ export class WorkflowHistoryCompactionConfig {
 	 * Versions trimmed are those with `createdAt` between `trimmingMinimumAgeDays - trimmingTimeWindowDays` and `trimmingMinimumAgeDays`.
 	 */
 	@Env('N8N_WORKFLOW_HISTORY_TRIMMING_MINIMUM_AGE_DAYS')
-	trimmingMinimumAgeDays: number = 7;
+	trimmingMinimumAgeDays: number = 6;
 
 	/**
 	 * Time window in days used when selecting versions to trim. Trimming runs once per day.
