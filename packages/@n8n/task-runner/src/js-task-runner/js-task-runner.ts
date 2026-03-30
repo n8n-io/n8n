@@ -674,6 +674,23 @@ export class JsTaskRunner extends TaskRunner {
 		});
 	}
 
+	/**
+	 * Assembles the VM-executable code string for use with `runInContext`.
+	 *
+	 * Prepends a security preamble (sandbox restrictions, prototype lockdown, etc.)
+	 * to the user-supplied code. Each preamble statement occupies its own line via
+	 * `';\n'` joining, and `code` begins on a fresh line inside the `VmCodeWrapper`
+	 * function body (i.e. `{\n${code}\n}`).
+	 *
+	 * This line separation is required to prevent V8 from misattributing tokens on
+	 * the user's first line back to the preamble parse context. Without it, valid
+	 * JavaScript patterns such as regex character classes (`/[:.]/g`) or nested
+	 * object literals (`{ options: { temperature: 0.3 } }`) produce false
+	 * `SyntaxError`s depending on the length of the preamble.
+	 *
+	 * @param code Raw user-provided JavaScript string (may be multi-line).
+	 * @returns A newline-separated string ready to be passed to `runInContext`.
+	 */
 	private createVmExecutableCode(code: string) {
 		return [
 			// shim for `global` compatibility
@@ -702,15 +719,15 @@ export class JsTaskRunner extends TaskRunner {
 			'[Object, Function, Array, String, Number, Boolean, RegExp, Error, TypeError, RangeError, SyntaxError, ReferenceError, Promise, Symbol, Map, Set, WeakMap, WeakSet, Date, JSON, Math, Reflect, ArrayBuffer, DataView, Int8Array, Uint8Array, Float32Array, Float64Array].forEach((constructor) => { try { Object.freeze(constructor); } catch {} })',
 
 			// wrap user code
-			`module.exports = async function VmCodeWrapper() {${code}\n}()`,
-		].join('; ');
+			`module.exports = async function VmCodeWrapper() {\n${code}\n}()`,
+		].join(';\n');
 	}
 
 	private async runDirectly<T>(code: string, context: Context): Promise<T> {
 		// eslint-disable-next-line @typescript-eslint/no-implied-eval
 		const fn = new Function(
 			'context',
-			`with(context) { return (async function() {${code}\n})(); }`,
+			`with(context) { return (async function() {\n${code}\n})(); }`,
 		);
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return
 		return await fn(context);
