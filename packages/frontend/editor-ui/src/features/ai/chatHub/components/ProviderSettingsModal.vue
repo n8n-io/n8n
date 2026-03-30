@@ -264,6 +264,7 @@ watch(
 						placement="top"
 					>
 						<N8nSwitch
+							data-test-id="chat-provider-enabled-switch"
 							size="large"
 							:model-value="settings?.enabled ?? false"
 							:disabled="props.data.disabled || loadingSettings"
@@ -317,6 +318,7 @@ watch(
 							placement="top"
 						>
 							<N8nSwitch
+								data-test-id="chat-provider-limit-models-switch"
 								size="large"
 								:model-value="limitModels"
 								:disabled="props.data.disabled || loadingSettings"
