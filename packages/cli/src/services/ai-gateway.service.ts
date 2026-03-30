@@ -1,11 +1,12 @@
-import { AI_GATEWAY_CREDENTIAL_TYPES } from '@n8n/constants';
-import { GlobalConfig } from '@n8n/config';
 import { LicenseState, Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
+import { AI_GATEWAY_CREDENTIAL_TYPES } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
 
+import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
 import { License } from '@/license';
 
 type AiGatewayCredentialType = (typeof AI_GATEWAY_CREDENTIAL_TYPES)[number];
@@ -62,8 +63,8 @@ export class AiGatewayService {
 		userId: string,
 	): Promise<ICredentialDataDecryptedObject> {
 		// TODO: enforce license before shipping — throw FeatureNotLicensedError when not licensed
-		if (!this.licenseState.isAiCreditsLicensed()) {
-			this.logger.error('AI Gateway: license check failed (feat:aiCredits not licensed)');
+		if (!this.licenseState.isAiGatewayLicensed()) {
+			this.logger.error('AI Gateway: license check failed (feat:aiGateway not licensed)');
 		}
 
 		const baseUrl = this.globalConfig.aiAssistant.baseUrl;
@@ -108,6 +109,20 @@ export class AiGatewayService {
 	}
 
 	/**
+	 * Headers required by the AI Gateway credentials endpoint (`HeadersMetadataDto`).
+	 */
+	private buildGatewayCredentialsHeaders(userId: string): Record<string, string> {
+		const headers: Record<string, string> = {};
+		headers['Content-Type'] = 'application/json';
+		headers['x-user-id'] = userId;
+		headers['x-consumer-id'] = this.license.getConsumerId();
+		headers['x-sdk-version'] = AI_ASSISTANT_SDK_VERSION;
+		headers['x-n8n-version'] = N8N_VERSION;
+		headers['x-instance-id'] = this.instanceSettings.instanceId;
+		return headers;
+	}
+
+	/**
 	 * Returns a cached JWT for `instanceId:userId`, fetching a fresh one from the gateway
 	 * if missing or past 90% of its lifetime.
 	 */
@@ -124,8 +139,8 @@ export class AiGatewayService {
 
 		const response = await fetch(`${baseUrl}/v1/gateway/credentials`, {
 			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ licenseCert, instanceId: this.instanceSettings.instanceId, userId }),
+			headers: this.buildGatewayCredentialsHeaders(userId),
+			body: JSON.stringify({ licenseCert }),
 		});
 
 		if (!response.ok) {

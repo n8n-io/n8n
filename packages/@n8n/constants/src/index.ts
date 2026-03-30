@@ -30,6 +30,7 @@ export const LICENSE_FEATURES = {
 	ASK_AI: 'feat:askAi',
 	COMMUNITY_NODES_CUSTOM_REGISTRY: 'feat:communityNodes:customRegistry',
 	AI_CREDITS: 'feat:aiCredits',
+	AI_GATEWAY: 'feat:aiGateway',
 	FOLDERS: 'feat:folders',
 	INSIGHTS_VIEW_SUMMARY: 'feat:insights:viewSummary',
 	INSIGHTS_VIEW_DASHBOARD: 'feat:insights:viewDashboard',
