@@ -44,7 +44,10 @@ function getOrCreateProxyClient(proxyConfig: ServiceProxyConfig): Client {
 	const proxyFetch: typeof globalThis.fetch = (input, init) => {
 		const contextHeaders = proxyHeaderStore.getStore();
 		if (contextHeaders) {
-			const merged = { ...(init?.headers as Record<string, string>), ...contextHeaders };
+			const merged = new Headers(init?.headers);
+			for (const [key, value] of Object.entries(contextHeaders)) {
+				merged.set(key, value);
+			}
 			return globalThis.fetch(input, { ...init, headers: merged });
 		}
 		return globalThis.fetch(input, init);
