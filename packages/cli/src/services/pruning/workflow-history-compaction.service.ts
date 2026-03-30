@@ -29,7 +29,7 @@ import { strict } from 'node:assert';
  *    by `trimmingMinimumAgeDays` and `trimmingTimeWindowDays`
  *
  * 2. For each workflow, fetch all versions in that window and leave behind
- *    only one version every minute to eight hours, depending on the size of the
+ *    only one version every minute to ten hours, depending on the size of the
  *    workflow.
  *
  * Neither of these operations will remove active or named versions, and a version
