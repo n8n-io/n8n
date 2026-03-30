@@ -32,11 +32,6 @@
   "files": [
     "dist/**/*"
   ],
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "@vscode/ripgrep"
-    ]
-  },
   "dependencies": {
     "@anthropic-ai/sandbox-runtime": "^0.0.42",
     "@inquirer/prompts": "^8.3.2",
