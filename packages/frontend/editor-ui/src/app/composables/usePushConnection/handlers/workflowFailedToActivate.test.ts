@@ -76,7 +76,7 @@ describe('workflowFailedToActivate', () => {
 		expect(mockCloseModal).toHaveBeenCalledWith('activation');
 	});
 
-	it('should show error toast when there is no pending confirmation', async () => {
+	it('should always show error toast with published vocabulary', async () => {
 		vi.mocked(activationConfirmation.rejectActivationConfirmation).mockReturnValue(false);
 
 		const event: WorkflowFailedToActivate = {
@@ -92,7 +92,7 @@ describe('workflowFailedToActivate', () => {
 		);
 	});
 
-	it('should not show error toast when a pending confirmation was consumed', async () => {
+	it('should show error toast even when a pending confirmation was consumed', async () => {
 		vi.mocked(activationConfirmation.rejectActivationConfirmation).mockReturnValue(true);
 
 		const event: WorkflowFailedToActivate = {
@@ -102,7 +102,10 @@ describe('workflowFailedToActivate', () => {
 
 		await workflowFailedToActivate(event, options);
 
-		expect(mockShowError).not.toHaveBeenCalled();
+		expect(mockShowError).toHaveBeenCalledWith(
+			expect.any(Error),
+			expect.stringContaining('"newStateName":"published"'),
+		);
 	});
 
 	it('should still reject confirmation but skip UI updates when workflowId does not match', async () => {

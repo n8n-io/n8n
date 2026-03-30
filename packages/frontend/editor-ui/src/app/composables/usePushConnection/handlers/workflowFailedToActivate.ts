@@ -33,16 +33,12 @@ export async function workflowFailedToActivate(
 	const uiStore = useUIStore();
 	uiStore.closeModal(WORKFLOW_ACTIVE_MODAL_KEY);
 
-	// Only show the error toast if there was no pending publish flow waiting,
-	// because the publish modal will handle the error display in that case
-	if (!wasPendingConfirmation) {
-		const toast = useToast();
-		const i18n = useI18n();
-		toast.showError(
-			new Error(data.errorMessage),
-			i18n.baseText('workflowActivator.showError.title', {
-				interpolate: { newStateName: 'published' },
-			}) + ':',
-		);
-	}
+	const toast = useToast();
+	const i18n = useI18n();
+	toast.showError(
+		new Error(data.errorMessage),
+		i18n.baseText('workflowActivator.showError.title', {
+			interpolate: { newStateName: 'published' },
+		}) + ':',
+	);
 }
