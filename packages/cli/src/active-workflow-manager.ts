@@ -711,12 +711,18 @@ export class ActiveWorkflowManager {
 		await this.workflowStaticDataService.saveStaticData(workflow);
 
 		// Broadcast activation confirmation so the frontend can show the
-		// success modal. Skip when called from handleAddWebhooksTriggersAndPollers
-		// (shouldPublish === false) because that handler broadcasts the event itself.
+		// success modal. Also fan out to follower mains so their connected
+		// UIs reflect the publish. Skip when called from
+		// handleAddWebhooksTriggersAndPollers (shouldPublish === false)
+		// because that handler broadcasts the event itself.
 		if (shouldPublish && dbWorkflow.activeVersionId) {
 			this.push.broadcast({
 				type: 'workflowActivated',
 				data: { workflowId, activeVersionId: dbWorkflow.activeVersionId },
+			});
+			await this.publisher.publishCommand({
+				command: 'display-workflow-activation',
+				payload: { workflowId, activeVersionId: dbWorkflow.activeVersionId },
 			});
 		}
 
