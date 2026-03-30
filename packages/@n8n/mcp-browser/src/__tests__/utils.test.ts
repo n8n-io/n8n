@@ -83,8 +83,8 @@ describe('formatImageResponse', () => {
 
 describe('toError', () => {
 	it('should return Error instances unchanged', () => {
-		const error = new Error('test');
-		expect(toError(error)).toBe(error);
+		const original = new Error('test');
+		expect(toError(original)).toBe(original);
 	});
 
 	it('should wrap string values in Error', () => {

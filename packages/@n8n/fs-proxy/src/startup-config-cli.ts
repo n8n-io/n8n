@@ -104,7 +104,7 @@ async function promptFilesystemDir(currentDir: string): Promise<string> {
 	const rawDir = await input({
 		message: 'Filesystem root directory',
 		default: currentDir,
-		validate: async (dir) => {
+		validate: async (dir: string) => {
 			const resolved = nodePath.resolve(dir);
 			try {
 				const stat = await fs.stat(resolved);

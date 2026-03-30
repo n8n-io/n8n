@@ -14,6 +14,10 @@ export function createRunWorkflowTool(context: InstanceAiContext) {
 			'Execute a workflow, wait for completion (with timeout), and return the full result including output data and any errors. Default timeout is 5 minutes.',
 		inputSchema: z.object({
 			workflowId: z.string().describe('ID of the workflow to execute'),
+			workflowName: z
+				.string()
+				.optional()
+				.describe('Name of the workflow (for confirmation message)'),
 			inputData: z
 				.record(z.unknown())
 				.optional()
@@ -58,7 +62,7 @@ export function createRunWorkflowTool(context: InstanceAiContext) {
 			if (needsApproval && (resumeData === undefined || resumeData === null)) {
 				await suspend?.({
 					requestId: nanoid(),
-					message: `Execute workflow "${input.workflowId}"?`,
+					message: `Execute workflow "${input.workflowName ?? input.workflowId}"?`,
 					severity: 'warning' as const,
 				});
 				return {

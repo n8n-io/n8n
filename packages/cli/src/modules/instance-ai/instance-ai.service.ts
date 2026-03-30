@@ -4,6 +4,7 @@ import type {
 	InstanceAiThreadStatusResponse,
 	InstanceAiGatewayCapabilities,
 	McpToolCallResult,
+	ToolCategory,
 	TaskList,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -449,14 +450,16 @@ export class InstanceAiService {
 		this.gatewayRegistry.disconnectGateway(userId);
 	}
 
-	isLocalGatewayDisabled(userId: string): boolean {
-		return this.settingsService.isFilesystemDisabledForUser(userId);
+	isLocalGatewayDisabled(): boolean {
+		return this.settingsService.isLocalGatewayDisabled();
 	}
 
 	getGatewayStatus(userId: string): {
 		connected: boolean;
 		connectedAt: string | null;
 		directory: string | null;
+		hostIdentifier: string | null;
+		toolCategories: ToolCategory[];
 	} {
 		return this.gatewayRegistry.getGatewayStatus(userId);
 	}
@@ -623,7 +626,7 @@ export class InstanceAiService {
 		messageGroupId?: string,
 		pushRef?: string,
 	) {
-		const localGatewayDisabled = this.settingsService.isFilesystemDisabledForUser(user.id);
+		const localGatewayDisabled = this.settingsService.isLocalGatewayDisabled();
 		const userGateway = this.gatewayRegistry.findGateway(user.id);
 		const localFilesystemService =
 			!localGatewayDisabled && !userGateway?.isConnected && this.isLocalFilesystemAvailable()
@@ -642,6 +645,18 @@ export class InstanceAiService {
 		}
 		context.domainAccessTracker = domainTracker;
 		context.runId = runId;
+
+		// Compute gateway status for the system prompt
+		if (localGatewayDisabled) {
+			context.localGatewayStatus = { status: 'disabled' };
+		} else if (userGateway?.isConnected) {
+			context.localGatewayStatus = { status: 'connected' };
+		} else {
+			context.localGatewayStatus = {
+				status: 'disconnected',
+				capabilities: ['filesystem', 'browser'],
+			};
+		}
 
 		const modelId = await this.resolveModel(user);
 		const memory = createMemory(this.createMemoryConfig());
@@ -680,6 +695,7 @@ export class InstanceAiService {
 			browserMcpConfig: this.instanceAiConfig.browserMcp
 				? { name: 'chrome-devtools', command: 'npx', args: ['-y', 'chrome-devtools-mcp@latest'] }
 				: undefined,
+			localMcpServer: context.localMcpServer,
 			oauth2CallbackUrl: this.oauth2CallbackUrl,
 			webhookBaseUrl: this.webhookBaseUrl,
 			waitForConfirmation: async (requestId: string) => {

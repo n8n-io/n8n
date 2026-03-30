@@ -1,45 +1,30 @@
 import { z } from 'zod';
 
+import type { BrowserConnection } from '../connection';
 import { McpBrowserError } from '../errors';
-import type { SessionManager } from '../session-manager';
-import type { ToolContext, ToolDefinition } from '../types';
-import { browserNameSchema, sessionModeSchema, viewportSchema } from '../types';
+import type { AffectedResource, ToolContext, ToolDefinition } from '../types';
+import { browserNameSchema } from '../types';
 import { formatErrorResponse, formatCallToolResult } from '../utils';
-import { sessionIdField } from './helpers';
 
-export function createSessionTools(
-	sessionManager: SessionManager,
-	toolGroupId: string,
-): ToolDefinition[] {
-	return [browserOpen(sessionManager, toolGroupId), browserClose(sessionManager, toolGroupId)];
+export function createSessionTools(connection: BrowserConnection): ToolDefinition[] {
+	return [browserConnect(connection), browserDisconnect(connection)];
 }
 
 // ---------------------------------------------------------------------------
-// browser_open
+// browser_connect
 // ---------------------------------------------------------------------------
 
-const browserOpenSchema = z.object({
-	mode: sessionModeSchema
-		.optional()
-		.describe(
-			'Session mode: "ephemeral" (fresh, destroyed on close), "persistent" (named profile survives), "local" (user\'s real browser)',
-		),
+const browserConnectSchema = z.object({
 	browser: browserNameSchema
 		.optional()
-		.describe('Browser to use: chromium, chrome, brave, edge, firefox, safari, webkit'),
-	headless: z.boolean().optional().describe('Run in headless mode'),
-	viewport: viewportSchema.optional().describe('Viewport size { width, height }'),
-	profileName: z
-		.string()
-		.optional()
-		.describe('Profile name for persistent mode (default: "default")'),
-	ttlMs: z.number().positive().optional().describe('Session idle timeout in milliseconds'),
+		.describe(
+			'Chromium-based browser to connect to. Options: chrome, brave, edge, chromium. ' +
+				'Defaults to chrome. Only Chromium-based browsers are supported (they provide the CDP protocol required by the browser bridge extension).',
+		),
 });
 
-const browserOpenOutputSchema = z.object({
-	sessionId: z.string(),
+const browserConnectOutputSchema = z.object({
 	browser: z.string(),
-	mode: z.string(),
 	pages: z.array(
 		z.object({
 			id: z.string(),
@@ -49,23 +34,23 @@ const browserOpenOutputSchema = z.object({
 	),
 });
 
-function browserOpen(
-	sessionManager: SessionManager,
-	toolGroupId: string,
-): ToolDefinition<typeof browserOpenSchema> {
+function browserConnect(
+	connection: BrowserConnection,
+): ToolDefinition<typeof browserConnectSchema> {
 	return {
-		name: 'browser_open',
+		name: 'browser_connect',
 		description:
-			"Create a new browser session. Returns a sessionId for use in all other browser tools. Supports ephemeral (throwaway), persistent (named profile), and local (user's real browser) modes.",
-		inputSchema: browserOpenSchema,
-		outputSchema: browserOpenOutputSchema,
+			"Connect to the user's browser for web automation. " +
+			'Optionally specify a Chromium-based browser (chrome, brave, edge, chromium). ' +
+			'Requires the n8n AI Browser Bridge extension to be installed. ' +
+			'Must be called before using any other browser tools.',
+		inputSchema: browserConnectSchema,
+		outputSchema: browserConnectOutputSchema,
 		async execute(args, _context: ToolContext) {
 			try {
-				const result = await sessionManager.open(args);
+				const result = await connection.connect(args.browser);
 				return formatCallToolResult({
-					sessionId: result.sessionId,
 					browser: result.browser,
-					mode: result.mode,
 					pages: result.pages,
 				});
 			} catch (error) {
@@ -75,38 +60,34 @@ function browserOpen(
 				);
 			}
 		},
-		getAffectedResources(_args, _context: ToolContext) {
-			return [{ toolGroup: toolGroupId, resource: 'browser', description: 'Open browser session' }];
+		getAffectedResources(_args, _context: ToolContext): AffectedResource[] {
+			return [{ toolGroup: 'browser', resource: 'browser', description: 'Connect to browser' }];
 		},
 	};
 }
 
 // ---------------------------------------------------------------------------
-// browser_close
+// browser_disconnect
 // ---------------------------------------------------------------------------
 
-const browserCloseSchema = z.object({
-	sessionId: sessionIdField,
+const browserDisconnectSchema = z.object({});
+
+const browserDisconnectOutputSchema = z.object({
+	disconnected: z.boolean(),
 });
 
-const browserCloseOutputSchema = z.object({
-	closed: z.boolean(),
-	sessionId: z.string(),
-});
-
-function browserClose(
-	sessionManager: SessionManager,
-	toolGroupId: string,
-): ToolDefinition<typeof browserCloseSchema> {
+function browserDisconnect(
+	connection: BrowserConnection,
+): ToolDefinition<typeof browserDisconnectSchema> {
 	return {
-		name: 'browser_close',
-		description: 'Close a browser session and release all resources.',
-		inputSchema: browserCloseSchema,
-		outputSchema: browserCloseOutputSchema,
-		async execute(args, _context: ToolContext) {
+		name: 'browser_disconnect',
+		description: 'Disconnect from the browser and release all resources.',
+		inputSchema: browserDisconnectSchema,
+		outputSchema: browserDisconnectOutputSchema,
+		async execute(_args, _context: ToolContext) {
 			try {
-				await sessionManager.close(args.sessionId);
-				return formatCallToolResult({ closed: true, sessionId: args.sessionId });
+				await connection.disconnect();
+				return formatCallToolResult({ disconnected: true });
 			} catch (error) {
 				if (error instanceof McpBrowserError) return formatErrorResponse(error);
 				return formatErrorResponse(
@@ -114,9 +95,9 @@ function browserClose(
 				);
 			}
 		},
-		getAffectedResources(_args, _context: ToolContext) {
+		getAffectedResources(_args, _context: ToolContext): AffectedResource[] {
 			return [
-				{ toolGroup: toolGroupId, resource: 'browser', description: 'Close browser session' },
+				{ toolGroup: 'browser', resource: 'browser', description: 'Disconnect from browser' },
 			];
 		},
 	};

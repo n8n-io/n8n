@@ -1,128 +1,121 @@
 import { z } from 'zod';
 
-import type { SessionManager } from '../session-manager';
+import type { BrowserConnection } from '../connection';
 import type { ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
-import { createSessionTool, extractDomain, pageIdField, sessionIdField } from './helpers';
+import { createConnectedTool, extractDomain, pageIdField, withSnapshotEnvelope } from './helpers';
 
 const waitUntilField = z
 	.enum(['load', 'domcontentloaded', 'networkidle'])
 	.optional()
 	.describe('When to consider navigation done (default: "load")');
 
-export function createNavigationTools(
-	sessionManager: SessionManager,
-	toolGroupId: string,
-): ToolDefinition[] {
+export function createNavigationTools(connection: BrowserConnection): ToolDefinition[] {
 	return [
-		browserNavigate(sessionManager, toolGroupId),
-		browserBack(sessionManager, toolGroupId),
-		browserForward(sessionManager, toolGroupId),
-		browserReload(sessionManager, toolGroupId),
+		browserNavigate(connection),
+		browserBack(connection),
+		browserForward(connection),
+		browserReload(connection),
 	];
 }
 
 const browserNavigateSchema = z.object({
-	sessionId: sessionIdField,
 	url: z.string().describe('Full URL to navigate to'),
 	waitUntil: waitUntilField,
 	pageId: pageIdField,
 });
 
-const browserNavigateOutputSchema = z.object({
+const browserNavigateOutputSchema = withSnapshotEnvelope({
 	title: z.string(),
 	url: z.string(),
 	status: z.number(),
 });
 
-function browserNavigate(sessionManager: SessionManager, toolGroupId: string): ToolDefinition {
-	return createSessionTool(
-		sessionManager,
+function browserNavigate(connection: BrowserConnection): ToolDefinition {
+	return createConnectedTool(
+		connection,
 		'browser_navigate',
 		'Navigate to a URL and wait for the page to load.',
 		browserNavigateSchema,
-		async (session, input, pageId) => {
-			const result = await session.adapter.navigate(pageId, input.url, input.waitUntil);
+		async (state, input, pageId) => {
+			const result = await state.adapter.navigate(pageId, input.url, input.waitUntil);
 			return formatCallToolResult({ title: result.title, url: result.url, status: result.status });
 		},
 		browserNavigateOutputSchema,
-		toolGroupId,
+		{ autoSnapshot: true, waitForCompletion: true },
 		(args) => extractDomain(args.url),
 	);
 }
 
 const browserBackSchema = z.object({
-	sessionId: sessionIdField,
 	pageId: pageIdField,
 });
 
-const browserBackOutputSchema = z.object({
+const browserBackOutputSchema = withSnapshotEnvelope({
 	title: z.string(),
 	url: z.string(),
 });
 
-function browserBack(sessionManager: SessionManager, toolGroupId: string): ToolDefinition {
-	return createSessionTool(
-		sessionManager,
+function browserBack(connection: BrowserConnection): ToolDefinition {
+	return createConnectedTool(
+		connection,
 		'browser_back',
 		'Navigate back in browser history.',
 		browserBackSchema,
-		async (session, _input, pageId) => {
-			const result = await session.adapter.back(pageId);
+		async (state, _input, pageId) => {
+			const result = await state.adapter.back(pageId);
 			return formatCallToolResult({ title: result.title, url: result.url });
 		},
 		browserBackOutputSchema,
-		toolGroupId,
+		{ autoSnapshot: true, waitForCompletion: true },
 	);
 }
 
 const browserForwardSchema = z.object({
-	sessionId: sessionIdField,
 	pageId: pageIdField,
 });
 
-const browserForwardOutputSchema = z.object({
+const browserForwardOutputSchema = withSnapshotEnvelope({
 	title: z.string(),
 	url: z.string(),
 });
 
-function browserForward(sessionManager: SessionManager, toolGroupId: string): ToolDefinition {
-	return createSessionTool(
-		sessionManager,
+function browserForward(connection: BrowserConnection): ToolDefinition {
+	return createConnectedTool(
+		connection,
 		'browser_forward',
 		'Navigate forward in browser history.',
 		browserForwardSchema,
-		async (session, _input, pageId) => {
-			const result = await session.adapter.forward(pageId);
+		async (state, _input, pageId) => {
+			const result = await state.adapter.forward(pageId);
 			return formatCallToolResult({ title: result.title, url: result.url });
 		},
 		browserForwardOutputSchema,
-		toolGroupId,
+		{ autoSnapshot: true, waitForCompletion: true },
 	);
 }
 
 const browserReloadSchema = z.object({
-	sessionId: sessionIdField,
 	waitUntil: waitUntilField,
 	pageId: pageIdField,
 });
 
-const browserReloadOutputSchema = z.object({
+const browserReloadOutputSchema = withSnapshotEnvelope({
 	title: z.string(),
 	url: z.string(),
 });
 
-function browserReload(sessionManager: SessionManager, toolGroupId: string): ToolDefinition {
-	return createSessionTool(
-		sessionManager,
+function browserReload(connection: BrowserConnection): ToolDefinition {
+	return createConnectedTool(
+		connection,
 		'browser_reload',
 		'Reload the current page.',
 		browserReloadSchema,
-		async (session, input, pageId) => {
-			const result = await session.adapter.reload(pageId, input.waitUntil);
+		async (state, input, pageId) => {
+			const result = await state.adapter.reload(pageId, input.waitUntil);
 			return formatCallToolResult({ title: result.title, url: result.url });
 		},
 		browserReloadOutputSchema,
-		toolGroupId,
+		{ autoSnapshot: true, waitForCompletion: true },
 	);
 }

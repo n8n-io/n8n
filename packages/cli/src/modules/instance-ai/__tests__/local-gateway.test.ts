@@ -8,7 +8,7 @@ const SAMPLE_TOOL: McpTool = {
 	inputSchema: { type: 'object', properties: { filePath: { type: 'string' } } },
 };
 
-const EMPTY_CAPABILITIES = { rootPath: 'project', tools: [] };
+const EMPTY_CAPABILITIES = { rootPath: 'project', tools: [], toolCategories: [] };
 
 describe('LocalGateway', () => {
 	let gateway: LocalGateway;
@@ -25,7 +25,7 @@ describe('LocalGateway', () => {
 		it('should mark gateway as connected and store tools', () => {
 			expect(gateway.isConnected).toBe(false);
 
-			gateway.init({ rootPath: 'my-project', tools: [SAMPLE_TOOL] });
+			gateway.init({ rootPath: 'my-project', tools: [SAMPLE_TOOL], toolCategories: [] });
 
 			expect(gateway.isConnected).toBe(true);
 			expect(gateway.rootPath).toBe('my-project');
@@ -36,7 +36,7 @@ describe('LocalGateway', () => {
 
 	describe('disconnect', () => {
 		it('should mark gateway as disconnected and clear tools', () => {
-			gateway.init({ rootPath: 'my-project', tools: [SAMPLE_TOOL] });
+			gateway.init({ rootPath: 'my-project', tools: [SAMPLE_TOOL], toolCategories: [] });
 
 			gateway.disconnect();
 
@@ -185,7 +185,7 @@ describe('LocalGateway', () => {
 		});
 
 		it('should return connected status after init', () => {
-			gateway.init({ rootPath: 'my-project', tools: [] });
+			gateway.init({ rootPath: 'my-project', tools: [], toolCategories: [] });
 
 			const status = gateway.getStatus();
 			expect(status.connected).toBe(true);

@@ -59,11 +59,7 @@ export interface GatewayConfig {
 	filesystem: { dir: string };
 	computer: { shell: { timeout: number } };
 	browser: {
-		headless: boolean;
 		defaultBrowser: string;
-		viewport: { width: number; height: number };
-		sessionTtlMs: number;
-		maxConcurrentSessions: number;
 	};
 	/** Startup permission overrides (ENV/CLI). Merged with persistent settings in SettingsStore. */
 	permissions: Partial<Record<ToolGroup, PermissionMode>>;
@@ -92,12 +88,6 @@ function envNumber(name: string): number | undefined {
 	return Number.isNaN(n) ? undefined : n;
 }
 
-function parseViewport(raw: string): { width: number; height: number } | undefined {
-	const match = /^(\d+)x(\d+)$/i.exec(raw);
-	if (!match) return undefined;
-	return { width: Number(match[1]), height: Number(match[2]) };
-}
-
 // ---------------------------------------------------------------------------
 // Zod schemas (internal — used only in parseConfig)
 // ---------------------------------------------------------------------------
@@ -118,13 +108,7 @@ const structuralConfigSchema = z.object({
 		.default({}),
 	browser: z
 		.object({
-			headless: z.boolean().default(false),
-			defaultBrowser: z.string().default('chromium'),
-			viewport: z
-				.object({ width: z.number().int().positive(), height: z.number().int().positive() })
-				.default({ width: 1280, height: 720 }),
-			sessionTtlMs: z.number().positive().default(1_800_000),
-			maxConcurrentSessions: z.number().positive().default(5),
+			defaultBrowser: z.string().default('chrome'),
 		})
 		.default({}),
 });
@@ -190,18 +174,8 @@ function buildEnvConfig(): PartialStructural {
 	const shellTimeout = envNumber('COMPUTER_SHELL_TIMEOUT');
 	if (shellTimeout !== undefined) config.computer = { shell: { timeout: shellTimeout } };
 
-	const browser: Record<string, unknown> = {};
-	const headless = envBoolean('BROWSER_HEADLESS');
-	if (headless !== undefined) browser.headless = headless;
 	const defaultBrowser = envString('BROWSER_DEFAULT');
-	if (defaultBrowser) browser.defaultBrowser = defaultBrowser;
-	const viewport = envString('BROWSER_VIEWPORT');
-	if (viewport) browser.viewport = parseViewport(viewport);
-	const sessionTtlMs = envNumber('BROWSER_SESSION_TTL_MS');
-	if (sessionTtlMs !== undefined) browser.sessionTtlMs = sessionTtlMs;
-	const maxSessions = envNumber('BROWSER_MAX_SESSIONS');
-	if (maxSessions !== undefined) browser.maxConcurrentSessions = maxSessions;
-	if (Object.keys(browser).length > 0) config.browser = browser;
+	if (defaultBrowser) config.browser = { defaultBrowser };
 
 	return config as PartialStructural;
 }
@@ -222,17 +196,8 @@ function buildCliConfig(args: yargsParser.Arguments): PartialStructural {
 	const timeout = args['computer-shell-timeout'] as number;
 	if (timeout !== undefined) config.computer = { shell: { timeout } };
 
-	const browser: Record<string, unknown> = {};
-	if (args['browser-headless'] !== undefined) browser.headless = args['browser-headless'];
-	if (args['no-browser-headless'] === true) browser.headless = false;
-	if (args['browser-default']) browser.defaultBrowser = args['browser-default'];
-	if (args['browser-viewport'])
-		browser.viewport = parseViewport(args['browser-viewport'] as string);
-	if (args['browser-session-ttl-ms'] !== undefined)
-		browser.sessionTtlMs = args['browser-session-ttl-ms'];
-	if (args['browser-max-sessions'] !== undefined)
-		browser.maxConcurrentSessions = args['browser-max-sessions'];
-	if (Object.keys(browser).length > 0) config.browser = browser;
+	if (args['browser-default'])
+		config.browser = { defaultBrowser: args['browser-default'] as string };
 
 	return config as PartialStructural;
 }
@@ -308,16 +273,9 @@ export function parseConfig(argv = process.argv.slice(2)): ParsedArgs {
 	const permissionFlags = Object.values(TOOL_GROUP_DEFINITIONS).map((o) => o.cliFlag);
 
 	const args = yargsParser(rawArgs, {
-		string: [
-			'log-level',
-			'filesystem-dir',
-			'browser-default',
-			'browser-viewport',
-			'allow-origin',
-			...permissionFlags,
-		],
-		boolean: ['browser-headless', 'no-browser-headless', 'auto-confirm', 'non-interactive', 'help'],
-		number: ['port', 'computer-shell-timeout', 'browser-session-ttl-ms', 'browser-max-sessions'],
+		string: ['log-level', 'filesystem-dir', 'browser-default', 'allow-origin', ...permissionFlags],
+		boolean: ['auto-confirm', 'non-interactive', 'help'],
+		number: ['port', 'computer-shell-timeout'],
 		alias: { h: 'help', p: 'port' },
 	});
 

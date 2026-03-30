@@ -79,16 +79,18 @@ onUnmounted(() => {
 </script>
 
 <template>
-	<Transition name="status-bar">
-		<div v-if="isVisible && activity" :class="$style.bar" data-test-id="instance-ai-status-bar">
-			<span :class="$style.dot" />
-			<span :class="$style.label">{{ activity.label }}</span>
-			<span v-if="activity.detail" :class="$style.separator">&middot;</span>
-			<span v-if="activity.detail" :class="$style.detail">{{ activity.detail }}</span>
-			<span :class="$style.separator">&middot;</span>
-			<span :class="$style.elapsed">{{ formattedElapsed }}</span>
-		</div>
-	</Transition>
+	<div>
+		<Transition name="status-bar">
+			<div v-if="isVisible && activity" :class="$style.bar" data-test-id="instance-ai-status-bar">
+				<span :class="$style.dot" />
+				<span :class="$style.label">{{ activity.label }}</span>
+				<span v-if="activity.detail" :class="$style.separator">&middot;</span>
+				<span v-if="activity.detail" :class="$style.detail">{{ activity.detail }}</span>
+				<span :class="$style.separator">&middot;</span>
+				<span :class="$style.elapsed">{{ formattedElapsed }}</span>
+			</div>
+		</Transition>
+	</div>
 </template>
 
 <style lang="scss" module>

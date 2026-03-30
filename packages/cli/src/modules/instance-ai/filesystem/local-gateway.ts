@@ -5,6 +5,7 @@ import type {
 	McpToolCallResult,
 	McpTool,
 	InstanceAiGatewayCapabilities,
+	ToolCategory,
 } from '@n8n/api-types';
 
 const REQUEST_TIMEOUT_MS = 30_000;
@@ -50,6 +51,10 @@ export class LocalGateway {
 
 	private _rootPath: string | null = null;
 
+	private _hostIdentifier: string | null = null;
+
+	private _toolCategories: ToolCategory[] = [];
+
 	private _availableTools: McpTool[] = [];
 
 	get isConnected(): boolean {
@@ -69,6 +74,11 @@ export class LocalGateway {
 		return this._availableTools;
 	}
 
+	/** Return tools that belong to the given category (based on annotations.category). */
+	getToolsByCategory(category: string): McpTool[] {
+		return this._availableTools.filter((t) => t.annotations?.category === category);
+	}
+
 	/** Subscribe to outbound tool call events (consumed by the SSE endpoint). */
 	onRequest(listener: (event: LocalGatewayEvent) => void): () => void {
 		this.emitter.on('filesystem-request', listener);
@@ -78,6 +88,8 @@ export class LocalGateway {
 	/** Called when the client uploads its MCP tool capabilities. */
 	init(data: InstanceAiGatewayCapabilities): void {
 		this._rootPath = data.rootPath;
+		this._hostIdentifier = data.hostIdentifier ?? null;
+		this._toolCategories = data.toolCategories ?? [];
 		this._availableTools = data.tools;
 		this._connected = true;
 		this._connectedAt = new Date().toISOString();
@@ -113,6 +125,8 @@ export class LocalGateway {
 		this._connected = false;
 		this._connectedAt = null;
 		this._rootPath = null;
+		this._hostIdentifier = null;
+		this._toolCategories = [];
 		this._availableTools = [];
 
 		for (const [id, pending] of this.pendingRequests) {
@@ -123,11 +137,19 @@ export class LocalGateway {
 	}
 
 	/** Return connection status for the frontend. */
-	getStatus(): { connected: boolean; connectedAt: string | null; directory: string | null } {
+	getStatus(): {
+		connected: boolean;
+		connectedAt: string | null;
+		directory: string | null;
+		hostIdentifier: string | null;
+		toolCategories: ToolCategory[];
+	} {
 		return {
 			connected: this._connected,
 			connectedAt: this._connectedAt,
 			directory: this._rootPath,
+			hostIdentifier: this._hostIdentifier,
+			toolCategories: this._toolCategories,
 		};
 	}
 

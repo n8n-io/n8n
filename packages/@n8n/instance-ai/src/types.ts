@@ -499,6 +499,8 @@ export interface InstanceAiFilesystemService {
  */
 export interface LocalMcpServer {
 	getAvailableTools(): McpTool[];
+	/** Return tools that belong to the given category (based on annotations.category). */
+	getToolsByCategory(category: string): McpTool[];
 	callTool(req: McpToolCallRequest): Promise<McpToolCallResult>;
 }
 
@@ -543,6 +545,13 @@ export interface InstanceAiWorkspaceService {
 	): Promise<{ deletedCount: number }>;
 }
 
+// ── Local gateway status ─────────────────────────────────────────────────────
+
+export type LocalGatewayStatus =
+	| { status: 'connected' }
+	| { status: 'disconnected'; capabilities: string[] }
+	| { status: 'disabled' };
+
 // ── Context bundle ───────────────────────────────────────────────────────────
 
 export interface InstanceAiContext {
@@ -559,6 +568,8 @@ export interface InstanceAiContext {
 	 * Connected remote MCP server (e.g. fs-proxy daemon). When set, dynamic tools are created from its advertised capabilities. Takes precedence over `filesystemService`.
 	 */
 	localMcpServer?: LocalMcpServer;
+	/** Connection state of the local gateway — drives system prompt guidance. */
+	localGatewayStatus?: LocalGatewayStatus;
 	/** Per-action HITL permission overrides. When absent, tools default to requiring approval. */
 	permissions?: InstanceAiPermissions;
 	/** Human-readable hints about licensed features that are NOT available on this instance.
@@ -744,6 +755,9 @@ export interface OrchestrationContext {
 	}>;
 	/** Chrome DevTools MCP config — only present when browser automation is enabled */
 	browserMcpConfig?: McpServerConfig;
+	/** Local MCP server (fs-proxy daemon) — when connected and advertising browser_* tools,
+	 *  browser-credential-setup prefers these over chrome-devtools-mcp. */
+	localMcpServer?: LocalMcpServer;
 	/** MCP tools loaded from external servers — available for delegation to sub-agents */
 	mcpTools?: ToolsInput;
 	/** OAuth2 callback URL for the n8n instance (e.g. http://localhost:5678/rest/oauth2-credential/callback) */
