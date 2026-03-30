@@ -147,7 +147,7 @@
       "langsmith": ">=0.4.6",
       "lodash-es": "4.17.23",
       "word-wrap@<=1.2.4": "1.2.4",
-      "minimatch@<=5.1.8": "5.1.8",
+      "minimatch@<=5.1.8": "9.0.7",
       "minimatch@10": "10.2.3",
       "@hono/node-server": "1.19.10",
       "express-rate-limit": "8.2.2",
