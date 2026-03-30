@@ -681,6 +681,87 @@ describe('GET /api/v1/executions/:id — Execution Redaction', () => {
 			expect(response.body.data).toBeUndefined();
 		});
 	});
+
+	describe('explicit redactExecutionData=true query param', () => {
+		test('always redacts even when policy is "none"', async () => {
+			const workflow = await createWorkflow({}, publicApiOwner);
+			const execution = await createExecutionWithRedaction({
+				workflow,
+				mode: 'trigger',
+				policy: 'none',
+			});
+
+			const response = await testServer
+				.publicApiAgentFor(publicApiOwner)
+				.get(`/executions/${execution.id}?includeData=true&redactExecutionData=true`)
+				.expect(200);
+
+			assertRedacted(response.body.data as IRunExecutionData, 'user_requested');
+		});
+	});
+
+	describe('explicit redactExecutionData=false query param (reveal)', () => {
+		test('owner can reveal unredacted data', async () => {
+			const workflow = await createWorkflow({}, publicApiOwner);
+			const execution = await createExecutionWithRedaction({
+				workflow,
+				mode: 'trigger',
+				policy: 'all',
+			});
+
+			const response = await testServer
+				.publicApiAgentFor(publicApiOwner)
+				.get(`/executions/${execution.id}?includeData=true&redactExecutionData=false`)
+				.expect(200);
+
+			assertNotRedacted(response.body.data as IRunExecutionData);
+		});
+
+		test('member without execution:reveal scope gets 403', async () => {
+			testServer.license.enable('feat:sharing');
+
+			const teamProject = await createTeamProject();
+			await linkUserToProject(publicApiMember, teamProject, 'project:editor');
+
+			const workflow = await createWorkflow({}, teamProject);
+			const execution = await createExecutionWithRedaction({
+				workflow,
+				mode: 'trigger',
+				policy: 'all',
+			});
+
+			const response = await testServer
+				.publicApiAgentFor(publicApiMember)
+				.get(`/executions/${execution.id}?includeData=true&redactExecutionData=false`)
+				.expect(403);
+
+			expect(response.body).toMatchObject({
+				code: 403,
+				message: expect.stringContaining('execution:reveal'),
+			});
+		});
+
+		test('member without execution:reveal scope can still reveal when policy allows it (policy=none)', async () => {
+			testServer.license.enable('feat:sharing');
+
+			const teamProject = await createTeamProject();
+			await linkUserToProject(publicApiMember, teamProject, 'project:editor');
+
+			const workflow = await createWorkflow({}, teamProject);
+			const execution = await createExecutionWithRedaction({
+				workflow,
+				mode: 'trigger',
+				policy: 'none',
+			});
+
+			const response = await testServer
+				.publicApiAgentFor(publicApiMember)
+				.get(`/executions/${execution.id}?includeData=true&redactExecutionData=false`)
+				.expect(200);
+
+			assertNotRedacted(response.body.data as IRunExecutionData);
+		});
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -786,5 +867,67 @@ describe('GET /api/v1/executions — Execution Redaction', () => {
 		assertNotRedacted(wf1Manual!.data);
 		assertNotRedacted(wf2Trigger!.data);
 		assertRedacted(wf2Webhook!.data, 'workflow_redaction_policy', false);
+	});
+
+	describe('explicit redactExecutionData=true query param', () => {
+		test('always redacts even when policy is "none"', async () => {
+			const workflow = await createWorkflow({}, publicApiOwner);
+			await createExecutionWithRedaction({
+				workflow,
+				mode: 'trigger',
+				policy: 'none',
+			});
+
+			const response = await testServer
+				.publicApiAgentFor(publicApiOwner)
+				.get('/executions?includeData=true&redactExecutionData=true')
+				.expect(200);
+
+			expect(response.body.data).toHaveLength(1);
+			assertRedacted(response.body.data[0].data as IRunExecutionData, 'user_requested');
+		});
+	});
+
+	describe('explicit redactExecutionData=false query param (reveal)', () => {
+		test('owner can reveal unredacted data in list', async () => {
+			const workflow = await createWorkflow({}, publicApiOwner);
+			await createExecutionWithRedaction({
+				workflow,
+				mode: 'trigger',
+				policy: 'all',
+			});
+
+			const response = await testServer
+				.publicApiAgentFor(publicApiOwner)
+				.get('/executions?includeData=true&redactExecutionData=false')
+				.expect(200);
+
+			expect(response.body.data).toHaveLength(1);
+			assertNotRedacted(response.body.data[0].data as IRunExecutionData);
+		});
+
+		test('member without execution:reveal scope gets 403 in list', async () => {
+			testServer.license.enable('feat:sharing');
+
+			const teamProject = await createTeamProject();
+			await linkUserToProject(publicApiMember, teamProject, 'project:editor');
+
+			const workflow = await createWorkflow({}, teamProject);
+			await createExecutionWithRedaction({
+				workflow,
+				mode: 'trigger',
+				policy: 'all',
+			});
+
+			const response = await testServer
+				.publicApiAgentFor(publicApiMember)
+				.get('/executions?includeData=true&redactExecutionData=false')
+				.expect(403);
+
+			expect(response.body).toMatchObject({
+				code: 403,
+				message: expect.stringContaining('execution:reveal'),
+			});
+		});
 	});
 });
