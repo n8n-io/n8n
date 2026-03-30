@@ -2,14 +2,18 @@ import type { ILoadOptionsFunctions } from 'n8n-workflow';
 
 import { getUsers, getRepositories, getWorkflows, getRefs } from '../SearchFunctions';
 
+const sharedRequestMock = jest.fn();
 const mockLoadOptionsFunctions = {
 	getNodeParameter: jest.fn(),
 	getCredentials: jest.fn().mockResolvedValue({
 		server: 'https://api.github.com',
 	}),
 	helpers: {
-		requestWithAuthentication: jest.fn(),
+		requestWithAuthentication: sharedRequestMock,
+		httpRequestWithAuthentication: sharedRequestMock,
+		httpRequest: jest.fn(),
 	},
+	getNode: jest.fn().mockReturnValue({ id: 'test', name: 'test-node' }),
 	getCurrentNodeParameter: jest.fn(),
 } as unknown as ILoadOptionsFunctions;
 
