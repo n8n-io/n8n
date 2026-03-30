@@ -1,26 +1,25 @@
 import type { CommunityNodeType } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'jest-mock-extended';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { EventService } from '@/events/event.service';
 import type { Push } from '@/push';
-import type { NodeRequest } from '@/requests';
 
 import type { CommunityNodeTypesService } from '../community-node-types.service';
-import { CommunityPackagesController } from '../community-packages.controller';
 import { CommunityPackagesLifecycleService } from '../community-packages.lifecycle.service';
 import type { CommunityPackagesService } from '../community-packages.service';
 import type { InstalledPackages } from '../installed-packages.entity';
 
-describe('CommunityPackagesController', () => {
+describe('CommunityPackagesLifecycleService', () => {
 	const logger = mock<Logger>();
 	const push = mock<Push>();
 	const communityPackagesService = mock<CommunityPackagesService>();
 	const eventService = mock<EventService>();
 	const communityNodeTypesService = mock<CommunityNodeTypesService>();
-	const instanceSettings = mock<InstanceSettings>();
-	(instanceSettings as any).nodesDownloadDir = '/tmp/n8n-nodes-download';
+	const instanceSettings = mock<{ nodesDownloadDir: string }>({
+		nodesDownloadDir: '/tmp/n8n-nodes-download',
+	});
 
 	const lifecycle = new CommunityPackagesLifecycleService(
 		logger,
@@ -28,45 +27,36 @@ describe('CommunityPackagesController', () => {
 		communityPackagesService,
 		eventService,
 		communityNodeTypesService,
-		instanceSettings,
+		instanceSettings as never,
 	);
 
-	const controller = new CommunityPackagesController(lifecycle);
+	const user = { id: 'user123' };
 
 	beforeEach(() => {
 		jest.clearAllMocks();
 	});
 
-	describe('installPackage', () => {
+	describe('install', () => {
 		it('should throw error if verify in options but no checksum', async () => {
-			const request = mock<NodeRequest.Post>({
-				user: { id: 'user123' },
-				body: { name: 'n8n-nodes-test', verify: true, version: '1.0.0' },
-			});
 			communityNodeTypesService.findVetted.mockReturnValue(undefined);
-			await expect(controller.installPackage(request)).rejects.toThrow(
-				'Package n8n-nodes-test is not vetted for installation',
-			);
+
+			await expect(
+				lifecycle.install({ name: 'n8n-nodes-test', verify: true, version: '1.0.0' }, user, 'ui'),
+			).rejects.toThrow('Package n8n-nodes-test is not vetted for installation');
+
+			expect(communityNodeTypesService.findVetted).toHaveBeenCalledWith('n8n-nodes-test');
 		});
 
 		it.each(['foo', 'echo "hello"', '1.a.b', '0.1.29#;ls'])(
 			'should throw error if version is invalid',
 			async (version) => {
-				const request = mock<NodeRequest.Post>({
-					user: { id: 'user123' },
-					body: { name: 'n8n-nodes-test', verify: true, version },
-				});
-				await expect(controller.installPackage(request)).rejects.toThrow(
-					`Invalid version: ${version}`,
-				);
+				await expect(
+					lifecycle.install({ name: 'n8n-nodes-test', verify: true, version }, user, 'ui'),
+				).rejects.toThrow(`Invalid version: ${version}`);
 			},
 		);
 
-		it('should have correct version', async () => {
-			const request = mock<NodeRequest.Post>({
-				user: { id: 'user123' },
-				body: { name: 'n8n-nodes-test', verify: true, version: '1.0.0' },
-			});
+		it('should install with checksum when verify is true', async () => {
 			communityNodeTypesService.findVetted.mockReturnValue(
 				mock<CommunityNodeType>({
 					checksum: 'checksum',
@@ -88,7 +78,11 @@ describe('CommunityPackagesController', () => {
 				}),
 			);
 
-			await controller.installPackage(request);
+			await lifecycle.install(
+				{ name: 'n8n-nodes-test', verify: true, version: '1.0.0' },
+				user,
+				'ui',
+			);
 
 			expect(communityPackagesService.installPackage).toHaveBeenCalledWith(
 				'n8n-nodes-test',
@@ -104,17 +98,8 @@ describe('CommunityPackagesController', () => {
 		});
 	});
 
-	describe('updatePackage', () => {
-		it('should use the version from the request body when updating a package', async () => {
-			const req = mock<NodeRequest.Update>({
-				body: {
-					name: 'n8n-nodes-test',
-					version: '2.0.0',
-					checksum: 'a893hfdsy7399',
-				},
-				user: { id: 'user1' },
-			});
-
+	describe('update', () => {
+		it('should use the version from the request when updating a package', async () => {
 			const previouslyInstalledPackage = mock<InstalledPackages>({
 				installedNodes: [{ type: 'testNode', latestVersion: 1, name: 'testNode' }],
 				installedVersion: '1.0.0',
@@ -136,7 +121,15 @@ describe('CommunityPackagesController', () => {
 				version: undefined,
 			});
 
-			const result = await controller.updatePackage(req);
+			const result = await lifecycle.update(
+				{
+					name: 'n8n-nodes-test',
+					version: '2.0.0',
+					checksum: 'a893hfdsy7399',
+				},
+				user,
+				'badRequest',
+			);
 
 			expect(communityPackagesService.updatePackage).toHaveBeenCalledWith(
 				'n8n-nodes-test',
@@ -151,11 +144,30 @@ describe('CommunityPackagesController', () => {
 		it.each(['foo', 'echo "hello"', '1.a.b', '0.1.29#;ls'])(
 			'should throw error if version is invalid',
 			async (version) => {
-				const req = mock<NodeRequest.Update>({
-					body: { name: 'n8n-nodes-test', version, checksum: 'a893hfdsy7399' },
-				});
-				await expect(controller.updatePackage(req)).rejects.toThrow(`Invalid version: ${version}`);
+				await expect(
+					lifecycle.update(
+						{ name: 'n8n-nodes-test', version, checksum: 'a893hfdsy7399' },
+						user,
+						'badRequest',
+					),
+				).rejects.toThrow(`Invalid version: ${version}`);
 			},
 		);
+
+		it('should throw NotFoundError when package missing and whenMissing is notFound', async () => {
+			communityPackagesService.findInstalledPackage.mockResolvedValue(null);
+
+			await expect(
+				lifecycle.update({ name: 'n8n-nodes-missing', version: '1.0.0' }, user, 'notFound'),
+			).rejects.toMatchObject({ httpStatusCode: 404 });
+		});
+
+		it('should throw BadRequestError when package missing and whenMissing is badRequest', async () => {
+			communityPackagesService.findInstalledPackage.mockResolvedValue(null);
+
+			await expect(
+				lifecycle.update({ name: 'n8n-nodes-missing', version: '1.0.0' }, user, 'badRequest'),
+			).rejects.toBeInstanceOf(BadRequestError);
+		});
 	});
 });

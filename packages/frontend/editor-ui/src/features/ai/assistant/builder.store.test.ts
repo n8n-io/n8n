@@ -4019,4 +4019,73 @@ describe('AI Builder store', () => {
 			});
 		});
 	});
+
+	describe('generated pin data', () => {
+		it('storeGeneratedPinData stores pin data without applying it', () => {
+			const builderStore = useBuilderStore();
+			const pinData = { 'Node A': [{ json: { test: true } }] };
+
+			builderStore.storeGeneratedPinData(pinData);
+
+			expect(builderStore.hasDeferredPinData).toBe(true);
+			const wfDocStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			expect(wfDocStore.pinData).toEqual({});
+		});
+
+		it('storeGeneratedPinData merges multiple calls', () => {
+			const builderStore = useBuilderStore();
+
+			builderStore.storeGeneratedPinData({ 'Node A': [{ json: { a: 1 } }] });
+			builderStore.storeGeneratedPinData({ 'Node B': [{ json: { b: 2 } }] });
+
+			expect(builderStore.hasDeferredPinData).toBe(true);
+		});
+
+		it('hasDeferredPinData returns false when no data is stored', () => {
+			const builderStore = useBuilderStore();
+			expect(builderStore.hasDeferredPinData).toBe(false);
+		});
+
+		it('applyGeneratedPinData applies data and marks state dirty', () => {
+			const builderStore = useBuilderStore();
+			const uiStore = useUIStore();
+			const pinData = { 'Node A': [{ json: { test: true } }] };
+
+			builderStore.storeGeneratedPinData(pinData);
+			builderStore.applyGeneratedPinData();
+
+			const wfDocStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			expect(wfDocStore.pinData).toEqual(pinData);
+			expect(uiStore.stateIsDirty).toBe(true);
+			expect(builderStore.hasDeferredPinData).toBe(false);
+			expect(builderStore.pinDataApplied).toBe(true);
+		});
+
+		it('applyGeneratedPinData is a no-op when no data is stored', () => {
+			const builderStore = useBuilderStore();
+			const uiStore = useUIStore();
+
+			builderStore.applyGeneratedPinData();
+
+			expect(uiStore.stateIsDirty).toBe(false);
+			expect(builderStore.pinDataApplied).toBe(false);
+		});
+
+		it('resetBuilderChat clears generated pin data and pinDataApplied', () => {
+			const builderStore = useBuilderStore();
+
+			builderStore.storeGeneratedPinData({ 'Node A': [{ json: { test: true } }] });
+			builderStore.applyGeneratedPinData();
+			expect(builderStore.pinDataApplied).toBe(true);
+
+			builderStore.resetBuilderChat();
+
+			expect(builderStore.hasDeferredPinData).toBe(false);
+			expect(builderStore.pinDataApplied).toBe(false);
+		});
+	});
 });
