@@ -8,7 +8,8 @@ jest.mock('node-screenshots');
 const mockSharp = jest.fn<unknown, unknown[]>();
 jest.mock('sharp', () => ({
 	__esModule: true,
-	default: (...args: unknown[]): unknown => mockSharp(...args),
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+	default: (...args: unknown[]) => mockSharp(...args),
 }));
 
 const MockMonitor = Monitor as jest.MockedClass<typeof Monitor>;
