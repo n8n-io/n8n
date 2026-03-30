@@ -67,7 +67,8 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 		const historicalExecMap = historicalExecutions.value;
 		for (const entry of store.resourceRegistry.values()) {
 			if (entry.type === 'workflow' || entry.type === 'data-table') {
-				// Live push event state takes priority over historical message data
+				// Live push event state takes priority over historical message data.
+				// Historical data already has stale executions filtered out.
 				const status =
 					entry.type === 'workflow'
 						? (liveExecMap?.get(entry.id)?.status ?? historicalExecMap.get(entry.id)?.status)
@@ -212,13 +213,17 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 
 	// Watch the toolCallId — it changes even when the same workflow is rebuilt.
 	// Auto-open logic:
-	//   - Live build (isStreaming): always auto-open
+	//   - Preview closed + live build/user message: auto-open to this workflow
+	//   - Preview open on same workflow: refresh it (workflowRefreshKey++)
+	//   - Preview open on different artifact: don't switch — user chose that tab
 	//   - Thread switch with canvas open: restore canvas with new thread's workflow
 	//   - Thread switch with canvas closed: stay closed
 	watch(
 		() => latestBuildResult.value?.toolCallId,
 		(toolCallId) => {
 			if (!toolCallId || !latestBuildResult.value) return;
+
+			const targetId = latestBuildResult.value.workflowId;
 
 			if (
 				!isPreviewVisible.value &&
@@ -229,41 +234,60 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 				return;
 			}
 
+			// Clear stale execution state for the rebuilt workflow so the tab
+			// icon doesn't show a checkmark from a previous execution.
+			if (workflowExecutions?.value.has(targetId)) {
+				const next = new Map(workflowExecutions.value);
+				next.delete(targetId);
+				workflowExecutions.value = next;
+			}
+
+			// If preview is already open on a different artifact, don't switch
+			if (isPreviewVisible.value && activeTabId.value !== null && activeTabId.value !== targetId) {
+				workflowRefreshKey.value++;
+				return;
+			}
+
 			wasCanvasOpenBeforeSwitch.value = false;
 			activeExecutionId.value = null;
-			activeTabId.value = latestBuildResult.value.workflowId;
+			activeTabId.value = targetId;
 			workflowRefreshKey.value++;
 		},
 	);
 
 	// --- Auto-show execution after run-workflow completes ---
 
-	const latestExecutionId = computed(() => {
+	const latestExecution = computed(() => {
 		for (let i = store.messages.length - 1; i >= 0; i--) {
 			const msg = store.messages[i];
 			if (msg.agentTree) {
-				const execId = getLatestExecutionId(msg.agentTree);
-				if (execId) return execId;
+				const result = getLatestExecutionId(msg.agentTree);
+				if (result) return result;
 			}
 		}
 		return null;
 	});
 
-	watch(latestExecutionId, (execId) => {
-		if (!execId) return;
+	watch(
+		() => latestExecution.value?.executionId,
+		() => {
+			const exec = latestExecution.value;
+			if (!exec) return;
 
-		if (!isPreviewVisible.value && !store.isStreaming && !userSentMessage.value) return;
+			if (!isPreviewVisible.value && !store.isStreaming && !userSentMessage.value) return;
 
-		activeExecutionId.value = execId;
+			// If preview is already open on a different artifact, don't switch
+			if (isPreviewVisible.value && activeTabId.value !== null && activeTabId.value !== exec.workflowId) {
+				return;
+			}
 
-		// Switch to the executed workflow's tab
-		if (latestBuildResult.value) {
-			activeTabId.value = latestBuildResult.value.workflowId;
+			activeExecutionId.value = exec.executionId;
+			activeTabId.value = exec.workflowId;
 			if (!isPreviewVisible.value) {
 				workflowRefreshKey.value++;
 			}
-		}
-	});
+		},
+	);
 
 	// --- Auto-open data table preview when AI creates/modifies a data table ---
 
@@ -283,6 +307,8 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 		(toolCallId) => {
 			if (!toolCallId || !latestDataTableResult.value) return;
 
+			const targetId = latestDataTableResult.value.dataTableId;
+
 			if (
 				!isPreviewVisible.value &&
 				!store.isStreaming &&
@@ -292,9 +318,15 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 				return;
 			}
 
+			// If preview is already open on a different artifact, don't switch
+			if (isPreviewVisible.value && activeTabId.value !== null && activeTabId.value !== targetId) {
+				dataTableRefreshKey.value++;
+				return;
+			}
+
 			wasCanvasOpenBeforeSwitch.value = false;
 			activeExecutionId.value = null;
-			activeTabId.value = latestDataTableResult.value.dataTableId;
+			activeTabId.value = targetId;
 			dataTableRefreshKey.value++;
 		},
 	);

@@ -177,5 +177,47 @@ describe('useEventRelay', () => {
 			expect(relay).toHaveBeenNthCalledWith(1, event1);
 			expect(relay).toHaveBeenNthCalledWith(2, event2);
 		});
+
+		test('relays executionFinished on running → success transition', async () => {
+			setup({ activeWfId: 'wf-1' });
+
+			// Start running
+			const nodeEvent = nodeExecuteBeforeEvent('exec-1', 'Node1');
+			workflowExecutions.value = new Map([
+				['wf-1', createExecState('wf-1', 'exec-1', 'running', [nodeEvent])],
+			]);
+			await nextTick();
+			expect(relay).toHaveBeenCalledTimes(1);
+
+			// Transition to success (eventLog cleared, as useExecutionPushEvents does)
+			workflowExecutions.value = new Map([
+				['wf-1', createExecState('wf-1', 'exec-1', 'success', [])],
+			]);
+			await nextTick();
+
+			expect(relay).toHaveBeenCalledTimes(2);
+			const finishEvent = relay.mock.calls[1][0];
+			expect(finishEvent.type).toBe('executionFinished');
+			expect(finishEvent.data.executionId).toBe('exec-1');
+			expect(finishEvent.data.status).toBe('success');
+		});
+
+		test('relays executionFinished on running → error transition', async () => {
+			setup({ activeWfId: 'wf-1' });
+
+			workflowExecutions.value = new Map([
+				['wf-1', createExecState('wf-1', 'exec-1', 'running', [nodeExecuteBeforeEvent('exec-1', 'N1')])],
+			]);
+			await nextTick();
+
+			workflowExecutions.value = new Map([
+				['wf-1', createExecState('wf-1', 'exec-1', 'error', [])],
+			]);
+			await nextTick();
+
+			const finishEvent = relay.mock.calls[1][0];
+			expect(finishEvent.type).toBe('executionFinished');
+			expect(finishEvent.data.status).toBe('error');
+		});
 	});
 });

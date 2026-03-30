@@ -45,11 +45,16 @@ export function getLatestBuildResult(node: InstanceAiAgentNode): BuildResult | u
 	return undefined;
 }
 
+export interface LatestExecution {
+	executionId: string;
+	workflowId: string;
+}
+
 /**
  * Walks an agent tree depth-first (most recent last) and returns the executionId
- * from the latest completed run-workflow tool result.
+ * and workflowId from the latest completed run-workflow tool result.
  */
-export function getLatestExecutionId(node: InstanceAiAgentNode): string | undefined {
+export function getLatestExecutionId(node: InstanceAiAgentNode): LatestExecution | undefined {
 	for (let i = node.children.length - 1; i >= 0; i--) {
 		const childResult = getLatestExecutionId(node.children[i]);
 		if (childResult) return childResult;
@@ -63,8 +68,9 @@ export function getLatestExecutionId(node: InstanceAiAgentNode): string | undefi
 			typeof tc.result === 'object'
 		) {
 			const result = tc.result as Record<string, unknown>;
-			if (typeof result.executionId === 'string') {
-				return result.executionId;
+			const args = tc.args as Record<string, unknown> | undefined;
+			if (typeof result.executionId === 'string' && typeof args?.workflowId === 'string') {
+				return { executionId: result.executionId, workflowId: args.workflowId };
 			}
 		}
 	}

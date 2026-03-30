@@ -480,7 +480,7 @@ describe('useCanvasPreview', () => {
 			expect(ctx.isPreviewVisible.value).toBe(false);
 		});
 
-		test('switches tab when switching from data table to workflow preview', async () => {
+		test('does not switch tab when viewing a different artifact', async () => {
 			const ctx = setup();
 			registerDataTable(ctx.store, 'dt-1', 'Table', 'proj-1');
 			registerWorkflow(ctx.store, 'wf-1');
@@ -502,9 +502,9 @@ describe('useCanvasPreview', () => {
 			];
 			await nextTick();
 
-			expect(ctx.activeDataTableId.value).toBeNull();
-			expect(ctx.activeDataTableProjectId.value).toBeNull();
-			expect(ctx.activeWorkflowId.value).toBe('wf-1');
+			// Should stay on data table — user chose that tab
+			expect(ctx.activeDataTableId.value).toBe('dt-1');
+			expect(ctx.activeWorkflowId.value).toBeNull();
 		});
 
 		test('increments workflowRefreshKey on each build', async () => {
@@ -546,6 +546,7 @@ describe('useCanvasPreview', () => {
 							makeToolCall({
 								toolCallId: 'tc-run',
 								toolName: 'run-workflow',
+								args: { workflowId: 'wf-1' },
 								result: { executionId: 'exec-1' },
 							}),
 						],
@@ -567,6 +568,7 @@ describe('useCanvasPreview', () => {
 							makeToolCall({
 								toolCallId: 'tc-run',
 								toolName: 'run-workflow',
+								args: { workflowId: 'wf-1' },
 								result: { executionId: 'exec-historical' },
 							}),
 						],
@@ -616,6 +618,7 @@ describe('useCanvasPreview', () => {
 							makeToolCall({
 								toolCallId: 'tc-run',
 								toolName: 'run-workflow',
+								args: { workflowId: 'wf-1' },
 								result: { executionId: 'exec-1' },
 							}),
 						],

@@ -214,48 +214,64 @@ describe('getLatestExecutionId', () => {
 		expect(getLatestExecutionId(node)).toBeUndefined();
 	});
 
-	test('returns executionId from completed run-workflow call', () => {
+	test('returns executionId and workflowId from completed run-workflow call', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
 					toolName: 'run-workflow',
+					args: { workflowId: 'wf-1' },
 					result: { executionId: 'exec-789', status: 'success' },
 				}),
 			],
 		});
-		expect(getLatestExecutionId(node)).toBe('exec-789');
+		expect(getLatestExecutionId(node)).toEqual({ executionId: 'exec-789', workflowId: 'wf-1' });
 	});
 
-	test('returns the latest executionId when multiple runs exist', () => {
+	test('returns undefined when workflowId is missing from args', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolName: 'run-workflow',
+					result: { executionId: 'exec-789' },
+				}),
+			],
+		});
+		expect(getLatestExecutionId(node)).toBeUndefined();
+	});
+
+	test('returns the latest result when multiple runs exist', () => {
 		const node = makeAgentNode({
 			toolCalls: [
 				makeToolCall({
 					toolCallId: 'tc-1',
 					toolName: 'run-workflow',
+					args: { workflowId: 'wf-1' },
 					result: { executionId: 'exec-old' },
 				}),
 				makeToolCall({
 					toolCallId: 'tc-2',
 					toolName: 'run-workflow',
+					args: { workflowId: 'wf-1' },
 					result: { executionId: 'exec-new' },
 				}),
 			],
 		});
-		expect(getLatestExecutionId(node)).toBe('exec-new');
+		expect(getLatestExecutionId(node)).toEqual({ executionId: 'exec-new', workflowId: 'wf-1' });
 	});
 
-	test('finds executionId in child agent nodes', () => {
+	test('finds result in child agent nodes', () => {
 		const child = makeAgentNode({
 			agentId: 'builder-1',
 			toolCalls: [
 				makeToolCall({
 					toolName: 'run-workflow',
+					args: { workflowId: 'wf-1' },
 					result: { executionId: 'exec-child' },
 				}),
 			],
 		});
 		const parent = makeAgentNode({ children: [child] });
-		expect(getLatestExecutionId(parent)).toBe('exec-child');
+		expect(getLatestExecutionId(parent)).toEqual({ executionId: 'exec-child', workflowId: 'wf-1' });
 	});
 });
 

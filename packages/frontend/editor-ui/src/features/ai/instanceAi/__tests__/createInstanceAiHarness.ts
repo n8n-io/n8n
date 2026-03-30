@@ -281,6 +281,7 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 						makeToolCall({
 							toolCallId: tcId,
 							toolName: 'run-workflow',
+							args: { workflowId },
 							result: { executionId },
 						}),
 					],
@@ -298,6 +299,7 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 							makeToolCall({
 								toolCallId: tcId,
 								toolName: 'run-workflow',
+								args: { workflowId },
 								result: { executionId },
 							}),
 						],

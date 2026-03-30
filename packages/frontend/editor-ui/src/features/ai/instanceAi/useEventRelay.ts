@@ -24,23 +24,45 @@ export function useEventRelay({
 			const wfId = activeWorkflowId.value;
 			if (!wfId) return;
 			const buffered = getBufferedEvents(wfId);
+			console.log('[useEventRelay] iframe ready, replaying', buffered.length, 'events for', wfId);
 			for (const event of buffered) {
 				relay(event);
 			}
 		});
 	}
 
-	// Forward live execution events to the iframe in real-time
+	// Forward live execution events to the iframe in real-time.
+	// Track previous status per workflow to detect running → finished transitions
+	// and relay the executionFinished event (which clears the iframe's executing node queue).
+	const prevStatus = new Map<string, string>();
+
 	watch(
 		() => workflowExecutions.value,
 		(executions) => {
 			const wfId = activeWorkflowId.value;
 			if (!wfId) return;
 			const entry = executions.get(wfId);
-			if (!entry || entry.status !== 'running') return;
-			const log = entry.eventLog;
-			if (log.length > 0) {
-				relay(log[log.length - 1]);
+			if (!entry) return;
+
+			const prev = prevStatus.get(wfId);
+			prevStatus.set(wfId, entry.status);
+
+			if (entry.status === 'running') {
+				const log = entry.eventLog;
+				if (log.length > 0) {
+					relay(log[log.length - 1]);
+				}
+			} else if (prev === 'running') {
+				// Transition from running → success/error: relay a synthetic executionFinished
+				// so the iframe clears its executing node queue.
+				relay({
+					type: 'executionFinished',
+					data: {
+						executionId: entry.executionId,
+						workflowId: entry.workflowId,
+						status: entry.status,
+					},
+				} as PushMessage);
 			}
 		},
 	);

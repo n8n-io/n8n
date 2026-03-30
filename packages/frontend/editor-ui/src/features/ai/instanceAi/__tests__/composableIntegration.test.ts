@@ -63,7 +63,7 @@ describe('composable integration', () => {
 	// 2. Tab auto-switches to executed workflow
 	// -----------------------------------------------------------------------
 	describe('tab auto-switch on execution', () => {
-		test('switches tab to executed workflow when viewing different tab', async () => {
+		test('does not switch tab when viewing a different artifact', async () => {
 			h.registerWorkflow('wf-1', 'Workflow A');
 			h.registerWorkflow('wf-2', 'Workflow B');
 			h.selectTab('wf-2');
@@ -74,8 +74,8 @@ describe('composable integration', () => {
 			h.addExecutionResult('wf-1', 'exec-1');
 			await h.flush();
 
-			expect(h.activeTabId.value).toBe('wf-1');
-			expect(h.activeExecutionId.value).toBe('exec-1');
+			// Should stay on wf-2 — user chose that tab
+			expect(h.activeTabId.value).toBe('wf-2');
 		});
 
 		test('auto-opens preview when streaming and build result appears', async () => {
@@ -310,12 +310,11 @@ describe('composable integration', () => {
 			await h.flush();
 			expect(h.relayedEvents.length).toBeGreaterThan(afterStart);
 
-			// wf-1 fails — no more relay (finished status)
-			const beforeFinish = h.relayedEvents.length;
+			// wf-1 fails — executionFinished is relayed so iframe clears executing nodes
 			h.simulatePushEvent(executionFinishedEvent('exec-1', 'wf-1', 'error'));
 			await h.flush();
 			expect(h.allArtifactTabs.value.find((t) => t.id === 'wf-1')?.executionStatus).toBe('error');
-			expect(h.relayedEvents.length).toBe(beforeFinish); // no new relay
+			const afterFinish = h.relayedEvents.length;
 
 			// Switch to wf-2 (no execution) — no relay
 			const beforeSwitch = h.relayedEvents.length;
@@ -349,12 +348,13 @@ describe('composable integration', () => {
 			expect(h.allArtifactTabs.value[0].executionStatus).toBe('running');
 			expect(h.relayedEvents.length).toBeGreaterThan(afterFirstExec);
 
-			// Re-execution succeeds — relay stops
+			// Re-execution succeeds — executionFinished relayed, then relay stops
 			const beforeSecondFinish = h.relayedEvents.length;
 			h.simulatePushEvent(executionFinishedEvent('exec-2', 'wf-1', 'success'));
 			await h.flush();
 			expect(h.allArtifactTabs.value[0].executionStatus).toBe('success');
-			expect(h.relayedEvents.length).toBe(beforeSecondFinish);
+			expect(h.relayedEvents.length).toBe(beforeSecondFinish + 1);
+			expect(h.relayedEvents[h.relayedEvents.length - 1].type).toBe('executionFinished');
 		});
 
 		test('two workflows executing concurrently — only active workflow events relayed', async () => {
@@ -549,12 +549,13 @@ describe('composable integration', () => {
 			await h.flush();
 			expect(h.relayedEvents.length).toBeGreaterThan(beforeStaleFinish);
 
-			// Second execution finishes — relay stops
+			// Second execution finishes — executionFinished relayed, then relay stops
 			const beforeSecondFinish = h.relayedEvents.length;
 			h.simulatePushEvent(executionFinishedEvent('exec-2', 'wf-1', 'error'));
 			await h.flush();
 			expect(h.allArtifactTabs.value[0].executionStatus).toBe('error');
-			expect(h.relayedEvents.length).toBe(beforeSecondFinish);
+			expect(h.relayedEvents.length).toBe(beforeSecondFinish + 1);
+			expect(h.relayedEvents[h.relayedEvents.length - 1].type).toBe('executionFinished');
 		});
 
 		test('relay: buffered replay then live forwarding in sequence', async () => {
@@ -585,16 +586,151 @@ describe('composable integration', () => {
 			expect(h.relayedEvents.length).toBeGreaterThan(afterReplayCount);
 			expect(h.relayedEvents[h.relayedEvents.length - 1].type).toBe('nodeExecuteAfter');
 
-			// Execution finishes — relay stops
+			// Execution finishes — executionFinished relayed, then relay stops
 			const beforeFinish = h.relayedEvents.length;
 			h.simulatePushEvent(executionFinishedEvent('exec-1', 'wf-1', 'success'));
 			await h.flush();
-			expect(h.relayedEvents.length).toBe(beforeFinish);
+			expect(h.relayedEvents.length).toBe(beforeFinish + 1);
+			expect(h.relayedEvents[h.relayedEvents.length - 1].type).toBe('executionFinished');
 		});
 	});
 
 	// -----------------------------------------------------------------------
-	// 9. Data table lifecycle
+	// 9. Build → execute → edit: no stale node state
+	// -----------------------------------------------------------------------
+	describe('build → execute → edit workflow', () => {
+		test('editing after execution clears execution state and stops relay', async () => {
+			h.registerWorkflow('wf-1', 'My Workflow');
+			h.setStreaming(true);
+
+			// Step 1: Build
+			h.addBuildResult('wf-1', 'tc-build-1');
+			await h.flush();
+			expect(h.activeWorkflowId.value).toBe('wf-1');
+
+			// Step 2: Execute — push events relay node highlighting
+			h.simulatePushEvent(executionStartedEvent('exec-1', 'wf-1'));
+			await h.flush();
+			expect(h.allArtifactTabs.value[0].executionStatus).toBe('running');
+
+			h.simulatePushEvent(nodeExecuteBeforeEvent('exec-1', 'Start'));
+			h.simulatePushEvent(nodeExecuteAfterEvent('exec-1', 'Start'));
+			h.simulatePushEvent(nodeExecuteBeforeEvent('exec-1', 'Set'));
+			h.simulatePushEvent(nodeExecuteAfterEvent('exec-1', 'Set'));
+			h.simulatePushEvent(executionFinishedEvent('exec-1', 'wf-1', 'success'));
+			await h.flush();
+
+			expect(h.allArtifactTabs.value[0].executionStatus).toBe('success');
+			const relayCountAfterExecution = h.relayedEvents.length;
+
+			// Step 3: Edit — new build result for the same workflow
+			h.addBuildResult('wf-1', 'tc-build-2');
+			await h.flush();
+
+			// Execution state should be cleared
+			expect(h.activeExecutionId.value).toBeNull();
+			// Preview should still be open on the same workflow
+			expect(h.activeWorkflowId.value).toBe('wf-1');
+			// No new events should be relayed after the edit
+			expect(h.relayedEvents.length).toBe(relayCountAfterExecution);
+		});
+
+		test('node events from old execution are not relayed after edit', async () => {
+			h.registerWorkflow('wf-1', 'My Workflow');
+			h.setStreaming(true);
+
+			// Build and start execution
+			h.addBuildResult('wf-1', 'tc-build-1');
+			await h.flush();
+
+			h.simulatePushEvent(executionStartedEvent('exec-1', 'wf-1'));
+			h.simulatePushEvent(nodeExecuteBeforeEvent('exec-1', 'Start'));
+			await h.flush();
+			const relayCountDuringExecution = h.relayedEvents.length;
+			expect(relayCountDuringExecution).toBeGreaterThan(0);
+
+			// Execution finishes
+			h.simulatePushEvent(nodeExecuteAfterEvent('exec-1', 'Start'));
+			h.simulatePushEvent(executionFinishedEvent('exec-1', 'wf-1', 'success'));
+			await h.flush();
+			const relayCountAfterFinish = h.relayedEvents.length;
+
+			// Edit — new build
+			h.addBuildResult('wf-1', 'tc-build-2');
+			await h.flush();
+
+			// Simulate a late-arriving node event from the old execution
+			// (e.g. race condition where event arrives after build)
+			h.simulatePushEvent(nodeExecuteBeforeEvent('exec-1', 'LateNode'));
+			await h.flush();
+
+			// Should NOT be relayed — old execution is done and workflow was rebuilt
+			expect(h.relayedEvents.length).toBe(relayCountAfterFinish);
+		});
+
+		test('new execution after edit is tracked independently', async () => {
+			h.registerWorkflow('wf-1', 'My Workflow');
+			h.setStreaming(true);
+
+			// Build → execute → finish
+			h.addBuildResult('wf-1', 'tc-build-1');
+			await h.flush();
+			h.simulatePushEvent(executionStartedEvent('exec-1', 'wf-1'));
+			h.simulatePushEvent(executionFinishedEvent('exec-1', 'wf-1', 'success'));
+			await h.flush();
+			expect(h.allArtifactTabs.value[0].executionStatus).toBe('success');
+
+			// Edit
+			h.addBuildResult('wf-1', 'tc-build-2');
+			await h.flush();
+			expect(h.activeExecutionId.value).toBeNull();
+
+			// New execution on edited workflow
+			h.relayedEvents.length = 0;
+			h.simulatePushEvent(executionStartedEvent('exec-2', 'wf-1'));
+			await h.flush();
+			expect(h.allArtifactTabs.value[0].executionStatus).toBe('running');
+			expect(h.relayedEvents.length).toBeGreaterThan(0);
+
+			// Node events for new execution should relay
+			h.simulatePushEvent(nodeExecuteBeforeEvent('exec-2', 'Start'));
+			await h.flush();
+			expect(h.relayedEvents[h.relayedEvents.length - 1].type).toBe('nodeExecuteBefore');
+
+			// Finish new execution
+			h.simulatePushEvent(executionFinishedEvent('exec-2', 'wf-1', 'success'));
+			await h.flush();
+			expect(h.allArtifactTabs.value[0].executionStatus).toBe('success');
+		});
+
+		test('iframe replay after edit does not include old execution events', async () => {
+			h.registerWorkflow('wf-1', 'My Workflow');
+			h.setStreaming(true);
+
+			// Build → execute with node events → finish
+			h.addBuildResult('wf-1', 'tc-build-1');
+			await h.flush();
+			h.simulatePushEvent(executionStartedEvent('exec-1', 'wf-1'));
+			h.simulatePushEvent(nodeExecuteBeforeEvent('exec-1', 'Start'));
+			h.simulatePushEvent(nodeExecuteAfterEvent('exec-1', 'Start'));
+			h.simulatePushEvent(executionFinishedEvent('exec-1', 'wf-1', 'success'));
+			await h.flush();
+
+			// Edit
+			h.addBuildResult('wf-1', 'tc-build-2');
+			await h.flush();
+
+			// Iframe reloads after edit — should NOT replay old execution events
+			h.relayedEvents.length = 0;
+			await h.simulateIframeReady();
+
+			// No old events should be replayed (buffer was cleared on finish)
+			expect(h.relayedEvents.length).toBe(0);
+		});
+	});
+
+	// -----------------------------------------------------------------------
+	// Data table lifecycle
 	// -----------------------------------------------------------------------
 	describe('data table lifecycle', () => {
 		test('auto-opens data table preview when streaming', async () => {
