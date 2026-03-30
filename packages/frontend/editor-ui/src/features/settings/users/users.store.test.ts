@@ -109,6 +109,151 @@ describe('users.store', () => {
 		});
 	});
 
+	describe('addUsers', () => {
+		it('should add a single user to the store', () => {
+			const usersStore = useUsersStore();
+
+			usersStore.addUsers([
+				{
+					id: '1',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: 'global:member',
+					isPending: false,
+				},
+			]);
+
+			expect(usersStore.usersById['1']).toMatchObject({
+				id: '1',
+				firstName: 'John',
+				lastName: 'Doe',
+				fullName: 'John Doe',
+				isDefaultUser: false,
+				isPendingUser: false,
+			});
+		});
+
+		it('should add multiple users in a single batch update', () => {
+			const usersStore = useUsersStore();
+
+			usersStore.addUsers([
+				{
+					id: '1',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: 'global:member',
+					isPending: false,
+				},
+				{
+					id: '2',
+					firstName: 'Jane',
+					lastName: 'Smith',
+					role: 'global:admin',
+					isPending: false,
+				},
+				{
+					id: '3',
+					firstName: 'Bob',
+					role: 'global:owner',
+					isPending: true,
+				},
+			]);
+
+			expect(Object.keys(usersStore.usersById)).toHaveLength(3);
+			expect(usersStore.usersById['1'].fullName).toBe('John Doe');
+			expect(usersStore.usersById['2'].fullName).toBe('Jane Smith');
+			expect(usersStore.usersById['3'].isDefaultUser).toBe(true);
+			expect(usersStore.usersById['3'].isPendingUser).toBe(true);
+		});
+
+		it('should merge with existing user data', () => {
+			const usersStore = useUsersStore();
+
+			// Add initial user
+			usersStore.usersById['1'] = {
+				id: '1',
+				firstName: 'John',
+				lastName: 'Doe',
+				email: 'john@example.com',
+				role: 'global:member',
+				isPending: false,
+				isDefaultUser: false,
+				isPendingUser: false,
+				mfaEnabled: false,
+				settings: { userActivated: true },
+			};
+
+			// Update the user with new data
+			usersStore.addUsers([
+				{
+					id: '1',
+					firstName: 'Johnny',
+					lastName: 'Doe',
+					role: 'global:admin',
+					isPending: false,
+				},
+			]);
+
+			// Should merge: keep email and settings, update firstName and role
+			expect(usersStore.usersById['1']).toMatchObject({
+				id: '1',
+				firstName: 'Johnny',
+				lastName: 'Doe',
+				email: 'john@example.com',
+				role: 'global:admin',
+				fullName: 'Johnny Doe',
+				settings: { userActivated: true },
+			});
+		});
+
+		it('should preserve existing users when adding new ones', () => {
+			const usersStore = useUsersStore();
+
+			// Add initial user
+			usersStore.usersById['1'] = {
+				id: '1',
+				firstName: 'John',
+				lastName: 'Doe',
+				role: 'global:member',
+				isPending: false,
+				isDefaultUser: false,
+				isPendingUser: false,
+				mfaEnabled: false,
+			};
+
+			// Add a new user
+			usersStore.addUsers([
+				{
+					id: '2',
+					firstName: 'Jane',
+					lastName: 'Smith',
+					role: 'global:member',
+					isPending: false,
+				},
+			]);
+
+			// Both users should exist
+			expect(Object.keys(usersStore.usersById)).toHaveLength(2);
+			expect(usersStore.usersById['1'].firstName).toBe('John');
+			expect(usersStore.usersById['2'].firstName).toBe('Jane');
+		});
+
+		it('should set fullName to undefined when firstName is not provided', () => {
+			const usersStore = useUsersStore();
+
+			usersStore.addUsers([
+				{
+					id: '1',
+					email: 'test@example.com',
+					role: 'global:member',
+					isPending: true,
+				},
+			]);
+
+			expect(usersStore.usersById['1'].fullName).toBeUndefined();
+		});
+	});
+
 	describe('setCalloutDismissed', () => {
 		it('should set callout as dismissed in user settings', () => {
 			const usersStore = useUsersStore();
