@@ -54,6 +54,7 @@ import {
 	type OrchestrationContext,
 	type InstanceAiTraceContext,
 	type PlannedTaskGraph,
+	type PendingConfirmation,
 	type PlannedTaskRecord,
 	type SandboxConfig,
 	type SpawnBackgroundTaskOptions,
@@ -123,6 +124,7 @@ export class InstanceAiService {
 		string,
 		{ threadId: string; messageGroupId?: string; tracing: InstanceAiTraceContext }
 	>();
+	private readonly pendingSubAgentConfirmations = new Map<string, PendingConfirmation>();
 
 	/** Active sandboxes keyed by thread ID — persisted across messages within a conversation. */
 	private readonly sandboxes = new Map<
@@ -970,6 +972,11 @@ export class InstanceAiService {
 
 		this.gatewayRegistry.disconnectAll();
 
+		for (const [, pending] of this.pendingSubAgentConfirmations) {
+			pending.resolve({ approved: false });
+		}
+		this.pendingSubAgentConfirmations.clear();
+
 		// Destroy all active sandboxes
 		const sandboxCleanups = [...this.sandboxes.keys()].map(
 			async (threadId) => await this.destroySandbox(threadId),
@@ -1799,6 +1806,7 @@ export class InstanceAiService {
 			...(data.nodeParameters ? { nodeParameters: data.nodeParameters } : {}),
 			...(data.testTriggerNode ? { testTriggerNode: data.testTriggerNode } : {}),
 			...(data.answers ? { answers: data.answers } : {}),
+			...(data.resourceDecisionToken ? { resourceDecisionToken: data.resourceDecisionToken } : {}),
 		};
 
 		void this.processResumedStream(agent, resumeData, {

@@ -345,6 +345,22 @@ describe('InstanceAiController', () => {
 			);
 		});
 
+		it('should pass resourceDecisionToken through to resolveConfirmation', async () => {
+			instanceAiService.resolveConfirmation.mockResolvedValue(true);
+			const body = mock<InstanceAiConfirmRequestDto>({
+				approved: true,
+				resourceDecisionToken: 'tok-allow-once',
+			});
+
+			await controller.confirm(req, res, 'req-1', body);
+
+			expect(instanceAiService.resolveConfirmation).toHaveBeenCalledWith(
+				USER_ID,
+				'req-1',
+				expect.objectContaining({ resourceDecisionToken: 'tok-allow-once' }),
+			);
+		});
+
 		it('should throw NotFoundError when confirmation not found', async () => {
 			instanceAiService.resolveConfirmation.mockResolvedValue(false);
 			const body = mock<InstanceAiConfirmRequestDto>({ approved: false });
