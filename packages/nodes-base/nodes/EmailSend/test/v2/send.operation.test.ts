@@ -482,4 +482,159 @@ describe('Test EmailSendV2, send operation', () => {
 			);
 		});
 	});
+
+	describe('custom headers', () => {
+		it('should add custom headers from key-value pairs', async () => {
+			const items = [{ json: { data: 'test' } }];
+
+			mockExecuteFunctions.getInputData.mockReturnValue(items);
+			mockExecuteFunctions.getNode.mockReturnValue({ typeVersion: 2.0 } as any);
+			mockExecuteFunctions.getInstanceId.mockReturnValue('instanceId');
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				host: 'smtp.example.com',
+				port: 587,
+			});
+
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('from@example.com')
+				.mockReturnValueOnce('to@example.com')
+				.mockReturnValueOnce('Test Subject')
+				.mockReturnValueOnce('html')
+				.mockReturnValueOnce({
+					appendAttribution: false,
+					sendCustomHeaders: true,
+					specifyHeaders: 'keypair',
+					headerParameters: {
+						parameters: [
+							{ name: 'In-Reply-To', value: '<msg-id@example.com>' },
+							{ name: 'X-Custom', value: 'custom-value' },
+						],
+					},
+				})
+				.mockReturnValueOnce('<p>Test HTML</p>');
+
+			transporter.sendMail.mockResolvedValue({ messageId: 'test-id' });
+
+			await sendOperation.execute.call(mockExecuteFunctions);
+
+			expect(transporter.sendMail).toHaveBeenCalledWith(
+				expect.objectContaining({
+					headers: {
+						'In-Reply-To': '<msg-id@example.com>',
+						'X-Custom': 'custom-value',
+					},
+				}),
+			);
+		});
+
+		it('should add custom headers from JSON', async () => {
+			const items = [{ json: { data: 'test' } }];
+
+			mockExecuteFunctions.getInputData.mockReturnValue(items);
+			mockExecuteFunctions.getNode.mockReturnValue({ typeVersion: 2.0 } as any);
+			mockExecuteFunctions.getInstanceId.mockReturnValue('instanceId');
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				host: 'smtp.example.com',
+				port: 587,
+			});
+
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('from@example.com')
+				.mockReturnValueOnce('to@example.com')
+				.mockReturnValueOnce('Test Subject')
+				.mockReturnValueOnce('html')
+				.mockReturnValueOnce({
+					appendAttribution: false,
+					sendCustomHeaders: true,
+					specifyHeaders: 'json',
+					jsonHeaders: '{"References": "<ref@example.com>", "X-Priority": "1"}',
+				})
+				.mockReturnValueOnce('<p>Test HTML</p>');
+
+			transporter.sendMail.mockResolvedValue({ messageId: 'test-id' });
+
+			await sendOperation.execute.call(mockExecuteFunctions);
+
+			expect(transporter.sendMail).toHaveBeenCalledWith(
+				expect.objectContaining({
+					headers: {
+						References: '<ref@example.com>',
+						'X-Priority': '1',
+					},
+				}),
+			);
+		});
+
+		it('should not add headers when sendCustomHeaders is false', async () => {
+			const items = [{ json: { data: 'test' } }];
+
+			mockExecuteFunctions.getInputData.mockReturnValue(items);
+			mockExecuteFunctions.getNode.mockReturnValue({ typeVersion: 2.0 } as any);
+			mockExecuteFunctions.getInstanceId.mockReturnValue('instanceId');
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				host: 'smtp.example.com',
+				port: 587,
+			});
+
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('from@example.com')
+				.mockReturnValueOnce('to@example.com')
+				.mockReturnValueOnce('Test Subject')
+				.mockReturnValueOnce('html')
+				.mockReturnValueOnce({ appendAttribution: false })
+				.mockReturnValueOnce('<p>Test HTML</p>');
+
+			transporter.sendMail.mockResolvedValue({ messageId: 'test-id' });
+
+			await sendOperation.execute.call(mockExecuteFunctions);
+
+			expect(transporter.sendMail).toHaveBeenCalledWith(
+				expect.not.objectContaining({
+					headers: expect.anything(),
+				}),
+			);
+		});
+
+		it('should skip headers with empty name in keypair mode', async () => {
+			const items = [{ json: { data: 'test' } }];
+
+			mockExecuteFunctions.getInputData.mockReturnValue(items);
+			mockExecuteFunctions.getNode.mockReturnValue({ typeVersion: 2.0 } as any);
+			mockExecuteFunctions.getInstanceId.mockReturnValue('instanceId');
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				host: 'smtp.example.com',
+				port: 587,
+			});
+
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('from@example.com')
+				.mockReturnValueOnce('to@example.com')
+				.mockReturnValueOnce('Test Subject')
+				.mockReturnValueOnce('html')
+				.mockReturnValueOnce({
+					appendAttribution: false,
+					sendCustomHeaders: true,
+					specifyHeaders: 'keypair',
+					headerParameters: {
+						parameters: [
+							{ name: '', value: 'ignored' },
+							{ name: 'X-Valid', value: 'kept' },
+						],
+					},
+				})
+				.mockReturnValueOnce('<p>Test HTML</p>');
+
+			transporter.sendMail.mockResolvedValue({ messageId: 'test-id' });
+
+			await sendOperation.execute.call(mockExecuteFunctions);
+
+			expect(transporter.sendMail).toHaveBeenCalledWith(
+				expect.objectContaining({
+					headers: {
+						'X-Valid': 'kept',
+					},
+				}),
+			);
+		});
+	});
 });

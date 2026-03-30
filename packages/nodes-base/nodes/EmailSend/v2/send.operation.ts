@@ -5,7 +5,7 @@ import type {
 	INodeProperties,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, jsonParse } from 'n8n-workflow';
 
 import { createUtmCampaignLink, updateDisplayOptions } from '@utils/utilities';
 
@@ -161,6 +161,92 @@ const properties: INodeProperties[] = [
 				placeholder: 'info@example.com',
 				description: 'The email address to send the reply to',
 			},
+			{
+				displayName: 'Send Custom Headers',
+				name: 'sendCustomHeaders',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to add custom headers to the email',
+			},
+			{
+				displayName: 'Specify Headers',
+				name: 'specifyHeaders',
+				type: 'options',
+				displayOptions: {
+					show: {
+						'/options.sendCustomHeaders': [true],
+					},
+				},
+				options: [
+					{
+						name: 'Using Fields Below',
+						value: 'keypair',
+					},
+					{
+						name: 'Using JSON',
+						value: 'json',
+					},
+				],
+				default: 'keypair',
+			},
+			{
+				displayName: 'Headers',
+				name: 'headerParameters',
+				type: 'fixedCollection',
+				displayOptions: {
+					show: {
+						'/options.sendCustomHeaders': [true],
+						'/options.specifyHeaders': ['keypair'],
+					},
+				},
+				typeOptions: {
+					multipleValues: true,
+				},
+				placeholder: 'Add Header',
+				default: {
+					parameters: [
+						{
+							name: '',
+							value: '',
+						},
+					],
+				},
+				options: [
+					{
+						name: 'parameters',
+						displayName: 'Header',
+						values: [
+							{
+								displayName: 'Name',
+								name: 'name',
+								type: 'string',
+								default: '',
+								placeholder: 'e.g. In-Reply-To',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'JSON',
+				name: 'jsonHeaders',
+				type: 'json',
+				displayOptions: {
+					show: {
+						'/options.sendCustomHeaders': [true],
+						'/options.specifyHeaders': ['json'],
+					},
+				},
+				default: '',
+				placeholder: '{"In-Reply-To": "&lt;message-ID@example.com&gt;"}',
+				description: 'Custom headers as JSON object',
+			},
 		],
 	},
 ];
@@ -249,6 +335,35 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 				if (attachments.length) {
 					mailOptions.attachments = attachments;
+				}
+			}
+
+			if (options.sendCustomHeaders) {
+				let customHeaders: Record<string, string> = {};
+
+				if (options.specifyHeaders === 'keypair') {
+					const headerParametersValues = (
+						options.headerParameters as { parameters: Array<{ name: string; value: string }> }
+					)?.parameters;
+
+					if (headerParametersValues) {
+						for (const header of headerParametersValues) {
+							if (header.name) {
+								customHeaders[header.name] = header.value;
+							}
+						}
+					}
+				} else if (options.specifyHeaders === 'json') {
+					customHeaders = jsonParse<Record<string, string>>(
+						(options.jsonHeaders as string) || '{}',
+						{
+							errorMessage: 'Custom headers JSON is not valid',
+						},
+					);
+				}
+
+				if (Object.keys(customHeaders).length > 0) {
+					mailOptions.headers = customHeaders;
 				}
 			}
 
