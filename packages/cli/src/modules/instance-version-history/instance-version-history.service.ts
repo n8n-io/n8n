@@ -11,6 +11,7 @@ import {
 	parseVersion,
 	versionGte,
 } from './instance-version-history.types';
+import { InstanceSettings } from 'n8n-core';
 
 @Service()
 export class InstanceVersionHistoryService {
@@ -19,13 +20,20 @@ export class InstanceVersionHistoryService {
 	constructor(
 		private readonly repository: InstanceVersionHistoryRepository,
 		private readonly logger: Logger,
+		private readonly instanceSettings: InstanceSettings,
 	) {
 		this.logger = this.logger.scoped('instance-version-history');
 	}
 
 	async init(): Promise<void> {
-		await this.loadCache();
-		await this.checkAndRecordCurrentVersion();
+		try {
+			await this.loadCache();
+			await this.checkAndRecordCurrentVersion();
+		} catch (error) {
+			this.logger.warn('Failed to initialize version history, retrying in 10s', { error });
+
+			setTimeout(async () => await this.init(), 10_000);
+		}
 	}
 
 	private async loadCache(): Promise<void> {
@@ -47,12 +55,24 @@ export class InstanceVersionHistoryService {
 		if (!newest || compareVersions(newest, current) !== 0) {
 			const entry = this.repository.create(current);
 			const saved = await this.repository.save(entry);
-			this.cache.push({
-				major: saved.major,
-				minor: saved.minor,
-				patch: saved.patch,
-				createdAt: saved.createdAt,
-			});
+			if (this.instanceSettings.isLeader) {
+				this.cache.push({
+					major: saved.major,
+					minor: saved.minor,
+					patch: saved.patch,
+					createdAt: saved.createdAt,
+				});
+			} else {
+				// if we're not the leader, we just add it to our local cache
+				// relying on the leader to update the DB
+				this.cache.push({
+					major: entry.major,
+					minor: entry.minor,
+					patch: entry.patch,
+					createdAt: entry.createdAt,
+				});
+			}
+
 			this.logger.info(
 				`Recorded version change: ${newest ? formatVersion(newest) : '(none)'} -> ${N8N_VERSION}`,
 			);
