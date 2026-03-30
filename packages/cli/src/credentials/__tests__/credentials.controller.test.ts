@@ -247,6 +247,7 @@ describe('CredentialsController', () => {
 				credentialType: existingCredential.type,
 				credentialId: existingCredential.id,
 				isDynamic: false,
+				usesExternalSecrets: false,
 			});
 		});
 
