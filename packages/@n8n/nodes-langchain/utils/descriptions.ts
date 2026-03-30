@@ -106,10 +106,11 @@ export const promptTypeOptionsDeprecated: INodeProperties = {
 	type: 'options',
 	options: [
 		{
-			name: 'Connected Chat Trigger Node',
+			name: 'Auto-detect from connected node',
 			value: 'auto',
 			description:
-				"Looks for an input field called 'chatInput' that is coming from a directly connected Chat Trigger",
+				"Looks for an input field called 'chatInput' (from a Chat Trigger) " +
+				"or 'guardrailsInput' (from a Guardrails node)",
 		},
 		{
 			name: 'Connected Guardrails Node',
@@ -132,10 +133,11 @@ export const promptTypeOptions: INodeProperties = {
 	type: 'options',
 	options: [
 		{
-			name: 'Connected Chat Trigger Node',
+			name: 'Auto-detect from connected node',
 			value: 'auto',
 			description:
-				"Looks for an input field called 'chatInput' that is coming from a directly connected Chat Trigger",
+				"Looks for an input field called 'chatInput' (from a Chat Trigger) " +
+				"or 'guardrailsInput' (from a Guardrails node)",
 		},
 		{
 			name: 'Define below',
@@ -145,7 +147,8 @@ export const promptTypeOptions: INodeProperties = {
 	],
 	default: 'auto',
 	builderHint: {
-		message: "Use 'auto' when following a chat trigger, 'define' when custom prompt needed",
+		message:
+			"Use 'auto' when following a Chat Trigger or Guardrails node, 'define' when custom prompt needed",
 	},
 };
 
@@ -171,7 +174,7 @@ export const textFromPreviousNode: INodeProperties = {
 	name: 'text',
 	type: 'string',
 	required: true,
-	default: '={{ $json.chatInput }}',
+	default: '={{ $json.chatInput ?? $json.guardrailsInput }}',
 	typeOptions: {
 		rows: 2,
 	},
