@@ -2,6 +2,7 @@
 import { computed, provide, watch } from 'vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { N8nButton, N8nCallout, N8nIcon, N8nLink, N8nText, N8nTooltip } from '@n8n/design-system';
+import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants/nodeTypes';
 
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
@@ -144,6 +145,10 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 
 const isComplete = computed(() => props.state.isComplete);
 const isExecutable = computed(() => executableNode.value !== null);
+const showExecuteButton = computed(() => {
+	if (nodeType.value?.name === CHAT_TRIGGER_NODE_TYPE && isInListeningState.value) return false;
+	return isExecutable.value;
+});
 const isLastCard = computed(() => props.stepIndex === props.totalCards - 1);
 
 const showContinue = computed(
@@ -349,7 +354,7 @@ watch(isActive, (active, wasActive) => {
 				/>
 
 				<TriggerExecuteButton
-					v-if="isExecutable"
+					v-if="showExecuteButton"
 					:label="executeLabel"
 					:icon="executeButtonIcon"
 					:disabled="isButtonDisabled || isTestingCredential"

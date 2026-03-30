@@ -7,6 +7,8 @@ import { useNodeExecution, type UseNodeExecutionOptions } from '@/app/composable
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { getTriggerNodeServiceName } from '@/app/utils/nodeTypesUtils';
+import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants/nodeTypes';
+import { useLogsStore } from '@/app/stores/logs.store';
 
 /**
  * Wraps `useNodeExecution` with listening-hint logic for setup-panel cards.
@@ -20,6 +22,7 @@ export function useTriggerExecution(
 	const i18n = useI18n();
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowsStore = useWorkflowsStore();
+	const logsStore = useLogsStore();
 
 	const {
 		isExecuting,
@@ -40,9 +43,15 @@ export function useTriggerExecution(
 			: null,
 	);
 
-	const isInListeningState = computed(
-		() => isListening.value || isListeningForWorkflowEvents.value,
-	);
+	const isInListeningState = computed(() => {
+		if (isListening.value || isListeningForWorkflowEvents.value) return true;
+
+		return (
+			nodeType.value?.name === CHAT_TRIGGER_NODE_TYPE &&
+			logsStore.isOpen &&
+			workflowsStore.chatPartialExecutionDestinationNode === nodeValue.value?.name
+		);
+	});
 
 	const listeningHint = computed(() => {
 		if (!isInListeningState.value || !nodeType.value) return '';
