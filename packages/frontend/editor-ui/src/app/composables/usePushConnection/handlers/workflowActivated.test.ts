@@ -46,7 +46,7 @@ describe('workflowActivated', () => {
 		vi.clearAllMocks();
 	});
 
-	it('should resolve pending activation confirmation', async () => {
+	it('should resolve pending activation confirmation with workflowId and activeVersionId', async () => {
 		const event: WorkflowActivated = {
 			type: 'workflowActivated',
 			data: { workflowId: 'wf-1', activeVersionId: 'v-1' },
@@ -54,17 +54,23 @@ describe('workflowActivated', () => {
 
 		await workflowActivated(event);
 
-		expect(activationConfirmation.resolveActivationConfirmation).toHaveBeenCalledWith('wf-1');
+		expect(activationConfirmation.resolveActivationConfirmation).toHaveBeenCalledWith(
+			'wf-1',
+			'v-1',
+		);
 	});
 
 	it('should resolve confirmation even for a different workflow', async () => {
 		const event: WorkflowActivated = {
 			type: 'workflowActivated',
-			data: { workflowId: 'wf-other', activeVersionId: 'v-1' },
+			data: { workflowId: 'wf-other', activeVersionId: 'v-2' },
 		};
 
 		await workflowActivated(event);
 
-		expect(activationConfirmation.resolveActivationConfirmation).toHaveBeenCalledWith('wf-other');
+		expect(activationConfirmation.resolveActivationConfirmation).toHaveBeenCalledWith(
+			'wf-other',
+			'v-2',
+		);
 	});
 });

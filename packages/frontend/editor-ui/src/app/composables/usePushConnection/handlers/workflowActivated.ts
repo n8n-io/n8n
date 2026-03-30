@@ -17,8 +17,8 @@ export async function workflowActivated({ data }: WorkflowActivated) {
 
 	const { workflowId, activeVersionId } = data;
 
-	// Confirm activation for any pending publish flow
-	resolveActivationConfirmation(workflowId);
+	// Confirm activation for any pending publish flow, matching version
+	resolveActivationConfirmation(workflowId, activeVersionId);
 
 	const workflowIsBeingViewed = workflowsStore.workflowId === workflowId;
 	const activeVersionChanged = documentStore?.value?.activeVersionId !== activeVersionId;

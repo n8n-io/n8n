@@ -12,16 +12,21 @@ const CONFIRMATION_TIMEOUT = 30_000; // 30 seconds
 interface PendingConfirmation {
 	resolve: (confirmed: boolean) => void;
 	timeoutId: ReturnType<typeof setTimeout>;
+	activeVersionId: string;
 }
 
 const pendingConfirmations = new Map<string, PendingConfirmation>();
 
 /**
  * Returns a promise that resolves to `true` when a `workflowActivated` push
- * event arrives, or `false` when a `workflowFailedToActivate` push event
- * arrives or the timeout expires without confirmation.
+ * event arrives for the expected version, or `false` when a
+ * `workflowFailedToActivate` push event arrives or the timeout expires
+ * without confirmation.
  */
-export async function waitForActivationConfirmation(workflowId: string): Promise<boolean> {
+export async function waitForActivationConfirmation(
+	workflowId: string,
+	activeVersionId: string,
+): Promise<boolean> {
 	// Clean up any existing confirmation for this workflow
 	const existing = pendingConfirmations.get(workflowId);
 	if (existing) {
@@ -32,20 +37,24 @@ export async function waitForActivationConfirmation(workflowId: string): Promise
 	return await new Promise<boolean>((resolve) => {
 		const timeoutId = setTimeout(() => {
 			pendingConfirmations.delete(workflowId);
-			resolve(false); // Assume error on timeout
+			resolve(false); // Don't show false success if push event never arrives
 		}, CONFIRMATION_TIMEOUT);
 
-		pendingConfirmations.set(workflowId, { resolve, timeoutId });
+		pendingConfirmations.set(workflowId, { resolve, timeoutId, activeVersionId });
 	});
 }
 
 /**
  * Called by the `workflowActivated` push handler to confirm successful
- * activation.
+ * activation. Only resolves if the activeVersionId matches the one being
+ * published, preventing stale events from falsely completing the flow.
  */
-export function resolveActivationConfirmation(workflowId: string): boolean {
+export function resolveActivationConfirmation(
+	workflowId: string,
+	activeVersionId: string,
+): boolean {
 	const pending = pendingConfirmations.get(workflowId);
-	if (pending) {
+	if (pending && pending.activeVersionId === activeVersionId) {
 		clearTimeout(pending.timeoutId);
 		pendingConfirmations.delete(workflowId);
 		pending.resolve(true);

@@ -109,7 +109,7 @@ export function useWorkflowActivate() {
 
 		// Register the confirmation listener BEFORE the API call so we don't
 		// miss push events that arrive before the await below.
-		const activationConfirmation = waitForActivationConfirmation(workflowId);
+		const activationConfirmation = waitForActivationConfirmation(workflowId, versionId);
 
 		try {
 			const expectedChecksum =
