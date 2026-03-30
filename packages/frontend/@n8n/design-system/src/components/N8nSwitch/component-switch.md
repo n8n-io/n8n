@@ -2,7 +2,7 @@
 
 A toggle control that allows users to switch between two states (on/off). The Switch component is ideal for binary choices where the effect is immediate, such as enabling or disabling a feature.
 
-- **Component Name:** N8nSwitch2
+- **Component Name:** N8nSwitch
 - **Figma Component:** [Figma](https://www.figma.com/design/8zib7Trf2D2CHYXrEGPHkg/n8n-Design-System-V3?node-id=81-530&m=dev)
 - **Reka UI Component:** [Switch](https://reka-ui.com/docs/components/switch)
 
@@ -44,7 +44,7 @@ const isEnabled = ref(false)
 </script>
 
 <template>
-  <N8nSwitch2 v-model="isEnabled" label="Enable notifications" />
+  <N8nSwitch v-model="isEnabled" label="Enable notifications" />
 </template>
 ```
 
@@ -58,10 +58,10 @@ const timeout = ref(true)
 
 <template>
   <!-- Small size for parameters panel -->
-  <N8nSwitch2 v-model="sendBody" label="Send Body" size="small" />
+  <N8nSwitch v-model="sendBody" label="Send Body" size="small" />
 
   <!-- Large size for settings -->
-  <N8nSwitch2 v-model="timeout" label="Timeout Workflow" size="large" />
+  <N8nSwitch v-model="timeout" label="Timeout Workflow" size="large" />
 </template>
 ```
 
@@ -73,10 +73,10 @@ const isAccepted = ref(false)
 </script>
 
 <template>
-  <N8nSwitch2 v-model="isAccepted">
+  <N8nSwitch v-model="isAccepted">
     <template #label>
       I accept the <a href="/terms">terms and conditions</a>
     </template>
-  </N8nSwitch2>
+  </N8nSwitch>
 </template>
 ```

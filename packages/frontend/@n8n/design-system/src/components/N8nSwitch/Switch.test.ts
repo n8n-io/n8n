@@ -3,7 +3,7 @@ import { render, waitFor } from '@testing-library/vue';
 
 import Switch from './Switch.vue';
 
-describe('v2/components/Switch', () => {
+describe('components/N8nSwitch', () => {
 	describe('rendering', () => {
 		it('should render unchecked by default', () => {
 			const wrapper = render(Switch);
