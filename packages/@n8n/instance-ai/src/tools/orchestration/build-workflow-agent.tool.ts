@@ -29,7 +29,12 @@ import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor
 import { traceWorkingMemoryContext } from '../../runtime/working-memory-tracing';
 import { formatPreviousAttempts } from '../../storage/iteration-log';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
-import { getTraceParentRun, withTraceParentContext } from '../../tracing/langsmith-tracing';
+import {
+	buildAgentTraceInputs,
+	getTraceParentRun,
+	mergeTraceRunInputs,
+	withTraceParentContext,
+} from '../../tracing/langsmith-tracing';
 import type { BackgroundTaskResult, OrchestrationContext } from '../../types';
 import { SDK_IMPORT_STATEMENT } from '../../workflow-builder/extract-code';
 import type { TriggerType, WorkflowBuildOutcome } from '../../workflow-loop';
@@ -408,6 +413,14 @@ export async function startBuildWorkflowAgentTask(
 							tools: tracedBuilderTools,
 							workspace,
 						});
+						mergeTraceRunInputs(
+							traceContext?.actorRun,
+							buildAgentTraceInputs({
+								systemPrompt: prompt,
+								tools: tracedBuilderTools,
+								modelId: context.modelId,
+							}),
+						);
 
 						registerWithMastra(subAgentId, subAgent, context.storage);
 
@@ -531,6 +544,14 @@ export async function startBuildWorkflowAgentTask(
 						model: context.modelId,
 						tools: tracedBuilderTools,
 					});
+					mergeTraceRunInputs(
+						traceContext?.actorRun,
+						buildAgentTraceInputs({
+							systemPrompt: prompt,
+							tools: tracedBuilderTools,
+							modelId: context.modelId,
+						}),
+					);
 
 					registerWithMastra(subAgentId, subAgent, context.storage);
 

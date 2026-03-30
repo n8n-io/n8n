@@ -21,7 +21,12 @@ import {
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
-import { getTraceParentRun, withTraceParentContext } from '../../tracing/langsmith-tracing';
+import {
+	buildAgentTraceInputs,
+	getTraceParentRun,
+	mergeTraceRunInputs,
+	withTraceParentContext,
+} from '../../tracing/langsmith-tracing';
 import type { OrchestrationContext } from '../../types';
 
 const RESEARCH_MAX_STEPS = 25;
@@ -122,6 +127,14 @@ export async function startResearchAgentTask(
 					model: context.modelId,
 					tools: tracedResearchTools,
 				});
+				mergeTraceRunInputs(
+					traceContext?.actorRun,
+					buildAgentTraceInputs({
+						systemPrompt: RESEARCH_AGENT_PROMPT,
+						tools: tracedResearchTools,
+						modelId: context.modelId,
+					}),
+				);
 
 				registerWithMastra(subAgentId, subAgent, context.storage);
 

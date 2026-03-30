@@ -17,7 +17,12 @@ import {
 	createLlmStepTraceHooks,
 	executeResumableStream,
 } from '../../runtime/resumable-stream-executor';
-import { getTraceParentRun, withTraceParentContext } from '../../tracing/langsmith-tracing';
+import {
+	buildAgentTraceInputs,
+	getTraceParentRun,
+	mergeTraceRunInputs,
+	withTraceParentContext,
+} from '../../tracing/langsmith-tracing';
 import type { OrchestrationContext } from '../../types';
 
 const BROWSER_AGENT_MAX_STEPS = 300;
@@ -219,6 +224,14 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 						model: context.modelId,
 						tools: tracedBrowserTools,
 					});
+					mergeTraceRunInputs(
+						traceRun,
+						buildAgentTraceInputs({
+							systemPrompt: BROWSER_AGENT_PROMPT,
+							tools: tracedBrowserTools,
+							modelId: context.modelId,
+						}),
+					);
 
 					registerWithMastra(subAgentId, subAgent, context.storage);
 

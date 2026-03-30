@@ -190,6 +190,7 @@ export async function startDetachedDelegateTask(
 						'Complete the delegated task using the provided tools. Return concrete results only.',
 					tools: tracedTools,
 					modelId: context.modelId,
+					traceRun: traceContext?.actorRun,
 				});
 
 				registerWithMastra(subAgentId, subAgent, context.storage);
@@ -305,6 +306,7 @@ export function createDelegateTool(context: OrchestrationContext) {
 					instructions: input.instructions,
 					tools: tracedTools,
 					modelId: context.modelId,
+					traceRun,
 				});
 
 				registerWithMastra(subAgentId, subAgent, context.storage);

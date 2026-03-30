@@ -23,7 +23,12 @@ import { registerWithMastra } from '../../agent/register-with-mastra';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
 import { traceWorkingMemoryContext } from '../../runtime/working-memory-tracing';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
-import { getTraceParentRun, withTraceParentContext } from '../../tracing/langsmith-tracing';
+import {
+	buildAgentTraceInputs,
+	getTraceParentRun,
+	mergeTraceRunInputs,
+	withTraceParentContext,
+} from '../../tracing/langsmith-tracing';
 import type { OrchestrationContext } from '../../types';
 
 const DATA_TABLE_MAX_STEPS = 15;
@@ -130,6 +135,14 @@ export async function startDataTableAgentTask(
 					model: context.modelId,
 					tools: tracedDataTableTools,
 				});
+				mergeTraceRunInputs(
+					traceContext?.actorRun,
+					buildAgentTraceInputs({
+						systemPrompt: DATA_TABLE_AGENT_PROMPT,
+						tools: tracedDataTableTools,
+						modelId: context.modelId,
+					}),
+				);
 
 				registerWithMastra(subAgentId, subAgent, context.storage);
 

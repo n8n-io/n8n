@@ -57,6 +57,16 @@ interface CurrentTraceSpanOptions<T = unknown> {
 	processOutputs?: (result: T) => unknown;
 }
 
+interface AgentTraceInputOptions {
+	systemPrompt?: string;
+	tools?: ToolsInput;
+	deferredTools?: ToolsInput;
+	modelId?: unknown;
+	memory?: unknown;
+	toolSearchEnabled?: boolean;
+	inputProcessors?: string[];
+}
+
 type TraceableMastraTool = ToolAction<
 	unknown,
 	unknown,
@@ -129,6 +139,86 @@ function truncateString(value: string): string {
 	}
 
 	return `${value.slice(0, MAX_TRACE_STRING_LENGTH)}…`;
+}
+
+function splitTraceText(value: string): string[] {
+	if (value.length <= MAX_TRACE_STRING_LENGTH) {
+		return [value];
+	}
+
+	const chunks: string[] = [];
+	let remaining = value;
+
+	while (remaining.length > MAX_TRACE_STRING_LENGTH) {
+		const candidate = remaining.slice(0, MAX_TRACE_STRING_LENGTH);
+		const splitIndex = candidate.lastIndexOf('\n');
+		const chunkEnd =
+			splitIndex >= MAX_TRACE_STRING_LENGTH / 2 ? splitIndex + 1 : MAX_TRACE_STRING_LENGTH;
+		chunks.push(remaining.slice(0, chunkEnd));
+		remaining = remaining.slice(chunkEnd);
+	}
+
+	if (remaining.length > 0) {
+		chunks.push(remaining);
+	}
+
+	return chunks;
+}
+
+function serializeTraceText(value: string): string | Record<string, string> {
+	const chunks = splitTraceText(value);
+	if (chunks.length === 1) {
+		return chunks[0];
+	}
+
+	return Object.fromEntries(
+		chunks.map((chunk, index) => [`part_${String(index + 1).padStart(2, '0')}`, chunk]),
+	);
+}
+
+function summarizeToolDescription(tool: unknown): string | undefined {
+	if (!isRecord(tool)) {
+		return undefined;
+	}
+
+	return typeof tool.description === 'string' ? tool.description : undefined;
+}
+
+function summarizeToolSet(
+	fieldPrefix: 'loaded' | 'deferred',
+	tools: ToolsInput | undefined,
+): Record<string, unknown> {
+	if (!tools || Object.keys(tools).length === 0) {
+		return {};
+	}
+
+	const summaries = Object.entries(tools).map(([name, tool]) => ({
+		name,
+		...(summarizeToolDescription(tool) ? { description: summarizeToolDescription(tool) } : {}),
+	}));
+	const catalogText = summaries
+		.map((tool) =>
+			typeof tool.description === 'string' ? `${tool.name}: ${tool.description}` : tool.name,
+		)
+		.join('\n');
+
+	return {
+		[`${fieldPrefix}_tool_count`]: summaries.length,
+		[`${fieldPrefix}_tools`]: summaries,
+		[`${fieldPrefix}_tool_catalog`]: serializeTraceText(catalogText),
+	};
+}
+
+function summarizeMemoryBinding(memory: unknown): Record<string, unknown> {
+	if (!isRecord(memory)) {
+		return {};
+	}
+
+	return {
+		memory_enabled: true,
+		...(typeof memory.resource === 'string' ? { memory_resource_id: memory.resource } : {}),
+		...(typeof memory.thread === 'string' ? { memory_thread_id: memory.thread } : {}),
+	};
 }
 
 function sanitizeTraceValue(value: unknown, depth = 0): unknown {
@@ -250,6 +340,19 @@ function mergeRunTreeMetadata(
 	return mergeMetadata(baseMetadata, metadata);
 }
 
+function mergeRunTreeInputs(
+	baseInputs: unknown,
+	inputs: Record<string, unknown> | undefined,
+): Record<string, unknown> {
+	const existingInputs =
+		isRecord(baseInputs) && !Array.isArray(baseInputs) ? { ...baseInputs } : {};
+
+	return {
+		...existingInputs,
+		...(inputs ?? {}),
+	};
+}
+
 export function getTraceParentRun(): RunTree | undefined {
 	const overrideRun = traceParentOverrideStorage.getStore()?.current ?? traceParentOverrideFallback;
 	if (overrideRun) {
@@ -283,6 +386,37 @@ export function mergeCurrentTraceMetadata(metadata: Record<string, unknown>): vo
 	if (mergedMetadata) {
 		currentRun.metadata = mergedMetadata;
 	}
+}
+
+export function mergeTraceRunInputs(
+	run: InstanceAiTraceRun | undefined,
+	inputs: Record<string, unknown>,
+): void {
+	if (!run) {
+		return;
+	}
+
+	const mergedInputs = sanitizeTracePayload(mergeRunTreeInputs(run.inputs, inputs));
+	run.inputs = mergedInputs;
+
+	const currentRun = getTraceParentRun();
+	if (currentRun?.id === run.id) {
+		currentRun.inputs = mergedInputs;
+	}
+}
+
+export function buildAgentTraceInputs(options: AgentTraceInputOptions): Record<string, unknown> {
+	return sanitizeTracePayload({
+		...(options.systemPrompt ? { system_prompt: serializeTraceText(options.systemPrompt) } : {}),
+		...(options.modelId !== undefined ? { model: options.modelId } : {}),
+		...(options.toolSearchEnabled !== undefined
+			? { tool_search_enabled: options.toolSearchEnabled }
+			: {}),
+		...(options.inputProcessors?.length ? { input_processors: options.inputProcessors } : {}),
+		...summarizeMemoryBinding(options.memory),
+		...summarizeToolSet('loaded', options.tools),
+		...summarizeToolSet('deferred', options.deferredTools),
+	});
 }
 
 export async function withTraceParentContext<T>(

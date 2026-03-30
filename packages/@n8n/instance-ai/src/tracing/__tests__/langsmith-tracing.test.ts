@@ -215,9 +215,11 @@ function isExecutableTool(value: unknown): value is ExecutableTool {
 }
 
 const {
+	buildAgentTraceInputs,
 	createDetachedSubAgentTraceContext,
 	createInstanceAiTraceContext,
 	continueInstanceAiTraceContext,
+	mergeTraceRunInputs,
 	withCurrentTraceSpan,
 } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
@@ -351,6 +353,95 @@ describe('createInstanceAiTraceContext', () => {
 				spawned_by_agent_id: 'agent-001',
 			}),
 		);
+	});
+
+	it('attaches root agent config without duplicating it into llm steps', async () => {
+		const tracing = await createDetachedSubAgentTraceContext({
+			threadId: 'thread-1',
+			conversationId: 'thread-1',
+			messageGroupId: 'group-1',
+			messageId: 'message-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			agentId: 'agent-builder-1',
+			role: 'workflow-builder',
+			kind: 'builder',
+			taskId: 'build-1',
+			input: { task: 'Build a workflow' },
+		});
+
+		expect(tracing).toBeDefined();
+
+		mergeTraceRunInputs(
+			tracing?.actorRun,
+			buildAgentTraceInputs({
+				systemPrompt: ['line 1', 'line 2', 'line 3', 'line 4'].join('\n').repeat(700),
+				tools: {
+					'build-workflow': {
+						description: 'Build or patch a workflow from SDK code.',
+					},
+					'submit-workflow': {
+						description: 'Submit a workflow to n8n.',
+					},
+				} as never,
+				modelId: 'anthropic/claude-sonnet-4-6',
+			}),
+		);
+
+		const actorInputs = tracing?.actorRun.inputs as Record<string, unknown>;
+		const loadedTools = actorInputs.loaded_tools as Array<Record<string, unknown>>;
+		const systemPrompt = actorInputs.system_prompt as Record<string, unknown>;
+
+		expect(actorInputs.task).toBe('Build a workflow');
+		expect(actorInputs.model).toBe('anthropic/claude-sonnet-4-6');
+		expect(actorInputs.loaded_tool_count).toBe(2);
+		expect(loadedTools).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ name: 'build-workflow' }),
+				expect.objectContaining({ name: 'submit-workflow' }),
+			]),
+		);
+		expect(systemPrompt.part_01).toEqual(expect.any(String));
+		expect(systemPrompt.part_02).toEqual(expect.any(String));
+	});
+
+	it('persists merged actor inputs while the actor run is active', async () => {
+		const tracing = await createDetachedSubAgentTraceContext({
+			threadId: 'thread-1',
+			conversationId: 'thread-1',
+			messageGroupId: 'group-1',
+			messageId: 'message-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			agentId: 'agent-builder-1',
+			role: 'workflow-builder',
+			kind: 'builder',
+			taskId: 'build-1',
+			input: { task: 'Build a workflow' },
+		});
+
+		expect(tracing).toBeDefined();
+
+		await tracing?.withRunTree(tracing.actorRun, async () => {
+			mergeTraceRunInputs(
+				tracing?.actorRun,
+				buildAgentTraceInputs({
+					systemPrompt: 'system prompt',
+					tools: {
+						'build-workflow': {
+							description: 'Build or patch a workflow from SDK code.',
+						},
+					} as never,
+					modelId: 'anthropic/claude-sonnet-4-6',
+				}),
+			);
+			await Promise.resolve();
+		});
+
+		const actorInputs = tracing?.actorRun.inputs as Record<string, unknown>;
+		expect(actorInputs.model).toBe('anthropic/claude-sonnet-4-6');
+		expect(actorInputs.system_prompt).toBe('system prompt');
+		expect(actorInputs.loaded_tool_count).toBe(1);
 	});
 
 	it('redacts model secrets from trace metadata', async () => {

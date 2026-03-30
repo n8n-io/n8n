@@ -8,9 +8,10 @@ import { nanoid } from 'nanoid';
 
 import { createMemory } from '../memory/memory-config';
 import { createAllTools, createOrchestrationTools } from '../tools';
-import { sanitizeMcpToolSchemas } from './sanitize-mcp-schemas';
 import { createToolsFromLocalMcpServer } from '../tools/filesystem/create-tools-from-mcp-server';
+import { buildAgentTraceInputs, mergeTraceRunInputs } from '../tracing/langsmith-tracing';
 import type { CreateInstanceAgentOptions, McpServerConfig } from '../types';
+import { sanitizeMcpToolSchemas } from './sanitize-mcp-schemas';
 import { getSystemPrompt } from './system-prompt';
 
 function buildMcpServers(
@@ -246,20 +247,21 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 
 	// Use pre-built memory if provided, otherwise create from config
 	const memory = options.memory ?? createMemory(memoryConfig);
+	const systemPrompt = getSystemPrompt({
+		researchMode: orchestrationContext?.researchMode,
+		webhookBaseUrl: orchestrationContext?.webhookBaseUrl,
+		filesystemAccess: !!(context.localMcpServer ?? context.filesystemService),
+		toolSearchEnabled: hasDeferrableTools,
+		licenseHints: context.licenseHints,
+		timeZone: options.timeZone,
+	});
 
 	const agent = new Agent({
 		id: 'n8n-instance-agent',
 		name: 'n8n Instance Agent',
 		instructions: {
 			role: 'system' as const,
-			content: getSystemPrompt({
-				researchMode: orchestrationContext?.researchMode,
-				webhookBaseUrl: orchestrationContext?.webhookBaseUrl,
-				filesystemAccess: !!(context.localMcpServer ?? context.filesystemService),
-				toolSearchEnabled: hasDeferrableTools,
-				licenseHints: context.licenseHints,
-				timeZone: options.timeZone,
-			}),
+			content: systemPrompt,
 			providerOptions: {
 				anthropic: { cacheControl: { type: 'ephemeral' } },
 			},
@@ -270,6 +272,19 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		memory,
 		workspace: options.workspace,
 	});
+
+	mergeTraceRunInputs(
+		orchestrationContext?.tracing?.actorRun,
+		buildAgentTraceInputs({
+			systemPrompt,
+			tools: hasDeferrableTools ? coreTools : tracedOrchestratorTools,
+			deferredTools: hasDeferrableTools ? deferrableTools : undefined,
+			modelId,
+			memory,
+			toolSearchEnabled: hasDeferrableTools,
+			inputProcessors: toolSearchProcessor ? ['ToolSearchProcessor'] : undefined,
+		}),
+	);
 
 	// Register agent with Mastra for HITL suspend/resume snapshot storage
 	ensureMastraRegistered(agent, memoryConfig.storage);

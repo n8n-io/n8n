@@ -1,7 +1,8 @@
 import { Agent } from '@mastra/core/agent';
 import type { ToolsInput } from '@mastra/core/agent';
 
-import type { ModelConfig } from '../types';
+import { buildAgentTraceInputs, mergeTraceRunInputs } from '../tracing/langsmith-tracing';
+import type { InstanceAiTraceRun, ModelConfig } from '../types';
 
 export interface SubAgentOptions {
 	/** Unique ID for this sub-agent instance (e.g., "agent-V1StGX") */
@@ -14,6 +15,8 @@ export interface SubAgentOptions {
 	tools: ToolsInput;
 	/** Model config (same as orchestrator) */
 	modelId: ModelConfig;
+	/** Optional trace run to annotate with the sub-agent's static config */
+	traceRun?: InstanceAiTraceRun;
 }
 
 /** Hard protocol injected into every sub-agent — cannot be overridden by orchestrator instructions. */
@@ -39,11 +42,11 @@ ${instructions}`;
 }
 
 export function createSubAgent(options: SubAgentOptions): Agent {
-	const { agentId, role, instructions, tools, modelId } = options;
+	const { agentId, role, instructions, tools, modelId, traceRun } = options;
 
 	const systemPrompt = buildSubAgentPrompt(role, instructions);
 
-	return new Agent({
+	const agent = new Agent({
 		id: agentId,
 		name: `Sub-Agent: ${role}`,
 		instructions: {
@@ -56,4 +59,15 @@ export function createSubAgent(options: SubAgentOptions): Agent {
 		model: modelId,
 		tools,
 	});
+
+	mergeTraceRunInputs(
+		traceRun,
+		buildAgentTraceInputs({
+			systemPrompt,
+			tools,
+			modelId,
+		}),
+	);
+
+	return agent;
 }
