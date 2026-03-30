@@ -4,6 +4,9 @@ import type {
 	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 } from 'n8n-workflow';
+
+import { normalizePem } from '@utils/helpers';
+
 type RequestParameters = {
 	headers?: IDataObject;
 	body?: IDataObject | string;
@@ -40,7 +43,20 @@ export async function apiRequest(
 		};
 	}
 
-	const options = {
+	const options: IDataObject & {
+		headers: IDataObject;
+		method: IHttpRequestMethods;
+		body?: IDataObject | string;
+		qs?: IDataObject;
+		uri: string;
+		json: boolean;
+		agentOptions?: {
+			ca?: string;
+			cert?: string;
+			key?: string;
+			passphrase?: string;
+		};
+	} = {
 		headers,
 		method,
 		body,
@@ -48,6 +64,30 @@ export async function apiRequest(
 		uri,
 		json: true,
 	};
+
+	// Apply TLS client certificates when configured in the OpenAi credential
+	if (credentials.sslCertificatesEnabled) {
+		if (credentials.cert || credentials.key || credentials.ca) {
+			options.agentOptions = {
+				ca:
+					typeof credentials.ca === 'string' && credentials.ca
+						? normalizePem(credentials.ca)
+						: undefined,
+				cert:
+					typeof credentials.cert === 'string' && credentials.cert
+						? normalizePem(credentials.cert)
+						: undefined,
+				key:
+					typeof credentials.key === 'string' && credentials.key
+						? normalizePem(credentials.key)
+						: undefined,
+				passphrase:
+					typeof credentials.passphrase === 'string' && credentials.passphrase
+						? credentials.passphrase
+						: undefined,
+			};
+		}
+	}
 
 	if (option && Object.keys(option).length !== 0) {
 		Object.assign(options, option);

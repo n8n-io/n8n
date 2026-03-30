@@ -78,4 +78,60 @@ describe('apiRequest', () => {
 		// Assert
 		expect(response.error).toBeUndefined();
 	});
+
+	it('should include agentOptions with TLS fields when sslCertificatesEnabled is true', async () => {
+		mockedExecutionContext.getCredentials.mockResolvedValue({
+			sslCertificatesEnabled: true,
+			ca: '-----BEGIN CERTIFICATE-----\nCA\n-----END CERTIFICATE-----',
+			cert: '-----BEGIN CERTIFICATE-----\nCERT\n-----END CERTIFICATE-----',
+			key: '-----BEGIN PRIVATE KEY-----\nKEY\n-----END PRIVATE KEY-----',
+			passphrase: 'secret',
+		});
+
+		await apiRequest.call(mockedExecutionContext as unknown as IExecuteFunctions, 'GET', '/test');
+
+		expect(mockedExecutionContext.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+			'openAiApi',
+			expect.objectContaining({
+				agentOptions: {
+					ca: '-----BEGIN CERTIFICATE-----\nCA\n-----END CERTIFICATE-----',
+					cert: '-----BEGIN CERTIFICATE-----\nCERT\n-----END CERTIFICATE-----',
+					key: '-----BEGIN PRIVATE KEY-----\nKEY\n-----END PRIVATE KEY-----',
+					passphrase: 'secret',
+				},
+			}),
+		);
+	});
+
+	it('should not include agentOptions when sslCertificatesEnabled is false', async () => {
+		mockedExecutionContext.getCredentials.mockResolvedValue({
+			sslCertificatesEnabled: false,
+			cert: '-----BEGIN CERTIFICATE-----\nCERT\n-----END CERTIFICATE-----',
+			key: '-----BEGIN PRIVATE KEY-----\nKEY\n-----END PRIVATE KEY-----',
+		});
+
+		await apiRequest.call(mockedExecutionContext as unknown as IExecuteFunctions, 'GET', '/test');
+
+		expect(mockedExecutionContext.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+			'openAiApi',
+			expect.not.objectContaining({ agentOptions: expect.anything() }),
+		);
+	});
+
+	it('should not include agentOptions when sslCertificatesEnabled is true but all cert fields are empty', async () => {
+		mockedExecutionContext.getCredentials.mockResolvedValue({
+			sslCertificatesEnabled: true,
+			ca: '',
+			cert: '',
+			key: '',
+			passphrase: '',
+		});
+
+		await apiRequest.call(mockedExecutionContext as unknown as IExecuteFunctions, 'GET', '/test');
+
+		expect(mockedExecutionContext.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+			'openAiApi',
+			expect.not.objectContaining({ agentOptions: expect.anything() }),
+		);
+	});
 });
