@@ -292,7 +292,7 @@ export class GatewayClient {
 		logger.debug('Connecting to gateway', { keyPrefix: this.apiKey.slice(0, 8) });
 		const apiKey = this.apiKey;
 		this.eventSource = new EventSource(url, {
-			fetch: (input, init) => {
+			fetch: async (input, init) => {
 				const headers = new Headers(init?.headers);
 				headers.set('X-Gateway-Key', apiKey);
 				return fetch(input, { ...init, headers });

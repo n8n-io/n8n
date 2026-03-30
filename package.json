@@ -87,6 +87,7 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
+      "@vscode/ripgrep",
       "isolated-vm",
       "sqlite3"
     ],
