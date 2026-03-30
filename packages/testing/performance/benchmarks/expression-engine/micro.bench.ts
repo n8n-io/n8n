@@ -19,9 +19,11 @@ import {
 } from 'n8n-workflow/src/expression-sandboxing';
 
 // Top-level await — vitest bench doesn't support beforeAll
-const bridge = new IsolatedVmBridge({ timeout: 5000 });
 const evaluator = new ExpressionEvaluator({
-	bridge,
+	createBridge: () => new IsolatedVmBridge({ timeout: 5000 }),
+	isolatePoolSize: 1,
+	acquireTimeoutMs: 5000,
+	maxCodeCacheSize: 1024,
 	hooks: {
 		before: [ThisSanitizer],
 		after: [PrototypeSanitizer, DollarSignValidator],

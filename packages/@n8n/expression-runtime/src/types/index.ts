@@ -16,7 +16,7 @@ export type {
 	EvaluatorConfig,
 	IExpressionEvaluator,
 	WorkflowData,
-	EvaluateOptions,
+	EvaluateContext,
 	ObservabilityProvider,
 	MetricsAPI,
 	TracesAPI,

@@ -35,6 +35,8 @@ function createMockObservability(): ObservabilityProvider {
 	};
 }
 
+const POOL_DEFAULTS = { isolatePoolSize: 1, acquireTimeoutMs: 5000 } as const;
+
 describe('ExpressionEvaluator cache', () => {
 	let bridge: RuntimeBridge;
 	let observability: ObservabilityProvider;
@@ -46,14 +48,18 @@ describe('ExpressionEvaluator cache', () => {
 	});
 
 	it('should emit cache miss on first evaluation', async () => {
-		const evaluator = new ExpressionEvaluator({ bridge, observability, maxCodeCacheSize: 1024 });
+		const evaluator = new ExpressionEvaluator({
+			createBridge: () => bridge, observability, maxCodeCacheSize: 1024, ...POOL_DEFAULTS,
+		});
 		await evaluator.initialize();
 		evaluator.evaluate('={{ $json.email }}', {});
 		expect(observability.metrics.counter).toHaveBeenCalledWith('expression.code_cache.miss', 1);
 	});
 
 	it('should emit cache hit on repeated evaluation', async () => {
-		const evaluator = new ExpressionEvaluator({ bridge, observability, maxCodeCacheSize: 1024 });
+		const evaluator = new ExpressionEvaluator({
+			createBridge: () => bridge, observability, maxCodeCacheSize: 1024, ...POOL_DEFAULTS,
+		});
 		await evaluator.initialize();
 		evaluator.evaluate('={{ $json.email }}', {});
 		evaluator.evaluate('={{ $json.email }}', {});
@@ -62,9 +68,7 @@ describe('ExpressionEvaluator cache', () => {
 
 	it('should emit eviction when cache is full', async () => {
 		const evaluator = new ExpressionEvaluator({
-			bridge,
-			observability,
-			maxCodeCacheSize: 2,
+			createBridge: () => bridge, observability, maxCodeCacheSize: 2, ...POOL_DEFAULTS,
 		});
 		await evaluator.initialize();
 		evaluator.evaluate('={{ $json.a }}', {});
@@ -74,7 +78,9 @@ describe('ExpressionEvaluator cache', () => {
 	});
 
 	it('should work without observability', async () => {
-		const evaluator = new ExpressionEvaluator({ bridge, maxCodeCacheSize: 1024 });
+		const evaluator = new ExpressionEvaluator({
+			createBridge: () => bridge, maxCodeCacheSize: 1024, ...POOL_DEFAULTS,
+		});
 		await evaluator.initialize();
 		expect(() => {
 			evaluator.evaluate('={{ $json.email }}', {});
@@ -83,14 +89,18 @@ describe('ExpressionEvaluator cache', () => {
 	});
 
 	it('should emit cache size gauge on cache miss', async () => {
-		const evaluator = new ExpressionEvaluator({ bridge, observability, maxCodeCacheSize: 1024 });
+		const evaluator = new ExpressionEvaluator({
+			createBridge: () => bridge, observability, maxCodeCacheSize: 1024, ...POOL_DEFAULTS,
+		});
 		await evaluator.initialize();
 		evaluator.evaluate('={{ $json.email }}', {});
 		expect(observability.metrics.gauge).toHaveBeenCalledWith('expression.code_cache.size', 1);
 	});
 
 	it('should emit cache size gauge of 0 on dispose', async () => {
-		const evaluator = new ExpressionEvaluator({ bridge, observability, maxCodeCacheSize: 1024 });
+		const evaluator = new ExpressionEvaluator({
+			createBridge: () => bridge, observability, maxCodeCacheSize: 1024, ...POOL_DEFAULTS,
+		});
 		await evaluator.initialize();
 		evaluator.evaluate('={{ $json.email }}', {});
 		vi.clearAllMocks();
@@ -99,7 +109,9 @@ describe('ExpressionEvaluator cache', () => {
 	});
 
 	it('should evict least recently used and report miss on re-access', async () => {
-		const evaluator = new ExpressionEvaluator({ bridge, observability, maxCodeCacheSize: 2 });
+		const evaluator = new ExpressionEvaluator({
+			createBridge: () => bridge, observability, maxCodeCacheSize: 2, ...POOL_DEFAULTS,
+		});
 		await evaluator.initialize();
 		evaluator.evaluate('={{ $json.a }}', {});
 		evaluator.evaluate('={{ $json.b }}', {});

@@ -14,6 +14,7 @@ import {
 	sanitizer,
 	sanitizerName,
 } from './expression-sandboxing';
+import { PLACEHOLDER_EMPTY_EXECUTION_ID } from './constants';
 import { isExpression } from './expressions/expression-helpers';
 import { extend, extendOptional } from './extensions';
 import { extendSyntax } from './extensions/expression-extension';
@@ -173,6 +174,8 @@ const createSafeErrorSubclass = <T extends ErrorConstructor>(ErrorClass: T): T =
 	});
 };
 
+const envInt = (key: string, fallback: number) => parseInt(process.env[key] ?? '', 10) || fallback;
+
 export class Expression {
 	// Feature gate for expression engine selection
 	private static expressionEngine: 'current' | 'vm' = (() => {
@@ -210,13 +213,11 @@ export class Expression {
 		if (!this.vmEvaluator) {
 			// Dynamic import to avoid loading expression-runtime in browser environments
 			const { ExpressionEvaluator, IsolatedVmBridge } = await import('@n8n/expression-runtime');
-			const bridge = new IsolatedVmBridge({ timeout: options?.timeout ?? 5000 });
-			const DEFAULT_MAX_CODE_CACHE_SIZE = 1024;
-			const parsed = parseInt(process.env.N8N_EXPRESSION_ENGINE_MAX_CODE_CACHE_SIZE ?? '', 10);
-			const maxCodeCacheSize = parsed || DEFAULT_MAX_CODE_CACHE_SIZE;
 			this.vmEvaluator = new ExpressionEvaluator({
-				bridge,
-				maxCodeCacheSize,
+				createBridge: () => new IsolatedVmBridge({ timeout: options?.timeout ?? 5000 }),
+				maxCodeCacheSize: envInt('N8N_EXPRESSION_ENGINE_MAX_CODE_CACHE_SIZE', 1024),
+				isolatePoolSize: envInt('N8N_EXPRESSION_ISOLATE_POOL_SIZE', 1),
+				acquireTimeoutMs: envInt('N8N_EXPRESSION_ISOLATE_ACQUIRE_TIMEOUT_MS', 5000),
 				hooks: {
 					before: [ThisSanitizer],
 					after: [PrototypeSanitizer, DollarSignValidator],
@@ -224,6 +225,14 @@ export class Expression {
 			});
 			await this.vmEvaluator.initialize();
 		}
+	}
+
+	static async acquireIsolate(executionId: string): Promise<void> {
+		if (this.vmEvaluator) await this.vmEvaluator.acquireForExecution(executionId);
+	}
+
+	static async releaseIsolate(executionId: string): Promise<void> {
+		if (this.vmEvaluator) await this.vmEvaluator.releaseIsolate(executionId);
 	}
 
 	/**
@@ -535,8 +544,11 @@ export class Expression {
 			}
 
 			try {
+				const rawExecutionId = (data as { $execution?: { id: string } }).$execution?.id;
 				const result = Expression.vmEvaluator.evaluate(expression, data, {
 					timezone: this.timezone,
+					executionId:
+						rawExecutionId === PLACEHOLDER_EMPTY_EXECUTION_ID ? undefined : rawExecutionId,
 				});
 				return result as string | null | (() => unknown);
 			} catch (error) {
