@@ -1,5 +1,6 @@
 import { nanoid } from 'nanoid';
 
+import type { InstanceAiTraceContext } from '../../types';
 import type {
 	BackgroundTaskStatusSnapshot,
 	ConfirmationData,
@@ -534,7 +535,7 @@ describe('RunStateRegistry', () => {
 
 				const tracing = {
 					projectName: 'test',
-				} as unknown as import('../../types').InstanceAiTraceContext;
+				} as unknown as InstanceAiTraceContext;
 				registry.attachTracing('thread-1', tracing);
 
 				const activeRun = registry.getActiveRun('thread-1');
@@ -544,7 +545,7 @@ describe('RunStateRegistry', () => {
 			it('does nothing when no active run exists', () => {
 				const tracing = {
 					projectName: 'test',
-				} as unknown as import('../../types').InstanceAiTraceContext;
+				} as unknown as InstanceAiTraceContext;
 
 				// Should not throw
 				expect(() => registry.attachTracing('nonexistent', tracing)).not.toThrow();
@@ -558,7 +559,7 @@ describe('RunStateRegistry', () => {
 
 				const tracing = {
 					projectName: 'test',
-				} as unknown as import('../../types').InstanceAiTraceContext;
+				} as unknown as InstanceAiTraceContext;
 				registry.attachTracing('thread-1', tracing);
 
 				const activeRun = registry.getActiveRun('thread-1');
@@ -621,7 +622,7 @@ describe('RunStateRegistry', () => {
 				registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
 				const tracing = {
 					projectName: 'test',
-				} as unknown as import('../../types').InstanceAiTraceContext;
+				} as unknown as InstanceAiTraceContext;
 				const suspendedState = createSuspendedRunState({
 					threadId: 'thread-1',
 					tracing,

@@ -1,6 +1,5 @@
 import type { PlannedTaskStorage } from '../../storage/planned-task-storage';
 import type { PlannedTask, PlannedTaskGraph, PlannedTaskRecord } from '../../types';
-
 import { PlannedTaskCoordinator } from '../planned-task-service';
 
 function makeStorage(): jest.Mocked<PlannedTaskStorage> {
@@ -9,13 +8,13 @@ function makeStorage(): jest.Mocked<PlannedTaskStorage> {
 		save: jest.fn(),
 		update: jest.fn(),
 		clear: jest.fn(),
-	};
+	} as unknown as jest.Mocked<PlannedTaskStorage>;
 }
 
 function makeTask(overrides: Partial<PlannedTask> = {}): PlannedTask {
 	return {
 		id: 'task-1',
-		description: 'Test task',
+		title: 'Test task',
 		kind: 'build-workflow',
 		deps: [],
 		spec: 'Build a workflow',
@@ -35,7 +34,7 @@ function makeGraph(overrides: Partial<PlannedTaskGraph> = {}): PlannedTaskGraph 
 function makeTaskRecord(overrides: Partial<PlannedTaskRecord> = {}): PlannedTaskRecord {
 	return {
 		id: 'task-1',
-		description: 'Test task',
+		title: 'Test task',
 		kind: 'build-workflow',
 		deps: [],
 		spec: 'Build a workflow',
@@ -65,6 +64,7 @@ describe('PlannedTaskCoordinator', () => {
 				expect.objectContaining({
 					planRunId: 'run-1',
 					status: 'active',
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 					tasks: expect.arrayContaining([
 						expect.objectContaining({ id: 'a', status: 'planned' }),
 						expect.objectContaining({ id: 'b', status: 'planned' }),
@@ -126,7 +126,7 @@ describe('PlannedTaskCoordinator', () => {
 				const graph = makeGraph({
 					tasks: [makeTaskRecord({ id: 'task-1', status: 'planned' })],
 				});
-				return updater(graph);
+				return await Promise.resolve(updater(graph));
 			});
 
 			const result = await coordinator.markRunning('thread-1', 'task-1', {
@@ -144,7 +144,7 @@ describe('PlannedTaskCoordinator', () => {
 				const graph = makeGraph({
 					tasks: [makeTaskRecord({ id: 'task-1', status: 'running' })],
 				});
-				return updater(graph);
+				return await Promise.resolve(updater(graph));
 			});
 
 			const result = await coordinator.markSucceeded('thread-1', 'task-1', {
@@ -162,7 +162,7 @@ describe('PlannedTaskCoordinator', () => {
 				const graph = makeGraph({
 					tasks: [makeTaskRecord({ id: 'task-1', status: 'running' })],
 				});
-				return updater(graph);
+				return await Promise.resolve(updater(graph));
 			});
 
 			const result = await coordinator.markFailed('thread-1', 'task-1', {
@@ -180,7 +180,7 @@ describe('PlannedTaskCoordinator', () => {
 				const graph = makeGraph({
 					tasks: [makeTaskRecord({ id: 'task-1', status: 'running' })],
 				});
-				return updater(graph);
+				return await Promise.resolve(updater(graph));
 			});
 
 			const result = await coordinator.markCancelled('thread-1', 'task-1');
@@ -199,7 +199,7 @@ describe('PlannedTaskCoordinator', () => {
 						makeTaskRecord({ id: 'c', deps: ['a'], status: 'planned' }),
 					],
 				});
-				return updater(graph);
+				return await Promise.resolve(updater(graph));
 			});
 
 			const action = await coordinator.tick('thread-1');
@@ -219,7 +219,7 @@ describe('PlannedTaskCoordinator', () => {
 						makeTaskRecord({ id: 'b', deps: ['a'], status: 'planned' }),
 					],
 				});
-				return updater(graph);
+				return await Promise.resolve(updater(graph));
 			});
 
 			const action = await coordinator.tick('thread-1');
@@ -231,7 +231,7 @@ describe('PlannedTaskCoordinator', () => {
 				const graph = makeGraph({
 					tasks: [makeTaskRecord({ id: 'a', status: 'failed', error: 'boom' })],
 				});
-				return updater(graph);
+				return await Promise.resolve(updater(graph));
 			});
 
 			const action = await coordinator.tick('thread-1');
@@ -251,7 +251,7 @@ describe('PlannedTaskCoordinator', () => {
 						makeTaskRecord({ id: 'b', status: 'succeeded' }),
 					],
 				});
-				return updater(graph);
+				return await Promise.resolve(updater(graph));
 			});
 
 			const action = await coordinator.tick('thread-1');
@@ -271,7 +271,7 @@ describe('PlannedTaskCoordinator', () => {
 						makeTaskRecord({ id: 'c', status: 'planned' }),
 					],
 				});
-				return updater(graph);
+				return await Promise.resolve(updater(graph));
 			});
 
 			const action = await coordinator.tick('thread-1', { availableSlots: 1 });
@@ -285,7 +285,7 @@ describe('PlannedTaskCoordinator', () => {
 		it('returns none when graph is not active', async () => {
 			storage.update.mockImplementation(async (_threadId, updater) => {
 				const graph = makeGraph({ status: 'completed' });
-				return updater(graph);
+				return await Promise.resolve(updater(graph));
 			});
 
 			const action = await coordinator.tick('thread-1');

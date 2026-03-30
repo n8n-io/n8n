@@ -18,7 +18,7 @@ function makeMemory(overrides: Partial<Memory> = {}): Memory {
 		updateThread: jest
 			.fn()
 			.mockImplementation(
-				async (args: { id: string; title: string; metadata: Record<string, unknown> }) => ({
+				(args: { id: string; title: string; metadata: Record<string, unknown> }) => ({
 					...baseThread,
 					id: args.id,
 					title: args.title,

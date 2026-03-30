@@ -1,12 +1,11 @@
 import type { Memory } from '@mastra/memory';
 
-import { MastraIterationLogStorage } from '../mastra-iteration-log-storage';
-import type { IterationEntry } from '../iteration-log';
-
 jest.mock('../thread-patch', () => ({
 	patchThread: jest.fn(),
 }));
 
+import type { IterationEntry } from '../iteration-log';
+import { MastraIterationLogStorage } from '../mastra-iteration-log-storage';
 import { patchThread } from '../thread-patch';
 
 const mockedPatchThread = jest.mocked(patchThread);
@@ -38,7 +37,7 @@ describe('MastraIterationLogStorage', () => {
 
 	describe('append', () => {
 		it('appends entry to thread metadata via patchThread', async () => {
-			mockedPatchThread.mockImplementation(async (_mem, { update }) => {
+			mockedPatchThread.mockImplementation((_mem, { update }) => {
 				const result = update({
 					id: 'thread-1',
 					title: 'Test',
@@ -61,7 +60,7 @@ describe('MastraIterationLogStorage', () => {
 			const existingEntry = makeEntry({ attempt: 1 });
 			const newEntry = makeEntry({ attempt: 2 });
 
-			mockedPatchThread.mockImplementation(async (_mem, { update }) => {
+			mockedPatchThread.mockImplementation((_mem, { update }) => {
 				const result = update({
 					id: 'thread-1',
 					title: 'Test',
@@ -148,7 +147,7 @@ describe('MastraIterationLogStorage', () => {
 
 	describe('clear', () => {
 		it('removes the log metadata key via patchThread', async () => {
-			mockedPatchThread.mockImplementation(async (_mem, { update }) => {
+			mockedPatchThread.mockImplementation((_mem, { update }) => {
 				const result = update({
 					id: 'thread-1',
 					title: 'Test',

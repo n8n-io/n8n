@@ -1,13 +1,12 @@
 import type { Memory } from '@mastra/memory';
 
-import { WorkflowLoopStorage } from '../workflow-loop-storage';
-import type { WorkflowLoopState, AttemptRecord } from '../../workflow-loop/workflow-loop-state';
-
 jest.mock('../thread-patch', () => ({
 	patchThread: jest.fn(),
 }));
 
+import type { WorkflowLoopState, AttemptRecord } from '../../workflow-loop/workflow-loop-state';
 import { patchThread } from '../thread-patch';
+import { WorkflowLoopStorage } from '../workflow-loop-storage';
 
 const mockedPatchThread = jest.mocked(patchThread);
 
@@ -103,7 +102,7 @@ describe('WorkflowLoopStorage', () => {
 			const state = makeState();
 			const attempts = [makeAttempt()];
 
-			mockedPatchThread.mockImplementation(async (_mem, { update }) => {
+			mockedPatchThread.mockImplementation((_mem, { update }) => {
 				const result = update({
 					...baseThread,
 					metadata: {},
@@ -122,7 +121,7 @@ describe('WorkflowLoopStorage', () => {
 			const existingState = makeState({ workItemId: 'wi-existing', status: 'completed' });
 			const newState = makeState({ workItemId: 'wi-2' });
 
-			mockedPatchThread.mockImplementation(async (_mem, { update }) => {
+			mockedPatchThread.mockImplementation((_mem, { update }) => {
 				const result = update({
 					...baseThread,
 					metadata: {

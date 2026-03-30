@@ -1,5 +1,3 @@
-import { parseAndValidate, partitionWarnings } from '../parse-validate';
-
 jest.mock('@n8n/workflow-sdk', () => ({
 	parseWorkflowCodeToBuilder: jest.fn(),
 	validateWorkflow: jest.fn(),
@@ -10,7 +8,9 @@ jest.mock('../extract-code', () => ({
 }));
 
 import { parseWorkflowCodeToBuilder, validateWorkflow } from '@n8n/workflow-sdk';
+
 import { stripImportStatements } from '../extract-code';
+import { parseAndValidate, partitionWarnings } from '../parse-validate';
 
 const mockedParseWorkflowCodeToBuilder = jest.mocked(parseWorkflowCodeToBuilder);
 const mockedValidateWorkflow = jest.mocked(validateWorkflow);
@@ -111,6 +111,7 @@ describe('parseAndValidate', () => {
 
 	it('wraps non-Error exceptions', () => {
 		mockedParseWorkflowCodeToBuilder.mockImplementation(() => {
+			// eslint-disable-next-line @typescript-eslint/only-throw-error
 			throw 'string error';
 		});
 

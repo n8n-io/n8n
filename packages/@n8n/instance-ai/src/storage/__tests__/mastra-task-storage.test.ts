@@ -1,12 +1,11 @@
 import type { Memory } from '@mastra/memory';
 import type { TaskList } from '@n8n/api-types';
 
-import { MastraTaskStorage } from '../mastra-task-storage';
-
 jest.mock('../thread-patch', () => ({
 	patchThread: jest.fn(),
 }));
 
+import { MastraTaskStorage } from '../mastra-task-storage';
 import { patchThread } from '../thread-patch';
 
 const mockedPatchThread = jest.mocked(patchThread);
@@ -87,7 +86,7 @@ describe('MastraTaskStorage', () => {
 
 	describe('save', () => {
 		it('saves task list to thread metadata via patchThread', async () => {
-			mockedPatchThread.mockImplementation(async (_mem, { update }) => {
+			mockedPatchThread.mockImplementation((_mem, { update }) => {
 				const result = update({
 					id: 'thread-1',
 					title: 'Test',

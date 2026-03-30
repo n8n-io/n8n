@@ -1,5 +1,5 @@
-import type { WorkflowLoopAction } from '../workflow-loop-state';
 import { formatWorkflowLoopGuidance } from '../guidance';
+import type { WorkflowLoopAction } from '../workflow-loop-state';
 
 describe('formatWorkflowLoopGuidance', () => {
 	// ── done ────────────────────────────────────────────────────────────────────

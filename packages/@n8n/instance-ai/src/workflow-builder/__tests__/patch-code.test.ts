@@ -192,9 +192,10 @@ describe('applyPatches', () => {
 
 	describe('real-world example', () => {
 		it('should patch TypeScript code with indentation differences', () => {
+			const interpolation = '$' + '{name}';
 			const code = [
 				'export function greet(name: string): string {',
-				'\tconst greeting = `Hello, ${name}!`;',
+				'\tconst greeting = `Hello, ' + interpolation + '!`;',
 				'\tconsole.log(greeting);',
 				'\treturn greeting;',
 				'}',
@@ -204,17 +205,19 @@ describe('applyPatches', () => {
 			const result = applyPatches(code, [
 				{
 					old_str: [
-						'  const greeting = `Hello, ${name}!`;',
+						'  const greeting = `Hello, ' + interpolation + '!`;',
 						'  console.log(greeting);',
 						'  return greeting;',
 					].join('\n'),
-					new_str: ['\tconst greeting = `Hi, ${name}!`;', '\treturn greeting;'].join('\n'),
+					new_str: ['\tconst greeting = `Hi, ' + interpolation + '!`;', '\treturn greeting;'].join(
+						'\n',
+					),
 				},
 			]);
 
 			expect(result.success).toBe(true);
 			if (result.success) {
-				expect(result.code).toContain('Hi, ${name}!');
+				expect(result.code).toContain('Hi, ' + interpolation + '!');
 				expect(result.code).not.toContain('console.log');
 			}
 		});

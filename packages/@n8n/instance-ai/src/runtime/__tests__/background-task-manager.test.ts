@@ -1,3 +1,4 @@
+import type { BackgroundTaskResult } from '../../types';
 import { BackgroundTaskManager, enrichMessageWithRunningTasks } from '../background-task-manager';
 import type {
 	ManagedBackgroundTask,
@@ -37,9 +38,15 @@ describe('BackgroundTaskManager', () => {
 		it('rejects spawn when concurrent limit is reached', () => {
 			const onLimitReached = jest.fn();
 
-			manager.spawn(makeSpawnOptions({ taskId: 't1', run: () => new Promise(() => {}) }));
-			manager.spawn(makeSpawnOptions({ taskId: 't2', run: () => new Promise(() => {}) }));
-			manager.spawn(makeSpawnOptions({ taskId: 't3', run: () => new Promise(() => {}) }));
+			manager.spawn(
+				makeSpawnOptions({ taskId: 't1', run: async () => await new Promise(() => {}) }),
+			);
+			manager.spawn(
+				makeSpawnOptions({ taskId: 't2', run: async () => await new Promise(() => {}) }),
+			);
+			manager.spawn(
+				makeSpawnOptions({ taskId: 't3', run: async () => await new Promise(() => {}) }),
+			);
 
 			const result = manager.spawn(makeSpawnOptions({ taskId: 't4', onLimitReached }));
 
@@ -54,7 +61,7 @@ describe('BackgroundTaskManager', () => {
 
 			manager.spawn(
 				makeSpawnOptions({
-					run: () => promise,
+					run: async () => await promise,
 					onCompleted,
 					onSettled,
 				}),
@@ -71,11 +78,11 @@ describe('BackgroundTaskManager', () => {
 
 		it('calls onCompleted with structured result', async () => {
 			const onCompleted = jest.fn();
-			const { promise, resolve } = createDeferred();
+			const { promise, resolve } = createDeferred<string | BackgroundTaskResult>();
 
 			manager.spawn(
 				makeSpawnOptions({
-					run: () => promise,
+					run: async () => await promise,
 					onCompleted,
 				}),
 			);
@@ -95,11 +102,11 @@ describe('BackgroundTaskManager', () => {
 		it('calls onFailed and onSettled when run rejects', async () => {
 			const onFailed = jest.fn();
 			const onSettled = jest.fn();
-			const { promise, reject } = createDeferred();
+			const { promise, reject } = createDeferred<string | BackgroundTaskResult>();
 
 			manager.spawn(
 				makeSpawnOptions({
-					run: () => promise,
+					run: async () => await promise,
 					onFailed,
 					onSettled,
 				}),
@@ -116,11 +123,11 @@ describe('BackgroundTaskManager', () => {
 
 		it('does not call onFailed when aborted', async () => {
 			const onFailed = jest.fn();
-			const { promise, reject } = createDeferred();
+			const { promise, reject } = createDeferred<string | BackgroundTaskResult>();
 
 			manager.spawn(
 				makeSpawnOptions({
-					run: () => promise,
+					run: async () => await promise,
 					onFailed,
 				}),
 			);
@@ -135,7 +142,7 @@ describe('BackgroundTaskManager', () => {
 		it('removes task from map after settlement', async () => {
 			const { promise, resolve } = createDeferred<string>();
 
-			manager.spawn(makeSpawnOptions({ run: () => promise }));
+			manager.spawn(makeSpawnOptions({ run: async () => await promise }));
 			expect(manager.getTaskSnapshots('thread-1')).toHaveLength(1);
 
 			resolve('done');
@@ -147,7 +154,7 @@ describe('BackgroundTaskManager', () => {
 
 	describe('queueCorrection', () => {
 		it('queues correction for running task', () => {
-			manager.spawn(makeSpawnOptions({ run: () => new Promise(() => {}) }));
+			manager.spawn(makeSpawnOptions({ run: async () => await new Promise(() => {}) }));
 
 			expect(manager.queueCorrection('thread-1', 'task-1', 'fix this')).toBe('queued');
 		});
@@ -157,7 +164,7 @@ describe('BackgroundTaskManager', () => {
 		});
 
 		it('returns task-not-found for wrong thread', () => {
-			manager.spawn(makeSpawnOptions({ run: () => new Promise(() => {}) }));
+			manager.spawn(makeSpawnOptions({ run: async () => await new Promise(() => {}) }));
 
 			expect(manager.queueCorrection('thread-2', 'task-1', 'fix')).toBe('task-not-found');
 		});
@@ -188,7 +195,7 @@ describe('BackgroundTaskManager', () => {
 
 	describe('cancelTask', () => {
 		it('cancels a running task and aborts its signal', () => {
-			manager.spawn(makeSpawnOptions({ run: () => new Promise(() => {}) }));
+			manager.spawn(makeSpawnOptions({ run: async () => await new Promise(() => {}) }));
 
 			const cancelled = manager.cancelTask('thread-1', 'task-1');
 
@@ -203,7 +210,7 @@ describe('BackgroundTaskManager', () => {
 		});
 
 		it('returns undefined for wrong thread', () => {
-			manager.spawn(makeSpawnOptions({ run: () => new Promise(() => {}) }));
+			manager.spawn(makeSpawnOptions({ run: async () => await new Promise(() => {}) }));
 
 			expect(manager.cancelTask('thread-2', 'task-1')).toBeUndefined();
 		});
@@ -211,8 +218,12 @@ describe('BackgroundTaskManager', () => {
 
 	describe('cancelThread', () => {
 		it('cancels all running tasks for a thread', () => {
-			manager.spawn(makeSpawnOptions({ taskId: 't1', run: () => new Promise(() => {}) }));
-			manager.spawn(makeSpawnOptions({ taskId: 't2', run: () => new Promise(() => {}) }));
+			manager.spawn(
+				makeSpawnOptions({ taskId: 't1', run: async () => await new Promise(() => {}) }),
+			);
+			manager.spawn(
+				makeSpawnOptions({ taskId: 't2', run: async () => await new Promise(() => {}) }),
+			);
 
 			const cancelled = manager.cancelThread('thread-1');
 
@@ -225,14 +236,14 @@ describe('BackgroundTaskManager', () => {
 				makeSpawnOptions({
 					taskId: 't1',
 					threadId: 'thread-1',
-					run: () => new Promise(() => {}),
+					run: async () => await new Promise(() => {}),
 				}),
 			);
 			manager.spawn(
 				makeSpawnOptions({
 					taskId: 't2',
 					threadId: 'thread-2',
-					run: () => new Promise(() => {}),
+					run: async () => await new Promise(() => {}),
 				}),
 			);
 
@@ -248,14 +259,14 @@ describe('BackgroundTaskManager', () => {
 				makeSpawnOptions({
 					taskId: 't1',
 					threadId: 'thread-1',
-					run: () => new Promise(() => {}),
+					run: async () => await new Promise(() => {}),
 				}),
 			);
 			manager.spawn(
 				makeSpawnOptions({
 					taskId: 't2',
 					threadId: 'thread-2',
-					run: () => new Promise(() => {}),
+					run: async () => await new Promise(() => {}),
 				}),
 			);
 
@@ -275,7 +286,7 @@ describe('BackgroundTaskManager', () => {
 
 		it('getRunningTasks excludes non-running tasks', async () => {
 			const { promise, resolve } = createDeferred<string>();
-			manager.spawn(makeSpawnOptions({ run: () => promise }));
+			manager.spawn(makeSpawnOptions({ run: async () => await promise }));
 
 			resolve('done');
 			await flushPromises();
@@ -315,8 +326,8 @@ describe('enrichMessageWithRunningTasks', () => {
 
 // --- Helpers ---
 
-function flushPromises(): Promise<void> {
-	return new Promise((resolve) => {
+async function flushPromises(): Promise<void> {
+	await new Promise((resolve) => {
 		setTimeout(resolve, 0);
 	});
 }
