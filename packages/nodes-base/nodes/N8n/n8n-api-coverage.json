@@ -103,6 +103,12 @@
 			"status": "covered",
 			"nodeOperation": "workflow:deactivate"
 		},
+		"POST /workflows/{id}/archive": {
+			"status": "gap"
+		},
+		"POST /workflows/{id}/unarchive": {
+			"status": "gap"
+		},
 		"PUT /workflows/{id}/transfer": {
 			"status": "gap"
 		},

@@ -1,3 +1,4 @@
+import type { QuickReplyType } from '@n8n/api-types';
 import {
 	hasRevertVersionId,
 	type ChatRequest,
@@ -29,7 +30,7 @@ export async function createBuilderPayload(
 	id: string,
 	options: {
 		workflowId: string;
-		quickReplyType?: string;
+		quickReplyType?: QuickReplyType;
 		executionData?: IRunExecutionData['resultData'];
 		workflow?: IWorkflowDb;
 		nodesForSchema?: string[];
