@@ -6,22 +6,25 @@ describe('cleanStoredUserMessage', () => {
 	});
 
 	it('strips <running-tasks> block from the beginning', () => {
-		const stored = `<running-tasks>\n[task-1 builder running]\n</running-tasks>\n\nActual user message`;
+		const stored =
+			'<running-tasks>\n[task-1 builder running]\n</running-tasks>\n\nActual user message';
 		expect(cleanStoredUserMessage(stored)).toBe('Actual user message');
 	});
 
 	it('strips <background-tasks> (legacy) block', () => {
-		const stored = `<background-tasks>\ntask info here\n</background-tasks>\n\nUser said this`;
+		const stored = '<background-tasks>\ntask info here\n</background-tasks>\n\nUser said this';
 		expect(cleanStoredUserMessage(stored)).toBe('User said this');
 	});
 
 	it('strips <planned-task-follow-up> block', () => {
-		const stored = `<planned-task-follow-up taskId="t1">\nfollow up details\n</planned-task-follow-up>\n\nContinue building`;
+		const stored =
+			'<planned-task-follow-up taskId="t1">\nfollow up details\n</planned-task-follow-up>\n\nContinue building';
 		expect(cleanStoredUserMessage(stored)).toBe('Continue building');
 	});
 
 	it('strips <background-task-completed> block', () => {
-		const stored = `<background-task-completed>\ntask-1 completed with result\n</background-task-completed>\n\nUser reply`;
+		const stored =
+			'<background-task-completed>\ntask-1 completed with result\n</background-task-completed>\n\nUser reply';
 		expect(cleanStoredUserMessage(stored)).toBe('User reply');
 	});
 
@@ -35,7 +38,7 @@ describe('cleanStoredUserMessage', () => {
 	});
 
 	it('does not strip task blocks that are not at the beginning', () => {
-		const stored = `Some text\n<running-tasks>\ntask\n</running-tasks>\n\nMore text`;
+		const stored = 'Some text\n<running-tasks>\ntask\n</running-tasks>\n\nMore text';
 		expect(cleanStoredUserMessage(stored)).toBe(stored);
 	});
 });

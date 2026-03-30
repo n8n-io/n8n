@@ -56,7 +56,7 @@ describe('getRenderableAgentResult', () => {
 	test('returns null when result matches timeline text entries', () => {
 		const timeline: InstanceAiTimelineEntry[] = [
 			{ type: 'text', content: 'Hello ' },
-			{ type: 'tool-call', toolCallId: 'tc-1', toolName: 'test', isLoading: false },
+			{ type: 'tool-call', toolCallId: 'tc-1' },
 			{ type: 'text', content: 'world' },
 		];
 		const node = makeAgentNode({
