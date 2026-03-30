@@ -17,4 +17,11 @@ export const ATTR = {
 	EXECUTION_IS_RETRY: 'n8n.execution.is_retry',
 	EXECUTION_RETRY_OF: 'n8n.execution.retry_of',
 	EXECUTION_ERROR_TYPE: 'n8n.execution.error_type',
+
+	NODE_ID: 'n8n.node.id',
+	NODE_NAME: 'n8n.node.name',
+	NODE_TYPE: 'n8n.node.type',
+	NODE_TYPE_VERSION: 'n8n.node.type_version',
+	NODE_ITEMS_INPUT: 'n8n.node.items.input',
+	NODE_ITEMS_OUTPUT: 'n8n.node.items.output',
 } as const;

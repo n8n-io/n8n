@@ -6,6 +6,8 @@ import { trace } from '@opentelemetry/api';
 
 import { WorkflowEndHandler } from './handlers/workflow-end.handler';
 import { WorkflowStartHandler } from './handlers/workflow-start.handler';
+import { NodeStartHandler } from './handlers/node-start.handler';
+import { NodeEndHandler } from './handlers/node-end.handler';
 import { SpanRegistry } from './span-registry';
 
 const TRACER_NAME = 'n8n-workflow';
@@ -43,6 +45,18 @@ export class N8nInstrumentation {
 	@OnLifecycleEvent('workflowExecuteAfter')
 	onWorkflowEnd(ctx: WorkflowExecuteAfterContext) {
 		this.executeLifecycleHandler('workflowExecuteAfter', ctx);
+	}
+
+	@OnLifecycleEvent('nodeExecuteBefore')
+	onNodeStart(ctx: NodeExecuteBeforeContext) {
+		if (!this.config.includeNodeSpans) return;
+		this.executeLifecycleHandler('nodeExecuteBefore', ctx);
+	}
+
+	@OnLifecycleEvent('nodeExecuteAfter')
+	onNodeEnd(ctx: NodeExecuteAfterContext) {
+		if (!this.config.includeNodeSpans) return;
+		this.executeLifecycleHandler('nodeExecuteAfter', ctx);
 	}
 
 	private executeLifecycleHandler<K extends keyof OtelLifecycleContexts>(

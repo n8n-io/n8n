@@ -1,0 +1,218 @@
+import type { NodeExecuteAfterContext } from '@n8n/decorators';
+import type { ExecutionError, IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
+import { SpanStatusCode, trace } from '@opentelemetry/api';
+
+import { ATTR } from '../otel.constants';
+import { SpanRegistry } from '../span-registry';
+import { NodeStartHandler } from '../handlers/node-start.handler';
+import { NodeEndHandler } from '../handlers/node-end.handler';
+import { OtelTestProvider } from './otel-test-provider';
+
+const TRACER_NAME = 'n8n-workflow';
+
+let otel: OtelTestProvider;
+let startHandler: NodeStartHandler;
+let endHandler: NodeEndHandler;
+let spans: SpanRegistry;
+
+beforeAll(() => {
+	otel = OtelTestProvider.create();
+});
+
+beforeEach(() => {
+	otel.reset();
+	startHandler = new NodeStartHandler();
+	endHandler = new NodeEndHandler();
+	spans = new SpanRegistry();
+});
+
+afterAll(async () => {
+	await otel.shutdown();
+});
+
+const workflow: IWorkflowBase = {
+	id: 'wf-1',
+	name: 'Test Workflow',
+	active: false,
+	isArchived: false,
+	createdAt: new Date(),
+	updatedAt: new Date(),
+	activeVersionId: null,
+	connections: {},
+	nodes: [
+		{
+			id: 'node-trigger',
+			name: 'Manual Trigger',
+			type: 'n8n-nodes-base.manualTrigger',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		},
+		{
+			id: 'node-abc',
+			name: 'HTTP Request',
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 2,
+			position: [200, 0],
+			parameters: {},
+		},
+	],
+};
+
+function startNodeSpan(executionId: string, nodeName: string) {
+	const tracer = trace.getTracer(TRACER_NAME);
+	startHandler.handle(
+		{
+			type: 'nodeExecuteBefore',
+			workflow,
+			nodeName,
+			executionId,
+			taskData: { startTime: Date.now(), executionIndex: 0, source: [] },
+		},
+		spans,
+		tracer,
+	);
+}
+
+const emptyExecutionData = {
+	resultData: {
+		runData: {},
+		pinData: {},
+	},
+	executionData: undefined,
+} as unknown as IRunExecutionData;
+
+describe('NodeEndHandler', () => {
+	it('should set status OK and item counts on successful execution', () => {
+		startNodeSpan('exec-1', 'HTTP Request');
+
+		const executionData: IRunExecutionData = {
+			...emptyExecutionData,
+			resultData: {
+				...emptyExecutionData.resultData,
+				runData: {
+					'Manual Trigger': [
+						{
+							startTime: 0,
+							executionTime: 10,
+							executionIndex: 0,
+							source: [],
+							data: {
+								main: [[{ json: { a: 1 } }, { json: { a: 2 } }, { json: { a: 3 } }]],
+							},
+						},
+					],
+				},
+			},
+		};
+
+		const ctx: NodeExecuteAfterContext = {
+			type: 'nodeExecuteAfter',
+			workflow,
+			nodeName: 'HTTP Request',
+			executionId: 'exec-1',
+			taskData: {
+				startTime: 0,
+				executionTime: 100,
+				executionIndex: 1,
+				source: [{ previousNode: 'Manual Trigger', previousNodeRun: 0 }],
+				data: {
+					main: [[{ json: { result: 1 } }, { json: { result: 2 } }]],
+				},
+			},
+			executionData,
+		};
+
+		endHandler.handle(ctx, spans);
+
+		const finished = otel.getFinishedSpans();
+		expect(finished).toHaveLength(1);
+		expect(finished[0].name).toBe('node.execute');
+		expect(finished[0].status.code).toBe(SpanStatusCode.OK);
+		expect(finished[0].attributes[ATTR.NODE_ITEMS_OUTPUT]).toBe(2);
+		expect(finished[0].attributes[ATTR.NODE_ITEMS_INPUT]).toBe(3);
+	});
+
+	it('should set status ERROR and record exception event on node error', () => {
+		startNodeSpan('exec-1', 'HTTP Request');
+
+		const error = new Error('Request failed') as ExecutionError;
+		error.stack = 'Error: Request failed\n    at test.ts:1:1';
+
+		const ctx: NodeExecuteAfterContext = {
+			type: 'nodeExecuteAfter',
+			workflow,
+			nodeName: 'HTTP Request',
+			executionId: 'exec-1',
+			taskData: {
+				startTime: 0,
+				executionTime: 50,
+				executionIndex: 1,
+				source: [],
+				error,
+			},
+			executionData: emptyExecutionData,
+		};
+
+		endHandler.handle(ctx, spans);
+
+		const finished = otel.getFinishedSpans();
+		expect(finished).toHaveLength(1);
+		expect(finished[0].status.code).toBe(SpanStatusCode.ERROR);
+		expect(finished[0].attributes[ATTR.NODE_ITEMS_OUTPUT]).toBe(0);
+
+		const events = finished[0].events;
+		expect(events).toHaveLength(1);
+		expect(events[0].name).toBe('exception');
+		expect(events[0].attributes).toMatchObject({
+			'exception.message': 'Request failed',
+			'exception.type': 'Error',
+			'exception.stacktrace': error.stack,
+		});
+	});
+
+	it('should not fail if node span was not started', () => {
+		const ctx: NodeExecuteAfterContext = {
+			type: 'nodeExecuteAfter',
+			workflow,
+			nodeName: 'HTTP Request',
+			executionId: 'exec-1',
+			taskData: {
+				startTime: 0,
+				executionTime: 50,
+				executionIndex: 1,
+				source: [],
+				data: { main: [[{ json: {} }]] },
+			},
+			executionData: emptyExecutionData,
+		};
+
+		// Should not throw
+		endHandler.handle(ctx, spans);
+		expect(otel.getFinishedSpans()).toHaveLength(0);
+	});
+
+	it('should handle zero output items', () => {
+		startNodeSpan('exec-1', 'HTTP Request');
+
+		const ctx: NodeExecuteAfterContext = {
+			type: 'nodeExecuteAfter',
+			workflow,
+			nodeName: 'HTTP Request',
+			executionId: 'exec-1',
+			taskData: {
+				startTime: 0,
+				executionTime: 50,
+				executionIndex: 1,
+				source: [],
+			},
+			executionData: emptyExecutionData,
+		};
+
+		endHandler.handle(ctx, spans);
+
+		const finished = otel.getFinishedSpans();
+		expect(finished[0].attributes[ATTR.NODE_ITEMS_OUTPUT]).toBe(0);
+		expect(finished[0].attributes[ATTR.NODE_ITEMS_INPUT]).toBe(0);
+	});
+});
