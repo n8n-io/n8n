@@ -311,27 +311,27 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 					tools: Object.keys(browserTools),
 				},
 			});
-			const traceRun = await startSubAgentTrace(context, {
-				agentId: subAgentId,
-				role: 'credential-setup-browser-agent',
-				kind: 'browser-credential-setup',
-				inputs: {
-					credentialType: input.credentialType,
-					docsUrl: input.docsUrl,
-					requiredFields: input.requiredFields?.map((field) => ({
-						name: field.name,
-						type: field.type,
-						required: field.required,
-					})),
-				},
-			});
-			const tracedBrowserTools = traceSubAgentTools(
-				context,
-				browserTools,
-				'credential-setup-browser-agent',
-			);
-
+			let traceRun: Awaited<ReturnType<typeof startSubAgentTrace>>;
 			try {
+				traceRun = await startSubAgentTrace(context, {
+					agentId: subAgentId,
+					role: 'credential-setup-browser-agent',
+					kind: 'browser-credential-setup',
+					inputs: {
+						credentialType: input.credentialType,
+						docsUrl: input.docsUrl,
+						requiredFields: input.requiredFields?.map((field) => ({
+							name: field.name,
+							type: field.type,
+							required: field.required,
+						})),
+					},
+				});
+				const tracedBrowserTools = traceSubAgentTools(
+					context,
+					browserTools,
+					'credential-setup-browser-agent',
+				);
 				const browserPrompt = buildBrowserAgentPrompt(toolSource);
 				const resultText = await withTraceRun(context, traceRun, async () => {
 					const subAgent = new Agent({

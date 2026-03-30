@@ -34,9 +34,16 @@ function getWorkingMemoryBinding(memory: unknown): WorkingMemoryBinding | undefi
 		return undefined;
 	}
 
+	const resourceId = typeof memory.resource === 'string' ? memory.resource : undefined;
+	const threadId = typeof memory.thread === 'string' ? memory.thread : undefined;
+
+	if (!resourceId && !threadId) {
+		return undefined;
+	}
+
 	return {
-		...(typeof memory.resource === 'string' ? { resourceId: memory.resource } : {}),
-		...(typeof memory.thread === 'string' ? { threadId: memory.thread } : {}),
+		...(resourceId ? { resourceId } : {}),
+		...(threadId ? { threadId } : {}),
 	};
 }
 
