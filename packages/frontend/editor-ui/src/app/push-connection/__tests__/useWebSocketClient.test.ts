@@ -1,6 +1,39 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { useWebSocketClient } from '../useWebSocketClient';
+import { useWebSocketClient, convertRelativeWebSocketUrl } from '../useWebSocketClient';
 import { MockWebSocket } from './mockWebSocketClient';
+
+describe('convertRelativeWebSocketUrl', () => {
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	test('should convert relative path to ws:// on HTTP', () => {
+		vi.stubGlobal('location', { href: 'http://localhost:5678/', protocol: 'http:' });
+
+		const result = convertRelativeWebSocketUrl('/rest/push');
+		expect(result).toBe('ws://localhost:5678/rest/push');
+	});
+
+	test('should convert relative path to wss:// on HTTPS', () => {
+		vi.stubGlobal('location', { href: 'https://n8n.example.com/', protocol: 'https:' });
+
+		const result = convertRelativeWebSocketUrl('/rest/push');
+		expect(result).toBe('wss://n8n.example.com/rest/push');
+	});
+
+	test('should preserve existing query parameters', () => {
+		vi.stubGlobal('location', { href: 'http://localhost:5678/', protocol: 'http:' });
+
+		const result = convertRelativeWebSocketUrl('/rest/push?pushRef=abc');
+		expect(result).toBe('ws://localhost:5678/rest/push?pushRef=abc');
+	});
+
+	test('should not modify already absolute WebSocket URLs', () => {
+		const absoluteUrl = 'wss://external.com/socket';
+		const result = convertRelativeWebSocketUrl(absoluteUrl);
+		expect(result).toBe(absoluteUrl);
+	});
+});
 
 describe('useWebSocketClient', () => {
 	let mockWebSocket: MockWebSocket;
@@ -27,6 +60,18 @@ describe('useWebSocketClient', () => {
 		connect();
 
 		expect(WebSocket).toHaveBeenCalledWith(url);
+	});
+
+	test('should use converted absolute URL when connecting', () => {
+		vi.stubGlobal('location', { href: 'http://localhost:5678/', protocol: 'http:' });
+
+		const url = '/rest/push';
+		const onMessage = vi.fn();
+
+		const { connect } = useWebSocketClient({ url, onMessage });
+		connect();
+
+		expect(WebSocket).toHaveBeenCalledWith('ws://localhost:5678/rest/push');
 	});
 
 	test('should update connection status and start heartbeat on successful connection', () => {

@@ -15,6 +15,15 @@ export const WebSocketState = {
 	CLOSED: 3,
 };
 
+export const convertRelativeWebSocketUrl = (url: string): string => {
+	if (url.startsWith('ws://') || url.startsWith('wss://')) {
+		return url;
+	}
+	const socketUrl = new URL(url, window.location.href);
+	socketUrl.protocol = socketUrl.protocol === 'https:' ? 'wss:' : 'ws:';
+	return socketUrl.toString();
+};
+
 /**
  * Creates a WebSocket connection to the server. Uses reconnection logic
  * to reconnect if the connection is lost.
@@ -74,7 +83,8 @@ export const useWebSocketClient = <T>(options: UseWebSocketClientOptions<T>) => 
 		// Ensure we disconnect any existing connection
 		disconnect();
 
-		socket.value = new WebSocket(options.url);
+		const webSocketUrl = convertRelativeWebSocketUrl(options.url);
+		socket.value = new WebSocket(webSocketUrl);
 		socket.value.addEventListener('open', onConnected);
 		socket.value.addEventListener('message', onMessage);
 		socket.value.addEventListener('error', onError);
