@@ -35,7 +35,7 @@ const externalLinkHref = computed(() => {
 				:class="[$style.tab, tab.id === activeTabId ? $style.activeTab : '']"
 				@click="emit('update:activeTabId', tab.id)"
 			>
-				<N8nIcon :icon="tab.icon" size="small" :class="$style.tabIcon" />
+				<N8nIcon :icon="tab.icon" size="medium" :class="$style.tabIcon" />
 				<span :class="$style.tabLabel">{{ tab.name }}</span>
 				<N8nIcon
 					v-if="tab.executionStatus === 'running'"

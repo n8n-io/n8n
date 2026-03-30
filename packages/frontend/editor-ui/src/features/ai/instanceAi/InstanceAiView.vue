@@ -63,7 +63,7 @@ const currentThreadTitle = computed(() => {
 const preview = useCanvasPreview({
 	store,
 	route,
-	getExecutionStatus: executionTracking.getStatus,
+	workflowExecutions: executionTracking.workflowExecutions,
 });
 
 provide('openWorkflowPreview', preview.openWorkflowPreview);

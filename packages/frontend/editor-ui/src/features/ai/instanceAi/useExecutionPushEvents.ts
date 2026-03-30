@@ -4,7 +4,7 @@ import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 
 export type ExecutionStatus = 'running' | 'success' | 'error';
 
-interface WorkflowExecutionState {
+export interface WorkflowExecutionState {
 	executionId: string;
 	workflowId: string;
 	status: ExecutionStatus;

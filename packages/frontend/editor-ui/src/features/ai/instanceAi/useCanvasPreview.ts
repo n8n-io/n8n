@@ -1,4 +1,4 @@
-import { computed, ref, watch } from 'vue';
+import { computed, ref, watch, type Ref } from 'vue';
 import type { RouteLocationNormalizedLoadedGeneric } from 'vue-router';
 import type { IconName } from '@n8n/design-system';
 import {
@@ -8,7 +8,7 @@ import {
 	getLatestDeletedDataTableId,
 } from './canvasPreview.utils';
 import type { useInstanceAiStore } from './instanceAi.store';
-import type { ExecutionStatus } from './useExecutionPushEvents';
+import type { ExecutionStatus, WorkflowExecutionState } from './useExecutionPushEvents';
 
 export interface ArtifactTab {
 	id: string;
@@ -27,10 +27,10 @@ const ARTIFACT_ICON_MAP: Record<string, IconName> = {
 interface UseCanvasPreviewOptions {
 	store: ReturnType<typeof useInstanceAiStore>;
 	route: RouteLocationNormalizedLoadedGeneric;
-	getExecutionStatus?: (workflowId: string) => ExecutionStatus | undefined;
+	workflowExecutions?: Ref<Map<string, WorkflowExecutionState>>;
 }
 
-export function useCanvasPreview({ store, route, getExecutionStatus }: UseCanvasPreviewOptions) {
+export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvasPreviewOptions) {
 	// --- Tab state ---
 	const activeTabId = ref<string | null>(null);
 	const activeExecutionId = ref<string | null>(null);
@@ -46,7 +46,8 @@ export function useCanvasPreview({ store, route, getExecutionStatus }: UseCanvas
 					name: entry.name,
 					icon: ARTIFACT_ICON_MAP[entry.type] ?? 'file',
 					projectId: entry.projectId,
-					executionStatus: entry.type === 'workflow' ? getExecutionStatus?.(entry.id) : undefined,
+					executionStatus:
+						entry.type === 'workflow' ? workflowExecutions?.value.get(entry.id)?.status : undefined,
 				});
 			}
 		}

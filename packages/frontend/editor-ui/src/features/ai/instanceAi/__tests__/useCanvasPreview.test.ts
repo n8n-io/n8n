@@ -7,7 +7,7 @@ import type {
 } from '@n8n/api-types';
 import { useCanvasPreview } from '../useCanvasPreview';
 import type { ResourceEntry } from '../useResourceRegistry';
-import type { ExecutionStatus } from '../useExecutionPushEvents';
+import type { WorkflowExecutionState } from '../useExecutionPushEvents';
 
 // ---------------------------------------------------------------------------
 // Factories
@@ -106,7 +106,7 @@ function createMockRoute(threadId = 'thread-1') {
 
 function setup(options?: {
 	storeOverrides?: Partial<MockStore>;
-	getExecutionStatus?: (workflowId: string) => ExecutionStatus | undefined;
+	workflowExecutions?: Ref<Map<string, WorkflowExecutionState>>;
 }) {
 	const store = createMockStore();
 	if (options?.storeOverrides) Object.assign(store, options.storeOverrides);
@@ -117,7 +117,7 @@ function setup(options?: {
 		store: store as any,
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		route: route as any,
-		getExecutionStatus: options?.getExecutionStatus,
+		workflowExecutions: options?.workflowExecutions,
 	});
 
 	return { ...result, store, route };
@@ -150,16 +150,104 @@ describe('useCanvasPreview', () => {
 			]);
 		});
 
-		test('includes executionStatus from getExecutionStatus callback', () => {
-			const ctx = setup({
-				getExecutionStatus: (id) => (id === 'wf-1' ? 'running' : undefined),
-			});
+		test('includes executionStatus from workflowExecutions ref', () => {
+			const executions = ref(
+				new Map<string, WorkflowExecutionState>([
+					['wf-1', { executionId: 'exec-1', workflowId: 'wf-1', status: 'running', eventLog: [] }],
+				]),
+			);
+			const ctx = setup({ workflowExecutions: executions });
 			registerWorkflow(ctx.store, 'wf-1', 'My Workflow');
 			registerDataTable(ctx.store, 'dt-1', 'My Table', 'proj-1');
 
 			const tabs = ctx.allArtifactTabs.value;
 			expect(tabs[0].executionStatus).toBe('running');
 			expect(tabs[1].executionStatus).toBeUndefined();
+		});
+
+		test('recomputes when workflowExecutions ref changes', () => {
+			const executions = ref(new Map<string, WorkflowExecutionState>());
+			const ctx = setup({ workflowExecutions: executions });
+			registerWorkflow(ctx.store, 'wf-1', 'My Workflow');
+
+			expect(ctx.allArtifactTabs.value[0].executionStatus).toBeUndefined();
+
+			// Simulate execution starting
+			executions.value = new Map([
+				[
+					'wf-1',
+					{ executionId: 'exec-1', workflowId: 'wf-1', status: 'running' as const, eventLog: [] },
+				],
+			]);
+
+			expect(ctx.allArtifactTabs.value[0].executionStatus).toBe('running');
+
+			// Simulate execution finishing
+			executions.value = new Map([
+				[
+					'wf-1',
+					{ executionId: 'exec-1', workflowId: 'wf-1', status: 'success' as const, eventLog: [] },
+				],
+			]);
+
+			expect(ctx.allArtifactTabs.value[0].executionStatus).toBe('success');
+		});
+
+		test('recomputes from success back to running on re-execution', () => {
+			const executions = ref(new Map<string, WorkflowExecutionState>());
+			const ctx = setup({ workflowExecutions: executions });
+			registerWorkflow(ctx.store, 'wf-1', 'My Workflow');
+
+			// First execution completes
+			executions.value = new Map([
+				[
+					'wf-1',
+					{ executionId: 'exec-1', workflowId: 'wf-1', status: 'success' as const, eventLog: [] },
+				],
+			]);
+			expect(ctx.allArtifactTabs.value[0].executionStatus).toBe('success');
+
+			// Second execution starts on same workflow
+			executions.value = new Map([
+				[
+					'wf-1',
+					{ executionId: 'exec-2', workflowId: 'wf-1', status: 'running' as const, eventLog: [] },
+				],
+			]);
+			expect(ctx.allArtifactTabs.value[0].executionStatus).toBe('running');
+		});
+
+		test('updates status when re-executing after switching to a different tab', () => {
+			const executions = ref(new Map<string, WorkflowExecutionState>());
+			const ctx = setup({ workflowExecutions: executions });
+			registerWorkflow(ctx.store, 'wf-1', 'Workflow A');
+			registerDataTable(ctx.store, 'dt-1', 'Table B', 'proj-1');
+
+			// Execute workflow A → success
+			ctx.selectTab('wf-1');
+			executions.value = new Map([
+				[
+					'wf-1',
+					{ executionId: 'exec-1', workflowId: 'wf-1', status: 'success' as const, eventLog: [] },
+				],
+			]);
+			expect(ctx.allArtifactTabs.value[0].executionStatus).toBe('success');
+
+			// Switch to table tab
+			ctx.selectTab('dt-1');
+			expect(ctx.activeTabId.value).toBe('dt-1');
+
+			// Re-execute workflow A while viewing table tab
+			executions.value = new Map([
+				[
+					'wf-1',
+					{ executionId: 'exec-2', workflowId: 'wf-1', status: 'running' as const, eventLog: [] },
+				],
+			]);
+
+			// Workflow A tab should show running even though we're viewing table tab
+			const wfTab = ctx.allArtifactTabs.value.find((t) => t.id === 'wf-1');
+			expect(wfTab?.executionStatus).toBe('running');
 		});
 
 		test('excludes credential entries', () => {
