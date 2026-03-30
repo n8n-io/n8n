@@ -146,6 +146,16 @@ describe('parseContentDisposition', () => {
 			expected: { type: 'attachment', filename: 'test.txt' },
 			description: 'should handle multiple parameters',
 		},
+		{
+			input: 'attachment; filename="my_scan_144dpi_75%.pdf"',
+			expected: { type: 'attachment', filename: 'my_scan_144dpi_75%.pdf' },
+			description: 'should handle filename with unencoded percent sign',
+		},
+		{
+			input: 'attachment; filename="report_100%_done.xlsx"',
+			expected: { type: 'attachment', filename: 'report_100%_done.xlsx' },
+			description: 'should handle filename with percent sign followed by non-hex chars',
+		},
 	];
 
 	test.each(testCases)('$description', ({ input, expected }) => {
@@ -246,6 +256,21 @@ describe('parseIncomingMessage', () => {
 
 		expect(message.contentDisposition).toEqual({
 			filename: 'screenshot (1).png',
+			type: 'attachment',
+		});
+	});
+
+	it('parses content-disposition with unencoded percent in filename', () => {
+		const message = mock<IncomingMessage>({
+			headers: {
+				'content-type': undefined,
+				'content-disposition': 'attachment; filename="my_scan_144dpi_75%.pdf"',
+			},
+		});
+		parseIncomingMessage(message);
+
+		expect(message.contentDisposition).toEqual({
+			filename: 'my_scan_144dpi_75%.pdf',
 			type: 'attachment',
 		});
 	});
