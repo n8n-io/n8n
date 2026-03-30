@@ -244,6 +244,22 @@ describe('N8nPromptInput', () => {
 			expect(render.emitted('submit')).toBeTruthy();
 		});
 
+		it('should not emit submit on Enter during IME composition', async () => {
+			const render = renderComponent({
+				props: {
+					modelValue: 'Test message',
+				},
+				global: {
+					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
+				},
+			});
+
+			const textarea = render.container.querySelector('textarea') as HTMLTextAreaElement;
+			await fireEvent.keyDown(textarea, { key: 'Enter', isComposing: true });
+
+			expect(render.emitted('submit')).toBeFalsy();
+		});
+
 		it('should emit submit on Ctrl+Enter', async () => {
 			const render = renderComponent({
 				props: {
