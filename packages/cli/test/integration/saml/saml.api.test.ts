@@ -1,7 +1,13 @@
 import type { SamlPreferences } from '@n8n/api-types';
-import { randomEmail, randomName, randomValidPassword } from '@n8n/backend-test-utils';
+import {
+	createTeamProject,
+	getProjectRoleForUser,
+	randomEmail,
+	randomName,
+	randomValidPassword,
+} from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
+import { type User, UserRepository, RoleRepository, RoleMappingRuleRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type express from 'express';
 import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
@@ -15,6 +21,7 @@ import {
 } from '@/modules/sso-saml/__tests__/saml-signing-test-fixtures';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { setSamlLoginEnabled } from '@/modules/sso-saml/saml-helpers';
 import { SamlService } from '@/modules/sso-saml/saml.service.ee';
 import {
@@ -689,5 +696,113 @@ describe('SAML email validation', () => {
 			expect(result).toBeDefined();
 			expect(result.attributes.email).toBe(upperCaseEmail); // Original email should be preserved in attributes
 		});
+	});
+});
+
+describe('SAML SSO provisioning', () => {
+	let samlService: SamlService;
+	let roleMappingRuleRepository: RoleMappingRuleRepository;
+	let roleRepository: RoleRepository;
+	let userRepository: UserRepository;
+	let originalEnvFlag: string | undefined;
+	let savedProvisioningConfig: unknown;
+
+	beforeAll(async () => {
+		samlService = Container.get(SamlService);
+		roleMappingRuleRepository = Container.get(RoleMappingRuleRepository);
+		roleRepository = Container.get(RoleRepository);
+		userRepository = Container.get(UserRepository);
+		await Container.get(ProvisioningService).init();
+	});
+
+	beforeEach(() => {
+		originalEnvFlag = process.env.N8N_ENV_FEAT_ROLE_MAPPING_STRATEGY;
+		process.env.N8N_ENV_FEAT_ROLE_MAPPING_STRATEGY = 'true';
+
+		const provisioningService = Container.get(ProvisioningService);
+		// @ts-expect-error - provisioningConfig is private
+		savedProvisioningConfig = { ...provisioningService.provisioningConfig };
+		// @ts-expect-error - provisioningConfig is private
+		provisioningService.provisioningConfig.scopesUseExpressionMapping = true;
+	});
+
+	afterEach(async () => {
+		if (originalEnvFlag === undefined) {
+			delete process.env.N8N_ENV_FEAT_ROLE_MAPPING_STRATEGY;
+		} else {
+			process.env.N8N_ENV_FEAT_ROLE_MAPPING_STRATEGY = originalEnvFlag;
+		}
+
+		const provisioningService = Container.get(ProvisioningService);
+		// @ts-expect-error - provisioningConfig is private
+		provisioningService.provisioningConfig = { ...savedProvisioningConfig };
+
+		await roleMappingRuleRepository.delete({});
+	});
+
+	it('should provision instance role via expression mapping', async () => {
+		const adminRole = await roleRepository.findOneOrFail({ where: { slug: 'global:admin' } });
+		await roleMappingRuleRepository.save(
+			roleMappingRuleRepository.create({
+				expression: "{{ $claims.department === 'it' }}",
+				role: adminRole,
+				type: 'instance',
+				order: 0,
+			}),
+		);
+
+		jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+			mapped: {
+				email: 'saml-expr-instance@example.com',
+				firstName: 'SAML',
+				lastName: 'User',
+				userPrincipalName: 'saml-expr-instance',
+			},
+			raw: { department: 'it', email: 'saml-expr-instance@example.com' },
+		});
+
+		const mockRequest = {} as express.Request;
+		const result = await samlService.handleSamlLogin(mockRequest, 'post');
+		expect(result).toBeDefined();
+
+		const userFromDB = await userRepository.findOne({
+			where: { email: 'saml-expr-instance@example.com' },
+			relations: ['role'],
+		});
+		expect(userFromDB!.role.slug).toEqual('global:admin');
+	});
+
+	it('should provision project role via expression mapping', async () => {
+		const project = await createTeamProject('saml-expr-project-role-test');
+
+		const editorRole = await roleRepository.findOneOrFail({ where: { slug: 'project:editor' } });
+		const rule = roleMappingRuleRepository.create({
+			expression: "{{ $claims.groups !== undefined && $claims.groups.includes('n8n-editors') }}",
+			role: editorRole,
+			type: 'project',
+			order: 0,
+		});
+		rule.projects = [project];
+		await roleMappingRuleRepository.save(rule);
+
+		jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+			mapped: {
+				email: 'saml-expr-project@example.com',
+				firstName: 'SAML',
+				lastName: 'User',
+				userPrincipalName: 'saml-expr-project',
+			},
+			raw: {
+				email: 'saml-expr-project@example.com',
+				groups: ['n8n-editors', 'devops'],
+			},
+		});
+
+		const mockRequest = {} as express.Request;
+		const result = await samlService.handleSamlLogin(mockRequest, 'post');
+		expect(result.authenticatedUser).toBeDefined();
+
+		const projectRole = await getProjectRoleForUser(project.id, result.authenticatedUser!.id);
+		expect(projectRole).toEqual('project:editor');
 	});
 });
