@@ -20,23 +20,17 @@ import type {
 	ExplicitConnectionsNode,
 	MultiOutputNode,
 } from './composite-tree';
-import {
-	AI_CONNECTION_TO_CONFIG_KEY,
-	AI_CONNECTION_TO_BUILDER,
-	AI_ALWAYS_ARRAY_TYPES,
-	AI_OPTIONAL_ARRAY_TYPES,
-} from './constants';
+import { AI_CONNECTION_TO_BUILDER } from './constants';
 import { schemaToOutputSample } from './execution-schema-jsdoc';
 import type { NodeExecutionStatus } from './execution-status';
-import {
-	isTriggerType,
-	isStickyNote,
-	isMergeType,
-	generateDefaultNodeName,
-} from './node-type-utils';
+import { isTriggerType, isStickyNote, isMergeType } from './node-type-utils';
 import { escapeString, escapeRegexChars } from './string-utils';
-import { formatValue } from './subnode-generator';
-import type { SemanticGraph, SemanticNode, AiConnectionType } from './types';
+import {
+	formatValue,
+	generateSubnodeCall as generateSubnodeCallUnified,
+	generateSubnodesConfig as generateSubnodesConfigUnified,
+} from './subnode-generator';
+import type { SemanticGraph, SemanticNode } from './types';
 import { getVarName, getUniqueVarName } from './variable-names';
 import type { WorkflowJSON } from '../types/base';
 
@@ -86,123 +80,10 @@ function getIndent(ctx: GenerationContext): string {
 }
 
 /**
- * Generate a subnode builder call (languageModel, tool, memory, etc.)
- * Recursively includes nested subnodes if the subnode itself has subnodes.
- */
-function generateSubnodeCall(
-	subnodeNode: SemanticNode,
-	builderName: string,
-	ctx: GenerationContext,
-): string {
-	const parts: string[] = [];
-
-	parts.push(`type: '${subnodeNode.type}'`);
-	parts.push(`version: ${subnodeNode.json.typeVersion ?? 1}`);
-
-	const configParts: string[] = [];
-
-	const defaultName = generateDefaultNodeName(subnodeNode.type);
-	if (subnodeNode.json.name && subnodeNode.json.name !== defaultName) {
-		configParts.push(`name: '${escapeString(subnodeNode.json.name)}'`);
-	}
-
-	if (subnodeNode.json.parameters && Object.keys(subnodeNode.json.parameters).length > 0) {
-		configParts.push(`parameters: ${formatValue(subnodeNode.json.parameters, ctx)}`);
-	}
-
-	if (subnodeNode.json.credentials) {
-		configParts.push(`credentials: ${formatValue(subnodeNode.json.credentials, ctx)}`);
-	}
-
-	const pos = subnodeNode.json.position;
-	if (pos && (pos[0] !== 0 || pos[1] !== 0)) {
-		configParts.push(`position: [${pos[0]}, ${pos[1]}]`);
-	}
-
-	// Recursively include nested subnodes if this subnode has its own subnodes
-	const nestedSubnodesConfig = generateSubnodesConfigForNode(subnodeNode, ctx);
-	if (nestedSubnodesConfig) {
-		configParts.push(`subnodes: ${nestedSubnodesConfig}`);
-	}
-
-	if (configParts.length > 0) {
-		parts.push(`config: { ${configParts.join(', ')} }`);
-	} else {
-		parts.push('config: {}');
-	}
-
-	return `${builderName}({ ${parts.join(', ')} })`;
-}
-
-/**
- * Generate subnodes config object for a specific node (used for recursion)
- */
-function generateSubnodesConfigForNode(node: SemanticNode, ctx: GenerationContext): string | null {
-	if (node.subnodes.length === 0) {
-		return null;
-	}
-
-	// Group subnodes by connection type, tracking indices
-	const grouped = new Map<AiConnectionType, Array<{ node: SemanticNode; index: number }>>();
-
-	for (const sub of node.subnodes) {
-		// Skip self-referencing subnodes (circular reference in source data)
-		if (sub.subnodeName === node.name) continue;
-
-		const subnodeNode = ctx.graph.nodes.get(sub.subnodeName);
-		if (!subnodeNode) continue;
-
-		const existing = grouped.get(sub.connectionType) ?? [];
-		existing.push({ node: subnodeNode, index: sub.index });
-		grouped.set(sub.connectionType, existing);
-	}
-
-	// Generate config entries
-	const entries: string[] = [];
-
-	for (const [connType, subnodeEntries] of grouped) {
-		const configKey = AI_CONNECTION_TO_CONFIG_KEY[connType];
-		const builderName = AI_CONNECTION_TO_BUILDER[connType];
-
-		if (subnodeEntries.length === 0) continue;
-
-		const calls = subnodeEntries.map((e) => generateSubnodeCall(e.node, builderName, ctx));
-
-		if (AI_ALWAYS_ARRAY_TYPES.has(connType)) {
-			// Always array type (tools) - generate as array even for single item
-			entries.push(`${configKey}: [${calls.join(', ')}]`);
-		} else if (AI_OPTIONAL_ARRAY_TYPES.has(connType)) {
-			// Optional array type (model, documentLoader, etc.) - single if one, array if multiple
-			if (subnodeEntries.length === 1) {
-				entries.push(`${configKey}: ${calls[0]}`);
-			} else if (
-				connType === 'ai_languageModel' &&
-				subnodeEntries.every((e) => e.index === subnodeEntries[0].index)
-			) {
-				// Nested array: [[m1, m2]] — all at same input slot (ai_languageModel only)
-				entries.push(`${configKey}: [[${calls.join(', ')}]]`);
-			} else {
-				// Flat array: [m1, m2] — sequential indices (primary=0, fallback=1)
-				entries.push(`${configKey}: [${calls.join(', ')}]`);
-			}
-		} else {
-			// Single item type (memory, etc.)
-			entries.push(`${configKey}: ${calls[0]}`);
-		}
-	}
-
-	if (entries.length === 0) {
-		return null;
-	}
-
-	return `{ ${entries.join(', ')} }`;
-}
-
-/**
  * Generate subnodes config object for a node with AI subnodes
  */
 function generateSubnodesConfig(node: SemanticNode, ctx: GenerationContext): string | null {
-	return generateSubnodesConfigForNode(node, ctx);
+	return generateSubnodesConfigUnified(node, ctx, { useVarRefs: false });
 }
 
 /**
@@ -247,44 +128,7 @@ function generateSubnodeCallWithVarRefs(
 	builderName: string,
 	ctx: GenerationContext,
 ): string {
-	const parts: string[] = [];
-
-	parts.push(`type: '${subnodeNode.type}'`);
-	parts.push(`version: ${subnodeNode.json.typeVersion ?? 1}`);
-
-	const configParts: string[] = [];
-
-	const defaultName = generateDefaultNodeName(subnodeNode.type);
-	if (subnodeNode.json.name && subnodeNode.json.name !== defaultName) {
-		configParts.push(`name: '${escapeString(subnodeNode.json.name)}'`);
-	}
-
-	if (subnodeNode.json.parameters && Object.keys(subnodeNode.json.parameters).length > 0) {
-		configParts.push(`parameters: ${formatValue(subnodeNode.json.parameters, ctx)}`);
-	}
-
-	if (subnodeNode.json.credentials) {
-		configParts.push(`credentials: ${formatValue(subnodeNode.json.credentials, ctx)}`);
-	}
-
-	const pos = subnodeNode.json.position;
-	if (pos && (pos[0] !== 0 || pos[1] !== 0)) {
-		configParts.push(`position: [${pos[0]}, ${pos[1]}]`);
-	}
-
-	// Generate nested subnodes config using variable references
-	const nestedSubnodesConfig = generateSubnodesConfigWithVarRefs(subnodeNode, ctx);
-	if (nestedSubnodesConfig) {
-		configParts.push(`subnodes: ${nestedSubnodesConfig}`);
-	}
-
-	if (configParts.length > 0) {
-		parts.push(`config: { ${configParts.join(', ')} }`);
-	} else {
-		parts.push('config: {}');
-	}
-
-	return `${builderName}({ ${parts.join(', ')} })`;
+	return generateSubnodeCallUnified(subnodeNode, builderName, ctx, { useVarRefs: true });
 }
 
 /**
@@ -294,61 +138,7 @@ function generateSubnodesConfigWithVarRefs(
 	node: SemanticNode,
 	ctx: GenerationContext,
 ): string | null {
-	if (node.subnodes.length === 0) {
-		return null;
-	}
-
-	// Group subnodes by connection type, using variable names and tracking indices
-	const grouped = new Map<AiConnectionType, Array<{ varName: string; index: number }>>();
-
-	for (const sub of node.subnodes) {
-		// Skip self-referencing subnodes (circular reference in source data)
-		if (sub.subnodeName === node.name) continue;
-
-		const varName = getVarName(sub.subnodeName, ctx);
-		const existing = grouped.get(sub.connectionType) ?? [];
-		existing.push({ varName, index: sub.index });
-		grouped.set(sub.connectionType, existing);
-	}
-
-	// Generate config entries using variable names
-	const entries: string[] = [];
-
-	for (const [connType, varEntries] of grouped) {
-		const configKey = AI_CONNECTION_TO_CONFIG_KEY[connType];
-
-		if (varEntries.length === 0) continue;
-
-		const varNames = varEntries.map((e) => e.varName);
-
-		if (AI_ALWAYS_ARRAY_TYPES.has(connType)) {
-			// Always array type (tools) - generate as array even for single item
-			entries.push(`${configKey}: [${varNames.join(', ')}]`);
-		} else if (AI_OPTIONAL_ARRAY_TYPES.has(connType)) {
-			// Optional array type (model, documentLoader, etc.) - single if one, array if multiple
-			if (varEntries.length === 1) {
-				entries.push(`${configKey}: ${varNames[0]}`);
-			} else if (
-				connType === 'ai_languageModel' &&
-				varEntries.every((e) => e.index === varEntries[0].index)
-			) {
-				// Nested array: [[m1, m2]] — all at same input slot (ai_languageModel only)
-				entries.push(`${configKey}: [[${varNames.join(', ')}]]`);
-			} else {
-				// Flat array: [m1, m2] — sequential indices (primary=0, fallback=1)
-				entries.push(`${configKey}: [${varNames.join(', ')}]`);
-			}
-		} else {
-			// Single item type (memory, etc.)
-			entries.push(`${configKey}: ${varNames[0]}`);
-		}
-	}
-
-	if (entries.length === 0) {
-		return null;
-	}
-
-	return `{ ${entries.join(', ')} }`;
+	return generateSubnodesConfigUnified(node, ctx, { useVarRefs: true });
 }
 
 /**
