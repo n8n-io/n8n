@@ -180,7 +180,11 @@ function publishCorrections(context: ResumableStreamContext, corrections: string
 }
 
 function isErrorChunk(chunk: unknown): boolean {
-	return chunk !== null && typeof chunk === 'object' && (chunk as Record<string, unknown>).type === 'error';
+	return (
+		chunk !== null &&
+		typeof chunk === 'object' &&
+		(chunk as Record<string, unknown>).type === 'error'
+	);
 }
 
 async function waitForConfirmation(

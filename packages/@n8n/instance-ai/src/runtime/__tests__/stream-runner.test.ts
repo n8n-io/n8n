@@ -5,7 +5,6 @@ jest.mock('../resumable-stream-executor', () => ({
 	executeResumableStream: jest.fn(),
 }));
 
-
 function createEventBus() {
 	return {
 		publish: jest.fn(),
@@ -47,13 +46,18 @@ describe('streamAgentRun', () => {
 			}),
 		};
 
-		const result = await streamAgentRun(agent, 'test input', {}, {
-			threadId: 'thread-1',
-			runId: 'run-1',
-			agentId: 'agent-1',
-			signal: new AbortController().signal,
-			eventBus,
-		});
+		const result = await streamAgentRun(
+			agent,
+			'test input',
+			{},
+			{
+				threadId: 'thread-1',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				signal: new AbortController().signal,
+				eventBus,
+			},
+		);
 
 		expect(result.status).toBe('errored');
 		expect(result.mastraRunId).toBe('mastra-run-1');
@@ -64,19 +68,22 @@ describe('streamAgentRun', () => {
 		const agent = {
 			stream: jest.fn().mockResolvedValue({
 				runId: 'mastra-run-1',
-				fullStream: fromChunks([
-					{ type: 'text-delta', payload: { text: 'All good' } },
-				]),
+				fullStream: fromChunks([{ type: 'text-delta', payload: { text: 'All good' } }]),
 			}),
 		};
 
-		const result = await streamAgentRun(agent, 'test input', {}, {
-			threadId: 'thread-1',
-			runId: 'run-1',
-			agentId: 'agent-1',
-			signal: new AbortController().signal,
-			eventBus,
-		});
+		const result = await streamAgentRun(
+			agent,
+			'test input',
+			{},
+			{
+				threadId: 'thread-1',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				signal: new AbortController().signal,
+				eventBus,
+			},
+		);
 
 		expect(result.status).toBe('completed');
 	});
