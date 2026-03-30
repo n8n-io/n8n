@@ -17,6 +17,7 @@ import { useWorkflowDocumentUsedCredentials } from './workflowDocument/useWorkfl
 import { useWorkflowDocumentNodes } from './workflowDocument/useWorkflowDocumentNodes';
 import { useWorkflowDocumentViewport } from './workflowDocument/useWorkflowDocumentViewport';
 import { useWorkflowDocumentConnections } from './workflowDocument/useWorkflowDocumentConnections';
+import { useWorkflowDocumentName } from './workflowDocument/useWorkflowDocumentName';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
@@ -60,6 +61,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 	return defineStore(getWorkflowDocumentStoreId(id), () => {
 		const [workflowId, workflowVersion] = id.split('@');
 
+		const workflowDocumentName = useWorkflowDocumentName();
 		const workflowDocumentActive = useWorkflowDocumentActive();
 		const workflowDocumentHomeProject = useWorkflowDocumentHomeProject();
 		const workflowDocumentChecksum = useWorkflowDocumentChecksum();
@@ -101,6 +103,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		return {
 			workflowId,
 			workflowVersion,
+			...workflowDocumentName,
 			...workflowDocumentActive,
 			...workflowDocumentHomeProject,
 			...workflowDocumentChecksum,

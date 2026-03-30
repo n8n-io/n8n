@@ -4595,7 +4595,7 @@ describe('useCanvasOperations', () => {
 				renameNode: vi.fn(),
 			});
 
-			const setWorkflowName = vi.spyOn(workflowState, 'setWorkflowName');
+			const setNameSpy = vi.spyOn(workflowDocumentStoreInstance, 'setName');
 
 			const canvasOperations = useCanvasOperations();
 			const workflowDataWithName = {
@@ -4606,10 +4606,7 @@ describe('useCanvasOperations', () => {
 
 			await canvasOperations.importWorkflowData(workflowDataWithName, 'file');
 
-			expect(setWorkflowName).toHaveBeenCalledWith({
-				newName: 'Test Workflow Name',
-				setStateDirty: true,
-			});
+			expect(setNameSpy).toHaveBeenCalledWith('Test Workflow Name');
 		});
 
 		it('should not crash when importing nodes that exceed maxNodes limit', async () => {
