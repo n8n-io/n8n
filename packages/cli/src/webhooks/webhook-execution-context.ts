@@ -30,17 +30,14 @@ export class WebhookExecutionContext {
 		executeData?: IExecuteData,
 		defaultValue?: T,
 	): Promise<T | undefined> {
-		return await this.withIsolate(
-			() =>
-				this.workflow.expression.getSimpleParameterValue(
-					this.workflowStartNode,
-					this.webhookData.webhookDescription[propertyName],
-					this.executionMode,
-					this.additionalKeys,
-					executeData,
-					defaultValue,
-				) as T | undefined,
-		);
+		return this.workflow.expression.getSimpleParameterValue(
+			this.workflowStartNode,
+			this.webhookData.webhookDescription[propertyName],
+			this.executionMode,
+			this.additionalKeys,
+			executeData,
+			defaultValue,
+		) as T | undefined;
 	}
 
 	/**
@@ -51,25 +48,13 @@ export class WebhookExecutionContext {
 		executeData?: IExecuteData,
 		defaultValue?: T,
 	): Promise<T | undefined> {
-		return await this.withIsolate(
-			() =>
-				this.workflow.expression.getComplexParameterValue(
-					this.workflowStartNode,
-					this.webhookData.webhookDescription[propertyName],
-					this.executionMode,
-					this.additionalKeys,
-					executeData,
-					defaultValue,
-				) as T | undefined,
-		);
-	}
-
-	private async withIsolate<T>(fn: () => T): Promise<T> {
-		await this.workflow.expression.acquireIsolate();
-		try {
-			return fn();
-		} finally {
-			await this.workflow.expression.releaseIsolate();
-		}
+		return this.workflow.expression.getComplexParameterValue(
+			this.workflowStartNode,
+			this.webhookData.webhookDescription[propertyName],
+			this.executionMode,
+			this.additionalKeys,
+			executeData,
+			defaultValue,
+		) as T | undefined;
 	}
 }

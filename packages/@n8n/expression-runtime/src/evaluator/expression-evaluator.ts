@@ -54,8 +54,11 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 			bridge = this.pool.acquire();
 		} catch (error) {
 			if (error instanceof PoolDisposedError) throw error;
-			if (!(error instanceof PoolExhaustedError)) throw error;
-			bridge = await this.createBridge();
+			if (error instanceof PoolExhaustedError) {
+				bridge = await this.createBridge();
+				return;
+			}
+			throw error;
 		}
 		this.config.observability?.metrics.counter('expression.pool.acquired', 1);
 		this.bridgesByCaller.set(caller, bridge);
