@@ -68,11 +68,11 @@ export class InstanceVersionHistoryService {
 				patch: saved.patch,
 				createdAt: saved.createdAt,
 			});
-		}
 
-		this.logger.info(
-			`Recorded version change: ${newest ? formatVersion(newest) : '(none)'} -> ${N8N_VERSION}`,
-		);
+			this.logger.info(
+				`Recorded version change: ${newest ? formatVersion(newest) : '(none)'} -> ${N8N_VERSION}`,
+			);
+		}
 	}
 
 	/**
