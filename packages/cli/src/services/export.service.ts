@@ -148,87 +148,98 @@ export class ExportService {
 
 			this.logger.info(`\n📊 Processing table: ${tableName} (${entityName})`);
 
-			// Clear existing files for this entity
-			await this.clearExistingEntityFiles(outputDir, entityName);
+			try {
+				// Clear existing files for this entity
+				await this.clearExistingEntityFiles(outputDir, entityName);
 
-			// Get column information for this table
-			const columnNames = metadata.columns.map((col) => col.databaseName);
-			const columns = columnNames.map(this.dataSource.driver.escape).join(', ');
-			this.logger.info(`   💭 Columns: ${columnNames.join(', ')}`);
+				// Get column information for this table
+				const columnNames = metadata.columns.map((col) => col.databaseName);
+				const columns = columnNames.map(this.dataSource.driver.escape).join(', ');
+				this.logger.info(`   💭 Columns: ${columnNames.join(', ')}`);
 
-			let offset = 0;
-			let totalEntityCount = 0;
-			let hasNextPage = true;
-			let fileIndex = 1;
-			let currentFileEntityCount = 0;
+				let offset = 0;
+				let totalEntityCount = 0;
+				let hasNextPage = true;
+				let fileIndex = 1;
+				let currentFileEntityCount = 0;
 
-			do {
-				/*
-				 * use raw SQL query to avoid typeorm limitations,
-				 * typeorm repositories do not return joining table entries
-				 */
-				const formattedTableName = this.dataSource.driver.escape(tableName);
-				const pageEntities = await this.dataSource.query(
-					`SELECT ${columns} FROM ${formattedTableName} LIMIT ${pageSize} OFFSET ${offset}`,
-				);
+				do {
+					/*
+					 * use raw SQL query to avoid typeorm limitations,
+					 * typeorm repositories do not return joining table entries
+					 */
+					const formattedTableName = this.dataSource.driver.escape(tableName);
+					const pageEntities = await this.dataSource.query(
+						`SELECT ${columns} FROM ${formattedTableName} LIMIT ${pageSize} OFFSET ${offset}`,
+					);
 
-				// If no entities returned, we've reached the end
-				if (pageEntities.length === 0) {
-					this.logger.info(`      No more entities available at offset ${offset}`);
-					hasNextPage = false;
-					break;
-				}
+					// If no entities returned, we've reached the end
+					if (pageEntities.length === 0) {
+						this.logger.info(`      No more entities available at offset ${offset}`);
+						hasNextPage = false;
+						break;
+					}
 
-				// Determine which file to write to based on current entity count
-				const targetFileIndex = Math.floor(totalEntityCount / entitiesPerFile) + 1;
-				const fileName =
-					targetFileIndex === 1 ? `${entityName}.jsonl` : `${entityName}.${targetFileIndex}.jsonl`;
-				const filePath = safeJoinPath(outputDir, fileName);
+					// Determine which file to write to based on current entity count
+					const targetFileIndex = Math.floor(totalEntityCount / entitiesPerFile) + 1;
+					const fileName =
+						targetFileIndex === 1
+							? `${entityName}.jsonl`
+							: `${entityName}.${targetFileIndex}.jsonl`;
+					const filePath = safeJoinPath(outputDir, fileName);
 
-				// If we've moved to a new file, log the completion of the previous file
-				if (targetFileIndex > fileIndex) {
+					// If we've moved to a new file, log the completion of the previous file
+					if (targetFileIndex > fileIndex) {
+						this.logger.info(
+							`   ✅ Completed file ${fileIndex}: ${currentFileEntityCount} entities`,
+						);
+						fileIndex = targetFileIndex;
+						currentFileEntityCount = 0;
+					}
+
+					// Append all entities in this page as JSONL (one JSON object per line)
+					const entitiesJsonl: string = pageEntities
+						.map((entity: unknown) => JSON.stringify(entity))
+						.join('\n');
+					await appendFile(
+						filePath,
+						this.cipher.encrypt(entitiesJsonl, customEncryptionKey) + '\n',
+						'utf8',
+					);
+
+					totalEntityCount += pageEntities.length;
+					currentFileEntityCount += pageEntities.length;
+					offset += pageEntities.length;
+
+					this.logger.info(
+						`      Fetched page containing ${pageEntities.length} entities (page size: ${pageSize}, offset: ${offset - pageEntities.length}, total processed: ${totalEntityCount})`,
+					);
+
+					// If we got fewer entities than requested, we've reached the end
+					if (pageEntities.length < pageSize) {
+						this.logger.info(
+							`      Reached end of dataset (got ${pageEntities.length} < ${pageSize} requested)`,
+						);
+						hasNextPage = false;
+					}
+				} while (hasNextPage);
+
+				// Log completion of the final file
+				if (currentFileEntityCount > 0) {
 					this.logger.info(`   ✅ Completed file ${fileIndex}: ${currentFileEntityCount} entities`);
-					fileIndex = targetFileIndex;
-					currentFileEntityCount = 0;
 				}
-
-				// Append all entities in this page as JSONL (one JSON object per line)
-				const entitiesJsonl: string = pageEntities
-					.map((entity: unknown) => JSON.stringify(entity))
-					.join('\n');
-				await appendFile(
-					filePath,
-					this.cipher.encrypt(entitiesJsonl, customEncryptionKey) + '\n',
-					'utf8',
-				);
-
-				totalEntityCount += pageEntities.length;
-				currentFileEntityCount += pageEntities.length;
-				offset += pageEntities.length;
 
 				this.logger.info(
-					`      Fetched page containing ${pageEntities.length} entities (page size: ${pageSize}, offset: ${offset - pageEntities.length}, total processed: ${totalEntityCount})`,
+					`   ✅ Completed export for ${tableName}: ${totalEntityCount} entities in ${fileIndex} file(s)`,
 				);
-
-				// If we got fewer entities than requested, we've reached the end
-				if (pageEntities.length < pageSize) {
-					this.logger.info(
-						`      Reached end of dataset (got ${pageEntities.length} < ${pageSize} requested)`,
-					);
-					hasNextPage = false;
-				}
-			} while (hasNextPage);
-
-			// Log completion of the final file
-			if (currentFileEntityCount > 0) {
-				this.logger.info(`   ✅ Completed file ${fileIndex}: ${currentFileEntityCount} entities`);
+				totalTablesProcessed++;
+				totalEntitiesExported += totalEntityCount;
+			} catch (error) {
+				this.logger.warn(
+					`   ⚠️  Table ${tableName} could not be exported (it may not exist in the database), skipping...`,
+					{ error },
+				);
 			}
-
-			this.logger.info(
-				`   ✅ Completed export for ${tableName}: ${totalEntityCount} entities in ${fileIndex} file(s)`,
-			);
-			totalTablesProcessed++;
-			totalEntitiesExported += totalEntityCount;
 		}
 
 		// Compress the output directory to entities.zip
