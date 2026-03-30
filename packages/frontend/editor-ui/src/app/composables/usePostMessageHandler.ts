@@ -231,11 +231,6 @@ export function usePostMessageHandler({
 				// Relay execution push events from parent into the iframe's push pipeline.
 				// Uses onMessageReceivedHandlers (part of the store's public API) to dispatch
 				// the event to all registered listeners — same pattern the store uses internally.
-				console.log('[iframe postMessageHandler] executionEvent received', json.event?.type, {
-					executionId: json.event?.data?.executionId,
-					nodeName: json.event?.data?.nodeName,
-					status: json.event?.data?.status,
-				});
 				const { usePushConnectionStore } = await import('@/app/stores/pushConnection.store');
 				const pushStore = usePushConnectionStore();
 				for (const handler of pushStore.onMessageReceivedHandlers) {

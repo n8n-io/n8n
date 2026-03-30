@@ -41,10 +41,6 @@ export class SnapshotManager {
 			)
 			.runCommands('cd /home/daytona/workspace && npm install --ignore-scripts');
 
-		console.log(
-			`[BuilderImageManager] image built (base: ${base}, dockerfile: ${this.cachedImage.dockerfile.length} chars)`,
-		);
-
 		return this.cachedImage;
 	}
 

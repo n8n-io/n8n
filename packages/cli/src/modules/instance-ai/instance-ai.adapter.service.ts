@@ -1630,51 +1630,42 @@ export class InstanceAiAdapterService {
 					projectId: personalProject.id,
 					currentNodeParameters,
 				});
-				try {
-					if (params.methodType === 'listSearch') {
-						const result = await dynamicNodeParametersService.getResourceLocatorResults(
-							params.methodName,
-							'',
-							additionalData,
-							nodeTypeAndVersion,
-							currentNodeParameters,
-							credentials,
-							params.filter,
-							params.paginationToken,
-						);
-						return {
-							results: (result.results ?? []).map((r) => ({
-								name: String(r.name),
-								value: r.value,
-								url: r.url,
-							})),
-							paginationToken: result.paginationToken,
-						};
-					}
-
-					const options = await dynamicNodeParametersService.getOptionsViaMethodName(
+				if (params.methodType === 'listSearch') {
+					const result = await dynamicNodeParametersService.getResourceLocatorResults(
 						params.methodName,
 						'',
 						additionalData,
 						nodeTypeAndVersion,
 						currentNodeParameters,
 						credentials,
+						params.filter,
+						params.paginationToken,
 					);
 					return {
-						results: options.map((o) => ({
-							name: String(o.name),
-							value: o.value,
-							description: o.description,
+						results: (result.results ?? []).map((r) => ({
+							name: String(r.name),
+							value: r.value,
+							url: r.url,
 						})),
+						paginationToken: result.paginationToken,
 					};
-				} catch (error) {
-					console.error(
-						'[explore-resources] ERROR:',
-						error instanceof Error ? error.message : error,
-					);
-					console.error('[explore-resources] stack:', error instanceof Error ? error.stack : 'N/A');
-					throw error;
 				}
+
+				const options = await dynamicNodeParametersService.getOptionsViaMethodName(
+					params.methodName,
+					'',
+					additionalData,
+					nodeTypeAndVersion,
+					currentNodeParameters,
+					credentials,
+				);
+				return {
+					results: options.map((o) => ({
+						name: String(o.name),
+						value: o.value,
+						description: o.description,
+					})),
+				};
 			},
 		};
 	}

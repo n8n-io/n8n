@@ -24,7 +24,6 @@ export function useEventRelay({
 			const wfId = activeWorkflowId.value;
 			if (!wfId) return;
 			const buffered = getBufferedEvents(wfId);
-			console.log('[useEventRelay] iframe ready, replaying', buffered.length, 'events for', wfId);
 			for (const event of buffered) {
 				relay(event);
 			}
