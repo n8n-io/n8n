@@ -1599,7 +1599,7 @@ describe('SessionManagerService', () => {
 		});
 
 		describe('clearAllSessions', () => {
-			it('should clear the main multi-agent thread', async () => {
+			it('should clear the main session thread', async () => {
 				(mockMemorySaver.getTuple as jest.Mock).mockResolvedValue(null);
 				mockStorage.deleteSession.mockResolvedValue(undefined);
 
