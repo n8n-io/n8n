@@ -28,7 +28,6 @@ export function useExecutionPushEvents() {
 	function handlePushEvent(event: PushMessage) {
 		if (!EXECUTION_EVENT_TYPES.has(event.type)) return;
 
-
 		if (event.type === 'executionStarted') {
 			const { executionId, workflowId } = event.data;
 			executionToWorkflow.set(executionId, workflowId);

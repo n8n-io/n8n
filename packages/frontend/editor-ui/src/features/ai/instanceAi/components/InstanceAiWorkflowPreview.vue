@@ -49,7 +49,10 @@ function relayPushEvent(event: PushMessage) {
 	const iframe = (previewRef.value as { iframeRef?: HTMLIFrameElement | null } | undefined)
 		?.iframeRef;
 	if (!iframe?.contentWindow) return;
-	iframe.contentWindow.postMessage(JSON.stringify({ command: 'executionEvent', event }), '*');
+	iframe.contentWindow.postMessage(
+		JSON.stringify({ command: 'executionEvent', event }),
+		window.location.origin,
+	);
 }
 
 async function fetchWorkflow(id: string) {

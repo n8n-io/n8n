@@ -177,34 +177,32 @@ export function getExecutionResultsByWorkflow(
 	return results;
 }
 
-function collectExecutionResults(
-	node: InstanceAiAgentNode,
-	results: Map<string, ExecutionResult>,
-) {
+function collectExecutionResults(node: InstanceAiAgentNode, results: Map<string, ExecutionResult>) {
+	// Process parent's own toolCalls first, then children — children's results
+	// are more recent (the orchestrator delegates to children) and should win.
+	for (const tc of node.toolCalls) {
+		if (tc.toolName !== 'run-workflow' || tc.isLoading) continue;
+		const result = tc.result;
+		const args = tc.args;
+		if (
+			typeof result === 'object' &&
+			result !== null &&
+			typeof args === 'object' &&
+			args !== null &&
+			'workflowId' in args &&
+			typeof args.workflowId === 'string' &&
+			'executionId' in result &&
+			typeof result.executionId === 'string' &&
+			'status' in result &&
+			(result.status === 'success' || result.status === 'error')
+		) {
+			results.set(args.workflowId, {
+				executionId: result.executionId,
+				status: result.status,
+			});
+		}
+	}
 	for (const child of node.children) {
 		collectExecutionResults(child, results);
-	}
-	for (const tc of node.toolCalls) {
-		if (
-			tc.toolName === 'run-workflow' &&
-			!tc.isLoading &&
-			tc.result &&
-			typeof tc.result === 'object'
-		) {
-			const result = tc.result as Record<string, unknown>;
-			const args = tc.args as Record<string, unknown> | undefined;
-			const workflowId = args?.workflowId;
-			if (
-				typeof workflowId === 'string' &&
-				typeof result.executionId === 'string' &&
-				typeof result.status === 'string' &&
-				(result.status === 'success' || result.status === 'error')
-			) {
-				results.set(workflowId, {
-					executionId: result.executionId,
-					status: result.status,
-				});
-			}
-		}
 	}
 }

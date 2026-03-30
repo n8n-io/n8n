@@ -138,7 +138,6 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 		},
 		(status) => {
 			if (status === 'running') {
-	
 				activeExecutionId.value = null;
 			}
 		},

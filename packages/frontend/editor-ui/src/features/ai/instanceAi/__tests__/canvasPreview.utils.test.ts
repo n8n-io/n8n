@@ -638,6 +638,32 @@ describe('getExecutionResultsByWorkflow', () => {
 		expect(results.get('wf-1')?.executionId).toBe('exec-child');
 	});
 
+	test('child result wins over parent result for same workflowId', () => {
+		const child = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-child',
+					toolName: 'run-workflow',
+					args: { workflowId: 'wf-1' },
+					result: { executionId: 'exec-child', status: 'success' },
+				}),
+			],
+		});
+		const parent = makeAgentNode({
+			children: [child],
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-parent',
+					toolName: 'run-workflow',
+					args: { workflowId: 'wf-1' },
+					result: { executionId: 'exec-parent', status: 'error' },
+				}),
+			],
+		});
+		const results = getExecutionResultsByWorkflow(parent);
+		expect(results.get('wf-1')).toEqual({ executionId: 'exec-child', status: 'success' });
+	});
+
 	test('ignores loading tool calls', () => {
 		const node = makeAgentNode({
 			toolCalls: [
