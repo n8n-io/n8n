@@ -303,15 +303,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 	const trackingSessionId = computed(() => rootStore.pushRef);
 
-	/** Whether the code-builder experiment is enabled for this user */
-	const isCodeBuilder = computed(() => {
-		const variant = posthogStore.getVariant(CODE_WORKFLOW_BUILDER_EXPERIMENT.name);
-		return (
-			variant === CODE_WORKFLOW_BUILDER_EXPERIMENT.codeNoPinData ||
-			variant === CODE_WORKFLOW_BUILDER_EXPERIMENT.codePinData
-		);
-	});
-
 	const workflowPrompt = computed(() => {
 		const firstUserMessage = chatMessages.value.find(
 			(msg) => msg.role === 'user' && msg.type === 'text',
@@ -518,7 +509,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			workflow_id: workflowsStore.workflowId,
 			session_id: trackingSessionId.value,
 			tab_visible: document.visibilityState === 'visible',
-			code_builder: isCodeBuilder.value,
+			code_builder: true,
 			mode: builderMode.value,
 			...(planApproved ? { plan_approved: true } : {}),
 			...getWorkflowModifications(currentStreamingMessage.value),
@@ -783,7 +774,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			manual_exec_success_count_since_prev_msg: manualExecStatsInBetweenMessages.value.success,
 			manual_exec_error_count_since_prev_msg: manualExecStatsInBetweenMessages.value.error,
 			user_message_id: userMessageId,
-			code_builder: isCodeBuilder.value,
+			code_builder: true,
 			mode,
 			...getTodosToTrack(),
 		};
@@ -1162,11 +1153,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		isLoadingSessions.value = true;
 		try {
-			const response = await getAiSessions(
-				rootStore.restApiContext,
-				workflowId,
-				isCodeBuilder.value,
-			);
+			const response = await getAiSessions(rootStore.restApiContext, workflowId, true);
 			loadedSessionsForWorkflowId.value = workflowId;
 			const sessions = response.sessions || [];
 
@@ -1626,7 +1613,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 				workflowId,
 				nextUserMsg.id,
 				versionCardId,
-				isCodeBuilder.value || undefined,
+				true,
 			);
 		}
 
@@ -1672,7 +1659,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		collapsedMessageIds,
 		builderThinkingMessage,
 		isAIBuilderEnabled,
-		isCodeBuilder,
 		builderMode,
 		isPlanModeAvailable,
 		isInterrupted,

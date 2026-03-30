@@ -128,7 +128,7 @@ function getNodeTypeByName(nodeName: string) {
 
 const showUnpinSection = computed(
 	() =>
-		(builderStore.isCodeBuilder || builderStore.pinDataApplied) &&
+		builderStore.pinDataApplied &&
 		builderStore.hasTodosHiddenByPinnedData &&
 		builderStore.hasHadSuccessfulExecution,
 );

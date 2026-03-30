@@ -202,9 +202,7 @@ const showAskOwnerTooltip = computed(() => !usersStore.isInstanceOwner);
 
 // Use different completion message for code-builder
 const thinkingCompletionMessage = computed(() =>
-	builderStore.isCodeBuilder
-		? i18n.baseText('aiAssistant.builder.thinkingCompletionMessage.codeBuilder')
-		: undefined,
+	i18n.baseText('aiAssistant.builder.thinkingCompletionMessage.codeBuilder'),
 );
 
 const workflowSuggestions = computed<WorkflowSuggestion[] | undefined>(() => {
