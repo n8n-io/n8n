@@ -336,10 +336,12 @@ export class WorkflowService {
 		}
 
 		// Update the workflow's version when changing nodes or connections
-		const saveNewVersion =
-			('nodes' in workflowUpdateData && !isEqual(workflowUpdateData.nodes, workflow.nodes)) ||
-			('connections' in workflowUpdateData &&
-				!isEqual(workflowUpdateData.connections, workflow.connections));
+		const hasNodesKey = 'nodes' in workflowUpdateData;
+		const hasConnectionsKey = 'connections' in workflowUpdateData;
+		const nodesChanged = hasNodesKey && !isEqual(workflowUpdateData.nodes, workflow.nodes);
+		const connectionsChanged =
+			hasConnectionsKey && !isEqual(workflowUpdateData.connections, workflow.connections);
+		const saveNewVersion = nodesChanged || connectionsChanged;
 
 		if (saveNewVersion) {
 			workflowUpdateData.versionId = uuid();
@@ -873,7 +875,7 @@ export class WorkflowService {
 	async archive(
 		user: User,
 		workflowId: string,
-		options?: { skipArchived?: boolean; expectedChecksum?: string },
+		options?: { skipArchived?: boolean; expectedChecksum?: string; publicApi?: boolean },
 	): Promise<WorkflowEntity | undefined> {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:delete',
@@ -927,13 +929,21 @@ export class WorkflowService {
 
 		await this.workflowHistoryService.saveVersion(user, workflow, workflowId);
 
-		this.eventService.emit('workflow-archived', { user, workflowId, publicApi: false });
+		this.eventService.emit('workflow-archived', {
+			user,
+			workflowId,
+			publicApi: options?.publicApi ?? false,
+		});
 		await this.externalHooks.run('workflow.afterArchive', [workflowId]);
 
 		return workflow;
 	}
 
-	async unarchive(user: User, workflowId: string): Promise<WorkflowEntity | undefined> {
+	async unarchive(
+		user: User,
+		workflowId: string,
+		options?: { publicApi?: boolean },
+	): Promise<WorkflowEntity | undefined> {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:delete',
 		]);
@@ -954,10 +964,22 @@ export class WorkflowService {
 
 		await this.workflowHistoryService.saveVersion(user, workflow, workflowId);
 
-		this.eventService.emit('workflow-unarchived', { user, workflowId, publicApi: false });
+		this.eventService.emit('workflow-unarchived', {
+			user,
+			workflowId,
+			publicApi: options?.publicApi ?? false,
+		});
 		await this.externalHooks.run('workflow.afterUnarchive', [workflowId]);
 
 		return workflow;
+	}
+
+	async archiveForPublicApi(user: User, workflowId: string): Promise<WorkflowEntity | undefined> {
+		return await this.archive(user, workflowId, { skipArchived: true, publicApi: true });
+	}
+
+	async unarchiveForPublicApi(user: User, workflowId: string): Promise<WorkflowEntity | undefined> {
+		return await this.unarchive(user, workflowId, { publicApi: true });
 	}
 
 	async getWorkflowScopes(user: User, workflowId: string): Promise<Scope[]> {
