@@ -11,7 +11,35 @@ export const USER_CALLED_MCP_TOOL_EVENT = 'User called mcp tool';
 
 export const UNAUTHORIZED_ERROR_MESSAGE = 'Unauthorized';
 export const INTERNAL_SERVER_ERROR_MESSAGE = 'Internal server error';
-export const MCP_ACCESS_DISABLED_ERROR_MESSAGE = 'MCP access is disabled';
+
+/**
+ * Error message returned when MCP access is disabled.
+ * This ensures clients get a clear 403 Forbidden response instead of
+ * connection errors or 404s that mask the real issue.
+ * 
+ * To enable MCP access:
+ * - UI: Settings > MCP Access > Toggle "Enable MCP Access"
+ * - API: PATCH /rest/mcp/settings with {"mcpAccessEnabled": true}
+ * 
+ * Note: There is NO N8N_MCP_ENABLED environment variable.
+ */
+export const MCP_ACCESS_DISABLED_ERROR_MESSAGE =
+	'MCP access is disabled. Enable it in Settings > MCP Access or via API: PATCH /rest/mcp/settings';
+
+/**
+ * MCP endpoint information returned by GET /mcp-server/http
+ * Used for endpoint discovery by MCP clients
+ */
+export const MCP_ENDPOINT_INFO = {
+	name: 'n8n MCP Server',
+	version: '1.0.0',
+	protocol: 'mcp',
+	transport: 'http',
+	authentication: 'Bearer',
+	endpoint: '/mcp-server/http',
+	methods: ['POST'],
+	description: 'n8n Model Context Protocol server endpoint',
+} as const;
 
 /**
  * Triggers supported in production mode for MCP execution
