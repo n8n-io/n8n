@@ -34,6 +34,7 @@ export type AgentOptions = {
 	passthroughBinaryImages?: boolean;
 	enableStreaming?: boolean;
 	maxTokensFromMemory?: number;
+	parseOutput?: boolean;
 	tracingMetadata?: {
 		values?: TracingMetadataEntry[];
 	};

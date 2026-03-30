@@ -12,6 +12,15 @@ const enableStreaminOption: INodeProperties = {
 	description: 'Whether this agent will stream the response in real-time as it generates text',
 };
 
+const parseOutputOption: INodeProperties = {
+	displayName: 'Parse JSON Output',
+	name: 'parseOutput',
+	type: 'boolean',
+	default: false,
+	description:
+		"Whether to automatically extract and parse JSON from the agent's output. When enabled, if the output contains JSON (even wrapped in markdown code blocks or mixed with other text), it will be parsed and returned as a JSON object. Falls back to the raw text if no valid JSON is found.",
+};
+
 const maxTokensFromMemoryOption: INodeProperties = {
 	displayName: 'Max Tokens To Read From Memory',
 	name: 'maxTokensFromMemory',
@@ -32,5 +41,6 @@ export const toolsAgentProperties: INodeProperties = {
 		enableStreaminOption,
 		getBatchingOptionFields(undefined, 1),
 		maxTokensFromMemoryOption,
+		parseOutputOption,
 	],
 };
