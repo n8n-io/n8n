@@ -10,7 +10,6 @@ import {
 	SUBGRAPH_SPACING,
 	AI_X_SPACING,
 	AI_Y_SPACING,
-	NODE_SPACING_X,
 	DEFAULT_Y,
 	START_X,
 } from './constants';
@@ -55,10 +54,6 @@ describe('workflow-builder/constants', () => {
 	});
 
 	describe('legacy constants', () => {
-		it('NODE_SPACING_X is 200', () => {
-			expect(NODE_SPACING_X).toBe(200);
-		});
-
 		it('DEFAULT_Y is 300', () => {
 			expect(DEFAULT_Y).toBe(300);
 		});
