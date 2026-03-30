@@ -1,5 +1,5 @@
 import vue from '@vitejs/plugin-vue';
-import { posix as pathPosix, resolve, sep as pathSep } from 'path';
+import { resolve } from 'path';
 import { defineConfig, mergeConfig, type UserConfig } from 'vite';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
@@ -109,21 +109,21 @@ const plugins: UserConfig['plugins'] = [
 	viteStaticCopy({
 		targets: [
 			{
-				src: pathPosix.resolve(__dirname, 'node_modules/web-tree-sitter/tree-sitter.wasm'),
-				dest: resolve(__dirname, 'dist'),
+				src: 'node_modules/web-tree-sitter/tree-sitter.wasm',
+				dest: 'dist',
 			},
 			{
-				src: pathPosix.resolve(__dirname, 'node_modules/curlconverter/dist/tree-sitter-bash.wasm'),
-				dest: resolve(__dirname, 'dist'),
+				src: 'node_modules/curlconverter/dist/tree-sitter-bash.wasm',
+				dest: 'dist',
 			},
 			// wa-sqlite WASM files for OPFS database support (no cross-origin isolation needed)
 			{
-				src: pathPosix.resolve(__dirname, 'node_modules/wa-sqlite/dist/wa-sqlite.wasm'),
-				dest: resolve(__dirname, 'assets'),
+				src: 'node_modules/wa-sqlite/dist/wa-sqlite.wasm',
+				dest: 'assets',
 			},
 			{
-				src: pathPosix.resolve(__dirname, 'node_modules/wa-sqlite/dist/wa-sqlite-async.wasm'),
-				dest: resolve(__dirname, 'assets'),
+				src: 'node_modules/wa-sqlite/dist/wa-sqlite-async.wasm',
+				dest: 'assets',
 			},
 		],
 	}),
