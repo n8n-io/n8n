@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onMounted, onUnmounted, provide, ref, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, provide, ref, useTemplateRef, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import {
 	N8nHeading,
@@ -290,13 +290,18 @@ const workflowPreviewRef =
 	useTemplateRef<InstanceType<typeof InstanceAiWorkflowPreview>>('workflowPreview');
 
 function handleIframeReady() {
-	// Replay buffered events to the iframe so it catches up
-	const wfId = preview.activeWorkflowId.value;
-	if (!wfId) return;
-	const buffered = executionTracking.getBufferedEvents(wfId);
-	for (const event of buffered) {
-		workflowPreviewRef.value?.relayPushEvent(event);
-	}
+	// Replay buffered events to the iframe so it catches up.
+	// Use nextTick so WorkflowPreview's loadWorkflow (triggered by the same n8nReady
+	// signal) runs first — the iframe needs the workflow loaded before it can process
+	// execution events.
+	void nextTick(() => {
+		const wfId = preview.activeWorkflowId.value;
+		if (!wfId) return;
+		const buffered = executionTracking.getBufferedEvents(wfId);
+		for (const event of buffered) {
+			workflowPreviewRef.value?.relayPushEvent(event);
+		}
+	});
 }
 
 // Forward live execution events to the iframe in real-time
@@ -307,7 +312,6 @@ watch(
 		if (!wfId || !workflowPreviewRef.value) return;
 		const entry = executions.get(wfId);
 		if (!entry || entry.status !== 'running') return;
-		// Forward the latest event (last in the log)
 		const log = entry.eventLog;
 		if (log.length > 0) {
 			workflowPreviewRef.value.relayPushEvent(log[log.length - 1]);

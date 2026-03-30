@@ -38,19 +38,21 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 	// All artifacts (workflows + data tables) in the current thread, derived from resource registry
 	const allArtifactTabs = computed((): ArtifactTab[] => {
 		const result: ArtifactTab[] = [];
+		const execMap = workflowExecutions?.value;
 		for (const entry of store.resourceRegistry.values()) {
 			if (entry.type === 'workflow' || entry.type === 'data-table') {
+				const status = entry.type === 'workflow' ? execMap?.get(entry.id)?.status : undefined;
 				result.push({
 					id: entry.id,
 					type: entry.type,
 					name: entry.name,
 					icon: ARTIFACT_ICON_MAP[entry.type] ?? 'file',
 					projectId: entry.projectId,
-					executionStatus:
-						entry.type === 'workflow' ? workflowExecutions?.value.get(entry.id)?.status : undefined,
+					executionStatus: status,
 				});
 			}
 		}
+
 		return result;
 	});
 
@@ -106,6 +108,22 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 	function markUserSentMessage() {
 		userSentMessage.value = true;
 	}
+
+	// --- Reset execution view when a new execution starts ---
+	// When the AI re-runs a workflow, clear the stale executionId so the iframe
+	// switches from showing old execution results to the live workflow view.
+	watch(
+		() => {
+			if (!workflowExecutions || !activeTabId.value) return undefined;
+			return workflowExecutions.value.get(activeTabId.value)?.status;
+		},
+		(status) => {
+			if (status === 'running') {
+	
+				activeExecutionId.value = null;
+			}
+		},
+	);
 
 	// --- Guard: fall back if active tab is removed from registry ---
 	// Only acts when there ARE tabs but the selected one is missing (i.e. it was removed).

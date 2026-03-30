@@ -28,6 +28,7 @@ export function useExecutionPushEvents() {
 	function handlePushEvent(event: PushMessage) {
 		if (!EXECUTION_EVENT_TYPES.has(event.type)) return;
 
+
 		if (event.type === 'executionStarted') {
 			const { executionId, workflowId } = event.data;
 			executionToWorkflow.set(executionId, workflowId);
@@ -39,6 +40,7 @@ export function useExecutionPushEvents() {
 				eventLog: [event],
 			});
 			workflowExecutions.value = next;
+
 			return;
 		}
 
@@ -54,6 +56,7 @@ export function useExecutionPushEvents() {
 				eventLog: [],
 			});
 			workflowExecutions.value = next;
+
 			executionToWorkflow.delete(executionId);
 			return;
 		}
