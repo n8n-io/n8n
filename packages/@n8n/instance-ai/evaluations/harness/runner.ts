@@ -76,8 +76,8 @@ const POLL_INTERVAL_MS = 500;
 const BACKGROUND_TASK_POLL_INTERVAL_MS = 2_000;
 const MAX_CONFIRMATION_RETRIES = 5;
 
-/** Max concurrent scenario executions (Phase 1 Sonnet + Phase 2 Haiku calls) to avoid API rate limits */
-const MAX_CONCURRENT_SCENARIOS = 3;
+/** Max concurrent scenario executions per test case */
+const MAX_CONCURRENT_SCENARIOS = 99;
 
 // ---------------------------------------------------------------------------
 // Main entry point
@@ -566,6 +566,7 @@ export async function runWorkflowTestCase(
 
 		result.workflowBuildSuccess = true;
 		result.workflowId = outcome.workflowsCreated[0].id;
+		result.workflowJson = outcome.workflowJsons[0] as Record<string, unknown> | undefined;
 
 		logger.info(
 			`  Workflow built: ${outcome.workflowsCreated[0].name} (${String(outcome.workflowsCreated[0].nodeCount)} nodes)`,
@@ -952,7 +953,7 @@ function getNestedRecord(
  * Run tasks with bounded concurrency. Like Promise.all but limits how many
  * tasks execute simultaneously to avoid API rate limits.
  */
-async function runWithConcurrency<T, R>(
+export async function runWithConcurrency<T, R>(
 	items: T[],
 	fn: (item: T) => Promise<R>,
 	limit: number,

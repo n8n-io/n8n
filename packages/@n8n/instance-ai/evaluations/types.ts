@@ -319,6 +319,8 @@ export interface WorkflowTestCaseResult {
 	workflowBuildSuccess: boolean;
 	buildError?: string;
 	scenarioResults: ScenarioResult[];
+	/** The built workflow JSON — saved for debugging and cross-run comparison */
+	workflowJson?: Record<string, unknown>;
 }
 
 // ---------------------------------------------------------------------------

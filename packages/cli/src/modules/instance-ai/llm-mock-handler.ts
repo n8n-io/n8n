@@ -107,7 +107,7 @@ async function generateMockResponse(
 
 You have two tools. Call them before generating your response:
 
-"lookup_api_docs" — Fetches real API documentation for a service endpoint. Use this to learn the correct response STRUCTURE (what fields, what nesting, what types the real API returns).
+"lookup_api_docs" — Fetches real API documentation for a service endpoint. Use this to learn the correct response STRUCTURE (what fields, what nesting, what types the real API returns). Pay special attention to what the real API returns for the exact HTTP method and URL path you're responding to.
 
 "get_node_config" — Returns the n8n node's configuration parameters. This tells you what the node is set up to work with. The configuration contains the values the node expects to find in API responses — resource IDs, field names, column names, etc. Every node type has different parameters, so you need to interpret the config intelligently. Key patterns:
   - Objects with "__rl" are resource selectors — "value" is the selected resource (a document ID, channel, project, etc.)
@@ -129,15 +129,18 @@ Respond with ONLY a JSON object. No explanation, no markdown, no prose.
 
 ## Rules
 
-- Each HTTP request is independent — match the response to the specific URL and method, not the node's overall purpose.
+- A node may make MULTIPLE sequential HTTP requests in a single execution (e.g., first GET metadata, then GET headers, then POST data). You are responding to ONE specific request. Match your response to the URL + method of THIS request only. A GET to a metadata endpoint must return metadata — not a write result — even if the node's overall purpose is to write data.
+- Echo request values faithfully. If the request contains an identifier, name, or reference value (even one that looks like a placeholder such as "YOUR_CHAT_ID" or "YOUR_API_KEY"), echo it back exactly in the corresponding response field. The real API would reflect the same value the client sent.
+- Some APIs return empty or minimal responses on success (204 with no body, 202 with empty body). If the API documentation indicates an empty response body, return { "type": "json", "body": {} }. Don't invent additional response fields.
 - No pagination — always indicate end of results (has_more=false, nextPageToken=null, etc.)`;
 
 	// Build user prompt with clearly separated sections
 	const sections: string[] = [
-		`## Request`,
+		'## Request',
 		`Service: ${serviceName}`,
 		`Node: "${node.name}" (${node.type})`,
 		(request.method ?? 'GET') + ' ' + endpoint,
+		'Generate the response for this EXACT endpoint and method.',
 	];
 
 	if (request.body) {
@@ -145,6 +148,21 @@ Respond with ONLY a JSON object. No explanation, no markdown, no prose.
 	}
 	if (request.qs && Object.keys(request.qs).length > 0) {
 		sections.push(`Query: ${JSON.stringify(request.qs)}`);
+	}
+
+	// Detect GraphQL and add format constraint
+	const isGraphQL =
+		endpoint.includes('/graphql') ||
+		(typeof request.body === 'object' && request.body !== null && 'query' in request.body);
+
+	if (isGraphQL) {
+		sections.push('', '## GraphQL format requirement');
+		sections.push(
+			'This is a GraphQL endpoint. ALL responses MUST use GraphQL response format:',
+			'- Success: { "data": { ...fields matching the query... } }',
+			'- Error: { "errors": [{ "message": "...", "extensions": { "code": "..." } }], "data": null }',
+			'Never return flat REST-style error objects.',
+		);
 	}
 
 	if (context.nodeConfig) {
@@ -157,7 +175,11 @@ Respond with ONLY a JSON object. No explanation, no markdown, no prose.
 		if (context.nodeHint) sections.push(`Hint: ${context.nodeHint}`);
 		if (context.scenarioHints) {
 			sections.push(`Scenario: ${context.scenarioHints}`);
-			sections.push('(Use "error" type with appropriate statusCode for error scenarios.)');
+			sections.push(
+				isGraphQL
+					? '(For error scenarios, use GraphQL error format with "data": null. Don\'t use "type": "error" wrapper.)'
+					: '(Use "error" type with appropriate statusCode for error scenarios.)',
+			);
 		}
 	}
 
@@ -167,11 +189,12 @@ Respond with ONLY a JSON object. No explanation, no markdown, no prose.
 		const spec = await callLlm(systemPrompt, userPrompt, context.nodeConfig);
 		return materializeSpec(spec);
 	} catch (error) {
+		const errorMsg = error instanceof Error ? error.message : String(error);
 		Container.get(Logger).error(
-			`[EvalMock] Mock generation failed for ${request.method ?? 'GET'} ${request.url}: ${error instanceof Error ? error.message : String(error)}`,
+			`[EvalMock] Mock generation failed for ${request.method ?? 'GET'} ${request.url}: ${errorMsg}`,
 		);
 		return {
-			body: { _evalMockError: true, message: 'LLM mock generation failed' },
+			body: { _evalMockError: true, message: `Mock generation failed: ${errorMsg}` },
 			headers: { 'content-type': 'application/json' },
 			statusCode: 200,
 		};
@@ -266,22 +289,23 @@ function parseResponseText(raw: string): MockResponseSpec {
 	let text = raw.trim();
 
 	// Extract JSON from a ```json fenced block (anywhere in the text)
-	const fencedMatch = text.match(/```(?:json)?\s*\n([\s\S]*?)\n\s*```/i);
+	// Allow optional newline after opening fence — LLM sometimes omits it
+	const fencedMatch = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?\s*```/i);
 	if (fencedMatch) {
 		text = fencedMatch[1].trim();
-	} else {
-		// Strip fences at boundaries only
-		text = text
-			.replace(/^```(?:json)?\s*\n?/i, '')
-			.replace(/\n?\s*```\s*$/i, '')
-			.trim();
 	}
 
-	// If still starts with prose, find the first { ... } block
+	// Strip any remaining fences at boundaries
+	text = text
+		.replace(/^```(?:json)?\s*\n?/i, '')
+		.replace(/\n?\s*```\s*$/i, '')
+		.trim();
+
+	// If still starts with prose, extract the JSON object by finding balanced braces
 	if (text.length > 0 && !text.startsWith('{') && !text.startsWith('[')) {
-		const objStart = text.indexOf('{');
-		if (objStart >= 0) {
-			text = text.slice(objStart);
+		const extracted = extractJsonObject(text);
+		if (extracted) {
+			text = extracted;
 		}
 	}
 
@@ -337,6 +361,45 @@ function materializeSpec(spec: MockResponseSpec): EvalMockHttpResponse {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * Extract a JSON object from text by finding balanced braces.
+ * Handles the case where the LLM wraps JSON in prose.
+ */
+function extractJsonObject(text: string): string | undefined {
+	const start = text.indexOf('{');
+	if (start < 0) return undefined;
+
+	let depth = 0;
+	let inString = false;
+	let escape = false;
+
+	for (let i = start; i < text.length; i++) {
+		const ch = text[i];
+		if (escape) {
+			escape = false;
+			continue;
+		}
+		if (ch === '\\' && inString) {
+			escape = true;
+			continue;
+		}
+		if (ch === '"') {
+			inString = !inString;
+			continue;
+		}
+		if (inString) continue;
+		if (ch === '{') depth++;
+		if (ch === '}') {
+			depth--;
+			if (depth === 0) {
+				return text.slice(start, i + 1);
+			}
+		}
+	}
+	// Unbalanced — fall back to slice from start
+	return text.slice(start);
+}
 
 function extractServiceName(url: string): string {
 	try {
