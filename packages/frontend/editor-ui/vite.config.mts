@@ -71,6 +71,9 @@ const alias = [
 		find: /^@n8n\/utils(.+)$/,
 		replacement: resolve(packagesDir, '@n8n', 'utils', 'src$1'),
 	},
+	// Keep vue-agile imports on their modular lodash packages.
+	{ find: /^lodash\.throttle$/i, replacement: 'lodash.throttle' },
+	{ find: /^lodash\.orderby$/i, replacement: 'lodash.orderby' },
 	...['orderBy', 'camelCase', 'cloneDeep', 'startCase'].map((name) => ({
 		find: new RegExp(`^lodash.${name}$`, 'i'),
 		replacement: `lodash/${name}`,
