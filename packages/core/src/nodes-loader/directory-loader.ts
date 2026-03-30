@@ -419,13 +419,18 @@ export abstract class DirectoryLoader {
 	private getIconPath(icon: string, filePath: string) {
 		const iconPath = path.join(path.dirname(filePath), icon.replace('file:', ''));
 
-		if (!isContainedWithin(this.directory, path.join(this.directory, iconPath))) {
+		// Resolve to absolute path for security validation (relative to loader directory, not CWD)
+		const absoluteIconPath = path.resolve(this.directory, iconPath);
+		if (!isContainedWithin(this.directory, absoluteIconPath)) {
 			throw new UnexpectedError(
 				`Icon path "${iconPath}" is not contained within the package directory "${this.directory}"`,
 			);
 		}
 
-		return `icons/${this.packageName}/${iconPath}`;
+		// Always use a relative path in the icon URL to avoid encoding absolute
+		// filesystem paths (which causes malformed URLs with double slashes).
+		const relativeIconPath = path.relative(this.directory, absoluteIconPath);
+		return `icons/${this.packageName}/${relativeIconPath}`;
 	}
 
 	private fixIconPaths(
@@ -441,7 +446,9 @@ export abstract class DirectoryLoader {
 				: isExpression(icon.light) || isExpression(icon.dark);
 
 		if (hasExpression) {
-			obj.iconBasePath = `icons/${this.packageName}/${path.dirname(filePath)}`;
+			const absoluteDirPath = path.resolve(this.directory, path.dirname(filePath));
+			const relativeDirPath = path.relative(this.directory, absoluteDirPath);
+			obj.iconBasePath = `icons/${this.packageName}/${relativeDirPath}`;
 			return;
 		}
 
