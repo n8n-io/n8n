@@ -2990,7 +2990,7 @@ describe('SourceControlImportService', () => {
 						teamId: 'project1',
 						teamName: 'Team Project 1',
 					},
-					columns: [{ id: 'col1', name: 'Kostenstelle', type: 'string', index: 0 }],
+					columns: [{ id: 'col1', name: 'New Column Name', type: 'string', index: 0 }],
 					createdAt: '2024-01-01T00:00:00.000Z',
 					updatedAt: '2024-01-02T00:00:00.000Z',
 				};
@@ -2999,13 +2999,13 @@ describe('SourceControlImportService', () => {
 					id: 'dt1',
 					name: 'Test Table',
 					projectId: 'project1',
-					columns: [{ id: 'col1', name: 'kostenstelle' }],
+					columns: [{ id: 'col1', name: 'Old Column Name' }],
 				};
 
 				fsReadFile.mockResolvedValue(JSON.stringify(mockDataTable) as any);
 				dataTableRepository.findOne.mockResolvedValue(existingTable as any);
 				dataTableColumnRepository.find.mockResolvedValue([
-					{ id: 'col1', name: 'kostenstelle' },
+					{ id: 'col1', name: 'Old Column Name' },
 				] as any);
 				projectRepository.findOne.mockResolvedValue({ id: 'project1', type: 'team' } as any);
 
@@ -3015,8 +3015,8 @@ describe('SourceControlImportService', () => {
 				// Assert
 				expect(dataTableDDLService.renameColumn).toHaveBeenCalledWith(
 					'dt1',
-					'kostenstelle',
-					'Kostenstelle',
+					'Old Column Name',
+					'New Column Name',
 					'sqlite',
 					expect.anything(),
 				);
