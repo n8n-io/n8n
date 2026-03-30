@@ -76,8 +76,8 @@ catalogs:
       specifier: 0.3.20-16
       version: 0.3.20-16
     '@n8n_io/ai-assistant-sdk':
-      specifier: 1.20.0
-      version: 1.20.0
+      specifier: 1.21.0
+      version: 1.21.0
     '@types/basic-auth':
       specifier: ^1.1.3
       version: 1.1.3
@@ -704,7 +704,7 @@ importers:
         version: link:../workflow-sdk
       '@n8n_io/ai-assistant-sdk':
         specifier: 'catalog:'
-        version: 1.20.0
+        version: 1.21.0
       csv-parse:
         specifier: 5.5.0
         version: 5.5.0
@@ -2345,7 +2345,7 @@ importers:
         version: link:../@n8n/workflow-sdk
       '@n8n_io/ai-assistant-sdk':
         specifier: 'catalog:'
-        version: 1.20.0
+        version: 1.21.0
       '@n8n_io/license-sdk':
         specifier: 2.25.0
         version: 2.25.0
@@ -7522,8 +7522,8 @@ packages:
       sqlite3:
         optional: true
 
-  '@n8n_io/ai-assistant-sdk@1.20.0':
-    resolution: {integrity: sha512-uXa6EDufQIV46tvqQ222441dWZYLnT219HC5H8grfAVd6Mpp2Rs4NoBM6YPWnGFWBp8XVsgXUud0EKRbJsw0eA==}
+  '@n8n_io/ai-assistant-sdk@1.21.0':
+    resolution: {integrity: sha512-reF4A3CvGw4hr61xss0gO9YXOs/c5O8nwmoL91Neu2j6aENtuqmYeZ7UT4v0IvjuiO/IJJtUsASWkVQJNCpN6A==}
     engines: {node: '>=20.15', pnpm: '>=8.14'}
 
   '@n8n_io/license-sdk@2.25.0':
@@ -25102,7 +25102,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@n8n_io/ai-assistant-sdk@1.20.0': {}
+  '@n8n_io/ai-assistant-sdk@1.21.0': {}
 
   '@n8n_io/license-sdk@2.25.0':
     dependencies:

@@ -8,7 +8,6 @@ import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 import AgentActivityTree from './AgentActivityTree.vue';
 import type { InstanceAiMessage } from '@n8n/api-types';
 import { useInstanceAiStore } from '../instanceAi.store';
-import CollapsibleMessage from './CollapsibleMessage.vue';
 
 const props = defineProps<{
 	message: InstanceAiMessage;
@@ -114,61 +113,59 @@ function formatJson(value: unknown): string {
 
 		<!-- Assistant message -->
 		<div v-else :class="$style.assistantWrapper" data-test-id="instance-ai-assistant-message">
-			<CollapsibleMessage :is-streaming="isStreaming">
-				<div :class="$style.assistantContent">
-					<!-- Agent activity tree (handles reasoning, tool calls, sub-agents) -->
-					<AgentActivityTree
-						v-if="props.message.agentTree"
-						:agent-node="props.message.agentTree"
-						:is-root="true"
-					/>
+			<div :class="$style.assistantContent">
+				<!-- Agent activity tree (handles reasoning, tool calls, sub-agents) -->
+				<AgentActivityTree
+					v-if="props.message.agentTree"
+					:agent-node="props.message.agentTree"
+					:is-root="true"
+				/>
 
-					<!-- Run-level error -->
-					<div v-if="runError" :class="$style.errorBubble" role="alert">
-						<div :class="$style.errorIcon">
-							<N8nIcon icon="triangle-alert" size="medium" />
+				<!-- Run-level error -->
+				<div v-if="runError" :class="$style.errorBubble" role="alert">
+					<div :class="$style.errorIcon">
+						<N8nIcon icon="triangle-alert" size="medium" />
+					</div>
+					<div :class="$style.errorBody">
+						<div :class="$style.errorHeader">
+							<span :class="$style.errorTitle">{{ errorTitle }}</span>
+							<span v-if="errorDetails?.statusCode" :class="$style.errorStatusCode">{{
+								errorDetails.statusCode
+							}}</span>
 						</div>
-						<div :class="$style.errorBody">
-							<div :class="$style.errorHeader">
-								<span :class="$style.errorTitle">{{ errorTitle }}</span>
-								<span v-if="errorDetails?.statusCode" :class="$style.errorStatusCode">{{
-									errorDetails.statusCode
-								}}</span>
-							</div>
-							<p v-if="hasProviderError" :class="$style.errorDescription">{{ runError }}</p>
-							<details v-if="formattedTechnicalDetails" :class="$style.errorDetailsCollapsible">
-								<summary :class="$style.errorDetailsSummary">
-									{{ i18n.baseText('instanceAi.error.technicalDetails') }}
-								</summary>
-								<pre :class="$style.errorDetailsContent">{{ formattedTechnicalDetails }}</pre>
-							</details>
-						</div>
-					</div>
-
-					<!-- Text content (shown when no agentTree, or streaming dots) -->
-					<div v-if="showContent && !props.message.agentTree" :class="$style.textContent">
-						<InstanceAiMarkdown v-if="props.message.content" :content="props.message.content" />
-					</div>
-
-					<!-- Status indicator while preparing context -->
-					<div v-if="statusMessage && !props.message.content" :class="$style.statusIndicator">
-						<span :class="$style.statusDot" />
-						<span>{{ statusMessage }}</span>
-					</div>
-
-					<!-- Blinking cursor while waiting for response -->
-					<span
-						v-else-if="isStreaming && !props.message.content && !props.message.agentTree"
-						:class="$style.blinkingCursor"
-					/>
-
-					<!-- Background task indicator (run finished but sub-agents still working) -->
-					<div v-if="hasActiveBackgroundTasks" :class="$style.backgroundStatus">
-						<N8nIcon icon="spinner" spin size="small" />
-						<span>{{ i18n.baseText('instanceAi.backgroundTask.running') }}</span>
+						<p v-if="hasProviderError" :class="$style.errorDescription">{{ runError }}</p>
+						<details v-if="formattedTechnicalDetails" :class="$style.errorDetailsCollapsible">
+							<summary :class="$style.errorDetailsSummary">
+								{{ i18n.baseText('instanceAi.error.technicalDetails') }}
+							</summary>
+							<pre :class="$style.errorDetailsContent">{{ formattedTechnicalDetails }}</pre>
+						</details>
 					</div>
 				</div>
-			</CollapsibleMessage>
+
+				<!-- Text content (shown when no agentTree, or streaming dots) -->
+				<div v-if="showContent && !props.message.agentTree" :class="$style.textContent">
+					<InstanceAiMarkdown v-if="props.message.content" :content="props.message.content" />
+				</div>
+
+				<!-- Status indicator while preparing context -->
+				<div v-if="statusMessage && !props.message.content" :class="$style.statusIndicator">
+					<span :class="$style.statusDot" />
+					<span>{{ statusMessage }}</span>
+				</div>
+
+				<!-- Blinking cursor while waiting for response -->
+				<span
+					v-else-if="isStreaming && !props.message.content && !props.message.agentTree"
+					:class="$style.blinkingCursor"
+				/>
+
+				<!-- Background task indicator (run finished but sub-agents still working) -->
+				<div v-if="hasActiveBackgroundTasks" :class="$style.backgroundStatus">
+					<N8nIcon icon="spinner" spin size="small" />
+					<span>{{ i18n.baseText('instanceAi.backgroundTask.running') }}</span>
+				</div>
+			</div>
 
 			<!-- Response feedback -->
 			<N8nMessageRating
