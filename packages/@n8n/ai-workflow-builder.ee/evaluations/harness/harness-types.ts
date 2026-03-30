@@ -25,7 +25,7 @@ export interface DatasetInputContext {
 	/** Builder mode from dataset */
 	mode?: 'build' | 'plan';
 	/** Feature flags from dataset metadata */
-	featureFlags?: Record<string, unknown>;
+	featureFlags?: ChatPayload['featureFlags'];
 }
 
 /**
