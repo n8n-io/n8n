@@ -90,54 +90,46 @@ import { SourceControlContext } from './types/source-control-context';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
 import { VariablesService } from '../../environments.ee/variables/variables.service.ee';
 
-const findOwnerProject = (
-	owner: RemoteResourceOwner,
-	accessibleProjects: Project[],
-): Project | undefined => {
-	if (typeof owner === 'string') {
-		return accessibleProjects.find((project) =>
-			project.projectRelations.some(
-				(r) => r.role.slug === PROJECT_OWNER_ROLE_SLUG && r.user.email === owner,
-			),
-		);
-	}
-	if (owner.type === 'personal') {
-		return accessibleProjects.find(
-			(project) =>
-				project.type === 'personal' &&
-				project.projectRelations.some(
-					(r) => r.role.slug === PROJECT_OWNER_ROLE_SLUG && r.user.email === owner.personalEmail,
-				),
-		);
-	}
-	return accessibleProjects.find(
-		(project) => project.type === 'team' && project.id === owner.teamId,
-	);
-};
+/**
+ * Pre-built indexes for O(1) project lookups instead of O(n) scans per resource.
+ */
+class ProjectIndex {
+	private byTeamId = new Map<string, Project>();
 
-const getOwnerFromProject = (remoteOwnerProject: Project): StatusResourceOwner | undefined => {
-	let owner: StatusResourceOwner | undefined = undefined;
+	private byOwnerEmail = new Map<string, Project>();
 
-	if (remoteOwnerProject?.type === 'personal') {
-		const personalEmail = remoteOwnerProject.projectRelations?.find(
-			(r) => r.role.slug === PROJECT_OWNER_ROLE_SLUG,
-		)?.user?.email;
-
-		if (personalEmail) {
-			owner = {
-				type: 'personal',
-				projectId: remoteOwnerProject.id,
-				projectName: remoteOwnerProject.name,
-			};
+	constructor(accessibleProjects: Project[]) {
+		for (const project of accessibleProjects) {
+			if (project.type === 'team') {
+				this.byTeamId.set(project.id, project);
+			}
+			if (project.type === 'personal') {
+				const ownerEmail = project.projectRelations?.find(
+					(r) => r.role.slug === PROJECT_OWNER_ROLE_SLUG,
+				)?.user?.email;
+				if (ownerEmail) {
+					this.byOwnerEmail.set(ownerEmail, project);
+				}
+			}
 		}
-	} else if (remoteOwnerProject?.type === 'team') {
-		owner = {
-			type: 'team',
-			projectId: remoteOwnerProject.id,
-			projectName: remoteOwnerProject.name,
-		};
 	}
-	return owner;
+
+	findByOwner(owner: RemoteResourceOwner): Project | undefined {
+		if (typeof owner === 'string') {
+			return this.byOwnerEmail.get(owner);
+		}
+		if (owner.type === 'personal') {
+			return this.byOwnerEmail.get(owner.personalEmail);
+		}
+		return this.byTeamId.get(owner.teamId);
+	}
+}
+
+const toStatusOwner = (project: Project | undefined): StatusResourceOwner | undefined => {
+	if (project?.type === 'team' || project?.type === 'personal') {
+		return { type: project.type, projectId: project.id, projectName: project.name };
+	}
+	return undefined;
 };
 
 @Service()
@@ -195,8 +187,8 @@ export class SourceControlImportService {
 			absolute: true,
 		});
 
-		const accessibleProjects =
-			await this.sourceControlScopedService.getAuthorizedProjectsFromContext(context);
+		const accessibleProjects = context.authorizedProjects;
+		const projectIndex = new ProjectIndex(accessibleProjects);
 
 		const remoteWorkflowsRead = await Promise.all(
 			remoteWorkflowFiles.map(async (file) => await this.parseWorkflowFromFile(file)),
@@ -209,13 +201,11 @@ export class SourceControlImportService {
 				}
 				return (
 					context.hasAccessToAllProjects() ||
-					(remote.owner && findOwnerProject(remote.owner, accessibleProjects))
+					(remote.owner && projectIndex.findByOwner(remote.owner))
 				);
 			})
 			.map((remote) => {
-				const project = remote.owner
-					? findOwnerProject(remote.owner, accessibleProjects)
-					: undefined;
+				const project = remote.owner ? projectIndex.findByOwner(remote.owner) : undefined;
 				return {
 					id: remote.id,
 					versionId: remote.versionId ?? '',
@@ -223,7 +213,7 @@ export class SourceControlImportService {
 					parentFolderId: remote.parentFolderId,
 					remoteId: remote.id,
 					filename: getWorkflowExportPath(remote.id, this.workflowExportFolder),
-					owner: project ? getOwnerFromProject(project) : undefined,
+					owner: toStatusOwner(project ?? undefined),
 					isRemoteArchived: remote.isArchived,
 				};
 			});
@@ -276,12 +266,7 @@ export class SourceControlImportService {
 			relations: {
 				parentFolder: true,
 				shared: {
-					project: {
-						projectRelations: {
-							user: true,
-							role: true,
-						},
-					},
+					project: true,
 				},
 			},
 			select: {
@@ -297,16 +282,6 @@ export class SourceControlImportService {
 						id: true,
 						name: true,
 						type: true,
-						projectRelations: {
-							// Even if the userId is not used, it seems that this is needed to get the other nested properties populated
-							userId: true,
-							role: {
-								slug: true,
-							},
-							user: {
-								email: true,
-							},
-						},
 					},
 					role: true,
 				},
@@ -328,7 +303,7 @@ export class SourceControlImportService {
 				updatedAt = isNaN(Date.parse(local.updatedAt)) ? new Date() : new Date(local.updatedAt);
 			}
 
-			const remoteOwnerProject = local.shared?.find((s) => s.role === 'workflow:owner')?.project;
+			const ownerProject = local.shared?.find((s) => s.role === 'workflow:owner')?.project;
 
 			return {
 				id: local.id,
@@ -338,7 +313,7 @@ export class SourceControlImportService {
 				parentFolderId: local.parentFolder?.id ?? null,
 				filename: getWorkflowExportPath(local.id, this.workflowExportFolder),
 				updatedAt: updatedAt.toISOString(),
-				owner: remoteOwnerProject ? getOwnerFromProject(remoteOwnerProject) : undefined,
+				owner: toStatusOwner(ownerProject),
 			};
 		});
 	}
@@ -351,8 +326,8 @@ export class SourceControlImportService {
 			absolute: true,
 		});
 
-		const accessibleProjects =
-			await this.sourceControlScopedService.getAuthorizedProjectsFromContext(context);
+		const accessibleProjects = context.authorizedProjects;
+		const projectIndex = new ProjectIndex(accessibleProjects);
 
 		const remoteCredentialFilesRead = await Promise.all(
 			remoteCredentialFiles.map(async (file) => {
@@ -370,15 +345,10 @@ export class SourceControlImportService {
 					return false;
 				}
 				const owner = remote.ownedBy;
-				// The credential `remote` belongs not to a project, that the context has access to
-				return (
-					!owner || context.hasAccessToAllProjects() || findOwnerProject(owner, accessibleProjects)
-				);
+				return !owner || context.hasAccessToAllProjects() || projectIndex.findByOwner(owner);
 			})
 			.map((remote) => {
-				const project = remote.ownedBy
-					? findOwnerProject(remote.ownedBy, accessibleProjects)
-					: null;
+				const project = remote.ownedBy ? projectIndex.findByOwner(remote.ownedBy) : null;
 				return {
 					...remote,
 					ownedBy: project
@@ -403,12 +373,7 @@ export class SourceControlImportService {
 		const localCredentials = await this.credentialsRepository.find({
 			relations: {
 				shared: {
-					project: {
-						projectRelations: {
-							user: true,
-							role: true,
-						},
-					},
+					project: true,
 				},
 			},
 			select: {
@@ -422,16 +387,6 @@ export class SourceControlImportService {
 						id: true,
 						name: true,
 						type: true,
-						projectRelations: {
-							// Even if the userId is not used, it seems that this is needed to get the other nested properties populated
-							userId: true,
-							role: {
-								slug: true,
-							},
-							user: {
-								email: true,
-							},
-						},
 					},
 					role: true,
 				},
@@ -441,7 +396,7 @@ export class SourceControlImportService {
 		});
 
 		return localCredentials.map((local) => {
-			const remoteOwnerProject = local.shared?.find((s) => s.role === 'credential:owner')?.project;
+			const ownerProject = local.shared?.find((s) => s.role === 'credential:owner')?.project;
 
 			let data: Record<string, unknown> = {};
 			try {
@@ -461,7 +416,7 @@ export class SourceControlImportService {
 				type: local.type,
 				data,
 				filename: getCredentialExportPath(local.id, this.credentialExportFolder),
-				ownedBy: remoteOwnerProject ? getOwnerFromProject(remoteOwnerProject) : undefined,
+				ownedBy: toStatusOwner(ownerProject),
 				isGlobal: local.isGlobal,
 			};
 		}) as StatusExportableCredential[];
@@ -587,14 +542,14 @@ export class SourceControlImportService {
 				fallbackValue: { folders: [] },
 			});
 
-			const accessibleProjects =
-				await this.sourceControlScopedService.getAuthorizedProjectsFromContext(context);
+			if (!context.hasAccessToAllProjects()) {
+				const accessibleProjects = context.authorizedProjects;
+				const accessibleProjectIds = new Set(accessibleProjects.map((p) => p.id));
 
-			mappedFolders.folders = mappedFolders.folders.filter(
-				(folder) =>
-					context.hasAccessToAllProjects() ||
-					accessibleProjects.some((project) => project.id === folder.homeProjectId),
-			);
+				mappedFolders.folders = mappedFolders.folders.filter((folder) =>
+					accessibleProjectIds.has(folder.homeProjectId),
+				);
+			}
 
 			return mappedFolders;
 		}
@@ -656,9 +611,7 @@ export class SourceControlImportService {
 	}
 
 	async getLocalTagsAndMappingsFromDb(context: SourceControlContext): Promise<ExportableTags> {
-		const localTags = await this.tagRepository.find({
-			select: ['id', 'name'],
-		});
+		const localTags = await this.tagRepository.find({ select: ['id', 'name'] });
 		const localMappings = await this.workflowTagMappingRepository.find({
 			select: ['workflowId', 'tagId'],
 			where:
@@ -697,11 +650,11 @@ export class SourceControlImportService {
 			return remoteProjects;
 		}
 
-		const accessibleProjects =
-			await this.sourceControlScopedService.getAuthorizedProjectsFromContext(context);
+		const accessibleProjects = context.authorizedProjects;
+		const projectIndex = new ProjectIndex(accessibleProjects);
 
 		return remoteProjects.filter((remoteProject) => {
-			return findOwnerProject(remoteProject.owner, accessibleProjects);
+			return projectIndex.findByOwner(remoteProject.owner);
 		});
 	}
 
@@ -1093,7 +1046,7 @@ export class SourceControlImportService {
 
 		// Get all workflow IDs from remote files (in scope for this import)
 		// This ensures we delete mappings for workflows with zero tags
-		const context = new SourceControlContext(user);
+		const context = await this.sourceControlScopedService.createContext(user);
 		const remoteWorkflowIds = (await this.getRemoteVersionIdsFromFiles(context)).map((wf) => wf.id);
 
 		// Include both workflows with mappings AND workflows in remote files (even with zero tags)
