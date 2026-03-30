@@ -374,10 +374,10 @@ export class InstanceAiService {
 					[user.id],
 				);
 			}
-		} catch (err) {
+		} catch (error) {
 			this.creditedThreads.delete(threadId); // Allow retry on failure
 			this.logger.warn('[credits] Failed to count Instance AI credits', {
-				error: getErrorMessage(err),
+				error: getErrorMessage(error),
 				threadId,
 				runId,
 			});
