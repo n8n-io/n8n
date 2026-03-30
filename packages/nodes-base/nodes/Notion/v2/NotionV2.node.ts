@@ -716,9 +716,13 @@ export class NotionV2 implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i);
 						const simple = this.getNodeParameter('simple', i) as boolean;
 						const body: IDataObject = {};
+						const limit = returnAll ? undefined : this.getNodeParameter('limit', i);
 
 						if (text) {
 							body.query = text;
+						}
+						if (limit) {
+							body.page_size = limit;
 						}
 						if (options.filter) {
 							const filter = ((options.filter as IDataObject)?.filters as IDataObject[]) || [];
@@ -737,15 +741,12 @@ export class NotionV2 implements INodeType {
 								body,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i);
-							responseData = await notionApiRequestAllItems.call(
-								this,
-								'results',
-								'POST',
-								'/search',
-								body,
-							);
-							responseData = responseData.splice(0, qs.limit);
+							if (limit) {
+								responseData = await notionApiRequest.call(this, 'POST', '/search', body);
+								responseData = responseData.results;
+							} else {
+								responseData = [];
+							}
 						}
 
 						if (simple) {
