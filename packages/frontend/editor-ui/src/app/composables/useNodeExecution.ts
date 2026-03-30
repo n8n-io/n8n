@@ -1,4 +1,4 @@
-import { computed, ref, toValue, type ComputedRef, type MaybeRef } from 'vue';
+import { computed, ref, toValue, watch, type ComputedRef, type MaybeRef } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
@@ -31,8 +31,6 @@ import {
 import { needsAgentInput } from '@/app/utils/nodes/nodeTransforms';
 import { generateCodeForAiTransform } from '@/features/ndv/parameters/utils/buttonParameter.utils';
 
-import { nodeViewEventBus } from '@/app/event-bus';
-
 import {
 	WEBHOOK_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
@@ -46,7 +44,6 @@ export type ExecuteAction =
 	| 'executed'
 	| 'stopped-webhook'
 	| 'stopped-execution'
-	| 'opened-chat'
 	| 'opened-modal'
 	| 'cancelled'
 	| 'noop';
@@ -153,7 +150,19 @@ export function useNodeExecution(
 		);
 	});
 
+	const isWaitingForChatInput = ref(false);
+
+	// Clear chat waiting state when execution finishes (user sent a message and it completed)
+	watch(
+		() => workflowsStore.isWorkflowRunning,
+		(running, wasRunning) => {
+			if (!running && wasRunning) isWaitingForChatInput.value = false;
+		},
+	);
+
 	const isListening = computed(() => {
+		if (isWaitingForChatInput.value) return true;
+
 		const waitingOnWebhook = workflowsStore.executionWaitingForWebhook;
 		const executedNode = workflowsStore.executedNode;
 
@@ -352,17 +361,13 @@ export function useNodeExecution(
 			if (!success) return 'cancelled';
 		}
 
-		// Chat nodes
-		if (isChatNode.value || (isChatChild.value && ndvStore.isInputPanelEmpty)) {
-			ndvStore.unsetActiveNodeName();
-			workflowsStore.chatPartialExecutionDestinationNode = nodeName;
-			nodeViewEventBus.emit('openChat');
-			return 'opened-chat';
-		}
-
-		// Stop webhook listening
+		// Stop listening for chat input or webhook
 		if (isListening.value) {
-			await stopWaitingForWebhook();
+			if (isWaitingForChatInput.value) {
+				isWaitingForChatInput.value = false;
+			} else {
+				await stopWaitingForWebhook();
+			}
 			return 'stopped-webhook';
 		}
 
@@ -413,10 +418,21 @@ export function useNodeExecution(
 			telemetry.track('User clicked execute node button', telemetryPayload);
 			await externalHooks.run('nodeExecuteButton.onClick', telemetryPayload);
 
+			// Close NDV before running workflow if chat will open,
+			// otherwise the NDV blocks the chat panel
+			const willOpenChat = isChatNode.value || (isChatChild.value && ndvStore.isInputPanelEmpty);
+			if (willOpenChat) {
+				ndvStore.unsetActiveNodeName();
+			}
+
 			await runWorkflow({
 				destinationNode: { nodeName, mode: toValue(executionMode) },
 				source,
 			});
+
+			if (willOpenChat) {
+				isWaitingForChatInput.value = true;
+			}
 
 			return 'executed';
 		}

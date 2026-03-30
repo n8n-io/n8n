@@ -113,8 +113,6 @@ let renderComponent: ReturnType<typeof createComponentRenderer>;
 let workflowsStore: MockedStore<typeof useWorkflowsStore>;
 let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
 let nodeTypesStore: MockedStore<typeof useNodeTypesStore>;
-let ndvStore: MockedStore<typeof useNDVStore>;
-
 let runWorkflow: ReturnType<typeof useRunWorkflow>;
 let externalHooks: ReturnType<typeof useExternalHooks>;
 let pinnedData: ReturnType<typeof usePinnedData>;
@@ -144,7 +142,7 @@ describe('NodeExecuteButton', () => {
 		vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 
 		nodeTypesStore = mockedStore(useNodeTypesStore);
-		ndvStore = mockedStore(useNDVStore);
+		mockedStore(useNDVStore);
 
 		runWorkflow = useRunWorkflow({ router: useRouter() });
 		externalHooks = useExternalHooks();
@@ -346,7 +344,7 @@ describe('NodeExecuteButton', () => {
 		expect(emitted().execute).toBeTruthy();
 	});
 
-	it('opens chat when clicking button for chat node', async () => {
+	it('calls runWorkflow for chat node instead of opening chat directly', async () => {
 		const node = mockNode({ name: 'test-node', type: SET_NODE_TYPE });
 		vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(node);
 		nodeTypesStore.getNodeType = () => mockNodeTypeDescription({ name: CHAT_TRIGGER_NODE_TYPE });
@@ -355,12 +353,14 @@ describe('NodeExecuteButton', () => {
 
 		await userEvent.click(getByRole('button'));
 
-		expect(ndvStore.unsetActiveNodeName).toHaveBeenCalled();
-		expect(workflowsStore.chatPartialExecutionDestinationNode).toBe(node.name);
-		expect(nodeViewEventBusEmitSpy).toHaveBeenCalledWith('openChat');
+		expect(runWorkflow.runWorkflow).toHaveBeenCalledWith({
+			destinationNode: { nodeName: node.name, mode: 'inclusive' },
+			source: 'RunData.ExecuteNodeButton',
+		});
+		expect(nodeViewEventBusEmitSpy).not.toHaveBeenCalledWith('openChat');
 	});
 
-	it('opens chat when clicking button for chat child node', async () => {
+	it('calls runWorkflow for chat child node instead of opening chat directly', async () => {
 		const node = mockNode({ name: 'test-node', type: SET_NODE_TYPE });
 		vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(node);
 		workflowsStore.checkIfNodeHasChatParent.mockReturnValue(true);
@@ -369,9 +369,11 @@ describe('NodeExecuteButton', () => {
 
 		await userEvent.click(getByRole('button'));
 
-		expect(ndvStore.unsetActiveNodeName).toHaveBeenCalled();
-		expect(workflowsStore.chatPartialExecutionDestinationNode).toBe(node.name);
-		expect(nodeViewEventBusEmitSpy).toHaveBeenCalledWith('openChat');
+		expect(runWorkflow.runWorkflow).toHaveBeenCalledWith({
+			destinationNode: { nodeName: node.name, mode: 'inclusive' },
+			source: 'RunData.ExecuteNodeButton',
+		});
+		expect(nodeViewEventBusEmitSpy).not.toHaveBeenCalledWith('openChat');
 	});
 
 	it('prompts for confirmation when pinned data exists', async () => {

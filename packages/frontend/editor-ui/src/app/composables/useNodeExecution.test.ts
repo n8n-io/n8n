@@ -16,7 +16,6 @@ import {
 	type WorkflowState,
 } from '@/app/composables/useWorkflowState';
 import { useUIStore } from '@/app/stores/ui.store';
-import { nodeViewEventBus } from '@/app/event-bus';
 import { needsAgentInput } from '@/app/utils/nodes/nodeTransforms';
 import { generateCodeForAiTransform } from '@/features/ndv/parameters/utils/buttonParameter.utils';
 import type { INodeUi } from '@/Interface';
@@ -159,10 +158,6 @@ vi.mock('@/app/utils/nodes/nodeTransforms', () => ({
 
 vi.mock('@/features/ndv/parameters/utils/buttonParameter.utils', () => ({
 	generateCodeForAiTransform: vi.fn(),
-}));
-
-vi.mock('@/app/event-bus', () => ({
-	nodeViewEventBus: { emit: vi.fn() },
 }));
 
 function createTestNode(overrides: Partial<INodeUi> = {}): INodeUi {
@@ -328,6 +323,20 @@ describe('useNodeExecution', () => {
 			const { isListening } = useNodeExecution(node);
 
 			expect(isListening.value).toBe(false);
+		});
+
+		it('should return true after execute opens chat for chat trigger', async () => {
+			mockNodeTypesStore.getNodeType.mockReturnValue({
+				name: CHAT_TRIGGER_NODE_TYPE,
+				group: ['trigger'],
+			} as INodeTypeDescription);
+			const node = ref(createTestNode({ name: 'Chat Node', type: CHAT_TRIGGER_NODE_TYPE }));
+
+			const { isListening, execute } = useNodeExecution(node);
+			expect(isListening.value).toBe(false);
+
+			await execute();
+			expect(isListening.value).toBe(true);
 		});
 	});
 
@@ -648,31 +657,72 @@ describe('useNodeExecution', () => {
 			expect(result).toBe('noop');
 		});
 
-		it('should open chat for chat trigger nodes', async () => {
+		it('should close NDV, call runWorkflow, and enter listening state for chat trigger nodes', async () => {
 			mockNodeTypesStore.getNodeType.mockReturnValue({
 				name: CHAT_TRIGGER_NODE_TYPE,
 				group: ['trigger'],
 			} as INodeTypeDescription);
 			const node = ref(createTestNode({ name: 'Chat Node', type: CHAT_TRIGGER_NODE_TYPE }));
 
-			const { execute } = useNodeExecution(node);
+			const { execute, isListening } = useNodeExecution(node);
 			const result = await execute();
 
-			expect(result).toBe('opened-chat');
+			expect(result).toBe('executed');
 			expect(mockNdvStore.unsetActiveNodeName).toHaveBeenCalled();
-			expect(nodeViewEventBus.emit).toHaveBeenCalledWith('openChat');
-			expect(mockWorkflowsStore.chatPartialExecutionDestinationNode).toBe('Chat Node');
+			expect(isListening.value).toBe(true);
+			expect(mockRunWorkflow.runWorkflow).toHaveBeenCalledWith({
+				destinationNode: { nodeName: 'Chat Node', mode: 'inclusive' },
+				source: 'SetupPanel.ExecuteNodeButton',
+			});
 		});
 
-		it('should open chat for chat child nodes when input panel is empty', async () => {
+		it('should close NDV, call runWorkflow, and enter listening state for chat child nodes with empty input', async () => {
 			mockWorkflowsStore.checkIfNodeHasChatParent.mockReturnValue(true);
 			mockNdvStore.isInputPanelEmpty = true;
+			const node = ref(createTestNode({ name: 'Child Node' }));
+
+			const { execute, isListening } = useNodeExecution(node);
+			const result = await execute();
+
+			expect(result).toBe('executed');
+			expect(mockNdvStore.unsetActiveNodeName).toHaveBeenCalled();
+			expect(isListening.value).toBe(true);
+			expect(mockRunWorkflow.runWorkflow).toHaveBeenCalledWith({
+				destinationNode: { nodeName: 'Child Node', mode: 'inclusive' },
+				source: 'SetupPanel.ExecuteNodeButton',
+			});
+		});
+
+		it('should not close NDV for chat child nodes when input panel has data', async () => {
+			mockWorkflowsStore.checkIfNodeHasChatParent.mockReturnValue(true);
+			mockNdvStore.isInputPanelEmpty = false;
 			const node = ref(createTestNode({ name: 'Child Node' }));
 
 			const { execute } = useNodeExecution(node);
 			const result = await execute();
 
-			expect(result).toBe('opened-chat');
+			expect(result).toBe('executed');
+			expect(mockNdvStore.unsetActiveNodeName).not.toHaveBeenCalled();
+		});
+
+		it('should stop chat input listening and clear state', async () => {
+			mockNodeTypesStore.getNodeType.mockReturnValue({
+				name: CHAT_TRIGGER_NODE_TYPE,
+				group: ['trigger'],
+			} as INodeTypeDescription);
+			const node = ref(createTestNode({ name: 'Chat Node', type: CHAT_TRIGGER_NODE_TYPE }));
+
+			const { execute, isListening } = useNodeExecution(node);
+
+			// First call opens chat and enters listening state
+			await execute();
+			expect(isListening.value).toBe(true);
+
+			// Second call stops listening
+			const result = await execute();
+			expect(result).toBe('stopped-webhook');
+			expect(isListening.value).toBe(false);
+			expect(mockWorkflowsStore.removeTestWebhook).not.toHaveBeenCalled();
 		});
 
 		it('should stop webhook when listening', async () => {
