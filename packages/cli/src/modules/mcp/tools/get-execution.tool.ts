@@ -18,7 +18,7 @@ const inputSchema = z.object({
 		.boolean()
 		.optional()
 		.describe(
-			'Whether to include the full execution result data. Defaults to false (metadata only). Set to true to include node inputs/outputs.',
+			'Whether to include the full execution result data. Defaults to false (metadata only). Set to true to include node inputs/outputs. Use `false` to quickly check execution status',
 		),
 	nodeNames: z
 		.array(z.string())
