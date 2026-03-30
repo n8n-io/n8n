@@ -99,9 +99,47 @@ function getAllConnectedAiConfigNodes(
 // ---------------------------------------------------------------------------
 
 /**
- * Get node dimensions based on classification.
- * Uses defaults for now — structured so it can later accept node type descriptions
- * for accurate handle-based sizing.
+ * Count main output indices for a node (from its outgoing main connections).
+ */
+function getMainOutputCount(nodeName: string, nodes: ReadonlyMap<string, GraphNode>): number {
+	const graphNode = nodes.get(nodeName);
+	if (!graphNode) return 1;
+	const mainConns = graphNode.connections.get('main');
+	if (!mainConns || mainConns.size === 0) return 1;
+	return Math.max(...mainConns.keys()) + 1;
+}
+
+/**
+ * Count main input indices targeting a node (from all nodes' outgoing main connections).
+ */
+function getMainInputCount(nodeName: string, nodes: ReadonlyMap<string, GraphNode>): number {
+	let maxIndex = 0;
+	for (const graphNode of nodes.values()) {
+		const mainConns = graphNode.connections.get('main');
+		if (!mainConns) continue;
+		for (const targets of mainConns.values()) {
+			for (const target of targets) {
+				if (target.node === nodeName) {
+					maxIndex = Math.max(maxIndex, target.index + 1);
+				}
+			}
+		}
+	}
+	return Math.max(1, maxIndex);
+}
+
+/**
+ * Calculate node height based on main handle counts.
+ * Matches the FE's calculateNodeSize formula in nodeViewUtils.ts.
+ */
+function calculateNodeHeight(mainInputCount: number, mainOutputCount: number): number {
+	const maxVerticalHandles = Math.max(mainInputCount, mainOutputCount, 1);
+	return DEFAULT_NODE_SIZE[1] + Math.max(0, maxVerticalHandles - 2) * GRID_SIZE * 2;
+}
+
+/**
+ * Get node dimensions based on classification and connection counts.
+ * Matches the FE's calculateNodeSize in nodeViewUtils.ts.
  */
 export function getNodeDimensions(
 	nodeName: string,
@@ -133,7 +171,12 @@ export function getNodeDimensions(
 		return { width, height: CONFIGURABLE_NODE_SIZE[1] };
 	}
 
-	return { width: DEFAULT_NODE_SIZE[0], height: DEFAULT_NODE_SIZE[1] };
+	const mainInputCount = getMainInputCount(nodeName, nodes);
+	const mainOutputCount = getMainOutputCount(nodeName, nodes);
+	return {
+		width: DEFAULT_NODE_SIZE[0],
+		height: calculateNodeHeight(mainInputCount, mainOutputCount),
+	};
 }
 
 // ---------------------------------------------------------------------------
