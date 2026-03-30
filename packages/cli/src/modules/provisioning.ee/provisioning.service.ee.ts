@@ -448,8 +448,14 @@ export class ProvisioningService {
 		user: User,
 		resolvedRoles: ResolvedRoles,
 	): Promise<void> {
-		// Instance role
-		const instanceRoleSlug = resolvedRoles.instanceRole;
+		await this.applyExpressionMappedInstanceRole(user, resolvedRoles.instanceRole);
+		await this.applyExpressionMappedProjectRoles(user.id, resolvedRoles.projectRoles);
+	}
+
+	private async applyExpressionMappedInstanceRole(
+		user: User,
+		instanceRoleSlug: string,
+	): Promise<void> {
 		let dbRole: Role;
 		try {
 			dbRole = await this.roleRepository.findOneOrFail({ where: { slug: instanceRoleSlug } });
@@ -490,9 +496,12 @@ export class ProvisioningService {
 				role: dbRole.slug,
 			});
 		}
+	}
 
-		// Project roles
-		const projectRoleMap = resolvedRoles.projectRoles;
+	private async applyExpressionMappedProjectRoles(
+		userId: string,
+		projectRoleMap: Map<string, string>,
+	): Promise<void> {
 		if (projectRoleMap.size === 0) return;
 
 		const projectIds = [...projectRoleMap.keys()];
@@ -516,7 +525,7 @@ export class ProvisioningService {
 			if (!existingProjectIds.has(projectId)) {
 				this.logger.warn(
 					`Expression mapping: skipping project ${projectId}, not found or is a personal project`,
-					{ userId: user.id, projectId, roleSlug },
+					{ userId, projectId, roleSlug },
 				);
 				continue;
 			}
@@ -524,7 +533,7 @@ export class ProvisioningService {
 			if (!role) {
 				this.logger.warn(
 					`Expression mapping: skipping role "${roleSlug}", not found or not a project role`,
-					{ userId: user.id, projectId, roleSlug },
+					{ userId, projectId, roleSlug },
 				);
 				continue;
 			}
@@ -534,7 +543,7 @@ export class ProvisioningService {
 		if (validMappings.length === 0) return;
 
 		const currentlyAccessibleProjects = await this.projectRepository.find({
-			where: { type: Not('personal'), projectRelations: { userId: user.id } },
+			where: { type: Not('personal'), projectRelations: { userId } },
 			relations: ['projectRelations'],
 		});
 
@@ -545,17 +554,17 @@ export class ProvisioningService {
 
 		await this.projectRepository.manager.transaction(async (tx) => {
 			for (const project of projectsToRemoveAccessFrom) {
-				await tx.delete(ProjectRelation, { projectId: project.id, userId: user.id });
+				await tx.delete(ProjectRelation, { projectId: project.id, userId });
 			}
 			for (const { projectId, roleSlug } of validMappings) {
-				await this.projectService.addUser(projectId, { userId: user.id, role: roleSlug }, tx);
+				await this.projectService.addUser(projectId, { userId, role: roleSlug }, tx);
 			}
 		});
 
 		this.eventService.emit('sso-user-project-access-updated', {
 			projectsAdded: validProjectIds.size,
 			projectsRemoved: projectsToRemoveAccessFrom.length,
-			userId: user.id,
+			userId,
 		});
 	}
 

@@ -7,6 +7,7 @@ import {
 	type UserRepository,
 	type SettingsRepository,
 	type RoleRepository,
+	type RoleMappingRuleRepository,
 	type Role,
 	type Project,
 	type ProjectRepository,
@@ -21,6 +22,7 @@ import type { EntityManager } from '@n8n/typeorm';
 import { type InstanceSettings } from 'n8n-core';
 import { type EventService } from '@/events/event.service';
 import { type UserService } from '@/services/user.service';
+import { type RoleResolverService } from '@/modules/provisioning.ee/role-resolver.service.ee';
 
 const globalConfig = mock<GlobalConfig>();
 const settingsRepository = mock<SettingsRepository>();
@@ -35,6 +37,8 @@ const logger = mock<Logger>();
 const publisher = mock<Publisher>();
 const roleRepository = mock<RoleRepository>();
 const instanceSettings = mock<InstanceSettings>();
+const roleMappingRuleRepository = mock<RoleMappingRuleRepository>();
+const roleResolverService = mock<RoleResolverService>();
 
 const provisioningService = new ProvisioningService(
 	eventService,
@@ -48,6 +52,8 @@ const provisioningService = new ProvisioningService(
 	logger,
 	publisher,
 	instanceSettings,
+	roleMappingRuleRepository,
+	roleResolverService,
 );
 
 describe('ProvisioningService', () => {
@@ -65,6 +71,7 @@ describe('ProvisioningService', () => {
 		scopesName: 'n8n_test_scope',
 		scopesInstanceRoleClaimName: 'n8n_test_instance_role',
 		scopesProjectsRolesClaimName: 'n8n_test_projects_roles',
+		scopesUseExpressionMapping: false,
 	};
 
 	describe('init', () => {
@@ -151,6 +158,7 @@ describe('ProvisioningService', () => {
 				scopesName: 'n8n_test_scope_overridden',
 				scopesInstanceRoleClaimName: 'n8n_test_instance_role_overridden',
 				scopesProjectsRolesClaimName: 'n8n_test_projects_roles_overridden',
+				scopesUseExpressionMapping: false,
 			};
 			settingsRepository.findByKey.mockResolvedValue({
 				key: PROVISIONING_PREFERENCES_DB_KEY,
