@@ -3,6 +3,7 @@ export type { CompactionInput } from './compaction';
 export { createDomainAccessTracker } from './domain-access';
 export type { DomainAccessTracker } from './domain-access';
 export { createInstanceAgent } from './agent/instance-agent';
+export { tracingHeaderStore } from './agent/build-langsmith-exporter';
 export { createAllTools, createOrchestrationTools } from './tools';
 export { startBuildWorkflowAgentTask } from './tools/orchestration/build-workflow-agent.tool';
 export { startDataTableAgentTask } from './tools/orchestration/data-table-agent.tool';
@@ -159,6 +160,7 @@ export type {
 	InstanceAiWorkspaceService,
 	ProjectSummary,
 	FolderSummary,
+	ServiceProxyConfig,
 } from './types';
 export type { StartedWorkflowBuildTask } from './tools/orchestration/build-workflow-agent.tool';
 export type { StartedBackgroundAgentTask } from './tools/orchestration/data-table-agent.tool';

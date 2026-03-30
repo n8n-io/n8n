@@ -1514,6 +1514,9 @@ importers:
 
   packages/@n8n/instance-ai:
     dependencies:
+      '@ai-sdk/provider-v5':
+        specifier: npm:@ai-sdk/provider@2.0.0
+        version: '@ai-sdk/provider@2.0.0'
       '@daytonaio/sdk':
         specifier: 0.149.0
         version: 0.149.0(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))
@@ -1572,6 +1575,9 @@ importers:
         specifier: npm:zod-from-json-schema@^0.0.5
         version: zod-from-json-schema@0.0.5
     devDependencies:
+      '@ai-sdk/anthropic':
+        specifier: 2.0.61
+        version: 2.0.61(zod@3.25.67)
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -2264,6 +2270,9 @@ importers:
       '@1password/connect':
         specifier: 1.4.2
         version: 1.4.2
+      '@ai-sdk/anthropic':
+        specifier: 2.0.61
+        version: 2.0.61(zod@3.25.67)
       '@apidevtools/json-schema-ref-parser':
         specifier: 12.0.2
         version: 12.0.2
@@ -4431,6 +4440,12 @@ packages:
 
   '@adobe/css-tools@4.4.0':
     resolution: {integrity: sha512-Ff9+ksdQQB3rMncgqDK78uLznstjyfIf2Arnh22pW8kBpLs6rpKDwgnZT46hin5Hl1WzazzK64DOrhSwYpS7bQ==}
+
+  '@ai-sdk/anthropic@2.0.61':
+    resolution: {integrity: sha512-vJVXVlw+jvvh87ccUgEIJyQoO7+ERhkRyZ3e8NIhVQLHN+Xu5fGCm1/ewc8KCeoWFFh0GWDeN2MmB/cwCEYlbw==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      zod: 3.25.67
 
   '@ai-sdk/anthropic@3.0.63':
     resolution: {integrity: sha512-SiLosFr0FfKfrNpAAj8mD/i3S5YBB/z5orb1DH3pN1yATuBNjjPMLnRE4P3Dn7Y5cQsro0uzw5g5117hkShWoQ==}
@@ -20403,6 +20418,12 @@ snapshots:
       - supports-color
 
   '@adobe/css-tools@4.4.0': {}
+
+  '@ai-sdk/anthropic@2.0.61(zod@3.25.67)':
+    dependencies:
+      '@ai-sdk/provider': 2.0.1
+      '@ai-sdk/provider-utils': 3.0.20(zod@3.25.67)
+      zod: 3.25.67
 
   '@ai-sdk/anthropic@3.0.63(zod@3.25.67)':
     dependencies:

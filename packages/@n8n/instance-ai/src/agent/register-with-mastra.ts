@@ -12,13 +12,21 @@
 import type { Agent } from '@mastra/core/agent';
 import { Mastra } from '@mastra/core/mastra';
 import type { MastraCompositeStore } from '@mastra/core/storage';
-import { LangSmithExporter } from '@mastra/langsmith';
 import { Observability } from '@mastra/observability';
+
+import type { ServiceProxyConfig } from '../types';
+
+import { buildLangSmithExporter } from './build-langsmith-exporter';
 
 let cachedSubAgentMastra: Mastra | null = null;
 let cachedSubAgentStorageKey = '';
 
-export function registerWithMastra(agentId: string, agent: Agent, storage: MastraCompositeStore) {
+export function registerWithMastra(
+	agentId: string,
+	agent: Agent,
+	storage: MastraCompositeStore,
+	tracingConfig?: ServiceProxyConfig,
+) {
 	const key = storage.id ?? 'default';
 
 	if (cachedSubAgentMastra && cachedSubAgentStorageKey === key) {
@@ -35,7 +43,7 @@ export function registerWithMastra(agentId: string, agent: Agent, storage: Mastr
 			configs: {
 				langsmith: {
 					serviceName: 'instance-ai',
-					exporters: [new LangSmithExporter({ projectName: 'instance-ai' })],
+					exporters: [buildLangSmithExporter(tracingConfig)],
 				},
 			},
 		}),

@@ -1,3 +1,4 @@
+import type { LanguageModelV2 } from '@ai-sdk/provider-v5';
 import type { ToolsInput } from '@mastra/core/agent';
 import type { MastraCompositeStore } from '@mastra/core/storage';
 import type { Workspace } from '@mastra/core/workspace';
@@ -688,8 +689,26 @@ export interface InstanceAiMemoryConfig {
 
 // ── Model configuration ─────────────────────────────────────────────────────
 
-/** Model identifier: plain string for built-in providers, or object for OpenAI-compatible endpoints. */
-export type ModelConfig = string | { id: `${string}/${string}`; url: string; apiKey?: string };
+/** Model identifier: plain string for built-in providers, object for OpenAI-compatible endpoints,
+ *  or a pre-built LanguageModelV2 instance (e.g. from @ai-sdk/anthropic with a custom baseURL).
+ *
+ *  The LanguageModelV2 variant exists because Mastra's model router forces all object configs
+ *  with a `url` field through `createOpenAICompatible`, which calls `/chat/completions`.
+ *  When routing through a proxy that forwards to Vertex AI (which only supports the native
+ *  Anthropic Messages API at `/v1/messages`), we must use `@ai-sdk/anthropic` directly to
+ *  produce a model instance that speaks the correct protocol. */
+export type ModelConfig =
+	| string
+	| { id: `${string}/${string}`; url: string; apiKey?: string; headers?: Record<string, string> }
+	| LanguageModelV2;
+
+/** Configuration for routing requests through an AI service proxy (LangSmith tracing, Brave Search, etc.). */
+export interface ServiceProxyConfig {
+	/** Proxy endpoint, e.g. '{baseUrl}/langsmith' or '{baseUrl}/brave-search' */
+	apiUrl: string;
+	/** Auth headers to include in proxied requests */
+	headers: Record<string, string>;
+}
 
 // ── Background task spawning ─────────────────────────────────────────────────
 
@@ -791,6 +810,8 @@ export interface OrchestrationContext {
 	) => 'queued' | 'task-completed' | 'task-not-found';
 	/** Shared workflow-task state service for build / verify / credential-finalize flows */
 	workflowTaskService?: WorkflowTaskService;
+	/** When provided, LangSmith traces are routed through a proxy instead of direct */
+	tracingConfig?: ServiceProxyConfig;
 }
 
 // ── Agent factory options ────────────────────────────────────────────────────
@@ -807,6 +828,8 @@ export interface CreateInstanceAgentOptions {
 	workspace?: Workspace;
 	/** When true, all tools are loaded eagerly (no ToolSearchProcessor). Workaround for Mastra bug where toModelOutput is not called for deferred tools. */
 	disableDeferredTools?: boolean;
+	/** When provided, LangSmith traces are routed through a proxy instead of direct. */
+	tracingConfig?: ServiceProxyConfig;
 	/** IANA time zone for the current user (e.g. "Europe/Helsinki"). Falls back to instance default. */
 	timeZone?: string;
 }

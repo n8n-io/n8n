@@ -275,6 +275,14 @@ export class InstanceAiController {
 		return { ok: true };
 	}
 
+	// ── Credits ──────────────────────────────────────────────────────────────
+
+	@Get('/credits')
+	@GlobalScope('instanceAi:message')
+	async getCredits(req: AuthenticatedRequest) {
+		return await this.instanceAiService.getCredits(req.user);
+	}
+
 	// ── Admin settings (owner/admin only) ──────────────────────────────────
 
 	@Get('/settings')

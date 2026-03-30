@@ -97,6 +97,37 @@ describe('executeResumableStream', () => {
 		expect(result.confirmationEvent?.payload.requestId).toBe('request-1');
 	});
 
+	it('returns errored status when stream contains an error chunk', async () => {
+		const eventBus = createEventBus();
+
+		const result = await executeResumableStream({
+			agent: {},
+			stream: {
+				runId: 'mastra-run-1',
+				fullStream: fromChunks([
+					{ type: 'text-delta', payload: { text: 'Working...' } },
+					{
+						type: 'error',
+						runId: 'mastra-run-1',
+						from: 'AGENT',
+						payload: { error: new Error('Not Found') },
+					},
+				]),
+			},
+			context: {
+				threadId: 'thread-1',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				eventBus,
+				signal: new AbortController().signal,
+			},
+			control: { mode: 'manual' },
+		});
+
+		expect(result.status).toBe('errored');
+		expect(result.mastraRunId).toBe('mastra-run-1');
+	});
+
 	it('auto-resumes suspended streams and surfaces queued corrections', async () => {
 		const eventBus = createEventBus();
 		const resumeStream = jest.fn().mockResolvedValue({

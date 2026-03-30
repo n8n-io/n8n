@@ -271,6 +271,7 @@ export {
 	getRenderHint,
 	isSafeObjectKey,
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
+	UNLIMITED_CREDITS,
 	domainAccessActionSchema,
 	domainAccessMetaSchema,
 	credentialFlowSchema,
