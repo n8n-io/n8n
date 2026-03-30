@@ -532,7 +532,6 @@ describe('AiController', () => {
 			const payload = {
 				workflowId: 'workflow123',
 				messageId: 'message456',
-				codeBuilder: true,
 			};
 
 			workflowBuilderService.truncateMessagesAfter.mockResolvedValue(true);
@@ -544,7 +543,6 @@ describe('AiController', () => {
 				request.user,
 				payload.messageId,
 				undefined,
-				payload.codeBuilder,
 			);
 			expect(result).toEqual({ success: true });
 		});
@@ -591,7 +589,6 @@ describe('AiController', () => {
 				payload.workflowId,
 				request.user,
 				payload.messageId,
-				undefined,
 				undefined,
 			);
 		});

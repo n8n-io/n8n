@@ -13,8 +13,6 @@ import type { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { Push } from '@/push';
 import { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
-import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
-import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowBuilderSessionRepository } from '@/modules/workflow-builder';
 
@@ -33,11 +31,9 @@ describe('WorkflowBuilderService', () => {
 	let mockLicense: License;
 	let mockConfig: GlobalConfig;
 	let mockLogger: Logger;
-	let mockUrlService: UrlService;
 	let mockPush: Push;
 	let mockTelemetry: Telemetry;
 	let mockInstanceSettings: InstanceSettings;
-	let mockDynamicNodeParametersService: DynamicNodeParametersService;
 	let mockSessionRepository: WorkflowBuilderSessionRepository;
 	let mockUser: IUser;
 
@@ -76,17 +72,14 @@ describe('WorkflowBuilderService', () => {
 		mockLicense = mock<License>();
 		mockConfig = mock<GlobalConfig>();
 		mockLogger = mock<Logger>();
-		mockUrlService = mock<UrlService>();
 		mockPush = mock<Push>();
 		mockTelemetry = mock<Telemetry>();
 		mockInstanceSettings = mock<InstanceSettings>();
-		mockDynamicNodeParametersService = mock<DynamicNodeParametersService>();
 		mockSessionRepository = mock<WorkflowBuilderSessionRepository>();
 		mockUser = mock<IUser>();
 		mockUser.id = 'test-user-id';
 
 		// Setup default mocks
-		(mockUrlService.getInstanceBaseUrl as jest.Mock).mockReturnValue('https://instance.test.com');
 		(mockLicense.loadCertStr as jest.Mock).mockResolvedValue('test-cert');
 		(mockLicense.getConsumerId as jest.Mock).mockReturnValue('test-consumer-id');
 		(mockInstanceSettings.instanceId as unknown) = 'test-instance-id';
@@ -102,11 +95,9 @@ describe('WorkflowBuilderService', () => {
 			mockLicense,
 			mockConfig,
 			mockLogger,
-			mockUrlService,
 			mockPush,
 			mockTelemetry,
 			mockInstanceSettings,
-			mockDynamicNodeParametersService,
 			mockSessionRepository,
 		);
 	});
@@ -142,12 +133,10 @@ describe('WorkflowBuilderService', () => {
 				undefined, // No client when baseUrl is not set
 				mockLogger,
 				'test-instance-id', // instanceId
-				'https://instance.test.com', // instanceUrl
 				expect.any(String), // n8nVersion
 				expect.any(Function), // onCreditsUpdated callback
 				expect.any(Function), // onTelemetryEvent callback
 				expect.anything(), // nodeDefinitionDirs
-				expect.any(Function), // resourceLocatorCallbackFactory
 			);
 
 			expect(result.value).toEqual({ messages: ['response'] });
@@ -187,12 +176,10 @@ describe('WorkflowBuilderService', () => {
 				expect.any(AiAssistantClient),
 				mockLogger,
 				'test-instance-id', // instanceId
-				'https://instance.test.com', // instanceUrl
 				expect.any(String), // n8nVersion
 				expect.any(Function), // onCreditsUpdated callback
 				expect.any(Function), // onTelemetryEvent callback
 				expect.anything(), // nodeDefinitionDirs
-				expect.any(Function), // resourceLocatorCallbackFactory
 			);
 		});
 
@@ -274,7 +261,7 @@ describe('WorkflowBuilderService', () => {
 			const result = await service.getSessions('workflow-123', mockUser);
 
 			expect(MockedAiWorkflowBuilderService).toHaveBeenCalledTimes(1);
-			expect(mockAiService.getSessions).toHaveBeenCalledWith('workflow-123', mockUser, undefined);
+			expect(mockAiService.getSessions).toHaveBeenCalledWith('workflow-123', mockUser);
 			expect(result).toEqual(mockSessions);
 		});
 
@@ -287,35 +274,7 @@ describe('WorkflowBuilderService', () => {
 
 			const result = await service.getSessions(undefined, mockUser);
 
-			expect(mockAiService.getSessions).toHaveBeenCalledWith(undefined, mockUser, undefined);
-			expect(result).toEqual(mockSessions);
-		});
-
-		it('should pass codeBuilder flag to underlying service', async () => {
-			const mockSessions = {
-				sessions: [{ sessionId: 'test-session-code', messages: [], lastUpdated: new Date() }],
-			};
-
-			const mockAiService = mock<AiWorkflowBuilderService>();
-			(mockAiService.getSessions as jest.Mock).mockResolvedValue(mockSessions);
-			MockedAiWorkflowBuilderService.mockImplementation(() => mockAiService);
-
-			const result = await service.getSessions('workflow-123', mockUser, true);
-
-			expect(mockAiService.getSessions).toHaveBeenCalledWith('workflow-123', mockUser, true);
-			expect(result).toEqual(mockSessions);
-		});
-
-		it('should pass codeBuilder=false to underlying service', async () => {
-			const mockSessions = { sessions: [] };
-
-			const mockAiService = mock<AiWorkflowBuilderService>();
-			(mockAiService.getSessions as jest.Mock).mockResolvedValue(mockSessions);
-			MockedAiWorkflowBuilderService.mockImplementation(() => mockAiService);
-
-			const result = await service.getSessions('workflow-123', mockUser, false);
-
-			expect(mockAiService.getSessions).toHaveBeenCalledWith('workflow-123', mockUser, false);
+			expect(mockAiService.getSessions).toHaveBeenCalledWith(undefined, mockUser);
 			expect(result).toEqual(mockSessions);
 		});
 	});
@@ -341,7 +300,7 @@ describe('WorkflowBuilderService', () => {
 
 			MockedAiWorkflowBuilderService.mockImplementation(((...args: any[]) => {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				const callback = args[7]; // onCreditsUpdated is the 8th parameter (index 7, after n8nVersion)
+				const callback = args[6]; // onCreditsUpdated is the 7th parameter (index 6, after n8nVersion)
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				capturedCallback = callback;
 				return mockAiService;
@@ -390,7 +349,7 @@ describe('WorkflowBuilderService', () => {
 
 			MockedAiWorkflowBuilderService.mockImplementation(((...args: any[]) => {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				const callback = args[7]; // onCreditsUpdated is the 8th parameter (index 7, after n8nVersion)
+				const callback = args[6]; // onCreditsUpdated is the 7th parameter (index 6, after n8nVersion)
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				capturedCallback = callback;
 				return mockAiService;
@@ -451,7 +410,7 @@ describe('WorkflowBuilderService', () => {
 
 			MockedAiWorkflowBuilderService.mockImplementation(((...args: any[]) => {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				const telemetryCallback = args[8]; // onTelemetryEvent is the 9th parameter (index 8, after n8nVersion)
+				const telemetryCallback = args[7]; // onTelemetryEvent is the 8th parameter (index 7, after onCreditsUpdated)
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				capturedTelemetryCallback = telemetryCallback;
 				return mockAiService;
@@ -498,7 +457,7 @@ describe('WorkflowBuilderService', () => {
 
 			MockedAiWorkflowBuilderService.mockImplementation(((...args: any[]) => {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				const telemetryCallback = args[8]; // onTelemetryEvent is the 9th parameter (index 8, after n8nVersion)
+				const telemetryCallback = args[7]; // onTelemetryEvent is the 8th parameter (index 7, after onCreditsUpdated)
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				capturedTelemetryCallback = telemetryCallback;
 				return mockAiService;
@@ -543,7 +502,7 @@ describe('WorkflowBuilderService', () => {
 
 			MockedAiWorkflowBuilderService.mockImplementation(((...args: any[]) => {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				const telemetryCallback = args[8]; // onTelemetryEvent is the 9th parameter (index 8, after n8nVersion)
+				const telemetryCallback = args[7]; // onTelemetryEvent is the 8th parameter (index 7, after onCreditsUpdated)
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				capturedTelemetryCallback = telemetryCallback;
 				return mockAiService;
@@ -841,11 +800,9 @@ describe('WorkflowBuilderService - node type loading', () => {
 			}),
 			mock<GlobalConfig>({ aiAssistant: { baseUrl: '' } }),
 			mock(),
-			mock<UrlService>({ getInstanceBaseUrl: jest.fn().mockReturnValue('http://localhost') }),
 			mock(),
 			mock(),
 			mock<InstanceSettings>({ instanceId: 'test' }),
-			mock(),
 			mock(),
 		);
 
