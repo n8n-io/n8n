@@ -1642,6 +1642,7 @@ describe('CredentialsService', () => {
 			} as any);
 			projectService.getProjectRelationsForUser.mockResolvedValue([]);
 			credentialsHelper.getCredentialsProperties.mockReturnValue([]);
+			jest.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 		});
 
 		it('should allow owner to create global credential', async () => {
@@ -1940,6 +1941,7 @@ describe('CredentialsService', () => {
 		describe('external secrets', () => {
 			beforeEach(() => {
 				jest.spyOn(service, 'decrypt').mockReturnValue({});
+				jest.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 			});
 
 			it('should list all unavailable external secret providers in error message', async () => {

@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, ref, onMounted } from 'vue';
-import { N8nHeading, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nHeading, N8nIcon, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { ElSwitch } from 'element-plus';
 import { useI18n } from '@n8n/i18n';
 import { useSettingsField } from './useSettingsField';

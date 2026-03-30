@@ -415,11 +415,11 @@ watch(
 
 .title {
 	font-weight: var(--font-weight--bold);
-	color: var(--text-color);
+	color: var(--color--text);
 }
 
 .subtitle {
-	color: var(--text-color--subtle);
+	color: var(--color--text--tint-1);
 	font-weight: var(--font-weight--regular);
 	max-width: 280px;
 	overflow: hidden;
@@ -439,7 +439,7 @@ watch(
 	align-items: center;
 	gap: var(--spacing--4xs);
 	font-size: var(--font-size--2xs);
-	color: var(--text-color--subtle);
+	color: var(--color--text--tint-1);
 }
 
 .phaseActive {
@@ -459,7 +459,7 @@ watch(
 }
 
 .phaseIconPending {
-	color: var(--text-color--subtle);
+	color: var(--color--text--tint-1);
 }
 
 .phaseLabel {
@@ -487,7 +487,7 @@ watch(
 	font-family: var(--font-family);
 	font-size: var(--font-size--3xs);
 	font-weight: var(--font-weight--bold);
-	color: var(--text-color--subtle);
+	color: var(--color--text--tint-1);
 	text-transform: uppercase;
 	letter-spacing: 0.05em;
 
@@ -669,7 +669,7 @@ watch(
 .modalTitle {
 	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--bold);
-	color: var(--text-color);
+	color: var(--color--text);
 }
 
 .modalClose {
@@ -683,7 +683,7 @@ watch(
 	border: none;
 	border-radius: var(--radius);
 	cursor: pointer;
-	color: var(--text-color--subtle);
+	color: var(--color--text--tint-1);
 
 	&:hover {
 		background: var(--color--background--shade-1);

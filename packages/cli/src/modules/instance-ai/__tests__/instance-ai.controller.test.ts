@@ -555,7 +555,12 @@ describe('InstanceAiController', () => {
 			expect(push.sendToUsers).toHaveBeenCalledWith(
 				expect.objectContaining({
 					type: 'instanceAiGatewayStateChanged',
-					data: { connected: true, directory: '/home/user' },
+					data: {
+						connected: true,
+						directory: '/home/user',
+						hostIdentifier: null,
+						toolCategories: [],
+					},
 				}),
 				[USER_ID],
 			);
@@ -666,7 +671,10 @@ describe('InstanceAiController', () => {
 			expect(instanceAiService.disconnectGateway).toHaveBeenCalledWith(USER_ID);
 			expect(instanceAiService.clearActiveSessionKey).toHaveBeenCalledWith(USER_ID);
 			expect(push.sendToUsers).toHaveBeenCalledWith(
-				{ type: 'instanceAiGatewayStateChanged', data: { connected: false, directory: null } },
+				{
+					type: 'instanceAiGatewayStateChanged',
+					data: { connected: false, directory: null, hostIdentifier: null, toolCategories: [] },
+				},
 				[USER_ID],
 			);
 		});

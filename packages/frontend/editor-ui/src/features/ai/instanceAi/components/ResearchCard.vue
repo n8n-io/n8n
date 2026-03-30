@@ -188,7 +188,7 @@ const headerTitle = computed(() => {
 
 .title {
 	font-weight: var(--font-weight--bold);
-	color: var(--text-color);
+	color: var(--color--text);
 }
 
 .checklist {
@@ -203,12 +203,12 @@ const headerTitle = computed(() => {
 	align-items: center;
 	gap: var(--spacing--4xs);
 	font-size: var(--font-size--2xs);
-	color: var(--text-color--subtle);
+	color: var(--color--text--tint-1);
 	min-width: 0;
 }
 
 .checkItemActive {
-	color: var(--text-color--subtle);
+	color: var(--color--text--tint-1);
 }
 
 .checkItemDone {
@@ -254,7 +254,7 @@ const headerTitle = computed(() => {
 	font-family: var(--font-family);
 	font-size: var(--font-size--3xs);
 	font-weight: var(--font-weight--bold);
-	color: var(--text-color--subtle);
+	color: var(--color--text--tint-1);
 	text-transform: uppercase;
 	letter-spacing: 0.05em;
 

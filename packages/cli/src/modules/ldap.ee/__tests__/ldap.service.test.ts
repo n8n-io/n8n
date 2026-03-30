@@ -103,6 +103,8 @@ describe('LdapService', () => {
 
 	beforeEach(() => {
 		jest.restoreAllMocks();
+		(Client.prototype.bind as jest.Mock).mockClear();
+		(Client.prototype.unbind as jest.Mock).mockClear();
 	});
 
 	const mockSettingsRespositoryFindOneByOrFail = (config: LdapConfig) => {
