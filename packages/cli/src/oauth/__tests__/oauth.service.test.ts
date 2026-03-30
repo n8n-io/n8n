@@ -1130,6 +1130,30 @@ describe('OauthService', () => {
 			);
 		});
 
+		it.each(['facebookGraphApiOAuth2Api', 'facebookGraphAppOAuth2Api'])(
+			'should not delete scope for %s credentials',
+			async (credentialType) => {
+				const credential = mock<CredentialsEntity>({ id: '1', type: credentialType });
+				const mockDecryptedData = { clientId: 'client-id', scope: 'custom-scope' };
+				const mockOAuthCredentials = { clientId: 'client-id', scope: 'custom-scope' };
+				const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
+
+				jest.mocked(WorkflowExecuteAdditionalData.getBase).mockResolvedValue(mockAdditionalData);
+				credentialsHelper.getDecrypted.mockResolvedValue(mockDecryptedData);
+				credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue(mockOAuthCredentials);
+
+				await service.getOAuthCredentials(credential);
+
+				expect(credentialsHelper.applyDefaultsAndOverwrites).toHaveBeenCalledWith(
+					mockAdditionalData,
+					{ clientId: 'client-id', scope: 'custom-scope' },
+					credentialType,
+					'internal',
+					undefined,
+					undefined,
+				);
+			},
+		);
 		it('should not delete scope for wordpressOAuth2Api credentials', async () => {
 			const credential = mock<CredentialsEntity>({
 				id: '1',
