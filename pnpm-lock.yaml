@@ -2779,9 +2779,6 @@ importers:
       element-plus:
         specifier: catalog:frontend
         version: 2.4.3(patch_hash=3bc4ea0a42ad52c6bbc3d06c12c2963d55b57d6b5b8d436e46e7fd8ff8c10661)(vue@3.5.26(typescript@5.9.2))
-      emojibase-data:
-        specifier: ^17.0.0
-        version: 17.0.0(emojibase@17.0.0)
       is-emoji-supported:
         specifier: ^0.0.5
         version: 0.0.5
@@ -2822,6 +2819,9 @@ importers:
         specifier: 'catalog:'
         version: 1.0.15
     devDependencies:
+      '@iconify/json':
+        specifier: ^2.2.349
+        version: 2.2.354
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../../../@n8n/eslint-config
@@ -2873,6 +2873,9 @@ importers:
       autoprefixer:
         specifier: ^10.4.19
         version: 10.4.19(postcss@8.4.49)
+      emojibase-data:
+        specifier: ^17.0.0
+        version: 17.0.0(emojibase@17.0.0)
       postcss:
         specifier: ^8.4.38
         version: 8.4.49
