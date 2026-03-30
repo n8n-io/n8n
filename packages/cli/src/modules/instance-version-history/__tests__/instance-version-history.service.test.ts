@@ -1,6 +1,7 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
+import type { InstanceSettings } from 'n8n-core';
 
 import type { InstanceVersionHistoryRepository } from '../database/repositories/instance-version-history.repository';
 import { InstanceVersionHistoryService } from '../instance-version-history.service';
@@ -13,14 +14,16 @@ jest.mock('@/constants', () => ({
 describe('InstanceVersionHistoryService', () => {
 	let service: InstanceVersionHistoryService;
 	let repository: MockProxy<InstanceVersionHistoryRepository>;
+	let instanceSettings: MockProxy<InstanceSettings>;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
 		repository = mock<InstanceVersionHistoryRepository>();
+		instanceSettings = mock<InstanceSettings>({ isLeader: true });
 	});
 
 	function createService() {
-		return new InstanceVersionHistoryService(repository, mockLogger());
+		return new InstanceVersionHistoryService(repository, mockLogger(), instanceSettings);
 	}
 
 	describe('init', () => {
