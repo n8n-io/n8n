@@ -377,7 +377,6 @@ function createCodeWorkflowBuilderGenerator(
 				historyContext,
 			)) {
 				for (const message of output.messages) {
-					console.log(`Received message chunk: ${JSON.stringify(message)}`);
 					if (isWorkflowUpdateChunk(message)) {
 						const parsed: unknown = JSON.parse(message.codeSnippet);
 						if (isSimpleWorkflow(parsed)) {
