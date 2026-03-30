@@ -3,17 +3,13 @@
  * Without this, tools that use suspend() will fail on resumeStream() because
  * Mastra has no storage to persist/retrieve the execution snapshot.
  *
- * Reuses a single Mastra + Observability instance per storage key to avoid
- * creating throwaway Mastra/LangSmithExporter/Observability objects on every
- * sub-agent call.  Previous approach created a new Mastra per call, leaking
- * RunTree trace objects that retained full LLM request bodies (~25 MB+).
+ * Reuses a single Mastra instance per storage key to avoid creating throwaway
+ * registration objects on every sub-agent call.
  */
 
 import type { Agent } from '@mastra/core/agent';
 import { Mastra } from '@mastra/core/mastra';
 import type { MastraCompositeStore } from '@mastra/core/storage';
-import { LangSmithExporter } from '@mastra/langsmith';
-import { Observability } from '@mastra/observability';
 
 let cachedSubAgentMastra: Mastra | null = null;
 let cachedSubAgentStorageKey = '';
@@ -31,14 +27,6 @@ export function registerWithMastra(agentId: string, agent: Agent, storage: Mastr
 	cachedSubAgentMastra = new Mastra({
 		agents: { [agentId]: agent },
 		storage,
-		observability: new Observability({
-			configs: {
-				langsmith: {
-					serviceName: 'instance-ai',
-					exporters: [new LangSmithExporter({ projectName: 'instance-ai' })],
-				},
-			},
-		}),
 	});
 	cachedSubAgentStorageKey = key;
 }

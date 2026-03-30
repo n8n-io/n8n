@@ -13,8 +13,20 @@ import { z } from 'zod';
 
 import { truncateLabel } from './display-utils';
 import { RESEARCH_AGENT_PROMPT } from './research-agent-prompt';
+import {
+	createDetachedSubAgentTracing,
+	traceSubAgentTools,
+	withTraceContextActor,
+} from './tracing-utils';
 import { registerWithMastra } from '../../agent/register-with-mastra';
+import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
+import {
+	buildAgentTraceInputs,
+	getTraceParentRun,
+	mergeTraceRunInputs,
+	withTraceParentContext,
+} from '../../tracing/langsmith-tracing';
 import type { OrchestrationContext } from '../../types';
 
 const RESEARCH_MAX_STEPS = 25;
@@ -34,10 +46,10 @@ export interface StartedResearchAgentTask {
 	agentId: string;
 }
 
-export function startResearchAgentTask(
+export async function startResearchAgentTask(
 	context: OrchestrationContext,
 	input: StartResearchAgentInput,
-): StartedResearchAgentTask {
+): Promise<StartedResearchAgentTask> {
 	const researchTools: ToolsInput = {};
 	const toolNames = ['web-search', 'fetch-url'];
 	for (const name of toolNames) {
@@ -79,51 +91,80 @@ export function startResearchAgentTask(
 	const briefing = input.constraints
 		? `${input.goal}${conversationCtx}\n\nConstraints: ${input.constraints}`
 		: `${input.goal}${conversationCtx}`;
+	const traceContext = await createDetachedSubAgentTracing(context, {
+		agentId: subAgentId,
+		role: 'web-researcher',
+		kind: 'research',
+		taskId,
+		plannedTaskId: input.plannedTaskId,
+		inputs: {
+			goal: input.goal,
+			constraints: input.constraints,
+			conversationContext: input.conversationContext,
+		},
+	});
+	const tracedResearchTools = traceSubAgentTools(context, researchTools, 'web-researcher');
 
 	context.spawnBackgroundTask({
 		taskId,
 		threadId: context.threadId,
 		agentId: subAgentId,
 		role: 'web-researcher',
+		traceContext,
 		plannedTaskId: input.plannedTaskId,
 		run: async (signal, drainCorrections) => {
-			const subAgent = new Agent({
-				id: subAgentId,
-				name: 'Web Research Agent',
-				instructions: {
-					role: 'system' as const,
-					content: RESEARCH_AGENT_PROMPT,
-					providerOptions: {
-						anthropic: { cacheControl: { type: 'ephemeral' } },
+			return await withTraceContextActor(traceContext, async () => {
+				const subAgent = new Agent({
+					id: subAgentId,
+					name: 'Web Research Agent',
+					instructions: {
+						role: 'system' as const,
+						content: RESEARCH_AGENT_PROMPT,
+						providerOptions: {
+							anthropic: { cacheControl: { type: 'ephemeral' } },
+						},
 					},
-				},
-				model: context.modelId,
-				tools: researchTools,
+					model: context.modelId,
+					tools: tracedResearchTools,
+				});
+				mergeTraceRunInputs(
+					traceContext?.actorRun,
+					buildAgentTraceInputs({
+						systemPrompt: RESEARCH_AGENT_PROMPT,
+						tools: tracedResearchTools,
+						modelId: context.modelId,
+					}),
+				);
+
+				registerWithMastra(subAgentId, subAgent, context.storage);
+
+				return await withTraceParentContext(getTraceParentRun(), async () => {
+					const llmStepTraceHooks = createLlmStepTraceHooks();
+					const stream = await subAgent.stream(briefing, {
+						maxSteps: RESEARCH_MAX_STEPS,
+						abortSignal: signal,
+						providerOptions: {
+							anthropic: { cacheControl: { type: 'ephemeral' } },
+						},
+						...(llmStepTraceHooks?.executionOptions ?? {}),
+					});
+
+					const { text } = await consumeStreamWithHitl({
+						agent: subAgent,
+						stream,
+						runId: context.runId,
+						agentId: subAgentId,
+						eventBus: context.eventBus,
+						threadId: context.threadId,
+						abortSignal: signal,
+						waitForConfirmation: context.waitForConfirmation,
+						drainCorrections,
+						llmStepTraceHooks,
+					});
+
+					return await text;
+				});
 			});
-
-			registerWithMastra(subAgentId, subAgent, context.storage);
-
-			const stream = await subAgent.stream(briefing, {
-				maxSteps: RESEARCH_MAX_STEPS,
-				abortSignal: signal,
-				providerOptions: {
-					anthropic: { cacheControl: { type: 'ephemeral' } },
-				},
-			});
-
-			const { text } = await consumeStreamWithHitl({
-				agent: subAgent,
-				stream,
-				runId: context.runId,
-				agentId: subAgentId,
-				eventBus: context.eventBus,
-				threadId: context.threadId,
-				abortSignal: signal,
-				waitForConfirmation: context.waitForConfirmation,
-				drainCorrections,
-			});
-
-			return await text;
 		},
 	});
 
@@ -165,7 +206,7 @@ export function createResearchWithAgentTool(context: OrchestrationContext) {
 			taskId: z.string(),
 		}),
 		execute: async (input) => {
-			const result = startResearchAgentTask(context, input);
+			const result = await startResearchAgentTask(context, input);
 			return await Promise.resolve({ result: result.result, taskId: result.taskId });
 		},
 	});

@@ -3,16 +3,15 @@ import { Agent } from '@mastra/core/agent';
 import { Mastra } from '@mastra/core/mastra';
 import { ToolSearchProcessor, type ToolSearchProcessorOptions } from '@mastra/core/processors';
 import type { MastraCompositeStore } from '@mastra/core/storage';
-import { withLangsmithMetadata, LangSmithExporter } from '@mastra/langsmith';
 import { MCPClient } from '@mastra/mcp';
-import { buildTracingOptions, Observability } from '@mastra/observability';
 import { nanoid } from 'nanoid';
 
 import { createMemory } from '../memory/memory-config';
 import { createAllTools, createOrchestrationTools } from '../tools';
-import { sanitizeMcpToolSchemas } from './sanitize-mcp-schemas';
 import { createToolsFromLocalMcpServer } from '../tools/filesystem/create-tools-from-mcp-server';
+import { buildAgentTraceInputs, mergeTraceRunInputs } from '../tracing/langsmith-tracing';
 import type { CreateInstanceAgentOptions, McpServerConfig } from '../types';
+import { sanitizeMcpToolSchemas } from './sanitize-mcp-schemas';
 import { getSystemPrompt } from './system-prompt';
 
 function buildMcpServers(
@@ -113,14 +112,6 @@ function ensureMastraRegistered(agent: Agent, storage: MastraCompositeStore): vo
 	cachedMastra = new Mastra({
 		agents: { 'n8n-instance-agent': agent },
 		storage,
-		observability: new Observability({
-			configs: {
-				langsmith: {
-					serviceName: 'my-service',
-					exporters: [new LangSmithExporter({ projectName: 'instance-ai' })],
-				},
-			},
-		}),
 	});
 	cachedMastraStorageKey = key;
 }
@@ -239,10 +230,15 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		...safeMcpTools, // external MCP only — browser tools excluded
 		...localMcpTools, // gateway tools — browser tools excluded via browserToolNames
 	};
+	const tracedOrchestratorTools =
+		orchestrationContext?.tracing?.wrapTools(allOrchestratorTools, {
+			agentRole: 'orchestrator',
+			tags: ['orchestrator'],
+		}) ?? allOrchestratorTools;
 
 	const coreTools: ToolsInput = {};
 	const deferrableTools: ToolsInput = {};
-	for (const [name, tool] of Object.entries(allOrchestratorTools)) {
+	for (const [name, tool] of Object.entries(tracedOrchestratorTools)) {
 		if (ALWAYS_LOADED_TOOLS.has(name)) {
 			coreTools[name] = tool;
 		} else {
@@ -257,38 +253,46 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 
 	// Use pre-built memory if provided, otherwise create from config
 	const memory = options.memory ?? createMemory(memoryConfig);
+	const systemPrompt = getSystemPrompt({
+		researchMode: orchestrationContext?.researchMode,
+		webhookBaseUrl: orchestrationContext?.webhookBaseUrl,
+		filesystemAccess: !!(context.localMcpServer ?? context.filesystemService),
+		localGateway: context.localGatewayStatus,
+		toolSearchEnabled: hasDeferrableTools,
+		licenseHints: context.licenseHints,
+		timeZone: options.timeZone,
+		browserAvailable: browserToolNames.size > 0,
+	});
 
 	const agent = new Agent({
 		id: 'n8n-instance-agent',
 		name: 'n8n Instance Agent',
 		instructions: {
 			role: 'system' as const,
-			content: getSystemPrompt({
-				researchMode: orchestrationContext?.researchMode,
-				webhookBaseUrl: orchestrationContext?.webhookBaseUrl,
-				filesystemAccess: !!(context.localMcpServer ?? context.filesystemService),
-				localGateway: context.localGatewayStatus,
-				toolSearchEnabled: hasDeferrableTools,
-				licenseHints: context.licenseHints,
-				timeZone: options.timeZone,
-				browserAvailable: browserToolNames.size > 0,
-			}),
+			content: systemPrompt,
 			providerOptions: {
 				anthropic: { cacheControl: { type: 'ephemeral' } },
 			},
 		},
 		model: modelId,
-		tools: hasDeferrableTools ? coreTools : allOrchestratorTools,
+		tools: hasDeferrableTools ? coreTools : tracedOrchestratorTools,
 		inputProcessors: toolSearchProcessor ? [toolSearchProcessor] : undefined,
-		defaultOptions: {
-			tracingOptions: buildTracingOptions(
-				withLangsmithMetadata({ projectName: 'instance-ai' }),
-				(opts) => ({ ...opts, recordInputs: false, recordOutputs: false }),
-			),
-		},
 		memory,
 		workspace: options.workspace,
 	});
+
+	mergeTraceRunInputs(
+		orchestrationContext?.tracing?.actorRun,
+		buildAgentTraceInputs({
+			systemPrompt,
+			tools: hasDeferrableTools ? coreTools : tracedOrchestratorTools,
+			deferredTools: hasDeferrableTools ? deferrableTools : undefined,
+			modelId,
+			memory,
+			toolSearchEnabled: hasDeferrableTools,
+			inputProcessors: toolSearchProcessor ? ['ToolSearchProcessor'] : undefined,
+		}),
+	);
 
 	// Register agent with Mastra for HITL suspend/resume snapshot storage
 	ensureMastraRegistered(agent, memoryConfig.storage);
