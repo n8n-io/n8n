@@ -172,6 +172,35 @@ export const userFields: INodeProperties[] = [
 				default: '',
 				description: 'An alphanumeric identifier for the user',
 			},
+			{
+				displayName: 'Roles',
+				name: 'roles',
+				type: 'multiOptions',
+				options: [
+					{
+						name: 'Administrator',
+						value: 'administrator',
+					},
+					{
+						name: 'Editor',
+						value: 'editor',
+					},
+					{
+						name: 'Author',
+						value: 'author',
+					},
+					{
+						name: 'Contributor',
+						value: 'contributor',
+					},
+					{
+						name: 'Subscriber',
+						value: 'subscriber',
+					}
+				],
+				default: 'subscriber',
+				description: 'The role for the new user',
+			}
 		],
 	},
 	/* -------------------------------------------------------------------------- */
@@ -276,6 +305,35 @@ export const userFields: INodeProperties[] = [
 				default: '',
 				description: 'An alphanumeric identifier for the user',
 			},
+			{
+				displayName: 'Roles',
+				name: 'roles',
+				type: 'multiOptions',
+				options: [
+					{
+						name: 'Administrator',
+						value: 'administrator',
+					},
+					{
+						name: 'Editor',
+						value: 'editor',
+					},
+					{
+						name: 'Author',
+						value: 'author',
+					},
+					{
+						name: 'Contributor',
+						value: 'contributor',
+					},
+					{
+						name: 'Subscriber',
+						value: 'subscriber',
+					}
+				],
+				default: 'subscriber',
+				description: 'Update the role for the existing user',
+			}
 		],
 	},
 	/* -------------------------------------------------------------------------- */
