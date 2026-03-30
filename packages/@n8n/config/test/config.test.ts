@@ -430,6 +430,7 @@ describe('GlobalConfig', () => {
 				scopesName: 'n8n',
 				scopesInstanceRoleClaimName: 'n8n_instance_role',
 				scopesProjectsRolesClaimName: 'n8n_projects',
+				scopesUseExpressionMapping: false,
 			},
 		},
 		ssrfProtection: {
