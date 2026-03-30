@@ -7,6 +7,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 const props = defineProps<{
 	aiGatewayEnabled: boolean;
+	readonly: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -42,6 +43,7 @@ watch(
 				:model-value="props.aiGatewayEnabled"
 				data-test-id="ai-gateway-toggle-switch"
 				@update:model-value="(val) => emit('toggle', Boolean(val))"
+				:disabled="props.readonly"
 			/>
 			<N8nText size="small" color="text-dark">
 				{{ i18n.baseText('aiGateway.toggle.label') }}

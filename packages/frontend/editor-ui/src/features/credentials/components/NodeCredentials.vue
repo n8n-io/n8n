@@ -497,7 +497,10 @@ function isAiGatewayManaged(credentialType: string): boolean {
 }
 
 function showAiGatewayToggle(credentialType: string): boolean {
-	return !props.readonly && aiGateway.isEnabled.value && aiGateway.isNodeSupported(credentialType);
+	if (!aiGateway.isEnabled.value || !aiGateway.isNodeSupported(credentialType)) return false;
+	// In readonly mode only show when currently managed (so the active state is visible)
+	if (props.readonly) return isAiGatewayManaged(credentialType);
+	return true;
 }
 
 function onAiGatewayToggle(credentialType: string, enable: boolean): void {
@@ -650,7 +653,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 				<template v-if="$slots['label-postfix']" #options>
 					<slot name="label-postfix" />
 				</template>
-				<div v-if="readonly">
+				<div v-if="readonly && !isAiGatewayManaged(type.name)">
 					<N8nInput
 						:model-value="getSelectedName(type.name)"
 						disabled
@@ -840,6 +843,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 			<AiGatewayToggle
 				v-if="showAiGatewayToggle(type.name)"
 				:ai-gateway-enabled="isAiGatewayManaged(type.name)"
+				:readonly="readonly"
 				@toggle="onAiGatewayToggle(type.name, $event)"
 			/>
 		</div>

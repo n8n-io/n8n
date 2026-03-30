@@ -258,6 +258,7 @@ export class AiController {
 		}
 	}
 
+	//TODO: consider to add @Licensed decorator
 	@Get('/gateway/credits')
 	async getGatewayCredits(
 		req: AuthenticatedRequest,

@@ -38,7 +38,10 @@ const GATEWAY_PROVIDER_CONFIG: Record<
 
 @Service()
 export class AiGatewayService {
-	private readonly tokenCache = new Map<string, { token: string; expiresAt: number }>();
+	private readonly tokenCache = new Map<
+		string,
+		{ token: string; expiresAt: number; refreshAt: number }
+	>();
 	private readonly TOKEN_CACHE_MAX_SIZE = 500;
 
 	constructor(
@@ -86,11 +89,11 @@ export class AiGatewayService {
 			throw new UserError('AI Gateway is not configured. Set the AI assistant base URL.');
 		}
 
-		const licenseCert = await this.license.loadCertStr();
+		const jwt = await this.getOrFetchToken(userId);
 		const response = await fetch(`${baseUrl}/v1/gateway/credits`, {
 			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ licenseCert, instanceId: this.instanceSettings.instanceId, userId }),
+			headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` },
+			body: JSON.stringify({}),
 		});
 
 		if (!response.ok) {
@@ -113,7 +116,7 @@ export class AiGatewayService {
 		const key = `${this.instanceSettings.instanceId}:${userId}`;
 		const cached = this.tokenCache.get(key);
 
-		if (cached && cached.expiresAt > Date.now() + 60_000) {
+		if (cached && cached.refreshAt > Date.now()) {
 			return cached.token;
 		}
 
@@ -137,7 +140,12 @@ export class AiGatewayService {
 		if (this.tokenCache.size >= this.TOKEN_CACHE_MAX_SIZE) {
 			this.tokenCache.delete(this.tokenCache.keys().next().value as string);
 		}
-		this.tokenCache.set(key, { token, expiresAt: Date.now() + expiresIn * 1000 });
+		const lifetimeMs = expiresIn * 1000;
+		this.tokenCache.set(key, {
+			token,
+			expiresAt: Date.now() + lifetimeMs,
+			refreshAt: Date.now() + lifetimeMs * 0.9,
+		});
 		return token;
 	}
 }

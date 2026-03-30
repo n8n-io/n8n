@@ -30,8 +30,8 @@ export function useAiGateway() {
 			const data = await getGatewayCredits(rootStore.restApiContext);
 			creditsRemaining.value = data.creditsRemaining;
 			creditsQuota.value = data.creditsQuota;
-		} catch {
-			// Keep previous values on error
+		} catch (error) {
+			console.error('[useAiGateway] Failed to fetch credits:', error);
 		}
 	}
 

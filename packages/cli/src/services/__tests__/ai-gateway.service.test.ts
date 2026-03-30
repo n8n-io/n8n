@@ -130,10 +130,15 @@ describe('AiGatewayService', () => {
 		});
 
 		it('returns creditsQuota and creditsRemaining from gateway', async () => {
-			fetchMock.mockResolvedValue({
-				ok: true,
-				json: jest.fn().mockResolvedValue({ creditsQuota: 10, creditsRemaining: 7 }),
-			});
+			fetchMock
+				.mockResolvedValueOnce({
+					ok: true,
+					json: jest.fn().mockResolvedValue({ token: 'mock-jwt', expiresIn: 3600 }),
+				})
+				.mockResolvedValueOnce({
+					ok: true,
+					json: jest.fn().mockResolvedValue({ creditsQuota: 10, creditsRemaining: 7 }),
+				});
 			const service = makeService();
 
 			const result = await service.getCreditsRemaining(USER_ID);
@@ -141,11 +146,16 @@ describe('AiGatewayService', () => {
 			expect(result).toEqual({ creditsQuota: 10, creditsRemaining: 7 });
 		});
 
-		it('sends correct payload to gateway', async () => {
-			fetchMock.mockResolvedValue({
-				ok: true,
-				json: jest.fn().mockResolvedValue({ creditsQuota: 10, creditsRemaining: 7 }),
-			});
+		it('sends JWT Bearer token in Authorization header to credits endpoint', async () => {
+			fetchMock
+				.mockResolvedValueOnce({
+					ok: true,
+					json: jest.fn().mockResolvedValue({ token: 'mock-jwt', expiresIn: 3600 }),
+				})
+				.mockResolvedValueOnce({
+					ok: true,
+					json: jest.fn().mockResolvedValue({ creditsQuota: 10, creditsRemaining: 7 }),
+				});
 			const service = makeService();
 
 			await service.getCreditsRemaining(USER_ID);
@@ -154,26 +164,33 @@ describe('AiGatewayService', () => {
 				`${BASE_URL}/v1/gateway/credits`,
 				expect.objectContaining({
 					method: 'POST',
-					body: JSON.stringify({
-						licenseCert: LICENSE_CERT,
-						instanceId: INSTANCE_ID,
-						userId: USER_ID,
-					}),
+					headers: expect.objectContaining({ Authorization: 'Bearer mock-jwt' }),
+					body: JSON.stringify({}),
 				}),
 			);
 		});
 
-		it('throws UserError when gateway returns non-ok status', async () => {
-			fetchMock.mockResolvedValue({ ok: false, status: 429 });
+		it('throws UserError when credits gateway returns non-ok status', async () => {
+			fetchMock
+				.mockResolvedValueOnce({
+					ok: true,
+					json: jest.fn().mockResolvedValue({ token: 'mock-jwt', expiresIn: 3600 }),
+				})
+				.mockResolvedValueOnce({ ok: false, status: 429 });
 			const service = makeService();
 			await expect(service.getCreditsRemaining(USER_ID)).rejects.toThrow(UserError);
 		});
 
 		it('throws UserError when gateway returns invalid response shape', async () => {
-			fetchMock.mockResolvedValue({
-				ok: true,
-				json: jest.fn().mockResolvedValue({ creditsQuota: 'not-a-number' }),
-			});
+			fetchMock
+				.mockResolvedValueOnce({
+					ok: true,
+					json: jest.fn().mockResolvedValue({ token: 'mock-jwt', expiresIn: 3600 }),
+				})
+				.mockResolvedValueOnce({
+					ok: true,
+					json: jest.fn().mockResolvedValue({ creditsQuota: 'not-a-number' }),
+				});
 			const service = makeService();
 			await expect(service.getCreditsRemaining(USER_ID)).rejects.toThrow(UserError);
 		});
