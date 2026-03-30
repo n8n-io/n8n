@@ -4,9 +4,11 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 
 import BuilderSetupCard from './BuilderSetupCard.vue';
+import BuilderNodeGroupCard from './BuilderNodeGroupCard.vue';
 import { useBuilderSetupCards } from '@/features/ai/assistant/composables/useBuilderSetupCards';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
+import { isNodeGroupCard } from '@/features/setupPanel/setupPanel.utils';
 
 const emit = defineEmits<{
 	workflowExecuted: [];
@@ -58,13 +60,39 @@ function onMouseLeave() {
 }
 
 // Highlight all nodes associated with the active card while hovering over the wizard.
-const highlightedNodeIds = computed(() => {
+// When hovering a specific section inside an agent group, override with that section's nodes.
+const sectionHighlightOverride = ref<string[] | null>(null);
+
+function onSectionHighlight(nodeIds: string[] | null) {
+	sectionHighlightOverride.value = nodeIds;
+	if (isHovering.value && showWizard.value) {
+		setupPanelStore.setHighlightedNodes(nodeIds ?? cardHighlightNodeIds.value);
+	}
+}
+
+const cardHighlightNodeIds = computed(() => {
 	const card = currentCard.value;
 	if (!card) return [];
+	if (isNodeGroupCard(card)) {
+		const ids = new Set<string>([card.nodeGroup.parentNode.id]);
+		for (const sub of card.nodeGroup.subnodeCards) {
+			ids.add(sub.node.id);
+		}
+		return [...ids];
+	}
 	if (card.state.allNodesUsingCredential?.length) {
 		return card.state.allNodesUsingCredential.map((n) => n.id);
 	}
 	return [card.state.node.id];
+});
+
+const highlightedNodeIds = computed(
+	() => sectionHighlightOverride.value ?? cardHighlightNodeIds.value,
+);
+
+// Clear section override when navigating to a different card (unmount won't fire mouseleave)
+watch(currentCard, () => {
+	sectionHighlightOverride.value = null;
 });
 
 watch([isHovering, highlightedNodeIds, showWizard], ([hovering, nodeIds, visible]) => {
@@ -137,12 +165,8 @@ watch(
 watch(
 	[totalCards, wizardDismissed],
 	([count, dismissed]) => {
-		// Guard: don't emit noSetupNeeded while the builder is still applying
-		// the workflow update. Between addNewNodes() and updateConnections() there is
-		// an async gap (await nextTick) where connections are not yet in the store,
-		// causing sortNodesByExecutionOrder to drop non-trigger nodes and totalCards
-		// to be transiently 0. Once setBuilderMadeEdits(true) fires the update is
-		// complete and we can trust the card count.
+		// Don't fall back while the builder is still applying the workflow update.
+		// setupCards can be transiently empty before the new nodes/connections settle.
 		if (count === 0 && !builderStore.getAiBuilderMadeEdits()) return;
 
 		if ((count === 0 || dismissed) && !hasTrackedShown.value) {
@@ -177,20 +201,36 @@ watch(
 				{{ descriptionText }}
 			</N8nText>
 
-			<BuilderSetupCard
-				v-if="showCard"
-				:key="currentStepIndex"
-				:state="currentCard!.state"
-				:step-index="currentStepIndex"
-				:total-cards="totalCards"
-				:first-trigger-name="firstTriggerName"
-				@go-to-next="onGoToNext"
-				@go-to-prev="onGoToPrev"
-				@step-executed="handleStepExecuted"
-				@continue-current="continueCurrent"
-				@credential-selected="onCredentialSelected"
-				@credential-deselected="onCredentialDeselected"
-			/>
+			<template v-if="showCard && currentCard">
+				<BuilderNodeGroupCard
+					v-if="isNodeGroupCard(currentCard)"
+					:key="`group-${currentStepIndex}`"
+					:node-group="currentCard.nodeGroup"
+					:step-index="currentStepIndex"
+					:total-cards="totalCards"
+					@go-to-next="onGoToNext"
+					@go-to-prev="onGoToPrev"
+					@step-executed="handleStepExecuted"
+					@continue-current="continueCurrent"
+					@section-highlight="onSectionHighlight"
+					@credential-selected="onCredentialSelected"
+					@credential-deselected="onCredentialDeselected"
+				/>
+				<BuilderSetupCard
+					v-else
+					:key="currentStepIndex"
+					:state="currentCard.state"
+					:step-index="currentStepIndex"
+					:total-cards="totalCards"
+					:first-trigger-name="firstTriggerName"
+					@go-to-next="onGoToNext"
+					@go-to-prev="onGoToPrev"
+					@step-executed="handleStepExecuted"
+					@continue-current="continueCurrent"
+					@credential-selected="onCredentialSelected"
+					@credential-deselected="onCredentialDeselected"
+				/>
+			</template>
 		</template>
 	</div>
 </template>
