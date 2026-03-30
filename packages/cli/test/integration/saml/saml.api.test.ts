@@ -604,11 +604,14 @@ describe('SAML email validation', () => {
 		test('should throw BadRequestError for invalid email format', async () => {
 			// Mock getAttributesFromLoginResponse to return invalid email
 			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
-				email: 'invalid-email-format',
-				firstName: 'John',
-				lastName: 'Doe',
-				userPrincipalName: 'john.doe',
-				n8nInstanceRole: 'n8n_instance_role',
+				mapped: {
+					email: 'invalid-email-format',
+					firstName: 'John',
+					lastName: 'Doe',
+					userPrincipalName: 'john.doe',
+					n8nInstanceRole: 'n8n_instance_role',
+				},
+				raw: {},
 			});
 
 			const mockRequest = {} as express.Request;
@@ -622,11 +625,14 @@ describe('SAML email validation', () => {
 			'should throw BadRequestError for invalid email <%s>',
 			async (invalidEmail) => {
 				jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
-					email: invalidEmail,
-					firstName: 'John',
-					lastName: 'Doe',
-					userPrincipalName: 'john.doe',
-					n8nInstanceRole: 'n8n_instance_role',
+					mapped: {
+						email: invalidEmail,
+						firstName: 'John',
+						lastName: 'Doe',
+						userPrincipalName: 'john.doe',
+						n8nInstanceRole: 'n8n_instance_role',
+					},
+					raw: {},
 				});
 
 				const mockRequest = {} as express.Request;
@@ -646,11 +652,14 @@ describe('SAML email validation', () => {
 			const mockRequest = {} as express.Request;
 
 			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
-				email: validEmail,
-				firstName: 'John',
-				lastName: 'Doe',
-				userPrincipalName: 'john.doe',
-				n8nInstanceRole: 'n8n_instance_role',
+				mapped: {
+					email: validEmail,
+					firstName: 'John',
+					lastName: 'Doe',
+					userPrincipalName: 'john.doe',
+					n8nInstanceRole: 'n8n_instance_role',
+				},
+				raw: {},
 			});
 
 			// Should not throw an error for valid emails
@@ -663,11 +672,14 @@ describe('SAML email validation', () => {
 			const upperCaseEmail = 'USER@EXAMPLE.COM';
 
 			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
-				email: upperCaseEmail,
-				firstName: 'John',
-				lastName: 'Doe',
-				userPrincipalName: 'john.doe',
-				n8nInstanceRole: 'n8n_instance_role',
+				mapped: {
+					email: upperCaseEmail,
+					firstName: 'John',
+					lastName: 'Doe',
+					userPrincipalName: 'john.doe',
+					n8nInstanceRole: 'n8n_instance_role',
+				},
+				raw: {},
 			});
 
 			const mockRequest = {} as express.Request;
