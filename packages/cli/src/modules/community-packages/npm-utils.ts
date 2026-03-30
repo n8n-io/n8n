@@ -19,6 +19,7 @@ const NPM_ERROR_PATTERNS = {
 interface NpmCommandOptions {
 	cwd?: string;
 	doNotHandleError?: boolean;
+	shell?: boolean;
 }
 
 function isDnsError(error: unknown): boolean {
@@ -55,11 +56,19 @@ export async function executeNpmCommand(
 	args: string[],
 	options: NpmCommandOptions = {},
 ): Promise<string> {
-	const { cwd, doNotHandleError } = options;
+	const { cwd, doNotHandleError, shell } = options;
+
+	const execOptions = {
+		...(cwd && { cwd }),
+		...(shell && { shell }),
+	};
+
+	const hasOptions = cwd !== undefined || shell !== undefined;
 
 	try {
-		const { stdout } = await asyncExecFile('npm', args, cwd ? { cwd } : undefined);
-		return typeof stdout === 'string' ? stdout : stdout.toString();
+		const commandResult = await asyncExecFile('npm', args, hasOptions ? execOptions : undefined);
+		const stdout = commandResult.stdout;
+		return Buffer.isBuffer(stdout) ? stdout.toString('utf8') : stdout;
 	} catch (error) {
 		if (doNotHandleError) {
 			throw error;
