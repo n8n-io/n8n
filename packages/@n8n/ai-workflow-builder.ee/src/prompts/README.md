@@ -13,11 +13,8 @@ src/prompts/
 │   ├── prompt-builder.ts         # Fluent builder class
 │   └── types.ts                  # Type definitions
 │
-├── agents/                       # Multi-agent system prompts
-│   ├── supervisor.prompt.ts      # Routes requests to specialists
-│   ├── discovery.prompt.ts       # Finds nodes & categorizes techniques
-│   ├── builder.prompt.ts         # Creates workflow structure and configures parameters
-│   └── responder.prompt.ts       # Generates user responses
+├── agents/                       # Agent prompts
+│   └── planner.prompt.ts         # Plans workflow steps
 │
 └── chains/                       # Chain-level prompts
     ├── categorization.prompt.ts  # Workflow technique classification
@@ -54,16 +51,13 @@ const systemPrompt = prompt()
 - **Output formats**: XML tags (default) or Markdown headers
 - **LangChain integration**: `buildAsMessageBlocks()` with cache_control support
 
-## Multi-Agent Prompts
+## Agent Prompts
 
-The `agents/` directory contains prompts for the multi-agent workflow builder system. Each agent has a specialized role:
+The `agents/` directory contains prompts for the workflow builder system:
 
 | Agent | Purpose |
 |-------|---------|
-| **Supervisor** | Routes user requests to the appropriate specialist |
-| **Discovery** | Identifies relevant n8n nodes and categorizes techniques |
-| **Builder** | Creates workflow structure and configures node parameters |
-| **Responder** | Generates user-facing responses |
+| **Planner** | Plans the steps needed to build a workflow |
 
 All agent prompts use PromptBuilder for consistent composition.
 
