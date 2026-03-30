@@ -21,6 +21,10 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import {
+	waitForActivationConfirmation,
+	cancelActivationConfirmation,
+} from '@/app/composables/useWorkflowActivateConfirmation';
 
 export function useWorkflowActivate() {
 	const updatingWorkflowActivation = ref(false);
@@ -103,6 +107,10 @@ export function useWorkflowActivate() {
 
 		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 
+		// Register the confirmation listener BEFORE the API call so we don't
+		// miss push events that arrive before the await below.
+		const activationConfirmation = waitForActivationConfirmation(workflowId);
+
 		try {
 			const expectedChecksum =
 				workflowId === workflowsStore.workflowId ? workflowDocumentStore.checksum : undefined;
@@ -139,11 +147,25 @@ export function useWorkflowActivate() {
 				versionId: updatedWorkflow.activeVersion.versionId,
 			});
 
+			// Wait for push event confirmation before showing the success modal.
+			// In multi-main mode, webhook registration happens asynchronously on
+			// the leader and may fail after the API returns success.
+			const confirmed = await activationConfirmation;
+
+			if (!confirmed) {
+				// The workflowFailedToActivate push handler already reverted
+				// the store state and showed an error toast
+				return { success: false, errorHandled: true };
+			}
+
 			if (!hadPublishedVersion && useStorage(LOCAL_STORAGE_ACTIVATION_FLAG).value !== 'true') {
 				uiStore.openModal(WORKFLOW_ACTIVE_MODAL_KEY);
 			}
 			return { success: true };
 		} catch (error) {
+			// API call failed — no push event will arrive, clean up the listener
+			cancelActivationConfirmation(workflowId);
+
 			if (isWebhookConflictError(error)) {
 				await handleWebhookConflictError(error);
 				return { success: false, errorHandled: true };

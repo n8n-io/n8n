@@ -608,12 +608,16 @@ export class ActiveWorkflowManager {
 				});
 			}
 
-			void this.publisher.publishCommand({
-				command: 'add-webhooks-triggers-and-pollers',
-				payload: { workflowId, activeVersionId: dbWorkflow.activeVersionId, activationMode },
-			});
+			if (!this.instanceSettings.isLeader) {
+				void this.publisher.publishCommand({
+					command: 'add-webhooks-triggers-and-pollers',
+					payload: { workflowId, activeVersionId: dbWorkflow.activeVersionId, activationMode },
+				});
 
-			return added;
+				return added;
+			}
+
+			// Leader: fall through to synchronous activation below
 		}
 
 		let workflow: Workflow;
@@ -705,6 +709,16 @@ export class ActiveWorkflowManager {
 		// If for example webhooks get created it sometimes has to save the
 		// id of them in the static data. So make sure that data gets persisted.
 		await this.workflowStaticDataService.saveStaticData(workflow);
+
+		// Broadcast activation confirmation so the frontend can show the
+		// success modal. Skip when called from handleAddWebhooksTriggersAndPollers
+		// (shouldPublish === false) because that handler broadcasts the event itself.
+		if (shouldPublish && dbWorkflow.activeVersionId) {
+			this.push.broadcast({
+				type: 'workflowActivated',
+				data: { workflowId, activeVersionId: dbWorkflow.activeVersionId },
+			});
+		}
 
 		return added;
 	}
