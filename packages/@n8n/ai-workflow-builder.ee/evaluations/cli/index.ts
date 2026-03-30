@@ -139,12 +139,12 @@ function createWorkflowGenerator(
 	prompt: string,
 	datasetInputContext?: DatasetInputContext,
 	collectors?: GenerationCollectors,
-) => Promise<SimpleWorkflow | GenerationResult> {
+) => Promise<GenerationResult> {
 	return async (
 		prompt: string,
 		datasetInputContext?: DatasetInputContext,
 		collectors?: GenerationCollectors,
-	): Promise<SimpleWorkflow | GenerationResult> => {
+	): Promise<GenerationResult> => {
 		const runId = generateRunId();
 
 		const agent = createAgent({
