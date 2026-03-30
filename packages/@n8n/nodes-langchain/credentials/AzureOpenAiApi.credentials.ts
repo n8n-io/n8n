@@ -37,6 +37,22 @@ export class AzureOpenAiApi implements ICredentialType {
 			default: undefined,
 			placeholder: 'https://westeurope.api.cognitive.microsoft.com',
 		},
+		{
+			displayName: 'Custom HTTP Header Name',
+			name: 'customHttpHeader',
+			type: 'string',
+			default: '',
+			placeholder: 'X-Custom-Header',
+			description: 'A custom headers, e.g. a api-gateway header for authentication',
+		},
+		{
+			displayName: 'Custom HTTP Header Value',
+			name: 'customHttpHeaderValue',
+			type: 'string',
+			typeOptions: { password: true }, // Passwort-Typ für Sicherheit
+			default: '',
+			description: 'A value/string for the custom header',
+		},
 	];
 
 	authenticate: IAuthenticateGeneric = {
@@ -44,6 +60,8 @@ export class AzureOpenAiApi implements ICredentialType {
 		properties: {
 			headers: {
 				'api-key': '={{$credentials.apiKey}}',
+				// Hier nutzen wir die neue n8n Syntax, um dynamische Header-Namen zu setzen
+				'={{$credentials.customHttpHeader}}': '={{$credentials.customHttpHeaderValue}}',
 			},
 		},
 	};

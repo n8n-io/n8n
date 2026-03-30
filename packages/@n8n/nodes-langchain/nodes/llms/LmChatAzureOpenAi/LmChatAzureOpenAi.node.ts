@@ -84,18 +84,27 @@ export class LmChatAzureOpenAi implements INodeType {
 
 			// Set up Authentication based on selection and get configuration
 			let modelConfig: AzureOpenAIApiKeyModelConfig | AzureOpenAIOAuth2ModelConfig;
+			const credentialName =
+				authenticationMethod === AuthenticationType.ApiKey
+					? 'azureOpenAiApi'
+					: 'azureEntraCognitiveServicesOAuth2Api';
 			switch (authenticationMethod) {
 				case AuthenticationType.ApiKey:
-					modelConfig = await setupApiKeyAuthentication.call(this, 'azureOpenAiApi');
+					modelConfig = await setupApiKeyAuthentication.call(this, credentialName);
 					break;
 				case AuthenticationType.EntraOAuth2:
-					modelConfig = await setupOAuth2Authentication.call(
-						this,
-						'azureEntraCognitiveServicesOAuth2Api',
-					);
+					modelConfig = await setupOAuth2Authentication.call(this, credentialName);
 					break;
 				default:
 					throw new NodeOperationError(this.getNode(), 'Invalid authentication method');
+			}
+
+			// set custom http header in case given in credential set
+			const credentials = await this.getCredentials(credentialName);
+			if (credentials.customHttpHeader && credentials.customHttpHeaderValue) {
+				modelConfig.customHeaders = {
+					[credentials.customHttpHeader as string]: credentials.customHttpHeaderValue as string,
+				};
 			}
 
 			this.logger.info(`Instantiating AzureChatOpenAI model with deployment: ${modelName}`);
@@ -116,6 +125,7 @@ export class LmChatAzureOpenAi implements INodeType {
 				maxRetries: options.maxRetries ?? 2,
 				callbacks: [new N8nLlmTracing(this)],
 				configuration: {
+					defaultHeaders: modelConfig.customHeaders,
 					fetchOptions: {
 						dispatcher: getProxyAgent(undefined, {
 							headersTimeout: timeout,
