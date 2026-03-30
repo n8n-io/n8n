@@ -115,6 +115,7 @@ watchEffect(async () => {
 		newOptions = {
 			...DEFAULT_FILTER_OPTIONS,
 			...(await resolveParameter(typeOptions as unknown as NodeParameterValue)),
+			...(props.value?.options ?? {}),
 		};
 	} catch {
 		// Keep default options
