@@ -108,7 +108,11 @@ describe('Test YouTube, video => upload', () => {
 
 		expect(httpRequestMock).toHaveBeenCalledWith({
 			body: expect.any(Object),
-			headers: { 'Content-Length': 2097152, 'Content-Range': 'bytes 0-2097151/2097152' },
+			headers: {
+				'Content-Length': 2097152,
+				'Content-Range': 'bytes 0-2097151/2097152',
+				'Content-Type': 'video/mp4',
+			},
 			method: 'PUT',
 			url: 'https://www.youtube.com/watch?v=1234',
 		});
