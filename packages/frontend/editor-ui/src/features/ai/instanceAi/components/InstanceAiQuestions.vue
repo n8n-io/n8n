@@ -271,9 +271,8 @@ function submitAnswers() {
 
 // Keyboard navigation
 
-function handleInputEnter(event: KeyboardEvent, type: string) {
+function handleInputEnter(event: KeyboardEvent, _type: string) {
 	if (event.key !== 'Enter' || event.shiftKey) return false;
-	if (type === 'multi' && !event.metaKey && !event.ctrlKey) return true;
 	event.preventDefault();
 	if (hasCustomText.value || isNextEnabled.value) {
 		goToNextInternal();
@@ -317,16 +316,14 @@ function handleEnterKey(event: KeyboardEvent, type: string, optionCount: number)
 			onSingleSelectAndAdvance(filteredOptions.value[highlightedIndex.value], 'keyboard_enter');
 		}
 	} else if (type === 'multi') {
-		if (event.metaKey || event.ctrlKey) {
-			if (isNextEnabled.value) {
-				goToNextInternal();
-			}
-		} else if (highlightedIndex.value >= 0 && highlightedIndex.value < optionCount) {
+		if (highlightedIndex.value >= 0 && highlightedIndex.value < optionCount) {
 			const option = filteredOptions.value[highlightedIndex.value];
 			const answer = currentAnswer.value;
 			if (answer) {
 				onMultiToggle(option, !answer.selectedOptions.includes(option));
 			}
+		} else if (isNextEnabled.value) {
+			goToNextInternal();
 		}
 	} else if (type === 'text' && hasCustomText.value) {
 		goToNextInternal();
