@@ -1,5 +1,3 @@
-import { prompt } from '@/prompts/builder';
-
 import { createLlmCheck } from './create-llm-check';
 
 export const responseMatchesWorkflowChanges = createLlmCheck({
@@ -24,16 +22,18 @@ Rules:
 - Ignore general/vague statements that don't make specific claims (e.g., "I built a workflow for you").
 - If the agent's response contains NO specific claims about workflow changes, pass (nothing to verify).
 - A single verifiably false claim means fail.`,
-	humanTemplate: prompt({ format: 'plain' })
-		.section('user_request', 'User Request: {userPrompt}')
-		.section('agent_response', "Agent's Text Response:\n{agentTextResponse}")
-		.section('workflow_before', "Workflow BEFORE agent's turn:\n{workflowBefore}")
-		.section('workflow_after', "Workflow AFTER agent's turn:\n{generatedWorkflow}")
-		.section(
-			'instructions',
-			'Compare the before and after workflows, then verify each specific claim the agent makes. If there are no specific claims, pass.',
-		)
-		.build(),
+	humanTemplate: `User Request: {userPrompt}
+
+Agent's Text Response:
+{agentTextResponse}
+
+Workflow BEFORE agent's turn:
+{workflowBefore}
+
+Workflow AFTER agent's turn:
+{generatedWorkflow}
+
+Compare the before and after workflows, then verify each specific claim the agent makes. If there are no specific claims, pass.`,
 	skipIf: (_workflow, ctx) => {
 		if (!ctx.agentTextResponse) {
 			return 'Skipped: no agent text response available';
