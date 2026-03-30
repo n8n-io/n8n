@@ -13,6 +13,7 @@ import { NodeExecutionContext } from './node-execution-context';
 import { getBinaryHelperFunctions } from './utils/binary-helper-functions';
 import { getRequestHelperFunctions } from './utils/request-helper-functions';
 import { returnJsonArray } from './utils/return-json-array';
+import { getDeduplicationHelperFunctions } from './utils/deduplication-helper-functions';
 import { getSchedulingFunctions } from './utils/scheduling-helper-functions';
 import { getSSHTunnelFunctions } from './utils/ssh-tunnel-helper-functions';
 
@@ -50,6 +51,11 @@ export class TriggerContext extends NodeExecutionContext implements ITriggerFunc
 			...getRequestHelperFunctions(workflow, node, additionalData),
 			...getBinaryHelperFunctions(additionalData, workflow.id),
 			...getSchedulingFunctions(workflow.id, workflow.timezone, node.id),
+			/**
+			 * Provides deduplication helper functions to the trigger context.
+			 * This allows polling triggers to use n8n's centralized deduplication engine.
+			 */
+			...getDeduplicationHelperFunctions(workflow, node),
 		};
 	}
 
