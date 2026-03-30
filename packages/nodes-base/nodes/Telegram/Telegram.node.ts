@@ -1797,6 +1797,14 @@ export class Telegram implements INodeType {
 						description:
 							'Unique identifier for the target chat or username of the target channel (in the format @channelusername). To find your chat ID ask @get_id_bot.',
 					},
+					{
+						displayName: 'Message Thread ID',
+						name: 'messageThreadId',
+						type: 'number',
+						default: 0,
+						description:
+							'The unique identifier of the forum topic to send the message to. Only required when the chat is a forum (supergroup with topics enabled).',
+					},
 				],
 				'message',
 				undefined,
