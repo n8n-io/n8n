@@ -153,6 +153,38 @@ export class BinaryDataService {
 		return await this.getManager(mode).getMetadata(fileId);
 	}
 
+	/**
+	 * Calculate total size of all binary data in bytes.
+	 * Only supported in filesystem mode.
+	 */
+	async getTotalStorageSize(): Promise<number> {
+		const manager = this.managers[this.mode];
+
+		if (!manager?.getTotalStorageSize) {
+			throw new UnexpectedError(
+				`getTotalStorageSize() is not supported in '${this.mode}' binary data mode`,
+			);
+		}
+
+		return await manager.getTotalStorageSize();
+	}
+
+	/**
+	 * Check whether binary data exists for a given location.
+	 * Only supported in filesystem mode.
+	 */
+	async locationExists(location: BinaryData.FileLocation): Promise<boolean> {
+		const manager = this.managers[this.mode];
+
+		if (!manager?.locationExists) {
+			throw new UnexpectedError(
+				`locationExists() is not supported in '${this.mode}' binary data mode`,
+			);
+		}
+
+		return await manager.locationExists(location);
+	}
+
 	async deleteMany(locations: BinaryData.FileLocation[]) {
 		const manager = this.managers[this.mode];
 
