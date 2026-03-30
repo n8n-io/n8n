@@ -35,7 +35,7 @@ import {
 import { useBuilderTodos, type TodosTrackingPayload } from './composables/useBuilderTodos';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import pick from 'lodash/pick';
-import { type ITelemetryTrackProperties } from 'n8n-workflow';
+import { type IPinData, type ITelemetryTrackProperties } from 'n8n-workflow';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { stringSizeInBytes } from '@/app/utils/typesUtils';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -47,6 +47,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useBrowserNotifications } from '@/app/composables/useBrowserNotifications';
 import { AI_BUILDER_PLAN_MODE_EXPERIMENT } from '@/app/constants/experiments';
+import type { QuickReplyType } from '@n8n/api-types';
 import {
 	isVersionCardMessage,
 	type PlanMode,
@@ -100,7 +101,9 @@ export type WorkflowBuilderJourneyEventType =
 	| 'web_fetch_completed'
 	| 'qa_question_answered'
 	| 'qa_question_skipped'
-	| 'qa_answers_submitted';
+	| 'qa_answers_submitted'
+	| 'user_clicked_run_with_test_data'
+	| 'user_clicked_configure_own';
 
 interface WorkflowBuilderJourneyEventProperties {
 	node_type?: string;
@@ -213,6 +216,12 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 	// Track whether any successful execution (full workflow or per-node) has occurred in this session
 	const hasHadSuccessfulExecution = ref(false);
+
+	// AI-generated test data — persists throughout the session for apply/re-apply
+	const generatedPinData = ref<IPinData | null>(null);
+
+	// Whether the generated pin data has been applied to workflow nodes
+	const pinDataApplied = ref(false);
 
 	// Setup wizard state
 	const wizardCurrentStep = ref(0);
@@ -431,6 +440,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		lastUserMessageId.value = undefined;
 		loadedSessionsForWorkflowId.value = undefined;
 		hasHadSuccessfulExecution.value = false;
+		generatedPinData.value = null;
+		pinDataApplied.value = false;
 		builderMode.value = 'build';
 		resetWizardState();
 	}
@@ -890,7 +901,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	async function sendChatMessage(options: {
 		text: string;
 		source?: 'chat' | 'canvas' | 'empty-state';
-		quickReplyType?: string;
+		quickReplyType?: QuickReplyType;
 		initialGeneration?: boolean;
 		type?: 'message' | 'execution';
 		errorMessage?: string;
@@ -1332,6 +1343,21 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 					convertedMessages.push(pendingVersionCard);
 				}
 
+				// Restore pin data state if pin data is currently applied on the workflow
+				const isPinDataEnabled =
+					posthogStore.getVariant(CODE_WORKFLOW_BUILDER_EXPERIMENT.name) ===
+					CODE_WORKFLOW_BUILDER_EXPERIMENT.codePinData;
+				if (isPinDataEnabled) {
+					const wfDocStore = workflowsStore.workflowId
+						? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
+						: undefined;
+					const pinData = wfDocStore?.getPinDataSnapshot();
+					if (pinData && Object.keys(pinData).length > 0) {
+						generatedPinData.value = pinData;
+						pinDataApplied.value = true;
+					}
+				}
+
 				chatMessages.value = convertedMessages;
 
 				// Restore collapse state from DB
@@ -1381,6 +1407,33 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			}
 		}
 		uiStore.markStateDirty();
+	}
+
+	const hasGeneratedPinData = computed(
+		() => generatedPinData.value !== null && Object.keys(generatedPinData.value).length > 0,
+	);
+
+	/** True when generated pin data exists but hasn't been applied yet */
+	const hasDeferredPinData = computed(() => hasGeneratedPinData.value && !pinDataApplied.value);
+
+	function storeGeneratedPinData(pinData: IPinData) {
+		generatedPinData.value = {
+			...(generatedPinData.value ?? {}),
+			...pinData,
+		};
+	}
+
+	function applyGeneratedPinData() {
+		if (!generatedPinData.value || !workflowsStore.workflowId) return;
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
+		workflowDocumentStore.setPinData({
+			...workflowDocumentStore.getPinDataSnapshot(),
+			...generatedPinData.value,
+		});
+		uiStore.markStateDirty();
+		pinDataApplied.value = true;
 	}
 
 	function clearExistingWorkflow() {
@@ -1642,6 +1695,9 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		workflowTodos,
 		hasTodosHiddenByPinnedData,
 		hasHadSuccessfulExecution,
+		hasDeferredPinData,
+		hasGeneratedPinData,
+		pinDataApplied,
 		lastUserMessageId,
 		wizardCurrentStep,
 		wizardClearedPlaceholders,
@@ -1649,6 +1705,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		// Methods
 		unpinAllNodes,
+		storeGeneratedPinData,
+		applyGeneratedPinData,
 		abortStreaming,
 		resetBuilderChat,
 		setBuilderMode,

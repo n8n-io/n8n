@@ -42,5 +42,29 @@ export interface NodeSetupState {
 	isAutoApplied?: boolean;
 }
 
-/** Unified setup card item — all cards use NodeSetupState */
-export type SetupCardItem = { state: NodeSetupState };
+/** Groups a parent node with its subnode setup cards */
+export interface NodeGroupItem {
+	parentNode: INodeUi;
+	/** Parent node's own setup state, if it has credentials/params needing setup */
+	parentState?: NodeSetupState;
+	/** Subnode cards pulled from the flat list, in execution order */
+	subnodeCards: NodeSetupState[];
+}
+
+/** A card is either a single-node card or a node group */
+export type SetupCardItem =
+	| { state: NodeSetupState; nodeGroup?: undefined }
+	| { nodeGroup: NodeGroupItem; state?: undefined };
+
+/** Payload emitted when a credential is selected on a setup card */
+export interface CredentialSelectedPayload {
+	credentialType: string;
+	credentialId: string;
+	nodeName: string;
+}
+
+/** Payload emitted when a credential is deselected on a setup card */
+export interface CredentialDeselectedPayload {
+	credentialType: string;
+	nodeName: string;
+}
