@@ -42,7 +42,11 @@ export type ContextMenuAction =
 	| 'extract_sub_workflow'
 	| 'focus_ai_on_selected';
 
-type Item = ActionDropdownItem<ContextMenuAction>;
+export type ContextMenuItem = ActionDropdownItem<ContextMenuAction> & {
+	children?: ContextMenuItem[];
+};
+
+type Item = ContextMenuItem;
 
 export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): ComputedRef<Item[]> {
 	const uiStore = useUIStore();
@@ -321,6 +325,20 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 						label: i18n.baseText('contextMenu.openSubworkflow'),
 						shortcut: { shiftKey: true, metaKey: true, keys: ['O'] },
 						disabled: !canOpenSubworkflow.value,
+					});
+				}
+
+				// TODO: Demo submenu item — remove before merging
+				if (!onlyStickies) {
+					singleNodeActions.push({
+						id: 'demo_submenu' as ContextMenuAction,
+						divided: true,
+						label: 'Demo submenu',
+						children: [
+							{ id: 'select_all', label: 'Child item 1' },
+							{ id: 'select_all', label: 'Child item 2' },
+							{ id: 'select_all', label: 'Child item 3' },
+						],
 					});
 				}
 				// Add actions only available for a single node
