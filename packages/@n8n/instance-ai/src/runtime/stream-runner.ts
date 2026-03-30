@@ -125,7 +125,12 @@ async function consumeStream(
 	}
 
 	return {
-		status: result.status === 'cancelled' ? 'cancelled' : result.status === 'errored' ? 'errored' : 'completed',
+		status:
+			result.status === 'cancelled'
+				? 'cancelled'
+				: result.status === 'errored'
+					? 'errored'
+					: 'completed',
 		mastraRunId: result.mastraRunId,
 		text: result.text,
 	};

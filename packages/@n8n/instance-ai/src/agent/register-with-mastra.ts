@@ -14,11 +14,7 @@ import type { MastraCompositeStore } from '@mastra/core/storage';
 let cachedSubAgentMastra: Mastra | null = null;
 let cachedSubAgentStorageKey = '';
 
-export function registerWithMastra(
-	agentId: string,
-	agent: Agent,
-	storage: MastraCompositeStore,
-) {
+export function registerWithMastra(agentId: string, agent: Agent, storage: MastraCompositeStore) {
 	const key = storage.id ?? 'default';
 
 	if (cachedSubAgentMastra && cachedSubAgentStorageKey === key) {
