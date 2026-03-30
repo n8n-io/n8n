@@ -44,7 +44,7 @@ import { loadSubgraphDatasetFile } from './dataset-file-loader';
 import { sendWebhookNotification } from './webhook';
 import { WorkflowGenerationError } from '../errors';
 import {
-	consumeGenerator,
+	collectAgentTextResponse,
 	extractSubgraphMetrics,
 	getChatPayload,
 } from '../harness/evaluation-helpers';
@@ -139,12 +139,12 @@ function createWorkflowGenerator(
 	prompt: string,
 	datasetInputContext?: DatasetInputContext,
 	collectors?: GenerationCollectors,
-) => Promise<SimpleWorkflow> {
+) => Promise<SimpleWorkflow | GenerationResult> {
 	return async (
 		prompt: string,
 		datasetInputContext?: DatasetInputContext,
 		collectors?: GenerationCollectors,
-	): Promise<SimpleWorkflow> => {
+	): Promise<SimpleWorkflow | GenerationResult> => {
 		const runId = generateRunId();
 
 		const agent = createAgent({
@@ -157,7 +157,7 @@ function createWorkflowGenerator(
 		// (supervisor, discovery, builder, responder agents)
 		const tokenTracker = collectors?.tokenUsage ? new TokenUsageTrackingHandler() : undefined;
 
-		await consumeGenerator(
+		const agentTextResponse = await collectAgentTextResponse(
 			agent.chat(
 				getChatPayload({
 					evalType: EVAL_TYPES.LANGSMITH,
@@ -198,7 +198,7 @@ function createWorkflowGenerator(
 		// Report introspection events
 		collectors?.introspectionEvents?.(state.values.introspectionEvents ?? []);
 
-		return workflow;
+		return { workflow, agentTextResponse: agentTextResponse || undefined };
 	};
 }
 
@@ -356,6 +356,7 @@ function createCodeWorkflowBuilderGenerator(
 
 		let workflow: SimpleWorkflow | null = null;
 		let generatedCode: string | undefined;
+		const textParts: string[] = [];
 
 		// Create an AbortController to properly cancel the agent on timeout or error.
 		// Without this, the agent continues running even after Promise.race rejects,
@@ -384,6 +385,9 @@ function createCodeWorkflowBuilderGenerator(
 							generatedCode = message.sourceCode;
 						}
 					}
+					if (message.type === 'message' && 'text' in message && typeof message.text === 'string') {
+						textParts.push(message.text);
+					}
 				}
 			}
 		} finally {
@@ -401,7 +405,7 @@ function createCodeWorkflowBuilderGenerator(
 			collectors.tokenUsage({ inputTokens: totalInputTokens, outputTokens: totalOutputTokens });
 		}
 
-		return { workflow, generatedCode };
+		return { workflow, generatedCode, agentTextResponse: textParts.join('') || undefined };
 	};
 }
 
