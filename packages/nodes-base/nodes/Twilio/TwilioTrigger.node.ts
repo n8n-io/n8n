@@ -8,6 +8,7 @@ import {
 } from 'n8n-workflow';
 
 import { twilioTriggerApiRequest } from './GenericFunctions';
+import { verifySignature } from './TwilioTriggerHelpers';
 
 export class TwilioTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -188,6 +189,16 @@ export class TwilioTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		// Verify webhook signature if auth token is available
+		const isValid = await verifySignature.call(this);
+		if (!isValid) {
+			const res = this.getResponseObject();
+			res.status(401).send('Unauthorized').end();
+			return {
+				noWebhookResponse: true,
+			};
+		}
+
 		const bodyData = this.getBodyData();
 
 		return {
