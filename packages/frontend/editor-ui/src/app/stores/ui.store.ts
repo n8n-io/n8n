@@ -533,6 +533,10 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const openExistingCredential = (id: string) => {
 		setActiveId(CREDENTIAL_EDIT_MODAL_KEY, id);
 		setMode(CREDENTIAL_EDIT_MODAL_KEY, 'edit');
+		modalsById.value[CREDENTIAL_EDIT_MODAL_KEY] = {
+			...modalsById.value[CREDENTIAL_EDIT_MODAL_KEY],
+			projectId: undefined,
+		} as NewCredentialsModal;
 		openModal(CREDENTIAL_EDIT_MODAL_KEY);
 	};
 

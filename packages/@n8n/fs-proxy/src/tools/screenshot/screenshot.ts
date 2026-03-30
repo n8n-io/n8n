@@ -1,7 +1,5 @@
 import { z } from 'zod';
 
-import sharp from 'sharp';
-
 import { getPrimaryMonitor } from '../monitor-utils';
 import type { ToolContext, ToolDefinition } from '../types';
 
@@ -21,6 +19,7 @@ async function toJpeg(
 	logicalWidth?: number,
 	logicalHeight?: number,
 ): Promise<Buffer> {
+	const { default: sharp } = await import('sharp');
 	let pipeline = sharp(rawBuffer, { raw: { width, height, channels: 4 } });
 	if (logicalWidth && logicalHeight && (width !== logicalWidth || height !== logicalHeight)) {
 		pipeline = pipeline.resize(logicalWidth, logicalHeight);
@@ -45,7 +44,7 @@ export const screenshotTool: ToolDefinition<typeof screenshotSchema> = {
 		return [{ toolGroup: 'computer' as const, resource: '*', description: 'Capture screenshot' }];
 	},
 	async execute(_input: z.infer<typeof screenshotSchema>, _context: ToolContext) {
-		const monitor = getPrimaryMonitor();
+		const monitor = await getPrimaryMonitor();
 		const image = await monitor.captureImage();
 		const rawBuffer = await image.toRaw();
 		const jpegBuffer = await toJpeg(
@@ -81,7 +80,7 @@ export const screenshotRegionTool: ToolDefinition<typeof screenshotRegionSchema>
 		{ x, y, width, height }: z.infer<typeof screenshotRegionSchema>,
 		_context: ToolContext,
 	) {
-		const monitor = getPrimaryMonitor();
+		const monitor = await getPrimaryMonitor();
 		const image = await monitor.captureImage();
 		const scaleFactor = monitor.scaleFactor();
 

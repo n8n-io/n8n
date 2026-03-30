@@ -62,7 +62,7 @@ export function createRunWorkflowTool(context: InstanceAiContext) {
 			if (needsApproval && (resumeData === undefined || resumeData === null)) {
 				await suspend?.({
 					requestId: nanoid(),
-					message: `Execute workflow "${input.workflowName ?? input.workflowId}"?`,
+					message: `Execute workflow "${input.workflowName ?? input.workflowId}" (ID: ${input.workflowId})?`,
 					severity: 'warning' as const,
 				});
 				return {

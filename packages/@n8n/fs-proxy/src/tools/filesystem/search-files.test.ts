@@ -43,7 +43,7 @@ describe('searchFilesTool', () => {
 
 		it('has a non-empty description', () => {
 			expect(searchFilesTool.description).toBe(
-				'Search for text patterns across files using a regex query',
+				'Search for text patterns across files using a literal text query',
 			);
 		});
 	});
