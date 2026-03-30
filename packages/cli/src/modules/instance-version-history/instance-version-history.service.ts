@@ -15,7 +15,7 @@ import { InstanceSettings } from 'n8n-core';
 
 @Service()
 export class InstanceVersionHistoryService {
-	private cache: VersionEntry[] = [];
+	private cache: VersionEntry[] | null = null;
 
 	constructor(
 		private readonly repository: InstanceVersionHistoryRepository,
@@ -26,8 +26,12 @@ export class InstanceVersionHistoryService {
 	}
 
 	async init(): Promise<void> {
+		if (!this.instanceSettings.isLeader) return;
+
 		try {
-			await this.loadCache();
+			// Re-set to null in case any previous queries fetched after
+			// we errored on past init attempt
+			this.cache = null;
 			await this.checkAndRecordCurrentVersion();
 		} catch (error) {
 			this.logger.warn('Failed to initialize version history, retrying in 10s', { error });
@@ -36,7 +40,7 @@ export class InstanceVersionHistoryService {
 		}
 	}
 
-	private async loadCache(): Promise<void> {
+	private async getCache(): Promise<VersionEntry[]> {
 		const entries = await this.repository.find({
 			order: { createdAt: 'ASC' },
 		});
@@ -46,45 +50,38 @@ export class InstanceVersionHistoryService {
 			patch: e.patch,
 			createdAt: e.createdAt,
 		}));
+		return this.cache;
 	}
 
+	// Should only be called from leader
 	private async checkAndRecordCurrentVersion(): Promise<void> {
+		const cache = await this.getCache();
 		const current = parseVersion(N8N_VERSION);
-		const newest = this.cache.at(-1);
+		const newest = cache.at(-1);
 
 		if (!newest || compareVersions(newest, current) !== 0) {
 			const entry = this.repository.create(current);
-			if (this.instanceSettings.isLeader) {
-				const saved = await this.repository.save(entry);
-				this.cache.push({
-					major: saved.major,
-					minor: saved.minor,
-					patch: saved.patch,
-					createdAt: saved.createdAt,
-				});
-			} else {
-				// if we're not the leader, we just add it to our local cache
-				// relying on the leader to update the DB
-				this.cache.push({
-					major: entry.major,
-					minor: entry.minor,
-					patch: entry.patch,
-					createdAt: entry.createdAt,
-				});
-			}
-
-			this.logger.info(
-				`Recorded version change: ${newest ? formatVersion(newest) : '(none)'} -> ${N8N_VERSION}`,
-			);
+			const saved = await this.repository.save(entry);
+			cache.push({
+				major: saved.major,
+				minor: saved.minor,
+				patch: saved.patch,
+				createdAt: saved.createdAt,
+			});
 		}
+
+		this.logger.info(
+			`Recorded version change: ${newest ? formatVersion(newest) : '(none)'} -> ${N8N_VERSION}`,
+		);
 	}
 
 	/**
 	 * Returns the smallest (minimum) version since the given date.
 	 */
-	getMinVersionSince(since: Date): SemVer | undefined {
+	async getMinVersionSince(since: Date): Promise<SemVer | undefined> {
+		const cache = await this.getCache();
 		let min: VersionEntry | undefined;
-		for (const entry of this.cache) {
+		for (const entry of cache) {
 			if (entry.createdAt >= since) {
 				if (!min || compareVersions(entry, min) < 0) {
 					min = entry;
@@ -104,11 +101,12 @@ export class InstanceVersionHistoryService {
 	 * Example: v2.3.4 (Jan 1) -> v2.2.0 (Jan 2) -> v2.3.5 (Jan 3)
 	 * Query for v2.3.4 returns Jan 3 (not Jan 1, because of the downgrade).
 	 */
-	getDateSinceContinuouslyAtLeastVersion(target: SemVer): Date | undefined {
+	async getDateSinceContinuouslyAtLeastVersion(target: SemVer): Promise<Date | undefined> {
+		const cache = await this.getCache();
 		let result: Date | undefined;
-		for (let i = this.cache.length - 1; i >= 0; i--) {
-			if (versionGte(this.cache[i], target)) {
-				result = this.cache[i].createdAt;
+		for (let i = cache.length - 1; i >= 0; i--) {
+			if (versionGte(cache[i], target)) {
+				result = cache[i].createdAt;
 			} else {
 				break;
 			}
@@ -119,8 +117,9 @@ export class InstanceVersionHistoryService {
 	/**
 	 * Returns the datetime at which the instance changed to the current version.
 	 */
-	getCurrentVersionDate(): VersionEntry | undefined {
-		const entry = this.cache.at(-1);
+	async getCurrentVersionDate(): Promise<VersionEntry | undefined> {
+		const cache = await this.getCache();
+		const entry = cache.at(-1);
 		if (!entry) return undefined;
 		return { ...entry };
 	}
@@ -129,8 +128,9 @@ export class InstanceVersionHistoryService {
 	 * Returns the first time a version (or above) was adopted by the instance.
 	 * Scans from oldest to newest.
 	 */
-	getFirstAdoptionDate(target: SemVer): Date | undefined {
-		for (const entry of this.cache) {
+	async getFirstAdoptionDate(target: SemVer): Promise<Date | undefined> {
+		const cache = await this.getCache();
+		for (const entry of cache) {
 			if (versionGte(entry, target)) {
 				return entry.createdAt;
 			}

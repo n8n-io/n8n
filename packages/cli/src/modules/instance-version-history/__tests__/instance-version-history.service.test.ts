@@ -79,10 +79,19 @@ describe('InstanceVersionHistoryService', () => {
 
 			expect(repository.save).not.toHaveBeenCalled();
 		});
+
+		it('should skip init when not leader', async () => {
+			instanceSettings = mock<InstanceSettings>({ isLeader: false });
+			service = createService();
+			await service.init();
+
+			expect(repository.find).not.toHaveBeenCalled();
+			expect(repository.save).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('getMinVersionSince', () => {
-		beforeEach(async () => {
+		beforeEach(() => {
 			repository.find.mockResolvedValue([
 				{ id: 1, major: 2, minor: 3, patch: 4, createdAt: new Date('2025-01-01') },
 				{ id: 2, major: 2, minor: 2, patch: 0, createdAt: new Date('2025-01-02') },
@@ -90,32 +99,31 @@ describe('InstanceVersionHistoryService', () => {
 			] as never);
 
 			service = createService();
-			await service.init();
 		});
 
-		it('should return smallest version since the given date', () => {
-			const result = service.getMinVersionSince(new Date('2025-01-01'));
+		it('should return smallest version since the given date', async () => {
+			const result = await service.getMinVersionSince(new Date('2025-01-01'));
 			expect(result).toEqual({ major: 2, minor: 2, patch: 0 });
 		});
 
-		it('should filter by date', () => {
-			const result = service.getMinVersionSince(new Date('2025-01-02'));
+		it('should filter by date', async () => {
+			const result = await service.getMinVersionSince(new Date('2025-01-02'));
 			expect(result).toEqual({ major: 2, minor: 2, patch: 0 });
 		});
 
-		it('should return only entries from after the date', () => {
-			const result = service.getMinVersionSince(new Date('2025-01-03'));
+		it('should return only entries from after the date', async () => {
+			const result = await service.getMinVersionSince(new Date('2025-01-03'));
 			expect(result).toEqual({ major: 2, minor: 5, patch: 0 });
 		});
 
-		it('should return undefined when no entries match', () => {
-			const result = service.getMinVersionSince(new Date('2025-02-01'));
+		it('should return undefined when no entries match', async () => {
+			const result = await service.getMinVersionSince(new Date('2025-02-01'));
 			expect(result).toBeUndefined();
 		});
 	});
 
 	describe('getDateSinceContinuouslyAtLeastVersion', () => {
-		beforeEach(async () => {
+		beforeEach(() => {
 			// Simulates: upgrade to 2.3.4, downgrade to 2.2.0, upgrade to 2.5.0 (current)
 			repository.find.mockResolvedValue([
 				{ id: 1, major: 2, minor: 3, patch: 4, createdAt: new Date('2025-01-01') },
@@ -124,12 +132,11 @@ describe('InstanceVersionHistoryService', () => {
 			] as never);
 
 			service = createService();
-			await service.init();
 		});
 
-		it('should return date accounting for downgrades', () => {
+		it('should return date accounting for downgrades', async () => {
 			// Querying "since when at least 2.3.4" should return Jan 3 (not Jan 1)
-			const result = service.getDateSinceContinuouslyAtLeastVersion({
+			const result = await service.getDateSinceContinuouslyAtLeastVersion({
 				major: 2,
 				minor: 3,
 				patch: 4,
@@ -137,8 +144,8 @@ describe('InstanceVersionHistoryService', () => {
 			expect(result).toEqual(new Date('2025-01-03'));
 		});
 
-		it('should return earliest date when all entries satisfy', () => {
-			const result = service.getDateSinceContinuouslyAtLeastVersion({
+		it('should return earliest date when all entries satisfy', async () => {
+			const result = await service.getDateSinceContinuouslyAtLeastVersion({
 				major: 2,
 				minor: 0,
 				patch: 0,
@@ -146,8 +153,8 @@ describe('InstanceVersionHistoryService', () => {
 			expect(result).toEqual(new Date('2025-01-01'));
 		});
 
-		it('should return undefined when current version is below target', () => {
-			const result = service.getDateSinceContinuouslyAtLeastVersion({
+		it('should return undefined when current version is below target', async () => {
+			const result = await service.getDateSinceContinuouslyAtLeastVersion({
 				major: 3,
 				minor: 0,
 				patch: 0,
@@ -164,9 +171,8 @@ describe('InstanceVersionHistoryService', () => {
 			] as never);
 
 			service = createService();
-			await service.init();
 
-			const result = service.getCurrentVersionDate();
+			const result = await service.getCurrentVersionDate();
 			expect(result).toEqual(
 				expect.objectContaining({
 					major: 2,
@@ -179,29 +185,15 @@ describe('InstanceVersionHistoryService', () => {
 
 		it('should return undefined when cache is empty', async () => {
 			repository.find.mockResolvedValue([]);
-			repository.create.mockImplementation((data) => data as never);
-			repository.save.mockImplementation(
-				async (data) =>
-					({
-						...data,
-						id: 1,
-						createdAt: new Date(),
-					}) as never,
-			);
 
 			service = createService();
-			// Don't call init() - test with truly empty state
-			// (init would add current version)
-			// Instead, we test the method directly on empty cache
-			// by creating service without init
-			const emptyService = createService();
-			const result = emptyService.getCurrentVersionDate();
+			const result = await service.getCurrentVersionDate();
 			expect(result).toBeUndefined();
 		});
 	});
 
 	describe('getFirstAdoptionDate', () => {
-		beforeEach(async () => {
+		beforeEach(() => {
 			// 2.3.4 -> 2.2.0 (downgrade) -> 2.3.5 -> 2.5.0 (current)
 			repository.find.mockResolvedValue([
 				{ id: 1, major: 2, minor: 3, patch: 4, createdAt: new Date('2025-01-01') },
@@ -211,22 +203,36 @@ describe('InstanceVersionHistoryService', () => {
 			] as never);
 
 			service = createService();
-			await service.init();
 		});
 
-		it('should return first time version or above was adopted', () => {
-			const result = service.getFirstAdoptionDate({ major: 2, minor: 3, patch: 4 });
+		it('should return first time version or above was adopted', async () => {
+			const result = await service.getFirstAdoptionDate({ major: 2, minor: 3, patch: 4 });
 			expect(result).toEqual(new Date('2025-01-01'));
 		});
 
-		it('should find first entry matching a lower version requirement', () => {
-			const result = service.getFirstAdoptionDate({ major: 2, minor: 2, patch: 0 });
+		it('should find first entry matching a lower version requirement', async () => {
+			const result = await service.getFirstAdoptionDate({ major: 2, minor: 2, patch: 0 });
 			expect(result).toEqual(new Date('2025-01-01'));
 		});
 
-		it('should return undefined when no version matches', () => {
-			const result = service.getFirstAdoptionDate({ major: 3, minor: 0, patch: 0 });
+		it('should return undefined when no version matches', async () => {
+			const result = await service.getFirstAdoptionDate({ major: 3, minor: 0, patch: 0 });
 			expect(result).toBeUndefined();
+		});
+	});
+
+	describe('lazy cache loading', () => {
+		it('should load cache from repository on first query when not initialized via init', async () => {
+			repository.find.mockResolvedValue([
+				{ id: 1, major: 2, minor: 3, patch: 0, createdAt: new Date('2025-01-01') },
+			] as never);
+
+			service = createService();
+			// No init() call - query methods lazily load cache via getCache()
+			const result = await service.getMinVersionSince(new Date('2025-01-01'));
+
+			expect(repository.find).toHaveBeenCalledWith({ order: { createdAt: 'ASC' } });
+			expect(result).toEqual({ major: 2, minor: 3, patch: 0 });
 		});
 	});
 });
