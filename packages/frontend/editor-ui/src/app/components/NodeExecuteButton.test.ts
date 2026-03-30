@@ -1,4 +1,4 @@
-import { reactive, shallowRef } from 'vue';
+import { reactive, shallowRef, computed } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { useRouter } from 'vue-router';
 import userEvent from '@testing-library/user-event';
@@ -78,17 +78,17 @@ vi.mock('@/app/composables/useExternalHooks', () => {
 
 vi.mock('@/app/composables/usePinnedData', () => {
 	const createMock = () => ({
-		hasData: { value: false },
-		canPinNode: vi.fn(),
+		hasData: computed(() => false),
+		canPinNode: vi.fn().mockReturnValue(false),
 		setData: vi.fn(),
 		onSetDataSuccess: vi.fn(),
 		onSetDataError: vi.fn(),
 		unsetData: vi.fn(),
 		onUnsetData: vi.fn(),
-		isValidNodeType: vi.fn(),
+		isValidNodeType: computed(() => false),
 		isValidJSON: vi.fn(),
 		isValidSize: vi.fn(),
-		data: { value: null },
+		data: computed(() => undefined),
 	});
 	return {
 		usePinnedData: vi.fn(createMock),
@@ -125,7 +125,6 @@ let ndvStore: MockedStore<typeof useNDVStore>;
 
 let runWorkflow: ReturnType<typeof useRunWorkflow>;
 let externalHooks: ReturnType<typeof useExternalHooks>;
-let pinnedData: ReturnType<typeof usePinnedData>;
 let message: ReturnType<typeof useMessage>;
 let toast: ReturnType<typeof useToast>;
 let workflowState: WorkflowState;
@@ -390,20 +389,20 @@ describe('NodeExecuteButton', () => {
 		const node = mockNode({ name: 'test-node', type: SET_NODE_TYPE });
 		vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(node);
 
-		// Create mock with hasData.value = true before rendering
+		// Use a one-time mock return value so the mocked `usePinnedData` implementation does not leak into subsequent tests.
 		const mockUnsetData = vi.fn();
-		vi.mocked(usePinnedData).mockReturnValue({
-			hasData: { value: true },
-			canPinNode: vi.fn(),
+		vi.mocked(usePinnedData).mockReturnValueOnce({
+			hasData: computed(() => true),
+			canPinNode: vi.fn().mockReturnValue(true),
 			setData: vi.fn(),
 			onSetDataSuccess: vi.fn(),
 			onSetDataError: vi.fn(),
 			unsetData: mockUnsetData,
 			onUnsetData: vi.fn(),
-			isValidNodeType: vi.fn(),
+			isValidNodeType: computed(() => true),
 			isValidJSON: vi.fn(),
 			isValidSize: vi.fn(),
-			data: { value: null },
+			data: computed(() => undefined),
 		});
 
 		const { getByRole } = renderComponent();
