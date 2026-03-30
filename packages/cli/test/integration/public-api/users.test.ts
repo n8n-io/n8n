@@ -72,12 +72,44 @@ describe('Users in Public API', () => {
 				expect(user).toHaveProperty('updatedAt');
 				expect(user).toHaveProperty('isPending');
 				expect(user).toHaveProperty('role');
+				expect(user).toHaveProperty('mfaEnabled');
 			});
 
 			const members = users.filter((user: any) => user.role === 'global:member');
 			expect(members).toHaveLength(3);
 			const owners = users.filter((user: any) => user.role === 'global:owner');
 			expect(owners).toHaveLength(1);
+		});
+
+		it('should return mfaEnabled status for users', async () => {
+			/**
+			 * Arrange
+			 */
+			const owner = await createOwnerWithApiKey();
+			const memberWithMfa = await createMember();
+			// Manually enable MFA for this member
+			const userRepository = (await import('@n8n/db')).UserRepository;
+			const { Container } = await import('@n8n/di');
+			await Container.get(userRepository).update(memberWithMfa.id, { mfaEnabled: true });
+
+			const memberWithoutMfa = await createMember();
+
+			/**
+			 * Act
+			 */
+			const response = await testServer.publicApiAgentFor(owner).get('/users');
+
+			/**
+			 * Assert
+			 */
+			expect(response.status).toBe(200);
+			const { data: users } = response.body;
+
+			const userWithMfa = users.find((u: any) => u.id === memberWithMfa.id);
+			const userWithoutMfa = users.find((u: any) => u.id === memberWithoutMfa.id);
+
+			expect(userWithMfa).toHaveProperty('mfaEnabled', true);
+			expect(userWithoutMfa).toHaveProperty('mfaEnabled', false);
 		});
 	});
 
@@ -129,6 +161,32 @@ describe('Users in Public API', () => {
 			expect(returnedUser).toHaveProperty('updatedAt');
 			expect(returnedUser).toHaveProperty('isPending', member.isPending);
 			expect(returnedUser).toHaveProperty('role', 'global:member');
+			expect(returnedUser).toHaveProperty('mfaEnabled', false);
+		});
+
+		it('should return mfaEnabled status for a single user', async () => {
+			/**
+			 * Arrange
+			 */
+			const owner = await createOwnerWithApiKey();
+			const member = await createMember();
+			// Enable MFA for this member
+			const userRepository = (await import('@n8n/db')).UserRepository;
+			const { Container } = await import('@n8n/di');
+			await Container.get(userRepository).update(member.id, { mfaEnabled: true });
+
+			/**
+			 * Act
+			 */
+			const response = await testServer.publicApiAgentFor(owner).get(`/users/${member.id}`);
+
+			/**
+			 * Assert
+			 */
+			expect(response.status).toBe(200);
+			const returnedUser = response.body;
+
+			expect(returnedUser).toHaveProperty('mfaEnabled', true);
 		});
 	});
 
