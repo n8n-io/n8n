@@ -1,5 +1,10 @@
 import type { InstanceAiAgentNode } from '@n8n/api-types';
 
+export interface ExecutionResult {
+	executionId: string;
+	status: 'success' | 'error';
+}
+
 export interface BuildResult {
 	workflowId: string;
 	/** Unique per build — changes even when the same workflow is rebuilt. */
@@ -157,4 +162,49 @@ export function getLatestDataTableResult(node: InstanceAiAgentNode): DataTableRe
 		}
 	}
 	return undefined;
+}
+
+/**
+ * Walks an agent tree and collects the latest completed run-workflow result
+ * per workflowId. Used to restore execution status from historical messages
+ * after page refresh.
+ */
+export function getExecutionResultsByWorkflow(
+	node: InstanceAiAgentNode,
+): Map<string, ExecutionResult> {
+	const results = new Map<string, ExecutionResult>();
+	collectExecutionResults(node, results);
+	return results;
+}
+
+function collectExecutionResults(
+	node: InstanceAiAgentNode,
+	results: Map<string, ExecutionResult>,
+) {
+	for (const child of node.children) {
+		collectExecutionResults(child, results);
+	}
+	for (const tc of node.toolCalls) {
+		if (
+			tc.toolName === 'run-workflow' &&
+			!tc.isLoading &&
+			tc.result &&
+			typeof tc.result === 'object'
+		) {
+			const result = tc.result as Record<string, unknown>;
+			const args = tc.args as Record<string, unknown> | undefined;
+			const workflowId = args?.workflowId;
+			if (
+				typeof workflowId === 'string' &&
+				typeof result.executionId === 'string' &&
+				typeof result.status === 'string' &&
+				(result.status === 'success' || result.status === 'error')
+			) {
+				results.set(workflowId, {
+					executionId: result.executionId,
+					status: result.status,
+				});
+			}
+		}
+	}
 }

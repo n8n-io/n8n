@@ -6,6 +6,8 @@ import {
 	getLatestExecutionId,
 	getLatestDataTableResult,
 	getLatestDeletedDataTableId,
+	getExecutionResultsByWorkflow,
+	type ExecutionResult,
 } from './canvasPreview.utils';
 import type { useInstanceAiStore } from './instanceAi.store';
 import type { ExecutionStatus, WorkflowExecutionState } from './useExecutionPushEvents';
@@ -35,13 +37,30 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 	const activeTabId = ref<string | null>(null);
 	const activeExecutionId = ref<string | null>(null);
 
+	// Execution results extracted from historical chat messages (survives page refresh)
+	const historicalExecutions = computed(() => {
+		const results = new Map<string, ExecutionResult>();
+		for (const msg of store.messages) {
+			if (!msg.agentTree) continue;
+			for (const [wfId, result] of getExecutionResultsByWorkflow(msg.agentTree)) {
+				results.set(wfId, result);
+			}
+		}
+		return results;
+	});
+
 	// All artifacts (workflows + data tables) in the current thread, derived from resource registry
 	const allArtifactTabs = computed((): ArtifactTab[] => {
 		const result: ArtifactTab[] = [];
-		const execMap = workflowExecutions?.value;
+		const liveExecMap = workflowExecutions?.value;
+		const historicalExecMap = historicalExecutions.value;
 		for (const entry of store.resourceRegistry.values()) {
 			if (entry.type === 'workflow' || entry.type === 'data-table') {
-				const status = entry.type === 'workflow' ? execMap?.get(entry.id)?.status : undefined;
+				// Live push event state takes priority over historical message data
+				const status =
+					entry.type === 'workflow'
+						? (liveExecMap?.get(entry.id)?.status ?? historicalExecMap.get(entry.id)?.status)
+						: undefined;
 				result.push({
 					id: entry.id,
 					type: entry.type,
@@ -124,6 +143,19 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 			}
 		},
 	);
+
+	// --- Restore historical execution when tab becomes active ---
+	// On page refresh or thread switch, if a workflow tab has a completed execution
+	// in the chat history, show its execution results in the iframe.
+	watch(activeTabId, (tabId) => {
+		if (!tabId) return;
+		// Don't override if a live execution is in progress
+		if (workflowExecutions?.value.get(tabId)?.status === 'running') return;
+		const historical = historicalExecutions.value.get(tabId);
+		if (historical) {
+			activeExecutionId.value = historical.executionId;
+		}
+	});
 
 	// --- Guard: fall back if active tab is removed from registry ---
 	// Only acts when there ARE tabs but the selected one is missing (i.e. it was removed).

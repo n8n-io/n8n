@@ -55,7 +55,6 @@ function relayPushEvent(event: PushMessage) {
 async function fetchWorkflow(id: string) {
 	const isRefresh = workflow.value?.id === id;
 	const generation = ++fetchGeneration;
-
 	fetchError.value = null;
 	if (!isRefresh) {
 		isLoading.value = true;
@@ -64,7 +63,7 @@ async function fetchWorkflow(id: string) {
 
 	try {
 		const result = await workflowsListStore.fetchWorkflow(id);
-		if (generation !== fetchGeneration) return; // Stale response — discard
+		if (generation !== fetchGeneration) return;
 		workflow.value = result;
 	} catch {
 		if (generation !== fetchGeneration) return;
