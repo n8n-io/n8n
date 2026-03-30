@@ -24,8 +24,7 @@
 		},
 		"test": {
 			"dependsOn": ["^build", "build"],
-			"outputs": ["coverage/**", "*.xml"],
-			"inputs": ["packages/cli/src/public-api/v1/**"]
+			"outputs": ["coverage/**", "*.xml"]
 		},
 		"test:unit": {
 			"dependsOn": ["^build", "build"],
