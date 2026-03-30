@@ -40,10 +40,4 @@ Rules:
 		}
 		return undefined;
 	},
-	extraVars: (_workflow, ctx) => ({
-		agentTextResponse: ctx.agentTextResponse ?? '',
-		workflowBefore: ctx.existingWorkflow
-			? JSON.stringify(ctx.existingWorkflow, null, 2)
-			: '{"nodes": [], "connections": {}}',
-	}),
 });
