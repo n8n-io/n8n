@@ -16,7 +16,10 @@ import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
 import { createBrowserCredentialSetupTool } from './browser-credential-setup.tool';
-import { BUILDER_AGENT_PROMPT, SANDBOX_BUILDER_AGENT_PROMPT } from './build-workflow-agent.prompt';
+import {
+	BUILDER_AGENT_PROMPT,
+	createSandboxBuilderAgentPrompt,
+} from './build-workflow-agent.prompt';
 import { truncateLabel } from './display-utils';
 import { createVerifyBuiltWorkflowTool } from './verify-built-workflow.tool';
 import { registerWithMastra } from '../../agent/register-with-mastra';
@@ -178,7 +181,7 @@ export async function startBuildWorkflowAgentTask(
 	const useSandbox = !!factory && !!domainContext;
 
 	let builderTools: ToolsInput;
-	let prompt: string;
+	let prompt = BUILDER_AGENT_PROMPT;
 	let credMap: CredentialMap | undefined;
 
 	if (useSandbox) {
@@ -221,7 +224,6 @@ export async function startBuildWorkflowAgentTask(
 		if (context.browserMcpConfig) {
 			builderTools['browser-credential-setup'] = createBrowserCredentialSetupTool(context);
 		}
-		prompt = SANDBOX_BUILDER_AGENT_PROMPT;
 	} else {
 		builderTools = {};
 
@@ -250,8 +252,6 @@ export async function startBuildWorkflowAgentTask(
 		if (!builderTools['build-workflow']) {
 			return { result: 'Error: build-workflow tool not available.', taskId: '', agentId: '' };
 		}
-
-		prompt = BUILDER_AGENT_PROMPT;
 	}
 
 	const builderMemory = createSubAgentMemory(context.storage, 'workflow-builder');
@@ -324,6 +324,7 @@ export async function startBuildWorkflowAgentTask(
 					builderWs = await factory.create(subAgentId, domainContext);
 					const workspace = builderWs.workspace;
 					const root = await getWorkspaceRoot(workspace);
+					prompt = createSandboxBuilderAgentPrompt(root);
 
 					if (workflowId && domainContext) {
 						try {

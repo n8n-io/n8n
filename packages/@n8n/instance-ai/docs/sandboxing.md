@@ -6,7 +6,7 @@ Today the main consumer is the workflow builder. The agent writes TypeScript fil
 
 ## How the Pieces Fit Together
 
-There are three layers between the agent and actual code execution: a workspace abstraction from Mastra, a sandbox provider (Daytona or local), and the execution runtime inside the sandbox. Here is how they relate:
+There are three layers between the agent and actual code execution: a workspace abstraction from Mastra, a sandbox provider (Daytona, n8n sandbox service, or local), and the execution runtime inside the sandbox. Here is how they relate:
 
 ```mermaid
 graph TB
@@ -23,13 +23,17 @@ graph TB
     subgraph Providers ["Sandbox Providers"]
         FS --> DaytonaFS["Daytona Filesystem<br/>(remote API calls)"]
         FS --> LocalFS["Local Filesystem<br/>(host disk I/O)"]
+        FS --> N8nFS["n8n Sandbox FS<br/>(remote API calls)"]
         Sandbox --> DaytonaSB["Daytona Sandbox<br/>(remote container)"]
+        Sandbox --> N8nSB["n8n Sandbox Service<br/>(remote container)"]
         Sandbox --> LocalSB["Local Sandbox<br/>(host process)"]
     end
 
     subgraph Runtime ["Execution Runtime"]
         DaytonaSB --> Container["Container<br/>Node.js · TypeScript · shell"]
         DaytonaFS --> Container
+        N8nSB --> Container
+        N8nFS --> Container
         LocalSB --> HostDir["Host Directory<br/>Node.js · TypeScript · shell"]
         LocalFS --> HostDir
     end
@@ -40,7 +44,7 @@ graph TB
     style Runtime fill:#dcfce7,stroke:#16a34a
 ```
 
-The agent never talks to Daytona or the host filesystem directly. It only sees the Workspace, which exposes two capabilities: a filesystem (read/write/list files) and a sandbox (run shell commands). The Workspace routes those operations to whichever provider is configured.
+The agent never talks to Daytona, the n8n sandbox service, or the host filesystem directly. It only sees the Workspace, which exposes two capabilities: a filesystem (read/write/list files) and a sandbox (run shell commands). The Workspace routes those operations to whichever provider is configured.
 
 ## Mastra Workspaces
 
@@ -136,6 +140,18 @@ Once the sandbox is provisioned and the catalog is written, n8n wraps it in a Ma
 | npm | Package management |
 | Full shell (bash) | Arbitrary command execution |
 | Python | Available but not primary |
+
+## n8n Sandbox Service: API-Backed Alternative
+
+The n8n sandbox service exposes a simple HTTP API for creating sandboxes, executing shell commands, and manipulating files. Instance AI uses it through a custom Mastra sandbox and filesystem adapter.
+
+Builder prewarming follows Daytona-like lazy image instantiation semantics:
+- the builder creates an in-memory image placeholder from setup commands
+- the first sandbox creation sends those commands to the service
+- the returned `image_id` is cached on that placeholder
+- later builder sandboxes reuse the cached image directly
+
+This provider supports the builder's file and command workflow, but it does not expose interactive process handles. That means `execute_command` works, while process-manager-backed features such as long-lived spawned subprocesses are out of scope for this provider.
 
 ## Local: The Development Fallback
 
@@ -244,8 +260,10 @@ If any step fails, the agent reads the error output, fixes the code, and retries
 | Variable | Default | What it does |
 | --- | --- | --- |
 | `N8N_INSTANCE_AI_SANDBOX_ENABLED` | `false` | Master switch for sandboxing |
-| `N8N_INSTANCE_AI_SANDBOX_PROVIDER` | `daytona` | Which provider to use: `daytona` or `local` |
+| `N8N_INSTANCE_AI_SANDBOX_PROVIDER` | `daytona` | Which provider to use: `daytona`, `n8n-sandbox`, or `local` |
 | `DAYTONA_API_URL` | — | Daytona API endpoint (required for Daytona) |
 | `DAYTONA_API_KEY` | — | Daytona API key (required for Daytona) |
+| `N8N_SANDBOX_SERVICE_URL` | — | n8n sandbox service URL (required for `n8n-sandbox`) |
+| `N8N_SANDBOX_SERVICE_API_KEY` | — | n8n sandbox service API key (optional when using an `httpHeaderAuth` credential) |
 | `N8N_INSTANCE_AI_SANDBOX_IMAGE` | `daytonaio/sandbox:0.5.0` | Base container image for Daytona |
 | `N8N_INSTANCE_AI_SANDBOX_TIMEOUT` | `300000` | Command timeout in milliseconds |

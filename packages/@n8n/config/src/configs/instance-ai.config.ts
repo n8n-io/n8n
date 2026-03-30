@@ -58,6 +58,14 @@ export class InstanceAiConfig {
 	@Env('DAYTONA_API_KEY')
 	daytonaApiKey: string = '';
 
+	/** n8n sandbox service base URL. */
+	@Env('N8N_SANDBOX_SERVICE_URL')
+	n8nSandboxServiceUrl: string = '';
+
+	/** n8n sandbox service API key. */
+	@Env('N8N_SANDBOX_SERVICE_API_KEY')
+	n8nSandboxServiceApiKey: string = '';
+
 	/** Docker image for the Daytona sandbox (default: daytonaio/sandbox:0.5.0). */
 	@Env('N8N_INSTANCE_AI_SANDBOX_IMAGE')
 	sandboxImage: string = 'daytonaio/sandbox:0.5.0';
