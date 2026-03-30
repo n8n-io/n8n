@@ -10,12 +10,12 @@ import ResourceCard from '../components/ResourceCard.vue';
 import ResourceFeatureCard from '../components/ResourceFeatureCard.vue';
 import {
 	featuredTemplateIds,
-	inspirationVideos,
-	learningVideos,
+	getInspiredContent,
 	learnTemplateIds,
-	masterclassVideos,
+	learnContent,
+	type OrderedSectionResource,
+	type ResourceItem,
 } from '../data/resourceCenterData';
-import type { ResourceItem } from '../data/resourceCenterData';
 import { quickStartWorkflows } from '../data/quickStartWorkflows';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useResourceCenterStore } from '../stores/resourceCenter.store';
@@ -39,6 +39,7 @@ const resourceCenterStore = useResourceCenterStore();
 const featuredTemplates = ref<ITemplatesWorkflowFull[]>([]);
 const learnTemplates = ref<ITemplatesWorkflowFull[]>([]);
 const isLoading = ref(false);
+type ResourceSection = Exclude<ResourceItem['section'], undefined>;
 
 const searchQuery = ref('');
 const debouncedSearch = ref('');
@@ -87,6 +88,57 @@ const getTemplateCardNodeTypes = (template: ITemplatesWorkflowFull): string[] =>
 		.filter((nodeName) => nodeName !== '');
 };
 
+const buildTemplateResourceItem = (
+	template: ITemplatesWorkflowFull,
+	section: ResourceSection,
+	title: string,
+): ResourceItem => ({
+	id: template.id,
+	type: 'template' as const,
+	title,
+	description: template.description ?? '',
+	section,
+	templateId: template.id,
+	nodeTypes: getTemplateCardNodeTypes(template),
+	nodeCount: template.nodes?.length,
+	setupTime: template.nodes
+		? `${Math.max(5, Math.ceil((template.nodes.length / 3) * 5))} min`
+		: undefined,
+});
+
+const buildOrderedSectionItems = (
+	content: OrderedSectionResource[],
+	templatesById: Map<number, ITemplatesWorkflowFull>,
+	section: ResourceSection,
+): ResourceItem[] =>
+	content.flatMap((entry) => {
+		if (entry.type === 'video') {
+			return [
+				{
+					id: entry.videoId,
+					type: 'video' as const,
+					title: entry.title,
+					description: entry.description,
+					section,
+					videoId: entry.videoId,
+					url: entry.url,
+					duration: entry.duration,
+					level: entry.level,
+				},
+			];
+		}
+
+		const template = templatesById.get(entry.templateId);
+		return template ? [buildTemplateResourceItem(template, section, entry.title)] : [];
+	});
+
+const featuredTemplatesById = computed(
+	() => new Map(featuredTemplates.value.map((template) => [template.id, template] as const)),
+);
+const learnTemplatesById = computed(
+	() => new Map(learnTemplates.value.map((template) => [template.id, template] as const)),
+);
+
 const getStartedItems = computed<ResourceItem[]>(() =>
 	quickStartWorkflows.map((workflow) => ({
 		id: workflow.id,
@@ -102,111 +154,13 @@ const getStartedItems = computed<ResourceItem[]>(() =>
 	})),
 );
 
-const getInspiredItems = computed<ResourceItem[]>(() => {
-	const videos: ResourceItem[] = inspirationVideos.map((video) => ({
-		id: video.videoId,
-		type: 'video' as const,
-		title: video.title,
-		description: video.description,
-		section: 'inspiration' as const,
-		videoId: video.videoId,
-		duration: video.duration,
-	}));
+const getInspiredItems = computed<ResourceItem[]>(() =>
+	buildOrderedSectionItems(getInspiredContent, featuredTemplatesById.value, 'inspiration'),
+);
 
-	const templates: ResourceItem[] = featuredTemplates.value.map((template) => ({
-		id: template.id,
-		type: 'template' as const,
-		title: template.name,
-		description: template.description ?? '',
-		section: 'inspiration' as const,
-		templateId: template.id,
-		nodeTypes: getTemplateCardNodeTypes(template),
-		nodeCount: template.nodes?.length,
-		setupTime: template.nodes
-			? `${Math.max(5, Math.ceil((template.nodes.length / 3) * 5))} min`
-			: undefined,
-	}));
-
-	const result: ResourceItem[] = [];
-	let templateIndex = 0;
-	let videoIndex = 0;
-
-	while (templateIndex < templates.length || videoIndex < videos.length) {
-		if (templateIndex < templates.length) {
-			result.push(templates[templateIndex++]);
-		}
-		if (videoIndex < videos.length) {
-			result.push(videos[videoIndex++]);
-		}
-	}
-
-	return result;
-});
-
-const learnItems = computed<ResourceItem[]>(() => {
-	const tutorials: ResourceItem[] = learningVideos.map((video) => ({
-		id: video.videoId,
-		type: 'video' as const,
-		title: video.title,
-		description: video.description,
-		section: 'learn' as const,
-		videoId: video.videoId,
-		duration: video.duration,
-		level: video.level,
-	}));
-
-	const masterclasses: ResourceItem[] = masterclassVideos.map((video) => ({
-		id: video.videoId,
-		type: 'video' as const,
-		title: video.title,
-		description: video.description,
-		section: 'learn' as const,
-		videoId: video.videoId,
-		duration: video.duration,
-		level: video.level,
-	}));
-
-	const templates: ResourceItem[] = learnTemplates.value.map((template) => ({
-		id: template.id,
-		type: 'template' as const,
-		title: template.name,
-		description: template.description ?? '',
-		section: 'learn' as const,
-		templateId: template.id,
-		nodeTypes: getTemplateCardNodeTypes(template),
-		nodeCount: template.nodes?.length,
-		setupTime: template.nodes
-			? `${Math.max(5, Math.ceil((template.nodes.length / 3) * 5))} min`
-			: undefined,
-	}));
-
-	const courses: ResourceItem[] = [
-		{
-			id: 'beginner-course',
-			type: 'video' as const,
-			title: 'n8n Beginner Course',
-			description:
-				'Official video course covering workflows, APIs, webhooks, nodes, error handling, and debugging.',
-			section: 'learn' as const,
-			url: 'https://docs.n8n.io/video-courses/',
-			duration: '3 hours',
-			level: 'Masterclass',
-		},
-		{
-			id: 'advanced-course',
-			type: 'video' as const,
-			title: 'n8n Advanced Course',
-			description:
-				'Master complex data flows, advanced nodes, sub-workflows, error workflows, and enterprise features.',
-			section: 'learn' as const,
-			url: 'https://docs.n8n.io/video-courses/',
-			duration: '4 hours',
-			level: 'Masterclass',
-		},
-	];
-
-	return [...templates, ...tutorials, ...masterclasses, ...courses];
-});
+const learnItems = computed<ResourceItem[]>(() =>
+	buildOrderedSectionItems(learnContent, learnTemplatesById.value, 'learn'),
+);
 
 const filteredGetStarted = computed(() => filterItems(getStartedItems.value));
 const filteredGetInspired = computed(() => filterItems(getInspiredItems.value));
