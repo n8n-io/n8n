@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi, Mock } from 'vitest';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { useBuilderStore } from './builder.store';
@@ -121,9 +121,9 @@ let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
 let credentialsStore: ReturnType<typeof mockedStore<typeof useCredentialsStore>>;
 let pinia: ReturnType<typeof createTestingPinia>;
 
-let setWorkflowNameSpy: ReturnType<typeof vi.fn>;
-let getNodeTypeSpy: ReturnType<typeof vi.fn>;
-let getCredentialsByTypeSpy: ReturnType<typeof vi.fn>;
+let setWorkflowNameSpy: Mock;
+let getNodeTypeSpy: Mock;
+let getCredentialsByTypeSpy: Mock;
 
 const apiSpy = vi.spyOn(chatAPI, 'chatWithBuilder');
 

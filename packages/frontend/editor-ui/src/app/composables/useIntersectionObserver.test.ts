@@ -1,4 +1,4 @@
-import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { vi, describe, it, expect, beforeEach, afterEach, Mock } from 'vitest';
 import { useIntersectionObserver } from './useIntersectionObserver';
 import { ref } from 'vue';
 
@@ -25,7 +25,7 @@ describe('useIntersectionObserver()', () => {
 		disconnect: ReturnType<typeof vi.fn>;
 		unobserve: ReturnType<typeof vi.fn>;
 	};
-	let mockCallback: ReturnType<typeof vi.fn>;
+	let mockCallback: Mock;
 	let mockRoot: Element;
 	let mockConstructor: MockIntersectionObserverConstructor;
 	let originalIntersectionObserver: typeof IntersectionObserver;
