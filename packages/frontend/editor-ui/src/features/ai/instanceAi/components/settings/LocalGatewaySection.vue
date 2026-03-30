@@ -1,8 +1,10 @@
 <script lang="ts" setup>
 import { computed, ref, onMounted } from 'vue';
-import { N8nHeading, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nHeading, N8nIcon, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
+import type { IconName } from '@n8n/design-system';
 import { ElSwitch } from 'element-plus';
 import { useI18n } from '@n8n/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 import { useSettingsField } from './useSettingsField';
 
 const i18n = useI18n();
@@ -26,7 +28,7 @@ async function copyCommand() {
 	}, 2000);
 }
 
-const CATEGORY_META: Record<string, { icon: string; labelKey: string }> = {
+const CATEGORY_META: Record<string, { icon: IconName; labelKey: BaseTextKey }> = {
 	filesystem: { icon: 'folder-open', labelKey: 'instanceAi.filesystem.category.filesystem' },
 	browser: { icon: 'globe', labelKey: 'instanceAi.filesystem.category.browser' },
 	screenshot: { icon: 'mouse-pointer', labelKey: 'instanceAi.filesystem.category.computerUse' },
@@ -41,7 +43,7 @@ const displayCategories = computed(() => {
 	const seen = new Set<string>();
 	const result: Array<{
 		key: string;
-		icon: string;
+		icon: IconName;
 		label: string;
 		enabled: boolean;
 		sublabel?: string;

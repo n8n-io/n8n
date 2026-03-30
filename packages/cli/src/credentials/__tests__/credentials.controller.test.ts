@@ -26,6 +26,8 @@ import * as validation from '../validation';
 import * as checkAccess from '@/permissions.ee/check-access';
 import type { CredentialRequest } from '@/requests';
 
+const originalValidateExternalSecretsPermissions = validation.validateExternalSecretsPermissions;
+
 describe('CredentialsController', () => {
 	type ControllerEventService = ConstructorParameters<typeof CredentialsController>[9];
 	const eventService = mock<ControllerEventService>();
@@ -465,10 +467,9 @@ describe('CredentialsController', () => {
 			const existingCredentialWithSecret = mock<CredentialsEntity>({
 				...existingCredential,
 			});
-			const validateExternalSecretsPermissionsSpy = jest.spyOn(
-				validation,
-				'validateExternalSecretsPermissions',
-			);
+			const validateExternalSecretsPermissionsSpy = jest
+				.spyOn(validation, 'validateExternalSecretsPermissions')
+				.mockImplementation(originalValidateExternalSecretsPermissions);
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(
 				existingCredentialWithSecret,
 			);
@@ -493,13 +494,12 @@ describe('CredentialsController', () => {
 				user: { id: 'member-id', role: GLOBAL_MEMBER_ROLE },
 				params: { credentialId },
 				body: {
-					data: { apiKey: '{{ $secrets.myKey }}' }, // Changed from regular key to external secret
+					data: { apiKey: '{{ $secrets.myVault.myKey }}' }, // Changed from regular key to external secret
 				},
 			} as unknown as CredentialRequest.Update;
-			const validateExternalSecretsPermissionsSpy = jest.spyOn(
-				validation,
-				'validateExternalSecretsPermissions',
-			);
+			const validateExternalSecretsPermissionsSpy = jest
+				.spyOn(validation, 'validateExternalSecretsPermissions')
+				.mockImplementation(originalValidateExternalSecretsPermissions);
 
 			// Mock setup: existing credential has no external secret yet
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(existingCredential);
