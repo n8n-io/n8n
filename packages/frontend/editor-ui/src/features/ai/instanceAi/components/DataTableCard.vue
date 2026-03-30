@@ -202,11 +202,11 @@ const displayResult = computed(() => getRenderableAgentResult(props.agentNode));
 
 .title {
 	font-weight: var(--font-weight--bold);
-	color: var(--text-color);
+	color: var(--color--text);
 }
 
 .subtitle {
-	color: var(--text-color--subtle);
+	color: var(--color--text--tint-1);
 	font-weight: var(--font-weight--regular);
 	max-width: 280px;
 	overflow: hidden;
@@ -226,7 +226,7 @@ const displayResult = computed(() => getRenderableAgentResult(props.agentNode));
 	align-items: center;
 	gap: var(--spacing--4xs);
 	font-size: var(--font-size--2xs);
-	color: var(--text-color--subtle);
+	color: var(--color--text--tint-1);
 }
 
 .phaseActive {
@@ -246,7 +246,7 @@ const displayResult = computed(() => getRenderableAgentResult(props.agentNode));
 }
 
 .phaseIconPending {
-	color: var(--text-color--subtle);
+	color: var(--color--text--tint-1);
 }
 
 .phaseLabel {
@@ -274,7 +274,7 @@ const displayResult = computed(() => getRenderableAgentResult(props.agentNode));
 	font-family: var(--font-family);
 	font-size: var(--font-size--3xs);
 	font-weight: var(--font-weight--bold);
-	color: var(--text-color--subtle);
+	color: var(--color--text--tint-1);
 	text-transform: uppercase;
 	letter-spacing: 0.05em;
 
