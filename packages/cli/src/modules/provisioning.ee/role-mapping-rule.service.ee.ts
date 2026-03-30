@@ -272,19 +272,6 @@ export class RoleMappingRuleService {
 		if (rules.every((r, i) => r.order === i)) return;
 
 		await this.applyOrder(rules.map((r) => r.id));
-		await this.roleMappingRuleRepository.manager.transaction(async (tx) => {
-			// Phase 1 — move all to a safe high offset to avoid unique constraint
-			// conflicts during resequencing (checked per-statement in SQLite/Postgres)
-			const offset = rules.length + 1000;
-			for (let i = 0; i < rules.length; i++) {
-				await tx.update(RoleMappingRule, { id: rules[i].id }, { order: offset + i });
-			}
-
-			// Phase 2 — assign final 0-based contiguous orders
-			for (let i = 0; i < rules.length; i++) {
-				await tx.update(RoleMappingRule, { id: rules[i].id }, { order: i });
-			}
-		});
 	}
 
 	private async assertOrderAvailable(
