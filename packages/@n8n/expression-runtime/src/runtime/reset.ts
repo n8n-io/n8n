@@ -72,6 +72,7 @@ export function resetDataProxies(timezone?: string): void {
 	globalThis.__data.$prevNode = createDeepLazyProxy(['$prevNode']);
 	globalThis.__data.$data = createDeepLazyProxy(['$data']);
 	globalThis.__data.$env = createDeepLazyProxy(['$env']);
+	globalThis.__data.process = createDeepLazyProxy(['process']);
 
 	// -------------------------------------------------------------------------
 	// Create DateTime values inside the isolate (not lazy-loaded from host,
