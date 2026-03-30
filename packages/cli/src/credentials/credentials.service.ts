@@ -862,7 +862,7 @@ export class CredentialsService {
 
 			if (
 				prop.typeOptions?.password &&
-				(!(data[dataKey] as string).startsWith('={{') || prop.noDataExpression)
+				(!data[dataKey].toString().startsWith('={{') || prop.noDataExpression)
 			) {
 				if (data[dataKey].toString().length > 0) {
 					data[dataKey] = CREDENTIAL_BLANKING_VALUE;

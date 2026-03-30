@@ -127,6 +127,9 @@ describe('GlobalConfig', () => {
 			jwtSecret: '',
 			jwtSessionDurationHours: 168,
 			jwtRefreshTimeoutHours: 0,
+			password: {
+				minLength: 8,
+			},
 			emails: {
 				mode: 'smtp',
 				smtp: {
@@ -450,7 +453,6 @@ describe('GlobalConfig', () => {
 		// @ts-expect-error structuredClone ignores properties defined as a getter
 		ai: {
 			enabled: false,
-			persistBuilderSessions: false,
 			timeout: 3600000,
 			allowSendingParameterValues: true,
 		},
@@ -488,6 +490,7 @@ describe('GlobalConfig', () => {
 			N8N_TEMPLATES_ENABLED: '0',
 			N8N_DYNAMIC_BANNERS_ENDPOINT: 'https://localhost:5678/api/banners',
 			N8N_DYNAMIC_BANNERS_ENABLED: 'false',
+			N8N_PASSWORD_MIN_LENGTH: '12',
 		};
 		const config = Container.get(GlobalConfig);
 
@@ -524,6 +527,12 @@ describe('GlobalConfig', () => {
 			dynamicBanners: {
 				endpoint: 'https://localhost:5678/api/banners',
 				enabled: false,
+			},
+			userManagement: {
+				...defaultConfig.userManagement,
+				password: {
+					minLength: 12,
+				},
 			},
 		});
 		expect(mockFs.readFileSync).not.toHaveBeenCalled();
@@ -581,6 +590,18 @@ describe('GlobalConfig', () => {
 		expect(consoleWarnMock).toHaveBeenCalledWith(
 			'Invalid number value for DB_LOGGING_MAX_EXECUTION_TIME: abcd',
 		);
+	});
+
+	it('should clamp password min length to valid range', () => {
+		process.env = { N8N_PASSWORD_MIN_LENGTH: '100' };
+		const config = Container.get(GlobalConfig);
+		expect(config.userManagement.password.minLength).toEqual(64);
+	});
+
+	it('should floor password min length at 8', () => {
+		process.env = { N8N_PASSWORD_MIN_LENGTH: '2' };
+		const config = Container.get(GlobalConfig);
+		expect(config.userManagement.password.minLength).toEqual(8);
 	});
 
 	describe('string unions', () => {
