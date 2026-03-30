@@ -9,14 +9,13 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import type { INodeUi } from '@/Interface';
 import ExecuteMessage from './ExecuteMessage.vue';
-import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
+import { CHAT_TRIGGER_NODE_TYPE, SETUP_CREDENTIALS_MODAL_KEY } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useBuilderStore } from '../../builder.store';
-import { SETUP_CREDENTIALS_MODAL_KEY } from '@/app/constants';
 
 const workflowValidationIssuesRef = ref<
 	Array<{ node: string; type: string; value: string | string[] }>

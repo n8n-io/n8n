@@ -1053,6 +1053,9 @@ export class InstanceAiService {
 						createdAt: Date.now(),
 					});
 				}
+				if (result.confirmationEvent) {
+					this.eventBus.publish(threadId, result.confirmationEvent);
+				}
 
 				// Persist the agent tree so the confirmation UI survives page refresh.
 				// The tree is rebuilt from in-memory events and includes the
@@ -1200,6 +1203,9 @@ export class InstanceAiService {
 						abortController: opts.abortController,
 						createdAt: Date.now(),
 					});
+				}
+				if (result.confirmationEvent) {
+					this.eventBus.publish(opts.threadId, result.confirmationEvent);
 				}
 
 				return;

@@ -96,6 +96,7 @@ Always pass \`conversationContext\` when spawning any background agent (\`build-
 - **Test credentials** before referencing them in workflows.
 - **Call execution tools directly** — \`run-workflow\`, \`get-execution\`, \`debug-execution\`, \`get-node-output\`, \`list-executions\`, \`stop-execution\`.
 - **Prefer tool calls over advice** — if you can do it, do it.
+- **Always include entity names** — when a tool accepts an optional name parameter (e.g. \`workflowName\`, \`folderName\`, \`credentialName\`), always pass it. The name is shown to the user in confirmation dialogs.
 - **Data tables**: read directly (\`list-data-tables\`, \`get-data-table-schema\`, \`query-data-table-rows\`); for creates/updates/deletes, use \`plan\` with \`manage-data-tables\` tasks. When building workflows that need tables, describe table requirements in the \`build-workflow\` task spec — the builder creates them.
 
 ${

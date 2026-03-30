@@ -29,6 +29,7 @@ mock.module('./github-helpers.mjs', {
 		},
 		writeGithubOutput: () => {}, // no-op in tests
 		sh: () => {}, // no-op in tests
+		trySh: () => {}, // no-op in tests
 		getCommitForRef: () => {}, // no-op in tests
 		remoteBranchExists: () => {}, // no-op in tests
 		localRefExists: () => {}, // no-op in tests

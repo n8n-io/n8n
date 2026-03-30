@@ -133,7 +133,7 @@ describe('CredentialSharing.ee', () => {
 				binaryDataS3: false,
 				workerView: false,
 				advancedPermissions: false,
-				apiKeyScopes: false,
+
 				workflowDiffs: false,
 				namedVersions: false,
 				provisioning: true,
@@ -278,7 +278,7 @@ describe('CredentialSharing.ee', () => {
 				binaryDataS3: false,
 				workerView: false,
 				advancedPermissions: false,
-				apiKeyScopes: false,
+
 				workflowDiffs: false,
 				provisioning: true,
 				showNonProdBanner: false,

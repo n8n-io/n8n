@@ -86,6 +86,7 @@ const chunks = computed((): ConfirmationChunk[] => {
 const textInputValues = ref<Record<string, string>>({});
 
 function handleConfirm(requestId: string, approved: boolean) {
+	if (store.resolvedConfirmationIds.has(requestId)) return;
 	store.resolveConfirmation(requestId, approved ? 'approved' : 'denied');
 	void store.confirmAction(requestId, approved);
 }
@@ -93,6 +94,7 @@ function handleConfirm(requestId: string, approved: boolean) {
 function handleApproveAll(items: PendingConfirmationItem[]) {
 	for (const item of items) {
 		const rid = item.toolCall.confirmation!.requestId;
+		if (store.resolvedConfirmationIds.has(rid)) continue;
 		store.resolveConfirmation(rid, 'approved');
 		void store.confirmAction(rid, true);
 	}

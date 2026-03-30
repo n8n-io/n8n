@@ -60,6 +60,7 @@ export const RESOURCES = {
 	apiKey: ['manage'] as const,
 	credentialResolver: [...DEFAULT_OPERATIONS] as const,
 	instanceAi: ['message', 'manage', 'gateway'] as const,
+	roleMappingRule: [...DEFAULT_OPERATIONS] as const,
 } as const;
 
 export const API_KEY_RESOURCES = {

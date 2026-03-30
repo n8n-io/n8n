@@ -61,6 +61,7 @@ import {
 	DELETE_FOLDER_MODAL_KEY,
 	MOVE_FOLDER_MODAL_KEY,
 } from '@/features/core/folders/folders.constants';
+import type { WorkflowListEventMap } from '@/features/core/folders/folders.types';
 import {
 	SOURCE_CONTROL_PUSH_MODAL_KEY,
 	SOURCE_CONTROL_PULL_MODAL_KEY,
@@ -572,7 +573,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 
 	const openDeleteFolderModal = (
 		id: string,
-		workflowListEventBus: EventBus,
+		workflowListEventBus: EventBus<WorkflowListEventMap>,
 		content: { workflowCount: number; subFolderCount: number },
 	) => {
 		setActiveId(DELETE_FOLDER_MODAL_KEY, id);
@@ -588,7 +589,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			sharedWithProjects?: ProjectSharingData[];
 			homeProjectId?: string;
 		},
-		workflowListEventBus: EventBus,
+		workflowListEventBus: EventBus<WorkflowListEventMap>,
 	) => {
 		openModalWithData({
 			name: MOVE_FOLDER_MODAL_KEY,

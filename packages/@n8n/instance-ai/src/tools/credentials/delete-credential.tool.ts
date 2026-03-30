@@ -11,6 +11,10 @@ export function createDeleteCredentialTool(context: InstanceAiContext) {
 		description: 'Permanently delete a credential by ID. Irreversible.',
 		inputSchema: z.object({
 			credentialId: z.string().describe('ID of the credential to delete'),
+			credentialName: z
+				.string()
+				.optional()
+				.describe('Name of the credential (for confirmation message)'),
 		}),
 		outputSchema: z.object({
 			success: z.boolean(),
@@ -34,7 +38,7 @@ export function createDeleteCredentialTool(context: InstanceAiContext) {
 			if (needsApproval && (resumeData === undefined || resumeData === null)) {
 				await suspend?.({
 					requestId: nanoid(),
-					message: `Delete credential "${input.credentialId}"? This cannot be undone.`,
+					message: `Delete credential "${input.credentialName ?? input.credentialId}"? This cannot be undone.`,
 					severity: 'destructive' as const,
 				});
 				// suspend() never resolves — this line is unreachable but satisfies the type checker

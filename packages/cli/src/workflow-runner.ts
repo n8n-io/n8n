@@ -489,7 +489,10 @@ export class WorkflowRunner {
 
 				let runData: IRun;
 
-				if (!jobResult || this.needsFullExecutionData(data.executionMode, executionId)) {
+				if (
+					!jobResult ||
+					this.needsFullExecutionData(data.executionMode, executionId, data.forceFullExecutionData)
+				) {
 					const fullExecutionData = await this.executionRepository.findSingleExecution(
 						executionId,
 						{
@@ -561,7 +564,12 @@ export class WorkflowRunner {
 	 * In all other cases we can skip the DB fetch and use the lightweight
 	 * result summary sent by the worker via the job progress message.
 	 */
-	private needsFullExecutionData(executionMode: WorkflowExecuteMode, executionId: string): boolean {
+	private needsFullExecutionData(
+		executionMode: WorkflowExecuteMode,
+		executionId: string,
+		forceFullExecutionData?: boolean,
+	): boolean {
+		if (forceFullExecutionData) return true;
 		if (!process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING) return true;
 
 		return (

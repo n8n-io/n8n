@@ -49,15 +49,10 @@ const credentialPayload = (): CredentialPayload => ({
 	},
 });
 
-describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
+describe('Public API endpoints with API key scopes', () => {
 	const testServer = setupTestServer({
 		endpointGroups: ['publicApi'],
-		enabledFeatures: [
-			'feat:advancedPermissions',
-			'feat:apiKeyScopes',
-			'feat:variables',
-			'feat:projectRole:admin',
-		],
+		enabledFeatures: ['feat:advancedPermissions', 'feat:variables', 'feat:projectRole:admin'],
 		quotas: {
 			'quota:users': -1,
 			'quota:maxTeamProjects': -1,
@@ -91,7 +86,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 		// globalConfig.tags.disabled = false;
 	});
 
-	describe('with "feat:apiKeyScopes" enabled', () => {
+	describe('API key scope enforcement', () => {
 		describe('users', () => {
 			describe('GET /user', () => {
 				test('should return the user when API key has "user:read" scope', async () => {
@@ -179,7 +174,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 				});
 			});
 
-			test('should fail when "feat:apiKeyScopes" is disabled and API key does not have "user:list" scope', async () => {
+			test('should fail when API key does not have "user:list" scope', async () => {
 				const member = await createMemberWithApiKey({ scopes: ['user:read'] });
 
 				await createUser();
@@ -357,7 +352,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 					 * Arrange
 					 */
 					testServer.license.enable('feat:advancedPermissions');
-					testServer.license.enable('feat:apiKeyScopes');
+
 					const owner = await createOwnerWithApiKey({ scopes: ['user:delete'] });
 					const member = await createMember();
 
@@ -378,7 +373,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 					 * Arrange
 					 */
 					testServer.license.enable('feat:advancedPermissions');
-					testServer.license.enable('feat:apiKeyScopes');
+
 					const owner = await createOwnerWithApiKey({ scopes: ['credential:create'] });
 					const member = await createMember();
 

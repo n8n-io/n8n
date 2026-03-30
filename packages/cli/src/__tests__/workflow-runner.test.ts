@@ -1,6 +1,12 @@
 import { testDb, createWorkflow, mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { type User, type ExecutionEntity, GLOBAL_OWNER_ROLE, Project } from '@n8n/db';
+import {
+	type User,
+	type ExecutionEntity,
+	GLOBAL_OWNER_ROLE,
+	Project,
+	ExecutionRepository,
+} from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
@@ -60,6 +66,7 @@ afterAll(() => {
 beforeEach(async () => {
 	await testDb.truncate(['WorkflowEntity', 'SharedWorkflow']);
 	jest.clearAllMocks();
+	jest.spyOn(Container.get(ExecutionRepository), 'setRunning').mockResolvedValue(new Date());
 });
 
 describe('processError', () => {
@@ -569,6 +576,57 @@ describe('workflow timeout with startedAt', () => {
 		// ASSERT
 		// The execution should be stopped when the timeout callback is executed
 		expect(mockStopExecution).toHaveBeenCalledWith('1', expect.any(TimeoutExecutionCancelledError));
+	});
+});
+
+describe('needsFullExecutionData', () => {
+	const originalEnv = process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING;
+
+	afterEach(() => {
+		if (originalEnv === undefined) {
+			delete process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING;
+		} else {
+			process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING = originalEnv;
+		}
+	});
+
+	it('should return true when forceFullExecutionData is true even with N8N_MINIMIZE_EXECUTION_DATA_FETCHING set', () => {
+		process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING = 'true';
+
+		// @ts-expect-error Private method
+		const result = runner.needsFullExecutionData('evaluation', 'exec-id', true);
+
+		expect(result).toBe(true);
+	});
+
+	it('should return true when env var is not set and forceFullExecutionData is undefined', () => {
+		delete process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING;
+
+		// @ts-expect-error Private method
+		const result = runner.needsFullExecutionData('webhook', 'exec-id', undefined);
+
+		expect(result).toBe(true);
+	});
+
+	it('should return false when env var is set, forceFullExecutionData is undefined, and mode is not integrated', () => {
+		process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING = 'true';
+
+		const activeExecutions = Container.get(ActiveExecutions);
+		jest.spyOn(activeExecutions, 'getResponseMode').mockReturnValue('responseNode');
+
+		// @ts-expect-error Private method
+		const result = runner.needsFullExecutionData('webhook', 'exec-id', undefined);
+
+		expect(result).toBe(false);
+	});
+
+	it('should return true when env var is set and mode is integrated', () => {
+		process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING = 'true';
+
+		// @ts-expect-error Private method
+		const result = runner.needsFullExecutionData('integrated', 'exec-id', undefined);
+
+		expect(result).toBe(true);
 	});
 });
 

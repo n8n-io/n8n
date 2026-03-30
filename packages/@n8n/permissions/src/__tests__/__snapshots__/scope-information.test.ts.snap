@@ -183,6 +183,12 @@ exports[`Scope Information ensure scopes are defined correctly 1`] = `
   "instanceAi:manage",
   "instanceAi:gateway",
   "instanceAi:*",
+  "roleMappingRule:create",
+  "roleMappingRule:read",
+  "roleMappingRule:update",
+  "roleMappingRule:delete",
+  "roleMappingRule:list",
+  "roleMappingRule:*",
   "*",
 ]
 `;
