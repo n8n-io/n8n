@@ -16,11 +16,10 @@ import { Observability } from '@mastra/observability';
 
 import type { ServiceProxyConfig } from '../types';
 
-import { UpdatableLangSmithExporter } from './build-langsmith-exporter';
+import { buildLangSmithExporter } from './build-langsmith-exporter';
 
 let cachedSubAgentMastra: Mastra | null = null;
 let cachedSubAgentStorageKey = '';
-let cachedSubAgentExporter: UpdatableLangSmithExporter | null = null;
 
 export function registerWithMastra(
 	agentId: string,
@@ -34,12 +33,9 @@ export function registerWithMastra(
 		// Mastra.__registerMastra sets the mastra back-reference on the agent,
 		// which is what enables suspend/resume snapshot storage.
 		agent.__registerMastra(cachedSubAgentMastra);
-		// Refresh auth headers so this run's traces use a valid token.
-		cachedSubAgentExporter?.update(tracingConfig);
 		return;
 	}
 
-	cachedSubAgentExporter = new UpdatableLangSmithExporter(tracingConfig);
 	cachedSubAgentMastra = new Mastra({
 		agents: { [agentId]: agent },
 		storage,
@@ -47,7 +43,7 @@ export function registerWithMastra(
 			configs: {
 				langsmith: {
 					serviceName: 'instance-ai',
-					exporters: [cachedSubAgentExporter],
+					exporters: [buildLangSmithExporter(tracingConfig)],
 				},
 			},
 		}),

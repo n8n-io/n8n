@@ -1,7 +1,16 @@
-import type { ObservabilityExporter, InitExporterOptions, TracingEvent } from '@mastra/core/observability';
+import { AsyncLocalStorage } from 'node:async_hooks';
+
 import { LangSmithExporter } from '@mastra/langsmith';
 
 import type { ServiceProxyConfig } from '../types';
+
+/**
+ * Per-request tracing auth headers, isolated via AsyncLocalStorage.
+ * Callers wrap their agent run in `tracingHeaderStore.run(headers, fn)`
+ * so the shared exporter's custom fetch reads the correct per-request
+ * Authorization header without any shared mutable state.
+ */
+export const tracingHeaderStore = new AsyncLocalStorage<Record<string, string>>();
 
 // autoBatchTracing must be false because @mastra/langsmith calls patchRun()
 // multiple times per span (on update and on finish). With batching enabled,
@@ -11,13 +20,25 @@ import type { ServiceProxyConfig } from '../types';
 // instead, which don't require those fields.
 export function buildLangSmithExporter(tracingConfig?: ServiceProxyConfig): LangSmithExporter {
 	if (tracingConfig) {
+		// Custom fetch that injects per-request auth headers from AsyncLocalStorage.
+		// The exporter is created once and cached; each request's fetch calls read
+		// headers from their own async context — no shared mutable state.
+		const proxyFetch: typeof globalThis.fetch = (input, init) => {
+			const contextHeaders = tracingHeaderStore.getStore();
+			if (contextHeaders) {
+				const merged = { ...(init?.headers as Record<string, string>), ...contextHeaders };
+				return globalThis.fetch(input, { ...init, headers: merged });
+			}
+			return globalThis.fetch(input, init);
+		};
+
 		return new LangSmithExporter({
 			projectName: 'instance-ai',
 			apiUrl: tracingConfig.apiUrl,
 			apiKey: '-', // proxy manages auth
 			autoBatchTracing: false,
 			traceBatchConcurrency: 1,
-			fetchOptions: { headers: tracingConfig.headers },
+			fetchImplementation: proxyFetch,
 		});
 	}
 	return new LangSmithExporter({
@@ -25,43 +46,4 @@ export function buildLangSmithExporter(tracingConfig?: ServiceProxyConfig): Lang
 		autoBatchTracing: false,
 		traceBatchConcurrency: 1,
 	});
-}
-
-/**
- * Delegating wrapper around LangSmithExporter that allows swapping the inner
- * exporter to pick up fresh proxy auth headers without recreating the entire
- * Mastra + Observability stack (which would leak ~25 MB RunTree objects).
- *
- * The swap happens before each agent run in ensureMastraRegistered /
- * registerWithMastra, so all traces from a given run use that run's auth token.
- */
-export class UpdatableLangSmithExporter implements ObservabilityExporter {
-	name = 'langsmith-updatable';
-
-	private inner: LangSmithExporter;
-
-	constructor(tracingConfig?: ServiceProxyConfig) {
-		this.inner = buildLangSmithExporter(tracingConfig);
-	}
-
-	/** Replace the inner exporter with one carrying fresh auth headers. */
-	update(tracingConfig?: ServiceProxyConfig) {
-		this.inner = buildLangSmithExporter(tracingConfig);
-	}
-
-	init(options: InitExporterOptions) {
-		this.inner.init?.(options);
-	}
-
-	async exportTracingEvent(event: TracingEvent): Promise<void> {
-		return this.inner.exportTracingEvent(event);
-	}
-
-	async flush(): Promise<void> {
-		return this.inner.flush();
-	}
-
-	async shutdown(): Promise<void> {
-		return this.inner.shutdown();
-	}
 }

@@ -13,7 +13,7 @@ import { createAllTools, createOrchestrationTools } from '../tools';
 import { sanitizeMcpToolSchemas } from './sanitize-mcp-schemas';
 import { createToolsFromLocalMcpServer } from '../tools/filesystem/create-tools-from-mcp-server';
 import type { CreateInstanceAgentOptions, McpServerConfig, ServiceProxyConfig } from '../types';
-import { UpdatableLangSmithExporter } from './build-langsmith-exporter';
+import { buildLangSmithExporter } from './build-langsmith-exporter';
 import { getSystemPrompt } from './system-prompt';
 
 function buildMcpServers(
@@ -49,7 +49,6 @@ let cachedToolSearchKey = '';
 
 let cachedMastra: Mastra | null = null;
 let cachedMastraStorageKey = '';
-let cachedMastraExporter: UpdatableLangSmithExporter | null = null;
 
 // Tools that are always loaded into the orchestrator's context (no search required).
 // These are used in nearly every conversation per system prompt analysis.
@@ -113,12 +112,9 @@ function ensureMastraRegistered(
 		// Register the new agent with the existing Mastra so it gets
 		// the #mastra back-reference needed for suspend/resume snapshot storage.
 		agent.__registerMastra(cachedMastra);
-		// Refresh auth headers so this run's traces use a valid token.
-		cachedMastraExporter?.update(tracingConfig);
 		return;
 	}
 
-	cachedMastraExporter = new UpdatableLangSmithExporter(tracingConfig);
 	cachedMastra = new Mastra({
 		agents: { 'n8n-instance-agent': agent },
 		storage,
@@ -126,7 +122,7 @@ function ensureMastraRegistered(
 			configs: {
 				langsmith: {
 					serviceName: 'instance-ai',
-					exporters: [cachedMastraExporter],
+					exporters: [buildLangSmithExporter(tracingConfig)],
 				},
 			},
 		}),

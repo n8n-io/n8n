@@ -52,6 +52,7 @@ import {
 	type SpawnBackgroundTaskOptions,
 	type StreamableAgent,
 	type ServiceProxyConfig,
+	tracingHeaderStore,
 	WorkflowTaskCoordinator,
 	WorkflowLoopStorage,
 } from '@n8n/instance-ai';
@@ -1094,18 +1095,25 @@ export class InstanceAiService {
 				});
 			}
 
-			const agent = await createInstanceAgent({
-				modelId,
-				context,
-				orchestrationContext,
-				mcpServers,
-				memoryConfig,
-				memory,
-				workspace: orchestrationContext.workspace,
-				disableDeferredTools: true,
-				tracingConfig,
-				timeZone: timeZone ?? this.defaultTimeZone,
-			});
+			// Wrap agent creation + execution in tracingHeaderStore so the shared
+			// LangSmith exporter's custom fetch reads per-request auth headers from
+			// this async context — no shared mutable state between concurrent runs.
+			const agent = await tracingHeaderStore.run(
+				tracingConfig?.headers ?? {},
+				() =>
+					createInstanceAgent({
+						modelId,
+						context,
+						orchestrationContext,
+						mcpServers,
+						memoryConfig,
+						memory,
+						workspace: orchestrationContext.workspace,
+						disableDeferredTools: true,
+						tracingConfig,
+						timeZone: timeZone ?? this.defaultTimeZone,
+					}),
+			);
 
 			// Compact older conversation history into a summary (best-effort, non-blocking on failure)
 			this.eventBus.publish(threadId, {
@@ -1152,26 +1160,30 @@ export class InstanceAiService {
 						]
 					: fullMessage;
 
-			const result = await streamAgentRun(
-				agent as StreamableAgent,
-				streamInput,
-				{
-					abortSignal: signal,
-					memory: {
-						resource: user.id,
-						thread: threadId,
-					},
-					providerOptions: {
-						anthropic: { cacheControl: { type: 'ephemeral' } },
-					},
-				},
-				{
-					threadId,
-					runId,
-					agentId: ORCHESTRATOR_AGENT_ID,
-					signal,
-					eventBus: this.eventBus,
-				},
+			const result = await tracingHeaderStore.run(
+				tracingConfig?.headers ?? {},
+				() =>
+					streamAgentRun(
+						agent as StreamableAgent,
+						streamInput,
+						{
+							abortSignal: signal,
+							memory: {
+								resource: user.id,
+								thread: threadId,
+							},
+							providerOptions: {
+								anthropic: { cacheControl: { type: 'ephemeral' } },
+							},
+						},
+						{
+							threadId,
+							runId,
+							agentId: ORCHESTRATOR_AGENT_ID,
+							signal,
+							eventBus: this.eventBus,
+						},
+					),
 			);
 
 			if (result.status === 'suspended') {

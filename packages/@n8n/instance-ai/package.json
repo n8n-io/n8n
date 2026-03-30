@@ -43,11 +43,11 @@
     "pdf-parse": "^1.1.1",
     "turndown": "^7.2.0",
     "zod": "catalog:",
+    "@ai-sdk/provider-v5": "npm:@ai-sdk/provider@2.0.0",
     "zod-from-json-schema-v3": "npm:zod-from-json-schema@^0.0.5"
   },
   "devDependencies": {
     "@ai-sdk/anthropic": "2.0.61",
-    "@ai-sdk/provider-v5": "npm:@ai-sdk/provider@2.0.0",
     "@n8n/typescript-config": "workspace:*",
     "@types/luxon": "3.2.0",
     "@types/turndown": "^5.0.5"

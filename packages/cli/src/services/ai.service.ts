@@ -76,6 +76,9 @@ export class AiService {
 		if (!this.client) {
 			this.initPromise ??= this.init();
 			await this.initPromise;
+			if (!this.client) {
+				this.initPromise = undefined; // allow retry after license activation
+			}
 		}
 		assert(this.client, 'AI Assistant client not initialized');
 		return this.client;
