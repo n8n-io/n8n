@@ -148,6 +148,8 @@ import { ChangeWorkflowPublishedVersionFKsToRestrict1772619247762 } from '../com
 import { AddTypeToChatHubSessions1772700000000 } from '../common/1772700000000-AddTypeToChatHubSessions';
 import { CreateRoleMappingRuleTable1772800000000 } from '../common/1772800000000-CreateRoleMappingRuleTable';
 import { CreateCredentialDependencyTable1773000000000 } from '../common/1773000000000-CreateCredentialDependencyTable';
+import { CreateInstanceAiTables1773000000000 } from '../common/1773000000000-CreateInstanceAiTables';
+import { CreateInstanceAiSnapshotAndLogTables1774000000000 } from '../common/1774000000000-CreateInstanceAiSnapshotAndLogTables';
 import { AddRestoreFieldsToWorkflowBuilderSession1774280963551 } from '../common/1774280963551-AddRestoreFieldsToWorkflowBuilderSession';
 import type { Migration } from '../migration-types';
 
@@ -301,7 +303,9 @@ const sqliteMigrations: Migration[] = [
 	ChangeWorkflowPublishedVersionFKsToRestrict1772619247762,
 	AddTypeToChatHubSessions1772700000000,
 	CreateRoleMappingRuleTable1772800000000,
+	CreateInstanceAiTables1773000000000,
 	CreateCredentialDependencyTable1773000000000,
+	CreateInstanceAiSnapshotAndLogTables1774000000000,
 	AddRestoreFieldsToWorkflowBuilderSession1774280963551,
 ];
 

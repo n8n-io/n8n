@@ -1,0 +1,194 @@
+/**
+ * Preconfigured Data Table Agent Tool
+ *
+ * Creates a focused sub-agent for data table management (CRUD on tables,
+ * columns, and rows). Uses consumeStreamWithHitl for HITL on destructive
+ * operations (delete-data-table, delete-data-table-rows).
+ */
+
+import { Agent } from '@mastra/core/agent';
+import type { ToolsInput } from '@mastra/core/agent';
+import { createTool } from '@mastra/core/tools';
+import { nanoid } from 'nanoid';
+import { z } from 'zod';
+
+import { DATA_TABLE_AGENT_PROMPT } from './data-table-agent.prompt';
+import { truncateLabel } from './display-utils';
+import { registerWithMastra } from '../../agent/register-with-mastra';
+import { createSubAgentMemory, subAgentResourceId } from '../../memory/sub-agent-memory';
+import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
+import type { OrchestrationContext } from '../../types';
+
+const DATA_TABLE_MAX_STEPS = 15;
+
+const DATA_TABLE_TOOL_NAMES = [
+	'list-data-tables',
+	'create-data-table',
+	'delete-data-table',
+	'get-data-table-schema',
+	'add-data-table-column',
+	'delete-data-table-column',
+	'rename-data-table-column',
+	'query-data-table-rows',
+	'insert-data-table-rows',
+	'update-data-table-rows',
+	'delete-data-table-rows',
+];
+
+export interface StartDataTableAgentInput {
+	task: string;
+	conversationContext?: string;
+	taskId?: string;
+	agentId?: string;
+	plannedTaskId?: string;
+}
+
+export interface StartedBackgroundAgentTask {
+	result: string;
+	taskId: string;
+	agentId: string;
+}
+
+export function startDataTableAgentTask(
+	context: OrchestrationContext,
+	input: StartDataTableAgentInput,
+): StartedBackgroundAgentTask {
+	// Collect data table tools from the domain tools
+	const dataTableTools: ToolsInput = {};
+	for (const name of DATA_TABLE_TOOL_NAMES) {
+		if (name in context.domainTools) {
+			dataTableTools[name] = context.domainTools[name];
+		}
+	}
+
+	if (Object.keys(dataTableTools).length === 0) {
+		return { result: 'Error: no data table tools available.', taskId: '', agentId: '' };
+	}
+
+	if (!context.spawnBackgroundTask) {
+		return { result: 'Error: background task support not available.', taskId: '', agentId: '' };
+	}
+
+	const subAgentId = input.agentId ?? `agent-datatable-${nanoid(6)}`;
+	const taskId = input.taskId ?? `datatable-${nanoid(8)}`;
+
+	context.eventBus.publish(context.threadId, {
+		type: 'agent-spawned',
+		runId: context.runId,
+		agentId: subAgentId,
+		payload: {
+			parentId: context.orchestratorAgentId,
+			role: 'data-table-manager',
+			tools: Object.keys(dataTableTools),
+			taskId,
+			kind: 'data-table',
+			title: 'Managing data table',
+			subtitle: truncateLabel(input.task),
+			goal: input.task,
+			targetResource: { type: 'data-table' as const },
+		},
+	});
+
+	context.spawnBackgroundTask({
+		taskId,
+		threadId: context.threadId,
+		agentId: subAgentId,
+		role: 'data-table-manager',
+		plannedTaskId: input.plannedTaskId,
+		run: async (signal, _drainCorrections) => {
+			const dataTableMemory = createSubAgentMemory(context.storage, 'data-table-manager');
+
+			const subAgent = new Agent({
+				id: subAgentId,
+				name: 'Data Table Agent',
+				instructions: {
+					role: 'system' as const,
+					content: DATA_TABLE_AGENT_PROMPT,
+					providerOptions: {
+						anthropic: { cacheControl: { type: 'ephemeral' } },
+					},
+				},
+				model: context.modelId,
+				tools: dataTableTools,
+				memory: dataTableMemory,
+			});
+
+			registerWithMastra(subAgentId, subAgent, context.storage);
+
+			const dtMemoryOpts = dataTableMemory
+				? {
+						resource: subAgentResourceId(context.userId, 'data-table-manager'),
+						thread: subAgentId,
+					}
+				: undefined;
+
+			const conversationCtx = input.conversationContext
+				? `\n\n[CONVERSATION CONTEXT: ${input.conversationContext}]`
+				: '';
+			const briefing = `${input.task}${conversationCtx}`;
+
+			const stream = await subAgent.stream(briefing, {
+				maxSteps: DATA_TABLE_MAX_STEPS,
+				abortSignal: signal,
+				providerOptions: {
+					anthropic: { cacheControl: { type: 'ephemeral' } },
+				},
+				...(dtMemoryOpts ? { memory: dtMemoryOpts } : {}),
+			});
+
+			const hitlResult = await consumeStreamWithHitl({
+				agent: subAgent,
+				stream: stream as {
+					runId?: string;
+					fullStream: AsyncIterable<unknown>;
+					text: Promise<string>;
+				},
+				runId: context.runId,
+				agentId: subAgentId,
+				eventBus: context.eventBus,
+				threadId: context.threadId,
+				abortSignal: signal,
+				waitForConfirmation: context.waitForConfirmation,
+			});
+
+			return await hitlResult.text;
+		},
+	});
+
+	return {
+		result: `Data table operation started (task: ${taskId}). Reply with one short sentence. Do NOT summarize the plan or list details.`,
+		taskId,
+		agentId: subAgentId,
+	};
+}
+
+export function createDataTableAgentTool(context: OrchestrationContext) {
+	return createTool({
+		id: 'manage-data-tables-with-agent',
+		description:
+			'Manage data tables using a specialized agent. ' +
+			'The agent handles listing, creating, deleting tables, modifying schemas, ' +
+			'and querying/inserting/updating/deleting rows.',
+		inputSchema: z.object({
+			task: z
+				.string()
+				.describe(
+					'What to do: describe the data table operation. Include table names, column details, data to insert, or query criteria.',
+				),
+			conversationContext: z
+				.string()
+				.optional()
+				.describe(
+					'Brief summary of the conversation so far — what was discussed, decisions made, and information gathered. The agent uses this to avoid repeating information the user already knows.',
+				),
+		}),
+		outputSchema: z.object({
+			result: z.string(),
+			taskId: z.string(),
+		}),
+		execute: async (input) => {
+			const result = startDataTableAgentTask(context, input);
+			return await Promise.resolve({ result: result.result, taskId: result.taskId });
+		},
+	});
+}

@@ -269,6 +269,16 @@ export type FrontendModuleSettings = {
 	};
 
 	/**
+	 * Client settings for instance AI module.
+	 */
+	'instance-ai'?: {
+		enabled: boolean;
+		localGateway: boolean;
+		localGatewayDisabled: boolean;
+		localGatewayFallbackDirectory: string | null;
+	};
+
+	/**
 	 * Quick connect settings
 	 */
 	'quick-connect'?: {

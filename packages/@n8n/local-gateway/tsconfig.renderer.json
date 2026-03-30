@@ -1,0 +1,15 @@
+{
+	"compilerOptions": {
+		"rootDir": "src",
+		"outDir": "dist",
+		"allowSyntheticDefaultImports": true,
+		"esModuleInterop": false,
+		"lib": ["DOM", "DOM.Iterable", "ESNext"],
+		"module": "ESNext",
+		"target": "ESNext",
+		"moduleResolution": "bundler",
+		"verbatimModuleSyntax": true,
+		"types": []
+	},
+	"include": ["src/renderer/**/*.ts", "src/shared/**/*.ts"]
+}
