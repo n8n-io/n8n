@@ -32,12 +32,6 @@ const MAX_INGEST_MEMORY_BYTES = 3 * 1024 * 1024 * 1024;
 export interface StageModels {
 	/** Default model for all stages */
 	default: ModelId;
-	/** Model for supervisor stage (routing decisions) */
-	supervisor?: ModelId;
-	/** Model for responder stage (final user responses) */
-	responder?: ModelId;
-	/** Model for discovery stage (node discovery) */
-	discovery?: ModelId;
 	/** Model for builder stage (workflow structure and configuration) */
 	builder?: ModelId;
 	/** Model for parameter updater (within builder) */
@@ -54,9 +48,6 @@ export interface StageModels {
  */
 export interface ResolvedStageLLMs {
 	default: BaseChatModel;
-	supervisor: BaseChatModel;
-	responder: BaseChatModel;
-	discovery: BaseChatModel;
 	builder: BaseChatModel;
 	parameterUpdater: BaseChatModel;
 	planner: BaseChatModel;
@@ -106,9 +97,6 @@ export async function resolveStageModels(stageModels: StageModels): Promise<Reso
 
 	return {
 		default: defaultLLM,
-		supervisor: stageModels.supervisor ? await setupLLM(stageModels.supervisor) : defaultLLM,
-		responder: stageModels.responder ? await setupLLM(stageModels.responder) : defaultLLM,
-		discovery: stageModels.discovery ? await setupLLM(stageModels.discovery) : defaultLLM,
 		builder: builderLLM,
 		parameterUpdater: stageModels.parameterUpdater
 			? await setupLLM(stageModels.parameterUpdater)
@@ -281,9 +269,6 @@ export function createAgent(options: CreateAgentOptions): WorkflowBuilderAgent {
 	return new WorkflowBuilderAgent({
 		parsedNodeTypes,
 		stageLLMs: {
-			supervisor: llms.supervisor,
-			responder: llms.responder,
-			discovery: llms.discovery,
 			builder: llms.builder,
 			parameterUpdater: llms.parameterUpdater,
 			planner: llms.planner,

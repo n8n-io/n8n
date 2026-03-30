@@ -66,15 +66,6 @@ const DISPLAY_METRICS_BY_EVALUATOR: Record<string, string[]> = {
 		'pairwise_total_passes',
 		'pairwise_total_violations',
 	],
-	'responder-judge': [
-		'relevance',
-		'accuracy',
-		'completeness',
-		'clarity',
-		'criteriaMatch',
-		'forbiddenPhrases',
-		'overallScore',
-	],
 };
 
 const PAIRWISE_COUNT_METRICS = new Set([
@@ -144,16 +135,6 @@ function extractIssuesForLogs(evaluator: string, feedback: Feedback[]): Feedback
 			if (f.metric === 'pairwise_primary' && f.score < 1) return true;
 			if (f.metric === 'pairwise_generation_correctness' && f.score < 1) return true;
 
-			return false;
-		});
-	}
-
-	if (evaluator === 'responder-judge') {
-		return withComments.filter((f) => {
-			// Show per-judge detail summaries
-			if (/^judge\d+$/u.test(f.metric)) return true;
-			// Show dimensions that scored below threshold
-			if (f.kind === 'metric' && f.score < 0.7) return true;
 			return false;
 		});
 	}

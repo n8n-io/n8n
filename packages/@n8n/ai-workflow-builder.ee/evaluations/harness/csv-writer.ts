@@ -15,9 +15,6 @@ const FIXED_COLUMNS = [
 	'gen_input_tokens',
 	'gen_output_tokens',
 	'node_count',
-	'discovery_latency_ms',
-	'builder_latency_ms',
-	'responder_latency_ms',
 ] as const;
 
 /**
@@ -129,10 +126,7 @@ function buildLlmJudgeRow(result: ExampleResult): string[] {
 	row.push(escapeCsvValue(result.generationDurationMs));
 	row.push(escapeCsvValue(result.generationInputTokens));
 	row.push(escapeCsvValue(result.generationOutputTokens));
-	row.push(escapeCsvValue(result.subgraphMetrics?.nodeCount));
-	row.push(escapeCsvValue(result.subgraphMetrics?.discoveryDurationMs));
-	row.push(escapeCsvValue(result.subgraphMetrics?.builderDurationMs));
-	row.push(escapeCsvValue(result.subgraphMetrics?.responderDurationMs));
+	row.push(escapeCsvValue(result.workflow?.nodes?.length));
 
 	// LLM Judge metric columns (score + detail pairs)
 	for (const metric of LLM_JUDGE_METRICS) {
@@ -156,10 +150,7 @@ function buildPairwiseRow(result: ExampleResult, judgeCount: number): string[] {
 	row.push(escapeCsvValue(result.generationDurationMs));
 	row.push(escapeCsvValue(result.generationInputTokens));
 	row.push(escapeCsvValue(result.generationOutputTokens));
-	row.push(escapeCsvValue(result.subgraphMetrics?.nodeCount));
-	row.push(escapeCsvValue(result.subgraphMetrics?.discoveryDurationMs));
-	row.push(escapeCsvValue(result.subgraphMetrics?.builderDurationMs));
-	row.push(escapeCsvValue(result.subgraphMetrics?.responderDurationMs));
+	row.push(escapeCsvValue(result.workflow?.nodes?.length));
 
 	// Pairwise metrics (scores only, no detail)
 	for (const metric of PAIRWISE_METRICS) {

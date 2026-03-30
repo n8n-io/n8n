@@ -129,11 +129,9 @@ function createMockEnvironment() {
 		parsedNodeTypes: [] as INodeTypeDescription[],
 		llms: {
 			default: mockLlm,
-			supervisor: mockLlm,
-			responder: mockLlm,
-			discovery: mockLlm,
 			builder: mockLlm,
 			parameterUpdater: mockLlm,
+			planner: mockLlm,
 			judge: mockLlm,
 		},
 		lsClient: mock<Client>(),

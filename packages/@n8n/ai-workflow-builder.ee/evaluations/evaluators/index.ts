@@ -15,10 +15,6 @@ export {
 	createSimilarityEvaluator,
 	type SimilarityEvaluatorOptions,
 } from './similarity';
-export {
-	createResponderEvaluator,
-	type ResponderEvaluationContext,
-} from './responder';
 export { createExecutionEvaluator } from './execution';
 export {
 	createBinaryChecksEvaluator,
