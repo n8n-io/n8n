@@ -1,0 +1,59 @@
+{
+	"createdAt": "2026-02-28T00:06:13.000Z",
+	"updatedAt": "2026-02-28T00:06:13.000Z",
+	"id": "271",
+	"name": "LineMessagingApi:Message:multicast",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "Start",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [250, 300],
+			"id": "e5f6a7b8-c9d0-1234-ef01-345678901234"
+		},
+		{
+			"parameters": {
+				"resource": "message",
+				"operation": "multicast",
+				"userIds": "U1234567890abcdef1234567890abcdef, Uabcdef1234567890abcdef1234567890",
+				"messages": "[{\"type\": \"text\", \"text\": \"Multicast from n8n!\"}]"
+			},
+			"name": "LINE Messaging API",
+			"type": "n8n-nodes-base.lineMessagingApi",
+			"typeVersion": 1,
+			"position": [480, 300],
+			"credentials": {
+				"lineApi": {
+					"id": "224",
+					"name": "LINE API"
+				}
+			},
+			"id": "f6a7b8c9-d0e1-2345-f012-456789012345"
+		}
+	],
+	"connections": {
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "LINE Messaging API",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"LINE Messaging API": {
+			"main": [[]]
+		}
+	},
+	"settings": {},
+	"staticData": null,
+	"meta": null,
+	"pinData": null,
+	"versionId": null,
+	"triggerCount": 0,
+	"tags": []
+}
