@@ -3,12 +3,37 @@ import type { IncomingMessage } from 'http';
 function parseHeaderParameters(parameters: string[]): Record<string, string> {
 	return parameters.reduce(
 		(acc, param) => {
-			const [key, value] = param.split('=');
-			let decodedValue = decodeURIComponent(value).trim();
-			if (decodedValue.startsWith('"') && decodedValue.endsWith('"')) {
-				decodedValue = decodedValue.slice(1, -1);
+			const eqIdx = param.indexOf('=');
+			if (eqIdx === -1) return acc;
+			const key = param.slice(0, eqIdx);
+			let processedValue = param.slice(eqIdx + 1).trim();
+
+			if (processedValue.startsWith('"') && processedValue.endsWith('"')) {
+				// Quoted string: strip quotes first, then try to percent-decode.
+				// Some non-standard servers percent-encode inside quoted strings
+				// (e.g. filename="my%20file.pdf"). Per RFC 6266, quoted filename
+				// values are plain strings but we decode as a best-effort fallback.
+				// A bare % that isn't a valid percent-encoded sequence is kept as-is.
+				processedValue = processedValue.slice(1, -1);
+				try {
+					processedValue = decodeURIComponent(processedValue);
+				} catch {
+					// Keep raw value — contains an invalid percent sequence (e.g. 75%.pdf)
+				}
+			} else {
+				// Unquoted value: may be entirely percent-encoded, including the quotes
+				// themselves (e.g. filename=%22test%20file.txt%22 → "test file.txt")
+				try {
+					processedValue = decodeURIComponent(processedValue);
+					if (processedValue.startsWith('"') && processedValue.endsWith('"')) {
+						processedValue = processedValue.slice(1, -1);
+					}
+				} catch {
+					// Keep raw value
+				}
 			}
-			acc[key.toLowerCase().trim()] = decodedValue;
+
+			acc[key.toLowerCase().trim()] = processedValue;
 			return acc;
 		},
 		{} as Record<string, string>,
