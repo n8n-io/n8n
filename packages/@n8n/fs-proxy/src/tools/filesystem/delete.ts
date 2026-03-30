@@ -14,7 +14,7 @@ export const deleteTool: ToolDefinition<typeof inputSchema> = {
 	description:
 		'Delete a file or directory. Deleting a directory removes it and all of its contents recursively.',
 	inputSchema,
-	annotations: { defaultPermission: 'confirm', destructiveHint: true },
+	annotations: { destructiveHint: true },
 	async getAffectedResources({ path: relPath }, { dir }) {
 		return [await buildFilesystemResource(dir, relPath, 'filesystemWrite', `Delete: ${relPath}`)];
 	},

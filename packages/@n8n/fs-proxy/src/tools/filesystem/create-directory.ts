@@ -14,7 +14,7 @@ export const createDirectoryTool: ToolDefinition<typeof inputSchema> = {
 	description:
 		'Create a new directory. Idempotent: does nothing if the directory already exists. Parent directories are created automatically.',
 	inputSchema,
-	annotations: { defaultPermission: 'confirm' },
+	annotations: {},
 	async getAffectedResources({ dirPath }, { dir }) {
 		return [
 			await buildFilesystemResource(

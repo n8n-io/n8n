@@ -8,11 +8,7 @@ const BASE_CONFIG: GatewayConfig = {
 	filesystem: { dir: '/tmp' },
 	computer: { shell: { timeout: 30_000 } },
 	browser: {
-		headless: false,
-		defaultBrowser: 'chromium',
-		viewport: { width: 1280, height: 720 },
-		sessionTtlMs: 1_800_000,
-		maxConcurrentSessions: 5,
+		defaultBrowser: 'chrome',
 	},
 	permissions: {},
 };

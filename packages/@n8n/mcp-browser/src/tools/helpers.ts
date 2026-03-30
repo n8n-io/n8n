@@ -1,65 +1,81 @@
-import { z } from 'zod';
+import type { z } from 'zod';
 
-import { McpBrowserError } from '../errors';
-import type { SessionManager } from '../session-manager';
+import type { BrowserConnection } from '../connection';
+import { createLogger } from '../logger';
 import type {
 	AffectedResource,
-	BrowserSession,
+	CallToolResult,
+	ConnectionState,
 	ToolContext,
 	ToolDefinition,
-	CallToolResult,
 } from '../types';
-import { formatErrorResponse } from '../utils';
+import { buildErrorResponse, enrichResponse, resolvePageContext } from './response-envelope';
+
+const log = createLogger('connected-tool');
 
 // ---------------------------------------------------------------------------
-// Session tool input constraint — every session tool must have these fields
+// Re-export schemas so existing tool files can keep importing from helpers
 // ---------------------------------------------------------------------------
 
-type SessionToolInput = { sessionId: string; pageId?: string };
+export {
+	consoleSummarySchema,
+	elementTargetSchema,
+	modalStateSchema,
+	pageIdField,
+	withSnapshotEnvelope,
+} from './schemas';
+export type { ElementTargetInput } from './schemas';
 
 // ---------------------------------------------------------------------------
-// Common Zod field schemas reused across tools
+// Connected tool input constraint — every tool must have at least pageId
 // ---------------------------------------------------------------------------
 
-export const sessionIdField = z.string().describe('Session ID from browser_open');
-export const pageIdField = z
-	.string()
-	.optional()
-	.describe('Target page/tab ID. Defaults to active page');
-
-/** Element target: exactly one of ref or selector. Prefer ref from browser_snapshot. */
-const refTargetSchema = z.object({
-	ref: z.string().describe('Element ref from browser_snapshot (preferred)'),
-});
-const selectorTargetSchema = z.object({
-	selector: z.string().describe('CSS/text/role/XPath selector (fallback — prefer ref)'),
-});
-export const elementTargetSchema = z.union([refTargetSchema, selectorTargetSchema]);
-
-export type ElementTargetInput = z.infer<typeof elementTargetSchema>;
+type ConnectedToolInput = { pageId?: string };
 
 // ---------------------------------------------------------------------------
-// Tool factory: session-scoped tool with automatic session/page resolution
+// Connected tool options
+// ---------------------------------------------------------------------------
+
+export interface ConnectedToolOptions {
+	/** Append an accessibility snapshot to the response after the action. */
+	autoSnapshot?: boolean;
+	/** Wrap the action in waitForCompletion (network/navigation settle). */
+	waitForCompletion?: boolean;
+	/** Skip post-action enrichment (snapshot, tab diff, etc.). Use for destructive actions like tab close. */
+	skipEnrichment?: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Domain extraction helper
+// ---------------------------------------------------------------------------
+
+export function extractDomain(url: string): string {
+	try {
+		return new URL(url).hostname || 'browser';
+	} catch {
+		return 'browser';
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Tool factory: connection-scoped tool with automatic page resolution
 // ---------------------------------------------------------------------------
 
 /**
- * Create a tool that operates on an existing session.
- * Handles session lookup, TTL touch, page resolution, and error formatting.
- *
- * Accepts either:
- *  - a ZodRawShape (auto-wrapped in z.object)
- *  - a pre-built ZodType (for unions, intersections, etc.)
+ * Create a tool that operates on the active browser connection.
+ * Handles connection lookup, page resolution, error formatting,
+ * and optional post-action response enrichment (snapshot, modals, console).
  */
-export function createSessionTool<
-	TSchema extends z.ZodType<SessionToolInput & Record<string, unknown>>,
+export function createConnectedTool<
+	TSchema extends z.ZodType<ConnectedToolInput & Record<string, unknown>>,
 >(
-	sessionManager: SessionManager,
+	connection: BrowserConnection,
 	name: string,
 	description: string,
 	inputSchema: TSchema,
-	fn: (session: BrowserSession, input: z.infer<TSchema>, pageId: string) => Promise<CallToolResult>,
+	fn: (state: ConnectionState, input: z.infer<TSchema>, pageId: string) => Promise<CallToolResult>,
 	outputSchema?: z.ZodObject<z.ZodRawShape>,
-	toolGroupId?: string,
+	options?: ConnectedToolOptions,
 	getResourceFromArgs?: (args: z.infer<TSchema>) => string,
 ): ToolDefinition<TSchema> {
 	return {
@@ -69,47 +85,56 @@ export function createSessionTool<
 		outputSchema,
 		async execute(args: z.infer<TSchema>, _context: ToolContext) {
 			try {
-				const { sessionId, pageId: rawPageId } = args;
-				const session = sessionManager.get(sessionId);
-				sessionManager.touch(sessionId);
+				const { state, pageId } = resolvePageContext(connection, args);
 
-				const pageId = rawPageId ?? session.activePageId;
-
-				return await fn(session, args, pageId);
-			} catch (error) {
-				if (error instanceof McpBrowserError) {
-					return formatErrorResponse(error);
+				// Snapshot tab IDs before the action so we can detect new tabs
+				let tabsBefore: Set<string> | undefined;
+				if (!options?.skipEnrichment) {
+					tabsBefore = new Set(await state.adapter.listTabIds());
+					log.debug(`tabsBefore snapshot: ${tabsBefore.size} tab(s)`);
 				}
-				return formatErrorResponse(
-					new McpBrowserError(error instanceof Error ? error.message : String(error)),
-				);
+
+				const result = options?.waitForCompletion
+					? await state.adapter.waitForCompletion(pageId, async () => await fn(state, args, pageId))
+					: await fn(state, args, pageId);
+
+				if (!options?.skipEnrichment) {
+					// Re-resolve: tab-creating actions (tab_open) update activePageId
+					const enrichPageId = state.activePageId || pageId;
+					await enrichResponse(result, state, enrichPageId, options ?? {}, tabsBefore);
+				}
+				// Sync live URL back to state.pages so the cache stays fresh
+				const currentUrl = state.adapter.getPageUrl(pageId);
+				if (currentUrl) {
+					const pageInfo = state.pages.get(pageId);
+					if (pageInfo) pageInfo.url = currentUrl;
+				}
+
+				return result;
+			} catch (error) {
+				return await buildErrorResponse(error, connection, args, options ?? {});
 			}
 		},
 		getAffectedResources(args: z.infer<TSchema>, _context: ToolContext): AffectedResource[] {
-			const group = toolGroupId ?? 'browser';
 			const resource = getResourceFromArgs
 				? getResourceFromArgs(args)
-				: getSessionResource(sessionManager, args.sessionId);
-			return [{ toolGroup: group, resource, description: `Browser: ${resource}` }];
+				: getConnectionResource(connection);
+			return [{ toolGroup: 'browser', resource, description: `Browser: ${resource}` }];
 		},
 	};
 }
 
-function getSessionResource(sessionManager: SessionManager, sessionId: string): string {
+function getConnectionResource(connection: BrowserConnection): string {
 	try {
-		const session = sessionManager.get(sessionId);
-		const activeUrl = session.pages.get(session.activePageId)?.url;
-		return activeUrl ? extractDomain(activeUrl) : 'browser';
+		const state = connection.getConnection();
+		// Get live URL from Playwright (not the stale pages map)
+		const liveUrl = state.adapter.getPageUrl(state.activePageId);
+		if (liveUrl) return extractDomain(liveUrl);
+		// Fallback to cached pages map
+		const activePage = state.pages.get(state.activePageId);
+		return activePage?.url ? extractDomain(activePage.url) : 'browser';
 	} catch {
-		// Session doesn't exist yet or other error — use generic resource
-		return 'browser';
-	}
-}
-
-export function extractDomain(url: string): string {
-	try {
-		return new URL(url).hostname || 'browser';
-	} catch {
+		// Not connected or other error — use generic resource
 		return 'browser';
 	}
 }
