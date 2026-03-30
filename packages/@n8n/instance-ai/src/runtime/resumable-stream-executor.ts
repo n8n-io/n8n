@@ -58,7 +58,7 @@ export interface ExecuteResumableStreamOptions {
 }
 
 export interface ExecuteResumableStreamResult {
-	status: 'completed' | 'cancelled' | 'suspended';
+	status: 'completed' | 'cancelled' | 'suspended' | 'errored';
 	mastraRunId: string;
 	text?: Promise<string>;
 	suspension?: SuspensionInfo;
@@ -1910,6 +1910,7 @@ export async function executeResumableStream(
 
 	while (true) {
 		let suspension: SuspensionInfo | undefined;
+		let hasError = false;
 		let pendingConfirmation: Promise<Record<string, unknown>> | undefined;
 		let confirmationEvent: ConfirmationRequestEvent | undefined;
 		let confirmationEventPublished = false;
@@ -1980,6 +1981,10 @@ export async function executeResumableStream(
 				}
 			}
 
+			if (isErrorChunk(chunk)) {
+				hasError = true;
+			}
+
 			const event = mapMastraChunkToEvent(options.context.runId, options.context.agentId, chunk);
 			if (event) {
 				let shouldPublishEvent = true;
@@ -2031,7 +2036,7 @@ export async function executeResumableStream(
 		}
 
 		if (!suspension) {
-			return { status: 'completed', mastraRunId: activeMastraRunId, text };
+			return { status: hasError ? 'errored' : 'completed', mastraRunId: activeMastraRunId, text };
 		}
 
 		if (options.control.mode === 'manual') {
@@ -2096,6 +2101,14 @@ function publishCorrections(context: ResumableStreamContext, corrections: string
 			payload: { text: `\n[USER CORRECTION]: ${correction}\n` },
 		});
 	}
+}
+
+function isErrorChunk(chunk: unknown): boolean {
+	return (
+		chunk !== null &&
+		typeof chunk === 'object' &&
+		(chunk as Record<string, unknown>).type === 'error'
+	);
 }
 
 async function waitForConfirmation(

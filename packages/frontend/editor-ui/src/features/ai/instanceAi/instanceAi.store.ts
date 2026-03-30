@@ -9,6 +9,7 @@ import { ResponseError } from '@n8n/rest-api-client';
 import {
 	instanceAiEventSchema,
 	isSafeObjectKey,
+	UNLIMITED_CREDITS,
 	type InstanceAiConfirmResponse,
 } from '@n8n/api-types';
 import {
@@ -17,7 +18,9 @@ import {
 	postCancel,
 	postCancelTask,
 	postConfirmation,
+	getInstanceAiCredits,
 } from './instanceAi.api';
+import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import {
 	fetchThreads as fetchThreadsApi,
@@ -129,6 +132,11 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const debugMode = ref(false);
 	const researchMode = ref(localStorage.getItem('instanceAi.researchMode') === 'true');
 	const amendContext = ref<{ agentId: string; role: string } | null>(null);
+	// Credits are instance-level state (not per-thread). Re-fetched on mount via fetchCredits(),
+	// and updated in real-time via the 'updateInstanceAiCredits' push event.
+	// No reset needed on thread switch — login/logout reloads the page.
+	const creditsQuota = ref<number | undefined>(undefined);
+	const creditsClaimed = ref<number | undefined>(undefined);
 	const resolvedConfirmationIds = ref<Map<string, 'approved' | 'denied' | 'deferred'>>(new Map());
 	const MAX_DEBUG_EVENTS = 1000;
 
@@ -189,6 +197,64 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 
 		return null;
 	});
+
+	const creditsRemaining = computed(() => {
+		if (
+			creditsQuota.value === undefined ||
+			creditsClaimed.value === undefined ||
+			creditsQuota.value === UNLIMITED_CREDITS
+		) {
+			return undefined;
+		}
+		return Math.max(0, creditsQuota.value - creditsClaimed.value);
+	});
+
+	const creditsPercentageRemaining = computed(() => {
+		if (
+			creditsQuota.value === undefined ||
+			creditsQuota.value === UNLIMITED_CREDITS ||
+			creditsRemaining.value === undefined
+		) {
+			return undefined;
+		}
+		if (creditsQuota.value === 0) return 0;
+		return (creditsRemaining.value / creditsQuota.value) * 100;
+	});
+
+	const isLowCredits = computed(() => {
+		return creditsPercentageRemaining.value !== undefined && creditsPercentageRemaining.value <= 10;
+	});
+
+	// --- Credits push listener ---
+
+	let removeCreditsPushListener: (() => void) | null = null;
+
+	function startCreditsPushListener(): void {
+		if (removeCreditsPushListener) return;
+		const pushStore = usePushConnectionStore();
+		removeCreditsPushListener = pushStore.addEventListener((message) => {
+			if (message.type !== 'updateInstanceAiCredits') return;
+			creditsQuota.value = message.data.creditsQuota;
+			creditsClaimed.value = message.data.creditsClaimed;
+		});
+	}
+
+	function stopCreditsPushListener(): void {
+		if (removeCreditsPushListener) {
+			removeCreditsPushListener();
+			removeCreditsPushListener = null;
+		}
+	}
+
+	async function fetchCredits(): Promise<void> {
+		try {
+			const result = await getInstanceAiCredits(rootStore.restApiContext);
+			creditsQuota.value = result.creditsQuota;
+			creditsClaimed.value = result.creditsClaimed;
+		} catch {
+			// Non-critical — credits display is optional
+		}
+	}
 
 	/** All pending confirmations across all messages, for the top-level panel. */
 	const pendingConfirmations = computed((): PendingConfirmationItem[] => {
@@ -852,6 +918,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		researchMode,
 		amendContext,
 		feedbackByResponseId,
+		creditsQuota,
+		creditsClaimed,
 		resolvedConfirmationIds,
 		// Computed
 		isStreaming,
@@ -865,6 +933,9 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		currentTasks,
 		resourceRegistry,
 		rateableResponseId,
+		creditsRemaining,
+		creditsPercentageRemaining,
+		isLowCredits,
 		pendingConfirmations,
 		// Actions
 		newThread,
@@ -884,6 +955,9 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		findToolCallByRequestId,
 		copyFullTrace,
 		submitFeedback,
+		fetchCredits,
+		startCreditsPushListener,
+		stopCreditsPushListener,
 		connectSSE,
 		closeSSE,
 	};
