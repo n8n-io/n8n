@@ -7,6 +7,7 @@ import {
 	isResourceLocatorValue,
 } from 'n8n-workflow';
 import type { SetupCardItem, NodeSetupState } from '@/features/setupPanel/setupPanel.types';
+import { isCardComplete } from '@/features/setupPanel/setupPanel.utils';
 
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
@@ -40,6 +41,7 @@ import { PLACEHOLDER_FILLED_AT_EXECUTION_TIME, MANUAL_TRIGGER_NODE_TYPE } from '
 import { sortNodesByExecutionOrder } from '@/app/utils/workflowUtils';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
+import { groupSetupCards } from '@/features/setupPanel/composables/groupSetupCards';
 
 /**
  * Composable that manages workflow setup state for credential configuration.
@@ -684,15 +686,22 @@ export const useWorkflowSetupState = (
 			isComplete: trigState.isComplete,
 		}));
 
-		const all: SetupCardItem[] = [...credentialCards, ...triggerCards, ...nodeStates.value]
+		const flatCards: SetupCardItem[] = [...credentialCards, ...triggerCards, ...nodeStates.value]
 			.filter((state) => state.node.type !== MANUAL_TRIGGER_NODE_TYPE)
 			.map((state) => ({ state }));
 
 		const executionOrder = nodesRequiringSetup.value.map(({ node }) => node.name);
 
-		return all.sort(
+		flatCards.sort(
 			(a, b) =>
-				executionOrder.indexOf(a.state.node.name) - executionOrder.indexOf(b.state.node.name),
+				executionOrder.indexOf(a.state!.node.name) - executionOrder.indexOf(b.state!.node.name),
+		);
+
+		return groupSetupCards(
+			flatCards,
+			sourceNodes.value,
+			workflowsStore.connectionsByDestinationNode,
+			executionOrder,
 		);
 	});
 
@@ -705,7 +714,7 @@ export const useWorkflowSetupState = (
 	});
 
 	const isAllComplete = computed(() => {
-		return setupCards.value.length > 0 && setupCards.value.every((card) => card.state.isComplete);
+		return setupCards.value.length > 0 && setupCards.value.every((card) => isCardComplete(card));
 	});
 
 	/**

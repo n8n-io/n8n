@@ -205,7 +205,7 @@ describe('NodeExecuteButton', () => {
 		});
 
 		const { getByRole } = renderComponent();
-		expect(getByRole('button').textContent).toBe('Test chat');
+		expect(getByRole('button').textContent).toBe('Open chat');
 	});
 
 	it('displays correct button label for polling node', () => {
@@ -367,22 +367,27 @@ describe('NodeExecuteButton', () => {
 		await userEvent.click(getByRole('button'));
 
 		expect(ndvStore.unsetActiveNodeName).toHaveBeenCalled();
-		expect(workflowsStore.chatPartialExecutionDestinationNode).toBe(node.name);
-		expect(nodeViewEventBusEmitSpy).toHaveBeenCalledWith('openChat');
+		expect(runWorkflow.runWorkflow).toHaveBeenCalledWith({
+			destinationNode: { nodeName: node.name, mode: 'inclusive' },
+			source: 'RunData.ExecuteNodeButton',
+		});
 	});
 
 	it('opens chat when clicking button for chat child node', async () => {
 		const node = mockNode({ name: 'test-node', type: SET_NODE_TYPE });
 		vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(node);
 		workflowsStore.checkIfNodeHasChatParent.mockReturnValue(true);
+		workflowsStore.workflowObject.getStartNode = vi.fn().mockReturnValue(undefined);
 
 		const { getByRole } = renderComponent();
 
 		await userEvent.click(getByRole('button'));
 
 		expect(ndvStore.unsetActiveNodeName).toHaveBeenCalled();
-		expect(workflowsStore.chatPartialExecutionDestinationNode).toBe(node.name);
-		expect(nodeViewEventBusEmitSpy).toHaveBeenCalledWith('openChat');
+		expect(runWorkflow.runWorkflow).toHaveBeenCalledWith({
+			destinationNode: { nodeName: node.name, mode: 'inclusive' },
+			source: 'RunData.ExecuteNodeButton',
+		});
 	});
 
 	it('prompts for confirmation when pinned data exists', async () => {
