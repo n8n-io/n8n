@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { TaskRunnersConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
+import assert from 'node:assert/strict';
 import { exec, spawn } from 'node:child_process';
 import { access } from 'node:fs/promises';
 import path from 'node:path';
@@ -29,6 +30,8 @@ export class PyTaskRunnerProcess extends TaskRunnerProcessBase {
 		readonly runnerLifecycleEvents: TaskRunnerLifecycleEvents,
 	) {
 		super(logger, runnerConfig, authService, runnerLifecycleEvents);
+
+		assert(this.isInternal, `${this.constructor.name} cannot be used in external mode`);
 	}
 
 	async startProcess(grantToken: string, taskBrokerUri: string) {
