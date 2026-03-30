@@ -2043,6 +2043,94 @@ describe('LogStreamingEventRelay', () => {
 				},
 			});
 		});
+
+		it('should log on `execution-waiting` event with a concrete waitTill date', () => {
+			const waitTill = new Date('2025-06-01T12:00:00.000Z');
+			const event: RelayEventMap['execution-waiting'] = {
+				executionId: 'exec-waiting-123',
+				workflowId: 'wf-waiting-456',
+				workflowName: 'Waiting Workflow',
+				nodeName: 'Wait Node',
+				nodeId: 'node-wait-id',
+				nodeType: 'n8n-nodes-base.wait',
+				waitTill,
+			};
+
+			eventService.emit('execution-waiting', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.workflow.waiting',
+				payload: {
+					executionId: 'exec-waiting-123',
+					workflowId: 'wf-waiting-456',
+					workflowName: 'Waiting Workflow',
+					nodeName: 'Wait Node',
+					nodeId: 'node-wait-id',
+					nodeType: 'n8n-nodes-base.wait',
+					waitTill: waitTill.toISOString(),
+				},
+			});
+		});
+
+		it('should log on `execution-waiting` event with null waitTill (indefinite wait)', () => {
+			const event: RelayEventMap['execution-waiting'] = {
+				executionId: 'exec-waiting-indefinite',
+				workflowId: 'wf-waiting-789',
+				workflowName: 'Send And Wait Workflow',
+				nodeName: 'Send and Wait',
+				nodeId: 'node-saw-id',
+				nodeType: 'n8n-nodes-base.sendAndWait',
+				waitTill: null,
+			};
+
+			eventService.emit('execution-waiting', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.workflow.waiting',
+				payload: {
+					executionId: 'exec-waiting-indefinite',
+					workflowId: 'wf-waiting-789',
+					workflowName: 'Send And Wait Workflow',
+					nodeName: 'Send and Wait',
+					nodeId: 'node-saw-id',
+					nodeType: 'n8n-nodes-base.sendAndWait',
+					waitTill: null,
+				},
+			});
+		});
+
+		it.each(['webhook', 'form', 'timer'] as const)(
+			'should log on `execution-resumed` event with resumeSource %s',
+			(resumeSource) => {
+				const responseAt = new Date('2025-06-02T08:00:00.000Z');
+				const event: RelayEventMap['execution-resumed'] = {
+					executionId: 'exec-resumed-123',
+					workflowId: 'wf-resumed-456',
+					workflowName: 'Resumed Workflow',
+					nodeName: 'Wait Node',
+					nodeId: 'node-wait-id',
+					nodeType: 'n8n-nodes-base.wait',
+					resumeSource,
+					responseAt,
+				};
+
+				eventService.emit('execution-resumed', event);
+
+				expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+					eventName: 'n8n.audit.workflow.resumed',
+					payload: {
+						executionId: 'exec-resumed-123',
+						workflowId: 'wf-resumed-456',
+						workflowName: 'Resumed Workflow',
+						nodeName: 'Wait Node',
+						nodeId: 'node-wait-id',
+						nodeType: 'n8n-nodes-base.wait',
+						resumeSource,
+						responseAt: responseAt.toISOString(),
+					},
+				});
+			},
+		);
 	});
 
 	describe('AI events', () => {
