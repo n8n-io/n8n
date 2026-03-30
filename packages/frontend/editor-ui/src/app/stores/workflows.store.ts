@@ -1374,6 +1374,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				name: versionData.value?.name ?? null,
 				description: versionData.value?.description ?? null,
 			});
+			workflow.value.settings = updatedWorkflow.settings;
+			workflow.value.updatedAt = updatedWorkflow.updatedAt;
+			workflow.value.name = updatedWorkflow.name;
+			workflow.value.description = updatedWorkflow.description;
+
 			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(id));
 			workflowDocumentStore.setChecksum(updatedWorkflow.checksum);
 		}
@@ -1476,6 +1481,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		// Update local store state to reflect the change
 		if (isCurrentWorkflow && workflowDocumentStore) {
 			workflowDocumentStore.setSettings(updated.settings ?? {});
+			workflow.value.settings = updated.settings;
+			workflow.value.updatedAt = updated.updatedAt;
 		} else if (workflowsListStore.getWorkflowById(id)) {
 			workflowsListStore.updateWorkflowInCache(id, {
 				settings: updated.settings,
