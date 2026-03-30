@@ -460,14 +460,15 @@ export async function executeWebhook(
 		additionalData.executionId = executionId;
 	}
 
-	const { responseMode, responseCode, responseData, checkAllMainOutputs } = evaluateResponseOptions(
-		workflowStartNode,
-		workflow,
-		req,
-		webhookData,
-		executionMode,
-		additionalKeys,
-	);
+	const { responseMode, responseCode, responseData, checkAllMainOutputs } =
+		await evaluateResponseOptions(
+			workflowStartNode,
+			workflow,
+			req,
+			webhookData,
+			executionMode,
+			additionalKeys,
+		);
 
 	if (
 		!['onReceived', 'lastNode', 'responseNode', 'formPage', 'streaming', 'hostedChat'].includes(
@@ -575,7 +576,7 @@ export async function executeWebhook(
 			};
 		}
 
-		const responseHeaders = evaluateResponseHeaders(context);
+		const responseHeaders = await evaluateResponseHeaders(context);
 
 		if (!res.headersSent && responseHeaders) {
 			// Only set given headers if they haven't been sent yet, e.g. for streaming
@@ -741,14 +742,8 @@ export async function executeWebhook(
 				resumeUrl: `${additionalData.webhookWaitingBaseUrl}/${executionId}`,
 				resumeFormUrl: `${additionalData.formWaitingBaseUrl}/${executionId}`,
 			};
-			const evaluatedResponseData = workflow.expression.getComplexParameterValue(
-				workflowStartNode,
-				webhookData.webhookDescription.responseData,
-				executionMode,
-				additionalKeys,
-				undefined,
-				'firstEntryJson',
-			) as string | undefined;
+			const evaluatedResponseData =
+				await context.evaluateComplexWebhookDescriptionExpression<string>('responseData');
 
 			const responseBody = extractWebhookOnReceivedResponse(
 				evaluatedResponseData,
@@ -929,7 +924,7 @@ export async function executeWebhook(
 /**
  * Evaluates the response mode, code and data for a webhook node
  */
-function evaluateResponseOptions(
+async function evaluateResponseOptions(
 	workflowStartNode: INode,
 	workflow: Workflow,
 	req: WebhookRequest,
@@ -937,45 +932,50 @@ function evaluateResponseOptions(
 	executionMode: WorkflowExecuteMode,
 	additionalKeys: IWorkflowDataProxyAdditionalKeys,
 ) {
-	//check if response mode should be set automatically, e.g. multipage form
-	const responseMode =
-		autoDetectResponseMode(workflowStartNode, workflow, req.method) ??
-		(workflow.expression.getSimpleParameterValue(
+	await workflow.expression.acquireIsolate();
+	try {
+		//check if response mode should be set automatically, e.g. multipage form
+		const responseMode =
+			autoDetectResponseMode(workflowStartNode, workflow, req.method) ??
+			(workflow.expression.getSimpleParameterValue(
+				workflowStartNode,
+				webhookData.webhookDescription.responseMode,
+				executionMode,
+				additionalKeys,
+				undefined,
+				'onReceived',
+			) as WebhookResponseMode);
+
+		const responseCode = workflow.expression.getSimpleParameterValue(
 			workflowStartNode,
-			webhookData.webhookDescription.responseMode,
+			webhookData.webhookDescription.responseCode as string,
 			executionMode,
 			additionalKeys,
 			undefined,
-			'onReceived',
-		) as WebhookResponseMode);
+			200,
+		) as number;
 
-	const responseCode = workflow.expression.getSimpleParameterValue(
-		workflowStartNode,
-		webhookData.webhookDescription.responseCode as string,
-		executionMode,
-		additionalKeys,
-		undefined,
-		200,
-	) as number;
+		// This parameter is used for two different purposes:
+		// 1. as arbitrary string input defined in the workflow in the "respond immediately" mode,
+		// 2. as well as WebhookResponseData config in all the other modes
+		const responseData = workflow.expression.getComplexParameterValue(
+			workflowStartNode,
+			webhookData.webhookDescription.responseData,
+			executionMode,
+			additionalKeys,
+			undefined,
+			'firstEntryJson',
+		) as WebhookResponseData | string | undefined;
 
-	// This parameter is used for two different purposes:
-	// 1. as arbitrary string input defined in the workflow in the "respond immediately" mode,
-	// 2. as well as WebhookResponseData config in all the other modes
-	const responseData = workflow.expression.getComplexParameterValue(
-		workflowStartNode,
-		webhookData.webhookDescription.responseData,
-		executionMode,
-		additionalKeys,
-		undefined,
-		'firstEntryJson',
-	) as WebhookResponseData | string | undefined;
+		// This is needed for backward compatibility, where only the first main output was checked for data.
+		// We want to keep existing behavior for webhooks, but change for chat triggers, where checking all main outputs makes more sense.
+		// We can unify the behavior in the next major release and get rid of this flag
+		const checkAllMainOutputs = workflowStartNode.type === CHAT_TRIGGER_NODE_TYPE;
 
-	// This is needed for backward compatibility, where only the first main output was checked for data.
-	// We want to keep existing behavior for webhooks, but change for chat triggers, where checking all main outputs makes more sense.
-	// We can unify the behavior in the next major release and get rid of this flag
-	const checkAllMainOutputs = workflowStartNode.type === CHAT_TRIGGER_NODE_TYPE;
-
-	return { responseMode, responseCode, responseData, checkAllMainOutputs };
+		return { responseMode, responseCode, responseData, checkAllMainOutputs };
+	} finally {
+		await workflow.expression.releaseIsolate();
+	}
 }
 
 /**
@@ -994,14 +994,19 @@ async function parseRequestBody(
 	const nodeVersion = workflowStartNode.typeVersion;
 	if (nodeVersion === 1) {
 		// binaryData option is removed in versions higher than 1
-		binaryData = workflow.expression.getSimpleParameterValue(
-			workflowStartNode,
-			'={{$parameter["options"]["binaryData"]}}',
-			executionMode,
-			additionalKeys,
-			undefined,
-			false,
-		);
+		await workflow.expression.acquireIsolate();
+		try {
+			binaryData = workflow.expression.getSimpleParameterValue(
+				workflowStartNode,
+				'={{$parameter["options"]["binaryData"]}}',
+				executionMode,
+				additionalKeys,
+				undefined,
+				false,
+			);
+		} finally {
+			await workflow.expression.releaseIsolate();
+		}
 	}
 
 	// if `Webhook` or `Wait` node, and binaryData is enabled, skip pre-parse the request-body
@@ -1033,7 +1038,9 @@ async function parseRequestBody(
 /**
  * Evaluates the `responseHeaders` parameter of a webhook node
  */
-function evaluateResponseHeaders(context: WebhookExecutionContext): WebhookResponseHeaders {
+async function evaluateResponseHeaders(
+	context: WebhookExecutionContext,
+): Promise<WebhookResponseHeaders> {
 	const headers = new WebhookResponseHeaders();
 
 	if (context.webhookData.webhookDescription.responseHeaders === undefined) {
@@ -1041,7 +1048,7 @@ function evaluateResponseHeaders(context: WebhookExecutionContext): WebhookRespo
 	}
 
 	const evaluatedHeaders =
-		context.evaluateComplexWebhookDescriptionExpression<WebhookNodeResponseHeaders>(
+		await context.evaluateComplexWebhookDescriptionExpression<WebhookNodeResponseHeaders>(
 			'responseHeaders',
 		);
 	if (evaluatedHeaders) {

@@ -25,36 +25,51 @@ export class WebhookExecutionContext {
 	/**
 	 * Evaluates a simple expression from the webhook description.
 	 */
-	evaluateSimpleWebhookDescriptionExpression<T extends boolean | number | string | unknown[]>(
+	async evaluateSimpleWebhookDescriptionExpression<T extends boolean | number | string | unknown[]>(
 		propertyName: keyof IWebhookDescription,
 		executeData?: IExecuteData,
 		defaultValue?: T,
-	): T | undefined {
-		return this.workflow.expression.getSimpleParameterValue(
-			this.workflowStartNode,
-			this.webhookData.webhookDescription[propertyName],
-			this.executionMode,
-			this.additionalKeys,
-			executeData,
-			defaultValue,
-		) as T | undefined;
+	): Promise<T | undefined> {
+		return await this.withIsolate(
+			() =>
+				this.workflow.expression.getSimpleParameterValue(
+					this.workflowStartNode,
+					this.webhookData.webhookDescription[propertyName],
+					this.executionMode,
+					this.additionalKeys,
+					executeData,
+					defaultValue,
+				) as T | undefined,
+		);
 	}
 
 	/**
 	 * Evaluates a complex expression from the webhook description.
 	 */
-	evaluateComplexWebhookDescriptionExpression<T extends NodeParameterValueType>(
+	async evaluateComplexWebhookDescriptionExpression<T extends NodeParameterValueType>(
 		propertyName: keyof IWebhookDescription,
 		executeData?: IExecuteData,
 		defaultValue?: T,
-	): T | undefined {
-		return this.workflow.expression.getComplexParameterValue(
-			this.workflowStartNode,
-			this.webhookData.webhookDescription[propertyName],
-			this.executionMode,
-			this.additionalKeys,
-			executeData,
-			defaultValue,
-		) as T | undefined;
+	): Promise<T | undefined> {
+		return await this.withIsolate(
+			() =>
+				this.workflow.expression.getComplexParameterValue(
+					this.workflowStartNode,
+					this.webhookData.webhookDescription[propertyName],
+					this.executionMode,
+					this.additionalKeys,
+					executeData,
+					defaultValue,
+				) as T | undefined,
+		);
+	}
+
+	private async withIsolate<T>(fn: () => T): Promise<T> {
+		await this.workflow.expression.acquireIsolate();
+		try {
+			return fn();
+		} finally {
+			await this.workflow.expression.releaseIsolate();
+		}
 	}
 }

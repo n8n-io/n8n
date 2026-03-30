@@ -35,7 +35,7 @@ export async function extractWebhookLastNodeResponse(
 	checkAllMainOutputs: boolean = false,
 ): Promise<Result<StaticResponse | StreamResponse, OperationalError>> {
 	if (responseDataType === 'firstEntryJson') {
-		return extractFirstEntryJsonFromTaskData(context, lastNodeTaskData, checkAllMainOutputs);
+		return await extractFirstEntryJsonFromTaskData(context, lastNodeTaskData, checkAllMainOutputs);
 	}
 
 	if (responseDataType === 'firstEntryBinary') {
@@ -61,11 +61,11 @@ export async function extractWebhookLastNodeResponse(
 /**
  * Extracts the JSON data of the first item of the last node
  */
-function extractFirstEntryJsonFromTaskData(
+async function extractFirstEntryJsonFromTaskData(
 	context: WebhookExecutionContext,
 	lastNodeTaskData: ITaskData,
 	checkAllMainOutputs: boolean = false,
-): Result<StaticResponse, OperationalError> {
+): Promise<Result<StaticResponse, OperationalError>> {
 	const mainOutputs = lastNodeTaskData.data?.main;
 	let firstItem: INodeExecutionData | undefined;
 
@@ -90,7 +90,7 @@ function extractFirstEntryJsonFromTaskData(
 	let lastNodeFirstJsonItem: unknown = firstItem.json;
 
 	const responsePropertyName =
-		context.evaluateSimpleWebhookDescriptionExpression<string>('responsePropertyName');
+		await context.evaluateSimpleWebhookDescriptionExpression<string>('responsePropertyName');
 
 	if (responsePropertyName !== undefined) {
 		lastNodeFirstJsonItem = get(lastNodeFirstJsonItem, responsePropertyName);
@@ -99,7 +99,7 @@ function extractFirstEntryJsonFromTaskData(
 	// User can set the content type of the response and also the headers.
 	// The `responseContentType` only applies to `firstEntryJson` mode.
 	const responseContentType =
-		context.evaluateSimpleWebhookDescriptionExpression<string>('responseContentType');
+		await context.evaluateSimpleWebhookDescriptionExpression<string>('responseContentType');
 
 	return createResultOk({
 		type: 'static',
@@ -142,11 +142,12 @@ async function extractFirstEntryBinaryFromTaskData(
 		return createResultError(new OperationalError('No binary data was found to return'));
 	}
 
-	const responseBinaryPropertyName = context.evaluateSimpleWebhookDescriptionExpression<string>(
-		'responseBinaryPropertyName',
-		undefined,
-		'data',
-	);
+	const responseBinaryPropertyName =
+		await context.evaluateSimpleWebhookDescriptionExpression<string>(
+			'responseBinaryPropertyName',
+			undefined,
+			'data',
+		);
 
 	if (responseBinaryPropertyName === undefined) {
 		return createResultError(new OperationalError("No 'responseBinaryPropertyName' is set"));
