@@ -64,7 +64,13 @@ export class BuilderSandboxFactory {
 		return await this.createDaytona(builderId, context);
 	}
 
-	private getDaytona(): Daytona {
+	private async getDaytona(): Promise<Daytona> {
+		if (this.config.getAuthToken) {
+			// Proxy mode: create a fresh client with a fresh JWT each time
+			const apiKey = await this.config.getAuthToken();
+			return new Daytona({ apiKey, apiUrl: this.config.daytonaApiUrl });
+		}
+		// Direct mode: cache the client (Daytona API keys don't expire)
 		this.daytona ??= new Daytona({
 			apiKey: this.config.daytonaApiKey,
 			apiUrl: this.config.daytonaApiUrl,
@@ -90,58 +96,71 @@ export class BuilderSandboxFactory {
 		const image = this.imageManager!.ensureImage();
 
 		// Start sandbox creation AND catalog generation in parallel
-		const daytona = this.getDaytona();
-		const [sandbox, catalog] = await Promise.all([
-			daytona.create(
+		const createSandbox = async () => {
+			const daytona = await this.getDaytona();
+			return await daytona.create(
 				{
 					image,
 					language: 'typescript',
 					ephemeral: true,
 					labels: { 'n8n-builder': builderId },
 				},
-				{
-					timeout: 300,
-				},
-			),
-			this.getNodeCatalog(context),
-		]);
-
-		// Wrap raw Sandbox in DaytonaSandbox for Mastra Workspace compatibility.
-		// DaytonaSandbox.start() reconnects to the existing sandbox by ID.
-		const daytonaSandbox = new DaytonaSandbox({
-			id: sandbox.id,
-			apiKey: this.config.daytonaApiKey,
-			apiUrl: this.config.daytonaApiUrl,
-			language: 'typescript',
-			timeout: this.config.timeout ?? 300_000,
-		});
-
-		const workspace = new Workspace({
-			sandbox: daytonaSandbox,
-			filesystem: new DaytonaFilesystem(daytonaSandbox),
-		});
-
-		await workspace.init();
-
-		// Write node-types catalog (too large for dockerfile, written post-creation via filesystem API)
-		const root = await getWorkspaceRoot(workspace);
-		if (workspace.filesystem) {
-			await workspace.filesystem.writeFile(`${root}/node-types/index.txt`, catalog);
-		} else {
-			await writeFileViaSandbox(workspace, `${root}/node-types/index.txt`, catalog);
-		}
-
-		return {
-			workspace,
-			cleanup: async () => {
-				await cleanupTrackedSandboxProcesses(workspace);
-				try {
-					await daytona.delete(sandbox);
-				} catch {
-					// Best-effort cleanup
-				}
-			},
+				{ timeout: 300 },
+			);
 		};
+
+		const [sandbox, catalog] = await Promise.all([createSandbox(), this.getNodeCatalog(context)]);
+
+		const deleteSandbox = async () => {
+			try {
+				const d = await this.getDaytona();
+				await d.delete(sandbox);
+			} catch {
+				// Best-effort cleanup
+			}
+		};
+
+		try {
+			// Wrap raw Sandbox in DaytonaSandbox for Mastra Workspace compatibility.
+			// DaytonaSandbox.start() reconnects to the existing sandbox by ID.
+			// Use the same apiKey source as getDaytona() — fresh token in proxy mode, static key in direct mode.
+			const apiKey = this.config.getAuthToken
+				? await this.config.getAuthToken()
+				: this.config.daytonaApiKey;
+			const daytonaSandbox = new DaytonaSandbox({
+				id: sandbox.id,
+				apiKey,
+				apiUrl: this.config.daytonaApiUrl,
+				language: 'typescript',
+				timeout: this.config.timeout ?? 300_000,
+			});
+
+			const workspace = new Workspace({
+				sandbox: daytonaSandbox,
+				filesystem: new DaytonaFilesystem(daytonaSandbox),
+			});
+
+			await workspace.init();
+
+			// Write node-types catalog (too large for dockerfile, written post-creation via filesystem API)
+			const root = await getWorkspaceRoot(workspace);
+			if (workspace.filesystem) {
+				await workspace.filesystem.writeFile(`${root}/node-types/index.txt`, catalog);
+			} else {
+				await writeFileViaSandbox(workspace, `${root}/node-types/index.txt`, catalog);
+			}
+
+			return {
+				workspace,
+				cleanup: async () => {
+					await cleanupTrackedSandboxProcesses(workspace);
+					await deleteSandbox();
+				},
+			};
+		} catch (error) {
+			await deleteSandbox();
+			throw error;
+		}
 	}
 
 	private async createLocal(
