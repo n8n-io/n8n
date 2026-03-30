@@ -8,7 +8,6 @@ export class MockEventSource extends EventTarget {
 
 		MockEventSource._instance = this;
 		MockEventSource.init(url, ...args);
-		console.log('Init');
 	}
 
 	static init = vi.fn();

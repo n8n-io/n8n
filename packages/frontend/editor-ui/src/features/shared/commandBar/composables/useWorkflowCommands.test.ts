@@ -79,6 +79,7 @@ describe('useWorkflowCommands', () => {
 
 	beforeEach(() => {
 		setActivePinia(createTestingPinia({ stubActions: false }));
+		vi.clearAllMocks();
 
 		mockWorkflow = ref(
 			createTestWorkflow({
