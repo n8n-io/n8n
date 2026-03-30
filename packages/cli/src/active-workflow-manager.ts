@@ -72,6 +72,10 @@ interface QueuedActivation {
 	workflowData: IWorkflowDb;
 }
 
+function isDriverError(err: unknown): err is { code?: string; message?: string } {
+	return typeof err === 'object' && err !== null;
+}
+
 @Service()
 export class ActiveWorkflowManager {
 	private queuedActivations: Record<WorkflowId, QueuedActivation> = {};
@@ -194,8 +198,29 @@ export class ActiveWorkflowManager {
 				) {
 					// n8n does not remove the registered webhooks on exit.
 					// This means that further initializations will always fail
-					// when inserting to database. This is why we ignore this error
-					// as it's expected to happen.
+					// when inserting to database due to duplicate key violations.
+					// We only silently skip genuine duplicate-key constraint errors.
+					// All other QueryFailedError subtypes (connection failures, timeouts,
+					// lock contention, schema mismatches) are logged and reported.
+					const driverError = error.driverError;
+					const isDuplicateKeyError =
+						isDriverError(driverError) &&
+						(driverError.code === '23505' || // PostgreSQL
+							driverError.code === 'ER_DUP_ENTRY' || // MySQL/MariaDB
+							(driverError.code === 'SQLITE_CONSTRAINT' &&
+								driverError.message?.includes('UNIQUE'))); // SQLite
+
+					if (isDuplicateKeyError) {
+						continue;
+					}
+
+					// Unexpected DB error during init/leadershipChange — log it but
+					// do not abort the entire activation pass (preserve best-effort behaviour)
+					this.errorReporter.error(error);
+					this.logger.error(
+						`Unexpected database error registering webhook for workflow "${workflow.id}" during ${activation}: ${error.message}`,
+						{ workflowId: workflow.id, activation, error },
+					);
 
 					continue;
 				}
@@ -209,9 +234,6 @@ export class ActiveWorkflowManager {
 					);
 				}
 
-				// if it's a workflow from the insert
-				// TODO check if there is standard error code for duplicate key violation that works
-				// with all databases
 				if (error instanceof Error && error.name === 'QueryFailedError') {
 					error = new WebhookPathTakenError(webhook.node, error);
 				} else if (error.detail) {
