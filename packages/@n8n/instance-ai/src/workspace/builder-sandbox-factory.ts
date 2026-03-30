@@ -64,7 +64,13 @@ export class BuilderSandboxFactory {
 		return await this.createDaytona(builderId, context);
 	}
 
-	private getDaytona(): Daytona {
+	private async getDaytona(): Promise<Daytona> {
+		if (this.config.getAuthToken) {
+			// Proxy mode: create a fresh client with a fresh JWT each time
+			const apiKey = await this.config.getAuthToken();
+			return new Daytona({ apiKey, apiUrl: this.config.daytonaApiUrl });
+		}
+		// Direct mode: cache the client (Daytona API keys don't expire)
 		this.daytona ??= new Daytona({
 			apiKey: this.config.daytonaApiKey,
 			apiUrl: this.config.daytonaApiUrl,
@@ -90,7 +96,7 @@ export class BuilderSandboxFactory {
 		const image = this.imageManager!.ensureImage();
 
 		// Start sandbox creation AND catalog generation in parallel
-		const daytona = this.getDaytona();
+		const daytona = await this.getDaytona();
 		const [sandbox, catalog] = await Promise.all([
 			daytona.create(
 				{
@@ -108,9 +114,13 @@ export class BuilderSandboxFactory {
 
 		// Wrap raw Sandbox in DaytonaSandbox for Mastra Workspace compatibility.
 		// DaytonaSandbox.start() reconnects to the existing sandbox by ID.
+		// Use the same apiKey source as getDaytona() — fresh token in proxy mode, static key in direct mode.
+		const apiKey = this.config.getAuthToken
+			? await this.config.getAuthToken()
+			: this.config.daytonaApiKey;
 		const daytonaSandbox = new DaytonaSandbox({
 			id: sandbox.id,
-			apiKey: this.config.daytonaApiKey,
+			apiKey,
 			apiUrl: this.config.daytonaApiUrl,
 			language: 'typescript',
 			timeout: this.config.timeout ?? 300_000,
@@ -136,7 +146,9 @@ export class BuilderSandboxFactory {
 			cleanup: async () => {
 				await cleanupTrackedSandboxProcesses(workspace);
 				try {
-					await daytona.delete(sandbox);
+					// Get a fresh client for cleanup — the original token may have expired
+					const cleanupDaytona = await this.getDaytona();
+					await cleanupDaytona.delete(sandbox);
 				} catch {
 					// Best-effort cleanup
 				}

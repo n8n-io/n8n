@@ -13,6 +13,10 @@ import { Time } from '@n8n/constants';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
+import { InstanceSettings } from 'n8n-core';
+import { N8N_VERSION } from '@/constants';
+import { License } from '@/license';
 import { UrlService } from '@/services/url.service';
 import {
 	createInstanceAgent,
@@ -126,15 +130,20 @@ export class InstanceAiService {
 	/** Default IANA timezone for the instance (from GENERIC_TIMEZONE env var). */
 	private readonly defaultTimeZone: string;
 
+	/** Lazily-initialized AI assistant client for sandbox proxy integration. */
+	private aiAssistantClient: AiAssistantClient | undefined;
+
 	constructor(
 		private readonly logger: Logger,
-		globalConfig: GlobalConfig,
+		private readonly globalConfig: GlobalConfig,
 		private readonly adapterService: InstanceAiAdapterService,
 		private readonly eventBus: InProcessEventBus,
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly compositeStore: TypeORMCompositeStore,
 		private readonly compactionService: InstanceAiCompactionService,
 		private readonly urlService: UrlService,
+		private readonly license: License,
+		private readonly instanceSettings: InstanceSettings,
 		private readonly dbSnapshotStorage: DbSnapshotStorage,
 		private readonly dbIterationLogStorage: DbIterationLogStorage,
 	) {
@@ -145,14 +154,8 @@ export class InstanceAiService {
 		this.oauth2CallbackUrl = `${editorBaseUrl.replace(/\/$/, '')}/${restEndpoint}/oauth2-credential/callback`;
 		this.webhookBaseUrl = `${this.urlService.getWebhookBaseUrl()}${globalConfig.endpoints.webhook}`;
 
-		// Initialize per-builder sandbox factory from env vars (credential-based config resolves at runtime)
-		const sbxConfig = this.getSandboxConfigFromEnv();
-		if (sbxConfig.enabled && sbxConfig.provider === 'daytona') {
-			this.snapshotManager = new SnapshotManager(sbxConfig.image);
-			this.builderSandboxFactory = new BuilderSandboxFactory(sbxConfig, this.snapshotManager);
-		} else if (sbxConfig.enabled) {
-			this.builderSandboxFactory = new BuilderSandboxFactory(sbxConfig);
-		}
+		// Builder sandbox factory is initialized lazily in getOrCreateBuilderFactory()
+		// because proxy mode requires async config resolution and a user context.
 
 		this.startConfirmationTimeoutSweep();
 	}
@@ -196,15 +199,77 @@ export class InstanceAiService {
 		};
 	}
 
+	private async getAiAssistantClient(): Promise<AiAssistantClient | undefined> {
+		if (this.aiAssistantClient) return this.aiAssistantClient;
+
+		const baseUrl = this.globalConfig.aiAssistant.baseUrl;
+		if (!baseUrl) return undefined;
+
+		const licenseCert = await this.license.loadCertStr();
+		const consumerId = this.license.getConsumerId();
+
+		this.aiAssistantClient = new AiAssistantClient({
+			licenseCert,
+			consumerId,
+			baseUrl,
+			n8nVersion: N8N_VERSION,
+			instanceId: this.instanceSettings.instanceId,
+		});
+
+		this.license.onCertRefresh((cert) => {
+			this.aiAssistantClient?.updateLicenseCert(cert);
+		});
+
+		return this.aiAssistantClient;
+	}
+
 	private async resolveSandboxConfig(user: User): Promise<SandboxConfig> {
 		const base = this.getSandboxConfigFromEnv();
 		if (!base.enabled) return base;
+
+		// If AI assistant service is available, route Daytona calls through its sandbox proxy
+		const client = await this.getAiAssistantClient();
+		if (client) {
+			const proxyConfig = await client.getSandboxProxyConfig();
+			return {
+				...base,
+				daytonaApiUrl: client.getSandboxProxyBaseUrl(),
+				image: proxyConfig.image,
+				getAuthToken: async () => {
+					const token = await client.getBuilderApiProxyToken(
+						{ id: user.id },
+						{ userMessageId: nanoid() },
+					);
+
+					return token.accessToken;
+				},
+			};
+		}
+
+		// Direct mode: Daytona credentials from env vars or admin credential
 		const daytona = await this.settingsService.resolveDaytonaConfig(user);
 		return {
 			...base,
 			daytonaApiUrl: daytona.apiUrl ?? base.daytonaApiUrl,
 			daytonaApiKey: daytona.apiKey ?? base.daytonaApiKey,
 		};
+	}
+
+	/** Lazily create the builder sandbox factory. Async because proxy mode needs to fetch config. */
+	private async getOrCreateBuilderFactory(user: User): Promise<BuilderSandboxFactory | undefined> {
+		if (this.builderSandboxFactory) return this.builderSandboxFactory;
+
+		const config = await this.resolveSandboxConfig(user);
+		if (!config.enabled) return undefined;
+
+		if (config.provider === 'daytona') {
+			this.snapshotManager = new SnapshotManager(config.image);
+			this.builderSandboxFactory = new BuilderSandboxFactory(config, this.snapshotManager);
+		} else {
+			this.builderSandboxFactory = new BuilderSandboxFactory(config);
+		}
+
+		return this.builderSandboxFactory;
 	}
 
 	/** Lazily create the local filesystem provider (singleton). */
@@ -718,7 +783,7 @@ export class InstanceAiService {
 				this.sendCorrectionToTask(threadId, taskId, correction),
 			workflowTaskService: workflowTasks,
 			workspace: sandboxEntry?.workspace,
-			builderSandboxFactory: this.builderSandboxFactory,
+			builderSandboxFactory: await this.getOrCreateBuilderFactory(user),
 			nodeDefinitionDirs: nodeDefDirs.length > 0 ? nodeDefDirs : undefined,
 			domainContext: context,
 		};
