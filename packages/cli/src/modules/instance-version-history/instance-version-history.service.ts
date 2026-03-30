@@ -54,8 +54,8 @@ export class InstanceVersionHistoryService {
 
 		if (!newest || compareVersions(newest, current) !== 0) {
 			const entry = this.repository.create(current);
-			const saved = await this.repository.save(entry);
 			if (this.instanceSettings.isLeader) {
+				const saved = await this.repository.save(entry);
 				this.cache.push({
 					major: saved.major,
 					minor: saved.minor,
