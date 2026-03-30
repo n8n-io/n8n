@@ -189,6 +189,8 @@ export declare namespace CredentialRequest {
 	type Delete = AuthenticatedRequest<{ id: string }, {}, {}, Record<string, string>>;
 
 	type Transfer = AuthenticatedRequest<{ id: string }, {}, { destinationProjectId: string }>;
+
+	type Share = AuthenticatedRequest<{ id: string }, {}, { shareWithIds: string[] }>;
 }
 
 export type OperationID = 'getUsers' | 'getUser';

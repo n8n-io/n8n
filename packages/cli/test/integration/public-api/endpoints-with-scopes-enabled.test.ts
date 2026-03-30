@@ -568,6 +568,40 @@ describe('Public API endpoints with API key scopes', () => {
 					expect(response.statusCode).toBe(403);
 				});
 			});
+
+			describe('PUT /credentials/:id/share', () => {
+				test('should fail to share credential when API key doesn\'t have "credential:share" scope', async () => {
+					/**
+					 * Arrange
+					 */
+					testServer.license.enable('feat:sharing');
+
+					const owner = await createOwnerWithApiKey({ scopes: ['tag:create'] });
+					const authOwnerAgent = testServer.publicApiAgentFor(owner);
+
+					const [ownerProject, targetProject] = await Promise.all([
+						createTeamProject('owner-project', owner),
+						createTeamProject('target-project', owner),
+					]);
+
+					const credentials = await createCredentials(
+						{ name: 'Test', type: 'test', data: '' },
+						ownerProject,
+					);
+
+					/**
+					 * Act
+					 */
+					const response = await authOwnerAgent.put(`/credentials/${credentials.id}/share`).send({
+						shareWithIds: [targetProject.id],
+					});
+
+					/**
+					 * Assert
+					 */
+					expect(response.statusCode).toBe(403);
+				});
+			});
 		});
 
 		describe('executions', () => {
