@@ -16,6 +16,7 @@ const mockAutoPopulateNodeCredentials = jest.fn();
 jest.mock('../tools/workflow-builder/credentials-auto-assign', () => ({
 	autoPopulateNodeCredentials: (...args: unknown[]) =>
 		mockAutoPopulateNodeCredentials(...args) as unknown,
+	stripNullCredentialStubs: jest.fn(),
 }));
 
 // Mock dynamic imports

@@ -48,6 +48,7 @@ export class ModuleRegistry {
 		'workflow-builder',
 		'redaction',
 		'instance-registry',
+		'otel',
 		'instance-version-history',
 	];
 
