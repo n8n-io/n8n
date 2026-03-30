@@ -34,6 +34,7 @@ export default {
 	'codeDiff.replacing': 'Replacing...',
 	'codeDiff.undo': 'Undo',
 	'betaTag.beta': 'beta',
+	'previewTag.preview': 'Preview',
 	'askAssistantButton.askAssistant': 'n8n AI',
 	'assistantChat.builder.name': 'AI Builder',
 	'assistantChat.builder.generatingFinalWorkflow': 'Generating final workflow...',

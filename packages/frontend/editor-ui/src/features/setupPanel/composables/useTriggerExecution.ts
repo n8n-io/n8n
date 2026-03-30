@@ -1,6 +1,5 @@
 import { computed, toValue, type MaybeRef } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { NodeConnectionTypes } from 'n8n-workflow';
 
 import type { INodeUi } from '@/Interface';
 import { useNodeExecution, type UseNodeExecutionOptions } from '@/app/composables/useNodeExecution';
@@ -66,10 +65,7 @@ export function useTriggerExecution(
 
 	const hasUpstreamIssues = computed(() => {
 		if (!nodeValue.value) return false;
-		const parentNames = workflowsStore.workflowObject.getParentNodes(
-			nodeValue.value.name,
-			NodeConnectionTypes.Main,
-		);
+		const parentNames = workflowsStore.workflowObject.getParentNodes(nodeValue.value.name, 'ALL');
 		return parentNames.some((name) => {
 			const parentNode = workflowsStore.getNodeByName(name);
 			return parentNode?.issues?.parameters || parentNode?.issues?.credentials;

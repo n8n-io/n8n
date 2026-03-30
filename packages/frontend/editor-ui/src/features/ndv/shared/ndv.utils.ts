@@ -448,10 +448,13 @@ export function shouldSkipParamValidation(
 	);
 }
 
-export function createCommonNodeSettings(isToolNode: boolean, t: (key: BaseTextKey) => string) {
+export function createCommonNodeSettings(
+	isToolOrModelNode: boolean,
+	t: (key: BaseTextKey) => string,
+) {
 	const ret: INodeProperties[] = [];
 
-	if (!isToolNode) {
+	if (!isToolOrModelNode) {
 		ret.push(
 			{
 				displayName: t('nodeSettings.alwaysOutputData.displayName'),
