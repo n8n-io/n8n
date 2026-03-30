@@ -158,6 +158,9 @@ export class ChatHubModelsService {
 				const rawModels = await this.fetchMistralCloudModels(credentials, additionalData);
 				return { models: this.transformAndFilterModels(rawModels, 'mistralCloud') };
 			}
+			case 'miniMax': {
+				return { models: this.transformAndFilterModels(this.fetchMiniMaxModels(), 'miniMax') };
+			}
 			case 'n8n':
 				return { models: await this.fetchAgentWorkflowsAsModels(user) };
 			case 'custom-agent':
@@ -539,6 +542,16 @@ export class ChatHubModelsService {
 			{},
 			credentials,
 		);
+	}
+
+	private fetchMiniMaxModels(): INodePropertyOptions[] {
+		// MiniMax does not provide a /models endpoint, so we use a static list
+		return [
+			{ name: 'MiniMax-M2.7', value: 'MiniMax-M2.7' },
+			{ name: 'MiniMax-M2.7-highspeed', value: 'MiniMax-M2.7-highspeed' },
+			{ name: 'MiniMax-M2.5', value: 'MiniMax-M2.5' },
+			{ name: 'MiniMax-M2.5-highspeed', value: 'MiniMax-M2.5-highspeed' },
+		];
 	}
 
 	private async fetchOpenRouterModels(
