@@ -298,12 +298,12 @@ function isUnknownRecord(value: unknown): value is Record<string, unknown> {
 
 /** Process a single stream message from CodeWorkflowBuilder, extracting workflow updates and text. */
 function processCodeBuilderMessage(
-	message: { type: string; text?: string; codeSnippet?: string; sourceCode?: string },
+	message: StreamChunk,
 	state: { workflow: SimpleWorkflow | null; generatedCode?: string; textParts: string[] },
 ) {
 	if (isWorkflowUpdateChunk(message)) {
 		try {
-			const parsed: unknown = JSON.parse(message.codeSnippet ?? '');
+			const parsed: unknown = JSON.parse(message.codeSnippet);
 			if (isSimpleWorkflow(parsed)) {
 				state.workflow = parsed;
 				state.generatedCode = message.sourceCode;
@@ -311,7 +311,7 @@ function processCodeBuilderMessage(
 		} catch {
 			// Invalid JSON in codeSnippet — skip this message
 		}
-	} else if (message.type === 'message' && typeof message.text === 'string') {
+	} else if (message.type === 'message' && 'text' in message && typeof message.text === 'string') {
 		state.textParts.push(message.text);
 	}
 }
