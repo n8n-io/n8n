@@ -40,7 +40,7 @@ beforeEach(() => {
 	mockNode.typeVersion = 3;
 	mockContext.getExecuteData = jest.fn() as any;
 	(tracing.getTracingConfig as jest.Mock).mockReturnValue({
-		runName: '[Test Workflow] Test Node',
+		runName: 'Test Node',
 		metadata: { execution_id: 'test-123', workflow: {}, node: 'Test Node' },
 	});
 });
@@ -275,7 +275,7 @@ describe('runAgent - iteration count tracking', () => {
 describe('runAgent - tracing configuration', () => {
 	it('should apply tracing config in non-streaming mode', async () => {
 		const mockTracingConfig = {
-			runName: '[Test Workflow] Test Node',
+			runName: 'Test Node',
 			metadata: { execution_id: 'test-123', workflow: {}, node: 'Test Node' },
 		};
 		jest.spyOn(tracing, 'getTracingConfig').mockReturnValue(mockTracingConfig);
@@ -366,7 +366,7 @@ describe('runAgent - tracing configuration', () => {
 		// Assert on the actual tracing config built by the real getTracingConfig + buildTracingMetadata
 		expect(mockWithConfig).toHaveBeenCalledWith(
 			expect.objectContaining({
-				runName: '[Test Workflow] Test Node',
+				runName: 'Test Node',
 				metadata: expect.objectContaining({
 					execution_id: 'exec-456',
 					node: 'Test Node',
@@ -380,7 +380,7 @@ describe('runAgent - tracing configuration', () => {
 
 	it('should apply tracing config in streaming mode', async () => {
 		const mockTracingConfig = {
-			runName: '[Test Workflow] Test Node',
+			runName: 'Test Node',
 			metadata: { execution_id: 'test-123', workflow: {}, node: 'Test Node' },
 		};
 		jest.spyOn(tracing, 'getTracingConfig').mockReturnValue(mockTracingConfig);
