@@ -211,6 +211,7 @@ watch(
 					@go-to-next="onGoToNext"
 					@go-to-prev="onGoToPrev"
 					@step-executed="handleStepExecuted"
+					@continue-current="continueCurrent"
 					@section-highlight="onSectionHighlight"
 					@credential-selected="onCredentialSelected"
 					@credential-deselected="onCredentialDeselected"

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, toRef, watch } from 'vue';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 
 import NodeIcon from '@/app/components/NodeIcon.vue';
@@ -17,6 +17,7 @@ import { isCardComplete } from '@/features/setupPanel/setupPanel.types';
 import type { INodeUi } from '@/Interface';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useTriggerExecution } from '@/features/setupPanel/composables/useTriggerExecution';
 import { useNodeGroupSections } from '@/features/setupPanel/composables/useNodeGroupSections';
 
@@ -29,6 +30,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 	goToNext: [];
 	goToPrev: [];
+	continueCurrent: [];
 	stepExecuted: [];
 	credentialSelected: [payload: CredentialSelectedPayload];
 	credentialDeselected: [payload: CredentialDeselectedPayload];
@@ -38,6 +40,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const workflowsStore = useWorkflowsStore();
 const credentialsStore = useCredentialsStore();
+const nodeHelpers = useNodeHelpers();
 
 const {
 	parentNodeType,
@@ -53,8 +56,12 @@ const {
 	getSectionNodeType,
 } = useNodeGroupSections(toRef(props, 'nodeGroup'));
 
-// Execute button always targets the parent node
-const executableNode = computed<INodeUi | null>(() => props.nodeGroup.parentNode);
+// Execute button always targets the parent node, but only if it's actually executable
+const executableNode = computed<INodeUi | null>(() => {
+	const parent = props.nodeGroup.parentNode;
+	if (!nodeHelpers.isNodeExecutable(parent, true, [])) return null;
+	return parent;
+});
 
 const {
 	isExecuting,
@@ -72,6 +79,11 @@ const isLastCard = computed(() => props.stepIndex === props.totalCards - 1);
 const showArrows = computed(() => props.totalCards > 1);
 const isPrevDisabled = computed(() => props.stepIndex === 0);
 const isNextDisabled = computed(() => isLastCard.value);
+
+const isExecutable = computed(() => executableNode.value !== null);
+const showContinue = computed(
+	() => !isExecutable.value && props.totalCards > 1 && !isLastCard.value,
+);
 
 const isGroupComplete = computed(() => isCardComplete({ nodeGroup: props.nodeGroup }));
 
@@ -237,7 +249,18 @@ watch(hoveredSection, (section) => {
 			</div>
 
 			<div :class="$style.footerActions">
+				<N8nButton
+					v-if="showContinue"
+					data-test-id="builder-node-group-card-continue"
+					type="primary"
+					size="small"
+					:class="$style.actionButton"
+					:label="i18n.baseText('aiAssistant.builder.setupWizard.continue' as BaseTextKey)"
+					@click="emit('continueCurrent')"
+				/>
+
 				<TriggerExecuteButton
+					v-if="isExecutable"
 					:label="executeLabel"
 					:icon="executeButtonIcon"
 					:disabled="isButtonDisabled || isAnyCredentialTesting"
@@ -358,5 +381,9 @@ watch(hoveredSection, (section) => {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+}
+
+.actionButton {
+	--button--font-size: var(--font-size--2xs);
 }
 </style>
