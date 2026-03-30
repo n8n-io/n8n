@@ -132,7 +132,8 @@ export async function executeBatch(
 		}
 
 		// Finalize the result
-		const itemResult = finalizeResult(batchResult, itemIndex, memory, outputParser);
+		const parseOutput = ctx.getNodeParameter('options.parseOutput', itemIndex, false) as boolean;
+		const itemResult = finalizeResult(batchResult, itemIndex, memory, outputParser, parseOutput);
 		returnData.push(itemResult);
 	});
 
