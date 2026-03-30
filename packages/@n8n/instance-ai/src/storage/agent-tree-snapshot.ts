@@ -1,5 +1,6 @@
 import type { Memory } from '@mastra/memory';
 import type { InstanceAiAgentNode } from '@n8n/api-types';
+import { instanceAiAgentNodeSchema } from '@n8n/api-types';
 import { z } from 'zod';
 
 import { patchThread } from './thread-patch';
@@ -14,7 +15,7 @@ export interface AgentTreeSnapshot {
 }
 
 const agentTreeSnapshotSchema = z.object({
-	tree: z.record(z.unknown()),
+	tree: instanceAiAgentNodeSchema,
 	runId: z.string(),
 	messageGroupId: z.string().optional(),
 	runIds: z.array(z.string()).optional(),
@@ -25,7 +26,7 @@ const snapshotsArraySchema = z.array(agentTreeSnapshotSchema);
 function parseSnapshots(raw: unknown): AgentTreeSnapshot[] {
 	const result = snapshotsArraySchema.safeParse(raw);
 	if (!result.success) return [];
-	return result.data as unknown as AgentTreeSnapshot[];
+	return result.data;
 }
 
 function findLastSnapshotIndex(

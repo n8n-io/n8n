@@ -610,6 +610,53 @@ export type InstanceAiTimelineEntry =
 	| { type: 'tool-call'; toolCallId: string }
 	| { type: 'child'; agentId: string };
 
+export const instanceAiTimelineEntrySchema = z.discriminatedUnion('type', [
+	z.object({ type: z.literal('text'), content: z.string() }),
+	z.object({ type: z.literal('tool-call'), toolCallId: z.string() }),
+	z.object({ type: z.literal('child'), agentId: z.string() }),
+]);
+
+export const instanceAiToolCallStateSchema = z.object({
+	toolCallId: z.string(),
+	toolName: z.string(),
+	args: z.record(z.unknown()),
+	result: z.unknown().optional(),
+	error: z.string().optional(),
+	isLoading: z.boolean(),
+	renderHint: z
+		.enum(['tasks', 'delegate', 'builder', 'data-table', 'researcher', 'default'])
+		.optional(),
+	confirmation: z
+		.object({
+			requestId: z.string(),
+			severity: instanceAiConfirmationSeveritySchema,
+			message: z.string(),
+			credentialRequests: z.array(credentialRequestSchema).optional(),
+			projectId: z.string().optional(),
+			inputType: z.enum(['approval', 'text', 'questions', 'plan-review']).optional(),
+			domainAccess: domainAccessMetaSchema.optional(),
+			credentialFlow: credentialFlowSchema.optional(),
+			setupRequests: z.array(workflowSetupNodeSchema).optional(),
+			workflowId: z.string().optional(),
+			questions: z
+				.array(
+					z.object({
+						id: z.string(),
+						question: z.string(),
+						type: z.enum(['single', 'multi', 'text']),
+						options: z.array(z.string()).optional(),
+					}),
+				)
+				.optional(),
+			introMessage: z.string().optional(),
+			tasks: taskListSchema.optional(),
+		})
+		.optional(),
+	confirmationStatus: z.enum(['pending', 'approved', 'denied']).optional(),
+	startedAt: z.string().optional(),
+	completedAt: z.string().optional(),
+});
+
 export interface InstanceAiAgentNode {
 	agentId: string;
 	role: string;
@@ -645,6 +692,37 @@ export interface InstanceAiAgentNode {
 		technicalDetails?: string;
 	};
 }
+
+export const instanceAiAgentNodeSchema: z.ZodType<InstanceAiAgentNode> = z.lazy(() =>
+	z.object({
+		agentId: z.string(),
+		role: z.string(),
+		tools: z.array(z.string()).optional(),
+		taskId: z.string().optional(),
+		kind: instanceAiAgentKindSchema.optional(),
+		title: z.string().optional(),
+		subtitle: z.string().optional(),
+		goal: z.string().optional(),
+		targetResource: agentSpawnedTargetResourceSchema.optional(),
+		statusMessage: z.string().optional(),
+		status: instanceAiAgentStatusSchema,
+		textContent: z.string(),
+		reasoning: z.string(),
+		toolCalls: z.array(instanceAiToolCallStateSchema),
+		children: z.array(instanceAiAgentNodeSchema),
+		timeline: z.array(instanceAiTimelineEntrySchema),
+		tasks: taskListSchema.optional(),
+		result: z.string().optional(),
+		error: z.string().optional(),
+		errorDetails: z
+			.object({
+				statusCode: z.number().optional(),
+				provider: z.string().optional(),
+				technicalDetails: z.string().optional(),
+			})
+			.optional(),
+	}),
+);
 
 export interface InstanceAiMessage {
 	id: string;

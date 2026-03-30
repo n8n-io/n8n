@@ -275,6 +275,7 @@ export {
 	domainAccessActionSchema,
 	domainAccessMetaSchema,
 	credentialFlowSchema,
+	instanceAiAgentNodeSchema,
 	InstanceAiSendMessageRequest,
 	instanceAiGatewayKeySchema,
 	InstanceAiGatewayEventsQuery,
