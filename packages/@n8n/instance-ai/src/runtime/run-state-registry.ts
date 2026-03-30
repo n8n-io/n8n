@@ -1,9 +1,13 @@
 import type { InstanceAiThreadStatusResponse } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 
+import type { InstanceAiTraceContext } from '../types';
+
 export interface ActiveRunState {
 	runId: string;
 	abortController: AbortController;
+	messageGroupId?: string;
+	tracing?: InstanceAiTraceContext;
 }
 
 export interface SuspendedRunState<TUser = unknown> extends ActiveRunState {
@@ -82,14 +86,13 @@ export class RunStateRegistry<TUser = unknown> {
 	startRun(options: StartRunOptions<TUser>): StartedRunState {
 		const runId = `run_${nanoid()}`;
 		const abortController = new AbortController();
+		const messageGroupId = options.messageGroupId ?? `mg_${nanoid()}`;
 
-		this.activeRuns.set(options.threadId, { runId, abortController });
+		this.activeRuns.set(options.threadId, { runId, abortController, messageGroupId });
 		this.threadUsers.set(options.threadId, options.user);
 		if (options.researchMode !== undefined) {
 			this.threadResearchMode.set(options.threadId, options.researchMode);
 		}
-
-		const messageGroupId = options.messageGroupId ?? `mg_${nanoid()}`;
 
 		// When creating a fresh message group (no reuse), clean up the previous
 		// one so runIdsByMessageGroup doesn't leak entries indefinitely.
@@ -174,6 +177,20 @@ export class RunStateRegistry<TUser = unknown> {
 		return this.activeRuns.get(threadId);
 	}
 
+	getSuspendedRun(threadId: string): SuspendedRunState<TUser> | undefined {
+		return this.suspendedRuns.get(threadId);
+	}
+
+	attachTracing(threadId: string, tracing: InstanceAiTraceContext): void {
+		const activeRun = this.activeRuns.get(threadId);
+		if (!activeRun) return;
+
+		this.activeRuns.set(threadId, {
+			...activeRun,
+			tracing,
+		});
+	}
+
 	clearActiveRun(threadId: string): void {
 		this.activeRuns.delete(threadId);
 	}
@@ -198,6 +215,8 @@ export class RunStateRegistry<TUser = unknown> {
 		this.activeRuns.set(threadId, {
 			runId: suspended.runId,
 			abortController: suspended.abortController,
+			messageGroupId: suspended.messageGroupId,
+			tracing: suspended.tracing,
 		});
 		return suspended;
 	}
