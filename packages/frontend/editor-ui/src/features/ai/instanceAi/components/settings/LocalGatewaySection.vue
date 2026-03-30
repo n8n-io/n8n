@@ -8,10 +8,10 @@ import { useSettingsField } from './useSettingsField';
 const i18n = useI18n();
 const { store } = useSettingsField();
 
-const isFilesystemDisabled = computed(() => {
-	if (store.preferencesDraft.filesystemDisabled !== undefined)
-		return store.preferencesDraft.filesystemDisabled;
-	return store.preferences?.filesystemDisabled ?? false;
+const isLocalGatewayDisabled = computed(() => {
+	if (store.preferencesDraft.localGatewayDisabled !== undefined)
+		return store.preferencesDraft.localGatewayDisabled;
+	return store.preferences?.localGatewayDisabled ?? false;
 });
 
 const copied = ref(false);
@@ -25,6 +25,61 @@ async function copyCommand() {
 		copied.value = false;
 	}, 2000);
 }
+
+const CATEGORY_META: Record<string, { icon: string; labelKey: string }> = {
+	filesystem: { icon: 'folder-open', labelKey: 'instanceAi.filesystem.category.filesystem' },
+	browser: { icon: 'globe', labelKey: 'instanceAi.filesystem.category.browser' },
+	screenshot: { icon: 'mouse-pointer', labelKey: 'instanceAi.filesystem.category.computerUse' },
+	'mouse-keyboard': {
+		icon: 'mouse-pointer',
+		labelKey: 'instanceAi.filesystem.category.computerUse',
+	},
+	shell: { icon: 'terminal', labelKey: 'instanceAi.filesystem.category.shell' },
+};
+
+const displayCategories = computed(() => {
+	const seen = new Set<string>();
+	const result: Array<{
+		key: string;
+		icon: string;
+		label: string;
+		enabled: boolean;
+		sublabel?: string;
+	}> = [];
+
+	for (const cat of store.gatewayToolCategories) {
+		const meta = CATEGORY_META[cat.name];
+		if (!meta) continue;
+		const labelKey = meta.labelKey;
+
+		// Merge screenshot + mouse-keyboard into one "Computer use" pill
+		if (seen.has(labelKey)) {
+			// If this duplicate is enabled, upgrade the existing pill to enabled
+			if (cat.enabled) {
+				const existing = result.find((r) => r.label === i18n.baseText(labelKey));
+				if (existing) existing.enabled = true;
+			}
+			continue;
+		}
+		seen.add(labelKey);
+
+		let sublabel: string | undefined;
+		if (cat.name === 'filesystem' && cat.enabled) {
+			sublabel = cat.writeAccess
+				? i18n.baseText('instanceAi.filesystem.access.readWrite')
+				: i18n.baseText('instanceAi.filesystem.access.read');
+		}
+
+		result.push({
+			key: cat.name,
+			icon: meta.icon,
+			label: i18n.baseText(labelKey),
+			enabled: cat.enabled,
+			sublabel,
+		});
+	}
+	return result.sort((a, b) => Number(b.enabled) - Number(a.enabled));
+});
 
 onMounted(() => {
 	if (!store.isGatewayConnected) {
@@ -42,18 +97,40 @@ onMounted(() => {
 		<div :class="$style.switchRow">
 			<span :class="$style.switchLabel">{{ i18n.baseText('instanceAi.filesystem.label') }}</span>
 			<ElSwitch
-				:model-value="!isFilesystemDisabled"
-				@update:model-value="store.setPreferenceField('filesystemDisabled', !$event)"
+				:model-value="!isLocalGatewayDisabled"
+				:disabled="store.isLocalGatewayDisabled"
+				@update:model-value="store.setPreferenceField('localGatewayDisabled', !$event)"
 			/>
 		</div>
 
-		<template v-if="!isFilesystemDisabled">
+		<template v-if="!isLocalGatewayDisabled">
 			<!-- Gateway connected -->
-			<div v-if="store.isGatewayConnected" :class="$style.statusRow">
-				<span :class="[$style.dot, $style.dotConnected]" />
-				<N8nText size="small" color="text-light">
-					{{ store.gatewayDirectory }}
-				</N8nText>
+			<div v-if="store.isGatewayConnected" :class="$style.connectedBlock">
+				<div :class="$style.statusRow">
+					<span :class="[$style.dot, $style.dotConnected]" />
+					<N8nText size="small" :bold="true">
+						{{ store.gatewayHostIdentifier ?? store.gatewayDirectory }}
+					</N8nText>
+				</div>
+				<div
+					v-if="store.gatewayHostIdentifier && store.gatewayDirectory"
+					:class="$style.directoryRow"
+				>
+					<N8nText size="small" color="text-light">
+						{{ store.gatewayDirectory }}
+					</N8nText>
+				</div>
+				<div v-if="displayCategories.length" :class="$style.toolCategories">
+					<span
+						v-for="cat in displayCategories"
+						:key="cat.key"
+						:class="[$style.categoryPill, !cat.enabled && $style.categoryPillDisabled]"
+					>
+						<N8nIcon :icon="cat.icon" size="xsmall" />
+						{{ cat.label }}
+						<span v-if="cat.sublabel" :class="$style.categorySublabel"> ({{ cat.sublabel }}) </span>
+					</span>
+				</div>
 			</div>
 
 			<!-- Local filesystem (no gateway) -->
@@ -120,13 +197,50 @@ onMounted(() => {
 	color: var(--color--text--tint-1);
 }
 
+.connectedBlock {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
+	padding: var(--spacing--2xs) var(--spacing--xs);
+	background: var(--color--foreground--tint-2);
+	border-radius: var(--radius--lg);
+}
+
 .statusRow {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	background: var(--color--foreground--tint-2);
+}
+
+.directoryRow {
+	padding-left: calc(8px + var(--spacing--3xs));
+}
+
+.toolCategories {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--spacing--4xs);
+	padding-left: calc(8px + var(--spacing--3xs));
+}
+
+.categoryPill {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--5xs);
+	padding: var(--spacing--5xs) var(--spacing--3xs);
+	background: var(--color--background);
+	border: var(--border);
 	border-radius: var(--radius);
+	font-size: var(--font-size--3xs);
+	color: var(--color--text--tint-1);
+}
+
+.categoryPillDisabled {
+	opacity: 0.4;
+}
+
+.categorySublabel {
+	color: var(--color--text--tint-1);
 }
 
 .dot {
@@ -142,6 +256,17 @@ onMounted(() => {
 
 .dotLocal {
 	background: var(--color--warning);
+}
+
+@keyframes pulse {
+	0%,
+	100% {
+		opacity: 1;
+	}
+
+	50% {
+		opacity: 0.4;
+	}
 }
 
 .connectingRow {

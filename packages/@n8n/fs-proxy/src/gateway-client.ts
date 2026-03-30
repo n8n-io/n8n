@@ -1,4 +1,5 @@
 import { EventSource } from 'eventsource';
+import * as os from 'node:os';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import type { GatewayConfig } from './config';
@@ -29,6 +30,14 @@ import { formatErrorResult } from './tools/utils';
 
 const MAX_RECONNECT_DELAY_MS = 30_000;
 const MAX_AUTH_RETRIES = 5;
+
+/** Tag tool definitions with a category annotation (mutates in place for efficiency). */
+function tagCategory(defs: ToolDefinition[], category: string): ToolDefinition[] {
+	for (const def of defs) {
+		def.annotations = { ...def.annotations, category };
+	}
+	return defs;
+}
 
 export interface GatewayClientOptions {
 	url: string;
@@ -66,6 +75,9 @@ export class GatewayClient {
 	private sessionKey: string | null = null;
 
 	private allDefinitions: ToolDefinition[] | null = null;
+
+	private activeToolCategories: Array<{ name: string; enabled: boolean; writeAccess?: boolean }> =
+		[];
 
 	private definitionMap: Map<string, ToolDefinition> = new Map();
 
@@ -144,69 +156,91 @@ export class GatewayClient {
 
 		const { config, settingsStore } = this.options;
 		const defs: ToolDefinition[] = [];
+		const categories: Array<{ name: string; enabled: boolean; writeAccess?: boolean }> = [];
 
 		// Filesystem
-		if (settingsStore.getGroupMode('filesystemRead') !== 'deny') {
-			defs.push(...filesystemReadTools);
+		const fsReadEnabled = settingsStore.getGroupMode('filesystemRead') !== 'deny';
+		const fsWriteEnabled = settingsStore.getGroupMode('filesystemWrite') !== 'deny';
+		if (fsReadEnabled) {
+			defs.push(...tagCategory(filesystemReadTools, 'filesystem'));
 		}
-		if (settingsStore.getGroupMode('filesystemWrite') !== 'deny') {
-			defs.push(...filesystemWriteTools);
+		if (fsWriteEnabled) {
+			defs.push(...tagCategory(filesystemWriteTools, 'filesystem'));
 		}
+		categories.push({
+			name: 'filesystem',
+			enabled: fsReadEnabled || fsWriteEnabled,
+			writeAccess: fsWriteEnabled,
+		});
 
 		// Computer use modules — check permission mode and platform support
 		const computerModules: Array<{
 			name: string;
+			category: string;
 			enabled: boolean;
 			module: { isSupported(): boolean | Promise<boolean>; definitions: ToolDefinition[] };
 		}> = [
 			{
 				name: 'Shell',
+				category: 'shell',
 				enabled: settingsStore.getGroupMode('shell') !== 'deny',
 				module: ShellModule,
 			},
 			{
 				name: 'Screenshot',
+				category: 'screenshot',
 				enabled: settingsStore.getGroupMode('computer') !== 'deny',
 				module: ScreenshotModule,
 			},
 			{
 				name: 'MouseKeyboard',
+				category: 'mouse-keyboard',
 				enabled: settingsStore.getGroupMode('computer') !== 'deny',
 				module: MouseKeyboardModule,
 			},
 		];
 
-		for (const { name, enabled, module } of computerModules) {
+		for (const { name, category, enabled, module } of computerModules) {
 			if (!enabled) {
 				logger.debug('Module denied by permission, skipping', { module: name });
+				categories.push({ name: category, enabled: false });
 				continue;
 			}
 			if (await module.isSupported()) {
-				defs.push(...module.definitions);
+				defs.push(...tagCategory(module.definitions, category));
+				categories.push({ name: category, enabled: true });
 			} else {
 				logger.debug('Module not supported on this platform, skipping', { module: name });
+				categories.push({ name: category, enabled: false });
 			}
 		}
 
 		// Browser
 		if (settingsStore.getGroupMode('browser') !== 'deny') {
 			const { BrowserModule: BrowserModuleClass } = await import('./tools/browser');
-			this.browserModule = await BrowserModuleClass.create(config.browser);
+			this.browserModule = await BrowserModuleClass.create({
+				...config.browser,
+				logLevel: config.logLevel,
+			});
 			if (this.browserModule) {
-				defs.push(...this.browserModule.definitions);
+				defs.push(...tagCategory(this.browserModule.definitions, 'browser'));
+				categories.push({ name: 'browser', enabled: true });
 			} else {
 				logger.debug('Module not supported on this platform, skipping', {
 					module: 'Browser',
 				});
+				categories.push({ name: 'browser', enabled: false });
 			}
 		} else {
 			logger.debug('Module denied by permission, skipping', { module: 'Browser' });
+			categories.push({ name: 'browser', enabled: false });
 		}
 
 		for (const def of defs) {
 			logger.debug('Registered tool', { name: def.name, description: def.description });
 		}
 		this.allDefinitions = defs;
+		this.activeToolCategories = categories;
 		this.definitionMap = new Map(defs.map((d) => [d.name, d]));
 		return defs;
 	}
@@ -217,6 +251,7 @@ export class GatewayClient {
 			name: d.name,
 			description: d.description,
 			inputSchema: zodToJsonSchema(d.inputSchema) as McpTool['inputSchema'],
+			...(d.annotations ? { annotations: d.annotations } : {}),
 		}));
 		const url = `${this.options.url}/rest/instance-ai/gateway/init`;
 		const headers = new Headers();
@@ -225,7 +260,12 @@ export class GatewayClient {
 		const response = await fetch(url, {
 			method: 'POST',
 			headers,
-			body: JSON.stringify({ rootPath: this.dir, tools }),
+			body: JSON.stringify({
+				rootPath: this.dir,
+				tools,
+				hostIdentifier: `${os.userInfo().username}@${os.hostname()}`,
+				toolCategories: this.activeToolCategories,
+			}),
 		});
 
 		if (!response.ok) {

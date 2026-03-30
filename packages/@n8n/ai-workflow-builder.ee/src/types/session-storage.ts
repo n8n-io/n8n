@@ -4,6 +4,10 @@ export interface StoredSession {
 	messages: LangchainMessage[];
 	previousSummary?: string;
 	updatedAt: Date;
+	/** Version card message ID that the user restored to */
+	activeVersionCardId?: string | null;
+	/** First user message ID sent after a restore */
+	resumeAfterRestoreMessageId?: string | null;
 }
 
 export interface ISessionStorage {

@@ -31,6 +31,7 @@ import type {
 	InstanceAiWorkspaceService,
 	ProjectSummary,
 	FolderSummary,
+	CredentialTypeSearchResult,
 } from '@n8n/instance-ai';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { GlobalConfig } from '@n8n/config';
@@ -232,8 +233,10 @@ export class InstanceAiAdapterService {
 			workflowRepository,
 			sharedWorkflowRepository,
 			workflowHistoryService,
+			allowSendingParameterValues,
 		} = this;
 		const { resolveProjectId } = this.createProjectScopeHelpers(user);
+		const redactParameters = !allowSendingParameterValues;
 
 		return {
 			async list(options) {
@@ -268,7 +271,7 @@ export class InstanceAiAdapterService {
 					throw new Error(`Workflow ${workflowId} not found or not accessible`);
 				}
 
-				return toWorkflowDetail(workflow);
+				return toWorkflowDetail(workflow, { redactParameters });
 			},
 
 			async archive(workflowId: string) {
@@ -303,7 +306,7 @@ export class InstanceAiAdapterService {
 					'workflow:read',
 				]);
 				if (!wf) throw new Error(`Workflow ${workflowId} not found or not accessible`);
-				return toWorkflowJSON(wf);
+				return toWorkflowJSON(wf, { redactParameters });
 			},
 
 			async createFromWorkflowJSON(json: WorkflowJSON, options?: { projectId?: string }) {
@@ -343,7 +346,7 @@ export class InstanceAiAdapterService {
 				} as Partial<WorkflowEntity>);
 				const updated = await workflowService.update(user, updateData, saved.id);
 
-				return toWorkflowDetail(updated);
+				return toWorkflowDetail(updated, { redactParameters });
 			},
 
 			async updateFromWorkflowJSON(
@@ -360,7 +363,7 @@ export class InstanceAiAdapterService {
 				} as Partial<WorkflowEntity>);
 
 				const updated = await workflowService.update(user, updateData, workflowId);
-				return toWorkflowDetail(updated);
+				return toWorkflowDetail(updated, { redactParameters });
 			},
 
 			async listVersions(workflowId, options) {
@@ -412,7 +415,7 @@ export class InstanceAiAdapterService {
 						(n): WorkflowNode => ({
 							name: n.name,
 							type: n.type,
-							parameters: n.parameters as Record<string, unknown>,
+							parameters: redactParameters ? undefined : (n.parameters as Record<string, unknown>),
 							position: n.position,
 						}),
 					),
@@ -865,6 +868,46 @@ export class InstanceAiAdapterService {
 				} catch {
 					return [];
 				}
+			},
+
+			async searchCredentialTypes(query: string): Promise<CredentialTypeSearchResult[]> {
+				const q = query.toLowerCase().trim();
+				if (!q) return [];
+
+				const known = loadNodesAndCredentials.knownCredentials;
+				const results: CredentialTypeSearchResult[] = [];
+
+				for (const typeName of Object.keys(known)) {
+					// Match against the type key name
+					if (typeName.toLowerCase().includes(q)) {
+						try {
+							const credClass = loadNodesAndCredentials.getCredential(typeName);
+							results.push({
+								type: typeName,
+								displayName: credClass.type.displayName,
+							});
+						} catch {
+							// Type not loadable — include with type name as display name
+							results.push({ type: typeName, displayName: typeName });
+						}
+						continue;
+					}
+
+					// Match against display name (requires loading the credential class)
+					try {
+						const credClass = loadNodesAndCredentials.getCredential(typeName);
+						if (credClass.type.displayName.toLowerCase().includes(q)) {
+							results.push({
+								type: typeName,
+								displayName: credClass.type.displayName,
+							});
+						}
+					} catch {
+						// Type not loadable — skip
+					}
+				}
+
+				return results;
 			},
 		};
 	}
@@ -2157,7 +2200,11 @@ function sdkPinDataToRuntime(pinData: Record<string, unknown[]> | undefined): IP
 	return result;
 }
 
-function toWorkflowJSON(workflow: WorkflowEntity): WorkflowJSON {
+function toWorkflowJSON(
+	workflow: WorkflowEntity,
+	options?: { redactParameters?: boolean },
+): WorkflowJSON {
+	const redact = options?.redactParameters ?? false;
 	return {
 		id: workflow.id,
 		name: workflow.name,
@@ -2167,7 +2214,7 @@ function toWorkflowJSON(workflow: WorkflowEntity): WorkflowJSON {
 			type: n.type,
 			typeVersion: n.typeVersion,
 			position: n.position,
-			parameters: n.parameters,
+			parameters: redact ? {} : n.parameters,
 			credentials: n.credentials as Record<string, { id?: string; name: string }> | undefined,
 			webhookId: n.webhookId,
 			disabled: n.disabled,
@@ -2178,7 +2225,11 @@ function toWorkflowJSON(workflow: WorkflowEntity): WorkflowJSON {
 	};
 }
 
-function toWorkflowDetail(workflow: WorkflowEntity): WorkflowDetail {
+function toWorkflowDetail(
+	workflow: WorkflowEntity,
+	options?: { redactParameters?: boolean },
+): WorkflowDetail {
+	const redact = options?.redactParameters ?? false;
 	return {
 		id: workflow.id,
 		name: workflow.name,
@@ -2190,7 +2241,7 @@ function toWorkflowDetail(workflow: WorkflowEntity): WorkflowDetail {
 			(n): WorkflowNode => ({
 				name: n.name,
 				type: n.type,
-				parameters: n.parameters,
+				parameters: redact ? undefined : n.parameters,
 				position: n.position,
 				webhookId: n.webhookId,
 			}),

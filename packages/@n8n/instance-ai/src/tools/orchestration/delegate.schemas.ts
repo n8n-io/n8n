@@ -18,6 +18,12 @@ export const delegateInputSchema = z.object({
 		.record(z.unknown())
 		.optional()
 		.describe('Relevant IDs, data, or context (workflow IDs, credential IDs, etc.)'),
+	conversationContext: z
+		.string()
+		.optional()
+		.describe(
+			'Brief summary of the conversation so far — what was discussed, decisions made, and information gathered. The sub-agent uses this to avoid repeating information the user already knows.',
+		),
 });
 
 export type DelegateInput = z.infer<typeof delegateInputSchema>;

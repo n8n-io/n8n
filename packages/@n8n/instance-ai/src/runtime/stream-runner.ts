@@ -1,3 +1,5 @@
+import type { InstanceAiEvent } from '@n8n/api-types';
+
 import type { InstanceAiEventBus } from '../event-bus';
 import { executeResumableStream } from './resumable-stream-executor';
 import { asResumable } from '../utils/stream-helpers';
@@ -22,6 +24,7 @@ export interface StreamRunResult {
 	status: 'completed' | 'cancelled' | 'suspended';
 	mastraRunId: string;
 	suspension?: SuspensionInfo;
+	confirmationEvent?: Extract<InstanceAiEvent, { type: 'confirmation-request' }>;
 }
 
 export async function streamAgentRun(
@@ -78,6 +81,7 @@ async function consumeStream(
 			status: 'suspended',
 			mastraRunId: result.mastraRunId,
 			suspension: result.suspension,
+			...(result.confirmationEvent ? { confirmationEvent: result.confirmationEvent } : {}),
 		};
 	}
 

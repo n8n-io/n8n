@@ -64,6 +64,14 @@ const typeConfig: Record<DependencyType, { icon: IconName; labelKey: BaseTextKey
 		icon: 'table',
 		labelKey: 'workflows.dependencies.type.dataTables' as BaseTextKey,
 	},
+	errorWorkflow: {
+		icon: 'bug',
+		labelKey: 'workflows.dependencies.type.errorWorkflow' as BaseTextKey,
+	},
+	errorWorkflowParent: {
+		icon: 'bug',
+		labelKey: 'workflows.dependencies.type.errorWorkflowParent' as BaseTextKey,
+	},
 	workflowCall: {
 		icon: 'log-in',
 		labelKey: 'workflows.dependencies.type.subWorkflows' as BaseTextKey,
@@ -79,6 +87,8 @@ const displayOrder: DependencyType[] = [
 	'dataTableId',
 	'workflowCall',
 	'workflowParent',
+	'errorWorkflow',
+	'errorWorkflowParent',
 ];
 
 const menuItems = computed(() => {
@@ -91,6 +101,8 @@ const menuItems = computed(() => {
 	const groups: Record<DependencyType, ResolvedDependency[]> = {
 		credentialId: [],
 		dataTableId: [],
+		errorWorkflow: [],
+		errorWorkflowParent: [],
 		workflowCall: [],
 		workflowParent: [],
 	};
@@ -140,6 +152,8 @@ function onSelect(value: string) {
 			break;
 		case 'workflowCall':
 		case 'workflowParent':
+		case 'errorWorkflow':
+		case 'errorWorkflowParent':
 			const href = router.resolve({ name: VIEWS.WORKFLOW, params: { name: dep.id } }).href;
 			window.open(href, '_blank');
 			break;

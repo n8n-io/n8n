@@ -29,6 +29,7 @@ export const instanceAiEventTypeSchema = z.enum([
 	'confirmation-request',
 	'tasks-update',
 	'filesystem-request',
+	'thread-title-updated',
 	'status',
 	'error',
 ]);
@@ -161,6 +162,7 @@ export const credentialRequestSchema = z.object({
 	credentialType: z.string(),
 	reason: z.string(),
 	existingCredentials: z.array(z.object({ id: z.string(), name: z.string() })),
+	suggestedName: z.string().optional(),
 });
 
 export type InstanceAiCredentialRequest = z.infer<typeof credentialRequestSchema>;
@@ -325,10 +327,25 @@ const mcpOneOfInputSchema = z.object({ oneOf: z.array(mcpObjectInputSchema) });
 
 const mcpInputSchema = z.union([mcpObjectInputSchema, mcpAnyOfInputSchema, mcpOneOfInputSchema]);
 
+export const mcpToolAnnotationsSchema = z.object({
+	/** Tool category — used to route tools to the correct sub-agent (e.g. 'browser', 'filesystem') */
+	category: z.string().optional(),
+	/** If true, the tool does not modify its environment */
+	readOnlyHint: z.boolean().optional(),
+	/** If true, the tool may perform destructive updates */
+	destructiveHint: z.boolean().optional(),
+	/** If true, repeated calls with same args have no additional effect */
+	idempotentHint: z.boolean().optional(),
+	/** If true, tool interacts with external entities */
+	openWorldHint: z.boolean().optional(),
+});
+export type McpToolAnnotations = z.infer<typeof mcpToolAnnotationsSchema>;
+
 export const mcpToolSchema = z.object({
 	name: z.string(),
 	description: z.string().optional(),
 	inputSchema: mcpInputSchema,
+	annotations: mcpToolAnnotationsSchema.optional(),
 });
 export type McpTool = z.infer<typeof mcpToolSchema>;
 
@@ -353,9 +370,18 @@ export const mcpToolCallResultSchema = z.object({
 export type McpToolCallResult = z.infer<typeof mcpToolCallResultSchema>;
 
 // Sent by the daemon on connect — replaces the old file-tree upload
+export const toolCategorySchema = z.object({
+	name: z.string(),
+	enabled: z.boolean(),
+	writeAccess: z.boolean().optional(),
+});
+export type ToolCategory = z.infer<typeof toolCategorySchema>;
+
 export const instanceAiGatewayCapabilitiesSchema = z.object({
 	rootPath: z.string(),
 	tools: z.array(mcpToolSchema).default([]),
+	hostIdentifier: z.string().optional(),
+	toolCategories: z.array(toolCategorySchema).default([]),
 });
 export type InstanceAiGatewayCapabilities = z.infer<typeof instanceAiGatewayCapabilitiesSchema>;
 
@@ -375,6 +401,10 @@ export const instanceAiFilesystemResponseSchema = z.object({
 
 export const tasksUpdatePayloadSchema = z.object({
 	tasks: taskListSchema,
+});
+
+export const threadTitleUpdatedPayloadSchema = z.object({
+	title: z.string(),
 });
 
 // ---------------------------------------------------------------------------
@@ -414,6 +444,11 @@ export const instanceAiEventSchema = z.discriminatedUnion('type', [
 		...eventBase,
 		payload: filesystemRequestPayloadSchema,
 	}),
+	z.object({
+		type: z.literal('thread-title-updated'),
+		...eventBase,
+		payload: threadTitleUpdatedPayloadSchema,
+	}),
 ]);
 
 // ---------------------------------------------------------------------------
@@ -442,6 +477,10 @@ export type InstanceAiErrorEvent = Extract<InstanceAiEvent, { type: 'error' }>;
 export type InstanceAiFilesystemRequestEvent = Extract<
 	InstanceAiEvent,
 	{ type: 'filesystem-request' }
+>;
+export type InstanceAiThreadTitleUpdatedEvent = Extract<
+	InstanceAiEvent,
+	{ type: 'thread-title-updated' }
 >;
 
 export type InstanceAiFilesystemResponse = z.infer<typeof instanceAiFilesystemResponseSchema>;
@@ -768,6 +807,7 @@ export interface InstanceAiAdminSettingsResponse {
 	sandboxTimeout: number;
 	daytonaCredentialId: string | null;
 	searchCredentialId: string | null;
+	localGatewayDisabled: boolean;
 }
 
 export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
@@ -785,6 +825,7 @@ export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	sandboxTimeout: z.number().int().positive().optional(),
 	daytonaCredentialId: z.string().nullable().optional(),
 	searchCredentialId: z.string().nullable().optional(),
+	localGatewayDisabled: z.boolean().optional(),
 }) {}
 
 // ---------------------------------------------------------------------------
@@ -796,13 +837,13 @@ export interface InstanceAiUserPreferencesResponse {
 	credentialType: string | null;
 	credentialName: string | null;
 	modelName: string;
-	filesystemDisabled: boolean;
+	localGatewayDisabled: boolean;
 }
 
 export class InstanceAiUserPreferencesUpdateRequest extends Z.class({
 	credentialId: z.string().nullable().optional(),
 	modelName: z.string().optional(),
-	filesystemDisabled: z.boolean().optional(),
+	localGatewayDisabled: z.boolean().optional(),
 }) {}
 
 export interface InstanceAiModelCredential {

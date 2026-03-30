@@ -15,7 +15,7 @@ export const shellExecuteTool: ToolDefinition<typeof inputSchema> = {
 	name: 'shell_execute',
 	description: 'Execute a shell command and return stdout, stderr, and exit code',
 	inputSchema,
-	annotations: { defaultPermission: 'confirm', destructiveHint: true },
+	annotations: { destructiveHint: true },
 	getAffectedResources({ command }) {
 		return [
 			{

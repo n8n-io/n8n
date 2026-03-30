@@ -4,6 +4,7 @@ import type {
 	InstanceAiThreadStatusResponse,
 	InstanceAiGatewayCapabilities,
 	McpToolCallResult,
+	ToolCategory,
 	TaskList,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -40,6 +41,9 @@ import {
 	startDetachedDelegateTask,
 	startResearchAgentTask,
 	streamAgentRun,
+	truncateToTitle,
+	generateThreadTitle,
+	patchThread,
 	type ConfirmationData,
 	type DomainAccessTracker,
 	type ManagedBackgroundTask,
@@ -439,10 +443,11 @@ export class InstanceAiService {
 
 	/** Send a correction message to a running background task. */
 	sendCorrectionToTask(
+		threadId: string,
 		taskId: string,
 		correction: string,
 	): 'queued' | 'task-completed' | 'task-not-found' {
-		return this.backgroundTasks.queueCorrection(taskId, correction);
+		return this.backgroundTasks.queueCorrection(threadId, taskId, correction);
 	}
 
 	/** Cancel a single background task by ID. */
@@ -511,13 +516,15 @@ export class InstanceAiService {
 	}
 
 	isLocalGatewayDisabled(): boolean {
-		return this.settingsService.isFilesystemDisabled();
+		return this.settingsService.isLocalGatewayDisabled();
 	}
 
 	getGatewayStatus(userId: string): {
 		connected: boolean;
 		connectedAt: string | null;
 		directory: string | null;
+		hostIdentifier: string | null;
+		toolCategories: ToolCategory[];
 	} {
 		return this.gatewayRegistry.getGatewayStatus(userId);
 	}
@@ -579,13 +586,12 @@ export class InstanceAiService {
 		this.logger.debug('Instance AI service shut down');
 	}
 
-	private createMemoryConfig(titleModel?: string) {
+	private createMemoryConfig() {
 		return {
 			storage: this.compositeStore,
 			embedderModel: this.instanceAiConfig.embedderModel || undefined,
 			lastMessages: this.instanceAiConfig.lastMessages,
 			semanticRecallTopK: this.instanceAiConfig.semanticRecallTopK,
-			titleModel,
 		};
 	}
 
@@ -656,8 +662,8 @@ export class InstanceAiService {
 		return `<planned-task-follow-up type="${type}">\n${JSON.stringify(payload, null, 2)}\n</planned-task-follow-up>\n\n${AUTO_FOLLOW_UP_MESSAGE}`;
 	}
 
-	private async createPlannedTaskState(titleModel?: string) {
-		const memory = createMemory(this.createMemoryConfig(titleModel));
+	private async createPlannedTaskState() {
+		const memory = createMemory(this.createMemoryConfig());
 		const taskStorage = new MastraTaskStorage(memory);
 		const plannedTaskStorage = new PlannedTaskStorage(memory);
 		const plannedTaskService = new PlannedTaskCoordinator(plannedTaskStorage);
@@ -685,7 +691,7 @@ export class InstanceAiService {
 		messageGroupId?: string,
 		pushRef?: string,
 	) {
-		const localGatewayDisabled = this.settingsService.isFilesystemDisabled();
+		const localGatewayDisabled = this.settingsService.isLocalGatewayDisabled();
 		const userGateway = this.gatewayRegistry.findGateway(user.id);
 		const localFilesystemService =
 			!localGatewayDisabled && !userGateway?.isConnected && this.isLocalFilesystemAvailable()
@@ -705,9 +711,20 @@ export class InstanceAiService {
 		context.domainAccessTracker = domainTracker;
 		context.runId = runId;
 
+		// Compute gateway status for the system prompt
+		if (localGatewayDisabled) {
+			context.localGatewayStatus = { status: 'disabled' };
+		} else if (userGateway?.isConnected) {
+			context.localGatewayStatus = { status: 'connected' };
+		} else {
+			context.localGatewayStatus = {
+				status: 'disconnected',
+				capabilities: ['filesystem', 'browser'],
+			};
+		}
+
 		const modelId = await this.resolveModel(user);
-		const titleModel = typeof modelId === 'string' ? modelId : modelId.id;
-		const memory = createMemory(this.createMemoryConfig(titleModel));
+		const memory = createMemory(this.createMemoryConfig());
 		await this.ensureThreadExists(memory, threadId, user.id);
 
 		const taskStorage = new MastraTaskStorage(memory);
@@ -743,6 +760,7 @@ export class InstanceAiService {
 			browserMcpConfig: this.instanceAiConfig.browserMcp
 				? { name: 'chrome-devtools', command: 'npx', args: ['-y', 'chrome-devtools-mcp@latest'] }
 				: undefined,
+			localMcpServer: context.localMcpServer,
 			oauth2CallbackUrl: this.oauth2CallbackUrl,
 			webhookBaseUrl: this.webhookBaseUrl,
 			waitForConfirmation: async (requestId: string) => {
@@ -761,7 +779,8 @@ export class InstanceAiService {
 			plannedTaskService,
 			schedulePlannedTasks: async () => await this.schedulePlannedTasks(user, threadId),
 			iterationLog,
-			sendCorrectionToTask: (taskId, correction) => this.sendCorrectionToTask(taskId, correction),
+			sendCorrectionToTask: (taskId, correction) =>
+				this.sendCorrectionToTask(threadId, taskId, correction),
 			workflowTaskService: workflowTasks,
 			workspace: sandboxEntry?.workspace,
 			builderSandboxFactory: await this.getOrCreateBuilderFactory(user),
@@ -1001,9 +1020,16 @@ export class InstanceAiService {
 					messageGroupId,
 					executionPushRef,
 				);
-			const memoryConfig = this.createMemoryConfig(
-				typeof modelId === 'string' ? modelId : modelId.id,
-			);
+			const memoryConfig = this.createMemoryConfig();
+
+			// Set heuristic title before agent starts — thread always has a title
+			const thread = await memory.getThreadById({ threadId });
+			if (thread && !thread.title) {
+				await patchThread(memory, {
+					threadId,
+					update: () => ({ title: truncateToTitle(message) }),
+				});
+			}
 
 			const existingTasks = await taskStorage.get(threadId);
 			if (existingTasks) {
@@ -1108,11 +1134,21 @@ export class InstanceAiService {
 						createdAt: Date.now(),
 					});
 				}
+				if (result.confirmationEvent) {
+					this.eventBus.publish(threadId, result.confirmationEvent);
+				}
 
+				// Persist the agent tree so the confirmation UI survives page refresh.
+				// The tree is rebuilt from in-memory events and includes the
+				// confirmation-request data that the frontend needs.
+				await this.saveAgentTreeSnapshot(threadId, runId, snapshotStorage);
 				return;
 			}
 
-			await this.finalizeRun(threadId, runId, result.status, snapshotStorage);
+			await this.finalizeRun(threadId, runId, result.status, snapshotStorage, {
+				userId: user.id,
+				modelId,
+			});
 		} catch (error) {
 			if (signal.aborted) {
 				this.publishRunFinish(threadId, runId, 'cancelled', 'user_cancelled');
@@ -1248,6 +1284,9 @@ export class InstanceAiService {
 						abortController: opts.abortController,
 						createdAt: Date.now(),
 					});
+				}
+				if (result.confirmationEvent) {
+					this.eventBus.publish(opts.threadId, result.confirmationEvent);
 				}
 
 				return;
@@ -1408,10 +1447,67 @@ export class InstanceAiService {
 		runId: string,
 		status: 'completed' | 'cancelled',
 		snapshotStorage: DbSnapshotStorage,
+		options?: { userId?: string; modelId?: ModelConfig },
 	): Promise<void> {
 		this.publishRunFinish(threadId, runId, status);
 		if (status === 'completed') {
 			await this.saveAgentTreeSnapshot(threadId, runId, snapshotStorage);
+			if (options?.userId && options?.modelId) {
+				void this.refineTitleIfNeeded(threadId, options.userId, options.modelId);
+			}
+		}
+	}
+
+	/**
+	 * Refine the thread title with an LLM-generated version after a run completes.
+	 * Fires asynchronously and is best-effort — the heuristic title remains if this fails.
+	 */
+	private async refineTitleIfNeeded(
+		threadId: string,
+		userId: string,
+		modelId: ModelConfig,
+	): Promise<void> {
+		try {
+			const memory = createMemory(this.createMemoryConfig());
+			const thread = await memory.getThreadById({ threadId });
+			if (!thread?.title) return;
+
+			// Skip if thread already has an LLM-refined title
+			if (thread.metadata?.titleRefined) return;
+
+			// Get first user message
+			const result = await memory.recall({ threadId, resourceId: userId, perPage: 5 });
+			const firstUserMsg = result.messages.find((m) => m.role === 'user');
+			if (!firstUserMsg) return;
+			const userText =
+				typeof firstUserMsg.content === 'string'
+					? firstUserMsg.content
+					: JSON.stringify(firstUserMsg.content);
+
+			const llmTitle = await generateThreadTitle(modelId, userText);
+			if (!llmTitle) return;
+
+			await patchThread(memory, {
+				threadId,
+				update: ({ metadata }) => ({
+					title: llmTitle,
+					metadata: { ...metadata, titleRefined: true },
+				}),
+			});
+
+			// Push SSE event so frontend updates immediately
+			this.eventBus.publish(threadId, {
+				type: 'thread-title-updated',
+				runId: '',
+				agentId: ORCHESTRATOR_AGENT_ID,
+				payload: { title: llmTitle },
+			});
+		} catch (error) {
+			this.logger.warn('Failed to refine thread title', {
+				threadId,
+				error: getErrorMessage(error),
+			});
+			// Non-fatal — heuristic title remains
 		}
 	}
 

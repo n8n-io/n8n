@@ -18,7 +18,7 @@ interface MemoryArgs {
 	options: {
 		lastMessages: number;
 		semanticRecall: false | { topK: number };
-		generateTitle: boolean | { model: string; instructions: string };
+		generateTitle: boolean;
 		workingMemory: { enabled: boolean; template: string };
 	};
 	embedder?: string;
@@ -65,12 +65,10 @@ describe('createMemory', () => {
 		expect(args.embedder).toBe('openai/text-embedding-3-small');
 	});
 
-	it('uses custom title model when provided', () => {
-		createMemory({ ...baseConfig, titleModel: 'anthropic/claude-sonnet-4-5' });
+	it('disables Mastra title generation (titles are managed by n8n)', () => {
+		createMemory(baseConfig);
 
 		const args = getLastCallArgs();
-		const title = args.options.generateTitle as { model: string; instructions: string };
-		expect(title.model).toBe('anthropic/claude-sonnet-4-5');
-		expect(title.instructions).toContain('concise title');
+		expect(args.options.generateTitle).toBe(false);
 	});
 });

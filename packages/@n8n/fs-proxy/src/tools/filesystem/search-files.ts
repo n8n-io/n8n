@@ -19,7 +19,7 @@ export const searchFilesTool: ToolDefinition<typeof inputSchema> = {
 	name: 'search_files',
 	description: 'Search for text patterns across files using a regex query',
 	inputSchema,
-	annotations: { defaultPermission: 'allow', readOnlyHint: true },
+	annotations: { readOnlyHint: true },
 	async getAffectedResources({ dirPath }, { dir }) {
 		return [
 			await buildFilesystemResource(dir, dirPath, 'filesystemRead', `Search files in: ${dirPath}`),

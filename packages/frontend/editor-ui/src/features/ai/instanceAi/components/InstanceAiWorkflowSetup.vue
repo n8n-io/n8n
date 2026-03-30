@@ -1,33 +1,35 @@
 <script lang="ts" setup>
-import { ref, computed, watch, provide, onMounted, onUnmounted } from 'vue';
-import { N8nButton, N8nIcon, N8nLink, N8nText, N8nTooltip } from '@n8n/design-system';
-import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import type {
-	InstanceAiWorkflowSetupNode,
-	InstanceAiCredentialFlow,
-	InstanceAiToolCallState,
-} from '@n8n/api-types';
-import { type INodeProperties, NodeHelpers, isResourceLocatorValue } from 'n8n-workflow';
-import type {
-	INodeUi,
-	IUpdateInformation,
-	INodeUpdatePropertiesInformation,
-	IWorkflowDb,
-} from '@/Interface';
-import { useInstanceAiStore } from '../instanceAi.store';
-import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
-import { useRootStore } from '@n8n/stores/useRootStore';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
-import { useExpressionResolveCtx } from '@/features/workflows/canvas/experimental/composables/useExpressionResolveCtx';
 import { getWorkflow as fetchWorkflowApi } from '@/app/api/workflows';
-import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
+import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
+import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
+import { useWizardNavigation } from '@/features/ai/shared/composables/useWizardNavigation';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
-import { useWizardNavigation } from '@/features/ai/shared/composables/useWizardNavigation';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useExpressionResolveCtx } from '@/features/workflows/canvas/experimental/composables/useExpressionResolveCtx';
+import type {
+	INodeUi,
+	INodeUpdatePropertiesInformation,
+	IUpdateInformation,
+	IWorkflowDb,
+} from '@/Interface';
+import type {
+	InstanceAiCredentialFlow,
+	InstanceAiToolCallState,
+	InstanceAiWorkflowSetupNode,
+} from '@n8n/api-types';
+import { N8nButton, N8nIcon, N8nLink, N8nText, N8nTooltip } from '@n8n/design-system';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { NodeHelpers, isResourceLocatorValue, type INodeProperties } from 'n8n-workflow';
+import { computed, onMounted, onUnmounted, provide, ref, watch } from 'vue';
+import { useInstanceAiStore } from '../instanceAi.store';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -61,6 +63,7 @@ const props = defineProps<{
 const i18n = useI18n();
 const store = useInstanceAiStore();
 const credentialsStore = useCredentialsStore();
+const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
 const nodeHelpers = useNodeHelpers();
@@ -441,9 +444,7 @@ function isCardComplete(card: SetupCard): boolean {
 	return true;
 }
 
-const allCardsComplete = computed(() => cards.value.every((c) => isCardComplete(c)));
 const anyCardComplete = computed(() => cards.value.some((c) => isCardComplete(c)));
-const isPartialApply = computed(() => anyCardComplete.value && !allCardsComplete.value);
 
 const allPreResolved = computed(() => props.setupRequests.every((r) => !r.needsAction));
 
@@ -495,8 +496,38 @@ const stopDeleteListener = credentialsStore.$onAction(({ name, after, args }) =>
 	});
 });
 
+// Listen for credential creation to auto-select newly created credentials
+// when using the setup button path (no NodeCredentials dropdown rendered)
+const stopCreateListener = credentialsStore.$onAction(({ name, after }) => {
+	if (name !== 'createNewCredential') return;
+	after((newCred) => {
+		if (!newCred || typeof newCred !== 'object' || !('id' in newCred)) return;
+		const card = currentCard.value;
+		if (!card?.credentialType) return;
+		const cred = newCred as { id: string; type: string };
+		if (cred.type === card.credentialType) {
+			selections.value[card.id] = cred.id;
+		}
+	});
+});
+
+function cardHasExistingCredentials(card: SetupCard): boolean {
+	if (!card.credentialType) return false;
+	const firstReq = card.nodes[0];
+	return (
+		(firstReq?.existingCredentials?.length ?? 0) > 0 ||
+		(credentialsStore.getUsableCredentialByType(card.credentialType)?.length ?? 0) > 0
+	);
+}
+
+function openNewCredentialForCard(card: SetupCard) {
+	if (!card.credentialType) return;
+	uiStore.openNewCredential(card.credentialType, false, false, props.projectId);
+}
+
 onUnmounted(() => {
 	stopDeleteListener();
+	stopCreateListener();
 	if (previousWorkflow) {
 		workflowsStore.setWorkflow(previousWorkflow);
 	}
@@ -547,7 +578,10 @@ onMounted(async () => {
 // ---------------------------------------------------------------------------
 
 function getDisplayName(credentialType: string): string {
-	return credentialsStore.getCredentialTypeByName(credentialType)?.displayName ?? credentialType;
+	const raw =
+		credentialsStore.getCredentialTypeByName(credentialType)?.displayName ?? credentialType;
+	const appName = getAppNameFromCredType(raw);
+	return i18n.baseText('instanceAi.credential.setupTitle', { interpolate: { name: appName } });
 }
 
 function getCardTitle(card: SetupCard): string {
@@ -963,7 +997,7 @@ function handleLater() {
 					</div>
 					<div :class="$style.footerActions">
 						<N8nButton
-							variant="ghost"
+							variant="outline"
 							size="small"
 							:class="$style.actionButton"
 							:label="i18n.baseText('instanceAi.workflowSetup.later')"
@@ -973,7 +1007,7 @@ function handleLater() {
 						<N8nButton
 							size="small"
 							:class="$style.actionButton"
-							:label="i18n.baseText('instanceAi.workflowSetup.apply')"
+							:label="i18n.baseText('instanceAi.credential.continueButton')"
 							data-test-id="instance-ai-workflow-setup-apply-button"
 							@click="handleApply"
 						/>
@@ -1035,6 +1069,7 @@ function handleLater() {
 						:class="$style.credentialContainer"
 					>
 						<NodeCredentials
+							v-if="cardHasExistingCredentials(currentCard)"
 							:node="cardNodeUi(currentCard)"
 							:override-cred-type="currentCard.credentialType"
 							:project-id="projectId"
@@ -1061,6 +1096,12 @@ function handleLater() {
 								</N8nTooltip>
 							</template>
 						</NodeCredentials>
+						<N8nButton
+							v-else
+							:label="i18n.baseText('instanceAi.credential.setupButton')"
+							data-test-id="instance-ai-workflow-setup-credential-button"
+							@click="openNewCredentialForCard(currentCard)"
+						/>
 					</div>
 
 					<!-- Parameter editing via ParameterInputList -->
@@ -1149,7 +1190,7 @@ function handleLater() {
 
 					<div :class="$style.footerActions">
 						<N8nButton
-							variant="ghost"
+							variant="outline"
 							size="small"
 							:class="$style.actionButton"
 							:label="i18n.baseText('instanceAi.workflowSetup.later')"
@@ -1171,11 +1212,7 @@ function handleLater() {
 							size="small"
 							:class="$style.actionButton"
 							:disabled="!anyCardComplete"
-							:label="
-								isPartialApply
-									? i18n.baseText('instanceAi.workflowSetup.applyCompleted')
-									: i18n.baseText('instanceAi.workflowSetup.apply')
-							"
+							:label="i18n.baseText('instanceAi.credential.continueButton')"
 							data-test-id="instance-ai-workflow-setup-apply-button"
 							@click="handleApply"
 						/>
@@ -1208,9 +1245,9 @@ function handleLater() {
 
 <style lang="scss" module>
 .root {
-	border-top: var(--border);
-	background: var(--color--background--shade-1);
-	padding: var(--spacing--xs);
+	// border-top: var(--border);
+	// background: var(--color--background--shade-1);
+	// padding: var(--spacing--xs);
 }
 
 .card {
@@ -1219,7 +1256,7 @@ function handleLater() {
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	padding: 0;
-	background-color: var(--color--background--light-3);
+	// background-color: var(--color--background--light-3);
 	border: var(--border);
 	border-radius: var(--radius);
 

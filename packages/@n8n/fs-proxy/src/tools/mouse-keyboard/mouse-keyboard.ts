@@ -109,7 +109,7 @@ export const mouseMoveTool: ToolDefinition<typeof mouseMoveSchema> = {
 	name: 'mouse_move',
 	description: 'Move the mouse cursor to the specified screen coordinates',
 	inputSchema: mouseMoveSchema,
-	annotations: { defaultPermission: 'confirm' },
+	annotations: {},
 	getAffectedResources() {
 		return [COMPUTER_RESOURCE];
 	},
@@ -131,7 +131,7 @@ export const mouseClickTool: ToolDefinition<typeof mouseClickSchema> = {
 	name: 'mouse_click',
 	description: 'Move the mouse to the specified coordinates and click',
 	inputSchema: mouseClickSchema,
-	annotations: { defaultPermission: 'confirm' },
+	annotations: {},
 	getAffectedResources() {
 		return [COMPUTER_RESOURCE];
 	},
@@ -153,7 +153,7 @@ export const mouseDoubleClickTool: ToolDefinition<typeof mouseDoubleClickSchema>
 	name: 'mouse_double_click',
 	description: 'Move the mouse to the specified coordinates and double-click',
 	inputSchema: mouseDoubleClickSchema,
-	annotations: { defaultPermission: 'confirm' },
+	annotations: {},
 	getAffectedResources() {
 		return [COMPUTER_RESOURCE];
 	},
@@ -177,7 +177,7 @@ export const mouseDragTool: ToolDefinition<typeof mouseDragSchema> = {
 	name: 'mouse_drag',
 	description: 'Click-drag from one coordinate to another',
 	inputSchema: mouseDragSchema,
-	annotations: { defaultPermission: 'confirm' },
+	annotations: {},
 	getAffectedResources() {
 		return [COMPUTER_RESOURCE];
 	},
@@ -204,7 +204,7 @@ export const mouseScrollTool: ToolDefinition<typeof mouseScrollSchema> = {
 	name: 'mouse_scroll',
 	description: 'Scroll at the specified screen coordinates',
 	inputSchema: mouseScrollSchema,
-	annotations: { defaultPermission: 'confirm' },
+	annotations: {},
 	getAffectedResources() {
 		return [COMPUTER_RESOURCE];
 	},
@@ -237,7 +237,7 @@ export const keyboardTypeTool: ToolDefinition<typeof keyboardTypeSchema> = {
 	name: 'keyboard_type',
 	description: 'Type a string of text using the keyboard',
 	inputSchema: keyboardTypeSchema,
-	annotations: { defaultPermission: 'confirm' },
+	annotations: {},
 	getAffectedResources() {
 		return [COMPUTER_RESOURCE];
 	},
@@ -268,7 +268,7 @@ export const keyboardKeyTapTool: ToolDefinition<typeof keyboardKeyTapSchema> = {
 	name: 'keyboard_key_tap',
 	description: 'Press and release a single key. Use keyboard_shortcut for key combinations.',
 	inputSchema: keyboardKeyTapSchema,
-	annotations: { defaultPermission: 'confirm' },
+	annotations: {},
 	getAffectedResources() {
 		return [COMPUTER_RESOURCE];
 	},
@@ -293,7 +293,7 @@ export const keyboardShortcutTool: ToolDefinition<typeof keyboardShortcutSchema>
 	name: 'keyboard_shortcut',
 	description: `Press a keyboard shortcut (e.g. ${IS_MACOS ? '⌘C, ⌘⇧Z' : 'Ctrl+C, Ctrl+Shift+Z'})`,
 	inputSchema: keyboardShortcutSchema,
-	annotations: { defaultPermission: 'confirm' },
+	annotations: {},
 	getAffectedResources() {
 		return [COMPUTER_RESOURCE];
 	},

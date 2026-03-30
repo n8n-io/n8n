@@ -115,8 +115,10 @@ export {
 	credentialResolversSchema,
 	credentialResolverTypeSchema,
 	credentialResolverTypesSchema,
+	credentialResolverAffectedWorkflowsSchema,
 	type CredentialResolver,
 	type CredentialResolverType,
+	type CredentialResolverAffectedWorkflow,
 } from './schemas/credential-resolver.schema';
 export {
 	WORKFLOW_VERSION_NAME_MAX_LENGTH,
@@ -312,6 +314,7 @@ export type {
 	InstanceAiFilesystemResponse,
 	InstanceAiGatewayCapabilities,
 	McpTool,
+	McpToolAnnotations,
 	McpToolCallRequest,
 	McpToolCallResult,
 	InstanceAiEvent,
@@ -341,6 +344,7 @@ export type {
 	DomainAccessAction,
 	DomainAccessMeta,
 	InstanceAiCredentialFlow,
+	ToolCategory,
 	InstanceAiWorkflowSetupNode,
 } from './schemas/instance-ai.schema';
 

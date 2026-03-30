@@ -65,6 +65,8 @@ type Props = {
 	standalone?: boolean;
 	/** Project ID to scope new credential creation to the correct project. */
 	projectId?: string;
+	/** Pre-fill the credential name when creating a new credential. */
+	suggestedCredentialName?: string;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -98,7 +100,6 @@ const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
 // Quick connect
 const {
 	loading: quickConnectLoading,
-	isQuickConnectEnabled,
 	getQuickConnectOption,
 	connect,
 	cancelConnect,
@@ -354,7 +355,13 @@ function createNewCredential(
 		subscribedToCredentialType.value = credentialType;
 	}
 
-	uiStore.openNewCredential(credentialType, showAuthOptions, forceManualMode, props.projectId);
+	uiStore.openNewCredential(
+		credentialType,
+		showAuthOptions,
+		forceManualMode,
+		props.projectId,
+		props.suggestedCredentialName,
+	);
 	telemetry.track('User opened Credential modal', {
 		credential_type: credentialType,
 		source: 'node',
@@ -525,11 +532,7 @@ function getCredentialsFieldLabel(credentialType: INodeCredentialDescription): s
 			interpolate: { credentialType: credentialTypeName },
 		});
 	}
-	return i18n.baseText(
-		isQuickConnectEnabled.value
-			? 'nodeCredentials.credentialsLabelShort'
-			: 'nodeCredentials.credentialsLabel',
-	);
+	return i18n.baseText('nodeCredentials.credentialsLabelShort');
 }
 
 function setFilter(newFilter = '') {
@@ -552,7 +555,6 @@ function getServiceName(credentialTypeName: string): string {
 }
 
 const quickConnectCredentialType = computed(() => {
-	if (!isQuickConnectEnabled.value) return undefined;
 	return credentialTypesNodeDescriptions.value.find(
 		(t) => !!getQuickConnectOption(t.name, props.node.type) || hasManagedOAuthCredentials(t.name),
 	)?.name;
@@ -650,14 +652,9 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 				</div>
 
 				<div
-					v-else-if="
-						!standalone &&
-						options.length === 0 &&
-						isQuickConnectEnabled &&
-						showStandardEmptyState(type)
-					"
+					v-else-if="showStandardEmptyState(type)"
 					:class="$style.standardEmptyContainer"
-					data-test-id="standard-empty-state"
+					data-test-id="node-credentials-empty-state"
 				>
 					<N8nSelect
 						:class="$style.emptySelect"

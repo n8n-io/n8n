@@ -225,7 +225,11 @@ describe('InstanceAiController', () => {
 			const result = await controller.correctTask(req, res, THREAD_ID, 'task-1', payload);
 
 			expect(result).toEqual({ ok: true });
-			expect(instanceAiService.sendCorrectionToTask).toHaveBeenCalledWith('task-1', 'fix this');
+			expect(instanceAiService.sendCorrectionToTask).toHaveBeenCalledWith(
+				THREAD_ID,
+				'task-1',
+				'fix this',
+			);
 		});
 	});
 
@@ -291,9 +295,9 @@ describe('InstanceAiController', () => {
 			});
 		});
 
-		it('should refresh module settings when filesystemDisabled changes', async () => {
+		it('should refresh module settings when localGatewayDisabled changes', async () => {
 			const payload = mock<InstanceAiUserPreferencesUpdateRequest>({
-				filesystemDisabled: true,
+				localGatewayDisabled: true,
 			});
 			settingsService.updateUserPreferences.mockResolvedValue(
 				mock<InstanceAiUserPreferencesResponse>(),
@@ -304,9 +308,9 @@ describe('InstanceAiController', () => {
 			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('instance-ai');
 		});
 
-		it('should not refresh module settings when filesystemDisabled is not in payload', async () => {
+		it('should not refresh module settings when localGatewayDisabled is not in payload', async () => {
 			const payload = mock<InstanceAiUserPreferencesUpdateRequest>({
-				filesystemDisabled: undefined,
+				localGatewayDisabled: undefined,
 			});
 			settingsService.updateUserPreferences.mockResolvedValue(
 				mock<InstanceAiUserPreferencesResponse>(),
