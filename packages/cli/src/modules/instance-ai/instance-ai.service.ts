@@ -1579,13 +1579,14 @@ export class InstanceAiService {
 			}
 
 			const outputText = await (result.text ?? Promise.resolve(''));
+			const finalStatus = result.status === 'errored' ? 'error' : result.status;
 			await this.finalizeRunTracing(runId, tracing, {
-				status: result.status,
+				status: finalStatus,
 				outputText,
 				modelId,
 			});
 			messageTraceFinalization = {
-				status: result.status,
+				status: finalStatus,
 				outputText,
 				modelId,
 				metadata: { completion_source: 'orchestrator' },
@@ -1791,12 +1792,13 @@ export class InstanceAiService {
 			}
 
 			const outputText = await (result.text ?? Promise.resolve(''));
+			const finalStatus = result.status === 'errored' ? 'error' : result.status;
 			await this.finalizeRunTracing(opts.runId, opts.tracing, {
-				status: result.status,
+				status: finalStatus,
 				outputText,
 			});
 			messageTraceFinalization = {
-				status: result.status,
+				status: finalStatus,
 				outputText,
 				metadata: { completion_source: 'orchestrator' },
 			};
