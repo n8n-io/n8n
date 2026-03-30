@@ -822,7 +822,12 @@ describe('useCanvasPreview', () => {
 	});
 
 	describe('stale execution filtering', () => {
-		function addExecutionMessage(store: MockStore, workflowId: string, executionId: string, finishedAt?: string) {
+		function addExecutionMessage(
+			store: MockStore,
+			workflowId: string,
+			executionId: string,
+			finishedAt?: string,
+		) {
 			store.messages = [
 				...store.messages,
 				makeMessage({

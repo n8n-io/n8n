@@ -206,7 +206,10 @@ describe('useEventRelay', () => {
 			setup({ activeWfId: 'wf-1' });
 
 			workflowExecutions.value = new Map([
-				['wf-1', createExecState('wf-1', 'exec-1', 'running', [nodeExecuteBeforeEvent('exec-1', 'N1')])],
+				[
+					'wf-1',
+					createExecState('wf-1', 'exec-1', 'running', [nodeExecuteBeforeEvent('exec-1', 'N1')]),
+				],
 			]);
 			await nextTick();
 

@@ -277,7 +277,11 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 			if (!isPreviewVisible.value && !store.isStreaming && !userSentMessage.value) return;
 
 			// If preview is already open on a different artifact, don't switch
-			if (isPreviewVisible.value && activeTabId.value !== null && activeTabId.value !== exec.workflowId) {
+			if (
+				isPreviewVisible.value &&
+				activeTabId.value !== null &&
+				activeTabId.value !== exec.workflowId
+			) {
 				return;
 			}
 
