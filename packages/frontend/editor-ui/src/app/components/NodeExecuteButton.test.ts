@@ -194,7 +194,7 @@ describe('NodeExecuteButton', () => {
 		});
 
 		const { getByRole } = renderComponent();
-		expect(getByRole('button').textContent).toBe('Test chat');
+		expect(getByRole('button').textContent).toBe('Open chat');
 	});
 
 	it('displays correct button label for polling node', () => {
