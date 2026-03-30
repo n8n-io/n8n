@@ -1,5 +1,12 @@
 import { getDefaultDiscovery, getInstallInstructions } from './browser-discovery';
-import { AlreadyConnectedError, BrowserNotAvailableError, NotConnectedError } from './errors';
+import {
+	AlreadyConnectedError,
+	BrowserNotAvailableError,
+	ConnectionLostError,
+	NotConnectedError,
+	type ConnectionLostReason,
+} from './errors';
+import { createLogger } from './logger';
 import type {
 	BrowserName,
 	Config,
@@ -11,8 +18,11 @@ import type {
 } from './types';
 import { configSchema } from './types';
 
+const log = createLogger('connection');
+
 export class BrowserConnection {
 	private state: ConnectionState | null = null;
+	private disconnectReason: ConnectionLostReason | undefined;
 	private readonly config: ResolvedConfig;
 
 	constructor(userConfig?: Partial<Config>) {
@@ -68,6 +78,15 @@ export class BrowserConnection {
 		};
 
 		const adapter = await this.createAdapter();
+
+		// Listen for unexpected disconnections so we can invalidate state immediately
+		adapter.onDisconnect = (reason) => {
+			if (!this.state) return; // already disconnected
+			log.debug('unexpected disconnect, reason:', reason);
+			this.disconnectReason = reason;
+			this.state = null;
+		};
+
 		await adapter.launch(connectConfig);
 
 		// Two-tier model: listTabs() returns metadata from the relay (no
@@ -90,6 +109,7 @@ export class BrowserConnection {
 
 		const { adapter } = this.state;
 		this.state = null;
+		this.disconnectReason = undefined;
 
 		try {
 			await adapter.close();
@@ -99,7 +119,12 @@ export class BrowserConnection {
 	}
 
 	getConnection(): ConnectionState {
-		if (!this.state) throw new NotConnectedError();
+		if (!this.state) {
+			if (this.disconnectReason) {
+				throw new ConnectionLostError(this.disconnectReason);
+			}
+			throw new NotConnectedError();
+		}
 		return this.state;
 	}
 

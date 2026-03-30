@@ -169,7 +169,7 @@ export class RelayConnection {
 		this.sendMessage({ method: 'tabClosed', params: { id } });
 
 		if (this.tabs.size === 0) {
-			this.close('All tabs closed');
+			this.close('extension_disconnected');
 		}
 	}
 
@@ -356,7 +356,7 @@ export class RelayConnection {
 		this.sendMessage({ method: 'tabClosed', params: { id } });
 
 		if (this.tabs.size === 0) {
-			this.close(`Debugger detached: ${reason}`);
+			this.close('debugger_detached');
 		}
 	}
 
@@ -523,7 +523,7 @@ export class RelayConnection {
 		}
 
 		if (this.tabs.size === 0) {
-			this.close('All tabs closed');
+			this.close('extension_disconnected');
 		}
 
 		return { closed: true, id };

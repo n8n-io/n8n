@@ -21,7 +21,12 @@ import type {
 	ExtensionEvents,
 	ExtensionResponse,
 } from './cdp-relay-protocol';
-import { ExtensionNotConnectedError, type ExtensionNotConnectedPhase } from './errors';
+import {
+	ConnectionLostError,
+	ExtensionNotConnectedError,
+	type ConnectionLostReason,
+	type ExtensionNotConnectedPhase,
+} from './errors';
 import { createLogger } from './logger';
 
 const log = createLogger('relay');
@@ -64,6 +69,9 @@ export class CDPRelayServer {
 	private extensionConnectedResolve?: () => void;
 	private extensionConnectedReject?: (error: Error) => void;
 	private extensionConnectedPromise: Promise<void>;
+
+	/** Called when the extension disconnects with a typed reason. */
+	onExtensionDisconnect?: (reason: ConnectionLostReason) => void;
 
 	private readonly connectionTimeoutMs: number;
 
@@ -396,7 +404,7 @@ export class CDPRelayServer {
 		params: unknown,
 		sessionId: string | undefined,
 	): Promise<unknown> {
-		if (!this.extensionConn) throw new Error('Extension not connected');
+		if (!this.extensionConn) throw new ConnectionLostError('extension_disconnected');
 
 		// sessionId IS the CDP targetId — pass it directly
 		log.debug('→ EXT: forwardCDPCommand', method, sessionId ? 'id=' + sessionId : '(primary)');
@@ -419,7 +427,7 @@ export class CDPRelayServer {
 
 	/** Create a new tab via the extension. */
 	private async createTab(url?: string): Promise<{ id: string; title: string; url: string }> {
-		if (!this.extensionConn) throw new Error('Extension not connected');
+		if (!this.extensionConn) throw new ConnectionLostError('extension_disconnected');
 
 		log.debug('createTab: requesting from extension, url =', url);
 		const result = (await this.extensionConn.send('createTab', { url })) as {
@@ -456,7 +464,7 @@ export class CDPRelayServer {
 
 	/** Close a tab via the extension. */
 	async closeTab(id: string): Promise<void> {
-		if (!this.extensionConn) throw new Error('Extension not connected');
+		if (!this.extensionConn) throw new ConnectionLostError('extension_disconnected');
 
 		await this.extensionConn.send('closeTab', { id });
 
@@ -531,7 +539,9 @@ export class CDPRelayServer {
 		this.extensionConn = new ExtensionConnection(ws);
 
 		this.extensionConn.onclose = () => {
-			log.debug('extension disconnected');
+			const rawReason = this.extensionConn?.closeReason;
+			log.debug('extension disconnected, reason:', rawReason ?? '(none)');
+			this.onExtensionDisconnect?.(asConnectionLostReason(rawReason));
 			this.resetState();
 			this.closePlaywrightConnection('Extension disconnected');
 		};
@@ -612,6 +622,9 @@ export class CDPRelayServer {
 // ExtensionConnection — wraps the WebSocket to the extension
 // ---------------------------------------------------------------------------
 
+const HEARTBEAT_INTERVAL_MS = 10_000;
+const HEARTBEAT_TIMEOUT_MS = 20_000;
+
 class ExtensionConnection {
 	private readonly ws: WebSocket;
 	private readonly callbacks = new Map<
@@ -619,6 +632,11 @@ class ExtensionConnection {
 		{ resolve: (value: unknown) => void; reject: (reason: Error) => void }
 	>();
 	private lastId = 0;
+	private lastPongAt = Date.now();
+	private heartbeatInterval: ReturnType<typeof setInterval> | undefined;
+
+	/** The reason string from the WebSocket close frame, if any. */
+	closeReason: string | undefined;
 
 	onmessage?: <M extends keyof ExtensionEvents>(
 		method: M,
@@ -629,14 +647,21 @@ class ExtensionConnection {
 	constructor(ws: WebSocket) {
 		this.ws = ws;
 		this.ws.on('message', (data) => this.handleMessage(data));
-		this.ws.on('close', () => {
-			log.debug('ExtensionConnection WebSocket closed');
+		this.ws.on('close', (_code: number, reason: Buffer) => {
+			const reasonStr = reason.toString();
+			log.debug('ExtensionConnection WebSocket closed:', reasonStr || '(no reason)');
+			this.closeReason = reasonStr || undefined;
 			this.handleClose();
 		});
 		this.ws.on('error', (error) => {
 			log.debug('ExtensionConnection WebSocket error:', error);
 			this.handleClose();
 		});
+		this.ws.on('pong', () => {
+			this.lastPongAt = Date.now();
+		});
+
+		this.startHeartbeat();
 	}
 
 	async send<M extends keyof ExtensionCommands>(
@@ -645,7 +670,7 @@ class ExtensionConnection {
 		timeoutMs = 30_000,
 	): Promise<unknown> {
 		if (this.ws.readyState !== WebSocket.OPEN) {
-			throw new Error(`WebSocket not open (state=${this.ws.readyState})`);
+			throw new ConnectionLostError('network_error');
 		}
 
 		const id = ++this.lastId;
@@ -666,11 +691,7 @@ class ExtensionConnection {
 					'pending:',
 					this.callbacks.size,
 				);
-				reject(
-					new Error(
-						`Extension command '${String(method)}' (id=${id}) timed out after ${timeoutMs}ms`,
-					),
-				);
+				reject(new ConnectionLostError('heartbeat_timeout'));
 			}, timeoutMs);
 
 			this.callbacks.set(id, {
@@ -687,8 +708,36 @@ class ExtensionConnection {
 	}
 
 	close(reason: string): void {
+		this.stopHeartbeat();
 		if (this.ws.readyState === WebSocket.OPEN) {
 			this.ws.close(1000, reason);
+		}
+	}
+
+	private startHeartbeat(): void {
+		this.heartbeatInterval = setInterval(() => {
+			if (this.ws.readyState !== WebSocket.OPEN) {
+				this.stopHeartbeat();
+				return;
+			}
+
+			const elapsed = Date.now() - this.lastPongAt;
+			if (elapsed > HEARTBEAT_TIMEOUT_MS) {
+				log.debug('heartbeat timeout: no pong for', elapsed, 'ms');
+				this.closeReason = 'heartbeat_timeout';
+				this.stopHeartbeat();
+				this.ws.terminate();
+				return;
+			}
+
+			this.ws.ping();
+		}, HEARTBEAT_INTERVAL_MS);
+	}
+
+	private stopHeartbeat(): void {
+		if (this.heartbeatInterval) {
+			clearInterval(this.heartbeatInterval);
+			this.heartbeatInterval = undefined;
 		}
 	}
 
@@ -722,14 +771,34 @@ class ExtensionConnection {
 	}
 
 	private handleClose(): void {
+		this.stopHeartbeat();
 		const pendingCount = this.callbacks.size;
 		if (pendingCount > 0) {
 			log.debug('ExtensionConnection closed with', pendingCount, 'pending callbacks');
 		}
+		const reason = asConnectionLostReason(this.closeReason);
 		for (const pending of this.callbacks.values()) {
-			pending.reject(new Error('WebSocket closed'));
+			pending.reject(new ConnectionLostError(reason));
 		}
 		this.callbacks.clear();
 		this.onclose?.();
 	}
+}
+
+// ---------------------------------------------------------------------------
+// Close reason validation
+// ---------------------------------------------------------------------------
+
+const VALID_REASONS = new Set<ConnectionLostReason>([
+	'browser_closed',
+	'extension_disconnected',
+	'debugger_detached',
+	'network_error',
+	'heartbeat_timeout',
+]);
+
+/** Validate a raw close reason string as a typed `ConnectionLostReason`. */
+function asConnectionLostReason(raw: string | undefined): ConnectionLostReason {
+	if (raw && VALID_REASONS.has(raw as ConnectionLostReason)) return raw as ConnectionLostReason;
+	return 'network_error';
 }
