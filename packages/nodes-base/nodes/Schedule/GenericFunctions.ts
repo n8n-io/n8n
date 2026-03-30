@@ -160,3 +160,22 @@ export function intervalToRecurrence(interval: ScheduleInterval, index: number) 
 
 	return recurrence;
 }
+
+export function computeIntervalsHash(intervals: ScheduleInterval[]): string {
+	const relevantData = intervals.map((interval) => {
+		const base = { field: interval.field };
+		switch (interval.field) {
+			case 'hours':
+				return { ...base, hoursInterval: interval.hoursInterval };
+			case 'days':
+				return { ...base, daysInterval: interval.daysInterval };
+			case 'weeks':
+				return { ...base, weeksInterval: interval.weeksInterval };
+			case 'months':
+				return { ...base, monthsInterval: interval.monthsInterval };
+			default:
+				return base;
+		}
+	});
+	return JSON.stringify(relevantData);
+}
