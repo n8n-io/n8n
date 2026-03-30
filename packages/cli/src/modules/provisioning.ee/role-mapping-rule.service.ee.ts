@@ -1,4 +1,8 @@
-import { CreateRoleMappingRuleDto, type PatchRoleMappingRuleInput } from '@n8n/api-types';
+import {
+	CreateRoleMappingRuleDto,
+	type ListRoleMappingRuleQueryInput,
+	type PatchRoleMappingRuleInput,
+} from '@n8n/api-types';
 import {
 	ProjectRepository,
 	RoleMappingRule,
@@ -6,7 +10,8 @@ import {
 	RoleRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { In } from '@n8n/typeorm';
+
+import { type FindOptionsOrder, In } from '@n8n/typeorm';
 import type { z } from 'zod';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -31,6 +36,11 @@ export type RoleMappingRuleResponse = {
 	updatedAt: string;
 };
 
+export type RoleMappingRuleListResponse = {
+	count: number;
+	items: RoleMappingRuleResponse[];
+};
+
 @Service()
 export class RoleMappingRuleService {
 	constructor(
@@ -38,6 +48,37 @@ export class RoleMappingRuleService {
 		private readonly roleRepository: RoleRepository,
 		private readonly projectRepository: ProjectRepository,
 	) {}
+
+	async list(query: ListRoleMappingRuleQueryInput): Promise<RoleMappingRuleListResponse> {
+		const sortBy = query.sortBy ?? 'order:asc';
+		const [sortField, sortDir] = sortBy.split(':') as [
+			'order' | 'createdAt' | 'updatedAt',
+			'asc' | 'desc',
+		];
+		const direction: 'ASC' | 'DESC' = sortDir === 'desc' ? 'DESC' : 'ASC';
+
+		const order: FindOptionsOrder<RoleMappingRule> =
+			sortField === 'createdAt'
+				? { createdAt: direction, id: 'ASC' }
+				: sortField === 'updatedAt'
+					? { updatedAt: direction, id: 'ASC' }
+					: { order: direction, id: 'ASC' };
+
+		const where = query.type ? { type: query.type } : {};
+
+		const [entities, count] = await this.roleMappingRuleRepository.findAndCount({
+			where,
+			relations: ['projects', 'role'],
+			order,
+			skip: query.skip,
+			take: query.take,
+		});
+
+		return {
+			count,
+			items: entities.map((entity) => this.toResponse(entity)),
+		};
+	}
 
 	async create(dto: CreateRoleMappingRuleInput): Promise<RoleMappingRuleResponse> {
 		const uniqueProjectIds = assertAndNormalizeProjectIdsForRuleType(dto.type, dto.projectIds, []);
@@ -69,6 +110,8 @@ export class RoleMappingRuleService {
 
 		const saved = await this.roleMappingRuleRepository.save(rule);
 
+		await this.normalizeOrderForType(dto.type);
+
 		const loaded = await this.roleMappingRuleRepository.findOneOrFail({
 			where: { id: saved.id },
 			relations: ['projects', 'role'],
@@ -95,7 +138,8 @@ export class RoleMappingRuleService {
 			throw new NotFoundError('Could not find role mapping rule');
 		}
 
-		const mergedType = dto.type ?? (rule.type as 'instance' | 'project');
+		const originalType = rule.type as 'instance' | 'project';
+		const mergedType = dto.type ?? originalType;
 		const mergedOrder = dto.order ?? rule.order;
 		const mergedExpression = dto.expression ?? rule.expression;
 		const mergedRoleSlug = dto.role ?? rule.role.slug;
@@ -137,12 +181,60 @@ export class RoleMappingRuleService {
 
 		await this.roleMappingRuleRepository.save(rule);
 
+		await this.normalizeOrderForType(mergedType);
+		if (originalType !== mergedType) {
+			await this.normalizeOrderForType(originalType);
+		}
+
 		const loaded = await this.roleMappingRuleRepository.findOneOrFail({
 			where: { id: rule.id },
 			relations: ['projects', 'role'],
 		});
 
 		return this.toResponse(loaded);
+	}
+
+	async delete(id: string): Promise<void> {
+		if (typeof id !== 'string' || id.length === 0) {
+			throw new BadRequestError('Rule id is required');
+		}
+
+		const rule = await this.roleMappingRuleRepository.findOne({ where: { id } });
+
+		if (!rule) {
+			throw new NotFoundError('Could not find role mapping rule');
+		}
+
+		const ruleType = rule.type as 'instance' | 'project';
+		await this.roleMappingRuleRepository.remove(rule);
+		await this.normalizeOrderForType(ruleType);
+	}
+
+	private async normalizeOrderForType(type: 'instance' | 'project'): Promise<void> {
+		const rules = await this.roleMappingRuleRepository.find({
+			where: { type },
+			select: ['id', 'order'],
+			order: { order: 'ASC' },
+		});
+
+		if (rules.length === 0) return;
+
+		// Early exit: already a contiguous sequence starting at 0
+		if (rules.every((r, i) => r.order === i)) return;
+
+		await this.roleMappingRuleRepository.manager.transaction(async (tx) => {
+			// Phase 1 — move all to a safe high offset to avoid unique constraint
+			// conflicts during resequencing (checked per-statement in SQLite/Postgres)
+			const offset = rules.length + 1000;
+			for (let i = 0; i < rules.length; i++) {
+				await tx.update(RoleMappingRule, { id: rules[i].id }, { order: offset + i });
+			}
+
+			// Phase 2 — assign final 0-based contiguous orders
+			for (let i = 0; i < rules.length; i++) {
+				await tx.update(RoleMappingRule, { id: rules[i].id }, { order: i });
+			}
+		});
 	}
 
 	private async assertOrderAvailable(

@@ -36,7 +36,6 @@ export declare namespace Zammad {
 	export type Group = Organization;
 
 	export type GroupUpdateFields = UserUpdateFields;
-
 	export type User = {
 		id: number;
 		login: string;
