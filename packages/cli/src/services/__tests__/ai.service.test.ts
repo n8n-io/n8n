@@ -86,7 +86,9 @@ describe('AiService', () => {
 		it('should throw error if client is not initialized', async () => {
 			license.isAiAssistantEnabled.mockReturnValue(false);
 
-			await expect(aiService.chat(payload, user)).rejects.toThrow('Assistant client not setup');
+			await expect(aiService.chat(payload, user)).rejects.toThrow(
+				'AI Assistant client not initialized',
+			);
 		});
 	});
 
@@ -108,7 +110,7 @@ describe('AiService', () => {
 			license.isAiAssistantEnabled.mockReturnValue(false);
 
 			await expect(aiService.applySuggestion(payload, user)).rejects.toThrow(
-				'Assistant client not setup',
+				'AI Assistant client not initialized',
 			);
 		});
 	});
@@ -172,7 +174,9 @@ describe('AiService', () => {
 		it('should throw error if client is not initialized', async () => {
 			license.isAiAssistantEnabled.mockReturnValue(false);
 
-			await expect(aiService.askAi(payload, user)).rejects.toThrow('Assistant client not setup');
+			await expect(aiService.askAi(payload, user)).rejects.toThrow(
+				'AI Assistant client not initialized',
+			);
 		});
 	});
 
