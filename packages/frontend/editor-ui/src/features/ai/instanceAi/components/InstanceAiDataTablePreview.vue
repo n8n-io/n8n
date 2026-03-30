@@ -1,6 +1,6 @@
 <script lang="ts" setup>
-import { ref, watch, computed } from 'vue';
-import { N8nIconButton, N8nSpinner, N8nText } from '@n8n/design-system';
+import { ref, watch } from 'vue';
+import { N8nSpinner, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import DataTableTable from '@/features/core/dataTable/components/dataGrid/DataTableTable.vue';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
@@ -16,18 +16,12 @@ const props = withDefaults(
 	{ refreshKey: 0 },
 );
 
-const emit = defineEmits<{
-	close: [];
-}>();
-
 const i18n = useI18n();
 const dataTableStore = useDataTableStore();
 
 const dataTable = ref<DataTable | null>(null);
 const isLoading = ref(false);
 const fetchError = ref<string | null>(null);
-
-const tableName = computed(() => dataTable.value?.name ?? '');
 
 async function fetchDataTable(id: string, projectId: string) {
 	const isRefresh = dataTable.value?.id === id;
@@ -70,88 +64,33 @@ watch(
 </script>
 
 <template>
-	<div :class="$style.container">
-		<!-- Header -->
-		<div :class="$style.header">
-			<N8nText size="medium" :class="$style.headerTitle">
-				{{ tableName || i18n.baseText('instanceAi.dataTablePreview.title') }}
-			</N8nText>
-			<div :class="$style.headerActions">
-				<N8nIconButton
-					v-if="dataTable"
-					icon="external-link"
-					variant="ghost"
-					size="medium"
-					tag="a"
-					:href="
-						props.projectId
-							? `/projects/${props.projectId}/datatables/${dataTable.id}`
-							: '/home/datatables'
-					"
-					target="_blank"
-				/>
-				<N8nIconButton icon="x" variant="ghost" size="medium" @click="emit('close')" />
-			</div>
+	<div :class="$style.content">
+		<!-- Error (only when no data table to show) -->
+		<div v-if="fetchError && !dataTable" :class="$style.centerState">
+			<N8nText color="text-light">{{ fetchError }}</N8nText>
 		</div>
 
-		<!-- Content -->
-		<div :class="$style.content">
-			<!-- Error (only when no data table to show) -->
-			<div v-if="fetchError && !dataTable" :class="$style.centerState">
-				<N8nText color="text-light">{{ fetchError }}</N8nText>
-				<N8nIconButton icon="x" variant="outline" size="small" @click="emit('close')" />
-			</div>
+		<!-- Data table grid -->
+		<DataTableTable
+			v-if="dataTable"
+			:key="props.refreshKey"
+			:data-table="dataTable"
+			:read-only="true"
+		/>
 
-			<!-- Data table grid -->
-			<DataTableTable
-				v-if="dataTable"
-				:key="props.refreshKey"
-				:data-table="dataTable"
-				:read-only="true"
-			/>
-
-			<!-- Loading overlay (shown during initial load or when no data table yet) -->
-			<div v-if="isLoading && !dataTable" :class="$style.centerState">
-				<N8nSpinner type="dots" />
-			</div>
+		<!-- Loading overlay (shown during initial load or when no data table yet) -->
+		<div v-if="isLoading && !dataTable" :class="$style.centerState">
+			<N8nSpinner type="dots" />
 		</div>
 	</div>
 </template>
 
 <style lang="scss" module>
-.container {
-	display: flex;
-	flex-direction: column;
-	height: 100%;
-}
-
-.header {
-	display: flex;
-	align-items: center;
-	padding: var(--spacing--2xs) var(--spacing--xs);
-	border-bottom: var(--border);
-	flex-shrink: 0;
-	gap: var(--spacing--2xs);
-}
-
-.headerTitle {
-	flex: 1;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.headerActions {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	flex-shrink: 0;
-}
-
 .content {
 	flex: 1;
 	min-height: 0;
 	position: relative;
+	height: 100%;
 }
 
 .centerState {
