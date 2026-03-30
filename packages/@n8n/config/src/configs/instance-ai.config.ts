@@ -82,7 +82,7 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_FILESYSTEM_PATH')
 	filesystemPath: string = '';
 
-	/** API key for the filesystem gateway daemon. When set, enables the gateway endpoint for remote filesystem access. */
+	/** Optional static API key for the filesystem gateway. When set, accepted alongside per-user pairing/session keys. */
 	@Env('N8N_INSTANCE_AI_GATEWAY_API_KEY')
 	gatewayApiKey: string = '';
 
