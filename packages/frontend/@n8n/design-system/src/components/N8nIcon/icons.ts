@@ -91,6 +91,7 @@ import IconLucideCloud from '~icons/lucide/cloud';
 import IconLucideCloudDownload from '~icons/lucide/cloud-download';
 import IconLucideCode from '~icons/lucide/code';
 import IconLucideCog from '~icons/lucide/cog';
+import IconLucideCircleDollarSign from '~icons/lucide/circle-dollar-sign';
 import IconLucideColumns3Cog from '~icons/lucide/columns-3-cog';
 import IconLucideContrast from '~icons/lucide/contrast';
 import IconLucideCopy from '~icons/lucide/copy';
@@ -556,6 +557,7 @@ export const updatedIconSet = {
 	'cloud-download': IconLucideCloudDownload,
 	code: IconLucideCode,
 	cog: IconLucideCog,
+	'circle-dollar-sign': IconLucideCircleDollarSign,
 	contrast: IconLucideContrast,
 	copy: IconLucideCopy,
 	crosshair: IconLucideCrosshair,
