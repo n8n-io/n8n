@@ -27,7 +27,8 @@ export class N8nApi implements ICredentialType {
 			type: 'string',
 			default: '',
 			placeholder: 'https://<name>.app.n8n.cloud/api/v1',
-			description: 'The API URL of the n8n instance',
+			description:
+				'The API URL of the n8n instance. Must end with /api/v1 (e.g. https://your-n8n-instance.com/api/v1)',
 		},
 	];
 
@@ -42,8 +43,19 @@ export class N8nApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: '={{ $credentials.baseUrl }}',
+			baseURL:
+				'={{ ((($credentials.baseUrl || "").trim().replace(/\/+$/, "")).endsWith("/api/v1")) ? (($credentials.baseUrl || "").trim().replace(/\/+$/, "")) : "" }}',
 			url: '/workflows?limit=5',
 		},
+		rules: [
+			{
+				type: 'responseSuccessBody',
+				properties: {
+					key: 'data',
+					value: [],
+					message: 'Invalid Base URL. Please make sure it ends with /api/v1',
+				},
+			},
+		],
 	};
 }
