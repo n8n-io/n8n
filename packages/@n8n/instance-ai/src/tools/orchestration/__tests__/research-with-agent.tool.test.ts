@@ -10,12 +10,6 @@ jest.mock('@mastra/core/agent', () => ({
 jest.mock('@mastra/core/mastra', () => ({
 	Mastra: jest.fn(),
 }));
-jest.mock('@mastra/langsmith', () => ({
-	LangSmithExporter: jest.fn(),
-}));
-jest.mock('@mastra/observability', () => ({
-	Observability: jest.fn(),
-}));
 jest.mock('../../../stream/map-chunk', () => ({
 	mapMastraChunkToEvent: jest.fn(),
 }));
