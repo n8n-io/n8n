@@ -960,6 +960,61 @@ describe('OpenAI Responses Helper Functions', () => {
 			});
 		});
 
+		it('should not include text config when textOptions.type is empty', async () => {
+			const executeFunctions = createExecuteFunctionsMock({});
+			const options = {
+				model: 'gpt-4',
+				messages: [
+					{
+						role: 'user',
+						type: 'text',
+						content: 'Hello',
+					},
+				],
+				options: {
+					textFormat: {
+						textOptions: {
+							type: '',
+							verbosity: undefined,
+						},
+					},
+				},
+				builtInTools: undefined,
+				tools: undefined,
+			};
+
+			const result = await createRequest.call(executeFunctions, 0, options);
+
+			expect(result).not.toHaveProperty('text');
+		});
+
+		it('should not include text config when textOptions result in empty object', async () => {
+			const executeFunctions = createExecuteFunctionsMock({});
+			const options = {
+				model: 'gpt-4',
+				messages: [
+					{
+						role: 'user',
+						type: 'text',
+						content: 'Hello',
+					},
+				],
+				options: {
+					textFormat: {
+						textOptions: {
+							type: '',
+						},
+					},
+				},
+				builtInTools: undefined,
+				tools: undefined,
+			};
+
+			const result = await createRequest.call(executeFunctions, 0, options);
+
+			expect(result).not.toHaveProperty('text');
+		});
+
 		it('should handle built-in tools - web search', async () => {
 			const executeFunctions = createExecuteFunctionsMock({});
 			const options = {
