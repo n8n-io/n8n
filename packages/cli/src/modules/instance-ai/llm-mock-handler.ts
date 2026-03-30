@@ -213,9 +213,7 @@ const apiDocsTool = new Tool('lookup_api_docs')
 				.describe('The API service name (e.g. "Google Sheets", "Gmail", "Slack")'),
 			endpointDescription: z
 				.string()
-				.describe(
-					'Description of the endpoint (e.g. "GET spreadsheets values response format")',
-				),
+				.describe('Description of the endpoint (e.g. "GET spreadsheets values response format")'),
 		}),
 	)
 	.handler(async (input: { serviceName: string; endpointDescription: string }) => {
