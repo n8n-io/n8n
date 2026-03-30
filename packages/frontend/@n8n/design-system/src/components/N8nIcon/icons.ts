@@ -74,6 +74,7 @@ import IconLucideChevronsUpDown from '~icons/lucide/chevrons-up-down';
 import IconLucideCircle from '~icons/lucide/circle';
 import IconLucideCircleAlert from '~icons/lucide/circle-alert';
 import IconLucideCircleCheck from '~icons/lucide/circle-check';
+import IconLucideCircleDollarSign from '~icons/lucide/circle-dollar-sign';
 import IconLucideCircleDot from '~icons/lucide/circle-dot';
 import IconLucideCircleEllipsis from '~icons/lucide/circle-ellipsis';
 import IconLucideCircleHelp from '~icons/lucide/circle-help';
@@ -91,7 +92,6 @@ import IconLucideCloud from '~icons/lucide/cloud';
 import IconLucideCloudDownload from '~icons/lucide/cloud-download';
 import IconLucideCode from '~icons/lucide/code';
 import IconLucideCog from '~icons/lucide/cog';
-import IconLucideCircleDollarSign from '~icons/lucide/circle-dollar-sign';
 import IconLucideColumns3Cog from '~icons/lucide/columns-3-cog';
 import IconLucideContrast from '~icons/lucide/contrast';
 import IconLucideCopy from '~icons/lucide/copy';
@@ -540,6 +540,7 @@ export const updatedIconSet = {
 	circle: IconLucideCircle,
 	'circle-alert': IconLucideCircleAlert,
 	'circle-check': IconLucideCircleCheck,
+	'circle-dollar-sign': IconLucideCircleDollarSign,
 	'circle-dot': IconLucideCircleDot,
 	'circle-ellipsis': IconLucideCircleEllipsis,
 	'circle-help': IconLucideCircleHelp,
@@ -557,7 +558,6 @@ export const updatedIconSet = {
 	'cloud-download': IconLucideCloudDownload,
 	code: IconLucideCode,
 	cog: IconLucideCog,
-	'circle-dollar-sign': IconLucideCircleDollarSign,
 	contrast: IconLucideContrast,
 	copy: IconLucideCopy,
 	crosshair: IconLucideCrosshair,
