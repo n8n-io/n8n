@@ -8,7 +8,13 @@ import type { z } from 'zod';
 
 import type { EvaluationInput } from '../evaluation';
 
-type EvaluatorChainInput = Record<string, string>;
+type EvaluatorChainInput = {
+	userPrompt: string;
+	generatedWorkflow: string;
+	referenceSection: string;
+	agentTextResponse?: string;
+	workflowBefore?: string;
+};
 
 export function createEvaluatorChain<TResult extends Record<string, unknown>>(
 	llm: BaseChatModel,
