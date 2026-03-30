@@ -12,7 +12,7 @@ import type {
 	CredentialSelectedPayload,
 	CredentialDeselectedPayload,
 } from '@/features/setupPanel/setupPanel.types';
-import { isCardComplete } from '@/features/setupPanel/setupPanel.types';
+import { isCardComplete } from '@/features/setupPanel/setupPanel.utils';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';

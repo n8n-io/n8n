@@ -1,6 +1,7 @@
 import { computed, ref, watch } from 'vue';
 
-import { type SetupCardItem, isCardComplete } from '@/features/setupPanel/setupPanel.types';
+import type { SetupCardItem } from '@/features/setupPanel/setupPanel.types';
+import { isCardComplete } from '@/features/setupPanel/setupPanel.utils';
 import { useWorkflowSetupState } from '@/features/setupPanel/composables/useWorkflowSetupState';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';

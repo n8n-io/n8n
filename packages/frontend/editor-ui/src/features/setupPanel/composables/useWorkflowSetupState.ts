@@ -7,7 +7,7 @@ import {
 	isResourceLocatorValue,
 } from 'n8n-workflow';
 import type { SetupCardItem, NodeSetupState } from '@/features/setupPanel/setupPanel.types';
-import { isCardComplete } from '@/features/setupPanel/setupPanel.types';
+import { isCardComplete } from '@/features/setupPanel/setupPanel.utils';
 
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {

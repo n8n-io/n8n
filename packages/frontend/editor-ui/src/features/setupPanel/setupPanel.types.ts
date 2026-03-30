@@ -68,17 +68,3 @@ export interface CredentialDeselectedPayload {
 	credentialType: string;
 	nodeName: string;
 }
-
-export function isCardComplete(card: SetupCardItem): boolean {
-	if (card.nodeGroup) {
-		const { parentState, subnodeCards } = card.nodeGroup;
-		return (!parentState || parentState.isComplete) && subnodeCards.every((c) => c.isComplete);
-	}
-	return card.state.isComplete;
-}
-
-export function isNodeGroupCard(
-	card: SetupCardItem,
-): card is { nodeGroup: NodeGroupItem; state?: undefined } {
-	return !!card.nodeGroup;
-}

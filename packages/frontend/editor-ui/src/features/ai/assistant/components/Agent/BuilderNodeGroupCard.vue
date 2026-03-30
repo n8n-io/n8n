@@ -13,7 +13,7 @@ import type {
 	CredentialSelectedPayload,
 	CredentialDeselectedPayload,
 } from '@/features/setupPanel/setupPanel.types';
-import { isCardComplete } from '@/features/setupPanel/setupPanel.types';
+import { isCardComplete } from '@/features/setupPanel/setupPanel.utils';
 import type { INodeUi } from '@/Interface';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';

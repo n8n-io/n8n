@@ -8,7 +8,7 @@ import BuilderNodeGroupCard from './BuilderNodeGroupCard.vue';
 import { useBuilderSetupCards } from '@/features/ai/assistant/composables/useBuilderSetupCards';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
-import { isNodeGroupCard } from '@/features/setupPanel/setupPanel.types';
+import { isNodeGroupCard } from '@/features/setupPanel/setupPanel.utils';
 
 const emit = defineEmits<{
 	workflowExecuted: [];

@@ -4,11 +4,8 @@ import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { ref, computed } from 'vue';
 import SetupPanelCards from '@/features/setupPanel/components/SetupPanelCards.vue';
-import {
-	type SetupCardItem,
-	type NodeSetupState,
-	isCardComplete,
-} from '@/features/setupPanel/setupPanel.types';
+import type { SetupCardItem, NodeSetupState } from '@/features/setupPanel/setupPanel.types';
+import { isCardComplete } from '@/features/setupPanel/setupPanel.utils';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import type { INodeUi } from '@/Interface';
 
