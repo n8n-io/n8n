@@ -109,20 +109,20 @@ const plugins: UserConfig['plugins'] = [
 	viteStaticCopy({
 		targets: [
 			{
-				src: pathPosix.resolve('node_modules/web-tree-sitter/tree-sitter.wasm'),
+				src: resolve('node_modules/web-tree-sitter/tree-sitter.wasm'),
 				dest: resolve(__dirname, 'dist'),
 			},
 			{
-				src: pathPosix.resolve('node_modules/curlconverter/dist/tree-sitter-bash.wasm'),
+				src: resolve('node_modules/curlconverter/dist/tree-sitter-bash.wasm'),
 				dest: resolve(__dirname, 'dist'),
 			},
 			// wa-sqlite WASM files for OPFS database support (no cross-origin isolation needed)
 			{
-				src: pathPosix.resolve('node_modules/wa-sqlite/dist/wa-sqlite.wasm'),
+				src: resolve('node_modules/wa-sqlite/dist/wa-sqlite.wasm'),
 				dest: 'assets',
 			},
 			{
-				src: pathPosix.resolve('node_modules/wa-sqlite/dist/wa-sqlite-async.wasm'),
+				src: resolve('node_modules/wa-sqlite/dist/wa-sqlite-async.wasm'),
 				dest: 'assets',
 			},
 		],
