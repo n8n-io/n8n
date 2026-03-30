@@ -2,7 +2,12 @@
 import { computed, onBeforeUnmount, onMounted, ref, nextTick, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
-import { N8nScrollArea, N8nResizeWrapper, type IMenuItem } from '@n8n/design-system';
+import {
+	N8nScrollArea,
+	N8nResizeWrapper,
+	N8nTooltipGroup,
+	type IMenuItem,
+} from '@n8n/design-system';
 import { ABOUT_MODAL_KEY, VIEWS, WHATS_NEW_MODAL_KEY } from '@/app/constants';
 import { EXTERNAL_LINKS } from '@/app/constants/externalLinks';
 import { hasPermission } from '@/app/utils/rbac/permissions';
@@ -347,27 +352,29 @@ useKeybindings({
 			@collapse="toggleCollapse"
 			@open-command-bar="openCommandBar"
 		/>
-		<div
-			:class="{
-				[$style.scrollAreaWrapper]: true,
-				[$style.scrollAreaWrapperWithBottomBorder]: hasOverflow && !isCollapsed,
-				[$style.scrollAreaWrapperWithTopBorder]: hasScrolledFromTop && !isCollapsed,
-			}"
-		>
-			<N8nScrollArea ref="scrollAreaRef" @scroll-capture="checkOverflow">
-				<ProjectNavigation
-					:collapsed="isCollapsed"
-					:plan-name="cloudPlanStore.currentPlanData?.displayName"
-				/>
-			</N8nScrollArea>
-		</div>
-		<BottomMenu
-			:items="visibleMenuItems"
-			:is-collapsed="isCollapsed"
-			@logout="onLogout"
-			@select="handleSelect"
-		/>
-		<MainSidebarSourceControl :is-collapsed="isCollapsed" />
+		<N8nTooltipGroup :delay-duration="500" :skip-delay-duration="0">
+			<div
+				:class="{
+					[$style.scrollAreaWrapper]: true,
+					[$style.scrollAreaWrapperWithBottomBorder]: hasOverflow && !isCollapsed,
+					[$style.scrollAreaWrapperWithTopBorder]: hasScrolledFromTop && !isCollapsed,
+				}"
+			>
+				<N8nScrollArea ref="scrollAreaRef" @scroll-capture="checkOverflow">
+					<ProjectNavigation
+						:collapsed="isCollapsed"
+						:plan-name="cloudPlanStore.currentPlanData?.displayName"
+					/>
+				</N8nScrollArea>
+			</div>
+			<BottomMenu
+				:items="visibleMenuItems"
+				:is-collapsed="isCollapsed"
+				@logout="onLogout"
+				@select="handleSelect"
+			/>
+			<MainSidebarSourceControl :is-collapsed="isCollapsed" />
+		</N8nTooltipGroup>
 		<ResourceCenterTooltip />
 	</N8nResizeWrapper>
 </template>

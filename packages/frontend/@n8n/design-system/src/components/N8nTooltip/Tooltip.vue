@@ -7,12 +7,21 @@ import {
 	TooltipPortal,
 	TooltipArrow,
 } from 'reka-ui';
-import { computed, ref, watch } from 'vue';
+import { computed, defineComponent, inject, ref, watch } from 'vue';
 
+import { TOOLTIP_GROUP_INJECTION_KEY } from './constants';
 import type { N8nTooltipProps } from './Tooltip.types';
 import { useInjectTooltipAppendTo } from '../../composables/useTooltipAppendTo';
 import { n8nHtml as vN8nHtml } from '../../directives';
 import N8nButton from '../N8nButton';
+
+// Transparent wrapper that renders children without adding a DOM element
+const Fragment = defineComponent({
+	name: 'Fragment',
+	render() {
+		return this.$slots.default?.();
+	},
+});
 
 defineOptions({
 	name: 'N8nTooltip',
@@ -73,13 +82,17 @@ const isControlled = computed(() => props.visible !== undefined);
 const handleOpenChange = (open: boolean) => {
 	isOpen.value = open;
 };
+
+// When inside an N8nTooltipGroup, skip creating our own TooltipProvider
+const isInsideGroup = inject(TOOLTIP_GROUP_INJECTION_KEY, false);
+const providerWrapper = computed(() => (isInsideGroup ? Fragment : TooltipProvider));
 </script>
 
 <template>
-	<TooltipProvider>
+	<component :is="providerWrapper">
 		<TooltipRoot
 			:disabled="disabled"
-			:delay-duration="showAfter"
+			:delay-duration="isInsideGroup ? undefined : showAfter"
 			:open="isControlled ? isOpen : undefined"
 			:disable-hoverable-content="disableHoverableContent"
 			@update:open="handleOpenChange"
@@ -115,7 +128,7 @@ const handleOpenChange = (open: boolean) => {
 				</TooltipContent>
 			</TooltipPortal>
 		</TooltipRoot>
-	</TooltipProvider>
+	</component>
 </template>
 
 <style lang="scss" module>
