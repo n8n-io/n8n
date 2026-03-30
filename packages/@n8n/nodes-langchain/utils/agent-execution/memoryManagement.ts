@@ -89,6 +89,10 @@ export function buildMessagesFromSteps(steps: ToolCallData[]): BaseMessage[] {
 			existingToolCallId ?? extractToolCallId(step.action.toolCallId, step.action.tool);
 
 		// Use existing AIMessage or create a synthetic one
+		// Preserve reasoning_content from existing message if present (for DeepSeek Reasoner)
+		const existingReasoningContent =
+			existingAIMessage?.additional_kwargs?.reasoning_content as string | undefined;
+
 		const aiMessage =
 			existingAIMessage ??
 			new AIMessage({
@@ -101,6 +105,12 @@ export function buildMessagesFromSteps(steps: ToolCallData[]): BaseMessage[] {
 						type: 'tool_call',
 					},
 				],
+				// Preserve reasoning_content for DeepSeek Reasoner
+				...(existingReasoningContent && {
+					additional_kwargs: {
+						reasoning_content: existingReasoningContent,
+					},
+				}),
 			});
 
 		// Create ToolMessage with the observation result

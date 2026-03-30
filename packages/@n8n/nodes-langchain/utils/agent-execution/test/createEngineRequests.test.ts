@@ -997,4 +997,134 @@ describe('createEngineRequests', () => {
 			expect(result[0].metadata.google?.thoughtSignature).toBe('actual_signature');
 		});
 	});
+
+	describe('DeepSeek reasoning_content extraction', () => {
+		it('should extract reasoning_content from additionalKwargs on toolCall', async () => {
+			const tools = [createMockTool('calculator', { sourceNodeName: 'Calculator' })];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'calculator',
+					toolInput: { expression: '2+2' },
+					toolCallId: 'call_123',
+					additionalKwargs: {
+						reasoning_content: 'DeepSeek reasoning content for tool call',
+					},
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].metadata.deepseek?.reasoningContent).toBe(
+				'DeepSeek reasoning content for tool call',
+			);
+		});
+
+		it('should extract reasoning_content from message additional_kwargs', async () => {
+			const tools = [createMockTool('calculator', { sourceNodeName: 'Calculator' })];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'calculator',
+					toolInput: { expression: '2+2' },
+					toolCallId: 'call_456',
+					messageLog: [
+						{
+							content: 'Some content',
+							additional_kwargs: {
+								reasoning_content: 'DeepSeek reasoning from message kwargs',
+							},
+						},
+					],
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].metadata.deepseek?.reasoningContent).toBe(
+				'DeepSeek reasoning from message kwargs',
+			);
+		});
+
+		it('should prefer additionalKwargs over messageLog reasoning_content', async () => {
+			const tools = [createMockTool('calculator', { sourceNodeName: 'Calculator' })];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'calculator',
+					toolInput: { expression: '2+2' },
+					toolCallId: 'call_123',
+					additionalKwargs: {
+						reasoning_content: 'reasoning_from_kwargs',
+					},
+					messageLog: [
+						{
+							content: 'Some content',
+							additional_kwargs: {
+								reasoning_content: 'reasoning_from_message',
+							},
+						},
+					],
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			// Should prefer additionalKwargs over messageLog
+			expect(result[0].metadata.deepseek?.reasoningContent).toBe('reasoning_from_kwargs');
+		});
+
+		it('should handle missing reasoning_content gracefully', async () => {
+			const tools = [createMockTool('calculator', { sourceNodeName: 'Calculator' })];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'calculator',
+					toolInput: { expression: '2+2' },
+					toolCallId: 'call_123',
+					additionalKwargs: {},
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].metadata.deepseek).toBeUndefined();
+		});
+
+		it('should share reasoning_content from first tool call to subsequent calls', async () => {
+			const tools = [
+				createMockTool('calculator', { sourceNodeName: 'Calculator' }),
+				createMockTool('weather', { sourceNodeName: 'Weather' }),
+			];
+
+			// Simulates LangChain behavior where only first tool call has additionalKwargs
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'calculator',
+					toolInput: { expression: '2+2' },
+					toolCallId: 'call_1',
+					additionalKwargs: {
+						reasoning_content: 'shared_reasoning_content',
+					},
+				},
+				{
+					tool: 'weather',
+					toolInput: { location: 'NYC' },
+					toolCallId: 'call_2',
+					// No additionalKwargs on second call
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(2);
+			// Both should get the reasoning_content from the shared additionalKwargs
+			expect(result[0].metadata.deepseek?.reasoningContent).toBe('shared_reasoning_content');
+			expect(result[1].metadata.deepseek?.reasoningContent).toBe('shared_reasoning_content');
+		});
+	});
 });
