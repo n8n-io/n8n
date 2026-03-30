@@ -27,6 +27,7 @@ export {
 	HTTP_REQUEST_GUIDE,
 	TOOL_NODES_GUIDE,
 	GMAIL_GUIDE,
+	SPLIT_IN_BATCHES_GUIDE,
 } from './guides';
 
 // Parameter type guides
