@@ -22,12 +22,48 @@ import { file as tmpFile } from 'tmp-promise';
 
 import { formatPrivateKey } from '@utils/utilities';
 
+export const enum ShellType {
+	Cmd = 'cmd',
+	PowerShell = 'powershell',
+	Unix = 'unix',
+}
+
+const CMD_PATH_PREFIX = 'CMD_PATH:';
+
+async function detectShellType(ssh: NodeSSH): Promise<ShellType> {
+	// Check for PowerShell
+	const psResult = await ssh.execCommand('echo $PSVersionTable');
+	// PowerShell should return version info, not the literal string
+	if (
+		psResult.code === 0 &&
+		psResult.stdout.toLowerCase().includes('psversion') &&
+		!psResult.stdout.includes('$PSVersionTable')
+	) {
+		return ShellType.PowerShell;
+	}
+
+	// Check for Windows cmd
+	const cmdResult = await ssh.execCommand('ver');
+	if (cmdResult.code === 0 && cmdResult.stdout.toLowerCase().includes('windows')) {
+		return ShellType.Cmd;
+	}
+
+	// Default to Unix-like system
+	return ShellType.Unix;
+}
+
 async function resolveHomeDir(
 	this: IExecuteFunctions,
 	path: string,
 	ssh: NodeSSH,
+	shellType: ShellType,
 	itemIndex: number,
 ) {
+	// Mark Windows cmd absolute paths (C:\, D:/) for special handling
+	if (shellType === ShellType.Cmd && /^[A-Za-z]:[\\\/]/.test(path)) {
+		return `${CMD_PATH_PREFIX}${path}`;
+	}
+
 	if (path.startsWith('~/')) {
 		let homeDir = (await ssh.execCommand('echo $HOME')).stdout;
 
@@ -365,6 +401,9 @@ export class Ssh implements INodeType {
 				await ssh.connect(options);
 			}
 
+			// Detect shell type once after connection is established, before processing items
+			const shellType = await detectShellType(ssh);
+
 			for (let i = 0; i < items.length; i++) {
 				try {
 					if (resource === 'command') {
@@ -374,10 +413,31 @@ export class Ssh implements INodeType {
 								this,
 								this.getNodeParameter('cwd', i) as string,
 								ssh,
+								shellType,
 								i,
 							);
+
+							let finalCommand = command;
+							let execOptions = {};
+
+							// Handle working directory based on shell type
+							if (cwd?.startsWith(CMD_PATH_PREFIX)) {
+								// Windows cmd needs 'cd /d' to change drives
+								const cmdPath = cwd.replace(CMD_PATH_PREFIX, '');
+								finalCommand = `cd /d "${cmdPath}" && ${command}`;
+							} else if (cwd) {
+								// Unix and PowerShell support the cwd option
+								execOptions = { cwd };
+							}
+
+							const result = await ssh.execCommand(finalCommand, execOptions);
 							returnItems.push({
-								json: (await ssh.execCommand(command, { cwd })) as unknown as IDataObject,
+								json: {
+									code: result.code,
+									signal: result.signal,
+									stdout: result.stdout,
+									stderr: result.stderr,
+								},
 								pairedItem: {
 									item: i,
 								},
@@ -392,6 +452,7 @@ export class Ssh implements INodeType {
 								this,
 								this.getNodeParameter('path', i) as string,
 								ssh,
+								shellType,
 								i,
 							);
 
@@ -431,6 +492,7 @@ export class Ssh implements INodeType {
 								this,
 								this.getNodeParameter('path', i) as string,
 								ssh,
+								shellType,
 								i,
 							);
 							const fileName = this.getNodeParameter('options.fileName', i, '') as string;
