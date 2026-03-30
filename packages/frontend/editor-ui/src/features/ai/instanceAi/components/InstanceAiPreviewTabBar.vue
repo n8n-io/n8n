@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
+import { computed, watch, nextTick } from 'vue';
 import { N8nIcon, N8nIconButton } from '@n8n/design-system';
 import type { ArtifactTab } from '../useCanvasPreview';
 
@@ -14,6 +14,18 @@ const emit = defineEmits<{
 }>();
 
 const activeTab = computed(() => props.tabs.find((t) => t.id === props.activeTabId));
+
+// Scroll the active tab into view when it changes (e.g. auto-switch on execution)
+watch(
+	() => props.activeTabId,
+	(tabId) => {
+		if (!tabId) return;
+		void nextTick(() => {
+			const el = document.querySelector(`[data-tab-id="${tabId}"]`);
+			el?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+		});
+	},
+);
 
 const externalLinkHref = computed(() => {
 	const tab = activeTab.value;
@@ -32,6 +44,7 @@ const externalLinkHref = computed(() => {
 			<div
 				v-for="tab in tabs"
 				:key="tab.id"
+				:data-tab-id="tab.id"
 				:class="[$style.tab, tab.id === activeTabId ? $style.activeTab : '']"
 				@click="emit('update:activeTabId', tab.id)"
 			>

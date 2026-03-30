@@ -145,15 +145,19 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 	);
 
 	// --- Restore historical execution when tab becomes active ---
-	// On page refresh or thread switch, if a workflow tab has a completed execution
+	// On page refresh or tab switch, if a workflow tab has a completed execution
 	// in the chat history, show its execution results in the iframe.
-	watch(activeTabId, (tabId) => {
+	// If it doesn't, clear the stale executionId so the iframe shows workflow mode.
+	watch(activeTabId, (tabId, oldTabId) => {
 		if (!tabId) return;
 		// Don't override if a live execution is in progress
 		if (workflowExecutions?.value.get(tabId)?.status === 'running') return;
 		const historical = historicalExecutions.value.get(tabId);
 		if (historical) {
 			activeExecutionId.value = historical.executionId;
+		} else if (oldTabId) {
+			// Only clear when switching between tabs, not on initial open
+			activeExecutionId.value = null;
 		}
 	});
 
@@ -242,10 +246,12 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 
 		activeExecutionId.value = execId;
 
-		// Open the canvas if it's not visible yet (e.g. user closed it, then asked to re-execute)
-		if (!isPreviewVisible.value && latestBuildResult.value) {
+		// Switch to the executed workflow's tab
+		if (latestBuildResult.value) {
 			activeTabId.value = latestBuildResult.value.workflowId;
-			workflowRefreshKey.value++;
+			if (!isPreviewVisible.value) {
+				workflowRefreshKey.value++;
+			}
 		}
 	});
 
