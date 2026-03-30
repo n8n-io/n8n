@@ -8,6 +8,14 @@ import type {
 import { useCanvasPreview } from '../useCanvasPreview';
 import type { ResourceEntry } from '../useResourceRegistry';
 import type { WorkflowExecutionState } from '../useExecutionPushEvents';
+import type { IWorkflowDb } from '@/Interface';
+
+const mockWorkflowsById: Record<string, Partial<IWorkflowDb>> = {};
+vi.mock('@/app/stores/workflowsList.store', () => ({
+	useWorkflowsListStore: vi.fn(() => ({
+		getWorkflowById: (id: string) => mockWorkflowsById[id],
+	})),
+}));
 
 // ---------------------------------------------------------------------------
 // Factories
@@ -130,6 +138,9 @@ function setup(options?: {
 describe('useCanvasPreview', () => {
 	beforeEach(() => {
 		vi.restoreAllMocks();
+		for (const key of Object.keys(mockWorkflowsById)) {
+			delete mockWorkflowsById[key];
+		}
 	});
 
 	describe('allArtifactTabs', () => {
@@ -804,6 +815,72 @@ describe('useCanvasPreview', () => {
 		test('is false when nothing is active', () => {
 			const ctx = setup();
 			expect(ctx.isPreviewVisible.value).toBe(false);
+		});
+	});
+
+	describe('stale execution filtering', () => {
+		function addExecutionMessage(store: MockStore, workflowId: string, executionId: string, finishedAt?: string) {
+			store.messages = [
+				...store.messages,
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'run-workflow',
+								args: { workflowId },
+								result: { executionId, status: 'success', ...(finishedAt ? { finishedAt } : {}) },
+							}),
+						],
+					}),
+				}),
+			];
+		}
+
+		test('excludes execution when workflow updatedAt > finishedAt', () => {
+			const ctx = setup();
+			mockWorkflowsById['wf-1'] = { updatedAt: '2026-03-30T12:00:00Z' };
+			addExecutionMessage(ctx.store, 'wf-1', 'exec-1', '2026-03-30T10:00:00Z');
+
+			// Workflow was updated 2 hours after execution finished
+			const historical = ctx.allArtifactTabs; // force computed evaluation
+			void historical.value;
+			expect(ctx.activeExecutionId.value).toBeNull();
+		});
+
+		test('includes execution when workflow updatedAt <= finishedAt', async () => {
+			const ctx = setup();
+			registerWorkflow(ctx.store, 'wf-1');
+			mockWorkflowsById['wf-1'] = { updatedAt: '2026-03-30T09:00:00Z' };
+			addExecutionMessage(ctx.store, 'wf-1', 'exec-1', '2026-03-30T10:00:00Z');
+
+			ctx.selectTab('wf-1');
+			await nextTick();
+
+			expect(ctx.activeExecutionId.value).toBe('exec-1');
+		});
+
+		test('includes execution when finishedAt is missing', async () => {
+			const ctx = setup();
+			registerWorkflow(ctx.store, 'wf-1');
+			mockWorkflowsById['wf-1'] = { updatedAt: '2026-03-30T12:00:00Z' };
+			addExecutionMessage(ctx.store, 'wf-1', 'exec-1'); // no finishedAt
+
+			ctx.selectTab('wf-1');
+			await nextTick();
+
+			expect(ctx.activeExecutionId.value).toBe('exec-1');
+		});
+
+		test('includes execution when workflow is not in cache', async () => {
+			const ctx = setup();
+			registerWorkflow(ctx.store, 'wf-1');
+			// mockWorkflowsById['wf-1'] intentionally not set
+			addExecutionMessage(ctx.store, 'wf-1', 'exec-1', '2026-03-30T10:00:00Z');
+
+			ctx.selectTab('wf-1');
+			await nextTick();
+
+			expect(ctx.activeExecutionId.value).toBe('exec-1');
 		});
 	});
 

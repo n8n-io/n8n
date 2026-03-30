@@ -3,6 +3,8 @@ import type { InstanceAiAgentNode } from '@n8n/api-types';
 export interface ExecutionResult {
 	executionId: string;
 	status: 'success' | 'error';
+	/** ISO timestamp from the run-workflow tool result. Used to detect stale executions. */
+	finishedAt?: string;
 }
 
 export interface BuildResult {
@@ -199,6 +201,9 @@ function collectExecutionResults(node: InstanceAiAgentNode, results: Map<string,
 			results.set(args.workflowId, {
 				executionId: result.executionId,
 				status: result.status,
+				...('finishedAt' in result && typeof result.finishedAt === 'string'
+					? { finishedAt: result.finishedAt }
+					: {}),
 			});
 		}
 	}

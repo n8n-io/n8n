@@ -9,6 +9,7 @@ import {
 	getExecutionResultsByWorkflow,
 	type ExecutionResult,
 } from './canvasPreview.utils';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { useInstanceAiStore } from './instanceAi.store';
 import type { ExecutionStatus, WorkflowExecutionState } from './useExecutionPushEvents';
 
@@ -33,17 +34,27 @@ interface UseCanvasPreviewOptions {
 }
 
 export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvasPreviewOptions) {
+	const workflowsListStore = useWorkflowsListStore();
+
 	// --- Tab state ---
 	const activeTabId = ref<string | null>(null);
 	const activeExecutionId = ref<string | null>(null);
 
-	// Execution results extracted from historical chat messages (survives page refresh)
+	// Execution results extracted from historical chat messages (survives page refresh).
+	// Filters out stale executions where the workflow was edited after the execution finished.
 	const historicalExecutions = computed(() => {
 		const results = new Map<string, ExecutionResult>();
 		for (const msg of store.messages) {
 			if (!msg.agentTree) continue;
 			for (const [wfId, result] of getExecutionResultsByWorkflow(msg.agentTree)) {
 				results.set(wfId, result);
+			}
+		}
+		for (const [wfId, result] of results) {
+			if (!result.finishedAt) continue;
+			const wf = workflowsListStore.getWorkflowById(wfId);
+			if (wf?.updatedAt && new Date(wf.updatedAt) > new Date(result.finishedAt)) {
+				results.delete(wfId);
 			}
 		}
 		return results;

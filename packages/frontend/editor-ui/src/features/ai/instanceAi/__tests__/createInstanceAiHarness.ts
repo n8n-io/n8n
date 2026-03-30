@@ -26,6 +26,11 @@ export function mockPushConnectionStore() {
 			}),
 		})),
 	}));
+	vi.mock('@/app/stores/workflowsList.store', () => ({
+		useWorkflowsListStore: vi.fn(() => ({
+			getWorkflowById: vi.fn(),
+		})),
+	}));
 }
 
 // ---------------------------------------------------------------------------

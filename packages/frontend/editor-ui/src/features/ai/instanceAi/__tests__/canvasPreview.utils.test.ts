@@ -664,6 +664,34 @@ describe('getExecutionResultsByWorkflow', () => {
 		expect(results.get('wf-1')).toEqual({ executionId: 'exec-child', status: 'success' });
 	});
 
+	test('extracts finishedAt when present in result', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolName: 'run-workflow',
+					args: { workflowId: 'wf-1' },
+					result: { executionId: 'exec-1', status: 'success', finishedAt: '2026-03-30T10:00:00Z' },
+				}),
+			],
+		});
+		const results = getExecutionResultsByWorkflow(node);
+		expect(results.get('wf-1')?.finishedAt).toBe('2026-03-30T10:00:00Z');
+	});
+
+	test('omits finishedAt when absent from result', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolName: 'run-workflow',
+					args: { workflowId: 'wf-1' },
+					result: { executionId: 'exec-1', status: 'success' },
+				}),
+			],
+		});
+		const results = getExecutionResultsByWorkflow(node);
+		expect(results.get('wf-1')?.finishedAt).toBeUndefined();
+	});
+
 	test('ignores loading tool calls', () => {
 		const node = makeAgentNode({
 			toolCalls: [
