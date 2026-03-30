@@ -47,9 +47,9 @@ export function createLlmCheck(options: LlmCheckOptions): BinaryCheck {
 				return await withTimeout({
 					promise: invokeEvaluatorChain(chain, {
 						userPrompt: ctx.prompt,
+						existingWorkflow: ctx.existingWorkflow,
 						generatedWorkflow: workflow,
 						agentTextResponse: ctx.agentTextResponse,
-						existingWorkflow: ctx.existingWorkflow,
 					}),
 					timeoutMs: ctx.timeoutMs,
 					label: `binary-checks:${options.name}`,
