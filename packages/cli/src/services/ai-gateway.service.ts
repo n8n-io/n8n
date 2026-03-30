@@ -91,9 +91,8 @@ export class AiGatewayService {
 
 		const jwt = await this.getOrFetchToken(userId);
 		const response = await fetch(`${baseUrl}/v1/gateway/credits`, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` },
-			body: JSON.stringify({}),
+			method: 'GET',
+			headers: { Authorization: `Bearer ${jwt}` },
 		});
 
 		if (!response.ok) {
@@ -110,7 +109,7 @@ export class AiGatewayService {
 
 	/**
 	 * Returns a cached JWT for `instanceId:userId`, fetching a fresh one from the gateway
-	 * if missing or within 1 minute of expiry.
+	 * if missing or past 90% of its lifetime.
 	 */
 	private async getOrFetchToken(userId: string): Promise<string> {
 		const key = `${this.instanceSettings.instanceId}:${userId}`;

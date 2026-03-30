@@ -163,9 +163,8 @@ describe('AiGatewayService', () => {
 			expect(fetchMock).toHaveBeenCalledWith(
 				`${BASE_URL}/v1/gateway/credits`,
 				expect.objectContaining({
-					method: 'POST',
+					method: 'GET',
 					headers: expect.objectContaining({ Authorization: 'Bearer mock-jwt' }),
-					body: JSON.stringify({}),
 				}),
 			);
 		});
