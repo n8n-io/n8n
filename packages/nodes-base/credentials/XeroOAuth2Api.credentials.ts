@@ -1,10 +1,14 @@
 import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 const scopes = [
-	'offline_access',
-	'accounting.transactions',
-	'accounting.settings',
-	'accounting.contacts',
+    'offline_access',
+    'accounting.invoices',
+    'accounting.payments',
+    'accounting.banktransactions',
+    'accounting.manualjournals',
+    'accounting.attachments',
+    'accounting.settings',
+    'accounting.contacts',
 ];
 
 export class XeroOAuth2Api implements ICredentialType {
