@@ -1,0 +1,53 @@
+{
+	"name": "GraphQL Error String Field",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "737a85de-287d-4feb-89e2-15245f3ea176",
+			"name": "When clicking 'Execute workflow'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [220, 280]
+		},
+		{
+			"parameters": {
+				"endpoint": "http://test/graphql",
+				"requestFormat": "json",
+				"query": "query { foo }"
+			},
+			"id": "6f815da0-5458-4bfc-ba02-fd9476a71154",
+			"name": "GraphQL",
+			"type": "n8n-nodes-base.graphql",
+			"typeVersion": 1,
+			"position": [500, 280],
+			"onError": "continueRegularOutput"
+		}
+	],
+	"pinData": {
+		"GraphQL": [
+			{
+				"json": {
+					"errors": "An unexpected error occurred"
+				}
+			},
+			{
+				"json": {
+					"error": "An unexpected error occurred"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute workflow'": {
+			"main": [
+				[
+					{
+						"node": "GraphQL",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}
