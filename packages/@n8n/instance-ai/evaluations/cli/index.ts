@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { parseCliArgs } from './args';
-import { runEvaluation, runWorkflowTestCase } from '../harness/runner';
+import { runEvaluation, runWorkflowTestCase, runWithConcurrency } from '../harness/runner';
 import { listRuns } from '../report/storage';
 import { writeReport as writeHtmlReport } from '../report/generator';
 import { PROMPTS } from '../data/prompts';
@@ -74,9 +74,14 @@ async function main(): Promise<void> {
 		const preRunWorkflowIds = await snapshotWorkflowIds(client);
 		const claimedWorkflowIds = new Set<string>();
 
-		// Run all test cases in parallel — each uses its own thread and SSE connection
-		const results = await Promise.all(
-			testCases.map((testCase) =>
+		// Run test cases with bounded concurrency.
+		// Each test case builds a workflow (uses n8n's agent) then runs scenarios
+		// (uses our Anthropic key for Phase 1 + Phase 2 mock generation).
+		// At Tier 4 (20K RPM) no practical limit is needed — set high to run all in parallel.
+		const MAX_CONCURRENT_TEST_CASES = 99;
+		const results = await runWithConcurrency(
+			testCases,
+			(testCase) =>
 				runWorkflowTestCase({
 					client,
 					testCase,
@@ -86,15 +91,15 @@ async function main(): Promise<void> {
 					claimedWorkflowIds,
 					logger,
 				}),
-			),
+			MAX_CONCURRENT_TEST_CASES,
 		);
 
 		// Cleanup credentials
 		await cleanupCredentials(client, seedResult.credentialIds).catch(() => {});
 
 		// Generate HTML report
-		writeWorkflowReport(results);
-		console.log('Report: evaluations/.data/workflow-eval-report.html');
+		const reportPath = writeWorkflowReport(results);
+		console.log(`Report: ${reportPath}`);
 
 		// Print summary
 		console.log('\n=== Workflow Test Case Results ===\n');
