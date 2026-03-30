@@ -105,7 +105,9 @@ describe('workflowFailedToActivate', () => {
 		expect(mockShowError).not.toHaveBeenCalled();
 	});
 
-	it('should skip processing when workflowId does not match current workflow', async () => {
+	it('should still reject confirmation but skip UI updates when workflowId does not match', async () => {
+		vi.mocked(activationConfirmation.rejectActivationConfirmation).mockReturnValue(false);
+
 		const event: WorkflowFailedToActivate = {
 			type: 'workflowFailedToActivate',
 			data: { workflowId: 'wf-other', errorMessage: 'error' },
@@ -113,7 +115,7 @@ describe('workflowFailedToActivate', () => {
 
 		await workflowFailedToActivate(event, options);
 
-		expect(activationConfirmation.rejectActivationConfirmation).not.toHaveBeenCalled();
+		expect(activationConfirmation.rejectActivationConfirmation).toHaveBeenCalledWith('wf-other');
 		expect(mockCloseModal).not.toHaveBeenCalled();
 		expect(mockShowError).not.toHaveBeenCalled();
 	});

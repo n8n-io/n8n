@@ -12,17 +12,19 @@ export async function workflowFailedToActivate(
 	{ data }: WorkflowFailedToActivate,
 	_options: { workflowState: WorkflowState },
 ) {
+	// Signal the pending publish flow (if any) that activation failed,
+	// regardless of which workflow is currently being viewed. This must
+	// happen before the early return below so that history-based or
+	// cross-workflow publish flows get immediate feedback instead of
+	// waiting for the confirmation timeout.
+	const wasPendingConfirmation = rejectActivationConfirmation(data.workflowId);
+
 	const workflowsStore = useWorkflowsStore();
 	const documentStore = injectWorkflowDocumentStore();
 
 	if (workflowsStore.workflowId !== data.workflowId) {
 		return;
 	}
-
-	// Signal the pending publish flow (if any) that activation failed.
-	// The publish flow will handle its own cleanup; when there is no
-	// pending publish flow, we handle the error directly below.
-	const wasPendingConfirmation = rejectActivationConfirmation(data.workflowId);
 
 	workflowsStore.setWorkflowInactive(data.workflowId);
 	documentStore?.value?.setActiveState({ activeVersionId: null, activeVersion: null });

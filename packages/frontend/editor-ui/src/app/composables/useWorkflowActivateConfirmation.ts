@@ -19,8 +19,7 @@ const pendingConfirmations = new Map<string, PendingConfirmation>();
 /**
  * Returns a promise that resolves to `true` when a `workflowActivated` push
  * event arrives, or `false` when a `workflowFailedToActivate` push event
- * arrives. Falls back to `true` after a timeout (e.g. if the push connection
- * drops).
+ * arrives or the timeout expires without confirmation.
  */
 export async function waitForActivationConfirmation(workflowId: string): Promise<boolean> {
 	// Clean up any existing confirmation for this workflow
@@ -33,7 +32,7 @@ export async function waitForActivationConfirmation(workflowId: string): Promise
 	return await new Promise<boolean>((resolve) => {
 		const timeoutId = setTimeout(() => {
 			pendingConfirmations.delete(workflowId);
-			resolve(true); // Assume success on timeout
+			resolve(false); // Assume error on timeout
 		}, CONFIRMATION_TIMEOUT);
 
 		pendingConfirmations.set(workflowId, { resolve, timeoutId });

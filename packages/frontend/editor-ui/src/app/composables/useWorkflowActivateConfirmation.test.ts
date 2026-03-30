@@ -27,10 +27,10 @@ describe('useWorkflowActivateConfirmation', () => {
 			await expect(promise).resolves.toBe(false);
 		});
 
-		it('should resolve to true on timeout', async () => {
+		it('should resolve to false on timeout', async () => {
 			const promise = waitForActivationConfirmation('wf-1');
 			vi.advanceTimersByTime(30_000);
-			await expect(promise).resolves.toBe(true);
+			await expect(promise).resolves.toBe(false);
 		});
 
 		it('should clean up previous confirmation for the same workflow', async () => {
