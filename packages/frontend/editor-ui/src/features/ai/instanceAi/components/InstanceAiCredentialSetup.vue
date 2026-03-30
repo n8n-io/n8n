@@ -1,16 +1,16 @@
 <script lang="ts" setup>
-import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
-import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
-import type { InstanceAiCredentialRequest, InstanceAiCredentialFlow } from '@n8n/api-types';
-import type { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
-import { useInstanceAiStore } from '../instanceAi.store';
-import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
+import { useWizardNavigation } from '@/features/ai/shared/composables/useWizardNavigation';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
-import { useWizardNavigation } from '@/features/ai/shared/composables/useWizardNavigation';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import type { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
+import type { InstanceAiCredentialFlow, InstanceAiCredentialRequest } from '@n8n/api-types';
+import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { useInstanceAiStore } from '../instanceAi.store';
 
 const props = defineProps<{
 	requestId: string;
@@ -320,7 +320,7 @@ function handleLater() {
 					<div :class="$style.footerNav">
 						<N8nButton
 							v-if="showArrows"
-							variant="ghost"
+							variant="outline"
 							size="xsmall"
 							icon-only
 							:disabled="isPrevDisabled"
@@ -335,7 +335,7 @@ function handleLater() {
 						</N8nText>
 						<N8nButton
 							v-if="showArrows"
-							variant="ghost"
+							variant="outline"
 							size="xsmall"
 							icon-only
 							:disabled="isNextDisabled"
@@ -349,7 +349,7 @@ function handleLater() {
 
 					<div :class="$style.footerActions">
 						<N8nButton
-							variant="ghost"
+							variant="outline"
 							size="small"
 							:class="$style.actionButton"
 							:label="
@@ -396,7 +396,7 @@ function handleLater() {
 
 <style lang="scss" module>
 .root {
-	padding: var(--spacing--xs);
+	// padding: var(--spacing--xs);
 }
 
 .card {
@@ -405,7 +405,7 @@ function handleLater() {
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	padding: 0;
-	background-color: var(--color--background--light-3);
+	// background-color: var(--color--background--light-3);
 	border: var(--border);
 	border-radius: var(--radius);
 
