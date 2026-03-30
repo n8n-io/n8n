@@ -211,6 +211,10 @@ export class RoleMappingRuleService {
 	}
 
 	async move(id: string, targetIndex: number): Promise<RoleMappingRuleResponse> {
+		if (typeof id !== 'string' || id.length === 0) {
+			throw new BadRequestError('Rule id is required');
+		}
+
 		const rule = await this.roleMappingRuleRepository.findOne({
 			where: { id },
 			relations: ['projects', 'role'],
@@ -250,9 +254,15 @@ export class RoleMappingRuleService {
 
 		await this.roleMappingRuleRepository.manager.transaction(async (tx) => {
 			const offset = orderedIds.length + 1000;
+
+			// Phase 1: move all rules to high offset values to vacate the target slots.
+			// This avoids transient unique constraint violations on (type, order) when
+			// shifting rules into positions that are already occupied.
 			for (let i = 0; i < orderedIds.length; i++) {
 				await tx.update(RoleMappingRule, { id: orderedIds[i] }, { order: offset + i });
 			}
+
+			// Phase 2: assign the final sequential order values starting from 0.
 			for (let i = 0; i < orderedIds.length; i++) {
 				await tx.update(RoleMappingRule, { id: orderedIds[i] }, { order: i });
 			}
