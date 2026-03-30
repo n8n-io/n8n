@@ -3,19 +3,17 @@ import { UnexpectedError, UserError } from 'n8n-workflow';
 
 import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 
-export const HttpErrorKind = {
-	ResponseError: 'responseError',
-	UserError: 'userError',
-	UnexpectedError: 'unexpectedError',
-	HttpError: 'httpError',
-	ServerError: 'serverError',
-} as const;
-
-export type HttpErrorKind = (typeof HttpErrorKind)[keyof typeof HttpErrorKind];
+export const enum HttpErrorKind {
+	responseError = 'responseError',
+	userError = 'userError',
+	unexpectedError = 'unexpectedError',
+	httpError = 'httpError',
+	serverError = 'serverError',
+}
 
 export type HttpErrorDescriptor =
 	| {
-			kind: typeof HttpErrorKind.ResponseError;
+			kind: HttpErrorKind.responseError;
 			status: number;
 			message: string;
 			code: number;
@@ -23,20 +21,20 @@ export type HttpErrorDescriptor =
 			meta?: Record<string, unknown>;
 	  }
 	| {
-			kind: typeof HttpErrorKind.UserError;
+			kind: HttpErrorKind.userError;
 			message: string;
 	  }
 	| {
-			kind: typeof HttpErrorKind.UnexpectedError;
+			kind: HttpErrorKind.unexpectedError;
 			message: string;
 	  }
 	| {
-			kind: typeof HttpErrorKind.HttpError;
+			kind: HttpErrorKind.httpError;
 			status: number;
 			message: string;
 	  }
 	| {
-			kind: typeof HttpErrorKind.ServerError;
+			kind: HttpErrorKind.serverError;
 			message: string;
 	  };
 
@@ -59,8 +57,8 @@ export function isResponseError(error: Error): error is ResponseError {
 
 export function classifyHttpError(error: Error): HttpErrorDescriptor {
 	if (isResponseError(error)) {
-		const descriptor: HttpErrorDescriptor & { kind: typeof HttpErrorKind.ResponseError } = {
-			kind: HttpErrorKind.ResponseError,
+		const descriptor: HttpErrorDescriptor & { kind: HttpErrorKind.responseError } = {
+			kind: HttpErrorKind.responseError,
 			status: error.httpStatusCode,
 			message: error.message ?? 'Unknown error',
 			code: error.errorCode,
@@ -75,20 +73,20 @@ export function classifyHttpError(error: Error): HttpErrorDescriptor {
 	}
 
 	if (error instanceof UserError) {
-		return { kind: HttpErrorKind.UserError, message: error.message };
+		return { kind: HttpErrorKind.userError, message: error.message };
 	}
 
 	if (error instanceof UnexpectedError) {
-		return { kind: HttpErrorKind.UnexpectedError, message: error.message };
+		return { kind: HttpErrorKind.unexpectedError, message: error.message };
 	}
 
 	if (error instanceof HttpError) {
 		return {
-			kind: HttpErrorKind.HttpError,
+			kind: HttpErrorKind.httpError,
 			status: error.status || 400,
 			message: error.message || 'Bad request',
 		};
 	}
 
-	return { kind: HttpErrorKind.ServerError, message: error.message ?? 'Unknown error' };
+	return { kind: HttpErrorKind.serverError, message: error.message ?? 'Unknown error' };
 }

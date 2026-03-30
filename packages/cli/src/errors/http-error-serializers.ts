@@ -15,23 +15,23 @@ export function serializePublicApiError(descriptor: HttpErrorDescriptor): {
 	body: { message: string };
 } {
 	switch (descriptor.kind) {
-		case HttpErrorKind.ResponseError:
+		case HttpErrorKind.responseError:
 			return {
 				status: descriptor.status,
 				body: { message: descriptor.message },
 			};
-		case HttpErrorKind.UserError:
+		case HttpErrorKind.userError:
 			return {
 				status: 400,
 				body: { message: descriptor.message },
 			};
-		case HttpErrorKind.UnexpectedError:
-		case HttpErrorKind.ServerError:
+		case HttpErrorKind.unexpectedError:
+		case HttpErrorKind.serverError:
 			return {
 				status: 500,
 				body: { message: GENERIC_PUBLIC_MESSAGE },
 			};
-		case HttpErrorKind.HttpError:
+		case HttpErrorKind.httpError:
 			return {
 				status: descriptor.status,
 				body: { message: descriptor.message },
@@ -44,7 +44,7 @@ export function serializeInternalRestError(descriptor: HttpErrorDescriptor): {
 	body: InternalRestErrorBody;
 } {
 	switch (descriptor.kind) {
-		case HttpErrorKind.ResponseError: {
+		case HttpErrorKind.responseError: {
 			const body: InternalRestErrorBody = {
 				code: descriptor.code,
 				message: descriptor.message,
@@ -57,18 +57,18 @@ export function serializeInternalRestError(descriptor: HttpErrorDescriptor): {
 			}
 			return { status: descriptor.status, body };
 		}
-		case HttpErrorKind.UserError:
+		case HttpErrorKind.userError:
 			return {
 				status: 400,
 				body: { code: 0, message: descriptor.message },
 			};
-		case HttpErrorKind.UnexpectedError:
-		case HttpErrorKind.ServerError:
+		case HttpErrorKind.unexpectedError:
+		case HttpErrorKind.serverError:
 			return {
 				status: 500,
 				body: { code: 0, message: descriptor.message },
 			};
-		case HttpErrorKind.HttpError:
+		case HttpErrorKind.httpError:
 			return {
 				status: descriptor.status,
 				body: { code: 0, message: descriptor.message },

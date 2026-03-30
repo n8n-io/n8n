@@ -11,7 +11,7 @@ describe('classifyHttpError', () => {
 	it('tags ResponseError with kind responseError and http fields', () => {
 		const d = classifyHttpError(new NotFoundError('missing'));
 		expect(d).toEqual({
-			kind: HttpErrorKind.ResponseError,
+			kind: HttpErrorKind.responseError,
 			status: 404,
 			message: 'missing',
 			code: 404,
@@ -21,7 +21,7 @@ describe('classifyHttpError', () => {
 	it('tags UserError without HTTP status (serializers assign status)', () => {
 		const d = classifyHttpError(new UserError('bad input'));
 		expect(d).toEqual({
-			kind: HttpErrorKind.UserError,
+			kind: HttpErrorKind.userError,
 			message: 'bad input',
 		});
 	});
@@ -29,7 +29,7 @@ describe('classifyHttpError', () => {
 	it('tags n8n UnexpectedError', () => {
 		const d = classifyHttpError(new UnexpectedError('internal bug'));
 		expect(d).toEqual({
-			kind: HttpErrorKind.UnexpectedError,
+			kind: HttpErrorKind.unexpectedError,
 			message: 'internal bug',
 		});
 	});
@@ -37,7 +37,7 @@ describe('classifyHttpError', () => {
 	it('tags OperationalError as generic serverError', () => {
 		const d = classifyHttpError(new OperationalError('temporarily down'));
 		expect(d).toEqual({
-			kind: HttpErrorKind.ServerError,
+			kind: HttpErrorKind.serverError,
 			message: 'temporarily down',
 		});
 	});
@@ -46,7 +46,7 @@ describe('classifyHttpError', () => {
 		const err = new BadRequest({ path: '/x', message: 'schema failed' });
 		const d = classifyHttpError(err);
 		expect(d).toEqual({
-			kind: HttpErrorKind.HttpError,
+			kind: HttpErrorKind.httpError,
 			status: 400,
 			message: 'schema failed',
 		});
@@ -55,7 +55,7 @@ describe('classifyHttpError', () => {
 	it('tags plain Error as serverError', () => {
 		const d = classifyHttpError(new Error('plain'));
 		expect(d).toEqual({
-			kind: HttpErrorKind.ServerError,
+			kind: HttpErrorKind.serverError,
 			message: 'plain',
 		});
 	});
@@ -67,8 +67,8 @@ describe('classifyHttpError', () => {
 				eulaUrl,
 			}),
 		);
-		expect(d.kind).toBe(HttpErrorKind.ResponseError);
-		if (d.kind === HttpErrorKind.ResponseError) {
+		expect(d.kind).toBe(HttpErrorKind.responseError);
+		if (d.kind === HttpErrorKind.responseError) {
 			expect(d.status).toBe(400);
 			expect(d.meta).toEqual({ eulaUrl });
 		}
@@ -77,7 +77,7 @@ describe('classifyHttpError', () => {
 	it('matches BadRequestError fields', () => {
 		const d = classifyHttpError(new BadRequestError('invalid'));
 		expect(d).toEqual({
-			kind: HttpErrorKind.ResponseError,
+			kind: HttpErrorKind.responseError,
 			status: 400,
 			message: 'invalid',
 			code: 400,
