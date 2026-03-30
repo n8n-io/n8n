@@ -1,0 +1,185 @@
+{
+  "name": "Shopify - Billing Alternative (CSV + Fallback)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "shopify-new-order-billing",
+        "responseMode": "lastNode",
+        "responseData": "={{ $json }}"
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const order = $json;\nconst row = {\n  id: order.id || '',\n  email: order.email || '',\n  total: order.total_price || '',\n  currency: order.currency || 'USD',\n  items: JSON.stringify(order.line_items || [])\n};\nreturn [{ json: row }];"
+      },
+      "name": "Build CSV Row",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "fileName": "invoice-={{$json.id}}.csv",
+        "dataPropertyName": "csv",
+        "options": {}
+      },
+      "name": "Create CSV",
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "operation": "upload",
+        "bucketName": "={{ $env.BILLING_SFTP_BUCKET || '' }}",
+        "path": "invoices/"
+      },
+      "name": "Upload to SFTP (optional)",
+      "type": "n8n-nodes-base.sftp",
+      "typeVersion": 1,
+      "position": [1000, 300]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $env.SMTP_FROM || $env.SMTP_USER }}",
+        "toEmail": "={{ $env.SUPPORT_EMAIL }}",
+        "subject": "Billing failed for order {{$json.id}}",
+        "text": "Automatic billing failed for order {{$json.id}}. Please process manually."
+      },
+      "name": "Email Support (fallback)",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 1,
+      "position": [1250, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Build CSV Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build CSV Row": {
+      "main": [
+        [
+          {
+            "node": "Create CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create CSV": {
+      "main": [
+        [
+          {
+            "node": "Upload to SFTP (optional)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload to SFTP (optional)": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Email Support (fallback)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
+
+{
+  "name": "Shopify - Billing (CSV export / QuickBooks placeholder)",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "shopify-billing",
+        "httpMethod": "POST",
+        "responseMode": "onReceived"
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 240]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Map order to invoice payload for QuickBooks or CSV\nconst o = $json;\nconst invoice = {\n  invoiceNumber: o.order_id,\n  date: new Date().toISOString(),\n  customerEmail: o.customer_email,\n  lines: o.items.map(i=>({description: i.name, qty: i.qty, unitPrice: i.price})),\n  subtotal: o.subtotal,\n  taxes: o.taxes,\n  total: o.total\n};\nreturn [{json: {invoice}}];"
+    ,
+      "name": "Map Invoice",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [480, 240]
+    },
+    {
+      "parameters": {
+        "options": {},
+        "url": "={{$env.QUICKBOOKS_API_URL || ''}}",
+        "responseFormat": "json",
+        "jsonParameters": true,
+        "bodyParametersJson": "={{JSON.stringify({ invoice: $json.invoice })}}"
+      },
+      "name": "QuickBooks (HTTP Request)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [760, 240]
+    },
+    {
+      "parameters": {
+        "fileName": "invoice-{{$json.invoice.invoiceNumber}}.csv",
+        "fileDataPropertyName": "binaryData"
+      },
+      "name": "Write CSV",
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1,
+      "position": [760, 420]
+    },
+    {
+      "parameters": {
+        "functionCode": "// create CSV content\nconst inv = $json.invoice;\nconst lines = inv.lines.map(l=>`${l.qty}x ${l.description} @ ${l.unitPrice}`).join(' | ');\nconst row = [inv.invoiceNumber, inv.customerEmail, inv.subtotal, inv.taxes, inv.total, `\"${lines}\"`].join(',') + '\n';\nreturn [{json:{csv: row}}];"
+      },
+      "name": "Prepare CSV",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [520, 420]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{$env.SMTP_FROM || 'support@store.example'}}",
+        "toEmail": "={{$env.SUPPORT_EMAIL}}",
+        "subject": "Billing failed for invoice {{$json.invoice.invoiceNumber}}",
+        "text": "Billing step failed. Error: {{$json.errorMessage}}\nPayload: {{$json.invoice}}"
+      },
+      "name": "Billing Fallback Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 1,
+      "position": [980, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {"main": [[{"node":"Map Invoice","type":"main","index":0}]]},
+    "Map Invoice": {"main": [[{"node":"QuickBooks (HTTP Request)","type":"main","index":0},{"node":"Prepare CSV","type":"main","index":0}]]},
+    "Prepare CSV": {"main": [[{"node":"Write CSV","type":"main","index":0}]]}
+  }
+}
+
+
+
