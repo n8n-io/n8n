@@ -39,13 +39,12 @@ export class AIBuilderPage {
 
 	// #region Actions
 
-	async waitForCanvasBuildEntry(options?: { timeout?: number }) {
-		const timeout = options?.timeout ?? 30000;
+	async waitForCanvasBuildEntry() {
 		const buildButton = this.getCanvasBuildWithAIButton();
 
-		await expect(this.getCanvasChoicePrompt()).toBeVisible({ timeout });
-		await expect(buildButton).toBeVisible({ timeout });
-		await expect(buildButton).toBeEnabled({ timeout });
+		await expect(this.getCanvasChoicePrompt()).toBeVisible();
+		await expect(buildButton).toBeVisible();
+		await expect(buildButton).toBeEnabled();
 	}
 
 	async waitForWorkflowBuildComplete(options?: { timeout?: number }) {

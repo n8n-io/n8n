@@ -123,17 +123,15 @@ export class BuilderWizardComposer {
 	 */
 	private async clickAnyNavButton(direction: 'next' | 'prev'): Promise<boolean> {
 		const wizard = this.n8n.aiBuilder.wizard;
-		const buttons = direction === 'next' ? [wizard.getNextButton()] : [wizard.getPrevButton()];
+		const btn = direction === 'next' ? wizard.getNextButton() : wizard.getPrevButton();
 
-		for (const btn of buttons) {
-			try {
-				if ((await btn.isVisible()) && (await btn.isEnabled())) {
-					await btn.click();
-					return true;
-				}
-			} catch {
-				continue;
+		try {
+			if ((await btn.isVisible()) && (await btn.isEnabled())) {
+				await btn.click();
+				return true;
 			}
+		} catch {
+			// Button may have detached during check
 		}
 		return false;
 	}
