@@ -18,60 +18,60 @@ describe('DbClock', () => {
 		jest.clearAllTimers();
 	});
 
-	it('should fetch server time from the repository on first call', async () => {
-		const serverTime = new Date();
-		clockRepository.getServerTime.mockResolvedValue(serverTime);
+	it('should fetch DB time from the repository on first call', async () => {
+		const dbTime = new Date();
+		clockRepository.getDbTime.mockResolvedValue(dbTime);
 
-		const result = await dbClock.getApproximateServerTime();
+		const result = await dbClock.getApproximateDbTime();
 
-		expect(clockRepository.getServerTime).toHaveBeenCalledTimes(1);
-		expect(result.getTime()).toBe(serverTime.getTime());
+		expect(clockRepository.getDbTime).toHaveBeenCalledTimes(1);
+		expect(result.getTime()).toBeCloseTo(dbTime.getTime(), -1);
 	});
 
-	it('should reuse cached server time within 60s TTL', async () => {
-		clockRepository.getServerTime.mockResolvedValue(new Date());
+	it('should reuse cached DB time within 60s TTL', async () => {
+		clockRepository.getDbTime.mockResolvedValue(new Date());
 
-		await dbClock.getApproximateServerTime();
-		await dbClock.getApproximateServerTime();
+		await dbClock.getApproximateDbTime();
+		await dbClock.getApproximateDbTime();
 
-		expect(clockRepository.getServerTime).toHaveBeenCalledTimes(1);
+		expect(clockRepository.getDbTime).toHaveBeenCalledTimes(1);
 	});
 
-	it('should refresh server time after 60s TTL expires', async () => {
-		clockRepository.getServerTime.mockResolvedValue(new Date());
+	it('should refresh DB time after 60s TTL expires', async () => {
+		clockRepository.getDbTime.mockResolvedValue(new Date());
 
-		await dbClock.getApproximateServerTime();
+		await dbClock.getApproximateDbTime();
 
 		jest.advanceTimersByTime(60_001);
 
-		await dbClock.getApproximateServerTime();
+		await dbClock.getApproximateDbTime();
 
-		expect(clockRepository.getServerTime).toHaveBeenCalledTimes(2);
+		expect(clockRepository.getDbTime).toHaveBeenCalledTimes(2);
 	});
 
-	it('should interpolate server time between cache refreshes', async () => {
-		const serverTimeAtFetch = new Date(Date.now() - 5_000);
-		clockRepository.getServerTime.mockResolvedValue(serverTimeAtFetch);
+	it('should interpolate DB time between cache refreshes', async () => {
+		const dbTimeAtFetch = new Date(Date.now() - 5_000);
+		clockRepository.getDbTime.mockResolvedValue(dbTimeAtFetch);
 
-		await dbClock.getApproximateServerTime();
+		await dbClock.getApproximateDbTime();
 
 		jest.advanceTimersByTime(10_000);
 
-		const result = await dbClock.getApproximateServerTime();
+		const result = await dbClock.getApproximateDbTime();
 
-		// Approximate = serverTimeAtFetch + 10s elapsed
-		const expected = serverTimeAtFetch.getTime() + 10_000;
+		// Approximate = dbTimeAtFetch + 10s elapsed (RTT is ~0 with mocks)
+		const expected = dbTimeAtFetch.getTime() + 10_000;
 		expect(result.getTime()).toBe(expected);
-		expect(clockRepository.getServerTime).toHaveBeenCalledTimes(1);
+		expect(clockRepository.getDbTime).toHaveBeenCalledTimes(1);
 	});
 
 	it('should clear cache on resetCache()', async () => {
-		clockRepository.getServerTime.mockResolvedValue(new Date());
+		clockRepository.getDbTime.mockResolvedValue(new Date());
 
-		await dbClock.getApproximateServerTime();
+		await dbClock.getApproximateDbTime();
 		dbClock.resetCache();
-		await dbClock.getApproximateServerTime();
+		await dbClock.getApproximateDbTime();
 
-		expect(clockRepository.getServerTime).toHaveBeenCalledTimes(2);
+		expect(clockRepository.getDbTime).toHaveBeenCalledTimes(2);
 	});
 });

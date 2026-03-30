@@ -2,7 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { ExecutionRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { InstanceSettings } from 'n8n-core';
+import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import { UnexpectedError, type IWorkflowExecutionDataProcess } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -37,6 +37,7 @@ export class WaitTracker {
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly dbClock: DbClock,
+		private readonly errorReporter: ErrorReporter,
 	) {
 		this.logger = this.logger.scoped('waiting-executions');
 	}
@@ -70,12 +71,12 @@ export class WaitTracker {
 		try {
 			this.logger.debug('Querying database for waiting executions');
 
-			const [executions, serverTime] = await Promise.all([
+			const [executions, dbTime] = await Promise.all([
 				this.executionRepository.getWaitingExecutions(),
-				this.dbClock.getApproximateServerTime(),
+				this.dbClock.getApproximateDbTime(),
 			]);
 
-			const skewMs = serverTime.getTime() - Date.now();
+			const skewMs = dbTime.getTime() - Date.now();
 			if (Math.abs(skewMs) > 2000) {
 				this.logger.warn(
 					`Clock skew detected: this instance is ${Math.abs(skewMs)}ms ${skewMs > 0 ? 'behind' : 'ahead of'} the database server`,
@@ -94,9 +95,18 @@ export class WaitTracker {
 			for (const execution of executions) {
 				const executionId = execution.id;
 				if (this.waitingExecutions[executionId] !== undefined) continue;
-				if (execution.waitTill === null) continue; // row without a waitTill should never be returned, skip defensively
+				if (execution.waitTill === null || execution.waitTill === undefined) {
+					this.errorReporter.error(
+						new UnexpectedError(
+							'Polling returned an execution without waitTill — this should never happen',
+							{ extra: { executionId } },
+						),
+						{ level: 'fatal' },
+					);
+					continue;
+				}
 
-				const triggerTime = execution.waitTill.getTime() - serverTime.getTime();
+				const triggerTime = execution.waitTill.getTime() - dbTime.getTime();
 				this.waitingExecutions[executionId] = {
 					executionId,
 					timer: setTimeout(
@@ -123,71 +133,70 @@ export class WaitTracker {
 	async startExecution(executionId: string) {
 		this.logger.debug(`Resuming execution ${executionId}`, { executionId });
 
-		const fullExecutionData = await this.executionRepository.findSingleExecution(executionId, {
-			includeData: true,
-			unflattenData: true,
-		});
-
-		if (!fullExecutionData) {
-			delete this.waitingExecutions[executionId];
-			throw new UnexpectedError('Execution does not exist.', { extra: { executionId } });
-		}
-		if (fullExecutionData.finished) {
-			delete this.waitingExecutions[executionId];
-			throw new UnexpectedError('The execution did succeed and can so not be started again.');
-		}
-
-		if (!fullExecutionData.workflowData.id) {
-			delete this.waitingExecutions[executionId];
-			throw new UnexpectedError('Only saved workflows can be resumed.');
-		}
-
-		const workflowId = fullExecutionData.workflowData.id;
-		const project = await this.ownershipService.getWorkflowProjectCached(workflowId);
-
-		const data: IWorkflowExecutionDataProcess = {
-			executionMode: fullExecutionData.mode,
-			executionData: fullExecutionData.data,
-			workflowData: fullExecutionData.workflowData,
-			projectId: project.id,
-			pushRef: fullExecutionData.data.pushRef,
-			startedAt: fullExecutionData.startedAt,
-		};
-
 		try {
-			await this.workflowRunner.run(data, false, false, executionId);
-		} catch (error) {
-			if (error instanceof ExecutionAlreadyResumingError) {
-				this.logger.debug(
-					`Execution ${executionId} is already being resumed, skipping duplicate resume`,
-					{ executionId },
-				);
-				return;
+			const fullExecutionData = await this.executionRepository.findSingleExecution(executionId, {
+				includeData: true,
+				unflattenData: true,
+			});
+
+			if (!fullExecutionData) {
+				throw new UnexpectedError('Execution does not exist.', { extra: { executionId } });
 			}
-			throw error;
+			if (fullExecutionData.finished) {
+				throw new UnexpectedError('The execution did succeed and can so not be started again.');
+			}
+
+			if (!fullExecutionData.workflowData.id) {
+				throw new UnexpectedError('Only saved workflows can be resumed.');
+			}
+
+			const workflowId = fullExecutionData.workflowData.id;
+			const project = await this.ownershipService.getWorkflowProjectCached(workflowId);
+
+			const data: IWorkflowExecutionDataProcess = {
+				executionMode: fullExecutionData.mode,
+				executionData: fullExecutionData.data,
+				workflowData: fullExecutionData.workflowData,
+				projectId: project.id,
+				pushRef: fullExecutionData.data.pushRef,
+				startedAt: fullExecutionData.startedAt,
+			};
+
+			try {
+				await this.workflowRunner.run(data, false, false, executionId);
+			} catch (error) {
+				if (error instanceof ExecutionAlreadyResumingError) {
+					this.logger.debug(
+						`Execution ${executionId} is already being resumed, skipping duplicate resume`,
+						{ executionId },
+					);
+					return;
+				}
+				throw error;
+			}
+
+			const { parentExecution } = fullExecutionData.data;
+			if (shouldRestartParentExecution(parentExecution)) {
+				void this.activeExecutions
+					.getPostExecutePromise(executionId)
+					.then(async (subworkflowResults) => {
+						if (!subworkflowResults) return;
+						if (subworkflowResults.status === 'waiting') return; // The child execution is waiting, not completing.
+						await updateParentExecutionWithChildResults(
+							this.executionRepository,
+							parentExecution.executionId,
+							subworkflowResults,
+						);
+						return subworkflowResults;
+					})
+					.then((subworkflowResults) => {
+						if (!subworkflowResults) return;
+						if (subworkflowResults.status === 'waiting') return; // The child execution is waiting, not completing.
+						void this.startExecution(parentExecution.executionId);
+					});
+			}
 		} finally {
 			delete this.waitingExecutions[executionId];
-		}
-
-		const { parentExecution } = fullExecutionData.data;
-		if (shouldRestartParentExecution(parentExecution)) {
-			void this.activeExecutions
-				.getPostExecutePromise(executionId)
-				.then(async (subworkflowResults) => {
-					if (!subworkflowResults) return;
-					if (subworkflowResults.status === 'waiting') return; // The child execution is waiting, not completing.
-					await updateParentExecutionWithChildResults(
-						this.executionRepository,
-						parentExecution.executionId,
-						subworkflowResults,
-					);
-					return subworkflowResults;
-				})
-				.then((subworkflowResults) => {
-					if (!subworkflowResults) return;
-					if (subworkflowResults.status === 'waiting') return; // The child execution is waiting, not completing.
-					void this.startExecution(parentExecution.executionId);
-				});
 		}
 	}
 
@@ -199,8 +208,6 @@ export class WaitTracker {
 		Object.keys(this.waitingExecutions).forEach((executionId) => {
 			clearTimeout(this.waitingExecutions[executionId].timer);
 		});
-		this.dbClock.resetCache();
-		this.isPolling = false;
 
 		this.logger.debug('Stopped tracking waiting executions');
 	}
