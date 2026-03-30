@@ -343,22 +343,8 @@ function handleStop() {
 						:credits-quota="store.creditsQuota"
 						:is-low-credits="store.isLowCredits"
 						@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
-					>
-						<template #actions>
-							<div :class="$style.dropdownDivider">
-								<N8nButton
-									icon="settings"
-									variant="ghost"
-									size="small"
-									:label="i18n.baseText('generic.settings')"
-									data-test-id="instance-ai-settings-button"
-									@click="goToSettings"
-								/>
-							</div>
-						</template>
-					</CreditsSettingsDropdown>
+					/>
 					<N8nIconButton
-						v-else-if="store.creditsQuota !== undefined"
 						icon="settings2"
 						variant="ghost"
 						size="medium"
@@ -614,17 +600,6 @@ function handleStop() {
 
 .activeButton {
 	color: var(--color--primary);
-}
-
-.dropdownDivider {
-	border-top: var(--border);
-
-	button {
-		width: 100%;
-		justify-content: flex-start;
-		padding-inline: var(--spacing--sm);
-		min-height: var(--height--lg);
-	}
 }
 
 .reconnecting {
