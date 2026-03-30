@@ -380,7 +380,11 @@ export const checkConditions = (
 					return (propertyValue as string).endsWith(targetValue);
 				}
 				if (key === 'regex') {
-					return new RegExp(targetValue as string).test(propertyValue as string);
+					try {
+						return new RegExp(targetValue as string).test(propertyValue as string);
+					} catch {
+						return false;
+					}
 				}
 				if (key === 'exists') {
 					return propertyValue !== null && propertyValue !== undefined && propertyValue !== '';
@@ -1263,9 +1267,13 @@ const validateResourceLocatorParameter = (
 		for (const validation of parameterMode.validation) {
 			if (validation && (validation as INodePropertyModeValidation).type === 'regex') {
 				const regexValidation = validation as INodePropertyRegexValidation;
-				const regex = new RegExp(`^${regexValidation.properties.regex}$`);
+				try {
+					const regex = new RegExp(`^${regexValidation.properties.regex}$`);
 
-				if (!regex.test(valueToValidate)) {
+					if (!regex.test(valueToValidate)) {
+						validationErrors.push(regexValidation.properties.errorMessage);
+					}
+				} catch {
 					validationErrors.push(regexValidation.properties.errorMessage);
 				}
 			}
