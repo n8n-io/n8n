@@ -1,17 +1,36 @@
+import { SystemMessage } from '@langchain/core/messages';
+import { ChatPromptTemplate, HumanMessagePromptTemplate } from '@langchain/core/prompts';
+import { RunnableSequence } from '@langchain/core/runnables';
+
 import { runWithOptionalLimiter, withTimeout } from '../../../harness/evaluation-helpers';
 import { createEvaluatorChain, invokeEvaluatorChain } from '../../llm-judge/evaluators/base';
 import type { BinaryCheck, BinaryCheckContext, SimpleWorkflow } from '../types';
-import { binaryJudgeResultSchema } from './schemas';
+import { binaryJudgeResultSchema, type BinaryJudgeResult } from './schemas';
 
 const REASONING_FIRST_SUFFIX = `
 
 IMPORTANT: Write your full reasoning FIRST. Only AFTER completing your analysis, decide on pass or fail based on what you wrote. Do not decide pass/fail before reasoning.`;
 
-export function createLlmCheck(options: {
+interface LlmCheckOptions {
 	name: string;
 	systemPrompt: string;
 	humanTemplate: string;
-}): BinaryCheck {
+	/**
+	 * Optional early-exit check. Return a skip message to skip the check,
+	 * or undefined to proceed with evaluation.
+	 */
+	skipIf?: (workflow: SimpleWorkflow, ctx: BinaryCheckContext) => string | undefined;
+	/**
+	 * Optional extra template variables to pass to the human template.
+	 * These are merged with the default variables (userPrompt, generatedWorkflow, referenceSection).
+	 */
+	extraVars?: (
+		workflow: SimpleWorkflow,
+		ctx: BinaryCheckContext,
+	) => Record<string, string> | undefined;
+}
+
+export function createLlmCheck(options: LlmCheckOptions): BinaryCheck {
 	const systemPrompt = options.systemPrompt + REASONING_FIRST_SUFFIX;
 
 	return {
@@ -22,6 +41,44 @@ export function createLlmCheck(options: {
 				return { pass: true, comment: 'Skipped: no LLM' };
 			}
 
+			if (options.skipIf) {
+				const skipMessage = options.skipIf(workflow, ctx);
+				if (skipMessage) {
+					return { pass: true, comment: skipMessage };
+				}
+			}
+
+			const extras = options.extraVars?.(workflow, ctx);
+
+			if (extras) {
+				// Use custom chain with extra template variables
+				const chatPrompt = ChatPromptTemplate.fromMessages([
+					new SystemMessage(systemPrompt),
+					HumanMessagePromptTemplate.fromTemplate(options.humanTemplate),
+				]);
+				const llmWithStructuredOutput =
+					ctx.llm.withStructuredOutput<BinaryJudgeResult>(binaryJudgeResultSchema);
+				const chain = RunnableSequence.from<Record<string, string>, BinaryJudgeResult>([
+					chatPrompt,
+					llmWithStructuredOutput,
+				]);
+
+				const result = await runWithOptionalLimiter(async () => {
+					return await withTimeout({
+						promise: chain.invoke({
+							userPrompt: ctx.prompt,
+							generatedWorkflow: JSON.stringify(workflow, null, 2),
+							...extras,
+						}),
+						timeoutMs: ctx.timeoutMs,
+						label: `binary-checks:${options.name}`,
+					});
+				}, ctx.llmCallLimiter);
+
+				return { pass: result.pass, comment: result.reasoning };
+			}
+
+			// Default path: use shared evaluator chain
 			const chain = createEvaluatorChain(
 				ctx.llm,
 				binaryJudgeResultSchema,

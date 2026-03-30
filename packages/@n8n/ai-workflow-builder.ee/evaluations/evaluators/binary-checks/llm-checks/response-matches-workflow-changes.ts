@@ -1,18 +1,10 @@
-import { SystemMessage } from '@langchain/core/messages';
-import { ChatPromptTemplate, HumanMessagePromptTemplate } from '@langchain/core/prompts';
-import { RunnableSequence } from '@langchain/core/runnables';
-
 import { prompt } from '@/prompts/builder';
 
-import { runWithOptionalLimiter, withTimeout } from '../../../harness/evaluation-helpers';
-import type { BinaryCheck, BinaryCheckContext, SimpleWorkflow } from '../types';
-import { binaryJudgeResultSchema, type BinaryJudgeResult } from './schemas';
+import { createLlmCheck } from './create-llm-check';
 
-const REASONING_FIRST_SUFFIX = `
-
-IMPORTANT: Write your full reasoning FIRST. Only AFTER completing your analysis, decide on pass or fail based on what you wrote. Do not decide pass/fail before reasoning.`;
-
-const SYSTEM_PROMPT = `You are a strict evaluator checking whether an AI assistant's text response accurately describes the changes it made to an n8n workflow.
+export const responseMatchesWorkflowChanges = createLlmCheck({
+	name: 'response_matches_workflow_changes',
+	systemPrompt: `You are a strict evaluator checking whether an AI assistant's text response accurately describes the changes it made to an n8n workflow.
 
 You are given:
 - The workflow BEFORE the agent's turn (may be empty for new workflows)
@@ -31,66 +23,27 @@ Rules:
 - If the agent claims connections between nodes, verify those connections exist in the AFTER workflow.
 - Ignore general/vague statements that don't make specific claims (e.g., "I built a workflow for you").
 - If the agent's response contains NO specific claims about workflow changes, pass (nothing to verify).
-- A single verifiably false claim means fail.${REASONING_FIRST_SUFFIX}`;
-
-function buildHumanTemplate() {
-	return prompt({ format: 'plain' })
+- A single verifiably false claim means fail.`,
+	humanTemplate: prompt({ format: 'plain' })
 		.section('user_request', 'User Request: {userPrompt}')
 		.section('agent_response', "Agent's Text Response:\n{agentTextResponse}")
 		.section('workflow_before', "Workflow BEFORE agent's turn:\n{workflowBefore}")
-		.section('workflow_after', "Workflow AFTER agent's turn:\n{workflowAfter}")
+		.section('workflow_after', "Workflow AFTER agent's turn:\n{generatedWorkflow}")
 		.section(
 			'instructions',
 			'Compare the before and after workflows, then verify each specific claim the agent makes. If there are no specific claims, pass.',
 		)
-		.build();
-}
-
-export const responseMatchesWorkflowChanges: BinaryCheck = {
-	name: 'response_matches_workflow_changes',
-	kind: 'llm',
-	async run(workflow: SimpleWorkflow, ctx: BinaryCheckContext) {
-		if (!ctx.llm) {
-			return { pass: true, comment: 'Skipped: no LLM provided' };
+		.build(),
+	skipIf: (_workflow, ctx) => {
+		if (!ctx.agentTextResponse) {
+			return 'Skipped: no agent text response available';
 		}
-		const { agentTextResponse } = ctx;
-		if (!agentTextResponse) {
-			return { pass: true, comment: 'Skipped: no agent text response available' };
-		}
-
-		const workflowBefore = ctx.existingWorkflow
-			? JSON.stringify(ctx.existingWorkflow, null, 2)
-			: '{"nodes": [], "connections": {}}';
-
-		const chatPrompt = ChatPromptTemplate.fromMessages([
-			new SystemMessage(SYSTEM_PROMPT),
-			HumanMessagePromptTemplate.fromTemplate(buildHumanTemplate()),
-		]);
-		const llmWithStructuredOutput =
-			ctx.llm.withStructuredOutput<BinaryJudgeResult>(binaryJudgeResultSchema);
-		const chain = RunnableSequence.from<
-			{
-				userPrompt: string;
-				agentTextResponse: string;
-				workflowBefore: string;
-				workflowAfter: string;
-			},
-			BinaryJudgeResult
-		>([chatPrompt, llmWithStructuredOutput]);
-
-		const result = await runWithOptionalLimiter(async () => {
-			return await withTimeout({
-				promise: chain.invoke({
-					userPrompt: ctx.prompt,
-					agentTextResponse,
-					workflowBefore,
-					workflowAfter: JSON.stringify(workflow, null, 2),
-				}),
-				timeoutMs: ctx.timeoutMs,
-				label: 'binary-checks:response_matches_workflow_changes',
-			});
-		}, ctx.llmCallLimiter);
-
-		return { pass: result.pass, comment: result.reasoning };
+		return undefined;
 	},
-};
+	extraVars: (_workflow, ctx) => ({
+		agentTextResponse: ctx.agentTextResponse ?? '',
+		workflowBefore: ctx.existingWorkflow
+			? JSON.stringify(ctx.existingWorkflow, null, 2)
+			: '{"nodes": [], "connections": {}}',
+	}),
+});
