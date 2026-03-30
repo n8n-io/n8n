@@ -1,6 +1,6 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
-import type { MemorySaver } from '@langchain/langgraph';
+import { Annotation, type MemorySaver, StateGraph, START, END } from '@langchain/langgraph';
 import type { SelectedNodeContext } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type {
@@ -13,7 +13,8 @@ import type {
 
 import { MAX_AI_BUILDER_PROMPT_LENGTH } from '@/constants';
 
-import { parsePlanDecision } from './agents/planner.agent';
+import { createPlannerAgent, invokePlannerNode, parsePlanDecision } from './agents/planner.agent';
+import type { PlannerNodeInput, PlannerNodeResult } from './agents/planner.agent';
 import type { AssistantHandler } from './assistant';
 import { CodeWorkflowBuilder } from './code-builder';
 import { TriageAgent } from './code-builder/triage.agent';
@@ -27,7 +28,10 @@ import {
 import { ValidationError } from './errors';
 import { SessionManagerService } from './session-manager.service';
 import type { ResourceLocatorCallback } from './types/callbacks';
+import type { DiscoveryContext } from './types/discovery-types';
 import type { HITLInterruptValue, PlanOutput } from './types/planning';
+import type { PlanChunk, StreamOutput } from './types/streaming';
+import { buildSelectedNodesContextBlock } from './utils/context-builders';
 
 /**
  * Per-stage LLM configuration for the workflow builder.
@@ -172,22 +176,22 @@ export class WorkflowBuilderAgent {
 				return;
 			}
 
-			// Plan modify or reject: temporarily route to code builder (plan mode integration in Task 4)
-			this.logger?.debug('Plan modify/reject, routing to code workflow builder', {
+			// Plan modify or reject: resume the planner graph
+			this.logger?.debug('Plan modify/reject, resuming planner graph', {
 				userId,
 				action: decision.action,
 			});
-			yield* this.runCodeWorkflowBuilder(payload, userId, abortSignal);
+			yield* this.runPlanMode(payload, userId, abortSignal);
 			return;
 		}
 
-		// Initial plan request: temporarily route to code builder (plan mode integration in Task 4)
+		// Initial plan request: run planner agent via LangGraph wrapper
 		const usePlanMode = payload.featureFlags?.planMode === true;
 		if (usePlanMode && payload.mode === 'plan') {
-			this.logger?.debug('Plan mode request, routing to code workflow builder', {
+			this.logger?.debug('Plan mode request, running planner agent', {
 				userId,
 			});
-			yield* this.runCodeWorkflowBuilder(payload, userId, abortSignal);
+			yield* this.runPlanMode(payload, userId, abortSignal);
 			return;
 		}
 
@@ -199,6 +203,187 @@ export class WorkflowBuilderAgent {
 			this.logger?.debug('Routing to code workflow builder', { userId });
 			yield* this.runCodeWorkflowBuilder(payload, userId, abortSignal);
 		}
+	}
+
+	/**
+	 * Run the planner agent inside a minimal LangGraph StateGraph.
+	 *
+	 * The planner uses `interrupt()` from LangGraph to pause execution and yield
+	 * a plan for user approval. This requires a compiled LangGraph graph context.
+	 *
+	 * Flow:
+	 * - Initial request: invoke the graph, planner generates plan, hits interrupt()
+	 * - Resume (modify): resume the graph with user feedback, planner re-plans
+	 * - Resume (reject): the planner returns with planDecision='reject', we yield nothing
+	 */
+	private async *runPlanMode(
+		payload: ChatPayload,
+		userId: string | undefined,
+		abortSignal: AbortSignal | undefined,
+	): AsyncGenerator<StreamOutput> {
+		const workflowId = payload.workflowContext?.currentWorkflow?.id;
+		const threadId = `planner-${SessionManagerService.generateThreadId(workflowId, userId)}`;
+
+		// Build minimal discovery context (planner can generate plans from user request alone)
+		const discoveryContext: DiscoveryContext = { nodesFound: [] };
+
+		// Build the current workflow from payload context
+		const currentWorkflow = payload.workflowContext?.currentWorkflow;
+		const workflowJSON = {
+			nodes: currentWorkflow?.nodes ?? [],
+			connections: currentWorkflow?.connections ?? {},
+			name: currentWorkflow?.name ?? '',
+		};
+
+		// Build selected nodes context string
+		const selectedNodesContext =
+			buildSelectedNodesContextBlock(payload.workflowContext) || undefined;
+
+		// Check if this is a resume (modify/reject)
+		const isResume = payload.resumeData && payload.resumeInterrupt?.type === 'plan';
+
+		// Build the planner input for initial requests
+		const plannerInput: PlannerNodeInput = {
+			userRequest: payload.message,
+			discoveryContext,
+			workflowJSON,
+			selectedNodesContext,
+		};
+
+		// For modify resumes, include previous plan and feedback
+		if (isResume) {
+			const decision = parsePlanDecision(payload.resumeData);
+			if (decision.action === 'modify') {
+				const planInterrupt = payload.resumeInterrupt;
+				plannerInput.planPrevious = planInterrupt?.type === 'plan' ? planInterrupt.plan : null;
+				plannerInput.planFeedback = decision.feedback ?? null;
+			}
+		}
+
+		// Define minimal state for the planner graph
+		const PlannerGraphState = Annotation.Root({
+			plannerInput: Annotation<PlannerNodeInput>({
+				reducer: (_x, y) => y,
+				default: () => plannerInput,
+			}),
+			plannerResult: Annotation<PlannerNodeResult | null>({
+				reducer: (_x, y) => y ?? null,
+				default: () => null,
+			}),
+		});
+
+		// Create graph with a single planner node
+		const plannerLlm = this.stageLLMs.planner;
+		const callbacks = this.tracer ? [this.tracer] : undefined;
+
+		const graph = new StateGraph(PlannerGraphState)
+			.addNode('planner', async (state) => {
+				const agent = createPlannerAgent({ llm: plannerLlm });
+				const result = await invokePlannerNode(agent, state.plannerInput, {
+					callbacks,
+					metadata: this.runMetadata,
+				});
+				return { plannerResult: result };
+			})
+			.addEdge(START, 'planner')
+			.addEdge('planner', END)
+			.compile({ checkpointer: this.checkpointer });
+
+		const threadConfig = { configurable: { thread_id: threadId } };
+
+		if (isResume) {
+			const decision = parsePlanDecision(payload.resumeData);
+
+			if (decision.action === 'reject') {
+				// For reject, no need to resume the graph — just signal rejection
+				this.logger?.debug('Plan rejected by user', { userId });
+				return;
+			}
+
+			// Resume the graph for modify — the planner will see planPrevious + planFeedback
+			// and re-invoke with feedback, then hit interrupt() again with the new plan
+			this.logger?.debug('Resuming planner graph for modification', { userId });
+			try {
+				// We need to re-invoke the graph with updated input rather than resuming,
+				// because modify means generating a new plan entirely
+				const stream = await graph.stream(
+					{
+						plannerInput: plannerInput,
+						plannerResult: null,
+					},
+					{
+						...threadConfig,
+						// Use a new thread for each modify to avoid checkpoint conflicts
+						configurable: { thread_id: `${threadId}-${Date.now()}` },
+						signal: abortSignal,
+						streamMode: 'updates',
+					},
+				);
+
+				yield* this.processPlannerStream(stream);
+			} catch (error) {
+				this.logger?.error('Planner graph error during modification', { error, userId });
+				throw error;
+			}
+		} else {
+			// Initial plan request — invoke the graph fresh
+			this.logger?.debug('Invoking planner graph for initial plan', { userId });
+			try {
+				const stream = await graph.stream(
+					{
+						plannerInput: plannerInput,
+						plannerResult: null,
+					},
+					{
+						...threadConfig,
+						signal: abortSignal,
+						streamMode: 'updates',
+					},
+				);
+
+				yield* this.processPlannerStream(stream);
+			} catch (error) {
+				this.logger?.error('Planner graph error', { error, userId });
+				throw error;
+			}
+		}
+	}
+
+	/**
+	 * Process the planner graph's update stream, extracting plan interrupt chunks.
+	 */
+	private async *processPlannerStream(
+		stream: AsyncIterable<Record<string, unknown>>,
+	): AsyncGenerator<StreamOutput> {
+		for await (const chunk of stream) {
+			// Check for interrupt payload (plan chunk)
+			const interruptPayload = this.extractPlanInterrupt(chunk);
+			if (interruptPayload) {
+				const planChunk: PlanChunk = {
+					role: 'assistant',
+					type: 'plan',
+					plan: interruptPayload,
+				};
+				yield { messages: [planChunk] };
+			}
+		}
+	}
+
+	/**
+	 * Extract a plan interrupt value from a LangGraph updates stream chunk.
+	 * The interrupt appears as `__interrupt__` in the chunk when the graph hits interrupt().
+	 */
+	private extractPlanInterrupt(chunk: Record<string, unknown>): PlanOutput | null {
+		const interrupts = chunk.__interrupt__ as
+			| Array<{ value?: { type?: string; plan?: PlanOutput } }>
+			| undefined;
+		if (!Array.isArray(interrupts) || interrupts.length === 0) return null;
+
+		const first = interrupts[0];
+		if (first?.value?.type === 'plan' && first.value.plan) {
+			return first.value.plan;
+		}
+		return null;
 	}
 
 	private async *runCodeWorkflowBuilder(
