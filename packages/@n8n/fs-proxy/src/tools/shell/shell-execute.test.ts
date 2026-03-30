@@ -35,6 +35,13 @@ function getCloseHandler(on: jest.Mock): ((code: number) => void) | undefined {
 	return call?.[1];
 }
 
+function getErrorHandler(on: jest.Mock): ((error: Error) => void) | undefined {
+	const call = on.mock.calls.find((args: unknown[]) => args[0] === 'error') as
+		| [string, (error: Error) => void]
+		| undefined;
+	return call?.[1];
+}
+
 describe('shell_execute tool', () => {
 	afterEach(() => {
 		jest.clearAllMocks();
@@ -145,6 +152,26 @@ describe('shell_execute tool', () => {
 		expect(child.kill).toHaveBeenCalled();
 
 		jest.useRealTimers();
+	});
+
+	it('resolves with an error result when spawn emits an error event', async () => {
+		const child = makeMockChild();
+		mockSpawn.mockReturnValue(child as unknown as ReturnType<typeof spawn>);
+
+		const resultPromise = shellExecuteTool.execute(
+			{ command: 'nonexistent-binary', timeout: 5000 },
+			DUMMY_CONTEXT,
+		);
+
+		const errorHandler = getErrorHandler(child.on);
+		errorHandler?.(new Error('spawn sh ENOENT'));
+
+		const result = await resultPromise;
+
+		expect(result.isError).toBe(true);
+		// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse
+		const parsed = JSON.parse(textOf(result)) as { error: string };
+		expect(parsed.error).toBe('Failed to start process: spawn sh ENOENT');
 	});
 
 	it('passes cwd option to spawn', async () => {

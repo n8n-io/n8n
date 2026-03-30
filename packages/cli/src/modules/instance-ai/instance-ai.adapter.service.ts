@@ -380,11 +380,26 @@ export class InstanceAiAdapterService {
 				json: WorkflowJSON,
 				_options?: { projectId?: string },
 			) {
+				// Strip redactionPolicy if the user lacks the required scope —
+				// mirrors the check in createFromWorkflowJSON() and WorkflowService.update().
+				const settings = (json.settings ?? {}) as IWorkflowSettings;
+				if (settings.redactionPolicy !== undefined) {
+					const canUpdateRedaction = await userHasScopes(
+						user,
+						['workflow:updateRedactionSetting'],
+						false,
+						{ workflowId },
+					);
+					if (!canUpdateRedaction) {
+						delete settings.redactionPolicy;
+					}
+				}
+
 				let updateData = workflowRepository.create({
 					name: json.name,
 					nodes: json.nodes as unknown as INode[],
 					connections: json.connections as unknown as IConnections,
-					settings: (json.settings ?? {}) as IWorkflowSettings,
+					settings,
 					pinData: sdkPinDataToRuntime(json.pinData),
 				} as Partial<WorkflowEntity>);
 

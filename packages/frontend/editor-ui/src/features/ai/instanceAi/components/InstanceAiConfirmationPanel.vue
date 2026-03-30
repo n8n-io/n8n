@@ -530,7 +530,7 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 }
 
 .confirmation-slide-enter-active {
-	transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+	transition: all var(--animation--duration--snappy) cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .confirmation-slide-leave-to {
@@ -539,6 +539,6 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 }
 
 .confirmation-slide-leave-active {
-	transition: all 0.2s ease-in;
+	transition: all var(--animation--duration--snappy) var(--easing--ease-in);
 }
 </style>

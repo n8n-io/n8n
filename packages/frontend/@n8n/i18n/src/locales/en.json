@@ -5052,7 +5052,7 @@
 	"instanceAi.credential.setupTitle": "Set up {name}",
 	"instanceAi.credential.continueButton": "Continue",
 	"instanceAi.credential.modal.title": "Set up credentials",
-	"instanceAi.workflowSetup.usedByNodes": "Used by {count} nodes",
+	"instanceAi.workflowSetup.usedByNodes": "Used by {count} node | Used by {count} nodes",
 	"instanceAi.workflowSetup.nodesUsing": "Nodes using this credential:",
 	"instanceAi.workflowSetup.parameterIssues": "Parameters need attention:",
 	"instanceAi.workflowSetup.testTrigger": "Test step",

@@ -265,15 +265,15 @@ describe('ScreenshotModule.isSupported', () => {
 	it.each([
 		['has monitors', [{}], true],
 		['returns empty array', [], false],
-	])('returns %s -> %s', (_label, monitorList, expected) => {
+	])('returns %s -> %s', async (_label, monitorList, expected) => {
 		(MockMonitor.all as jest.Mock).mockReturnValue(monitorList);
-		expect(ScreenshotModule.isSupported()).toBe(expected);
+		await expect(ScreenshotModule.isSupported()).resolves.toBe(expected);
 	});
 
-	it('returns false when Monitor.all() throws', () => {
+	it('returns false when Monitor.all() throws', async () => {
 		(MockMonitor.all as jest.Mock).mockImplementation(() => {
 			throw new Error('Display server unavailable');
 		});
-		expect(ScreenshotModule.isSupported()).toBe(false);
+		await expect(ScreenshotModule.isSupported()).resolves.toBe(false);
 	});
 });

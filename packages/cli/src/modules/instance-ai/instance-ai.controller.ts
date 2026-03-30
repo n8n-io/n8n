@@ -5,7 +5,6 @@ import {
 	InstanceAiRenameThreadRequestDto,
 	InstanceAiSendMessageRequest,
 	InstanceAiEventsQuery,
-	InstanceAiGatewayEventsQuery,
 	instanceAiGatewayKeySchema,
 	InstanceAiCorrectTaskRequest,
 	InstanceAiUpdateMemoryRequest,
@@ -452,12 +451,8 @@ export class InstanceAiController {
 	}
 
 	@Get('/gateway/events', { usesTemplates: true, skipAuth: true })
-	async gatewayEvents(
-		req: Request,
-		res: FlushableResponse,
-		@Query query: InstanceAiGatewayEventsQuery,
-	) {
-		const userId = this.validateGatewayApiKey(query.apiKey);
+	async gatewayEvents(req: Request, res: FlushableResponse) {
+		const userId = this.validateGatewayApiKey(this.getGatewayKeyHeader(req));
 
 		res.setHeader('Content-Type', 'text/event-stream; charset=UTF-8');
 		res.setHeader('Cache-Control', 'no-cache');
