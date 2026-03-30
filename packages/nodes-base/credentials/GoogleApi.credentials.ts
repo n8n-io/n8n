@@ -12,6 +12,11 @@ import type {
 
 const regions = [
 	{
+		name: 'global',
+		displayName: 'Global',
+		location: 'Global',
+	},
+	{
 		name: 'africa-south1',
 		displayName: 'Africa',
 		location: 'Johannesburg',
