@@ -5124,7 +5124,6 @@
 	"instanceAi.settings.sandboxImage.label": "Sandbox Docker image",
 	"instanceAi.settings.sandboxTimeout.label": "Sandbox timeout (ms)",
 	"instanceAi.settings.searchCredential.label": "Search credential",
-	"instanceAi.settings.timeout.label": "Agent timeout (ms)",
 	"instanceAi.settings.subAgentMaxSteps.label": "Sub-agent max steps",
 	"instanceAi.settings.browserMcp.label": "Chrome DevTools MCP",
 	"instanceAi.settings.mcpServers.label": "MCP servers",

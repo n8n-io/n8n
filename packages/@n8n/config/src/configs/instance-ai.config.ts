@@ -30,10 +30,6 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_SEMANTIC_RECALL_TOP_K')
 	semanticRecallTopK: number = 5;
 
-	/** Agent response timeout in milliseconds. */
-	@Env('N8N_INSTANCE_AI_TIMEOUT')
-	timeout: number = 120_000;
-
 	/** Maximum LLM reasoning steps for sub-agents spawned via delegate tool. */
 	@Env('N8N_INSTANCE_AI_SUB_AGENT_MAX_STEPS')
 	subAgentMaxSteps: number = 100;
@@ -78,11 +74,11 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_SEARXNG_URL')
 	searxngUrl: string = '';
 
-	/** Restrict filesystem access to this directory path. Empty = full filesystem access (reads any path the n8n process can access). */
+	/** Base directory for server-side filesystem access. Empty = filesystem access disabled. */
 	@Env('N8N_INSTANCE_AI_FILESYSTEM_PATH')
 	filesystemPath: string = '';
 
-	/** API key for the filesystem gateway daemon. When set, enables the gateway endpoint for remote filesystem access. */
+	/** Optional static API key for the filesystem gateway. When set, accepted alongside per-user pairing/session keys. */
 	@Env('N8N_INSTANCE_AI_GATEWAY_API_KEY')
 	gatewayApiKey: string = '';
 
@@ -90,15 +86,15 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_THREAD_TTL_DAYS')
 	threadTtlDays: number = 90;
 
-	/** Interval in minutes between snapshot pruning runs. 0 = disabled. */
+	/** Interval in milliseconds between snapshot pruning runs. 0 = disabled. */
 	@Env('N8N_INSTANCE_AI_SNAPSHOT_PRUNE_INTERVAL')
-	snapshotPruneInterval: number = 60;
+	snapshotPruneInterval: number = 60 * 60 * 1000; // 1 hour
 
-	/** Retention period in minutes for orphaned workflow snapshots before pruning. */
+	/** Retention period in milliseconds for orphaned workflow snapshots before pruning. */
 	@Env('N8N_INSTANCE_AI_SNAPSHOT_RETENTION')
-	snapshotRetention: number = 1440;
+	snapshotRetention: number = 24 * 60 * 60 * 1000; // 24 hours
 
-	/** Timeout in minutes for HITL confirmation requests. 0 = no timeout. */
+	/** Timeout in milliseconds for HITL confirmation requests. 0 = no timeout. */
 	@Env('N8N_INSTANCE_AI_CONFIRMATION_TIMEOUT')
-	confirmationTimeout: number = 60;
+	confirmationTimeout: number = 10 * 60 * 1000; // 10 minutes
 }
