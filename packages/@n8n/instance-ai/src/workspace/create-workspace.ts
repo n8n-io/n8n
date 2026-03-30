@@ -10,6 +10,8 @@ export interface SandboxConfig {
 	daytonaApiKey?: string;
 	image?: string;
 	timeout?: number;
+	/** When provided, called before each Daytona interaction to get a fresh auth token (e.g. a short-lived JWT for proxy mode). */
+	getAuthToken?: () => Promise<string>;
 }
 
 /**

@@ -221,7 +221,7 @@ export function useNodeExecution(
 		}
 
 		if (isChatNode.value) {
-			return i18n.baseText('ndv.execute.testChat');
+			return i18n.baseText('chat.open');
 		}
 
 		if (isWebhookNode.value) {

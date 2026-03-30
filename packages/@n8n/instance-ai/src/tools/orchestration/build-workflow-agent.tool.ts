@@ -424,8 +424,9 @@ export async function startBuildWorkflowAgentTask(
 
 						registerWithMastra(subAgentId, subAgent, context.storage);
 
-						const hitlResult = await withTraceParentContext(getTraceParentRun(), async () => {
-							const llmStepTraceHooks = createLlmStepTraceHooks();
+						const traceParent = getTraceParentRun();
+						const hitlResult = await withTraceParentContext(traceParent, async () => {
+							const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
 							const stream = await traceWorkingMemoryContext(
 								{
 									phase: 'initial',
@@ -555,8 +556,9 @@ export async function startBuildWorkflowAgentTask(
 
 					registerWithMastra(subAgentId, subAgent, context.storage);
 
-					const hitlResult = await withTraceParentContext(getTraceParentRun(), async () => {
-						const llmStepTraceHooks = createLlmStepTraceHooks();
+					const traceParent = getTraceParentRun();
+					const hitlResult = await withTraceParentContext(traceParent, async () => {
+						const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
 						const stream = await traceWorkingMemoryContext(
 							{
 								phase: 'initial',

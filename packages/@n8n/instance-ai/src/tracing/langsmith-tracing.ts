@@ -22,7 +22,6 @@ const MAX_TRACE_STRING_LENGTH = 2_000;
 const MAX_TRACE_ARRAY_ITEMS = 20;
 const MAX_TRACE_OBJECT_KEYS = 30;
 const traceParentOverrideStorage = new AsyncLocalStorage<{ current: RunTree | null }>();
-let traceParentOverrideFallback: RunTree | null = null;
 
 // Per-request proxy auth headers, isolated via AsyncLocalStorage.
 // The proxy Client is cached per deployment URL; each concurrent request
@@ -400,7 +399,7 @@ function mergeRunTreeInputs(
 }
 
 export function getTraceParentRun(): RunTree | undefined {
-	const overrideRun = traceParentOverrideStorage.getStore()?.current ?? traceParentOverrideFallback;
+	const overrideRun = traceParentOverrideStorage.getStore()?.current;
 	if (overrideRun) {
 		return overrideRun;
 	}
@@ -416,10 +415,12 @@ export function setTraceParentOverride(parentRun: RunTree | null | undefined): v
 	const store = traceParentOverrideStorage.getStore();
 	if (store) {
 		store.current = parentRun ?? null;
-		return;
+	} else if (parentRun) {
+		// No ALS context yet — bootstrap one for the current async chain.
+		// Safe: each withTraceParentContext call creates its own nested context,
+		// so this only affects code that skips our context setup (e.g. tests).
+		traceParentOverrideStorage.enterWith({ current: parentRun });
 	}
-
-	traceParentOverrideFallback = parentRun ?? null;
 }
 
 export function mergeCurrentTraceMetadata(metadata: Record<string, unknown>): void {
@@ -469,26 +470,9 @@ export async function withTraceParentContext<T>(
 	parentRun: RunTree | undefined,
 	fn: () => Promise<T>,
 ): Promise<T> {
-	const existingStore = traceParentOverrideStorage.getStore();
-	if (existingStore) {
-		const previous = existingStore.current;
-		existingStore.current = parentRun ?? null;
-		try {
-			return await fn();
-		} finally {
-			existingStore.current = previous;
-		}
-	}
-
-	const previousFallback = traceParentOverrideFallback;
-	return await traceParentOverrideStorage.run({ current: parentRun ?? null }, async () => {
-		traceParentOverrideFallback = parentRun ?? null;
-		try {
-			return await fn();
-		} finally {
-			traceParentOverrideFallback = previousFallback;
-		}
-	});
+	// Always create a new nested ALS context. Mutating an existing store.current
+	// is not safe when concurrent background tasks inherit the same parent context.
+	return await traceParentOverrideStorage.run({ current: parentRun ?? null }, fn);
 }
 
 async function postChildRun(
