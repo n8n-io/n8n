@@ -6,7 +6,7 @@ import type { INodeUi } from '@/Interface';
 import type { INodeTypeDescription, WorkflowParameters } from 'n8n-workflow';
 import { NodeConnectionTypes, Workflow } from 'n8n-workflow';
 import { nextTick } from 'vue';
-import { Mock } from 'vitest';
+import { type Mock } from 'vitest';
 
 const nodeType: INodeTypeDescription = {
 	displayName: 'OpenAI',
