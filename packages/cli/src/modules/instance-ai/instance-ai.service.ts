@@ -118,12 +118,6 @@ export class InstanceAiService {
 	/** Tracks the iframe pushRef per thread for live execution push events. */
 	private readonly threadPushRef = new Map<string, string>();
 
-	/** Pre-warmed image manager for builder sandboxes (Daytona only). */
-	private snapshotManager?: SnapshotManager;
-
-	/** Factory for creating per-builder ephemeral sandboxes. */
-	private builderSandboxFactory?: BuilderSandboxFactory;
-
 	/** Periodic sweep that auto-rejects timed-out HITL confirmations. */
 	private confirmationTimeoutInterval?: NodeJS.Timeout;
 
@@ -153,9 +147,6 @@ export class InstanceAiService {
 		const restEndpoint = globalConfig.endpoints.rest;
 		this.oauth2CallbackUrl = `${editorBaseUrl.replace(/\/$/, '')}/${restEndpoint}/oauth2-credential/callback`;
 		this.webhookBaseUrl = `${this.urlService.getWebhookBaseUrl()}${globalConfig.endpoints.webhook}`;
-
-		// Builder sandbox factory is initialized lazily in getOrCreateBuilderFactory()
-		// because proxy mode requires async config resolution and a user context.
 
 		this.startConfirmationTimeoutSweep();
 	}
@@ -255,21 +246,15 @@ export class InstanceAiService {
 		};
 	}
 
-	/** Lazily create the builder sandbox factory. Async because proxy mode needs to fetch config. */
-	private async getOrCreateBuilderFactory(user: User): Promise<BuilderSandboxFactory | undefined> {
-		if (this.builderSandboxFactory) return this.builderSandboxFactory;
-
+	private async createBuilderFactory(user: User): Promise<BuilderSandboxFactory | undefined> {
 		const config = await this.resolveSandboxConfig(user);
 		if (!config.enabled) return undefined;
 
 		if (config.provider === 'daytona') {
-			this.snapshotManager = new SnapshotManager(config.image);
-			this.builderSandboxFactory = new BuilderSandboxFactory(config, this.snapshotManager);
-		} else {
-			this.builderSandboxFactory = new BuilderSandboxFactory(config);
+			return new BuilderSandboxFactory(config, new SnapshotManager(config.image));
 		}
 
-		return this.builderSandboxFactory;
+		return new BuilderSandboxFactory(config);
 	}
 
 	/** Lazily create the local filesystem provider (singleton). */
@@ -580,7 +565,6 @@ export class InstanceAiService {
 
 		this.domainAccessTrackersByThread.clear();
 
-		this.snapshotManager?.invalidate();
 		this.eventBus.clear();
 		await this.mcpClientManager.disconnect();
 		this.logger.debug('Instance AI service shut down');
@@ -783,7 +767,7 @@ export class InstanceAiService {
 				this.sendCorrectionToTask(threadId, taskId, correction),
 			workflowTaskService: workflowTasks,
 			workspace: sandboxEntry?.workspace,
-			builderSandboxFactory: await this.getOrCreateBuilderFactory(user),
+			builderSandboxFactory: await this.createBuilderFactory(user),
 			nodeDefinitionDirs: nodeDefDirs.length > 0 ? nodeDefDirs : undefined,
 			domainContext: context,
 		};
