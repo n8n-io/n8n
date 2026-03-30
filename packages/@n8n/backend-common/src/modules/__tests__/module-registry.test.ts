@@ -38,6 +38,7 @@ describe('eligibleModules', () => {
 			'workflow-builder',
 			'redaction',
 			'instance-registry',
+			'instance-version-history',
 			'otel',
 		]);
 	});
@@ -64,6 +65,7 @@ describe('eligibleModules', () => {
 			'redaction',
 			'instance-registry',
 			'otel',
+			'instance-version-history',
 		]);
 	});
 
