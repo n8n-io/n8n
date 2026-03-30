@@ -469,7 +469,7 @@ describe('useNodeExecution', () => {
 
 			const { buttonLabel } = useNodeExecution(node);
 
-			expect(buttonLabel.value).toBe('ndv.execute.testChat');
+			expect(buttonLabel.value).toBe('chat.open');
 		});
 
 		it('should return listenForTestEvent for webhook node', () => {
