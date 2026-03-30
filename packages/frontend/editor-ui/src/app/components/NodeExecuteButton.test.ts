@@ -77,13 +77,21 @@ vi.mock('@/app/composables/useExternalHooks', () => {
 });
 
 vi.mock('@/app/composables/usePinnedData', () => {
-	const hasData = {};
-	const unsetData = vi.fn();
+	const createMock = () => ({
+		hasData: { value: false },
+		canPinNode: vi.fn(),
+		setData: vi.fn(),
+		onSetDataSuccess: vi.fn(),
+		onSetDataError: vi.fn(),
+		unsetData: vi.fn(),
+		onUnsetData: vi.fn(),
+		isValidNodeType: vi.fn(),
+		isValidJSON: vi.fn(),
+		isValidSize: vi.fn(),
+		data: { value: null },
+	});
 	return {
-		usePinnedData: () => ({
-			hasData,
-			unsetData,
-		}),
+		usePinnedData: vi.fn(createMock),
 	};
 });
 
@@ -121,12 +129,12 @@ let pinnedData: ReturnType<typeof usePinnedData>;
 let message: ReturnType<typeof useMessage>;
 let toast: ReturnType<typeof useToast>;
 let workflowState: WorkflowState;
-
-const nodeViewEventBusEmitSpy = vi.spyOn(nodeViewEventBus, 'emit');
+let nodeViewEventBusEmitSpy: ReturnType<typeof vi.spyOn>;
 
 describe('NodeExecuteButton', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		nodeViewEventBusEmitSpy = vi.spyOn(nodeViewEventBus, 'emit');
 
 		renderComponent = createComponentRenderer(NodeExecuteButton, {
 			pinia: createTestingPinia(),
@@ -150,6 +158,10 @@ describe('NodeExecuteButton', () => {
 		externalHooks = useExternalHooks();
 		message = useMessage();
 		toast = useToast();
+	});
+
+	afterEach(() => {
+		nodeViewEventBusEmitSpy.mockRestore();
 	});
 
 	it('renders without error', () => {
@@ -377,15 +389,29 @@ describe('NodeExecuteButton', () => {
 	it('prompts for confirmation when pinned data exists', async () => {
 		const node = mockNode({ name: 'test-node', type: SET_NODE_TYPE });
 		vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(node);
-		pinnedData = usePinnedData(node);
-		Object.defineProperty(pinnedData.hasData, 'value', { value: true });
+
+		// Create mock with hasData.value = true before rendering
+		const mockUnsetData = vi.fn();
+		vi.mocked(usePinnedData).mockReturnValue({
+			hasData: { value: true },
+			canPinNode: vi.fn(),
+			setData: vi.fn(),
+			onSetDataSuccess: vi.fn(),
+			onSetDataError: vi.fn(),
+			unsetData: mockUnsetData,
+			onUnsetData: vi.fn(),
+			isValidNodeType: vi.fn(),
+			isValidJSON: vi.fn(),
+			isValidSize: vi.fn(),
+			data: { value: null },
+		});
 
 		const { getByRole } = renderComponent();
 
 		await userEvent.click(getByRole('button'));
 
 		expect(message.confirm).toHaveBeenCalledTimes(1);
-		expect(pinnedData.unsetData).toHaveBeenCalledWith('unpin-and-execute-modal');
+		expect(mockUnsetData).toHaveBeenCalledWith('unpin-and-execute-modal');
 		expect(runWorkflow.runWorkflow).toHaveBeenCalledTimes(1);
 	});
 
