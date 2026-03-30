@@ -17,7 +17,7 @@ export async function workflowFailedToActivate(
 	// happen before the early return below so that history-based or
 	// cross-workflow publish flows get immediate feedback instead of
 	// waiting for the confirmation timeout.
-	const wasPendingConfirmation = rejectActivationConfirmation(data.workflowId);
+	rejectActivationConfirmation(data.workflowId);
 
 	const workflowsStore = useWorkflowsStore();
 	const documentStore = injectWorkflowDocumentStore();
