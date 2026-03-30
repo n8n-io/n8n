@@ -1,5 +1,4 @@
 import { AiWorkflowBuilderService } from '@n8n/ai-workflow-builder';
-import type { ResourceLocatorCallbackFactory } from '@n8n/ai-workflow-builder';
 import { ChatPayload } from '@n8n/ai-workflow-builder/dist/workflow-builder-agent';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -8,23 +7,14 @@ import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import * as fs from 'fs';
 import { InstanceSettings } from 'n8n-core';
 import * as path from 'path';
-import type {
-	INodeCredentials,
-	INodeParameters,
-	INodeTypeNameVersion,
-	IUser,
-	ITelemetryTrackProperties,
-} from 'n8n-workflow';
+import type { IUser, ITelemetryTrackProperties } from 'n8n-workflow';
 
 import { N8N_VERSION } from '@/constants';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { WorkflowBuilderSessionRepository } from '@/modules/workflow-builder';
 import { Push } from '@/push';
-import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
-import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
-import { getBase } from '@/workflow-execute-additional-data';
 
 /**
  * This service wraps the actual AiWorkflowBuilderService to avoid circular dependencies.
@@ -43,11 +33,9 @@ export class WorkflowBuilderService {
 		private readonly license: License,
 		private readonly config: GlobalConfig,
 		private readonly logger: Logger,
-		private readonly urlService: UrlService,
 		private readonly push: Push,
 		private readonly telemetry: Telemetry,
 		private readonly instanceSettings: InstanceSettings,
-		private readonly dynamicNodeParametersService: DynamicNodeParametersService,
 		private readonly sessionRepository: WorkflowBuilderSessionRepository,
 	) {
 		// Register a post-processor to update node types when they change.
@@ -116,35 +104,6 @@ export class WorkflowBuilderService {
 			this.telemetry.track(event, properties);
 		};
 
-		// Factory for creating resource locator callbacks scoped to a user
-		const resourceLocatorCallbackFactory: ResourceLocatorCallbackFactory = (userId: string) => {
-			return async (
-				methodName: string,
-				path: string,
-				nodeTypeAndVersion: INodeTypeNameVersion,
-				currentNodeParameters: INodeParameters,
-				credentials?: INodeCredentials,
-				filter?: string,
-				paginationToken?: string,
-			) => {
-				const additionalData = await getBase({
-					userId,
-					currentNodeParameters,
-				});
-
-				return await this.dynamicNodeParametersService.getResourceLocatorResults(
-					methodName,
-					path,
-					additionalData,
-					nodeTypeAndVersion,
-					currentNodeParameters,
-					credentials,
-					filter,
-					paginationToken,
-				);
-			};
-		};
-
 		await this.loadNodesAndCredentials.postProcessLoaders();
 		const { nodes: nodeTypeDescriptions } = await this.loadNodesAndCredentials.collectTypes();
 
@@ -159,12 +118,10 @@ export class WorkflowBuilderService {
 			this.client,
 			this.logger,
 			this.instanceSettings.instanceId,
-			this.urlService.getInstanceBaseUrl(),
 			N8N_VERSION,
 			onCreditsUpdated,
 			onTelemetryEvent,
 			this.resolveBuiltinNodeDefinitionDirs(),
-			resourceLocatorCallbackFactory,
 		);
 
 		return this.service;
@@ -192,9 +149,9 @@ export class WorkflowBuilderService {
 		yield* service.chat(payload, user, abortSignal);
 	}
 
-	async getSessions(workflowId: string | undefined, user: IUser, codeBuilder?: boolean) {
+	async getSessions(workflowId: string | undefined, user: IUser) {
 		const service = await this.getService();
-		const sessions = await service.getSessions(workflowId, user, codeBuilder);
+		const sessions = await service.getSessions(workflowId, user);
 		return sessions;
 	}
 
@@ -213,15 +170,8 @@ export class WorkflowBuilderService {
 		user: IUser,
 		messageId: string,
 		versionCardId?: string,
-		codeBuilder?: boolean,
 	): Promise<boolean> {
 		const service = await this.getService();
-		return await service.truncateMessagesAfter(
-			workflowId,
-			user,
-			messageId,
-			versionCardId,
-			codeBuilder,
-		);
+		return await service.truncateMessagesAfter(workflowId, user, messageId, versionCardId);
 	}
 }

@@ -27,7 +27,6 @@ import {
 } from './code-builder/utils/code-builder-session';
 import { ValidationError } from './errors';
 import { SessionManagerService } from './session-manager.service';
-import type { ResourceLocatorCallback } from './types/callbacks';
 import type { DiscoveryContext } from './types/discovery-types';
 import type { HITLInterruptValue, PlanOutput } from './types/planning';
 import type { PlanChunk, StreamOutput } from './types/streaming';
@@ -50,19 +49,14 @@ export interface WorkflowBuilderAgentConfig {
 	logger?: Logger;
 	checkpointer: MemorySaver;
 	tracer?: LangChainTracer;
-	instanceUrl?: string;
 	/** Metadata to include in LangSmith traces */
 	runMetadata?: Record<string, unknown>;
-	/** Feature flags for enabling/disabling features */
-	featureFlags?: BuilderFeatureFlags;
 	/** Callback when generation completes successfully (not aborted) */
 	onGenerationSuccess?: () => Promise<void>;
 	/**
 	 * Ordered list of directories to search for built-in node definitions.
 	 */
 	nodeDefinitionDirs?: string[];
-	/** Callback for fetching resource locator options */
-	resourceLocatorCallback?: ResourceLocatorCallback;
 	/** Callback for emitting telemetry events */
 	onTelemetryEvent?: (event: string, properties: ITelemetryTrackProperties) => void;
 	/** Assistant handler for routing help/debug queries via the SDK (code builder only) */
