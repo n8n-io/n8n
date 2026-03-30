@@ -1626,9 +1626,9 @@ export class Gitlab implements INodeType {
 							// Currently internally n8n uses base64 and also GitLab expects it base64 encoded.
 							// If that ever changes the data has to get converted here.
 							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
-							const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
-							// TODO: Does this work with filesystem mode
-							body.content = binaryData.data;
+
+							const buffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+							body.content = buffer.toString('base64');
 							body.encoding = 'base64';
 						} else {
 							// Is text file
