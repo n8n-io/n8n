@@ -11,13 +11,16 @@ import { GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import { CREDENTIAL_ERRORS, CredentialDataError, Credentials, type ErrorReporter } from 'n8n-core';
 import {
+	CREDENTIAL_BLANKING_VALUE,
 	CREDENTIAL_EMPTY_VALUE,
 	type ICredentialDataDecryptedObject,
 	type ICredentialType,
 } from 'n8n-workflow';
 
-import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
+import { mockExistingCredential } from './credentials.test-data';
+
 import type { CredentialTypes } from '@/credential-types';
+import type { CredentialDependencyService } from '@/credentials/credential-dependency.service';
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import * as validation from '@/credentials/validation';
@@ -31,7 +34,8 @@ import type { OwnershipService } from '@/services/ownership.service';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { RoleService } from '@/services/role.service';
 
-import { mockExistingCredential } from './credentials.test-data';
+const ownerUser = mock<User>({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
+const memberUser = mock<User>({ id: 'member-id', role: GLOBAL_MEMBER_ROLE });
 
 describe('CredentialsService', () => {
 	const credType = mock<ICredentialType>({
@@ -55,6 +59,7 @@ describe('CredentialsService', () => {
 	const errorReporter = mock<ErrorReporter>();
 	const credentialTypes = mock<CredentialTypes>();
 	const credentialsRepository = mock<CredentialsRepository>();
+	const credentialDependencyService = mock<CredentialDependencyService>();
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
 	const ownershipService = mock<OwnershipService>();
 	const logger = mock<Logger>();
@@ -71,6 +76,7 @@ describe('CredentialsService', () => {
 
 	const service = new CredentialsService(
 		credentialsRepository,
+		credentialDependencyService,
 		sharedCredentialsRepository,
 		ownershipService,
 		logger,
@@ -90,6 +96,13 @@ describe('CredentialsService', () => {
 
 	beforeEach(() => {
 		jest.resetAllMocks();
+		credentialDependencyService.resolveExternalSecretsStoreDependencyFilter.mockResolvedValue(
+			undefined,
+		);
+		credentialDependencyService.syncExternalSecretProviderDependenciesForCredential.mockResolvedValue(
+			undefined,
+		);
+		ownershipService.addOwnedByAndSharedWith.mockImplementation((credential: any) => credential);
 		// Mock the subquery method used by member users and admin users with onlySharedWithMe
 		credentialsRepository.getManyAndCountWithSharingSubquery.mockResolvedValue({
 			credentials: [],
@@ -154,6 +167,33 @@ describe('CredentialsService', () => {
 				accessToken: CREDENTIAL_EMPTY_VALUE,
 				oauthTokenData: CREDENTIAL_BLANKING_VALUE,
 				csrfSecret: CREDENTIAL_BLANKING_VALUE,
+			});
+		});
+
+		it('should redact non-string password field values without throwing', () => {
+			const credential = mock<CredentialsEntity>({
+				id: '123',
+				name: 'Test Credential',
+				type: 'oauth2',
+			});
+
+			const decryptedData = {
+				clientId: 'abc123',
+				clientSecret: 12345, // number, not a string
+				accessToken: '',
+			};
+
+			credentialTypes.getByName.calledWith(credential.type).mockReturnValueOnce(credType);
+
+			const redactedData = service.redact(
+				decryptedData as unknown as ICredentialDataDecryptedObject,
+				credential,
+			);
+
+			expect(redactedData).toEqual({
+				clientId: 'abc123',
+				clientSecret: CREDENTIAL_BLANKING_VALUE,
+				accessToken: CREDENTIAL_EMPTY_VALUE,
 			});
 		});
 
@@ -430,6 +470,94 @@ describe('CredentialsService', () => {
 				},
 			});
 		});
+
+		it('should redact json field for httpCustomAuth credential type', () => {
+			const credential = mock<CredentialsEntity>({
+				id: '123',
+				name: 'Test Credential',
+				type: 'httpCustomAuth',
+			});
+
+			const decryptedData = {
+				json: '{"key": "value"}',
+				otherField: 'not-redacted',
+			};
+
+			const httpCustomAuthCredType = {
+				properties: [
+					{
+						name: 'otherField',
+						type: 'string',
+					},
+				],
+			} as unknown as ICredentialType;
+
+			credentialTypes.getByName
+				.calledWith(credential.type)
+				.mockReturnValueOnce(httpCustomAuthCredType);
+
+			const redactedData = service.redact(decryptedData, credential);
+
+			expect(redactedData).toEqual({
+				json: CREDENTIAL_BLANKING_VALUE,
+				otherField: 'not-redacted',
+			});
+		});
+
+		it('should redact empty json field for httpCustomAuth credential type', () => {
+			const credential = mock<CredentialsEntity>({
+				id: '123',
+				name: 'Test Credential',
+				type: 'httpCustomAuth',
+			});
+
+			const decryptedData = {
+				json: '',
+				otherField: 'not-redacted',
+			};
+
+			const httpCustomAuthCredType = {
+				properties: [
+					{
+						name: 'otherField',
+						type: 'string',
+					},
+				],
+			} as unknown as ICredentialType;
+
+			credentialTypes.getByName
+				.calledWith(credential.type)
+				.mockReturnValueOnce(httpCustomAuthCredType);
+
+			const redactedData = service.redact(decryptedData, credential);
+
+			expect(redactedData).toEqual({
+				json: CREDENTIAL_EMPTY_VALUE,
+				otherField: 'not-redacted',
+			});
+		});
+
+		it('should not redact json field for non-httpCustomAuth credential types', () => {
+			const credential = mock<CredentialsEntity>({
+				id: '123',
+				name: 'Test Credential',
+				type: 'oauth2',
+			});
+
+			const decryptedData = {
+				json: '{"key": "value"}',
+				clientSecret: 'sensitiveSecret',
+			};
+
+			credentialTypes.getByName.calledWith(credential.type).mockReturnValueOnce(credType);
+
+			const redactedData = service.redact(decryptedData, credential);
+
+			expect(redactedData).toEqual({
+				json: '{"key": "value"}',
+				clientSecret: CREDENTIAL_BLANKING_VALUE,
+			});
+		});
 	});
 
 	describe('decrypt', () => {
@@ -504,9 +632,6 @@ describe('CredentialsService', () => {
 	});
 
 	describe('getMany', () => {
-		const ownerUser = mock<User>({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
-		const memberUser = mock<User>({ id: 'member-id', role: GLOBAL_MEMBER_ROLE });
-
 		const regularCredential = {
 			id: 'cred-1',
 			name: 'Regular Credential',
@@ -869,7 +994,9 @@ describe('CredentialsService', () => {
 						projectRoles: expect.any(Array),
 						credentialRoles: expect.any(Array),
 					}),
-					{},
+					expect.objectContaining({
+						filters: { dependency: undefined },
+					}),
 				);
 			});
 
@@ -1049,7 +1176,9 @@ describe('CredentialsService', () => {
 					expect.objectContaining({
 						onlySharedWithMe: true,
 					}),
-					{},
+					expect.objectContaining({
+						filters: { dependency: undefined },
+					}),
 				);
 				expect(sharedCredentialsRepository.getAllRelationsForCredentials).toHaveBeenCalledWith([
 					'cred-1',
@@ -1104,7 +1233,10 @@ describe('CredentialsService', () => {
 
 				// ASSERT
 				expect(credentialsRepository.findMany).toHaveBeenCalled();
-				expect(credentialsRepository.findAllGlobalCredentials).toHaveBeenCalledWith(false);
+				expect(credentialsRepository.findAllGlobalCredentials).toHaveBeenCalledWith({
+					includeData: false,
+					filters: { dependency: undefined },
+				});
 				expect(result).toHaveLength(2);
 				expect(result).toEqual(
 					expect.arrayContaining([
@@ -1129,7 +1261,10 @@ describe('CredentialsService', () => {
 
 				// ASSERT
 				expect(credentialsRepository.getManyAndCountWithSharingSubquery).toHaveBeenCalled();
-				expect(credentialsRepository.findAllGlobalCredentials).toHaveBeenCalledWith(false);
+				expect(credentialsRepository.findAllGlobalCredentials).toHaveBeenCalledWith({
+					includeData: false,
+					filters: { dependency: undefined },
+				});
 				expect(result).toHaveLength(2);
 				expect(result).toEqual(
 					expect.arrayContaining([
@@ -1185,7 +1320,10 @@ describe('CredentialsService', () => {
 				});
 
 				// ASSERT
-				expect(credentialsRepository.findAllGlobalCredentials).toHaveBeenCalledWith(true);
+				expect(credentialsRepository.findAllGlobalCredentials).toHaveBeenCalledWith({
+					includeData: true,
+					filters: { dependency: undefined },
+				});
 			});
 		});
 
@@ -1225,68 +1363,62 @@ describe('CredentialsService', () => {
 		});
 
 		describe('with externalSecretsStore', () => {
-			const createCredentialWithEncryptedData = (id: string, apiKey: string) =>
-				mock<CredentialsEntity>({
-					id,
-					data: service.createEncryptedData({ ...regularCredential, data: { apiKey } }).data,
-				});
-
-			it('should filter credentials by external secrets store using dot notation', async () => {
+			it('should resolve dependency filter and pass it to repository query', async () => {
 				// ARRANGE
-				const credentialWithExternalSecret1 = createCredentialWithEncryptedData(
-					'cred-with-external-secret-1',
-					'{{ $secrets.myProvider.apiKey }}',
+				ownershipService.addOwnedByAndSharedWith.mockImplementation(
+					(credential: any) => credential,
 				);
-				const credentialWithExternalSecret2 = createCredentialWithEncryptedData(
-					'cred-with-external-secret-2',
-					'{{ $secrets.anotherProvider.apiKey }}',
-				);
+				const credentialWithExternalSecret1 = {
+					id: 'cred-with-external-secret-1',
+					name: 'Credential with secret 1',
+					type: 'apiKey',
+					isGlobal: false,
+					shared: [],
+				} as Partial<CredentialsEntity> as CredentialsEntity;
+				credentialDependencyService.resolveExternalSecretsStoreDependencyFilter.mockResolvedValue({
+					dependencyType: 'externalSecretProvider',
+					dependencyId: '123',
+				});
 				credentialsRepository.getManyAndCountWithSharingSubquery.mockResolvedValue({
-					credentials: [
-						regularCredential,
-						credentialWithExternalSecret1,
-						credentialWithExternalSecret2,
-					],
-					count: 3,
+					credentials: [credentialWithExternalSecret1],
+					count: 1,
 				});
 
 				// ACT
 				const result = await service.getMany(memberUser, {
-					externalSecretsStore: 'myProvider',
+					filters: { externalSecretsStore: 'myProvider' },
+					listQueryOptions: { select: { id: true } } as any,
 				});
 
 				// ASSERT
 				expect(result).toHaveLength(1);
 				expect(result[0].id).toBe(credentialWithExternalSecret1.id);
+				expect(credentialsRepository.getManyAndCountWithSharingSubquery).toHaveBeenCalledWith(
+					memberUser,
+					expect.any(Object),
+					{
+						select: { id: true },
+						filters: {
+							dependency: {
+								dependencyType: 'externalSecretProvider',
+								dependencyId: '123',
+							},
+						},
+					},
+				);
 			});
 
-			it('should filter credentials by external secrets store using square bracket notation', async () => {
-				// ARRANGE
-				const credentialWithExternalSecret1 = createCredentialWithEncryptedData(
-					'cred-with-external-secret-1',
-					'{{ $secrets["myProvider"]["apiKey"] }}',
+			it('should return early when no credential dependencies match the external secrets store', async () => {
+				credentialDependencyService.resolveExternalSecretsStoreDependencyFilter.mockResolvedValue(
+					undefined,
 				);
-				const credentialWithExternalSecret2 = createCredentialWithEncryptedData(
-					'cred-with-external-secret-2',
-					'{{ $secrets["anotherProvider"]["apiKey"] }}',
-				);
-				credentialsRepository.getManyAndCountWithSharingSubquery.mockResolvedValue({
-					credentials: [
-						regularCredential,
-						credentialWithExternalSecret1,
-						credentialWithExternalSecret2,
-					],
-					count: 3,
-				});
 
-				// ACT
 				const result = await service.getMany(memberUser, {
-					externalSecretsStore: 'myProvider',
+					filters: { externalSecretsStore: 'myProvider' },
 				});
 
-				// ASSERT
-				expect(result).toHaveLength(1);
-				expect(result[0].id).toBe(credentialWithExternalSecret1.id);
+				expect(result).toEqual([]);
+				expect(credentialsRepository.getManyAndCountWithSharingSubquery).not.toHaveBeenCalled();
 			});
 		});
 	});
@@ -1392,8 +1524,6 @@ describe('CredentialsService', () => {
 
 	describe('findAllCredentialIdsForWorkflow', () => {
 		const workflowId = 'workflow-1';
-		const ownerUser = mock<User>({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
-		const memberUser = mock<User>({ id: 'member-id', role: GLOBAL_MEMBER_ROLE });
 
 		it('should return all personal credentials when owner has global read permissions', async () => {
 			// ARRANGE
@@ -1452,8 +1582,6 @@ describe('CredentialsService', () => {
 
 	describe('findAllCredentialIdsForProject', () => {
 		const projectId = 'project-1';
-		const ownerUser = mock<User>({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
-		const memberUser = mock<User>({ id: 'member-id', role: GLOBAL_MEMBER_ROLE });
 
 		it('should return all personal credentials when project owner has global read permissions', async () => {
 			// ARRANGE
@@ -1511,9 +1639,6 @@ describe('CredentialsService', () => {
 	});
 
 	describe('createUnmanagedCredential', () => {
-		const ownerUser = mock<User>({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
-		const memberUser = mock<User>({ id: 'member-id', role: GLOBAL_MEMBER_ROLE });
-
 		const credentialData = {
 			name: 'Test Credential',
 			type: 'apiKey',
@@ -1758,8 +1883,6 @@ describe('CredentialsService', () => {
 	});
 
 	describe('createManagedCredential', () => {
-		const ownerUser = mock<User>({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
-
 		const credentialData = {
 			name: 'Managed Credential',
 			type: 'oauth2',
@@ -1841,7 +1964,6 @@ describe('CredentialsService', () => {
 	});
 
 	describe('prepareUpdateData', () => {
-		const ownerUser = mock<User>({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
 		describe('external secrets', () => {
 			beforeEach(() => {
 				jest.spyOn(service, 'decrypt').mockReturnValue({});
@@ -1943,7 +2065,6 @@ describe('CredentialsService', () => {
 	});
 
 	describe('checkCredentialData', () => {
-		const ownerUser = mock<User>({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
 		const testProjectId = 'test-project-id';
 
 		beforeEach(() => {
@@ -2180,6 +2301,59 @@ describe('CredentialsService', () => {
 			await expect(
 				service.checkCredentialData('apiCredential', data, ownerUser, testProjectId),
 			).rejects.toThrow('The field "apiKey" is mandatory for credentials of type "apiCredential"');
+		});
+	});
+
+	describe('validateOAuthCredentialUrls', () => {
+		const testProjectId = 'test-project-id';
+
+		beforeEach(() => {
+			credentialsHelper.getCredentialsProperties.mockReturnValue([]);
+			jest.spyOn(validation, 'validateExternalSecretsPermissions').mockResolvedValue();
+		});
+
+		it('should reject an invalid OAuth2 URL', async () => {
+			credentialTypes.getParentTypes.mockReturnValue(['oAuth2Api']);
+			const data = { authUrl: 'javascript:alert(1)' };
+
+			await expect(
+				service.checkCredentialData('myOAuth2Cred', data, ownerUser, testProjectId),
+			).rejects.toThrow('OAuth url must use HTTP or HTTPS protocol');
+		});
+
+		it('should accept a valid OAuth2 URL', async () => {
+			credentialTypes.getParentTypes.mockReturnValue(['oAuth2Api']);
+			const data = { authUrl: 'https://example.com/oauth/authorize' };
+
+			await expect(
+				service.checkCredentialData('myOAuth2Cred', data, ownerUser, testProjectId),
+			).resolves.toBeUndefined();
+		});
+
+		it('should skip validation for expression-prefixed OAuth2 URLs', async () => {
+			credentialTypes.getParentTypes.mockReturnValue(['oAuth2Api']);
+			const data = {
+				authUrl: '=https://example.com/oauth/authorize',
+				accessTokenUrl: '={{ $vars.tokenUrl }}',
+				serverUrl: '={{ $vars.serverUrl }}',
+			};
+
+			await expect(
+				service.checkCredentialData('myOAuth2Cred', data, ownerUser, testProjectId),
+			).resolves.toBeUndefined();
+		});
+
+		it('should skip validation for expression-prefixed OAuth1 URLs', async () => {
+			credentialTypes.getParentTypes.mockReturnValue(['oAuth1Api']);
+			const data = {
+				authUrl: '={{ $vars.authUrl }}',
+				requestTokenUrl: '=https://example.com/request-token',
+				accessTokenUrl: '={{ $vars.tokenUrl }}',
+			};
+
+			await expect(
+				service.checkCredentialData('myOAuth1Cred', data, ownerUser, testProjectId),
+			).resolves.toBeUndefined();
 		});
 	});
 });

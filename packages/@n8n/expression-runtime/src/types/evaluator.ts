@@ -30,6 +30,11 @@ export interface EvaluatorConfig {
 	 * If omitted, expressions are transformed with no security hooks (dev/testing use).
 	 */
 	hooks?: TournamentHooks;
+
+	/**
+	 * Maximum number of tournament-transformed expressions to cache (LRU).
+	 */
+	maxCodeCacheSize: number;
 }
 
 /**
@@ -78,9 +83,6 @@ export type WorkflowData = Record<string, unknown>;
 
 /**
  * Options for evaluate().
- */
-/**
- * Options for evaluate().
  *
  * Note: Slice 1 is minimal. Tournament options will be added later.
  */
@@ -90,6 +92,12 @@ export interface EvaluateOptions {
 	 * Overrides the bridge's default timeout.
 	 */
 	timeout?: number;
+
+	/**
+	 * IANA timezone for this evaluation (e.g., 'America/New_York').
+	 * Sets luxon Settings.defaultZone inside the isolate before execution.
+	 */
+	timezone?: string;
 }
 
 // ============================================================================

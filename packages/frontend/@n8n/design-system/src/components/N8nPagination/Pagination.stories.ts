@@ -5,6 +5,14 @@ import N8nPagination from './Pagination.vue';
 export default {
 	title: 'Core/Pagination',
 	component: N8nPagination,
+
+	parameters: {
+		docs: {
+			description: {
+				component: 'A page navigation control for stepping through paginated results.',
+			},
+		},
+	},
 };
 
 const Template: StoryFn = (args, { argTypes }) => ({

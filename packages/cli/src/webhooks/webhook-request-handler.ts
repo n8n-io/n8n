@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import type express from 'express';
-import { isWebhookHtmlSandboxingDisabled, getWebhookSandboxCSP } from 'n8n-core';
+import { isWebhookHtmlSandboxingDisabled, getHtmlSandboxCSP } from 'n8n-core';
 import { ensureError, type IHttpRequestMethods } from 'n8n-workflow';
 import { Readable } from 'stream';
 import { finished } from 'stream/promises';
@@ -139,7 +139,7 @@ class WebhookRequestHandler {
 		headers?.applyToResponse(res);
 
 		if (!isWebhookHtmlSandboxingDisabled()) {
-			res.setHeader('Content-Security-Policy', getWebhookSandboxCSP());
+			res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
 		}
 	}
 

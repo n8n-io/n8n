@@ -313,6 +313,42 @@ describe('useWorkflowHelpers', () => {
 	});
 
 	describe('getWorkflowDataToSave', () => {
+		it('should snapshot connections so later store mutations do not affect saved data', async () => {
+			const workflowId = 'test-workflow-id';
+			const initialConnections: IConnections = {
+				'Node A': {
+					main: [[{ node: 'Node B', index: 0, type: NodeConnectionTypes.Main }]],
+				},
+			};
+
+			workflowsStore.workflowId = workflowId;
+			workflowsStore.workflowName = 'Test Workflow';
+			workflowsStore.allNodes = [];
+			workflowsStore.workflow.versionId = 'v1';
+
+			const documentId = createWorkflowDocumentId(workflowId);
+			const workflowDocumentStore = useWorkflowDocumentStore(documentId);
+			Object.defineProperty(workflowDocumentStore, 'connectionsBySourceNode', {
+				value: initialConnections,
+				configurable: true,
+			});
+			vi.mocked(workflowDocumentStore.getSettingsSnapshot).mockReturnValue({
+				executionOrder: 'v1',
+			});
+
+			const { getWorkflowDataToSave } = useWorkflowHelpers();
+			const workflowData = await getWorkflowDataToSave();
+
+			// Simulate a node + connection being added to the store after snapshot
+			// It should not mutate the connections in the saved workflow data (reference sharing)
+			initialConnections['New Node'] = {
+				main: [[{ node: 'Node B', index: 0, type: NodeConnectionTypes.Main }]],
+			};
+
+			// The saved data must not include the late-added connection
+			expect(workflowData.connections).not.toHaveProperty('New Node');
+		});
+
 		it('should read tags from workflowDocumentStore', async () => {
 			const workflowId = 'test-workflow-id';
 			const tagIds = ['tag1', 'tag2'];
@@ -320,7 +356,6 @@ describe('useWorkflowHelpers', () => {
 			workflowsStore.workflowId = workflowId;
 			workflowsStore.workflowName = 'Test Workflow';
 			workflowsStore.allNodes = [];
-			workflowsStore.allConnections = {};
 			workflowsStore.isWorkflowActive = false;
 			workflowsStore.workflow.settings = { executionOrder: 'v1' };
 			workflowsStore.workflow.versionId = 'v1';
@@ -328,6 +363,10 @@ describe('useWorkflowHelpers', () => {
 
 			const documentId = createWorkflowDocumentId(workflowId);
 			const workflowDocumentStore = useWorkflowDocumentStore(documentId);
+			Object.defineProperty(workflowDocumentStore, 'connectionsBySourceNode', {
+				value: {},
+				configurable: true,
+			});
 
 			// Note: createTestingPinia() stubs actions by default, so setTags()/setSettings() won't work
 			Object.defineProperty(workflowDocumentStore, 'tags', {

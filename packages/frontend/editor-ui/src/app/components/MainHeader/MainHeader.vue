@@ -19,8 +19,8 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { computed, inject, onBeforeMount, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { RouteLocation, RouteLocationRaw } from 'vue-router';
 import { useRoute, useRouter } from 'vue-router';
-import { injectStrict } from '@/app/utils/injectStrict';
-import { WorkflowIdKey, WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 
 import { useLocalStorage } from '@vueuse/core';
 import GithubButton from 'vue-github-button';
@@ -72,7 +72,7 @@ const hideMenuBar = computed(() =>
 	Boolean(activeNode.value && activeNode.value.type !== STICKY_NODE_TYPE),
 );
 const workflow = computed(() => workflowsStore.workflow);
-const workflowId = injectStrict(WorkflowIdKey);
+const workflowId = useInjectWorkflowId();
 const workflowDocumentStore = inject(WorkflowDocumentStoreKey, null);
 const workflowTags = computed(() => workflowDocumentStore?.value?.tags ?? []);
 const workflowIsArchived = computed(() => workflowDocumentStore?.value?.isArchived ?? false);
@@ -247,7 +247,7 @@ async function navigateToEvaluationsView(openInNewTab: boolean) {
 	} else if (route.name !== routeToNavigateTo.name) {
 		dirtyState.value = uiStore.stateIsDirty;
 		workflowToReturnTo.value = workflowId.value;
-		activeHeaderTab.value = MAIN_HEADER_TABS.EXECUTIONS;
+		activeHeaderTab.value = MAIN_HEADER_TABS.EVALUATION;
 		await router.push(routeToNavigateTo);
 	}
 }
@@ -280,9 +280,13 @@ async function onWorkflowDeactivated() {
 <template>
 	<div :class="$style.container">
 		<div
-			:class="{ [$style['main-header']]: true, [$style.expanded]: !uiStore.sidebarMenuCollapsed }"
+			:class="{
+				[$style['main-header']]: true,
+				[$style.expanded]: !uiStore.sidebarMenuCollapsed,
+				[$style['canvas-only']]: settingsStore.isCanvasOnly,
+			}"
 		>
-			<div v-show="!hideMenuBar" :class="$style['top-menu']">
+			<div v-show="!hideMenuBar && !settingsStore.isCanvasOnly" :class="$style['top-menu']">
 				<WorkflowDetails
 					v-if="workflow?.name"
 					:id="workflow.id"
@@ -317,6 +321,7 @@ async function onWorkflowDeactivated() {
 				v-if="onWorkflowPage"
 				:items="tabBarItems"
 				:model-value="activeHeaderTab"
+				:floating="settingsStore.isCanvasOnly"
 				@update:model-value="onTabSelected"
 			/>
 		</div>
@@ -337,6 +342,12 @@ async function onWorkflowDeactivated() {
 	width: 100%;
 	box-sizing: border-box;
 	border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
+}
+
+.canvas-only {
+	min-height: 0;
+	border-bottom: none;
+	background-color: transparent;
 }
 
 .top-menu {

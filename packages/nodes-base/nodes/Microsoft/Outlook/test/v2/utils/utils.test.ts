@@ -68,7 +68,7 @@ describe('Test MicrosoftOutlookV2, prepareContactFields', () => {
 });
 
 describe('Test MicrosoftOutlookV2, prepareFilterString', () => {
-	it('should create filter string', () => {
+	it('should create filter string with a single folder to include', () => {
 		const filters = {
 			filterBy: 'filters',
 			filters: {
@@ -83,7 +83,21 @@ describe('Test MicrosoftOutlookV2, prepareFilterString', () => {
 			},
 		};
 		const result =
-			"parentFolderId eq 'DDDxCCC...=' and parentFolderId ne 'AAAxBBB...=' and (from/emailAddress/address eq 'test@mail.com' or from/emailAddress/name eq 'test@mail.com') and hasAttachments eq true and isRead eq false and receivedDateTime ge 2023-07-31T21:00:00.000Z and receivedDateTime le 2023-08-14T21:00:00.000Z and isRead eq false";
+			"(parentFolderId eq 'DDDxCCC...=') and parentFolderId ne 'AAAxBBB...=' and (from/emailAddress/address eq 'test@mail.com' or from/emailAddress/name eq 'test@mail.com') and hasAttachments eq true and isRead eq false and receivedDateTime ge 2023-07-31T21:00:00.000Z and receivedDateTime le 2023-08-14T21:00:00.000Z and isRead eq false";
+
+		const data = prepareFilterString(filters);
+
+		expect(data).toEqual(result);
+	});
+
+	it('should wrap multiple folders to include in parentheses to ensure correct operator precedence', () => {
+		const filters = {
+			filterBy: 'filters',
+			filters: {
+				foldersToInclude: ['FolderA...=', 'FolderB...='],
+			},
+		};
+		const result = "(parentFolderId eq 'FolderA...=' or parentFolderId eq 'FolderB...=')";
 
 		const data = prepareFilterString(filters);
 

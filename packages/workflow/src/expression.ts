@@ -204,15 +204,19 @@ export class Expression {
 	 * Should be called once during application startup.
 	 * Only available in Node.js environments (not in browser).
 	 */
-	static async initializeVmEvaluator(): Promise<void> {
+	static async initializeVmEvaluator(options?: { timeout?: number }): Promise<void> {
 		if (this.expressionEngine !== 'vm' || IS_FRONTEND) return;
 
 		if (!this.vmEvaluator) {
 			// Dynamic import to avoid loading expression-runtime in browser environments
 			const { ExpressionEvaluator, IsolatedVmBridge } = await import('@n8n/expression-runtime');
-			const bridge = new IsolatedVmBridge({ timeout: 5000 });
+			const bridge = new IsolatedVmBridge({ timeout: options?.timeout ?? 5000 });
+			const DEFAULT_MAX_CODE_CACHE_SIZE = 1024;
+			const parsed = parseInt(process.env.N8N_EXPRESSION_ENGINE_MAX_CODE_CACHE_SIZE ?? '', 10);
+			const maxCodeCacheSize = parsed || DEFAULT_MAX_CODE_CACHE_SIZE;
 			this.vmEvaluator = new ExpressionEvaluator({
 				bridge,
+				maxCodeCacheSize,
 				hooks: {
 					before: [ThisSanitizer],
 					after: [PrototypeSanitizer, DollarSignValidator],
@@ -474,7 +478,7 @@ export class Expression {
 						pid: process.pid,
 						ppid: process.ppid,
 						release: process.release,
-						version: process.pid,
+						version: process.version,
 						versions: process.versions,
 					}
 				: {};
@@ -531,7 +535,9 @@ export class Expression {
 			}
 
 			try {
-				const result = Expression.vmEvaluator.evaluate(expression, data);
+				const result = Expression.vmEvaluator.evaluate(expression, data, {
+					timezone: this.timezone,
+				});
 				return result as string | null | (() => unknown);
 			} catch (error) {
 				if (isExpressionError(error)) throw error;

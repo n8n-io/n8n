@@ -1,13 +1,25 @@
 import { readFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 
-import ivm from 'isolated-vm';
-
 import type { IDataObject } from 'n8n-workflow';
+import type IsolatedVM from 'isolated-vm';
+
+// Lazy-loaded isolated-vm — avoids loading the native module at startup.
+// The module is only loaded when combineBySql is actually used.
+type IsolatedVm = typeof IsolatedVM;
+let _ivm: IsolatedVm | null = null;
+
+async function getIvm(): Promise<IsolatedVm> {
+	if (!_ivm) {
+		const mod = await import('isolated-vm');
+		_ivm = mod.default;
+	}
+	return _ivm!;
+}
 
 // Singleton – recreated only after resetSandboxCache() (tests) or isolate disposal.
-let sandboxIsolate: ivm.Isolate | null = null;
-let sandboxContext: ivm.Context | null = null;
+let sandboxIsolate: IsolatedVM.Isolate | null = null;
+let sandboxContext: IsolatedVM.Context | null = null;
 
 /** Disposes the cached isolate. Exposed for tests only. */
 export function resetSandboxCache(): void {
@@ -19,13 +31,24 @@ export function resetSandboxCache(): void {
 }
 
 /** Returns a cached isolated-vm context with alasql pre-loaded. Creates it on first call. */
-export async function loadAlaSqlSandbox(): Promise<ivm.Context> {
+export async function loadAlaSqlSandbox(): Promise<IsolatedVM.Context> {
 	if (sandboxContext && sandboxIsolate && !sandboxIsolate.isDisposed) {
 		return sandboxContext;
 	}
 
+	const ivm = await getIvm();
+
 	sandboxIsolate = new ivm.Isolate({ memoryLimit: 64 }); // 64 MB hard limit
 	sandboxContext = await sandboxIsolate.createContext();
+
+	// Block network/file APIs before loading alasql to prevent
+	// file access via SQL statements (e.g. SOURCE, REQUIRE).
+	// Must be non-writable/non-configurable so the alasql bundle cannot overwrite them.
+	await sandboxContext.eval(`
+		function blockedNetworkOrFileApi() { throw new Error('Network and file system access is disabled in the SQL sandbox'); }
+		Object.defineProperty(globalThis, 'fetch', { value: blockedNetworkOrFileApi, writable: false, configurable: false });
+		Object.defineProperty(globalThis, 'XMLHttpRequest', { value: blockedNetworkOrFileApi, writable: false, configurable: false });
+	`);
 
 	// Browser bundle only – no Node.js fs/require handlers inside the isolate.
 	// eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -41,7 +64,7 @@ export async function loadAlaSqlSandbox(): Promise<ivm.Context> {
  * Only JSON-serialisable values cross the isolate boundary.
  */
 export async function runAlaSqlInSandbox(
-	context: ivm.Context,
+	context: IsolatedVM.Context,
 	tableData: unknown[][],
 	query: string,
 ): Promise<IDataObject[]> {

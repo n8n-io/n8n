@@ -1,6 +1,7 @@
 import { setActivePinia, createPinia } from 'pinia';
 import * as workflowsApi from '@/app/api/workflows';
 import {
+	CHAT_TRIGGER_NODE_TYPE,
 	DUPLICATE_POSTFFIX,
 	FORM_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
@@ -98,6 +99,17 @@ vi.mock('@n8n/permissions', () => ({
 		},
 	})),
 }));
+
+vi.mock('@/features/execution/executions/executions.utils', async (importOriginal) => {
+	const original = await importOriginal<object>();
+	return {
+		...original,
+		openFormPopupWindow: vi.fn(),
+	};
+});
+
+// Import the mocked function after the mock is set up
+import { openFormPopupWindow } from '@/features/execution/executions/executions.utils';
 
 describe('useWorkflowsStore', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
@@ -665,6 +677,72 @@ describe('useWorkflowsStore', () => {
 		});
 	});
 
+	describe('checkIfToolNodeHasChatParent()', () => {
+		it('returns true when tool node is connected via ai_tool to an agent that has a Chat Trigger parent', () => {
+			const chatTrigger = createTestNode({ name: 'Chat Trigger', type: CHAT_TRIGGER_NODE_TYPE });
+			const agentNode = createTestNode({ name: 'AI Agent' });
+			const toolNode = createTestNode({ name: 'My Tool' });
+
+			workflowsStore.setNodes([chatTrigger, agentNode, toolNode]);
+
+			// Chat Trigger → main → AI Agent
+			// My Tool → ai_tool → AI Agent
+			workflowsStore.setConnections({
+				[chatTrigger.name]: {
+					main: [[{ node: agentNode.name, type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+				[toolNode.name]: {
+					[NodeConnectionTypes.AiTool]: [
+						[{ node: agentNode.name, type: NodeConnectionTypes.AiTool, index: 0 }],
+					],
+				},
+			});
+
+			expect(workflowsStore.checkIfToolNodeHasChatParent(toolNode.name)).toBe(true);
+		});
+
+		it('returns false when tool node is connected to an agent that has no Chat Trigger parent', () => {
+			const manualTrigger = createTestNode({
+				name: 'Manual Trigger',
+				type: MANUAL_TRIGGER_NODE_TYPE,
+			});
+			const agentNode = createTestNode({ name: 'AI Agent' });
+			const toolNode = createTestNode({ name: 'My Tool' });
+
+			workflowsStore.setNodes([manualTrigger, agentNode, toolNode]);
+
+			// Manual Trigger → main → AI Agent
+			// My Tool → ai_tool → AI Agent
+			workflowsStore.setConnections({
+				[manualTrigger.name]: {
+					main: [[{ node: agentNode.name, type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+				[toolNode.name]: {
+					[NodeConnectionTypes.AiTool]: [
+						[{ node: agentNode.name, type: NodeConnectionTypes.AiTool, index: 0 }],
+					],
+				},
+			});
+
+			expect(workflowsStore.checkIfToolNodeHasChatParent(toolNode.name)).toBe(false);
+		});
+
+		it('returns false when tool node has no ai_tool connections', () => {
+			const toolNode = createTestNode({ name: 'My Tool' });
+			workflowsStore.setNodes([toolNode]);
+			workflowsStore.setConnections({});
+
+			expect(workflowsStore.checkIfToolNodeHasChatParent(toolNode.name)).toBe(false);
+		});
+
+		it('returns false for an unknown node name', () => {
+			workflowsStore.setNodes([]);
+			workflowsStore.setConnections({});
+
+			expect(workflowsStore.checkIfToolNodeHasChatParent('NonExistentNode')).toBe(false);
+		});
+	});
+
 	describe('fetchAllWorkflows()', () => {
 		it('should fetch workflows successfully', async () => {
 			const workflowsListStore = useWorkflowsListStore();
@@ -1117,6 +1195,7 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('should add node error event and track errored executions', async () => {
+			workflowsStore.workflow.id = 'test-workflow';
 			workflowsStore.workflow.pinData = {};
 			useWorkflowState().setWorkflowExecutionData(executionResponse);
 			workflowsStore.addNode({
@@ -1197,14 +1276,17 @@ describe('useWorkflowsStore', () => {
 
 			expect(workflowsStore.workflowExecutionData).toEqual({
 				...runWithExistingRunData,
-				data: createRunExecutionData({
-					resultData: {
-						lastNodeExecuted: 'When clicking ‘Execute workflow’',
-						runData: {
-							[successEvent.nodeName]: [successEvent.data],
+				data: {
+					...createRunExecutionData({
+						resultData: {
+							lastNodeExecuted: 'When clicking ‘Execute workflow’',
+							runData: {
+								[successEvent.nodeName]: [successEvent.data],
+							},
 						},
-					},
-				}),
+					}),
+					resumeToken: expect.any(String),
+				},
 			});
 		});
 
@@ -1252,14 +1334,17 @@ describe('useWorkflowsStore', () => {
 
 			expect(workflowsStore.workflowExecutionData).toEqual({
 				...executionResponse,
-				data: createRunExecutionData({
-					resultData: {
-						lastNodeExecuted: 'When clicking ‘Execute workflow’',
-						runData: {
-							[successEvent.nodeName]: [successEventWithExecutionIndex.data],
+				data: {
+					...createRunExecutionData({
+						resultData: {
+							lastNodeExecuted: 'When clicking ‘Execute workflow’',
+							runData: {
+								[successEvent.nodeName]: [successEventWithExecutionIndex.data],
+							},
 						},
-					},
-				}),
+					}),
+					resumeToken: expect.any(String),
+				},
 			});
 		});
 	});
@@ -2378,6 +2463,93 @@ describe('useWorkflowsStore', () => {
 			await workflowsStore.fetchLastSuccessfulExecution();
 
 			expect(workflowsApi.getLastSuccessfulExecution).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('updateNodeExecutionStatus - form popup', () => {
+		beforeEach(() => {
+			vi.mocked(openFormPopupWindow).mockClear();
+		});
+
+		it('should open form popup using metadata.resumeFormUrl when present', () => {
+			const nodeName = 'Wait';
+			const executionId = 'exec-123';
+			const signedFormUrl = 'http://localhost:5678/form-waiting/exec-123?signature=abc123';
+
+			// Setup workflow with a node
+			workflowsStore.setNodes([createTestNode({ name: nodeName, type: WAIT_NODE_TYPE })]);
+
+			// Initialize execution data directly
+			workflowsStore.workflowExecutionData = {
+				id: executionId,
+				workflowData: createTestWorkflow(),
+				finished: false,
+				mode: 'manual',
+				startedAt: new Date(),
+				createdAt: new Date(),
+				status: 'running',
+				data: createEmptyRunExecutionData(),
+			} as IExecutionResponse;
+
+			// Call updateNodeExecutionStatus with waiting status and metadata.resumeFormUrl
+			workflowsStore.updateNodeExecutionStatus({
+				executionId,
+				nodeName,
+				data: {
+					executionStatus: 'waiting',
+					startTime: Date.now(),
+					executionTime: 0,
+					executionIndex: 0,
+					source: [],
+					hints: [],
+					metadata: {
+						resumeFormUrl: signedFormUrl,
+					},
+				},
+				itemCountByConnectionType: {},
+			});
+
+			// Should open form popup with the signed URL from metadata
+			expect(openFormPopupWindow).toHaveBeenCalledWith(signedFormUrl);
+		});
+
+		it('should not open form popup when metadata.resumeFormUrl is not present', () => {
+			const nodeName = 'Wait';
+			const executionId = 'exec-456';
+
+			// Setup workflow with a node
+			workflowsStore.setNodes([createTestNode({ name: nodeName, type: WAIT_NODE_TYPE })]);
+
+			// Initialize execution data directly
+			workflowsStore.workflowExecutionData = {
+				id: executionId,
+				workflowData: createTestWorkflow(),
+				finished: false,
+				mode: 'manual',
+				startedAt: new Date(),
+				createdAt: new Date(),
+				status: 'running',
+				data: createEmptyRunExecutionData(),
+			} as IExecutionResponse;
+
+			// Call updateNodeExecutionStatus with waiting status but NO metadata.resumeFormUrl
+			workflowsStore.updateNodeExecutionStatus({
+				executionId,
+				nodeName,
+				data: {
+					executionStatus: 'waiting',
+					startTime: Date.now(),
+					executionTime: 0,
+					executionIndex: 0,
+					source: [],
+					hints: [],
+					// No metadata
+				},
+				itemCountByConnectionType: {},
+			});
+
+			// Should NOT open form popup
+			expect(openFormPopupWindow).not.toHaveBeenCalled();
 		});
 	});
 

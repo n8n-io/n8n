@@ -240,6 +240,52 @@ describe('CredentialsPermissionChecker', () => {
 			);
 		});
 
+		it('should check generic credential types specified by genericAuthType', async () => {
+			const genericCredentialId = 'generic-cred';
+			const httpRequestNodeWithGenericAuth: INode = {
+				id: 'node-2',
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.2,
+				position: [0, 0],
+				parameters: {
+					authentication: 'genericCredentialType',
+					genericAuthType: 'httpHeaderAuth',
+				},
+				credentials: {
+					httpHeaderAuth: {
+						id: genericCredentialId,
+						name: 'Header Auth',
+					},
+				},
+			};
+
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: {
+					credentials: [
+						{
+							name: 'httpSslAuth',
+							required: true,
+							displayOptions: { show: { provideSslCertificates: [true] } },
+						},
+					],
+				},
+			} as never);
+
+			sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([]);
+			credentialsRepository.find.mockResolvedValue([]);
+
+			await expect(
+				permissionChecker.check(workflowId, [httpRequestNodeWithGenericAuth]),
+			).rejects.toThrow('Node "HTTP Request" does not have access to the credential');
+
+			// Should check the generic credential type, not skip it
+			expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).toHaveBeenCalledWith(
+				[teamProject.id],
+				[genericCredentialId],
+			);
+		});
+
 		it('should fall back to checking all credentials if node type cannot be resolved', async () => {
 			nodeTypes.getByNameAndVersion.mockImplementation(() => {
 				throw new Error('Unknown node type');

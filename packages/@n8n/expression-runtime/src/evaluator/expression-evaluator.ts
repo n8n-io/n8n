@@ -5,6 +5,7 @@ import type {
 	WorkflowData,
 	EvaluateOptions,
 } from '../types';
+import { LruCache } from './lru-cache';
 
 export class ExpressionEvaluator implements IExpressionEvaluator {
 	private config: EvaluatorConfig;
@@ -16,24 +17,29 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 
 	// Cache: template expression → tournament-transformed JavaScript code
 	// Cache hit rate in production: ~99.9% (same expressions repeat within a workflow)
-	private codeCache = new Map<string, string>();
+	private codeCache: LruCache<string, string>;
 
 	constructor(config: EvaluatorConfig) {
 		this.config = config;
+		this.codeCache = new LruCache<string, string>(config.maxCodeCacheSize, () => {
+			this.config.observability?.metrics.counter('expression.code_cache.eviction', 1);
+		});
 	}
 
 	async initialize(): Promise<void> {
 		await this.config.bridge.initialize();
 	}
 
-	evaluate(expression: string, data: WorkflowData, _options?: EvaluateOptions): unknown {
+	evaluate(expression: string, data: WorkflowData, options?: EvaluateOptions): unknown {
 		if (this.disposed) throw new Error('Evaluator disposed');
 
 		// Transform template expression → sanitized JavaScript (cached)
 		const transformedCode = this.getTransformedCode(expression);
 
 		try {
-			const result = this.config.bridge.execute(transformedCode, data);
+			const result = this.config.bridge.execute(transformedCode, data, {
+				timezone: options?.timezone,
+			});
 
 			if (this.config.observability) {
 				this.config.observability.metrics.counter('expression.evaluation.success', 1);
@@ -60,8 +66,11 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 	private getTransformedCode(expression: string): string {
 		const cached = this.codeCache.get(expression);
 		if (cached !== undefined) {
+			this.config.observability?.metrics.counter('expression.code_cache.hit', 1);
 			return cached;
 		}
+
+		this.config.observability?.metrics.counter('expression.code_cache.miss', 1);
 
 		if (!this.tournament) {
 			// Tournament requires an errorHandler but we only use getExpressionCode()
@@ -77,12 +86,14 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 
 		const [transformedCode] = this.tournament.getExpressionCode(expression);
 		this.codeCache.set(expression, transformedCode);
+		this.config.observability?.metrics.gauge('expression.code_cache.size', this.codeCache.size);
 		return transformedCode;
 	}
 
 	async dispose(): Promise<void> {
 		this.disposed = true;
 		this.codeCache.clear();
+		this.config.observability?.metrics.gauge('expression.code_cache.size', 0);
 		await this.config.bridge.dispose();
 	}
 
