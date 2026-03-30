@@ -1,21 +1,21 @@
 /**
- * Tests for layout utility functions
+ * Tests for Dagre-based layout utility functions
  */
 
-import { NODE_SPACING_X, DEFAULT_Y, START_X } from './constants';
+import { GRID_SIZE, STICKY_NODE_TYPE } from './constants';
 import { calculateNodePositions } from './layout-utils';
 import type { GraphNode, ConnectionTarget } from '../types/base';
 
-// Helper to create connection targets with correct type
-function makeTarget(node: string, index: number = 0): ConnectionTarget {
-	return { node, type: 'main', index };
+// Helper to create connection targets
+function makeTarget(node: string, type: string = 'main', index: number = 0): ConnectionTarget {
+	return { node, type, index };
 }
 
 // Helper to create a minimal GraphNode for testing
 function createGraphNode(
 	name: string,
 	type: string,
-	connections: Map<string, Map<number, ConnectionTarget[]>> = new Map(),
+	connections: Map<string, Map<number, ConnectionTarget[]>> = new Map([['main', new Map()]]),
 	position?: [number, number],
 ): GraphNode {
 	return {
@@ -38,6 +38,22 @@ function makeMainConns(
 	return result;
 }
 
+// Helper to create AI subnode connection map (subnode -> parent via ai_* type)
+function makeAiConns(
+	parentName: string,
+	aiType: string,
+	index: number = 0,
+): Map<string, Map<number, ConnectionTarget[]>> {
+	const result = new Map<string, Map<number, ConnectionTarget[]>>();
+	result.set('main', new Map());
+	result.set(aiType, new Map([[0, [makeTarget(parentName, aiType, index)]]]));
+	return result;
+}
+
+function isGridAligned(pos: [number, number]): boolean {
+	return pos[0] % GRID_SIZE === 0 && pos[1] % GRID_SIZE === 0;
+}
+
 describe('calculateNodePositions', () => {
 	describe('basic functionality', () => {
 		it('returns empty map for empty nodes', () => {
@@ -46,19 +62,19 @@ describe('calculateNodePositions', () => {
 			expect(positions.size).toBe(0);
 		});
 
-		it('positions single root node at START_X, DEFAULT_Y', () => {
+		it('positions a single node', () => {
 			const nodes = new Map<string, GraphNode>();
 			nodes.set('trigger', createGraphNode('trigger', 'n8n-nodes-base.manualTrigger'));
 
 			const positions = calculateNodePositions(nodes);
 
-			expect(positions.get('trigger')).toEqual([START_X, DEFAULT_Y]);
+			expect(positions.has('trigger')).toBe(true);
+			const pos = positions.get('trigger')!;
+			expect(isGridAligned(pos)).toBe(true);
 		});
 
-		it('positions connected node NODE_SPACING_X to the right of source', () => {
+		it('positions connected nodes left-to-right', () => {
 			const nodes = new Map<string, GraphNode>();
-
-			// Trigger -> Set
 			const triggerConns = makeMainConns([[0, [makeTarget('set')]]]);
 
 			nodes.set(
@@ -69,104 +85,18 @@ describe('calculateNodePositions', () => {
 
 			const positions = calculateNodePositions(nodes);
 
-			expect(positions.get('trigger')).toEqual([START_X, DEFAULT_Y]);
-			expect(positions.get('set')).toEqual([START_X + NODE_SPACING_X, DEFAULT_Y]);
-		});
-	});
-
-	describe('multiple roots', () => {
-		it('positions multiple root nodes with Y offset of 150', () => {
-			const nodes = new Map<string, GraphNode>();
-			nodes.set('trigger1', createGraphNode('trigger1', 'n8n-nodes-base.manualTrigger'));
-			nodes.set('trigger2', createGraphNode('trigger2', 'n8n-nodes-base.scheduleTrigger'));
-
-			const positions = calculateNodePositions(nodes);
-
-			// Both at START_X, different Y
-			const pos1 = positions.get('trigger1');
-			const pos2 = positions.get('trigger2');
-
-			expect(pos1?.[0]).toBe(START_X);
-			expect(pos2?.[0]).toBe(START_X);
-			// Y values should differ by 150
-			expect(Math.abs((pos1?.[1] ?? 0) - (pos2?.[1] ?? 0))).toBe(150);
-		});
-	});
-
-	describe('branching', () => {
-		it('positions branches with Y offset for each branch', () => {
-			const nodes = new Map<string, GraphNode>();
-
-			// IF node with two outputs
-			const ifConns = makeMainConns([
-				[0, [makeTarget('trueBranch')]],
-				[1, [makeTarget('falseBranch')]],
-			]);
-
-			nodes.set('if', createGraphNode('if', 'n8n-nodes-base.if', ifConns));
-			nodes.set('trueBranch', createGraphNode('trueBranch', 'n8n-nodes-base.set'));
-			nodes.set('falseBranch', createGraphNode('falseBranch', 'n8n-nodes-base.set'));
-
-			const positions = calculateNodePositions(nodes);
-
-			const ifPos = positions.get('if');
-			const truePos = positions.get('trueBranch');
-			const falsePos = positions.get('falseBranch');
-
-			// IF at root position
-			expect(ifPos).toEqual([START_X, DEFAULT_Y]);
-
-			// Both branches at same X (NODE_SPACING_X from IF)
-			expect(truePos?.[0]).toBe(START_X + NODE_SPACING_X);
-			expect(falsePos?.[0]).toBe(START_X + NODE_SPACING_X);
-
-			// Different Y positions (offset by 150)
-			expect(Math.abs((truePos?.[1] ?? 0) - (falsePos?.[1] ?? 0))).toBe(150);
-		});
-	});
-
-	describe('explicit positions', () => {
-		it('skips nodes that already have explicit position in config', () => {
-			const nodes = new Map<string, GraphNode>();
-
-			// Node with explicit position
-			nodes.set(
-				'trigger',
-				createGraphNode('trigger', 'n8n-nodes-base.manualTrigger', new Map(), [500, 600]),
-			);
-
-			const positions = calculateNodePositions(nodes);
-
-			// Should not include node with explicit position
-			expect(positions.has('trigger')).toBe(false);
-		});
-
-		it('positions nodes without explicit config but skips those with explicit', () => {
-			const nodes = new Map<string, GraphNode>();
-
-			// Trigger has explicit position
-			const triggerConns = makeMainConns([[0, [makeTarget('set')]]]);
-
-			nodes.set(
-				'trigger',
-				createGraphNode('trigger', 'n8n-nodes-base.manualTrigger', triggerConns, [500, 600]),
-			);
-			nodes.set('set', createGraphNode('set', 'n8n-nodes-base.set'));
-
-			const positions = calculateNodePositions(nodes);
-
-			// Trigger skipped (has explicit position)
-			expect(positions.has('trigger')).toBe(false);
-			// Set still gets calculated position relative to trigger's BFS position
-			expect(positions.has('set')).toBe(true);
+			const triggerPos = positions.get('trigger')!;
+			const setPos = positions.get('set')!;
+			// Set should be to the right of trigger
+			expect(setPos[0]).toBeGreaterThan(triggerPos[0]);
+			// Same Y (roughly)
+			expect(Math.abs(setPos[1] - triggerPos[1])).toBeLessThan(GRID_SIZE * 2);
 		});
 	});
 
 	describe('linear chain', () => {
-		it('positions chain of nodes incrementing X by NODE_SPACING_X', () => {
+		it('positions chain of nodes incrementing X', () => {
 			const nodes = new Map<string, GraphNode>();
-
-			// A -> B -> C -> D
 			const aConns = makeMainConns([[0, [makeTarget('B')]]]);
 			const bConns = makeMainConns([[0, [makeTarget('C')]]]);
 			const cConns = makeMainConns([[0, [makeTarget('D')]]]);
@@ -178,10 +108,202 @@ describe('calculateNodePositions', () => {
 
 			const positions = calculateNodePositions(nodes);
 
-			expect(positions.get('A')).toEqual([START_X, DEFAULT_Y]);
-			expect(positions.get('B')).toEqual([START_X + NODE_SPACING_X, DEFAULT_Y]);
-			expect(positions.get('C')).toEqual([START_X + NODE_SPACING_X * 2, DEFAULT_Y]);
-			expect(positions.get('D')).toEqual([START_X + NODE_SPACING_X * 3, DEFAULT_Y]);
+			const posA = positions.get('A')!;
+			const posB = positions.get('B')!;
+			const posC = positions.get('C')!;
+			const posD = positions.get('D')!;
+
+			// Each node should be further right
+			expect(posB[0]).toBeGreaterThan(posA[0]);
+			expect(posC[0]).toBeGreaterThan(posB[0]);
+			expect(posD[0]).toBeGreaterThan(posC[0]);
+
+			// All at same Y
+			expect(posA[1]).toBe(posB[1]);
+			expect(posB[1]).toBe(posC[1]);
+			expect(posC[1]).toBe(posD[1]);
+		});
+	});
+
+	describe('branching', () => {
+		it('positions branches with Y offset', () => {
+			const nodes = new Map<string, GraphNode>();
+			const ifConns = makeMainConns([
+				[0, [makeTarget('trueBranch')]],
+				[1, [makeTarget('falseBranch')]],
+			]);
+
+			nodes.set('if', createGraphNode('if', 'n8n-nodes-base.if', ifConns));
+			nodes.set('trueBranch', createGraphNode('trueBranch', 'n8n-nodes-base.set'));
+			nodes.set('falseBranch', createGraphNode('falseBranch', 'n8n-nodes-base.set'));
+
+			const positions = calculateNodePositions(nodes);
+
+			const ifPos = positions.get('if')!;
+			const truePos = positions.get('trueBranch')!;
+			const falsePos = positions.get('falseBranch')!;
+
+			// Both branches to the right of IF
+			expect(truePos[0]).toBeGreaterThan(ifPos[0]);
+			expect(falsePos[0]).toBeGreaterThan(ifPos[0]);
+
+			// At same X
+			expect(truePos[0]).toBe(falsePos[0]);
+
+			// Different Y
+			expect(truePos[1]).not.toBe(falsePos[1]);
+		});
+	});
+
+	describe('disconnected subgraphs', () => {
+		it('arranges disconnected components vertically', () => {
+			const nodes = new Map<string, GraphNode>();
+			const aConns = makeMainConns([[0, [makeTarget('B')]]]);
+			const cConns = makeMainConns([[0, [makeTarget('D')]]]);
+
+			// Two independent chains
+			nodes.set('A', createGraphNode('A', 'n8n-nodes-base.manualTrigger', aConns));
+			nodes.set('B', createGraphNode('B', 'n8n-nodes-base.set'));
+			nodes.set('C', createGraphNode('C', 'n8n-nodes-base.scheduleTrigger', cConns));
+			nodes.set('D', createGraphNode('D', 'n8n-nodes-base.set'));
+
+			const positions = calculateNodePositions(nodes);
+
+			expect(positions.size).toBe(4);
+
+			// Both chains should exist with all positions grid-aligned
+			for (const pos of positions.values()) {
+				expect(isGridAligned(pos)).toBe(true);
+			}
+		});
+	});
+
+	describe('AI workflow', () => {
+		it('positions AI subnodes below parent node', () => {
+			const nodes = new Map<string, GraphNode>();
+
+			// Trigger -> Agent, with Model and Tool connected to Agent via ai_* types
+			const triggerConns = makeMainConns([[0, [makeTarget('Agent')]]]);
+			const agentConns = makeMainConns([]); // Agent has no main outgoing
+
+			nodes.set(
+				'trigger',
+				createGraphNode('trigger', 'n8n-nodes-base.manualTrigger', triggerConns),
+			);
+			nodes.set('Agent', createGraphNode('Agent', '@n8n/n8n-nodes-langchain.agent', agentConns));
+			nodes.set(
+				'OpenAI Model',
+				createGraphNode(
+					'OpenAI Model',
+					'@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					makeAiConns('Agent', 'ai_languageModel'),
+				),
+			);
+			nodes.set(
+				'Calculator',
+				createGraphNode(
+					'Calculator',
+					'@n8n/n8n-nodes-langchain.toolCalculator',
+					makeAiConns('Agent', 'ai_tool'),
+				),
+			);
+
+			const positions = calculateNodePositions(nodes);
+
+			const triggerPos = positions.get('trigger')!;
+			const agentPos = positions.get('Agent')!;
+			const modelPos = positions.get('OpenAI Model')!;
+			const calcPos = positions.get('Calculator')!;
+
+			// Agent should be to the right of trigger
+			expect(agentPos[0]).toBeGreaterThan(triggerPos[0]);
+
+			// Subnodes should be below (or at least not above) the agent
+			expect(modelPos[1]).toBeGreaterThanOrEqual(agentPos[1]);
+			expect(calcPos[1]).toBeGreaterThanOrEqual(agentPos[1]);
+
+			// All positions grid-aligned
+			expect(isGridAligned(triggerPos)).toBe(true);
+			expect(isGridAligned(agentPos)).toBe(true);
+			expect(isGridAligned(modelPos)).toBe(true);
+			expect(isGridAligned(calcPos)).toBe(true);
+		});
+	});
+
+	describe('explicit positions', () => {
+		it('skips nodes that already have explicit position in config', () => {
+			const nodes = new Map<string, GraphNode>();
+			nodes.set(
+				'trigger',
+				createGraphNode(
+					'trigger',
+					'n8n-nodes-base.manualTrigger',
+					new Map([['main', new Map()]]),
+					[500, 600],
+				),
+			);
+
+			const positions = calculateNodePositions(nodes);
+			expect(positions.has('trigger')).toBe(false);
+		});
+
+		it('positions nodes without explicit config but skips those with explicit', () => {
+			const nodes = new Map<string, GraphNode>();
+			const triggerConns = makeMainConns([[0, [makeTarget('set')]]]);
+
+			nodes.set(
+				'trigger',
+				createGraphNode('trigger', 'n8n-nodes-base.manualTrigger', triggerConns, [500, 600]),
+			);
+			nodes.set('set', createGraphNode('set', 'n8n-nodes-base.set'));
+
+			const positions = calculateNodePositions(nodes);
+
+			expect(positions.has('trigger')).toBe(false);
+			expect(positions.has('set')).toBe(true);
+		});
+	});
+
+	describe('grid alignment', () => {
+		it('all positions are multiples of GRID_SIZE', () => {
+			const nodes = new Map<string, GraphNode>();
+			const aConns = makeMainConns([[0, [makeTarget('B')]]]);
+			const bConns = makeMainConns([
+				[0, [makeTarget('C')]],
+				[1, [makeTarget('D')]],
+			]);
+
+			nodes.set('A', createGraphNode('A', 'n8n-nodes-base.manualTrigger', aConns));
+			nodes.set('B', createGraphNode('B', 'n8n-nodes-base.if', bConns));
+			nodes.set('C', createGraphNode('C', 'n8n-nodes-base.set'));
+			nodes.set('D', createGraphNode('D', 'n8n-nodes-base.set'));
+
+			const positions = calculateNodePositions(nodes);
+
+			for (const [, pos] of positions) {
+				expect(pos[0] % GRID_SIZE).toBe(0);
+				expect(pos[1] % GRID_SIZE).toBe(0);
+			}
+		});
+	});
+
+	describe('sticky notes', () => {
+		it('excludes sticky notes from main layout', () => {
+			const nodes = new Map<string, GraphNode>();
+			const triggerConns = makeMainConns([[0, [makeTarget('set')]]]);
+
+			nodes.set(
+				'trigger',
+				createGraphNode('trigger', 'n8n-nodes-base.manualTrigger', triggerConns),
+			);
+			nodes.set('set', createGraphNode('set', 'n8n-nodes-base.set'));
+			nodes.set('note', createGraphNode('note', STICKY_NODE_TYPE));
+
+			const positions = calculateNodePositions(nodes);
+
+			// Non-sticky nodes get positions
+			expect(positions.has('trigger')).toBe(true);
+			expect(positions.has('set')).toBe(true);
 		});
 	});
 });

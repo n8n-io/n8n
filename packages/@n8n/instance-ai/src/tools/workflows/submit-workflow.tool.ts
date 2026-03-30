@@ -9,7 +9,7 @@
 import { createTool } from '@mastra/core/tools';
 import type { Workspace } from '@mastra/core/workspace';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import { validateWorkflow } from '@n8n/workflow-sdk';
+import { validateWorkflow, layoutWorkflowJSON } from '@n8n/workflow-sdk';
 import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
@@ -272,6 +272,9 @@ export function createSubmitWorkflowTool(
 							: undefined,
 				};
 			}
+
+			// Apply Dagre-based layout to produce positions matching the FE's tidy-up
+			layoutWorkflowJSON(buildOutput.workflow);
 
 			// Override name if provided
 			const json = buildOutput.workflow;

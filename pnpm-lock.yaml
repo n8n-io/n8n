@@ -2243,6 +2243,9 @@ importers:
 
   packages/@n8n/workflow-sdk:
     dependencies:
+      '@dagrejs/dagre':
+        specifier: ^1.1.4
+        version: 1.1.4
       acorn:
         specifier: 8.14.0
         version: 8.14.0
