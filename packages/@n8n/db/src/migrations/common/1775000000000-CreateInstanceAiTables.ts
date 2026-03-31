@@ -6,9 +6,11 @@ const table = {
 	resources: 'instance_ai_resources',
 	observationalMemory: 'instance_ai_observational_memory',
 	workflowSnapshots: 'instance_ai_workflow_snapshots',
+	runSnapshots: 'instance_ai_run_snapshots',
+	iterationLogs: 'instance_ai_iteration_logs',
 } as const;
 
-export class CreateInstanceAiTables1773000000000 implements ReversibleMigration {
+export class CreateInstanceAiTables1775000000000 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
 		await createTable(table.threads)
 			.withColumns(
@@ -88,9 +90,41 @@ export class CreateInstanceAiTables1773000000000 implements ReversibleMigration 
 			)
 			.withIndexOn('workflowName')
 			.withIndexOn(['workflowName', 'status']).withTimestamps;
+
+		await createTable(table.runSnapshots)
+			.withColumns(
+				column('threadId').varchar().primary.notNull,
+				column('runId').varchar().primary.notNull,
+				column('messageGroupId').varchar(),
+				column('runIds').json,
+				column('tree').text.notNull,
+			)
+			.withIndexOn(['threadId', 'messageGroupId'])
+			.withIndexOn(['threadId', 'createdAt'])
+			.withForeignKey('threadId', {
+				tableName: table.threads,
+				columnName: 'id',
+				onDelete: 'CASCADE',
+			}).withTimestamps;
+
+		await createTable(table.iterationLogs)
+			.withColumns(
+				column('id').varchar().primary.notNull,
+				column('threadId').varchar().notNull,
+				column('taskKey').varchar().notNull,
+				column('entry').text.notNull,
+			)
+			.withIndexOn(['threadId', 'taskKey', 'createdAt'])
+			.withForeignKey('threadId', {
+				tableName: table.threads,
+				columnName: 'id',
+				onDelete: 'CASCADE',
+			}).withTimestamps;
 	}
 
 	async down({ schemaBuilder: { dropTable } }: MigrationContext) {
+		await dropTable(table.iterationLogs);
+		await dropTable(table.runSnapshots);
 		await dropTable(table.workflowSnapshots);
 		await dropTable(table.observationalMemory);
 		await dropTable(table.resources);
