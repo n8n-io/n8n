@@ -247,6 +247,7 @@ export {
 	instanceAiAgentStatusSchema,
 	instanceAiAgentKindSchema,
 	instanceAiEventSchema,
+	instanceAiEvalExecutionRequestSchema,
 	taskItemSchema,
 	taskListSchema,
 	runStartPayloadSchema,
@@ -347,6 +348,12 @@ export type {
 	InstanceAiCredentialFlow,
 	ToolCategory,
 	InstanceAiWorkflowSetupNode,
+	InstanceAiEvalNodeExecutionMode,
+	InstanceAiEvalInterceptedRequest,
+	InstanceAiEvalNodeResult,
+	InstanceAiEvalMockHints,
+	InstanceAiEvalExecutionResult,
+	InstanceAiEvalExecutionRequest,
 } from './schemas/instance-ai.schema';
 
 export {
