@@ -1932,6 +1932,22 @@ export function truncateResultData(resultData: Record<string, unknown>): Record<
 	return truncated;
 }
 
+/**
+ * Wraps each entry in truncated result data with untrusted-data boundary tags.
+ * Applied after truncation so that `truncateResultData` can still inspect raw arrays.
+ */
+function wrapResultDataEntries(data: Record<string, unknown>): Record<string, unknown> {
+	const wrapped: Record<string, unknown> = {};
+	for (const [nodeName, value] of Object.entries(data)) {
+		wrapped[nodeName] = wrapUntrustedData(
+			JSON.stringify(value, null, 2),
+			'execution-output',
+			`node:${nodeName}`,
+		);
+	}
+	return wrapped;
+}
+
 export async function extractExecutionResult(
 	executionRepository: ExecutionRepository,
 	executionId: string,
@@ -1969,12 +1985,7 @@ export async function extractExecutionResult(
 						.filter((item): item is NonNullable<typeof item> => item !== null && item !== undefined)
 						.map((item) => item.json);
 					if (outputItems.length > 0) {
-						const truncated = truncateNodeOutput(outputItems);
-						resultData[nodeName] = wrapUntrustedData(
-							JSON.stringify(truncated, null, 2),
-							'execution-output',
-							`node:${nodeName}`,
-						);
+						resultData[nodeName] = truncateNodeOutput(outputItems);
 					}
 				}
 			}
@@ -1987,7 +1998,10 @@ export async function extractExecutionResult(
 	return {
 		executionId,
 		status,
-		data: Object.keys(resultData).length > 0 ? truncateResultData(resultData) : undefined,
+		data:
+			Object.keys(resultData).length > 0
+				? wrapResultDataEntries(truncateResultData(resultData))
+				: undefined,
 		error: errorMessage,
 		startedAt: execution.startedAt?.toISOString(),
 		finishedAt: execution.stoppedAt?.toISOString(),

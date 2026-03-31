@@ -60,5 +60,7 @@ export function wrapUntrustedData(content: string, source: string, label?: strin
 	const safeLabel = label
 		? ` label="${label.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}"`
 		: '';
-	return `<untrusted_data source="${safeSource}"${safeLabel}>\n${content}\n</untrusted_data>`;
+	// Escape any closing boundary tags in the content to prevent breakout
+	const safeContent = content.replace(/<\/untrusted_data/gi, '&lt;/untrusted_data');
+	return `<untrusted_data source="${safeSource}"${safeLabel}>\n${safeContent}\n</untrusted_data>`;
 }
