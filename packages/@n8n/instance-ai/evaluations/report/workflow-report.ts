@@ -95,44 +95,46 @@ function renderScenarioDetail(sr: ScenarioResult): string {
 
 	// 2. Diagnosis — verifier's reasoning
 	if (sr.reasoning) {
-		html += `<details class="section" open><summary>Diagnosis</summary>`;
+		html += '<details class="section" open><summary>Diagnosis</summary>';
 		html += `<div class="diagnosis">${escapeHtml(sr.reasoning)}</div>`;
-		html += `</details>`;
+		html += '</details>';
 	}
 
 	// 3. Mock data plan — Phase 1 hints
 	if (sr.evalResult.hints) {
-		html += `<details class="section"><summary>Mock data plan</summary>`;
+		html += '<details class="section"><summary>Mock data plan</summary>';
 		const { globalContext, triggerContent, nodeHints } = sr.evalResult.hints;
 
 		if (globalContext) {
-			html += `<div class="subsection-label">Global context</div>`;
+			html += '<div class="subsection-label">Global context</div>';
 			html += `<div class="hint-text">${escapeHtml(globalContext)}</div>`;
 		}
 
 		if (Object.keys(triggerContent ?? {}).length > 0) {
-			html += `<div class="subsection-label">Trigger content</div>`;
+			html += '<div class="subsection-label">Trigger content</div>';
 			html += `<pre class="json-block"><code>${escapeHtml(JSON.stringify(triggerContent, null, 2))}</code></pre>`;
 		} else {
-			html += `<div class="warning-inline">No trigger content generated — start node has no input data</div>`;
+			html +=
+				'<div class="warning-inline">No trigger content generated \u2014 start node has no input data</div>';
 		}
 
 		if (nodeHints && Object.keys(nodeHints).length > 0) {
-			html += `<div class="subsection-label">Per-node hints</div>`;
+			html += '<div class="subsection-label">Per-node hints</div>';
 			for (const [nodeName, hint] of Object.entries(nodeHints)) {
 				html += `<details class="node-hint"><summary>${escapeHtml(nodeName)}</summary>`;
 				html += `<div class="hint-text">${escapeHtml(hint)}</div>`;
-				html += `</details>`;
+				html += '</details>';
 			}
 		}
-		html += `</details>`;
+		html += '</details>';
 	}
 
 	// 4. Execution trace — per-node results
 	const nodeEntries = Object.entries(sr.evalResult.nodeResults);
 	if (nodeEntries.length > 0) {
-		html += `<details class="section"><summary>Execution trace</summary>`;
-		html += `<div class="trace-legend"><span class="node-mode-mocked">mocked</span> <span class="node-mode-pinned">pinned</span> <span class="node-mode-real">real</span></div>`;
+		html += '<details class="section"><summary>Execution trace</summary>';
+		html +=
+			'<div class="trace-legend"><span class="node-mode-mocked">mocked</span> <span class="node-mode-pinned">pinned</span> <span class="node-mode-real">real</span></div>';
 
 		for (const [nodeName, nr] of nodeEntries) {
 			const modeClass = `node-mode-${nr.executionMode}`;
@@ -141,44 +143,44 @@ function renderScenarioDetail(sr: ScenarioResult): string {
 				? `<span class="build-issue">Build issue: ${escapeHtml(Object.values(nr.configIssues!).flat().join('; '))}</span>`
 				: '';
 
-			html += `<div class="trace-node">`;
-			html += `<div class="trace-node-header">`;
+			html += '<div class="trace-node">';
+			html += '<div class="trace-node-header">';
 			html += `<span class="${modeClass}">[${nr.executionMode}]</span> <strong>${escapeHtml(nodeName)}</strong>`;
 			if (nr.interceptedRequests.length > 0) {
 				html += ` <span class="request-count">${String(nr.interceptedRequests.length)} request(s)</span>`;
 			}
-			html += `</div>`;
+			html += '</div>';
 			if (configWarning) html += configWarning;
 
 			// Intercepted requests
 			for (const req of nr.interceptedRequests) {
-				html += `<div class="request-pair">`;
-				html += `<div class="request-header">Request sent</div>`;
+				html += '<div class="request-pair">';
+				html += '<div class="request-header">Request sent</div>';
 				html += `<div class="request-method">${escapeHtml(req.method)} ${escapeHtml(req.url)}</div>`;
 				if (req.requestBody) {
 					html += `<pre class="json-block json-sm"><code>${escapeHtml(JSON.stringify(req.requestBody, null, 2))}</code></pre>`;
 				}
-				html += `<div class="response-header">Mock returned</div>`;
+				html += '<div class="response-header">Mock returned</div>';
 				if (req.mockResponse) {
 					html += `<pre class="json-block json-sm"><code>${escapeHtml(JSON.stringify(req.mockResponse, null, 2))}</code></pre>`;
 				} else {
-					html += `<div class="muted">no mock response</div>`;
+					html += '<div class="muted">no mock response</div>';
 				}
-				html += `</div>`;
+				html += '</div>';
 			}
 
 			// Node output
 			if (nr.output !== null && nr.output !== undefined) {
-				html += `<details class="node-output-toggle"><summary>Node output</summary>`;
+				html += '<details class="node-output-toggle"><summary>Node output</summary>';
 				html += `<pre class="json-block"><code>${escapeHtml(JSON.stringify(nr.output, null, 2))}</code></pre>`;
-				html += `</details>`;
+				html += '</details>';
 			} else {
-				html += `<div class="muted">no output</div>`;
+				html += '<div class="muted">no output</div>';
 			}
 
-			html += `</div>`;
+			html += '</div>';
 		}
-		html += `</details>`;
+		html += '</details>';
 	}
 
 	return html;
@@ -231,8 +233,8 @@ function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string
 	const statusClass = result.workflowBuildSuccess ? (allPass ? 'pass' : 'mixed') : 'fail';
 
 	const buildBadge = result.workflowBuildSuccess
-		? `<span class="badge badge-pass">BUILT</span>`
-		: `<span class="badge badge-fail">BUILD FAILED</span>`;
+		? '<span class="badge badge-pass">BUILT</span>'
+		: '<span class="badge badge-fail">BUILD FAILED</span>';
 
 	const scoreBadge =
 		totalCount > 0

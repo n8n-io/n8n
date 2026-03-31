@@ -81,8 +81,8 @@ async function main(): Promise<void> {
 		const MAX_CONCURRENT_TEST_CASES = 99;
 		const results = await runWithConcurrency(
 			testCases,
-			(testCase) =>
-				runWorkflowTestCase({
+			async (testCase) =>
+				await runWorkflowTestCase({
 					client,
 					testCase,
 					timeoutMs: args.timeoutMs,
@@ -156,7 +156,7 @@ async function main(): Promise<void> {
 	});
 
 	console.log(`\nRun ${run.id} ${run.status}`);
-	console.log(`Report: evaluations/.data/instance-ai-report.html`);
+	console.log('Report: evaluations/.data/instance-ai-report.html');
 }
 
 function toDatasetExample(p: PromptConfig): DatasetExample {
@@ -169,7 +169,7 @@ function toDatasetExample(p: PromptConfig): DatasetExample {
 	};
 }
 
-main().catch((err) => {
-	console.error('Fatal error:', err);
+main().catch((error) => {
+	console.error('Fatal error:', error);
 	process.exit(1);
 });
