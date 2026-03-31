@@ -25,7 +25,7 @@ Set these in `.env.local`:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `N8N_AI_ANTHROPIC_KEY` | Yes | Anthropic API key for Phase 1 hints, Phase 2 mock generation, and verification |
+| `N8N_INSTANCE_AI_MODEL_API_KEY` | Yes | Anthropic API key — shared with the Instance AI agent and used for Phase 1 hints, Phase 2 mock generation, and verification |
 | `N8N_EVAL_EMAIL` | Yes | n8n login email for the eval runner |
 | `N8N_EVAL_PASSWORD` | Yes | n8n login password |
 | `CONTEXT7_API_KEY` | No | Context7 API key for higher rate limits on API doc lookups. Free tier is 1,000 req/month |
