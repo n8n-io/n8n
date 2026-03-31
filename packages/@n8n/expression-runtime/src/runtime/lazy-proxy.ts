@@ -244,6 +244,7 @@ export function createDeepLazyProxy(
 					},
 				});
 
+				proxyPaths.set(arrayProxy, path);
 				target[prop] = arrayProxy;
 				return target[prop];
 			}
