@@ -6,7 +6,7 @@ patch:
   summary: Update a community package
   description: Update an installed community package to a new version.
   parameters:
-    - name: packageName
+    - name: name
       in: path
       description: npm package name
       required: true
@@ -46,7 +46,7 @@ delete:
   summary: Uninstall a community package
   description: Uninstall a community package by name.
   parameters:
-    - name: packageName
+    - name: name
       in: path
       description: npm package name
       required: true

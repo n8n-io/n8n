@@ -32,10 +32,10 @@
 		"POST /community-packages": {
 			"status": "gap"
 		},
-		"PATCH /community-packages/{packageName}": {
+		"PATCH /community-packages/{name}": {
 			"status": "gap"
 		},
-		"DELETE /community-packages/{packageName}": {
+		"DELETE /community-packages/{name}": {
 			"status": "gap"
 		},
 		"GET /discover": {

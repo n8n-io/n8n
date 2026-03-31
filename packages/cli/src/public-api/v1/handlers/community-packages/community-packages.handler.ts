@@ -5,6 +5,7 @@ import type express from 'express';
 import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 import { CommunityPackagesLifecycleService } from '@/modules/community-packages/community-packages.lifecycle.service';
 
+import { mapToCommunityPackage, mapToCommunityPackageList } from './community-packages.mapper';
 import { apiKeyHasScope } from '../../shared/middlewares/global.middleware';
 
 function sendResponseError(res: express.Response, error: ResponseError): express.Response {
@@ -26,7 +27,7 @@ export = {
 					req.user,
 					'publicApi',
 				);
-				return res.json(installedPackage);
+				return res.json(mapToCommunityPackage(installedPackage));
 			} catch (error) {
 				if (error instanceof ResponseError) {
 					return sendResponseError(res, error);
@@ -44,18 +45,14 @@ export = {
 		): Promise<express.Response> => {
 			const lifecycle = Container.get(CommunityPackagesLifecycleService);
 			const packages = await lifecycle.listInstalledPackages();
-			return res.json(packages);
+			return res.json(mapToCommunityPackageList(packages));
 		},
 	],
 
 	updatePackage: [
 		apiKeyHasScope('communityPackage:update'),
 		async (
-			req: AuthenticatedRequest<
-				{ packageName: string },
-				Record<string, never>,
-				{ version?: string }
-			>,
+			req: AuthenticatedRequest<{ name: string }, Record<string, never>, { version?: string }>,
 			res: express.Response,
 		): Promise<express.Response> => {
 			const lifecycle = Container.get(CommunityPackagesLifecycleService);
@@ -63,13 +60,13 @@ export = {
 			try {
 				const updated = await lifecycle.update(
 					{
-						name: req.params.packageName,
+						name: req.params.name,
 						version: req.body?.version,
 					},
 					req.user,
 					'notFound',
 				);
-				return res.json(updated);
+				return res.json(mapToCommunityPackage(updated));
 			} catch (error) {
 				if (error instanceof ResponseError) {
 					return sendResponseError(res, error);
@@ -82,13 +79,13 @@ export = {
 	uninstallPackage: [
 		apiKeyHasScope('communityPackage:uninstall'),
 		async (
-			req: AuthenticatedRequest<{ packageName: string }>,
+			req: AuthenticatedRequest<{ name: string }>,
 			res: express.Response,
 		): Promise<express.Response> => {
 			const lifecycle = Container.get(CommunityPackagesLifecycleService);
 
 			try {
-				await lifecycle.uninstall(req.params.packageName, req.user, 'notFound');
+				await lifecycle.uninstall(req.params.name, req.user, 'notFound');
 				return res.status(204).send();
 			} catch (error) {
 				if (error instanceof ResponseError) {

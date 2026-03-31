@@ -285,8 +285,8 @@ export declare namespace DataTableRequest {
 export declare namespace CommunityPackageRequest {
 	type Install = AuthenticatedRequest<{}, {}, { name: string; version?: string }>;
 	type List = AuthenticatedRequest;
-	type Update = AuthenticatedRequest<{ packageName: string }, {}, { version?: string }>;
-	type Uninstall = AuthenticatedRequest<{ packageName: string }>;
+	type Update = AuthenticatedRequest<{ name: string }, {}, { version?: string }>;
+	type Uninstall = AuthenticatedRequest<{ name: string }>;
 }
 
 // ----------------------------------

@@ -5,9 +5,10 @@ import type { Response } from 'express';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { InstalledPackages } from '@/modules/community-packages/installed-packages.entity';
 import { CommunityPackagesLifecycleService } from '@/modules/community-packages/community-packages.lifecycle.service';
 import * as middlewares from '@/public-api/v1/shared/middlewares/global.middleware';
-import type { InstalledPackages } from '@/modules/community-packages/installed-packages.entity';
+import { mapToCommunityPackage, mapToCommunityPackageList } from '../community-packages.mapper';
 import { mock } from 'jest-mock-extended';
 
 const mockMiddleware = jest.fn(async (_req: unknown, _res: unknown, next: unknown) =>
@@ -64,7 +65,7 @@ describe('CommunityPackages Handler', () => {
 				mockUser,
 				'publicApi',
 			);
-			expect(mockResponse.json).toHaveBeenCalledWith(mockInstalledPackage);
+			expect(mockResponse.json).toHaveBeenCalledWith(mapToCommunityPackage(mockInstalledPackage));
 		});
 
 		it('should return 400 when name is missing', async () => {
@@ -109,7 +110,9 @@ describe('CommunityPackages Handler', () => {
 				mockResponse,
 			);
 
-			expect(mockResponse.json).toHaveBeenCalledWith([mockInstalledPackage]);
+			expect(mockResponse.json).toHaveBeenCalledWith(
+				mapToCommunityPackageList([mockInstalledPackage]),
+			);
 		});
 
 		it('should return empty array when no packages installed', async () => {
@@ -129,7 +132,7 @@ describe('CommunityPackages Handler', () => {
 	describe('updatePackage', () => {
 		it('should update a package successfully', async () => {
 			const req = {
-				params: { packageName: 'n8n-nodes-test' },
+				params: { name: 'n8n-nodes-test' },
 				body: {},
 				user: mockUser,
 			};
@@ -148,12 +151,12 @@ describe('CommunityPackages Handler', () => {
 				mockUser,
 				'notFound',
 			);
-			expect(mockResponse.json).toHaveBeenCalledWith(updatedPackage);
+			expect(mockResponse.json).toHaveBeenCalledWith(mapToCommunityPackage(updatedPackage));
 		});
 
 		it('should return 404 when package is not installed', async () => {
 			const req = {
-				params: { packageName: 'n8n-nodes-missing' },
+				params: { name: 'n8n-nodes-missing' },
 				body: {},
 				user: mockUser,
 			};
@@ -171,7 +174,7 @@ describe('CommunityPackages Handler', () => {
 	describe('uninstallPackage', () => {
 		it('should uninstall a package successfully', async () => {
 			const req = {
-				params: { packageName: 'n8n-nodes-test' },
+				params: { name: 'n8n-nodes-test' },
 				user: mockUser,
 			};
 
@@ -185,7 +188,7 @@ describe('CommunityPackages Handler', () => {
 
 		it('should return 404 when package is not installed', async () => {
 			const req = {
-				params: { packageName: 'n8n-nodes-missing' },
+				params: { name: 'n8n-nodes-missing' },
 				user: mockUser,
 			};
 

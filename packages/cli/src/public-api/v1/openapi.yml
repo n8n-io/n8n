@@ -120,7 +120,7 @@ paths:
     $ref: './handlers/projects/spec/paths/projects.projectId.users.userId.yml'
   /community-packages:
     $ref: './handlers/community-packages/spec/paths/community-packages.yml'
-  /community-packages/{packageName}:
+  /community-packages/{name}:
     $ref: './handlers/community-packages/spec/paths/community-packages.packageName.yml'
   /discover:
     $ref: './handlers/discover/spec/paths/discover.yml'

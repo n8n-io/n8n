@@ -67,6 +67,21 @@ describe('Community packages (Public API)', () => {
 			expect(response.status).toBe(401);
 		});
 
+		it('should return 403 when API key lacks communityPackage:list scope', async () => {
+			const userWithoutCommunityScopes = await createOwner();
+			const apiKey = await addApiKey(userWithoutCommunityScopes, {
+				scopes: [...OWNER_API_KEY_SCOPES],
+			});
+			userWithoutCommunityScopes.apiKeys = [apiKey];
+
+			const response = await testServer
+				.publicApiAgentFor(userWithoutCommunityScopes)
+				.get('/community-packages');
+
+			expect(response.status).toBe(403);
+			expect(response.body).toEqual({ message: 'Forbidden' });
+		});
+
 		it('should return an empty list when no packages are installed', async () => {
 			communityPackagesService.getAllInstalledPackages.mockResolvedValue([]);
 
@@ -192,7 +207,7 @@ describe('Community packages (Public API)', () => {
 		});
 	});
 
-	describe('PATCH /community-packages/:packageName', () => {
+	describe('PATCH /community-packages/:name', () => {
 		it('should return 200 when package is updated successfully', async () => {
 			const pkg = mockPackage();
 			const updatedPkg = mockPackage();
@@ -230,7 +245,7 @@ describe('Community packages (Public API)', () => {
 		});
 	});
 
-	describe('DELETE /community-packages/:packageName', () => {
+	describe('DELETE /community-packages/:name', () => {
 		it('should return 404 when package is not installed', async () => {
 			const name = mockPackageName();
 			communityPackagesService.parseNpmPackageName.mockReturnValue({
