@@ -15,7 +15,8 @@ import { InstanceSettings } from 'n8n-core';
 
 @Service()
 export class InstanceVersionHistoryService {
-	private cache: VersionEntry[] | null = null;
+	// Use via `getCache`, not directly
+	private _cache: VersionEntry[] | null = null;
 
 	constructor(
 		private readonly repository: InstanceVersionHistoryRepository,
@@ -31,7 +32,7 @@ export class InstanceVersionHistoryService {
 		try {
 			// Re-set to null in case any previous queries fetched after
 			// we errored on past init attempt
-			this.cache = null;
+			this._cache = null;
 			await this.checkAndRecordCurrentVersion();
 		} catch (error) {
 			this.logger.warn('Failed to initialize version history, retrying in 10s', { error });
@@ -41,16 +42,18 @@ export class InstanceVersionHistoryService {
 	}
 
 	private async getCache(): Promise<VersionEntry[]> {
+		if (this._cache !== null) return this._cache;
+
 		const entries = await this.repository.find({
 			order: { createdAt: 'ASC' },
 		});
-		this.cache = entries.map((e) => ({
+		this._cache = entries.map((e) => ({
 			major: e.major,
 			minor: e.minor,
 			patch: e.patch,
 			createdAt: e.createdAt,
 		}));
-		return this.cache;
+		return this._cache;
 	}
 
 	// Should only be called from leader
