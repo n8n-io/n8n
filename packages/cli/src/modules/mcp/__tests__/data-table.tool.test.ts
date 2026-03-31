@@ -15,8 +15,6 @@ const user = Object.assign(new User(), { id: 'user-1' });
 
 const createTelemetry = () => ({ track: jest.fn() }) as unknown as Telemetry;
 
-// #region search_data_tables
-
 describe('search_data_tables MCP tool', () => {
 	const createMocks = (overrides?: {
 		data?: Array<{
@@ -299,10 +297,6 @@ describe('create_data_table MCP tool', () => {
 	});
 });
 
-// #endregion
-
-// #region modify_data_table
-
 describe('modify_data_table MCP tool', () => {
 	const createMocks = (overrides?: { error?: Error }) => {
 		const dataTableService = {
@@ -329,7 +323,7 @@ describe('modify_data_table MCP tool', () => {
 			columnId?: string;
 			columnType?: 'string' | 'number' | 'boolean' | 'date';
 		},
-	) => await tool.handler(args, {} as never);
+	) => await tool.handler(args as never, {} as never);
 
 	test('creates tool correctly', () => {
 		const { dataTableService, telemetry } = createMocks();
@@ -524,10 +518,6 @@ describe('modify_data_table MCP tool', () => {
 		);
 	});
 });
-
-// #endregion
-
-// #region add_data_table_rows
 
 describe('add_data_table_rows MCP tool', () => {
 	const createMocks = (overrides?: { insertedRows?: number; error?: Error }) => {
