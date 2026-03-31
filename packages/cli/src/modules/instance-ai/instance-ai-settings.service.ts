@@ -108,20 +108,10 @@ export class InstanceAiSettingsService {
 		const row = await this.settingsRepository.findByKey(ADMIN_SETTINGS_KEY);
 		if (!row) return;
 
-		const persisted = jsonParse<PersistedAdminSettings & PersistedUserPreferences>(row.value, {
+		const persisted = jsonParse<PersistedAdminSettings>(row.value, {
 			fallbackValue: {},
 		});
 		this.applyAdminSettings(persisted);
-
-		// Migrate legacy user fields from admin settings (credentialId, modelName)
-		// — these were previously stored in the shared settings blob.
-		// They become defaults for users who haven't set their own preferences yet.
-		if (persisted.credentialId !== undefined || persisted.modelName !== undefined) {
-			this.userPreferences.set('__legacy_default__', {
-				credentialId: persisted.credentialId,
-				modelName: persisted.modelName,
-			});
-		}
 	}
 
 	// ── Admin settings ────────────────────────────────────────────────────
@@ -402,16 +392,10 @@ export class InstanceAiSettingsService {
 		if (persisted.subAgentMaxSteps !== undefined) c.subAgentMaxSteps = persisted.subAgentMaxSteps;
 		if (persisted.browserMcp !== undefined) c.browserMcp = persisted.browserMcp;
 		if (persisted.permissions) {
-			// Migrate legacy "activateWorkflow" → "publishWorkflow"
-			const perms = { ...persisted.permissions } as Record<string, unknown>;
-			if ('activateWorkflow' in perms && !('publishWorkflow' in perms)) {
-				perms.publishWorkflow = perms.activateWorkflow;
-				delete perms.activateWorkflow;
-			}
 			this.permissions = {
 				...DEFAULT_INSTANCE_AI_PERMISSIONS,
-				...perms,
-			} as typeof this.permissions;
+				...persisted.permissions,
+			};
 		}
 		if (persisted.mcpServers !== undefined) c.mcpServers = persisted.mcpServers;
 		if (persisted.sandboxEnabled !== undefined) c.sandboxEnabled = persisted.sandboxEnabled;
@@ -437,9 +421,7 @@ export class InstanceAiSettingsService {
 			return { ...prefs };
 		}
 
-		// Fall back to legacy defaults (migrated from old shared settings)
-		const legacy = this.userPreferences.get('__legacy_default__');
-		return legacy ? { ...legacy } : {};
+		return {};
 	}
 
 	private async persistAdminSettings(): Promise<void> {
