@@ -259,13 +259,13 @@ function addRole() {
 			<div :class="$style.paywallContainer">
 				<div :class="$style.paywallIcons">
 					<div :class="[$style.iconBox, $style.iconBoxLeft]">
-						<N8nIcon icon="eye-off" :size="20" color="foreground-xdark" />
+						<N8nIcon icon="eye-off" :size="20" color="foreground-shade-2" />
 					</div>
 					<div :class="[$style.iconBox, $style.iconBoxCenter]">
-						<N8nIcon icon="shield-user" :size="20" color="foreground-xdark" />
+						<N8nIcon icon="shield-user" :size="20" color="foreground-shade-2" />
 					</div>
 					<div :class="[$style.iconBox, $style.iconBoxRight]">
-						<N8nIcon icon="pencil-off" :size="20" color="foreground-xdark" />
+						<N8nIcon icon="pencil-off" :size="20" color="foreground-shade-2" />
 					</div>
 				</div>
 				<div :class="$style.paywallText">

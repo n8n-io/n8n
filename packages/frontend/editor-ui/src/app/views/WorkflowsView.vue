@@ -2044,7 +2044,7 @@ const onNameSubmit = async (name: string) => {
 							<N8nIcon
 								:class="$style.emptyStateCardIcon"
 								icon="file"
-								color="foreground-dark"
+								color="foreground-shade-1"
 								:stroke-width="1.5"
 							/>
 							<N8nText size="large" class="mt-xs">

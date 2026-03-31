@@ -76,7 +76,7 @@ async function onClickTemplatesLink() {
 					data-test-id="canvas-add-first-step-button"
 					@mousedown.stop.prevent="onAddFirstStepClick"
 				>
-					<N8nIcon icon="plus" color="foreground-xdark" :size="40" />
+					<N8nIcon icon="plus" color="foreground-shade-2" :size="40" />
 				</button>
 			</div>
 			<p :class="$style.label">
@@ -106,7 +106,7 @@ async function onClickTemplatesLink() {
 					data-test-id="canvas-build-with-ai-button"
 					@mousedown.stop.prevent="onBuildWithAIClick"
 				>
-					<N8nIcon icon="wand-sparkles" color="foreground-xdark" :size="40" />
+					<N8nIcon icon="wand-sparkles" color="foreground-shade-2" :size="40" />
 				</button>
 			</div>
 			<p :class="$style.label">

@@ -66,7 +66,7 @@ export const statusDictionary: Record<
 > = {
 	new: {
 		icon: 'status-new',
-		color: 'foreground-xdark',
+		color: 'foreground-shade-2',
 	},
 	running: {
 		icon: 'spinner',
@@ -82,7 +82,7 @@ export const statusDictionary: Record<
 	},
 	cancelled: {
 		icon: 'status-canceled',
-		color: 'foreground-xdark',
+		color: 'foreground-shade-2',
 	},
 	warning: {
 		icon: 'status-warning',

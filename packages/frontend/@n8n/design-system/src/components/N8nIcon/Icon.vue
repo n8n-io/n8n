@@ -69,8 +69,8 @@ const colorMap: Record<IconColor, string> = {
 	danger: '--color--danger',
 	success: '--color--success',
 	warning: '--color--warning',
-	'foreground-dark': '--color--foreground--shade-1',
-	'foreground-xdark': '--color--foreground--shade-2',
+	'foreground-shade-1': '--color--foreground--shade-1',
+	'foreground-shade-2': '--color--foreground--shade-2',
 };
 
 const styles = computed(() => {

@@ -37,7 +37,7 @@ withDefaults(defineProps<ActionBoxProps>(), {
 				:icon="icon.value"
 				:size="40"
 				:stroke-width="1.5"
-				color="foreground-xdark"
+				color="foreground-shade-2"
 			/>
 			<span v-else>{{ icon.value }}</span>
 		</div>

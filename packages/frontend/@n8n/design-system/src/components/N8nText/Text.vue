@@ -122,11 +122,11 @@ const classes = computed(() => {
 	color: var(--color--warning);
 }
 
-.foreground-dark {
+.foreground-shade-1 {
 	color: var(--color--foreground--shade-1);
 }
 
-.foreground-xdark {
+.foreground-shade-2 {
 	color: var(--color--foreground--shade-2);
 }
 
