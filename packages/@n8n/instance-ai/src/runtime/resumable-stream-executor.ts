@@ -2,6 +2,7 @@ import type { InstanceAiEvent } from '@n8n/api-types';
 import type { RunTree } from 'langsmith';
 
 import type { InstanceAiEventBus } from '../event-bus';
+import type { Logger } from '../logger';
 import { traceWorkingMemoryContext } from './working-memory-tracing';
 import { mapMastraChunkToEvent } from '../stream/map-chunk';
 import { getTraceParentRun, setTraceParentOverride } from '../tracing/langsmith-tracing';
@@ -28,6 +29,7 @@ export interface ResumableStreamContext {
 	agentId: string;
 	eventBus: InstanceAiEventBus;
 	signal: AbortSignal;
+	logger: Logger;
 }
 
 export interface ManualSuspensionControl {
@@ -1975,14 +1977,17 @@ export async function executeResumableStream(
 						pendingConfirmation = options.control.waitForConfirmation(parsedSuspension.requestId);
 					}
 				} else if (!isSameSuspension(parsedSuspension, suspension)) {
-					console.warn('[HITL] additional suspension encountered before resume; deferring', {
-						threadId: options.context.threadId,
-						runId: options.context.runId,
-						activeRequestId: suspension.requestId,
-						deferredRequestId: parsedSuspension.requestId,
-						activeToolCallId: suspension.toolCallId,
-						deferredToolCallId: parsedSuspension.toolCallId,
-					});
+					options.context.logger.warn(
+						'Additional HITL suspension encountered before resume; deferring',
+						{
+							threadId: options.context.threadId,
+							runId: options.context.runId,
+							activeRequestId: suspension.requestId,
+							deferredRequestId: parsedSuspension.requestId,
+							activeToolCallId: suspension.toolCallId,
+							deferredToolCallId: parsedSuspension.toolCallId,
+						},
+					);
 				}
 			}
 
