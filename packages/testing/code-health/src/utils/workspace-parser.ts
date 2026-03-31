@@ -15,7 +15,11 @@ export function parseCatalog(rootDir: string, workspaceFile = 'pnpm-workspace.ya
 	}
 
 	const content = fs.readFileSync(filePath, 'utf-8');
-	const workspace = parseYaml(content) as Record<string, unknown>;
+	const workspace = parseYaml(content) as Record<string, unknown> | null;
+
+	if (!workspace || typeof workspace !== 'object') {
+		return { default: {}, named: {} };
+	}
 
 	const result: CatalogData = { default: {}, named: {} };
 

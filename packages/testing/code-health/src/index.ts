@@ -15,9 +15,22 @@ const defaultRuleSettings: RuleSettingsMap = {
 	},
 };
 
+function mergeSettings(defaults: RuleSettingsMap, overrides?: RuleSettingsMap): RuleSettingsMap {
+	if (!overrides) return defaults;
+
+	const merged = { ...defaults };
+	for (const [ruleId, override] of Object.entries(overrides)) {
+		const base = merged[ruleId];
+		merged[ruleId] = base
+			? { ...base, ...override, options: { ...base.options, ...override?.options } }
+			: override;
+	}
+	return merged;
+}
+
 export function createDefaultRunner(settings?: RuleSettingsMap): RuleRunner<CodeHealthContext> {
 	const runner = new RuleRunner<CodeHealthContext>();
 	runner.registerRule(new CatalogViolationsRule());
-	runner.applySettings({ ...defaultRuleSettings, ...settings });
+	runner.applySettings(mergeSettings(defaultRuleSettings, settings));
 	return runner;
 }
