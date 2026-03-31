@@ -1,18 +1,44 @@
 import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 
-import type { ICustomProperties } from '../transport';
+import type { ICustomProperties, ICustomInterface } from '../transport';
+
+/** Field types that are passed through without enum/set resolution in resolve functions. */
+const PASSTHROUGH_FIELD_TYPES = [
+	'date',
+	'address',
+	'double',
+	'monetary',
+	'org',
+	'people',
+	'phone',
+	'text',
+	'time',
+	'user',
+	'varchar',
+	'varchar_auto',
+	'int',
+	'timerange',
+] as const;
+
+/** Build a lookup map from custom property display name to its property data. */
+function buildNameMap(customProperties: ICustomProperties): Map<string, ICustomInterface> {
+	const map = new Map<string, ICustomInterface>();
+	for (const propertyData of Object.values(customProperties)) {
+		map.set(propertyData.name, propertyData);
+	}
+	return map;
+}
 
 /**
  * Encodes human-readable custom field names to Pipedrive API keys for v2 endpoints.
  * Places custom fields under `item.custom_fields = { key: value }`.
  */
 export function encodeCustomFieldsV2(customProperties: ICustomProperties, item: IDataObject): void {
+	const nameMap = buildNameMap(customProperties);
 	const customFields: IDataObject = {};
 
 	for (const key of Object.keys(item)) {
-		const customPropertyData = Object.values(customProperties).find(
-			(propertyData) => propertyData.name === key,
-		);
+		const customPropertyData = nameMap.get(key);
 
 		if (customPropertyData !== undefined) {
 			if (
@@ -38,39 +64,6 @@ export function encodeCustomFieldsV2(customProperties: ICustomProperties, item: 
 
 	if (Object.keys(customFields).length > 0) {
 		item.custom_fields = customFields;
-	}
-}
-
-/**
- * Encodes human-readable custom field names to Pipedrive API keys for v1 endpoints.
- * Places custom fields at the root level of the item.
- */
-export function encodeCustomFieldsV1(customProperties: ICustomProperties, item: IDataObject): void {
-	for (const key of Object.keys(item)) {
-		const customPropertyData = Object.values(customProperties).find(
-			(propertyData) => propertyData.name === key,
-		);
-
-		if (customPropertyData !== undefined) {
-			if (
-				item[key] !== null &&
-				item[key] !== undefined &&
-				customPropertyData.options !== undefined &&
-				Array.isArray(customPropertyData.options)
-			) {
-				const propertyOption = customPropertyData.options.find(
-					(option) => option.label.toString() === item[key]!.toString(),
-				);
-				if (propertyOption !== undefined) {
-					item[customPropertyData.key] = propertyOption.id;
-				} else {
-					item[customPropertyData.key] = item[key];
-				}
-			} else {
-				item[customPropertyData.key] = item[key];
-			}
-			delete item[key];
-		}
 	}
 }
 
@@ -104,24 +97,7 @@ export function resolveCustomFieldsV2(
 			continue;
 		}
 
-		if (
-			[
-				'date',
-				'address',
-				'double',
-				'monetary',
-				'org',
-				'people',
-				'phone',
-				'text',
-				'time',
-				'user',
-				'varchar',
-				'varchar_auto',
-				'int',
-				'timerange',
-			].includes(customPropertyData.field_type)
-		) {
+		if ((PASSTHROUGH_FIELD_TYPES as readonly string[]).includes(customPropertyData.field_type)) {
 			json[customPropertyData.name] = value;
 		} else if (
 			['enum', 'visible_to'].includes(customPropertyData.field_type) &&
@@ -149,78 +125,5 @@ export function resolveCustomFieldsV2(
 	}
 
 	delete json.custom_fields;
-	item.json = json;
-}
-
-/**
- * Resolves custom field keys from v1 API response to human-readable names.
- * Reads from `item.json` root, resolves keys to display names.
- */
-export function resolveCustomFieldsV1(
-	customProperties: ICustomProperties,
-	item: INodeExecutionData,
-): void {
-	const json = item.json as IDataObject;
-
-	for (const [key, value] of Object.entries(json)) {
-		if (customProperties[key] === undefined) {
-			continue;
-		}
-
-		const customPropertyData = customProperties[key];
-
-		if (value === null) {
-			json[customPropertyData.name] = value;
-			delete json[key];
-			continue;
-		}
-
-		if (
-			[
-				'date',
-				'address',
-				'double',
-				'monetary',
-				'org',
-				'people',
-				'phone',
-				'text',
-				'time',
-				'user',
-				'varchar',
-				'varchar_auto',
-				'int',
-				'timerange',
-			].includes(customPropertyData.field_type)
-		) {
-			json[customPropertyData.name] = value;
-			delete json[key];
-		} else if (
-			['enum', 'visible_to'].includes(customPropertyData.field_type) &&
-			customPropertyData.options
-		) {
-			const propertyOption = customPropertyData.options.find(
-				(option) => option.id.toString() === value?.toString(),
-			);
-			if (propertyOption !== undefined) {
-				json[customPropertyData.name] = propertyOption.label;
-			} else {
-				json[customPropertyData.name] = value;
-			}
-			delete json[key];
-		} else if (
-			customPropertyData.field_type === 'set' &&
-			customPropertyData.options &&
-			typeof value === 'string'
-		) {
-			const selectedIds = value.split(',');
-			const selectedLabels = customPropertyData.options
-				.filter((option) => selectedIds.includes(option.id.toString()))
-				.map((option) => option.label);
-			json[customPropertyData.name] = selectedLabels;
-			delete json[key];
-		}
-	}
-
 	item.json = json;
 }

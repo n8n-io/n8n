@@ -7,8 +7,12 @@ import type {
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { pipedriveApiRequest, pipedriveGetCustomProperties } from '../../transport';
-import { encodeCustomFieldsV2 } from '../../helpers';
-import { customFieldsCollection, encodeCustomFieldsOption } from '../common.description';
+import { encodeCustomFieldsV2, addFieldsToBody } from '../../helpers';
+import {
+	customFieldsCollection,
+	encodeCustomFieldsOption,
+	visibleToOption,
+} from '../common.description';
 
 const properties: INodeProperties[] = [
 	{
@@ -113,24 +117,7 @@ const properties: INodeProperties[] = [
 				default: '',
 				description: 'The unit in which this product is sold',
 			},
-			{
-				displayName: 'Visible To',
-				name: 'visible_to',
-				type: 'options',
-				default: '3',
-				options: [
-					{
-						name: 'Owner & Followers (Private)',
-						value: '1',
-					},
-					{
-						name: 'Entire Company (Shared)',
-						value: '3',
-					},
-				],
-				description:
-					'Visibility of the product. If omitted, visibility will be set to the default visibility setting of this item type for the authorized user.',
-			},
+			visibleToOption,
 			customFieldsCollection,
 		],
 	},
@@ -145,27 +132,6 @@ const displayOptions = {
 };
 
 export const description = updateDisplayOptions(displayOptions, properties);
-
-function addAdditionalFields(body: IDataObject, additionalFields: IDataObject): void {
-	for (const key of Object.keys(additionalFields)) {
-		if (
-			key === 'customFields' &&
-			(additionalFields.customFields as IDataObject)?.property !== undefined
-		) {
-			for (const customProperty of (additionalFields.customFields as IDataObject)
-				.property as Array<{ name: string; value: string }>) {
-				body[customProperty.name] = customProperty.value;
-			}
-		} else if (key === 'prices') {
-			const pricesInput = additionalFields.prices as IDataObject;
-			if (pricesInput.pricesValues) {
-				body.prices = pricesInput.pricesValues;
-			}
-		} else {
-			body[key] = additionalFields[key];
-		}
-	}
-}
 
 export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
 	const items = this.getInputData();
@@ -184,7 +150,12 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			body.name = this.getNodeParameter('name', i) as string;
 
 			const additionalFields = this.getNodeParameter('additionalFields', i);
-			addAdditionalFields(body, additionalFields);
+			addFieldsToBody(body, additionalFields);
+
+			// Unpack the prices fixed-collection into the format the API expects
+			if (body.prices && (body.prices as IDataObject).pricesValues) {
+				body.prices = (body.prices as IDataObject).pricesValues;
+			}
 
 			if (customProperties) {
 				encodeCustomFieldsV2(customProperties, body);

@@ -7,7 +7,7 @@ import type {
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { pipedriveApiRequest, pipedriveGetCustomProperties } from '../../transport';
-import { encodeCustomFieldsV2, coerceToBoolean } from '../../helpers';
+import { encodeCustomFieldsV2, coerceToBoolean, addFieldsToBody } from '../../helpers';
 import { customFieldsCollection, encodeCustomFieldsOption } from '../common.description';
 
 const properties: INodeProperties[] = [
@@ -141,24 +141,6 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-function addUpdateFields(body: IDataObject, updateFields: IDataObject): void {
-	for (const key of Object.keys(updateFields)) {
-		if (
-			key === 'customFields' &&
-			(updateFields.customFields as IDataObject)?.property !== undefined
-		) {
-			for (const customProperty of (updateFields.customFields as IDataObject).property as Array<{
-				name: string;
-				value: string;
-			}>) {
-				body[customProperty.name] = customProperty.value;
-			}
-		} else {
-			body[key] = updateFields[key];
-		}
-	}
-}
-
 export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
 	const items = this.getInputData();
 	const returnData: INodeExecutionData[] = [];
@@ -175,7 +157,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			const body: IDataObject = {};
 
 			const updateFields = this.getNodeParameter('updateFields', i);
-			addUpdateFields(body, updateFields);
+			addFieldsToBody(body, updateFields);
 
 			// Coerce done to boolean for v2 API
 			if (body.done !== undefined) {

@@ -7,8 +7,8 @@ import type {
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { pipedriveApiRequest, pipedriveGetCustomProperties } from '../../transport';
-import { encodeCustomFieldsV2, coerceToBoolean } from '../../helpers';
-import { customFieldsCollection } from '../common.description';
+import { encodeCustomFieldsV2, coerceToBoolean, addFieldsToBody } from '../../helpers';
+import { customFieldsCollection, encodeCustomFieldsOption } from '../common.description';
 
 const properties: INodeProperties[] = [
 	{
@@ -108,14 +108,7 @@ const properties: INodeProperties[] = [
 			customFieldsCollection,
 		],
 	},
-	{
-		displayName: 'Encode Custom Fields',
-		name: 'encodeCustomFields',
-		type: 'boolean',
-		default: false,
-		description:
-			'Whether to encode custom field values (e.g. convert labels to enum IDs) before sending',
-	},
+	encodeCustomFieldsOption,
 ];
 
 const displayOptions = {
@@ -126,22 +119,6 @@ const displayOptions = {
 };
 
 export const description = updateDisplayOptions(displayOptions, properties);
-
-function addAdditionalFields(body: IDataObject, additionalFields: IDataObject): void {
-	for (const key of Object.keys(additionalFields)) {
-		if (
-			key === 'customFields' &&
-			(additionalFields.customFields as IDataObject)?.property !== undefined
-		) {
-			for (const customProperty of (additionalFields.customFields as IDataObject)
-				.property as Array<{ name: string; value: string }>) {
-				body[customProperty.name] = customProperty.value;
-			}
-		} else {
-			body[key] = additionalFields[key];
-		}
-	}
-}
 
 export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
 	const items = this.getInputData();
@@ -162,7 +139,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			body.type = this.getNodeParameter('type', i) as string;
 
 			const additionalFields = this.getNodeParameter('additionalFields', i);
-			addAdditionalFields(body, additionalFields);
+			addFieldsToBody(body, additionalFields);
 
 			if (customProperties) {
 				encodeCustomFieldsV2(customProperties, body);

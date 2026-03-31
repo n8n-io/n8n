@@ -42,6 +42,25 @@ export const resolveCustomFieldsOption: INodeProperties = {
 		'Whether to resolve custom field keys to their human-readable names and enum IDs to labels',
 };
 
+export const visibleToOption: INodeProperties = {
+	displayName: 'Visible To',
+	name: 'visible_to',
+	type: 'options',
+	options: [
+		{
+			name: 'Owner & Followers (Private)',
+			value: '1',
+		},
+		{
+			name: 'Entire Company (Shared)',
+			value: '3',
+		},
+	],
+	default: '3',
+	description:
+		'Visibility of the item. If omitted, visibility will be set to the default visibility setting of this item type for the authorized user.',
+};
+
 export const encodeCustomFieldsOption: INodeProperties = {
 	displayName: 'Encode Custom Fields',
 	name: 'encodeCustomFields',

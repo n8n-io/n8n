@@ -7,8 +7,12 @@ import type {
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { pipedriveApiRequest, pipedriveGetCustomProperties } from '../../transport';
-import { encodeCustomFieldsV2 } from '../../helpers';
-import { customFieldsCollection, encodeCustomFieldsOption } from '../common.description';
+import { encodeCustomFieldsV2, addFieldsToBody } from '../../helpers';
+import {
+	customFieldsCollection,
+	encodeCustomFieldsOption,
+	visibleToOption,
+} from '../common.description';
 
 const properties: INodeProperties[] = [
 	{
@@ -193,24 +197,7 @@ const properties: INodeProperties[] = [
 				default: 0,
 				description: 'Value of the deal. If not set it will automatically be set to 0.',
 			},
-			{
-				displayName: 'Visible To',
-				name: 'visible_to',
-				type: 'options',
-				options: [
-					{
-						name: 'Owner & Followers (Private)',
-						value: '1',
-					},
-					{
-						name: 'Entire Company (Shared)',
-						value: '3',
-					},
-				],
-				default: '3',
-				description:
-					'Visibility of the deal. If omitted, visibility will be set to the default visibility setting of this item type for the authorized user.',
-			},
+			visibleToOption,
 			customFieldsCollection,
 		],
 	},
@@ -225,22 +212,6 @@ const displayOptions = {
 };
 
 export const description = updateDisplayOptions(displayOptions, properties);
-
-function addAdditionalFields(body: IDataObject, additionalFields: IDataObject): void {
-	for (const key of Object.keys(additionalFields)) {
-		if (
-			key === 'customFields' &&
-			(additionalFields.customFields as IDataObject)?.property !== undefined
-		) {
-			for (const customProperty of (additionalFields.customFields as IDataObject)
-				.property as Array<{ name: string; value: string }>) {
-				body[customProperty.name] = customProperty.value;
-			}
-		} else {
-			body[key] = additionalFields[key];
-		}
-	}
-}
 
 export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
 	const items = this.getInputData();
@@ -267,7 +238,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			}
 
 			const additionalFields = this.getNodeParameter('additionalFields', i);
-			addAdditionalFields(body, additionalFields);
+			addFieldsToBody(body, additionalFields);
 
 			if (customProperties) {
 				encodeCustomFieldsV2(customProperties, body);

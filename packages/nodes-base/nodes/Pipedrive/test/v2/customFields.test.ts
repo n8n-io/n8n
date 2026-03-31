@@ -1,17 +1,7 @@
 import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 
-import {
-	encodeCustomFieldsV2,
-	encodeCustomFieldsV1,
-	resolveCustomFieldsV2,
-	resolveCustomFieldsV1,
-} from '../../v2/helpers/customFields';
-import {
-	coerceToBoolean,
-	coerceToNumber,
-	toRfc3339,
-	applyV2TypeStrictness,
-} from '../../v2/helpers/typeCoercion';
+import { encodeCustomFieldsV2, resolveCustomFieldsV2 } from '../../v2/helpers/customFields';
+import { coerceToBoolean } from '../../v2/helpers/typeCoercion';
 import type { ICustomProperties } from '../../v2/transport';
 
 const customProperties: ICustomProperties = {
@@ -137,42 +127,6 @@ describe('Pipedrive v2 Custom Fields', () => {
 		});
 	});
 
-	describe('encodeCustomFieldsV1', () => {
-		it('should place custom fields at root level', () => {
-			const item: IDataObject = {
-				title: 'Test Deal',
-				'My Custom Text': 'Hello World',
-			};
-
-			encodeCustomFieldsV1(customProperties, item);
-
-			expect(item.title).toBe('Test Deal');
-			expect(item['My Custom Text']).toBeUndefined();
-			expect(item.abc123_text).toBe('Hello World');
-		});
-
-		it('should resolve enum labels to option IDs at root level', () => {
-			const item: IDataObject = {
-				'My Custom Enum': 'Option B',
-			};
-
-			encodeCustomFieldsV1(customProperties, item);
-
-			expect(item.def456_enum).toBe(20);
-			expect(item['My Custom Enum']).toBeUndefined();
-		});
-
-		it('should handle null values at root level', () => {
-			const item: IDataObject = {
-				'My Custom Text': null,
-			};
-
-			encodeCustomFieldsV1(customProperties, item);
-
-			expect(item.abc123_text).toBeNull();
-		});
-	});
-
 	describe('resolveCustomFieldsV2', () => {
 		it('should read from nested custom_fields and flatten to root', () => {
 			const item: INodeExecutionData = {
@@ -293,79 +247,6 @@ describe('Pipedrive v2 Custom Fields', () => {
 			expect(item.json.custom_fields).toBeUndefined();
 		});
 	});
-
-	describe('resolveCustomFieldsV1', () => {
-		it('should read from root and resolve keys to display names', () => {
-			const item: INodeExecutionData = {
-				json: {
-					id: 1,
-					title: 'Test Deal',
-					abc123_text: 'Hello World',
-				},
-			};
-
-			resolveCustomFieldsV1(customProperties, item);
-
-			expect(item.json['My Custom Text']).toBe('Hello World');
-			expect(item.json.abc123_text).toBeUndefined();
-			expect(item.json.title).toBe('Test Deal');
-		});
-
-		it('should resolve enum option IDs to labels', () => {
-			const item: INodeExecutionData = {
-				json: {
-					def456_enum: '20',
-				},
-			};
-
-			resolveCustomFieldsV1(customProperties, item);
-
-			expect(item.json['My Custom Enum']).toBe('Option B');
-			expect(item.json.def456_enum).toBeUndefined();
-		});
-
-		it('should handle comma-separated set values', () => {
-			const item: INodeExecutionData = {
-				json: {
-					ghi789_set: '1,3',
-				},
-			};
-
-			resolveCustomFieldsV1(customProperties, item);
-
-			expect(item.json['My Custom Set']).toEqual(['Tag One', 'Tag Three']);
-			expect(item.json.ghi789_set).toBeUndefined();
-		});
-
-		it('should handle null values', () => {
-			const item: INodeExecutionData = {
-				json: {
-					abc123_text: null,
-				},
-			};
-
-			resolveCustomFieldsV1(customProperties, item);
-
-			expect(item.json['My Custom Text']).toBeNull();
-			expect(item.json.abc123_text).toBeUndefined();
-		});
-
-		it('should not modify non-custom fields', () => {
-			const item: INodeExecutionData = {
-				json: {
-					id: 1,
-					title: 'Test Deal',
-					regular_field: 'value',
-				},
-			};
-
-			resolveCustomFieldsV1(customProperties, item);
-
-			expect(item.json.id).toBe(1);
-			expect(item.json.title).toBe('Test Deal');
-			expect(item.json.regular_field).toBe('value');
-		});
-	});
 });
 
 describe('Pipedrive v2 Type Coercion', () => {
@@ -404,81 +285,6 @@ describe('Pipedrive v2 Type Coercion', () => {
 
 		it('should handle case-insensitive "TRUE"', () => {
 			expect(coerceToBoolean('TRUE')).toBe(true);
-		});
-	});
-
-	describe('coerceToNumber', () => {
-		it('should return number as-is', () => {
-			expect(coerceToNumber(42)).toBe(42);
-		});
-
-		it('should convert string number to number', () => {
-			expect(coerceToNumber('42')).toBe(42);
-		});
-
-		it('should convert string float to number', () => {
-			expect(coerceToNumber('3.14')).toBeCloseTo(3.14);
-		});
-
-		it('should throw on non-numeric string', () => {
-			expect(() => coerceToNumber('abc')).toThrow('Cannot convert "abc" to a number');
-		});
-
-		it('should convert "0" to 0', () => {
-			expect(coerceToNumber('0')).toBe(0);
-		});
-	});
-
-	describe('toRfc3339', () => {
-		it('should convert space-separated datetime to T-separated', () => {
-			expect(toRfc3339('2024-01-15 10:30:00')).toBe('2024-01-15T10:30:00');
-		});
-
-		it('should pass through values already containing T', () => {
-			expect(toRfc3339('2024-01-15T10:30:00')).toBe('2024-01-15T10:30:00');
-		});
-
-		it('should handle date with timezone offset', () => {
-			expect(toRfc3339('2024-01-15T10:30:00+02:00')).toBe('2024-01-15T10:30:00+02:00');
-		});
-
-		it('should convert space-separated with milliseconds', () => {
-			expect(toRfc3339('2024-01-15 10:30:00.123')).toBe('2024-01-15T10:30:00.123');
-		});
-	});
-
-	describe('applyV2TypeStrictness', () => {
-		it('should convert specified boolean fields', () => {
-			const body: IDataObject = {
-				is_active: 1,
-				is_deleted: '0',
-				title: 'Test',
-			};
-
-			applyV2TypeStrictness(body, ['is_active', 'is_deleted']);
-
-			expect(body.is_active).toBe(true);
-			expect(body.is_deleted).toBe(false);
-			expect(body.title).toBe('Test');
-		});
-
-		it('should skip fields not present in body', () => {
-			const body: IDataObject = {
-				title: 'Test',
-			};
-
-			applyV2TypeStrictness(body, ['is_active']);
-
-			expect(body.is_active).toBeUndefined();
-			expect(body.title).toBe('Test');
-		});
-
-		it('should handle empty boolean fields list', () => {
-			const body: IDataObject = { title: 'Test' };
-
-			applyV2TypeStrictness(body, []);
-
-			expect(body).toEqual({ title: 'Test' });
 		});
 	});
 });

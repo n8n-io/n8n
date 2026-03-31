@@ -7,8 +7,12 @@ import type {
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { pipedriveApiRequest, pipedriveGetCustomProperties } from '../../transport';
-import { encodeCustomFieldsV2 } from '../../helpers';
-import { customFieldsCollection, encodeCustomFieldsOption } from '../common.description';
+import { encodeCustomFieldsV2, addFieldsToBody } from '../../helpers';
+import {
+	customFieldsCollection,
+	encodeCustomFieldsOption,
+	visibleToOption,
+} from '../common.description';
 
 const properties: INodeProperties[] = [
 	{
@@ -55,24 +59,7 @@ const properties: INodeProperties[] = [
 				description:
 					'ID of the user who will be marked as the owner of this organization. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
-			{
-				displayName: 'Visible To',
-				name: 'visible_to',
-				type: 'options',
-				options: [
-					{
-						name: 'Owner & Followers (Private)',
-						value: '1',
-					},
-					{
-						name: 'Entire Company (Shared)',
-						value: '3',
-					},
-				],
-				default: '3',
-				description:
-					'Visibility of the organization. If omitted, visibility will be set to the default visibility setting of this item type for the authorized user.',
-			},
+			visibleToOption,
 			customFieldsCollection,
 		],
 	},
@@ -87,24 +74,6 @@ const displayOptions = {
 };
 
 export const description = updateDisplayOptions(displayOptions, properties);
-
-function addUpdateFields(body: IDataObject, updateFields: IDataObject): void {
-	for (const key of Object.keys(updateFields)) {
-		if (
-			key === 'customFields' &&
-			(updateFields.customFields as IDataObject)?.property !== undefined
-		) {
-			for (const customProperty of (updateFields.customFields as IDataObject).property as Array<{
-				name: string;
-				value: string;
-			}>) {
-				body[customProperty.name] = customProperty.value;
-			}
-		} else {
-			body[key] = updateFields[key];
-		}
-	}
-}
 
 export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
 	const items = this.getInputData();
@@ -122,7 +91,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			const body: IDataObject = {};
 
 			const updateFields = this.getNodeParameter('updateFields', i);
-			addUpdateFields(body, updateFields);
+			addFieldsToBody(body, updateFields);
 
 			// Clear label when set to 'null' string
 			if (body.label === 'null') {

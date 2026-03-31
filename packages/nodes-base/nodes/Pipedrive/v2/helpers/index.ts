@@ -1,13 +1,7 @@
-export {
-	encodeCustomFieldsV2,
-	encodeCustomFieldsV1,
-	resolveCustomFieldsV2,
-	resolveCustomFieldsV1,
-} from './customFields';
+export { encodeCustomFieldsV2, resolveCustomFieldsV2 } from './customFields';
 
-export {
-	coerceToBoolean,
-	coerceToNumber,
-	toRfc3339,
-	applyV2TypeStrictness,
-} from './typeCoercion';
+export { coerceToBoolean } from './typeCoercion';
+
+export { addFieldsToBody } from './fields';
+
+export { parseSearchResponse } from './searchResponse';

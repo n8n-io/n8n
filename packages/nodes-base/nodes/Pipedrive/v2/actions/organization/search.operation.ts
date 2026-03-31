@@ -7,6 +7,7 @@ import type {
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { pipedriveApiRequest, pipedriveApiRequestAllItemsOffset } from '../../transport';
+import { parseSearchResponse } from '../../helpers';
 
 const properties: INodeProperties[] = [
 	{
@@ -137,22 +138,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				);
 			}
 
-			let data: IDataObject[];
-
-			// v1 search returns data.items[].item, v2 might return flat data[]
-			const rawData = responseData.data as IDataObject;
-			if (!Array.isArray(responseData.data) && rawData?.items) {
-				data = (rawData.items as Array<{ result_score: number; item: IDataObject }>).map(
-					(entry) => ({
-						result_score: entry.result_score,
-						...entry.item,
-					}),
-				);
-			} else if (Array.isArray(responseData.data)) {
-				data = responseData.data as IDataObject[];
-			} else {
-				data = [];
-			}
+			const data = parseSearchResponse(responseData);
 
 			const executionData = this.helpers.constructExecutionMetaData(
 				this.helpers.returnJsonArray(data),

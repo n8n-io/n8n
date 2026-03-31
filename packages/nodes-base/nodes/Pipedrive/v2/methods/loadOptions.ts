@@ -159,138 +159,48 @@ export async function getStageIds(this: ILoadOptionsFunctions): Promise<INodePro
 	return sortOptionParameters(returnData);
 }
 
-/**
- * Get organization custom fields
- * Uses v2 endpoint: /organizationFields
- */
-export async function getOrganizationCustomFields(
+async function getLabelsForResource(
 	this: ILoadOptionsFunctions,
+	endpoint: string,
 ): Promise<INodePropertyOptions[]> {
 	const returnData: INodePropertyOptions[] = [];
-	const { data } = await pipedriveApiRequest.call(this, 'GET', '/organizationFields', {});
-	for (const field of data as Array<{ name: string; key: string }>) {
-		if (field.key.length === 40) {
-			returnData.push({
-				name: field.name,
-				value: field.key,
-			});
+	const operation = this.getCurrentNodeParameter('operation') as string;
+	const { data } = await pipedriveApiRequest.call(this, 'GET', endpoint, {});
+	for (const field of data as Array<{
+		key: string;
+		options?: Array<{ id: number; label: string }>;
+	}>) {
+		if (field.key === 'label' && field.options) {
+			for (const option of field.options) {
+				returnData.push({
+					name: option.label,
+					value: option.id,
+				});
+			}
 		}
 	}
-	return sortOptionParameters(returnData);
-}
 
-/**
- * Get deal custom fields
- * Uses v2 endpoint: /dealFields
- */
-export async function getDealCustomFields(
-	this: ILoadOptionsFunctions,
-): Promise<INodePropertyOptions[]> {
-	const returnData: INodePropertyOptions[] = [];
-	const { data } = await pipedriveApiRequest.call(this, 'GET', '/dealFields', {});
-	for (const field of data as Array<{ name: string; key: string }>) {
-		if (field.key.length === 40) {
-			returnData.push({
-				name: field.name,
-				value: field.key,
-			});
-		}
+	sortOptionParameters(returnData);
+
+	if (operation === 'update') {
+		returnData.push({
+			name: 'No Label',
+			value: 'null',
+		});
 	}
-	return sortOptionParameters(returnData);
+	return returnData;
 }
 
-/**
- * Get person custom fields
- * Uses v2 endpoint: /personFields
- */
-export async function getPersonCustomFields(
-	this: ILoadOptionsFunctions,
-): Promise<INodePropertyOptions[]> {
-	const returnData: INodePropertyOptions[] = [];
-	const { data } = await pipedriveApiRequest.call(this, 'GET', '/personFields', {});
-	for (const field of data as Array<{ name: string; key: string }>) {
-		if (field.key.length === 40) {
-			returnData.push({
-				name: field.name,
-				value: field.key,
-			});
-		}
-	}
-	return sortOptionParameters(returnData);
-}
-
-/**
- * Get person labels
- * Uses v2 endpoint: /personFields
- */
 export async function getPersonLabels(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
-	const returnData: INodePropertyOptions[] = [];
-	const operation = this.getCurrentNodeParameter('operation') as string;
-	const { data } = await pipedriveApiRequest.call(this, 'GET', '/personFields', {});
-	for (const field of data as Array<{
-		key: string;
-		options?: Array<{ id: number; label: string }>;
-	}>) {
-		if (field.key === 'label') {
-			if (field.options) {
-				for (const option of field.options) {
-					returnData.push({
-						name: option.label,
-						value: option.id,
-					});
-				}
-			}
-		}
-	}
-
-	sortOptionParameters(returnData);
-
-	if (operation === 'update') {
-		returnData.push({
-			name: 'No Label',
-			value: 'null',
-		});
-	}
-	return returnData;
+	return getLabelsForResource.call(this, '/personFields');
 }
 
-/**
- * Get organization labels
- * Uses v2 endpoint: /organizationFields
- */
 export async function getOrganizationLabels(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
-	const returnData: INodePropertyOptions[] = [];
-	const operation = this.getCurrentNodeParameter('operation') as string;
-	const { data } = await pipedriveApiRequest.call(this, 'GET', '/organizationFields', {});
-	for (const field of data as Array<{
-		key: string;
-		options?: Array<{ id: number; label: string }>;
-	}>) {
-		if (field.key === 'label') {
-			if (field.options) {
-				for (const option of field.options) {
-					returnData.push({
-						name: option.label,
-						value: option.id,
-					});
-				}
-			}
-		}
-	}
-
-	sortOptionParameters(returnData);
-
-	if (operation === 'update') {
-		returnData.push({
-			name: 'No Label',
-			value: 'null',
-		});
-	}
-	return returnData;
+	return getLabelsForResource.call(this, '/organizationFields');
 }
 
 /**
@@ -320,37 +230,6 @@ export async function getLeadLabels(this: ILoadOptionsFunctions): Promise<INodeP
 	return sortOptionParameters(labels.map(({ id, name }) => ({ value: id, name })));
 }
 
-/**
- * Get deal labels
- * Uses v2 endpoint: /dealFields
- */
 export async function getDealLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	const returnData: INodePropertyOptions[] = [];
-	const operation = this.getCurrentNodeParameter('operation') as string;
-	const { data } = await pipedriveApiRequest.call(this, 'GET', '/dealFields', {});
-	for (const field of data as Array<{
-		key: string;
-		options?: Array<{ id: number; label: string }>;
-	}>) {
-		if (field.key === 'label') {
-			if (field.options) {
-				for (const option of field.options) {
-					returnData.push({
-						name: option.label,
-						value: option.id,
-					});
-				}
-			}
-		}
-	}
-
-	sortOptionParameters(returnData);
-
-	if (operation === 'update') {
-		returnData.push({
-			name: 'No Label',
-			value: 'null',
-		});
-	}
-	return returnData;
+	return getLabelsForResource.call(this, '/dealFields');
 }
