@@ -1,10 +1,11 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import { N8nButton, N8nIcon, N8nInput, N8nOption, N8nSelect } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nOption, N8nSelect } from '@n8n/design-system';
 import { ElSwitch } from 'element-plus';
 import { useI18n } from '@n8n/i18n';
 import { useRolesStore } from '@/app/stores/roles.store';
 import type { RoleMappingRuleResponse } from '../types';
+import RuleMappingExpressionInput from './RuleMappingExpressionInput.vue';
 
 const props = defineProps<{
 	rule: RoleMappingRuleResponse;
@@ -34,18 +35,11 @@ const instanceRoleOptions = computed(() =>
 			data-test-id="rule-toggle"
 			@update:model-value="emit('update', props.rule.id, { enabled: $event as boolean })"
 		/>
-		<div :class="$style.expression">
-			<N8nInput
-				:model-value="props.rule.expression"
-				type="text"
-				size="small"
-				:placeholder="
-					i18n.baseText('settings.sso.settings.roleMappingRules.expression.placeholder')
-				"
-				data-test-id="rule-expression-input"
-				@update:model-value="emit('update', props.rule.id, { expression: String($event) })"
-			/>
-		</div>
+		<RuleMappingExpressionInput
+			:model-value="props.rule.expression"
+			:placeholder="i18n.baseText('settings.sso.settings.roleMappingRules.expression.placeholder')"
+			@update:model-value="emit('update', props.rule.id, { expression: $event })"
+		/>
 		<div :class="$style.roleSelect">
 			<N8nSelect
 				:model-value="props.rule.role"
@@ -96,11 +90,6 @@ const instanceRoleOptions = computed(() =>
 	&:active {
 		cursor: grabbing;
 	}
-}
-
-.expression {
-	flex: 1;
-	min-width: 0;
 }
 
 .roleSelect {
