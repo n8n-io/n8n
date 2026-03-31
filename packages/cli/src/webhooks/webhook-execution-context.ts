@@ -25,51 +25,36 @@ export class WebhookExecutionContext {
 	/**
 	 * Evaluates a simple expression from the webhook description.
 	 */
-	async evaluateSimpleWebhookDescriptionExpression<T extends boolean | number | string | unknown[]>(
+	evaluateSimpleWebhookDescriptionExpression<T extends boolean | number | string | unknown[]>(
 		propertyName: keyof IWebhookDescription,
 		executeData?: IExecuteData,
 		defaultValue?: T,
-	): Promise<T | undefined> {
-		return await this.withIsolate(
-			() =>
-				this.workflow.expression.getSimpleParameterValue(
-					this.workflowStartNode,
-					this.webhookData.webhookDescription[propertyName],
-					this.executionMode,
-					this.additionalKeys,
-					executeData,
-					defaultValue,
-				) as T | undefined,
-		);
+	): T | undefined {
+		return this.workflow.expression.getSimpleParameterValue(
+			this.workflowStartNode,
+			this.webhookData.webhookDescription[propertyName],
+			this.executionMode,
+			this.additionalKeys,
+			executeData,
+			defaultValue,
+		) as T | undefined;
 	}
 
 	/**
 	 * Evaluates a complex expression from the webhook description.
 	 */
-	async evaluateComplexWebhookDescriptionExpression<T extends NodeParameterValueType>(
+	evaluateComplexWebhookDescriptionExpression<T extends NodeParameterValueType>(
 		propertyName: keyof IWebhookDescription,
 		executeData?: IExecuteData,
 		defaultValue?: T,
-	): Promise<T | undefined> {
-		return await this.withIsolate(
-			() =>
-				this.workflow.expression.getComplexParameterValue(
-					this.workflowStartNode,
-					this.webhookData.webhookDescription[propertyName],
-					this.executionMode,
-					this.additionalKeys,
-					executeData,
-					defaultValue,
-				) as T | undefined,
-		);
-	}
-
-	private async withIsolate<T>(fn: () => T): Promise<T> {
-		await this.workflow.expression.acquireIsolate();
-		try {
-			return fn();
-		} finally {
-			await this.workflow.expression.releaseIsolate();
-		}
+	): T | undefined {
+		return this.workflow.expression.getComplexParameterValue(
+			this.workflowStartNode,
+			this.webhookData.webhookDescription[propertyName],
+			this.executionMode,
+			this.additionalKeys,
+			executeData,
+			defaultValue,
+		) as T | undefined;
 	}
 }

@@ -460,8 +460,17 @@ export async function executeWebhook(
 		additionalData.executionId = executionId;
 	}
 
-	const { responseMode, responseCode, responseData, checkAllMainOutputs } =
-		await evaluateResponseOptions(
+	await workflow.expression.acquireIsolate();
+	try {
+		const {
+			responseMode,
+			responseCode,
+			responseData,
+			checkAllMainOutputs,
+			responsePropertyName,
+			responseContentType,
+			responseBinaryPropertyName,
+		} = evaluateResponseOptions(
 			workflowStartNode,
 			workflow,
 			req,
@@ -470,461 +479,466 @@ export async function executeWebhook(
 			additionalKeys,
 		);
 
-	if (
-		!['onReceived', 'lastNode', 'responseNode', 'formPage', 'streaming', 'hostedChat'].includes(
-			responseMode,
-		)
-	) {
-		// If the mode is not known we error. Is probably best like that instead of using
-		// the default that people know as early as possible (probably already testing phase)
-		// that something does not resolve properly.
-		const errorMessage = `The response mode '${responseMode}' is not valid!`;
-		responseCallback(new UnexpectedError(errorMessage), {});
-		throw new InternalServerError(errorMessage);
-	}
-
-	// Add the Response and Request so that this data can be accessed in the node
-	additionalData.httpRequest = req;
-	additionalData.httpResponse = res;
-
-	const authService = Container.get(AuthService);
-	additionalData.validateCookieAuth = async (token: string) => {
-		await authService.validateCookieToken(token);
-	};
-
-	let didSendResponse = false;
-	let runExecutionDataMerge = {};
-	try {
-		// Run the webhook function to see what should be returned and if
-		// the workflow should be executed or not
-		let webhookResultData: IWebhookResponseData;
-
-		await parseRequestBody(req, workflowStartNode, workflow, executionMode, additionalKeys);
-
-		// TODO: remove this hack, and make sure that execution data is properly created before the MCP trigger is executed
 		if (
-			[MCP_TRIGGER_NODE_TYPE, MICROSOFT_AGENT365_TRIGGER_NODE_TYPE].includes(workflowStartNode.type)
+			!['onReceived', 'lastNode', 'responseNode', 'formPage', 'streaming', 'hostedChat'].includes(
+				responseMode,
+			)
 		) {
-			// Initialize the data of the webhook node
-			const nodeExecutionStack: IExecuteData[] = [];
-			nodeExecutionStack.push({
-				node: workflowStartNode,
-				data: {
-					main: [],
-				},
-				source: null,
-			});
-			runExecutionData =
-				runExecutionData ??
-				createRunExecutionData({
-					executionData: {
-						nodeExecutionStack,
-					},
-				});
-		}
-
-		try {
-			webhookResultData = await Container.get(WebhookService).runWebhook(
-				workflow,
-				webhookData,
-				workflowStartNode,
-				additionalData,
-				executionMode,
-				runExecutionData ?? null,
-			);
-			Container.get(WorkflowStatisticsService).emit('nodeFetchedData', {
-				workflowId: workflow.id,
-				node: workflowStartNode,
-			});
-		} catch (err) {
-			// Send error response to webhook caller
-			const webhookType = ['formTrigger', 'form'].includes(nodeType.description.name)
-				? 'Form'
-				: 'Webhook';
-			const errorMessage = _privateGetWebhookErrorMessage(err, webhookType);
-
-			Container.get(ErrorReporter).error(err, {
-				extra: {
-					nodeName: workflowStartNode.name,
-					nodeType: workflowStartNode.type,
-					nodeVersion: workflowStartNode.typeVersion,
-					workflowId: workflow.id,
-				},
-			});
-
+			// If the mode is not known we error. Is probably best like that instead of using
+			// the default that people know as early as possible (probably already testing phase)
+			// that something does not resolve properly.
+			const errorMessage = `The response mode '${responseMode}' is not valid!`;
 			responseCallback(new UnexpectedError(errorMessage), {});
-			didSendResponse = true;
-
-			// Add error to execution data that it can be logged and send to Editor-UI
-			runExecutionDataMerge = {
-				resultData: {
-					runData: {},
-					lastNodeExecuted: workflowStartNode.name,
-					error: {
-						...err,
-						message: err.message,
-						stack: err.stack,
-					},
-				},
-			};
-
-			webhookResultData = {
-				noWebhookResponse: true,
-				// Add empty data that it at least tries to "execute" the webhook
-				// which then so gets the chance to throw the error.
-				workflowData: [[{ json: {} }]],
-			};
+			throw new InternalServerError(errorMessage);
 		}
 
-		const responseHeaders = await evaluateResponseHeaders(context);
+		// Add the Response and Request so that this data can be accessed in the node
+		additionalData.httpRequest = req;
+		additionalData.httpResponse = res;
 
-		if (!res.headersSent && responseHeaders) {
-			// Only set given headers if they haven't been sent yet, e.g. for streaming
-			responseHeaders.applyToResponse(res);
-		}
-
-		if (webhookResultData.noWebhookResponse === true && !didSendResponse) {
-			// The response got already send
-			responseCallback(null, {
-				noWebhookResponse: true,
-			});
-			didSendResponse = true;
-		}
-
-		if (webhookResultData.workflowData === undefined) {
-			// Workflow should not run
-			if (webhookResultData.webhookResponse !== undefined) {
-				// Data to respond with is given
-				if (!didSendResponse) {
-					responseCallback(null, {
-						data: webhookResultData.webhookResponse,
-						responseCode,
-					});
-					didSendResponse = true;
-				}
-			} else {
-				// Send default response
-
-				if (!didSendResponse) {
-					responseCallback(null, {
-						data: {
-							message: 'Webhook call received',
-						},
-						responseCode,
-					});
-					didSendResponse = true;
-				}
-			}
-			return;
-		}
-
-		// For "onReceived" mode, we need to defer response sending until after the execution
-		// is created, so that `$execution.id` is available in response data expressions.
-		const shouldDeferOnReceivedResponse = responseMode === 'onReceived' && !didSendResponse;
-
-		// Prepare execution data
-		const { runExecutionData: preparedRunExecutionData, pinData } = prepareExecutionData(
-			executionMode,
-			workflowStartNode,
-			webhookResultData,
-			runExecutionData,
-			runExecutionDataMerge,
-			destinationNode,
-			executionId,
-			workflowData,
-		);
-		runExecutionData = preparedRunExecutionData;
-
-		const runData: IWorkflowExecutionDataProcess = {
-			executionMode,
-			executionData: runExecutionData,
-			pushRef,
-			workflowData,
-			pinData,
-			projectId: project?.id,
-			projectName: project?.name,
+		const authService = Container.get(AuthService);
+		additionalData.validateCookieAuth = async (token: string) => {
+			await authService.validateCookieToken(token);
 		};
 
-		// When resuming from a wait node, copy over the pushRef from the execution-data
-		if (!runData.pushRef) {
-			runData.pushRef = runExecutionData.pushRef;
-		}
+		let didSendResponse = false;
+		let runExecutionDataMerge = {};
+		try {
+			// Run the webhook function to see what should be returned and if
+			// the workflow should be executed or not
+			let webhookResultData: IWebhookResponseData;
 
-		const executionsConfig = Container.get(ExecutionsConfig);
-		if (workflowStartNode.type === MCP_TRIGGER_NODE_TYPE && executionsConfig.mode === 'queue') {
-			const querySessionId = req.query?.sessionId;
-			const headerSessionId = req.headers['mcp-session-id'];
-			const mcpSessionId =
-				typeof querySessionId === 'string'
-					? querySessionId
-					: typeof headerSessionId === 'string'
-						? headerSessionId
-						: '';
+			await parseRequestBody(req, workflowStartNode, workflow, executionMode, additionalKeys);
 
-			const firstItem = webhookResultData.workflowData?.[0]?.[0];
-			const mcpMessageId =
-				(firstItem && 'json' in firstItem && typeof firstItem.json?.mcpMessageId === 'string'
-					? firstItem.json.mcpMessageId
-					: null) ?? `mcp-trigger-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
-
-			runData.isMcpExecution = true;
-			runData.mcpType = 'trigger';
-			runData.mcpSessionId = mcpSessionId;
-			runData.mcpMessageId = mcpMessageId;
-
-			const mcpToolCallValue =
-				firstItem && 'json' in firstItem ? firstItem.json?.mcpToolCall : null;
-			if (isMcpToolCall(mcpToolCallValue)) {
-				runData.mcpToolCall = mcpToolCallValue;
-			}
-
-			// Handle MCP list tools relay - forward to main with SSE transport via pub/sub
-			const mcpListToolsRelayValue =
-				firstItem && 'json' in firstItem ? firstItem.json?.mcpListToolsRelay : null;
-			if (isMcpListToolsRelay(mcpListToolsRelayValue)) {
-				const { Publisher } = await import('@/scaling/pubsub/publisher.service');
-				const publisher = Container.get(Publisher);
-				await publisher.publishMcpRelay({
-					sessionId: mcpListToolsRelayValue.sessionId,
-					messageId: mcpListToolsRelayValue.messageId,
-					response: mcpListToolsRelayValue.marker,
+			// TODO: remove this hack, and make sure that execution data is properly created before the MCP trigger is executed
+			if (
+				[MCP_TRIGGER_NODE_TYPE, MICROSOFT_AGENT365_TRIGGER_NODE_TYPE].includes(
+					workflowStartNode.type,
+				)
+			) {
+				// Initialize the data of the webhook node
+				const nodeExecutionStack: IExecuteData[] = [];
+				nodeExecutionStack.push({
+					node: workflowStartNode,
+					data: {
+						main: [],
+					},
+					source: null,
 				});
-				// Don't run workflow - the relay will be handled by the main with the transport
-				// Return undefined since no execution is started
-				return undefined;
+				runExecutionData =
+					runExecutionData ??
+					createRunExecutionData({
+						executionData: {
+							nodeExecutionStack,
+						},
+					});
 			}
-		}
 
-		let responsePromise: IDeferredPromise<IN8nHttpFullResponse> | undefined;
-		if (responseMode === 'responseNode') {
-			responsePromise = createDeferredPromise<IN8nHttpFullResponse>();
-			setupResponseNodePromise(
-				responsePromise,
-				res,
-				responseCallback,
+			try {
+				webhookResultData = await Container.get(WebhookService).runWebhook(
+					workflow,
+					webhookData,
+					workflowStartNode,
+					additionalData,
+					executionMode,
+					runExecutionData ?? null,
+				);
+				Container.get(WorkflowStatisticsService).emit('nodeFetchedData', {
+					workflowId: workflow.id,
+					node: workflowStartNode,
+				});
+			} catch (err) {
+				// Send error response to webhook caller
+				const webhookType = ['formTrigger', 'form'].includes(nodeType.description.name)
+					? 'Form'
+					: 'Webhook';
+				const errorMessage = _privateGetWebhookErrorMessage(err, webhookType);
+
+				Container.get(ErrorReporter).error(err, {
+					extra: {
+						nodeName: workflowStartNode.name,
+						nodeType: workflowStartNode.type,
+						nodeVersion: workflowStartNode.typeVersion,
+						workflowId: workflow.id,
+					},
+				});
+
+				responseCallback(new UnexpectedError(errorMessage), {});
+				didSendResponse = true;
+
+				// Add error to execution data that it can be logged and send to Editor-UI
+				runExecutionDataMerge = {
+					resultData: {
+						runData: {},
+						lastNodeExecuted: workflowStartNode.name,
+						error: {
+							...err,
+							message: err.message,
+							stack: err.stack,
+						},
+					},
+				};
+
+				webhookResultData = {
+					noWebhookResponse: true,
+					// Add empty data that it at least tries to "execute" the webhook
+					// which then so gets the chance to throw the error.
+					workflowData: [[{ json: {} }]],
+				};
+			}
+
+			const responseHeaders = evaluateResponseHeaders(context);
+
+			if (!res.headersSent && responseHeaders) {
+				// Only set given headers if they haven't been sent yet, e.g. for streaming
+				responseHeaders.applyToResponse(res);
+			}
+
+			if (webhookResultData.noWebhookResponse === true && !didSendResponse) {
+				// The response got already send
+				responseCallback(null, {
+					noWebhookResponse: true,
+				});
+				didSendResponse = true;
+			}
+
+			if (webhookResultData.workflowData === undefined) {
+				// Workflow should not run
+				if (webhookResultData.webhookResponse !== undefined) {
+					// Data to respond with is given
+					if (!didSendResponse) {
+						responseCallback(null, {
+							data: webhookResultData.webhookResponse,
+							responseCode,
+						});
+						didSendResponse = true;
+					}
+				} else {
+					// Send default response
+
+					if (!didSendResponse) {
+						responseCallback(null, {
+							data: {
+								message: 'Webhook call received',
+							},
+							responseCode,
+						});
+						didSendResponse = true;
+					}
+				}
+				return;
+			}
+
+			// For "onReceived" mode, we need to defer response sending until after the execution
+			// is created, so that `$execution.id` is available in response data expressions.
+			const shouldDeferOnReceivedResponse = responseMode === 'onReceived' && !didSendResponse;
+
+			// Prepare execution data
+			const { runExecutionData: preparedRunExecutionData, pinData } = prepareExecutionData(
+				executionMode,
 				workflowStartNode,
+				webhookResultData,
+				runExecutionData,
+				runExecutionDataMerge,
+				destinationNode,
 				executionId,
-				workflow,
+				workflowData,
 			);
-		}
+			runExecutionData = preparedRunExecutionData;
 
-		if (responseMode === 'streaming') {
+			const runData: IWorkflowExecutionDataProcess = {
+				executionMode,
+				executionData: runExecutionData,
+				pushRef,
+				workflowData,
+				pinData,
+				projectId: project?.id,
+				projectName: project?.name,
+			};
+
+			// When resuming from a wait node, copy over the pushRef from the execution-data
+			if (!runData.pushRef) {
+				runData.pushRef = runExecutionData.pushRef;
+			}
+
+			const executionsConfig = Container.get(ExecutionsConfig);
+			if (workflowStartNode.type === MCP_TRIGGER_NODE_TYPE && executionsConfig.mode === 'queue') {
+				const querySessionId = req.query?.sessionId;
+				const headerSessionId = req.headers['mcp-session-id'];
+				const mcpSessionId =
+					typeof querySessionId === 'string'
+						? querySessionId
+						: typeof headerSessionId === 'string'
+							? headerSessionId
+							: '';
+
+				const firstItem = webhookResultData.workflowData?.[0]?.[0];
+				const mcpMessageId =
+					(firstItem && 'json' in firstItem && typeof firstItem.json?.mcpMessageId === 'string'
+						? firstItem.json.mcpMessageId
+						: null) ?? `mcp-trigger-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+
+				runData.isMcpExecution = true;
+				runData.mcpType = 'trigger';
+				runData.mcpSessionId = mcpSessionId;
+				runData.mcpMessageId = mcpMessageId;
+
+				const mcpToolCallValue =
+					firstItem && 'json' in firstItem ? firstItem.json?.mcpToolCall : null;
+				if (isMcpToolCall(mcpToolCallValue)) {
+					runData.mcpToolCall = mcpToolCallValue;
+				}
+
+				// Handle MCP list tools relay - forward to main with SSE transport via pub/sub
+				const mcpListToolsRelayValue =
+					firstItem && 'json' in firstItem ? firstItem.json?.mcpListToolsRelay : null;
+				if (isMcpListToolsRelay(mcpListToolsRelayValue)) {
+					const { Publisher } = await import('@/scaling/pubsub/publisher.service');
+					const publisher = Container.get(Publisher);
+					await publisher.publishMcpRelay({
+						sessionId: mcpListToolsRelayValue.sessionId,
+						messageId: mcpListToolsRelayValue.messageId,
+						response: mcpListToolsRelayValue.marker,
+					});
+					// Don't run workflow - the relay will be handled by the main with the transport
+					// Return undefined since no execution is started
+					return undefined;
+				}
+			}
+
+			let responsePromise: IDeferredPromise<IN8nHttpFullResponse> | undefined;
+			if (responseMode === 'responseNode') {
+				responsePromise = createDeferredPromise<IN8nHttpFullResponse>();
+				setupResponseNodePromise(
+					responsePromise,
+					res,
+					responseCallback,
+					workflowStartNode,
+					executionId,
+					workflow,
+				);
+			}
+
+			if (responseMode === 'streaming') {
+				Container.get(Logger).debug(
+					`Execution of workflow "${workflow.name}" from with ID ${executionId} is set to streaming`,
+					{ executionId },
+				);
+				// TODO: Add check for streaming nodes here
+				runData.httpResponse = res;
+				runData.streamingEnabled = true;
+				didSendResponse = true;
+			}
+
+			// Start now to run the workflow
+			executionId = await Container.get(WorkflowRunner).run(
+				runData,
+				true,
+				!didSendResponse && !shouldDeferOnReceivedResponse,
+				executionId,
+				responsePromise,
+			);
+
+			/**
+			 * We track the webhook response mode so that `WorkflowRunner` can decide whether it
+			 * needs to fetch full execution data from the DB when a job finishes in scaling mdoe.
+			 */
+			Container.get(ActiveExecutions).setResponseMode(executionId, responseMode);
+
+			if (shouldDeferOnReceivedResponse) {
+				additionalKeys.$executionId = executionId;
+				additionalKeys.$execution = {
+					id: executionId,
+					mode: executionMode === 'manual' ? 'test' : 'production',
+					resumeUrl: `${additionalData.webhookWaitingBaseUrl}/${executionId}`,
+					resumeFormUrl: `${additionalData.formWaitingBaseUrl}/${executionId}`,
+				};
+				const evaluatedResponseData =
+					context.evaluateComplexWebhookDescriptionExpression<string>('responseData');
+
+				const responseBody = extractWebhookOnReceivedResponse(
+					evaluatedResponseData,
+					webhookResultData,
+				);
+				const webhookResponse = createStaticResponse(responseBody, responseCode, responseHeaders);
+				responseCallback(null, webhookResponse);
+				didSendResponse = true;
+			}
+
+			Container.get(EventService).emit('workflow-executed', {
+				workflowId: workflowData.id,
+				workflowName: workflowData.name,
+				executionId,
+				source: 'webhook',
+			});
+
+			if (responseMode === 'formPage' && !didSendResponse) {
+				const formUrl = new URL(`${additionalData.formWaitingBaseUrl}/${executionId}`);
+				if (runExecutionData.resumeToken) {
+					formUrl.searchParams.set(WAITING_TOKEN_QUERY_PARAM, runExecutionData.resumeToken);
+				}
+				res.send({ formWaitingUrl: formUrl.toString() });
+				process.nextTick(() => res.end());
+				didSendResponse = true;
+			}
+
+			didSendResponse = handleHostedChatResponse(res, responseMode, didSendResponse, executionId);
+
 			Container.get(Logger).debug(
-				`Execution of workflow "${workflow.name}" from with ID ${executionId} is set to streaming`,
+				`Started execution of workflow "${workflow.name}" from webhook with execution ID ${executionId}`,
 				{ executionId },
 			);
-			// TODO: Add check for streaming nodes here
-			runData.httpResponse = res;
-			runData.streamingEnabled = true;
-			didSendResponse = true;
-		}
 
-		// Start now to run the workflow
-		executionId = await Container.get(WorkflowRunner).run(
-			runData,
-			true,
-			!didSendResponse && !shouldDeferOnReceivedResponse,
-			executionId,
-			responsePromise,
-		);
+			const activeExecutions = Container.get(ActiveExecutions);
 
-		/**
-		 * We track the webhook response mode so that `WorkflowRunner` can decide whether it
-		 * needs to fetch full execution data from the DB when a job finishes in scaling mdoe.
-		 */
-		Container.get(ActiveExecutions).setResponseMode(executionId, responseMode);
+			// Get a promise which resolves when the workflow did execute and send then response
+			const executePromise = activeExecutions.getPostExecutePromise(executionId);
 
-		if (shouldDeferOnReceivedResponse) {
-			additionalKeys.$executionId = executionId;
-			additionalKeys.$execution = {
-				id: executionId,
-				mode: executionMode === 'manual' ? 'test' : 'production',
-				resumeUrl: `${additionalData.webhookWaitingBaseUrl}/${executionId}`,
-				resumeFormUrl: `${additionalData.formWaitingBaseUrl}/${executionId}`,
-			};
-			const evaluatedResponseData =
-				await context.evaluateComplexWebhookDescriptionExpression<string>('responseData');
-
-			const responseBody = extractWebhookOnReceivedResponse(
-				evaluatedResponseData,
-				webhookResultData,
-			);
-			const webhookResponse = createStaticResponse(responseBody, responseCode, responseHeaders);
-			responseCallback(null, webhookResponse);
-			didSendResponse = true;
-		}
-
-		Container.get(EventService).emit('workflow-executed', {
-			workflowId: workflowData.id,
-			workflowName: workflowData.name,
-			executionId,
-			source: 'webhook',
-		});
-
-		if (responseMode === 'formPage' && !didSendResponse) {
-			const formUrl = new URL(`${additionalData.formWaitingBaseUrl}/${executionId}`);
-			if (runExecutionData.resumeToken) {
-				formUrl.searchParams.set(WAITING_TOKEN_QUERY_PARAM, runExecutionData.resumeToken);
-			}
-			res.send({ formWaitingUrl: formUrl.toString() });
-			process.nextTick(() => res.end());
-			didSendResponse = true;
-		}
-
-		didSendResponse = handleHostedChatResponse(res, responseMode, didSendResponse, executionId);
-
-		Container.get(Logger).debug(
-			`Started execution of workflow "${workflow.name}" from webhook with execution ID ${executionId}`,
-			{ executionId },
-		);
-
-		const activeExecutions = Container.get(ActiveExecutions);
-
-		// Get a promise which resolves when the workflow did execute and send then response
-		const executePromise = activeExecutions.getPostExecutePromise(executionId);
-
-		const { parentExecution } = runExecutionData;
-		if (WorkflowHelpers.shouldRestartParentExecution(parentExecution)) {
-			// on child execution completion, resume parent execution
-			const executionRepository = Container.get(ExecutionRepository);
-			void executePromise
-				.then(async (subworkflowResults) => {
-					if (!subworkflowResults) return;
-					if (subworkflowResults.status === 'waiting') return; // The child execution is waiting, not completing.
-					await WorkflowHelpers.updateParentExecutionWithChildResults(
-						executionRepository,
-						parentExecution.executionId,
-						subworkflowResults,
-					);
-					return subworkflowResults;
-				})
-				.then((subworkflowResults) => {
-					if (!subworkflowResults) return;
-					if (subworkflowResults.status === 'waiting') return; // The child execution is waiting, not completing.
-					const waitTracker = Container.get(WaitTracker);
-					void waitTracker.startExecution(parentExecution.executionId);
-				});
-		}
-
-		if (!didSendResponse) {
-			executePromise
-				.then(async (runData) => {
-					if (runData === undefined) {
-						if (!didSendResponse) {
-							responseCallback(null, {
-								data: {
-									message: 'Workflow executed successfully but no data was returned',
-								},
-								responseCode,
-							});
-							didSendResponse = true;
-						}
-						return undefined;
-					}
-
-					if (pinData) {
-						runData.data.resultData.pinData = pinData;
-					}
-
-					const lastNodeTaskData = WorkflowHelpers.getDataLastExecutedNodeData(runData);
-					if (runData.data.resultData.error || lastNodeTaskData?.error !== undefined) {
-						if (!didSendResponse) {
-							responseCallback(null, {
-								data: {
-									message: 'Error in workflow',
-								},
-								responseCode: 500,
-							});
-						}
-						didSendResponse = true;
-						return runData;
-					}
-
-					// in `responseNode` mode `responseCallback` is called by `responsePromise`
-					if (responseMode === 'responseNode' && responsePromise) {
-						await Promise.allSettled([responsePromise.promise]);
-						return undefined;
-					}
-
-					if (lastNodeTaskData === undefined) {
-						if (!didSendResponse) {
-							responseCallback(null, {
-								data: {
-									message:
-										'Workflow executed successfully but the last node did not return any data',
-								},
-								responseCode,
-							});
-						}
-						didSendResponse = true;
-						return runData;
-					}
-
-					if (didSendResponse) {
-						return runData;
-					}
-
-					const result = await extractWebhookLastNodeResponse(
-						context,
-						responseData as WebhookResponseData,
-						lastNodeTaskData,
-						checkAllMainOutputs,
-					);
-
-					if (!result.ok) {
-						responseCallback(result.error, {});
-						didSendResponse = true;
-						return runData;
-					}
-
-					const response = result.result;
-					// Apply potential content-type override
-					if (response.contentType) {
-						responseHeaders.set('content-type', response.contentType);
-					}
-
-					responseCallback(
-						null,
-						response.type === 'static'
-							? createStaticResponse(response.body, responseCode, responseHeaders)
-							: createStreamResponse(response.stream, responseCode, responseHeaders),
-					);
-					didSendResponse = true;
-					return runData;
-				})
-				.catch((e) => {
-					if (!didSendResponse) {
-						responseCallback(
-							new OperationalError('There was a problem executing the workflow', {
-								cause: e,
-							}),
-							{},
+			const { parentExecution } = runExecutionData;
+			if (WorkflowHelpers.shouldRestartParentExecution(parentExecution)) {
+				// on child execution completion, resume parent execution
+				const executionRepository = Container.get(ExecutionRepository);
+				void executePromise
+					.then(async (subworkflowResults) => {
+						if (!subworkflowResults) return;
+						if (subworkflowResults.status === 'waiting') return; // The child execution is waiting, not completing.
+						await WorkflowHelpers.updateParentExecutionWithChildResults(
+							executionRepository,
+							parentExecution.executionId,
+							subworkflowResults,
 						);
-					}
-
-					const internalServerError = new InternalServerError(e.message, e);
-					if (e instanceof ExecutionCancelledError) internalServerError.level = 'warning';
-					throw internalServerError;
-				});
-		}
-		return executionId;
-	} catch (e) {
-		const error =
-			e instanceof UnprocessableRequestError
-				? e
-				: new OperationalError('There was a problem executing the workflow', {
-						cause: e,
+						return subworkflowResults;
+					})
+					.then((subworkflowResults) => {
+						if (!subworkflowResults) return;
+						if (subworkflowResults.status === 'waiting') return; // The child execution is waiting, not completing.
+						const waitTracker = Container.get(WaitTracker);
+						void waitTracker.startExecution(parentExecution.executionId);
 					});
-		if (didSendResponse) throw error;
-		responseCallback(error, {});
-		return;
+			}
+
+			if (!didSendResponse) {
+				executePromise
+					.then(async (runData) => {
+						if (runData === undefined) {
+							if (!didSendResponse) {
+								responseCallback(null, {
+									data: {
+										message: 'Workflow executed successfully but no data was returned',
+									},
+									responseCode,
+								});
+								didSendResponse = true;
+							}
+							return undefined;
+						}
+
+						if (pinData) {
+							runData.data.resultData.pinData = pinData;
+						}
+
+						const lastNodeTaskData = WorkflowHelpers.getDataLastExecutedNodeData(runData);
+						if (runData.data.resultData.error || lastNodeTaskData?.error !== undefined) {
+							if (!didSendResponse) {
+								responseCallback(null, {
+									data: {
+										message: 'Error in workflow',
+									},
+									responseCode: 500,
+								});
+							}
+							didSendResponse = true;
+							return runData;
+						}
+
+						// in `responseNode` mode `responseCallback` is called by `responsePromise`
+						if (responseMode === 'responseNode' && responsePromise) {
+							await Promise.allSettled([responsePromise.promise]);
+							return undefined;
+						}
+
+						if (lastNodeTaskData === undefined) {
+							if (!didSendResponse) {
+								responseCallback(null, {
+									data: {
+										message:
+											'Workflow executed successfully but the last node did not return any data',
+									},
+									responseCode,
+								});
+							}
+							didSendResponse = true;
+							return runData;
+						}
+
+						if (didSendResponse) {
+							return runData;
+						}
+
+						const result = await extractWebhookLastNodeResponse(
+							responseData as WebhookResponseData,
+							lastNodeTaskData,
+							checkAllMainOutputs,
+							{ responsePropertyName, responseContentType, responseBinaryPropertyName },
+						);
+
+						if (!result.ok) {
+							responseCallback(result.error, {});
+							didSendResponse = true;
+							return runData;
+						}
+
+						const response = result.result;
+						// Apply potential content-type override
+						if (response.contentType) {
+							responseHeaders.set('content-type', response.contentType);
+						}
+
+						responseCallback(
+							null,
+							response.type === 'static'
+								? createStaticResponse(response.body, responseCode, responseHeaders)
+								: createStreamResponse(response.stream, responseCode, responseHeaders),
+						);
+						didSendResponse = true;
+						return runData;
+					})
+					.catch((e) => {
+						if (!didSendResponse) {
+							responseCallback(
+								new OperationalError('There was a problem executing the workflow', {
+									cause: e,
+								}),
+								{},
+							);
+						}
+
+						const internalServerError = new InternalServerError(e.message, e);
+						if (e instanceof ExecutionCancelledError) internalServerError.level = 'warning';
+						throw internalServerError;
+					});
+			}
+			return executionId;
+		} catch (e) {
+			const error =
+				e instanceof UnprocessableRequestError
+					? e
+					: new OperationalError('There was a problem executing the workflow', {
+							cause: e,
+						});
+			if (didSendResponse) throw error;
+			responseCallback(error, {});
+			return;
+		}
+	} finally {
+		await workflow.expression.releaseIsolate();
 	}
 }
 
 /**
  * Evaluates the response mode, code and data for a webhook node
  */
-async function evaluateResponseOptions(
+function evaluateResponseOptions(
 	workflowStartNode: INode,
 	workflow: Workflow,
 	req: WebhookRequest,
@@ -932,50 +946,76 @@ async function evaluateResponseOptions(
 	executionMode: WorkflowExecuteMode,
 	additionalKeys: IWorkflowDataProxyAdditionalKeys,
 ) {
-	await workflow.expression.acquireIsolate();
-	try {
-		//check if response mode should be set automatically, e.g. multipage form
-		const responseMode =
-			autoDetectResponseMode(workflowStartNode, workflow, req.method) ??
-			(workflow.expression.getSimpleParameterValue(
-				workflowStartNode,
-				webhookData.webhookDescription.responseMode,
-				executionMode,
-				additionalKeys,
-				undefined,
-				'onReceived',
-			) as WebhookResponseMode);
-
-		const responseCode = workflow.expression.getSimpleParameterValue(
+	//check if response mode should be set automatically, e.g. multipage form
+	const responseMode =
+		autoDetectResponseMode(workflowStartNode, workflow, req.method) ??
+		(workflow.expression.getSimpleParameterValue(
 			workflowStartNode,
-			webhookData.webhookDescription.responseCode as string,
+			webhookData.webhookDescription.responseMode,
 			executionMode,
 			additionalKeys,
 			undefined,
-			200,
-		) as number;
+			'onReceived',
+		) as WebhookResponseMode);
 
-		// This parameter is used for two different purposes:
-		// 1. as arbitrary string input defined in the workflow in the "respond immediately" mode,
-		// 2. as well as WebhookResponseData config in all the other modes
-		const responseData = workflow.expression.getComplexParameterValue(
-			workflowStartNode,
-			webhookData.webhookDescription.responseData,
-			executionMode,
-			additionalKeys,
-			undefined,
-			'firstEntryJson',
-		) as WebhookResponseData | string | undefined;
+	const responseCode = workflow.expression.getSimpleParameterValue(
+		workflowStartNode,
+		webhookData.webhookDescription.responseCode as string,
+		executionMode,
+		additionalKeys,
+		undefined,
+		200,
+	) as number;
 
-		// This is needed for backward compatibility, where only the first main output was checked for data.
-		// We want to keep existing behavior for webhooks, but change for chat triggers, where checking all main outputs makes more sense.
-		// We can unify the behavior in the next major release and get rid of this flag
-		const checkAllMainOutputs = workflowStartNode.type === CHAT_TRIGGER_NODE_TYPE;
+	// This parameter is used for two different purposes:
+	// 1. as arbitrary string input defined in the workflow in the "respond immediately" mode,
+	// 2. as well as WebhookResponseData config in all the other modes
+	const responseData = workflow.expression.getComplexParameterValue(
+		workflowStartNode,
+		webhookData.webhookDescription.responseData,
+		executionMode,
+		additionalKeys,
+		undefined,
+		'firstEntryJson',
+	) as WebhookResponseData | string | undefined;
 
-		return { responseMode, responseCode, responseData, checkAllMainOutputs };
-	} finally {
-		await workflow.expression.releaseIsolate();
-	}
+	// This is needed for backward compatibility, where only the first main output was checked for data.
+	// We want to keep existing behavior for webhooks, but change for chat triggers, where checking all main outputs makes more sense.
+	// We can unify the behavior in the next major release and get rid of this flag
+	const checkAllMainOutputs = workflowStartNode.type === CHAT_TRIGGER_NODE_TYPE;
+
+	const responsePropertyName = workflow.expression.getSimpleParameterValue(
+		workflowStartNode,
+		webhookData.webhookDescription.responsePropertyName,
+		executionMode,
+		additionalKeys,
+	) as string | undefined;
+
+	const responseContentType = workflow.expression.getSimpleParameterValue(
+		workflowStartNode,
+		webhookData.webhookDescription.responseContentType,
+		executionMode,
+		additionalKeys,
+	) as string | undefined;
+
+	const responseBinaryPropertyName = workflow.expression.getSimpleParameterValue(
+		workflowStartNode,
+		webhookData.webhookDescription.responseBinaryPropertyName,
+		executionMode,
+		additionalKeys,
+		undefined,
+		'data',
+	);
+
+	return {
+		responseMode,
+		responseCode,
+		responseData,
+		checkAllMainOutputs,
+		responsePropertyName,
+		responseContentType,
+		responseBinaryPropertyName,
+	};
 }
 
 /**
@@ -994,19 +1034,14 @@ async function parseRequestBody(
 	const nodeVersion = workflowStartNode.typeVersion;
 	if (nodeVersion === 1) {
 		// binaryData option is removed in versions higher than 1
-		await workflow.expression.acquireIsolate();
-		try {
-			binaryData = workflow.expression.getSimpleParameterValue(
-				workflowStartNode,
-				'={{$parameter["options"]["binaryData"]}}',
-				executionMode,
-				additionalKeys,
-				undefined,
-				false,
-			);
-		} finally {
-			await workflow.expression.releaseIsolate();
-		}
+		binaryData = workflow.expression.getSimpleParameterValue(
+			workflowStartNode,
+			'={{$parameter["options"]["binaryData"]}}',
+			executionMode,
+			additionalKeys,
+			undefined,
+			false,
+		);
 	}
 
 	// if `Webhook` or `Wait` node, and binaryData is enabled, skip pre-parse the request-body
@@ -1038,9 +1073,7 @@ async function parseRequestBody(
 /**
  * Evaluates the `responseHeaders` parameter of a webhook node
  */
-async function evaluateResponseHeaders(
-	context: WebhookExecutionContext,
-): Promise<WebhookResponseHeaders> {
+function evaluateResponseHeaders(context: WebhookExecutionContext): WebhookResponseHeaders {
 	const headers = new WebhookResponseHeaders();
 
 	if (context.webhookData.webhookDescription.responseHeaders === undefined) {
@@ -1048,7 +1081,7 @@ async function evaluateResponseHeaders(
 	}
 
 	const evaluatedHeaders =
-		await context.evaluateComplexWebhookDescriptionExpression<WebhookNodeResponseHeaders>(
+		context.evaluateComplexWebhookDescriptionExpression<WebhookNodeResponseHeaders>(
 			'responseHeaders',
 		);
 	if (evaluatedHeaders) {
