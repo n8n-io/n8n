@@ -72,6 +72,7 @@ export const instanceAiAgentKindSchema = z.enum([
 	'researcher',
 	'delegate',
 	'browser-setup',
+	'planner',
 ]);
 export type InstanceAiAgentKind = z.infer<typeof instanceAiAgentKindSchema>;
 
@@ -579,7 +580,14 @@ export interface InstanceAiToolCallState {
 	result?: unknown;
 	error?: string;
 	isLoading: boolean;
-	renderHint?: 'tasks' | 'delegate' | 'builder' | 'data-table' | 'researcher' | 'default';
+	renderHint?:
+		| 'tasks'
+		| 'delegate'
+		| 'builder'
+		| 'data-table'
+		| 'researcher'
+		| 'planner'
+		| 'default';
 	confirmation?: {
 		requestId: string;
 		severity: InstanceAiConfirmationSeverity;
@@ -869,6 +877,7 @@ const DATA_TABLE_RENDER_HINT_TOOLS = new Set([
 	'agent-data-table-manager',
 ]);
 const RESEARCH_RENDER_HINT_TOOLS = new Set(['research-with-agent']);
+const PLANNER_RENDER_HINT_TOOLS = new Set(['plan-with-agent']);
 
 export function getRenderHint(toolName: string): InstanceAiToolCallState['renderHint'] {
 	if (toolName === 'update-tasks') return 'tasks';
@@ -876,5 +885,6 @@ export function getRenderHint(toolName: string): InstanceAiToolCallState['render
 	if (BUILDER_RENDER_HINT_TOOLS.has(toolName)) return 'builder';
 	if (DATA_TABLE_RENDER_HINT_TOOLS.has(toolName)) return 'data-table';
 	if (RESEARCH_RENDER_HINT_TOOLS.has(toolName)) return 'researcher';
+	if (PLANNER_RENDER_HINT_TOOLS.has(toolName)) return 'planner';
 	return 'default';
 }

@@ -134,10 +134,11 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 					:is-loading="toolCallsById[entry.toolCallId].isLoading"
 					:tool-call-id="toolCallsById[entry.toolCallId].toolCallId"
 				/>
-				<!-- Hidden tool calls (builder/data-table/researcher handled by child agent via AgentSection) -->
+				<!-- Hidden tool calls (builder/data-table/researcher/planner handled by child agent via AgentSection) -->
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'builder'" />
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'data-table'" />
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'researcher'" />
+				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'planner'" />
 				<!-- Answered questions (read-only after resolution) -->
 				<AnsweredQuestions
 					v-else-if="
