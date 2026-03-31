@@ -45,8 +45,7 @@ import { WorkflowBuilderToolsService } from './tools/workflow-builder/workflow-b
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { DataTableAggregateService } from '@/modules/data-table/data-table-aggregate.service';
-import { DataTableService } from '@/modules/data-table/data-table.service';
+import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { NodeTypes } from '@/node-types';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
@@ -99,8 +98,7 @@ export class McpService {
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly executionRepository: ExecutionRepository,
 		private readonly executionService: ExecutionService,
-		private readonly dataTableService: DataTableService,
-		private readonly dataTableAggregateService: DataTableAggregateService,
+		private readonly dataTableProxyService: DataTableProxyService,
 	) {}
 
 	async getServer(user: User) {
@@ -219,44 +217,30 @@ export class McpService {
 		server.registerTool(testWorkflowTool.name, testWorkflowTool.config, testWorkflowTool.handler);
 
 		// Data table tools
-		const searchDataTablesTool = createSearchDataTablesTool(
-			user,
-			this.dataTableAggregateService,
-			this.telemetry,
-		);
+		const dataTableOps = this.dataTableProxyService.makeDataTableOperationsForUser(user);
+
+		const searchDataTablesTool = createSearchDataTablesTool(user, dataTableOps, this.telemetry);
 		server.registerTool(
 			searchDataTablesTool.name,
 			searchDataTablesTool.config,
 			searchDataTablesTool.handler,
 		);
 
-		const createDataTableTool = createCreateDataTableTool(
-			user,
-			this.dataTableService,
-			this.telemetry,
-		);
+		const createDataTableTool = createCreateDataTableTool(user, dataTableOps, this.telemetry);
 		server.registerTool(
 			createDataTableTool.name,
 			createDataTableTool.config,
 			createDataTableTool.handler,
 		);
 
-		const modifyDataTableTool = createModifyDataTableTool(
-			user,
-			this.dataTableService,
-			this.telemetry,
-		);
+		const modifyDataTableTool = createModifyDataTableTool(user, dataTableOps, this.telemetry);
 		server.registerTool(
 			modifyDataTableTool.name,
 			modifyDataTableTool.config,
 			modifyDataTableTool.handler,
 		);
 
-		const addDataTableRowsTool = createAddDataTableRowsTool(
-			user,
-			this.dataTableService,
-			this.telemetry,
-		);
+		const addDataTableRowsTool = createAddDataTableRowsTool(user, dataTableOps, this.telemetry);
 		server.registerTool(
 			addDataTableRowsTool.name,
 			addDataTableRowsTool.config,

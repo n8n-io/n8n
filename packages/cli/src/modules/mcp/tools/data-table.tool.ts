@@ -6,8 +6,7 @@ import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
 import { dataTableColumnSchema, dataTableColumnTypeSchema, dataTableSchema } from './schemas';
 
-import type { DataTableAggregateService } from '@/modules/data-table/data-table-aggregate.service';
-import type { DataTableService } from '@/modules/data-table/data-table.service';
+import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
 import type { Telemetry } from '@/telemetry';
 
 // #region Search Data Tables
@@ -36,7 +35,7 @@ const searchOutputSchema = {
 
 export const createSearchDataTablesTool = (
 	user: User,
-	dataTableAggregateService: DataTableAggregateService,
+	dataTableOps: DataTableUserOperations,
 	telemetry: Telemetry,
 ): ToolDefinition<typeof searchInputSchema> => ({
 	name: 'search_data_tables',
@@ -71,7 +70,7 @@ export const createSearchDataTablesTool = (
 		try {
 			const safeLimit = Math.min(Math.max(1, limit), SEARCH_MAX_RESULTS);
 
-			const result = await dataTableAggregateService.getManyAndCount(user, {
+			const result = await dataTableOps.getManyAndCount({
 				take: safeLimit,
 				filter: {
 					...(query ? { name: query } : {}),
@@ -162,7 +161,7 @@ const createOutputSchema = {
 
 export const createCreateDataTableTool = (
 	user: User,
-	dataTableService: DataTableService,
+	dataTableOps: DataTableUserOperations,
 	telemetry: Telemetry,
 ): ToolDefinition<typeof createInputSchema> => ({
 	name: 'create_data_table',
@@ -195,7 +194,7 @@ export const createCreateDataTableTool = (
 		};
 
 		try {
-			const result = await dataTableService.createDataTable(projectId, {
+			const result = await dataTableOps.createDataTable(projectId, {
 				name,
 				columns: columns.map((col) => ({
 					name: col.name,
@@ -203,7 +202,7 @@ export const createCreateDataTableTool = (
 				})),
 			});
 
-			const tableColumns = await dataTableService.getColumns(result.id, projectId);
+			const tableColumns = await dataTableOps.getColumns(result.id, projectId);
 
 			const output = {
 				id: result.id,
@@ -274,7 +273,7 @@ const modifyOutputSchema = {
 
 export const createModifyDataTableTool = (
 	user: User,
-	dataTableService: DataTableService,
+	dataTableOps: DataTableUserOperations,
 	telemetry: Telemetry,
 ): ToolDefinition<typeof modifyInputSchema> => ({
 	name: 'modify_data_table',
@@ -324,7 +323,7 @@ export const createModifyDataTableTool = (
 					if (!name) {
 						throw new Error("'name' is required for the 'rename_table' operation");
 					}
-					await dataTableService.updateDataTable(dataTableId, projectId, { name });
+					await dataTableOps.updateDataTable(dataTableId, projectId, { name });
 					output = { success: true, message: `Data table renamed to '${name}'` };
 					break;
 				}
@@ -336,7 +335,7 @@ export const createModifyDataTableTool = (
 					if (!columnType) {
 						throw new Error("'columnType' is required for the 'add_column' operation");
 					}
-					const column = await dataTableService.addColumn(dataTableId, projectId, {
+					const column = await dataTableOps.addColumn(dataTableId, projectId, {
 						name,
 						type: columnType,
 					});
@@ -352,7 +351,7 @@ export const createModifyDataTableTool = (
 					if (!columnId) {
 						throw new Error("'columnId' is required for the 'delete_column' operation");
 					}
-					await dataTableService.deleteColumn(dataTableId, projectId, columnId);
+					await dataTableOps.deleteColumn(dataTableId, projectId, columnId);
 					output = { success: true, message: `Column '${columnId}' deleted` };
 					break;
 				}
@@ -364,12 +363,9 @@ export const createModifyDataTableTool = (
 					if (!name) {
 						throw new Error("'name' is required for the 'rename_column' operation");
 					}
-					const renamedColumn = await dataTableService.renameColumn(
-						dataTableId,
-						projectId,
-						columnId,
-						{ name },
-					);
+					const renamedColumn = await dataTableOps.renameColumn(dataTableId, projectId, columnId, {
+						name,
+					});
 					output = {
 						success: true,
 						message: `Column renamed to '${name}'`,
@@ -426,7 +422,7 @@ const addRowsOutputSchema = {
 
 export const createAddDataTableRowsTool = (
 	user: User,
-	dataTableService: DataTableService,
+	dataTableOps: DataTableUserOperations,
 	telemetry: Telemetry,
 ): ToolDefinition<typeof addRowsInputSchema> => ({
 	name: 'add_data_table_rows',
@@ -459,7 +455,7 @@ export const createAddDataTableRowsTool = (
 		};
 
 		try {
-			const result = await dataTableService.insertRows(dataTableId, projectId, rows, 'count');
+			const result = await dataTableOps.insertRows(dataTableId, projectId, rows, 'count');
 
 			const output = {
 				success: true,

@@ -7,8 +7,7 @@ import {
 	createSearchDataTablesTool,
 } from '../tools/data-table.tool';
 
-import type { DataTableAggregateService } from '@/modules/data-table/data-table-aggregate.service';
-import type { DataTableService } from '@/modules/data-table/data-table.service';
+import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
 import type { Telemetry } from '@/telemetry';
 
 const user = Object.assign(new User(), { id: 'user-1' });
@@ -31,15 +30,15 @@ describe('search_data_tables MCP tool', () => {
 		const data = overrides?.data ?? [];
 		const count = overrides?.count ?? data.length;
 
-		const dataTableAggregateService = {
+		const dataTableOps = {
 			getManyAndCount: overrides?.error
 				? jest.fn().mockRejectedValue(overrides.error)
 				: jest.fn().mockResolvedValue({ data, count }),
-		} as unknown as DataTableAggregateService;
+		} as unknown as DataTableUserOperations;
 
 		const telemetry = createTelemetry();
 
-		return { dataTableAggregateService, telemetry };
+		return { dataTableOps, telemetry };
 	};
 
 	const callHandler = async (
@@ -56,8 +55,8 @@ describe('search_data_tables MCP tool', () => {
 		);
 
 	test('creates tool correctly', () => {
-		const { dataTableAggregateService, telemetry } = createMocks();
-		const tool = createSearchDataTablesTool(user, dataTableAggregateService, telemetry);
+		const { dataTableOps, telemetry } = createMocks();
+		const tool = createSearchDataTablesTool(user, dataTableOps, telemetry);
 
 		expect(tool.name).toBe('search_data_tables');
 		expect(tool.config).toBeDefined();
@@ -79,8 +78,8 @@ describe('search_data_tables MCP tool', () => {
 				columns: [{ id: 'col-1', name: 'email', type: 'string', index: 0 }],
 			},
 		];
-		const { dataTableAggregateService, telemetry } = createMocks({ data });
-		const tool = createSearchDataTablesTool(user, dataTableAggregateService, telemetry);
+		const { dataTableOps, telemetry } = createMocks({ data });
+		const tool = createSearchDataTablesTool(user, dataTableOps, telemetry);
 
 		const result = await callHandler(tool, {});
 
@@ -100,13 +99,12 @@ describe('search_data_tables MCP tool', () => {
 	});
 
 	test('passes query and projectId filters', async () => {
-		const { dataTableAggregateService, telemetry } = createMocks();
-		const tool = createSearchDataTablesTool(user, dataTableAggregateService, telemetry);
+		const { dataTableOps, telemetry } = createMocks();
+		const tool = createSearchDataTablesTool(user, dataTableOps, telemetry);
 
 		await callHandler(tool, { query: 'users', projectId: 'proj-1' });
 
-		expect(dataTableAggregateService.getManyAndCount).toHaveBeenCalledWith(
-			user,
+		expect(dataTableOps.getManyAndCount).toHaveBeenCalledWith(
 			expect.objectContaining({
 				filter: { name: 'users', projectId: 'proj-1' },
 			}),
@@ -114,10 +112,10 @@ describe('search_data_tables MCP tool', () => {
 	});
 
 	test('handles errors gracefully', async () => {
-		const { dataTableAggregateService, telemetry } = createMocks({
+		const { dataTableOps, telemetry } = createMocks({
 			error: new Error('DB error'),
 		});
-		const tool = createSearchDataTablesTool(user, dataTableAggregateService, telemetry);
+		const tool = createSearchDataTablesTool(user, dataTableOps, telemetry);
 
 		const result = await callHandler(tool, {});
 
@@ -130,8 +128,8 @@ describe('search_data_tables MCP tool', () => {
 	});
 
 	test('tracks telemetry on success', async () => {
-		const { dataTableAggregateService, telemetry } = createMocks({ data: [], count: 0 });
-		const tool = createSearchDataTablesTool(user, dataTableAggregateService, telemetry);
+		const { dataTableOps, telemetry } = createMocks({ data: [], count: 0 });
+		const tool = createSearchDataTablesTool(user, dataTableOps, telemetry);
 
 		await callHandler(tool, { query: 'test' });
 
@@ -146,10 +144,10 @@ describe('search_data_tables MCP tool', () => {
 	});
 
 	test('tracks telemetry on error', async () => {
-		const { dataTableAggregateService, telemetry } = createMocks({
+		const { dataTableOps, telemetry } = createMocks({
 			error: new Error('DB error'),
 		});
-		const tool = createSearchDataTablesTool(user, dataTableAggregateService, telemetry);
+		const tool = createSearchDataTablesTool(user, dataTableOps, telemetry);
 
 		await callHandler(tool, {});
 
@@ -181,16 +179,16 @@ describe('create_data_table MCP tool', () => {
 		};
 		const columns = overrides?.columns ?? [{ id: 'col-1', name: 'email', type: 'string' }];
 
-		const dataTableService = {
+		const dataTableOps = {
 			createDataTable: overrides?.error
 				? jest.fn().mockRejectedValue(overrides.error)
 				: jest.fn().mockResolvedValue(createdTable),
 			getColumns: jest.fn().mockResolvedValue(columns),
-		} as unknown as DataTableService;
+		} as unknown as DataTableUserOperations;
 
 		const telemetry = createTelemetry();
 
-		return { dataTableService, telemetry };
+		return { dataTableOps, telemetry };
 	};
 
 	const callHandler = async (
@@ -203,8 +201,8 @@ describe('create_data_table MCP tool', () => {
 	) => await tool.handler(args, {} as never);
 
 	test('creates tool correctly', () => {
-		const { dataTableService, telemetry } = createMocks();
-		const tool = createCreateDataTableTool(user, dataTableService, telemetry);
+		const { dataTableOps, telemetry } = createMocks();
+		const tool = createCreateDataTableTool(user, dataTableOps, telemetry);
 
 		expect(tool.name).toBe('create_data_table');
 		expect(tool.config).toBeDefined();
@@ -215,8 +213,8 @@ describe('create_data_table MCP tool', () => {
 	});
 
 	test('creates data table and returns result', async () => {
-		const { dataTableService, telemetry } = createMocks();
-		const tool = createCreateDataTableTool(user, dataTableService, telemetry);
+		const { dataTableOps, telemetry } = createMocks();
+		const tool = createCreateDataTableTool(user, dataTableOps, telemetry);
 
 		const result = await callHandler(tool, {
 			projectId: 'proj-1',
@@ -231,17 +229,17 @@ describe('create_data_table MCP tool', () => {
 			columns: [{ id: 'col-1', name: 'email', type: 'string' }],
 		});
 
-		expect(dataTableService.createDataTable).toHaveBeenCalledWith('proj-1', {
+		expect(dataTableOps.createDataTable).toHaveBeenCalledWith('proj-1', {
 			name: 'Users',
 			columns: [{ name: 'email', type: 'string' }],
 		});
 	});
 
 	test('throws on error', async () => {
-		const { dataTableService, telemetry } = createMocks({
+		const { dataTableOps, telemetry } = createMocks({
 			error: new Error('Duplicate name'),
 		});
-		const tool = createCreateDataTableTool(user, dataTableService, telemetry);
+		const tool = createCreateDataTableTool(user, dataTableOps, telemetry);
 
 		await expect(
 			callHandler(tool, {
@@ -253,8 +251,8 @@ describe('create_data_table MCP tool', () => {
 	});
 
 	test('tracks telemetry on success', async () => {
-		const { dataTableService, telemetry } = createMocks();
-		const tool = createCreateDataTableTool(user, dataTableService, telemetry);
+		const { dataTableOps, telemetry } = createMocks();
+		const tool = createCreateDataTableTool(user, dataTableOps, telemetry);
 
 		await callHandler(tool, {
 			projectId: 'proj-1',
@@ -273,10 +271,10 @@ describe('create_data_table MCP tool', () => {
 	});
 
 	test('tracks telemetry on error', async () => {
-		const { dataTableService, telemetry } = createMocks({
+		const { dataTableOps, telemetry } = createMocks({
 			error: new Error('Duplicate name'),
 		});
-		const tool = createCreateDataTableTool(user, dataTableService, telemetry);
+		const tool = createCreateDataTableTool(user, dataTableOps, telemetry);
 
 		await expect(
 			callHandler(tool, {
@@ -299,18 +297,18 @@ describe('create_data_table MCP tool', () => {
 
 describe('modify_data_table MCP tool', () => {
 	const createMocks = (overrides?: { error?: Error }) => {
-		const dataTableService = {
+		const dataTableOps = {
 			updateDataTable: overrides?.error
 				? jest.fn().mockRejectedValue(overrides.error)
 				: jest.fn().mockResolvedValue(undefined),
 			addColumn: jest.fn().mockResolvedValue({ id: 'col-new', name: 'age', type: 'number' }),
 			deleteColumn: jest.fn().mockResolvedValue(undefined),
 			renameColumn: jest.fn().mockResolvedValue({ id: 'col-1', name: 'full_name', type: 'string' }),
-		} as unknown as DataTableService;
+		} as unknown as DataTableUserOperations;
 
 		const telemetry = createTelemetry();
 
-		return { dataTableService, telemetry };
+		return { dataTableOps, telemetry };
 	};
 
 	const callHandler = async (
@@ -326,8 +324,8 @@ describe('modify_data_table MCP tool', () => {
 	) => await tool.handler(args as never, {} as never);
 
 	test('creates tool correctly', () => {
-		const { dataTableService, telemetry } = createMocks();
-		const tool = createModifyDataTableTool(user, dataTableService, telemetry);
+		const { dataTableOps, telemetry } = createMocks();
+		const tool = createModifyDataTableTool(user, dataTableOps, telemetry);
 
 		expect(tool.name).toBe('modify_data_table');
 		expect(tool.config).toBeDefined();
@@ -338,8 +336,8 @@ describe('modify_data_table MCP tool', () => {
 	});
 
 	test('renames a data table', async () => {
-		const { dataTableService, telemetry } = createMocks();
-		const tool = createModifyDataTableTool(user, dataTableService, telemetry);
+		const { dataTableOps, telemetry } = createMocks();
+		const tool = createModifyDataTableTool(user, dataTableOps, telemetry);
 
 		const result = await callHandler(tool, {
 			dataTableId: 'dt-1',
@@ -352,14 +350,14 @@ describe('modify_data_table MCP tool', () => {
 			success: true,
 			message: "Data table renamed to 'Customers'",
 		});
-		expect(dataTableService.updateDataTable).toHaveBeenCalledWith('dt-1', 'proj-1', {
+		expect(dataTableOps.updateDataTable).toHaveBeenCalledWith('dt-1', 'proj-1', {
 			name: 'Customers',
 		});
 	});
 
 	test('adds a column', async () => {
-		const { dataTableService, telemetry } = createMocks();
-		const tool = createModifyDataTableTool(user, dataTableService, telemetry);
+		const { dataTableOps, telemetry } = createMocks();
+		const tool = createModifyDataTableTool(user, dataTableOps, telemetry);
 
 		const result = await callHandler(tool, {
 			dataTableId: 'dt-1',
@@ -373,15 +371,15 @@ describe('modify_data_table MCP tool', () => {
 			success: true,
 			column: { id: 'col-new', name: 'age', type: 'number' },
 		});
-		expect(dataTableService.addColumn).toHaveBeenCalledWith('dt-1', 'proj-1', {
+		expect(dataTableOps.addColumn).toHaveBeenCalledWith('dt-1', 'proj-1', {
 			name: 'age',
 			type: 'number',
 		});
 	});
 
 	test('deletes a column', async () => {
-		const { dataTableService, telemetry } = createMocks();
-		const tool = createModifyDataTableTool(user, dataTableService, telemetry);
+		const { dataTableOps, telemetry } = createMocks();
+		const tool = createModifyDataTableTool(user, dataTableOps, telemetry);
 
 		const result = await callHandler(tool, {
 			dataTableId: 'dt-1',
@@ -394,12 +392,12 @@ describe('modify_data_table MCP tool', () => {
 			success: true,
 			message: "Column 'col-1' deleted",
 		});
-		expect(dataTableService.deleteColumn).toHaveBeenCalledWith('dt-1', 'proj-1', 'col-1');
+		expect(dataTableOps.deleteColumn).toHaveBeenCalledWith('dt-1', 'proj-1', 'col-1');
 	});
 
 	test('renames a column', async () => {
-		const { dataTableService, telemetry } = createMocks();
-		const tool = createModifyDataTableTool(user, dataTableService, telemetry);
+		const { dataTableOps, telemetry } = createMocks();
+		const tool = createModifyDataTableTool(user, dataTableOps, telemetry);
 
 		const result = await callHandler(tool, {
 			dataTableId: 'dt-1',
@@ -413,14 +411,14 @@ describe('modify_data_table MCP tool', () => {
 			success: true,
 			column: { id: 'col-1', name: 'full_name', type: 'string' },
 		});
-		expect(dataTableService.renameColumn).toHaveBeenCalledWith('dt-1', 'proj-1', 'col-1', {
+		expect(dataTableOps.renameColumn).toHaveBeenCalledWith('dt-1', 'proj-1', 'col-1', {
 			name: 'full_name',
 		});
 	});
 
 	test('throws when rename_table is missing name', async () => {
-		const { dataTableService, telemetry } = createMocks();
-		const tool = createModifyDataTableTool(user, dataTableService, telemetry);
+		const { dataTableOps, telemetry } = createMocks();
+		const tool = createModifyDataTableTool(user, dataTableOps, telemetry);
 
 		await expect(
 			callHandler(tool, {
@@ -432,8 +430,8 @@ describe('modify_data_table MCP tool', () => {
 	});
 
 	test('throws when add_column is missing columnType', async () => {
-		const { dataTableService, telemetry } = createMocks();
-		const tool = createModifyDataTableTool(user, dataTableService, telemetry);
+		const { dataTableOps, telemetry } = createMocks();
+		const tool = createModifyDataTableTool(user, dataTableOps, telemetry);
 
 		await expect(
 			callHandler(tool, {
@@ -446,8 +444,8 @@ describe('modify_data_table MCP tool', () => {
 	});
 
 	test('throws when delete_column is missing columnId', async () => {
-		const { dataTableService, telemetry } = createMocks();
-		const tool = createModifyDataTableTool(user, dataTableService, telemetry);
+		const { dataTableOps, telemetry } = createMocks();
+		const tool = createModifyDataTableTool(user, dataTableOps, telemetry);
 
 		await expect(
 			callHandler(tool, {
@@ -459,8 +457,8 @@ describe('modify_data_table MCP tool', () => {
 	});
 
 	test('throws when rename_column is missing columnId', async () => {
-		const { dataTableService, telemetry } = createMocks();
-		const tool = createModifyDataTableTool(user, dataTableService, telemetry);
+		const { dataTableOps, telemetry } = createMocks();
+		const tool = createModifyDataTableTool(user, dataTableOps, telemetry);
 
 		await expect(
 			callHandler(tool, {
@@ -473,8 +471,8 @@ describe('modify_data_table MCP tool', () => {
 	});
 
 	test('tracks telemetry on success', async () => {
-		const { dataTableService, telemetry } = createMocks();
-		const tool = createModifyDataTableTool(user, dataTableService, telemetry);
+		const { dataTableOps, telemetry } = createMocks();
+		const tool = createModifyDataTableTool(user, dataTableOps, telemetry);
 
 		await callHandler(tool, {
 			dataTableId: 'dt-1',
@@ -494,10 +492,10 @@ describe('modify_data_table MCP tool', () => {
 	});
 
 	test('tracks telemetry on error', async () => {
-		const { dataTableService, telemetry } = createMocks({
+		const { dataTableOps, telemetry } = createMocks({
 			error: new Error('Not found'),
 		});
-		const tool = createModifyDataTableTool(user, dataTableService, telemetry);
+		const tool = createModifyDataTableTool(user, dataTableOps, telemetry);
 
 		await expect(
 			callHandler(tool, {
@@ -521,15 +519,15 @@ describe('modify_data_table MCP tool', () => {
 
 describe('add_data_table_rows MCP tool', () => {
 	const createMocks = (overrides?: { insertedRows?: number; error?: Error }) => {
-		const dataTableService = {
+		const dataTableOps = {
 			insertRows: overrides?.error
 				? jest.fn().mockRejectedValue(overrides.error)
 				: jest.fn().mockResolvedValue({ insertedRows: overrides?.insertedRows ?? 3 }),
-		} as unknown as DataTableService;
+		} as unknown as DataTableUserOperations;
 
 		const telemetry = createTelemetry();
 
-		return { dataTableService, telemetry };
+		return { dataTableOps, telemetry };
 	};
 
 	const callHandler = async (
@@ -548,8 +546,8 @@ describe('add_data_table_rows MCP tool', () => {
 	];
 
 	test('creates tool correctly', () => {
-		const { dataTableService, telemetry } = createMocks();
-		const tool = createAddDataTableRowsTool(user, dataTableService, telemetry);
+		const { dataTableOps, telemetry } = createMocks();
+		const tool = createAddDataTableRowsTool(user, dataTableOps, telemetry);
 
 		expect(tool.name).toBe('add_data_table_rows');
 		expect(tool.config).toBeDefined();
@@ -560,8 +558,8 @@ describe('add_data_table_rows MCP tool', () => {
 	});
 
 	test('inserts rows and returns count', async () => {
-		const { dataTableService, telemetry } = createMocks({ insertedRows: 3 });
-		const tool = createAddDataTableRowsTool(user, dataTableService, telemetry);
+		const { dataTableOps, telemetry } = createMocks({ insertedRows: 3 });
+		const tool = createAddDataTableRowsTool(user, dataTableOps, telemetry);
 
 		const result = await callHandler(tool, {
 			dataTableId: 'dt-1',
@@ -574,14 +572,14 @@ describe('add_data_table_rows MCP tool', () => {
 			insertedCount: 3,
 		});
 
-		expect(dataTableService.insertRows).toHaveBeenCalledWith('dt-1', 'proj-1', sampleRows, 'count');
+		expect(dataTableOps.insertRows).toHaveBeenCalledWith('dt-1', 'proj-1', sampleRows, 'count');
 	});
 
 	test('throws on error', async () => {
-		const { dataTableService, telemetry } = createMocks({
+		const { dataTableOps, telemetry } = createMocks({
 			error: new Error('Column mismatch'),
 		});
-		const tool = createAddDataTableRowsTool(user, dataTableService, telemetry);
+		const tool = createAddDataTableRowsTool(user, dataTableOps, telemetry);
 
 		await expect(
 			callHandler(tool, {
@@ -593,8 +591,8 @@ describe('add_data_table_rows MCP tool', () => {
 	});
 
 	test('tracks telemetry on success', async () => {
-		const { dataTableService, telemetry } = createMocks({ insertedRows: 3 });
-		const tool = createAddDataTableRowsTool(user, dataTableService, telemetry);
+		const { dataTableOps, telemetry } = createMocks({ insertedRows: 3 });
+		const tool = createAddDataTableRowsTool(user, dataTableOps, telemetry);
 
 		await callHandler(tool, {
 			dataTableId: 'dt-1',
@@ -613,10 +611,10 @@ describe('add_data_table_rows MCP tool', () => {
 	});
 
 	test('tracks telemetry on error', async () => {
-		const { dataTableService, telemetry } = createMocks({
+		const { dataTableOps, telemetry } = createMocks({
 			error: new Error('Column mismatch'),
 		});
-		const tool = createAddDataTableRowsTool(user, dataTableService, telemetry);
+		const tool = createAddDataTableRowsTool(user, dataTableOps, telemetry);
 
 		await expect(
 			callHandler(tool, {

@@ -307,3 +307,7 @@ export class DataTableProxyService implements DataTableProxyProvider {
 		};
 	}
 }
+
+export type DataTableUserOperations = ReturnType<
+	DataTableProxyService['makeDataTableOperationsForUser']
+>;
