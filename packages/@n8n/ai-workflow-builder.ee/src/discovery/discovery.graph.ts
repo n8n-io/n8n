@@ -23,6 +23,11 @@ import { createGetWorkflowExamplesTool } from '@/tools/get-workflow-examples.too
 import { createIntrospectTool } from '@/tools/introspect.tool';
 import { createNodeSearchTool } from '@/tools/node-search.tool';
 import { submitQuestionsTool } from '@/tools/submit-questions.tool';
+import {
+	createMutableSecurityManagerFactory,
+	type MutableWebFetchState,
+} from '@/tools/utils/web-fetch-security';
+import { createWebFetchTool } from '@/tools/web-fetch.tool';
 import type { PlanDecision, PlanOutput } from '@/types/planning';
 import type { WorkflowMetadata } from '@/types/tools';
 import type { SimpleWorkflow } from '@/types/workflow';
@@ -226,6 +231,16 @@ export class DiscoveryGraph {
 		if (enableIntrospection) {
 			baseTools.push(createIntrospectTool(config.logger).tool);
 		}
+
+		// Add web_fetch tool for URL fetching during discovery
+		const webFetchState: MutableWebFetchState = {
+			approvedDomains: [],
+			allDomainsApproved: false,
+			webFetchCount: 0,
+			messages: [],
+		};
+		const webFetchSecurityFactory = createMutableSecurityManagerFactory(webFetchState);
+		baseTools.push(createWebFetchTool(webFetchSecurityFactory).tool);
 
 		// Conditionally add documentation and workflow examples tools if feature flag is enabled
 		const tools = includeExamples

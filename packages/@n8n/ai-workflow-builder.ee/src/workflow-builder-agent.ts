@@ -69,6 +69,33 @@ function extractQuestionsInterrupt(
 }
 
 /**
+ * Extract a web_fetch_approval interrupt value from a LangGraph updates stream chunk.
+ */
+function extractWebFetchApprovalInterrupt(
+	chunk: Record<string, unknown>,
+): { requestId: string; url: string; domain: string } | null {
+	const interrupts = chunk.__interrupt__ as
+		| Array<{ value?: { type?: string; requestId?: string; url?: string; domain?: string } }>
+		| undefined;
+	if (!Array.isArray(interrupts) || interrupts.length === 0) return null;
+
+	const first = interrupts[0];
+	if (
+		first?.value?.type === 'web_fetch_approval' &&
+		typeof first.value.requestId === 'string' &&
+		typeof first.value.url === 'string' &&
+		typeof first.value.domain === 'string'
+	) {
+		return {
+			requestId: first.value.requestId,
+			url: first.value.url,
+			domain: first.value.domain,
+		};
+	}
+	return null;
+}
+
+/**
  * Per-stage LLM configuration for the workflow builder.
  * All stages must be configured with an LLM instance.
  */
@@ -188,38 +215,23 @@ export class WorkflowBuilderAgent {
 		userId: string | undefined,
 		abortSignal: AbortSignal | undefined,
 	) {
-		// Check if this is a questions resume (discovery graph interrupt)
-		if (payload.resumeData && payload.resumeInterrupt?.type === 'questions') {
-			this.logger?.debug('Questions answered, resuming discovery graph', { userId });
+		// Check if this is a discovery graph resume (questions or web_fetch_approval)
+		const isDiscoveryResume =
+			payload.resumeData &&
+			(payload.resumeInterrupt?.type === 'questions' ||
+				payload.resumeInterrupt?.type === 'web_fetch_approval');
+		if (isDiscoveryResume) {
+			this.logger?.debug('Resuming discovery graph from interrupt', {
+				userId,
+				type: payload.resumeInterrupt?.type,
+			});
 			yield* this.runPlanMode(payload, userId, abortSignal);
 			return;
 		}
 
 		// Check if this is a plan decision resume (approval/modify/reject)
 		if (payload.resumeData && payload.resumeInterrupt?.type === 'plan') {
-			const decision = parsePlanDecision(payload.resumeData);
-
-			if (decision.action === 'approve') {
-				// Plan approved: extract plan, route to CodeWorkflowBuilder with plan context
-				this.logger?.debug('Plan approved, routing to CodeWorkflowBuilder with plan', {
-					userId,
-				});
-				const codePayload: ChatPayload = {
-					...payload,
-					planOutput: payload.resumeInterrupt.plan,
-					resumeData: undefined,
-					resumeInterrupt: undefined,
-				};
-				yield* this.runCodeWorkflowBuilder(codePayload, userId, abortSignal);
-				return;
-			}
-
-			// Plan modify or reject: resume the planner graph
-			this.logger?.debug('Plan modify/reject, resuming planner graph', {
-				userId,
-				action: decision.action,
-			});
-			yield* this.runPlanMode(payload, userId, abortSignal);
+			yield* this.handlePlanResume(payload, userId, abortSignal);
 			return;
 		}
 
@@ -241,6 +253,34 @@ export class WorkflowBuilderAgent {
 			this.logger?.debug('Routing to code workflow builder', { userId });
 			yield* this.runCodeWorkflowBuilder(payload, userId, abortSignal);
 		}
+	}
+
+	private async *handlePlanResume(
+		payload: ChatPayload,
+		userId: string | undefined,
+		abortSignal: AbortSignal | undefined,
+	): AsyncGenerator<StreamOutput> {
+		const decision = parsePlanDecision(payload.resumeData);
+
+		if (decision.action === 'approve') {
+			this.logger?.debug('Plan approved, routing to CodeWorkflowBuilder with plan', { userId });
+			const planInterrupt =
+				payload.resumeInterrupt?.type === 'plan' ? payload.resumeInterrupt : undefined;
+			const codePayload: ChatPayload = {
+				...payload,
+				planOutput: planInterrupt?.plan,
+				resumeData: undefined,
+				resumeInterrupt: undefined,
+			};
+			yield* this.runCodeWorkflowBuilder(codePayload, userId, abortSignal);
+			return;
+		}
+
+		this.logger?.debug('Plan modify/reject, resuming planner graph', {
+			userId,
+			action: decision.action,
+		});
+		yield* this.runPlanMode(payload, userId, abortSignal);
 	}
 
 	/**
@@ -324,6 +364,20 @@ export class WorkflowBuilderAgent {
 						role: 'assistant' as const,
 						type: 'questions' as const,
 						...questions,
+					},
+				],
+			};
+			return;
+		}
+
+		const webFetch = extractWebFetchApprovalInterrupt(chunk);
+		if (webFetch) {
+			yield {
+				messages: [
+					{
+						role: 'assistant' as const,
+						type: 'web_fetch_approval' as const,
+						...webFetch,
 					},
 				],
 			};
