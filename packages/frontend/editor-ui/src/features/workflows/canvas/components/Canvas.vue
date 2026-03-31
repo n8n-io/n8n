@@ -957,10 +957,10 @@ function onRequestFitViewOnInit() {
 }
 
 function onRequestSetConnectionsOnInit(connections: IConnections) {
-	if (initialized.value) {
-		useWorkflowsStore().setConnections(connections);
-		return;
-	}
+	// Always defer — this event is only emitted during importWorkflowExact which
+	// recreates all nodes. VueFlow will drop edges applied before node handles
+	// exist, so we must wait for onNodesInitialized.
+	initialized.value = false;
 	pendingConnections = connections;
 }
 

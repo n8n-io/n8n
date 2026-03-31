@@ -1,6 +1,6 @@
 {
   "name": "@n8n/fs-proxy",
-  "version": "0.1.0",
+  "version": "0.1.0-rc1",
   "description": "Local AI gateway for n8n Instance AI — filesystem, shell, screenshots, mouse/keyboard, and browser automation",
   "bin": {
     "n8n-fs-proxy": "dist/cli.js"
@@ -33,10 +33,12 @@
     "dist/**/*"
   ],
   "dependencies": {
+    "@anthropic-ai/sandbox-runtime": "^0.0.42",
     "@inquirer/prompts": "^8.3.2",
     "@jitsi/robotjs": "^0.6.21",
     "@modelcontextprotocol/sdk": "1.26.0",
     "@n8n/mcp-browser": "workspace:*",
+    "@vscode/ripgrep": "^1.17.1",
     "eventsource": "^3.0.6",
     "node-screenshots": "^0.2.8",
     "picocolors": "catalog:",

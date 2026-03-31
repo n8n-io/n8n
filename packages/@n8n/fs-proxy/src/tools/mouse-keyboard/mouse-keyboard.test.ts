@@ -28,7 +28,7 @@ jest.mock('@jitsi/robotjs', () => ({
 }));
 
 jest.mock('../monitor-utils', () => ({
-	getPrimaryMonitor: jest.fn().mockReturnValue({ width: () => 1920, height: () => 1080 }),
+	getPrimaryMonitor: jest.fn().mockResolvedValue({ width: () => 1920, height: () => 1080 }),
 }));
 
 const mockRobot = robot as jest.Mocked<typeof robot>;
@@ -41,8 +41,8 @@ afterEach(() => {
 });
 
 describe('mouse_move', () => {
-	it('calls moveMouse with the specified coordinates', () => {
-		const result = mouseMoveTool.execute({ x: 100, y: 200 }, DUMMY_CONTEXT);
+	it('calls moveMouse with the specified coordinates', async () => {
+		const result = await mouseMoveTool.execute({ x: 100, y: 200 }, DUMMY_CONTEXT);
 
 		expect(mockRobot.moveMouse).toHaveBeenCalledWith(100, 200);
 		expect(result).toEqual(OK_RESULT);
@@ -72,8 +72,8 @@ describe('mouse_click', () => {
 		expect(result).toEqual(OK_RESULT);
 	});
 
-	it('defaults to left button when no button is specified', () => {
-		void mouseClickTool.execute({ x: 10, y: 20 }, DUMMY_CONTEXT);
+	it('defaults to left button when no button is specified', async () => {
+		await mouseClickTool.execute({ x: 10, y: 20 }, DUMMY_CONTEXT);
 
 		expect(mockRobot.mouseClick).toHaveBeenCalledWith('left');
 	});
@@ -183,10 +183,13 @@ describe('keyboard_type', () => {
 
 		const promise = keyboardTypeTool.execute({ text: 'delayed', delayMs: 500 }, DUMMY_CONTEXT);
 
-		// typeStringDelayed should not have been called yet
+		// Allow the dynamic import microtask to resolve before checking
+		await jest.advanceTimersByTimeAsync(0);
+
+		// typeStringDelayed should not have been called yet (still waiting on setTimeout)
 		expect(mockRobot.typeStringDelayed).not.toHaveBeenCalled();
 
-		jest.advanceTimersByTime(500);
+		await jest.advanceTimersByTimeAsync(500);
 		await promise;
 
 		expect(mockRobot.typeStringDelayed).toHaveBeenCalledWith('delayed', expect.any(Number));

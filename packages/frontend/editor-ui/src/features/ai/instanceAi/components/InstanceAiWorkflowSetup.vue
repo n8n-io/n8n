@@ -1089,6 +1089,7 @@ function handleLater() {
 									>
 										{{
 											i18n.baseText('instanceAi.workflowSetup.usedByNodes', {
+												adjustToNumber: nodeNames.length,
 												interpolate: { count: String(nodeNames.length) },
 											})
 										}}

@@ -21,6 +21,11 @@ const i18n = useI18n();
 const store = useInstanceAiStore();
 const inputText = ref('');
 const attachedFiles = ref<File[]>([]);
+const chatInputRef = ref<InstanceType<typeof ChatInputBase> | null>(null);
+
+defineExpose({
+	focus: () => chatInputRef.value?.focus(),
+});
 
 const canSubmit = computed(
 	() => (inputText.value.trim().length > 0 || attachedFiles.value.length > 0) && !props.isStreaming,
@@ -81,6 +86,7 @@ function handleFileRemove(file: File) {
 
 <template>
 	<ChatInputBase
+		ref="chatInputRef"
 		v-model="inputText"
 		:placeholder="placeholder"
 		:is-streaming="props.isStreaming"

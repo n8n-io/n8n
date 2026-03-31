@@ -182,7 +182,8 @@ export class InstanceAiService {
 	}
 
 	private startConfirmationTimeoutSweep(): void {
-		const timeoutMs = 10 * Time.minutes.toMilliseconds;
+		const timeoutMs = this.instanceAiConfig.confirmationTimeout;
+		if (timeoutMs <= 0) return;
 
 		this.confirmationTimeoutInterval = setInterval(() => {
 			const { suspendedThreadIds, confirmationRequestIds } = this.runState.sweepTimedOut(timeoutMs);

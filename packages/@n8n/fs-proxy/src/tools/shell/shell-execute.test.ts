@@ -1,3 +1,4 @@
+import { SandboxManager } from '@anthropic-ai/sandbox-runtime';
 import { spawn } from 'child_process';
 import { EventEmitter } from 'events';
 
@@ -8,6 +9,18 @@ import { ShellModule } from './index';
 import { shellExecuteTool } from './shell-execute';
 
 jest.mock('child_process');
+jest.mock('@vscode/ripgrep', () => ({ rgPath: '/usr/bin/rg' }));
+jest.mock('@anthropic-ai/sandbox-runtime', () => ({
+	// eslint-disable-next-line
+	SandboxManager: {
+		initialize: jest.fn().mockResolvedValue(undefined),
+		wrapWithSandbox: jest
+			.fn()
+			.mockImplementation(async (cmd: string) => await Promise.resolve(cmd)),
+	},
+}));
+
+const mockSandboxManager = SandboxManager as jest.Mocked<typeof SandboxManager>;
 
 const mockSpawn = spawn as jest.MockedFunction<typeof spawn>;
 
@@ -35,9 +48,29 @@ function getCloseHandler(on: jest.Mock): ((code: number) => void) | undefined {
 	return call?.[1];
 }
 
+function getErrorHandler(on: jest.Mock): ((error: Error) => void) | undefined {
+	const call = on.mock.calls.find((args: unknown[]) => args[0] === 'error') as
+		| [string, (error: Error) => void]
+		| undefined;
+	return call?.[1];
+}
+
+/** Flush all pending microtasks. */
+async function flushMicrotasks(ticks = 1) {
+	for (let i = 0; i < ticks; i++) await Promise.resolve();
+}
+
 describe('shell_execute tool', () => {
+	const originalPlatform = Object.getOwnPropertyDescriptor(process, 'platform');
+
+	beforeEach(() => {
+		// Default to linux to avoid the macOS async sandbox path in non-platform-specific tests
+		Object.defineProperty(process, 'platform', { value: 'linux', configurable: true });
+	});
+
 	afterEach(() => {
 		jest.clearAllMocks();
+		if (originalPlatform) Object.defineProperty(process, 'platform', originalPlatform);
 	});
 
 	it('captures stdout and exits with code 0', async () => {
@@ -49,7 +82,9 @@ describe('shell_execute tool', () => {
 			DUMMY_CONTEXT,
 		);
 
-		// Emit stdout data then close
+		// spawnCommand is async, so flush the microtask that registers child event handlers
+		await flushMicrotasks();
+
 		child.stdout.emit('data', Buffer.from('hello\n'));
 		const closeHandler = getCloseHandler(child.on);
 		closeHandler?.(0);
@@ -76,6 +111,8 @@ describe('shell_execute tool', () => {
 			DUMMY_CONTEXT,
 		);
 
+		await flushMicrotasks();
+
 		child.stderr.emit('data', Buffer.from('command not found\n'));
 		const closeHandler = getCloseHandler(child.on);
 		closeHandler?.(1);
@@ -100,6 +137,8 @@ describe('shell_execute tool', () => {
 			{ command: 'mixed', timeout: 5000 },
 			DUMMY_CONTEXT,
 		);
+
+		await flushMicrotasks();
 
 		child.stdout.emit('data', Buffer.from('out-line\n'));
 		child.stderr.emit('data', Buffer.from('err-line\n'));
@@ -129,6 +168,8 @@ describe('shell_execute tool', () => {
 			DUMMY_CONTEXT,
 		);
 
+		await flushMicrotasks();
+
 		jest.advanceTimersByTime(1001);
 
 		const result = await resultPromise;
@@ -147,6 +188,28 @@ describe('shell_execute tool', () => {
 		jest.useRealTimers();
 	});
 
+	it('resolves with an error result when spawn emits an error event', async () => {
+		const child = makeMockChild();
+		mockSpawn.mockReturnValue(child as unknown as ReturnType<typeof spawn>);
+
+		const resultPromise = shellExecuteTool.execute(
+			{ command: 'nonexistent-binary', timeout: 5000 },
+			DUMMY_CONTEXT,
+		);
+
+		await flushMicrotasks();
+
+		const errorHandler = getErrorHandler(child.on);
+		errorHandler?.(new Error('spawn sh ENOENT'));
+
+		const result = await resultPromise;
+
+		expect(result.isError).toBe(true);
+		// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse
+		const parsed = JSON.parse(textOf(result)) as { error: string };
+		expect(parsed.error).toBe('Failed to start process: spawn sh ENOENT');
+	});
+
 	it('passes cwd option to spawn', async () => {
 		const child = makeMockChild();
 		mockSpawn.mockReturnValue(child as unknown as ReturnType<typeof spawn>);
@@ -155,6 +218,8 @@ describe('shell_execute tool', () => {
 			{ command: 'pwd', timeout: 5000, cwd: '/custom/path' },
 			DUMMY_CONTEXT,
 		);
+
+		await flushMicrotasks();
 
 		const closeHandler = getCloseHandler(child.on);
 		closeHandler?.(0);
@@ -165,14 +230,6 @@ describe('shell_execute tool', () => {
 	});
 
 	describe('cross-platform shell selection', () => {
-		const originalPlatform = Object.getOwnPropertyDescriptor(process, 'platform');
-
-		afterEach(() => {
-			if (originalPlatform) {
-				Object.defineProperty(process, 'platform', originalPlatform);
-			}
-		});
-
 		it('uses cmd.exe /C on win32', async () => {
 			Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
 
@@ -183,6 +240,8 @@ describe('shell_execute tool', () => {
 				{ command: 'dir', timeout: 5000 },
 				DUMMY_CONTEXT,
 			);
+
+			await flushMicrotasks();
 
 			const closeHandler = getCloseHandler(child.on);
 			closeHandler?.(0);
@@ -204,6 +263,8 @@ describe('shell_execute tool', () => {
 				DUMMY_CONTEXT,
 			);
 
+			await flushMicrotasks();
+
 			const closeHandler = getCloseHandler(child.on);
 			closeHandler?.(0);
 			await resultPromise;
@@ -211,6 +272,32 @@ describe('shell_execute tool', () => {
 			const [executable, args] = mockSpawn.mock.calls[0];
 			expect(executable).toBe('sh');
 			expect(args).toEqual(['-c', 'ls']);
+		});
+
+		it('wraps command with SandboxManager on darwin', async () => {
+			Object.defineProperty(process, 'platform', { value: 'darwin', configurable: true });
+			mockSandboxManager.wrapWithSandbox.mockResolvedValue('sandboxed-ls');
+
+			const child = makeMockChild();
+			mockSpawn.mockReturnValue(child as unknown as ReturnType<typeof spawn>);
+
+			const resultPromise = shellExecuteTool.execute(
+				{ command: 'ls', timeout: 5000 },
+				DUMMY_CONTEXT,
+			);
+
+			// darwin path has extra async depth: initializeSandbox (×2 awaits) + wrapWithSandbox + return + .then()
+			await flushMicrotasks(5);
+
+			const closeHandler = getCloseHandler(child.on);
+			closeHandler?.(0);
+			await resultPromise;
+
+			expect(mockSandboxManager.initialize).toHaveBeenCalled();
+			expect(mockSandboxManager.wrapWithSandbox).toHaveBeenCalledWith('ls');
+			const [executable, spawnOptions] = mockSpawn.mock.calls[0];
+			expect(executable).toBe('sandboxed-ls');
+			expect(spawnOptions).toMatchObject({ shell: true });
 		});
 	});
 
@@ -223,6 +310,8 @@ describe('shell_execute tool', () => {
 				{ command: 'true', timeout: 5000 },
 				DUMMY_CONTEXT,
 			);
+
+			await flushMicrotasks();
 
 			const closeHandler = getCloseHandler(child.on);
 			closeHandler?.(0);
@@ -249,6 +338,8 @@ describe('shell_execute tool', () => {
 				{ command: 'cmd', timeout: 5000 },
 				DUMMY_CONTEXT,
 			);
+
+			await flushMicrotasks();
 
 			const closeHandler = getCloseHandler(child.on);
 			closeHandler?.(exitCode);

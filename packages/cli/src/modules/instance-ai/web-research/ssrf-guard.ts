@@ -14,6 +14,14 @@ const PRIVATE_RANGES = [
 	{ start: ip4ToNum('169.254.0.0'), end: ip4ToNum('169.254.255.255') },
 	// 0.0.0.0/8
 	{ start: ip4ToNum('0.0.0.0'), end: ip4ToNum('0.255.255.255') },
+	// 100.64.0.0/10  (Carrier-grade NAT, RFC 6598 — common in cloud VPCs)
+	{ start: ip4ToNum('100.64.0.0'), end: ip4ToNum('100.127.255.255') },
+	// 192.0.0.0/24  (IETF protocol assignments, RFC 6890)
+	{ start: ip4ToNum('192.0.0.0'), end: ip4ToNum('192.0.0.255') },
+	// 198.18.0.0/15  (Benchmarking, RFC 2544)
+	{ start: ip4ToNum('198.18.0.0'), end: ip4ToNum('198.19.255.255') },
+	// 240.0.0.0/4  (Reserved, class E)
+	{ start: ip4ToNum('240.0.0.0'), end: ip4ToNum('255.255.255.255') },
 ];
 
 /** IPv6 loopback and link-local prefixes. */
@@ -32,6 +40,24 @@ function isPrivateIPv4(ip: string): boolean {
 
 function isPrivateIPv6(ip: string): boolean {
 	const lower = ip.toLowerCase();
+
+	// IPv4-mapped IPv6 (::ffff:x.x.x.x or ::ffff:HHHH:HHHH) — extract and check the v4 address
+	if (lower.startsWith('::ffff:')) {
+		const v4Part = lower.slice(7);
+		// Dotted-quad form (e.g. ::ffff:127.0.0.1)
+		if (/^\d+\.\d+\.\d+\.\d+$/.test(v4Part)) {
+			return isPrivateIPv4(v4Part);
+		}
+		// Hex-pair form that Node normalizes to (e.g. ::ffff:7f00:1 for 127.0.0.1)
+		const hexMatch = /^([0-9a-f]{1,4}):([0-9a-f]{1,4})$/.exec(v4Part);
+		if (hexMatch) {
+			const hi = parseInt(hexMatch[1], 16);
+			const lo = parseInt(hexMatch[2], 16);
+			const reconstructed = `${hi >> 8}.${hi & 0xff}.${lo >> 8}.${lo & 0xff}`;
+			return isPrivateIPv4(reconstructed);
+		}
+	}
+
 	return PRIVATE_IPV6_PREFIXES.some((prefix) => lower.startsWith(prefix));
 }
 

@@ -16,8 +16,6 @@ import {
 import type { SettingsStore } from './settings-store';
 import type { BrowserModule } from './tools/browser';
 import { filesystemReadTools, filesystemWriteTools } from './tools/filesystem';
-import { MouseKeyboardModule } from './tools/mouse-keyboard';
-import { ScreenshotModule } from './tools/screenshot';
 import { ShellModule } from './tools/shell';
 import type {
 	AffectedResource,
@@ -174,6 +172,10 @@ export class GatewayClient {
 		});
 
 		// Computer use modules — check permission mode and platform support
+		// Lazy-load Screenshot and MouseKeyboard to avoid eager native module imports
+		const { ScreenshotModule } = await import('./tools/screenshot');
+		const { MouseKeyboardModule } = await import('./tools/mouse-keyboard');
+
 		const computerModules: Array<{
 			name: string;
 			category: string;
@@ -285,10 +287,17 @@ export class GatewayClient {
 	}
 
 	private connectSSE(): void {
-		const url = `${this.options.url}/rest/instance-ai/gateway/events?apiKey=${encodeURIComponent(this.apiKey)}`;
+		const url = `${this.options.url}/rest/instance-ai/gateway/events`;
 
 		logger.debug('Connecting to gateway', { keyPrefix: this.apiKey.slice(0, 8) });
-		this.eventSource = new EventSource(url);
+		const apiKey = this.apiKey;
+		this.eventSource = new EventSource(url, {
+			fetch: async (input, init) => {
+				const headers = new Headers(init?.headers);
+				headers.set('X-Gateway-Key', apiKey);
+				return await fetch(input, { ...init, headers });
+			},
+		});
 
 		this.eventSource.onopen = () => {
 			logger.debug('Connected to gateway SSE');
@@ -315,7 +324,7 @@ export class GatewayClient {
 				this.eventSource = null;
 			}
 
-			const isAuthError = String(statusCode) === '403' || String(statusCode) === '500';
+			const isAuthError = String(statusCode) === '401' || String(statusCode) === '403';
 
 			setTimeout(() => {
 				if (!this.shouldReconnect) return;

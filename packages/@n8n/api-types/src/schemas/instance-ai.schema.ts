@@ -814,7 +814,6 @@ export interface InstanceAiAdminSettingsResponse {
 	lastMessages: number;
 	embedderModel: string;
 	semanticRecallTopK: number;
-	timeout: number;
 	subAgentMaxSteps: number;
 	browserMcp: boolean;
 	permissions: InstanceAiPermissions;
@@ -832,7 +831,6 @@ export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	lastMessages: z.number().int().positive().optional(),
 	embedderModel: z.string().optional(),
 	semanticRecallTopK: z.number().int().positive().optional(),
-	timeout: z.number().int().positive().optional(),
 	subAgentMaxSteps: z.number().int().positive().optional(),
 	browserMcp: z.boolean().optional(),
 	permissions: instanceAiPermissionsSchema.partial().optional(),
