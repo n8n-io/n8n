@@ -1,5 +1,145 @@
-import type { INodeProperties } from 'n8n-workflow';
-export const description: INodeProperties[] = [];
-export async function execute(this: any): Promise<any[]> {
-	return [];
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeProperties,
+} from 'n8n-workflow';
+
+import { updateDisplayOptions } from '../../../../../utils/utilities';
+import { pipedriveApiRequest, pipedriveGetCustomProperties } from '../../transport';
+import { encodeCustomFieldsV2 } from '../../helpers';
+import { customFieldsCollection, encodeCustomFieldsOption } from '../common.description';
+
+const properties: INodeProperties[] = [
+	{
+		displayName: 'Name',
+		name: 'name',
+		type: 'string',
+		default: '',
+		required: true,
+		description: 'The name of the organization to create',
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		options: [
+			{
+				displayName: 'Label Name or ID',
+				name: 'label',
+				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getOrganizationLabels',
+				},
+				default: '',
+			},
+			{
+				displayName: 'Owner Name or ID',
+				name: 'owner_id',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getUserIds',
+				},
+				default: '',
+				description:
+					'ID of the user who will be marked as the owner of this organization. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+			},
+			{
+				displayName: 'Visible To',
+				name: 'visible_to',
+				type: 'options',
+				options: [
+					{
+						name: 'Owner & Followers (Private)',
+						value: '1',
+					},
+					{
+						name: 'Entire Company (Shared)',
+						value: '3',
+					},
+				],
+				default: '3',
+				description:
+					'Visibility of the organization. If omitted, visibility will be set to the default visibility setting of this item type for the authorized user.',
+			},
+			customFieldsCollection,
+		],
+	},
+	encodeCustomFieldsOption,
+];
+
+const displayOptions = {
+	show: {
+		resource: ['organization'],
+		operation: ['create'],
+	},
+};
+
+export const description = updateDisplayOptions(displayOptions, properties);
+
+function addAdditionalFields(body: IDataObject, additionalFields: IDataObject): void {
+	for (const key of Object.keys(additionalFields)) {
+		if (
+			key === 'customFields' &&
+			(additionalFields.customFields as IDataObject)?.property !== undefined
+		) {
+			for (const customProperty of (additionalFields.customFields as IDataObject)
+				.property as Array<{ name: string; value: string }>) {
+				body[customProperty.name] = customProperty.value;
+			}
+		} else {
+			body[key] = additionalFields[key];
+		}
+	}
+}
+
+export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
+	const items = this.getInputData();
+	const returnData: INodeExecutionData[] = [];
+
+	const encodeCustom = this.getNodeParameter('encodeCustomFields', 0, false) as boolean;
+	let customProperties;
+	if (encodeCustom) {
+		customProperties = await pipedriveGetCustomProperties.call(this, 'organization');
+	}
+
+	for (let i = 0; i < items.length; i++) {
+		try {
+			const body: IDataObject = {};
+
+			body.name = this.getNodeParameter('name', i) as string;
+
+			const additionalFields = this.getNodeParameter('additionalFields', i);
+			addAdditionalFields(body, additionalFields);
+
+			if (customProperties) {
+				encodeCustomFieldsV2(customProperties, body);
+			}
+
+			const responseData = await pipedriveApiRequest.call(this, 'POST', '/organizations', body);
+
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData.data as IDataObject),
+				{ itemData: { item: i } },
+			);
+			returnData.push(...executionData);
+		} catch (error) {
+			if (this.continueOnFail()) {
+				returnData.push(
+					...this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: (error as Error).message }),
+						{ itemData: { item: i } },
+					),
+				);
+				continue;
+			}
+			throw error;
+		}
+	}
+
+	return returnData;
 }
