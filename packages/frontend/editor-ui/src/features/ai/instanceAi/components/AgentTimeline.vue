@@ -138,7 +138,12 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'builder'" />
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'data-table'" />
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'researcher'" />
-				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'planner'" />
+				<template
+					v-else-if="
+						toolCallsById[entry.toolCallId].renderHint === 'planner' &&
+						toolCallsById[entry.toolCallId].confirmation?.inputType !== 'plan-review'
+					"
+				/>
 				<!-- Answered questions (read-only after resolution) -->
 				<AnsweredQuestions
 					v-else-if="
@@ -151,7 +156,11 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 				<PlanReviewPanel
 					v-else-if="toolCallsById[entry.toolCallId].confirmation?.inputType === 'plan-review'"
 					:planned-tasks="
-						(toolCallsById[entry.toolCallId].args?.tasks as PlannedTaskArg[] | undefined) ?? []
+						(toolCallsById[entry.toolCallId].args?.tasks as PlannedTaskArg[] | undefined) ??
+						(toolCallsById[entry.toolCallId].confirmation?.tasks?.tasks as
+							| PlannedTaskArg[]
+							| undefined) ??
+						[]
 					"
 					:read-only="!toolCallsById[entry.toolCallId].isLoading"
 					@approve="handlePlanConfirm(toolCallsById[entry.toolCallId], true)"
