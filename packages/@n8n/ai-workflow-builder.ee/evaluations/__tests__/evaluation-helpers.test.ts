@@ -4,7 +4,11 @@
 
 import pLimit from 'p-limit';
 
-import { withTimeout, extractSubgraphMetrics } from '../harness/evaluation-helpers';
+import {
+	withTimeout,
+	extractSubgraphMetrics,
+	collectAgentTextResponse,
+} from '../harness/evaluation-helpers';
 
 describe('evaluation-helpers', () => {
 	describe('withTimeout()', () => {
@@ -40,6 +44,54 @@ describe('evaluation-helpers', () => {
 
 			await p1;
 			jest.useRealTimers();
+		});
+	});
+
+	describe('collectAgentTextResponse()', () => {
+		it('should collect text from message chunks', async () => {
+			async function* gen() {
+				yield { messages: [{ type: 'message', text: 'Hello ' }] };
+				yield { messages: [{ type: 'tool', toolName: 'search' }] };
+				yield { messages: [{ type: 'message', text: 'world' }] };
+			}
+			const result = await collectAgentTextResponse(gen());
+			expect(result).toBe('Hello world');
+		});
+
+		it('should return empty string when no message chunks', async () => {
+			async function* gen() {
+				yield { messages: [{ type: 'tool', toolName: 'search' }] };
+			}
+			const result = await collectAgentTextResponse(gen());
+			expect(result).toBe('');
+		});
+
+		it('should handle empty generator', async () => {
+			async function* gen() {
+				// yields nothing
+			}
+			const result = await collectAgentTextResponse(
+				gen() as AsyncGenerator<{ messages?: Array<{ type: string; text?: string }> }>,
+			);
+			expect(result).toBe('');
+		});
+
+		it('should handle chunks without messages property', async () => {
+			async function* gen() {
+				yield {} as { messages?: Array<{ type: string; text?: string }> };
+				yield { messages: [{ type: 'message', text: 'hello' }] };
+			}
+			const result = await collectAgentTextResponse(gen());
+			expect(result).toBe('hello');
+		});
+
+		it('should skip message chunks without text', async () => {
+			async function* gen() {
+				yield { messages: [{ type: 'message' }] };
+				yield { messages: [{ type: 'message', text: 'ok' }] };
+			}
+			const result = await collectAgentTextResponse(gen());
+			expect(result).toBe('ok');
 		});
 	});
 
