@@ -902,6 +902,11 @@ export interface GeneratePinDataOptions {
 	beforeWorkflow?: WorkflowJSON;
 }
 
+export interface ToJSONOptions {
+	/** Use Dagre-based layout matching the FE's tidy-up algorithm. Defaults to false (BFS layout). */
+	tidyUp?: boolean;
+}
+
 /**
  * Workflow builder for constructing workflows with a fluent API
  */
@@ -969,7 +974,7 @@ export interface WorkflowBuilder {
 	 */
 	validate(options?: ValidationOptions): ValidationResult;
 
-	toJSON(): WorkflowJSON;
+	toJSON(options?: ToJSONOptions): WorkflowJSON;
 
 	/**
 	 * Serialize the workflow to a specific format using registered serializers.

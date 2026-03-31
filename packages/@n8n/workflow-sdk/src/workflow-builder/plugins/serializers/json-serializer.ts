@@ -15,7 +15,7 @@ import type {
 	GraphNode,
 } from '../../../types/base';
 import { START_X, DEFAULT_Y } from '../../constants';
-import { calculateNodePositions } from '../../layout-utils';
+import { calculateNodePositions, calculateNodePositionsDagre } from '../../layout-utils';
 import {
 	normalizeResourceLocators,
 	escapeNewlinesInExpressionStrings,
@@ -193,7 +193,9 @@ export const jsonSerializer: SerializerPlugin<WorkflowJSON> = {
 		const connections: IConnections = {};
 
 		// Calculate positions for nodes without explicit positions
-		const nodePositions = calculateNodePositions(ctx.nodes);
+		const nodePositions = ctx.tidyUp
+			? calculateNodePositionsDagre(ctx.nodes)
+			: calculateNodePositions(ctx.nodes);
 
 		// Convert nodes and connections
 		for (const [mapKey, graphNode] of ctx.nodes) {
