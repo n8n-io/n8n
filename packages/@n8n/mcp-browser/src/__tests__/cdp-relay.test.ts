@@ -163,8 +163,8 @@ describe('CDPRelayServer', () => {
 			relay.onExtensionDisconnect = (r) => resolve(r);
 		});
 
-		// Advance past heartbeat interval (10s) + timeout (20s)
-		await jest.advanceTimersByTimeAsync(30_000);
+		// Advance past heartbeat interval (5s) + timeout (5s)
+		await jest.advanceTimersByTimeAsync(10_000);
 
 		const reason = await disconnectPromise;
 		expect(reason).toBe('heartbeat_timeout');

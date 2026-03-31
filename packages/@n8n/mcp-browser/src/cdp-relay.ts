@@ -826,8 +826,8 @@ export class CDPRelayServer {
 // ExtensionConnection — wraps the WebSocket to the extension
 // ---------------------------------------------------------------------------
 
-const HEARTBEAT_INTERVAL_MS = 10_000;
-const HEARTBEAT_TIMEOUT_MS = 20_000;
+const HEARTBEAT_INTERVAL_MS = 5_000;
+const HEARTBEAT_TIMEOUT_MS = 5_000;
 
 class ExtensionConnection {
 	private readonly ws: WebSocket;
