@@ -111,12 +111,13 @@ export class InstanceAiSettingsService {
 	/** Load persisted settings from DB and apply to the singleton config. Call on module init. */
 	async loadFromDb(): Promise<void> {
 		const row = await this.settingsRepository.findByKey(ADMIN_SETTINGS_KEY);
-		if (!row) return;
+		if (row) {
+			const persisted = jsonParse<PersistedAdminSettings>(row.value, {
+				fallbackValue: {},
+			});
+			this.applyAdminSettings(persisted);
+		}
 
-		const persisted = jsonParse<PersistedAdminSettings>(row.value, {
-			fallbackValue: {},
-		});
-		this.applyAdminSettings(persisted);
 		await this.syncChatHubAccessWithInstanceAi();
 	}
 
