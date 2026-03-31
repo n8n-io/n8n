@@ -1,4 +1,3 @@
-export { AgentTreeSnapshotStorage } from './agent-tree-snapshot';
 export type { AgentTreeSnapshot } from './agent-tree-snapshot';
 export { iterationEntrySchema, formatPreviousAttempts } from './iteration-log';
 export type { IterationEntry, IterationLog } from './iteration-log';
