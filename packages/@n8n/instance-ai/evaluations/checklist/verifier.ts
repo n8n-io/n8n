@@ -3,7 +3,6 @@ import type { WorkflowResponse } from '../clients/n8n-client';
 import { CHECKLIST_VERIFY_PROMPT } from '../system-prompts/checklist-verify';
 import { MOCK_EXECUTION_VERIFY_PROMPT } from '../system-prompts/mock-execution-verify';
 import type { ChecklistItem, ChecklistResult } from '../types';
-import { runProgrammaticCheck } from './programmatic-checks';
 
 // ---------------------------------------------------------------------------
 // JSON parsing helpers
@@ -49,35 +48,11 @@ export interface VerifyOptions {
 export async function verifyChecklist(
 	checklist: ChecklistItem[],
 	verificationArtifact: string,
-	workflowJsons: WorkflowResponse[],
+	_workflowJsons: WorkflowResponse[],
 	options?: VerifyOptions,
 ): Promise<ChecklistResult[]> {
-	const programmaticItems = checklist.filter((i) => i.strategy === 'programmatic' && i.check);
 	const llmItems = checklist.filter((i) => i.strategy === 'llm');
-
 	const results: ChecklistResult[] = [];
-
-	// -----------------------------------------------------------------------
-	// 1. Run programmatic checks (synchronous, against first workflow JSON)
-	// -----------------------------------------------------------------------
-
-	const workflowJson = workflowJsons[0];
-
-	for (const item of programmaticItems) {
-		if (!item.check || !workflowJson) continue;
-
-		const checkResult = runProgrammaticCheck(workflowJson, item.check);
-		results.push({
-			id: item.id,
-			pass: checkResult.pass,
-			reasoning: checkResult.reasoning,
-			strategy: 'programmatic',
-		});
-	}
-
-	// -----------------------------------------------------------------------
-	// 2. Run LLM verification for semantic items
-	// -----------------------------------------------------------------------
 
 	if (llmItems.length > 0) {
 		const userMessage = `## Checklist
