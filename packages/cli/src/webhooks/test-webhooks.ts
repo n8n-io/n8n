@@ -154,7 +154,10 @@ export class TestWebhooks implements IWebhookManager {
 					// The workflow did not run as the request was probably setup related
 					// or a ping so do not resolve the promise and wait for the real webhook
 					// request instead.
-					if (executionId === undefined) return;
+					if (executionId === undefined) {
+						await workflow.expression.releaseIsolate();
+						return;
+					}
 
 					// Inform editor-ui that webhook got received
 					if (pushRef !== undefined) {

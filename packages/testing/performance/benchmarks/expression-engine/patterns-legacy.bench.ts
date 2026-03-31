@@ -1,8 +1,8 @@
 /**
- * Tier 1: Current Engine (Tournament) Pattern Benchmarks
+ * Tier 1: Legacy Engine Pattern Benchmarks
  *
  * Benchmarks expression evaluation through the full Workflow.expression path
- * using the current (Tournament) engine.
+ * using the legacy engine.
  *
  * Run: pnpm --filter=@n8n/performance bench
  */

@@ -84,7 +84,7 @@ export const test = base.extend<
 				try {
 					return JSON.parse(raw) as Record<string, string>;
 				} catch {
-					console.warn(`[base.ts] Failed to parse N8N_TEST_ENV: ${raw}`);
+					console.warn('[base.ts] Failed to parse N8N_TEST_ENV');
 					return {};
 				}
 			})();

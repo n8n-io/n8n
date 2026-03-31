@@ -347,8 +347,8 @@ export class CredentialsTester {
 		const routingNode = new RoutingNode(executeFunctions, nodeTypeCopy, credentialsDecrypted);
 
 		let response: INodeExecutionData[][] | null | undefined;
-		await workflow.expression.acquireIsolate();
 		try {
+			await workflow.expression.acquireIsolate();
 			response = await routingNode.runNode();
 		} catch (error) {
 			this.errorReporter.error(error);

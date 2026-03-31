@@ -65,6 +65,7 @@ export class IsolatePool {
 
 	async dispose(): Promise<void> {
 		this.disposed = true;
+		await Promise.all([...this.replenishPromises]);
 		await Promise.all(this.bridges.map((b) => b.dispose()));
 		this.bridges = [];
 	}

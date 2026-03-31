@@ -8,7 +8,7 @@ const expressionEngineSchema = z.enum(['legacy', 'vm']);
 export class ExpressionEngineConfig {
 	/**
 	 * Which expression engine to use.
-	 * - `current` runs expressions without isolation.
+	 * - `legacy` runs expressions without isolation.
 	 * - `vm` runs expressions in a V8 isolate.
 	 *
 	 * `vm` is currently **experimental**. Use at your own risk.
