@@ -145,6 +145,7 @@ export {
 } from './roles/role-project-members-response.dto';
 
 export { OidcConfigDto } from './oidc/config.dto';
+export { TestOidcConfigResponseDto } from './oidc/test-oidc-config-response.dto';
 
 export { CreateDataTableDto } from './data-table/create-data-table.dto';
 export { UpdateDataTableDto } from './data-table/update-data-table.dto';

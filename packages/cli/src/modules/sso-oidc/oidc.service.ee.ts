@@ -431,8 +431,8 @@ export class OidcService {
 		}
 
 		return {
-			claims: claims as unknown as Record<string, unknown>,
-			userInfo: userInfo as unknown as Record<string, unknown>,
+			claims: { ...claims },
+			userInfo: { ...userInfo },
 		};
 	}
 

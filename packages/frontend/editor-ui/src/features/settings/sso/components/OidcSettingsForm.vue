@@ -80,7 +80,7 @@ const loadOidcConfig = async () => {
 	try {
 		await getOidcConfig();
 	} catch (error) {
-		toast.showError(error, 'error');
+		toast.showError(error, i18n.baseText('settings.sso.settings.save.error_oidc'));
 	}
 };
 
@@ -198,7 +198,7 @@ const onTest = async () => {
 			window.open(url, '_blank');
 		}
 	} catch (error) {
-		toast.showError(error, 'error');
+		toast.showError(error, i18n.baseText('settings.sso.settings.test.error'));
 	}
 };
 
