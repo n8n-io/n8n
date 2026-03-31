@@ -1,6 +1,6 @@
 {
   "name": "@n8n/cli",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "[beta] Client CLI for n8n — manage workflows, executions, and credentials from the terminal",
   "license": "SEE LICENSE IN LICENSE.md",
   "bin": {
@@ -23,7 +23,8 @@
     "lint": "eslint src --quiet",
     "lint:fix": "eslint src --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:unit": "vitest run"
   },
   "oclif": {
     "bin": "n8n-cli",
@@ -39,6 +40,7 @@
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
     "@types/node": "24.10.1",
     "vitest": "catalog:"
   }
