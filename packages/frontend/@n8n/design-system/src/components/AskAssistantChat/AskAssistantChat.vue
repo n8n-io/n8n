@@ -464,6 +464,7 @@ defineExpose({
 	focusInput: () => {
 		promptInputRef.value?.focusInput();
 	},
+	scrollToBottom,
 });
 </script>
 

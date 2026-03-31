@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, inject, ref, watch } from 'vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 
@@ -9,6 +9,7 @@ import { useBuilderSetupCards } from '@/features/ai/assistant/composables/useBui
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { isNodeGroupCard } from '@/features/setupPanel/setupPanel.utils';
+import { AiBuilderScrollToBottomKey } from '@/app/constants/injectionKeys';
 
 const emit = defineEmits<{
 	workflowExecuted: [];
@@ -18,6 +19,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const builderStore = useBuilderStore();
 const setupPanelStore = useSetupPanelStore();
+const scrollToBottom = inject(AiBuilderScrollToBottomKey, () => {});
 
 const {
 	currentStepIndex,
@@ -48,7 +50,6 @@ const showCard = computed(
 
 const showWizard = computed(() => !wizardDismissed.value);
 
-const containerRef = ref<HTMLElement>();
 const isHovering = ref(false);
 
 function onMouseEnter() {
@@ -99,12 +100,7 @@ watch(currentCard, () => {
 // Auto-scroll so the wizard footer stays visible when switching to a taller card.
 // requestAnimationFrame ensures the new card has been laid out before we read scrollHeight.
 watch(currentStepIndex, () => {
-	requestAnimationFrame(() => {
-		const viewport = containerRef.value?.closest(
-			'[data-reka-scroll-area-viewport]',
-		) as HTMLElement | null;
-		viewport?.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' });
-	});
+	requestAnimationFrame(() => scrollToBottom());
 });
 
 watch([isHovering, highlightedNodeIds, showWizard], ([hovering, nodeIds, visible]) => {
@@ -191,7 +187,6 @@ watch(
 
 <template>
 	<div
-		ref="containerRef"
 		v-if="showWizard"
 		data-test-id="builder-setup-wizard"
 		:class="$style.container"
