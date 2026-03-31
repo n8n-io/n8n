@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { ref, computed } from 'vue';
 import SetupPanelCards from '@/features/setupPanel/components/SetupPanelCards.vue';
 import type { SetupCardItem, NodeSetupState } from '@/features/setupPanel/setupPanel.types';
+import { isCardComplete } from '@/features/setupPanel/setupPanel.utils';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import type { INodeUi } from '@/Interface';
 
@@ -12,7 +13,7 @@ const mockSetCredential = vi.fn();
 const mockUnsetCredential = vi.fn();
 const mockSetupCards = ref<SetupCardItem[]>([]);
 const mockIsAllComplete = computed(
-	() => mockSetupCards.value.length > 0 && mockSetupCards.value.every((c) => c.state.isComplete),
+	() => mockSetupCards.value.length > 0 && mockSetupCards.value.every((c) => isCardComplete(c)),
 );
 
 const mockFirstTriggerName = ref<string | null>(null);
