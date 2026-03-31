@@ -1,4 +1,5 @@
 import type { FileContent } from '@mastra/core/workspace';
+import { z } from 'zod';
 
 /** Error payload returned by the sandbox service. */
 export interface N8nSandboxServiceErrorPayload {
@@ -57,64 +58,62 @@ export interface N8nSandboxExecResult {
 	success: boolean;
 }
 
-/** Streaming stdout event emitted by `/exec`. */
-interface ExecEventStdout {
-	type: 'stdout';
-	data: string;
-}
+// ── Exec event schemas (streamed NDJSON from `/exec`) ────────────────────────
 
-/** Streaming stderr event emitted by `/exec`. */
-interface ExecEventStderr {
-	type: 'stderr';
-	data: string;
-}
+const execEventStdoutSchema = z.object({ type: z.literal('stdout'), data: z.string() });
+const execEventStderrSchema = z.object({ type: z.literal('stderr'), data: z.string() });
+const execEventExitSchema = z.object({
+	type: z.literal('exit'),
+	exit_code: z.number(),
+	success: z.boolean(),
+	execution_time_ms: z.number(),
+	timed_out: z.boolean(),
+	killed: z.boolean(),
+});
+const execEventErrorSchema = z.object({ type: z.literal('error'), error: z.string() });
 
-/** Final exit event emitted by `/exec`. */
-interface ExecEventExit {
-	type: 'exit';
-	exit_code: number;
-	success: boolean;
-	execution_time_ms: number;
-	timed_out: boolean;
-	killed: boolean;
-}
+const execEventSchema = z.discriminatedUnion('type', [
+	execEventStdoutSchema,
+	execEventStderrSchema,
+	execEventExitSchema,
+	execEventErrorSchema,
+]);
 
-/** Error event emitted by `/exec`. */
-interface ExecEventError {
-	type: 'error';
-	error: string;
-}
+type ExecEvent = z.infer<typeof execEventSchema>;
 
-type ExecEvent = ExecEventStdout | ExecEventStderr | ExecEventExit | ExecEventError;
+// ── Service response schemas ─────────────────────────────────────────────────
 
-/** Sandbox creation response returned by the service. */
-interface CreateSandboxResponse {
-	id: string;
-	status: string;
-	provider: string;
-	image_id?: string;
-	created_at: number;
-	last_active_at: number;
-}
+const createSandboxResponseSchema = z.object({
+	id: z.string(),
+	status: z.string(),
+	provider: z.string(),
+	image_id: z.string().optional(),
+	created_at: z.number(),
+	last_active_at: z.number(),
+});
 
-/** Raw directory entry payload returned by the service. */
-interface FileEntryResponse {
-	name: string;
-	size: number;
-	is_dir: boolean;
-	type: 'file' | 'directory';
-	mod_time: string;
-}
+type CreateSandboxResponse = z.infer<typeof createSandboxResponseSchema>;
 
-/** Raw stat payload returned by the service. */
-interface FileStatResponse {
-	name: string;
-	path: string;
-	type: 'file' | 'directory';
-	size: number;
-	created_at: string;
-	modified_at: string;
-}
+const fileEntryResponseSchema = z.object({
+	name: z.string(),
+	size: z.number(),
+	is_dir: z.boolean(),
+	type: z.enum(['file', 'directory']),
+	mod_time: z.string(),
+});
+
+type FileEntryResponse = z.infer<typeof fileEntryResponseSchema>;
+
+const fileStatResponseSchema = z.object({
+	name: z.string(),
+	path: z.string(),
+	type: z.enum(['file', 'directory']),
+	size: z.number(),
+	created_at: z.string(),
+	modified_at: z.string(),
+});
+
+type FileStatResponse = z.infer<typeof fileStatResponseSchema>;
 
 /** Client configuration for talking to the sandbox service. */
 export interface N8nSandboxClientOptions {
@@ -184,55 +183,13 @@ function asBuffer(content: FileContent): Buffer {
 	return typeof content === 'string' ? Buffer.from(content, 'utf-8') : Buffer.from(content);
 }
 
-function safeJsonParse(raw: string): unknown {
-	try {
-		return JSON.parse(raw) as unknown;
-	} catch {
-		return null;
-	}
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null;
-}
-
 function parseExecEvent(line: string): ExecEvent {
-	const parsed = safeJsonParse(line);
-	if (!isRecord(parsed) || typeof parsed.type !== 'string') {
+	try {
+		const json: unknown = JSON.parse(line);
+		return execEventSchema.parse(json);
+	} catch {
 		return { type: 'error', error: 'Invalid exec event payload' };
 	}
-
-	if (parsed.type === 'stdout' && typeof parsed.data === 'string') {
-		return { type: 'stdout', data: parsed.data };
-	}
-
-	if (parsed.type === 'stderr' && typeof parsed.data === 'string') {
-		return { type: 'stderr', data: parsed.data };
-	}
-
-	if (
-		parsed.type === 'exit' &&
-		typeof parsed.exit_code === 'number' &&
-		typeof parsed.success === 'boolean' &&
-		typeof parsed.execution_time_ms === 'number' &&
-		typeof parsed.timed_out === 'boolean' &&
-		typeof parsed.killed === 'boolean'
-	) {
-		return {
-			type: 'exit',
-			exit_code: parsed.exit_code,
-			success: parsed.success,
-			execution_time_ms: parsed.execution_time_ms,
-			timed_out: parsed.timed_out,
-			killed: parsed.killed,
-		};
-	}
-
-	if (parsed.type === 'error' && typeof parsed.error === 'string') {
-		return { type: 'error', error: parsed.error };
-	}
-
-	return { type: 'error', error: 'Invalid exec event payload' };
 }
 
 /**
@@ -457,7 +414,7 @@ export class N8nSandboxClient {
 				throw new Error(event.error);
 			}
 
-			const exitEvent: ExecEventExit = event;
+			const exitEvent = event;
 			exitMeta = {
 				exitCode: exitEvent.exit_code,
 				executionTimeMs: exitEvent.execution_time_ms,
@@ -467,7 +424,6 @@ export class N8nSandboxClient {
 			};
 		};
 
-		// for-await-of automatically acquires and releases the reader
 		for await (const chunk of response.body) {
 			pendingLine += decoder.decode(chunk, { stream: true });
 			let newlineIndex = pendingLine.indexOf('\n');
