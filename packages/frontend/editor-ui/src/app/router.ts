@@ -875,8 +875,11 @@ export const routes: RouteRecordRaw[] = [
 				name: VIEWS.INSTANCE_REGISTRY,
 				component: SettingsInstanceRegistryView,
 				meta: {
-					middleware: ['authenticated', 'custom'],
+					middleware: ['authenticated', 'rbac', 'custom'],
 					middlewareOptions: {
+						rbac: {
+							scope: 'orchestration:read',
+						},
 						custom: () => {
 							const { check } = useEnvFeatureFlag();
 							return check.value('INSTANCE_REGISTRY');
