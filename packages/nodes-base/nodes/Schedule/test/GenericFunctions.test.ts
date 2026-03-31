@@ -38,6 +38,20 @@ describe('toCronExpression', () => {
 		expect(result).toEqual('30 */30 * * * *');
 	});
 
+	it('should return a deterministic cron expression for the same seed', () => {
+		const interval = {
+			field: 'minutes' as const,
+			minutesInterval: 30,
+		};
+
+		const result = toCronExpression(interval, 'node-1-0');
+		const resultAgain = toCronExpression(interval, 'node-1-0');
+		const resultWithDifferentSeed = toCronExpression(interval, 'node-1-1');
+
+		expect(result).toEqual(resultAgain);
+		expect(result).not.toEqual(resultWithDifferentSeed);
+	});
+
 	it('should return cron expression for hours interval', () => {
 		const result = toCronExpression({
 			field: 'hours',
