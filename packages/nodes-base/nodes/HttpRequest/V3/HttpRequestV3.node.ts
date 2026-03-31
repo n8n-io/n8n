@@ -49,6 +49,14 @@ import { configureResponseOptimizer } from '../shared/optimizeResponse';
 
 import { binaryToStringWithEncodingDetection } from './utils/buffer-decoding';
 
+function isResponseBodyEmpty(body: unknown, headers?: IDataObject): body is string {
+	const contentLength = headers?.['content-length'];
+	if (contentLength === '0') {
+		return true;
+	}
+	return typeof body === 'string' && (body === '' || body.trim().length === 0);
+}
+
 function toText<T>(data: T) {
 	if (typeof data === 'object' && data !== null) {
 		return JSON.stringify(data);
@@ -885,17 +893,8 @@ export class HttpRequestV3 implements INodeType {
 									responseContentType,
 									this.helpers,
 								);
-								const isEmptyResponse =
-									data === '' ||
-									data === null ||
-									data === undefined ||
-									(Buffer.isBuffer(data) && data.length === 0);
 
-								const contentLength = response.headers?.['content-length'];
-								const hasZeroLength = contentLength === '0';
-
-								if (isEmptyResponse || hasZeroLength) {
-									// For empty JSON responses, return empty object
+								if (isResponseBodyEmpty(data, response.headers)) {
 									response.body = {};
 								} else {
 									response.body = jsonParse(data, {
@@ -1025,14 +1024,24 @@ export class HttpRequestV3 implements INodeType {
 							}
 
 							if (responseFormat === 'json' && typeof returnItem.body === 'string') {
-								try {
-									returnItem.body = JSON.parse(returnItem.body);
-								} catch (error) {
-									throw new NodeOperationError(
-										this.getNode(),
-										'Response body is not valid JSON. Change "Response Format" to "Text"',
-										{ itemIndex },
-									);
+								// Check for empty response body
+								if (
+									isResponseBodyEmpty(
+										returnItem.body,
+										returnItem.headers as Record<string, string | undefined>,
+									)
+								) {
+									returnItem.body = {};
+								} else {
+									try {
+										returnItem.body = JSON.parse(returnItem.body);
+									} catch (error) {
+										throw new NodeOperationError(
+											this.getNode(),
+											'Response body is not valid JSON. Change "Response Format" to "Text"',
+											{ itemIndex },
+										);
+									}
 								}
 							}
 
@@ -1044,16 +1053,21 @@ export class HttpRequestV3 implements INodeType {
 							});
 						} else {
 							if (responseFormat === 'json' && typeof response === 'string') {
-								try {
-									if (typeof response !== 'object') {
-										response = JSON.parse(response);
+								// Check for empty response body
+								if (isResponseBodyEmpty(response)) {
+									response = {};
+								} else {
+									try {
+										if (typeof response !== 'object') {
+											response = JSON.parse(response);
+										}
+									} catch (error) {
+										throw new NodeOperationError(
+											this.getNode(),
+											'Response body is not valid JSON. Change "Response Format" to "Text"',
+											{ itemIndex },
+										);
 									}
-								} catch (error) {
-									throw new NodeOperationError(
-										this.getNode(),
-										'Response body is not valid JSON. Change "Response Format" to "Text"',
-										{ itemIndex },
-									);
 								}
 							}
 
