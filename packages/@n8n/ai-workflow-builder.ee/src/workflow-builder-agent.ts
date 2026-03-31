@@ -351,21 +351,26 @@ export class WorkflowBuilderAgent {
 		};
 	}
 
+	/** Map tool names to display titles for the frontend */
+	private static readonly DISCOVERY_TOOL_TITLES: Record<string, string> = {
+		search_nodes: 'Searching nodes',
+		web_fetch: 'Fetching web content',
+		get_documentation: 'Getting documentation',
+		get_workflow_examples: 'Getting workflow examples',
+		submit_questions: 'Asking questions',
+		submit_discovery_results: 'Processing results',
+	};
+
 	/**
 	 * Process a single chunk from the discovery graph stream,
-	 * yielding questions or plan interrupts as StreamOutput.
+	 * yielding tool progress, questions, or plan interrupts as StreamOutput.
 	 */
 	private *processDiscoveryChunk(chunk: Record<string, unknown>): Generator<StreamOutput> {
+		// Check for interrupts first
 		const questions = extractQuestionsInterrupt(chunk);
 		if (questions) {
 			yield {
-				messages: [
-					{
-						role: 'assistant' as const,
-						type: 'questions' as const,
-						...questions,
-					},
-				],
+				messages: [{ role: 'assistant' as const, type: 'questions' as const, ...questions }],
 			};
 			return;
 		}
@@ -374,11 +379,7 @@ export class WorkflowBuilderAgent {
 		if (webFetch) {
 			yield {
 				messages: [
-					{
-						role: 'assistant' as const,
-						type: 'web_fetch_approval' as const,
-						...webFetch,
-					},
+					{ role: 'assistant' as const, type: 'web_fetch_approval' as const, ...webFetch },
 				],
 			};
 			return;
@@ -387,14 +388,64 @@ export class WorkflowBuilderAgent {
 		const plan = extractPlanInterrupt(chunk);
 		if (plan) {
 			yield {
-				messages: [
-					{
-						role: 'assistant' as const,
-						type: 'plan' as const,
-						plan,
-					},
-				],
+				messages: [{ role: 'assistant' as const, type: 'plan' as const, plan }],
 			};
+			return;
+		}
+
+		// Extract tool progress from node updates
+		yield* this.extractToolProgress(chunk);
+	}
+
+	/**
+	 * Extract tool call progress from discovery graph stream updates.
+	 * Emits 'running' when agent makes tool calls, 'completed' when tools finish.
+	 */
+	private *extractToolProgress(chunk: Record<string, unknown>): Generator<StreamOutput> {
+		// Agent node produced tool calls → emit 'running' for each
+		const agentUpdate = chunk.discovery_agent as
+			| { messages?: Array<{ tool_calls?: Array<{ name: string; id?: string }> }> }
+			| undefined;
+		if (agentUpdate?.messages) {
+			for (const msg of agentUpdate.messages) {
+				if (msg.tool_calls) {
+					for (const tc of msg.tool_calls) {
+						const displayTitle = WorkflowBuilderAgent.DISCOVERY_TOOL_TITLES[tc.name] ?? tc.name;
+						yield {
+							messages: [
+								{
+									type: 'tool' as const,
+									toolName: tc.name,
+									toolCallId: tc.id,
+									displayTitle,
+									status: 'running',
+								},
+							],
+						};
+					}
+				}
+			}
+		}
+
+		// Tools node finished → emit 'completed' for each tool message
+		const toolsUpdate = chunk.tools as
+			| { messages?: Array<{ tool_call_id?: string; name?: string }> }
+			| undefined;
+		if (toolsUpdate?.messages) {
+			for (const msg of toolsUpdate.messages) {
+				if (msg.tool_call_id) {
+					yield {
+						messages: [
+							{
+								type: 'tool' as const,
+								toolName: msg.name ?? 'unknown',
+								toolCallId: msg.tool_call_id,
+								status: 'completed',
+							},
+						],
+					};
+				}
+			}
 		}
 	}
 
