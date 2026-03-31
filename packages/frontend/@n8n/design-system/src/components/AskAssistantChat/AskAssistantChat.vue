@@ -738,6 +738,7 @@ defineExpose({
 	border-top: 0;
 	border-bottom: 0;
 	position: relative;
+	overflow: hidden;
 	line-height: var(--line-height--xl);
 
 	pre,
