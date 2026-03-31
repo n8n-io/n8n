@@ -178,6 +178,6 @@ function onDropdownSelect(action: DomainAction) {
 .splitButtonCaret {
 	border-top-left-radius: 0;
 	border-bottom-left-radius: 0;
-	border-left: 1px solid rgba(255, 255, 255, 0.4);
+	border-left: 1px solid var(--color--foreground--tint-2);
 }
 </style>

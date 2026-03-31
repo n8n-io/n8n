@@ -269,7 +269,6 @@ describe('GlobalConfig', () => {
 			lastMessages: 20,
 			embedderModel: '',
 			semanticRecallTopK: 5,
-			timeout: 120000,
 			subAgentMaxSteps: 100,
 			sandboxEnabled: false,
 			sandboxProvider: 'daytona',
@@ -282,9 +281,9 @@ describe('GlobalConfig', () => {
 			filesystemPath: '',
 			gatewayApiKey: '',
 			threadTtlDays: 90,
-			snapshotPruneInterval: 60,
-			snapshotRetention: 1440,
-			confirmationTimeout: 60,
+			snapshotPruneInterval: 3_600_000,
+			snapshotRetention: 86_400_000,
+			confirmationTimeout: 600_000,
 		},
 		queue: {
 			health: {
@@ -476,7 +475,6 @@ describe('GlobalConfig', () => {
 		// @ts-expect-error structuredClone ignores properties defined as a getter
 		ai: {
 			enabled: false,
-			persistBuilderSessions: false,
 			timeout: 3600000,
 			allowSendingParameterValues: true,
 		},
