@@ -212,11 +212,10 @@ export class Expression {
 		if (!this.vmEvaluator) {
 			// Dynamic import to avoid loading expression-runtime in browser environments
 			const { ExpressionEvaluator, IsolatedVmBridge } = await import('@n8n/expression-runtime');
-			const concurrencyLimit = parseInt(process.env.N8N_CONCURRENCY_PRODUCTION_LIMIT ?? '', 10);
 			this.vmEvaluator = new ExpressionEvaluator({
 				createBridge: () => new IsolatedVmBridge({ timeout: options?.timeout ?? 5000 }),
 				maxCodeCacheSize: envInt('N8N_EXPRESSION_ENGINE_MAX_CODE_CACHE_SIZE', 1024),
-				poolSize: concurrencyLimit > 0 ? concurrencyLimit : 1,
+				poolSize: envInt('N8N_EXPRESSION_ENGINE_POOL_SIZE', 1),
 				hooks: {
 					before: [ThisSanitizer],
 					after: [PrototypeSanitizer, DollarSignValidator],
