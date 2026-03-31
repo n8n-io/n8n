@@ -13,6 +13,7 @@ import {
 	CHAT_PROVIDER_SETTINGS_MODAL_KEY,
 } from '@/features/ai/chatHub/constants';
 import { i18n } from '@n8n/i18n';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
 const ChatView = async () => await import('@/features/ai/chatHub/ChatView.vue');
@@ -200,7 +201,19 @@ export const ChatModule: FrontendModuleDescription = {
 			position: 'top',
 			route: { to: { name: CHAT_SETTINGS_VIEW } },
 			get available() {
-				return hasPermission(['rbac'], { rbac: { scope: 'chatHub:manage' } });
+				if (!hasPermission(['rbac'], { rbac: { scope: 'chatHub:manage' } })) {
+					return false;
+				}
+
+				// When instance-ai is enabled, Chathub settings link is hidden
+				const settingsStore = useSettingsStore();
+				if (
+					settingsStore.isModuleActive('instance-ai') &&
+					settingsStore.moduleSettings['instance-ai']?.instanceAiEnabled !== false
+				) {
+					return false;
+				}
+				return true;
 			},
 		},
 	],

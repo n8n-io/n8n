@@ -273,6 +273,8 @@ export type FrontendModuleSettings = {
 	 */
 	'instance-ai'?: {
 		enabled: boolean;
+		/** Admin toggle: main Instance AI UI and chat when true. */
+		instanceAiEnabled: boolean;
 		localGateway: boolean;
 		localGatewayDisabled: boolean;
 		localGatewayFallbackDirectory: string | null;

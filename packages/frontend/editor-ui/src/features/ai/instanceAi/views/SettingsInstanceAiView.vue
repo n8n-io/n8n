@@ -1,9 +1,10 @@
 <script lang="ts" setup>
-import { onMounted, watch } from 'vue';
+import { computed, onMounted, watch } from 'vue';
 import { N8nButton, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
+import InstanceAiEnabledSection from '../components/settings/InstanceAiEnabledSection.vue';
 import ModelSection from '../components/settings/ModelSection.vue';
 import MemorySection from '../components/settings/MemorySection.vue';
 import LocalGatewaySection from '../components/settings/LocalGatewaySection.vue';
@@ -11,10 +12,14 @@ import SandboxSection from '../components/settings/SandboxSection.vue';
 import SearchSection from '../components/settings/SearchSection.vue';
 import AdvancedSection from '../components/settings/AdvancedSection.vue';
 import PermissionsSection from '../components/settings/PermissionsSection.vue';
+import { useSettingsField } from '../components/settings/useSettingsField';
 
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
 const store = useInstanceAiSettingsStore();
+const { getBool } = useSettingsField();
+
+const isInstanceAiEnabled = computed(() => getBool('instanceAiEnabled'));
 
 onMounted(() => {
 	documentTitle.set(i18n.baseText('settings.instanceAi'));
@@ -45,16 +50,19 @@ watch(
 		</div>
 
 		<div v-else-if="store.settings" :class="$style.sections">
-			<ModelSection />
-			<MemorySection />
-			<LocalGatewaySection />
-			<SandboxSection />
-			<SearchSection />
-			<AdvancedSection />
-			<PermissionsSection />
+			<InstanceAiEnabledSection />
+			<template v-if="isInstanceAiEnabled">
+				<ModelSection />
+				<MemorySection />
+				<LocalGatewaySection />
+				<SandboxSection />
+				<SearchSection />
+				<AdvancedSection />
+				<PermissionsSection />
+			</template>
 		</div>
 
-		<div :class="$style.footer">
+		<div v-if="isInstanceAiEnabled" :class="$style.footer">
 			<N8nButton
 				size="large"
 				:disabled="!store.isDirty || store.isSaving"

@@ -430,6 +430,8 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const activeModals = computed(() => modalStack.value.map((modalName) => modalName));
 
 	const settingsSidebarItems = computed<IMenuItem[]>(() => {
+		// Re-run when module settings change (e.g. Instance AI on/off affects Chat Hub settings link)
+		void settingsStore.moduleSettings;
 		const items: IMenuItem[] = [];
 		Object.entries(registeredSettingsPages.value).forEach(([moduleName, moduleItems]) => {
 			if (settingsStore.isModuleActive(moduleName)) {
