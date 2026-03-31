@@ -69,7 +69,7 @@ async function main() {
 		}
 		if (data.configIssues && Object.keys(data.configIssues).length > 0) {
 			for (const [param, messages] of Object.entries(data.configIssues)) {
-				console.log(`    ⚠ ${param}: ${(messages as string[]).join(', ')}`);
+				console.log(`    ⚠ ${param}: ${messages.join(', ')}`);
 			}
 		}
 	}

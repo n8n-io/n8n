@@ -8,7 +8,9 @@ jest.mock('@n8n/instance-ai', () => ({
 	workflowBuildOutcomeSchema: z.string(),
 }));
 
-jest.mock('../eval-execution.service');
+jest.mock('../eval-execution.service', () => ({
+	EvalExecutionService: jest.fn(),
+}));
 
 import type {
 	InstanceAiSendMessageRequest,
