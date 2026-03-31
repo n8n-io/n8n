@@ -111,6 +111,13 @@ export class InstanceAiController {
 			throw new ForbiddenError('Not authorized for this thread');
 		}
 
+		// Track whether we need to re-validate ownership on first event.
+		// When the thread didn't exist at connect time, another user could create
+		// and own it before events start flowing. We re-check once on the first
+		// event and close the stream if ownership changed.
+		let ownershipVerified = ownership === 'owned';
+		const userId = req.user.id;
+
 		// 1. Set SSE headers
 		res.setHeader('Content-Type', 'text/event-stream; charset=UTF-8');
 		res.setHeader('Cache-Control', 'no-cache');
@@ -193,7 +200,20 @@ export class InstanceAiController {
 		if (liveGroups.size > 0) res.flush?.();
 
 		// 4. Subscribe to live events
+		// When the thread was not_found at connect time, re-validate ownership on
+		// the first event. If another user now owns the thread, close the stream.
 		const unsubscribe = this.eventBus.subscribe(threadId, (stored) => {
+			if (!ownershipVerified) {
+				ownershipVerified = true;
+				void this.memoryService.checkThreadOwnership(userId, threadId).then((currentOwnership) => {
+					if (currentOwnership === 'other_user') {
+						res.end();
+						return;
+					}
+					this.writeSseEvent(res, stored);
+				});
+				return;
+			}
 			this.writeSseEvent(res, stored);
 		});
 

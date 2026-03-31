@@ -80,4 +80,36 @@ describe('assertPublicUrl', () => {
 		] as never);
 		await expect(assertPublicUrl('https://dual-stack.example')).rejects.toThrow('private IP');
 	});
+
+	describe('IPv4-mapped IPv6 addresses', () => {
+		it('blocks ::ffff:127.0.0.1 (loopback)', async () => {
+			await expect(assertPublicUrl('http://[::ffff:127.0.0.1]:8080/x')).rejects.toThrow('private');
+		});
+
+		it('blocks ::ffff:10.0.0.1 (RFC-1918)', async () => {
+			await expect(assertPublicUrl('http://[::ffff:10.0.0.1]/x')).rejects.toThrow('private');
+		});
+
+		it('blocks ::ffff:192.168.1.1 (RFC-1918)', async () => {
+			await expect(assertPublicUrl('http://[::ffff:192.168.1.1]/x')).rejects.toThrow('private');
+		});
+
+		it('blocks ::ffff:169.254.169.254 (link-local / cloud metadata)', async () => {
+			await expect(assertPublicUrl('http://[::ffff:169.254.169.254]/x')).rejects.toThrow('private');
+		});
+
+		it('blocks DNS-resolved IPv4-mapped IPv6 loopback', async () => {
+			mockLookup.mockResolvedValue([{ address: '::ffff:127.0.0.1', family: 6 }] as never);
+			await expect(assertPublicUrl('https://sneaky.example')).rejects.toThrow('private');
+		});
+
+		it('blocks DNS-resolved IPv4-mapped IPv6 private range', async () => {
+			mockLookup.mockResolvedValue([{ address: '::ffff:10.0.0.1', family: 6 }] as never);
+			await expect(assertPublicUrl('https://sneaky.example')).rejects.toThrow('private');
+		});
+
+		it('allows ::ffff: mapped public IP', async () => {
+			await expect(assertPublicUrl('http://[::ffff:8.8.8.8]/x')).resolves.toBeUndefined();
+		});
+	});
 });
