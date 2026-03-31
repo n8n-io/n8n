@@ -232,6 +232,26 @@ describe('Start - AuthRolesService initialization', () => {
 		});
 	});
 
+	describe('init - instance settings loader initialization', () => {
+		it('should initialize instance settings loader when instanceType is main', async () => {
+			setupInstanceSettings('main', false, false);
+
+			await start.init();
+
+			// @ts-expect-error - Accessing private method for testing
+			expect(start.initInstanceSettingsLoader).toHaveBeenCalledTimes(1);
+		});
+
+		it('should NOT initialize instance settings loader when instanceType is not main', async () => {
+			setupInstanceSettings('worker', false, false);
+
+			await start.init();
+
+			// @ts-expect-error - Accessing private method for testing
+			expect(start.initInstanceSettingsLoader).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('init - multi-main follower license retry', () => {
 		const multiMainConfig = {
 			executions: { mode: 'queue' as const },
