@@ -186,7 +186,6 @@ export class WebhookService {
 	/**
 	 * Returns all the webhooks which should be created for the give node
 	 */
-	// TODO: Isolation pending. This method evaluates webhook description expressions (path, httpMethod, etc.) without acquiring an isolate first. It is called during workflow activation and webhook request handling, both outside of any execution context. Making this async and adding acquire/release requires cascading the change through getWorkflowWebhooks and all their callers.
 	getNodeWebhooks(
 		workflow: Workflow,
 		node: INode,
