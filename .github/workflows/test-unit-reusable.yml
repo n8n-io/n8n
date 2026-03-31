@@ -62,6 +62,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           flags: backend-unit
           name: backend-unit
+          files: ./packages/**/coverage/cobertura-coverage.xml,./coverage/cobertura-coverage.xml
 
   integration-test-backend:
     name: Backend Integration Tests
@@ -103,6 +104,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           flags: backend-integration
           name: backend-integration
+          files: ./packages/**/coverage/cobertura-coverage.xml,./coverage/cobertura-coverage.xml
 
   unit-test-nodes:
     name: Nodes Unit Tests
@@ -144,6 +146,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           flags: nodes-unit
           name: nodes-unit
+          files: ./packages/**/coverage/cobertura-coverage.xml,./coverage/cobertura-coverage.xml
 
   unit-test-frontend:
     name: Frontend (${{ matrix.shard }}/2)
@@ -191,6 +194,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           flags: frontend
           name: frontend-shard-${{ matrix.shard }}
+          files: ./packages/**/coverage/cobertura-coverage.xml,./coverage/cobertura-coverage.xml
 
   unit-test:
     name: Unit tests
