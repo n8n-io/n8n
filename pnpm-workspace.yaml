@@ -157,3 +157,5 @@ minimumReleaseAgeExclude:
   - multer
   - simple-git
   - underscore
+  # Renovate security update: flatted@3.4.0
+  - flatted@3.4.0

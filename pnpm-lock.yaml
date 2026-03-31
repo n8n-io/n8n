@@ -106,8 +106,8 @@ catalogs:
       specifier: 1.0.16
       version: 1.0.16
     flatted:
-      specifier: 3.2.7
-      version: 3.2.7
+      specifier: 3.4.0
+      version: 3.4.0
     http-proxy-agent:
       specifier: 7.0.2
       version: 7.0.2
@@ -783,7 +783,7 @@ importers:
         version: 3.1.0
       flatted:
         specifier: 'catalog:'
-        version: 3.2.7
+        version: 3.4.0
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
@@ -1116,7 +1116,7 @@ importers:
         version: 0.14.0
       flatted:
         specifier: 'catalog:'
-        version: 3.2.7
+        version: 3.4.0
       lodash:
         specifier: 'catalog:'
         version: 4.17.23
@@ -2201,7 +2201,7 @@ importers:
         version: 5.0.2
       flatted:
         specifier: 'catalog:'
-        version: 3.2.7
+        version: 3.4.0
       formidable:
         specifier: 3.5.4
         version: 3.5.4
@@ -2978,7 +2978,7 @@ importers:
         version: 1.13.5
       flatted:
         specifier: 'catalog:'
-        version: 3.2.7
+        version: 3.4.0
       js-base64:
         specifier: 'catalog:'
         version: 3.7.2(patch_hash=bb02fdf69495c7b0768791b60ab6e1a002053b8decd19a174f5755691e5c9500)
@@ -3335,7 +3335,7 @@ importers:
         version: 2.0.5
       flatted:
         specifier: 'catalog:'
-        version: 3.2.7
+        version: 3.4.0
       highlight.js:
         specifier: catalog:frontend
         version: 11.8.0
@@ -4017,7 +4017,7 @@ importers:
         version: 2.2.2(eslint@9.29.0(jiti@2.6.1))
       flatted:
         specifier: 'catalog:'
-        version: 3.2.7
+        version: 3.4.0
       generate-schema:
         specifier: 2.6.0
         version: 2.6.0
@@ -10413,6 +10413,7 @@ packages:
 
   '@xata.io/client@0.28.4':
     resolution: {integrity: sha512-B02WHIA/ViHya84XvH6JCo13rd5h4S5vVyY2aYi6fIcjDIbCpsSLJ4oGWpdodovRYeAZy9Go4OhdyZwMIRC4BQ==}
+    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
     peerDependencies:
       typescript: 5.9.2
 
@@ -13089,11 +13090,11 @@ packages:
     resolution: {integrity: sha512-b6suED+5/3rTpUBdG1gupIl8MPFCAMA0QXwmljLhvCUKcUvdE4gWky9zpuGCcXHOsz4J9wPGNWq6OKpmIzz3hQ==}
     hasBin: true
 
-  flatted@3.2.7:
-    resolution: {integrity: sha512-5nqDSxl8nn5BSNxyR3n4I6eDmbolI6WT+QqR547RwxQapgjQBmtktdP+HTBb/a/zLsbzERTONyUB5pefh5TtjQ==}
-
   flatted@3.3.3:
     resolution: {integrity: sha512-GX+ysw4PBCz0PzosHDepZGANEuFCMLrnRTiEy9McGjmkCQYwRq4A/X786G/fjM/+OjsWSU1ZrY5qyARZmO/uwg==}
+
+  flatted@3.4.0:
+    resolution: {integrity: sha512-kC6Bb+ooptOIvWj5B63EQWkF0FEnNjV2ZNkLMLZRDDduIiWeFF4iKnslwhiWxjAdbg4NzTNo6h0qLuvFrcx+Sw==}
 
   fn.name@1.1.0:
     resolution: {integrity: sha512-GRnmB5gPyJpAhTQdSZTSp9uaPSvl09KoYcMQtsB9rQoOmzs9dH6ffeccH+Z+cv6P68Hu5bC6JjRh4Ah/mHSNRw==}
@@ -17365,6 +17366,7 @@ packages:
   rolldown-vite@7.3.1:
     resolution: {integrity: sha512-LYzdNAjRHhF2yA4JUQm/QyARyi216N2rpJ0lJZb8E9FU2y5v6Vk+xq/U4XBOxMefpWixT5H3TslmAHm1rqIq2w==}
     engines: {node: ^20.19.0 || >=22.12.0}
+    deprecated: Use this package to migrate from Vite 7 to Vite 8. For the most recent updates, migrate to Vite 8 once you're ready.
     hasBin: true
     peerDependencies:
       '@types/node': ^20.17.50
@@ -31898,9 +31900,9 @@ snapshots:
 
   flat@5.0.2: {}
 
-  flatted@3.2.7: {}
-
   flatted@3.3.3: {}
+
+  flatted@3.4.0: {}
 
   fn.name@1.1.0: {}
 
