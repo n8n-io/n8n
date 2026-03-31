@@ -252,6 +252,7 @@ export {
 	instanceAiAgentStatusSchema,
 	instanceAiAgentKindSchema,
 	instanceAiEventSchema,
+	instanceAiEvalExecutionRequestSchema,
 	taskItemSchema,
 	taskListSchema,
 	runStartPayloadSchema,
@@ -355,6 +356,12 @@ export type {
 	GatewayConfirmationRequiredPayload,
 	ToolCategory,
 	InstanceAiWorkflowSetupNode,
+	InstanceAiEvalNodeExecutionMode,
+	InstanceAiEvalInterceptedRequest,
+	InstanceAiEvalNodeResult,
+	InstanceAiEvalMockHints,
+	InstanceAiEvalExecutionResult,
+	InstanceAiEvalExecutionRequest,
 } from './schemas/instance-ai.schema';
 
 export {
