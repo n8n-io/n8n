@@ -2,9 +2,9 @@ import { Config, Env } from '../decorators';
 
 @Config
 export class InstanceAiConfig {
-	/** LLM model in provider/model format (e.g. "anthropic/claude-sonnet-4-5"). */
+	/** LLM model in provider/model format (e.g. "anthropic/claude-sonnet-4-6"). */
 	@Env('N8N_INSTANCE_AI_MODEL')
-	model: string = 'anthropic/claude-sonnet-4-5';
+	model: string = 'anthropic/claude-sonnet-4-6';
 
 	/** Base URL for an OpenAI-compatible endpoint (e.g. "http://localhost:1234/v1" for LM Studio). */
 	@Env('N8N_INSTANCE_AI_MODEL_URL')
@@ -13,6 +13,14 @@ export class InstanceAiConfig {
 	/** API key for the custom model endpoint (optional — some local servers don't require one). */
 	@Env('N8N_INSTANCE_AI_MODEL_API_KEY')
 	modelApiKey: string = '';
+
+	/**
+	 * Hard cap on the context window size (in tokens). When set, the effective
+	 * context window is the lesser of this value and the model's native capability.
+	 * 0 = use the model's full context window.
+	 */
+	@Env('N8N_INSTANCE_AI_MAX_CONTEXT_WINDOW_TOKENS')
+	maxContextWindowTokens: number = 500_000;
 
 	/** Comma-separated name=url pairs for MCP servers (e.g. "github=https://mcp.github.com/sse"). */
 	@Env('N8N_INSTANCE_AI_MCP_SERVERS')

@@ -260,9 +260,10 @@ describe('GlobalConfig', () => {
 			streamStateTtl: 300,
 		},
 		instanceAi: {
-			model: 'anthropic/claude-sonnet-4-5',
+			model: 'anthropic/claude-sonnet-4-6',
 			modelUrl: '',
 			modelApiKey: '',
+			maxContextWindowTokens: 500_000,
 			mcpServers: '',
 			localGatewayDisabled: false,
 			browserMcp: false,
