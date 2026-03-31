@@ -252,7 +252,7 @@ const modifyInputSchema = {
 		.string()
 		.optional()
 		.describe(
-			"For 'rename_table': the new table name. For 'add_column': the new column name. For 'rename_column': the new column name.",
+			"For 'rename_table': the new table name. For 'add_column', 'rename_column' and 'delete_column': the new column name.",
 		),
 	columnId: z
 		.string()
