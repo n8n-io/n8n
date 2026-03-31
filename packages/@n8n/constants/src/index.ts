@@ -60,8 +60,6 @@ export const LICENSE_QUOTAS = {
 
 export const UNLIMITED_LICENSE_QUOTA = -1;
 
-export const AI_GATEWAY_CREDENTIAL_TYPES = ['googlePalmApi'] as const;
-export type AiGatewayCredentialType = (typeof AI_GATEWAY_CREDENTIAL_TYPES)[number];
 export const DEFAULT_WORKFLOW_HISTORY_PRUNE_LIMIT = 24;
 
 export type BooleanLicenseFeature = (typeof LICENSE_FEATURES)[keyof typeof LICENSE_FEATURES];

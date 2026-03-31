@@ -14,6 +14,10 @@ export { AiSessionRetrievalRequestDto } from './ai/ai-session-retrieval-request.
 export { AiUsageSettingsRequestDto } from './ai/ai-usage-settings-request.dto';
 export { AiTruncateMessagesRequestDto } from './ai/ai-truncate-messages-request.dto';
 export { AiClearSessionRequestDto } from './ai/ai-clear-session-request.dto';
+export type {
+	AiGatewayConfigDto,
+	AiGatewayProviderConfigEntry,
+} from './ai/ai-gateway-config-response.dto';
 
 export { BinaryDataQueryDto } from './binary-data/binary-data-query.dto';
 export { BinaryDataSignedQueryDto } from './binary-data/binary-data-signed-query.dto';

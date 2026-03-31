@@ -1,5 +1,5 @@
 import type { GlobalConfig } from '@n8n/config';
-import type { LicenseState, Logger } from '@n8n/backend-common';
+import type { LicenseState } from '@n8n/backend-common';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
@@ -14,6 +14,18 @@ const INSTANCE_ID = 'test-instance-id';
 const USER_ID = 'user-abc';
 const LICENSE_CERT = 'cert-xyz';
 const CONSUMER_ID = 'consumer-test-uuid';
+
+const MOCK_GATEWAY_CONFIG = {
+	nodes: [
+		'@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+		'@n8n/n8n-nodes-langchain.embeddingsGoogleGemini',
+		'@n8n/n8n-nodes-langchain.googleGemini',
+	],
+	credentialTypes: ['googlePalmApi'],
+	providerConfig: {
+		googlePalmApi: { gatewayPath: '/v1/gateway/google', urlField: 'host', apiKeyField: 'apiKey' },
+	},
+};
 
 function makeService({
 	baseUrl = BASE_URL as string | null,
@@ -31,8 +43,20 @@ function makeService({
 		isAiGatewayLicensed: jest.fn().mockReturnValue(isAiGatewayLicensed),
 	});
 	const instanceSettings = mock<InstanceSettings>({ instanceId: INSTANCE_ID });
-	const logger = mock<Logger>();
-	return new AiGatewayService(globalConfig, license, licenseState, instanceSettings, logger);
+	return new AiGatewayService(globalConfig, license, licenseState, instanceSettings);
+}
+
+/** Mock: config fetch succeeds, then credentials fetch returns a token. */
+function mockConfigThenToken(fetchMock: jest.Mock, token = 'mock-jwt-token') {
+	fetchMock
+		.mockResolvedValueOnce({
+			ok: true,
+			json: jest.fn().mockResolvedValue(MOCK_GATEWAY_CONFIG),
+		})
+		.mockResolvedValueOnce({
+			ok: true,
+			json: jest.fn().mockResolvedValue({ token, expiresIn: 3600 }),
+		});
 }
 
 describe('AiGatewayService', () => {
@@ -47,6 +71,54 @@ describe('AiGatewayService', () => {
 		jest.clearAllMocks();
 	});
 
+	describe('getGatewayConfig()', () => {
+		it('fetches and returns config from the gateway', async () => {
+			fetchMock.mockResolvedValueOnce({
+				ok: true,
+				json: jest.fn().mockResolvedValue(MOCK_GATEWAY_CONFIG),
+			});
+			const service = makeService();
+
+			const result = await service.getGatewayConfig();
+
+			expect(result).toEqual(MOCK_GATEWAY_CONFIG);
+			expect(fetchMock).toHaveBeenCalledWith(`${BASE_URL}/v1/gateway/config`);
+		});
+
+		it('caches config and does not re-fetch within TTL', async () => {
+			fetchMock.mockResolvedValue({
+				ok: true,
+				json: jest.fn().mockResolvedValue(MOCK_GATEWAY_CONFIG),
+			});
+			const service = makeService();
+
+			await service.getGatewayConfig();
+			await service.getGatewayConfig();
+
+			expect(fetchMock).toHaveBeenCalledTimes(1);
+		});
+
+		it('throws UserError when baseUrl is not configured', async () => {
+			const service = makeService({ baseUrl: null });
+			await expect(service.getGatewayConfig()).rejects.toThrow(UserError);
+		});
+
+		it('throws UserError when gateway returns non-ok status', async () => {
+			fetchMock.mockResolvedValueOnce({ ok: false, status: 503 });
+			const service = makeService();
+			await expect(service.getGatewayConfig()).rejects.toThrow(UserError);
+		});
+
+		it('throws UserError when gateway returns invalid config shape', async () => {
+			fetchMock.mockResolvedValueOnce({
+				ok: true,
+				json: jest.fn().mockResolvedValue({ nodes: 'not-an-array' }),
+			});
+			const service = makeService();
+			await expect(service.getGatewayConfig()).rejects.toThrow(UserError);
+		});
+	});
+
 	describe('getSyntheticCredential()', () => {
 		it('throws FeatureNotLicensedError when not licensed and dev mode is off', async () => {
 			const service = makeService({ isAiGatewayLicensed: false });
@@ -56,10 +128,7 @@ describe('AiGatewayService', () => {
 		});
 
 		it('allows access when dev mode is on regardless of license', async () => {
-			fetchMock.mockResolvedValue({
-				ok: true,
-				json: jest.fn().mockResolvedValue({ token: 'mock-jwt-token', expiresIn: 3600 }),
-			});
+			mockConfigThenToken(fetchMock);
 			const service = makeService({ isAiGatewayLicensed: false, aiGatewayDevMode: true });
 			await expect(service.getSyntheticCredential('googlePalmApi', USER_ID)).resolves.toBeDefined();
 		});
@@ -72,19 +141,16 @@ describe('AiGatewayService', () => {
 		});
 
 		it('throws UserError for unsupported credential type', async () => {
-			fetchMock.mockResolvedValue({
+			fetchMock.mockResolvedValueOnce({
 				ok: true,
-				json: jest.fn().mockResolvedValue({ token: 'mock-jwt', expiresIn: 3600 }),
+				json: jest.fn().mockResolvedValue(MOCK_GATEWAY_CONFIG),
 			});
 			const service = makeService();
 			await expect(service.getSyntheticCredential('openAiApi', USER_ID)).rejects.toThrow(UserError);
 		});
 
 		it('returns synthetic credential with apiKey (JWT) and host (gateway URL)', async () => {
-			fetchMock.mockResolvedValue({
-				ok: true,
-				json: jest.fn().mockResolvedValue({ token: 'mock-jwt-token', expiresIn: 3600 }),
-			});
+			mockConfigThenToken(fetchMock, 'mock-jwt-token');
 			const service = makeService();
 
 			const result = await service.getSyntheticCredential('googlePalmApi', USER_ID);
@@ -96,15 +162,13 @@ describe('AiGatewayService', () => {
 		});
 
 		it('fetches token from gateway with HeadersMetadataDto headers and licenseCert body', async () => {
-			fetchMock.mockResolvedValue({
-				ok: true,
-				json: jest.fn().mockResolvedValue({ token: 'mock-jwt-token', expiresIn: 3600 }),
-			});
+			mockConfigThenToken(fetchMock);
 			const service = makeService();
 
 			await service.getSyntheticCredential('googlePalmApi', USER_ID);
 
-			expect(fetchMock).toHaveBeenCalledWith(
+			expect(fetchMock).toHaveBeenNthCalledWith(
+				2,
 				`${BASE_URL}/v1/gateway/credentials`,
 				expect.objectContaining({
 					method: 'POST',
@@ -121,22 +185,19 @@ describe('AiGatewayService', () => {
 			);
 		});
 
-		it('caches the token and reuses it on subsequent calls', async () => {
-			fetchMock.mockResolvedValue({
-				ok: true,
-				json: jest.fn().mockResolvedValue({ token: 'cached-token', expiresIn: 3600 }),
-			});
+		it('caches config and token — second call makes no additional fetches', async () => {
+			mockConfigThenToken(fetchMock);
 			const service = makeService();
 
 			await service.getSyntheticCredential('googlePalmApi', USER_ID);
 			await service.getSyntheticCredential('googlePalmApi', USER_ID);
 
-			// Token endpoint called only once; second call uses cache
-			expect(fetchMock).toHaveBeenCalledTimes(1);
+			// Config + credentials fetched once each; both cached on second call
+			expect(fetchMock).toHaveBeenCalledTimes(2);
 		});
 
-		it('throws UserError when gateway returns non-ok status', async () => {
-			fetchMock.mockResolvedValue({ ok: false, status: 503 });
+		it('throws UserError when config gateway returns non-ok status', async () => {
+			fetchMock.mockResolvedValueOnce({ ok: false, status: 503 });
 			const service = makeService();
 			await expect(service.getSyntheticCredential('googlePalmApi', USER_ID)).rejects.toThrow(
 				UserError,
@@ -144,10 +205,15 @@ describe('AiGatewayService', () => {
 		});
 
 		it('throws UserError when gateway token response is missing token field', async () => {
-			fetchMock.mockResolvedValue({
-				ok: true,
-				json: jest.fn().mockResolvedValue({ expiresIn: 3600 }), // token missing
-			});
+			fetchMock
+				.mockResolvedValueOnce({
+					ok: true,
+					json: jest.fn().mockResolvedValue(MOCK_GATEWAY_CONFIG),
+				})
+				.mockResolvedValueOnce({
+					ok: true,
+					json: jest.fn().mockResolvedValue({ expiresIn: 3600 }), // token missing
+				});
 			const service = makeService();
 			await expect(service.getSyntheticCredential('googlePalmApi', USER_ID)).rejects.toThrow(
 				UserError,

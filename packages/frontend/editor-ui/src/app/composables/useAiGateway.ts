@@ -1,4 +1,3 @@
-import { AI_GATEWAY_CREDENTIAL_TYPES } from '@n8n/constants';
 import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -7,6 +6,7 @@ import { usePostHog } from '@/app/stores/posthog.store';
 import { AI_GATEWAY_EXPERIMENT } from '@/app/constants';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { getGatewayCredits } from '@/features/ai/assistant/assistant.api';
+import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 
 export function useAiGateway() {
 	const settingsStore = useSettingsStore();
@@ -14,6 +14,7 @@ export function useAiGateway() {
 	const rootStore = useRootStore();
 	const router = useRouter();
 	const { saveCurrentWorkflow } = useWorkflowSaving({ router });
+	const aiGatewayStore = useAiGatewayStore();
 
 	const isEnabled = computed(
 		() =>
@@ -36,7 +37,7 @@ export function useAiGateway() {
 	}
 
 	const isNodeSupported = (credentialType: string): boolean =>
-		(AI_GATEWAY_CREDENTIAL_TYPES as readonly string[]).includes(credentialType);
+		aiGatewayStore.isCredentialTypeSupported(credentialType);
 
 	async function saveAfterToggle(): Promise<void> {
 		await saveCurrentWorkflow({}, false, false, true);

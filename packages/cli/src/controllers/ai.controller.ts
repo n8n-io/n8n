@@ -1,5 +1,5 @@
 import { FREE_AI_CREDITS_CREDENTIAL_NAME, STREAM_SEPARATOR } from '@/constants';
-import type { CreateCredentialDto } from '@n8n/api-types';
+import type { AiGatewayConfigDto, CreateCredentialDto } from '@n8n/api-types';
 import {
 	AiChatRequestDto,
 	AiApplySuggestionRequestDto,
@@ -252,6 +252,16 @@ export class AiController {
 				payload.codeBuilder,
 			);
 			return sessions;
+		} catch (e) {
+			assert(e instanceof Error);
+			throw new InternalServerError(e.message, e);
+		}
+	}
+
+	@Get('/gateway/config')
+	async getGatewayConfig(): Promise<AiGatewayConfigDto> {
+		try {
+			return await this.aiGatewayService.getGatewayConfig();
 		} catch (e) {
 			assert(e instanceof Error);
 			throw new InternalServerError(e.message, e);

@@ -18,7 +18,6 @@ import {
 	AI_SUBCATEGORY,
 	AI_TRANSFORM_NODE_TYPE,
 	AI_GATEWAY_EXPERIMENT,
-	AI_GATEWAY_NODES,
 	BETA_NODES,
 	CORE_NODES_CATEGORY,
 	DEFAULT_SUBCATEGORY,
@@ -36,6 +35,7 @@ import * as changeCase from 'change-case';
 import sortBy from 'lodash/sortBy';
 import type { NodeViewItemSection } from './views/viewsData';
 
+import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -301,7 +301,7 @@ function applyNodeTags(element: INodeCreateElement): INodeCreateElement {
 	} else if (
 		usePostHog().getVariant(AI_GATEWAY_EXPERIMENT.name) === AI_GATEWAY_EXPERIMENT.variant &&
 		useSettingsStore().isAiGatewayEnabled &&
-		AI_GATEWAY_NODES.includes(element.properties.name)
+		useAiGatewayStore().isNodeSupported(element.properties.name)
 	) {
 		element.properties.tag = {
 			type: 'success',

@@ -4,9 +4,17 @@ import { ref } from 'vue';
 import { useAiGateway } from './useAiGateway';
 
 const mockGetGatewayCredits = vi.fn();
+const mockIsCredentialTypeSupported = vi.fn().mockReturnValue(false);
 
 vi.mock('@/features/ai/assistant/assistant.api', () => ({
 	getGatewayCredits: (...args: unknown[]) => mockGetGatewayCredits(...args),
+}));
+
+vi.mock('@/app/stores/aiGateway.store', () => ({
+	useAiGatewayStore: vi.fn(() => ({
+		fetchConfig: vi.fn().mockResolvedValue(undefined),
+		isCredentialTypeSupported: (...args: unknown[]) => mockIsCredentialTypeSupported(...args),
+	})),
 }));
 
 vi.mock('@/app/composables/useWorkflowSaving', () => ({
@@ -48,6 +56,7 @@ describe('useAiGateway', () => {
 		vi.clearAllMocks();
 		mockIsAiGatewayEnabled.value = false;
 		mockGetVariant.mockReturnValue(undefined);
+		mockIsCredentialTypeSupported.mockReturnValue(false);
 	});
 
 	describe('fetchCredits()', () => {
@@ -96,15 +105,16 @@ describe('useAiGateway', () => {
 	});
 
 	describe('isNodeSupported()', () => {
-		it('should return true for googlePalmApi (AI Gateway-supported type)', () => {
+		it('should return true when store reports credential type as supported', () => {
+			mockIsCredentialTypeSupported.mockReturnValue(true);
 			const { isNodeSupported } = useAiGateway();
 			expect(isNodeSupported('googlePalmApi')).toBe(true);
 		});
 
-		it('should return false for unsupported credential types', () => {
+		it('should return false when store reports credential type as unsupported', () => {
+			mockIsCredentialTypeSupported.mockReturnValue(false);
 			const { isNodeSupported } = useAiGateway();
 			expect(isNodeSupported('openAiApi')).toBe(false);
-			expect(isNodeSupported('anthropicApi')).toBe(false);
 		});
 	});
 });

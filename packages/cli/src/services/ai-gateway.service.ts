@@ -1,16 +1,15 @@
-import { LicenseState, Logger } from '@n8n/backend-common';
+import { LicenseState } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { AI_GATEWAY_CREDENTIAL_TYPES, LICENSE_FEATURES } from '@n8n/constants';
+import { LICENSE_FEATURES } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
+import type { AiGatewayConfigDto } from '@n8n/api-types';
 
 import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { License } from '@/license';
-
-type AiGatewayCredentialType = (typeof AI_GATEWAY_CREDENTIAL_TYPES)[number];
 
 interface GatewayTokenResponse {
 	token: string;
@@ -22,22 +21,6 @@ interface GatewayCreditsResponse {
 	creditsRemaining: number;
 }
 
-/**
- * Per-provider routing config.
- *
- * - `gatewayPath`  — path appended to `aiAssistant.baseUrl` in the synthetic credential
- * - `urlField`     — credential field the node reads for the base URL (`url` for most, `host` for googlePalmApi)
- * - `apiKeyField`  — credential field the node reads for the API key (`apiKey` for most)
- *
- * To add a provider: add an entry here + add its type to `AI_GATEWAY_CREDENTIAL_TYPES` in `@n8n/constants`.
- */
-const GATEWAY_PROVIDER_CONFIG: Record<
-	AiGatewayCredentialType,
-	{ gatewayPath: string; urlField: string; apiKeyField: string }
-> = {
-	googlePalmApi: { gatewayPath: '/v1/gateway/google', urlField: 'host', apiKeyField: 'apiKey' },
-};
-
 @Service()
 export class AiGatewayService {
 	private readonly tokenCache = new Map<
@@ -46,13 +29,25 @@ export class AiGatewayService {
 	>();
 	private readonly TOKEN_CACHE_MAX_SIZE = 500;
 
+	/** Cached gateway config (nodes, credential types, provider routing). Refreshed every hour. */
+	private gatewayConfig: AiGatewayConfigDto | null = null;
+	private configFetchedAt = 0;
+	private static readonly CONFIG_TTL_MS = 60 * 60 * 1000; // 1 hour
+
 	constructor(
 		private readonly globalConfig: GlobalConfig,
 		private readonly license: License,
 		private readonly licenseState: LicenseState,
 		private readonly instanceSettings: InstanceSettings,
-		private readonly logger: Logger,
 	) {}
+
+	/**
+	 * Returns the gateway config (nodes, credential types, provider routing),
+	 * fetching from the gateway service and caching for 1 hour.
+	 */
+	async getGatewayConfig(): Promise<AiGatewayConfigDto> {
+		return await this.getOrFetchConfig();
+	}
 
 	/**
 	 * Returns a synthetic credential for the given type, pointing the node at the gateway
@@ -75,13 +70,20 @@ export class AiGatewayService {
 			throw new UserError('AI Gateway is not configured. Set the AI assistant base URL.');
 		}
 
-		const config = GATEWAY_PROVIDER_CONFIG[credentialType as AiGatewayCredentialType];
-		if (!config) {
+		const config = await this.getOrFetchConfig();
+		const providerConfig = config.providerConfig[credentialType];
+		if (!providerConfig) {
 			throw new UserError(`Credential type "${credentialType}" is not supported by AI Gateway.`);
 		}
 
 		const jwt = await this.getOrFetchToken(userId);
-		return { [config.apiKeyField]: jwt, [config.urlField]: `${baseUrl}${config.gatewayPath}` };
+		if (!jwt) {
+			throw new UserError('Failed to obtain a valid AI Gateway token.');
+		}
+		return {
+			[providerConfig.apiKeyField]: jwt,
+			[providerConfig.urlField]: `${baseUrl}${providerConfig.gatewayPath}`,
+		};
 	}
 
 	/**
@@ -94,6 +96,9 @@ export class AiGatewayService {
 		}
 
 		const jwt = await this.getOrFetchToken(userId);
+		if (!jwt) {
+			throw new UserError('Failed to obtain a valid AI Gateway token.');
+		}
 		const response = await fetch(`${baseUrl}/v1/gateway/credits`, {
 			method: 'GET',
 			headers: { Authorization: `Bearer ${jwt}` },
@@ -108,6 +113,40 @@ export class AiGatewayService {
 			throw new UserError('AI Gateway returned an invalid credits response.');
 		}
 
+		return data;
+	}
+
+	private isConfigStale(): boolean {
+		return (
+			this.gatewayConfig === null ||
+			Date.now() - this.configFetchedAt > AiGatewayService.CONFIG_TTL_MS
+		);
+	}
+
+	private async getOrFetchConfig(): Promise<AiGatewayConfigDto> {
+		if (!this.isConfigStale()) return this.gatewayConfig!;
+
+		const baseUrl = this.globalConfig.aiAssistant.baseUrl;
+		if (!baseUrl) {
+			throw new UserError('AI Gateway is not configured. Set the AI assistant base URL.');
+		}
+
+		const response = await fetch(`${baseUrl}/v1/gateway/config`);
+		if (!response.ok) {
+			throw new UserError(`Failed to fetch AI Gateway config: HTTP ${response.status}`);
+		}
+
+		const data = (await response.json()) as AiGatewayConfigDto;
+		if (
+			!Array.isArray(data.nodes) ||
+			!Array.isArray(data.credentialTypes) ||
+			typeof data.providerConfig !== 'object'
+		) {
+			throw new UserError('AI Gateway returned an invalid config response.');
+		}
+
+		this.gatewayConfig = data;
+		this.configFetchedAt = Date.now();
 		return data;
 	}
 
