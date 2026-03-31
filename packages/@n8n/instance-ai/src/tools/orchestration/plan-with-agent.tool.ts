@@ -68,16 +68,17 @@ async function getRecentMessages(
 	context: OrchestrationContext,
 	count: number,
 ): Promise<FormattedMessage[]> {
-	if (!context.memory) return [];
+	const messages: FormattedMessage[] = [];
 
-	try {
-		const result = await context.memory.recall({
-			threadId: context.threadId,
-			perPage: count,
-		});
+	// Retrieve previously-saved messages from memory
+	if (context.memory) {
+		try {
+			const result = await context.memory.recall({
+				threadId: context.threadId,
+				perPage: count,
+			});
 
-		return result.messages
-			.filter((m) => {
+			for (const m of result.messages) {
 				const role = m.role as string;
 				const content =
 					typeof m.content === 'string'
@@ -90,28 +91,22 @@ async function getRecentMessages(
 									)
 									.map((c) => c.text)
 									.join('\n')
-							: '';
-				// Skip empty messages and internal follow-ups
-				return (role === 'user' || role === 'assistant') && content.length > 0;
-			})
-			.map((m) => ({
-				role: m.role as string,
-				content:
-					typeof m.content === 'string'
-						? m.content
-						: Array.isArray(m.content)
-							? m.content
-									.filter(
-										(c): c is { type: 'text'; text: string } =>
-											typeof c === 'object' && c !== null && 'text' in c,
-									)
-									.map((c) => c.text)
-									.join('\n')
-							: JSON.stringify(m.content),
-			}));
-	} catch {
-		return [];
+							: JSON.stringify(m.content);
+				if ((role === 'user' || role === 'assistant') && content.length > 0) {
+					messages.push({ role, content });
+				}
+			}
+		} catch {
+			// Memory recall failed — continue with just the current message
+		}
 	}
+
+	// Always append the current in-flight user message (not yet saved to memory)
+	if (context.currentUserMessage) {
+		messages.push({ role: 'user', content: context.currentUserMessage });
+	}
+
+	return messages;
 }
 
 function formatMessagesForBriefing(messages: FormattedMessage[], guidance?: string): string {
@@ -197,6 +192,14 @@ function blueprintToTasks(bp: PlanningBlueprint): PlannedTaskInput[] {
 			specParts.push('\nData table schemas:');
 			for (const dt of depTables) {
 				specParts.push(`- ${formatTableSchema(dt)}`);
+			}
+		}
+
+		// Append blueprint assumptions so the builder has design context
+		if (bp.assumptions.length > 0) {
+			specParts.push('\nAssumptions:');
+			for (const a of bp.assumptions) {
+				specParts.push(`- ${a}`);
 			}
 		}
 
