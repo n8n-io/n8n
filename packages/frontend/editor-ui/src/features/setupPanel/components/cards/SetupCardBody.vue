@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { N8nLink, N8nText, N8nTooltip } from '@n8n/design-system';
 import { type INodeProperties, NodeHelpers } from 'n8n-workflow';
@@ -117,6 +117,21 @@ const openNdv = () => {
 	ndvStore.setActiveNodeName(props.state.node.name, 'other');
 };
 
+// Hide parameter issues until the user interacts with a parameter.
+const hiddenIssuesInputs = ref<string[]>([]);
+
+watch(
+	simpleParameters,
+	(params) => {
+		hiddenIssuesInputs.value = params.map((p) => p.name);
+	},
+	{ immediate: true },
+);
+
+const revealParameterIssues = (parameterName: string) => {
+	hiddenIssuesInputs.value = hiddenIssuesInputs.value.filter((name) => name !== parameterName);
+};
+
 const onCredentialSelected = (updateInfo: INodeUpdatePropertiesInformation) => {
 	if (!props.state.credentialType) return;
 	emit('interacted');
@@ -144,6 +159,8 @@ const onValueChanged = (parameterData: IUpdateInformation) => {
 	const paramName = props.isWizard
 		? parameterData.name.replace(/^parameters\./, '')
 		: parameterData.name;
+
+	revealParameterIssues(paramName);
 
 	workflowState.updateNodeProperties({
 		name: props.state.node.name,
@@ -205,9 +222,11 @@ const onValueChanged = (parameterData: IUpdateInformation) => {
 			:remove-last-parameter-margin="true"
 			:node="state.node"
 			:hide-delete="true"
+			:hidden-issues-inputs="hiddenIssuesInputs"
 			:path="isWizard ? 'parameters' : undefined"
 			:options-overrides="{ hideExpressionSelector: true, hideFocusPanelButton: true }"
 			@value-changed="onValueChanged"
+			@parameter-blur="revealParameterIssues"
 		/>
 
 		<N8nLink
