@@ -14,6 +14,14 @@ const PRIVATE_RANGES = [
 	{ start: ip4ToNum('169.254.0.0'), end: ip4ToNum('169.254.255.255') },
 	// 0.0.0.0/8
 	{ start: ip4ToNum('0.0.0.0'), end: ip4ToNum('0.255.255.255') },
+	// 100.64.0.0/10  (Carrier-grade NAT, RFC 6598 — common in cloud VPCs)
+	{ start: ip4ToNum('100.64.0.0'), end: ip4ToNum('100.127.255.255') },
+	// 192.0.0.0/24  (IETF protocol assignments, RFC 6890)
+	{ start: ip4ToNum('192.0.0.0'), end: ip4ToNum('192.0.0.255') },
+	// 198.18.0.0/15  (Benchmarking, RFC 2544)
+	{ start: ip4ToNum('198.18.0.0'), end: ip4ToNum('198.19.255.255') },
+	// 240.0.0.0/4  (Reserved, class E)
+	{ start: ip4ToNum('240.0.0.0'), end: ip4ToNum('255.255.255.255') },
 ];
 
 /** IPv6 loopback and link-local prefixes. */
