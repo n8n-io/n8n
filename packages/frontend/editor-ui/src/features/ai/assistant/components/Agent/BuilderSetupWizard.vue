@@ -48,6 +48,7 @@ const showCard = computed(
 
 const showWizard = computed(() => !wizardDismissed.value);
 
+const containerRef = ref<HTMLElement>();
 const isHovering = ref(false);
 
 function onMouseEnter() {
@@ -93,6 +94,17 @@ const highlightedNodeIds = computed(
 // Clear section override when navigating to a different card (unmount won't fire mouseleave)
 watch(currentCard, () => {
 	sectionHighlightOverride.value = null;
+});
+
+// Auto-scroll so the wizard footer stays visible when switching to a taller card.
+// requestAnimationFrame ensures the new card has been laid out before we read scrollHeight.
+watch(currentStepIndex, () => {
+	requestAnimationFrame(() => {
+		const viewport = containerRef.value?.closest(
+			'[data-reka-scroll-area-viewport]',
+		) as HTMLElement | null;
+		viewport?.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' });
+	});
 });
 
 watch([isHovering, highlightedNodeIds, showWizard], ([hovering, nodeIds, visible]) => {
@@ -179,6 +191,7 @@ watch(
 
 <template>
 	<div
+		ref="containerRef"
 		v-if="showWizard"
 		data-test-id="builder-setup-wizard"
 		:class="$style.container"

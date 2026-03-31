@@ -497,7 +497,10 @@ defineExpose({
 					:enable-vertical-scroll="true"
 					:enable-horizontal-scroll="false"
 				>
-					<div ref="messagesRef" :class="$style.messagesContent">
+					<div
+						ref="messagesRef"
+						:class="[$style.messagesContent, showFooterRating && $style.messagesContentWithRating]"
+					>
 						<div v-if="normalizedMessages?.length">
 							<data
 								v-for="(message, i) in normalizedMessages"
@@ -774,12 +777,16 @@ defineExpose({
 
 .messagesContent {
 	padding: var(--spacing--xs);
-	padding-bottom: var(--spacing--3xl);
 
 	// Override p line-height from reset.scss (1.8) to use chat standard (1.5)
 	:global(p) {
 		line-height: var(--line-height--xl);
 	}
+}
+
+.messagesContentWithRating {
+	// Extra bottom padding so scroll-to-bottom clears the feedback-wrapper overlay
+	padding-bottom: var(--spacing--3xl);
 }
 
 .message {
