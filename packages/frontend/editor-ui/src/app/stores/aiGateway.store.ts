@@ -1,21 +1,34 @@
+import { ref } from 'vue';
+import { defineStore } from 'pinia';
 import type { AiGatewayConfigDto } from '@n8n/api-types';
 import { STORES } from '@n8n/stores';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { defineStore } from 'pinia';
-import { ref } from 'vue';
 
-import { getGatewayConfig } from '@/features/ai/assistant/assistant.api';
+import { getGatewayConfig, getGatewayCredits } from '@/features/ai/assistant/assistant.api';
 
 export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
+	const rootStore = useRootStore();
+
 	const config = ref<AiGatewayConfigDto | null>(null);
+	const creditsRemaining = ref<number | undefined>(undefined);
+	const creditsQuota = ref<number | undefined>(undefined);
 
 	async function fetchConfig(): Promise<void> {
 		if (config.value !== null) return;
 		try {
-			const rootStore = useRootStore();
 			config.value = await getGatewayConfig(rootStore.restApiContext);
 		} catch (error) {
 			console.error('[aiGatewayStore] Failed to fetch gateway config:', error);
+		}
+	}
+
+	async function fetchCredits(): Promise<void> {
+		try {
+			const data = await getGatewayCredits(rootStore.restApiContext);
+			creditsRemaining.value = data.creditsRemaining;
+			creditsQuota.value = data.creditsQuota;
+		} catch (error) {
+			console.error('[aiGatewayStore] Failed to fetch credits:', error);
 		}
 	}
 
@@ -27,5 +40,13 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 		return config.value?.credentialTypes.includes(credentialType) ?? false;
 	}
 
-	return { config, fetchConfig, isNodeSupported, isCredentialTypeSupported };
+	return {
+		config,
+		creditsRemaining,
+		creditsQuota,
+		fetchConfig,
+		fetchCredits,
+		isNodeSupported,
+		isCredentialTypeSupported,
+	};
 });

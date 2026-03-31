@@ -2,19 +2,16 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { ref } from 'vue';
 import { useAiGateway } from './useAiGateway';
+import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 
 const mockGetGatewayCredits = vi.fn();
-const mockIsCredentialTypeSupported = vi.fn().mockReturnValue(false);
+const mockGetGatewayConfig = vi
+	.fn()
+	.mockResolvedValue({ nodes: [], credentialTypes: [], providerConfig: {} });
 
 vi.mock('@/features/ai/assistant/assistant.api', () => ({
 	getGatewayCredits: (...args: unknown[]) => mockGetGatewayCredits(...args),
-}));
-
-vi.mock('@/app/stores/aiGateway.store', () => ({
-	useAiGatewayStore: vi.fn(() => ({
-		fetchConfig: vi.fn().mockResolvedValue(undefined),
-		isCredentialTypeSupported: (...args: unknown[]) => mockIsCredentialTypeSupported(...args),
-	})),
+	getGatewayConfig: (...args: unknown[]) => mockGetGatewayConfig(...args),
 }));
 
 vi.mock('@/app/composables/useWorkflowSaving', () => ({
@@ -56,7 +53,7 @@ describe('useAiGateway', () => {
 		vi.clearAllMocks();
 		mockIsAiGatewayEnabled.value = false;
 		mockGetVariant.mockReturnValue(undefined);
-		mockIsCredentialTypeSupported.mockReturnValue(false);
+		mockGetGatewayConfig.mockResolvedValue({ nodes: [], credentialTypes: [], providerConfig: {} });
 	});
 
 	describe('fetchCredits()', () => {
@@ -102,17 +99,38 @@ describe('useAiGateway', () => {
 			expect(creditsRemaining.value).toBe(5);
 			expect(creditsQuota.value).toBe(10);
 		});
+
+		it('should share credits state across multiple composable instances', async () => {
+			mockGetVariant.mockReturnValue('enabled');
+			mockIsAiGatewayEnabled.value = true;
+			mockGetGatewayCredits.mockResolvedValue({ creditsRemaining: 3, creditsQuota: 5 });
+
+			const instance1 = useAiGateway();
+			const instance2 = useAiGateway();
+
+			await instance1.fetchCredits();
+
+			// Both instances read from the same store
+			expect(instance1.creditsRemaining.value).toBe(3);
+			expect(instance2.creditsRemaining.value).toBe(3);
+		});
 	});
 
 	describe('isNodeSupported()', () => {
-		it('should return true when store reports credential type as supported', () => {
-			mockIsCredentialTypeSupported.mockReturnValue(true);
+		it('should return true when credential type is in gateway config', async () => {
+			mockGetGatewayConfig.mockResolvedValue({
+				nodes: [],
+				credentialTypes: ['googlePalmApi'],
+				providerConfig: {},
+			});
+			const aiGatewayStore = useAiGatewayStore();
+			await aiGatewayStore.fetchConfig();
+
 			const { isNodeSupported } = useAiGateway();
 			expect(isNodeSupported('googlePalmApi')).toBe(true);
 		});
 
-		it('should return false when store reports credential type as unsupported', () => {
-			mockIsCredentialTypeSupported.mockReturnValue(false);
+		it('should return false when credential type is not in gateway config', () => {
 			const { isNodeSupported } = useAiGateway();
 			expect(isNodeSupported('openAiApi')).toBe(false);
 		});
