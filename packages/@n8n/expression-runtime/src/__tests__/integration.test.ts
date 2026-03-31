@@ -416,7 +416,23 @@ describe('Integration: Concurrent execution pooling', () => {
 		await evaluator.release(caller);
 	});
 
-	it('should replenish after release so pool recovers', async () => {
+	it('should replenish after acquire', async () => {
+		const caller1 = {};
+		await evaluator.acquire(caller1);
+
+		await evaluator.waitForReplenishment();
+
+		// Pool should have a fresh bridge available for a second caller
+		const caller2 = {};
+		await evaluator.acquire(caller2);
+		const result = evaluator.evaluate('{{ $json.y }}', { $json: { y: 'replenished' } }, caller2);
+		expect(result).toBe('replenished');
+
+		await evaluator.release(caller1);
+		await evaluator.release(caller2);
+	});
+
+	it('should replenish after release', async () => {
 		const caller1 = {};
 		await evaluator.acquire(caller1);
 		await evaluator.release(caller1);
