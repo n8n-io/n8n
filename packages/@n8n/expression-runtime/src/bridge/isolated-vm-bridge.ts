@@ -4,6 +4,8 @@ import * as path from 'node:path';
 import type { RuntimeBridge, BridgeConfig, ExecuteOptions } from '../types';
 import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
 import type { ErrorSentinel } from '../runtime/lazy-proxy';
+import { prepareForTransfer, isProxyResultSentinel } from '../shared/serialize';
+import { resolvePathInData } from '../shared/resolve-path';
 
 // Lazy-loaded isolated-vm — avoids loading the native binary when the barrel
 // file is statically imported (e.g. for error classes). The native module is
@@ -586,6 +588,15 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			// Step 6: If the result is an error sentinel, reconstruct and throw
 			if (isErrorSentinel(result)) {
 				throw this.reconstructError(result);
+			}
+
+			// Step 7: If the result is a proxy-result sentinel, resolve from
+			// host-side data. This avoids the cross-bridge callback storm that
+			// would occur if __prepareForTransfer walked the proxy inside the
+			// isolate (one callback per leaf node).
+			if (isProxyResultSentinel(result)) {
+				const resolved = resolvePathInData(data, result.__path);
+				return prepareForTransfer(resolved);
 			}
 
 			if (this.config.debug) {
