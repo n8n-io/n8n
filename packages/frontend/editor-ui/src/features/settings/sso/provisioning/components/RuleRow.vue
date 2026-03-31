@@ -1,7 +1,9 @@
 <script lang="ts" setup>
+import { computed } from 'vue';
 import { N8nButton, N8nIcon, N8nInput, N8nOption, N8nSelect } from '@n8n/design-system';
 import { ElSwitch } from 'element-plus';
 import { useI18n } from '@n8n/i18n';
+import { useRolesStore } from '@/app/stores/roles.store';
 import type { RoleMappingRuleResponse } from '../types';
 
 const props = defineProps<{
@@ -14,15 +16,17 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const rolesStore = useRolesStore();
 
-const instanceRoleOptions = [
-	{ label: 'Admin', value: 'global:admin' },
-	{ label: 'Member', value: 'global:member' },
-];
+const instanceRoleOptions = computed(() =>
+	rolesStore.roles.global
+		.filter((role) => !role.systemRole)
+		.map((role) => ({ label: role.name, value: role.slug })),
+);
 </script>
 <template>
 	<div :class="$style.row" data-test-id="rule-row">
-		<div :class="$style.dragHandle" class="drag-handle">
+		<div :class="$style.dragHandle" class="drag-handle" aria-label="Reorder rule">
 			<N8nIcon icon="grip-vertical" size="small" color="text-light" />
 		</div>
 		<ElSwitch
@@ -62,6 +66,7 @@ const instanceRoleOptions = [
 			type="tertiary"
 			size="small"
 			icon="trash-2"
+			aria-label="Delete rule"
 			data-test-id="rule-delete-button"
 			@click="emit('delete', props.rule.id)"
 		/>
