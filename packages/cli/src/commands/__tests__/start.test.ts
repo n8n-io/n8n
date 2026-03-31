@@ -147,6 +147,8 @@ describe('Start - AuthRolesService initialization', () => {
 		start.initDataDeduplicationService = jest.fn().mockResolvedValue(undefined);
 		start.initExternalHooks = jest.fn().mockResolvedValue(undefined);
 		start.initWorkflowHistory = jest.fn();
+		// @ts-expect-error - Accessing private method for testing
+		start.initInstanceSettingsLoader = jest.fn().mockResolvedValue(undefined);
 		start.cleanupTestRunner = jest.fn().mockResolvedValue(undefined);
 		// @ts-expect-error - Accessing private method for testing
 		start.generateStaticAssets = jest.fn().mockResolvedValue(undefined);
