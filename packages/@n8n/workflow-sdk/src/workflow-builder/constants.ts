@@ -27,6 +27,7 @@ export const STICKY_BOTTOM_PADDING = GRID_SIZE * 4; // 64
 
 export const STICKY_NODE_TYPE = 'n8n-nodes-base.stickyNote';
 
-// Legacy constants (used by json-serializer.ts for fallback positioning)
+// BFS layout constants (used by calculateNodePositions for basic positioning)
+export const NODE_SPACING_X = 200;
 export const DEFAULT_Y = 300;
 export const START_X = 100;

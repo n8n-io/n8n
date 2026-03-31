@@ -1,8 +1,10 @@
 /**
  * Layout Utility Functions
  *
- * Dagre-based layout that mirrors the frontend's useCanvasLayout algorithm
- * to produce positions matching what the FE tidy-up would generate.
+ * Two layout strategies:
+ * 1. BFS layout (calculateNodePositions) — simple left-to-right BFS, used by default toJSON()
+ * 2. Dagre layout (calculateNodePositionsDagre) — mirrors the FE's useCanvasLayout algorithm,
+ *    used by toJSON({ tidyUp: true }) and layoutWorkflowJSON()
  */
 
 import dagre from '@dagrejs/dagre';
@@ -21,8 +23,88 @@ import {
 	AI_Y_SPACING,
 	STICKY_BOTTOM_PADDING,
 	STICKY_NODE_TYPE,
+	NODE_SPACING_X,
+	DEFAULT_Y,
+	START_X,
 } from './constants';
-import type { GraphNode } from '../types/base';
+import type { GraphNode, WorkflowJSON, ConnectionTarget } from '../types/base';
+
+// ===========================================================================
+// BFS Layout (default)
+// ===========================================================================
+
+/**
+ * Calculate positions for nodes using BFS left-to-right layout.
+ * Only sets positions for nodes without explicit config.position.
+ */
+export function calculateNodePositions(
+	nodes: ReadonlyMap<string, GraphNode>,
+): Map<string, [number, number]> {
+	const positions = new Map<string, [number, number]>();
+
+	// Find root nodes (nodes with no incoming connections)
+	const hasIncoming = new Set<string>();
+	for (const graphNode of nodes.values()) {
+		for (const typeConns of graphNode.connections.values()) {
+			for (const targets of typeConns.values()) {
+				for (const target of targets) {
+					hasIncoming.add(target.node);
+				}
+			}
+		}
+	}
+
+	const rootNodes = [...nodes.keys()].filter((name) => !hasIncoming.has(name));
+
+	// BFS to assign positions
+	const visited = new Set<string>();
+	const queue: Array<{ name: string; x: number; y: number }> = [];
+
+	// Initialize queue with root nodes
+	let y = DEFAULT_Y;
+	for (const rootName of rootNodes) {
+		queue.push({ name: rootName, x: START_X, y });
+		y += 150; // Offset Y for multiple roots
+	}
+
+	while (queue.length > 0) {
+		const { name, x, y: nodeY } = queue.shift()!;
+
+		if (visited.has(name)) continue;
+		visited.add(name);
+
+		// Only set position if node doesn't have explicit position
+		const node = nodes.get(name);
+		if (node && !node.instance.config?.position) {
+			positions.set(name, [x, nodeY]);
+		}
+
+		// Queue connected nodes
+		if (node) {
+			let branchOffset = 0;
+			for (const typeConns of node.connections.values()) {
+				for (const targets of typeConns.values()) {
+					for (const target of targets) {
+						if (!visited.has(target.node)) {
+							queue.push({
+								name: target.node,
+								x: x + NODE_SPACING_X,
+								y: nodeY + branchOffset * 150,
+							});
+							branchOffset++;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return positions;
+}
+
+// ===========================================================================
+// Dagre Layout (tidyUp)
+// ===========================================================================
 
 // ---------------------------------------------------------------------------
 // Types
@@ -43,10 +125,6 @@ function isAiConnectionType(type: string): boolean {
 	return type.startsWith('ai_');
 }
 
-/**
- * Find nodes that are AI parents (targets of ai_* connections).
- * Returns a set of node names that receive ai_* connections.
- */
 function getAiParentNames(nodes: ReadonlyMap<string, GraphNode>): Set<string> {
 	const parents = new Set<string>();
 	for (const graphNode of nodes.values()) {
@@ -62,10 +140,6 @@ function getAiParentNames(nodes: ReadonlyMap<string, GraphNode>): Set<string> {
 	return parents;
 }
 
-/**
- * Find nodes that are AI config nodes (have outgoing ai_* connections).
- * Returns a set of node names.
- */
 function getAiConfigNames(nodes: ReadonlyMap<string, GraphNode>): Set<string> {
 	const configs = new Set<string>();
 	for (const [name, graphNode] of nodes) {
@@ -79,10 +153,6 @@ function getAiConfigNames(nodes: ReadonlyMap<string, GraphNode>): Set<string> {
 	return configs;
 }
 
-/**
- * Recursively find all AI config nodes connected to a parent node.
- * Uses dagre graph predecessors (since ai edges go config -> parent in the graph).
- */
 function getAllConnectedAiConfigNodes(
 	graph: dagre.graphlib.Graph,
 	rootId: string,
@@ -98,9 +168,6 @@ function getAllConnectedAiConfigNodes(
 // Helpers: Node dimensions
 // ---------------------------------------------------------------------------
 
-/**
- * Count main output indices for a node (from its outgoing main connections).
- */
 function getMainOutputCount(nodeName: string, nodes: ReadonlyMap<string, GraphNode>): number {
 	const graphNode = nodes.get(nodeName);
 	if (!graphNode) return 1;
@@ -109,9 +176,6 @@ function getMainOutputCount(nodeName: string, nodes: ReadonlyMap<string, GraphNo
 	return Math.max(...mainConns.keys()) + 1;
 }
 
-/**
- * Count main input indices targeting a node (from all nodes' outgoing main connections).
- */
 function getMainInputCount(nodeName: string, nodes: ReadonlyMap<string, GraphNode>): number {
 	let maxIndex = 0;
 	for (const graphNode of nodes.values()) {
@@ -128,19 +192,11 @@ function getMainInputCount(nodeName: string, nodes: ReadonlyMap<string, GraphNod
 	return Math.max(1, maxIndex);
 }
 
-/**
- * Calculate node height based on main handle counts.
- * Matches the FE's calculateNodeSize formula in nodeViewUtils.ts.
- */
 function calculateNodeHeight(mainInputCount: number, mainOutputCount: number): number {
 	const maxVerticalHandles = Math.max(mainInputCount, mainOutputCount, 1);
 	return DEFAULT_NODE_SIZE[1] + Math.max(0, maxVerticalHandles - 2) * GRID_SIZE * 2;
 }
 
-/**
- * Get node dimensions based on classification and connection counts.
- * Matches the FE's calculateNodeSize in nodeViewUtils.ts.
- */
 export function getNodeDimensions(
 	nodeName: string,
 	aiParentNames: Set<string>,
@@ -152,7 +208,6 @@ export function getNodeDimensions(
 	}
 
 	if (aiParentNames.has(nodeName)) {
-		// Count distinct ai_* connection types targeting this node to determine port count
 		const aiInputTypes = new Set<string>();
 		for (const graphNode of nodes.values()) {
 			for (const [connType, outputMap] of graphNode.connections) {
@@ -328,10 +383,6 @@ function createAiSubGraph(parent: dagre.graphlib.Graph, nodeIds: string[]): dagr
 // Sticky note repositioning
 // ---------------------------------------------------------------------------
 
-/**
- * Reposition sticky notes to cover the same nodes they covered before layout.
- * Structured as a standalone function for easy future refinement.
- */
 function repositionStickyNotes(
 	stickyNames: string[],
 	nonStickyNames: string[],
@@ -343,7 +394,6 @@ function repositionStickyNotes(
 		const stickyBoxBefore = positionsBefore.get(stickyName);
 		if (!stickyBoxBefore) continue;
 
-		// Find which non-sticky nodes the sticky covered before layout
 		const coveredNames = nonStickyNames.filter((name) => {
 			const nodeBox = positionsBefore.get(name);
 			return nodeBox && isCoveredBy(stickyBoxBefore, nodeBox);
@@ -351,7 +401,6 @@ function repositionStickyNotes(
 
 		if (coveredNames.length === 0) continue;
 
-		// Get the bounding box of those nodes after layout
 		const coveredBoxesAfter = coveredNames
 			.map((name) => positionsAfter.get(name))
 			.filter((box): box is BoundingBox => box !== undefined);
@@ -368,7 +417,7 @@ function repositionStickyNotes(
 }
 
 // ---------------------------------------------------------------------------
-// Main layout function
+// Dagre layout function
 // ---------------------------------------------------------------------------
 
 /**
@@ -377,7 +426,7 @@ function repositionStickyNotes(
  *
  * Only sets positions for nodes without explicit config.position.
  */
-export function calculateNodePositions(
+export function calculateNodePositionsDagre(
 	nodes: ReadonlyMap<string, GraphNode>,
 ): Map<string, [number, number]> {
 	const positions = new Map<string, [number, number]>();
@@ -575,7 +624,6 @@ export function calculateNodePositions(
 
 	// Reposition sticky notes
 	if (stickyNames.length > 0) {
-		// Build "before" bounding boxes from original positions
 		const positionsBefore = new Map<string, BoundingBox>();
 		for (const [name, graphNode] of nodes) {
 			const pos = graphNode.instance.config?.position;
@@ -588,7 +636,6 @@ export function calculateNodePositions(
 			});
 		}
 
-		// Build "after" bounding boxes from computed positions
 		const positionsAfter = new Map<string, BoundingBox>();
 		for (const [name, box] of Object.entries(boundingBoxByNodeId)) {
 			positionsAfter.set(name, box);
@@ -598,4 +645,80 @@ export function calculateNodePositions(
 	}
 
 	return positions;
+}
+
+// ===========================================================================
+// WorkflowJSON layout (operates on serialized workflow, not builder graph)
+// ===========================================================================
+
+/**
+ * Return a new WorkflowJSON with Dagre-computed node positions.
+ * Builds a GraphNode map from the serialized JSON and delegates to calculateNodePositionsDagre.
+ *
+ * Pure function — does not mutate the input.
+ *
+ * This is the entry point for code paths that receive pre-built WorkflowJSON
+ * (e.g., sandbox-compiled workflows in instance-ai) and need proper layout
+ * before the SDK is published with tidyUp support.
+ */
+export function layoutWorkflowJSON(json: WorkflowJSON): WorkflowJSON {
+	const jsonNodes = json.nodes;
+	if (!jsonNodes || jsonNodes.length === 0) return json;
+
+	const connections = json.connections ?? {};
+
+	// Build a GraphNode map from WorkflowJSON
+	const graphNodes = new Map<string, GraphNode>();
+
+	for (const node of jsonNodes) {
+		if (!node.name) continue;
+		const connectionsMap = new Map<string, Map<number, ConnectionTarget[]>>();
+		connectionsMap.set('main', new Map());
+		graphNodes.set(node.name, {
+			instance: {
+				type: node.type,
+				name: node.name,
+				version: node.typeVersion,
+				config: {},
+			} as unknown as GraphNode['instance'],
+			connections: connectionsMap,
+		});
+	}
+
+	// Populate connections from WorkflowJSON connections structure
+	for (const [sourceName, nodeConns] of Object.entries(connections)) {
+		const graphNode = graphNodes.get(sourceName);
+		if (!graphNode) continue;
+
+		for (const [connType, outputs] of Object.entries(nodeConns)) {
+			if (!Array.isArray(outputs)) continue;
+			let outputMap = graphNode.connections.get(connType);
+			if (!outputMap) {
+				outputMap = new Map();
+				graphNode.connections.set(connType, outputMap);
+			}
+			for (let outputIdx = 0; outputIdx < outputs.length; outputIdx++) {
+				const slot = outputs[outputIdx];
+				if (!Array.isArray(slot)) continue;
+				const targets: ConnectionTarget[] = slot
+					.filter((t): t is { node: string; type: string; index: number } => !!t?.node)
+					.map((t) => ({ node: t.node, type: t.type, index: t.index }));
+				if (targets.length > 0) {
+					outputMap.set(outputIdx, targets);
+				}
+			}
+		}
+	}
+
+	// Calculate positions using the Dagre layout
+	const positions = calculateNodePositionsDagre(graphNodes);
+
+	// Return new WorkflowJSON with updated positions
+	return {
+		...json,
+		nodes: jsonNodes.map((node) => {
+			const pos = node.name ? positions.get(node.name) : undefined;
+			return pos ? { ...node, position: pos } : node;
+		}),
+	};
 }
