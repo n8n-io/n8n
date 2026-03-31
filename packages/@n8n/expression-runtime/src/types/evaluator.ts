@@ -35,9 +35,9 @@ export interface EvaluatorConfig {
 	maxCodeCacheSize: number;
 
 	/**
-	 * Number of bridges to pre-warm in the pool.
-	 * Should match the execution concurrency limit so each concurrent execution
-	 * gets a pre-warmed bridge. Defaults to 1 if not provided.
+	 * Number of bridges to pre-warm in the pool. Defaults to 1 if not provided.
+	 * Can be set to the execution concurrency limit (N8N_EXPRESSION_ENGINE_POOL_SIZE)
+	 * to give each concurrent execution a pre-warmed bridge.
 	 */
 	poolSize?: number;
 }
