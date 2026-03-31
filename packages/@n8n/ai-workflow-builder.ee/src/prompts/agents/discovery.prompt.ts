@@ -52,27 +52,34 @@ const N8N_EXECUTION_MODEL = `n8n executes each node once per input item.
 
 When a trigger or node outputs multiple items (e.g., Gmail returns 10 emails), every downstream node runs once for each item. Flow control nodes like Aggregate and Split Out change how items flow through the workflow by combining or expanding them.`;
 
-const PROCESS = `1. Search for nodes matching the user's request using search_nodes tool
-2. Identify connection-changing parameters from input/output expressions (look for $parameter.X)
-3. Call submit_discovery_results with your nodesFound array`;
+const URL_FETCH_STEP =
+	"If the user's request contains a URL (http:// or https://), fetch it first using web_fetch to understand the referenced page content before searching for nodes.";
 
-const PROCESS_WITH_QUESTIONS = `1. Search for nodes matching the user's request using search_nodes tool
-2. Identify connection-changing parameters from input/output expressions (look for $parameter.X)
-3. Assess: do you have enough information to build exactly what the user wants, or would you need to make assumptions about their intent? If assumptions are needed, ask clarifying questions using submit_questions (see clarifying_questions section)
+const PROCESS = `1. ${URL_FETCH_STEP}
+2. Search for nodes matching the user's request using search_nodes tool
+3. Identify connection-changing parameters from input/output expressions (look for $parameter.X)
 4. Call submit_discovery_results with your nodesFound array`;
 
-const PROCESS_WITH_EXAMPLES = `1. Search for nodes matching the user's request using search_nodes tool
-2. Identify connection-changing parameters from input/output expressions (look for $parameter.X)
-3. Use get_documentation to retrieve best practices for relevant workflow techniques—this provides proven patterns that improve workflow quality
-4. Use get_workflow_examples to find real community workflows using mentioned services—these examples show how experienced users structure similar integrations
+const PROCESS_WITH_QUESTIONS = `1. ${URL_FETCH_STEP}
+2. Search for nodes matching the user's request using search_nodes tool
+3. Identify connection-changing parameters from input/output expressions (look for $parameter.X)
+4. Assess: do you have enough information to build exactly what the user wants, or would you need to make assumptions about their intent? If assumptions are needed, ask clarifying questions using submit_questions (see clarifying_questions section)
 5. Call submit_discovery_results with your nodesFound array`;
 
-const PROCESS_WITH_EXAMPLES_AND_QUESTIONS = `1. Search for nodes matching the user's request using search_nodes tool
-2. Identify connection-changing parameters from input/output expressions (look for $parameter.X)
-3. Use get_documentation to retrieve best practices for relevant workflow techniques—this provides proven patterns that improve workflow quality
-4. Use get_workflow_examples to find real community workflows using mentioned services—these examples show how experienced users structure similar integrations
-5. Assess: do you have enough information to build exactly what the user wants, or would you need to make assumptions about their intent? If assumptions are needed, ask clarifying questions using submit_questions (see clarifying_questions section)
+const PROCESS_WITH_EXAMPLES = `1. ${URL_FETCH_STEP}
+2. Search for nodes matching the user's request using search_nodes tool
+3. Identify connection-changing parameters from input/output expressions (look for $parameter.X)
+4. Use get_documentation to retrieve best practices for relevant workflow techniques—this provides proven patterns that improve workflow quality
+5. Use get_workflow_examples to find real community workflows using mentioned services—these examples show how experienced users structure similar integrations
 6. Call submit_discovery_results with your nodesFound array`;
+
+const PROCESS_WITH_EXAMPLES_AND_QUESTIONS = `1. ${URL_FETCH_STEP}
+2. Search for nodes matching the user's request using search_nodes tool
+3. Identify connection-changing parameters from input/output expressions (look for $parameter.X)
+4. Use get_documentation to retrieve best practices for relevant workflow techniques—this provides proven patterns that improve workflow quality
+5. Use get_workflow_examples to find real community workflows using mentioned services—these examples show how experienced users structure similar integrations
+6. Assess: do you have enough information to build exactly what the user wants, or would you need to make assumptions about their intent? If assumptions are needed, ask clarifying questions using submit_questions (see clarifying_questions section)
+7. Call submit_discovery_results with your nodesFound array`;
 
 const AI_NODE_SELECTION = `AI node selection guidance:
 
@@ -382,6 +389,9 @@ function generateAvailableToolsList(options: DiscoveryPromptOptions): string {
 			'- get_workflow_examples: Find real community workflows as reference for structuring integrations',
 		);
 	}
+	tools.push(
+		'- web_fetch: Fetch a URL to retrieve page content (use when the user provides a URL for context)',
+	);
 	tools.push('- submit_discovery_results: Submit final results');
 	return tools.join('\n');
 }
