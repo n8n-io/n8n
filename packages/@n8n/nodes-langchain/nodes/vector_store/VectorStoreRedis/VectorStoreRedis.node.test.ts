@@ -4,6 +4,18 @@ import { NodeOperationError, type ILoadOptionsFunctions } from 'n8n-workflow';
 // Mock external modules that are not needed for these unit tests
 vi.mock('@langchain/redis', () => {
 	const state: any = { ctorArgs: undefined, filterExpression: undefined };
+	// Legacy RedisVectorStore for v1.3 and below
+	class RedisVectorStore {
+		static fromDocuments = jest.fn();
+		defaultFilter?: string[];
+		constructor(...args: any[]) {
+			state.legacyCtorArgs = args;
+		}
+		async similaritySearchVectorWithScore(_query: number[], _k: number, _filter?: string[]) {
+			return [];
+		}
+	}
+	// New FluentRedisVectorStore for v1.4+
 	class FluentRedisVectorStore {
 		static fromDocuments = vi.fn();
 		constructor(...args: any[]) {
@@ -19,7 +31,16 @@ vi.mock('@langchain/redis', () => {
 		}),
 	});
 	const Custom = (query: string) => ({ type: 'custom', query });
-	return { FluentRedisVectorStore, Tag, Custom, __state: state };
+	// Mock inferMetadataSchema to return empty schema
+	const inferMetadataSchema = jest.fn().mockReturnValue([]);
+	return {
+		RedisVectorStore,
+		FluentRedisVectorStore,
+		Tag,
+		Custom,
+		inferMetadataSchema,
+		__state: state,
+	};
 });
 
 vi.mock('@n8n/ai-utilities', () => ({
@@ -204,7 +225,7 @@ describe('VectorStoreRedis.node', () => {
 	});
 
 	describe('getVectorStoreClient', () => {
-		it('constructs ExtendedRedisVectorSearch with correct options and passes simple filter as Tag expression', async () => {
+		it('constructs ExtendedRedisVectorSearch with correct options for v1.4', async () => {
 			const mockClient = {
 				on: vi.fn(),
 				connect: vi.fn().mockResolvedValue(undefined),
@@ -237,13 +258,12 @@ describe('VectorStoreRedis.node', () => {
 						'options.metadataKey': 'm',
 						'options.contentKey': 'c',
 						'options.vectorKey': 'v',
-						'options.metadataFilter': 'a,b',
 						'options.customFilter': '',
 						'options.metadataSchema': '',
 					};
 					return map[name] ?? '';
 				},
-				getNode: () => ({ name: 'VectorStoreRedis' }),
+				getNode: () => ({ name: 'VectorStoreRedis', typeVersion: 1.4 }),
 				logger: loadOptionsFunctions.logger,
 			} as any;
 
@@ -274,8 +294,8 @@ describe('VectorStoreRedis.node', () => {
 			// Call the overridden method and ensure behavior is as expected
 			const res = await client.similaritySearchVectorWithScore([1, 2], 3);
 			expect(res).toBe('ok');
-			// Validate filter expression is a Tag filter with the metadata key
-			expect(client.defaultFilter).toEqual({ type: 'tag', field: 'm', values: ['a', 'b'] });
+			// v1.4 with no customFilter should have undefined filter
+			expect(client.defaultFilter).toBeUndefined();
 		});
 
 		it('uses Custom filter when customFilter is provided', async () => {
@@ -308,7 +328,7 @@ describe('VectorStoreRedis.node', () => {
 					};
 					return map[name] ?? '';
 				},
-				getNode: () => ({ name: 'VectorStoreRedis' }),
+				getNode: () => ({ name: 'VectorStoreRedis', typeVersion: 1.4 }),
 				logger: loadOptionsFunctions.logger,
 			} as any;
 
@@ -322,7 +342,7 @@ describe('VectorStoreRedis.node', () => {
 			});
 		});
 
-		it('trims and removes empty metadata filter tokens', async () => {
+		it('trims and removes empty metadata filter tokens for legacy v1.3', async () => {
 			const mockClient = {
 				on: vi.fn(),
 				connect: vi.fn().mockResolvedValue(undefined),
@@ -333,8 +353,8 @@ describe('VectorStoreRedis.node', () => {
 
 			(MockCreateClient as any).mockReturnValue(mockClient);
 
-			const FluentRedisVectorStoreMod: any = vi.mocked(await import('@langchain/redis'));
-			FluentRedisVectorStoreMod.FluentRedisVectorStore.prototype.similaritySearchVectorWithScore = vi
+			const LegacyRedisVectorStoreMod: any = vi.mocked(await import('@langchain/redis'));
+			LegacyRedisVectorStoreMod.RedisVectorStore.prototype.similaritySearchVectorWithScore = vi
 				.fn()
 				.mockResolvedValue('ok');
 
@@ -348,24 +368,18 @@ describe('VectorStoreRedis.node', () => {
 						'options.contentKey': '',
 						'options.vectorKey': '',
 						'options.metadataFilter': 'tag1, tag2 , ,tag3',
-						'options.customFilter': '',
-						'options.metadataSchema': '',
 					};
 					return map[name] ?? '';
 				},
-				getNode: () => ({ name: 'VectorStoreRedis' }),
+				getNode: () => ({ name: 'VectorStoreRedis', typeVersion: 1.3 }),
 				logger: loadOptionsFunctions.logger,
 			} as any;
 
 			const node = new RedisNode.VectorStoreRedis();
 			const client = await (node as any).getVectorStoreClient(context, undefined, {}, 0);
 
-			// Ensure trimming/removal works - filter uses default 'metadata' field when metadataKey is empty
-			expect(client.defaultFilter).toEqual({
-				type: 'tag',
-				field: 'metadata',
-				values: ['tag1', 'tag2', 'tag3'],
-			});
+			// Legacy v1.3 uses string[] filter - verify trimming/removal works
+			expect(client.defaultFilter).toEqual(['tag1', 'tag2', 'tag3']);
 		});
 
 		it('omits optional keys when empty/whitespace and handles empty filter as undefined', async () => {
@@ -399,7 +413,7 @@ describe('VectorStoreRedis.node', () => {
 					};
 					return map[name] ?? '';
 				},
-				getNode: () => ({ name: 'VectorStoreRedis' }),
+				getNode: () => ({ name: 'VectorStoreRedis', typeVersion: 1.4 }),
 				logger: loadOptionsFunctions.logger,
 			} as any;
 
@@ -453,7 +467,7 @@ describe('VectorStoreRedis.node', () => {
 					};
 					return map[name] ?? '';
 				},
-				getNode: () => ({ name: 'VectorStoreRedis' }),
+				getNode: () => ({ name: 'VectorStoreRedis', typeVersion: 1.4 }),
 				logger: loadOptionsFunctions.logger,
 			} as any;
 
@@ -477,7 +491,7 @@ describe('VectorStoreRedis.node', () => {
 			const context: any = {
 				getCredentials: vi.fn().mockResolvedValue(baseCredentials),
 				getNodeParameter: (name: string) => (name === 'redisIndex' ? 'idx' : ''),
-				getNode: () => ({ name: 'VectorStoreRedis' }),
+				getNode: () => ({ name: 'VectorStoreRedis', typeVersion: 1.4 }),
 			};
 
 			const node = new RedisNode.VectorStoreRedis();
@@ -521,7 +535,7 @@ describe('VectorStoreRedis.node', () => {
 					};
 					return map[name] ?? '';
 				},
-				getNode: () => ({ name: 'VectorStoreRedis' }),
+				getNode: () => ({ name: 'VectorStoreRedis', typeVersion: 1.4 }),
 				logger: loadOptionsFunctions.logger,
 			} as any;
 
@@ -585,7 +599,7 @@ describe('VectorStoreRedis.node', () => {
 					};
 					return map[name] ?? '';
 				},
-				getNode: () => ({ name: 'VectorStoreRedis' }),
+				getNode: () => ({ name: 'VectorStoreRedis', typeVersion: 1.4 }),
 				logger: loadOptionsFunctions.logger,
 			} as any;
 
@@ -624,7 +638,7 @@ describe('VectorStoreRedis.node', () => {
 			const context: any = {
 				getCredentials: vi.fn().mockResolvedValue(baseCredentials),
 				getNodeParameter: (name: string) => (name === 'redisIndex' ? 'idx' : ''),
-				getNode: () => ({ name: 'VectorStoreRedis' }),
+				getNode: () => ({ name: 'VectorStoreRedis', typeVersion: 1.4 }),
 				logger: loadOptionsFunctions.logger,
 			} as any;
 
