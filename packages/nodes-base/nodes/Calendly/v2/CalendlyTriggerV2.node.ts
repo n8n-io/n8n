@@ -11,7 +11,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 
-import { calendlyApiRequest, resolveIdentity } from './GenericFunctions';
+import { calendlyApiRequest, hasResponseStatus, resolveIdentity } from './GenericFunctions';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -28,6 +28,7 @@ type CalendlyWebhookSubscriptionsResponse = {
 type CalendlyCreateWebhookResponse = {
 	resource?: {
 		uri?: string;
+		signing_key?: string;
 	};
 };
 
@@ -69,25 +70,18 @@ function isCalendlyCreateWebhookResponse(value: unknown): value is CalendlyCreat
 	);
 }
 
-function hasResponseStatus(
-	error: unknown,
-	status: number,
-): error is { response: { status: number } } {
-	return (
-		typeof error === 'object' &&
-		error !== null &&
-		'response' in error &&
-		typeof error.response === 'object' &&
-		error.response !== null &&
-		'status' in error.response &&
-		error.response.status === status
-	);
-}
-
 function enforceV2Uri(this: IHookFunctions, value: string, parameterName: string) {
 	if (UUID_REGEX.test(value) && !value.startsWith('http')) {
 		throw new NodeApiError(this.getNode(), {} as JsonObject, {
 			message: `Legacy v1 ID detected in '${parameterName}'. Calendly v2 requires full URIs. Please re-select this resource from the dropdown to fetch the modern v2 URI.`,
+		});
+	}
+}
+
+function validateWebhookScope(this: IHookFunctions, scope: string) {
+	if (scope !== 'user' && scope !== 'organization') {
+		throw new NodeApiError(this.getNode(), {} as JsonObject, {
+			message: `Unsupported scope: ${scope}. Calendly v2 only supports 'user' and 'organization' scopes.`,
 		});
 	}
 }
@@ -283,7 +277,7 @@ export class CalendlyTriggerV2 implements INodeType {
 					events.forEach((eventString) => enforceV2Uri.call(this, eventString, 'events'));
 
 					const { userUri, organizationUri } = await resolveIdentity.call(this);
-					buildWebhookSubscriptionQuery.call(this, scope, organizationUri, userUri);
+					validateWebhookScope.call(this, scope);
 
 					const authType = this.getNodeParameter('authentication', 0) as string;
 					const credType = authType === 'apiKey' ? 'calendlyApi' : 'calendlyOAuth2Api';
@@ -324,38 +318,30 @@ export class CalendlyTriggerV2 implements INodeType {
 						events,
 						organization: organizationUri,
 						scope,
-						signing_key: signingKey,
 					};
 
 					if (scope === 'user') {
 						body.user = userUri;
 					}
 
-					try {
-						const responseData = await calendlyApiRequest.call(
-							this,
-							'POST',
-							'/webhook_subscriptions',
-							body,
-						);
-						if (!isCalendlyCreateWebhookResponse(responseData)) {
-							throw new NodeApiError(this.getNode(), {} as JsonObject, {
-								message: 'Malformed Calendly webhook creation response.',
-							});
-						}
+					const responseData = await calendlyApiRequest.call(
+						this,
+						'POST',
+						'/webhook_subscriptions',
+						body,
+					);
+					if (!isCalendlyCreateWebhookResponse(responseData)) {
+						throw new NodeApiError(this.getNode(), {} as JsonObject, {
+							message: 'Malformed Calendly webhook creation response.',
+						});
+					}
 
-						if (responseData.resource?.uri) {
-							webhookData.webhookId = responseData.resource.uri;
-							return true;
+					if (responseData.resource?.uri) {
+						webhookData.webhookId = responseData.resource.uri;
+						if (responseData.resource.signing_key) {
+							webhookData.webhookSigningKey = responseData.resource.signing_key;
 						}
-					} catch (error) {
-						if (hasResponseStatus(error, 403)) {
-							throw new NodeApiError(this.getNode(), error as JsonObject, {
-								message:
-									'Webhook creation forbidden by SSO policy. Your Enterprise organization restricts PATs from creating webhooks. Please switch to "OAuth2 (recommended)".',
-							});
-						}
-						throw error;
+						return true;
 					}
 
 					return false;
@@ -382,7 +368,15 @@ export class CalendlyTriggerV2 implements INodeType {
 				}
 
 				const webhookUri = webhookData.webhookId as string;
-				const endpoint = new URL(webhookUri).pathname;
+				let endpoint: string;
+				try {
+					endpoint = new URL(webhookUri).pathname;
+				} catch (error) {
+					// Fallback for legacy IDs if they somehow persist in V2 static data
+					endpoint = webhookUri.startsWith('/')
+						? webhookUri
+						: `/webhook_subscriptions/${webhookUri}`;
+				}
 
 				try {
 					await calendlyApiRequest.call(this, 'DELETE', endpoint);
@@ -393,6 +387,7 @@ export class CalendlyTriggerV2 implements INodeType {
 				}
 
 				delete webhookData.webhookId;
+				delete webhookData.webhookSigningKey;
 				return true;
 			},
 		},
@@ -407,14 +402,17 @@ export class CalendlyTriggerV2 implements INodeType {
 		const authenticationMethod = this.getNodeParameter('authentication', 0) as string;
 		const credentialName = authenticationMethod === 'oAuth2' ? 'calendlyOAuth2Api' : 'calendlyApi';
 		const credentials = await this.getCredentials(credentialName);
-		const webhookSigningKey = credentials?.webhookSigningKey as string | undefined;
+		const webhookData = this.getWorkflowStaticData('node');
+		const webhookSigningKey =
+			(webhookData.webhookSigningKey as string | undefined) ||
+			(credentials?.webhookSigningKey as string | undefined);
 
 		if (webhookSigningKey) {
 			if (!calendlySignature) {
-				throw new NodeApiError(this.getNode(), {
+				throw new NodeApiError(this.getNode(), {} as JsonObject, {
 					message: 'Missing Calendly-Webhook-Signature header',
 					httpCode: '401',
-				} as JsonObject);
+				});
 			}
 
 			const signatureParts = calendlySignature.split(',');
@@ -425,27 +423,30 @@ export class CalendlyTriggerV2 implements INodeType {
 			const v1 = v1Part?.slice(3);
 
 			if (!t || !v1) {
-				throw new NodeApiError(this.getNode(), {
+				throw new NodeApiError(this.getNode(), {} as JsonObject, {
 					message: 'Malformed Calendly-Webhook-Signature header',
 					httpCode: '401',
-				} as JsonObject);
+				});
 			}
 
 			const eventTimestampMs = Number(t) * 1000;
 			const fiveMinutesMs = 5 * 60 * 1000;
-			if (Number.isNaN(eventTimestampMs) || Date.now() - eventTimestampMs > fiveMinutesMs) {
-				throw new NodeApiError(this.getNode(), {
-					message: 'Webhook timestamp is too old \u2014 possible replay attack',
-					httpCode: '401',
-				} as JsonObject);
+			const timeSkewMs = Math.abs(Date.now() - eventTimestampMs);
+
+			if (Number.isNaN(eventTimestampMs) || timeSkewMs > fiveMinutesMs) {
+				throw new NodeApiError(this.getNode(), {} as JsonObject, {
+					message:
+						'Webhook timestamp is outside of the 5-minute window \u2014 possible replay attack',
+					httpCode: '400',
+				});
 			}
 
 			const req = this.getRequestObject() as { rawBody?: Buffer | string };
 			if (!req.rawBody) {
-				throw new NodeApiError(this.getNode(), {
+				throw new NodeApiError(this.getNode(), {} as JsonObject, {
 					message: 'Missing raw request body for Calendly webhook signature verification.',
 					httpCode: '401',
-				} as JsonObject);
+				});
 			}
 
 			const rawBody = typeof req.rawBody === 'string' ? req.rawBody : req.rawBody.toString('utf8');
@@ -461,10 +462,10 @@ export class CalendlyTriggerV2 implements INodeType {
 				expectedSignatureBuffer.length !== v1Buffer.length ||
 				!crypto.timingSafeEqual(expectedSignatureBuffer, v1Buffer)
 			) {
-				throw new NodeApiError(this.getNode(), {
+				throw new NodeApiError(this.getNode(), {} as JsonObject, {
 					message: 'Calendly Webhook Signature Mismatch - Please check your Signing Key.',
 					httpCode: '401',
-				} as JsonObject);
+				});
 			}
 		}
 

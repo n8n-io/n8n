@@ -17,7 +17,7 @@ type CalendlyIdentityResponse = {
 	};
 };
 
-function hasResponseStatus(error: any, status: number): boolean {
+export function hasResponseStatus(error: any, status: number): boolean {
 	if (error && (error.httpCode === status.toString() || error.httpCode === status)) {
 		return true;
 	}

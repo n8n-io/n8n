@@ -25,10 +25,12 @@ export class CalendlyApi implements ICredentialType {
 				"The Personal Access Token for your Calendly account. Requires 'user:read' and 'webhook:manage' scopes.",
 		},
 		{
-			displayName: 'API Key',
+			displayName: 'API Key (Deprecated)',
 			name: 'apiKey',
 			type: 'hidden',
 			default: '',
+			description:
+				'Legacy API Key. This authentication method is deprecated and will be discontinued by Calendly on May 31, 2025. Please migrate to a Personal Access Token.',
 		},
 		{
 			displayName: 'Webhook Signing Key',
@@ -49,10 +51,22 @@ export class CalendlyApi implements ICredentialType {
 	): Promise<IHttpRequestOptions> {
 		const token = (credentials.accessToken as string) || (credentials.apiKey as string);
 
-		if (
-			requestOptions.baseURL?.includes('api.calendly.com') ||
-			requestOptions.url?.includes('api.calendly.com')
-		) {
+		let isV2 = false;
+		try {
+			const urlString = requestOptions.baseURL || requestOptions.url || '';
+			if (urlString.startsWith('http')) {
+				const url = new URL(urlString);
+				isV2 = url.hostname === 'api.calendly.com';
+			}
+		} catch {
+			// Fallback to legacy check if URL is malformed or relative
+			isV2 =
+				requestOptions.baseURL?.includes('api.calendly.com') ||
+				requestOptions.url?.includes('api.calendly.com') ||
+				false;
+		}
+
+		if (isV2) {
 			requestOptions.headers = {
 				...requestOptions.headers,
 				// eslint-disable-next-line @typescript-eslint/naming-convention

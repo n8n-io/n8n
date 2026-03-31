@@ -5,7 +5,6 @@ import type {
 	INode,
 	INodeTypeBaseDescription,
 	IWebhookFunctions,
-	JsonObject,
 } from 'n8n-workflow';
 
 import { CalendlyApi } from '../../../credentials/CalendlyApi.credentials';
@@ -165,7 +164,9 @@ describe('Calendly Trigger - Version 2', () => {
 					if (name === 'events') return ['invitee.created'];
 					return 'apiKey';
 				},
-				getCredentials: jest.fn().mockResolvedValue({ webhookSigningKey }),
+				getCredentials: jest
+					.fn()
+					.mockResolvedValue({ accessToken: 'test-token', webhookSigningKey }),
 				getNode: () => ({ name: 'Calendly Trigger' }) as unknown as INode,
 				helpers: {
 					requestWithAuthentication: requestMock,
@@ -191,7 +192,6 @@ describe('Calendly Trigger - Version 2', () => {
 						events: ['invitee.created'],
 						organization: mockOrgUri,
 						scope: 'organization',
-						signing_key: webhookSigningKey,
 					},
 				}),
 			);
@@ -215,7 +215,9 @@ describe('Calendly Trigger - Version 2', () => {
 					if (name === 'events') return ['invitee.created'];
 					return 'apiKey';
 				},
-				getCredentials: jest.fn().mockResolvedValue({ webhookSigningKey }),
+				getCredentials: jest
+					.fn()
+					.mockResolvedValue({ accessToken: 'test-token', webhookSigningKey }),
 				getNode: () => ({ name: 'Calendly Trigger' }) as unknown as INode,
 				helpers: {
 					requestWithAuthentication: requestMock,
@@ -241,7 +243,10 @@ describe('Calendly Trigger - Version 2', () => {
 					[calendlyWebhookSignatureHeader]: `t=${t},v1=${v1}`,
 				}),
 				getNodeParameter: () => 'apiKey',
-				getCredentials: jest.fn().mockResolvedValue({ webhookSigningKey }),
+				getCredentials: jest
+					.fn()
+					.mockResolvedValue({ accessToken: 'test-token', webhookSigningKey }),
+				getWorkflowStaticData: () => ({}),
 				getRequestObject: () => ({ rawBody }),
 				getNode: () => ({ name: 'Calendly Trigger' }) as unknown as INode,
 				helpers: {
@@ -267,15 +272,44 @@ describe('Calendly Trigger - Version 2', () => {
 					[calendlyWebhookSignatureHeader]: `t=${staleT},v1=${v1}`,
 				}),
 				getNodeParameter: () => 'apiKey',
-				getCredentials: jest.fn().mockResolvedValue({ webhookSigningKey }),
+				getCredentials: jest
+					.fn()
+					.mockResolvedValue({ accessToken: 'test-token', webhookSigningKey }),
+				getWorkflowStaticData: () => ({}),
 				getRequestObject: () => ({ rawBody }),
 				getNode: () => ({ name: 'Calendly Trigger' }) as unknown as INode,
 			} as unknown as IWebhookFunctions;
 
 			await expect(trigger.webhook.call(mockWebhookFunctions)).rejects.toMatchObject({
-				description: 'Webhook timestamp is too old \u2014 possible replay attack',
-				httpCode: '401',
-			} as JsonObject);
+				message: expect.stringContaining('Webhook timestamp is outside of the 5-minute window'),
+			});
+		});
+
+		it('should throw when timestamp is too far in the future', async () => {
+			const fiveMinutesPlusOneSecondMs = 5 * 60 * 1000 + 1000;
+			const futureT = Math.floor((Date.now() + fiveMinutesPlusOneSecondMs) / 1000).toString();
+			const futureV1 = generateSignature(futureT, testBody, webhookSigningKey);
+
+			const mockWebhookFunctions = {
+				getBodyData: () => testBody,
+				getHeaderData: () => ({
+					[calendlyWebhookSignatureHeader]: `t=${futureT},v1=${futureV1}`,
+				}),
+				getNodeParameter: () => 'apiKey',
+				getCredentials: jest
+					.fn()
+					.mockResolvedValue({ accessToken: 'test-token', webhookSigningKey }),
+				getWorkflowStaticData: () => ({}),
+				getRequestObject: () => ({ rawBody }),
+				getNode: () => ({ name: 'Calendly Trigger' }) as unknown as INode,
+				helpers: {
+					returnJsonArray: (data: unknown) => [data] as unknown as IDataObject[],
+				},
+			} as unknown as IWebhookFunctions;
+
+			await expect(trigger.webhook.call(mockWebhookFunctions)).rejects.toThrow(
+				'Webhook timestamp is outside of the 5-minute window \u2014 possible replay attack',
+			);
 		});
 
 		it('should throw NodeApiError for signature mismatch', async () => {
@@ -288,15 +322,17 @@ describe('Calendly Trigger - Version 2', () => {
 					[calendlyWebhookSignatureHeader]: `t=${t},v1=${invalidV1}`,
 				}),
 				getNodeParameter: () => 'apiKey',
-				getCredentials: jest.fn().mockResolvedValue({ webhookSigningKey }),
+				getCredentials: jest
+					.fn()
+					.mockResolvedValue({ accessToken: 'test-token', webhookSigningKey }),
+				getWorkflowStaticData: () => ({}),
 				getRequestObject: () => ({ rawBody }),
 				getNode: () => ({ name: 'Calendly Trigger' }) as unknown as INode,
 			} as unknown as IWebhookFunctions;
 
 			await expect(trigger.webhook.call(mockWebhookFunctions)).rejects.toMatchObject({
-				description: 'Calendly Webhook Signature Mismatch - Please check your Signing Key.',
-				httpCode: '401',
-			} as JsonObject);
+				message: expect.stringContaining('Calendly Webhook Signature Mismatch'),
+			});
 		});
 
 		it('should throw NodeApiError if no calendly-webhook-signature header is provided', async () => {
@@ -304,15 +340,17 @@ describe('Calendly Trigger - Version 2', () => {
 				getBodyData: () => testBody,
 				getHeaderData: () => ({}),
 				getNodeParameter: () => 'apiKey',
-				getCredentials: jest.fn().mockResolvedValue({ webhookSigningKey }),
+				getCredentials: jest
+					.fn()
+					.mockResolvedValue({ accessToken: 'test-token', webhookSigningKey }),
+				getWorkflowStaticData: () => ({}),
 				getRequestObject: () => ({ rawBody }),
 				getNode: () => ({ name: 'Calendly Trigger' }) as unknown as INode,
 			} as unknown as IWebhookFunctions;
 
 			await expect(trigger.webhook.call(mockWebhookFunctions)).rejects.toMatchObject({
-				description: 'Missing Calendly-Webhook-Signature header',
-				httpCode: '401',
-			} as JsonObject);
+				message: expect.stringContaining('Missing Calendly-Webhook-Signature header'),
+			});
 		});
 
 		it('should throw NodeApiError if rawBody is missing while verifying a signature', async () => {
@@ -325,15 +363,17 @@ describe('Calendly Trigger - Version 2', () => {
 					[calendlyWebhookSignatureHeader]: `t=${t},v1=${v1}`,
 				}),
 				getNodeParameter: () => 'apiKey',
-				getCredentials: jest.fn().mockResolvedValue({ webhookSigningKey }),
+				getCredentials: jest
+					.fn()
+					.mockResolvedValue({ accessToken: 'test-token', webhookSigningKey }),
+				getWorkflowStaticData: () => ({}),
 				getRequestObject: () => ({}),
 				getNode: () => ({ name: 'Calendly Trigger' }) as unknown as INode,
 			} as unknown as IWebhookFunctions;
 
 			await expect(trigger.webhook.call(mockWebhookFunctions)).rejects.toMatchObject({
-				description: 'Missing raw request body for Calendly webhook signature verification.',
-				httpCode: '401',
-			} as JsonObject);
+				message: expect.stringContaining('Missing raw request body'),
+			});
 		});
 
 		it('should pass through when no webhookSigningKey is configured', async () => {
@@ -342,6 +382,7 @@ describe('Calendly Trigger - Version 2', () => {
 				getHeaderData: () => ({}),
 				getNodeParameter: () => 'apiKey',
 				getCredentials: jest.fn().mockResolvedValue({}),
+				getWorkflowStaticData: () => ({}),
 				getRequestObject: () => ({ rawBody }),
 				getNode: () => ({ name: 'Calendly Trigger' }) as unknown as INode,
 				helpers: {

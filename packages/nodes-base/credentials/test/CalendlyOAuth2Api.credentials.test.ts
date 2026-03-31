@@ -11,6 +11,7 @@ describe('CalendlyOAuth2Api Credential', () => {
 	it('should have the correct default scopes', () => {
 		const scopeProperty = calendlyOAuth2Api.properties.find((p) => p.name === 'scope');
 		expect(scopeProperty).toBeDefined();
+		expect(scopeProperty?.type).not.toBe('hidden');
 		expect(scopeProperty?.default).toBe(
 			'user:read bookings:read bookings:manage webhooks:read webhooks:write',
 		);
