@@ -10,14 +10,15 @@ import { runProgrammaticCheck } from './programmatic-checks';
 // ---------------------------------------------------------------------------
 
 function parseJsonArray(text: string): unknown[] {
+	// Try fenced code block first
 	const fenceMatch = text.match(/```(?:json)?\s*\n?([\s\S]*?)```/);
 	const jsonStr = fenceMatch ? fenceMatch[1].trim() : text.trim();
 
 	try {
 		const parsed: unknown = JSON.parse(jsonStr);
 		if (Array.isArray(parsed)) return parsed;
-		return [];
 	} catch {
+		// Try extracting array from anywhere in the text
 		const arrayMatch = jsonStr.match(/\[[\s\S]*\]/);
 		if (arrayMatch) {
 			try {
@@ -27,8 +28,13 @@ function parseJsonArray(text: string): unknown[] {
 				// fall through
 			}
 		}
-		return [];
 	}
+
+	// Log failure for debugging — this causes "No verification result"
+	console.warn(
+		`[verifier] Failed to parse JSON array from LLM response (${text.length} chars). First 500 chars: ${text.slice(0, 500)}`,
+	);
+	return [];
 }
 
 // ---------------------------------------------------------------------------
