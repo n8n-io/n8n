@@ -8,6 +8,7 @@ import type {
 	ChatToolCall,
 	ChatEntry,
 } from '../types';
+import type { WorkflowResponse } from '../clients/n8n-client';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -93,7 +94,7 @@ function getWorkflowIdFromResult(result: unknown): string | undefined {
 function renderChatToolCall(
 	tc: ChatToolCall,
 	idx: number,
-	workflowJsonMap: Map<string, Record<string, unknown>>,
+	workflowJsonMap: Map<string, WorkflowResponse>,
 ): string {
 	const statusBadge = tc.error
 		? '<span class="badge badge-failed">ERROR</span>'
@@ -140,7 +141,7 @@ function renderChatToolCall(
 function renderChatEntry(
 	entry: ChatEntry,
 	tcIdx: number,
-	workflowJsonMap: Map<string, Record<string, unknown>>,
+	workflowJsonMap: Map<string, WorkflowResponse>,
 ): string {
 	if (entry.type === 'text') {
 		return `<div style="margin:8px 0;padding:8px;background:#161b22;border:1px solid #30363d;border-radius:4px;font-size:12px;color:#c9d1d9;white-space:pre-wrap">${escapeHtml(entry.content)}</div>`;
@@ -148,12 +149,10 @@ function renderChatEntry(
 	return renderChatToolCall(entry.toolCall, tcIdx, workflowJsonMap);
 }
 
-function buildWorkflowJsonMap(result: InstanceAiResult): Map<string, Record<string, unknown>> {
-	const map = new Map<string, Record<string, unknown>>();
+function buildWorkflowJsonMap(result: InstanceAiResult): Map<string, WorkflowResponse> {
+	const map = new Map<string, WorkflowResponse>();
 	for (const wfJson of result.outcome.workflowJsons) {
-		if (typeof wfJson.id === 'string') {
-			map.set(wfJson.id, wfJson);
-		}
+		map.set(wfJson.id, wfJson);
 	}
 	return map;
 }

@@ -16,7 +16,8 @@ The verification artifact contains:
 - **Pre-analysis**: Automated flags for known issues (builder config problems, mock generation failures)
 - **Execution summary**: Which nodes were mocked, pinned, or real
 - **Errors**: Any runtime errors from the execution
-- **Execution trace**: Per-node detail including HTTP requests sent, mock responses returned, and node output
+- **Workflow structure**: ALL nodes that were built, whether they executed or not, plus the full connections JSON showing how nodes are wired. Use this to verify node existence and wiring before making claims about missing nodes or wrong connections.
+- **Execution trace**: Per-node detail including HTTP requests sent, mock responses returned, and node output. Only includes nodes that actually ran. **IMPORTANT: The trace is NOT in chronological order.** Do not infer execution sequence from the order nodes appear in the trace. Use the connections JSON in the workflow structure to determine execution flow.
 
 ## How to evaluate
 
@@ -31,8 +32,12 @@ The verification artifact contains:
    - Did the workflow handle an error scenario but the success criteria is ambiguous about what "graceful" means? → evaluate based on whether data was lost or the workflow crashed entirely
 
    KEY PRINCIPLE: A mock response that faithfully matches the HTTP request is NEVER a mock issue, even if downstream nodes needed different data. If the request didn't ask for a field, the mock shouldn't invent it. The fault lies with whatever built the request (the node choice or its configuration).
-4. Check the **success criteria** against the execution trace and node outputs
-5. For scenarios with no errors and no output beyond the trigger: this usually means the workflow handled empty data gracefully (no crash = success for empty-input scenarios)
+
+4. **Be definitive, not speculative.** You have the full execution trace, node configurations, request bodies, mock responses, and node outputs. Use this data to give exact answers. Say "the expression references $json.firstName but the upstream output has the field as firstname (lowercase)" — not "likely references a field that doesn't resolve correctly." If a node errored, quote the exact error. If a field is missing, name it and trace where it should have come from. Never use "likely", "might", "probably", or "possibly" when the data in the artifact gives you a definitive answer.
+5. **Always check the "Workflow structure" section before claiming a node is missing or miswired.** The workflow structure lists ALL nodes that were built AND the connections JSON showing exactly how they are wired. The execution trace only shows nodes that actually ran. Before claiming a branch is wired to the wrong node, verify against the connections JSON. If a node exists in the structure but not in the trace, check why: was an upstream condition met unexpectedly? Was the IF/Switch node's condition misconfigured? Was the input data wrong? Don't assume miswiring — check the connections first.
+6. **Workflows can branch.** Not every node runs in every execution. A crashed or misconfigured node prevents all downstream branches from running. When diagnosing, identify the single root cause (the first node that crashed) rather than listing each unexecuted downstream node as a separate issue.
+7. Check the **success criteria** against the execution trace and node outputs
+8. For scenarios with no errors and no output beyond the trigger: this usually means the workflow handled empty data gracefully (no crash = success for empty-input scenarios)
 
 ## Failure categories
 

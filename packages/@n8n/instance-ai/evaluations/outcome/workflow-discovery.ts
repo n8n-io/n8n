@@ -5,6 +5,7 @@
 import type { InstanceAiAgentNode, InstanceAiMessage } from '@n8n/api-types';
 
 import type { N8nClient } from '../clients/n8n-client';
+import type { WorkflowResponse } from '../clients/n8n-client';
 import type { AgentOutcome, EventOutcome, ExecutionSummary, WorkflowSummary } from '../types';
 
 // ---------------------------------------------------------------------------
@@ -42,7 +43,7 @@ export async function buildAgentOutcome(
 	claimedWorkflowIds?: Set<string>,
 ): Promise<AgentOutcome> {
 	const workflowsCreated: WorkflowSummary[] = [];
-	const workflowJsons: Record<string, unknown>[] = [];
+	const workflowJsons: WorkflowResponse[] = [];
 	const executionsRun: ExecutionSummary[] = [];
 
 	// Collect workflow IDs from events
@@ -80,12 +81,11 @@ export async function buildAgentOutcome(
 	for (const wfId of knownWfIds) {
 		try {
 			const wf = await client.getWorkflow(wfId);
-			const nodes = Array.isArray(wf.nodes) ? (wf.nodes as unknown[]) : [];
 			workflowsCreated.push({
 				id: wfId,
-				name: typeof wf.name === 'string' ? wf.name : 'Unknown',
-				nodeCount: nodes.length,
-				active: typeof wf.active === 'boolean' ? wf.active : false,
+				name: wf.name,
+				nodeCount: wf.nodes.length,
+				active: wf.active,
 			});
 			workflowJsons.push(wf);
 		} catch {

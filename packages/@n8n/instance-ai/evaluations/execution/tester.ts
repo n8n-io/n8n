@@ -12,7 +12,7 @@
 
 import { parse as parseFlatted } from 'flatted';
 
-import type { N8nClient } from '../clients/n8n-client';
+import type { N8nClient, WorkflowNodeResponse, WorkflowResponse } from '../clients/n8n-client';
 import type {
 	AgentOutcome,
 	ExecutionSummary,
@@ -152,26 +152,19 @@ export async function runPostBuildExecutions(
  * Find the first trigger node in a workflow JSON by workflow ID.
  */
 export function findTriggerNode(
-	workflowJsons: Record<string, unknown>[],
+	workflowJsons: WorkflowResponse[],
 	workflowId: string,
-): { name: string; type: string } | undefined {
-	const wfJson = workflowJsons.find((wf) => typeof wf.id === 'string' && wf.id === workflowId);
-	if (!wfJson || !Array.isArray(wfJson.nodes)) return undefined;
-
-	const nodes = wfJson.nodes as Array<Record<string, unknown>>;
+): WorkflowNodeResponse | undefined {
+	const wfJson = workflowJsons.find((wf) => wf.id === workflowId);
+	if (!wfJson) return undefined;
 
 	// Find the first trigger node (type contains "trigger" or "Trigger", or is a webhook/schedule)
-	return nodes
-		.filter(
-			(n): n is Record<string, unknown> & { name: string; type: string } =>
-				typeof n.name === 'string' && typeof n.type === 'string',
-		)
-		.find(
-			(n) =>
-				n.type.toLowerCase().includes('trigger') ||
-				n.type === 'n8n-nodes-base.webhook' ||
-				n.type === 'n8n-nodes-base.manualTrigger',
-		);
+	return wfJson.nodes.find(
+		(n) =>
+			n.type.toLowerCase().includes('trigger') ||
+			n.type === 'n8n-nodes-base.webhook' ||
+			n.type === 'n8n-nodes-base.manualTrigger',
+	);
 }
 
 // ---------------------------------------------------------------------------
@@ -298,7 +291,7 @@ export async function executeWithFullPinData(
 	client: N8nClient,
 	workflowId: string,
 	pinData: PinData,
-	workflowJsons: Record<string, unknown>[],
+	workflowJsons: WorkflowResponse[],
 ): Promise<ExecutionSummary> {
 	const originalWorkflow = await client.getWorkflow(workflowId);
 	const originalPinData = originalWorkflow.pinData ?? null;

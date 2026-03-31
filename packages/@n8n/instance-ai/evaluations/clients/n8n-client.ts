@@ -12,16 +12,30 @@ import type { InstanceAiRichMessagesResponse, InstanceAiEvalExecutionResult } fr
 // Response shapes from the n8n REST API (wrapped in { data: ... })
 // ---------------------------------------------------------------------------
 
-interface WorkflowNode {
-	type: string;
+/** A node as returned by the n8n REST API — the fields eval code reads. */
+export interface WorkflowNodeResponse {
 	name: string;
+	type: string;
+	parameters?: Record<string, unknown>;
+	disabled?: boolean;
+	credentials?: Record<string, unknown>;
+}
+
+/** A workflow as returned by GET /rest/workflows/:id. */
+export interface WorkflowResponse {
+	id: string;
+	name: string;
+	active: boolean;
+	nodes: WorkflowNodeResponse[];
+	connections: Record<string, unknown>;
+	pinData?: Record<string, unknown>;
 }
 
 interface WorkflowListItem {
 	id: string;
 	name: string;
 	active: boolean;
-	nodes: WorkflowNode[];
+	nodes: WorkflowNodeResponse[];
 }
 
 interface ExecutionListItem {
@@ -157,9 +171,9 @@ export class N8nClient {
 	 * Get a single workflow by ID.
 	 * GET /rest/workflows/:id
 	 */
-	async getWorkflow(id: string): Promise<Record<string, unknown>> {
+	async getWorkflow(id: string): Promise<WorkflowResponse> {
 		const result = (await this.fetch(`/rest/workflows/${id}`)) as {
-			data: Record<string, unknown>;
+			data: WorkflowResponse;
 		};
 		return result.data;
 	}
@@ -211,14 +225,11 @@ export class N8nClient {
 	 * Update a workflow (partial update).
 	 * PATCH /rest/workflows/:id -- used to set/restore pin data for execution eval.
 	 */
-	async updateWorkflow(
-		id: string,
-		updates: Record<string, unknown>,
-	): Promise<Record<string, unknown>> {
+	async updateWorkflow(id: string, updates: Record<string, unknown>): Promise<WorkflowResponse> {
 		const result = (await this.fetch(`/rest/workflows/${id}`, {
 			method: 'PATCH',
 			body: updates,
-		})) as { data: Record<string, unknown> };
+		})) as { data: WorkflowResponse };
 		return result.data;
 	}
 

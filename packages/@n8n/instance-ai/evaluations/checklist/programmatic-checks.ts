@@ -1,3 +1,4 @@
+import type { WorkflowNodeResponse, WorkflowResponse } from '../clients/n8n-client';
 import type { ProgrammaticCheck } from '../types';
 
 // ---------------------------------------------------------------------------
@@ -13,18 +14,12 @@ export interface CheckResult {
 // Helpers
 // ---------------------------------------------------------------------------
 
-interface WorkflowNode {
-	name?: string;
-	type?: string;
-	parameters?: Record<string, unknown>;
+function extractNodes(workflow: WorkflowResponse): WorkflowNodeResponse[] {
+	return workflow.nodes;
 }
 
-function extractNodes(workflow: Record<string, unknown>): WorkflowNode[] {
-	return Array.isArray(workflow.nodes) ? (workflow.nodes as WorkflowNode[]) : [];
-}
-
-function extractConnections(workflow: Record<string, unknown>): Record<string, unknown> {
-	return (workflow.connections as Record<string, unknown>) ?? {};
+function extractConnections(workflow: WorkflowResponse): Record<string, unknown> {
+	return workflow.connections;
 }
 
 /**
@@ -48,7 +43,7 @@ function getNestedValue(obj: unknown, path: string): unknown {
 // ---------------------------------------------------------------------------
 
 export function checkNodeExists(
-	workflow: Record<string, unknown>,
+	workflow: WorkflowResponse,
 	params: { nodeType: string },
 ): CheckResult {
 	const nodes = extractNodes(workflow);
@@ -62,7 +57,7 @@ export function checkNodeExists(
 }
 
 export function checkNodeConnected(
-	workflow: Record<string, unknown>,
+	workflow: WorkflowResponse,
 	params: { nodeType: string },
 ): CheckResult {
 	const nodes = extractNodes(workflow);
@@ -106,7 +101,7 @@ export function checkNodeConnected(
 }
 
 export function checkTriggerType(
-	workflow: Record<string, unknown>,
+	workflow: WorkflowResponse,
 	params: { expectedTriggerType: string },
 ): CheckResult {
 	const nodes = extractNodes(workflow);
@@ -137,7 +132,7 @@ export function checkTriggerType(
 }
 
 export function checkNodeCountGte(
-	workflow: Record<string, unknown>,
+	workflow: WorkflowResponse,
 	params: { minCount: number },
 ): CheckResult {
 	const nodes = extractNodes(workflow);
@@ -151,7 +146,7 @@ export function checkNodeCountGte(
 }
 
 export function checkConnectionExists(
-	workflow: Record<string, unknown>,
+	workflow: WorkflowResponse,
 	params: { sourceNodeType: string; targetNodeType: string },
 ): CheckResult {
 	const nodes = extractNodes(workflow);
@@ -199,7 +194,7 @@ export function checkConnectionExists(
 }
 
 export function checkNodeParameter(
-	workflow: Record<string, unknown>,
+	workflow: WorkflowResponse,
 	params: { nodeType: string; parameterPath: string; expectedValue: unknown },
 ): CheckResult {
 	const nodes = extractNodes(workflow);
@@ -248,7 +243,7 @@ export function checkNodeParameter(
 // ---------------------------------------------------------------------------
 
 export function runProgrammaticCheck(
-	workflow: Record<string, unknown>,
+	workflow: WorkflowResponse,
 	check: ProgrammaticCheck,
 ): CheckResult {
 	switch (check.type) {

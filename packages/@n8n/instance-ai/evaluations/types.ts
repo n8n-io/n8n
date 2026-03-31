@@ -5,6 +5,8 @@
 import type { InstanceAiEvalExecutionResult } from '@n8n/api-types';
 import { z } from 'zod';
 
+import type { WorkflowResponse } from './clients/n8n-client';
+
 // ---------------------------------------------------------------------------
 // Checklist items and verification
 // ---------------------------------------------------------------------------
@@ -185,7 +187,7 @@ export interface AgentOutcome {
 	executionsRun: ExecutionSummary[];
 	dataTablesCreated: string[];
 	finalText: string;
-	workflowJsons: Record<string, unknown>[];
+	workflowJsons: WorkflowResponse[];
 }
 
 export interface EventOutcome {
@@ -326,7 +328,7 @@ export interface WorkflowTestCaseResult {
 	buildError?: string;
 	scenarioResults: ScenarioResult[];
 	/** The built workflow JSON — saved for debugging and cross-run comparison */
-	workflowJson?: Record<string, unknown>;
+	workflowJson?: WorkflowResponse;
 }
 
 // ---------------------------------------------------------------------------

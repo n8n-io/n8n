@@ -7,12 +7,16 @@ import {
 	checkNodeParameter,
 	runProgrammaticCheck,
 } from '../checklist/programmatic-checks';
+import type { WorkflowResponse } from '../clients/n8n-client';
 
 // ---------------------------------------------------------------------------
 // Test fixtures
 // ---------------------------------------------------------------------------
 
-const sampleWorkflow: Record<string, unknown> = {
+const sampleWorkflow: WorkflowResponse = {
+	id: 'test-1',
+	name: 'Test Workflow',
+	active: false,
 	nodes: [
 		{
 			name: 'Webhook',
@@ -36,7 +40,10 @@ const sampleWorkflow: Record<string, unknown> = {
 	},
 };
 
-const emptyWorkflow: Record<string, unknown> = {
+const emptyWorkflow: WorkflowResponse = {
+	id: 'test-empty',
+	name: 'Empty',
+	active: false,
 	nodes: [],
 	connections: {},
 };
@@ -60,11 +67,6 @@ describe('checkNodeExists', () => {
 
 	it('fails on empty workflow', () => {
 		const result = checkNodeExists(emptyWorkflow, { nodeType: 'n8n-nodes-base.webhook' });
-		expect(result.pass).toBe(false);
-	});
-
-	it('handles missing nodes array', () => {
-		const result = checkNodeExists({}, { nodeType: 'n8n-nodes-base.webhook' });
 		expect(result.pass).toBe(false);
 	});
 });
@@ -93,7 +95,10 @@ describe('checkNodeConnected', () => {
 	});
 
 	it('fails when the node exists but is not connected', () => {
-		const disconnectedWorkflow = {
+		const disconnectedWorkflow: WorkflowResponse = {
+			id: 'test-disconnected',
+			name: 'Disconnected',
+			active: false,
 			nodes: [
 				{ name: 'Webhook', type: 'n8n-nodes-base.webhook', parameters: {} },
 				{ name: 'Code', type: 'n8n-nodes-base.code', parameters: {} },
@@ -119,7 +124,10 @@ describe('checkTriggerType', () => {
 	});
 
 	it('fails when trigger type does not match', () => {
-		const workflowWithTrigger = {
+		const workflowWithTrigger: WorkflowResponse = {
+			id: 'test-trigger',
+			name: 'Manual',
+			active: false,
 			nodes: [
 				{ name: 'Manual Trigger', type: 'n8n-nodes-base.manualTrigger', parameters: {} },
 				{ name: 'Set', type: 'n8n-nodes-base.set', parameters: {} },
@@ -134,7 +142,10 @@ describe('checkTriggerType', () => {
 	});
 
 	it('fails when no trigger node exists', () => {
-		const noTriggerWorkflow = {
+		const noTriggerWorkflow: WorkflowResponse = {
+			id: 'test-no-trigger',
+			name: 'No Trigger',
+			active: false,
 			nodes: [{ name: 'Set', type: 'n8n-nodes-base.set', parameters: {} }],
 			connections: {},
 		};

@@ -13,7 +13,7 @@ import type { InstanceAiEvalExecutionResult } from '@n8n/api-types';
 import { extractBuildChecklist } from '../checklist/extractor';
 import { extractExecutionChecklist } from '../checklist/execution-extractor';
 import { verifyChecklist } from '../checklist/verifier';
-import { N8nClient } from '../clients/n8n-client';
+import { N8nClient, type WorkflowResponse } from '../clients/n8n-client';
 import { consumeSseStream } from '../clients/sse-client';
 import { seedCredentials, cleanupCredentials } from '../credentials/seeder';
 import { runPostBuildExecutions } from '../execution/tester';
@@ -568,7 +568,7 @@ export async function runWorkflowTestCase(
 
 		result.workflowBuildSuccess = true;
 		result.workflowId = outcome.workflowsCreated[0].id;
-		result.workflowJson = outcome.workflowJsons[0] as Record<string, unknown> | undefined;
+		result.workflowJson = outcome.workflowJsons[0];
 
 		logger.info(
 			`  Workflow built: ${outcome.workflowsCreated[0].name} (${String(outcome.workflowsCreated[0].nodeCount)} nodes)`,
@@ -637,7 +637,7 @@ async function runScenario(
 	client: N8nClient,
 	scenario: TestScenario,
 	workflowId: string,
-	workflowJsons: Record<string, unknown>[],
+	workflowJsons: WorkflowResponse[],
 	logger: EvalLogger,
 ): Promise<ScenarioResult> {
 	const evalResult = await client.executeWithLlmMock(workflowId, scenario.dataSetup);
@@ -647,7 +647,7 @@ async function runScenario(
 			` (${Object.keys(evalResult.nodeResults).length} nodes, ${evalResult.errors.length} errors)`,
 	);
 
-	const verificationArtifact = buildVerificationArtifact(scenario, evalResult);
+	const verificationArtifact = buildVerificationArtifact(scenario, evalResult, workflowJsons);
 
 	const scenarioChecklist: ChecklistItem[] = [
 		{
@@ -699,6 +699,7 @@ async function runScenario(
 function buildVerificationArtifact(
 	scenario: TestScenario,
 	evalResult: InstanceAiEvalExecutionResult,
+	workflowJsons: WorkflowResponse[],
 ): string {
 	const sections: string[] = [];
 
@@ -713,12 +714,9 @@ function buildVerificationArtifact(
 
 	// --- Pre-analysis: flag known issues programmatically ---
 	const preAnalysis: string[] = [];
-	let hasMockError = false;
-	let hasConfigIssue = false;
 
 	for (const [nodeName, nr] of Object.entries(evalResult.nodeResults)) {
 		if (nr.configIssues && Object.keys(nr.configIssues).length > 0) {
-			hasConfigIssue = true;
 			preAnalysis.push(
 				`⚠ BUILDER ISSUE: "${nodeName}" has missing config: ${Object.values(nr.configIssues).flat().join('; ')}`,
 			);
@@ -729,7 +727,6 @@ function buildVerificationArtifact(
 				req.mockResponse !== null &&
 				'_evalMockError' in (req.mockResponse as Record<string, unknown>)
 			) {
-				hasMockError = true;
 				const msg = (req.mockResponse as Record<string, unknown>).message ?? 'unknown';
 				preAnalysis.push(
 					`⚠ MOCK ISSUE: "${nodeName}" ${req.method} ${req.url} → mock generation failed: ${String(msg)}`,
@@ -767,11 +764,48 @@ function buildVerificationArtifact(
 		sections.push('## Errors', '', ...evalResult.errors.map((e) => `- ${e}`), '');
 	}
 
-	// --- Execution trace: per-node detail ---
+	// --- Build a node config lookup from workflow JSON ---
+	const nodeConfigs = new Map<string, Record<string, unknown>>();
+	const wf = workflowJsons[0];
+	if (wf) {
+		for (const node of wf.nodes) {
+			if (node.name && node.parameters) {
+				nodeConfigs.set(node.name, { type: node.type, parameters: node.parameters });
+			}
+		}
+	}
+
+	// --- Workflow structure: ALL nodes and connections ---
+	const executedNodeNames = new Set(Object.keys(evalResult.nodeResults));
+	if (wf) {
+		sections.push('## Workflow structure (all nodes)', '');
+		for (const node of wf.nodes) {
+			const ran = node.name ? executedNodeNames.has(node.name) : false;
+			const status = ran ? 'EXECUTED' : 'DID NOT RUN';
+			sections.push(`- **${node.name ?? '(unnamed)'}** (${node.type}) — ${status}`);
+		}
+		sections.push('');
+		sections.push('**Connections:**');
+		sections.push('```json', JSON.stringify(wf.connections, null, 2), '```');
+		sections.push('');
+	}
+
+	// --- Execution trace: per-node detail (sorted by execution order) ---
 	sections.push('## Execution trace', '');
 
-	for (const [nodeName, nr] of Object.entries(evalResult.nodeResults)) {
+	const sortedNodeResults = Object.entries(evalResult.nodeResults).sort(
+		([, a], [, b]) => (a.startTime ?? 0) - (b.startTime ?? 0),
+	);
+
+	for (const [nodeName, nr] of sortedNodeResults) {
 		sections.push(`### ${nodeName} [${nr.executionMode}]`);
+
+		// Node configuration (from workflow JSON)
+		const nodeConfig = nodeConfigs.get(nodeName);
+		if (nodeConfig) {
+			sections.push('**Node config:**');
+			sections.push('```json', JSON.stringify(nodeConfig, null, 2), '```');
+		}
 
 		// Config issues
 		if (nr.configIssues && Object.keys(nr.configIssues).length > 0) {

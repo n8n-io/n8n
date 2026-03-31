@@ -1,8 +1,9 @@
-import { runProgrammaticCheck } from './programmatic-checks';
 import { createEvalAgent, extractText } from '../../src/utils/eval-agents';
+import type { WorkflowResponse } from '../clients/n8n-client';
 import { CHECKLIST_VERIFY_PROMPT } from '../system-prompts/checklist-verify';
 import { MOCK_EXECUTION_VERIFY_PROMPT } from '../system-prompts/mock-execution-verify';
 import type { ChecklistItem, ChecklistResult } from '../types';
+import { runProgrammaticCheck } from './programmatic-checks';
 
 // ---------------------------------------------------------------------------
 // JSON parsing helpers
@@ -42,7 +43,7 @@ export interface VerifyOptions {
 export async function verifyChecklist(
 	checklist: ChecklistItem[],
 	verificationArtifact: string,
-	workflowJsons: Array<Record<string, unknown>>,
+	workflowJsons: WorkflowResponse[],
 	options?: VerifyOptions,
 ): Promise<ChecklistResult[]> {
 	const programmaticItems = checklist.filter((i) => i.strategy === 'programmatic' && i.check);
@@ -54,10 +55,10 @@ export async function verifyChecklist(
 	// 1. Run programmatic checks (synchronous, against first workflow JSON)
 	// -----------------------------------------------------------------------
 
-	const workflowJson = workflowJsons.length > 0 ? workflowJsons[0] : {};
+	const workflowJson = workflowJsons[0];
 
 	for (const item of programmaticItems) {
-		if (!item.check) continue;
+		if (!item.check || !workflowJson) continue;
 
 		const checkResult = runProgrammaticCheck(workflowJson, item.check);
 		results.push({

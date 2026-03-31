@@ -1,4 +1,5 @@
 import { createEvalAgent, extractText } from '../../src/utils/eval-agents';
+import type { WorkflowResponse } from '../clients/n8n-client';
 import { EXECUTION_CHECKLIST_EXTRACT_PROMPT } from '../system-prompts/execution-extract';
 import type { ChecklistItem, ExecutionChecklist } from '../types';
 
@@ -9,16 +10,13 @@ import type { ChecklistItem, ExecutionChecklist } from '../types';
 const EMPTY_EXECUTION_CHECKLIST: ExecutionChecklist = { items: [], testInputs: [] };
 
 /** Build a simplified workflow summary for the LLM (node names, types, parameters — not the full JSON) */
-function simplifyWorkflowJson(workflowJson: Record<string, unknown>): string {
-	const nodes = Array.isArray(workflowJson.nodes)
-		? (workflowJson.nodes as Array<Record<string, unknown>>).map((n) => ({
-				name: n.name,
-				type: n.type,
-				parameters: n.parameters,
-			}))
-		: [];
-	const connections = workflowJson.connections ?? {};
-	return JSON.stringify({ nodes, connections }, null, 2);
+function simplifyWorkflowResponse(workflowJson: WorkflowResponse): string {
+	const nodes = workflowJson.nodes.map((n) => ({
+		name: n.name,
+		type: n.type,
+		parameters: n.parameters,
+	}));
+	return JSON.stringify({ nodes, connections: workflowJson.connections }, null, 2);
 }
 
 function parseJsonObject(text: string): Record<string, unknown> | null {
@@ -53,11 +51,11 @@ function parseJsonObject(text: string): Record<string, unknown> | null {
 
 export async function extractExecutionChecklist(
 	prompt: string,
-	workflowJson: Record<string, unknown>,
+	workflowJson: WorkflowResponse,
 	seededCredentialTypes?: string[],
 	existingExecutionOutput?: Array<{ nodeName: string; data: Array<Record<string, unknown>> }>,
 ): Promise<ExecutionChecklist> {
-	const workflowSummary = simplifyWorkflowJson(workflowJson);
+	const workflowSummary = simplifyWorkflowResponse(workflowJson);
 
 	const seededSection =
 		seededCredentialTypes && seededCredentialTypes.length > 0
