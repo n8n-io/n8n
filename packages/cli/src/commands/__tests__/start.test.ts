@@ -136,6 +136,7 @@ describe('Start - AuthRolesService initialization', () => {
 			},
 			cache: { backend: 'memory' },
 			taskRunners: {},
+			expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
 		};
 		// @ts-expect-error - Accessing protected method for testing
 		start.initCrashJournal = jest.fn().mockResolvedValue(undefined);
@@ -186,6 +187,7 @@ describe('Start - AuthRolesService initialization', () => {
 				},
 				cache: { backend: 'memory' },
 				taskRunners: {},
+				expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
 			};
 
 			await start.init();
@@ -219,6 +221,7 @@ describe('Start - AuthRolesService initialization', () => {
 				},
 				cache: { backend: 'memory' },
 				taskRunners: {},
+				expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
 			};
 
 			await start.init();
@@ -243,6 +246,7 @@ describe('Start - AuthRolesService initialization', () => {
 			},
 			cache: { backend: 'memory' },
 			taskRunners: {},
+			expressionEngine: { engine: 'legacy' as const, poolSize: 1, maxCodeCacheSize: 1024 },
 		};
 
 		beforeEach(() => {
