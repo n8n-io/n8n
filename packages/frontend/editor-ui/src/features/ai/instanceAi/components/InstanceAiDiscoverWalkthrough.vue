@@ -34,6 +34,7 @@ import {
 } from './instanceAiDiscoverWalkthrough.animation';
 import type { InstanceAiDiscoverHighlightTargets } from './instanceAiDiscoverWalkthrough.types';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
+import FirstAutomationInspirationSparklesIcon from './FirstAutomationInspirationSparklesIcon.vue';
 import LocalGatewayConnectionPanel from './settings/LocalGatewayConnectionPanel.vue';
 
 const open = defineModel<boolean>({ default: false });
@@ -48,14 +49,25 @@ const settingsStore = useInstanceAiSettingsStore();
 
 const spotlightMaskId = `instance-ai-discover-spot-${useId().replace(/:/g, '')}`;
 
-const STEP_KEYS = [
+/**
+ * When `true`, inserts the "Tuning Instance AI" (`settings`) step after Local gateway and before
+ * the first-automation step. Copy stays in i18n as `instanceAi.discover.steps.settings.*`.
+ */
+const DISCOVER_INCLUDE_SETTINGS_STEP = false;
+
+const DISCOVER_STEP_KEYS_PREFIX = [
 	'welcome',
 	'chatThreads',
 	'automation',
 	'research',
 	'memoryArtifacts',
 	'localGateway',
-	'settings',
+] as const;
+
+const STEP_KEYS = [
+	...DISCOVER_STEP_KEYS_PREFIX,
+	...(DISCOVER_INCLUDE_SETTINGS_STEP ? (['settings'] as const) : []),
+	'firstAutomation',
 ] as const;
 
 const stepIndex = ref(0);
@@ -66,7 +78,41 @@ const currentStepKey = computed(() => STEP_KEYS[stepIndex.value] ?? STEP_KEYS[0]
 
 const isWelcomeStep = computed(() => currentStepKey.value === 'welcome');
 
-const DISCOVER_STEP_TITLE_ICONS: Partial<Record<(typeof STEP_KEYS)[number], IconName>> = {
+const isFirstAutomationStep = computed(() => currentStepKey.value === 'firstAutomation');
+
+/** After leaving Local gateway, spotlight + flyout wait this long before appearing. */
+const FIRST_AUTOMATION_REVEAL_DELAY_MS = 500;
+
+let firstAutomationRevealTimer: ReturnType<typeof setTimeout> | null = null;
+const firstAutomationRevealReady = ref(false);
+
+const showFirstAutomationFlyout = computed(
+	() => isFirstAutomationStep.value && firstAutomationRevealReady.value,
+);
+
+function clearFirstAutomationRevealTimer() {
+	if (firstAutomationRevealTimer !== null) {
+		clearTimeout(firstAutomationRevealTimer);
+		firstAutomationRevealTimer = null;
+	}
+}
+
+function scheduleFirstAutomationReveal() {
+	clearFirstAutomationRevealTimer();
+	firstAutomationRevealReady.value = false;
+	firstAutomationRevealTimer = setTimeout(() => {
+		firstAutomationRevealTimer = null;
+		firstAutomationRevealReady.value = true;
+		void nextTick(() => {
+			syncHole();
+			relayoutDiscoverUi();
+		});
+	}, FIRST_AUTOMATION_REVEAL_DELAY_MS);
+}
+
+const DISCOVER_STEP_TITLE_ICONS: Partial<
+	Record<(typeof STEP_KEYS)[number] | 'settings', IconName>
+> = {
 	chatThreads: 'messages-square',
 	automation: 'wrench',
 	research: 'search',
@@ -80,7 +126,8 @@ const discoverTitleStepIcon = computed(
 );
 
 const titleClusterAlignsLeadingIcon = computed(
-	() => isWelcomeStep.value || discoverTitleStepIcon.value !== null,
+	() =>
+		!isFirstAutomationStep.value && (isWelcomeStep.value || discoverTitleStepIcon.value !== null),
 );
 
 // Style constants
@@ -88,6 +135,8 @@ const DISCOVER_STEP_TITLE_ICON_PX = 16;
 const DISCOVER_CARD_BASE_MAX_WIDTH_PX = Math.round(520 * 1.15);
 const DISCOVER_WELCOME_CARD_WIDTH_MULTIPLIER = 1.2;
 const DISCOVER_LOCAL_GATEWAY_CARD_WIDTH_MULTIPLIER = 1.3;
+/** Must match `.discover-walkthrough-card-*` / `.first-automation-fade-enter-active` opacity duration. */
+const DISCOVER_CARD_OPACITY_TRANSITION_MS = 650;
 
 function centeredCardWidthPx(vw: number): number {
 	const maxUsable = vw - 32;
@@ -116,6 +165,13 @@ const highlightSpec = computed((): { el: HTMLElement; placement: HighlightPlacem
 		return { el: props.highlightTargets.sidebar, placement: 'sidebar' };
 	}
 	if (key === 'automation' && props.highlightTargets.chatInput) {
+		return { el: props.highlightTargets.chatInput, placement: 'input' };
+	}
+	if (
+		key === 'firstAutomation' &&
+		firstAutomationRevealReady.value &&
+		props.highlightTargets.chatInput
+	) {
 		return { el: props.highlightTargets.chatInput, placement: 'input' };
 	}
 	if (key === 'research' && props.highlightTargets.researchToggle) {
@@ -209,7 +265,7 @@ const shadeGeometries = computed(() => {
 const useSvgRoundedSpotlightDim = computed(
 	() =>
 		open.value &&
-		currentStepKey.value === 'automation' &&
+		(currentStepKey.value === 'automation' || currentStepKey.value === 'firstAutomation') &&
 		holeCornerRadiusPx.value > 0 &&
 		holeRect.value !== null,
 );
@@ -225,7 +281,10 @@ const ringStyle = computed(() => {
 	};
 	if (currentStepKey.value === 'chatThreads') {
 		style.borderRadius = '0';
-	} else if (currentStepKey.value === 'automation' && holeCornerRadiusPx.value > 0) {
+	} else if (
+		(currentStepKey.value === 'automation' || currentStepKey.value === 'firstAutomation') &&
+		holeCornerRadiusPx.value > 0
+	) {
 		style.borderRadius = `${holeCornerRadiusPx.value}px`;
 	}
 	return style;
@@ -248,8 +307,21 @@ const highlightRingEntranceStyle = computed((): Record<string, string> => {
 });
 
 const cardRef = useTemplateRef<HTMLElement>('cardRef');
+const firstAutomationPanelRef = useTemplateRef<HTMLElement>('firstAutomationPanelRef');
 
 const cardPosition = ref({ top: 16, left: 16, width: DISCOVER_CARD_BASE_MAX_WIDTH_PX });
+
+const firstAutomationPanelPosition = ref({
+	top: 16,
+	left: 16,
+	width: DISCOVER_CARD_BASE_MAX_WIDTH_PX,
+});
+
+function firstAutomationPanelWidthPx(vw: number): number {
+	const maxUsable = vw - 32;
+	const base = Math.min(DISCOVER_CARD_BASE_MAX_WIDTH_PX, maxUsable);
+	return Math.min(Math.round(base * DISCOVER_LOCAL_GATEWAY_CARD_WIDTH_MULTIPLIER), maxUsable);
+}
 
 const suppressRelocationTransition = ref(true);
 
@@ -278,6 +350,40 @@ function layoutCenteredCard() {
 	const left = Math.max(16, (vw - cardW) / 2);
 	const top = Math.max(16, Math.min((vh - cardH) / 2, vh - cardH - 16));
 	cardPosition.value = { top, left, width: cardW };
+}
+
+function layoutFirstAutomationPanel() {
+	if (!open.value || !showFirstAutomationFlyout.value) return;
+	const vw = window.innerWidth;
+	const vh = window.innerHeight;
+	const pad = 16;
+	const panelW = firstAutomationPanelWidthPx(vw);
+	const panelH = firstAutomationPanelRef.value?.getBoundingClientRect().height ?? 220;
+
+	const h = holeRect.value;
+	if (h) {
+		const hb = h.top + h.height;
+		let top = hb + pad;
+		if (top + panelH > vh - pad) {
+			top = Math.max(pad, vh - panelH - pad);
+		}
+		let left = h.left + h.width / 2 - panelW / 2;
+		left = Math.max(pad, Math.min(left, vw - panelW - pad));
+		firstAutomationPanelPosition.value = { top, left, width: panelW };
+	} else {
+		const left = Math.max(pad, (vw - panelW) / 2);
+		const top = Math.max(pad, Math.min((vh - panelH) / 2, vh - panelH - pad));
+		firstAutomationPanelPosition.value = { top, left, width: panelW };
+	}
+}
+
+function relayoutDiscoverUi() {
+	if (!open.value) return;
+	if (showFirstAutomationFlyout.value) {
+		layoutFirstAutomationPanel();
+	} else if (!isFirstAutomationStep.value) {
+		layoutCard();
+	}
 }
 
 function layoutCard() {
@@ -358,14 +464,33 @@ const cardLayoutStyle = computed(() => {
 	};
 });
 
+const firstAutomationPanelLayoutStyle = computed(() => {
+	const { top, left, width } = firstAutomationPanelPosition.value;
+	return {
+		position: 'fixed' as const,
+		top: `${top}px`,
+		left: `${left}px`,
+		width: `${width}px`,
+		maxHeight: 'min(70vh, 520px)',
+	};
+});
+
 const relocationTransitionStyle = computed(() => {
-	if (!ENABLE_ONBOARDING_RELOCATION_ANIMATION || suppressRelocationTransition.value) {
+	// Inline transition must include `opacity` so Vue's <Transition> leave/enter (same name) can run.
+	// Otherwise `transitionProperty: top, left, width` overrides the class-based opacity fade.
+	if (!ENABLE_ONBOARDING_RELOCATION_ANIMATION) {
+		return {};
+	}
+	if (suppressRelocationTransition.value) {
 		return { transition: 'none' };
 	}
+	const d = ONBOARDING_RELOCATION_TRANSITION_MS;
+	const ease = ONBOARDING_RELOCATION_TRANSITION_EASING;
+	const o = DISCOVER_CARD_OPACITY_TRANSITION_MS;
 	return {
-		transitionProperty: ONBOARDING_RELOCATION_TRANSITION_PROPERTIES,
-		transitionDuration: `${ONBOARDING_RELOCATION_TRANSITION_MS}ms`,
-		transitionTimingFunction: ONBOARDING_RELOCATION_TRANSITION_EASING,
+		transitionProperty: `top, left, width, opacity`,
+		transitionDuration: `${d}ms, ${d}ms, ${d}ms, ${o}ms`,
+		transitionTimingFunction: `${ease}, ${ease}, ${ease}, ease`,
 	};
 });
 
@@ -391,11 +516,21 @@ const showLocalGatewayConnectionPanel = computed(
 	() => !isFilesystemDisabledForDiscover.value || discoverLocalGatewayUserEnabled.value,
 );
 
-watch(currentStepKey, (key) => {
-	if (key !== 'localGateway') {
-		discoverLocalGatewayUserEnabled.value = false;
-	}
-});
+watch(
+	currentStepKey,
+	(key) => {
+		if (key !== 'localGateway') {
+			discoverLocalGatewayUserEnabled.value = false;
+		}
+		if (key === 'firstAutomation') {
+			scheduleFirstAutomationReveal();
+		} else {
+			clearFirstAutomationRevealTimer();
+			firstAutomationRevealReady.value = false;
+		}
+	},
+	{ immediate: true },
+);
 
 async function ensureGatewayProbesForDiscover() {
 	await settingsStore.refreshModuleSettings().catch(() => {});
@@ -438,6 +573,8 @@ function onDiscoverSkipLocalGateway() {
 
 watch(open, (isOpen) => {
 	if (!isOpen) {
+		clearFirstAutomationRevealTimer();
+		firstAutomationRevealReady.value = false;
 		suppressRelocationTransition.value = true;
 		return;
 	}
@@ -446,6 +583,8 @@ watch(open, (isOpen) => {
 });
 
 function close() {
+	clearFirstAutomationRevealTimer();
+	firstAutomationRevealReady.value = false;
 	open.value = false;
 }
 
@@ -474,7 +613,7 @@ watchEffect((onCleanup) => {
 	if (!el) return;
 	const ro = new ResizeObserver(() => {
 		syncHole();
-		void nextTick(() => layoutCard());
+		void nextTick(() => relayoutDiscoverUi());
 	});
 	ro.observe(el);
 	onCleanup(() => ro.disconnect());
@@ -486,7 +625,7 @@ useEventListener(
 	() => {
 		if (!open.value) return;
 		syncHole();
-		void nextTick(() => layoutCard());
+		void nextTick(() => relayoutDiscoverUi());
 	},
 	true,
 );
@@ -494,16 +633,16 @@ useEventListener(
 useEventListener(window, 'resize', () => {
 	if (!open.value) return;
 	syncHole();
-	void nextTick(() => layoutCard());
+	void nextTick(() => relayoutDiscoverUi());
 });
 
 watch(
-	[open, stepIndex, () => props.highlightTargets],
+	[open, stepIndex, () => props.highlightTargets, firstAutomationRevealReady],
 	async () => {
 		if (!open.value) return;
 		syncHole();
 		await nextTick();
-		layoutCard();
+		relayoutDiscoverUi();
 		await nextTick();
 		if (suppressRelocationTransition.value) {
 			scheduleEnableRelocationTransition();
@@ -514,20 +653,29 @@ watch(
 
 let cardLayoutRo: ResizeObserver | null = null;
 watch(
-	[open, () => cardRef.value],
+	[
+		open,
+		() => cardRef.value,
+		() => firstAutomationPanelRef.value,
+		currentStepKey,
+		showFirstAutomationFlyout,
+	],
 	() => {
 		cardLayoutRo?.disconnect();
 		cardLayoutRo = null;
-		if (!open.value || !cardRef.value) return;
+		if (!open.value) return;
+		const el = showFirstAutomationFlyout.value ? firstAutomationPanelRef.value : cardRef.value;
+		if (!el) return;
 		cardLayoutRo = new ResizeObserver(() => {
-			void nextTick(() => layoutCard());
+			void nextTick(() => relayoutDiscoverUi());
 		});
-		cardLayoutRo.observe(cardRef.value);
+		cardLayoutRo.observe(el);
 	},
 	{ flush: 'post' },
 );
 
 onUnmounted(() => {
+	clearFirstAutomationRevealTimer();
 	cardLayoutRo?.disconnect();
 });
 </script>
@@ -541,7 +689,12 @@ onUnmounted(() => {
 				data-test-id="instance-ai-discover-backdrop"
 				role="dialog"
 				aria-modal="true"
-				:aria-labelledby="'instance-ai-discover-title'"
+				:aria-labelledby="
+					showFirstAutomationFlyout
+						? 'instance-ai-discover-first-automation-title'
+						: 'instance-ai-discover-title'
+				"
+				:aria-busy="isFirstAutomationStep && !firstAutomationRevealReady ? true : undefined"
 			>
 				<!-- Spotlight: dim only outside the focused element's hole -->
 				<template v-if="useSpotlight && holeRect">
@@ -628,153 +781,259 @@ onUnmounted(() => {
 				<!-- Full dim when no element to spotlight -->
 				<div v-else :class="$style.fullDim" @click.self="close" />
 
-				<div
-					ref="cardRef"
-					:class="$style.card"
-					:style="[cardLayoutStyle, relocationTransitionStyle]"
-					data-test-id="instance-ai-discover-dialog"
-					@click.stop
-				>
+				<Transition name="discover-walkthrough-card">
 					<div
-						v-if="stepIndex > 0"
-						:class="$style.progressBar"
-						role="progressbar"
-						:aria-valuenow="stepIndex + 1"
-						aria-valuemin="1"
-						:aria-valuemax="totalSteps"
-						:aria-label="
-							i18n.baseText('instanceAi.discover.stepProgress', {
-								interpolate: {
-									current: String(stepIndex + 1),
-									total: String(totalSteps),
-								},
-							})
-						"
-						data-test-id="instance-ai-discover-progress"
+						v-if="!isFirstAutomationStep"
+						ref="cardRef"
+						:class="$style.card"
+						:style="[cardLayoutStyle, relocationTransitionStyle]"
+						data-test-id="instance-ai-discover-dialog"
+						@click.stop
 					>
-						<div :class="$style.progressTrack">
-							<div :class="$style.progressFill" :style="{ width: `${progressFillPercent}%` }" />
+						<div
+							v-if="stepIndex > 0"
+							:class="$style.progressBar"
+							role="progressbar"
+							:aria-valuenow="stepIndex + 1"
+							aria-valuemin="1"
+							:aria-valuemax="totalSteps"
+							:aria-label="
+								i18n.baseText('instanceAi.discover.stepProgress', {
+									interpolate: {
+										current: String(stepIndex + 1),
+										total: String(totalSteps),
+									},
+								})
+							"
+							data-test-id="instance-ai-discover-progress"
+						>
+							<div :class="$style.progressTrack">
+								<div :class="$style.progressFill" :style="{ width: `${progressFillPercent}%` }" />
+							</div>
+							<div :class="$style.progressSeparators" aria-hidden="true">
+								<span
+									v-for="(pct, idx) in progressSeparatorPositions"
+									:key="idx"
+									:class="$style.progressSeparator"
+									:style="{ left: `${pct}%` }"
+								/>
+							</div>
 						</div>
-						<div :class="$style.progressSeparators" aria-hidden="true">
-							<span
-								v-for="(pct, idx) in progressSeparatorPositions"
-								:key="idx"
-								:class="$style.progressSeparator"
-								:style="{ left: `${pct}%` }"
+
+						<div :class="$style.cardHeader">
+							<div
+								:class="[
+									$style.titleCluster,
+									titleClusterAlignsLeadingIcon && $style.titleClusterWithLeadingIcon,
+								]"
+							>
+								<span v-if="isWelcomeStep" :class="$style.titleIconWrap">
+									<N8nIcon icon="sparkles" :size="24" aria-hidden="true" />
+								</span>
+								<span v-else-if="discoverTitleStepIcon" :class="$style.titleIconWrap">
+									<N8nIcon
+										:icon="discoverTitleStepIcon"
+										:size="DISCOVER_STEP_TITLE_ICON_PX"
+										aria-hidden="true"
+									/>
+								</span>
+								<div :class="$style.titleHeadingRow">
+									<N8nHeading
+										id="instance-ai-discover-title"
+										tag="h2"
+										size="large"
+										bold
+										:class="$style.dialogTitle"
+									>
+										{{ i18n.baseText(titleKey(currentStepKey)) }}
+									</N8nHeading>
+									<span
+										v-if="currentStepKey === 'localGateway'"
+										:class="$style.optionalStepBadge"
+										data-test-id="instance-ai-discover-local-gateway-optional-badge"
+									>
+										{{ i18n.baseText('instanceAi.discover.localGateway.optionalBadge') }}
+									</span>
+								</div>
+							</div>
+							<N8nIconButton
+								icon="x"
+								variant="ghost"
+								size="small"
+								:aria-label="i18n.baseText('instanceAi.discover.close')"
+								data-test-id="instance-ai-discover-close"
+								@click="close"
 							/>
 						</div>
-					</div>
 
-					<div :class="$style.cardHeader">
-						<div
-							:class="[
-								$style.titleCluster,
-								titleClusterAlignsLeadingIcon && $style.titleClusterWithLeadingIcon,
-							]"
-						>
-							<span v-if="isWelcomeStep" :class="$style.titleIconWrap">
-								<N8nIcon icon="sparkles" :size="24" aria-hidden="true" />
-							</span>
-							<span v-else-if="discoverTitleStepIcon" :class="$style.titleIconWrap">
-								<N8nIcon
-									:icon="discoverTitleStepIcon"
-									:size="DISCOVER_STEP_TITLE_ICON_PX"
-									aria-hidden="true"
-								/>
-							</span>
-							<N8nHeading
-								id="instance-ai-discover-title"
-								tag="h2"
-								size="large"
-								bold
-								:class="$style.dialogTitle"
-							>
-								{{ i18n.baseText(titleKey(currentStepKey)) }}
-							</N8nHeading>
+						<div :class="$style.stepBody">
+							<N8nText color="text-base" :class="$style.stepText">
+								{{ i18n.baseText(bodyKey(currentStepKey)) }}
+							</N8nText>
+							<LocalGatewayConnectionPanel
+								v-if="currentStepKey === 'localGateway' && showLocalGatewayConnectionPanel"
+								variant="onboarding"
+							/>
 						</div>
-						<N8nIconButton
-							icon="x"
-							variant="ghost"
-							size="small"
-							:aria-label="i18n.baseText('instanceAi.discover.close')"
-							data-test-id="instance-ai-discover-close"
-							@click="close"
-						/>
-					</div>
 
-					<div :class="$style.stepBody">
-						<N8nText color="text-base" :class="$style.stepText">
-							{{ i18n.baseText(bodyKey(currentStepKey)) }}
-						</N8nText>
-						<LocalGatewayConnectionPanel
-							v-if="currentStepKey === 'localGateway' && showLocalGatewayConnectionPanel"
-							variant="onboarding"
-						/>
-					</div>
-
-					<div :class="$style.footer">
-						<N8nButton
-							v-if="stepIndex > 0"
-							:class="[$style.footerActionButton, $style.footerCornerLeft]"
-							variant="outline"
-							size="medium"
-							data-test-id="instance-ai-discover-prev"
-							@click="prev"
-						>
-							{{ i18n.baseText('instanceAi.discover.back') }}
-						</N8nButton>
-						<template v-if="currentStepKey === 'localGateway' && !showLocalGatewayConnectionPanel">
+						<div v-if="!isFirstAutomationStep" :class="$style.footer">
 							<N8nButton
-								:class="$style.footerActionButton"
+								v-if="stepIndex > 0"
+								:class="[$style.footerActionButton, $style.footerCornerLeft]"
 								variant="outline"
 								size="medium"
-								data-test-id="instance-ai-discover-local-gateway-skip"
-								@click="onDiscoverSkipLocalGateway"
+								data-test-id="instance-ai-discover-prev"
+								@click="prev"
 							>
-								{{ i18n.baseText('instanceAi.discover.localGateway.skip') }}
+								{{ i18n.baseText('instanceAi.discover.back') }}
 							</N8nButton>
-							<N8nButton
-								:class="[$style.footerActionButton, $style.footerCornerRight]"
-								size="medium"
-								:loading="isEnablingLocalGateway"
-								:disabled="isEnablingLocalGateway"
-								data-test-id="instance-ai-discover-local-gateway-enable"
-								@click="onDiscoverEnableLocalGateway"
+							<template
+								v-if="currentStepKey === 'localGateway' && !showLocalGatewayConnectionPanel"
 							>
-								{{ i18n.baseText('instanceAi.discover.localGateway.enable') }}
-							</N8nButton>
-						</template>
-						<template v-else>
-							<N8nButton
-								v-if="currentStepKey === 'settings'"
-								:class="$style.footerActionButton"
-								variant="outline"
-								size="medium"
-								data-test-id="instance-ai-discover-open-settings"
-								@click="goToSettings"
-							>
-								{{ i18n.baseText('instanceAi.discover.openSettings') }}
-							</N8nButton>
-							<N8nButton
-								:class="[
-									$style.footerActionButton,
-									stepIndex === 0 ? $style.footerActionButtonFullWidth : $style.footerCornerRight,
-								]"
-								size="medium"
-								data-test-id="instance-ai-discover-next"
-								@click="next"
-							>
-								{{
-									stepIndex >= totalSteps - 1
-										? i18n.baseText('instanceAi.discover.done')
-										: isWelcomeStep
-											? i18n.baseText('instanceAi.discover.steps.welcome.cta')
-											: i18n.baseText('instanceAi.discover.next')
-								}}
-							</N8nButton>
-						</template>
+								<N8nButton
+									:class="$style.footerActionButton"
+									variant="outline"
+									size="medium"
+									data-test-id="instance-ai-discover-local-gateway-skip"
+									@click="onDiscoverSkipLocalGateway"
+								>
+									{{ i18n.baseText('instanceAi.discover.localGateway.skip') }}
+								</N8nButton>
+								<N8nButton
+									:class="[$style.footerActionButton, $style.footerCornerRight]"
+									size="medium"
+									:loading="isEnablingLocalGateway"
+									:disabled="isEnablingLocalGateway"
+									data-test-id="instance-ai-discover-local-gateway-enable"
+									@click="onDiscoverEnableLocalGateway"
+								>
+									{{ i18n.baseText('instanceAi.discover.localGateway.enable') }}
+								</N8nButton>
+							</template>
+							<template v-else>
+								<N8nButton
+									v-if="currentStepKey === 'settings'"
+									:class="$style.footerActionButton"
+									variant="outline"
+									size="medium"
+									data-test-id="instance-ai-discover-open-settings"
+									@click="goToSettings"
+								>
+									{{ i18n.baseText('instanceAi.discover.openSettings') }}
+								</N8nButton>
+								<N8nButton
+									:class="[
+										$style.footerActionButton,
+										stepIndex === 0 ? $style.footerActionButtonFullWidth : $style.footerCornerRight,
+									]"
+									size="medium"
+									data-test-id="instance-ai-discover-next"
+									@click="next"
+								>
+									{{
+										stepIndex >= totalSteps - 1
+											? i18n.baseText('instanceAi.discover.done')
+											: isWelcomeStep
+												? i18n.baseText('instanceAi.discover.steps.welcome.cta')
+												: currentStepKey === 'localGateway' && !settingsStore.isGatewayConnected
+													? i18n.baseText('instanceAi.discover.localGateway.skipAndContinue')
+													: i18n.baseText('instanceAi.discover.next')
+									}}
+								</N8nButton>
+							</template>
+						</div>
 					</div>
-				</div>
+				</Transition>
+
+				<Transition name="first-automation-fade" appear>
+					<div
+						v-if="showFirstAutomationFlyout"
+						ref="firstAutomationPanelRef"
+						:class="$style.firstAutomationFlyout"
+						:style="firstAutomationPanelLayoutStyle"
+						data-test-id="instance-ai-discover-first-automation-panel"
+						@click.stop
+					>
+						<div :class="$style.firstAutomationFlyoutHeader">
+							<div aria-hidden="true" :class="$style.cardHeaderBalance" />
+							<div :class="$style.titleClusterFirstAutomation">
+								<N8nHeading
+									id="instance-ai-discover-first-automation-title"
+									tag="h2"
+									size="xlarge"
+									bold
+									:class="$style.dialogTitleFirstAutomation"
+								>
+									{{ i18n.baseText(titleKey(currentStepKey)) }}
+								</N8nHeading>
+							</div>
+							<div :class="$style.cardHeaderCloseWrap">
+								<N8nIconButton
+									icon="x"
+									variant="ghost"
+									size="small"
+									:aria-label="i18n.baseText('instanceAi.discover.close')"
+									data-test-id="instance-ai-discover-first-automation-close"
+									@click="close"
+								/>
+							</div>
+						</div>
+						<div :class="$style.firstAutomationFlyoutBody">
+							<div :class="$style.firstAutomationChoices" role="group">
+								<N8nButton
+									type="button"
+									variant="outline"
+									size="large"
+									:class="$style.firstAutomationChoice"
+									data-test-id="instance-ai-discover-first-automation-know"
+								>
+									<div :class="$style.firstAutomationChoiceInner">
+										<div :class="$style.firstAutomationChoiceTextStack">
+											<span :class="$style.firstAutomationChoiceTitle">{{
+												i18n.baseText('instanceAi.discover.steps.firstAutomation.optionKnowTitle')
+											}}</span>
+											<span :class="$style.firstAutomationChoiceDescription">{{
+												i18n.baseText(
+													'instanceAi.discover.steps.firstAutomation.optionKnowDescription',
+												)
+											}}</span>
+										</div>
+									</div>
+								</N8nButton>
+								<N8nButton
+									type="button"
+									variant="outline"
+									size="large"
+									:class="$style.firstAutomationChoice"
+									data-test-id="instance-ai-discover-first-automation-inspiration"
+								>
+									<div
+										:class="[
+											$style.firstAutomationChoiceInner,
+											$style.firstAutomationChoiceInnerWithSparkle,
+										]"
+									>
+										<span :class="$style.firstAutomationInspirationSparkleWrap">
+											<FirstAutomationInspirationSparklesIcon />
+										</span>
+										<div :class="$style.firstAutomationChoiceTextStack">
+											<span :class="$style.firstAutomationChoiceTitle">{{
+												i18n.baseText(
+													'instanceAi.discover.steps.firstAutomation.optionInspirationTitle',
+												)
+											}}</span>
+											<span :class="$style.firstAutomationChoiceDescription">{{
+												i18n.baseText(
+													'instanceAi.discover.steps.firstAutomation.optionInspirationDescription',
+												)
+											}}</span>
+										</div>
+									</div>
+								</N8nButton>
+							</div>
+						</div>
+					</div>
+				</Transition>
 			</div>
 		</Transition>
 	</Teleport>
@@ -891,6 +1150,56 @@ onUnmounted(() => {
 	padding: var(--spacing--md) var(--spacing--md) 0;
 }
 
+.firstAutomationFlyout {
+	display: flex;
+	flex-direction: column;
+	background: var(--color--background);
+	border: var(--border);
+	border-radius: var(--radius--lg);
+	box-shadow: 0 24px 48px rgba(0, 0, 0, 0.18);
+	pointer-events: auto;
+	z-index: 2;
+	overflow: hidden;
+}
+
+.firstAutomationFlyoutHeader {
+	display: grid;
+	grid-template-columns: 2.5rem 1fr 2.5rem;
+	align-items: flex-start;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--md) var(--spacing--md) 0;
+}
+
+.firstAutomationFlyoutBody {
+	flex: 1;
+	min-height: 0;
+	overflow-y: auto;
+	padding: 0 var(--spacing--md) var(--spacing--md);
+}
+
+.cardHeaderBalance {
+	width: 100%;
+	min-height: 1px;
+}
+
+.titleClusterFirstAutomation {
+	display: flex;
+	justify-content: center;
+	min-width: 0;
+}
+
+.dialogTitleFirstAutomation {
+	width: 100%;
+	text-align: center;
+	color: var(--color--text);
+	line-height: var(--line-height--lg);
+}
+
+.cardHeaderCloseWrap {
+	display: flex;
+	justify-content: flex-end;
+}
+
 .titleCluster {
 	display: flex;
 	flex: 1;
@@ -915,10 +1224,34 @@ onUnmounted(() => {
 	}
 }
 
+.titleHeadingRow {
+	display: inline-flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	max-width: 100%;
+	min-width: 0;
+}
+
 .dialogTitle {
-	flex: 1;
+	flex: 0 1 auto;
 	min-width: 0;
 	color: var(--color--text);
+}
+
+.optionalStepBadge {
+	flex-shrink: 0;
+	padding: var(--spacing--4xs) var(--spacing--3xs);
+	border: 1px solid var(--color--neutral-white);
+	border-radius: var(--radius--3xs);
+	color: var(--color--neutral-white);
+	font-size: var(--font-size--3xs);
+	font-weight: var(--font-weight--bold);
+	line-height: 1;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	margin-top: 4px;
+	opacity: 0.8;
 }
 
 .stepBody {
@@ -929,6 +1262,73 @@ onUnmounted(() => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
+}
+
+.firstAutomationChoices {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: nowrap;
+	align-items: stretch;
+	gap: var(--spacing--sm);
+	margin-top: var(--spacing--lg);
+	width: 100%;
+}
+
+.firstAutomationChoice:global(.button) {
+	flex: 1 1 0;
+	min-width: 0;
+	width: auto;
+	height: auto;
+	min-height: calc(var(--button--height) + var(--spacing--md));
+	max-width: 100%;
+	white-space: normal;
+	padding: var(--spacing--md);
+}
+
+.firstAutomationChoiceInner {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--spacing--4xs);
+	text-align: left;
+	width: 100%;
+}
+
+.firstAutomationChoiceInnerWithSparkle {
+	flex-direction: row;
+	align-items: center;
+	gap: var(--spacing--sm);
+}
+
+.firstAutomationChoiceTextStack {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--spacing--4xs);
+	text-align: left;
+	flex: 1;
+	min-width: 0;
+}
+
+.firstAutomationInspirationSparkleWrap {
+	flex-shrink: 0;
+	display: inline-flex;
+	align-items: center;
+	color: var(--color--neutral-white);
+}
+
+.firstAutomationChoiceTitle {
+	font-size: var(--font-size--md);
+	font-weight: var(--font-weight--bold);
+	line-height: var(--line-height--md);
+	color: var(--color--text);
+}
+
+.firstAutomationChoiceDescription {
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--regular);
+	line-height: var(--line-height--lg);
+	color: var(--color--text--tint-1);
 }
 
 .stepText {
@@ -988,6 +1388,24 @@ onUnmounted(() => {
 
 .discover-fade-enter-from,
 .discover-fade-leave-to {
+	opacity: 0;
+}
+
+.discover-walkthrough-card-enter-active,
+.discover-walkthrough-card-leave-active {
+	transition: opacity 0.65s ease;
+}
+
+.discover-walkthrough-card-enter-from,
+.discover-walkthrough-card-leave-to {
+	opacity: 0;
+}
+
+.first-automation-fade-enter-active {
+	transition: opacity 0.65s ease;
+}
+
+.first-automation-fade-enter-from {
 	opacity: 0;
 }
 
