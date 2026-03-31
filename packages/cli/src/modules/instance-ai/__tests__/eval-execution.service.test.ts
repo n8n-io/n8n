@@ -20,13 +20,9 @@ jest.mock('@n8n/instance-ai', () => ({
 	createEvalAgent: jest.fn(),
 	extractText: jest.fn(),
 }));
-jest.mock(
-	'@n8n/instance-ai/evaluations/support/pin-data-generator',
-	() => ({
-		generatePinData: jest.fn(),
-	}),
-	{ virtual: true },
-);
+jest.mock('../eval-pin-data-generator', () => ({
+	generatePinData: jest.fn(),
+}));
 jest.mock('../llm-mock-handler', () => ({
 	createLlmMockHandler: jest.fn(),
 }));
