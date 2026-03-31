@@ -14,6 +14,7 @@
 import { Agent } from '@mastra/core/agent';
 import type { ToolsInput } from '@mastra/core/agent';
 import { createTool } from '@mastra/core/tools';
+import { taskListSchema } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
@@ -33,7 +34,7 @@ import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor
 import { traceWorkingMemoryContext } from '../../runtime/working-memory-tracing';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
 import { getTraceParentRun, withTraceParentContext } from '../../tracing/langsmith-tracing';
-import type { OrchestrationContext } from '../../types';
+import type { OrchestrationContext, PlannedTask } from '../../types';
 
 const PLANNER_MAX_STEPS = 15;
 
@@ -244,10 +245,10 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 			'Spawn an inline planner agent to design the solution architecture ' +
 			'for a multi-step request. The planner reads the recent conversation ' +
 			'history directly and can ask the user questions. It discovers available ' +
-			'nodes, credentials, and data tables, then returns a pre-translated tasks ' +
-			'array. Use when the request requires 2 or more tasks with dependencies. ' +
-			'After receiving the result, pass the tasks array directly to plan() ' +
-			'without modification.',
+			'nodes, credentials, and data tables, then creates the plan and shows it ' +
+			'to the user for approval. Use when the request requires 2 or more tasks ' +
+			'with dependencies. After this tool returns, the plan is already approved ' +
+			'and tasks are dispatched — just acknowledge briefly and end your turn.',
 		inputSchema: z.object({
 			guidance: z
 				.string()
@@ -260,9 +261,35 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 		}),
 		outputSchema: z.object({
 			result: z.string(),
-			tasks: z.array(z.record(z.unknown())).optional(),
 		}),
-		execute: async (input) => {
+		suspendSchema: z.object({
+			requestId: z.string(),
+			message: z.string(),
+			severity: z.literal('info'),
+			inputType: z.literal('plan-review'),
+			tasks: taskListSchema,
+		}),
+		resumeSchema: z.object({
+			approved: z.boolean(),
+			userInput: z.string().optional(),
+		}),
+		execute: async (input, ctx) => {
+			const { resumeData, suspend } = ctx?.agent ?? {};
+
+			// ── Resume path — user approved or rejected the plan ──────
+			if (resumeData !== undefined && resumeData !== null) {
+				if (resumeData.approved) {
+					if (context.schedulePlannedTasks) {
+						await context.schedulePlannedTasks();
+					}
+					return { result: 'Plan approved and tasks dispatched.' };
+				}
+				return {
+					result: `User requested changes: ${resumeData.userInput ?? 'No feedback provided'}. Call plan-with-agent again or plan() directly with revised tasks.`,
+				};
+			}
+
+			// ── First call — run planner, create plan, suspend for approval ──
 			// ── Collect planner tools ──────────────────────────────────────
 			const plannerTools: ToolsInput = {};
 
@@ -412,13 +439,48 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 					},
 				});
 
-				// ── Return pre-translated tasks to orchestrator ──────────
+				// ── Create plan, suspend for approval ─────────────────────
 				if (submittedBlueprint) {
 					const tasks = blueprintToTasks(submittedBlueprint);
-					return {
-						result: `Blueprint ready (${tasks.length} tasks). Call plan() with the tasks array from this result — do NOT modify or re-derive the tasks.`,
-						tasks: tasks as unknown as Array<Record<string, unknown>>,
-					};
+
+					if (!context.plannedTaskService || !context.schedulePlannedTasks) {
+						return { result: 'Planning failed: task scheduling not available.' };
+					}
+
+					// Persist the plan
+					await context.plannedTaskService.createPlan(
+						context.threadId,
+						tasks as unknown as PlannedTask[],
+						{
+							planRunId: context.runId,
+							messageGroupId: context.messageGroupId,
+						},
+					);
+
+					// Emit tasks checklist
+					const taskItems = tasks.map((t) => ({
+						id: t.id,
+						description: t.title,
+						status: 'todo' as const,
+					}));
+					context.eventBus.publish(context.threadId, {
+						type: 'tasks-update',
+						runId: context.runId,
+						agentId: context.orchestratorAgentId,
+						payload: { tasks: { tasks: taskItems } },
+					});
+
+					// Suspend for user approval — Mastra HITL handles the rest
+					await suspend?.({
+						requestId: nanoid(),
+						message: `Review the plan (${tasks.length} task${tasks.length === 1 ? '' : 's'}) before execution starts.`,
+						severity: 'info' as const,
+						inputType: 'plan-review' as const,
+						tasks: { tasks: taskItems },
+					});
+
+					// suspend() never resolves — this satisfies the type checker
+					return { result: 'Awaiting approval' };
 				}
 
 				return {
