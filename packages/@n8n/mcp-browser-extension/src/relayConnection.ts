@@ -62,6 +62,14 @@ const ATTACH_TIMEOUT_MS = 5_000;
 // RelayConnection
 // ---------------------------------------------------------------------------
 
+/** URL prefixes that indicate restricted child targets (extensions, internal pages). */
+function isRestrictedUrl(url: string | undefined): boolean {
+	if (!url) return false;
+	if (url.startsWith('chrome-extension://')) return true;
+	const restrictedPrefixes = ['chrome://', 'devtools://', 'edge://'];
+	return restrictedPrefixes.some((prefix) => url.startsWith(prefix));
+}
+
 export class RelayConnection {
 	/** Primary map: CDP targetId → Chrome tab state */
 	private readonly tabs = new Map<string, TabEntry>();
@@ -73,6 +81,8 @@ export class RelayConnection {
 	private readonly agentCreatedChromeTabIds = new Set<number>();
 	/** The primary tab ID (first registered), used as default target */
 	private primaryId: string | undefined;
+	/** Cached Target.setAutoAttach params — reapplied to newly attached tabs for OOPIF support. */
+	private autoAttachParams: object | null = null;
 
 	private readonly ws: WebSocket;
 	private readonly eventListener: (
@@ -310,6 +320,19 @@ export class RelayConnection {
 			]);
 			entry.attached = true;
 			log.debug(`ensureAttached: attached ${id}`);
+
+			// Reapply cached auto-attach so new tabs report OOPIFs immediately
+			if (this.autoAttachParams) {
+				try {
+					await chrome.debugger.sendCommand(
+						{ tabId: entry.chromeTabId },
+						'Target.setAutoAttach',
+						this.autoAttachParams,
+					);
+				} catch (e) {
+					log.debug('Failed to apply auto-attach after attach:', e);
+				}
+			}
 		})();
 
 		this.pendingAttaches.set(id, promise);
@@ -328,6 +351,27 @@ export class RelayConnection {
 		if (!source.tabId) return;
 		const id = this.chromeTabIdToId.get(source.tabId);
 		if (!id) return;
+
+		// Filter restricted child targets from auto-attach (extension pages, chrome://, etc.).
+		// Without this, Chrome's debugger API throws "Cannot access a chrome-extension:// URL
+		// of a different extension" when the relay tries to send commands to these targets.
+		if (method === 'Target.attachedToTarget') {
+			const targetParams = params as
+				| { sessionId?: string; targetInfo?: { url?: string } }
+				| undefined;
+			if (isRestrictedUrl(targetParams?.targetInfo?.url)) {
+				log.debug('filtering restricted child target:', targetParams?.targetInfo?.url);
+				// Detach from the restricted child — sent on the parent tab session, not the child
+				if (targetParams?.sessionId) {
+					chrome.debugger
+						.sendCommand({ tabId: source.tabId }, 'Target.detachFromTarget', {
+							sessionId: targetParams.sessionId,
+						})
+						.catch((e) => log.debug('failed to detach restricted target:', e));
+				}
+				return;
+			}
+		}
 
 		this.sendMessage({
 			method: 'forwardCDPEvent',
@@ -434,6 +478,25 @@ export class RelayConnection {
 
 	private async handleForwardCDPCommand(params: Record<string, unknown>): Promise<unknown> {
 		const { method, params: cmdParams, id: rawId } = params;
+
+		// Root-level Target.setAutoAttach: cache params and apply to ALL attached tabs.
+		// This ensures Chrome emits Target.attachedToTarget for OOPIFs (cross-origin iframes).
+		if (method === 'Target.setAutoAttach' && !rawId) {
+			this.autoAttachParams = (cmdParams as object) ?? null;
+			const promises: Array<Promise<void>> = [];
+			for (const [, entry] of this.tabs) {
+				if (!entry.attached) continue;
+				promises.push(
+					chrome.debugger
+						.sendCommand({ tabId: entry.chromeTabId }, 'Target.setAutoAttach', cmdParams as object)
+						.then(() => {})
+						.catch((e) => log.debug('setAutoAttach failed:', e)),
+				);
+			}
+			await Promise.all(promises);
+			return {};
+		}
+
 		const { id, entry } = this.resolveTab(rawId as string | undefined);
 
 		log.debug(`CDP: ${method as string} → targetId=${id} (chromeTabId=${entry.chromeTabId})`);
@@ -442,6 +505,19 @@ export class RelayConnection {
 		await this.ensureAttached(id);
 
 		const debuggee = { tabId: entry.chromeTabId };
+
+		// Force Chrome to re-emit executionContextCreated events so Playwright's
+		// internal context cache stays in sync. Without this, Runtime.enable on an
+		// already-enabled session is a no-op and Playwright never learns about
+		// existing execution contexts, causing "Cannot find context" errors.
+		if (method === 'Runtime.enable') {
+			try {
+				await chrome.debugger.sendCommand(debuggee, 'Runtime.disable');
+				await new Promise((r) => setTimeout(r, 50));
+			} catch {
+				// Ignore — Runtime may not be enabled yet
+			}
+		}
 
 		const result = await Promise.race([
 			chrome.debugger.sendCommand(debuggee, method as string, cmdParams as object | undefined),
