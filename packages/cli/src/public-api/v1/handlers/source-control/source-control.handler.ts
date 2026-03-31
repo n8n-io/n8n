@@ -56,10 +56,7 @@ export = {
 
 	push: [
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'sourceControl:push' }),
-		async (
-			req: AuthenticatedRequest,
-			res: express.Response,
-		): Promise<express.Response> => {
+		async (req: AuthenticatedRequest, res: express.Response): Promise<express.Response> => {
 			const sourceControlPreferencesService = Container.get(SourceControlPreferencesService);
 			if (!isSourceControlLicensed()) {
 				return res
