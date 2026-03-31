@@ -45,11 +45,11 @@ watch(
 		</div>
 
 		<div v-else-if="store.settings" :class="$style.sections">
-			<ModelSection />
+			<ModelSection v-if="!store.isProxyEnabled" />
 			<MemorySection />
 			<LocalGatewaySection />
-			<SandboxSection />
-			<SearchSection />
+			<SandboxSection v-if="!store.isProxyEnabled" />
+			<SearchSection v-if="!store.isProxyEnabled" />
 			<AdvancedSection />
 			<PermissionsSection />
 		</div>
