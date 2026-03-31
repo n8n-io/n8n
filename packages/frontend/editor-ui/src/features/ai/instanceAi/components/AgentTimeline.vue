@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import type { InstanceAiAgentNode, InstanceAiToolCallState } from '@n8n/api-types';
+import type { InstanceAiAgentNode, InstanceAiToolCallState, TaskList } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 import AgentSection from './AgentSection.vue';
@@ -74,7 +74,7 @@ defineSlots<{
 }>();
 
 /** Tool calls that are internal bookkeeping and should not be shown to the user. */
-const HIDDEN_TOOLS = new Set(['updateWorkingMemory']);
+const HIDDEN_TOOLS = new Set(['updateWorkingMemory', 'add-plan-item']);
 
 /** Index tool calls by ID for O(1) lookup and proper reactivity tracking. */
 const toolCallsById = computed(() => {
@@ -101,6 +101,18 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 	if (!requestId) return;
 	store.resolveConfirmation(requestId, approved ? 'approved' : 'denied');
 	void store.confirmAction(requestId, approved, undefined, undefined, undefined, feedback);
+}
+
+/** Map simplified TaskList items to PlannedTaskArg shape for loading preview */
+function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefined {
+	if (!tasks?.tasks?.length) return undefined;
+	return tasks.tasks.map((t) => ({
+		id: t.id,
+		title: t.description,
+		kind: '',
+		spec: '',
+		deps: [],
+	}));
 }
 </script>
 
@@ -138,12 +150,34 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'builder'" />
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'data-table'" />
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'researcher'" />
-				<template
+				<!-- Planner: plan-review confirmation present → interactive/read-only panel -->
+				<PlanReviewPanel
 					v-else-if="
 						toolCallsById[entry.toolCallId].renderHint === 'planner' &&
-						toolCallsById[entry.toolCallId].confirmation?.inputType !== 'plan-review'
+						toolCallsById[entry.toolCallId].confirmation?.inputType === 'plan-review'
 					"
+					:planned-tasks="
+						toolCallsById[entry.toolCallId].confirmation?.planItems ??
+						(toolCallsById[entry.toolCallId].args?.tasks as PlannedTaskArg[] | undefined) ??
+						mapTaskItemsToPlannedTasks(toolCallsById[entry.toolCallId].confirmation?.tasks) ??
+						[]
+					"
+					:read-only="!toolCallsById[entry.toolCallId].isLoading"
+					@approve="handlePlanConfirm(toolCallsById[entry.toolCallId], true)"
+					@request-changes="(fb) => handlePlanConfirm(toolCallsById[entry.toolCallId], false, fb)"
 				/>
+				<!-- Planner: still loading, has tasks → progressive loading preview -->
+				<PlanReviewPanel
+					v-else-if="
+						toolCallsById[entry.toolCallId].renderHint === 'planner' &&
+						toolCallsById[entry.toolCallId].isLoading &&
+						props.agentNode.tasks?.tasks?.length
+					"
+					:planned-tasks="mapTaskItemsToPlannedTasks(props.agentNode.tasks) ?? []"
+					:loading="true"
+				/>
+				<!-- Planner: loading, no tasks yet → suppress -->
+				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'planner'" />
 				<!-- Answered questions (read-only after resolution) -->
 				<AnsweredQuestions
 					v-else-if="
@@ -152,14 +186,13 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 					"
 					:tool-call="toolCallsById[entry.toolCallId]"
 				/>
-				<!-- Plan review: always render inline (interactive while pending, read-only after) -->
+				<!-- Plan review from plan() tool: always render inline -->
 				<PlanReviewPanel
 					v-else-if="toolCallsById[entry.toolCallId].confirmation?.inputType === 'plan-review'"
 					:planned-tasks="
+						toolCallsById[entry.toolCallId].confirmation?.planItems ??
 						(toolCallsById[entry.toolCallId].args?.tasks as PlannedTaskArg[] | undefined) ??
-						(toolCallsById[entry.toolCallId].confirmation?.tasks?.tasks as
-							| PlannedTaskArg[]
-							| undefined) ??
+						mapTaskItemsToPlannedTasks(toolCallsById[entry.toolCallId].confirmation?.tasks) ??
 						[]
 					"
 					:read-only="!toolCallsById[entry.toolCallId].isLoading"

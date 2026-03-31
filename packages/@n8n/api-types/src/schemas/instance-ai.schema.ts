@@ -259,6 +259,18 @@ export const taskListSchema = z.object({
 
 export type TaskList = z.infer<typeof taskListSchema>;
 
+export const plannedTaskArgSchema = z.object({
+	id: z.string(),
+	title: z.string(),
+	kind: z.string(),
+	spec: z.string(),
+	deps: z.array(z.string()),
+	tools: z.array(z.string()).optional(),
+	workflowId: z.string().optional(),
+});
+
+export type PlannedTaskArg = z.infer<typeof plannedTaskArgSchema>;
+
 export const confirmationRequestPayloadSchema = z.object({
 	requestId: z.string(),
 	toolCallId: z.string().describe('Correlates to the tool-call that needs approval'),
@@ -295,6 +307,10 @@ export const confirmationRequestPayloadSchema = z.object({
 	tasks: taskListSchema
 		.optional()
 		.describe('Task checklist for plan review (inputType=plan-review)'),
+	planItems: z
+		.array(plannedTaskArgSchema)
+		.optional()
+		.describe('Full planned task details for plan review (title, kind, spec, deps)'),
 	domainAccess: domainAccessMetaSchema
 		.optional()
 		.describe('When present, renders domain-access approval UI instead of generic confirm'),
@@ -599,6 +615,7 @@ export interface InstanceAiToolCallState {
 		credentialFlow?: InstanceAiCredentialFlow;
 		setupRequests?: InstanceAiWorkflowSetupNode[];
 		workflowId?: string;
+		planItems?: PlannedTaskArg[];
 		questions?: Array<{
 			id: string;
 			question: string;

@@ -249,6 +249,7 @@ export {
 	instanceAiEventSchema,
 	taskItemSchema,
 	taskListSchema,
+	plannedTaskArgSchema,
 	runStartPayloadSchema,
 	runFinishPayloadSchema,
 	agentSpawnedPayloadSchema,
@@ -347,6 +348,7 @@ export type {
 	InstanceAiCredentialFlow,
 	ToolCategory,
 	InstanceAiWorkflowSetupNode,
+	PlannedTaskArg,
 } from './schemas/instance-ai.schema';
 
 export {

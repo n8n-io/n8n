@@ -3,8 +3,9 @@
  *
  * Spawns an **inline** planner sub-agent that reads the conversation history,
  * discovers available nodes/credentials/tables, and produces a typed
- * solution blueprint. The blueprint is deterministically translated to
- * plan() tasks with inferred dependencies.
+ * solution blueprint. Blueprint items are emitted incrementally via the
+ * `add-plan-item` tool — each call publishes a `tasks-update` event so the
+ * task checklist populates progressively in the UI.
  *
  * The planner receives the last 5 messages from the thread as primary context,
  * plus an optional guidance string from the orchestrator for ambiguous cases.
@@ -14,14 +15,14 @@
 import { Agent } from '@mastra/core/agent';
 import type { ToolsInput } from '@mastra/core/agent';
 import { createTool } from '@mastra/core/tools';
-import { taskListSchema } from '@n8n/api-types';
+import { plannedTaskArgSchema, taskListSchema } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
-import type { PlanningBlueprint, BlueprintDataTableItem } from './blueprint.schema';
+import { createAddPlanItemTool } from './add-plan-item.tool';
+import { BlueprintAccumulator } from './blueprint-accumulator';
 import { truncateLabel } from './display-utils';
 import { PLANNER_AGENT_PROMPT } from './plan-agent-prompt';
-import { createSubmitBlueprintTool } from './submit-blueprint.tool';
 import {
 	failTraceRun,
 	finishTraceRun,
@@ -133,110 +134,20 @@ function formatMessagesForBriefing(messages: FormattedMessage[], guidance?: stri
 }
 
 // ---------------------------------------------------------------------------
-// Blueprint → task array (deterministic, no LLM needed)
+// Helper: clear draft checklist from taskStorage
 // ---------------------------------------------------------------------------
 
-interface PlannedTaskInput {
-	id: string;
-	title: string;
-	kind: string;
-	spec: string;
-	deps: string[];
-	tools?: string[];
-	workflowId?: string;
+async function clearDraftChecklist(context: OrchestrationContext): Promise<void> {
+	try {
+		await context.taskStorage.save(context.threadId, { tasks: [] });
+	} catch {
+		// Best-effort — don't let cleanup failures block the return path
+	}
 }
 
-/** Format a data table schema as a compact string for builder context. */
-function formatTableSchema(dt: BlueprintDataTableItem): string {
-	const cols = dt.columns.map((c) => `${c.name} (${c.type})`).join(', ');
-	return `Table '${dt.name}': ${cols}`;
-}
-
-function blueprintToTasks(bp: PlanningBlueprint): PlannedTaskInput[] {
-	const tasks: PlannedTaskInput[] = [];
-
-	// Index table IDs for dependency inference
-	const tableIds = new Set(bp.dataTables.map((dt) => dt.id));
-
-	for (const dt of bp.dataTables) {
-		const columnList = dt.columns.map((c) => `${c.name} (${c.type})`).join(', ');
-		tasks.push({
-			id: dt.id,
-			title: `Create '${dt.name}' data table`,
-			kind: 'manage-data-tables',
-			spec: `Create a data table named '${dt.name}'. Purpose: ${dt.purpose}\nColumns: ${columnList}`,
-			deps: dt.dependsOn,
-		});
-	}
-
-	for (const wf of bp.workflows) {
-		const specParts = [wf.purpose];
-		if (wf.triggerDescription) specParts.push(`Trigger: ${wf.triggerDescription}`);
-		if (wf.integrations.length > 0) specParts.push(`Integrations: ${wf.integrations.join(', ')}`);
-
-		// Infer missing table dependencies by checking if the workflow's
-		// purpose or integrations mention any table name. The planner should
-		// set these explicitly, but this catches omissions.
-		const explicitDeps = new Set(wf.dependsOn);
-		const inferredDeps = [...explicitDeps];
-		const wfText = `${wf.purpose} ${wf.integrations.join(' ')}`.toLowerCase();
-		for (const dt of bp.dataTables) {
-			if (!explicitDeps.has(dt.id) && wfText.includes(dt.name.toLowerCase())) {
-				inferredDeps.push(dt.id);
-			}
-		}
-
-		// Append schemas of tables this workflow depends on (explicit + inferred)
-		const depTableIds = new Set(inferredDeps.filter((id) => tableIds.has(id)));
-		const depTables = bp.dataTables.filter((dt) => depTableIds.has(dt.id));
-		if (depTables.length > 0) {
-			specParts.push('\nData table schemas:');
-			for (const dt of depTables) {
-				specParts.push(`- ${formatTableSchema(dt)}`);
-			}
-		}
-
-		// Append blueprint assumptions so the builder has design context
-		if (bp.assumptions.length > 0) {
-			specParts.push('\nAssumptions:');
-			for (const a of bp.assumptions) {
-				specParts.push(`- ${a}`);
-			}
-		}
-
-		tasks.push({
-			id: wf.id,
-			title: `Build '${wf.name}' workflow`,
-			kind: 'build-workflow',
-			spec: specParts.join('\n'),
-			deps: inferredDeps,
-			workflowId: wf.existingWorkflowId,
-		});
-	}
-
-	for (const ri of bp.researchItems) {
-		tasks.push({
-			id: ri.id,
-			title: ri.question,
-			kind: 'research',
-			spec: ri.constraints ?? ri.question,
-			deps: ri.dependsOn,
-		});
-	}
-
-	for (const di of bp.delegateItems) {
-		tasks.push({
-			id: di.id,
-			title: di.title,
-			kind: 'delegate',
-			spec: di.description,
-			deps: di.dependsOn,
-			tools: di.requiredTools,
-		});
-	}
-
-	return tasks;
-}
+// ---------------------------------------------------------------------------
+// Tool factory
+// ---------------------------------------------------------------------------
 
 export function createPlanWithAgentTool(context: OrchestrationContext) {
 	return createTool({
@@ -268,6 +179,7 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 			severity: z.literal('info'),
 			inputType: z.literal('plan-review'),
 			tasks: taskListSchema,
+			planItems: z.array(plannedTaskArgSchema).optional(),
 		}),
 		resumeSchema: z.object({
 			approved: z.boolean(),
@@ -284,6 +196,8 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 					}
 					return { result: 'Plan approved and tasks dispatched.' };
 				}
+				// User rejected — clear the draft checklist
+				await clearDraftChecklist(context);
 				return {
 					result: `User requested changes: ${resumeData.userInput ?? 'No feedback provided'}. Call plan-with-agent again or plan() directly with revised tasks.`,
 				};
@@ -305,21 +219,9 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 				}
 			}
 
-			// Mutable ref — written by submit-blueprint, read after stream
-			let submittedBlueprint: PlanningBlueprint | undefined;
-
-			const submitTool = createSubmitBlueprintTool();
-			const originalExecute = submitTool.execute! as (
-				args: Record<string, unknown>,
-				ctx: unknown,
-			) => Promise<{ result: string }>;
-			plannerTools['submit-blueprint'] = {
-				...submitTool,
-				execute: async (args: Record<string, unknown>, ctx: unknown) => {
-					submittedBlueprint = args as unknown as PlanningBlueprint;
-					return await originalExecute(args, ctx);
-				},
-			};
+			// Incremental plan accumulation via add-plan-item tool
+			const accumulator = new BlueprintAccumulator();
+			plannerTools['add-plan-item'] = createAddPlanItemTool(accumulator, context);
 
 			// ── Retrieve conversation history ─────────────────────────────
 			const messages = await getRecentMessages(context, MESSAGE_HISTORY_COUNT);
@@ -424,7 +326,8 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 						result: resultText,
 						agentId: subAgentId,
 						role: 'planner',
-						hasBlueprint: !!submittedBlueprint,
+						hasItems: !accumulator.isEmpty(),
+						itemCount: accumulator.getTaskItemsForEvent().length,
 					},
 				});
 
@@ -440,10 +343,13 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 				});
 
 				// ── Create plan, suspend for approval ─────────────────────
-				if (submittedBlueprint) {
-					const tasks = blueprintToTasks(submittedBlueprint);
+				if (!accumulator.isEmpty()) {
+					// Re-run dep inference now that all tables are known
+					accumulator.reconcileDependencies();
+					const tasks = accumulator.getTaskList();
 
 					if (!context.plannedTaskService || !context.schedulePlannedTasks) {
+						await clearDraftChecklist(context);
 						return { result: 'Planning failed: task scheduling not available.' };
 					}
 
@@ -457,7 +363,7 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 						},
 					);
 
-					// Emit tasks checklist
+					// Emit final tasks checklist
 					const taskItems = tasks.map((t) => ({
 						id: t.id,
 						description: t.title,
@@ -470,6 +376,17 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 						payload: { tasks: { tasks: taskItems } },
 					});
 
+					// Build planItems for the suspend payload (full task details for PlanReviewPanel)
+					const planItems = tasks.map((t) => ({
+						id: t.id,
+						title: t.title,
+						kind: t.kind,
+						spec: t.spec,
+						deps: t.deps,
+						...(t.tools ? { tools: t.tools } : {}),
+						...(t.workflowId ? { workflowId: t.workflowId } : {}),
+					}));
+
 					// Suspend for user approval — Mastra HITL handles the rest
 					await suspend?.({
 						requestId: nanoid(),
@@ -477,14 +394,17 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 						severity: 'info' as const,
 						inputType: 'plan-review' as const,
 						tasks: { tasks: taskItems },
+						planItems,
 					});
 
 					// suspend() never resolves — this satisfies the type checker
 					return { result: 'Awaiting approval' };
 				}
 
+				// Planner finished without adding any items — clear draft checklist
+				await clearDraftChecklist(context);
 				return {
-					result: `Planner finished without submitting a blueprint. Agent output: ${resultText}`,
+					result: `Planner finished without producing a plan. Agent output: ${resultText}`,
 				};
 			} catch (error) {
 				const errorMessage = error instanceof Error ? error.message : String(error);
@@ -503,6 +423,9 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 						error: errorMessage,
 					},
 				});
+
+				// Clear draft checklist on error
+				await clearDraftChecklist(context);
 
 				return { result: `Planner error: ${errorMessage}` };
 			}
