@@ -246,7 +246,7 @@ async function callLlm(userPrompt: string, nodeConfig: string): Promise<MockResp
 		providerOptions: { anthropic: { maxTokens: 4096 } },
 	});
 
-	const text = extractText(result);
+	const text: string = extractText(result);
 	return parseResponseText(text);
 }
 
