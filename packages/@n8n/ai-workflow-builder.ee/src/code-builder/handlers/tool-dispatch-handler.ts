@@ -8,6 +8,7 @@
 import type { BaseMessage } from '@langchain/core/messages';
 import { ToolMessage } from '@langchain/core/messages';
 import type { StructuredToolInterface } from '@langchain/core/tools';
+import { Command } from '@langchain/langgraph';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 import type { TextEditorHandler } from './text-editor-handler';
@@ -343,16 +344,26 @@ export class ToolDispatchHandler {
 		}
 
 		try {
-			const result: unknown = await tool.invoke(toolCall.args);
-			const resultStr = typeof result === 'string' ? result : JSON.stringify(result);
+			const result: unknown = await tool.invoke(toolCall.args, {
+				toolCall: { id: toolCall.id!, name: toolCall.name, args: toolCall.args },
+			});
 
-			// Add tool result to messages
-			messages.push(
-				new ToolMessage({
-					tool_call_id: toolCall.id!,
-					content: resultStr,
-				}),
-			);
+			// Unwrap LangGraph Command results (e.g. from web_fetch tool)
+			if (result instanceof Command) {
+				const update = (result as unknown as { update?: { messages?: BaseMessage[] } }).update;
+				const cmdMessages = update?.messages ?? [];
+				for (const msg of cmdMessages) {
+					messages.push(msg);
+				}
+			} else {
+				const resultStr = typeof result === 'string' ? result : JSON.stringify(result);
+				messages.push(
+					new ToolMessage({
+						tool_call_id: toolCall.id!,
+						content: resultStr,
+					}),
+				);
+			}
 
 			// Stream tool completion
 			yield {

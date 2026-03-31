@@ -17,7 +17,10 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 
-import { createLangGraphSecurityManagerFactory } from '@/tools/utils/web-fetch-security';
+import {
+	createMutableSecurityManagerFactory,
+	type MutableWebFetchState,
+} from '@/tools/utils/web-fetch-security';
 import { createWebFetchTool } from '@/tools/web-fetch.tool';
 
 import type {
@@ -80,6 +83,8 @@ export class CodeBuilderAgent {
 	private toolDispatchHandler: ToolDispatchHandler;
 	/** Optional callback for emitting telemetry events */
 	private onTelemetryEvent?: (event: string, properties: ITelemetryTrackProperties) => void;
+	/** Mutable web fetch state — reset per chat turn to enforce per-turn budget */
+	private webFetchState: MutableWebFetchState;
 	/** Token usage accumulator - tracks original callback and accumulated totals */
 	private originalOnTokenUsage?: (usage: TokenUsage) => void;
 	/** Accumulated token usage for the current chat session */
@@ -146,7 +151,13 @@ export class CodeBuilderAgent {
 		const searchTool = createCodeBuilderSearchTool(this.nodeTypeParser);
 		const getTool = createCodeBuilderGetTool({ nodeDefinitionDirs: config.nodeDefinitionDirs });
 		const suggestedNodesTool = createGetSuggestedNodesTool(this.nodeTypeParser);
-		const webFetchSecurityFactory = createLangGraphSecurityManagerFactory();
+		this.webFetchState = {
+			approvedDomains: [],
+			allDomainsApproved: false,
+			webFetchCount: 0,
+			messages: [],
+		};
+		const webFetchSecurityFactory = createMutableSecurityManagerFactory(this.webFetchState);
 		const webFetchTool = createWebFetchTool(webFetchSecurityFactory);
 		this.tools = [searchTool, getTool, suggestedNodesTool, webFetchTool.tool];
 		this.toolsMap = new Map(this.tools.map((t) => [t.name, t]));
@@ -263,6 +274,9 @@ export class CodeBuilderAgent {
 
 		// Reset accumulated tokens for this chat session
 		this.resetAccumulatedTokens();
+
+		// Reset per-turn web fetch budget (preserve domain approvals across turns)
+		this.webFetchState.webFetchCount = 0;
 
 		// Capture before workflow for node diff calculation
 		const beforeWorkflow = payload.workflowContext?.currentWorkflow as WorkflowJSON | undefined;
