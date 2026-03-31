@@ -43,7 +43,7 @@ describe('IsolatePool', () => {
 		await pool.dispose();
 	});
 
-	it('should dispose bridge on release and replenish', async () => {
+	it('should dispose and replace bridge on release', async () => {
 		const factory = createFactory();
 		const pool = new IsolatePool(factory, 1);
 		await pool.initialize();
@@ -68,6 +68,7 @@ describe('IsolatePool', () => {
 		const bridges = await Promise.all(
 			factory.mock.results.map((r) => r.value as Promise<RuntimeBridge>),
 		);
+		expect(factory).toHaveBeenCalledTimes(3);
 		for (const bridge of bridges) {
 			expect(bridge.dispose).toHaveBeenCalled();
 		}
