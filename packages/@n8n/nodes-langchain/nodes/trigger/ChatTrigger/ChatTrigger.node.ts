@@ -894,6 +894,12 @@ export class ChatTrigger extends Node {
 
 		// Handle streaming responses
 		if (enableStreaming) {
+			// Configure socket for long-lived streaming (matches SSE push pattern).
+			// Prevents reverse proxies (e.g. Cloudflare) from timing out idle connections.
+			req.socket.setTimeout(0);
+			req.socket.setNoDelay(true);
+			req.socket.setKeepAlive(true);
+
 			// Set up streaming response headers
 			res.writeHead(200, {
 				'Content-Type': 'application/json; charset=utf-8',

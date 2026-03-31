@@ -631,7 +631,7 @@ describe('needsFullExecutionData', () => {
 });
 
 describe('streaming functionality', () => {
-	it('should setup sendChunk handler when streaming is enabled and execution mode is not manual', async () => {
+	it('should setup sendChunk and heartbeat handlers when streaming is enabled', async () => {
 		// ARRANGE
 		const activeExecutions = Container.get(ActiveExecutions);
 		jest.spyOn(activeExecutions, 'add').mockResolvedValue('1');
@@ -669,9 +669,10 @@ describe('streaming functionality', () => {
 
 		// ASSERT
 		expect(mockHooks.addHandler).toHaveBeenCalledWith('sendChunk', expect.any(Function));
+		expect(mockHooks.addHandler).toHaveBeenCalledWith('workflowExecuteAfter', expect.any(Function));
 	});
 
-	it('should setup sendChunk handler when streaming is enabled and execution mode is manual', async () => {
+	it('should setup sendChunk and heartbeat handlers when streaming is enabled in manual mode', async () => {
 		// ARRANGE
 		const activeExecutions = Container.get(ActiveExecutions);
 		jest.spyOn(activeExecutions, 'add').mockResolvedValue('1');
@@ -709,5 +710,6 @@ describe('streaming functionality', () => {
 
 		// ASSERT
 		expect(mockHooks.addHandler).toHaveBeenCalledWith('sendChunk', expect.any(Function));
+		expect(mockHooks.addHandler).toHaveBeenCalledWith('workflowExecuteAfter', expect.any(Function));
 	});
 });

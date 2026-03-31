@@ -528,6 +528,148 @@ describe('sendMessageStreaming', () => {
 		});
 	});
 
+	describe('proxy error HTML filtering', () => {
+		it('should discard injected proxy error HTML (e.g. Cloudflare 524) from the stream', async () => {
+			const cloudflareHtml =
+				'<!DOCTYPE html><html class="no-js"><head><title>524</title></head><body>A timeout occurred</body></html>';
+			const validChunk = {
+				type: 'item',
+				content: 'Hello',
+				metadata: {
+					nodeId: 'node-1',
+					nodeName: 'Test Node',
+					timestamp: Date.now(),
+					runIndex: 0,
+					itemIndex: 0,
+				},
+			};
+
+			const encoder = new TextEncoder();
+			const stream = new ReadableStream({
+				start(controller) {
+					controller.enqueue(
+						encoder.encode(JSON.stringify(validChunk) + '\n' + cloudflareHtml + '\n'),
+					);
+					controller.close();
+				},
+			});
+
+			const mockResponse = {
+				ok: true,
+				status: 200,
+				body: stream,
+				headers: new Headers(),
+			} as Response;
+
+			vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse);
+
+			const onChunk = vi.fn();
+			const onBeginMessage = vi.fn();
+			const onEndMessage = vi.fn();
+
+			await sendMessageStreaming('Test message', [], 'test-session-id', mockOptions, {
+				onChunk,
+				onBeginMessage,
+				onEndMessage,
+			});
+
+			// The valid chunk should come through, the HTML should be silently dropped
+			expect(onChunk).toHaveBeenCalledTimes(1);
+			expect(onChunk).toHaveBeenCalledWith('Hello', 'node-1', 0);
+		});
+
+		it('should discard HTML lines starting with <html tag', async () => {
+			const htmlLine = '<html lang="en"><body>Error</body></html>';
+			const validChunk = {
+				type: 'end',
+				metadata: {
+					nodeId: 'node-1',
+					nodeName: 'Test Node',
+					timestamp: Date.now(),
+					runIndex: 0,
+					itemIndex: 0,
+				},
+			};
+
+			const encoder = new TextEncoder();
+			const stream = new ReadableStream({
+				start(controller) {
+					controller.enqueue(encoder.encode(htmlLine + '\n' + JSON.stringify(validChunk) + '\n'));
+					controller.close();
+				},
+			});
+
+			const mockResponse = {
+				ok: true,
+				status: 200,
+				body: stream,
+				headers: new Headers(),
+			} as Response;
+
+			vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse);
+
+			const onChunk = vi.fn();
+			const onBeginMessage = vi.fn();
+			const onEndMessage = vi.fn();
+
+			await sendMessageStreaming('Test message', [], 'test-session-id', mockOptions, {
+				onChunk,
+				onBeginMessage,
+				onEndMessage,
+			});
+
+			// HTML line should be dropped, valid end chunk should still process
+			expect(onChunk).not.toHaveBeenCalled();
+			expect(onEndMessage).toHaveBeenCalledTimes(1);
+		});
+
+		it('should skip empty keepalive newlines without producing chunks', async () => {
+			const validChunk = {
+				type: 'item',
+				content: 'data',
+				metadata: {
+					nodeId: 'node-1',
+					nodeName: 'Test Node',
+					timestamp: Date.now(),
+					runIndex: 0,
+					itemIndex: 0,
+				},
+			};
+
+			const encoder = new TextEncoder();
+			// Simulate heartbeat newlines interleaved with real data
+			const stream = new ReadableStream({
+				start(controller) {
+					controller.enqueue(encoder.encode('\n\n' + JSON.stringify(validChunk) + '\n\n\n'));
+					controller.close();
+				},
+			});
+
+			const mockResponse = {
+				ok: true,
+				status: 200,
+				body: stream,
+				headers: new Headers(),
+			} as Response;
+
+			vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse);
+
+			const onChunk = vi.fn();
+			const onBeginMessage = vi.fn();
+			const onEndMessage = vi.fn();
+
+			await sendMessageStreaming('Test message', [], 'test-session-id', mockOptions, {
+				onChunk,
+				onBeginMessage,
+				onEndMessage,
+			});
+
+			// Only the real chunk should come through
+			expect(onChunk).toHaveBeenCalledTimes(1);
+			expect(onChunk).toHaveBeenCalledWith('data', 'node-1', 0);
+		});
+	});
+
 	describe('async handlers', () => {
 		it('should support async onEndMessage handler', async () => {
 			const onEndMessage = vi.fn().mockImplementation(async () => {

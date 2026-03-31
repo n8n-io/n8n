@@ -286,6 +286,22 @@ export class WorkflowRunner {
 			});
 
 			if (data.streamingEnabled) {
+				// Send periodic keepalive newlines to prevent reverse proxies
+				// (e.g. Cloudflare ~100s idle timeout) from killing the connection
+				// during long tool calls that produce no chunks.
+				// Cleared when the execution finishes (success, error, or timeout).
+				const STREAMING_HEARTBEAT_INTERVAL_MS = 30_000;
+				const heartbeatInterval = setInterval(() => {
+					if (!data.httpResponse?.writableEnded) {
+						data.httpResponse?.write('\n');
+						data.httpResponse?.flush?.();
+					}
+				}, STREAMING_HEARTBEAT_INTERVAL_MS);
+
+				lifecycleHooks.addHandler('workflowExecuteAfter', () => {
+					clearInterval(heartbeatInterval);
+				});
+
 				lifecycleHooks.addHandler('sendChunk', (chunk) => {
 					data.httpResponse?.write(JSON.stringify(chunk) + '\n');
 					data.httpResponse?.flush?.();

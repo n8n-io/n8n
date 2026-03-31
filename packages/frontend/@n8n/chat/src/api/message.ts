@@ -81,6 +81,10 @@ function createLineParser(): TransformStream<Uint8Array, StructuredChunk> {
 						const parsed = JSON.parse(line) as StructuredChunk;
 						controller.enqueue(parsed);
 					} catch (error) {
+						// Skip lines that look like injected proxy error pages (e.g. Cloudflare 524)
+						if (line.includes('<!DOCTYPE') || line.includes('<html')) {
+							continue;
+						}
 						// Handle non-JSON lines as plain text
 						controller.enqueue({
 							type: 'item',
@@ -98,6 +102,9 @@ function createLineParser(): TransformStream<Uint8Array, StructuredChunk> {
 					const parsed = JSON.parse(buffer) as StructuredChunk;
 					controller.enqueue(parsed);
 				} catch (error) {
+					if (buffer.includes('<!DOCTYPE') || buffer.includes('<html')) {
+						return;
+					}
 					controller.enqueue({
 						type: 'item',
 						content: buffer,
