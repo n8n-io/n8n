@@ -49,4 +49,6 @@ export class MemoryInstanceStorage implements InstanceStorage {
 	async cleanupStaleMembers(): Promise<number> {
 		return 0;
 	}
+
+	async destroy(): Promise<void> {}
 }

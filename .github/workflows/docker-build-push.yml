@@ -275,7 +275,6 @@ jobs:
           curl -v "${{ env.SUCCESS_URL }}" || echo "Failed to call success URL"
         shell: bash
 
-  # SLSA L3 Provenance - Must use version tags (@vX.Y.Z), NOT SHAs
   provenance-n8n:
     name: SLSA Provenance (n8n)
     needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
@@ -286,7 +285,8 @@ jobs:
       id-token: write
       packages: write
       actions: read
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@f7dd8c54c2067bafc12ca7a55595d5ee9b75204a
+    # SLSA L3 Provenance - Must use version tags (@vX.Y.Z), NOT SHAs
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.1.0
     with:
       image: ${{ needs.create_multi_arch_manifest.outputs.n8n_image }}
       digest: ${{ needs.create_multi_arch_manifest.outputs.n8n_digest }}
@@ -304,7 +304,8 @@ jobs:
       id-token: write
       packages: write
       actions: read
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@f7dd8c54c2067bafc12ca7a55595d5ee9b75204a
+    # SLSA L3 Provenance - Must use version tags (@vX.Y.Z), NOT SHAs
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.1.0
     with:
       image: ${{ needs.create_multi_arch_manifest.outputs.runners_image }}
       digest: ${{ needs.create_multi_arch_manifest.outputs.runners_digest }}
@@ -322,7 +323,8 @@ jobs:
       id-token: write
       packages: write
       actions: read
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@f7dd8c54c2067bafc12ca7a55595d5ee9b75204a
+    # SLSA L3 Provenance - Must use version tags (@vX.Y.Z), NOT SHAs
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.1.0
     with:
       image: ${{ needs.create_multi_arch_manifest.outputs.runners_distroless_image }}
       digest: ${{ needs.create_multi_arch_manifest.outputs.runners_distroless_digest }}
