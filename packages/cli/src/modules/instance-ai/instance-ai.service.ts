@@ -154,8 +154,10 @@ export class InstanceAiService {
 	/** Lazily-initialized AI assistant client for sandbox proxy integration. */
 	private aiAssistantClient: AiAssistantClient | undefined;
 
+	private readonly logger: Logger;
+
 	constructor(
-		private readonly logger: Logger,
+		logger: Logger,
 		private readonly globalConfig: GlobalConfig,
 		private readonly adapterService: InstanceAiAdapterService,
 		private readonly eventBus: InProcessEventBus,
@@ -171,6 +173,7 @@ export class InstanceAiService {
 		private readonly dbSnapshotStorage: DbSnapshotStorage,
 		private readonly dbIterationLogStorage: DbIterationLogStorage,
 	) {
+		this.logger = logger.scoped('instance-ai');
 		this.instanceAiConfig = globalConfig.instanceAi;
 		this.defaultTimeZone = globalConfig.generic.timezone;
 		const editorBaseUrl = globalConfig.editorBaseUrl || `http://localhost:${globalConfig.port}`;
@@ -325,7 +328,7 @@ export class InstanceAiService {
 		if (!config.enabled) return undefined;
 
 		if (config.provider === 'daytona') {
-			return new BuilderSandboxFactory(config, new SnapshotManager(config.image));
+			return new BuilderSandboxFactory(config, new SnapshotManager(config.image, this.logger));
 		}
 
 		return new BuilderSandboxFactory(config);
@@ -470,7 +473,7 @@ export class InstanceAiService {
 			}
 		} catch (error) {
 			this.creditedThreads.delete(threadId); // Allow retry on failure
-			this.logger.warn('[credits] Failed to count Instance AI credits', {
+			this.logger.warn('Failed to count Instance AI credits', {
 				error: getErrorMessage(error),
 				threadId,
 				runId,
@@ -1158,6 +1161,7 @@ export class InstanceAiService {
 			storage: this.compositeStore,
 			subAgentMaxSteps: this.instanceAiConfig.subAgentMaxSteps,
 			eventBus: this.eventBus,
+			logger: this.logger,
 			domainTools,
 			abortSignal,
 			taskStorage,
@@ -1628,6 +1632,7 @@ export class InstanceAiService {
 								agentId: ORCHESTRATOR_AGENT_ID,
 								signal,
 								eventBus: this.eventBus,
+								logger: this.logger,
 							},
 						);
 					})
@@ -1650,6 +1655,7 @@ export class InstanceAiService {
 							agentId: ORCHESTRATOR_AGENT_ID,
 							signal,
 							eventBus: this.eventBus,
+							logger: this.logger,
 						},
 					);
 			mastraRunId = result.mastraRunId;
@@ -1849,6 +1855,7 @@ export class InstanceAiService {
 								agentId: ORCHESTRATOR_AGENT_ID,
 								signal: opts.signal,
 								eventBus: this.eventBus,
+								logger: this.logger,
 								mastraRunId: opts.mastraRunId,
 							},
 						);
@@ -1867,6 +1874,7 @@ export class InstanceAiService {
 							agentId: ORCHESTRATOR_AGENT_ID,
 							signal: opts.signal,
 							eventBus: this.eventBus,
+							logger: this.logger,
 							mastraRunId: opts.mastraRunId,
 						},
 					);
