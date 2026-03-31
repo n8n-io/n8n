@@ -121,10 +121,10 @@ describe('Test getResolvables', () => {
 	it('should return empty array when there are no resolvables', () => {
 		expect(getResolvables('Plain String, no resolvables here.')).toEqual([]);
 	});
-	it('should properly handle resovables in SQL query', () => {
-		expect(getResolvables('SELECT * FROM {{ $json.db }}.{{ $json.table }};')).toEqual([
-			'{{ $json.db }}',
-			'{{ $json.table }}',
+	it('should properly handle resolvables in a string with multiple expressions', () => {
+		expect(getResolvables('Hello {{ $json.firstName }} {{ $json.lastName }}!')).toEqual([
+			'{{ $json.firstName }}',
+			'{{ $json.lastName }}',
 		]);
 	});
 	it('should properly handle resovables in HTML string', () => {
@@ -334,7 +334,7 @@ describe('addExecutionHints', () => {
 				return 'single';
 			}
 			if (parameterName === 'query') {
-				return 'INSERT INTO my_test_table VALUES (`{{ $json.name }}`)';
+				return 'INSERT INTO my_test_table VALUES ($1)';
 			}
 		},
 		addExecutionHints: jest.fn(),
