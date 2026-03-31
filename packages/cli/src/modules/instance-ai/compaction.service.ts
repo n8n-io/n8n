@@ -3,6 +3,7 @@ import type { MastraDBMessage } from '@mastra/core/memory';
 import type { Memory } from '@mastra/memory';
 import type { ChatHubLLMProvider } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { generateCompactionSummary, patchThread } from '@n8n/instance-ai';
 import type { ModelConfig } from '@n8n/instance-ai';
@@ -90,10 +91,15 @@ interface ConversationSummaryMetadata {
  */
 @Service()
 export class InstanceAiCompactionService {
+	private readonly maxContextWindowTokensCap: number;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly memoryStorage: TypeORMMemoryStorage,
-	) {}
+		globalConfig: GlobalConfig,
+	) {
+		this.maxContextWindowTokensCap = globalConfig.instanceAi.maxContextWindowTokens;
+	}
 
 	/**
 	 * If compaction is needed, generate a summary and return a formatted
@@ -128,7 +134,11 @@ export class InstanceAiCompactionService {
 				FIXED_CONTEXT_OVERHEAD_TOKENS +
 				allMessages.reduce((sum, m) => sum + estimateTokens(this.extractRawText(m)), 0);
 
-			const contextWindow = getContextWindowForModel(modelId);
+			const modelContextWindow = getContextWindowForModel(modelId);
+			const contextWindow =
+				this.maxContextWindowTokensCap > 0
+					? Math.min(modelContextWindow, this.maxContextWindowTokensCap)
+					: modelContextWindow;
 			const threshold = contextWindow * compactionThreshold;
 
 			// Only compact when context usage exceeds the threshold
