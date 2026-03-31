@@ -428,7 +428,6 @@ export class N8nSandboxClient {
 			throw new Error('Sandbox exec response body is not readable');
 		}
 
-		const reader = response.body.getReader();
 		const decoder = new TextDecoder();
 		let pendingLine = '';
 		let stdout = '';
@@ -468,28 +467,20 @@ export class N8nSandboxClient {
 			};
 		};
 
-		try {
-			while (true) {
-				const chunk = await this.readExecChunk(reader);
-				if (chunk === null) {
-					break;
-				}
-
-				pendingLine += decoder.decode(chunk, { stream: true });
-				let newlineIndex = pendingLine.indexOf('\n');
-				while (newlineIndex !== -1) {
-					processLine(pendingLine.slice(0, newlineIndex));
-					pendingLine = pendingLine.slice(newlineIndex + 1);
-					newlineIndex = pendingLine.indexOf('\n');
-				}
+		// for-await-of automatically acquires and releases the reader
+		for await (const chunk of response.body) {
+			pendingLine += decoder.decode(chunk, { stream: true });
+			let newlineIndex = pendingLine.indexOf('\n');
+			while (newlineIndex !== -1) {
+				processLine(pendingLine.slice(0, newlineIndex));
+				pendingLine = pendingLine.slice(newlineIndex + 1);
+				newlineIndex = pendingLine.indexOf('\n');
 			}
+		}
 
-			pendingLine += decoder.decode();
-			if (pendingLine.length > 0) {
-				processLine(pendingLine);
-			}
-		} finally {
-			reader.releaseLock();
+		pendingLine += decoder.decode();
+		if (pendingLine.length > 0) {
+			processLine(pendingLine);
 		}
 
 		const finalExitMeta = this.requireExecExitMeta(exitMeta);
@@ -502,25 +493,6 @@ export class N8nSandboxClient {
 			killed: finalExitMeta.killed,
 			success: finalExitMeta.success,
 		};
-	}
-
-	private async readExecChunk(reader: {
-		read: () => Promise<unknown>;
-	}): Promise<Uint8Array | null> {
-		const chunk = await reader.read();
-		if (!isRecord(chunk) || typeof chunk.done !== 'boolean') {
-			throw new Error('Sandbox exec stream returned an invalid chunk');
-		}
-
-		if (chunk.done) {
-			return null;
-		}
-
-		if (!(chunk.value instanceof Uint8Array)) {
-			throw new Error('Sandbox exec stream returned a non-binary chunk');
-		}
-
-		return chunk.value;
 	}
 
 	private requireExecExitMeta(exitMeta: ExecExitMeta | null): ExecExitMeta {
