@@ -2499,7 +2499,9 @@ describe('OauthService', () => {
 
 			// Verify the discovery URL used is the root-level one (no double /.well-known/)
 			const authServerDiscoveryCall = (axios.get as jest.Mock).mock.calls[2]; // after 2 protected resource calls
-			expect(authServerDiscoveryCall[0]).not.toContain('/.well-known/openid-configuration/.well-known/');
+			expect(authServerDiscoveryCall[0]).not.toContain(
+				'/.well-known/openid-configuration/.well-known/',
+			);
 			expect(authServerDiscoveryCall[0]).toBe(
 				'https://example.domain/.well-known/oauth-authorization-server',
 			);
