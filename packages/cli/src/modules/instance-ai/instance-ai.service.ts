@@ -1149,6 +1149,7 @@ export class InstanceAiService {
 			nodeDefinitionDirs: nodeDefDirs.length > 0 ? nodeDefDirs : undefined,
 			domainContext: context,
 			tracingProxyConfig,
+			memory,
 		};
 
 		return {

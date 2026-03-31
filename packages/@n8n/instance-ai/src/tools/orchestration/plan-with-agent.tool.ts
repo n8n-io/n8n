@@ -1,15 +1,14 @@
 /**
  * Plan-with-Agent Orchestration Tool
  *
- * Spawns an **inline** planner sub-agent that analyses the user's request,
+ * Spawns an **inline** planner sub-agent that reads the conversation history,
  * discovers available nodes/credentials/tables, and produces a typed
- * solution blueprint. The blueprint is returned directly to the orchestrator
- * as the tool result — the orchestrator then translates it into a `plan()`
- * call.
+ * solution blueprint. The blueprint is deterministically translated to
+ * plan() tasks with inferred dependencies.
  *
- * Runs synchronously (like the inline `delegate` tool) — the orchestrator
- * waits while the planner streams its reasoning. The user sees real-time
- * progress via SSE events from `consumeStreamWithHitl`.
+ * The planner receives the last 5 messages from the thread as primary context,
+ * plus an optional guidance string from the orchestrator for ambiguous cases.
+ * It can also ask the user questions directly via the ask-user tool.
  */
 
 import { Agent } from '@mastra/core/agent';
@@ -36,7 +35,10 @@ import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
 import { getTraceParentRun, withTraceParentContext } from '../../tracing/langsmith-tracing';
 import type { OrchestrationContext } from '../../types';
 
-const PLANNER_MAX_STEPS = 10;
+const PLANNER_MAX_STEPS = 15;
+
+/** Number of recent thread messages to include as planner context. */
+const MESSAGE_HISTORY_COUNT = 5;
 
 /** Read-only discovery tools the planner gets from domainTools. */
 const PLANNER_DOMAIN_TOOL_NAMES = [
@@ -47,10 +49,92 @@ const PLANNER_DOMAIN_TOOL_NAMES = [
 	'list-data-tables',
 	'get-data-table-schema',
 	'list-workflows',
+	'ask-user',
 ];
 
 /** Research tools added when available. */
 const PLANNER_RESEARCH_TOOL_NAMES = ['web-search', 'fetch-url'];
+
+// ---------------------------------------------------------------------------
+// Message history retrieval
+// ---------------------------------------------------------------------------
+
+interface FormattedMessage {
+	role: string;
+	content: string;
+}
+
+async function getRecentMessages(
+	context: OrchestrationContext,
+	count: number,
+): Promise<FormattedMessage[]> {
+	if (!context.memory) return [];
+
+	try {
+		const result = await context.memory.recall({
+			threadId: context.threadId,
+			perPage: count,
+		});
+
+		return result.messages
+			.filter((m) => {
+				const role = m.role as string;
+				const content =
+					typeof m.content === 'string'
+						? m.content
+						: Array.isArray(m.content)
+							? m.content
+									.filter(
+										(c): c is { type: 'text'; text: string } =>
+											typeof c === 'object' && c !== null && 'text' in c,
+									)
+									.map((c) => c.text)
+									.join('\n')
+							: '';
+				// Skip empty messages and internal follow-ups
+				return (role === 'user' || role === 'assistant') && content.length > 0;
+			})
+			.map((m) => ({
+				role: m.role as string,
+				content:
+					typeof m.content === 'string'
+						? m.content
+						: Array.isArray(m.content)
+							? m.content
+									.filter(
+										(c): c is { type: 'text'; text: string } =>
+											typeof c === 'object' && c !== null && 'text' in c,
+									)
+									.map((c) => c.text)
+									.join('\n')
+							: JSON.stringify(m.content),
+			}));
+	} catch {
+		return [];
+	}
+}
+
+function formatMessagesForBriefing(messages: FormattedMessage[], guidance?: string): string {
+	const parts: string[] = [];
+
+	if (messages.length > 0) {
+		parts.push('## Recent conversation');
+		for (const m of messages) {
+			const label = m.role === 'user' ? 'User' : 'Assistant';
+			// Truncate very long messages
+			const content = m.content.length > 2000 ? m.content.slice(0, 2000) + '...' : m.content;
+			parts.push(`**${label}:** ${content}`);
+		}
+	}
+
+	if (guidance) {
+		parts.push(`\n## Orchestrator guidance\n${guidance}`);
+	}
+
+	parts.push('\nDesign the solution blueprint based on the conversation above.');
+
+	return parts.join('\n\n');
+}
 
 // ---------------------------------------------------------------------------
 // Blueprint → task array (deterministic, no LLM needed)
@@ -75,8 +159,8 @@ function formatTableSchema(dt: BlueprintDataTableItem): string {
 function blueprintToTasks(bp: PlanningBlueprint): PlannedTaskInput[] {
 	const tasks: PlannedTaskInput[] = [];
 
-	// Index tables by ID for dependency lookup
-	const tablesById = new Map(bp.dataTables.map((dt) => [dt.id, dt]));
+	// Index table IDs for dependency inference
+	const tableIds = new Set(bp.dataTables.map((dt) => dt.id));
 
 	for (const dt of bp.dataTables) {
 		const columnList = dt.columns.map((c) => `${c.name} (${c.type})`).join(', ');
@@ -94,10 +178,21 @@ function blueprintToTasks(bp: PlanningBlueprint): PlannedTaskInput[] {
 		if (wf.triggerDescription) specParts.push(`Trigger: ${wf.triggerDescription}`);
 		if (wf.integrations.length > 0) specParts.push(`Integrations: ${wf.integrations.join(', ')}`);
 
-		// Append schemas of data tables this workflow depends on
-		const depTables = wf.dependsOn
-			.map((depId) => tablesById.get(depId))
-			.filter((dt): dt is BlueprintDataTableItem => dt !== undefined);
+		// Infer missing table dependencies by checking if the workflow's
+		// purpose or integrations mention any table name. The planner should
+		// set these explicitly, but this catches omissions.
+		const explicitDeps = new Set(wf.dependsOn);
+		const inferredDeps = [...explicitDeps];
+		const wfText = `${wf.purpose} ${wf.integrations.join(' ')}`.toLowerCase();
+		for (const dt of bp.dataTables) {
+			if (!explicitDeps.has(dt.id) && wfText.includes(dt.name.toLowerCase())) {
+				inferredDeps.push(dt.id);
+			}
+		}
+
+		// Append schemas of tables this workflow depends on (explicit + inferred)
+		const depTableIds = new Set(inferredDeps.filter((id) => tableIds.has(id)));
+		const depTables = bp.dataTables.filter((dt) => depTableIds.has(dt.id));
 		if (depTables.length > 0) {
 			specParts.push('\nData table schemas:');
 			for (const dt of depTables) {
@@ -110,7 +205,7 @@ function blueprintToTasks(bp: PlanningBlueprint): PlannedTaskInput[] {
 			title: `Build '${wf.name}' workflow`,
 			kind: 'build-workflow',
 			spec: specParts.join('\n'),
-			deps: wf.dependsOn,
+			deps: inferredDeps,
 			workflowId: wf.existingWorkflowId,
 		});
 	}
@@ -144,25 +239,20 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 		id: 'plan-with-agent',
 		description:
 			'Spawn an inline planner agent to design the solution architecture ' +
-			'for a multi-step request. The planner discovers available nodes, credentials, ' +
-			'and data tables, then returns a pre-translated tasks array. ' +
-			'Use when the request requires 2 or more tasks with dependencies (e.g. data ' +
-			'table setup + multiple workflows, parallel builds). The planner streams its ' +
-			'reasoning visibly while you wait. After receiving the result, pass the tasks ' +
-			'array directly to plan() without modification.',
+			'for a multi-step request. The planner reads the recent conversation ' +
+			'history directly and can ask the user questions. It discovers available ' +
+			'nodes, credentials, and data tables, then returns a pre-translated tasks ' +
+			'array. Use when the request requires 2 or more tasks with dependencies. ' +
+			'After receiving the result, pass the tasks array directly to plan() ' +
+			'without modification.',
 		inputSchema: z.object({
-			goal: z
-				.string()
-				.describe(
-					'What the user wants to achieve, e.g. "Build a Shopify order sync ' +
-						'that writes orders to a data table and sends a daily Slack summary"',
-				),
-			conversationContext: z
+			guidance: z
 				.string()
 				.optional()
 				.describe(
-					'Brief summary of the conversation so far — what was discussed, decisions made, ' +
-						'and information gathered (credentials found, user preferences, etc.).',
+					'Optional steering note for the planner — use ONLY when the conversation ' +
+						'history alone is ambiguous about what to build. The planner reads the ' +
+						'last 5 messages directly, so do NOT rewrite the user request here.',
 				),
 		}),
 		outputSchema: z.object({
@@ -201,8 +291,14 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 				},
 			};
 
+			// ── Retrieve conversation history ─────────────────────────────
+			const messages = await getRecentMessages(context, MESSAGE_HISTORY_COUNT);
+			const briefing = formatMessagesForBriefing(messages, input.guidance);
+
 			// ── IDs & events ──────────────────────────────────────────────
 			const subAgentId = `agent-planner-${nanoid(6)}`;
+			const subtitle =
+				input.guidance ?? messages.find((m) => m.role === 'user')?.content ?? 'Planning...';
 
 			context.eventBus.publish(context.threadId, {
 				type: 'agent-spawned',
@@ -214,16 +310,10 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 					tools: Object.keys(plannerTools),
 					kind: 'planner' as const,
 					title: 'Planning',
-					subtitle: truncateLabel(input.goal),
-					goal: input.goal,
+					subtitle: truncateLabel(subtitle),
+					goal: briefing,
 				},
 			});
-
-			// ── Briefing ──────────────────────────────────────────────────
-			const conversationCtx = input.conversationContext
-				? `\n\n[CONVERSATION CONTEXT: ${input.conversationContext}]`
-				: '';
-			const briefing = `${input.goal}${conversationCtx}`;
 
 			// ── Tracing ───────────────────────────────────────────────────
 			const traceRun = await startSubAgentTrace(context, {
@@ -231,8 +321,8 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 				role: 'planner',
 				kind: 'planner',
 				inputs: {
-					goal: input.goal,
-					conversationContext: input.conversationContext,
+					guidance: input.guidance,
+					messageCount: messages.length,
 				},
 			});
 			const tracedPlannerTools = traceSubAgentTools(context, plannerTools, 'planner');
