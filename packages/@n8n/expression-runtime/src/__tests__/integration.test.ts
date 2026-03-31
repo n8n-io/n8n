@@ -339,6 +339,62 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 		expect(result).toBe(systemOffset);
 	});
 
+	it('should return an entire object (not just a leaf primitive)', () => {
+		const data = {
+			$json: {
+				user: {
+					name: 'Alice',
+					age: 30,
+					address: { city: 'Berlin', zip: '10115' },
+				},
+			},
+		};
+
+		const result = evaluator.evaluate('{{ $json.user }}', data);
+
+		expect(result).toEqual({
+			name: 'Alice',
+			age: 30,
+			address: { city: 'Berlin', zip: '10115' },
+		});
+	});
+
+	it('should return the root $json object', () => {
+		const data = {
+			$json: {
+				name: 'Alice',
+				active: true,
+				tags: ['admin', 'user'],
+			},
+		};
+
+		const result = evaluator.evaluate('{{ $json }}', data);
+
+		expect(result).toEqual({
+			name: 'Alice',
+			active: true,
+			tags: ['admin', 'user'],
+		});
+	});
+
+	it('should return an array of objects', () => {
+		const data = {
+			$json: {
+				items: [
+					{ id: 1, name: 'one' },
+					{ id: 2, name: 'two' },
+				],
+			},
+		};
+
+		const result = evaluator.evaluate('{{ $json.items }}', data);
+
+		expect(result).toEqual([
+			{ id: 1, name: 'one' },
+			{ id: 2, name: 'two' },
+		]);
+	});
+
 	it('should support Object.keys() on root proxy data', () => {
 		const data = {
 			$json: { name: 'Alice', age: 30, city: 'Berlin' },

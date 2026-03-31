@@ -37,6 +37,9 @@ export const CONDITIONAL = [
 	'={{ $json.status === "active" ? "yes" : "no" }}',
 ] as const;
 
+/** Whole-object return — expression result is an object, not a leaf primitive */
+export const OBJECT_RETURN = ['={{ $json }}', '={{ $json.items }}'] as const;
+
 /** All groups for iteration */
 export const ALL_GROUPS = {
 	'Simple Property': SIMPLE_PROPERTY,
@@ -44,4 +47,5 @@ export const ALL_GROUPS = {
 	'Extension Call': EXTENSION_CALL,
 	'Array Iteration': ARRAY_ITERATION,
 	Conditional: CONDITIONAL,
+	'Object Return': OBJECT_RETURN,
 } as const;
