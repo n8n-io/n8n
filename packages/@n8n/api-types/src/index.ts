@@ -237,3 +237,8 @@ export {
 	testSecretProviderConnectionResponseSchema,
 	reloadSecretProviderConnectionResponseSchema,
 } from './schemas/secrets-provider.schema';
+
+export {
+	communityPackageResponseSchema,
+	type CommunityPackageResponse,
+} from './schemas/community-package.schema';
