@@ -502,55 +502,57 @@ export class ProvisioningService {
 		userId: string,
 		projectRoleMap: Map<string, string>,
 	): Promise<void> {
-		if (projectRoleMap.size === 0) return;
-
-		const projectIds = [...projectRoleMap.keys()];
-		const roleSlugs = [...new Set(projectRoleMap.values())];
-
-		const [existingProjects, existingRoles] = await Promise.all([
-			this.projectRepository.find({
-				where: { id: In(projectIds), type: Not('personal') },
-				select: ['id'],
-			}),
-			this.roleRepository.find({
-				where: { slug: In(roleSlugs), roleType: 'project' },
-				select: ['displayName', 'slug'],
-			}),
-		]);
-
-		const existingProjectIds = new Set(existingProjects.map((p) => p.id));
-		const validMappings: Array<{ projectId: string; roleSlug: string }> = [];
-
-		for (const [projectId, roleSlug] of projectRoleMap.entries()) {
-			if (!existingProjectIds.has(projectId)) {
-				this.logger.warn(
-					`Expression mapping: skipping project ${projectId}, not found or is a personal project`,
-					{ userId, projectId, roleSlug },
-				);
-				continue;
-			}
-			const role = existingRoles.find((r) => r.slug === roleSlug);
-			if (!role) {
-				this.logger.warn(
-					`Expression mapping: skipping role "${roleSlug}", not found or not a project role`,
-					{ userId, projectId, roleSlug },
-				);
-				continue;
-			}
-			validMappings.push({ projectId, roleSlug: role.slug });
-		}
-
-		if (validMappings.length === 0) return;
-
+		// Fetch existing access first so revocation always runs, even when projectRoleMap is empty
 		const currentlyAccessibleProjects = await this.projectRepository.find({
 			where: { type: Not('personal'), projectRelations: { userId } },
 			relations: ['projectRelations'],
 		});
 
+		const validMappings: Array<{ projectId: string; roleSlug: string }> = [];
+
+		if (projectRoleMap.size > 0) {
+			const projectIds = [...projectRoleMap.keys()];
+			const roleSlugs = [...new Set(projectRoleMap.values())];
+
+			const [existingProjects, existingRoles] = await Promise.all([
+				this.projectRepository.find({
+					where: { id: In(projectIds), type: Not('personal') },
+					select: ['id'],
+				}),
+				this.roleRepository.find({
+					where: { slug: In(roleSlugs), roleType: 'project' },
+					select: ['displayName', 'slug'],
+				}),
+			]);
+
+			const existingProjectIds = new Set(existingProjects.map((p) => p.id));
+
+			for (const [projectId, roleSlug] of projectRoleMap.entries()) {
+				if (!existingProjectIds.has(projectId)) {
+					this.logger.warn(
+						`Expression mapping: skipping project ${projectId}, not found or is a personal project`,
+						{ userId, projectId, roleSlug },
+					);
+					continue;
+				}
+				const role = existingRoles.find((r) => r.slug === roleSlug);
+				if (!role) {
+					this.logger.warn(
+						`Expression mapping: skipping role "${roleSlug}", not found or not a project role`,
+						{ userId, projectId, roleSlug },
+					);
+					continue;
+				}
+				validMappings.push({ projectId, roleSlug: role.slug });
+			}
+		}
+
 		const validProjectIds = new Set(validMappings.map((m) => m.projectId));
 		const projectsToRemoveAccessFrom = currentlyAccessibleProjects.filter(
 			(p) => !validProjectIds.has(p.id),
 		);
+
+		if (projectsToRemoveAccessFrom.length === 0 && validMappings.length === 0) return;
 
 		await this.projectRepository.manager.transaction(async (tx) => {
 			for (const project of projectsToRemoveAccessFrom) {

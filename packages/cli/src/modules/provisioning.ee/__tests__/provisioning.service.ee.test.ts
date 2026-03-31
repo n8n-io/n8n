@@ -551,6 +551,59 @@ describe('ProvisioningService', () => {
 		});
 	});
 
+	describe('applyExpressionMappedProjectRoles', () => {
+		it('should revoke all existing project access when projectRoleMap is empty', async () => {
+			const userId = 'user-id-123';
+			const existingProject = mock<Project>({ id: 'project-1' });
+			projectRepository.find.mockResolvedValueOnce([existingProject]);
+
+			await provisioningService['applyExpressionMappedProjectRoles'](userId, new Map());
+
+			expect(entityManager.delete).toHaveBeenCalledWith(ProjectRelation, {
+				projectId: 'project-1',
+				userId,
+			});
+			expect(projectService.addUser).not.toHaveBeenCalled();
+			expect(eventService.emit).toHaveBeenCalledWith('sso-user-project-access-updated', {
+				projectsAdded: 0,
+				projectsRemoved: 1,
+				userId,
+			});
+		});
+
+		it('should revoke existing access when all mapped projects are invalid', async () => {
+			const userId = 'user-id-123';
+			const existingProject = mock<Project>({ id: 'project-existing' });
+			// First find: currentlyAccessibleProjects
+			projectRepository.find.mockResolvedValueOnce([existingProject]);
+			// Second find: existingProjects lookup (none found — all invalid)
+			projectRepository.find.mockResolvedValueOnce([]);
+			roleRepository.find.mockResolvedValue([]);
+
+			await provisioningService['applyExpressionMappedProjectRoles'](
+				userId,
+				new Map([['nonExistentProject', 'project:viewer']]),
+			);
+
+			expect(entityManager.delete).toHaveBeenCalledWith(ProjectRelation, {
+				projectId: 'project-existing',
+				userId,
+			});
+			expect(projectService.addUser).not.toHaveBeenCalled();
+		});
+
+		it('should do nothing when projectRoleMap is empty and user has no existing access', async () => {
+			const userId = 'user-id-123';
+			projectRepository.find.mockResolvedValueOnce([]);
+
+			await provisioningService['applyExpressionMappedProjectRoles'](userId, new Map());
+
+			expect(entityManager.delete).not.toHaveBeenCalled();
+			expect(projectService.addUser).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('handleReloadSsoProvisioningConfiguration', () => {
 		it('should reload the provisioning config', async () => {
 			const originStateLoadConfig = provisioningService.loadConfig;
