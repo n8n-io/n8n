@@ -520,7 +520,6 @@ describe('ExecuteMessage', () => {
 		it('hides old unpin section and execute button when post-execution follow-ups show', () => {
 			Object.defineProperty(builderStore, 'hasDeferredPinData', { get: () => false });
 			Object.defineProperty(builderStore, 'pinDataApplied', { get: () => true });
-			Object.defineProperty(builderStore, 'isCodeBuilder', { get: () => true });
 			Object.defineProperty(builderStore, 'hasHadSuccessfulExecution', { get: () => true });
 			Object.defineProperty(builderStore, 'hasTodosHiddenByPinnedData', { get: () => true });
 

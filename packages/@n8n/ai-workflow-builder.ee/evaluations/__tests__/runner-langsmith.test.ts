@@ -173,13 +173,13 @@ describe('Runner - LangSmith Mode', () => {
 			expect(isLangsmithTargetOutput(result)).toBe(true);
 			if (!isLangsmithTargetOutput(result)) throw new Error('Expected LangSmith target output');
 
-			// Collectors are passed explicitly from the traceable wrapper to capture token usage and subgraph metrics
+			// Collectors are passed explicitly from the traceable wrapper to capture token usage and generation metrics
 			expect(generateWorkflow).toHaveBeenCalledWith(
 				'Create a workflow',
 				undefined,
 				expect.objectContaining({
 					tokenUsage: expect.any(Function),
-					subgraphMetrics: expect.any(Function),
+					generationMetrics: expect.any(Function),
 				}),
 			);
 			expect(evaluator.evaluate).toHaveBeenCalledWith(

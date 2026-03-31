@@ -1,6 +1,4 @@
 import { ChatAnthropic } from '@langchain/anthropic';
-import { AIMessage, ToolMessage } from '@langchain/core/messages';
-import type { BaseMessage } from '@langchain/core/messages';
 import { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
@@ -14,7 +12,6 @@ import { AssistantHandler } from '@/assistant';
 import { LLMServiceError } from '@/errors';
 import { anthropicClaudeSonnet45 } from '@/llm-config';
 import { SessionManagerService } from '@/session-manager.service';
-import { ResourceLocatorCallbackFactory } from '@/types/callbacks';
 import type { HITLInterruptValue } from '@/types/planning';
 import { ISessionStorage } from '@/types/session-storage';
 import {
@@ -39,12 +36,10 @@ export class AiWorkflowBuilderService {
 		private readonly client?: AiAssistantClient,
 		private readonly logger?: Logger,
 		private readonly instanceId?: string,
-		private readonly instanceUrl?: string,
 		private readonly n8nVersion?: string,
 		private readonly onCreditsUpdated?: OnCreditsUpdated,
 		private readonly onTelemetryEvent?: OnTelemetryEvent,
 		private readonly nodeDefinitionDirs?: string[],
-		private readonly resourceLocatorCallbackFactory?: ResourceLocatorCallbackFactory,
 	) {
 		this.nodeTypes = this.filterNodeTypes(parsedNodeTypes);
 		this.sessionManager = new SessionManagerService(this.nodeTypes, sessionStorage, logger);
@@ -192,9 +187,6 @@ export class AiWorkflowBuilderService {
 			userMessageId,
 		);
 
-		// Create resource locator callback scoped to this user if factory is provided
-		const resourceLocatorCallback = this.resourceLocatorCallbackFactory?.(user.id);
-
 		const assistantHandler = this.client
 			? new AssistantHandler(this.client, this.logger)
 			: undefined;
@@ -203,9 +195,6 @@ export class AiWorkflowBuilderService {
 			parsedNodeTypes: this.nodeTypes,
 			// Use the same model for all stages
 			stageLLMs: {
-				supervisor: anthropicClaude,
-				responder: anthropicClaude,
-				discovery: anthropicClaude,
 				builder: anthropicClaude,
 				parameterUpdater: anthropicClaude,
 				planner: anthropicClaude,
@@ -215,19 +204,15 @@ export class AiWorkflowBuilderService {
 			tracer: tracingClient
 				? new LangChainTracer({
 						client: tracingClient,
-						projectName: featureFlags?.codeBuilder
-							? 'code-workflow-builder'
-							: 'n8n-workflow-builder',
+						projectName: 'n8n-workflow-builder',
 					})
 				: undefined,
-			instanceUrl: this.instanceUrl,
 			runMetadata: {
 				n8nVersion: this.n8nVersion,
 				featureFlags: featureFlags ?? {},
 			},
 			onGenerationSuccess: async () => await this.onGenerationSuccess(user, authHeaders),
 			nodeDefinitionDirs: this.nodeDefinitionDirs,
-			resourceLocatorCallback,
 			onTelemetryEvent: this.onTelemetryEvent,
 			assistantHandler,
 		});
@@ -262,13 +247,8 @@ export class AiWorkflowBuilderService {
 		const { agent } = await this.getAgent(user, payload.id, payload.featureFlags);
 		const userId = user?.id?.toString();
 		const workflowId = payload.workflowContext?.currentWorkflow?.id;
-		const isCodeBuilder = payload.featureFlags?.codeBuilder ?? false;
 
 		const threadId = SessionManagerService.generateThreadId(workflowId, userId);
-
-		// Load historical messages from persistent storage to include in initial state.
-		// Degrades gracefully if storage is temporarily unavailable.
-		const historicalMessages = await this.loadSessionMessagesSafe(threadId);
 
 		const pendingHitl = payload.resumeData
 			? this.sessionManager.getAndClearPendingHitl(threadId)
@@ -283,13 +263,7 @@ export class AiWorkflowBuilderService {
 		const resumeInterrupt = pendingHitl?.value;
 		const agentPayload = resumeInterrupt ? { ...payload, resumeInterrupt } : payload;
 
-		for await (const output of agent.chat(
-			agentPayload,
-			userId,
-			abortSignal,
-			undefined,
-			historicalMessages,
-		)) {
+		for await (const output of agent.chat(agentPayload, userId, abortSignal)) {
 			const streamHitl = this.extractHitlFromStreamOutput(output);
 			if (streamHitl) {
 				this.sessionManager.setPendingHitl(threadId, streamHitl, payload.id);
@@ -300,19 +274,12 @@ export class AiWorkflowBuilderService {
 
 		// Save session to persistent storage after chat completes.
 		// Non-critical: if storage is unavailable, the in-memory checkpointer still has the state.
-		await this.saveSessionSafe(agent, workflowId, userId, threadId);
+		await this.saveSessionSafe(threadId);
 
 		// Track telemetry after stream completes (onGenerationSuccess is called by the agent)
 		if (this.onTelemetryEvent && userId) {
 			try {
-				await this.trackBuilderReplyTelemetry(
-					agent,
-					workflowId,
-					userId,
-					payload.id,
-					threadId,
-					isCodeBuilder,
-				);
+				this.trackBuilderReplyTelemetry(workflowId, userId, payload.id, threadId);
 			} catch (error) {
 				this.logger?.error('Failed to track builder reply telemetry', { error });
 			}
@@ -356,70 +323,28 @@ export class AiWorkflowBuilderService {
 		}
 	}
 
-	private extractLastAiMessageContent(messages: BaseMessage[]): string {
-		const lastAiMessage = messages.findLast(
-			(m: BaseMessage): m is AIMessage => m instanceof AIMessage,
-		);
-		return typeof lastAiMessage?.content === 'string'
-			? lastAiMessage.content
-			: JSON.stringify(lastAiMessage?.content ?? '');
-	}
-
-	private extractUniqueToolNames(messages: BaseMessage[]): string[] {
-		const toolMessages = messages.filter(
-			(m: BaseMessage): m is ToolMessage => m instanceof ToolMessage,
-		);
-		return [
-			...new Set(
-				toolMessages
-					.map((m: ToolMessage) => m.name)
-					.filter((name: string | undefined): name is string => name !== undefined),
-			),
-		];
-	}
-
-	private async trackBuilderReplyTelemetry(
-		agent: WorkflowBuilderAgent,
+	private trackBuilderReplyTelemetry(
 		workflowId: string | undefined,
 		userId: string,
 		userMessageId: string,
 		threadId: string,
-		isCodeBuilder: boolean,
-	): Promise<void> {
+	): void {
 		if (!this.onTelemetryEvent) return;
-
-		const state = await agent.getState(workflowId, userId);
-		const messages = state?.values?.messages ?? [];
-
-		// Count web_fetch tool calls
-		const webFetchToolNames = messages.filter(
-			(m: BaseMessage): m is ToolMessage => m instanceof ToolMessage && m.name === 'web_fetch',
-		);
 
 		const properties: ITelemetryTrackProperties = {
 			user_id: userId,
 			instance_id: this.instanceId,
 			workflow_id: workflowId,
 			sequence_id: threadId,
-			message_ai: this.extractLastAiMessageContent(messages),
-			tools_called: this.extractUniqueToolNames(messages),
-			techniques_categories: state?.values?.techniqueCategories,
-			validations: state?.values?.validationHistory,
-			...((state?.values?.templateIds?.length ?? 0) > 0 && {
-				templates_selected: state.values.templateIds,
-			}),
 			user_message_id: userMessageId,
-			code_builder: isCodeBuilder,
-			web_fetch_count: webFetchToolNames.length,
 		};
 
 		this.onTelemetryEvent('Builder replied to user message', properties);
 	}
 
-	async getSessions(workflowId: string | undefined, user?: IUser, codeBuilder?: boolean) {
+	async getSessions(workflowId: string | undefined, user?: IUser) {
 		const userId = user?.id?.toString();
-		const agentType = codeBuilder ? 'code-builder' : undefined;
-		return await this.sessionManager.getSessions(workflowId, userId, agentType);
+		return await this.sessionManager.getSessions(workflowId, userId);
 	}
 
 	async getBuilderInstanceCredits(
@@ -445,48 +370,23 @@ export class AiWorkflowBuilderService {
 		user: IUser,
 		messageId: string,
 		versionCardId?: string,
-		codeBuilder?: boolean,
 	): Promise<boolean> {
-		const agentType = codeBuilder ? 'code-builder' : undefined;
 		return await this.sessionManager.truncateMessagesAfter(
 			workflowId,
 			user.id,
 			messageId,
-			agentType,
+			undefined,
 			versionCardId,
 		);
-	}
-
-	/**
-	 * Load session messages, degrading gracefully if storage is unavailable.
-	 * Chat still works via the in-memory checkpointer, just without cross-restart persistence.
-	 */
-	private async loadSessionMessagesSafe(threadId: string) {
-		try {
-			return await this.sessionManager.loadSessionMessages(threadId);
-		} catch (error) {
-			this.logger?.error(
-				'Failed to load session messages from storage, continuing without history',
-				{ threadId, error },
-			);
-			return [];
-		}
 	}
 
 	/**
 	 * Save session to persistent storage, logging errors without propagating.
 	 * Non-critical: the in-memory checkpointer still has the state.
 	 */
-	private async saveSessionSafe(
-		agent: WorkflowBuilderAgent,
-		workflowId: string | undefined,
-		userId: string | undefined,
-		threadId: string,
-	) {
+	private async saveSessionSafe(threadId: string) {
 		try {
-			const state = await agent.getState(workflowId, userId);
-			const previousSummary = state?.values?.previousSummary;
-			await this.sessionManager.saveSessionFromCheckpointer(threadId, previousSummary);
+			await this.sessionManager.saveSessionFromCheckpointer(threadId);
 		} catch (error) {
 			this.logger?.error('Failed to save session to persistent storage', { threadId, error });
 		}

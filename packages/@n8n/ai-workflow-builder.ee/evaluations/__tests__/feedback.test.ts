@@ -51,12 +51,6 @@ describe('langsmithMetricKey()', () => {
 			score: 1.5,
 			kind: 'metric',
 		};
-		const responderLatency: Feedback = {
-			evaluator: 'metrics',
-			metric: 'responder_latency_s',
-			score: 0.2,
-			kind: 'metric',
-		};
 		const nodeCount: Feedback = {
 			evaluator: 'metrics',
 			metric: 'node_count',
@@ -66,7 +60,6 @@ describe('langsmithMetricKey()', () => {
 
 		expect(langsmithMetricKey(discoveryLatency)).toBe('metrics.discovery_latency_s');
 		expect(langsmithMetricKey(builderLatency)).toBe('metrics.builder_latency_s');
-		expect(langsmithMetricKey(responderLatency)).toBe('metrics.responder_latency_s');
 		expect(langsmithMetricKey(nodeCount)).toBe('metrics.node_count');
 	});
 

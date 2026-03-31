@@ -213,11 +213,11 @@ describe('writeResultsCsv', () => {
 		expect(content).toBe('');
 	});
 
-	it('includes subgraph metrics columns (node_count, discovery_latency_ms, builder_latency_ms)', () => {
+	it('includes node_count column in header', () => {
 		const results: ExampleResult[] = [
 			{
 				index: 1,
-				prompt: 'Test workflow with subgraph metrics',
+				prompt: 'Test workflow with nodes',
 				status: 'pass',
 				score: 0.9,
 				feedback: [
@@ -233,104 +233,32 @@ describe('writeResultsCsv', () => {
 				generationDurationMs: 3000,
 				generationInputTokens: 1000,
 				generationOutputTokens: 500,
-				subgraphMetrics: {
-					nodeCount: 8,
-					discoveryDurationMs: 450,
-					builderDurationMs: 1200,
+				workflow: {
+					name: 'Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'Start',
+							type: 'n8n-nodes-base.start',
+							position: [0, 0],
+							typeVersion: 1,
+							parameters: {},
+						},
+					],
+					connections: {},
 				},
-			},
-			{
-				index: 2,
-				prompt: 'Test workflow without subgraph metrics',
-				status: 'pass',
-				score: 0.8,
-				feedback: [
-					{
-						evaluator: 'llm-judge',
-						metric: 'functionality',
-						score: 0.8,
-						kind: 'metric',
-						comment: '',
-					},
-				],
-				durationMs: 4000,
-				generationDurationMs: 2500,
-				generationInputTokens: 900,
-				generationOutputTokens: 450,
-				// No subgraphMetrics
 			},
 		];
 
-		const outputPath = join(tempDir, 'subgraph-metrics.csv');
+		const outputPath = join(tempDir, 'node-count.csv');
 		writeResultsCsv(results, outputPath);
 
 		const content = readFileSync(outputPath, 'utf-8');
 		const lines = content.trim().split('\n');
 
-		// Check header includes subgraph metrics columns
 		expect(lines[0]).toContain('node_count');
-		expect(lines[0]).toContain('discovery_latency_ms');
-		expect(lines[0]).toContain('builder_latency_ms');
-
-		// Check data rows (sorted by prompt alphabetically: "with" < "without")
-		// First row: with metrics (should contain the values)
-		expect(lines[1]).toContain('Test workflow with subgraph metrics');
-		expect(lines[1]).toContain('8'); // nodeCount
-		expect(lines[1]).toContain('450'); // discoveryDurationMs
-		expect(lines[1]).toContain('1200'); // builderDurationMs
-
-		// Second row: without metrics (empty values)
-		expect(lines[2]).toContain('Test workflow without subgraph metrics');
-	});
-
-	it('includes subgraph metrics in pairwise format', () => {
-		const results: ExampleResult[] = [
-			{
-				index: 1,
-				prompt: 'Pairwise with metrics',
-				status: 'pass',
-				score: 0.9,
-				feedback: [
-					{
-						evaluator: 'pairwise',
-						metric: 'pairwise_primary',
-						score: 1,
-						kind: 'score',
-					},
-					{
-						evaluator: 'pairwise',
-						metric: 'judge1',
-						score: 1,
-						kind: 'detail',
-					},
-				],
-				durationMs: 5000,
-				generationDurationMs: 3000,
-				generationInputTokens: 1000,
-				generationOutputTokens: 500,
-				subgraphMetrics: {
-					nodeCount: 5,
-					discoveryDurationMs: 300,
-					builderDurationMs: 800,
-				},
-			},
-		];
-
-		const outputPath = join(tempDir, 'pairwise-with-metrics.csv');
-		writeResultsCsv(results, outputPath);
-
-		const content = readFileSync(outputPath, 'utf-8');
-		const lines = content.trim().split('\n');
-
-		// Check header includes subgraph metrics columns for pairwise format too
-		expect(lines[0]).toContain('node_count');
-		expect(lines[0]).toContain('discovery_latency_ms');
-		expect(lines[0]).toContain('builder_latency_ms');
-
-		// Check data row contains the metrics
-		expect(lines[1]).toContain('5'); // nodeCount
-		expect(lines[1]).toContain('300'); // discoveryDurationMs
-		expect(lines[1]).toContain('800'); // builderDurationMs
+		expect(lines[0]).not.toContain('discovery_latency_ms');
+		expect(lines[0]).not.toContain('responder_latency_ms');
 	});
 
 	it('uses explicit suite option to override auto-detection', () => {

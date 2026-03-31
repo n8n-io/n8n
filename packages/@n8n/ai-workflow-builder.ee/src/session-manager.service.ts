@@ -421,8 +421,6 @@ export class SessionManagerService {
 
 	/**
 	 * Clear all sessions for a given workflow and user.
-	 * Currently clears the regular multi-agent thread only.
-	 * Code-builder session clearing will be handled in a follow-up.
 	 */
 	async clearAllSessions(workflowId: string, userId: string): Promise<void> {
 		const mainThreadId = SessionManagerService.generateThreadId(workflowId, userId);

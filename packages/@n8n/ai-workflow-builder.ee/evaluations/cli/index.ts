@@ -11,10 +11,8 @@ import pLimit from 'p-limit';
 import { CodeWorkflowBuilder } from '@/code-builder';
 import type { HistoryContext } from '@/code-builder';
 import type { ConversationEntry } from '@/code-builder/utils/code-builder-session';
-import type { CoordinationLogEntry } from '@/types/coordination';
 import type { StreamChunk, WorkflowUpdateChunk } from '@/types/streaming';
 import type { SimpleWorkflow } from '@/types/workflow';
-import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
 
 /** Type guard for SimpleWorkflow */
 function isSimpleWorkflow(value: unknown): value is SimpleWorkflow {
@@ -32,7 +30,6 @@ import {
 	getDefaultDatasetName,
 	getDefaultExperimentName,
 	parseEvaluationArgs,
-	type EvaluationArgs,
 } from './argument-parser';
 import { buildCIMetadata } from './ci-metadata';
 import {
@@ -40,18 +37,12 @@ import {
 	loadDefaultTestCases,
 	getDefaultTestCaseIds,
 } from './csv-prompt-loader';
-import { loadSubgraphDatasetFile } from './dataset-file-loader';
 import { sendWebhookNotification } from './webhook';
 import { WorkflowGenerationError } from '../errors';
-import {
-	consumeGenerator,
-	extractSubgraphMetrics,
-	getChatPayload,
-} from '../harness/evaluation-helpers';
+import { getChatPayload } from '../harness/evaluation-helpers';
 import type { DatasetInputContext } from '../harness/harness-types';
 import { createLogger } from '../harness/logger';
-import type { GenerationCollectors, SubgraphMetricsCollector } from '../harness/runner';
-import { TokenUsageTrackingHandler } from '../harness/token-tracking-handler';
+import type { GenerationCollectors } from '../harness/runner';
 import {
 	runEvaluation,
 	createConsoleLifecycle,
@@ -67,21 +58,14 @@ import {
 	type Evaluator,
 	type EvaluationContext,
 	type GenerationResult,
-	createSubgraphRunner,
-	createResponderEvaluator,
-	type EvaluationLifecycle,
-	runLocalSubgraphEvaluation,
-	runSubgraphEvaluation,
 } from '../index';
-import { generateRunId, isWorkflowStateValues } from '../langsmith/types';
+import { generateRunId } from '../langsmith/types';
 import { createIntrospectionAnalysisLifecycle } from '../lifecycles/introspection-analysis';
-import { AGENT_TYPES, EVAL_TYPES, EVAL_USERS } from '../support/constants';
+import { EVAL_TYPES, EVAL_USERS } from '../support/constants';
 import {
 	setupTestEnvironment,
-	createAgent,
 	resolveNodesBasePath,
 	type ResolvedStageLLMs,
-	type TestEnvironment,
 } from '../support/environment';
 import { generateEvalPinData } from '../support/pin-data-generator';
 
@@ -90,116 +74,6 @@ import { generateEvalPinData } from '../support/pin-data-generator';
  */
 function isWorkflowUpdateChunk(chunk: StreamChunk): chunk is WorkflowUpdateChunk {
 	return chunk.type === 'workflow-updated';
-}
-
-/**
- * Type guard to check if state values contain a coordination log.
- */
-function hasCoordinationLog(
-	values: unknown,
-): values is { coordinationLog: CoordinationLogEntry[] } {
-	if (!values || typeof values !== 'object') return false;
-	const obj = values as Record<string, unknown>;
-	return Array.isArray(obj.coordinationLog);
-}
-
-/**
- * Report subgraph metrics from coordination log and workflow.
- */
-function reportSubgraphMetrics(
-	collector: SubgraphMetricsCollector,
-	stateValues: unknown,
-	workflow: SimpleWorkflow,
-): void {
-	const coordinationLog = hasCoordinationLog(stateValues) ? stateValues.coordinationLog : undefined;
-	const nodeCount = workflow.nodes?.length;
-	const metrics = extractSubgraphMetrics(coordinationLog, nodeCount);
-
-	if (
-		metrics.discoveryDurationMs !== undefined ||
-		metrics.builderDurationMs !== undefined ||
-		metrics.responderDurationMs !== undefined ||
-		metrics.nodeCount !== undefined
-	) {
-		collector(metrics);
-	}
-}
-
-/**
- * Create a workflow generator function for the multi-agent system.
- * LangSmith tracing is handled via traceable() in the runner.
- * Callbacks are passed explicitly from the runner to ensure correct trace context
- * under high concurrency (avoids AsyncLocalStorage race conditions).
- */
-function createWorkflowGenerator(
-	parsedNodeTypes: INodeTypeDescription[],
-	llms: ResolvedStageLLMs,
-	featureFlags?: BuilderFeatureFlags,
-): (
-	prompt: string,
-	datasetInputContext?: DatasetInputContext,
-	collectors?: GenerationCollectors,
-) => Promise<SimpleWorkflow> {
-	return async (
-		prompt: string,
-		datasetInputContext?: DatasetInputContext,
-		collectors?: GenerationCollectors,
-	): Promise<SimpleWorkflow> => {
-		const runId = generateRunId();
-
-		const agent = createAgent({
-			parsedNodeTypes,
-			llms,
-			featureFlags,
-		});
-
-		// Create token tracking handler to capture usage from all LLM calls
-		// (supervisor, discovery, builder, responder agents)
-		const tokenTracker = collectors?.tokenUsage ? new TokenUsageTrackingHandler() : undefined;
-
-		await consumeGenerator(
-			agent.chat(
-				getChatPayload({
-					evalType: EVAL_TYPES.LANGSMITH,
-					message: prompt,
-					workflowId: runId,
-					featureFlags,
-					workflowContext: datasetInputContext?.workflowContext,
-					mode: datasetInputContext?.mode,
-				}),
-				EVAL_USERS.LANGSMITH,
-				undefined, // abortSignal
-				tokenTracker ? [tokenTracker] : undefined, // externalCallbacks
-				datasetInputContext?.historicalMessages,
-			),
-		);
-
-		const state = await agent.getState(runId, EVAL_USERS.LANGSMITH);
-
-		if (!state.values || !isWorkflowStateValues(state.values)) {
-			throw new Error('Invalid workflow state: workflow or messages missing');
-		}
-
-		const workflow = state.values.workflowJSON;
-
-		// Report accumulated token usage from all agents
-		if (collectors?.tokenUsage && tokenTracker) {
-			const usage = tokenTracker.getUsage();
-			if (usage.inputTokens > 0 || usage.outputTokens > 0) {
-				collectors.tokenUsage(usage);
-			}
-		}
-
-		// Extract and report subgraph metrics from coordination log
-		if (collectors?.subgraphMetrics) {
-			reportSubgraphMetrics(collectors.subgraphMetrics, state.values, workflow);
-		}
-
-		// Report introspection events
-		collectors?.introspectionEvents?.(state.values.introspectionEvents ?? []);
-
-		return workflow;
-	};
 }
 
 /**
@@ -344,7 +218,7 @@ function createCodeWorkflowBuilderGenerator(
 			evalType: EVAL_TYPES.LANGSMITH,
 			message: prompt,
 			workflowId: runId,
-			featureFlags: { codeBuilder: true },
+			featureFlags: {},
 			workflowContext: datasetInputContext?.workflowContext,
 			mode: datasetInputContext?.mode,
 		});
@@ -455,102 +329,6 @@ function loadTestCases(args: ReturnType<typeof parseEvaluationArgs>): TestCase[]
 }
 
 /**
- * Handle subgraph evaluation mode (--subgraph flag).
- * Supports both local dataset files and LangSmith datasets.
- */
-async function handleSubgraphMode(
-	args: EvaluationArgs,
-	env: TestEnvironment,
-	lifecycle: EvaluationLifecycle,
-	logger: ReturnType<typeof createLogger>,
-): Promise<void> {
-	const { subgraph } = args;
-	if (!subgraph) throw new Error('subgraph is required');
-
-	const subgraphRunner = createSubgraphRunner({
-		subgraph,
-		llms: env.llms,
-	});
-
-	const evaluators: Array<Evaluator<EvaluationContext>> = [];
-	if (subgraph === 'responder') {
-		evaluators.push(createResponderEvaluator(env.llms.judge, { numJudges: args.numJudges }));
-	} else {
-		logger.warn(`Subgraph evaluation not supported for ${subgraph}`);
-	}
-
-	let summary: Awaited<ReturnType<typeof runSubgraphEvaluation>>;
-
-	if (args.datasetFile) {
-		const examples = loadSubgraphDatasetFile(args.datasetFile);
-		const slicedExamples = args.maxExamples ? examples.slice(0, args.maxExamples) : examples;
-
-		summary = await runLocalSubgraphEvaluation({
-			subgraph,
-			subgraphRunner,
-			evaluators,
-			examples: slicedExamples,
-			concurrency: args.concurrency,
-			lifecycle,
-			logger,
-			outputDir: args.outputDir,
-			timeoutMs: args.timeoutMs,
-			regenerate: args.regenerate,
-			writeBack: args.writeBack,
-			datasetFilePath: args.datasetFile,
-			llms: args.regenerate ? env.llms : undefined,
-			parsedNodeTypes: args.regenerate ? env.parsedNodeTypes : undefined,
-		});
-	} else {
-		if (!args.datasetName) {
-			throw new Error('`--subgraph` requires `--dataset` or `--dataset-file`');
-		}
-		if (!env.lsClient) {
-			throw new Error('LangSmith client not initialized - check LANGSMITH_API_KEY');
-		}
-
-		summary = await runSubgraphEvaluation({
-			subgraph,
-			subgraphRunner,
-			evaluators,
-			datasetName: args.datasetName,
-			langsmithClient: env.lsClient,
-			langsmithOptions: {
-				experimentName: args.experimentName ?? `${subgraph}-eval`,
-				repetitions: args.repetitions,
-				concurrency: args.concurrency,
-				maxExamples: args.maxExamples,
-				filters: args.filters,
-				experimentMetadata: {
-					...buildCIMetadata(),
-					subgraph,
-				},
-			},
-			lifecycle,
-			logger,
-			outputDir: args.outputDir,
-			timeoutMs: args.timeoutMs,
-			regenerate: args.regenerate,
-			writeBack: args.writeBack,
-			llms: args.regenerate ? env.llms : undefined,
-			parsedNodeTypes: args.regenerate ? env.parsedNodeTypes : undefined,
-		});
-	}
-
-	if (args.webhookUrl) {
-		await sendWebhookNotification({
-			webhookUrl: args.webhookUrl,
-			webhookSecret: args.webhookSecret,
-			summary,
-			dataset: args.datasetFile ?? args.datasetName ?? 'local-dataset',
-			suite: args.suite,
-			metadata: { ...buildCIMetadata(), subgraph },
-			logger,
-		});
-	}
-}
-
-/**
  * Main entry point for v2 evaluation CLI.
  */
 export async function runV2Evaluation(): Promise<void> {
@@ -564,7 +342,6 @@ export async function runV2Evaluation(): Promise<void> {
 
 	// Setup environment with per-stage model configuration
 	const logger = createLogger(args.verbose);
-	const lifecycle = createConsoleLifecycle({ verbose: args.verbose, logger });
 	const stageModels = argsToStageModels(args);
 
 	const env = await setupTestEnvironment(stageModels, logger);
@@ -574,22 +351,13 @@ export async function runV2Evaluation(): Promise<void> {
 		throw new Error('LangSmith client not initialized - check LANGSMITH_API_KEY');
 	}
 
-	// Subgraph evaluation mode
-	if (args.subgraph) {
-		await handleSubgraphMode(args, env, lifecycle, logger);
-		process.exit(0);
-	}
-
-	// Create workflow generator based on agent type
-	const generateWorkflow =
-		args.agent === AGENT_TYPES.CODE_BUILDER
-			? createCodeWorkflowBuilderGenerator(
-					env.parsedNodeTypes,
-					env.llms,
-					args.timeoutMs,
-					env.nodeDefinitionDirs,
-				)
-			: createWorkflowGenerator(env.parsedNodeTypes, env.llms, args.featureFlags);
+	// Create workflow generator
+	const generateWorkflow = createCodeWorkflowBuilderGenerator(
+		env.parsedNodeTypes,
+		env.llms,
+		args.timeoutMs,
+		env.nodeDefinitionDirs,
+	);
 
 	// Create evaluators based on suite type
 	const evaluators = createEvaluators({

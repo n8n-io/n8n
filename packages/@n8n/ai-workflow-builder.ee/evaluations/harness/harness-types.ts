@@ -218,20 +218,6 @@ export interface LangsmithExampleFilters {
 }
 
 /**
- * Subgraph timing metrics extracted from coordination log.
- */
-export interface SubgraphMetrics {
-	/** Time spent in discovery subgraph (ms) */
-	discoveryDurationMs?: number;
-	/** Time spent in builder subgraph (ms) */
-	builderDurationMs?: number;
-	/** Time spent in responder generating the final response (ms) */
-	responderDurationMs?: number;
-	/** Number of nodes in the final workflow */
-	nodeCount?: number;
-}
-
-/**
  * Result of evaluating a single example.
  */
 export interface ExampleResult {
@@ -250,26 +236,12 @@ export interface ExampleResult {
 	generationInputTokens?: number;
 	/** Output tokens used during workflow generation */
 	generationOutputTokens?: number;
-	/** Subgraph timing and workflow metrics */
-	subgraphMetrics?: SubgraphMetrics;
 	/** Introspection events reported by the agent during workflow generation */
 	introspectionEvents?: IntrospectionEvent[];
 	workflow?: SimpleWorkflow;
-	/** Subgraph output (e.g., responder text). Present in subgraph eval mode. */
-	subgraphOutput?: SubgraphExampleOutput;
 	/** Generated source code (e.g., TypeScript SDK code from coding agent) */
 	generatedCode?: string;
 	error?: string;
-}
-
-/**
- * Output from a subgraph evaluation example.
- */
-export interface SubgraphExampleOutput {
-	/** The text response from the subgraph (e.g., responder output) */
-	response?: string;
-	/** The workflow produced by the subgraph (for builder/configurator) */
-	workflow?: SimpleWorkflow;
 }
 
 /**

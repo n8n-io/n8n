@@ -4,7 +4,7 @@
  * This directory contains all prompts used by the AI workflow builder agents and chains.
  * Organization:
  * - builder/ - PromptBuilder utility for composing prompts
- * - agents/ - Agent prompts (supervisor, discovery, builder, responder)
+ * - agents/ - Agent prompts (planner)
  * - chains/ - Chain-level prompts (categorization, compact, workflow-name, parameter-updater)
  * - shared/ - Shared prompt fragments
  */
@@ -21,27 +21,7 @@ export {
 } from './builder';
 
 // Agent prompts
-export {
-	buildBuilderPrompt,
-	INSTANCE_URL_PROMPT,
-	buildRecoveryModeContext,
-} from './agents/builder.prompt';
-export {
-	buildDiscoveryPrompt,
-	exampleCategorizations,
-	formatTechniqueList,
-	formatExampleCategorizations,
-	type DiscoveryPromptOptions,
-} from './agents/discovery.prompt';
-export { buildSupervisorPrompt } from './agents/supervisor.prompt';
 export { buildPlannerPrompt, buildPlannerContext } from './agents/planner.prompt';
-export {
-	buildResponderPrompt,
-	buildRecursionErrorWithWorkflowGuidance,
-	buildRecursionErrorNoWorkflowGuidance,
-	buildGeneralErrorGuidance,
-	buildDataTableCreationGuidance,
-} from './agents/responder.prompt';
 
 // Chain prompts
 export {

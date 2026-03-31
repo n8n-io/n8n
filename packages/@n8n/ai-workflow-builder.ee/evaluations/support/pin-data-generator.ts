@@ -3,7 +3,7 @@
  *
  * Generates realistic mock output data for service nodes in a workflow
  * via a single LLM call, ensuring cross-node data consistency.
- * Works with both the code-based and multi-agent builder outputs.
+ * Works with the code-based builder outputs.
  */
 
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';

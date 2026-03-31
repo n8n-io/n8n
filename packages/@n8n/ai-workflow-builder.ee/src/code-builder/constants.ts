@@ -108,6 +108,11 @@ export const CODE_BUILDER_GET_SUGGESTED_NODES_TOOL: BuilderToolBase = {
 	displayTitle: 'Getting suggested nodes',
 };
 
+export const CODE_BUILDER_WEB_FETCH_TOOL: BuilderToolBase = {
+	toolName: 'web_fetch',
+	displayTitle: 'Fetching web content',
+};
+
 /** MCP tools — not used by the code-builder agent, only exposed via the MCP server. */
 export const MCP_GET_SDK_REFERENCE_TOOL: BuilderToolBase = {
 	toolName: 'get_sdk_reference',

@@ -47,13 +47,10 @@ const DEFAULT_PASS_THRESHOLD = 0.7;
 export type TokenUsageCollector = (usage: { inputTokens: number; outputTokens: number }) => void;
 
 /**
- * Callback to collect subgraph metrics from generation.
- * Called after each workflow generation with timing and node count data.
+ * Callback to collect generation metrics.
+ * Called after each workflow generation with node count data.
  */
-export type SubgraphMetricsCollector = (metrics: {
-	discoveryDurationMs?: number;
-	builderDurationMs?: number;
-	responderDurationMs?: number;
+export type GenerationMetricsCollector = (metrics: {
 	nodeCount?: number;
 }) => void;
 
@@ -68,7 +65,7 @@ export type IntrospectionEventsCollector = (events: IntrospectionEvent[]) => voi
  */
 export interface GenerationCollectors {
 	tokenUsage?: TokenUsageCollector;
-	subgraphMetrics?: SubgraphMetricsCollector;
+	generationMetrics?: GenerationMetricsCollector;
 	introspectionEvents?: IntrospectionEventsCollector;
 }
 
@@ -131,55 +128,13 @@ function hasErrorFeedback(feedback: Feedback[]): boolean {
 }
 
 /**
- * Convert milliseconds to seconds for LangSmith metrics.
- * LangSmith scores must be within [-99999.9999, 99999.9999], so we store
- * latencies in seconds (supporting up to ~27 hours) instead of milliseconds.
- */
-function msToSeconds(ms: number): number {
-	return ms / 1000;
-}
-
-/**
- * Create feedback items for subgraph metrics.
+ * Create feedback items for generation metrics.
  * These are reported to LangSmith as 'metrics' evaluator feedback.
- *
- * Note: Latencies are converted from milliseconds to seconds to stay within
- * LangSmith's score limits while preserving precision for long-running operations.
  */
 function createMetricsFeedback(args: {
-	discoveryDurationMs?: number;
-	builderDurationMs?: number;
-	responderDurationMs?: number;
 	nodeCount?: number;
 }): Feedback[] {
 	const feedback: Feedback[] = [];
-
-	if (args.discoveryDurationMs !== undefined) {
-		feedback.push({
-			evaluator: 'metrics',
-			metric: 'discovery_latency_s',
-			score: msToSeconds(args.discoveryDurationMs),
-			kind: 'metric',
-		});
-	}
-
-	if (args.builderDurationMs !== undefined) {
-		feedback.push({
-			evaluator: 'metrics',
-			metric: 'builder_latency_s',
-			score: msToSeconds(args.builderDurationMs),
-			kind: 'metric',
-		});
-	}
-
-	if (args.responderDurationMs !== undefined) {
-		feedback.push({
-			evaluator: 'metrics',
-			metric: 'responder_latency_s',
-			score: msToSeconds(args.responderDurationMs),
-			kind: 'metric',
-		});
-	}
 
 	if (args.nodeCount !== undefined) {
 		feedback.push({
@@ -477,9 +432,6 @@ function extractContextFromLangsmithInputs(inputs: unknown): TestCaseContext {
 interface CollectedMetrics {
 	genInputTokens?: number;
 	genOutputTokens?: number;
-	discoveryDurationMs?: number;
-	builderDurationMs?: number;
-	responderDurationMs?: number;
 	nodeCount?: number;
 	introspectionEvents?: IntrospectionEvent[];
 }
@@ -499,10 +451,7 @@ function createMetricsCollectors(): {
 			metrics.genInputTokens = usage.inputTokens;
 			metrics.genOutputTokens = usage.outputTokens;
 		},
-		subgraphMetrics: (m) => {
-			metrics.discoveryDurationMs = m.discoveryDurationMs;
-			metrics.builderDurationMs = m.builderDurationMs;
-			metrics.responderDurationMs = m.responderDurationMs;
+		generationMetrics: (m) => {
 			metrics.nodeCount = m.nodeCount;
 		},
 		introspectionEvents: (events) => {
@@ -511,22 +460,6 @@ function createMetricsCollectors(): {
 	};
 
 	return { collectors, getMetrics: () => metrics };
-}
-
-/**
- * Build SubgraphMetrics object if any metrics are present, otherwise undefined.
- */
-function buildSubgraphMetrics(metrics: CollectedMetrics): ExampleResult['subgraphMetrics'] {
-	const { discoveryDurationMs, builderDurationMs, responderDurationMs, nodeCount } = metrics;
-	const hasMetrics =
-		discoveryDurationMs !== undefined ||
-		builderDurationMs !== undefined ||
-		responderDurationMs !== undefined ||
-		nodeCount !== undefined;
-
-	return hasMetrics
-		? { discoveryDurationMs, builderDurationMs, responderDurationMs, nodeCount }
-		: undefined;
 }
 
 /**
@@ -641,7 +574,6 @@ async function runLocalExampleSuccess(args: {
 		evaluationDurationMs: evalDurationMs,
 		generationInputTokens: metrics.genInputTokens,
 		generationOutputTokens: metrics.genOutputTokens,
-		subgraphMetrics: buildSubgraphMetrics(metrics),
 		introspectionEvents: metrics.introspectionEvents,
 		workflow,
 		generatedCode,
@@ -1526,7 +1458,6 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 				evaluationDurationMs: evalDurationMs,
 				generationInputTokens: metrics.genInputTokens,
 				generationOutputTokens: metrics.genOutputTokens,
-				subgraphMetrics: buildSubgraphMetrics(metrics),
 				introspectionEvents: metrics.introspectionEvents,
 				workflow,
 				generatedCode,
@@ -1536,7 +1467,7 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 			capturedResults.push(result);
 			lifecycle?.onExampleComplete?.(index, result);
 
-			// Create metrics feedback for LangSmith (subgraph timing + node count)
+			// Create metrics feedback for LangSmith (node count)
 			const metricsFeedback = createMetricsFeedback(metrics);
 
 			return {
