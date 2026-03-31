@@ -15,7 +15,9 @@ function makeTarget(node: string, type: string = 'main', index: number = 0): Con
 function createGraphNode(
 	name: string,
 	type: string,
-	connections: Map<string, Map<number, ConnectionTarget[]>> = new Map([['main', new Map()]]),
+	connections: Map<string, Map<number, ConnectionTarget[]>> = new Map([
+		['main', new Map<number, ConnectionTarget[]>()],
+	]),
 	position?: [number, number],
 ): GraphNode {
 	return {
@@ -119,7 +121,7 @@ describe('calculateNodePositions (BFS)', () => {
 			createGraphNode(
 				'trigger',
 				'n8n-nodes-base.manualTrigger',
-				new Map([['main', new Map()]]),
+				new Map([['main', new Map<number, ConnectionTarget[]>()]]),
 				[500, 600],
 			),
 		);
@@ -300,7 +302,7 @@ describe('calculateNodePositionsDagre', () => {
 				createGraphNode(
 					'trigger',
 					'n8n-nodes-base.manualTrigger',
-					new Map([['main', new Map()]]),
+					new Map([['main', new Map<number, ConnectionTarget[]>()]]),
 					[500, 600],
 				),
 			);
