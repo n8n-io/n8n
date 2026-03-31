@@ -36,7 +36,7 @@ import { CommunityPackagesConfig } from '@/modules/community-packages/community-
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { ShutdownService } from '@/shutdown/shutdown.service';
-import { resolveHealthEndpointPath } from '@/utils/health-endpoint.util';
+import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
 import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
@@ -104,7 +104,7 @@ export abstract class BaseCommand<F = never> {
 			eventLoopBlockThreshold,
 			tracesSampleRate,
 			profilesSampleRate,
-			healthEndpoint: resolveHealthEndpointPath(this.globalConfig),
+			healthEndpoint: resolveBackendHealthEndpointPath(this.globalConfig),
 			eligibleIntegrations: {
 				Express: true,
 				Http: true,
@@ -155,15 +155,6 @@ export abstract class BaseCommand<F = never> {
 			);
 		}
 
-		// @TODO: Move to community-packages module
-		const communityPackagesConfig = Container.get(CommunityPackagesConfig);
-		if (communityPackagesConfig.enabled && this.needsCommunityPackages) {
-			const { CommunityPackagesService } = await import(
-				'@/modules/community-packages/community-packages.service'
-			);
-			await Container.get(CommunityPackagesService).init();
-		}
-
 		const taskRunnersConfig = this.globalConfig.taskRunners;
 
 		if (this.needsTaskRunner) {
@@ -187,6 +178,17 @@ export abstract class BaseCommand<F = never> {
 
 	protected async stopProcess() {
 		// This needs to be overridden
+	}
+
+	protected async initCommunityPackages() {
+		// @TODO: Move to community-packages module
+		const communityPackagesConfig = Container.get(CommunityPackagesConfig);
+		if (communityPackagesConfig.enabled && this.needsCommunityPackages) {
+			const { CommunityPackagesService } = await import(
+				'@/modules/community-packages/community-packages.service'
+			);
+			await Container.get(CommunityPackagesService).init();
+		}
 	}
 
 	protected async initCrashJournal() {

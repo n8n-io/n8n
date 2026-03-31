@@ -91,7 +91,6 @@ describe('WorkflowBuilderService', () => {
 		(mockLicense.getConsumerId as jest.Mock).mockReturnValue('test-consumer-id');
 		(mockInstanceSettings.instanceId as unknown) = 'test-instance-id';
 		mockConfig.aiAssistant = { baseUrl: '' };
-		(mockConfig.ai as { persistBuilderSessions: boolean }) = { persistBuilderSessions: false };
 
 		// Reset the mocked AiWorkflowBuilderService
 		MockedAiWorkflowBuilderService.mockClear();
@@ -138,7 +137,7 @@ describe('WorkflowBuilderService', () => {
 
 			expect(MockedAiWorkflowBuilderService).toHaveBeenCalledWith(
 				mockNodeTypeDescriptions,
-				undefined, // No session storage when persistBuilderSessions is false
+				mockSessionRepository,
 				undefined, // No client when baseUrl is not set
 				mockLogger,
 				'test-instance-id', // instanceId
@@ -183,7 +182,7 @@ describe('WorkflowBuilderService', () => {
 
 			expect(MockedAiWorkflowBuilderService).toHaveBeenCalledWith(
 				mockNodeTypeDescriptions,
-				undefined, // No session storage when persistBuilderSessions is false
+				mockSessionRepository,
 				expect.any(AiAssistantClient),
 				mockLogger,
 				'test-instance-id', // instanceId

@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import * as path from 'node:path';
 import type { RuntimeBridge, BridgeConfig, ExecuteOptions } from '../types';
 import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
+import type { ErrorSentinel } from '../runtime/lazy-proxy';
 
 // Lazy-loaded isolated-vm — avoids loading the native binary when the barrel
 // file is statically imported (e.g. for error classes). The native module is
@@ -19,6 +20,39 @@ function getIvm(): IsolatedVm {
 }
 
 const BUNDLE_RELATIVE_PATH = path.join('dist', 'bundle', 'runtime.iife.js');
+
+/** Check if a value is an error sentinel returned by serializeError. */
+function isErrorSentinel(value: unknown): value is ErrorSentinel {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		(value as Record<string, unknown>).__isError === true
+	);
+}
+
+/**
+ * Serialize an error into a transferable metadata object.
+ *
+ * Host-side callbacks (getValueAtPath, etc.) catch errors and return this
+ * sentinel instead of letting the error cross the isolate boundary (which
+ * strips custom class identity and properties). The isolate-side proxy
+ * detects __isError and reconstructs a proper Error to throw.
+ */
+function serializeError(err: unknown): ErrorSentinel {
+	if (err instanceof Error) {
+		const extra = Object.fromEntries(
+			Object.entries(err).filter(([key]) => key !== 'name' && key !== 'message' && key !== 'stack'),
+		);
+		return {
+			__isError: true,
+			name: err.name,
+			message: err.message,
+			stack: err.stack,
+			extra,
+		};
+	}
+	return { __isError: true, name: 'Error', message: String(err), extra: {} };
+}
 
 /**
  * Read the runtime IIFE bundle by walking up from `__dirname` until
@@ -315,126 +349,138 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		// Callback 1: Get value/metadata at path
 		// Used by createDeepLazyProxy when accessing properties
 		const getValueAtPath = new (getIvm().Reference)((path: string[]) => {
-			// Navigate to value
-			// Special-case: paths starting with ['$item', index] call data.$item(index)
-			// to get the sub-proxy for that item, then continue navigating the rest.
-			let value: unknown = data;
-			let startIndex = 0;
-			const itemFn = (data as Record<string, unknown>).$item;
-			if (path.length >= 2 && path[0] === '$item' && typeof itemFn === 'function') {
-				const itemIndex = parseInt(path[1], 10);
-				if (!isNaN(itemIndex)) {
-					value = (itemFn as (i: number) => unknown)(itemIndex);
-					startIndex = 2;
+			try {
+				// Navigate to value
+				// Special-case: paths starting with ['$item', index] call data.$item(index)
+				// to get the sub-proxy for that item, then continue navigating the rest.
+				let value: unknown = data;
+				let startIndex = 0;
+				const itemFn = (data as Record<string, unknown>).$item;
+				if (path.length >= 2 && path[0] === '$item' && typeof itemFn === 'function') {
+					const itemIndex = parseInt(path[1], 10);
+					if (!isNaN(itemIndex)) {
+						value = (itemFn as (i: number) => unknown)(itemIndex);
+						startIndex = 2;
+					}
 				}
-			}
-			for (let i = startIndex; i < path.length; i++) {
-				value = (value as Record<string, unknown>)?.[path[i]];
-				if (value === undefined || value === null) {
-					return value;
+				for (let i = startIndex; i < path.length; i++) {
+					value = (value as Record<string, unknown>)?.[path[i]];
+					if (value === undefined || value === null) {
+						return value;
+					}
 				}
-			}
 
-			// Handle functions - return metadata marker
-			if (typeof value === 'function') {
-				const fnString = value.toString();
-				// Block native functions for security
-				if (fnString.includes('[native code]')) {
-					return undefined;
+				// Handle functions - return metadata marker
+				if (typeof value === 'function') {
+					const fnString = value.toString();
+					// Block native functions for security
+					if (fnString.includes('[native code]')) {
+						return undefined;
+					}
+					return { __isFunction: true, __name: path[path.length - 1] };
 				}
-				return { __isFunction: true, __name: path[path.length - 1] };
-			}
 
-			// Handle arrays - always lazy, only transfer length
-			if (Array.isArray(value)) {
-				return {
-					__isArray: true,
-					__length: value.length,
-					__data: null,
-				};
-			}
+				// Handle arrays - always lazy, only transfer length
+				if (Array.isArray(value)) {
+					return {
+						__isArray: true,
+						__length: value.length,
+						__data: null,
+					};
+				}
 
-			// Handle objects - return metadata with keys
-			if (value !== null && typeof value === 'object') {
-				return {
-					__isObject: true,
-					__keys: Object.keys(value),
-				};
-			}
+				// Handle objects - return metadata with keys
+				if (value !== null && typeof value === 'object') {
+					return {
+						__isObject: true,
+						__keys: Object.keys(value),
+					};
+				}
 
-			// Primitive value
-			return value;
+				// Primitive value
+				return value;
+			} catch (err) {
+				return serializeError(err);
+			}
 		});
 
 		// Callback 2: Get array element at index
 		// Used by array proxy when accessing numeric indices
 		const getArrayElement = new (getIvm().Reference)((path: string[], index: number) => {
-			// Navigate to array
-			// Special-case: paths starting with ['$item', index] call data.$item(index)
-			let arr: unknown = data;
-			let startIndex = 0;
-			const itemFn = (data as Record<string, unknown>).$item;
-			if (path.length >= 2 && path[0] === '$item' && typeof itemFn === 'function') {
-				const itemIndex = parseInt(path[1], 10);
-				if (!isNaN(itemIndex)) {
-					arr = (itemFn as (i: number) => unknown)(itemIndex);
-					startIndex = 2;
+			try {
+				// Navigate to array
+				// Special-case: paths starting with ['$item', index] call data.$item(index)
+				let arr: unknown = data;
+				let startIndex = 0;
+				const itemFn = (data as Record<string, unknown>).$item;
+				if (path.length >= 2 && path[0] === '$item' && typeof itemFn === 'function') {
+					const itemIndex = parseInt(path[1], 10);
+					if (!isNaN(itemIndex)) {
+						arr = (itemFn as (i: number) => unknown)(itemIndex);
+						startIndex = 2;
+					}
 				}
-			}
-			for (let i = startIndex; i < path.length; i++) {
-				arr = (arr as Record<string, unknown>)?.[path[i]];
-				if (arr === undefined || arr === null) {
+				for (let i = startIndex; i < path.length; i++) {
+					arr = (arr as Record<string, unknown>)?.[path[i]];
+					if (arr === undefined || arr === null) {
+						return undefined;
+					}
+				}
+
+				if (!Array.isArray(arr)) {
 					return undefined;
 				}
-			}
 
-			if (!Array.isArray(arr)) {
-				return undefined;
-			}
+				const element = arr[index];
 
-			const element = arr[index];
-
-			// If element is object/array, return metadata
-			if (element !== null && typeof element === 'object') {
-				if (Array.isArray(element)) {
+				// If element is object/array, return metadata
+				if (element !== null && typeof element === 'object') {
+					if (Array.isArray(element)) {
+						return {
+							__isArray: true,
+							__length: element.length,
+							__data: null,
+						};
+					}
 					return {
-						__isArray: true,
-						__length: element.length,
-						__data: null,
+						__isObject: true,
+						__keys: Object.keys(element),
 					};
 				}
-				return {
-					__isObject: true,
-					__keys: Object.keys(element),
-				};
-			}
 
-			// Primitive element
-			return element;
+				// Primitive element
+				return element;
+			} catch (err) {
+				return serializeError(err);
+			}
 		});
 
 		// Callback 3: Call function at path with arguments
 		// Used when expressions invoke functions from workflow data
 		const callFunctionAtPath = new (getIvm().Reference)((path: string[], ...args: unknown[]) => {
-			// Navigate to function, tracking parent to preserve `this` context
-			let fn: unknown = data;
-			let parent: unknown = undefined;
-			for (const key of path) {
-				parent = fn;
-				fn = (fn as Record<string, unknown>)?.[key];
-			}
+			try {
+				// Navigate to function, tracking parent to preserve `this` context
+				let fn: unknown = data;
+				let parent: unknown = undefined;
+				for (const key of path) {
+					parent = fn;
+					fn = (fn as Record<string, unknown>)?.[key];
+				}
 
-			if (typeof fn !== 'function') {
-				throw new Error(`${path.join('.')} is not a function`);
-			}
+				if (typeof fn !== 'function') {
+					throw new Error(`${path.join('.')} is not a function`);
+				}
 
-			// Block native functions for security (same check as getValueAtPath)
-			if (fn.toString().includes('[native code]')) {
-				throw new Error(`${path.join('.')} is a native function and cannot be called`);
-			}
+				// Block native functions for security (same check as getValueAtPath)
+				if (fn.toString().includes('[native code]')) {
+					throw new Error(`${path.join('.')} is a native function and cannot be called`);
+				}
 
-			// Execute function with parent as `this` to preserve method context
-			return (fn as (...fnArgs: unknown[]) => unknown).call(parent, ...args);
+				// Execute function with parent as `this` to preserve method context
+				return (fn as (...fnArgs: unknown[]) => unknown).call(parent, ...args);
+			} catch (err) {
+				return serializeError(err);
+			}
 		});
 
 		// Release previous references before replacing to avoid accumulation
@@ -488,8 +534,39 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			// Step 3: Wrap transformed code so 'this' === __data in the isolate.
 			// Tournament generates: this.$json.email, this.$items(), etc.
 			// __data has $json, $items, etc. as lazy proxies (set in resetDataProxies).
-			const wrappedCode = `(function() { var __result = (function() {\n${code}\n}).call(__data); return __prepareForTransfer(__result); })()`;
+			// The outer try-catch serializes errors into a sentinel object and returns
+			// it as the result. Errors from host callbacks arrive as sentinels already
+			// (via serializeError), so we pass them through. This avoids a round-trip
+			// callback and keeps Error reconstruction on the host side only.
+			const wrappedCode = `
+(function() {
+  try {
+    var __result = (function() {
+      ${code}
+    }).call(__data);
+    return __prepareForTransfer(__result);
+  } catch(e) {
+    if (e && e.__isError) return e;
+    if (e == null) return { __isError: true, name: "Error", message: String(e), stack: "", extra: {} };
+    var extra = {};
+    for (var k in e) {
+      if (Object.prototype.hasOwnProperty.call(e, k) && k !== "name" && k !== "message" && k !== "stack") extra[k] = e[k];
+    }
+    return {
+      __isError: true,
+      name: e.name || "Error",
+      message: e.message || "",
+      stack: e.stack || "",
+      extra: extra
+    };
+  }
+})()`;
 
+			// Cache key is `code` (tournament output), but the compiled script uses
+			// `wrappedCode` which adds the try-catch/reportError wrapper. This works
+			// because wrappedCode is a deterministic transform of code. If the wrapper
+			// ever becomes parameterized (e.g., different wrapping based on options),
+			// the cache key must include those parameters to avoid serving stale scripts.
 			let script = this.scriptCache.get(code);
 			if (!script) {
 				script = this.isolate.compileScriptSync(wrappedCode);
@@ -500,11 +577,16 @@ export class IsolatedVmBridge implements RuntimeBridge {
 				}
 			}
 
-			// Step 4: Execute with timeout and copy result back
+			// Step 5: Execute with timeout and copy result back
 			const result = script.runSync(this.context, {
 				timeout: this.config.timeout,
 				copy: true,
 			});
+
+			// Step 6: If the result is an error sentinel, reconstruct and throw
+			if (isErrorSentinel(result)) {
+				throw this.reconstructError(result);
+			}
 
 			if (this.config.debug) {
 				console.log('[IsolatedVmBridge] Expression executed successfully');
@@ -512,6 +594,17 @@ export class IsolatedVmBridge implements RuntimeBridge {
 
 			return result;
 		} catch (error) {
+			// Re-throw reconstructed errors as-is.
+			// Note: TypeError is intentionally NOT included here — the isolate's
+			// E() handler swallows TypeErrors (failed attack attempts return undefined),
+			// so TypeErrors from host callbacks should also go through the generic
+			// wrapping for consistent behavior.
+			if (
+				error instanceof Error &&
+				(error.name === 'ExpressionError' || error.name === 'ExpressionExtensionError')
+			) {
+				throw error;
+			}
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			if (errorMessage.includes('Script execution timed out')) {
 				throw new TimeoutError(`Expression timed out after ${this.config.timeout}ms`, {});
@@ -524,6 +617,27 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			}
 			throw new Error(`Expression evaluation failed: ${errorMessage}`);
 		}
+	}
+
+	/**
+	 * Reconstruct an error from serialized isolate data.
+	 *
+	 * Maps error names back to their host-side classes and restores
+	 * custom properties that would otherwise be lost crossing the boundary.
+	 */
+	private reconstructError(data: ErrorSentinel): Error {
+		const error = new Error(data.message);
+		error.name = data.name || 'Error';
+		if (data.stack) {
+			error.stack = data.stack;
+		}
+
+		// Restore custom properties transferred via copy: true
+		if (data.extra) {
+			Object.assign(error, data.extra);
+		}
+
+		return error;
 	}
 
 	/**

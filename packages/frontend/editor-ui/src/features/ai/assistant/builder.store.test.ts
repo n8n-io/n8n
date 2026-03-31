@@ -2360,7 +2360,7 @@ describe('AI Builder store', () => {
 		});
 
 		describe('fetchExistingVersionIds and message enrichment', () => {
-			it('should enrich messages with revertVersion when versions exist', async () => {
+			it('should convert revertVersion on user messages into version card messages', async () => {
 				const builderStore = useBuilderStore();
 
 				// Mark workflow as saved to allow loadSessions
@@ -2384,6 +2384,11 @@ describe('AI Builder store', () => {
 									revertVersionId: 'version-1',
 								} as unknown as ChatRequest.MessageResponse,
 								{
+									type: 'workflow-updated',
+									id: 'msg-1-workflow-updated',
+									codeSnippet: '{}',
+								} as unknown as ChatRequest.MessageResponse,
+								{
 									type: 'message',
 									role: 'assistant',
 									text: 'Created workflow',
@@ -2401,15 +2406,200 @@ describe('AI Builder store', () => {
 
 				await builderStore.loadSessions();
 
-				// Should have 2 messages
-				expect(builderStore.chatMessages).toHaveLength(2);
+				// Should have 3 messages: user message + assistant message + version card
+				// (workflow-updated messages are filtered out of the UI)
+				expect(builderStore.chatMessages).toHaveLength(3);
 
-				// First message should have revertVersion object
-				const firstMessage = builderStore.chatMessages[0] as ChatUI.TextMessage;
-				expect(firstMessage).toHaveProperty('revertVersion');
-				expect(firstMessage.revertVersion).toEqual({
-					id: 'version-1',
+				// Version card should be at the end (after the AI response),
+				// matching live session ordering from stopStreaming()
+				const versionCard = builderStore.chatMessages[2];
+				expect(versionCard.type).toBe('custom');
+				expect(versionCard).toHaveProperty('customType', 'version_card');
+				expect(versionCard).toHaveProperty('data');
+				expect((versionCard as Record<string, unknown>).data).toEqual({
+					versionId: 'version-1',
 					createdAt: '2024-01-01T00:00:00Z',
+				});
+			});
+
+			it('should create version cards from tool messages in session API (no workflow-updated)', async () => {
+				const builderStore = useBuilderStore();
+
+				// Mark workflow as saved to allow loadSessions
+				workflowsStore.isWorkflowSaved = { 'test-workflow-id': true };
+
+				const workflowHistoryModule = await import('@n8n/rest-api-client/api/workflowHistory');
+
+				// Mock API to return messages matching real backend format:
+				// tool messages (add_nodes, connect_nodes) instead of workflow-updated
+				mockGetAiSessions.mockResolvedValueOnce({
+					sessions: [
+						{
+							sessionId: 'session-1',
+							lastUpdated: '2024-01-01T00:00:00Z',
+							messages: [
+								{
+									type: 'message',
+									role: 'user',
+									text: 'Create workflow',
+									id: 'msg-1',
+									revertVersionId: 'version-1',
+								} as unknown as ChatRequest.MessageResponse,
+								{
+									type: 'tool',
+									role: 'assistant',
+									toolName: 'add_nodes',
+									toolCallId: 'tool-1',
+									status: 'completed',
+									updates: [],
+								} as unknown as ChatRequest.MessageResponse,
+								{
+									type: 'tool',
+									role: 'assistant',
+									toolName: 'connect_nodes',
+									toolCallId: 'tool-2',
+									status: 'completed',
+									updates: [],
+								} as unknown as ChatRequest.MessageResponse,
+								{
+									type: 'message',
+									role: 'assistant',
+									text: 'Created workflow',
+									id: 'msg-2',
+								} as unknown as ChatRequest.MessageResponse,
+							],
+						},
+					],
+				});
+
+				vi.mocked(workflowHistoryModule.getWorkflowVersionsByIds).mockResolvedValueOnce({
+					versions: [{ versionId: 'version-1', createdAt: '2024-01-01T00:00:00Z' }],
+				});
+
+				await builderStore.loadSessions();
+
+				// Should have: user + tool + tool + assistant + version card = 5 messages
+				expect(builderStore.chatMessages).toHaveLength(5);
+
+				const versionCard = builderStore.chatMessages[4];
+				expect(versionCard.type).toBe('custom');
+				expect(versionCard).toHaveProperty('customType', 'version_card');
+				expect((versionCard as Record<string, unknown>).data).toEqual({
+					versionId: 'version-1',
+					createdAt: '2024-01-01T00:00:00Z',
+				});
+			});
+
+			it('should NOT create version cards when only non-modifying tools exist', async () => {
+				const builderStore = useBuilderStore();
+
+				workflowsStore.isWorkflowSaved = { 'test-workflow-id': true };
+
+				const workflowHistoryModule = await import('@n8n/rest-api-client/api/workflowHistory');
+
+				// Mock with only non-modifying tools (search_nodes, validate_structure)
+				mockGetAiSessions.mockResolvedValueOnce({
+					sessions: [
+						{
+							sessionId: 'session-1',
+							lastUpdated: '2024-01-01T00:00:00Z',
+							messages: [
+								{
+									type: 'message',
+									role: 'user',
+									text: 'What can you do?',
+									id: 'msg-1',
+									revertVersionId: 'version-1',
+								} as unknown as ChatRequest.MessageResponse,
+								{
+									type: 'tool',
+									role: 'assistant',
+									toolName: 'search_nodes',
+									toolCallId: 'tool-1',
+									status: 'completed',
+									updates: [],
+								} as unknown as ChatRequest.MessageResponse,
+								{
+									type: 'message',
+									role: 'assistant',
+									text: 'Here is a plan',
+									id: 'msg-2',
+								} as unknown as ChatRequest.MessageResponse,
+							],
+						},
+					],
+				});
+
+				vi.mocked(workflowHistoryModule.getWorkflowVersionsByIds).mockResolvedValueOnce({
+					versions: [{ versionId: 'version-1', createdAt: '2024-01-01T00:00:00Z' }],
+				});
+
+				await builderStore.loadSessions();
+
+				// No version card should be created
+				const versionCards = builderStore.chatMessages.filter(
+					(msg) =>
+						msg.type === 'custom' && 'customType' in msg && msg.customType === 'version_card',
+				);
+				expect(versionCards).toHaveLength(0);
+			});
+
+			it('should create version cards even when version has been pruned from history', async () => {
+				const builderStore = useBuilderStore();
+
+				workflowsStore.isWorkflowSaved = { 'test-workflow-id': true };
+
+				const workflowHistoryModule = await import('@n8n/rest-api-client/api/workflowHistory');
+
+				// Session with revertVersionId on user message + tool messages
+				mockGetAiSessions.mockResolvedValueOnce({
+					sessions: [
+						{
+							sessionId: 'session-1',
+							lastUpdated: '2024-01-01T00:00:00Z',
+							messages: [
+								{
+									type: 'message',
+									role: 'user',
+									text: 'Build it',
+									id: 'msg-1',
+									revertVersionId: 'pruned-version',
+								} as unknown as ChatRequest.MessageResponse,
+								{
+									type: 'tool',
+									role: 'assistant',
+									toolName: 'add_nodes',
+									toolCallId: 'tool-1',
+									status: 'completed',
+									updates: [],
+								} as unknown as ChatRequest.MessageResponse,
+								{
+									type: 'message',
+									role: 'assistant',
+									text: 'Done',
+									id: 'msg-2',
+								} as unknown as ChatRequest.MessageResponse,
+							],
+						},
+					],
+				});
+
+				// Version does NOT exist (pruned) — API returns empty
+				vi.mocked(workflowHistoryModule.getWorkflowVersionsByIds).mockResolvedValueOnce({
+					versions: [],
+				});
+
+				await builderStore.loadSessions();
+
+				// Version card should still be created even though version is pruned
+				const versionCards = builderStore.chatMessages.filter(
+					(msg) =>
+						msg.type === 'custom' && 'customType' in msg && msg.customType === 'version_card',
+				);
+				expect(versionCards).toHaveLength(1);
+				expect((versionCards[0] as Record<string, unknown>).data).toEqual({
+					versionId: 'pruned-version',
+					// No createdAt since version was pruned
 				});
 			});
 
@@ -2567,6 +2757,450 @@ describe('AI Builder store', () => {
 				expect(typeof builderStore.sendChatMessage).toBe('function');
 			});
 		});
+
+		describe('collapsedMessageIds computed', () => {
+			function makeVersionCard(id: string, versionId: string): ChatUI.AssistantMessage {
+				return {
+					id,
+					role: 'assistant',
+					type: 'custom',
+					customType: 'version_card',
+					data: { versionId },
+				} as unknown as ChatUI.AssistantMessage;
+			}
+
+			function makeTextMessage(
+				id: string,
+				role: 'user' | 'assistant',
+				text: string,
+			): ChatUI.AssistantMessage {
+				return { id, role, type: 'text', text } as unknown as ChatUI.AssistantMessage;
+			}
+
+			it('should return empty set when no activeVersionCardId is set', () => {
+				const builderStore = useBuilderStore();
+				builderStore.chatMessages = [
+					makeTextMessage('user-1', 'user', 'Build something'),
+					makeTextMessage('ai-1', 'assistant', 'Done'),
+					makeVersionCard('vc-1', 'v-1'),
+				];
+
+				expect(builderStore.collapsedMessageIds.size).toBe(0);
+			});
+
+			it('should collapse all messages after active card when no resumeAfterRestoreMessageId', () => {
+				const builderStore = useBuilderStore();
+				builderStore.chatMessages = [
+					makeTextMessage('user-1', 'user', 'Build v1'),
+					makeTextMessage('ai-1', 'assistant', 'Done v1'),
+					makeVersionCard('vc-1', 'v-1'),
+					makeTextMessage('user-2', 'user', 'Build v2'),
+					makeTextMessage('ai-2', 'assistant', 'Done v2'),
+					makeVersionCard('vc-2', 'v-2'),
+					makeTextMessage('user-3', 'user', 'Build v3'),
+					makeTextMessage('ai-3', 'assistant', 'Done v3'),
+					makeVersionCard('vc-3', 'v-3'),
+				];
+
+				// Simulate restore to vc-1
+				builderStore.activeVersionCardId = 'vc-1';
+
+				const collapsed = builderStore.collapsedMessageIds;
+				// Everything after vc-1 should be collapsed
+				expect(collapsed.has('user-2')).toBe(true);
+				expect(collapsed.has('ai-2')).toBe(true);
+				expect(collapsed.has('vc-2')).toBe(true);
+				expect(collapsed.has('user-3')).toBe(true);
+				expect(collapsed.has('ai-3')).toBe(true);
+				expect(collapsed.has('vc-3')).toBe(true);
+				// Messages before and including vc-1 should NOT be collapsed
+				expect(collapsed.has('user-1')).toBe(false);
+				expect(collapsed.has('ai-1')).toBe(false);
+				expect(collapsed.has('vc-1')).toBe(false);
+			});
+
+			it('should collapse only messages between active card and resume point', () => {
+				const builderStore = useBuilderStore();
+				builderStore.chatMessages = [
+					makeTextMessage('user-1', 'user', 'Build v1'),
+					makeTextMessage('ai-1', 'assistant', 'Done v1'),
+					makeVersionCard('vc-1', 'v-1'),
+					makeTextMessage('user-2', 'user', 'Build v2'),
+					makeTextMessage('ai-2', 'assistant', 'Done v2'),
+					makeVersionCard('vc-2', 'v-2'),
+					// Resume point — user sends new message after restore
+					makeTextMessage('user-3', 'user', 'Build v3 (after restore)'),
+					makeTextMessage('ai-3', 'assistant', 'Done v3'),
+					makeVersionCard('vc-3', 'v-3'),
+				];
+
+				// Simulate: restore to vc-1, then user sent user-3
+				builderStore.activeVersionCardId = 'vc-1';
+				builderStore.resumeAfterRestoreMessageId = 'user-3';
+
+				const collapsed = builderStore.collapsedMessageIds;
+				// Only messages between vc-1 and user-3 should be collapsed
+				expect(collapsed.has('user-2')).toBe(true);
+				expect(collapsed.has('ai-2')).toBe(true);
+				expect(collapsed.has('vc-2')).toBe(true);
+				// Messages after resume point should NOT be collapsed
+				expect(collapsed.has('user-3')).toBe(false);
+				expect(collapsed.has('ai-3')).toBe(false);
+				expect(collapsed.has('vc-3')).toBe(false);
+			});
+
+			it('should handle messages without IDs gracefully', () => {
+				const builderStore = useBuilderStore();
+				builderStore.chatMessages = [
+					makeTextMessage('user-1', 'user', 'Build v1'),
+					makeVersionCard('vc-1', 'v-1'),
+					// Message without ID (e.g., a thinking indicator)
+					{
+						role: 'assistant',
+						type: 'text',
+						text: 'thinking...',
+					} as unknown as ChatUI.AssistantMessage,
+					makeTextMessage('user-2', 'user', 'Build v2'),
+					makeVersionCard('vc-2', 'v-2'),
+				];
+
+				builderStore.activeVersionCardId = 'vc-1';
+
+				const collapsed = builderStore.collapsedMessageIds;
+				// The message without ID should not be in the set
+				expect(collapsed.has('user-2')).toBe(true);
+				expect(collapsed.has('vc-2')).toBe(true);
+				// No undefined in the set
+				expect(collapsed.has(undefined as unknown as string)).toBe(false);
+			});
+
+			it('should return empty set when activeVersionCardId points to non-existent message', () => {
+				const builderStore = useBuilderStore();
+				builderStore.chatMessages = [
+					makeTextMessage('user-1', 'user', 'Build v1'),
+					makeVersionCard('vc-1', 'v-1'),
+				];
+
+				builderStore.activeVersionCardId = 'non-existent';
+
+				expect(builderStore.collapsedMessageIds.size).toBe(0);
+			});
+
+			it('collapsed range should remain stable when new messages are appended after resume', () => {
+				const builderStore = useBuilderStore();
+				builderStore.chatMessages = [
+					makeTextMessage('user-1', 'user', 'Build v1'),
+					makeVersionCard('vc-1', 'v-1'),
+					makeTextMessage('user-2', 'user', 'Build v2'),
+					makeVersionCard('vc-2', 'v-2'),
+					makeTextMessage('user-3', 'user', 'After restore'),
+					makeTextMessage('ai-3', 'assistant', 'Done v3'),
+					makeVersionCard('vc-3', 'v-3'),
+				];
+
+				builderStore.activeVersionCardId = 'vc-1';
+				builderStore.resumeAfterRestoreMessageId = 'user-3';
+
+				const collapsedBefore = new Set(builderStore.collapsedMessageIds);
+				expect(collapsedBefore.has('user-2')).toBe(true);
+				expect(collapsedBefore.has('vc-2')).toBe(true);
+
+				// Simulate appending more messages (second send after restore)
+				builderStore.chatMessages = [
+					...builderStore.chatMessages,
+					makeTextMessage('user-4', 'user', 'Build v4'),
+					makeTextMessage('ai-4', 'assistant', 'Done v4'),
+					makeVersionCard('vc-4', 'v-4'),
+				];
+
+				const collapsedAfter = builderStore.collapsedMessageIds;
+				// Same collapsed range (user-2, vc-2 still collapsed)
+				expect(collapsedAfter.has('user-2')).toBe(true);
+				expect(collapsedAfter.has('vc-2')).toBe(true);
+				// New messages NOT collapsed
+				expect(collapsedAfter.has('user-4')).toBe(false);
+				expect(collapsedAfter.has('ai-4')).toBe(false);
+				expect(collapsedAfter.has('vc-4')).toBe(false);
+			});
+
+			it('should return empty set when active card is the last version card (restore to latest)', () => {
+				const builderStore = useBuilderStore();
+				builderStore.chatMessages = [
+					makeTextMessage('user-1', 'user', 'Build v1'),
+					makeVersionCard('vc-1', 'v-1'),
+					makeTextMessage('user-2', 'user', 'Build v2'),
+					makeVersionCard('vc-2', 'v-2'),
+					makeTextMessage('user-3', 'user', 'Build v3'),
+					makeVersionCard('vc-3', 'v-3'),
+				];
+
+				// Restore to the latest version — nothing should collapse
+				builderStore.activeVersionCardId = 'vc-3';
+
+				expect(builderStore.collapsedMessageIds.size).toBe(0);
+			});
+
+			it('should return empty set when active card is the only version card', () => {
+				const builderStore = useBuilderStore();
+				builderStore.chatMessages = [
+					makeTextMessage('user-1', 'user', 'Build v1'),
+					makeVersionCard('vc-1', 'v-1'),
+					makeTextMessage('user-2', 'user', 'More chat'),
+				];
+
+				builderStore.activeVersionCardId = 'vc-1';
+
+				expect(builderStore.collapsedMessageIds.size).toBe(0);
+			});
+
+			it('version card IDs should use userMessageId for consistency across reload', () => {
+				// During live streaming, version card IDs are `version-card-${userMessageId}`.
+				// During loadSessions, they are also `version-card-${userMessageId}`.
+				// This test documents the contract so a mismatch doesn't regress.
+				const builderStore = useBuilderStore();
+				const userMessageId = 'user-msg-abc';
+				const expectedCardId = `version-card-${userMessageId}`;
+
+				builderStore.chatMessages = [
+					makeTextMessage(userMessageId, 'user', 'Build v1'),
+					makeVersionCard(expectedCardId, 'v-1'),
+					makeTextMessage('user-msg-def', 'user', 'Build v2'),
+					makeVersionCard('version-card-user-msg-def', 'v-2'),
+				];
+
+				// Simulate restore saved with live-generated ID
+				builderStore.activeVersionCardId = expectedCardId;
+
+				// Should match and collapse messages after the card
+				const collapsed = builderStore.collapsedMessageIds;
+				expect(collapsed.has('user-msg-def')).toBe(true);
+				expect(collapsed.has('version-card-user-msg-def')).toBe(true);
+			});
+		});
+
+		describe('restore then send new message flow', () => {
+			function makeVersionCard(id: string, versionId: string): ChatUI.AssistantMessage {
+				return {
+					id,
+					role: 'assistant',
+					type: 'custom',
+					customType: 'version_card',
+					data: { versionId },
+				} as unknown as ChatUI.AssistantMessage;
+			}
+
+			function makeTextMessage(
+				id: string,
+				role: 'user' | 'assistant',
+				text: string,
+			): ChatUI.AssistantMessage {
+				return { id, role, type: 'text', text } as unknown as ChatUI.AssistantMessage;
+			}
+
+			it('should freeze collapse range when first message is sent after restore', () => {
+				const builderStore = useBuilderStore();
+
+				// Set up: 3 versions, restore to vc-1
+				builderStore.chatMessages = [
+					makeTextMessage('user-1', 'user', 'Build v1'),
+					makeVersionCard('vc-1', 'v-1'),
+					makeTextMessage('user-2', 'user', 'Build v2'),
+					makeVersionCard('vc-2', 'v-2'),
+					makeTextMessage('user-3', 'user', 'Build v3'),
+					makeVersionCard('vc-3', 'v-3'),
+				];
+
+				// Simulate restore: sets activeVersionCardId, clears resume
+				builderStore.activeVersionCardId = 'vc-1';
+				builderStore.resumeAfterRestoreMessageId = undefined;
+
+				// Before sending: everything after vc-1 is collapsed
+				expect(builderStore.collapsedMessageIds.has('vc-3')).toBe(true);
+
+				// Simulate sendChatMessage setting resumeAfterRestoreMessageId
+				// (mimicking the logic at builder.store.ts line 900-901)
+				builderStore.resumeAfterRestoreMessageId = 'user-4';
+				builderStore.chatMessages = [
+					...builderStore.chatMessages,
+					makeTextMessage('user-4', 'user', 'New message after restore'),
+				];
+
+				// user-2, vc-2, user-3, vc-3 should still be collapsed
+				expect(builderStore.collapsedMessageIds.has('user-2')).toBe(true);
+				expect(builderStore.collapsedMessageIds.has('vc-2')).toBe(true);
+				expect(builderStore.collapsedMessageIds.has('user-3')).toBe(true);
+				expect(builderStore.collapsedMessageIds.has('vc-3')).toBe(true);
+				// user-4 (resume point) should NOT be collapsed
+				expect(builderStore.collapsedMessageIds.has('user-4')).toBe(false);
+			});
+
+			it('should not update resumeAfterRestoreMessageId on second message send', () => {
+				const builderStore = useBuilderStore();
+
+				builderStore.chatMessages = [
+					makeTextMessage('user-1', 'user', 'Build v1'),
+					makeVersionCard('vc-1', 'v-1'),
+					makeTextMessage('user-2', 'user', 'Build v2'),
+					makeVersionCard('vc-2', 'v-2'),
+				];
+
+				// Restore to vc-1
+				builderStore.activeVersionCardId = 'vc-1';
+				// First send already happened
+				builderStore.resumeAfterRestoreMessageId = 'user-3';
+
+				builderStore.chatMessages = [
+					...builderStore.chatMessages,
+					makeTextMessage('user-3', 'user', 'First after restore'),
+					makeVersionCard('vc-3', 'v-3'),
+					makeTextMessage('user-4', 'user', 'Second after restore'),
+				];
+
+				// The check in sendChatMessage: activeVersionCardId && !resumeAfterRestoreMessageId
+				// Since resumeAfterRestoreMessageId is already set, it stays at user-3
+				expect(builderStore.resumeAfterRestoreMessageId).toBe('user-3');
+
+				// Collapsed should still only be between vc-1 and user-3
+				expect(builderStore.collapsedMessageIds.has('user-2')).toBe(true);
+				expect(builderStore.collapsedMessageIds.has('vc-2')).toBe(true);
+				// Everything from user-3 onward should NOT be collapsed
+				expect(builderStore.collapsedMessageIds.has('user-3')).toBe(false);
+				expect(builderStore.collapsedMessageIds.has('vc-3')).toBe(false);
+				expect(builderStore.collapsedMessageIds.has('user-4')).toBe(false);
+			});
+
+			it('should restore collapse state from loadSessions', async () => {
+				const builderStore = useBuilderStore();
+				workflowsStore.isWorkflowSaved = { 'test-workflow-id': true };
+
+				const workflowHistoryModule = await import('@n8n/rest-api-client/api/workflowHistory');
+
+				// Version card IDs are generated as `version-card-${userMessageId}`
+				// by loadSessions (line ~1248). The session stores the generated ID.
+				mockGetAiSessions.mockResolvedValueOnce({
+					sessions: [
+						{
+							sessionId: 'session-1',
+							lastUpdated: '2024-01-01T00:00:00Z',
+							activeVersionCardId: 'version-card-user-msg-1',
+							resumeAfterRestoreMessageId: 'user-msg-3',
+							messages: [
+								{
+									type: 'message',
+									role: 'user',
+									text: 'Build v1',
+									id: 'user-msg-1',
+									revertVersionId: 'version-1',
+								} as unknown as ChatRequest.MessageResponse,
+								{
+									type: 'workflow-updated',
+									id: 'wu-1',
+									codeSnippet: '{}',
+								} as unknown as ChatRequest.MessageResponse,
+								{
+									type: 'message',
+									role: 'assistant',
+									text: 'Done v1',
+									id: 'ai-msg-1',
+								} as unknown as ChatRequest.MessageResponse,
+								{
+									type: 'message',
+									role: 'user',
+									text: 'Build v2',
+									id: 'user-msg-2',
+									revertVersionId: 'version-2',
+								} as unknown as ChatRequest.MessageResponse,
+								{
+									type: 'workflow-updated',
+									id: 'wu-2',
+									codeSnippet: '{}',
+								} as unknown as ChatRequest.MessageResponse,
+								{
+									type: 'message',
+									role: 'assistant',
+									text: 'Done v2',
+									id: 'ai-msg-2',
+								} as unknown as ChatRequest.MessageResponse,
+								{
+									type: 'message',
+									role: 'user',
+									text: 'After restore',
+									id: 'user-msg-3',
+								} as unknown as ChatRequest.MessageResponse,
+								{
+									type: 'message',
+									role: 'assistant',
+									text: 'Done v3',
+									id: 'ai-msg-3',
+								} as unknown as ChatRequest.MessageResponse,
+							],
+						},
+					],
+				});
+
+				vi.mocked(workflowHistoryModule.getWorkflowVersionsByIds).mockResolvedValue({
+					versions: [
+						{ versionId: 'version-1', createdAt: '2024-01-01T00:00:00Z' },
+						{ versionId: 'version-2', createdAt: '2024-01-02T00:00:00Z' },
+					],
+				});
+
+				await builderStore.loadSessions();
+
+				// activeVersionCardId should be restored from the session
+				expect(builderStore.activeVersionCardId).toBe('version-card-user-msg-1');
+
+				// resumeAfterRestoreMessageId should be restored
+				expect(builderStore.resumeAfterRestoreMessageId).toBe('user-msg-3');
+
+				// Messages between the active card and resume point should be collapsed
+				const collapsed = builderStore.collapsedMessageIds;
+				expect(collapsed.size).toBeGreaterThan(0);
+
+				// user-msg-3 (resume point) should NOT be collapsed
+				expect(collapsed.has('user-msg-3')).toBe(false);
+			});
+
+			it('should handle re-restore within collapsed region', () => {
+				const builderStore = useBuilderStore();
+
+				builderStore.chatMessages = [
+					makeTextMessage('user-1', 'user', 'Build v1'),
+					makeVersionCard('vc-1', 'v-1'),
+					makeTextMessage('user-2', 'user', 'Build v2'),
+					makeVersionCard('vc-2', 'v-2'),
+					makeTextMessage('user-3', 'user', 'Build v3'),
+					makeVersionCard('vc-3', 'v-3'),
+					// Resume region
+					makeTextMessage('user-4', 'user', 'After first restore'),
+					makeVersionCard('vc-4', 'v-4'),
+				];
+
+				// State: restored to vc-1, resumed at user-4
+				builderStore.activeVersionCardId = 'vc-1';
+				builderStore.resumeAfterRestoreMessageId = 'user-4';
+
+				// vc-2, vc-3 collapsed, vc-4 visible
+				expect(builderStore.collapsedMessageIds.has('vc-2')).toBe(true);
+				expect(builderStore.collapsedMessageIds.has('vc-3')).toBe(true);
+				expect(builderStore.collapsedMessageIds.has('vc-4')).toBe(false);
+
+				// Now re-restore to vc-2 (within the collapsed group)
+				// This simulates restoreToVersion() behavior
+				builderStore.activeVersionCardId = 'vc-2';
+				builderStore.resumeAfterRestoreMessageId = undefined;
+
+				// Now vc-3, user-4, vc-4 should be collapsed
+				// vc-1, user-2, vc-2 should be visible
+				expect(builderStore.collapsedMessageIds.has('vc-1')).toBe(false);
+				expect(builderStore.collapsedMessageIds.has('user-2')).toBe(false);
+				expect(builderStore.collapsedMessageIds.has('vc-2')).toBe(false);
+				expect(builderStore.collapsedMessageIds.has('user-3')).toBe(true);
+				expect(builderStore.collapsedMessageIds.has('vc-3')).toBe(true);
+				expect(builderStore.collapsedMessageIds.has('user-4')).toBe(true);
+				expect(builderStore.collapsedMessageIds.has('vc-4')).toBe(true);
+			});
+		});
 	});
 
 	describe('Page title status', () => {
@@ -2671,7 +3305,7 @@ describe('AI Builder store', () => {
 			expect(userMessage.revertVersion).toBeUndefined();
 		});
 
-		it('should add revertVersion to user message after streaming when workflow was modified', async () => {
+		it('should insert a version card message after streaming when workflow was modified', async () => {
 			const builderStore = useBuilderStore();
 			workflowsStore.workflowId = 'test-workflow-123';
 			workflowsStore.isNewWorkflow = false;
@@ -2680,6 +3314,17 @@ describe('AI Builder store', () => {
 				createWorkflowDocumentId(workflowsStore.workflowId),
 			);
 			workflowDocumentStore.setUpdatedAt('2024-01-01T00:00:00Z');
+
+			// Mock the workflow history API to return the version as existing
+			// Called twice: once for saveWorkflowAndGetRevertVersion, once for savePostModificationVersion
+			const workflowHistoryModule = await import('@n8n/rest-api-client/api/workflowHistory');
+			vi.mocked(workflowHistoryModule.getWorkflowVersionsByIds)
+				.mockResolvedValueOnce({
+					versions: [{ versionId: 'version-1', createdAt: '2024-01-01T00:00:00Z' }],
+				})
+				.mockResolvedValueOnce({
+					versions: [{ versionId: 'version-1', createdAt: '2024-01-01T00:00:00Z' }],
+				});
 
 			await builderStore.sendChatMessage({ text: 'Build a workflow' });
 
@@ -2697,18 +3342,24 @@ describe('AI Builder store', () => {
 				});
 			}
 
-			// Complete streaming
+			// Complete streaming — stopStreaming is async (saves post-modification version)
 			if (capturedDoneCallback) {
 				capturedDoneCallback();
 			}
 
-			await vi.waitFor(() => expect(builderStore.streaming).toBe(false));
+			// Wait for the version card to be appended (async stopStreaming)
+			await vi.waitFor(() => {
+				const last = builderStore.chatMessages[builderStore.chatMessages.length - 1];
+				expect(last.type).toBe('custom');
+			});
 
-			// User message should now have revertVersion
-			const userMessage = builderStore.chatMessages[0] as ChatUI.TextMessage;
-			expect(userMessage.role).toBe('user');
-			expect(userMessage.revertVersion).toEqual({
-				id: 'version-1',
+			// A version card message should be appended
+			const lastMessage = builderStore.chatMessages[builderStore.chatMessages.length - 1];
+			expect(lastMessage.type).toBe('custom');
+			expect(lastMessage).toHaveProperty('customType', 'version_card');
+			expect(lastMessage).toHaveProperty('data');
+			expect((lastMessage as Record<string, unknown>).data).toEqual({
+				versionId: 'version-1',
 				createdAt: '2024-01-01T00:00:00Z',
 			});
 		});
@@ -2959,6 +3610,12 @@ describe('AI Builder store', () => {
 			workflowsStore.isNewWorkflow = false;
 			workflowsStore.workflowVersionId = 'version-1';
 
+			// Mock version check for saveWorkflowAndGetRevertVersion + savePostModificationVersion
+			const workflowHistoryModule = await import('@n8n/rest-api-client/api/workflowHistory');
+			vi.mocked(workflowHistoryModule.getWorkflowVersionsByIds).mockResolvedValue({
+				versions: [{ versionId: 'version-1', createdAt: '2024-01-01T00:00:00Z' }],
+			});
+
 			// Trigger sendChatMessage to start streaming and capture callbacks
 			await builderStore.sendChatMessage({ text: 'test message' });
 
@@ -2976,10 +3633,18 @@ describe('AI Builder store', () => {
 				});
 			}
 
-			// Simulate successful completion by calling the done callback
+			// Simulate successful completion — stopStreaming is async
 			if (capturedDoneCallback) {
 				capturedDoneCallback();
 			}
+
+			// Wait for async stopStreaming to finish (saves post-mod version, shows notifications)
+			await vi.waitFor(() => expect(builderStore.streaming).toBe(false));
+			// Flush pending microtasks from the async stopStreaming chain
+			await vi.waitFor(() => {
+				const last = builderStore.chatMessages[builderStore.chatMessages.length - 1];
+				expect(last.type).toBe('custom');
+			});
 		};
 
 		it('should show browser notification when streaming completes successfully and tab is hidden', async () => {
@@ -3305,51 +3970,122 @@ describe('AI Builder store', () => {
 			expect(builderStore.latestRevertVersion).toBeNull();
 		});
 
-		it('returns the revertVersion when only one message has it', () => {
+		it('returns the revertVersion from a version card message', () => {
 			const builderStore = useBuilderStore();
-			const revertVersion = { id: 'version-1', createdAt: '2024-01-01T00:00:00Z' };
 			builderStore.$patch({
 				chatMessages: [
-					{
-						id: '1',
-						type: 'text',
-						role: 'user',
-						content: 'build a workflow',
-						read: true,
-						revertVersion,
-					},
+					{ id: '1', type: 'text', role: 'user', content: 'build a workflow', read: true },
 					{ id: '2', type: 'text', role: 'assistant', content: 'done', read: true },
+					{
+						id: 'vc-1',
+						type: 'custom',
+						role: 'assistant',
+						customType: 'version_card',
+						data: { versionId: 'version-1', createdAt: '2024-01-01T00:00:00Z' },
+					},
 				],
 			});
-			expect(builderStore.latestRevertVersion).toEqual(revertVersion);
+			expect(builderStore.latestRevertVersion).toEqual({
+				id: 'version-1',
+				createdAt: '2024-01-01T00:00:00Z',
+			});
 		});
 
-		it('returns the latest revertVersion when multiple messages have revertVersion', () => {
+		it('returns the latest version card when multiple exist', () => {
 			const builderStore = useBuilderStore();
-			const firstRevertVersion = { id: 'version-1', createdAt: '2024-01-01T00:00:00Z' };
-			const secondRevertVersion = { id: 'version-2', createdAt: '2024-01-02T00:00:00Z' };
 			builderStore.$patch({
 				chatMessages: [
+					{ id: '1', type: 'text', role: 'user', content: 'build a workflow', read: true },
 					{
-						id: '1',
-						type: 'text',
-						role: 'user',
-						content: 'build a workflow',
-						read: true,
-						revertVersion: firstRevertVersion,
+						id: 'vc-1',
+						type: 'custom',
+						role: 'assistant',
+						customType: 'version_card',
+						data: { versionId: 'version-1', createdAt: '2024-01-01T00:00:00Z' },
 					},
-					{ id: '2', type: 'text', role: 'assistant', content: 'done', read: true },
+					{ id: '2', type: 'text', role: 'user', content: 'modify it', read: true },
 					{
-						id: '3',
-						type: 'text',
-						role: 'user',
-						content: 'modify it',
-						read: true,
-						revertVersion: secondRevertVersion,
+						id: 'vc-2',
+						type: 'custom',
+						role: 'assistant',
+						customType: 'version_card',
+						data: { versionId: 'version-2', createdAt: '2024-01-02T00:00:00Z' },
 					},
 				],
 			});
-			expect(builderStore.latestRevertVersion).toEqual(secondRevertVersion);
+			expect(builderStore.latestRevertVersion).toEqual({
+				id: 'version-2',
+				createdAt: '2024-01-02T00:00:00Z',
+			});
+		});
+	});
+
+	describe('generated pin data', () => {
+		it('storeGeneratedPinData stores pin data without applying it', () => {
+			const builderStore = useBuilderStore();
+			const pinData = { 'Node A': [{ json: { test: true } }] };
+
+			builderStore.storeGeneratedPinData(pinData);
+
+			expect(builderStore.hasDeferredPinData).toBe(true);
+			const wfDocStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			expect(wfDocStore.pinData).toEqual({});
+		});
+
+		it('storeGeneratedPinData merges multiple calls', () => {
+			const builderStore = useBuilderStore();
+
+			builderStore.storeGeneratedPinData({ 'Node A': [{ json: { a: 1 } }] });
+			builderStore.storeGeneratedPinData({ 'Node B': [{ json: { b: 2 } }] });
+
+			expect(builderStore.hasDeferredPinData).toBe(true);
+		});
+
+		it('hasDeferredPinData returns false when no data is stored', () => {
+			const builderStore = useBuilderStore();
+			expect(builderStore.hasDeferredPinData).toBe(false);
+		});
+
+		it('applyGeneratedPinData applies data and marks state dirty', () => {
+			const builderStore = useBuilderStore();
+			const uiStore = useUIStore();
+			const pinData = { 'Node A': [{ json: { test: true } }] };
+
+			builderStore.storeGeneratedPinData(pinData);
+			builderStore.applyGeneratedPinData();
+
+			const wfDocStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			expect(wfDocStore.pinData).toEqual(pinData);
+			expect(uiStore.stateIsDirty).toBe(true);
+			expect(builderStore.hasDeferredPinData).toBe(false);
+			expect(builderStore.pinDataApplied).toBe(true);
+		});
+
+		it('applyGeneratedPinData is a no-op when no data is stored', () => {
+			const builderStore = useBuilderStore();
+			const uiStore = useUIStore();
+
+			builderStore.applyGeneratedPinData();
+
+			expect(uiStore.stateIsDirty).toBe(false);
+			expect(builderStore.pinDataApplied).toBe(false);
+		});
+
+		it('resetBuilderChat clears generated pin data and pinDataApplied', () => {
+			const builderStore = useBuilderStore();
+
+			builderStore.storeGeneratedPinData({ 'Node A': [{ json: { test: true } }] });
+			builderStore.applyGeneratedPinData();
+			expect(builderStore.pinDataApplied).toBe(true);
+
+			builderStore.resetBuilderChat();
+
+			expect(builderStore.hasDeferredPinData).toBe(false);
+			expect(builderStore.pinDataApplied).toBe(false);
 		});
 	});
 });
