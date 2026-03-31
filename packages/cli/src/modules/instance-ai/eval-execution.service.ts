@@ -172,7 +172,9 @@ export class EvalExecutionService {
 			const errorMsg = error instanceof Error ? error.message : String(error);
 			this.logger.error(`[EvalMock] Phase 1.5 pin data generation failed: ${errorMsg}`);
 			return normalizePinData(
-				Object.fromEntries(bypassNodeNames.map((nodeName) => [nodeName, [{ json: {} }]])) as IPinData,
+				Object.fromEntries(
+					bypassNodeNames.map((nodeName) => [nodeName, [{ json: {} }]]),
+				) as IPinData,
 			);
 		}
 	}
