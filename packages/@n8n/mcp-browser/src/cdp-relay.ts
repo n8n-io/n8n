@@ -42,8 +42,7 @@ function isRestrictedTarget(targetInfo: { type?: string; url?: string }): boolea
 	// Only allow page and iframe targets
 	if (type && type !== 'page' && type !== 'iframe') return true;
 	if (!url) return false;
-	if (url.startsWith('chrome-extension://')) return true;
-	const blocked = ['chrome://', 'devtools://', 'edge://'];
+	const blocked = ['chrome://', 'chrome-extension://', 'devtools://', 'edge://'];
 	return blocked.some((prefix) => url.startsWith(prefix));
 }
 
@@ -368,7 +367,7 @@ export class CDPRelayServer {
 				return {};
 
 			case 'Target.setAutoAttach': {
-				// Child session auto-attach: forward to extension so Chrome attaches to OOPIFs
+				// Child session auto-attach: forward to extension so Chrome attaches to iframes
 				if (sessionId) {
 					return await this.forwardToExtension(method, params, sessionId);
 				}
@@ -855,7 +854,8 @@ class ExtensionConnection {
 		this.ws.on('close', (_code: number, reason: Buffer) => {
 			const reasonStr = reason.toString();
 			log.debug('ExtensionConnection WebSocket closed:', reasonStr || '(no reason)');
-			this.closeReason = reasonStr || undefined;
+			// Only update closeReason if not already set (e.g. by heartbeat timeout)
+			this.closeReason ??= reasonStr || undefined;
 			this.handleClose();
 		});
 		this.ws.on('error', (error) => {
