@@ -1,6 +1,6 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
-import { Annotation, type MemorySaver, StateGraph, START, END } from '@langchain/langgraph';
+import { Command, type MemorySaver } from '@langchain/langgraph';
 import type { SelectedNodeContext } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type {
@@ -13,8 +13,8 @@ import type {
 
 import { MAX_AI_BUILDER_PROMPT_LENGTH } from '@/constants';
 
-import { createPlannerAgent, invokePlannerNode, parsePlanDecision } from './agents/planner.agent';
-import type { PlannerNodeInput, PlannerNodeResult } from './agents/planner.agent';
+import { parsePlanDecision } from './agents/planner.agent';
+import { DiscoveryGraph } from './discovery/discovery.graph';
 import type { AssistantHandler } from './assistant';
 import { CodeWorkflowBuilder } from './code-builder';
 import { TriageAgent } from './code-builder/triage.agent';
@@ -27,7 +27,7 @@ import {
 } from './code-builder/utils/code-builder-session';
 import { ValidationError } from './errors';
 import { SessionManagerService } from './session-manager.service';
-import type { HITLInterruptValue, PlanOutput } from './types/planning';
+import type { HITLInterruptValue, PlannerQuestion, PlanOutput } from './types/planning';
 import type { StreamOutput } from './types/streaming';
 import { buildSelectedNodesContextBlock } from './utils/context-builders';
 
@@ -48,6 +48,27 @@ function extractPlanInterrupt(chunk: Record<string, unknown>): PlanOutput | null
 }
 
 /**
+ * Extract a questions interrupt value from a LangGraph updates stream chunk.
+ */
+function extractQuestionsInterrupt(
+	chunk: Record<string, unknown>,
+): { introMessage?: string; questions: PlannerQuestion[] } | null {
+	const interrupts = chunk.__interrupt__ as
+		| Array<{ value?: { type?: string; introMessage?: string; questions?: PlannerQuestion[] } }>
+		| undefined;
+	if (!Array.isArray(interrupts) || interrupts.length === 0) return null;
+
+	const first = interrupts[0];
+	if (first?.value?.type === 'questions' && Array.isArray(first.value.questions)) {
+		return {
+			introMessage: first.value.introMessage,
+			questions: first.value.questions,
+		};
+	}
+	return null;
+}
+
+/**
  * Per-stage LLM configuration for the workflow builder.
  * All stages must be configured with an LLM instance.
  */
@@ -55,6 +76,7 @@ export interface StageLLMs {
 	builder: BaseChatModel;
 	parameterUpdater: BaseChatModel;
 	planner: BaseChatModel;
+	discovery: BaseChatModel;
 }
 
 export interface WorkflowBuilderAgentConfig {
@@ -166,6 +188,13 @@ export class WorkflowBuilderAgent {
 		userId: string | undefined,
 		abortSignal: AbortSignal | undefined,
 	) {
+		// Check if this is a questions resume (discovery graph interrupt)
+		if (payload.resumeData && payload.resumeInterrupt?.type === 'questions') {
+			this.logger?.debug('Questions answered, resuming discovery graph', { userId });
+			yield* this.runPlanMode(payload, userId, abortSignal);
+			return;
+		}
+
 		// Check if this is a plan decision resume (approval/modify/reject)
 		if (payload.resumeData && payload.resumeInterrupt?.type === 'plan') {
 			const decision = parsePlanDecision(payload.resumeData);
@@ -215,20 +244,21 @@ export class WorkflowBuilderAgent {
 	}
 
 	/**
-	 * Run the planner agent inside a minimal LangGraph StateGraph.
+	 * Run the discovery graph for plan mode.
 	 *
-	 * The planner uses `interrupt()` from LangGraph to pause execution and yield
-	 * a plan for user approval. This requires a compiled LangGraph graph context.
+	 * The discovery graph handles node discovery, optional questions via interrupt,
+	 * and plan generation/approval via interrupt. This replaces the old minimal
+	 * planner-only StateGraph wrapper.
 	 */
 	private async *runPlanMode(
 		payload: ChatPayload,
 		userId: string | undefined,
 		abortSignal: AbortSignal | undefined,
 	): AsyncGenerator<StreamOutput> {
-		const isResume = payload.resumeData && payload.resumeInterrupt?.type === 'plan';
+		const isResume = !!payload.resumeData;
 
 		// Handle reject early — no graph invocation needed
-		if (isResume) {
+		if (isResume && payload.resumeInterrupt?.type === 'plan') {
 			const decision = parsePlanDecision(payload.resumeData);
 			if (decision.action === 'reject') {
 				this.logger?.debug('Plan rejected by user', { userId });
@@ -236,88 +266,102 @@ export class WorkflowBuilderAgent {
 			}
 		}
 
-		const plannerInput = this.buildPlannerInput(payload);
-		const graph = this.compilePlannerGraph(plannerInput);
 		const workflowId = payload.workflowContext?.currentWorkflow?.id;
-		const baseThreadId = `planner-${SessionManagerService.generateThreadId(workflowId, userId)}`;
-		// Use a unique thread for modify to avoid checkpoint conflicts
-		const threadId = isResume ? `${baseThreadId}-${Date.now()}` : baseThreadId;
+		const baseThreadId = `discovery-${SessionManagerService.generateThreadId(workflowId, userId)}`;
+		// Use stable thread for resume (must match the original), unique for new requests
+		const threadId = isResume ? baseThreadId : `${baseThreadId}-${Date.now()}`;
 
-		this.logger?.debug(isResume ? 'Resuming planner for modification' : 'Invoking planner', {
-			userId,
-		});
-
-		const stream = await graph.stream(
-			{ plannerInput, plannerResult: null },
-			{ configurable: { thread_id: threadId }, signal: abortSignal, streamMode: 'updates' },
-		);
-
-		for await (const chunk of stream) {
-			const plan = extractPlanInterrupt(chunk as Record<string, unknown>);
-			if (plan) {
-				yield { messages: [{ role: 'assistant' as const, type: 'plan' as const, plan }] };
-			}
-		}
-	}
-
-	/**
-	 * Build the planner input from a chat payload.
-	 */
-	private buildPlannerInput(payload: ChatPayload): PlannerNodeInput {
-		const currentWorkflow = payload.workflowContext?.currentWorkflow;
-		const input: PlannerNodeInput = {
-			userRequest: payload.message,
-			discoveryContext: { nodesFound: [] },
-			workflowJSON: {
-				nodes: currentWorkflow?.nodes ?? [],
-				connections: currentWorkflow?.connections ?? {},
-				name: currentWorkflow?.name ?? '',
-			},
-			selectedNodesContext: buildSelectedNodesContextBlock(payload.workflowContext) || undefined,
-		};
-
-		if (payload.resumeData && payload.resumeInterrupt?.type === 'plan') {
-			const decision = parsePlanDecision(payload.resumeData);
-			if (decision.action === 'modify') {
-				input.planPrevious = payload.resumeInterrupt.plan;
-				input.planFeedback = decision.feedback ?? null;
-			}
-		}
-
-		return input;
-	}
-
-	/**
-	 * Compile a minimal LangGraph StateGraph with a single planner node.
-	 */
-	private compilePlannerGraph(defaultInput: PlannerNodeInput) {
-		const PlannerGraphState = Annotation.Root({
-			plannerInput: Annotation<PlannerNodeInput>({
-				reducer: (_x, y) => y,
-				default: () => defaultInput,
-			}),
-			plannerResult: Annotation<PlannerNodeResult | null>({
-				reducer: (_x, y) => y ?? null,
-				default: () => null,
-			}),
-		});
-
-		const plannerLlm = this.stageLLMs.planner;
+		const graph = this.compileDiscoveryGraph();
 		const callbacks = this.tracer ? [this.tracer] : undefined;
-		const { runMetadata } = this;
 
-		return new StateGraph(PlannerGraphState)
-			.addNode('planner', async (state) => {
-				const agent = createPlannerAgent({ llm: plannerLlm });
-				const result = await invokePlannerNode(agent, state.plannerInput, {
+		if (isResume) {
+			this.logger?.debug('Resuming discovery graph from interrupt', { userId });
+			const stream = await graph.stream(new Command({ resume: payload.resumeData }), {
+				configurable: { thread_id: threadId },
+				signal: abortSignal,
+				streamMode: 'updates' as const,
+				callbacks,
+				metadata: this.runMetadata,
+			});
+			for await (const chunk of stream) {
+				yield* this.processDiscoveryChunk(chunk as Record<string, unknown>);
+			}
+		} else {
+			this.logger?.debug('Starting discovery graph for plan mode', { userId });
+			const currentWorkflow = payload.workflowContext?.currentWorkflow;
+			const selectedNodesContext = buildSelectedNodesContextBlock(payload.workflowContext) || '';
+
+			const stream = await graph.stream(
+				{
+					userRequest: payload.message,
+					workflowJSON: {
+						nodes: currentWorkflow?.nodes ?? [],
+						connections: currentWorkflow?.connections ?? {},
+						name: currentWorkflow?.name ?? '',
+					},
+					mode: 'plan' as const,
+					selectedNodesContext,
+				},
+				{
+					configurable: { thread_id: threadId },
+					signal: abortSignal,
+					streamMode: 'updates' as const,
 					callbacks,
-					metadata: runMetadata,
-				});
-				return { plannerResult: result };
-			})
-			.addEdge(START, 'planner')
-			.addEdge('planner', END)
-			.compile({ checkpointer: this.checkpointer });
+					metadata: this.runMetadata,
+				},
+			);
+			for await (const chunk of stream) {
+				yield* this.processDiscoveryChunk(chunk as Record<string, unknown>);
+			}
+		}
+	}
+
+	/**
+	 * Process a single chunk from the discovery graph stream,
+	 * yielding questions or plan interrupts as StreamOutput.
+	 */
+	private *processDiscoveryChunk(chunk: Record<string, unknown>): Generator<StreamOutput> {
+		const questions = extractQuestionsInterrupt(chunk);
+		if (questions) {
+			yield {
+				messages: [
+					{
+						role: 'assistant' as const,
+						type: 'questions' as const,
+						...questions,
+					},
+				],
+			};
+			return;
+		}
+
+		const plan = extractPlanInterrupt(chunk);
+		if (plan) {
+			yield {
+				messages: [
+					{
+						role: 'assistant' as const,
+						type: 'plan' as const,
+						plan,
+					},
+				],
+			};
+		}
+	}
+
+	/**
+	 * Compile the discovery subgraph with node search, questions, and planner.
+	 */
+	private compileDiscoveryGraph() {
+		const discoveryGraph = new DiscoveryGraph();
+		return discoveryGraph.create({
+			parsedNodeTypes: this.parsedNodeTypes,
+			llm: this.stageLLMs.discovery,
+			plannerLLM: this.stageLLMs.planner,
+			logger: this.logger,
+			featureFlags: { planMode: true },
+			checkpointer: this.checkpointer,
+		});
 	}
 
 	private async *runCodeWorkflowBuilder(

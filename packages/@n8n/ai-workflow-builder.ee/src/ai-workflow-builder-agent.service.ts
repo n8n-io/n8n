@@ -198,6 +198,7 @@ export class AiWorkflowBuilderService {
 				builder: anthropicClaude,
 				parameterUpdater: anthropicClaude,
 				planner: anthropicClaude,
+				discovery: anthropicClaude,
 			},
 			logger: this.logger,
 			checkpointer: this.sessionManager.getCheckpointer(),

@@ -272,6 +272,7 @@ export function createAgent(options: CreateAgentOptions): WorkflowBuilderAgent {
 			builder: llms.builder,
 			parameterUpdater: llms.parameterUpdater,
 			planner: llms.planner,
+			discovery: llms.builder,
 		},
 		checkpointer: new MemorySaver(),
 		tracer,
