@@ -2,7 +2,7 @@
 // LangSmith dataset management: load examples and upload datasets
 // ---------------------------------------------------------------------------
 
-import { Client } from 'langsmith';
+import type { Client } from 'langsmith';
 
 import type { DatasetExample } from '../types';
 

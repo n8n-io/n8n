@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+
 import type { Run } from '../types';
 
 const DATA_DIR = path.join(__dirname, '..', '..', '.data', 'instance-ai-runs');
@@ -20,7 +21,11 @@ export function getRun(id: string): Run | null {
 	const filePath = path.join(DATA_DIR, `${id}.json`);
 	if (!fs.existsSync(filePath)) return null;
 	const content = fs.readFileSync(filePath, 'utf-8');
-	return JSON.parse(content) as Run;
+	try {
+		return JSON.parse(content) as Run;
+	} catch {
+		return null;
+	}
 }
 
 export function listRuns(): Run[] {
@@ -29,8 +34,13 @@ export function listRuns(): Run[] {
 	return files
 		.map((f) => {
 			const content = fs.readFileSync(path.join(DATA_DIR, f), 'utf-8');
-			return JSON.parse(content) as Run;
+			try {
+				return JSON.parse(content) as Run;
+			} catch {
+				return null;
+			}
 		})
+		.filter((run): run is Run => run !== null)
 		.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 

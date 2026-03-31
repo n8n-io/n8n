@@ -135,8 +135,8 @@ export async function runPostBuildExecutions(
 				const executionSummary = await pollExecution(client, executionId, wf.id);
 				outcome.executionsRun.push(executionSummary);
 			}
-		} catch (err: unknown) {
-			const errorMessage = err instanceof Error ? err.message : String(err);
+		} catch (error: unknown) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
 			outcome.executionsRun.push({
 				id: '',
 				workflowId: wf.id,
@@ -380,8 +380,8 @@ async function executeViaWebhook(
 
 	try {
 		await client.activateWorkflow(workflowId);
-	} catch (err: unknown) {
-		const errorMessage = err instanceof Error ? err.message : String(err);
+	} catch (error: unknown) {
+		const errorMessage = error instanceof Error ? error.message : String(error);
 		return [
 			{
 				id: '',
@@ -431,8 +431,8 @@ async function executeViaWebhook(
 						body: webhookResponse.data,
 					},
 				});
-			} catch (err: unknown) {
-				const errorMessage = err instanceof Error ? err.message : String(err);
+			} catch (error: unknown) {
+				const errorMessage = error instanceof Error ? error.message : String(error);
 				summaries.push({
 					id: '',
 					workflowId,

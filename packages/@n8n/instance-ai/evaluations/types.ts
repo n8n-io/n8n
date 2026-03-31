@@ -163,7 +163,7 @@ export interface WorkflowSummary {
 
 export interface NodeOutputData {
 	nodeName: string;
-	data: Record<string, unknown>[];
+	data: Array<Record<string, unknown>>;
 }
 
 export interface WebhookResponse {

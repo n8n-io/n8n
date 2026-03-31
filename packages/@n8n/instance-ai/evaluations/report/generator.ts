@@ -1,5 +1,7 @@
 import fs from 'fs';
 import path from 'path';
+
+import type { WorkflowResponse } from '../clients/n8n-client';
 import type {
 	Run,
 	InstanceAiResult,
@@ -8,7 +10,6 @@ import type {
 	ChatToolCall,
 	ChatEntry,
 } from '../types';
-import type { WorkflowResponse } from '../clients/n8n-client';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -53,12 +54,8 @@ function backfillFromPrompts(run: Run): void {
 		if (p.tags) tagsMap.set(p.text, p.tags);
 	}
 	for (const result of run.results) {
-		if (!result.complexity) {
-			result.complexity = complexityMap.get(result.prompt) ?? 'medium';
-		}
-		if (!result.tags) {
-			result.tags = tagsMap.get(result.prompt);
-		}
+		result.complexity ??= complexityMap.get(result.prompt) ?? 'medium';
+		result.tags ??= tagsMap.get(result.prompt);
 	}
 }
 
@@ -208,7 +205,8 @@ function renderWorkflowsSection(result: InstanceAiResult, n8nBaseUrl: string): s
 			html += `<n8n-demo tidyup="true" workflow='${escapeHtml(wfJsonStr)}'></n8n-demo>`;
 
 			// Collapsible raw JSON
-			html += `<details style="margin-bottom:12px"><summary style="cursor:pointer;color:#8b949e;font-size:12px;margin-top:4px">Workflow JSON</summary>`;
+			html +=
+				'<details style="margin-bottom:12px"><summary style="cursor:pointer;color:#8b949e;font-size:12px;margin-top:4px">Workflow JSON</summary>';
 			html += `<pre><code>${escapeHtml(JSON.stringify(wfJson, null, 2))}</code></pre></details>`;
 		}
 	}

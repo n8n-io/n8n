@@ -6,12 +6,11 @@
 // checklist verification, and result aggregation.
 // ---------------------------------------------------------------------------
 
+import type { InstanceAiEvalExecutionResult } from '@n8n/api-types';
 import crypto from 'node:crypto';
 
-import type { InstanceAiEvalExecutionResult } from '@n8n/api-types';
-
-import { extractBuildChecklist } from '../checklist/extractor';
 import { extractExecutionChecklist } from '../checklist/execution-extractor';
+import { extractBuildChecklist } from '../checklist/extractor';
 import { verifyChecklist } from '../checklist/verifier';
 import { N8nClient, type WorkflowResponse } from '../clients/n8n-client';
 import { consumeSseStream } from '../clients/sse-client';
@@ -30,7 +29,6 @@ import {
 } from '../outcome/workflow-discovery';
 import { writeReport } from '../report/generator';
 import { saveRun } from '../report/storage';
-import { createLogger, type EvalLogger } from './logger';
 import type {
 	PromptConfig,
 	ChecklistItem,
@@ -44,6 +42,7 @@ import type {
 	WorkflowTestCase,
 	WorkflowTestCaseResult,
 } from '../types';
+import { createLogger, type EvalLogger } from './logger';
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -195,8 +194,8 @@ export async function runEvaluation(config: RunConfig): Promise<Run> {
 
 		run.results = results;
 		run.status = 'completed';
-	} catch (err: unknown) {
-		const msg = err instanceof Error ? err.message : String(err);
+	} catch (error: unknown) {
+		const msg = error instanceof Error ? error.message : String(error);
 		logger.error(`Pipeline error: ${msg}`);
 		run.status = 'failed';
 	} finally {
@@ -254,10 +253,10 @@ async function runSingleExample(config: SingleExampleConfig): Promise<InstanceAi
 		logger.verbose(`[${threadId}] Starting SSE connection`);
 		let sseError: Error | undefined;
 		const ssePromise = startSseConnection(client, threadId, events, abortController.signal).catch(
-			(err: unknown) => {
+			(error: unknown) => {
 				// Capture SSE errors instead of letting them become unhandled rejections.
 				// The error will surface when we check sseError or await ssePromise.
-				sseError = err instanceof Error ? err : new Error(String(err));
+				sseError = error instanceof Error ? error : new Error(String(error));
 			},
 		);
 
@@ -483,9 +482,9 @@ export async function runWorkflowTestCase(
 		logger.info(`  Building workflow: "${truncate(testCase.prompt, 60)}"`);
 
 		const ssePromise = startSseConnection(client, threadId, events, abortController.signal).catch(
-			(err: unknown) => {
-				if (err instanceof Error) throw err;
-				throw new Error(String(err));
+			(error: unknown) => {
+				if (error instanceof Error) throw error;
+				throw new Error(String(error));
 			},
 		);
 
@@ -535,7 +534,8 @@ export async function runWorkflowTestCase(
 						typeof e.data.payload === 'object' && e.data.payload !== null
 							? (e.data.payload as Record<string, unknown>)
 							: e.data;
-					return String(payload.error ?? payload.message ?? 'unknown tool error');
+					const toolError = payload.error ?? payload.message;
+					return typeof toolError === 'string' ? toolError : 'unknown tool error';
 				});
 
 			const agentText = events
@@ -586,8 +586,8 @@ export async function runWorkflowTestCase(
 			async (scenario) => {
 				try {
 					return await runScenario(client, scenario, workflowId, outcome.workflowJsons, logger);
-				} catch (err: unknown) {
-					const errorMessage = err instanceof Error ? err.message : String(err);
+				} catch (error: unknown) {
+					const errorMessage = error instanceof Error ? error.message : String(error);
 					logger.error(`    ERROR [${scenario.name}]: ${errorMessage}`);
 					return {
 						scenario,
@@ -727,9 +727,10 @@ function buildVerificationArtifact(
 				req.mockResponse !== null &&
 				'_evalMockError' in (req.mockResponse as Record<string, unknown>)
 			) {
-				const msg = (req.mockResponse as Record<string, unknown>).message ?? 'unknown';
+				const msg = (req.mockResponse as Record<string, unknown>).message;
+				const msgStr = typeof msg === 'string' ? msg : 'unknown';
 				preAnalysis.push(
-					`⚠ MOCK ISSUE: "${nodeName}" ${req.method} ${req.url} → mock generation failed: ${String(msg)}`,
+					`⚠ MOCK ISSUE: "${nodeName}" ${req.method} ${req.url} → mock generation failed: ${msgStr}`,
 				);
 			}
 		}
@@ -842,7 +843,7 @@ function buildVerificationArtifact(
 // SSE connection
 // ---------------------------------------------------------------------------
 
-function startSseConnection(
+async function startSseConnection(
 	client: N8nClient,
 	threadId: string,
 	events: CapturedEvent[],
@@ -851,7 +852,7 @@ function startSseConnection(
 	const url = client.getEventsUrl(threadId);
 	const cookie = client.cookie;
 
-	return consumeSseStream(
+	return await consumeSseStream(
 		url,
 		cookie,
 		(sseEvent) => {
@@ -1077,7 +1078,7 @@ export async function runWithConcurrency<T, R>(
 	fn: (item: T) => Promise<R>,
 	limit: number,
 ): Promise<R[]> {
-	const results: R[] = new Array(items.length);
+	const results = new Array<R>(items.length);
 	let nextIndex = 0;
 
 	async function worker(): Promise<void> {
@@ -1087,7 +1088,7 @@ export async function runWithConcurrency<T, R>(
 		}
 	}
 
-	const workers = Array.from({ length: Math.min(limit, items.length) }, () => worker());
+	const workers = Array.from({ length: Math.min(limit, items.length) }, async () => await worker());
 	await Promise.all(workers);
 	return results;
 }
@@ -1211,8 +1212,8 @@ function printSummary(run: Run, logger: EvalLogger): void {
 // Utility helpers
 // ---------------------------------------------------------------------------
 
-function delay(ms: number): Promise<void> {
-	return new Promise((resolve) => setTimeout(resolve, ms));
+async function delay(ms: number): Promise<void> {
+	return await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function truncate(text: string, maxLength: number): string {

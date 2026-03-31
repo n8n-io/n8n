@@ -4,8 +4,7 @@
 
 import type { InstanceAiAgentNode, InstanceAiMessage } from '@n8n/api-types';
 
-import type { N8nClient } from '../clients/n8n-client';
-import type { WorkflowResponse } from '../clients/n8n-client';
+import type { N8nClient, WorkflowResponse } from '../clients/n8n-client';
 import type { AgentOutcome, EventOutcome, ExecutionSummary, WorkflowSummary } from '../types';
 
 // ---------------------------------------------------------------------------
@@ -66,7 +65,7 @@ export async function buildAgentOutcome(
 				if (
 					!preRunWorkflowIds.has(wf.id) &&
 					!knownWfIds.has(wf.id) &&
-					(!claimedWorkflowIds || !claimedWorkflowIds.has(wf.id))
+					!claimedWorkflowIds?.has(wf.id)
 				) {
 					knownWfIds.add(wf.id);
 					claimedWorkflowIds?.add(wf.id);
