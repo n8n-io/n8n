@@ -404,13 +404,24 @@ export class WorkflowBuilderAgent {
 	private *extractToolProgress(chunk: Record<string, unknown>): Generator<StreamOutput> {
 		// Agent node produced tool calls → emit 'running' for each
 		const agentUpdate = chunk.discovery_agent as
-			| { messages?: Array<{ tool_calls?: Array<{ name: string; id?: string }> }> }
+			| {
+					messages?: Array<{
+						tool_calls?: Array<{
+							name: string;
+							id?: string;
+							args?: Record<string, unknown>;
+						}>;
+					}>;
+			  }
 			| undefined;
 		if (agentUpdate?.messages) {
 			for (const msg of agentUpdate.messages) {
 				if (msg.tool_calls) {
 					for (const tc of msg.tool_calls) {
-						const displayTitle = WorkflowBuilderAgent.DISCOVERY_TOOL_TITLES[tc.name] ?? tc.name;
+						// Skip submit_discovery_results — routed to format_output, not tools
+						if (tc.name === 'submit_discovery_results') continue;
+
+						const displayTitle = this.getToolDisplayTitle(tc.name, tc.args);
 						yield {
 							messages: [
 								{
@@ -447,6 +458,14 @@ export class WorkflowBuilderAgent {
 				}
 			}
 		}
+	}
+
+	private getToolDisplayTitle(toolName: string, args?: Record<string, unknown>): string {
+		// web_fetch: show the URL being fetched
+		if (toolName === 'web_fetch' && typeof args?.url === 'string') {
+			return `Fetching ${args.url}`;
+		}
+		return WorkflowBuilderAgent.DISCOVERY_TOOL_TITLES[toolName] ?? toolName;
 	}
 
 	/**
