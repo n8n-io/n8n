@@ -58,6 +58,8 @@ export interface EvaluationContext {
 	 * Populated from GenerationResult when available.
 	 */
 	generatedCode?: string;
+	/** Agent's text response for this turn (available when captured from stream) */
+	agentTextResponse?: string;
 	/** Pin data for service nodes (used by execution evaluator) */
 	pinData?: IPinData;
 	/** Per-example annotations (e.g., code_necessary) from CSV or LangSmith dataset */
@@ -259,6 +261,8 @@ export interface ExampleResult {
 	subgraphOutput?: SubgraphExampleOutput;
 	/** Generated source code (e.g., TypeScript SDK code from coding agent) */
 	generatedCode?: string;
+	/** Agent's text response for this turn */
+	agentTextResponse?: string;
 	error?: string;
 }
 
@@ -280,6 +284,8 @@ export interface GenerationResult {
 	workflow: SimpleWorkflow;
 	/** Source code that generated the workflow (e.g., TypeScript SDK code) */
 	generatedCode?: string;
+	/** Text response from the agent (e.g., responder output describing what was built) */
+	agentTextResponse?: string;
 }
 
 /**
