@@ -78,7 +78,10 @@ function createMockMemory(metadata?: Record<string, unknown>) {
 	};
 }
 
-function createService(messages: MockMessage[]): InstanceAiCompactionService {
+function createService(
+	messages: MockMessage[],
+	maxContextWindowTokens = 0,
+): InstanceAiCompactionService {
 	const mockLogger = {
 		info: jest.fn(),
 		warn: jest.fn(),
@@ -94,7 +97,14 @@ function createService(messages: MockMessage[]): InstanceAiCompactionService {
 			hasMore: false,
 		}),
 	};
-	return new InstanceAiCompactionService(mockLogger as never, mockStorage as never);
+	const mockGlobalConfig = {
+		instanceAi: { maxContextWindowTokens },
+	};
+	return new InstanceAiCompactionService(
+		mockLogger as never,
+		mockStorage as never,
+		mockGlobalConfig as never,
+	);
 }
 
 // Claude context window = 200k tokens. At 80% threshold = 160k tokens trigger.

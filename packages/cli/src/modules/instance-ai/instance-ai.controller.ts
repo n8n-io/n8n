@@ -111,6 +111,15 @@ export class InstanceAiController {
 			throw new ForbiddenError('Not authorized for this thread');
 		}
 
+		// When the thread didn't exist at connect time, another user could create
+		// and own it before events start flowing. We re-check once on the first
+		// event and close the stream if ownership changed. Events are buffered
+		// until the check resolves to prevent leaking data during the async gap.
+		let ownershipVerified = ownership === 'owned';
+		let ownershipCheckInFlight = false;
+		const pendingEvents: StoredEvent[] = [];
+		const userId = req.user.id;
+
 		// 1. Set SSE headers
 		res.setHeader('Content-Type', 'text/event-stream; charset=UTF-8');
 		res.setHeader('Cache-Control', 'no-cache');
@@ -193,8 +202,37 @@ export class InstanceAiController {
 		if (liveGroups.size > 0) res.flush?.();
 
 		// 4. Subscribe to live events
+		// When the thread was not_found at connect time, re-validate ownership on
+		// the first event. Buffer all events until the check resolves to avoid
+		// leaking data during the async gap.
 		const unsubscribe = this.eventBus.subscribe(threadId, (stored) => {
-			this.writeSseEvent(res, stored);
+			if (ownershipVerified) {
+				this.writeSseEvent(res, stored);
+				return;
+			}
+
+			pendingEvents.push(stored);
+
+			if (ownershipCheckInFlight) return;
+			ownershipCheckInFlight = true;
+
+			void this.memoryService
+				.checkThreadOwnership(userId, threadId)
+				.then((currentOwnership) => {
+					if (currentOwnership === 'other_user') {
+						res.end();
+						return;
+					}
+					ownershipVerified = true;
+					for (const buffered of pendingEvents) {
+						this.writeSseEvent(res, buffered);
+					}
+					pendingEvents.length = 0;
+				})
+				.catch(() => {
+					pendingEvents.length = 0;
+					res.end();
+				});
 		});
 
 		// 5. Keep-alive
@@ -337,6 +375,7 @@ export class InstanceAiController {
 	@Get('/memory/:threadId')
 	@GlobalScope('instanceAi:message')
 	async getMemory(req: AuthenticatedRequest, _res: Response, @Param('threadId') threadId: string) {
+		await this.assertThreadAccess(req.user.id, threadId, { allowNew: true });
 		return await this.memoryService.getWorkingMemory(req.user.id, threadId);
 	}
 
@@ -348,6 +387,7 @@ export class InstanceAiController {
 		@Param('threadId') threadId: string,
 		@Body payload: InstanceAiUpdateMemoryRequest,
 	) {
+		await this.assertThreadAccess(req.user.id, threadId, { allowNew: true });
 		await this.memoryService.updateWorkingMemory(req.user.id, threadId, payload.content);
 		return { ok: true };
 	}
@@ -379,7 +419,7 @@ export class InstanceAiController {
 	) {
 		await this.assertThreadAccess(req.user.id, threadId);
 		await this.instanceAiService.clearThreadState(threadId);
-		await this.memoryService.deleteThread(req.user.id, threadId);
+		await this.memoryService.deleteThread(threadId);
 		return { ok: true };
 	}
 
@@ -392,7 +432,7 @@ export class InstanceAiController {
 		@Body payload: InstanceAiRenameThreadRequestDto,
 	) {
 		await this.assertThreadAccess(req.user.id, threadId);
-		const thread = await this.memoryService.renameThread(req.user.id, threadId, payload.title);
+		const thread = await this.memoryService.renameThread(threadId, payload.title);
 		return { thread };
 	}
 
@@ -444,6 +484,7 @@ export class InstanceAiController {
 		_res: Response,
 		@Param('threadId') threadId: string,
 	) {
+		await this.assertThreadAccess(req.user.id, threadId, { allowNew: true });
 		return await this.memoryService.getThreadContext(req.user.id, threadId);
 	}
 

@@ -64,7 +64,6 @@ export function parseAndValidate(code: string): ParseAndValidateResult {
 		collectValidationIssues(graphValidation.errors, allWarnings);
 		collectValidationIssues(graphValidation.warnings, allWarnings);
 
-		// Convert to JSON (auto-layout calculates positions for nodes without config.position)
 		const json = builder.toJSON();
 
 		// Stage 2: Schema validation via Zod schemas from schemaBaseDirs

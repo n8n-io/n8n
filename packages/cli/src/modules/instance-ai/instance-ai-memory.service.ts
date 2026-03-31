@@ -10,12 +10,7 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { InstanceAiConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import {
-	AgentTreeSnapshotStorage,
-	createMemory,
-	patchThread,
-	WORKING_MEMORY_TEMPLATE,
-} from '@n8n/instance-ai';
+import { createMemory, patchThread, WORKING_MEMORY_TEMPLATE } from '@n8n/instance-ai';
 
 import { DbSnapshotStorage } from './storage/db-snapshot-storage';
 
@@ -191,22 +186,13 @@ export class InstanceAiMemoryService {
 			throw error;
 		}
 
-		// Fetch agent tree snapshots: DB table (new) + legacy metadata fallback
-		const dbSnapshots = await this.dbSnapshotStorage.getAll(threadId).catch((error) => {
-			this.logger.warn('Failed to load DB snapshots, falling back to metadata', {
+		const snapshots = await this.dbSnapshotStorage.getAll(threadId).catch((error) => {
+			this.logger.warn('Failed to load agent tree snapshots', {
 				threadId,
 				error: error instanceof Error ? error.message : String(error),
 			});
 			return [];
 		});
-
-		// Legacy metadata snapshots for threads created before the table migration
-		const legacyStorage = new AgentTreeSnapshotStorage(memory);
-		const legacySnapshots = await legacyStorage.getAll(threadId);
-
-		// Merge: deduplicate by runId (prefer DB version), maintain chronological order
-		const dbRunIds = new Set(dbSnapshots.map((s) => s.runId));
-		const snapshots = [...legacySnapshots.filter((s) => !dbRunIds.has(s.runId)), ...dbSnapshots];
 
 		// Parse into rich messages with agent trees
 		const mastraMessages: MastraDBMessage[] = result.messages.map((m) => ({
@@ -245,16 +231,12 @@ export class InstanceAiMemoryService {
 		return thread.resourceId === userId ? 'owned' : 'other_user';
 	}
 
-	async deleteThread(_userId: string, threadId: string): Promise<void> {
+	async deleteThread(threadId: string): Promise<void> {
 		const memory = this.createMemoryInstance();
 		await memory.deleteThread(threadId);
 	}
 
-	async renameThread(
-		_userId: string,
-		threadId: string,
-		title: string,
-	): Promise<InstanceAiThreadInfo> {
+	async renameThread(threadId: string, title: string): Promise<InstanceAiThreadInfo> {
 		const memory = this.createMemoryInstance();
 		const updated = await patchThread(memory, {
 			threadId,

@@ -169,6 +169,99 @@ describe('InstanceAiController', () => {
 		it('should require instanceAi:message scope', () => {
 			expect(scopeOf('events')).toEqual({ scope: 'instanceAi:message', globalOnly: true });
 		});
+
+		it('should close SSE stream when thread ownership changes after pre-creation subscribe', async () => {
+			// Simulate: thread does not exist at connect time
+			memoryService.checkThreadOwnership.mockResolvedValueOnce('not_found');
+
+			const sseRes = mock<Response & { flush?: () => void }>({
+				setHeader: jest.fn(),
+				flushHeaders: jest.fn(),
+				write: jest.fn(),
+				end: jest.fn(),
+				flush: jest.fn(),
+			});
+
+			// Capture the subscribe handler
+			let subscribeHandler: ((stored: { id: number; event: unknown }) => void) | undefined;
+			eventBus.subscribe.mockImplementation((_threadId, handler) => {
+				subscribeHandler = handler as typeof subscribeHandler;
+				return jest.fn();
+			});
+			eventBus.getEventsAfter.mockReturnValue([]);
+			instanceAiService.getThreadStatus.mockReturnValue({
+				hasActiveRun: false,
+				isSuspended: false,
+				backgroundTasks: [],
+			} as never);
+
+			const sseReq = mock<AuthenticatedRequest>({
+				user: { id: USER_ID },
+				headers: {},
+				once: jest.fn(),
+			});
+
+			await controller.events(sseReq, sseRes, THREAD_ID, { lastEventId: undefined } as never);
+
+			// Now simulate: another user created the thread, so ownership is 'other_user'
+			memoryService.checkThreadOwnership.mockResolvedValueOnce('other_user');
+
+			// Fire an event through the subscriber
+			subscribeHandler!({
+				id: 1,
+				event: { type: 'text-delta', runId: 'r1', agentId: 'a1', payload: { text: 'secret' } },
+			});
+
+			// Allow the async ownership check to resolve
+			await new Promise((resolve) => setImmediate(resolve));
+
+			// The stream should be closed, not written to
+			expect(sseRes.end).toHaveBeenCalled();
+		});
+
+		it('should close SSE stream when deferred ownership check rejects', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValueOnce('not_found');
+
+			const sseRes = mock<Response & { flush?: () => void }>({
+				setHeader: jest.fn(),
+				flushHeaders: jest.fn(),
+				write: jest.fn(),
+				end: jest.fn(),
+				flush: jest.fn(),
+			});
+
+			let subscribeHandler: ((stored: { id: number; event: unknown }) => void) | undefined;
+			eventBus.subscribe.mockImplementation((_threadId, handler) => {
+				subscribeHandler = handler as typeof subscribeHandler;
+				return jest.fn();
+			});
+			eventBus.getEventsAfter.mockReturnValue([]);
+			instanceAiService.getThreadStatus.mockReturnValue({
+				hasActiveRun: false,
+				isSuspended: false,
+				backgroundTasks: [],
+			} as never);
+
+			const sseReq = mock<AuthenticatedRequest>({
+				user: { id: USER_ID },
+				headers: {},
+				once: jest.fn(),
+			});
+
+			await controller.events(sseReq, sseRes, THREAD_ID, { lastEventId: undefined } as never);
+
+			// Make the deferred ownership check reject with an error
+			memoryService.checkThreadOwnership.mockRejectedValueOnce(new Error('DB connection lost'));
+
+			subscribeHandler!({
+				id: 1,
+				event: { type: 'text-delta', runId: 'r1', agentId: 'a1', payload: { text: 'data' } },
+			});
+
+			await new Promise((resolve) => setImmediate(resolve));
+
+			expect(sseRes.end).toHaveBeenCalled();
+		});
 	});
 
 	describe('cancel', () => {
@@ -344,6 +437,19 @@ describe('InstanceAiController', () => {
 		it('should require instanceAi:message scope', () => {
 			expect(scopeOf('getMemory')).toEqual({ scope: 'instanceAi:message', globalOnly: true });
 		});
+
+		it('should throw ForbiddenError for other user thread', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('other_user');
+
+			await expect(controller.getMemory(req, res, THREAD_ID)).rejects.toThrow(ForbiddenError);
+		});
+
+		it('should allow new threads', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
+			memoryService.getWorkingMemory.mockResolvedValue({ content: '', template: '' });
+
+			await expect(controller.getMemory(req, res, THREAD_ID)).resolves.toBeDefined();
+		});
 	});
 
 	describe('updateMemory', () => {
@@ -352,6 +458,7 @@ describe('InstanceAiController', () => {
 		});
 
 		it('should update working memory', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
 			const payload = mock<InstanceAiUpdateMemoryRequest>({ content: 'new memory' });
 
 			const result = await controller.updateMemory(req, res, THREAD_ID, payload);
@@ -362,6 +469,24 @@ describe('InstanceAiController', () => {
 				THREAD_ID,
 				'new memory',
 			);
+		});
+
+		it('should throw ForbiddenError for other user thread', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('other_user');
+			const payload = mock<InstanceAiUpdateMemoryRequest>({ content: 'new memory' });
+
+			await expect(controller.updateMemory(req, res, THREAD_ID, payload)).rejects.toThrow(
+				ForbiddenError,
+			);
+		});
+
+		it('should allow new threads', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
+			const payload = mock<InstanceAiUpdateMemoryRequest>({ content: 'new memory' });
+
+			const result = await controller.updateMemory(req, res, THREAD_ID, payload);
+
+			expect(result).toEqual({ ok: true });
 		});
 	});
 
@@ -412,7 +537,7 @@ describe('InstanceAiController', () => {
 
 			expect(result).toEqual({ ok: true });
 			expect(instanceAiService.clearThreadState).toHaveBeenCalledWith(THREAD_ID);
-			expect(memoryService.deleteThread).toHaveBeenCalledWith(USER_ID, THREAD_ID);
+			expect(memoryService.deleteThread).toHaveBeenCalledWith(THREAD_ID);
 		});
 
 		it('should throw ForbiddenError for other user thread', async () => {
@@ -442,7 +567,7 @@ describe('InstanceAiController', () => {
 			const result = await controller.renameThread(req, res, THREAD_ID, payload);
 
 			expect(result).toEqual({ thread: threadObj });
-			expect(memoryService.renameThread).toHaveBeenCalledWith(USER_ID, THREAD_ID, 'New Title');
+			expect(memoryService.renameThread).toHaveBeenCalledWith(THREAD_ID, 'New Title');
 		});
 	});
 
@@ -508,6 +633,24 @@ describe('InstanceAiController', () => {
 				scope: 'instanceAi:message',
 				globalOnly: true,
 			});
+		});
+
+		it('should throw ForbiddenError for other user thread', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('other_user');
+
+			await expect(controller.getThreadContext(req, res, THREAD_ID)).rejects.toThrow(
+				ForbiddenError,
+			);
+		});
+
+		it('should allow new threads', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('not_found');
+			memoryService.getThreadContext.mockResolvedValue({
+				threadId: THREAD_ID,
+				workingMemory: null,
+			});
+
+			await expect(controller.getThreadContext(req, res, THREAD_ID)).resolves.toBeDefined();
 		});
 	});
 

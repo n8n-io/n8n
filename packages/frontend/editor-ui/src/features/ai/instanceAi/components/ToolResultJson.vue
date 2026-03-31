@@ -5,12 +5,25 @@ const props = defineProps<{
 	value: unknown;
 }>();
 
+function escapeHtml(text: string): string {
+	return text
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;')
+		.replace(/'/g, '&#39;');
+}
+
 function highlightJson(value: unknown): string {
 	const json = JSON.stringify(value, null, 2);
-	if (!json) return String(value);
+	if (!json) return escapeHtml(String(value));
 
-	return json.replace(
-		/("(?:\\.|[^"\\])*")\s*:|("(?:\\.|[^"\\])*")|(true|false|null)|(\d+\.?\d*)/g,
+	// First HTML-escape the entire JSON string to neutralize any embedded markup,
+	// then apply syntax-highlighting spans on the safe output.
+	const escaped = escapeHtml(json);
+
+	return escaped.replace(
+		/(&quot;(?:\\.|[^&]|&(?!quot;))*?&quot;)\s*:|(&quot;(?:\\.|[^&]|&(?!quot;))*?&quot;)|(true|false|null)|(\d+\.?\d*)/g,
 		(
 			match,
 			key: string | undefined,

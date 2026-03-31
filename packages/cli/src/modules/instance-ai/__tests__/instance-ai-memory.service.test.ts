@@ -15,22 +15,11 @@ const mockMemory = {
 jest.mock('@n8n/instance-ai', () => ({
 	createMemory: () => mockMemory,
 	WORKING_MEMORY_TEMPLATE: 'template',
-	AgentTreeSnapshotStorage: class MockAgentTreeSnapshotStorage {
-		private memory: typeof mockMemory;
-
-		constructor(memory: typeof mockMemory) {
-			this.memory = memory;
-		}
-
-		async getAll(threadId: string) {
-			const thread = await this.memory.getThreadById({ threadId });
-			const raw = thread?.metadata?.instanceAiRunSnapshots;
-			return Array.isArray(raw) ? raw : [];
-		}
-	},
 }));
 
 // Mock GlobalConfig
+const mockDbSnapshotStorage = { getAll: jest.fn().mockResolvedValue([]) };
+
 function createService(): InstanceAiMemoryService {
 	const mockConfig = {
 		instanceAi: {
@@ -51,12 +40,11 @@ function createService(): InstanceAiMemoryService {
 	};
 	const mockLogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() };
 	const mockCompositeStore = {} as never;
-	const mockDbSnapshotStorage = { getAll: jest.fn().mockResolvedValue([]) } as never;
 	return new InstanceAiMemoryService(
 		mockLogger as never,
 		mockConfig as never,
 		mockCompositeStore,
-		mockDbSnapshotStorage,
+		mockDbSnapshotStorage as never,
 	);
 }
 
@@ -77,6 +65,7 @@ function makeTree(overrides?: Partial<InstanceAiAgentNode>): InstanceAiAgentNode
 describe('InstanceAiMemoryService.getRichMessages', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
+		mockDbSnapshotStorage.getAll.mockResolvedValue([]);
 	});
 
 	it('should return parsed rich messages with agent trees from snapshots', async () => {
@@ -97,13 +86,7 @@ describe('InstanceAiMemoryService.getRichMessages', () => {
 				},
 			],
 		});
-		mockGetThreadById.mockResolvedValue({
-			id: 'thread-1',
-			title: 'Test',
-			metadata: {
-				instanceAiRunSnapshots: [{ tree, runId: 'run_abc' }],
-			},
-		});
+		mockDbSnapshotStorage.getAll.mockResolvedValue([{ tree, runId: 'run_abc' }]);
 
 		const service = createService();
 		const result = await service.getRichMessages('user-1', 'thread-1');
