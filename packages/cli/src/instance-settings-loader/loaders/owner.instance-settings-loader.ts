@@ -9,7 +9,7 @@ import config from '@/config';
 const BCRYPT_HASH_RE = /^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/;
 
 @Service()
-export class OwnerInstanceSettingsLoaderStep {
+export class OwnerInstanceSettingsLoader {
 	constructor(
 		private readonly instanceSettingsLoaderConfig: InstanceSettingsLoaderConfig,
 		private readonly settingsRepository: SettingsRepository,
@@ -24,21 +24,21 @@ export class OwnerInstanceSettingsLoaderStep {
 
 		if (!this.instanceSettingsLoaderConfig.ownerEmail) {
 			this.logger.warn(
-				'Instance settings loader: owner step skipped — INSTANCE_OWNER_EMAIL is required when INSTANCE_OWNER_OVERRIDE is true',
+				'Instance settings loader: owner loader skipped — INSTANCE_OWNER_EMAIL is required when INSTANCE_OWNER_OVERRIDE is true',
 			);
 			return 'skipped';
 		}
 
 		if (!this.instanceSettingsLoaderConfig.ownerPasswordHash) {
 			this.logger.warn(
-				'Instance settings loader: owner step skipped — INSTANCE_OWNER_PASSWORD_HASH is required when INSTANCE_OWNER_OVERRIDE is true',
+				'Instance settings loader: owner loader skipped — INSTANCE_OWNER_PASSWORD_HASH is required when INSTANCE_OWNER_OVERRIDE is true',
 			);
 			return 'skipped';
 		}
 
 		if (!BCRYPT_HASH_RE.test(this.instanceSettingsLoaderConfig.ownerPasswordHash)) {
 			this.logger.warn(
-				'Instance settings loader: owner step skipped — INSTANCE_OWNER_PASSWORD_HASH is not a valid bcrypt hash',
+				'Instance settings loader: owner loader skipped — INSTANCE_OWNER_PASSWORD_HASH is not a valid bcrypt hash',
 			);
 			return 'skipped';
 		}
