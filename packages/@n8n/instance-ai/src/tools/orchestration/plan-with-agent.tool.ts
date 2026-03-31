@@ -33,8 +33,6 @@ import { registerWithMastra } from '../../agent/register-with-mastra';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
 import { traceWorkingMemoryContext } from '../../runtime/working-memory-tracing';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
-import { documentation } from '../../tools/best-practices/index';
-import type { WorkflowTechniqueType } from '../../tools/best-practices/techniques';
 import { getTraceParentRun, withTraceParentContext } from '../../tracing/langsmith-tracing';
 import type { OrchestrationContext } from '../../types';
 
@@ -74,21 +72,6 @@ function formatTableSchema(dt: BlueprintDataTableItem): string {
 	return `Table '${dt.name}': ${cols}`;
 }
 
-/** Look up best practices docs for a list of technique names. Returns concatenated docs. */
-function lookupBestPractices(techniques: string[]): string {
-	const docs: string[] = [];
-	const seen = new Set<string>();
-	for (const tech of techniques) {
-		if (seen.has(tech)) continue;
-		seen.add(tech);
-		const getDoc = documentation[tech as WorkflowTechniqueType];
-		if (getDoc) {
-			docs.push(getDoc());
-		}
-	}
-	return docs.join('\n\n');
-}
-
 function blueprintToTasks(bp: PlanningBlueprint): PlannedTaskInput[] {
 	const tasks: PlannedTaskInput[] = [];
 
@@ -120,12 +103,6 @@ function blueprintToTasks(bp: PlanningBlueprint): PlannedTaskInput[] {
 			for (const dt of depTables) {
 				specParts.push(`- ${formatTableSchema(dt)}`);
 			}
-		}
-
-		// Append best practices for the workflow's techniques
-		const practices = lookupBestPractices(wf.techniques);
-		if (practices) {
-			specParts.push(`\n${practices}`);
 		}
 
 		tasks.push({

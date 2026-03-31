@@ -13,12 +13,6 @@ export const blueprintWorkflowItemSchema = z.object({
 		.string()
 		.optional()
 		.describe('Trigger type in a few words (e.g. "Webhook POST", "Schedule hourly")'),
-	techniques: z
-		.array(z.string())
-		.default([])
-		.describe(
-			'Workflow building techniques used (e.g. "scheduling", "form_input", "data_persistence", "data_transformation", "notification", "triage")',
-		),
 	existingWorkflowId: z
 		.string()
 		.optional()
