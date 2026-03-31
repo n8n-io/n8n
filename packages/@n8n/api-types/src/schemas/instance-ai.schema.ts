@@ -920,8 +920,6 @@ export interface InstanceAiEvalExecutionResult {
 	hints: InstanceAiEvalMockHints;
 }
 
-export const instanceAiEvalExecutionRequestSchema = z.object({
+export class InstanceAiEvalExecutionRequest extends Z.class({
 	scenarioHints: z.string().max(2000).optional(),
-});
-
-export type InstanceAiEvalExecutionRequest = z.infer<typeof instanceAiEvalExecutionRequestSchema>;
+}) {}

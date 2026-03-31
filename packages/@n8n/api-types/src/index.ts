@@ -247,7 +247,6 @@ export {
 	instanceAiAgentStatusSchema,
 	instanceAiAgentKindSchema,
 	instanceAiEventSchema,
-	instanceAiEvalExecutionRequestSchema,
 	taskItemSchema,
 	taskListSchema,
 	runStartPayloadSchema,

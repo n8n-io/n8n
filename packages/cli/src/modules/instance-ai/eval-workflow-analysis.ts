@@ -175,14 +175,14 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 			providerOptions: { anthropic: { maxTokens: 4096 } },
 		});
 
-		let text = extractText(result);
+		let text: string = extractText(result);
 
 		text = text
 			.replace(/^```(?:json)?\s*\n?/i, '')
 			.replace(/\n?\s*```\s*$/i, '')
 			.trim();
 
-		const parsed = jsonParse<Record<string, unknown>>(text);
+		const parsed: Record<string, unknown> = jsonParse(text);
 
 		// globalContext may come back as a string or object — normalize to string
 		let globalContext = '';
