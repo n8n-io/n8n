@@ -34,7 +34,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { normalizePinData } from '@n8n/workflow-sdk';
 
-import { generatePinData } from '@n8n/instance-ai/evaluations/support/pin-data-generator';
+import { generatePinData } from './eval-pin-data-generator';
 
 import {
 	generateMockHints,
