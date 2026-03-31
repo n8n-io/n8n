@@ -12,7 +12,7 @@
 
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
-import { type INode, type IWorkflowBase, jsonParse } from 'n8n-workflow';
+import { type INode, type IPinData, type IWorkflowBase, jsonParse } from 'n8n-workflow';
 
 import { createEvalAgent, extractText } from '@n8n/instance-ai';
 import { extractNodeConfig } from './eval-node-config';
@@ -22,39 +22,107 @@ import { extractNodeConfig } from './eval-node-config';
 // ---------------------------------------------------------------------------
 
 /**
- * Find node names that are AI sub-nodes (connected via ai_* connection types).
- * These are pinned via their root AI node and should not receive individual hints.
+ * Find node names that are targets of ai_* connections (Agent, Chain nodes).
+ * These are "root" AI nodes whose sub-nodes use vendor SDKs. Pinning the root
+ * prevents supplyData() on all connected sub-nodes, avoiding SDK calls entirely.
+ *
+ * Ported from @n8n/instance-ai/evaluations/support/service-node-classifier.ts
  */
-function findAiSubNodeNames(workflow: IWorkflowBase): Set<string> {
-	const subNodes = new Set<string>();
-	for (const [, nodeConns] of Object.entries(workflow.connections)) {
+function findAiRootNodeNames(workflow: IWorkflowBase): Set<string> {
+	const roots = new Set<string>();
+	for (const nodeConns of Object.values(workflow.connections)) {
 		for (const [connType, outputs] of Object.entries(nodeConns)) {
 			if (!connType.startsWith('ai_') || !Array.isArray(outputs)) continue;
 			for (const group of outputs) {
 				if (!Array.isArray(group)) continue;
 				for (const conn of group) {
 					if (typeof conn === 'object' && conn !== null && 'node' in conn) {
-						subNodes.add((conn as { node: string }).node);
+						roots.add((conn as { node: string }).node);
 					}
 				}
+			}
+		}
+	}
+	return roots;
+}
+
+/**
+ * Find node names that are sources of ai_* connections (LLM models, tools, memory).
+ * These are sub-nodes handled via their root — they should not be pinned individually
+ * or receive mock hints.
+ *
+ * Ported from @n8n/instance-ai/evaluations/support/service-node-classifier.ts
+ */
+function findAiSubNodeNames(workflow: IWorkflowBase): Set<string> {
+	const subNodes = new Set<string>();
+	for (const [sourceName, nodeConns] of Object.entries(workflow.connections)) {
+		for (const connType of Object.keys(nodeConns)) {
+			if (connType.startsWith('ai_')) {
+				subNodes.add(sourceName);
 			}
 		}
 	}
 	return subNodes;
 }
 
+// ---------------------------------------------------------------------------
+// Bypass node types — nodes that use non-HTTP protocols or bypass n8n's
+// request helper functions. These can't be intercepted by the eval mock handler.
+// ---------------------------------------------------------------------------
+
+const BYPASS_NODE_TYPES = new Set([
+	// Databases (TCP/binary protocol)
+	'n8n-nodes-base.redis',
+	'n8n-nodes-base.mongoDb',
+	'n8n-nodes-base.mySql',
+	'n8n-nodes-base.postgres',
+	'n8n-nodes-base.microsoftSql',
+	'n8n-nodes-base.snowflake',
+	// Message queues (TCP/binary protocol)
+	'n8n-nodes-base.kafka',
+	'n8n-nodes-base.rabbitmq',
+	'n8n-nodes-base.mqtt',
+	'n8n-nodes-base.amqp',
+	// File/network protocols
+	'n8n-nodes-base.ftp',
+	'n8n-nodes-base.ssh',
+	'n8n-nodes-base.ldap',
+	'n8n-nodes-base.emailSend',
+	// Non-helper HTTP
+	'n8n-nodes-base.rssFeedRead',
+	'n8n-nodes-base.git',
+]);
+
+/**
+ * Identify nodes that bypass the HTTP mock layer and need pin data instead.
+ * Returns AI root nodes (Agent, Chain) and protocol/bypass nodes.
+ */
+export function identifyNodesForPinData(workflow: IWorkflowBase): INode[] {
+	const aiRootNodes = findAiRootNodeNames(workflow);
+
+	return workflow.nodes.filter((node) => {
+		if (node.disabled) return false;
+		if (aiRootNodes.has(node.name)) return true;
+		if (BYPASS_NODE_TYPES.has(node.type)) return true;
+		return false;
+	});
+}
+
 /**
  * Identify which nodes in a workflow should receive mock hints.
- * Returns all active nodes except AI sub-nodes (which are handled via their root).
- * Hints are generated for every node — the mock handler and execution engine
- * decide how to use them (HTTP interception, pin data, or ignored for logic nodes).
+ * Excludes AI sub-nodes (handled via their root) and nodes that will be
+ * pinned (they don't execute, so hints are irrelevant for them).
  */
 export function identifyNodesForHints(workflow: IWorkflowBase): INode[] {
 	const aiSubNodes = findAiSubNodeNames(workflow);
+	const aiRootNodes = findAiRootNodeNames(workflow);
+	const pinnedNodeNames = new Set(identifyNodesForPinData(workflow).map((n) => n.name));
 
 	return workflow.nodes.filter((node) => {
 		if (node.disabled) return false;
 		if (aiSubNodes.has(node.name)) return false;
+		if (aiRootNodes.has(node.name)) return false;
+		if (pinnedNodeNames.has(node.name)) return false;
 		return true;
 	});
 }
@@ -72,6 +140,8 @@ export interface MockHints {
 	triggerContent: Record<string, unknown>;
 	/** Errors encountered during hint generation or mock execution */
 	warnings: string[];
+	/** Pin data for nodes that bypass the HTTP mock layer (AI roots, protocol nodes) */
+	bypassPinData: IPinData;
 }
 
 export interface GenerateMockHintsOptions {
@@ -160,6 +230,7 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 		nodeHints: {},
 		triggerContent: {},
 		warnings: [],
+		bypassPinData: {},
 	};
 
 	if (nodeNames.length === 0) return emptyResult;
@@ -226,6 +297,7 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 			nodeHints,
 			triggerContent: triggerContent as Record<string, unknown>,
 			warnings,
+			bypassPinData: {},
 		};
 	} catch (error) {
 		const errorMsg = error instanceof Error ? error.message : String(error);
