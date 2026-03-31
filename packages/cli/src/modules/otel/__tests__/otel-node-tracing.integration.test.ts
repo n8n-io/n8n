@@ -10,6 +10,7 @@ import type { OtelTestProvider } from './support/otel-test-provider';
 import {
 	createMultiNodeWorkflowFixture,
 	createFailingWorkflowFixture,
+	createTracingMetadataWorkflowFixture,
 } from './support/otel-workflow-fixtures';
 import {
 	initOtelTestEnvironment,
@@ -150,6 +151,29 @@ describe('Node tracing', () => {
 			expect(nodeSpan.attributes[ATTR.NODE_ITEMS_OUTPUT]).toBeDefined();
 			expect(typeof nodeSpan.attributes[ATTR.NODE_ITEMS_OUTPUT]).toBe('number');
 		}
+	});
+
+	it('should attach tracing metadata as custom span attributes', async () => {
+		const workflow = await createWorkflow(
+			{ name: 'Tracing Metadata Workflow', ...createTracingMetadataWorkflowFixture() },
+			project,
+		);
+
+		const executionId = await executeWorkflow(workflowRunner, workflow, project.id);
+		await waitForExecution(executionRepository, executionId);
+
+		const spans = otel.getFinishedSpans();
+		const tracingNodeSpan = spans.find(
+			(s) =>
+				s.name === 'node.execute' &&
+				s.attributes[ATTR.NODE_TYPE] === 'n8n-nodes-base.tracingTestNode',
+		);
+
+		expect(tracingNodeSpan).toBeDefined();
+		expect(tracingNodeSpan!.attributes['n8n.node.custom.llm.model']).toBe('gpt-4o');
+		expect(tracingNodeSpan!.attributes['n8n.node.custom.llm.token.input']).toBe(1500);
+		expect(tracingNodeSpan!.attributes['n8n.node.custom.llm.token.output']).toBe(340);
+		expect(tracingNodeSpan!.attributes['n8n.node.custom.llm.stream']).toBe(true);
 	});
 
 	it('should isolate node spans across concurrent executions', async () => {

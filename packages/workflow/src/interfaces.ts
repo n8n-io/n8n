@@ -2774,6 +2774,11 @@ export interface ITaskMetadata {
 	 * Contains token for security validation.
 	 */
 	resumeUrl?: string;
+
+	/**
+	 * Key-value pairs that can set for tracing - they will be attached to the OTEL node span
+	 * */
+	tracing?: Record<string, string | number | boolean>;
 }
 
 /** The data that gets returned when a node execution starts */

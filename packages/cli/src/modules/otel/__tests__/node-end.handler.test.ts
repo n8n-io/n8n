@@ -192,6 +192,42 @@ describe('NodeEndHandler', () => {
 		expect(otel.getFinishedSpans()).toHaveLength(0);
 	});
 
+	it('should attach tracing metadata as custom span attributes', () => {
+		startNodeSpan('exec-1', 'HTTP Request');
+
+		const ctx: NodeExecuteAfterContext = {
+			type: 'nodeExecuteAfter',
+			workflow,
+			nodeName: 'HTTP Request',
+			executionId: 'exec-1',
+			taskData: {
+				startTime: 0,
+				executionTime: 100,
+				executionIndex: 1,
+				source: [],
+				data: { main: [[{ json: {} }]] },
+				metadata: {
+					tracing: {
+						'llm.model': 'gpt-4o',
+						'llm.token.input': 1500,
+						'llm.token.output': 340,
+						'llm.stream': true,
+					},
+				},
+			},
+			executionData: emptyExecutionData,
+		};
+
+		endHandler.handle(ctx, spans);
+
+		const finished = otel.getFinishedSpans();
+		expect(finished).toHaveLength(1);
+		expect(finished[0].attributes['n8n.node.custom.llm.model']).toBe('gpt-4o');
+		expect(finished[0].attributes['n8n.node.custom.llm.token.input']).toBe(1500);
+		expect(finished[0].attributes['n8n.node.custom.llm.token.output']).toBe(340);
+		expect(finished[0].attributes['n8n.node.custom.llm.stream']).toBe(true);
+	});
+
 	it('should handle zero output items', () => {
 		startNodeSpan('exec-1', 'HTTP Request');
 

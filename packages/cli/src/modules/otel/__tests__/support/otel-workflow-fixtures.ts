@@ -78,6 +78,43 @@ export function createFailingWorkflowFixture() {
 	};
 }
 
+export function createTracingMetadataWorkflowFixture() {
+	return {
+		nodes: [
+			{
+				parameters: {},
+				type: 'n8n-nodes-base.manualTrigger',
+				typeVersion: 1,
+				position: [0, 0] as [number, number],
+				id: uuid(),
+				name: 'Trigger',
+			},
+			{
+				parameters: {},
+				type: 'n8n-nodes-base.tracingTestNode',
+				typeVersion: 1,
+				position: [200, 0] as [number, number],
+				id: uuid(),
+				name: 'TracingTestNode',
+			},
+		],
+		connections: {
+			Trigger: {
+				main: [
+					[
+						{
+							node: 'TracingTestNode',
+							type: NodeConnectionTypes.Main,
+							index: 0,
+						},
+					],
+				],
+			},
+		},
+		pinData: {},
+	};
+}
+
 export function createSimpleWorkflowFixture() {
 	return {
 		nodes: [

@@ -26,6 +26,12 @@ export class NodeEndHandler implements SpanHandler<NodeExecuteAfterContext> {
 		const inputItems = this.countInputItems(ctx);
 		span.setAttribute(ATTR.NODE_ITEMS_INPUT, inputItems);
 
+		if (ctx.taskData.metadata?.tracing) {
+			for (const [key, value] of Object.entries(ctx.taskData.metadata.tracing)) {
+				span.setAttribute(`n8n.node.custom.${key}`, value);
+			}
+		}
+
 		if (ctx.taskData.error) {
 			span.setStatus({ code: SpanStatusCode.ERROR });
 			span.addEvent('exception', {

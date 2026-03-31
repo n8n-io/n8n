@@ -6,6 +6,8 @@ import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { DebugHelper } from 'n8n-nodes-base/nodes/DebugHelper/DebugHelper.node';
 import { ManualTrigger } from 'n8n-nodes-base/nodes/ManualTrigger/ManualTrigger.node';
+
+import { TestNodeWithTracing } from './test-node-with-tracing';
 import { createRunExecutionData } from 'n8n-workflow';
 
 import { WorkflowRunner } from '@/workflow-runner';
@@ -22,6 +24,7 @@ export async function initOtelTestEnvironment() {
 	await utils.initNodeTypes({
 		'n8n-nodes-base.manualTrigger': { type: new ManualTrigger(), sourcePath: '' },
 		'n8n-nodes-base.debugHelper': { type: new DebugHelper(), sourcePath: '' },
+		'n8n-nodes-base.tracingTestNode': { type: new TestNodeWithTracing(), sourcePath: '' },
 	});
 	await utils.initBinaryDataService();
 
