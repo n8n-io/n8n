@@ -22,7 +22,7 @@ const rolesStore = useRolesStore();
 const instanceRoleOptions = computed(() =>
 	rolesStore.roles.global
 		.filter((role) => !role.systemRole)
-		.map((role) => ({ label: role.name, value: role.slug })),
+		.map((role) => ({ label: role.displayName, value: role.slug })),
 );
 </script>
 <template>
