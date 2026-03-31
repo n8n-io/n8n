@@ -162,8 +162,8 @@ describe('ExecutionRepository', () => {
 			const results = await executionRepo.getWaitingExecutions();
 
 			expect(results).toHaveLength(2);
-			expect(results[0].id).toBe(earlierIds[0].id);
-			expect(results[1].id).toBe(laterIds[0].id);
+			expect(String(results[0].id)).toBe(String(earlierIds[0].id));
+			expect(String(results[1].id)).toBe(String(laterIds[0].id));
 		});
 
 		it('should only return id and waitTill fields', async () => {
