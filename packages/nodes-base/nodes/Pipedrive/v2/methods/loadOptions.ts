@@ -233,3 +233,35 @@ export async function getLeadLabels(this: ILoadOptionsFunctions): Promise<INodeP
 export async function getDealLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	return getLabelsForResource.call(this, '/dealFields');
 }
+
+async function getCustomFieldsForResource(
+	this: ILoadOptionsFunctions,
+	endpoint: string,
+): Promise<INodePropertyOptions[]> {
+	const returnData: INodePropertyOptions[] = [];
+	const { data } = await pipedriveApiRequest.call(this, 'GET', endpoint, {});
+	for (const field of data as Array<{ name: string; key: string }>) {
+		if (field.key.length === 40) {
+			returnData.push({ name: field.name, value: field.key });
+		}
+	}
+	return sortOptionParameters(returnData);
+}
+
+export async function getOrganizationCustomFields(
+	this: ILoadOptionsFunctions,
+): Promise<INodePropertyOptions[]> {
+	return getCustomFieldsForResource.call(this, '/organizationFields');
+}
+
+export async function getDealCustomFields(
+	this: ILoadOptionsFunctions,
+): Promise<INodePropertyOptions[]> {
+	return getCustomFieldsForResource.call(this, '/dealFields');
+}
+
+export async function getPersonCustomFields(
+	this: ILoadOptionsFunctions,
+): Promise<INodePropertyOptions[]> {
+	return getCustomFieldsForResource.call(this, '/personFields');
+}

@@ -1,7 +1,7 @@
 import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 import { encodeCustomFieldsV2, resolveCustomFieldsV2 } from '../../v2/helpers/customFields';
-import { coerceToBoolean } from '../../v2/helpers/typeCoercion';
+import { coerceToBoolean, coerceToNumber, toRfc3339 } from '../../v2/helpers/typeCoercion';
 import type { ICustomProperties } from '../../v2/transport';
 
 const customProperties: ICustomProperties = {
@@ -285,6 +285,31 @@ describe('Pipedrive v2 Type Coercion', () => {
 
 		it('should handle case-insensitive "TRUE"', () => {
 			expect(coerceToBoolean('TRUE')).toBe(true);
+		});
+	});
+
+	describe('coerceToNumber', () => {
+		it('should convert string numbers', () => {
+			expect(coerceToNumber('42')).toBe(42);
+			expect(coerceToNumber('3.14')).toBe(3.14);
+		});
+		it('should pass through numbers', () => {
+			expect(coerceToNumber(42)).toBe(42);
+		});
+		it('should throw for non-numeric strings', () => {
+			expect(() => coerceToNumber('abc')).toThrow('Cannot convert');
+		});
+	});
+
+	describe('toRfc3339', () => {
+		it('should convert v1 datetime format to RFC 3339', () => {
+			expect(toRfc3339('2024-01-15 14:30:00')).toBe('2024-01-15T14:30:00.000Z');
+		});
+		it('should pass through RFC 3339 format unchanged', () => {
+			expect(toRfc3339('2024-01-15T14:30:00Z')).toBe('2024-01-15T14:30:00Z');
+		});
+		it('should pass through date-only format unchanged', () => {
+			expect(toRfc3339('2024-01-15')).toBe('2024-01-15');
 		});
 	});
 });

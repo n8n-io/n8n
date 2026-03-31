@@ -7,7 +7,7 @@ import type {
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { pipedriveApiRequest, pipedriveGetCustomProperties } from '../../transport';
-import { encodeCustomFieldsV2, addFieldsToBody } from '../../helpers';
+import { encodeCustomFieldsV2, coerceToNumber, toRfc3339, addFieldsToBody } from '../../helpers';
 import {
 	customFieldsCollection,
 	encodeCustomFieldsOption,
@@ -191,6 +191,16 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			// Clear label when set to 'null' string
 			if (body.label === 'null') {
 				body.label = null;
+			}
+
+			if (body.expected_close_date) {
+				body.expected_close_date = toRfc3339(body.expected_close_date as string);
+			}
+			if (body.value !== undefined) {
+				body.value = coerceToNumber(body.value);
+			}
+			if (body.probability !== undefined) {
+				body.probability = coerceToNumber(body.probability);
 			}
 
 			if (customProperties) {

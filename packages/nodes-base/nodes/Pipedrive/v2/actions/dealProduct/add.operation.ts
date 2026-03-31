@@ -7,6 +7,7 @@ import type {
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { pipedriveApiRequest } from '../../transport';
+import { coerceToNumber } from '../../helpers';
 
 const properties: INodeProperties[] = [
 	{
@@ -123,12 +124,19 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 			const body: IDataObject = {
 				product_id: this.getNodeParameter('productId', i) as number,
-				item_price: this.getNodeParameter('item_price', i) as number,
-				quantity: this.getNodeParameter('quantity', i) as number,
+				item_price: coerceToNumber(this.getNodeParameter('item_price', i)),
+				quantity: coerceToNumber(this.getNodeParameter('quantity', i)),
 			};
 
 			const additionalFields = this.getNodeParameter('additionalFields', i);
 			Object.assign(body, additionalFields);
+
+			if (body.discount !== undefined) {
+				body.discount = coerceToNumber(body.discount);
+			}
+			if (body.tax !== undefined) {
+				body.tax = coerceToNumber(body.tax);
+			}
 
 			const responseData = await pipedriveApiRequest.call(
 				this,

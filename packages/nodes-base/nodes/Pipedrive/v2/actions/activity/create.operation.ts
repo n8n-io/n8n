@@ -7,7 +7,7 @@ import type {
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { pipedriveApiRequest, pipedriveGetCustomProperties } from '../../transport';
-import { encodeCustomFieldsV2, coerceToBoolean, addFieldsToBody } from '../../helpers';
+import { encodeCustomFieldsV2, coerceToBoolean, toRfc3339, addFieldsToBody } from '../../helpers';
 import { customFieldsCollection, encodeCustomFieldsOption } from '../common.description';
 
 const properties: INodeProperties[] = [
@@ -140,6 +140,10 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 			const additionalFields = this.getNodeParameter('additionalFields', i);
 			addFieldsToBody(body, additionalFields);
+
+			if (body.due_date) {
+				body.due_date = toRfc3339(body.due_date as string);
+			}
 
 			if (customProperties) {
 				encodeCustomFieldsV2(customProperties, body);
