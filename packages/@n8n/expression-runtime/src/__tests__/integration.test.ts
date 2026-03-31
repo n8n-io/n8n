@@ -344,7 +344,7 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 			$json: { name: 'Alice', age: 30, city: 'Berlin' },
 		};
 
-		const result = evaluator.evaluate('{{ Object.keys($json).join(",") }}', data);
+		const result = evaluator.evaluate('{{ Object.keys($json).join(",") }}', data, caller);
 
 		expect(result).toBe('name,age,city');
 	});
@@ -365,7 +365,7 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 			'  throw e;' +
 			'})() }}';
 
-		expect(() => evaluator.evaluate(expression, data)).toThrow(
+		expect(() => evaluator.evaluate(expression, data, caller)).toThrow(
 			expect.objectContaining({
 				name: 'ExpressionExtensionError',
 				message: 'test error',
@@ -379,7 +379,7 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 		const data = { $json: {} };
 		let error: Error | undefined;
 		try {
-			evaluator.evaluate('{{ (() => { throw null })() }}', data);
+			evaluator.evaluate('{{ (() => { throw null })() }}', data, caller);
 		} catch (e) {
 			error = e as Error;
 		}
@@ -391,7 +391,7 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 		const data = { $json: {} };
 		let error: Error | undefined;
 		try {
-			evaluator.evaluate('{{ (() => { throw undefined })() }}', data);
+			evaluator.evaluate('{{ (() => { throw undefined })() }}', data, caller);
 		} catch (e) {
 			error = e as Error;
 		}
@@ -406,6 +406,7 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 			evaluator.evaluate(
 				'{{ (() => { var e = Object.create(null); e.foo = "bar"; throw e; })() }}',
 				data,
+				caller,
 			);
 		} catch (e) {
 			error = e as Error;
@@ -418,7 +419,11 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 		const data = { $json: {} };
 		let error: Error | undefined;
 		try {
-			evaluator.evaluate('{{ (() => { throw { hasOwnProperty: null, foo: "bar" }; })() }}', data);
+			evaluator.evaluate(
+				'{{ (() => { throw { hasOwnProperty: null, foo: "bar" }; })() }}',
+				data,
+				caller,
+			);
 		} catch (e) {
 			error = e as Error;
 		}
@@ -431,7 +436,11 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 
 		// E() inside the isolate swallows TypeErrors (failed attack attempts).
 		// The expression should return undefined, not throw.
-		const result = evaluator.evaluate('{{ (() => { throw new TypeError("test") })() }}', data);
+		const result = evaluator.evaluate(
+			'{{ (() => { throw new TypeError("test") })() }}',
+			data,
+			caller,
+		);
 
 		expect(result).toBeUndefined();
 	});
@@ -443,7 +452,7 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 			},
 		};
 
-		expect(() => evaluator.evaluate('{{ $json.brokenProp }}', { $json: json })).toThrow(
+		expect(() => evaluator.evaluate('{{ $json.brokenProp }}', { $json: json }, caller)).toThrow(
 			'property access failed',
 		);
 	});
@@ -457,7 +466,7 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 			},
 		};
 
-		expect(() => evaluator.evaluate('{{ $json.myFn() }}', data)).toThrow('function threw');
+		expect(() => evaluator.evaluate('{{ $json.myFn() }}', data, caller)).toThrow('function threw');
 	});
 
 	it('should propagate errors from $items() when result properties are accessed', () => {
@@ -469,7 +478,7 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 
 		// Without throwIfErrorSentinel in the $items wrapper, the sentinel is
 		// returned as a value and .length reads undefined on it — silently swallowed
-		expect(() => evaluator.evaluate('{{ $items().length }}', data)).toThrow('items failed');
+		expect(() => evaluator.evaluate('{{ $items().length }}', data, caller)).toThrow('items failed');
 	});
 
 	it('should propagate errors thrown during array element access across the isolate boundary', () => {
@@ -484,7 +493,9 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 
 		const data = { $json: { items } };
 
-		expect(() => evaluator.evaluate('{{ $json.items[0] }}', data)).toThrow('element access failed');
+		expect(() => evaluator.evaluate('{{ $json.items[0] }}', data, caller)).toThrow(
+			'element access failed',
+		);
 	});
 
 	it('should propagate errors thrown during an "in" operator check across the isolate boundary', () => {
@@ -498,9 +509,9 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 		// The bridge calls __getValueAtPath(['$json', 'brokenProp']) which throws.
 		// Without throwIfErrorSentinel in the has trap, the sentinel is returned
 		// as a non-undefined value so 'brokenProp' in $json incorrectly returns true.
-		expect(() => evaluator.evaluate('{{ "brokenProp" in $json }}', { $json: json })).toThrow(
-			'in-check access failed',
-		);
+		expect(() =>
+			evaluator.evaluate('{{ "brokenProp" in $json }}', { $json: json }, caller),
+		).toThrow('in-check access failed');
 	});
 });
 
