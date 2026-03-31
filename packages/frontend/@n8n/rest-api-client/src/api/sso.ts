@@ -54,6 +54,10 @@ export const saveOidcConfig = async (
 	return await makeRestApiRequest(context, 'POST', '/sso/oidc/config', data);
 };
 
+export const testOidcConfig = async (context: IRestApiContext): Promise<{ url: string }> => {
+	return await makeRestApiRequest(context, 'POST', '/sso/oidc/config/test');
+};
+
 export const initOidcLogin = async (context: IRestApiContext): Promise<string> => {
 	return await makeRestApiRequest(context, 'GET', '/sso/oidc/login');
 };
