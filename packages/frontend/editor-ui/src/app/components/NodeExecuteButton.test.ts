@@ -1,4 +1,4 @@
-import { reactive, shallowRef } from 'vue';
+import { reactive, shallowRef, computed } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { useRouter } from 'vue-router';
 import userEvent from '@testing-library/user-event';
@@ -6,6 +6,7 @@ import { waitFor } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore, getTooltip } from '@/__tests__/utils';
 import { mockNode, mockNodeTypeDescription } from '@/__tests__/mocks';
+import { nodeViewEventBus } from '@/app/event-bus';
 import {
 	AI_TRANSFORM_NODE_TYPE,
 	AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT,
@@ -76,13 +77,21 @@ vi.mock('@/app/composables/useExternalHooks', () => {
 });
 
 vi.mock('@/app/composables/usePinnedData', () => {
-	const hasData = {};
-	const unsetData = vi.fn();
+	const createMock = () => ({
+		hasData: computed(() => false),
+		canPinNode: vi.fn().mockReturnValue(false),
+		setData: vi.fn(),
+		onSetDataSuccess: vi.fn(),
+		onSetDataError: vi.fn(),
+		unsetData: vi.fn(),
+		onUnsetData: vi.fn(),
+		isValidNodeType: computed(() => false),
+		isValidJSON: vi.fn(),
+		isValidSize: vi.fn(),
+		data: computed(() => undefined),
+	});
 	return {
-		usePinnedData: () => ({
-			hasData,
-			unsetData,
-		}),
+		usePinnedData: vi.fn(createMock),
 	};
 });
 
@@ -116,14 +125,15 @@ let ndvStore: MockedStore<typeof useNDVStore>;
 
 let runWorkflow: ReturnType<typeof useRunWorkflow>;
 let externalHooks: ReturnType<typeof useExternalHooks>;
-let pinnedData: ReturnType<typeof usePinnedData>;
 let message: ReturnType<typeof useMessage>;
 let toast: ReturnType<typeof useToast>;
 let workflowState: WorkflowState;
+let nodeViewEventBusEmitSpy: ReturnType<typeof vi.spyOn>;
 
 describe('NodeExecuteButton', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		nodeViewEventBusEmitSpy = vi.spyOn(nodeViewEventBus, 'emit');
 
 		renderComponent = createComponentRenderer(NodeExecuteButton, {
 			pinia: createTestingPinia(),
@@ -147,6 +157,10 @@ describe('NodeExecuteButton', () => {
 		externalHooks = useExternalHooks();
 		message = useMessage();
 		toast = useToast();
+	});
+
+	afterEach(() => {
+		nodeViewEventBusEmitSpy.mockRestore();
 	});
 
 	it('renders without error', () => {
@@ -379,15 +393,29 @@ describe('NodeExecuteButton', () => {
 	it('prompts for confirmation when pinned data exists', async () => {
 		const node = mockNode({ name: 'test-node', type: SET_NODE_TYPE });
 		vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(node);
-		pinnedData = usePinnedData(node);
-		Object.defineProperty(pinnedData.hasData, 'value', { value: true });
+
+		// Use a one-time mock return value so the mocked `usePinnedData` implementation does not leak into subsequent tests.
+		const mockUnsetData = vi.fn();
+		vi.mocked(usePinnedData).mockReturnValueOnce({
+			hasData: computed(() => true),
+			canPinNode: vi.fn().mockReturnValue(true),
+			setData: vi.fn(),
+			onSetDataSuccess: vi.fn(),
+			onSetDataError: vi.fn(),
+			unsetData: mockUnsetData,
+			onUnsetData: vi.fn(),
+			isValidNodeType: computed(() => true),
+			isValidJSON: vi.fn(),
+			isValidSize: vi.fn(),
+			data: computed(() => undefined),
+		});
 
 		const { getByRole } = renderComponent();
 
 		await userEvent.click(getByRole('button'));
 
 		expect(message.confirm).toHaveBeenCalledTimes(1);
-		expect(pinnedData.unsetData).toHaveBeenCalledWith('unpin-and-execute-modal');
+		expect(mockUnsetData).toHaveBeenCalledWith('unpin-and-execute-modal');
 		expect(runWorkflow.runWorkflow).toHaveBeenCalledTimes(1);
 	});
 
