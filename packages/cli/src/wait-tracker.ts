@@ -7,6 +7,7 @@ import { UnexpectedError, type IWorkflowExecutionDataProcess } from 'n8n-workflo
 
 import { ActiveExecutions } from '@/active-executions';
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
+import { EventService } from '@/events/event.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowRunner } from '@/workflow-runner';
 import {
@@ -32,6 +33,7 @@ export class WaitTracker {
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly eventService: EventService,
 	) {
 		this.logger = this.logger.scoped('waiting-executions');
 	}
@@ -127,6 +129,9 @@ export class WaitTracker {
 			startedAt: fullExecutionData.startedAt,
 		};
 
+		const lastNodeName = fullExecutionData.data.resultData.lastNodeExecuted ?? '';
+		const resumedNode = fullExecutionData.workflowData.nodes.find((n) => n.name === lastNodeName);
+
 		// Start the execution again
 		try {
 			await this.workflowRunner.run(data, false, false, executionId);
@@ -143,6 +148,17 @@ export class WaitTracker {
 			// Rethrow any other errors
 			throw error;
 		}
+
+		this.eventService.emit('execution-resumed', {
+			executionId,
+			workflowId,
+			workflowName: fullExecutionData.workflowData.name,
+			nodeName: lastNodeName,
+			nodeId: resumedNode?.id,
+			nodeType: resumedNode?.type,
+			resumeSource: 'timer',
+			responseAt: new Date(),
+		});
 
 		const { parentExecution } = fullExecutionData.data;
 		if (shouldRestartParentExecution(parentExecution)) {

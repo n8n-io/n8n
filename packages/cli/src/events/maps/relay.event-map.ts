@@ -482,6 +482,30 @@ export type RelayEventMap = {
 		rejectionReason: string;
 	};
 
+	'execution-waiting': {
+		executionId: string;
+		workflowId: string;
+		workflowName: string;
+		nodeName: string;
+		nodeId?: string;
+		nodeType?: string;
+		/**
+		 * A value of null means waiting indefinitely (no timeout).
+		 */
+		waitTill: Date | null;
+	};
+
+	'execution-resumed': {
+		executionId: string;
+		workflowId: string;
+		workflowName: string;
+		nodeName: string;
+		nodeId?: string;
+		nodeType?: string;
+		resumeSource: 'webhook' | 'form' | 'timer';
+		responseAt: Date;
+	};
+
 	// #endregion
 
 	// #region Project

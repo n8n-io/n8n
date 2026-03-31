@@ -84,6 +84,8 @@ export class LogStreamingEventRelay extends EventRelay {
 			'execution-deleted': (event) => this.executionDeleted(event),
 			'execution-data-revealed': (event) => this.executionDataRevealed(event),
 			'execution-data-reveal-failure': (event) => this.executionDataRevealFailure(event),
+			'execution-waiting': (event) => this.executionWaiting(event),
+			'execution-resumed': (event) => this.executionResumed(event),
 			'ai-messages-retrieved-from-memory': (event) => this.aiMessagesRetrievedFromMemory(event),
 			'ai-message-added-to-memory': (event) => this.aiMessageAddedToMemory(event),
 			'ai-output-parsed': (event) => this.aiOutputParsed(event),
@@ -780,6 +782,54 @@ export class LogStreamingEventRelay extends EventRelay {
 				userAgent,
 				redactionPolicy,
 				rejectionReason,
+			},
+		});
+	}
+
+	private executionWaiting({
+		executionId,
+		workflowId,
+		workflowName,
+		nodeName,
+		nodeId,
+		nodeType,
+		waitTill,
+	}: RelayEventMap['execution-waiting']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.workflow.waiting',
+			payload: {
+				executionId,
+				workflowId,
+				workflowName,
+				nodeName,
+				nodeId,
+				nodeType,
+				waitTill: waitTill?.toISOString() ?? null,
+			},
+		});
+	}
+
+	private executionResumed({
+		executionId,
+		workflowId,
+		workflowName,
+		nodeName,
+		nodeId,
+		nodeType,
+		resumeSource,
+		responseAt,
+	}: RelayEventMap['execution-resumed']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.workflow.resumed',
+			payload: {
+				executionId,
+				workflowId,
+				workflowName,
+				nodeName,
+				nodeId,
+				nodeType,
+				resumeSource,
+				responseAt: responseAt.toISOString(),
 			},
 		});
 	}

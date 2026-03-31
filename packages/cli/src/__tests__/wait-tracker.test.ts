@@ -7,6 +7,8 @@ import type { IWorkflowBase, IRun, INode, IExecuteData, ITaskData } from 'n8n-wo
 import { createDeferredPromise, createRunExecutionData, WAIT_INDEFINITELY } from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
+import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
+import type { EventService } from '@/events/event.service';
 import type { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import type { OwnershipService } from '@/services/ownership.service';
 import { WaitTracker } from '@/wait-tracker';
@@ -21,6 +23,7 @@ describe('WaitTracker', () => {
 	const executionRepository = mock<ExecutionRepository>();
 	const multiMainSetup = mock<MultiMainSetup>();
 	const instanceSettings = mock<InstanceSettings>({ isLeader: true, isMultiMain: false });
+	const eventService = mock<EventService>();
 
 	const project = mock<Project>({ id: 'projectId' });
 	const execution = mock<IExecutionResponse>({
@@ -31,10 +34,14 @@ describe('WaitTracker', () => {
 		data: mock({
 			pushRef: 'push_ref',
 			parentExecution: undefined,
+			resultData: {
+				lastNodeExecuted: undefined,
+				runData: {},
+			},
 		}),
 		startedAt: undefined,
 	});
-	execution.workflowData = mock<IWorkflowBase>({ id: 'abcd' });
+	execution.workflowData = mock<IWorkflowBase>({ id: 'abcd', nodes: [] });
 
 	let waitTracker: WaitTracker;
 	beforeEach(() => {
@@ -45,6 +52,7 @@ describe('WaitTracker', () => {
 			activeExecutions,
 			workflowRunner,
 			instanceSettings,
+			eventService,
 		);
 		multiMainSetup.on.mockReturnThis();
 	});
@@ -146,6 +154,28 @@ describe('WaitTracker', () => {
 			);
 		});
 
+		it('should emit execution-resumed after run() succeeds', async () => {
+			await waitTracker.startExecution(execution.id);
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'execution-resumed',
+				expect.objectContaining({
+					executionId: execution.id,
+					workflowId: execution.workflowData.id,
+					workflowName: execution.workflowData.name,
+					resumeSource: 'timer',
+				}),
+			);
+		});
+
+		it('should not emit execution-resumed when run() throws ExecutionAlreadyResumingError', async () => {
+			workflowRunner.run.mockRejectedValueOnce(new ExecutionAlreadyResumingError(execution.id));
+
+			await waitTracker.startExecution(execution.id);
+
+			expect(eventService.emit).not.toHaveBeenCalledWith('execution-resumed', expect.anything());
+		});
+
 		it('should preserve original startedAt timestamp when resuming execution', async () => {
 			const originalStartedAt = new Date('2025-12-02T09:04:47.150Z');
 			const executionWithStartedAt = {
@@ -174,8 +204,9 @@ describe('WaitTracker', () => {
 				const parentExecution = mock<IExecutionResponse>({
 					id: 'parent_execution_id',
 					finished: false,
+					data: createRunExecutionData(),
 				});
-				parentExecution.workflowData = mock<IWorkflowBase>({ id: 'parent_workflow_id' });
+				parentExecution.workflowData = mock<IWorkflowBase>({ id: 'parent_workflow_id', nodes: [] });
 				execution.data.parentExecution = {
 					executionId: parentExecution.id,
 					workflowId: parentExecution.workflowData.id,
@@ -333,7 +364,7 @@ describe('WaitTracker', () => {
 					finished: false,
 					status: 'waiting',
 					waitTill: WAIT_INDEFINITELY,
-					workflowData: mock<IWorkflowBase>({ id: 'parent_workflow_id' }),
+					workflowData: mock<IWorkflowBase>({ id: 'parent_workflow_id', nodes: [] }),
 					customData: {},
 					annotation: { tags: [] },
 					createdAt: new Date(),
@@ -579,6 +610,7 @@ describe('WaitTracker', () => {
 				activeExecutions,
 				workflowRunner,
 				mock<InstanceSettings>({ isLeader: false, isMultiMain: false }),
+				mock(),
 			);
 
 			executionRepository.getWaitingExecutions.mockResolvedValue([]);

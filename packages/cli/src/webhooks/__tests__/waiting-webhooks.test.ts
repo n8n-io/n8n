@@ -8,6 +8,7 @@ import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { EventService } from '@/events/event.service';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 import type { WebhookService } from '@/webhooks/webhook.service';
@@ -36,12 +37,14 @@ describe('WaitingWebhooks', () => {
 	const executionRepository = mock<ExecutionRepository>();
 	const mockWebhookService = mock<WebhookService>();
 	const mockInstanceSettings = mock<InstanceSettings>({ hmacSignatureSecret: TEST_HMAC_SECRET });
+	const mockEventService = mock<EventService>();
 	const waitingWebhooks = new TestWaitingWebhooks(
 		mock(),
 		mock(),
 		executionRepository,
 		mockWebhookService,
 		mockInstanceSettings,
+		mockEventService,
 	);
 
 	beforeEach(() => {
@@ -980,6 +983,300 @@ describe('WaitingWebhooks', () => {
 
 			// Should have empty array after popping and not adding placeholder
 			expect(runDataArray).toHaveLength(0);
+		});
+
+		it('should emit execution-resumed event when execution successfully resumes', async () => {
+			/**
+			 * Arrange
+			 */
+			const executionId = 'test-execution-id';
+			const lastNodeExecuted = 'WaitNode';
+
+			const mockExecution = mock<IExecutionResponse>({
+				id: executionId,
+				status: 'waiting',
+				finished: false,
+				mode: 'manual',
+				data: {
+					executionData: {
+						nodeExecutionStack: [
+							{
+								node: {
+									name: lastNodeExecuted,
+									type: 'n8n-nodes-base.wait',
+									typeVersion: 1,
+									parameters: {},
+									id: 'node-id',
+									position: [0, 0],
+									disabled: false,
+								},
+								data: {},
+								source: null,
+							},
+						],
+					},
+					resultData: {
+						runData: {
+							[lastNodeExecuted]: [
+								{ startTime: 0, executionTime: 0, executionIndex: 0, source: [] },
+							],
+						},
+						lastNodeExecuted,
+					},
+				},
+				workflowData: {
+					id: 'workflow-id',
+					name: 'Test Workflow',
+					nodes: [
+						{
+							name: lastNodeExecuted,
+							type: 'n8n-nodes-base.wait',
+							typeVersion: 1,
+							parameters: {},
+							id: 'node-id',
+							position: [0, 0],
+						},
+					],
+					connections: {},
+					active: false,
+					activeVersionId: null,
+					settings: {},
+					staticData: {},
+					isArchived: false,
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				},
+			});
+
+			mockExecution.data.resultData.error = undefined;
+			executionRepository.findSingleExecution.mockResolvedValue(mockExecution);
+
+			const mockReq = mock<WaitingWebhookRequest>({
+				params: { path: executionId, suffix: undefined },
+				method: 'POST',
+			});
+			const mockRes = mock<express.Response>();
+
+			jest
+				.spyOn(WebhookHelpers, 'executeWebhook')
+				.mockImplementation(
+					async (_w, _wd, _wfd, _wsn, _m, _pr, _red, _eid, _req, _res, callback) => {
+						callback(null, { noWebhookResponse: true });
+						return undefined;
+					},
+				);
+
+			mockWebhookService.getNodeWebhooks.mockReturnValue([
+				{
+					httpMethod: 'POST',
+					path: '',
+					webhookDescription: {
+						restartWebhook: true,
+						httpMethod: 'POST',
+						name: 'default',
+						path: '',
+						nodeType: undefined,
+					} as any,
+				},
+			] as any);
+
+			jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
+
+			/**
+			 * Act
+			 */
+			await waitingWebhooks.executeWebhook(mockReq, mockRes);
+
+			/**
+			 * Assert
+			 */
+			expect(mockEventService.emit).toHaveBeenCalledWith(
+				'execution-resumed',
+				expect.objectContaining({ executionId, workflowId: 'workflow-id' }),
+			);
+		});
+
+		it('should not emit execution-resumed event when no matching webhook found', async () => {
+			/**
+			 * Arrange
+			 */
+			const executionId = 'test-execution-id';
+			const lastNodeExecuted = 'WaitNode';
+
+			const mockExecution = mock<IExecutionResponse>({
+				id: executionId,
+				status: 'waiting',
+				finished: false,
+				mode: 'manual',
+				data: {
+					executionData: {
+						nodeExecutionStack: [
+							{
+								node: {
+									name: lastNodeExecuted,
+									type: 'n8n-nodes-base.wait',
+									typeVersion: 1,
+									parameters: {},
+									id: 'node-id',
+									position: [0, 0],
+									disabled: false,
+								},
+								data: {},
+								source: null,
+							},
+						],
+					},
+					resultData: {
+						runData: {
+							[lastNodeExecuted]: [
+								{ startTime: 0, executionTime: 0, executionIndex: 0, source: [] },
+							],
+						},
+						lastNodeExecuted,
+					},
+				},
+				workflowData: {
+					id: 'workflow-id',
+					name: 'Test Workflow',
+					nodes: [
+						{
+							name: lastNodeExecuted,
+							type: 'n8n-nodes-base.wait',
+							typeVersion: 1,
+							parameters: {},
+							id: 'node-id',
+							position: [0, 0],
+						},
+					],
+					connections: {},
+					active: false,
+					activeVersionId: null,
+					settings: {},
+					staticData: {},
+					isArchived: false,
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				},
+			});
+
+			mockExecution.data.resultData.error = undefined;
+			executionRepository.findSingleExecution.mockResolvedValue(mockExecution);
+
+			const mockReq = mock<WaitingWebhookRequest>({
+				params: { path: executionId, suffix: undefined },
+				method: 'POST',
+			});
+			const mockRes = mock<express.Response>();
+
+			mockWebhookService.getNodeWebhooks.mockReturnValue([]);
+			jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
+
+			/**
+			 * Act
+			 */
+			await expect(waitingWebhooks.executeWebhook(mockReq, mockRes)).rejects.toThrowError(
+				NotFoundError,
+			);
+
+			/**
+			 * Assert
+			 */
+			expect(mockEventService.emit).not.toHaveBeenCalledWith(
+				'execution-resumed',
+				expect.anything(),
+			);
+		});
+
+		it('should not emit execution-resumed event for send-and-wait already-responded requests', async () => {
+			/**
+			 * Arrange
+			 */
+			const executionId = 'test-execution-id';
+			const lastNodeExecuted = 'SendAndWaitNode';
+			const sendAndWaitNodeId = 'send-and-wait-node-id';
+
+			const mockExecution = mock<IExecutionResponse>({
+				id: executionId,
+				status: 'waiting',
+				finished: false,
+				mode: 'manual',
+				data: {
+					executionData: {
+						nodeExecutionStack: [
+							{
+								node: {
+									name: lastNodeExecuted,
+									type: 'n8n-nodes-base.sendAndWait',
+									typeVersion: 1,
+									parameters: { operation: SEND_AND_WAIT_OPERATION },
+									id: sendAndWaitNodeId,
+									position: [0, 0],
+									disabled: false,
+								},
+								data: {},
+								source: null,
+							},
+						],
+					},
+					resultData: {
+						runData: {
+							[lastNodeExecuted]: [
+								{ startTime: 0, executionTime: 0, executionIndex: 0, source: [] },
+							],
+						},
+						lastNodeExecuted,
+					},
+				},
+				workflowData: {
+					id: 'workflow-id',
+					name: 'Test Workflow',
+					nodes: [
+						{
+							name: lastNodeExecuted,
+							type: 'n8n-nodes-base.sendAndWait',
+							typeVersion: 1,
+							parameters: { operation: SEND_AND_WAIT_OPERATION },
+							id: sendAndWaitNodeId,
+							position: [0, 0],
+						},
+					],
+					connections: {},
+					active: false,
+					activeVersionId: null,
+					settings: {},
+					staticData: {},
+					isArchived: false,
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				},
+			});
+
+			mockExecution.data.resultData.error = undefined;
+			mockExecution.data.validateSignature = false;
+			executionRepository.findSingleExecution.mockResolvedValue(mockExecution);
+
+			const mockReq = mock<WaitingWebhookRequest>({
+				params: { path: executionId, suffix: sendAndWaitNodeId },
+				method: 'POST',
+			});
+			const mockRes = mock<express.Response>();
+
+			mockWebhookService.getNodeWebhooks.mockReturnValue([]);
+			jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
+
+			/**
+			 * Act
+			 */
+			const result = await waitingWebhooks.executeWebhook(mockReq, mockRes);
+
+			/**
+			 * Assert
+			 */
+			expect(result).toEqual({ noWebhookResponse: true });
+			expect(mockEventService.emit).not.toHaveBeenCalledWith(
+				'execution-resumed',
+				expect.anything(),
+			);
 		});
 
 		it('should not set rewireOutputLogTo for non-HITL nodes', async () => {

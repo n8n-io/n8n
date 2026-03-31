@@ -116,6 +116,12 @@ describe('Execution Lifecycle Hooks', () => {
 		status: 'waiting',
 		waitTill: new Date(),
 		storedAt: 'db',
+		data: {
+			resultData: {
+				lastNodeExecuted: undefined,
+				runData: {},
+			},
+		},
 	});
 	const successfulRunWithMetadata = mock<IRun>({
 		status: 'success',
