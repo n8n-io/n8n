@@ -59,6 +59,9 @@ describe('HttpRequestV3', () => {
 				assertBinaryData: jest.fn(),
 				getBinaryStream: jest.fn(),
 				getBinaryMetadata: jest.fn(),
+				binaryToBuffer: jest.fn(async (data: string | Buffer) =>
+					Buffer.isBuffer(data) ? data : Buffer.from(data),
+				),
 				binaryToString: jest.fn((buffer: Buffer) => {
 					return buffer.toString();
 				}),
@@ -97,6 +100,69 @@ describe('HttpRequestV3', () => {
 		const result = await node.execute.call(executeFunctions);
 
 		expect(result).toEqual([[{ json: { success: true }, pairedItem: { item: 0 } }]]);
+	});
+
+	it('should treat empty application/json responses as empty objects in autodetect mode', async () => {
+		(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+		(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+			switch (paramName) {
+				case 'method':
+					return 'POST';
+				case 'url':
+					return baseUrl;
+				case 'authentication':
+					return 'none';
+				case 'options':
+					return options;
+				case 'options.response.response.neverError':
+					return false;
+				default:
+					return undefined;
+			}
+		});
+		const response = {
+			headers: {
+				'content-type': 'application/json',
+				'content-length': '0',
+			},
+			body: Buffer.from(''),
+		};
+
+		(executeFunctions.helpers.request as jest.Mock).mockResolvedValue(response);
+
+		const result = await node.execute.call(executeFunctions);
+
+		expect(result).toEqual([[{ json: {}, pairedItem: { item: 0 } }]]);
+	});
+
+	it('should treat empty responses as empty objects when response format is json', async () => {
+		(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+		(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+			switch (paramName) {
+				case 'method':
+					return 'POST';
+				case 'url':
+					return baseUrl;
+				case 'authentication':
+					return 'none';
+				case 'options':
+					return options;
+				case 'options.response.response.responseFormat':
+					return 'json';
+				default:
+					return undefined;
+			}
+		});
+		const response = {
+			headers: { 'content-type': 'text/plain' },
+			body: '',
+		};
+
+		(executeFunctions.helpers.request as jest.Mock).mockResolvedValue(response);
+
+		const result = await node.execute.call(executeFunctions);
+
+		expect(result).toEqual([[{ json: {}, pairedItem: { item: 0 } }]]);
 	});
 
 	it('should handle authentication', async () => {

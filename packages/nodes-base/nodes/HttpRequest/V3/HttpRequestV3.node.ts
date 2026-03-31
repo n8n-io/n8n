@@ -55,6 +55,18 @@ function toText<T>(data: T) {
 	}
 	return data;
 }
+
+function parseJsonResponseBody(
+	body: string,
+	options: { fallbackValue?: JsonObject; errorMessage?: string },
+) {
+	if (body.trim() === '') {
+		return {};
+	}
+
+	return jsonParse(body, options);
+}
+
 export class HttpRequestV3 implements INodeType {
 	description: INodeTypeDescription;
 
@@ -885,7 +897,7 @@ export class HttpRequestV3 implements INodeType {
 									responseContentType,
 									this.helpers,
 								);
-								response.body = jsonParse(data, {
+								response.body = parseJsonResponseBody(data, {
 									...(neverError
 										? { fallbackValue: {} }
 										: { errorMessage: 'Invalid JSON in response body' }),
@@ -1012,7 +1024,8 @@ export class HttpRequestV3 implements INodeType {
 
 							if (responseFormat === 'json' && typeof returnItem.body === 'string') {
 								try {
-									returnItem.body = JSON.parse(returnItem.body);
+									returnItem.body =
+										returnItem.body.trim() === '' ? {} : JSON.parse(returnItem.body);
 								} catch (error) {
 									throw new NodeOperationError(
 										this.getNode(),
@@ -1031,9 +1044,7 @@ export class HttpRequestV3 implements INodeType {
 						} else {
 							if (responseFormat === 'json' && typeof response === 'string') {
 								try {
-									if (typeof response !== 'object') {
-										response = JSON.parse(response);
-									}
+									response = response.trim() === '' ? {} : JSON.parse(response);
 								} catch (error) {
 									throw new NodeOperationError(
 										this.getNode(),
