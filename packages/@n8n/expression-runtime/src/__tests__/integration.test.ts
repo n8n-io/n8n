@@ -324,6 +324,170 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 
 		expect(result).toBe(systemOffset);
 	});
+
+	it('should support Object.keys() on root proxy data', () => {
+		const data = {
+			$json: { name: 'Alice', age: 30, city: 'Berlin' },
+		};
+
+		const result = evaluator.evaluate('{{ Object.keys($json).join(",") }}', data);
+
+		expect(result).toBe('name,age,city');
+	});
+
+	it('should preserve error name, message, and custom properties across isolate boundary', () => {
+		const data = { $json: {} };
+
+		// Throw a plain Error with a name the bridge recognizes and custom
+		// properties. The bridge serializes via __reportError, reconstructs
+		// on the host, and re-throws — name, message, and extra properties
+		// should survive the round-trip.
+		const expression =
+			'{{ (() => {' +
+			'  const e = new Error("test error");' +
+			'  e.name = "ExpressionExtensionError";' +
+			'  e.customProp = "hello";' +
+			'  e.context = { foo: "bar" };' +
+			'  throw e;' +
+			'})() }}';
+
+		expect(() => evaluator.evaluate(expression, data)).toThrow(
+			expect.objectContaining({
+				name: 'ExpressionExtensionError',
+				message: 'test error',
+				customProp: 'hello',
+				context: { foo: 'bar' },
+			}),
+		);
+	});
+
+	it('should handle throw null without crashing', () => {
+		const data = { $json: {} };
+		let error: Error | undefined;
+		try {
+			evaluator.evaluate('{{ (() => { throw null })() }}', data);
+		} catch (e) {
+			error = e as Error;
+		}
+		expect(error).toBeDefined();
+		expect(error?.message).not.toContain('Cannot read properties');
+	});
+
+	it('should handle throw undefined without crashing', () => {
+		const data = { $json: {} };
+		let error: Error | undefined;
+		try {
+			evaluator.evaluate('{{ (() => { throw undefined })() }}', data);
+		} catch (e) {
+			error = e as Error;
+		}
+		expect(error).toBeDefined();
+		expect(error?.message).not.toContain('Cannot read properties');
+	});
+
+	it('should handle throw of null-prototype object with properties without crashing', () => {
+		const data = { $json: {} };
+		let error: Error | undefined;
+		try {
+			evaluator.evaluate(
+				'{{ (() => { var e = Object.create(null); e.foo = "bar"; throw e; })() }}',
+				data,
+			);
+		} catch (e) {
+			error = e as Error;
+		}
+		expect(error).toBeDefined();
+		expect(error?.message).not.toContain('hasOwnProperty is not a function');
+	});
+
+	it('should handle throw of object with hasOwnProperty shadowed by null without crashing', () => {
+		const data = { $json: {} };
+		let error: Error | undefined;
+		try {
+			evaluator.evaluate('{{ (() => { throw { hasOwnProperty: null, foo: "bar" }; })() }}', data);
+		} catch (e) {
+			error = e as Error;
+		}
+		expect(error).toBeDefined();
+		expect(error?.message).not.toContain('hasOwnProperty is not a function');
+	});
+
+	it('should swallow TypeError and return undefined', () => {
+		const data = { $json: {} };
+
+		// E() inside the isolate swallows TypeErrors (failed attack attempts).
+		// The expression should return undefined, not throw.
+		const result = evaluator.evaluate('{{ (() => { throw new TypeError("test") })() }}', data);
+
+		expect(result).toBeUndefined();
+	});
+
+	it('should propagate errors thrown when reading a property across the isolate boundary', () => {
+		const json = {
+			get brokenProp() {
+				throw new Error('property access failed');
+			},
+		};
+
+		expect(() => evaluator.evaluate('{{ $json.brokenProp }}', { $json: json })).toThrow(
+			'property access failed',
+		);
+	});
+
+	it('should propagate errors thrown by functions accessed via the lazy proxy', () => {
+		const data = {
+			$json: {
+				myFn() {
+					throw new Error('function threw');
+				},
+			},
+		};
+
+		expect(() => evaluator.evaluate('{{ $json.myFn() }}', data)).toThrow('function threw');
+	});
+
+	it('should propagate errors from $items() when result properties are accessed', () => {
+		const data = {
+			$items() {
+				throw new Error('items failed');
+			},
+		};
+
+		// Without throwIfErrorSentinel in the $items wrapper, the sentinel is
+		// returned as a value and .length reads undefined on it — silently swallowed
+		expect(() => evaluator.evaluate('{{ $items().length }}', data)).toThrow('items failed');
+	});
+
+	it('should propagate errors thrown during array element access across the isolate boundary', () => {
+		const items = [1, 2, 3];
+		Object.defineProperty(items, '0', {
+			get() {
+				throw new Error('element access failed');
+			},
+			configurable: true,
+			enumerable: true,
+		});
+
+		const data = { $json: { items } };
+
+		expect(() => evaluator.evaluate('{{ $json.items[0] }}', data)).toThrow('element access failed');
+	});
+
+	it('should propagate errors thrown during an "in" operator check across the isolate boundary', () => {
+		const json = {
+			get brokenProp() {
+				throw new Error('in-check access failed');
+			},
+		};
+
+		// The 'in' operator triggers the has trap on $json proxy.
+		// The bridge calls __getValueAtPath(['$json', 'brokenProp']) which throws.
+		// Without throwIfErrorSentinel in the has trap, the sentinel is returned
+		// as a non-undefined value so 'brokenProp' in $json incorrectly returns true.
+		expect(() => evaluator.evaluate('{{ "brokenProp" in $json }}', { $json: json })).toThrow(
+			'in-check access failed',
+		);
+	});
 });
 
 describe('Integration: IsolatedVmBridge error handling', () => {
