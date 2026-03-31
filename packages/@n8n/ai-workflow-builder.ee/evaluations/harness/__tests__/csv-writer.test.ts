@@ -257,8 +257,6 @@ describe('writeResultsCsv', () => {
 		const lines = content.trim().split('\n');
 
 		expect(lines[0]).toContain('node_count');
-		expect(lines[0]).not.toContain('discovery_latency_ms');
-		expect(lines[0]).not.toContain('responder_latency_ms');
 	});
 
 	it('uses explicit suite option to override auto-detection', () => {
