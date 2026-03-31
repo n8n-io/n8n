@@ -268,8 +268,8 @@ export class InstanceAiService {
 			};
 		}
 
-		// Direct mode: Daytona credentials from env vars or admin credential
-		const daytona = await this.settingsService.resolveDaytonaConfig(user);
+		// Direct mode: Daytona credentials from env vars
+		const daytona = this.settingsService.resolveDaytonaConfig();
 		return {
 			...base,
 			daytonaApiUrl: daytona.apiUrl ?? base.daytonaApiUrl,
@@ -361,7 +361,7 @@ export class InstanceAiService {
 	private async resolveModel(user: User): Promise<ModelConfig> {
 		if (this.aiService.isProxyEnabled()) {
 			const { client, headers } = await this.getProxyAuth(user);
-			const modelName = await this.settingsService.resolveModelName(user);
+			const modelName = this.settingsService.resolveModelName();
 			const provider = createAnthropic({
 				baseURL: client.getApiProxyBaseUrl() + '/anthropic/v1',
 				apiKey: 'proxy-managed',
@@ -369,7 +369,7 @@ export class InstanceAiService {
 			});
 			return provider(modelName);
 		}
-		return await this.settingsService.resolveModelConfig(user);
+		return this.settingsService.resolveModelConfig();
 	}
 
 	/** Build search proxy config when proxy is enabled. */

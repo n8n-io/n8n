@@ -810,12 +810,6 @@ export interface InstanceAiAdminSettingsResponse {
 	browserMcp: boolean;
 	permissions: InstanceAiPermissions;
 	mcpServers: string;
-	sandboxEnabled: boolean;
-	sandboxProvider: string;
-	sandboxImage: string;
-	sandboxTimeout: number;
-	daytonaCredentialId: string | null;
-	searchCredentialId: string | null;
 	localGatewayDisabled: boolean;
 }
 
@@ -827,12 +821,6 @@ export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	browserMcp: z.boolean().optional(),
 	permissions: instanceAiPermissionsSchema.partial().optional(),
 	mcpServers: z.string().optional(),
-	sandboxEnabled: z.boolean().optional(),
-	sandboxProvider: z.string().optional(),
-	sandboxImage: z.string().optional(),
-	sandboxTimeout: z.number().int().positive().optional(),
-	daytonaCredentialId: z.string().nullable().optional(),
-	searchCredentialId: z.string().nullable().optional(),
 	localGatewayDisabled: z.boolean().optional(),
 }) {}
 
@@ -841,25 +829,12 @@ export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 // ---------------------------------------------------------------------------
 
 export interface InstanceAiUserPreferencesResponse {
-	credentialId: string | null;
-	credentialType: string | null;
-	credentialName: string | null;
-	modelName: string;
 	localGatewayDisabled: boolean;
 }
 
 export class InstanceAiUserPreferencesUpdateRequest extends Z.class({
-	credentialId: z.string().nullable().optional(),
-	modelName: z.string().optional(),
 	localGatewayDisabled: z.boolean().optional(),
 }) {}
-
-export interface InstanceAiModelCredential {
-	id: string;
-	name: string;
-	type: string;
-	provider: string;
-}
 
 const BUILDER_RENDER_HINT_TOOLS = new Set(['build-workflow-with-agent', 'workflow-build-flow']);
 const DATA_TABLE_RENDER_HINT_TOOLS = new Set([

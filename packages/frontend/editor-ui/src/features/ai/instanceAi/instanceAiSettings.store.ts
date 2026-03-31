@@ -9,8 +9,6 @@ import {
 	updateSettings,
 	fetchPreferences,
 	updatePreferences,
-	fetchModelCredentials,
-	fetchServiceCredentials,
 } from './instanceAi.settings.api';
 import { createGatewayLink, getGatewayStatus } from './instanceAi.api';
 import type {
@@ -18,7 +16,6 @@ import type {
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiUserPreferencesResponse,
 	InstanceAiUserPreferencesUpdateRequest,
-	InstanceAiModelCredential,
 	InstanceAiPermissions,
 	InstanceAiPermissionMode,
 	ToolCategory,
@@ -33,8 +30,6 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const isSaving = ref(false);
 	const settings = ref<InstanceAiAdminSettingsResponse | null>(null);
 	const preferences = ref<InstanceAiUserPreferencesResponse | null>(null);
-	const credentials = ref<InstanceAiModelCredential[]>([]);
-	const serviceCredentials = ref<InstanceAiModelCredential[]>([]);
 	const draft = reactive<InstanceAiAdminSettingsUpdateRequest>({});
 	const preferencesDraft = reactive<InstanceAiUserPreferencesUpdateRequest>({});
 
@@ -69,16 +64,12 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	async function fetch(): Promise<void> {
 		isLoading.value = true;
 		try {
-			const [s, p, c, sc] = await Promise.all([
+			const [s, p] = await Promise.all([
 				fetchSettings(rootStore.restApiContext),
 				fetchPreferences(rootStore.restApiContext),
-				fetchModelCredentials(rootStore.restApiContext),
-				fetchServiceCredentials(rootStore.restApiContext),
 			]);
 			settings.value = s;
 			preferences.value = p;
-			credentials.value = c;
-			serviceCredentials.value = sc;
 			clearDraft();
 		} catch {
 			toast.showError(new Error('Failed to load settings'), 'Settings error');
@@ -296,19 +287,6 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		}
 	}
 
-	async function refreshCredentials(): Promise<void> {
-		try {
-			const [c, sc] = await Promise.all([
-				fetchModelCredentials(rootStore.restApiContext),
-				fetchServiceCredentials(rootStore.restApiContext),
-			]);
-			credentials.value = c;
-			serviceCredentials.value = sc;
-		} catch {
-			// Silently fail — credentials list will refresh on next full fetch
-		}
-	}
-
 	async function refreshModuleSettings(): Promise<void> {
 		await settingsStore.getModuleSettings();
 	}
@@ -316,8 +294,6 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	return {
 		settings,
 		preferences,
-		credentials,
-		serviceCredentials,
 		draft,
 		preferencesDraft,
 		isLoading,
@@ -349,7 +325,6 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		startGatewayPushListener,
 		stopGatewayPushListener,
 		fetchSetupCommand,
-		refreshCredentials,
 		refreshModuleSettings,
 	};
 });

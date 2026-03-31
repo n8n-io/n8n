@@ -371,24 +371,6 @@ describe('InstanceAiController', () => {
 		});
 	});
 
-	describe('listModelCredentials', () => {
-		it('should require instanceAi:message scope', () => {
-			expect(scopeOf('listModelCredentials')).toEqual({
-				scope: 'instanceAi:message',
-				globalOnly: true,
-			});
-		});
-	});
-
-	describe('listServiceCredentials', () => {
-		it('should require instanceAi:manage scope', () => {
-			expect(scopeOf('listServiceCredentials')).toEqual({
-				scope: 'instanceAi:manage',
-				globalOnly: true,
-			});
-		});
-	});
-
 	describe('getMemory', () => {
 		it('should require instanceAi:message scope', () => {
 			expect(scopeOf('getMemory')).toEqual({ scope: 'instanceAi:message', globalOnly: true });

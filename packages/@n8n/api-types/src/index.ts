@@ -338,7 +338,6 @@ export type {
 	InstanceAiThreadStatusResponse,
 	InstanceAiAdminSettingsResponse,
 	InstanceAiUserPreferencesResponse,
-	InstanceAiModelCredential,
 	InstanceAiPermissionMode,
 	InstanceAiPermissions,
 	InstanceAiTargetResource,

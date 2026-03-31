@@ -354,18 +354,6 @@ export class InstanceAiController {
 		return result;
 	}
 
-	@Get('/settings/credentials')
-	@GlobalScope('instanceAi:message')
-	async listModelCredentials(req: AuthenticatedRequest) {
-		return await this.settingsService.listModelCredentials(req.user);
-	}
-
-	@Get('/settings/service-credentials')
-	@GlobalScope('instanceAi:manage')
-	async listServiceCredentials(req: AuthenticatedRequest) {
-		return await this.settingsService.listServiceCredentials(req.user);
-	}
-
 	@Get('/memory/:threadId')
 	@GlobalScope('instanceAi:message')
 	async getMemory(req: AuthenticatedRequest, _res: Response, @Param('threadId') threadId: string) {

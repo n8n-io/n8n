@@ -2,8 +2,6 @@ import { useInstanceAiSettingsStore } from '../../instanceAiSettings.store';
 import type {
 	InstanceAiAdminSettingsResponse,
 	InstanceAiAdminSettingsUpdateRequest,
-	InstanceAiUserPreferencesResponse,
-	InstanceAiUserPreferencesUpdateRequest,
 } from '@n8n/api-types';
 
 type StringField = keyof {
@@ -18,12 +16,6 @@ type NumberField = keyof {
 };
 type BoolField = keyof {
 	[K in keyof InstanceAiAdminSettingsResponse as InstanceAiAdminSettingsResponse[K] extends boolean
-		? K
-		: never]: true;
-};
-
-type PreferenceStringField = keyof {
-	[K in keyof InstanceAiUserPreferencesResponse as InstanceAiUserPreferencesResponse[K] extends string
 		? K
 		: never]: true;
 };
@@ -49,13 +41,5 @@ export function useSettingsField() {
 		return store.settings?.[key] ?? false;
 	}
 
-	function getPreferenceString(
-		key: PreferenceStringField & keyof InstanceAiUserPreferencesUpdateRequest,
-	): string {
-		const draftVal = store.preferencesDraft[key];
-		if (draftVal !== undefined) return String(draftVal);
-		return store.preferences?.[key] ?? '';
-	}
-
-	return { store, getString, getNumber, getBool, getPreferenceString };
+	return { store, getString, getNumber, getBool };
 }

@@ -8,51 +8,18 @@ import type {
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiUserPreferencesResponse,
 	InstanceAiUserPreferencesUpdateRequest,
-	InstanceAiModelCredential,
 	InstanceAiPermissions,
 } from '@n8n/api-types';
 import { DEFAULT_INSTANCE_AI_PERMISSIONS } from '@n8n/api-types';
 import type { ModelConfig } from '@n8n/instance-ai';
 import { jsonParse } from 'n8n-workflow';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { CredentialsService } from '@/credentials/credentials.service';
-
 const ADMIN_SETTINGS_KEY = 'instanceAi.settings';
 const USER_PREFERENCES_KEY_PREFIX = 'instanceAi.preferences.';
-
-/** Credential types we support and their Mastra provider mapping. */
-const CREDENTIAL_TO_MASTRA_PROVIDER: Record<string, string> = {
-	openAiApi: 'openai',
-	anthropicApi: 'anthropic',
-	googlePalmApi: 'google',
-	ollamaApi: 'ollama',
-	groqApi: 'groq',
-	deepSeekApi: 'deepseek',
-	mistralCloudApi: 'mistral',
-	xAiApi: 'xai',
-	openRouterApi: 'openrouter',
-	cohereApi: 'cohere',
-};
-
-const SUPPORTED_CREDENTIAL_TYPES = Object.keys(CREDENTIAL_TO_MASTRA_PROVIDER);
-
-/** Fields that contain the base URL per credential type. */
-const URL_FIELD_MAP: Record<string, string> = {
-	openAiApi: 'url',
-	anthropicApi: 'url',
-	googlePalmApi: 'host',
-	ollamaApi: 'baseUrl',
-};
 
 // ---------------------------------------------------------------------------
 // Persisted shapes (no secrets — those come from env/config only)
 // ---------------------------------------------------------------------------
-
-/** Credential types for sandbox and search services. */
-const SANDBOX_CREDENTIAL_TYPES = ['daytonaApi'];
-const SEARCH_CREDENTIAL_TYPES = ['braveSearchApi', 'searXngApi'];
-const SERVICE_CREDENTIAL_TYPES = [...SANDBOX_CREDENTIAL_TYPES, ...SEARCH_CREDENTIAL_TYPES];
 
 /** Admin settings stored in DB under ADMIN_SETTINGS_KEY. */
 interface PersistedAdminSettings {
@@ -63,19 +30,11 @@ interface PersistedAdminSettings {
 	browserMcp?: boolean;
 	permissions?: Partial<InstanceAiPermissions>;
 	mcpServers?: string;
-	sandboxEnabled?: boolean;
-	sandboxProvider?: string;
-	sandboxImage?: string;
-	sandboxTimeout?: number;
-	daytonaCredentialId?: string | null;
-	searchCredentialId?: string | null;
 	localGatewayDisabled?: boolean;
 }
 
 /** Per-user preferences stored under USER_PREFERENCES_KEY_PREFIX + userId. */
 interface PersistedUserPreferences {
-	credentialId?: string | null;
-	modelName?: string;
 	localGatewayDisabled?: boolean;
 }
 
@@ -86,19 +45,12 @@ export class InstanceAiSettingsService {
 	/** Per-action HITL permission overrides. */
 	private permissions: InstanceAiPermissions = { ...DEFAULT_INSTANCE_AI_PERMISSIONS };
 
-	/** Admin-level credential IDs for sandbox and search services. */
-	private adminDaytonaCredentialId: string | null = null;
-
-	private adminSearchCredentialId: string | null = null;
-
 	/** In-memory cache of per-user preferences keyed by userId. */
 	private readonly userPreferences = new Map<string, PersistedUserPreferences>();
 
 	constructor(
 		globalConfig: GlobalConfig,
 		private readonly settingsRepository: SettingsRepository,
-		private readonly credentialsService: CredentialsService,
-		private readonly credentialsFinderService: CredentialsFinderService,
 	) {
 		this.config = globalConfig.instanceAi;
 	}
@@ -108,20 +60,10 @@ export class InstanceAiSettingsService {
 		const row = await this.settingsRepository.findByKey(ADMIN_SETTINGS_KEY);
 		if (!row) return;
 
-		const persisted = jsonParse<PersistedAdminSettings & PersistedUserPreferences>(row.value, {
+		const persisted = jsonParse<PersistedAdminSettings>(row.value, {
 			fallbackValue: {},
 		});
 		this.applyAdminSettings(persisted);
-
-		// Migrate legacy user fields from admin settings (credentialId, modelName)
-		// — these were previously stored in the shared settings blob.
-		// They become defaults for users who haven't set their own preferences yet.
-		if (persisted.credentialId !== undefined || persisted.modelName !== undefined) {
-			this.userPreferences.set('__legacy_default__', {
-				credentialId: persisted.credentialId,
-				modelName: persisted.modelName,
-			});
-		}
 	}
 
 	// ── Admin settings ────────────────────────────────────────────────────
@@ -136,12 +78,6 @@ export class InstanceAiSettingsService {
 			browserMcp: c.browserMcp,
 			permissions: { ...this.permissions },
 			mcpServers: c.mcpServers,
-			sandboxEnabled: c.sandboxEnabled,
-			sandboxProvider: c.sandboxProvider,
-			sandboxImage: c.sandboxImage,
-			sandboxTimeout: c.sandboxTimeout,
-			daytonaCredentialId: this.adminDaytonaCredentialId,
-			searchCredentialId: this.adminSearchCredentialId,
 			localGatewayDisabled: this.isLocalGatewayDisabled(),
 		};
 	}
@@ -159,14 +95,6 @@ export class InstanceAiSettingsService {
 			this.permissions = { ...this.permissions, ...update.permissions };
 		}
 		if (update.mcpServers !== undefined) c.mcpServers = update.mcpServers;
-		if (update.sandboxEnabled !== undefined) c.sandboxEnabled = update.sandboxEnabled;
-		if (update.sandboxProvider !== undefined) c.sandboxProvider = update.sandboxProvider;
-		if (update.sandboxImage !== undefined) c.sandboxImage = update.sandboxImage;
-		if (update.sandboxTimeout !== undefined) c.sandboxTimeout = update.sandboxTimeout;
-		if (update.daytonaCredentialId !== undefined)
-			this.adminDaytonaCredentialId = update.daytonaCredentialId;
-		if (update.searchCredentialId !== undefined)
-			this.adminSearchCredentialId = update.searchCredentialId;
 		if (update.localGatewayDisabled !== undefined)
 			c.localGatewayDisabled = update.localGatewayDisabled;
 		await this.persistAdminSettings();
@@ -177,26 +105,7 @@ export class InstanceAiSettingsService {
 
 	async getUserPreferences(user: User): Promise<InstanceAiUserPreferencesResponse> {
 		const prefs = await this.loadUserPreferences(user.id);
-		const credentialId = prefs.credentialId ?? null;
-
-		let credentialType: string | null = null;
-		let credentialName: string | null = null;
-
-		if (credentialId) {
-			const cred = await this.credentialsFinderService.findCredentialForUser(credentialId, user, [
-				'credential:read',
-			]);
-			if (cred) {
-				credentialType = cred.type;
-				credentialName = cred.name;
-			}
-		}
-
 		return {
-			credentialId,
-			credentialType,
-			credentialName,
-			modelName: prefs.modelName || this.extractModelName(this.config.model),
 			localGatewayDisabled:
 				this.config.localGatewayDisabled || (prefs.localGatewayDisabled ?? false),
 		};
@@ -207,8 +116,6 @@ export class InstanceAiSettingsService {
 		update: InstanceAiUserPreferencesUpdateRequest,
 	): Promise<InstanceAiUserPreferencesResponse> {
 		const prefs = await this.loadUserPreferences(user.id);
-		if (update.credentialId !== undefined) prefs.credentialId = update.credentialId;
-		if (update.modelName !== undefined) prefs.modelName = update.modelName;
 		if (update.localGatewayDisabled !== undefined)
 			prefs.localGatewayDisabled = update.localGatewayDisabled;
 		this.userPreferences.set(user.id, prefs);
@@ -218,89 +125,22 @@ export class InstanceAiSettingsService {
 
 	// ── Shared accessors ──────────────────────────────────────────────────
 
-	/** List credentials the user can access that are usable as LLM providers. */
-	async listModelCredentials(user: User): Promise<InstanceAiModelCredential[]> {
-		const allCredentials = await this.credentialsFinderService.findCredentialsForUser(user, [
-			'credential:read',
-		]);
-		return allCredentials
-			.filter((c) => SUPPORTED_CREDENTIAL_TYPES.includes(c.type))
-			.map((c) => ({
-				id: c.id,
-				name: c.name,
-				type: c.type,
-				provider: CREDENTIAL_TO_MASTRA_PROVIDER[c.type] ?? 'custom',
-			}));
-	}
-
-	/** List credentials the user can access that are usable as sandbox/search services. */
-	async listServiceCredentials(user: User): Promise<InstanceAiModelCredential[]> {
-		const allCredentials = await this.credentialsFinderService.findCredentialsForUser(user, [
-			'credential:read',
-		]);
-		return allCredentials
-			.filter((c) => SERVICE_CREDENTIAL_TYPES.includes(c.type))
-			.map((c) => ({
-				id: c.id,
-				name: c.name,
-				type: c.type,
-				provider: c.type,
-			}));
-	}
-
-	/** Resolve sandbox (Daytona) config from the admin-selected credential. */
-	async resolveDaytonaConfig(user: User): Promise<{ apiUrl?: string; apiKey?: string }> {
-		const credentialId = this.adminDaytonaCredentialId;
-		if (!credentialId) {
-			// Fall back to env vars
-			const { daytonaApiUrl, daytonaApiKey } = this.config;
-			return {
-				apiUrl: daytonaApiUrl || undefined,
-				apiKey: daytonaApiKey || undefined,
-			};
-		}
-		const credential = await this.credentialsFinderService.findCredentialForUser(
-			credentialId,
-			user,
-			['credential:read'],
-		);
-		if (!credential) {
-			return {};
-		}
-		const data = this.credentialsService.decrypt(credential, true);
+	/** Resolve sandbox (Daytona) config from env vars. */
+	resolveDaytonaConfig(): { apiUrl?: string; apiKey?: string } {
+		const { daytonaApiUrl, daytonaApiKey } = this.config;
 		return {
-			apiUrl: typeof data.apiUrl === 'string' ? data.apiUrl : undefined,
-			apiKey: typeof data.apiKey === 'string' ? data.apiKey : undefined,
+			apiUrl: daytonaApiUrl || undefined,
+			apiKey: daytonaApiKey || undefined,
 		};
 	}
 
-	/** Resolve search config from the admin-selected credential. */
-	async resolveSearchConfig(user: User): Promise<{ braveApiKey?: string; searxngUrl?: string }> {
-		const credentialId = this.adminSearchCredentialId;
-		if (!credentialId) {
-			// Fall back to env vars
-			const { braveSearchApiKey, searxngUrl } = this.config;
-			return {
-				braveApiKey: braveSearchApiKey || undefined,
-				searxngUrl: searxngUrl || undefined,
-			};
-		}
-		const credential = await this.credentialsFinderService.findCredentialForUser(
-			credentialId,
-			user,
-			['credential:read'],
-		);
-		if (!credential) {
-			return {};
-		}
-		const data = this.credentialsService.decrypt(credential, true);
-		if (credential.type === 'braveSearchApi') {
-			return { braveApiKey: typeof data.apiKey === 'string' ? data.apiKey : undefined };
-		}
-		if (credential.type === 'searXngApi') {
-			return { searxngUrl: typeof data.apiUrl === 'string' ? data.apiUrl : undefined };
-		}
-		return {};
+	/** Resolve search config from env vars. */
+	resolveSearchConfig(): { braveApiKey?: string; searxngUrl?: string } {
+		const { braveSearchApiKey, searxngUrl } = this.config;
+		return {
+			braveApiKey: braveSearchApiKey || undefined,
+			searxngUrl: searxngUrl || undefined,
+		};
 	}
 
 	/** Return the current HITL permission map. */
@@ -320,53 +160,14 @@ export class InstanceAiSettingsService {
 		return this.config.localGatewayDisabled;
 	}
 
-	/** Resolve just the model name (e.g. 'claude-sonnet-4-20250514') for proxy routing. */
-	async resolveModelName(user: User): Promise<string> {
-		const prefs = await this.loadUserPreferences(user.id);
-		return prefs.modelName || this.extractModelName(this.config.model);
+	/** Resolve just the model name (e.g. 'claude-sonnet-4-20250514') from config. */
+	resolveModelName(): string {
+		return this.extractModelName(this.config.model);
 	}
 
-	/** Resolve the current model configuration for an agent run. */
-	async resolveModelConfig(user: User): Promise<ModelConfig> {
-		const prefs = await this.loadUserPreferences(user.id);
-		const credentialId = prefs.credentialId ?? null;
-
-		if (!credentialId) {
-			return this.envVarModelConfig();
-		}
-
-		const credential = await this.credentialsFinderService.findCredentialForUser(
-			credentialId,
-			user,
-			['credential:read'],
-		);
-
-		if (!credential) {
-			return this.envVarModelConfig();
-		}
-
-		const provider = CREDENTIAL_TO_MASTRA_PROVIDER[credential.type];
-		if (!provider) {
-			return this.envVarModelConfig();
-		}
-
-		const data = this.credentialsService.decrypt(credential, true);
-		const apiKey = typeof data.apiKey === 'string' ? data.apiKey : '';
-		const urlField = URL_FIELD_MAP[credential.type];
-		const rawUrl = urlField ? data[urlField] : undefined;
-		const baseUrl = typeof rawUrl === 'string' ? rawUrl : '';
-		const modelName = prefs.modelName || this.extractModelName(this.config.model);
-		const id: `${string}/${string}` = `${provider}/${modelName}`;
-
-		if (baseUrl) {
-			return { id, url: baseUrl, ...(apiKey ? { apiKey } : {}) };
-		}
-
-		if (apiKey) {
-			return { id, url: '', apiKey };
-		}
-
-		return id;
+	/** Resolve the current model configuration from env vars. */
+	resolveModelConfig(): ModelConfig {
+		return this.envVarModelConfig();
 	}
 
 	// ── Private helpers ───────────────────────────────────────────────────
@@ -414,14 +215,6 @@ export class InstanceAiSettingsService {
 			} as typeof this.permissions;
 		}
 		if (persisted.mcpServers !== undefined) c.mcpServers = persisted.mcpServers;
-		if (persisted.sandboxEnabled !== undefined) c.sandboxEnabled = persisted.sandboxEnabled;
-		if (persisted.sandboxProvider !== undefined) c.sandboxProvider = persisted.sandboxProvider;
-		if (persisted.sandboxImage !== undefined) c.sandboxImage = persisted.sandboxImage;
-		if (persisted.sandboxTimeout !== undefined) c.sandboxTimeout = persisted.sandboxTimeout;
-		if (persisted.daytonaCredentialId !== undefined)
-			this.adminDaytonaCredentialId = persisted.daytonaCredentialId;
-		if (persisted.searchCredentialId !== undefined)
-			this.adminSearchCredentialId = persisted.searchCredentialId;
 		if (persisted.localGatewayDisabled !== undefined)
 			c.localGatewayDisabled = persisted.localGatewayDisabled;
 	}
@@ -437,9 +230,7 @@ export class InstanceAiSettingsService {
 			return { ...prefs };
 		}
 
-		// Fall back to legacy defaults (migrated from old shared settings)
-		const legacy = this.userPreferences.get('__legacy_default__');
-		return legacy ? { ...legacy } : {};
+		return {};
 	}
 
 	private async persistAdminSettings(): Promise<void> {
@@ -452,12 +243,6 @@ export class InstanceAiSettingsService {
 			browserMcp: c.browserMcp,
 			permissions: this.permissions,
 			mcpServers: c.mcpServers,
-			sandboxEnabled: c.sandboxEnabled,
-			sandboxProvider: c.sandboxProvider,
-			sandboxImage: c.sandboxImage,
-			sandboxTimeout: c.sandboxTimeout,
-			daytonaCredentialId: this.adminDaytonaCredentialId,
-			searchCredentialId: this.adminSearchCredentialId,
 			localGatewayDisabled: c.localGatewayDisabled,
 		};
 
