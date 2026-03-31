@@ -1,5 +1,5 @@
 {
-	"node": "n8n-nodes-alicloud-modelstudio.alicloudModelStudio",
+	"node": "n8n-nodes-alicloud-modelstudio",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": ["AI"],
