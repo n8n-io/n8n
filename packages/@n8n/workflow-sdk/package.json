@@ -54,6 +54,7 @@
   },
   "dependencies": {
     "acorn": "8.14.0",
+    "lodash": "catalog:",
     "n8n-workflow": "workspace:*",
     "uuid": "catalog:",
     "zod": "catalog:"

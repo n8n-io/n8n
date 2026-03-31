@@ -616,6 +616,9 @@ importers:
       langchain:
         specifier: 'catalog:'
         version: 1.2.30(@langchain/core@1.1.34(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.213.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.6.0(@opentelemetry/api@1.9.0))(openai@6.19.0(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.213.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.6.0(@opentelemetry/api@1.9.0))(openai@6.19.0(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(vue@3.5.26(typescript@5.9.2))(zod-to-json-schema@3.23.3(zod@3.25.67))
+      lodash:
+        specifier: 'catalog:'
+        version: 4.17.23
       proxy-from-env:
         specifier: ^1.1.0
         version: 1.1.0
@@ -2000,6 +2003,9 @@ importers:
       acorn:
         specifier: 8.14.0
         version: 8.14.0
+      lodash:
+        specifier: 'catalog:'
+        version: 4.17.23
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
