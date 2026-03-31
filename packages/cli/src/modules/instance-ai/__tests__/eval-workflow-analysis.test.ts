@@ -14,10 +14,8 @@ import { identifyNodesForHints, identifyNodesForPinData } from '../eval-workflow
 function makeNode(overrides: Partial<INode> & { name: string; type: string }): INode {
 	return {
 		id: overrides.name,
-		name: overrides.name,
-		type: overrides.type,
-		typeVersion: overrides.typeVersion ?? 1,
-		position: [0, 0],
+		typeVersion: 1,
+		position: [0, 0] as [number, number],
 		parameters: {},
 		...overrides,
 	};
@@ -28,6 +26,8 @@ function makeWorkflow(nodes: INode[], connections: IConnections = {}): IWorkflow
 		id: 'test-workflow',
 		name: 'Test',
 		active: false,
+		isArchived: false,
+		activeVersionId: null,
 		nodes,
 		connections,
 		createdAt: new Date(),
