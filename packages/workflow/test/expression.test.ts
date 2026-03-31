@@ -35,6 +35,13 @@ describe('Expression', () => {
 		});
 		const expression = workflow.expression;
 
+		beforeAll(async () => {
+			await expression.acquireIsolate();
+		});
+		afterAll(async () => {
+			await expression.releaseIsolate();
+		});
+
 		const evaluate = (value: string) =>
 			expression.getParameterValue(value, null, 0, 0, 'node', [], 'manual', {});
 
@@ -828,7 +835,7 @@ describe('Expression', () => {
 	});
 
 	describe('resolveSimpleParameterValue with IWorkflowDataProxyData', () => {
-		it('should evaluate expression with provided IWorkflowDataProxyData', () => {
+		it('should evaluate expression with provided IWorkflowDataProxyData', async () => {
 			const nodeTypes = Helpers.NodeTypes();
 			const workflow = new Workflow({
 				id: 'test',
@@ -865,7 +872,9 @@ describe('Expression', () => {
 			// Test Expression with new API
 			const timezone = workflow.settings?.timezone ?? 'UTC';
 			const expression = new Expression(timezone);
+			await expression.acquireIsolate();
 			const result = expression.resolveSimpleParameterValue('={{ $json.value * 2 }}', data, false);
+			await expression.releaseIsolate();
 
 			expect(result).toBe(84);
 		});
@@ -916,7 +925,7 @@ describe('Expression', () => {
 	});
 
 	describe('getParameterValue with IWorkflowDataProxyData', () => {
-		it('should evaluate simple expression with provided IWorkflowDataProxyData', () => {
+		it('should evaluate simple expression with provided IWorkflowDataProxyData', async () => {
 			const nodeTypes = Helpers.NodeTypes();
 			const workflow = new Workflow({
 				id: 'test',
@@ -951,11 +960,13 @@ describe('Expression', () => {
 
 			const timezone = workflow.settings?.timezone ?? 'UTC';
 			const expression = new Expression(timezone);
+			await expression.acquireIsolate();
 			const result = expression.resolveSimpleParameterValue(
 				'={{ $json.text.toUpperCase() }}',
 				data,
 				false,
 			);
+			await expression.releaseIsolate();
 
 			expect(result).toBe('HELLO');
 		});
