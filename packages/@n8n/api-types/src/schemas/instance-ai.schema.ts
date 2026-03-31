@@ -817,6 +817,8 @@ export interface InstanceAiAdminSettingsResponse {
 	daytonaCredentialId: string | null;
 	searchCredentialId: string | null;
 	localGatewayDisabled: boolean;
+	/** When false, chat routes and main UI are hidden; settings remain available. */
+	instanceAiEnabled: boolean;
 }
 
 export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
@@ -834,6 +836,7 @@ export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	daytonaCredentialId: z.string().nullable().optional(),
 	searchCredentialId: z.string().nullable().optional(),
 	localGatewayDisabled: z.boolean().optional(),
+	instanceAiEnabled: z.boolean().optional(),
 }) {}
 
 // ---------------------------------------------------------------------------

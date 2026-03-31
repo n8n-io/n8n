@@ -86,6 +86,7 @@ describe('InstanceAiController', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		settingsService.isInstanceAiEnabled.mockReturnValue(true);
 	});
 
 	describe('chat', () => {

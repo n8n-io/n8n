@@ -14,6 +14,13 @@ export function useInstanceAiCommands(options: { lastQuery: Ref<string> }): Comm
 	const settingsStore = useSettingsStore();
 	const instanceAiStore = useInstanceAiStore();
 
+	// Instance AI commands disabled when instanceAiEnabled admin setting is false or module disabled
+	const isInstanceAiCommandsVisible = computed(
+		() =>
+			settingsStore.isModuleActive('instance-ai') &&
+			settingsStore.moduleSettings['instance-ai']?.instanceAiEnabled !== false,
+	);
+
 	const filteredThreads = computed(() => {
 		const trimmed = (lastQuery.value || '').trim().toLowerCase();
 		const allThreads = instanceAiStore.threads;
@@ -36,7 +43,7 @@ export function useInstanceAiCommands(options: { lastQuery: Ref<string> }): Comm
 	);
 
 	const commands = computed<CommandBarItem[]>(() => {
-		if (!settingsStore.isModuleActive('instance-ai')) return [];
+		if (!isInstanceAiCommandsVisible.value) return [];
 
 		return [
 			{
@@ -83,7 +90,7 @@ export function useInstanceAiCommands(options: { lastQuery: Ref<string> }): Comm
 	return {
 		commands,
 		async initialize() {
-			if (settingsStore.isModuleActive('instance-ai')) {
+			if (isInstanceAiCommandsVisible.value) {
 				await instanceAiStore.loadThreads();
 			}
 		},
