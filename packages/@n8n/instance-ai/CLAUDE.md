@@ -21,14 +21,11 @@ Read these docs before starting any implementation:
 
 - `docs/architecture.md` — system diagram, deep agent pillars, package responsibilities
 - `docs/streaming-protocol.md` — canonical event schema, SSE transport, replay rules
-- `docs/FRONTEND_PLAN.md` — TypeScript types, store structure, reducer, rendering rules
-- `docs/tools.md` — tool reference, orchestration tools (update-tasks, delegate), domain tools
-- `docs/simplify-agent-loop-plan.md` — rationale for the simplified agent loop design
-- `docs/memory.md` — memory tiers, scoping model
+- `docs/tools.md` — tool reference, orchestration tools, domain tools, tool distribution
+- `docs/memory.md` — memory tiers, scoping model, sub-agent working memory
 - `docs/filesystem-access.md` — filesystem architecture, gateway protocol, security model
-- `docs/decisions.md` — ADR-001 through ADR-027
-- `docs/IMPLEMENTATION_PHASES.md` — ticket sequencing and dependencies
-- `docs/vision.md` — future direction, autonomous loop, MCP self-augmentation
+- `docs/sandboxing.md` — Daytona/local sandbox providers, workspace lifecycle, builder loop
+- `docs/configuration.md` — environment variables, minimal setup, storage, event bus
 
 ## Key Conventions
 
@@ -36,5 +33,6 @@ Read these docs before starting any implementation:
 - **POST `/chat/:threadId`** returns `{ runId }` — not a stream
 - **SSE `/events/:threadId`** delivers all events — replay via `Last-Event-ID` header or `?lastEventId` query param
 - **Run lifecycle**: `run-start` (first) → events → `run-finish` (last, carries status)
+- **Planned tasks**: `plan` tool for multi-step work; tasks run detached as background agents
 - **Sub-agents**: stateless, native domain tools only, no MCP, no recursive delegation
 - **Memory**: working memory = user-scoped, observational memory = thread-scoped

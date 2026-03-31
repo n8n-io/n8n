@@ -254,3 +254,4 @@ jobs:
             channel: ${{ env.SLACK_CHANNEL_ID }}
             text: "🚨 Trivy Scan: ${{ steps.process_results.outputs.critical_count }} Critical, ${{ steps.process_results.outputs.high_count }} High, ${{ steps.process_results.outputs.medium_count }} Medium, ${{ steps.process_results.outputs.low_count }} Low vulnerabilities found in ${{ inputs.image_ref }}"
             blocks: ${{ steps.generate_blocks.outputs.slack_blocks }}
+

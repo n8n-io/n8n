@@ -74,7 +74,7 @@ The `agentId` identifies which agent branch (orchestrator or sub-agent) the
 event belongs to. The frontend uses this to render an agent activity tree.
 
 For the full TypeScript type definitions, see
-[FRONTEND_PLAN.md](./FRONTEND_PLAN.md#1-typescript-types).
+`@n8n/api-types` — `instanceAiEventSchema` in `schemas/instance-ai.schema.ts`.
 
 ## Event Types
 
@@ -216,8 +216,8 @@ The frontend marks the sub-agent node as completed.
 
 ### `confirmation-request`
 
-A tool requires user approval before execution (HITL confirmation protocol,
-ADR-006). The tool's execution is paused until the user responds.
+A tool requires user approval before execution (HITL confirmation protocol).
+The tool's execution is paused until the user responds.
 
 ```json
 {
@@ -239,6 +239,57 @@ The frontend renders an approval card on the matching tool call (matched by
 `toolCallId`). The user responds via `POST /instance-ai/confirm/:requestId`
 with `{ approved: boolean }`. On approval, normal `tool-result` follows. On
 denial, `tool-error` follows.
+
+**Rich payload fields** (all optional, extend the base confirmation):
+
+| Field | Type | When used |
+|-------|------|-----------|
+| `inputType` | `'approval'` \| `'text'` \| `'questions'` \| `'plan-review'` | Controls which UI component renders. Default: `approval` |
+| `questions` | `[{id, question, type, options?}]` | Structured Q&A wizard (`inputType=questions`) |
+| `tasks` | `TaskList` | Plan approval checklist (`inputType=plan-review`) |
+| `introMessage` | string | Intro text shown above questions or plan review |
+| `credentialRequests` | array | Credential setup requests |
+| `credentialFlow` | `{stage: 'generic' \| 'finalize'}` | Controls credential picker UX |
+| `setupRequests` | `WorkflowSetupNode[]` | Per-node setup cards for workflow credential/parameter config |
+| `workflowId` | string | Workflow being set up (for `setup-workflow` tool) |
+| `projectId` | string | Scopes actions to a project (e.g., credential creation) |
+| `domainAccess` | `{url, host}` | Renders domain-access approval UI instead of generic confirm |
+
+### `tasks-update`
+
+A task checklist has been created or updated. The frontend renders a live
+progress indicator from this data.
+
+```json
+{
+  "type": "tasks-update",
+  "runId": "run_abc123",
+  "agentId": "agent-001",
+  "payload": {
+    "tasks": [
+      {"id": "t1", "description": "Build weather workflow", "status": "completed"},
+      {"id": "t2", "description": "Set up Slack credential", "status": "in_progress"},
+      {"id": "t3", "description": "Test end-to-end", "status": "pending"}
+    ]
+  }
+}
+```
+
+### `status`
+
+A transient status message. Empty string clears the indicator.
+
+```json
+{"type":"status","runId":"run_abc123","agentId":"agent-001","payload":{"message":"Searching nodes..."}}
+```
+
+### `thread-title-updated`
+
+The thread title has been updated (e.g., auto-generated from conversation).
+
+```json
+{"type":"thread-title-updated","runId":"run_abc123","agentId":"agent-001","payload":{"title":"Weather to Slack workflow"}}
+```
 
 ### `error`
 
@@ -460,9 +511,25 @@ The order is sequential: historical messages load first, then SSE connects.
 This eliminates the race condition where SSE and HTTP responses would compete,
 creating duplicate messages.
 
-## Future: Rich Component Rendering
+## Complete Event Type Reference
 
-The planned rich component system will extend the protocol so tools can declare
-a `renderType`, allowing the frontend to render domain-specific components
-(execution views, workflow previews, etc.) instead of generic JSON. See
-[vision.md](./vision.md) for details.
+| Event Type | Payload Key Fields | Purpose |
+|------------|-------------------|---------|
+| `run-start` | `messageId` | First event in a run |
+| `run-finish` | `status`, `reason?` | Last event in a run |
+| `text-delta` | `text` | Incremental agent text |
+| `reasoning-delta` | `text` | Incremental agent reasoning |
+| `tool-call` | `toolCallId`, `toolName`, `args` | Tool invocation (before execution) |
+| `tool-result` | `toolCallId`, `result` | Successful tool completion |
+| `tool-error` | `toolCallId`, `error` | Failed tool execution |
+| `agent-spawned` | `parentId`, `role`, `tools` | Sub-agent created |
+| `agent-completed` | `role`, `result` | Sub-agent finished |
+| `confirmation-request` | `requestId`, `toolCallId`, `severity`, `message`, ... | HITL approval gate |
+| `tasks-update` | `tasks` | Task checklist created/updated |
+| `status` | `message` | Transient status indicator |
+| `error` | `content`, `statusCode?`, `provider?` | System-level error |
+| `thread-title-updated` | `title` | Thread title changed |
+| `filesystem-request` | `requestId`, `operation`, `args` | Gateway filesystem operation (internal) |
+
+All event types are defined as a Zod discriminated union in
+`@n8n/api-types/src/schemas/instance-ai.schema.ts`.

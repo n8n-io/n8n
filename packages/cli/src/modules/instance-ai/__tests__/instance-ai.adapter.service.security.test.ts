@@ -1,3 +1,14 @@
+// Mock the barrel import to avoid pulling in @mastra/core (ESM-only transitive deps)
+jest.mock('@n8n/instance-ai', () => ({
+	wrapUntrustedData(content: string, source: string, label?: string): string {
+		const esc = (s: string) =>
+			s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+		const safeLabel = label ? ` label="${esc(label)}"` : '';
+		const safeContent = content.replace(/<\/untrusted_data/gi, '&lt;/untrusted_data');
+		return `<untrusted_data source="${esc(source)}"${safeLabel}>\n${safeContent}\n</untrusted_data>`;
+	},
+}));
+
 import { mock } from 'jest-mock-extended';
 import type {
 	User,
