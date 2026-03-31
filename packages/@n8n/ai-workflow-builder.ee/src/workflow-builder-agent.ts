@@ -14,7 +14,6 @@ import type {
 import { MAX_AI_BUILDER_PROMPT_LENGTH } from '@/constants';
 
 import { parsePlanDecision } from './agents/planner.agent';
-import { DiscoveryGraph } from './discovery/discovery.graph';
 import type { AssistantHandler } from './assistant';
 import { CodeWorkflowBuilder } from './code-builder';
 import { TriageAgent } from './code-builder/triage.agent';
@@ -25,6 +24,7 @@ import {
 	saveCodeBuilderSession,
 	generateCodeBuilderThreadId,
 } from './code-builder/utils/code-builder-session';
+import { DiscoveryGraph } from './discovery/discovery.graph';
 import { ValidationError } from './errors';
 import { SessionManagerService } from './session-manager.service';
 import type { HITLInterruptValue, PlannerQuestion, PlanOutput } from './types/planning';
@@ -272,48 +272,43 @@ export class WorkflowBuilderAgent {
 		const threadId = isResume ? baseThreadId : `${baseThreadId}-${Date.now()}`;
 
 		const graph = this.compileDiscoveryGraph();
-		const callbacks = this.tracer ? [this.tracer] : undefined;
+		const streamConfig = this.buildDiscoveryStreamConfig(threadId, abortSignal);
 
-		if (isResume) {
-			this.logger?.debug('Resuming discovery graph from interrupt', { userId });
-			const stream = await graph.stream(new Command({ resume: payload.resumeData }), {
-				configurable: { thread_id: threadId },
-				signal: abortSignal,
-				streamMode: 'updates' as const,
-				callbacks,
-				metadata: this.runMetadata,
-			});
-			for await (const chunk of stream) {
-				yield* this.processDiscoveryChunk(chunk as Record<string, unknown>);
-			}
-		} else {
-			this.logger?.debug('Starting discovery graph for plan mode', { userId });
-			const currentWorkflow = payload.workflowContext?.currentWorkflow;
-			const selectedNodesContext = buildSelectedNodesContextBlock(payload.workflowContext) || '';
+		this.logger?.debug(isResume ? 'Resuming discovery graph' : 'Starting discovery graph', {
+			userId,
+		});
 
-			const stream = await graph.stream(
-				{
-					userRequest: payload.message,
-					workflowJSON: {
-						nodes: currentWorkflow?.nodes ?? [],
-						connections: currentWorkflow?.connections ?? {},
-						name: currentWorkflow?.name ?? '',
-					},
-					mode: 'plan' as const,
-					selectedNodesContext,
-				},
-				{
-					configurable: { thread_id: threadId },
-					signal: abortSignal,
-					streamMode: 'updates' as const,
-					callbacks,
-					metadata: this.runMetadata,
-				},
-			);
-			for await (const chunk of stream) {
-				yield* this.processDiscoveryChunk(chunk as Record<string, unknown>);
-			}
+		const stream = isResume
+			? await graph.stream(new Command({ resume: payload.resumeData }), streamConfig)
+			: await graph.stream(this.buildDiscoveryInput(payload), streamConfig);
+
+		for await (const chunk of stream) {
+			yield* this.processDiscoveryChunk(chunk as Record<string, unknown>);
 		}
+	}
+
+	private buildDiscoveryStreamConfig(threadId: string, abortSignal: AbortSignal | undefined) {
+		return {
+			configurable: { thread_id: threadId },
+			signal: abortSignal,
+			streamMode: 'updates' as const,
+			callbacks: this.tracer ? [this.tracer] : undefined,
+			metadata: this.runMetadata,
+		};
+	}
+
+	private buildDiscoveryInput(payload: ChatPayload) {
+		const currentWorkflow = payload.workflowContext?.currentWorkflow;
+		return {
+			userRequest: payload.message,
+			workflowJSON: {
+				nodes: currentWorkflow?.nodes ?? [],
+				connections: currentWorkflow?.connections ?? {},
+				name: currentWorkflow?.name ?? '',
+			},
+			mode: 'plan' as const,
+			selectedNodesContext: buildSelectedNodesContextBlock(payload.workflowContext) || '',
+		};
 	}
 
 	/**
