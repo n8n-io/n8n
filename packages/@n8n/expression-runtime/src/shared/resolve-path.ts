@@ -2,8 +2,8 @@
  * Resolve a property path against the host-side data object.
  *
  * Same navigation logic as the getValueAtPath callback, including the
- * $item special case. Used to resolve proxy-result sentinels without
- * crossing the isolate boundary.
+ * $item and $ special cases. Used to resolve proxy-result sentinels
+ * without crossing the isolate boundary.
  */
 export function resolvePathInData(data: Record<string, unknown>, path: string[]): unknown {
 	let value: unknown = data;
@@ -13,6 +13,12 @@ export function resolvePathInData(data: Record<string, unknown>, path: string[])
 		const itemIndex = parseInt(path[1], 10);
 		if (!isNaN(itemIndex)) {
 			value = (itemFn as (i: number) => unknown)(itemIndex);
+			startIndex = 2;
+		}
+	} else {
+		const dollarFn = data.$;
+		if (path.length >= 2 && path[0] === '$' && typeof dollarFn === 'function') {
+			value = (dollarFn as (name: string) => unknown)(path[1]);
 			startIndex = 2;
 		}
 	}
