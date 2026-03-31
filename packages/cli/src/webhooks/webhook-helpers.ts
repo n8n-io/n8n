@@ -753,8 +753,11 @@ export async function executeWebhook(
 					resumeUrl: `${additionalData.webhookWaitingBaseUrl}/${executionId}`,
 					resumeFormUrl: `${additionalData.formWaitingBaseUrl}/${executionId}`,
 				};
-				const evaluatedResponseData =
-					context.evaluateComplexWebhookDescriptionExpression<string>('responseData');
+				const evaluatedResponseData = context.evaluateComplexWebhookDescriptionExpression<string>(
+					'responseData',
+					undefined,
+					'firstEntryJson',
+				);
 
 				const responseBody = extractWebhookOnReceivedResponse(
 					evaluatedResponseData,
