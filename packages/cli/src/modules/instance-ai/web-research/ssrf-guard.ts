@@ -27,6 +27,10 @@ const PRIVATE_RANGES = [
 /** IPv6 loopback and link-local prefixes. */
 const PRIVATE_IPV6_PREFIXES = ['::1', 'fe80:', 'fd', 'fc'];
 
+/** Regex for IPv4-mapped IPv6 addresses like ::ffff:127.0.0.1 or ::ffff:7f00:1 */
+const IPV4_MAPPED_IPV6_DOTTED = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/i;
+const IPV4_MAPPED_IPV6_HEX = /^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/i;
+
 function ip4ToNum(ip: string): number {
 	const parts = ip.split('.').map(Number);
 	// eslint-disable-next-line no-bitwise
@@ -38,24 +42,33 @@ function isPrivateIPv4(ip: string): boolean {
 	return PRIVATE_RANGES.some((r) => num >= r.start && num <= r.end);
 }
 
+/**
+ * Extract the embedded IPv4 address from an IPv4-mapped IPv6 address.
+ * Handles both dotted notation (::ffff:127.0.0.1) and hex notation (::ffff:7f00:1).
+ * Returns null if the address is not an IPv4-mapped IPv6 address.
+ */
+function extractMappedIPv4(ip: string): string | null {
+	const dottedMatch = IPV4_MAPPED_IPV6_DOTTED.exec(ip);
+	if (dottedMatch) return dottedMatch[1];
+
+	const hexMatch = IPV4_MAPPED_IPV6_HEX.exec(ip);
+	if (hexMatch) {
+		const high = parseInt(hexMatch[1], 16);
+		const low = parseInt(hexMatch[2], 16);
+		// eslint-disable-next-line no-bitwise
+		return `${(high >> 8) & 0xff}.${high & 0xff}.${(low >> 8) & 0xff}.${low & 0xff}`;
+	}
+
+	return null;
+}
+
 function isPrivateIPv6(ip: string): boolean {
 	const lower = ip.toLowerCase();
 
-	// IPv4-mapped IPv6 (::ffff:x.x.x.x or ::ffff:HHHH:HHHH) — extract and check the v4 address
-	if (lower.startsWith('::ffff:')) {
-		const v4Part = lower.slice(7);
-		// Dotted-quad form (e.g. ::ffff:127.0.0.1)
-		if (/^\d+\.\d+\.\d+\.\d+$/.test(v4Part)) {
-			return isPrivateIPv4(v4Part);
-		}
-		// Hex-pair form that Node normalizes to (e.g. ::ffff:7f00:1 for 127.0.0.1)
-		const hexMatch = /^([0-9a-f]{1,4}):([0-9a-f]{1,4})$/.exec(v4Part);
-		if (hexMatch) {
-			const hi = parseInt(hexMatch[1], 16);
-			const lo = parseInt(hexMatch[2], 16);
-			const reconstructed = `${hi >> 8}.${hi & 0xff}.${lo >> 8}.${lo & 0xff}`;
-			return isPrivateIPv4(reconstructed);
-		}
+	// Check IPv4-mapped IPv6 addresses (e.g. ::ffff:127.0.0.1, ::ffff:7f00:1)
+	const mappedIPv4 = extractMappedIPv4(lower);
+	if (mappedIPv4 !== null) {
+		return isPrivateIPv4(mappedIPv4);
 	}
 
 	return PRIVATE_IPV6_PREFIXES.some((prefix) => lower.startsWith(prefix));
