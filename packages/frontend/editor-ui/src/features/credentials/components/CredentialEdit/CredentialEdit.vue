@@ -13,12 +13,7 @@ import type {
 	INodeProperties,
 	ITelemetryTrackProperties,
 } from 'n8n-workflow';
-import {
-	CREDENTIAL_BLANKING_VALUE,
-	CREDENTIAL_EMPTY_VALUE,
-	deepCopy,
-	NodeHelpers,
-} from 'n8n-workflow';
+import { CREDENTIAL_EMPTY_VALUE, deepCopy, NodeHelpers } from 'n8n-workflow';
 import CredentialIcon from '../CredentialIcon.vue';
 
 import CredentialConfig from './CredentialConfig.vue';

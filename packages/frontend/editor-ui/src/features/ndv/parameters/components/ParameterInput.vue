@@ -17,7 +17,6 @@ import type {
 	NodeParameterValueType,
 } from 'n8n-workflow';
 import {
-	CREDENTIAL_BLANKING_VALUE,
 	CREDENTIAL_EMPTY_VALUE,
 	IconOrEmojiSchema,
 	isResourceLocatorValue,
@@ -285,7 +284,7 @@ const isCustomAuthJsonField = computed<boolean>(() => {
 });
 const isCredentialJsonValueRedacted = computed<boolean>(() => {
 	const val = props.modelValue;
-	if (val === CREDENTIAL_BLANKING_VALUE || val === CREDENTIAL_EMPTY_VALUE) return true;
+	if (val === CREDENTIAL_EMPTY_VALUE) return true;
 	// New: detect shaped-redacted JSON (backend replaces leaf values with ***)
 	if (isCustomAuthJsonField.value) {
 		try {
@@ -302,13 +301,8 @@ const isRedactedCustomAuthJson = computed<boolean>(
 
 const credentialJsonEditorValue = computed<string>(() => {
 	if (!isRedactedCustomAuthJson.value) return modelValueString.value;
-	// Fallback for non-parseable / empty JSON
-	if (
-		props.modelValue === CREDENTIAL_BLANKING_VALUE ||
-		props.modelValue === CREDENTIAL_EMPTY_VALUE
-	) {
-		return '***\n***\n***';
-	}
+	// Empty json field — show empty editor so the user knows to fill it in
+	if (props.modelValue === CREDENTIAL_EMPTY_VALUE) return '';
 	// Shaped-redacted JSON: backend already formatted with *** leaves — show as-is
 	return modelValueString.value;
 });
