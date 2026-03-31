@@ -347,6 +347,7 @@ export class CredentialsTester {
 		const routingNode = new RoutingNode(executeFunctions, nodeTypeCopy, credentialsDecrypted);
 
 		let response: INodeExecutionData[][] | null | undefined;
+		await workflow.expression.acquireIsolate();
 		try {
 			response = await routingNode.runNode();
 		} catch (error) {
@@ -393,6 +394,7 @@ export class CredentialsTester {
 				message: error.message.toString(),
 			};
 		} finally {
+			await workflow.expression.releaseIsolate();
 			delete mockNodesData[nodeTypeCopy.description.name];
 		}
 
