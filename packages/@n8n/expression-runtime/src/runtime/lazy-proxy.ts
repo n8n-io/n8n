@@ -230,6 +230,7 @@ export function createDeepLazyProxy(basePath: string[] = [], knownKeys?: string[
 					},
 				});
 
+				proxyPaths.set(arrayProxy, path);
 				target[prop] = arrayProxy;
 				return target[prop];
 			}
