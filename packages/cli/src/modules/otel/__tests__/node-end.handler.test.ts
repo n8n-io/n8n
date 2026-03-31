@@ -228,6 +228,91 @@ describe('NodeEndHandler', () => {
 		expect(finished[0].attributes['n8n.node.custom.llm.stream']).toBe(true);
 	});
 
+	it('should count input items only from the referenced output branch', () => {
+		const multiOutputWorkflow: IWorkflowBase = {
+			...workflow,
+			nodes: [
+				...workflow.nodes,
+				{
+					id: 'node-if',
+					name: 'IF',
+					type: 'n8n-nodes-base.if',
+					typeVersion: 1,
+					position: [100, 0],
+					parameters: {},
+				},
+			],
+		};
+
+		// Start span for the node under test using multi-output workflow
+		const tracer = trace.getTracer(TRACER_NAME);
+		startHandler.handle(
+			{
+				type: 'nodeExecuteBefore',
+				workflow: multiOutputWorkflow,
+				nodeName: 'HTTP Request',
+				executionId: 'exec-multi',
+				taskData: { startTime: Date.now(), executionIndex: 0, source: [] },
+			},
+			spans,
+			tracer,
+		);
+
+		const executionData: IRunExecutionData = {
+			...emptyExecutionData,
+			resultData: {
+				...emptyExecutionData.resultData,
+				runData: {
+					IF: [
+						{
+							startTime: 0,
+							executionTime: 10,
+							executionIndex: 0,
+							source: [],
+							data: {
+								main: [
+									// Branch 0 (true): 2 items
+									[{ json: { matched: true } }, { json: { matched: true } }],
+									// Branch 1 (false): 5 items
+									[
+										{ json: { matched: false } },
+										{ json: { matched: false } },
+										{ json: { matched: false } },
+										{ json: { matched: false } },
+										{ json: { matched: false } },
+									],
+								],
+							},
+						},
+					],
+				},
+			},
+		};
+
+		const ctx: NodeExecuteAfterContext = {
+			type: 'nodeExecuteAfter',
+			workflow: multiOutputWorkflow,
+			nodeName: 'HTTP Request',
+			executionId: 'exec-multi',
+			taskData: {
+				startTime: 0,
+				executionTime: 100,
+				executionIndex: 1,
+				// Connected to branch 1 (false) of the IF node
+				source: [{ previousNode: 'IF', previousNodeRun: 0, previousNodeOutput: 1 }],
+				data: { main: [[{ json: { result: 1 } }]] },
+			},
+			executionData,
+		};
+
+		endHandler.handle(ctx, spans);
+
+		const finished = otel.getFinishedSpans();
+		expect(finished).toHaveLength(1);
+		// Should count only branch 1 (5 items), not branch 0+1 (7 items)
+		expect(finished[0].attributes[ATTR.NODE_ITEMS_INPUT]).toBe(5);
+	});
+
 	it('should handle zero output items', () => {
 		startNodeSpan('exec-1', 'HTTP Request');
 

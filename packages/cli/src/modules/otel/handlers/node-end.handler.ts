@@ -63,9 +63,8 @@ export class NodeEndHandler implements SpanHandler<NodeExecuteAfterContext> {
 			const run = sourceRuns[source.previousNodeRun ?? 0];
 			if (!run?.data?.main) continue;
 
-			for (const branch of run.data.main) {
-				total += branch?.length ?? 0;
-			}
+			const branch = run.data.main[source.previousNodeOutput ?? 0];
+			total += branch?.length ?? 0;
 		}
 
 		return total;
