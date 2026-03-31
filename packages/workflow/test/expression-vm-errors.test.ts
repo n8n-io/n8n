@@ -2,6 +2,7 @@ import { TimeoutError, MemoryLimitError, SecurityViolationError } from '@n8n/exp
 import type { IExpressionEvaluator } from '@n8n/expression-runtime';
 
 import { ExpressionError } from '../src/errors/expression.error';
+import { ExpressionExtensionError } from '../src/errors/expression-extension.error';
 import { Expression } from '../src/expression';
 import { Workflow } from '../src/workflow';
 import * as Helpers from './helpers';
@@ -119,6 +120,52 @@ describe('Expression VM error handling', () => {
 			'Cannot access "constructor" due to security concerns',
 		);
 		expect((caught as ExpressionError).cause).toBe(securityError);
+	});
+
+	it('should preserve description when reconstructing ExpressionError across isolate boundary', () => {
+		setVmEvaluator({
+			evaluate: () => {
+				throw new ExpressionError('something went wrong', {
+					description: 'A human-readable description',
+				});
+			},
+		});
+
+		let caught: unknown;
+		try {
+			evaluate('={{ $json.id }}');
+		} catch (error) {
+			caught = error;
+		}
+
+		expect(caught).toBeInstanceOf(ExpressionError);
+		expect((caught as ExpressionError).description).toBe('A human-readable description');
+	});
+
+	it('should preserve description when reconstructing ExpressionExtensionError across isolate boundary', () => {
+		// After crossing the isolate boundary, the error is a plain Error with
+		// name='ExpressionExtensionError' and properties restored via Object.assign.
+		// Simulate what reconstructError() produces:
+		const boundaryError = Object.assign(new Error('extension failed'), {
+			name: 'ExpressionExtensionError',
+			description: 'Extension-specific description',
+			context: {},
+		});
+		setVmEvaluator({
+			evaluate: () => {
+				throw boundaryError;
+			},
+		});
+
+		let caught: unknown;
+		try {
+			evaluate('={{ $json.id }}');
+		} catch (error) {
+			caught = error;
+		}
+
+		expect(caught).toBeInstanceOf(ExpressionExtensionError);
+		expect((caught as ExpressionExtensionError).description).toBe('Extension-specific description');
 	});
 
 	it('should convert built-in SyntaxError to ExpressionError', () => {
