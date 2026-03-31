@@ -110,6 +110,8 @@ export class RoleMappingRuleService {
 
 		const saved = await this.roleMappingRuleRepository.save(rule);
 
+		await this.normalizeOrderForType(dto.type);
+
 		const loaded = await this.roleMappingRuleRepository.findOneOrFail({
 			where: { id: saved.id },
 			relations: ['projects', 'role'],
@@ -136,7 +138,8 @@ export class RoleMappingRuleService {
 			throw new NotFoundError('Could not find role mapping rule');
 		}
 
-		const mergedType = dto.type ?? (rule.type as 'instance' | 'project');
+		const originalType = rule.type as 'instance' | 'project';
+		const mergedType = dto.type ?? originalType;
 		const mergedOrder = dto.order ?? rule.order;
 		const mergedExpression = dto.expression ?? rule.expression;
 		const mergedRoleSlug = dto.role ?? rule.role.slug;
@@ -178,12 +181,107 @@ export class RoleMappingRuleService {
 
 		await this.roleMappingRuleRepository.save(rule);
 
+		await this.normalizeOrderForType(mergedType);
+		if (originalType !== mergedType) {
+			await this.normalizeOrderForType(originalType);
+		}
+
 		const loaded = await this.roleMappingRuleRepository.findOneOrFail({
 			where: { id: rule.id },
 			relations: ['projects', 'role'],
 		});
 
 		return this.toResponse(loaded);
+	}
+
+	async delete(id: string): Promise<void> {
+		if (typeof id !== 'string' || id.length === 0) {
+			throw new BadRequestError('Rule id is required');
+		}
+
+		const rule = await this.roleMappingRuleRepository.findOne({ where: { id } });
+
+		if (!rule) {
+			throw new NotFoundError('Could not find role mapping rule');
+		}
+
+		const ruleType = rule.type as 'instance' | 'project';
+		await this.roleMappingRuleRepository.remove(rule);
+		await this.normalizeOrderForType(ruleType);
+	}
+
+	async move(id: string, targetIndex: number): Promise<RoleMappingRuleResponse> {
+		if (typeof id !== 'string' || id.length === 0) {
+			throw new BadRequestError('Rule id is required');
+		}
+
+		const rule = await this.roleMappingRuleRepository.findOne({
+			where: { id },
+			relations: ['projects', 'role'],
+		});
+
+		if (!rule) {
+			throw new NotFoundError('Could not find role mapping rule');
+		}
+
+		const type = rule.type as 'instance' | 'project';
+
+		const all = await this.roleMappingRuleRepository.find({
+			where: { type },
+			select: ['id', 'order'],
+			order: { order: 'ASC' },
+		});
+
+		const clampedIndex = Math.min(targetIndex, all.length - 1);
+		const currentIndex = all.findIndex((r) => r.id === id);
+
+		const reordered = [...all];
+		reordered.splice(currentIndex, 1);
+		reordered.splice(clampedIndex, 0, all[currentIndex]);
+
+		await this.applyOrder(reordered.map((r) => r.id));
+
+		const loaded = await this.roleMappingRuleRepository.findOneOrFail({
+			where: { id },
+			relations: ['projects', 'role'],
+		});
+
+		return this.toResponse(loaded);
+	}
+
+	private async applyOrder(orderedIds: string[]): Promise<void> {
+		if (orderedIds.length === 0) return;
+
+		await this.roleMappingRuleRepository.manager.transaction(async (tx) => {
+			const offset = orderedIds.length + 1000;
+
+			// Phase 1: move all rules to high offset values to vacate the target slots.
+			// This avoids transient unique constraint violations on (type, order) when
+			// shifting rules into positions that are already occupied.
+			for (let i = 0; i < orderedIds.length; i++) {
+				await tx.update(RoleMappingRule, { id: orderedIds[i] }, { order: offset + i });
+			}
+
+			// Phase 2: assign the final sequential order values starting from 0.
+			for (let i = 0; i < orderedIds.length; i++) {
+				await tx.update(RoleMappingRule, { id: orderedIds[i] }, { order: i });
+			}
+		});
+	}
+
+	private async normalizeOrderForType(type: 'instance' | 'project'): Promise<void> {
+		const rules = await this.roleMappingRuleRepository.find({
+			where: { type },
+			select: ['id', 'order'],
+			order: { order: 'ASC' },
+		});
+
+		if (rules.length === 0) return;
+
+		// Early exit: already a contiguous sequence starting at 0
+		if (rules.every((r, i) => r.order === i)) return;
+
+		await this.applyOrder(rules.map((r) => r.id));
 	}
 
 	private async assertOrderAvailable(

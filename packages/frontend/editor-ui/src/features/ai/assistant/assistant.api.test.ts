@@ -506,7 +506,7 @@ describe('API: ai', () => {
 			const mockResponse = { success: true };
 			makeRestApiRequestSpy.mockResolvedValue(mockResponse);
 
-			await truncateBuilderMessages(mockContext, 'workflow-123', 'message-456', true);
+			await truncateBuilderMessages(mockContext, 'workflow-123', 'message-456', undefined, true);
 
 			expect(makeRestApiRequestSpy).toHaveBeenCalledWith(
 				mockContext,
@@ -515,6 +515,7 @@ describe('API: ai', () => {
 				{
 					workflowId: 'workflow-123',
 					messageId: 'message-456',
+					versionCardId: undefined,
 					codeBuilder: true,
 				},
 			);

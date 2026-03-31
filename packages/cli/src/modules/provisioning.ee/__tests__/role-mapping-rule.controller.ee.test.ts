@@ -145,4 +145,70 @@ describe('RoleMappingRuleController', () => {
 			expect(roleMappingRuleService.patch).toHaveBeenCalledWith(ruleId, patchBody);
 		});
 	});
+
+	describe('move', () => {
+		const ruleId = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
+		const moveBody = { targetIndex: 2 };
+		const req = mock<AuthenticatedRequest>();
+		req.params = { id: ruleId };
+		const res = mock<Response>({
+			json: jest.fn().mockReturnThis(),
+			status: jest.fn().mockReturnThis(),
+		});
+
+		it('should return 403 if provisioning is not licensed', async () => {
+			licenseState.isProvisioningLicensed.mockReturnValue(false);
+			await controller.move(req, res, moveBody, ruleId);
+
+			expect(res.status).toHaveBeenCalledWith(403);
+		});
+
+		it('should move a role mapping rule when provisioning is licensed', async () => {
+			const moved: RoleMappingRuleResponse = {
+				id: ruleId,
+				expression: 'true',
+				role: 'global:admin',
+				type: 'instance',
+				order: 2,
+				projectIds: [],
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+			};
+
+			licenseState.isProvisioningLicensed.mockReturnValue(true);
+			roleMappingRuleService.move.mockResolvedValue(moved);
+
+			const result = await controller.move(req, res, moveBody, ruleId);
+
+			expect(result).toEqual(moved);
+			expect(roleMappingRuleService.move).toHaveBeenCalledWith(ruleId, moveBody.targetIndex);
+		});
+	});
+
+	describe('delete', () => {
+		const ruleId = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
+		const req = mock<AuthenticatedRequest>();
+		req.params = { id: ruleId };
+		const res = mock<Response>({
+			json: jest.fn().mockReturnThis(),
+			status: jest.fn().mockReturnThis(),
+		});
+
+		it('should return 403 if provisioning is not licensed', async () => {
+			licenseState.isProvisioningLicensed.mockReturnValue(false);
+			await controller.delete(req, res, ruleId);
+
+			expect(res.status).toHaveBeenCalledWith(403);
+		});
+
+		it('should delete a role mapping rule when provisioning is licensed', async () => {
+			licenseState.isProvisioningLicensed.mockReturnValue(true);
+			roleMappingRuleService.delete.mockResolvedValue(undefined);
+
+			const result = await controller.delete(req, res, ruleId);
+
+			expect(result).toEqual({ success: true });
+			expect(roleMappingRuleService.delete).toHaveBeenCalledWith(ruleId);
+		});
+	});
 });
