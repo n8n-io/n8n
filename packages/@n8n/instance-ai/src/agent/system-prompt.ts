@@ -66,7 +66,7 @@ ${capList}
 The gateway is not currently connected. When the user asks for something that requires local machine access (reading files, browsing, etc.), let them know they can connect by either:
 
 1. **Download the Local Gateway app** — https://n8n.io/downloads/local-gateway
-2. **Or run via CLI:** \`npx @n8n/local-gateway\`
+2. **Or run via CLI:** \`npx @n8n/fs-proxy serve\`
 
 Do NOT attempt to use filesystem tools — they are not available until the gateway connects.`;
 	}
