@@ -135,6 +135,19 @@ describe('ScheduleTrigger', () => {
 			});
 		});
 
+		it('should emit when manually executed even with existing recurrence rules', async () => {
+			const { emit, manualTriggerFunction } = await testTriggerNode(ScheduleTrigger, {
+				mode: 'manual',
+				timezone,
+				node: { parameters: { rule: { interval: [{ field: 'hours', hoursInterval: 2 }] } } },
+				workflowStaticData: { recurrenceRules: [5] },
+			});
+
+			await manualTriggerFunction?.();
+
+			expect(emit).toHaveBeenCalledTimes(1);
+		});
+
 		it('should throw on invalid cron expressions in manual mode', async () => {
 			const { manualTriggerFunction } = await testTriggerNode(ScheduleTrigger, {
 				mode: 'manual',
