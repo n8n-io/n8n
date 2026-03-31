@@ -137,9 +137,9 @@ export function makeLargeData(): INodeExecutionData[] {
 
 // ── Engine switching helpers ──
 
-export async function useCurrentEngine(): Promise<void> {
+export async function useLegacyEngine(): Promise<void> {
 	await Expression.disposeExpressionEngine();
-	Expression.setExpressionEngine('current');
+	Expression.setExpressionEngine('legacy');
 }
 
 export async function useVmEngine(): Promise<void> {

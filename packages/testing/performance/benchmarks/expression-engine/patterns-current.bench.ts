@@ -14,19 +14,19 @@ import {
 	makeSmallData,
 	makeMediumData,
 	makeLargeData,
-	useCurrentEngine,
+	useLegacyEngine,
 } from './fixtures/data';
 import { definePatternBenchmarks } from './fixtures/pattern-benchmarks';
 
-await useCurrentEngine();
-if (Expression.getActiveImplementation() !== 'current') {
-	throw new Error(`Engine not set to 'current' — got '${Expression.getActiveImplementation()}'`);
+await useLegacyEngine();
+if (Expression.getActiveImplementation() !== 'legacy') {
+	throw new Error(`Engine not set to 'legacy' — got '${Expression.getActiveImplementation()}'`);
 }
 
 const workflow = createWorkflow();
 
 definePatternBenchmarks(
-	'current',
+	'legacy',
 	workflow,
 	evaluate,
 	makeSmallData(),

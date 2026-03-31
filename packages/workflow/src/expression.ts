@@ -224,7 +224,7 @@ const createSafeErrorSubclass = <T extends ErrorConstructor>(ErrorClass: T): T =
 };
 
 export class Expression {
-	private static expressionEngine: 'current' | 'vm' = 'current';
+	private static expressionEngine: 'legacy' | 'vm' = 'legacy';
 
 	private static vmEvaluator?: IExpressionEvaluator;
 
@@ -244,7 +244,7 @@ export class Expression {
 	 * Only available in Node.js environments (not in browser).
 	 */
 	static async initExpressionEngine(options: {
-		engine: 'current' | 'vm';
+		engine: 'legacy' | 'vm';
 		timeout?: number;
 		poolSize: number;
 		maxCodeCacheSize: number;
@@ -291,9 +291,9 @@ export class Expression {
 	 * Get the active expression evaluation implementation.
 	 * Used for testing and verification.
 	 */
-	static getActiveImplementation(): 'current' | 'vm' {
+	static getActiveImplementation(): 'legacy' | 'vm' {
 		if (this.shouldUseVm()) return 'vm';
-		return 'current';
+		return 'legacy';
 	}
 
 	/**
@@ -304,7 +304,7 @@ export class Expression {
 	 * another. Only use this in benchmarks and tests, never in production code.
 	 * In production, set `N8N_EXPRESSION_ENGINE` before process startup instead.
 	 */
-	static setExpressionEngine(engine: 'current' | 'vm'): void {
+	static setExpressionEngine(engine: 'legacy' | 'vm'): void {
 		this.expressionEngine = engine;
 	}
 

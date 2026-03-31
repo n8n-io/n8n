@@ -2,7 +2,7 @@ import z from 'zod';
 
 import { Config, Env } from '../decorators';
 
-const expressionEngineSchema = z.enum(['current', 'vm']);
+const expressionEngineSchema = z.enum(['legacy', 'vm']);
 
 @Config
 export class ExpressionEngineConfig {
@@ -14,7 +14,7 @@ export class ExpressionEngineConfig {
 	 * `vm` is currently **experimental**. Use at your own risk.
 	 */
 	@Env('N8N_EXPRESSION_ENGINE', expressionEngineSchema)
-	engine: 'current' | 'vm' = 'current';
+	engine: 'legacy' | 'vm' = 'legacy';
 
 	/** Number of V8 isolates ready in the pool. */
 	@Env('N8N_EXPRESSION_ENGINE_POOL_SIZE')

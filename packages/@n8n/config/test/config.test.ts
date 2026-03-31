@@ -462,7 +462,7 @@ describe('GlobalConfig', () => {
 			trimOnStartUp: false,
 		},
 		expressionEngine: {
-			engine: 'current',
+			engine: 'legacy',
 			poolSize: 1,
 			maxCodeCacheSize: 1024,
 		},
