@@ -23,8 +23,6 @@ import { createSearchFoldersTool } from './tools/search-folders.tool';
 import { createSearchProjectsTool } from './tools/search-projects.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
 import { createPublishWorkflowTool } from './tools/publish-workflow.tool';
-import { createSearchFoldersTool } from './tools/search-folders.tool';
-import { createSearchProjectsTool } from './tools/search-projects.tool';
 import { createSearchWorkflowsTool } from './tools/search-workflows.tool';
 import { createUnpublishWorkflowTool } from './tools/unpublish-workflow.tool';
 import { createCreateWorkflowFromCodeTool } from './tools/workflow-builder/create-workflow-from-code.tool';
