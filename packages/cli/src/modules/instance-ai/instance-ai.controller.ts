@@ -12,7 +12,7 @@ import {
 	InstanceAiThreadMessagesQuery,
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiUserPreferencesUpdateRequest,
-	instanceAiEvalExecutionRequestSchema,
+	InstanceAiEvalExecutionRequest,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -498,13 +498,9 @@ export class InstanceAiController {
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('workflowId') workflowId: string,
+		@Body payload: InstanceAiEvalExecutionRequest,
 	) {
-		const parsed = instanceAiEvalExecutionRequestSchema.safeParse(req.body ?? {});
-		if (!parsed.success) {
-			throw new BadRequestError(parsed.error.message);
-		}
-
-		return await this.evalExecutionService.executeWithLlmMock(workflowId, req.user, parsed.data);
+		return await this.evalExecutionService.executeWithLlmMock(workflowId, req.user, payload);
 	}
 
 	// ── Gateway endpoints (daemon ↔ server) ──────────────────────────────────

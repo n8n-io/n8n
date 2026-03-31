@@ -80,16 +80,16 @@ export function normalizeLegacyRequest(
 		return {
 			url: uriOrObject,
 			method: options?.method,
-			headers: options?.headers as IHttpRequestOptions['headers'],
-			body: options?.body,
+			headers: options?.headers,
+			body: options?.body as IHttpRequestOptions['body'],
 			qs: options?.qs,
 		};
 	}
 	return {
 		url: uriOrObject.uri ?? uriOrObject.url ?? '',
 		method: uriOrObject.method,
-		headers: uriOrObject.headers as IHttpRequestOptions['headers'],
-		body: uriOrObject.body,
+		headers: uriOrObject.headers,
+		body: uriOrObject.body as IHttpRequestOptions['body'],
 		qs: uriOrObject.qs,
 	};
 }

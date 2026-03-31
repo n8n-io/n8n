@@ -63,10 +63,21 @@ export function createEvalAgent(
 // ---------------------------------------------------------------------------
 
 export function extractText(result: GenerateResult): string {
-	return result.messages
-		.filter((m) => 'role' in m && m.role === 'assistant')
-		.flatMap((m) => ('content' in m ? m.content : []))
-		.filter((c): c is { type: 'text'; text: string } => c.type === 'text')
-		.map((c) => c.text)
-		.join('');
+	const texts: string[] = [];
+	for (const msg of result.messages) {
+		if (!('role' in msg) || msg.role !== 'assistant') continue;
+		if (!('content' in msg) || !Array.isArray(msg.content)) continue;
+		for (const part of msg.content) {
+			if (
+				typeof part === 'object' &&
+				part !== null &&
+				'type' in part &&
+				part.type === 'text' &&
+				'text' in part
+			) {
+				texts.push(String(part.text));
+			}
+		}
+	}
+	return texts.join('');
 }
