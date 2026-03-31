@@ -22,7 +22,7 @@ import {
 	STICKY_BOTTOM_PADDING,
 	STICKY_NODE_TYPE,
 } from './constants';
-import type { GraphNode, WorkflowJSON, ConnectionTarget } from '../types/base';
+import type { GraphNode } from '../types/base';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -598,79 +598,4 @@ export function calculateNodePositions(
 	}
 
 	return positions;
-}
-
-// ---------------------------------------------------------------------------
-// WorkflowJSON layout (operates on serialized workflow, not builder graph)
-// ---------------------------------------------------------------------------
-
-/**
- * Return a new WorkflowJSON with Dagre-computed node positions.
- * Builds a GraphNode map from the serialized JSON and delegates to calculateNodePositions.
- *
- * Pure function — does not mutate the input.
- *
- * This is the entry point for code paths that don't go through the builder
- * (e.g., sandbox-compiled workflows in instance-ai).
- */
-export function layoutWorkflowJSON(json: WorkflowJSON): WorkflowJSON {
-	const jsonNodes = json.nodes;
-	if (!jsonNodes || jsonNodes.length === 0) return json;
-
-	const connections = json.connections ?? {};
-
-	// Build a GraphNode map from WorkflowJSON
-	const graphNodes = new Map<string, GraphNode>();
-
-	for (const node of jsonNodes) {
-		if (!node.name) continue;
-		const connectionsMap = new Map<string, Map<number, ConnectionTarget[]>>();
-		connectionsMap.set('main', new Map());
-		graphNodes.set(node.name, {
-			instance: {
-				type: node.type,
-				name: node.name,
-				version: node.typeVersion,
-				config: {},
-			} as unknown as GraphNode['instance'],
-			connections: connectionsMap,
-		});
-	}
-
-	// Populate connections from WorkflowJSON connections structure
-	for (const [sourceName, nodeConns] of Object.entries(connections)) {
-		const graphNode = graphNodes.get(sourceName);
-		if (!graphNode) continue;
-
-		for (const [connType, outputs] of Object.entries(nodeConns)) {
-			if (!Array.isArray(outputs)) continue;
-			let outputMap = graphNode.connections.get(connType);
-			if (!outputMap) {
-				outputMap = new Map();
-				graphNode.connections.set(connType, outputMap);
-			}
-			for (let outputIdx = 0; outputIdx < outputs.length; outputIdx++) {
-				const slot = outputs[outputIdx];
-				if (!Array.isArray(slot)) continue;
-				const targets: ConnectionTarget[] = slot
-					.filter((t): t is { node: string; type: string; index: number } => !!t?.node)
-					.map((t) => ({ node: t.node, type: t.type, index: t.index }));
-				if (targets.length > 0) {
-					outputMap.set(outputIdx, targets);
-				}
-			}
-		}
-	}
-
-	// Calculate positions using the existing Dagre layout
-	const positions = calculateNodePositions(graphNodes);
-
-	// Return new WorkflowJSON with updated positions
-	return {
-		...json,
-		nodes: jsonNodes.map((node) => {
-			const pos = node.name ? positions.get(node.name) : undefined;
-			return pos ? { ...node, position: pos } : node;
-		}),
-	};
 }
