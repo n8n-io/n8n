@@ -1079,12 +1079,18 @@ export class WorkflowDataProxy {
 					type: 'no_execution_data',
 				});
 			}
-			return (
+
+			const value =
 				// TS does not know that the key exists, we need to address this in refactor
 				(placeholdersDataInputData?.query as Record<string, unknown>)?.[name] ??
 				placeholdersDataInputData?.[name] ??
-				defaultValue
-			);
+				defaultValue;
+
+			if (_type.toLowerCase() === 'json' && value !== undefined) {
+				return typeof value === 'string' ? value : JSON.stringify(value);
+			}
+
+			return value;
 		};
 		const handleTool = (throwOnError = true) => {
 			const fallbackValue = that.additionalKeys?.['$tool'];

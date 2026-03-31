@@ -869,6 +869,66 @@ describe('WorkflowDataProxy', () => {
 			).toEqual('default_value');
 		});
 
+		test('Serializes json-typed values as JSON strings', () => {
+			const workflowWithJsonData: IWorkflowBase = {
+				id: '123',
+				name: 'test workflow',
+				nodes: [
+					{
+						id: 'aiNode',
+						name: 'AI Node',
+						type: 'n8n-nodes-base.aiAgent',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				active: false,
+				activeVersionId: null,
+				isArchived: false,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			};
+
+			const connectionInputData = [
+				{
+					json: {
+						query: {
+							payload: ['foo', 'bar'],
+							config: { enabled: true },
+						},
+					},
+					pairedItem: { item: 0 },
+				},
+			];
+
+			const dataProxy = new WorkflowDataProxy(
+				new Workflow({
+					id: '123',
+					name: 'test workflow',
+					nodes: workflowWithJsonData.nodes,
+					connections: workflowWithJsonData.connections,
+					active: false,
+					nodeTypes: Helpers.NodeTypes(),
+				}),
+				null,
+				0,
+				0,
+				'AI Node',
+				connectionInputData,
+				{},
+				'manual',
+				{},
+				undefined,
+			);
+
+			const proxy = dataProxy.getDataProxy();
+
+			expect(proxy.$fromAI('payload', 'description', 'json')).toEqual('["foo","bar"]');
+			expect(proxy.$fromAI('config', 'description', 'json')).toEqual('{"enabled":true}');
+		});
+
 		test('Throws an error when a key is invalid (e.g. empty string)', () => {
 			expect(() => getFromAIProxy().$fromAI('')).toThrow(ExpressionError);
 			expect(() => getFromAIProxy().$fromAI('invalid key')).toThrow(ExpressionError);
