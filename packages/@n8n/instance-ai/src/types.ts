@@ -72,7 +72,7 @@ export interface ExecutionDebugInfo extends ExecutionResult {
 		name: string;
 		type: string;
 		error: string;
-		inputData?: Record<string, unknown>;
+		inputData?: Record<string, unknown> | string;
 	};
 	nodeTrace: Array<{
 		name: string;

@@ -34,6 +34,7 @@ import type {
 	ServiceProxyConfig,
 	CredentialTypeSearchResult,
 } from '@n8n/instance-ai';
+import { wrapUntrustedData } from '@n8n/instance-ai';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -1968,7 +1969,12 @@ export async function extractExecutionResult(
 						.filter((item): item is NonNullable<typeof item> => item !== null && item !== undefined)
 						.map((item) => item.json);
 					if (outputItems.length > 0) {
-						resultData[nodeName] = truncateNodeOutput(outputItems);
+						const truncated = truncateNodeOutput(outputItems);
+						resultData[nodeName] = wrapUntrustedData(
+							JSON.stringify(truncated, null, 2),
+							'execution-output',
+							`node:${nodeName}`,
+						);
 					}
 				}
 			}
@@ -2084,7 +2090,13 @@ export async function extractNodeOutput(
 
 	return {
 		nodeName,
-		items: capped,
+		items: capped.map((item, i) =>
+			wrapUntrustedData(
+				JSON.stringify(item, null, 2),
+				'execution-output',
+				`node:${nodeName}[${startIndex + i}]`,
+			),
+		),
 		totalItems,
 		returned: { from: startIndex, to: startIndex + capped.length },
 	};
@@ -2268,9 +2280,15 @@ export async function extractExecutionDebugInfo(
 										(item): item is NonNullable<typeof item> => item !== null && item !== undefined,
 									)
 									.map((item) => item.json);
-								return inputItems && inputItems.length > 0
-									? (inputItems[0] as Record<string, unknown>)
-									: undefined;
+								if (inputItems && inputItems.length > 0) {
+									const raw = inputItems[0] as Record<string, unknown>;
+									return wrapUntrustedData(
+										JSON.stringify(raw, null, 2),
+										'execution-output',
+										`failed-node-input:${nodeName}`,
+									);
+								}
+								return undefined;
 							})()
 						: undefined,
 				};
