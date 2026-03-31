@@ -9,7 +9,7 @@
 		"dist"
 	],
 	"scripts": {
-		"build": "tsc",
+		"build": "tsc -p tsconfig.build.json",
 		"dev": "tsc --watch",
 		"test": "vitest run",
 		"test:unit": "vitest run",
