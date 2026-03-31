@@ -114,6 +114,10 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 		await this.pool.release(bridge);
 	}
 
+	async waitForReplenishment(): Promise<void> {
+		await this.pool.waitForReplenishment();
+	}
+
 	/**
 	 * Transform a template expression to executable JavaScript via tournament.
 	 *

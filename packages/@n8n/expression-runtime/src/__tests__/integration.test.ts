@@ -381,8 +381,7 @@ describe('Integration: Concurrent execution pooling', () => {
 	});
 
 	beforeEach(async () => {
-		// Let any in-flight replenishment from the previous test complete
-		await new Promise((resolve) => setTimeout(resolve, 200));
+		await evaluator.waitForReplenishment();
 	});
 
 	it('should hold separate bridges for separate callers', async () => {
@@ -422,8 +421,7 @@ describe('Integration: Concurrent execution pooling', () => {
 		await evaluator.acquire(caller1);
 		await evaluator.release(caller1);
 
-		// Wait for replenishment
-		await new Promise((resolve) => setTimeout(resolve, 100));
+		await evaluator.waitForReplenishment();
 
 		// Pool should have a fresh bridge available
 		const caller2 = {};

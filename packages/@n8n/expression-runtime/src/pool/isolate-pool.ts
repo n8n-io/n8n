@@ -17,7 +17,10 @@ export class PoolExhaustedError extends Error {
 export class IsolatePool {
 	private bridges: RuntimeBridge[] = [];
 	private disposed = false;
+	/** Number of bridges currently being created. */
 	private warming = 0;
+	/** In-flight isolate replenishment promises. */
+	private replenishPromises = new Set<Promise<void>>();
 
 	constructor(
 		private readonly createBridge: () => Promise<RuntimeBridge>,
@@ -69,14 +72,22 @@ export class IsolatePool {
 	private static readonly MAX_REPLENISH_RETRIES = 3;
 	private static readonly REPLENISH_RETRY_BASE_MS = 500;
 
+	async waitForReplenishment(): Promise<void> {
+		if (this.replenishPromises.size > 0) {
+			await Promise.all([...this.replenishPromises]);
+		}
+	}
+
 	private replenish(attempt = 0) {
 		if (this.disposed) return;
 		if (this.bridges.length + this.warming >= this.size) return;
 
 		this.warming++;
-		void this.createBridge()
+		let promise: Promise<void>;
+		promise = this.createBridge()
 			.then((bridge) => {
 				this.warming--;
+				this.replenishPromises.delete(promise);
 				if (this.disposed) {
 					void bridge.dispose();
 					return;
@@ -85,6 +96,7 @@ export class IsolatePool {
 			})
 			.catch((error: unknown) => {
 				this.warming--;
+				this.replenishPromises.delete(promise);
 				this.onReplenishFailed?.(error);
 
 				if (attempt < IsolatePool.MAX_REPLENISH_RETRIES) {
@@ -92,5 +104,6 @@ export class IsolatePool {
 					setTimeout(() => this.replenish(attempt + 1), delay).unref();
 				}
 			});
+		this.replenishPromises.add(promise);
 	}
 }
