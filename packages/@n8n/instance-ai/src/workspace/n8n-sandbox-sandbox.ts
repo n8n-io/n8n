@@ -99,7 +99,7 @@ export class N8nSandboxServiceSandbox extends MastraSandbox {
 			command: toShellCommand(command, args),
 			env: options?.env,
 			workdir: options?.cwd,
-			timeoutMs: options?.timeout,
+			timeoutMs: options?.timeout ?? this.options.timeout,
 			abortSignal: options?.abortSignal,
 			onStdout: options?.onStdout,
 			onStderr: options?.onStderr,

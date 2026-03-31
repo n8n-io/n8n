@@ -468,24 +468,28 @@ export class N8nSandboxClient {
 			};
 		};
 
-		while (true) {
-			const chunk = await this.readExecChunk(reader);
-			if (chunk === null) {
-				break;
+		try {
+			while (true) {
+				const chunk = await this.readExecChunk(reader);
+				if (chunk === null) {
+					break;
+				}
+
+				pendingLine += decoder.decode(chunk, { stream: true });
+				let newlineIndex = pendingLine.indexOf('\n');
+				while (newlineIndex !== -1) {
+					processLine(pendingLine.slice(0, newlineIndex));
+					pendingLine = pendingLine.slice(newlineIndex + 1);
+					newlineIndex = pendingLine.indexOf('\n');
+				}
 			}
 
-			pendingLine += decoder.decode(chunk, { stream: true });
-			let newlineIndex = pendingLine.indexOf('\n');
-			while (newlineIndex !== -1) {
-				processLine(pendingLine.slice(0, newlineIndex));
-				pendingLine = pendingLine.slice(newlineIndex + 1);
-				newlineIndex = pendingLine.indexOf('\n');
+			pendingLine += decoder.decode();
+			if (pendingLine.length > 0) {
+				processLine(pendingLine);
 			}
-		}
-
-		pendingLine += decoder.decode();
-		if (pendingLine.length > 0) {
-			processLine(pendingLine);
+		} finally {
+			reader.releaseLock();
 		}
 
 		const finalExitMeta = this.requireExecExitMeta(exitMeta);
