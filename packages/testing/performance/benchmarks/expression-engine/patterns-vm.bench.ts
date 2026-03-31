@@ -6,6 +6,7 @@
  *
  * Run: pnpm --filter=@n8n/performance bench
  */
+import { afterAll } from 'vitest';
 import { Expression } from 'n8n-workflow';
 
 import {
