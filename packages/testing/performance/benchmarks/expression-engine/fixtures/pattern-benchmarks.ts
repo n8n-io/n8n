@@ -15,6 +15,7 @@ import {
 	EXTENSION_CALL,
 	ARRAY_ITERATION,
 	CONDITIONAL,
+	OBJECT_RETURN,
 } from './expressions';
 
 type EvalFn = (workflow: Workflow, expr: string, data: INodeExecutionData[]) => unknown;
@@ -82,5 +83,16 @@ export function definePatternBenchmarks(
 
 	bench(`${engine}: Conditional - ternary`, () => {
 		evalFn(workflow, CONDITIONAL[1], smallData);
+	});
+
+	// Object Return — expression returns a whole object, not a leaf primitive.
+	// For the VM engine this forces __prepareForTransfer to walk the proxy and
+	// trigger a cross-bridge callback for every leaf, duplicating memory.
+	bench(`${engine}: Object Return - whole $json (10k-item array)`, () => {
+		evalFn(workflow, OBJECT_RETURN[0], largeData);
+	});
+
+	bench(`${engine}: Object Return - $json.items (10k-item array)`, () => {
+		evalFn(workflow, OBJECT_RETURN[1], largeData);
 	});
 }
