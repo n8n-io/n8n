@@ -3,10 +3,14 @@ import { type IconName } from '../N8nIcon/icons';
 export type IconOrEmoji =
 	| {
 			type: 'icon';
-			value: IconName;
+			/** Icon name — can be a registered IconName or any Lucide icon name */
+			value: IconName | (string & {});
+			/** Optional CSS variable name for icon color (e.g. '--node--icon--color--blue') */
+			color?: string;
 	  }
 	| {
 			type: 'emoji';
+			/** Emoji unicode character (may include skin tone modifier) */
 			value: string;
 	  };
 

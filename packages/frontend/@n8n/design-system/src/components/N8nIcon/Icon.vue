@@ -1,14 +1,16 @@
 <script lang="ts" setup>
-import { computed, useCssModule } from 'vue';
+import { computed, ref, watch, useCssModule } from 'vue';
 
 import type { IconName } from './icons';
 import { deprecatedIconSet, updatedIconSet } from './icons';
+import { loadLucideIconBody } from './lucideIconLoader';
+import { vSvgContent } from './svgContentDirective';
 import type { IconSize, IconColor } from '../../types/icon';
 
 interface IconProps {
 	// component supports both deprecated and updated icon set to support project icons
-	// but only allow new icon names to be used in the future
-	icon: IconName;
+	// as well as any Lucide icon name (rendered via fallback SVG)
+	icon: IconName | (string & {});
 	size?: IconSize | number;
 	spin?: boolean;
 	color?: IconColor;
@@ -86,18 +88,45 @@ const styles = computed(() => {
 
 	return stylesToApply;
 });
+
+const resolvedComponent = computed(
+	() =>
+		updatedIconSet[props.icon as keyof typeof updatedIconSet] ??
+		deprecatedIconSet[props.icon as keyof typeof deprecatedIconSet] ??
+		null,
+);
+
+const fallbackBody = ref<string | null>(null);
+let fallbackRequestId = 0;
+
+watch(
+	() => [props.icon, resolvedComponent.value] as const,
+	async ([iconName, resolvedIcon]) => {
+		const requestId = ++fallbackRequestId;
+		if (resolvedIcon) {
+			fallbackBody.value = null;
+			return;
+		}
+
+		try {
+			const body = await loadLucideIconBody(iconName);
+			if (requestId === fallbackRequestId) {
+				fallbackBody.value = body;
+			}
+		} catch {
+			if (requestId === fallbackRequestId) {
+				fallbackBody.value = null;
+			}
+		}
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>
 	<Component
-		:is="
-			updatedIconSet[icon as keyof typeof updatedIconSet] ??
-			deprecatedIconSet[icon as keyof typeof deprecatedIconSet]
-		"
-		v-if="
-			updatedIconSet[icon as keyof typeof updatedIconSet] ??
-			deprecatedIconSet[icon as keyof typeof deprecatedIconSet]
-		"
+		:is="resolvedComponent"
+		v-if="resolvedComponent"
 		:class="classes"
 		aria-hidden="true"
 		focusable="false"
@@ -106,10 +135,31 @@ const styles = computed(() => {
 		:width="size.width"
 		:data-icon="props.icon"
 		:style="styles"
+	/><svg
+		v-else-if="fallbackBody"
+		xmlns="http://www.w3.org/2000/svg"
+		viewBox="0 0 24 24"
+		:class="[...classes, $style.fallbackIcon]"
+		:height="size.height"
+		:width="size.width"
+		fill="none"
+		stroke="currentColor"
+		stroke-linecap="round"
+		stroke-linejoin="round"
+		aria-hidden="true"
+		focusable="false"
+		role="img"
+		:data-icon="props.icon"
+		:style="styles"
+		v-svg-content="fallbackBody"
 	/>
 </template>
 
 <style lang="scss" module>
+.fallbackIcon {
+	stroke-width: 1.5;
+}
+
 .strokeWidth {
 	rect,
 	path {

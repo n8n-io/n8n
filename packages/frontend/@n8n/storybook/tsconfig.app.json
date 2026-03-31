@@ -29,6 +29,7 @@
 		"src/**/*.vue",
 		"../chat/src/**/*.stories.ts",
 		"../design-system/src/**/*.stories.ts",
+		"../design-system/vite/**/*.d.ts",
 		"../../editor-ui/src/**/*.stories.ts"
 	]
 }
