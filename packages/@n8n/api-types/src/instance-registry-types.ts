@@ -4,7 +4,9 @@ import { z } from 'zod';
 const InstanceRegistrationSchemaV1 = z
 	.object({
 		schemaVersion: z.literal(1),
-		instanceKey: z.string(),
+		instanceKey: z
+			.string()
+			.regex(/^[a-zA-Z0-9\-_]+$/, 'instanceKey must be alphanumeric with hyphens/underscores'),
 		hostId: z.string(),
 		instanceType: z.enum(['main', 'worker', 'webhook']),
 		instanceRole: z.enum(['leader', 'follower', 'unset']),
