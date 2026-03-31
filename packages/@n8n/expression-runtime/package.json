@@ -17,6 +17,7 @@
     "build": "tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json && pnpm build:runtime",
     "build:runtime": "node esbuild.config.js",
     "test": "vitest run",
+    "test:unit": "vitest run",
     "test:dev": "vitest --watch --silent false",
     "typecheck": "tsc --noEmit"
   },
@@ -42,6 +43,7 @@
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
     "@types/lodash": "catalog:",
     "@types/luxon": "3.2.0",
     "@types/md5": "^2.3.5",
