@@ -111,11 +111,13 @@ export class InstanceAiController {
 			throw new ForbiddenError('Not authorized for this thread');
 		}
 
-		// Track whether we need to re-validate ownership on first event.
 		// When the thread didn't exist at connect time, another user could create
 		// and own it before events start flowing. We re-check once on the first
-		// event and close the stream if ownership changed.
+		// event and close the stream if ownership changed. Events are buffered
+		// until the check resolves to prevent leaking data during the async gap.
 		let ownershipVerified = ownership === 'owned';
+		let ownershipCheckInFlight = false;
+		const pendingEvents: StoredEvent[] = [];
 		const userId = req.user.id;
 
 		// 1. Set SSE headers
@@ -201,20 +203,30 @@ export class InstanceAiController {
 
 		// 4. Subscribe to live events
 		// When the thread was not_found at connect time, re-validate ownership on
-		// the first event. If another user now owns the thread, close the stream.
+		// the first event. Buffer all events until the check resolves to avoid
+		// leaking data during the async gap.
 		const unsubscribe = this.eventBus.subscribe(threadId, (stored) => {
-			if (!ownershipVerified) {
-				ownershipVerified = true;
-				void this.memoryService.checkThreadOwnership(userId, threadId).then((currentOwnership) => {
-					if (currentOwnership === 'other_user') {
-						res.end();
-						return;
-					}
-					this.writeSseEvent(res, stored);
-				});
+			if (ownershipVerified) {
+				this.writeSseEvent(res, stored);
 				return;
 			}
-			this.writeSseEvent(res, stored);
+
+			pendingEvents.push(stored);
+
+			if (ownershipCheckInFlight) return;
+			ownershipCheckInFlight = true;
+
+			void this.memoryService.checkThreadOwnership(userId, threadId).then((currentOwnership) => {
+				if (currentOwnership === 'other_user') {
+					res.end();
+					return;
+				}
+				ownershipVerified = true;
+				for (const buffered of pendingEvents) {
+					this.writeSseEvent(res, buffered);
+				}
+				pendingEvents.length = 0;
+			});
 		});
 
 		// 5. Keep-alive
