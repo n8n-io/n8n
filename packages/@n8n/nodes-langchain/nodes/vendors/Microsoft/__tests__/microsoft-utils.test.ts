@@ -703,14 +703,9 @@ describe('microsoft-utils', () => {
 			];
 			(getAllTools as jest.Mock).mockResolvedValue(mockTools);
 
-			const mockCallTool = jest.fn();
-			(createCallTool as jest.Mock).mockReturnValue(mockCallTool);
-
-			const mockDynamicTool1 = { name: 'mcp_CalendarTools_create_event' };
-			const mockDynamicTool2 = { name: 'mcp_CalendarTools_list_events' };
 			(mcpToolToDynamicTool as jest.Mock)
-				.mockReturnValueOnce(mockDynamicTool1)
-				.mockReturnValueOnce(mockDynamicTool2);
+				.mockReturnValueOnce({ name: 'mcp_CalendarTools_create_event' })
+				.mockReturnValueOnce({ name: 'mcp_CalendarTools_list_events' });
 
 			const result = await getMicrosoftMcpTools(
 				mockTurnContext,
@@ -723,29 +718,15 @@ describe('microsoft-utils', () => {
 			// One toolkit per server
 			expect(result?.toolkits).toHaveLength(1);
 			expect(result?.toolkits[0].tools).toHaveLength(2);
-			expect(createCallTool).toHaveBeenCalledTimes(2);
 			expect(mcpToolToDynamicTool).toHaveBeenCalledTimes(2);
-			// createCallTool uses the original (unprefixed) tool name for the actual MCP call
-			expect(createCallTool).toHaveBeenCalledWith(
-				'create_event',
-				mockClient,
-				60000,
-				expect.any(Function),
-			);
-			expect(createCallTool).toHaveBeenCalledWith(
-				'list_events',
-				mockClient,
-				60000,
-				expect.any(Function),
-			);
-			// mcpToolToDynamicTool receives the prefixed name so LangChain sees unique names
+			// mcpToolToDynamicTool receives the prefixed name and a logging wrapper
 			expect(mcpToolToDynamicTool).toHaveBeenCalledWith(
 				expect.objectContaining({ name: 'mcp_CalendarTools_create_event' }),
-				mockCallTool,
+				expect.any(Function),
 			);
 			expect(mcpToolToDynamicTool).toHaveBeenCalledWith(
 				expect.objectContaining({ name: 'mcp_CalendarTools_list_events' }),
-				mockCallTool,
+				expect.any(Function),
 			);
 		});
 
@@ -893,8 +874,6 @@ describe('microsoft-utils', () => {
 			// Both servers expose a tool called 'search'
 			(getAllTools as jest.Mock).mockResolvedValue([{ name: 'search', description: 'Search' }]);
 
-			const mockCallTool = jest.fn();
-			(createCallTool as jest.Mock).mockReturnValue(mockCallTool);
 			(mcpToolToDynamicTool as jest.Mock)
 				.mockReturnValueOnce({ name: 'mcp_CalendarTools_search' })
 				.mockReturnValueOnce({ name: 'mcp_MailTools_search' });
@@ -906,21 +885,14 @@ describe('microsoft-utils', () => {
 				undefined,
 			);
 
-			// createCallTool always uses the original tool name for the MCP call
-			expect(createCallTool).toHaveBeenCalledWith(
-				'search',
-				expect.anything(),
-				60000,
-				expect.any(Function),
-			);
 			// mcpToolToDynamicTool gets server-prefixed names, avoiding collision
 			expect(mcpToolToDynamicTool).toHaveBeenCalledWith(
 				expect.objectContaining({ name: 'mcp_CalendarTools_search' }),
-				mockCallTool,
+				expect.any(Function),
 			);
 			expect(mcpToolToDynamicTool).toHaveBeenCalledWith(
 				expect.objectContaining({ name: 'mcp_MailTools_search' }),
-				mockCallTool,
+				expect.any(Function),
 			);
 			// Two toolkits, each with one distinctly-named tool
 			expect(result?.toolkits).toHaveLength(2);
@@ -940,8 +912,6 @@ describe('microsoft-utils', () => {
 				{ name: 'create_event', description: 'Create event' },
 			]);
 
-			const mockCallTool = jest.fn();
-			(createCallTool as jest.Mock).mockReturnValue(mockCallTool);
 			(mcpToolToDynamicTool as jest.Mock).mockReturnValue({
 				name: 'mcp_Calendar_Tools__v2__create_event',
 			});
@@ -951,7 +921,7 @@ describe('microsoft-utils', () => {
 			// Special chars (dash, dot, space, parens) all replaced with underscores
 			expect(mcpToolToDynamicTool).toHaveBeenCalledWith(
 				expect.objectContaining({ name: 'mcp_Calendar_Tools__v2__create_event' }),
-				mockCallTool,
+				expect.any(Function),
 			);
 		});
 
@@ -987,16 +957,199 @@ describe('microsoft-utils', () => {
 			(connectMcpClient as jest.Mock).mockResolvedValue({ ok: true, result: { close: jest.fn() } });
 			(getAllTools as jest.Mock).mockResolvedValue([{ name: toolName, description: 'Tool' }]);
 
-			const mockCallTool = jest.fn();
-			(createCallTool as jest.Mock).mockReturnValue(mockCallTool);
 			(mcpToolToDynamicTool as jest.Mock).mockReturnValue({ name: toolName });
 
 			await getMicrosoftMcpTools(mockTurnContext, mockAuthorization, 'test-token', undefined);
 
 			expect(mcpToolToDynamicTool).toHaveBeenCalledWith(
 				expect.objectContaining({ name: toolName }),
-				mockCallTool,
+				expect.any(Function),
 			);
+		});
+		describe('tool call logging', () => {
+			let mockTurnContextLogging: any;
+			let mockConfigServiceLogging: any;
+			let mockAuthorizationLogging: any;
+
+			beforeEach(() => {
+				jest.clearAllMocks();
+
+				mockTurnContextLogging = {
+					activity: {
+						recipient: { tenantId: 'test-tenant-id' },
+						channelData: { tenant: { id: 'test-tenant-id' } },
+					},
+				};
+
+				mockAuthorizationLogging = { exchangeToken: jest.fn() };
+
+				const { McpToolServerConfigurationService } = jest.requireMock(
+					'@microsoft/agents-a365-tooling',
+				);
+				mockConfigServiceLogging = {
+					listToolServers: jest
+						.fn()
+						.mockResolvedValue([
+							{ mcpServerName: 'mcp_CalendarTools', url: 'http://calendar-server' },
+						]),
+				};
+				(McpToolServerConfigurationService as jest.Mock).mockImplementation(
+					() => mockConfigServiceLogging,
+				);
+
+				(connectMcpClient as jest.Mock).mockResolvedValue({
+					ok: true,
+					result: { close: jest.fn() },
+				});
+
+				(getAllTools as jest.Mock).mockResolvedValue([
+					{ name: 'list_events', description: 'List calendar events' },
+				]);
+			});
+
+			test('should return an empty logs array when no tools have been called', async () => {
+				(mcpToolToDynamicTool as jest.Mock).mockReturnValue({
+					name: 'mcp_CalendarTools_list_events',
+				});
+
+				const result = await getMicrosoftMcpTools(
+					mockTurnContextLogging,
+					mockAuthorizationLogging,
+					'test-token',
+					undefined,
+				);
+
+				expect(result).toBeDefined();
+				expect(result?.logs).toBeDefined();
+				expect(result?.logs).toHaveLength(0);
+			});
+
+			test('should log a successful tool call with correct metadata', async () => {
+				let capturedToolFunc: ((args: Record<string, unknown>) => Promise<unknown>) | undefined;
+				(mcpToolToDynamicTool as jest.Mock).mockImplementation(
+					(_tool: unknown, func: (args: Record<string, unknown>) => Promise<unknown>) => {
+						capturedToolFunc = func;
+						return { name: 'mcp_CalendarTools_list_events' };
+					},
+				);
+
+				(createCallTool as jest.Mock).mockImplementation(() =>
+					jest.fn().mockResolvedValue([{ id: '1', title: 'Team meeting' }]),
+				);
+
+				const result = await getMicrosoftMcpTools(
+					mockTurnContextLogging,
+					mockAuthorizationLogging,
+					'test-token',
+					undefined,
+				);
+
+				await capturedToolFunc!({ maxResults: 5 });
+
+				expect(result?.logs).toHaveLength(1);
+				expect(result?.logs[0]).toMatchObject({
+					serverName: 'mcp_CalendarTools',
+					toolName: 'mcp_CalendarTools_list_events',
+					input: { maxResults: 5 },
+					output: [{ id: '1', title: 'Team meeting' }],
+					isError: false,
+				});
+				expect(typeof result?.logs[0].durationMs).toBe('number');
+				expect(typeof result?.logs[0].timestamp).toBe('string');
+			});
+
+			test('should log a failed tool call with isError set to true', async () => {
+				let capturedToolFunc: ((args: Record<string, unknown>) => Promise<unknown>) | undefined;
+				(mcpToolToDynamicTool as jest.Mock).mockImplementation(
+					(_tool: unknown, func: (args: Record<string, unknown>) => Promise<unknown>) => {
+						capturedToolFunc = func;
+						return { name: 'mcp_CalendarTools_list_events' };
+					},
+				);
+
+				(createCallTool as jest.Mock).mockImplementation(
+					(_name: string, _client: unknown, _timeout: number, onError: (msg: string) => void) =>
+						jest.fn().mockImplementation(async () => {
+							onError('Calendar API unavailable');
+							return 'Calendar API unavailable';
+						}),
+				);
+
+				const result = await getMicrosoftMcpTools(
+					mockTurnContextLogging,
+					mockAuthorizationLogging,
+					'test-token',
+					undefined,
+				);
+
+				await capturedToolFunc!({ maxResults: 5 });
+
+				expect(result?.logs).toHaveLength(1);
+				expect(result?.logs[0].isError).toBe(true);
+				expect(result?.logs[0].output).toBe('Calendar API unavailable');
+			});
+
+			test('should use original tool name (not prefixed) when calling createCallTool', async () => {
+				let capturedToolFunc: ((args: Record<string, unknown>) => Promise<unknown>) | undefined;
+				(mcpToolToDynamicTool as jest.Mock).mockImplementation(
+					(_tool: unknown, func: (args: Record<string, unknown>) => Promise<unknown>) => {
+						capturedToolFunc = func;
+						return { name: 'mcp_CalendarTools_list_events' };
+					},
+				);
+
+				const mockCallTool = jest.fn().mockResolvedValue('result');
+				(createCallTool as jest.Mock).mockReturnValue(mockCallTool);
+
+				await getMicrosoftMcpTools(
+					mockTurnContextLogging,
+					mockAuthorizationLogging,
+					'test-token',
+					undefined,
+				);
+
+				// createCallTool is not called at setup — only when the tool is actually invoked
+				expect(createCallTool).not.toHaveBeenCalled();
+
+				await capturedToolFunc!({ arg: 'value' });
+
+				// After invocation, createCallTool is called with the original (unprefixed) tool name
+				expect(createCallTool).toHaveBeenCalledWith(
+					'list_events',
+					expect.anything(),
+					60000,
+					expect.any(Function),
+				);
+			});
+
+			test('should accumulate logs across multiple tool invocations', async () => {
+				const capturedFuncs: Array<(args: Record<string, unknown>) => Promise<unknown>> = [];
+				(getAllTools as jest.Mock).mockResolvedValue([
+					{ name: 'list_events', description: 'List events' },
+					{ name: 'create_event', description: 'Create event' },
+				]);
+				(mcpToolToDynamicTool as jest.Mock).mockImplementation(
+					(_tool: unknown, func: (args: Record<string, unknown>) => Promise<unknown>) => {
+						capturedFuncs.push(func);
+						return { name: 'some-tool' };
+					},
+				);
+				(createCallTool as jest.Mock).mockImplementation(() => jest.fn().mockResolvedValue('ok'));
+
+				const result = await getMicrosoftMcpTools(
+					mockTurnContextLogging,
+					mockAuthorizationLogging,
+					'test-token',
+					undefined,
+				);
+
+				await capturedFuncs[0]!({ query: 'today' });
+				await capturedFuncs[1]!({ title: 'Standup' });
+
+				expect(result?.logs).toHaveLength(2);
+				expect(result?.logs[0].toolName).toBe('mcp_CalendarTools_list_events');
+				expect(result?.logs[1].toolName).toBe('mcp_CalendarTools_create_event');
+			});
 		});
 	});
 
@@ -1048,11 +1201,13 @@ describe('microsoft-utils', () => {
 
 			(invokeAgent as jest.Mock).mockResolvedValue('Agent response');
 
+			const activityCapture = { input: '', output: [], activity: {} };
 			const callback = configureActivityCallback(
 				nodeContext,
 				credentials,
 				mcpTokenRef,
 				mockAuthorization,
+				activityCapture,
 			);
 			await callback(mockTurnContext);
 
@@ -1082,11 +1237,13 @@ describe('microsoft-utils', () => {
 
 			(invokeAgent as jest.Mock).mockResolvedValue('Response');
 
+			const activityCapture = { input: '', output: [], activity: {} };
 			const callback = configureActivityCallback(
 				nodeContext,
 				credentials,
 				mcpTokenRef,
 				mockAuthorization,
+				activityCapture,
 			);
 			await callback(contextWithEmptyText);
 
@@ -1109,11 +1266,13 @@ describe('microsoft-utils', () => {
 
 			(invokeAgent as jest.Mock).mockResolvedValue('Response');
 
+			const activityCapture = { input: '', output: [], activity: {} };
 			const callback = configureActivityCallback(
 				nodeContext,
 				credentials,
 				noTokenRef,
 				mockAuthorization,
+				activityCapture,
 			);
 			await callback(mockTurnContext);
 
@@ -1135,15 +1294,123 @@ describe('microsoft-utils', () => {
 
 			(invokeAgent as jest.Mock).mockResolvedValue('Test agent response');
 
+			const activityCapture = { input: '', output: [], activity: {} };
 			const callback = configureActivityCallback(
 				nodeContext,
 				credentials,
 				mcpTokenRef,
 				mockAuthorization,
+				activityCapture,
 			);
 			await callback(mockTurnContext);
 
 			expect(mockTurnContext.sendActivity).toHaveBeenCalledWith('Test agent response');
+		});
+
+		test('should not set mcpToolLogs on activityCapture when no MCP tools are invoked', async () => {
+			const { McpToolServerConfigurationService } = jest.requireMock(
+				'@microsoft/agents-a365-tooling',
+			);
+			const mockConfigSvc = {
+				listToolServers: jest
+					.fn()
+					.mockResolvedValue([
+						{ mcpServerName: 'mcp_CalendarTools', url: 'http://calendar-server' },
+					]),
+			};
+			(McpToolServerConfigurationService as jest.Mock).mockImplementation(() => mockConfigSvc);
+			(connectMcpClient as jest.Mock).mockResolvedValue({ ok: true, result: { close: jest.fn() } });
+			(getAllTools as jest.Mock).mockResolvedValue([
+				{ name: 'list_events', description: 'List events' },
+			]);
+			(mcpToolToDynamicTool as jest.Mock).mockReturnValue({
+				name: 'mcp_CalendarTools_list_events',
+			});
+
+			(nodeContext.getNodeParameter as jest.Mock).mockImplementation((param: string) => {
+				if (param === 'systemPrompt') return 'Test prompt';
+				if (param === 'useMcpTools') return true;
+				if (param === 'include') return 'all';
+				return undefined;
+			});
+
+			(invokeAgent as jest.Mock).mockResolvedValue('Response');
+
+			const activityCapture: ActivityCapture = { input: '', output: [], activity: {} };
+			const callback = configureActivityCallback(
+				nodeContext,
+				credentials,
+				mcpTokenRef,
+				mockAuthorization,
+				activityCapture,
+			);
+			await callback(mockTurnContext);
+
+			// invokeAgent is mocked and never actually calls the tools,
+			// so logs remain empty and mcpToolLogs should not be set
+			expect(activityCapture.mcpToolLogs).toBeUndefined();
+		});
+
+		test('should persist mcpToolLogs on activityCapture even when invokeAgent throws', async () => {
+			const { McpToolServerConfigurationService } = jest.requireMock(
+				'@microsoft/agents-a365-tooling',
+			);
+			const mockConfigSvc = {
+				listToolServers: jest
+					.fn()
+					.mockResolvedValue([
+						{ mcpServerName: 'mcp_CalendarTools', url: 'http://calendar-server' },
+					]),
+			};
+			(McpToolServerConfigurationService as jest.Mock).mockImplementation(() => mockConfigSvc);
+			(connectMcpClient as jest.Mock).mockResolvedValue({ ok: true, result: { close: jest.fn() } });
+			(getAllTools as jest.Mock).mockResolvedValue([
+				{ name: 'list_events', description: 'List events' },
+			]);
+
+			let capturedToolFunc: ((args: Record<string, unknown>) => Promise<unknown>) | undefined;
+			(mcpToolToDynamicTool as jest.Mock).mockImplementation(
+				(_tool: unknown, func: (args: Record<string, unknown>) => Promise<unknown>) => {
+					capturedToolFunc = func;
+					return { name: 'mcp_CalendarTools_list_events' };
+				},
+			);
+			(createCallTool as jest.Mock).mockImplementation(() =>
+				jest.fn().mockResolvedValue('event list result'),
+			);
+
+			// Simulate agent invoking a tool before the LLM call fails
+			(invokeAgent as jest.Mock).mockImplementation(async () => {
+				await capturedToolFunc!({ query: 'today' });
+				throw new Error('LLM API timeout');
+			});
+
+			(nodeContext.getNodeParameter as jest.Mock).mockImplementation((param: string) => {
+				if (param === 'systemPrompt') return 'Test prompt';
+				if (param === 'useMcpTools') return true;
+				if (param === 'include') return 'all';
+				return undefined;
+			});
+
+			const activityCapture: ActivityCapture = { input: '', output: [], activity: {} };
+			const callback = configureActivityCallback(
+				nodeContext,
+				credentials,
+				mcpTokenRef,
+				mockAuthorization,
+				activityCapture,
+			);
+
+			await expect(callback(mockTurnContext)).rejects.toThrow('LLM API timeout');
+
+			// Logs from the tool call that ran before the failure must still be present
+			expect(activityCapture.mcpToolLogs).toHaveLength(1);
+			expect(activityCapture.mcpToolLogs![0]).toMatchObject({
+				serverName: 'mcp_CalendarTools',
+				toolName: 'mcp_CalendarTools_list_events',
+				input: { query: 'today' },
+				isError: false,
+			});
 		});
 
 		test('should use default values when recipient data is missing', async () => {
@@ -1164,11 +1431,13 @@ describe('microsoft-utils', () => {
 
 			(invokeAgent as jest.Mock).mockResolvedValue('Response');
 
+			const activityCapture = { input: '', output: [], activity: {} };
 			const callback = configureActivityCallback(
 				nodeContext,
 				credentials,
 				mcpTokenRef,
 				mockAuthorization,
+				activityCapture,
 			);
 			await callback(contextWithoutRecipient as any);
 
@@ -1179,19 +1448,31 @@ describe('microsoft-utils', () => {
 	describe('microsoftMcpServers', () => {
 		test('should export correct server options', () => {
 			expect(microsoftMcpServers).toEqual([
+				{ name: 'Admin 365', value: 'mcp_Admin365_GraphTools' },
+				{ name: 'Admin Tools', value: 'mcp_AdminTools' },
 				{ name: 'Calendar', value: 'mcp_CalendarTools' },
+				{ name: 'DA Search', value: 'mcp_DASearch' },
+				{ name: 'Excel', value: 'mcp_ExcelServer' },
+				{ name: 'Knowledge', value: 'mcp_KnowledgeTools' },
+				{ name: 'M365 Copilot', value: 'mcp_M365Copilot' },
 				{ name: 'Mail', value: 'mcp_MailTools' },
-				{ name: 'Me', value: 'mcp_MeServer' },
+				{ name: 'OneDrive', value: 'mcp_OneDriveRemoteServer' },
 				{ name: 'OneDrive & SharePoint', value: 'mcp_ODSPRemoteServer' },
+				{ name: 'Planner', value: 'mcp_PlannerServer' },
+				{ name: 'SharePoint', value: 'mcp_SharePointRemoteServer' },
 				{ name: 'SharePoint Lists', value: 'mcp_SharePointListsTools' },
+				{ name: 'Task Personalization', value: 'mcp_TaskPersonalizationServer' },
 				{ name: 'Teams', value: 'mcp_TeamsServer' },
 				{ name: 'Teams Canary', value: 'mcp_TeamsCanaryServer' },
+				{ name: 'Teams V1', value: 'mcp_TeamsServerV1' },
+				{ name: 'Web Search', value: 'mcp_WebSearchTools' },
+				{ name: 'Windows 365 Computer Use', value: 'mcp_W365ComputerUse' },
 				{ name: 'Word', value: 'mcp_WordServer' },
 			]);
 		});
 
 		test('should have correct number of server options', () => {
-			expect(microsoftMcpServers).toHaveLength(8);
+			expect(microsoftMcpServers).toHaveLength(20);
 		});
 	});
 
@@ -1338,10 +1619,16 @@ describe('microsoft-utils', () => {
 	describe('disposeActivityResources', () => {
 		let mockInvokeAgentScope: { dispose: jest.Mock };
 		let mockMcpClient: { close: jest.Mock };
+		let consoleErrorSpy: jest.SpyInstance;
 
 		beforeEach(() => {
 			mockInvokeAgentScope = { dispose: jest.fn() };
 			mockMcpClient = { close: jest.fn().mockResolvedValue(undefined) };
+			consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+		});
+
+		afterEach(() => {
+			consoleErrorSpy.mockRestore();
 		});
 
 		test('should dispose invokeAgentScope and close mcpClient', async () => {

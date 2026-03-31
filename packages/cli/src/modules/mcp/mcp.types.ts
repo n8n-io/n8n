@@ -88,7 +88,8 @@ export type WorkflowNotFoundReason =
 	| 'workflow_not_active'
 	| 'unsupported_trigger'
 	| 'execution_does_not_exist'
-	| 'execution_workflow_mismatch';
+	| 'execution_workflow_mismatch'
+	| 'invalid_pin_data';
 
 export type UserCalledMCPToolEventPayload = {
 	user_id?: string;

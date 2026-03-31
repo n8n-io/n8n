@@ -7,11 +7,8 @@ import {
 	WEBHOOK_NODE_TYPE,
 	type INode,
 	type IPinData,
-	type IRun,
 	type IWorkflowExecutionDataProcess,
 	type WorkflowExecuteMode,
-	UnexpectedError,
-	TimeoutExecutionCancelledError,
 	ensureError,
 	jsonStringify,
 	SCHEDULE_TRIGGER_NODE_TYPE,
@@ -31,6 +28,7 @@ import type {
 	UserCalledMCPToolEventPayload,
 } from '../mcp.types';
 import { findMcpSupportedTrigger } from '../mcp.utils';
+import { waitForExecutionResult, WORKFLOW_EXECUTION_TIMEOUT_MS } from './execution-utils';
 import { getMcpWorkflow, type FoundWorkflow } from './workflow-validation.utils';
 
 import type { ActiveExecutions } from '@/active-executions';
@@ -38,8 +36,6 @@ import type { McpService } from '@/modules/mcp/mcp.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-
-const WORKFLOW_EXECUTION_TIMEOUT_MS = 5 * Time.minutes.toMilliseconds; // 5 minutes
 
 export { type FoundWorkflow };
 
@@ -120,7 +116,7 @@ export const createExecuteWorkflowTool = (
 			title: 'Execute Workflow',
 			readOnlyHint: false, // Can read and write data via workflows
 			destructiveHint: true, // Can cause changes in external systems via workflows
-			idempotentHint: true, // Safe to retry multiple times
+			idempotentHint: false, // Executions can trigger side effects in external systems
 			openWorldHint: true, // Can access external systems via workflows
 		},
 	},
@@ -180,7 +176,7 @@ export const createExecuteWorkflowTool = (
 				executionId: isTimeout ? error.executionId : null,
 				status: 'error',
 				error: isTimeout
-					? `Workflow execution timed out after ${WORKFLOW_EXECUTION_TIMEOUT_MS / Time.milliseconds.toSeconds} seconds (Enforced MCP timeout)`
+					? `Workflow execution timed out after ${WORKFLOW_EXECUTION_TIMEOUT_MS * Time.milliseconds.toSeconds} seconds (Enforced MCP timeout)`
 					: (error.message ?? `${error.constructor.name}: (no message)`),
 			};
 
@@ -305,7 +301,7 @@ const buildRunData = async (
 
 	const triggerPinData = await getPinDataForTrigger(triggerNode, inputs);
 	const workflowPinData = isManualExecution ? (workflow.pinData ?? {}) : {};
-	runData.pinData = { ...triggerPinData, ...workflowPinData };
+	runData.pinData = { ...workflowPinData, ...triggerPinData };
 
 	runData.executionData = createRunExecutionData({
 		startData: {},
@@ -331,58 +327,6 @@ const buildRunData = async (
 	});
 
 	return runData;
-};
-
-const waitForExecutionResult = async (
-	executionId: string,
-	activeExecutions: ActiveExecutions,
-	mcpService: McpService,
-): Promise<IRun> => {
-	// Create a timeout promise
-	let timeoutId: NodeJS.Timeout | undefined;
-	const timeoutPromise = new Promise<never>((_, reject) => {
-		timeoutId = setTimeout(() => {
-			reject(new McpExecutionTimeoutError(executionId, WORKFLOW_EXECUTION_TIMEOUT_MS));
-		}, WORKFLOW_EXECUTION_TIMEOUT_MS);
-	});
-
-	// In queue mode, use the MCP service's pending response mechanism
-	// In regular mode, use the standard activeExecutions promise
-	const resultPromise = mcpService.isQueueMode
-		? mcpService.createPendingResponse(executionId).promise
-		: activeExecutions.getPostExecutePromise(executionId);
-
-	try {
-		const data = await Promise.race([resultPromise, timeoutPromise]);
-
-		// Executed successfully before timeout: clear the timeout
-		clearTimeout(timeoutId);
-
-		if (data === undefined) {
-			throw new UnexpectedError('Workflow did not return any data');
-		}
-
-		return data;
-	} catch (error) {
-		if (timeoutId) clearTimeout(timeoutId);
-
-		if (mcpService.isQueueMode) {
-			mcpService.removePendingResponse(executionId);
-		}
-
-		if (error instanceof McpExecutionTimeoutError) {
-			try {
-				const cancellationError = new TimeoutExecutionCancelledError(error.executionId!);
-				activeExecutions.stopExecution(error.executionId!, cancellationError);
-			} catch (stopError) {
-				throw new UnexpectedError(
-					`Failed to stop timed-out execution [id: ${error.executionId}]: ${ensureError(stopError).message}`,
-				);
-			}
-		}
-		// Re-throw the error to be handled by the caller
-		throw error;
-	}
 };
 
 /**
@@ -431,7 +375,7 @@ const getPinDataForTrigger = async (
 			};
 		}
 		case CHAT_TRIGGER_NODE_TYPE:
-			if (!inputs || inputs.type !== 'chat') return {};
+			if (!inputs || inputs.type !== 'chat') return { [node.name]: [{ json: {} }] };
 			return {
 				[node.name]: [
 					{
@@ -444,7 +388,7 @@ const getPinDataForTrigger = async (
 				],
 			};
 		case FORM_TRIGGER_NODE_TYPE:
-			if (!inputs || inputs.type !== 'form') return {};
+			if (!inputs || inputs.type !== 'form') return { [node.name]: [{ json: {} }] };
 			return {
 				[node.name]: [
 					{
@@ -482,7 +426,7 @@ const getPinDataForTrigger = async (
 			};
 		}
 		default:
-			return {};
+			return { [node.name]: [{ json: {} }] };
 	}
 };
 
