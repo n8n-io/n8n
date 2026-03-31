@@ -2,19 +2,11 @@ import { HumanMessage } from '@langchain/core/messages';
 
 import { WEB_FETCH_MAX_PER_TURN } from '@/constants';
 import type { MutableWebFetchState } from '@/tools/utils/web-fetch-security';
-import {
-	createLangGraphSecurityManagerFactory,
-	createMutableSecurityManagerFactory,
-} from '@/tools/utils/web-fetch-security';
+import { createMutableSecurityManagerFactory } from '@/tools/utils/web-fetch-security';
 
 // ---------------------------------------------------------------------------
 // Mocks
 // ---------------------------------------------------------------------------
-
-const mockGetCurrentTaskInput = jest.fn();
-jest.mock('@langchain/langgraph', () => ({
-	getCurrentTaskInput: (...args: unknown[]) => mockGetCurrentTaskInput(...args) as unknown,
-}));
 
 const mockIsAllowedDomain = jest.fn();
 jest.mock('@/tools/utils/allowed-domains', () => ({
@@ -307,71 +299,5 @@ describe('createMutableSecurityManagerFactory', () => {
 		const manager = createMutableSecurityManagerFactory(state)();
 
 		expect(manager.isHostAllowed('site.com', 'https://site.com')).toBe(true);
-	});
-});
-
-// ---------------------------------------------------------------------------
-// createLangGraphSecurityManagerFactory
-// ---------------------------------------------------------------------------
-
-describe('createLangGraphSecurityManagerFactory', () => {
-	it('should read state lazily from getCurrentTaskInput on each call', () => {
-		mockGetCurrentTaskInput.mockReturnValue({
-			approvedDomains: ['lazy.com'],
-			allDomainsApproved: false,
-			webFetchCount: 1,
-			messages: [],
-		});
-
-		const factory = createLangGraphSecurityManagerFactory();
-		const manager = factory();
-
-		expect(mockGetCurrentTaskInput).toHaveBeenCalledTimes(1);
-		expect(manager.isHostAllowed('lazy.com', 'https://lazy.com')).toBe(true);
-	});
-
-	it('should default missing state fields', () => {
-		mockGetCurrentTaskInput.mockReturnValue({});
-
-		const factory = createLangGraphSecurityManagerFactory();
-		const manager = factory();
-
-		expect(manager.hasBudget()).toBe(true);
-		expect(manager.isHostAllowed('any.com', 'https://any.com')).toBe(false);
-	});
-
-	it('should NOT write-through (pure read-only snapshot)', () => {
-		const stateObj = {
-			approvedDomains: [],
-			allDomainsApproved: false,
-			webFetchCount: 0,
-			messages: [],
-		};
-		mockGetCurrentTaskInput.mockReturnValue(stateObj);
-
-		const factory = createLangGraphSecurityManagerFactory();
-		const manager = factory();
-
-		manager.approveDomain('new.com');
-		manager.recordFetch();
-
-		// Original state object should be untouched
-		expect(stateObj.approvedDomains).toEqual([]);
-		expect(stateObj.webFetchCount).toBe(0);
-	});
-
-	it('should pass messages for URL provenance checks', () => {
-		const messages = [new HumanMessage('https://user-url.com')];
-		mockGetCurrentTaskInput.mockReturnValue({
-			approvedDomains: [],
-			allDomainsApproved: false,
-			webFetchCount: 0,
-			messages,
-		});
-
-		const factory = createLangGraphSecurityManagerFactory();
-		const manager = factory();
-
-		expect(manager.isHostAllowed('user-url.com', 'https://user-url.com')).toBe(true);
 	});
 });

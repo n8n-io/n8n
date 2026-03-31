@@ -3,7 +3,6 @@
  * and state-propagation logic for the WebFetchTool
  */
 import type { BaseMessage } from '@langchain/core/messages';
-import { getCurrentTaskInput } from '@langchain/langgraph';
 
 import { WEB_FETCH_MAX_PER_TURN } from '@/constants';
 
@@ -81,17 +80,6 @@ function createSecurityManager(config: {
 }
 
 // ---------------------------------------------------------------------------
-// LangGraph state shape (read via getCurrentTaskInput)
-// ---------------------------------------------------------------------------
-
-interface WebFetchSecurityManagerState {
-	approvedDomains?: string[];
-	allDomainsApproved?: boolean;
-	webFetchCount?: number;
-	messages?: BaseMessage[];
-}
-
-// ---------------------------------------------------------------------------
 // Shared factory core
 // ---------------------------------------------------------------------------
 
@@ -134,25 +122,6 @@ function createFactory(options: SecurityManagerFactoryOptions): () => WebFetchSe
 			},
 		};
 	};
-}
-
-/**
- * Factory for LangGraph subgraph contexts where state propagation
- * happens via Command reducers. Reads lazily from getCurrentTaskInput()
- * at each tool invocation.
- */
-export function createLangGraphSecurityManagerFactory(): () => WebFetchSecurityManager {
-	return createFactory({
-		stateProvider: () => {
-			const s = getCurrentTaskInput<WebFetchSecurityManagerState>();
-			return {
-				approvedDomains: s.approvedDomains ?? [],
-				allDomainsApproved: s.allDomainsApproved === true,
-				webFetchCount: s.webFetchCount ?? 0,
-				messages: s.messages ?? [],
-			};
-		},
-	});
 }
 
 /**
