@@ -694,6 +694,8 @@ export interface InstanceAiEvalNodeResult {
 	executionMode: InstanceAiEvalNodeExecutionMode;
 	/** Missing required parameters detected before execution (empty = fully configured) */
 	configIssues?: Record<string, string[]>;
+	/** Epoch ms when the node started executing — used to sort the execution trace chronologically */
+	startTime?: number;
 }
 
 export interface InstanceAiEvalMockHints {

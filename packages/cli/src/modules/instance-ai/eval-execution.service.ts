@@ -344,6 +344,9 @@ export class EvalExecutionService {
 				executionMode: 'real',
 			});
 			const lastRun = nodeRuns[nodeRuns.length - 1];
+			if (lastRun?.startTime) {
+				entry.startTime = lastRun.startTime;
+			}
 			if (lastRun?.data?.main) {
 				// Capture output from all branches (Switch/IF nodes have multiple outputs)
 				const allOutputs = lastRun.data.main
