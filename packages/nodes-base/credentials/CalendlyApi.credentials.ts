@@ -3,30 +3,31 @@ import type {
 	ICredentialTestRequest,
 	ICredentialType,
 	IHttpRequestOptions,
+	Icon,
 	INodeProperties,
 } from 'n8n-workflow';
 
-const getAuthenticationType = (data: string): 'accessToken' | 'apiKey' => {
-	// The access token is a JWT, so it will always include dots to separate
-	// header, payoload and signature.
-	return data.includes('.') ? 'accessToken' : 'apiKey';
-};
-
 export class CalendlyApi implements ICredentialType {
 	name = 'calendlyApi';
-
-	displayName = 'Calendly API';
-
-	documentationUrl = 'calendly';
+	displayName = 'Calendly API (Personal Access Token)';
+	documentationUrl = 'https://docs.n8n.io/integrations/builtin/nodes/n8n-nodes-base.calendly/';
+	icon: Icon = 'file:icons/Calendly.svg';
 
 	properties: INodeProperties[] = [
-		// Change name to Personal Access Token once API Keys
-		// are deprecated
 		{
-			displayName: 'API Key or Personal Access Token',
-			name: 'apiKey',
+			displayName: 'Personal Access Token',
+			name: 'accessToken',
 			type: 'string',
 			typeOptions: { password: true },
+			default: '',
+			required: true,
+			description:
+				"The Personal Access Token for your Calendly account. Requires 'user:read' and 'webhook:manage' scopes.",
+		},
+		{
+			displayName: 'API Key',
+			name: 'apiKey',
+			type: 'hidden',
 			default: '',
 		},
 		{
@@ -35,32 +36,44 @@ export class CalendlyApi implements ICredentialType {
 			type: 'string',
 			typeOptions: { password: true },
 			default: '',
+			required: false,
 			description:
-				'A unique key shared between your app and Calendly used to verify events sent to your endpoints',
+				'Optional. Enter the Signing Key from your Calendly Developer Dashboard to enable HMAC signature verification.',
 		},
 	];
 
+	// eslint-disable-next-line @typescript-eslint/require-await
 	async authenticate(
 		credentials: ICredentialDataDecryptedObject,
 		requestOptions: IHttpRequestOptions,
 	): Promise<IHttpRequestOptions> {
-		//check whether the token is an API Key or an access token
-		const { apiKey } = credentials as { apiKey: string };
-		const tokenType = getAuthenticationType(apiKey);
-		// remove condition once v1 is deprecated
-		// and only inject credentials as an access token
-		if (tokenType === 'accessToken') {
-			requestOptions.headers!.Authorization = `Bearer ${apiKey}`;
+		const token = (credentials.accessToken as string) || (credentials.apiKey as string);
+
+		if (
+			requestOptions.baseURL?.includes('api.calendly.com') ||
+			requestOptions.url?.includes('api.calendly.com')
+		) {
+			requestOptions.headers = {
+				...requestOptions.headers,
+				// eslint-disable-next-line @typescript-eslint/naming-convention
+				Authorization: `Bearer ${token}`,
+			};
 		} else {
-			requestOptions.headers!['X-TOKEN'] = apiKey;
+			requestOptions.headers = {
+				...requestOptions.headers,
+				// eslint-disable-next-line @typescript-eslint/naming-convention
+				'X-TOKEN': token,
+			};
 		}
+
 		return requestOptions;
 	}
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: 'https://calendly.com',
-			url: '/api/v1/users/me',
+			baseURL: 'https://api.calendly.com',
+			method: 'GET',
+			url: '/users/me',
 		},
 	};
 }
