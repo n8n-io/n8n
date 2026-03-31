@@ -18,6 +18,11 @@ export type {
 	AiGatewayConfigDto,
 	AiGatewayProviderConfigEntry,
 } from './ai/ai-gateway-config-response.dto';
+export { AiGatewayUsageQueryDto } from './ai/ai-gateway-usage-response.dto';
+export type {
+	AiGatewayUsageEntry,
+	AiGatewayUsageResponse,
+} from './ai/ai-gateway-usage-response.dto';
 
 export { BinaryDataQueryDto } from './binary-data/binary-data-query.dto';
 export { BinaryDataSignedQueryDto } from './binary-data/binary-data-signed-query.dto';

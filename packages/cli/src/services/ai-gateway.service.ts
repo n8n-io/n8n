@@ -5,7 +5,7 @@ import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
-import type { AiGatewayConfigDto } from '@n8n/api-types';
+import type { AiGatewayConfigDto, AiGatewayUsageResponse } from '@n8n/api-types';
 
 import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
@@ -84,6 +84,36 @@ export class AiGatewayService {
 			[providerConfig.apiKeyField]: jwt,
 			[providerConfig.urlField]: `${baseUrl}${providerConfig.gatewayPath}`,
 		};
+	}
+
+	/**
+	 * Returns paginated usage history for the given user.
+	 */
+	async getUsage(userId: string, offset: number, limit: number): Promise<AiGatewayUsageResponse> {
+		const baseUrl = this.globalConfig.aiAssistant.baseUrl;
+		if (!baseUrl) {
+			throw new UserError('AI Gateway is not configured. Set the AI assistant base URL.');
+		}
+
+		const jwt = await this.getOrFetchToken(userId);
+		if (!jwt) {
+			throw new UserError('Failed to obtain a valid AI Gateway token.');
+		}
+
+		const url = new URL(`${baseUrl}/v1/gateway/usage`);
+		url.searchParams.set('offset', String(offset));
+		url.searchParams.set('limit', String(limit));
+
+		const response = await fetch(url.toString(), {
+			method: 'GET',
+			headers: { Authorization: `Bearer ${jwt}` },
+		});
+
+		if (!response.ok) {
+			throw new UserError(`Failed to fetch AI Gateway usage: HTTP ${response.status}`);
+		}
+
+		return (await response.json()) as AiGatewayUsageResponse;
 	}
 
 	/**

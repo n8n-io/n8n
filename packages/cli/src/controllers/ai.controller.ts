@@ -1,5 +1,9 @@
 import { FREE_AI_CREDITS_CREDENTIAL_NAME, STREAM_SEPARATOR } from '@/constants';
-import type { AiGatewayConfigDto, CreateCredentialDto } from '@n8n/api-types';
+import type {
+	AiGatewayConfigDto,
+	AiGatewayUsageResponse,
+	CreateCredentialDto,
+} from '@n8n/api-types';
 import {
 	AiChatRequestDto,
 	AiApplySuggestionRequestDto,
@@ -10,9 +14,10 @@ import {
 	AiUsageSettingsRequestDto,
 	AiTruncateMessagesRequestDto,
 	AiClearSessionRequestDto,
+	AiGatewayUsageQueryDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Body, Get, Licensed, Post, RestController, GlobalScope } from '@n8n/decorators';
+import { Body, Get, Licensed, Post, Query, RestController, GlobalScope } from '@n8n/decorators';
 import { type AiAssistantSDK, APIResponseError } from '@n8n_io/ai-assistant-sdk';
 import { Response } from 'express';
 import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
@@ -275,6 +280,20 @@ export class AiController {
 	): Promise<{ creditsQuota: number; creditsRemaining: number }> {
 		try {
 			return await this.aiGatewayService.getCreditsRemaining(req.user.id);
+		} catch (e) {
+			assert(e instanceof Error);
+			throw new InternalServerError(e.message, e);
+		}
+	}
+
+	@Get('/gateway/usage')
+	async getGatewayUsage(
+		req: AuthenticatedRequest,
+		_: Response,
+		@Query query: AiGatewayUsageQueryDto,
+	): Promise<AiGatewayUsageResponse> {
+		try {
+			return await this.aiGatewayService.getUsage(req.user.id, query.offset, query.limit);
 		} catch (e) {
 			assert(e instanceof Error);
 			throw new InternalServerError(e.message, e);
