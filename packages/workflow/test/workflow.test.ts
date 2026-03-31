@@ -1742,7 +1742,7 @@ describe('Workflow', () => {
 		const nodeTypes = Helpers.NodeTypes();
 
 		for (const testData of tests) {
-			test(testData.description, () => {
+			test(testData.description, async () => {
 				process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE = 'false';
 
 				const nodes: INode[] = [
@@ -1820,6 +1820,7 @@ describe('Workflow', () => {
 				};
 
 				const workflow = new Workflow({ nodes, connections, active: false, nodeTypes });
+				await workflow.expression.acquireIsolate();
 				const activeNodeName = testData.input.hasOwnProperty('Node3') ? 'Node3' : 'Node2';
 
 				const runExecutionData = createRunExecutionData({
@@ -1874,10 +1875,11 @@ describe('Workflow', () => {
 					);
 					expect(result).toEqual(testData.output[parameterName]);
 				}
+				await workflow.expression.releaseIsolate();
 			});
 		}
 
-		test('should also resolve all child parameters when the parent get requested', () => {
+		test('should also resolve all child parameters when the parent get requested', async () => {
 			const nodes: INode[] = [
 				{
 					name: 'Node1',
@@ -1904,6 +1906,7 @@ describe('Workflow', () => {
 			const connections: IConnections = {};
 
 			const workflow = new Workflow({ nodes, connections, active: false, nodeTypes });
+			await workflow.expression.acquireIsolate();
 			const activeNodeName = 'Node1';
 
 			const runExecutionData = createRunExecutionData({
@@ -1962,6 +1965,7 @@ describe('Workflow', () => {
 					},
 				],
 			});
+			await workflow.expression.releaseIsolate();
 		});
 	});
 
