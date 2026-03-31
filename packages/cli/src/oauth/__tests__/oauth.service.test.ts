@@ -1130,6 +1130,32 @@ describe('OauthService', () => {
 			);
 		});
 
+		it('should not delete scope for credentials inheriting editable generic OAuth2 scope', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: '1',
+				type: 'customOAuth2Api',
+			});
+			const mockDecryptedData = { clientId: 'client-id', scope: 'custom-scope' };
+			const mockOAuthCredentials = { clientId: 'client-id', scope: 'custom-scope' };
+			const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
+
+			jest.mocked(WorkflowExecuteAdditionalData.getBase).mockResolvedValue(mockAdditionalData);
+			credentialsHelper.getDecrypted.mockResolvedValue(mockDecryptedData);
+			credentialsHelper.getParentTypes.mockReturnValue(['oAuth2Api']);
+			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue(mockOAuthCredentials);
+
+			await service.getOAuthCredentials(credential);
+
+			expect(credentialsHelper.applyDefaultsAndOverwrites).toHaveBeenCalledWith(
+				mockAdditionalData,
+				{ clientId: 'client-id', scope: 'custom-scope' },
+				credential.type,
+				'internal',
+				undefined,
+				undefined,
+			);
+		});
+
 		it('should not delete scope for wordpressOAuth2Api credentials', async () => {
 			const credential = mock<CredentialsEntity>({
 				id: '1',
