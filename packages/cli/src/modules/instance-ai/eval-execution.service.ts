@@ -31,7 +31,17 @@ import { NodeTypes } from '@/node-types';
 import { getBase } from '@/workflow-execute-additional-data';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import { generateMockHints, identifyNodesForHints, type MockHints } from './eval-workflow-analysis';
+import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import { normalizePinData } from '@n8n/workflow-sdk';
+
+import { generatePinData } from '@n8n/instance-ai/evaluations/support/pin-data-generator';
+
+import {
+	generateMockHints,
+	identifyNodesForHints,
+	identifyNodesForPinData,
+	type MockHints,
+} from './eval-workflow-analysis';
 import { createLlmMockHandler } from './llm-mock-handler';
 
 // ---------------------------------------------------------------------------
@@ -91,6 +101,7 @@ export class EvalExecutionService {
 		workflowEntity: IWorkflowBase,
 		scenarioHints?: string,
 	): Promise<MockHints> {
+		// Phase 1: Generate mock hints for HTTP-interceptible nodes
 		const hintNodes = identifyNodesForHints(workflowEntity);
 		const nodeNames = hintNodes.map((n) => n.name);
 
@@ -114,7 +125,54 @@ export class EvalExecutionService {
 			`[EvalMock] Phase 1 result — globalContext: ${hints.globalContext ? 'present' : 'EMPTY'}, triggerContent keys: ${JSON.stringify(Object.keys(hints.triggerContent))}, nodeHints: ${Object.keys(hints.nodeHints).join(', ')}`,
 		);
 
+		// Phase 1.5: Generate pin data for nodes that bypass the HTTP mock layer
+		const bypassNodes = identifyNodesForPinData(workflowEntity);
+		const bypassNodeNames = bypassNodes.map((n) => n.name);
+
+		if (bypassNodeNames.length > 0) {
+			this.logger.debug(
+				`[EvalMock] Generating pin data for ${bypassNodeNames.length} bypass nodes: ${bypassNodeNames.join(', ')}`,
+			);
+			hints.bypassPinData = await this.generateBypassPinData(
+				workflowEntity,
+				bypassNodeNames,
+				hints.globalContext,
+			);
+			this.logger.debug(
+				`[EvalMock] Phase 1.5 result — pinned nodes: ${Object.keys(hints.bypassPinData).join(', ') || 'none'}`,
+			);
+		}
+
 		return hints;
+	}
+
+	// ── Phase 1.5: Pin data for bypass nodes ─────────────────────────────
+
+	/**
+	 * Generate pin data for nodes that bypass the HTTP mock layer.
+	 * Uses the existing LLM-based pin data generator with Phase 1's globalContext
+	 * for cross-node data consistency.
+	 */
+	private async generateBypassPinData(
+		workflowEntity: IWorkflowBase,
+		bypassNodeNames: string[],
+		globalContext: string,
+	): Promise<IPinData> {
+		if (bypassNodeNames.length === 0) return {};
+
+		try {
+			const result = await generatePinData({
+				workflow: workflowEntity as unknown as WorkflowJSON,
+				nodeNames: bypassNodeNames,
+				instructions: globalContext ? { dataDescription: globalContext } : undefined,
+			});
+
+			return normalizePinData(result as unknown as IPinData);
+		} catch (error) {
+			const errorMsg = error instanceof Error ? error.message : String(error);
+			this.logger.error(`[EvalMock] Phase 1.5 pin data generation failed: ${errorMsg}`);
+			return {};
+		}
 	}
 
 	// ── Phase 2: Mock execution ────────────────────────────────────────────
@@ -149,7 +207,8 @@ export class EvalExecutionService {
 		additionalData.evalLlmMockHandler = this.createInterceptingHandler(mockHandler, nodeResults);
 		additionalData.hooks = new ExecutionLifecycleHooks('evaluation', executionId, workflowEntity);
 
-		const pinData = this.buildTriggerPinData(startNode, hints.triggerContent);
+		const triggerPinData = this.buildTriggerPinData(startNode, hints.triggerContent);
+		const pinData: IPinData = { ...triggerPinData, ...hints.bypassPinData };
 		const pinDataNodeNames = Object.keys(pinData);
 
 		// Check config completeness before execution — detect missing required parameters
@@ -158,9 +217,20 @@ export class EvalExecutionService {
 
 		// Mark the trigger node as pinned (it gets its output from pin data, not execution)
 		// Preserve any configIssues that checkNodeConfig may have already recorded.
-		if (Object.keys(pinData).length > 0) {
+		if (Object.keys(triggerPinData).length > 0) {
 			const existing = nodeResults[startNode.name];
 			nodeResults[startNode.name] = {
+				output: null,
+				interceptedRequests: [],
+				executionMode: 'pinned',
+				...(existing?.configIssues ? { configIssues: existing.configIssues } : {}),
+			};
+		}
+
+		// Mark bypass nodes as pinned
+		for (const nodeName of Object.keys(hints.bypassPinData)) {
+			const existing = nodeResults[nodeName];
+			nodeResults[nodeName] = {
 				output: null,
 				interceptedRequests: [],
 				executionMode: 'pinned',
@@ -382,7 +452,13 @@ export class EvalExecutionService {
 			success: false,
 			nodeResults: {},
 			errors: [message],
-			hints: { globalContext: '', triggerContent: {}, nodeHints: {}, warnings: [] },
+			hints: {
+				globalContext: '',
+				triggerContent: {},
+				nodeHints: {},
+				warnings: [],
+				bypassPinData: {},
+			},
 		};
 	}
 }
