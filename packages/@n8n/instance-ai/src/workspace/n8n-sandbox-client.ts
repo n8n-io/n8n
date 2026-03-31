@@ -183,6 +183,35 @@ function asBuffer(content: FileContent): Buffer {
 	return typeof content === 'string' ? Buffer.from(content, 'utf-8') : Buffer.from(content);
 }
 
+/** Yields parsed objects from an NDJSON ReadableStream, one per line. */
+async function* readNdjsonStream<T>(
+	stream: ReadableStream<Uint8Array>,
+	parse: (line: string) => T,
+): AsyncGenerator<T> {
+	const decoder = new TextDecoder();
+	let pending = '';
+
+	for await (const chunk of stream) {
+		pending += decoder.decode(chunk, { stream: true });
+		let newlineIndex = pending.indexOf('\n');
+		while (newlineIndex !== -1) {
+			const line = pending.slice(0, newlineIndex).trim();
+			pending = pending.slice(newlineIndex + 1);
+			if (line.length > 0) {
+				yield parse(line);
+			}
+			newlineIndex = pending.indexOf('\n');
+		}
+	}
+
+	// Flush any remaining partial line
+	pending += decoder.decode();
+	const last = pending.trim();
+	if (last.length > 0) {
+		yield parse(last);
+	}
+}
+
 function parseExecEvent(line: string): ExecEvent {
 	try {
 		const json: unknown = JSON.parse(line);
@@ -385,58 +414,32 @@ export class N8nSandboxClient {
 			throw new Error('Sandbox exec response body is not readable');
 		}
 
-		const decoder = new TextDecoder();
-		let pendingLine = '';
 		let stdout = '';
 		let stderr = '';
 		let exitMeta: ExecExitMeta | null = null;
 
-		const processLine = (rawLine: string) => {
-			const line = rawLine.trim();
-			if (line.length === 0) {
-				return;
+		for await (const event of readNdjsonStream(response.body, parseExecEvent)) {
+			switch (event.type) {
+				case 'stdout':
+					stdout += event.data;
+					request.onStdout?.(event.data);
+					break;
+				case 'stderr':
+					stderr += event.data;
+					request.onStderr?.(event.data);
+					break;
+				case 'error':
+					throw new Error(event.error);
+				case 'exit':
+					exitMeta = {
+						exitCode: event.exit_code,
+						executionTimeMs: event.execution_time_ms,
+						timedOut: event.timed_out,
+						killed: event.killed,
+						success: event.success,
+					};
+					break;
 			}
-
-			const event = parseExecEvent(line);
-			if (event.type === 'stdout') {
-				stdout += event.data;
-				request.onStdout?.(event.data);
-				return;
-			}
-
-			if (event.type === 'stderr') {
-				stderr += event.data;
-				request.onStderr?.(event.data);
-				return;
-			}
-
-			if (event.type === 'error') {
-				throw new Error(event.error);
-			}
-
-			const exitEvent = event;
-			exitMeta = {
-				exitCode: exitEvent.exit_code,
-				executionTimeMs: exitEvent.execution_time_ms,
-				timedOut: exitEvent.timed_out,
-				killed: exitEvent.killed,
-				success: exitEvent.success,
-			};
-		};
-
-		for await (const chunk of response.body) {
-			pendingLine += decoder.decode(chunk, { stream: true });
-			let newlineIndex = pendingLine.indexOf('\n');
-			while (newlineIndex !== -1) {
-				processLine(pendingLine.slice(0, newlineIndex));
-				pendingLine = pendingLine.slice(newlineIndex + 1);
-				newlineIndex = pendingLine.indexOf('\n');
-			}
-		}
-
-		pendingLine += decoder.decode();
-		if (pendingLine.length > 0) {
-			processLine(pendingLine);
 		}
 
 		const finalExitMeta = this.requireExecExitMeta(exitMeta);
