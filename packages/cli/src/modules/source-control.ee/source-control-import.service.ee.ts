@@ -1422,6 +1422,20 @@ export class SourceControlImportService {
 						});
 						columnEntities.push(columnEntity);
 
+						// Rename columns whose name changed (same ID, different name)
+						if (!isNewTable && existingColumnIds.has(column.id)) {
+							const oldName = existingColumnNameMap.get(column.id);
+							if (oldName && oldName !== column.name) {
+								await this.dataTableDDLService.renameColumn(
+									dataTable.id,
+									oldName,
+									column.name,
+									dbType,
+									trx,
+								);
+							}
+						}
+
 						// Add new columns to existing physical table
 						if (!isNewTable && !existingColumnIds.has(column.id)) {
 							await this.dataTableDDLService.addColumn(dataTable.id, columnEntity, dbType, trx);

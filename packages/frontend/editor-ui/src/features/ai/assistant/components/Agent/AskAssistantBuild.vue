@@ -32,6 +32,10 @@ import CreditsSettingsDropdown from './CreditsSettingsDropdown.vue';
 import CreditWarningBanner from './CreditWarningBanner.vue';
 import ChatInputWithMention from '../FocusedNodes/ChatInputWithMention.vue';
 import MessageFocusedNodesChips from '../FocusedNodes/MessageFocusedNodesChips.vue';
+import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { isChatNode } from '@/app/utils/aiUtils';
+import { useLogsStore } from '@/app/stores/logs.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useBrowserNotifications } from '@/app/composables/useBrowserNotifications';
 import { useToast } from '@/app/composables/useToast';
@@ -46,6 +50,7 @@ import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useChatPanelStateStore } from '@/features/ai/assistant/chatPanelState.store';
 import { useReviewChanges } from '@/features/ai/assistant/composables/useReviewChanges';
+import { watchExecutionCompletion } from '@/features/ai/assistant/composables/useExecutionWatcher';
 
 import { N8nAskAssistantChat, N8nInfoTip } from '@n8n/design-system';
 import BuildModeEmptyState from './BuildModeEmptyState.vue';
@@ -93,6 +98,9 @@ const i18n = useI18n();
 const route = useRoute();
 const { goToUpgrade } = usePageRedirectionHelper();
 const toast = useToast();
+const { runWorkflow } = useRunWorkflow({ router });
+const nodeTypesStore = useNodeTypesStore();
+const logsStore = useLogsStore();
 const { updateWorkflow } = useWorkflowUpdate();
 const { handleError } = useErrorHandler({
 	source: 'ai-builder',
@@ -405,10 +413,14 @@ async function onCustomInputSubmit() {
 	await onUserMessage(content);
 }
 
+let mockDataExecutionWatcherStop: (() => void) | undefined;
+
 function onNewWorkflow() {
 	builderStore.resetBuilderChat();
 	processedWorkflowUpdates.value.clear();
 	accumulatedNodeIdsToTidyUp.value = [];
+	mockDataExecutionWatcherStop?.();
+	mockDataExecutionWatcherStop = undefined;
 }
 
 function onFeedback(feedback: RatingFeedback) {
@@ -459,6 +471,13 @@ async function onWorkflowExecuted() {
 	}
 
 	if (executionStatus === 'success') {
+		// Skip sending to AI when re-executing with test data still applied —
+		// the first mock data execution already informed the AI, and re-executions
+		// are just confirmations that don't need AI responses or workflow modifications.
+		if (builderStore.pinDataApplied) {
+			return;
+		}
+
 		await builderStore.sendChatMessage({
 			text: i18n.baseText('aiAssistant.builder.executeMessage.executionSuccess'),
 			type: 'execution',
@@ -487,6 +506,34 @@ async function onWorkflowExecuted() {
 		errorMessage: executionError,
 		errorNodeType,
 		executionStatus: failureStatus,
+	});
+}
+
+async function onExecuteWithMockData() {
+	builderStore.applyGeneratedPinData();
+
+	const triggerNode = (workflowDocumentStore.value?.allNodes ?? []).find((node) =>
+		nodeTypesStore.isTriggerNode(node.type),
+	);
+
+	// Chat trigger nodes require the user to send a message via the logs panel
+	if (triggerNode && isChatNode(triggerNode)) {
+		toast.showMessage({
+			title: i18n.baseText('aiAssistant.builder.toast.title'),
+			message: i18n.baseText('aiAssistant.builder.toast.description'),
+			type: 'info',
+		});
+		logsStore.toggleOpen(true);
+		return;
+	}
+
+	mockDataExecutionWatcherStop = watchExecutionCompletion(() => {
+		mockDataExecutionWatcherStop = undefined;
+		void onWorkflowExecuted();
+	});
+
+	await runWorkflow({
+		triggerNode: workflowsStore.selectedTriggerNodeName ?? triggerNode?.name,
 	});
 }
 
@@ -729,7 +776,11 @@ defineExpose({
 				</Transition>
 			</template>
 			<template #messagesFooter>
-				<ExecuteMessage v-if="showExecuteMessage" @workflow-executed="onWorkflowExecuted" />
+				<ExecuteMessage
+					v-if="showExecuteMessage"
+					@workflow-executed="onWorkflowExecuted"
+					@execute-with-mock-data="onExecuteWithMockData"
+				/>
 			</template>
 			<template #placeholder>
 				<BuildModeEmptyState />
