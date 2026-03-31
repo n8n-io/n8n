@@ -59,7 +59,6 @@ interface PersistedAdminSettings {
 	lastMessages?: number;
 	embedderModel?: string;
 	semanticRecallTopK?: number;
-	timeout?: number;
 	subAgentMaxSteps?: number;
 	browserMcp?: boolean;
 	permissions?: Partial<InstanceAiPermissions>;
@@ -136,7 +135,6 @@ export class InstanceAiSettingsService {
 			lastMessages: c.lastMessages,
 			embedderModel: c.embedderModel,
 			semanticRecallTopK: c.semanticRecallTopK,
-			timeout: c.timeout,
 			subAgentMaxSteps: c.subAgentMaxSteps,
 			browserMcp: c.browserMcp,
 			permissions: { ...this.permissions },
@@ -159,7 +157,6 @@ export class InstanceAiSettingsService {
 		if (update.lastMessages !== undefined) c.lastMessages = update.lastMessages;
 		if (update.embedderModel !== undefined) c.embedderModel = update.embedderModel;
 		if (update.semanticRecallTopK !== undefined) c.semanticRecallTopK = update.semanticRecallTopK;
-		if (update.timeout !== undefined) c.timeout = update.timeout;
 		if (update.subAgentMaxSteps !== undefined) c.subAgentMaxSteps = update.subAgentMaxSteps;
 		if (update.browserMcp !== undefined) c.browserMcp = update.browserMcp;
 		if (update.permissions) {
@@ -439,7 +436,6 @@ export class InstanceAiSettingsService {
 		if (persisted.embedderModel !== undefined) c.embedderModel = persisted.embedderModel;
 		if (persisted.semanticRecallTopK !== undefined)
 			c.semanticRecallTopK = persisted.semanticRecallTopK;
-		if (persisted.timeout !== undefined) c.timeout = persisted.timeout;
 		if (persisted.subAgentMaxSteps !== undefined) c.subAgentMaxSteps = persisted.subAgentMaxSteps;
 		if (persisted.browserMcp !== undefined) c.browserMcp = persisted.browserMcp;
 		if (persisted.permissions) {
@@ -491,7 +487,6 @@ export class InstanceAiSettingsService {
 			lastMessages: c.lastMessages,
 			embedderModel: c.embedderModel,
 			semanticRecallTopK: c.semanticRecallTopK,
-			timeout: c.timeout,
 			subAgentMaxSteps: c.subAgentMaxSteps,
 			browserMcp: c.browserMcp,
 			permissions: this.permissions,

@@ -169,6 +169,55 @@ describe('InstanceAiController', () => {
 		it('should require instanceAi:message scope', () => {
 			expect(scopeOf('events')).toEqual({ scope: 'instanceAi:message', globalOnly: true });
 		});
+
+		it('should close SSE stream when thread ownership changes after pre-creation subscribe', async () => {
+			// Simulate: thread does not exist at connect time
+			memoryService.checkThreadOwnership.mockResolvedValueOnce('not_found');
+
+			const sseRes = mock<Response & { flush?: () => void }>({
+				setHeader: jest.fn(),
+				flushHeaders: jest.fn(),
+				write: jest.fn(),
+				end: jest.fn(),
+				flush: jest.fn(),
+			});
+
+			// Capture the subscribe handler
+			let subscribeHandler: ((stored: { id: number; event: unknown }) => void) | undefined;
+			eventBus.subscribe.mockImplementation((_threadId, handler) => {
+				subscribeHandler = handler as typeof subscribeHandler;
+				return jest.fn();
+			});
+			eventBus.getEventsAfter.mockReturnValue([]);
+			instanceAiService.getThreadStatus.mockReturnValue({
+				hasActiveRun: false,
+				isSuspended: false,
+				backgroundTasks: [],
+			} as never);
+
+			const sseReq = mock<AuthenticatedRequest>({
+				user: { id: USER_ID },
+				headers: {},
+				once: jest.fn(),
+			});
+
+			await controller.events(sseReq, sseRes, THREAD_ID, { lastEventId: undefined } as never);
+
+			// Now simulate: another user created the thread, so ownership is 'other_user'
+			memoryService.checkThreadOwnership.mockResolvedValueOnce('other_user');
+
+			// Fire an event through the subscriber
+			subscribeHandler!({
+				id: 1,
+				event: { type: 'text-delta', runId: 'r1', agentId: 'a1', payload: { text: 'secret' } },
+			});
+
+			// Allow the async ownership check to resolve
+			await new Promise((resolve) => setImmediate(resolve));
+
+			// The stream should be closed, not written to
+			expect(sseRes.end).toHaveBeenCalled();
+		});
 	});
 
 	describe('cancel', () => {

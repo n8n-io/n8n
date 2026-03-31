@@ -26,7 +26,7 @@ export class DemoPage extends BasePage {
 	async dispatchPushEvent(event: Record<string, unknown>) {
 		await this.page.evaluate((evt) => {
 			/* eslint-disable @typescript-eslint/naming-convention */
-			const app = document.querySelector('#n8n-app') as HTMLElement & {
+			const app = document.querySelector('#app') as HTMLElement & {
 				__vue_app__?: { config: { globalProperties: { $pinia: { _s: Map<string, unknown> } } } };
 			};
 			const pinia = app?.__vue_app__?.config.globalProperties.$pinia;

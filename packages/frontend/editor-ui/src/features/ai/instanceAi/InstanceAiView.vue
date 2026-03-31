@@ -1,5 +1,14 @@
 <script lang="ts" setup>
-import { computed, onMounted, onUnmounted, provide, ref, useTemplateRef, watch } from 'vue';
+import {
+	computed,
+	nextTick,
+	onMounted,
+	onUnmounted,
+	provide,
+	ref,
+	useTemplateRef,
+	watch,
+} from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
 	N8nHeading,
@@ -193,6 +202,9 @@ watch(
 	() => store.currentThreadId,
 	() => {
 		userScrolledUp.value = false;
+		void nextTick(() => {
+			chatInputRef.value?.focus();
+		});
 	},
 );
 
@@ -225,6 +237,9 @@ watch(
 	},
 	{ immediate: true },
 );
+
+// --- Chat input ref for auto-focus ---
+const chatInputRef = ref<InstanceType<typeof InstanceAiInput> | null>(null);
 
 // --- Floating input dynamic padding ---
 const inputContainerRef = useTemplateRef<HTMLElement>('inputContainer');
@@ -426,6 +441,7 @@ function handleStop() {
 								@dismiss="creditBannerDismissed = true"
 							/>
 							<InstanceAiInput
+								ref="chatInputRef"
 								:is-streaming="store.isStreaming"
 								@submit="handleSubmit"
 								@stop="handleStop"
@@ -483,6 +499,7 @@ function handleStop() {
 									@dismiss="creditBannerDismissed = true"
 								/>
 								<InstanceAiInput
+									ref="chatInputRef"
 									:is-streaming="store.isStreaming"
 									@submit="handleSubmit"
 									@stop="handleStop"

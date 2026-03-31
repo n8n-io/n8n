@@ -118,8 +118,23 @@ async function handleConnect(req: http.IncomingMessage, res: http.ServerResponse
 		return;
 	}
 
-	// Check allowedOrigins — skip confirmation for trusted URLs
-	const isAllowed = state.config.allowedOrigins.some((origin) => url.startsWith(origin));
+	// Check allowedOrigins — skip confirmation for trusted URLs.
+	// Use exact origin matching via `new URL()` to prevent spoofing
+	// (e.g. "https://example.com.attacker.com" must not match "https://example.com").
+	let parsedOrigin: string;
+	try {
+		parsedOrigin = new URL(url).origin;
+	} catch {
+		jsonResponse(res, 400, { error: 'Invalid URL' });
+		return;
+	}
+	const isAllowed = state.config.allowedOrigins.some((origin) => {
+		try {
+			return new URL(origin).origin === parsedOrigin;
+		} catch {
+			return false;
+		}
+	});
 
 	if (!isAllowed) {
 		const approved = await daemonOptions.confirmConnect(url);
@@ -144,6 +159,7 @@ async function handleConnect(req: http.IncomingMessage, res: http.ServerResponse
 				state.connectedAt = null;
 				state.connectedUrl = null;
 				printDisconnected();
+				daemonOptions.onStatusChange?.('disconnected');
 			},
 		});
 

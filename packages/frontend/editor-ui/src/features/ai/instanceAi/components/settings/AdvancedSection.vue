@@ -15,21 +15,6 @@ const { store, getString, getNumber, getBool } = useSettingsField();
 		</N8nHeading>
 
 		<N8nInputLabel
-			:label="i18n.baseText('instanceAi.settings.timeout.label')"
-			:bold="false"
-			size="small"
-		>
-			<N8nInputNumber
-				:class="$style.numberInput"
-				:model-value="getNumber('timeout') ?? 120000"
-				size="small"
-				:min="0"
-				:step="10000"
-				@update:model-value="store.setField('timeout', $event ?? 120000)"
-			/>
-		</N8nInputLabel>
-
-		<N8nInputLabel
 			:label="i18n.baseText('instanceAi.settings.subAgentMaxSteps.label')"
 			:bold="false"
 			size="small"

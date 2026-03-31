@@ -14,10 +14,22 @@ const PRIVATE_RANGES = [
 	{ start: ip4ToNum('169.254.0.0'), end: ip4ToNum('169.254.255.255') },
 	// 0.0.0.0/8
 	{ start: ip4ToNum('0.0.0.0'), end: ip4ToNum('0.255.255.255') },
+	// 100.64.0.0/10  (Carrier-grade NAT, RFC 6598 — common in cloud VPCs)
+	{ start: ip4ToNum('100.64.0.0'), end: ip4ToNum('100.127.255.255') },
+	// 192.0.0.0/24  (IETF protocol assignments, RFC 6890)
+	{ start: ip4ToNum('192.0.0.0'), end: ip4ToNum('192.0.0.255') },
+	// 198.18.0.0/15  (Benchmarking, RFC 2544)
+	{ start: ip4ToNum('198.18.0.0'), end: ip4ToNum('198.19.255.255') },
+	// 240.0.0.0/4  (Reserved, class E)
+	{ start: ip4ToNum('240.0.0.0'), end: ip4ToNum('255.255.255.255') },
 ];
 
 /** IPv6 loopback and link-local prefixes. */
 const PRIVATE_IPV6_PREFIXES = ['::1', 'fe80:', 'fd', 'fc'];
+
+/** Regex for IPv4-mapped IPv6 addresses like ::ffff:127.0.0.1 or ::ffff:7f00:1 */
+const IPV4_MAPPED_IPV6_DOTTED = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/i;
+const IPV4_MAPPED_IPV6_HEX = /^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/i;
 
 function ip4ToNum(ip: string): number {
 	const parts = ip.split('.').map(Number);
@@ -30,8 +42,35 @@ function isPrivateIPv4(ip: string): boolean {
 	return PRIVATE_RANGES.some((r) => num >= r.start && num <= r.end);
 }
 
+/**
+ * Extract the embedded IPv4 address from an IPv4-mapped IPv6 address.
+ * Handles both dotted notation (::ffff:127.0.0.1) and hex notation (::ffff:7f00:1).
+ * Returns null if the address is not an IPv4-mapped IPv6 address.
+ */
+function extractMappedIPv4(ip: string): string | null {
+	const dottedMatch = IPV4_MAPPED_IPV6_DOTTED.exec(ip);
+	if (dottedMatch) return dottedMatch[1];
+
+	const hexMatch = IPV4_MAPPED_IPV6_HEX.exec(ip);
+	if (hexMatch) {
+		const high = parseInt(hexMatch[1], 16);
+		const low = parseInt(hexMatch[2], 16);
+		// eslint-disable-next-line no-bitwise
+		return `${(high >> 8) & 0xff}.${high & 0xff}.${(low >> 8) & 0xff}.${low & 0xff}`;
+	}
+
+	return null;
+}
+
 function isPrivateIPv6(ip: string): boolean {
 	const lower = ip.toLowerCase();
+
+	// Check IPv4-mapped IPv6 addresses (e.g. ::ffff:127.0.0.1, ::ffff:7f00:1)
+	const mappedIPv4 = extractMappedIPv4(lower);
+	if (mappedIPv4 !== null) {
+		return isPrivateIPv4(mappedIPv4);
+	}
+
 	return PRIVATE_IPV6_PREFIXES.some((prefix) => lower.startsWith(prefix));
 }
 

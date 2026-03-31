@@ -36,7 +36,7 @@ export function createCreateDataTableTool(context: InstanceAiContext) {
 				.object({
 					id: z.string(),
 					name: z.string(),
-					projectId: z.string(),
+					projectId: z.string().optional(),
 					columns: z.array(z.object({ id: z.string(), name: z.string(), type: z.string() })),
 					createdAt: z.string(),
 					updatedAt: z.string(),

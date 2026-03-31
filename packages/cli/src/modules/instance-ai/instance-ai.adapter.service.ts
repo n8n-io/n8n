@@ -385,11 +385,26 @@ export class InstanceAiAdapterService {
 				json: WorkflowJSON,
 				_options?: { projectId?: string },
 			) {
+				// Strip redactionPolicy if the user lacks the required scope —
+				// mirrors the check in createFromWorkflowJSON() and WorkflowService.update().
+				const settings = (json.settings ?? {}) as IWorkflowSettings;
+				if (settings.redactionPolicy !== undefined) {
+					const canUpdateRedaction = await userHasScopes(
+						user,
+						['workflow:updateRedactionSetting'],
+						false,
+						{ workflowId },
+					);
+					if (!canUpdateRedaction) {
+						delete settings.redactionPolicy;
+					}
+				}
+
 				let updateData = workflowRepository.create({
 					name: json.name,
 					nodes: json.nodes as unknown as INode[],
 					connections: json.connections as unknown as IConnections,
-					settings: (json.settings ?? {}) as IWorkflowSettings,
+					settings,
 					pinData: sdkPinDataToRuntime(json.pinData),
 				} as Partial<WorkflowEntity>);
 
@@ -1102,13 +1117,13 @@ export class InstanceAiAdapterService {
 		};
 	}
 
-	/** Shared cache for web research results. */
+	/** Cache for web research results, keyed per user to prevent cross-user data leaks. */
 	private readonly webResearchCache = new LRUCache<FetchedPage>({
 		maxEntries: 100,
 		ttlMs: 15 * 60 * 1000,
 	});
 
-	/** Shared cache for web search results. */
+	/** Cache for web search results, keyed per user to prevent cross-user data leaks. */
 	private readonly searchCache = new LRUCache<WebSearchResponse>({
 		maxEntries: 100,
 		ttlMs: 15 * 60 * 1000,
@@ -1121,6 +1136,7 @@ export class InstanceAiAdapterService {
 		const fetchCache = this.webResearchCache;
 		const searchCacheRef = this.searchCache;
 		const settingsService = this.settingsService;
+		const userId = user.id;
 
 		// Lazy search method that resolves credentials on first call
 		let resolvedSearchMethod: ReturnType<typeof this.buildSearchMethod>;
@@ -1133,6 +1149,7 @@ export class InstanceAiAdapterService {
 					config.searxngUrl ?? '',
 					searchCacheRef,
 					searchProxyConfig,
+					userId,
 				);
 				searchResolved = true;
 			}
@@ -1152,8 +1169,10 @@ export class InstanceAiAdapterService {
 					authorizeUrl?: (targetUrl: string) => Promise<void>;
 				},
 			) {
+				const cacheKey = `${userId}:${url}`;
+
 				// Check cache first
-				const cached = fetchCache.get(url);
+				const cached = fetchCache.get(cacheKey);
 				if (cached) {
 					// If cached result redirected to a different host, authorize it
 					if (options?.authorizeUrl && cached.finalUrl) {
@@ -1181,7 +1200,7 @@ export class InstanceAiAdapterService {
 				const result = await maybeSummarize(page);
 
 				// Cache the result
-				fetchCache.set(url, result);
+				fetchCache.set(cacheKey, result);
 
 				return result;
 			},
@@ -1199,6 +1218,7 @@ export class InstanceAiAdapterService {
 		searxngUrl: string,
 		cache: LRUCache<WebSearchResponse>,
 		searchProxyConfig?: ServiceProxyConfig,
+		userId?: string,
 	) {
 		type SearchOptions = {
 			maxResults?: number;
@@ -1206,12 +1226,14 @@ export class InstanceAiAdapterService {
 			excludeDomains?: string[];
 		};
 
+		const keyPrefix = userId ? `${userId}:` : '';
+
 		// When the AI service proxy is enabled (licensed instance), search always goes
 		// through the proxy which provides managed Brave Search with credit tracking.
 		// This intentionally takes priority over local SearXNG or API key configuration.
 		if (searchProxyConfig) {
 			return async (query: string, options?: SearchOptions) => {
-				const cacheKey = JSON.stringify([query, options ?? {}]);
+				const cacheKey = `${keyPrefix}${JSON.stringify([query, options ?? {}])}`;
 				const cached = cache.get(cacheKey);
 				if (cached) return cached;
 
@@ -1226,7 +1248,7 @@ export class InstanceAiAdapterService {
 
 		if (apiKey) {
 			return async (query: string, options?: SearchOptions) => {
-				const cacheKey = JSON.stringify([query, options ?? {}]);
+				const cacheKey = `${keyPrefix}${JSON.stringify([query, options ?? {}])}`;
 				const cached = cache.get(cacheKey);
 				if (cached) return cached;
 
@@ -1238,7 +1260,7 @@ export class InstanceAiAdapterService {
 
 		if (searxngUrl) {
 			return async (query: string, options?: SearchOptions) => {
-				const cacheKey = JSON.stringify([query, options ?? {}]);
+				const cacheKey = `${keyPrefix}${JSON.stringify([query, options ?? {}])}`;
 				const cached = cache.get(cacheKey);
 				if (cached) return cached;
 
