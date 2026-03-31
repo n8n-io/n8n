@@ -5,8 +5,6 @@ packages:
   - packages/extensions/**
   - packages/testing/**
 
-catalogMode: strict
-
 catalog:
   '@azure/identity': 4.13.0
   '@codemirror/autocomplete': 6.20.0
@@ -45,6 +43,7 @@ catalog:
   axios: 1.13.5
   basic-auth: 2.0.1
   callsites: 3.1.0
+  cheerio: 1.1.0
   chokidar: 4.0.3
   eslint: 9.29.0
   fast-glob: 3.2.12
@@ -86,6 +85,8 @@ catalog:
   xss: 1.0.15
   zod: 3.25.67
   zod-to-json-schema: 3.23.3
+
+catalogMode: strict
 
 catalogs:
   e2e:
