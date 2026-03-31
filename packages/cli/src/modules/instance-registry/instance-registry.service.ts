@@ -113,6 +113,9 @@ export class InstanceRegistryService {
 		this.heartbeatInterval = setInterval(async () => {
 			try {
 				await this.storage.heartbeat(this.buildRegistration());
+				this.logger.debug('Heartbeat updated', {
+					info: await this.storage.getAllRegistrations(),
+				});
 			} catch (error) {
 				this.logger.warn('Heartbeat failed', { error });
 			}
