@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach, Mock } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useBrowserNotifications, __resetpermissionState } from './useBrowserNotifications';
 import { LOCAL_STORAGE_BROWSER_NOTIFICATION_METADATA } from '@/app/constants/localStorage';
 import { SEVEN_DAYS_IN_MILLIS } from '@/app/constants/durations';
