@@ -2980,6 +2980,48 @@ describe('SourceControlImportService', () => {
 				);
 			});
 
+			it('should rename columns when name changes but ID stays the same', async () => {
+				// Arrange
+				const mockDataTable = {
+					id: 'dt1',
+					name: 'Test Table',
+					ownedBy: {
+						type: 'team',
+						teamId: 'project1',
+						teamName: 'Team Project 1',
+					},
+					columns: [{ id: 'col1', name: 'newColumnName', type: 'string', index: 0 }],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-02T00:00:00.000Z',
+				};
+
+				const existingTable = {
+					id: 'dt1',
+					name: 'Test Table',
+					projectId: 'project1',
+					columns: [{ id: 'col1', name: 'oldColumnName' }],
+				};
+
+				fsReadFile.mockResolvedValue(JSON.stringify(mockDataTable) as any);
+				dataTableRepository.findOne.mockResolvedValue(existingTable as any);
+				dataTableColumnRepository.find.mockResolvedValue([
+					{ id: 'col1', name: 'oldColumnName' },
+				] as any);
+				projectRepository.findOne.mockResolvedValue({ id: 'project1', type: 'team' } as any);
+
+				// Act
+				await service.importDataTablesFromWorkFolder([mockCandidate], mockUser.id);
+
+				// Assert
+				expect(dataTableDDLService.renameColumn).toHaveBeenCalledWith(
+					'dt1',
+					'oldColumnName',
+					'newColumnName',
+					'sqlite',
+					expect.anything(),
+				);
+			});
+
 			it('should delete removed columns', async () => {
 				// Arrange
 				const mockDataTable = {
