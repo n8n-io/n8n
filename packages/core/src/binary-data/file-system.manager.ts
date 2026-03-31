@@ -138,6 +138,24 @@ export class FileSystemManager implements BinaryData.Manager {
 		await fs.rm(tempDir, { recursive: true });
 	}
 
+	async getTotalStorageSize(): Promise<number> {
+		const entries = await fs.readdir(this.storagePath, { recursive: true, withFileTypes: true });
+
+		const filePaths = entries
+			.filter((entry) => entry.isFile())
+			.map((entry) => path.join(entry.parentPath, entry.name));
+
+		const sizes = await Promise.all(filePaths.map(async (p) => (await fs.stat(p)).size));
+
+		return sizes.reduce((sum, size) => sum + size, 0);
+	}
+
+	async locationExists(location: BinaryData.FileLocation): Promise<boolean> {
+		const dirPath = this.resolvePath(this.toRelativePath(location), 'binary_data');
+
+		return await exists(dirPath);
+	}
+
 	async deleteManyByFileId(ids: string[]): Promise<void> {
 		const parsedIds = ids.flatMap((id) => {
 			try {

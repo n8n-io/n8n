@@ -4,6 +4,7 @@ import { AiAssistantConfig } from './configs/ai-assistant.config';
 import { AiBuilderConfig } from './configs/ai-builder.config';
 import { AiConfig } from './configs/ai.config';
 import { AuthConfig } from './configs/auth.config';
+import { BinaryDataPruningConfig } from './configs/binary-data-pruning.config';
 import { CacheConfig } from './configs/cache.config';
 import { ChatHubConfig } from './configs/chat-hub.config';
 import { CredentialsConfig } from './configs/credentials.config';
@@ -43,6 +44,7 @@ import { Config, Env, Nested } from './decorators';
 
 export { Config, Env, Nested } from './decorators';
 export { AiConfig } from './configs/ai.config';
+export { BinaryDataPruningConfig } from './configs/binary-data-pruning.config';
 export { DatabaseConfig, SqliteConfig } from './configs/database.config';
 export { InstanceSettingsConfig } from './configs/instance-settings-config';
 export { sampleRateSchema } from './configs/sentry.config';
@@ -242,4 +244,7 @@ export class GlobalConfig {
 
 	@Nested
 	chatHub: ChatHubConfig;
+
+	@Nested
+	binaryDataPruning: BinaryDataPruningConfig;
 }

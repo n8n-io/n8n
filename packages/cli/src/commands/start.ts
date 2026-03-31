@@ -28,6 +28,7 @@ import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { Server } from '@/server';
 import { OwnershipService } from '@/services/ownership.service';
+import { BinaryDataPruningService } from '@/services/pruning/binary-data-pruning.service';
 import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service';
 import { UrlService } from '@/services/url.service';
 import { WaitTracker } from '@/wait-tracker';
@@ -360,6 +361,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		await this.server.start();
 
 		Container.get(ExecutionsPruningService).init();
+		Container.get(BinaryDataPruningService).init();
 		Container.get(WorkflowHistoryCompactionService).init();
 
 		if (this.globalConfig.executions.mode === 'regular') {

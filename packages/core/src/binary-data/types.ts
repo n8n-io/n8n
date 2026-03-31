@@ -58,6 +58,18 @@ export namespace BinaryData {
 		deleteMany?(locations: FileLocation[]): Promise<void>;
 		deleteManyByFileId?(ids: string[]): Promise<void>;
 
+		/**
+		 * Calculate total size of all stored binary data in bytes.
+		 * Present for `FileSystem`, absent for `ObjectStore` and `Database`.
+		 */
+		getTotalStorageSize?(): Promise<number>;
+
+		/**
+		 * Check whether binary data exists for a given location.
+		 * Present for `FileSystem`, absent for `ObjectStore` and `Database`.
+		 */
+		locationExists?(location: FileLocation): Promise<boolean>;
+
 		copyByFileId(targetLocation: FileLocation, sourceFileId: string): Promise<string>;
 		copyByFilePath(
 			targetLocation: FileLocation,

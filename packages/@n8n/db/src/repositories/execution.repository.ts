@@ -16,6 +16,7 @@ import {
 	IsNull,
 	LessThan,
 	LessThanOrEqual,
+	MoreThan,
 	MoreThanOrEqual,
 	Not,
 	Repository,
@@ -58,6 +59,9 @@ import type {
 	IExecutionResponse,
 } from '../entities/types-db';
 import { separate } from '../utils/separate';
+
+/** Execution statuses that indicate the execution is still in progress. */
+const IN_PROGRESS_STATUSES: ExecutionStatus[] = ['new', 'running', 'waiting'];
 
 class PostgresLiveRowsRetrievalError extends UnexpectedError {
 	constructor(rows: unknown) {
@@ -559,7 +563,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			.where({
 				deletedAt: IsNull(),
 				// Only mark executions as deleted if they are in an end state
-				status: Not(In(['new', 'running', 'waiting'])),
+				status: Not(In(IN_PROGRESS_STATUSES)),
 			})
 			// Only mark executions as deleted if they are not annotated
 			.andWhere('id NOT IN ' + annotatedExecutionsSubQuery.getQuery())
@@ -596,6 +600,26 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			executionId,
 			storedAt,
 		}));
+	}
+
+	/**
+	 * Return completed executions ordered by ID ascending, optionally starting
+	 * after `afterId`. Excludes in-progress executions (new, running, waiting).
+	 */
+	async findCompletedExecutionsAfter(afterId: string | undefined, batchSize: number) {
+		const where: FindOptionsWhere<ExecutionEntity> = {
+			status: Not(In(IN_PROGRESS_STATUSES)),
+			...(afterId && { id: MoreThan(afterId) }),
+		};
+
+		const results = await this.find({
+			select: ['id', 'workflowId'],
+			where,
+			order: { id: 'ASC' },
+			take: batchSize,
+		});
+
+		return results.map(({ id, workflowId }) => ({ executionId: id, workflowId }));
 	}
 
 	async deleteByIds(executionIds: string[]) {
