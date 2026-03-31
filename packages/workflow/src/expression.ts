@@ -47,6 +47,56 @@ setErrorHandler((error: Error) => {
 });
 
 /**
+ * Map errors from the VM expression evaluator to host-side error types.
+ *
+ * The VM bridge can only reconstruct plain Error objects with .name set,
+ * because it can't import ExpressionError/ExpressionExtensionError from
+ * packages/workflow without creating a circular dependency.
+ *
+ * TODO: Move this reconstruction into the bridge once expression-runtime
+ * can depend on workflow error classes (or a shared error package exists).
+ */
+function mapVmError(error: unknown): Error {
+	if (isExpressionError(error)) return error;
+
+	// Runtime error types (TimeoutError, MemoryLimitError, etc.) must be
+	// checked before the name-based reconstruction below, because they
+	// extend the runtime's ExpressionError and share .name === 'ExpressionError'.
+	if (error instanceof TimeoutError) {
+		const wrapped = new ExpressionError('Expression timed out');
+		wrapped.cause = error;
+		return wrapped;
+	}
+	if (error instanceof MemoryLimitError) {
+		const wrapped = new ExpressionError('Expression exceeded memory limit');
+		wrapped.cause = error;
+		return wrapped;
+	}
+	if (error instanceof SecurityViolationError) {
+		const wrapped = new ExpressionError(error.message);
+		wrapped.cause = error;
+		return wrapped;
+	}
+
+	// Name-based reconstruction for errors that crossed the isolate boundary
+	if (error instanceof Error && error.name === 'ExpressionExtensionError') {
+		const reconstructed = new ExpressionExtensionError(error.message);
+		Object.assign(reconstructed, error);
+		return reconstructed;
+	}
+	if (error instanceof Error && error.name === 'ExpressionError') {
+		const reconstructed = new ExpressionError(error.message);
+		Object.assign(reconstructed, error);
+		return reconstructed;
+	}
+
+	if (isSyntaxError(error)) return new ExpressionError('invalid syntax');
+
+	if (error instanceof Error) return error;
+	return new Error(String(error));
+}
+
+/**
  * Creates a safe Object wrapper that removes dangerous static methods
  * that could be used to bypass property access sanitization.
  *
@@ -540,30 +590,7 @@ export class Expression {
 				});
 				return result as string | null | (() => unknown);
 			} catch (error) {
-				if (isExpressionError(error)) throw error;
-
-				if (error instanceof TimeoutError) {
-					const wrapped = new ExpressionError('Expression timed out');
-					// Assign cause manually because ExecutionBaseError drops it if it's an instance of Error
-					wrapped.cause = error;
-					throw wrapped;
-				}
-				if (error instanceof MemoryLimitError) {
-					const wrapped = new ExpressionError('Expression exceeded memory limit');
-					// Assign cause manually because ExecutionBaseError drops it if it's an instance of Error
-					wrapped.cause = error;
-					throw wrapped;
-				}
-				if (error instanceof SecurityViolationError) {
-					const wrapped = new ExpressionError(error.message);
-					// Assign cause manually because ExecutionBaseError drops it if it's an instance of Error
-					wrapped.cause = error;
-					throw wrapped;
-				}
-
-				if (isSyntaxError(error)) throw new ExpressionError('invalid syntax');
-
-				throw error;
+				throw mapVmError(error);
 			}
 		}
 

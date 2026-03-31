@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "2.14.0",
+  "version": "2.15.0",
   "private": true,
   "engines": {
     "node": ">=22.16",
@@ -49,9 +49,7 @@
     "test:show:report": "pnpm --filter=n8n-playwright exec playwright show-report",
     "watch": "turbo run watch --concurrency=32",
     "webhook": "./packages/cli/bin/n8n webhook",
-    "worker": "./packages/cli/bin/n8n worker",
-    "dev:fs-proxy": "pnpm --filter @n8n/fs-proxy build && node packages/@n8n/fs-proxy/dist/cli.js serve",
-    "stop:fs-proxy": "lsof -ti :7655 | xargs kill 2>/dev/null; echo 'fs-proxy stopped'"
+    "worker": "./packages/cli/bin/n8n worker"
   },
   "devDependencies": {
     "@babel/preset-env": "^7.26.0",

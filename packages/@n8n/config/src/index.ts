@@ -68,6 +68,7 @@ export { CronLoggingConfig } from './configs/logging.config';
 export { WorkflowHistoryCompactionConfig } from './configs/workflow-history-compaction.config';
 export { ChatHubConfig } from './configs/chat-hub.config';
 export { InstanceAiConfig } from './configs/instance-ai.config';
+export { PasswordConfig } from './configs/password.config';
 
 const protocolSchema = z.enum(['http', 'https']);
 

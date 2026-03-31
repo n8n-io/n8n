@@ -78,7 +78,9 @@ jobs:
           node-version: 24.13.1
 
       # Remove after https://github.com/npm/cli/issues/8547 gets resolved
-      - run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+      - run: echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Add beta/next tags to NPM
         if: needs.validate-inputs.outputs.release_channel == 'beta'
@@ -112,19 +114,23 @@ jobs:
 
       - name: Tag stable/latest Docker image
         if: needs.validate-inputs.outputs.release_channel == 'stable'
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
         run: |
-          docker buildx imagetools create -t "${{ secrets.DOCKER_USERNAME }}/n8n:stable" "${{ secrets.DOCKER_USERNAME }}/n8n:${{ needs.validate-inputs.outputs.version }}"
-          docker buildx imagetools create -t "${{ secrets.DOCKER_USERNAME }}/n8n:latest" "${{ secrets.DOCKER_USERNAME }}/n8n:${{ needs.validate-inputs.outputs.version }}"
-          docker buildx imagetools create -t "${{ secrets.DOCKER_USERNAME }}/runners:stable" "${{ secrets.DOCKER_USERNAME }}/runners:${{ needs.validate-inputs.outputs.version }}"
-          docker buildx imagetools create -t "${{ secrets.DOCKER_USERNAME }}/runners:latest" "${{ secrets.DOCKER_USERNAME }}/runners:${{ needs.validate-inputs.outputs.version }}"
+          docker buildx imagetools create -t "${DOCKER_USERNAME}/n8n:stable" "${DOCKER_USERNAME}/n8n:${{ needs.validate-inputs.outputs.version }}"
+          docker buildx imagetools create -t "${DOCKER_USERNAME}/n8n:latest" "${DOCKER_USERNAME}/n8n:${{ needs.validate-inputs.outputs.version }}"
+          docker buildx imagetools create -t "${DOCKER_USERNAME}/runners:stable" "${DOCKER_USERNAME}/runners:${{ needs.validate-inputs.outputs.version }}"
+          docker buildx imagetools create -t "${DOCKER_USERNAME}/runners:latest" "${DOCKER_USERNAME}/runners:${{ needs.validate-inputs.outputs.version }}"
 
       - name: Tag beta/next Docker image
         if: needs.validate-inputs.outputs.release_channel == 'beta'
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
         run: |
-          docker buildx imagetools create -t "${{ secrets.DOCKER_USERNAME }}/n8n:beta" "${{ secrets.DOCKER_USERNAME }}/n8n:${{ needs.validate-inputs.outputs.version }}"
-          docker buildx imagetools create -t "${{ secrets.DOCKER_USERNAME }}/n8n:next" "${{ secrets.DOCKER_USERNAME }}/n8n:${{ needs.validate-inputs.outputs.version }}"
-          docker buildx imagetools create -t "${{ secrets.DOCKER_USERNAME }}/runners:beta" "${{ secrets.DOCKER_USERNAME }}/runners:${{ needs.validate-inputs.outputs.version }}"
-          docker buildx imagetools create -t "${{ secrets.DOCKER_USERNAME }}/runners:next" "${{ secrets.DOCKER_USERNAME }}/runners:${{ needs.validate-inputs.outputs.version }}"
+          docker buildx imagetools create -t "${DOCKER_USERNAME}/n8n:beta" "${DOCKER_USERNAME}/n8n:${{ needs.validate-inputs.outputs.version }}"
+          docker buildx imagetools create -t "${DOCKER_USERNAME}/n8n:next" "${DOCKER_USERNAME}/n8n:${{ needs.validate-inputs.outputs.version }}"
+          docker buildx imagetools create -t "${DOCKER_USERNAME}/runners:beta" "${DOCKER_USERNAME}/runners:${{ needs.validate-inputs.outputs.version }}"
+          docker buildx imagetools create -t "${DOCKER_USERNAME}/runners:next" "${DOCKER_USERNAME}/runners:${{ needs.validate-inputs.outputs.version }}"
 
   release-to-github-container-registry:
     name: Release to GitHub Container Registry
