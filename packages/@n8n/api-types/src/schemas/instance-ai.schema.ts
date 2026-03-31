@@ -817,7 +817,6 @@ export interface InstanceAiAdminSettingsResponse {
 	daytonaCredentialId: string | null;
 	searchCredentialId: string | null;
 	localGatewayDisabled: boolean;
-	/** When false, chat routes and main UI are hidden; settings remain available. */
 	instanceAiEnabled: boolean;
 }
 

@@ -44,7 +44,7 @@ export class InstanceAiConfig {
 
 	/**
 	 * When false, Instance AI chat and related user-facing features are off; admins can
-	 * still open Instance AI settings. Persisted via admin settings API (overrides default).
+	 * still open Instance AI settings. Persisted via admin settings API.
 	 */
 	instanceAiEnabled: boolean = true;
 
