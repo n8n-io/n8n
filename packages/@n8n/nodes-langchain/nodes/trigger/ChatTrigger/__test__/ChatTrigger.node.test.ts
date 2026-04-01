@@ -21,6 +21,14 @@ describe('ChatTrigger Node', () => {
 
 		chatTrigger = new ChatTrigger();
 
+		// Provide socket methods required by the streaming keepalive configuration
+		mockRequest.socket = {
+			...mockRequest.socket,
+			setTimeout: jest.fn(),
+			setNoDelay: jest.fn(),
+			setKeepAlive: jest.fn(),
+		} as unknown as Request['socket'];
+
 		mockContext.getRequestObject.mockReturnValue(mockRequest);
 		mockContext.getResponseObject.mockReturnValue(mockResponse);
 		mockContext.getNodeParameter.mockImplementation(
