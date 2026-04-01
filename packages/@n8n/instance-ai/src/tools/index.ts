@@ -44,8 +44,10 @@ import { createReportVerificationVerdictTool } from './orchestration/report-veri
 import { createUpdateTasksTool } from './orchestration/update-tasks.tool';
 import { createVerifyBuiltWorkflowTool } from './orchestration/verify-built-workflow.tool';
 import { createAskUserTool } from './shared/ask-user.tool';
+import { createChooseWorkflowTemplateTool } from './templates/choose-workflow-template.tool';
 import { createSearchTemplateParametersTool } from './templates/search-template-parameters.tool';
 import { createSearchTemplateStructuresTool } from './templates/search-template-structures.tool';
+import { createSearchWorkflowTemplatesTool } from './templates/search-workflow-templates.tool';
 import { createFetchUrlTool } from './web-research/fetch-url.tool';
 import { createWebSearchTool } from './web-research/web-search.tool';
 import { createApplyWorkflowCredentialsTool } from './workflows/apply-workflow-credentials.tool';
@@ -104,6 +106,7 @@ export function createAllTools(context: InstanceAiContext) {
 		'explore-node-resources': createExploreNodeResourcesTool(context),
 		'search-template-structures': createSearchTemplateStructuresTool(),
 		'search-template-parameters': createSearchTemplateParametersTool(),
+		'search-workflow-templates': createSearchWorkflowTemplatesTool(),
 		'get-best-practices': createGetBestPracticesTool(),
 		'list-data-tables': createListDataTablesTool(context),
 		'create-data-table': createCreateDataTableTool(context),
@@ -165,6 +168,7 @@ export function createAllTools(context: InstanceAiContext) {
 export function createOrchestrationTools(context: OrchestrationContext) {
 	return {
 		plan: createPlanTool(context),
+		'choose-workflow-template': createChooseWorkflowTemplateTool(context),
 		'update-tasks': createUpdateTasksTool(context),
 		delegate: createDelegateTool(context),
 		'build-workflow-with-agent': createBuildWorkflowAgentTool(context),

@@ -1798,6 +1798,7 @@ export class InstanceAiService {
 			...(data.nodeParameters ? { nodeParameters: data.nodeParameters } : {}),
 			...(data.testTriggerNode ? { testTriggerNode: data.testTriggerNode } : {}),
 			...(data.answers ? { answers: data.answers } : {}),
+			...(data.templateChoice ? { templateChoice: data.templateChoice } : {}),
 		};
 
 		void this.processResumedStream(agent, resumeData, {

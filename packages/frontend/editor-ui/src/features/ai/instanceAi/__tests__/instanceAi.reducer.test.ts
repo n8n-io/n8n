@@ -614,6 +614,10 @@ describe('instanceAi.reducer', () => {
 			expect(getRenderHint('agent-data-table-manager')).toBe('data-table');
 		});
 
+		test('returns default for search-workflow-templates after chooser cleanup', () => {
+			expect(getRenderHint('search-workflow-templates')).toBe('default');
+		});
+
 		test('returns default for other tool names', () => {
 			expect(getRenderHint('some-tool')).toBe('default');
 		});

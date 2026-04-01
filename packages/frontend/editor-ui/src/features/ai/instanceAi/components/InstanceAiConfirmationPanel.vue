@@ -2,6 +2,7 @@
 import { N8nButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
+import type { InstanceAiConfirmResponse } from '@n8n/api-types';
 import { useInstanceAiStore, type PendingConfirmationItem } from '../instanceAi.store';
 import { useToolLabel } from '../toolLabels';
 import DomainAccessApproval from './DomainAccessApproval.vue';
@@ -10,6 +11,13 @@ import type { QuestionAnswer } from './InstanceAiQuestions.vue';
 import InstanceAiQuestions from './InstanceAiQuestions.vue';
 import InstanceAiWorkflowSetup from './InstanceAiWorkflowSetup.vue';
 import PlanReviewPanel, { type PlannedTaskArg } from './PlanReviewPanel.vue';
+import TemplateChoicePanel from './TemplateChoicePanel.vue';
+import {
+	getTemplateChoiceIntroMessage,
+	getTemplateChoiceTemplates,
+	getTemplateChoiceTotalResults,
+	isTemplateChoiceToolCall,
+} from '../templateChoice.utils';
 
 const store = useInstanceAiStore();
 const i18n = useI18n();
@@ -44,6 +52,7 @@ type ConfirmationChunk = ApprovalWrappedGroup | StandaloneChunk;
 function isApprovalWrapped(item: PendingConfirmationItem): boolean {
 	const conf = item.toolCall.confirmation!;
 	if (conf.domainAccess) return true;
+	if (isTemplateChoiceToolCall(item.toolCall)) return false;
 	// Generic approval: no special fields and no inputType
 	if (
 		!conf.credentialRequests?.length &&
@@ -112,9 +121,9 @@ function handleTextSkip(requestId: string) {
 	void store.confirmAction(requestId, false);
 }
 
-function handleQuestionsSubmit(requestId: string, answers: QuestionAnswer[]) {
-	store.resolveConfirmation(requestId, 'approved');
-	void store.confirmAction(
+async function handleQuestionsSubmit(item: PendingConfirmationItem, answers: QuestionAnswer[]) {
+	const requestId = item.toolCall.confirmation!.requestId;
+	const success = await store.confirmAction(
 		requestId,
 		true,
 		undefined,
@@ -124,7 +133,10 @@ function handleQuestionsSubmit(requestId: string, answers: QuestionAnswer[]) {
 		undefined,
 		undefined,
 		answers,
+		item.toolCall.confirmation?.selectedTemplateChoice,
 	);
+	if (!success) return;
+	store.resolveConfirmation(requestId, 'approved');
 }
 
 function handlePlanApprove(requestId: string) {
@@ -135,6 +147,26 @@ function handlePlanApprove(requestId: string) {
 function handlePlanRequestChanges(requestId: string, feedback: string) {
 	store.resolveConfirmation(requestId, 'denied');
 	void store.confirmAction(requestId, false, undefined, undefined, undefined, feedback);
+}
+
+async function handleTemplateChoiceSubmit(
+	requestId: string,
+	templateChoice: NonNullable<InstanceAiConfirmResponse['templateChoice']>,
+) {
+	const success = await store.confirmAction(
+		requestId,
+		true,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		templateChoice,
+	);
+	if (!success) return;
+	store.resolveConfirmation(requestId, 'approved');
 }
 
 /** True when every item in the approval-wrapped group is a generic approval (not domain access). */
@@ -190,8 +222,21 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 					:class="$style.confirmation"
 					:questions="chunk.item.toolCall.confirmation!.questions!"
 					:intro-message="chunk.item.toolCall.confirmation!.introMessage"
+					@submit="(answers) => handleQuestionsSubmit(chunk.item, answers)"
+				/>
+
+				<!-- Template choice -->
+				<TemplateChoicePanel
+					v-else-if="isTemplateChoiceToolCall(chunk.item.toolCall)"
+					:key="'template-choice-' + chunk.item.toolCall.confirmation!.requestId"
+					:class="$style.confirmation"
+					:request-id="chunk.item.toolCall.confirmation!.requestId"
+					:templates="getTemplateChoiceTemplates(chunk.item.toolCall)"
+					:total-results="getTemplateChoiceTotalResults(chunk.item.toolCall)"
+					:intro-message="getTemplateChoiceIntroMessage(chunk.item.toolCall)"
 					@submit="
-						(answers) => handleQuestionsSubmit(chunk.item.toolCall.confirmation!.requestId, answers)
+						(choice) =>
+							handleTemplateChoiceSubmit(chunk.item.toolCall.confirmation!.requestId, choice)
 					"
 				/>
 

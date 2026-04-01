@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { ref, computed } from 'vue';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { N8nTooltip } from '@n8n/design-system';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import AttachmentPreview from './AttachmentPreview.vue';
@@ -27,11 +27,29 @@ defineExpose({
 	focus: () => chatInputRef.value?.focus(),
 });
 
+const isDisabled = computed(() => store.hasBlockingTemplateChoice);
+const isBlockingTemplateQuestion = computed(
+	() =>
+		store.pendingConfirmations?.some(
+			(item) =>
+				item.toolCall.toolName === 'choose-workflow-template' &&
+				item.toolCall.confirmation?.inputType === 'questions',
+		) ?? false,
+);
+
 const canSubmit = computed(
-	() => (inputText.value.trim().length > 0 || attachedFiles.value.length > 0) && !props.isStreaming,
+	() =>
+		(inputText.value.trim().length > 0 || attachedFiles.value.length > 0) &&
+		!props.isStreaming &&
+		!isDisabled.value,
 );
 
 const placeholder = computed(() => {
+	if (isDisabled.value) {
+		return isBlockingTemplateQuestion.value
+			? i18n.baseText('instanceAi.input.templateAdaptationBlocking' as BaseTextKey)
+			: i18n.baseText('instanceAi.input.templateChoiceBlocking');
+	}
 	if (store.amendContext) {
 		return i18n.baseText('instanceAi.input.amendPlaceholder', {
 			interpolate: { role: store.amendContext.role },
@@ -91,6 +109,7 @@ function handleFileRemove(file: File) {
 		:placeholder="placeholder"
 		:is-streaming="props.isStreaming"
 		:can-submit="canSubmit"
+		:disabled="isDisabled"
 		show-voice
 		show-attach
 		@submit="handleSubmit"
@@ -117,6 +136,7 @@ function handleFileRemove(file: File) {
 			>
 				<button
 					:class="[$style.researchToggle, { [$style.active]: store.researchMode }]"
+					:disabled="isDisabled"
 					data-test-id="instance-ai-research-toggle"
 					@click="store.toggleResearchMode()"
 				>

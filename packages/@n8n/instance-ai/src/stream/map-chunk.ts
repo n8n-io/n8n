@@ -14,6 +14,18 @@ const questionItemSchema = z.object({
 	options: z.array(z.string()).optional(),
 });
 
+const templateChoiceItemSchema = z.object({
+	templateId: z.number(),
+	name: z.string(),
+	description: z.string().optional(),
+});
+
+const selectedTemplateChoiceSchema = z.object({
+	action: z.enum(['adapt_with_agent', 'use_now']),
+	templateId: z.number(),
+	templateName: z.string(),
+});
+
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
@@ -186,7 +198,13 @@ export function mapMastraChunkToEvent(
 		// Extract optional inputType (e.g., 'text' for ask-user, 'questions', 'plan-review')
 		const rawInputType =
 			typeof suspendPayload.inputType === 'string' ? suspendPayload.inputType : undefined;
-		const validInputTypes = ['approval', 'text', 'questions', 'plan-review'] as const;
+		const validInputTypes = [
+			'approval',
+			'text',
+			'questions',
+			'plan-review',
+			'template-choice',
+		] as const;
 		const inputType = (validInputTypes as readonly string[]).includes(rawInputType ?? '')
 			? (rawInputType as (typeof validInputTypes)[number])
 			: undefined;
@@ -206,6 +224,25 @@ export function mapMastraChunkToEvent(
 		// Extract optional intro message
 		const introMessage =
 			typeof suspendPayload.introMessage === 'string' ? suspendPayload.introMessage : undefined;
+
+		// Extract optional template-choice metadata
+		let templates: Array<z.infer<typeof templateChoiceItemSchema>> | undefined;
+		if (Array.isArray(suspendPayload.templates)) {
+			const parsed = suspendPayload.templates
+				.map((item) => templateChoiceItemSchema.safeParse(item))
+				.filter((result) => result.success)
+				.map((result) => result.data);
+			if (parsed.length > 0) {
+				templates = parsed;
+			}
+		}
+
+		const totalResults =
+			typeof suspendPayload.totalResults === 'number' ? suspendPayload.totalResults : undefined;
+
+		const selectedTemplateChoice = isRecord(suspendPayload.selectedTemplateChoice)
+			? selectedTemplateChoiceSchema.safeParse(suspendPayload.selectedTemplateChoice)
+			: null;
 
 		// Extract optional task list (for plan-review)
 		let tasks: TaskList | undefined;
@@ -280,6 +317,11 @@ export function mapMastraChunkToEvent(
 				...(workflowId ? { workflowId } : {}),
 				...(questions ? { questions } : {}),
 				...(introMessage ? { introMessage } : {}),
+				...(templates ? { templates } : {}),
+				...(totalResults !== undefined ? { totalResults } : {}),
+				...(selectedTemplateChoice?.success
+					? { selectedTemplateChoice: selectedTemplateChoice.data }
+					: {}),
 				...(tasks ? { tasks } : {}),
 			},
 		};

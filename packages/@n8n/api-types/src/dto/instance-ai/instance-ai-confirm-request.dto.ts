@@ -24,4 +24,11 @@ export class InstanceAiConfirmRequestDto extends Z.class({
 			}),
 		)
 		.optional(),
+	templateChoice: z
+		.object({
+			action: z.enum(['adapt_with_agent', 'use_now']),
+			templateId: z.number(),
+			templateName: z.string(),
+		})
+		.optional(),
 }) {}

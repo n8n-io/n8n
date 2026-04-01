@@ -447,6 +447,102 @@ describe('agent-run-reducer', () => {
 				projectId: 'proj-456',
 			});
 		});
+
+		it('confirmation-request stores template-choice data on the tool call', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-1', 'choose-workflow-template'));
+			reduceEvent(state, {
+				type: 'confirmation-request',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: {
+					requestId: 'req-3',
+					toolCallId: 'tc-1',
+					toolName: 'choose-workflow-template',
+					args: {},
+					severity: 'info',
+					message: 'Pick a template',
+					inputType: 'template-choice',
+					templates: [
+						{
+							templateId: 101,
+							name: 'Slack alert triage',
+							description: 'Route inbound leads to Slack for qualification',
+						},
+					],
+					totalResults: 4,
+					introMessage: 'I found a few close matches.',
+				},
+			});
+
+			const tc = state.toolCallsById['tc-1'];
+			expect(tc.confirmation).toEqual({
+				requestId: 'req-3',
+				severity: 'info',
+				message: 'Pick a template',
+				inputType: 'template-choice',
+				templates: [
+					{
+						templateId: 101,
+						name: 'Slack alert triage',
+						description: 'Route inbound leads to Slack for qualification',
+					},
+				],
+				totalResults: 4,
+				introMessage: 'I found a few close matches.',
+			});
+		});
+
+		it('confirmation-request stores selected template choice on chooser follow-up questions', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-1', 'choose-workflow-template'));
+			reduceEvent(state, {
+				type: 'confirmation-request',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: {
+					requestId: 'req-4',
+					toolCallId: 'tc-1',
+					toolName: 'choose-workflow-template',
+					args: {},
+					severity: 'info',
+					message: 'What would you like to change?',
+					inputType: 'questions',
+					questions: [
+						{
+							id: 'template_changes',
+							question: 'What would you like to change?',
+							type: 'text',
+						},
+					],
+					selectedTemplateChoice: {
+						action: 'adapt_with_agent',
+						templateId: 101,
+						templateName: 'Slack alert triage',
+					},
+				},
+			});
+
+			const tc = state.toolCallsById['tc-1'];
+			expect(tc.confirmation).toEqual({
+				requestId: 'req-4',
+				severity: 'info',
+				message: 'What would you like to change?',
+				inputType: 'questions',
+				questions: [
+					{
+						id: 'template_changes',
+						question: 'What would you like to change?',
+						type: 'text',
+					},
+				],
+				selectedTemplateChoice: {
+					action: 'adapt_with_agent',
+					templateId: 101,
+					templateName: 'Slack alert triage',
+				},
+			});
+		});
 	});
 
 	describe('tasks-update', () => {
