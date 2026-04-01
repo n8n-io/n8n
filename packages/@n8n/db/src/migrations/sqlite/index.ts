@@ -150,7 +150,6 @@ import { CreateRoleMappingRuleTable1772800000000 } from '../common/1772800000000
 import { CreateCredentialDependencyTable1773000000000 } from '../common/1773000000000-CreateCredentialDependencyTable';
 import { AddRestoreFieldsToWorkflowBuilderSession1774280963551 } from '../common/1774280963551-AddRestoreFieldsToWorkflowBuilderSession';
 import { CreateInstanceVersionHistoryTable1774854660000 } from '../common/1774854660000-CreateInstanceVersionHistoryTable';
-import { AddInsightsReadScopeToApiKeyRoles1775000000000 } from '../common/1775000000000-AddInsightsReadScopeToApiKeyRoles';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -306,7 +305,6 @@ const sqliteMigrations: Migration[] = [
 	CreateCredentialDependencyTable1773000000000,
 	AddRestoreFieldsToWorkflowBuilderSession1774280963551,
 	CreateInstanceVersionHistoryTable1774854660000,
-	AddInsightsReadScopeToApiKeyRoles1775000000000,
 ];
 
 export { sqliteMigrations };
