@@ -1,0 +1,57 @@
+{
+	"name": "Pipedrive v2 activity delete test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "d4e5f6a7-b8c9-0123-defa-234567890123",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"authentication": "apiToken",
+				"resource": "activity",
+				"operation": "delete",
+				"activityId": 10
+			},
+			"id": "e5f6a7b8-c9d0-1234-efab-345678901234",
+			"name": "Pipedrive",
+			"type": "n8n-nodes-base.pipedrive",
+			"typeVersion": 2,
+			"position": [200, 0],
+			"credentials": {
+				"pipedriveApi": {
+					"id": "cred-1",
+					"name": "Pipedrive API"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "f6a7b8c9-d0e1-2345-fabc-456789012345",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [400, 0]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"success": true
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [[{ "node": "Pipedrive", "type": "main", "index": 0 }]]
+		},
+		"Pipedrive": {
+			"main": [[{ "node": "No Operation, do nothing", "type": "main", "index": 0 }]]
+		}
+	}
+}
