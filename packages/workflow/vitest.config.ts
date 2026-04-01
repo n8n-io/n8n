@@ -14,7 +14,7 @@ export default defineConfig({
 			{
 				test: {
 					...sharedTestConfig,
-					name: 'current-engine',
+					name: 'legacy-engine',
 				},
 			},
 			{
