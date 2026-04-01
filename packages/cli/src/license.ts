@@ -489,7 +489,6 @@ export class License implements LicenseProvider {
 		const now = new Date();
 		const diffMs = terminationTime - now.getTime();
 		const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-		console.log('DIFF DAYS: ', diffDays);
 
 		// Return 0 for already terminated licenses instead of negative values
 		return Math.max(0, diffDays);
