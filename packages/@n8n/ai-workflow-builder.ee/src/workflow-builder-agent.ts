@@ -153,11 +153,9 @@ export class WorkflowBuilderAgent {
 	private stageLLMs: StageLLMs;
 	private logger?: Logger;
 	private tracer?: LangChainTracer;
-	private instanceUrl?: string;
 	private runMetadata?: Record<string, unknown>;
 	private onGenerationSuccess?: () => Promise<void>;
 	private nodeDefinitionDirs?: string[];
-	private resourceLocatorCallback?: ResourceLocatorCallback;
 	private onTelemetryEvent?: (event: string, properties: ITelemetryTrackProperties) => void;
 	private assistantHandler?: AssistantHandler;
 	/** Feature flags stored from the first chat call to ensure consistency across a session */
@@ -169,11 +167,9 @@ export class WorkflowBuilderAgent {
 		this.logger = config.logger;
 		this.checkpointer = config.checkpointer;
 		this.tracer = config.tracer;
-		this.instanceUrl = config.instanceUrl;
 		this.runMetadata = config.runMetadata;
 		this.onGenerationSuccess = config.onGenerationSuccess;
 		this.nodeDefinitionDirs = config.nodeDefinitionDirs;
-		this.resourceLocatorCallback = config.resourceLocatorCallback;
 		this.onTelemetryEvent = config.onTelemetryEvent;
 		this.assistantHandler = config.assistantHandler;
 	}
@@ -187,11 +183,8 @@ export class WorkflowBuilderAgent {
 			parsedNodeTypes: this.parsedNodeTypes,
 			stageLLMs: this.stageLLMs,
 			logger: this.logger,
-			instanceUrl: this.instanceUrl,
 			checkpointer: this.checkpointer,
 			featureFlags,
-			onGenerationSuccess: this.onGenerationSuccess,
-			resourceLocatorCallback: this.resourceLocatorCallback,
 			assistantHandler: this.assistantHandler,
 		});
 	}

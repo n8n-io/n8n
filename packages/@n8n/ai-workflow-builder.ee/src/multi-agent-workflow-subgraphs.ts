@@ -26,7 +26,6 @@ import {
 import { ParentGraphState } from './parent-graph-state';
 import { DiscoverySubgraph } from './subgraphs/discovery.subgraph';
 import type { BaseSubgraph } from './subgraphs/subgraph-interface';
-import type { ResourceLocatorCallback } from './types/callbacks';
 import {
 	type CoordinationLogEntry,
 	type CoordinationMetadata,
@@ -84,15 +83,10 @@ export interface MultiAgentSubgraphConfig {
 	/** Per-stage LLM configuration */
 	stageLLMs: StageLLMs;
 	logger?: Logger;
-	instanceUrl?: string;
 	checkpointer?: MemorySaver;
 	/** Token threshold for auto-compaction. Defaults to DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS */
 	autoCompactThresholdTokens?: number;
 	featureFlags?: BuilderFeatureFlags;
-	/** Callback invoked when a successful generation completes (e.g., for credit deduction) */
-	onGenerationSuccess?: () => Promise<void>;
-	/** Callback for fetching resource locator options */
-	resourceLocatorCallback?: ResourceLocatorCallback;
 	/** Assistant handler for routing help/debug queries via the SDK */
 	assistantHandler?: AssistantHandler;
 }
