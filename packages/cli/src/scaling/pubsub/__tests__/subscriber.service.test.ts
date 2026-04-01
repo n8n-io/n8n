@@ -6,6 +6,7 @@ import { mock } from 'jest-mock-extended';
 
 import type { RedisClientService } from '@/services/redis-client.service';
 
+import type { PubSubEventBus } from '../pubsub.eventbus';
 import type { McpRelayMessage } from '../subscriber.service';
 import { Subscriber } from '../subscriber.service';
 
@@ -104,6 +105,102 @@ describe('Subscriber', () => {
 				'n8n-instance-1:n8n.worker-response',
 				expect.any(Function),
 			);
+		});
+	});
+
+	describe('debounce', () => {
+		beforeEach(() => {
+			jest.useFakeTimers();
+			client.on.mockClear();
+		});
+
+		afterEach(() => {
+			jest.useRealTimers();
+		});
+
+		function getMessageHandler() {
+			const call = client.on.mock.calls.find(([event]) => event === 'message');
+			expect(call).toBeDefined();
+			return call![1] as (channel: string, msg: string) => void;
+		}
+
+		function makeCommandMsg(command: string, debounce: boolean, payload?: unknown) {
+			return JSON.stringify({ command, senderId: 'other-host', debounce, payload });
+		}
+
+		it('should not drop different debounced commands arriving within 300ms', () => {
+			const pubsubEventBus = mock<PubSubEventBus>();
+			new Subscriber(
+				mockLogger(),
+				mock(),
+				pubsubEventBus,
+				redisClientService,
+				executionsConfig,
+				globalConfig,
+			);
+
+			const messageHandler = getMessageHandler();
+
+			messageHandler('n8n:n8n.commands', makeCommandMsg('reload-license', true));
+			messageHandler('n8n:n8n.commands', makeCommandMsg('reload-external-secrets-providers', true));
+
+			jest.advanceTimersByTime(300);
+
+			expect(pubsubEventBus.emit).toHaveBeenCalledWith('reload-license', undefined);
+			expect(pubsubEventBus.emit).toHaveBeenCalledWith(
+				'reload-external-secrets-providers',
+				undefined,
+			);
+			expect(pubsubEventBus.emit).toHaveBeenCalledTimes(2);
+		});
+
+		it('should debounce repeated identical commands within 300ms', () => {
+			const pubsubEventBus = mock<PubSubEventBus>();
+			new Subscriber(
+				mockLogger(),
+				mock(),
+				pubsubEventBus,
+				redisClientService,
+				executionsConfig,
+				globalConfig,
+			);
+
+			const messageHandler = getMessageHandler();
+
+			messageHandler('n8n:n8n.commands', makeCommandMsg('reload-license', true));
+			messageHandler('n8n:n8n.commands', makeCommandMsg('reload-license', true));
+			messageHandler('n8n:n8n.commands', makeCommandMsg('reload-license', true));
+
+			jest.advanceTimersByTime(300);
+
+			expect(pubsubEventBus.emit).toHaveBeenCalledWith('reload-license', undefined);
+			expect(pubsubEventBus.emit).toHaveBeenCalledTimes(1);
+		});
+
+		it('should not debounce immediate commands', () => {
+			const pubsubEventBus = mock<PubSubEventBus>();
+			new Subscriber(
+				mockLogger(),
+				mock(),
+				pubsubEventBus,
+				redisClientService,
+				executionsConfig,
+				globalConfig,
+			);
+
+			const messageHandler = getMessageHandler();
+
+			const payload = { workflowId: 'wf-1', activeVersionId: 'v-1', activationMode: 'init' };
+			messageHandler(
+				'n8n:n8n.commands',
+				makeCommandMsg('add-webhooks-triggers-and-pollers', false, payload),
+			);
+
+			expect(pubsubEventBus.emit).toHaveBeenCalledWith(
+				'add-webhooks-triggers-and-pollers',
+				payload,
+			);
+			expect(pubsubEventBus.emit).toHaveBeenCalledTimes(1);
 		});
 	});
 
