@@ -169,6 +169,38 @@ export class WorkflowRunner {
 			this.activeExecutions.attachResponsePromise(executionId, responsePromise);
 		}
 
+		// Set up streaming heartbeat on the main process that holds the HTTP response.
+		// This must happen BEFORE the queue/local decision because in queue mode the
+		// execution runs on a worker process that has no access to the HTTP response.
+		let heartbeatInterval: NodeJS.Timeout | undefined;
+		if (data.streamingEnabled && data.httpResponse) {
+			const STREAMING_HEARTBEAT_INTERVAL_MS = 30_000;
+			const keepaliveChunk = '{"type":"keepalive"}\n';
+			const res = data.httpResponse;
+			this.logger.debug('[streaming-heartbeat] Starting heartbeat', {
+				executionId,
+				executionsMode: this.executionsConfig.mode,
+				hasFlush: typeof res.flush === 'function',
+			});
+			heartbeatInterval = setInterval(() => {
+				if (!res.writableEnded) {
+					res.write(keepaliveChunk);
+					if (typeof res.flush === 'function') {
+						(res as unknown as { flush: () => void }).flush();
+					}
+					this.logger.debug('[streaming-heartbeat] Sent keepalive', { executionId });
+				} else {
+					this.logger.debug('[streaming-heartbeat] Skipped — response already ended', {
+						executionId,
+					});
+				}
+			}, STREAMING_HEARTBEAT_INTERVAL_MS);
+		} else if (data.streamingEnabled) {
+			this.logger.warn('[streaming-heartbeat] Streaming enabled but no httpResponse attached', {
+				executionId,
+			});
+		}
+
 		// @TODO: Reduce to true branch once feature is stable
 		const shouldEnqueue =
 			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true'
@@ -210,6 +242,15 @@ export class WorkflowRunner {
 					...(data.projectId && { projectId: data.projectId }),
 					...(data.projectName && { projectName: data.projectName }),
 				});
+			});
+		}
+
+		// Clean up the streaming heartbeat when the execution finishes
+		if (heartbeatInterval) {
+			const postExecutePromise = this.activeExecutions.getPostExecutePromise(executionId);
+			void postExecutePromise.finally(() => {
+				clearInterval(heartbeatInterval);
+				this.logger.debug('[streaming-heartbeat] Cleared heartbeat', { executionId });
 			});
 		}
 
@@ -286,31 +327,10 @@ export class WorkflowRunner {
 			});
 
 			if (data.streamingEnabled) {
-				// Send periodic keepalive comments to prevent reverse proxies
-				// (e.g. Cloudflare ~100s idle timeout) from killing the connection
-				// during long tool calls that produce no chunks.
-				// Uses a JSON keepalive object (not just '\n') to ensure the
-				// compression middleware produces output bytes after flush.
-				// Cleared when the execution finishes (success, error, or timeout).
-				const STREAMING_HEARTBEAT_INTERVAL_MS = 30_000;
-				const keepaliveChunk = '{"type":"keepalive"}\n';
-				const heartbeatInterval = setInterval(() => {
-					if (!data.httpResponse?.writableEnded) {
-						data.httpResponse?.write(keepaliveChunk);
-						if (typeof data.httpResponse?.flush === 'function') {
-							data.httpResponse.flush();
-						}
-					}
-				}, STREAMING_HEARTBEAT_INTERVAL_MS);
-
-				lifecycleHooks.addHandler('workflowExecuteAfter', () => {
-					clearInterval(heartbeatInterval);
-				});
-
 				lifecycleHooks.addHandler('sendChunk', (chunk) => {
 					data.httpResponse?.write(JSON.stringify(chunk) + '\n');
 					if (typeof data.httpResponse?.flush === 'function') {
-						data.httpResponse.flush();
+						(data.httpResponse as unknown as { flush: () => void }).flush();
 					}
 				});
 			}
