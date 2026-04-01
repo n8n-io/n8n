@@ -494,6 +494,7 @@ export class InstanceAiController {
 	// ── Evaluation endpoints ──────────────────────────────────────────────────
 
 	@Post('/eval/execute-with-llm-mock/:workflowId')
+	@GlobalScope('instanceAi:message')
 	async executeWithLlmMock(
 		req: AuthenticatedRequest,
 		_res: Response,

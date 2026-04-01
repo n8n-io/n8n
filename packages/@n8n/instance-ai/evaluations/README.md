@@ -12,9 +12,6 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai workflows --verbose
 
 # Run a single test case
 dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai workflows --filter contact-form --verbose
-
-# Test a specific workflow directly (skip the build step)
-dotenvx run -f ../../../.env.local -- npx tsx evaluations/scripts/test-llm-mock.ts <workflowId>
 ```
 
 The n8n server must be running with `N8N_ENABLED_MODULES=instance-ai`.

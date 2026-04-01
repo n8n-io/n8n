@@ -15,8 +15,11 @@ import type { EvalLlmMockHandler, EvalMockHttpResponse } from './index';
 // Mock credentials
 // ---------------------------------------------------------------------------
 
-// Throwaway RSA key for eval mode — allows jwt.sign() to succeed so requests
-// reach the intercepted HTTP helpers. Not a secret, never leaves the process.
+// NOT A SECRET — throwaway RSA key used only in eval mode to satisfy OAuth
+// signing requirements so HTTP requests reach the interception layer. This key
+// has no access to any real service. It never leaves the process. The mock
+// credential system needs a structurally valid key for jwt.sign() to succeed;
+// without it, OAuth nodes crash before the HTTP interceptor can capture the request.
 // Generated once offline via: openssl genrsa 2048
 // prettier-ignore
 const EVAL_MOCK_RSA_KEY =
@@ -67,7 +70,10 @@ export function buildEvalMockCredentials(
  * encoding detection, stream handling) works exactly as with a real HTTP response.
  */
 export function serializeMockToHttpResponse(mock: EvalMockHttpResponse) {
-	const body = mock.body instanceof Buffer ? mock.body : Buffer.from(JSON.stringify(mock.body));
+	const body =
+		mock.body instanceof Buffer
+			? mock.body
+			: Buffer.from(typeof mock.body === 'string' ? mock.body : JSON.stringify(mock.body));
 	return { body, headers: mock.headers, statusCode: mock.statusCode, statusMessage: 'OK' };
 }
 
