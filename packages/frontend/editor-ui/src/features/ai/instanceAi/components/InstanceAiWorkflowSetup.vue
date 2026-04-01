@@ -941,6 +941,27 @@ async function handleApply() {
 }
 
 async function handleLater() {
+	// In wizard mode: skip current card and advance to the next one.
+	// The skipped card will have no selection, so buildNodeCredentials()
+	// naturally excludes it from the apply payload.
+	if (!allPreResolved.value || showFullWizard.value) {
+		if (currentCard.value) {
+			selections.value[currentCard.value.id] = null;
+		}
+
+		if (!isNextDisabled.value) {
+			goToNext();
+			return;
+		}
+
+		// Last step: if any card has been completed, auto-apply the partial set
+		if (anyCardComplete.value) {
+			void handleApply();
+			return;
+		}
+	}
+
+	// No cards completed at all (or confirm mode) — defer the whole setup
 	isSubmitted.value = true;
 	isDeferred.value = true;
 
