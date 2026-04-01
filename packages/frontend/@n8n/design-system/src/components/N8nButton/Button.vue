@@ -234,12 +234,9 @@ const handleClick = (event: MouseEvent) => {
 		--button--color--background-hover: var(--background--brand--hover);
 		--button--color--background-active: var(--background--brand--active);
 		--button--color: var(--color--neutral-white);
-		--button--shadow: 0 1px 2px -1px 0
-			light-dark(var(--color--black-alpha-100), var(--color--black-alpha-200));
-		--button--shadow--hover: 0 1px 2px -1px 0
-			light-dark(var(--color--black-alpha-100), var(--color--black-alpha-200));
-		--button--shadow--active: 0 1px 2px -1px 0
-			light-dark(var(--color--black-alpha-100), var(--color--black-alpha-200));
+		--button--shadow: var(--shadow--xs);
+		--button--shadow--hover: var(--shadow--xs);
+		--button--shadow--active: var(--shadow--xs);
 		--button--border-color: var(--background--brand);
 		--button--border-color--hover: var(--background--brand--hover);
 		--button--border-color--active: var(--background--brand--active);
@@ -250,15 +247,9 @@ const handleClick = (event: MouseEvent) => {
 
 	&.subtle {
 		--button--color--background: var(--background--surface);
-		--button--shadow:
-			0 1px 2px -1px light-dark(var(--color--black-alpha-100), var(--color--black-alpha-300)),
-			0 0 0 1.5px light-dark(transparent, var(--color--black-alpha-100));
-		--button--shadow--hover:
-			0 1px 2px -1px light-dark(var(--color--black-alpha-200), var(--color--black-alpha-300)),
-			0 0 0 1px light-dark(transparent, var(--color--black-alpha-100));
-		--button--shadow--active:
-			0 1px 2px -1px light-dark(var(--color--black-alpha-200), var(--color--black-alpha-300)),
-			0 0 0 1px light-dark(transparent, var(--color--black-alpha-100));
+		--button--shadow: var(--shadow--xs);
+		--button--shadow--hover: var(--shadow--xs);
+		--button--shadow--active: var(--shadow--xs);
 		--button--border-color: var(--border-color);
 		--button--border-color--hover: light-dark(
 			var(--color--black-alpha-200),
@@ -275,14 +266,6 @@ const handleClick = (event: MouseEvent) => {
 
 	&.outline {
 		--button--color--background: transparent;
-		--button--color--background-hover: light-dark(
-			var(--color--neutral-150),
-			var(--color--white-alpha-100)
-		);
-		--button--color--background-active: light-dark(
-			var(--color--black-alpha-200),
-			var(--color--white-alpha-200)
-		);
 		--button--border-color: var(--border-color);
 		--button--border-color--hover: light-dark(
 			var(--color--black-alpha-200),
