@@ -5,13 +5,13 @@ import { Column, Entity, Index, PrimaryColumn } from '@n8n/typeorm';
 @Index(['threadId', 'messageGroupId'])
 @Index(['threadId', 'createdAt'])
 export class InstanceAiRunSnapshot extends WithTimestamps {
-	@PrimaryColumn('varchar')
+	@PrimaryColumn('uuid')
 	threadId: string;
 
-	@PrimaryColumn('varchar')
+	@PrimaryColumn({ type: 'varchar', length: 36 })
 	runId: string;
 
-	@Column({ type: 'varchar', nullable: true })
+	@Column({ type: 'varchar', length: 36, nullable: true })
 	messageGroupId: string | null;
 
 	@Column({ type: 'simple-json', nullable: true })

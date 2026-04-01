@@ -3,7 +3,7 @@ import { Column, Entity, PrimaryColumn } from '@n8n/typeorm';
 
 @Entity({ name: 'instance_ai_resources' })
 export class InstanceAiResource extends WithTimestamps {
-	@PrimaryColumn('varchar')
+	@PrimaryColumn({ type: 'varchar', length: 255 })
 	id: string;
 
 	@Column({ type: 'text', nullable: true })

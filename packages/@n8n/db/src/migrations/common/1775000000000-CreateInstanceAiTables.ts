@@ -14,8 +14,8 @@ export class CreateInstanceAiTables1775000000000 implements ReversibleMigration 
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
 		await createTable(table.threads)
 			.withColumns(
-				column('id').varchar().primary.notNull,
-				column('resourceId').varchar().notNull,
+				column('id').uuid.primary.notNull,
+				column('resourceId').varchar(255).notNull,
 				column('title').text.default("''").notNull,
 				column('metadata').json,
 			)
@@ -23,12 +23,12 @@ export class CreateInstanceAiTables1775000000000 implements ReversibleMigration 
 
 		await createTable(table.messages)
 			.withColumns(
-				column('id').varchar().primary.notNull,
-				column('threadId').varchar().notNull,
+				column('id').varchar(36).primary.notNull,
+				column('threadId').uuid.notNull,
 				column('content').text.notNull,
 				column('role').varchar(16).notNull,
 				column('type').varchar(32),
-				column('resourceId').varchar(),
+				column('resourceId').varchar(255),
 			)
 			.withIndexOn('threadId')
 			.withIndexOn('resourceId')
@@ -39,18 +39,18 @@ export class CreateInstanceAiTables1775000000000 implements ReversibleMigration 
 			}).withTimestamps;
 
 		await createTable(table.resources).withColumns(
-			column('id').varchar().primary.notNull,
+			column('id').varchar(255).primary.notNull,
 			column('workingMemory').text,
 			column('metadata').json,
 		).withTimestamps;
 
 		await createTable(table.observationalMemory)
 			.withColumns(
-				column('id').varchar().primary.notNull,
-				column('lookupKey').varchar().notNull,
+				column('id').varchar(36).primary.notNull,
+				column('lookupKey').varchar(255).notNull,
 				column('scope').varchar(16).notNull,
-				column('threadId').varchar(),
-				column('resourceId').varchar().notNull,
+				column('threadId').uuid,
+				column('resourceId').varchar(255).notNull,
 				column('activeObservations').text.default("''").notNull,
 				column('originType').varchar(32).notNull,
 				column('config').text.notNull,
@@ -78,24 +78,28 @@ export class CreateInstanceAiTables1775000000000 implements ReversibleMigration 
 				column('metadata').json,
 			)
 			.withIndexOn('lookupKey')
-			.withIndexOn(['scope', 'threadId', 'resourceId'], true).withTimestamps;
+			.withIndexOn(['scope', 'threadId', 'resourceId'], true)
+			.withForeignKey('threadId', {
+				tableName: table.threads,
+				columnName: 'id',
+				onDelete: 'SET NULL',
+			}).withTimestamps;
 
 		await createTable(table.workflowSnapshots)
 			.withColumns(
-				column('runId').varchar().primary.notNull,
-				column('workflowName').varchar().primary.notNull,
-				column('resourceId').varchar(),
+				column('runId').varchar(36).primary.notNull,
+				column('workflowName').varchar(255).primary.notNull,
+				column('resourceId').varchar(255),
 				column('status').varchar(),
 				column('snapshot').text.notNull,
 			)
-			.withIndexOn('workflowName')
 			.withIndexOn(['workflowName', 'status']).withTimestamps;
 
 		await createTable(table.runSnapshots)
 			.withColumns(
-				column('threadId').varchar().primary.notNull,
-				column('runId').varchar().primary.notNull,
-				column('messageGroupId').varchar(),
+				column('threadId').uuid.primary.notNull,
+				column('runId').varchar(36).primary.notNull,
+				column('messageGroupId').varchar(36),
 				column('runIds').json,
 				column('tree').text.notNull,
 			)
@@ -109,8 +113,8 @@ export class CreateInstanceAiTables1775000000000 implements ReversibleMigration 
 
 		await createTable(table.iterationLogs)
 			.withColumns(
-				column('id').varchar().primary.notNull,
-				column('threadId').varchar().notNull,
+				column('id').varchar(36).primary.notNull,
+				column('threadId').uuid.notNull,
 				column('taskKey').varchar().notNull,
 				column('entry').text.notNull,
 			)

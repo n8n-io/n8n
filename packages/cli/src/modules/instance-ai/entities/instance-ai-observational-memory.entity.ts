@@ -6,20 +6,20 @@ import { Column, Entity, Index, PrimaryColumn } from '@n8n/typeorm';
 	unique: true,
 })
 export class InstanceAiObservationalMemory extends WithTimestamps {
-	@PrimaryColumn('varchar')
+	@PrimaryColumn({ type: 'varchar', length: 36 })
 	id: string;
 
 	@Index()
-	@Column({ type: 'varchar' })
+	@Column({ type: 'varchar', length: 255 })
 	lookupKey: string;
 
 	@Column({ type: 'varchar', length: 16 })
 	scope: string;
 
-	@Column({ type: 'varchar', nullable: true })
+	@Column({ type: 'uuid', nullable: true })
 	threadId: string | null;
 
-	@Column({ type: 'varchar' })
+	@Column({ type: 'varchar', length: 255 })
 	resourceId: string;
 
 	@Column({ type: 'text', default: '' })
