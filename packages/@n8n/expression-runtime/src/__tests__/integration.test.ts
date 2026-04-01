@@ -284,6 +284,18 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 		});
 	});
 
+	it('should not allow __proto__ key to pollute the returned object prototype', () => {
+		const result = evaluator.evaluate(
+			'{{ JSON.parse(\'{"__proto__": {"isAdmin": true}, "name": "test"}\') }}',
+			{ $json: {} },
+		) as Record<string, unknown>;
+
+		expect(result.name).toBe('test');
+		// __proto__ should be a plain data property, not a prototype setter
+		expect(Object.prototype.hasOwnProperty.call(result, '__proto__')).toBe(true);
+		expect(result.isAdmin).toBeUndefined();
+	});
+
 	it('should throw on invalid timezone', async () => {
 		const data = { $json: { x: 1 } };
 
