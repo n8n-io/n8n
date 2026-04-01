@@ -14,6 +14,24 @@ type RequestParameters = {
 	option?: IDataObject;
 };
 
+const REGION_BASE_URLS: Record<string, string> = {
+	'ap-southeast-1': 'https://dashscope-intl.aliyuncs.com',
+	'us-east-1': 'https://dashscope-us.aliyuncs.com',
+	'cn-beijing': 'https://dashscope.aliyuncs.com',
+	'cn-hongkong': 'https://cn-hongkong.dashscope.aliyuncs.com',
+};
+
+export function getBaseUrl(credentials: IDataObject): string {
+	const region = (credentials.region as string) || 'ap-southeast-1';
+
+	if (region === 'eu-central-1') {
+		const workspaceId = credentials.workspaceId as string;
+		return `https://${workspaceId}.eu-central-1.maas.aliyuncs.com`;
+	}
+
+	return REGION_BASE_URLS[region] ?? REGION_BASE_URLS['ap-southeast-1'];
+}
+
 const TERMINAL_STATUSES = ['SUCCEEDED', 'FAILED', 'CANCELED'];
 const DEFAULT_POLL_INTERVAL_MS = 15_000;
 const MAX_POLL_ATTEMPTS = 60; // ~15 min with 15s interval
@@ -28,24 +46,9 @@ export async function apiRequest(
 
 	const credentials = await this.getCredentials('alicloudModelStudioApi');
 
-	let uri = `https://dashscope-intl.aliyuncs.com${endpoint}`;
-	let headers = parameters?.headers ?? {};
-
-	if (credentials.url) {
-		uri = `${credentials?.url}${endpoint}`;
-	}
-
-	if (
-		credentials.header &&
-		typeof credentials.headerName === 'string' &&
-		credentials.headerName &&
-		typeof credentials.headerValue === 'string'
-	) {
-		headers = {
-			...headers,
-			[credentials.headerName]: credentials.headerValue,
-		};
-	}
+	const baseUrl = getBaseUrl(credentials as IDataObject);
+	const uri = `${baseUrl}${endpoint}`;
+	const headers = parameters?.headers ?? {};
 
 	const options = {
 		headers,
@@ -86,11 +89,7 @@ export async function pollTaskResult(
 	pollIntervalMs: number = DEFAULT_POLL_INTERVAL_MS,
 ): Promise<IDataObject> {
 	for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS; attempt++) {
-		const response = await apiRequest.call(
-			this,
-			'GET',
-			`/api/v1/tasks/${taskId}`,
-		);
+		const response = await apiRequest.call(this, 'GET', `/api/v1/tasks/${taskId}`);
 
 		const taskStatus = response?.output?.task_status as string;
 
