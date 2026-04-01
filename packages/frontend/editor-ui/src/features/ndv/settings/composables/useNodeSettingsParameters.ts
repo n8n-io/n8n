@@ -437,7 +437,7 @@ export function useNodeSettingsParameters() {
 					displayKey,
 				);
 			}
-			return nodeHelpers.displayParameter(nodeParams, parameter, '', node, displayKey);
+			return nodeHelpers.displayParameter(nodeParams, effectiveParameter, '', node, displayKey);
 		}
 
 		return nodeHelpers.displayParameter(nodeParameters, effectiveParameter, path, node, displayKey);
