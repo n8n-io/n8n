@@ -490,8 +490,8 @@ export class Agent implements BuiltAgent {
 	): Promise<StreamResult> {
 		const config = await this.ensureBuilt();
 		const { runtime, bus } = this.createRuntime(config);
-		const result = await runtime.stream(this.toMessages(input), options);
 		try {
+			const result = await runtime.stream(this.toMessages(input), options);
 			return { ...result, stream: this.trackStreamBus(result.stream, bus) };
 		} catch (error) {
 			this.cleanupBus(bus);
