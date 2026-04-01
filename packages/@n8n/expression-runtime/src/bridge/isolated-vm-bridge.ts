@@ -362,6 +362,12 @@ export class IsolatedVmBridge implements RuntimeBridge {
 						value = (itemFn as (i: number) => unknown)(itemIndex);
 						startIndex = 2;
 					}
+				} else {
+					const dollarFn = (data as Record<string, unknown>).$;
+					if (path.length >= 2 && path[0] === '$' && typeof dollarFn === 'function') {
+						value = (dollarFn as (name: string) => unknown)(path[1]);
+						startIndex = 2;
+					}
 				}
 				for (let i = startIndex; i < path.length; i++) {
 					value = (value as Record<string, unknown>)?.[path[i]];
@@ -419,6 +425,12 @@ export class IsolatedVmBridge implements RuntimeBridge {
 						arr = (itemFn as (i: number) => unknown)(itemIndex);
 						startIndex = 2;
 					}
+				} else {
+					const dollarFn = (data as Record<string, unknown>).$;
+					if (path.length >= 2 && path[0] === '$' && typeof dollarFn === 'function') {
+						arr = (dollarFn as (name: string) => unknown)(path[1]);
+						startIndex = 2;
+					}
 				}
 				for (let i = startIndex; i < path.length; i++) {
 					arr = (arr as Record<string, unknown>)?.[path[i]];
@@ -462,9 +474,19 @@ export class IsolatedVmBridge implements RuntimeBridge {
 				// Navigate to function, tracking parent to preserve `this` context
 				let fn: unknown = data;
 				let parent: unknown = undefined;
-				for (const key of path) {
+				const dollarFn = (data as Record<string, unknown>).$;
+				if (path.length >= 2 && path[0] === '$' && typeof dollarFn === 'function') {
+					fn = (dollarFn as (name: string) => unknown)(path[1]);
 					parent = fn;
-					fn = (fn as Record<string, unknown>)?.[key];
+					for (let i = 2; i < path.length; i++) {
+						parent = fn;
+						fn = (fn as Record<string, unknown>)?.[path[i]];
+					}
+				} else {
+					for (const key of path) {
+						parent = fn;
+						fn = (fn as Record<string, unknown>)?.[key];
+					}
 				}
 
 				if (typeof fn !== 'function') {
