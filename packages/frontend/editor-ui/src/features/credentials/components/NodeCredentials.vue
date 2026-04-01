@@ -626,14 +626,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 							underline
 							size="small"
 							data-test-id="setup-manually-link"
-							@click="
-								createNewCredential(
-									quickConnectCredentialType ?? type.name,
-									true,
-									showMixedCredentials(type),
-									true,
-								)
-							"
+							@click="createNewCredential(type.name, true, showMixedCredentials(type), true)"
 						>
 							{{ i18n.baseText('nodeCredentials.quickConnect.setupManually') }}
 						</N8nLink>
