@@ -488,10 +488,9 @@ export async function runWorkflowTestCase(
 		// 1. Send prompt to Instance AI and wait for workflow to be built (ONCE)
 		logger.info(`  Building workflow: "${truncate(testCase.prompt, 60)}"`);
 
-		let sseError: Error | undefined;
 		const ssePromise = startSseConnection(client, threadId, events, abortController.signal).catch(
-			(error: unknown) => {
-				sseError = error instanceof Error ? error : new Error(String(error));
+			() => {
+				// SSE errors are non-fatal — workflow discovery falls back to event-based approach
 			},
 		);
 

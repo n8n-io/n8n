@@ -13,9 +13,9 @@ jest.mock('@n8n/instance-ai', () => ({
 	})),
 }));
 
-jest.mock('../eval-api-docs', () => ({ fetchApiDocs: jest.fn() }));
+jest.mock('../api-docs', () => ({ fetchApiDocs: jest.fn() }));
 
-jest.mock('../eval-node-config', () => ({
+jest.mock('../node-config', () => ({
 	extractNodeConfig: jest.fn().mockReturnValue('{}'),
 }));
 
@@ -31,7 +31,7 @@ jest.mock('@n8n/di', () => ({
 
 import type { IHttpRequestOptions, INode } from 'n8n-workflow';
 
-import { createLlmMockHandler } from '../llm-mock-handler';
+import { createLlmMockHandler } from '../mock-handler';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -235,7 +235,7 @@ describe('createLlmMockHandler', () => {
 	});
 
 	it('should cache node config across calls for the same node name', async () => {
-		const { extractNodeConfig } = require('../eval-node-config') as {
+		const { extractNodeConfig } = require('../node-config') as {
 			extractNodeConfig: jest.Mock;
 		};
 		extractNodeConfig.mockReturnValue('{"resource":"message"}');
@@ -250,7 +250,7 @@ describe('createLlmMockHandler', () => {
 	});
 
 	it('should extract config separately for different node names', async () => {
-		const { extractNodeConfig } = require('../eval-node-config') as {
+		const { extractNodeConfig } = require('../node-config') as {
 			extractNodeConfig: jest.Mock;
 		};
 		extractNodeConfig.mockReturnValue('{}');

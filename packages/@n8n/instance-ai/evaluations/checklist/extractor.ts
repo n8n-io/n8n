@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 
 import { createEvalAgent, extractText } from '../../src/utils/eval-agents';
-import { CHECKLIST_EXTRACT_PROMPT } from '../system-prompts/checklist-extract';
+import { CHECKLIST_EXTRACT_PROMPT } from '../system-prompts/builder-checklist-extract';
 import { checklistItemSchema, type ChecklistItem } from '../types';
 
 // ---------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 import type { INode } from 'n8n-workflow';
 
-import { extractNodeConfig } from '../eval-node-config';
+import { extractNodeConfig } from '../node-config';
 
 const makeNode = (parameters: Record<string, unknown>): INode =>
 	({ parameters }) as unknown as INode;
