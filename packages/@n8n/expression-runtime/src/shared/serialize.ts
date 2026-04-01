@@ -1,16 +1,47 @@
 import { DateTime, Duration, Interval } from 'luxon';
 
+/**
+ * Serialized error sentinel returned by host-side bridge callbacks.
+ * When a callback throws, the bridge catches the error and returns this
+ * sentinel instead of letting it cross the isolate boundary (which strips
+ * custom class identity and properties).
+ */
+export interface ErrorSentinel {
+	__isError: true;
+	name: string;
+	message: string;
+	stack?: string;
+	extra?: Record<string, unknown>;
+}
+
 /** Sentinel returned when __prepareForTransfer encounters a lazy proxy. */
 export interface ProxyResultSentinel {
 	__isProxyResult: true;
 	__path: string[];
 }
 
+/** Sentinel wrapping a non-proxy result. */
+export interface DataResultSentinel {
+	__isDataResult: true;
+	__value: unknown;
+}
+
+/** All possible return types from script.runSync in the isolate. */
+export type IsolateResult = ErrorSentinel | ProxyResultSentinel | DataResultSentinel;
+
 export function isProxyResultSentinel(value: unknown): value is ProxyResultSentinel {
 	return (
 		typeof value === 'object' &&
 		value !== null &&
 		(value as Record<string, unknown>).__isProxyResult === true
+	);
+}
+
+export function isDataResultSentinel(value: unknown): value is DataResultSentinel {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		(value as Record<string, unknown>).__isDataResult === true
 	);
 }
 
