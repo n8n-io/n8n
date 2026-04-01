@@ -26,6 +26,65 @@ describe('Workflow Builder', () => {
 			expect(json.settings?.timezone).toBe('America/New_York');
 			expect(json.settings?.executionOrder).toBe('v1');
 		});
+
+		describe('Argument Normalization', () => {
+			const sampleNode = node({
+				type: 'n8n-nodes-base.set',
+				version: 1,
+				config: {
+					name: 'Test Node',
+					parameters: {},
+				},
+			});
+
+			it("Positional Support: createWorkflow('My Work', [nodeInstance]) should have nodeCount: 1", () => {
+				const builder = workflow('My Work', [sampleNode] as unknown[]);
+				const json = builder.toJSON();
+				expect(json.name).toBe('My Work');
+				expect(json.nodes).toHaveLength(1);
+				expect(json.nodes[0].name).toBe('Test Node');
+			});
+
+			it("Settings Preservation: createWorkflow('My Work', [nodeInstance], { settings: { executionOrder: 'v1' } }) must preserve the settings", () => {
+				const builder = workflow('My Work', [sampleNode] as unknown[], {
+					settings: { executionOrder: 'v1' },
+				});
+				const json = builder.toJSON();
+				expect(json.name).toBe('My Work');
+				expect(json.nodes).toHaveLength(1);
+				expect(json.settings?.executionOrder).toBe('v1');
+			});
+
+			it("Legacy Support: createWorkflow('My Work', 'My Name', { saveManualExecutions: true }) must still work", () => {
+				const builder = workflow('My Work', 'My Name', { saveManualExecutions: true });
+				const json = builder.toJSON();
+				expect(json.id).toBe('My Work');
+				expect(json.name).toBe('My Name');
+				expect(json.settings?.saveManualExecutions).toBe(true);
+			});
+
+			it("Empty Array Safety: createWorkflow('My Work', []) should default to the legacy branch and return an empty workflow", () => {
+				const builder = workflow('My Work', []);
+				const json = builder.toJSON();
+				expect(json.name).toBe('My Work');
+				expect(json.nodes).toHaveLength(0);
+			});
+
+			it('Raw Object Injection: Ensure the builder can hydrate a raw JSON object into a GraphNode instance via .add() fallback', () => {
+				const rawNode = {
+					id: '123',
+					type: 'n8n-nodes-base.set',
+					parameters: { test: true },
+					name: 'Raw Node',
+					version: 1,
+				};
+				const builder = workflow('Raw Test', [rawNode] as unknown[]);
+				const json = builder.toJSON();
+				expect(json.nodes).toHaveLength(1);
+				expect(json.nodes[0].name).toBe('Raw Node');
+				expect(json.nodes[0].id).toBe('123');
+			});
+		});
 	});
 
 	describe('.add()', () => {
