@@ -13,6 +13,8 @@ export class AlibabaCloudApi implements ICredentialType {
 
 	displayName = 'Alibaba Cloud';
 
+	icon = 'file:icons/alibabaCloud.svg' as const;
+
 	documentationUrl =
 		'https://www.alibabacloud.com/help/en/model-studio/developer-reference/compatibility-of-openai-with-dashscope';
 
