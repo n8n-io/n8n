@@ -6,7 +6,7 @@ import { OperationalError } from 'n8n-workflow';
 import { DataTableColumnRepository } from './data-table-column.repository';
 import { DataTableRepository } from './data-table.repository';
 import { toTableName } from './utils/sql-utils';
-import { SqlValidator } from './utils/sql-validator';
+import { SqlValidator, type TableColumnSchema } from './utils/sql-validator';
 
 export type TableSchema = {
 	id: string;
@@ -84,18 +84,33 @@ export class DataTableSqlService {
 		options: SqlExecutionOptions = {},
 	): Promise<SqlQueryResult> {
 		const maxRows = options.maxRows ?? DEFAULT_MAX_ROWS;
-		const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+		const timeoutMs = this.sanitizeTimeout(options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
 
-		// 1. Load tables from DB to build logical→physical name mapping
+		// 1. Load tables and columns from DB
 		const tables = await this.dataTableRepository.find({
 			where: { id: In(tableIds), projectId },
 		});
 
-		// Build logical name → physical name mapping, handling name collisions
-		// by appending _2 suffix for the second occurrence.
+		const foundIds = tables.map((t) => t.id);
+		const columns =
+			foundIds.length > 0
+				? await this.dataTableColumnRepository.find({ where: { dataTableId: In(foundIds) } })
+				: [];
+
+		// Group columns by table ID
+		const columnsByTableId = new Map<string, string[]>();
+		for (const col of columns) {
+			const existing = columnsByTableId.get(col.dataTableId) ?? [];
+			existing.push(col.name);
+			columnsByTableId.set(col.dataTableId, existing);
+		}
+
+		// Build logical name → physical name mapping and table schemas
 		const tableMapping = new Map<string, string>();
-		const logicalNames: string[] = [];
+		const tableSchemas: TableColumnSchema[] = [];
 		const seenNames = new Map<string, number>();
+		// System columns available on every table
+		const systemColumns = ['id', 'createdAt', 'updatedAt'];
 
 		for (const table of tables) {
 			const physicalName = toTableName(table.id);
@@ -105,13 +120,18 @@ export class DataTableSqlService {
 
 			const logicalName = count === 0 ? baseName : `${baseName}_${count + 1}`;
 			tableMapping.set(logicalName, physicalName);
-			logicalNames.push(logicalName);
+
+			const userColumns = columnsByTableId.get(table.id) ?? [];
+			tableSchemas.push({
+				name: logicalName,
+				columns: [...systemColumns, ...userColumns],
+			});
 		}
 
 		// 2. Validate and rewrite SQL
 		const dbType = this.dataSource.options.type;
 		const validator = new SqlValidator(dbType);
-		const { rewrittenSql } = validator.validateAndRewrite(sql, logicalNames, tableMapping);
+		const { rewrittenSql } = validator.validateAndRewrite(sql, tableSchemas, tableMapping);
 
 		// 3. Apply LIMIT
 		const limitedSql = this.ensureLimit(rewrittenSql, maxRows);
@@ -170,8 +190,20 @@ export class DataTableSqlService {
 			return await this.executePostgresReadOnly(sql, timeoutMs);
 		}
 
-		// SQLite — execute directly via manager
-		return await this.executeSqliteDirect(sql);
+		// SQLite — execute in read-only mode via PRAGMA query_only
+		return await this.executeSqliteReadOnly(sql);
+	}
+
+	/**
+	 * Coerce timeoutMs to a safe positive integer to prevent SQL injection
+	 * via template literal interpolation in SET LOCAL statement_timeout.
+	 */
+	private sanitizeTimeout(value: number): number {
+		const n = Math.trunc(Number(value));
+		if (!Number.isFinite(n) || n < 0) {
+			return DEFAULT_TIMEOUT_MS;
+		}
+		return n;
 	}
 
 	private async executePostgresReadOnly(
@@ -184,7 +216,7 @@ export class DataTableSqlService {
 
 		try {
 			await queryRunner.query('SET TRANSACTION READ ONLY');
-			await queryRunner.query(`SET LOCAL statement_timeout = ${timeoutMs}`);
+			await queryRunner.query('SET LOCAL statement_timeout = $1', [timeoutMs]);
 			const result = (await queryRunner.query(sql)) as Array<Record<string, unknown>>;
 			await queryRunner.rollbackTransaction();
 			return result;
@@ -200,11 +232,23 @@ export class DataTableSqlService {
 		}
 	}
 
-	private async executeSqliteDirect(sql: string): Promise<Array<Record<string, unknown>>> {
+	private async executeSqliteReadOnly(sql: string): Promise<Array<Record<string, unknown>>> {
+		const queryRunner = this.dataSource.createQueryRunner();
+		await queryRunner.connect();
+
 		try {
-			return await this.dataSource.manager.query(sql);
+			await queryRunner.query('PRAGMA query_only = ON');
+			const result = (await queryRunner.query(sql)) as Array<Record<string, unknown>>;
+			return result;
 		} catch (error) {
 			throw this.sanitizeDbError(error);
+		} finally {
+			await queryRunner.query('PRAGMA query_only = OFF').catch((pragmaErr: unknown) => {
+				this.logger.warn('Failed to reset PRAGMA query_only', { pragmaErr });
+			});
+			await queryRunner.release().catch((releaseErr: unknown) => {
+				this.logger.warn('Failed to release query runner', { releaseErr });
+			});
 		}
 	}
 

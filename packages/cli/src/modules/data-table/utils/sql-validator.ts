@@ -2,12 +2,16 @@ import type { DataSourceOptions } from '@n8n/typeorm';
 
 import { getAllowedFunctions, isAllowedFunction } from './sql-function-allowlist';
 
+// ── Error ──────────────────────────────────────────────────────────
+
 export class SqlValidationError extends Error {
 	constructor(message: string) {
 		super(message);
 		this.name = 'SqlValidationError';
 	}
 }
+
+// ── Types ──────────────────────────────────────────────────────────
 
 export type SqlValidationResult = {
 	type: 'select';
@@ -16,177 +20,258 @@ export type SqlValidationResult = {
 	rewrittenSql: string;
 };
 
-type SqlAstNode = Record<string, unknown>;
+export type TableColumnSchema = {
+	name: string;
+	columns: string[];
+};
 
-function resolveDialect(dbType: DataSourceOptions['type']): string {
-	if (dbType === 'sqlite' || dbType === 'sqlite-pooled') {
-		return 'SQLite';
-	}
-	return 'PostgresQL';
+// ── Token types (internal) ─────────────────────────────────────────
+
+type TokenType =
+	| 'keyword'
+	| 'identifier'
+	| 'number'
+	| 'string'
+	| 'operator'
+	| 'punctuation'
+	| 'star';
+
+type Token = {
+	type: TokenType;
+	value: string;
+	upper: string;
+	start: number;
+	end: number;
+};
+
+type TableRef = {
+	name: string;
+	tokenIndex: number;
+};
+
+// ── Token helpers ──────────────────────────────────────────────────
+
+function isToken(tokens: Token[], index: number, type: TokenType, value?: string): boolean {
+	if (index < 0 || index >= tokens.length) return false;
+	const t = tokens[index];
+	return t.type === type && (value === undefined || t.upper === value.toUpperCase());
 }
 
-// ── Allowlists ──────────────────────────────────────────────────────
-// Every AST node type and operator that can appear in a valid query
-// must be listed here. Anything not listed is rejected.
+function isPunc(tokens: Token[], index: number, value: string): boolean {
+	return isToken(tokens, index, 'punctuation', value);
+}
 
-/** Expression node types the walker will accept. */
-const ALLOWED_EXPR_TYPES = new Set([
-	'column_ref',
-	'binary_expr',
-	'unary_expr',
-	'aggr_func',
-	'function',
-	'number',
-	'single_quote_string',
-	'double_quote_string',
-	'bool',
-	'null',
-	'star',
-	'expr_list',
-	'cast',
-	'case',
-	'when',
-	'else',
-	'default', // internal: column name value wrapper
-	'expr', // internal: column list entry wrapper
-	'interval', // INTERVAL '1 day'
-	'param', // parameterized value
-]);
+function isKeyword(tokens: Token[], index: number, value?: string): boolean {
+	return isToken(tokens, index, 'keyword', value);
+}
 
-/** Binary operators the walker will accept. */
-const ALLOWED_OPERATORS = new Set([
-	'=',
-	'!=',
-	'<>',
-	'<',
-	'>',
-	'<=',
-	'>=',
+function isIdentifier(tokens: Token[], index: number): boolean {
+	return isToken(tokens, index, 'identifier');
+}
+
+// ── Allowlists ─────────────────────────────────────────────────────
+// Security model: every character is tokenized. Every token is validated.
+// Every identifier must resolve to a known table, column, or function.
+// No aliases, no banned-keyword list — the closed-world check on
+// identifiers rejects anything unknown, including SQL keywords that
+// our tokenizer doesn't recognize.
+
+/** SQL keywords allowed in the simplified SELECT subset. */
+const ALLOWED_KEYWORDS = new Set([
+	'SELECT',
+	'FROM',
+	'WHERE',
+	'JOIN',
+	'LEFT',
+	'RIGHT',
+	'INNER',
+	'OUTER',
+	'CROSS',
+	'ON',
 	'AND',
 	'OR',
 	'NOT',
 	'IN',
-	'NOT IN',
 	'BETWEEN',
-	'NOT BETWEEN',
 	'LIKE',
-	'NOT LIKE',
 	'ILIKE',
-	'NOT ILIKE',
 	'IS',
-	'IS NOT',
-	'+',
-	'-',
-	'*',
-	'/',
-	'%',
-	'||', // string concatenation
+	'NULL',
+	'TRUE',
+	'FALSE',
+	'GROUP',
+	'BY',
+	'ORDER',
+	'ASC',
+	'DESC',
+	'LIMIT',
+	'OFFSET',
+	'HAVING',
+	'DISTINCT',
+	'AS', // only valid inside CAST(expr AS type)
+	'CASE',
+	'WHEN',
+	'THEN',
+	'ELSE',
+	'END',
+	'CAST',
 ]);
 
-/** JOIN types allowed in FROM clause. */
-const ALLOWED_JOIN_TYPES = new Set([
-	undefined, // first table in FROM (no join keyword)
-	'INNER JOIN',
-	'LEFT JOIN',
-	'LEFT OUTER JOIN',
-	'RIGHT JOIN',
-	'RIGHT OUTER JOIN',
-	'CROSS JOIN',
-	'JOIN',
+/** CAST target types the validator will accept. */
+const ALLOWED_CAST_TYPES = new Set([
+	'TEXT',
+	'VARCHAR',
+	'CHAR',
+	'CHARACTER',
+	'INTEGER',
+	'INT',
+	'BIGINT',
+	'SMALLINT',
+	'REAL',
+	'FLOAT',
+	'DOUBLE',
+	'NUMERIC',
+	'DECIMAL',
+	'BOOLEAN',
+	'BOOL',
+	'DATE',
+	'TIME',
+	'TIMESTAMP',
+	'DATETIME',
+	'BLOB',
 ]);
 
 /**
- * Strict allowlist-based SQL validator.
- *
- * Security model: every AST node is checked against an explicit allowlist.
- * Anything not recognized is rejected. This means new parser features,
- * subqueries, CTEs, UNIONs, window functions, and any other construct
- * we haven't explicitly vetted will be blocked by default.
+ * Check if the token at `index` is inside a CAST(... AS <type>) expression.
+ * Scans backward from the AS keyword to find the matching '(' and checks
+ * if CAST precedes it.
  */
-export class SqlValidator {
-	private readonly dialect: string;
+function isInsideCast(tokens: Token[], asIndex: number): boolean {
+	let depth = 0;
+	for (let j = asIndex - 1; j >= 0; j--) {
+		if (isPunc(tokens, j, ')')) depth++;
+		if (isPunc(tokens, j, '(')) {
+			if (depth === 0) {
+				return isKeyword(tokens, j - 1, 'CAST');
+			}
+			depth--;
+		}
+	}
+	return false;
+}
 
+// ── Tokenizer ──────────────────────────────────────────────────────
+// Each pattern is tried at the current position using the sticky (y) flag.
+// First match wins. If nothing matches, the character is rejected.
+
+type TokenRule = {
+	type: TokenType | 'skip' | 'error';
+	re: RegExp;
+	message?: string;
+};
+
+const TOKEN_RULES: TokenRule[] = [
+	{ type: 'skip', re: /\s+/y },
+	{ type: 'error', re: /--/y, message: 'Comments are not allowed' },
+	{ type: 'error', re: /\/\*/y, message: 'Comments are not allowed' },
+	{ type: 'string', re: /'(?:[^']|'')*'/y },
+	{ type: 'error', re: /'/y, message: 'Unterminated string literal' },
+	{ type: 'number', re: /\d+(?:\.\d+)?/y },
+	{ type: 'operator', re: /\|\||<=|>=|<>|!=|[=<>+\-/%]/y },
+	{ type: 'star', re: /\*/y },
+	{ type: 'punctuation', re: /[(),.]/y },
+	{ type: 'identifier', re: /[a-zA-Z_]\w*/y }, // classified as keyword below
+];
+
+function tokenize(sql: string): Token[] {
+	const tokens: Token[] = [];
+	let pos = 0;
+
+	while (pos < sql.length) {
+		let matched = false;
+
+		for (const rule of TOKEN_RULES) {
+			rule.re.lastIndex = pos;
+			const m = rule.re.exec(sql);
+			if (!m) continue;
+
+			if (rule.type === 'error') {
+				throw new SqlValidationError(rule.message!);
+			}
+
+			if (rule.type !== 'skip') {
+				const value = m[0];
+				const upper = value.toUpperCase();
+				const type: TokenType =
+					rule.type === 'identifier' && ALLOWED_KEYWORDS.has(upper)
+						? 'keyword'
+						: (rule.type as TokenType);
+
+				tokens.push({ type, value, upper, start: pos, end: pos + value.length });
+			}
+
+			pos += m[0].length;
+			matched = true;
+			break;
+		}
+
+		if (!matched) {
+			throw new SqlValidationError(`Unexpected character '${sql[pos]}' at position ${pos}`);
+		}
+	}
+
+	return tokens;
+}
+
+// ── Validator ──────────────────────────────────────────────────────
+
+export class SqlValidator {
 	private readonly dbType: DataSourceOptions['type'];
 
 	constructor(dbType: DataSourceOptions['type']) {
 		this.dbType = dbType;
-		this.dialect = resolveDialect(dbType);
 	}
 
 	/**
 	 * Validates SQL without rewriting table names.
 	 */
-	validate(sql: string, allowedTables: string[]): SqlValidationResult {
-		const ast = this.parse(sql) as SqlAstNode;
-
-		this.assertSimpleSelect(ast);
-
-		const tables = this.extractTables(ast);
-		this.checkTablesAllowed(tables, allowedTables);
-
-		const functions: string[] = [];
-		this.assertAllNodesAllowed(ast, functions);
+	validate(sql: string, tableSchemas: TableColumnSchema[]): SqlValidationResult {
+		const trimmed = sql.trim();
+		const { tables, functions } = this.doValidate(trimmed, tableSchemas);
 
 		return {
 			type: 'select',
 			tables: [...new Set(tables.map((t) => t.name))],
 			functions: [...new Set(functions)],
-			rewrittenSql: sql,
+			rewrittenSql: trimmed,
 		};
 	}
 
 	/**
-	 * Full pipeline: validate + rewrite table names + whiteListCheck.
+	 * Full pipeline: validate + rewrite table names.
 	 */
 	validateAndRewrite(
 		sql: string,
-		allowedTables: string[],
+		tableSchemas: TableColumnSchema[],
 		tableMapping: Map<string, string>,
 	): SqlValidationResult {
-		const ast = this.parse(sql) as SqlAstNode;
+		const trimmed = sql.trim();
+		const { tokens, tables, functions } = this.doValidate(trimmed, tableSchemas);
 
-		this.assertSimpleSelect(ast);
+		// Rewrite ALL occurrences of table names (FROM, JOIN, and column qualifiers)
+		const tableNamesLower = new Set(tables.map((t) => t.name.toLowerCase()));
+		for (const token of tokens) {
+			if (token.type !== 'identifier') continue;
+			if (!tableNamesLower.has(token.value.toLowerCase())) continue;
 
-		const tables = this.extractTables(ast);
-		this.checkTablesAllowed(tables, allowedTables);
-
-		const functions: string[] = [];
-		this.assertAllNodesAllowed(ast, functions);
-
-		// Rewrite table names from logical to physical
-		for (const table of tables) {
-			const physical = tableMapping.get(table.name.toLowerCase());
+			const physical = tableMapping.get(token.value.toLowerCase());
 			if (!physical) {
-				throw new SqlValidationError(`No physical table mapping found for table '${table.name}'`);
+				throw new SqlValidationError(`No physical table mapping found for table '${token.value}'`);
 			}
-			table.ref.table = physical;
+			token.value = physical;
 		}
 
-		// eslint-disable-next-line @typescript-eslint/consistent-type-imports
-		const { Parser } = require('node-sql-parser') as typeof import('node-sql-parser');
-		const parser = new Parser();
-
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
-		const rewrittenSql = parser.sqlify(ast as any, { database: this.dialect });
-
-		// Defense-in-depth: whiteListCheck on rewritten SQL
-		const physicalTableNames = [...new Set(tables.map((t) => t.name))].map((name) => {
-			const physical = tableMapping.get(name.toLowerCase());
-			if (!physical) {
-				throw new SqlValidationError(`No physical table mapping found for table '${name}'`);
-			}
-			return `select::null::${physical}`;
-		});
-
-		try {
-			parser.whiteListCheck(rewrittenSql, physicalTableNames, {
-				database: this.dialect,
-			});
-		} catch {
-			throw new SqlValidationError(
-				'Rewritten SQL references tables not in the allowed physical table list',
-			);
-		}
+		const rewrittenSql = this.toSql(tokens, trimmed);
 
 		return {
 			type: 'select',
@@ -196,340 +281,196 @@ export class SqlValidator {
 		};
 	}
 
-	// ── Parsing ───────────────────────────────────────────────────────
+	// ── Core validation pipeline ──────────────────────────────────
 
-	private parse(sql: string): unknown {
-		const trimmed = sql.trim();
-		if (trimmed.length === 0) {
+	private doValidate(
+		sql: string,
+		tableSchemas: TableColumnSchema[],
+	): { tokens: Token[]; tables: TableRef[]; functions: string[] } {
+		// 1. Tokenize — validates every character
+		const tokens = tokenize(sql);
+		if (tokens.length === 0) {
 			throw new SqlValidationError('SQL query must not be empty');
 		}
 
-		// eslint-disable-next-line @typescript-eslint/consistent-type-imports
-		const { Parser } = require('node-sql-parser') as typeof import('node-sql-parser');
-		const parser = new Parser();
-
-		try {
-			return parser.astify(trimmed, { database: this.dialect });
-		} catch {
-			throw new SqlValidationError('Failed to parse SQL query');
+		// 2. First token must be SELECT
+		if (!isKeyword(tokens, 0, 'SELECT')) {
+			throw new SqlValidationError('Only SELECT statements are allowed');
 		}
+
+		// 3. Only one SELECT keyword (blocks subqueries, UNIONs, CTEs)
+		let selectCount = 0;
+		for (let i = 0; i < tokens.length; i++) {
+			if (isKeyword(tokens, i, 'SELECT')) {
+				selectCount++;
+				if (selectCount > 1) {
+					throw new SqlValidationError(
+						'Only single SELECT statements are allowed (no subqueries or set operations)',
+					);
+				}
+			}
+		}
+
+		// 4. Extract table references
+		const tables = this.extractTables(tokens, tableSchemas);
+
+		// 5. Validate every identifier against the closed world (including functions)
+		const functions = this.validateAllIdentifiers(tokens, tableSchemas);
+
+		return { tokens, tables, functions };
 	}
 
-	// ── Structure checks ──────────────────────────────────────────────
+	// ── Table extraction ──────────────────────────────────────────
 
 	/**
-	 * Reject anything that isn't a single, simple SELECT.
-	 * No CTEs, no UNION, no INTO, no window clause.
+	 * Extract table references from FROM and JOIN at parenthesis depth 0.
 	 */
-	private assertSimpleSelect(ast: unknown): void {
-		if (Array.isArray(ast)) {
-			throw new SqlValidationError('Only single SELECT statements are allowed');
-		}
+	private extractTables(tokens: Token[], tableSchemas: TableColumnSchema[]): TableRef[] {
+		const allowedLower = new Set(tableSchemas.map((t) => t.name.toLowerCase()));
+		const tables: TableRef[] = [];
+		let depth = 0;
 
-		const node = ast as SqlAstNode;
-		if (node.type !== 'select') {
-			throw new SqlValidationError('Only single SELECT statements are allowed');
-		}
+		for (let i = 0; i < tokens.length; i++) {
+			if (isPunc(tokens, i, '(')) depth++;
+			if (isPunc(tokens, i, ')')) depth--;
 
-		if (node.with !== null && node.with !== undefined) {
-			throw new SqlValidationError('WITH/CTE expressions are not allowed');
-		}
+			if (depth !== 0) continue;
 
-		if (node._next !== null && node._next !== undefined) {
-			throw new SqlValidationError('UNION/INTERSECT/EXCEPT are not allowed');
-		}
-
-		const into = node.into as SqlAstNode | null | undefined;
-		if (into && into.expr !== undefined && into.expr !== null) {
-			throw new SqlValidationError('SELECT INTO is not allowed');
-		}
-
-		if (node.window !== null && node.window !== undefined) {
-			throw new SqlValidationError('Window clauses are not allowed');
-		}
-	}
-
-	// ── Table extraction & validation ─────────────────────────────────
-
-	private extractTables(
-		ast: SqlAstNode,
-	): Array<{ name: string; db: string | null; ref: SqlAstNode }> {
-		const from = ast.from as SqlAstNode[] | null;
-		if (!Array.isArray(from)) return [];
-
-		const tables: Array<{ name: string; db: string | null; ref: SqlAstNode }> = [];
-
-		for (const entry of from) {
-			// Reject derived tables (subqueries in FROM)
-			if (entry.expr && typeof entry.expr === 'object') {
-				throw new SqlValidationError('Subqueries in FROM (derived tables) are not allowed');
+			if (isKeyword(tokens, i, 'FROM')) {
+				i = this.extractTablesAt(tokens, i + 1, tables, allowedLower, true);
+			} else if (isKeyword(tokens, i, 'JOIN')) {
+				i = this.extractTablesAt(tokens, i + 1, tables, allowedLower, false);
 			}
-
-			if (typeof entry.table !== 'string') continue;
-
-			// Reject schema-qualified references
-			if (entry.db !== null && entry.db !== undefined) {
-				throw new SqlValidationError(
-					`Schema-qualified table references are not allowed: '${String(entry.db)}.${entry.table}'`,
-				);
-			}
-
-			// Reject unknown join types
-			if (!ALLOWED_JOIN_TYPES.has(entry.join as string | undefined)) {
-				throw new SqlValidationError(`Join type '${String(entry.join)}' is not allowed`);
-			}
-
-			tables.push({ name: entry.table, db: null, ref: entry });
-
-			// Validate the ON condition if present
-			// (done later by assertAllNodesAllowed, but verify it's an expression not a subquery)
 		}
 
 		return tables;
 	}
 
-	private checkTablesAllowed(
-		tables: Array<{ name: string; db: string | null; ref: SqlAstNode }>,
-		allowedTables: string[],
-	): void {
-		const allowedLower = new Set(allowedTables.map((t) => t.toLowerCase()));
-		for (const table of tables) {
-			if (!allowedLower.has(table.name.toLowerCase())) {
-				throw new SqlValidationError(`Table '${table.name}' is not in the allowed table list`);
+	/**
+	 * After FROM or JOIN: extract table name(s).
+	 * FROM supports comma-separated lists; JOIN expects a single table.
+	 */
+	private extractTablesAt(
+		tokens: Token[],
+		startIndex: number,
+		tables: TableRef[],
+		allowedLower: Set<string>,
+		allowMultiple: boolean,
+	): number {
+		let i = startIndex;
+
+		while (isIdentifier(tokens, i)) {
+			this.validateTableName(tokens[i], allowedLower);
+			tables.push({ name: tokens[i].value, tokenIndex: i });
+			i++;
+
+			if (allowMultiple && isPunc(tokens, i, ',')) {
+				i++;
+				continue;
 			}
+
+			break;
+		}
+
+		return i - 1;
+	}
+
+	private validateTableName(token: Token, allowedLower: Set<string>): void {
+		if (!allowedLower.has(token.value.toLowerCase())) {
+			throw new SqlValidationError(`Table '${token.value}' is not in the allowed table list`);
 		}
 	}
 
-	// ── Allowlist walker ──────────────────────────────────────────────
+	// ── Closed-world identifier validation ────────────────────────
 
 	/**
-	 * Walk every expression node in the AST and verify it is in the
-	 * allowlist. Rejects any node type not explicitly permitted.
-	 *
-	 * Also collects function names for reporting.
+	 * Every identifier token must be a known table name, column name,
+	 * allowed function name, or CAST target type. This is the core
+	 * security guarantee — anything unknown is rejected.
+	 * Also validates and collects function names.
 	 */
-	private assertAllNodesAllowed(ast: SqlAstNode, functions: string[]): void {
-		// Validate column expressions
-		const columns = ast.columns as SqlAstNode[] | string;
-		if (Array.isArray(columns)) {
-			for (const col of columns) {
-				this.assertExprAllowed(col, functions);
+	private validateAllIdentifiers(tokens: Token[], tableSchemas: TableColumnSchema[]): string[] {
+		const tableNames = new Set(tableSchemas.map((t) => t.name.toLowerCase()));
+		const allColumns = new Set<string>();
+		const columnsByTable = new Map<string, Set<string>>();
+		const functions: string[] = [];
+
+		for (const schema of tableSchemas) {
+			const colSet = new Set(schema.columns.map((c) => c.toLowerCase()));
+			columnsByTable.set(schema.name.toLowerCase(), colSet);
+			for (const col of schema.columns) {
+				allColumns.add(col.toLowerCase());
 			}
 		}
 
-		// Validate FROM ON conditions
-		const from = ast.from as SqlAstNode[] | null;
-		if (Array.isArray(from)) {
-			for (const entry of from) {
-				if (entry.on) {
-					this.assertExprAllowed(entry.on as SqlAstNode, functions);
-				}
-			}
-		}
+		for (let i = 0; i < tokens.length; i++) {
+			if (!isIdentifier(tokens, i)) continue;
 
-		// Validate WHERE
-		if (ast.where) {
-			this.assertExprAllowed(ast.where as SqlAstNode, functions);
-		}
+			const value = tokens[i].value;
+			const lower = value.toLowerCase();
+			const upper = tokens[i].upper;
 
-		// Validate GROUP BY
-		const groupby = ast.groupby as SqlAstNode | null;
-		if (groupby && typeof groupby === 'object') {
-			const groupCols = (groupby as SqlAstNode).columns as SqlAstNode[] | undefined;
-			if (Array.isArray(groupCols)) {
-				for (const col of groupCols) {
-					this.assertExprAllowed(col, functions);
-				}
-			}
-		}
-
-		// Validate HAVING
-		if (ast.having) {
-			this.assertExprAllowed(ast.having as SqlAstNode, functions);
-		}
-
-		// Validate ORDER BY
-		const orderby = ast.orderby as SqlAstNode[] | null;
-		if (Array.isArray(orderby)) {
-			for (const item of orderby) {
-				if (item.expr) {
-					this.assertExprAllowed(item.expr as SqlAstNode, functions);
-				}
-			}
-		}
-
-		// Validate LIMIT
-		const limit = ast.limit as SqlAstNode | null;
-		if (limit && typeof limit === 'object') {
-			const limitValues = limit.value as SqlAstNode[] | undefined;
-			if (Array.isArray(limitValues)) {
-				for (const v of limitValues) {
-					this.assertExprAllowed(v, functions);
-				}
-			}
-		}
-
-		// Reject DISTINCT ON (complex; plain DISTINCT is fine)
-		const distinct = ast.distinct as SqlAstNode | null;
-		if (distinct && typeof distinct === 'object' && distinct.type === 'DISTINCT ON') {
-			throw new SqlValidationError('DISTINCT ON is not allowed');
-		}
-	}
-
-	/**
-	 * Recursively validate a single expression node against the allowlist.
-	 * Throws on any unrecognized node type, operator, or structure.
-	 */
-	private assertExprAllowed(node: unknown, functions: string[]): void {
-		if (node === null || node === undefined) return;
-		if (typeof node !== 'object') return; // primitives are fine
-		if (Array.isArray(node)) {
-			for (const item of node) {
-				this.assertExprAllowed(item, functions);
-			}
-			return;
-		}
-
-		const obj = node as SqlAstNode;
-		const type = obj.type as string | undefined;
-
-		// Nodes without a type are structural wrappers (e.g., args object) — recurse
-		if (type === undefined) {
-			for (const value of Object.values(obj)) {
-				if (value && typeof value === 'object') {
-					this.assertExprAllowed(value, functions);
-				}
-			}
-			return;
-		}
-
-		// ── Reject subqueries anywhere ──
-		// Subqueries have a nested `ast` property with `tableList`
-		if ('tableList' in obj || 'ast' in obj) {
-			throw new SqlValidationError('Subqueries are not allowed');
-		}
-
-		// ── Check type against allowlist ──
-		if (!ALLOWED_EXPR_TYPES.has(type)) {
-			throw new SqlValidationError(`SQL expression type '${type}' is not allowed`);
-		}
-
-		// ── Type-specific validation ──
-
-		if (type === 'binary_expr') {
-			const op = obj.operator as string;
-			if (!ALLOWED_OPERATORS.has(op)) {
-				throw new SqlValidationError(`Operator '${op}' is not allowed`);
-			}
-			this.assertExprAllowed(obj.left, functions);
-			this.assertExprAllowed(obj.right, functions);
-			return;
-		}
-
-		if (type === 'unary_expr') {
-			const op = obj.operator as string;
-			if (op !== 'NOT' && op !== '-' && op !== '+') {
-				throw new SqlValidationError(`Unary operator '${op}' is not allowed`);
-			}
-			this.assertExprAllowed(obj.expr, functions);
-			return;
-		}
-
-		if (type === 'aggr_func') {
-			const name = (obj.name as string).toUpperCase();
-			if (!isAllowedFunction(name, this.dbType)) {
-				throw new SqlValidationError(`Function '${name}' is not allowed`);
-			}
-			// Reject window functions attached to aggregates (OVER clause)
-			if (obj.over !== null && obj.over !== undefined) {
-				throw new SqlValidationError('Window functions (OVER) are not allowed');
-			}
-			functions.push(name);
-			this.assertExprAllowed(obj.args, functions);
-			return;
-		}
-
-		if (type === 'function') {
-			const nameObj = obj.name as SqlAstNode | undefined;
-			const nameArray = nameObj?.name as Array<{ value: string }> | undefined;
-			if (
-				Array.isArray(nameArray) &&
-				nameArray.length > 0 &&
-				typeof nameArray[0].value === 'string'
-			) {
-				const funcName = nameArray[0].value.toUpperCase();
-				if (!isAllowedFunction(funcName, this.dbType)) {
+			// 1. Function call: identifier followed by '('
+			if (isPunc(tokens, i + 1, '(')) {
+				if (!isAllowedFunction(upper, this.dbType)) {
 					throw new SqlValidationError(
-						`Function '${funcName}' is not allowed. Allowed: ${getAllowedFunctions(this.dbType).join(', ')}`,
+						`Function '${upper}' is not allowed. Allowed: ${getAllowedFunctions(this.dbType).join(', ')}`,
 					);
 				}
-				// Reject window functions
-				if (obj.over !== null && obj.over !== undefined) {
-					throw new SqlValidationError('Window functions (OVER) are not allowed');
-				}
-				functions.push(funcName);
+				functions.push(upper);
+				continue;
 			}
-			this.assertExprAllowed(obj.args, functions);
-			return;
-		}
 
-		if (type === 'cast') {
-			this.assertExprAllowed(obj.expr, functions);
-			// target type is a keyword — safe
-			return;
-		}
+			// 2. Known table name
+			if (tableNames.has(lower)) continue;
 
-		if (type === 'case') {
-			this.assertExprAllowed(obj.expr, functions); // CASE <expr>
-			this.assertExprAllowed(obj.args, functions); // WHEN/ELSE branches
-			return;
-		}
+			// 3. Table-qualified column: table.column
+			if (isPunc(tokens, i - 1, '.') && isIdentifier(tokens, i - 2)) {
+				const tableLower = tokens[i - 2].value.toLowerCase();
+				const tableCols = columnsByTable.get(tableLower);
+				if (tableCols && tableCols.has(lower)) continue;
 
-		if (type === 'when') {
-			this.assertExprAllowed(obj.cond, functions);
-			this.assertExprAllowed(obj.result, functions);
-			return;
-		}
-
-		if (type === 'else') {
-			this.assertExprAllowed(obj.result, functions);
-			return;
-		}
-
-		if (type === 'expr_list') {
-			const values = obj.value as unknown[];
-			if (Array.isArray(values)) {
-				for (const v of values) {
-					this.assertExprAllowed(v, functions);
-				}
+				throw new SqlValidationError(
+					`Column '${value}' does not exist in table '${tokens[i - 2].value}'`,
+				);
 			}
-			return;
-		}
 
-		if (type === 'column_ref') {
-			// Column references are safe — just table.column
-			// The column value can be a nested { expr: { type: 'default', value: 'name' } }
-			const col = obj.column;
-			if (col && typeof col === 'object') {
-				const colObj = col as SqlAstNode;
-				if (colObj.expr && typeof colObj.expr === 'object') {
-					const exprObj = colObj.expr as SqlAstNode;
-					if (exprObj.type !== 'default') {
-						throw new SqlValidationError(
-							`Unexpected column expression type '${String(exprObj.type)}'`,
-						);
-					}
+			// 4. Identifier after AS
+			if (isKeyword(tokens, i - 1, 'AS')) {
+				// Inside CAST(expr AS <type>) → validate against allowed types
+				if (isInsideCast(tokens, i - 1)) {
+					if (ALLOWED_CAST_TYPES.has(upper)) continue;
+					throw new SqlValidationError(`Cast type '${value}' is not allowed`);
 				}
+				// Outside CAST → column alias, harmless
+				continue;
 			}
-			return;
+
+			// 5. Standalone column name (must exist in at least one allowed table)
+			if (allColumns.has(lower)) continue;
+
+			throw new SqlValidationError(
+				`Unknown identifier '${value}'. Must be a table name, column name, or allowed function`,
+			);
 		}
 
-		// Leaf types: number, string, bool, null, star, default, expr, interval, param
-		// These are terminal — no children to validate beyond what's already checked.
-		if (type === 'expr') {
-			// Wrapper around an expression
-			this.assertExprAllowed(obj.expr, functions);
-			return;
+		return functions;
+	}
+
+	// ── SQL reconstruction ────────────────────────────────────────
+
+	/** Rebuild SQL from tokens, substituting any rewritten values. */
+	private toSql(tokens: Token[], originalSql: string): string {
+		let result = '';
+		let lastEnd = 0;
+
+		for (const token of tokens) {
+			result += originalSql.slice(lastEnd, token.start);
+			result += token.value;
+			lastEnd = token.end;
 		}
+
+		result += originalSql.slice(lastEnd);
+		return result.trim();
 	}
 }

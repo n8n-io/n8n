@@ -5,8 +5,6 @@ packages:
   - packages/extensions/**
   - packages/testing/**
 
-catalogMode: strict
-
 catalog:
   '@azure/identity': 4.13.0
   '@codemirror/autocomplete': 6.20.0
@@ -86,6 +84,8 @@ catalog:
   xss: 1.0.15
   zod: 3.25.67
   zod-to-json-schema: 3.23.3
+
+catalogMode: strict
 
 catalogs:
   e2e:
