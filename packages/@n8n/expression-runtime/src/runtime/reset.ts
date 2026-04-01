@@ -73,6 +73,9 @@ export function resetDataProxies(timezone?: string): void {
 	globalThis.__data.$data = createDeepLazyProxy(['$data']);
 	globalThis.__data.$env = createDeepLazyProxy(['$env']);
 	globalThis.__data.process = createDeepLazyProxy(['process']);
+	globalThis.__data.$execution = createDeepLazyProxy(['$execution']);
+	globalThis.__data.$vars = createDeepLazyProxy(['$vars']);
+	globalThis.__data.$secrets = createDeepLazyProxy(['$secrets']);
 
 	// -------------------------------------------------------------------------
 	// Create DateTime values inside the isolate (not lazy-loaded from host,
@@ -108,6 +111,29 @@ export function resetDataProxies(timezone?: string): void {
 		globalThis.__data.$itemIndex = undefined;
 	}
 
+	try {
+		globalThis.__data.$executionId = globalThis.__getValueAtPath.applySync(
+			null,
+			[['$executionId']],
+			{
+				arguments: { copy: true },
+				result: { copy: true },
+			},
+		);
+	} catch (error) {
+		globalThis.__data.$executionId = undefined;
+	}
+
+	try {
+		globalThis.__data.$resumeWebhookUrl = globalThis.__getValueAtPath.applySync(
+			null,
+			[['$resumeWebhookUrl']],
+			{ arguments: { copy: true }, result: { copy: true } },
+		);
+	} catch (error) {
+		globalThis.__data.$resumeWebhookUrl = undefined;
+	}
+
 	// -------------------------------------------------------------------------
 	// Expose workflow data to globalThis for expression access
 	// -------------------------------------------------------------------------
@@ -125,6 +151,11 @@ export function resetDataProxies(timezone?: string): void {
 	globalThis.$env = globalThis.__data.$env;
 	globalThis.$now = globalThis.__data.$now as DateTime;
 	globalThis.$today = globalThis.__data.$today as DateTime;
+	globalThis.$execution = globalThis.__data.$execution;
+	globalThis.$vars = globalThis.__data.$vars;
+	globalThis.$secrets = globalThis.__data.$secrets;
+	globalThis.$executionId = globalThis.__data.$executionId as string | undefined;
+	globalThis.$resumeWebhookUrl = globalThis.__data.$resumeWebhookUrl as string | undefined;
 
 	// Expose standalone functions (min, max, average, numberList, zip, $ifEmpty, etc.)
 	Object.assign(globalThis.__data, extendedFunctions);
@@ -189,6 +220,12 @@ export function resetDataProxies(timezone?: string): void {
 			$binary: createDeepLazyProxy(['$item', indexStr, '$binary']),
 		};
 	};
+
+	// $('NodeName') returns a lazy proxy for the specified node's data
+	globalThis.$ = function (nodeName: string) {
+		return createDeepLazyProxy(['$', nodeName]);
+	};
+	globalThis.__data.$ = globalThis.$;
 }
 
 // Matches initializeGlobalContext() lines 262-318 in packages/workflow/src/expression.ts
