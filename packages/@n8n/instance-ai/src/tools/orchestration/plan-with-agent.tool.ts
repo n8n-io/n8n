@@ -37,7 +37,7 @@ import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
 import { getTraceParentRun, withTraceParentContext } from '../../tracing/langsmith-tracing';
 import type { OrchestrationContext } from '../../types';
 
-const PLANNER_MAX_STEPS = 15;
+const PLANNER_MAX_STEPS = 30;
 
 /** Number of recent thread messages to include as planner context. */
 const MESSAGE_HISTORY_COUNT = 5;
