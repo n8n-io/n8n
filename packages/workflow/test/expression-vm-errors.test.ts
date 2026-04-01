@@ -36,7 +36,7 @@ describe('Expression VM error handling', () => {
 		nodeTypes,
 	});
 
-	let originalEngine: 'current' | 'vm';
+	let originalEngine: 'legacy' | 'vm';
 	let originalEvaluator: IExpressionEvaluator | undefined;
 
 	beforeEach(() => {
