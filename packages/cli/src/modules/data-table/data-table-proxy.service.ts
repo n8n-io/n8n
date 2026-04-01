@@ -88,8 +88,8 @@ export class DataTableProxyService implements DataTableProxyProvider {
 		return this.makeDataTableOperations(projectId, dataTableId);
 	}
 
-	private async requireScope(user: User, scope: Scope, projectId?: string): Promise<void> {
-		const hasScope = await userHasScopes(user, [scope], !projectId, { projectId });
+	private async requireScope(user: User, scope: Scope, projectId: string): Promise<void> {
+		const hasScope = await userHasScopes(user, [scope], false, { projectId });
 		if (!hasScope) {
 			throw new Error(`User does not have '${scope}' access on project '${projectId}'`);
 		}
@@ -98,13 +98,12 @@ export class DataTableProxyService implements DataTableProxyProvider {
 	makeDataTableOperationsForUser(user: User) {
 		const dataTableService = this.dataTableService;
 		const dataTableAggregateService = this.dataTableAggregateService;
-		const requireScope = async (scope: Scope, projectId?: string) =>
+		const requireScope = async (scope: Scope, projectId: string) =>
 			await this.requireScope(user, scope, projectId);
 
 		return {
 			// dataTable:listProject
 			async getManyAndCount(options: ListDataTableQueryDto) {
-				await requireScope('dataTable:listProject');
 				return await dataTableAggregateService.getManyAndCount(user, options);
 			},
 
