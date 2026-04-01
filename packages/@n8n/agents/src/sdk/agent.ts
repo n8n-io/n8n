@@ -387,6 +387,7 @@ export class Agent implements BuiltAgent {
 	/**
 	 * Register a handler for an agent lifecycle event.
 	 * Handlers are forwarded into every per-run event bus so they fire for all concurrent runs.
+	 * Use off() to remove the handler when it is no longer needed.
 	 */
 	on(event: AgentEvent, handler: AgentEventHandler): void {
 		let set = this.agentHandlers.get(event);
@@ -395,6 +396,19 @@ export class Agent implements BuiltAgent {
 			this.agentHandlers.set(event, set);
 		}
 		set.add(handler);
+	}
+
+	/**
+	 * Remove a previously registered event handler.
+	 * A no-op if the handler was never registered.
+	 */
+	off(event: AgentEvent, handler: AgentEventHandler): void {
+		const set = this.agentHandlers.get(event);
+		if (!set) return;
+		set.delete(handler);
+		if (set.size === 0) {
+			this.agentHandlers.delete(event);
+		}
 	}
 
 	/**
@@ -596,18 +610,52 @@ export class Agent implements BuiltAgent {
 
 	/**
 	 * Wrap a stream so that the bus is deregistered from activeEventBuses
-	 * when the stream closes (either normally or with an error).
+	 * when the stream closes — whether the consumer drains it, cancels it, or
+	 * the source errors.
+	 *
+	 * The bus is cleaned up in all three observable terminal states:
+	 *   - `pull` reaches `done` (source finished normally)
+	 *   - `pull` throws (source errored)
+	 *   - `cancel` is called (consumer explicitly cancelled the stream)
+	 *
+	 * The one case that cannot be detected without GC hooks is a consumer that
+	 * holds a reference to the stream but never reads or cancels it. Callers
+	 * should always drain or cancel the returned stream.
 	 */
 	private trackStreamBus(
 		stream: ReadableStream<StreamChunk>,
 		bus: AgentEventBus,
 	): ReadableStream<StreamChunk> {
+		let cleanedUp = false;
 		const cleanup = () => {
-			this.cleanupBus(bus);
+			if (!cleanedUp) {
+				cleanedUp = true;
+				this.cleanupBus(bus);
+			}
 		};
-		const { readable, writable } = new TransformStream<StreamChunk, StreamChunk>();
-		stream.pipeTo(writable).then(cleanup, cleanup);
-		return readable;
+
+		const reader = stream.getReader();
+
+		return new ReadableStream<StreamChunk>({
+			async pull(controller) {
+				try {
+					const { done, value } = await reader.read();
+					if (done) {
+						controller.close();
+						cleanup();
+					} else {
+						controller.enqueue(value);
+					}
+				} catch (error) {
+					controller.error(error);
+					cleanup();
+				}
+			},
+			cancel() {
+				reader.cancel().catch(() => {});
+				cleanup();
+			},
+		});
 	}
 
 	private cleanupBus(bus: AgentEventBus): void {

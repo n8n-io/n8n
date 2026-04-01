@@ -312,6 +312,103 @@ describe('Agent — per-run isolation', () => {
 		});
 	});
 
+	describe('off() — event handler removal', () => {
+		it('removes a specific handler so it no longer fires', async () => {
+			generateText
+				.mockResolvedValueOnce(makeGenerateSuccess('A'))
+				.mockResolvedValueOnce(makeGenerateSuccess('B'));
+
+			const agent = buildAgent();
+			const events: string[] = [];
+
+			const handler = () => events.push('end');
+			agent.on(AgentEvent.AgentEnd, handler);
+			await agent.generate('First');
+
+			agent.off(AgentEvent.AgentEnd, handler);
+			await agent.generate('Second');
+
+			// Handler should have fired only for the first run
+			expect(events).toHaveLength(1);
+		});
+
+		it('removing one handler does not affect other handlers for the same event', async () => {
+			generateText.mockResolvedValueOnce(makeGenerateSuccess('A'));
+
+			const agent = buildAgent();
+			const firedA: string[] = [];
+			const firedB: string[] = [];
+
+			const handlerA = () => firedA.push('a');
+			const handlerB = () => firedB.push('b');
+
+			agent.on(AgentEvent.AgentEnd, handlerA);
+			agent.on(AgentEvent.AgentEnd, handlerB);
+
+			agent.off(AgentEvent.AgentEnd, handlerA);
+
+			await agent.generate('Hello');
+
+			expect(firedA).toHaveLength(0);
+			expect(firedB).toHaveLength(1);
+		});
+
+		it('off() on a handler that was never registered is a no-op', () => {
+			const agent = buildAgent();
+			expect(() => agent.off(AgentEvent.AgentEnd, () => {})).not.toThrow();
+		});
+	});
+
+	describe('trackStreamBus — cleanup on stream cancel', () => {
+		it('removes the bus from active runs when the consumer cancels the stream', async () => {
+			streamText.mockReturnValueOnce(makeStreamSuccess('Hello'));
+
+			const agent = buildAgent();
+
+			// Access the private set via casting so we can assert its size
+			const getActiveBuses = () =>
+				(agent as unknown as { activeEventBuses: Set<unknown> }).activeEventBuses;
+
+			const { stream } = await agent.stream('Hello');
+
+			// Bus is registered while the stream is live
+			expect(getActiveBuses().size).toBe(1);
+
+			// Consumer cancels instead of draining
+			await stream.cancel();
+
+			// Bus must be removed immediately after cancel
+			expect(getActiveBuses().size).toBe(0);
+		});
+
+		it('removes the bus from active runs when the consumer drains the stream normally', async () => {
+			streamText.mockReturnValueOnce(makeStreamSuccess('Hello'));
+
+			const agent = buildAgent();
+			const getActiveBuses = () =>
+				(agent as unknown as { activeEventBuses: Set<unknown> }).activeEventBuses;
+
+			const { stream } = await agent.stream('Hello');
+			expect(getActiveBuses().size).toBe(1);
+
+			await drainStream(stream);
+
+			expect(getActiveBuses().size).toBe(0);
+		});
+
+		it('abort() after stream cancel does not throw on a disposed bus', async () => {
+			streamText.mockReturnValueOnce(makeStreamSuccess('Hello'));
+
+			const agent = buildAgent();
+			const { stream } = await agent.stream('Hello');
+
+			await stream.cancel();
+
+			// agent.abort() should be harmless — no active buses remain
+			expect(() => agent.abort()).not.toThrow();
+		});
+	});
+
 	describe('result.getState()', () => {
 		it('generate() result.getState() reports success after a clean run', async () => {
 			generateText.mockResolvedValueOnce(makeGenerateSuccess());
