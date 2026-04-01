@@ -63,9 +63,7 @@ function collectPendingConfirmations(
 			tc.isLoading &&
 			tc.confirmationStatus !== 'approved' &&
 			tc.confirmationStatus !== 'denied' &&
-			!resolved.has(tc.confirmation.requestId) &&
-			// Plan review renders inline in the timeline, not in the confirmation panel
-			tc.confirmation.inputType !== 'plan-review'
+			!resolved.has(tc.confirmation.requestId)
 		) {
 			out.push({ toolCall: tc, agentNode: node, messageId });
 		}
