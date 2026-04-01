@@ -292,7 +292,14 @@ async function runSingleExample(config: SingleExampleConfig): Promise<InstanceAi
 
 		// 6. Fetch thread messages and build metrics/outcome
 		logger.verbose(`[${threadId}] Fetching thread messages...`);
-		const threadMessages = await client.getThreadMessages(threadId);
+		let threadMessages;
+		try {
+			threadMessages = await client.getThreadMessages(threadId);
+		} catch {
+			// Thread may not exist if the build timed out before the agent persisted it
+			logger.verbose(`[${threadId}] Thread messages unavailable — using SSE events only`);
+			threadMessages = { messages: [] as never[] };
+		}
 		const messageWorkflowIds = extractWorkflowIdsFromMessages(threadMessages.messages);
 
 		const metrics = buildMetrics(events, startTime);
@@ -507,7 +514,13 @@ export async function runWorkflowTestCase(
 		await ssePromise.catch(() => {});
 
 		// 2. Capture the built workflow
-		const threadMessages = await client.getThreadMessages(threadId);
+		let threadMessages;
+		try {
+			threadMessages = await client.getThreadMessages(threadId);
+		} catch {
+			logger.verbose(`[${threadId}] Thread messages unavailable — using SSE events only`);
+			threadMessages = { messages: [] as never[] };
+		}
 		const messageWorkflowIds = extractWorkflowIdsFromMessages(threadMessages.messages);
 		const eventOutcome = extractOutcomeFromEvents(events);
 		const outcome = await buildAgentOutcome(
