@@ -249,7 +249,7 @@ function getPermissionValue(key: keyof InstanceAiPermissions): InstanceAiPermiss
 	padding-left: var(--spacing--sm);
 	padding-right: var(--spacing--sm);
 	min-height: 64px;
-	background: white;
+	background: var(--color--background--light-3);
 }
 
 .settingsRowBorder {
