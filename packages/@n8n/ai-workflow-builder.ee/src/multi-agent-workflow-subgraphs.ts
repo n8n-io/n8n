@@ -36,14 +36,8 @@ import {
 	createResponderMetadata,
 } from './types/coordination';
 import type { StreamChunk } from './types/streaming';
-import {
-	getLastCompletedPhase,
-	getNextPhaseFromLog,
-	hasBuilderPhaseInLog,
-	hasErrorInLog,
-} from './utils/coordination-log';
+import { getLastCompletedPhase, getNextPhaseFromLog } from './utils/coordination-log';
 import { sanitizeLlmErrorMessage } from './utils/error-sanitizer';
-import { processOperations } from './utils/operations-processor';
 import {
 	determineStateAction,
 	handleClearErrorState,
@@ -225,7 +219,6 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 		checkpointer,
 		autoCompactThresholdTokens = DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS,
 		featureFlags,
-		onGenerationSuccess,
 		assistantHandler,
 	} = config;
 
@@ -331,16 +324,6 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 					{ enableIntrospection: featureFlags?.enableIntrospection },
 				);
 
-				if (
-					onGenerationSuccess &&
-					!hasErrorInLog(state.coordinationLog) &&
-					hasBuilderPhaseInLog(state.coordinationLog)
-				) {
-					void Promise.resolve(onGenerationSuccess()).catch((error) => {
-						logger?.warn('Failed to execute onGenerationSuccess callback', { error });
-					});
-				}
-
 				// Calculate response length for metadata
 				const responseContent =
 					typeof response.content === 'string'
@@ -368,16 +351,6 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 					introspectionEvents, // Collected from responder's tool calls
 				};
 			})
-			// Add process_operations node for hybrid operations approach
-			.addNode('process_operations', (state) => {
-				// Process accumulated operations and clear the queue
-				const result = processOperations(state);
-
-				return {
-					...result,
-					workflowOperations: [], // Clear operations after processing
-				};
-			})
 			.addNode('route_next_phase', (state) => {
 				const next = getNextPhaseFromLog(state.coordinationLog);
 
@@ -395,6 +368,8 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 					return { nextPhase: 'discovery', planDecision: null, planOutput: null };
 				}
 
+				// After discovery in plan mode, getNextPhaseFromLog returns 'builder'.
+				// With builder removed, redirect back to discovery to retry planning.
 				if (
 					next === 'builder' &&
 					featureFlags?.planMode === true &&
@@ -535,8 +510,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 					logger,
 				),
 			)
-			.addEdge('discovery_subgraph', 'process_operations')
-			.addEdge('process_operations', 'route_next_phase')
+			.addEdge('discovery_subgraph', 'route_next_phase')
 			.addEdge('assistant_subgraph', 'route_next_phase')
 			// Start flows to check_state (preprocessing)
 			.addEdge(START, 'check_state')
@@ -569,11 +543,11 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 				return hasMessages ? 'check_state' : 'responder';
 			})
 			// Conditional Edge for Supervisor (initial routing via LLM)
-			// Builder/discovery routes go through create_workflow_name first (for name generation)
+			// Discovery routes go through create_workflow_name first (for name generation)
 			// Assistant/responder routes go directly (no workflow modification)
 			.addConditionalEdges('supervisor', (state) => {
 				const next = state.nextPhase;
-				if (next === 'builder' || next === 'discovery') {
+				if (next === 'discovery') {
 					return 'create_workflow_name';
 				}
 				return routeToNode(next);
