@@ -4332,6 +4332,7 @@
 	"settings.sso.settings.userRoleProvisioning.option.instanceRole.label": "Instance role",
 	"settings.sso.settings.userRoleProvisioning.option.instanceAndProjectRoles.label": "Instance and project roles",
 	"settings.sso.settings.test": "Test settings",
+	"settings.sso.settings.test.error": "Error testing OIDC SSO configuration",
 	"settings.sso.settings.save": "Save settings",
 	"settings.sso.settings.unsavedChanges.title": "Unsaved changes",
 	"settings.sso.settings.unsavedChanges.message": "You have unsaved changes. They'll be lost if you leave.",

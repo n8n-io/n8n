@@ -1,8 +1,8 @@
 /**
- * Tier 1: Current Engine (Tournament) Pattern Benchmarks
+ * Tier 1: Legacy Engine Pattern Benchmarks
  *
  * Benchmarks expression evaluation through the full Workflow.expression path
- * using the current (Tournament) engine.
+ * using the legacy engine.
  *
  * Run: pnpm --filter=@n8n/performance bench
  */
@@ -14,19 +14,19 @@ import {
 	makeSmallData,
 	makeMediumData,
 	makeLargeData,
-	useCurrentEngine,
+	useLegacyEngine,
 } from './fixtures/data';
 import { definePatternBenchmarks } from './fixtures/pattern-benchmarks';
 
-await useCurrentEngine();
-if (Expression.getActiveImplementation() !== 'current') {
-	throw new Error(`Engine not set to 'current' — got '${Expression.getActiveImplementation()}'`);
+await useLegacyEngine();
+if (Expression.getActiveImplementation() !== 'legacy') {
+	throw new Error(`Engine not set to 'legacy' — got '${Expression.getActiveImplementation()}'`);
 }
 
 const workflow = createWorkflow();
 
 definePatternBenchmarks(
-	'current',
+	'legacy',
 	workflow,
 	evaluate,
 	makeSmallData(),

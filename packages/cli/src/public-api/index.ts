@@ -2,7 +2,6 @@ import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { Router, ErrorRequestHandler, RequestHandler } from 'express';
 import express from 'express';
-import type { HttpError } from 'express-openapi-validator/dist/framework/types';
 import fs from 'fs/promises';
 import path from 'path';
 import type { JsonObject } from 'swagger-ui-express';
@@ -11,6 +10,8 @@ import validator from 'validator';
 import { License } from '@/license';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 import { UrlService } from '@/services/url.service';
+
+import { sendPublicApiErrorResponse } from './v1/public-api-error-response';
 
 function createLazySwaggerMiddleware(
 	openApiSpecPath: string,
@@ -155,18 +156,16 @@ function createApiRouter(
 		createLazyValidatorMiddleware(openApiSpecPath, handlersDirectory, version),
 	);
 
-	apiController.use(
-		(
-			error: HttpError,
-			_req: express.Request,
-			res: express.Response,
-			_next: express.NextFunction,
-		) => {
-			res.status(error.status || 400).json({
-				message: error.message,
-			});
-		},
-	);
+	const publicApiErrorHandler: ErrorRequestHandler = (
+		error: Error,
+		_req: express.Request,
+		res: express.Response,
+		_next: express.NextFunction,
+	) => {
+		sendPublicApiErrorResponse(res, error);
+	};
+
+	apiController.use(publicApiErrorHandler);
 
 	return apiController;
 }

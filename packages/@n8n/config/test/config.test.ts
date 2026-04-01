@@ -461,6 +461,11 @@ describe('GlobalConfig', () => {
 			trimmingTimeWindowDays: 2,
 			trimOnStartUp: false,
 		},
+		expressionEngine: {
+			engine: 'legacy',
+			poolSize: 1,
+			maxCodeCacheSize: 1024,
+		},
 	} satisfies GlobalConfigShape;
 
 	it('should use all default values when no env variables are defined', () => {
