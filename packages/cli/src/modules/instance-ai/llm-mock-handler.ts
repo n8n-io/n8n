@@ -39,7 +39,7 @@ You have two tools. Call them before generating your response:
 
 "get_node_config" — Returns the n8n node's configuration parameters. This tells you what the node is set up to work with. The configuration contains the values the node expects to find in API responses — resource IDs, field names, column names, etc. Every node type has different parameters, so you need to interpret the config intelligently. Key patterns:
   - Objects with "__rl" are resource selectors — "value" is the selected resource (a document ID, channel, project, etc.)
-  - "schema" arrays list the exact field names the node expects in data
+  - "schema" arrays list the columns/fields the node expects. CRITICAL: use the "id" field as the exact column/field name in your response — NOT "displayName". For example, if schema has {"id": "timestamp", "displayName": "Timestamp"}, the API response must use "timestamp" (lowercase), not "Timestamp"
   - "operation" and "resource" describe what the node does (e.g. "send" a "message", "create" an "issue")
   - Strings starting with "=" are expressions (ignore these) — all other strings are literal values
 

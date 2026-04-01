@@ -45,6 +45,7 @@ When a checklist item fails, categorize the root cause:
 - **builder_issue**: The AI agent that built the workflow misconfigured a node (missing parameters, wrong settings, incomplete config, wrong routing logic, missing nodes). Evidence: configIssues flags, nodes crashing before making HTTP requests, Switch/IF nodes missing required options, workflow structure doesn't match what the prompt asked for.
 - **mock_issue**: The LLM mock handler returned incorrect or missing data. Evidence: _evalMockError in responses, mock response shape doesn't match what the node expects, identical responses for different requests, mock data missing fields that downstream nodes reference.
 - **legitimate_failure**: The workflow genuinely doesn't meet the success criteria and neither the builder nor mock is at fault. The test is working as designed — for example, the workflow lacks error handling that the scenario tests for.
+- **framework_issue**: The evaluation framework itself failed — Phase 1 returned an error or empty trigger content, causing cascading failures. Evidence: pre-analysis flags starting with "FRAMEWORK ISSUE", empty trigger node output (empty JSON object), "Phase 1 error" warnings. When this happens, downstream node crashes are a consequence of the empty input, NOT a builder or mock problem.
 - **verification_gap**: You don't have enough information in the artifact to make a determination.
 
 NOT failure categories:

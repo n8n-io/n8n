@@ -909,7 +909,6 @@ export interface InstanceAiEvalMockHints {
 	globalContext: string;
 	triggerContent: Record<string, unknown>;
 	nodeHints: Record<string, string>;
-	/** Warnings from Phase 1 hint generation or Phase 2 mock execution (API errors, empty results, etc.) */
 	warnings: string[];
 	/** Pin data generated for nodes that bypass the HTTP mock layer (AI roots, protocol nodes) */
 	bypassPinData: Record<string, Array<{ json: Record<string, unknown> }>>;
@@ -920,7 +919,6 @@ export interface InstanceAiEvalExecutionResult {
 	success: boolean;
 	nodeResults: Record<string, InstanceAiEvalNodeResult>;
 	errors: string[];
-	/** Phase 1 output — the data context, trigger content, and per-node hints used during execution */
 	hints: InstanceAiEvalMockHints;
 }
 
