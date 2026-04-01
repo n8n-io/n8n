@@ -236,9 +236,9 @@ describe('AgentRuntime.generate() — graceful error contract', () => {
 		generateText.mockRejectedValue(new Error('API failure'));
 
 		const { runtime } = createRuntime();
-		await runtime.generate('hello');
+		const result = await runtime.generate('hello');
 
-		expect(runtime.getState().status).toBe('failed');
+		expect(result.getState().status).toBe('failed');
 	});
 
 	it('emits AgentEvent.Error (not AgentEnd) when the LLM call throws', async () => {
@@ -266,10 +266,10 @@ describe('AgentRuntime.generate() — graceful error contract', () => {
 		// Abort during AgentStart so the loop's first abort-check fires before generateText is called
 		bus.on(AgentEvent.AgentStart, () => bus.abort());
 
-		await runtime.generate('hello');
+		const result = await runtime.generate('hello');
 
 		expect(errorEvents.length).toBe(0);
-		expect(runtime.getState().status).toBe('cancelled');
+		expect(result.getState().status).toBe('cancelled');
 	});
 
 	it('returns finishReason "error" and sets cancelled status on abort', async () => {
@@ -282,7 +282,7 @@ describe('AgentRuntime.generate() — graceful error contract', () => {
 		const result = await runtime.generate('hello');
 
 		expect(result.finishReason).toBe('error');
-		expect(runtime.getState().status).toBe('cancelled');
+		expect(result.getState().status).toBe('cancelled');
 	});
 
 	it('is reusable after an error — subsequent call with a good LLM response succeeds', async () => {
@@ -400,10 +400,10 @@ describe('AgentRuntime.stream() — graceful error contract', () => {
 		});
 
 		const { runtime } = createRuntime();
-		const { stream: readableStream } = await runtime.stream('hello');
+		const { stream: readableStream, getState } = await runtime.stream('hello');
 		await collectChunks(readableStream);
 
-		expect(runtime.getState().status).toBe('failed');
+		expect(getState().status).toBe('failed');
 	});
 
 	it('yields error chunk and finishes cleanly on abort', async () => {
@@ -412,13 +412,13 @@ describe('AgentRuntime.stream() — graceful error contract', () => {
 		const { runtime, bus } = createRuntime();
 		bus.on(AgentEvent.TurnStart, () => bus.abort());
 
-		const { stream: readableStream } = await runtime.stream('hello');
+		const { stream: readableStream, getState } = await runtime.stream('hello');
 		const chunks = await collectChunks(readableStream);
 
 		const errorChunks = chunks.filter((c) => c.type === 'error');
 		expect(errorChunks.length).toBeGreaterThan(0);
 
-		expect(runtime.getState().status).toBe('cancelled');
+		expect(getState().status).toBe('cancelled');
 	});
 
 	it('stream is reusable after an error', async () => {
@@ -497,35 +497,37 @@ describe('AgentRuntime — state transitions on error', () => {
 		jest.clearAllMocks();
 	});
 
-	it('starts idle, then reflects running→failed after a generate error', async () => {
+	it('starts idle before first run', () => {
 		const { runtime } = createRuntime();
-
 		expect(runtime.getState().status).toBe('idle');
-
-		generateText.mockRejectedValue(new Error('oops'));
-		const runDone = runtime.generate('hi');
-
-		await runDone;
-		expect(runtime.getState().status).toBe('failed');
 	});
 
-	it('starts idle, then reflects running→cancelled on abort', async () => {
+	it('result.getState() reflects failed after a generate error', async () => {
+		generateText.mockRejectedValue(new Error('oops'));
+
+		const { runtime } = createRuntime();
+		const result = await runtime.generate('hi');
+
+		expect(result.getState().status).toBe('failed');
+	});
+
+	it('result.getState() reflects cancelled on abort', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess());
 
 		const { runtime, bus } = createRuntime();
 		bus.on(AgentEvent.AgentStart, () => bus.abort());
 
-		await runtime.generate('hi');
-		expect(runtime.getState().status).toBe('cancelled');
+		const result = await runtime.generate('hi');
+		expect(result.getState().status).toBe('cancelled');
 	});
 
-	it('transitions to success on a clean run', async () => {
+	it('result.getState() transitions to success on a clean run', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess());
 
 		const { runtime } = createRuntime();
-		await runtime.generate('hi');
+		const result = await runtime.generate('hi');
 
-		expect(runtime.getState().status).toBe('success');
+		expect(result.getState().status).toBe('success');
 	});
 });
 
@@ -673,7 +675,7 @@ describe('AgentRuntime — concurrent tool execution', () => {
 		expect(result.pendingSuspend![0].toolCallId).toBe('tc-1');
 
 		// Verify tc-3 is in the persisted state as a pending tool call (without suspendPayload)
-		const state = runtime.getState();
+		const state = result.getState();
 		expect(state.pendingToolCalls['tc-3']).toBeDefined();
 		expect(state.pendingToolCalls['tc-3'].suspended).toBe(false);
 	});
@@ -980,9 +982,9 @@ describe('AgentRuntime — concurrent tool execution', () => {
 			]),
 		);
 
-		await runtime.generate('run tools');
+		const result = await runtime.generate('run tools');
 
-		const state = runtime.getState();
+		const state = result.getState();
 		expect(state.pendingToolCalls['tc-1']).toBeDefined();
 		expect(state.pendingToolCalls['tc-1'].toolName).toBe('suspend_tool');
 	});
@@ -1005,9 +1007,9 @@ describe('AgentRuntime — concurrent tool execution', () => {
 			]),
 		);
 
-		await runtime.generate('run tools');
+		const result = await runtime.generate('run tools');
 
-		const state = runtime.getState();
+		const state = result.getState();
 		expect(state.pendingToolCalls['tc-2']).toBeDefined();
 		expect(state.pendingToolCalls['tc-2'].toolName).toBe('normal_tool');
 		expect(state.pendingToolCalls['tc-2'].suspended).toBe(false);

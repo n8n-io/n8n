@@ -1,13 +1,17 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import { z } from 'zod';
 
+import type { ModelCost } from './catalog';
+import { getModelCost } from './catalog';
 import type { Eval } from './eval';
 import type { McpClient } from './mcp-client';
 import { Memory } from './memory';
 import { Telemetry } from './telemetry';
 import { Tool, wrapToolForApproval } from './tool';
 import { AgentRuntime } from '../runtime/agent-runtime';
+import type { AgentRuntimeConfig } from '../runtime/agent-runtime';
 import { AgentEventBus } from '../runtime/event-bus';
+import { RunStateManager } from '../runtime/run-state';
 import { createAgentToolResult } from '../runtime/tool-adapter';
 import type {
 	AgentEvent,
@@ -27,13 +31,13 @@ import type {
 	ModelConfig,
 	Provider,
 	RunOptions,
-	SerializableAgentState,
 	StreamResult,
 	SubAgentUsage,
 	ThinkingConfig,
 	ThinkingConfigFor,
 	ResumeOptions,
 } from '../types';
+import type { StreamChunk } from '../types/sdk/agent';
 import type { AgentMessage } from '../types/sdk/message';
 import type { Workspace } from '../workspace/workspace';
 
@@ -91,8 +95,6 @@ export class Agent implements BuiltAgent {
 
 	private resolvedKey?: string;
 
-	private runtime?: AgentRuntime;
-
 	private concurrencyValue?: number;
 
 	private telemetryBuilder?: Telemetry;
@@ -105,9 +107,16 @@ export class Agent implements BuiltAgent {
 
 	private mcpClients: McpClient[] = [];
 
-	private buildPromise: Promise<AgentRuntime> | undefined;
+	/** Cached shared config produced by build(). Reused across all per-run runtimes. */
+	private builtConfig?: AgentRuntimeConfig;
 
-	private eventBus = new AgentEventBus();
+	private buildPromise: Promise<AgentRuntimeConfig> | undefined;
+
+	/** Handlers registered via on() — copied into each per-run event bus at creation time. */
+	private agentHandlers = new Map<AgentEvent, Set<AgentEventHandler>>();
+
+	/** Event buses for all currently active runs, used to broadcast abort(). */
+	private activeEventBuses = new Set<AgentEventBus>();
 
 	private workspaceInstance?: Workspace;
 
@@ -380,10 +389,15 @@ export class Agent implements BuiltAgent {
 
 	/**
 	 * Register a handler for an agent lifecycle event.
-	 * Handlers are called synchronously during the agentic loop.
+	 * Handlers are forwarded into every per-run event bus so they fire for all concurrent runs.
 	 */
 	on(event: AgentEvent, handler: AgentEventHandler): void {
-		this.eventBus.on(event, handler);
+		let set = this.agentHandlers.get(event);
+		if (!set) {
+			set = new Set();
+			this.agentHandlers.set(event, set);
+		}
+		set.add(handler);
 	}
 
 	/**
@@ -447,25 +461,15 @@ export class Agent implements BuiltAgent {
 		return tool.build();
 	}
 
-	/** Return the latest state snapshot of the agent. Returns `{ status: 'idle' }` before first run. */
-	getState(): SerializableAgentState {
-		if (!this.runtime) {
-			return {
-				persistence: undefined,
-				status: 'idle',
-				messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
-				pendingToolCalls: {},
-			};
-		}
-		return this.runtime.getState();
-	}
-
 	/**
-	 * Cancel the currently running agent.
-	 * Synchronous — sets an abort flag; the agentic loop checks it asynchronously.
+	 * Cancel all currently active runs on this agent.
+	 * Synchronous — sets an abort flag on every active event bus;
+	 * the agentic loop in each run checks it asynchronously.
 	 */
 	abort(): void {
-		this.eventBus.abort();
+		for (const bus of this.activeEventBuses) {
+			bus.abort();
+		}
 	}
 
 	/** Generate a response (non-streaming). Lazy-builds on first call. */
@@ -473,8 +477,13 @@ export class Agent implements BuiltAgent {
 		input: AgentMessage[] | string,
 		options?: RunOptions & ExecutionOptions,
 	): Promise<GenerateResult> {
-		const runtime = await this.ensureBuilt();
-		return await runtime.generate(this.toMessages(input), options);
+		const config = await this.ensureBuilt();
+		const { runtime, bus } = this.createRuntime(config);
+		try {
+			return await runtime.generate(this.toMessages(input), options);
+		} finally {
+			this.activeEventBuses.delete(bus);
+		}
 	}
 
 	/** Stream a response. Lazy-builds on first call. */
@@ -482,8 +491,10 @@ export class Agent implements BuiltAgent {
 		input: AgentMessage[] | string,
 		options?: RunOptions & ExecutionOptions,
 	): Promise<StreamResult> {
-		const runtime = await this.ensureBuilt();
-		return await runtime.stream(this.toMessages(input), options);
+		const config = await this.ensureBuilt();
+		const { runtime, bus } = this.createRuntime(config);
+		const result = await runtime.stream(this.toMessages(input), options);
+		return { ...result, stream: this.trackStreamBus(result.stream, bus) };
 	}
 
 	/** Resume a suspended tool call with data. Lazy-builds on first call. */
@@ -502,11 +513,18 @@ export class Agent implements BuiltAgent {
 		data: unknown,
 		options: ResumeOptions & ExecutionOptions,
 	): Promise<GenerateResult | StreamResult> {
-		const runtime = await this.ensureBuilt();
+		const config = await this.ensureBuilt();
 		if (method === 'generate') {
-			return await runtime.resume('generate', data, options);
+			const { runtime, bus } = this.createRuntime(config);
+			try {
+				return await runtime.resume('generate', data, options);
+			} finally {
+				this.activeEventBuses.delete(bus);
+			}
 		}
-		return await runtime.resume('stream', data, options);
+		const { runtime, bus } = this.createRuntime(config);
+		const result = await runtime.resume('stream', data, options);
+		return { ...result, stream: this.trackStreamBus(result.stream, bus) };
 	}
 
 	approve(method: 'generate', options: ResumeOptions & ExecutionOptions): Promise<GenerateResult>;
@@ -538,7 +556,7 @@ export class Agent implements BuiltAgent {
 	 * concurrent callers share one build operation. On error the promise is
 	 * cleared so the caller can retry.
 	 */
-	private async ensureBuilt(): Promise<AgentRuntime> {
+	private async ensureBuilt(): Promise<AgentRuntimeConfig> {
 		if (!this.buildPromise) {
 			const p = this.build();
 			this.buildPromise = p;
@@ -549,13 +567,47 @@ export class Agent implements BuiltAgent {
 		return await this.buildPromise;
 	}
 
+	/**
+	 * Create a fresh AgentRuntime from the shared config, wiring a new event bus
+	 * with all registered agent-level handlers copied in. The bus is registered
+	 * in activeEventBuses so that abort() can reach it. Callers are responsible
+	 * for deregistering the bus when the run finishes.
+	 *
+	 * AgentRuntime is not supposed to be reused across runs, it gets created and destroyed for each run.
+	 */
+	private createRuntime(config: AgentRuntimeConfig): { runtime: AgentRuntime; bus: AgentEventBus } {
+		const bus = new AgentEventBus();
+		for (const [event, handlers] of this.agentHandlers) {
+			for (const handler of handlers) {
+				bus.on(event, handler);
+			}
+		}
+		this.activeEventBuses.add(bus);
+		const runtime = new AgentRuntime({ ...config, eventBus: bus });
+		return { runtime, bus };
+	}
+
+	/**
+	 * Wrap a stream so that the bus is deregistered from activeEventBuses
+	 * when the stream closes (either normally or with an error).
+	 */
+	private trackStreamBus(
+		stream: ReadableStream<StreamChunk>,
+		bus: AgentEventBus,
+	): ReadableStream<StreamChunk> {
+		const cleanup = () => this.activeEventBuses.delete(bus);
+		const { readable, writable } = new TransformStream<StreamChunk, StreamChunk>();
+		stream.pipeTo(writable).then(cleanup, cleanup);
+		return readable;
+	}
+
 	private toMessages(input: string | AgentMessage[]): AgentMessage[] {
 		if (Array.isArray(input)) return input;
 		return [{ role: 'user', content: [{ type: 'text', text: input }] }];
 	}
 
-	/** @internal Validate configuration and produce an AgentRuntime. Overridden by the execution engine. */
-	protected async build(): Promise<AgentRuntime> {
+	/** @internal Validate configuration and produce a shared AgentRuntimeConfig. Overridden by the execution engine. */
+	protected async build(): Promise<AgentRuntimeConfig> {
 		const hasModel = this.modelId ?? this.modelConfigObj;
 		if (!hasModel) {
 			throw new Error(`Agent "${this.name}" requires a model`);
@@ -651,7 +703,24 @@ export class Agent implements BuiltAgent {
 			}
 		}
 
-		this.runtime = new AgentRuntime({
+		// Prefetch model cost once — shared across all per-run runtimes.
+		let modelCost: ModelCost | undefined;
+		try {
+			const modelId =
+				typeof modelConfig === 'string'
+					? modelConfig
+					: 'id' in modelConfig
+						? modelConfig.id
+						: undefined;
+			modelCost = modelId ? await getModelCost(modelId) : undefined;
+		} catch {
+			// Catalog unavailable — proceed without cost data
+		}
+
+		// Shared RunStateManager so resume() can find state from a prior stream()/generate() call.
+		const runState = new RunStateManager(this.checkpointStore);
+
+		this.builtConfig = {
 			name: this.name,
 			model: modelConfig,
 			instructions,
@@ -665,12 +734,13 @@ export class Agent implements BuiltAgent {
 			structuredOutput: this.outputSchema,
 			checkpointStorage: this.checkpointStore,
 			thinking: this.thinkingConfig,
-			eventBus: this.eventBus,
 			toolCallConcurrency: this.concurrencyValue,
 			titleGeneration: this.memoryConfig?.titleGeneration,
 			telemetry: this.telemetryConfig ?? (await this.telemetryBuilder?.build()),
-		});
+			modelCost,
+			runState,
+		};
 
-		return this.runtime;
+		return this.builtConfig;
 	}
 }
