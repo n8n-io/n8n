@@ -23,7 +23,6 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { MCP_DOCS_PAGE_URL, MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
-import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 
 import { N8nSuggestedActions } from '@n8n/design-system';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -44,7 +43,6 @@ const message = useMessage();
 const telemetry = useTelemetry();
 const sourceControlStore = useSourceControlStore();
 const settingsStore = useSettingsStore();
-const { isEligibleForMcpAccess } = useMcp();
 const usersStore = useUsersStore();
 const workflowDocumentStore = inject(WorkflowDocumentStoreKey, null);
 
@@ -104,10 +102,6 @@ const isMcpAccessEnabled = computed(() => {
 });
 
 const canToggleInstanceMCPAccess = computed(() => isOwner.value || isAdmin.value);
-
-const isWorkflowEligibleForMcpAccess = computed(() => {
-	return isEligibleForMcpAccess(props.workflow);
-});
 
 const availableActions = computed(() => {
 	if (workflowsCache.isCacheLoading.value) {
@@ -181,7 +175,7 @@ const availableActions = computed(() => {
 		moreInfoLink: string;
 		completed: boolean;
 	} | null {
-		if (!isMcpModuleEnabled.value || !isWorkflowEligibleForMcpAccess.value) return null;
+		if (!isMcpModuleEnabled.value) return null;
 
 		const baseAction = {
 			title: i18n.baseText('mcp.productionChecklist.title'),
