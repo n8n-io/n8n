@@ -1192,6 +1192,7 @@ export class InstanceAiService {
 			nodeDefinitionDirs: nodeDefDirs.length > 0 ? nodeDefDirs : undefined,
 			domainContext: context,
 			tracingProxyConfig,
+			memory,
 		};
 
 		return {
@@ -1431,6 +1432,9 @@ export class InstanceAiService {
 					messageGroupId,
 					executionPushRef,
 				);
+			// Make the current user message available to sub-agents (e.g. planner)
+			// since memory.recall() only returns previously-saved messages.
+			orchestrationContext.currentUserMessage = message;
 			const memoryConfig = this.createMemoryConfig();
 			const traceInput = {
 				message,
