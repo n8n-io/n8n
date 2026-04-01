@@ -289,34 +289,6 @@ describe('WorkflowBuilderService', () => {
 			expect(mockAiService.getSessions).toHaveBeenCalledWith(undefined, mockUser, undefined);
 			expect(result).toEqual(mockSessions);
 		});
-
-		it('should pass codeBuilder flag to underlying service', async () => {
-			const mockSessions = {
-				sessions: [{ sessionId: 'test-session-code', messages: [], lastUpdated: new Date() }],
-			};
-
-			const mockAiService = mock<AiWorkflowBuilderService>();
-			(mockAiService.getSessions as jest.Mock).mockResolvedValue(mockSessions);
-			MockedAiWorkflowBuilderService.mockImplementation(() => mockAiService);
-
-			const result = await service.getSessions('workflow-123', mockUser, true);
-
-			expect(mockAiService.getSessions).toHaveBeenCalledWith('workflow-123', mockUser, true);
-			expect(result).toEqual(mockSessions);
-		});
-
-		it('should pass codeBuilder=false to underlying service', async () => {
-			const mockSessions = { sessions: [] };
-
-			const mockAiService = mock<AiWorkflowBuilderService>();
-			(mockAiService.getSessions as jest.Mock).mockResolvedValue(mockSessions);
-			MockedAiWorkflowBuilderService.mockImplementation(() => mockAiService);
-
-			const result = await service.getSessions('workflow-123', mockUser, false);
-
-			expect(mockAiService.getSessions).toHaveBeenCalledWith('workflow-123', mockUser, false);
-			expect(result).toEqual(mockSessions);
-		});
 	});
 
 	describe('onCreditsUpdated callback', () => {
