@@ -183,15 +183,6 @@ export class InstanceAiDriver {
 						const bgVisible = await ai.getBackgroundTaskIndicator().isVisible();
 
 						if (stopVisible || statusVisible || bgVisible) {
-							const active = [
-								stopVisible && 'stop',
-								statusVisible && 'status-bar',
-								bgVisible && 'background',
-							]
-								.filter(Boolean)
-								.join(', ');
-							console.log(`[INSTANCE-AI] Tab ${i + 1}: still active (${active}), waiting...`);
-
 							// Brief wait before re-checking (short to catch HITL quickly)
 							await ai
 								.getStopButton()

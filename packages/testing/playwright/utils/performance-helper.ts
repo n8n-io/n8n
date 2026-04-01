@@ -233,31 +233,45 @@ async function waitForStableMemory(
 }
 
 /**
- * Trigger a V8 heap snapshot on the n8n server and attach metadata to test artifacts.
- * The actual .heapsnapshot file remains on the server filesystem — retrieve via
- * `docker cp` or container keepalive mode for Chrome DevTools analysis.
+ * Trigger a V8 heap snapshot on the n8n server, download it locally, and
+ * return the local file path for programmatic analysis (e.g., memlab).
  */
 export async function takeHeapSnapshot(
 	baseUrl: string,
 	testInfo: TestInfo,
 	label: string,
-): Promise<HeapSnapshotResult> {
-	const response = await fetch(`${baseUrl}/rest/e2e/heap-snapshot`, { method: 'POST' });
-	if (!response.ok) {
-		throw new Error(`Heap snapshot endpoint returned ${response.status}: ${response.statusText}`);
+): Promise<string | null> {
+	// Step 1: Trigger snapshot on server
+	const createRes = await fetch(`${baseUrl}/rest/e2e/heap-snapshot`, { method: 'POST' });
+	if (!createRes.ok) {
+		console.warn(`[HEAP-SNAPSHOT] Create failed: ${createRes.status}`);
+		return null;
 	}
 
-	const result = (await response.json()) as { data?: HeapSnapshotResult };
+	const result = (await createRes.json()) as { data?: HeapSnapshotResult };
 	const snapshot = result.data;
 
-	if (!snapshot?.success) {
+	if (!snapshot?.success || !snapshot.filePath) {
 		console.warn(`[HEAP-SNAPSHOT] Failed: ${snapshot?.message ?? 'Unknown error'}`);
-		return snapshot ?? { success: false, message: 'No response data' };
+		return null;
 	}
-
-	console.log(`[HEAP-SNAPSHOT] "${label}" written: ${snapshot.filePath} (${snapshot.sizeMB} MB)`);
 
 	await attachMetric(testInfo, `heap-snapshot-${label}-size`, snapshot.sizeMB ?? 0, 'MB');
 
-	return snapshot;
+	// Step 2: Download the snapshot file from the server
+	const filename = snapshot.filePath.split('/').pop()!;
+	const downloadRes = await fetch(`${baseUrl}/rest/e2e/heap-snapshot/${filename}`);
+	if (!downloadRes.ok || !downloadRes.body) {
+		console.warn(`[HEAP-SNAPSHOT] Download failed: ${downloadRes.status}`);
+		return null;
+	}
+
+	const localPath = `${testInfo.outputDir}/${label}.heapsnapshot`;
+	const { writeFile, mkdir } = await import('node:fs/promises');
+	await mkdir(testInfo.outputDir, { recursive: true });
+	await writeFile(localPath, Buffer.from(await downloadRes.arrayBuffer()));
+
+	console.log(`[HEAP-SNAPSHOT] "${label}" saved: ${localPath} (${snapshot.sizeMB} MB)`);
+
+	return localPath;
 }
