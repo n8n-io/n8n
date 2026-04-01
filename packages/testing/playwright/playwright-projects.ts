@@ -98,6 +98,36 @@ const BENCHMARK_PROFILES: Array<{ name: string; config: N8NConfig }> = [
 			},
 		},
 	},
+	{
+		name: 'memory-instanceai',
+		config: {
+			...BENCHMARK_BASE_CONFIG,
+			services: [...OBSERVABILITY_SERVICES, 'proxy'],
+			env: {
+				...BENCHMARK_BASE_CONFIG.env,
+				// Instance-AI module & model config
+				N8N_ENABLED_MODULES: 'instance-ai',
+				N8N_INSTANCE_AI_MODEL: process.env.N8N_INSTANCE_AI_MODEL ?? 'anthropic/claude-sonnet-4-6',
+				// Forward API key to the container if present
+				...(process.env.ANTHROPIC_API_KEY && {
+					ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+				}),
+				// Sandbox config — forwarded from host env if present
+				...(process.env.N8N_INSTANCE_AI_SANDBOX_ENABLED && {
+					N8N_INSTANCE_AI_SANDBOX_ENABLED: process.env.N8N_INSTANCE_AI_SANDBOX_ENABLED,
+					N8N_INSTANCE_AI_SANDBOX_PROVIDER:
+						process.env.N8N_INSTANCE_AI_SANDBOX_PROVIDER ?? 'daytona',
+					N8N_INSTANCE_AI_SANDBOX_IMAGE: process.env.N8N_INSTANCE_AI_SANDBOX_IMAGE ?? '',
+				}),
+				...(process.env.DAYTONA_API_URL && {
+					DAYTONA_API_URL: process.env.DAYTONA_API_URL,
+				}),
+				...(process.env.DAYTONA_API_KEY && {
+					DAYTONA_API_KEY: process.env.DAYTONA_API_KEY,
+				}),
+			},
+		},
+	},
 ];
 
 export function getProjects(): Project[] {

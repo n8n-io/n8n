@@ -284,6 +284,35 @@ export class E2EController {
 		};
 	}
 
+	/**
+	 * Write a V8 heap snapshot for memory leak analysis.
+	 * Triggers GC first for a cleaner snapshot.
+	 * Returns the file path inside the container — retrieve via `docker cp` or keepalive mode.
+	 */
+	@Post('/heap-snapshot', { skipAuth: true })
+	takeHeapSnapshot() {
+		const v8 = require('node:v8') as typeof import('node:v8');
+		const fs = require('node:fs') as typeof import('node:fs');
+
+		if (typeof global.gc === 'function') {
+			global.gc();
+			global.gc();
+		}
+
+		const filePath = v8.writeHeapSnapshot();
+		if (!filePath) {
+			return { success: false, message: 'Failed to write heap snapshot' };
+		}
+
+		const stats = fs.statSync(filePath);
+		return {
+			success: true,
+			filePath,
+			sizeBytes: stats.size,
+			sizeMB: Math.round(stats.size / 1024 / 1024),
+		};
+	}
+
 	private resetFeatures() {
 		for (const feature of Object.keys(this.enabledFeatures)) {
 			this.enabledFeatures[feature as BooleanLicenseFeature] = false;
