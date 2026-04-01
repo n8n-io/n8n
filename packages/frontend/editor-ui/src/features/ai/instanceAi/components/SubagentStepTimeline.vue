@@ -18,7 +18,12 @@ const { getToolLabel, getToggleLabel, getHideLabel } = useToolLabel();
 const CODE_BLOCK_PATTERN = /```/;
 
 /** Tool calls that are internal and should not be shown in the step timeline. */
-const HIDDEN_TOOLS = new Set(['updateWorkingMemory', 'add-plan-item']);
+const HIDDEN_TOOLS = new Set([
+	'updateWorkingMemory',
+	'add-plan-item',
+	'remove-plan-item',
+	'submit-plan',
+]);
 
 interface TimelineStep {
 	type: 'tool-call' | 'text' | 'done';

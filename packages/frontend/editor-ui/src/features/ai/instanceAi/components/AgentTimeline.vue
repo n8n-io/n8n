@@ -74,7 +74,12 @@ defineSlots<{
 }>();
 
 /** Tool calls that are internal bookkeeping and should not be shown to the user. */
-const HIDDEN_TOOLS = new Set(['updateWorkingMemory', 'add-plan-item']);
+const HIDDEN_TOOLS = new Set([
+	'updateWorkingMemory',
+	'add-plan-item',
+	'remove-plan-item',
+	'submit-plan',
+]);
 
 /** Index tool calls by ID for O(1) lookup and proper reactivity tracking. */
 const toolCallsById = computed(() => {

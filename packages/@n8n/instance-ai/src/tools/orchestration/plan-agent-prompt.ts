@@ -33,12 +33,17 @@ You receive the recent conversation between the user and the orchestrator. Read 
    - \`dependsOn\`: **CRITICAL** — set dependencies correctly. Data tables before workflows that use them. Workflows that produce data before workflows that consume it. Independent workflows should NOT depend on each other.
    - \`columns\`: name and type only — no descriptions
    - \`assumptions\`: only non-obvious ones
-   - After the last item, reply with "Plan complete." and stop
+   - After all items are added, call \`submit-plan\` to request user approval.
+
+4. **Handle approval** — \`submit-plan\` returns the user's decision:
+   - If \`approved: true\`: reply with "Plan approved." and stop.
+   - If \`approved: false\`: read the \`feedback\` field. Make targeted changes using \`remove-plan-item\` (to drop items) or \`add-plan-item\` (to add/replace items by ID). Then call \`submit-plan\` again. Repeat until approved.
 
 ## Critical Rules
 
 - **Call \`add-plan-item\` for each item as you design it.** Data tables first, then workflows. 3-8 discovery tool calls then start emitting items.
-- **After your last \`add-plan-item\` call, reply with ONLY "Plan complete." and nothing else.** No summary, no recap, no architecture breakdown. One sentence, period, done.
+- **Always call \`submit-plan\` after your last \`add-plan-item\`.** Never end without submitting.
+- **On rejection, be surgical.** Only change what the user asked for. Do NOT re-add items that are already correct.
 - **Dependencies are mandatory.** Every workflow MUST list the data table IDs it reads from or writes to in \`dependsOn\`. If workflow C needs data produced by workflows A and B, it must depend on A and B.
 - **No duplicate items.** Each piece of work appears exactly once. Use \`workflow\` kind for workflows, \`data-table\` kind for tables. Only use \`delegate\` kind for tasks that don't fit the other categories.
 - Never fabricate node names — if unsure whether a node exists, search first.`;

@@ -15,14 +15,14 @@
 import { Agent } from '@mastra/core/agent';
 import type { ToolsInput } from '@mastra/core/agent';
 import { createTool } from '@mastra/core/tools';
-import { plannedTaskArgSchema, taskListSchema } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
-import { createAddPlanItemTool } from './add-plan-item.tool';
+import { createAddPlanItemTool, createRemovePlanItemTool } from './add-plan-item.tool';
 import { BlueprintAccumulator } from './blueprint-accumulator';
 import { truncateLabel } from './display-utils';
 import { PLANNER_AGENT_PROMPT } from './plan-agent-prompt';
+import { createSubmitPlanTool } from './submit-plan.tool';
 import {
 	failTraceRun,
 	finishTraceRun,
@@ -35,7 +35,7 @@ import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor
 import { traceWorkingMemoryContext } from '../../runtime/working-memory-tracing';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
 import { getTraceParentRun, withTraceParentContext } from '../../tracing/langsmith-tracing';
-import type { OrchestrationContext, PlannedTask } from '../../types';
+import type { OrchestrationContext } from '../../types';
 
 const PLANNER_MAX_STEPS = 15;
 
@@ -173,37 +173,7 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 		outputSchema: z.object({
 			result: z.string(),
 		}),
-		suspendSchema: z.object({
-			requestId: z.string(),
-			message: z.string(),
-			severity: z.literal('info'),
-			inputType: z.literal('plan-review'),
-			tasks: taskListSchema,
-			planItems: z.array(plannedTaskArgSchema).optional(),
-		}),
-		resumeSchema: z.object({
-			approved: z.boolean(),
-			userInput: z.string().optional(),
-		}),
-		execute: async (input, ctx) => {
-			const { resumeData, suspend } = ctx?.agent ?? {};
-
-			// ── Resume path — user approved or rejected the plan ──────
-			if (resumeData !== undefined && resumeData !== null) {
-				if (resumeData.approved) {
-					if (context.schedulePlannedTasks) {
-						await context.schedulePlannedTasks();
-					}
-					return { result: 'Plan approved and tasks dispatched.' };
-				}
-				// User rejected — clear the draft checklist
-				await clearDraftChecklist(context);
-				return {
-					result: `User requested changes: ${resumeData.userInput ?? 'No feedback provided'}. Call plan-with-agent again or plan() directly with revised tasks.`,
-				};
-			}
-
-			// ── First call — run planner, create plan, suspend for approval ──
+		execute: async (input) => {
 			// ── Collect planner tools ──────────────────────────────────────
 			const plannerTools: ToolsInput = {};
 
@@ -219,9 +189,11 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 				}
 			}
 
-			// Incremental plan accumulation via add-plan-item tool
+			// Incremental plan accumulation + approval tools
 			const accumulator = new BlueprintAccumulator();
 			plannerTools['add-plan-item'] = createAddPlanItemTool(accumulator, context);
+			plannerTools['remove-plan-item'] = createRemovePlanItemTool(accumulator, context);
+			plannerTools['submit-plan'] = createSubmitPlanTool(accumulator, context);
 
 			// ── Retrieve conversation history ─────────────────────────────
 			const messages = await getRecentMessages(context, MESSAGE_HISTORY_COUNT);
@@ -342,66 +314,20 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 					},
 				});
 
-				// ── Create plan, suspend for approval ─────────────────────
+				// ── Schedule tasks after planner-driven approval ──────────
+				// The planner's submit-plan tool handled createPlan + user approval.
+				// If the planner finished and accumulated tasks, schedule them.
 				if (!accumulator.isEmpty()) {
-					// Re-run dep inference now that all tables are known
-					accumulator.reconcileDependencies();
-					const tasks = accumulator.getTaskList();
-
-					if (!context.plannedTaskService || !context.schedulePlannedTasks) {
-						await clearDraftChecklist(context);
-						return { result: 'Planning failed: task scheduling not available.' };
+					if (context.schedulePlannedTasks) {
+						await context.schedulePlannedTasks();
 					}
-
-					// Persist the plan
-					await context.plannedTaskService.createPlan(
-						context.threadId,
-						tasks as unknown as PlannedTask[],
-						{
-							planRunId: context.runId,
-							messageGroupId: context.messageGroupId,
-						},
-					);
-
-					// Emit final tasks checklist
-					const taskItems = tasks.map((t) => ({
-						id: t.id,
-						description: t.title,
-						status: 'todo' as const,
-					}));
-					context.eventBus.publish(context.threadId, {
-						type: 'tasks-update',
-						runId: context.runId,
-						agentId: context.orchestratorAgentId,
-						payload: { tasks: { tasks: taskItems } },
-					});
-
-					// Build planItems for the suspend payload (full task details for PlanReviewPanel)
-					const planItems = tasks.map((t) => ({
-						id: t.id,
-						title: t.title,
-						kind: t.kind,
-						spec: t.spec,
-						deps: t.deps,
-						...(t.tools ? { tools: t.tools } : {}),
-						...(t.workflowId ? { workflowId: t.workflowId } : {}),
-					}));
-
-					// Suspend for user approval — Mastra HITL handles the rest
-					await suspend?.({
-						requestId: nanoid(),
-						message: `Review the plan (${tasks.length} task${tasks.length === 1 ? '' : 's'}) before execution starts.`,
-						severity: 'info' as const,
-						inputType: 'plan-review' as const,
-						tasks: { tasks: taskItems },
-						planItems,
-					});
-
-					// suspend() never resolves — this satisfies the type checker
-					return { result: 'Awaiting approval' };
+					const taskCount = accumulator.getTaskList().length;
+					return {
+						result: `Plan approved and ${taskCount} task${taskCount === 1 ? '' : 's'} dispatched.`,
+					};
 				}
 
-				// Planner finished without adding any items — clear draft checklist
+				// Planner finished without adding any items
 				await clearDraftChecklist(context);
 				return {
 					result: `Planner finished without producing a plan. Agent output: ${resultText}`,

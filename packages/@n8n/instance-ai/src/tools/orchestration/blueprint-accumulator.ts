@@ -216,6 +216,26 @@ export class BlueprintAccumulator {
 		}
 	}
 
+	/** Remove an item by ID. Returns true if found and removed. */
+	removeItem(id: string): boolean {
+		const taskIdx = this.tasks.findIndex((t) => t.id === id);
+		if (taskIdx < 0) return false;
+		this.tasks.splice(taskIdx, 1);
+		// Also remove from the typed item arrays
+		this.removeFromArray(this.dataTables, id);
+		this.removeFromArray(this.workflows, id);
+		this.removeFromArray(this.researchItems, id);
+		this.removeFromArray(this.delegateItems, id);
+		return true;
+	}
+
+	/** Load pre-existing tasks into the accumulator (for revision flows). */
+	loadFromTasks(tasks: PlannedTaskInput[]): void {
+		for (const t of tasks) {
+			this.upsertTask(t);
+		}
+	}
+
 	/** Whether any items have been added. */
 	isEmpty(): boolean {
 		return this.tasks.length === 0;
@@ -241,6 +261,12 @@ export class BlueprintAccumulator {
 		} else {
 			arr.push(item);
 		}
+	}
+
+	/** Remove from a typed item array by ID. */
+	private removeFromArray<T extends { id: string }>(arr: T[], id: string): void {
+		const idx = arr.findIndex((item) => item.id === id);
+		if (idx >= 0) arr.splice(idx, 1);
 	}
 
 	/** Upsert into the tasks array by ID. */
