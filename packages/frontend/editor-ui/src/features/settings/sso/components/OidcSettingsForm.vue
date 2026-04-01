@@ -203,6 +203,7 @@ onMounted(async () => {
 <template>
 	<div>
 		<div :class="$style.card">
+			<slot name="protocol-select" />
 			<div :class="$style.group">
 				<label>Redirect URL</label>
 				<CopyInput
