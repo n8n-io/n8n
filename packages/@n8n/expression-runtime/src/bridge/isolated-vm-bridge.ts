@@ -165,7 +165,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		this.initialized = true;
 
 		if (this.config.debug) {
-			this.logger.debug('[IsolatedVmBridge] Initialized successfully');
+			this.logger.info('[IsolatedVmBridge] Initialized successfully');
 		}
 	}
 
@@ -195,7 +195,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			await this.context.eval(runtimeBundle);
 
 			if (this.config.debug) {
-				this.logger.debug('[IsolatedVmBridge] Runtime bundle loaded');
+				this.logger.info('[IsolatedVmBridge] Runtime bundle loaded');
 			}
 
 			// Verify vendor libraries loaded correctly
@@ -209,7 +209,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			}
 
 			if (this.config.debug) {
-				this.logger.debug('[IsolatedVmBridge] Vendor libraries verified successfully');
+				this.logger.info('[IsolatedVmBridge] Vendor libraries verified successfully');
 			}
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
@@ -249,7 +249,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			}
 
 			if (this.config.debug) {
-				this.logger.debug('[IsolatedVmBridge] Proxy system verified successfully');
+				this.logger.info('[IsolatedVmBridge] Proxy system verified successfully');
 			}
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
@@ -291,7 +291,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		`);
 
 		if (this.config.debug) {
-			this.logger.debug('[IsolatedVmBridge] Error handler injected successfully');
+			this.logger.info('[IsolatedVmBridge] Error handler injected successfully');
 		}
 	}
 
@@ -667,7 +667,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		this.scriptCache.clear();
 
 		if (this.config.debug) {
-			this.logger.debug('[IsolatedVmBridge] Disposed');
+			this.logger.info('[IsolatedVmBridge] Disposed');
 		}
 	}
 
