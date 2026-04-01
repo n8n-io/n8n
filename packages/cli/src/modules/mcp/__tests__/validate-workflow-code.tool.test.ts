@@ -143,6 +143,26 @@ describe('validate-workflow-code MCP tool', () => {
 			expect(result.isError).toBe(true);
 		});
 
+		test('returns valid=false when nodes parse but map is empty (potential syntax mismatch)', async () => {
+			mockParseAndValidate.mockResolvedValue({
+				workflow: { nodes: [] },
+				warnings: [],
+			});
+
+			const tool = createTool();
+			const result = await tool.handler(
+				{ code: 'const node1 = node(...); workflow([node1]);' },
+				{} as never,
+			);
+
+			const response = parseResult(result);
+			expect(response.valid).toBe(false);
+			expect(response.nodeCount).toBe(0);
+			expect((response.errors as string[])?.[0]).toContain(
+				'The workflow was parsed successfully but contains 0 nodes',
+			);
+		});
+
 		test('tracks telemetry on success with nodeCount and warningCount', async () => {
 			mockParseAndValidate.mockResolvedValue({
 				workflow: { nodes: [{ id: '1' }, { id: '2' }] },
