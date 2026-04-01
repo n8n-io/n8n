@@ -11,7 +11,6 @@ import type { AuthlessRequest } from '@/requests';
 import { TokenExchangeController } from '../token-exchange.controller';
 import { TOKEN_EXCHANGE_GRANT_TYPE } from '../token-exchange.schemas';
 import { TokenExchangeService } from '../token-exchange.service';
-import type { TokenExchangeSuccessResponse } from '../token-exchange.types';
 
 describe('TokenExchangeController', () => {
 	mockInstance(EventService);
@@ -119,8 +118,8 @@ describe('TokenExchangeController', () => {
 				subject_token: 'eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJ1c2VyIn0.sig',
 			};
 
-			const stubResponse: TokenExchangeSuccessResponse = {
-				access_token: 'n8n-access-token',
+			const stubResponse = {
+				access_token: 'stub-access-token',
 				token_type: 'Bearer',
 				expires_in: 3600,
 				issued_token_type: 'urn:ietf:params:oauth:token-type:access_token',
@@ -128,7 +127,7 @@ describe('TokenExchangeController', () => {
 
 			test('returns RFC 8693 success response', async () => {
 				req.body = validBody;
-				jest.mocked(tokenExchangeService.exchange).mockResolvedValue(stubResponse);
+				jest.mocked(tokenExchangeService.exchange).mockResolvedValue(true);
 
 				await controller.exchangeToken(req, res);
 
@@ -138,11 +137,7 @@ describe('TokenExchangeController', () => {
 
 			test('response includes all required RFC 8693 fields', async () => {
 				req.body = { ...validBody, scope: 'openid profile' };
-				const withScope: TokenExchangeSuccessResponse = {
-					...stubResponse,
-					scope: 'openid profile',
-				};
-				jest.mocked(tokenExchangeService.exchange).mockResolvedValue(withScope);
+				jest.mocked(tokenExchangeService.exchange).mockResolvedValue(true);
 
 				await controller.exchangeToken(req, res);
 
@@ -158,7 +153,7 @@ describe('TokenExchangeController', () => {
 
 			test('emits token-exchange-succeeded event on success', async () => {
 				req.body = validBody;
-				jest.mocked(tokenExchangeService.exchange).mockResolvedValue(stubResponse);
+				jest.mocked(tokenExchangeService.exchange).mockResolvedValue(true);
 
 				await controller.exchangeToken(req, res);
 

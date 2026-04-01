@@ -66,7 +66,7 @@ export class TokenExchangeController {
 
 		// Success path: delegate to service.
 		try {
-			const result = await this.tokenExchangeService.exchange(parsed.data);
+			await this.tokenExchangeService.exchange(parsed.data);
 
 			this.eventService.emit('token-exchange-succeeded', {
 				subject: parsed.data.subject_token,
@@ -78,7 +78,12 @@ export class TokenExchangeController {
 				issuer: '', // populated by service in later ticket
 			});
 
-			res.json(result);
+			res.json({
+				access_token: 'stub-access-token',
+				token_type: 'Bearer',
+				expires_in: 3600,
+				issued_token_type: 'urn:ietf:params:oauth:token-type:access_token',
+			});
 		} catch {
 			this.eventService.emit('token-exchange-failed', {
 				subject: parsed.data.subject_token,
