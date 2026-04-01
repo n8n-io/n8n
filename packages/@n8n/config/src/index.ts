@@ -35,6 +35,7 @@ import { SsoConfig } from './configs/sso.config';
 import { SsrfProtectionConfig } from './configs/ssrf-protection.config';
 import { TagsConfig } from './configs/tags.config';
 import { TemplatesConfig } from './configs/templates.config';
+import { TokenExchangeConfig } from './configs/token-exchange.config';
 import { UserManagementConfig } from './configs/user-management.config';
 import { VersionNotificationsConfig } from './configs/version-notifications.config';
 import { WorkflowHistoryCompactionConfig } from './configs/workflow-history-compaction.config';
@@ -67,6 +68,7 @@ export { NodesConfig } from './configs/nodes.config';
 export { CronLoggingConfig } from './configs/logging.config';
 export { WorkflowHistoryCompactionConfig } from './configs/workflow-history-compaction.config';
 export { ChatHubConfig } from './configs/chat-hub.config';
+export { TokenExchangeConfig } from './configs/token-exchange.config';
 export { ExpressionEngineConfig } from './configs/expression-engine.config';
 export { PasswordConfig } from './configs/password.config';
 
@@ -194,6 +196,9 @@ export class GlobalConfig {
 
 	@Nested
 	sso: SsoConfig;
+
+	@Nested
+	tokenExchange: TokenExchangeConfig;
 
 	@Nested
 	ssrfProtection: SsrfProtectionConfig;
