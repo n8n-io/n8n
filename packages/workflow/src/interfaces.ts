@@ -2776,7 +2776,7 @@ export interface ITaskMetadata {
 	resumeUrl?: string;
 
 	/**
-	 * Key-value pairs that can set for tracing - they will be attached to the OTEL node span
+	 * Key-value pairs that can be set for tracing - they will be attached to the OTEL node span
 	 * */
 	tracing?: Record<string, string | number | boolean>;
 }
