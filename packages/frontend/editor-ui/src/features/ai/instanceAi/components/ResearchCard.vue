@@ -1,11 +1,11 @@
 <script lang="ts" setup>
-import { ref, computed } from 'vue';
-import { CollapsibleRoot, CollapsibleTrigger, CollapsibleContent } from 'reka-ui';
+import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { InstanceAiAgentNode } from '@n8n/api-types';
-import { useInstanceAiStore } from '../instanceAi.store';
+import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
+import { computed, ref } from 'vue';
 import { getRenderableAgentResult } from '../agentResult';
+import { useInstanceAiStore } from '../instanceAi.store';
 import AgentTimeline from './AgentTimeline.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 
@@ -167,7 +167,7 @@ const headerTitle = computed(() => {
 .root {
 	border: var(--border);
 	border-radius: var(--radius--lg);
-	margin: var(--spacing--2xs) 0;
+	// margin: var(--spacing--2xs) 0;
 	overflow: hidden;
 	background: var(--color--background);
 }

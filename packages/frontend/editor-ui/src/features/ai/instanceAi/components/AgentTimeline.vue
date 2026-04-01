@@ -1,17 +1,17 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
 import type { InstanceAiAgentNode, InstanceAiToolCallState } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
-import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
-import AgentSection from './AgentSection.vue';
-import ArtifactCard from './ArtifactCard.vue';
-import ToolCallStep from './ToolCallStep.vue';
-import DelegateCard from './DelegateCard.vue';
-import TaskChecklist from './TaskChecklist.vue';
-import AnsweredQuestions from './AnsweredQuestions.vue';
-import PlanReviewPanel, { type PlannedTaskArg } from './PlanReviewPanel.vue';
-import { useInstanceAiStore } from '../instanceAi.store';
+import { computed } from 'vue';
 import { extractArtifacts, type ArtifactInfo } from '../agentTimeline.utils';
+import { useInstanceAiStore } from '../instanceAi.store';
+import AgentSection from './AgentSection.vue';
+import AnsweredQuestions from './AnsweredQuestions.vue';
+import ArtifactCard from './ArtifactCard.vue';
+import DelegateCard from './DelegateCard.vue';
+import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
+import PlanReviewPanel, { type PlannedTaskArg } from './PlanReviewPanel.vue';
+import TaskChecklist from './TaskChecklist.vue';
+import ToolCallStep from './ToolCallStep.vue';
 
 const i18n = useI18n();
 
@@ -190,13 +190,16 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 <style lang="scss" module>
 .timeline {
 	width: 100%;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
 }
 
 .textContent {
 	font-size: var(--font-size--md);
 	line-height: var(--line-height--xl);
-	color: var(--color--text--shade-1);
-	margin-bottom: var(--spacing--xs);
+	color: var(--color--text);
+	// margin-bottom: var(--spacing--xs);
 }
 
 .compactText {

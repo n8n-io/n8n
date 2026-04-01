@@ -1,6 +1,6 @@
 <script lang="ts" setup>
-import { N8nIcon, type IconName } from '@n8n/design-system';
 import type { TaskList } from '@n8n/api-types';
+import { N8nIcon, type IconName } from '@n8n/design-system';
 
 defineProps<{
 	tasks?: TaskList;
@@ -46,7 +46,7 @@ function getConfig(status: string) {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--4xs);
-	margin: var(--spacing--2xs) 0;
+	// margin: var(--spacing--2xs) 0;
 	padding: var(--spacing--2xs) var(--spacing--xs);
 	border: var(--border);
 	border-radius: var(--radius--lg);
