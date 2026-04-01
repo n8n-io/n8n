@@ -183,6 +183,108 @@ ruleTester.run('options-sorted-alphabetically', OptionsSortedAlphabeticallyRule,
 				}
 			`,
 		},
+		{
+			name: 'description assigned from a variable is skipped',
+			filename: '/tmp/TestNode.node.ts',
+			code: `
+				import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+
+				const desc: INodeTypeDescription = {} as INodeTypeDescription;
+
+				export class TestNode implements INodeType {
+					description = desc;
+				}
+			`,
+		},
+		{
+			name: 'node with no properties array is skipped',
+			filename: '/tmp/TestNode.node.ts',
+			code: `
+				import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+
+				export class TestNode implements INodeType {
+					description: INodeTypeDescription = {
+						displayName: 'Test Node',
+						name: 'testNode',
+					};
+				}
+			`,
+		},
+		{
+			name: 'spread element in properties array is skipped gracefully',
+			filename: '/tmp/TestNode.node.ts',
+			code: `
+				import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+
+				const extraProps = [{ displayName: 'Extra', name: 'extra', type: 'string', default: '' }];
+
+				export class TestNode implements INodeType {
+					description: INodeTypeDescription = {
+						displayName: 'Test Node',
+						name: 'testNode',
+						properties: [
+							...extraProps,
+						],
+					};
+				}
+			`,
+		},
+		{
+			name: 'options with a spread element are skipped (dynamic options)',
+			filename: '/tmp/TestNode.node.ts',
+			code: `
+				import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+
+				const extraOption = { name: 'Extra', value: 'extra' };
+
+				export class TestNode implements INodeType {
+					description: INodeTypeDescription = {
+						displayName: 'Test Node',
+						name: 'testNode',
+						properties: [
+							{
+								displayName: 'Resource',
+								name: 'resource',
+								type: 'options',
+								options: [
+									{ name: 'User', value: 'user' },
+									...([extraOption]),
+								],
+								default: 'user',
+							},
+						],
+					};
+				}
+			`,
+		},
+		{
+			name: 'options with a dynamic name value are skipped',
+			filename: '/tmp/TestNode.node.ts',
+			code: `
+				import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+
+				const dynamicName = 'Dynamic';
+
+				export class TestNode implements INodeType {
+					description: INodeTypeDescription = {
+						displayName: 'Test Node',
+						name: 'testNode',
+						properties: [
+							{
+								displayName: 'Resource',
+								name: 'resource',
+								type: 'options',
+								options: [
+									{ name: dynamicName, value: 'dynamic' },
+									{ name: 'User', value: 'user' },
+								],
+								default: 'user',
+							},
+						],
+					};
+				}
+			`,
+		},
 	],
 	invalid: [
 		{
@@ -282,6 +384,37 @@ ruleTester.run('options-sorted-alphabetically', OptionsSortedAlphabeticallyRule,
 				{
 					messageId: 'optionsNotSorted',
 					data: { displayName: 'Model', expectedOrder: 'Claude, Gemini, GPT-4' },
+				},
+			],
+		},
+		{
+			name: 'options-type parameter without displayName falls back to "unknown"',
+			filename: '/tmp/TestNode.node.ts',
+			code: `
+				import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
+
+				export class TestNode implements INodeType {
+					description: INodeTypeDescription = {
+						displayName: 'Test Node',
+						name: 'testNode',
+						properties: [
+							{
+								name: 'resource',
+								type: 'options',
+								options: [
+									{ name: 'User', value: 'user' },
+									{ name: 'Contact', value: 'contact' },
+								],
+								default: 'user',
+							},
+						],
+					};
+				}
+			`,
+			errors: [
+				{
+					messageId: 'optionsNotSorted',
+					data: { displayName: 'unknown', expectedOrder: 'Contact, User' },
 				},
 			],
 		},
