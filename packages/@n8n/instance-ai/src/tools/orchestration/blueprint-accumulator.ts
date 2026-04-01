@@ -149,6 +149,8 @@ export class BlueprintAccumulator {
 
 	private assumptions: string[] = [];
 
+	private approved = false;
+
 	/** Route item by kind, upsert into arrays, convert to task, return the task. */
 	addItem(item: BlueprintItem): PlannedTaskInput {
 		let task: PlannedTaskInput;
@@ -234,6 +236,16 @@ export class BlueprintAccumulator {
 		for (const t of tasks) {
 			this.upsertTask(t);
 		}
+	}
+
+	/** Mark the plan as approved by the user (called by submit-plan on approval). */
+	markApproved(): void {
+		this.approved = true;
+	}
+
+	/** Whether the user approved the plan via submit-plan. */
+	isApproved(): boolean {
+		return this.approved;
 	}
 
 	/** Whether any items have been added. */

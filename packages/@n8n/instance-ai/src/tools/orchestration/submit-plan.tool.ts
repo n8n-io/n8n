@@ -49,6 +49,7 @@ export function createSubmitPlanTool(
 			// Resume — return the user's decision to the planner
 			if (resumeData !== undefined && resumeData !== null) {
 				if (resumeData.approved) {
+					accumulator.markApproved();
 					return { approved: true };
 				}
 				return {

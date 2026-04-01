@@ -315,9 +315,8 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 				});
 
 				// ── Schedule tasks after planner-driven approval ──────────
-				// The planner's submit-plan tool handled createPlan + user approval.
-				// If the planner finished and accumulated tasks, schedule them.
-				if (!accumulator.isEmpty()) {
+				// Only dispatch if submit-plan was called AND the user approved.
+				if (accumulator.isApproved()) {
 					if (context.schedulePlannedTasks) {
 						await context.schedulePlannedTasks();
 					}
@@ -327,8 +326,13 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 					};
 				}
 
-				// Planner finished without adding any items
+				// Planner finished without approval (no submit-plan or user didn't approve)
 				await clearDraftChecklist(context);
+				if (!accumulator.isEmpty()) {
+					return {
+						result: `Planner added ${accumulator.getTaskList().length} items but did not submit the plan for approval. The plan was not executed.`,
+					};
+				}
 				return {
 					result: `Planner finished without producing a plan. Agent output: ${resultText}`,
 				};
