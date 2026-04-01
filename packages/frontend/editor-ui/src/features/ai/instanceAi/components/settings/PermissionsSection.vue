@@ -92,6 +92,18 @@ const store = useInstanceAiSettingsStore();
 
 		<div :class="$style.switchRow">
 			<span :class="$style.switchLabel">{{
+				i18n.baseText('instanceAi.settings.permissions.deleteDataTable.label')
+			}}</span>
+			<ElSwitch
+				:model-value="store.getPermission('deleteDataTable') === 'always_allow'"
+				@update:model-value="
+					store.setPermission('deleteDataTable', $event ? 'always_allow' : 'require_approval')
+				"
+			/>
+		</div>
+
+		<div :class="$style.switchRow">
+			<span :class="$style.switchLabel">{{
 				i18n.baseText('instanceAi.settings.permissions.fetchUrl.label')
 			}}</span>
 			<ElSwitch

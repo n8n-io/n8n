@@ -5138,6 +5138,7 @@
 	"instanceAi.settings.permissions.publishWorkflow.label": "Publish/unpublish workflow without approval",
 	"instanceAi.settings.permissions.deleteWorkflow.label": "Delete workflow without approval",
 	"instanceAi.settings.permissions.deleteCredential.label": "Delete credential without approval",
+	"instanceAi.settings.permissions.deleteDataTable.label": "Delete data table without approval",
 	"instanceAi.builderCard.title": "Building workflow",
 	"instanceAi.builderCard.phase.researching": "Researching nodes",
 	"instanceAi.builderCard.phase.schemas": "Loading schemas",
