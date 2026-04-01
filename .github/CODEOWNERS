@@ -2,6 +2,9 @@
 #
 # Last-match-wins: specific rules MUST come AFTER general rules.
 
+# Default catch-all (ensures every file gets at least one reviewer)
+*                                                       @n8n-io/catalysts
+
 # Catalysts
 
 packages/core/                                          @n8n-io/catalysts
@@ -25,8 +28,16 @@ packages/@n8n/db/                                       @n8n-io/catalysts
 packages/@n8n/json-schema-to-zod/                       @n8n-io/catalysts
 packages/@n8n/crdt/                                     @n8n-io/catalysts
 packages/@n8n/extension-sdk/                            @n8n-io/catalysts
+packages/@n8n/eslint-config/                            @n8n-io/catalysts
+packages/@n8n/typescript-config/                        @n8n-io/catalysts
 
 packages/@n8n/db/src/migrations/                        @n8n-io/migrations-review
+
+# Top-level paths
+scripts/                                                @n8n-io/ci-admins
+patches/                                                @n8n-io/catalysts
+assets/                                                 @n8n-io/adore
+security/                                               @n8n-io/ci-admins
 
 # @n8n/cli (default: Catalysts)
 packages/@n8n/cli/                                      @n8n-io/catalysts
@@ -55,6 +66,7 @@ packages/cli/src/events/                                @n8n-io/catalysts
 packages/cli/src/security-audit/                        @n8n-io/catalysts
 packages/cli/src/modules/workflow-index/                @n8n-io/catalysts
 packages/cli/src/modules/breaking-changes/              @n8n-io/catalysts
+packages/cli/src/modules/otel/                          @n8n-io/ligo
 
 packages/cli/src/auth/                                  @n8n-io/iam
 packages/cli/src/credentials/                           @n8n-io/iam
@@ -72,6 +84,7 @@ packages/cli/src/modules/provisioning.ee/               @n8n-io/iam
 packages/cli/src/modules/dynamic-credentials.ee/        @n8n-io/iam
 packages/cli/src/modules/redaction/                     @n8n-io/iam
 packages/cli/src/modules/instance-registry/             @n8n-io/iam
+packages/cli/src/modules/token-exchange/                @n8n-io/iam
 
 packages/cli/src/environments.ee/                       @n8n-io/ligo
 packages/cli/src/public-api/                            @n8n-io/ligo
@@ -110,15 +123,46 @@ packages/cli/src/controllers/security-settings.controller.ts @n8n-io/iam
 packages/cli/src/controllers/oauth/                     @n8n-io/iam
 packages/cli/src/controllers/ai.controller.ts           @n8n-io/ai
 packages/cli/src/controllers/annotation-tags.controller.ee.ts @n8n-io/ai
+packages/cli/src/controllers/cta.controller.ts          @n8n-io/adore
 packages/cli/src/controllers/folder.controller.ts       @n8n-io/adore
 packages/cli/src/controllers/tags.controller.ts         @n8n-io/adore
 packages/cli/src/controllers/binary-data.controller.ts  @n8n-io/adore
 packages/cli/src/controllers/dynamic-templates.controller.ts @n8n-io/adore
 packages/cli/src/controllers/posthog.controller.ts      @n8n-io/adore
+packages/cli/src/controllers/translation.controller.ts  @n8n-io/adore
 packages/cli/src/controllers/project.controller.ts      @n8n-io/ligo
 packages/cli/src/controllers/workflow-statistics.controller.ts @n8n-io/ligo
 packages/cli/src/controllers/node-types.controller.ts   @n8n-io/nodes
 packages/cli/src/controllers/dynamic-node-parameters.controller.ts @n8n-io/nodes
+packages/cli/src/controllers/e2e.controller.ts          @n8n-io/qa
+
+# CLI services
+packages/cli/src/services/jwt.service.ts                @n8n-io/iam
+packages/cli/src/services/user.service.ts               @n8n-io/iam
+packages/cli/src/services/role.service.ts               @n8n-io/iam
+packages/cli/src/services/role-cache.service.ts         @n8n-io/iam
+packages/cli/src/services/password.utility.ts           @n8n-io/iam
+packages/cli/src/services/public-api-key.service.ts     @n8n-io/iam
+packages/cli/src/services/security-settings.service.ts  @n8n-io/iam
+packages/cli/src/services/ssrf/                         @n8n-io/catalysts
+packages/cli/src/services/static-auth-service.ts        @n8n-io/iam
+packages/cli/src/services/access.service.ts             @n8n-io/iam
+packages/cli/src/services/ai.service.ts                 @n8n-io/ai
+packages/cli/src/services/ai-usage.service.ts           @n8n-io/ai
+packages/cli/src/services/ai-workflow-builder.service.ts @n8n-io/ai
+packages/cli/src/services/annotation-tag.service.ee.ts  @n8n-io/ai
+packages/cli/src/services/folder.service.ts             @n8n-io/adore
+packages/cli/src/services/tag.service.ts                @n8n-io/adore
+packages/cli/src/services/cta.service.ts                @n8n-io/adore
+packages/cli/src/services/dynamic-templates.service.ts  @n8n-io/adore
+packages/cli/src/services/frontend.service.ts           @n8n-io/adore
+packages/cli/src/services/banner.service.ts             @n8n-io/adore
+packages/cli/src/services/project.service.ee.ts         @n8n-io/ligo
+packages/cli/src/services/workflow-statistics.service.ts @n8n-io/ligo
+packages/cli/src/services/export.service.ts             @n8n-io/ligo
+packages/cli/src/services/import.service.ts             @n8n-io/ligo
+packages/cli/src/services/ownership.service.ts          @n8n-io/ligo
+packages/cli/src/services/dynamic-node-parameters.service.ts @n8n-io/nodes
 
 # Adore
 
@@ -135,6 +179,7 @@ packages/frontend/@n8n/composables/                     @n8n-io/adore
 packages/frontend/@n8n/rest-api-client/                 @n8n-io/adore
 packages/frontend/@n8n/storybook/                       @n8n-io/adore
 packages/frontend/@n8n/i18n/                            @n8n-io/adore
+packages/@n8n/stylelint-config/                         @n8n-io/adore
 
 # AI
 
@@ -142,6 +187,7 @@ packages/@n8n/nodes-langchain/                          @n8n-io/ai
 packages/@n8n/ai-utilities/                             @n8n-io/ai
 packages/@n8n/ai-node-sdk/                              @n8n-io/ai
 packages/@n8n/ai-workflow-builder.ee/                   @n8n-io/ai
+packages/@n8n/agents/                                   @n8n-io/ai
 packages/frontend/@n8n/chat/                            @n8n-io/ai
 
 # Chat
@@ -181,3 +227,4 @@ docker/                                                 @n8n-io/ci-admins
 
 packages/testing/                                       @n8n-io/qa
 packages/@n8n/benchmark/                                @n8n-io/qa
+packages/@n8n/vitest-config/                            @n8n-io/qa
