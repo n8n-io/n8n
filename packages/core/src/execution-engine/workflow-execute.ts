@@ -1523,47 +1523,28 @@ export class WorkflowExecute {
 						hints: [],
 					};
 
-					// Update the pairedItem information on items
-					const newTaskDataConnections: ITaskDataConnections = {};
+					// Update the pairedItem information on items (mutate in-place to avoid
+					// cloning every item — see paired-item-clone-elimination design doc)
 					for (const connectionType of Object.keys(executionData.data)) {
-						newTaskDataConnections[connectionType] = executionData.data[connectionType].map(
-							(input, inputIndex) => {
-								if (input === null) {
-									return input;
-								}
+						const connections = executionData.data[connectionType];
+						for (let inputIndex = 0; inputIndex < connections.length; inputIndex++) {
+							const input = connections[inputIndex];
+							if (input === null) continue;
 
-								return input.map((item, itemIndex) => {
-									// Preserve any existing sourceOverwrite from the pairedItem
-									// for tool executions. Tool calls don't have a main
-									// connection to the agent's input, so the data proxy needs
-									// the sourceOverwrite information to know where to look up
-									// paired items. This is necessary because the workflow data
-									// proxy works on input data which normally scrubs paired
-									// item information before executing the node.
-									const sourceOverwrite = resolveSourceOverwrite(item, executionData);
-									if (sourceOverwrite) {
-										return {
-											...item,
-											pairedItem: {
-												item: itemIndex,
-												input: inputIndex || undefined,
-												sourceOverwrite,
-											},
-										};
-									}
-
-									return {
-										...item,
-										pairedItem: {
-											item: itemIndex,
-											input: inputIndex || undefined,
-										},
-									};
-								});
-							},
-						);
+							for (let itemIndex = 0; itemIndex < input.length; itemIndex++) {
+								const item = input[itemIndex];
+								// Preserve any existing sourceOverwrite from the pairedItem
+								// for tool executions. Tool calls don't have a main
+								// connection to the agent's input, so the data proxy needs
+								// the sourceOverwrite information to know where to look up
+								// paired items.
+								const sourceOverwrite = resolveSourceOverwrite(item, executionData);
+								item.pairedItem = sourceOverwrite
+									? { item: itemIndex, input: inputIndex || undefined, sourceOverwrite }
+									: { item: itemIndex, input: inputIndex || undefined };
+							}
+						}
 					}
-					executionData.data = newTaskDataConnections;
 
 					// Get the index of the current run
 					runIndex = 0;
