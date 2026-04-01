@@ -49,12 +49,21 @@ import { configureResponseOptimizer } from '../shared/optimizeResponse';
 
 import { binaryToStringWithEncodingDetection } from './utils/buffer-decoding';
 
-function isResponseBodyEmpty(body: unknown, headers?: IDataObject): body is string {
+function isResponseBodyEmpty(body: unknown, headers?: IDataObject): boolean {
 	const contentLength = headers?.['content-length'];
 	if (contentLength === '0') {
 		return true;
 	}
-	return typeof body === 'string' && (body === '' || body.trim().length === 0);
+
+	if (typeof body === 'string') {
+		return body === '' || body.trim().length === 0;
+	}
+
+	if (body === null || body === undefined) {
+		return true;
+	}
+
+	return false;
 }
 
 function toText<T>(data: T) {
@@ -893,8 +902,9 @@ export class HttpRequestV3 implements INodeType {
 									responseContentType,
 									this.helpers,
 								);
+								const dataStr = typeof data === 'string' ? data : String(data ?? '');
 
-								if (isResponseBodyEmpty(data, response.headers)) {
+								if (isResponseBodyEmpty(dataStr, response.headers)) {
 									response.body = {};
 								} else {
 									response.body = jsonParse(data, {
@@ -1023,25 +1033,31 @@ export class HttpRequestV3 implements INodeType {
 								returnItem[property] = response[property];
 							}
 
-							if (responseFormat === 'json' && typeof returnItem.body === 'string') {
-								// Check for empty response body
-								if (
-									isResponseBodyEmpty(
-										returnItem.body,
-										returnItem.headers as Record<string, string | undefined>,
-									)
-								) {
-									returnItem.body = {};
-								} else {
-									try {
-										returnItem.body = JSON.parse(returnItem.body);
-									} catch (error) {
-										throw new NodeOperationError(
-											this.getNode(),
-											'Response body is not valid JSON. Change "Response Format" to "Text"',
-											{ itemIndex },
-										);
+							if (responseFormat === 'json' || responseFormat === 'autodetect') {
+								// Handle body if it's a string
+								if (typeof returnItem.body === 'string') {
+									if (
+										isResponseBodyEmpty(
+											returnItem.body,
+											returnItem.headers as Record<string, string | undefined>,
+										)
+									) {
+										returnItem.body = {};
+									} else {
+										try {
+											returnItem.body = JSON.parse(returnItem.body);
+										} catch (error) {
+											throw new NodeOperationError(
+												this.getNode(),
+												'Response body is not valid JSON. Change "Response Format" to "Text"',
+												{ itemIndex },
+											);
+										}
 									}
+								}
+								// If body is already an object or undefined, handle undefined case
+								else if (returnItem.body === undefined) {
+									returnItem.body = {};
 								}
 							}
 
@@ -1052,15 +1068,16 @@ export class HttpRequestV3 implements INodeType {
 								},
 							});
 						} else {
-							if (responseFormat === 'json' && typeof response === 'string') {
-								// Check for empty response body
-								if (isResponseBodyEmpty(response)) {
-									response = {};
+							// NOT fullResponse - handle direct response
+							let parsedResponse = response;
+
+							// If response is a string, parse it
+							if (typeof parsedResponse === 'string') {
+								if (isResponseBodyEmpty(parsedResponse)) {
+									parsedResponse = {};
 								} else {
 									try {
-										if (typeof response !== 'object') {
-											response = JSON.parse(response);
-										}
+										parsedResponse = JSON.parse(parsedResponse);
 									} catch (error) {
 										throw new NodeOperationError(
 											this.getNode(),
@@ -1070,9 +1087,13 @@ export class HttpRequestV3 implements INodeType {
 									}
 								}
 							}
+							// If response is undefined (empty body), set to empty object
+							else if (parsedResponse === undefined) {
+								parsedResponse = {};
+							}
 
-							if (Array.isArray(response)) {
-								response.forEach((item) =>
+							if (Array.isArray(parsedResponse)) {
+								parsedResponse.forEach((item) =>
 									returnItems.push({
 										json: item,
 										pairedItem: {
@@ -1082,7 +1103,7 @@ export class HttpRequestV3 implements INodeType {
 								);
 							} else {
 								returnItems.push({
-									json: response,
+									json: parsedResponse,
 									pairedItem: {
 										item: itemIndex,
 									},
