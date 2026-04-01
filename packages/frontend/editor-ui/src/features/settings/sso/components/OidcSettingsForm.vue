@@ -202,98 +202,107 @@ onMounted(async () => {
 </script>
 <template>
 	<div>
-		<div :class="$style.group">
-			<label>Redirect URL</label>
-			<CopyInput
-				:value="ssoStore.oidc.callbackUrl"
-				:copy-button-text="i18n.baseText('generic.clickToCopy')"
-				toast-title="Redirect URL copied to clipboard"
-			/>
-			<small>Copy the Redirect URL to configure your OIDC provider </small>
-		</div>
-		<div :class="$style.group">
-			<label>Discovery Endpoint</label>
-			<N8nInput
-				:model-value="discoveryEndpoint"
-				type="text"
-				data-test-id="oidc-discovery-endpoint"
-				placeholder="https://accounts.google.com/.well-known/openid-configuration"
-				@update:model-value="(v: string) => (discoveryEndpoint = v)"
-			/>
-			<small>Paste here your discovery endpoint</small>
-		</div>
-		<div :class="$style.group">
-			<label>Client ID</label>
-			<N8nInput
-				:model-value="clientId"
-				type="text"
-				data-test-id="oidc-client-id"
-				@update:model-value="(v: string) => (clientId = v)"
-			/>
-			<small>The client ID you received when registering your application with your provider</small>
-		</div>
-		<div :class="$style.group">
-			<label>Client Secret</label>
-			<N8nInput
-				:model-value="clientSecret"
-				type="password"
-				data-test-id="oidc-client-secret"
-				@update:model-value="(v: string) => (clientSecret = v)"
-			/>
-			<small
-				>The client Secret you received when registering your application with your provider</small
-			>
-		</div>
-		<div :class="$style.group">
-			<label>Prompt</label>
-			<N8nSelect
-				:model-value="prompt"
-				data-test-id="oidc-prompt"
-				@update:model-value="handlePromptChange"
-			>
-				<N8nOption
-					v-for="option in promptDescriptions"
-					:key="option.value"
-					:label="option.label"
-					data-test-id="oidc-prompt-filter-option"
-					:value="option.value"
+		<div :class="$style.card">
+			<div :class="$style.group">
+				<label>Redirect URL</label>
+				<CopyInput
+					:value="ssoStore.oidc.callbackUrl"
+					:copy-button-text="i18n.baseText('generic.clickToCopy')"
+					toast-title="Redirect URL copied to clipboard"
 				/>
-			</N8nSelect>
-			<small>The prompt parameter to use when authenticating with the OIDC provider</small>
+				<small>Copy the Redirect URL to configure your OIDC provider </small>
+			</div>
+			<div :class="$style.group">
+				<label>Discovery Endpoint</label>
+				<N8nInput
+					:model-value="discoveryEndpoint"
+					type="text"
+					data-test-id="oidc-discovery-endpoint"
+					placeholder="https://accounts.google.com/.well-known/openid-configuration"
+					@update:model-value="(v: string) => (discoveryEndpoint = v)"
+				/>
+				<small>Paste here your discovery endpoint</small>
+			</div>
+			<div :class="$style.group">
+				<label>Client ID</label>
+				<N8nInput
+					:model-value="clientId"
+					type="text"
+					data-test-id="oidc-client-id"
+					@update:model-value="(v: string) => (clientId = v)"
+				/>
+				<small
+					>The client ID you received when registering your application with your provider</small
+				>
+			</div>
+			<div :class="$style.group">
+				<label>Client Secret</label>
+				<N8nInput
+					:model-value="clientSecret"
+					type="password"
+					data-test-id="oidc-client-secret"
+					@update:model-value="(v: string) => (clientSecret = v)"
+				/>
+				<small
+					>The client Secret you received when registering your application with your
+					provider</small
+				>
+			</div>
+			<div :class="$style.group">
+				<label>Prompt</label>
+				<N8nSelect
+					:model-value="prompt"
+					data-test-id="oidc-prompt"
+					@update:model-value="handlePromptChange"
+				>
+					<N8nOption
+						v-for="option in promptDescriptions"
+						:key="option.value"
+						:label="option.label"
+						data-test-id="oidc-prompt-filter-option"
+						:value="option.value"
+					/>
+				</N8nSelect>
+				<small>The prompt parameter to use when authenticating with the OIDC provider</small>
+			</div>
 		</div>
-		<UserRoleProvisioningDropdown v-model="userRoleProvisioning" auth-protocol="oidc" />
-		<RoleMappingRuleEditor
-			v-if="userRoleProvisioning === 'expression_based'"
-			ref="roleMappingRuleEditorRef"
-			@remove-mapping="userRoleProvisioning = 'disabled'"
-		/>
-		<ConfirmProvisioningDialog
-			v-model="showUserRoleProvisioningDialog"
-			:new-provisioning-setting="userRoleProvisioning"
-			auth-protocol="oidc"
-			@confirm-provisioning="onOidcSettingsSave(true)"
-			@cancel="showUserRoleProvisioningDialog = false"
-		/>
-		<div :class="$style.group">
-			<label>Authentication Context Class Reference</label>
-			<N8nInput
-				:model-value="authenticationContextClassReference"
-				type="textarea"
-				data-test-id="oidc-authentication-context-class-reference"
-				placeholder="mfa, phrh, pwd"
-				@update:model-value="(v: string) => (authenticationContextClassReference = v)"
+		<div :class="$style.card">
+			<UserRoleProvisioningDropdown v-model="userRoleProvisioning" auth-protocol="oidc" />
+			<RoleMappingRuleEditor
+				v-if="userRoleProvisioning === 'expression_based'"
+				ref="roleMappingRuleEditorRef"
+				@remove-mapping="userRoleProvisioning = 'disabled'"
 			/>
-			<small
-				>ACR values to include in the authorization request (acr_values parameter), separated by
-				commas in order of preference.</small
-			>
+			<ConfirmProvisioningDialog
+				v-model="showUserRoleProvisioningDialog"
+				:new-provisioning-setting="userRoleProvisioning"
+				auth-protocol="oidc"
+				@confirm-provisioning="onOidcSettingsSave(true)"
+				@cancel="showUserRoleProvisioningDialog = false"
+			/>
+			<div :class="$style.group">
+				<label>Authentication Context Class Reference</label>
+				<N8nInput
+					:model-value="authenticationContextClassReference"
+					type="textarea"
+					data-test-id="oidc-authentication-context-class-reference"
+					placeholder="mfa, phrh, pwd"
+					@update:model-value="(v: string) => (authenticationContextClassReference = v)"
+				/>
+				<small
+					>ACR values to include in the authorization request (acr_values parameter), separated by
+					commas in order of preference.</small
+				>
+			</div>
 		</div>
-		<div :class="[$style.group, $style.checkboxGroup]">
-			<N8nCheckbox
-				v-model="ssoStore.isOidcLoginEnabled"
-				data-test-id="sso-oidc-toggle"
-				:label="i18n.baseText('settings.sso.activated')"
-			/>
+		<div :class="$style.card">
+			<div :class="[$style.group, $style.checkboxGroup]">
+				<N8nCheckbox
+					v-model="ssoStore.isOidcLoginEnabled"
+					data-test-id="sso-oidc-toggle"
+					:label="i18n.baseText('settings.sso.activated')"
+				/>
+			</div>
 		</div>
 
 		<div :class="$style.buttons">
