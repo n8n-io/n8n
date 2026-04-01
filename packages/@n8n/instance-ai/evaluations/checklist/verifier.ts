@@ -1,6 +1,5 @@
 import { createEvalAgent, extractText } from '../../src/utils/eval-agents';
 import type { WorkflowResponse } from '../clients/n8n-client';
-import { CHECKLIST_VERIFY_PROMPT } from '../system-prompts/builder-checklist-verify';
 import { MOCK_EXECUTION_VERIFY_PROMPT } from '../system-prompts/mock-execution-verify';
 import type { ChecklistItem, ChecklistResult } from '../types';
 
@@ -40,16 +39,10 @@ function parseJsonArray(text: string): unknown[] {
 // Public API
 // ---------------------------------------------------------------------------
 
-export interface VerifyOptions {
-	/** Use the mock execution prompt instead of the default builder prompt */
-	mockExecution?: boolean;
-}
-
 export async function verifyChecklist(
 	checklist: ChecklistItem[],
 	verificationArtifact: string,
 	_workflowJsons: WorkflowResponse[],
-	options?: VerifyOptions,
 ): Promise<ChecklistResult[]> {
 	const llmItems = checklist.filter((i) => i.strategy === 'llm');
 	const results: ChecklistResult[] = [];
@@ -65,12 +58,8 @@ ${verificationArtifact}
 
 Verify each checklist item against the artifact above.`;
 
-		const systemPrompt = options?.mockExecution
-			? MOCK_EXECUTION_VERIFY_PROMPT
-			: CHECKLIST_VERIFY_PROMPT;
-
 		const agent = createEvalAgent('eval-checklist-verifier', {
-			instructions: systemPrompt,
+			instructions: MOCK_EXECUTION_VERIFY_PROMPT,
 			cache: true,
 		});
 
