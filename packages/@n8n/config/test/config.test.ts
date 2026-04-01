@@ -186,6 +186,7 @@ describe('GlobalConfig', () => {
 		},
 		tokenExchange: {
 			enabled: false,
+			maxTokenTtl: 900,
 		},
 		versionNotifications: {
 			enabled: true,

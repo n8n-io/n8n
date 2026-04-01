@@ -69,29 +69,29 @@ export class TokenExchangeController {
 
 		// Success path: delegate to service.
 		try {
-			await this.tokenExchangeService.exchange(parsed.data);
+			const result = await this.tokenExchangeService.exchange(parsed.data);
 
 			this.eventService.emit('token-exchange-succeeded', {
-				subject: '', // sub claim extracted by service in later ticket
-				actor: undefined, // act.sub claim extracted by service in later ticket
+				subject: result.subject,
+				actor: result.actor,
 				scopes: parsed.data.scope,
 				resource: parsed.data.resource,
 				grantType: parsed.data.grant_type,
 				clientIp,
-				issuer: '', // populated by service in later ticket
+				issuer: result.issuer,
 			});
 
 			res.json({
-				access_token: 'stub-access-token',
+				access_token: result.accessToken,
 				token_type: 'Bearer',
-				expires_in: 3600,
+				expires_in: result.expiresIn,
 				issued_token_type: 'urn:ietf:params:oauth:token-type:access_token',
 			});
 		} catch (error) {
 			this.errorReporter.error(error instanceof Error ? error : new Error(String(error)));
 
 			this.eventService.emit('token-exchange-failed', {
-				subject: '', // sub claim extracted by service in later ticket
+				subject: '',
 				failureReason: 'internal_error',
 				grantType: parsed.data.grant_type,
 				clientIp,
