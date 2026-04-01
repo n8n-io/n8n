@@ -59,12 +59,17 @@ export class TokenExchangeService {
 
 		let payload: jwt.JwtPayload;
 		try {
-			payload = jwt.verify(subjectToken, resolvedKey.key, {
+			const result = jwt.verify(subjectToken, resolvedKey.key, {
 				algorithms: resolvedKey.algorithms,
 				issuer: resolvedKey.issuer,
 				audience: resolvedKey.expectedAudience,
-			}) as jwt.JwtPayload;
+			});
+			if (typeof result === 'string' || !('iat' in result)) {
+				throw new AuthError('Unexpected token format');
+			}
+			payload = result;
 		} catch (error) {
+			if (error instanceof AuthError) throw error;
 			const message = error instanceof Error ? error.message : 'unknown error';
 			this.logger.warn('JWT verification failed', { error: message });
 			throw new AuthError('Token verification failed');

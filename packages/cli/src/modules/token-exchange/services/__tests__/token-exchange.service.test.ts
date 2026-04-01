@@ -7,10 +7,10 @@ import { AuthError } from '@/errors/response-errors/auth.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import type { ResolvedTrustedKey } from '../../token-exchange.schemas';
-import { IdentityResolutionService } from '../identity-resolution.service';
-import { JtiStoreService } from '../jti-store.service';
+import type { IdentityResolutionService } from '../identity-resolution.service';
+import type { JtiStoreService } from '../jti-store.service';
 import { TokenExchangeService } from '../token-exchange.service';
-import { TrustedKeyService } from '../trusted-key.service';
+import type { TrustedKeyService } from '../trusted-key.service';
 
 const logger = mock<Logger>({ scoped: jest.fn().mockReturnThis() });
 const trustedKeyStore = mock<TrustedKeyService>();
