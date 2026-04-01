@@ -361,16 +361,6 @@ export class InstanceAiService {
 	}
 
 	/**
-	 * Build model config. When the AI service proxy is enabled, returns a native
-	 * Anthropic LanguageModelV2 instance pointing at the proxy.
-	 *
-	 * We use `@ai-sdk/anthropic` directly instead of returning a `{ url }` config
-	 * object because Mastra's model router forces all configs with a `url` through
-	 * `createOpenAICompatible`, which sends requests to `/chat/completions`.
-	 * The proxy may forward to Vertex AI, which only supports the native Anthropic
-	 * Messages API (`/v1/messages`), not the OpenAI-compatible endpoint.
-	 */
-	/**
 	 * Prefer gzip over brotli for LLM API responses.
 	 * Brotli decompressors cost ~8.6 MB of native memory each and are retained
 	 * by undici's connection pool. Gzip decompressors are ~1 KB.
@@ -379,39 +369,95 @@ export class InstanceAiService {
 		'Accept-Encoding': 'gzip, deflate',
 	};
 
+	/**
+	 * Resolve the LLM model as a LanguageModelV2 instance.
+	 *
+	 * We create AI SDK providers directly (bypassing Mastra's model router)
+	 * for two reasons:
+	 * 1. Mastra's dev gateway drops custom headers — we need Accept-Encoding
+	 *    to avoid 8.6 MB brotli decompressors per HTTP connection.
+	 * 2. The proxy path needs @ai-sdk/anthropic directly because Mastra's
+	 *    router forces OpenAI-compatible endpoints, but the proxy may
+	 *    forward to Vertex AI which only speaks native Anthropic Messages API.
+	 */
 	private async resolveModel(user: User): Promise<ModelConfig> {
 		if (this.aiService.isProxyEnabled()) {
 			const { client, headers } = await this.getProxyAuth(user);
 			const modelName = await this.settingsService.resolveModelName(user);
-			const { createAnthropic } = await import('@ai-sdk/anthropic');
-			const provider = createAnthropic({
-				baseURL: client.getApiProxyBaseUrl() + '/anthropic/v1',
+			return this.createProvider('anthropic', modelName, {
 				apiKey: 'proxy-managed',
-				headers: { ...headers, ...InstanceAiService.LLM_HEADERS },
+				baseURL: client.getApiProxyBaseUrl() + '/anthropic/v1',
+				extraHeaders: headers,
 			});
-			return provider(modelName);
 		}
 
 		const config = await this.settingsService.resolveModelConfig(user);
-		return this.withGzipEncoding(config);
+
+		// Already a LanguageModelV2 instance — return as-is
+		if (typeof config !== 'string' && !('id' in config)) {
+			return config;
+		}
+
+		// Extract provider/model from the config
+		const id = typeof config === 'string' ? config : config.id;
+		const [providerId, ...modelParts] = id.split('/');
+		const modelName = modelParts.join('/');
+		const apiKey = typeof config !== 'string' ? config.apiKey : undefined;
+		const baseURL = typeof config !== 'string' && config.url ? config.url : undefined;
+		const extraHeaders = typeof config !== 'string' ? config.headers : undefined;
+
+		return this.createProvider(providerId, modelName, { apiKey, baseURL, extraHeaders });
 	}
 
-	/** Inject Accept-Encoding: gzip into the model config so Mastra's router
-	 *  forwards it to the AI SDK provider's HTTP requests. */
-	private withGzipEncoding(config: ModelConfig): ModelConfig {
-		if (typeof config === 'string') {
-			const id: `${string}/${string}` = config.includes('/')
-				? (config as `${string}/${string}`)
-				: `custom/${config}`;
-			return { id, url: '', headers: InstanceAiService.LLM_HEADERS };
-		}
+	/**
+	 * Create an AI SDK provider instance with gzip headers baked in.
+	 * Falls back to the original ModelConfig string when the provider
+	 * isn't one we handle directly (lets Mastra's router deal with it).
+	 */
+	private createProvider(
+		providerId: string,
+		modelName: string,
+		options: { apiKey?: string; baseURL?: string; extraHeaders?: Record<string, string> },
+	): ModelConfig {
+		const headers = { ...InstanceAiService.LLM_HEADERS, ...options.extraHeaders };
+		const { apiKey, baseURL } = options;
 
-		if ('id' in config) {
-			return { ...config, headers: { ...config.headers, ...InstanceAiService.LLM_HEADERS } };
-		}
+		console.log(
+			`[INSTANCE-AI] createProvider: ${providerId}/${modelName} headers:`,
+			Object.keys(headers),
+		);
 
-		// LanguageModelV2 instance — headers already baked in at creation time
-		return config;
+		switch (providerId) {
+			case 'anthropic': {
+				const provider = createAnthropic({
+					...(apiKey ? { apiKey } : {}),
+					...(baseURL ? { baseURL } : {}),
+					headers,
+				});
+				return provider(modelName);
+			}
+			case 'openai': {
+				const { createOpenAI } = require('@ai-sdk/openai') as typeof import('@ai-sdk/openai');
+				const provider = createOpenAI({
+					...(apiKey ? { apiKey } : {}),
+					...(baseURL ? { baseURL } : {}),
+					headers,
+				});
+				// V3 is runtime-compatible with V2; Mastra handles both
+				return provider.responses(modelName) as unknown as ModelConfig;
+			}
+			default:
+				// For providers we don't handle directly, fall back to string config
+				// so Mastra's model router handles it (without gzip optimization)
+				return apiKey
+					? {
+							id: `${providerId}/${modelName}` as `${string}/${string}`,
+							url: baseURL ?? '',
+							apiKey,
+							headers,
+						}
+					: `${providerId}/${modelName}`;
+		}
 	}
 
 	/** Build search proxy config when proxy is enabled. */
@@ -1127,15 +1173,7 @@ export class InstanceAiService {
 			};
 		}
 
-		const modelId = await this.resolveModel(user); // separate proxy token — see getProxyAuth
-		console.log(
-			'[INSTANCE-AI] resolveModel →',
-			typeof modelId === 'string'
-				? modelId
-				: 'id' in modelId
-					? { id: modelId.id, headers: modelId.headers }
-					: 'LanguageModelV2',
-		);
+		const modelId = await this.resolveModel(user);
 		const memory = createMemory(this.createMemoryConfig());
 		await this.ensureThreadExists(memory, threadId, user.id);
 

@@ -96,6 +96,7 @@
   "dependencies": {
     "@1password/connect": "1.4.2",
     "@ai-sdk/anthropic": "2.0.61",
+    "@ai-sdk/openai": "catalog:",
     "@apidevtools/json-schema-ref-parser": "12.0.2",
     "@aws-sdk/client-secrets-manager": "3.808.0",
     "@azure/identity": "catalog:",

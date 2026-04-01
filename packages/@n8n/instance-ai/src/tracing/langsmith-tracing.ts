@@ -35,21 +35,44 @@ const proxyHeaderStore = new AsyncLocalStorage<Record<string, string>>();
 // can use the correct proxy client for its HTTP calls.
 const traceClients = new Map<string, Client>();
 
+/**
+ * Fetch wrapper that forces gzip encoding to avoid brotli decompressors.
+ * Brotli decompressors cost ~8.6 MB of native memory each and are retained
+ * by undici's connection pool. Gzip decompressors are ~1 KB.
+ */
+const gzipFetch: typeof globalThis.fetch = async (input, init) => {
+	const headers = new Headers(init?.headers);
+	if (!headers.has('Accept-Encoding')) {
+		headers.set('Accept-Encoding', 'gzip, deflate');
+	}
+	return await globalThis.fetch(input, { ...init, headers });
+};
+
 let cachedProxyClient: { client: Client; apiUrl: string } | null = null;
+let cachedDirectClient: Client | null = null;
+
+/** Get a LangSmith Client that uses gzip encoding (no brotli). */
+function getOrCreateDirectClient(): Client {
+	if (cachedDirectClient) return cachedDirectClient;
+	cachedDirectClient = new Client({
+		autoBatchTracing: false,
+		fetchImplementation: gzipFetch,
+	});
+	return cachedDirectClient;
+}
 
 function getOrCreateProxyClient(proxyConfig: ServiceProxyConfig): Client {
 	if (cachedProxyClient?.apiUrl === proxyConfig.apiUrl) return cachedProxyClient.client;
 
 	const proxyFetch: typeof globalThis.fetch = async (input, init) => {
+		const merged = new Headers(init?.headers);
 		const contextHeaders = proxyHeaderStore.getStore();
 		if (contextHeaders) {
-			const merged = new Headers(init?.headers);
 			for (const [key, value] of Object.entries(contextHeaders)) {
 				merged.set(key, value);
 			}
-			return await globalThis.fetch(input, { ...init, headers: merged });
 		}
-		return await globalThis.fetch(input, init);
+		return await gzipFetch(input, { ...init, headers: merged });
 	};
 
 	const client = new Client({
@@ -861,7 +884,7 @@ function hydrateRunTree(state: InstanceAiTraceRun): RunTree {
 		outputs: state.outputs,
 		error: state.error,
 		serialized: {},
-		...(client ? { client } : {}),
+		client: client ?? getOrCreateDirectClient(),
 	});
 }
 
@@ -954,7 +977,7 @@ async function createRun(options: {
 		tags: normalizeTags(DEFAULT_TAGS, options.tags),
 		metadata: mergeMetadata(options.metadata),
 		inputs: sanitizeTracePayload(options.inputs),
-		...(options.client ? { client: options.client } : {}),
+		client: options.client ?? getOrCreateDirectClient(),
 	});
 	await runTree.postRun();
 
