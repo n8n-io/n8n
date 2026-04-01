@@ -106,8 +106,6 @@ export interface ExpressionValue {
 
 export interface BuilderFeatureFlags {
 	templateExamples?: boolean;
-	/** @deprecated Code builder is now the only path. This field is ignored and will be removed. */
-	codeBuilder?: boolean;
 	/** Enable pin data generation in code builder (default: true). */
 	pinData?: boolean;
 	planMode?: boolean;
