@@ -90,7 +90,7 @@ describe('WorkflowBuilderService', () => {
 		(mockLicense.loadCertStr as jest.Mock).mockResolvedValue('test-cert');
 		(mockLicense.getConsumerId as jest.Mock).mockReturnValue('test-consumer-id');
 		(mockInstanceSettings.instanceId as unknown) = 'test-instance-id';
-		mockConfig.aiAssistant = { baseUrl: '' };
+		mockConfig.aiAssistant = { baseUrl: '', aiGatewayDevMode: false };
 
 		// Reset the mocked AiWorkflowBuilderService
 		MockedAiWorkflowBuilderService.mockClear();
