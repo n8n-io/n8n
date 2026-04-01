@@ -1524,7 +1524,7 @@ export class WorkflowExecute {
 					};
 
 					// Update the pairedItem information on items (mutate in-place to avoid
-					// cloning every item — see paired-item-clone-elimination design doc)
+					// cloning every item)
 					for (const connectionType of Object.keys(executionData.data)) {
 						const connections = executionData.data[connectionType];
 						for (let inputIndex = 0; inputIndex < connections.length; inputIndex++) {
