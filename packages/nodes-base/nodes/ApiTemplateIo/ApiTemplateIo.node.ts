@@ -46,23 +46,31 @@ export class ApiTemplateIo implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'PDF V2',
-						value: 'pdfv2',
-					},
-					{
-						name: 'Account V1 (deprecated)',
+						name: 'Account V1 (Deprecated)',
 						value: 'account',
 					},
 					{
-						name: 'Image V1 (deprecated)',
+						name: 'Account V2',
+						value: 'accountv2',
+					},
+					{
+						name: 'Image V1 (Deprecated)',
 						value: 'image',
 					},
 					{
-						name: 'PDF V1 (deprecated)',
+						name: 'Image V2',
+						value: 'imagev2',
+					},
+					{
+						name: 'PDF V1 (Deprecated)',
 						value: 'pdf',
 					},
+					{
+						name: 'PDF V2',
+						value: 'pdfv2',
+					},
 				],
-				default: 'image',
+				default: 'pdfv2',
 			},
 			{
 				displayName: 'Operation',
@@ -109,9 +117,34 @@ export class ApiTemplateIo implements INodeType {
 				name: 'operation',
 				type: 'options',
 				noDataExpression: true,
-				default: 'createFromHtml',
+				default: 'create',
 				required: true,
 				options: [
+					{
+						name: 'Create',
+						value: 'create',
+						action: 'Create an image',
+					},
+				],
+				displayOptions: {
+					show: {
+						resource: ['imagev2'],
+					},
+				},
+			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				default: 'create',
+				required: true,
+				options: [
+					{
+						name: 'Create',
+						value: 'create',
+						action: 'Create a PDF from template',
+					},
 					{
 						name: 'Create From HTML',
 						value: 'createFromHtml',
@@ -131,6 +164,26 @@ export class ApiTemplateIo implements INodeType {
 				displayOptions: {
 					show: {
 						resource: ['pdfv2'],
+					},
+				},
+			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				default: 'get',
+				required: true,
+				options: [
+					{
+						name: 'Get',
+						value: 'get',
+						action: 'Query account information',
+					},
+				],
+				displayOptions: {
+					show: {
+						resource: ['accountv2'],
 					},
 				},
 			},
@@ -392,8 +445,7 @@ export class ApiTemplateIo implements INodeType {
 				description: 'Region of the API endpoint',
 				displayOptions: {
 					show: {
-						resource: ['pdfv2'],
-						operation: ['createFromHtml', 'createFromUrl', 'createFromMarkdown'],
+						resource: ['pdfv2', 'imagev2', 'accountv2'],
 					},
 				},
 				options: [
@@ -438,6 +490,115 @@ export class ApiTemplateIo implements INodeType {
 						description: 'Staging endpoint',
 					},
 				],
+			},
+			{
+				displayName: 'Template Name or ID',
+				name: 'imageTemplateId',
+				type: 'options',
+				required: true,
+				default: '',
+				description:
+					'ID of the image template to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+				typeOptions: {
+					loadOptionsMethod: 'getImageTemplates',
+				},
+				displayOptions: {
+					show: {
+						resource: ['imagev2'],
+						operation: ['create'],
+					},
+				},
+			},
+			{
+				displayName: 'Template Name or ID',
+				name: 'pdfTemplateId',
+				type: 'options',
+				required: true,
+				default: '',
+				description:
+					'ID of the PDF template to use. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+				typeOptions: {
+					loadOptionsMethod: 'getPdfTemplates',
+				},
+				displayOptions: {
+					show: {
+						resource: ['pdfv2'],
+						operation: ['create'],
+					},
+				},
+			},
+			{
+				displayName: 'Data Source',
+				name: 'dataSource',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'JSON Data',
+						value: 'json',
+						description: 'Provide template data as a JSON object in the request body',
+					},
+					{
+						name: 'URL',
+						value: 'url',
+						description: 'Load template data from a remote URL',
+					},
+				],
+				default: 'json',
+				displayOptions: {
+					show: {
+						resource: ['pdfv2'],
+						operation: ['create'],
+					},
+				},
+			},
+			{
+				displayName: 'Data (JSON)',
+				name: 'v2PdfData',
+				type: 'json',
+				default: '{}',
+				placeholder: '{"invoice_number": "INV38379", "date": "2021-09-30"}',
+				description:
+					'JSON object with the template data. Must be a valid JSON object. Sent as the request body.',
+				displayOptions: {
+					show: {
+						resource: ['pdfv2'],
+						operation: ['create'],
+						dataSource: ['json'],
+					},
+				},
+			},
+			{
+				displayName: 'Load Data From URL',
+				name: 'loadDataFrom',
+				type: 'string',
+				required: true,
+				default: '',
+				placeholder: 'https://mydata.com/get-json-data?invoice=123',
+				description:
+					'Load JSON data from a remote URL. The API will fetch data from this URL instead of the request body.',
+				displayOptions: {
+					show: {
+						resource: ['pdfv2'],
+						operation: ['create'],
+						dataSource: ['url'],
+					},
+				},
+			},
+			{
+				displayName: 'Overrides (JSON)',
+				name: 'v2ImageOverrides',
+				type: 'json',
+				default: '[{}]',
+				placeholder:
+					'[{"name": "text_1", "text": "hello world", "textBackgroundColor": "rgba(246, 243, 243, 0)"}]',
+				description: 'JSON array of override objects for template layers',
+				displayOptions: {
+					show: {
+						resource: ['imagev2'],
+						operation: ['create'],
+					},
+				},
 			},
 			{
 				displayName: 'HTML Body',
@@ -544,7 +705,6 @@ export class ApiTemplateIo implements INodeType {
 				displayOptions: {
 					show: {
 						resource: ['pdfv2'],
-						operation: ['createFromHtml', 'createFromUrl', 'createFromMarkdown'],
 					},
 				},
 			},
@@ -558,11 +718,10 @@ export class ApiTemplateIo implements INodeType {
 				},
 				default: 60,
 				required: true,
-				description: 'Expiration of the generated PDF in minutes',
+				description: 'Expiration of the generated file in minutes',
 				displayOptions: {
 					show: {
-						resource: ['pdfv2'],
-						operation: ['createFromHtml', 'createFromUrl', 'createFromMarkdown'],
+						resource: ['pdfv2', 'imagev2'],
 					},
 				},
 			},
@@ -576,7 +735,6 @@ export class ApiTemplateIo implements INodeType {
 				displayOptions: {
 					show: {
 						resource: ['pdfv2'],
-						operation: ['createFromHtml', 'createFromUrl', 'createFromMarkdown'],
 						exportType: ['file'],
 					},
 				},
@@ -594,7 +752,6 @@ export class ApiTemplateIo implements INodeType {
 				displayOptions: {
 					show: {
 						resource: ['pdfv2'],
-						operation: ['createFromHtml', 'createFromUrl', 'createFromMarkdown'],
 					},
 				},
 			},
@@ -609,7 +766,6 @@ export class ApiTemplateIo implements INodeType {
 				displayOptions: {
 					show: {
 						resource: ['pdfv2'],
-						operation: ['createFromHtml', 'createFromUrl', 'createFromMarkdown'],
 						isAsync: [true],
 					},
 				},
@@ -626,7 +782,6 @@ export class ApiTemplateIo implements INodeType {
 				displayOptions: {
 					show: {
 						resource: ['pdfv2'],
-						operation: ['createFromHtml', 'createFromUrl', 'createFromMarkdown'],
 						isAsync: [true],
 					},
 				},
@@ -643,7 +798,6 @@ export class ApiTemplateIo implements INodeType {
 				displayOptions: {
 					show: {
 						resource: ['pdfv2'],
-						operation: ['createFromHtml', 'createFromUrl', 'createFromMarkdown'],
 					},
 				},
 				options: [
@@ -683,6 +837,27 @@ export class ApiTemplateIo implements INodeType {
 						],
 						default: 'pdf',
 						description: 'The desired output format',
+					},
+				],
+			},
+			{
+				displayName: 'Options',
+				name: 'v2ImageOptions',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				displayOptions: {
+					show: {
+						resource: ['imagev2'],
+					},
+				},
+				options: [
+					{
+						displayName: 'Generation Delay',
+						name: 'generation_delay',
+						type: 'number',
+						default: 0,
+						description: 'Delay in milliseconds before image generation',
 					},
 				],
 			},
@@ -1054,8 +1229,206 @@ export class ApiTemplateIo implements INodeType {
 					return [returnData as unknown as INodeExecutionData[]];
 				}
 			}
+		} else if (resource === 'accountv2') {
+			// *********************************************************************
+			//                            accountv2
+			// *********************************************************************
+
+			if (operation === 'get') {
+				for (let i = 0; i < length; i++) {
+					try {
+						const region = this.getNodeParameter('region', i) as string;
+
+						responseData = await apiTemplateIoApiRequestV2.call(
+							this,
+							'GET',
+							region,
+							'/v2/account-information',
+						);
+
+						returnData.push(responseData as IDataObject);
+					} catch (error) {
+						if (this.continueOnFail()) {
+							returnData.push({ json: { error: error.message } });
+							continue;
+						}
+						throw error;
+					}
+				}
+			}
+		} else if (resource === 'imagev2') {
+			// *********************************************************************
+			//                            imagev2
+			// *********************************************************************
+
+			if (operation === 'create') {
+				for (let i = 0; i < length; i++) {
+					try {
+						const region = this.getNodeParameter('region', i) as string;
+						const expiration = this.getNodeParameter('expiration', i) as number;
+						const v2ImageOptions = this.getNodeParameter('v2ImageOptions', i) as IDataObject;
+
+						const qs: IDataObject = {
+							template_id: this.getNodeParameter('imageTemplateId', i),
+							expiration,
+						};
+
+						for (const [key, value] of Object.entries(v2ImageOptions)) {
+							if (value !== '' && value !== undefined) {
+								qs[key] = value;
+							}
+						}
+
+						const body: IDataObject = { overrides: [] };
+						const overridesRaw = this.getNodeParameter('v2ImageOverrides', i) as string;
+						if (overridesRaw) {
+							const overrides = validateJSON(overridesRaw);
+							if (overrides === undefined) {
+								throw new NodeOperationError(
+									this.getNode(),
+									'The Overrides field must contain valid JSON',
+									{ itemIndex: i },
+								);
+							}
+							body.overrides = overrides;
+						}
+
+						responseData = await apiTemplateIoApiRequestV2.call(
+							this,
+							'POST',
+							region,
+							'/v2/create-image',
+							qs,
+							body,
+						);
+
+						returnData.push(responseData as IDataObject);
+					} catch (error) {
+						if (this.continueOnFail()) {
+							returnData.push({ json: { error: error.message } });
+							continue;
+						}
+						throw error;
+					}
+				}
+			}
 		} else if (resource === 'pdfv2') {
-			if (
+			// *********************************************************************
+			//                              pdfv2
+			// *********************************************************************
+
+			if (operation === 'create') {
+				const exportType = this.getNodeParameter('exportType', 0) as string;
+
+				for (let i = 0; i < length; i++) {
+					try {
+						const region = this.getNodeParameter('region', i) as string;
+						const expiration = this.getNodeParameter('expiration', i) as number;
+						const isAsync = this.getNodeParameter('isAsync', i) as boolean;
+						const v2Options = this.getNodeParameter('v2Options', i) as IDataObject;
+
+						const qs: IDataObject = {
+							template_id: this.getNodeParameter('pdfTemplateId', i),
+							export_type: this.getNodeParameter('exportType', i) as string,
+							expiration,
+						};
+
+						if (isAsync) {
+							const webhookUrl = this.getNodeParameter('webhookUrl', i) as string;
+							const webhookMethod = this.getNodeParameter('webhookMethod', i) as string;
+							qs.async = '1';
+							qs.webhook_url = webhookUrl;
+							qs.webhook_method = webhookMethod;
+						}
+
+						for (const [key, value] of Object.entries(v2Options)) {
+							if (value !== '' && value !== undefined) {
+								qs[key] = value;
+							}
+						}
+
+						const dataSource = this.getNodeParameter('dataSource', i) as string;
+						let body: IDataObject = {};
+
+						if (dataSource === 'url') {
+							const loadDataFrom = this.getNodeParameter('loadDataFrom', i) as string;
+							qs.load_data_from = loadDataFrom;
+						} else {
+							const dataJsonRaw = this.getNodeParameter('v2PdfData', i) as string;
+							if (dataJsonRaw) {
+								const parsedData = validateJSON(dataJsonRaw);
+								if (parsedData === undefined) {
+									throw new NodeOperationError(
+										this.getNode(),
+										'The Data field must contain valid JSON',
+										{ itemIndex: i },
+									);
+								}
+								if (typeof parsedData !== 'object' || Array.isArray(parsedData)) {
+									throw new NodeOperationError(
+										this.getNode(),
+										'The Data field must be a JSON object, not an array or primitive',
+										{ itemIndex: i },
+									);
+								}
+								body = parsedData as IDataObject;
+							}
+						}
+
+						const returnBinary = qs.export_type === 'file';
+
+						responseData = await apiTemplateIoApiRequestV2.call(
+							this,
+							'POST',
+							region,
+							'/v2/create-pdf',
+							qs,
+							body,
+							returnBinary,
+						);
+
+						if (returnBinary) {
+							const binaryProperty = this.getNodeParameter('v2BinaryProperty', i) as string;
+							const outputFormat = (v2Options.output_format as string) || 'pdf';
+							const mimeTypes: Record<string, string> = {
+								pdf: 'application/pdf',
+								html: 'text/html',
+								png: 'image/png',
+								jpeg: 'image/jpeg',
+							};
+							const extensions: Record<string, string> = {
+								pdf: 'pdf',
+								html: 'html',
+								png: 'png',
+								jpeg: 'jpeg',
+							};
+							const fileName =
+								(v2Options.filename as string) || `output.${extensions[outputFormat] || 'pdf'}`;
+							const binaryData = await this.helpers.prepareBinaryData(
+								responseData as Buffer,
+								fileName,
+								mimeTypes[outputFormat] || 'application/pdf',
+							);
+							returnData.push({
+								json: {},
+								binary: { [binaryProperty]: binaryData },
+							} as unknown as IDataObject);
+						} else {
+							returnData.push(responseData as IDataObject);
+						}
+					} catch (error) {
+						if (this.continueOnFail()) {
+							returnData.push({ json: { error: error.message } });
+							continue;
+						}
+						throw error;
+					}
+				}
+
+				if (exportType === 'file') {
+					return [returnData as unknown as INodeExecutionData[]];
+				}
+			} else if (
 				operation === 'createFromHtml' ||
 				operation === 'createFromUrl' ||
 				operation === 'createFromMarkdown'
@@ -1090,11 +1463,11 @@ export class ApiTemplateIo implements INodeType {
 						const body: IDataObject = {};
 
 						if (operation === 'createFromHtml' || operation === 'createFromMarkdown') {
-							const bodyContent =
+							const rawContent =
 								operation === 'createFromHtml'
 									? (this.getNodeParameter('htmlBody', i) as string)
 									: (this.getNodeParameter('markdownBody', i) as string);
-							body.body = bodyContent;
+							body.body = rawContent.replaceAll('\\n', '\n');
 
 							const css = this.getNodeParameter('css', i) as string;
 							if (css) {
