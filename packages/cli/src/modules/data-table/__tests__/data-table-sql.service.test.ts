@@ -398,14 +398,22 @@ describe('DataTableSqlService', () => {
 				['COMMIT', 'SELECT * FROM orders; COMMIT'],
 				['SET search_path', 'SET search_path TO public'],
 				['SET ROLE', 'SET ROLE postgres'],
+				['LOCK TABLE', 'LOCK TABLE orders IN ACCESS EXCLUSIVE MODE'],
+				['prepared statement', 'PREPARE steal AS SELECT * FROM orders'],
+				['execute prepared statement', 'EXECUTE steal'],
+				['CALL stored procedure', 'CALL evil_procedure()'],
+				['DO block', 'DO $$ BEGIN PERFORM pg_sleep(10); END $$'],
 
 				// Schema-qualified access to system/other tables
 				['schema-qualified credentials', 'SELECT * FROM public.credential_entity'],
 				['information_schema.tables', 'SELECT * FROM information_schema.tables'],
 				['pg_catalog access', 'SELECT * FROM pg_catalog.pg_class'],
+				['sqlite_schema access', 'SELECT * FROM sqlite_schema'],
+				['sqlite pragma table-valued function', "SELECT * FROM pragma_table_info('orders')"],
 
 				// Dangerous functions
 				['pg_read_file', "SELECT pg_read_file('/etc/passwd') FROM orders"],
+				['pg advisory lock', 'SELECT pg_try_advisory_lock(1) FROM orders'],
 				['pg_sleep (DoS)', 'SELECT pg_sleep(999) FROM orders'],
 				['lo_import', "SELECT lo_import('/etc/passwd') FROM orders"],
 				['current_setting', "SELECT current_setting('data_directory') FROM orders"],
@@ -415,11 +423,15 @@ describe('DataTableSqlService', () => {
 					"SELECT query_to_xml('SELECT * FROM credential_entity', true, true, '') FROM orders",
 				],
 				['dblink (cross-db)', "SELECT dblink('SELECT * FROM credential_entity') FROM orders"],
+				['sqlite readfile extension', "SELECT readfile('/etc/passwd') FROM orders"],
+				['sqlite writefile extension', "SELECT writefile('/tmp/evil', 'x') FROM orders"],
 
 				// COPY / EXPLAIN / GRANT
 				['COPY to file', "COPY orders TO '/tmp/data.csv'"],
 				['EXPLAIN leaking plan', 'EXPLAIN SELECT * FROM orders'],
 				['GRANT', 'GRANT ALL ON orders TO evil_user'],
+				['VACUUM', 'VACUUM'],
+				['ANALYZE', 'ANALYZE orders'],
 
 				// Quote injection (trying to break out of tokenizer)
 				['double-quote identifier escape', 'SELECT "credential_entity".* FROM orders'],
@@ -437,6 +449,13 @@ describe('DataTableSqlService', () => {
 				// Window functions (could bypass read restrictions in theory)
 				['OVER clause', 'SELECT COUNT(*) OVER () FROM orders'],
 				['ROW_NUMBER window', 'SELECT ROW_NUMBER() OVER (ORDER BY amount) FROM orders'],
+				['TABLESAMPLE', 'SELECT * FROM orders TABLESAMPLE SYSTEM (100)'],
+				['ONLY inheritance escape', 'SELECT * FROM ONLY orders'],
+				['FETCH FIRST syntax', 'SELECT * FROM orders FETCH FIRST 10 ROWS ONLY'],
+				['SELECT FOR UPDATE', 'SELECT * FROM orders FOR UPDATE'],
+				['SELECT FOR SHARE', 'SELECT * FROM orders FOR SHARE'],
+				['SELECT FOR KEY SHARE', 'SELECT * FROM orders FOR KEY SHARE'],
+				['SELECT FOR NO KEY UPDATE', 'SELECT * FROM orders FOR NO KEY UPDATE'],
 
 				// SELECT INTO (creates a new table)
 				['SELECT INTO', 'SELECT * INTO evil_table FROM orders'],
