@@ -38,6 +38,8 @@ describe('eligibleModules', () => {
 			'workflow-builder',
 			'redaction',
 			'instance-registry',
+			'otel',
+			'token-exchange',
 		]);
 	});
 
@@ -62,6 +64,8 @@ describe('eligibleModules', () => {
 			'workflow-builder',
 			'redaction',
 			'instance-registry',
+			'otel',
+			'token-exchange',
 		]);
 	});
 
