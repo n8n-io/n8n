@@ -44,7 +44,6 @@
   "n8n": {
     "n8nNodesApiVersion": 1,
     "credentials": [
-      "dist/credentials/AlibabaCloudApi.credentials.js",
       "dist/credentials/AnthropicApi.credentials.js",
       "dist/credentials/AzureAiSearchApi.credentials.js",
       "dist/credentials/AzureOpenAiApi.credentials.js",

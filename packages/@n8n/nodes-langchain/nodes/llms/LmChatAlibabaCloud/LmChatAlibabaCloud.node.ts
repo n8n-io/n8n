@@ -13,8 +13,21 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { getBaseUrl } from '../../../credentials/AlibabaCloudApi.credentials';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
+
+const REGION_BASE_URLS: Record<string, string> = {
+	'ap-southeast-1': 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1',
+	'us-east-1': 'https://dashscope-us.aliyuncs.com/compatible-mode/v1',
+	'cn-beijing': 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+	'cn-hongkong': 'https://cn-hongkong.dashscope.aliyuncs.com/compatible-mode/v1',
+};
+
+function getBaseUrl(region: string, workspaceId?: string): string {
+	if (region === 'eu-central-1' && workspaceId) {
+		return `https://${workspaceId}.eu-central-1.maas.aliyuncs.com/compatible-mode/v1`;
+	}
+	return REGION_BASE_URLS[region] ?? REGION_BASE_URLS['ap-southeast-1'];
+}
 
 export class LmChatAlibabaCloud implements INodeType {
 	description: INodeTypeDescription = {

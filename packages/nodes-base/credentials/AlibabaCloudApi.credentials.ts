@@ -8,20 +8,6 @@ import type {
 const REGION_TO_BASE_URL_EXPRESSION =
 	'={{ $credentials.region === "us-east-1" ? "https://dashscope-us.aliyuncs.com/compatible-mode/v1" : $credentials.region === "cn-beijing" ? "https://dashscope.aliyuncs.com/compatible-mode/v1" : $credentials.region === "cn-hongkong" ? "https://cn-hongkong.dashscope.aliyuncs.com/compatible-mode/v1" : $credentials.region === "eu-central-1" ? "https://" + $credentials.workspaceId + ".eu-central-1.maas.aliyuncs.com/compatible-mode/v1" : "https://dashscope-intl.aliyuncs.com/compatible-mode/v1" }}';
 
-export const REGION_BASE_URLS: Record<string, string> = {
-	'ap-southeast-1': 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1',
-	'us-east-1': 'https://dashscope-us.aliyuncs.com/compatible-mode/v1',
-	'cn-beijing': 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-	'cn-hongkong': 'https://cn-hongkong.dashscope.aliyuncs.com/compatible-mode/v1',
-};
-
-export function getBaseUrl(region: string, workspaceId?: string): string {
-	if (region === 'eu-central-1' && workspaceId) {
-		return `https://${workspaceId}.eu-central-1.maas.aliyuncs.com/compatible-mode/v1`;
-	}
-	return REGION_BASE_URLS[region] ?? REGION_BASE_URLS['ap-southeast-1'];
-}
-
 export class AlibabaCloudApi implements ICredentialType {
 	name = 'alibabaCloudApi';
 
