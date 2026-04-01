@@ -74,6 +74,7 @@ packages/cli/src/modules/redaction/                     @n8n-io/iam
 packages/cli/src/modules/instance-registry/             @n8n-io/iam
 
 packages/cli/src/environments.ee/                       @n8n-io/ligo
+packages/cli/src/public-api/                            @n8n-io/ligo
 packages/cli/src/modules/source-control.ee/             @n8n-io/ligo
 packages/cli/src/modules/external-secrets.ee/           @n8n-io/ligo
 packages/cli/src/modules/insights/                      @n8n-io/ligo
