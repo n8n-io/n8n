@@ -10,6 +10,11 @@
  * the LLM decide whether an endpoint returns JSON, a file download, or an
  * error — without us maintaining per-service detection rules.
  *
+ * IMPORTANT: This handler is designed for use with synthetic/eval data only.
+ * All request data (body, query params) is sanitized before being sent to
+ * the LLM, but the handler should never be used with real user data in
+ * production workflows.
+ *
  * Used by:
  *   - Instance AI agent tools (self-validation during workflow building)
  *   - Eval CLI test suite (scenario-based testing via REST endpoint)
@@ -24,6 +29,7 @@ import { z } from 'zod';
 import { createEvalAgent, extractText, Tool } from '@n8n/instance-ai';
 import { fetchApiDocs } from './api-docs';
 import { extractNodeConfig } from './node-config';
+import { redactSecretKeys, truncateForLlm } from './request-sanitizer';
 
 // ---------------------------------------------------------------------------
 // System prompt
@@ -141,10 +147,13 @@ async function generateMockResponse(
 	];
 
 	if (request.body) {
-		sections.push(`Body: ${JSON.stringify(request.body)}`);
+		const sanitized = redactSecretKeys(request.body);
+		const serialized = truncateForLlm(JSON.stringify(sanitized));
+		sections.push(`Body: ${serialized}`);
 	}
 	if (request.qs && Object.keys(request.qs).length > 0) {
-		sections.push(`Query: ${JSON.stringify(request.qs)}`);
+		const sanitizedQs = redactSecretKeys(request.qs);
+		sections.push(`Query: ${JSON.stringify(sanitizedQs)}`);
 	}
 
 	// Detect GraphQL and add format constraint
