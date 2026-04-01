@@ -89,7 +89,7 @@ export class DataTableProxyService implements DataTableProxyProvider {
 	}
 
 	private async requireScope(user: User, scope: Scope, projectId?: string): Promise<void> {
-		const hasScope = await userHasScopes(user, [scope], false, { projectId });
+		const hasScope = await userHasScopes(user, [scope], !projectId, { projectId });
 		if (!hasScope) {
 			throw new Error(`User does not have '${scope}' access on project '${projectId}'`);
 		}
