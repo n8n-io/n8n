@@ -13,7 +13,7 @@ import type {
 	INodeProperties,
 	ITelemetryTrackProperties,
 } from 'n8n-workflow';
-import { deepCopy, NodeHelpers } from 'n8n-workflow';
+import { CREDENTIAL_EMPTY_VALUE, deepCopy, NodeHelpers } from 'n8n-workflow';
 import CredentialIcon from '../CredentialIcon.vue';
 
 import CredentialConfig from './CredentialConfig.vue';
@@ -301,6 +301,19 @@ const requiredPropertiesFilled = computed(() => {
 				return false;
 			}
 		}
+
+		if (property.type === 'json' && credentialProperty) {
+			const jsonValue = String(credentialProperty);
+			const containsExpression = isExpression(jsonValue);
+			// Sentinels represent a previously-saved value, and expressions are always valid
+			if (!containsExpression && jsonValue !== CREDENTIAL_EMPTY_VALUE) {
+				try {
+					JSON.parse(jsonValue);
+				} catch {
+					return false;
+				}
+			}
+		}
 	}
 	return true;
 });
@@ -354,6 +367,12 @@ const showSaveButton = computed(() => {
 const showSharingContent = computed(() => activeTab.value === 'sharing' && !!credentialType.value);
 
 const homeProject = computed(() => {
+	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+	const overrideProjectId = isCredentialModalState(modalState) ? modalState.projectId : undefined;
+	if (overrideProjectId) {
+		const override = projectsStore.myProjects.find((p) => p.id === overrideProjectId);
+		if (override) return override;
+	}
 	const { currentProject, personalProject } = projectsStore;
 	return currentProject ?? personalProject;
 });
@@ -395,7 +414,9 @@ onMounted(async () => {
 
 	const forceManual = isCredentialModalState(modalState) && modalState.forceManualMode === true;
 
-	const projectId = projectsStore.currentProjectId ?? projectsStore.personalProject?.id;
+	const overrideProjectId = isCredentialModalState(modalState) ? modalState.projectId : undefined;
+	const projectId =
+		overrideProjectId ?? projectsStore.currentProjectId ?? projectsStore.personalProject?.id;
 	if (projectId) {
 		try {
 			await externalSecretsStore.fetchSecretsForProject(projectId);
@@ -405,9 +426,14 @@ onMounted(async () => {
 	}
 
 	if (props.mode === 'new' && credentialTypeName.value) {
-		credentialName.value = await credentialsStore.getNewCredentialName({
-			credentialTypeName: defaultCredentialTypeName.value,
-		});
+		const modalSuggestedName = isCredentialModalState(modalState)
+			? modalState.suggestedName
+			: undefined;
+		credentialName.value = modalSuggestedName
+			? modalSuggestedName
+			: await credentialsStore.getNewCredentialName({
+					credentialTypeName: defaultCredentialTypeName.value,
+				});
 
 		credentialData.value = {
 			...credentialData.value,
@@ -856,6 +882,12 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 		credentialId.value = credential.id;
 		currentCredential.value = credential;
 
+		// Re-fetch to display server-redacted JSON shape for credentials with leaf-redacted fields
+		if (credentialProperties.value.some((p) => p.typeOptions?.redactJsonLeaves)) {
+			await loadCurrentCredential(credential.id);
+			setCredentialPropertyDefaults();
+		}
+
 		if (isCredentialTestable.value) {
 			isTesting.value = true;
 			// Add the full data including defaults for testing
@@ -1293,14 +1325,19 @@ function resetCredentialData(): void {
 		}
 	}
 
+	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+	const overrideProjectId = isCredentialModalState(modalState) ? modalState.projectId : undefined;
+	const overrideProject = overrideProjectId
+		? projectsStore.myProjects.find((p) => p.id === overrideProjectId)
+		: undefined;
 	const { currentProject, personalProject } = projectsStore;
-	const scopes = currentProject?.scopes ?? personalProject?.scopes ?? [];
-	const homeProject = currentProject ?? personalProject ?? {};
+	const resolvedProject = overrideProject ?? currentProject ?? personalProject ?? {};
+	const scopes = ('scopes' in resolvedProject ? resolvedProject.scopes : undefined) ?? [];
 
 	credentialData.value = {
 		...credentialData.value,
 		scopes: scopes as unknown as CredentialInformation,
-		homeProject,
+		homeProject: resolvedProject,
 	};
 }
 
