@@ -824,6 +824,8 @@ export interface OrchestrationContext {
 	domainTools: ToolsInput;
 	abortSignal: AbortSignal;
 	taskStorage: TaskStorage;
+	/** Set when a template adaptation in the current turn must go through plan review before building. */
+	templateAdaptationRequiresPlanReview?: boolean;
 	tracing?: InstanceAiTraceContext;
 	waitForConfirmation?: (requestId: string) => Promise<{
 		approved: boolean;

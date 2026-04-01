@@ -1,7 +1,7 @@
 import { setActivePinia, createPinia } from 'pinia';
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { fetchThreadMessages, fetchThreadStatus } from '../instanceAi.memory.api';
-import { ensureThread, postMessage } from '../instanceAi.api';
+import { ensureThread, postMessage, postConfirmation } from '../instanceAi.api';
 import { useInstanceAiStore } from '../instanceAi.store';
 
 // ---------------------------------------------------------------------------
@@ -134,6 +134,14 @@ const mockFetchThreadMessages = vi.mocked(fetchThreadMessages);
 const mockFetchThreadStatus = vi.mocked(fetchThreadStatus);
 const mockEnsureThread = vi.mocked(ensureThread);
 const mockPostMessage = vi.mocked(postMessage);
+const mockPostConfirmation = vi.mocked(postConfirmation);
+
+vi.stubGlobal('localStorage', {
+	getItem: vi.fn().mockReturnValue(null),
+	setItem: vi.fn(),
+	removeItem: vi.fn(),
+	clear: vi.fn(),
+});
 
 describe('useInstanceAiStore - onSSEMessage', () => {
 	let store: ReturnType<typeof useInstanceAiStore>;
@@ -486,6 +494,148 @@ describe('useInstanceAiStore - onSSEMessage', () => {
 	});
 });
 
+describe('useInstanceAiStore - blocking template choice detection', () => {
+	test('treats legacy choose-workflow-template confirmations as blocking', () => {
+		setActivePinia(createPinia());
+		const store = useInstanceAiStore();
+
+		store.messages = [
+			{
+				id: 'msg-1',
+				role: 'assistant',
+				createdAt: '2026-01-01T00:00:00.000Z',
+				content: '',
+				reasoning: '',
+				isStreaming: true,
+				agentTree: {
+					agentId: 'agent-root',
+					role: 'orchestrator',
+					status: 'active',
+					textContent: '',
+					reasoning: '',
+					toolCalls: [
+						{
+							toolCallId: 'tc-choose',
+							toolName: 'choose-workflow-template',
+							args: {
+								templates: [{ templateId: 101, name: 'Slack alert triage' }],
+								totalResults: 4,
+							},
+							isLoading: true,
+							confirmation: {
+								requestId: 'req-1',
+								severity: 'info',
+								message: 'Pick one',
+							},
+						},
+					],
+					children: [],
+					timeline: [{ type: 'tool-call', toolCallId: 'tc-choose' }],
+				},
+			},
+		];
+
+		expect(store.hasBlockingTemplateChoice).toBe(true);
+	});
+
+	test('does not surface restored template confirmations when the message is no longer live', () => {
+		setActivePinia(createPinia());
+		const store = useInstanceAiStore();
+
+		store.messages = [
+			{
+				id: 'msg-1',
+				role: 'assistant',
+				createdAt: '2026-01-01T00:00:00.000Z',
+				content: '',
+				reasoning: '',
+				isStreaming: false,
+				agentTree: {
+					agentId: 'agent-root',
+					role: 'orchestrator',
+					status: 'active',
+					textContent: '',
+					reasoning: '',
+					toolCalls: [
+						{
+							toolCallId: 'tc-choose',
+							toolName: 'choose-workflow-template',
+							args: {
+								templates: [{ templateId: 101, name: 'Slack alert triage' }],
+								totalResults: 4,
+							},
+							isLoading: true,
+							confirmation: {
+								requestId: 'req-1',
+								severity: 'info',
+								message: 'Pick one',
+							},
+						},
+					],
+					children: [],
+					timeline: [{ type: 'tool-call', toolCallId: 'tc-choose' }],
+				},
+			},
+		];
+
+		expect(store.pendingConfirmations).toEqual([]);
+		expect(store.hasBlockingTemplateChoice).toBe(false);
+	});
+});
+
+describe('useInstanceAiStore - loadThreadStatus', () => {
+	let store: ReturnType<typeof useInstanceAiStore>;
+
+	beforeEach(() => {
+		setActivePinia(createPinia());
+		store = useInstanceAiStore();
+		store.currentThreadId = 'thread-1';
+		store.messages = [
+			{
+				id: 'msg-1',
+				runId: 'run-suspended',
+				role: 'assistant',
+				createdAt: '2026-01-01T00:00:00.000Z',
+				content: '',
+				reasoning: '',
+				isStreaming: false,
+				agentTree: {
+					agentId: 'agent-root',
+					role: 'orchestrator',
+					status: 'active',
+					textContent: '',
+					reasoning: '',
+					toolCalls: [],
+					children: [],
+					timeline: [],
+				},
+			},
+		];
+	});
+
+	afterEach(() => {
+		vi.clearAllMocks();
+		mockFetchThreadStatus.mockResolvedValue({
+			hasActiveRun: false,
+			isSuspended: false,
+			backgroundTasks: [],
+		});
+	});
+
+	test('keeps the latest assistant message streaming while the thread is suspended', async () => {
+		mockFetchThreadStatus.mockResolvedValue({
+			hasActiveRun: false,
+			isSuspended: true,
+			backgroundTasks: [],
+		});
+
+		await store.loadThreadStatus('thread-1');
+
+		expect(store.activeRunId).toBe('run-suspended');
+		expect(store.messages[0].isStreaming).toBe(true);
+	});
+});
+
 // ---------------------------------------------------------------------------
 // Store-level feedback integration tests
 // (Composable logic is tested in useResponseFeedback.test.ts)
@@ -595,5 +745,66 @@ describe('useInstanceAiStore - feedback integration', () => {
 			store.creditsClaimed = 75;
 			expect(store.creditsPercentageRemaining).toBe(25);
 		});
+	});
+});
+
+// ---------------------------------------------------------------------------
+// confirmAction — templateChoice forwarding
+// ---------------------------------------------------------------------------
+
+describe('useInstanceAiStore - confirmAction forwards templateChoice', () => {
+	let store: ReturnType<typeof useInstanceAiStore>;
+
+	beforeEach(async () => {
+		setActivePinia(createPinia());
+		capturedOnMessage = null;
+		store = useInstanceAiStore();
+		store.newThread();
+		await vi.waitFor(() => {
+			expect(capturedOnMessage).not.toBeNull();
+		});
+	});
+
+	afterEach(() => {
+		store.closeSSE();
+		vi.clearAllMocks();
+	});
+
+	test('confirmAction passes templateChoice through to postConfirmation', async () => {
+		mockPostConfirmation.mockResolvedValue(undefined);
+
+		const templateChoice = {
+			action: 'adapt_with_agent' as const,
+			templateId: 101,
+			templateName: 'Slack alert triage',
+		};
+
+		const result = await store.confirmAction(
+			'req-1',
+			true,
+			undefined, // credentialId
+			undefined, // credentials
+			undefined, // autoSetup
+			undefined, // userInput
+			undefined, // domainAccessAction
+			undefined, // setupWorkflowData
+			undefined, // answers
+			templateChoice,
+		);
+
+		expect(result).toBe(true);
+		expect(mockPostConfirmation).toHaveBeenCalledWith(
+			expect.anything(), // context
+			'req-1',
+			true,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			templateChoice,
+		);
 	});
 });

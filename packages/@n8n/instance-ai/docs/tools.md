@@ -685,6 +685,48 @@ curated tool subset.
 
 ---
 
+## Template Inspiration Tools
+
+### `search-workflow-templates`
+
+Search public n8n workflow templates and return concise template suggestions for inspiration before building.
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `search` | string | no | — | Free-text search query |
+| `category` | enum | no | — | Template category filter |
+| `rows` | number | no | 5 | Max results (1–10) |
+
+**Returns**: `{ templates: [{ templateId, name, description }], totalResults }`
+
+**Usage**:
+- Use when the user wants examples, inspiration, or starter workflows
+- Do not use when the user has already supplied a concrete build spec
+- After the user picks a direction, hand off to `build-workflow-with-agent`
+
+### `choose-workflow-template`
+
+Presents a blocking chooser for curated workflow template matches. The tool suspends the orchestrator until the user selects either:
+- `adapt_with_agent` — continue the build using the selected template as reference
+- `use_now` — open the template directly (frontend handles the redirect)
+
+**Input:**
+- `templates` — array of `{ templateId, name, description? }` (at least 1)
+- `totalResults` — total number of matches from the search
+- `introMessage` — optional intro text shown above the chooser
+
+**Output:**
+- `selected` — whether the user made a selection
+- `action` — `'adapt_with_agent'` or `'use_now'`
+- `templateId` — selected template ID
+- `templateName` — selected template name
+
+### Builder-only template reference tools
+
+`search-template-structures` and `search-template-parameters` remain builder-oriented reference tools. They are useful for internal workflow construction but are not the default user-facing inspiration entrypoint.
+
+---
+
 ## Adding New Tools
 
 1. Create a file in `src/tools/<domain>/` following the naming convention `<verb>-<noun>.tool.ts`

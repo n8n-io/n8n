@@ -4990,6 +4990,8 @@
 	"instanceAi.input.placeholder": "Ask anything...",
 	"instanceAi.input.send": "Send",
 	"instanceAi.input.stop": "Stop",
+	"instanceAi.input.templateChoiceBlocking": "Choose a template to continue.",
+	"instanceAi.input.templateAdaptationBlocking": "Answer the pending question to continue.",
 	"instanceAi.input.researchToggle": "Deep research",
 	"instanceAi.input.researchToggle.tooltip": "Search the web, read documentation, and synthesize findings before responding",
 	"instanceAi.toolCall.input": "Input",
@@ -4997,6 +4999,16 @@
 	"instanceAi.toolCall.running": "Running...",
 	"instanceAi.toolCall.error": "Error",
 	"instanceAi.toolResult.moreRows": "and {count} more rows...",
+	"instanceAi.toolResult.templates.empty": "No matching templates found.",
+	"instanceAi.toolResult.templates.id": "Template ID: {id}",
+	"instanceAi.toolResult.templates.summary": "Showing {visible} of {total} matching templates",
+	"instanceAi.toolResult.templates.use": "Use template",
+	"instanceAi.templateChoice.adapt": "Adapt with agent",
+	"instanceAi.templateChoice.summary": "Showing {visible} of {total} matching templates",
+	"instanceAi.templateChoice.summary.adapt": "Adapting \"{name}\" as reference",
+	"instanceAi.templateChoice.summary.useNow": "Opened template \"{name}\"",
+	"instanceAi.templateChoice.useNow": "Use now",
+	"instanceAi.templateChoice.useNowError": "Could not open the template. Try again.",
 	"instanceAi.thread.new": "New chat",
 	"instanceAi.sidebar.back": "Back",
 	"instanceAi.message.reasoning": "Reasoning",
@@ -5299,5 +5311,6 @@
 	"instanceAi.filesystem.category.filesystem": "Files",
 	"instanceAi.filesystem.category.shell": "Shell",
 	"instanceAi.settings.permissions.activateWorkflow.label": "Activate workflow without approval",
-	"instanceAi.tools.patch-workflow": "Updating workflow"
+	"instanceAi.tools.patch-workflow": "Updating workflow",
+	"instanceAi.tools.search-workflow-templates": "Searching templates"
 }

@@ -252,6 +252,32 @@ describe('InstanceAiController', () => {
 			);
 		});
 
+		it('should forward templateChoice when resolving confirmation', async () => {
+			instanceAiService.resolveConfirmation.mockResolvedValue(true);
+			const body = mock<InstanceAiConfirmRequestDto>({ approved: true });
+			// Override the deep-mocked property with the actual value
+			(body as unknown as Record<string, unknown>).templateChoice = {
+				action: 'adapt_with_agent',
+				templateId: 101,
+				templateName: 'Slack alert triage',
+			};
+
+			await controller.confirm(req, res, 'req-1', body);
+
+			expect(instanceAiService.resolveConfirmation).toHaveBeenCalledWith(
+				USER_ID,
+				'req-1',
+				expect.objectContaining({
+					approved: true,
+					templateChoice: {
+						action: 'adapt_with_agent',
+						templateId: 101,
+						templateName: 'Slack alert triage',
+					},
+				}),
+			);
+		});
+
 		it('should throw NotFoundError when confirmation not found', async () => {
 			instanceAiService.resolveConfirmation.mockResolvedValue(false);
 			const body = mock<InstanceAiConfirmRequestDto>({ approved: false });

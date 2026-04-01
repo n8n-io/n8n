@@ -33,6 +33,7 @@ import { handleEvent as reduceEvent, rebuildRunStateFromTree } from './instanceA
 import { useResourceRegistry } from './useResourceRegistry';
 import { useResponseFeedback } from './useResponseFeedback';
 import { NEW_CONVERSATION_TITLE } from './constants';
+import { isTemplateChoiceToolCall } from './templateChoice.utils';
 import type {
 	InstanceAiAttachment,
 	InstanceAiEvent,
@@ -260,11 +261,15 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const pendingConfirmations = computed((): PendingConfirmationItem[] => {
 		const items: PendingConfirmationItem[] = [];
 		for (const msg of messages.value) {
-			if (msg.role !== 'assistant' || !msg.agentTree) continue;
+			if (msg.role !== 'assistant' || !msg.agentTree || !msg.isStreaming) continue;
 			collectPendingConfirmations(msg.agentTree, msg.id, resolvedConfirmationIds.value, items);
 		}
 		return items;
 	});
+
+	const hasBlockingTemplateChoice = computed(() =>
+		pendingConfirmations.value.some((item) => isTemplateChoiceToolCall(item.toolCall)),
+	);
 
 	function resolveConfirmation(
 		requestId: string,
@@ -667,7 +672,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 
 			if (status.hasActiveRun || status.isSuspended) {
 				activeRunId.value = lastAssistant.runId ?? null;
-				lastAssistant.isStreaming = status.hasActiveRun;
+				lastAssistant.isStreaming = status.hasActiveRun || status.isSuspended;
 			}
 
 			// Background task visibility is handled by the run-sync control frame
@@ -781,6 +786,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			testTriggerNode?: string;
 		},
 		answers?: InstanceAiConfirmResponse['answers'],
+		templateChoice?: InstanceAiConfirmResponse['templateChoice'],
 	): Promise<boolean> {
 		try {
 			await postConfirmation(
@@ -794,6 +800,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				domainAccessAction,
 				setupWorkflowData,
 				answers,
+				templateChoice,
 			);
 			return true;
 		} catch {
@@ -937,6 +944,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		creditsPercentageRemaining,
 		isLowCredits,
 		pendingConfirmations,
+		hasBlockingTemplateChoice,
 		// Actions
 		newThread,
 		deleteThread,

@@ -258,6 +258,24 @@ export const taskListSchema = z.object({
 
 export type TaskList = z.infer<typeof taskListSchema>;
 
+// ---------------------------------------------------------------------------
+// Template choice schemas (blocking template-choice panel)
+// ---------------------------------------------------------------------------
+
+export const templateChoiceActionSchema = z.enum(['adapt_with_agent', 'use_now']);
+
+export const templateChoiceItemSchema = z.object({
+	templateId: z.number(),
+	name: z.string(),
+	description: z.string().optional(),
+});
+
+export const templateChoiceResponseSchema = z.object({
+	action: templateChoiceActionSchema,
+	templateId: z.number(),
+	templateName: z.string(),
+});
+
 export const confirmationRequestPayloadSchema = z.object({
 	requestId: z.string(),
 	toolCallId: z.string().describe('Correlates to the tool-call that needs approval'),
@@ -273,11 +291,12 @@ export const confirmationRequestPayloadSchema = z.object({
 			'Target project ID — used to scope actions (e.g. credential creation) to the correct project',
 		),
 	inputType: z
-		.enum(['approval', 'text', 'questions', 'plan-review'])
+		.enum(['approval', 'text', 'questions', 'plan-review', 'template-choice'])
 		.optional()
 		.describe(
 			'UI mode: approval (default) shows approve/deny, text shows a text input, ' +
-				'questions shows structured Q&A wizard, plan-review shows plan approval with feedback',
+				'questions shows structured Q&A wizard, plan-review shows plan approval with feedback, ' +
+				'template-choice shows a blocking template chooser panel',
 		),
 	questions: z
 		.array(
@@ -290,7 +309,21 @@ export const confirmationRequestPayloadSchema = z.object({
 		)
 		.optional()
 		.describe('Structured questions for the Q&A wizard (inputType=questions)'),
-	introMessage: z.string().optional().describe('Intro text shown above questions or plan review'),
+	introMessage: z
+		.string()
+		.optional()
+		.describe('Intro text shown above questions, plan review, or template choice'),
+	templates: z
+		.array(templateChoiceItemSchema)
+		.optional()
+		.describe('Template shortlist for the blocking template-choice panel'),
+	totalResults: z
+		.number()
+		.optional()
+		.describe('Total number of template matches returned by the search tool'),
+	selectedTemplateChoice: templateChoiceResponseSchema
+		.optional()
+		.describe('Selected template carried into chooser follow-up questions'),
 	tasks: taskListSchema
 		.optional()
 		.describe('Task checklist for plan review (inputType=plan-review)'),
@@ -566,6 +599,7 @@ export interface InstanceAiConfirmResponse {
 		customText?: string;
 		skipped?: boolean;
 	}>;
+	templateChoice?: z.infer<typeof templateChoiceResponseSchema>;
 }
 
 // ---------------------------------------------------------------------------
@@ -586,7 +620,10 @@ export interface InstanceAiToolCallState {
 		message: string;
 		credentialRequests?: InstanceAiCredentialRequest[];
 		projectId?: string;
-		inputType?: 'approval' | 'text' | 'questions' | 'plan-review';
+		inputType?: 'approval' | 'text' | 'questions' | 'plan-review' | 'template-choice';
+		templates?: Array<{ templateId: number; name: string; description?: string }>;
+		totalResults?: number;
+		selectedTemplateChoice?: z.infer<typeof templateChoiceResponseSchema>;
 		domainAccess?: DomainAccessMeta;
 		credentialFlow?: InstanceAiCredentialFlow;
 		setupRequests?: InstanceAiWorkflowSetupNode[];
@@ -867,7 +904,6 @@ const DATA_TABLE_RENDER_HINT_TOOLS = new Set([
 	'agent-data-table-manager',
 ]);
 const RESEARCH_RENDER_HINT_TOOLS = new Set(['research-with-agent']);
-
 export function getRenderHint(toolName: string): InstanceAiToolCallState['renderHint'] {
 	if (toolName === 'update-tasks') return 'tasks';
 	if (toolName === 'delegate') return 'delegate';

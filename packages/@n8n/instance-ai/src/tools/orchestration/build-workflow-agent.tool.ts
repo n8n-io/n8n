@@ -643,6 +643,13 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 			taskId: z.string(),
 		}),
 		execute: async (input) => {
+			if (context.templateAdaptationRequiresPlanReview) {
+				return {
+					result:
+						'Template adaptation must go through plan review first. Call `plan` with a single `build-workflow` task instead of `build-workflow-with-agent`.',
+					taskId: '',
+				};
+			}
 			const result = await startBuildWorkflowAgentTask(context, input);
 			return { result: result.result, taskId: result.taskId };
 		},

@@ -37,6 +37,11 @@ export interface ConfirmationData {
 		customText?: string;
 		skipped?: boolean;
 	}>;
+	templateChoice?: {
+		action: 'adapt_with_agent' | 'use_now';
+		templateId: number;
+		templateName: string;
+	};
 }
 
 export interface PendingConfirmation {

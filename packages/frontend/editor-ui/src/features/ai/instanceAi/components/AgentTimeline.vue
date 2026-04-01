@@ -12,6 +12,13 @@ import AnsweredQuestions from './AnsweredQuestions.vue';
 import PlanReviewPanel, { type PlannedTaskArg } from './PlanReviewPanel.vue';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { extractArtifacts, type ArtifactInfo } from '../agentTimeline.utils';
+import TemplateChoiceSummary from './TemplateChoiceSummary.vue';
+import { isTemplateChoiceToolCall } from '../templateChoice.utils';
+
+type DisplayTimelineEntry =
+	| { type: 'text'; content: string }
+	| { type: 'tool-call'; toolCallId: string }
+	| { type: 'child'; agentId: string };
 
 const i18n = useI18n();
 
@@ -94,7 +101,15 @@ const childrenById = computed(() => {
 	return map;
 });
 
+const displayTimeline = computed<DisplayTimelineEntry[]>(() => {
+	return props.agentNode.timeline;
+});
+
 const store = useInstanceAiStore();
+
+const hasTemplateChooserFlow = computed(() =>
+	props.agentNode.toolCalls.some((toolCall) => isTemplateChoiceToolCall(toolCall)),
+);
 
 function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedback?: string) {
 	const requestId = tc.confirmation?.requestId;
@@ -106,7 +121,7 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 
 <template>
 	<div :class="$style.timeline">
-		<template v-for="(entry, idx) in props.agentNode.timeline" :key="idx">
+		<template v-for="(entry, idx) in displayTimeline" :key="idx">
 			<!-- Text segment -->
 			<div
 				v-if="entry.type === 'text'"
@@ -114,7 +129,6 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 			>
 				<InstanceAiMarkdown :content="entry.content" />
 			</div>
-
 			<!-- Tool call (skip internal tools like updateWorkingMemory) -->
 			<template
 				v-else-if="
@@ -123,8 +137,14 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 					!HIDDEN_TOOLS.has(toolCallsById[entry.toolCallId].toolName)
 				"
 			>
+				<template
+					v-if="
+						toolCallsById[entry.toolCallId].toolName === 'search-workflow-templates' &&
+						hasTemplateChooserFlow
+					"
+				/>
 				<TaskChecklist
-					v-if="toolCallsById[entry.toolCallId].renderHint === 'tasks'"
+					v-else-if="toolCallsById[entry.toolCallId].renderHint === 'tasks'"
 					:tasks="props.agentNode.tasks"
 				/>
 				<DelegateCard
@@ -138,6 +158,31 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'builder'" />
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'data-table'" />
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'researcher'" />
+				<!-- Template chooser: suppressed while pending -->
+				<template
+					v-else-if="
+						isTemplateChoiceToolCall(toolCallsById[entry.toolCallId]) &&
+						toolCallsById[entry.toolCallId].isLoading
+					"
+				/>
+				<template
+					v-else-if="
+						isTemplateChoiceToolCall(toolCallsById[entry.toolCallId]) &&
+						toolCallsById[entry.toolCallId].confirmation?.inputType === 'questions' &&
+						!toolCallsById[entry.toolCallId].isLoading
+					"
+				>
+					<TemplateChoiceSummary :tool-call="toolCallsById[entry.toolCallId]" />
+					<AnsweredQuestions :tool-call="toolCallsById[entry.toolCallId]" />
+				</template>
+				<!-- Template chooser: compact summary after resolution -->
+				<TemplateChoiceSummary
+					v-else-if="
+						isTemplateChoiceToolCall(toolCallsById[entry.toolCallId]) &&
+						!toolCallsById[entry.toolCallId].isLoading
+					"
+					:tool-call="toolCallsById[entry.toolCallId]"
+				/>
 				<!-- Answered questions (read-only after resolution) -->
 				<AnsweredQuestions
 					v-else-if="
