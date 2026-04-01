@@ -20,8 +20,7 @@ import {
 	shallowRef,
 	watch,
 } from 'vue';
-import { useRoute } from 'vue-router';
-import { INSIGHT_TYPES } from '../insights.constants';
+import { INSIGHT_TYPES, isInsightsSummaryType, type InsightsViewType } from '../insights.constants';
 import { getAdjustedDateRange, getTimeRangeLabels, timeRangeMappings } from '../insights.utils';
 import InsightsDataRangePicker from './InsightsDataRangePicker.vue';
 
@@ -53,17 +52,28 @@ const InsightsTableWorkflows = defineAsyncComponent(
 	async () =>
 		await import('@/features/execution/insights/components/tables/InsightsTableWorkflows.vue'),
 );
+const ScheduleControlPanel = defineAsyncComponent(
+	async () =>
+		await import('@/features/execution/insights/schedule/components/ScheduleControlPanel.vue'),
+);
 
 const props = defineProps<{
-	insightType: InsightsSummaryType;
+	insightType: InsightsViewType;
 }>();
 
-const route = useRoute();
 const i18n = useI18n();
 
 const insightsStore = useInsightsStore();
 const projectsStore = useProjectsStore();
-const isTimeSavedRoute = computed(() => route.params.insightType === INSIGHT_TYPES.TIME_SAVED);
+const isScheduleRoute = computed(() => props.insightType === INSIGHT_TYPES.SCHEDULE);
+const isTimeSavedRoute = computed(() => props.insightType === INSIGHT_TYPES.TIME_SAVED);
+
+const getDefaultSortInsightType = (insightType: InsightsViewType): InsightsSummaryType =>
+	isInsightsSummaryType(insightType) ? insightType : INSIGHT_TYPES.TOTAL;
+
+const activeInsightType = computed<InsightsSummaryType>(() =>
+	getDefaultSortInsightType(props.insightType),
+);
 
 const chartComponents = computed(() => ({
 	total: InsightsChartTotal,
@@ -79,7 +89,7 @@ const transformFilter = ({ id, desc }: { id: string; desc: boolean }) => {
 	return `${key}:${order}` as const;
 };
 
-const sortTableBy = ref([{ id: props.insightType, desc: true }]);
+const sortTableBy = ref([{ id: activeInsightType.value, desc: true }]);
 
 const granularity = computed(() => {
 	const { start, end } = range.value;
@@ -159,7 +169,7 @@ const fetchPaginatedTableData = ({
 watch(
 	() => [props.insightType, selectedProject.value, range.value],
 	() => {
-		sortTableBy.value = [{ id: props.insightType, desc: true }];
+		sortTableBy.value = [{ id: activeInsightType.value, desc: true }];
 
 		const { startDate, endDate } = getFilteredRange();
 
@@ -169,6 +179,10 @@ watch(
 				endDate,
 				projectId: selectedProject.value?.id,
 			});
+		}
+
+		if (isScheduleRoute.value) {
+			return;
 		}
 
 		void insightsStore.charts.execute(0, {
@@ -245,8 +259,14 @@ onBeforeMount(async () => {
 				:class="$style.insightsBanner"
 			/>
 			<div :class="$style.insightsContent">
+				<ScheduleControlPanel
+					v-if="isScheduleRoute"
+					:start-date="range.start"
+					:end-date="range.end"
+					:project-id="selectedProject?.id"
+				/>
 				<div
-					v-if="insightsStore.isDashboardEnabled || isTimeSavedRoute"
+					v-else-if="insightsStore.isDashboardEnabled || isTimeSavedRoute"
 					:class="$style.insightsContentWrapper"
 				>
 					<div
@@ -264,8 +284,8 @@ onBeforeMount(async () => {
 					<div :class="$style.insightsChartWrapper">
 						{{ granularity }}
 						<component
-							:is="chartComponents[props.insightType]"
-							:type="props.insightType"
+							:is="chartComponents[activeInsightType]"
+							:type="activeInsightType"
 							:data="insightsStore.charts.state"
 							:granularity
 							:start-date="range.start.toString()"
