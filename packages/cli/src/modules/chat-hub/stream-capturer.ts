@@ -6,7 +6,6 @@ import { v4 as uuidv4 } from 'uuid';
 
 import type { ChatHubMessage } from './chat-hub-message.entity';
 
-type Write = ServerResponse['write'];
 type End = ServerResponse['end'];
 
 export type ChunkTransformer = (chunk: string) => Promise<string>;
