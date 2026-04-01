@@ -56,7 +56,7 @@ export function prepareForTransfer(value: unknown): unknown {
 	if (!isPlainObject(value)) return value;
 
 	// Plain object — walk values
-	const result: Record<string, unknown> = {};
+	const result: Record<string, unknown> = Object.create(null);
 	for (const key of Object.keys(value)) {
 		result[key] = prepareForTransfer(value[key]);
 	}
