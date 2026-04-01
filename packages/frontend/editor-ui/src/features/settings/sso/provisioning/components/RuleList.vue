@@ -10,9 +10,15 @@ const props = withDefaults(
 	defineProps<{
 		rules: RoleMappingRuleResponse[];
 		fallbackRole?: string;
+		type?: RoleMappingRuleType;
+		projects?: Array<{ id: string; name: string }>;
+		disabled?: boolean;
 	}>(),
 	{
 		fallbackRole: 'global:member',
+		type: 'instance',
+		projects: () => [],
+		disabled: false,
 	},
 );
 
@@ -54,6 +60,7 @@ function onDragEnd(event: { oldIndex?: number; newIndex?: number }) {
 			item-key="id"
 			handle=".drag-handle"
 			:animation="150"
+			:disabled="props.disabled"
 			:drag-class="$style.dragging"
 			:ghost-class="$style.ghost"
 			:chosen-class="$style.chosen"
@@ -63,6 +70,9 @@ function onDragEnd(event: { oldIndex?: number; newIndex?: number }) {
 				<RuleRow
 					:rule="element"
 					:priority="index + 1"
+					:type="props.type"
+					:projects="props.projects"
+					:disabled="props.disabled"
 					@update="(id, patch) => emit('update', id, patch)"
 					@delete="(id) => emit('delete', id)"
 					@duplicate="(id) => emit('duplicate', id)"
@@ -80,6 +90,7 @@ function onDragEnd(event: { oldIndex?: number; newIndex?: number }) {
 				<N8nSelect
 					:model-value="props.fallbackRole"
 					size="small"
+					:disabled="props.disabled"
 					data-test-id="fallback-role-select"
 					:class="$style.fallbackSelect"
 					@update:model-value="emit('update:fallbackRole', String($event))"
