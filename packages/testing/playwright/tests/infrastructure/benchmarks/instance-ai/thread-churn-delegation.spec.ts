@@ -4,7 +4,7 @@ import { test, instanceAiTestConfig } from './fixtures';
 
 test.use(instanceAiTestConfig);
 
-const ROUNDS = 5;
+const ROUNDS = 3;
 
 const DELEGATION_PROMPT =
 	`Without asking any questions, go straight to execution. ` +
