@@ -725,6 +725,93 @@ describe('NodeCredentials', () => {
 			expect(screen.getByText('Connect to Dropbox')).toBeInTheDocument();
 		});
 
+		it('should open the OAuth credential modal (not the access-token one) when "setup manually" is clicked on a node with sibling credential types', async () => {
+			setupQuickConnectStores();
+
+			const dropboxOAuth2ApiType: ICredentialType = {
+				name: 'dropboxOAuth2Api',
+				extends: ['oAuth2Api'],
+				displayName: 'Dropbox OAuth2 API',
+				properties: [],
+				__overwrittenProperties: ['clientId', 'clientSecret'],
+			};
+
+			credentialsStore.state.credentialTypes = {
+				...credentialsStore.state.credentialTypes,
+				dropboxOAuth2Api: dropboxOAuth2ApiType,
+			};
+
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			nodeTypesStore.setNodeTypes([
+				{
+					displayName: 'Dropbox',
+					name: 'n8n-nodes-base.dropbox',
+					group: ['input'],
+					version: 1,
+					description: 'Access data on Dropbox',
+					defaults: { name: 'Dropbox' },
+					inputs: [NodeConnectionTypes.Main],
+					outputs: [NodeConnectionTypes.Main],
+					credentials: [
+						{
+							name: 'dropboxApi',
+							required: true,
+							displayOptions: { show: { authentication: ['accessToken'] } },
+						},
+						{
+							name: 'dropboxOAuth2Api',
+							required: true,
+							displayOptions: { show: { authentication: ['oAuth2'] } },
+						},
+					],
+					properties: [
+						{
+							displayName: 'Authentication',
+							name: 'authentication',
+							type: 'options',
+							options: [
+								{ name: 'Access Token', value: 'accessToken' },
+								{ name: 'OAuth2', value: 'oAuth2' },
+							],
+							default: 'accessToken',
+						},
+					],
+				} as unknown as INodeTypeDescription,
+			]);
+
+			const dropboxNode: INodeUi = {
+				parameters: { authentication: 'accessToken' },
+				type: 'n8n-nodes-base.dropbox',
+				typeVersion: 1,
+				position: [0, 0],
+				id: 'dropbox-node-id',
+				name: 'Dropbox',
+				credentials: {},
+			};
+
+			ndvStore.activeNode = dropboxNode;
+
+			renderComponent(
+				{
+					props: {
+						node: dropboxNode,
+						overrideCredType: '',
+					},
+				},
+				{ merge: true },
+			);
+
+			await userEvent.click(screen.getByTestId('setup-manually-link'));
+
+			// Should open the OAuth credential (dropboxOAuth2Api), not the displayed access-token
+			// credential (dropboxApi), because "setup manually" is in the quickConnect context
+			expect(uiStore.openNewCredential).toHaveBeenCalledWith(
+				'dropboxOAuth2Api',
+				expect.any(Boolean),
+				true,
+			);
+		});
+
 		it('should show standard dropdown when credential already exists', () => {
 			setupQuickConnectStores();
 
