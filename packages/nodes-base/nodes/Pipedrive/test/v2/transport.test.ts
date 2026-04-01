@@ -456,7 +456,7 @@ describe('Pipedrive v2 Transport', () => {
 
 		it('should handle case-insensitive sorting', () => {
 			const options = [
-				{ name: 'banana', value: 'b' },
+				{ name: 'Banana', value: 'b' },
 				{ name: 'Apple', value: 'a' },
 			];
 
@@ -464,7 +464,7 @@ describe('Pipedrive v2 Transport', () => {
 
 			expect(sorted).toEqual([
 				{ name: 'Apple', value: 'a' },
-				{ name: 'banana', value: 'b' },
+				{ name: 'Banana', value: 'b' },
 			]);
 		});
 

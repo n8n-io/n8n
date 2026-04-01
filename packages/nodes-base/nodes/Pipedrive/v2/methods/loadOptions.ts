@@ -92,7 +92,7 @@ export async function getUserIds(this: ILoadOptionsFunctions): Promise<INodeProp
 		{ apiVersion: 'v1' },
 	);
 	for (const user of data as Array<{ name: string; id: number; active_flag: boolean }>) {
-		if (user.active_flag === true) {
+		if (user.active_flag) {
 			returnData.push({
 				name: user.name,
 				value: user.id,
@@ -194,13 +194,13 @@ async function getLabelsForResource(
 export async function getPersonLabels(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
-	return getLabelsForResource.call(this, '/personFields');
+	return await getLabelsForResource.call(this, '/personFields');
 }
 
 export async function getOrganizationLabels(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
-	return getLabelsForResource.call(this, '/organizationFields');
+	return await getLabelsForResource.call(this, '/organizationFields');
 }
 
 /**
@@ -231,7 +231,7 @@ export async function getLeadLabels(this: ILoadOptionsFunctions): Promise<INodeP
 }
 
 export async function getDealLabels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	return getLabelsForResource.call(this, '/dealFields');
+	return await getLabelsForResource.call(this, '/dealFields');
 }
 
 async function getCustomFieldsForResource(
@@ -251,17 +251,17 @@ async function getCustomFieldsForResource(
 export async function getOrganizationCustomFields(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
-	return getCustomFieldsForResource.call(this, '/organizationFields');
+	return await getCustomFieldsForResource.call(this, '/organizationFields');
 }
 
 export async function getDealCustomFields(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
-	return getCustomFieldsForResource.call(this, '/dealFields');
+	return await getCustomFieldsForResource.call(this, '/dealFields');
 }
 
 export async function getPersonCustomFields(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
-	return getCustomFieldsForResource.call(this, '/personFields');
+	return await getCustomFieldsForResource.call(this, '/personFields');
 }
