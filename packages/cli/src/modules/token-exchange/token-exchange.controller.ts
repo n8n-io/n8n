@@ -3,6 +3,7 @@ import { Time } from '@n8n/constants';
 import { Post, RestController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
+import { ErrorReporter } from 'n8n-core';
 
 import { EventService } from '@/events/event.service';
 import { AuthlessRequest } from '@/requests';
@@ -15,6 +16,8 @@ import { TokenExchangeService } from './token-exchange.service';
 @RestController('/auth/oauth')
 export class TokenExchangeController {
 	private readonly globalConfig = Container.get(GlobalConfig);
+
+	private readonly errorReporter = Container.get(ErrorReporter);
 
 	private readonly eventService = Container.get(EventService);
 
@@ -69,8 +72,8 @@ export class TokenExchangeController {
 			await this.tokenExchangeService.exchange(parsed.data);
 
 			this.eventService.emit('token-exchange-succeeded', {
-				subject: parsed.data.subject_token,
-				actor: parsed.data.actor_token,
+				subject: '', // sub claim extracted by service in later ticket
+				actor: undefined, // act.sub claim extracted by service in later ticket
 				scopes: parsed.data.scope,
 				resource: parsed.data.resource,
 				grantType: parsed.data.grant_type,
@@ -84,9 +87,11 @@ export class TokenExchangeController {
 				expires_in: 3600,
 				issued_token_type: 'urn:ietf:params:oauth:token-type:access_token',
 			});
-		} catch {
+		} catch (error) {
+			this.errorReporter.error(error instanceof Error ? error : new Error(String(error)));
+
 			this.eventService.emit('token-exchange-failed', {
-				subject: parsed.data.subject_token,
+				subject: '', // sub claim extracted by service in later ticket
 				failureReason: 'internal_error',
 				grantType: parsed.data.grant_type,
 				clientIp,

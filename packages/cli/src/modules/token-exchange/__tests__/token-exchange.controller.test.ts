@@ -3,6 +3,7 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
+import { ErrorReporter } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
@@ -13,11 +14,13 @@ import { TOKEN_EXCHANGE_GRANT_TYPE } from '../token-exchange.schemas';
 import { TokenExchangeService } from '../token-exchange.service';
 
 describe('TokenExchangeController', () => {
+	mockInstance(ErrorReporter);
 	mockInstance(EventService);
 	mockInstance(TokenExchangeService);
 	const globalConfig = mockInstance(GlobalConfig);
 
 	const controller = Container.get(TokenExchangeController);
+	const errorReporter = Container.get(ErrorReporter);
 	const tokenExchangeService = Container.get(TokenExchangeService);
 	const eventService = Container.get(EventService);
 
@@ -160,7 +163,7 @@ describe('TokenExchangeController', () => {
 				expect(eventService.emit).toHaveBeenCalledWith(
 					'token-exchange-succeeded',
 					expect.objectContaining({
-						subject: validBody.subject_token,
+						subject: '',
 						grantType: TOKEN_EXCHANGE_GRANT_TYPE,
 						clientIp: '127.0.0.1',
 					}),
@@ -197,11 +200,21 @@ describe('TokenExchangeController', () => {
 				expect(eventService.emit).toHaveBeenCalledWith(
 					'token-exchange-failed',
 					expect.objectContaining({
-						subject: validBody.subject_token,
+						subject: '',
 						grantType: TOKEN_EXCHANGE_GRANT_TYPE,
 						clientIp: '127.0.0.1',
 					}),
 				);
+			});
+
+			test('reports error to ErrorReporter when service throws', async () => {
+				const error = new UnexpectedError('Token exchange not yet implemented');
+				req.body = validBody;
+				jest.mocked(tokenExchangeService.exchange).mockRejectedValue(error);
+
+				await controller.exchangeToken(req, res);
+
+				expect(errorReporter.error).toHaveBeenCalledWith(error);
 			});
 		});
 	});
