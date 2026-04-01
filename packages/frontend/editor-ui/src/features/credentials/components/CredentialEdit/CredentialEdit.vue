@@ -13,7 +13,7 @@ import type {
 	INodeProperties,
 	ITelemetryTrackProperties,
 } from 'n8n-workflow';
-import { deepCopy, NodeHelpers } from 'n8n-workflow';
+import { CREDENTIAL_EMPTY_VALUE, deepCopy, NodeHelpers } from 'n8n-workflow';
 import CredentialIcon from '../CredentialIcon.vue';
 
 import CredentialConfig from './CredentialConfig.vue';
@@ -299,6 +299,19 @@ const requiredPropertiesFilled = computed(() => {
 
 			if (typeof credentialProperty !== 'number' && !containsExpression) {
 				return false;
+			}
+		}
+
+		if (property.type === 'json' && credentialProperty) {
+			const jsonValue = String(credentialProperty);
+			const containsExpression = isExpression(jsonValue);
+			// Sentinels represent a previously-saved value, and expressions are always valid
+			if (!containsExpression && jsonValue !== CREDENTIAL_EMPTY_VALUE) {
+				try {
+					JSON.parse(jsonValue);
+				} catch {
+					return false;
+				}
 			}
 		}
 	}
@@ -855,6 +868,12 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 	if (credential) {
 		credentialId.value = credential.id;
 		currentCredential.value = credential;
+
+		// Re-fetch to display server-redacted JSON shape for credentials with leaf-redacted fields
+		if (credentialProperties.value.some((p) => p.typeOptions?.redactJsonLeaves)) {
+			await loadCurrentCredential(credential.id);
+			setCredentialPropertyDefaults();
+		}
 
 		if (isCredentialTestable.value) {
 			isTesting.value = true;

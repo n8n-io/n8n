@@ -30,10 +30,6 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.page.getByTestId('node-credentials-empty-state');
 	}
 
-	getQuickConnectEmptyState() {
-		return this.page.getByTestId('quick-connect-empty-state');
-	}
-
 	credentialDropdownCreateNewCredential() {
 		return this.page.getByText('Create new credential');
 	}
@@ -48,10 +44,6 @@ export class NodeDetailsViewPage extends BasePage {
 
 	getCredentialSelect() {
 		return this.page.getByRole('combobox', { name: 'Select Credential' });
-	}
-
-	getCredentialSelectInput() {
-		return this.getNodeCredentialsSelect().locator('input');
 	}
 
 	async clickBackToCanvasButton() {
