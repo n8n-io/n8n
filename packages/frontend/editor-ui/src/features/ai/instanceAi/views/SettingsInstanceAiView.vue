@@ -72,15 +72,16 @@ async function loadSettings() {
 	}
 }
 
-async function autoSave(update: Record<string, unknown>) {
+async function saveSettings(
+	update: Parameters<typeof updateSettings>[1],
+	previousSettings: InstanceAiAdminSettingsResponse | null,
+) {
 	if (isSaving.value) return;
 	isSaving.value = true;
 	try {
-		settings.value = await updateSettings(
-			rootStore.restApiContext,
-			update as Parameters<typeof updateSettings>[1],
-		);
+		settings.value = await updateSettings(rootStore.restApiContext, update);
 	} catch {
+		settings.value = previousSettings;
 		toast.showError(new Error('Failed to save settings'), 'Settings error');
 	} finally {
 		isSaving.value = false;
@@ -88,11 +89,23 @@ async function autoSave(update: Record<string, unknown>) {
 }
 
 function handleEnabledToggle(value: string | number | boolean) {
-	void autoSave({ enabled: Boolean(value) });
+	const previous = settings.value;
+	const newEnabled = Boolean(value);
+	if (settings.value) {
+		settings.value = { ...settings.value, enabled: newEnabled };
+	}
+	void saveSettings({ enabled: newEnabled }, previous);
 }
 
 function handlePermissionChange(key: keyof InstanceAiPermissions, value: InstanceAiPermissionMode) {
-	void autoSave({ permissions: { [key]: value } });
+	const previous = settings.value;
+	if (settings.value) {
+		settings.value = {
+			...settings.value,
+			permissions: { ...settings.value.permissions, [key]: value },
+		};
+	}
+	void saveSettings({ permissions: { [key]: value } }, previous);
 }
 
 function getPermissionValue(key: keyof InstanceAiPermissions): InstanceAiPermissionMode {

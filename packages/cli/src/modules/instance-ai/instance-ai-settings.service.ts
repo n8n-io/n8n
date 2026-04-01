@@ -86,7 +86,7 @@ export class InstanceAiSettingsService {
 	private readonly config: InstanceAiConfig;
 
 	/** Whether n8n Agent is enabled for this instance. */
-	private enabled = false;
+	private enabled = true;
 
 	/** Per-action HITL permission overrides. */
 	private permissions: InstanceAiPermissions = { ...DEFAULT_INSTANCE_AI_PERMISSIONS };
@@ -346,6 +346,11 @@ export class InstanceAiSettingsService {
 		if (this.config.localGatewayDisabled) return true;
 		const prefs = this.userPreferences.get(userId);
 		return prefs?.localGatewayDisabled ?? false;
+	}
+
+	/** Whether the n8n Agent is enabled by the admin. */
+	isAgentEnabled(): boolean {
+		return this.enabled;
 	}
 
 	/** Whether the local gateway is disabled globally by the admin. */
