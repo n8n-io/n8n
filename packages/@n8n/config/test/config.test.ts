@@ -184,6 +184,9 @@ describe('GlobalConfig', () => {
 			host: 'https://api.n8n.io/api/',
 			dynamicTemplatesHost: 'https://dynamic-templates.n8n.io/templates',
 		},
+		tokenExchange: {
+			enabled: false,
+		},
 		versionNotifications: {
 			enabled: true,
 			endpoint: 'https://api.n8n.io/api/versions/',

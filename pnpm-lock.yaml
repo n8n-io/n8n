@@ -4218,6 +4218,9 @@ importers:
 
   packages/testing/janitor:
     dependencies:
+      '@n8n/rules-engine':
+        specifier: workspace:*
+        version: link:../rules-engine
       glob:
         specifier: 10.5.0
         version: 10.5.0
