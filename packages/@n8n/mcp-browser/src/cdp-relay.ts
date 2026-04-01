@@ -832,13 +832,6 @@ export class CDPRelayServer {
 // ---------------------------------------------------------------------------
 
 const HEARTBEAT_INTERVAL_MS = 5_000;
-// Must be strictly greater than HEARTBEAT_INTERVAL_MS: the first interval tick
-// fires ~5 000 ms after construction (before any ping has been sent), so elapsed
-// since lastPongAt ≈ interval. If timeout ≤ interval the connection is killed
-// before a single ping/pong round-trip completes. A 3× multiplier absorbs timer
-// jitter and gives room for one full round-trip.
-// Note: Playwriter uses the same 5 000 ms interval but no hard timeout — it
-// relies on JSON ping/pong to implicitly detect dead connections.
 const HEARTBEAT_TIMEOUT_MS = 15_000;
 
 class ExtensionConnection {
