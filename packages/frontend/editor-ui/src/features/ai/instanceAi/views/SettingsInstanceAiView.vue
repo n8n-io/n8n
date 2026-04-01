@@ -1,16 +1,16 @@
 <script lang="ts" setup>
-import { onMounted, watch } from 'vue';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { N8nButton, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
-import ModelSection from '../components/settings/ModelSection.vue';
-import MemorySection from '../components/settings/MemorySection.vue';
+import { onMounted, watch } from 'vue';
+import AdvancedSection from '../components/settings/AdvancedSection.vue';
 import LocalGatewaySection from '../components/settings/LocalGatewaySection.vue';
+import MemorySection from '../components/settings/MemorySection.vue';
+import ModelSection from '../components/settings/ModelSection.vue';
+import PermissionsSection from '../components/settings/PermissionsSection.vue';
 import SandboxSection from '../components/settings/SandboxSection.vue';
 import SearchSection from '../components/settings/SearchSection.vue';
-import AdvancedSection from '../components/settings/AdvancedSection.vue';
-import PermissionsSection from '../components/settings/PermissionsSection.vue';
+import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
@@ -41,7 +41,7 @@ watch(
 		</header>
 
 		<div v-if="store.isLoading" :class="$style.loading">
-			<N8nIcon icon="spinner" spin />
+			<N8nIcon icon="spinner" color="primary" spin />
 		</div>
 
 		<div v-else-if="store.settings" :class="$style.sections">

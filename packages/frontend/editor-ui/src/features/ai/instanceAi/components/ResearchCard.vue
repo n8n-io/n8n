@@ -1,11 +1,11 @@
 <script lang="ts" setup>
-import { ref, computed } from 'vue';
-import { CollapsibleRoot, CollapsibleTrigger, CollapsibleContent } from 'reka-ui';
+import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { InstanceAiAgentNode } from '@n8n/api-types';
-import { useInstanceAiStore } from '../instanceAi.store';
+import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
+import { computed, ref } from 'vue';
 import { getRenderableAgentResult } from '../agentResult';
+import { useInstanceAiStore } from '../instanceAi.store';
 import AgentTimeline from './AgentTimeline.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 
@@ -105,7 +105,7 @@ const headerTitle = computed(() => {
 		<!-- Header -->
 		<div :class="$style.header">
 			<div :class="$style.headerLeft">
-				<N8nIcon v-if="isActive" icon="spinner" spin size="small" :class="$style.activeIcon" />
+				<N8nIcon v-if="isActive" icon="spinner" color="primary" spin size="small" />
 				<N8nIcon v-else-if="isError" icon="triangle-alert" size="small" :class="$style.errorIcon" />
 				<N8nIcon v-else icon="check" size="small" :class="$style.successIcon" />
 				<span :class="$style.title">{{ headerTitle }}</span>
@@ -123,7 +123,14 @@ const headerTitle = computed(() => {
 				:key="item.key"
 				:class="[$style.checkItem, item.isLoading ? $style.checkItemActive : $style.checkItemDone]"
 			>
-				<N8nIcon v-if="item.isLoading" icon="spinner" spin size="small" :class="$style.checkIcon" />
+				<N8nIcon
+					v-if="item.isLoading"
+					icon="spinner"
+					color="primary"
+					spin
+					size="small"
+					:class="$style.checkIcon"
+				/>
 				<N8nIcon v-else icon="check" size="small" :class="$style.checkIconDone" />
 				<span :class="$style.checkLabel">{{ item.label }}</span>
 				<span v-if="item.detail" :class="$style.checkDetail">{{ item.detail }}</span>
@@ -164,166 +171,166 @@ const headerTitle = computed(() => {
 </template>
 
 <style lang="scss" module>
-.root {
-	border: var(--border);
-	border-radius: var(--radius--lg);
-	margin: var(--spacing--2xs) 0;
-	overflow: hidden;
-	background: var(--color--background);
-}
+// .root {
+// 	border: var(--border);
+// 	border-radius: var(--radius--lg);
+// 	// margin: var(--spacing--2xs) 0;
+// 	overflow: hidden;
+// 	background: var(--color--background);
+// }
 
-.header {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: var(--spacing--2xs) var(--spacing--xs);
-}
+// .header {
+// 	display: flex;
+// 	align-items: center;
+// 	justify-content: space-between;
+// 	padding: var(--spacing--2xs) var(--spacing--xs);
+// }
 
-.headerLeft {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	font-size: var(--font-size--2xs);
-}
+// .headerLeft {
+// 	display: flex;
+// 	align-items: center;
+// 	gap: var(--spacing--3xs);
+// 	font-size: var(--font-size--2xs);
+// }
 
-.title {
-	font-weight: var(--font-weight--bold);
-	color: var(--color--text);
-}
+// .title {
+// 	font-weight: var(--font-weight--bold);
+// 	color: var(--color--text);
+// }
 
-.checklist {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
-	padding: 0 var(--spacing--xs) var(--spacing--2xs);
-}
+// .checklist {
+// 	display: flex;
+// 	flex-direction: column;
+// 	gap: var(--spacing--4xs);
+// 	padding: 0 var(--spacing--xs) var(--spacing--2xs);
+// }
 
-.checkItem {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
-	min-width: 0;
-}
+// .checkItem {
+// 	display: flex;
+// 	align-items: center;
+// 	gap: var(--spacing--4xs);
+// 	font-size: var(--font-size--2xs);
+// 	color: var(--color--text--tint-1);
+// 	min-width: 0;
+// }
 
-.checkItemActive {
-	color: var(--color--text--tint-1);
-}
+// .checkItemActive {
+// 	color: var(--color--text--tint-1);
+// }
 
-.checkItemDone {
-	color: var(--color--success);
-}
+// .checkItemDone {
+// 	color: var(--color--success);
+// }
 
-.checkIcon {
-	flex-shrink: 0;
-	color: var(--color--primary);
-}
+// .checkIcon {
+// 	flex-shrink: 0;
+// 	color: var(--color--primary);
+// }
 
-.checkIconDone {
-	flex-shrink: 0;
-	color: var(--color--success);
-}
+// .checkIconDone {
+// 	flex-shrink: 0;
+// 	color: var(--color--success);
+// }
 
-.checkLabel {
-	flex-shrink: 0;
-	font-weight: var(--font-weight--bold);
-}
+// .checkLabel {
+// 	flex-shrink: 0;
+// 	font-weight: var(--font-weight--bold);
+// }
 
-.checkDetail {
-	font-weight: var(--font-weight--regular);
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	opacity: 0.8;
-}
+// .checkDetail {
+// 	font-weight: var(--font-weight--regular);
+// 	white-space: nowrap;
+// 	overflow: hidden;
+// 	text-overflow: ellipsis;
+// 	opacity: 0.8;
+// }
 
-.detailBlock {
-	border-top: var(--border);
-}
+// .detailBlock {
+// 	border-top: var(--border);
+// }
 
-.detailTrigger {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	width: 100%;
-	padding: var(--spacing--4xs) var(--spacing--xs);
-	background: none;
-	border: none;
-	cursor: pointer;
-	font-family: var(--font-family);
-	font-size: var(--font-size--3xs);
-	font-weight: var(--font-weight--bold);
-	color: var(--color--text--tint-1);
-	text-transform: uppercase;
-	letter-spacing: 0.05em;
+// .detailTrigger {
+// 	display: flex;
+// 	align-items: center;
+// 	justify-content: space-between;
+// 	width: 100%;
+// 	padding: var(--spacing--4xs) var(--spacing--xs);
+// 	background: none;
+// 	border: none;
+// 	cursor: pointer;
+// 	font-family: var(--font-family);
+// 	font-size: var(--font-size--3xs);
+// 	font-weight: var(--font-weight--bold);
+// 	color: var(--color--text--tint-1);
+// 	text-transform: uppercase;
+// 	letter-spacing: 0.05em;
 
-	&:hover {
-		background: var(--color--background--shade-1);
-	}
-}
+// 	&:hover {
+// 		background: var(--color--background--shade-1);
+// 	}
+// }
 
-.detailContent {
-	padding: var(--spacing--2xs) var(--spacing--xs);
-}
+// .detailContent {
+// 	padding: var(--spacing--2xs) var(--spacing--xs);
+// }
 
-.successResult {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	padding: var(--spacing--xs);
-	border-top: var(--border);
-	background: color-mix(in srgb, var(--color--success) 10%, var(--color--background));
-	font-size: var(--font-size--2xs);
-	color: var(--color--success);
-}
+// .successResult {
+// 	display: flex;
+// 	align-items: center;
+// 	gap: var(--spacing--3xs);
+// 	padding: var(--spacing--xs);
+// 	border-top: var(--border);
+// 	background: color-mix(in srgb, var(--color--success) 10%, var(--color--background));
+// 	font-size: var(--font-size--2xs);
+// 	color: var(--color--success);
+// }
 
-.resultBlock {
-	padding: var(--spacing--xs);
-	border-top: var(--border);
-	font-size: var(--font-size--2xs);
-	color: var(--color--text);
-}
+// .resultBlock {
+// 	padding: var(--spacing--xs);
+// 	border-top: var(--border);
+// 	font-size: var(--font-size--2xs);
+// 	color: var(--color--text);
+// }
 
-.errorResult {
-	display: flex;
-	align-items: flex-start;
-	gap: var(--spacing--3xs);
-	padding: var(--spacing--xs);
-	border-top: var(--border);
-	background: color-mix(in srgb, var(--color--danger) 10%, var(--color--background));
-	font-size: var(--font-size--2xs);
-	color: var(--color--danger);
-}
+// .errorResult {
+// 	display: flex;
+// 	align-items: flex-start;
+// 	gap: var(--spacing--3xs);
+// 	padding: var(--spacing--xs);
+// 	border-top: var(--border);
+// 	background: color-mix(in srgb, var(--color--danger) 10%, var(--color--background));
+// 	font-size: var(--font-size--2xs);
+// 	color: var(--color--danger);
+// }
 
-.stopButton {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	padding: var(--spacing--5xs) var(--spacing--2xs);
-	font-family: var(--font-family);
-	font-size: var(--font-size--3xs);
-	font-weight: var(--font-weight--bold);
-	color: var(--color--danger);
-	background: color-mix(in srgb, var(--color--danger) 10%, var(--color--background));
-	border: var(--border-width) var(--border-style) var(--color--danger);
-	border-radius: var(--radius);
-	cursor: pointer;
+// .stopButton {
+// 	display: inline-flex;
+// 	align-items: center;
+// 	gap: var(--spacing--4xs);
+// 	padding: var(--spacing--5xs) var(--spacing--2xs);
+// 	font-family: var(--font-family);
+// 	font-size: var(--font-size--3xs);
+// 	font-weight: var(--font-weight--bold);
+// 	color: var(--color--danger);
+// 	background: color-mix(in srgb, var(--color--danger) 10%, var(--color--background));
+// 	border: var(--border-width) var(--border-style) var(--color--danger);
+// 	border-radius: var(--radius);
+// 	cursor: pointer;
 
-	&:hover {
-		background: color-mix(in srgb, var(--color--danger) 18%, var(--color--background));
-	}
-}
+// 	&:hover {
+// 		background: color-mix(in srgb, var(--color--danger) 18%, var(--color--background));
+// 	}
+// }
 
-.activeIcon {
-	color: var(--color--primary);
-}
+// .activeIcon {
+// 	color: var(--color--primary);
+// }
 
-.successIcon {
-	color: var(--color--success);
-}
+// .successIcon {
+// 	color: var(--color--success);
+// }
 
-.errorIcon {
-	color: var(--color--danger);
-}
+// .errorIcon {
+// 	color: var(--color--danger);
+// }
 </style>

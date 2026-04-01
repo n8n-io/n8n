@@ -1,13 +1,13 @@
 <script lang="ts" setup>
-import { ref, computed } from 'vue';
-import { CollapsibleRoot, CollapsibleTrigger, CollapsibleContent } from 'reka-ui';
+import type { InstanceAiToolCallState } from '@n8n/api-types';
 import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { InstanceAiToolCallState } from '@n8n/api-types';
+import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
+import { computed, ref } from 'vue';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { useToolLabel } from '../toolLabels';
-import ToolResultRenderer from './ToolResultRenderer.vue';
 import ToolResultJson from './ToolResultJson.vue';
+import ToolResultRenderer from './ToolResultRenderer.vue';
 
 const props = defineProps<{
 	toolCall: InstanceAiToolCallState;
@@ -58,6 +58,7 @@ const resolvedAction = computed((): 'approved' | 'denied' | 'deferred' | null =>
 				<N8nIcon
 					v-if="props.toolCall.isLoading"
 					icon="spinner"
+					color="primary"
 					:class="$style.spinner"
 					spin
 					size="small"

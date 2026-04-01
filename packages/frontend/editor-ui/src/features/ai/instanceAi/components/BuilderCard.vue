@@ -1,18 +1,18 @@
 <script lang="ts" setup>
-import { ref, computed, watch, inject } from 'vue';
-import { CollapsibleRoot, CollapsibleTrigger, CollapsibleContent } from 'reka-ui';
+import WorkflowPreview from '@/app/components/WorkflowPreview.vue';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import type { IWorkflowDb } from '@/Interface';
+import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { InstanceAiAgentNode } from '@n8n/api-types';
-import type { IWorkflowDb } from '@/Interface';
-import WorkflowMiniCanvas from './WorkflowMiniCanvas.vue';
-import WorkflowPreview from '@/app/components/WorkflowPreview.vue';
-import ExecutionPreviewCard from './ExecutionPreviewCard.vue';
-import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import { useInstanceAiStore } from '../instanceAi.store';
+import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
+import { computed, inject, ref, watch } from 'vue';
 import { getRenderableAgentResult } from '../agentResult';
+import { useInstanceAiStore } from '../instanceAi.store';
 import AgentTimeline from './AgentTimeline.vue';
+import ExecutionPreviewCard from './ExecutionPreviewCard.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
+import WorkflowMiniCanvas from './WorkflowMiniCanvas.vue';
 
 const props = defineProps<{
 	agentNode: InstanceAiAgentNode;
@@ -171,7 +171,7 @@ const runResults = computed(() => {
 	for (const tc of props.agentNode.toolCalls) {
 		if (tc.toolName === 'run-workflow' && tc.result && typeof tc.result === 'object') {
 			const result = tc.result as Record<string, unknown>;
-			const args = tc.args as Record<string, unknown>;
+			const args = tc.args;
 			if (typeof result.executionId === 'string' && typeof args.workflowId === 'string') {
 				map.set(tc.toolCallId, {
 					executionId: result.executionId,
@@ -218,7 +218,14 @@ watch(
 		<!-- Header -->
 		<div :class="$style.header">
 			<div :class="$style.headerLeft">
-				<N8nIcon v-if="isActive" icon="spinner" spin size="small" :class="$style.activeIcon" />
+				<N8nIcon
+					v-if="isActive"
+					icon="spinner"
+					color="primary"
+					spin
+					size="small"
+					:class="$style.activeIcon"
+				/>
 				<N8nIcon v-else-if="isError" icon="triangle-alert" size="small" :class="$style.errorIcon" />
 				<N8nIcon v-else icon="check" size="small" :class="$style.successIcon" />
 				<span :class="$style.title">{{ i18n.baseText('instanceAi.builderCard.title') }}</span>
@@ -243,7 +250,14 @@ watch(
 					phase.isCompleted ? $style.phaseCompleted : '',
 				]"
 			>
-				<N8nIcon v-if="phase.isActive" icon="spinner" spin size="small" :class="$style.phaseIcon" />
+				<N8nIcon
+					v-if="phase.isActive"
+					icon="spinner"
+					color="primary"
+					spin
+					size="small"
+					:class="$style.phaseIcon"
+				/>
 				<N8nIcon
 					v-else-if="phase.isCompleted"
 					icon="check"
@@ -621,10 +635,6 @@ watch(
 	&:hover {
 		background: color-mix(in srgb, var(--color--danger) 18%, var(--color--background));
 	}
-}
-
-.activeIcon {
-	color: var(--color--primary);
 }
 
 .successIcon {

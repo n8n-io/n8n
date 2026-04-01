@@ -19,7 +19,7 @@ import {
 } from '@n8n/design-system';
 import { useScroll, useWindowSize } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
-import type { InstanceAiAttachment } from '@n8n/api-types';
+import type { InstanceAiAttachment, InstanceAiMessage as Message } from '@n8n/api-types';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -462,6 +462,7 @@ function handleStop() {
 										v-for="message in store.messages"
 										:key="message.id"
 										:message="message"
+										:class="$style.message"
 									/>
 								</TransitionGroup>
 								<InstanceAiConfirmationPanel />
@@ -699,6 +700,13 @@ function handleStop() {
 	max-width: 800px;
 	margin: 0 auto;
 	padding: var(--spacing--sm) var(--spacing--lg);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+}
+
+.message {
+	width: 90%;
 }
 
 .scrollButtonContainer {
