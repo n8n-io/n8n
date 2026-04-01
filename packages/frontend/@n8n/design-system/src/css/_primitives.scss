@@ -280,11 +280,24 @@
 	--height--3xl: 3.5rem; /** 56px **/
 	--height--4xl: 4rem; /** 64px **/
 	--height--5xl: 6rem; /** 96px **/
-	--duration--snappy: 0.15;
-	--duration--base: 0.3;
+
+	--duration--snappy: 200ms;
+	--duration--base: 400ms;
 	--easing--ease-out: cubic-bezier(0.215, 0.61, 0.355, 1);
 	--easing--ease-in: cubic-bezier(0.55, 0.055, 0.675, 0.19);
 	--easing--ease-in-out: cubic-bezier(0.645, 0.045, 0.355, 1);
+
+	--shadow-color: var(--color--black-alpha-100);
+
+	/* box-shadow: var(--shadow--xs), inset var(--shadow--outline); */
+	--shadow--outline: 0 0 0 1px var(--shadow-color);
+	--shadow--2xs: 0 1px var(--shadow-color);
+	--shadow--xs: 0 1px 3px -1px var(--shadow-color);
+	--shadow--sm: 0 1px 3px 0 var(--shadow-color), 0 1px 2px -1px var(--shadow-color);
+	--shadow--md: 0 4px 6px -1px var(--shadow-color), 0 2px 4px -2px var(--shadow-color);
+	--shadow--lg: 0 10px 15px -3px var(--shadow-color), 0 4px 6px -4px var(--shadow-color);
+	--shadow--xl: 0 20px 25px -5px var(--shadow-color), 0 8px 10px -6px var(--shadow-color);
+	--shadow--2xl: 0 25px 50px -12px var(--color--black-alpha-300);
 }
 
 :root {

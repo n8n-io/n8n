@@ -35,6 +35,7 @@ const PROPERTY_VOCABULARY = new Set([
 	'size',
 	'stroke-width',
 	'shadow',
+	'shadow-color',
 	'spacing',
 	'padding',
 	'font-size',
@@ -75,6 +76,7 @@ const STANDALONE_PROPERTIES = new Set([
 	'background',
 	'icon-color',
 	'text-color',
+	'shadow-color',
 ]);
 
 const STATES = new Set([

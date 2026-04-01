@@ -28,9 +28,9 @@
 	--background--brand--disabled: var(--color--neutral-200);
 
 	--background--surface: var(--color--neutral-white);
-	--background--hover: var(--color--neutral-100);
-	--background--active: var(--color--neutral-150);
-	--background--focus: var(--color--neutral-150);
+	--background--hover: var(--color--black-alpha-50);
+	--background--active: var(--color--black-alpha-100);
+	--background--focus: var(--color--black-alpha-100);
 	--background--disabled: var(--color--neutral-200);
 
 	/* stylelint-disable @n8n/css-var-naming */
@@ -650,22 +650,6 @@
 	--animation--duration: var(--duration--base);
 	--animation--duration--snappy: var(--duration--snappy);
 	--animation--easing: var(--easing--ease-out);
-
-	--shadow--xs: 0 1px 2px var(--color--black-alpha-100);
-	--shadow--sm:
-		0 1px 2px var(--color--black-alpha-100), 0 4px 4px -2px var(--color--black-alpha-100);
-	--shadow--md:
-		0 4px 6px -1px var(--color--black-alpha-100), 0 2px 4px -2px var(--color--black-alpha-100);
-	--shadow--lg:
-		0 10px 15px -3px var(--color--black-alpha-100), 0 4px 6px -4px var(--color--black-alpha-100);
-	--shadow--xl:
-		0 20px 25px -5px var(--color--black-alpha-100), 0 8px 10px -6px var(--color--black-alpha-100);
-
-	--shadow--xs--inset: var(--shadow--xs), inset 0 0 0 1px var(--color--black-alpha-100);
-	--shadow--sm--inset: var(--shadow--sm), inset 0 0 0 1px var(--color--black-alpha-100);
-	--shadow--md--inset: var(--shadow--md), inset 0 0 0 1px var(--color--black-alpha-100);
-	--shadow--lg--inset: var(--shadow--lg), inset 0 0 0 1px var(--color--black-alpha-100);
-	--shadow--xl--inset: var(--shadow--xl), inset 0 0 0 1px var(--color--black-alpha-100);
 }
 
 @mixin theme-dark {
