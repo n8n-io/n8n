@@ -156,7 +156,8 @@
       "express-rate-limit": "8.2.2",
       "underscore": "1.13.8",
       "fast-xml-parser": "5.3.8",
-      "path-to-regexp@<0.1.13": "0.1.13"
+      "path-to-regexp@<0.1.13": "0.1.13",
+      "avsc": "5.7.9"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",
