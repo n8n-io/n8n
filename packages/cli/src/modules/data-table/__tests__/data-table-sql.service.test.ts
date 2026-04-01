@@ -791,74 +791,49 @@ describe('DataTableSqlService', () => {
 
 		// ── 10. FROM-less query execution (table authorization bypass) ──
 
-		describe('VULNERABILITY: FROM-less queries bypass table authorization', () => {
-			it('SELECT NOW() executes without referencing any table, leaking server time', async () => {
-				const fakeTime = [{ now: '2024-01-15 12:00:00+00' }];
-				queryRunnerMock.query.mockResolvedValue(fakeTime);
-
-				// This should be rejected — the intent is to only allow reading from
-				// authorized tables. A FROM-less query bypasses table authorization.
-				const result = await service.validateAndExecute('SELECT NOW()', ['table1'], projectId);
-
-				// BUG: the query passes validation and returns server metadata
-				expect(result.rows).toEqual(fakeTime);
-				expect(result.rowCount).toBe(1);
+		describe('FIXED: FROM-less queries are now rejected', () => {
+			it('SELECT NOW() is rejected — requires a FROM clause', async () => {
+				await expect(
+					service.validateAndExecute('SELECT NOW()', ['table1'], projectId),
+				).rejects.toThrow(SqlValidationError);
 			});
 
-			it('SELECT COALESCE(1, 2) executes arbitrary expressions with no table access', async () => {
-				queryRunnerMock.query.mockResolvedValue([{ coalesce: 1 }]);
-
-				const result = await service.validateAndExecute(
-					'SELECT COALESCE(1, 2)',
-					['table1'],
-					projectId,
-				);
-
-				expect(result.rows).toHaveLength(1);
+			it('SELECT COALESCE(1, 2) is rejected', async () => {
+				await expect(
+					service.validateAndExecute('SELECT COALESCE(1, 2)', ['table1'], projectId),
+				).rejects.toThrow(SqlValidationError);
 			});
 
-			it('SELECT CAST(1 AS TEXT) executes type conversion with no table access', async () => {
-				queryRunnerMock.query.mockResolvedValue([{ cast: '1' }]);
-
-				const result = await service.validateAndExecute(
-					'SELECT CAST(1 AS TEXT)',
-					['table1'],
-					projectId,
-				);
-
-				expect(result.rows).toHaveLength(1);
+			it('SELECT CAST(1 AS TEXT) is rejected', async () => {
+				await expect(
+					service.validateAndExecute('SELECT CAST(1 AS TEXT)', ['table1'], projectId),
+				).rejects.toThrow(SqlValidationError);
 			});
 
-			it('nested allowed functions execute without FROM clause', async () => {
-				queryRunnerMock.query.mockResolvedValue([{ result: 'HELLO' }]);
-
-				const result = await service.validateAndExecute(
-					"SELECT UPPER(REPLACE('secret', 's', 'S'))",
-					['table1'],
-					projectId,
-				);
-
-				expect(result.rows).toHaveLength(1);
+			it('nested allowed functions without FROM are rejected', async () => {
+				await expect(
+					service.validateAndExecute(
+						"SELECT UPPER(REPLACE('secret', 's', 'S'))",
+						['table1'],
+						projectId,
+					),
+				).rejects.toThrow(SqlValidationError);
 			});
 
-			it('SELECT with only literals and functions — no FROM, no table IDs needed', async () => {
-				queryRunnerMock.query.mockResolvedValue([{ a: 1, b: 'text' }]);
-
-				// Even with empty table IDs, the query executes
+			it('SELECT with only literals and no FROM is rejected', async () => {
 				dataTableRepositoryMock.find.mockResolvedValue([]);
 				dataTableColumnRepositoryMock.find.mockResolvedValue([]);
 
-				const result = await service.validateAndExecute("SELECT 1, 'text'", [], projectId);
-
-				expect(result.rows).toHaveLength(1);
+				await expect(service.validateAndExecute("SELECT 1, 'text'", [], projectId)).rejects.toThrow(
+					SqlValidationError,
+				);
 			});
 		});
 
 		// ── 11. AS alias breaks FROM table extraction ───────────────────
 
-		describe('VULNERABILITY: AS alias in FROM breaks comma-separated table extraction', () => {
-			it('second table after AS alias is not extracted or rewritten', async () => {
-				// Setup: two valid tables
+		describe('FIXED: AS alias in FROM now correctly extracts all comma-separated tables', () => {
+			it('second table after AS alias is now extracted and rewritten', async () => {
 				const tables = [
 					makeTable('t1', 'orders', projectId),
 					makeTable('t2', 'customers', projectId),
@@ -872,11 +847,6 @@ describe('DataTableSqlService', () => {
 
 				queryRunnerMock.query.mockResolvedValue([]);
 
-				// FROM orders AS amount, customers
-				// The AS keyword causes extractTablesAt to stop after 'orders'.
-				// 'customers' after the comma is never extracted as a table reference,
-				// so it is NOT rewritten to its physical name.
-				// The executed SQL contains the bare logical name 'customers'.
 				await service.validateAndExecute(
 					'SELECT * FROM orders AS amount, customers',
 					['t1', 't2'],
@@ -886,41 +856,49 @@ describe('DataTableSqlService', () => {
 				const calls = queryRunnerMock.query.mock.calls.map((args) => String(args[0]));
 				const selectQuery = calls.find((sql) => sql.toUpperCase().startsWith('SELECT'));
 
-				// BUG: 'customers' was NOT rewritten to physical name.
-				// The DB will look for a table literally named 'customers',
-				// which could match an unrelated table in the same schema.
-				expect(selectQuery).toContain('customers');
-				expect(selectQuery).not.toMatch(/n8n_data_table_user_t2/);
+				// Both tables are now rewritten to physical names
+				expect(selectQuery).toContain('n8n_data_table_user_t1');
+				expect(selectQuery).toContain('n8n_data_table_user_t2');
 			});
 
-			it('table alias using AS makes validator accept columns from the wrong table schema', async () => {
-				// `FROM customers AS orders` makes the validator check column references
-				// against the 'orders' schema (the alias name), but the DB resolves
-				// them against the actual 'customers' table.
+			it('single table with AS alias works correctly', async () => {
+				queryRunnerMock.query.mockResolvedValue([]);
+
+				await service.validateAndExecute('SELECT * FROM orders AS o', ['table1'], projectId);
+
+				const calls = queryRunnerMock.query.mock.calls.map((args) => String(args[0]));
+				const selectQuery = calls.find((sql) => sql.toUpperCase().startsWith('SELECT'));
+
+				expect(selectQuery).toContain('n8n_data_table_user_table1');
+			});
+
+			it('JOIN with AS alias extracts the table correctly', async () => {
 				const tables = [
 					makeTable('t1', 'orders', projectId),
 					makeTable('t2', 'customers', projectId),
 				];
 				const columns = [
-					makeColumn('c1', 'amount', 'number', 't1'), // only in orders
-					makeColumn('c2', 'name', 'string', 't2'), // only in customers
+					makeColumn('c1', 'amount', 'number', 't1'),
+					makeColumn('c2', 'name', 'string', 't2'),
+					makeColumn('c3', 'id', 'number', 't1'),
+					makeColumn('c4', 'id', 'number', 't2'),
 				];
 				dataTableRepositoryMock.find.mockResolvedValue(tables);
 				dataTableColumnRepositoryMock.find.mockResolvedValue(columns);
 
 				queryRunnerMock.query.mockResolvedValue([]);
 
-				// Validator: 'orders.amount' → checks orders schema → amount exists → passes.
-				// DB: 'orders' is alias for physical customers table → amount DOES NOT exist → error.
-				// This is a validation model / execution model mismatch.
-				const result = await service.validateAndExecute(
-					'SELECT orders.amount FROM customers AS orders',
+				await service.validateAndExecute(
+					'SELECT * FROM orders AS o JOIN customers AS c ON 1 = 1',
 					['t1', 't2'],
 					projectId,
 				);
 
-				// The validator approved a query referencing a non-existent column
-				expect(result).toBeDefined();
+				const calls = queryRunnerMock.query.mock.calls.map((args) => String(args[0]));
+				const selectQuery = calls.find((sql) => sql.toUpperCase().startsWith('SELECT'));
+
+				expect(selectQuery).toContain('n8n_data_table_user_t1');
+				expect(selectQuery).toContain('n8n_data_table_user_t2');
 			});
 		});
 

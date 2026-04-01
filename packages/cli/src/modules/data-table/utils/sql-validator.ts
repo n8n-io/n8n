@@ -314,7 +314,12 @@ export class SqlValidator {
 		// 4. Extract table references
 		const tables = this.extractTables(tokens, tableSchemas);
 
-		// 5. Validate every identifier against the closed world (including functions)
+		// 5. Every query must reference at least one table
+		if (tables.length === 0) {
+			throw new SqlValidationError('Query must reference at least one table in FROM clause');
+		}
+
+		// 6. Validate every identifier against the closed world (including functions)
 		const functions = this.validateAllIdentifiers(tokens, tableSchemas);
 
 		return { tokens, tables, functions };
@@ -349,6 +354,7 @@ export class SqlValidator {
 	/**
 	 * After FROM or JOIN: extract table name(s).
 	 * FROM supports comma-separated lists; JOIN expects a single table.
+	 * Handles optional AS alias after each table name.
 	 */
 	private extractTablesAt(
 		tokens: Token[],
@@ -363,6 +369,11 @@ export class SqlValidator {
 			this.validateTableName(tokens[i], allowedLower);
 			tables.push({ name: tokens[i].value, tokenIndex: i });
 			i++;
+
+			// Skip optional AS alias (e.g. FROM orders AS o)
+			if (isKeyword(tokens, i, 'AS') && isIdentifier(tokens, i + 1)) {
+				i += 2;
+			}
 
 			if (allowMultiple && isPunc(tokens, i, ',')) {
 				i++;
