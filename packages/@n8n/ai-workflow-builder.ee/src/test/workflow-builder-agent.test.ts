@@ -128,6 +128,7 @@ describe('WorkflowBuilderAgent', () => {
 			mockPayload = {
 				id: '12345',
 				message: 'Create a workflow',
+				// Test for plan mode as it's the only case when legacy multi-agent implementation is still in use
 				featureFlags: { planMode: true },
 				mode: 'plan',
 				workflowContext: {
