@@ -86,8 +86,10 @@ export function definePatternBenchmarks(
 	});
 
 	// Object Return — expression returns a whole object, not a leaf primitive.
-	// For the VM engine this forces __prepareForTransfer to walk the proxy and
-	// trigger a cross-bridge callback for every leaf, duplicating memory.
+	// The VM engine detects the proxy and returns a path sentinel, which the
+	// host resolves directly from its in-memory data. Regression guard against
+	// reintroducing the old proxy-walk path (which triggered one cross-bridge
+	// callback per leaf).
 	bench(`${engine}: Object Return - whole $json (10k-item array)`, () => {
 		evalFn(workflow, OBJECT_RETURN[0], largeData);
 	});
