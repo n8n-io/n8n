@@ -82,6 +82,12 @@ catalog:
   rimraf: 6.0.1
   simple-git: 3.32.3
   stream-json: 1.9.1
+  testcontainers: ^11.13.0
+  '@testcontainers/k3s': ^11.13.0
+  '@testcontainers/kafka': ^11.13.0
+  '@testcontainers/mysql': ^11.13.0
+  '@testcontainers/postgresql': ^11.13.0
+  '@testcontainers/redis': ^11.13.0
   ts-morph: ^27.0.2
   tsdown: ^0.16.5
   tsx: ^4.19.3
