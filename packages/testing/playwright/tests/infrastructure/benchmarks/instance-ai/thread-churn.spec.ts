@@ -8,7 +8,7 @@ test.use(instanceAiTestConfig);
 const ROUNDS = 3;
 
 test.describe(
-	'Instance-AI Memory: Parallel Workflow Builds @capability:proxy @capability:observability',
+	'Instance-AI Memory: Parallel Workflow Builds @capability:observability',
 	{
 		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},
@@ -49,8 +49,7 @@ test.describe(
 							const results = await driver.runParallel(BENCHMARK_PROMPTS);
 							const completed = results.filter((r) => r.completed).length;
 							console.log(`[ROUND ${round + 1}] ${completed}/${results.length} builds completed`);
-							await driver.closeAllTabs();
-							await driver.deleteAllThreads();
+							await driver.cleanup();
 						},
 					})),
 				],
