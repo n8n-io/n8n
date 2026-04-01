@@ -157,7 +157,7 @@ const selectedCredentialType = computed(() => {
 				return nodeCredential;
 			}
 		}
-		return activeNodeType.value?.credentials ? activeNodeType.value.credentials[0] : null;
+		return activeNodeType.value?.credentials?.[0] ?? null;
 	}
 
 	return null;
