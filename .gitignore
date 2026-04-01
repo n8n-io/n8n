@@ -59,3 +59,5 @@ packages/cli/src/commands/export/outputs
 .claude/plans/
 lefthook-local.yml
 .playwright-mcp
+docs
+.planning
