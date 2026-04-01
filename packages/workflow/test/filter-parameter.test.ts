@@ -536,6 +536,10 @@ describe('FilterParameter', () => {
 					{ left: 'any string', right: '[a-z]', expected: true },
 					{ left: 'lowercase', right: '[A-Z]', expected: false },
 					{ left: 'foo', right: '/^fo{2}$/g', expected: true },
+					{ left: 'foo', right: 'foo|bar', expected: true },
+					{ left: 'bar', right: 'foo|bar', expected: true },
+					{ left: 'baz', right: 'foo|bar', expected: false },
+					{ left: 'FOO', right: 'foo|bar', expected: true },
 				])('string:regex("$left","$right") === $expected', ({ left, right, expected }) => {
 					const result = executeFilter(
 						filterFactory({
@@ -560,6 +564,8 @@ describe('FilterParameter', () => {
 					{ left: 'any string', right: '[a-z]', expected: false },
 					{ left: 'lowercase', right: '[A-Z]', expected: true },
 					{ left: 'foo', right: '/^fo{2}$/g', expected: false },
+					{ left: 'foo', right: 'foo|bar', expected: false },
+					{ left: 'baz', right: 'foo|bar', expected: true },
 				])('string:notRegex("$left","$right") === $expected', ({ left, right, expected }) => {
 					const result = executeFilter(
 						filterFactory({

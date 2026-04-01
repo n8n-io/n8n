@@ -14,7 +14,7 @@ import {
 } from 'n8n-workflow';
 
 import { numberInputsProperty, configuredInputs } from './helpers';
-import { N8nLlmTracing } from '../llms/N8nLlmTracing';
+import { N8nLlmTracing } from '@n8n/ai-utilities';
 import { N8nNonEstimatingTracing } from '../llms/N8nNonEstimatingTracing';
 
 interface ModeleSelectionRule {

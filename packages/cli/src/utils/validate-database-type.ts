@@ -4,9 +4,6 @@ export const supportedTypesForExport = [
 	'sqlite-memory',
 	'postgres',
 	'postgresql',
-	'mysql',
-	'mariadb',
-	'mysqldb',
 ];
 
 export const supportedTypesForImport = [

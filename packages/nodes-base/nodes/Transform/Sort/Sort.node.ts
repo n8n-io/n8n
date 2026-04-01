@@ -282,7 +282,7 @@ export class Sort implements INodeType {
 				return result;
 			});
 		} else {
-			returnData = sortByCode.call(this, returnData);
+			returnData = await sortByCode.call(this);
 		}
 		return [returnData];
 	}

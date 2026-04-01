@@ -19,6 +19,7 @@ import { createUser } from '@/__tests__/data/users';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useRolesStore } from '@/app/stores/roles.store';
+import { useRBACStore } from '@/app/stores/rbac.store';
 import type { FrontendSettings } from '@n8n/api-types';
 
 const mockTrack = vi.fn();
@@ -169,6 +170,8 @@ describe('ProjectSettings', () => {
 		createTestingPinia();
 
 		projectsStore = mockedStore(useProjectsStore);
+		projectsStore.searchProjects.mockResolvedValue({ count: projects.length, data: projects });
+		projectsStore.globalProjectPermissions = { list: true };
 		usersStore = mockedStore(useUsersStore);
 		settingsStore = mockedStore(useSettingsStore);
 		rolesStore = mockedStore(useRolesStore);
@@ -229,7 +232,7 @@ describe('ProjectSettings', () => {
 					role: 'project:admin',
 				},
 			],
-			scopes: ['project:read'],
+			scopes: ['project:read', 'project:update'],
 		};
 
 		projectsStore.currentProject = mockProject;
@@ -717,22 +720,48 @@ describe('ProjectSettings', () => {
 		});
 	});
 
-	describe('Upgrade dialog', () => {
-		it('should open upgrade dialog when show-upgrade-dialog event is emitted', async () => {
-			const { queryByRole, getByRole } = renderComponent();
+	describe('External secrets permission (no project:update)', () => {
+		beforeEach(() => {
+			projectsStore.currentProject = {
+				...projectsStore.currentProject!,
+				scopes: ['project:read', 'externalSecretsProvider:read', 'externalSecretsProvider:list'],
+			};
+			settingsStore.moduleSettings = {
+				'external-secrets': {
+					multipleConnections: false,
+					forProjects: true,
+					roleBasedAccess: false,
+					systemRolesEnabled: false,
+				},
+			};
+			const rbacStore = mockedStore(useRBACStore);
+			rbacStore.hasScope.mockReturnValue(false);
+			projectsStore.getProjectSecretProviders.mockResolvedValue([]);
+		});
 
+		it('hides name, description, members, and danger zone sections', async () => {
+			const { queryByTestId } = renderComponent();
 			await nextTick();
 
-			// Dialog should not be visible initially
-			expect(queryByRole('dialog')).not.toBeInTheDocument();
+			expect(queryByTestId('project-settings-name-input')).not.toBeInTheDocument();
+			expect(queryByTestId('project-settings-description-input')).not.toBeInTheDocument();
+			expect(queryByTestId('project-members-select')).not.toBeInTheDocument();
+			expect(queryByTestId('project-settings-delete-button')).not.toBeInTheDocument();
+		});
 
-			// Emit the show-upgrade-dialog event from the members table
-			emitters.projectMembersTable.emit('show-upgrade-dialog');
-
+		it('hides the save and cancel buttons', async () => {
+			const { queryByTestId } = renderComponent();
 			await nextTick();
 
-			// The upgrade dialog should now be visible
-			expect(getByRole('dialog')).toBeInTheDocument();
+			expect(queryByTestId('project-settings-save-button')).not.toBeInTheDocument();
+			expect(queryByTestId('project-settings-cancel-button')).not.toBeInTheDocument();
+		});
+
+		it('renders the external secrets section', async () => {
+			const { getByTestId } = renderComponent();
+			await nextTick();
+
+			expect(getByTestId('external-secrets-section')).toBeInTheDocument();
 		});
 	});
 });

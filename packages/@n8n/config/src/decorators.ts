@@ -21,7 +21,15 @@ const readEnv = (envName: string) => {
 
 	// Read the value from a file, if "_FILE" environment variable is defined
 	const filePath = process.env[`${envName}_FILE`];
-	if (filePath) return readFileSync(filePath, 'utf8');
+	if (filePath) {
+		const value = readFileSync(filePath, 'utf8');
+		if (value !== value.trim()) {
+			console.warn(
+				`[n8n] Warning: The file specified by ${envName}_FILE contains leading or trailing whitespace, which may cause authentication failures.`,
+			);
+		}
+		return value;
+	}
 
 	return undefined;
 };

@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import { Z } from 'zod-class';
 
 import { baseWorkflowShape } from './base-workflow.dto';
+import { Z } from '../../zod-class';
 
 export class UpdateWorkflowDto extends Z.class(
 	// Make all base fields optional for partial updates

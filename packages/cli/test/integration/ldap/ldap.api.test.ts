@@ -39,6 +39,7 @@ let authOwnerAgent: SuperAgentTest;
 const testServer = utils.setupTestServer({
 	endpointGroups: ['auth', 'ldap'],
 	enabledFeatures: ['feat:ldap'],
+	modules: ['ldap'],
 });
 
 beforeAll(async () => {

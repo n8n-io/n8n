@@ -72,32 +72,9 @@ export function loadNodesFromFile(): INodeTypeDescription[] {
 	const nodesData = readFileSync(nodesPath, 'utf-8');
 	const allNodes = jsonParse<NodeWithVersion[]>(nodesData);
 
-	// Group nodes by name and select latest version
-	const nodesByName = new Map<string, NodeWithVersion[]>();
-	for (const node of allNodes) {
-		const existing = nodesByName.get(node.name) ?? [];
-		existing.push(node);
-		nodesByName.set(node.name, existing);
-	}
-
-	const latestNodes: INodeTypeDescription[] = [];
-	for (const [, versions] of nodesByName.entries()) {
-		if (versions.length > 1) {
-			// Find the node that matches the default version
-			const selectedNode = versions.find(
-				(node) =>
-					node.defaultVersion !== undefined &&
-					(Array.isArray(node.version)
-						? node.version.includes(node.defaultVersion)
-						: node.version === node.defaultVersion),
-			);
-			latestNodes.push(selectedNode ?? versions[0]);
-		} else {
-			latestNodes.push(versions[0]);
-		}
-	}
-
-	// Apply filtering (ignored types, disabled nodes, hidden nodes, tool merging)
+	// Keep all version entries instead of selecting only the latest version.
+	// Workflows may use older node versions (e.g., removeDuplicates v1.1), and
+	// discarding those entries causes "Node type not found" validation errors.
 	const disabledNodes = getDisabledNodes();
-	return filterNodeTypes(latestNodes, disabledNodes);
+	return filterNodeTypes(allNodes, disabledNodes);
 }

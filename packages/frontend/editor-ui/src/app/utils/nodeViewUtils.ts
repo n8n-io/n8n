@@ -559,6 +559,10 @@ export const getNodeViewTab = (route: RouteLocation): string | null => {
 			.includes(String(route.name))
 	) {
 		return MAIN_HEADER_TABS.EXECUTIONS;
+	} else if (
+		[VIEWS.EVALUATION_EDIT, VIEWS.EVALUATION_RUNS_DETAIL].map(String).includes(String(route.name))
+	) {
+		return MAIN_HEADER_TABS.EVALUATION;
 	}
 	return null;
 };

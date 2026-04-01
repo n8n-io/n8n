@@ -1,59 +1,67 @@
+import flatted from 'flatted';
+
 import { test, expect } from '../../../../fixtures/base';
 import executionOutOfMemoryResponse from '../../../../fixtures/execution-out-of-memory-server-response.json';
 import { retryUntil } from '../../../../utils/retry-utils';
 
-test.describe('Executions Filter', () => {
-	test.beforeEach(async ({ n8n }) => {
-		await n8n.start.fromImportedWorkflow('Test_workflow_4_executions_view.json');
-	});
+test.describe(
+	'Executions Filter',
+	{
+		annotation: [{ type: 'owner', description: 'Lifecycle & Governance' }],
+	},
+	() => {
+		test.beforeEach(async ({ n8n }) => {
+			await n8n.start.fromImportedWorkflow('Test_workflow_4_executions_view.json');
+		});
 
-	// There is flakiness in this test. When the dropdown is opened, at times it appears to automatically close even without user interaction.
-	// Manual timeouts have been added to try to mitigate this, but it still happens.
-	test.fixme(
-		'should keep popover open when selecting from dropdown inside it @fixme',
-		async ({ n8n }) => {
-			// Regression test: Element Plus dropdowns are teleported to body, causing
-			// Reka UI's DismissableLayer to detect clicks as "outside" and close the popover.
-			// This test verifies the popover stays open during and after dropdown selection.
+		// There is flakiness in this test. When the dropdown is opened, at times it appears to automatically close even without user interaction.
+		// Manual timeouts have been added to try to mitigate this, but it still happens.
+		test.fixme(
+			'should keep popover open when selecting from dropdown inside it',
+			async ({ n8n }) => {
+				// Regression test: Element Plus dropdowns are teleported to body, causing
+				// Reka UI's DismissableLayer to detect clicks as "outside" and close the popover.
+				// This test verifies the popover stays open during and after dropdown selection.
 
-			// Create some executions first
-			await n8n.executionsComposer.createExecutions(2);
+				// Create some executions first
+				await n8n.executionsComposer.createExecutions(2);
 
-			// Go to executions tab
-			await n8n.canvas.clickExecutionsTab();
-			await expect(n8n.executions.getExecutionItems().first()).toBeVisible();
+				// Go to executions tab
+				await n8n.canvas.clickExecutionsTab();
+				await expect(n8n.executions.getExecutionItems().first()).toBeVisible();
 
-			// Open filter popover
-			await n8n.executions.openFilter();
-			const filterForm = n8n.executions.getFilterForm();
-			await n8n.page.waitForTimeout(1500);
-			await expect(filterForm).toBeVisible();
+				// Open filter popover
+				await n8n.executions.openFilter();
+				const filterForm = n8n.executions.getFilterForm();
+				await n8n.page.waitForTimeout(1500);
+				await expect(filterForm).toBeVisible();
 
-			// Click to open the status dropdown
-			await n8n.executions.getStatusSelect().click();
-			// Verify popover is still open while dropdown is open
-			await expect(filterForm).toBeVisible();
+				// Click to open the status dropdown
+				await n8n.executions.getStatusSelect().click();
+				// Verify popover is still open while dropdown is open
+				await expect(filterForm).toBeVisible();
 
-			// Set up listener for the filtered executions request
-			const filterRequestPromise = n8n.page.waitForRequest(
-				(request) =>
-					request.url().includes('/rest/executions?filter=') && request.url().includes('success'),
-			);
+				// Set up listener for the filtered executions request
+				const filterRequestPromise = n8n.page.waitForRequest(
+					(request) =>
+						request.url().includes('/rest/executions?filter=') && request.url().includes('success'),
+				);
 
-			await n8n.page.waitForTimeout(500);
-			// Select an option from the dropdown
-			await n8n.page.getByRole('option', { name: 'Success' }).click();
+				await n8n.page.waitForTimeout(500);
+				// Select an option from the dropdown
+				await n8n.page.getByRole('option', { name: 'Success' }).click();
 
-			// Verify the filter request was sent to the backend (confirms selection worked)
-			const filterRequest = await filterRequestPromise;
-			expect(filterRequest.url()).toContain('status');
-			expect(filterRequest.url()).toContain('success');
+				// Verify the filter request was sent to the backend (confirms selection worked)
+				const filterRequest = await filterRequestPromise;
+				expect(filterRequest.url()).toContain('status');
+				expect(filterRequest.url()).toContain('success');
 
-			// KEY ASSERTION: Verify the popover did NOT close after selecting from dropdown
-			await expect(filterForm).toBeVisible();
-		},
-	);
-});
+				// KEY ASSERTION: Verify the popover did NOT close after selecting from dropdown
+				await expect(filterForm).toBeVisible();
+			},
+		);
+	},
+);
 
 const ERROR_MESSAGES = {
 	OUT_OF_MEMORY: 'Workflow did not finish, possible out-of-memory issue',
@@ -197,12 +205,12 @@ test.describe('Workflow Executions', () => {
 		});
 
 		test.fixme(
-			'should show workflow data in executions tab after hard reload and modify name and tags @fixme',
+			'should show workflow data in executions tab after hard reload and modify name and tags',
 			async () => {
 				// TODO: Migrate from Cypress
 			},
 		);
-		test.fixme('should load items and auto scroll after filter change @fixme', async () => {
+		test.fixme('should load items and auto scroll after filter change', async () => {
 			// TODO: This should be a component test
 		});
 
@@ -267,10 +275,8 @@ test.describe('Workflow Executions', () => {
 
 			const execution = await api.workflows.waitForExecution(workflowId, 10000);
 			const originalStartedAt = execution.startedAt;
-			console.log('originalStartedAt', originalStartedAt);
 
 			const finalExecution = await api.workflows.getExecution(execution.id);
-			console.log('finalExecution', finalExecution);
 			expect(finalExecution.startedAt).toBe(originalStartedAt);
 		});
 
@@ -286,16 +292,21 @@ test.describe('Workflow Executions', () => {
 			const execution = await api.workflows.waitForWorkflowStatus(workflowId, 'waiting', 10000);
 			const originalStartedAt = execution.startedAt;
 
-			await new Promise((resolve) => setTimeout(resolve, 1000));
+			const fullExecution = await api.workflows.getExecution(execution.id);
+			const executionData = flatted.parse(fullExecution.data);
+			const resumeUrl = new URL(
+				executionData.resultData.runData['Capture Resume URL'][0].data.main[0][0].json
+					.resumeUrl as string,
+			);
 
-			const resumeResponse = await api.request.get(`/webhook-waiting/${execution.id}`);
+			const resumeResponse = await api.webhooks.trigger(`${resumeUrl.pathname}${resumeUrl.search}`);
 			expect(resumeResponse.ok()).toBe(true);
 
 			await api.workflows.waitForExecution(workflowId, 15000);
 
 			await retryUntil(async () => {
-				const finalExecution = await api.workflows.getExecution(execution.id);
-				expect(finalExecution.startedAt).toBe(originalStartedAt);
+				const completedExecution = await api.workflows.getExecution(execution.id);
+				expect(completedExecution.startedAt).toBe(originalStartedAt);
 			});
 		});
 	});

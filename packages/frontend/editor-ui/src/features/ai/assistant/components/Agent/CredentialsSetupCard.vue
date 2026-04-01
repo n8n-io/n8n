@@ -1,11 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { INodeTypeDescription } from 'n8n-workflow';
-import { N8nTooltip, N8nIcon } from '@n8n/design-system';
-import NodeIcon from '@/app/components/NodeIcon.vue';
+import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-
-const MAX_VISIBLE_ICONS = 4;
 
 interface CredentialIssue {
 	node: string;
@@ -15,7 +11,6 @@ interface CredentialIssue {
 
 interface Props {
 	issues: CredentialIssue[];
-	getNodeType: (nodeName: string) => INodeTypeDescription | null;
 }
 
 const props = defineProps<Props>();
@@ -26,17 +21,42 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 
-const displayNodes = computed(() => {
+const MAX_VISIBLE_NODES = 3;
+
+const nodeNames = computed(() => {
 	const seen = new Set<string>();
-	const uniqueNodes = props.issues.filter((issue) => {
-		if (seen.has(issue.node)) return false;
-		seen.add(issue.node);
-		return true;
+	return props.issues
+		.filter((issue) => {
+			if (seen.has(issue.node)) return false;
+			seen.add(issue.node);
+			return true;
+		})
+		.map((issue) => issue.node);
+});
+
+const formattedNodeNames = computed(() => {
+	const names = nodeNames.value;
+	if (names.length === 0) return '';
+	if (names.length === 1) return names[0];
+	if (names.length === 2) {
+		return i18n.baseText('aiAssistant.builder.executeMessage.nodeListTwo', {
+			interpolate: { first: names[0], second: names[1] },
+		});
+	}
+
+	if (names.length <= MAX_VISIBLE_NODES) {
+		const allButLast = names.slice(0, -1).join(', ');
+		return i18n.baseText('aiAssistant.builder.executeMessage.nodeListLast', {
+			interpolate: { list: allButLast, last: names[names.length - 1] },
+		});
+	}
+
+	const visible = names.slice(0, MAX_VISIBLE_NODES).join(', ');
+	const remaining = names.length - MAX_VISIBLE_NODES;
+	return i18n.baseText('aiAssistant.builder.executeMessage.nodeListMore', {
+		interpolate: { list: visible, count: String(remaining) },
+		adjustToNumber: remaining,
 	});
-	return {
-		visible: uniqueNodes.slice(0, MAX_VISIBLE_ICONS),
-		overflowCount: Math.max(0, uniqueNodes.length - MAX_VISIBLE_ICONS),
-	};
 });
 
 function handleClick() {
@@ -52,23 +72,12 @@ function handleClick() {
 		@click="handleClick"
 		@keydown.enter="handleClick"
 	>
+		<N8nIcon :class="$style.keyIcon" icon="key-round" :size="14" />
 		<div :class="$style.credentialsContent">
 			<span :class="$style.credentialsHeader">
 				{{ i18n.baseText('aiAssistant.builder.executeMessage.addMissingCredentials') }}
 			</span>
-			<div :class="$style.credentialsIcons">
-				<N8nTooltip
-					v-for="item in displayNodes.visible"
-					:key="item.node"
-					:content="item.node"
-					placement="top"
-				>
-					<NodeIcon :node-type="getNodeType(item.node)" :size="20" />
-				</N8nTooltip>
-				<span v-if="displayNodes.overflowCount > 0" :class="$style.overflowBadge">
-					+{{ displayNodes.overflowCount }}
-				</span>
-			</div>
+			<span :class="$style.credentialsDescription">{{ formattedNodeNames }}</span>
 		</div>
 		<N8nIcon :class="$style.chevron" icon="chevron-right" />
 	</div>
@@ -78,48 +87,38 @@ function handleClick() {
 .credentialsCard {
 	display: flex;
 	align-items: center;
-	padding: var(--spacing--xs);
+	padding: var(--spacing--2xs) 0;
 	cursor: pointer;
-	border-radius: var(--radius);
-	transition: background-color 0.15s ease;
 
 	&:hover {
-		background-color: var(--color--foreground--tint-1);
-
-		.chevron {
-			color: var(--color--primary);
-		}
+		color: var(--color--primary);
 	}
+}
+
+.keyIcon {
+	margin-right: var(--spacing--2xs);
+	flex-shrink: 0;
+	color: var(--color--primary);
 }
 
 .credentialsContent {
 	flex: 1;
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--3xs);
+	padding-right: var(--spacing--xs);
+	line-height: var(--line-height--md);
 }
 
 .credentialsHeader {
 	font-weight: var(--font-weight--bold);
-	color: var(--color--text--shade-1);
 }
 
-.credentialsIcons {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-}
-
-.overflowBadge {
-	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
-	padding: var(--spacing--5xs) var(--spacing--4xs);
-	background-color: var(--color--foreground);
-	border-radius: var(--radius--sm);
+.credentialsDescription {
+	margin-left: var(--spacing--4xs);
 }
 
 .chevron {
-	color: var(--color--text--tint-2);
-	transition: color 0.15s ease;
+	width: 16px;
+	height: 16px;
+	flex-shrink: 0;
+	color: var(--color--text);
 }
 </style>

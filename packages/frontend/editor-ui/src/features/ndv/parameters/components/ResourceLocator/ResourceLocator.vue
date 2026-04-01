@@ -35,6 +35,7 @@ import {
 } from 'n8n-workflow';
 import {
 	computed,
+	inject,
 	nextTick,
 	onBeforeUnmount,
 	onMounted,
@@ -54,7 +55,9 @@ import {
 	type FromAIOverride,
 } from '../../utils/fromAIOverride.utils';
 import { completeExpressionSyntax } from '@/app/utils/expressions';
+import { DEBOUNCE_TIME, ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import FromAiOverrideButton from '../ParameterInputOverrides/FromAiOverrideButton.vue';
 import FromAiOverrideField from '../ParameterInputOverrides/FromAiOverrideField.vue';
 import ParameterOverrideSelectableList from '../ParameterInputOverrides/ParameterOverrideSelectableList.vue';
@@ -147,7 +150,7 @@ const searchFilter = ref('');
 const cachedResponses = ref<Record<string, IResourceLocatorQuery>>({});
 const hasCompletedASearch = ref(false);
 const width = ref(0);
-const inputRef = ref<HTMLInputElement>();
+const inputRef = ref<{ focus: () => void; blur: () => void; select: () => void } | null>(null);
 const containerRef = ref<HTMLDivElement>();
 const dropdownRef = ref<InstanceType<typeof ResourceLocatorDropdown>>();
 const showSlowLoadNotice = ref(false);
@@ -159,6 +162,8 @@ const rootStore = useRootStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
+const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
 
 const appName = computed(() => {
 	if (!props.node) {
@@ -271,7 +276,11 @@ const urlValue = computedAsync(async () => {
 		const value = props.isValueExpression ? props.expressionComputedValue : valueToDisplay.value;
 		if (typeof value === 'string') {
 			const expression = currentMode.value.url.replace(/\{\{\$value\}\}/g, value);
-			const resolved = await workflowHelpers.resolveExpression(expression);
+			const resolved = await workflowHelpers.resolveExpression(
+				expression,
+				{},
+				expressionLocalResolveCtx?.value ?? {},
+			);
 
 			return typeof resolved === 'string' ? resolved : null;
 		}
@@ -286,6 +295,7 @@ const currentRequestParams = computed(() => {
 		credentials: props.node?.credentials ?? {},
 		filter: searchFilter.value,
 		projectId: projectsStore.currentProjectId,
+		workflowId: workflowsStore.workflow.id,
 	};
 });
 
@@ -404,13 +414,16 @@ const handleAddResourceClick = async () => {
 		let resolvedUrl = redirectUrl;
 
 		if (resolvedUrl.includes('{{$projectId}}')) {
-			resolvedUrl = resolvedUrl.replace(
-				/\{\{\$projectId\}\}/g,
-				projectsStore.currentProjectId ?? '',
-			);
+			const projectId =
+				projectsStore.currentProjectId ??
+				workflowDocumentStore?.value?.homeProject?.id ??
+				projectsStore.personalProject?.id ??
+				'';
+			resolvedUrl = resolvedUrl.replace(/\{\{\$projectId\}\}/g, projectId);
 		}
 
 		hideResourceDropdown();
+		refreshList();
 		openResource(resolvedUrl);
 		return;
 	}
@@ -418,6 +431,7 @@ const handleAddResourceClick = async () => {
 	const resolvedNodeParameters = await workflowHelpers.resolveRequiredParameters(
 		props.parameter,
 		currentRequestParams.value.parameters,
+		expressionLocalResolveCtx?.value ?? {},
 	);
 
 	if (!resolvedNodeParameters || !addNewResourceMethodName) {
@@ -486,7 +500,7 @@ watch(currentMode, (mode) => {
 	}
 });
 
-watch([currentQueryLoading, resourceDropdownVisible], (isLoading, isDropdownVisible) => {
+watch([currentQueryLoading, resourceDropdownVisible], ([isLoading, isDropdownVisible]) => {
 	if (!slowLoadNoticeMessage.value) return;
 
 	if (isLoading && isDropdownVisible) {
@@ -665,6 +679,12 @@ function onInputMouseDown(event: MouseEvent): void {
 	}
 }
 
+function onInputContainerClick(): void {
+	// Focus the input when clicking anywhere in the container
+	// This ensures the dropdown opens in list mode even when clicking on the container itself
+	inputRef.value?.focus();
+}
+
 function onModeSelected(value: string): void {
 	if (typeof props.modelValue !== 'object') {
 		emit('update:modelValue', { __rl: true, value: props.modelValue, mode: value });
@@ -713,14 +733,14 @@ async function loadInitialResources(): Promise<void> {
 	}
 }
 
-function loadResourcesDebounced() {
+function loadResourcesDebounced(debounceTime: number = DEBOUNCE_TIME.INPUT.SEARCH) {
 	if (currentResponse.value?.error) {
 		// Clear error response immediately when retrying to show loading state
 		delete cachedResponses.value[currentRequestKey.value];
 	}
 
 	void callDebounced(loadResources, {
-		debounceTime: 1000,
+		debounceTime,
 		trailing: true,
 	});
 }
@@ -779,6 +799,7 @@ async function loadResources() {
 		const resolvedNodeParameters = (await workflowHelpers.resolveRequiredParameters(
 			props.parameter,
 			params.parameters,
+			expressionLocalResolveCtx?.value ?? {},
 		)) as INodeParameters;
 		const loadOptionsMethod = getPropertyArgument(currentMode.value, 'searchListMethod') as string;
 
@@ -792,6 +813,7 @@ async function loadResources() {
 			currentNodeParameters: resolvedNodeParameters,
 			credentials: props.node.credentials,
 			projectId: projectsStore.currentProjectId,
+			workflowId: workflowsStore.workflow.id,
 		};
 
 		if (params.filter) {
@@ -814,10 +836,10 @@ async function loadResources() {
 		// Store response under the original key to prevent cache pollution
 		setResponse(paramsKey, responseData);
 
-		// If the key changed during the request, also store under current key to prevent infinite loading
-		const currentKey = currentRequestKey.value;
-		if (currentKey !== paramsKey) {
-			setResponse(currentKey, responseData);
+		// Restart if the key changed during the request
+		if (currentRequestKey.value !== paramsKey) {
+			loadResourcesDebounced(0);
+			return;
 		}
 
 		if (params.filter && !hasCompletedASearch.value) {
@@ -839,10 +861,9 @@ async function loadResources() {
 		// Store error under the original key
 		setResponse(paramsKey, errorData);
 
-		// If the key changed during the request, also store under current key to prevent infinite loading
-		const currentKey = currentRequestKey.value;
-		if (currentKey !== paramsKey) {
-			setResponse(currentKey, errorData);
+		// Restart if the key changed during the request
+		if (currentRequestKey.value !== paramsKey) {
+			loadResourcesDebounced(0);
 		}
 	}
 }
@@ -1049,14 +1070,6 @@ function removeOverride() {
 						hasMultipleModes && canBeContentOverride && !isContentOverride,
 				}"
 			>
-				<div
-					:class="[
-						$style.background,
-						{
-							[$style.backgroundOverride]: showOverrideButton,
-						},
-					]"
-				></div>
 				<div v-if="hasMultipleModes" :class="$style.modeSelector">
 					<N8nSelect
 						:model-value="selectedMode"
@@ -1084,7 +1097,11 @@ function removeOverride() {
 					</N8nSelect>
 				</div>
 
-				<div :class="$style.inputContainer" data-test-id="rlc-input-container">
+				<div
+					:class="$style.inputContainer"
+					data-test-id="rlc-input-container"
+					@click="onInputContainerClick"
+				>
 					<DraggableTarget
 						type="mapping"
 						:disabled="hasOnlyListMode"
@@ -1144,10 +1161,11 @@ function removeOverride() {
 									@mousedown="onInputMouseDown"
 								>
 									<template v-if="isListMode" #suffix>
-										<i
+										<N8nIcon
+											icon="chevron-down"
+											color="text-light"
+											size="medium"
 											:class="{
-												['el-input__icon']: true,
-												['el-icon-arrow-down']: true,
 												[$style.selectIcon]: true,
 												[$style.isReverse]: resourceDropdownVisible,
 											}"

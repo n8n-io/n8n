@@ -5,10 +5,28 @@ import { CREDENTIAL_EDIT_MODAL_KEY } from '../../credentials.constants';
 import { STORES } from '@n8n/stores';
 import { retry, mockedStore } from '@/__tests__/utils';
 import { useCredentialsStore } from '../../credentials.store';
+import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ICredentialsResponse } from '../../credentials.types';
-import { within } from '@testing-library/vue';
+import { within, waitFor } from '@testing-library/vue';
 import type { ICredentialType } from 'n8n-workflow';
-import * as permissionsModule from '@n8n/permissions';
+
+vi.mock('vue-router', async () => ({
+	...(await vi.importActual('vue-router')),
+	useRouter: vi.fn(),
+	useRoute: () => ({
+		params: {},
+		query: {},
+		path: '',
+	}),
+}));
+
+vi.mock('@/app/composables/useToast', () => ({
+	useToast: () => ({
+		showError: vi.fn(),
+		showMessage: vi.fn(),
+	}),
+}));
 
 const oAuth2Api: ICredentialType = {
 	name: 'oAuth2Api',
@@ -181,16 +199,6 @@ const googleBigQueryOAuth2Api: ICredentialType = {
 	supportedNodes: ['n8n-nodes-base.googleBigQuery'],
 };
 
-vi.mock('@n8n/permissions', () => ({
-	getResourcePermissions: vi.fn(() => ({
-		credential: {
-			create: true,
-			update: true,
-		},
-	})),
-	hasScope: vi.fn(() => true),
-}));
-
 const renderComponent = createComponentRenderer(CredentialEdit, {
 	pinia: createTestingPinia({
 		initialState: {
@@ -214,16 +222,60 @@ const renderComponent = createComponentRenderer(CredentialEdit, {
 	}),
 });
 describe('CredentialEdit', () => {
+	beforeEach(() => {
+		const externalSecretsStore = mockedStore(useExternalSecretsStore);
+		externalSecretsStore.fetchSecretsForProject.mockResolvedValue(undefined);
+	});
+
 	afterEach(() => {
 		vi.clearAllMocks();
 	});
 
 	test('shows the save button when credentialId is null', async () => {
+		const pinia = createTestingPinia({
+			initialState: {
+				[STORES.UI]: {
+					modalsById: {
+						[CREDENTIAL_EDIT_MODAL_KEY]: { open: true },
+					},
+				},
+				[STORES.SETTINGS]: {
+					settings: {
+						enterprise: {
+							sharing: true,
+							externalSecrets: false,
+						},
+						templates: {
+							host: '',
+						},
+					},
+				},
+				[STORES.PROJECTS]: {
+					personalProject: {
+						id: 'personal-project',
+						type: 'personal',
+						scopes: ['credential:create', 'credential:read'],
+					},
+				},
+			},
+		});
+
+		const credStore = useCredentialsStore(pinia);
+		credStore.state.credentialTypes = {
+			testApi: {
+				name: 'testApi',
+				displayName: 'Test API',
+				properties: [],
+			} as ICredentialType,
+		};
+
 		const { queryByTestId } = renderComponent({
 			props: {
+				activeId: 'testApi',
 				modalName: CREDENTIAL_EDIT_MODAL_KEY,
 				mode: 'new',
 			},
+			pinia,
 		});
 		await retry(() => expect(queryByTestId('credential-save-button')).toBeInTheDocument());
 	});
@@ -336,111 +388,64 @@ describe('CredentialEdit', () => {
 		await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
 		await retry(() => expect(getByTestId('credential-edit-dialog')).toBeInTheDocument());
 
-		expect(
-			within(getByTestId('credential-edit-dialog')).getByTestId('oauth-connect-button'),
-		).toBeInTheDocument();
+		await retry(() =>
+			expect(
+				within(getByTestId('credential-edit-dialog')).getAllByLabelText('Sign in with Google')
+					.length,
+			).toBeGreaterThan(0),
+		);
 	});
 
-	describe('Dynamic Credentials Section', () => {
-		test('should not display dynamic credentials section when feature flag is disabled', async () => {
-			const credentialsStore = mockedStore(useCredentialsStore);
-
-			credentialsStore.state.credentialTypes = {
-				testCredential: {
-					name: 'testCredential',
-					displayName: 'Test Credential',
-					properties: [],
-				} as ICredentialType,
+	describe('external secrets', () => {
+		it('should fetch secrets on mount', async () => {
+			const externalSecretsStore = mockedStore(useExternalSecretsStore);
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.personalProject = {
+				id: 'personal-project',
+				name: 'Personal',
+				type: 'personal',
+				icon: null,
+				createdAt: '',
+				updatedAt: '',
+				relations: [],
+				scopes: [],
 			};
 
-			const { queryByTestId } = renderComponent({
-				props: {
-					modalName: CREDENTIAL_EDIT_MODAL_KEY,
-					mode: 'new',
-				},
-				pinia: createTestingPinia({
-					initialState: {
-						[STORES.UI]: {
-							modalsById: {
-								[CREDENTIAL_EDIT_MODAL_KEY]: { open: true },
-							},
-						},
-						[STORES.SETTINGS]: {
-							settings: {
-								enterprise: {
-									sharing: false,
-									externalSecrets: false,
-								},
-								envFeatureFlags: {
-									N8N_ENV_FEAT_DYNAMIC_CREDENTIALS: false,
-								},
-							},
-						},
-					},
-				}),
+			renderComponent({
+				props: { modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'new' },
 			});
 
-			await retry(() => expect(queryByTestId('credential-save-button')).toBeInTheDocument());
-			expect(queryByTestId('dynamic-credentials-section')).not.toBeInTheDocument();
+			await waitFor(() => {
+				expect(externalSecretsStore.fetchSecretsForProject).toHaveBeenCalledTimes(1);
+				expect(externalSecretsStore.fetchSecretsForProject).toHaveBeenCalledWith(
+					'personal-project',
+				);
+			});
 		});
 
-		test('should not display dynamic credentials section when user lacks permissions', async () => {
-			// Mock permissions to deny create and update
-			vi.mocked(permissionsModule.getResourcePermissions).mockReturnValueOnce({
-				credential: {
-					create: false,
-					update: false,
-					read: false,
-					delete: false,
-					share: false,
-					list: false,
-					move: false,
-				},
-			} as permissionsModule.PermissionsRecord);
+		it('should not block modal mount when secrets fetch fails', async () => {
+			const externalSecretsStore = mockedStore(useExternalSecretsStore);
+			externalSecretsStore.fetchSecretsForProject.mockRejectedValue(new Error('Network error'));
 
-			const credentialsStore = mockedStore(useCredentialsStore);
-
-			credentialsStore.state.credentialTypes = {
-				testCredential: {
-					name: 'testCredential',
-					displayName: 'Test Credential',
-					properties: [],
-				} as ICredentialType,
+			const projectsStore = mockedStore(useProjectsStore);
+			projectsStore.personalProject = {
+				id: 'personal-project',
+				name: 'Personal',
+				type: 'personal',
+				icon: null,
+				createdAt: '',
+				updatedAt: '',
+				relations: [],
+				scopes: [],
 			};
 
-			const { queryByTestId, getByTestId } = renderComponent({
-				props: {
-					modalName: CREDENTIAL_EDIT_MODAL_KEY,
-					mode: 'new',
-				},
-				pinia: createTestingPinia({
-					initialState: {
-						[STORES.UI]: {
-							modalsById: {
-								[CREDENTIAL_EDIT_MODAL_KEY]: { open: true },
-							},
-						},
-						[STORES.SETTINGS]: {
-							settings: {
-								enterprise: {
-									sharing: false,
-									externalSecrets: false,
-								},
-								envFeatureFlags: {
-									N8N_ENV_FEAT_DYNAMIC_CREDENTIALS: true,
-								},
-							},
-						},
-					},
-				}),
+			const { getByTestId } = renderComponent({
+				props: { modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'new' },
 			});
 
-			await retry(() => expect(getByTestId('credential-edit-dialog')).toBeInTheDocument());
-			expect(queryByTestId('dynamic-credentials-section')).not.toBeInTheDocument();
+			await waitFor(() => {
+				expect(getByTestId('credential-edit-dialog')).toBeInTheDocument();
+			});
 		});
-
-		// TODO: Add test for "should display the toggle switch in the dynamic credentials section"
-		// This requires properly mocking the credential store in edit mode which is complex.
-		// The functionality is covered by the negative test cases above.
 	});
 });

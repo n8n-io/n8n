@@ -66,24 +66,53 @@ test('enterprise feature @licensed', ...)           // Requires enterprise licen
 | `@licensed` | Enterprise license features | Tests for features behind license flags at startup |
 | `@cloud:X` | Resource constraints (trial, enterprise) | Performance tests with memory/CPU limits |
 | `@chaostest` | Chaos engineering tests | Tests that intentionally break things |
-| `@db:reset` | ⚠️ Deprecated - use `test.use()` pattern | Legacy isolation pattern |
+| `@auth:X` | Authentication role (owner, admin, member, none) | Tests requiring specific user role |
+| `@db:reset` | Reset database before each test (container-only) | Tests that need fresh DB state per test (e.g., MFA tests) |
 
 ### Worker Isolation (Fresh Database)
-If tests need a clean database state, use `test.use()` at the top level of the file with a unique capability config instead of the deprecated `@db:reset` tag:
+
+Tests that need their own isolated database should use `test.use()` with a unique capability config. This gives the test file its own container with a fresh database:
 
 ```typescript
 // my-isolated-tests.spec.ts
 import { test, expect } from '../fixtures/base';
 
-// Must be top-level, not inside describe block
-test.use({ capability: { env: { _ISOLATION: 'my-isolated-tests' } } });
+// Unique value breaks worker cache → fresh container with clean DB
+test.use({ capability: { env: { TEST_ISOLATION: 'my-test-name' } } });
 
-test('test with clean state', async ({ n8n }) => {
-  // Fresh container with reset database
+test.describe('My isolated tests', () => {
+  test.describe.configure({ mode: 'serial' }); // If tests depend on each other's data
+
+  test('test with clean state', async ({ n8n }) => {
+    // Fresh container with reset database
+  });
 });
 ```
 
-> **Deprecated:** `@db:reset` tag causes CI issues (separate workers, sequential execution). Use `test.use()` pattern above instead.
+**How it works:** The `capability` option is scoped to the worker level. When you pass a unique value via `test.use()`, Playwright creates a new worker with a fresh container. Each container starts with a clean database automatically.
+
+### Per-Test Database Reset (@db:reset)
+
+If tests within the same file need a fresh database before **each test** (not just the file), add `@db:reset` to the describe block. **Note:** This tag is container-only - tests with `@db:reset` won't run in local mode.
+
+```typescript
+// my-stateful-tests.spec.ts
+import { test, expect } from '../fixtures/base';
+
+test.use({ capability: { env: { TEST_ISOLATION: 'my-stateful-tests' } } });
+
+test.describe('My stateful tests @db:reset', () => {
+  test('test 1', async ({ n8n }) => {
+    // Fresh database (reset before this test)
+  });
+
+  test('test 2', async ({ n8n }) => {
+    // Fresh database again (reset before this test too)
+  });
+});
+```
+
+**When to use `@db:reset`:** When tests modify shared state that would break subsequent tests (e.g., enabling MFA, creating users, changing settings). Since resetting the database would affect all parallel tests in local mode, these tests are excluded from local runs and only execute in container mode where each worker has its own isolated database.
 
 ### Enterprise Features (@licensed)
 Use the `@licensed` tag for tests that require enterprise features which are **only available when the license is present at startup**. This differs from features that can be enabled/disabled at runtime.
@@ -285,6 +314,102 @@ node scripts/import-victoria-data.mjs --start victoria-metrics-export.jsonl vict
 3. Query locally:
    - **Metrics UI:** http://localhost:8428/vmui/
    - **Logs UI:** http://localhost:9428/select/vmui/
+
+## Janitor (Static Analysis)
+
+Janitor enforces test architecture patterns via static analysis. It runs as a **pre-commit hook** and blocks new violations from being introduced.
+
+Existing violations are tracked in a baseline file (`.janitor-baseline.json`) and don't block commits. Only **new** violations in your changed files will fail.
+
+### Quick Commands
+
+```bash
+# Run all rules on entire codebase
+pnpm janitor
+
+# Run on a specific file
+pnpm janitor --file=tests/e2e/my-test.spec.ts
+
+# Run a specific rule
+pnpm janitor --rule=dead-code
+pnpm janitor --rule=selector-purity
+
+# Dead code auto-removal
+pnpm janitor:fix --rule=dead-code
+
+# List all rules
+pnpm janitor --list
+
+# Verbose output (shows suggestions)
+pnpm janitor --verbose
+```
+
+### Rules
+
+| Rule | Severity | What it enforces |
+|------|----------|------------------|
+| `selector-purity` | error | Tests/flows use page objects, not raw locators |
+| `scope-lockdown` | error | Page locators scoped to their container |
+| `boundary-protection` | error | Pages don't import other pages |
+| `no-direct-page-instantiation` | error | Access pages through the facade, not `new XPage()` |
+| `dead-code` | warning | No unused methods/properties [fixable] |
+| `no-page-in-flow` | warning | Flows use page objects, not `page` directly |
+| `api-purity` | warning | Tests use API services, not raw HTTP calls |
+| `deduplication` | warning | Same test ID defined in one page object only |
+
+### Janitor Blocked My Commit - Now What?
+
+When the pre-commit hook blocks your commit, you'll see output like:
+
+```
+Found 2 violation(s)
+
+tests/e2e/my-test.spec.ts (2)
+   [ERR] L15: [selector-purity] Raw locator in test: page.getByTestId('save-button')
+   [ERR] L22: [selector-purity] Chained locator call: n8n.canvas.getNode('X').locator('.status')
+```
+
+**Steps to fix:**
+
+1. **Read the rule name and message** - it tells you exactly what's wrong
+2. **Move the selector into a page object** - the fix is almost always "put this in a page object method instead"
+3. **Re-run janitor on your file** to verify: `pnpm janitor --file=<your-file>`
+4. **Commit again**
+
+**Common fixes by rule:**
+
+| Rule | Problem | Fix |
+|------|---------|-----|
+| `selector-purity` | `page.getByTestId('x')` in test | Add a getter to the page object, call it from the test |
+| `selector-purity` | `someLocator.locator('.child')` in test | Add a method to the page object that returns the specific element |
+| `scope-lockdown` | `this.page.getByTestId('x')` in a component | Use `this.container.getByTestId('x')` instead |
+| `boundary-protection` | Page importing another page | Move the composition to a flow/composable |
+| `dead-code` | Unused method in page object | Delete it (or run `pnpm janitor:fix --rule=dead-code`) |
+
+**False positive?** If you believe the violation is wrong, raise it with the QA team. Don't bypass the hook.
+
+### Impact Analysis
+
+Find which tests are affected by a file or method change:
+
+```bash
+# File-level: which tests use this page object?
+pnpm janitor impact --file=pages/CanvasPage.ts
+
+# Method-level: which tests call this specific method?
+pnpm janitor method-impact --method=CanvasPage.addNode
+
+# Pipe to playwright to run only affected tests
+pnpm janitor impact --file=pages/CanvasPage.ts --test-list | xargs pnpm test:local
+```
+
+### Inventory (Codebase Discovery)
+
+```bash
+pnpm janitor inventory                    # Full inventory
+pnpm janitor inventory --summary          # Summary counts
+pnpm janitor inventory --category=pages   # Single category
+```
 
 ## Writing Tests
 For guidelines on writing new tests, see [CONTRIBUTING.md](./CONTRIBUTING.md).

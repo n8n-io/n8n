@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { splitMarkdownIntoChunks } from './chat.utils';
+import { splitMarkdownIntoChunks, isWaitingForApproval } from './chat.utils';
+import type { ChatMessage } from './chat.types';
 
 describe('splitMarkdownIntoChunks', () => {
 	it('should return empty array for empty string', () => {
@@ -104,5 +105,97 @@ describe('splitMarkdownIntoChunks', () => {
 		const result = splitMarkdownIntoChunks(content);
 		expect(result).toHaveLength(1);
 		expect(result[0]).toBe(content);
+	});
+});
+
+describe('isWaitingForApproval', () => {
+	const createMessage = (
+		status: ChatMessage['status'],
+		content: ChatMessage['content'] = [],
+	): ChatMessage => ({
+		id: 'msg-1',
+		sessionId: 'session-1',
+		type: 'ai',
+		name: 'AI',
+		content,
+		provider: 'openai',
+		model: 'gpt-4',
+		workflowId: null,
+		agentId: null,
+		executionId: null,
+		status,
+		createdAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString(),
+		previousMessageId: null,
+		retryOfMessageId: null,
+		revisionOfMessageId: null,
+		attachments: [],
+		responses: [],
+		alternatives: [],
+	});
+
+	it('should return false when message is null', () => {
+		expect(isWaitingForApproval(null)).toBe(false);
+	});
+
+	it('should return false when message is undefined', () => {
+		expect(isWaitingForApproval(undefined)).toBe(false);
+	});
+
+	it('should return false when message status is not waiting', () => {
+		const message = createMessage('success', [
+			{
+				type: 'with-buttons',
+				content: 'Approve?',
+				blockUserInput: true,
+				buttons: [{ text: 'Yes', link: 'https://example.com', type: 'primary' }],
+			},
+		]);
+		expect(isWaitingForApproval(message)).toBe(false);
+	});
+
+	it('should return false when message has no with-buttons chunk', () => {
+		const message = createMessage('waiting', [{ type: 'text', content: 'Hello' }]);
+		expect(isWaitingForApproval(message)).toBe(false);
+	});
+
+	it('should return false when with-buttons chunk has blockUserInput false', () => {
+		const message = createMessage('waiting', [
+			{
+				type: 'with-buttons',
+				content: 'Click a button',
+				blockUserInput: false,
+				buttons: [{ text: 'Click', link: 'https://example.com', type: 'primary' }],
+			},
+		]);
+		expect(isWaitingForApproval(message)).toBe(false);
+	});
+
+	it('should return true when message has waiting status with blocking with-buttons chunk', () => {
+		const message = createMessage('waiting', [
+			{
+				type: 'with-buttons',
+				content: 'Please approve this action',
+				blockUserInput: true,
+				buttons: [
+					{ text: 'Approve', link: 'https://example.com/approve', type: 'primary' },
+					{ text: 'Reject', link: 'https://example.com/reject', type: 'secondary' },
+				],
+			},
+		]);
+		expect(isWaitingForApproval(message)).toBe(true);
+	});
+
+	it('should return true when with-buttons is among other content chunks', () => {
+		const message = createMessage('waiting', [
+			{ type: 'text', content: 'Some text before' },
+			{
+				type: 'with-buttons',
+				content: 'Approve?',
+				blockUserInput: true,
+				buttons: [{ text: 'Yes', link: 'https://example.com', type: 'primary' }],
+			},
+		]);
+		expect(isWaitingForApproval(message)).toBe(true);
 	});
 });

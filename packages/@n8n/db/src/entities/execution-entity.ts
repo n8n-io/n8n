@@ -20,7 +20,7 @@ import type { ExecutionMetadata } from './execution-metadata';
 import { WorkflowEntity } from './workflow-entity';
 import { idStringifier } from '../utils/transformers';
 
-export type ExecutionDataStorageLocation = 'db' | 'fs' | 's3';
+export type ExecutionDataStorageLocation = 'db' | 'fs';
 
 @Entity()
 @Index(['workflowId', 'id'])

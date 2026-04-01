@@ -26,6 +26,8 @@ import ProjectNavigation from '@/features/collaboration/projects/components/Proj
 import ResourceCenterTooltip from '@/experiments/resourceCenter/components/ResourceCenterTooltip.vue';
 import { useResourceCenterStore } from '@/experiments/resourceCenter/stores/resourceCenter.store';
 import { RESOURCE_CENTER_EXPERIMENT } from '@/app/constants';
+import { useSidebarExpandedExperiment } from '@/experiments/sidebarExpanded';
+import { trackTemplatesClick, TemplateClickSource } from '@/experiments/utils';
 
 const cloudPlanStore = useCloudPlanStore();
 const rootStore = useRootStore();
@@ -41,6 +43,10 @@ const router = useRouter();
 const telemetry = useTelemetry();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const { getReportingURL } = useBugReporting();
+
+const { applyExperiment: applySidebarExpandedExperiment } = useSidebarExpandedExperiment();
+applySidebarExpandedExperiment();
+
 const { isCollapsed, sidebarWidth, onResizeStart, onResize, onResizeEnd, toggleCollapse } =
 	useSidebarLayout();
 
@@ -288,6 +294,9 @@ const handleSelect = (key: string) => {
 			trackHelpItemClick(key);
 			break;
 		}
+		case 'templates':
+			trackTemplatesClick(TemplateClickSource.sidebarButton);
+			break;
 		case 'insights':
 			telemetry.track('User clicked insights link from side menu');
 			break;

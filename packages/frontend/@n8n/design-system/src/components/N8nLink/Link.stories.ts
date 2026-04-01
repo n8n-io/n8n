@@ -4,7 +4,7 @@ import { action } from 'storybook/actions';
 import N8nLink from './Link.vue';
 
 export default {
-	title: 'Atoms/Link',
+	title: 'Core/Link',
 	component: N8nLink,
 	argTypes: {
 		size: {
@@ -12,6 +12,12 @@ export default {
 				type: 'select',
 			},
 			options: ['small', 'medium', 'large'],
+		},
+	},
+
+	parameters: {
+		docs: {
+			description: { component: 'A text link component for navigation and inline actions.' },
 		},
 	},
 };

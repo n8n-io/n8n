@@ -44,6 +44,7 @@ export const NEW_QUERY_AUTH_ACCOUNT_NAME = 'Query Auth account';
 export const E2E_TEST_NODE_NAME = 'E2E Test';
 
 export const TOOL_SUBCATEGORY = 'Action in an app';
+export const HITL_TOOL_SUBCATEGORY = 'Human review';
 
 export const ROUTES = {
 	NEW_WORKFLOW_PAGE: '/workflow/new',

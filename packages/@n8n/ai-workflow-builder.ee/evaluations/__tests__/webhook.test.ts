@@ -4,7 +4,15 @@
 
 import { jsonParse } from 'n8n-workflow';
 
-import { validateWebhookUrl, sendWebhookNotification, type WebhookPayload } from '../cli/webhook';
+import {
+	validateWebhookUrl,
+	sendWebhookNotification,
+	generateWebhookSignature,
+	verifyWebhookSignature,
+	WEBHOOK_SIGNATURE_HEADER,
+	WEBHOOK_TIMESTAMP_HEADER,
+	type WebhookPayload,
+} from '../cli/webhook';
 import type { RunSummary } from '../harness/harness-types';
 
 const mockFetch = jest.fn();
@@ -54,6 +62,91 @@ function createMockSummary(overrides: Partial<RunSummary> = {}): RunSummary {
 describe('webhook utilities', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
+	});
+
+	describe('generateWebhookSignature()', () => {
+		it('generates consistent signatures for same payload and secret', () => {
+			const payload = '{"test": "data"}';
+			const secret = 'test-secret-key-1234';
+
+			const sig1 = generateWebhookSignature(payload, secret);
+			const sig2 = generateWebhookSignature(payload, secret);
+
+			expect(sig1).toBe(sig2);
+			expect(sig1).toMatch(/^sha256=[a-f0-9]{64}$/);
+		});
+
+		it('generates different signatures for different payloads', () => {
+			const secret = 'test-secret-key-1234';
+
+			const sig1 = generateWebhookSignature('payload1', secret);
+			const sig2 = generateWebhookSignature('payload2', secret);
+
+			expect(sig1).not.toBe(sig2);
+		});
+
+		it('generates different signatures for different secrets', () => {
+			const payload = '{"test": "data"}';
+
+			const sig1 = generateWebhookSignature(payload, 'secret1');
+			const sig2 = generateWebhookSignature(payload, 'secret2');
+
+			expect(sig1).not.toBe(sig2);
+		});
+
+		it('generates known signature for test vector', () => {
+			// This provides a reference for receiver implementations
+			const payload = '{"suite":"llm-judge","summary":{"totalExamples":10}}';
+			const secret = 'test-webhook-secret-12345678';
+
+			const signature = generateWebhookSignature(payload, secret);
+
+			// Verify format
+			expect(signature).toMatch(/^sha256=[a-f0-9]{64}$/);
+
+			// This is the actual expected signature - useful for testing receiver implementations
+			expect(signature).toBe(
+				'sha256=0905f894294181ac73c6b2d61538c23dfbc5b023f4c2ab83513b1078a7fabe3c',
+			);
+		});
+	});
+
+	describe('verifyWebhookSignature()', () => {
+		it('returns true for valid signature', () => {
+			const payload = '{"test": "data"}';
+			const secret = 'test-secret-key-1234';
+			const signature = generateWebhookSignature(payload, secret);
+
+			expect(verifyWebhookSignature(payload, signature, secret)).toBe(true);
+		});
+
+		it('returns false for invalid signature', () => {
+			const payload = '{"test": "data"}';
+			const secret = 'test-secret-key-1234';
+
+			expect(verifyWebhookSignature(payload, 'sha256=invalid', secret)).toBe(false);
+		});
+
+		it('returns false for wrong secret', () => {
+			const payload = '{"test": "data"}';
+			const signature = generateWebhookSignature(payload, 'correct-secret');
+
+			expect(verifyWebhookSignature(payload, signature, 'wrong-secret')).toBe(false);
+		});
+
+		it('returns false for tampered payload', () => {
+			const secret = 'test-secret-key-1234';
+			const signature = generateWebhookSignature('original payload', secret);
+
+			expect(verifyWebhookSignature('tampered payload', signature, secret)).toBe(false);
+		});
+
+		it('returns false for signature with wrong length', () => {
+			const payload = '{"test": "data"}';
+			const secret = 'test-secret-key-1234';
+
+			expect(verifyWebhookSignature(payload, 'sha256=tooshort', secret)).toBe(false);
+		});
 	});
 
 	describe('validateWebhookUrl()', () => {
@@ -471,6 +564,146 @@ describe('webhook utilities', () => {
 			).rejects.toThrow('Webhook URL cannot target private/internal IP addresses');
 
 			expect(mockFetch).not.toHaveBeenCalled();
+		});
+
+		describe('HMAC signature', () => {
+			it('includes signature headers when webhookSecret is provided', async () => {
+				mockFetch.mockResolvedValueOnce({
+					ok: true,
+					status: 200,
+					statusText: 'OK',
+				});
+
+				const logger = createMockLogger();
+
+				await sendWebhookNotification({
+					webhookUrl: 'https://example.com/webhook',
+					webhookSecret: 'test-secret-key-1234',
+					summary: createMockSummary(),
+					dataset: 'test-dataset',
+					suite: 'llm-judge',
+					metadata: {},
+					logger,
+				});
+
+				expect(mockFetch).toHaveBeenCalledTimes(1);
+				const callArgs = mockFetch.mock.calls[0] as [string, RequestInit];
+				const headers = callArgs[1].headers as Record<string, string>;
+
+				// Verify signature header is present and valid format
+				expect(headers[WEBHOOK_SIGNATURE_HEADER]).toMatch(/^sha256=[a-f0-9]{64}$/);
+
+				// Verify timestamp header is present and valid
+				expect(headers[WEBHOOK_TIMESTAMP_HEADER]).toMatch(/^\d+$/);
+				const timestamp = parseInt(headers[WEBHOOK_TIMESTAMP_HEADER], 10);
+				expect(timestamp).toBeGreaterThan(Date.now() - 60000); // Within last minute
+				expect(timestamp).toBeLessThanOrEqual(Date.now());
+			});
+
+			it('signature can be verified by receiver', async () => {
+				mockFetch.mockResolvedValueOnce({
+					ok: true,
+					status: 200,
+					statusText: 'OK',
+				});
+
+				const logger = createMockLogger();
+				const secret = 'test-secret-key-1234';
+
+				await sendWebhookNotification({
+					webhookUrl: 'https://example.com/webhook',
+					webhookSecret: secret,
+					summary: createMockSummary(),
+					dataset: 'test-dataset',
+					suite: 'llm-judge',
+					metadata: {},
+					logger,
+				});
+
+				const callArgs = mockFetch.mock.calls[0] as [string, RequestInit];
+				const headers = callArgs[1].headers as Record<string, string>;
+				const body = callArgs[1].body as string;
+
+				const signature = headers[WEBHOOK_SIGNATURE_HEADER];
+				const timestamp = headers[WEBHOOK_TIMESTAMP_HEADER];
+
+				// Verify that the receiver can validate the signature
+				// Signature is computed as: timestamp.body
+				const signaturePayload = `${timestamp}.${body}`;
+				expect(verifyWebhookSignature(signaturePayload, signature, secret)).toBe(true);
+			});
+
+			it('does not include signature headers when webhookSecret is not provided', async () => {
+				mockFetch.mockResolvedValueOnce({
+					ok: true,
+					status: 200,
+					statusText: 'OK',
+				});
+
+				const logger = createMockLogger();
+
+				await sendWebhookNotification({
+					webhookUrl: 'https://example.com/webhook',
+					summary: createMockSummary(),
+					dataset: 'test-dataset',
+					suite: 'llm-judge',
+					metadata: {},
+					logger,
+				});
+
+				const callArgs = mockFetch.mock.calls[0] as [string, RequestInit];
+				const headers = callArgs[1].headers as Record<string, string>;
+
+				expect(headers[WEBHOOK_SIGNATURE_HEADER]).toBeUndefined();
+				expect(headers[WEBHOOK_TIMESTAMP_HEADER]).toBeUndefined();
+			});
+
+			it('logs warning when webhook secret is not provided', async () => {
+				mockFetch.mockResolvedValueOnce({
+					ok: true,
+					status: 200,
+					statusText: 'OK',
+				});
+
+				const logger = createMockLogger();
+
+				await sendWebhookNotification({
+					webhookUrl: 'https://example.com/webhook',
+					summary: createMockSummary(),
+					dataset: 'test-dataset',
+					suite: 'llm-judge',
+					metadata: {},
+					logger,
+				});
+
+				expect(logger.warn).toHaveBeenCalledWith(
+					expect.stringContaining('No webhook secret provided'),
+				);
+			});
+
+			it('logs info when request is signed', async () => {
+				mockFetch.mockResolvedValueOnce({
+					ok: true,
+					status: 200,
+					statusText: 'OK',
+				});
+
+				const logger = createMockLogger();
+
+				await sendWebhookNotification({
+					webhookUrl: 'https://example.com/webhook',
+					webhookSecret: 'test-secret-key-1234',
+					summary: createMockSummary(),
+					dataset: 'test-dataset',
+					suite: 'llm-judge',
+					metadata: {},
+					logger,
+				});
+
+				expect(logger.info).toHaveBeenCalledWith(
+					expect.stringContaining('signed with HMAC-SHA256'),
+				);
+			});
 		});
 	});
 });

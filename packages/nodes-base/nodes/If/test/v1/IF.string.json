@@ -7,23 +7,24 @@
 			"name": "On clicking 'execute'",
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [
-				-3120,
-				600
-			]
+			"position": [-3120, 600]
 		},
 		{
 			"parameters": {
-				"jsCode": "return [\n  { name: \"Elon Musk\" },\n  { name: \"Arnold Schwarzenegger\"},\n];"
+				"data": [
+					{
+						"name": "Elon Musk"
+					},
+					{
+						"name": "Arnold Schwarzenegger"
+					}
+				]
 			},
 			"id": "a35687af-99c1-43b2-aa43-955fcd87ff81",
 			"name": "Code",
-			"type": "n8n-nodes-base.code",
+			"type": "n8n-nodes-testing.testData",
 			"typeVersion": 1,
-			"position": [
-				-2920,
-				600
-			]
+			"position": [-2920, 600]
 		},
 		{
 			"parameters": {},
@@ -31,10 +32,7 @@
 			"name": "On True",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [
-				-2460,
-				-500
-			]
+			"position": [-2460, -500]
 		},
 		{
 			"parameters": {},
@@ -42,10 +40,7 @@
 			"name": "On False",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [
-				-2220,
-				-460
-			]
+			"position": [-2220, -460]
 		},
 		{
 			"parameters": {
@@ -63,10 +58,7 @@
 			"name": "IF Contains",
 			"type": "n8n-nodes-base.if",
 			"typeVersion": 1,
-			"position": [
-				-2660,
-				-480
-			]
+			"position": [-2660, -480]
 		},
 		{
 			"parameters": {
@@ -84,10 +76,7 @@
 			"name": "IF Not Contains",
 			"type": "n8n-nodes-base.if",
 			"typeVersion": 1,
-			"position": [
-				-2660,
-				-300
-			]
+			"position": [-2660, -300]
 		},
 		{
 			"parameters": {},
@@ -95,10 +84,7 @@
 			"name": "On True Contains",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [
-				-2460,
-				-320
-			]
+			"position": [-2460, -320]
 		},
 		{
 			"parameters": {},
@@ -106,10 +92,7 @@
 			"name": "On False Contains",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [
-				-2220,
-				-280
-			]
+			"position": [-2220, -280]
 		},
 		{
 			"parameters": {
@@ -127,10 +110,7 @@
 			"name": "IF Ends With",
 			"type": "n8n-nodes-base.if",
 			"typeVersion": 1,
-			"position": [
-				-2660,
-				-120
-			]
+			"position": [-2660, -120]
 		},
 		{
 			"parameters": {},
@@ -138,10 +118,7 @@
 			"name": "On True Ends With",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [
-				-2460,
-				-140
-			]
+			"position": [-2460, -140]
 		},
 		{
 			"parameters": {},
@@ -149,10 +126,7 @@
 			"name": "On False Ends With",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [
-				-2220,
-				-100
-			]
+			"position": [-2220, -100]
 		},
 		{
 			"parameters": {},
@@ -160,10 +134,7 @@
 			"name": "On True Not Ends With",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [
-				-2460,
-				20
-			]
+			"position": [-2460, 20]
 		},
 		{
 			"parameters": {
@@ -181,10 +152,7 @@
 			"name": "IF Not Ends With",
 			"type": "n8n-nodes-base.if",
 			"typeVersion": 1,
-			"position": [
-				-2660,
-				40
-			]
+			"position": [-2660, 40]
 		},
 		{
 			"parameters": {},
@@ -192,10 +160,7 @@
 			"name": "On False Not Ends With",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [
-				-2220,
-				60
-			]
+			"position": [-2220, 60]
 		},
 		{
 			"parameters": {
@@ -212,10 +177,7 @@
 			"name": "IF Equal",
 			"type": "n8n-nodes-base.if",
 			"typeVersion": 1,
-			"position": [
-				-2660,
-				240
-			]
+			"position": [-2660, 240]
 		},
 		{
 			"parameters": {},
@@ -223,10 +185,7 @@
 			"name": "On True Equal",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [
-				-2460,
-				220
-			]
+			"position": [-2460, 220]
 		},
 		{
 			"parameters": {},
@@ -234,10 +193,7 @@
 			"name": "On False Equal",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [
-				-2220,
-				260
-			]
+			"position": [-2220, 260]
 		},
 		{
 			"parameters": {
@@ -255,10 +211,7 @@
 			"name": "IF Not Equal",
 			"type": "n8n-nodes-base.if",
 			"typeVersion": 1,
-			"position": [
-				-2660,
-				420
-			]
+			"position": [-2660, 420]
 		},
 		{
 			"parameters": {},
@@ -266,10 +219,7 @@
 			"name": "On True Not Equal",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [
-				-2460,
-				400
-			]
+			"position": [-2460, 400]
 		},
 		{
 			"parameters": {},
@@ -277,10 +227,7 @@
 			"name": "On False Not Equal",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [
-				-2220,
-				440
-			]
+			"position": [-2220, 440]
 		},
 		{
 			"parameters": {
@@ -298,10 +245,7 @@
 			"name": "IF Regex",
 			"type": "n8n-nodes-base.if",
 			"typeVersion": 1,
-			"position": [
-				-2660,
-				600
-			]
+			"position": [-2660, 600]
 		},
 		{
 			"parameters": {},
@@ -309,10 +253,7 @@
 			"name": "On True Regex",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [
-				-2460,
-				580
-			]
+			"position": [-2460, 580]
 		},
 		{
 			"parameters": {},
@@ -320,10 +261,7 @@
 			"name": "On False Regex",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [
-				-2220,
-				620
-			]
+			"position": [-2220, 620]
 		},
 		{
 			"parameters": {
@@ -341,10 +279,7 @@
 			"name": "IF Not Regex",
 			"type": "n8n-nodes-base.if",
 			"typeVersion": 1,
-			"position": [
-				-2660,
-				780
-			]
+			"position": [-2660, 780]
 		},
 		{
 			"parameters": {},
@@ -352,10 +287,7 @@
 			"name": "On True Not Regex",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [
-				-2460,
-				760
-			]
+			"position": [-2460, 760]
 		},
 		{
 			"parameters": {},
@@ -363,10 +295,7 @@
 			"name": "On False Not Regex",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [
-				-2220,
-				800
-			]
+			"position": [-2220, 800]
 		},
 		{
 			"parameters": {
@@ -384,10 +313,7 @@
 			"name": "IF Starts With",
 			"type": "n8n-nodes-base.if",
 			"typeVersion": 1,
-			"position": [
-				-2660,
-				980
-			]
+			"position": [-2660, 980]
 		},
 		{
 			"parameters": {},
@@ -395,10 +321,7 @@
 			"name": "On True Starts With",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [
-				-2460,
-				960
-			]
+			"position": [-2460, 960]
 		},
 		{
 			"parameters": {},
@@ -406,10 +329,7 @@
 			"name": "On False Starts With",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [
-				-2220,
-				1000
-			]
+			"position": [-2220, 1000]
 		},
 		{
 			"parameters": {
@@ -427,10 +347,7 @@
 			"name": "IF Not Starts With",
 			"type": "n8n-nodes-base.if",
 			"typeVersion": 1,
-			"position": [
-				-2660,
-				1180
-			]
+			"position": [-2660, 1180]
 		},
 		{
 			"parameters": {},
@@ -438,10 +355,7 @@
 			"name": "On True Not Starts With",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [
-				-2460,
-				1160
-			]
+			"position": [-2460, 1160]
 		},
 		{
 			"parameters": {},
@@ -449,10 +363,7 @@
 			"name": "On False Not Starts With",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [
-				-2220,
-				1200
-			]
+			"position": [-2220, 1200]
 		},
 		{
 			"parameters": {
@@ -469,10 +380,7 @@
 			"name": "IF Is Empty",
 			"type": "n8n-nodes-base.if",
 			"typeVersion": 1,
-			"position": [
-				-2660,
-				1380
-			]
+			"position": [-2660, 1380]
 		},
 		{
 			"parameters": {},
@@ -480,10 +388,7 @@
 			"name": "On False Is Empty",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [
-				-2220,
-				1400
-			]
+			"position": [-2220, 1400]
 		},
 		{
 			"parameters": {
@@ -500,10 +405,7 @@
 			"name": "IF Is Not Empty",
 			"type": "n8n-nodes-base.if",
 			"typeVersion": 1,
-			"position": [
-				-2660,
-				1560
-			]
+			"position": [-2660, 1560]
 		},
 		{
 			"parameters": {},
@@ -511,10 +413,7 @@
 			"name": "On True Is Not Empty",
 			"type": "n8n-nodes-base.noOp",
 			"typeVersion": 1,
-			"position": [
-				-2460,
-				1540
-			]
+			"position": [-2460, 1540]
 		}
 	],
 	"pinData": {

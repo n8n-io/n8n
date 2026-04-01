@@ -1,4 +1,5 @@
 import { type Response } from 'express';
+import { getHtmlSandboxCSP, isFormHtmlSandboxingDisabled } from 'n8n-core';
 import {
 	type NodeTypeAndVersion,
 	type IWebhookFunctions,
@@ -8,10 +9,7 @@ import {
 	OperationalError,
 } from 'n8n-workflow';
 
-import { sanitizeCustomCss, sanitizeHtml, validateSafeRedirectUrl } from './utils';
-
-const SANDBOX_CSP =
-	'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols';
+import { handleNewlines, sanitizeCustomCss, sanitizeHtml, validateSafeRedirectUrl } from './utils';
 
 const getBinaryDataFromNode = (context: IWebhookFunctions, nodeName: string): IDataObject => {
 	return context.evaluateExpression(`{{ $('${nodeName}').first().binary }}`) as IDataObject;
@@ -49,7 +47,9 @@ export const renderFormCompletion = async (
 	trigger: NodeTypeAndVersion,
 ): Promise<IWebhookResponseData> => {
 	const completionTitle = context.getNodeParameter('completionTitle', '') as string;
-	const completionMessage = context.getNodeParameter('completionMessage', '') as string;
+	const completionMessage = handleNewlines(
+		sanitizeHtml(context.getNodeParameter('completionMessage', '') as string),
+	);
 	const redirectUrl = context.getNodeParameter('redirectUrl', '') as string;
 	const options = context.getNodeParameter('options', {}) as {
 		formTitle: string;
@@ -71,13 +71,13 @@ export const renderFormCompletion = async (
 		`{{ $('${trigger?.name}').params.options?.appendAttribution === false ? false : true }}`,
 	) as boolean;
 
-	if (respondWith !== 'redirect') {
-		res.setHeader('Content-Security-Policy', SANDBOX_CSP);
+	if (respondWith !== 'redirect' && !isFormHtmlSandboxingDisabled()) {
+		res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
 	}
 
 	res.render('form-trigger-completion', {
 		title: completionTitle,
-		message: sanitizeHtml(completionMessage),
+		message: completionMessage,
 		formTitle: title,
 		appendAttribution,
 		responseText,

@@ -2,10 +2,9 @@ import { SupabaseVectorStore } from '@langchain/community/vectorstores/supabase'
 import { createClient } from '@supabase/supabase-js';
 import { NodeOperationError, type INodeProperties } from 'n8n-workflow';
 
-import { metadataFilterField } from '@utils/sharedFields';
+import { metadataFilterField, createVectorStoreNode } from '@n8n/ai-utilities';
 
-import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
-import { supabaseTableNameSearch } from '../shared/createVectorStoreNode/methods/listSearch';
+import { supabaseTableNameSearch } from '../shared/methods/listSearch';
 import { supabaseTableNameRLC } from '../shared/descriptions';
 
 const queryNameField: INodeProperties = {
