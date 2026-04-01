@@ -287,6 +287,7 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 							waitForConfirmation: context.waitForConfirmation,
 							llmStepTraceHooks,
 							workingMemoryEnabled: false,
+							maxSteps: PLANNER_MAX_STEPS,
 						});
 
 						return await result.text;
