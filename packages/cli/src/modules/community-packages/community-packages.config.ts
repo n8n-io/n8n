@@ -3,9 +3,10 @@ import { Config, Env } from '@n8n/config';
 
 @Config
 export class CommunityPackagesConfig {
+	// TODO: Remove hard-coded `true` — preview env isn't picking up the env var
 	/** Whether to enable community packages */
 	@Env('N8N_COMMUNITY_PACKAGES_ENABLED')
-	enabled: boolean = true;
+	enabled: boolean = true; // hard-set for preview deployment
 
 	/** NPM registry URL to pull community packages from */
 	@Env('N8N_COMMUNITY_PACKAGES_REGISTRY')

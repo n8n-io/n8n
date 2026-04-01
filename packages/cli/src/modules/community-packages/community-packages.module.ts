@@ -22,12 +22,11 @@ export class CommunityPackagesModule implements ModuleInterface {
 		return [InstalledNodes, InstalledPackages] as EntityClass[];
 	}
 
+	// TODO: Remove hard-coded `true` values — preview env isn't picking up community package env vars
 	async settings() {
-		const { CommunityPackagesConfig } = await import('./community-packages.config');
-
 		return {
-			communityNodesEnabled: Container.get(CommunityPackagesConfig).enabled,
-			unverifiedCommunityNodesEnabled: Container.get(CommunityPackagesConfig).unverifiedEnabled,
+			communityNodesEnabled: true,
+			unverifiedCommunityNodesEnabled: true,
 		};
 	}
 
