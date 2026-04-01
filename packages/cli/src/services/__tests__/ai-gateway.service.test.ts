@@ -27,13 +27,9 @@ const MOCK_GATEWAY_CONFIG = {
 	},
 };
 
-function makeService({
-	baseUrl = BASE_URL as string | null,
-	isAiGatewayLicensed = true,
-	aiGatewayDevMode = false,
-} = {}) {
+function makeService({ baseUrl = BASE_URL as string | null, isAiGatewayLicensed = true } = {}) {
 	const globalConfig = {
-		aiAssistant: { baseUrl: baseUrl ?? undefined, aiGatewayDevMode },
+		aiAssistant: { baseUrl: baseUrl ?? undefined },
 	} as unknown as GlobalConfig;
 	const license = mock<License>({
 		loadCertStr: jest.fn().mockResolvedValue(LICENSE_CERT),
@@ -125,12 +121,6 @@ describe('AiGatewayService', () => {
 			await expect(service.getSyntheticCredential('googlePalmApi', USER_ID)).rejects.toThrow(
 				FeatureNotLicensedError,
 			);
-		});
-
-		it('allows access when dev mode is on regardless of license', async () => {
-			mockConfigThenToken(fetchMock);
-			const service = makeService({ isAiGatewayLicensed: false, aiGatewayDevMode: true });
-			await expect(service.getSyntheticCredential('googlePalmApi', USER_ID)).resolves.toBeDefined();
 		});
 
 		it('throws UserError when baseUrl is not configured', async () => {

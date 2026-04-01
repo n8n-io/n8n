@@ -8,11 +8,4 @@ export class AiAssistantConfig {
 	 */
 	@Env('N8N_AI_ASSISTANT_BASE_URL')
 	baseUrl: string = '';
-
-	/**
-	 * Makes AI Gateway available without a valid license.
-	 * For local development only; credential and token checks remain enforced.
-	 */
-	@Env('N8N_AI_GATEWAY_DEV_MODE')
-	aiGatewayDevMode: boolean = false;
 }

@@ -263,6 +263,7 @@ export class AiController {
 		}
 	}
 
+	@Licensed('feat:aiGateway')
 	@Get('/gateway/config')
 	async getGatewayConfig(): Promise<AiGatewayConfigDto> {
 		try {
@@ -273,7 +274,7 @@ export class AiController {
 		}
 	}
 
-	//TODO: consider to add @Licensed decorator
+	@Licensed('feat:aiGateway')
 	@Get('/gateway/credits')
 	async getGatewayCredits(
 		req: AuthenticatedRequest,
@@ -286,6 +287,7 @@ export class AiController {
 		}
 	}
 
+	@Licensed('feat:aiGateway')
 	@Get('/gateway/usage')
 	async getGatewayUsage(
 		req: AuthenticatedRequest,

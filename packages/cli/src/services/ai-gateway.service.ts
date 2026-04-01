@@ -58,10 +58,7 @@ export class AiGatewayService {
 		credentialType: string,
 		userId: string,
 	): Promise<ICredentialDataDecryptedObject> {
-		if (
-			!this.globalConfig.aiAssistant.aiGatewayDevMode &&
-			!this.licenseState.isAiGatewayLicensed()
-		) {
+		if (!this.licenseState.isAiGatewayLicensed()) {
 			throw new FeatureNotLicensedError(LICENSE_FEATURES.AI_GATEWAY);
 		}
 
