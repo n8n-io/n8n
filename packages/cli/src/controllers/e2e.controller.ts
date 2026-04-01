@@ -304,13 +304,42 @@ export class E2EController {
 			return { success: false, message: 'Failed to write heap snapshot' };
 		}
 
+		const path = require('node:path') as typeof import('node:path');
 		const stats = fs.statSync(filePath);
+		const filename = path.basename(filePath);
+		this.heapSnapshotPaths.set(filename, filePath);
+
 		return {
 			success: true,
-			filePath,
+			filePath: filename,
 			sizeBytes: stats.size,
 			sizeMB: Math.round(stats.size / 1024 / 1024),
 		};
+	}
+
+	private heapSnapshotPaths = new Map<string, string>();
+
+	/**
+	 * Download a heap snapshot file as a stream.
+	 * The response-helper pipes Readable streams directly to the response.
+	 */
+	@Get('/heap-snapshot/:filename', { skipAuth: true })
+	downloadHeapSnapshot(req: Request) {
+		const fs = require('node:fs') as typeof import('node:fs');
+		const path = require('node:path') as typeof import('node:path');
+
+		const filename = path.basename(req.params.filename);
+		if (!filename.endsWith('.heapsnapshot')) {
+			throw new Error('Invalid file type');
+		}
+
+		// Look up the full path stored during POST, or try cwd
+		const filePath = this.heapSnapshotPaths.get(filename) ?? path.resolve(filename);
+		if (!fs.existsSync(filePath)) {
+			throw new Error(`Snapshot not found: ${filename} (tried ${filePath})`);
+		}
+
+		return fs.createReadStream(filePath);
 	}
 
 	private resetFeatures() {

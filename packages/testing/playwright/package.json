@@ -37,6 +37,8 @@
   },
   "devDependencies": {
     "@currents/playwright": "catalog:e2e",
+    "@memlab/api": "catalog:",
+    "@memlab/heap-analysis": "catalog:",
     "@n8n/api-types": "workspace:*",
     "@n8n/constants": "workspace:*",
     "@n8n/db": "workspace:*",

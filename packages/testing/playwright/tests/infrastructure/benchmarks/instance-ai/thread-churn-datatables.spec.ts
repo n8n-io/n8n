@@ -1,20 +1,28 @@
-import { BENCHMARK_PROMPTS } from '../../../../utils/benchmark/instance-ai-driver';
 import { analyzeHeapLeaks } from '../../../../utils/benchmark/heap-analysis';
 import { runMemoryBenchmark } from '../harness/memory-harness';
 import { test, instanceAiTestConfig } from './fixtures';
 
 test.use(instanceAiTestConfig);
 
-/** Number of parallel-build rounds. Each round opens 3 tabs, builds, then cleans up. */
 const ROUNDS = 3;
 
+const DATA_TABLE_PROMPT =
+	`Without asking any questions, go straight to building. ` +
+	`Create 5 data tables with sample data:\n` +
+	`1. "Bench Employees" with columns: name (text), email (text), department (text) — add 3 rows\n` +
+	`2. "Bench Products" with columns: sku (text), name (text), price (number) — add 3 rows\n` +
+	`3. "Bench Orders" with columns: orderId (text), product (text), quantity (number) — add 3 rows\n` +
+	`4. "Bench Inventory" with columns: warehouse (text), sku (text), count (number) — add 3 rows\n` +
+	`5. "Bench Logs" with columns: timestamp (text), level (text), message (text) — add 3 rows\n` +
+	`After creating all 5, delete all of them.`;
+
 test.describe(
-	'Instance-AI Memory: Parallel Workflow Builds @capability:observability',
+	'Instance-AI Memory: Data Table CRUD @capability:observability',
 	{
 		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},
 	() => {
-		test('heap returns to baseline after parallel build rounds', async ({
+		test('heap returns to baseline after data table create/delete rounds', async ({
 			instanceAiDriver: driver,
 			backendUrl,
 			services,
@@ -32,21 +40,16 @@ test.describe(
 					testInfo,
 					baseUrl: backendUrl,
 					metrics: services.observability.metrics,
-					dimensions: {
-						scenario: 'parallel-builds',
-						rounds: ROUNDS,
-						promptsPerRound: BENCHMARK_PROMPTS.length,
-					},
+					dimensions: { scenario: 'data-tables', rounds: ROUNDS },
 					heapOptions,
 					captureSnapshots: true,
 					dryRun: false,
 				},
 				[
-					// Each round: open 3 tabs, build in parallel, close tabs, delete threads
 					...Array.from({ length: ROUNDS }, (_, round) => ({
 						name: `round-${round + 1}`,
 						action: async () => {
-							const results = await driver.runParallel(BENCHMARK_PROMPTS);
+							const results = await driver.runParallel([DATA_TABLE_PROMPT]);
 							const completed = results.filter((r) => r.completed).length;
 							console.log(`[ROUND ${round + 1}] ${completed}/${results.length} builds completed`);
 							await driver.cleanup();
@@ -55,7 +58,6 @@ test.describe(
 				],
 			);
 
-			// Run memlab analysis if all three snapshots were captured
 			const { baseline, target, final: finalSnap } = result.snapshots;
 			if (baseline && target && finalSnap) {
 				await analyzeHeapLeaks(baseline, target, finalSnap, testInfo);

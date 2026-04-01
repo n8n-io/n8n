@@ -53,6 +53,12 @@ export interface MemoryBenchmarkResult {
 	postCleanup: StableHeapResult;
 	/** Post-cleanup heap minus baseline — the leaked amount (MB) */
 	leakMB: number;
+	/** Local paths to downloaded heap snapshots (for memlab analysis). Null if not captured. */
+	snapshots: {
+		baseline: string | null;
+		target: string | null;
+		final: string | null;
+	};
 }
 
 /**
@@ -92,13 +98,19 @@ export async function runMemoryBenchmark(
 		`[MEMORY] Starting benchmark with ${phases.length} phases${dryRun ? ' (DRY RUN — no heap measurement)' : ''}`,
 	);
 
+	const snapshotPaths = {
+		baseline: null as string | null,
+		target: null as string | null,
+		final: null as string | null,
+	};
+
 	// --- Baseline ---
 	let baseline = emptyHeap;
 	if (!dryRun) {
 		baseline = await getStableHeap(baseUrl, metrics, heapOptions);
 		await attachMetric(testInfo, 'heap-baseline', baseline.heapUsedMB, 'MB', dimensions);
 		if (captureSnapshots) {
-			await takeHeapSnapshot(baseUrl, testInfo, 'baseline');
+			snapshotPaths.baseline = await takeHeapSnapshot(baseUrl, testInfo, 'baseline');
 		}
 		console.log(`[MEMORY] Baseline: ${baseline.heapUsedMB.toFixed(1)} MB`);
 	}
@@ -137,6 +149,11 @@ export async function runMemoryBenchmark(
 		}
 	}
 
+	// --- Target snapshot (peak state, before cleanup) ---
+	if (!dryRun && captureSnapshots) {
+		snapshotPaths.target = await takeHeapSnapshot(baseUrl, testInfo, 'target');
+	}
+
 	// --- Post-cleanup ---
 	let postCleanup = emptyHeap;
 	let leakMB = 0;
@@ -149,7 +166,7 @@ export async function runMemoryBenchmark(
 		await attachMetric(testInfo, 'leak-delta', leakMB, 'MB', dimensions);
 
 		if (captureSnapshots) {
-			await takeHeapSnapshot(baseUrl, testInfo, 'post-cleanup');
+			snapshotPaths.final = await takeHeapSnapshot(baseUrl, testInfo, 'final');
 		}
 
 		console.log(
@@ -164,5 +181,5 @@ export async function runMemoryBenchmark(
 		console.log(`\n[MEMORY] ═══ Dry run complete ═══`);
 	}
 
-	return { baseline, phases: phaseResults, postCleanup, leakMB };
+	return { baseline, phases: phaseResults, postCleanup, leakMB, snapshots: snapshotPaths };
 }
