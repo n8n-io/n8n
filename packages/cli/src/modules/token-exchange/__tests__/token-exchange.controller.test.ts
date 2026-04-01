@@ -1,4 +1,3 @@
-import { GlobalConfig } from '@n8n/config';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
@@ -9,6 +8,7 @@ import { UnexpectedError } from 'n8n-workflow';
 import { EventService } from '@/events/event.service';
 import type { AuthlessRequest } from '@/requests';
 
+import { TokenExchangeConfig } from '../token-exchange.config';
 import { TokenExchangeController } from '../token-exchange.controller';
 import { TOKEN_EXCHANGE_GRANT_TYPE } from '../token-exchange.schemas';
 import { TokenExchangeService } from '../token-exchange.service';
@@ -18,7 +18,7 @@ describe('TokenExchangeController', () => {
 	mockInstance(ErrorReporter);
 	mockInstance(EventService);
 	mockInstance(TokenExchangeService);
-	const globalConfig = mockInstance(GlobalConfig);
+	const tokenExchangeConfig = mockInstance(TokenExchangeConfig);
 
 	const controller = Container.get(TokenExchangeController);
 	const errorReporter = Container.get(ErrorReporter);
@@ -30,7 +30,8 @@ describe('TokenExchangeController', () => {
 
 	beforeEach(() => {
 		jest.resetAllMocks();
-		globalConfig.tokenExchange = { enabled: true, maxTokenTtl: 900 };
+		tokenExchangeConfig.enabled = true;
+		tokenExchangeConfig.maxTokenTtl = 900;
 		req = mock<AuthlessRequest>({ ip: '127.0.0.1' });
 		res = mock<Response>();
 		res.status.mockReturnThis();
@@ -40,7 +41,7 @@ describe('TokenExchangeController', () => {
 	describe('POST /auth/oauth/token', () => {
 		describe('feature flag', () => {
 			test('returns 501 server_error when token exchange is disabled', async () => {
-				globalConfig.tokenExchange = { enabled: false, maxTokenTtl: 900 };
+				tokenExchangeConfig.enabled = false;
 				req.body = {
 					grant_type: TOKEN_EXCHANGE_GRANT_TYPE,
 					subject_token: 'some-token',

@@ -1,10 +1,10 @@
-import { GlobalConfig } from '@n8n/config';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 import jwt from 'jsonwebtoken';
 
 import { JwtService } from '@/services/jwt.service';
 
+import { TokenExchangeConfig } from '../token-exchange.config';
 import { TOKEN_EXCHANGE_GRANT_TYPE } from '../token-exchange.schemas';
 import { TokenExchangeService } from '../token-exchange.service';
 import type { IssuedJwtPayload } from '../token-exchange.types';
@@ -38,7 +38,7 @@ function makeExternalToken(
 
 describe('TokenExchangeService', () => {
 	mockInstance(JwtService);
-	const globalConfig = mockInstance(GlobalConfig);
+	const tokenExchangeConfig = mockInstance(TokenExchangeConfig);
 
 	const service = Container.get(TokenExchangeService);
 	const jwtService = Container.get(JwtService);
@@ -67,7 +67,8 @@ describe('TokenExchangeService', () => {
 
 	beforeEach(() => {
 		jest.resetAllMocks();
-		globalConfig.tokenExchange = { enabled: true, maxTokenTtl: 900 };
+		tokenExchangeConfig.enabled = true;
+		tokenExchangeConfig.maxTokenTtl = 900;
 
 		// Use real decode so we can read external token claims, but capture what gets signed.
 		jest.mocked(jwtService.decode).mockImplementation((token: string) => jwt.decode(token));
@@ -159,7 +160,7 @@ describe('TokenExchangeService', () => {
 
 	describe('expiry calculation', () => {
 		test('exp = min(subject.exp, now + maxTokenTtl) for impersonation (no actor)', async () => {
-			globalConfig.tokenExchange = { enabled: true, maxTokenTtl: 900 };
+			tokenExchangeConfig.maxTokenTtl = 900;
 			const result = await service.exchange(baseRequest);
 
 			const decoded = jwt.decode(result.accessToken) as IssuedJwtPayload;
@@ -175,7 +176,7 @@ describe('TokenExchangeService', () => {
 				aud: 'n8n',
 				exp: now + 300, // 5 minutes
 			});
-			globalConfig.tokenExchange = { enabled: true, maxTokenTtl: 900 };
+			tokenExchangeConfig.maxTokenTtl = 900;
 
 			const result = await service.exchange({ ...baseRequest, subject_token: shortLived });
 
@@ -190,7 +191,7 @@ describe('TokenExchangeService', () => {
 				aud: 'n8n',
 				exp: now + 200, // actor expires soonest
 			});
-			globalConfig.tokenExchange = { enabled: true, maxTokenTtl: 900 };
+			tokenExchangeConfig.maxTokenTtl = 900;
 
 			const result = await service.exchange({ ...baseRequest, actor_token: shortActor });
 
@@ -199,7 +200,7 @@ describe('TokenExchangeService', () => {
 		});
 
 		test('maxTokenTtl ceiling is enforced even when both tokens have far-future exp', async () => {
-			globalConfig.tokenExchange = { enabled: true, maxTokenTtl: 60 };
+			tokenExchangeConfig.maxTokenTtl = 60;
 
 			const result = await service.exchange({ ...baseRequest, actor_token: actorToken });
 
@@ -208,7 +209,7 @@ describe('TokenExchangeService', () => {
 		});
 
 		test('expiresIn in result matches exp - now', async () => {
-			globalConfig.tokenExchange = { enabled: true, maxTokenTtl: 900 };
+			tokenExchangeConfig.maxTokenTtl = 900;
 			const result = await service.exchange(baseRequest);
 
 			const decoded = jwt.decode(result.accessToken) as IssuedJwtPayload;

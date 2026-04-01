@@ -1,9 +1,9 @@
-import { GlobalConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
 import { randomUUID } from 'crypto';
 
 import { JwtService } from '@/services/jwt.service';
 
+import { TokenExchangeConfig } from './token-exchange.config';
 import {
 	ExternalTokenClaimsSchema,
 	type ExternalTokenClaims,
@@ -17,7 +17,7 @@ export class TokenExchangeService {
 
 	private readonly jwtService = Container.get(JwtService);
 
-	private readonly globalConfig = Container.get(GlobalConfig);
+	private readonly config = Container.get(TokenExchangeConfig);
 
 	async exchange(request: TokenExchangeRequest): Promise<IssuedTokenResult> {
 		const subjectClaims = this.decodeAndValidate(request.subject_token);
@@ -26,7 +26,7 @@ export class TokenExchangeService {
 			: undefined;
 
 		const now = Math.floor(Date.now() / 1000);
-		const maxTtl = this.globalConfig.tokenExchange.maxTokenTtl;
+		const maxTtl = this.config.maxTokenTtl;
 		const exp = Math.min(subjectClaims.exp, actorClaims?.exp ?? Infinity, now + maxTtl);
 
 		const scopes = request.scope?.split(' ').filter(Boolean);
