@@ -267,6 +267,7 @@ onBeforeUnmount(() => {
 
 .actions {
 	display: flex;
+	align-items: center;
 	gap: var(--spacing--3xs);
 	margin-left: auto;
 }
