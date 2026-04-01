@@ -66,29 +66,6 @@ const roleOptions = computed(() =>
 				@update:model-value="emit('update', props.rule.id, { expression: $event })"
 			/>
 		</div>
-		<div v-if="props.type === 'project'" :class="$style.cellProject">
-			<span :class="$style.label">in</span>
-			<N8nSelect
-				:model-value="props.rule.projectIds"
-				size="small"
-				multiple
-				:disabled="props.disabled"
-				placeholder="Select projects"
-				data-test-id="rule-project-select"
-				@update:model-value="
-					emit('update', props.rule.id, {
-						projectIds: ($event as string[]) ?? [],
-					})
-				"
-			>
-				<N8nOption
-					v-for="project in props.projects"
-					:key="project.id"
-					:label="project.name"
-					:value="project.id"
-				/>
-			</N8nSelect>
-		</div>
 		<div :class="$style.cellRole">
 			<span :class="$style.label">assign</span>
 			<N8nSelect
@@ -108,6 +85,29 @@ const roleOptions = computed(() =>
 				/>
 				<div :class="$style.optionDivider" />
 				<N8nOption label="No role" value="" />
+			</N8nSelect>
+		</div>
+		<div v-if="props.type === 'project'" :class="$style.cellProject">
+			<span :class="$style.label">in</span>
+			<N8nSelect
+				:model-value="props.rule.projectIds"
+				size="small"
+				multiple
+				:disabled="props.disabled"
+				placeholder="Select proj..."
+				data-test-id="rule-project-select"
+				@update:model-value="
+					emit('update', props.rule.id, {
+						projectIds: ($event as string[]) ?? [],
+					})
+				"
+			>
+				<N8nOption
+					v-for="project in props.projects"
+					:key="project.id"
+					:label="project.name"
+					:value="project.id"
+				/>
 			</N8nSelect>
 		</div>
 		<div :class="$style.cellAction">
