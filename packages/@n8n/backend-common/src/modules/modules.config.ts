@@ -21,6 +21,8 @@ export const MODULE_NAMES = [
 	'workflow-builder',
 	'redaction',
 	'instance-registry',
+	'otel',
+	'token-exchange',
 ] as const;
 
 export type ModuleName = (typeof MODULE_NAMES)[number];

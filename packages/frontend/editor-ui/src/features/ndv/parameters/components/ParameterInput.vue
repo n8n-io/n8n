@@ -339,7 +339,19 @@ const iconPickerValue = computed<DesignSystemIconOrEmoji | undefined>({
 	},
 });
 
-const editorRows = computed(() => getTypeOption('rows'));
+const editorRows = computed(() => {
+	const configuredRows = getTypeOption('rows') as number | undefined;
+	if (configuredRows !== undefined) return configuredRows;
+
+	// Auto-detect: when the stored value contains newlines, use a textarea
+	// so newlines are preserved natively without pipe substitution
+	const value = props.modelValue;
+	if (props.parameter.type === 'string' && typeof value === 'string' && value.includes('\n')) {
+		return Math.max(2, value.split('\n').length);
+	}
+
+	return undefined;
+});
 
 const editorType = computed<EditorType | 'json' | 'code' | 'cssEditor' | undefined>(() => {
 	return getTypeOption('editor');
@@ -425,13 +437,6 @@ const displayValue = computed(() => {
 		h.push(((255 - bigint) & 255) / 255);
 
 		returnValue = 'rgba(' + h.join() + ')';
-	}
-
-	if (returnValue !== undefined && returnValue !== null && props.parameter.type === 'string') {
-		const rows = editorRows.value;
-		if (rows === undefined || rows === 1) {
-			returnValue = (returnValue as string).toString().replace(/\n/g, '|');
-		}
 	}
 
 	return returnValue as string;
@@ -1136,12 +1141,6 @@ function onJsonPasswordFieldChange(value: string) {
 }
 
 function onUpdateTextInput(value: string) {
-	if (
-		props.parameter.type === 'string' &&
-		(editorRows.value === undefined || editorRows.value === 1)
-	) {
-		value = value.replace(/\|/g, '\n');
-	}
 	valueChanged(value);
 	onTextInputChange(value);
 }

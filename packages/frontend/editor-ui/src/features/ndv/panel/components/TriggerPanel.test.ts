@@ -46,6 +46,7 @@ describe('TriggerPanel.vue', () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
+		vi.resetAllMocks();
 	});
 
 	it('renders default state', () => {
@@ -65,6 +66,7 @@ describe('TriggerPanel.vue', () => {
 	it('renders listening state for webhook node', () => {
 		workflowsStore.executionWaitingForWebhook = true;
 		workflowsStore.executedNode = 'Webhook';
+		workflowsStore.workflowObject.getParentNodes = vi.fn(() => []);
 		const { getByTestId } = renderComponent(TriggerPanel, {
 			props: { nodeName: 'Webhook' },
 			global: {
@@ -79,6 +81,7 @@ describe('TriggerPanel.vue', () => {
 	it('does not render listening state for other nodes', () => {
 		workflowsStore.executionWaitingForWebhook = true;
 		workflowsStore.executedNode = 'OtherNode';
+		workflowsStore.workflowObject.getParentNodes = vi.fn(() => []);
 		const { queryByTestId } = renderComponent(TriggerPanel, {
 			props: { nodeName: 'Webhook' },
 			global: {

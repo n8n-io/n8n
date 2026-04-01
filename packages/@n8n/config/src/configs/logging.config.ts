@@ -7,6 +7,7 @@ import { Config, Env, Nested } from '../decorators';
 export const LOG_SCOPES = [
 	'concurrency',
 	'external-secrets',
+	'instance-registry',
 	'license',
 	'mcp',
 	'multi-main-setup',

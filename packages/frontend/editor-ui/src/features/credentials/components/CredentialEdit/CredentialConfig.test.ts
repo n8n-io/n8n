@@ -48,7 +48,7 @@ const defaultRenderOptions: RenderOptions<typeof CredentialConfig> = {
 	props: {
 		isManaged: true,
 		mode: 'edit',
-		credentialType: {} as ICredentialType,
+		credentialType: mockCredentialType,
 		credentialProperties: [],
 		credentialData: {} as ICredentialDataDecryptedObject,
 		credentialPermissions: {

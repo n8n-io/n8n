@@ -1,5 +1,5 @@
 import isbot from 'isbot';
-import { getWebhookSandboxCSP } from 'n8n-core';
+import { getHtmlSandboxCSP, isFormHtmlSandboxingDisabled } from 'n8n-core';
 import type {
 	FormFieldsParameter,
 	IDataObject,
@@ -379,7 +379,9 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 				customCss,
 			});
 
-			res.setHeader('Content-Security-Policy', getWebhookSandboxCSP());
+			if (!isFormHtmlSandboxingDisabled()) {
+				res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
+			}
 			res.render('form-trigger', data);
 
 			return {
@@ -431,7 +433,9 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 				customCss,
 			});
 
-			res.setHeader('Content-Security-Policy', getWebhookSandboxCSP());
+			if (!isFormHtmlSandboxingDisabled()) {
+				res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
+			}
 			res.render('form-trigger', data);
 
 			return {
@@ -487,7 +491,6 @@ export function getSendAndWaitConfig(context: IExecuteFunctions): SendAndWaitCon
 
 	const responseType = context.getNodeParameter('responseType', 0, 'approval') as string;
 
-	context.setSignatureValidationRequired();
 	const approvedSignedResumeUrl = context.getSignedResumeUrl({ approved: 'true' });
 
 	if (responseType === 'freeText' || responseType === 'customForm') {
