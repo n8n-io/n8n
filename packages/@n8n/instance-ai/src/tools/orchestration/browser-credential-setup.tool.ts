@@ -327,11 +327,19 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 					inputs: {
 						credentialType: input.credentialType,
 						docsUrl: input.docsUrl,
-						requiredFields: input.requiredFields?.map((field) => ({
-							name: field.name,
-							type: field.type,
-							required: field.required,
-						})),
+						requiredFields: input.requiredFields?.map(
+							(field: {
+								name: string;
+								displayName: string;
+								type: string;
+								required: boolean;
+								description?: string;
+							}) => ({
+								name: field.name,
+								type: field.type,
+								required: field.required,
+							}),
+						),
 					},
 				});
 				const tracedBrowserTools = traceSubAgentTools(
@@ -373,7 +381,13 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 					let fieldsSection = '';
 					if (input.requiredFields && input.requiredFields.length > 0) {
 						const fieldLines = input.requiredFields.map(
-							(f) =>
+							(f: {
+								name: string;
+								displayName: string;
+								type: string;
+								required: boolean;
+								description?: string;
+							}) =>
 								`- ${f.displayName} (${f.name})${f.required ? ' [REQUIRED]' : ''}${f.description ? ': ' + f.description : ''}`,
 						);
 						fieldsSection = `\n### Required Fields\n${fieldLines.join('\n')}`;

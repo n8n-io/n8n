@@ -71,7 +71,7 @@ export function createMaterializeNodeTypeTool(context: InstanceAiContext, worksp
 		execute: async ({ nodeIds }) => {
 			if (!context.nodeService.getNodeTypeDefinition) {
 				return {
-					definitions: nodeIds.map((req) => ({
+					definitions: nodeIds.map((req: z.infer<typeof nodeRequestSchema>) => ({
 						nodeId: typeof req === 'string' ? req : req.nodeId,
 						path: '',
 						content: '',
@@ -84,7 +84,7 @@ export function createMaterializeNodeTypeTool(context: InstanceAiContext, worksp
 
 			// 1. Resolve all definitions in parallel
 			const resolved = await Promise.all(
-				nodeIds.map(async (req) => {
+				nodeIds.map(async (req: z.infer<typeof nodeRequestSchema>) => {
 					const nodeId = typeof req === 'string' ? req : req.nodeId;
 					const options = typeof req === 'string' ? undefined : req;
 					const result = await context.nodeService.getNodeTypeDefinition!(nodeId, options);
@@ -105,7 +105,9 @@ export function createMaterializeNodeTypeTool(context: InstanceAiContext, worksp
 			);
 
 			// 2. Batch-write all successful definitions in a single shell script
-			const toWrite = resolved.filter((r) => r.content && !r.error);
+			const toWrite = resolved.filter(
+				(r: { content: string; error?: string }) => r.content && !r.error,
+			);
 			if (toWrite.length > 0) {
 				const lines: string[] = ['#!/bin/bash', 'set -e'];
 

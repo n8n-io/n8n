@@ -94,8 +94,10 @@ export function createAskUserTool() {
 			}
 
 			// Merge question text into answers for LLM context
-			const enrichedAnswers = resumeData.answers.map((a) => {
-				const q = input.questions.find((q2) => q2.id === a.questionId);
+			const enrichedAnswers = resumeData.answers.map((a: z.infer<typeof answerSchema>) => {
+				const q = input.questions.find(
+					(q2: z.infer<typeof questionSchema>) => q2.id === a.questionId,
+				);
 				return {
 					...a,
 					question: q?.question ?? a.questionId,

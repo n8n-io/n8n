@@ -77,7 +77,7 @@ export function createPlanTool(context: OrchestrationContext) {
 				);
 
 				// Emit tasks-update so the checklist appears in the chat immediately
-				const taskItems = input.tasks.map((t) => ({
+				const taskItems = input.tasks.map((t: z.infer<typeof plannedTaskSchema>) => ({
 					id: t.id,
 					description: t.title,
 					status: 'todo' as const,
