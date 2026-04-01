@@ -403,6 +403,7 @@ describe('GlobalConfig', () => {
 		},
 		aiAssistant: {
 			baseUrl: '',
+			aiGatewayDevMode: false,
 		},
 		aiBuilder: {
 			apiKey: '',

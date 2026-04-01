@@ -33,6 +33,7 @@ vi.mock('@/app/composables/useAiGateway', () => ({
 		isNodeSupported: vi.fn(() => false),
 		creditsRemaining: ref(undefined),
 		creditsQuota: ref(undefined),
+		fetchConfig: vi.fn().mockResolvedValue(undefined),
 		fetchCredits: vi.fn().mockResolvedValue(undefined),
 		saveAfterToggle: vi.fn().mockResolvedValue(undefined),
 	})),
@@ -895,6 +896,7 @@ describe('NodeCredentials', () => {
 				isNodeSupported: vi.fn((credType: string) => credType === 'googlePalmApi'),
 				creditsRemaining: ref(undefined),
 				creditsQuota: ref(undefined),
+				fetchConfig: vi.fn().mockResolvedValue(undefined),
 				fetchCredits: vi.fn().mockResolvedValue(undefined),
 				saveAfterToggle: vi.fn().mockResolvedValue(undefined),
 			});

@@ -591,6 +591,46 @@ describe('CredentialsHelper', () => {
 			jest.clearAllMocks();
 		});
 
+		it('should fall back to activatedByUserId when userId is absent', async () => {
+			const aiGatewayService = mock<AiGatewayService>();
+			const helperWithGateway = new CredentialsHelper(
+				new CredentialTypes(mockNodesAndCredentials),
+				mock(),
+				credentialsRepository,
+				dynamicCredentialProxy,
+				secretsProviderRepository,
+				licenseState,
+				externalSecretsConfig,
+				aiGatewayService,
+			);
+
+			const syntheticCred = { apiKey: 'mock-jwt', host: 'http://gateway/v1/gateway/google' };
+			aiGatewayService.getSyntheticCredential.mockResolvedValue(syntheticCred);
+
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				userId: undefined,
+				activatedByUserId: 'activated-user-456',
+			});
+			const nodeCredentials: INodeCredentialsDetails = {
+				id: null,
+				name: '',
+				__aiGatewayManaged: true,
+			};
+
+			const result = await helperWithGateway.getDecrypted(
+				additionalData,
+				nodeCredentials,
+				'googlePalmApi',
+				'manual',
+			);
+
+			expect(aiGatewayService.getSyntheticCredential).toHaveBeenCalledWith(
+				'googlePalmApi',
+				'activated-user-456',
+			);
+			expect(result).toEqual(syntheticCred);
+		});
+
 		it('should call getSyntheticCredential and return its result when __aiGatewayManaged is true', async () => {
 			const aiGatewayService = mock<AiGatewayService>();
 			const helperWithGateway = new CredentialsHelper(
