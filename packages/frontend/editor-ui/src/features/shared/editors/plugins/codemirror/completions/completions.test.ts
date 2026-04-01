@@ -1,4 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
+import { ensureSyntaxTree } from '@codemirror/language';
 import { setActivePinia } from 'pinia';
 import { DateTime } from 'luxon';
 
@@ -289,14 +290,11 @@ describe('Resolution-based completions', () => {
 			);
 		});
 
-		// This test is flaky to begin with. See if we want to re-activate this later on
-		// test('should return completions when node reference is used as a function parameter', async () => {
-		// 	const initialState = { workflows: { workflow: { nodes: mockNodes } } };
+		test('should return completions when node reference is used as a function parameter', async () => {
+			vi.spyOn(utils, 'autocompletableNodeNames').mockReturnValue(mockNodes.map((n) => n.name));
 
-		// 	setActivePinia(createTestingPinia({ initialState }));
-
-		// 	expect(await completions('{{ new Date($(|) }}')).toHaveLength(mockNodes.length);
-		// });
+			expect(await completions('{{ new Date($(|) }}')).toHaveLength(mockNodes.length);
+		});
 
 		test('should return completions for complex expression: {{ $now.diff($now.diff($now.|)) }}', async () => {
 			vi.spyOn(workflowHelpers, 'resolveParameter').mockResolvedValueOnce(DateTime.now());
