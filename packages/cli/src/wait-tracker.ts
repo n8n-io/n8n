@@ -69,8 +69,6 @@ export class WaitTracker {
 
 		this.isPolling = true;
 		try {
-			this.logger.debug('Querying database for waiting executions');
-
 			const [executions, dbTime] = await Promise.all([
 				this.executionRepository.getWaitingExecutions(),
 				this.dbClock.getApproximateDbTime(),
@@ -87,14 +85,17 @@ export class WaitTracker {
 				return;
 			}
 
-			const executionIds = executions.map((execution) => execution.id).join(', ');
-			this.logger.debug(
-				`Found ${executions.length} executions. Setting timer for IDs: ${executionIds}`,
-			);
+			const newExecutions = executions.filter((e) => this.waitingExecutions[e.id] === undefined);
 
-			for (const execution of executions) {
+			if (newExecutions.length > 0) {
+				const executionIds = newExecutions.map((e) => e.id).join(', ');
+				this.logger.debug(
+					`Found ${newExecutions.length} new waiting execution(s). Setting timer for IDs: ${executionIds}`,
+				);
+			}
+
+			for (const execution of newExecutions) {
 				const executionId = execution.id;
-				if (this.waitingExecutions[executionId] !== undefined) continue;
 				if (execution.waitTill === null || execution.waitTill === undefined) {
 					this.errorReporter.error(
 						new UnexpectedError(
