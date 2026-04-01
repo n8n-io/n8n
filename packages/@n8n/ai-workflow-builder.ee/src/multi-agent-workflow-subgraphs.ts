@@ -21,11 +21,9 @@ import type { AssistantHandler } from './assistant';
 import {
 	ASSISTANT_SDK_TIMEOUT_MS,
 	DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS,
-	MAX_BUILDER_ITERATIONS,
 	MAX_DISCOVERY_ITERATIONS,
 } from './constants';
 import { ParentGraphState } from './parent-graph-state';
-import { BuilderSubgraph } from './subgraphs/builder.subgraph';
 import { DiscoverySubgraph } from './subgraphs/discovery.subgraph';
 import type { BaseSubgraph } from './subgraphs/subgraph-interface';
 import type { ResourceLocatorCallback } from './types/callbacks';
@@ -82,7 +80,6 @@ function routeToNode(next: string): string {
 	const nodeMapping: Record<string, string> = {
 		responder: 'responder',
 		discovery: 'discovery_subgraph',
-		builder: 'builder_subgraph',
 		assistant: 'assistant_subgraph',
 	};
 	return nodeMapping[next] ?? 'responder';
@@ -225,12 +222,10 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 		parsedNodeTypes,
 		stageLLMs,
 		logger,
-		instanceUrl,
 		checkpointer,
 		autoCompactThresholdTokens = DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS,
 		featureFlags,
 		onGenerationSuccess,
-		resourceLocatorCallback,
 		assistantHandler,
 	} = config;
 
@@ -255,18 +250,6 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 		plannerLLM: stageLLMs.planner,
 		logger,
 		featureFlags,
-	});
-
-	// Create Builder subgraph (still uses StateGraph pattern)
-	const builderSubgraph = new BuilderSubgraph();
-	const compiledBuilder = builderSubgraph.create({
-		parsedNodeTypes,
-		llm: stageLLMs.builder,
-		llmParameterUpdater: stageLLMs.parameterUpdater,
-		logger,
-		instanceUrl,
-		featureFlags,
-		resourceLocatorCallback,
 	});
 
 	// Build graph using method chaining for proper TypeScript inference
@@ -479,15 +462,6 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 					logger,
 				),
 			)
-			// Add Builder Subgraph Node (still uses StateGraph pattern)
-			.addNode(
-				'builder_subgraph',
-				createSubgraphNodeHandler(
-					'builder',
-					createCompiledSubgraphExecutor(builderSubgraph, compiledBuilder, MAX_BUILDER_ITERATIONS),
-					logger,
-				),
-			)
 			// Add Assistant Subgraph Node (routes to SDK for help/debug queries)
 			.addNode(
 				'assistant_subgraph',
@@ -562,7 +536,6 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 				),
 			)
 			.addEdge('discovery_subgraph', 'process_operations')
-			.addEdge('builder_subgraph', 'process_operations')
 			.addEdge('process_operations', 'route_next_phase')
 			.addEdge('assistant_subgraph', 'route_next_phase')
 			// Start flows to check_state (preprocessing)
