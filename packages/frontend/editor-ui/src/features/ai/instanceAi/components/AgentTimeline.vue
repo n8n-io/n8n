@@ -103,6 +103,19 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 	void store.confirmAction(requestId, approved, undefined, undefined, undefined, feedback);
 }
 
+/** Find a pending plan-review confirmation from a planner child's submit-plan tool call. */
+function findPlannerConfirmation(): InstanceAiToolCallState | undefined {
+	for (const child of props.agentNode.children) {
+		if (child.role !== 'planner') continue;
+		for (const tc of child.toolCalls) {
+			if (tc.toolName === 'submit-plan' && tc.confirmation?.inputType === 'plan-review') {
+				return tc;
+			}
+		}
+	}
+	return undefined;
+}
+
 /** Map simplified TaskList items to PlannedTaskArg shape for loading preview */
 function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefined {
 	if (!tasks?.tasks?.length) return undefined;
@@ -150,35 +163,29 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'builder'" />
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'data-table'" />
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'researcher'" />
-				<!-- Planner: plan-review confirmation present → interactive/read-only panel -->
+				<!-- Planner: show progressive PlanReviewPanel (loading → interactive → read-only) -->
 				<PlanReviewPanel
 					v-else-if="
 						toolCallsById[entry.toolCallId].renderHint === 'planner' &&
-						toolCallsById[entry.toolCallId].confirmation?.inputType === 'plan-review'
+						(findPlannerConfirmation() ||
+							props.agentNode.planItems?.length ||
+							props.agentNode.tasks?.tasks?.length)
 					"
 					:planned-tasks="
-						toolCallsById[entry.toolCallId].confirmation?.planItems ??
-						(toolCallsById[entry.toolCallId].args?.tasks as PlannedTaskArg[] | undefined) ??
-						mapTaskItemsToPlannedTasks(toolCallsById[entry.toolCallId].confirmation?.tasks) ??
-						[]
-					"
-					:read-only="!toolCallsById[entry.toolCallId].isLoading"
-					@approve="handlePlanConfirm(toolCallsById[entry.toolCallId], true)"
-					@request-changes="(fb) => handlePlanConfirm(toolCallsById[entry.toolCallId], false, fb)"
-				/>
-				<!-- Planner: still loading, has tasks → progressive loading preview -->
-				<PlanReviewPanel
-					v-else-if="
-						toolCallsById[entry.toolCallId].renderHint === 'planner' &&
-						toolCallsById[entry.toolCallId].isLoading &&
-						(props.agentNode.planItems?.length || props.agentNode.tasks?.tasks?.length)
-					"
-					:planned-tasks="
+						findPlannerConfirmation()?.confirmation?.planItems ??
 						(props.agentNode.planItems as PlannedTaskArg[] | undefined) ??
 						mapTaskItemsToPlannedTasks(props.agentNode.tasks) ??
 						[]
 					"
-					:loading="true"
+					:loading="!findPlannerConfirmation() && toolCallsById[entry.toolCallId].isLoading"
+					:read-only="!!findPlannerConfirmation() && !findPlannerConfirmation()!.isLoading"
+					@approve="
+						findPlannerConfirmation() && handlePlanConfirm(findPlannerConfirmation()!, true)
+					"
+					@request-changes="
+						(fb) =>
+							findPlannerConfirmation() && handlePlanConfirm(findPlannerConfirmation()!, false, fb)
+					"
 				/>
 				<!-- Planner: loading, no tasks yet → suppress -->
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'planner'" />
