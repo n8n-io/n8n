@@ -103,17 +103,22 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 	void store.confirmAction(requestId, approved, undefined, undefined, undefined, feedback);
 }
 
-/** Find a pending plan-review confirmation from a planner child's submit-plan tool call. */
+/** Find the latest plan-review confirmation from a planner child's submit-plan tool call.
+ *  Prefers pending (isLoading) over resolved — handles revision loops where
+ *  multiple submit-plan calls exist. */
 function findPlannerConfirmation(): InstanceAiToolCallState | undefined {
+	let latest: InstanceAiToolCallState | undefined;
 	for (const child of props.agentNode.children) {
 		if (child.role !== 'planner') continue;
 		for (const tc of child.toolCalls) {
 			if (tc.toolName === 'submit-plan' && tc.confirmation?.inputType === 'plan-review') {
-				return tc;
+				// Prefer the pending (loading) one — that's the active approval
+				if (tc.isLoading) return tc;
+				latest = tc;
 			}
 		}
 	}
-	return undefined;
+	return latest;
 }
 
 /** Map simplified TaskList items to PlannedTaskArg shape for loading preview */
