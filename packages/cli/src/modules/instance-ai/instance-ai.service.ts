@@ -36,6 +36,7 @@ import {
 	MastraTaskStorage,
 	PlannedTaskCoordinator,
 	PlannedTaskStorage,
+	applyPlannedTaskPermissions,
 	resumeAgentRun,
 	RunStateRegistry,
 	startBuildWorkflowAgentTask,
@@ -1212,31 +1213,35 @@ export class InstanceAiService {
 		task: PlannedTaskRecord,
 		context: OrchestrationContext,
 	): Promise<void> {
+		// Plan approval authorizes the task-family's non-destructive tools,
+		// so the sub-agent can execute without a redundant second confirmation.
+		const taskContext = this.createPlannedTaskContext(task.kind, context);
+
 		let started: { taskId: string; agentId: string; result: string } | null = null;
 
 		switch (task.kind) {
 			case 'build-workflow':
-				started = await startBuildWorkflowAgentTask(context, {
+				started = await startBuildWorkflowAgentTask(taskContext, {
 					task: task.spec,
 					workflowId: task.workflowId,
 					plannedTaskId: task.id,
 				});
 				break;
 			case 'manage-data-tables':
-				started = await startDataTableAgentTask(context, {
+				started = await startDataTableAgentTask(taskContext, {
 					task: task.spec,
 					plannedTaskId: task.id,
 				});
 				break;
 			case 'research':
-				started = await startResearchAgentTask(context, {
+				started = await startResearchAgentTask(taskContext, {
 					goal: task.title,
 					constraints: task.spec,
 					plannedTaskId: task.id,
 				});
 				break;
 			case 'delegate':
-				started = await startDetachedDelegateTask(context, {
+				started = await startDetachedDelegateTask(taskContext, {
 					title: task.title,
 					spec: task.spec,
 					tools: task.tools ?? [],
@@ -1261,6 +1266,27 @@ export class InstanceAiService {
 		if (nextGraph) {
 			await this.syncPlannedTasksToUi(context.threadId, nextGraph);
 		}
+	}
+
+	/**
+	 * Creates a task-scoped OrchestrationContext with plan-approved permission
+	 * overrides. Rebuilds domain tools so each sub-agent gets its own closure
+	 * with the correct permissions, preventing cross-task leakage.
+	 */
+	private createPlannedTaskContext(
+		kind: PlannedTaskRecord['kind'],
+		context: OrchestrationContext,
+	): OrchestrationContext {
+		if (!context.domainContext) return context;
+
+		const taskDomainContext = applyPlannedTaskPermissions(context.domainContext, kind);
+		if (taskDomainContext === context.domainContext) return context;
+
+		return {
+			...context,
+			domainContext: taskDomainContext,
+			domainTools: createAllTools(taskDomainContext),
+		};
 	}
 
 	private async handlePlannedTaskSettlement(

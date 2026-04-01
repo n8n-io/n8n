@@ -485,12 +485,9 @@ export class TypeORMMemoryStorage extends MemoryStorage {
 		messages: MastraDBMessage[];
 	}): Promise<{ messages: MastraDBMessage[] }> {
 		const entities = messages.map((m) => {
-			if (!m.threadId) {
-				throw new Error(`Message ${m.id} is missing required threadId`);
-			}
 			const entity = this.messageRepo.create({
 				id: m.id,
-				threadId: m.threadId,
+				threadId: m.threadId ?? '',
 				content: JSON.stringify(m.content),
 				role: m.role,
 				type: m.type ?? null,
