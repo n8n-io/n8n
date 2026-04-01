@@ -258,5 +258,31 @@ describe('TokenExchangeService', () => {
 				service.exchange({ ...baseRequest, subject_token: 'not-a-jwt' }),
 			).rejects.toThrow();
 		});
+
+		test('throws when subject_token is expired', async () => {
+			const expiredSubject = makeExternalToken({
+				sub: 'user-123',
+				iss: 'https://idp.example.com',
+				aud: 'n8n',
+				exp: now - 60, // expired 1 minute ago
+			});
+
+			await expect(
+				service.exchange({ ...baseRequest, subject_token: expiredSubject }),
+			).rejects.toThrow('subject_token is expired');
+		});
+
+		test('throws when actor_token is expired', async () => {
+			const expiredActor = makeExternalToken({
+				sub: 'actor-456',
+				iss: 'https://idp.example.com',
+				aud: 'n8n',
+				exp: now - 60, // expired 1 minute ago
+			});
+
+			await expect(service.exchange({ ...baseRequest, actor_token: expiredActor })).rejects.toThrow(
+				'actor_token is expired',
+			);
+		});
 	});
 });

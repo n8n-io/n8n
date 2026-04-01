@@ -1,5 +1,6 @@
 import { Container, Service } from '@n8n/di';
 import { randomUUID } from 'crypto';
+import { OperationalError } from 'n8n-workflow';
 
 import { JwtService } from '@/services/jwt.service';
 
@@ -26,6 +27,14 @@ export class TokenExchangeService {
 			: undefined;
 
 		const now = Math.floor(Date.now() / 1000);
+
+		if (subjectClaims.exp <= now) {
+			throw new OperationalError('subject_token is expired');
+		}
+		if (actorClaims && actorClaims.exp <= now) {
+			throw new OperationalError('actor_token is expired');
+		}
+
 		const maxTtl = this.config.maxTokenTtl;
 		const exp = Math.min(subjectClaims.exp, actorClaims?.exp ?? Infinity, now + maxTtl);
 
