@@ -106,9 +106,9 @@ export interface ExpressionValue {
 
 export interface BuilderFeatureFlags {
 	templateExamples?: boolean;
-	/** Enable CodeWorkflowBuilder (default: false). When false, uses legacy multi-agent system. */
+	/** @deprecated Code builder is now the only path. This field is ignored and will be removed. */
 	codeBuilder?: boolean;
-	/** Enable pin data generation in code builder (default: true when codeBuilder is true). */
+	/** Enable pin data generation in code builder (default: true). */
 	pinData?: boolean;
 	planMode?: boolean;
 	/** Enable introspection tool for diagnostic data collection. Disabled by default. */
@@ -224,23 +224,7 @@ export class WorkflowBuilderAgent {
 	) {
 		this.validateMessageLength(payload.message);
 
-		// Feature flag: Route to CodeWorkflowBuilder if enabled (default: false)
-		const useCodeWorkflowBuilder = payload.featureFlags?.codeBuilder ?? false;
-
-		if (useCodeWorkflowBuilder) {
-			yield* this.routeCodeBuilder(
-				payload,
-				userId,
-				abortSignal,
-				externalCallbacks,
-				historicalMessages,
-			);
-			return;
-		}
-
-		// Fall back to legacy multi-agent system
-		this.logger?.debug('Routing to legacy multi-agent system', { userId });
-		yield* this.runMultiAgentSystem(
+		yield* this.routeCodeBuilder(
 			payload,
 			userId,
 			abortSignal,
