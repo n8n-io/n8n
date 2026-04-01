@@ -34,6 +34,7 @@ let fetchGeneration = 0;
 const previewMode = computed(() => (props.executionId ? 'execution' : 'workflow'));
 
 function handleIframeMessage(event: MessageEvent) {
+	if (event.origin !== window.location.origin) return;
 	if (typeof event.data !== 'string' || !event.data.includes('"command"')) return;
 	try {
 		const json = JSON.parse(event.data);

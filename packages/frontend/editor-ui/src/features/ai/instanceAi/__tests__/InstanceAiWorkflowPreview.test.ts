@@ -84,6 +84,7 @@ describe('InstanceAiWorkflowPreview', () => {
 					command: 'n8nReady',
 					pushRef: 'iframe-push-ref-abc',
 				}),
+				origin: window.location.origin,
 			}),
 		);
 
@@ -100,6 +101,7 @@ describe('InstanceAiWorkflowPreview', () => {
 		window.dispatchEvent(
 			new MessageEvent('message', {
 				data: JSON.stringify({ command: 'n8nReady' }),
+				origin: window.location.origin,
 			}),
 		);
 

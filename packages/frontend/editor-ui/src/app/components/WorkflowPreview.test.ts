@@ -18,7 +18,12 @@ let focusSpy: Mock;
 let consoleErrorSpy: MockInstance;
 
 const sendPostMessageCommand = (command: string) => {
-	window.postMessage(`{"command":"${command}"}`, '*');
+	window.dispatchEvent(
+		new MessageEvent('message', {
+			data: `{"command":"${command}"}`,
+			origin: window.location.origin,
+		}),
+	);
 };
 
 describe('WorkflowPreview', () => {
@@ -114,7 +119,7 @@ describe('WorkflowPreview', () => {
 					suppressNotifications: false,
 					projectId: 'test-project-id',
 				}),
-				'*',
+				window.location.origin,
 			);
 			expect(focusSpy).toHaveBeenCalled();
 		});
@@ -157,7 +162,7 @@ describe('WorkflowPreview', () => {
 					canOpenNDV: true,
 					projectId: 'test-project-id',
 				}),
-				'*',
+				window.location.origin,
 			);
 		});
 	});
@@ -187,7 +192,7 @@ describe('WorkflowPreview', () => {
 					canOpenNDV: true,
 					projectId: 'test-project-id',
 				}),
-				'*',
+				window.location.origin,
 			);
 
 			expect(postMessageSpy).toHaveBeenCalledWith(
@@ -195,7 +200,7 @@ describe('WorkflowPreview', () => {
 					command: 'setActiveExecution',
 					executionId: 'abc',
 				}),
-				'*',
+				window.location.origin,
 			);
 		});
 	});
@@ -226,7 +231,7 @@ describe('WorkflowPreview', () => {
 					suppressNotifications: false,
 					projectId: 'test-project-id',
 				}),
-				'*',
+				window.location.origin,
 			);
 		});
 
@@ -264,7 +269,7 @@ describe('WorkflowPreview', () => {
 					suppressNotifications: false,
 					projectId: 'test-project-id',
 				}),
-				'*',
+				window.location.origin,
 			);
 		});
 	});
@@ -287,7 +292,9 @@ describe('WorkflowPreview', () => {
 			props: {},
 		});
 
-		window.postMessage('commando', '*');
+		window.dispatchEvent(
+			new MessageEvent('message', { data: 'commando', origin: window.location.origin }),
+		);
 
 		await waitFor(() => {
 			expect(console.error).not.toHaveBeenCalled();
@@ -301,7 +308,9 @@ describe('WorkflowPreview', () => {
 			props: {},
 		});
 
-		window.postMessage(null, '*');
+		window.dispatchEvent(
+			new MessageEvent('message', { data: null, origin: window.location.origin }),
+		);
 
 		await waitFor(() => {
 			expect(console.error).not.toHaveBeenCalled();

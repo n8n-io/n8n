@@ -100,9 +100,17 @@ describe('WorkflowHistoryContent', () => {
 			},
 		});
 
-		window.postMessage('{"command":"n8nReady"}', '*');
+		window.dispatchEvent(
+			new MessageEvent('message', {
+				data: '{"command":"n8nReady"}',
+				origin: window.location.origin,
+			}),
+		);
 		await waitFor(() => {
-			expect(postMessageSpy).toHaveBeenCalledWith(expect.not.stringContaining('pinData'), '*');
+			expect(postMessageSpy).toHaveBeenCalledWith(
+				expect.not.stringContaining('pinData'),
+				window.location.origin,
+			);
 		});
 	});
 });

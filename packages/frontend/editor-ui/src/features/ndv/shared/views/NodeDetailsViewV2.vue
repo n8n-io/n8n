@@ -634,7 +634,10 @@ watch(
 			}, 2000); // wait for RunData to mount and present pindata discovery tooltip
 		}
 		if (window.top && !isActiveStickyNode.value) {
-			window.top.postMessage(JSON.stringify({ command: node ? 'openNDV' : 'closeNDV' }), '*');
+			window.top.postMessage(
+				JSON.stringify({ command: node ? 'openNDV' : 'closeNDV' }),
+				window.location.origin,
+			);
 		}
 	},
 	{ immediate: true },

@@ -90,7 +90,7 @@ const loadWorkflow = () => {
 				suppressNotifications: props.suppressNotifications,
 				projectId: projectsStore.currentProjectId,
 			}),
-			'*',
+			window.location.origin,
 		);
 	} catch (error) {
 		toast.showError(
@@ -115,7 +115,7 @@ const loadExecution = () => {
 				canOpenNDV: props.canOpenNDV,
 				projectId: projectsStore.currentProjectId,
 			}),
-			'*',
+			window.location.origin,
 		);
 
 		if (executionsStore.activeExecution) {
@@ -124,7 +124,7 @@ const loadExecution = () => {
 					command: 'setActiveExecution',
 					executionId: executionsStore.activeExecution.id,
 				}),
-				'*',
+				window.location.origin,
 			);
 		}
 	} catch (error) {
@@ -146,7 +146,8 @@ const onMouseLeave = () => {
 	insideIframe.value = false;
 };
 
-const receiveMessage = ({ data }: MessageEvent) => {
+const receiveMessage = ({ origin, data }: MessageEvent) => {
+	if (origin !== window.location.origin) return;
 	if (!data?.includes?.('"command"')) {
 		return;
 	}
