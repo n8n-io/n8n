@@ -44,7 +44,7 @@ export interface InstanceAiDriverConfig {
 }
 
 export interface RunParallelOptions {
-	/** Max time to wait for each build to complete (default: 120s) */
+	/** Max time to wait for each build to complete (default: 180s) */
 	timeoutMs?: number;
 	/** Time to wait after stop button disappears to catch follow-up runs (default: 5s) */
 	settleMs?: number;
@@ -89,7 +89,7 @@ export class InstanceAiDriver {
 		prompts: readonly string[],
 		options: RunParallelOptions = {},
 	): Promise<TabRunResult[]> {
-		const { timeoutMs = 120_000, settleMs = 5_000 } = options;
+		const { timeoutMs = 180_000, settleMs = 5_000 } = options;
 		const context = this.n8n.page.context();
 
 		console.log(`[INSTANCE-AI] Starting ${prompts.length} parallel builds`);
@@ -138,8 +138,12 @@ export class InstanceAiDriver {
 							// Auto-approve HITL if visible
 							const approve = ai.getAnyApproveButton().first();
 							if (await approve.isVisible().catch(() => false)) {
-								await approve.click();
-								console.log(`[INSTANCE-AI] Tab ${i + 1}: auto-approved HITL (during run)`);
+								try {
+									await approve.click({ timeout: 2_000 });
+									console.log(`[INSTANCE-AI] Tab ${i + 1}: auto-approved HITL (during run)`);
+								} catch {
+									// Button disappeared between isVisible and click — race condition, retry
+								}
 								continue;
 							}
 							// Check if stop button is gone (run finished)
@@ -164,8 +168,12 @@ export class InstanceAiDriver {
 						// Auto-approve any HITL confirmations that appear
 						const approveBtn = ai.getAnyApproveButton().first();
 						if (await approveBtn.isVisible().catch(() => false)) {
-							await approveBtn.click();
-							console.log(`[INSTANCE-AI] Tab ${i + 1}: auto-approved HITL`);
+							try {
+								await approveBtn.click({ timeout: 2_000 });
+								console.log(`[INSTANCE-AI] Tab ${i + 1}: auto-approved HITL`);
+							} catch {
+								// Button disappeared between isVisible and click — race condition, retry
+							}
 							continue;
 						}
 
@@ -265,10 +273,23 @@ export class InstanceAiDriver {
 		}
 	}
 
-	/** Full cleanup: close tabs + delete threads. */
+	/** Full cleanup: close tabs + delete threads + reset DB + re-authenticate. */
 	async cleanup(): Promise<void> {
 		await this.closeAllTabs();
 		await this.deleteAllThreads();
+		await this.resetAndReauth();
+	}
+
+	/**
+	 * Reset the database and re-authenticate.
+	 * Removes workflows, credentials, data tables, and other artifacts
+	 * created during builds so rounds don't accumulate side effects.
+	 * Re-signs in because the reset invalidates all sessions.
+	 */
+	async resetAndReauth(): Promise<void> {
+		await this.n8n.api.resetDatabase();
+		await this.n8n.api.signin('owner');
+		console.log('[INSTANCE-AI] Database reset + re-authenticated');
 	}
 
 	/** Take a stable server-side heap measurement (triggers GC + polls VictoriaMetrics). */

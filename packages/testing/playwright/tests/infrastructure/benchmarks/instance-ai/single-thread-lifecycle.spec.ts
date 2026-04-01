@@ -5,7 +5,7 @@ import { test, instanceAiTestConfig } from './fixtures';
 test.use(instanceAiTestConfig);
 
 test.describe(
-	'Instance-AI Memory: Single Thread Lifecycle @capability:proxy @capability:observability',
+	'Instance-AI Memory: Single Thread Lifecycle @capability:observability',
 	{
 		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},

@@ -8,7 +8,7 @@ test.use(instanceAiTestConfig);
 const RECONNECT_CYCLES = 10;
 
 test.describe(
-	'Instance-AI Memory: SSE Reconnection @capability:proxy @capability:observability',
+	'Instance-AI Memory: SSE Reconnection @capability:observability',
 	{
 		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},
