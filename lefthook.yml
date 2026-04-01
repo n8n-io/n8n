@@ -2,21 +2,21 @@ pre-commit:
   commands:
     biome_check:
       glob: 'packages/**/*.{js,ts,json}'
-      run: pnpm biome check --write --no-errors-on-unmatched --files-ignore-unknown=true --colors=off {staged_files}
+      run: node scripts/run-pnpm.mjs biome check --write --no-errors-on-unmatched --files-ignore-unknown=true --colors=off {staged_files}
       stage_fixed: true
       skip:
         - merge
         - rebase
     prettier_check:
       glob: 'packages/**/*.{vue,yml,md,css,scss}'
-      run: pnpm prettier --write --ignore-unknown --no-error-on-unmatched-pattern {staged_files}
+      run: node scripts/run-pnpm.mjs prettier --write --ignore-unknown --no-error-on-unmatched-pattern {staged_files}
       stage_fixed: true
       skip:
         - merge
         - rebase
     styles_check:
       glob: 'packages/**/*.{scss,sass,vue}'
-      run: pnpm lint:styles:fix
+      run: node scripts/run-pnpm.mjs lint:styles:fix
       skip:
         - merge
         - rebase
@@ -36,5 +36,5 @@ pre-commit:
       glob: 'packages/testing/playwright/**/*.ts'
       run: |
         files=$(echo {staged_files} | tr ' ' ',')
-        pnpm --filter=n8n-playwright janitor --files="$files"
+        node scripts/run-pnpm.mjs --filter=n8n-playwright janitor --files="$files"
       skip: true  # Disabled for now - enable when baseline is committed
