@@ -1,6 +1,6 @@
 <script lang="ts" setup>
-import { computed, watch, nextTick } from 'vue';
 import { N8nIcon, N8nIconButton } from '@n8n/design-system';
+import { computed, nextTick, watch } from 'vue';
 import type { ArtifactTab } from '../useCanvasPreview';
 
 const props = defineProps<{
@@ -54,6 +54,7 @@ const externalLinkHref = computed(() => {
 					v-if="tab.executionStatus === 'running'"
 					data-test-id="execution-status-running"
 					icon="spinner"
+					color="primary"
 					:spin="true"
 					size="small"
 					:class="$style.statusRunning"

@@ -1,6 +1,6 @@
 <script lang="ts" setup>
-import { computed, inject } from 'vue';
 import { N8nIcon, type IconName } from '@n8n/design-system';
+import { computed, inject } from 'vue';
 
 const props = defineProps<{
 	type: 'workflow' | 'data-table';
@@ -65,7 +65,7 @@ function handleClick(e: MouseEvent) {
 	border-radius: var(--radius--lg);
 	background: var(--color--background--light-2);
 	cursor: pointer;
-	margin: var(--spacing--xs) 0;
+	// margin: var(--spacing--xs) 0;
 	transition: box-shadow 0.3s ease;
 
 	&:hover {

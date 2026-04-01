@@ -1,6 +1,7 @@
 <script lang="ts" setup>
-import { computed, inject, ref, onMounted, onUpdated, useCssModule } from 'vue';
 import ChatMarkdownChunk from '@/features/ai/chatHub/components/ChatMarkdownChunk.vue';
+import type { ComponentPublicInstance } from 'vue';
+import { computed, inject, onMounted, onUpdated, ref, useCssModule } from 'vue';
 import { useInstanceAiStore } from '../instanceAi.store';
 
 const props = defineProps<{
@@ -9,7 +10,7 @@ const props = defineProps<{
 
 const store = useInstanceAiStore();
 const styles = useCssModule();
-const wrapperRef = ref<HTMLElement | null>(null);
+const wrapperRef = ref<ComponentPublicInstance | null>(null);
 
 const openWorkflowPreview = inject<((id: string) => void) | undefined>(
 	'openWorkflowPreview',
@@ -120,7 +121,7 @@ function applyResourceChip(link: HTMLAnchorElement, type: string): void {
 function enhanceResourceLinks(): void {
 	if (!wrapperRef.value) return;
 
-	const allLinks = wrapperRef.value.querySelectorAll<HTMLAnchorElement>('a');
+	const allLinks = (wrapperRef.value.$el as HTMLElement).querySelectorAll<HTMLAnchorElement>('a');
 
 	for (const link of allLinks) {
 		// Already enhanced — skip
@@ -185,9 +186,7 @@ onUpdated(enhanceResourceLinks);
 </script>
 
 <template>
-	<div ref="wrapperRef">
-		<ChatMarkdownChunk :source="source" />
-	</div>
+	<ChatMarkdownChunk ref="wrapperRef" :source="source" />
 </template>
 
 <style lang="scss" module>

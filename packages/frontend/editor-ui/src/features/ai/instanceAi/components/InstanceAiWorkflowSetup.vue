@@ -1040,6 +1040,7 @@ async function handleLater() {
 					<N8nIcon
 						v-if="getCredTestIcon(currentCard) === 'spinner'"
 						icon="spinner"
+						color="primary"
 						size="small"
 						:class="$style.loading"
 					/>
@@ -1151,7 +1152,7 @@ async function handleLater() {
 					"
 					:class="$style.listeningCallout"
 				>
-					<N8nIcon icon="spinner" size="small" :class="$style.loading" />
+					<N8nIcon icon="spinner" color="primary" spin size="small" :class="$style.loading" />
 					<N8nText size="small" color="text-light">
 						{{ i18n.baseText('instanceAi.workflowSetup.triggerListening') }}
 					</N8nText>
@@ -1229,7 +1230,7 @@ async function handleLater() {
 		</template>
 
 		<div v-else-if="isApplying" :class="$style.submitted">
-			<N8nIcon icon="spinner" size="small" :class="$style.loading" />
+			<N8nIcon icon="spinner" color="primary" spin size="small" :class="$style.loading" />
 			<span>{{ i18n.baseText('instanceAi.workflowSetup.applying') }}</span>
 		</div>
 

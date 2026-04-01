@@ -1,12 +1,11 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
-import { CollapsibleRoot, CollapsibleTrigger, CollapsibleContent } from 'reka-ui';
+import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { InstanceAiAgentNode } from '@n8n/api-types';
-import { ref } from 'vue';
-import { useInstanceAiStore } from '../instanceAi.store';
+import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
+import { computed, ref } from 'vue';
 import { getRenderableAgentResult } from '../agentResult';
+import { useInstanceAiStore } from '../instanceAi.store';
 import AgentTimeline from './AgentTimeline.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 
@@ -102,7 +101,14 @@ const displayResult = computed(() => getRenderableAgentResult(props.agentNode));
 		<!-- Header -->
 		<div :class="$style.header">
 			<div :class="$style.headerLeft">
-				<N8nIcon v-if="isActive" icon="spinner" spin size="small" :class="$style.activeIcon" />
+				<N8nIcon
+					v-if="isActive"
+					icon="spinner"
+					color="primary"
+					spin
+					size="small"
+					:class="$style.activeIcon"
+				/>
 				<N8nIcon v-else-if="isError" icon="triangle-alert" size="small" :class="$style.errorIcon" />
 				<N8nIcon v-else icon="check" size="small" :class="$style.successIcon" />
 				<span :class="$style.title">{{ i18n.baseText('instanceAi.dataTableCard.title') }}</span>
@@ -127,7 +133,14 @@ const displayResult = computed(() => getRenderableAgentResult(props.agentNode));
 					phase.isCompleted ? $style.phaseCompleted : '',
 				]"
 			>
-				<N8nIcon v-if="phase.isActive" icon="spinner" spin size="small" :class="$style.phaseIcon" />
+				<N8nIcon
+					v-if="phase.isActive"
+					icon="spinner"
+					color="primary"
+					spin
+					size="small"
+					:class="$style.phaseIcon"
+				/>
 				<N8nIcon
 					v-else-if="phase.isCompleted"
 					icon="check"
