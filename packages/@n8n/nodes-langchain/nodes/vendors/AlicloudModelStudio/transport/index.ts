@@ -8,7 +8,7 @@ import { NodeOperationError, sleep } from 'n8n-workflow';
 
 type RequestParameters = {
 	headers?: IDataObject;
-	body?: IDataObject | string;
+	body?: IDataObject | string | object;
 	qs?: IDataObject;
 	uri?: string;
 	option?: IDataObject;

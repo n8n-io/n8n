@@ -1,7 +1,7 @@
 import type { INodeProperties, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { updateDisplayOptions } from 'n8n-workflow';
 import { apiRequest } from '../../transport';
-import { IMessage, IModelStudioRequestBody } from '../../helpers/interfaces';
+import type { IMessage, IModelStudioRequestBody } from '../../helpers/interfaces';
 
 const properties: INodeProperties[] = [
 	{
@@ -62,12 +62,6 @@ const properties: INodeProperties[] = [
 		],
 		default: 'qwen3.5-flash',
 		description: 'The model to use for generation',
-		routing: {
-			send: {
-				type: 'body',
-				property: 'model',
-			},
-		},
 	},
 	{
 		displayName: 'Simplify Output',
@@ -132,13 +126,6 @@ const properties: INodeProperties[] = [
 				],
 			},
 		],
-		routing: {
-			send: {
-				type: 'body',
-				property: 'input.messages',
-				value: '={{$value.messageValues}}',
-			},
-		},
 	},
 	{
 		displayName: 'Options',
@@ -149,36 +136,24 @@ const properties: INodeProperties[] = [
 		options: [
 			{
 				displayName: 'Enable Search',
-				name: 'enable_search',
+				name: 'enableSearch',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to enable web search for up-to-date information',
-				routing: {
-					send: {
-						type: 'body',
-						property: 'parameters.enable_search',
-					},
-				},
 			},
 			{
 				displayName: 'Max Tokens',
-				name: 'max_tokens',
+				name: 'maxTokens',
 				type: 'number',
 				typeOptions: {
 					minValue: 1,
 				},
 				default: 2000,
 				description: 'Maximum number of tokens to generate',
-				routing: {
-					send: {
-						type: 'body',
-						property: 'parameters.max_tokens',
-					},
-				},
 			},
 			{
 				displayName: 'Repetition Penalty',
-				name: 'repetition_penalty',
+				name: 'repetitionPenalty',
 				type: 'number',
 				typeOptions: {
 					minValue: 1,
@@ -187,12 +162,6 @@ const properties: INodeProperties[] = [
 				},
 				default: 1.1,
 				description: 'Penalty for token repetition. Higher values reduce repetition.',
-				routing: {
-					send: {
-						type: 'body',
-						property: 'parameters.repetition_penalty',
-					},
-				},
 			},
 			{
 				displayName: 'Seed',
@@ -200,12 +169,6 @@ const properties: INodeProperties[] = [
 				type: 'number',
 				default: 1234,
 				description: 'Random seed for reproducible outputs',
-				routing: {
-					send: {
-						type: 'body',
-						property: 'parameters.seed',
-					},
-				},
 			},
 			{
 				displayName: 'Stop Sequences',
@@ -213,13 +176,6 @@ const properties: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'Comma-separated list of sequences where the API will stop generating',
-				routing: {
-					send: {
-						type: 'body',
-						property: 'parameters.stop',
-						value: '={{$value ? $value.split(",").map(s => s.trim()) : undefined}}',
-					},
-				},
 			},
 			{
 				displayName: 'Temperature',
@@ -233,16 +189,10 @@ const properties: INodeProperties[] = [
 				default: 1,
 				description:
 					'Controls randomness in the output. Lower values make output more focused and deterministic.',
-				routing: {
-					send: {
-						type: 'body',
-						property: 'parameters.temperature',
-					},
-				},
 			},
 			{
 				displayName: 'Top K',
-				name: 'top_k',
+				name: 'topK',
 				type: 'number',
 				typeOptions: {
 					minValue: 1,
@@ -250,16 +200,10 @@ const properties: INodeProperties[] = [
 				},
 				default: 50,
 				description: 'Limits the sampling pool to top K tokens',
-				routing: {
-					send: {
-						type: 'body',
-						property: 'parameters.top_k',
-					},
-				},
 			},
 			{
 				displayName: 'Top P',
-				name: 'top_p',
+				name: 'topP',
 				type: 'number',
 				typeOptions: {
 					minValue: 0,
@@ -268,12 +212,6 @@ const properties: INodeProperties[] = [
 				},
 				default: 0.9,
 				description: 'Nucleus sampling parameter. Lower values make output more focused.',
-				routing: {
-					send: {
-						type: 'body',
-						property: 'parameters.top_p',
-					},
-				},
 			},
 		],
 	},
@@ -306,7 +244,6 @@ export async function execute(
 	this: IExecuteFunctions,
 	itemIndex: number,
 ): Promise<INodeExecutionData> {
-	// Get the parameters
 	const model = this.getNodeParameter('model', itemIndex) as string;
 	const messagesParam = this.getNodeParameter('messages', itemIndex) as {
 		messageValues: IMessage[];
@@ -326,7 +263,6 @@ export async function execute(
 			}))
 		: messages;
 
-	// Build the request body
 	const body: IModelStudioRequestBody = {
 		model,
 		input: {
@@ -335,27 +271,26 @@ export async function execute(
 		parameters: {},
 	};
 
-	// Add optional parameters
 	if (options.temperature !== undefined) {
 		body.parameters.temperature = options.temperature as number;
 	}
-	if (options.top_p !== undefined) {
-		body.parameters.top_p = options.top_p as number;
+	if (options.topP !== undefined) {
+		body.parameters.top_p = options.topP as number;
 	}
-	if (options.top_k !== undefined) {
-		body.parameters.top_k = options.top_k as number;
+	if (options.topK !== undefined) {
+		body.parameters.top_k = options.topK as number;
 	}
-	if (options.max_tokens !== undefined) {
-		body.parameters.max_tokens = options.max_tokens as number;
+	if (options.maxTokens !== undefined) {
+		body.parameters.max_tokens = options.maxTokens as number;
 	}
-	if (options.repetition_penalty !== undefined) {
-		body.parameters.repetition_penalty = options.repetition_penalty as number;
+	if (options.repetitionPenalty !== undefined) {
+		body.parameters.repetition_penalty = options.repetitionPenalty as number;
 	}
 	if (options.stop) {
 		body.parameters.stop = (options.stop as string).split(',').map((s: string) => s.trim());
 	}
-	if (options.enable_search !== undefined) {
-		body.parameters.enable_search = options.enable_search as boolean;
+	if (options.enableSearch !== undefined) {
+		body.parameters.enable_search = options.enableSearch as boolean;
 	}
 	if (options.seed !== undefined) {
 		body.parameters.seed = options.seed as number;
@@ -366,12 +301,10 @@ export async function execute(
 		? '/api/v1/services/aigc/multimodal-generation/generation'
 		: '/api/v1/services/aigc/text-generation/generation';
 
-	// Make the API request
 	const response = await apiRequest.call(this, 'POST', endpoint, {
 		body,
 	});
 
-	// Extract the generated text from the response
 	// Multimodal endpoint returns content as an array of objects, text endpoint returns plain text
 	const output = isMultimodal
 		? (response.output?.choices?.[0]?.message?.content?.[0]?.text as string) || ''

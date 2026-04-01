@@ -56,7 +56,6 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const contentType = (response.headers?.['content-type'] as string) || 'image/png';
 	const fileContent = Buffer.from(response.body as ArrayBuffer);
 
-	// Derive extension from content type
 	const ext = contentType.includes('jpeg') || contentType.includes('jpg') ? 'jpg' : 'png';
 	const binaryData = await this.helpers.prepareBinaryData(fileContent, `image.${ext}`, contentType);
 

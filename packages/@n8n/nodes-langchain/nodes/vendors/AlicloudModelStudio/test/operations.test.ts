@@ -264,7 +264,7 @@ describe('AlicloudModelStudio Operations', () => {
 						prompt: 'A cat playing with yarn',
 						resolution: '1080P',
 						duration: 5,
-						shot_type: 'single',
+						shotType: 'single',
 						simplifyVideoOutput: false,
 						videoOptions: {},
 					};
@@ -325,7 +325,7 @@ describe('AlicloudModelStudio Operations', () => {
 						prompt: 'A bird taking flight',
 						resolution: '720P',
 						duration: 3,
-						shot_type: 'single',
+						shotType: 'single',
 						simplifyVideoOutput: true,
 						imageToVideoOptions: {},
 					};

@@ -37,12 +37,6 @@ export class AlicloudModelStudio implements INodeType {
 				required: true,
 			},
 		],
-		requestDefaults: {
-			baseURL: 'https://dashscope-intl.aliyuncs.com',
-			headers: {
-				'Content-Type': 'application/json',
-			},
-		},
 		properties: [
 			{
 				displayName: 'Resource',
@@ -69,7 +63,7 @@ export class AlicloudModelStudio implements INodeType {
 			...image.description,
 			...video.description,
 		],
-		usableAsTool: undefined,
+		usableAsTool: true,
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {

@@ -1,8 +1,7 @@
-import { IDataObject } from 'n8n-workflow';
-
 export interface IImageOptions {
 	size: string;
 	prompt_extend?: boolean;
+	promptExtend?: boolean;
 }
 
 export interface IMessage {
@@ -10,7 +9,7 @@ export interface IMessage {
 	content: string | Array<{ text?: string; image?: string }>;
 }
 
-export interface IModelStudioRequestBody extends IDataObject {
+export interface IModelStudioRequestBody {
 	model: string;
 	input: {
 		messages?: IMessage[];

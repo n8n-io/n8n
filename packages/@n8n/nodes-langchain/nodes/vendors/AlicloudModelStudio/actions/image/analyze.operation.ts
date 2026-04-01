@@ -1,7 +1,7 @@
 import type { INodeProperties, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { updateDisplayOptions } from 'n8n-workflow';
 import { apiRequest } from '../../transport';
-import { IModelStudioRequestBody } from '../../helpers/interfaces';
+import type { IModelStudioRequestBody } from '../../helpers/interfaces';
 
 const properties: INodeProperties[] = [
 	{
@@ -85,7 +85,7 @@ const properties: INodeProperties[] = [
 			},
 			{
 				displayName: 'Max Tokens',
-				name: 'max_tokens',
+				name: 'maxTokens',
 				type: 'number',
 				typeOptions: {
 					minValue: 1,
@@ -116,7 +116,6 @@ export async function execute(
 	this: IExecuteFunctions,
 	itemIndex: number,
 ): Promise<INodeExecutionData> {
-	// Get the parameters
 	const visionModel = this.getNodeParameter('visionModel', itemIndex) as string;
 	const imageUrl = this.getNodeParameter('imageUrl', itemIndex) as string;
 	const question = this.getNodeParameter('question', itemIndex) as string;
@@ -130,7 +129,6 @@ export async function execute(
 		true,
 	) as boolean;
 
-	// Build the request body
 	const body: IModelStudioRequestBody = {
 		model: visionModel,
 		input: {
@@ -151,15 +149,13 @@ export async function execute(
 		parameters: {},
 	};
 
-	// Add optional parameters
 	if (visionOptions.temperature !== undefined) {
 		body.parameters.temperature = visionOptions.temperature as number;
 	}
-	if (visionOptions.max_tokens !== undefined) {
-		body.parameters.max_tokens = visionOptions.max_tokens as number;
+	if (visionOptions.maxTokens !== undefined) {
+		body.parameters.max_tokens = visionOptions.maxTokens as number;
 	}
 
-	// Make the API request
 	const response = await apiRequest.call(
 		this,
 		'POST',
@@ -169,7 +165,6 @@ export async function execute(
 		},
 	);
 
-	// Extract the text response from the response
 	const output = (response.output?.choices?.[0]?.message?.content?.[0]?.text as string) || '';
 
 	return {

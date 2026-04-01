@@ -1,7 +1,7 @@
 import type { INodeProperties, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { updateDisplayOptions } from 'n8n-workflow';
 import { apiRequest } from '../../transport';
-import { IImageOptions, IModelStudioRequestBody } from '../../helpers/interfaces';
+import type { IImageOptions, IModelStudioRequestBody } from '../../helpers/interfaces';
 
 const properties: INodeProperties[] = [
 	{
@@ -143,7 +143,7 @@ const properties: INodeProperties[] = [
 			},
 			{
 				displayName: 'Prompt Extend',
-				name: 'prompt_extend',
+				name: 'promptExtend',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to automatically extend and enhance the prompt',
@@ -171,7 +171,6 @@ export async function execute(
 	this: IExecuteFunctions,
 	itemIndex: number,
 ): Promise<INodeExecutionData> {
-	// Get the parameters
 	const imageModel = this.getNodeParameter('imageModel', itemIndex) as string;
 	const prompt = this.getNodeParameter('prompt', itemIndex) as string;
 	const imageOptions = this.getNodeParameter('imageOptions', itemIndex, {}) as IImageOptions;
@@ -181,7 +180,6 @@ export async function execute(
 		true,
 	) as boolean;
 
-	// Build the request body
 	const body: IModelStudioRequestBody = {
 		model: imageModel,
 		input: {
@@ -197,16 +195,14 @@ export async function execute(
 			],
 		},
 		parameters: {
-			prompt_extend: imageOptions.prompt_extend !== undefined ? imageOptions.prompt_extend : false,
+			prompt_extend: imageOptions.prompt_extend ?? imageOptions.promptExtend ?? false,
 		},
 	};
 
-	// Add optional size parameter
 	if (imageOptions.size) {
 		body.parameters.size = imageOptions.size;
 	}
 
-	// Make the API request
 	const response = await apiRequest.call(
 		this,
 		'POST',
@@ -216,7 +212,6 @@ export async function execute(
 		},
 	);
 
-	// Extract the image URL from the response
 	const image = response.output?.choices[0]?.message?.content[0]?.image || '';
 
 	return {

@@ -4,23 +4,38 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { updateDisplayOptions } from 'n8n-workflow';
+import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 import { apiRequest, pollTaskResult } from '../../transport';
-import { IModelStudioRequestBody } from '../../helpers/interfaces';
+import type { IModelStudioRequestBody } from '../../helpers/interfaces';
 
 export const properties: INodeProperties[] = [
 	{
 		displayName: 'Model',
-		name: 'videoModel',
+		name: 'i2vModel',
 		type: 'options',
 		options: [
 			{
-				name: 'wan2.6-t2v',
-				value: 'wan2.6-t2v',
+				name: 'Wan 2.6 Image-to-Video Flash',
+				value: 'wan2.6-i2v-flash',
+				description: 'Fast image-to-video generation model',
+			},
+			{
+				name: 'Wan 2.6 Image-to-Video',
+				value: 'wan2.6-i2v',
+				description: 'Standard image-to-video generation model',
 			},
 		],
-		default: 'wan2.6-t2v',
-		description: 'The model to use for text-to-video generation',
+		default: 'wan2.6-i2v-flash',
+		description: 'The model to use for image-to-video generation',
+	},
+	{
+		displayName: 'Image URL',
+		name: 'imgUrl',
+		type: 'string',
+		required: true,
+		default: '',
+		placeholder: 'https://example.com/image.png',
+		description: 'The URL of the first-frame image to generate video from',
 	},
 	{
 		displayName: 'Prompt',
@@ -30,9 +45,9 @@ export const properties: INodeProperties[] = [
 			rows: 4,
 		},
 		default: '',
-		required: true,
-		description: 'The text prompt to generate video from',
-		placeholder: 'A cat playing with a ball of yarn',
+		description:
+			'A text prompt describing the desired content and visual characteristics for the generated video',
+		placeholder: 'A small cat running on the grass',
 	},
 	{
 		displayName: 'Resolution',
@@ -64,7 +79,7 @@ export const properties: INodeProperties[] = [
 	},
 	{
 		displayName: 'Shot Type',
-		name: 'shot_type',
+		name: 'shotType',
 		type: 'options',
 		options: [
 			{
@@ -88,14 +103,14 @@ export const properties: INodeProperties[] = [
 	},
 	{
 		displayName: 'Options',
-		name: 'videoOptions',
+		name: 'imageToVideoOptions',
 		type: 'collection',
 		placeholder: 'Add Option',
 		default: {},
 		options: [
 			{
 				displayName: 'Prompt Extend',
-				name: 'prompt_extend',
+				name: 'promptExtend',
 				type: 'boolean',
 				default: false,
 				description: 'Whether to automatically extend and enhance the prompt',
@@ -109,7 +124,7 @@ export const properties: INodeProperties[] = [
 			},
 			{
 				displayName: 'Audio URL',
-				name: 'audio_url',
+				name: 'audioUrl',
 				type: 'string',
 				default: '',
 				placeholder: 'https://example.com/audio.mp3',
@@ -122,7 +137,7 @@ export const properties: INodeProperties[] = [
 const displayOptions = {
 	show: {
 		resource: ['video'],
-		operation: ['textToVideo'],
+		operation: ['imageToVideo'],
 	},
 };
 
@@ -132,21 +147,23 @@ export async function execute(
 	this: IExecuteFunctions,
 	itemIndex: number,
 ): Promise<INodeExecutionData> {
-	const videoModel = this.getNodeParameter('videoModel', itemIndex) as string;
-	const prompt = this.getNodeParameter('prompt', itemIndex) as string;
+	const model = this.getNodeParameter('i2vModel', itemIndex) as string;
+	const imgUrl = this.getNodeParameter('imgUrl', itemIndex) as string;
+	const prompt = this.getNodeParameter('prompt', itemIndex, '') as string;
 	const resolution = this.getNodeParameter('resolution', itemIndex) as string;
 	const duration = this.getNodeParameter('duration', itemIndex) as number;
-	const shotType = this.getNodeParameter('shot_type', itemIndex) as string;
+	const shotType = this.getNodeParameter('shotType', itemIndex) as string;
 	const simplifyVideoOutput = this.getNodeParameter(
 		'simplifyVideoOutput',
 		itemIndex,
 		false,
 	) as boolean;
-	const videoOptions = this.getNodeParameter('videoOptions', itemIndex, {}) as IDataObject;
+	const options = this.getNodeParameter('imageToVideoOptions', itemIndex, {}) as IDataObject;
 
 	const body: IModelStudioRequestBody = {
-		model: videoModel,
+		model,
 		input: {
+			img_url: imgUrl,
 			prompt,
 		},
 		parameters: {
@@ -156,19 +173,18 @@ export async function execute(
 		},
 	};
 
-	if (videoOptions.prompt_extend !== undefined) {
-		body.parameters.prompt_extend = videoOptions.prompt_extend as boolean;
+	if (options.promptExtend !== undefined) {
+		body.parameters.prompt_extend = options.promptExtend as boolean;
 	}
 
-	if (videoOptions.audio !== undefined) {
-		body.parameters.audio = videoOptions.audio as boolean;
+	if (options.audio !== undefined) {
+		body.parameters.audio = options.audio as boolean;
 	}
 
-	if (videoOptions.audio_url) {
-		body.input.audio_url = videoOptions.audio_url as string;
+	if (options.audioUrl) {
+		body.input.audio_url = options.audioUrl as string;
 	}
 
-	// Step 1: Create the async video generation task
 	const createResponse = await apiRequest.call(
 		this,
 		'POST',
@@ -183,12 +199,12 @@ export async function execute(
 
 	const taskId = createResponse?.output?.task_id as string;
 	if (!taskId) {
-		throw new Error(
+		throw new NodeOperationError(
+			this.getNode(),
 			`Failed to create video generation task: ${createResponse?.message || 'No task_id returned'}`,
 		);
 	}
 
-	// Step 2: Poll the task until it reaches a terminal status
 	const result = await pollTaskResult.call(this, taskId);
 
 	const output = result.output as IDataObject;
@@ -198,7 +214,7 @@ export async function execute(
 		json: simplifyVideoOutput
 			? { videoUrl }
 			: {
-					model: videoModel,
+					model,
 					taskId,
 					videoUrl,
 					usage: result.usage,
