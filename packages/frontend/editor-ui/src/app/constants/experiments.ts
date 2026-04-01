@@ -92,7 +92,6 @@ export const SETUP_PANEL = createExperiment('069_setup_panel', {
 });
 
 export const CODE_WORKFLOW_BUILDER_EXPERIMENT = createExperiment('071_coding_workflow_builder', {
-	control: 'control',
 	codeNoPinData: 'code-no-pin-data',
 	codePinData: 'code-pin-data',
 });
