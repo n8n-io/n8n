@@ -30,6 +30,11 @@ export function useAiGateway() {
 	const isNodeSupported = (credentialType: string): boolean =>
 		aiGatewayStore.isCredentialTypeSupported(credentialType);
 
+	async function fetchConfig(): Promise<void> {
+		if (!isEnabled.value) return;
+		await aiGatewayStore.fetchConfig();
+	}
+
 	async function saveAfterToggle(): Promise<void> {
 		await saveCurrentWorkflow({}, false, false, true);
 	}
@@ -38,6 +43,7 @@ export function useAiGateway() {
 		isEnabled,
 		creditsRemaining,
 		creditsQuota,
+		fetchConfig,
 		fetchCredits,
 		isNodeSupported,
 		saveAfterToggle,

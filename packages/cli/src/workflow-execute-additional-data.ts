@@ -5,7 +5,7 @@
 import type { PushMessage, PushType } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
-import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
+import { ExecutionRepository, WorkflowPublishHistoryRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ExternalSecretsProxy, WorkflowExecute } from 'n8n-core';
 import { UnexpectedError, Workflow, createRunExecutionData } from 'n8n-workflow';
@@ -486,6 +486,10 @@ export async function getBase({
 		currentNodeParameters,
 		executionTimeoutTimestamp,
 		userId,
+		activatedByUserId:
+			!userId && workflowId
+				? await Container.get(WorkflowPublishHistoryRepository).findActivatedByUserId(workflowId)
+				: undefined,
 		setExecutionStatus,
 		variables,
 		workflowSettings,

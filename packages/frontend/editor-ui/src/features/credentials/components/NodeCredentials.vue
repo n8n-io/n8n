@@ -294,6 +294,8 @@ onMounted(() => {
 
 	ndvEventBus.on('credential.createNew', onCreateAndAssignNewCredential);
 
+	void aiGateway.fetchConfig();
+
 	// Clear stale AI Gateway managed credentials if the feature is disabled
 	if (!aiGateway.isEnabled.value) {
 		const credentials = { ...(props.node.credentials ?? {}) };

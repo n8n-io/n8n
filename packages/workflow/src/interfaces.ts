@@ -3024,6 +3024,13 @@ export interface IWorkflowExecuteAdditionalData {
 	currentNodeParameters?: INodeParameters;
 	executionTimeoutTimestamp?: number;
 	userId?: string;
+	/**
+	 * The ID of the user who last activated the workflow. Used as a fallback for
+	 * attribution (e.g. AI Gateway usage tracking) in production executions
+	 * (webhook, schedule, queue) where no interactive user is present.
+	 * Only set when `userId` is absent.
+	 */
+	activatedByUserId?: string;
 	variables: IDataObject;
 	logAiEvent: (eventName: AiEvent, payload: AiEventPayload) => void;
 	parentCallbackManager?: CallbackManager;

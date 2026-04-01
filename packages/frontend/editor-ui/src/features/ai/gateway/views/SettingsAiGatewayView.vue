@@ -27,9 +27,8 @@ function formatDate(timestamp: number): string {
 	}).format(new Date(timestamp));
 }
 
-function formatTokens(input?: number, output?: number): string {
-	if (input === undefined && output === undefined) return '—';
-	return String((input ?? 0) + (output ?? 0));
+function formatTokens(value?: number): string {
+	return value !== undefined ? String(value) : '—';
 }
 
 function providerLabel(provider: string): string {
@@ -100,13 +99,14 @@ onMounted(async () => {
 							<th>{{ i18n.baseText('settings.n8nGateway.usage.col.date') }}</th>
 							<th>{{ i18n.baseText('settings.n8nGateway.usage.col.provider') }}</th>
 							<th>{{ i18n.baseText('settings.n8nGateway.usage.col.model') }}</th>
-							<th>{{ i18n.baseText('settings.n8nGateway.usage.col.tokens') }}</th>
+							<th>{{ i18n.baseText('settings.n8nGateway.usage.col.inputTokens') }}</th>
+							<th>{{ i18n.baseText('settings.n8nGateway.usage.col.outputTokens') }}</th>
 							<th>{{ i18n.baseText('settings.n8nGateway.usage.col.credits') }}</th>
 						</tr>
 					</thead>
 					<tbody>
 						<tr v-if="entries.length === 0 && !isLoading">
-							<td colspan="5" :class="$style.empty">
+							<td colspan="6" :class="$style.empty">
 								{{ i18n.baseText('settings.n8nGateway.usage.empty') }}
 							</td>
 						</tr>
@@ -118,7 +118,8 @@ onMounted(async () => {
 								</span>
 							</td>
 							<td>{{ entry.model }}</td>
-							<td>{{ formatTokens(entry.inputTokens, entry.outputTokens) }}</td>
+							<td>{{ formatTokens(entry.inputTokens) }}</td>
+							<td>{{ formatTokens(entry.outputTokens) }}</td>
 							<td>{{ entry.creditsDeducted }}</td>
 						</tr>
 					</tbody>
