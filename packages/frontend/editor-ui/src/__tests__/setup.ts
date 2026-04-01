@@ -108,6 +108,7 @@ class JsonDomPointerEvent extends MouseEvent implements PointerEvent {
 	readonly altitudeAngle: number;
 
 	readonly azimuthAngle: number;
+	readonly persistentDeviceId: number;
 
 	constructor(type: string, params: PointerEventInit = {}) {
 		super(type, params);
@@ -123,6 +124,7 @@ class JsonDomPointerEvent extends MouseEvent implements PointerEvent {
 		this.altitudeAngle = params.altitudeAngle ?? Math.PI / 2;
 		this.azimuthAngle = params.azimuthAngle ?? 0;
 		this.isPrimary = params.isPrimary ?? true;
+		this.persistentDeviceId = 0;
 	}
 
 	getCoalescedEvents(): PointerEvent[] {
@@ -218,6 +220,8 @@ export class IntersectionObserver {
 	root = null;
 
 	rootMargin = '';
+
+	scrollMargin = '';
 
 	thresholds = [];
 
