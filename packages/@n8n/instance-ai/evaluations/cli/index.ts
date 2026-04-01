@@ -78,7 +78,7 @@ async function main(): Promise<void> {
 		// Each test case builds a workflow (uses n8n's agent) then runs scenarios
 		// (uses our Anthropic key for Phase 1 + Phase 2 mock generation).
 		// At Tier 4 (20K RPM) no practical limit is needed — set high to run all in parallel.
-		const MAX_CONCURRENT_TEST_CASES = 99;
+		const MAX_CONCURRENT_TEST_CASES = 4;
 		const results = await runWithConcurrency(
 			testCases,
 			async (testCase) =>
