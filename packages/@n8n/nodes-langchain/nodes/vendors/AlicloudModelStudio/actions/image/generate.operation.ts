@@ -50,11 +50,12 @@ const properties: INodeProperties[] = [
 		required: true,
 	},
 	{
-		displayName: 'Simplify Output',
-		name: 'simplifyOutput',
+		displayName: 'Download Image',
+		name: 'downloadImage',
 		type: 'boolean',
 		default: true,
-		description: 'Whether to return only the image URL instead of the full response object',
+		description:
+			'Whether to download the generated image as binary data. When disabled, only the image URL is returned.',
 	},
 	{
 		displayName: 'Options',
@@ -150,7 +151,7 @@ export async function execute(
 	const imageModel = this.getNodeParameter('imageModel', itemIndex) as string;
 	const prompt = this.getNodeParameter('prompt', itemIndex) as string;
 	const imageOptions = this.getNodeParameter('imageOptions', itemIndex, {}) as IImageOptions;
-	const simplifyOutput = this.getNodeParameter('simplifyOutput', itemIndex, true) as boolean;
+	const downloadImage = this.getNodeParameter('downloadImage', itemIndex, true) as boolean;
 
 	const body: IModelStudioRequestBody = {
 		model: imageModel,
@@ -184,16 +185,42 @@ export async function execute(
 		},
 	);
 
-	const image = response.output?.choices[0]?.message?.content[0]?.image || '';
+	const imageUrl = (response.output?.choices[0]?.message?.content[0]?.image as string) || '';
+
+	if (downloadImage && imageUrl) {
+		const imageResponse = await this.helpers.httpRequest({
+			method: 'GET',
+			url: imageUrl,
+			encoding: 'arraybuffer',
+			returnFullResponse: true,
+		});
+
+		const contentType = (imageResponse.headers?.['content-type'] as string) || 'image/png';
+		const fileContent = Buffer.from(imageResponse.body as ArrayBuffer);
+		const ext = contentType.includes('jpeg') || contentType.includes('jpg') ? 'jpg' : 'png';
+		const binaryData = await this.helpers.prepareBinaryData(
+			fileContent,
+			`image.${ext}`,
+			contentType,
+		);
+
+		return {
+			binary: { data: binaryData },
+			json: {
+				model: imageModel,
+				imageUrl,
+				usage: response.usage,
+			},
+			pairedItem: itemIndex,
+		};
+	}
 
 	return {
-		json: simplifyOutput
-			? { image }
-			: {
-					model: imageModel,
-					usage: response.usage,
-					fullResponse: response,
-				},
+		json: {
+			model: imageModel,
+			imageUrl,
+			usage: response.usage,
+		},
 		pairedItem: itemIndex,
 	};
 }

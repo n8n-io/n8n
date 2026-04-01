@@ -169,14 +169,14 @@ describe('AlicloudModelStudio Operations', () => {
 	});
 
 	describe('Image: generate', () => {
-		it('should send prompt to multimodal endpoint and return image URL', async () => {
+		it('should send prompt and return URL-only when downloadImage is false', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
 				(param: string, _index: number, fallback?: unknown) => {
 					const params: Record<string, unknown> = {
 						imageModel: 'z-image-turbo',
 						prompt: 'A sunset over mountains',
 						imageOptions: {},
-						simplifyOutput: true,
+						downloadImage: false,
 					};
 					return params[param] ?? fallback;
 				},
@@ -208,7 +208,75 @@ describe('AlicloudModelStudio Operations', () => {
 					}),
 				},
 			);
-			expect(result.json).toEqual({ image: 'https://result.aliyuncs.com/generated.png' });
+			expect(result.json).toEqual({
+				model: 'z-image-turbo',
+				imageUrl: 'https://result.aliyuncs.com/generated.png',
+				usage: { input_tokens: 10 },
+			});
+			expect(result.binary).toBeUndefined();
+		});
+
+		it('should auto-download image as binary when downloadImage is true', async () => {
+			const deepMock = mockDeep<IExecuteFunctions>();
+			deepMock.getNodeParameter.mockImplementation(
+				(param: string, _index: number, fallback?: unknown) => {
+					const params: Record<string, unknown> = {
+						imageModel: 'z-image-turbo',
+						prompt: 'A sunset over mountains',
+						imageOptions: {},
+						downloadImage: true,
+					};
+					return params[param] ?? fallback;
+				},
+			);
+
+			const mockResponse = {
+				output: {
+					choices: [
+						{
+							message: {
+								content: [{ image: 'https://result.aliyuncs.com/generated.png' }],
+							},
+						},
+					],
+				},
+				usage: { input_tokens: 10 },
+			};
+			mockApiRequest.mockResolvedValue(mockResponse);
+
+			const imageBuffer = Buffer.from('fake-png-data');
+			deepMock.helpers.httpRequest.mockResolvedValue({
+				body: imageBuffer,
+				headers: { 'content-type': 'image/png' },
+			});
+
+			const mockBinaryData: IBinaryData = {
+				mimeType: 'image/png',
+				fileType: 'image',
+				fileExtension: 'png',
+				data: '',
+				fileName: 'image.png',
+			};
+			deepMock.helpers.prepareBinaryData.mockResolvedValue(mockBinaryData);
+
+			const result = await imageGenerateExecute.call(deepMock, 0);
+
+			expect(deepMock.helpers.httpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({
+					method: 'GET',
+					url: 'https://result.aliyuncs.com/generated.png',
+					encoding: 'arraybuffer',
+					returnFullResponse: true,
+				}),
+			);
+			expect(result.binary).toBeDefined();
+			expect(result.binary!.data).toEqual(mockBinaryData);
+			expect(result.json).toEqual(
+				expect.objectContaining({
+					model: 'z-image-turbo',
+					imageUrl: 'https://result.aliyuncs.com/generated.png',
+				}),
+			);
 		});
 	});
 
