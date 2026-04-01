@@ -1,28 +1,171 @@
 import { mock } from 'jest-mock-extended';
-import type { IHttpRequestOptions, INode, IRequestOptions } from 'n8n-workflow';
+import type { IHttpRequestOptions, INode, INodeProperties, IRequestOptions } from 'n8n-workflow';
 
 import {
 	buildEvalMockCredentials,
 	callEvalMockHandler,
+	isSecretCredentialProperty,
 	normalizeLegacyRequest,
 	serializeMockToHttpResponse,
 } from '../eval-mock-helpers';
 import type { EvalLlmMockHandler, EvalMockHttpResponse } from '../index';
 
+// ---------------------------------------------------------------------------
+// Helper to build a minimal INodeProperties with sensible defaults
+// ---------------------------------------------------------------------------
+function credProp(overrides: Partial<INodeProperties> & { name: string }): INodeProperties {
+	return {
+		displayName: overrides.name,
+		type: 'string',
+		default: '',
+		...overrides,
+	};
+}
+
 describe('eval-mock-helpers', () => {
+	// -----------------------------------------------------------------------
+	// isSecretCredentialProperty
+	// -----------------------------------------------------------------------
+	describe('isSecretCredentialProperty', () => {
+		it('should classify typeOptions.password as secret', () => {
+			expect(
+				isSecretCredentialProperty(
+					credProp({ name: 'someField', typeOptions: { password: true } }),
+				),
+			).toBe(true);
+		});
+
+		it('should classify secret name patterns as secret', () => {
+			const secretNames = [
+				'apiKey',
+				'secretAccessKey',
+				'accessToken',
+				'password',
+				'credentials',
+				'authHeader',
+				'connectionString',
+			];
+			for (const name of secretNames) {
+				expect(isSecretCredentialProperty(credProp({ name }))).toBe(true);
+			}
+		});
+
+		it('should classify boolean, number, and options types as config', () => {
+			expect(
+				isSecretCredentialProperty(credProp({ name: 'useTls', type: 'boolean', default: false })),
+			).toBe(false);
+			expect(
+				isSecretCredentialProperty(credProp({ name: 'port', type: 'number', default: 5432 })),
+			).toBe(false);
+			expect(
+				isSecretCredentialProperty(
+					credProp({
+						name: 'region',
+						type: 'options',
+						default: 'us-east-1',
+						options: [{ name: 'US East', value: 'us-east-1' }],
+					}),
+				),
+			).toBe(false);
+		});
+
+		it('should classify config name patterns as config', () => {
+			const configNames = [
+				'baseUrl',
+				'hostname',
+				'region',
+				'endpoint',
+				'subdomain',
+				'domain',
+				'server',
+				'namespace',
+				'workspace',
+				'database',
+			];
+			for (const name of configNames) {
+				expect(isSecretCredentialProperty(credProp({ name }))).toBe(false);
+			}
+		});
+
+		it('should fall back to secret for ambiguous string properties', () => {
+			expect(isSecretCredentialProperty(credProp({ name: 'customField' }))).toBe(true);
+		});
+
+		it('should treat secret name patterns as secret even when type is non-string', () => {
+			// Secret name patterns take priority over type-based classification
+			expect(
+				isSecretCredentialProperty(credProp({ name: 'apiKey', type: 'number', default: 0 })),
+			).toBe(true);
+		});
+	});
+
 	// -----------------------------------------------------------------------
 	// buildEvalMockCredentials
 	// -----------------------------------------------------------------------
 	describe('buildEvalMockCredentials', () => {
-		it('should populate each property with eval-mock-value', () => {
-			const result = buildEvalMockCredentials([{ name: 'apiKey' }, { name: 'domain' }]);
+		it('should mock secret properties with descriptive placeholders', () => {
+			const result = buildEvalMockCredentials([
+				credProp({ name: 'apiKey', typeOptions: { password: true } }),
+				credProp({ name: 'secretAccessKey' }),
+			]);
 
-			expect(result.apiKey).toBe('eval-mock-value');
-			expect(result.domain).toBe('eval-mock-value');
+			expect(result.apiKey).toBe('<api-key>');
+			expect(result.secretAccessKey).toBe('<secret-access-key>');
+		});
+
+		it('should preserve default values for config properties', () => {
+			const result = buildEvalMockCredentials([
+				credProp({ name: 'baseUrl', default: 'https://api.example.com' }),
+				credProp({ name: 'region', type: 'options', default: 'eu-west-1' }),
+				credProp({ name: 'port', type: 'number', default: 443 }),
+				credProp({ name: 'useTls', type: 'boolean', default: true }),
+			]);
+
+			expect(result.baseUrl).toBe('https://api.example.com');
+			expect(result.region).toBe('eu-west-1');
+			expect(result.port).toBe(443);
+			expect(result.useTls).toBe(true);
+		});
+
+		it('should fall back to placeholder for config properties with no default', () => {
+			const result = buildEvalMockCredentials([
+				credProp({ name: 'endpoint', default: undefined as unknown as string }),
+			]);
+
+			expect(result.endpoint).toBe('<endpoint>');
+		});
+
+		it('should handle a realistic credential with mixed secret and config properties', () => {
+			const result = buildEvalMockCredentials([
+				credProp({ name: 'accessKeyId' }),
+				credProp({
+					name: 'secretAccessKey',
+					typeOptions: { password: true },
+				}),
+				credProp({
+					name: 'region',
+					type: 'options',
+					default: 'us-east-1',
+					options: [
+						{ name: 'US East', value: 'us-east-1' },
+						{ name: 'EU West', value: 'eu-west-1' },
+					],
+				}),
+				credProp({ name: 'customEndpoint', default: 'https://s3.amazonaws.com' }),
+			]);
+
+			// Secrets
+			expect(result.accessKeyId).toBe('<access-key-id>');
+			expect(result.secretAccessKey).toBe('<secret-access-key>');
+			// Config
+			expect(result.region).toBe('us-east-1');
+			expect(result.customEndpoint).toBe('https://s3.amazonaws.com');
 		});
 
 		it('should always include oauthTokenData with access_token, token_type, and refresh_token', () => {
-			const result = buildEvalMockCredentials([{ name: 'apiKey' }]);
+			const result = buildEvalMockCredentials([
+				credProp({ name: 'apiKey', typeOptions: { password: true } }),
+			]);
 
 			expect(result.oauthTokenData).toEqual({
 				access_token: 'eval-mock-access-token',
@@ -32,7 +175,9 @@ describe('eval-mock-helpers', () => {
 		});
 
 		it('should always include a privateKey containing an RSA key', () => {
-			const result = buildEvalMockCredentials([{ name: 'apiKey' }]);
+			const result = buildEvalMockCredentials([
+				credProp({ name: 'apiKey', typeOptions: { password: true } }),
+			]);
 
 			expect(result.privateKey).toEqual(expect.stringContaining('BEGIN RSA PRIVATE KEY'));
 			expect(result.privateKey).toEqual(expect.stringContaining('END RSA PRIVATE KEY'));
