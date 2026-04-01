@@ -125,6 +125,87 @@ describe('With license unlimited quota:users', () => {
 				expect.arrayContaining([firstMember.id, secondMember.id]),
 			);
 		});
+
+		it('should not leak project membership when caller has no access to project', async () => {
+			/**
+			 * SECURITY: A member with user:list scope should NOT be able to enumerate
+			 * members of projects they don't have access to.
+			 *
+			 * Arrange: Create two projects - one the member has access to, one they don't
+			 */
+			const [memberWithApiKey, otherMember1, otherMember2] = await Promise.all([
+				createMemberWithApiKey({ scopes: ['user:list'] }),
+				createMember(),
+				createMember(),
+			]);
+
+			const [accessibleProject, inaccessibleProject] = await Promise.all([
+				createTeamProject(),
+				createTeamProject(),
+			]);
+
+			// Link memberWithApiKey to accessibleProject
+			await linkUserToProject(memberWithApiKey, accessibleProject, 'project:viewer');
+
+			// Link other members to inaccessibleProject (which memberWithApiKey has NO access to)
+			await Promise.all([
+				linkUserToProject(otherMember1, inaccessibleProject, 'project:admin'),
+				linkUserToProject(otherMember2, inaccessibleProject, 'project:viewer'),
+			]);
+
+			/**
+			 * Act: Try to query users from the inaccessible project
+			 */
+			const response = await testServer
+				.publicApiAgentFor(memberWithApiKey)
+				.get('/users')
+				.query({
+					projectId: inaccessibleProject.id,
+				});
+
+			/**
+			 * Assert: Should return 404 (project not found) or 403 (forbidden)
+			 * because the caller has no access to this project
+			 */
+			expect(response.status).toBeGreaterThanOrEqual(400);
+			expect(response.status).toBeLessThan(500);
+		});
+
+		it('should allow member to query their own accessible project', async () => {
+			/**
+			 * Arrange: Create a member with access to a specific project
+			 */
+			const [memberWithApiKey, otherMember] = await Promise.all([
+				createMemberWithApiKey({ scopes: ['user:list'] }),
+				createMember(),
+			]);
+
+			const accessibleProject = await createTeamProject();
+
+			await Promise.all([
+				linkUserToProject(memberWithApiKey, accessibleProject, 'project:admin'),
+				linkUserToProject(otherMember, accessibleProject, 'project:viewer'),
+			]);
+
+			/**
+			 * Act: Query users from their own project
+			 */
+			const response = await testServer
+				.publicApiAgentFor(memberWithApiKey)
+				.get('/users')
+				.query({
+					projectId: accessibleProject.id,
+				});
+
+			/**
+			 * Assert: Should succeed and return project members
+			 */
+			expect(response.status).toBe(200);
+			expect(response.body.data.length).toBe(2);
+			expect(response.body.data.map((user: User) => user.id)).toEqual(
+				expect.arrayContaining([memberWithApiKey.id, otherMember.id]),
+			);
+		});
 	});
 
 	describe('GET /users/:id', () => {
