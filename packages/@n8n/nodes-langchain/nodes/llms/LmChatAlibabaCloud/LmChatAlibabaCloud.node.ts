@@ -7,6 +7,7 @@ import {
 } from '@n8n/ai-utilities';
 import {
 	NodeConnectionTypes,
+	NodeOperationError,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
@@ -23,7 +24,7 @@ const REGION_BASE_URLS: Record<string, string> = {
 };
 
 function getBaseUrl(region: string, workspaceId?: string): string {
-	if (region === 'eu-central-1' && workspaceId) {
+	if (region === 'eu-central-1') {
 		return `https://${workspaceId}.eu-central-1.maas.aliyuncs.com/compatible-mode/v1`;
 	}
 	return REGION_BASE_URLS[region] ?? REGION_BASE_URLS['ap-southeast-1'];
@@ -245,6 +246,13 @@ export class LmChatAlibabaCloud implements INodeType {
 			topP?: number;
 			responseFormat?: 'text' | 'json_object';
 		};
+
+		if (credentials.region === 'eu-central-1' && !credentials.workspaceId) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Workspace ID is required for the Germany (Frankfurt) region',
+			);
+		}
 
 		const baseURL = getBaseUrl(credentials.region, credentials.workspaceId);
 		const timeout = options.timeout;

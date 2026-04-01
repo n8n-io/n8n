@@ -230,5 +230,51 @@ describe('LmChatAlibabaCloud', () => {
 				}),
 			);
 		});
+
+		it('should use China (Beijing) region base URL', async () => {
+			const ctx = setupMockContext();
+			ctx.getCredentials = jest.fn().mockResolvedValue({
+				apiKey: 'test-key',
+				region: 'cn-beijing',
+			});
+
+			await node.supplyData.call(ctx, 0);
+
+			expect(MockedChatOpenAI).toHaveBeenCalledWith(
+				expect.objectContaining({
+					configuration: expect.objectContaining({
+						baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+					}),
+				}),
+			);
+		});
+
+		it('should use Hong Kong region base URL', async () => {
+			const ctx = setupMockContext();
+			ctx.getCredentials = jest.fn().mockResolvedValue({
+				apiKey: 'test-key',
+				region: 'cn-hongkong',
+			});
+
+			await node.supplyData.call(ctx, 0);
+
+			expect(MockedChatOpenAI).toHaveBeenCalledWith(
+				expect.objectContaining({
+					configuration: expect.objectContaining({
+						baseURL: 'https://cn-hongkong.dashscope.aliyuncs.com/compatible-mode/v1',
+					}),
+				}),
+			);
+		});
+
+		it('should throw when eu-central-1 is selected without workspaceId', async () => {
+			const ctx = setupMockContext();
+			ctx.getCredentials = jest.fn().mockResolvedValue({
+				apiKey: 'test-key',
+				region: 'eu-central-1',
+			});
+
+			await expect(node.supplyData.call(ctx, 0)).rejects.toThrow('Workspace ID');
+		});
 	});
 });
