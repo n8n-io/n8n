@@ -11,16 +11,31 @@ import { IModelStudioRequestBody } from '../../helpers/interfaces';
 export const properties: INodeProperties[] = [
 	{
 		displayName: 'Model',
-		name: 'videoModel',
+		name: 'i2vModel',
 		type: 'options',
 		options: [
 			{
-				name: 'wan2.6-t2v',
-				value: 'wan2.6-t2v',
+				name: 'wan2.6-i2v-flash',
+				value: 'wan2.6-i2v-flash',
+				description: 'Fast image-to-video generation model',
+			},
+			{
+				name: 'wan2.6-i2v',
+				value: 'wan2.6-i2v',
+				description: 'Standard image-to-video generation model',
 			},
 		],
-		default: 'wan2.6-t2v',
-		description: 'The model to use for text-to-video generation',
+		default: 'wan2.6-i2v-flash',
+		description: 'The model to use for image-to-video generation',
+	},
+	{
+		displayName: 'Image URL',
+		name: 'imgUrl',
+		type: 'string',
+		required: true,
+		default: '',
+		placeholder: 'https://example.com/image.png',
+		description: 'The URL of the first-frame image to generate video from',
 	},
 	{
 		displayName: 'Prompt',
@@ -30,9 +45,9 @@ export const properties: INodeProperties[] = [
 			rows: 4,
 		},
 		default: '',
-		required: true,
-		description: 'The text prompt to generate video from',
-		placeholder: 'A cat playing with a ball of yarn',
+		description:
+			'A text prompt describing the desired content and visual characteristics for the generated video',
+		placeholder: 'A small cat running on the grass',
 	},
 	{
 		displayName: 'Resolution',
@@ -88,7 +103,7 @@ export const properties: INodeProperties[] = [
 	},
 	{
 		displayName: 'Options',
-		name: 'videoOptions',
+		name: 'imageToVideoOptions',
 		type: 'collection',
 		placeholder: 'Add Option',
 		default: {},
@@ -122,7 +137,7 @@ export const properties: INodeProperties[] = [
 const displayOptions = {
 	show: {
 		resource: ['video'],
-		operation: ['textToVideo'],
+		operation: ['imageToVideo'],
 	},
 };
 
@@ -132,17 +147,23 @@ export async function execute(
 	this: IExecuteFunctions,
 	itemIndex: number,
 ): Promise<INodeExecutionData> {
-	const videoModel = this.getNodeParameter('videoModel', itemIndex) as string;
-	const prompt = this.getNodeParameter('prompt', itemIndex) as string;
+	const model = this.getNodeParameter('i2vModel', itemIndex) as string;
+	const imgUrl = this.getNodeParameter('imgUrl', itemIndex) as string;
+	const prompt = this.getNodeParameter('prompt', itemIndex, '') as string;
 	const resolution = this.getNodeParameter('resolution', itemIndex) as string;
 	const duration = this.getNodeParameter('duration', itemIndex) as number;
 	const shotType = this.getNodeParameter('shot_type', itemIndex) as string;
-	const simplifyVideoOutput = this.getNodeParameter('simplifyVideoOutput', itemIndex, false) as boolean;
-	const videoOptions = this.getNodeParameter('videoOptions', itemIndex, {}) as IDataObject;
+	const simplifyVideoOutput = this.getNodeParameter(
+		'simplifyVideoOutput',
+		itemIndex,
+		false,
+	) as boolean;
+	const options = this.getNodeParameter('imageToVideoOptions', itemIndex, {}) as IDataObject;
 
 	const body: IModelStudioRequestBody = {
-		model: videoModel,
+		model,
 		input: {
+			img_url: imgUrl,
 			prompt,
 		},
 		parameters: {
@@ -152,16 +173,16 @@ export async function execute(
 		},
 	};
 
-	if (videoOptions.prompt_extend !== undefined) {
-		body.parameters.prompt_extend = videoOptions.prompt_extend as boolean;
+	if (options.prompt_extend !== undefined) {
+		body.parameters.prompt_extend = options.prompt_extend as boolean;
 	}
 
-	if (videoOptions.audio !== undefined) {
-		body.parameters.audio = videoOptions.audio as boolean;
+	if (options.audio !== undefined) {
+		body.parameters.audio = options.audio as boolean;
 	}
 
-	if (videoOptions.audio_url) {
-		body.input.audio_url = videoOptions.audio_url as string;
+	if (options.audio_url) {
+		body.input.audio_url = options.audio_url as string;
 	}
 
 	// Step 1: Create the async video generation task
@@ -194,14 +215,14 @@ export async function execute(
 		json: simplifyVideoOutput
 			? { videoUrl }
 			: {
-					model: videoModel,
+					model,
 					taskId,
 					videoUrl,
 					usage: result.usage,
 					taskStatus: output?.task_status,
 					submitTime: output?.submit_time,
 					endTime: output?.end_time,
-			  },
+				},
 		pairedItem: itemIndex,
 	};
 }

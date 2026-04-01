@@ -275,10 +275,6 @@ const properties: INodeProperties[] = [
 					},
 				},
 			},
-			
-			
-			
-			
 		],
 	},
 ];
@@ -312,7 +308,9 @@ export async function execute(
 ): Promise<INodeExecutionData> {
 	// Get the parameters
 	const model = this.getNodeParameter('model', itemIndex) as string;
-	const messagesParam = this.getNodeParameter('messages', itemIndex) as { messageValues: IMessage[] };
+	const messagesParam = this.getNodeParameter('messages', itemIndex) as {
+		messageValues: IMessage[];
+	};
 	const messages = messagesParam.messageValues || [];
 	const options = this.getNodeParameter('options', itemIndex, {});
 	const simplifyOutput = this.getNodeParameter('simplifyOutput', itemIndex, true) as boolean;
@@ -325,7 +323,7 @@ export async function execute(
 		? messages.map((msg) => ({
 				role: msg.role,
 				content: typeof msg.content === 'string' ? [{ text: msg.content }] : msg.content,
-		  }))
+			}))
 		: messages;
 
 	// Build the request body
@@ -369,14 +367,9 @@ export async function execute(
 		: '/api/v1/services/aigc/text-generation/generation';
 
 	// Make the API request
-	const response = await apiRequest.call(
-		this,
-		'POST',
-		endpoint,
-		{
-			body,
-		},
-	);
+	const response = await apiRequest.call(this, 'POST', endpoint, {
+		body,
+	});
 
 	// Extract the generated text from the response
 	// Multimodal endpoint returns content as an array of objects, text endpoint returns plain text
@@ -392,7 +385,7 @@ export async function execute(
 					response: output,
 					usage: response.usage,
 					fullResponse: response,
-			  },
+				},
 		pairedItem: itemIndex,
 	};
 }

@@ -38,10 +38,7 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(
-	this: IExecuteFunctions,
-	i: number,
-): Promise<INodeExecutionData> {
+export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData> {
 	const url = this.getNodeParameter('url', i, '') as string;
 	const binaryPropertyOutput = this.getNodeParameter(
 		'options.binaryPropertyOutput',

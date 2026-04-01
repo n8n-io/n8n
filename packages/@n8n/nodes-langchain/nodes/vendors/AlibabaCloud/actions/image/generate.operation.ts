@@ -9,31 +9,31 @@ const properties: INodeProperties[] = [
 		name: 'imageModel',
 		type: 'options',
 		options: [
-            {
-                name: 'Qwen Image',
-                value: 'qwen-image',
-                description: 'Qwen image generation model',
-            },
-            {
-                name: 'Qwen Image Max',
-                value: 'qwen-image-max',
-                description: 'Most capable Qwen image generation model',
-            },
-            {
-                name: 'Qwen Image Plus',
-                value: 'qwen-image-plus',
-                description: 'Enhanced Qwen image generation model',
-            },
 			{
-                name: 'Wan 2.6 T2I',
+				name: 'Qwen Image',
+				value: 'qwen-image',
+				description: 'Qwen image generation model',
+			},
+			{
+				name: 'Qwen Image Max',
+				value: 'qwen-image-max',
+				description: 'Most capable Qwen image generation model',
+			},
+			{
+				name: 'Qwen Image Plus',
+				value: 'qwen-image-plus',
+				description: 'Enhanced Qwen image generation model',
+			},
+			{
+				name: 'Wan 2.6 T2I',
 				value: 'wan2.6-t2i',
 				description: 'Wanx image generation model',
 			},
-            {
-                name: 'Z-Image Turbo',
-                value: 'z-image-turbo',
-                description: 'Fast image generation model',
-            },
+			{
+				name: 'Z-Image Turbo',
+				value: 'z-image-turbo',
+				description: 'Fast image generation model',
+			},
 		],
 		default: 'z-image-turbo',
 		description: 'The model to use for image generation',
@@ -111,22 +111,22 @@ const properties: INodeProperties[] = [
 					},
 				},
 				options: [
-                    {
-                        name: '1104x1472 (3:4)',
+					{
+						name: '1104x1472 (3:4)',
 						value: '1104*1472',
 					},
-                    {
-                        name: '1328x1328 (1:1)',
-                        value: '1328*1328',
-                    },
-                    {
-                        name: '1472x1104 (4:3)',
-                        value: '1472*1104',
-                    },
-                    {
-                        name: '1664x928 (16:9)',
-                        value: '1664*928',
-                    },
+					{
+						name: '1328x1328 (1:1)',
+						value: '1328*1328',
+					},
+					{
+						name: '1472x1104 (4:3)',
+						value: '1472*1104',
+					},
+					{
+						name: '1664x928 (16:9)',
+						value: '1664*928',
+					},
 					{
 						name: '928x1664 (9:16)',
 						value: '928*1664',
@@ -197,8 +197,7 @@ export async function execute(
 			],
 		},
 		parameters: {
-			prompt_extend:
-				imageOptions.prompt_extend !== undefined ? imageOptions.prompt_extend : false,
+			prompt_extend: imageOptions.prompt_extend !== undefined ? imageOptions.prompt_extend : false,
 		},
 	};
 
@@ -227,7 +226,7 @@ export async function execute(
 					model: imageModel,
 					usage: response.usage,
 					fullResponse: response,
-			  },
+				},
 		pairedItem: itemIndex,
 	};
 }

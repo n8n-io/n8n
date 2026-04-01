@@ -170,8 +170,7 @@ export async function execute(
 	);
 
 	// Extract the text response from the response
-	const output =
-		(response.output?.choices?.[0]?.message?.content?.[0]?.text as string) || '';
+	const output = (response.output?.choices?.[0]?.message?.content?.[0]?.text as string) || '';
 
 	return {
 		json: simplifyVisionOutput
@@ -181,7 +180,7 @@ export async function execute(
 					response: output,
 					usage: response.usage,
 					fullResponse: response,
-			  },
+				},
 		pairedItem: itemIndex,
 	};
 }

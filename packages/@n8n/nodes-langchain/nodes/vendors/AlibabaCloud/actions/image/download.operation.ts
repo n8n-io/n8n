@@ -38,10 +38,7 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(
-	this: IExecuteFunctions,
-	i: number,
-): Promise<INodeExecutionData> {
+export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData> {
 	const url = this.getNodeParameter('url', i, '') as string;
 	const binaryPropertyOutput = this.getNodeParameter(
 		'options.binaryPropertyOutput',
@@ -61,11 +58,7 @@ export async function execute(
 
 	// Derive extension from content type
 	const ext = contentType.includes('jpeg') || contentType.includes('jpg') ? 'jpg' : 'png';
-	const binaryData = await this.helpers.prepareBinaryData(
-		fileContent,
-		`image.${ext}`,
-		contentType,
-	);
+	const binaryData = await this.helpers.prepareBinaryData(fileContent, `image.${ext}`, contentType);
 
 	return {
 		binary: { [binaryPropertyOutput]: binaryData },
