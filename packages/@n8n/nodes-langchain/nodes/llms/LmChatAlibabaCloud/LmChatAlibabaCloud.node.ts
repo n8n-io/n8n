@@ -13,7 +13,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import type { OpenAICompatibleCredential } from '../../../types/types';
+import { getBaseUrl } from '../../../credentials/AlibabaCloudApi.credentials';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
 
 export class LmChatAlibabaCloud implements INodeType {
@@ -56,7 +56,8 @@ export class LmChatAlibabaCloud implements INodeType {
 		],
 		requestDefaults: {
 			ignoreHttpStatusErrors: true,
-			baseURL: '={{ $credentials?.url }}',
+			baseURL:
+				'={{ $credentials.region === "us-east-1" ? "https://dashscope-us.aliyuncs.com/compatible-mode/v1" : $credentials.region === "cn-beijing" ? "https://dashscope.aliyuncs.com/compatible-mode/v1" : $credentials.region === "cn-hongkong" ? "https://cn-hongkong.dashscope.aliyuncs.com/compatible-mode/v1" : $credentials.region === "eu-central-1" ? "https://" + $credentials.workspaceId + ".eu-central-1.maas.aliyuncs.com/compatible-mode/v1" : "https://dashscope-intl.aliyuncs.com/compatible-mode/v1" }}',
 		},
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiAgent]),
@@ -213,7 +214,11 @@ export class LmChatAlibabaCloud implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = await this.getCredentials<OpenAICompatibleCredential>('alibabaCloudApi');
+		const credentials = await this.getCredentials<{
+			apiKey: string;
+			region: string;
+			workspaceId?: string;
+		}>('alibabaCloudApi');
 
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 
@@ -228,11 +233,12 @@ export class LmChatAlibabaCloud implements INodeType {
 			responseFormat?: 'text' | 'json_object';
 		};
 
+		const baseURL = getBaseUrl(credentials.region, credentials.workspaceId);
 		const timeout = options.timeout;
 		const configuration: ClientOptions = {
-			baseURL: credentials.url,
+			baseURL,
 			fetchOptions: {
-				dispatcher: getProxyAgent(credentials.url, {
+				dispatcher: getProxyAgent(baseURL, {
 					headersTimeout: timeout,
 					bodyTimeout: timeout,
 				}),

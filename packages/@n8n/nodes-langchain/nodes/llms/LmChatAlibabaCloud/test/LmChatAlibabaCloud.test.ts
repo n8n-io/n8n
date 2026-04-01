@@ -37,7 +37,7 @@ describe('LmChatAlibabaCloud', () => {
 
 		ctx.getCredentials = jest.fn().mockResolvedValue({
 			apiKey: 'test-dashscope-key',
-			url: 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1',
+			region: 'ap-southeast-1',
 		});
 		ctx.getNode = jest.fn().mockReturnValue(nodeDef);
 		ctx.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
@@ -190,6 +190,43 @@ describe('LmChatAlibabaCloud', () => {
 				expect.objectContaining({
 					headersTimeout: 120000,
 					bodyTimeout: 120000,
+				}),
+			);
+		});
+
+		it('should use US region base URL', async () => {
+			const ctx = setupMockContext();
+			ctx.getCredentials = jest.fn().mockResolvedValue({
+				apiKey: 'test-key',
+				region: 'us-east-1',
+			});
+
+			await node.supplyData.call(ctx, 0);
+
+			expect(MockedChatOpenAI).toHaveBeenCalledWith(
+				expect.objectContaining({
+					configuration: expect.objectContaining({
+						baseURL: 'https://dashscope-us.aliyuncs.com/compatible-mode/v1',
+					}),
+				}),
+			);
+		});
+
+		it('should use Frankfurt region base URL with workspace ID', async () => {
+			const ctx = setupMockContext();
+			ctx.getCredentials = jest.fn().mockResolvedValue({
+				apiKey: 'test-key',
+				region: 'eu-central-1',
+				workspaceId: 'ws-abc123',
+			});
+
+			await node.supplyData.call(ctx, 0);
+
+			expect(MockedChatOpenAI).toHaveBeenCalledWith(
+				expect.objectContaining({
+					configuration: expect.objectContaining({
+						baseURL: 'https://ws-abc123.eu-central-1.maas.aliyuncs.com/compatible-mode/v1',
+					}),
 				}),
 			);
 		});

@@ -5,6 +5,23 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
+const REGION_TO_BASE_URL_EXPRESSION =
+	'={{ $credentials.region === "us-east-1" ? "https://dashscope-us.aliyuncs.com/compatible-mode/v1" : $credentials.region === "cn-beijing" ? "https://dashscope.aliyuncs.com/compatible-mode/v1" : $credentials.region === "cn-hongkong" ? "https://cn-hongkong.dashscope.aliyuncs.com/compatible-mode/v1" : $credentials.region === "eu-central-1" ? "https://" + $credentials.workspaceId + ".eu-central-1.maas.aliyuncs.com/compatible-mode/v1" : "https://dashscope-intl.aliyuncs.com/compatible-mode/v1" }}';
+
+export const REGION_BASE_URLS: Record<string, string> = {
+	'ap-southeast-1': 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1',
+	'us-east-1': 'https://dashscope-us.aliyuncs.com/compatible-mode/v1',
+	'cn-beijing': 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+	'cn-hongkong': 'https://cn-hongkong.dashscope.aliyuncs.com/compatible-mode/v1',
+};
+
+export function getBaseUrl(region: string, workspaceId?: string): string {
+	if (region === 'eu-central-1' && workspaceId) {
+		return `https://${workspaceId}.eu-central-1.maas.aliyuncs.com/compatible-mode/v1`;
+	}
+	return REGION_BASE_URLS[region] ?? REGION_BASE_URLS['ap-southeast-1'];
+}
+
 export class AlibabaCloudApi implements ICredentialType {
 	name = 'alibabaCloudApi';
 
@@ -23,10 +40,47 @@ export class AlibabaCloudApi implements ICredentialType {
 			default: '',
 		},
 		{
-			displayName: 'Base URL',
-			name: 'url',
-			type: 'hidden',
-			default: 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1',
+			displayName: 'Region',
+			name: 'region',
+			type: 'options',
+			default: 'ap-southeast-1',
+			options: [
+				{
+					name: 'Singapore (International)',
+					value: 'ap-southeast-1',
+				},
+				{
+					name: 'US (Virginia)',
+					value: 'us-east-1',
+				},
+				{
+					name: 'China (Beijing)',
+					value: 'cn-beijing',
+				},
+				{
+					name: 'Hong Kong (China)',
+					value: 'cn-hongkong',
+				},
+				{
+					name: 'Germany (Frankfurt)',
+					value: 'eu-central-1',
+				},
+			],
+			description: 'The region for the Alibaba Cloud Model Studio API endpoint',
+		},
+		{
+			displayName: 'Workspace ID',
+			name: 'workspaceId',
+			type: 'string',
+			default: '',
+			required: true,
+			displayOptions: {
+				show: {
+					region: ['eu-central-1'],
+				},
+			},
+			description:
+				'The Workspace ID required for the Germany (Frankfurt) region. Find it in the Model Studio console under the Germany region settings.',
 		},
 	];
 
@@ -41,7 +95,7 @@ export class AlibabaCloudApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: '={{ $credentials.url }}',
+			baseURL: REGION_TO_BASE_URL_EXPRESSION,
 			url: '/models',
 		},
 	};
