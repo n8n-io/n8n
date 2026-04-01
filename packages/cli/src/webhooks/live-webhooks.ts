@@ -140,45 +140,50 @@ export class LiveWebhooks implements IWebhookManager {
 			projectId: ownerProjectId,
 		});
 
-		const webhookData = this.webhookService
-			.getNodeWebhooks(workflow, workflow.getNode(webhook.node) as INode, additionalData)
-			.find((w) => w.httpMethod === httpMethod && w.path === webhook.webhookPath) as IWebhookData;
+		await workflow.expression.acquireIsolate();
+		try {
+			const webhookData = this.webhookService
+				.getNodeWebhooks(workflow, workflow.getNode(webhook.node) as INode, additionalData)
+				.find((w) => w.httpMethod === httpMethod && w.path === webhook.webhookPath) as IWebhookData;
 
-		// Get the node which has the webhook defined to know where to start from and to
-		// get additional data
-		const workflowStartNode = workflow.getNode(webhookData.node);
+			// Get the node which has the webhook defined to know where to start from and to
+			// get additional data
+			const workflowStartNode = workflow.getNode(webhookData.node);
 
-		if (workflowStartNode === null) {
-			throw new NotFoundError('Could not find node to process webhook.');
+			if (workflowStartNode === null) {
+				throw new NotFoundError('Could not find node to process webhook.');
+			}
+
+			if (!authAllowlistedNodes.has(workflowStartNode.type)) {
+				sanitizeWebhookRequest(request);
+			}
+
+			return await new Promise((resolve, reject) => {
+				const executionMode = 'webhook';
+				void WebhookHelpers.executeWebhook(
+					workflow,
+					webhookData,
+					activeWorkflowData, // Use activeWorkflowData instead of workflowData
+					workflowStartNode,
+					executionMode,
+					undefined,
+					undefined,
+					undefined,
+					request,
+					response,
+					async (error: Error | null, data: object) => {
+						if (error !== null) {
+							return reject(error);
+						}
+						// Save static data if it changed
+						await this.workflowStaticDataService.saveStaticData(workflow);
+						resolve(data);
+					},
+				);
+			});
+		} finally {
+			await workflow.expression.releaseIsolate();
 		}
-
-		if (!authAllowlistedNodes.has(workflowStartNode.type)) {
-			sanitizeWebhookRequest(request);
-		}
-
-		return await new Promise((resolve, reject) => {
-			const executionMode = 'webhook';
-			void WebhookHelpers.executeWebhook(
-				workflow,
-				webhookData,
-				activeWorkflowData, // Use activeWorkflowData instead of workflowData
-				workflowStartNode,
-				executionMode,
-				undefined,
-				undefined,
-				undefined,
-				request,
-				response,
-				async (error: Error | null, data: object) => {
-					if (error !== null) {
-						return reject(error);
-					}
-					// Save static data if it changed
-					await this.workflowStaticDataService.saveStaticData(workflow);
-					resolve(data);
-				},
-			);
-		});
 	}
 
 	private async findWebhook(path: string, httpMethod: IHttpRequestMethods) {

@@ -20,7 +20,7 @@ import {
 	ExecutionContextHookRegistry,
 } from 'n8n-core';
 import { ObjectStoreConfig } from 'n8n-core/dist/binary-data/object-store/object-store.config';
-import { ensureError, sleep, UnexpectedError } from 'n8n-workflow';
+import { ensureError, Expression, sleep, UnexpectedError } from 'n8n-workflow';
 
 import type { AbstractServer } from '@/abstract-server';
 import { N8N_VERSION, N8N_RELEASE_DATE } from '@/constants';
@@ -174,6 +174,9 @@ export abstract class BaseCommand<F = never> {
 		await Container.get(PostHogClient).init();
 		await Container.get(TelemetryEventRelay).init();
 		Container.get(WorkflowFailureNotificationEventRelay).init();
+
+		const { engine, poolSize, maxCodeCacheSize } = this.globalConfig.expressionEngine;
+		await Expression.initExpressionEngine({ engine, poolSize, maxCodeCacheSize });
 	}
 
 	protected async stopProcess() {
@@ -197,7 +200,11 @@ export abstract class BaseCommand<F = never> {
 
 	protected async exitSuccessFully() {
 		try {
-			await Promise.all([CrashJournal.cleanup(), this.dbConnection.close()]);
+			await Promise.all([
+				CrashJournal.cleanup(),
+				this.dbConnection.close(),
+				Expression.disposeExpressionEngine(),
+			]);
 		} finally {
 			process.exit();
 		}
