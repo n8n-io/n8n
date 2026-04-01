@@ -23,6 +23,7 @@ import {
 } from 'n8n-workflow';
 
 import { DataTableService } from './data-table.service';
+import { DataTableSqlService } from './data-table-sql.service';
 
 import { OwnershipService } from '@/services/ownership.service';
 
@@ -31,6 +32,7 @@ const ALLOWED_NODES = [
 	'n8n-nodes-base.dataTableTool',
 	'n8n-nodes-base.evaluationTrigger',
 	'n8n-nodes-base.evaluation',
+	'@n8n/n8n-nodes-langchain.toolDataTableSqlQuery',
 ] as const;
 
 type AllowedNode = (typeof ALLOWED_NODES)[number];
@@ -43,6 +45,7 @@ export function isAllowedNode(s: string): s is AllowedNode {
 export class DataTableProxyService implements DataTableProxyProvider {
 	constructor(
 		private readonly dataTableService: DataTableService,
+		private readonly dataTableSqlService: DataTableSqlService,
 		private readonly ownershipService: OwnershipService,
 		private readonly logger: Logger,
 	) {
@@ -81,6 +84,25 @@ export class DataTableProxyService implements DataTableProxyProvider {
 		projectId = projectId ?? (await this.getProjectId(workflow));
 
 		return this.makeDataTableOperations(projectId, dataTableId);
+	}
+
+	async executeSqlQuery(
+		workflow: Workflow,
+		node: INode,
+		sql: string,
+		tableIds: string[],
+		projectId?: string,
+		options?: { maxRows?: number; timeoutMs?: number },
+	) {
+		this.validateRequest(node);
+		projectId = projectId ?? (await this.getProjectId(workflow));
+		return await this.dataTableSqlService.validateAndExecute(sql, tableIds, projectId, options);
+	}
+
+	async getTableSchemas(workflow: Workflow, node: INode, tableIds: string[], projectId?: string) {
+		this.validateRequest(node);
+		projectId = projectId ?? (await this.getProjectId(workflow));
+		return await this.dataTableSqlService.getTableSchemas(tableIds, projectId);
 	}
 
 	private makeAggregateOperations(projectId: string): IDataTableProjectAggregateService {

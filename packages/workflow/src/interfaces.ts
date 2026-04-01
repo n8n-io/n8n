@@ -1014,12 +1014,52 @@ export type DataTableProxyProvider = {
 		dataTableId: string,
 		projectId?: string,
 	): Promise<IDataTableProjectService>;
+	executeSqlQuery(
+		workflow: Workflow,
+		node: INode,
+		sql: string,
+		tableIds: string[],
+		projectId?: string,
+		options?: { maxRows?: number; timeoutMs?: number },
+	): Promise<{
+		rows: Array<Record<string, unknown>>;
+		rowCount: number;
+		truncated: boolean;
+	}>;
+	getTableSchemas(
+		workflow: Workflow,
+		node: INode,
+		tableIds: string[],
+		projectId?: string,
+	): Promise<
+		Array<{
+			id: string;
+			name: string;
+			columns: Array<{ name: string; type: string }>;
+		}>
+	>;
 };
 
 export type DataTableProxyFunctions = {
 	// These are optional to account for situations where the data-table module is disabled
 	getDataTableAggregateProxy?(): Promise<IDataTableProjectAggregateService>;
 	getDataTableProxy?(dataTableId: string): Promise<IDataTableProjectService>;
+	executeSqlQuery?(
+		sql: string,
+		tableIds: string[],
+		options?: { maxRows?: number; timeoutMs?: number },
+	): Promise<{
+		rows: Array<Record<string, unknown>>;
+		rowCount: number;
+		truncated: boolean;
+	}>;
+	getTableSchemas?(tableIds: string[]): Promise<
+		Array<{
+			id: string;
+			name: string;
+			columns: Array<{ name: string; type: string }>;
+		}>
+	>;
 };
 
 export type CredentialCheckStatus = {
