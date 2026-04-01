@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import {
 	mapChatMessagesToStoredMessages,
 	mapStoredMessagesToChatMessages,
@@ -37,21 +38,36 @@ export class WorkflowBuilderSessionRepository
 			messages,
 			previousSummary: entity.previousSummary ?? undefined,
 			updatedAt: entity.updatedAt,
+			activeVersionCardId: entity.activeVersionCardId,
+			resumeAfterRestoreMessageId: entity.resumeAfterRestoreMessageId,
 		};
 	}
 
 	async saveSession(threadId: string, data: StoredSession): Promise<void> {
 		const { workflowId, userId } = this.parseThreadId(threadId);
+		const messages = mapChatMessagesToStoredMessages(data.messages);
+		const previousSummary = data.previousSummary ?? null;
 
-		await this.upsert(
-			{
+		const activeVersionCardId = data.activeVersionCardId ?? null;
+		const resumeAfterRestoreMessageId = data.resumeAfterRestoreMessageId ?? null;
+
+		await this.createQueryBuilder()
+			.insert()
+			.into(WorkflowBuilderSession)
+			.values({
+				id: randomUUID(),
 				workflowId,
 				userId,
-				messages: mapChatMessagesToStoredMessages(data.messages),
-				previousSummary: data.previousSummary ?? null,
-			},
-			['workflowId', 'userId'],
-		);
+				messages,
+				previousSummary,
+				activeVersionCardId,
+				resumeAfterRestoreMessageId,
+			})
+			.orUpdate(
+				['messages', 'previousSummary', 'activeVersionCardId', 'resumeAfterRestoreMessageId'],
+				['workflowId', 'userId'],
+			)
+			.execute();
 	}
 
 	async deleteSession(threadId: string): Promise<void> {

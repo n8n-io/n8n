@@ -1,6 +1,7 @@
 import type { PushPayload } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
+import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 import type { Workflow } from 'n8n-workflow';
@@ -29,6 +30,7 @@ import { AccessService } from '@/services/access.service';
 @Service()
 export class CollaborationService {
 	constructor(
+		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
 		private readonly push: Push,
 		private readonly state: CollaborationState,
@@ -41,6 +43,13 @@ export class CollaborationService {
 			try {
 				await this.handleUserMessage(event.userId, event.pushRef, event.msg);
 			} catch (error) {
+				if (this.isTransientError(error)) {
+					this.logger.debug('Transient infrastructure error in collaboration service', {
+						error,
+					});
+					return;
+				}
+
 				this.errorReporter.error(
 					new UnexpectedError('Error handling CollaborationService push message', {
 						extra: {
@@ -53,6 +62,15 @@ export class CollaborationService {
 				);
 			}
 		});
+	}
+
+	private isTransientError(error: unknown): error is NodeJS.ErrnoException {
+		return (
+			error instanceof Error &&
+			'code' in error &&
+			typeof error.code === 'string' &&
+			['ECONNREFUSED', 'ETIMEDOUT', 'ENOTFOUND', 'ECONNRESET'].includes(error.code)
+		);
 	}
 
 	async handleUserMessage(userId: User['id'], clientId: string, msg: unknown) {

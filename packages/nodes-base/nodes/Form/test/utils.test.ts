@@ -1,3 +1,11 @@
+jest.mock('n8n-core', () => ({
+	getHtmlSandboxCSP: jest.fn(
+		() =>
+			'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
+	),
+	isFormHtmlSandboxingDisabled: jest.fn(() => false),
+}));
+
 import type { Request } from 'express';
 import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
@@ -703,7 +711,7 @@ describe('FormTrigger, formWebhook', () => {
 
 		expect(mockSetHeader).toHaveBeenCalledWith(
 			'Content-Security-Policy',
-			'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
+			'sandbox allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-presentation allow-scripts allow-top-navigation-by-user-activation allow-top-navigation-to-custom-protocols',
 		);
 	});
 

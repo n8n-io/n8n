@@ -1,17 +1,11 @@
+import type { TournamentHooks } from '@n8n/tournament';
+
 import type { RuntimeBridge } from './bridge';
 
 // ============================================================================
 // Phase 1.1: Core Evaluation Interfaces (MVP)
 // These are the minimal interfaces needed to evaluate expressions.
 // ============================================================================
-
-// TournamentHooks is imported from '@n8n/tournament' once that dependency is
-// added (PR 4). Defined locally here so the type surface is complete from PR 1.
-// See: packages/@n8n/expression-runtime/src/evaluator/expression-evaluator.ts
-export interface TournamentHooks {
-	before?: Array<(ast: unknown) => unknown>;
-	after?: Array<(ast: unknown) => unknown>;
-}
 
 /**
  * Configuration for ExpressionEvaluator.
@@ -36,6 +30,11 @@ export interface EvaluatorConfig {
 	 * If omitted, expressions are transformed with no security hooks (dev/testing use).
 	 */
 	hooks?: TournamentHooks;
+
+	/**
+	 * Maximum number of tournament-transformed expressions to cache (LRU).
+	 */
+	maxCodeCacheSize: number;
 }
 
 /**
@@ -84,9 +83,6 @@ export type WorkflowData = Record<string, unknown>;
 
 /**
  * Options for evaluate().
- */
-/**
- * Options for evaluate().
  *
  * Note: Slice 1 is minimal. Tournament options will be added later.
  */
@@ -96,6 +92,12 @@ export interface EvaluateOptions {
 	 * Overrides the bridge's default timeout.
 	 */
 	timeout?: number;
+
+	/**
+	 * IANA timezone for this evaluation (e.g., 'America/New_York').
+	 * Sets luxon Settings.defaultZone inside the isolate before execution.
+	 */
+	timezone?: string;
 }
 
 // ============================================================================

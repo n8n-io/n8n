@@ -15,7 +15,8 @@ export interface ApiKey {
 	expiresAt: string | null;
 }
 
-/** Default scopes for test API keys - covers most common operations */
+/** Default scopes for test API keys - covers most common operations.
+ * These scopes are owner-level; pass explicit scopes for member API keys. */
 const DEFAULT_API_KEY_SCOPES: ApiKeyScope[] = [
 	'user:read',
 	'user:list',
@@ -29,6 +30,9 @@ const DEFAULT_API_KEY_SCOPES: ApiKeyScope[] = [
 	'credential:create',
 	'credential:update',
 	'credential:delete',
+	'tag:create',
+	'tag:read',
+	'tag:list',
 	'project:create',
 	'project:update',
 	'project:delete',
@@ -109,7 +113,7 @@ export class PublicApiHelper {
 	 *
 	 * n8n's Public API doesn't have a direct "create user" endpoint. Users must be invited first,
 	 * then accept the invitation to complete registration. The invitation acceptance endpoint
-	 * (`/rest/invitations/:id/accept`) automatically logs in the new user by setting session cookies.
+	 * (`/rest/invitations/accept`) expects a JWT token from the invite link and sets session cookies.
 	 *
 	 * To prevent this from hijacking the current browser session (which would log out the owner),
 	 * we use an isolated request context for the acceptance step. This ensures the owner's session
@@ -133,15 +137,17 @@ export class PublicApiHelper {
 		const invited = await this.inviteUser(email, role);
 
 		const url = new URL(invited.inviteAcceptUrl);
-		const inviterId = url.searchParams.get('inviterId');
-		const inviteeId = url.searchParams.get('inviteeId');
+		const token = url.searchParams.get('token');
+		if (!token) {
+			throw new TestError(`Invite URL has no token: ${invited.inviteAcceptUrl}`);
+		}
 
 		// Use an isolated request context to prevent session cookie contamination.
 		// The accept endpoint sets cookies that would otherwise override the current user's session.
 		const isolatedContext = await request.newContext({ baseURL: url.origin });
 		try {
-			const acceptResponse = await isolatedContext.post(`/rest/invitations/${inviteeId}/accept`, {
-				data: { inviterId, firstName, lastName, password },
+			const acceptResponse = await isolatedContext.post('/rest/invitations/accept', {
+				data: { token, firstName, lastName, password },
 			});
 
 			if (!acceptResponse.ok()) {
@@ -153,6 +159,29 @@ export class PublicApiHelper {
 		}
 
 		return { id: invited.id, email, password, firstName, lastName, role: role as TestUser['role'] };
+	}
+
+	async getDiscovery(): Promise<{
+		scopes: string[];
+		resources: Record<
+			string,
+			{
+				operations: string[];
+				endpoints: Array<{ method: string; path: string; operationId: string }>;
+			}
+		>;
+		specUrl: string;
+	}> {
+		const headers = await this.getApiHeaders();
+		const response = await this.api.request.get('/api/v1/discover', { headers });
+
+		if (!response.ok()) {
+			const errorText = await response.text();
+			throw new TestError(`Failed to get discovery: ${response.status()} ${errorText}`);
+		}
+
+		const result = await response.json();
+		return result.data;
 	}
 
 	async getUsers(options?: { includeRole?: boolean; limit?: number }): Promise<

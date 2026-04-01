@@ -104,6 +104,7 @@ const containerClasses = computed(() => [
 ]);
 
 const inputWrapperClasses = computed(() => [
+	'n8n-input__wrapper',
 	$style.inputWrapper,
 	{
 		[$style.disabled]: props.disabled,
@@ -377,11 +378,67 @@ defineExpose({ focus, blur, select });
 </template>
 
 <style module lang="scss">
+@use '../../css/mixins/focus';
+
 .inputContainer {
 	display: inline-flex;
 	align-items: center;
 	width: 100%;
 	gap: var(--spacing--3xs);
+
+	--input--height: var(--height--lg);
+	--input--radius: var(--radius--2xs);
+	--input--font-size: var(--font-size--sm);
+	--input--padding: var(--spacing--xs);
+
+	--input--color--background: light-dark(var(--color--neutral-white), var(--color--neutral-950));
+	--input--shadow: 0 0 0 0 transparent;
+	--input--shadow--hover: 0 0 0 0 transparent;
+	--input--shadow--focus: 0 0 0 0 transparent;
+	--input--border-color: light-dark(var(--color--black-alpha-200), var(--color--white-alpha-100));
+	--input--border-color--hover: light-dark(
+		var(--color--black-alpha-200),
+		var(--color--white-alpha-200)
+	);
+	--input--border-color--focus: light-dark(
+		var(--color--black-alpha-300),
+		var(--color--white-alpha-300)
+	);
+	--input--border--shadow: 0 0 0 1px var(--input--border-color);
+	--input--border--shadow--hover: 0 0 0 1px var(--input--border-color--hover);
+	--input--border--shadow--focus: 0 0 0 1px var(--input--border-color--focus);
+
+	&.xlarge {
+		--input--height: var(--height--xl);
+		--input--radius: var(--radius--2xs);
+		--input--font-size: var(--font-size--md);
+	}
+
+	&.large {
+		--input--height: var(--height--lg);
+		--input--radius: var(--radius--2xs);
+		--input--font-size: var(--font-size--sm);
+	}
+
+	&.medium {
+		--input--height: var(--height--md);
+		--input--radius: var(--radius--3xs);
+		--input--font-size: var(--font-size--sm);
+	}
+
+	&.small {
+		--input--height: var(--height--sm);
+		--input--radius: var(--radius--3xs);
+		--input--font-size: var(--font-size--xs);
+		--input--padding: var(--spacing--2xs);
+	}
+
+	&.mini {
+		--input--height: var(--height--xs);
+		--input--radius: var(--radius--3xs);
+		--input--font-size: var(--font-size--2xs);
+		--input--padding: var(--spacing--2xs);
+	}
 }
 
 .inputWrapper {
@@ -389,36 +446,48 @@ defineExpose({ focus, blur, select });
 	align-items: center;
 	flex: 1;
 	min-width: 0;
-	gap: var(--spacing--3xs);
-	border-radius: var(--input--radius--top-left, var(--input--radius, var(--radius)))
-		var(--input--radius--top-right, var(--input--radius, var(--radius)))
-		var(--input--radius--bottom-right, var(--input--radius, var(--radius)))
-		var(--input--radius--bottom-left, var(--input--radius, var(--radius)));
-	border: var(--input--border-width, var(--border-width))
-		var(--input--border-style, var(--border-style)) var(--input--border-color, var(--border-color));
-	background-color: var(--input--color--background, var(--color--background--light-2));
+	gap: var(--input--padding);
+	padding: 0 var(--input--padding);
+	min-height: var(--input--height);
+	border-radius: var(--input--radius--top-left, var(--input--radius))
+		var(--input--radius--top-right, var(--input--radius))
+		var(--input--radius--bottom-right, var(--input--radius))
+		var(--input--radius--bottom-left, var(--input--radius));
+	background-color: var(--input--color--background);
+	box-shadow:
+		var(--input--shadow),
+		inset var(--input--border--shadow);
+
+	/** NOTE (@heymynameisrob): Handles autofill colouring as padding from above isn't included **/
+	> input {
+		padding: 0 var(--input--padding);
+		margin-inline: calc(var(--input--padding) * -1);
+		border-radius: inherit;
+	}
+
+	@include focus.focus-within-ring;
 
 	&:hover:not(.disabled):not(:focus-within) {
-		border-color: var(--input--border-color--hover, var(--color--foreground--shade-1));
+		box-shadow:
+			var(--input--shadow--hover),
+			inset var(--input--border--shadow--hover);
 	}
 
 	&:focus-within {
-		border-color: var(--input--border-color--focus, var(--color--secondary));
+		box-shadow:
+			var(--input--shadow--focus),
+			inset var(--input--border--shadow--focus);
 	}
 
 	&.disabled {
-		background-color: var(--color--background--light-3);
 		cursor: not-allowed;
 		opacity: 0.6;
-	}
-
-	&.readonly {
-		background-color: var(--color--background--light-3);
 	}
 }
 
 .isTextarea {
 	align-items: flex-start;
+	padding-inline: 0;
 }
 
 .disabled {
@@ -439,85 +508,16 @@ defineExpose({ focus, blur, select });
 	border-bottom-right-radius: 0;
 }
 
-/* Size variants - padding on wrapper, height on input */
-.xlarge .inputWrapper {
-	padding: 0 var(--spacing--xs);
-}
-
-.xlarge .input {
-	min-height: 48px;
-	font-size: var(--input--font-size, var(--font-size--md));
-}
-
-.xlarge .textarea {
-	padding: var(--spacing--2xs) 0;
-	font-size: var(--input--font-size, var(--font-size--md));
-}
-
-.large .inputWrapper {
-	padding: 0 var(--spacing--xs);
-}
-
-.large .input {
-	min-height: 40px;
-	font-size: var(--input--font-size, var(--font-size--sm));
-}
-
-.large .textarea {
-	padding: var(--spacing--2xs) 0;
-	font-size: var(--input--font-size, var(--font-size--sm));
-}
-
-.medium .inputWrapper {
-	padding: 0 var(--spacing--2xs);
-}
-
-.medium .input {
-	min-height: 36px;
-	font-size: var(--input--font-size, var(--font-size--sm));
-}
-
-.medium .textarea {
-	padding: var(--spacing--2xs) 0;
-	font-size: var(--input--font-size, var(--font-size--sm));
-}
-
-.small .inputWrapper {
-	padding: 0 var(--spacing--2xs);
-}
-
-.small .input {
-	min-height: 28px;
-	font-size: var(--input--font-size, var(--font-size--2xs));
-}
-
-.small .textarea {
-	padding: var(--spacing--2xs) 0;
-	font-size: var(--input--font-size, var(--font-size--2xs));
-}
-
-.mini .inputWrapper {
-	padding: 0 var(--spacing--3xs);
-}
-
-.mini .input {
-	min-height: 22px;
-	font-size: var(--input--font-size, var(--font-size--3xs));
-}
-
-.mini .textarea {
-	padding: var(--spacing--3xs) 0;
-	font-size: var(--input--font-size, var(--font-size--3xs));
-}
-
 .input {
 	flex: 1;
 	min-width: 0;
+	min-height: var(--input--height);
 	padding: 0;
 	border: none;
 	background: transparent;
 	outline: none;
 	font-family: inherit;
+	font-size: var(--input--font-size, var(--font-size--md));
 	color: var(--color--text--shade-1);
 }
 
@@ -538,12 +538,13 @@ defineExpose({ focus, blur, select });
 	flex: 1;
 	min-width: 0;
 	resize: vertical;
+	padding: var(--input--padding);
 	line-height: var(--line-height--md);
 	border: none;
 	background: transparent;
 	outline: none;
 	font-family: inherit;
-	color: var(--color--text--shade-1);
+	font-size: var(--input--font-size, var(--font-size--base));
 }
 
 .textarea::placeholder {
@@ -564,7 +565,13 @@ defineExpose({ focus, blur, select });
 	display: flex;
 	align-items: center;
 	flex-shrink: 0;
-	color: var(--color--text--tint-1);
+	color: var(--color--text--shade-1);
+	opacity: 0.7;
+
+	svg {
+		width: var(--spacing--sm);
+		height: var(--spacing--sm);
+	}
 }
 
 .clearButton {
@@ -594,8 +601,7 @@ defineExpose({ focus, blur, select });
 	display: flex;
 	align-items: center;
 	flex-shrink: 0;
-	color: var(--color--text--tint-1);
-	background-color: var(--color--background--light-3);
+	background-color: light-dark(var(--color--neutral-150), var(--color--neutral-800));
 	padding: 0 var(--spacing--xs);
 }
 

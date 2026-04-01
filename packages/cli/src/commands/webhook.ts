@@ -69,6 +69,7 @@ export class Webhook extends BaseCommand {
 
 		await this.initLicense();
 		this.logger.debug('License init complete');
+		await this.initCommunityPackages();
 		await this.initOrchestration();
 		this.logger.debug('Orchestration init complete');
 		await this.initBinaryDataService();
@@ -90,6 +91,7 @@ export class Webhook extends BaseCommand {
 		const { ScalingService } = await import('@/scaling/scaling.service');
 		await Container.get(ScalingService).setupQueue();
 		await this.server.start();
+		this.server.markAsReady();
 		this.logger.info('Webhook listener waiting for requests.');
 
 		Container.get(LoadNodesAndCredentials).releaseTypes();

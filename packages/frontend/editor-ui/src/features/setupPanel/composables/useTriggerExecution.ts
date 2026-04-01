@@ -2,18 +2,26 @@ import { computed, toValue, type MaybeRef } from 'vue';
 import { useI18n } from '@n8n/i18n';
 
 import type { INodeUi } from '@/Interface';
-import { useNodeExecution } from '@/app/composables/useNodeExecution';
+import { useNodeExecution, type UseNodeExecutionOptions } from '@/app/composables/useNodeExecution';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { getTriggerNodeServiceName } from '@/app/utils/nodeTypesUtils';
+import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants/nodeTypes';
+import { useLogsStore } from '@/app/stores/logs.store';
 
 /**
  * Wraps `useNodeExecution` with listening-hint logic for setup-panel cards.
  * Returns everything a card needs: execution state for the button + listening
  * hint text for the callout.
  */
-export function useTriggerExecution(node: MaybeRef<INodeUi | null>) {
+export function useTriggerExecution(
+	node: MaybeRef<INodeUi | null>,
+	options?: UseNodeExecutionOptions,
+) {
 	const i18n = useI18n();
 	const nodeTypesStore = useNodeTypesStore();
+	const workflowsStore = useWorkflowsStore();
+	const logsStore = useLogsStore();
 
 	const {
 		isExecuting,
@@ -24,7 +32,7 @@ export function useTriggerExecution(node: MaybeRef<INodeUi | null>) {
 		disabledReason,
 		hasIssues,
 		execute,
-	} = useNodeExecution(node);
+	} = useNodeExecution(node, options);
 
 	const nodeValue = computed(() => toValue(node));
 
@@ -34,9 +42,15 @@ export function useTriggerExecution(node: MaybeRef<INodeUi | null>) {
 			: null,
 	);
 
-	const isInListeningState = computed(
-		() => isListening.value || isListeningForWorkflowEvents.value,
-	);
+	const isInListeningState = computed(() => {
+		if (isListening.value || isListeningForWorkflowEvents.value) return true;
+
+		return (
+			nodeType.value?.name === CHAT_TRIGGER_NODE_TYPE &&
+			logsStore.isOpen &&
+			workflowsStore.chatPartialExecutionDestinationNode === nodeValue.value?.name
+		);
+	});
 
 	const listeningHint = computed(() => {
 		if (!isInListeningState.value || !nodeType.value) return '';
@@ -58,23 +72,37 @@ export function useTriggerExecution(node: MaybeRef<INodeUi | null>) {
 		return buttonLabel.value;
 	});
 
+	const hasUpstreamIssues = computed(() => {
+		if (!nodeValue.value) return false;
+		const parentNames = workflowsStore.workflowObject.getParentNodes(nodeValue.value.name, 'ALL');
+		return parentNames.some((name) => {
+			const parentNode = workflowsStore.getNodeByName(name);
+			return parentNode?.issues?.parameters || parentNode?.issues?.credentials;
+		});
+	});
+
 	const isButtonDisabled = computed(
-		() => isExecuting.value || hasIssues.value || !!disabledReason.value,
+		() => isExecuting.value || hasIssues.value || hasUpstreamIssues.value || !!disabledReason.value,
 	);
 
 	const tooltipItems = computed<string[]>(() => {
-		if (!hasIssues.value) {
+		if (!hasIssues.value && !hasUpstreamIssues.value) {
 			return disabledReason.value ? [disabledReason.value] : [];
 		}
 
+		const messages: string[] = [];
+
 		const issues = nodeValue.value?.issues;
-		if (!issues) {
-			return [i18n.baseText('ndv.execute.requiredFieldsMissing')];
+		if (issues) {
+			messages.push(
+				...Object.values(issues.credentials ?? {}).flat(),
+				...Object.values(issues.parameters ?? {}).flat(),
+			);
 		}
 
-		const credentialErrors = Object.values(issues.credentials ?? {}).flat();
-		const parameterErrors = Object.values(issues.parameters ?? {}).flat();
-		const messages = [...credentialErrors, ...parameterErrors];
+		if (hasUpstreamIssues.value) {
+			messages.push(i18n.baseText('ndv.execute.upstreamNodeHasIssues'));
+		}
 
 		return messages.length > 0 ? messages : [i18n.baseText('ndv.execute.requiredFieldsMissing')];
 	});

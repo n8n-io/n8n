@@ -26,6 +26,16 @@ function isDnsError(error: unknown): boolean {
 	return message.includes('getaddrinfo') || message.includes('ENOTFOUND');
 }
 
+/**
+ * Type guard for errors thrown by `executeNpmCommand` with `doNotHandleError: true`
+ * (e.g. npm outdated exits with code 1 when updates exist).
+ */
+export function isNpmExecErrorWithStdout(
+	error: unknown,
+): error is { code: number; stdout: string } {
+	return typeof error === 'object' && error !== null && 'code' in error && 'stdout' in error;
+}
+
 function isNpmError(error: unknown): boolean {
 	const message = error instanceof Error ? error.message : String(error);
 	return (
@@ -114,7 +124,9 @@ export async function verifyIntegrity(
 
 		const integrity = metadata?.data?.dist?.integrity;
 		if (integrity !== expectedIntegrity) {
-			throw new UnexpectedError('Checksum verification failed. Package integrity does not match.');
+			throw new UnexpectedError(
+				'Checksum verification failed. Package integrity does not match. Try restarting n8n and attempting the installation again.',
+			);
 		}
 		return;
 	} catch (error) {
@@ -133,7 +145,7 @@ export async function verifyIntegrity(
 			const integrity = jsonParse(stdout);
 			if (integrity !== expectedIntegrity) {
 				throw new UnexpectedError(
-					'Checksum verification failed. Package integrity does not match.',
+					'Checksum verification failed. Package integrity does not match. Try restarting n8n and attempting the installation again.',
 				);
 			}
 			return;
@@ -143,7 +155,9 @@ export async function verifyIntegrity(
 					'Checksum verification failed. Please check your network connection and try again.',
 				);
 			}
-			throw new UnexpectedError('Checksum verification failed');
+			throw new UnexpectedError(
+				'Checksum verification failed. Try restarting n8n and attempting the installation again.',
+			);
 		}
 	}
 }

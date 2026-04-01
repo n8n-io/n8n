@@ -112,6 +112,7 @@ beforeEach(async () => {
 	anotherMember = await createMember();
 
 	workflowValidationService.validateForActivation.mockReturnValue({ isValid: true });
+	workflowValidationService.validateDynamicCredentials.mockResolvedValue({ isValid: true });
 	workflowValidationService.validateSubWorkflowReferences.mockResolvedValue({ isValid: true });
 
 	folderListMissingRole = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:list'], {
@@ -1206,6 +1207,7 @@ describe('GET /workflows', () => {
 					'workflow:list',
 					'workflow:move',
 					'workflow:publish',
+					'workflow:unpublish',
 					'workflow:read',
 					'workflow:share',
 					'workflow:unshare',
@@ -1225,6 +1227,7 @@ describe('GET /workflows', () => {
 					'workflow:list',
 					'workflow:move',
 					'workflow:publish',
+					'workflow:unpublish',
 					'workflow:read',
 					'workflow:share',
 					'workflow:unshare',
@@ -2384,6 +2387,7 @@ describe('GET /workflows?includeFolders=true', () => {
 					'workflow:list',
 					'workflow:move',
 					'workflow:publish',
+					'workflow:unpublish',
 					'workflow:read',
 					'workflow:share',
 					'workflow:unshare',
@@ -2403,6 +2407,7 @@ describe('GET /workflows?includeFolders=true', () => {
 					'workflow:list',
 					'workflow:move',
 					'workflow:publish',
+					'workflow:unpublish',
 					'workflow:read',
 					'workflow:share',
 					'workflow:unshare',
@@ -4167,8 +4172,8 @@ describe('POST /workflows/:workflowId/deactivate', () => {
 			.post(`/workflows/${workflow.id}/deactivate`)
 			.send({ expectedChecksum: outdatedChecksum });
 
-		expect(response.statusCode).toBe(400);
-		expect(response.body.code).toBe(100);
+		expect(response.statusCode).toBe(409);
+		expect(response.body.code).toBe(409);
 	});
 
 	test('should allow deactivation when expectedChecksum matches', async () => {
@@ -4416,8 +4421,8 @@ describe('POST /workflows/:workflowId/archive', () => {
 			.post(`/workflows/${workflow.id}/archive`)
 			.send({ expectedChecksum: outdatedChecksum });
 
-		expect(response.statusCode).toBe(400);
-		expect(response.body.code).toBe(100);
+		expect(response.statusCode).toBe(409);
+		expect(response.body.code).toBe(409);
 	});
 
 	test('should allow archive when expectedChecksum matches', async () => {

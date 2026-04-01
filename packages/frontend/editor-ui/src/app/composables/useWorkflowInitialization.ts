@@ -1,5 +1,5 @@
 import { ref, computed, shallowRef } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { type RouteRecordNameGeneric, useRoute, useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
@@ -12,7 +12,6 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
-import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useHistoryStore } from '@/app/stores/history.store';
@@ -45,7 +44,6 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 	const nodeTypesStore = useNodeTypesStore();
 	const credentialsStore = useCredentialsStore();
 	const environmentsStore = useEnvironmentsStore();
-	const externalSecretsStore = useExternalSecretsStore();
 	const settingsStore = useSettingsStore();
 	const projectsStore = useProjectsStore();
 	const historyStore = useHistoryStore();
@@ -54,6 +52,8 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 	const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
 	const telemetry = useTelemetry();
 
+	const DEMO_ROUTES: RouteRecordNameGeneric[] = [VIEWS.DEMO, VIEWS.DEMO_DIFF];
+
 	const {
 		resetWorkspace,
 		initializeWorkspace,
@@ -61,7 +61,6 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 		openWorkflowTemplate,
 		openWorkflowTemplateFromJSON,
 	} = useCanvasOperations();
-	const { fetchAndSetParentFolder } = useParentFolder();
 	// Pass workflowState to useExecutionDebugging since we're in the same component
 	// that provides WorkflowStateKey (WorkflowLayout), so inject won't work
 	const { applyExecutionData } = useExecutionDebugging(workflowState);
@@ -74,6 +73,8 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 		typeof useWorkflowDocumentStore
 	> | null>(null);
 
+	const { fetchParentFolder } = useParentFolder();
+
 	function disposeCurrentWorkflowDocumentStore() {
 		if (currentWorkflowDocumentStore.value) {
 			const storeId = createWorkflowDocumentId(
@@ -85,16 +86,18 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 		}
 	}
 
-	const workflowId = computed(() => {
-		const name = route.params.name;
-		return (Array.isArray(name) ? name[0] : name) ?? '';
-	});
-
 	const isNewWorkflowRoute = computed(() => route.query.new === 'true');
-	const isDemoRoute = computed(() => route.name === VIEWS.DEMO);
+	const isDemoRoute = computed(() => DEMO_ROUTES.includes(route.name));
 	const isTemplateRoute = computed(() => route.name === VIEWS.TEMPLATE_IMPORT);
 	const isOnboardingRoute = computed(() => route.name === VIEWS.WORKFLOW_ONBOARDING);
 	const isDebugRoute = computed(() => route.name === VIEWS.EXECUTION_DEBUG);
+
+	const workflowId = computed(() => {
+		if (isDemoRoute.value) return 'demo';
+
+		const name = route.params.name;
+		return (Array.isArray(name) ? name[0] : name) ?? '';
+	});
 
 	async function loadCredentials() {
 		let options: { workflowId: string } | { projectId: string };
@@ -202,15 +205,6 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 				promises.push(environmentsStore.fetchAllVariables());
 			}
 
-			if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.ExternalSecrets]) {
-				promises.push(externalSecretsStore.fetchGlobalSecrets());
-				const shouldFetchProjectSecrets =
-					projectsStore.currentProjectId !== projectsStore.personalProject?.id;
-				if (shouldFetchProjectSecrets && typeof projectsStore.currentProjectId === 'string') {
-					promises.push(externalSecretsStore.fetchProjectSecrets(projectsStore.currentProjectId));
-				}
-			}
-
 			return promises;
 		})();
 
@@ -263,7 +257,7 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 
 		const parentFolderId = route.query.parentFolderId as string | undefined;
 
-		await workflowState.getNewWorkflowDataAndMakeShareable(
+		await workflowState.getNewWorkflowData(
 			undefined,
 			projectsStore.currentProjectId,
 			parentFolderId,
@@ -278,7 +272,14 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 		currentWorkflowDocumentStore.value.setHomeProject(homeProject);
 
 		await projectsStore.refreshCurrentProject();
-		await fetchAndSetParentFolder(parentFolderId);
+
+		const { currentProject, personalProject } = projectsStore;
+		currentWorkflowDocumentStore.value.setScopes(
+			currentProject?.scopes ?? personalProject?.scopes ?? [],
+		);
+
+		const parentFolder = await fetchParentFolder(parentFolderId);
+		currentWorkflowDocumentStore.value?.setParentFolder(parentFolder);
 
 		uiStore.nodeViewInitialized = true;
 		initializedWorkflowId.value = workflowId.value;
@@ -291,10 +292,6 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 			const workflowData = await workflowsListStore.fetchWorkflow(id);
 
 			await openWorkflow(workflowData);
-
-			if (workflowData.parentFolder) {
-				workflowsStore.setParentFolder(workflowData.parentFolder);
-			}
 
 			// Track telemetry for onboarding and experiment workflows
 			if (workflowData.meta?.onboardingId) {

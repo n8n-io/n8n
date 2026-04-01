@@ -36,6 +36,7 @@ const {
 	mockRunWorkflow,
 	mockPinnedData,
 	mockMessage,
+	mockWorkflowDocumentStore,
 } = vi.hoisted(() => ({
 	mockWorkflowsStore: {
 		isWorkflowRunning: false,
@@ -68,6 +69,14 @@ const {
 	mockMessage: {
 		confirm: vi.fn(),
 	},
+	mockWorkflowDocumentStore: {
+		updateNodeProperties: vi.fn(),
+	},
+}));
+
+vi.mock('@/app/stores/workflowDocument.store', () => ({
+	useWorkflowDocumentStore: vi.fn().mockReturnValue(mockWorkflowDocumentStore),
+	createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
 }));
 
 vi.mock('vue-router', async (importOriginal) => {
@@ -460,7 +469,7 @@ describe('useNodeExecution', () => {
 
 			const { buttonLabel } = useNodeExecution(node);
 
-			expect(buttonLabel.value).toBe('ndv.execute.testChat');
+			expect(buttonLabel.value).toBe('chat.open');
 		});
 
 		it('should return listenForTestEvent for webhook node', () => {
@@ -755,7 +764,7 @@ describe('useNodeExecution', () => {
 				name: `parameters.${AI_TRANSFORM_JS_CODE}`,
 				value: 'return items;',
 			});
-			vi.spyOn(workflowState, 'updateNodeProperties').mockImplementation(() => {});
+			mockWorkflowDocumentStore.updateNodeProperties.mockClear();
 			const node = ref(
 				createTestNode({
 					name: 'AI Transform',
@@ -768,7 +777,7 @@ describe('useNodeExecution', () => {
 			const result = await execute();
 
 			expect(generateCodeForAiTransform).toHaveBeenCalled();
-			expect(workflowState.updateNodeProperties).toHaveBeenCalled();
+			expect(mockWorkflowDocumentStore.updateNodeProperties).toHaveBeenCalled();
 			expect(result).toBe('executed');
 		});
 
@@ -777,7 +786,7 @@ describe('useNodeExecution', () => {
 				name: `parameters.${AI_TRANSFORM_JS_CODE}`,
 				value: 'return items;',
 			});
-			vi.spyOn(workflowState, 'updateNodeProperties').mockImplementation(() => {});
+			mockWorkflowDocumentStore.updateNodeProperties.mockClear();
 			const onCodeGenerated = vi.fn();
 			const node = ref(
 				createTestNode({

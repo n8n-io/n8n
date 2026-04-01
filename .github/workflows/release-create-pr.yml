@@ -13,6 +13,11 @@ on:
         required: true
         type: string
 
+    outputs:
+      pull-request-number:
+        description: 'Number of the created pull request'
+        value: ${{ jobs.create-release-pr.outputs.pull-request-number }}
+
   workflow_dispatch:
     inputs:
       base-branch:
@@ -32,6 +37,10 @@ on:
           - experimental
           - premajor
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   create-release-pr:
     runs-on: ubuntu-latest
@@ -42,16 +51,19 @@ jobs:
 
     timeout-minutes: 5
 
+    outputs:
+      pull-request-number: ${{ steps.create-pr.outputs.pull-request-number }}
+
     steps:
       - name: Generate GitHub App Token
         id: generate_token
-        uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2.0.6
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
         with:
           app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
           private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
 
       - name: Checkout
-        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
           token: ${{ steps.generate_token.outputs.token }}
@@ -60,14 +72,14 @@ jobs:
       # poutine: untrusted_checkout_exec
       - name: Switch to base branch
         env:
-          BASE_BRANCH: ${{ github.event.inputs.base-branch }}
+          BASE_BRANCH: ${{ inputs.base-branch }}
         run: git checkout "$BASE_BRANCH"
 
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
         with:
-          node-version: 24.13.1
-
-      - run: npm install --prefix=.github/scripts --no-package-lock
+          build-command: ''
+          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
 
       - name: Setup corepack and pnpm
         run: |
@@ -78,14 +90,14 @@ jobs:
         run: |
           echo "NEXT_RELEASE=$(node .github/scripts/bump-versions.mjs)" >> "$GITHUB_ENV"
         env:
-          RELEASE_TYPE: ${{ github.event.inputs.release-type }}
+          RELEASE_TYPE: ${{ inputs.release-type }}
 
       - name: Update Changelog
         run: node .github/scripts/update-changelog.mjs
 
       - name: Push the base branch
         env:
-          BASE_BRANCH: ${{ github.event.inputs.base-branch }}
+          BASE_BRANCH: ${{ inputs.base-branch }}
         run: |
           git push -f origin "refs/remotes/origin/${{ env.BASE_BRANCH }}:refs/heads/release/${{ env.NEXT_RELEASE }}"
 
@@ -107,13 +119,23 @@ jobs:
           fi
 
       - name: Push the release branch, and Create the PR
-        uses: peter-evans/create-pull-request@c5a7806660adbe173f04e3e038b0ccdcd758773c # v6
+        uses: peter-evans/create-pull-request@c0f553fe549906ede9cf27b5156039d195d2ece0 # v8.1.0
+        id: create-pr
         with:
           token: ${{ steps.generate_token.outputs.token }}
           base: 'release/${{ env.NEXT_RELEASE }}'
           branch: 'release-pr/${{ env.NEXT_RELEASE }}'
           commit-message: ':rocket: Release ${{ env.NEXT_RELEASE }}'
           delete-branch: true
-          labels: release,release:${{ github.event.inputs.release-type }}
+          labels: release,release:${{ inputs.release-type }}
           title: ':rocket: Release ${{ env.NEXT_RELEASE }}'
           body: ${{ steps.generate-body.outputs.content }}
+
+  approve-and-automerge:
+    needs: [create-release-pr]
+    if: |
+      needs.create-release-pr.outputs.pull-request-number != ''
+    uses: ./.github/workflows/util-approve-and-set-automerge.yml
+    secrets: inherit
+    with:
+      pull-request-number: ${{ needs.create-release-pr.outputs.pull-request-number }}
