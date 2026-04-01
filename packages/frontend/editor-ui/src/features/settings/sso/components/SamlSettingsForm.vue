@@ -287,6 +287,7 @@ onMounted(async () => {
 	<div>
 		<!-- Card 1: SSO Configuration -->
 		<div :class="$style.card">
+			<slot name="protocol-select" />
 			<div :class="$style.group">
 				<label>{{ i18n.baseText('settings.sso.settings.redirectUrl.label') }}</label>
 				<CopyInput

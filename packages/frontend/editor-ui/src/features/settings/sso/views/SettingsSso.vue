@@ -111,38 +111,69 @@ onMounted(() => {
 				{{ i18n.baseText('settings.sso.info.link') }}
 			</a>
 		</N8nInfoTip>
-		<div v-if="hasAnySsoEnabled" data-test-id="sso-auth-protocol-select" :class="shared.group">
-			<label>Select Authentication Protocol</label>
-			<div>
-				<N8nSelect
-					filterable
-					:model-value="authProtocol"
-					:placeholder="i18n.baseText('parameterInput.select')"
-					@update:model-value="onAuthProtocolUpdated"
-					@keydown.stop
-				>
-					<N8nOption
-						v-for="{ label, value } in options"
-						:key="value"
-						:value="value"
-						:label="label"
-						data-test-id="credential-select-option"
-					>
-					</N8nOption>
-				</N8nSelect>
-			</div>
-		</div>
 		<div
 			v-if="ssoStore.isEnterpriseSamlEnabled && authProtocol === SupportedProtocols.SAML"
 			data-test-id="sso-content-licensed"
 		>
-			<SamlSettingsForm ref="samlForm" />
+			<SamlSettingsForm ref="samlForm">
+				<template #protocol-select>
+					<div data-test-id="sso-auth-protocol-select" :class="$style.settingsItem">
+						<div :class="$style.settingsItemLabel">
+							<label>Authentication protocol</label>
+							<small>Choose your SSO protocol</small>
+						</div>
+						<div :class="$style.settingsItemControl">
+							<N8nSelect
+								filterable
+								:model-value="authProtocol"
+								:placeholder="i18n.baseText('parameterInput.select')"
+								@update:model-value="onAuthProtocolUpdated"
+								@keydown.stop
+							>
+								<N8nOption
+									v-for="{ label, value } in options"
+									:key="value"
+									:value="value"
+									:label="label"
+									data-test-id="credential-select-option"
+								/>
+							</N8nSelect>
+						</div>
+					</div>
+				</template>
+			</SamlSettingsForm>
 		</div>
 		<div
 			v-if="ssoStore.isEnterpriseOidcEnabled && authProtocol === SupportedProtocols.OIDC"
 			data-test-id="sso-content-licensed"
 		>
-			<OidcSettingsForm ref="oidcForm" />
+			<OidcSettingsForm ref="oidcForm">
+				<template #protocol-select>
+					<div data-test-id="sso-auth-protocol-select" :class="$style.settingsItem">
+						<div :class="$style.settingsItemLabel">
+							<label>Authentication protocol</label>
+							<small>Choose your SSO protocol</small>
+						</div>
+						<div :class="$style.settingsItemControl">
+							<N8nSelect
+								filterable
+								:model-value="authProtocol"
+								:placeholder="i18n.baseText('parameterInput.select')"
+								@update:model-value="onAuthProtocolUpdated"
+								@keydown.stop
+							>
+								<N8nOption
+									v-for="{ label, value } in options"
+									:key="value"
+									:value="value"
+									:label="label"
+									data-test-id="credential-select-option"
+								/>
+							</N8nSelect>
+						</div>
+					</div>
+				</template>
+			</OidcSettingsForm>
 		</div>
 		<N8nActionBox
 			v-if="!hasAnySsoEnabled"
@@ -198,6 +229,36 @@ onMounted(() => {
 
 .actionBox {
 	margin-top: var(--spacing--lg);
+}
+
+.settingsItem {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	min-height: 64px;
+	padding: var(--spacing--xs) 0;
+	border-bottom: var(--border-width) var(--border-style) var(--color--foreground--tint-1);
+}
+
+.settingsItemLabel {
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+
+	label {
+		font-size: var(--font-size--sm);
+		font-weight: var(--font-weight--medium);
+		color: var(--color--text);
+	}
+
+	small {
+		font-size: var(--font-size--2xs);
+		color: var(--color--text--tint-1);
+	}
+}
+
+.settingsItemControl {
+	min-width: 200px;
 }
 
 .dialogFooter {
