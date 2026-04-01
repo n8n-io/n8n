@@ -628,6 +628,10 @@ describe('HttpRequestV3', () => {
 								},
 							},
 						};
+					case 'options.response.response.responseFormat':
+						return 'json';
+					case 'options.response.response.fullResponse':
+						return true;
 					default:
 						return undefined;
 				}
