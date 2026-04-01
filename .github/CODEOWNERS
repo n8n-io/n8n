@@ -104,7 +104,7 @@ packages/cli/src/modules/workflow-builder/              @n8n-io/ai
 packages/cli/src/modules/mcp/                           @n8n-io/ai
 packages/cli/src/modules/quick-connect/                 @n8n-io/ai
 
-packages/cli/src/modules/chat-hub/                      @n8n-io/chat
+packages/cli/src/modules/chat-hub/                      @n8n-io/ai # Suggesting a new @n8n-io/chat team
 
 packages/cli/src/modules/community-packages/            @n8n-io/nodes
 
