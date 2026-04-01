@@ -15,7 +15,7 @@ export class AlicloudModelStudio implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Alibaba Cloud Model Studio',
 		name: 'alicloudModelStudio',
-		icon: 'file:Qwen.svg',
+		icon: 'file:alibaba.svg',
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{ $parameter["operation"] + ": " + $parameter["resource"] }}',
@@ -26,7 +26,7 @@ export class AlicloudModelStudio implements INodeType {
 		codex: {
 			categories: ['AI'],
 			subcategories: {
-				AI: ['Language Models', 'Image', 'Video'],
+				AI: ['Agents', 'Miscellaneous', 'Root Nodes'],
 			},
 		},
 		inputs: [NodeConnectionTypes.Main],
