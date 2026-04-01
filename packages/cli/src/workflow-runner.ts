@@ -286,15 +286,20 @@ export class WorkflowRunner {
 			});
 
 			if (data.streamingEnabled) {
-				// Send periodic keepalive newlines to prevent reverse proxies
+				// Send periodic keepalive comments to prevent reverse proxies
 				// (e.g. Cloudflare ~100s idle timeout) from killing the connection
 				// during long tool calls that produce no chunks.
+				// Uses a JSON keepalive object (not just '\n') to ensure the
+				// compression middleware produces output bytes after flush.
 				// Cleared when the execution finishes (success, error, or timeout).
 				const STREAMING_HEARTBEAT_INTERVAL_MS = 30_000;
+				const keepaliveChunk = '{"type":"keepalive"}\n';
 				const heartbeatInterval = setInterval(() => {
 					if (!data.httpResponse?.writableEnded) {
-						data.httpResponse?.write('\n');
-						data.httpResponse?.flush?.();
+						data.httpResponse?.write(keepaliveChunk);
+						if (typeof data.httpResponse?.flush === 'function') {
+							data.httpResponse.flush();
+						}
 					}
 				}, STREAMING_HEARTBEAT_INTERVAL_MS);
 
@@ -304,7 +309,9 @@ export class WorkflowRunner {
 
 				lifecycleHooks.addHandler('sendChunk', (chunk) => {
 					data.httpResponse?.write(JSON.stringify(chunk) + '\n');
-					data.httpResponse?.flush?.();
+					if (typeof data.httpResponse?.flush === 'function') {
+						data.httpResponse.flush();
+					}
 				});
 			}
 

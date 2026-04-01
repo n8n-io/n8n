@@ -623,6 +623,61 @@ describe('sendMessageStreaming', () => {
 			expect(onEndMessage).toHaveBeenCalledTimes(1);
 		});
 
+		it('should silently ignore keepalive heartbeat chunks', async () => {
+			const keepaliveChunk = { type: 'keepalive' };
+			const validChunk = {
+				type: 'item',
+				content: 'real data',
+				metadata: {
+					nodeId: 'node-1',
+					nodeName: 'Test Node',
+					timestamp: Date.now(),
+					runIndex: 0,
+					itemIndex: 0,
+				},
+			};
+
+			const encoder = new TextEncoder();
+			const stream = new ReadableStream({
+				start(controller) {
+					controller.enqueue(
+						encoder.encode(
+							JSON.stringify(keepaliveChunk) +
+								'\n' +
+								JSON.stringify(validChunk) +
+								'\n' +
+								JSON.stringify(keepaliveChunk) +
+								'\n',
+						),
+					);
+					controller.close();
+				},
+			});
+
+			const mockResponse = {
+				ok: true,
+				status: 200,
+				body: stream,
+				headers: new Headers(),
+			} as Response;
+
+			vi.spyOn(global, 'fetch').mockResolvedValue(mockResponse);
+
+			const onChunk = vi.fn();
+			const onBeginMessage = vi.fn();
+			const onEndMessage = vi.fn();
+
+			await sendMessageStreaming('Test message', [], 'test-session-id', mockOptions, {
+				onChunk,
+				onBeginMessage,
+				onEndMessage,
+			});
+
+			// Only the real item chunk should produce output, keepalive chunks are ignored
+			expect(onChunk).toHaveBeenCalledTimes(1);
+			expect(onChunk).toHaveBeenCalledWith('real data', 'node-1', 0);
+		});
+
 		it('should skip empty keepalive newlines without producing chunks', async () => {
 			const validChunk = {
 				type: 'item',
