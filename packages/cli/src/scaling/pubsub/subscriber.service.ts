@@ -79,17 +79,15 @@ export class Subscriber {
 
 			const msg = this.parseMessage(str, channel);
 			if (!msg) return;
-			if (msg.debounce) {
-				const eventName = this.eventNameFrom(msg);
-				let handler = this.debouncedHandlers.get(eventName);
-				if (!handler) {
-					handler = debounce(handlerFn, 300);
-					this.debouncedHandlers.set(eventName, handler);
-				}
-				handler(msg);
-			} else {
-				handlerFn(msg);
+			if (!msg.debounce) return handlerFn(msg);
+
+			const eventName = this.eventNameFrom(msg);
+			let handler = this.debouncedHandlers.get(eventName);
+			if (!handler) {
+				handler = debounce(handlerFn, 300);
+				this.debouncedHandlers.set(eventName, handler);
 			}
+			handler(msg);
 		});
 	}
 
