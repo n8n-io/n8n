@@ -288,27 +288,35 @@ onMounted(async () => {
 		<!-- Card 1: SSO Configuration -->
 		<div :class="$style.card">
 			<slot name="protocol-select" />
-			<div :class="$style.group">
-				<label>{{ i18n.baseText('settings.sso.settings.redirectUrl.label') }}</label>
-				<CopyInput
-					:value="redirectUrl"
-					:copy-button-text="i18n.baseText('generic.clickToCopy')"
-					:toast-title="i18n.baseText('settings.sso.settings.redirectUrl.copied')"
-				/>
-				<small>{{ i18n.baseText('settings.sso.settings.redirectUrl.help') }}</small>
+			<div :class="$style.settingsItem">
+				<div :class="$style.settingsItemLabel">
+					<label>{{ i18n.baseText('settings.sso.settings.redirectUrl.label') }}</label>
+					<small>{{ i18n.baseText('settings.sso.settings.redirectUrl.help') }}</small>
+				</div>
+				<div :class="$style.settingsItemControl">
+					<CopyInput
+						:value="redirectUrl"
+						:copy-button-text="i18n.baseText('generic.clickToCopy')"
+						:toast-title="i18n.baseText('settings.sso.settings.redirectUrl.copied')"
+					/>
+				</div>
+			</div>
+			<div :class="$style.settingsItem">
+				<div :class="$style.settingsItemLabel">
+					<label>{{ i18n.baseText('settings.sso.settings.entityId.label') }}</label>
+					<small>{{ i18n.baseText('settings.sso.settings.entityId.help') }}</small>
+				</div>
+				<div :class="$style.settingsItemControl">
+					<CopyInput
+						:value="entityId"
+						:copy-button-text="i18n.baseText('generic.clickToCopy')"
+						:toast-title="i18n.baseText('settings.sso.settings.entityId.copied')"
+					/>
+				</div>
 			</div>
 			<div :class="$style.group">
-				<label>{{ i18n.baseText('settings.sso.settings.entityId.label') }}</label>
-				<CopyInput
-					:value="entityId"
-					:copy-button-text="i18n.baseText('generic.clickToCopy')"
-					:toast-title="i18n.baseText('settings.sso.settings.entityId.copied')"
-				/>
-				<small>{{ i18n.baseText('settings.sso.settings.entityId.help') }}</small>
-			</div>
-			<div :class="$style.group">
-				<label>{{ i18n.baseText('settings.sso.settings.ips.label') }}</label>
-				<div class="mt-2xs mb-s">
+				<div :class="$style.ipsHeader">
+					<label>{{ i18n.baseText('settings.sso.settings.ips.label') }}</label>
 					<N8nRadioButtons v-model="ipsType" :options="ipsOptions" />
 				</div>
 				<div v-if="ipsType === IdentityProviderSettingsType.URL">
