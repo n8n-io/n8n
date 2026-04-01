@@ -1,5 +1,4 @@
 import { createTestingPinia } from '@pinia/testing';
-import { ensureSyntaxTree } from '@codemirror/language';
 import { setActivePinia } from 'pinia';
 import { DateTime } from 'luxon';
 
