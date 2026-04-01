@@ -283,6 +283,7 @@ export {
 	gatewayConfirmationRequiredPayloadSchema,
 	GATEWAY_CONFIRMATION_REQUIRED_PREFIX,
 	InstanceAiSendMessageRequest,
+	InstanceAiEvalExecutionRequest,
 	instanceAiGatewayKeySchema,
 	InstanceAiGatewayEventsQuery,
 	InstanceAiEventsQuery,
@@ -360,7 +361,6 @@ export type {
 	InstanceAiEvalNodeResult,
 	InstanceAiEvalMockHints,
 	InstanceAiEvalExecutionResult,
-	InstanceAiEvalExecutionRequest,
 } from './schemas/instance-ai.schema';
 
 export {

@@ -715,6 +715,18 @@ function buildVerificationArtifact(
 	// --- Pre-analysis: flag known issues programmatically ---
 	const preAnalysis: string[] = [];
 
+	// Flag Phase 1 failures — these cause empty trigger data and cascade failures
+	if (evalResult.hints.warnings.length > 0) {
+		for (const warning of evalResult.hints.warnings) {
+			preAnalysis.push(`⚠ FRAMEWORK ISSUE: ${warning}`);
+		}
+	}
+	if (Object.keys(evalResult.hints.triggerContent).length === 0) {
+		preAnalysis.push(
+			'⚠ FRAMEWORK ISSUE: Trigger content is empty — the start node received no input data. All downstream failures are likely caused by this, not by the workflow builder.',
+		);
+	}
+
 	for (const [nodeName, nr] of Object.entries(evalResult.nodeResults)) {
 		if (nr.configIssues && Object.keys(nr.configIssues).length > 0) {
 			preAnalysis.push(
