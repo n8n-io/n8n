@@ -275,7 +275,6 @@ jobs:
           curl -v "${{ env.SUCCESS_URL }}" || echo "Failed to call success URL"
         shell: bash
 
-  # SLSA L3 Provenance - Must use version tags (@vX.Y.Z), NOT SHAs
   provenance-n8n:
     name: SLSA Provenance (n8n)
     needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
@@ -286,6 +285,7 @@ jobs:
       id-token: write
       packages: write
       actions: read
+    # SLSA L3 Provenance - Must use version tags (@vX.Y.Z), NOT SHAs
     uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.1.0
     with:
       image: ${{ needs.create_multi_arch_manifest.outputs.n8n_image }}
@@ -304,6 +304,7 @@ jobs:
       id-token: write
       packages: write
       actions: read
+    # SLSA L3 Provenance - Must use version tags (@vX.Y.Z), NOT SHAs
     uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.1.0
     with:
       image: ${{ needs.create_multi_arch_manifest.outputs.runners_image }}
@@ -322,6 +323,7 @@ jobs:
       id-token: write
       packages: write
       actions: read
+    # SLSA L3 Provenance - Must use version tags (@vX.Y.Z), NOT SHAs
     uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.1.0
     with:
       image: ${{ needs.create_multi_arch_manifest.outputs.runners_distroless_image }}
@@ -333,7 +335,15 @@ jobs:
   # VEX Attestation - Documents which CVEs affect us (security/vex.openvex.json)
   vex-attestation:
     name: VEX Attestation
-    needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest, provenance-n8n, provenance-runners, provenance-runners-distroless]
+    needs:
+      [
+        determine-build-context,
+        build-and-push-docker,
+        create_multi_arch_manifest,
+        provenance-n8n,
+        provenance-runners,
+        provenance-runners-distroless,
+      ]
     if: |
       always() &&
       needs.create_multi_arch_manifest.result == 'success' &&

@@ -19,4 +19,7 @@ export class OtelConfig {
 
 	@Env('N8N_OTEL_TRACES_SAMPLE_RATE')
 	tracesSampleRate: number = 1.0;
+
+	@Env('N8N_OTEL_STARTUP_CONNECTIVITY_TIMEOUT_MS')
+	startupConnectivityTimeoutMs: number = 2_000;
 }
