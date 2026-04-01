@@ -285,50 +285,57 @@ onMounted(async () => {
 </script>
 <template>
 	<div>
-		<div :class="$style.group">
-			<label>{{ i18n.baseText('settings.sso.settings.redirectUrl.label') }}</label>
-			<CopyInput
-				:value="redirectUrl"
-				:copy-button-text="i18n.baseText('generic.clickToCopy')"
-				:toast-title="i18n.baseText('settings.sso.settings.redirectUrl.copied')"
-			/>
-			<small>{{ i18n.baseText('settings.sso.settings.redirectUrl.help') }}</small>
-		</div>
-		<div :class="$style.group">
-			<label>{{ i18n.baseText('settings.sso.settings.entityId.label') }}</label>
-			<CopyInput
-				:value="entityId"
-				:copy-button-text="i18n.baseText('generic.clickToCopy')"
-				:toast-title="i18n.baseText('settings.sso.settings.entityId.copied')"
-			/>
-			<small>{{ i18n.baseText('settings.sso.settings.entityId.help') }}</small>
-		</div>
-		<div :class="$style.group">
-			<label>{{ i18n.baseText('settings.sso.settings.ips.label') }}</label>
-			<div class="mt-2xs mb-s">
-				<N8nRadioButtons v-model="ipsType" :options="ipsOptions" />
-			</div>
-			<div v-if="ipsType === IdentityProviderSettingsType.URL">
-				<N8nInput
-					v-model="metadataUrl"
-					type="text"
-					name="metadataUrl"
-					size="large"
-					:placeholder="i18n.baseText('settings.sso.settings.ips.url.placeholder')"
-					data-test-id="sso-provider-url"
+		<!-- Card 1: SSO Configuration -->
+		<div :class="$style.card">
+			<div :class="$style.group">
+				<label>{{ i18n.baseText('settings.sso.settings.redirectUrl.label') }}</label>
+				<CopyInput
+					:value="redirectUrl"
+					:copy-button-text="i18n.baseText('generic.clickToCopy')"
+					:toast-title="i18n.baseText('settings.sso.settings.redirectUrl.copied')"
 				/>
-				<small>{{ i18n.baseText('settings.sso.settings.ips.url.help') }}</small>
+				<small>{{ i18n.baseText('settings.sso.settings.redirectUrl.help') }}</small>
 			</div>
-			<div v-if="ipsType === IdentityProviderSettingsType.XML">
-				<N8nInput
-					v-model="metadata"
-					type="textarea"
-					name="metadata"
-					:rows="4"
-					data-test-id="sso-provider-xml"
+			<div :class="$style.group">
+				<label>{{ i18n.baseText('settings.sso.settings.entityId.label') }}</label>
+				<CopyInput
+					:value="entityId"
+					:copy-button-text="i18n.baseText('generic.clickToCopy')"
+					:toast-title="i18n.baseText('settings.sso.settings.entityId.copied')"
 				/>
-				<small>{{ i18n.baseText('settings.sso.settings.ips.xml.help') }}</small>
+				<small>{{ i18n.baseText('settings.sso.settings.entityId.help') }}</small>
 			</div>
+			<div :class="$style.group">
+				<label>{{ i18n.baseText('settings.sso.settings.ips.label') }}</label>
+				<div class="mt-2xs mb-s">
+					<N8nRadioButtons v-model="ipsType" :options="ipsOptions" />
+				</div>
+				<div v-if="ipsType === IdentityProviderSettingsType.URL">
+					<N8nInput
+						v-model="metadataUrl"
+						type="text"
+						name="metadataUrl"
+						size="large"
+						:placeholder="i18n.baseText('settings.sso.settings.ips.url.placeholder')"
+						data-test-id="sso-provider-url"
+					/>
+					<small>{{ i18n.baseText('settings.sso.settings.ips.url.help') }}</small>
+				</div>
+				<div v-if="ipsType === IdentityProviderSettingsType.XML">
+					<N8nInput
+						v-model="metadata"
+						type="textarea"
+						name="metadata"
+						:rows="4"
+						data-test-id="sso-provider-xml"
+					/>
+					<small>{{ i18n.baseText('settings.sso.settings.ips.xml.help') }}</small>
+				</div>
+			</div>
+		</div>
+
+		<!-- Card 2: Role Mapping -->
+		<div :class="$style.card">
 			<UserRoleProvisioningDropdown v-model="userRoleProvisioning" auth-protocol="saml" />
 			<RoleMappingRuleEditor
 				v-if="userRoleProvisioning === 'expression_based'"
@@ -341,6 +348,10 @@ onMounted(async () => {
 				@confirm-provisioning="onSave(true)"
 				@cancel="showUserRoleProvisioningDialog = false"
 			/>
+		</div>
+
+		<!-- Card 3: SSO Toggle -->
+		<div :class="$style.card">
 			<div :class="[$style.group, $style.checkboxGroup]">
 				<N8nCheckbox
 					v-model="samlLoginEnabled"
@@ -349,6 +360,7 @@ onMounted(async () => {
 				/>
 			</div>
 		</div>
+
 		<div :class="$style.buttons">
 			<N8nButton
 				:disabled="!isSaveEnabled"
