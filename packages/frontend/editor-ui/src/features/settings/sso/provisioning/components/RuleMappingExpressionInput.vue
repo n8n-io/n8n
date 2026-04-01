@@ -102,14 +102,14 @@ function createExtensions() {
 				borderStyle: 'var(--border-style)',
 				borderColor: 'var(--input--border-color, var(--border-color))',
 				borderRadius: 'var(--radius)',
-				backgroundColor: 'white',
+				backgroundColor: 'var(--color--background)',
 				minHeight: '30px',
 				width: '100%',
 				padding: '0 0 0 var(--spacing--2xs)',
 			},
 			'&.cm-focused': {
 				outline: '0 !important',
-				borderColor: 'var(--color--primary)',
+				borderColor: 'var(--color--foreground--shade-1, var(--input--border-color))',
 			},
 			'.cm-content': {
 				fontFamily: 'var(--font-family--monospace)',
@@ -128,11 +128,12 @@ function createExtensions() {
 				borderLeftColor: 'var(--code--caret--color)',
 			},
 			'.cm-resolvable-block': {
-				backgroundColor: 'var(--color--primary--tint-3, rgba(255, 109, 90, 0.08))',
+				backgroundColor: 'var(--color--primary--tint-3)',
 				borderRadius: '2px',
+				padding: '0 1px',
 			},
 			'.cm-resolvable-bracket': {
-				color: 'var(--color--primary, #ff6d5a)',
+				color: 'var(--color--text--tint-1)',
 				fontWeight: '600',
 			},
 		}),
