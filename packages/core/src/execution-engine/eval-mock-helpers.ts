@@ -7,7 +7,7 @@
  * type definitions in index.ts (module augmentation).
  */
 
-import type { IHttpRequestOptions, INode, IRequestOptions } from 'n8n-workflow';
+import type { IHttpRequestOptions, INode, INodeProperties, IRequestOptions } from 'n8n-workflow';
 
 import type { EvalLlmMockHandler, EvalMockHttpResponse } from './index';
 
@@ -38,17 +38,62 @@ const EVAL_MOCK_RSA_KEY =
 	'1RGx/w0Q3n5FVjMP3oG3UcUx9EB7GD8NMo74J/lEJ2UsBnIP3ggOb3AE+pWHNE0K\n' +
 	'-----END RSA PRIVATE KEY-----';
 
+// Name patterns that indicate a property holds a secret value (case-insensitive).
+const SECRET_NAME_PATTERNS =
+	/key|secret|token|password|credential|auth|connectionString|apiToken|accessCode/i;
+
+// Name patterns that indicate a property holds configuration (case-insensitive).
+const CONFIG_NAME_PATTERNS =
+	/url|host|region|endpoint|domain|subdomain|port|base|zone|server|namespace|org|project|team|site|instance|tenant|account(?!.*key)|workspace|bucket|database|schema|cluster|version/i;
+
+/**
+ * Determine whether a credential property is a secret that must be masked,
+ * or a config value whose default should be preserved for the LLM mock layer.
+ *
+ * Classification order:
+ * 1. `typeOptions.password` — explicit secret marker by credential authors
+ * 2. Secret name patterns — catches unmarked keys/tokens/passwords
+ * 3. Non-string types (boolean, number, options) — always config
+ * 4. Config name patterns — URLs, regions, hosts, etc.
+ * 5. Fallback — treat as secret (safe default: never leak to LLM)
+ */
+export function isSecretCredentialProperty(prop: INodeProperties): boolean {
+	if (prop.typeOptions?.password === true) return true;
+	if (SECRET_NAME_PATTERNS.test(prop.name)) return true;
+
+	if (prop.type === 'boolean' || prop.type === 'number' || prop.type === 'options') return false;
+	if (CONFIG_NAME_PATTERNS.test(prop.name)) return false;
+
+	return true;
+}
+
+/** Format a property name into a descriptive placeholder, e.g. `secretAccessKey` → `<secret-access-key>`. */
+function toPlaceholder(name: string): string {
+	const kebab = name.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
+	return `<${kebab}>`;
+}
+
 /**
  * Build mock credentials for eval mode from the credential type's property definitions.
- * Includes auth-related fields (OAuth tokens, RSA keys) that nodes need beyond
- * the UI properties — nodes pick what they need and ignore the rest.
+ *
+ * Secret properties (API keys, passwords, tokens) are replaced with a
+ * descriptive placeholder like `<api-key>` so identifying credentials never
+ * reach the LLM, while the placeholder makes it obvious the value was mocked.
+ * Config properties (URLs, regions, hosts) keep their schema default values
+ * so the LLM mock handler sees realistic request URLs and can generate
+ * accurate responses.
+ *
+ * Also includes auth-related fields (OAuth tokens, RSA keys) that nodes need
+ * beyond the UI properties — nodes pick what they need and ignore the rest.
  */
-export function buildEvalMockCredentials(
-	properties: Array<{ name: string }>,
-): Record<string, unknown> {
+export function buildEvalMockCredentials(properties: INodeProperties[]): Record<string, unknown> {
 	const mockCredentials: Record<string, unknown> = {};
 	for (const prop of properties) {
-		mockCredentials[prop.name] = 'eval-mock-value';
+		if (isSecretCredentialProperty(prop)) {
+			mockCredentials[prop.name] = toPlaceholder(prop.name);
+		} else {
+			mockCredentials[prop.name] = prop.default ?? toPlaceholder(prop.name);
+		}
 	}
 	mockCredentials.oauthTokenData = {
 		access_token: 'eval-mock-access-token',
