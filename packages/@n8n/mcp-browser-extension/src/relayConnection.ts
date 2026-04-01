@@ -506,17 +506,41 @@ export class RelayConnection {
 
 		const debuggee = { tabId: entry.chromeTabId };
 
-		// Force Chrome to re-emit executionContextCreated events so Playwright's
-		// internal context cache stays in sync. Without this, Runtime.enable on an
-		// already-enabled session is a no-op and Playwright never learns about
-		// existing execution contexts, causing "Cannot find context" errors.
+		// Wait for the main-frame execution context before returning from Runtime.enable.
+		// Without this, Playwright may reference execution contexts that don't exist yet,
+		// causing "Cannot find context" errors.
+		// Mirrors Playwriter's approach (playwriter/src/cdp-relay.ts Runtime.enable case):
+		// wait for Runtime.executionContextCreated with auxData.isDefault === true rather
+		// than using a fixed delay. auxData.isDefault identifies the top-level frame context
+		// (the page's window object) as opposed to iframes, workers, or injected worlds.
 		if (method === 'Runtime.enable') {
-			try {
-				await chrome.debugger.sendCommand(debuggee, 'Runtime.disable');
-				await new Promise((r) => setTimeout(r, 50));
-			} catch {
-				// Ignore — Runtime may not be enabled yet
-			}
+			const contextReady = new Promise<void>((resolve) => {
+				const timeout = setTimeout(() => {
+					log.debug('Runtime.enable: timed out waiting for executionContextCreated, proceeding');
+					chrome.debugger.onEvent.removeListener(handler);
+					resolve();
+				}, 3_000);
+				function handler(src: chrome.debugger.Debuggee, evt: string, evtParams?: object): void {
+					if (src.tabId !== entry.chromeTabId) return;
+					if (evt !== 'Runtime.executionContextCreated') return;
+					const auxData = (
+						evtParams as { context?: { auxData?: { isDefault?: boolean } } } | undefined
+					)?.context?.auxData;
+					if (auxData?.isDefault !== true) return;
+					clearTimeout(timeout);
+					chrome.debugger.onEvent.removeListener(handler);
+					resolve();
+				}
+				chrome.debugger.onEvent.addListener(handler);
+			});
+
+			const result = await chrome.debugger.sendCommand(
+				debuggee,
+				method as string,
+				cmdParams as object | undefined,
+			);
+			await contextReady;
+			return result;
 		}
 
 		const result = await Promise.race([
@@ -554,6 +578,21 @@ export class RelayConnection {
 		this.tabs.set(targetId, { chromeTabId: tab.id, attached: true });
 		this.chromeTabIdToId.set(tab.id, targetId);
 		this.agentCreatedChromeTabIds.add(tab.id);
+
+		// Apply cached auto-attach params so the new tab reports OOPIFs immediately.
+		// ensureAttached() does this for lazily-attached tabs; we must do it here too
+		// for eagerly-attached agent-created tabs.
+		if (this.autoAttachParams) {
+			try {
+				await chrome.debugger.sendCommand(
+					{ tabId: tab.id },
+					'Target.setAutoAttach',
+					this.autoAttachParams,
+				);
+			} catch (e) {
+				log.debug('Failed to apply auto-attach after eager attach:', e);
+			}
+		}
 
 		log.debug(`createTab: targetId=${targetId} chromeTabId=${tab.id} url=${tab.url ?? url ?? ''}`);
 

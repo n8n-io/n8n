@@ -742,10 +742,11 @@ describe('RelayConnection', () => {
 	});
 
 	describe('Runtime.enable workaround', () => {
-		it('should disable then re-enable Runtime to force context re-emission', async () => {
+		it('should wait for executionContextCreated before resolving Runtime.enable', async () => {
 			await registerAndAttach(42);
 
-			jest.useFakeTimers();
+			// Send Runtime.enable — this registers a one-shot onEvent listener and
+			// waits for executionContextCreated (with auxData.isDefault === true) before resolving.
 			ws.onmessage?.({
 				data: JSON.stringify({
 					id: 1,
@@ -753,15 +754,56 @@ describe('RelayConnection', () => {
 					params: { method: 'Runtime.enable', params: {} },
 				}),
 			});
-			// Advance past the 50ms delay between disable and enable
-			await jest.advanceTimersByTimeAsync(100);
-			jest.useRealTimers();
+
+			// Response should not be sent yet — waiting for the context event.
+			await tick();
+			expect(ws.sent.some((s) => JSON.parse(s).id === 1)).toBe(false);
+
+			// Fire the executionContextCreated event via the one-shot listener.
+			// It is the last listener registered (after the constructor's permanent listener).
+			const allListeners = chrome.debugger.onEvent.addListener.mock.calls;
+			const oneShotListener = allListeners[allListeners.length - 1]?.[0] as
+				| ((...args: unknown[]) => void)
+				| undefined;
+			oneShotListener?.({ tabId: 42 }, 'Runtime.executionContextCreated', {
+				context: { auxData: { isDefault: true } },
+			});
+
+			await tick();
 
 			const methods = chrome.debugger.sendCommand.mock.calls.map((c: unknown[]) => c[1]);
-			const disableIdx = methods.indexOf('Runtime.disable');
-			const enableIdx = methods.indexOf('Runtime.enable');
-			expect(disableIdx).toBeGreaterThanOrEqual(0);
-			expect(enableIdx).toBeGreaterThan(disableIdx);
+			// Runtime.disable must NOT be called — we use event-based waiting now
+			expect(methods).not.toContain('Runtime.disable');
+			expect(methods).toContain('Runtime.enable');
+			// Response was sent after context confirmed
+			expect(ws.sent.some((s) => JSON.parse(s).id === 1)).toBe(true);
+		});
+
+		it('should resolve Runtime.enable after timeout if executionContextCreated never fires', async () => {
+			await registerAndAttach(42);
+
+			// Install fake timers before sending the message so the 3 000 ms
+			// timeout inside contextReady is created under fake time control.
+			jest.useFakeTimers();
+			try {
+				ws.onmessage?.({
+					data: JSON.stringify({
+						id: 2,
+						method: 'forwardCDPCommand',
+						params: { method: 'Runtime.enable', params: {} },
+					}),
+				});
+				// Drain microtasks (sendCommand resolves immediately), then advance
+				// past the 3 000 ms fallback timeout.
+				await Promise.resolve();
+				await jest.advanceTimersByTimeAsync(3_100);
+			} finally {
+				jest.useRealTimers();
+			}
+
+			const methods = chrome.debugger.sendCommand.mock.calls.map((c: unknown[]) => c[1]);
+			expect(methods).not.toContain('Runtime.disable');
+			expect(methods).toContain('Runtime.enable');
 		});
 	});
 

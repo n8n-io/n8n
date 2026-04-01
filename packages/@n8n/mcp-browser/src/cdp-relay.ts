@@ -615,8 +615,12 @@ export class CDPRelayServer {
 		}
 
 		if (this.extensionConn) {
-			// Accept the new connection as a replacement (e.g. reconnect after transient drop)
+			// Accept the new connection as a replacement (e.g. reconnect after transient drop).
+			// Clear the handler first so the async close event from the old connection doesn't
+			// null out extensionConn or start a spurious reconnect timer after we've already
+			// installed the replacement.
 			log.debug('replacing existing extension connection');
+			this.extensionConn.onclose = undefined;
 			this.extensionConn.close('Replaced by new connection');
 		}
 
@@ -827,7 +831,14 @@ export class CDPRelayServer {
 // ---------------------------------------------------------------------------
 
 const HEARTBEAT_INTERVAL_MS = 5_000;
-const HEARTBEAT_TIMEOUT_MS = 5_000;
+// Must be strictly greater than HEARTBEAT_INTERVAL_MS: the first interval tick
+// fires ~5 000 ms after construction (before any ping has been sent), so elapsed
+// since lastPongAt ≈ interval. If timeout ≤ interval the connection is killed
+// before a single ping/pong round-trip completes. A 3× multiplier absorbs timer
+// jitter and gives room for one full round-trip.
+// Note: Playwriter uses the same 5 000 ms interval but no hard timeout — it
+// relies on JSON ping/pong to implicitly detect dead connections.
+const HEARTBEAT_TIMEOUT_MS = 15_000;
 
 class ExtensionConnection {
 	private readonly ws: WebSocket;
