@@ -188,7 +188,10 @@ export function useConnection() {
 
 	chrome.runtime.onMessage.addListener(onBackgroundMessage);
 
+	let mounted = true;
+
 	onUnmounted(() => {
+		mounted = false;
 		chrome.runtime.onMessage.removeListener(onBackgroundMessage);
 		chrome.tabs.onCreated.removeListener(onTabCreated);
 		chrome.tabs.onRemoved.removeListener(onTabRemoved);
@@ -231,6 +234,8 @@ export function useConnection() {
 		}
 
 		await initTabRegistry();
+
+		if (!mounted) return;
 
 		// Register tab event listeners after initial population
 		chrome.tabs.onCreated.addListener(onTabCreated);

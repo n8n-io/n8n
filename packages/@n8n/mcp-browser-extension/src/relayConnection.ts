@@ -8,6 +8,7 @@
  */
 
 import { createLogger } from './logger';
+import type { TabManagementSettings } from './types';
 
 interface ProtocolCommand {
 	id: number;
@@ -21,11 +22,6 @@ interface ProtocolResponse {
 	params?: Record<string, unknown>;
 	result?: unknown;
 	error?: string;
-}
-
-export interface TabManagementSettings {
-	allowTabCreation: boolean;
-	allowTabClosing: boolean;
 }
 
 const DEFAULT_SETTINGS: TabManagementSettings = {
