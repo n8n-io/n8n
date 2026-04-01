@@ -56,6 +56,7 @@ declare global {
 		var $secrets: unknown;
 		var $executionId: string | undefined;
 		var $resumeWebhookUrl: string | undefined;
+		var $webhookId: string | undefined;
 		var $: (nodeName: string) => unknown;
 	}
 }

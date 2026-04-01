@@ -134,6 +134,15 @@ export function resetDataProxies(timezone?: string): void {
 		globalThis.__data.$resumeWebhookUrl = undefined;
 	}
 
+	try {
+		globalThis.__data.$webhookId = globalThis.__getValueAtPath.applySync(null, [['$webhookId']], {
+			arguments: { copy: true },
+			result: { copy: true },
+		});
+	} catch (error) {
+		globalThis.__data.$webhookId = undefined;
+	}
+
 	// -------------------------------------------------------------------------
 	// Expose workflow data to globalThis for expression access
 	// -------------------------------------------------------------------------
@@ -156,6 +165,7 @@ export function resetDataProxies(timezone?: string): void {
 	globalThis.$secrets = globalThis.__data.$secrets;
 	globalThis.$executionId = globalThis.__data.$executionId as string | undefined;
 	globalThis.$resumeWebhookUrl = globalThis.__data.$resumeWebhookUrl as string | undefined;
+	globalThis.$webhookId = globalThis.__data.$webhookId as string | undefined;
 
 	// Expose standalone functions (min, max, average, numberList, zip, $ifEmpty, etc.)
 	Object.assign(globalThis.__data, extendedFunctions);
