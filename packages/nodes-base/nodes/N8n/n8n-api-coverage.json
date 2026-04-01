@@ -13,7 +13,8 @@
 			"nodeOperation": "credential:create"
 		},
 		"PATCH /credentials/{id}": {
-			"status": "gap"
+			"status": "covered",
+			"nodeOperation": "credential:update"
 		},
 		"DELETE /credentials/{id}": {
 			"status": "covered",

@@ -48,6 +48,17 @@ export const credentialOperations: INodeProperties[] = [
 					},
 				},
 			},
+			{
+				name: 'Update',
+				value: 'update',
+				action: 'Update a credential',
+				routing: {
+					request: {
+						method: 'PATCH',
+						url: '=/credentials/{{ $parameter.credentialId }}',
+					},
+				},
+			},
 		],
 	},
 ];
@@ -143,6 +154,71 @@ const deleteOperation: INodeProperties[] = [
 	},
 ];
 
+const updateOperation: INodeProperties[] = [
+	{
+		displayName: 'Credential ID',
+		name: 'credentialId',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['credential'],
+				operation: ['update'],
+			},
+		},
+		description: 'ID of the credential to update',
+	},
+	{
+		displayName: 'Update Fields',
+		name: 'updateFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['credential'],
+				operation: ['update'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+				placeholder: 'e.g. n8n account',
+				routing: {
+					request: {
+						body: {
+							name: '={{ $value }}',
+						},
+					},
+				},
+				description: 'New name for the credential',
+			},
+			{
+				displayName: 'Data',
+				name: 'data',
+				type: 'json',
+				default: '',
+				placeholder:
+					'// e.g. for n8nApi \n{\n  "apiKey": "my-n8n-api-key",\n  "baseUrl": "https://<name>.app.n8n.cloud/api/v1",\n}',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				routing: {
+					send: {
+						preSend: [parseAndSetBodyJson('updateFields.data', 'data')],
+					},
+				},
+				description:
+					"A valid JSON object whose keys must exactly match the properties defined by the credential type (no extra keys allowed). To see the expected format, use the 'Get Schema' operation first.",
+			},
+		],
+	},
+];
+
 const getSchemaOperation: INodeProperties[] = [
 	{
 		displayName: 'Credential Type',
@@ -166,4 +242,5 @@ export const credentialFields: INodeProperties[] = [
 	...createOperation,
 	...deleteOperation,
 	...getSchemaOperation,
+	...updateOperation,
 ];
