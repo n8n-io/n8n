@@ -1,12 +1,12 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
-import { CollapsibleRoot, CollapsibleTrigger, CollapsibleContent } from 'reka-ui';
-import { N8nIcon, type IconName } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
 import type { InstanceAiAgentNode, InstanceAiToolCallState } from '@n8n/api-types';
-import { useToolLabel, getToolIcon } from '../toolLabels';
-import ToolCallStep from './ToolCallStep.vue';
+import { N8nButton, N8nIcon, type IconName } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
+import { computed } from 'vue';
+import { getToolIcon, useToolLabel } from '../toolLabels';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
+import ToolCallStep from './ToolCallStep.vue';
 
 const props = defineProps<{
 	agentNode: InstanceAiAgentNode;
@@ -109,111 +109,103 @@ const steps = computed((): TimelineStep[] => {
 				:show-connector="idx < steps.length - 1"
 			/>
 
-			<!-- Text and done steps: use shared icon column layout -->
-			<div v-else :class="$style.step">
-				<div :class="$style.iconColumn">
-					<N8nIcon
-						:icon="step.icon"
-						size="small"
-						:spin="step.isLoading"
-						:class="[
-							$style.stepIcon,
-							step.type === 'done' && $style.doneIcon,
-							step.isLoading && $style.loadingIcon,
-						]"
-					/>
-					<div v-if="idx < steps.length - 1" :class="$style.connector" />
-				</div>
-				<div :class="$style.content">
-					<!-- Text segment: short inline or long behind toggle -->
-					<template v-if="step.type === 'text'">
-						<template v-if="step.isLongText">
-							<span :class="$style.textLabel">{{ step.shortLabel }}</span>
-							<CollapsibleRoot v-slot="{ open: textOpen }" :class="$style.toggleBlock">
-								<CollapsibleTrigger :class="$style.toggleButton">
-									{{
-										i18n.baseText(
-											textOpen
-												? 'instanceAi.stepTimeline.hideData'
-												: 'instanceAi.stepTimeline.showData',
-										)
-									}}
-								</CollapsibleTrigger>
-								<CollapsibleContent :class="$style.toggleContent">
-									<div :class="$style.dataSection">
-										<InstanceAiMarkdown :content="step.textContent!" />
-									</div>
-								</CollapsibleContent>
-							</CollapsibleRoot>
-						</template>
-						<div v-else :class="$style.textLabel">
+			<template v-else-if="step.type === 'text'">
+				<CollapsibleRoot v-if="step.isLongText" v-slot="{ open }">
+					<CollapsibleTrigger as-child>
+						<N8nButton ref="triggerRef" variant="ghost" size="small">
+							<template #icon>
+								<template v-if="step.isLoading">
+									<N8nIcon icon="loader" size="small" transform-origin="center" spin />
+								</template>
+								<N8nIcon v-else :icon="step.icon" size="small" />
+							</template>
+							<template v-if="open"> Thinking </template>
+							<template v-else>{{ step.label }}</template>
+						</N8nButton>
+					</CollapsibleTrigger>
+					<CollapsibleContent :class="$style.toggleContent">
+						<div :class="$style.dataSection">
 							<InstanceAiMarkdown :content="step.textContent!" />
 						</div>
-					</template>
-
-					<!-- Done marker -->
-					<template v-else-if="step.type === 'done'">
-						<span :class="$style.doneLabel">{{ step.label }}</span>
-					</template>
+					</CollapsibleContent>
+				</CollapsibleRoot>
+				<div v-else :class="$style.fakeButton">
+					<N8nIcon :icon="step.icon" size="small" />
+					<span :class="$style.doneLabel">{{ step.label }}</span>
 				</div>
+			</template>
+
+			<div v-else-if="step.type === 'done'" :class="$style.fakeButton">
+				<N8nIcon :icon="step.icon" size="small" />
+				<span :class="$style.doneLabel">{{ step.label }}</span>
 			</div>
 		</template>
 	</div>
 </template>
 
 <style lang="scss" module>
+.fakeButton {
+	height: var(--height--sm);
+	padding: 0 var(--spacing--xs);
+	border-radius: var(--radius--3xs);
+	font-size: var(--font-size--xs);
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+}
+
 .timeline {
 	display: flex;
 	flex-direction: column;
 }
 
-.step {
-	display: flex;
-	gap: var(--spacing--xs);
-}
+// .step {
+// 	display: flex;
+// 	gap: var(--spacing--xs);
+// }
 
-.iconColumn {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	width: 20px;
-	flex-shrink: 0;
-	padding-top: 2px;
-}
+// .iconColumn {
+// 	display: flex;
+// 	flex-direction: column;
+// 	align-items: center;
+// 	width: 20px;
+// 	flex-shrink: 0;
+// 	padding-top: 2px;
+// }
 
-.connector {
-	width: 1px;
-	flex: 1;
-	background: var(--color--foreground--shade-1);
-	min-height: 12px;
-}
+// .connector {
+// 	width: 1px;
+// 	flex: 1;
+// 	background: var(--color--foreground--shade-1);
+// 	min-height: 12px;
+// }
 
-.stepIcon {
-	color: var(--color--text--tint-1);
-	flex-shrink: 0;
-}
+// .stepIcon {
+// 	color: var(--color--text--tint-1);
+// 	flex-shrink: 0;
+// }
 
-.doneIcon {
-	color: var(--color--text--tint-1);
-}
+// .doneIcon {
+// 	color: var(--color--text--tint-1);
+// }
 
-.loadingIcon {
-	color: var(--color--primary);
-}
+// .loadingIcon {
+// 	color: var(--color--primary);
+// }
 
-.content {
-	display: flex;
-	flex-direction: column;
-	min-width: 0;
-	flex: 1;
-	padding-bottom: var(--spacing--2xs);
-}
+// .content {
+// 	display: flex;
+// 	flex-direction: column;
+// 	min-width: 0;
+// 	flex: 1;
+// 	padding-bottom: var(--spacing--2xs);
+// }
 
-.textLabel {
-	font-size: var(--font-size--sm);
-	color: var(--color--text);
-	line-height: var(--line-height--lg);
-}
+// .textLabel {
+// 	font-size: var(--font-size--sm);
+// 	color: var(--color--text);
+// 	line-height: var(--line-height--lg);
+// }
 
 .doneLabel {
 	font-size: var(--font-size--sm);
@@ -225,23 +217,23 @@ const steps = computed((): TimelineStep[] => {
 	margin-top: var(--spacing--4xs);
 }
 
-.toggleButton {
-	display: inline-flex;
-	align-items: center;
-	padding: var(--spacing--5xs) var(--spacing--2xs);
-	font-family: var(--font-family);
-	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--regular);
-	color: var(--color--text--tint-1);
-	background: var(--color--background--light-2);
-	border: var(--border);
-	border-radius: var(--radius);
-	cursor: pointer;
+// .toggleButton {
+// 	display: inline-flex;
+// 	align-items: center;
+// 	padding: var(--spacing--5xs) var(--spacing--2xs);
+// 	font-family: var(--font-family);
+// 	font-size: var(--font-size--2xs);
+// 	font-weight: var(--font-weight--regular);
+// 	color: var(--color--text--tint-1);
+// 	background: var(--color--background--light-2);
+// 	border: var(--border);
+// 	border-radius: var(--radius);
+// 	cursor: pointer;
 
-	&:hover {
-		background: var(--color--foreground--tint-2);
-	}
-}
+// 	&:hover {
+// 		background: var(--color--foreground--tint-2);
+// 	}
+// }
 
 .toggleContent {
 	margin-top: var(--spacing--4xs);

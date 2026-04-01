@@ -1,13 +1,13 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
-import { N8nIcon, N8nIconButton, N8nMessageRating } from '@n8n/design-system';
+import type { InstanceAiMessage } from '@n8n/api-types';
 import type { RatingFeedback } from '@n8n/design-system';
+import { N8nIcon, N8nIconButton, N8nMessageRating } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { computed, ref } from 'vue';
+import { useInstanceAiStore } from '../instanceAi.store';
+import AgentActivityTree from './AgentActivityTree.vue';
 import AttachmentPreview from './AttachmentPreview.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
-import AgentActivityTree from './AgentActivityTree.vue';
-import type { InstanceAiMessage } from '@n8n/api-types';
-import { useInstanceAiStore } from '../instanceAi.store';
 
 const props = defineProps<{
 	message: InstanceAiMessage;
@@ -199,7 +199,7 @@ function formatJson(value: unknown): string {
 
 <style lang="scss" module>
 .message {
-	padding: var(--spacing--sm) 0;
+	margin: var(--spacing--2xs) 0;
 }
 
 .userMessage {

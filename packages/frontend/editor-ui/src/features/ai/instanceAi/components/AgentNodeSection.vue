@@ -1,14 +1,14 @@
 <script lang="ts" setup>
-import { ref, computed, watch } from 'vue';
-import { CollapsibleRoot, CollapsibleTrigger, CollapsibleContent } from 'reka-ui';
+import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { N8nIcon, type IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { InstanceAiAgentNode } from '@n8n/api-types';
+import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
+import { computed, ref, watch } from 'vue';
+import { getRenderableAgentResult } from '../agentResult';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { useToolLabel } from '../toolLabels';
-import { getRenderableAgentResult } from '../agentResult';
-import ExecutionPreviewCard from './ExecutionPreviewCard.vue';
 import AgentTimeline from './AgentTimeline.vue';
+import ExecutionPreviewCard from './ExecutionPreviewCard.vue';
 
 const props = defineProps<{
 	agentNode: InstanceAiAgentNode;
@@ -61,7 +61,7 @@ const runResults = computed(() => {
 	for (const tc of props.agentNode.toolCalls) {
 		if (tc.toolName === 'run-workflow' && tc.result && typeof tc.result === 'object') {
 			const result = tc.result as Record<string, unknown>;
-			const args = tc.args as Record<string, unknown>;
+			const args = tc.args;
 			if (typeof result.executionId === 'string' && typeof args.workflowId === 'string') {
 				map.set(tc.toolCallId, {
 					executionId: result.executionId,
@@ -166,7 +166,7 @@ const statusEntry = computed(() => statusConfig[props.agentNode.status]);
 .root {
 	border: var(--border);
 	border-radius: var(--radius--lg);
-	margin: var(--spacing--2xs) 0;
+	// margin: var(--spacing--2xs) 0;
 	overflow: hidden;
 	background: var(--color--background);
 }

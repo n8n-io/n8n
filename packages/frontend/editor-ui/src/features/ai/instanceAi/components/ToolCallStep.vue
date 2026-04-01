@@ -1,10 +1,12 @@
 <script lang="ts" setup>
-import { CollapsibleRoot, CollapsibleTrigger, CollapsibleContent } from 'reka-ui';
-import { N8nIcon } from '@n8n/design-system';
 import type { InstanceAiToolCallState } from '@n8n/api-types';
-import { useToolLabel, getToolIcon } from '../toolLabels';
-import ToolResultRenderer from './ToolResultRenderer.vue';
+import { N8nButton, N8nIcon } from '@n8n/design-system';
+import { useElementHover } from '@vueuse/core';
+import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
+import { useTemplateRef } from 'vue';
+import { getToolIcon, useToolLabel } from '../toolLabels';
 import ToolResultJson from './ToolResultJson.vue';
+import ToolResultRenderer from './ToolResultRenderer.vue';
 
 const props = defineProps<{
 	toolCall: InstanceAiToolCallState;
@@ -19,6 +21,9 @@ defineSlots<{
 }>();
 
 const { getToolLabel, getToggleLabel, getHideLabel } = useToolLabel();
+
+const triggerRef = useTemplateRef<HTMLElement>('triggerRef');
+const isHovered = useElementHover(triggerRef);
 
 function getDisplayLabel(tc: InstanceAiToolCallState): string {
 	const label = getToolLabel(tc.toolName) || tc.toolName;
@@ -37,47 +42,39 @@ function getDisplayLabel(tc: InstanceAiToolCallState): string {
 </script>
 
 <template>
-	<div :class="$style.step">
-		<div :class="$style.iconColumn">
-			<N8nIcon
-				:icon="props.toolCall.isLoading ? 'spinner' : getToolIcon(props.toolCall.toolName)"
-				size="small"
-				:spin="props.toolCall.isLoading"
-				:class="[$style.stepIcon, props.toolCall.isLoading && $style.loadingIcon]"
-			/>
-			<div v-if="props.showConnector" :class="$style.connector" />
-		</div>
-		<div :class="$style.stepContent">
-			<span :class="$style.stepLabel">{{ props.label ?? getDisplayLabel(props.toolCall) }}</span>
-			<CollapsibleRoot
-				v-if="getToggleLabel(props.toolCall)"
-				v-slot="{ open: toolOpen }"
-				:class="$style.toggleBlock"
+	<CollapsibleRoot v-slot="{ open: isOpen }">
+		<CollapsibleTrigger as-child>
+			<N8nButton ref="triggerRef" variant="ghost" size="small">
+				<template #icon>
+					<template v-if="isHovered">
+						<N8nIcon v-if="!isOpen" icon="plus" size="small" />
+						<N8nIcon v-else icon="minus" size="small" />
+					</template>
+					<template v-else>
+						<template v-if="props.toolCall.isLoading">
+							<N8nIcon icon="loader" size="small" transform-origin="center" spin />
+						</template>
+						<N8nIcon v-else :icon="getToolIcon(props.toolCall.toolName)" size="small" />
+					</template>
+				</template>
+				{{ props.label ?? getDisplayLabel(props.toolCall) }}
+			</N8nButton>
+		</CollapsibleTrigger>
+		<CollapsibleContent>
+			<div v-if="props.toolCall.args" :class="$style.dataSection">
+				<ToolResultJson :value="props.toolCall.args" />
+			</div>
+			<div v-if="props.toolCall.result !== undefined" :class="$style.dataSection">
+				<ToolResultRenderer :result="props.toolCall.result" :tool-name="props.toolCall.toolName" />
+			</div>
+			<div
+				v-if="props.toolCall.error !== undefined"
+				:class="[$style.dataSection, $style.errorText]"
 			>
-				<CollapsibleTrigger :class="$style.toggleButton">
-					{{ toolOpen ? getHideLabel(props.toolCall) : getToggleLabel(props.toolCall) }}
-				</CollapsibleTrigger>
-				<CollapsibleContent :class="$style.toggleContent">
-					<div v-if="props.toolCall.args" :class="$style.dataSection">
-						<ToolResultJson :value="props.toolCall.args" />
-					</div>
-					<div v-if="props.toolCall.result !== undefined" :class="$style.dataSection">
-						<ToolResultRenderer
-							:result="props.toolCall.result"
-							:tool-name="props.toolCall.toolName"
-						/>
-					</div>
-					<div
-						v-if="props.toolCall.error !== undefined"
-						:class="[$style.dataSection, $style.errorText]"
-					>
-						{{ props.toolCall.error }}
-					</div>
-				</CollapsibleContent>
-			</CollapsibleRoot>
-			<slot />
-		</div>
-	</div>
+				{{ props.toolCall.error }}
+			</div>
+		</CollapsibleContent>
+	</CollapsibleRoot>
 </template>
 
 <style lang="scss" module>

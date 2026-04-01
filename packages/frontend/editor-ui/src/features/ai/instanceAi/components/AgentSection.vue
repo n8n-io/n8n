@@ -1,8 +1,8 @@
 <script lang="ts" setup>
-import { computed, ref, useTemplateRef, watch, nextTick } from 'vue';
+import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { InstanceAiAgentNode } from '@n8n/api-types';
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import { useInstanceAiStore } from '../instanceAi.store';
 import SubagentStepTimeline from './SubagentStepTimeline.vue';
 
@@ -115,7 +115,7 @@ watch(
 
 <style lang="scss" module>
 .root {
-	margin: var(--spacing--2xs) 0;
+	// margin: var(--spacing--2xs) 0;
 }
 
 .header {

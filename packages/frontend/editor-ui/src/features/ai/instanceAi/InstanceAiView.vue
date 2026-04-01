@@ -19,7 +19,7 @@ import {
 } from '@n8n/design-system';
 import { useScroll, useWindowSize } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
-import type { InstanceAiAttachment } from '@n8n/api-types';
+import type { InstanceAiAttachment, InstanceAiMessage as Message } from '@n8n/api-types';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -339,6 +339,856 @@ const eventRelay = useEventRelay({
 	relay: (event) => workflowPreviewRef.value?.relayPushEvent(event),
 });
 
+// ---------------------------------------------------------------------------
+// DEV: Mocked messages — covers all distinct UI states for component review.
+// Replace `store.messages` with `mockedMessages` in the template to use.
+// ---------------------------------------------------------------------------
+const mockedMessages: Message[] = [
+	// ── 1. User — plain text ──────────────────────────────────────────────────
+	{
+		id: 'mock-1',
+		role: 'user',
+		content: 'Create a workflow that sends a Slack message when a new Notion page is created.',
+		createdAt: new Date().toISOString(),
+		reasoning: '',
+		isStreaming: false,
+	},
+
+	// ── 2. User — with image attachment ───────────────────────────────────────
+	{
+		id: 'mock-2',
+		role: 'user',
+		content: 'Here is a screenshot of the error I am seeing.',
+		createdAt: new Date().toISOString(),
+		reasoning: '',
+		isStreaming: false,
+		attachments: [
+			{
+				// 1×1 transparent PNG
+				data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVQI12NgAAIABQAABjE+ibYAAAAASUVORK5CYII=',
+				mimeType: 'image/png',
+				fileName: 'screenshot.png',
+			},
+		],
+	},
+
+	// ── 3. Assistant — plain text, no agentTree ───────────────────────────────
+	{
+		id: 'mock-3',
+		role: 'assistant',
+		content:
+			"I'll create that workflow for you right away. This is a simple response without any agent activity.",
+		createdAt: new Date().toISOString(),
+		reasoning: '',
+		isStreaming: false,
+	},
+
+	// ── 4. Assistant — streaming, no content yet (blinking cursor) ────────────
+	{
+		id: 'mock-4',
+		role: 'assistant',
+		content: '',
+		createdAt: new Date().toISOString(),
+		reasoning: '',
+		isStreaming: true,
+	},
+
+	// ── 5. Assistant — agent active, status message only ──────────────────────
+	{
+		id: 'mock-5',
+		role: 'assistant',
+		content: '',
+		createdAt: new Date().toISOString(),
+		reasoning: '',
+		isStreaming: true,
+		agentTree: {
+			agentId: 'agent-status',
+			role: 'orchestrator',
+			status: 'active',
+			textContent: '',
+			reasoning: '',
+			toolCalls: [],
+			children: [],
+			timeline: [],
+			statusMessage: 'Recalling conversation history...',
+		},
+	},
+
+	// ── 6. Assistant — agent with reasoning + completed text ──────────────────
+	{
+		id: 'mock-6',
+		role: 'assistant',
+		content: '',
+		createdAt: new Date().toISOString(),
+		reasoning: '',
+		isStreaming: false,
+		agentTree: {
+			agentId: 'agent-reasoning',
+			role: 'orchestrator',
+			status: 'completed',
+			textContent:
+				"I've analyzed your workflows and found 12 executions in the last 24 hours with a **98% success rate**. The only failure was in the _Email Parser_ workflow due to a malformed attachment.",
+			reasoning:
+				"The user is asking about workflow performance. I should check recent executions, identify any failures, and provide a clear summary with actionable insights. I'll start with listing all executions from the past day.",
+			toolCalls: [],
+			children: [],
+			timeline: [
+				{
+					type: 'text',
+					content:
+						"I've analyzed your workflows and found 12 executions in the last 24 hours with a **98% success rate**. The only failure was in the _Email Parser_ workflow due to a malformed attachment.",
+				},
+			],
+		},
+	},
+
+	// ── 7. Agent — tool calls showcase ───────────────────────────────────────
+	// Covers: loading, JSON result, code result, table result, web-search, error
+	{
+		id: 'mock-7',
+		role: 'assistant',
+		content: '',
+		createdAt: new Date().toISOString(),
+		reasoning: '',
+		isStreaming: false,
+		agentTree: {
+			agentId: 'agent-tools',
+			role: 'orchestrator',
+			status: 'completed',
+			textContent: 'Here is a summary of your workflows and the fetched data.',
+			reasoning: '',
+			toolCalls: [
+				// (a) executing / loading
+				{
+					toolCallId: 'tc-loading',
+					toolName: 'get-executions',
+					args: { workflowId: 'wf-abc', limit: 20 },
+					isLoading: true,
+					renderHint: 'default',
+				},
+				// (b) completed — default JSON result renderer
+				{
+					toolCallId: 'tc-json',
+					toolName: 'get-workflow',
+					args: { workflowId: 'wf-abc' },
+					result: { id: 'wf-abc', name: 'My Workflow', active: true, nodeCount: 5 },
+					isLoading: false,
+					renderHint: 'default',
+				},
+				// (c) completed — ToolResultCode renderer (toolName matches code renderer list)
+				{
+					toolCallId: 'tc-code',
+					toolName: 'get-workflow-as-code',
+					args: { workflowId: 'wf-abc' },
+					result:
+						"import n8n from 'n8n-workflow';\n\nexport default {\n  name: 'My Workflow',\n  nodes: [...],\n};",
+					isLoading: false,
+					renderHint: 'default',
+				},
+				// (d) completed — ToolResultTable renderer (toolName matches table renderer list)
+				{
+					toolCallId: 'tc-table',
+					toolName: 'list-workflows',
+					args: { limit: 10 },
+					result: [
+						{ id: 'wf-1', name: 'Slack Notifier', active: true },
+						{ id: 'wf-2', name: 'Email Parser', active: false },
+						{ id: 'wf-3', name: 'Data Sync', active: true },
+					],
+					isLoading: false,
+					renderHint: 'default',
+				},
+				// (e) web-search tool
+				{
+					toolCallId: 'tc-search',
+					toolName: 'web-search',
+					args: { query: 'n8n Slack node send message documentation' },
+					result: {
+						results: [
+							{
+								url: 'https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.slack/',
+								title: 'Slack node',
+							},
+						],
+					},
+					isLoading: false,
+					renderHint: 'default',
+				},
+				// (f) error result
+				{
+					toolCallId: 'tc-error',
+					toolName: 'fetch-url',
+					args: { url: 'https://api.example.com/data' },
+					error: 'Connection timeout after 30 seconds',
+					isLoading: false,
+					renderHint: 'default',
+				},
+			],
+			children: [],
+			timeline: [
+				{ type: 'tool-call', toolCallId: 'tc-loading' },
+				{ type: 'tool-call', toolCallId: 'tc-json' },
+				{ type: 'tool-call', toolCallId: 'tc-code' },
+				{ type: 'tool-call', toolCallId: 'tc-table' },
+				{ type: 'tool-call', toolCallId: 'tc-search' },
+				{ type: 'tool-call', toolCallId: 'tc-error' },
+				{ type: 'text', content: 'Here is a summary of your workflows and the fetched data.' },
+			],
+		},
+	},
+
+	// ── 8. Agent — task checklist (renderHint='tasks') ────────────────────────
+	{
+		id: 'mock-8',
+		role: 'assistant',
+		content: '',
+		createdAt: new Date().toISOString(),
+		reasoning: '',
+		isStreaming: true,
+		agentTree: {
+			agentId: 'agent-task-list',
+			role: 'orchestrator',
+			status: 'active',
+			textContent: '',
+			reasoning: '',
+			toolCalls: [
+				{
+					toolCallId: 'tc-tasks',
+					toolName: 'update-tasks',
+					args: {},
+					isLoading: false,
+					renderHint: 'tasks',
+				},
+			],
+			children: [],
+			timeline: [{ type: 'tool-call', toolCallId: 'tc-tasks' }],
+			tasks: {
+				tasks: [
+					{ id: 't1', description: 'Analyze current workflow structure', status: 'done' },
+					{ id: 't2', description: 'Identify credential requirements', status: 'done' },
+					{ id: 't3', description: 'Build Notion trigger node', status: 'in_progress' },
+					{ id: 't4', description: 'Configure Slack message node', status: 'todo' },
+					{ id: 't5', description: 'Test and activate workflow', status: 'todo' },
+				],
+			},
+		},
+	},
+
+	// ── 9. Agent — delegate cards (loading + completed) ───────────────────────
+	{
+		id: 'mock-9',
+		role: 'assistant',
+		content: '',
+		createdAt: new Date().toISOString(),
+		reasoning: '',
+		isStreaming: false,
+		agentTree: {
+			agentId: 'agent-delegate',
+			role: 'orchestrator',
+			status: 'active',
+			textContent: '',
+			reasoning: '',
+			toolCalls: [
+				{
+					toolCallId: 'tc-delegate-loading',
+					toolName: 'delegate',
+					args: {
+						role: 'Slack researcher',
+						briefing: 'Research available Slack node operations and required credentials',
+						tools: ['web-search', 'fetch-url', 'list-workflows'],
+					},
+					isLoading: true,
+					renderHint: 'delegate',
+				},
+				{
+					toolCallId: 'tc-delegate-done',
+					toolName: 'delegate',
+					args: {
+						role: 'Notion researcher',
+						briefing: 'Find all Notion trigger events and their payload schemas',
+						tools: ['web-search', 'fetch-url'],
+					},
+					result: 'Notion supports: page.created, page.updated, database.updated events.',
+					isLoading: false,
+					renderHint: 'delegate',
+				},
+			],
+			children: [],
+			timeline: [
+				{ type: 'tool-call', toolCallId: 'tc-delegate-loading' },
+				{ type: 'tool-call', toolCallId: 'tc-delegate-done' },
+			],
+		},
+	},
+
+	// ── 10. Agent — answered questions (read-only) ────────────────────────────
+	{
+		id: 'mock-10',
+		role: 'assistant',
+		content: '',
+		createdAt: new Date().toISOString(),
+		reasoning: '',
+		isStreaming: false,
+		agentTree: {
+			agentId: 'agent-questions',
+			role: 'orchestrator',
+			status: 'completed',
+			textContent: 'Thank you! Building the workflow based on your answers.',
+			reasoning: '',
+			toolCalls: [
+				{
+					toolCallId: 'tc-questions',
+					toolName: 'ask-questions',
+					args: {},
+					isLoading: false,
+					renderHint: 'default',
+					confirmation: {
+						requestId: 'req-q1',
+						severity: 'info',
+						message: 'Please answer a few questions to help me build the workflow',
+						inputType: 'questions',
+						introMessage: 'Before I start, I need a few details about your workflow:',
+						questions: [
+							{
+								id: 'q1',
+								question: 'How often should the workflow run?',
+								type: 'single',
+								options: ['Every hour', 'Every day', 'Every week', 'On trigger event'],
+							},
+							{
+								id: 'q2',
+								question: 'Which environments is this for?',
+								type: 'multi',
+								options: ['Development', 'Staging', 'Production'],
+							},
+							{
+								id: 'q3',
+								question: 'Any additional notes or requirements?',
+								type: 'text',
+							},
+						],
+					},
+					confirmationStatus: 'approved',
+					result: {
+						answers: [
+							{ questionId: 'q1', selectedOptions: ['On trigger event'], skipped: false },
+							{
+								questionId: 'q2',
+								selectedOptions: ['Development', 'Production'],
+								skipped: false,
+							},
+							{
+								questionId: 'q3',
+								selectedOptions: [],
+								customText: 'Please add error handling for failed requests.',
+								skipped: false,
+							},
+						],
+					},
+				},
+			],
+			children: [],
+			timeline: [
+				{ type: 'tool-call', toolCallId: 'tc-questions' },
+				{ type: 'text', content: 'Thank you! Building the workflow based on your answers.' },
+			],
+		},
+	},
+
+	// ── 11. Agent — plan review, interactive (pending approval) ──────────────
+	{
+		id: 'mock-11',
+		role: 'assistant',
+		content: '',
+		createdAt: new Date().toISOString(),
+		reasoning: '',
+		isStreaming: true,
+		agentTree: {
+			agentId: 'agent-plan-interactive',
+			role: 'orchestrator',
+			status: 'active',
+			textContent: '',
+			reasoning: '',
+			toolCalls: [
+				{
+					toolCallId: 'tc-plan-interactive',
+					toolName: 'review-plan',
+					args: {},
+					isLoading: true,
+					renderHint: 'default',
+					confirmation: {
+						requestId: 'req-plan-1',
+						severity: 'info',
+						message: 'Please review this plan before I proceed',
+						inputType: 'plan-review',
+						introMessage: 'Here is my plan to build the Notion → Slack workflow:',
+						tasks: {
+							tasks: [
+								{
+									id: 'p1',
+									description: 'Create Notion "Page Created" trigger node',
+									status: 'todo',
+								},
+								{
+									id: 'p2',
+									description: 'Add data transformation (extract page title and URL)',
+									status: 'todo',
+								},
+								{
+									id: 'p3',
+									description: 'Configure Slack "Send Message" node to #notifications',
+									status: 'todo',
+								},
+								{ id: 'p4', description: 'Activate and test the workflow', status: 'todo' },
+							],
+						},
+					},
+					confirmationStatus: 'pending',
+				},
+			],
+			children: [],
+			timeline: [{ type: 'tool-call', toolCallId: 'tc-plan-interactive' }],
+		},
+	},
+
+	// ── 12. Agent — plan review, completed (read-only) ────────────────────────
+	{
+		id: 'mock-12',
+		role: 'assistant',
+		content: '',
+		createdAt: new Date().toISOString(),
+		reasoning: '',
+		isStreaming: false,
+		agentTree: {
+			agentId: 'agent-plan-done',
+			role: 'orchestrator',
+			status: 'completed',
+			textContent: 'Plan approved! All steps have been executed successfully.',
+			reasoning: '',
+			toolCalls: [
+				{
+					toolCallId: 'tc-plan-done',
+					toolName: 'review-plan',
+					args: {},
+					isLoading: false,
+					renderHint: 'default',
+					confirmation: {
+						requestId: 'req-plan-2',
+						severity: 'info',
+						message: 'Plan was reviewed and approved',
+						inputType: 'plan-review',
+						introMessage: 'Here is my plan to build the Notion → Slack workflow:',
+						tasks: {
+							tasks: [
+								{
+									id: 'p1',
+									description: 'Create Notion "Page Created" trigger node',
+									status: 'done',
+								},
+								{
+									id: 'p2',
+									description: 'Add data transformation (extract page title and URL)',
+									status: 'done',
+								},
+								{
+									id: 'p3',
+									description: 'Configure Slack "Send Message" node to #notifications',
+									status: 'done',
+								},
+								{ id: 'p4', description: 'Activate and test the workflow', status: 'done' },
+							],
+						},
+					},
+					confirmationStatus: 'approved',
+				},
+			],
+			children: [],
+			timeline: [
+				{ type: 'tool-call', toolCallId: 'tc-plan-done' },
+				{ type: 'text', content: 'Plan approved! All steps have been executed successfully.' },
+			],
+		},
+	},
+
+	// ── 13. Agent — child agents (active + completed + error + cancelled) ─────
+	{
+		id: 'mock-13',
+		role: 'assistant',
+		content: '',
+		createdAt: new Date().toISOString(),
+		reasoning: '',
+		isStreaming: false,
+		agentTree: {
+			agentId: 'agent-parent',
+			role: 'orchestrator',
+			status: 'active',
+			textContent: '',
+			reasoning: '',
+			toolCalls: [],
+			children: [
+				// Active child (builder kind, with targetResource for ArtifactCard)
+				{
+					agentId: 'child-active',
+					role: 'workflow builder',
+					kind: 'builder',
+					title: 'Building workflow',
+					subtitle: 'Notion → Slack integration',
+					goal: 'Build a complete workflow that monitors Notion page creation and posts a Slack notification.',
+					status: 'active',
+					textContent: 'Setting up the Notion trigger node...',
+					reasoning: '',
+					toolCalls: [
+						{
+							toolCallId: 'child-tc-1',
+							toolName: 'create-node',
+							args: { type: 'n8n-nodes-base.notionTrigger', name: 'Notion Trigger' },
+							isLoading: true,
+							renderHint: 'default',
+						},
+					],
+					children: [],
+					timeline: [
+						{ type: 'text', content: 'Setting up the Notion trigger node...' },
+						{ type: 'tool-call', toolCallId: 'child-tc-1' },
+					],
+					targetResource: { type: 'workflow', id: 'wf-new-123', name: 'Notion → Slack' },
+				},
+				// Completed child (researcher kind) — short inline text in SubagentStepTimeline
+				{
+					agentId: 'child-done',
+					role: 'researcher',
+					kind: 'researcher',
+					title: 'Research complete',
+					subtitle: 'Slack API documentation',
+					status: 'completed',
+					textContent: 'Found the required Slack scopes: chat:write, channels:read.',
+					reasoning: '',
+					toolCalls: [
+						{
+							toolCallId: 'child-tc-done',
+							toolName: 'web-search',
+							args: { query: 'Slack bot required OAuth scopes for posting messages' },
+							result: { answer: 'Required scopes: chat:write, channels:read' },
+							isLoading: false,
+							renderHint: 'default',
+						},
+					],
+					children: [],
+					timeline: [
+						{ type: 'tool-call', toolCallId: 'child-tc-done' },
+						{
+							type: 'text',
+							content: 'Found the required Slack scopes: chat:write, channels:read.',
+						},
+					],
+					result: 'Slack requires chat:write and channels:read OAuth scopes.',
+				},
+				// Completed child (builder kind) — long text behind toggle (contains code block)
+				{
+					agentId: 'child-long-text',
+					role: 'workflow builder',
+					kind: 'builder',
+					title: 'Workflow built',
+					subtitle: 'Generated workflow code',
+					status: 'completed',
+					textContent: 'Generated the workflow definition.',
+					reasoning: '',
+					toolCalls: [],
+					children: [],
+					timeline: [
+						{
+							type: 'text',
+							content:
+								'Generated the workflow definition:\n\n```json\n{\n  "name": "Notion → Slack",\n  "nodes": [\n    {\n      "name": "Notion Trigger",\n      "type": "n8n-nodes-base.notionTrigger",\n      "parameters": { "event": "page_added" }\n    },\n    {\n      "name": "Slack",\n      "type": "n8n-nodes-base.slack",\n      "parameters": {\n        "channel": "#notifications",\n        "text": "New page: {{ $json.title }}"\n      }\n    }\n  ]\n}\n```',
+						},
+					],
+					targetResource: { type: 'workflow', id: 'wf-built-456', name: 'Notion → Slack' },
+				},
+				// Error child — has timeline history visible when expanded
+				{
+					agentId: 'child-error',
+					role: 'credential validator',
+					status: 'error',
+					textContent: '',
+					reasoning: '',
+					toolCalls: [
+						{
+							toolCallId: 'child-err-tc-1',
+							toolName: 'validate-credential',
+							args: { credentialType: 'slackApi', credentialId: 'cred-abc' },
+							error: 'OAuth token is invalid or has been revoked',
+							isLoading: false,
+							renderHint: 'default',
+						},
+					],
+					children: [],
+					timeline: [
+						{ type: 'text', content: 'Validating Slack credential...' },
+						{ type: 'tool-call', toolCallId: 'child-err-tc-1' },
+					],
+					error: 'Failed to validate Slack credentials: Invalid OAuth token (401 Unauthorized)',
+					errorDetails: {
+						statusCode: 401,
+						provider: 'Slack',
+						technicalDetails: 'The provided access token is invalid or has been revoked.',
+					},
+				},
+				// Cancelled child — has partial timeline showing work done before cancellation
+				{
+					agentId: 'child-cancelled',
+					role: 'data validator',
+					status: 'cancelled',
+					textContent: '',
+					reasoning: '',
+					toolCalls: [
+						{
+							toolCallId: 'child-cancel-tc-1',
+							toolName: 'list-workflows',
+							args: { limit: 50 },
+							result: [
+								{ id: 'wf-1', name: 'Slack Notifier', active: true },
+								{ id: 'wf-2', name: 'Email Parser', active: false },
+							],
+							isLoading: false,
+							renderHint: 'default',
+						},
+					],
+					children: [],
+					timeline: [
+						{ type: 'text', content: 'Checking workflow data integrity...' },
+						{ type: 'tool-call', toolCallId: 'child-cancel-tc-1' },
+					],
+				},
+			],
+			timeline: [
+				{ type: 'child', agentId: 'child-active' },
+				{ type: 'child', agentId: 'child-done' },
+				{ type: 'child', agentId: 'child-long-text' },
+				{ type: 'child', agentId: 'child-error' },
+				{ type: 'child', agentId: 'child-cancelled' },
+			],
+		},
+	},
+
+	// ── 14. AgentSection — active (peek preview visible, shimmer title, stop button) ──
+	{
+		id: 'mock-14',
+		role: 'assistant',
+		content: '',
+		createdAt: new Date().toISOString(),
+		reasoning: '',
+		isStreaming: true,
+		agentTree: {
+			agentId: 'solo-parent-active',
+			role: 'orchestrator',
+			status: 'active',
+			textContent: '',
+			reasoning: '',
+			toolCalls: [],
+			children: [
+				{
+					agentId: 'solo-child-active',
+					role: 'workflow builder',
+					kind: 'builder',
+					title: 'Building workflow',
+					subtitle: 'Notion → Slack integration',
+					status: 'active',
+					textContent: '',
+					reasoning: '',
+					toolCalls: [
+						{
+							toolCallId: 'solo-active-tc-1',
+							toolName: 'create-node',
+							args: { type: 'n8n-nodes-base.notionTrigger', name: 'Notion Trigger' },
+							isLoading: true,
+							renderHint: 'default',
+						},
+					],
+					children: [],
+					timeline: [
+						{ type: 'text', content: 'Setting up the Notion trigger node...' },
+						{ type: 'tool-call', toolCallId: 'solo-active-tc-1' },
+					],
+				},
+			],
+			timeline: [{ type: 'child', agentId: 'solo-child-active' }],
+		},
+	},
+
+	// ── 15. AgentSection — completed (collapsed, no peek, timeline behind toggle) ──
+	{
+		id: 'mock-15',
+		role: 'assistant',
+		content: '',
+		createdAt: new Date().toISOString(),
+		reasoning: '',
+		isStreaming: false,
+		agentTree: {
+			agentId: 'solo-parent-completed',
+			role: 'orchestrator',
+			status: 'completed',
+			textContent: 'All done.',
+			reasoning: '',
+			toolCalls: [],
+			children: [
+				{
+					agentId: 'solo-child-completed',
+					role: 'researcher',
+					kind: 'researcher',
+					subtitle: 'Slack API documentation',
+					status: 'completed',
+					textContent: 'Found the required Slack scopes.',
+					reasoning: '',
+					toolCalls: [
+						{
+							toolCallId: 'solo-done-tc-1',
+							toolName: 'web-search',
+							args: { query: 'Slack bot OAuth scopes' },
+							result: { answer: 'chat:write, channels:read' },
+							isLoading: false,
+							renderHint: 'default',
+						},
+					],
+					children: [],
+					timeline: [
+						{ type: 'tool-call', toolCallId: 'solo-done-tc-1' },
+						{ type: 'text', content: 'Found the required Slack scopes.' },
+					],
+					result: 'Slack requires chat:write and channels:read.',
+				},
+			],
+			timeline: [
+				{ type: 'child', agentId: 'solo-child-completed' },
+				{ type: 'text', content: 'All done.' },
+			],
+		},
+	},
+
+	// ── 16. AgentSection — cancelled (collapsed, no peek, partial timeline behind toggle) ──
+	{
+		id: 'mock-16',
+		role: 'assistant',
+		content: '',
+		createdAt: new Date().toISOString(),
+		reasoning: '',
+		isStreaming: false,
+		agentTree: {
+			agentId: 'solo-parent-cancelled',
+			role: 'orchestrator',
+			status: 'completed',
+			textContent: '',
+			reasoning: '',
+			toolCalls: [],
+			children: [
+				{
+					agentId: 'solo-child-cancelled',
+					role: 'data validator',
+					subtitle: 'Workflow data integrity',
+					status: 'cancelled',
+					textContent: '',
+					reasoning: '',
+					toolCalls: [
+						{
+							toolCallId: 'solo-cancel-tc-1',
+							toolName: 'list-workflows',
+							args: { limit: 50 },
+							result: [
+								{ id: 'wf-1', name: 'Slack Notifier', active: true },
+								{ id: 'wf-2', name: 'Email Parser', active: false },
+							],
+							isLoading: false,
+							renderHint: 'default',
+						},
+					],
+					children: [],
+					timeline: [
+						{ type: 'text', content: 'Checking workflow data integrity...' },
+						{ type: 'tool-call', toolCallId: 'solo-cancel-tc-1' },
+					],
+				},
+			],
+			timeline: [{ type: 'child', agentId: 'solo-child-cancelled' }],
+		},
+	},
+
+	// ── 17. AgentSection — error (error message always visible, timeline behind toggle) ──
+	{
+		id: 'mock-17',
+		role: 'assistant',
+		content: '',
+		createdAt: new Date().toISOString(),
+		reasoning: '',
+		isStreaming: false,
+		agentTree: {
+			agentId: 'solo-parent-error',
+			role: 'orchestrator',
+			status: 'completed',
+			textContent: '',
+			reasoning: '',
+			toolCalls: [],
+			children: [
+				{
+					agentId: 'solo-child-error',
+					role: 'credential validator',
+					subtitle: 'Slack credential validation',
+					status: 'error',
+					textContent: '',
+					reasoning: '',
+					toolCalls: [
+						{
+							toolCallId: 'solo-err-tc-1',
+							toolName: 'validate-credential',
+							args: { credentialType: 'slackApi', credentialId: 'cred-abc' },
+							error: 'OAuth token is invalid or has been revoked',
+							isLoading: false,
+							renderHint: 'default',
+						},
+					],
+					children: [],
+					timeline: [
+						{ type: 'text', content: 'Validating Slack credential...' },
+						{ type: 'tool-call', toolCallId: 'solo-err-tc-1' },
+					],
+					error: 'Failed to validate Slack credentials: Invalid OAuth token (401 Unauthorized)',
+					errorDetails: {
+						statusCode: 401,
+						provider: 'Slack',
+						technicalDetails: 'The provided access token is invalid or has been revoked.',
+					},
+				},
+			],
+			timeline: [{ type: 'child', agentId: 'solo-child-error' }],
+		},
+	},
+
+	// ── 18. Agent — top-level error ───────────────────────────────────────────
+	{
+		id: 'mock-18',
+		role: 'assistant',
+		content: '',
+		createdAt: new Date().toISOString(),
+		reasoning: '',
+		isStreaming: false,
+		agentTree: {
+			agentId: 'agent-error',
+			role: 'orchestrator',
+			status: 'error',
+			textContent: '',
+			reasoning: '',
+			toolCalls: [],
+			children: [],
+			timeline: [],
+			error: 'Rate limit exceeded. Please try again in a few minutes.',
+			errorDetails: {
+				statusCode: 429,
+				provider: 'OpenAI',
+				technicalDetails:
+					'You have exceeded your API rate limit. Please wait before making more requests.',
+			},
+		},
+	},
+];
+
 // --- Message handlers ---
 async function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 	// Reset scroll on new user message
@@ -459,7 +1309,7 @@ function handleStop() {
 							>
 								<TransitionGroup name="message-slide">
 									<InstanceAiMessage
-										v-for="message in store.messages"
+										v-for="message in mockedMessages"
 										:key="message.id"
 										:message="message"
 									/>
