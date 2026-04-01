@@ -19,7 +19,7 @@ export const customFieldsCollection: INodeProperties = {
 					name: 'name',
 					type: 'string',
 					default: '',
-					description: 'The API key of the custom field',
+					description: 'The name or key of the custom field as it appears in Pipedrive',
 				},
 				{
 					displayName: 'Field Value',
@@ -39,7 +39,7 @@ export const resolveCustomFieldsOption: INodeProperties = {
 	type: 'boolean',
 	default: false,
 	description:
-		'Whether to resolve custom field keys to their human-readable names and enum IDs to labels',
+		'Whether to show custom field names instead of internal keys, and option labels instead of IDs',
 };
 
 export const visibleToOption: INodeProperties = {
@@ -67,5 +67,5 @@ export const encodeCustomFieldsOption: INodeProperties = {
 	type: 'boolean',
 	default: false,
 	description:
-		'Whether to encode custom field values (e.g. convert labels to enum IDs) before sending',
+		'Whether to automatically convert custom field names and option labels to their Pipedrive internal values',
 };

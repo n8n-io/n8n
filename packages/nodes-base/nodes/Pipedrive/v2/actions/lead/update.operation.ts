@@ -31,7 +31,7 @@ const properties: INodeProperties[] = [
 				name: 'expected_close_date',
 				type: 'dateTime',
 				default: '',
-				description: "Date when the lead's deal is expected to be closed, in ISO-8601 format",
+				description: "Expected close date for this lead's deal (YYYY-MM-DD)",
 			},
 			{
 				displayName: 'Is Archived',

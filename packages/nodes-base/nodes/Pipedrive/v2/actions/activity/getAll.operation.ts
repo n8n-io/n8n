@@ -51,8 +51,7 @@ const properties: INodeProperties[] = [
 				name: 'dealId',
 				type: 'number',
 				default: 0,
-				description:
-					'Filter activities by deal ID. This replaces the Deal Activity resource from v1.',
+				description: 'If set, only return activities linked to this deal',
 			},
 			{
 				displayName: 'Done',
