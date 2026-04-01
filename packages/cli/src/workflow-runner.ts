@@ -177,28 +177,14 @@ export class WorkflowRunner {
 			const STREAMING_HEARTBEAT_INTERVAL_MS = 30_000;
 			const keepaliveChunk = '{"type":"keepalive"}\n';
 			const res = data.httpResponse;
-			this.logger.debug('[streaming-heartbeat] Starting heartbeat', {
-				executionId,
-				executionsMode: this.executionsConfig.mode,
-				hasFlush: typeof res.flush === 'function',
-			});
 			heartbeatInterval = setInterval(() => {
 				if (!res.writableEnded) {
 					res.write(keepaliveChunk);
 					if (typeof res.flush === 'function') {
 						(res as unknown as { flush: () => void }).flush();
 					}
-					this.logger.debug('[streaming-heartbeat] Sent keepalive', { executionId });
-				} else {
-					this.logger.debug('[streaming-heartbeat] Skipped — response already ended', {
-						executionId,
-					});
 				}
 			}, STREAMING_HEARTBEAT_INTERVAL_MS);
-		} else if (data.streamingEnabled) {
-			this.logger.warn('[streaming-heartbeat] Streaming enabled but no httpResponse attached', {
-				executionId,
-			});
 		}
 
 		// @TODO: Reduce to true branch once feature is stable
@@ -250,7 +236,6 @@ export class WorkflowRunner {
 			const postExecutePromise = this.activeExecutions.getPostExecutePromise(executionId);
 			void postExecutePromise.finally(() => {
 				clearInterval(heartbeatInterval);
-				this.logger.debug('[streaming-heartbeat] Cleared heartbeat', { executionId });
 			});
 		}
 
