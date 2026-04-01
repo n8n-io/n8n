@@ -803,6 +803,7 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 // ---------------------------------------------------------------------------
 
 export interface InstanceAiAdminSettingsResponse {
+	enabled: boolean;
 	lastMessages: number;
 	embedderModel: string;
 	semanticRecallTopK: number;
@@ -821,6 +822,7 @@ export interface InstanceAiAdminSettingsResponse {
 }
 
 export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
+	enabled: z.boolean().optional(),
 	lastMessages: z.number().int().positive().optional(),
 	embedderModel: z.string().optional(),
 	semanticRecallTopK: z.number().int().positive().optional(),
