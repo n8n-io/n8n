@@ -107,9 +107,6 @@ export class Agent implements BuiltAgent {
 
 	private mcpClients: McpClient[] = [];
 
-	/** Cached shared config produced by build(). Reused across all per-run runtimes. */
-	private builtConfig?: AgentRuntimeConfig;
-
 	private buildPromise: Promise<AgentRuntimeConfig> | undefined;
 
 	/** Handlers registered via on() — copied into each per-run event bus at creation time. */
@@ -482,7 +479,7 @@ export class Agent implements BuiltAgent {
 		try {
 			return await runtime.generate(this.toMessages(input), options);
 		} finally {
-			this.activeEventBuses.delete(bus);
+			this.cleanupBus(bus);
 		}
 	}
 
@@ -494,7 +491,12 @@ export class Agent implements BuiltAgent {
 		const config = await this.ensureBuilt();
 		const { runtime, bus } = this.createRuntime(config);
 		const result = await runtime.stream(this.toMessages(input), options);
-		return { ...result, stream: this.trackStreamBus(result.stream, bus) };
+		try {
+			return { ...result, stream: this.trackStreamBus(result.stream, bus) };
+		} catch (error) {
+			this.cleanupBus(bus);
+			throw error;
+		}
 	}
 
 	/** Resume a suspended tool call with data. Lazy-builds on first call. */
@@ -519,12 +521,17 @@ export class Agent implements BuiltAgent {
 			try {
 				return await runtime.resume('generate', data, options);
 			} finally {
-				this.activeEventBuses.delete(bus);
+				this.cleanupBus(bus);
 			}
 		}
 		const { runtime, bus } = this.createRuntime(config);
-		const result = await runtime.resume('stream', data, options);
-		return { ...result, stream: this.trackStreamBus(result.stream, bus) };
+		try {
+			const result = await runtime.resume('stream', data, options);
+			return { ...result, stream: this.trackStreamBus(result.stream, bus) };
+		} catch (error) {
+			this.cleanupBus(bus);
+			throw error;
+		}
 	}
 
 	approve(method: 'generate', options: ResumeOptions & ExecutionOptions): Promise<GenerateResult>;
@@ -595,10 +602,17 @@ export class Agent implements BuiltAgent {
 		stream: ReadableStream<StreamChunk>,
 		bus: AgentEventBus,
 	): ReadableStream<StreamChunk> {
-		const cleanup = () => this.activeEventBuses.delete(bus);
+		const cleanup = () => {
+			this.cleanupBus(bus);
+		};
 		const { readable, writable } = new TransformStream<StreamChunk, StreamChunk>();
 		stream.pipeTo(writable).then(cleanup, cleanup);
 		return readable;
+	}
+
+	private cleanupBus(bus: AgentEventBus): void {
+		this.activeEventBuses.delete(bus);
+		bus.dispose();
 	}
 
 	private toMessages(input: string | AgentMessage[]): AgentMessage[] {
@@ -720,7 +734,7 @@ export class Agent implements BuiltAgent {
 		// Shared RunStateManager so resume() can find state from a prior stream()/generate() call.
 		const runState = new RunStateManager(this.checkpointStore);
 
-		this.builtConfig = {
+		return {
 			name: this.name,
 			model: modelConfig,
 			instructions,
@@ -740,7 +754,5 @@ export class Agent implements BuiltAgent {
 			modelCost,
 			runState,
 		};
-
-		return this.builtConfig;
 	}
 }
