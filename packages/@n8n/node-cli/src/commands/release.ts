@@ -55,6 +55,21 @@ Full documentation: https://docs.n8n.io/integrations/creating-nodes/deploy/submi
 		const pm = (await detectPackageManager()) ?? 'npm';
 		const isCI = Boolean(process.env.GITHUB_ACTIONS);
 
+		if (!isCI && !flags['init-workflow']) {
+			const workflowPath = path.resolve(process.cwd(), '.github/workflows/publish.yml');
+			const workflowExists = await fs
+				.access(workflowPath)
+				.then(() => true)
+				.catch(() => false);
+			if (!workflowExists) {
+				log.info(
+					'No GitHub Actions publish workflow found.\n' +
+						'Run `n8n-node release --init-workflow` to scaffold one. ' +
+						'This is required for npm provenance and n8n Cloud verification.',
+				);
+			}
+		}
+
 		if (flags['init-workflow']) {
 			await this.initWorkflow(pm);
 			return;

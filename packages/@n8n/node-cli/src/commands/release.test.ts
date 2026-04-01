@@ -122,6 +122,18 @@ describe('release command', () => {
 		expect(result).toBeDefined();
 	});
 
+	tmpdirTest('local release without publish.yml - shows init-workflow hint', async ({ tmpdir }) => {
+		await fs.writeFile(`${tmpdir}/pnpm-lock.yaml`, '# pnpm lock file');
+
+		mockSpawn('pnpm', [...releaseItArgs, '--npm.publish=false'], { exitCode: 0 });
+
+		const result = await CommandTester.run('release');
+
+		expect(result.getLogMessages('info')).toEqual(
+			expect.arrayContaining([expect.stringContaining('--init-workflow')]),
+		);
+	});
+
 	tmpdirTest(
 		'--init-workflow - creates publish.yml with package manager rendered',
 		async ({ tmpdir }) => {
