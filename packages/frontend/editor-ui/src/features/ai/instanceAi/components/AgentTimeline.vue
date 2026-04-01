@@ -170,6 +170,7 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'researcher'" />
 				<!-- Planner: show progressive PlanReviewPanel (loading → interactive → read-only) -->
 				<PlanReviewPanel
+					:key="findPlannerConfirmation()?.confirmation?.requestId ?? 'plan-loading'"
 					v-else-if="
 						toolCallsById[entry.toolCallId].renderHint === 'planner' &&
 						(findPlannerConfirmation() ||
