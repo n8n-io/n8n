@@ -356,6 +356,11 @@ async function connectToRelay(
 			broadcastStatusChange();
 		};
 
+		relay.ontabcreated = () => {
+			broadcastStatusChange();
+			updateBadge(relay.controlledTabCount);
+		};
+
 		const tabCount = relay.getControlledIds().length;
 		log.debug('connected, controlling', tabCount, 'tabs');
 		updateBadge(tabCount);

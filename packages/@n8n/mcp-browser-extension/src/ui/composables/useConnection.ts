@@ -159,14 +159,14 @@ export function useConnection() {
 
 	// ── Background push message listener ─────────────────────────────────────
 
-	function onBackgroundMessage(message: BackgroundPushMessage): void {
+	async function onBackgroundMessage(message: BackgroundPushMessage): Promise<void> {
 		if (message.type === 'relayUrlReady' && message.relayUrl) {
 			log.debug('relayUrlReady received:', message.relayUrl);
 			relayUrl.value = message.relayUrl;
 			if (status.value === 'connected') {
 				status.value = 'disconnected';
 				controlledTabIds.value = []; // controlledTabDetails auto-computes to []
-				void initTabRegistry();
+				await initTabRegistry();
 			}
 		}
 
@@ -174,7 +174,10 @@ export function useConnection() {
 			log.debug('statusChanged received: connected=', message.connected);
 			if (message.connected) {
 				status.value = 'connected';
-				controlledTabIds.value = message.tabIds ?? []; // controlledTabDetails auto-computes
+				const incoming = message.tabIds ?? [];
+				const missing = incoming.filter((e) => !tabRegistry.has(e.chromeTabId));
+				if (missing.length > 0) await initTabRegistry();
+				controlledTabIds.value = incoming; // controlledTabDetails auto-computes
 			} else {
 				status.value = 'disconnected';
 				controlledTabIds.value = []; // controlledTabDetails auto-computes to []

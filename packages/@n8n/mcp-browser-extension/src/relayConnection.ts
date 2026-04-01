@@ -85,6 +85,7 @@ export class RelayConnection {
 	private settings: TabManagementSettings = DEFAULT_SETTINGS;
 
 	onclose?: () => void;
+	ontabcreated?: () => void;
 
 	constructor(ws: WebSocket) {
 		this.ws = ws;
@@ -167,10 +168,6 @@ export class RelayConnection {
 
 		log.debug(`removeTab: ${id} (chromeTabId=${chromeTabId})`);
 		this.sendMessage({ method: 'tabClosed', params: { id } });
-
-		if (this.tabs.size === 0) {
-			this.close('All tabs closed');
-		}
 	}
 
 	setSettings(settings: TabManagementSettings): void {
@@ -473,13 +470,16 @@ export class RelayConnection {
 		const tab = await chrome.tabs.create({ url, active: false });
 		if (!tab.id) throw new Error('Failed to create tab');
 
+		this.agentCreatedChromeTabIds.add(tab.id);
+
 		// Agent-created tabs are eagerly attached for immediate use
 		const targetId = await this.attachAndResolveTargetId(tab.id);
 		this.tabs.set(targetId, { chromeTabId: tab.id, attached: true });
 		this.chromeTabIdToId.set(tab.id, targetId);
-		this.agentCreatedChromeTabIds.add(tab.id);
 
 		log.debug(`createTab: targetId=${targetId} chromeTabId=${tab.id} url=${tab.url ?? url ?? ''}`);
+
+		this.ontabcreated?.();
 
 		return {
 			id: targetId,
