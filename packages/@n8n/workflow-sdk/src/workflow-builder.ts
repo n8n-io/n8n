@@ -1231,23 +1231,37 @@ function normalizeArgs(args: unknown[]): NormalizedWorkflowArgs {
 	const [first, second, third] = args;
 
 	// Case 1: workflow('Name', [nodes], options?) -> AI Positional Syntax
-	if (typeof first === 'string' && isNodeArray(second)) {
-		return {
-			name: first,
-			id: first, // AI usually uses same name as id
-			nodesArray: second,
-			options: third,
-		};
+	if (typeof first === 'string' && Array.isArray(second)) {
+		if (second.length > 0 && isNodeLike(second[0]) && !isNodeArray(second)) {
+			throw new TypeError(
+				'workflow() received an invalid node array in the second argument. All items must be valid node definitions.',
+			);
+		}
+		if (isNodeArray(second)) {
+			return {
+				name: first,
+				id: first, // AI usually uses same name as id
+				nodesArray: second,
+				options: third,
+			};
+		}
 	}
 
 	// Case 2: workflow([nodes], options?) -> AI Fallback (no name provided)
-	if (isNodeArray(first)) {
-		return {
-			name: 'AI Generated Workflow',
-			id: 'ai-generated-workflow',
-			nodesArray: first,
-			options: second,
-		};
+	if (Array.isArray(first)) {
+		if (first.length > 0 && isNodeLike(first[0]) && !isNodeArray(first)) {
+			throw new TypeError(
+				'workflow() received an invalid node array in the first argument. All items must be valid node definitions.',
+			);
+		}
+		if (isNodeArray(first)) {
+			return {
+				name: 'AI Generated Workflow',
+				id: 'ai-generated-workflow',
+				nodesArray: first,
+				options: second,
+			};
+		}
 	}
 
 	// Default SDK syntax: workflow(id, name, options?)
