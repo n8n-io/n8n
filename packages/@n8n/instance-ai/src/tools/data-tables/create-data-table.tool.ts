@@ -56,6 +56,10 @@ export function createCreateDataTableTool(context: InstanceAiContext) {
 		execute: async (input, ctx) => {
 			const { resumeData, suspend } = ctx?.agent ?? {};
 
+			if (context.permissions?.createDataTable === 'blocked') {
+				return { denied: true, reason: 'Action blocked by admin' };
+			}
+
 			const needsApproval = context.permissions?.createDataTable !== 'always_allow';
 
 			// State 1: First call — suspend for confirmation (unless always_allow)

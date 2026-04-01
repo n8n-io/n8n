@@ -91,6 +91,17 @@ export function createFetchUrlTool(context: InstanceAiContext) {
 					runId: context.runId,
 				});
 				if (!check.allowed) {
+					// Blocked by admin — deny immediately without approval prompt
+					if (check.blocked) {
+						return {
+							url: input.url,
+							finalUrl: input.url,
+							title: '',
+							content: 'Action blocked by admin.',
+							truncated: false,
+							contentLength: 0,
+						};
+					}
 					await suspend?.(check.suspendPayload!);
 					// suspend() never resolves — this satisfies the type checker
 					return {
@@ -118,10 +129,11 @@ export function createFetchUrlTool(context: InstanceAiContext) {
 					runId: context.runId,
 				});
 				if (!redirectCheck.allowed) {
-					throw new Error(
-						`Redirect to ${new URL(targetUrl).hostname} requires approval. ` +
-							`Retry with the direct URL: ${targetUrl}`,
-					);
+					const reason = redirectCheck.blocked
+						? `Access to ${new URL(targetUrl).hostname} is blocked by admin.`
+						: `Redirect to ${new URL(targetUrl).hostname} requires approval. ` +
+							`Retry with the direct URL: ${targetUrl}`;
+					throw new Error(reason);
 				}
 			};
 

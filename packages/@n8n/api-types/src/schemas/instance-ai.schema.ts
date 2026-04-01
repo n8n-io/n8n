@@ -756,7 +756,7 @@ export interface InstanceAiThreadStatusResponse {
 // Settings types (runtime-configurable subset of InstanceAiConfig)
 // ---------------------------------------------------------------------------
 
-const instanceAiPermissionModeSchema = z.enum(['require_approval', 'always_allow']);
+const instanceAiPermissionModeSchema = z.enum(['require_approval', 'always_allow', 'blocked']);
 
 export type InstanceAiPermissionMode = z.infer<typeof instanceAiPermissionModeSchema>;
 

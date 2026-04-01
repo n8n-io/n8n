@@ -4200,6 +4200,7 @@
 	"settings.n8nAgent.permissions.description": "Control which actions need approval before agent executes them. These settings don't grant users any extra permissions",
 	"settings.n8nAgent.permissions.alwaysAllow": "Always allow",
 	"settings.n8nAgent.permissions.needsApproval": "Needs approval",
+	"settings.n8nAgent.permissions.blocked": "Blocked",
 	"settings.n8nAgent.permissions.runWorkflow": "Run workflows",
 	"settings.n8nAgent.permissions.publishWorkflow": "Activate workflows",
 	"settings.n8nAgent.permissions.deleteWorkflow": "Delete workflows",

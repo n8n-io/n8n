@@ -191,6 +191,10 @@ function getPermissionValue(key: keyof InstanceAiPermissions): InstanceAiPermiss
 								value="always_allow"
 								:label="i18n.baseText('settings.n8nAgent.permissions.alwaysAllow')"
 							/>
+							<N8nOption
+								value="blocked"
+								:label="i18n.baseText('settings.n8nAgent.permissions.blocked')"
+							/>
 						</N8nSelect>
 					</div>
 				</div>

@@ -50,6 +50,17 @@ export function createReadFileTool(context: InstanceAiContext) {
 		}),
 		execute: async ({ filePath, startLine, maxLines }, ctx) => {
 			const { resumeData, suspend } = ctx?.agent ?? {};
+			if (context.permissions?.readFilesystem === 'blocked') {
+				return {
+					path: '',
+					content: '',
+					truncated: false,
+					totalLines: 0,
+					denied: true,
+					reason: 'Action blocked by admin',
+				};
+			}
+
 			const needsApproval = context.permissions?.readFilesystem !== 'always_allow';
 
 			if (needsApproval && (resumeData === undefined || resumeData === null)) {

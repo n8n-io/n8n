@@ -34,6 +34,10 @@ export function createTagWorkflowTool(context: InstanceAiContext) {
 		execute: async (input, ctx) => {
 			const { resumeData, suspend } = ctx?.agent ?? {};
 
+			if (context.permissions?.tagWorkflow === 'blocked') {
+				return { appliedTags: [], denied: true, reason: 'Action blocked by admin' };
+			}
+
 			const needsApproval = context.permissions?.tagWorkflow !== 'always_allow';
 
 			// State 1: First call — suspend for confirmation (unless always_allow)

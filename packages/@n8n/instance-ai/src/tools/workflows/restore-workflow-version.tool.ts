@@ -34,6 +34,10 @@ export function createRestoreWorkflowVersionTool(context: InstanceAiContext) {
 		execute: async (input, ctx) => {
 			const { resumeData, suspend } = ctx?.agent ?? {};
 
+			if (context.permissions?.restoreWorkflowVersion === 'blocked') {
+				return { success: false, denied: true, reason: 'Action blocked by admin' };
+			}
+
 			const needsApproval = context.permissions?.restoreWorkflowVersion !== 'always_allow';
 
 			if (needsApproval && (resumeData === undefined || resumeData === null)) {

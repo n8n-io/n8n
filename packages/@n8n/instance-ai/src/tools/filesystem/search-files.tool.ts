@@ -60,6 +60,17 @@ export function createSearchFilesTool(context: InstanceAiContext) {
 		}),
 		execute: async ({ dirPath, query, filePattern, ignoreCase, maxResults }, ctx) => {
 			const { resumeData, suspend } = ctx?.agent ?? {};
+			if (context.permissions?.readFilesystem === 'blocked') {
+				return {
+					query,
+					matches: [],
+					truncated: false,
+					totalMatches: 0,
+					denied: true,
+					reason: 'Action blocked by admin',
+				};
+			}
+
 			const needsApproval = context.permissions?.readFilesystem !== 'always_allow';
 
 			if (needsApproval && (resumeData === undefined || resumeData === null)) {
