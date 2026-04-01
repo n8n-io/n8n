@@ -4,6 +4,7 @@ import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import type { InstanceAiContext } from '../../types';
+import { wrapUntrustedData } from '../web-research/sanitize-web-content';
 
 export function createReadFileTool(context: InstanceAiContext) {
 	return createTool({
@@ -74,10 +75,14 @@ export function createReadFileTool(context: InstanceAiContext) {
 			if (!context.filesystemService) {
 				throw new Error('No filesystem access available.');
 			}
-			return await context.filesystemService.readFile(filePath, {
+			const result = await context.filesystemService.readFile(filePath, {
 				startLine: startLine ?? undefined,
 				maxLines: maxLines ?? undefined,
 			});
+			return {
+				...result,
+				content: wrapUntrustedData(result.content, 'file', filePath),
+			};
 		},
 	});
 }

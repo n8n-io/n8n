@@ -2048,15 +2048,20 @@ export class InstanceAiService {
 					if (remaining.length === 0 && !hasActiveRun && !hasSuspendedRun) {
 						const user = this.runState.getThreadUser(opts.threadId);
 						if (user) {
-							const summary = task.result
-								? `Background task "${opts.role}" completed: ${task.result}`
-								: task.error
-									? `Background task "${opts.role}" failed: ${task.error}`
-									: `Background task "${opts.role}" finished.`;
+							const payload = JSON.stringify(
+								{
+									role: opts.role,
+									status: task.result ? 'completed' : task.error ? 'failed' : 'finished',
+									result: task.result ?? undefined,
+									error: task.error ?? undefined,
+								},
+								null,
+								2,
+							);
 							await this.startInternalFollowUpRun(
 								user,
 								opts.threadId,
-								`<background-task-completed>\n${summary}\n</background-task-completed>\n\n${AUTO_FOLLOW_UP_MESSAGE}`,
+								`<background-task-completed>\n${payload}\n</background-task-completed>\n\n${AUTO_FOLLOW_UP_MESSAGE}`,
 								this.runState.getThreadResearchMode(opts.threadId),
 								task.messageGroupId,
 							);

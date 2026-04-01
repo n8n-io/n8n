@@ -34,6 +34,7 @@ import type {
 	ServiceProxyConfig,
 	CredentialTypeSearchResult,
 } from '@n8n/instance-ai';
+import { wrapUntrustedData } from '@n8n/instance-ai';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -1931,6 +1932,22 @@ export function truncateResultData(resultData: Record<string, unknown>): Record<
 	return truncated;
 }
 
+/**
+ * Wraps each entry in truncated result data with untrusted-data boundary tags.
+ * Applied after truncation so that `truncateResultData` can still inspect raw arrays.
+ */
+function wrapResultDataEntries(data: Record<string, unknown>): Record<string, unknown> {
+	const wrapped: Record<string, unknown> = {};
+	for (const [nodeName, value] of Object.entries(data)) {
+		wrapped[nodeName] = wrapUntrustedData(
+			JSON.stringify(value, null, 2),
+			'execution-output',
+			`node:${nodeName}`,
+		);
+	}
+	return wrapped;
+}
+
 export async function extractExecutionResult(
 	executionRepository: ExecutionRepository,
 	executionId: string,
@@ -1981,7 +1998,10 @@ export async function extractExecutionResult(
 	return {
 		executionId,
 		status,
-		data: Object.keys(resultData).length > 0 ? truncateResultData(resultData) : undefined,
+		data:
+			Object.keys(resultData).length > 0
+				? wrapResultDataEntries(truncateResultData(resultData))
+				: undefined,
 		error: errorMessage,
 		startedAt: execution.startedAt?.toISOString(),
 		finishedAt: execution.stoppedAt?.toISOString(),
@@ -2084,7 +2104,13 @@ export async function extractNodeOutput(
 
 	return {
 		nodeName,
-		items: capped,
+		items: capped.map((item, i) =>
+			wrapUntrustedData(
+				JSON.stringify(item, null, 2),
+				'execution-output',
+				`node:${nodeName}[${startIndex + i}]`,
+			),
+		),
 		totalItems,
 		returned: { from: startIndex, to: startIndex + capped.length },
 	};
@@ -2268,9 +2294,15 @@ export async function extractExecutionDebugInfo(
 										(item): item is NonNullable<typeof item> => item !== null && item !== undefined,
 									)
 									.map((item) => item.json);
-								return inputItems && inputItems.length > 0
-									? (inputItems[0] as Record<string, unknown>)
-									: undefined;
+								if (inputItems && inputItems.length > 0) {
+									const raw = inputItems[0] as Record<string, unknown>;
+									return wrapUntrustedData(
+										JSON.stringify(raw, null, 2),
+										'execution-output',
+										`failed-node-input:${nodeName}`,
+									);
+								}
+								return undefined;
 							})()
 						: undefined,
 				};

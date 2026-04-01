@@ -1,3 +1,14 @@
+// Mock the barrel import to avoid pulling in @mastra/core (ESM-only transitive deps)
+jest.mock('@n8n/instance-ai', () => ({
+	wrapUntrustedData(content: string, source: string, label?: string): string {
+		const esc = (s: string) =>
+			s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+		const safeLabel = label ? ` label="${esc(label)}"` : '';
+		const safeContent = content.replace(/<\/untrusted_data/gi, '&lt;/untrusted_data');
+		return `<untrusted_data source="${esc(source)}"${safeLabel}>\n${safeContent}\n</untrusted_data>`;
+	},
+}));
+
 import type { ExecutionRepository } from '@n8n/db';
 import type { IRunExecutionData, ITaskData } from 'n8n-workflow';
 
@@ -165,7 +176,10 @@ describe('extractExecutionResult', () => {
 		);
 
 		expect(result.data).toBeDefined();
-		expect(result.data!['Set Node']).toEqual([{ id: 1, name: 'Alice' }]);
+		// After prompt-injection hardening, node output is wrapped in boundary tags
+		expect(result.data!['Set Node']).toContain('<untrusted_data');
+		expect(result.data!['Set Node']).toContain('"id": 1');
+		expect(result.data!['Set Node']).toContain('"name": "Alice"');
 	});
 
 	it('excludes node output data when includeOutputData is false', async () => {
@@ -571,7 +585,9 @@ describe('extractNodeOutput', () => {
 		expect(result.totalItems).toBe(25);
 		expect(result.items).toHaveLength(5);
 		expect(result.returned).toEqual({ from: 10, to: 15 });
-		expect(result.items[0]).toEqual({ id: 10 });
+		// Items are wrapped in untrusted-data boundary tags
+		expect(result.items[0]).toContain('<untrusted_data');
+		expect(result.items[0]).toContain('"id": 10');
 	});
 
 	it('caps maxItems at 50', async () => {
@@ -611,14 +627,11 @@ describe('extractNodeOutput', () => {
 
 		expect(result.totalItems).toBe(1);
 		expect(result.items).toHaveLength(1);
-		const item = result.items[0] as {
-			_truncatedItem: boolean;
-			preview: string;
-			originalLength: number;
-		};
-		expect(item._truncatedItem).toBe(true);
-		expect(item.preview.length).toBe(50_000);
-		expect(item.originalLength).toBeGreaterThan(50_000);
+		// Items are wrapped in untrusted-data boundary tags after truncation
+		const wrapped = result.items[0] as string;
+		expect(wrapped).toContain('<untrusted_data');
+		expect(wrapped).toContain('_truncatedItem');
+		expect(wrapped).toContain('"originalLength"');
 	});
 
 	it('throws when execution is not found', async () => {

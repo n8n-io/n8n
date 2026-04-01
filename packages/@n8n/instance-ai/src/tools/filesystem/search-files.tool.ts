@@ -4,6 +4,7 @@ import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import type { InstanceAiContext } from '../../types';
+import { wrapUntrustedData } from '../web-research/sanitize-web-content';
 
 export function createSearchFilesTool(context: InstanceAiContext) {
 	return createTool({
@@ -84,12 +85,21 @@ export function createSearchFilesTool(context: InstanceAiContext) {
 			if (!context.filesystemService) {
 				throw new Error('No filesystem access available.');
 			}
-			return await context.filesystemService.searchFiles(dirPath, {
+			const result = await context.filesystemService.searchFiles(dirPath, {
 				query,
 				filePattern: filePattern ?? undefined,
 				ignoreCase: ignoreCase ?? undefined,
 				maxResults: maxResults ?? undefined,
 			});
+			return {
+				...result,
+				matches: result.matches.map(
+					(match: { path: string; lineNumber: number; line: string }) => ({
+						...match,
+						line: wrapUntrustedData(match.line, 'file', `${match.path}:${match.lineNumber}`),
+					}),
+				),
+			};
 		},
 	});
 }
