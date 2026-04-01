@@ -222,9 +222,7 @@ export class InstanceAiCompactionService {
 
 	/** Get the full serialized text of a message (for token estimation). */
 	private extractRawText(msg: MastraDBMessage): string {
-		const content: unknown = msg.content;
-		if (typeof content === 'string') return content;
-		return JSON.stringify(content);
+		return JSON.stringify(msg.content);
 	}
 
 	/**
@@ -248,14 +246,9 @@ export class InstanceAiCompactionService {
 		return result;
 	}
 
-	/**
-	 * Extract plain text from a Mastra message content structure.
-	 * Handles both string content and structured content arrays.
-	 */
+	/** Extract plain text from a Mastra V2 message content structure. */
 	private extractTextFromContent(content: MastraMessageContentV2): string {
-		if (typeof content === 'string') return content;
-
-		const inner = (content as Record<string, unknown>)?.content;
+		const inner = content.content;
 		if (typeof inner === 'string') return inner;
 
 		if (Array.isArray(inner)) {

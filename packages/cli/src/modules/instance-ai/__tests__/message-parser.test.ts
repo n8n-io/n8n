@@ -7,30 +7,11 @@ function makeDate(offset = 0): Date {
 	return new Date(Date.now() + offset);
 }
 
+/** Shorthand for wrapping a string into V2 content format. */
+const v2 = (text: string) => ({ format: 2 as const, content: text });
+
 describe('parseStoredMessages', () => {
 	describe('user messages', () => {
-		it('should parse user message with string content', () => {
-			const messages: MastraDBMessage[] = [
-				{
-					id: 'msg-1',
-					role: 'user',
-					content: 'Hello world',
-					createdAt: makeDate(),
-				},
-			];
-
-			const result = parseStoredMessages(messages);
-
-			expect(result).toHaveLength(1);
-			expect(result[0]).toMatchObject({
-				id: 'msg-1',
-				role: 'user',
-				content: 'Hello world',
-				reasoning: '',
-				isStreaming: false,
-			});
-		});
-
 		it('should parse user message with V2 content (parts array)', () => {
 			const messages: MastraDBMessage[] = [
 				{
@@ -55,7 +36,7 @@ describe('parseStoredMessages', () => {
 				{
 					id: 'msg-1',
 					role: 'user',
-					content: { format: 2, content: 'Short version' },
+					content: v2('Short version'),
 					createdAt: makeDate(),
 				},
 			];
@@ -72,7 +53,7 @@ describe('parseStoredMessages', () => {
 				{
 					id: 'msg-u',
 					role: 'user',
-					content: 'Hi',
+					content: v2('Hi'),
 					createdAt: makeDate(),
 				},
 				{
@@ -100,7 +81,7 @@ describe('parseStoredMessages', () => {
 				{
 					id: 'msg-u',
 					role: 'user',
-					content: 'List workflows',
+					content: v2('List workflows'),
 					createdAt: makeDate(),
 				},
 				{
@@ -142,7 +123,7 @@ describe('parseStoredMessages', () => {
 				{
 					id: 'msg-u',
 					role: 'user',
-					content: 'Do something',
+					content: v2('Do something'),
 					createdAt: makeDate(),
 				},
 				{
@@ -177,7 +158,7 @@ describe('parseStoredMessages', () => {
 				{
 					id: 'msg-u',
 					role: 'user',
-					content: 'Think about this',
+					content: v2('Think about this'),
 					createdAt: makeDate(),
 				},
 				{
@@ -202,7 +183,7 @@ describe('parseStoredMessages', () => {
 				{
 					id: 'msg-u',
 					role: 'user',
-					content: 'Think',
+					content: v2('Think'),
 					createdAt: makeDate(),
 				},
 				{
@@ -230,7 +211,7 @@ describe('parseStoredMessages', () => {
 				{
 					id: 'msg-u',
 					role: 'user',
-					content: 'Build something',
+					content: v2('Build something'),
 					createdAt: makeDate(),
 				},
 				{
@@ -279,7 +260,7 @@ describe('parseStoredMessages', () => {
 				{
 					id: 'msg-u',
 					role: 'user',
-					content: 'Go',
+					content: v2('Go'),
 					createdAt: makeDate(),
 				},
 				{
@@ -323,7 +304,7 @@ describe('parseStoredMessages', () => {
 				{
 					id: 'msg-u',
 					role: 'user',
-					content: 'Go',
+					content: v2('Go'),
 					createdAt: makeDate(),
 				},
 				{
@@ -367,7 +348,7 @@ describe('parseStoredMessages', () => {
 				{
 					id: 'msg-u1',
 					role: 'user',
-					content: 'Build me a workflow',
+					content: v2('Build me a workflow'),
 					createdAt: makeDate(),
 				},
 				{
@@ -379,8 +360,9 @@ describe('parseStoredMessages', () => {
 				{
 					id: 'msg-u2',
 					role: 'user',
-					content:
+					content: v2(
 						'<background-tasks>\n[Background task completed — workflow-builder]: Done\n</background-tasks>\n\n(continue)',
+					),
 					createdAt: makeDate(2),
 				},
 				{
@@ -405,7 +387,7 @@ describe('parseStoredMessages', () => {
 				{
 					id: 'msg-u',
 					role: 'user',
-					content: '(continue)',
+					content: v2('(continue)'),
 					createdAt: makeDate(),
 				},
 			];
@@ -420,8 +402,9 @@ describe('parseStoredMessages', () => {
 				{
 					id: 'msg-u',
 					role: 'user',
-					content:
+					content: v2(
 						'<background-tasks>\n[Background task completed — workflow-builder]: Done\n</background-tasks>\n\nNow add error handling',
+					),
 					createdAt: makeDate(),
 				},
 			];
@@ -437,8 +420,9 @@ describe('parseStoredMessages', () => {
 				{
 					id: 'msg-u',
 					role: 'user',
-					content:
+					content: v2(
 						'<running-tasks>\n[Running task — workflow-builder]: taskId=build-1234\n</running-tasks>\n\nUse the Redis credential instead',
+					),
 					createdAt: makeDate(),
 				},
 			];
@@ -454,7 +438,7 @@ describe('parseStoredMessages', () => {
 				{
 					id: 'msg-u',
 					role: 'user',
-					content: 'Tell me about <background-tasks> tags',
+					content: v2('Tell me about <background-tasks> tags'),
 					createdAt: makeDate(),
 				},
 			];
@@ -477,13 +461,13 @@ describe('parseStoredMessages', () => {
 				{
 					id: 'msg-t',
 					role: 'tool',
-					content: 'tool output',
+					content: v2('tool output'),
 					createdAt: makeDate(),
 				},
 				{
 					id: 'msg-s',
 					role: 'system',
-					content: 'system message',
+					content: v2('system message'),
 					createdAt: makeDate(),
 				},
 			];
@@ -515,7 +499,7 @@ describe('parseStoredMessages', () => {
 				{
 					id: 'msg-u',
 					role: 'user',
-					content: 'test',
+					content: v2('test'),
 					createdAt: makeDate(),
 				},
 				{

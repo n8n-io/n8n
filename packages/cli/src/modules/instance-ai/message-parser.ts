@@ -40,8 +40,7 @@ interface MastraContentV2 {
 export interface MastraDBMessage {
 	id: string;
 	role: string;
-	/** Content from Mastra storage — unknown because it's read from DB via Record<string, unknown>. */
-	content: unknown;
+	content: MastraContentV2;
 	type?: string;
 	createdAt: Date;
 }
@@ -50,19 +49,9 @@ export interface MastraDBMessage {
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Type guard: narrows unknown content to MastraContentV2 (object with format or known V2 fields). */
-function isV2Content(content: unknown): content is MastraContentV2 {
-	return content !== null && typeof content === 'object' && !Array.isArray(content);
-}
-
-function extractTextFromContent(content: unknown): string {
-	if (typeof content === 'string') return content;
-	if (!isV2Content(content)) return '';
-
-	// V2 shortcut
+function extractTextFromContent(content: MastraContentV2): string {
 	if (content.content) return content.content;
 
-	// V2 parts array
 	if (content.parts) {
 		return content.parts
 			.filter((p) => p.type === 'text' && p.text)
@@ -73,16 +62,11 @@ function extractTextFromContent(content: unknown): string {
 	return '';
 }
 
-function extractReasoningFromContent(content: unknown): string {
-	if (typeof content === 'string') return '';
-	if (!isV2Content(content)) return '';
-
-	// V2 top-level reasoning array
+function extractReasoningFromContent(content: MastraContentV2): string {
 	if (content.reasoning?.length) {
 		return content.reasoning.map((r) => r.text).join('');
 	}
 
-	// V2 reasoning parts
 	if (content.parts) {
 		return content.parts
 			.filter((p) => p.type === 'reasoning' && p.text)
@@ -93,19 +77,9 @@ function extractReasoningFromContent(content: unknown): string {
 	return '';
 }
 
-function extractParts(content: unknown): MastraContentPart[] | undefined {
-	if (!isV2Content(content)) return undefined;
-	return content.parts;
-}
-
-function extractToolInvocations(content: unknown): MastraToolInvocation[] {
-	if (typeof content === 'string') return [];
-	if (!isV2Content(content)) return [];
-
-	// V2 top-level toolInvocations (preferred)
+function extractToolInvocations(content: MastraContentV2): MastraToolInvocation[] {
 	if (content.toolInvocations?.length) return content.toolInvocations;
 
-	// V2 parts-based tool invocations
 	if (content.parts) {
 		return content.parts
 			.filter((p) => p.type === 'tool-invocation' && p.toolInvocation)
@@ -230,7 +204,7 @@ export function parseStoredMessages(
 			const reasoning = extractReasoningFromContent(msg.content);
 			const invocations = extractToolInvocations(msg.content);
 			const toolCalls = invocations.map(buildToolCallState);
-			const parts = extractParts(msg.content);
+			const parts = msg.content.parts;
 
 			// Match snapshot by position: Nth assistant message → Nth snapshot (aligned from end)
 			const snapshotIdx = assistantIdx - snapshotOffset;
