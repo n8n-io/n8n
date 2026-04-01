@@ -14,10 +14,6 @@ import { Time } from '@n8n/constants';
 import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
-import { InstanceSettings } from 'n8n-core';
-import { N8N_VERSION } from '@/constants';
-import { License } from '@/license';
 import { UrlService } from '@/services/url.service';
 import {
 	createInstanceAgent,
@@ -150,14 +146,11 @@ export class InstanceAiService {
 	/** Default IANA timezone for the instance (from GENERIC_TIMEZONE env var). */
 	private readonly defaultTimeZone: string;
 
-	/** Lazily-initialized AI assistant client for sandbox proxy integration. */
-	private aiAssistantClient: AiAssistantClient | undefined;
-
 	private readonly logger: Logger;
 
 	constructor(
 		logger: Logger,
-		private readonly globalConfig: GlobalConfig,
+		globalConfig: GlobalConfig,
 		private readonly adapterService: InstanceAiAdapterService,
 		private readonly eventBus: InProcessEventBus,
 		private readonly settingsService: InstanceAiSettingsService,
@@ -167,8 +160,6 @@ export class InstanceAiService {
 		private readonly push: Push,
 		private readonly threadRepo: InstanceAiThreadRepository,
 		private readonly urlService: UrlService,
-		private readonly license: License,
-		private readonly instanceSettings: InstanceSettings,
 		private readonly dbSnapshotStorage: DbSnapshotStorage,
 		private readonly dbIterationLogStorage: DbIterationLogStorage,
 	) {
@@ -256,37 +247,13 @@ export class InstanceAiService {
 		};
 	}
 
-	private async getAiAssistantClient(): Promise<AiAssistantClient | undefined> {
-		if (this.aiAssistantClient) return this.aiAssistantClient;
-
-		const baseUrl = this.globalConfig.aiAssistant.baseUrl;
-		if (!baseUrl) return undefined;
-
-		const licenseCert = await this.license.loadCertStr();
-		const consumerId = this.license.getConsumerId();
-
-		this.aiAssistantClient = new AiAssistantClient({
-			licenseCert,
-			consumerId,
-			baseUrl,
-			n8nVersion: N8N_VERSION,
-			instanceId: this.instanceSettings.instanceId,
-		});
-
-		this.license.onCertRefresh((cert) => {
-			this.aiAssistantClient?.updateLicenseCert(cert);
-		});
-
-		return this.aiAssistantClient;
-	}
-
 	private async resolveSandboxConfig(user: User): Promise<SandboxConfig> {
 		const base = this.getSandboxConfigFromEnv();
 		if (!base.enabled) return base;
 		if (base.provider === 'daytona') {
 			// If AI assistant service is available, route Daytona calls through its sandbox proxy
-			const client = await this.getAiAssistantClient();
-			if (client) {
+			if (this.aiService.isProxyEnabled()) {
+				const client = await this.aiService.getClient();
 				const proxyConfig = await client.getSandboxProxyConfig();
 				return {
 					...base,
