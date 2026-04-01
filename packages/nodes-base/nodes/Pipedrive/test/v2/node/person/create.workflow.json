@@ -16,8 +16,24 @@
 				"operation": "create",
 				"name": "John Test",
 				"additionalFields": {
-					"email": "john@test.com",
-					"phone": "555-0100",
+					"emails": {
+						"emailProperties": [
+							{
+								"value": "john@test.com",
+								"primary": true,
+								"label": "work"
+							}
+						]
+					},
+					"phones": {
+						"phoneProperties": [
+							{
+								"value": "555-0100",
+								"primary": true,
+								"label": "work"
+							}
+						]
+					},
 					"org_id": 7
 				}
 			},

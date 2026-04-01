@@ -7,8 +7,20 @@ describe('Test PipedriveV2, person => create', () => {
 	nock('https://api.pipedrive.com/api/v2')
 		.post('/persons', {
 			name: 'John Test',
-			email: 'john@test.com',
-			phone: '555-0100',
+			emails: [
+				{
+					value: 'john@test.com',
+					primary: true,
+					label: 'work',
+				},
+			],
+			phones: [
+				{
+					value: '555-0100',
+					primary: true,
+					label: 'work',
+				},
+			],
 			org_id: 7,
 		})
 		.reply(200, {

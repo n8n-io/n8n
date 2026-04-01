@@ -31,12 +31,45 @@ const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Email',
-				name: 'email',
-				type: 'string',
-				placeholder: 'name@email.com',
-				default: '',
-				description: 'Email address of the person',
+				displayName: 'Emails',
+				name: 'emails',
+				type: 'fixedCollection',
+				typeOptions: { multipleValues: true },
+				default: {},
+				description: 'Email addresses of the person',
+				options: [
+					{
+						displayName: 'Email',
+						name: 'emailProperties',
+						values: [
+							{
+								displayName: 'Email',
+								name: 'value',
+								type: 'string',
+								placeholder: 'name@email.com',
+								default: '',
+							},
+							{
+								displayName: 'Primary',
+								name: 'primary',
+								type: 'boolean',
+								default: true,
+								description: 'Whether this is the primary email address',
+							},
+							{
+								displayName: 'Label',
+								name: 'label',
+								type: 'options',
+								options: [
+									{ name: 'Home', value: 'home' },
+									{ name: 'Work', value: 'work' },
+									{ name: 'Other', value: 'other' },
+								],
+								default: 'work',
+							},
+						],
+					},
+				],
 			},
 			{
 				displayName: 'Label Name or ID',
@@ -79,11 +112,45 @@ const properties: INodeProperties[] = [
 					'ID of the user who will be marked as the owner of this person. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Phone',
-				name: 'phone',
-				type: 'string',
-				default: '',
-				description: 'Phone number of the person',
+				displayName: 'Phones',
+				name: 'phones',
+				type: 'fixedCollection',
+				typeOptions: { multipleValues: true },
+				default: {},
+				description: 'Phone numbers of the person',
+				options: [
+					{
+						displayName: 'Phone',
+						name: 'phoneProperties',
+						values: [
+							{
+								displayName: 'Phone Number',
+								name: 'value',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Primary',
+								name: 'primary',
+								type: 'boolean',
+								default: true,
+								description: 'Whether this is the primary phone number',
+							},
+							{
+								displayName: 'Label',
+								name: 'label',
+								type: 'options',
+								options: [
+									{ name: 'Home', value: 'home' },
+									{ name: 'Mobile', value: 'mobile' },
+									{ name: 'Work', value: 'work' },
+									{ name: 'Other', value: 'other' },
+								],
+								default: 'mobile',
+							},
+						],
+					},
+				],
 			},
 			visibleToOption,
 			customFieldsCollection,
@@ -118,6 +185,15 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 			const updateFields = this.getNodeParameter('updateFields', i);
 			addFieldsToBody(body, updateFields);
+
+			// Transform fixedCollection emails to API array format
+			if (body.emails && (body.emails as IDataObject).emailProperties) {
+				body.emails = (body.emails as IDataObject).emailProperties;
+			}
+			// Transform fixedCollection phones to API array format
+			if (body.phones && (body.phones as IDataObject).phoneProperties) {
+				body.phones = (body.phones as IDataObject).phoneProperties;
+			}
 
 			// Clear label when set to 'null' string
 			if (body.label === 'null') {

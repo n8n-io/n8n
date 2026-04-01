@@ -85,16 +85,6 @@ const properties: INodeProperties[] = [
 								},
 								description: 'The cost of the product',
 							},
-							{
-								displayName: 'Overhead Cost',
-								name: 'overhead_cost',
-								type: 'number',
-								default: 0,
-								typeOptions: {
-									numberPrecision: 2,
-								},
-								description: 'The overhead cost of the product',
-							},
 						],
 					},
 				],
