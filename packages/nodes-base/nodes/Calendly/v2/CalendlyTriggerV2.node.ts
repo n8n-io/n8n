@@ -13,8 +13,6 @@ import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 
 import { calendlyApiRequest, hasResponseStatus, resolveIdentity } from './GenericFunctions';
 
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 type CalendlyWebhookSubscription = {
 	callback_url: string;
 	events: string[];
@@ -68,14 +66,6 @@ function isCalendlyCreateWebhookResponse(value: unknown): value is CalendlyCreat
 				value.resource !== null &&
 				(!('uri' in value.resource) || typeof value.resource.uri === 'string')))
 	);
-}
-
-function enforceV2Uri(this: IHookFunctions, value: string, parameterName: string) {
-	if (UUID_REGEX.test(value) && !value.startsWith('http')) {
-		throw new NodeApiError(this.getNode(), {} as JsonObject, {
-			message: `Legacy v1 ID detected in '${parameterName}'. Calendly v2 requires full URIs. Please re-select this resource from the dropdown to fetch the modern v2 URI.`,
-		});
-	}
 }
 
 function validateWebhookScope(this: IHookFunctions, scope: string) {
@@ -233,9 +223,6 @@ export class CalendlyTriggerV2 implements INodeType {
 				const events = this.getNodeParameter('events') as string[];
 				const scope = this.getNodeParameter('scope', 0) as string;
 
-				enforceV2Uri.call(this, scope, 'scope');
-				events.forEach((eventString) => enforceV2Uri.call(this, eventString, 'events'));
-
 				const { userUri, organizationUri } = await resolveIdentity.call(this);
 				const qs = buildWebhookSubscriptionQuery.call(this, scope, organizationUri, userUri);
 
@@ -273,22 +260,11 @@ export class CalendlyTriggerV2 implements INodeType {
 					const events = this.getNodeParameter('events', []) as string[];
 					const scope = this.getNodeParameter('scope', 'user') as string;
 
-					enforceV2Uri.call(this, scope, 'scope');
-					events.forEach((eventString) => enforceV2Uri.call(this, eventString, 'events'));
-
 					const { userUri, organizationUri } = await resolveIdentity.call(this);
 					validateWebhookScope.call(this, scope);
 
-					const authType = this.getNodeParameter('authentication', 0) as string;
-					const credType = authType === 'apiKey' ? 'calendlyApi' : 'calendlyOAuth2Api';
-					const credentials = await this.getCredentials(credType);
-					const signingKey = credentials?.webhookSigningKey as string | undefined;
-					if (!signingKey) {
-						throw new NodeApiError(this.getNode(), {} as JsonObject, {
-							message:
-								'Calendly webhook signing requires a Webhook Signing Key in the selected credentials.',
-						});
-					}
+					// Signing key is optional during creation since Calendly generates one per subscription.
+					// The generated key will be stored and used for verification.
 
 					if (scope === 'organization') {
 						try {
@@ -345,12 +321,8 @@ export class CalendlyTriggerV2 implements INodeType {
 					}
 
 					return false;
-				} catch (error: any) {
-					const isForbidden =
-						error?.httpCode === '403' ||
-						error?.httpCode === 403 ||
-						error?.message?.includes('Forbidden') ||
-						error?.response?.status === 403;
+				} catch (error) {
+					const isForbidden = hasResponseStatus(error, 403);
 
 					if (isForbidden) {
 						throw new NodeApiError(this.getNode(), error as JsonObject, {
@@ -404,7 +376,7 @@ export class CalendlyTriggerV2 implements INodeType {
 		const credentials = await this.getCredentials(credentialName);
 		const webhookData = this.getWorkflowStaticData('node');
 		const webhookSigningKey =
-			(webhookData.webhookSigningKey as string | undefined) ||
+			(webhookData.webhookSigningKey as string | undefined) ??
 			(credentials?.webhookSigningKey as string | undefined);
 
 		if (webhookSigningKey) {

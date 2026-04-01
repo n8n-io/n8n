@@ -17,19 +17,29 @@ type CalendlyIdentityResponse = {
 	};
 };
 
-export function hasResponseStatus(error: any, status: number): boolean {
-	if (error && (error.httpCode === status.toString() || error.httpCode === status)) {
+export function hasResponseStatus(error: unknown, status: number): boolean {
+	if (
+		error &&
+		typeof error === 'object' &&
+		'httpCode' in error &&
+		(error.httpCode === status.toString() || error.httpCode === status)
+	) {
 		return true;
 	}
-	return (
-		typeof error === 'object' &&
-		error !== null &&
-		'response' in error &&
-		typeof error.response === 'object' &&
-		error.response !== null &&
-		'status' in error.response &&
-		error.response.status === status
-	);
+	const isErrorWithResponse = (e: unknown): e is { response: { status: number } } => {
+		if (typeof e !== 'object' || e === null || !('response' in e)) {
+			return false;
+		}
+		const response = (e as { response: unknown }).response;
+		return (
+			typeof response === 'object' &&
+			response !== null &&
+			'status' in response &&
+			typeof (response as { status: unknown }).status === 'number'
+		);
+	};
+
+	return isErrorWithResponse(error) && error.response.status === status;
 }
 
 function isCalendlyIdentityResponse(value: unknown): value is CalendlyIdentityResponse {
@@ -125,9 +135,15 @@ export async function calendlyApiRequest(
 		json: true,
 	};
 
+	// The option parameter may supply extra request settings (e.g. timeout or additional headers),
+	// but cannot override built-in defaults like Content-Type.
 	options = {
-		...options,
 		...option,
+		...options,
+		headers: {
+			...(option.headers as IDataObject),
+			...options.headers,
+		},
 	};
 
 	const authentication = this.getNodeParameter('authentication', 0) as string;

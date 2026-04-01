@@ -51,20 +51,12 @@ export class CalendlyApi implements ICredentialType {
 	): Promise<IHttpRequestOptions> {
 		const token = (credentials.accessToken as string) || (credentials.apiKey as string);
 
-		let isV2 = false;
-		try {
-			const urlString = requestOptions.baseURL || requestOptions.url || '';
-			if (urlString.startsWith('http')) {
-				const url = new URL(urlString);
-				isV2 = url.hostname === 'api.calendly.com';
-			}
-		} catch {
-			// Fallback to legacy check if URL is malformed or relative
-			isV2 =
-				requestOptions.baseURL?.includes('api.calendly.com') ||
-				requestOptions.url?.includes('api.calendly.com') ||
-				false;
-		}
+		const urlString = requestOptions.baseURL || requestOptions.url || '';
+		const isV2 =
+			urlString.includes('api.calendly.com') ||
+			requestOptions.baseURL?.includes('api.calendly.com') ||
+			requestOptions.url?.includes('api.calendly.com') ||
+			false;
 
 		if (isV2) {
 			requestOptions.headers = {
