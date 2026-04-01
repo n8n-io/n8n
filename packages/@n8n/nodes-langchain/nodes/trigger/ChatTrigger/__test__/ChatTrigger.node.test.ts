@@ -169,6 +169,7 @@ describe('ChatTrigger Node', () => {
 			// Verify streaming headers are set
 			expect(mockResponse.writeHead).toHaveBeenCalledWith(200, {
 				'Content-Type': 'application/json; charset=utf-8',
+				'Content-Encoding': 'identity',
 				'Transfer-Encoding': 'chunked',
 				'Cache-Control': 'no-cache',
 				Connection: 'keep-alive',
@@ -231,6 +232,7 @@ describe('ChatTrigger Node', () => {
 			// Verify streaming headers are set
 			expect(mockResponse.writeHead).toHaveBeenCalledWith(200, {
 				'Content-Type': 'application/json; charset=utf-8',
+				'Content-Encoding': 'identity',
 				'Transfer-Encoding': 'chunked',
 				'Cache-Control': 'no-cache',
 				Connection: 'keep-alive',
@@ -265,6 +267,7 @@ describe('ChatTrigger Node', () => {
 			// Verify streaming headers are set
 			expect(mockResponse.writeHead).toHaveBeenCalledWith(200, {
 				'Content-Type': 'application/json; charset=utf-8',
+				'Content-Encoding': 'identity',
 				'Transfer-Encoding': 'chunked',
 				'Cache-Control': 'no-cache',
 				Connection: 'keep-alive',
@@ -305,6 +308,7 @@ describe('ChatTrigger Node', () => {
 			// Verify streaming headers are set
 			expect(mockResponse.writeHead).toHaveBeenCalledWith(200, {
 				'Content-Type': 'application/json; charset=utf-8',
+				'Content-Encoding': 'identity',
 				'Transfer-Encoding': 'chunked',
 				'Cache-Control': 'no-cache',
 				Connection: 'keep-alive',

@@ -900,9 +900,13 @@ export class ChatTrigger extends Node {
 			req.socket.setNoDelay(true);
 			req.socket.setKeepAlive(true);
 
-			// Set up streaming response headers
+			// Set up streaming response headers.
+			// Content-Encoding: identity prevents the compression middleware from
+			// wrapping the response in zlib, which can buffer small writes (like
+			// keepalive heartbeats) and prevent them from reaching the network.
 			res.writeHead(200, {
 				'Content-Type': 'application/json; charset=utf-8',
+				'Content-Encoding': 'identity',
 				'Transfer-Encoding': 'chunked',
 				'Cache-Control': 'no-cache',
 				Connection: 'keep-alive',
