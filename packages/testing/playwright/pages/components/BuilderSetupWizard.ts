@@ -4,7 +4,7 @@ import type { Page, Locator } from '@playwright/test';
  * Page object for the AI Builder Setup Wizard card UI.
  * Encapsulates all wizard locators so specs don't use raw selectors.
  */
-export class BuilderSetupWizardPage {
+export class BuilderSetupWizard {
 	readonly page: Page;
 
 	constructor(page: Page) {
@@ -71,28 +71,6 @@ export class BuilderSetupWizardPage {
 	/** Card title (node name) */
 	getCardTitle(name: string): Locator {
 		return this.getCard().getByText(name, { exact: true });
-	}
-
-	// #endregion
-
-	// #region Node Group Card Locators
-
-	/** The node group card (shown instead of regular card for agent nodes) */
-	getNodeGroupCard(): Locator {
-		return this.page.getByTestId('builder-node-group-card');
-	}
-
-	/** Node group card title (agent node name) */
-	getNodeGroupTitle(name: string): Locator {
-		return this.getNodeGroupCard().getByText(name, { exact: true });
-	}
-
-	/** A specific sub-node section header by name (clickable to expand/collapse) */
-	getNodeGroupSectionHeader(name: string): Locator {
-		return this.page
-			.getByTestId('builder-node-group-section')
-			.filter({ hasText: name })
-			.getByTestId('builder-node-group-section-header');
 	}
 
 	// #endregion
