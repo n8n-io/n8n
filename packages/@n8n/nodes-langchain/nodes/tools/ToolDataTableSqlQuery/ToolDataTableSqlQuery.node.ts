@@ -1,5 +1,7 @@
 import type {
+	IExecuteFunctions,
 	ILoadOptionsFunctions,
+	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
@@ -38,7 +40,7 @@ export class ToolDataTableSqlQuery implements INodeType {
 		defaults: {
 			name: 'Data Table SQL Query',
 		},
-		inputs: [],
+		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.AiTool],
 		outputNames: ['Tool'],
 		properties: [
@@ -95,6 +97,42 @@ export class ToolDataTableSqlQuery implements INodeType {
 			},
 		},
 	};
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const result: INodeExecutionData[] = [];
+		const input = this.getInputData();
+
+		for (let i = 0; i < input.length; i++) {
+			const sql = input[i].json.sql as string | undefined;
+			if (!sql) {
+				throw new NodeOperationError(this.getNode(), 'Input item must have a "sql" property', {
+					itemIndex: i,
+				});
+			}
+
+			const tableIds = this.getNodeParameter('tables', i) as string[];
+			const options = this.getNodeParameter('options', i, {}) as { maxRows?: number };
+
+			if (!this.helpers.executeSqlQuery) {
+				throw new NodeOperationError(this.getNode(), 'Data table module is not available');
+			}
+
+			const queryResult = await this.helpers.executeSqlQuery(sql, tableIds, {
+				maxRows: options.maxRows,
+			});
+
+			result.push({
+				json: {
+					rows: queryResult.rows,
+					rowCount: queryResult.rowCount,
+					truncated: queryResult.truncated,
+				},
+				pairedItem: { item: i },
+			});
+		}
+
+		return [result];
+	}
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const name = nodeNameToToolName(this.getNode());
