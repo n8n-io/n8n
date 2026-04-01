@@ -1,13 +1,20 @@
 <script lang="ts" setup>
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { EditorView, keymap, placeholder as cmPlaceholder } from '@codemirror/view';
-import { EditorState } from '@codemirror/state';
+import {
+	EditorView,
+	keymap,
+	placeholder as cmPlaceholder,
+	ViewPlugin,
+	type ViewUpdate,
+	Decoration,
+	type DecorationSet,
+} from '@codemirror/view';
+import { EditorState, type Range } from '@codemirror/state';
 import { history, historyKeymap } from '@codemirror/commands';
 import { parserWithMetaData as n8nParser } from '@n8n/codemirror-lang';
-import { LanguageSupport, LRLanguage } from '@codemirror/language';
+import { LanguageSupport, LRLanguage, syntaxTree } from '@codemirror/language';
 import { parseMixed, type SyntaxNodeRef } from '@lezer/common';
 import { javascriptLanguage } from '@codemirror/lang-javascript';
-import { highlighter } from '@/features/shared/editors/plugins/codemirror/resolvableHighlighter';
 
 const props = withDefaults(
 	defineProps<{
@@ -29,7 +36,6 @@ const editorRef = ref<HTMLDivElement>();
 let editorView: EditorView | null = null;
 
 // Standalone n8n expression language — syntax highlighting only, no completions
-// (completions need workflow context which isn't available in settings)
 const isResolvable = (node: SyntaxNodeRef) => node.type.name === 'Resolvable';
 
 const n8nParserWithNestedJs = n8nParser.configure({
@@ -43,10 +49,48 @@ const n8nParserWithNestedJs = n8nParser.configure({
 
 const n8nLanguage = LRLanguage.define({ parser: n8nParserWithNestedJs });
 
+// Static decoration plugin: highlights {{ }} resolvable blocks using the parser tree
+const resolvableDecoMark = Decoration.mark({ class: 'cm-resolvable-block' });
+const bracketDecoMark = Decoration.mark({ class: 'cm-resolvable-bracket' });
+
+function buildDecorations(view: EditorView): DecorationSet {
+	const decorations: Array<Range<Decoration>> = [];
+	const tree = syntaxTree(view.state);
+
+	tree.iterate({
+		enter(node) {
+			if (node.name === 'Resolvable') {
+				// Highlight the full resolvable block
+				decorations.push(resolvableDecoMark.range(node.from, node.to));
+			}
+			if (node.name === 'OpenMarker' || node.name === 'CloseMarker') {
+				decorations.push(bracketDecoMark.range(node.from, node.to));
+			}
+		},
+	});
+
+	return Decoration.set(decorations, true);
+}
+
+const resolvableHighlightPlugin = ViewPlugin.fromClass(
+	class {
+		decorations: DecorationSet;
+		constructor(view: EditorView) {
+			this.decorations = buildDecorations(view);
+		}
+		update(update: ViewUpdate) {
+			if (update.docChanged || update.viewportChanged) {
+				this.decorations = buildDecorations(update.view);
+			}
+		}
+	},
+	{ decorations: (v) => v.decorations },
+);
+
 function createExtensions() {
 	return [
 		new LanguageSupport(n8nLanguage),
-		highlighter.resolvableStyle,
+		resolvableHighlightPlugin,
 		history(),
 		keymap.of(historyKeymap),
 		EditorView.lineWrapping,
@@ -82,6 +126,14 @@ function createExtensions() {
 			},
 			'.cm-cursor, .cm-dropCursor': {
 				borderLeftColor: 'var(--code--caret--color)',
+			},
+			'.cm-resolvable-block': {
+				backgroundColor: 'var(--color--primary--tint-3, rgba(255, 109, 90, 0.08))',
+				borderRadius: '2px',
+			},
+			'.cm-resolvable-bracket': {
+				color: 'var(--color--primary, #ff6d5a)',
+				fontWeight: '600',
 			},
 		}),
 		...(props.placeholder ? [cmPlaceholder(props.placeholder)] : []),
