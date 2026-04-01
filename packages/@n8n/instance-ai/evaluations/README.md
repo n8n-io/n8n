@@ -129,16 +129,15 @@ evaluations/
 ├── outcome/              # Outcome extraction (original flow)
 ├── execution/            # Post-build execution (original flow)
 ├── report/               # HTML report generators
-├── scripts/              # Dev utilities
-├── support/              # Pin data generation (for non-HTTP nodes)
-└── system-prompts/       # LLM prompts for verification
+└── system-prompts/       # LLM prompts (builder-* for original flow, mock-* for mock execution)
 
-packages/cli/src/modules/instance-ai/
-├── eval-execution.service.ts   # Phase 1 + Phase 2 orchestration
-├── eval-workflow-analysis.ts   # Hint generation (Phase 1)
-├── llm-mock-handler.ts         # Per-request mock generation (Phase 2)
-├── eval-api-docs.ts            # Context7 API doc fetcher
-├── eval-node-config.ts         # Node config serializer
+packages/cli/src/modules/instance-ai/eval/
+├── execution.service.ts    # Phase 1 + Phase 2 orchestration
+├── workflow-analysis.ts    # Hint generation (Phase 1)
+├── mock-handler.ts         # Per-request mock generation (Phase 2)
+├── api-docs.ts             # Context7 API doc fetcher
+├── node-config.ts          # Node config serializer
+├── pin-data-generator.ts   # LLM pin data for bypass nodes (Phase 1.5)
 
 packages/core/src/execution-engine/
 ├── eval-mock-helpers.ts        # HTTP interception utilities

@@ -15,7 +15,7 @@ import { Container } from '@n8n/di';
 import { type INode, type IPinData, type IWorkflowBase, jsonParse } from 'n8n-workflow';
 
 import { createEvalAgent, extractText } from '@n8n/instance-ai';
-import { extractNodeConfig } from './eval-node-config';
+import { extractNodeConfig } from './node-config';
 
 // ---------------------------------------------------------------------------
 // Node classification

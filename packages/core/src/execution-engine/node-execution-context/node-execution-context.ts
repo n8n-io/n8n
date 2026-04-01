@@ -44,7 +44,6 @@ import {
 import { InstanceSettings } from '@/instance-settings';
 import { generateUrlSignature, prepareUrlForSigning } from '@/utils/signature-helpers';
 
-import { buildEvalMockCredentials } from '../eval-mock-helpers';
 import { cleanupParameterData } from './utils/cleanup-parameter-data';
 import { createExecutionCustomData } from './utils/custom-data';
 import { ensureType } from './utils/ensure-type';
@@ -311,6 +310,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		// This allows the node to execute (build requests, parse responses) without real credentials.
 		// Triple-gated: evaluation mode + mock handler present + credentials actually missing.
 		if (mode === 'evaluation' && additionalData.evalLlmMockHandler && !node.credentials?.[type]) {
+			const { buildEvalMockCredentials } = await import('../eval-mock-helpers');
 			return buildEvalMockCredentials(
 				additionalData.credentialsHelper.getCredentialsProperties(type),
 			) as T;

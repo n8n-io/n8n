@@ -22,8 +22,8 @@ import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { createEvalAgent, extractText, Tool } from '@n8n/instance-ai';
-import { fetchApiDocs } from './eval-api-docs';
-import { extractNodeConfig } from './eval-node-config';
+import { fetchApiDocs } from './api-docs';
+import { extractNodeConfig } from './node-config';
 
 // ---------------------------------------------------------------------------
 // System prompt

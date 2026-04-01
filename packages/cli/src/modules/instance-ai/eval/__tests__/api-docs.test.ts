@@ -58,7 +58,7 @@ afterEach(() => {
 
 describe('resolveLibraryId (via fetchApiDocs)', () => {
 	it('should return docs when library search and docs fetch both succeed', async () => {
-		const { fetchApiDocs } = await import('../eval-api-docs');
+		const { fetchApiDocs } = await import('../api-docs');
 
 		// Library search
 		mockFetchResponse(200, [{ id: '/lib/slack-api', trust_score: 90 }]);
@@ -72,7 +72,7 @@ describe('resolveLibraryId (via fetchApiDocs)', () => {
 	});
 
 	it('should cache library ID — second call does not re-fetch library search', async () => {
-		const { fetchApiDocs } = await import('../eval-api-docs');
+		const { fetchApiDocs } = await import('../api-docs');
 
 		// First call: library search + docs
 		mockFetchResponse(200, [{ id: '/lib/slack-api', trust_score: 90 }]);
@@ -91,7 +91,7 @@ describe('resolveLibraryId (via fetchApiDocs)', () => {
 	});
 
 	it('should return fallback when library search returns non-200', async () => {
-		const { fetchApiDocs } = await import('../eval-api-docs');
+		const { fetchApiDocs } = await import('../api-docs');
 
 		mockFetchResponse(500, 'Internal Server Error');
 
@@ -102,7 +102,7 @@ describe('resolveLibraryId (via fetchApiDocs)', () => {
 	});
 
 	it('should return fallback when library search returns empty results', async () => {
-		const { fetchApiDocs } = await import('../eval-api-docs');
+		const { fetchApiDocs } = await import('../api-docs');
 
 		mockFetchResponse(200, []);
 
@@ -113,7 +113,7 @@ describe('resolveLibraryId (via fetchApiDocs)', () => {
 	});
 
 	it('should log warning on 429 status (quota exceeded)', async () => {
-		const { fetchApiDocs } = await import('../eval-api-docs');
+		const { fetchApiDocs } = await import('../api-docs');
 
 		mockFetchResponse(429, 'Rate limit exceeded');
 
@@ -125,7 +125,7 @@ describe('resolveLibraryId (via fetchApiDocs)', () => {
 	});
 
 	it('should log warning when response body contains "Quota"', async () => {
-		const { fetchApiDocs } = await import('../eval-api-docs');
+		const { fetchApiDocs } = await import('../api-docs');
 
 		mockFetchResponse(403, 'Quota limit reached for your plan');
 
@@ -137,7 +137,7 @@ describe('resolveLibraryId (via fetchApiDocs)', () => {
 	});
 
 	it('should log warning only once per session (context7WarningLogged flag)', async () => {
-		const { fetchApiDocs } = await import('../eval-api-docs');
+		const { fetchApiDocs } = await import('../api-docs');
 
 		// First call — 429, should warn
 		mockFetchResponse(429, 'Rate limit');
@@ -151,7 +151,7 @@ describe('resolveLibraryId (via fetchApiDocs)', () => {
 	});
 
 	it('should return fallback on fetch timeout / network error', async () => {
-		const { fetchApiDocs } = await import('../eval-api-docs');
+		const { fetchApiDocs } = await import('../api-docs');
 
 		mockFetch.mockRejectedValueOnce(new Error('network timeout'));
 
@@ -170,7 +170,7 @@ describe('resolveLibraryId (via fetchApiDocs)', () => {
 
 describe('fetchApiDocs', () => {
 	it('should return docs text from Context7 on success', async () => {
-		const { fetchApiDocs } = await import('../eval-api-docs');
+		const { fetchApiDocs } = await import('../api-docs');
 
 		mockFetchResponse(200, [{ id: '/lib/github-api', trust_score: 80 }]);
 		mockFetchResponse(200, 'GET /repos/{owner}/{repo} — returns a repository');
@@ -181,7 +181,7 @@ describe('fetchApiDocs', () => {
 	});
 
 	it('should cache docs per serviceName + endpointQuery', async () => {
-		const { fetchApiDocs } = await import('../eval-api-docs');
+		const { fetchApiDocs } = await import('../api-docs');
 
 		// First call: library search + docs
 		mockFetchResponse(200, [{ id: '/lib/slack-api', trust_score: 90 }]);
@@ -199,7 +199,7 @@ describe('fetchApiDocs', () => {
 	});
 
 	it('should return fallback when docs endpoint returns non-200', async () => {
-		const { fetchApiDocs } = await import('../eval-api-docs');
+		const { fetchApiDocs } = await import('../api-docs');
 
 		mockFetchResponse(200, [{ id: '/lib/slack-api', trust_score: 90 }]);
 		mockFetchResponse(500, 'Server Error');
@@ -210,7 +210,7 @@ describe('fetchApiDocs', () => {
 	});
 
 	it('should return fallback when docs response is empty text', async () => {
-		const { fetchApiDocs } = await import('../eval-api-docs');
+		const { fetchApiDocs } = await import('../api-docs');
 
 		mockFetchResponse(200, [{ id: '/lib/slack-api', trust_score: 90 }]);
 		mockFetchResponse(200, '   ');
@@ -222,7 +222,7 @@ describe('fetchApiDocs', () => {
 
 	it('should pass CONTEXT7_API_KEY as Bearer Authorization header when env var is set', async () => {
 		process.env.CONTEXT7_API_KEY = 'test-api-key-123';
-		const { fetchApiDocs } = await import('../eval-api-docs');
+		const { fetchApiDocs } = await import('../api-docs');
 
 		mockFetchResponse(200, [{ id: '/lib/slack-api', trust_score: 90 }]);
 		mockFetchResponse(200, 'docs');
@@ -238,7 +238,7 @@ describe('fetchApiDocs', () => {
 
 	it('should not send Authorization header when CONTEXT7_API_KEY is not set', async () => {
 		delete process.env.CONTEXT7_API_KEY;
-		const { fetchApiDocs } = await import('../eval-api-docs');
+		const { fetchApiDocs } = await import('../api-docs');
 
 		mockFetchResponse(200, [{ id: '/lib/slack-api', trust_score: 90 }]);
 		mockFetchResponse(200, 'docs');

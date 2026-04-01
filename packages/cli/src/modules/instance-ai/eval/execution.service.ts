@@ -34,15 +34,15 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { normalizePinData } from '@n8n/workflow-sdk';
 
-import { generatePinData } from './eval-pin-data-generator';
+import { generatePinData } from './pin-data-generator';
 
 import {
 	generateMockHints,
 	identifyNodesForHints,
 	identifyNodesForPinData,
 	type MockHints,
-} from './eval-workflow-analysis';
-import { createLlmMockHandler } from './llm-mock-handler';
+} from './workflow-analysis';
+import { createLlmMockHandler } from './mock-handler';
 
 // ---------------------------------------------------------------------------
 // Constants

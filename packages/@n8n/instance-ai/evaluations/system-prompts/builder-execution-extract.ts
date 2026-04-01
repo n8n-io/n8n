@@ -35,7 +35,7 @@ After execution, we capture the output data from every node in the workflow AND 
 10. If an "Existing execution output" section is provided, the workflow has ALREADY been executed successfully. You MUST generate checklist items that verify the captured output data — do NOT return empty arrays when execution output is available. At minimum, assert that the workflow executed without errors and verify the output structure matches expectations.
 11. Test data should be realistic and exercise the workflow's logic paths
 12. For webhooks expecting specific field names, use those exact field names in the test data
-12. For webhooks, generate **2-4 test inputs** with varying payloads. Look at the webhook node's \`parameters.path\` and \`parameters.httpMethod\` in the workflow JSON to set the \`path\` and \`httpMethod\` fields.
+13. For webhooks, generate **2-4 test inputs** with varying payloads. Look at the webhook node's \`parameters.path\` and \`parameters.httpMethod\` in the workflow JSON to set the \`path\` and \`httpMethod\` fields.
 
 ## Output Format
 

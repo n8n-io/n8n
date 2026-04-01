@@ -14,7 +14,7 @@
 			"name": "multi-team-creator",
 			"description": "A creator belongs to multiple teams, issues for any of their teams are not cross-team",
 			"dataSetup": "The data source returns 4 issues from the last 2 weeks. Alice (alice@company.com) created 2 issues for team 'Backend' and 1 for team 'AI'. Bob (bob@company.com) created 1 issue for team 'Frontend'. The people/teams data maps Alice to teams ['Frontend', 'AI'] and Bob to team 'Backend'. So Alice's 2 Backend issues are cross-team (not in her teams), but her AI issue is not cross-team. Bob's Frontend issue is cross-team. The Slack post node returns a success response.",
-			"successCriteria": "The workflow correctly handles multi-team membership. Alice's AI issue is excluded from the cross-team report (AI is one of her teams). Alice's 2 Backend issues and Bob's 1 Frontend issue are counted as cross-team. The count shows Alice: 2, Bob: 1, sorted descending."
+			"successCriteria": "The workflow correctly handles multi-team membership. Alice's AI issue is excluded from the cross-team report (AI is one of her teams). Alice has more cross-team issues than Bob. The report is sorted descending by count, with Alice listed first."
 		},
 		{
 			"name": "no-cross-team-issues",

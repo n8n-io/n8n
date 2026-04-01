@@ -1,6 +1,6 @@
 import { createEvalAgent, extractText } from '../../src/utils/eval-agents';
 import type { WorkflowResponse } from '../clients/n8n-client';
-import { EXECUTION_CHECKLIST_EXTRACT_PROMPT } from '../system-prompts/execution-extract';
+import { EXECUTION_CHECKLIST_EXTRACT_PROMPT } from '../system-prompts/builder-execution-extract';
 import type { ChecklistItem, ExecutionChecklist } from '../types';
 
 // ---------------------------------------------------------------------------
