@@ -47,6 +47,14 @@
 	margin: var(--spacing--2xl) 0 0;
 }
 
+.card {
+	background: var(--color--background);
+	border: var(--border-width) var(--border-style) var(--color--foreground);
+	border-radius: var(--radius--lg);
+	padding: var(--spacing--sm) var(--spacing--lg) var(--spacing--lg);
+	margin-bottom: var(--spacing--lg);
+}
+
 .footer {
 	color: var(--color--text);
 	font-size: var(--font-size--2xs);

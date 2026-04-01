@@ -45,12 +45,7 @@ function onDragEnd(event: { oldIndex?: number; newIndex?: number }) {
 <template>
 	<div :class="$style.table" data-test-id="rule-list">
 		<div :class="$style.headerRow">
-			<div :class="$style.headerCellDrag" />
-			<div :class="$style.headerCellPriority">Priority</div>
-			<div :class="$style.headerCellCondition">Condition</div>
-			<div :class="$style.headerCellRole">Role</div>
-			<div :class="$style.headerCellAction" />
-			<div :class="$style.headerCellAction" />
+			<div :class="$style.headerCellFull">Condition & Assignment</div>
 		</div>
 		<Draggable
 			:model-value="props.rules"
@@ -110,44 +105,16 @@ function onDragEnd(event: { oldIndex?: number; newIndex?: number }) {
 	display: flex;
 	align-items: center;
 	height: 36px;
-	background: var(--color--background--shade-1);
+	background: var(--color--foreground--tint-2);
 	border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
 }
 
-.headerCellDrag {
-	width: 40px;
-	flex-shrink: 0;
-}
-
-.headerCellPriority {
-	width: 50px;
-	padding: 0 var(--spacing--2xs);
-	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
-	color: var(--color--text--tint-1);
-	flex-shrink: 0;
-}
-
-.headerCellCondition {
+.headerCellFull {
 	flex: 1;
-	padding: 0 var(--spacing--2xs);
+	padding: 0 var(--spacing--sm);
 	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--bold);
 	color: var(--color--text--tint-1);
-	min-width: 0;
-}
-
-.headerCellRole {
-	padding: 0 var(--spacing--2xs);
-	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
-	color: var(--color--text--tint-1);
-	flex-shrink: 0;
-}
-
-.headerCellAction {
-	width: 32px;
-	flex-shrink: 0;
 }
 
 .defaultRow {
