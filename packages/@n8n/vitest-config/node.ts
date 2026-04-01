@@ -17,7 +17,7 @@ export const createBaseInlineConfig = (options: InlineConfig = {}): InlineConfig
 					enabled: true,
 					provider: 'v8',
 					reporter: process.env.CI === 'true' ? 'cobertura' : 'text-summary',
-					include: ['src/*'],
+					include: ['src/**/*'],
 				},
 			}
 		: {}),

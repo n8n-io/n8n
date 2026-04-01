@@ -313,6 +313,12 @@ describe('useCredentialOAuth', () => {
 
 			static closeCalled = false;
 
+			static __reset() {
+				MockBroadcastChannel.closeCalled = false;
+				MockBroadcastChannel.noopEventListener = false;
+				MockBroadcastChannel.failOauth = false;
+			}
+
 			close = () => {
 				MockBroadcastChannel.closeCalled = true;
 			};
@@ -346,6 +352,7 @@ describe('useCredentialOAuth', () => {
 		});
 
 		afterEach(() => {
+			MockBroadcastChannel.__reset();
 			vi.unstubAllGlobals();
 		});
 
