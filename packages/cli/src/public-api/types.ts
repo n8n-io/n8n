@@ -33,13 +33,19 @@ export declare namespace ExecutionRequest {
 			cursor?: string;
 			offset?: number;
 			includeData?: boolean;
+			redactExecutionData?: boolean;
 			workflowId?: string;
 			lastId?: string;
 			projectId?: string;
 		}
 	>;
 
-	type Get = AuthenticatedRequest<{ id: string }, {}, {}, { includeData?: boolean }>;
+	type Get = AuthenticatedRequest<
+		{ id: string },
+		{},
+		{},
+		{ includeData?: boolean; redactExecutionData?: boolean }
+	>;
 	type Delete = Get;
 	type Retry = AuthenticatedRequest<{ id: string }, {}, { loadWorkflow?: boolean }, {}>;
 	type Stop = AuthenticatedRequest<{ id: string }>;
