@@ -22,7 +22,6 @@ import type {
 	WebhookAccessControlOptions,
 	WebhookRequest,
 } from './webhook.types';
-import type { WebhookResponse } from './webhook-response';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
@@ -37,6 +36,7 @@ import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registr
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { WorkflowRequest } from '@/workflows/workflow.request';
+import { WebhookResponse } from './webhook-response';
 
 const SINGLE_WEBHOOK_TRIGGERS = [
 	'n8n-nodes-base.telegramTrigger',
@@ -68,7 +68,7 @@ export class TestWebhooks implements IWebhookManager {
 	async executeWebhook(
 		request: WebhookRequest,
 		response: express.Response,
-	): Promise<IWebhookResponseCallbackData> {
+	): Promise<IWebhookResponseCallbackData | WebhookResponse> {
 		const httpMethod = request.method;
 
 		let path = removeTrailingSlash(request.params.path);
@@ -129,59 +129,70 @@ export class TestWebhooks implements IWebhookManager {
 			sanitizeWebhookRequest(request);
 		}
 
-		return await new Promise(async (resolve, reject) => {
-			try {
-				const executionMode = 'manual';
-				const executionId = await WebhookHelpers.executeWebhook(
-					workflow,
-					webhook,
-					workflowEntity,
-					workflowStartNode,
-					executionMode,
-					pushRef,
-					undefined, // IRunExecutionData
-					undefined, // executionId
-					request,
-					response,
-					(error: Error | null, data: IWebhookResponseCallbackData | WebhookResponse) => {
-						if (error !== null) reject(error);
-						else resolve(data as IWebhookResponseCallbackData);
-					},
-					destinationNode,
-				);
-
-				// The workflow did not run as the request was probably setup related
-				// or a ping so do not resolve the promise and wait for the real webhook
-				// request instead.
-				if (executionId === undefined) return;
-
-				// Inform editor-ui that webhook got received
-				if (pushRef !== undefined) {
-					this.push.send(
-						{ type: 'testWebhookReceived', data: { workflowId: webhook?.workflowId, executionId } },
+		await workflow.expression.acquireIsolate();
+		try {
+			return await new Promise(async (resolve, reject) => {
+				try {
+					const executionMode = 'manual';
+					const executionId = await WebhookHelpers.executeWebhook(
+						workflow,
+						webhook,
+						workflowEntity,
+						workflowStartNode,
+						executionMode,
 						pushRef,
+						undefined, // IRunExecutionData
+						undefined, // executionId
+						request,
+						response,
+						(error: Error | null, data: IWebhookResponseCallbackData | WebhookResponse) => {
+							if (error !== null) reject(error);
+							else resolve(data);
+						},
+						destinationNode,
 					);
+
+					// The workflow did not run as the request was probably setup related
+					// or a ping so do not resolve the promise and wait for the real webhook
+					// request instead.
+					if (executionId === undefined) {
+						await workflow.expression.releaseIsolate();
+						return;
+					}
+
+					// Inform editor-ui that webhook got received
+					if (pushRef !== undefined) {
+						this.push.send(
+							{
+								type: 'testWebhookReceived',
+								data: { workflowId: webhook?.workflowId, executionId },
+							},
+							pushRef,
+						);
+					}
+				} catch {}
+
+				/**
+				 * Multi-main setup: In a manual webhook execution, the main process that
+				 * handles a webhook might not be the same as the main process that created
+				 * the webhook. If so, after the test webhook has been successfully executed,
+				 * the handler process commands the creator process to clear its test webhooks.
+				 */
+				if (this.instanceSettings.isMultiMain && pushRef && !this.push.hasPushRef(pushRef)) {
+					void this.publisher.publishCommand({
+						command: 'clear-test-webhooks',
+						payload: { webhookKey: key, workflowEntity, pushRef },
+					});
+					return;
 				}
-			} catch {}
 
-			/**
-			 * Multi-main setup: In a manual webhook execution, the main process that
-			 * handles a webhook might not be the same as the main process that created
-			 * the webhook. If so, after the test webhook has been successfully executed,
-			 * the handler process commands the creator process to clear its test webhooks.
-			 */
-			if (this.instanceSettings.isMultiMain && pushRef && !this.push.hasPushRef(pushRef)) {
-				void this.publisher.publishCommand({
-					command: 'clear-test-webhooks',
-					payload: { webhookKey: key, workflowEntity, pushRef },
-				});
-				return;
-			}
+				this.clearTimeout(key);
 
-			this.clearTimeout(key);
-
-			await this.deactivateWebhooks(workflow);
-		});
+				await this.deactivateWebhooks(workflow);
+			});
+		} finally {
+			await workflow.expression.releaseIsolate();
+		}
 	}
 
 	@OnPubSubEvent('clear-test-webhooks', { instanceType: 'main' })

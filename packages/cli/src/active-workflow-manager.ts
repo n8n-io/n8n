@@ -776,6 +776,11 @@ export class ActiveWorkflowManager {
 
 	/**
 	 * Count all triggers in the workflow, excluding Manual Trigger and other n8n-internal triggers.
+	 *
+	 * TODO: This method calls getWorkflowWebhooks, which evaluates webhook description expressions
+	 * (path, httpMethod, etc.) that may reference user-authored expressions via $parameter. It
+	 * should acquire an isolate before calling getWorkflowWebhooks, but countTriggers is sync.
+	 * addWebhooks and removeWorkflow are async and can be fixed straightforwardly.
 	 */
 	private countTriggers(workflow: Workflow, additionalData: IWorkflowExecuteAdditionalData) {
 		const triggerFilter = (nodeType: INodeType) =>
