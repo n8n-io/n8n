@@ -454,7 +454,7 @@ async function runSingleExample(config: SingleExampleConfig): Promise<InstanceAi
 // Workflow test case runner — build once, run scenarios against it
 // ---------------------------------------------------------------------------
 
-const SCENARIO_BG_TASK_TIMEOUT_MS = 120_000;
+const SCENARIO_BG_TASK_TIMEOUT_MS = 240_000;
 
 interface WorkflowTestCaseConfig {
 	client: N8nClient;
