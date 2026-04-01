@@ -1202,7 +1202,7 @@ function isNodeLike(item: unknown): item is NodeLike {
 	// name is required: addNodeWithSubnodes() uses it as the internal map key.
 	// Without a top-level name the node would be silently stored under `undefined`.
 	if (!('name' in item) || typeof (item as Record<string, unknown>).name !== 'string') return false;
-	return 'config' in item || 'id' in item || 'parameters' in item;
+	return 'config' in item || 'parameters' in item;
 }
 
 /**
@@ -1313,7 +1313,6 @@ function createWorkflow(...args: unknown[]): WorkflowBuilder {
 
 	for (let i = 0; i < nodesArray.length; i++) {
 		const rawNode = nodesArray[i];
-		const sizeBeforeAdd = (builder as unknown as { _nodes: Map<string, unknown> })._nodes.size;
 		try {
 			// nodesArray entries are validated as NodeLike (including top-level name)
 			// by isNodeLike(). builder.add() is typed for NodeInstance, but the runtime
@@ -1323,11 +1322,10 @@ function createWorkflow(...args: unknown[]): WorkflowBuilder {
 			const message = e instanceof Error ? e.message : String(e);
 			throw new Error(`Failed to add node at index ${i}: ${message}`, { cause: e });
 		}
-		// Post-add verification: if the node count did not grow, the node was silently
-		// dropped (e.g., it was already registered under the same name or the object
-		// shape was not fully compatible). Throw so the LLM receives an actionable error.
-		const sizeAfterAdd = (builder as unknown as { _nodes: Map<string, unknown> })._nodes.size;
-		if (sizeAfterAdd === sizeBeforeAdd) {
+		// Post-add verification: Check that the node actually exists in the builder's map.
+		// We use a direct lookup because _nodes.size may not grow if a node was already
+		// pre-hydrated as a connection target during a previous add() call in the array.
+		if (!(builder as unknown as { _nodes: Map<string, unknown> })._nodes.has(rawNode.name)) {
 			throw new Error(
 				`Node at index ${i} (name: "${rawNode.name}", type: "${rawNode.type}") was not added to the workflow. ` +
 					'Ensure the node object is fully constructed via the node() factory before passing it to workflow().',
