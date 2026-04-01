@@ -1251,6 +1251,12 @@ function normalizeArgs(args: unknown[]): NormalizedWorkflowArgs {
 	}
 
 	// Default SDK syntax: workflow(id, name, options?)
+	if (typeof first === 'string' && second === undefined) {
+		throw new TypeError(
+			'workflow requires at least two arguments: id and name or name and options',
+		);
+	}
+
 	// Note: typeof null === 'object', so we must guard against null explicitly
 	// to avoid passing null as the options argument to WorkflowBuilderImpl.
 	return {
