@@ -15,5 +15,6 @@ export const ATTR = {
 	EXECUTION_MODE: 'n8n.execution.mode',
 	EXECUTION_STATUS: 'n8n.execution.status',
 	EXECUTION_IS_RETRY: 'n8n.execution.is_retry',
+	EXECUTION_RETRY_OF: 'n8n.execution.retry_of',
 	EXECUTION_ERROR_TYPE: 'n8n.execution.error_type',
 } as const;

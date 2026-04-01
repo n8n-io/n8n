@@ -39,6 +39,7 @@ describe('eligibleModules', () => {
 			'redaction',
 			'instance-registry',
 			'otel',
+			'token-exchange',
 		]);
 	});
 
@@ -64,6 +65,7 @@ describe('eligibleModules', () => {
 			'redaction',
 			'instance-registry',
 			'otel',
+			'token-exchange',
 		]);
 	});
 

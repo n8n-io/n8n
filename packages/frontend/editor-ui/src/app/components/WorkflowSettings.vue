@@ -62,7 +62,7 @@ const externalHooks = useExternalHooks();
 const toast = useToast();
 const modalBus = createEventBus();
 const telemetry = useTelemetry();
-const { isEligibleForMcpAccess, trackMcpAccessEnabledForWorkflow, mcpTriggerMap } = useMcp();
+const { trackMcpAccessEnabledForWorkflow } = useMcp();
 const { registerCustomAction, unregisterCustomAction } = useGlobalLinkActions();
 const { isEnabled: isCredentialResolverEnabled } = useDynamicCredentials();
 const canListCredentialResolvers = hasPermission(['rbac'], {
@@ -258,21 +258,12 @@ const redactManualData = computed({
 });
 
 const mcpToggleDisabled = computed(() => {
-	return readOnlyEnv.value || !workflowPermissions.value.update || !isEligibleForMcp.value;
+	return readOnlyEnv.value || !workflowPermissions.value.update;
 });
 
 const mcpToggleTooltip = computed(() => {
-	if (!isEligibleForMcp.value) {
-		return i18n.baseText('mcp.workflowNotEligable.description', {
-			interpolate: {
-				triggers: Object.values(mcpTriggerMap).join(', '),
-			},
-		});
-	}
 	return i18n.baseText('workflowSettings.availableInMCP.tooltip');
 });
-
-const isEligibleForMcp = computed(() => isEligibleForMcpAccess(workflow.value));
 
 const savedTimeNodes = computed(() => {
 	if (!workflow?.value?.nodes) return [];
