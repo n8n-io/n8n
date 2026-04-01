@@ -150,6 +150,9 @@ catalogs:
     nanoid:
       specifier: 3.3.8
       version: 3.3.8
+    node-sql-parser:
+      specifier: ^5.4.0
+      version: 5.4.0
     pg:
       specifier: 8.17.0
       version: 8.17.0
@@ -2256,6 +2259,9 @@ importers:
       nanoid:
         specifier: 'catalog:'
         version: 3.3.8
+      node-sql-parser:
+        specifier: 'catalog:'
+        version: 5.4.0
       nodemailer:
         specifier: 7.0.11
         version: 7.0.11
@@ -9778,6 +9784,9 @@ packages:
   '@types/oracledb@6.9.1':
     resolution: {integrity: sha512-rXDnApyfaki0dvHuqzQvfirK6yHbtEO5nJ4CXKHrZYdwNAx4PjddqoCXdN1dZaEnZxXFwCy9xEWyIemL8EI/NQ==}
 
+  '@types/pegjs@0.10.6':
+    resolution: {integrity: sha512-eLYXDbZWXh2uxf+w8sXS8d6KSoXTswfps6fvCUuVAGN8eRpfe7h9eSRydxiSJvo9Bf+GzifsDOr9TMQlmJdmkw==}
+
   '@types/pg-pool@2.0.7':
     resolution: {integrity: sha512-U4CwmGVQcbEuqpyju8/ptOKg6gEC+Tqsvj2xS9o1g71bUh8twxnC6ZL5rZKCsGN0iyH0CwgUyc9VR5owNQF9Ng==}
 
@@ -15943,6 +15952,10 @@ packages:
   node-source-walk@7.0.1:
     resolution: {integrity: sha512-3VW/8JpPqPvnJvseXowjZcirPisssnBuDikk6JIZ8jQzF7KJQX52iPFX4RYYxLycYH7IbMRSPUOga/esVjy5Yg==}
     engines: {node: '>=18'}
+
+  node-sql-parser@5.4.0:
+    resolution: {integrity: sha512-jVe6Z61gPcPjCElPZ6j8llB3wnqGcuQzefim1ERsqIakxnEy5JlzV7XKdO1KmacRG5TKwPc4vJTgSRQ0LfkbFw==}
+    engines: {node: '>=8'}
 
   node-ssh@13.2.0:
     resolution: {integrity: sha512-7vsKR2Bbs66th6IWCy/7SN4MSwlVt+G6QrHB631BjRUM8/LmvDugtYhi0uAmgvHS/+PVurfNBOmELf30rm0MZg==}
@@ -27762,6 +27775,8 @@ snapshots:
     dependencies:
       '@types/node': 20.19.21
 
+  '@types/pegjs@0.10.6': {}
+
   '@types/pg-pool@2.0.7':
     dependencies:
       '@types/pg': 8.15.6
@@ -35583,6 +35598,11 @@ snapshots:
   node-source-walk@7.0.1:
     dependencies:
       '@babel/parser': 7.28.5
+
+  node-sql-parser@5.4.0:
+    dependencies:
+      '@types/pegjs': 0.10.6
+      big-integer: 1.6.52
 
   node-ssh@13.2.0:
     dependencies:
