@@ -1175,26 +1175,128 @@ function isWorkflowBuilderOptions(
 }
 
 /**
- * Create a new workflow builder
+ * Minimal structural shape of a node-like object accepted in the positional
+ * array syntax: workflow('Name', [node1, node2]).
+ *
+ * This covers both SDK-created NodeInstance wrappers (which have `config`) and
+ * raw AST-evaluated objects (which have `parameters`). Runtime validation is
+ * performed by isNodeLike(); this interface captures the duck-typing contract
+ * explicitly so the `any` cast in createWorkflow can be avoided.
  */
-function createWorkflow(
-	id: string,
-	name: string,
-	options?: WorkflowSettings | WorkflowBuilderOptions,
-): WorkflowBuilder {
-	if (isWorkflowBuilderOptions(options)) {
-		return new WorkflowBuilderImpl(
+interface NodeLike {
+	type: string;
+	config?: unknown;
+	id?: string;
+	parameters?: unknown;
+}
+
+function isNodeLike(item: unknown): item is NodeLike {
+	if (typeof item !== 'object' || item === null) return false;
+	if (!('type' in item)) return false;
+	return 'config' in item || 'id' in item || 'parameters' in item;
+}
+
+/**
+ * Returns true only for non-empty arrays whose first element is node-like.
+ * Empty arrays are intentionally rejected so that workflow('Name', []) falls
+ * through to the legacy (id, name, options?) branch rather than being treated
+ * as an empty nodes list.
+ */
+function isNodeArray(arg: unknown): arg is NodeLike[] {
+	return Array.isArray(arg) && arg.length > 0 && isNodeLike(arg[0]);
+}
+
+/** Internal shape returned by normalizeArgs — keeps createWorkflow clean */
+interface NormalizedWorkflowArgs {
+	id: string;
+	name: string;
+	/**
+	 * Node-like objects to be hydrated via builder.add().
+	 * Validated at runtime by isNodeLike(); type is NodeLike[] not unknown[].
+	 */
+	nodesArray: NodeLike[];
+	options: unknown;
+}
+
+function normalizeArgs(args: unknown[]): NormalizedWorkflowArgs {
+	const [first, second, third] = args;
+
+	// Case 1: workflow('Name', [nodes], options?) -> AI Positional Syntax
+	if (typeof first === 'string' && isNodeArray(second)) {
+		return {
+			name: first,
+			id: first, // AI usually uses same name as id
+			nodesArray: second,
+			options: third,
+		};
+	}
+
+	// Case 2: workflow([nodes], options?) -> AI Fallback (no name provided)
+	if (isNodeArray(first)) {
+		return {
+			name: 'AI Generated Workflow',
+			id: 'ai-generated-workflow',
+			nodesArray: first,
+			options: second,
+		};
+	}
+
+	// Default SDK syntax: workflow(id, name, options?)
+	// Note: typeof null === 'object', so we must guard against null explicitly
+	// to avoid passing null as the options argument to WorkflowBuilderImpl.
+	return {
+		id: typeof first === 'string' ? first : 'ai-generated-workflow',
+		name:
+			typeof second === 'string'
+				? second
+				: typeof first === 'string'
+					? first
+					: 'AI Generated Workflow',
+		nodesArray: [],
+		options:
+			typeof second === 'object' && second !== null && !Array.isArray(second) ? second : third,
+	};
+}
+
+/**
+ * Create a new workflow builder.
+ * Supports both the standard SDK signature (id, name, options?) and
+ * the AI-generated positional syntax (name, [nodes], options?).
+ */
+function createWorkflow(...args: unknown[]): WorkflowBuilder {
+	const { id, name, nodesArray, options } = normalizeArgs(args);
+
+	let builder: WorkflowBuilderImpl;
+	if (isWorkflowBuilderOptions(options as WorkflowSettings | WorkflowBuilderOptions | undefined)) {
+		builder = new WorkflowBuilderImpl(
 			id,
 			name,
-			options.settings,
+			(options as WorkflowBuilderOptions).settings,
 			undefined,
 			undefined,
 			undefined,
 			undefined,
-			options.registry,
+			(options as WorkflowBuilderOptions).registry,
 		);
+	} else {
+		builder = new WorkflowBuilderImpl(id, name, options as WorkflowSettings | undefined);
 	}
-	return new WorkflowBuilderImpl(id, name, options);
+
+	for (let i = 0; i < nodesArray.length; i++) {
+		const rawNode = nodesArray[i];
+		try {
+			// nodesArray entries are validated as NodeLike by isNodeArray().
+			// builder.add() is typed for NodeInstance, but the runtime accepts
+			// raw graph objects matching the NodeLike shape — the cast reflects
+			// this intentional duck-typing at the boundary.
+			builder.add(rawNode as Parameters<typeof builder.add>[0]);
+		} catch (e) {
+			const message = e instanceof Error ? e.message : String(e);
+			throw new Error(`Failed to add node at index ${i}: ${message}`);
+		}
+	}
+
+	return builder;
 }
 
 /**
