@@ -168,32 +168,7 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'builder'" />
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'data-table'" />
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'researcher'" />
-				<!-- Planner: show progressive PlanReviewPanel (loading → interactive → read-only) -->
-				<PlanReviewPanel
-					:key="findPlannerConfirmation()?.confirmation?.requestId ?? 'plan-loading'"
-					v-else-if="
-						toolCallsById[entry.toolCallId].renderHint === 'planner' &&
-						(findPlannerConfirmation() ||
-							props.agentNode.planItems?.length ||
-							props.agentNode.tasks?.tasks?.length)
-					"
-					:planned-tasks="
-						findPlannerConfirmation()?.confirmation?.planItems ??
-						(props.agentNode.planItems as PlannedTaskArg[] | undefined) ??
-						mapTaskItemsToPlannedTasks(props.agentNode.tasks) ??
-						[]
-					"
-					:loading="!findPlannerConfirmation() && toolCallsById[entry.toolCallId].isLoading"
-					:read-only="!!findPlannerConfirmation() && !findPlannerConfirmation()!.isLoading"
-					@approve="
-						findPlannerConfirmation() && handlePlanConfirm(findPlannerConfirmation()!, true)
-					"
-					@request-changes="
-						(fb) =>
-							findPlannerConfirmation() && handlePlanConfirm(findPlannerConfirmation()!, false, fb)
-					"
-				/>
-				<!-- Planner: loading, no tasks yet → suppress -->
+				<!-- Planner: suppress tool call — PlanReviewPanel renders after the child AgentSection -->
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'planner'" />
 				<!-- Answered questions (read-only after resolution) -->
 				<AnsweredQuestions
@@ -231,6 +206,32 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 			<!-- Child agent — flat section -->
 			<template v-else-if="entry.type === 'child' && childrenById[entry.agentId]">
 				<AgentSection :agent-node="childrenById[entry.agentId]" />
+
+				<!-- Planner child: render PlanReviewPanel below the agent section -->
+				<PlanReviewPanel
+					v-if="
+						childrenById[entry.agentId].role === 'planner' &&
+						(findPlannerConfirmation() ||
+							props.agentNode.planItems?.length ||
+							props.agentNode.tasks?.tasks?.length)
+					"
+					:key="findPlannerConfirmation()?.confirmation?.requestId ?? 'plan-loading'"
+					:planned-tasks="
+						findPlannerConfirmation()?.confirmation?.planItems ??
+						(props.agentNode.planItems as PlannedTaskArg[] | undefined) ??
+						mapTaskItemsToPlannedTasks(props.agentNode.tasks) ??
+						[]
+					"
+					:loading="!findPlannerConfirmation()"
+					:read-only="!!findPlannerConfirmation() && !findPlannerConfirmation()!.isLoading"
+					@approve="
+						findPlannerConfirmation() && handlePlanConfirm(findPlannerConfirmation()!, true)
+					"
+					@request-changes="
+						(fb) =>
+							findPlannerConfirmation() && handlePlanConfirm(findPlannerConfirmation()!, false, fb)
+					"
+				/>
 
 				<!-- Artifact cards for completed subagents (one per workflow/data-table) -->
 				<ArtifactCard
