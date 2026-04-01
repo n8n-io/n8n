@@ -5,6 +5,14 @@ post:
     - Workflow
   summary: Create a workflow
   description: Create a workflow in your instance.
+  parameters:
+    - name: projectId
+      in: query
+      required: false
+      description: Project to create the workflow in. Defaults to the user's personal project.
+      schema:
+        type: string
+        example: VmwOO9HeTEj20kxM
   requestBody:
     description: Created workflow object.
     content:
@@ -23,6 +31,10 @@ post:
       $ref: '../../../../shared/spec/responses/badRequest.yml'
     '401':
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'
 get:
   x-eov-operation-id: getWorkflows
   x-eov-operation-handler: v1/handlers/workflows/workflows.handler

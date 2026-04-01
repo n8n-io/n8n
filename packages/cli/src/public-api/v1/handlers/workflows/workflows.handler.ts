@@ -14,6 +14,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { NodeTypes } from '@/node-types';
+import { ProjectService } from '@/services/project.service.ee';
 import { addNodeIds, replaceInvalidCredentials, resolveNodeWebhookIds } from '@/workflow-helpers';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
@@ -28,26 +29,37 @@ import {
 	validCursor,
 } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 export = {
 	createWorkflow: [
 		apiKeyHasScope('workflow:create'),
 		async (req: WorkflowRequest.Create, res: express.Response): Promise<express.Response> => {
 			const workflow = req.body;
+			const { projectId } = req.query;
+
+			const projectRepository = Container.get(ProjectRepository);
+			const projectService = Container.get(ProjectService);
+
+			const project = projectId
+				? await projectService.getProjectWithScope(req.user, projectId, ['workflow:create'])
+				: await projectRepository.getPersonalProjectForUserOrFail(req.user.id);
+
+			if (!project) {
+				if (projectId && !(await projectRepository.exists({ where: { id: projectId } }))) {
+					throw new NotFoundError('Project not found');
+				}
+				throw new ForbiddenError('Forbidden');
+			}
 
 			workflow.active = false;
 			workflow.versionId = uuid();
-
-			const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
-				req.user.id,
-			);
 
 			await replaceInvalidCredentials(workflow, project.id);
 
 			addNodeIds(workflow);
 			resolveNodeWebhookIds(workflow, Container.get(NodeTypes));
 
-			addNodeIds(workflow);
 			const createdWorkflow = await createWorkflow(workflow, req.user, project, 'workflow:owner');
 
 			await Container.get(WorkflowHistoryService).saveVersion(

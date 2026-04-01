@@ -62,7 +62,7 @@ export async function getWorkflowById(id: string): Promise<WorkflowEntity | null
 export async function createWorkflow(
 	workflow: WorkflowEntity,
 	user: User,
-	personalProject: Project,
+	project: Project,
 	role: WorkflowSharingRole,
 ): Promise<WorkflowEntity> {
 	const { manager: dbManager } = Container.get(SharedWorkflowRepository);
@@ -75,7 +75,7 @@ export async function createWorkflow(
 		Object.assign(newSharedWorkflow, {
 			role,
 			user,
-			project: personalProject,
+			project,
 			workflow: savedWorkflow,
 		});
 		await transactionManager.save<SharedWorkflow>(newSharedWorkflow);
