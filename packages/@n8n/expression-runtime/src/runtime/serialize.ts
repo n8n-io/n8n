@@ -4,12 +4,13 @@ import { prepareForTransfer } from '../shared/serialize';
 /**
  * Isolate-side prepareForTransfer with proxy detection.
  *
- * If the value is a lazy proxy, returns a ProxyResultSentinel with the
- * proxy's path instead of recursing into it (which would trigger thousands
- * of cross-bridge callbacks). The host detects the sentinel and resolves
- * the value from its in-memory data.
+ * Always returns a sentinel wrapper so the host can distinguish between:
+ * - ProxyResultSentinel: resolve the path from host-side data (zero crossings)
+ * - DataResultSentinel: use the serialized value directly
  *
- * For non-proxy values, delegates to the shared prepareForTransfer.
+ * This makes sentinel forgery impossible — user code returning a fake
+ * { __isProxyResult: true, __path: [...] } gets wrapped in a DataResultSentinel,
+ * so the host treats it as data, not a proxy path.
  */
 export function __prepareForTransfer(value: unknown): unknown {
 	if (value !== null && value !== undefined && typeof value === 'object') {
@@ -18,5 +19,5 @@ export function __prepareForTransfer(value: unknown): unknown {
 			if (path) return { __isProxyResult: true, __path: path };
 		}
 	}
-	return prepareForTransfer(value);
+	return { __isDataResult: true, __value: prepareForTransfer(value) };
 }

@@ -3,8 +3,12 @@ import { readFile } from 'node:fs/promises';
 import * as path from 'node:path';
 import type { RuntimeBridge, BridgeConfig, ExecuteOptions } from '../types';
 import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
-import type { ErrorSentinel } from '../runtime/lazy-proxy';
-import { prepareForTransfer, isProxyResultSentinel } from '../shared/serialize';
+import type { ErrorSentinel, IsolateResult } from '../shared/serialize';
+import {
+	prepareForTransfer,
+	isProxyResultSentinel,
+	isDataResultSentinel,
+} from '../shared/serialize';
 import { resolvePathInData } from '../shared/resolve-path';
 
 // Lazy-loaded isolated-vm — avoids loading the native binary when the barrel
@@ -531,7 +535,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			}
 
 			// Step 5: Execute with timeout and copy result back
-			const result = script.runSync(this.context, {
+			const result: IsolateResult = script.runSync(this.context, {
 				timeout: this.config.timeout,
 				copy: true,
 			});
@@ -541,20 +545,26 @@ export class IsolatedVmBridge implements RuntimeBridge {
 				throw this.reconstructError(result);
 			}
 
-			// Step 7: If the result is a proxy-result sentinel, resolve from
-			// host-side data. This avoids the cross-bridge callback storm that
-			// would occur if __prepareForTransfer walked the proxy inside the
-			// isolate (one callback per leaf node).
+			if (this.config.debug) {
+				console.log('[IsolatedVmBridge] Expression executed successfully');
+			}
+
+			// Step 7: Unwrap the transfer sentinel.
+			// __prepareForTransfer always wraps results so that user code
+			// cannot forge a ProxyResultSentinel.
 			if (isProxyResultSentinel(result)) {
 				const resolved = resolvePathInData(data, result.__path);
 				return prepareForTransfer(resolved);
 			}
 
-			if (this.config.debug) {
-				console.log('[IsolatedVmBridge] Expression executed successfully');
+			if (isDataResultSentinel(result)) {
+				return result.__value;
 			}
 
-			return result;
+			// Every code path in the isolate's wrappedCode returns either an
+			// error sentinel, a ProxyResultSentinel, or a DataResultSentinel.
+			// If we reach here, something is wrong with the isolate runtime.
+			throw new Error('Unexpected result from isolate: not a recognized sentinel');
 		} catch (error) {
 			// Re-throw reconstructed errors as-is.
 			// Note: TypeError is intentionally NOT included here — the isolate's

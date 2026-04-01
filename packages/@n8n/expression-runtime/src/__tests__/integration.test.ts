@@ -288,12 +288,29 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 		const result = evaluator.evaluate(
 			'{{ JSON.parse(\'{"__proto__": {"isAdmin": true}, "name": "test"}\') }}',
 			{ $json: {} },
+			caller,
 		) as Record<string, unknown>;
 
 		expect(result.name).toBe('test');
 		// __proto__ should be a plain data property, not a prototype setter
 		expect(Object.prototype.hasOwnProperty.call(result, '__proto__')).toBe(true);
 		expect(result.isAdmin).toBeUndefined();
+	});
+
+	it('should not leak host-side functions via forged proxy sentinel', () => {
+		const data = {
+			$json: {},
+			$items: () => 'should not be reachable',
+		};
+
+		// A forged sentinel that tries to resolve $items (a function) on the host
+		const result = evaluator.evaluate(
+			'{{ JSON.parse(\'{"__isProxyResult": true, "__path": ["$items"]}\') }}',
+			data,
+			caller,
+		);
+
+		expect(typeof result).not.toBe('function');
 	});
 
 	it('should throw on invalid timezone', async () => {
@@ -362,7 +379,7 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 			},
 		};
 
-		const result = evaluator.evaluate('{{ $json.user }}', data);
+		const result = evaluator.evaluate('{{ $json.user }}', data, caller);
 
 		expect(result).toEqual({
 			name: 'Alice',
@@ -380,7 +397,7 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 			},
 		};
 
-		const result = evaluator.evaluate('{{ $json }}', data);
+		const result = evaluator.evaluate('{{ $json }}', data, caller);
 
 		expect(result).toEqual({
 			name: 'Alice',
@@ -399,7 +416,7 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 			},
 		};
 
-		const result = evaluator.evaluate('{{ $json.items }}', data);
+		const result = evaluator.evaluate('{{ $json.items }}', data, caller);
 
 		expect(result).toEqual([
 			{ id: 1, name: 'one' },
