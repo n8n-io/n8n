@@ -10,13 +10,12 @@ export const WORKING_MEMORY_TEMPLATE = `
 - **Workflow naming conventions**:
 - **Error handling patterns**:
 
-# Current Goals
-- **Active project/task**:
-- **Known issues being debugged**:
-- **Pending workflow changes**:
+# Active Project
+<!-- Keep only the ONE project the user is currently working on. Replace when the user switches projects. -->
+- **Project**:
+- **Status**:
+- **Key details**:
 
-# Instance Knowledge
-- **Frequently used credentials**:
-- **Key workflow IDs and names**:
-- **Custom node types available**:
+# Known Issues
+<!-- Only unresolved issues. Remove when fixed. -->
 `;
