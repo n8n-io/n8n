@@ -95,18 +95,22 @@ export function createSetupCredentialsTool(context: InstanceAiContext) {
 			// State 1: First call — look up existing credentials per type and suspend
 			if (resumeData === undefined || resumeData === null) {
 				const credentialRequests = await Promise.all(
-					input.credentials.map(async (req) => {
-						const existing = await context.credentialService.list({ type: req.credentialType });
-						return {
-							credentialType: req.credentialType,
-							reason: req.reason ?? `Required for ${req.credentialType}`,
-							existingCredentials: existing.map((c) => ({ id: c.id, name: c.name })),
-							...(req.suggestedName ? { suggestedName: req.suggestedName } : {}),
-						};
-					}),
+					input.credentials.map(
+						async (req: { credentialType: string; reason?: string; suggestedName?: string }) => {
+							const existing = await context.credentialService.list({ type: req.credentialType });
+							return {
+								credentialType: req.credentialType,
+								reason: req.reason ?? `Required for ${req.credentialType}`,
+								existingCredentials: existing.map((c) => ({ id: c.id, name: c.name })),
+								...(req.suggestedName ? { suggestedName: req.suggestedName } : {}),
+							};
+						},
+					),
 				);
 
-				const typeNames = input.credentials.map((c) => c.credentialType).join(', ');
+				const typeNames = input.credentials
+					.map((c: { credentialType: string }) => c.credentialType)
+					.join(', ');
 				await suspend?.({
 					requestId: nanoid(),
 					message: isFinalize

@@ -39,7 +39,7 @@ export function createGetNodeTypeDefinitionTool(context: InstanceAiContext) {
 		execute: async ({ nodeIds }) => {
 			if (!context.nodeService.getNodeTypeDefinition) {
 				return {
-					definitions: nodeIds.map((req) => ({
+					definitions: nodeIds.map((req: z.infer<typeof nodeRequestSchema>) => ({
 						nodeId: typeof req === 'string' ? req : req.nodeId,
 						content: '',
 						error: 'Node type definitions are not available.',
@@ -48,7 +48,7 @@ export function createGetNodeTypeDefinitionTool(context: InstanceAiContext) {
 			}
 
 			const definitions = await Promise.all(
-				nodeIds.map(async (req) => {
+				nodeIds.map(async (req: z.infer<typeof nodeRequestSchema>) => {
 					const nodeId = typeof req === 'string' ? req : req.nodeId;
 					const options = typeof req === 'string' ? undefined : req;
 

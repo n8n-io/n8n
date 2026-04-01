@@ -50,7 +50,13 @@ export function createDeleteDataTableRowsTool(context: InstanceAiContext) {
 			// State 1: First call — suspend for confirmation (unless always_allow)
 			if (needsApproval && (resumeData === undefined || resumeData === null)) {
 				const filterDesc = input.filter.filters
-					.map((f) => `${f.columnName} ${f.condition} ${String(f.value)}`)
+					.map(
+						(f: {
+							columnName: string;
+							condition: string;
+							value: string | number | boolean | null;
+						}) => `${f.columnName} ${f.condition} ${String(f.value)}`,
+					)
 					.join(` ${input.filter.type} `);
 				await suspend?.({
 					requestId: nanoid(),
