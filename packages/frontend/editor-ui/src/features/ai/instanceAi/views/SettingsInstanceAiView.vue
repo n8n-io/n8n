@@ -116,10 +116,10 @@ function getPermissionValue(key: keyof InstanceAiPermissions): InstanceAiPermiss
 <template>
 	<div :class="$style.container" data-test-id="n8n-agent-settings">
 		<header :class="$style.header">
-			<N8nHeading size="2xlarge" class="mb-2xs">
+			<N8nHeading :class="$style.pageTitle" size="xlarge" class="mb-2xs">
 				{{ i18n.baseText('settings.n8nAgent') }}
 			</N8nHeading>
-			<N8nText size="small" color="text-light">
+			<N8nText size="medium" color="text-light">
 				{{ i18n.baseText('settings.n8nAgent.description') }}
 			</N8nText>
 		</header>
@@ -140,6 +140,7 @@ function getPermissionValue(key: keyof InstanceAiPermissions): InstanceAiPermiss
 						</span>
 					</div>
 					<ElSwitch
+						:class="$style.toggle"
 						:model-value="isEnabled"
 						:disabled="isSaving"
 						data-test-id="n8n-agent-enable-toggle"
@@ -150,10 +151,10 @@ function getPermissionValue(key: keyof InstanceAiPermissions): InstanceAiPermiss
 
 			<template v-if="isEnabled">
 				<div :class="$style.permissionsHeader">
-					<N8nHeading tag="h3" size="small">
+					<N8nHeading :class="$style.sectionTitle" tag="h3" size="medium">
 						{{ i18n.baseText('settings.n8nAgent.permissions.title') }}
 					</N8nHeading>
-					<N8nText size="small" color="text-light">
+					<N8nText size="medium" color="text-light">
 						{{ i18n.baseText('settings.n8nAgent.permissions.description') }}
 					</N8nText>
 				</div>
@@ -173,6 +174,7 @@ function getPermissionValue(key: keyof InstanceAiPermissions): InstanceAiPermiss
 							</span>
 						</div>
 						<N8nSelect
+							:class="$style.permissionSelect"
 							:model-value="getPermissionValue(perm.key)"
 							size="small"
 							:disabled="isSaving"
@@ -202,6 +204,14 @@ function getPermissionValue(key: keyof InstanceAiPermissions): InstanceAiPermiss
 	display: flex;
 	flex-direction: column;
 	max-width: 720px;
+	margin: 0 auto;
+	padding-bottom: var(--spacing--2xl);
+}
+
+.pageTitle {
+	font-weight: var(--font-weight--medium);
+	line-height: 26px;
+	color: var(--color--text--shade-1);
 }
 
 .header {
@@ -224,29 +234,45 @@ function getPermissionValue(key: keyof InstanceAiPermissions): InstanceAiPermiss
 	overflow: hidden;
 }
 
+.toggle {
+	--switch--color--background--active: var(--color--primary);
+}
+
 .settingsRow {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding: var(--spacing--sm);
+	padding-left: var(--spacing--sm);
+	padding-right: var(--spacing--sm);
 	min-height: 64px;
-	background: var(--color--background);
+	background: white;
 }
 
 .settingsRowBorder {
-	border-bottom: var(--border);
+	position: relative;
+
+	&::after {
+		content: '';
+		position: absolute;
+		bottom: 0;
+		left: var(--spacing--sm);
+		right: var(--spacing--sm);
+		height: 1px;
+		background: var(--color--foreground);
+	}
 }
 
 .settingsRowLeft {
 	display: flex;
 	flex-direction: column;
-	gap: 1px;
+	gap: var(--spacing--4xs);
 }
 
 .settingsRowLabel {
 	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--bold);
-	color: var(--color--text);
+	font-weight: var(--font-weight--medium);
+	line-height: 20px;
+	color: var(--color--text--shade-1);
 }
 
 .settingsRowDescription {
@@ -254,11 +280,22 @@ function getPermissionValue(key: keyof InstanceAiPermissions): InstanceAiPermiss
 	color: var(--color--text--tint-1);
 }
 
+.sectionTitle {
+	font-weight: var(--font-weight--medium);
+	line-height: 24px;
+	color: var(--color--text--shade-1);
+}
+
 .permissionsHeader {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--4xs);
-	margin-top: var(--spacing--lg);
-	margin-bottom: var(--spacing--xs);
+	margin-top: var(--spacing--xl);
+	margin-bottom: var(--spacing--sm);
+}
+
+.permissionSelect {
+	width: 178px;
+	flex-shrink: 0;
 }
 </style>
