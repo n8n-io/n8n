@@ -383,7 +383,11 @@ function parsePinDataResponse(responseText: string, expectedNodes: string[]): Pi
 
 	for (const nodeName of expectedNodes) {
 		const nodeData = parsed[nodeName];
-		if (!Array.isArray(nodeData) || nodeData.length === 0) continue;
+		if (!Array.isArray(nodeData)) continue;
+		if (nodeData.length === 0) {
+			pinData[nodeName] = [{ json: {} }];
+			continue;
+		}
 
 		pinData[nodeName] = nodeData.map((item: unknown) => {
 			// The execution engine expects { json: IDataObject } format.
