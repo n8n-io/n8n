@@ -20,6 +20,8 @@ export { BinaryDataSignedQueryDto } from './binary-data/binary-data-signed-query
 
 export { LoginRequestDto } from './auth/login-request.dto';
 export { ResolveSignupTokenQueryDto } from './auth/resolve-signup-token-query.dto';
+export { EmbedLoginQueryDto } from './auth/embed-login-query.dto';
+export { EmbedLoginBodyDto } from './auth/embed-login-body.dto';
 
 export { CreateCredentialResolverDto } from './credential-resolver/create-credential-resolver.dto';
 export { UpdateCredentialResolverDto } from './credential-resolver/update-credential-resolver.dto';
