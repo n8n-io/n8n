@@ -1202,7 +1202,7 @@ function isNodeLike(item: unknown): item is NodeLike {
 	// name is required: addNodeWithSubnodes() uses it as the internal map key.
 	// Without a top-level name the node would be silently stored under `undefined`.
 	if (!('name' in item) || typeof (item as Record<string, unknown>).name !== 'string') return false;
-	return 'config' in item || 'id' in item || 'parameters' in item;
+	return 'config' in item || 'parameters' in item;
 }
 
 /**
