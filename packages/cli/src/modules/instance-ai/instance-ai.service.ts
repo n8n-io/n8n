@@ -208,15 +208,48 @@ export class InstanceAiService {
 			sandboxProvider,
 			daytonaApiUrl,
 			daytonaApiKey,
+			n8nSandboxServiceUrl,
+			n8nSandboxServiceApiKey,
 			sandboxImage,
 			sandboxTimeout,
 		} = this.instanceAiConfig;
+		if (!sandboxEnabled) {
+			return {
+				enabled: false,
+				provider:
+					sandboxProvider === 'n8n-sandbox'
+						? 'n8n-sandbox'
+						: sandboxProvider === 'daytona'
+							? 'daytona'
+							: 'local',
+				timeout: sandboxTimeout,
+			};
+		}
+
+		if (sandboxProvider === 'daytona') {
+			return {
+				enabled: true,
+				provider: 'daytona',
+				daytonaApiUrl: daytonaApiUrl || undefined,
+				daytonaApiKey: daytonaApiKey || undefined,
+				image: sandboxImage || undefined,
+				timeout: sandboxTimeout,
+			};
+		}
+
+		if (sandboxProvider === 'n8n-sandbox') {
+			return {
+				enabled: true,
+				provider: 'n8n-sandbox',
+				serviceUrl: n8nSandboxServiceUrl || undefined,
+				apiKey: n8nSandboxServiceApiKey || undefined,
+				timeout: sandboxTimeout,
+			};
+		}
+
 		return {
-			enabled: sandboxEnabled,
-			provider: sandboxProvider as 'daytona' | 'local',
-			daytonaApiUrl: daytonaApiUrl || undefined,
-			daytonaApiKey: daytonaApiKey || undefined,
-			image: sandboxImage || undefined,
+			enabled: true,
+			provider: 'local',
 			timeout: sandboxTimeout,
 		};
 	}
@@ -248,33 +281,43 @@ export class InstanceAiService {
 	private async resolveSandboxConfig(user: User): Promise<SandboxConfig> {
 		const base = this.getSandboxConfigFromEnv();
 		if (!base.enabled) return base;
+		if (base.provider === 'daytona') {
+			// If AI assistant service is available, route Daytona calls through its sandbox proxy
+			const client = await this.getAiAssistantClient();
+			if (client) {
+				const proxyConfig = await client.getSandboxProxyConfig();
+				return {
+					...base,
+					daytonaApiUrl: client.getSandboxProxyBaseUrl(),
+					image: proxyConfig.image,
+					getAuthToken: async () => {
+						const token = await client.getBuilderApiProxyToken(
+							{ id: user.id },
+							{ userMessageId: nanoid() },
+						);
 
-		// If AI assistant service is available, route Daytona calls through its sandbox proxy
-		const client = await this.getAiAssistantClient();
-		if (client) {
-			const proxyConfig = await client.getSandboxProxyConfig();
+						return token.accessToken;
+					},
+				};
+			}
+
+			// Direct mode: Daytona credentials from env vars or admin credential
+			const daytona = await this.settingsService.resolveDaytonaConfig(user);
 			return {
 				...base,
-				daytonaApiUrl: client.getSandboxProxyBaseUrl(),
-				image: proxyConfig.image,
-				getAuthToken: async () => {
-					const token = await client.getBuilderApiProxyToken(
-						{ id: user.id },
-						{ userMessageId: nanoid() },
-					);
-
-					return token.accessToken;
-				},
+				daytonaApiUrl: daytona.apiUrl ?? base.daytonaApiUrl,
+				daytonaApiKey: daytona.apiKey ?? base.daytonaApiKey,
 			};
 		}
-
-		// Direct mode: Daytona credentials from env vars or admin credential
-		const daytona = await this.settingsService.resolveDaytonaConfig(user);
-		return {
-			...base,
-			daytonaApiUrl: daytona.apiUrl ?? base.daytonaApiUrl,
-			daytonaApiKey: daytona.apiKey ?? base.daytonaApiKey,
-		};
+		if (base.provider === 'n8n-sandbox') {
+			const sandbox = await this.settingsService.resolveN8nSandboxConfig(user);
+			return {
+				...base,
+				serviceUrl: sandbox.serviceUrl ?? base.serviceUrl,
+				apiKey: sandbox.apiKey ?? base.apiKey,
+			};
+		}
+		return base;
 	}
 
 	private async createBuilderFactory(user: User): Promise<BuilderSandboxFactory | undefined> {

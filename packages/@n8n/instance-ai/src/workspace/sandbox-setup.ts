@@ -29,6 +29,12 @@ import { runInSandbox, readFileViaSandbox, escapeSingleQuotes } from './sandbox-
 
 export const WORKSPACE_DIR = 'workspace';
 
+/** Default home directory inside the n8n sandbox service container. */
+export const N8N_SANDBOX_HOME = '/home/user';
+
+/** Absolute workspace root for n8n sandbox service Dockerfile steps (build-time). */
+export const N8N_SANDBOX_WORKSPACE_ROOT = `${N8N_SANDBOX_HOME}/${WORKSPACE_DIR}`;
+
 export const PACKAGE_JSON = JSON.stringify(
 	{
 		name: 'sandbox-workspace',

@@ -5121,6 +5121,7 @@
 	"instanceAi.settings.sandboxEnabled.label": "Enable sandbox",
 	"instanceAi.settings.sandboxProvider.label": "Sandbox provider",
 	"instanceAi.settings.daytonaCredential.label": "Daytona credential",
+	"instanceAi.settings.n8nSandboxCredential.label": "n8n sandbox API key credential",
 	"instanceAi.settings.sandboxImage.label": "Sandbox Docker image",
 	"instanceAi.settings.sandboxTimeout.label": "Sandbox timeout (ms)",
 	"instanceAi.settings.searchCredential.label": "Search credential",

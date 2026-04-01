@@ -29,6 +29,22 @@ jest.mock('../daytona-filesystem', () => {
 	return { DaytonaFilesystem };
 });
 
+jest.mock('../n8n-sandbox-sandbox', () => {
+	class N8nSandboxServiceSandbox {
+		readonly type = 'n8n-sandbox';
+		constructor(public opts: Record<string, unknown>) {}
+	}
+	return { N8nSandboxServiceSandbox };
+});
+
+jest.mock('../n8n-sandbox-filesystem', () => {
+	class N8nSandboxFilesystem {
+		readonly type = 'n8n-sandbox-fs';
+		constructor(public sandbox: unknown) {}
+	}
+	return { N8nSandboxFilesystem };
+});
+
 // ---------------------------------------------------------------------------
 // Typed mock classes — avoids `any` from jest.requireMock
 // ---------------------------------------------------------------------------
@@ -51,6 +67,10 @@ type MockDaytonaSandboxCtor = new (
 	opts: Record<string, unknown>,
 ) => MockWithOpts<Record<string, unknown>>;
 type MockDaytonaFilesystemCtor = new (sandbox: unknown) => { sandbox: unknown };
+type MockN8nSandboxCtor = new (
+	opts: Record<string, unknown>,
+) => MockWithOpts<Record<string, unknown>>;
+type MockN8nFilesystemCtor = new (sandbox: unknown) => { sandbox: unknown };
 
 const {
 	LocalSandbox,
@@ -67,6 +87,13 @@ const { DaytonaSandbox }: { DaytonaSandbox: MockDaytonaSandboxCtor } =
 
 const { DaytonaFilesystem }: { DaytonaFilesystem: MockDaytonaFilesystemCtor } =
 	jest.requireMock('../daytona-filesystem');
+
+const { N8nSandboxServiceSandbox }: { N8nSandboxServiceSandbox: MockN8nSandboxCtor } =
+	jest.requireMock('../n8n-sandbox-sandbox');
+
+const { N8nSandboxFilesystem }: { N8nSandboxFilesystem: MockN8nFilesystemCtor } = jest.requireMock(
+	'../n8n-sandbox-filesystem',
+);
 
 import { type SandboxConfig, createSandbox, createWorkspace } from '../create-workspace';
 
@@ -155,6 +182,25 @@ describe('createSandbox', () => {
 			'LocalSandbox (provider: "local") is not allowed in production. Use "daytona" provider for isolated sandbox execution.',
 		);
 	});
+
+	it('should return an N8nSandboxServiceSandbox for "n8n-sandbox" provider', () => {
+		const config: SandboxConfig = {
+			enabled: true,
+			provider: 'n8n-sandbox',
+			serviceUrl: 'https://sandbox.example.com',
+			apiKey: 'sandbox-key',
+			timeout: 45_000,
+		};
+
+		const result = createSandbox(config);
+
+		expect(result).toBeInstanceOf(N8nSandboxServiceSandbox);
+		expect((result as unknown as MockWithOpts<Record<string, unknown>>).opts).toEqual({
+			serviceUrl: 'https://sandbox.example.com',
+			apiKey: 'sandbox-key',
+			timeout: 45_000,
+		});
+	});
 });
 
 describe('createWorkspace', () => {
@@ -192,5 +238,20 @@ describe('createWorkspace', () => {
 		}>;
 		expect(workspace.opts.sandbox).toBe(sandbox);
 		expect(workspace.opts.filesystem).toBeInstanceOf(DaytonaFilesystem);
+	});
+
+	it('should wrap N8nSandboxServiceSandbox with N8nSandboxFilesystem', () => {
+		const sandbox = new N8nSandboxServiceSandbox({ apiKey: 'key' });
+
+		const result = createWorkspace(sandbox as unknown as Parameters<typeof createWorkspace>[0]);
+
+		expect(result).toBeDefined();
+		expect(result).toBeInstanceOf(WorkspaceMock);
+		const workspace = result as unknown as MockWithOpts<{
+			sandbox: unknown;
+			filesystem: unknown;
+		}>;
+		expect(workspace.opts.sandbox).toBe(sandbox);
+		expect(workspace.opts.filesystem).toBeInstanceOf(N8nSandboxFilesystem);
 	});
 });

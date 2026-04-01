@@ -58,14 +58,16 @@ When no search provider is available, `web-search` and `research-with-agent` too
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
 | `N8N_INSTANCE_AI_SANDBOX_ENABLED` | boolean | `false` | Enable sandbox for code execution. When true, the builder agent writes TypeScript files and validates with `tsc` instead of using the string-based `build-workflow` tool. |
-| `N8N_INSTANCE_AI_SANDBOX_PROVIDER` | string | `daytona` | Sandbox provider: `daytona` for isolated Docker containers (production), `local` for direct host execution (dev only, no isolation). |
+| `N8N_INSTANCE_AI_SANDBOX_PROVIDER` | string | `daytona` | Sandbox provider: `daytona` for isolated Docker containers, `n8n-sandbox` for the n8n sandbox service, `local` for direct host execution (dev only, no isolation). |
 | `DAYTONA_API_URL` | string | `''` | Daytona API URL (e.g. `https://app.daytona.io/api`). Required when provider is `daytona`. |
 | `DAYTONA_API_KEY` | string | `''` | Daytona API key for authentication. Required when provider is `daytona`. |
+| `N8N_SANDBOX_SERVICE_URL` | string | `''` | n8n sandbox service URL. Required when provider is `n8n-sandbox`. |
+| `N8N_SANDBOX_SERVICE_API_KEY` | string | `''` | API key for the n8n sandbox service. Optional when an `httpHeaderAuth` credential is selected in admin settings. |
 | `N8N_INSTANCE_AI_SANDBOX_IMAGE` | string | `daytonaio/sandbox:0.5.0` | Docker image for the Daytona sandbox. |
 | `N8N_INSTANCE_AI_SANDBOX_TIMEOUT` | number | `300000` | Default command timeout in the sandbox (milliseconds). |
 
 **Modes**: When sandbox is enabled, the builder agent works in two modes:
-- **Sandbox mode** (Daytona/local): agent writes TypeScript to `~/workspace/src/workflow.ts`, runs `tsc` for validation, and uses `submit-workflow` to save. Gets full filesystem access and `execute_command`.
+- **Sandbox mode** (Daytona/n8n-sandbox/local): agent writes TypeScript to `~/workspace/src/workflow.ts`, runs `tsc` for validation, and uses `submit-workflow` to save. Gets full filesystem access and `execute_command`.
 - **Tool mode** (fallback when sandbox unavailable): original `build-workflow` tool with string-based code validation.
 
 Sandbox workspaces persist per thread — the same container is reused across messages in a conversation. Workspaces are destroyed on server shutdown.
@@ -181,6 +183,13 @@ DAYTONA_API_KEY=dtn_xxx
 N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-4-6
 N8N_INSTANCE_AI_SANDBOX_ENABLED=true
 N8N_INSTANCE_AI_SANDBOX_PROVIDER=local
+
+# With sandbox (n8n sandbox service)
+N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-4-5
+N8N_INSTANCE_AI_SANDBOX_ENABLED=true
+N8N_INSTANCE_AI_SANDBOX_PROVIDER=n8n-sandbox
+N8N_SANDBOX_SERVICE_URL=https://sandbox.example.com
+N8N_SANDBOX_SERVICE_API_KEY=sandbox-key
 
 # With filesystem access (bare metal — zero config, auto-detected)
 N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-4-6
