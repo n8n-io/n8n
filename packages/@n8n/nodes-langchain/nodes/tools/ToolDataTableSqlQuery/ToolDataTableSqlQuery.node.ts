@@ -44,11 +44,12 @@ export class ToolDataTableSqlQuery implements INodeType {
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
 			{
-				displayName: 'Tables',
+				displayName: 'Table Names or IDs',
 				name: 'tables',
 				type: 'multiOptions',
 				required: true,
-				description: 'Select the data tables the agent can query',
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getTables',

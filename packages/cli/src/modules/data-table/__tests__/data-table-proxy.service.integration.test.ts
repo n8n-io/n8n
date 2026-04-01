@@ -14,6 +14,7 @@ import type {
 import type { OwnershipService } from '@/services/ownership.service';
 
 import { DataTableProxyService } from '../data-table-proxy.service';
+import type { DataTableSqlService } from '../data-table-sql.service';
 import type { DataTableService } from '../data-table.service';
 
 const PROJECT_ID = 'project-id';
@@ -24,6 +25,7 @@ beforeAll(async () => {
 });
 describe('DataTableProxyService', () => {
 	let dataTableServiceMock = mock<DataTableService>();
+	let dataTableSqlServiceMock = mock<DataTableSqlService>();
 	let ownershipServiceMock = mock<OwnershipService>();
 	let loggerMock = mock<Logger>();
 	let dataTableProxyService: DataTableProxyService;
@@ -34,11 +36,13 @@ describe('DataTableProxyService', () => {
 
 	beforeEach(() => {
 		dataTableServiceMock = mock<DataTableService>();
+		dataTableSqlServiceMock = mock<DataTableSqlService>();
 		ownershipServiceMock = mock<OwnershipService>();
 		loggerMock = mock<Logger>();
 
 		dataTableProxyService = new DataTableProxyService(
 			dataTableServiceMock,
+			dataTableSqlServiceMock,
 			ownershipServiceMock,
 			loggerMock,
 		);

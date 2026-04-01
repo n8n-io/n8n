@@ -102,12 +102,13 @@ export class SqlValidator {
 		// Rewrite table names from logical to physical
 		this.rewriteTableNames(selectAst, tableMapping);
 
+		// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 		const { Parser } = require('node-sql-parser') as typeof import('node-sql-parser');
 		const parser = new Parser();
 
 		// selectAst was produced by parser.astify — it has the correct shape,
 		// but our SqlAstNode alias lost the type. Cast through unknown.
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
 		const rewrittenSql = parser.sqlify(selectAst as any, { database: this.dialect });
 
 		// Defense-in-depth: run whiteListCheck on the rewritten SQL
@@ -148,6 +149,7 @@ export class SqlValidator {
 			throw new SqlValidationError('SQL query must not be empty');
 		}
 
+		// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 		const { Parser } = require('node-sql-parser') as typeof import('node-sql-parser');
 		const parser = new Parser();
 
@@ -404,7 +406,7 @@ export class SqlValidator {
 
 		// Window functions: ROW_NUMBER, RANK, etc.
 		if (type === 'window_func' && typeof obj.name === 'string') {
-			functions.push((obj.name as string).toUpperCase());
+			functions.push(obj.name.toUpperCase());
 		}
 
 		// Recurse into all properties
