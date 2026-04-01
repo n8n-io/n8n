@@ -192,7 +192,7 @@ packages/frontend/@n8n/chat/                            @n8n-io/ai
 
 # Chat
 
-packages/@n8n/chat-hub/                                 @n8n-io/chat
+packages/@n8n/chat-hub/                                 @n8n-io/ai # Suggesting a new @n8n-io/chat team
 
 # Nodes
 
