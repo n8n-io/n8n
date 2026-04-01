@@ -14,7 +14,7 @@ import { prepareForTransfer } from '../shared/serialize';
 export function __prepareForTransfer(value: unknown): unknown {
 	if (value !== null && value !== undefined && typeof value === 'object') {
 		if (isLazyProxy(value)) {
-			const path = getProxyPath(value as object);
+			const path = getProxyPath(value);
 			if (path) return { __isProxyResult: true, __path: path };
 		}
 	}
