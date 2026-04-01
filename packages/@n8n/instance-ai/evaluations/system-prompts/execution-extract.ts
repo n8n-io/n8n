@@ -33,8 +33,8 @@ After execution, we capture the output data from every node in the workflow AND 
 8. If the workflow uses nodes that require real external API credentials (Slack, GitHub, Notion, HTTP Request to external URLs, etc.) AND those credentials were NOT seeded with real tokens, return EMPTY arrays. If the "Seeded credentials" section below lists the credential types used by the workflow, then real tokens ARE available and you SHOULD generate test inputs. For seeded external credentials, do NOT assert on external side effects (e.g. "Slack message was delivered") — only assert on execution success and node output structure.
 9. If the workflow has no trigger node or is trivially simple (just a manual trigger with no processing), return EMPTY arrays
 10. If an "Existing execution output" section is provided, the workflow has ALREADY been executed successfully. You MUST generate checklist items that verify the captured output data — do NOT return empty arrays when execution output is available. At minimum, assert that the workflow executed without errors and verify the output structure matches expectations.
-10. Test data should be realistic and exercise the workflow's logic paths
-11. For webhooks expecting specific field names, use those exact field names in the test data
+11. Test data should be realistic and exercise the workflow's logic paths
+12. For webhooks expecting specific field names, use those exact field names in the test data
 12. For webhooks, generate **2-4 test inputs** with varying payloads. Look at the webhook node's \`parameters.path\` and \`parameters.httpMethod\` in the workflow JSON to set the \`path\` and \`httpMethod\` fields.
 
 ## Output Format

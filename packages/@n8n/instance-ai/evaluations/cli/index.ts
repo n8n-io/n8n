@@ -79,23 +79,26 @@ async function main(): Promise<void> {
 		// (uses our Anthropic key for Phase 1 + Phase 2 mock generation).
 		// At Tier 4 (20K RPM) no practical limit is needed — set high to run all in parallel.
 		const MAX_CONCURRENT_TEST_CASES = 4;
-		const results = await runWithConcurrency(
-			testCases,
-			async (testCase) =>
-				await runWorkflowTestCase({
-					client,
-					testCase,
-					timeoutMs: args.timeoutMs,
-					seededCredentialTypes: seedResult.seededTypes,
-					preRunWorkflowIds,
-					claimedWorkflowIds,
-					logger,
-				}),
-			MAX_CONCURRENT_TEST_CASES,
-		);
-
-		// Cleanup credentials
-		await cleanupCredentials(client, seedResult.credentialIds).catch(() => {});
+		let results;
+		try {
+			results = await runWithConcurrency(
+				testCases,
+				async (testCase) =>
+					await runWorkflowTestCase({
+						client,
+						testCase,
+						timeoutMs: args.timeoutMs,
+						seededCredentialTypes: seedResult.seededTypes,
+						preRunWorkflowIds,
+						claimedWorkflowIds,
+						logger,
+					}),
+				MAX_CONCURRENT_TEST_CASES,
+			);
+		} finally {
+			// Cleanup credentials even if test execution fails
+			await cleanupCredentials(client, seedResult.credentialIds).catch(() => {});
+		}
 
 		// Generate HTML report
 		const reportPath = writeWorkflowReport(results);

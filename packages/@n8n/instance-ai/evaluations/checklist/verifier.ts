@@ -82,9 +82,14 @@ Verify each checklist item against the artifact above.`;
 
 		const rawResults = parseJsonArray(content);
 
+		const validIds = new Set(llmItems.map((i) => i.id));
 		for (const raw of rawResults) {
 			const entry = raw as Record<string, unknown>;
-			if (typeof entry.id === 'number' && typeof entry.pass === 'boolean') {
+			if (
+				typeof entry.id === 'number' &&
+				typeof entry.pass === 'boolean' &&
+				validIds.has(entry.id)
+			) {
 				results.push({
 					id: entry.id,
 					pass: entry.pass,

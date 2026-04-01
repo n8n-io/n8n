@@ -187,8 +187,9 @@ async function generateMockResponse(
 		return materializeSpec(spec);
 	} catch (error) {
 		const errorMsg = error instanceof Error ? error.message : String(error);
+		const safeUrl = extractEndpoint(request.url);
 		Container.get(Logger).error(
-			`[EvalMock] Mock generation failed for ${request.method ?? 'GET'} ${request.url}: ${errorMsg}`,
+			`[EvalMock] Mock generation failed for ${request.method ?? 'GET'} ${safeUrl}: ${errorMsg}`,
 		);
 		return {
 			body: { _evalMockError: true, message: `Mock generation failed: ${errorMsg}` },
