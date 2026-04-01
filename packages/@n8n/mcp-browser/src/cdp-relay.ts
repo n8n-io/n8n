@@ -42,8 +42,9 @@ function isRestrictedTarget(targetInfo: { type?: string; url?: string }): boolea
 	// Only allow page and iframe targets
 	if (type && type !== 'page' && type !== 'iframe') return true;
 	if (!url) return false;
-	const blocked = ['chrome://', 'chrome-extension://', 'devtools://', 'edge://'];
-	return blocked.some((prefix) => url.startsWith(prefix));
+	return ['chrome://', 'chrome-extension://', 'devtools://', 'edge://'].some((prefix) =>
+		url.startsWith(prefix),
+	);
 }
 
 // ---------------------------------------------------------------------------

@@ -81,7 +81,7 @@ export class RelayConnection {
 	private readonly agentCreatedChromeTabIds = new Set<number>();
 	/** The primary tab ID (first registered), used as default target */
 	private primaryId: string | undefined;
-	/** Cached Target.setAutoAttach params — reapplied to newly attached tabs for OOPIF support. */
+	/** Cached Target.setAutoAttach params — reapplied to newly attached tabs for iframe support. */
 	private autoAttachParams: object | null = null;
 
 	private readonly ws: WebSocket;
@@ -321,7 +321,7 @@ export class RelayConnection {
 			entry.attached = true;
 			log.debug(`ensureAttached: attached ${id}`);
 
-			// Reapply cached auto-attach so new tabs report OOPIFs immediately
+			// Reapply cached auto-attach so new tabs report iframes immediately
 			if (this.autoAttachParams) {
 				try {
 					await chrome.debugger.sendCommand(
@@ -480,7 +480,7 @@ export class RelayConnection {
 		const { method, params: cmdParams, id: rawId } = params;
 
 		// Root-level Target.setAutoAttach: cache params and apply to ALL attached tabs.
-		// This ensures Chrome emits Target.attachedToTarget for OOPIFs (cross-origin iframes).
+		// This ensures Chrome emits Target.attachedToTarget for cross-origin iframes.
 		if (method === 'Target.setAutoAttach' && !rawId) {
 			this.autoAttachParams = (cmdParams as object) ?? null;
 			const promises: Array<Promise<void>> = [];
@@ -579,7 +579,7 @@ export class RelayConnection {
 		this.chromeTabIdToId.set(tab.id, targetId);
 		this.agentCreatedChromeTabIds.add(tab.id);
 
-		// Apply cached auto-attach params so the new tab reports OOPIFs immediately.
+		// Apply cached auto-attach params so the new tab reports iframes immediately.
 		// ensureAttached() does this for lazily-attached tabs; we must do it here too
 		// for eagerly-attached agent-created tabs.
 		if (this.autoAttachParams) {
