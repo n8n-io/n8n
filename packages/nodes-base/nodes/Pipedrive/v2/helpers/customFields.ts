@@ -38,7 +38,8 @@ export function encodeCustomFieldsV2(customProperties: ICustomProperties, item: 
 	const customFields: IDataObject = {};
 
 	for (const key of Object.keys(item)) {
-		const customPropertyData = nameMap.get(key);
+		// Look up by display name first, then by raw field key
+		const customPropertyData = nameMap.get(key) ?? customProperties[key];
 
 		if (customPropertyData !== undefined) {
 			if (
