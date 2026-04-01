@@ -143,6 +143,28 @@ export function resetDataProxies(timezone?: string): void {
 		globalThis.__data.$webhookId = undefined;
 	}
 
+	try {
+		globalThis.__data.$nodeId = globalThis.__getValueAtPath.applySync(null, [['$nodeId']], {
+			arguments: { copy: true },
+			result: { copy: true },
+		});
+	} catch (error) {
+		globalThis.__data.$nodeId = undefined;
+	}
+
+	try {
+		globalThis.__data.$nodeVersion = globalThis.__getValueAtPath.applySync(
+			null,
+			[['$nodeVersion']],
+			{
+				arguments: { copy: true },
+				result: { copy: true },
+			},
+		);
+	} catch (error) {
+		globalThis.__data.$nodeVersion = undefined;
+	}
+
 	// -------------------------------------------------------------------------
 	// Expose workflow data to globalThis for expression access
 	// -------------------------------------------------------------------------
@@ -166,6 +188,8 @@ export function resetDataProxies(timezone?: string): void {
 	globalThis.$executionId = globalThis.__data.$executionId as string | undefined;
 	globalThis.$resumeWebhookUrl = globalThis.__data.$resumeWebhookUrl as string | undefined;
 	globalThis.$webhookId = globalThis.__data.$webhookId as string | undefined;
+	globalThis.$nodeId = globalThis.__data.$nodeId as string | undefined;
+	globalThis.$nodeVersion = globalThis.__data.$nodeVersion as number | undefined;
 
 	// Expose standalone functions (min, max, average, numberList, zip, $ifEmpty, etc.)
 	Object.assign(globalThis.__data, extendedFunctions);
