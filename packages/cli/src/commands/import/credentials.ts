@@ -55,7 +55,7 @@ const flagsSchema = z.object({
 	flagsSchema,
 })
 export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
-	private transactionManager: EntityManager;
+	private transactionManager!: EntityManager;
 
 	async run(): Promise<void> {
 		const { flags } = this;

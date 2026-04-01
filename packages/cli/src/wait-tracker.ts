@@ -23,7 +23,7 @@ export class WaitTracker {
 		};
 	} = {};
 
-	mainTimer: NodeJS.Timeout;
+	mainTimer!: NodeJS.Timeout;
 
 	constructor(
 		private readonly logger: Logger,

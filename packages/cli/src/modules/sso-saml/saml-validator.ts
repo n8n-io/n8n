@@ -7,20 +7,20 @@ import { InvalidSamlMetadataError } from './errors/invalid-saml-metadata.error';
 
 @Service()
 export class SamlValidator {
-	private xmlMetadata: XMLFileInfo;
+	private xmlMetadata!: XMLFileInfo;
 
-	private xmlProtocol: XMLFileInfo;
+	private xmlProtocol!: XMLFileInfo;
 
 	private preload: XMLFileInfo[] = [];
 
 	constructor(private readonly logger: Logger) {}
 
-	private xmllint: {
+	private xmllint!: {
 		validateXML: (options: XMLLintOptions) => Promise<XMLValidationResult>;
 	};
 
 	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
-	private samlify: typeof import('samlify');
+	private samlify!: typeof import('samlify');
 
 	async init() {
 		if (this.samlify) return;

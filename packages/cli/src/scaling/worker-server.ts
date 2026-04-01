@@ -44,7 +44,7 @@ export class WorkerServer {
 
 	private readonly app: Application;
 
-	private endpointsConfig: WorkerServerEndpointsConfig;
+	private endpointsConfig!: WorkerServerEndpointsConfig;
 
 	private overwritesLoaded = false;
 

@@ -47,9 +47,9 @@ export interface MessageEventBusInitializeOptions {
 export class MessageEventBus extends EventEmitter {
 	private isInitialized = false;
 
-	logWriter: MessageEventBusLogWriter;
+	logWriter!: MessageEventBusLogWriter;
 
-	private pushIntervalTimer: NodeJS.Timeout;
+	private pushIntervalTimer!: NodeJS.Timeout;
 
 	constructor(
 		private readonly logger: Logger,

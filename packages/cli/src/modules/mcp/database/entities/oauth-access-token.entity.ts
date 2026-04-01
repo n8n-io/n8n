@@ -6,23 +6,23 @@ import { OAuthClient } from './oauth-client.entity';
 @Entity('oauth_access_tokens')
 export class AccessToken {
 	@Column({ type: 'varchar', primary: true })
-	token: string;
+	token!: string;
 
 	@ManyToOne(
 		() => OAuthClient,
 		(client) => client.accessTokens,
 		{ onDelete: 'CASCADE' },
 	)
-	client: OAuthClient;
+	client!: OAuthClient;
 
 	@Index()
 	@Column({ type: String })
-	clientId: string;
+	clientId!: string;
 
 	@ManyToOne(() => User, { onDelete: 'CASCADE' })
-	user: User;
+	user!: User;
 
 	@Index()
 	@Column({ type: String })
-	userId: string;
+	userId!: string;
 }

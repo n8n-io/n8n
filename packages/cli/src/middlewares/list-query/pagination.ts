@@ -7,15 +7,12 @@ import { toError } from '@/utils';
 
 import { Pagination } from './dtos/pagination.dto';
 
-export const paginationListQueryMiddleware: RequestHandler = (
-	req: ListQuery.Request,
-	res,
-	next,
-) => {
-	const { take: rawTake, skip: rawSkip = '0' } = req.query;
+export const paginationListQueryMiddleware: RequestHandler = (req, res, next) => {
+	const listQueryReq = req as ListQuery.Request;
+	const { take: rawTake, skip: rawSkip = '0' } = listQueryReq.query;
 
 	try {
-		if (!rawTake && req.query.skip) {
+		if (!rawTake && listQueryReq.query.skip) {
 			throw new UnexpectedError('Please specify `take` when using `skip`');
 		}
 
@@ -23,7 +20,7 @@ export const paginationListQueryMiddleware: RequestHandler = (
 
 		const { take, skip } = Pagination.fromString(rawTake, rawSkip);
 
-		req.listQueryOptions = { ...req.listQueryOptions, skip, take };
+		listQueryReq.listQueryOptions = { ...listQueryReq.listQueryOptions, skip, take };
 
 		next();
 	} catch (maybeError) {

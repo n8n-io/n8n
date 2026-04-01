@@ -178,6 +178,7 @@ describe('TaskBrokerServer', () => {
 			const wsServerMock = mock<WSServer>();
 			const mockWs = mock<WebSocket>();
 			wsServerMock.handleUpgrade.mockImplementation(
+				// @ts-expect-error Mock has looser parameter types than the actual handleUpgrade signature
 				(_req: unknown, _socket: unknown, _head: unknown, cb: (ws: WebSocket) => void) => {
 					cb(mockWs);
 				},

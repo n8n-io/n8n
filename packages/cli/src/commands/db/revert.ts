@@ -64,7 +64,7 @@ export async function main(
 	description: 'Revert last database migration',
 })
 export class DbRevertMigrationCommand {
-	private connection: Connection;
+	private connection!: Connection;
 
 	constructor(private readonly logger: Logger) {}
 

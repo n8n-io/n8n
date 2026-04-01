@@ -29,9 +29,9 @@ export interface EventMessageWorkflowOptions extends AbstractEventMessageOptions
 export class EventMessageWorkflow extends AbstractEventMessage {
 	readonly __type = EventMessageTypeNames.workflow;
 
-	eventName: EventNamesWorkflowType;
+	eventName!: EventNamesWorkflowType;
 
-	payload: EventPayloadWorkflow;
+	payload!: EventPayloadWorkflow;
 
 	constructor(options: EventMessageWorkflowOptions) {
 		super(options);

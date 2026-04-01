@@ -16,22 +16,23 @@ export class InsightsRaw extends BaseEntity {
 	}
 
 	@PrimaryGeneratedColumn()
-	id: number;
+	id!: number;
 
 	@Column()
-	metaId: number;
+	metaId!: number;
 
 	@Column({ name: 'type', type: 'int' })
-	private type_: number;
+	private type_!: number;
 
 	get type() {
-		if (!isValidTypeNumber(this.type_)) {
+		const typeValue = this.type_;
+		if (!isValidTypeNumber(typeValue)) {
 			throw new UnexpectedError(
-				`Type '${this.type_}' is not a valid type for 'InsightsByPeriod.type'`,
+				`Type '${typeValue}' is not a valid type for 'InsightsByPeriod.type'`,
 			);
 		}
 
-		return NumberToType[this.type_];
+		return NumberToType[typeValue];
 	}
 
 	set type(value: keyof typeof TypeToNumber) {
@@ -44,7 +45,7 @@ export class InsightsRaw extends BaseEntity {
 	 * Values exceeding Number.MAX_SAFE_INTEGER will lose precision.
 	 */
 	@Column()
-	value: number;
+	value!: number;
 
 	@DateTimeColumn({ name: 'timestamp' })
 	timestamp: Date;

@@ -60,11 +60,11 @@ export class InfisicalProvider extends SecretsProvider {
 
 	private cachedSecrets: Record<string, string> = {};
 
-	private client: InfisicalClient;
+	private client!: InfisicalClient;
 
-	private settings: InfisicalSettings;
+	private settings!: InfisicalSettings;
 
-	private environment: string;
+	private environment!: string;
 
 	async init(settings: SecretsProviderSettings): Promise<void> {
 		this.settings = settings.settings as unknown as InfisicalSettings;

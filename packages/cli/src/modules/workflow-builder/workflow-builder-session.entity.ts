@@ -31,7 +31,7 @@ export interface IWorkflowBuilderSession {
 @Unique(['workflowId', 'userId'])
 export class WorkflowBuilderSession extends WithTimestamps implements IWorkflowBuilderSession {
 	@PrimaryColumn('uuid')
-	id: string;
+	id!: string;
 
 	@BeforeInsert()
 	generateId() {
@@ -41,14 +41,14 @@ export class WorkflowBuilderSession extends WithTimestamps implements IWorkflowB
 	}
 
 	@Column({ type: 'varchar', length: 36 })
-	workflowId: string;
+	workflowId!: string;
 
 	@ManyToOne('WorkflowEntity', { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'workflowId' })
 	workflow?: Relation<object>;
 
 	@Column({ type: 'uuid' })
-	userId: string;
+	userId!: string;
 
 	@ManyToOne('User', { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'userId' })
@@ -56,16 +56,16 @@ export class WorkflowBuilderSession extends WithTimestamps implements IWorkflowB
 
 	/** Serialized LangChain messages in StoredMessage format */
 	@JsonColumn({ default: '[]' })
-	messages: StoredMessage[];
+	messages!: StoredMessage[];
 
 	@Column({ type: 'text', nullable: true, default: null })
-	previousSummary: string | null;
+	previousSummary!: string | null;
 
 	/** Version card message ID that the user restored to (null if no restore) */
 	@Column({ type: 'varchar', length: 255, nullable: true, default: null })
-	activeVersionCardId: string | null;
+	activeVersionCardId!: string | null;
 
 	/** First user message ID sent after a restore (null if no new message yet) */
 	@Column({ type: 'varchar', length: 255, nullable: true, default: null })
-	resumeAfterRestoreMessageId: string | null;
+	resumeAfterRestoreMessageId!: string | null;
 }

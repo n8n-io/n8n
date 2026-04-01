@@ -323,7 +323,7 @@ describe('AiController', () => {
 				let abortSignalPassed: AbortSignal | undefined;
 
 				// Mock response.on to capture the close handler
-				response.on.mockImplementation((event: string, handler: () => void) => {
+				response.on.mockImplementation((event: string | symbol, handler: () => void) => {
 					if (event === 'close') {
 						abortHandler = handler;
 					}
@@ -403,7 +403,7 @@ describe('AiController', () => {
 				let abortHandler: (() => void) | undefined;
 				let abortSignalPassed: AbortSignal | undefined;
 
-				response.on.mockImplementation((event: string, handler: () => void) => {
+				response.on.mockImplementation((event: string | symbol, handler: () => void) => {
 					if (event === 'close') {
 						abortHandler = handler;
 					}

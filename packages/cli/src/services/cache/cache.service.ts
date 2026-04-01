@@ -27,7 +27,7 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 		super();
 	}
 
-	private cache: TaggedRedisCache | TaggedMemoryCache;
+	private cache!: TaggedRedisCache | TaggedMemoryCache;
 
 	async init() {
 		const { backend } = this.globalConfig.cache;

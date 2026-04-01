@@ -263,7 +263,9 @@ export class WorkflowService {
 			though. So to avoid leaking the information we just delete it.
 		*/
 		workflows.forEach((workflow) => {
-			delete workflow.shared;
+			if ('shared' in workflow) {
+				delete (workflow as ListQueryDb.Workflow.WithSharing).shared;
+			}
 		});
 	}
 

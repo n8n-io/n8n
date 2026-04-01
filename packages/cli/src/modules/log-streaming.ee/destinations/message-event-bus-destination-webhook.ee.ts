@@ -230,7 +230,12 @@ export class MessageEventBusDestinationWebhook
 
 		const parametersToKeyValue = async (
 			acc: Promise<{ [key: string]: any }>,
-			cur: { name: string; value: string; parameterType?: string; inputDataFieldName?: string },
+			cur: {
+				name: string;
+				value: string | number | boolean | null;
+				parameterType?: string;
+				inputDataFieldName?: string;
+			},
 		) => {
 			const accumulator = await acc;
 			accumulator[cur.name] = cur.value;

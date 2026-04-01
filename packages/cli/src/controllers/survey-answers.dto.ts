@@ -7,17 +7,17 @@ export class PersonalizationSurveyAnswersV4 implements IPersonalizationSurveyAns
 	@NoXss()
 	@Expose()
 	@IsEnum(['v4'])
-	version: 'v4';
+	version!: 'v4';
 
 	@NoXss()
 	@Expose()
 	@IsString()
-	personalization_survey_submitted_at: string;
+	personalization_survey_submitted_at!: string;
 
 	@NoXss()
 	@Expose()
 	@IsString()
-	personalization_survey_n8n_version: string;
+	personalization_survey_n8n_version!: string;
 
 	@Expose()
 	@IsOptional()

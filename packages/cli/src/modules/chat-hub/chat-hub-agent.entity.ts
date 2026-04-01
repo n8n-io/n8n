@@ -36,43 +36,43 @@ export interface IChatHubAgent {
 @Entity({ name: 'chat_hub_agents' })
 export class ChatHubAgent extends WithTimestamps {
 	@PrimaryGeneratedColumn('uuid')
-	id: string;
+	id!: string;
 
 	/**
 	 * The name of the chat agent.
 	 */
 	@Column({ type: 'varchar', length: 128 })
-	name: string;
+	name!: string;
 
 	/**
 	 * The description of the chat agent (optional).
 	 */
 	@Column({ type: 'varchar', length: 512, nullable: true })
-	description: string | null;
+	description!: string | null;
 
 	/**
 	 * The icon or emoji for the chat agent.
 	 */
 	@JsonColumn({ nullable: true })
-	icon: AgentIconOrEmoji | null;
+	icon!: AgentIconOrEmoji | null;
 
 	/**
 	 * Suggested prompts displayed on the chat greeting screen.
 	 */
 	@JsonColumn({ default: '[]' })
-	suggestedPrompts: Array<{ text: string; icon?: AgentIconOrEmoji }>;
+	suggestedPrompts!: Array<{ text: string; icon?: AgentIconOrEmoji }>;
 
 	/**
 	 * The system prompt for the chat agent.
 	 */
 	@Column({ type: 'text' })
-	systemPrompt: string;
+	systemPrompt!: string;
 
 	/**
 	 * ID of the user that owns this chat agent.
 	 */
 	@Column({ type: String })
-	ownerId: string;
+	ownerId!: string;
 
 	/**
 	 * The user that owns this chat agent.
@@ -85,7 +85,7 @@ export class ChatHubAgent extends WithTimestamps {
 	 * ID of the selected credential to use by default with the selected LLM provider.
 	 */
 	@Column({ type: 'varchar', length: 36, nullable: true })
-	credentialId: string | null;
+	credentialId!: string | null;
 
 	/**
 	 * The selected credential to use by default with the selected LLM provider.
@@ -98,13 +98,13 @@ export class ChatHubAgent extends WithTimestamps {
 	 * Enum value of the LLM provider to use, e.g. 'openai', 'anthropic', 'google'.
 	 */
 	@Column({ type: 'varchar', length: 16, nullable: true })
-	provider: ChatHubLLMProvider;
+	provider!: ChatHubLLMProvider;
 
 	/*
 	 * LLM model to use from the provider (if applicable)
 	 */
 	@Column({ type: 'varchar', length: 64, nullable: true })
-	model: string;
+	model!: string;
 
 	/**
 	 * The tools associated with this agent via `chat_hub_agent_tools` join table.
@@ -122,5 +122,5 @@ export class ChatHubAgent extends WithTimestamps {
 	 * Can be active files with binary data or embedded PDFs (embeddings only).
 	 */
 	@JsonColumn({ default: '[]' })
-	files: ChatHubAgentKnowledgeItem[];
+	files!: ChatHubAgentKnowledgeItem[];
 }

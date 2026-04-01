@@ -231,14 +231,15 @@ class WebhookRequestHandler {
 	}
 }
 
-export function createWebhookHandlerFor(webhookManager: IWebhookManager) {
+export function createWebhookHandlerFor(webhookManager: IWebhookManager): express.RequestHandler {
 	const handler = new WebhookRequestHandler(webhookManager);
 
-	return async (req: WebhookRequest | WebhookOptionsRequest, res: express.Response) => {
-		const { params } = req;
+	return async (req, res) => {
+		const webhookReq = req as WebhookRequest | WebhookOptionsRequest;
+		const { params } = webhookReq;
 		if (Array.isArray(params.path)) {
 			params.path = params.path.join('/');
 		}
-		await handler.handleRequest(req, res);
+		await handler.handleRequest(webhookReq, res);
 	};
 }

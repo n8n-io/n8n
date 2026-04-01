@@ -17,31 +17,31 @@ export interface IChatHubTool {
 @Entity({ name: 'chat_hub_tools' })
 export class ChatHubTool extends WithTimestamps {
 	@PrimaryColumn('uuid')
-	id: string;
+	id!: string;
 
 	/**
 	 * The name of the tool, denormalized from definition for unique constraint.
 	 */
 	@Column({ type: 'varchar', length: 255 })
-	name: string;
+	name!: string;
 
 	/**
 	 * The node type of the tool, denormalized from definition.
 	 */
 	@Column({ type: 'varchar', length: 255 })
-	type: string;
+	type!: string;
 
 	/**
 	 * The node type version of the tool, denormalized from definition.
 	 */
 	@Column({ type: 'double precision' })
-	typeVersion: number;
+	typeVersion!: number;
 
 	/**
 	 * ID of the user that owns this tool.
 	 */
 	@Column({ type: String })
-	ownerId: string;
+	ownerId!: string;
 
 	/**
 	 * The user that owns this tool.
@@ -54,11 +54,11 @@ export class ChatHubTool extends WithTimestamps {
 	 * The full INode definition of the tool.
 	 */
 	@JsonColumn()
-	definition: INode;
+	definition!: INode;
 
 	/**
 	 * Whether the tool is enabled by default for new sessions.
 	 */
 	@Column({ type: 'boolean', default: true })
-	enabled: boolean;
+	enabled!: boolean;
 }

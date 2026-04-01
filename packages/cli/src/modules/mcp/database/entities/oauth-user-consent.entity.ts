@@ -7,26 +7,26 @@ import { OAuthClient } from './oauth-client.entity';
 @Unique(['userId', 'clientId'])
 export class UserConsent {
 	@PrimaryGeneratedColumn()
-	id: number;
+	id!: number;
 
 	@ManyToOne(() => User, { onDelete: 'CASCADE' })
-	user: User;
+	user!: User;
 
 	@Index()
 	@Column({ type: String })
-	userId: string;
+	userId!: string;
 
 	@ManyToOne(
 		() => OAuthClient,
 		(client) => client.userConsents,
 		{ onDelete: 'CASCADE' },
 	)
-	client: OAuthClient;
+	client!: OAuthClient;
 
 	@Index()
 	@Column({ type: String })
-	clientId: string;
+	clientId!: string;
 
 	@Column({ type: 'bigint' })
-	grantedAt: number;
+	grantedAt!: number;
 }

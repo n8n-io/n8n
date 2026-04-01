@@ -22,13 +22,13 @@ import type { McpRelayMessage } from './subscriber.service';
  */
 @Service()
 export class Publisher {
-	private readonly client: SingleNodeClient | MultiNodeClient;
+	private readonly client!: SingleNodeClient | MultiNodeClient;
 
-	private readonly commandChannel: string;
+	private readonly commandChannel!: string;
 
-	private readonly workerResponseChannel: string;
+	private readonly workerResponseChannel!: string;
 
-	private readonly mcpRelayChannel: string;
+	private readonly mcpRelayChannel!: string;
 
 	// #region Lifecycle
 

@@ -35,20 +35,20 @@ export interface IChatHubSession {
 @Entity({ name: 'chat_hub_sessions' })
 export class ChatHubSession extends WithTimestamps {
 	@PrimaryGeneratedColumn('uuid')
-	id: string;
+	id!: string;
 
 	/**
 	 * The title of the chat session/conversation.
 	 * Auto-generated if not provided by the user after the initial AI responses.
 	 */
 	@Column({ type: 'varchar', length: 256 })
-	title: string;
+	title!: string;
 
 	/**
 	 * ID of the user that owns this chat session.
 	 */
 	@Column({ type: String })
-	ownerId: string;
+	ownerId!: string;
 
 	/**
 	 * The user that owns this chat session.
@@ -62,13 +62,13 @@ export class ChatHubSession extends WithTimestamps {
 	 * Used to sort chat sessions by recent activity.
 	 */
 	@DateTimeColumn()
-	lastMessageAt: Date;
+	lastMessageAt!: Date;
 
 	/*
 	 * ID of the selected credential to use by default with the selected LLM provider (if applicable).
 	 */
 	@Column({ type: 'varchar', length: 36, nullable: true })
-	credentialId: string | null;
+	credentialId!: string | null;
 
 	/**
 	 * The selected credential to use by default with the selected LLM provider (if applicable).
@@ -81,19 +81,19 @@ export class ChatHubSession extends WithTimestamps {
 	 * Enum value of the LLM provider to use, e.g. 'openai', 'anthropic', 'google', 'n8n' (if applicable).
 	 */
 	@Column({ type: 'varchar', length: 16, nullable: true })
-	provider: ChatHubProvider | null;
+	provider!: ChatHubProvider | null;
 
 	/*
 	 * LLM model to use from the provider (if applicable)
 	 */
 	@Column({ type: 'varchar', length: 256, nullable: true })
-	model: string | null;
+	model!: string | null;
 
 	/*
 	 * ID of the custom n8n agent workflow to use (if applicable)
 	 */
 	@Column({ type: 'varchar', length: 36, nullable: true })
-	workflowId: string | null;
+	workflowId!: string | null;
 
 	/**
 	 * Custom n8n agent workflow to use (if applicable)
@@ -107,7 +107,7 @@ export class ChatHubSession extends WithTimestamps {
 	 * Only set when provider is 'custom-agent'.
 	 */
 	@Column({ type: 'uuid', nullable: true })
-	agentId: string | null;
+	agentId!: string | null;
 
 	/**
 	 * Custom n8n agent workflow to use (if applicable)
@@ -121,14 +121,14 @@ export class ChatHubSession extends WithTimestamps {
 	 * Used for all providers (LLM providers, custom agents, and n8n workflows).
 	 */
 	@Column({ type: 'varchar', length: 128, nullable: true })
-	agentName: string | null;
+	agentName!: string | null;
 
 	/**
 	 * Whether this session was created from the Chat Hub ('production')
 	 * or from a manual canvas executions ('manual').
 	 */
 	@Column({ type: 'varchar', length: 16, default: 'production' })
-	type: ChatHubSessionType;
+	type!: ChatHubSessionType;
 
 	/**
 	 * All messages that belong to this chat session.

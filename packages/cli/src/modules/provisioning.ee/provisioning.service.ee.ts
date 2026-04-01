@@ -25,7 +25,7 @@ import { UserService } from '@/services/user.service';
 
 @Service()
 export class ProvisioningService {
-	private provisioningConfig: ProvisioningConfigDto;
+	private provisioningConfig!: ProvisioningConfigDto;
 
 	constructor(
 		private readonly eventService: EventService,

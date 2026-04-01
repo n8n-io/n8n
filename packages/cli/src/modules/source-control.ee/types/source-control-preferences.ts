@@ -8,10 +8,10 @@ export class SourceControlPreferences {
 	}
 
 	@IsBoolean()
-	connected: boolean;
+	connected!: boolean;
 
 	@IsString()
-	repositoryUrl: string;
+	repositoryUrl!: string;
 
 	@IsString()
 	@Matches(/^[a-zA-Z0-9]/, {
@@ -20,10 +20,10 @@ export class SourceControlPreferences {
 	branchName = 'main';
 
 	@IsBoolean()
-	branchReadOnly: boolean;
+	branchReadOnly!: boolean;
 
 	@IsHexColor()
-	branchColor: string;
+	branchColor!: string;
 
 	@IsOptional()
 	@IsString()

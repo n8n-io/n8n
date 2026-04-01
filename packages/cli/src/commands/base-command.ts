@@ -41,17 +41,17 @@ import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-hi
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 export abstract class BaseCommand<F = never> {
-	readonly flags: F;
+	readonly flags!: F;
 
 	protected logger = Container.get(Logger);
 
-	protected dbConnection: DbConnection;
+	protected dbConnection!: DbConnection;
 
-	protected errorReporter: ErrorReporter;
+	protected errorReporter!: ErrorReporter;
 
 	protected externalHooks?: ExternalHooks;
 
-	protected nodeTypes: NodeTypes;
+	protected nodeTypes!: NodeTypes;
 
 	protected instanceSettings: InstanceSettings = Container.get(InstanceSettings);
 
@@ -59,7 +59,7 @@ export abstract class BaseCommand<F = never> {
 
 	protected shutdownService: ShutdownService = Container.get(ShutdownService);
 
-	protected license: License;
+	protected license!: License;
 
 	protected readonly globalConfig = Container.get(GlobalConfig);
 

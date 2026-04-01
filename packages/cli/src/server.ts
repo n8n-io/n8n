@@ -1,7 +1,7 @@
 import { inDevelopment, inProduction } from '@n8n/backend-common';
 import { SecurityConfig, WorkflowsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import type { APIRequest, AuthenticatedRequest } from '@n8n/db';
+import type { APIRequest } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import cookieParser from 'cookie-parser';
 import express from 'express';
@@ -70,9 +70,9 @@ import { PubSubRegistry } from './scaling/pubsub/pubsub.registry';
 
 @Service()
 export class Server extends AbstractServer {
-	private endpointPresetCredentials: string;
+	private endpointPresetCredentials!: string;
 
-	private presetCredentialsLoaded: boolean;
+	private presetCredentialsLoaded!: boolean;
 
 	private frontendService?: FrontendService;
 
@@ -468,7 +468,7 @@ export class Server extends AbstractServer {
 			this.app.get(
 				`/${this.restEndpoint}/settings`,
 				authService.createAuthMiddleware({ allowSkipMFA: false, allowUnauthenticated: true }),
-				ResponseHelper.send(async (req: AuthenticatedRequest) => {
+				ResponseHelper.send(async (req: express.Request) => {
 					return req.user
 						? await frontendService.getSettings()
 						: await frontendService.getPublicSettings(!!req.authInfo?.mfaEnrollmentRequired);

@@ -103,7 +103,7 @@ export type PublicFrontendSettings = {
 
 @Service()
 export class FrontendService {
-	private settings: FrontendSettings;
+	private settings!: FrontendSettings;
 
 	private communityPackagesService?: CommunityPackagesService;
 

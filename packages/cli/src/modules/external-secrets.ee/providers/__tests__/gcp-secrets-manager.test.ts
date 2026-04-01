@@ -106,6 +106,7 @@ describe('GCP Secrets Manager', () => {
 
 		const getSpy = jest
 			.spyOn(SecretManagerServiceClient.prototype, 'accessSecretVersion')
+			// @ts-expect-error Overload mismatch in mock
 			.mockImplementation(async ({ name }: { name: string }) => {
 				const secretName = name.split('/')[3];
 				return [
@@ -173,6 +174,7 @@ describe('GCP Secrets Manager', () => {
 			.mockImplementationOnce(() => {
 				throw new Error('test error');
 			})
+			// @ts-expect-error Overload mismatch in mock
 			.mockImplementation(async ({ name }: { name: string }) => {
 				const secretName = name.split('/')[3];
 				return [
@@ -228,6 +230,7 @@ describe('GCP Secrets Manager', () => {
 				error.code = 5;
 				throw error;
 			})
+			// @ts-expect-error Overload mismatch in mock
 			.mockImplementation(async ({ name }: { name: string }) => {
 				const secretName = name.split('/')[3];
 				return [
@@ -296,6 +299,7 @@ describe('GCP Secrets Manager', () => {
 				error.code = 7;
 				throw error;
 			})
+			// @ts-expect-error Overload mismatch in mock
 			.mockImplementation(async ({ name }: { name: string }) => {
 				const secretName = name.split('/')[3];
 				return [
@@ -364,6 +368,7 @@ describe('GCP Secrets Manager', () => {
 				error.code = 14;
 				throw error;
 			})
+			// @ts-expect-error Overload mismatch in mock
 			.mockImplementation(async ({ name }: { name: string }) => {
 				const secretName = name.split('/')[3];
 				return [

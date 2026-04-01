@@ -6,10 +6,10 @@ import type { InstalledNodes } from './installed-nodes.entity';
 @Entity()
 export class InstalledPackages extends WithTimestamps {
 	@PrimaryColumn()
-	packageName: string;
+	packageName!: string;
 
 	@Column()
-	installedVersion: string;
+	installedVersion!: string;
 
 	@Column()
 	authorName?: string;
@@ -19,5 +19,5 @@ export class InstalledPackages extends WithTimestamps {
 
 	@OneToMany('InstalledNodes', 'package')
 	@JoinColumn({ referencedColumnName: 'package' })
-	installedNodes: InstalledNodes[];
+	installedNodes!: InstalledNodes[];
 }

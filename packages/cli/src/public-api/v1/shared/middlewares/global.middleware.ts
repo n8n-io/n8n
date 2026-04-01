@@ -103,14 +103,19 @@ function tagMiddleware(
 
 export const apiKeyHasScope = (apiKeyScope: ApiKeyScope) => {
 	const middleware = Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(apiKeyScope);
-	return tagMiddleware(middleware, apiKeyScope);
+	return tagMiddleware(middleware as (...args: unknown[]) => unknown, apiKeyScope);
 };
 
 export const apiKeyHasScopeWithGlobalScopeFallback = (
 	config: { scope: ApiKeyScope & Scope } | { apiKeyScope: ApiKeyScope; globalScope: Scope },
 ) => {
 	const scope = 'scope' in config ? config.scope : config.apiKeyScope;
-	return tagMiddleware(Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(scope), scope);
+	return tagMiddleware(
+		Container.get(PublicApiKeyService).getApiKeyScopeMiddleware(scope) as (
+			...args: unknown[]
+		) => unknown,
+		scope,
+	);
 };
 
 export const validLicenseWithUserQuota = (

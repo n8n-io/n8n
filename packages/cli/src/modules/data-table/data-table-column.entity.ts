@@ -7,18 +7,18 @@ import { type DataTable } from './data-table.entity';
 @Index(['dataTableId', 'name'], { unique: true })
 export class DataTableColumn extends WithTimestampsAndStringId {
 	@Column()
-	dataTableId: string;
+	dataTableId!: string;
 
 	@Column()
-	name: string;
+	name!: string;
 
 	@Column({ type: 'varchar' })
-	type: 'string' | 'number' | 'boolean' | 'date';
+	type!: 'string' | 'number' | 'boolean' | 'date';
 
 	@Column({ type: 'int' })
-	index: number;
+	index!: number;
 
 	@ManyToOne('DataTable', 'columns')
 	@JoinColumn({ name: 'dataTableId' })
-	dataTable: DataTable;
+	dataTable!: DataTable;
 }

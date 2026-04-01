@@ -27,11 +27,11 @@ import { createWebhookHandlerFor } from '@/webhooks/webhook-request-handler';
 export abstract class AbstractServer {
 	protected logger: Logger;
 
-	protected server: Server;
+	protected server!: Server;
 
 	readonly app: express.Application;
 
-	protected externalHooks: ExternalHooks;
+	protected externalHooks!: ExternalHooks;
 
 	protected globalConfig = Container.get(GlobalConfig);
 
@@ -66,8 +66,6 @@ export abstract class AbstractServer {
 	protected testWebhooksEnabled = false;
 
 	private fullyReady = false;
-
-	readonly uniqueInstanceId: string;
 
 	constructor() {
 		this.app = express();

@@ -81,13 +81,13 @@ export const isEventMessageOptionsWithType = (
 export abstract class AbstractEventMessage {
 	abstract readonly __type: EventMessageTypeNames;
 
-	id: string;
+	id!: string;
 
-	ts: DateTime;
+	ts!: DateTime;
 
-	eventName: EventNamesTypes;
+	eventName!: EventNamesTypes;
 
-	message: string;
+	message!: string;
 
 	abstract payload: AbstractEventPayload;
 

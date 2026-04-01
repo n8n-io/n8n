@@ -11,7 +11,7 @@ export class DataTable extends WithTimestampsAndStringId {
 	}
 
 	@Column()
-	name: string;
+	name!: string;
 
 	@OneToMany(
 		() => DataTableColumn,
@@ -20,12 +20,12 @@ export class DataTable extends WithTimestampsAndStringId {
 			cascade: true,
 		},
 	)
-	columns: DataTableColumn[];
+	columns!: DataTableColumn[];
 
 	@ManyToOne(() => Project)
 	@JoinColumn({ name: 'projectId' })
-	project: Project;
+	project!: Project;
 
 	@Column()
-	projectId: string;
+	projectId!: string;
 }

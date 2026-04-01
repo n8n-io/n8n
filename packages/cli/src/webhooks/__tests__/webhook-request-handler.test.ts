@@ -21,7 +21,10 @@ jest.mock('n8n-core', () => ({
 
 describe('WebhookRequestHandler', () => {
 	const webhookManager = mock<Required<IWebhookManager>>();
-	const handler = createWebhookHandlerFor(webhookManager);
+	const handler = createWebhookHandlerFor(webhookManager) as (
+		req: WebhookRequest | WebhookOptionsRequest,
+		res: Response,
+	) => Promise<void>;
 
 	beforeEach(() => {
 		jest.resetAllMocks();

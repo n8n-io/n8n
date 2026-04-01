@@ -103,7 +103,11 @@ function createLazyValidatorMiddleware(
 						},
 						validateSecurity: {
 							handlers: {
-								ApiKeyAuth: Container.get(PublicApiKeyService).getAuthMiddleware(version),
+								ApiKeyAuth: Container.get(PublicApiKeyService).getAuthMiddleware(version) as (
+									req: express.Request,
+									scopes: string[],
+									schema: object,
+								) => Promise<boolean>,
 							},
 						},
 					}),

@@ -22,6 +22,7 @@ import type {
 	WebhookAccessControlOptions,
 	WebhookRequest,
 } from './webhook.types';
+import type { WebhookResponse } from './webhook-response';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
@@ -142,9 +143,9 @@ export class TestWebhooks implements IWebhookManager {
 					undefined, // executionId
 					request,
 					response,
-					(error: Error | null, data: IWebhookResponseCallbackData) => {
+					(error: Error | null, data: IWebhookResponseCallbackData | WebhookResponse) => {
 						if (error !== null) reject(error);
-						else resolve(data);
+						else resolve(data as IWebhookResponseCallbackData);
 					},
 					destinationNode,
 				);

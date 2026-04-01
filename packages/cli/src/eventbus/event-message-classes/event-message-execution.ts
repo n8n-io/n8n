@@ -19,9 +19,9 @@ export interface EventMessageExecutionOptions extends AbstractEventMessageOption
 export class EventMessageExecution extends AbstractEventMessage {
 	readonly __type = EventMessageTypeNames.execution;
 
-	eventName: EventNamesExecutionType;
+	eventName!: EventNamesExecutionType;
 
-	payload: EventPayloadExecution;
+	payload!: EventPayloadExecution;
 
 	constructor(options: EventMessageExecutionOptions) {
 		super(options);

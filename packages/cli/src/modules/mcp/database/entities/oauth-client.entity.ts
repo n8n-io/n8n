@@ -9,35 +9,35 @@ import type { UserConsent } from './oauth-user-consent.entity';
 @Entity('oauth_clients')
 export class OAuthClient extends WithTimestamps {
 	@Column({ type: 'varchar', primary: true })
-	id: string;
+	id!: string;
 
 	@Column({ type: String })
-	name: string;
+	name!: string;
 
 	@JsonColumn()
-	redirectUris: string[];
+	redirectUris!: string[];
 
 	@JsonColumn()
-	grantTypes: string[];
+	grantTypes!: string[];
 
 	@Column({ type: String, default: 'none' })
-	tokenEndpointAuthMethod: string;
+	tokenEndpointAuthMethod!: string;
 
 	@OneToMany('AuthorizationCode', 'client')
-	authorizationCodes: AuthorizationCode[];
+	authorizationCodes!: AuthorizationCode[];
 
 	@OneToMany('AccessToken', 'client')
-	accessTokens: AccessToken[];
+	accessTokens!: AccessToken[];
 
 	@OneToMany('RefreshToken', 'client')
-	refreshTokens: RefreshToken[];
+	refreshTokens!: RefreshToken[];
 
 	@OneToMany('UserConsent', 'client')
-	userConsents: UserConsent[];
+	userConsents!: UserConsent[];
 
 	@Column({ type: String, nullable: true })
-	clientSecret: string | null;
+	clientSecret!: string | null;
 
 	@Column({ type: 'int', nullable: true })
-	clientSecretExpiresAt: number | null;
+	clientSecretExpiresAt!: number | null;
 }

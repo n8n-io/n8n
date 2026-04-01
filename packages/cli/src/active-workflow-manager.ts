@@ -298,7 +298,7 @@ export class ActiveWorkflowManager {
 			const __emit = (
 				data: INodeExecutionData[][],
 				responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
-				donePromise?: IDeferredPromise<IRun | undefined>,
+				donePromise?: IDeferredPromise<IRun>,
 			) => {
 				this.logger.debug(`Received event to trigger execution for workflow "${workflow.name}"`);
 				void this.workflowStaticDataService.saveStaticData(workflow);
@@ -315,7 +315,7 @@ export class ActiveWorkflowManager {
 					void executePromise.then((executionId) => {
 						this.activeExecutions
 							.getPostExecutePromise(executionId)
-							.then(donePromise.resolve)
+							.then((run) => run !== undefined && donePromise.resolve(run))
 							.catch(donePromise.reject);
 					});
 				} else {
@@ -349,7 +349,7 @@ export class ActiveWorkflowManager {
 			const emit = (
 				data: INodeExecutionData[][],
 				responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
-				donePromise?: IDeferredPromise<IRun | undefined>,
+				donePromise?: IDeferredPromise<IRun>,
 			) => {
 				this.logger.debug(`Received trigger for workflow "${workflow.name}"`);
 				void this.workflowStaticDataService.saveStaticData(workflow);
@@ -376,7 +376,7 @@ export class ActiveWorkflowManager {
 					void executePromise.then((executionId) => {
 						this.activeExecutions
 							.getPostExecutePromise(executionId)
-							.then(donePromise.resolve)
+							.then((run) => run !== undefined && donePromise.resolve(run))
 							.catch(donePromise.reject);
 					});
 				} else {

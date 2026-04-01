@@ -97,7 +97,7 @@ export class AwsSecretsManager extends SecretsProvider {
 
 	private cachedSecrets: Record<string, string> = {};
 
-	private client: SecretsManager;
+	private client!: SecretsManager;
 
 	constructor(private readonly logger = Container.get(Logger)) {
 		super();

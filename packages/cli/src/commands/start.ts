@@ -53,7 +53,7 @@ const flagsSchema = z.object({
 	flagsSchema,
 })
 export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
-	protected activeWorkflowManager: ActiveWorkflowManager;
+	protected activeWorkflowManager!: ActiveWorkflowManager;
 
 	protected server = Container.get(Server);
 

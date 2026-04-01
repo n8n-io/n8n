@@ -15,8 +15,10 @@ export const PeriodUnitToNumber = {
 export type PeriodUnit = keyof typeof PeriodUnitToNumber;
 
 export type PeriodUnitNumber = (typeof PeriodUnitToNumber)[PeriodUnit];
-export const NumberToPeriodUnit = Object.entries(PeriodUnitToNumber).reduce(
-	(acc, [key, value]: [PeriodUnit, PeriodUnitNumber]) => {
+export const NumberToPeriodUnit = (
+	Object.entries(PeriodUnitToNumber) as Array<[PeriodUnit, PeriodUnitNumber]>
+).reduce(
+	(acc, [key, value]) => {
 		acc[value] = key;
 		return acc;
 	},
@@ -37,8 +39,10 @@ export const TypeToNumber = {
 export type TypeUnit = keyof typeof TypeToNumber;
 
 export type TypeUnitNumber = (typeof TypeToNumber)[TypeUnit];
-export const NumberToType = Object.entries(TypeToNumber).reduce(
-	(acc, [key, value]: [TypeUnit, TypeUnitNumber]) => {
+export const NumberToType = (
+	Object.entries(TypeToNumber) as Array<[TypeUnit, TypeUnitNumber]>
+).reduce(
+	(acc, [key, value]) => {
 		acc[value] = key;
 		return acc;
 	},
