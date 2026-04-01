@@ -1,5 +1,4 @@
-import type { RequestHandler } from 'express';
-import { type NextFunction, type Response } from 'express';
+import type { RequestHandler, type NextFunction, type Response } from 'express';
 
 import type { ListQuery } from '@/requests';
 

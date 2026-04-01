@@ -15,7 +15,7 @@ export function interceptResponseWrites<T extends Response>(
 	res: T,
 	transform: ChunkTransformer,
 ): T {
-	const originalWrite = res.write.bind(res) as Write;
+	const originalWrite = res.write.bind(res);
 	const originalEnd = res.end.bind(res) as End;
 	const defaultEncoding = 'utf8';
 

@@ -10,7 +10,6 @@ import type {
 } from '@n8n/db';
 import {
 	CredentialsRepository,
-	Folder,
 	FolderRepository,
 	ProjectRelationRepository,
 	ProjectRepository,
@@ -1172,7 +1171,7 @@ export class SourceControlImportService {
 					},
 				});
 
-				await this.folderRepository.upsert(folderCopy as Folder, {
+				await this.folderRepository.upsert(folderCopy, {
 					skipUpdateIfNoValuesChanged: true,
 					conflictPaths: { id: true },
 				});

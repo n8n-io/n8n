@@ -28,7 +28,10 @@ export interface IWebhookManager {
 		httpMethod: IHttpRequestMethods,
 	) => Promise<WebhookAccessControlOptions | undefined>;
 
-	executeWebhook(req: WebhookRequest, res: Response): Promise<IWebhookResponseCallbackData | WebhookResponse>;
+	executeWebhook(
+		req: WebhookRequest,
+		res: Response,
+	): Promise<IWebhookResponseCallbackData | WebhookResponse>;
 }
 
 export interface IWebhookResponseCallbackData {
