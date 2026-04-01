@@ -112,7 +112,7 @@ function handleRequestChanges() {
 				<button
 					:class="[$style.taskRow, expandedIds.has(task.id) && $style.taskRowExpanded]"
 					type="button"
-					:disabled="props.loading || !task.spec"
+					:disabled="!task.spec"
 					@click="toggle(task.id)"
 				>
 					<span :class="$style.taskNumber">{{ idx + 1 }}</span>
