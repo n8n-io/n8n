@@ -453,7 +453,9 @@ export class SqlValidator {
 					if (ALLOWED_CAST_TYPES.has(upper)) continue;
 					throw new SqlValidationError(`Cast type '${value}' is not allowed`);
 				}
-				// Outside CAST → column alias, harmless
+				// Outside CAST → column alias — record so it can be referenced
+				// later (e.g. in ORDER BY, HAVING)
+				allColumns.add(lower);
 				continue;
 			}
 
