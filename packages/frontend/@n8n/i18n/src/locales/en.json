@@ -5132,6 +5132,8 @@
 	"instanceAi.settings.mcpServers.placeholder": "name=url, comma-separated",
 	"instanceAi.settings.section.permissions": "Permissions",
 	"instanceAi.settings.permissions.description": "Toggle which actions require your approval before the agent executes them.",
+	"instanceAi.settings.permissions.createWorkflow.label": "Create workflow without approval",
+	"instanceAi.settings.permissions.updateWorkflow.label": "Update workflow without approval",
 	"instanceAi.settings.permissions.runWorkflow.label": "Run workflow without approval",
 	"instanceAi.settings.permissions.publishWorkflow.label": "Publish/unpublish workflow without approval",
 	"instanceAi.settings.permissions.deleteWorkflow.label": "Delete workflow without approval",

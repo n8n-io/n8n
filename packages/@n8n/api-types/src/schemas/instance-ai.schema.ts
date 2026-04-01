@@ -761,6 +761,8 @@ const instanceAiPermissionModeSchema = z.enum(['require_approval', 'always_allow
 export type InstanceAiPermissionMode = z.infer<typeof instanceAiPermissionModeSchema>;
 
 const instanceAiPermissionsSchema = z.object({
+	createWorkflow: instanceAiPermissionModeSchema,
+	updateWorkflow: instanceAiPermissionModeSchema,
 	runWorkflow: instanceAiPermissionModeSchema,
 	publishWorkflow: instanceAiPermissionModeSchema,
 	deleteWorkflow: instanceAiPermissionModeSchema,
@@ -781,6 +783,8 @@ const instanceAiPermissionsSchema = z.object({
 export type InstanceAiPermissions = z.infer<typeof instanceAiPermissionsSchema>;
 
 export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
+	createWorkflow: 'require_approval',
+	updateWorkflow: 'require_approval',
 	runWorkflow: 'require_approval',
 	publishWorkflow: 'require_approval',
 	deleteWorkflow: 'require_approval',
