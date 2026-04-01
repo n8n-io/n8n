@@ -10,7 +10,7 @@ import type { Project } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type express from 'express';
-import { BinaryDataService, ErrorReporter } from 'n8n-core';
+import { BinaryDataService, ErrorReporter, WAITING_TOKEN_QUERY_PARAM } from 'n8n-core';
 import type {
 	IBinaryData,
 	IDataObject,
@@ -460,7 +460,15 @@ export async function executeWebhook(
 		additionalData.executionId = executionId;
 	}
 
-	const { responseMode, responseCode, responseData, checkAllMainOutputs } = evaluateResponseOptions(
+	const {
+		responseMode,
+		responseCode,
+		responseData,
+		checkAllMainOutputs,
+		responsePropertyName,
+		responseContentType,
+		responseBinaryPropertyName,
+	} = evaluateResponseOptions(
 		workflowStartNode,
 		workflow,
 		req,
@@ -641,6 +649,7 @@ export async function executeWebhook(
 			workflowData,
 			pinData,
 			projectId: project?.id,
+			projectName: project?.name,
 		};
 
 		// When resuming from a wait node, copy over the pushRef from the execution-data
@@ -740,14 +749,11 @@ export async function executeWebhook(
 				resumeUrl: `${additionalData.webhookWaitingBaseUrl}/${executionId}`,
 				resumeFormUrl: `${additionalData.formWaitingBaseUrl}/${executionId}`,
 			};
-			const evaluatedResponseData = workflow.expression.getComplexParameterValue(
-				workflowStartNode,
-				webhookData.webhookDescription.responseData,
-				executionMode,
-				additionalKeys,
+			const evaluatedResponseData = context.evaluateComplexWebhookDescriptionExpression<string>(
+				'responseData',
 				undefined,
 				'firstEntryJson',
-			) as string | undefined;
+			);
 
 			const responseBody = extractWebhookOnReceivedResponse(
 				evaluatedResponseData,
@@ -766,7 +772,11 @@ export async function executeWebhook(
 		});
 
 		if (responseMode === 'formPage' && !didSendResponse) {
-			res.send({ formWaitingUrl: `${additionalData.formWaitingBaseUrl}/${executionId}` });
+			const formUrl = new URL(`${additionalData.formWaitingBaseUrl}/${executionId}`);
+			if (runExecutionData.resumeToken) {
+				formUrl.searchParams.set(WAITING_TOKEN_QUERY_PARAM, runExecutionData.resumeToken);
+			}
+			res.send({ formWaitingUrl: formUrl.toString() });
 			process.nextTick(() => res.end());
 			didSendResponse = true;
 		}
@@ -865,10 +875,10 @@ export async function executeWebhook(
 					}
 
 					const result = await extractWebhookLastNodeResponse(
-						context,
 						responseData as WebhookResponseData,
 						lastNodeTaskData,
 						checkAllMainOutputs,
+						{ responsePropertyName, responseContentType, responseBinaryPropertyName },
 					);
 
 					if (!result.ok) {
@@ -970,7 +980,38 @@ function evaluateResponseOptions(
 	// We can unify the behavior in the next major release and get rid of this flag
 	const checkAllMainOutputs = workflowStartNode.type === CHAT_TRIGGER_NODE_TYPE;
 
-	return { responseMode, responseCode, responseData, checkAllMainOutputs };
+	const responsePropertyName = workflow.expression.getSimpleParameterValue(
+		workflowStartNode,
+		webhookData.webhookDescription.responsePropertyName,
+		executionMode,
+		additionalKeys,
+	) as string | undefined;
+
+	const responseContentType = workflow.expression.getSimpleParameterValue(
+		workflowStartNode,
+		webhookData.webhookDescription.responseContentType,
+		executionMode,
+		additionalKeys,
+	) as string | undefined;
+
+	const responseBinaryPropertyName = workflow.expression.getSimpleParameterValue(
+		workflowStartNode,
+		webhookData.webhookDescription.responseBinaryPropertyName,
+		executionMode,
+		additionalKeys,
+		undefined,
+		'data',
+	);
+
+	return {
+		responseMode,
+		responseCode,
+		responseData,
+		checkAllMainOutputs,
+		responsePropertyName,
+		responseContentType,
+		responseBinaryPropertyName,
+	};
 }
 
 /**

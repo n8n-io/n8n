@@ -13,7 +13,7 @@ import type {
 	INodeProperties,
 	ITelemetryTrackProperties,
 } from 'n8n-workflow';
-import { deepCopy, NodeHelpers } from 'n8n-workflow';
+import { CREDENTIAL_EMPTY_VALUE, deepCopy, NodeHelpers } from 'n8n-workflow';
 import CredentialIcon from '../CredentialIcon.vue';
 
 import CredentialConfig from './CredentialConfig.vue';
@@ -40,6 +40,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { sendUserEvent, type DynamicNotification } from '@n8n/rest-api-client/api/cloudPlans';
 import { isExpression, isTestableExpression } from '@/app/utils/expressions';
@@ -63,7 +64,6 @@ import {
 	N8nText,
 	type IMenuItem,
 } from '@n8n/design-system';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { setParameterValue } from '@/app/utils/parameterUtils';
 import get from 'lodash/get';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
@@ -83,9 +83,9 @@ const ndvStore = useNDVStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
-const workflowState = injectWorkflowState();
 const nodeTypesStore = useNodeTypesStore();
 const projectsStore = useProjectsStore();
+const externalSecretsStore = useExternalSecretsStore();
 
 const nodeHelpers = useNodeHelpers();
 const externalHooks = useExternalHooks();
@@ -301,6 +301,19 @@ const requiredPropertiesFilled = computed(() => {
 				return false;
 			}
 		}
+
+		if (property.type === 'json' && credentialProperty) {
+			const jsonValue = String(credentialProperty);
+			const containsExpression = isExpression(jsonValue);
+			// Sentinels represent a previously-saved value, and expressions are always valid
+			if (!containsExpression && jsonValue !== CREDENTIAL_EMPTY_VALUE) {
+				try {
+					JSON.parse(jsonValue);
+				} catch {
+					return false;
+				}
+			}
+		}
 	}
 	return true;
 });
@@ -394,6 +407,15 @@ onMounted(async () => {
 		isCredentialModalState(modalState) && modalState.showAuthSelector === true;
 
 	const forceManual = isCredentialModalState(modalState) && modalState.forceManualMode === true;
+
+	const projectId = projectsStore.currentProjectId ?? projectsStore.personalProject?.id;
+	if (projectId) {
+		try {
+			await externalSecretsStore.fetchSecretsForProject(projectId);
+		} catch {
+			// Secrets fetch failure should not block the credential modal
+		}
+	}
 
 	if (props.mode === 'new' && credentialTypeName.value) {
 		credentialName.value = await credentialsStore.getNewCredentialName({
@@ -823,7 +845,7 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 
 	const appliedAuthType = pendingAuthType.value;
 	if (appliedAuthType && ndvStore.activeNode) {
-		updateNodeAuthType(workflowState, ndvStore.activeNode, appliedAuthType);
+		updateNodeAuthType(workflowsStore.workflowId, ndvStore.activeNode, appliedAuthType);
 		pendingAuthType.value = null;
 	}
 
@@ -846,6 +868,12 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 	if (credential) {
 		credentialId.value = credential.id;
 		currentCredential.value = credential;
+
+		// Re-fetch to display server-redacted JSON shape for credentials with leaf-redacted fields
+		if (credentialProperties.value.some((p) => p.typeOptions?.redactJsonLeaves)) {
+			await loadCurrentCredential(credential.id);
+			setCredentialPropertyDefaults();
+		}
 
 		if (isCredentialTestable.value) {
 			isTesting.value = true;
@@ -1252,9 +1280,7 @@ async function onAuthTypeChanged(payload: CredentialModeOption): Promise<void> {
 async function onQuickConnect(): Promise<void> {
 	if (!credentialTypeName.value || !ndvStore.activeNode) return;
 
-	const serviceName =
-		getAppNameFromCredType(credentialType.value?.displayName ?? '') ||
-		i18n.baseText('credentialEdit.credentialConfig.theServiceYouReConnectingTo');
+	const serviceName = getAppNameFromCredType(credentialType.value?.displayName ?? '');
 
 	const credential = await quickConnect({
 		credentialTypeName: credentialTypeName.value,

@@ -23,23 +23,17 @@ test.describe(
 
 			// Add
 			await n8n.ndv.addFilterCondition(FILTER_PARAM_NAME);
-			await n8n.ndv
-				.getFilterConditionLeft(FILTER_PARAM_NAME, 0)
-				.locator('input')
-				.fill('first left');
-			await n8n.ndv
-				.getFilterConditionLeft(FILTER_PARAM_NAME, 1)
-				.locator('input')
-				.fill('second left');
+			await n8n.ndv.getFilterConditionLeftInput(FILTER_PARAM_NAME, 0).fill('first left');
+			await n8n.ndv.getFilterConditionLeftInput(FILTER_PARAM_NAME, 1).fill('second left');
 			await n8n.ndv.addFilterCondition(FILTER_PARAM_NAME);
 			await expect(n8n.ndv.getFilterConditions(FILTER_PARAM_NAME)).toHaveCount(3);
 
 			// Delete
 			await n8n.ndv.removeFilterCondition(FILTER_PARAM_NAME, 0);
 			await expect(n8n.ndv.getFilterConditions(FILTER_PARAM_NAME)).toHaveCount(2);
-			await expect(
-				n8n.ndv.getFilterConditionLeft(FILTER_PARAM_NAME, 0).locator('input'),
-			).toHaveValue('second left');
+			await expect(n8n.ndv.getFilterConditionLeftInput(FILTER_PARAM_NAME, 0)).toHaveValue(
+				'second left',
+			);
 			await n8n.ndv.removeFilterCondition(FILTER_PARAM_NAME, 1);
 			await expect(n8n.ndv.getFilterConditions(FILTER_PARAM_NAME)).toHaveCount(1);
 		});

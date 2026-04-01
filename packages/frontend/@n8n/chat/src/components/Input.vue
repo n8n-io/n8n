@@ -90,10 +90,15 @@ onChange((newFiles) => {
 	files.value = newFilesDT.files;
 });
 
+function handleSetupWebsocket(executionId: string) {
+	setupWebsocketConnection(executionId);
+}
+
 onMounted(() => {
 	chatEventBus.on('focusInput', focusChatInput);
 	chatEventBus.on('blurInput', blurChatInput);
 	chatEventBus.on('setInputValue', setInputValue);
+	chatEventBus.on('setupWebsocket', handleSetupWebsocket);
 
 	if (chatTextArea.value) {
 		resizeObserver.value = new ResizeObserver((entries) => {
@@ -113,6 +118,7 @@ onUnmounted(() => {
 	chatEventBus.off('focusInput', focusChatInput);
 	chatEventBus.off('blurInput', blurChatInput);
 	chatEventBus.off('setInputValue', setInputValue);
+	chatEventBus.off('setupWebsocket', handleSetupWebsocket);
 
 	if (resizeObserver.value) {
 		resizeObserver.value.disconnect();

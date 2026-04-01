@@ -106,12 +106,18 @@ export async function saveCredential(
 ): Promise<CredentialsEntity> {
 	const credential = await createCredential(payload);
 
-	validateExternalSecretsPermissions(user, payload.data);
+	const projectRepository = Container.get(ProjectRepository);
+	const personalProject = await projectRepository.getPersonalProjectForUserOrFail(user.id);
+
+	await validateExternalSecretsPermissions({
+		user,
+		projectId: personalProject.id,
+		dataToSave: payload.data,
+	});
 
 	const encryptedData = await encryptCredential(credential);
 	Object.assign(credential, encryptedData);
 
-	const projectRepository = Container.get(ProjectRepository);
 	const { manager: dbManager } = projectRepository;
 	const result = await dbManager.transaction(async (transactionManager) => {
 		const savedCredential = await transactionManager.save<CredentialsEntity>(credential);
@@ -119,11 +125,6 @@ export async function saveCredential(
 		savedCredential.data = credential.data;
 
 		const newSharedCredential = new SharedCredentials();
-
-		const personalProject = await projectRepository.getPersonalProjectForUserOrFail(
-			user.id,
-			transactionManager,
-		);
 
 		Object.assign(newSharedCredential, {
 			role: 'credential:owner',
@@ -156,7 +157,7 @@ export async function saveCredential(
 }
 
 export async function updateCredential(
-	credentialId: string,
+	existingCredential: ICredentialsDb,
 	user: User,
 	updateData: {
 		type?: string;
@@ -166,15 +167,12 @@ export async function updateCredential(
 		isResolvable?: boolean;
 		isPartialData?: boolean;
 	},
-): Promise<ICredentialsDb | null> {
-	const existingCredential = await getCredential(credentialId);
-	if (!existingCredential) {
-		return null;
-	}
-
+): Promise<ICredentialsDb> {
 	if (existingCredential.isManaged) {
 		throw new CredentialsIsNotUpdatableError('Managed credentials cannot be updated.');
 	}
+
+	const credentialId = existingCredential.id;
 
 	// Merge the update data with existing credential
 	const credentialData: Partial<CredentialsEntity> = {};
@@ -194,14 +192,19 @@ export async function updateCredential(
 		// Decrypt existing data to access oauthTokenData
 		const decryptedData = credentialsService.decrypt(existingCredential as CredentialsEntity, true);
 
-		validateExternalSecretsPermissions(user, updateData.data, decryptedData);
+		// eslint-disable-next-line @typescript-eslint/no-non-null-asserted-optional-chain -- credential will always have an owner
+		const projectOwningCredential = existingCredential.shared?.find(
+			(shared) => shared.role === 'credential:owner',
+		)!;
+
+		await validateExternalSecretsPermissions({
+			user,
+			projectId: projectOwningCredential.project.id,
+			dataToSave: updateData.data,
+			decryptedExistingData: decryptedData,
+		});
 
 		if (isProjectScopedExternalSecretsEnabled() && decryptedData) {
-			// eslint-disable-next-line @typescript-eslint/no-non-null-asserted-optional-chain -- credential will always have an owner
-			const projectOwningCredential = existingCredential.shared?.find(
-				(shared) => shared.role === 'credential:owner',
-			)!;
-
 			await validateAccessToReferencedSecretProviders(
 				projectOwningCredential.project.id,
 				updateData.data,
@@ -252,7 +255,8 @@ export async function updateCredential(
 
 	await Container.get(CredentialsRepository).update(credentialId, credentialData);
 
-	return await getCredential(credentialId);
+	// credential exists since we just updated it
+	return (await getCredential(credentialId))!;
 }
 
 export async function removeCredential(

@@ -4,18 +4,16 @@ import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { ref, computed } from 'vue';
 import SetupPanelCards from '@/features/setupPanel/components/SetupPanelCards.vue';
-import type {
-	SetupCardItem,
-	TriggerSetupState,
-	CredentialTypeSetupState,
-} from '@/features/setupPanel/setupPanel.types';
+import type { SetupCardItem, NodeSetupState } from '@/features/setupPanel/setupPanel.types';
+import { isCardComplete } from '@/features/setupPanel/setupPanel.utils';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import type { INodeUi } from '@/Interface';
 
 const mockSetCredential = vi.fn();
 const mockUnsetCredential = vi.fn();
 const mockSetupCards = ref<SetupCardItem[]>([]);
 const mockIsAllComplete = computed(
-	() => mockSetupCards.value.length > 0 && mockSetupCards.value.every((c) => c.state.isComplete),
+	() => mockSetupCards.value.length > 0 && mockSetupCards.value.every((c) => isCardComplete(c)),
 );
 
 const mockFirstTriggerName = ref<string | null>(null);
@@ -30,59 +28,53 @@ vi.mock('../composables/useWorkflowSetupState', () => ({
 	}),
 }));
 
-vi.mock('./cards/TriggerSetupCard.vue', () => ({
+vi.mock('./cards/NodeSetupCard.vue', () => ({
 	default: {
 		template:
-			'<div data-test-id="trigger-setup-card">' +
-			'<span data-test-id="trigger-node-name">{{ state.node.name }}</span>' +
-			'</div>',
-		props: ['state'],
-	},
-}));
-
-vi.mock('./cards/CredentialTypeSetupCard.vue', () => ({
-	default: {
-		template:
-			'<div data-test-id="credential-type-setup-card">' +
-			'<span data-test-id="credential-type-name">{{ state.credentialDisplayName }}</span>' +
+			'<div data-test-id="node-setup-card">' +
+			'<span data-test-id="card-node-name">{{ state.node.name }}</span>' +
+			'<span v-if="state.credentialDisplayName" data-test-id="card-credential-name">{{ state.credentialDisplayName }}</span>' +
 			'<button data-test-id="select-credential-btn" @click="$emit(\'credentialSelected\', { credentialType: state.credentialType, credentialId: \'cred-123\' })">Select</button>' +
-			'<button data-test-id="deselect-credential-btn" @click="$emit(\'credentialDeselected\', state.credentialType)">Deselect</button>' +
+			'<button data-test-id="deselect-credential-btn" @click="$emit(\'credentialDeselected\', { credentialType: state.credentialType })">Deselect</button>' +
 			'</div>',
-		props: ['state', 'firstTriggerName'],
-		emits: ['credentialSelected', 'credentialDeselected'],
+		props: ['state', 'firstTriggerName', 'expanded'],
+		emits: ['credentialSelected', 'credentialDeselected', 'update:expanded'],
 	},
 }));
 
-const renderComponent = createComponentRenderer(SetupPanelCards);
+const renderComponent = createComponentRenderer(SetupPanelCards, {
+	global: {
+		provide: {
+			[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+		},
+	},
+});
 
-const createTriggerCard = (overrides: Partial<TriggerSetupState> = {}): SetupCardItem => ({
-	type: 'trigger',
+const createTriggerCard = (overrides: Partial<NodeSetupState> = {}): SetupCardItem => ({
 	state: {
 		node: createTestNode({
 			name: overrides.node?.name ?? 'Webhook Trigger',
 			type: 'n8n-nodes-base.webhook',
 		}) as INodeUi,
+		parameterIssues: {},
+		isTrigger: true,
 		isComplete: false,
 		...overrides,
 	},
 });
 
-const createCredentialCard = (
-	overrides: Partial<CredentialTypeSetupState> = {},
-): SetupCardItem => ({
-	type: 'credential',
+const createCredentialCard = (overrides: Partial<NodeSetupState> = {}): SetupCardItem => ({
 	state: {
+		node: createTestNode({
+			name: overrides.node?.name ?? 'OpenAI',
+			type: 'n8n-nodes-base.openAi',
+		}) as INodeUi,
+		parameterIssues: {},
+		isTrigger: false,
+		isComplete: false,
 		credentialType: 'openAiApi',
 		credentialDisplayName: 'OpenAI',
-		selectedCredentialId: undefined,
-		issues: [],
-		nodes: [
-			createTestNode({
-				name: 'OpenAI',
-				type: 'n8n-nodes-base.openAi',
-			}) as INodeUi,
-		],
-		isComplete: false,
+		showCredentialPicker: true,
 		...overrides,
 	},
 });
@@ -127,7 +119,7 @@ describe('SetupPanelCards', () => {
 			expect(queryByTestId('setup-cards-empty')).not.toBeInTheDocument();
 		});
 
-		it('should render TriggerSetupCard for trigger cards', () => {
+		it('should render NodeSetupCard for trigger cards', () => {
 			mockSetupCards.value = [
 				createTriggerCard({ node: createTestNode({ name: 'Webhook Trigger' }) as INodeUi }),
 				createTriggerCard({ node: createTestNode({ name: 'Chat Trigger' }) as INodeUi }),
@@ -135,15 +127,15 @@ describe('SetupPanelCards', () => {
 
 			const { getAllByTestId } = renderComponent();
 
-			const triggerCards = getAllByTestId('trigger-setup-card');
-			expect(triggerCards).toHaveLength(2);
+			const cards = getAllByTestId('node-setup-card');
+			expect(cards).toHaveLength(2);
 
-			const triggerNames = getAllByTestId('trigger-node-name');
-			expect(triggerNames[0]).toHaveTextContent('Webhook Trigger');
-			expect(triggerNames[1]).toHaveTextContent('Chat Trigger');
+			const names = getAllByTestId('card-node-name');
+			expect(names[0]).toHaveTextContent('Webhook Trigger');
+			expect(names[1]).toHaveTextContent('Chat Trigger');
 		});
 
-		it('should render CredentialTypeSetupCard for credential cards', () => {
+		it('should render NodeSetupCard for credential cards', () => {
 			mockSetupCards.value = [
 				createCredentialCard({ credentialDisplayName: 'OpenAI' }),
 				createCredentialCard({
@@ -154,10 +146,10 @@ describe('SetupPanelCards', () => {
 
 			const { getAllByTestId } = renderComponent();
 
-			const credentialCards = getAllByTestId('credential-type-setup-card');
-			expect(credentialCards).toHaveLength(2);
+			const cards = getAllByTestId('node-setup-card');
+			expect(cards).toHaveLength(2);
 
-			const credentialNames = getAllByTestId('credential-type-name');
+			const credentialNames = getAllByTestId('card-credential-name');
 			expect(credentialNames[0]).toHaveTextContent('OpenAI');
 			expect(credentialNames[1]).toHaveTextContent('Slack');
 		});
@@ -174,8 +166,7 @@ describe('SetupPanelCards', () => {
 
 			const { getAllByTestId } = renderComponent();
 
-			expect(getAllByTestId('trigger-setup-card')).toHaveLength(1);
-			expect(getAllByTestId('credential-type-setup-card')).toHaveLength(2);
+			expect(getAllByTestId('node-setup-card')).toHaveLength(3);
 		});
 	});
 

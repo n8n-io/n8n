@@ -1,6 +1,10 @@
 export { default as N8nActionBox } from './N8nActionBox';
 export { default as N8nAskAssistantButton } from './AskAssistantButton';
-export { default as N8nAskAssistantChat } from './AskAssistantChat';
+export {
+	default as N8nAskAssistantChat,
+	MessageWrapper,
+	ThinkingMessage,
+} from './AskAssistantChat';
 export { default as N8nAssistantIcon } from './AskAssistantIcon';
 export { default as N8nAssistantAvatar } from './AskAssistantAvatar';
 export { default as N8nAssistantText } from './AskAssistantText';
@@ -22,6 +26,7 @@ export { default as N8nDatatable } from './N8nDatatable';
 export { default as N8nDropdown } from './N8nDropdown';
 export type { N8nDropdownOption } from './N8nDropdown';
 export { default as N8nExternalLink } from './N8nExternalLink';
+export { default as N8nFloatingWindow } from './N8nFloatingWindow';
 export { default as N8nFormBox } from './N8nFormBox';
 export { default as N8nFormInputs } from './N8nFormInputs';
 export { default as N8nFormInput } from './N8nFormInput';
@@ -47,6 +52,7 @@ export { default as N8nNotice } from './N8nNotice';
 export { default as N8nOption } from './N8nOption';
 export { default as N8nSectionHeader } from './N8nSectionHeader';
 export { default as N8nSelectableList } from './N8nSelectableList';
+export { default as N8nPreviewTag } from './PreviewTag/PreviewTag.vue';
 export { default as N8nPopover } from './N8nPopover';
 export { default as N8nPopoverReka } from './N8nPopover'; // Alias for backwards compatibility
 export { default as N8nPromptInput } from './N8nPromptInput';

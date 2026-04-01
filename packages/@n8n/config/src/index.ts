@@ -15,6 +15,7 @@ import { DynamicBannersConfig } from './configs/dynamic-banners.config';
 import { EndpointsConfig } from './configs/endpoints.config';
 import { EventBusConfig } from './configs/event-bus.config';
 import { ExecutionsConfig } from './configs/executions.config';
+import { ExpressionEngineConfig } from './configs/expression-engine.config';
 import { ExternalHooksConfig } from './configs/external-hooks.config';
 import { GenericConfig } from './configs/generic.config';
 import { HiringBannerConfig } from './configs/hiring-banner.config';
@@ -66,6 +67,8 @@ export { NodesConfig } from './configs/nodes.config';
 export { CronLoggingConfig } from './configs/logging.config';
 export { WorkflowHistoryCompactionConfig } from './configs/workflow-history-compaction.config';
 export { ChatHubConfig } from './configs/chat-hub.config';
+export { ExpressionEngineConfig } from './configs/expression-engine.config';
+export { PasswordConfig } from './configs/password.config';
 
 const protocolSchema = z.enum(['http', 'https']);
 
@@ -215,6 +218,10 @@ export class GlobalConfig {
 	@Env('N8N_SSL_CERT')
 	ssl_cert: string = '';
 
+	/** Whether to enable canvas-only mode, hiding the chrome UI. */
+	@Env('N8N_CANVAS_ONLY')
+	canvasOnly: boolean = false;
+
 	/** Public URL where the editor is accessible. Also used for emails sent from n8n. */
 	@Env('N8N_EDITOR_BASE_URL')
 	editorBaseUrl: string = '';
@@ -237,4 +244,7 @@ export class GlobalConfig {
 
 	@Nested
 	chatHub: ChatHubConfig;
+
+	@Nested
+	expressionEngine: ExpressionEngineConfig;
 }
