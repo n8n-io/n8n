@@ -167,10 +167,9 @@ export class ToolDataTableSqlQuery implements INodeType {
 			schemaDescription,
 			'',
 			'Rules:',
-			'- Only SELECT queries are allowed',
-			'- You can use JOINs, subqueries, WHERE, GROUP BY, ORDER BY, LIMIT',
+			'- Only simple SELECT queries: SELECT ... FROM ... JOIN ... WHERE ... GROUP BY ... ORDER BY ... LIMIT',
 			'- Available functions: COUNT, SUM, AVG, MIN, MAX, LOWER, UPPER, TRIM, LENGTH, SUBSTR, REPLACE, ABS, ROUND, COALESCE, NULLIF, CAST',
-			'- Do NOT use WITH/CTEs or window functions',
+			'- Do NOT use subqueries, CTEs (WITH), UNION, or window functions',
 			'- Use the table names exactly as shown above',
 		].join('\n');
 

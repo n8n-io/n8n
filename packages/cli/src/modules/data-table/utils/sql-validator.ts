@@ -1,6 +1,6 @@
 import type { DataSourceOptions } from '@n8n/typeorm';
 
-import { isAllowedFunction } from './sql-function-allowlist';
+import { getAllowedFunctions, isAllowedFunction } from './sql-function-allowlist';
 
 export class SqlValidationError extends Error {
 	constructor(message: string) {
@@ -18,9 +18,6 @@ export type SqlValidationResult = {
 
 type SqlAstNode = Record<string, unknown>;
 
-/**
- * Resolves the node-sql-parser dialect string from a TypeORM database type.
- */
 function resolveDialect(dbType: DataSourceOptions['type']): string {
 	if (dbType === 'sqlite' || dbType === 'sqlite-pooled') {
 		return 'SQLite';
@@ -28,24 +25,83 @@ function resolveDialect(dbType: DataSourceOptions['type']): string {
 	return 'PostgresQL';
 }
 
-/**
- * SQL keywords that appear as `function` nodes in node-sql-parser AST
- * but are not actual callable functions. They must be allowed implicitly
- * and never routed through the function allowlist.
- */
-const SQL_KEYWORD_FUNCTIONS = new Set(['EXISTS', 'NOT EXISTS']);
+// ── Allowlists ──────────────────────────────────────────────────────
+// Every AST node type and operator that can appear in a valid query
+// must be listed here. Anything not listed is rejected.
+
+/** Expression node types the walker will accept. */
+const ALLOWED_EXPR_TYPES = new Set([
+	'column_ref',
+	'binary_expr',
+	'unary_expr',
+	'aggr_func',
+	'function',
+	'number',
+	'single_quote_string',
+	'double_quote_string',
+	'bool',
+	'null',
+	'star',
+	'expr_list',
+	'cast',
+	'case',
+	'when',
+	'else',
+	'default', // internal: column name value wrapper
+	'expr', // internal: column list entry wrapper
+	'interval', // INTERVAL '1 day'
+	'param', // parameterized value
+]);
+
+/** Binary operators the walker will accept. */
+const ALLOWED_OPERATORS = new Set([
+	'=',
+	'!=',
+	'<>',
+	'<',
+	'>',
+	'<=',
+	'>=',
+	'AND',
+	'OR',
+	'NOT',
+	'IN',
+	'NOT IN',
+	'BETWEEN',
+	'NOT BETWEEN',
+	'LIKE',
+	'NOT LIKE',
+	'ILIKE',
+	'NOT ILIKE',
+	'IS',
+	'IS NOT',
+	'+',
+	'-',
+	'*',
+	'/',
+	'%',
+	'||', // string concatenation
+]);
+
+/** JOIN types allowed in FROM clause. */
+const ALLOWED_JOIN_TYPES = new Set([
+	undefined, // first table in FROM (no join keyword)
+	'INNER JOIN',
+	'LEFT JOIN',
+	'LEFT OUTER JOIN',
+	'RIGHT JOIN',
+	'RIGHT OUTER JOIN',
+	'CROSS JOIN',
+	'JOIN',
+]);
 
 /**
- * AST-based SQL validation pipeline.
+ * Strict allowlist-based SQL validator.
  *
- * This is the security boundary between user-supplied SQL and the database.
- * The validation pipeline enforces:
- * 1. Only SELECT statements
- * 2. Only explicitly allowed tables
- * 3. Only explicitly allowed functions
- * 4. No schema-qualified references (e.g., public.table)
- * 5. No multiple statements (semicolon injection)
- * 6. Table name rewriting from logical to physical names
+ * Security model: every AST node is checked against an explicit allowlist.
+ * Anything not recognized is rejected. This means new parser features,
+ * subqueries, CTEs, UNIONs, window functions, and any other construct
+ * we haven't explicitly vetted will be blocked by default.
  */
 export class SqlValidator {
 	private readonly dialect: string;
@@ -59,18 +115,17 @@ export class SqlValidator {
 
 	/**
 	 * Validates SQL without rewriting table names.
-	 * Used for basic validation checks.
 	 */
 	validate(sql: string, allowedTables: string[]): SqlValidationResult {
-		const ast = this.parse(sql);
-		this.assertSingleSelect(ast);
-		const selectAst = ast as SqlAstNode;
+		const ast = this.parse(sql) as SqlAstNode;
 
-		const tables = this.extractAllTables(selectAst);
-		this.validateTables(tables, allowedTables);
+		this.assertSimpleSelect(ast);
 
-		const functions = this.extractAllFunctions(selectAst);
-		this.validateFunctions(functions);
+		const tables = this.extractTables(ast);
+		this.checkTablesAllowed(tables, allowedTables);
+
+		const functions: string[] = [];
+		this.assertAllNodesAllowed(ast, functions);
 
 		return {
 			type: 'select',
@@ -82,37 +137,39 @@ export class SqlValidator {
 
 	/**
 	 * Full pipeline: validate + rewrite table names + whiteListCheck.
-	 * Returns result with `rewrittenSql` containing physical table names.
 	 */
 	validateAndRewrite(
 		sql: string,
 		allowedTables: string[],
 		tableMapping: Map<string, string>,
 	): SqlValidationResult {
-		const ast = this.parse(sql);
-		this.assertSingleSelect(ast);
-		const selectAst = ast as SqlAstNode;
+		const ast = this.parse(sql) as SqlAstNode;
 
-		const tables = this.extractAllTables(selectAst);
-		this.validateTables(tables, allowedTables);
+		this.assertSimpleSelect(ast);
 
-		const functions = this.extractAllFunctions(selectAst);
-		this.validateFunctions(functions);
+		const tables = this.extractTables(ast);
+		this.checkTablesAllowed(tables, allowedTables);
+
+		const functions: string[] = [];
+		this.assertAllNodesAllowed(ast, functions);
 
 		// Rewrite table names from logical to physical
-		this.rewriteTableNames(selectAst, tableMapping);
+		for (const table of tables) {
+			const physical = tableMapping.get(table.name.toLowerCase());
+			if (!physical) {
+				throw new SqlValidationError(`No physical table mapping found for table '${table.name}'`);
+			}
+			table.ref.table = physical;
+		}
 
 		// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 		const { Parser } = require('node-sql-parser') as typeof import('node-sql-parser');
 		const parser = new Parser();
 
-		// selectAst was produced by parser.astify — it has the correct shape,
-		// but our SqlAstNode alias lost the type. Cast through unknown.
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
-		const rewrittenSql = parser.sqlify(selectAst as any, { database: this.dialect });
+		const rewrittenSql = parser.sqlify(ast as any, { database: this.dialect });
 
-		// Defense-in-depth: run whiteListCheck on the rewritten SQL
-		// to verify only physical table names appear
+		// Defense-in-depth: whiteListCheck on rewritten SQL
 		const physicalTableNames = [...new Set(tables.map((t) => t.name))].map((name) => {
 			const physical = tableMapping.get(name.toLowerCase());
 			if (!physical) {
@@ -139,10 +196,8 @@ export class SqlValidator {
 		};
 	}
 
-	/**
-	 * Parse SQL into an AST using node-sql-parser.
-	 * Throws SqlValidationError for empty input or parse failures.
-	 */
+	// ── Parsing ───────────────────────────────────────────────────────
+
 	private parse(sql: string): unknown {
 		const trimmed = sql.trim();
 		if (trimmed.length === 0) {
@@ -160,12 +215,13 @@ export class SqlValidator {
 		}
 	}
 
+	// ── Structure checks ──────────────────────────────────────────────
+
 	/**
-	 * Assert the AST represents exactly one SELECT statement.
-	 * Rejects multiple statements (semicolon injection) and non-SELECT types.
+	 * Reject anything that isn't a single, simple SELECT.
+	 * No CTEs, no UNION, no INTO, no window clause.
 	 */
-	private assertSingleSelect(ast: unknown): void {
-		// Multiple statements produce an array
+	private assertSimpleSelect(ast: unknown): void {
 		if (Array.isArray(ast)) {
 			throw new SqlValidationError('Only single SELECT statements are allowed');
 		}
@@ -175,206 +231,161 @@ export class SqlValidator {
 			throw new SqlValidationError('Only single SELECT statements are allowed');
 		}
 
-		// Reject SELECT ... INTO (creates tables or writes to files)
+		if (node.with !== null && node.with !== undefined) {
+			throw new SqlValidationError('WITH/CTE expressions are not allowed');
+		}
+
+		if (node._next !== null && node._next !== undefined) {
+			throw new SqlValidationError('UNION/INTERSECT/EXCEPT are not allowed');
+		}
+
 		const into = node.into as SqlAstNode | null | undefined;
 		if (into && into.expr !== undefined && into.expr !== null) {
 			throw new SqlValidationError('SELECT INTO is not allowed');
 		}
+
+		if (node.window !== null && node.window !== undefined) {
+			throw new SqlValidationError('Window clauses are not allowed');
+		}
 	}
 
-	/**
-	 * Extract all table references from the AST, including from subqueries,
-	 * UNION chains, CTEs, and derived tables.
-	 *
-	 * Returns an array of objects with `name`, `db` (schema), and the source
-	 * location to enable rewriting.
-	 */
-	private extractAllTables(
+	// ── Table extraction & validation ─────────────────────────────────
+
+	private extractTables(
 		ast: SqlAstNode,
 	): Array<{ name: string; db: string | null; ref: SqlAstNode }> {
+		const from = ast.from as SqlAstNode[] | null;
+		if (!Array.isArray(from)) return [];
+
 		const tables: Array<{ name: string; db: string | null; ref: SqlAstNode }> = [];
 
-		this.walkSelectAst(ast, (selectNode) => {
-			// FROM clause
-			const from = selectNode.from as SqlAstNode[] | null;
-			if (Array.isArray(from)) {
-				for (const entry of from) {
-					if (typeof entry.table === 'string') {
-						tables.push({
-							name: entry.table,
-							db: (entry.db as string) ?? null,
-							ref: entry,
-						});
-					}
-
-					// Derived table (subquery in FROM): { expr: { ast: { ... } } }
-					if (entry.expr && typeof entry.expr === 'object') {
-						const exprNode = entry.expr as SqlAstNode;
-						if (exprNode.ast && typeof exprNode.ast === 'object') {
-							this.walkSelectAst(exprNode.ast as SqlAstNode, (inner) => {
-								const innerFrom = inner.from as SqlAstNode[] | null;
-								if (Array.isArray(innerFrom)) {
-									for (const innerEntry of innerFrom) {
-										if (typeof innerEntry.table === 'string') {
-											tables.push({
-												name: innerEntry.table,
-												db: (innerEntry.db as string) ?? null,
-												ref: innerEntry,
-											});
-										}
-									}
-								}
-							});
-						}
-					}
-				}
+		for (const entry of from) {
+			// Reject derived tables (subqueries in FROM)
+			if (entry.expr && typeof entry.expr === 'object') {
+				throw new SqlValidationError('Subqueries in FROM (derived tables) are not allowed');
 			}
 
-			// CTE (WITH clause): each CTE has a .stmt sub-AST
-			const withClause = selectNode.with as SqlAstNode[] | null;
-			if (Array.isArray(withClause)) {
-				for (const cte of withClause) {
-					if (cte.stmt && typeof cte.stmt === 'object') {
-						const cteNames = new Set<string>();
-						for (const c of withClause) {
-							const nameObj = c.name as SqlAstNode | undefined;
-							if (nameObj && typeof nameObj.value === 'string') {
-								cteNames.add(nameObj.value.toLowerCase());
-							}
-						}
-						this.walkSelectAst(cte.stmt as SqlAstNode, (inner) => {
-							const innerFrom = inner.from as SqlAstNode[] | null;
-							if (Array.isArray(innerFrom)) {
-								for (const innerEntry of innerFrom) {
-									if (
-										typeof innerEntry.table === 'string' &&
-										!cteNames.has(innerEntry.table.toLowerCase())
-									) {
-										tables.push({
-											name: innerEntry.table,
-											db: (innerEntry.db as string) ?? null,
-											ref: innerEntry,
-										});
-									}
-								}
-							}
-						});
-					}
-				}
+			if (typeof entry.table !== 'string') continue;
+
+			// Reject schema-qualified references
+			if (entry.db !== null && entry.db !== undefined) {
+				throw new SqlValidationError(
+					`Schema-qualified table references are not allowed: '${String(entry.db)}.${entry.table}'`,
+				);
 			}
-		});
+
+			// Reject unknown join types
+			if (!ALLOWED_JOIN_TYPES.has(entry.join as string | undefined)) {
+				throw new SqlValidationError(`Join type '${String(entry.join)}' is not allowed`);
+			}
+
+			tables.push({ name: entry.table, db: null, ref: entry });
+
+			// Validate the ON condition if present
+			// (done later by assertAllNodesAllowed, but verify it's an expression not a subquery)
+		}
 
 		return tables;
 	}
 
-	/**
-	 * Walk through a SELECT AST node and its UNION chain (_next).
-	 * Calls the visitor for each SELECT-level node.
-	 * Also recurses into subqueries found in WHERE, HAVING, columns, etc.
-	 */
-	private walkSelectAst(ast: SqlAstNode, visitor: (node: SqlAstNode) => void): void {
-		visitor(ast);
-
-		// Walk subqueries in all expression-bearing clauses
-		this.walkExpressionsForSubqueries(ast, visitor);
-
-		// UNION chain: _next holds the next SELECT in the union
-		if (ast._next && typeof ast._next === 'object') {
-			this.walkSelectAst(ast._next as SqlAstNode, visitor);
-		}
-	}
-
-	/**
-	 * Recursively search for subquery ASTs embedded in expressions
-	 * (WHERE, HAVING, columns, etc.)
-	 */
-	private walkExpressionsForSubqueries(node: unknown, visitor: (node: SqlAstNode) => void): void {
-		if (node === null || node === undefined || typeof node !== 'object') {
-			return;
-		}
-
-		if (Array.isArray(node)) {
-			for (const item of node) {
-				this.walkExpressionsForSubqueries(item, visitor);
-			}
-			return;
-		}
-
-		const obj = node as SqlAstNode;
-
-		// A subquery nested in an expression will have an `ast` property
-		// with `tableList` and `columnList` siblings
-		if (obj.ast && typeof obj.ast === 'object' && 'tableList' in (obj as Record<string, unknown>)) {
-			const subAst = obj.ast as SqlAstNode;
-			if (subAst.type === 'select') {
-				this.walkSelectAst(subAst, visitor);
-			}
-		}
-
-		// Recurse into all properties
-		for (const key of Object.keys(obj)) {
-			// Skip recursing into `from` from this generic walker —
-			// `from` is handled by extractAllTables directly
-			if (key === 'from') continue;
-			const value = obj[key];
-			if (value && typeof value === 'object') {
-				this.walkExpressionsForSubqueries(value, visitor);
-			}
-		}
-	}
-
-	/**
-	 * Validate extracted table references against the allowed list.
-	 * Also rejects schema-qualified references (db property set).
-	 */
-	private validateTables(
+	private checkTablesAllowed(
 		tables: Array<{ name: string; db: string | null; ref: SqlAstNode }>,
 		allowedTables: string[],
 	): void {
 		const allowedLower = new Set(allowedTables.map((t) => t.toLowerCase()));
-
 		for (const table of tables) {
-			// Reject schema-qualified references
-			if (table.db !== null && table.db !== undefined) {
-				throw new SqlValidationError(
-					`Schema-qualified table references are not allowed: '${String(table.db)}.${table.name}'`,
-				);
-			}
-
-			// Check table is in the allowlist (case-insensitive)
 			if (!allowedLower.has(table.name.toLowerCase())) {
 				throw new SqlValidationError(`Table '${table.name}' is not in the allowed table list`);
 			}
 		}
 	}
 
+	// ── Allowlist walker ──────────────────────────────────────────────
+
 	/**
-	 * Extract all function names from the AST by recursively walking all nodes.
-	 * Handles both `aggr_func` (COUNT, SUM, etc.) and `function` types,
-	 * as well as `window_func` types.
+	 * Walk every expression node in the AST and verify it is in the
+	 * allowlist. Rejects any node type not explicitly permitted.
+	 *
+	 * Also collects function names for reporting.
 	 */
-	private extractAllFunctions(ast: SqlAstNode): string[] {
-		const functions: string[] = [];
-		this.walkForFunctions(ast, functions);
-		return functions;
+	private assertAllNodesAllowed(ast: SqlAstNode, functions: string[]): void {
+		// Validate column expressions
+		const columns = ast.columns as SqlAstNode[] | string;
+		if (Array.isArray(columns)) {
+			for (const col of columns) {
+				this.assertExprAllowed(col, functions);
+			}
+		}
+
+		// Validate FROM ON conditions
+		const from = ast.from as SqlAstNode[] | null;
+		if (Array.isArray(from)) {
+			for (const entry of from) {
+				if (entry.on) {
+					this.assertExprAllowed(entry.on as SqlAstNode, functions);
+				}
+			}
+		}
+
+		// Validate WHERE
+		if (ast.where) {
+			this.assertExprAllowed(ast.where as SqlAstNode, functions);
+		}
+
+		// Validate GROUP BY
+		const groupby = ast.groupby as SqlAstNode | null;
+		if (groupby && typeof groupby === 'object') {
+			const groupCols = (groupby as SqlAstNode).columns as SqlAstNode[] | undefined;
+			if (Array.isArray(groupCols)) {
+				for (const col of groupCols) {
+					this.assertExprAllowed(col, functions);
+				}
+			}
+		}
+
+		// Validate HAVING
+		if (ast.having) {
+			this.assertExprAllowed(ast.having as SqlAstNode, functions);
+		}
+
+		// Validate ORDER BY
+		const orderby = ast.orderby as SqlAstNode[] | null;
+		if (Array.isArray(orderby)) {
+			for (const item of orderby) {
+				if (item.expr) {
+					this.assertExprAllowed(item.expr as SqlAstNode, functions);
+				}
+			}
+		}
+
+		// Validate LIMIT
+		const limit = ast.limit as SqlAstNode | null;
+		if (limit && typeof limit === 'object') {
+			const limitValues = limit.value as SqlAstNode[] | undefined;
+			if (Array.isArray(limitValues)) {
+				for (const v of limitValues) {
+					this.assertExprAllowed(v, functions);
+				}
+			}
+		}
+
+		// Reject DISTINCT ON (complex; plain DISTINCT is fine)
+		const distinct = ast.distinct as SqlAstNode | null;
+		if (distinct && typeof distinct === 'object' && distinct.type === 'DISTINCT ON') {
+			throw new SqlValidationError('DISTINCT ON is not allowed');
+		}
 	}
 
 	/**
-	 * Recursively walk the AST to find function call nodes.
-	 *
-	 * node-sql-parser represents functions in three forms:
-	 * - `aggr_func`: { type: "aggr_func", name: "COUNT", args: { ... } }
-	 * - `function`:  { type: "function", name: { name: [{ value: "COALESCE" }] }, args: { ... } }
-	 * - `window_func`: { type: "window_func", name: "ROW_NUMBER", over: { ... } }
+	 * Recursively validate a single expression node against the allowlist.
+	 * Throws on any unrecognized node type, operator, or structure.
 	 */
-	private walkForFunctions(node: unknown, functions: string[]): void {
-		if (node === null || node === undefined || typeof node !== 'object') {
-			return;
-		}
-
+	private assertExprAllowed(node: unknown, functions: string[]): void {
+		if (node === null || node === undefined) return;
+		if (typeof node !== 'object') return; // primitives are fine
 		if (Array.isArray(node)) {
 			for (const item of node) {
-				this.walkForFunctions(item, functions);
+				this.assertExprAllowed(item, functions);
 			}
 			return;
 		}
@@ -382,152 +393,143 @@ export class SqlValidator {
 		const obj = node as SqlAstNode;
 		const type = obj.type as string | undefined;
 
-		// Aggregate functions: COUNT, SUM, AVG, MIN, MAX
-		if (type === 'aggr_func' && typeof obj.name === 'string') {
-			functions.push(obj.name.toUpperCase());
+		// Nodes without a type are structural wrappers (e.g., args object) — recurse
+		if (type === undefined) {
+			for (const value of Object.values(obj)) {
+				if (value && typeof value === 'object') {
+					this.assertExprAllowed(value, functions);
+				}
+			}
+			return;
 		}
 
-		// Regular functions: COALESCE, LOWER, pg_read_file, etc.
-		if (type === 'function' && obj.name && typeof obj.name === 'object') {
-			const nameObj = obj.name as SqlAstNode;
-			const nameArray = nameObj.name as Array<{ value: string }> | undefined;
+		// ── Reject subqueries anywhere ──
+		// Subqueries have a nested `ast` property with `tableList`
+		if ('tableList' in obj || 'ast' in obj) {
+			throw new SqlValidationError('Subqueries are not allowed');
+		}
+
+		// ── Check type against allowlist ──
+		if (!ALLOWED_EXPR_TYPES.has(type)) {
+			throw new SqlValidationError(`SQL expression type '${type}' is not allowed`);
+		}
+
+		// ── Type-specific validation ──
+
+		if (type === 'binary_expr') {
+			const op = obj.operator as string;
+			if (!ALLOWED_OPERATORS.has(op)) {
+				throw new SqlValidationError(`Operator '${op}' is not allowed`);
+			}
+			this.assertExprAllowed(obj.left, functions);
+			this.assertExprAllowed(obj.right, functions);
+			return;
+		}
+
+		if (type === 'unary_expr') {
+			const op = obj.operator as string;
+			if (op !== 'NOT' && op !== '-' && op !== '+') {
+				throw new SqlValidationError(`Unary operator '${op}' is not allowed`);
+			}
+			this.assertExprAllowed(obj.expr, functions);
+			return;
+		}
+
+		if (type === 'aggr_func') {
+			const name = (obj.name as string).toUpperCase();
+			if (!isAllowedFunction(name, this.dbType)) {
+				throw new SqlValidationError(`Function '${name}' is not allowed`);
+			}
+			// Reject window functions attached to aggregates (OVER clause)
+			if (obj.over !== null && obj.over !== undefined) {
+				throw new SqlValidationError('Window functions (OVER) are not allowed');
+			}
+			functions.push(name);
+			this.assertExprAllowed(obj.args, functions);
+			return;
+		}
+
+		if (type === 'function') {
+			const nameObj = obj.name as SqlAstNode | undefined;
+			const nameArray = nameObj?.name as Array<{ value: string }> | undefined;
 			if (
 				Array.isArray(nameArray) &&
 				nameArray.length > 0 &&
 				typeof nameArray[0].value === 'string'
 			) {
 				const funcName = nameArray[0].value.toUpperCase();
-				// Skip SQL keywords that appear as function nodes (e.g. EXISTS)
-				if (!SQL_KEYWORD_FUNCTIONS.has(funcName)) {
-					functions.push(funcName);
-				}
-			}
-		}
-
-		// Window functions: ROW_NUMBER, RANK, etc.
-		if (type === 'window_func' && typeof obj.name === 'string') {
-			functions.push(obj.name.toUpperCase());
-		}
-
-		// Recurse into all properties
-		for (const key of Object.keys(obj)) {
-			const value = obj[key];
-			if (value && typeof value === 'object') {
-				this.walkForFunctions(value, functions);
-			}
-		}
-	}
-
-	/**
-	 * Validate extracted function names against the allowlist.
-	 */
-	private validateFunctions(functions: string[]): void {
-		for (const fn of functions) {
-			if (!isAllowedFunction(fn, this.dbType)) {
-				throw new SqlValidationError(`Function '${fn}' is not allowed`);
-			}
-		}
-	}
-
-	/**
-	 * Rewrite table names in the AST from logical names to physical names
-	 * using the provided mapping.
-	 *
-	 * Mutates the AST in place. Handles FROM, JOIN, UNION, CTE, and subqueries.
-	 */
-	private rewriteTableNames(ast: SqlAstNode, tableMapping: Map<string, string>): void {
-		this.walkSelectAstForRewrite(ast, (fromEntry) => {
-			if (typeof fromEntry.table === 'string') {
-				const physical = tableMapping.get(fromEntry.table.toLowerCase());
-				if (physical === undefined) {
+				if (!isAllowedFunction(funcName, this.dbType)) {
 					throw new SqlValidationError(
-						`No physical table mapping found for table '${fromEntry.table}'`,
+						`Function '${funcName}' is not allowed. Allowed: ${getAllowedFunctions(this.dbType).join(', ')}`,
 					);
 				}
-				fromEntry.table = physical;
-			}
-		});
-	}
-
-	/**
-	 * Walk the AST to find all FROM entries for rewriting.
-	 * Visits every table reference including in JOINs, UNIONs, CTEs, and subqueries.
-	 */
-	private walkSelectAstForRewrite(
-		ast: SqlAstNode,
-		rewriter: (fromEntry: SqlAstNode) => void,
-	): void {
-		// FROM clause (includes JOINs)
-		const from = ast.from as SqlAstNode[] | null;
-		if (Array.isArray(from)) {
-			for (const entry of from) {
-				if (typeof entry.table === 'string') {
-					rewriter(entry);
+				// Reject window functions
+				if (obj.over !== null && obj.over !== undefined) {
+					throw new SqlValidationError('Window functions (OVER) are not allowed');
 				}
+				functions.push(funcName);
+			}
+			this.assertExprAllowed(obj.args, functions);
+			return;
+		}
 
-				// Derived table (subquery in FROM)
-				if (entry.expr && typeof entry.expr === 'object') {
-					const exprNode = entry.expr as SqlAstNode;
-					if (exprNode.ast && typeof exprNode.ast === 'object') {
-						this.walkSelectAstForRewrite(exprNode.ast as SqlAstNode, rewriter);
+		if (type === 'cast') {
+			this.assertExprAllowed(obj.expr, functions);
+			// target type is a keyword — safe
+			return;
+		}
+
+		if (type === 'case') {
+			this.assertExprAllowed(obj.expr, functions); // CASE <expr>
+			this.assertExprAllowed(obj.args, functions); // WHEN/ELSE branches
+			return;
+		}
+
+		if (type === 'when') {
+			this.assertExprAllowed(obj.cond, functions);
+			this.assertExprAllowed(obj.result, functions);
+			return;
+		}
+
+		if (type === 'else') {
+			this.assertExprAllowed(obj.result, functions);
+			return;
+		}
+
+		if (type === 'expr_list') {
+			const values = obj.value as unknown[];
+			if (Array.isArray(values)) {
+				for (const v of values) {
+					this.assertExprAllowed(v, functions);
+				}
+			}
+			return;
+		}
+
+		if (type === 'column_ref') {
+			// Column references are safe — just table.column
+			// The column value can be a nested { expr: { type: 'default', value: 'name' } }
+			const col = obj.column;
+			if (col && typeof col === 'object') {
+				const colObj = col as SqlAstNode;
+				if (colObj.expr && typeof colObj.expr === 'object') {
+					const exprObj = colObj.expr as SqlAstNode;
+					if (exprObj.type !== 'default') {
+						throw new SqlValidationError(
+							`Unexpected column expression type '${String(exprObj.type)}'`,
+						);
 					}
 				}
 			}
-		}
-
-		// Subqueries in expressions (WHERE, HAVING, columns, etc.)
-		this.walkExpressionsForRewrite(ast, rewriter);
-
-		// CTE (WITH clause)
-		const withClause = ast.with as SqlAstNode[] | null;
-		if (Array.isArray(withClause)) {
-			for (const cte of withClause) {
-				if (cte.stmt && typeof cte.stmt === 'object') {
-					this.walkSelectAstForRewrite(cte.stmt as SqlAstNode, rewriter);
-				}
-			}
-		}
-
-		// UNION chain
-		if (ast._next && typeof ast._next === 'object') {
-			this.walkSelectAstForRewrite(ast._next as SqlAstNode, rewriter);
-		}
-	}
-
-	/**
-	 * Walk all expression nodes for subqueries that need table rewriting.
-	 */
-	private walkExpressionsForRewrite(
-		node: unknown,
-		rewriter: (fromEntry: SqlAstNode) => void,
-	): void {
-		if (node === null || node === undefined || typeof node !== 'object') {
 			return;
 		}
 
-		if (Array.isArray(node)) {
-			for (const item of node) {
-				this.walkExpressionsForRewrite(item, rewriter);
-			}
+		// Leaf types: number, string, bool, null, star, default, expr, interval, param
+		// These are terminal — no children to validate beyond what's already checked.
+		if (type === 'expr') {
+			// Wrapper around an expression
+			this.assertExprAllowed(obj.expr, functions);
 			return;
-		}
-
-		const obj = node as SqlAstNode;
-
-		// A subquery in an expression
-		if (obj.ast && typeof obj.ast === 'object' && 'tableList' in (obj as Record<string, unknown>)) {
-			const subAst = obj.ast as SqlAstNode;
-			if (subAst.type === 'select') {
-				this.walkSelectAstForRewrite(subAst, rewriter);
-			}
-		}
-
-		for (const key of Object.keys(obj)) {
-			if (key === 'from') continue;
-			const value = obj[key];
-			if (value && typeof value === 'object') {
-				this.walkExpressionsForRewrite(value, rewriter);
-			}
 		}
 	}
 }
