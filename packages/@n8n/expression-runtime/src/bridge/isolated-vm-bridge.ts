@@ -164,9 +164,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 
 		this.initialized = true;
 
-		if (this.config.debug) {
-			this.logger.info('[IsolatedVmBridge] Initialized successfully');
-		}
+		this.logger.info('[IsolatedVmBridge] Initialized successfully');
 	}
 
 	/**
@@ -194,9 +192,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			// This makes all exported globals available (DateTime, extend, extendOptional, SafeObject, SafeError, createDeepLazyProxy, resetDataProxies, __data)
 			await this.context.eval(runtimeBundle);
 
-			if (this.config.debug) {
-				this.logger.info('[IsolatedVmBridge] Runtime bundle loaded');
-			}
+			this.logger.info('[IsolatedVmBridge] Runtime bundle loaded');
 
 			// Verify vendor libraries loaded correctly
 			const hasDateTime = await this.context.eval('typeof DateTime !== "undefined"');
@@ -208,9 +204,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 				);
 			}
 
-			if (this.config.debug) {
-				this.logger.info('[IsolatedVmBridge] Vendor libraries verified successfully');
-			}
+			this.logger.info('[IsolatedVmBridge] Vendor libraries verified successfully');
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			throw new Error(`Failed to load runtime bundle: ${errorMessage}`);
@@ -248,9 +242,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 				);
 			}
 
-			if (this.config.debug) {
-				this.logger.info('[IsolatedVmBridge] Proxy system verified successfully');
-			}
+			this.logger.info('[IsolatedVmBridge] Proxy system verified successfully');
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			throw new Error(`Failed to verify proxy system: ${errorMessage}`);
@@ -290,9 +282,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			}
 		`);
 
-		if (this.config.debug) {
-			this.logger.info('[IsolatedVmBridge] Error handler injected successfully');
-		}
+		this.logger.info('[IsolatedVmBridge] Error handler injected successfully');
 	}
 
 	/**
@@ -319,9 +309,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 				arguments: { copy: true },
 			});
 
-			if (this.config.debug) {
-				this.logger.debug('[IsolatedVmBridge] Data proxies reset successfully');
-			}
+			this.logger.debug('[IsolatedVmBridge] Data proxies reset successfully');
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			throw new Error(`Failed to reset data proxies: ${errorMessage}`);
@@ -500,9 +488,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		this.context.global.setSync('__getArrayElement', getArrayElement);
 		this.context.global.setSync('__callFunctionAtPath', callFunctionAtPath);
 
-		if (this.config.debug) {
-			this.logger.debug('[IsolatedVmBridge] Callbacks registered successfully');
-		}
+		this.logger.debug('[IsolatedVmBridge] Callbacks registered successfully');
 	}
 
 	/**
@@ -574,9 +560,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 				script = this.isolate.compileScriptSync(wrappedCode);
 				this.scriptCache.set(code, script);
 
-				if (this.config.debug) {
-					this.logger.debug('[IsolatedVmBridge] Script compiled and cached');
-				}
+				this.logger.debug('[IsolatedVmBridge] Script compiled and cached');
 			}
 
 			// Step 5: Execute with timeout and copy result back
@@ -590,9 +574,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 				throw this.reconstructError(result);
 			}
 
-			if (this.config.debug) {
-				this.logger.debug('[IsolatedVmBridge] Expression executed successfully');
-			}
+			this.logger.debug('[IsolatedVmBridge] Expression executed successfully');
 
 			return result;
 		} catch (error) {
@@ -666,9 +648,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		this.initialized = false;
 		this.scriptCache.clear();
 
-		if (this.config.debug) {
-			this.logger.info('[IsolatedVmBridge] Disposed');
-		}
+		this.logger.info('[IsolatedVmBridge] Disposed');
 	}
 
 	/**

@@ -74,14 +74,6 @@ export interface BridgeConfig {
 	 */
 	timeout?: number;
 
-	/**
-	 * Enable debug mode (inspector protocol).
-	 * Default: false
-	 *
-	 * Phase 2+: Chrome DevTools debugging support
-	 */
-	debug?: boolean;
-
 	/** Optional logger. Falls back to no-op if not provided. */
 	logger?: Logger;
 }
@@ -97,7 +89,6 @@ const NO_OP_LOGGER: Logger = {
 export const DEFAULT_BRIDGE_CONFIG: Required<BridgeConfig> = {
 	memoryLimit: 128,
 	timeout: 5000,
-	debug: false,
 	logger: NO_OP_LOGGER,
 };
 
