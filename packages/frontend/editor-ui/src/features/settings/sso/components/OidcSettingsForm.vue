@@ -23,6 +23,7 @@ const toast = useToast();
 const message = useMessage();
 
 const savingForm = ref<boolean>(false);
+const roleMappingRuleEditorRef = ref<InstanceType<typeof RoleMappingRuleEditor> | null>(null);
 
 const discoveryEndpoint = ref('');
 const clientId = ref('');
@@ -94,6 +95,8 @@ const cannotSaveOidcSettings = computed(() => {
 
 	const storedAcrString = ssoStore.oidcConfig?.authenticationContextClassReference?.join(',') || '';
 
+	const isRuleMappingDirty = roleMappingRuleEditorRef.value?.isDirty ?? false;
+
 	return (
 		ssoStore.oidcConfig?.clientId === clientId.value &&
 		ssoStore.oidcConfig?.clientSecret === clientSecret.value &&
@@ -101,6 +104,7 @@ const cannotSaveOidcSettings = computed(() => {
 		ssoStore.oidcConfig?.loginEnabled === ssoStore.isOidcLoginEnabled &&
 		ssoStore.oidcConfig?.prompt === prompt.value &&
 		!isUserRoleProvisioningChanged.value &&
+		!isRuleMappingDirty &&
 		storedAcrString === authenticationContextClassReference.value &&
 		currentAcrString === storedAcrString
 	);
@@ -156,6 +160,10 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 			authenticationContextClassReference: acrArray,
 		});
 		await saveProvisioningConfig(isDisablingOidcLogin);
+
+		if (userRoleProvisioning.value === 'expression_based') {
+			await roleMappingRuleEditorRef.value?.save();
+		}
 
 		showUserRoleProvisioningDialog.value = false;
 
@@ -257,6 +265,7 @@ onMounted(async () => {
 		<RoleMappingRuleEditor
 			v-if="userRoleProvisioning === 'expression_based'"
 			ref="roleMappingRuleEditorRef"
+			@remove-mapping="userRoleProvisioning = 'disabled'"
 		/>
 		<ConfirmProvisioningDialog
 			v-model="showUserRoleProvisioningDialog"
