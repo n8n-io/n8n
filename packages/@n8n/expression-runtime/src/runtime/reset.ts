@@ -18,6 +18,17 @@ const SafeURIError = createSafeErrorSubclass(URIError);
 // Reset Function for Data Proxies
 // ============================================================================
 
+function fetchPrimitive(key: string): unknown {
+	try {
+		return globalThis.__getValueAtPath.applySync(null, [[key]], {
+			arguments: { copy: true },
+			result: { copy: true },
+		});
+	} catch {
+		return undefined;
+	}
+}
+
 /**
  * Reset workflow data proxies before each evaluation.
  *
@@ -91,79 +102,13 @@ export function resetDataProxies(timezone?: string): void {
 	// Fetch primitives directly (no lazy loading needed for simple values)
 	// -------------------------------------------------------------------------
 
-	try {
-		globalThis.__data.$runIndex = globalThis.__getValueAtPath.applySync(null, [['$runIndex']], {
-			arguments: { copy: true },
-			result: { copy: true },
-		});
-	} catch (error) {
-		// Property doesn't exist - set to undefined
-		globalThis.__data.$runIndex = undefined;
-	}
-
-	try {
-		globalThis.__data.$itemIndex = globalThis.__getValueAtPath.applySync(null, [['$itemIndex']], {
-			arguments: { copy: true },
-			result: { copy: true },
-		});
-	} catch (error) {
-		// Property doesn't exist - set to undefined
-		globalThis.__data.$itemIndex = undefined;
-	}
-
-	try {
-		globalThis.__data.$executionId = globalThis.__getValueAtPath.applySync(
-			null,
-			[['$executionId']],
-			{
-				arguments: { copy: true },
-				result: { copy: true },
-			},
-		);
-	} catch (error) {
-		globalThis.__data.$executionId = undefined;
-	}
-
-	try {
-		globalThis.__data.$resumeWebhookUrl = globalThis.__getValueAtPath.applySync(
-			null,
-			[['$resumeWebhookUrl']],
-			{ arguments: { copy: true }, result: { copy: true } },
-		);
-	} catch (error) {
-		globalThis.__data.$resumeWebhookUrl = undefined;
-	}
-
-	try {
-		globalThis.__data.$webhookId = globalThis.__getValueAtPath.applySync(null, [['$webhookId']], {
-			arguments: { copy: true },
-			result: { copy: true },
-		});
-	} catch (error) {
-		globalThis.__data.$webhookId = undefined;
-	}
-
-	try {
-		globalThis.__data.$nodeId = globalThis.__getValueAtPath.applySync(null, [['$nodeId']], {
-			arguments: { copy: true },
-			result: { copy: true },
-		});
-	} catch (error) {
-		globalThis.__data.$nodeId = undefined;
-	}
-
-	try {
-		globalThis.__data.$nodeVersion = globalThis.__getValueAtPath.applySync(
-			null,
-			[['$nodeVersion']],
-			{
-				arguments: { copy: true },
-				result: { copy: true },
-			},
-		);
-	} catch (error) {
-		globalThis.__data.$nodeVersion = undefined;
-	}
+	globalThis.__data.$runIndex = fetchPrimitive('$runIndex');
+	globalThis.__data.$itemIndex = fetchPrimitive('$itemIndex');
+	globalThis.__data.$executionId = fetchPrimitive('$executionId');
+	globalThis.__data.$resumeWebhookUrl = fetchPrimitive('$resumeWebhookUrl');
+	globalThis.__data.$webhookId = fetchPrimitive('$webhookId');
+	globalThis.__data.$nodeId = fetchPrimitive('$nodeId');
+	globalThis.__data.$nodeVersion = fetchPrimitive('$nodeVersion');
 
 	// -------------------------------------------------------------------------
 	// Expose workflow data to globalThis for expression access
@@ -255,7 +200,6 @@ export function resetDataProxies(timezone?: string): void {
 		};
 	};
 
-	// $('NodeName') returns a lazy proxy for the specified node's data
 	globalThis.$ = function (nodeName: string) {
 		return createDeepLazyProxy(['$', nodeName]);
 	};

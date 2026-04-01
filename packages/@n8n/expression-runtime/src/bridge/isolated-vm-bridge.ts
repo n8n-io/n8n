@@ -474,19 +474,15 @@ export class IsolatedVmBridge implements RuntimeBridge {
 				// Navigate to function, tracking parent to preserve `this` context
 				let fn: unknown = data;
 				let parent: unknown = undefined;
+				let startIndex = 0;
 				const dollarFn = (data as Record<string, unknown>).$;
 				if (path.length >= 2 && path[0] === '$' && typeof dollarFn === 'function') {
 					fn = (dollarFn as (name: string) => unknown)(path[1]);
+					startIndex = 2;
+				}
+				for (let i = startIndex; i < path.length; i++) {
 					parent = fn;
-					for (let i = 2; i < path.length; i++) {
-						parent = fn;
-						fn = (fn as Record<string, unknown>)?.[path[i]];
-					}
-				} else {
-					for (const key of path) {
-						parent = fn;
-						fn = (fn as Record<string, unknown>)?.[key];
-					}
+					fn = (fn as Record<string, unknown>)?.[path[i]];
 				}
 
 				if (typeof fn !== 'function') {
