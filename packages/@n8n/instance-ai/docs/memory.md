@@ -13,9 +13,8 @@ The memory system serves two distinct purposes:
 - **Conversation history** — recent messages and semantic recall for the
   current thread (thread-scoped)
 
-Sub-agents with memory-enabled roles (workflow-builder, execution-debugger,
-data-table-manager) have their own working memory that persists per-user
-across invocations via Mastra's native working memory mechanism.
+Sub-agents currently have working memory **disabled** (`workingMemoryEnabled:
+false`). They are stateless — context is passed via the briefing only.
 
 ## Tiers
 
@@ -158,25 +157,15 @@ agent.stream(message, {
 - **Semantic recall** — vector retrieval of relevant past messages
 - **Plan** — the current execution plan
 
-### Sub-agent working memory (per-user, per-role)
+### Sub-agent memory
 
-Memory-enabled sub-agent roles get their own Mastra working memory:
+Sub-agents currently have working memory **disabled**. They are fully stateless —
+context is passed via the briefing and `conversationContext` fields in the
+`delegate` and `build-workflow-with-agent` tools.
 
-| Role | Resource ID | Template Focus |
-|------|-------------|---------------|
-| `workflow-builder` | `{userId}:workflow-builder` | User preferences, instance-specific credential disambiguation and quirks |
-| `execution-debugger` | `{userId}:execution-debugger` | Failure patterns, auth issues, environment quirks |
-| `data-table-manager` | `{userId}:data-table-manager` | Table inventory, schema patterns, query patterns |
-
-Mechanics (all handled by Mastra):
-- Current working memory is injected into the sub-agent's system prompt automatically
-- Mastra provides the `updateWorkingMemory` tool to the sub-agent automatically
-- Working memory persists across invocations — the builder gets better at building
-  for each user over time
-- No conversation history (lastMessages: 0) — sub-agents are still ephemeral
-
-Roles not in the enabled set (e.g., ad-hoc roles via the generic `delegate` tool)
-remain fully stateless.
+Past failed attempts are tracked via the `IterationLog` (stored in thread
+metadata) and appended to sub-agent briefings on retry, providing cross-attempt
+context without persistent memory.
 
 ### Cross-user isolation
 

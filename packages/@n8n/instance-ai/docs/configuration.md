@@ -8,15 +8,14 @@ All Instance AI configuration is done via environment variables.
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `N8N_INSTANCE_AI_MODEL` | string | `anthropic/claude-sonnet-4-5` | LLM model in `provider/model` format. Must be set for the module to enable. |
+| `N8N_INSTANCE_AI_MODEL` | string | `anthropic/claude-sonnet-4-6` | LLM model in `provider/model` format. Must be set for the module to enable. |
 | `N8N_INSTANCE_AI_MODEL_URL` | string | `''` | Base URL for an OpenAI-compatible endpoint (e.g. `http://localhost:1234/v1` for LM Studio). When set, model requests go to this URL instead of the built-in provider. |
 | `N8N_INSTANCE_AI_MODEL_API_KEY` | string | `''` | API key for the custom model endpoint. Optional — some local servers don't require one. |
+| `N8N_INSTANCE_AI_MAX_CONTEXT_WINDOW_TOKENS` | number | `500000` | Hard cap on context window size (tokens). 0 = use model's full context window. |
 | `N8N_INSTANCE_AI_MCP_SERVERS` | string | `''` | Comma-separated MCP server configs. Format: `name=url,name=url` |
-| `N8N_INSTANCE_AI_TIMEOUT` | number | `120000` | Agent response timeout in milliseconds |
-| `N8N_INSTANCE_AI_MAX_STEPS` | number | `50` | Maximum LLM reasoning steps for the orchestrator |
-| `N8N_INSTANCE_AI_MAX_LOOP_ITERATIONS` | number | `10` | Maximum Build→Debug loop iterations before asking user |
 | `N8N_INSTANCE_AI_SUB_AGENT_MAX_STEPS` | number | `100` | Maximum LLM reasoning steps for sub-agents spawned via delegate tool |
 | `N8N_INSTANCE_AI_BROWSER_MCP` | boolean | `false` | Enable Chrome DevTools MCP for browser-assisted credential setup |
+| `N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED` | boolean | `false` | Disable the local gateway (filesystem, shell, browser) for all users |
 
 ### Memory
 
@@ -78,6 +77,15 @@ Sandbox workspaces persist per thread — the same container is reused across me
 | `N8N_INSTANCE_AI_OBSERVER_MODEL` | string | `google/gemini-2.5-flash` | LLM for Observer/Reflector compression agents |
 | `N8N_INSTANCE_AI_OBSERVER_MESSAGE_TOKENS` | number | `30000` | Token threshold for Observer to trigger compression |
 | `N8N_INSTANCE_AI_REFLECTOR_OBSERVATION_TOKENS` | number | `40000` | Token threshold for Reflector to condense observations |
+
+### Lifecycle & Housekeeping
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `N8N_INSTANCE_AI_THREAD_TTL_DAYS` | number | `90` | Conversation thread TTL in days. Threads older than this are auto-expired. 0 = no expiration. |
+| `N8N_INSTANCE_AI_SNAPSHOT_PRUNE_INTERVAL` | number | `3600000` | Interval in ms between snapshot pruning runs. 0 = disabled. |
+| `N8N_INSTANCE_AI_SNAPSHOT_RETENTION` | number | `86400000` | Retention period in ms for orphaned workflow snapshots before pruning. |
+| `N8N_INSTANCE_AI_CONFIRMATION_TIMEOUT` | number | `600000` | Timeout in ms for HITL confirmation requests. 0 = no timeout. |
 
 ## Enabling / Disabling
 
@@ -144,46 +152,46 @@ Runtime behavior:
 
 ```bash
 # Minimal — just set the model
-N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-4-5
+N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-4-6
 
 # With MCP servers
-N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-4-5
+N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-4-6
 N8N_INSTANCE_AI_MCP_SERVERS="my-tools=https://mcp.example.com/sse"
 
 # With semantic memory
-N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-4-5
+N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-4-6
 N8N_INSTANCE_AI_EMBEDDER_MODEL=openai/text-embedding-3-small
 
 # With SearXNG (free, self-hosted search)
-N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-4-5
+N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-4-6
 N8N_INSTANCE_AI_SEARXNG_URL=http://searxng:8080
 
 # With Brave Search (paid API, takes priority over SearXNG)
-N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-4-5
+N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-4-6
 INSTANCE_AI_BRAVE_SEARCH_API_KEY=BSA-xxx
 
 # With sandbox (Daytona — isolated code execution for builder agent)
-N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-4-5
+N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-4-6
 N8N_INSTANCE_AI_SANDBOX_ENABLED=true
 N8N_INSTANCE_AI_SANDBOX_PROVIDER=daytona
 DAYTONA_API_URL=https://app.daytona.io/api
 DAYTONA_API_KEY=dtn_xxx
 
 # With sandbox (local — development only, no isolation)
-N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-4-5
+N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-4-6
 N8N_INSTANCE_AI_SANDBOX_ENABLED=true
 N8N_INSTANCE_AI_SANDBOX_PROVIDER=local
 
 # With filesystem access (bare metal — zero config, auto-detected)
-N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-4-5
+N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-4-6
 # Nothing else needed! Local filesystem is auto-detected on bare metal.
 
 # With filesystem access (restricted to a specific directory)
-N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-4-5
+N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-4-6
 N8N_INSTANCE_AI_FILESYSTEM_PATH=/home/user/my-project
 
 # With filesystem gateway (Docker/cloud — user runs daemon on their machine)
-N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-4-5
+N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-4-6
 N8N_INSTANCE_AI_GATEWAY_API_KEY=my-secret-key
 # User runs: npx @n8n/fs-proxy
 
@@ -192,7 +200,7 @@ N8N_INSTANCE_AI_MODEL=custom/llama-3.1-70b
 N8N_INSTANCE_AI_MODEL_URL=http://localhost:1234/v1
 
 # Full configuration with observational memory tuning
-N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-4-5
+N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-4-6
 N8N_INSTANCE_AI_MCP_SERVERS="github=https://mcp.github.com/sse"
 N8N_INSTANCE_AI_EMBEDDER_MODEL=openai/text-embedding-3-small
 N8N_INSTANCE_AI_MAX_STEPS=50
@@ -216,7 +224,7 @@ services:
       - "8888:8080"  # optional: expose to host
   n8n:
     environment:
-      N8N_INSTANCE_AI_MODEL: anthropic/claude-sonnet-4-5
+      N8N_INSTANCE_AI_MODEL: anthropic/claude-sonnet-4-6
       N8N_INSTANCE_AI_SEARXNG_URL: http://searxng:8080
 ```
 

@@ -5,43 +5,48 @@ orchestration tools (used by the orchestrator for loop control) and domain tools
 (used by the orchestrator directly or delegated to sub-agents). Each tool defines
 its input/output schema via Zod.
 
-## Orchestration Tools (7)
+## Orchestration Tools (up to 10)
 
 These tools are exclusive to the orchestrator agent. Sub-agents do not receive
-them.
+them. Some are conditional on context availability.
 
 ### `plan`
 
-Create, update, or review the execution plan. The orchestrator must call this
-tool before and after each phase of the autonomous loop. This serves as a
-context engineering mechanism — externalizing the plan forces structured
-reasoning and prevents goal drift.
+Persist a dependency-aware task plan for detached multi-step execution. Use only
+when the work requires 2+ tasks with dependencies. The plan is shown to the user
+for approval before execution starts.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `action` | enum | yes | `create`, `update`, or `review` |
-| `plan` | object | for create/update | The plan object (see schema below) |
+| `tasks` | array | yes | Dependency-aware execution plan (see schema below) |
 
-**Plan schema**:
+**Task schema**:
 
 ```typescript
 {
-  goal: string;                     // What the user wants accomplished
-  currentPhase: 'build' | 'execute' | 'inspect' | 'evaluate' | 'debug';
-  iteration: number;                // Loop iteration count
-  steps: [{
-    phase: string;
-    description: string;
-    status: 'pending' | 'in_progress' | 'completed' | 'failed' | 'skipped';
-    result?: string;
-  }];
+  id: string;          // Stable identifier used by dependency edges
+  title: string;       // Short user-facing task title
+  kind: 'delegate' | 'build-workflow' | 'manage-data-tables' | 'research';
+  spec: string;        // Detailed executor briefing for this task
+  deps: string[];      // Task IDs that must succeed before this task can start
+  tools?: string[];    // Required tool subset for delegate tasks
+  workflowId?: string; // Existing workflow ID to modify (build-workflow tasks only)
 }
 ```
 
-**Returns**: The current plan state.
+**Returns**: `{ result: string, taskCount: number }`
 
-**Storage**: Plans are stored in thread-scoped storage (ADR-017). They persist
-across reconnects but are isolated per conversation.
+**Behavior**:
+- First call persists the plan, publishes `tasks-update` event, and **suspends**
+  for user approval
+- On approval: calls `schedulePlannedTasks()` to start detached execution
+- On denial: returns feedback for the LLM to revise the plan
+
+**Task kinds** map to preconfigured sub-agents:
+- `build-workflow` → workflow builder agent (sandbox or tool mode)
+- `manage-data-tables` → data table agent (all `*-data-table*` tools)
+- `research` → research agent (web-search + fetch-url)
+- `delegate` → custom sub-agent with orchestrator-specified tool subset
 
 ### `delegate`
 
@@ -56,123 +61,143 @@ fixed taxonomy of sub-agent types.
 | `tools` | string[] | yes | Subset of registered native domain tool names |
 | `briefing` | string | yes | The specific task to accomplish |
 | `artifacts` | object | no | Relevant IDs, data, or context (workflow IDs, etc.) |
+| `conversationContext` | string | no | Summary of what was discussed so far — prevents repeating what user already knows |
 
 **Returns**: `{ result: string }` — the sub-agent's synthesized answer.
 
 **Behavior**:
 - Validates `tools` against registered native domain tool names
-- Creates a fresh agent with the specified tools, instructions, and low `maxSteps` (10–15)
-- Sub-agent publishes events directly to the event bus (ADR-014)
+- Forbids orchestration tools (`plan`, `delegate`) and MCP tools
+- Creates a fresh agent with specified tools and low `maxSteps` (default 10)
+- Sub-agent publishes events directly to the event bus
 - Sub-agent has no memory — receives context only via the briefing
-- Sub-agent cannot use `delegate`, `plan`, or MCP tools
-- The synthesized result returns to the orchestrator's context; intermediate
-  tool calls stay in the sub-agent's context (clean context separation)
+- Past failed attempts from `iterationLog` are appended to the briefing (if available)
 
-**Common delegation patterns** (guidelines, not constraints):
+### `update-tasks`
 
-| Pattern | Tools | When |
-|---------|-------|------|
-| Building workflows | create-workflow, update-workflow, list-nodes, get-node-description | Complex multi-node workflow creation |
-| Debugging failures | get-execution, get-workflow, list-nodes, get-node-description | Analyzing failed executions |
-| Evaluating quality | eval tools (TBD) | Running eval triggers, interpreting metrics |
-| Checking credentials | list-credentials, test-credential, get-credential | Validating credential setup |
-| Exploring capabilities | list-nodes, get-node-description | Finding the right node types |
-
-### `cancel-background-task`
-
-Cancel a running background task by its ID. Used when the user asks to stop a
-background agent (e.g., "stop building that workflow"). The orchestrator sees
-running task IDs via the `<running-tasks>` section injected into each message.
+Update a visible task checklist for the user. Used for lightweight progress
+tracking during synchronous work.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `taskId` | string | yes | Background task ID (e.g., `build-XXXXXXXX`) |
+| `tasks` | array | yes | List of `{id, description, status}` items |
 
-**Returns**: `{ result: "Background task {taskId} cancelled." }`
+**Returns**: `{ result: string }`
 
-**Behavior**:
-- Calls `cancelBackgroundTask` on the orchestration context
-- The service aborts the task's `AbortController`, publishes `agent-completed`
-  with an error payload, and removes the task from tracking
-- Safe to call on already-completed or non-existent tasks (no-op)
-- Only available when `cancelBackgroundTask` is present on the context
-
-**Cancellation flow** (three surfaces converge on the same backend method):
-
-```
-User clicks stop button  ─→ POST /chat/:threadId/tasks/:taskId/cancel ─┐
-User says "stop that"     ─→ orchestrator calls cancel-background-task ─┤
-cancelRun (global stop)   ─→ cancelBackgroundTasks(threadId)            ─┤
-                                                                        ▼
-                                              service.cancelBackgroundTask()
-                                                        │
-                                              abort + agent-completed event
-                                                        │
-                                              reducer marks node as error
-                                              UI auto-collapses section
-```
-
-**Amend flow**: After cancellation, the cancelled task context is enriched into
-the user's next message (`[Background task cancelled by user — {role}]`), so the
-orchestrator knows what was stopped and can act on new instructions.
+**Behavior**: Saves to storage, publishes `tasks-update` event for live UI refresh.
 
 ### `build-workflow-with-agent`
 
-Spawn a specialized builder sub-agent as a background task. The agent handles
-node discovery, schema lookups, code generation, and validation internally.
-Returns immediately — the builder runs detached from the orchestrator.
+Spawn a specialized builder sub-agent as a background task. Returns immediately —
+the builder runs detached from the orchestrator.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `task` | string | yes | What to build and any context (user requirements, credential names/types) |
-| `workflowId` | string | no | Existing workflow ID to modify. Agent starts with the current workflow code pre-loaded. |
+| `task` | string | yes | What to build and any context |
+| `workflowId` | string | no | Existing workflow ID to modify |
+| `conversationContext` | string | no | What user already knows |
 
 **Returns**: `{ result: string }` — contains task ID for background tracking.
 
-**Two modes** (selected automatically based on sandbox availability):
+**Two modes** (selected based on sandbox availability):
 
-- **Sandbox mode** (when `N8N_INSTANCE_AI_SANDBOX_ENABLED=true`): agent writes TypeScript
-  to `~/workspace/src/workflow.ts`, runs `tsc` for validation, and calls `submit-workflow`
-  to save. Gets tools: `search-nodes`, `get-workflow-as-code`, `get-node-type-definition`,
-  `submit-workflow`, plus filesystem and `execute_command` from the workspace.
+- **Sandbox mode** (`N8N_INSTANCE_AI_SANDBOX_ENABLED=true`): agent writes TypeScript
+  to `~/workspace/src/workflow.ts`, runs `tsc` for validation, and calls `submit-workflow`.
+  Gets filesystem and `execute_command` tools from the workspace.
 - **Tool mode** (fallback): agent uses string-based `build-workflow` tool with
   `get-node-type-definition`, `get-workflow-as-code`, `search-nodes`.
 
-Both modes: max 30 steps, publishes events to the event bus, non-blocking (ADR-018).
+Both modes: max 30 steps, publishes events to the event bus, non-blocking.
 
-**Sandbox-only tools** (not in `createAllTools`, only available to the builder sub-agent):
-- `submit-workflow` — reads TypeScript from sandbox, parses/validates, resolves credentials, saves to n8n
-- `materialize-node-type` — fetches `.d.ts` node type definitions and writes them into the sandbox for `tsc`
-- `write-file` — writes a file to the sandbox workspace (path-traversal protected)
+**Sandbox-only tools** (not in `createAllTools`, only available to the builder):
+- `submit-workflow` — reads TypeScript from sandbox, parses/validates, resolves credentials, saves
+- `materialize-node-type` — fetches `.d.ts` definitions and writes to sandbox for `tsc`
+- `write-sandbox-file` — writes files to sandbox workspace (path-traversal protected)
 
-### `manage-data-tables-with-agent`
+### `cancel-background-task` *(conditional)*
 
-Spawn a background sub-agent for complex data table operations. Same pattern as
-`build-workflow-with-agent` — non-blocking, returns immediately.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `task` | string | yes | What to do (e.g. "create a contacts table with name, email, phone columns") |
-
-**Returns**: `{ result: string }` — contains task ID for background tracking.
-
-**Tools available**: All `*-data-table*` tools from the domain tools pool.
-
-### `browser-credential-setup`
-
-Spawn a sub-agent with Chrome DevTools MCP to set up credentials via browser automation.
-Only available when `N8N_INSTANCE_AI_BROWSER_MCP=true`.
+Cancel a running background task by its ID.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `credentialType` | string | yes | Credential type to set up (e.g. `notionApi`) |
+| `taskId` | string | yes | Background task ID (from `<running-tasks>` context) |
+
+**Returns**: `{ result: "Background task {taskId} cancelled." }`
+
+**Cancellation flow** (three surfaces converge):
+```
+User clicks stop button  → POST /chat/:threadId/tasks/:taskId/cancel ─┐
+User says "stop that"    → orchestrator calls cancel-background-task  ─┤
+cancelRun (global stop)  → cancelBackgroundTasks(threadId)             ─┤
+                                                                       ▼
+                                           service.cancelBackgroundTask()
+```
+
+### `correct-background-task` *(conditional)*
+
+Send a course correction to a running background task.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `taskId` | string | yes | Background task ID |
+| `correction` | string | yes | Correction message |
+
+**Returns**: `{ result: string }` — 'queued', 'task-completed', or 'task-not-found'
+
+### `verify-built-workflow` *(conditional)*
+
+Run a built workflow with sidecar pin data for verification (never persisted).
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `workItemId` | string | yes | Work item ID from build outcome |
+
+**Returns**: `{ executionId, success, status, data?, error? }`
+
+### `report-verification-verdict` *(conditional)*
+
+Feed verification results into the deterministic workflow loop state machine.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `workItemId` | string | yes | Work item ID |
+| `verdict` | enum | yes | `verified`, `needs_patch`, `needs_rebuild`, `trigger_only`, `needs_user_input`, `failed_terminal` |
+| `failureSignature` | string | no | For repeated failure detection |
+| `failedNodeName` | string | no | Node that failed |
+| `patch` | string | no | For `needs_patch` verdict |
+| `diagnosis` | string | no | Failure analysis |
+
+**Returns**: `{ guidance: string }` — next action based on loop state machine.
+
+### `apply-workflow-credentials` *(conditional)*
+
+Atomically apply real credentials to previously-mocked workflow nodes.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `workItemId` | string | yes | Work item ID from build outcome |
+| `credentials` | object | yes | Real credential mapping |
+
+**Returns**: `{ updatedNodes: string[] }`
+
+### `browser-credential-setup` *(conditional)*
+
+Spawn a sub-agent with Chrome DevTools MCP for OAuth credential setup via
+browser automation. Only available when browser MCP or gateway browser tools
+are configured.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `credentialType` | string | yes | Credential type to set up (e.g., `notionApi`) |
 | `instructions` | string | yes | Setup instructions for the browser agent |
 
-**Returns**: `{ result: string }` — the sub-agent's result.
+**Returns**: `{ result: string }`
 
 ---
 
-## Workflow Tools (11)
+## Workflow Tools (8–12)
+
+Core count is 8; up to 4 more are conditionally registered based on license.
 
 ### `list-workflows`
 
@@ -193,38 +218,38 @@ Get full workflow definition including nodes, connections, and settings.
 |-------|------|----------|-------------|
 | `workflowId` | string | yes | Workflow ID |
 
-**Returns**: `{ id, name, active, nodes: [{ name, type, parameters, position }], connections, settings }`
+**Returns**: `{ id, name, active, nodes, connections, settings }`
 
-### `create-workflow`
+### `get-workflow-as-code`
 
-Create a new workflow.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `name` | string | yes | Workflow name |
-| `nodes` | array | no | Node definitions |
-| `connections` | object | no | Node connections |
-| `settings` | object | no | Workflow settings |
-
-**Returns**: Full workflow object (same as `get-workflow`)
-
-### `update-workflow`
-
-Update an existing workflow. Only provided fields are changed.
+Get a workflow as TypeScript SDK code. Used by the builder agent to load an
+existing workflow for modification.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `workflowId` | string | yes | Workflow to update |
-| `name` | string | no | New name |
-| `nodes` | array | no | Replaces all nodes |
-| `connections` | object | no | Replaces connections |
-| `settings` | object | no | Replaces settings |
+| `workflowId` | string | yes | Workflow ID |
 
-**Returns**: `{ id, name, active }`
+**Returns**: TypeScript code string representing the workflow.
+
+### `build-workflow`
+
+Submit workflow code (TypeScript SDK) for parsing, validation, and saving. Two
+modes: full code submission or `str_replace` patches against the last-submitted
+code.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `code` | string | conditional | Full TypeScript SDK code |
+| `patches` | array | conditional | `str_replace` patches against last-submitted code |
+
+**Returns**: `{ workflowId, nodes, errors? }`
+
+**Behavior**: Validates TypeScript SDK code via `parseAndValidate()`, generates
+workflow JSON, applies layout engine positioning, resolves credentials.
 
 ### `delete-workflow`
 
-Archive a workflow. This is a soft delete that deactivates it if needed and can be undone later.
+Archive a workflow (soft delete, deactivates if needed).
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -232,92 +257,90 @@ Archive a workflow. This is a soft delete that deactivates it if needed and can 
 
 **Returns**: `{ success: boolean }`
 
+### `setup-workflow`
+
+Open the UI for per-node credential and parameter setup. Uses a suspend/resume
+state machine where each node triggers a HITL confirmation for the user to
+configure it interactively.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `workflowId` | string | yes | Workflow to set up |
+
+**Returns**: `{ completedNodes, skippedNodes, failedNodes }`
+
 ### `publish-workflow`
 
-Publish a workflow version to production. Makes the specified version active — it will run on its triggers.
+Publish a workflow version to production. Makes it active — it will run on triggers.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `workflowId` | string | yes | Workflow ID |
-| `versionId` | string | no | Specific version to publish (omit to publish the latest draft) |
+| `versionId` | string | no | Specific version (omit for latest draft) |
 
 **Returns**: `{ success: boolean, activeVersionId?: string }`
 
 ### `unpublish-workflow`
 
-Unpublish a workflow — stops it from running in production. The draft is preserved.
+Stop a workflow from running in production. The draft is preserved.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `workflowId` | string | yes | Workflow ID to unpublish |
+| `workflowId` | string | yes | Workflow ID |
 
 **Returns**: `{ success: boolean }`
 
-### `list-workflow-versions`
+### `list-workflow-versions` *(conditional — requires license)*
 
-List version history for a workflow (metadata only, no nodes/connections). Each
-version includes flags indicating whether it is the currently active (published)
-version or the current draft.
+List version history for a workflow (metadata only).
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
 | `workflowId` | string | yes | — | Workflow ID |
 | `limit` | number | no | 20 | Max results (1–100) |
-| `skip` | number | no | 0 | Number of results to skip |
+| `skip` | number | no | 0 | Results to skip |
 
 **Returns**: `{ versions: [{ versionId, name, description, authors, createdAt, autosaved, isActive, isCurrentDraft }] }`
 
-### `get-workflow-version`
+### `get-workflow-version` *(conditional — requires license)*
 
 Get full details of a specific workflow version including nodes and connections.
-Use to inspect what a version looked like, diff against the current draft, or
-answer "when did node X change".
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `workflowId` | string | yes | Workflow ID |
-| `versionId` | string | yes | Version ID to retrieve |
+| `versionId` | string | yes | Version ID |
 
-**Returns**: `{ versionId, name, description, authors, createdAt, autosaved, isActive, isCurrentDraft, nodes: [{ name, type, parameters, position }], connections }`
+**Returns**: `{ versionId, name, description, authors, nodes, connections, ... }`
 
-### `restore-workflow-version`
+### `restore-workflow-version` *(conditional — requires license)*
 
-Restore a workflow to a previous version by overwriting the current draft with
-that version's nodes and connections. Does NOT affect the published/active
-version — publish separately after restoring.
+Restore a workflow to a previous version (overwrites current draft). HITL
+approval required.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `workflowId` | string | yes | Workflow ID |
-| `versionId` | string | yes | Version ID to restore |
+| `versionId` | string | yes | Version to restore |
 
 **Returns**: `{ success: boolean }`
 
-**HITL**: Requires user approval (severity: `warning`) since it overwrites the
-current draft. Controlled by `restoreWorkflowVersion` permission.
+### `update-workflow-version` *(conditional — requires `feat:namedVersions` license)*
 
-### `update-workflow-version`
-
-Update the name or description of a workflow version. Use to label versions
-with meaningful names (e.g. "v1 – initial release") or add descriptions
-explaining what changed.
+Update a version's name or description.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `workflowId` | string | yes | Workflow ID |
-| `versionId` | string | yes | Version ID to update |
-| `name` | string \| null | no | New name for the version (null to clear) |
-| `description` | string \| null | no | New description for the version (null to clear) |
+| `versionId` | string | yes | Version ID |
+| `name` | string \| null | no | New name |
+| `description` | string \| null | no | New description |
 
-**Returns**: `{ success: boolean, error?: string }`
-
-**Conditional**: Only registered when the `feat:namedVersions` license feature
-is active. The adapter checks the license at context creation time and omits
-the `updateVersion` method when unlicensed.
+**Returns**: `{ success: boolean }`
 
 ---
 
-## Execution Tools (5)
+## Execution Tools (6)
 
 ### `list-executions`
 
@@ -333,10 +356,8 @@ List recent workflow executions.
 
 ### `run-workflow`
 
-Execute a workflow, wait for completion (with timeout), and return the full result.
-This is the primary execution tool — a single call runs the workflow and returns its
-output data, status, and any errors. The default timeout is 5 minutes; on timeout the
-execution is automatically cancelled.
+Execute a workflow, wait for completion (with timeout), and return the result.
+Default timeout: 5 minutes; max: 10 minutes. On timeout, execution is cancelled.
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
@@ -345,10 +366,6 @@ execution is automatically cancelled.
 | `timeout` | number | no | 300000 | Max wait time in ms (max 600000) |
 
 **Returns**: `{ executionId, status, data?, error?, startedAt?, finishedAt? }`
-
-**Trigger detection**: Uses known trigger type constants (`CHAT_TRIGGER_NODE_TYPE`,
-`FORM_TRIGGER_NODE_TYPE`, `WEBHOOK_NODE_TYPE`, `SCHEDULE_TRIGGER_NODE_TYPE`) instead of
-naive string matching. Falls back to any node with "Trigger" in its type for unknown triggers.
 
 **Type-aware pin data**: Constructs proper pin data per trigger type:
 - **Chat trigger**: `{ chatInput, sessionId, action }`
@@ -359,8 +376,7 @@ naive string matching. Falls back to any node with "Trigger" in its type for unk
 
 ### `get-execution`
 
-Get execution status without blocking. Returns immediately with the current state —
-use this to poll running executions when needed.
+Get execution status without blocking.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -368,45 +384,30 @@ use this to poll running executions when needed.
 
 **Returns**: `{ executionId, status, data?, error?, startedAt?, finishedAt? }`
 
-Status values: `running`, `success`, `error`, `waiting`
-
 ### `debug-execution`
 
-Analyze a failed execution with structured diagnostics. Returns the failing node,
-its error message, the input data that caused the failure, and a per-node execution trace.
+Analyze a failed execution with structured diagnostics.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `executionId` | string | yes | Failed execution to debug |
 
-**Returns**:
-```typescript
-{
-  executionId: string;
-  status: 'running' | 'success' | 'error' | 'waiting';
-  data?: Record<string, unknown>;
-  error?: string;
-  startedAt?: string;
-  finishedAt?: string;
-  failedNode?: {
-    name: string;
-    type: string;
-    error: string;
-    inputData?: Record<string, unknown>;
-  };
-  nodeTrace: Array<{
-    name: string;
-    type: string;
-    status: 'success' | 'error';
-    startedAt?: string;
-    finishedAt?: string;
-  }>;
-}
-```
+**Returns**: `{ executionId, status, failedNode?: { name, type, error, inputData? }, nodeTrace: [{ name, type, status }] }`
+
+### `get-node-output`
+
+Get the output data of a specific node from an execution.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `executionId` | string | yes | Execution ID |
+| `nodeName` | string | yes | Node name to get output for |
+
+**Returns**: `{ nodeName, data?, error? }`
 
 ### `stop-execution`
 
-Cancel a running execution by ID. Returns success/failure with a message.
+Cancel a running execution.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -416,12 +417,11 @@ Cancel a running execution by ID. Returns success/failure with a message.
 
 ---
 
-## Credential Tools (4)
+## Credential Tools (6)
 
 > **Security note**: The agent never handles raw credential secrets. Credential
-> creation and secret configuration is done through the n8n frontend UI (or
-> eventually via browser automation). The agent can list, inspect metadata, test,
-> and delete credentials, but cannot read or write secret data.
+> creation and secret configuration is done through the n8n frontend UI (via
+> `setup-credentials`) or browser automation (`browser-credential-setup`).
 
 ### `list-credentials`
 
@@ -445,13 +445,38 @@ Get credential metadata. Never returns decrypted secrets.
 
 ### `delete-credential`
 
-Permanently delete a credential. **Irreversible** — agent must confirm with user.
+Permanently delete a credential. **Irreversible** — HITL confirmation required.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `credentialId` | string | yes | Credential to delete |
 
 **Returns**: `{ success: boolean }`
+
+### `search-credential-types`
+
+Search available credential types by name or description.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `query` | string | yes | Search query (e.g., "slack", "oauth") |
+
+**Returns**: `{ credentialTypes: [{ name, displayName, description }] }`
+
+### `setup-credentials`
+
+Open the credential picker UI for the user to configure credentials securely.
+The LLM never sees secrets — the user interacts with the n8n frontend directly.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `credentialType` | string | yes | Credential type to set up |
+
+**Returns**: `{ credentialId, credentialType, needsBrowserSetup? }`
+
+**HITL**: Suspends execution and renders the credential setup UI. When
+`needsBrowserSetup=true`, the orchestrator should invoke `browser-credential-setup`
+followed by another `setup-credentials` call to finalize.
 
 ### `test-credential`
 
@@ -463,17 +488,9 @@ Test whether a credential is valid and can connect to its service.
 
 **Returns**: `{ success: boolean, message?: string }`
 
-### Removed: `create-credential`, `update-credential`
-
-These tools were removed because they accepted raw secret fields in their input,
-which would be streamed to the frontend as `tool-call` args — leaking secrets
-in the UI, logs, and telemetry. Credential setup must go through the existing
-n8n frontend UI where secrets are handled securely, or eventually through
-browser automation.
-
 ---
 
-## Node Discovery Tools (2)
+## Node Discovery Tools (6)
 
 ### `list-nodes`
 
@@ -481,7 +498,7 @@ List available node types in the n8n instance.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `query` | string | no | Filter by name or description (e.g., `slack`, `http`) |
+| `query` | string | no | Filter by name or description |
 
 **Returns**: `{ nodes: [{ name, displayName, description, group, version }] }`
 
@@ -493,205 +510,201 @@ Get detailed node description including properties, credentials, inputs, and out
 |-------|------|----------|-------------|
 | `nodeType` | string | yes | Node type (e.g., `n8n-nodes-base.httpRequest`) |
 
-**Returns**: `{ name, displayName, description, group, version, properties: [...], credentials: [...], inputs, outputs }`
+**Returns**: `{ name, displayName, description, properties, credentials, inputs, outputs }`
+
+### `get-node-type-definition`
+
+Get the full JSON schema for a node type, including all parameter options and
+discriminators. Critical for understanding complex node configuration.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `nodeType` | string | yes | Node type |
+
+**Returns**: Full node type definition with all parameters.
+
+### `search-nodes`
+
+Search nodes ranked by relevance with `@builderHint` annotations. Includes
+subnode requirements and discriminator values.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `query` | string | yes | Short search query (service names, not descriptions) |
+
+**Returns**: `{ nodes: SearchableNodeDescription[] }`
+
+### `get-suggested-nodes`
+
+Get curated node suggestions for common use cases.
+
+**Returns**: Categorized node suggestions with descriptions.
+
+### `explore-node-resources`
+
+Explore a node's dynamic resources (listSearch / loadOptions). Used to discover
+discriminator values like spreadsheet IDs, calendar names, etc.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `nodeType` | string | yes | Node type |
+| `resource` | string | yes | Resource to explore |
+| `credentialId` | string | no | Credential to use for authenticated resources |
+
+**Returns**: Dynamic resource list from the node's loadOptions/listSearch.
+
+---
+
+## Data Table Tools (11)
+
+Full CRUD suite for n8n data tables. System columns (`id`, `createdAt`,
+`updatedAt`) are reserved and auto-managed.
+
+### Table operations
+
+| Tool | Description |
+|------|-------------|
+| `list-data-tables` | List all data tables |
+| `create-data-table` | Create a new data table with columns |
+| `delete-data-table` | Delete a data table (HITL confirmation) |
+| `get-data-table-schema` | Get table schema including all columns |
+
+### Column operations
+
+| Tool | Description |
+|------|-------------|
+| `add-data-table-column` | Add a column to a table |
+| `delete-data-table-column` | Remove a column from a table |
+| `rename-data-table-column` | Rename a column |
+
+### Row operations
+
+| Tool | Description |
+|------|-------------|
+| `query-data-table-rows` | Query rows with optional filters |
+| `insert-data-table-rows` | Insert one or more rows |
+| `update-data-table-rows` | Update rows matching criteria |
+| `delete-data-table-rows` | Delete rows matching criteria (HITL confirmation) |
+
+---
+
+## Workspace Tools (up to 8, conditional)
+
+Only registered when `workspaceService` is present. Folder tools additionally
+require `workspaceService.listFolders`.
+
+| Tool | Description |
+|------|-------------|
+| `list-projects` | List projects accessible to the user |
+| `tag-workflow` | Apply tags to a workflow |
+| `list-tags` | List available tags |
+| `cleanup-test-executions` | Remove test execution data |
+| `list-folders` | List folders (conditional) |
+| `create-folder` | Create a new folder (conditional) |
+| `delete-folder` | Delete a folder (conditional) |
+| `move-workflow-to-folder` | Move a workflow to a folder (conditional) |
 
 ---
 
 ## Web Research Tools (2)
 
-### `web-search`
+### `web-search` *(conditional — requires search provider)*
 
-Search the web and return ranked results with titles, URLs, and snippets.
-Supports domain filtering via native `site:` query syntax.
-
-**Search providers** (in priority order):
-1. **Brave Search** — used when `INSTANCE_AI_BRAVE_SEARCH_API_KEY` is set
-2. **SearXNG** — used when `N8N_INSTANCE_AI_SEARXNG_URL` is set
-3. **Disabled** — when neither is available
+Search the web and return ranked results. Provider priority: Brave > SearXNG > disabled.
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `query` | string | yes | — | Search query (be specific — include service names, API versions, error codes) |
-| `maxResults` | number | no | 5 | Max results to return (1–20) |
-| `includeDomains` | string[] | no | — | Restrict results to these domains |
+| `query` | string | yes | — | Search query |
+| `maxResults` | number | no | 5 | Max results (1–20) |
+| `includeDomains` | string[] | no | — | Restrict to these domains |
 
-**Returns**:
+**Returns**: `{ query, results: [{ title, url, snippet, publishedDate? }] }`
 
-```typescript
-{
-  query: string;
-  results: Array<{
-    title: string;
-    url: string;
-    snippet: string;
-    publishedDate?: string;  // relative date, e.g. "2 days ago"
-  }>;
-}
-```
-
-**Behavior**:
-- **Brave**: Single HTTP GET to `https://api.search.brave.com/res/v1/web/search`
-- **SearXNG**: Single HTTP GET to `{baseUrl}/search?q={query}&format=json&pageno=1`
-- Domain filtering: `includeDomains` → `site:` operators, `excludeDomains` → `-site:` operators (both providers)
-- Results cached for 15 minutes (LRU, 100 entries, keyed by query + options)
-- **Conditional**: Only registered when at least one search provider is configured
-- Returns empty results when no search provider is available
+Results cached for 15 minutes (LRU, 100 entries).
 
 ### `fetch-url`
 
-Fetch a web page and extract its content as markdown. Uses a local pipeline
-(Readability + Turndown) with no external API dependency. Includes SSRF
-protection and result caching.
+Fetch a web page and extract content as markdown. Local pipeline (Readability +
+Turndown). SSRF protection and result caching.
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `url` | string (URL) | yes | — | URL of the page to fetch |
-| `maxContentLength` | number | no | 30000 | Maximum content length in characters (max 100000) |
+| `url` | string | yes | — | URL to fetch |
+| `maxContentLength` | number | no | 30000 | Max content chars (max 100000) |
 
-**Returns**:
+**Returns**: `{ url, finalUrl, title, content, truncated, contentLength, safetyFlags? }`
 
-```typescript
-{
-  url: string;            // Original request URL
-  finalUrl: string;       // URL after redirects
-  title: string;          // Page title
-  content: string;        // Extracted content as markdown
-  truncated: boolean;     // Whether content was truncated
-  contentLength: number;  // Original content length before truncation
-  safetyFlags?: {
-    jsRenderingSuspected?: boolean;  // Page may need JS rendering
-    loginRequired?: boolean;         // Page may require authentication
-  };
-}
-```
-
-**Behavior**:
-- Routes by content-type: HTML → Readability + Turndown + GFM, PDF → pdf-parse,
-  plain text / markdown → passthrough
-- SSRF protection blocks private IPs, loopback, and non-HTTP(S) schemes
-- Post-redirect SSRF check prevents open-redirect attacks
-- Results cached for 15 minutes (LRU, 100 entries)
-- Returns graceful error when `webResearchService` is not configured
+**Content routing**: HTML → Readability + Turndown + GFM, PDF → pdf-parse,
+plain text / markdown → passthrough.
 
 ---
 
-## Filesystem Tools (4)
+## Filesystem Tools (4, conditional)
 
-> **Conditional**: Only registered when `filesystemService` is present on the
-> context. Auto-detected based on runtime environment — bare metal gets local
-> filesystem, containers get gateway protocol, cloud gets nothing unless a
-> daemon connects. See `docs/filesystem-access.md` for architecture details.
+Only registered when `filesystemService` is present. Auto-detected based on
+runtime: bare metal → local FS, containers → gateway, cloud → nothing unless
+daemon connects. See `docs/filesystem-access.md`.
 
-### `list-files`
-
-List files matching a glob pattern within a directory.
-
-| Field | Type | Required | Default | Description |
-|-------|------|----------|---------|-------------|
-| `dirPath` | string | yes | — | Directory to list (relative to root or basePath) |
-| `pattern` | string | no | `*` | Glob pattern to match |
-| `type` | enum | no | — | Filter: `file` or `directory` |
-| `recursive` | boolean | no | `false` | Recurse into subdirectories |
-
-**Returns**: `{ files: FileEntry[] }` (max 1000 results)
-
-### `read-file`
-
-Read file contents with optional line range.
-
-| Field | Type | Required | Default | Description |
-|-------|------|----------|---------|-------------|
-| `filePath` | string | yes | — | Path to file |
-| `startLine` | number | no | — | First line to read (1-based) |
-| `maxLines` | number | no | 500 | Maximum lines to return |
-
-**Returns**: `{ path, content, truncated, totalLines }` (max 512KB)
-
-**Behavior**:
-- Binary files detected via null-byte check in first 8KB — returns error
-- Files exceeding 512KB are truncated with `truncated: true`
-- Default excluded directories (node_modules, .git, dist, etc.) are skipped
-
-### `search-files`
-
-Search for text or regex patterns across files in a directory.
-
-| Field | Type | Required | Default | Description |
-|-------|------|----------|---------|-------------|
-| `dirPath` | string | yes | — | Directory to search |
-| `query` | string | yes | — | Search text or regex pattern |
-| `isRegex` | boolean | no | `false` | Treat query as regex |
-| `caseSensitive` | boolean | no | `false` | Case-sensitive matching |
-| `filePattern` | string | no | — | Only search files matching this glob |
-
-**Returns**: `{ query, matches: [{ path, lineNumber, line }], truncated, totalMatches }` (max 100 results)
-
-### `get-file-tree`
-
-Get directory structure as an indented tree string.
-
-| Field | Type | Required | Default | Description |
-|-------|------|----------|---------|-------------|
-| `dirPath` | string | yes | — | Root directory |
-| `maxDepth` | number | no | 10 | Maximum traversal depth |
-
-**Returns**: `string` — indented tree representation (max 500 entries)
+| Tool | Description |
+|------|-------------|
+| `list-files` | List files matching a glob pattern (max 1000 results) |
+| `read-file` | Read file contents with optional line range (max 512KB) |
+| `search-files` | Search for text/regex across files (max 100 results) |
+| `get-file-tree` | Get directory structure as indented tree (max 500 entries) |
 
 ---
 
-## Orchestration Tools — Research
+## Template Tools (2)
 
-### `research-with-agent`
+| Tool | Description |
+|------|-------------|
+| `search-template-structures` | Search workflow templates by structure pattern |
+| `search-template-parameters` | Search templates by parameter values |
 
-Spawn a background research sub-agent that autonomously searches the web and
-reads pages to answer a complex question. Same pattern as `build-workflow-with-agent`.
+---
 
-| Field | Type | Required | Default | Description |
-|-------|------|----------|---------|-------------|
-| `goal` | string | yes | — | What to research |
-| `constraints` | string | no | — | Optional constraints (e.g. "Focus on REST API, not GraphQL") |
+## Other Domain Tools
 
-**Returns**: `{ result: string }` — contains task ID for background tracking.
-
-**Behavior**:
-- Spawns a background task (non-blocking, returns immediately)
-- Sub-agent has tools: `web-search`, `fetch-url`
-- Max 12 steps, stateless (per ADR-011)
-- Publishes `agent-spawned` event; results arrive via `enrichMessageWithBackgroundTasks()`
-- **Conditional**: Only registered when `web-search` is available in domain tools
+| Tool | Description |
+|------|-------------|
+| `ask-user` | Suspend and request user input (single/multi-select or text) |
+| `get-best-practices` | Get workflow building best practices for common patterns |
 
 ---
 
 ## Tool Distribution
 
 Not all tools are available to all agents. The orchestrator has access to
-everything; sub-agents receive only what the orchestrator specifies in the
-`delegate` call. Background agents (builder, data-table, research) get a
-curated tool subset.
+everything; sub-agents receive only what they need.
 
-| Tool | Orchestrator | Sub-Agents (delegate) | Background Agents |
-|------|:---:|:---:|:---:|
-| `plan` | ✅ | ❌ | ❌ |
-| `delegate` | ✅ | ❌ | ❌ |
-| `build-workflow-with-agent` | ✅ | ❌ | ❌ |
-| `manage-data-tables-with-agent` | ✅ | ❌ | ❌ |
-| `research-with-agent` | ✅ (conditional) | ❌ | ❌ |
-| `cancel-background-task` | ✅ (conditional) | ❌ | ❌ |
-| `browser-credential-setup` | ✅ (conditional) | ❌ | ❌ |
-| Filesystem tools | ✅ (conditional) | ✅ (via `delegate` tool subset) | ❌ |
-| Domain tools | ✅ (direct use) | ✅ (via `delegate` tool subset) | ✅ (curated subset) |
-| Sandbox tools (`submit-workflow`, `materialize-node-type`, `write-file`) | ❌ | ❌ | ✅ (builder only) |
+| Tool Category | Orchestrator | Sub-Agents (delegate) | Background Agents |
+|---------------|:---:|:---:|:---:|
+| Orchestration tools (`plan`, `delegate`, etc.) | ✅ | ❌ | ❌ |
+| Workflow tools | ✅ | ✅ (via delegate) | ✅ (builder) |
+| Execution tools | ✅ (direct use) | ✅ (via delegate) | ❌ |
+| Credential tools | ✅ | ✅ (via delegate) | ✅ (builder — setup only) |
+| Node discovery tools | ✅ | ✅ (via delegate) | ✅ (builder) |
+| Data table read tools | ✅ (direct) | ✅ (via delegate) | ✅ (data table agent) |
+| Data table write tools | ❌ (via plan) | ❌ | ✅ (data table agent) |
+| Workspace tools | ✅ | ✅ (via delegate) | ❌ |
+| Filesystem tools | ✅ (conditional) | ✅ (via delegate) | ❌ |
+| Web research tools | ✅ | ✅ (via delegate) | ✅ (research agent) |
+| Template / best practices | ✅ | ✅ (via delegate) | ✅ (builder) |
+| Sandbox tools (`submit-workflow`, `materialize-node-type`, `write-sandbox-file`) | ❌ | ❌ | ✅ (builder only) |
 | MCP tools | ✅ | ❌ | ❌ |
+| Browser MCP tools | ❌ | ❌ | ✅ (browser-credential-setup only) |
 
 ---
 
 ## Adding New Tools
 
 1. Create a file in `src/tools/<domain>/` following the naming convention `<verb>-<noun>.tool.ts`
-2. Define input/output schemas with Zod
+2. Define input/output schemas with Zod (`.describe()` on fields — these are the LLM's parameter docs)
 3. Export a factory function that takes the service context and returns a Mastra tool
-4. Register the tool in `src/tools/index.ts`
+4. Register the tool in `src/tools/index.ts` (in `createAllTools` or `createOrchestrationTools`)
 5. If the tool requires a new service method, add it to the interface in `src/types.ts`
    and implement it in the backend adapter
 6. New native domain tools are automatically available for delegation — the
    orchestrator can include them in sub-agent tool subsets via `delegate`
+7. For HITL tools, define `suspendSchema` and `resumeSchema` — Mastra handles
+   the suspension/resume lifecycle automatically
