@@ -1,0 +1,74 @@
+import type { User } from '@n8n/db';
+import z from 'zod';
+
+import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
+import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+
+import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
+import type { Telemetry } from '@/telemetry';
+
+const inputSchema = {
+	dataTableId: z.string().describe('The ID of the data table containing the column'),
+	projectId: z.string().describe('The project ID the data table belongs to'),
+	columnId: z.string().describe('The ID of the column to delete'),
+} satisfies z.ZodRawShape;
+
+const outputSchema = {
+	success: z.boolean().describe('Whether the operation succeeded'),
+	message: z.string().describe('Description of the result'),
+} satisfies z.ZodRawShape;
+
+export const createDeleteDataTableColumnTool = (
+	user: User,
+	dataTableOps: DataTableUserOperations,
+	telemetry: Telemetry,
+): ToolDefinition<typeof inputSchema> => ({
+	name: 'delete_data_table_column',
+	config: {
+		description:
+			'Delete a column from a data table. This permanently removes the column and all its data.',
+		inputSchema,
+		outputSchema,
+		annotations: {
+			title: 'Delete Data Table Column',
+			readOnlyHint: false,
+			destructiveHint: true,
+			idempotentHint: false,
+			openWorldHint: false,
+		},
+	},
+	handler: async ({
+		dataTableId,
+		projectId,
+		columnId,
+	}: {
+		dataTableId: string;
+		projectId: string;
+		columnId: string;
+	}) => {
+		const telemetryPayload: UserCalledMCPToolEventPayload = {
+			user_id: user.id,
+			tool_name: 'delete_data_table_column',
+			parameters: { dataTableId, projectId, columnId },
+		};
+
+		try {
+			await dataTableOps.deleteColumn(dataTableId, projectId, columnId);
+
+			const output = { success: true, message: `Column '${columnId}' deleted` };
+
+			telemetryPayload.results = { success: true };
+			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+
+			return {
+				content: [{ type: 'text', text: JSON.stringify(output) }],
+				structuredContent: output,
+			};
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			telemetryPayload.results = { success: false, error: errorMessage };
+			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+			throw error;
+		}
+	},
+});

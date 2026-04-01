@@ -18,11 +18,14 @@ import {
 } from 'n8n-workflow';
 
 import {
+	createAddDataTableColumnTool,
 	createAddDataTableRowsTool,
 	createCreateDataTableTool,
-	createModifyDataTableTool,
+	createDeleteDataTableColumnTool,
+	createRenameDataTableColumnTool,
+	createRenameDataTableTool,
 	createSearchDataTablesTool,
-} from './tools/data-table.tool';
+} from './tools/data-table';
 import { createExecuteWorkflowTool } from './tools/execute-workflow.tool';
 import { createGetExecutionTool } from './tools/get-execution.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
@@ -233,11 +236,40 @@ export class McpService {
 			createDataTableTool.handler,
 		);
 
-		const modifyDataTableTool = createModifyDataTableTool(user, dataTableOps, this.telemetry);
+		const renameDataTableTool = createRenameDataTableTool(user, dataTableOps, this.telemetry);
 		server.registerTool(
-			modifyDataTableTool.name,
-			modifyDataTableTool.config,
-			modifyDataTableTool.handler,
+			renameDataTableTool.name,
+			renameDataTableTool.config,
+			renameDataTableTool.handler,
+		);
+
+		const addDataTableColumnTool = createAddDataTableColumnTool(user, dataTableOps, this.telemetry);
+		server.registerTool(
+			addDataTableColumnTool.name,
+			addDataTableColumnTool.config,
+			addDataTableColumnTool.handler,
+		);
+
+		const deleteDataTableColumnTool = createDeleteDataTableColumnTool(
+			user,
+			dataTableOps,
+			this.telemetry,
+		);
+		server.registerTool(
+			deleteDataTableColumnTool.name,
+			deleteDataTableColumnTool.config,
+			deleteDataTableColumnTool.handler,
+		);
+
+		const renameDataTableColumnTool = createRenameDataTableColumnTool(
+			user,
+			dataTableOps,
+			this.telemetry,
+		);
+		server.registerTool(
+			renameDataTableColumnTool.name,
+			renameDataTableColumnTool.config,
+			renameDataTableColumnTool.handler,
 		);
 
 		const addDataTableRowsTool = createAddDataTableRowsTool(user, dataTableOps, this.telemetry);
