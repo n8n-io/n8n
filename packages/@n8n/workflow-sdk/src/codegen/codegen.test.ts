@@ -135,7 +135,7 @@ describe('generateWorkflowCode', () => {
 		const code = generateWorkflowCode(json);
 
 		expect(code).toContain('credentials:');
-		expect(code).toContain("slackApi: { id: 'cred-123', name: 'My Slack' }");
+		expect(code).toContain("slackApi: newCredential('My Slack', 'cred-123')");
 	});
 
 	it('should generate code for sticky notes', () => {

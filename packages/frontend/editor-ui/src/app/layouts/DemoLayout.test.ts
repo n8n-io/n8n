@@ -28,6 +28,7 @@ vi.mock('@/app/composables/useWorkflowState', async (importOriginal) => {
 		useWorkflowState: vi.fn(() => ({
 			getNewWorkflowDataAndMakeShareable: vi.fn(),
 			setWorkflowId: vi.fn(),
+			setActiveExecutionId: vi.fn(),
 			resetState: vi.fn(),
 		})),
 	};
@@ -48,6 +49,15 @@ vi.mock('@/app/composables/usePostMessageHandler', () => ({
 	usePostMessageHandler: vi.fn(() => ({
 		setup: vi.fn(),
 		cleanup: vi.fn(),
+	})),
+}));
+
+const mockPushInitialize = vi.fn();
+const mockPushTerminate = vi.fn();
+vi.mock('@/app/composables/usePushConnection/usePushConnection', () => ({
+	usePushConnection: vi.fn(() => ({
+		initialize: mockPushInitialize,
+		terminate: mockPushTerminate,
 	})),
 }));
 
@@ -172,5 +182,20 @@ describe('DemoLayout', () => {
 		expect(getByText('Second Content')).toBeInTheDocument();
 		expect(getByText('Third Content')).toBeInTheDocument();
 		expect(getByTestId('demo-footer')).toBeInTheDocument();
+	});
+
+	describe('push connection', () => {
+		it('should initialize push handlers on mount', async () => {
+			renderComponent();
+			await vi.waitFor(() => {
+				expect(mockPushInitialize).toHaveBeenCalled();
+			});
+		});
+
+		it('should terminate push handlers on unmount', () => {
+			const { unmount } = renderComponent();
+			unmount();
+			expect(mockPushTerminate).toHaveBeenCalled();
+		});
 	});
 });
