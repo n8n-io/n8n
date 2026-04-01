@@ -117,12 +117,12 @@ onMounted(() => {
 		>
 			<SamlSettingsForm ref="samlForm">
 				<template #protocol-select>
-					<div data-test-id="sso-auth-protocol-select" :class="$style.settingsItem">
-						<div :class="$style.settingsItemLabel">
+					<div data-test-id="sso-auth-protocol-select" :class="shared.settingsItem">
+						<div :class="shared.settingsItemLabel">
 							<label>Authentication protocol</label>
 							<small>Choose your SSO protocol</small>
 						</div>
-						<div :class="$style.settingsItemControl">
+						<div :class="shared.settingsItemControl">
 							<N8nSelect
 								filterable
 								:model-value="authProtocol"
@@ -149,12 +149,12 @@ onMounted(() => {
 		>
 			<OidcSettingsForm ref="oidcForm">
 				<template #protocol-select>
-					<div data-test-id="sso-auth-protocol-select" :class="$style.settingsItem">
-						<div :class="$style.settingsItemLabel">
+					<div data-test-id="sso-auth-protocol-select" :class="shared.settingsItem">
+						<div :class="shared.settingsItemLabel">
 							<label>Authentication protocol</label>
 							<small>Choose your SSO protocol</small>
 						</div>
-						<div :class="$style.settingsItemControl">
+						<div :class="shared.settingsItemControl">
 							<N8nSelect
 								filterable
 								:model-value="authProtocol"
@@ -229,36 +229,6 @@ onMounted(() => {
 
 .actionBox {
 	margin-top: var(--spacing--lg);
-}
-
-.settingsItem {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	min-height: 64px;
-	padding: var(--spacing--xs) 0;
-	border-bottom: var(--border-width) var(--border-style) var(--color--foreground--tint-1);
-}
-
-.settingsItemLabel {
-	display: flex;
-	flex-direction: column;
-	gap: 1px;
-
-	label {
-		font-size: var(--font-size--sm);
-		font-weight: var(--font-weight--medium);
-		color: var(--color--text);
-	}
-
-	small {
-		font-size: var(--font-size--2xs);
-		color: var(--color--text--tint-1);
-	}
-}
-
-.settingsItemControl {
-	min-width: 200px;
 }
 
 .dialogFooter {

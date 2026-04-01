@@ -55,6 +55,51 @@
 	margin-bottom: var(--spacing--lg);
 }
 
+.settingsItem {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	min-height: 64px;
+	padding: var(--spacing--xs) 0;
+	border-bottom: var(--border-width) var(--border-style) var(--color--foreground--tint-1);
+
+	&:last-child {
+		border-bottom: none;
+	}
+}
+
+.settingsItemLabel {
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+	flex-shrink: 0;
+	width: 320px;
+
+	label {
+		font-size: var(--font-size--sm);
+		font-weight: var(--font-weight--medium);
+		color: var(--color--text);
+	}
+
+	small {
+		font-size: var(--font-size--2xs);
+		color: var(--color--text--tint-1);
+	}
+}
+
+.settingsItemControl {
+	flex: 1;
+	display: flex;
+	justify-content: flex-end;
+}
+
+.ipsHeader {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 0 0 var(--spacing--xs);
+}
+
 .footer {
 	color: var(--color--text);
 	font-size: var(--font-size--2xs);
