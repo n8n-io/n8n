@@ -268,6 +268,19 @@ export function parseStoredMessages(
 		// in the assistant message's content
 	}
 
+	// Deduplicate user messages by content.
+	// The user message may be pre-saved for HITL refresh recovery and then
+	// saved again by Mastra's incremental save queue — remove the duplicate.
+	for (let i = messages.length - 1; i > 0; i--) {
+		if (
+			messages[i].role === 'user' &&
+			messages[i - 1].role === 'user' &&
+			messages[i].content === messages[i - 1].content
+		) {
+			messages.splice(i, 1);
+		}
+	}
+
 	// Deduplicate assistant messages by messageGroupId.
 	// Follow-up runs in the same group produce separate DB rows; keep only
 	// the latest (which carries the full runIds array and complete tree).

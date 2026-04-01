@@ -9,6 +9,37 @@ import { InstanceAiRunSnapshotRepository } from '../repositories/instance-ai-run
 export class DbSnapshotStorage {
 	constructor(private readonly repo: InstanceAiRunSnapshotRepository) {}
 
+	async getLatest(
+		threadId: string,
+		options: { messageGroupId?: string; runId?: string } = {},
+	): Promise<AgentTreeSnapshot | undefined> {
+		const { messageGroupId, runId } = options;
+
+		const row = messageGroupId
+			? await this.repo.findOne({
+					where: { threadId, messageGroupId },
+					order: { createdAt: 'DESC' },
+				})
+			: runId
+				? await this.repo.findOne({
+						where: { threadId, runId },
+						order: { createdAt: 'DESC' },
+					})
+				: await this.repo.findOne({
+						where: { threadId },
+						order: { createdAt: 'DESC' },
+					});
+
+		if (!row) return undefined;
+
+		return {
+			tree: jsonParse<InstanceAiAgentNode>(row.tree),
+			runId: row.runId,
+			messageGroupId: row.messageGroupId ?? undefined,
+			runIds: row.runIds ?? undefined,
+		};
+	}
+
 	async save(
 		threadId: string,
 		agentTree: InstanceAiAgentNode,
