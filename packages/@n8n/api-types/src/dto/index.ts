@@ -2,7 +2,12 @@ export { GetNodeTypesByIdentifierRequestDto } from './node-types/get-node-types-
 
 export { AiAskRequestDto } from './ai/ai-ask-request.dto';
 export { AiChatRequestDto } from './ai/ai-chat-request.dto';
-export { AiBuilderChatRequestDto, type SelectedNodeContext } from './ai/ai-build-request.dto';
+export {
+	AiBuilderChatRequestDto,
+	QUICK_REPLY_TYPES,
+	type QuickReplyType,
+	type SelectedNodeContext,
+} from './ai/ai-build-request.dto';
 export { AiApplySuggestionRequestDto } from './ai/ai-apply-suggestion-request.dto';
 export { AiFreeCreditsRequestDto } from './ai/ai-free-credits-request.dto';
 export { AiSessionRetrievalRequestDto } from './ai/ai-session-retrieval-request.dto';
@@ -121,6 +126,7 @@ export {
 	PatchRoleMappingRuleDto,
 	type PatchRoleMappingRuleInput,
 } from './roles/patch-role-mapping-rule.dto';
+export { MoveRoleMappingRuleDto } from './roles/move-role-mapping-rule.dto';
 export {
 	ListRoleMappingRuleQueryDto,
 	type ListRoleMappingRuleQueryInput,

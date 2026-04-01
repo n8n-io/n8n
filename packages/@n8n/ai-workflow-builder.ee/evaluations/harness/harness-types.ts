@@ -1,3 +1,4 @@
+import type { BaseMessage } from '@langchain/core/messages';
 import type { Client as LangsmithClient } from 'langsmith/client';
 import type { IPinData } from 'n8n-workflow';
 import type pLimit from 'p-limit';
@@ -6,8 +7,26 @@ import type { EvalLogger } from './logger';
 import type { GenerationCollectors } from './runner';
 import type { IntrospectionEvent } from '../../src/tools/introspect.tool.js';
 import type { SimpleWorkflow } from '../../src/types/workflow';
+import type { ChatPayload } from '../../src/workflow-builder-agent';
 
 export type LlmCallLimiter = ReturnType<typeof pLimit>;
+
+/**
+ * Full dataset input context from a LangSmith example.
+ * Contains all the context fields the agent needs for realistic generation.
+ */
+export interface DatasetInputContext {
+	/** The complete workflowContext from the dataset (executionSchema, executionData, etc.) */
+	workflowContext?: ChatPayload['workflowContext'];
+	/** The existing workflow JSON before this turn */
+	existingWorkflow?: SimpleWorkflow;
+	/** Historical messages from prior conversation turns (deserialized BaseMessage instances) */
+	historicalMessages?: BaseMessage[];
+	/** Builder mode from dataset */
+	mode?: 'build' | 'plan';
+	/** Feature flags from dataset metadata */
+	featureFlags?: ChatPayload['featureFlags'];
+}
 
 /**
  * Shared context passed to all evaluators.
@@ -39,10 +58,14 @@ export interface EvaluationContext {
 	 * Populated from GenerationResult when available.
 	 */
 	generatedCode?: string;
+	/** Agent's text response for this turn (available when captured from stream) */
+	agentTextResponse?: string;
 	/** Pin data for service nodes (used by execution evaluator) */
 	pinData?: IPinData;
 	/** Per-example annotations (e.g., code_necessary) from CSV or LangSmith dataset */
 	annotations?: Record<string, unknown>;
+	/** Full dataset input context for trace-based evaluation */
+	datasetInputContext?: DatasetInputContext;
 }
 
 /** Context attached to an individual test case (prompt is provided separately). */
@@ -123,6 +146,7 @@ export interface RunConfigBase {
 	/** Function to generate workflow from prompt. May return GenerationResult with source code. Optional collectors receive metrics. */
 	generateWorkflow: (
 		prompt: string,
+		datasetInputContext?: DatasetInputContext,
 		collectors?: GenerationCollectors,
 	) => Promise<SimpleWorkflow | GenerationResult>;
 	/** Evaluators to run on each generated workflow */
@@ -237,6 +261,8 @@ export interface ExampleResult {
 	subgraphOutput?: SubgraphExampleOutput;
 	/** Generated source code (e.g., TypeScript SDK code from coding agent) */
 	generatedCode?: string;
+	/** Agent's text response for this turn */
+	agentTextResponse?: string;
 	error?: string;
 }
 
@@ -248,7 +274,7 @@ export interface SubgraphExampleOutput {
 	response?: string;
 	/** The workflow produced by the subgraph (for builder/configurator) */
 	workflow?: SimpleWorkflow;
-};
+}
 
 /**
  * Result from workflow generation that may include source code.
@@ -258,6 +284,8 @@ export interface GenerationResult {
 	workflow: SimpleWorkflow;
 	/** Source code that generated the workflow (e.g., TypeScript SDK code) */
 	generatedCode?: string;
+	/** Text response from the agent (e.g., responder output describing what was built) */
+	agentTextResponse?: string;
 }
 
 /**

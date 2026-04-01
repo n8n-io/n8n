@@ -16,7 +16,7 @@ import { ExternalHooks } from '@/external-hooks';
 import { rawBodyReader, bodyParser, corsMiddleware } from '@/middlewares';
 import { send, sendErrorResponse } from '@/response-helper';
 import { createHandlebarsEngine } from '@/utils/handlebars.util';
-import { resolveHealthEndpointPath } from '@/utils/health-endpoint.util';
+import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
 import { LiveWebhooks } from '@/webhooks/live-webhooks';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import { WaitingForms } from '@/webhooks/waiting-forms';
@@ -97,7 +97,7 @@ export abstract class AbstractServer {
 		this.endpointMcp = endpoints.mcp;
 		this.endpointMcpTest = endpoints.mcpTest;
 
-		this.endpointHealth = resolveHealthEndpointPath(this.globalConfig);
+		this.endpointHealth = resolveBackendHealthEndpointPath(this.globalConfig);
 
 		this.logger = Container.get(Logger);
 	}

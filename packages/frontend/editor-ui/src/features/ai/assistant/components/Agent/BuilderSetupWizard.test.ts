@@ -104,6 +104,7 @@ describe('BuilderSetupWizard', () => {
 			configurable: true,
 		});
 		builderStore.trackWorkflowBuilderJourney = vi.fn();
+		builderStore.getAiBuilderMadeEdits = vi.fn().mockReturnValue(true);
 	});
 
 	function render() {
@@ -212,8 +213,9 @@ describe('BuilderSetupWizard', () => {
 		expect(emitted().noSetupNeeded).toHaveLength(1);
 	});
 
-	it('does not emit noSetupNeeded when there are no cards but builder is still updating', () => {
+	it('does not emit noSetupNeeded while workflow updates are still being applied', () => {
 		mockTotalCards.value = 0;
+		builderStore.getAiBuilderMadeEdits = vi.fn().mockReturnValue(false);
 
 		const { emitted } = render();
 		expect(emitted().noSetupNeeded).toBeUndefined();
