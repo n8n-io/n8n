@@ -428,6 +428,7 @@ export const instanceAiFilesystemResponseSchema = z.object({
 
 export const tasksUpdatePayloadSchema = z.object({
 	tasks: taskListSchema,
+	planItems: z.array(plannedTaskArgSchema).optional(),
 });
 
 export const threadTitleUpdatedPayloadSchema = z.object({
@@ -662,6 +663,8 @@ export interface InstanceAiAgentNode {
 	timeline: InstanceAiTimelineEntry[];
 	/** Latest task list — updated by tasks-update events. */
 	tasks?: TaskList;
+	/** Full planned task details — updated progressively by plan-with-agent via tasks-update. */
+	planItems?: PlannedTaskArg[];
 	result?: string;
 	error?: string;
 	errorDetails?: {

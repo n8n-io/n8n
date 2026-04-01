@@ -62,11 +62,21 @@ export function createAddPlanItemTool(
 			// Publish tasks-update event so the UI updates progressively.
 			// Uses orchestratorAgentId (not the planner's sub-agent ID) so the
 			// event lands on the orchestrator's agentNode where AgentTimeline reads it.
+			// Includes full planItems so PlanReviewPanel can show specs/deps during planning.
+			const planItems = accumulator.getTaskList().map((t) => ({
+				id: t.id,
+				title: t.title,
+				kind: t.kind,
+				spec: t.spec,
+				deps: t.deps,
+				...(t.tools ? { tools: t.tools } : {}),
+				...(t.workflowId ? { workflowId: t.workflowId } : {}),
+			}));
 			context.eventBus.publish(context.threadId, {
 				type: 'tasks-update',
 				runId: context.runId,
 				agentId: context.orchestratorAgentId,
-				payload: { tasks: { tasks: taskItems } },
+				payload: { tasks: { tasks: taskItems }, planItems },
 			});
 
 			const totalCount = accumulator.getTaskItemsForEvent().length;

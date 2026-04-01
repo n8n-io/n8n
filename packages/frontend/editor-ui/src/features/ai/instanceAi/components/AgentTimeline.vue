@@ -171,9 +171,13 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 					v-else-if="
 						toolCallsById[entry.toolCallId].renderHint === 'planner' &&
 						toolCallsById[entry.toolCallId].isLoading &&
-						props.agentNode.tasks?.tasks?.length
+						(props.agentNode.planItems?.length || props.agentNode.tasks?.tasks?.length)
 					"
-					:planned-tasks="mapTaskItemsToPlannedTasks(props.agentNode.tasks) ?? []"
+					:planned-tasks="
+						(props.agentNode.planItems as PlannedTaskArg[] | undefined) ??
+						mapTaskItemsToPlannedTasks(props.agentNode.tasks) ??
+						[]
+					"
 					:loading="true"
 				/>
 				<!-- Planner: loading, no tasks yet → suppress -->

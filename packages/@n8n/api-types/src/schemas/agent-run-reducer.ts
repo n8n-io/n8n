@@ -15,6 +15,7 @@ import type {
 	InstanceAiToolCallState,
 	InstanceAiTimelineEntry,
 	InstanceAiTargetResource,
+	PlannedTaskArg,
 	TaskList,
 } from './instance-ai.schema';
 
@@ -39,6 +40,7 @@ export interface AgentNode {
 	textContent: string;
 	reasoning: string;
 	tasks?: TaskList;
+	planItems?: PlannedTaskArg[];
 	result?: string;
 	error?: string;
 }
@@ -322,6 +324,9 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			const agent = ensureAgent(state, event.agentId);
 			if (agent) {
 				agent.tasks = event.payload.tasks;
+				if (event.payload.planItems) {
+					agent.planItems = event.payload.planItems;
+				}
 			}
 			break;
 		}
@@ -437,6 +442,7 @@ function buildNodeRecursive(state: AgentRunState, agentId: string): InstanceAiAg
 		children,
 		timeline: [...timeline],
 		tasks: agent?.tasks,
+		planItems: agent?.planItems,
 		result: agent?.result,
 		error: agent?.error,
 	};
