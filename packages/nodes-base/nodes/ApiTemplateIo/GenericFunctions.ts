@@ -1,9 +1,10 @@
 import type {
+	IDataObject,
 	IExecuteFunctions,
-	ILoadOptionsFunctions,
-	JsonObject,
-	IRequestOptions,
 	IHttpRequestMethods,
+	ILoadOptionsFunctions,
+	IRequestOptions,
+	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
@@ -84,4 +85,58 @@ export async function downloadImage(this: IExecuteFunctions, url: string) {
 		json: false,
 		encoding: null,
 	});
+}
+
+export async function apiTemplateIoApiRequestV2(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	method: IHttpRequestMethods,
+	region = 'rest',
+	endpoint: string,
+	qs: IDataObject = {},
+	body: IDataObject = {},
+	returnBinary = false,
+) {
+	const options: IRequestOptions = {
+		headers: {
+			'user-agent': 'n8n',
+		},
+		uri: `https://${region}.apitemplate.io${endpoint}`,
+		method,
+		qs,
+		followRedirect: true,
+		followAllRedirects: true,
+	};
+
+	if (returnBinary) {
+		options.headers!['Content-Type'] = 'application/json';
+		options.json = false;
+		options.encoding = null;
+		if (Object.keys(body).length) {
+			options.body = JSON.stringify(body);
+		}
+	} else {
+		options.headers!.Accept = 'application/json';
+		options.json = true;
+		if (Object.keys(body).length) {
+			options.body = body;
+		}
+	}
+
+	if (!Object.keys(qs).length) {
+		delete options.qs;
+	}
+
+	try {
+		const response = await this.helpers.requestWithAuthentication.call(
+			this,
+			'apiTemplateIoApi',
+			options,
+		);
+		if (!returnBinary && response.status === 'error') {
+			throw new NodeApiError(this.getNode(), response.message as JsonObject);
+		}
+		return response;
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error as JsonObject);
+	}
 }
