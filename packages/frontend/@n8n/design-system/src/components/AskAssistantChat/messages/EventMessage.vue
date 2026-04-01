@@ -41,13 +41,15 @@ const eventMessages: Record<EventName, Record<'part1' | 'part2', BaseTextKey>> =
 		part2: 'assistantChat.sessionErrorMessage.2',
 	},
 } as const;
+
+// TODO: i18n key doesn't exist
+// `assistantChat.unknownEvent` is affected too.
 </script>
 
 <template>
 	<BaseMessage :message="message" :is-first-of-role="isFirstOfRole" :user="user">
 		<div :class="$style.eventText" data-test-id="chat-message-system">
 			<span>
-				{{ /** TODO: i18n key doesn't exist */ }}
 				{{ t(eventMessages[message.eventName]?.part1 || 'assistantChat.unknownEvent') }}
 			</span>
 			<InlineAskAssistantButton size="small" :static="true" />
