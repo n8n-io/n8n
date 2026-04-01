@@ -24,6 +24,8 @@ const isSaving = ref(false);
 const settings = ref<InstanceAiAdminSettingsResponse | null>(null);
 
 const permissionKeys: Array<{ key: keyof InstanceAiPermissions; labelKey: BaseTextKey }> = [
+	{ key: 'createWorkflow', labelKey: 'settings.n8nAgent.permissions.createWorkflow' },
+	{ key: 'updateWorkflow', labelKey: 'settings.n8nAgent.permissions.updateWorkflow' },
 	{ key: 'runWorkflow', labelKey: 'settings.n8nAgent.permissions.runWorkflow' },
 	{ key: 'publishWorkflow', labelKey: 'settings.n8nAgent.permissions.publishWorkflow' },
 	{ key: 'deleteWorkflow', labelKey: 'settings.n8nAgent.permissions.deleteWorkflow' },
