@@ -33,13 +33,17 @@ describe('rename_data_table MCP tool', () => {
 		});
 	});
 
-	test('throws on error and tracks telemetry', async () => {
+	test('returns error response and tracks telemetry', async () => {
 		const { dataTableOps, telemetry } = createMocks({ error: new Error('Not found') });
 		const tool = createRenameDataTableTool(user, dataTableOps, telemetry);
 
-		await expect(
-			tool.handler({ dataTableId: 'dt-1', projectId: 'proj-1', name: 'X' }, {} as never),
-		).rejects.toThrow('Not found');
+		const result = await tool.handler(
+			{ dataTableId: 'dt-1', projectId: 'proj-1', name: 'X' },
+			{} as never,
+		);
+
+		expect(result.isError).toBe(true);
+		expect(result.structuredContent).toEqual({ success: false, message: 'Not found' });
 
 		expect(telemetry.track).toHaveBeenCalledWith(
 			'User called mcp tool',

@@ -34,16 +34,17 @@ describe('add_data_table_column MCP tool', () => {
 		});
 	});
 
-	test('throws on error and tracks telemetry', async () => {
+	test('returns error response and tracks telemetry', async () => {
 		const { dataTableOps, telemetry } = createMocks({ error: new Error('Duplicate') });
 		const tool = createAddDataTableColumnTool(user, dataTableOps, telemetry);
 
-		await expect(
-			tool.handler(
-				{ dataTableId: 'dt-1', projectId: 'proj-1', name: 'age', type: 'number' as const },
-				{} as never,
-			),
-		).rejects.toThrow('Duplicate');
+		const result = await tool.handler(
+			{ dataTableId: 'dt-1', projectId: 'proj-1', name: 'age', type: 'number' as const },
+			{} as never,
+		);
+
+		expect(result.isError).toBe(true);
+		expect(result.structuredContent).toEqual({ success: false, message: 'Duplicate' });
 
 		expect(telemetry.track).toHaveBeenCalledWith(
 			'User called mcp tool',

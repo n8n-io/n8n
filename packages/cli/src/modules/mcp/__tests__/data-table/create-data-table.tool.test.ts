@@ -72,19 +72,20 @@ describe('create_data_table MCP tool', () => {
 		});
 	});
 
-	test('throws on error', async () => {
+	test('returns error response on failure', async () => {
 		const { dataTableOps, telemetry } = createMocks({
 			error: new Error('Duplicate name'),
 		});
 		const tool = createCreateDataTableTool(user, dataTableOps, telemetry);
 
-		await expect(
-			callHandler(tool, {
-				projectId: 'proj-1',
-				name: 'Users',
-				columns: [{ name: 'email', type: 'string' }],
-			}),
-		).rejects.toThrow('Duplicate name');
+		const result = await callHandler(tool, {
+			projectId: 'proj-1',
+			name: 'Users',
+			columns: [{ name: 'email', type: 'string' }],
+		});
+
+		expect(result.isError).toBe(true);
+		expect(result.structuredContent).toEqual({ error: 'Duplicate name' });
 	});
 
 	test('tracks telemetry on success', async () => {
@@ -113,13 +114,11 @@ describe('create_data_table MCP tool', () => {
 		});
 		const tool = createCreateDataTableTool(user, dataTableOps, telemetry);
 
-		await expect(
-			callHandler(tool, {
-				projectId: 'proj-1',
-				name: 'Users',
-				columns: [{ name: 'email', type: 'string' }],
-			}),
-		).rejects.toThrow();
+		await callHandler(tool, {
+			projectId: 'proj-1',
+			name: 'Users',
+			columns: [{ name: 'email', type: 'string' }],
+		});
 
 		expect(telemetry.track).toHaveBeenCalledWith(
 			'User called mcp tool',

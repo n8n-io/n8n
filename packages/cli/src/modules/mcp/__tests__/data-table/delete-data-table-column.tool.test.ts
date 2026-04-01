@@ -31,13 +31,17 @@ describe('delete_data_table_column MCP tool', () => {
 		expect(dataTableOps.deleteColumn).toHaveBeenCalledWith('dt-1', 'proj-1', 'col-1');
 	});
 
-	test('throws on error and tracks telemetry', async () => {
+	test('returns error response and tracks telemetry', async () => {
 		const { dataTableOps, telemetry } = createMocks({ error: new Error('Not found') });
 		const tool = createDeleteDataTableColumnTool(user, dataTableOps, telemetry);
 
-		await expect(
-			tool.handler({ dataTableId: 'dt-1', projectId: 'proj-1', columnId: 'col-1' }, {} as never),
-		).rejects.toThrow('Not found');
+		const result = await tool.handler(
+			{ dataTableId: 'dt-1', projectId: 'proj-1', columnId: 'col-1' },
+			{} as never,
+		);
+
+		expect(result.isError).toBe(true);
+		expect(result.structuredContent).toEqual({ success: false, message: 'Not found' });
 
 		expect(telemetry.track).toHaveBeenCalledWith(
 			'User called mcp tool',

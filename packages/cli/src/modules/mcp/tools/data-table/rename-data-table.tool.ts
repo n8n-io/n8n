@@ -67,7 +67,13 @@ export const createRenameDataTableTool = (
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			telemetryPayload.results = { success: false, error: errorMessage };
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
-			throw error;
+
+			const output = { success: false, message: errorMessage };
+			return {
+				content: [{ type: 'text', text: JSON.stringify(output) }],
+				structuredContent: output,
+				isError: true,
+			};
 		}
 	},
 });

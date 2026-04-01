@@ -62,19 +62,24 @@ describe('add_data_table_rows MCP tool', () => {
 		expect(dataTableOps.insertRows).toHaveBeenCalledWith('dt-1', 'proj-1', sampleRows, 'count');
 	});
 
-	test('throws on error', async () => {
+	test('returns error response on failure', async () => {
 		const { dataTableOps, telemetry } = createMocks({
 			error: new Error('Column mismatch'),
 		});
 		const tool = createAddDataTableRowsTool(user, dataTableOps, telemetry);
 
-		await expect(
-			callHandler(tool, {
-				dataTableId: 'dt-1',
-				projectId: 'proj-1',
-				rows: sampleRows,
-			}),
-		).rejects.toThrow('Column mismatch');
+		const result = await callHandler(tool, {
+			dataTableId: 'dt-1',
+			projectId: 'proj-1',
+			rows: sampleRows,
+		});
+
+		expect(result.isError).toBe(true);
+		expect(result.structuredContent).toEqual({
+			success: false,
+			insertedCount: 0,
+			error: 'Column mismatch',
+		});
 	});
 
 	test('tracks telemetry on success', async () => {
@@ -103,13 +108,11 @@ describe('add_data_table_rows MCP tool', () => {
 		});
 		const tool = createAddDataTableRowsTool(user, dataTableOps, telemetry);
 
-		await expect(
-			callHandler(tool, {
-				dataTableId: 'dt-1',
-				projectId: 'proj-1',
-				rows: sampleRows,
-			}),
-		).rejects.toThrow();
+		await callHandler(tool, {
+			dataTableId: 'dt-1',
+			projectId: 'proj-1',
+			rows: sampleRows,
+		});
 
 		expect(telemetry.track).toHaveBeenCalledWith(
 			'User called mcp tool',

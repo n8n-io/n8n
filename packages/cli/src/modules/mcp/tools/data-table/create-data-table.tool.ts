@@ -3,7 +3,7 @@ import z from 'zod';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
-import { dataTableColumnSchema, dataTableColumnTypeSchema } from '../schemas';
+import { dataTableColumnTypeSchema } from '../schemas';
 
 import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
 import type { Telemetry } from '@/telemetry';
@@ -37,9 +37,6 @@ const createOutputSchema = {
 	id: z.string().describe('The unique identifier of the created data table'),
 	name: z.string().describe('The name of the created data table'),
 	projectId: z.string().describe('The project ID of the created data table'),
-	columns: z
-		.array(dataTableColumnSchema.omit({ index: true }))
-		.describe('The columns created in the data table'),
 } satisfies z.ZodRawShape;
 
 export const createCreateDataTableTool = (
@@ -110,7 +107,13 @@ export const createCreateDataTableTool = (
 				error: errorMessage,
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
-			throw error;
+
+			const output = { error: errorMessage };
+			return {
+				content: [{ type: 'text', text: JSON.stringify(output) }],
+				structuredContent: output,
+				isError: true,
+			};
 		}
 	},
 });

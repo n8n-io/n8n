@@ -85,7 +85,13 @@ export const createAddDataTableRowsTool = (
 				error: errorMessage,
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
-			throw error;
+
+			const output = { success: false, insertedCount: 0, error: errorMessage };
+			return {
+				content: [{ type: 'text', text: JSON.stringify(output) }],
+				structuredContent: output,
+				isError: true,
+			};
 		}
 	},
 });
