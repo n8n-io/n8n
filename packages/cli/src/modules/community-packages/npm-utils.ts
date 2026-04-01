@@ -1,10 +1,7 @@
 import { NPM_COMMAND_TOKENS, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import axios from 'axios';
 import { jsonParse, UnexpectedError, LoggerProxy } from 'n8n-workflow';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
-
-const asyncExecFile = promisify(execFile);
+import spawn from 'cross-spawn';
 
 const REQUEST_TIMEOUT = 30000;
 
@@ -68,16 +65,44 @@ export async function executeNpmCommand(
 	const { cwd, doNotHandleError } = options;
 
 	try {
-		const { stdout } = await asyncExecFile('npm', args, cwd ? { cwd } : undefined);
-		return typeof stdout === 'string' ? stdout : stdout.toString();
+		const { stdout } = await new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
+			const child = spawn('npm', args, { cwd });
+			let stdoutData = '';
+			let stderrData = '';
+
+			child.stdout?.on('data', (data: Buffer) => {
+				stdoutData += data.toString();
+			});
+			child.stderr?.on('data', (data: Buffer) => {
+				stderrData += data.toString();
+			});
+
+			child.once('error', reject);
+			child.once('close', (code) => {
+				if (code === 0) {
+					resolve({ stdout: stdoutData, stderr: stderrData });
+				} else {
+					// Build a verbose error with full command details for server-side logging only.
+					// Do NOT include this message in user-facing errors as it may contain
+					// sensitive data such as registry URLs with embedded credentials.
+					const error = new Error(`Command failed: npm ${args.join(' ')}\n${stderrData}`);
+					Object.assign(error, { stdout: stdoutData, stderr: stderrData, code });
+					reject(error);
+				}
+			});
+		});
+		return stdout;
 	} catch (error) {
 		if (doNotHandleError) {
 			throw error;
 		}
 
+		// Extract the full message for pattern matching and server-side logging only.
+		// Never use this raw message in user-facing errors as it may contain
+		// sensitive details like registry URLs with embedded credentials.
 		const errorMessage = error instanceof Error ? error.message : String(error);
 
-		LoggerProxy.warn('Failed to execute npm command', { errorMessage });
+		LoggerProxy.warn('Failed to execute npm command', { error: errorMessage });
 
 		// Check for specific error patterns
 		if (matchesErrorPattern(errorMessage, NPM_ERROR_PATTERNS.PACKAGE_NOT_FOUND)) {
@@ -105,6 +130,8 @@ export async function executeNpmCommand(
 			);
 		}
 
+		// Fall-through: unknown error. Always throw a generic sanitized message.
+		// The full verbose details are preserved in `cause` for server-side diagnostics/logs.
 		throw new UnexpectedError('Failed to execute npm command', { cause: error });
 	}
 }
