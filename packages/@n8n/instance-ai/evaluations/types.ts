@@ -300,11 +300,6 @@ export interface WorkflowTestCase {
  */
 export type PinData = Record<string, Array<Record<string, unknown>>>;
 
-export interface PinDataGenerationInstructions {
-	/** Describes what the generated data should contain and how it should look */
-	dataDescription: string;
-}
-
 // ---------------------------------------------------------------------------
 // Workflow test case results
 // ---------------------------------------------------------------------------

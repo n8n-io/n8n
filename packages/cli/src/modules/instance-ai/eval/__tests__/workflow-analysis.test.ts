@@ -3,13 +3,13 @@ jest.mock('@n8n/instance-ai', () => ({
 	extractText: jest.fn(),
 }));
 
-jest.mock('../eval-node-config', () => ({
+jest.mock('../node-config', () => ({
 	extractNodeConfig: jest.fn(),
 }));
 
 import type { IConnections, INode, IWorkflowBase } from 'n8n-workflow';
 
-import { identifyNodesForHints, identifyNodesForPinData } from '../eval-workflow-analysis';
+import { identifyNodesForHints, identifyNodesForPinData } from '../workflow-analysis';
 
 function makeNode(overrides: Partial<INode> & { name: string; type: string }): INode {
 	return {

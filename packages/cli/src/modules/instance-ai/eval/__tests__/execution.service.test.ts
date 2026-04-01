@@ -20,13 +20,13 @@ jest.mock('@n8n/instance-ai', () => ({
 	createEvalAgent: jest.fn(),
 	extractText: jest.fn(),
 }));
-jest.mock('../eval-pin-data-generator', () => ({
+jest.mock('../pin-data-generator', () => ({
 	generatePinData: jest.fn(),
 }));
-jest.mock('../llm-mock-handler', () => ({
+jest.mock('../mock-handler', () => ({
 	createLlmMockHandler: jest.fn(),
 }));
-jest.mock('../eval-workflow-analysis', () => ({
+jest.mock('../workflow-analysis', () => ({
 	generateMockHints: jest.fn(),
 	identifyNodesForHints: jest.fn(),
 	identifyNodesForPinData: jest.fn(),
@@ -72,14 +72,14 @@ jest.mock('n8n-workflow', () => {
 // Import SUT and mocked modules (after jest.mock calls)
 // ---------------------------------------------------------------------------
 
-import { EvalExecutionService } from '../eval-execution.service';
+import { EvalExecutionService } from '../execution.service';
 import {
 	generateMockHints,
 	identifyNodesForHints,
 	identifyNodesForPinData,
-} from '../eval-workflow-analysis';
-import { createLlmMockHandler } from '../llm-mock-handler';
-import type { MockHints } from '../eval-workflow-analysis';
+} from '../workflow-analysis';
+import { createLlmMockHandler } from '../mock-handler';
+import type { MockHints } from '../workflow-analysis';
 
 // ---------------------------------------------------------------------------
 // Helpers

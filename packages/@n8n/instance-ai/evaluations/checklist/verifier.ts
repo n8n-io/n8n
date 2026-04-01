@@ -1,6 +1,6 @@
 import { createEvalAgent, extractText } from '../../src/utils/eval-agents';
 import type { WorkflowResponse } from '../clients/n8n-client';
-import { CHECKLIST_VERIFY_PROMPT } from '../system-prompts/checklist-verify';
+import { CHECKLIST_VERIFY_PROMPT } from '../system-prompts/builder-checklist-verify';
 import { MOCK_EXECUTION_VERIFY_PROMPT } from '../system-prompts/mock-execution-verify';
 import type { ChecklistItem, ChecklistResult } from '../types';
 

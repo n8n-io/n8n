@@ -14,8 +14,13 @@ import type { WorkflowJSON, NodeJSON } from '@n8n/workflow-sdk';
 import { existsSync, readFileSync, readdirSync } from 'fs';
 import { join } from 'path';
 
-import { createEvalAgent, extractText } from '../../src/utils/eval-agents';
-import type { PinData, PinDataGenerationInstructions } from '../types';
+import { createEvalAgent, extractText } from '@n8n/instance-ai';
+
+type PinData = Record<string, Array<Record<string, unknown>>>;
+
+interface PinDataGenerationInstructions {
+	dataDescription: string;
+}
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -153,8 +158,15 @@ function resolveSchemaForNode(
 		`v${versionStr}`,
 		...readdirSync(schemaBaseDir)
 			.filter((d) => d.startsWith('v'))
-			.sort()
-			.reverse(),
+			.sort((a, b) => {
+				const partsA = a.slice(1).split('.').map(Number);
+				const partsB = b.slice(1).split('.').map(Number);
+				for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
+					const diff = (partsB[i] ?? 0) - (partsA[i] ?? 0);
+					if (diff !== 0) return diff;
+				}
+				return 0;
+			}),
 	];
 
 	for (const vDir of [...new Set(versionDirs)]) {
