@@ -366,17 +366,29 @@ describe('Pipedrive v2 Transport', () => {
 	});
 
 	describe('pipedriveGetCustomProperties', () => {
-		it('should use v2 endpoint for deal resource', async () => {
+		it('should use v2 endpoint for deal resource and parse v2 field format', async () => {
 			mockExecuteFunctions.helpers.requestWithAuthentication.mockResolvedValue({
 				success: true,
-				data: [{ key: 'abc123', name: 'Custom Field', field_type: 'text' }],
+				data: [
+					{
+						field_code: 'abc123hash',
+						field_name: 'Custom Field',
+						field_type: 'text',
+						options: null,
+					},
+				],
 				additional_data: {},
 			});
 
 			const result = await pipedriveGetCustomProperties.call(mockExecuteFunctions, 'deal');
 
 			expect(result).toEqual({
-				abc123: { key: 'abc123', name: 'Custom Field', field_type: 'text' },
+				abc123hash: {
+					key: 'abc123hash',
+					name: 'Custom Field',
+					field_type: 'text',
+					options: null,
+				},
 			});
 			expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
 				'pipedriveApi',
@@ -386,17 +398,29 @@ describe('Pipedrive v2 Transport', () => {
 			);
 		});
 
-		it('should use v1 endpoint for lead resource', async () => {
+		it('should use v1 endpoint for lead resource and parse v1 field format', async () => {
 			mockExecuteFunctions.helpers.requestWithAuthentication.mockResolvedValue({
 				success: true,
-				data: [{ key: 'lead_field_1', name: 'Lead Custom', field_type: 'varchar' }],
+				data: [
+					{
+						key: 'lead_field_1',
+						name: 'Lead Custom',
+						field_type: 'varchar',
+						options: null,
+					},
+				],
 				additional_data: { pagination: { more_items_in_collection: false } },
 			});
 
 			const result = await pipedriveGetCustomProperties.call(mockExecuteFunctions, 'lead');
 
 			expect(result).toEqual({
-				lead_field_1: { key: 'lead_field_1', name: 'Lead Custom', field_type: 'varchar' },
+				lead_field_1: {
+					key: 'lead_field_1',
+					name: 'Lead Custom',
+					field_type: 'varchar',
+					options: null,
+				},
 			});
 			expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
 				'pipedriveApi',

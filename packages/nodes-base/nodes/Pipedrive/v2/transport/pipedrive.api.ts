@@ -209,7 +209,18 @@ export async function pipedriveGetCustomProperties(
 	const customProperties: ICustomProperties = {};
 
 	for (const field of responseData.data) {
-		customProperties[field.key as string] = field as unknown as ICustomInterface;
+		// v2 Fields API uses field_code/field_name, v1 uses key/name
+		const fieldKey = (field.field_code ?? field.key) as string;
+		const fieldName = (field.field_name ?? field.name) as string;
+
+		if (fieldKey && fieldName) {
+			customProperties[fieldKey] = {
+				name: fieldName,
+				key: fieldKey,
+				field_type: field.field_type as string,
+				options: field.options as ICustomInterface['options'],
+			};
+		}
 	}
 
 	return customProperties;
