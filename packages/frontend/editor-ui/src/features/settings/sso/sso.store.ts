@@ -144,6 +144,8 @@ export const useSSOStore = defineStore('sso', () => {
 		return savedConfig;
 	};
 
+	const testOidcConfig = async () => await ssoApi.testOidcConfig(rootStore.restApiContext);
+
 	const isOidcLoginEnabled = computed({
 		get: () => oidc.value.loginEnabled,
 		set: (value: boolean) => {
@@ -227,6 +229,7 @@ export const useSSOStore = defineStore('sso', () => {
 		isDefaultAuthenticationOidc,
 		getOidcConfig,
 		saveOidcConfig,
+		testOidcConfig,
 
 		ldap,
 		isLdapLoginEnabled,

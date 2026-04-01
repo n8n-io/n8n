@@ -105,14 +105,22 @@ defineExpose({
 	--markdown--spacing: var(--spacing--2xs);
 
 	display: block;
-	color: var(--color--text--shade-1);
+	color: inherit;
 
 	// Paragraphs and normal text
 	p,
 	li {
-		font-size: var(--font-size--md);
-		line-height: var(--line-height--xl);
+		font-size: inherit;
+		line-height: inherit;
 		margin: calc(var(--markdown--spacing) * 2) 0;
+
+		&:first-child {
+			margin-top: 0;
+		}
+
+		&:last-child {
+			margin-bottom: 0;
+		}
 	}
 
 	li {

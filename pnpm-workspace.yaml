@@ -20,6 +20,14 @@ catalog:
   '@codemirror/search': 6.5.11
   '@codemirror/state': 6.5.3
   '@codemirror/view': 6.39.8
+  '@mastra/core': 1.9.0
+  '@mastra/daytona': 0.1.0
+  '@mastra/evals': 1.1.0
+  '@mastra/libsql': 1.6.3
+  '@mastra/mcp': 1.0.3
+  '@mastra/memory': 1.6.0
+  langsmith: 0.4.12
+  '@mastra/pg': 1.7.1
   '@langchain/anthropic': 1.1.3
   '@langchain/community': 1.1.14
   '@langchain/core': 1.1.34
@@ -31,13 +39,15 @@ catalog:
   '@lezer/html': 1.3.13
   '@lezer/javascript': 1.5.4
   '@lezer/lr': 1.4.5
+  openai: 6.19.0
   '@n8n/typeorm': 0.3.20-16
-  '@n8n_io/ai-assistant-sdk': 1.20.0
+  '@n8n_io/ai-assistant-sdk': 1.21.0
   '@sentry/node': ^10.36.0
   '@types/basic-auth': ^1.1.3
   '@types/express': ^5.0.1
   '@types/jsonwebtoken': 9.0.10
   '@types/lodash': 4.17.17
+  '@types/node': 24.10.1
   '@types/mime-types': 3.0.1
   '@types/uuid': ^10.0.0
   '@types/xml2js': ^0.4.14
@@ -55,7 +65,7 @@ catalog:
   https-proxy-agent: 7.0.6
   iconv-lite: 0.6.3
   js-base64: 3.7.2
-  js-tiktoken: 1.0.12
+  js-tiktoken: 1.0.21
   jsonrepair: 3.13.2
   jsonwebtoken: 9.0.3
   kafkajs: 2.2.4
@@ -72,6 +82,12 @@ catalog:
   rimraf: 6.0.1
   simple-git: 3.32.3
   stream-json: 1.9.1
+  testcontainers: ^11.13.0
+  '@testcontainers/k3s': ^11.13.0
+  '@testcontainers/kafka': ^11.13.0
+  '@testcontainers/mysql': ^11.13.0
+  '@testcontainers/postgresql': ^11.13.0
+  '@testcontainers/redis': ^11.13.0
   ts-morph: ^27.0.2
   tsdown: ^0.16.5
   tsx: ^4.19.3
@@ -86,6 +102,7 @@ catalog:
   xss: 1.0.15
   zod: 3.25.67
   zod-to-json-schema: 3.23.3
+  playwright-core: 1.58.0
 
 catalogs:
   e2e:
