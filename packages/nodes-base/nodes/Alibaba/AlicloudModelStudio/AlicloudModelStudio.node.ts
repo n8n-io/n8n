@@ -33,7 +33,7 @@ export class AlicloudModelStudio implements INodeType {
 		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
-				name: 'alicloudModelStudioApi',
+				name: 'alibabaCloudApi',
 				required: true,
 			},
 		],

@@ -3,17 +3,20 @@ import type {
 	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
-	Icon,
 } from 'n8n-workflow';
 
-export class AlicloudModelStudioApi implements ICredentialType {
-	name = 'alicloudModelStudioApi';
+const REGION_TO_BASE_URL_EXPRESSION =
+	'={{ $credentials.region === "us-east-1" ? "https://dashscope-us.aliyuncs.com/compatible-mode/v1" : $credentials.region === "cn-beijing" ? "https://dashscope.aliyuncs.com/compatible-mode/v1" : $credentials.region === "cn-hongkong" ? "https://cn-hongkong.dashscope.aliyuncs.com/compatible-mode/v1" : $credentials.region === "eu-central-1" ? "https://" + $credentials.workspaceId + ".eu-central-1.maas.aliyuncs.com/compatible-mode/v1" : "https://dashscope-intl.aliyuncs.com/compatible-mode/v1" }}';
 
-	displayName = 'Alibaba Cloud Model Studio API';
+export class AlibabaCloudApi implements ICredentialType {
+	name = 'alibabaCloudApi';
 
-	documentationUrl = 'https://www.alibabacloud.com/help/en/model-studio/';
+	displayName = 'Alibaba Cloud';
 
-	icon: Icon = { light: 'file:icons/Qwen.svg', dark: 'file:icons/Qwen.dark.svg' };
+	icon = 'file:icons/alibabaCloud.svg' as const;
+
+	documentationUrl =
+		'https://www.alibabacloud.com/help/en/model-studio/developer-reference/compatibility-of-openai-with-dashscope';
 
 	properties: INodeProperties[] = [
 		{
@@ -21,9 +24,8 @@ export class AlicloudModelStudioApi implements ICredentialType {
 			name: 'apiKey',
 			type: 'string',
 			typeOptions: { password: true },
-			default: '',
 			required: true,
-			description: 'The API key from Alibaba Cloud Model Studio',
+			default: '',
 		},
 		{
 			displayName: 'Region',
@@ -66,7 +68,7 @@ export class AlicloudModelStudioApi implements ICredentialType {
 				},
 			},
 			description:
-				'The Workspace ID required for the Germany (Frankfurt) region. The endpoint URL is constructed as https://{WorkspaceId}.eu-central-1.maas.aliyuncs.com.',
+				'The Workspace ID required for the Germany (Frankfurt) region. Find it in the Model Studio console under the Germany region settings.',
 		},
 	];
 
@@ -81,21 +83,8 @@ export class AlicloudModelStudioApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL:
-				'={{$credentials.region === "us-east-1" ? "https://dashscope-us.aliyuncs.com" : $credentials.region === "cn-beijing" ? "https://dashscope.aliyuncs.com" : $credentials.region === "cn-hongkong" ? "https://cn-hongkong.dashscope.aliyuncs.com" : $credentials.region === "eu-central-1" ? "https://" + $credentials.workspaceId + ".eu-central-1.maas.aliyuncs.com" : "https://dashscope-intl.aliyuncs.com"}}',
-			url: '/api/v1/services/aigc/multimodal-generation/generation',
-			method: 'POST',
-			body: {
-				model: 'qwen3.5-flash',
-				input: {
-					messages: [
-						{
-							role: 'user',
-							content: [{ text: 'test' }],
-						},
-					],
-				},
-			},
+			baseURL: REGION_TO_BASE_URL_EXPRESSION,
+			url: '/models',
 		},
 	};
 }

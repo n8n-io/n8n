@@ -44,7 +44,7 @@ export async function apiRequest(
 ) {
 	const { body, qs, option } = parameters ?? {};
 
-	const credentials = await this.getCredentials('alicloudModelStudioApi');
+	const credentials = await this.getCredentials('alibabaCloudApi');
 
 	const baseUrl = getBaseUrl(credentials as IDataObject);
 	const uri = `${baseUrl}${endpoint}`;
@@ -65,7 +65,7 @@ export async function apiRequest(
 
 	const response = await this.helpers.httpRequestWithAuthentication.call(
 		this,
-		'alicloudModelStudioApi',
+		'alibabaCloudApi',
 		options,
 	);
 
