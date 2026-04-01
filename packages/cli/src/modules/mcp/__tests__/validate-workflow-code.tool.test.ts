@@ -161,6 +161,7 @@ describe('validate-workflow-code MCP tool', () => {
 			expect((response.errors as string[])?.[0]).toContain(
 				'The workflow was parsed successfully but contains 0 nodes',
 			);
+			expect(result.isError).toBe(true);
 		});
 
 		test('tracks telemetry on success with nodeCount and warningCount', async () => {

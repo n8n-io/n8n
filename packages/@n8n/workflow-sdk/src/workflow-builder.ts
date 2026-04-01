@@ -1182,9 +1182,15 @@ function isWorkflowBuilderOptions(
  * raw AST-evaluated objects (which have `parameters`). Runtime validation is
  * performed by isNodeLike(); this interface captures the duck-typing contract
  * explicitly so the `any` cast in createWorkflow can be avoided.
+ *
+ * `name` is required here because WorkflowBuilderImpl.add() delegates to
+ * addNodeWithSubnodes(), which uses node.name as the internal Map key.
+ * An object missing a top-level name would be silently stored under `undefined`
+ * and then dropped during toJSON(), reintroducing silent node loss.
  */
 interface NodeLike {
 	type: string;
+	name: string;
 	config?: unknown;
 	id?: string;
 	parameters?: unknown;
@@ -1192,7 +1198,10 @@ interface NodeLike {
 
 function isNodeLike(item: unknown): item is NodeLike {
 	if (typeof item !== 'object' || item === null) return false;
-	if (!('type' in item)) return false;
+	if (!('type' in item) || typeof (item as Record<string, unknown>).type !== 'string') return false;
+	// name is required: addNodeWithSubnodes() uses it as the internal map key.
+	// Without a top-level name the node would be silently stored under `undefined`.
+	if (!('name' in item) || typeof (item as Record<string, unknown>).name !== 'string') return false;
 	return 'config' in item || 'id' in item || 'parameters' in item;
 }
 
@@ -1203,7 +1212,7 @@ function isNodeLike(item: unknown): item is NodeLike {
  * as an empty nodes list.
  */
 function isNodeArray(arg: unknown): arg is NodeLike[] {
-	return Array.isArray(arg) && arg.length > 0 && isNodeLike(arg[0]);
+	return Array.isArray(arg) && arg.length > 0 && arg.every(isNodeLike);
 }
 
 /** Internal shape returned by normalizeArgs — keeps createWorkflow clean */
@@ -1284,15 +1293,25 @@ function createWorkflow(...args: unknown[]): WorkflowBuilder {
 
 	for (let i = 0; i < nodesArray.length; i++) {
 		const rawNode = nodesArray[i];
+		const sizeBeforeAdd = (builder as unknown as { _nodes: Map<string, unknown> })._nodes.size;
 		try {
-			// nodesArray entries are validated as NodeLike by isNodeArray().
-			// builder.add() is typed for NodeInstance, but the runtime accepts
-			// raw graph objects matching the NodeLike shape — the cast reflects
-			// this intentional duck-typing at the boundary.
+			// nodesArray entries are validated as NodeLike (including top-level name)
+			// by isNodeLike(). builder.add() is typed for NodeInstance, but the runtime
+			// accepts raw graph objects matching the NodeLike shape.
 			builder.add(rawNode as Parameters<typeof builder.add>[0]);
 		} catch (e) {
 			const message = e instanceof Error ? e.message : String(e);
 			throw new Error(`Failed to add node at index ${i}: ${message}`);
+		}
+		// Post-add verification: if the node count did not grow, the node was silently
+		// dropped (e.g., it was already registered under the same name or the object
+		// shape was not fully compatible). Throw so the LLM receives an actionable error.
+		const sizeAfterAdd = (builder as unknown as { _nodes: Map<string, unknown> })._nodes.size;
+		if (sizeAfterAdd === sizeBeforeAdd) {
+			throw new Error(
+				`Node at index ${i} (name: "${rawNode.name}", type: "${rawNode.type}") was not added to the workflow. ` +
+					'Ensure the node object is fully constructed via the node() factory before passing it to workflow().',
+			);
 		}
 	}
 

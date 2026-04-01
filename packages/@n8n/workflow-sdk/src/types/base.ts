@@ -1031,7 +1031,7 @@ export interface WorkflowBuilderStatic {
 	(id: string, name: string, options?: WorkflowSettings | WorkflowBuilderOptions): WorkflowBuilder;
 	/** AI positional syntax: workflow('Name', [node1, node2], options?) */
 	(
-		id: string,
+		name: string,
 		nodes: unknown[],
 		options?: WorkflowSettings | WorkflowBuilderOptions,
 	): WorkflowBuilder;
