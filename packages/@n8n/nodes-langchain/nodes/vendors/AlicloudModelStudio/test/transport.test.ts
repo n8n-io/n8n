@@ -24,7 +24,7 @@ describe('AlicloudModelStudio Transport', () => {
 		mockExecuteFunctions.getNode.mockReturnValue({
 			id: 'test-node-id',
 			name: 'Test Node',
-			type: 'n8n-nodes-base.alicloudModelStudio',
+			type: '@n8n/n8n-nodes-langchain.alicloudModelStudio',
 			typeVersion: 1,
 			position: [0, 0],
 			parameters: {},
@@ -143,6 +143,10 @@ describe('AlicloudModelStudio Transport', () => {
 			expect(getBaseUrl({ region: 'eu-central-1', workspaceId: 'ws123' })).toBe(
 				'https://ws123.eu-central-1.maas.aliyuncs.com',
 			);
+		});
+
+		it('should throw when eu-central-1 is selected without workspaceId', () => {
+			expect(() => getBaseUrl({ region: 'eu-central-1' })).toThrow('Workspace ID');
 		});
 	});
 

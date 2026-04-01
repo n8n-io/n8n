@@ -65,6 +65,6 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			...binaryData,
 			data: undefined,
 		},
-		pairedItem: { item: i },
+		pairedItem: i,
 	};
 }

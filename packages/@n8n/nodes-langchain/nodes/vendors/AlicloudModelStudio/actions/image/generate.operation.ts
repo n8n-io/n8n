@@ -37,12 +37,6 @@ const properties: INodeProperties[] = [
 		],
 		default: 'z-image-turbo',
 		description: 'The model to use for image generation',
-		routing: {
-			send: {
-				type: 'body',
-				property: 'model',
-			},
-		},
 	},
 	{
 		displayName: 'Prompt',
@@ -57,7 +51,7 @@ const properties: INodeProperties[] = [
 	},
 	{
 		displayName: 'Simplify Output',
-		name: 'simplifyImageOutput',
+		name: 'simplifyOutput',
 		type: 'boolean',
 		default: true,
 		description: 'Whether to return only the image URL instead of the full response object',
@@ -94,12 +88,6 @@ const properties: INodeProperties[] = [
 				],
 				default: '1024*1024',
 				description: 'The size of the generated image',
-				routing: {
-					send: {
-						type: 'body',
-						property: 'parameters.size',
-					},
-				},
 			},
 			{
 				displayName: 'Size',
@@ -134,12 +122,6 @@ const properties: INodeProperties[] = [
 				],
 				default: '1664*928',
 				description: 'The size of the generated image',
-				routing: {
-					send: {
-						type: 'body',
-						property: 'parameters.size',
-					},
-				},
 			},
 			{
 				displayName: 'Prompt Extend',
@@ -147,12 +129,6 @@ const properties: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 				description: 'Whether to automatically extend and enhance the prompt',
-				routing: {
-					send: {
-						type: 'body',
-						property: 'parameters.prompt_extend',
-					},
-				},
 			},
 		],
 	},
@@ -174,11 +150,7 @@ export async function execute(
 	const imageModel = this.getNodeParameter('imageModel', itemIndex) as string;
 	const prompt = this.getNodeParameter('prompt', itemIndex) as string;
 	const imageOptions = this.getNodeParameter('imageOptions', itemIndex, {}) as IImageOptions;
-	const simplifyImageOutput = this.getNodeParameter(
-		'simplifyImageOutput',
-		itemIndex,
-		true,
-	) as boolean;
+	const simplifyOutput = this.getNodeParameter('simplifyOutput', itemIndex, true) as boolean;
 
 	const body: IModelStudioRequestBody = {
 		model: imageModel,
@@ -195,7 +167,7 @@ export async function execute(
 			],
 		},
 		parameters: {
-			prompt_extend: imageOptions.prompt_extend ?? imageOptions.promptExtend ?? false,
+			prompt_extend: imageOptions.promptExtend ?? false,
 		},
 	};
 
@@ -215,7 +187,7 @@ export async function execute(
 	const image = response.output?.choices[0]?.message?.content[0]?.image || '';
 
 	return {
-		json: simplifyImageOutput
+		json: simplifyOutput
 			? { image }
 			: {
 					model: imageModel,

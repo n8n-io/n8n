@@ -1,6 +1,5 @@
 export interface IImageOptions {
 	size: string;
-	prompt_extend?: boolean;
 	promptExtend?: boolean;
 }
 

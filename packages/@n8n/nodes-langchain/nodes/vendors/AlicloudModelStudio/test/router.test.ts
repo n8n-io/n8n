@@ -29,7 +29,7 @@ describe('AlicloudModelStudio Router', () => {
 	const mockNode = {
 		id: 'test-node-id',
 		name: 'Test Node',
-		type: 'n8n-nodes-base.alicloudModelStudio',
+		type: '@n8n/n8n-nodes-langchain.alicloudModelStudio',
 		typeVersion: 1,
 		position: [0, 0] as [number, number],
 		parameters: {},

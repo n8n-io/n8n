@@ -15,7 +15,7 @@ export const properties: INodeProperties[] = [
 		type: 'options',
 		options: [
 			{
-				name: 'wan2.6-t2v',
+				name: 'Wan 2.6 Text-to-Video',
 				value: 'wan2.6-t2v',
 			},
 		],
@@ -81,7 +81,7 @@ export const properties: INodeProperties[] = [
 	},
 	{
 		displayName: 'Simplify Output',
-		name: 'simplifyVideoOutput',
+		name: 'simplifyOutput',
 		type: 'boolean',
 		default: false,
 		description: 'Whether to return only the generated video URL',
@@ -137,11 +137,7 @@ export async function execute(
 	const resolution = this.getNodeParameter('resolution', itemIndex) as string;
 	const duration = this.getNodeParameter('duration', itemIndex) as number;
 	const shotType = this.getNodeParameter('shotType', itemIndex) as string;
-	const simplifyVideoOutput = this.getNodeParameter(
-		'simplifyVideoOutput',
-		itemIndex,
-		false,
-	) as boolean;
+	const simplifyOutput = this.getNodeParameter('simplifyOutput', itemIndex, false) as boolean;
 	const videoOptions = this.getNodeParameter('videoOptions', itemIndex, {}) as IDataObject;
 
 	const body: IModelStudioRequestBody = {
@@ -194,7 +190,7 @@ export async function execute(
 	const videoUrl = (output?.video_url as string) || '';
 
 	return {
-		json: simplifyVideoOutput
+		json: simplifyOutput
 			? { videoUrl }
 			: {
 					model: videoModel,

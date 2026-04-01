@@ -4,7 +4,7 @@ import type {
 	IHttpRequestMethods,
 	ILoadOptionsFunctions,
 } from 'n8n-workflow';
-import { NodeOperationError, sleep } from 'n8n-workflow';
+import { NodeOperationError, UserError, sleep } from 'n8n-workflow';
 
 type RequestParameters = {
 	headers?: IDataObject;
@@ -26,6 +26,9 @@ export function getBaseUrl(credentials: IDataObject): string {
 
 	if (region === 'eu-central-1') {
 		const workspaceId = credentials.workspaceId as string;
+		if (!workspaceId) {
+			throw new UserError('Workspace ID is required for the Germany (Frankfurt) region');
+		}
 		return `https://${workspaceId}.eu-central-1.maas.aliyuncs.com`;
 	}
 

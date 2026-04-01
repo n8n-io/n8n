@@ -22,12 +22,6 @@ const properties: INodeProperties[] = [
 		],
 		default: 'qwen3-vl-flash',
 		description: 'The model to use for image analysis',
-		routing: {
-			send: {
-				type: 'body',
-				property: 'model',
-			},
-		},
 	},
 	{
 		displayName: 'Image URL',
@@ -52,7 +46,7 @@ const properties: INodeProperties[] = [
 	},
 	{
 		displayName: 'Simplify Output',
-		name: 'simplifyVisionOutput',
+		name: 'simplifyOutput',
 		type: 'boolean',
 		default: true,
 		description: 'Whether to return only the text response instead of the full response object',
@@ -76,12 +70,6 @@ const properties: INodeProperties[] = [
 				default: 1,
 				description:
 					'Controls randomness in the output. Lower values make output more focused and deterministic.',
-				routing: {
-					send: {
-						type: 'body',
-						property: 'parameters.temperature',
-					},
-				},
 			},
 			{
 				displayName: 'Max Tokens',
@@ -92,12 +80,6 @@ const properties: INodeProperties[] = [
 				},
 				default: 2000,
 				description: 'Maximum number of tokens to generate',
-				routing: {
-					send: {
-						type: 'body',
-						property: 'parameters.max_tokens',
-					},
-				},
 			},
 		],
 	},
@@ -123,11 +105,7 @@ export async function execute(
 		string,
 		unknown
 	>;
-	const simplifyVisionOutput = this.getNodeParameter(
-		'simplifyVisionOutput',
-		itemIndex,
-		true,
-	) as boolean;
+	const simplifyOutput = this.getNodeParameter('simplifyOutput', itemIndex, true) as boolean;
 
 	const body: IModelStudioRequestBody = {
 		model: visionModel,
@@ -168,7 +146,7 @@ export async function execute(
 	const output = (response.output?.choices?.[0]?.message?.content?.[0]?.text as string) || '';
 
 	return {
-		json: simplifyVisionOutput
+		json: simplifyOutput
 			? { text: output }
 			: {
 					model: visionModel,

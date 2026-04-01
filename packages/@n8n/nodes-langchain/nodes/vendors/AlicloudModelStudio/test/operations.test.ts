@@ -128,7 +128,7 @@ describe('AlicloudModelStudio Operations', () => {
 						imageUrl: 'https://example.com/photo.jpg',
 						question: 'What is in this image?',
 						visionOptions: {},
-						simplifyVisionOutput: true,
+						simplifyOutput: true,
 					};
 					return params[param] ?? fallback;
 				},
@@ -176,7 +176,7 @@ describe('AlicloudModelStudio Operations', () => {
 						imageModel: 'z-image-turbo',
 						prompt: 'A sunset over mountains',
 						imageOptions: {},
-						simplifyImageOutput: true,
+						simplifyOutput: true,
 					};
 					return params[param] ?? fallback;
 				},
@@ -265,7 +265,7 @@ describe('AlicloudModelStudio Operations', () => {
 						resolution: '1080P',
 						duration: 5,
 						shotType: 'single',
-						simplifyVideoOutput: false,
+						simplifyOutput: false,
 						videoOptions: {},
 					};
 					return params[param] ?? fallback;
@@ -326,7 +326,7 @@ describe('AlicloudModelStudio Operations', () => {
 						resolution: '720P',
 						duration: 3,
 						shotType: 'single',
-						simplifyVideoOutput: true,
+						simplifyOutput: true,
 						imageToVideoOptions: {},
 					};
 					return params[param] ?? fallback;
