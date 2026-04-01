@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import { N8nButton, N8nIcon, N8nOption, N8nSelect } from '@n8n/design-system';
-import { ElSwitch } from 'element-plus';
+import { N8nIcon, N8nOption, N8nSelect } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRolesStore } from '@/app/stores/roles.store';
 import type { RoleMappingRuleResponse } from '../types';
@@ -9,11 +8,13 @@ import RuleMappingExpressionInput from './RuleMappingExpressionInput.vue';
 
 const props = defineProps<{
 	rule: RoleMappingRuleResponse;
+	priority: number;
 }>();
 
 const emit = defineEmits<{
 	update: [id: string, patch: Partial<RoleMappingRuleResponse>];
 	delete: [id: string];
+	duplicate: [id: string];
 }>();
 
 const i18n = useI18n();
@@ -27,20 +28,24 @@ const instanceRoleOptions = computed(() =>
 </script>
 <template>
 	<div :class="$style.row" data-test-id="rule-row">
-		<div :class="$style.dragHandle" class="drag-handle" aria-label="Reorder rule">
+		<div :class="$style.cellDrag" class="drag-handle" aria-label="Reorder rule">
 			<N8nIcon icon="grip-vertical" size="small" color="text-light" />
 		</div>
-		<ElSwitch
-			:model-value="props.rule.enabled"
-			data-test-id="rule-toggle"
-			@update:model-value="emit('update', props.rule.id, { enabled: $event as boolean })"
-		/>
-		<RuleMappingExpressionInput
-			:model-value="props.rule.expression"
-			:placeholder="i18n.baseText('settings.sso.settings.roleMappingRules.expression.placeholder')"
-			@update:model-value="emit('update', props.rule.id, { expression: $event })"
-		/>
-		<div :class="$style.roleSelect">
+		<div :class="$style.cellPriority">
+			{{ priority }}
+		</div>
+		<div :class="$style.cellCondition">
+			<span :class="$style.label">If</span>
+			<RuleMappingExpressionInput
+				:model-value="props.rule.expression"
+				:placeholder="
+					i18n.baseText('settings.sso.settings.roleMappingRules.expression.placeholder')
+				"
+				@update:model-value="emit('update', props.rule.id, { expression: $event })"
+			/>
+		</div>
+		<div :class="$style.cellRole">
+			<span :class="$style.label">assign</span>
 			<N8nSelect
 				:model-value="props.rule.role"
 				size="small"
@@ -56,44 +61,103 @@ const instanceRoleOptions = computed(() =>
 				/>
 			</N8nSelect>
 		</div>
-		<N8nButton
-			type="tertiary"
-			size="small"
-			icon="trash-2"
-			aria-label="Delete rule"
-			data-test-id="rule-delete-button"
-			@click="emit('delete', props.rule.id)"
-		/>
+		<div :class="$style.cellAction">
+			<N8nIcon
+				icon="copy"
+				size="small"
+				color="text-light"
+				:class="$style.actionIcon"
+				aria-label="Duplicate rule"
+				data-test-id="rule-copy-button"
+				@click="emit('duplicate', props.rule.id)"
+			/>
+		</div>
+		<div :class="$style.cellAction">
+			<N8nIcon
+				icon="trash-2"
+				size="small"
+				color="text-light"
+				:class="$style.actionIcon"
+				aria-label="Delete rule"
+				data-test-id="rule-delete-button"
+				@click="emit('delete', props.rule.id)"
+			/>
+		</div>
 	</div>
 </template>
 <style lang="scss" module>
 .row {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--xs);
-	padding: var(--spacing--xs);
-	border: var(--border-width) var(--border-style) var(--color--foreground);
-	border-radius: var(--radius);
+	height: 48px;
 	background: var(--color--background);
+	border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
 
-	&:hover {
-		background: var(--color--background--shade-1);
+	&:last-child {
+		border-bottom: none;
 	}
 }
 
-.dragHandle {
-	cursor: grab;
+.cellDrag {
 	display: flex;
 	align-items: center;
-	padding: var(--spacing--4xs);
+	justify-content: center;
+	width: 40px;
+	padding: 0 var(--spacing--xs);
+	cursor: grab;
+	flex-shrink: 0;
 
 	&:active {
 		cursor: grabbing;
 	}
 }
 
-.roleSelect {
-	width: 160px;
+.cellPriority {
+	width: 50px;
+	padding: 0 var(--spacing--2xs);
+	font-size: var(--font-size--sm);
+	color: var(--color--text);
+	text-align: center;
 	flex-shrink: 0;
+}
+
+.cellCondition {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding: 0 var(--spacing--2xs);
+	min-width: 0;
+}
+
+.cellRole {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding: 0 var(--spacing--2xs);
+	flex-shrink: 0;
+}
+
+.cellAction {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 32px;
+	padding: 0 var(--spacing--4xs);
+	flex-shrink: 0;
+}
+
+.actionIcon {
+	cursor: pointer;
+
+	&:hover {
+		color: var(--color--text) !important;
+	}
+}
+
+.label {
+	font-size: var(--font-size--sm);
+	color: var(--color--text--tint-1);
+	white-space: nowrap;
 }
 </style>
