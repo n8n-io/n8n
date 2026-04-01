@@ -5,6 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import { computed } from 'vue';
 import { getToolIcon, useToolLabel } from '../toolLabels';
+import ButtonLike from './ButtonLike.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 import ToolCallStep from './ToolCallStep.vue';
 
@@ -115,7 +116,7 @@ const steps = computed((): TimelineStep[] => {
 						<N8nButton ref="triggerRef" variant="ghost" size="small">
 							<template #icon>
 								<template v-if="step.isLoading">
-									<N8nIcon icon="loader" size="small" transform-origin="center" spin />
+									<N8nIcon icon="spinner" size="small" color="primary" spin />
 								</template>
 								<N8nIcon v-else :icon="step.icon" size="small" />
 							</template>
@@ -129,114 +130,28 @@ const steps = computed((): TimelineStep[] => {
 						</div>
 					</CollapsibleContent>
 				</CollapsibleRoot>
-				<div v-else :class="$style.fakeButton">
+				<ButtonLike v-else>
 					<N8nIcon :icon="step.icon" size="small" />
-					<span :class="$style.doneLabel">{{ step.label }}</span>
-				</div>
+					{{ step.label }}
+				</ButtonLike>
 			</template>
 
-			<div v-else-if="step.type === 'done'" :class="$style.fakeButton">
+			<ButtonLike v-else-if="step.type === 'done'">
 				<N8nIcon :icon="step.icon" size="small" />
-				<span :class="$style.doneLabel">{{ step.label }}</span>
-			</div>
+				{{ step.label }}
+			</ButtonLike>
 		</template>
 	</div>
 </template>
 
 <style lang="scss" module>
-.fakeButton {
-	height: var(--height--sm);
-	padding: 0 var(--spacing--xs);
-	border-radius: var(--radius--3xs);
-	font-size: var(--font-size--xs);
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-}
-
 .timeline {
 	display: flex;
 	flex-direction: column;
+	gap: var(--spacing--2xs);
 }
-
-// .step {
-// 	display: flex;
-// 	gap: var(--spacing--xs);
-// }
-
-// .iconColumn {
-// 	display: flex;
-// 	flex-direction: column;
-// 	align-items: center;
-// 	width: 20px;
-// 	flex-shrink: 0;
-// 	padding-top: 2px;
-// }
-
-// .connector {
-// 	width: 1px;
-// 	flex: 1;
-// 	background: var(--color--foreground--shade-1);
-// 	min-height: 12px;
-// }
-
-// .stepIcon {
-// 	color: var(--color--text--tint-1);
-// 	flex-shrink: 0;
-// }
-
-// .doneIcon {
-// 	color: var(--color--text--tint-1);
-// }
-
-// .loadingIcon {
-// 	color: var(--color--primary);
-// }
-
-// .content {
-// 	display: flex;
-// 	flex-direction: column;
-// 	min-width: 0;
-// 	flex: 1;
-// 	padding-bottom: var(--spacing--2xs);
-// }
-
-// .textLabel {
-// 	font-size: var(--font-size--sm);
-// 	color: var(--color--text);
-// 	line-height: var(--line-height--lg);
-// }
-
-.doneLabel {
-	font-size: var(--font-size--sm);
-	color: var(--color--text);
-	line-height: var(--line-height--lg);
-}
-
-.toggleBlock {
-	margin-top: var(--spacing--4xs);
-}
-
-// .toggleButton {
-// 	display: inline-flex;
-// 	align-items: center;
-// 	padding: var(--spacing--5xs) var(--spacing--2xs);
-// 	font-family: var(--font-family);
-// 	font-size: var(--font-size--2xs);
-// 	font-weight: var(--font-weight--regular);
-// 	color: var(--color--text--tint-1);
-// 	background: var(--color--background--light-2);
-// 	border: var(--border);
-// 	border-radius: var(--radius);
-// 	cursor: pointer;
-
-// 	&:hover {
-// 		background: var(--color--foreground--tint-2);
-// 	}
-// }
 
 .toggleContent {
-	margin-top: var(--spacing--4xs);
 	max-height: 300px;
 	overflow-y: auto;
 }
@@ -247,6 +162,7 @@ const steps = computed((): TimelineStep[] => {
 	background: var(--color--foreground--tint-2);
 	border-radius: var(--radius);
 	padding: var(--spacing--2xs);
+	margin-top: var(--spacing--2xs);
 
 	:global(pre) {
 		background: transparent;

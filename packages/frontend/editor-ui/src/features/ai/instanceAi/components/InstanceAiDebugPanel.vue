@@ -1,7 +1,7 @@
 <script lang="ts" setup>
-import { ref, computed, nextTick, useTemplateRef, watch, onMounted } from 'vue';
 import { N8nIcon, N8nIconButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { useInstanceAiDebugStore } from '../instanceAiDebug.store';
 
@@ -228,7 +228,7 @@ onMounted(() => {
 			</div>
 
 			<div v-if="debugStore.isLoadingThreads" :class="$style.loadingState">
-				<N8nIcon icon="spinner" spin size="small" />
+				<N8nIcon icon="spinner" color="primary" spin size="small" />
 			</div>
 
 			<div v-else-if="debugStore.threads.length === 0" :class="$style.emptyState">
@@ -275,7 +275,7 @@ onMounted(() => {
 				<!-- Messages sub-tab -->
 				<div v-if="activeThreadSubTab === 'messages'" :class="$style.threadDetailContent">
 					<div v-if="debugStore.isLoadingMessages" :class="$style.loadingState">
-						<N8nIcon icon="spinner" spin size="small" />
+						<N8nIcon icon="spinner" color="primary" spin size="small" />
 					</div>
 					<div v-else-if="debugStore.threadMessages.length === 0" :class="$style.emptyState">
 						{{ i18n.baseText('instanceAi.debug.threads.noMessages') }}
@@ -304,7 +304,7 @@ onMounted(() => {
 				<!-- Context sub-tab -->
 				<div v-if="activeThreadSubTab === 'context'" :class="$style.threadDetailContent">
 					<div v-if="debugStore.isLoadingContext" :class="$style.loadingState">
-						<N8nIcon icon="spinner" spin size="small" />
+						<N8nIcon icon="spinner" color="primary" spin size="small" />
 					</div>
 					<template v-else-if="debugStore.threadContext">
 						<div :class="$style.contextSection">
