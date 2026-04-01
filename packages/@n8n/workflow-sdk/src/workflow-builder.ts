@@ -1301,7 +1301,7 @@ function createWorkflow(...args: unknown[]): WorkflowBuilder {
 			builder.add(rawNode as Parameters<typeof builder.add>[0]);
 		} catch (e) {
 			const message = e instanceof Error ? e.message : String(e);
-			throw new Error(`Failed to add node at index ${i}: ${message}`);
+			throw new Error(`Failed to add node at index ${i}: ${message}`, { cause: e });
 		}
 		// Post-add verification: if the node count did not grow, the node was silently
 		// dropped (e.g., it was already registered under the same name or the object
