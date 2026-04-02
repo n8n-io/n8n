@@ -10,7 +10,7 @@ post:
     content:
       application/json:
         schema:
-          $ref: '../schemas/workflow.yml'
+          $ref: '../schemas/workflowCreate.yml'
     required: true
   responses:
     '200':
@@ -23,6 +23,10 @@ post:
       $ref: '../../../../shared/spec/responses/badRequest.yml'
     '401':
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'
 get:
   x-eov-operation-id: getWorkflows
   x-eov-operation-handler: v1/handlers/workflows/workflows.handler

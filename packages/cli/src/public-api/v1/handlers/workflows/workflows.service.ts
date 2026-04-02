@@ -1,17 +1,17 @@
 import { GlobalConfig } from '@n8n/config';
-import type { Project, User } from '@n8n/db';
+import type { SharedWorkflow, User } from '@n8n/db';
 import {
 	WorkflowEntity,
 	WorkflowTagMapping,
-	SharedWorkflow,
 	TagRepository,
 	SharedWorkflowRepository,
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { PROJECT_OWNER_ROLE_SLUG, type Scope, type WorkflowSharingRole } from '@n8n/permissions';
+import { PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
 
 import { License } from '@/license';
+import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 function insertIf(condition: boolean, elements: string[]): string[] {
@@ -60,27 +60,14 @@ export async function getWorkflowById(id: string): Promise<WorkflowEntity | null
 }
 
 export async function createWorkflow(
-	workflow: WorkflowEntity,
 	user: User,
-	personalProject: Project,
-	role: WorkflowSharingRole,
+	body: WorkflowEntity & { projectId?: string },
 ): Promise<WorkflowEntity> {
-	const { manager: dbManager } = Container.get(SharedWorkflowRepository);
-	return await dbManager.transaction(async (transactionManager) => {
-		const newWorkflow = new WorkflowEntity();
-		Object.assign(newWorkflow, workflow);
-		const savedWorkflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
-
-		const newSharedWorkflow = new SharedWorkflow();
-		Object.assign(newSharedWorkflow, {
-			role,
-			user,
-			project: personalProject,
-			workflow: savedWorkflow,
-		});
-		await transactionManager.save<SharedWorkflow>(newSharedWorkflow);
-
-		return savedWorkflow;
+	const { projectId, ...rest } = body;
+	const workflow = Object.assign(new WorkflowEntity(), rest);
+	return await Container.get(WorkflowCreationService).createWorkflow(user, workflow, {
+		projectId,
+		publicApi: true,
 	});
 }
 
