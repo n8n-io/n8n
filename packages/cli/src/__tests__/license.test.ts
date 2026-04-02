@@ -18,9 +18,7 @@ const MOCK_FEATURE_FLAG = 'feat:sharing';
 const MOCK_MAIN_PLAN_ID = '1b765dc4-d39d-4ffe-9885-c56dd67c4b26';
 
 function makeDateWithHourOffset(offsetInHours: number): Date {
-	const date = new Date();
-	date.setHours(date.getHours() + offsetInHours);
-	return date;
+	return new Date(Date.now() + offsetInHours * 60 * 60 * 1000);
 }
 
 const licenseConfig: GlobalConfig['license'] = {

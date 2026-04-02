@@ -90,6 +90,12 @@ describe('sso/saml/samlHelpers', () => {
 					userPrincipalName: 'test',
 				},
 				missingAttributes: [],
+				rawAttributes: {
+					email: 'test@test.com',
+					firstName: 'test',
+					lastName: 'test',
+					userPrincipalName: 'test',
+				},
 			});
 		});
 
@@ -123,6 +129,7 @@ describe('sso/saml/samlHelpers', () => {
 					email: 'test@test.com',
 				},
 				missingAttributes: ['userPrincipalName', 'firstName', 'lastName'],
+				rawAttributes: { email: 'test@test.com' },
 			});
 		});
 		test('returns the attributes from the flow result with instance role', () => {
@@ -162,6 +169,13 @@ describe('sso/saml/samlHelpers', () => {
 					userPrincipalName: 'test',
 				},
 				missingAttributes: [],
+				rawAttributes: {
+					email: 'test@test.com',
+					firstName: 'test',
+					lastName: 'test',
+					userPrincipalName: 'test',
+					instanceRole: 'instanceRole',
+				},
 			});
 		});
 	});
@@ -203,6 +217,13 @@ describe('sso/saml/samlHelpers', () => {
 				n8nProjectRoles: ['projectRole1', 'projectRole2'],
 			},
 			missingAttributes: [],
+			rawAttributes: {
+				email: 'test@test.com',
+				firstName: 'test',
+				lastName: 'test',
+				userPrincipalName: 'test',
+				projectRoles: ['projectRole1', 'projectRole2'],
+			},
 		});
 	});
 
@@ -243,6 +264,69 @@ describe('sso/saml/samlHelpers', () => {
 				n8nProjectRoles: ['projectRole1'],
 			},
 			missingAttributes: [],
+			rawAttributes: {
+				email: 'test@test.com',
+				firstName: 'test',
+				lastName: 'test',
+				userPrincipalName: 'test',
+				projectRoles: 'projectRole1',
+			},
 		});
+	});
+
+	test('includes all raw attributes including custom ones not in the mapping', () => {
+		const flowResult = {
+			extract: {
+				attributes: {
+					email: 'test@test.com',
+					firstName: 'test',
+					lastName: 'test',
+					userPrincipalName: 'test',
+					customDepartment: 'engineering',
+					groups: ['devops', 'n8n-admins'],
+				},
+			},
+		} as any;
+		const attributeMapping = {
+			email: 'email',
+			firstName: 'firstName',
+			lastName: 'lastName',
+			userPrincipalName: 'userPrincipalName',
+		};
+		const jitClaimNames = { instanceRole: null, projectRoles: null };
+
+		const result = helpers.getMappedSamlAttributesFromFlowResult(
+			flowResult,
+			attributeMapping,
+			jitClaimNames,
+		);
+
+		expect(result.rawAttributes).toEqual({
+			email: 'test@test.com',
+			firstName: 'test',
+			lastName: 'test',
+			userPrincipalName: 'test',
+			customDepartment: 'engineering',
+			groups: ['devops', 'n8n-admins'],
+		});
+	});
+
+	test('returns empty rawAttributes when flowResult has no attributes', () => {
+		const flowResult = { extract: {} } as any;
+		const attributeMapping = {
+			email: 'email',
+			firstName: 'firstName',
+			lastName: 'lastName',
+			userPrincipalName: 'userPrincipalName',
+		};
+		const jitClaimNames = { instanceRole: null, projectRoles: null };
+
+		const result = helpers.getMappedSamlAttributesFromFlowResult(
+			flowResult,
+			attributeMapping,
+			jitClaimNames,
+		);
+
+		expect(result.rawAttributes).toEqual({});
 	});
 });

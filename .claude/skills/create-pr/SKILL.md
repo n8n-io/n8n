@@ -53,20 +53,27 @@ Creates GitHub PRs with titles that pass n8n's `check-pr-title` CI validation.
    git log origin/master..HEAD --oneline
    ```
 
-2. **If this is a security fix**, audit every public-facing artifact before
+2. **Check for implementation plan**: Look for a plan file in `.claude/plans/`
+   that matches the current branch's ticket ID (e.g. if branch is
+   `scdekov/PAY-1234-some-feature`, check for `.claude/plans/PAY-1234.md`).
+   If a plan file exists, ask the user whether they want to include it in the
+   PR description as a collapsible `<details>` section (see Plan Section below).
+   Only include the plan if the user explicitly approves.
+
+3. **If this is a security fix**, audit every public-facing artifact before
    proceeding (see Security Fixes below).
 
-3. **Analyze changes** to determine:
+4. **Analyze changes** to determine:
    - Type: What kind of change is this?
    - Scope: Which package/area is affected?
    - Summary: What does the change do?
 
-4. **Push branch if needed**:
+5. **Push branch if needed**:
    ```bash
    git push -u origin HEAD
    ```
 
-5. **Create PR** using gh CLI with the template from `.github/pull_request_template.md`:
+6. **Create PR** using gh CLI with the template from `.github/pull_request_template.md`:
    ```bash
    gh pr create --draft --title "<type>(<scope>): <summary>" --body "$(cat <<'EOF'
    ## Summary
@@ -155,6 +162,21 @@ Key validation rules:
 - Exclamation mark for breaking changes goes before the colon
 - Summary must start with capital letter
 - Summary must not end with a period
+
+## Plan Section
+
+If a matching plan file was found in `.claude/plans/` and the user has approved
+including it, add a collapsible section at the end of the PR body (after the
+checklist, before `EOF`):
+
+```markdown
+<details>
+<summary>Implementation plan</summary>
+
+<!-- paste plan file contents here -->
+
+</details>
+```
 
 ## Security Fixes
 

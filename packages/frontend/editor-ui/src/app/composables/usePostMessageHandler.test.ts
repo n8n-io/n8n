@@ -2,7 +2,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { shallowRef } from 'vue';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
+import { jsonParse } from 'n8n-workflow';
 import { usePostMessageHandler } from './usePostMessageHandler';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 
@@ -140,6 +142,25 @@ describe('usePostMessageHandler', () => {
 
 			cleanup();
 		});
+
+		it('should include pushRef in n8nReady postMessage', () => {
+			const postMessageSpy = vi.spyOn(window.parent, 'postMessage');
+			const { setup, cleanup } = usePostMessageHandler({
+				workflowState,
+				currentWorkflowDocumentStore: shallowRef(null),
+			});
+
+			setup();
+
+			const call = postMessageSpy.mock.calls.find(
+				([data]) => typeof data === 'string' && data.includes('"n8nReady"'),
+			);
+			expect(call).toBeDefined();
+			const parsed = jsonParse(call![0] as string);
+			expect(parsed).toHaveProperty('pushRef');
+
+			cleanup();
+		});
 	});
 
 	describe('openWorkflow command', () => {
@@ -216,6 +237,44 @@ describe('usePostMessageHandler', () => {
 			await vi.waitFor(() => {
 				expect(mockIsProductionExecutionPreview.value).toBe(true);
 			});
+
+			cleanup();
+		});
+
+		it('should set currentWorkflowDocumentStore after opening execution', async () => {
+			const workflowsStore = useWorkflowsStore();
+
+			mockOpenExecution.mockImplementation(async () => {
+				// Simulate what openExecution does: sets workflowId on the store
+				workflowsStore.workflow.id = 'test-wf-id';
+				return {
+					workflowData: { id: 'test-wf-id', name: 'Test' },
+					mode: 'trigger',
+					finished: true,
+				};
+			});
+
+			const storeRef = shallowRef(null);
+			const { setup, cleanup } = usePostMessageHandler({
+				workflowState,
+				currentWorkflowDocumentStore: storeRef,
+			});
+			setup();
+
+			const messageEvent = new MessageEvent('message', {
+				data: JSON.stringify({
+					command: 'openExecution',
+					executionId: 'exec-1',
+					executionMode: 'trigger',
+				}),
+			});
+			window.dispatchEvent(messageEvent);
+
+			await vi.waitFor(() => {
+				expect(mockOpenExecution).toHaveBeenCalled();
+			});
+
+			expect(storeRef.value).not.toBeNull();
 
 			cleanup();
 		});
