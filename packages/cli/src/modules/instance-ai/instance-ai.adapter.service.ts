@@ -653,6 +653,14 @@ export class InstanceAiAdapterService {
 							waitingExecutionSource: {},
 						},
 					});
+				} else if (triggerNode) {
+					// No inputData but we have a trigger node (e.g. test-trigger from
+					// setup-workflow). Tell the execution engine which node to start from
+					// so it doesn't fail to auto-detect webhook-only triggers like ChatTrigger.
+					runData.triggerToStartFrom = { name: triggerNode.name };
+					if (Object.keys(basePinData).length > 0) {
+						runData.pinData = basePinData;
+					}
 				} else if (Object.keys(basePinData).length > 0) {
 					runData.pinData = basePinData;
 				}
