@@ -407,8 +407,8 @@ onMounted(async () => {
 		<div :class="$style.card">
 			<div :class="$style.settingsItem" style="border-bottom: none">
 				<div :class="$style.settingsItemLabel">
-					<label>Single sign-on (SSO)</label>
-					<small>Allow users to sign in through your identity provider</small>
+					<label>{{ i18n.baseText('settings.sso.settings.ssoToggle.label') }}</label>
+					<small>{{ i18n.baseText('settings.sso.settings.ssoToggle.description') }}</small>
 				</div>
 				<div :class="$style.settingsItemControl">
 					<N8nSelect

@@ -70,7 +70,9 @@ const projectSelectLabel = computed(() => {
 		</div>
 		<div :class="$style.cellPriority">{{ priority }}.</div>
 		<div :class="$style.cellCondition">
-			<span :class="$style.label">If</span>
+			<span :class="$style.label">{{
+				i18n.baseText('settings.sso.settings.roleMappingRules.rule.if')
+			}}</span>
 			<RuleMappingExpressionInput
 				:model-value="props.rule.expression"
 				:disabled="props.disabled"
@@ -81,12 +83,14 @@ const projectSelectLabel = computed(() => {
 			/>
 		</div>
 		<div :class="$style.cellRole">
-			<span :class="$style.label">assign</span>
+			<span :class="$style.label">{{
+				i18n.baseText('settings.sso.settings.roleMappingRules.rule.assign')
+			}}</span>
 			<N8nSelect
 				:model-value="props.rule.role"
 				size="small"
 				:disabled="props.disabled"
-				placeholder="Select role"
+				:placeholder="i18n.baseText('settings.sso.settings.roleMappingRules.rule.selectRole')"
 				:class="$style.roleSelect"
 				data-test-id="rule-role-select"
 				@update:model-value="emit('update', props.rule.id, { role: String($event) })"
@@ -102,7 +106,9 @@ const projectSelectLabel = computed(() => {
 			</N8nSelect>
 		</div>
 		<div v-if="props.type === 'project'" :class="$style.cellProject">
-			<span :class="$style.label">in</span>
+			<span :class="$style.label">{{
+				i18n.baseText('settings.sso.settings.roleMappingRules.rule.in')
+			}}</span>
 			<N8nTooltip :content="selectedProjectNames" :disabled="!selectedProjectNames" placement="top">
 				<N8nSelect
 					:model-value="props.rule.projectIds"
@@ -111,7 +117,7 @@ const projectSelectLabel = computed(() => {
 					collapse-tags
 					:collapse-tags-tooltip="false"
 					:disabled="props.disabled"
-					placeholder="Select proj..."
+					:placeholder="i18n.baseText('settings.sso.settings.roleMappingRules.rule.selectProjects')"
 					data-test-id="rule-project-select"
 					@update:model-value="
 						emit('update', props.rule.id, {
