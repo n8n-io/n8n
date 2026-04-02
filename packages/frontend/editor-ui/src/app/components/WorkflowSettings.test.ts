@@ -2,7 +2,7 @@ import { reactive } from 'vue';
 import { flushPromises } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import type { MockInstance } from 'vitest';
-import { waitFor, within } from '@testing-library/vue';
+import { fireEvent, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import type { FrontendSettings } from '@n8n/api-types';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -780,21 +780,48 @@ describe('WorkflowSettingsVue', () => {
 		});
 
 		it('should save with empty credentialResolverId when resolver is cleared', async () => {
-			// Element Plus clearable sets the model value to '' when the clear icon is clicked.
-			// The clear icon requires CSS hover state which jsdom cannot simulate,
-			// so we verify the save behavior when the value is already empty.
-			workflowDocumentStore.setSettings({ credentialResolverId: '' });
+			workflowDocumentStore.setSettings({ credentialResolverId: 'resolver-1' });
 
-			const { getByTestId } = createComponent({ pinia });
+			const { getByTestId, getByRole } = createComponent({ pinia });
 			await flushPromises();
 
-			// Verify the credential resolver dropdown shows no selected value
+			await waitFor(() => {
+				expect(restApiClient.getCredentialResolvers).toHaveBeenCalled();
+			});
+
 			const dropdown = getByTestId('workflow-settings-credential-resolver');
 			const input = dropdown.querySelector('input') as HTMLInputElement;
-			expect(input.value).toBe('');
 
-			// Verify the document store still holds the empty credentialResolverId
-			expect(workflowDocumentStore.getSettingsSnapshot().credentialResolverId).toBe('');
+			// Wait for the select to display the selected resolver
+			await waitFor(() => {
+				expect(input?.value).toBe('Test Resolver 1');
+			});
+
+			// Hover over the select trigger to reveal the clear icon.
+			// Element Plus toggles the clear icon via a JS mouseenter handler on
+			// .select-trigger (not CSS :hover), and Vue re-renders asynchronously.
+			const selectTrigger = dropdown.querySelector('.select-trigger') as HTMLElement;
+			const arrowIcon = dropdown.querySelector('.el-icon');
+			selectTrigger.dispatchEvent(new MouseEvent('mouseenter', { bubbles: false }));
+
+			// Wait for Vue to swap the arrow icon for the clear icon (different VNode keys)
+			await waitFor(() => {
+				expect(dropdown.querySelector('.el-icon')).not.toBe(arrowIcon);
+			});
+
+			// Click the clear icon
+			const clearIcon = dropdown.querySelector('.el-icon') as HTMLElement;
+			await fireEvent.click(clearIcon);
+			await flushPromises();
+
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				'1',
+				expect.objectContaining({
+					settings: expect.objectContaining({ credentialResolverId: '' }),
+				}),
+			);
 		});
 
 		it('should disable credential resolver dropdown when environment is read-only', async () => {
