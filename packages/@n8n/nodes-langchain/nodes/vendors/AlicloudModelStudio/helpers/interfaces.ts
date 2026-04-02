@@ -12,6 +12,8 @@ export interface IModelStudioRequestBody {
 	model: string;
 	input: {
 		messages?: IMessage[];
+		// Text-to-video / Image-to-video prompt
+		prompt?: string;
 		// Image-to-video
 		img_url?: string;
 		// Video audio

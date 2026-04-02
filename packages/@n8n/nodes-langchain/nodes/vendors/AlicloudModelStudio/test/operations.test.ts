@@ -37,7 +37,7 @@ describe('AlicloudModelStudio Operations', () => {
 			// Since there's no non-multimodal model in the current options, let's mock as if
 			// a model is not in the list to test the non-multimodal path.
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
-				(param: string, _index: number, fallback?: unknown) => {
+				(param: string, _index: number, fallback?: any) => {
 					const params: Record<string, unknown> = {
 						modelId: 'some-text-only-model',
 						messages: { messageValues: [{ role: 'user', content: 'Hello' }] },
@@ -73,7 +73,7 @@ describe('AlicloudModelStudio Operations', () => {
 
 		it('should use multimodal endpoint and convert string content to array format for multimodal models', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
-				(param: string, _index: number, fallback?: unknown) => {
+				(param: string, _index: number, fallback?: any) => {
 					const params: Record<string, unknown> = {
 						modelId: 'qwen3.5-flash',
 						messages: {
@@ -119,7 +119,7 @@ describe('AlicloudModelStudio Operations', () => {
 
 		it('should return full response object when simplifyOutput is false', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
-				(param: string, _index: number, fallback?: unknown) => {
+				(param: string, _index: number, fallback?: any) => {
 					const params: Record<string, unknown> = {
 						modelId: 'some-text-only-model',
 						messages: { messageValues: [{ role: 'user', content: 'Hello' }] },
@@ -150,7 +150,7 @@ describe('AlicloudModelStudio Operations', () => {
 	describe('Image: analyze', () => {
 		it('should send image URL and question to multimodal endpoint and return text response', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
-				(param: string, _index: number, fallback?: unknown) => {
+				(param: string, _index: number, fallback?: any) => {
 					const params: Record<string, unknown> = {
 						visionModel: 'qwen3-vl-flash',
 						imageUrl: 'https://example.com/photo.jpg',
@@ -199,7 +199,7 @@ describe('AlicloudModelStudio Operations', () => {
 	describe('Image: generate', () => {
 		it('should send prompt and return URL-only when downloadImage is false', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
-				(param: string, _index: number, fallback?: unknown) => {
+				(param: string, _index: number, fallback?: any) => {
 					const params: Record<string, unknown> = {
 						imageModel: 'z-image-turbo',
 						prompt: 'A sunset over mountains',
@@ -247,7 +247,7 @@ describe('AlicloudModelStudio Operations', () => {
 		it('should auto-download image as binary when downloadImage is true', async () => {
 			const deepMock = mockDeep<IExecuteFunctions>();
 			deepMock.getNodeParameter.mockImplementation(
-				(param: string, _index: number, fallback?: unknown) => {
+				(param: string, _index: number, fallback?: any) => {
 					const params: Record<string, unknown> = {
 						imageModel: 'z-image-turbo',
 						prompt: 'A sunset over mountains',
@@ -311,7 +311,7 @@ describe('AlicloudModelStudio Operations', () => {
 	describe('Video: textToVideo', () => {
 		it('should create async task, poll until SUCCEEDED, and return video URL with metadata', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
-				(param: string, _index: number, fallback?: unknown) => {
+				(param: string, _index: number, fallback?: any) => {
 					const params: Record<string, unknown> = {
 						videoModel: 'wan2.6-t2v',
 						prompt: 'A cat playing with yarn',
@@ -371,7 +371,7 @@ describe('AlicloudModelStudio Operations', () => {
 	describe('Video: imageToVideo', () => {
 		it('should create async task with image URL input, poll until SUCCEEDED, and return video URL', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
-				(param: string, _index: number, fallback?: unknown) => {
+				(param: string, _index: number, fallback?: any) => {
 					const params: Record<string, unknown> = {
 						i2vModel: 'wan2.6-i2v-flash',
 						imgUrl: 'https://example.com/first-frame.png',
@@ -423,7 +423,7 @@ describe('AlicloudModelStudio Operations', () => {
 		it('should download binary video data and return it as video.mp4', async () => {
 			const deepMock = mockDeep<IExecuteFunctions>();
 			deepMock.getNodeParameter.mockImplementation(
-				(param: string, _index: number, fallback?: unknown) => {
+				(param: string, _index: number, fallback?: any) => {
 					const params: Record<string, unknown> = {
 						url: 'https://result.aliyuncs.com/video.mp4',
 						'options.binaryPropertyOutput': 'data',
