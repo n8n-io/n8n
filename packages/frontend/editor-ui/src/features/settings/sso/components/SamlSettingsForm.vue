@@ -4,14 +4,7 @@ import { SupportedProtocols, useSSOStore } from '../sso.store';
 import { useI18n } from '@n8n/i18n';
 import { captureMessage } from '@sentry/vue';
 
-import {
-	N8nButton,
-	N8nIcon,
-	N8nInput,
-	N8nOption,
-	N8nRadioButtons,
-	N8nSelect,
-} from '@n8n/design-system';
+import { N8nButton, N8nInput, N8nOption, N8nRadioButtons, N8nSelect } from '@n8n/design-system';
 import { useClipboard } from '@/app/composables/useClipboard';
 import { useToast } from '@/app/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
@@ -30,10 +23,18 @@ const telemetry = useTelemetry();
 const toast = useToast();
 const message = useMessage();
 const clipboard = useClipboard();
+const redirectUrlCopied = ref(false);
+const entityIdCopied = ref(false);
 
-function copyToClipboard(value: string, toastTitle: string) {
-	void clipboard.copy(value);
-	toast.showMessage({ title: toastTitle, type: 'success' });
+async function handleCopy(value: string, field: string) {
+	await clipboard.copy(value);
+	if (field === 'redirectUrl') {
+		redirectUrlCopied.value = true;
+		setTimeout(() => (redirectUrlCopied.value = false), 2000);
+	} else if (field === 'entityId') {
+		entityIdCopied.value = true;
+		setTimeout(() => (entityIdCopied.value = false), 2000);
+	}
 }
 
 const savingForm = ref<boolean>(false);
@@ -307,20 +308,18 @@ onMounted(async () => {
 					<small>{{ i18n.baseText('settings.sso.settings.redirectUrl.help') }}</small>
 				</div>
 				<div :class="$style.settingsItemControl">
-					<div
-						:class="$style.copyInputGroup"
-						data-test-id="copy-input"
-						@click="
-							copyToClipboard(
-								redirectUrl,
-								i18n.baseText('settings.sso.settings.redirectUrl.copied'),
-							)
-						"
-					>
-						<span :class="$style.copyInputValue">{{ redirectUrl }}</span>
-						<span :class="$style.copyInputIcon">
-							<N8nIcon icon="copy" size="small" />
-						</span>
+					<div :class="$style.copyInputGroup" data-test-id="copy-input">
+						<div :class="$style.copyInputField">
+							<N8nInput :model-value="redirectUrl" type="text" :readonly="true" />
+						</div>
+						<div :class="$style.copyButtonWrapper">
+							<N8nButton
+								variant="subtle"
+								icon-only
+								:icon="redirectUrlCopied ? 'check' : 'copy'"
+								@click="handleCopy(redirectUrl, 'redirectUrl')"
+							/>
+						</div>
 					</div>
 				</div>
 			</div>
@@ -330,17 +329,18 @@ onMounted(async () => {
 					<small>{{ i18n.baseText('settings.sso.settings.entityId.help') }}</small>
 				</div>
 				<div :class="$style.settingsItemControl">
-					<div
-						:class="$style.copyInputGroup"
-						data-test-id="copy-input"
-						@click="
-							copyToClipboard(entityId, i18n.baseText('settings.sso.settings.entityId.copied'))
-						"
-					>
-						<span :class="$style.copyInputValue">{{ entityId }}</span>
-						<span :class="$style.copyInputIcon">
-							<N8nIcon icon="copy" size="small" />
-						</span>
+					<div :class="$style.copyInputGroup" data-test-id="copy-input">
+						<div :class="$style.copyInputField">
+							<N8nInput :model-value="entityId" type="text" :readonly="true" />
+						</div>
+						<div :class="$style.copyButtonWrapper">
+							<N8nButton
+								variant="subtle"
+								icon-only
+								:icon="entityIdCopied ? 'check' : 'copy'"
+								@click="handleCopy(entityId, 'entityId')"
+							/>
+						</div>
 					</div>
 				</div>
 			</div>
