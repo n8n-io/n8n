@@ -14,6 +14,7 @@ export type {
 	ExecuteOptions,
 	RuntimeBridge,
 	BridgeConfig,
+	Logger,
 	ObservabilityProvider,
 	MetricsAPI,
 	TracesAPI,

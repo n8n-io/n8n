@@ -273,10 +273,20 @@ export class ActiveWorkflowManager {
 			workflowSettings: workflowData.settings,
 		});
 
-		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true);
+		await workflow.expression.acquireIsolate();
+		try {
+			const webhooks = WebhookHelpers.getWorkflowWebhooks(
+				workflow,
+				additionalData,
+				undefined,
+				true,
+			);
 
-		for (const webhookData of webhooks) {
-			await this.webhookService.deleteWebhook(workflow, webhookData, mode, 'update');
+			for (const webhookData of webhooks) {
+				await this.webhookService.deleteWebhook(workflow, webhookData, mode, 'update');
+			}
+		} finally {
+			await workflow.expression.releaseIsolate();
 		}
 
 		await this.workflowStaticDataService.saveStaticData(workflow);
@@ -671,21 +681,29 @@ export class ActiveWorkflowManager {
 				workflowSettings: dbWorkflow.settings,
 			});
 
-			if (shouldAddWebhooks) {
-				added.webhooks = await this.addWebhooks(
-					workflow,
-					additionalData,
-					'trigger',
-					activationMode,
-				);
-			}
+			let triggerCount = 0;
+			await workflow.expression.acquireIsolate();
+			try {
+				if (shouldAddWebhooks) {
+					added.webhooks = await this.addWebhooks(
+						workflow,
+						additionalData,
+						'trigger',
+						activationMode,
+					);
+				}
 
-			if (shouldAddTriggersAndPollers) {
-				added.triggersAndPollers = await this.addTriggersAndPollers(dbWorkflow, workflow, {
-					activationMode,
-					executionMode: 'trigger',
-					additionalData,
-				});
+				if (shouldAddTriggersAndPollers) {
+					added.triggersAndPollers = await this.addTriggersAndPollers(dbWorkflow, workflow, {
+						activationMode,
+						executionMode: 'trigger',
+						additionalData,
+					});
+				}
+
+				triggerCount = this.countTriggers(workflow, additionalData);
+			} finally {
+				await workflow.expression.releaseIsolate();
 			}
 
 			// Workflow got now successfully activated so make sure nothing is left in the queue
@@ -693,7 +711,6 @@ export class ActiveWorkflowManager {
 
 			await this.activationErrorsService.deregister(workflowId);
 
-			const triggerCount = this.countTriggers(workflow, additionalData);
 			await this.workflowRepository.updateWorkflowTriggerCount(workflow.id, triggerCount);
 		} catch (e) {
 			const error = e instanceof Error ? e : new Error(`${e}`);
@@ -776,11 +793,6 @@ export class ActiveWorkflowManager {
 
 	/**
 	 * Count all triggers in the workflow, excluding Manual Trigger and other n8n-internal triggers.
-	 *
-	 * TODO: This method calls getWorkflowWebhooks, which evaluates webhook description expressions
-	 * (path, httpMethod, etc.) that may reference user-authored expressions via $parameter. It
-	 * should acquire an isolate before calling getWorkflowWebhooks, but countTriggers is sync.
-	 * addWebhooks and removeWorkflow are async and can be fixed straightforwardly.
 	 */
 	private countTriggers(workflow: Workflow, additionalData: IWorkflowExecuteAdditionalData) {
 		const triggerFilter = (nodeType: INodeType) =>
