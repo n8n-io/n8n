@@ -17,6 +17,7 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 import type { DomainAccessTracker } from './domain-access/domain-access-tracker';
 import type { InstanceAiEventBus } from './event-bus/event-bus.interface';
+import type { Logger } from './logger';
 import type { IterationLog } from './storage/iteration-log';
 import type {
 	VerificationResult,
@@ -821,6 +822,7 @@ export interface OrchestrationContext {
 	storage: MastraCompositeStore;
 	subAgentMaxSteps: number;
 	eventBus: InstanceAiEventBus;
+	logger: Logger;
 	domainTools: ToolsInput;
 	abortSignal: AbortSignal;
 	taskStorage: TaskStorage;
