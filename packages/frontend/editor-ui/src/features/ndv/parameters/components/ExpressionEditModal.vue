@@ -33,6 +33,7 @@ import {
 	N8nText,
 	type ResizeData,
 } from '@n8n/design-system';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 const DEFAULT_LEFT_SIDEBAR_WIDTH = 360;
 
 type Props = {
@@ -58,6 +59,7 @@ const emit = defineEmits<{
 
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const telemetry = useTelemetry();
 const i18n = useI18n();
@@ -78,7 +80,7 @@ const inputEditor = computed(() => expressionInputRef.value?.editor);
 const parentNodes = computed(() => {
 	const node = activeNode.value;
 	if (!node) return [];
-	const nodes = workflowsStore.workflowObject.getParentNodesByDepth(node.name);
+	const nodes = workflowDocumentStore?.value?.getParentNodesByDepth(node.name) ?? [];
 
 	return nodes.filter(({ name }) => name !== node.name);
 });
@@ -91,7 +93,7 @@ const rootNode = computed(() => {
 
 const rootNodesParents = computed(() => {
 	if (!rootNode.value) return [];
-	return workflowsStore.workflowObject.getParentNodesByDepth(rootNode.value);
+	return workflowDocumentStore?.value?.getParentNodesByDepth(rootNode.value) ?? [];
 });
 
 watch(

@@ -1,10 +1,8 @@
 <script setup lang="ts">
 import type { INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { computed, ref, watch } from 'vue';
-import { NodeHelpers } from 'n8n-workflow';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import TitledList from '@/app/components/TitledList.vue';
@@ -12,7 +10,6 @@ import type {
 	NodeConnectionType,
 	INodeInputConfiguration,
 	INodeTypeDescription,
-	Workflow,
 } from 'n8n-workflow';
 import { useDebounce } from '@/app/composables/useDebounce';
 import { OnClickOutside } from '@vueuse/components';
@@ -25,7 +22,6 @@ interface Props {
 }
 
 const props = defineProps<Props>();
-const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const nodeTypesStore = useNodeTypesStore();
 const nodeHelpers = useNodeHelpers();
@@ -66,10 +62,8 @@ const nodeData = computed(
 );
 const ndvStore = useNDVStore();
 
-const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
-
 const nodeInputIssues = computed(() => {
-	const issues = nodeHelpers.getNodeIssues(nodeType.value, props.rootNode, workflowObject.value, [
+	const issues = workflowDocumentStore?.value?.getNodeIssues(nodeType.value, props.rootNode, [
 		'typeUnknown',
 		'parameters',
 		'credentials',
@@ -89,8 +83,9 @@ const connectedNodes = computed<Record<string, NodeConfig[]>>(() => {
 
 			// Get input-index-specific connections using the per-type index
 			const nodeConnections =
-				workflowObject.value.connectionsByDestinationNode[props.rootNode.name]?.[connection.type] ??
-				[];
+				workflowDocumentStore?.value?.connectionsByDestinationNode[props.rootNode.name]?.[
+					connection.type
+				] ?? [];
 			const inputConnections = nodeConnections[typeIndex] ?? [];
 			const nodeNames = inputConnections.map((conn) => conn.node);
 			const nodes = getINodesFromNames(nodeNames);
@@ -167,7 +162,7 @@ function getINodesFromNames(names: string[]): NodeConfig[] {
 			if (node) {
 				const matchedNodeType = nodeTypesStore.getNodeType(node.type);
 				if (matchedNodeType) {
-					const issues = nodeHelpers.getNodeIssues(matchedNodeType, node, workflowObject.value);
+					const issues = workflowDocumentStore?.value?.getNodeIssues(matchedNodeType, node);
 					const stringifiedIssues = issues ? nodeHelpers.nodeIssuesToString(issues, node) : '';
 					return { node, nodeType: matchedNodeType, issues: stringifiedIssues };
 				}
@@ -195,7 +190,7 @@ function isNodeInputConfiguration(
 function getPossibleSubInputConnections(): INodeInputConfiguration[] {
 	if (!nodeType.value || !props.rootNode) return [];
 
-	const inputs = NodeHelpers.getNodeInputs(workflowObject.value, props.rootNode, nodeType.value);
+	const inputs = workflowDocumentStore?.value?.getNodeInputs(props.rootNode, nodeType.value) ?? [];
 
 	const nonMainInputs = inputs.filter((input): input is INodeInputConfiguration => {
 		if (!isNodeInputConfiguration(input)) return false;
