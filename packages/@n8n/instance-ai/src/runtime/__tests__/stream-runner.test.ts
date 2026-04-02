@@ -13,6 +13,10 @@ jest.mock('../working-memory-tracing', () => ({
 	),
 }));
 
+function createLogger() {
+	return { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() };
+}
+
 function createEventBus() {
 	return {
 		publish: jest.fn(),
@@ -68,6 +72,7 @@ describe('streamAgentRun', () => {
 				agentId: 'agent-1',
 				signal: new AbortController().signal,
 				eventBus,
+				logger: createLogger(),
 			},
 		);
 
@@ -98,6 +103,7 @@ describe('streamAgentRun', () => {
 				agentId: 'agent-1',
 				signal: new AbortController().signal,
 				eventBus,
+				logger: createLogger(),
 			},
 		);
 
@@ -147,6 +153,7 @@ describe('streamAgentRun', () => {
 				agentId: 'agent-1',
 				signal: new AbortController().signal,
 				eventBus,
+				logger: createLogger(),
 			},
 		);
 
@@ -193,6 +200,7 @@ describe('streamAgentRun', () => {
 				agentId: 'agent-1',
 				signal: new AbortController().signal,
 				eventBus,
+				logger: createLogger(),
 			},
 		);
 
@@ -237,6 +245,7 @@ describe('streamAgentRun', () => {
 				agentId: 'agent-1',
 				signal: new AbortController().signal,
 				eventBus,
+				logger: createLogger(),
 			},
 		);
 
