@@ -37,6 +37,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { getWorkflowId } from '@/app/components/MainHeader/utils';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
+import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { ResourceType } from '@/features/collaboration/projects/projects.utils';
 import { useMoveResourceToProjectToast } from '@/features/collaboration/projects/composables/useMoveResourceToProjectToast';
 
@@ -68,6 +69,7 @@ const workflowHelpers = useWorkflowHelpers();
 const moveWorkflowEventBus = createEventBus<WorkflowListEventMap>();
 const { showMoveToProjectToast } = useMoveResourceToProjectToast();
 const workflowTelemetry = useTelemetry();
+const favoritesStore = useFavoritesStore();
 
 const onWorkflowPage = computed(() => {
 	return route.meta && (route.meta.nodeView || route.meta.keepWorkflowAlive === true);
@@ -149,6 +151,14 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 			disabled: !onWorkflowPage.value || props.workflowPermissions.update !== true,
 		});
 	}
+
+	actions.push({
+		id: WORKFLOW_MENU_ACTIONS.FAVORITE,
+		label: favoritesStore.isFavorite(props.id, 'workflow')
+			? locale.baseText('favorites.remove')
+			: locale.baseText('favorites.add'),
+		disabled: !onWorkflowPage.value || props.isNewWorkflow,
+	});
 
 	if (
 		(props.workflowPermissions.update === true &&
@@ -353,6 +363,10 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 		}
 		case WORKFLOW_MENU_ACTIONS.DELETE: {
 			nodeViewEventBus.emit('deleteWorkflow');
+			break;
+		}
+		case WORKFLOW_MENU_ACTIONS.FAVORITE: {
+			await favoritesStore.toggleFavorite(props.id, 'workflow');
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.CHANGE_OWNER: {

@@ -212,6 +212,7 @@ import IconLucideSquareCheck from '~icons/lucide/square-check';
 import IconLucideSquareMinus from '~icons/lucide/square-minus';
 import IconLucideSquarePen from '~icons/lucide/square-pen';
 import IconLucideSquarePlus from '~icons/lucide/square-plus';
+import IconLucideStar from '~icons/lucide/star';
 import IconLucideStickyNote from '~icons/lucide/sticky-note';
 import IconLucideSun from '~icons/lucide/sun';
 import IconLucideTable from '~icons/lucide/table';
@@ -712,6 +713,7 @@ export const updatedIconSet = {
 	'zoom-out': IconLucideZoomOut,
 	loader: IconLucideLoader2,
 	'quick-connect': IconLucideFlame,
+	star: IconLucideStar,
 } as const;
 
 export type IconName = keyof typeof updatedIconSet; // only new icon names should be used moving forward

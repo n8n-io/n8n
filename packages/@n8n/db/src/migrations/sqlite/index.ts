@@ -151,6 +151,7 @@ import { CreateCredentialDependencyTable1773000000000 } from '../common/17730000
 import { AddRestoreFieldsToWorkflowBuilderSession1774280963551 } from '../common/1774280963551-AddRestoreFieldsToWorkflowBuilderSession';
 import { CreateInstanceVersionHistoryTable1774854660000 } from '../common/1774854660000-CreateInstanceVersionHistoryTable';
 import { CreateInstanceAiTables1775000000000 } from '../common/1775000000000-CreateInstanceAiTables';
+import { CreateFavoritesTable1775088000000 } from '../common/1775088000000-CreateFavoritesTable';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -307,6 +308,7 @@ const sqliteMigrations: Migration[] = [
 	AddRestoreFieldsToWorkflowBuilderSession1774280963551,
 	CreateInstanceVersionHistoryTable1774854660000,
 	CreateInstanceAiTables1775000000000,
+	CreateFavoritesTable1775088000000,
 ];
 
 export { sqliteMigrations };
