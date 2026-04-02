@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach, type Mock } from 'vitest';
 import { ref, computed, nextTick, type Ref } from 'vue';
 import type { PushMessage } from '@n8n/api-types';
 import { useEventRelay } from '../useEventRelay';
@@ -49,7 +49,7 @@ function createExecState(
 // ---------------------------------------------------------------------------
 
 describe('useEventRelay', () => {
-	let relay: ReturnType<typeof vi.fn>;
+	let relay: Mock;
 	let workflowExecutions: Ref<Map<string, WorkflowExecutionState>>;
 	let activeWorkflowId: Ref<string | null>;
 	let bufferedEventsStore: Map<string, PushMessage[]>;
