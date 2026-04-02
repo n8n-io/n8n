@@ -9,7 +9,6 @@ jest.mock('../transport', () => ({
 import { execute as textMessageExecute } from '../actions/text/message.operation';
 import { execute as imageAnalyzeExecute } from '../actions/image/analyze.operation';
 import { execute as imageGenerateExecute } from '../actions/image/generate.operation';
-import { execute as imageDownloadExecute } from '../actions/image/download.operation';
 import { execute as videoT2VExecute } from '../actions/video/generate.t2v.operation';
 import { execute as videoI2VExecute } from '../actions/video/generate.i2v.operation';
 import { execute as videoDownloadExecute } from '../actions/video/download.operation';
@@ -277,49 +276,6 @@ describe('AlicloudModelStudio Operations', () => {
 					imageUrl: 'https://result.aliyuncs.com/generated.png',
 				}),
 			);
-		});
-	});
-
-	describe('Image: download', () => {
-		it('should download binary data from URL and return it with correct content type', async () => {
-			const deepMock = mockDeep<IExecuteFunctions>();
-			deepMock.getNodeParameter.mockImplementation(
-				(param: string, _index: number, fallback?: unknown) => {
-					const params: Record<string, unknown> = {
-						url: 'https://result.aliyuncs.com/image.png',
-						'options.binaryPropertyOutput': 'data',
-					};
-					return params[param] ?? fallback;
-				},
-			);
-
-			const imageBuffer = Buffer.from('fake-png-data');
-			deepMock.helpers.httpRequest.mockResolvedValue({
-				body: imageBuffer,
-				headers: { 'content-type': 'image/png' },
-			});
-
-			const mockBinaryData: IBinaryData = {
-				mimeType: 'image/png',
-				fileType: 'image',
-				fileExtension: 'png',
-				data: '',
-				fileName: 'image.png',
-			};
-			deepMock.helpers.prepareBinaryData.mockResolvedValue(mockBinaryData);
-
-			const result = await imageDownloadExecute.call(deepMock, 0);
-
-			expect(deepMock.helpers.httpRequest).toHaveBeenCalledWith(
-				expect.objectContaining({
-					method: 'GET',
-					url: 'https://result.aliyuncs.com/image.png',
-					encoding: 'arraybuffer',
-					returnFullResponse: true,
-				}),
-			);
-			expect(result.binary).toBeDefined();
-			expect(result.binary!.data).toEqual(mockBinaryData);
 		});
 	});
 

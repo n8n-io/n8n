@@ -9,7 +9,6 @@ jest.mock('../actions/text', () => ({
 jest.mock('../actions/image', () => ({
 	analyze: { execute: jest.fn() },
 	generate: { execute: jest.fn() },
-	download: { execute: jest.fn() },
 }));
 
 jest.mock('../actions/video', () => ({

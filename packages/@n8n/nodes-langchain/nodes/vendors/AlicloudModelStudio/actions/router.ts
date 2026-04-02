@@ -30,8 +30,6 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					executionData = await image.analyze.execute.call(this, itemIndex);
 				} else if (operation === 'generate') {
 					executionData = await image.generate.execute.call(this, itemIndex);
-				} else if (operation === 'download') {
-					executionData = await image.download.execute.call(this, itemIndex);
 				} else {
 					throw new NodeOperationError(
 						this.getNode(),
