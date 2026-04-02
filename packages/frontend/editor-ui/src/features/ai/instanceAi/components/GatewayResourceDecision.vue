@@ -66,8 +66,8 @@ const otherOptions = computed<OptionEntry[]>(() =>
 		.map(([token, decision]) => ({ token, label: getDecisionLabel(decision) })),
 );
 
-function confirm(token: string): void {
-	store.confirmResourceDecision(props.requestId, token);
+async function confirm(token: string) {
+	await store.confirmResourceDecision(props.requestId, token);
 }
 </script>
 
