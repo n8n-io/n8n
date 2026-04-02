@@ -19,13 +19,15 @@ Most n8n workflows with AI nodes (summarization, content generation, internal au
 - **GDPR** still applies if you process personal data through AI nodes. See the [GDPR section](#gdpr-considerations) below.
 - The high-risk obligations (Articles 9-15) are less likely to apply, but risk classification is context-dependent. **Do not self-classify without legal review.** Focus on Article 50 (transparency) and GDPR (data protection) as your baseline obligations.
 
-If you are unsure whether your use case qualifies as high-risk, consult a qualified legal professional before proceeding.
+> **Disclaimer:** The categories and decision tree in this guide are **informational guidance only** and do not constitute a legal determination of risk classification. High-risk classification under the EU AI Act requires a formal assessment against the criteria in Annex III, including consideration of the specific context, purpose, and deployment conditions of your AI system. Do not rely on this checklist alone to conclude that your workflow is exempt from high-risk obligations. Consult a qualified legal professional for a binding classification.
 
 ## When does an n8n workflow become regulated?
 
 Not every workflow with an AI node is regulated. The EU AI Act classifies AI systems by risk:
 
 ### Decision tree
+
+> This decision tree is a simplified starting point, not a substitute for formal risk assessment under Annex III. Edge cases exist, and some workflows may involve overlapping categories.
 
 1. **Does your workflow use an AI model to make or influence decisions about people?**
    - Hiring, firing, task allocation → **High-risk** (Annex III, Section 4)
@@ -84,7 +86,7 @@ graph LR
 
 **GDPR roles:**
 - **Your organization** is the controller (you determine the purpose and means of processing).
-- **AI providers (OpenAI, Google, Anthropic)** are typically processors for customer-submitted data, but the exact role depends on each provider's terms of service and the specific processing purpose. Review each provider's Data Processing Agreement and document the role accordingly.
+- **AI providers (OpenAI, Google, Anthropic)** may act as processors, controllers, or joint controllers depending on the specific deployment architecture, data flows, and how the provider uses submitted data (e.g., for model training vs. inference only). The classification is not automatic; it depends on each provider's Data Processing Agreement (DPA), their terms of service, and the purpose and means of processing in your specific use case. Review each provider's DPA and document the applicable GDPR role accordingly.
 - **Self-hosted vector stores:** Your organization remains the controller — no third-party transfer.
 - **The organization operating n8n Cloud** acts as a processor if you use the hosted version; no processor relationship if self-hosted.
 
