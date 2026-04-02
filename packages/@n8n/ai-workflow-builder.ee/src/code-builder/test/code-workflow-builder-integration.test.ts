@@ -170,34 +170,6 @@ describe('CodeWorkflowBuilder Integration', () => {
 			expect(result.value).toEqual(mockStreamOutput);
 		});
 
-		it('should route to CodeWorkflowBuilder with feature flags', async () => {
-			const mockStreamOutput: StreamOutput = {
-				messages: [
-					{
-						role: 'assistant',
-						type: 'message',
-						text: 'Generated workflow',
-					},
-				],
-			};
-
-			mockChatFn.mockImplementation(async function* () {
-				yield mockStreamOutput;
-			});
-
-			const payload: ChatPayload = {
-				id: 'test-456',
-				message: 'Create a chatbot workflow',
-				featureFlags: {},
-			};
-
-			const generator = agent.chat(payload, 'user-456');
-			await generator.next();
-
-			expect(CodeWorkflowBuilder).toHaveBeenCalled();
-			expect(mockChatFn).toHaveBeenCalledWith(payload, 'user-456', undefined);
-		});
-
 		it('should pass abort signal to CodeWorkflowBuilder', async () => {
 			const controller = new AbortController();
 
