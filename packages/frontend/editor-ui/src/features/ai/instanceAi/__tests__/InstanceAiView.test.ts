@@ -30,6 +30,7 @@ const createStoreState = () =>
 		creditsRemaining: 100,
 		creditsQuota: 200,
 		hasMessages: false,
+		isHydratingThread: false,
 		isStreaming: false,
 		debugMode: false,
 		loadThreads: vi.fn(),
@@ -339,6 +340,14 @@ describe('InstanceAiView', () => {
 				createdAt: '2026-04-01T00:00:00.000Z',
 			},
 		];
+
+		const { getByTestId } = renderView();
+
+		expect(getByTestId('instance-ai-input-stub')).toHaveTextContent('unset');
+	});
+
+	it('does not pass suggestions while an existing thread is hydrating', () => {
+		storeRef.current.isHydratingThread = true;
 
 		const { getByTestId } = renderView();
 

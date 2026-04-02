@@ -1,18 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
+import { reactive } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import InstanceAiInput from '../components/InstanceAiInput.vue';
 
 const toggleResearchMode = vi.fn();
+const storeState = reactive({
+	amendContext: null as { agentId: string; role: string } | null,
+	contextualSuggestion: null as string | null,
+	researchMode: false,
+	isSendingMessage: false,
+	toggleResearchMode,
+});
 
 vi.mock('../instanceAi.store', () => ({
-	useInstanceAiStore: vi.fn(() => ({
-		amendContext: null,
-		contextualSuggestion: null,
-		researchMode: false,
-		toggleResearchMode,
-	})),
+	useInstanceAiStore: vi.fn(() => storeState),
 }));
 
 const suggestions = [
@@ -77,6 +80,10 @@ const renderComponent = createComponentRenderer(InstanceAiInput);
 describe('InstanceAiInput', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		storeState.amendContext = null;
+		storeState.contextualSuggestion = null;
+		storeState.researchMode = false;
+		storeState.isSendingMessage = false;
 	});
 
 	it('renders the four empty-state suggestions when the textarea is empty', () => {
@@ -226,6 +233,23 @@ describe('InstanceAiInput', () => {
 		await waitFor(() => {
 			expect(queryByTestId('instance-ai-suggestion-build-workflow')).not.toBeInTheDocument();
 			expect(queryByTestId('instance-ai-quick-examples-panel')).not.toBeInTheDocument();
+		});
+	});
+
+	it('hides suggestions while a send is pending', async () => {
+		const { queryByTestId } = renderComponent({
+			props: {
+				isStreaming: false,
+				suggestions,
+			},
+		});
+
+		expect(queryByTestId('instance-ai-suggestion-build-workflow')).toBeInTheDocument();
+
+		storeState.isSendingMessage = true;
+
+		await waitFor(() => {
+			expect(queryByTestId('instance-ai-suggestion-build-workflow')).not.toBeInTheDocument();
 		});
 	});
 

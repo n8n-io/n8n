@@ -1,5 +1,5 @@
 import { setActivePinia, createPinia } from 'pinia';
-import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';
 import { fetchThreadMessages, fetchThreadStatus } from '../instanceAi.memory.api';
 import { ensureThread, postMessage } from '../instanceAi.api';
 import { useInstanceAiStore } from '../instanceAi.store';
@@ -61,6 +61,15 @@ vi.mock('../instanceAi.memory.api', () => ({
 	deleteThread: vi.fn().mockResolvedValue(undefined),
 	renameThread: vi.fn().mockResolvedValue({ thread: {} }),
 }));
+
+const localStorageStub = {
+	getItem: vi.fn(() => 'false'),
+	setItem: vi.fn(),
+	removeItem: vi.fn(),
+	clear: vi.fn(),
+};
+
+const originalLocalStorage = globalThis.localStorage;
 
 // Mock EventSource globally
 let capturedOnMessage: ((ev: MessageEvent) => void) | null = null;
@@ -134,6 +143,21 @@ const mockFetchThreadMessages = vi.mocked(fetchThreadMessages);
 const mockFetchThreadStatus = vi.mocked(fetchThreadStatus);
 const mockEnsureThread = vi.mocked(ensureThread);
 const mockPostMessage = vi.mocked(postMessage);
+
+beforeAll(() => {
+	vi.stubGlobal('localStorage', localStorageStub);
+});
+
+afterAll(() => {
+	if (typeof originalLocalStorage === 'undefined') {
+		Reflect.deleteProperty(globalThis, 'localStorage');
+	} else {
+		Object.defineProperty(globalThis, 'localStorage', {
+			configurable: true,
+			value: originalLocalStorage,
+		});
+	}
+});
 
 describe('useInstanceAiStore - onSSEMessage', () => {
 	let store: ReturnType<typeof useInstanceAiStore>;
@@ -431,6 +455,44 @@ describe('useInstanceAiStore - onSSEMessage', () => {
 			store.currentThreadId,
 		);
 		expect(mockPostMessage).toHaveBeenCalledTimes(2);
+	});
+
+	test('sendMessage enqueues the optimistic user message before a new thread finishes syncing', async () => {
+		let resolveEnsureThread:
+			| ((value: Awaited<ReturnType<typeof ensureThread>>) => void)
+			| undefined;
+
+		mockEnsureThread.mockReturnValueOnce(
+			new Promise((resolve) => {
+				resolveEnsureThread = resolve;
+			}),
+		);
+		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+
+		const sendPromise = store.sendMessage('first');
+
+		expect(store.messages).toHaveLength(1);
+		expect(store.messages[0]).toMatchObject({
+			role: 'user',
+			content: 'first',
+			isStreaming: false,
+		});
+		expect(mockPostMessage).not.toHaveBeenCalled();
+
+		resolveEnsureThread?.({
+			thread: {
+				id: store.currentThreadId,
+				title: '',
+				resourceId: 'user-1',
+				createdAt: '2026-01-01T00:00:00.000Z',
+				updatedAt: '2026-01-01T00:00:00.000Z',
+			},
+			created: true,
+		});
+
+		await sendPromise;
+
+		expect(mockPostMessage).toHaveBeenCalledTimes(1);
 	});
 
 	test('sendMessage forwards pushRef to postMessage', async () => {

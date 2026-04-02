@@ -103,6 +103,7 @@ watch(
 	},
 );
 const showCreditBanner = computed(() => store.isLowCredits && !creditBannerDismissed.value);
+const showEmptyStateLayout = computed(() => !store.hasMessages && !store.isHydratingThread);
 
 // Load persisted threads from Mastra storage on mount
 onMounted(() => {
@@ -430,7 +431,7 @@ function handleStop() {
 			<div :class="$style.contentArea">
 				<div :class="$style.chatContent">
 					<!-- Empty state: centered layout -->
-					<div v-if="!store.hasMessages" :class="$style.emptyLayout">
+					<div v-if="showEmptyStateLayout" :class="$style.emptyLayout">
 						<InstanceAiEmptyState />
 						<div :class="$style.centeredInput">
 							<InstanceAiStatusBar />

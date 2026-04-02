@@ -39,7 +39,10 @@ defineExpose({
 });
 
 const canSubmit = computed(
-	() => (inputText.value.trim().length > 0 || attachedFiles.value.length > 0) && !props.isStreaming,
+	() =>
+		(inputText.value.trim().length > 0 || attachedFiles.value.length > 0) &&
+		!props.isStreaming &&
+		!store.isSendingMessage,
 );
 
 const showSuggestions = computed(
@@ -47,7 +50,8 @@ const showSuggestions = computed(
 		Boolean(props.suggestions?.length) &&
 		inputText.value.trim().length === 0 &&
 		attachedFiles.value.length === 0 &&
-		!props.isStreaming,
+		!props.isStreaming &&
+		!store.isSendingMessage,
 );
 
 const quickExamplesSuggestion = computed(() => props.suggestions?.find(isMenuSuggestion) ?? null);
@@ -95,7 +99,9 @@ onUnmounted(() => {
 
 async function handleSubmit() {
 	const text = inputText.value.trim();
-	if ((!text && attachedFiles.value.length === 0) || props.isStreaming) return;
+	if ((!text && attachedFiles.value.length === 0) || props.isStreaming || store.isSendingMessage) {
+		return;
+	}
 
 	let attachments: InstanceAiAttachment[] | undefined;
 	if (attachedFiles.value.length > 0) {
@@ -150,6 +156,8 @@ function previewSuggestionPrompt(suggestion: InstanceAiEmptyStateSuggestion) {
 }
 
 function submitPrompt(promptKey: BaseTextKey) {
+	if (props.isStreaming || store.isSendingMessage) return;
+
 	hoveredPromptKey.value = null;
 	isQuickExamplesOpen.value = false;
 	inputText.value = '';
@@ -177,6 +185,8 @@ function handleSuggestionBlur(suggestion: InstanceAiEmptyStateSuggestion) {
 }
 
 function toggleQuickExamples() {
+	if (props.isStreaming || store.isSendingMessage) return;
+
 	hoveredPromptKey.value = null;
 	isQuickExamplesOpen.value = !isQuickExamplesOpen.value;
 }
