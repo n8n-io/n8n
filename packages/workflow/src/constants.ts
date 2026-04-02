@@ -53,6 +53,7 @@ export const MICROSOFT_AGENT365_TRIGGER_NODE_TYPE =
 export const SCHEDULE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.scheduleTrigger';
 export const DATA_TABLE_NODE_TYPE = 'n8n-nodes-base.dataTable';
 export const DATA_TABLE_TOOL_NODE_TYPE = 'n8n-nodes-base.dataTableTool';
+export const DATA_TABLE_SQL_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolDataTableSqlQuery';
 
 export const STARTING_NODE_TYPES = [
 	MANUAL_TRIGGER_NODE_TYPE,
@@ -72,6 +73,7 @@ export const SCRIPTING_NODE_TYPES = [
 export const DATA_TABLE_NODE_TYPES = [
 	DATA_TABLE_NODE_TYPE,
 	DATA_TABLE_TOOL_NODE_TYPE,
+	DATA_TABLE_SQL_TOOL_NODE_TYPE,
 	EVALUATION_TRIGGER_NODE_TYPE,
 	EVALUATION_NODE_TYPE,
 ];

@@ -26,5 +26,21 @@ export function getDataTableHelperFunctions(
 				dataTableId,
 				additionalData.dataTableProjectId,
 			),
+		executeSqlQuery: async (sql, tableIds, options) =>
+			await dataTableProxyProvider.executeSqlQuery(
+				workflow,
+				node,
+				sql,
+				tableIds,
+				additionalData.dataTableProjectId,
+				options,
+			),
+		getTableSchemas: async (tableIds) =>
+			await dataTableProxyProvider.getTableSchemas(
+				workflow,
+				node,
+				tableIds,
+				additionalData.dataTableProjectId,
+			),
 	};
 }
