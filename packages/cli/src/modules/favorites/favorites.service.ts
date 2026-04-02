@@ -55,9 +55,14 @@ export class FavoritesService {
 						where: { workflowId: In(workflowIds), projectId: In([...accessibleProjectIds]) },
 					})
 				: [],
-			dataTableIds.length > 0 ? this.dataTableRepository.find({ where: { id: In(dataTableIds) } }) : [],
+			dataTableIds.length > 0
+				? this.dataTableRepository.find({ where: { id: In(dataTableIds) } })
+				: [],
 			folderIds.length > 0
-				? this.folderRepository.find({ where: { id: In(folderIds) }, relations: { homeProject: true } })
+				? this.folderRepository.find({
+						where: { id: In(folderIds) },
+						relations: { homeProject: true },
+					})
 				: [],
 		]);
 
