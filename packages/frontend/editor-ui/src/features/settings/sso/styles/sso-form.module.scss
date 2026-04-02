@@ -94,11 +94,15 @@
 	justify-content: flex-end;
 }
 
-.ipsHeader {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
+.ipsBlock {
 	padding: 0 0 var(--spacing--xs);
+
+	small {
+		display: block;
+		padding: var(--spacing--2xs) 0 0;
+		font-size: var(--font-size--2xs);
+		color: var(--color--text--tint-1);
+	}
 }
 
 .footer {
