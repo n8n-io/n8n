@@ -6,7 +6,7 @@ import type { IMessage, IModelStudioRequestBody } from '../../helpers/interfaces
 const properties: INodeProperties[] = [
 	{
 		displayName: 'Model',
-		name: 'model',
+		name: 'modelId',
 		type: 'options',
 		options: [
 			{
@@ -244,7 +244,7 @@ export async function execute(
 	this: IExecuteFunctions,
 	itemIndex: number,
 ): Promise<INodeExecutionData> {
-	const model = this.getNodeParameter('model', itemIndex) as string;
+	const model = this.getNodeParameter('modelId', itemIndex) as string;
 	const messagesParam = this.getNodeParameter('messages', itemIndex) as {
 		messageValues: IMessage[];
 	};

@@ -39,7 +39,7 @@ describe('AlicloudModelStudio Operations', () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
 				(param: string, _index: number, fallback?: unknown) => {
 					const params: Record<string, unknown> = {
-						model: 'some-text-only-model',
+						modelId: 'some-text-only-model',
 						messages: { messageValues: [{ role: 'user', content: 'Hello' }] },
 						options: {},
 						simplifyOutput: true,
@@ -75,7 +75,7 @@ describe('AlicloudModelStudio Operations', () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
 				(param: string, _index: number, fallback?: unknown) => {
 					const params: Record<string, unknown> = {
-						model: 'qwen3.5-flash',
+						modelId: 'qwen3.5-flash',
 						messages: {
 							messageValues: [
 								{ role: 'system', content: 'You are helpful' },
@@ -121,7 +121,7 @@ describe('AlicloudModelStudio Operations', () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation(
 				(param: string, _index: number, fallback?: unknown) => {
 					const params: Record<string, unknown> = {
-						model: 'some-text-only-model',
+						modelId: 'some-text-only-model',
 						messages: { messageValues: [{ role: 'user', content: 'Hello' }] },
 						options: {},
 						simplifyOutput: false,
