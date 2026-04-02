@@ -6,6 +6,8 @@
  * 2. Cross-user agent retention in the shared singleton
  */
 
+export {};
+
 // ── Realistic Mastra mock that mirrors the real addAgent / #agents behavior ──
 
 const agentsDict: Record<string, unknown> = {};

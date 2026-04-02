@@ -1,3 +1,5 @@
+export {};
+
 const mockMastraInstance = {};
 const mockMastra = jest.fn().mockReturnValue(mockMastraInstance);
 
