@@ -12,7 +12,7 @@ jest.mock('openid-client', () => ({
 import type { OidcConfigDto, ProvisioningConfigDto } from '@n8n/api-types';
 import { createTeamProject, getProjectRoleForUser, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { type User, UserRepository } from '@n8n/db';
+import { type User, UserRepository, RoleRepository, RoleMappingRuleRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 import type * as mocked_oidc_client from 'openid-client';
@@ -922,6 +922,114 @@ describe('OIDC service', () => {
 
 				const projectRole = await getProjectRoleForUser(project.id, user.id);
 				expect(projectRole).toEqual('project:editor');
+			});
+
+			describe('expression-based role mapping', () => {
+				let originalEnvFlag: string | undefined;
+				let roleMappingRuleRepository: RoleMappingRuleRepository;
+				let roleRepository: RoleRepository;
+
+				beforeAll(() => {
+					roleMappingRuleRepository = Container.get(RoleMappingRuleRepository);
+					roleRepository = Container.get(RoleRepository);
+				});
+
+				beforeEach(() => {
+					originalEnvFlag = process.env.N8N_ENV_FEAT_ROLE_MAPPING_STRATEGY;
+					process.env.N8N_ENV_FEAT_ROLE_MAPPING_STRATEGY = 'true';
+				});
+
+				afterEach(async () => {
+					if (originalEnvFlag === undefined) {
+						delete process.env.N8N_ENV_FEAT_ROLE_MAPPING_STRATEGY;
+					} else {
+						process.env.N8N_ENV_FEAT_ROLE_MAPPING_STRATEGY = originalEnvFlag;
+					}
+					await roleMappingRuleRepository.delete({});
+				});
+
+				it('should provision instance role via expression mapping', async () => {
+					const provisioningService = Container.get(ProvisioningService);
+					// @ts-expect-error - provisioningConfig is private
+					provisioningService.provisioningConfig.scopesUseExpressionMapping = true;
+
+					const adminRole = await roleRepository.findOneOrFail({
+						where: { slug: 'global:admin' },
+					});
+					await roleMappingRuleRepository.save(
+						roleMappingRuleRepository.create({
+							expression: "{{ $claims.n8n_role === 'admin' }}",
+							role: adminRole,
+							type: 'instance',
+							order: 0,
+						}),
+					);
+
+					const state = oidcService.generateState();
+					const nonce = oidcService.generateNonce();
+					const callbackUrl = new URL(
+						`http://localhost:5678/rest/sso/oidc/callback?code=valid-code&state=${state.plaintext}`,
+					);
+
+					const mockTokens = createProvisioningMockTokens('oidc-expr-instance-role-sub', {
+						n8n_role: 'admin',
+					});
+					authorizationCodeGrantMock.mockResolvedValueOnce(mockTokens);
+					fetchUserInfoMock.mockResolvedValueOnce({
+						email_verified: true,
+						email: 'oidc-expr-instance-role@example.com',
+					});
+
+					const user = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
+					expect(user).toBeDefined();
+
+					const userFromDB = await userRepository.findOne({
+						where: { id: user.id },
+						relations: ['role'],
+					});
+					expect(userFromDB!.role.slug).toEqual('global:admin');
+				});
+
+				it('should provision project role via expression mapping', async () => {
+					const project = await createTeamProject('oidc-expr-project-role-test');
+
+					const provisioningService = Container.get(ProvisioningService);
+					// @ts-expect-error - provisioningConfig is private
+					provisioningService.provisioningConfig.scopesUseExpressionMapping = true;
+
+					const editorRole = await roleRepository.findOneOrFail({
+						where: { slug: 'project:editor' },
+					});
+					const rule = roleMappingRuleRepository.create({
+						expression: "{{ $claims.department === 'engineering' }}",
+						role: editorRole,
+						type: 'project',
+						order: 0,
+					});
+					rule.projects = [project];
+					await roleMappingRuleRepository.save(rule);
+
+					const state = oidcService.generateState();
+					const nonce = oidcService.generateNonce();
+					const callbackUrl = new URL(
+						`http://localhost:5678/rest/sso/oidc/callback?code=valid-code&state=${state.plaintext}`,
+					);
+
+					const mockTokens = createProvisioningMockTokens('oidc-expr-project-role-sub', {
+						department: 'engineering',
+					});
+					authorizationCodeGrantMock.mockResolvedValueOnce(mockTokens);
+					fetchUserInfoMock.mockResolvedValueOnce({
+						email_verified: true,
+						email: 'oidc-expr-project-role@example.com',
+					});
+
+					const user = await oidcService.loginUser(callbackUrl, state.signed, nonce.signed);
+					expect(user).toBeDefined();
+
+					const projectRole = await getProjectRoleForUser(project.id, user.id);
+					expect(projectRole).toEqual('project:editor');
+				});
 			});
 		});
 
