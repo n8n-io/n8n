@@ -28,44 +28,39 @@ export const versionDescription: INodeTypeDescription = {
 		{
 			name: 'notionApi',
 			required: true,
-			// displayOptions: {
-			// 	show: {
-			// 		authentication: [
-			// 			'apiKey',
-			// 		],
-			// 	},
-			// },
+			displayOptions: {
+				show: {
+					authentication: ['apiKey'],
+				},
+			},
 		},
-		// {
-		// 	name: 'notionOAuth2Api',
-		// 	required: true,
-		// 	displayOptions: {
-		// 		show: {
-		// 			authentication: [
-		// 				'oAuth2',
-		// 			],
-		// 		},
-		// 	},
-		// },
+		{
+			name: 'notionOAuth2Api',
+			required: true,
+			displayOptions: {
+				show: {
+					authentication: ['oAuth2'],
+				},
+			},
+		},
 	],
 	properties: [
-		// {
-		// 	displayName: 'Authentication',
-		// 	name: 'authentication',
-		// 	type: 'options',
-		// 	options: [
-		// 		{
-		// 			name: 'API Key',
-		// 			value: 'apiKey',
-		// 		},
-		// 		{
-		// 			name: 'OAuth2',
-		// 			value: 'oAuth2',
-		// 		},
-		// 	],
-		// 	default: 'apiKey',
-		// 	description: 'The resource to operate on.',
-		// },
+		{
+			displayName: 'Authentication',
+			name: 'authentication',
+			type: 'options',
+			options: [
+				{
+					name: 'API Key',
+					value: 'apiKey',
+				},
+				{
+					name: 'OAuth2',
+					value: 'oAuth2',
+				},
+			],
+			default: 'apiKey',
+		},
 		{
 			displayName:
 				'In Notion, make sure to <a href="https://www.notion.so/help/add-and-manage-connections-with-the-api" target="_blank">add your connection</a> to the pages you want to access.',
