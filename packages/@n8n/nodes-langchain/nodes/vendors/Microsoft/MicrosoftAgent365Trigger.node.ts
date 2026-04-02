@@ -192,7 +192,7 @@ export class MicrosoftAgent365Trigger implements INodeType {
 						name: 'welcomeMessage',
 						type: 'string',
 						placeholder: "e.g. Hello! I'm here to help you!",
-						default: '',
+						default: "Hello! I'm here to help you!",
 					},
 				],
 			},

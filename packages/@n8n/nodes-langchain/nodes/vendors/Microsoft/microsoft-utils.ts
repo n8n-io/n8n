@@ -458,9 +458,13 @@ export function configureAdapterProcessCallback(
 				"Hello! I'm here to help you!",
 			) as string;
 
-			agent.onConversationUpdate('membersAdded', async (context) => {
-				await context.sendActivity(welcomeMessage);
-			});
+			if (welcomeMessage) {
+				agent.onActivity(ActivityTypes.InstallationUpdate, async (context) => {
+					if (context.activity.action === 'add') {
+						await context.sendActivity(welcomeMessage);
+					}
+				});
+			}
 
 			const onActivity = configureActivityCallback(
 				nodeContext,

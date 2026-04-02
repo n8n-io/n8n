@@ -207,11 +207,12 @@ describe('microsoft-utils', () => {
 			};
 		});
 
-		test('should configure agent with welcome message', async () => {
+		test('should configure agent with welcome message on install', async () => {
 			const mockTurnContext = {
 				activity: {
-					type: 'conversationUpdate',
-					text: 'Hello',
+					type: 'installationUpdate',
+					action: 'add',
+					text: '',
 					recipient: { agenticAppId: 'agent-id', name: 'Agent', tenantId: 'tenant-id' },
 					conversation: { id: 'conversation-id' },
 				},
@@ -236,7 +237,11 @@ describe('microsoft-utils', () => {
 
 			await callback(mockTurnContext as any);
 
-			expect(agent.onConversationUpdate).toHaveBeenCalled();
+			expect(agent.onActivity).toHaveBeenCalledWith('installationUpdate', expect.any(Function));
+			expect(agent.onConversationUpdate).not.toHaveBeenCalledWith(
+				'membersAdded',
+				expect.any(Function),
+			);
 		});
 
 		test('should set up activity callback that invokes agent', async () => {
