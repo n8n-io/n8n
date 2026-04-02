@@ -80,32 +80,10 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 	// -----------------------------------------------------------------------
 
 	function applySetNodes(newNodes: INodeUi[]) {
-		newNodes.forEach((node) => {
-			if (!node.id) {
-				assignNodeId(node);
-			}
-
-			if (node.extendsCredential) {
-				node.type = getCredentialOnlyNodeTypeName(node.extendsCredential);
-			}
-
-			if (node.position) {
-				node.position = snapPositionToGrid(node.position);
-			}
-
-			if (!nodeMetadata.value[node.name]) {
-				nodeMetadata.value[node.name] = { pristine: true };
-			}
-		});
-
 		nodes.value = newNodes;
 	}
 
 	function applyAddNode(node: INodeUi) {
-		if (!('name' in node)) {
-			return;
-		}
-
 		nodes.value = [...nodes.value, node];
 
 		if (!nodeMetadata.value[node.name]) {
@@ -189,10 +167,32 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 	// -----------------------------------------------------------------------
 
 	function setNodes(newNodes: INodeUi[]): void {
+		newNodes.forEach((node) => {
+			if (!node.id) {
+				assignNodeId(node);
+			}
+
+			if (node.extendsCredential) {
+				node.type = getCredentialOnlyNodeTypeName(node.extendsCredential);
+			}
+
+			if (node.position) {
+				node.position = snapPositionToGrid(node.position);
+			}
+
+			if (!nodeMetadata.value[node.name]) {
+				nodeMetadata.value[node.name] = { pristine: true };
+			}
+		});
+
 		applySetNodes(newNodes);
 	}
 
 	function addNode(node: INodeUi): void {
+		if (!('name' in node)) {
+			return;
+		}
+
 		applyAddNode(node);
 	}
 
