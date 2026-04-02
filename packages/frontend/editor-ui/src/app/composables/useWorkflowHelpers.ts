@@ -1034,6 +1034,7 @@ export function useWorkflowHelpers() {
 		});
 		initializedWorkflowDocumentStore.onNameChange(({ payload }) => {
 			workflowsStore.workflowObject.name = payload.name;
+			workflowsListStore.updateWorkflowInCache(workflowData.id, { name: payload.name });
 		});
 
 		initializedWorkflowDocumentStore.setName(workflowData.name);
