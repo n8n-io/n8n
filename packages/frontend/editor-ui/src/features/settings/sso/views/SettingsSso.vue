@@ -105,12 +105,12 @@ onMounted(() => {
 		<div :class="$style.heading">
 			<N8nHeading size="2xlarge">{{ i18n.baseText('settings.sso.title') }}</N8nHeading>
 		</div>
-		<N8nInfoTip>
+		<p :class="$style.description">
 			{{ i18n.baseText('settings.sso.info') }}
-			<a href="https://docs.n8n.io/user-management/saml/" target="_blank">
+			<a :class="$style.docLink" href="https://docs.n8n.io/user-management/saml/" target="_blank">
 				{{ i18n.baseText('settings.sso.info.link') }}
 			</a>
-		</N8nInfoTip>
+		</p>
 		<div
 			v-if="ssoStore.isEnterpriseSamlEnabled && authProtocol === SupportedProtocols.SAML"
 			data-test-id="sso-content-licensed"
@@ -224,7 +224,24 @@ onMounted(() => {
 
 <style lang="scss" module>
 .heading {
-	margin-bottom: var(--spacing--sm);
+	margin-bottom: var(--spacing--2xs);
+}
+
+.description {
+	font-size: var(--font-size--sm);
+	color: var(--color--text--tint-1);
+	line-height: var(--line-height--xl);
+	margin: 0 0 var(--spacing--lg);
+}
+
+.docLink {
+	color: var(--color--text);
+	text-decoration: underline;
+
+	&::after {
+		content: '↗';
+		margin-left: 2px;
+	}
 }
 
 .actionBox {
