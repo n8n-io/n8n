@@ -97,6 +97,40 @@ describe('SpanRegistry', () => {
 		});
 	});
 
+	describe('findUnendedNodeSpans', () => {
+		it('should remove and return all node spans for an execution', () => {
+			const nodeSpan1 = mock<Span>();
+			const nodeSpan2 = mock<Span>();
+			registry.addNode('exec-1', 'node-a', nodeSpan1);
+			registry.addNode('exec-1', 'node-b', nodeSpan2);
+
+			const dangling = registry.findUnendedNodeSpans('exec-1');
+
+			expect(dangling).toHaveLength(2);
+			expect(dangling).toContain(nodeSpan1);
+			expect(dangling).toContain(nodeSpan2);
+			expect(registry.getNode('exec-1', 'node-a')).toBeUndefined();
+			expect(registry.getNode('exec-1', 'node-b')).toBeUndefined();
+		});
+
+		it('should return empty array when no node spans exist', () => {
+			expect(registry.findUnendedNodeSpans('exec-1')).toHaveLength(0);
+		});
+
+		it('should not affect workflow spans or other executions', () => {
+			const wfSpan = mock<Span>();
+			const otherNodeSpan = mock<Span>();
+			registry.addWorkflow('exec-1', wfSpan);
+			registry.addNode('exec-2', 'node-a', otherNodeSpan);
+
+			const dangling = registry.findUnendedNodeSpans('exec-1');
+
+			expect(dangling).toHaveLength(0);
+			expect(registry.getWorkflow('exec-1')).toBe(wfSpan);
+			expect(registry.getNode('exec-2', 'node-a')).toBe(otherNodeSpan);
+		});
+	});
+
 	describe('static key methods', () => {
 		it('should generate workflow key from executionId', () => {
 			expect(SpanRegistry.workflowKey('exec-1')).toBe('exec-1');
