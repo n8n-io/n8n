@@ -10,6 +10,10 @@ import {
 	getGatewayUsage,
 } from '@/features/ai/assistant/assistant.api';
 
+function toError(e: unknown): Error {
+	return e instanceof Error ? e : new Error(String(e));
+}
+
 export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 	const rootStore = useRootStore();
 
@@ -26,7 +30,7 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 			config.value = await getGatewayConfig(rootStore.restApiContext);
 			fetchError.value = null;
 		} catch (error) {
-			fetchError.value = error instanceof Error ? error : new Error(String(error));
+			fetchError.value = toError(error);
 			console.error('[aiGatewayStore] Failed to fetch gateway config:', error);
 		}
 	}
@@ -38,7 +42,7 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 			creditsQuota.value = data.creditsQuota;
 			fetchError.value = null;
 		} catch (error) {
-			fetchError.value = error instanceof Error ? error : new Error(String(error));
+			fetchError.value = toError(error);
 			console.error('[aiGatewayStore] Failed to fetch credits:', error);
 		}
 	}
@@ -50,7 +54,7 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 			usageTotal.value = data.total;
 			fetchError.value = null;
 		} catch (error) {
-			fetchError.value = error instanceof Error ? error : new Error(String(error));
+			fetchError.value = toError(error);
 			console.error('[aiGatewayStore] Failed to fetch usage:', error);
 		}
 	}
@@ -62,7 +66,7 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 			usageTotal.value = data.total;
 			fetchError.value = null;
 		} catch (error) {
-			fetchError.value = error instanceof Error ? error : new Error(String(error));
+			fetchError.value = toError(error);
 			console.error('[aiGatewayStore] Failed to fetch more usage:', error);
 		}
 	}

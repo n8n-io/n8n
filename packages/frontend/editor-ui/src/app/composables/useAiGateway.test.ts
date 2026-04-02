@@ -116,7 +116,7 @@ describe('useAiGateway', () => {
 		});
 	});
 
-	describe('isNodeSupported()', () => {
+	describe('isCredentialTypeSupported()', () => {
 		it('should return true when credential type is in gateway config', async () => {
 			mockGetGatewayConfig.mockResolvedValue({
 				nodes: [],
@@ -126,13 +126,13 @@ describe('useAiGateway', () => {
 			const aiGatewayStore = useAiGatewayStore();
 			await aiGatewayStore.fetchConfig();
 
-			const { isNodeSupported } = useAiGateway();
-			expect(isNodeSupported('googlePalmApi')).toBe(true);
+			const { isCredentialTypeSupported } = useAiGateway();
+			expect(isCredentialTypeSupported('googlePalmApi')).toBe(true);
 		});
 
 		it('should return false when credential type is not in gateway config', () => {
-			const { isNodeSupported } = useAiGateway();
-			expect(isNodeSupported('openAiApi')).toBe(false);
+			const { isCredentialTypeSupported } = useAiGateway();
+			expect(isCredentialTypeSupported('openAiApi')).toBe(false);
 		});
 	});
 });

@@ -43,14 +43,6 @@ export class AiGatewayService {
 	) {}
 
 	/**
-	 * Returns the gateway config (nodes, credential types, provider routing),
-	 * fetching from the gateway service and caching for 1 hour.
-	 */
-	async getGatewayConfig(): Promise<AiGatewayConfigDto> {
-		return await this.getOrFetchConfig();
-	}
-
-	/**
 	 * Returns a synthetic credential for the given type, pointing the node at the gateway
 	 * instead of the real provider. Called from `CredentialsHelper.getDecrypted` when
 	 * `nodeCredentials.__aiGatewayManaged` is set.
@@ -63,12 +55,9 @@ export class AiGatewayService {
 			throw new FeatureNotLicensedError(LICENSE_FEATURES.AI_GATEWAY);
 		}
 
-		const baseUrl = this.globalConfig.aiAssistant.baseUrl;
-		if (!baseUrl) {
-			throw new UserError('AI Gateway is not configured. Set the AI assistant base URL.');
-		}
+		const baseUrl = this.requireBaseUrl();
 
-		const config = await this.getOrFetchConfig();
+		const config = await this.getGatewayConfig();
 		const providerConfig = config.providerConfig[credentialType];
 		if (!providerConfig) {
 			throw new UserError(`Credential type "${credentialType}" is not supported by AI Gateway.`);
@@ -88,10 +77,7 @@ export class AiGatewayService {
 	 * Returns paginated usage history for the given user.
 	 */
 	async getUsage(userId: string, offset: number, limit: number): Promise<AiGatewayUsageResponse> {
-		const baseUrl = this.globalConfig.aiAssistant.baseUrl;
-		if (!baseUrl) {
-			throw new UserError('AI Gateway is not configured. Set the AI assistant base URL.');
-		}
+		const baseUrl = this.requireBaseUrl();
 
 		const jwt = await this.getOrFetchToken(userId);
 		if (!jwt) {
@@ -122,10 +108,7 @@ export class AiGatewayService {
 	 * Returns the current credits quota and remaining credits for the given user.
 	 */
 	async getCreditsRemaining(userId: string): Promise<GatewayCreditsResponse> {
-		const baseUrl = this.globalConfig.aiAssistant.baseUrl;
-		if (!baseUrl) {
-			throw new UserError('AI Gateway is not configured. Set the AI assistant base URL.');
-		}
+		const baseUrl = this.requireBaseUrl();
 
 		const jwt = await this.getOrFetchToken(userId);
 		if (!jwt) {
@@ -148,6 +131,12 @@ export class AiGatewayService {
 		return data;
 	}
 
+	private requireBaseUrl(): string {
+		const url = this.globalConfig.aiAssistant.baseUrl;
+		if (!url) throw new UserError('AI Gateway is not configured. Set the AI assistant base URL.');
+		return url;
+	}
+
 	private isConfigStale(): boolean {
 		return (
 			this.gatewayConfig === null ||
@@ -155,13 +144,10 @@ export class AiGatewayService {
 		);
 	}
 
-	private async getOrFetchConfig(): Promise<AiGatewayConfigDto> {
+	async getGatewayConfig(): Promise<AiGatewayConfigDto> {
 		if (!this.isConfigStale()) return this.gatewayConfig!;
 
-		const baseUrl = this.globalConfig.aiAssistant.baseUrl;
-		if (!baseUrl) {
-			throw new UserError('AI Gateway is not configured. Set the AI assistant base URL.');
-		}
+		const baseUrl = this.requireBaseUrl();
 
 		const response = await fetch(`${baseUrl}/v1/gateway/config`);
 		if (!response.ok) {
@@ -222,7 +208,7 @@ export class AiGatewayService {
 	}
 
 	private async fetchAndCacheToken(userId: string, key: string): Promise<string> {
-		const baseUrl = this.globalConfig.aiAssistant.baseUrl;
+		const baseUrl = this.requireBaseUrl();
 		const licenseCert = await this.license.loadCertStr();
 
 		const response = await fetch(`${baseUrl}/v1/gateway/credentials`, {

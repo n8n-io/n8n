@@ -30,7 +30,7 @@ import {
 vi.mock('@/app/composables/useAiGateway', () => ({
 	useAiGateway: vi.fn(() => ({
 		isEnabled: ref(false),
-		isNodeSupported: vi.fn(() => false),
+		isCredentialTypeSupported: vi.fn(() => false),
 		creditsRemaining: computed(() => undefined),
 		creditsQuota: computed(() => undefined),
 		fetchConfig: vi.fn().mockResolvedValue(undefined),
@@ -893,18 +893,125 @@ describe('NodeCredentials', () => {
 			// Enable AI Gateway for this describe block
 			vi.mocked(useAiGateway).mockReturnValue({
 				isEnabled: computed(() => true),
-				isNodeSupported: vi.fn((credType: string) => credType === 'googlePalmApi'),
+				isCredentialTypeSupported: vi.fn((credType: string) => credType === 'googlePalmApi'),
 				creditsRemaining: computed(() => undefined),
 				creditsQuota: computed(() => undefined),
 				fetchConfig: vi.fn().mockResolvedValue(undefined),
 				fetchCredits: vi.fn().mockResolvedValue(undefined),
 				saveAfterToggle: vi.fn().mockResolvedValue(undefined),
+				fetchError: computed(() => null),
 			});
 
 			const nodeTypesStore = mockedStore(useNodeTypesStore);
 			nodeTypesStore.setNodeTypes([googleAiNodeType]);
 
 			credentialsStore.state.credentialTypes = { googlePalmApi: googlePalmApiCredType };
+		});
+
+		const aiGatewayToggleStub = {
+			template: '<div data-test-id="ai-gateway-toggle" />',
+			props: ['aiGatewayEnabled', 'readonly'],
+			emits: ['toggle'],
+		};
+
+		describe('rendering', () => {
+			it('should show the toggle and the credential selector when gateway is supported but not managed', () => {
+				const existingCred = {
+					id: 'cred-1',
+					name: 'My Google Key',
+					type: 'googlePalmApi',
+					isManaged: false,
+					createdAt: '2024-01-01',
+					updatedAt: '2024-01-01',
+				};
+				credentialsStore.state.credentials = { 'cred-1': existingCred };
+				credentialsStore.getCredentialById = vi.fn().mockReturnValue(existingCred);
+
+				const nodeWithCred: INodeUi = {
+					...googleAiNode,
+					credentials: { googlePalmApi: { id: 'cred-1', name: 'My Google Key' } },
+				};
+				ndvStore.activeNode = nodeWithCred;
+
+				renderComponent({
+					props: { node: nodeWithCred, overrideCredType: 'googlePalmApi' },
+					global: { stubs: { AiGatewayToggle: aiGatewayToggleStub } },
+				});
+
+				// Both the toggle and the credential dropdown should be visible
+				expect(screen.getByTestId('ai-gateway-toggle')).toBeInTheDocument();
+				expect(screen.getByTestId('node-credentials-select')).toBeInTheDocument();
+			});
+
+			it('should show the toggle but hide the credential selector when gateway is managed', () => {
+				const nodeWithGateway: INodeUi = {
+					...googleAiNode,
+					credentials: { googlePalmApi: { id: null, name: '', __aiGatewayManaged: true } },
+				};
+				ndvStore.activeNode = nodeWithGateway;
+
+				renderComponent({
+					props: { node: nodeWithGateway, overrideCredType: 'googlePalmApi' },
+					global: { stubs: { AiGatewayToggle: aiGatewayToggleStub } },
+				});
+
+				expect(screen.getByTestId('ai-gateway-toggle')).toBeInTheDocument();
+				expect(screen.queryByTestId('node-credentials-select')).not.toBeInTheDocument();
+			});
+
+			it('should not show the toggle when gateway feature is disabled', () => {
+				vi.mocked(useAiGateway).mockReturnValue({
+					isEnabled: computed(() => false),
+					isCredentialTypeSupported: vi.fn(() => false),
+					creditsRemaining: computed(() => undefined),
+					creditsQuota: computed(() => undefined),
+					fetchError: computed(() => null),
+					fetchConfig: vi.fn().mockResolvedValue(undefined),
+					fetchCredits: vi.fn().mockResolvedValue(undefined),
+					saveAfterToggle: vi.fn().mockResolvedValue(undefined),
+				});
+				ndvStore.activeNode = googleAiNode;
+
+				renderComponent({
+					props: { node: googleAiNode, overrideCredType: 'googlePalmApi' },
+					global: { stubs: { AiGatewayToggle: aiGatewayToggleStub } },
+				});
+
+				expect(screen.queryByTestId('ai-gateway-toggle')).not.toBeInTheDocument();
+			});
+
+			it('should show the toggle in readonly mode when gateway is managed', () => {
+				const nodeWithGateway: INodeUi = {
+					...googleAiNode,
+					credentials: { googlePalmApi: { id: null, name: '', __aiGatewayManaged: true } },
+				};
+				ndvStore.activeNode = nodeWithGateway;
+
+				renderComponent({
+					props: { node: nodeWithGateway, overrideCredType: 'googlePalmApi', readonly: true },
+					global: { stubs: { AiGatewayToggle: aiGatewayToggleStub } },
+				});
+
+				expect(screen.getByTestId('ai-gateway-toggle')).toBeInTheDocument();
+				// The readonly disabled input should not be shown for a managed credential
+				expect(screen.queryByTestId('node-credentials-select')).not.toBeInTheDocument();
+			});
+
+			it('should show the readonly disabled input (not the toggle) when readonly and not managed', () => {
+				const nodeWithCred: INodeUi = {
+					...googleAiNode,
+					credentials: { googlePalmApi: { id: 'cred-1', name: 'My Google Key' } },
+				};
+				ndvStore.activeNode = nodeWithCred;
+
+				renderComponent({
+					props: { node: nodeWithCred, overrideCredType: 'googlePalmApi', readonly: true },
+					global: { stubs: { AiGatewayToggle: aiGatewayToggleStub } },
+				});
+
+				expect(screen.queryByTestId('ai-gateway-toggle')).not.toBeInTheDocument();
+				expect(screen.getByTestId('node-credentials-select')).toBeInTheDocument();
+			});
 		});
 
 		it('should emit credentialSelected with __aiGatewayManaged:true when toggled ON', async () => {

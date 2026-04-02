@@ -499,7 +499,8 @@ function isAiGatewayManaged(credentialType: string): boolean {
 }
 
 function showAiGatewayToggle(credentialType: string): boolean {
-	if (!aiGateway.isEnabled.value || !aiGateway.isNodeSupported(credentialType)) return false;
+	if (!aiGateway.isEnabled.value || !aiGateway.isCredentialTypeSupported(credentialType))
+		return false;
 	// In readonly mode only show when currently managed (so the active state is visible)
 	if (props.readonly) return isAiGatewayManaged(credentialType);
 	return true;

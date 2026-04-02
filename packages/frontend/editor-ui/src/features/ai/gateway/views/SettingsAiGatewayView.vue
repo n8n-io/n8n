@@ -40,19 +40,18 @@ function providerLabel(provider: string): string {
 	return map[provider.toLowerCase()] ?? provider;
 }
 
-async function load(reset = false): Promise<void> {
-	if (reset) offset.value = 0;
+async function load(): Promise<void> {
+	offset.value = 0;
 	isLoading.value = true;
 	try {
-		await aiGatewayStore.fetchUsage(offset.value, PAGE_SIZE);
-		if (!reset) offset.value += PAGE_SIZE;
+		await aiGatewayStore.fetchUsage(0, PAGE_SIZE);
 	} finally {
 		isLoading.value = false;
 	}
 }
 
 async function refresh(): Promise<void> {
-	await load(true);
+	await load();
 }
 
 async function loadMore(): Promise<void> {
@@ -67,7 +66,7 @@ async function loadMore(): Promise<void> {
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.n8nGateway.title'));
-	await load(true);
+	await load();
 });
 </script>
 

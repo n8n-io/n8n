@@ -28,7 +28,7 @@ export function useAiGateway() {
 		await aiGatewayStore.fetchCredits();
 	}
 
-	const isNodeSupported = (credentialType: string): boolean =>
+	const isCredentialTypeSupported = (credentialType: string): boolean =>
 		aiGatewayStore.isCredentialTypeSupported(credentialType);
 
 	async function fetchConfig(): Promise<void> {
@@ -47,7 +47,7 @@ export function useAiGateway() {
 		fetchError,
 		fetchConfig,
 		fetchCredits,
-		isNodeSupported,
+		isCredentialTypeSupported,
 		saveAfterToggle,
 	};
 }

@@ -27,11 +27,18 @@ watch(
 	{ immediate: true },
 );
 
-// Refresh after each execution so the badge reflects consumed credits
+// Refresh after each execution completes so the badge reflects consumed credits.
+// An execution is considered done when finished===true (saved runs) or stoppedAt is set
+// (step/test runs) — mirrors the same check used in workflows.store.ts.
 watch(
 	() => workflowsStore.workflowExecutionData,
-	() => {
-		if (props.aiGatewayEnabled) void fetchCredits();
+	(executionData) => {
+		if (
+			(executionData?.finished || executionData?.stoppedAt !== undefined) &&
+			props.aiGatewayEnabled
+		) {
+			void fetchCredits();
+		}
 	},
 );
 </script>
