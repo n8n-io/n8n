@@ -109,7 +109,7 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 	<div :class="$style.timeline">
 		<template v-for="(entry, idx) in props.agentNode.timeline" :key="idx">
 			<!-- Text segment -->
-			<N8nText v-if="entry.type === 'text'" :compact="props.compact">
+			<N8nText v-if="entry.type === 'text'" size="large" :compact="props.compact">
 				<InstanceAiMarkdown :content="entry.content" />
 			</N8nText>
 

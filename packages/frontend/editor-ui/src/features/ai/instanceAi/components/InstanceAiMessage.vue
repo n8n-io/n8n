@@ -109,7 +109,7 @@ function formatJson(value: unknown): string {
 					:is-removable="false"
 				/>
 			</div>
-			<N8nText>{{ props.message.content }}</N8nText>
+			<N8nText size="large">{{ props.message.content }}</N8nText>
 		</div>
 
 		<!-- Assistant message -->
@@ -142,6 +142,7 @@ function formatJson(value: unknown): string {
 			<!-- Text content (shown when no agentTree, or streaming dots) -->
 			<N8nText
 				v-if="showContent && !props.message.agentTree && props.message.content"
+				size="large"
 				:class="$style.textContent"
 			>
 				<InstanceAiMarkdown :content="props.message.content" />
