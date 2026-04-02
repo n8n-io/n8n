@@ -57,12 +57,11 @@ export class LmChatOllama implements INodeType {
 		const credentials = await this.getCredentials('ollamaApi');
 
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
-		const options = this.getNodeParameter('options', itemIndex, {}) as ChatOllamaInput;
-
-		if (options.think) {
-			delete options.think;
-		}
-
+		const { think: _, ...options } = this.getNodeParameter(
+			'options',
+			itemIndex,
+			{},
+		) as ChatOllamaInput;
 		const headers = credentials.apiKey
 			? {
 					Authorization: `Bearer ${credentials.apiKey as string}`,
