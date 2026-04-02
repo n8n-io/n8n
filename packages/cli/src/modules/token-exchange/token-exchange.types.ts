@@ -1,5 +1,24 @@
 import type { TOKEN_EXCHANGE_GRANT_TYPE } from './token-exchange.schemas';
 
+export interface IssuedTokenResult {
+	accessToken: string;
+	expiresIn: number;
+	subject: string;
+	issuer: string;
+	actor?: string;
+}
+
+export interface IssuedJwtPayload {
+	iss: string;
+	sub: string;
+	act?: { sub: string };
+	scope?: string[];
+	resource?: string;
+	iat: number;
+	exp: number;
+	jti: string;
+}
+
 export type TokenExchangeAuditEvent =
 	| {
 			event: 'token_exchange_success';

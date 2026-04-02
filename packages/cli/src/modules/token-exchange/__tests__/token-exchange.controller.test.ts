@@ -1,4 +1,3 @@
-import { GlobalConfig } from '@n8n/config';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
@@ -9,15 +8,17 @@ import { UnexpectedError } from 'n8n-workflow';
 import { EventService } from '@/events/event.service';
 import type { AuthlessRequest } from '@/requests';
 
+import { TokenExchangeConfig } from '../token-exchange.config';
 import { TokenExchangeController } from '../token-exchange.controller';
 import { TOKEN_EXCHANGE_GRANT_TYPE } from '../token-exchange.schemas';
 import { TokenExchangeService } from '../token-exchange.service';
+import type { IssuedTokenResult } from '../token-exchange.types';
 
 describe('TokenExchangeController', () => {
 	mockInstance(ErrorReporter);
 	mockInstance(EventService);
 	mockInstance(TokenExchangeService);
-	const globalConfig = mockInstance(GlobalConfig);
+	const tokenExchangeConfig = mockInstance(TokenExchangeConfig);
 
 	const controller = Container.get(TokenExchangeController);
 	const errorReporter = Container.get(ErrorReporter);
@@ -29,7 +30,8 @@ describe('TokenExchangeController', () => {
 
 	beforeEach(() => {
 		jest.resetAllMocks();
-		globalConfig.tokenExchange = { enabled: true };
+		tokenExchangeConfig.enabled = true;
+		tokenExchangeConfig.maxTokenTtl = 900;
 		req = mock<AuthlessRequest>({ ip: '127.0.0.1' });
 		res = mock<Response>();
 		res.status.mockReturnThis();
@@ -39,7 +41,7 @@ describe('TokenExchangeController', () => {
 	describe('POST /auth/oauth/token', () => {
 		describe('feature flag', () => {
 			test('returns 501 server_error when token exchange is disabled', async () => {
-				globalConfig.tokenExchange = { enabled: false };
+				tokenExchangeConfig.enabled = false;
 				req.body = {
 					grant_type: TOKEN_EXCHANGE_GRANT_TYPE,
 					subject_token: 'some-token',
@@ -121,26 +123,32 @@ describe('TokenExchangeController', () => {
 				subject_token: 'eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJ1c2VyIn0.sig',
 			};
 
-			const stubResponse = {
-				access_token: 'stub-access-token',
-				token_type: 'Bearer',
-				expires_in: 3600,
-				issued_token_type: 'urn:ietf:params:oauth:token-type:access_token',
+			const issuedResult: IssuedTokenResult = {
+				accessToken: 'eyJhbGciOiJIUzI1NiJ9.issued.token',
+				expiresIn: 900,
+				subject: 'user-123',
+				issuer: 'https://idp.example.com',
+				actor: undefined,
 			};
 
-			test('returns RFC 8693 success response', async () => {
+			test('returns RFC 8693 success response with issued token', async () => {
 				req.body = validBody;
-				jest.mocked(tokenExchangeService.exchange).mockResolvedValue(true);
+				jest.mocked(tokenExchangeService.exchange).mockResolvedValue(issuedResult);
 
 				await controller.exchangeToken(req, res);
 
-				expect(res.json).toHaveBeenCalledWith(stubResponse);
+				expect(res.json).toHaveBeenCalledWith({
+					access_token: issuedResult.accessToken,
+					token_type: 'Bearer',
+					expires_in: issuedResult.expiresIn,
+					issued_token_type: 'urn:ietf:params:oauth:token-type:access_token',
+				});
 				expect(res.status).not.toHaveBeenCalled();
 			});
 
 			test('response includes all required RFC 8693 fields', async () => {
 				req.body = { ...validBody, scope: 'openid profile' };
-				jest.mocked(tokenExchangeService.exchange).mockResolvedValue(true);
+				jest.mocked(tokenExchangeService.exchange).mockResolvedValue(issuedResult);
 
 				await controller.exchangeToken(req, res);
 
@@ -154,16 +162,17 @@ describe('TokenExchangeController', () => {
 				);
 			});
 
-			test('emits token-exchange-succeeded event on success', async () => {
+			test('emits token-exchange-succeeded event with subject and issuer from result', async () => {
 				req.body = validBody;
-				jest.mocked(tokenExchangeService.exchange).mockResolvedValue(true);
+				jest.mocked(tokenExchangeService.exchange).mockResolvedValue(issuedResult);
 
 				await controller.exchangeToken(req, res);
 
 				expect(eventService.emit).toHaveBeenCalledWith(
 					'token-exchange-succeeded',
 					expect.objectContaining({
-						subject: '',
+						subject: issuedResult.subject,
+						issuer: issuedResult.issuer,
 						grantType: TOKEN_EXCHANGE_GRANT_TYPE,
 						clientIp: '127.0.0.1',
 					}),
