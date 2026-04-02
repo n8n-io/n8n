@@ -22,12 +22,20 @@ vi.mock('@/features/setupPanel/composables/useWorkflowSetupState', () => ({
 }));
 
 const mockTrackJourney = vi.fn();
+const mockIsNodePinDataSet = vi.fn().mockReturnValue(false);
+const mockHasAvailablePinData = vi.fn().mockReturnValue(false);
+const mockSetPinDataForNodes = vi.fn();
+const mockUnsetPinDataForNodes = vi.fn();
 
 // Reactive object so computed properties in the composable can track changes
 const mockBuilderStoreState = reactive({
 	wizardCurrentStep: 0,
 	wizardHasExecutedWorkflow: false,
 	trackWorkflowBuilderJourney: mockTrackJourney,
+	isNodePinDataSet: mockIsNodePinDataSet,
+	hasAvailablePinData: mockHasAvailablePinData,
+	setPinDataForNodes: mockSetPinDataForNodes,
+	unsetPinDataForNodes: mockUnsetPinDataForNodes,
 });
 vi.mock('@/features/ai/assistant/builder.store', () => ({
 	useBuilderStore: () => mockBuilderStoreState,
@@ -119,6 +127,10 @@ describe('useBuilderSetupCards', () => {
 		mockBuilderStoreState.wizardCurrentStep = 0;
 		mockBuilderStoreState.wizardHasExecutedWorkflow = false;
 		mockIsInitialCredentialTestingDone.value = true;
+		mockIsNodePinDataSet.mockReturnValue(false);
+		mockHasAvailablePinData.mockReturnValue(false);
+		mockSetPinDataForNodes.mockClear();
+		mockUnsetPinDataForNodes.mockClear();
 	});
 
 	it('passes through cards from useWorkflowSetupState', () => {
@@ -495,5 +507,136 @@ describe('useBuilderSetupCards', () => {
 		await nextTick();
 
 		expect(mockBuilderStoreState.wizardHasExecutedWorkflow).toBe(true);
+	});
+
+	describe('pin data set/unset', () => {
+		it('isCurrentCardPinDataSet reflects builder store state', () => {
+			mockSetupCards.value = [createCard({ node: createNode({ name: 'Slack', id: 'n1' }) })];
+			mockIsNodePinDataSet.mockReturnValue(true);
+
+			const { isCurrentCardPinDataSet } = getComposable();
+			expect(isCurrentCardPinDataSet.value).toBe(true);
+			expect(mockIsNodePinDataSet).toHaveBeenCalledWith('Slack');
+		});
+
+		it('currentCardHasAvailablePinData reflects builder store state', () => {
+			mockSetupCards.value = [createCard({ node: createNode({ name: 'HTTP Request', id: 'n1' }) })];
+			mockHasAvailablePinData.mockReturnValue(true);
+
+			const { currentCardHasAvailablePinData } = getComposable();
+			expect(currentCardHasAvailablePinData.value).toBe(true);
+			expect(mockHasAvailablePinData).toHaveBeenCalledWith('HTTP Request');
+		});
+
+		it('setCurrentCardPinData calls store and tracks telemetry', () => {
+			mockSetupCards.value = [
+				createCard({
+					node: createNode({ name: 'Slack', id: 'n1', type: 'n8n-nodes-base.slack' }),
+				}),
+				createCard({ node: createNode({ name: 'Node 2', id: 'n2' }) }),
+			];
+
+			const { setCurrentCardPinData } = getComposable();
+			setCurrentCardPinData();
+
+			expect(mockSetPinDataForNodes).toHaveBeenCalledWith(['Slack']);
+			expect(mockTrackJourney).toHaveBeenCalledWith(
+				'setup_wizard_pin_data_set',
+				expect.objectContaining({
+					node_type: 'n8n-nodes-base.slack',
+					step: 1,
+					total: 2,
+				}),
+			);
+		});
+
+		it('setCurrentCardPinData auto-advances to next card', () => {
+			mockSetupCards.value = [
+				createCard({ node: createNode({ name: 'Node 1', id: 'n1' }) }),
+				createCard({ node: createNode({ name: 'Node 2', id: 'n2' }) }),
+			];
+
+			const { setCurrentCardPinData, currentStepIndex } = getComposable();
+			expect(currentStepIndex.value).toBe(0);
+
+			setCurrentCardPinData();
+			expect(currentStepIndex.value).toBe(1);
+		});
+
+		it('unsetCurrentCardPinData calls store and tracks telemetry', () => {
+			mockSetupCards.value = [
+				createCard({
+					node: createNode({ name: 'Slack', id: 'n1', type: 'n8n-nodes-base.slack' }),
+				}),
+			];
+
+			const { unsetCurrentCardPinData } = getComposable();
+			unsetCurrentCardPinData();
+
+			expect(mockUnsetPinDataForNodes).toHaveBeenCalledWith(['Slack']);
+			expect(mockTrackJourney).toHaveBeenCalledWith(
+				'setup_wizard_pin_data_unset',
+				expect.objectContaining({
+					node_type: 'n8n-nodes-base.slack',
+				}),
+			);
+		});
+
+		it('isAllComplete treats cards with pin data set as complete', () => {
+			mockSetupCards.value = [
+				createCard({
+					node: createNode({ name: 'Node 1', id: 'n1' }),
+					isComplete: false,
+					credentialType: 'slackApi',
+					issues: ['Not set'],
+				}),
+			];
+			// Card is incomplete but has pin data set
+			mockIsNodePinDataSet.mockReturnValue(true);
+
+			const { isAllComplete } = getComposable();
+			expect(isAllComplete.value).toBe(true);
+		});
+
+		it('skipToFirstIncomplete skips past cards with pin data set', () => {
+			mockIsNodePinDataSet.mockImplementation((name: string) => name === 'Node 1');
+			mockSetupCards.value = [
+				createCard({
+					node: createNode({ name: 'Node 1', id: 'n1' }),
+					isComplete: false,
+				}),
+				createCard({
+					node: createNode({ name: 'Node 2', id: 'n2' }),
+					isComplete: false,
+				}),
+			];
+
+			const { currentStepIndex } = getComposable();
+			// Node 1 has pin data set (effectively complete), should skip to Node 2
+			expect(currentStepIndex.value).toBe(1);
+		});
+
+		it('handles node group cards for pin data', () => {
+			const parentNode = createNode({ name: 'AI Agent', id: 'agent-1' });
+			const subnodeCard = createCardState({
+				node: createNode({ name: 'OpenAI Chat Model', id: 'model-1' }),
+			});
+			mockSetupCards.value = [
+				{
+					nodeGroup: {
+						parentNode,
+						parentState: createCardState({ node: parentNode }),
+						subnodeCards: [subnodeCard],
+					},
+				},
+			];
+
+			const { setCurrentCardPinData } = getComposable();
+			setCurrentCardPinData();
+
+			expect(mockSetPinDataForNodes).toHaveBeenCalledWith(
+				expect.arrayContaining(['AI Agent', 'OpenAI Chat Model']),
+			);
+		});
 	});
 });

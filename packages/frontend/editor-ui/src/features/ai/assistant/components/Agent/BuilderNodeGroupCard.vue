@@ -25,6 +25,8 @@ const props = defineProps<{
 	nodeGroup: NodeGroupItem;
 	stepIndex: number;
 	totalCards: number;
+	isPinDataSet?: boolean;
+	hasPinData?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -35,6 +37,8 @@ const emit = defineEmits<{
 	credentialSelected: [payload: CredentialSelectedPayload];
 	credentialDeselected: [payload: CredentialDeselectedPayload];
 	sectionHighlight: [nodeIds: string[] | null];
+	setPinData: [];
+	unsetPinData: [];
 }>();
 
 const i18n = useI18n();
@@ -81,9 +85,11 @@ const isPrevDisabled = computed(() => props.stepIndex === 0);
 const isNextDisabled = computed(() => isLastCard.value);
 
 const isExecutable = computed(() => executableNode.value !== null);
+const showExecuteButton = computed(() => isExecutable.value);
 const showContinue = computed(
 	() => !isExecutable.value && props.totalCards > 1 && !isLastCard.value,
 );
+const showSkip = computed(() => !props.isPinDataSet && !!props.hasPinData);
 
 const isGroupComplete = computed(() => isCardComplete({ nodeGroup: props.nodeGroup }));
 
@@ -118,19 +124,35 @@ watch(hoveredSection, (section) => {
 <template>
 	<div
 		data-test-id="builder-node-group-card"
-		:class="[$style.card, { [$style.completed]: isGroupComplete }]"
+		:class="[
+			$style.card,
+			{ [$style.completed]: isGroupComplete && !isPinDataSet, [$style.pinned]: isPinDataSet },
+		]"
 	>
 		<!-- Parent header -->
 		<header
-			:class="[$style.header, { [$style.headerClickable]: !!nodeGroup.parentState }]"
-			@click="nodeGroup.parentState && toggleSection(nodeGroup.parentState.node.id)"
+			:class="[
+				$style.header,
+				{ [$style.headerClickable]: !isPinDataSet && !!nodeGroup.parentState },
+			]"
+			@click="
+				!isPinDataSet && nodeGroup.parentState && toggleSection(nodeGroup.parentState.node.id)
+			"
 		>
 			<NodeIcon :node-type="parentNodeType" :size="16" />
 			<N8nText :class="$style.title" size="medium" color="text-dark" bold>
 				{{ nodeGroup.parentNode.name }}
 			</N8nText>
+			<span
+				v-if="isPinDataSet"
+				data-test-id="builder-node-group-card-pin-data-badge"
+				:class="$style.pinDataBadge"
+			>
+				<N8nIcon icon="pin" size="xsmall" />
+				{{ i18n.baseText('aiAssistant.builder.setupWizard.skipped' as BaseTextKey) }}
+			</span>
 			<N8nText
-				v-if="isGroupComplete"
+				v-else-if="isGroupComplete"
 				data-test-id="builder-node-group-card-check"
 				:class="$style.completeLabel"
 				size="medium"
@@ -250,6 +272,28 @@ watch(hoveredSection, (section) => {
 
 			<div :class="$style.footerActions">
 				<N8nButton
+					v-if="isPinDataSet"
+					variant="secondary"
+					size="small"
+					data-test-id="builder-node-group-card-clear-data"
+					:class="$style.actionButton"
+					@click="emit('unsetPinData')"
+				>
+					{{ i18n.baseText('aiAssistant.builder.setupWizard.clearData' as BaseTextKey) }}
+				</N8nButton>
+				<N8nButton
+					v-else-if="showSkip"
+					variant="secondary"
+					size="small"
+					data-test-id="builder-node-group-card-skip"
+					:class="$style.actionButton"
+					:title="i18n.baseText('aiAssistant.builder.setupWizard.skipTooltip' as BaseTextKey)"
+					@click="emit('setPinData')"
+				>
+					{{ i18n.baseText('aiAssistant.builder.setupWizard.skip' as BaseTextKey) }}
+				</N8nButton>
+
+				<N8nButton
 					v-if="showContinue"
 					data-test-id="builder-node-group-card-continue"
 					type="primary"
@@ -260,7 +304,7 @@ watch(hoveredSection, (section) => {
 				/>
 
 				<TriggerExecuteButton
-					v-if="isExecutable"
+					v-if="showExecuteButton"
 					:label="executeLabel"
 					:icon="executeButtonIcon"
 					:disabled="isButtonDisabled || isAnyCredentialTesting"
@@ -285,6 +329,10 @@ watch(hoveredSection, (section) => {
 
 	&.completed {
 		border-color: var(--color--success);
+	}
+
+	&.pinned {
+		border-color: var(--node--border-color--pinned);
 	}
 }
 
@@ -321,6 +369,15 @@ watch(hoveredSection, (section) => {
 	align-items: center;
 	gap: var(--spacing--4xs);
 	white-space: nowrap;
+}
+
+.pinDataBadge {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	white-space: nowrap;
+	color: var(--node--border-color--pinned);
+	font-size: var(--font-size--2xs);
 }
 
 .sections {
@@ -375,12 +432,14 @@ watch(hoveredSection, (section) => {
 	flex: 1;
 	align-items: center;
 	gap: var(--spacing--4xs);
+	white-space: nowrap;
 }
 
 .footerActions {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+	flex-shrink: 0;
 }
 
 .actionButton {

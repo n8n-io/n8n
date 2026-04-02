@@ -32,6 +32,10 @@ const {
 	goToPrev,
 	continueCurrent,
 	onStepExecuted,
+	isCurrentCardPinDataSet,
+	currentCardHasAvailablePinData,
+	setCurrentCardPinData,
+	unsetCurrentCardPinData,
 } = useBuilderSetupCards();
 
 const wizardDismissed = computed(
@@ -133,6 +137,10 @@ function onCredentialSelected(payload: {
 	credentialId: string;
 	nodeName: string;
 }) {
+	// Auto-unpin when user configures a credential on a node with sample data
+	if (builderStore.isNodePinDataSet(payload.nodeName)) {
+		builderStore.unsetPinDataForNode(payload.nodeName);
+	}
 	setCredential(payload.credentialType, payload.credentialId, payload.nodeName);
 }
 
@@ -170,6 +178,9 @@ watch(
 		if (count === 0 && !builderStore.getAiBuilderMadeEdits()) return;
 
 		if ((count === 0 || dismissed) && !hasTrackedShown.value) {
+			console.log('count', count);
+			console.log('dismissed', dismissed);
+			console.log('hasTrackedShown', hasTrackedShown.value);
 			emit('noSetupNeeded');
 		}
 	},
@@ -208,6 +219,8 @@ watch(
 					:node-group="currentCard.nodeGroup"
 					:step-index="currentStepIndex"
 					:total-cards="totalCards"
+					:is-pin-data-set="isCurrentCardPinDataSet"
+					:has-pin-data="currentCardHasAvailablePinData"
 					@go-to-next="onGoToNext"
 					@go-to-prev="onGoToPrev"
 					@step-executed="handleStepExecuted"
@@ -215,6 +228,8 @@ watch(
 					@section-highlight="onSectionHighlight"
 					@credential-selected="onCredentialSelected"
 					@credential-deselected="onCredentialDeselected"
+					@set-pin-data="setCurrentCardPinData"
+					@unset-pin-data="unsetCurrentCardPinData"
 				/>
 				<BuilderSetupCard
 					v-else
@@ -223,12 +238,16 @@ watch(
 					:step-index="currentStepIndex"
 					:total-cards="totalCards"
 					:first-trigger-name="firstTriggerName"
+					:is-pin-data-set="isCurrentCardPinDataSet"
+					:has-pin-data="currentCardHasAvailablePinData"
 					@go-to-next="onGoToNext"
 					@go-to-prev="onGoToPrev"
 					@step-executed="handleStepExecuted"
 					@continue-current="continueCurrent"
 					@credential-selected="onCredentialSelected"
 					@credential-deselected="onCredentialDeselected"
+					@set-pin-data="setCurrentCardPinData"
+					@unset-pin-data="unsetCurrentCardPinData"
 				/>
 			</template>
 		</template>

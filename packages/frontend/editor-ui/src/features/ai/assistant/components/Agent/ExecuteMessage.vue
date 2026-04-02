@@ -133,7 +133,8 @@ const showUnpinSection = computed(
 		builderStore.hasHadSuccessfulExecution,
 );
 
-const showFollowUps = computed(() => builderStore.hasDeferredPinData);
+// TODO: && false is there for product review purposes only. Should be removed before merging.
+const showFollowUps = computed(() => builderStore.hasDeferredPinData && false);
 
 const isExecutionBlocked = computed(
 	() => hasValidationIssues.value || builderStore.hasNoCreditsRemaining,
@@ -144,7 +145,8 @@ const hasPinDataApplied = computed(
 );
 
 const showPostExecutionFollowUps = computed(
-	() => builderStore.pinDataApplied && !builderStore.hasDeferredPinData,
+	// TODO: && false is there for product review purposes only. Should be removed before merging.
+	() => builderStore.pinDataApplied && !builderStore.hasDeferredPinData && false,
 );
 
 const followUpsTitle = computed(() =>
@@ -336,7 +338,7 @@ watch(hasValidationIssues, (hasIssues, hadIssues) => {
 		<!-- Follow-up sections (render below both wizard and fallback paths) -->
 
 		<!-- Pin data info message (visible when wizard is active and pin data is applied) -->
-		<p
+		<!-- <p
 			v-if="showWizard && (builderStore.hasTodosHiddenByPinnedData || builderStore.pinDataApplied)"
 			:class="$style.noIssuesMessage"
 		>
@@ -347,7 +349,7 @@ watch(hasValidationIssues, (hasIssues, hadIssues) => {
 				</template>
 				<N8nIcon icon="circle-help" size="small" :class="$style.infoIcon" />
 			</N8nTooltip>
-		</p>
+		</p> -->
 
 		<!-- Pre-execution Follow-ups -->
 		<div v-if="showFollowUps" :class="$style.followUpsSection">
