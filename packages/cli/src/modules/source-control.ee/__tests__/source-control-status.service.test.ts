@@ -22,7 +22,7 @@ import type { SourceControlGitService } from '../source-control-git.service.ee';
 import * as sourceControlHelper from '../source-control-helper.ee';
 import type { SourceControlImportService } from '../source-control-import.service.ee';
 import { SourceControlPreferencesService } from '../source-control-preferences.service.ee';
-import type { SourceControlScopedService } from '../source-control-scoped.service';
+import type { SourceControlContextFactory } from '../source-control-context.factory';
 import { SourceControlStatusService } from '../source-control-status.service.ee';
 import { SourceControlContext } from '../types/source-control-context';
 import type { StatusExportableCredential } from '../types/exportable-credential';
@@ -47,13 +47,13 @@ describe('getStatus', () => {
 		mock(),
 		mock(),
 	);
-	const sourceControlScopedService = mock<SourceControlScopedService>();
+	const sourceControlContextFactory = mock<SourceControlContextFactory>();
 	const sourceControlStatusService = new SourceControlStatusService(
 		mockLogger(),
 		mock<SourceControlGitService>(),
 		sourceControlImportService,
 		preferencesService,
-		sourceControlScopedService,
+		sourceControlContextFactory,
 		tagRepository,
 		folderRepository,
 		workflowRepository,
@@ -63,7 +63,7 @@ describe('getStatus', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 
-		sourceControlScopedService.createContext.mockImplementation(
+		sourceControlContextFactory.createContext.mockImplementation(
 			async (user) => new SourceControlContext(user, [], []),
 		);
 

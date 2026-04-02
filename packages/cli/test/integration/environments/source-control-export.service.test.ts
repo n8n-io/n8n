@@ -21,7 +21,7 @@ import path from 'node:path';
 import { v4 as uuid } from 'uuid';
 
 import { SourceControlExportService } from '@/modules/source-control.ee/source-control-export.service.ee';
-import { SourceControlScopedService } from '@/modules/source-control.ee/source-control-scoped.service';
+import { SourceControlContextFactory } from '@/modules/source-control.ee/source-control-context.factory';
 import type { ExportableCredential } from '@/modules/source-control.ee/types/exportable-credential';
 
 import { createCredentials } from '../shared/db/credentials';
@@ -33,7 +33,7 @@ jest.mock('node:fs/promises');
 
 describe('SourceControlExportService Integration', () => {
 	let exportService: SourceControlExportService;
-	let sourceControlScopedService: SourceControlScopedService;
+	let sourceControlContextFactory: SourceControlContextFactory;
 	let testUser: User;
 	let personalProject: Project;
 	let teamProject: Project;
@@ -71,7 +71,7 @@ describe('SourceControlExportService Integration', () => {
 
 		// Get the services from container (this will use real dependencies)
 		exportService = Container.get(SourceControlExportService);
-		sourceControlScopedService = Container.get(SourceControlScopedService);
+		sourceControlContextFactory = Container.get(SourceControlContextFactory);
 	});
 
 	afterAll(async () => {
@@ -546,7 +546,7 @@ describe('SourceControlExportService Integration', () => {
 
 		async function exportTags() {
 			return await exportService.exportTagsToWorkFolder(
-				await sourceControlScopedService.createContext(testUser),
+				await sourceControlContextFactory.createContext(testUser),
 			);
 		}
 

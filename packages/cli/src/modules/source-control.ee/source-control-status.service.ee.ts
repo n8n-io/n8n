@@ -23,7 +23,7 @@ import {
 } from './source-control-helper.ee';
 import { SourceControlImportService } from './source-control-import.service.ee';
 import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
-import { SourceControlScopedService } from './source-control-scoped.service';
+import { SourceControlContextFactory } from './source-control-context.factory';
 import type { StatusExportableCredential } from './types/exportable-credential';
 import type {
 	DataTableResourceOwner,
@@ -52,7 +52,7 @@ export class SourceControlStatusService {
 		private readonly gitService: SourceControlGitService,
 		private readonly sourceControlImportService: SourceControlImportService,
 		private readonly sourceControlPreferencesService: SourceControlPreferencesService,
-		private readonly sourceControlScopedService: SourceControlScopedService,
+		private readonly sourceControlContextFactory: SourceControlContextFactory,
 		private readonly tagRepository: TagRepository,
 		private readonly folderRepository: FolderRepository,
 		private readonly workflowRepository: WorkflowRepository,
@@ -149,7 +149,7 @@ export class SourceControlStatusService {
 		user: User,
 		options: SourceControlGetStatus,
 	): Promise<SourceControlledFile[] | SourceControlGetStatusVerboseResult> {
-		const context = await this.sourceControlScopedService.createContext(user);
+		const context = await this.sourceControlContextFactory.createContext(user);
 		const collectVerbose = options?.verbose ?? false;
 
 		if (options.direction === 'pull' && !hasGlobalScope(user, 'sourceControl:pull')) {

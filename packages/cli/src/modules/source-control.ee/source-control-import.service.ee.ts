@@ -71,6 +71,7 @@ import {
 	mergeRemoteCrendetialDataIntoLocalCredentialData,
 	sanitizeCredentialData,
 } from './source-control-helper.ee';
+import { SourceControlContextFactory } from './source-control-context.factory';
 import { SourceControlScopedService } from './source-control-scoped.service';
 import type {
 	ExportableCredential,
@@ -163,6 +164,7 @@ export class SourceControlImportService {
 		private readonly tagService: TagService,
 		private readonly folderRepository: FolderRepository,
 		instanceSettings: InstanceSettings,
+		private readonly sourceControlContextFactory: SourceControlContextFactory,
 		private readonly sourceControlScopedService: SourceControlScopedService,
 		private readonly workflowHistoryService: WorkflowHistoryService,
 		private readonly dataTableRepository: DataTableRepository,
@@ -1046,7 +1048,7 @@ export class SourceControlImportService {
 
 		// Get all workflow IDs from remote files (in scope for this import)
 		// This ensures we delete mappings for workflows with zero tags
-		const context = await this.sourceControlScopedService.createContext(user);
+		const context = await this.sourceControlContextFactory.createContext(user);
 		const remoteWorkflowIds = (await this.getRemoteVersionIdsFromFiles(context)).map((wf) => wf.id);
 
 		// Include both workflows with mappings AND workflows in remote files (even with zero tags)

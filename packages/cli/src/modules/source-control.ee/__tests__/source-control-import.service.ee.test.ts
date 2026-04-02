@@ -32,6 +32,7 @@ import type { DataTableColumnRepository } from '@/modules/data-table/data-table-
 import type { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
 
 import { SourceControlImportService } from '../source-control-import.service.ee';
+import type { SourceControlContextFactory } from '../source-control-context.factory';
 import type { SourceControlScopedService } from '../source-control-scoped.service';
 import type { ExportableFolder } from '../types/exportable-folders';
 import type { ExportableProject } from '../types/exportable-project';
@@ -54,6 +55,7 @@ describe('SourceControlImportService', () => {
 	const credentialsRepository = mock<CredentialsRepository>();
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
 	const mockLogger = mock<Logger>();
+	const sourceControlContextFactory = mock<SourceControlContextFactory>();
 	const sourceControlScopedService = mock<SourceControlScopedService>();
 	const variableService = mock<VariablesService>();
 	const variablesRepository = mock<VariablesRepository>();
@@ -88,6 +90,7 @@ describe('SourceControlImportService', () => {
 		mock(),
 		folderRepository,
 		mock<InstanceSettings>({ n8nFolder: '/mock/n8n' }),
+		sourceControlContextFactory,
 		sourceControlScopedService,
 		workflowHistoryService,
 		dataTableRepository,
