@@ -169,7 +169,7 @@ describe('DataTableSqlService', () => {
 			queryRunnerMock.query.mockResolvedValue(rows);
 
 			const result = await service.validateAndExecute(
-				'SELECT * FROM orders',
+				'SELECT * FROM "orders"',
 				['table1'],
 				projectId,
 			);
@@ -185,7 +185,7 @@ describe('DataTableSqlService', () => {
 			queryRunnerMock.query.mockResolvedValue(extraRows);
 
 			const result = await service.validateAndExecute(
-				'SELECT * FROM orders',
+				'SELECT * FROM "orders"',
 				['table1'],
 				projectId,
 				{ maxRows: 100 },
@@ -201,7 +201,7 @@ describe('DataTableSqlService', () => {
 			queryRunnerMock.query.mockResolvedValue(rows);
 
 			const result = await service.validateAndExecute(
-				'SELECT * FROM orders',
+				'SELECT * FROM "orders"',
 				['table1'],
 				projectId,
 				{ maxRows: 100 },
@@ -214,7 +214,7 @@ describe('DataTableSqlService', () => {
 		it('should use read-only transaction for postgres', async () => {
 			queryRunnerMock.query.mockResolvedValue([{ id: 1 }]);
 
-			await service.validateAndExecute('SELECT id FROM orders', ['table1'], projectId);
+			await service.validateAndExecute('SELECT "id" FROM "orders"', ['table1'], projectId);
 
 			expect(dataSourceMock.createQueryRunner).toHaveBeenCalled();
 			expect(queryRunnerMock.startTransaction).toHaveBeenCalled();
@@ -230,7 +230,7 @@ describe('DataTableSqlService', () => {
 			queryRunnerMock.query.mockRejectedValue(new Error('DB error'));
 
 			await expect(
-				service.validateAndExecute('SELECT * FROM orders', ['table1'], projectId),
+				service.validateAndExecute('SELECT * FROM "orders"', ['table1'], projectId),
 			).rejects.toThrow();
 
 			expect(queryRunnerMock.rollbackTransaction).toHaveBeenCalled();
@@ -243,7 +243,7 @@ describe('DataTableSqlService', () => {
 			);
 
 			await expect(
-				service.validateAndExecute('SELECT * FROM orders', ['table1'], projectId),
+				service.validateAndExecute('SELECT * FROM "orders"', ['table1'], projectId),
 			).rejects.toThrow('[table]');
 		});
 
@@ -260,7 +260,7 @@ describe('DataTableSqlService', () => {
 
 			// Both table IDs accessible; SQL references one by its logical name
 			const result = await service.validateAndExecute(
-				'SELECT * FROM sales',
+				'SELECT * FROM "sales"',
 				['table1', 'table2'],
 				projectId,
 			);
@@ -281,7 +281,7 @@ describe('DataTableSqlService', () => {
 		});
 
 		it('should add LIMIT clause when none is present in SQL', async () => {
-			await service.validateAndExecute('SELECT id FROM orders', ['table1'], projectId, {
+			await service.validateAndExecute('SELECT "id" FROM "orders"', ['table1'], projectId, {
 				maxRows: 50,
 			});
 
@@ -295,9 +295,14 @@ describe('DataTableSqlService', () => {
 		});
 
 		it('should cap existing LIMIT that exceeds maxRows', async () => {
-			await service.validateAndExecute('SELECT id FROM orders LIMIT 1000', ['table1'], projectId, {
-				maxRows: 50,
-			});
+			await service.validateAndExecute(
+				'SELECT "id" FROM "orders" LIMIT 1000',
+				['table1'],
+				projectId,
+				{
+					maxRows: 50,
+				},
+			);
 
 			const queryCalls = queryRunnerMock.query.mock.calls;
 			const selectCall = queryCalls.find((args) =>
@@ -482,7 +487,7 @@ describe('DataTableSqlService', () => {
 
 				queryRunnerMock.query.mockResolvedValue([]);
 
-				await service.validateAndExecute('SELECT * FROM orders', ['table1'], projectId, {
+				await service.validateAndExecute('SELECT * FROM "orders"', ['table1'], projectId, {
 					timeoutMs: maliciousTimeout,
 				});
 
@@ -500,7 +505,7 @@ describe('DataTableSqlService', () => {
 			it('NaN falls back to default timeout', async () => {
 				queryRunnerMock.query.mockResolvedValue([]);
 
-				await service.validateAndExecute('SELECT * FROM orders', ['table1'], projectId, {
+				await service.validateAndExecute('SELECT * FROM "orders"', ['table1'], projectId, {
 					timeoutMs: NaN,
 				});
 
@@ -513,7 +518,7 @@ describe('DataTableSqlService', () => {
 			it('negative value falls back to default timeout', async () => {
 				queryRunnerMock.query.mockResolvedValue([]);
 
-				await service.validateAndExecute('SELECT * FROM orders', ['table1'], projectId, {
+				await service.validateAndExecute('SELECT * FROM "orders"', ['table1'], projectId, {
 					timeoutMs: -5,
 				});
 
@@ -525,7 +530,7 @@ describe('DataTableSqlService', () => {
 			it('Infinity falls back to default timeout', async () => {
 				queryRunnerMock.query.mockResolvedValue([]);
 
-				await service.validateAndExecute('SELECT * FROM orders', ['table1'], projectId, {
+				await service.validateAndExecute('SELECT * FROM "orders"', ['table1'], projectId, {
 					timeoutMs: Infinity,
 				});
 
@@ -537,7 +542,7 @@ describe('DataTableSqlService', () => {
 			it('valid number is truncated to integer and used', async () => {
 				queryRunnerMock.query.mockResolvedValue([]);
 
-				await service.validateAndExecute('SELECT * FROM orders', ['table1'], projectId, {
+				await service.validateAndExecute('SELECT * FROM "orders"', ['table1'], projectId, {
 					timeoutMs: 5000.9,
 				});
 
@@ -577,7 +582,7 @@ describe('DataTableSqlService', () => {
 			});
 
 			it('enables PRAGMA query_only before executing the user query', async () => {
-				await sqliteService.validateAndExecute('SELECT * FROM orders', ['table1'], projectId);
+				await sqliteService.validateAndExecute('SELECT * FROM "orders"', ['table1'], projectId);
 
 				const allCalls = sqliteQueryRunner.query.mock.calls.map((args) => String(args[0]));
 
@@ -598,7 +603,7 @@ describe('DataTableSqlService', () => {
 					.mockResolvedValueOnce(undefined as never); // PRAGMA OFF
 
 				await expect(
-					sqliteService.validateAndExecute('SELECT * FROM orders', ['table1'], projectId),
+					sqliteService.validateAndExecute('SELECT * FROM "orders"', ['table1'], projectId),
 				).rejects.toThrow();
 
 				const allCalls = sqliteQueryRunner.query.mock.calls.map((args) => String(args[0]));
@@ -633,7 +638,7 @@ describe('DataTableSqlService', () => {
 
 				// Both tables in FROM → rewriter sees "customers" as a table name
 				await service.validateAndExecute(
-					'SELECT customers FROM orders, customers',
+					'SELECT "customers" FROM "orders", "customers"',
 					['t1', 't2'],
 					projectId,
 				);
@@ -688,7 +693,7 @@ describe('DataTableSqlService', () => {
 
 			it('LIMIT inside a string literal does not confuse ensureLimit', async () => {
 				await service.validateAndExecute(
-					"SELECT * FROM orders WHERE status = 'LIMIT 999999'",
+					'SELECT * FROM "orders" WHERE "status" = \'LIMIT 999999\'',
 					['table1'],
 					projectId,
 					{ maxRows: 10 },
@@ -704,7 +709,7 @@ describe('DataTableSqlService', () => {
 
 			it('existing LIMIT exceeding maxRows is capped', async () => {
 				await service.validateAndExecute(
-					'SELECT * FROM orders LIMIT 99999',
+					'SELECT * FROM "orders" LIMIT 99999',
 					['table1'],
 					projectId,
 					{ maxRows: 5 },
@@ -731,7 +736,7 @@ describe('DataTableSqlService', () => {
 				// With no tables in schema, any FROM reference is rejected.
 				await expect(
 					service.validateAndExecute(
-						'SELECT * FROM orders',
+						'SELECT * FROM "orders"',
 						['table-from-other-project'],
 						'other-project-id',
 					),
@@ -750,7 +755,7 @@ describe('DataTableSqlService', () => {
 				// token; the query either errors or is harmless.
 				await expect(
 					service.validateAndExecute(
-						"SELECT * FROM orders WHERE status = 'x\x00; DROP TABLE creds'",
+						'SELECT * FROM "orders" WHERE "status" = \'x\x00; DROP TABLE creds\'',
 						['table1'],
 						projectId,
 					),
@@ -867,7 +872,7 @@ describe('DataTableSqlService', () => {
 				queryRunnerMock.query.mockResolvedValue([]);
 
 				await service.validateAndExecute(
-					'SELECT * FROM orders AS amount, customers',
+					'SELECT * FROM "orders" AS "amount", "customers"',
 					['t1', 't2'],
 					projectId,
 				);
@@ -883,7 +888,7 @@ describe('DataTableSqlService', () => {
 			it('single table with AS alias works correctly', async () => {
 				queryRunnerMock.query.mockResolvedValue([]);
 
-				await service.validateAndExecute('SELECT * FROM orders AS o', ['table1'], projectId);
+				await service.validateAndExecute('SELECT * FROM "orders" AS "o"', ['table1'], projectId);
 
 				const calls = queryRunnerMock.query.mock.calls.map((args) => String(args[0]));
 				const selectQuery = calls.find((sql) => sql.toUpperCase().startsWith('SELECT'));
@@ -908,7 +913,7 @@ describe('DataTableSqlService', () => {
 				queryRunnerMock.query.mockResolvedValue([]);
 
 				await service.validateAndExecute(
-					'SELECT * FROM orders AS o JOIN customers AS c ON 1 = 1',
+					'SELECT * FROM "orders" AS "o" JOIN "customers" AS "c" ON 1 = 1',
 					['t1', 't2'],
 					projectId,
 				);
@@ -930,7 +935,7 @@ describe('DataTableSqlService', () => {
 				// 5x self-join: if table has 1000 rows, DB must process 10^15 intermediate rows.
 				// The statement_timeout mitigates but does not prevent resource consumption.
 				await service.validateAndExecute(
-					'SELECT * FROM orders, orders, orders, orders, orders',
+					'SELECT * FROM "orders", "orders", "orders", "orders", "orders"',
 					['table1'],
 					projectId,
 				);
@@ -949,7 +954,7 @@ describe('DataTableSqlService', () => {
 
 				// JOIN without a meaningful ON creates the same problem
 				await service.validateAndExecute(
-					'SELECT * FROM orders JOIN orders ON 1 = 1 JOIN orders ON 1 = 1',
+					'SELECT * FROM "orders" JOIN "orders" ON 1 = 1 JOIN "orders" ON 1 = 1',
 					['table1'],
 					projectId,
 				);
@@ -975,7 +980,7 @@ describe('DataTableSqlService', () => {
 				// If the result is exposed to the user, the column name 'credential_entity'
 				// could be used in social engineering or to probe for internal schema knowledge.
 				const result = await service.validateAndExecute(
-					'SELECT amount AS credential_entity FROM orders',
+					'SELECT "amount" AS "credential_entity" FROM "orders"',
 					['table1'],
 					projectId,
 				);
@@ -987,7 +992,7 @@ describe('DataTableSqlService', () => {
 				queryRunnerMock.query.mockResolvedValue([{ password_hash: 'some_value' }]);
 
 				const result = await service.validateAndExecute(
-					'SELECT status AS password_hash FROM orders',
+					'SELECT "status" AS "password_hash" FROM "orders"',
 					['table1'],
 					projectId,
 				);
@@ -1006,7 +1011,7 @@ describe('DataTableSqlService', () => {
 				queryRunnerMock.query.mockResolvedValue([{ cnt: 5 }]);
 
 				const result = await service.validateAndExecute(
-					"SELECT COUNT(*) FROM orders WHERE status LIKE 'a%'",
+					'SELECT COUNT(*) FROM "orders" WHERE "status" LIKE \'a%\'',
 					['table1'],
 					projectId,
 				);
@@ -1128,7 +1133,7 @@ describe('DataTableSqlService', () => {
 				queryRunnerMock.query.mockRejectedValue(new Error('column "email" does not exist'));
 
 				await expect(
-					service.validateAndExecute('SELECT email FROM orders', ['t1', 't2'], projectId),
+					service.validateAndExecute('SELECT "email" FROM "orders"', ['t1', 't2'], projectId),
 				).rejects.toThrow();
 
 				// The query reached the DB — validator did NOT catch the invalid column reference
@@ -1148,7 +1153,7 @@ describe('DataTableSqlService', () => {
 				);
 
 				await expect(
-					service.validateAndExecute('SELECT * FROM orders', ['table1'], projectId),
+					service.validateAndExecute('SELECT * FROM "orders"', ['table1'], projectId),
 				).rejects.toThrow('[table]');
 
 				// Physical name is scrubbed in this case, but confirms the time gap exists
@@ -1162,7 +1167,7 @@ describe('DataTableSqlService', () => {
 				queryRunnerMock.query.mockResolvedValue([]);
 
 				await service.validateAndExecute(
-					'SELECT * FROM orders LIMIT 999999999999999',
+					'SELECT * FROM "orders" LIMIT 999999999999999',
 					['table1'],
 					projectId,
 					{ maxRows: 10 },
@@ -1178,7 +1183,7 @@ describe('DataTableSqlService', () => {
 			it('maxRows=0 still applies a LIMIT of 1 (for truncation detection)', async () => {
 				queryRunnerMock.query.mockResolvedValue([]);
 
-				await service.validateAndExecute('SELECT * FROM orders', ['table1'], projectId, {
+				await service.validateAndExecute('SELECT * FROM "orders"', ['table1'], projectId, {
 					maxRows: 0,
 				});
 
@@ -1192,7 +1197,7 @@ describe('DataTableSqlService', () => {
 			it('negative maxRows wraps to unexpected LIMIT value', async () => {
 				queryRunnerMock.query.mockResolvedValue([]);
 
-				await service.validateAndExecute('SELECT * FROM orders', ['table1'], projectId, {
+				await service.validateAndExecute('SELECT * FROM "orders"', ['table1'], projectId, {
 					maxRows: -1,
 				});
 
@@ -1212,7 +1217,7 @@ describe('DataTableSqlService', () => {
 			it('tab characters between tokens are handled', async () => {
 				queryRunnerMock.query.mockResolvedValue([]);
 
-				await service.validateAndExecute('SELECT\t*\tFROM\torders', ['table1'], projectId);
+				await service.validateAndExecute('SELECT\t*\tFROM\t"orders"', ['table1'], projectId);
 
 				const calls = queryRunnerMock.query.mock.calls.map((args) => String(args[0]));
 				const selectQuery = calls.find((sql) => sql.toUpperCase().startsWith('SELECT'));
@@ -1223,7 +1228,7 @@ describe('DataTableSqlService', () => {
 				queryRunnerMock.query.mockResolvedValue([]);
 
 				// \v (vertical tab) and \f (form feed) match \s in regex
-				await service.validateAndExecute('SELECT\v*\fFROM\vorders', ['table1'], projectId);
+				await service.validateAndExecute('SELECT\v*\fFROM\v"orders"', ['table1'], projectId);
 
 				const calls = queryRunnerMock.query.mock.calls.map((args) => String(args[0]));
 				const selectQuery = calls.find((sql) => sql.toUpperCase().startsWith('SELECT'));
@@ -1239,7 +1244,7 @@ describe('DataTableSqlService', () => {
 				queryRunnerMock.query.mockResolvedValue([]);
 
 				const result = await service.validateAndExecute(
-					'SELECT\u00A0*\u00A0FROM\u00A0orders',
+					'SELECT\u00A0*\u00A0FROM\u00A0"orders"',
 					['table1'],
 					projectId,
 				);

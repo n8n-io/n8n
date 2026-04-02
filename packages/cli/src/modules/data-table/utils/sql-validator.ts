@@ -30,6 +30,7 @@ export type TableColumnSchema = {
 type TokenType =
 	| 'keyword'
 	| 'identifier'
+	| 'quoted_identifier'
 	| 'number'
 	| 'string'
 	| 'operator'
@@ -69,12 +70,22 @@ function isIdentifier(tokens: Token[], index: number): boolean {
 	return isToken(tokens, index, 'identifier');
 }
 
+function isQuotedIdentifier(tokens: Token[], index: number): boolean {
+	return isToken(tokens, index, 'quoted_identifier');
+}
+
+/** Strip surrounding `"` and unescape `""` → `"` */
+function unquote(value: string): string {
+	return value.slice(1, -1).replace(/""/g, '"');
+}
+
 // ── Allowlists ─────────────────────────────────────────────────────
 // Security model: every character is tokenized. Every token is validated.
-// Every identifier must resolve to a known table, column, or function.
-// No aliases, no banned-keyword list — the closed-world check on
-// identifiers rejects anything unknown, including SQL keywords that
-// our tokenizer doesn't recognize.
+// All user-provided names (tables, columns, aliases) MUST be
+// double-quoted. This prevents SQL keyword confusion attacks
+// (e.g. SELECT INTO, FOR UPDATE). Unquoted identifiers can ONLY be
+// allowed function names or CAST types — both validated against
+// allowlists. Everything else is rejected.
 
 /** SQL keywords allowed in the simplified SELECT subset. */
 const ALLOWED_KEYWORDS = new Set([
@@ -180,6 +191,8 @@ const TOKEN_RULES: TokenRule[] = [
 	{ type: 'operator', re: /\|\||<=|>=|<>|!=|[=<>+\-/%]/y },
 	{ type: 'star', re: /\*/y },
 	{ type: 'punctuation', re: /[(),.]/y },
+	{ type: 'quoted_identifier', re: /"(?:[^"]|"")*"/y },
+	{ type: 'error', re: /"/y, message: 'Unterminated double-quoted identifier' },
 	{ type: 'identifier', re: /[a-zA-Z_]\w*/y }, // classified as keyword below
 ];
 
@@ -258,15 +271,16 @@ export class SqlValidator {
 		const trimmed = sql.trim();
 		const { tokens, tables, functions } = this.doValidate(trimmed, tableSchemas);
 
-		// Rewrite ALL occurrences of table names (FROM, JOIN, and column qualifiers)
+		// Rewrite ALL quoted identifiers that match table names (FROM, JOIN, and column qualifiers)
 		const tableNamesLower = new Set(tables.map((t) => t.name.toLowerCase()));
 		for (const token of tokens) {
-			if (token.type !== 'identifier') continue;
-			if (!tableNamesLower.has(token.value.toLowerCase())) continue;
+			if (token.type !== 'quoted_identifier') continue;
+			const unquoted = unquote(token.value).toLowerCase();
+			if (!tableNamesLower.has(unquoted)) continue;
 
-			const physical = tableMapping.get(token.value.toLowerCase());
+			const physical = tableMapping.get(unquoted);
 			if (!physical) {
-				throw new SqlValidationError(`No physical table mapping found for table '${token.value}'`);
+				throw new SqlValidationError(`No physical table mapping found for table '${unquoted}'`);
 			}
 			token.value = physical;
 		}
@@ -352,7 +366,7 @@ export class SqlValidator {
 	}
 
 	/**
-	 * After FROM or JOIN: extract table name(s).
+	 * After FROM or JOIN: extract double-quoted table name(s).
 	 * FROM supports comma-separated lists; JOIN expects a single table.
 	 * Handles optional AS alias after each table name.
 	 */
@@ -365,13 +379,14 @@ export class SqlValidator {
 	): number {
 		let i = startIndex;
 
-		while (isIdentifier(tokens, i)) {
-			this.validateTableName(tokens[i], allowedLower);
-			tables.push({ name: tokens[i].value, tokenIndex: i });
+		while (isQuotedIdentifier(tokens, i)) {
+			const name = unquote(tokens[i].value);
+			this.validateTableName(name, allowedLower);
+			tables.push({ name, tokenIndex: i });
 			i++;
 
-			// Skip optional AS alias (e.g. FROM orders AS o)
-			if (isKeyword(tokens, i, 'AS') && isIdentifier(tokens, i + 1)) {
+			// Skip optional AS alias (e.g. FROM "orders" AS "o")
+			if (isKeyword(tokens, i, 'AS') && isQuotedIdentifier(tokens, i + 1)) {
 				i += 2;
 			}
 
@@ -386,19 +401,23 @@ export class SqlValidator {
 		return i - 1;
 	}
 
-	private validateTableName(token: Token, allowedLower: Set<string>): void {
-		if (!allowedLower.has(token.value.toLowerCase())) {
-			throw new SqlValidationError(`Table '${token.value}' is not in the allowed table list`);
+	private validateTableName(name: string, allowedLower: Set<string>): void {
+		if (!allowedLower.has(name.toLowerCase())) {
+			throw new SqlValidationError(`Table '${name}' is not in the allowed table list`);
 		}
 	}
 
 	// ── Closed-world identifier validation ────────────────────────
 
 	/**
-	 * Every identifier token must be a known table name, column name,
-	 * allowed function name, or CAST target type. This is the core
-	 * security guarantee — anything unknown is rejected.
-	 * Also validates and collects function names.
+	 * Validate every identifier token against the closed world.
+	 *
+	 * ALL user-provided names (tables, columns, aliases) MUST be
+	 * double-quoted. Unquoted identifiers can ONLY be function names
+	 * or CAST types — both validated against allowlists.
+	 *
+	 * - quoted_identifier → table name, column, table qualifier, or alias
+	 * - unquoted identifier → function call or CAST type (nothing else)
 	 */
 	private validateAllIdentifiers(tokens: Token[], tableSchemas: TableColumnSchema[]): string[] {
 		const tableNames = new Set(tableSchemas.map((t) => t.name.toLowerCase()));
@@ -415,13 +434,49 @@ export class SqlValidator {
 		}
 
 		for (let i = 0; i < tokens.length; i++) {
+			// ── Double-quoted identifier ──────────────────────────────
+			if (isQuotedIdentifier(tokens, i)) {
+				const raw = unquote(tokens[i].value);
+				const lower = raw.toLowerCase();
+
+				// Table-qualified column: "table"."column"
+				if (isPunc(tokens, i - 1, '.') && isQuotedIdentifier(tokens, i - 2)) {
+					const tableLower = unquote(tokens[i - 2].value).toLowerCase();
+					const tableCols = columnsByTable.get(tableLower);
+					if (tableCols && tableCols.has(lower)) continue;
+
+					throw new SqlValidationError(
+						`Column '${raw}' does not exist in table '${unquote(tokens[i - 2].value)}'`,
+					);
+				}
+
+				// Alias or CAST type after AS
+				if (isKeyword(tokens, i - 1, 'AS')) {
+					if (isInsideCast(tokens, i - 1)) {
+						throw new SqlValidationError('CAST types must not be double-quoted');
+					}
+					allColumns.add(lower);
+					continue;
+				}
+
+				// Known table name (FROM, JOIN, or qualifier before ".")
+				if (tableNames.has(lower)) continue;
+
+				// Standalone column reference
+				if (allColumns.has(lower)) continue;
+
+				throw new SqlValidationError(
+					`Unknown identifier '${raw}'. Must be a known table name or column name`,
+				);
+			}
+
+			// ── Unquoted identifier → function or CAST type only ─────
 			if (!isIdentifier(tokens, i)) continue;
 
 			const value = tokens[i].value;
-			const lower = value.toLowerCase();
 			const upper = tokens[i].upper;
 
-			// 1. Function call: identifier followed by '('
+			// Function call: identifier followed by '('
 			if (isPunc(tokens, i + 1, '(')) {
 				if (!isAllowedFunction(upper, this.dbType)) {
 					throw new SqlValidationError(
@@ -432,38 +487,15 @@ export class SqlValidator {
 				continue;
 			}
 
-			// 2. Known table name
-			if (tableNames.has(lower)) continue;
-
-			// 3. Table-qualified column: table.column
-			if (isPunc(tokens, i - 1, '.') && isIdentifier(tokens, i - 2)) {
-				const tableLower = tokens[i - 2].value.toLowerCase();
-				const tableCols = columnsByTable.get(tableLower);
-				if (tableCols && tableCols.has(lower)) continue;
-
-				throw new SqlValidationError(
-					`Column '${value}' does not exist in table '${tokens[i - 2].value}'`,
-				);
+			// CAST type after AS inside CAST expression
+			if (isKeyword(tokens, i - 1, 'AS') && isInsideCast(tokens, i - 1)) {
+				if (ALLOWED_CAST_TYPES.has(upper)) continue;
+				throw new SqlValidationError(`Cast type '${value}' is not allowed`);
 			}
 
-			// 4. Identifier after AS
-			if (isKeyword(tokens, i - 1, 'AS')) {
-				// Inside CAST(expr AS <type>) → validate against allowed types
-				if (isInsideCast(tokens, i - 1)) {
-					if (ALLOWED_CAST_TYPES.has(upper)) continue;
-					throw new SqlValidationError(`Cast type '${value}' is not allowed`);
-				}
-				// Outside CAST → column alias — record so it can be referenced
-				// later (e.g. in ORDER BY, HAVING)
-				allColumns.add(lower);
-				continue;
-			}
-
-			// 5. Standalone column name (must exist in at least one allowed table)
-			if (allColumns.has(lower)) continue;
-
+			// Everything else is rejected
 			throw new SqlValidationError(
-				`Unknown identifier '${value}'. Must be a table name, column name, or allowed function`,
+				`Unquoted identifier '${value}' is not allowed. All names must be double-quoted (e.g. "${value}")`,
 			);
 		}
 

@@ -168,17 +168,18 @@ export class ToolDataTableSqlQuery implements INodeType {
 			'',
 			'SQL format rules (queries that violate these will be rejected):',
 			'- Write ONLY: SELECT ... FROM ... [JOIN ... ON ...] [WHERE ...] [GROUP BY ...] [HAVING ...] [ORDER BY ...] [LIMIT ...] [OFFSET ...]',
+			'- IMPORTANT: All table names, column names, and aliases MUST be double-quoted. Example: SELECT "orders"."amount" FROM "orders" WHERE "status" = \'active\'',
 			'- Use ONLY the table and column names listed above. Every name in the query must be a known table or column',
-			'- Do NOT use aliases. Use full table names: SELECT orders.amount FROM orders (not SELECT o.amount FROM orders o)',
+			'- Do NOT use aliases. Use full table names: SELECT "orders"."amount" FROM "orders" (not SELECT "o"."amount" FROM "orders" AS "o")',
 			'- Joins: JOIN, LEFT JOIN, RIGHT JOIN, INNER JOIN, CROSS JOIN with ON conditions',
 			'- Operators: =, !=, <>, <, >, <=, >=, AND, OR, NOT, IN, BETWEEN, LIKE, IS NULL, IS NOT NULL',
-			'- Functions: COUNT, SUM, AVG, MIN, MAX, LOWER, UPPER, TRIM, LENGTH, SUBSTR, REPLACE, ABS, ROUND, COALESCE, NULLIF',
-			'- Use CAST(expr AS type) for type conversion (not :: syntax)',
+			'- Functions: COUNT, SUM, AVG, MIN, MAX, LOWER, UPPER, TRIM, LENGTH, SUBSTR, REPLACE, ABS, ROUND, COALESCE, NULLIF (function names are NOT quoted)',
+			'- Use CAST(expr AS type) for type conversion (not :: syntax). Type names like TEXT, INTEGER are NOT quoted',
 			'- Use CASE WHEN ... THEN ... ELSE ... END for conditionals',
-			'- Do NOT use: subqueries, CTEs (WITH), UNION, window functions (OVER), comments, semicolons, or double quotes',
+			'- Do NOT use: subqueries, CTEs (WITH), UNION, window functions (OVER), comments, semicolons, or backticks',
 			'',
 			'Best practices:',
-			'- Prefer case-insensitive comparisons for text search: use LOWER(column) = LOWER(value) or ILIKE instead of exact match, unless the user explicitly asks for case-sensitive matching',
+			'- Prefer case-insensitive comparisons for text search: use LOWER("column") = LOWER(value) or ILIKE instead of exact match, unless the user explicitly asks for case-sensitive matching',
 		].join('\n');
 
 		const schema = z.object({
