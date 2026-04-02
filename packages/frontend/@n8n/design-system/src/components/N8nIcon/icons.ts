@@ -458,7 +458,6 @@ export const deprecatedIconSet = {
 	'power-off': IconLucidePower,
 	'paper-plane': IconLucideSend,
 	bell: IconLucideBell,
-	star: IconLucideStar,
 } as const;
 
 export const updatedIconSet = {

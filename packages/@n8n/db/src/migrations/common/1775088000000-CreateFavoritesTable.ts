@@ -15,6 +15,7 @@ export class CreateFavoritesTable1775088000000 implements ReversibleMigration {
 				onDelete: 'CASCADE',
 			})
 			.withIndexOn('userId')
+			.withIndexOn(['resourceType', 'resourceId'])
 			.withUniqueConstraintOn(['userId', 'resourceId', 'resourceType']);
 	}
 

@@ -44,21 +44,28 @@ export class FavoritesService {
 		const accessibleProjectIds = new Set(accessibleProjects.map((p) => p.id));
 		const projectNameMap = new Map(accessibleProjects.map((p) => [p.id, p.name ?? '']));
 
+		// Workflow, data table, and folder enrichment run in parallel
+		const [workflows, sharedWorkflows, dataTables, folders] = await Promise.all([
+			workflowIds.length > 0
+				? this.workflowRepository.findByIds(workflowIds, { fields: ['id', 'name'] })
+				: [],
+			workflowIds.length > 0 && accessibleProjectIds.size > 0
+				? this.sharedWorkflowRepository.find({
+						select: { workflowId: true },
+						where: { workflowId: In(workflowIds), projectId: In([...accessibleProjectIds]) },
+					})
+				: [],
+			dataTableIds.length > 0 ? this.dataTableRepository.find({ where: { id: In(dataTableIds) } }) : [],
+			folderIds.length > 0
+				? this.folderRepository.find({ where: { id: In(folderIds) }, relations: { homeProject: true } })
+				: [],
+		]);
+
 		// Workflow enrichment with access control
 		const workflowNameMap = new Map<string, string>();
 		if (workflowIds.length > 0 && accessibleProjectIds.size > 0) {
-			const workflows = await this.workflowRepository.findByIds(workflowIds, {
-				fields: ['id', 'name'],
-			});
 			const wfMap = new Map(workflows.map((wf) => [wf.id, wf.name]));
-
-			// Check access via SharedWorkflow
-			const sharedWorkflows = await this.sharedWorkflowRepository.find({
-				select: { workflowId: true },
-				where: { workflowId: In(workflowIds), projectId: In([...accessibleProjectIds]) },
-			});
 			const accessibleWfIds = new Set(sharedWorkflows.map((sw) => sw.workflowId));
-
 			for (const id of workflowIds) {
 				const name = wfMap.get(id);
 				if (accessibleWfIds.has(id) && name !== undefined) {
@@ -69,29 +76,18 @@ export class FavoritesService {
 
 		// Data table enrichment with access control
 		const dataTableMetaMap = new Map<string, { name: string; projectId: string }>();
-		if (dataTableIds.length > 0) {
-			const dataTables = await this.dataTableRepository.find({
-				where: { id: In(dataTableIds) },
-			});
-			for (const dt of dataTables) {
-				if (accessibleProjectIds.has(dt.projectId)) {
-					dataTableMetaMap.set(dt.id, { name: dt.name, projectId: dt.projectId });
-				}
+		for (const dt of dataTables) {
+			if (accessibleProjectIds.has(dt.projectId)) {
+				dataTableMetaMap.set(dt.id, { name: dt.name, projectId: dt.projectId });
 			}
 		}
 
 		// Folder enrichment with access control
 		const folderMetaMap = new Map<string, { name: string; projectId: string }>();
-		if (folderIds.length > 0) {
-			const folders = await this.folderRepository.find({
-				where: { id: In(folderIds) },
-				relations: { homeProject: true },
-			});
-			for (const folder of folders) {
-				const projectId = folder.homeProject?.id;
-				if (projectId && accessibleProjectIds.has(projectId)) {
-					folderMetaMap.set(folder.id, { name: folder.name, projectId });
-				}
+		for (const folder of folders) {
+			const projectId = folder.homeProject?.id;
+			if (projectId && accessibleProjectIds.has(projectId)) {
+				folderMetaMap.set(folder.id, { name: folder.name, projectId });
 			}
 		}
 

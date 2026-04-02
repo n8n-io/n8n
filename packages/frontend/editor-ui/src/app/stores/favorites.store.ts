@@ -56,7 +56,11 @@ export const useFavoritesStore = defineStore(STORES.FAVORITES, () => {
 
 	async function toggleFavorite(resourceId: string, resourceType: FavoriteResourceType) {
 		if (isFavorite(resourceId, resourceType)) {
-			await favoritesApi.removeFavorite(rootStore.restApiContext, resourceId, resourceType);
+			try {
+				await favoritesApi.removeFavorite(rootStore.restApiContext, resourceId, resourceType);
+			} catch (e: unknown) {
+				if ((e as { httpStatusCode?: number }).httpStatusCode !== 404) throw e;
+			}
 			favorites.value = favorites.value.filter(
 				(f) => !(f.resourceId === resourceId && f.resourceType === resourceType),
 			);
