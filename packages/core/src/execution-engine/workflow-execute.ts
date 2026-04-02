@@ -55,6 +55,7 @@ import {
 	TimeoutExecutionCancelledError,
 	ManualExecutionCancelledError,
 	createRunExecutionData,
+	ensureError,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 
@@ -1034,23 +1035,24 @@ export class WorkflowExecute {
 			subNodeExecutionResults,
 		);
 
-		let data: INodeExecutionData[][] | EngineRequest | null;
+		let data: INodeExecutionData[][] | EngineRequest | null = null;
+		let executionError: Error | undefined;
 
-		if (customOperation) {
-			data = await customOperation.call(context);
-		} else if (nodeType.execute) {
-			data =
-				nodeType instanceof Node
-					? await nodeType.execute(context, subNodeExecutionResults)
-					: await nodeType.execute.call(context, subNodeExecutionResults);
-		} else {
-			throw new UnexpectedError(
-				"Can't execute node. There is no custom operation and the node has not execute function.",
-			);
-		}
-
-		if (isEngineRequest(data)) {
-			return data;
+		try {
+			if (customOperation) {
+				data = await customOperation.call(context);
+			} else if (nodeType.execute) {
+				data =
+					nodeType instanceof Node
+						? await nodeType.execute(context, subNodeExecutionResults)
+						: await nodeType.execute.call(context, subNodeExecutionResults);
+			} else {
+				throw new UnexpectedError(
+					"Can't execute node. There is no custom operation and the node has not execute function.",
+				);
+			}
+		} catch (e) {
+			executionError = ensureError(e);
 		}
 
 		const closeFunctionsResults = await Promise.allSettled(
@@ -1061,6 +1063,26 @@ export class WorkflowExecute {
 			.filter((result): result is PromiseRejectedResult => result.status === 'rejected')
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 			.map((result) => result.reason);
+
+		if (executionError) {
+			if (closingErrors.length > 0) {
+				Logger.error("Error on execution node's close function(s) during error handling", {
+					nodeName: node.name,
+					nodeType: node.type,
+				});
+			}
+			throw executionError;
+		}
+
+		if (isEngineRequest(data)) {
+			if (closingErrors.length > 0) {
+				Logger.error("Error on execution node's close function(s) during EngineRequest", {
+					nodeName: node.name,
+					nodeType: node.type,
+				});
+			}
+			return data;
+		}
 
 		if (closingErrors.length > 0) {
 			if (closingErrors[0] instanceof Error) throw closingErrors[0];
