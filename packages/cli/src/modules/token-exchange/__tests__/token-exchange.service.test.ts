@@ -6,6 +6,7 @@ import { JwtService } from '@/services/jwt.service';
 
 import { TokenExchangeConfig } from '../token-exchange.config';
 import { TOKEN_EXCHANGE_GRANT_TYPE } from '../token-exchange.schemas';
+import { DelegationAuthorizationService } from '../services/delegation-authorization.service';
 import { TokenExchangeService } from '../token-exchange.service';
 import type { IssuedJwtPayload } from '../token-exchange.types';
 
@@ -17,6 +18,7 @@ function makeExternalToken(
 		aud: string;
 		exp: number;
 		email?: string;
+		role?: string | string[];
 	},
 	secret = 'external-secret',
 ): string {
@@ -30,6 +32,7 @@ function makeExternalToken(
 			exp: claims.exp,
 			jti: 'test-jti',
 			...(claims.email && { email: claims.email }),
+			...(claims.role !== undefined && { role: claims.role }),
 		},
 		secret,
 		{ algorithm: 'HS256' },
@@ -39,6 +42,7 @@ function makeExternalToken(
 describe('TokenExchangeService', () => {
 	mockInstance(JwtService);
 	const tokenExchangeConfig = mockInstance(TokenExchangeConfig);
+	const delegationAuthService = mockInstance(DelegationAuthorizationService);
 
 	const service = Container.get(TokenExchangeService);
 	const jwtService = Container.get(JwtService);
@@ -69,6 +73,7 @@ describe('TokenExchangeService', () => {
 		jest.resetAllMocks();
 		tokenExchangeConfig.enabled = true;
 		tokenExchangeConfig.maxTokenTtl = 900;
+		delegationAuthService.canDelegate.mockResolvedValue({ allowed: true, missingScopes: [] });
 
 		// Use real decode so we can read external token claims, but capture what gets signed.
 		jest.mocked(jwtService.decode).mockImplementation((token: string) => jwt.decode(token));
@@ -243,6 +248,86 @@ describe('TokenExchangeService', () => {
 		test('issued JWT is verifiable with jwtService.verify()', async () => {
 			const result = await service.exchange(baseRequest);
 			expect(() => jwtService.verify(result.accessToken)).not.toThrow();
+		});
+	});
+
+	describe('delegation authorization', () => {
+		const actorWithRole = makeExternalToken({
+			sub: 'actor-456',
+			iss: 'https://idp.example.com',
+			aud: 'n8n',
+			exp: farFuture,
+			role: 'project:editor',
+		});
+
+		test('should call canDelegate with actor role, requested scope, and resource when actor has role claim', async () => {
+			await service.exchange({
+				...baseRequest,
+				actor_token: actorWithRole,
+				scope: 'project:viewer',
+				resource: 'project-123',
+			});
+
+			expect(delegationAuthService.canDelegate).toHaveBeenCalledWith(
+				'project:editor',
+				'project:viewer',
+				'project-123',
+			);
+		});
+
+		test('should throw when actor lacks required scopes for delegation', async () => {
+			delegationAuthService.canDelegate.mockResolvedValue({
+				allowed: false,
+				missingScopes: ['workflow:update', 'workflow:create'],
+			});
+
+			await expect(
+				service.exchange({
+					...baseRequest,
+					actor_token: actorWithRole,
+					scope: 'project:editor',
+				}),
+			).rejects.toThrow('Actor is not permitted to delegate this role');
+		});
+
+		test('should not call canDelegate when actor_token has no role claim', async () => {
+			await service.exchange({ ...baseRequest, actor_token: actorToken, scope: 'project:viewer' });
+
+			expect(delegationAuthService.canDelegate).not.toHaveBeenCalled();
+		});
+
+		test('should not call canDelegate when no scope in request', async () => {
+			await service.exchange({ ...baseRequest, actor_token: actorWithRole });
+
+			expect(delegationAuthService.canDelegate).not.toHaveBeenCalled();
+		});
+
+		test('should not call canDelegate when no actor_token', async () => {
+			await service.exchange({ ...baseRequest, scope: 'project:viewer' });
+
+			expect(delegationAuthService.canDelegate).not.toHaveBeenCalled();
+		});
+
+		test('should use first element when actor role claim is an array', async () => {
+			const actorWithArrayRole = makeExternalToken({
+				sub: 'actor-456',
+				iss: 'https://idp.example.com',
+				aud: 'n8n',
+				exp: farFuture,
+				role: ['project:editor', 'project:admin'],
+			});
+
+			await service.exchange({
+				...baseRequest,
+				actor_token: actorWithArrayRole,
+				scope: 'project:viewer',
+			});
+
+			expect(delegationAuthService.canDelegate).toHaveBeenCalledWith(
+				'project:editor',
+				'project:viewer',
+				undefined,
+			);
 		});
 	});
 

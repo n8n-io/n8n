@@ -11,6 +11,7 @@ import {
 	type TokenExchangeRequest,
 } from './token-exchange.schemas';
 import type { IssuedJwtPayload, IssuedTokenResult } from './token-exchange.types';
+import { DelegationAuthorizationService } from './services/delegation-authorization.service';
 
 @Service()
 export class TokenExchangeService {
@@ -19,6 +20,8 @@ export class TokenExchangeService {
 	private readonly jwtService = Container.get(JwtService);
 
 	private readonly config = Container.get(TokenExchangeConfig);
+
+	private readonly delegationAuthService = Container.get(DelegationAuthorizationService);
 
 	async exchange(request: TokenExchangeRequest): Promise<IssuedTokenResult> {
 		const subjectClaims = this.decodeAndValidate(request.subject_token);
@@ -33,6 +36,24 @@ export class TokenExchangeService {
 		}
 		if (actorClaims && actorClaims.exp <= now) {
 			throw new OperationalError('actor_token is expired');
+		}
+
+		if (actorClaims) {
+			const actorRole = Array.isArray(actorClaims.role) ? actorClaims.role[0] : actorClaims.role;
+
+			if (actorRole && request.scope) {
+				const delegationResult = await this.delegationAuthService.canDelegate(
+					actorRole,
+					request.scope,
+					request.resource,
+				);
+
+				if (!delegationResult.allowed) {
+					throw new OperationalError(
+						`Actor is not permitted to delegate this role. Missing scopes: ${delegationResult.missingScopes.join(', ')}`,
+					);
+				}
+			}
 		}
 
 		const maxTtl = this.config.maxTokenTtl;
