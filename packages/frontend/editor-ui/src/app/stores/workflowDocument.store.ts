@@ -74,7 +74,11 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		const workflowDocumentUsedCredentials = useWorkflowDocumentUsedCredentials();
 		const workflowDocumentViewport = useWorkflowDocumentViewport();
 		const nodeTypesStore = useNodeTypesStore();
-		const { onStateDirty: onNodesStateDirty, ...workflowDocumentNodes } = useWorkflowDocumentNodes({
+		const {
+			onStateDirty: onNodesStateDirty,
+			onNodesChange,
+			...workflowDocumentNodes
+		} = useWorkflowDocumentNodes({
 			getNodeType: (typeName, version) => nodeTypesStore.getNodeType(typeName, version),
 		});
 		const { onStateDirty: onConnectionsStateDirty, ...workflowDocumentConnections } =
@@ -86,11 +90,16 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		// Each composable is self-contained and unaware of its siblings. This
 		// store is where cross-concern side effects are wired. When adding new
 		// composables, check workflowsStore for hidden cross-cuts that need to
-		// surface here. Known future ones:
-		//   - removeNode → unpinNodeData (currently in workflowsStore.removeNode)
+		// surface here.
 
 		onNodesStateDirty(() => useUIStore().markStateDirty());
 		onConnectionsStateDirty(() => useUIStore().markStateDirty());
+
+		onNodesChange((event) => {
+			if (event.action === 'delete' && 'name' in event.payload && event.payload.name) {
+				workflowDocumentPinData.unpinNodeData(event.payload.name);
+			}
+		});
 
 		function removeAllNodes() {
 			workflowDocumentNodes.removeAllNodes();
@@ -116,6 +125,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			...workflowDocumentViewport,
 			...workflowDocumentNodes,
 			...workflowDocumentConnections,
+			onNodesChange,
 			removeAllNodes,
 		};
 	})();

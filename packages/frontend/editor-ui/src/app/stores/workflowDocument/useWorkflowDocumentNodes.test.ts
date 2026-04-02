@@ -17,7 +17,6 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createTestNode } from '@/__tests__/mocks';
 import type { INodeUi } from '@/Interface';
 import {
@@ -37,12 +36,10 @@ function createDeps(overrides: Partial<WorkflowDocumentNodesDeps> = {}): Workflo
 }
 
 describe('useWorkflowDocumentNodes', () => {
-	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let deps: WorkflowDocumentNodesDeps;
 
 	beforeEach(() => {
 		setActivePinia(createPinia());
-		workflowsStore = useWorkflowsStore();
 		deps = createDeps();
 	});
 
@@ -185,11 +182,11 @@ describe('useWorkflowDocumentNodes', () => {
 			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
 			workflowDocumentNodes.setNodes([createNode({ name: 'A' })]);
 
-			expect(workflowsStore.nodeMetadata).toHaveProperty('A');
+			expect(workflowDocumentNodes.nodeMetadata.value).toHaveProperty('A');
 
 			workflowDocumentNodes.removeAllNodes();
 
-			expect(workflowsStore.nodeMetadata).toEqual({});
+			expect(workflowDocumentNodes.nodeMetadata.value).toEqual({});
 		});
 	});
 
@@ -381,10 +378,12 @@ describe('useWorkflowDocumentNodes', () => {
 			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
 			workflowDocumentNodes.setNodes([node]);
 
-			const tsBefore = workflowsStore.nodeMetadata.Target.parametersLastUpdatedAt;
+			const tsBefore = workflowDocumentNodes.nodeMetadata.value.Target.parametersLastUpdatedAt;
 			workflowDocumentNodes.setNodeValue({ name: 'Target', key: 'position', value: [300, 400] });
 
-			expect(workflowsStore.nodeMetadata.Target.parametersLastUpdatedAt).toBe(tsBefore);
+			expect(workflowDocumentNodes.nodeMetadata.value.Target.parametersLastUpdatedAt).toBe(
+				tsBefore,
+			);
 		});
 
 		it('setNodeValue updates parametersLastUpdatedAt for non-position changes', () => {
@@ -395,7 +394,9 @@ describe('useWorkflowDocumentNodes', () => {
 
 			workflowDocumentNodes.setNodeValue({ name: 'Target', key: 'disabled', value: true });
 
-			expect(workflowsStore.nodeMetadata.Target.parametersLastUpdatedAt).toBeGreaterThan(0);
+			expect(
+				workflowDocumentNodes.nodeMetadata.value.Target.parametersLastUpdatedAt,
+			).toBeGreaterThan(0);
 		});
 
 		it('resetParametersLastUpdatedAt updates timestamp', () => {
@@ -406,7 +407,9 @@ describe('useWorkflowDocumentNodes', () => {
 
 			workflowDocumentNodes.resetParametersLastUpdatedAt('Target');
 
-			expect(workflowsStore.nodeMetadata.Target.parametersLastUpdatedAt).toBeGreaterThan(0);
+			expect(
+				workflowDocumentNodes.nodeMetadata.value.Target.parametersLastUpdatedAt,
+			).toBeGreaterThan(0);
 		});
 
 		it('resetParametersLastUpdatedAt creates metadata entry if missing', () => {
@@ -414,8 +417,10 @@ describe('useWorkflowDocumentNodes', () => {
 
 			workflowDocumentNodes.resetParametersLastUpdatedAt('NewNode');
 
-			expect(workflowsStore.nodeMetadata.NewNode).toBeDefined();
-			expect(workflowsStore.nodeMetadata.NewNode.parametersLastUpdatedAt).toBeGreaterThan(0);
+			expect(workflowDocumentNodes.nodeMetadata.value.NewNode).toBeDefined();
+			expect(
+				workflowDocumentNodes.nodeMetadata.value.NewNode.parametersLastUpdatedAt,
+			).toBeGreaterThan(0);
 		});
 	});
 
