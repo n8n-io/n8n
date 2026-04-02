@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { TokenExchangeConfig } from '@n8n/config';
+import { TokenExchangeConfig } from '../token-exchange.config';
 import { Time } from '@n8n/constants';
 import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';

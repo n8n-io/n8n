@@ -14,28 +14,31 @@ export class TokenExchangeJtiRepository extends Repository<TokenExchangeJti> {
 	constructor(dataSource: DataSource, globalConfig: GlobalConfig) {
 		super(TokenExchangeJti, dataSource.manager);
 		this.dbType = globalConfig.database.type;
-		this.escapedTableName = this.manager.connection.driver.escape('token_exchange_jti');
+		const { schema, tableName } = this.metadata;
+		const esc = (name: string) => dataSource.driver.escape(name);
+		this.escapedTableName = schema ? `${esc(schema)}.${esc(tableName)}` : esc(tableName);
 	}
 
 	/**
 	 * Atomically consume a JTI. Returns `true` if this is the first use
 	 * (row inserted), `false` if already consumed (replay attempt).
 	 *
-	 * Uses a CTE so both Postgres and SQLite return a single `{ inserted: boolean }`
-	 * row in one query. The INSERT uses ON CONFLICT / OR IGNORE with RETURNING
-	 * inside the CTE, and the outer SELECT checks whether a row was produced.
+	 * Postgres uses a CTE with INSERT...RETURNING + EXISTS in a single query.
+	 * SQLite uses a transactional 2-query approach (INSERT OR IGNORE + SELECT
+	 * changes()) because the sqlite-pooled driver dispatches WITH-prefixed
+	 * queries via `.all()` instead of `.run()`, which breaks DML execution.
 	 */
 	async atomicConsume(jti: string, expiresAt: Date): Promise<boolean> {
-		const e = (name: string) => this.manager.connection.driver.escape(name);
-		const t = this.escapedTableName;
+		const esc = (name: string) => this.manager.connection.driver.escape(name);
+		const tableName = this.escapedTableName;
 
 		if (this.dbType === 'postgresdb') {
 			const [row] = (await this.query(
 				`WITH ins AS (
-					INSERT INTO ${t} (${e('jti')}, ${e('expiresAt')}, ${e('createdAt')})
+					INSERT INTO ${tableName} (${esc('jti')}, ${esc('expiresAt')}, ${esc('createdAt')})
 					VALUES ($1, $2, NOW())
-					ON CONFLICT (${e('jti')}) DO NOTHING
-					RETURNING ${e('jti')}
+					ON CONFLICT (${esc('jti')}) DO NOTHING
+					RETURNING ${esc('jti')}
 				)
 				SELECT EXISTS (SELECT 1 FROM ins) AS inserted`,
 				[jti, expiresAt],
@@ -43,18 +46,24 @@ export class TokenExchangeJtiRepository extends Repository<TokenExchangeJti> {
 
 			return row.inserted;
 		} else if (this.dbType === 'sqlite') {
-			const [row] = (await this.query(
-				`WITH ins AS (
-					INSERT OR IGNORE INTO ${t} (${e('jti')}, ${e('expiresAt')}, ${e('createdAt')})
-					VALUES (?, ?, datetime('now'))
-					RETURNING ${e('jti')}
-				)
-				SELECT EXISTS (SELECT 1 FROM ins) AS inserted`,
-				[jti, expiresAt.toISOString()],
-			)) as Array<{ inserted: number }>;
-
-			// SQLite returns 0/1 for boolean expressions
-			return row.inserted === 1;
+			const qr = this.manager.connection.createQueryRunner();
+			await qr.startTransaction();
+			try {
+				await qr.query(
+					`INSERT OR IGNORE INTO ${tableName} (${esc('jti')}, ${esc('expiresAt')}, ${esc('createdAt')}) VALUES (?, datetime(?), datetime('now'))`,
+					[jti, expiresAt.toISOString()],
+				);
+				const [{ cnt }] = (await qr.query('SELECT changes() as cnt')) as Array<{
+					cnt: number;
+				}>;
+				await qr.commitTransaction();
+				return cnt > 0;
+			} catch (e) {
+				await qr.rollbackTransaction();
+				throw e;
+			} finally {
+				await qr.release();
+			}
 		}
 
 		assert.fail('Unknown database type');
@@ -63,29 +72,55 @@ export class TokenExchangeJtiRepository extends Repository<TokenExchangeJti> {
 	/**
 	 * Delete expired JTI rows in batches. Returns the number of deleted rows.
 	 *
-	 * Uses a CTE with DELETE...RETURNING + COUNT(*) so both Postgres and SQLite
-	 * reliably return the deleted count in a single query (same pattern as atomicConsume).
+	 * Postgres uses a CTE with DELETE...RETURNING + COUNT(*) in a single query.
+	 * SQLite uses a transactional 2-query approach (DELETE + SELECT changes())
+	 * for the same reason as atomicConsume (see above).
 	 */
 	async deleteExpiredBatch(batchSize: number): Promise<number> {
-		const e = (name: string) => this.manager.connection.driver.escape(name);
-		const t = this.escapedTableName;
-		const now = this.dbType === 'postgresdb' ? 'NOW()' : "datetime('now')";
-		const param = this.dbType === 'postgresdb' ? '$1' : '?';
+		const esc = (name: string) => this.manager.connection.driver.escape(name);
+		const tableName = this.escapedTableName;
 
-		const [row] = (await this.query(
-			`WITH deleted AS (
-				DELETE FROM ${t}
-				WHERE ${e('jti')} IN (
-					SELECT ${e('jti')} FROM ${t}
-					WHERE ${e('expiresAt')} < ${now}
-					LIMIT ${param}
+		if (this.dbType === 'postgresdb') {
+			const [row] = (await this.query(
+				`WITH deleted AS (
+					DELETE FROM ${tableName}
+					WHERE ${esc('jti')} IN (
+						SELECT ${esc('jti')} FROM ${tableName}
+						WHERE ${esc('expiresAt')} < NOW()
+						LIMIT $1
+					)
+					RETURNING ${esc('jti')}
 				)
-				RETURNING ${e('jti')}
-			)
-			SELECT COUNT(*) AS ${e('count')} FROM deleted`,
-			[batchSize],
-		)) as Array<{ count: string | number }>;
+				SELECT COUNT(*) AS ${esc('count')} FROM deleted`,
+				[batchSize],
+			)) as Array<{ count: string | number }>;
 
-		return Number(row.count);
+			return Number(row.count);
+		} else if (this.dbType === 'sqlite') {
+			const qr = this.manager.connection.createQueryRunner();
+			await qr.startTransaction();
+			try {
+				await qr.query(
+					`DELETE FROM ${tableName} WHERE ${esc('jti')} IN (
+						SELECT ${esc('jti')} FROM ${tableName}
+						WHERE ${esc('expiresAt')} < datetime('now')
+						LIMIT ?
+					)`,
+					[batchSize],
+				);
+				const [{ cnt }] = (await qr.query('SELECT changes() as cnt')) as Array<{
+					cnt: number;
+				}>;
+				await qr.commitTransaction();
+				return Number(cnt);
+			} catch (e) {
+				await qr.rollbackTransaction();
+				throw e;
+			} finally {
+				await qr.release();
+			}
+		}
+
+		assert.fail('Unknown database type');
 	}
 }
