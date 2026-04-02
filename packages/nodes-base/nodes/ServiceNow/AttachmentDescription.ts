@@ -234,7 +234,7 @@ export const attachmentFields: INodeProperties[] = [
 				placeholder: '<col_name><operator><value>',
 				default: '',
 				description: 'An encoded query string used to filter the results',
-				hint: 'All parameters are case-sensitive. Queries can contain more than one entry. <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/quebec/servicenow_application_developer/app_store_learnv2_rest_quebec_more_about_query_parameters">more information</a>.',
+				hint: 'All parameters are case-sensitive. Queries can contain more than one entry. <a href="https://developer.servicenow.com/dev.do#!/learn/learning-plans/quebec/servicenow_application_developer/app_store_learnv2_rest_quebec_more_about_query_parameters">More information</a>.',
 			},
 		],
 	},

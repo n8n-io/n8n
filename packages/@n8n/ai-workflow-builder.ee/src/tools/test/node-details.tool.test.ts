@@ -1,3 +1,4 @@
+import { getCurrentTaskInput } from '@langchain/langgraph';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
 import {
@@ -14,7 +15,9 @@ import {
 	expectXMLTag,
 	type ParsedToolContent,
 	createNodeType,
+	createNode,
 } from '../../../test/test-utils';
+import type { WorkflowMetadata } from '../../types/tools';
 import { createNodeDetailsTool } from '../node-details.tool';
 
 // Mock LangGraph dependencies
@@ -23,6 +26,19 @@ jest.mock('@langchain/langgraph', () => ({
 	Command: jest.fn().mockImplementation((params: Record<string, unknown>) => ({
 		content: JSON.stringify(params),
 	})),
+}));
+
+const mockGetCurrentTaskInput = getCurrentTaskInput as jest.MockedFunction<
+	typeof getCurrentTaskInput
+>;
+
+// Mock the templates module to prevent actual API calls
+jest.mock('../web/templates', () => ({
+	fetchWorkflowsFromTemplates: jest.fn().mockResolvedValue({
+		workflows: [],
+		totalFound: 0,
+		templateIds: [],
+	}),
 }));
 
 describe('NodeDetailsTool', () => {
@@ -404,11 +420,11 @@ describe('NodeDetailsTool', () => {
 			const mockConfig = createToolConfig('get_node_details', 'test-call-14');
 
 			const result = await nodeDetailsTool.invoke(
-				{
+				buildNodeDetailsInput({
 					nodeName: 'n8n-nodes-base.set',
 					withParameters: true,
 					withConnections: true,
-				},
+				}),
 				mockConfig,
 			);
 
@@ -454,6 +470,269 @@ describe('NodeDetailsTool', () => {
 
 			// Check empty outputs formatting
 			expect(message).toContain('<outputs>none</outputs>');
+		});
+
+		it('should retrieve the correct node version when multiple versions exist', async () => {
+			// Create multiple versions of the same node type
+			const setNodeV1 = createNodeType({
+				name: 'n8n-nodes-base.set',
+				displayName: 'Set V1',
+				version: 1,
+				description: 'Set node version 1',
+				properties: [
+					{
+						displayName: 'Mode',
+						name: 'mode',
+						type: 'options',
+						options: [
+							{ name: 'Manual', value: 'manual' },
+							{ name: 'Automatic', value: 'automatic' },
+						],
+						default: 'manual',
+					},
+				],
+			});
+
+			const setNodeV2 = createNodeType({
+				name: 'n8n-nodes-base.set',
+				displayName: 'Set V2',
+				version: 2,
+				description: 'Set node version 2 with enhanced features',
+				properties: [
+					{
+						displayName: 'Mode',
+						name: 'mode',
+						type: 'options',
+						options: [
+							{ name: 'Manual', value: 'manual' },
+							{ name: 'Automatic', value: 'automatic' },
+							{ name: 'Advanced', value: 'advanced' },
+						],
+						default: 'manual',
+					},
+				],
+			});
+
+			const setNodeV3 = createNodeType({
+				name: 'n8n-nodes-base.set',
+				displayName: 'Set V3',
+				version: 3,
+				description: 'Set node version 3 with latest improvements',
+				properties: [
+					{
+						displayName: 'Mode',
+						name: 'mode',
+						type: 'options',
+						options: [
+							{ name: 'Manual', value: 'manual' },
+							{ name: 'Automatic', value: 'automatic' },
+							{ name: 'Advanced', value: 'advanced' },
+							{ name: 'Expert', value: 'expert' },
+						],
+						default: 'manual',
+					},
+				],
+			});
+
+			const testNodeTypes = [setNodeV1, setNodeV2, setNodeV3, nodeTypes.code];
+			const testTool = createNodeDetailsTool(testNodeTypes).tool;
+
+			const mockConfig = createToolConfig('get_node_details', 'test-call-16');
+
+			// Request version 2 specifically
+			const result = await testTool.invoke(
+				buildNodeDetailsInput({
+					nodeName: 'n8n-nodes-base.set',
+					nodeVersion: 2,
+					withParameters: true,
+				}),
+				mockConfig,
+			);
+
+			const content = parseToolResult<ParsedToolContent>(result);
+			const message = content.update.messages[0]?.kwargs.content;
+
+			expectToolSuccess(content, '<node_details>');
+
+			// Verify we got version 2 details
+			expectNodeDetails(content, {
+				name: 'n8n-nodes-base.set',
+				displayName: 'Set V2',
+				description: 'Set node version 2 with enhanced features',
+			});
+
+			// Check that properties from v2 are present (3 options, not 2 from v1 or 4 from v3)
+			expect(message).toContain('<properties>');
+			expect(message).toContain('Advanced');
+			expect(message).not.toContain('Expert'); // This is only in v3
+		});
+
+		it('should fail when requesting a non-existent node version', async () => {
+			const mockConfig = createToolConfig('get_node_details', 'test-call-17');
+
+			const result = await nodeDetailsTool.invoke(
+				buildNodeDetailsInput({
+					nodeName: 'n8n-nodes-base.code',
+					nodeVersion: 99, // Non-existent version
+				}),
+				mockConfig,
+			);
+
+			const content = parseToolResult<ParsedToolContent>(result);
+			expectToolError(content, 'Error: Node type "n8n-nodes-base.code" not found');
+		});
+
+		it('should retrieve correct version with array version node types', async () => {
+			// Create a node that supports multiple versions in an array
+			const multiVersionNode = createNodeType({
+				name: 'n8n-nodes-base.multiVersion',
+				displayName: 'Multi Version Node',
+				version: [1, 2, 3],
+				description: 'Node that supports versions 1, 2, and 3',
+				properties: [
+					{
+						displayName: 'Setting',
+						name: 'setting',
+						type: 'string',
+						default: '',
+					},
+				],
+			});
+
+			const testNodeTypes = [...nodeTypesList, multiVersionNode];
+			const testTool = createNodeDetailsTool(testNodeTypes).tool;
+
+			const mockConfig = createToolConfig('get_node_details', 'test-call-18');
+
+			// Request version 2 from the array
+			const result = await testTool.invoke(
+				buildNodeDetailsInput({
+					nodeName: 'n8n-nodes-base.multiVersion',
+					nodeVersion: 2,
+				}),
+				mockConfig,
+			);
+
+			const content = parseToolResult<ParsedToolContent>(result);
+
+			expectToolSuccess(content, '<node_details>');
+			expectNodeDetails(content, {
+				name: 'n8n-nodes-base.multiVersion',
+				displayName: 'Multi Version Node',
+				description: 'Node that supports versions 1, 2, and 3',
+			});
+		});
+
+		describe('cached templates', () => {
+			// Helper to create mock cached templates with specific node configurations
+			let mockTemplateIdCounter = 1;
+			const createMockCachedTemplate = (
+				name: string,
+				nodes: Array<ReturnType<typeof createNode>>,
+			): WorkflowMetadata => ({
+				templateId: mockTemplateIdCounter++,
+				name,
+				description: `Template: ${name}`,
+				workflow: {
+					nodes,
+					connections: {},
+					name,
+				},
+			});
+
+			it('should retrieve node examples from cached templates', async () => {
+				const mockConfig = createToolConfig('get_node_details', 'test-cached-1');
+
+				// Create cached templates containing HTTP Request nodes with different configurations
+				const cachedTemplates: WorkflowMetadata[] = [
+					createMockCachedTemplate('API Integration Workflow', [
+						createNode({
+							id: 'http-1',
+							name: 'Fetch User Data',
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 1,
+							parameters: {
+								url: 'https://api.example.com/users',
+								method: 'GET',
+								authentication: 'genericCredentialType',
+							},
+						}),
+						createNode({
+							id: 'code-1',
+							name: 'Process Data',
+							type: 'n8n-nodes-base.code',
+						}),
+					]),
+					createMockCachedTemplate('Webhook Handler', [
+						createNode({
+							id: 'http-2',
+							name: 'Post to Slack',
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 1,
+							parameters: {
+								url: 'https://hooks.slack.com/services/xxx',
+								method: 'POST',
+								bodyParameters: {
+									parameters: [{ name: 'text', value: 'Hello World' }],
+								},
+							},
+						}),
+					]),
+				];
+
+				// Mock getCurrentTaskInput to return state with cached templates
+				mockGetCurrentTaskInput.mockReturnValue({
+					cachedTemplates,
+					workflowJSON: { nodes: [], connections: {}, name: 'Test' },
+					messages: [],
+				});
+
+				const result = await nodeDetailsTool.invoke(
+					buildNodeDetailsInput({
+						nodeName: 'n8n-nodes-base.httpRequest',
+						nodeVersion: 1,
+					}),
+					mockConfig,
+				);
+
+				const content = parseToolResult<ParsedToolContent>(result);
+				const message = content.update.messages[0]?.kwargs.content;
+
+				expectToolSuccess(content, '<node_details>');
+
+				expect(message).toEqual(`<node_details>
+<name>n8n-nodes-base.httpRequest</name>
+<display_name>HTTP Request</display_name>
+<description>Test node description</description>
+<connections>
+<input>main</input>
+<output>main</output>
+</connections>
+<node_examples>
+<example>
+{
+  "url": "https://api.example.com/users",
+  "method": "GET",
+  "authentication": "genericCredentialType"
+}
+</example>
+<example>
+{
+  "url": "https://hooks.slack.com/services/xxx",
+  "method": "POST",
+  "bodyParameters": {
+    "parameters": [
+      {
+        "name": "text",
+        "value": "Hello World"
+      }
+    ]
+  }
+}
+</example>
+</node_examples>
+</node_details>`);
+			});
 		});
 	});
 });

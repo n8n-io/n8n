@@ -1,7 +1,7 @@
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import type { VectorStore } from '@langchain/core/vectorstores';
-import { VectorDBQAChain } from 'langchain/chains';
-import { VectorStoreQATool } from 'langchain/tools';
+import { VectorDBQAChain } from '@langchain/classic/chains';
+import { VectorStoreQATool } from '@langchain/classic/tools';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -12,8 +12,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, nodeNameToToolName } from 'n8n-workflow';
 
-import { logWrapper } from '@utils/logWrapper';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 async function getTool(
 	ctx: ISupplyDataFunctions | IExecuteFunctions,
@@ -93,6 +92,12 @@ export class ToolVectorStore implements INodeType {
 
 		outputs: [NodeConnectionTypes.AiTool],
 		outputNames: ['Tool'],
+		builderHint: {
+			inputs: {
+				ai_vectorStore: { required: true },
+				ai_languageModel: { required: true },
+			},
+		},
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiAgent]),
 			{

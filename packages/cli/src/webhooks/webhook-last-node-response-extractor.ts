@@ -5,8 +5,6 @@ import type { INodeExecutionData, ITaskData, Result, WebhookResponseData } from 
 import { BINARY_ENCODING, createResultError, createResultOk, OperationalError } from 'n8n-workflow';
 import type { Readable } from 'node:stream';
 
-import type { WebhookExecutionContext } from '@/webhooks/webhook-execution-context';
-
 /** Response that is not a stream */
 type StaticResponse = {
 	type: 'static';
@@ -21,20 +19,38 @@ type StreamResponse = {
 };
 
 /**
-+ * Extracts the response for a webhook when the response mode is set to
+ * Extracts the response for a webhook when the response mode is set to
  * `lastNode`.
+ * Note: We can check either all main outputs or just the first one.
+ * For the backward compatibility, by default we only check the first main output.
+ * But when the `checkAllMainOutputs` is set to true, we check all main outputs
+ * until we find one that has data.
  */
 export async function extractWebhookLastNodeResponse(
-	context: WebhookExecutionContext,
 	responseDataType: WebhookResponseData | undefined,
 	lastNodeTaskData: ITaskData,
+	checkAllMainOutputs: boolean = false,
+	options: {
+		responsePropertyName: string | undefined;
+		responseContentType: string | undefined;
+		responseBinaryPropertyName: string | number | boolean | unknown[] | undefined;
+	},
 ): Promise<Result<StaticResponse | StreamResponse, OperationalError>> {
 	if (responseDataType === 'firstEntryJson') {
-		return extractFirstEntryJsonFromTaskData(context, lastNodeTaskData);
+		return extractFirstEntryJsonFromTaskData(
+			lastNodeTaskData,
+			checkAllMainOutputs,
+			options.responsePropertyName,
+			options.responseContentType,
+		);
 	}
 
 	if (responseDataType === 'firstEntryBinary') {
-		return await extractFirstEntryBinaryFromTaskData(context, lastNodeTaskData);
+		return await extractFirstEntryBinaryFromTaskData(
+			lastNodeTaskData,
+			checkAllMainOutputs,
+			options.responseBinaryPropertyName,
+		);
 	}
 
 	if (responseDataType === 'noData') {
@@ -46,15 +62,17 @@ export async function extractWebhookLastNodeResponse(
 	}
 
 	// Default to all entries JSON
-	return extractAllEntriesJsonFromTaskData(lastNodeTaskData);
+	return extractAllEntriesJsonFromTaskData(lastNodeTaskData, checkAllMainOutputs);
 }
 
 /**
- * Extracts the JSON data of the first item of the first non-empty branch of the last node
+ * Extracts the JSON data of the first item of the last node
  */
 function extractFirstEntryJsonFromTaskData(
-	context: WebhookExecutionContext,
 	lastNodeTaskData: ITaskData,
+	checkAllMainOutputs: boolean = false,
+	responsePropertyName: string | undefined,
+	responseContentType: string | undefined,
 ): Result<StaticResponse, OperationalError> {
 	const mainOutputs = lastNodeTaskData.data?.main;
 	let firstItem: INodeExecutionData | undefined;
@@ -65,6 +83,11 @@ function extractFirstEntryJsonFromTaskData(
 				firstItem = branch[0];
 				break; // Stop after processing the first non-empty branch
 			}
+
+			if (!checkAllMainOutputs) {
+				// If we should not check all main outputs, stop after the first one
+				break;
+			}
 		}
 	}
 
@@ -74,18 +97,12 @@ function extractFirstEntryJsonFromTaskData(
 
 	let lastNodeFirstJsonItem: unknown = firstItem.json;
 
-	const responsePropertyName =
-		context.evaluateSimpleWebhookDescriptionExpression<string>('responsePropertyName');
-
 	if (responsePropertyName !== undefined) {
 		lastNodeFirstJsonItem = get(lastNodeFirstJsonItem, responsePropertyName);
 	}
 
 	// User can set the content type of the response and also the headers.
 	// The `responseContentType` only applies to `firstEntryJson` mode.
-	const responseContentType =
-		context.evaluateSimpleWebhookDescriptionExpression<string>('responseContentType');
-
 	return createResultOk({
 		type: 'static',
 		body: lastNodeFirstJsonItem,
@@ -94,11 +111,12 @@ function extractFirstEntryJsonFromTaskData(
 }
 
 /**
- * Extracts the binary data of the first item of the first non-empty branch of the last node
+ * Extracts the binary data of the first item of the last node
  */
 async function extractFirstEntryBinaryFromTaskData(
-	context: WebhookExecutionContext,
 	lastNodeTaskData: ITaskData,
+	checkAllMainOutputs: boolean = false,
+	responseBinaryPropertyName: string | number | boolean | unknown[] | undefined,
 ): Promise<Result<StaticResponse | StreamResponse, OperationalError>> {
 	const mainOutputs = lastNodeTaskData.data?.main;
 	let lastNodeFirstJsonItem: INodeExecutionData | undefined;
@@ -110,6 +128,11 @@ async function extractFirstEntryBinaryFromTaskData(
 				lastNodeFirstJsonItem = branch[0];
 				break; // Stop after processing the first non-empty branch
 			}
+
+			if (!checkAllMainOutputs) {
+				// If we should not check all main outputs, stop after the first one
+				break;
+			}
 		}
 	}
 
@@ -120,12 +143,6 @@ async function extractFirstEntryBinaryFromTaskData(
 	if (lastNodeFirstJsonItem.binary === undefined) {
 		return createResultError(new OperationalError('No binary data was found to return'));
 	}
-
-	const responseBinaryPropertyName = context.evaluateSimpleWebhookDescriptionExpression<string>(
-		'responseBinaryPropertyName',
-		undefined,
-		'data',
-	);
 
 	if (responseBinaryPropertyName === undefined) {
 		return createResultError(new OperationalError("No 'responseBinaryPropertyName' is set"));
@@ -161,10 +178,11 @@ async function extractFirstEntryBinaryFromTaskData(
 }
 
 /**
- * Extracts the JSON data of all the items from the first non-empty branch of the last node
+ * Extracts the JSON data of all the items of the last node
  */
 function extractAllEntriesJsonFromTaskData(
 	lastNodeTaskData: ITaskData,
+	checkAllMainOutputs: boolean = false,
 ): Result<StaticResponse, OperationalError> {
 	const data: unknown[] = [];
 	const mainOutputs = lastNodeTaskData.data?.main;
@@ -176,7 +194,13 @@ function extractAllEntriesJsonFromTaskData(
 				for (const entry of branch) {
 					data.push(entry.json);
 				}
+
 				break; // Stop after processing the first non-empty branch
+			}
+
+			if (!checkAllMainOutputs) {
+				// If we should not check all main outputs, stop after the first one
+				break;
 			}
 		}
 	}

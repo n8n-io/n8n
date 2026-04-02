@@ -1,14 +1,23 @@
 import { mock } from 'jest-mock-extended';
 import type {
 	IDataObject,
-	IRunExecutionData,
 	IWorkflowExecuteAdditionalData,
 	EngineResponse,
 	WorkflowExecuteMode,
+	IExecuteFunctions,
+	IPairedItemData,
+	INodeExecutionData,
+	INodeType,
 } from 'n8n-workflow';
-import { ApplicationError } from 'n8n-workflow';
+import { ApplicationError, NodeConnectionTypes, createRunExecutionData } from 'n8n-workflow';
 
 import { NodeTypes } from '@test/helpers';
+
+jest.mock('node:fs', () => ({
+	...jest.requireActual('node:fs'),
+	existsSync: jest.fn().mockReturnValue(false),
+	renameSync: jest.fn(),
+}));
 
 import { DirectedGraph } from '../partial-execution-utils';
 import { createNodeData, toITaskData } from '../partial-execution-utils/__tests__/helpers';
@@ -26,11 +35,14 @@ describe('processRunExecutionData', () => {
 	const additionalData = mock<IWorkflowExecuteAdditionalData>({
 		hooks: { runHook },
 		restartExecutionId: undefined,
+		webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+		formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
 	});
 	const executionMode: WorkflowExecuteMode = 'trigger';
 
 	beforeEach(() => {
 		jest.resetAllMocks();
+		runHook.mockResolvedValue(undefined);
 	});
 
 	test('throws if execution-data is missing', () => {
@@ -40,10 +52,10 @@ describe('processRunExecutionData', () => {
 			.addNodes(node)
 			.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
 
-		const executionData: IRunExecutionData = {
+		const executionData = createRunExecutionData({
 			startData: { startNodes: [{ name: node.name, sourceData: null }] },
-			resultData: { runData: {} },
-		};
+		});
+		delete executionData.executionData;
 
 		const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
 
@@ -63,17 +75,10 @@ describe('processRunExecutionData', () => {
 			.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
 
 		const taskDataConnection = { main: [[{ json: { foo: 1 } }]] };
-		const executionData: IRunExecutionData = {
+		const executionData = createRunExecutionData({
 			startData: { startNodes: [{ name: node.name, sourceData: null }] },
-			resultData: { runData: {} },
-			executionData: {
-				contextData: {},
-				nodeExecutionStack: [{ data: taskDataConnection, node, source: null }],
-				metadata: {},
-				waitingExecution: {},
-				waitingExecutionSource: {},
-			},
-		};
+			executionData: { nodeExecutionStack: [{ data: taskDataConnection, node, source: null }] },
+		});
 
 		const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
 
@@ -94,17 +99,12 @@ describe('processRunExecutionData', () => {
 			.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
 
 		const taskDataConnection = { main: [[{ json: { foo: 1 } }]] };
-		const executionData: IRunExecutionData = {
+		const executionData = createRunExecutionData({
 			startData: { startNodes: [{ name: node1.name, sourceData: null }] },
-			resultData: { runData: {} },
 			executionData: {
-				contextData: {},
 				nodeExecutionStack: [{ data: taskDataConnection, node: node1, source: null }],
-				metadata: {},
-				waitingExecution: {},
-				waitingExecutionSource: {},
 			},
-		};
+		});
 
 		const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
 
@@ -121,6 +121,74 @@ describe('processRunExecutionData', () => {
 		expect(runHook).toHaveBeenNthCalledWith(6, 'workflowExecuteAfter', expect.any(Array));
 	});
 
+	test('agent node emits nodeExecuteBefore only once when resuming after tool execution', async () => {
+		// ARRANGE
+		// Create agent node that returns EngineRequest, then resumes with tool results
+		const agentNodeType = modifyNode(passThroughNode)
+			.return({
+				actions: [
+					{
+						actionType: 'ExecutionNodeAction',
+						nodeName: 'tool',
+						input: { query: 'test input' },
+						type: 'ai_tool',
+						id: 'action_1',
+						metadata: {},
+					},
+				],
+				metadata: {},
+			})
+			.return((response) => [[{ json: { result: 'agent completed', response } }]])
+			.done();
+
+		const trigger = createNodeData({ name: 'trigger', type: types.passThrough });
+		const agent = createNodeData({ name: 'agent', type: 'agent' });
+		const tool = createNodeData({ name: 'tool', type: types.passThrough });
+
+		const nodeTypes = NodeTypes({
+			...nodeTypeArguments,
+			agent: { type: agentNodeType, sourcePath: '' },
+		});
+
+		const workflowInstance = new DirectedGraph()
+			.addNodes(trigger, agent, tool)
+			.addConnections(
+				{ from: trigger, to: agent },
+				{ from: tool, to: agent, type: NodeConnectionTypes.AiTool },
+			)
+			.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
+
+		const taskDataConnection = { main: [[{ json: { foo: 1 } }]] };
+		const executionData = createRunExecutionData({
+			startData: { startNodes: [{ name: trigger.name, sourceData: null }] },
+			executionData: {
+				nodeExecutionStack: [{ data: taskDataConnection, node: trigger, source: null }],
+			},
+		});
+
+		const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
+
+		// ACT
+		await workflowExecute.processRunExecutionData(workflowInstance);
+
+		// ASSERT
+		expect(
+			runHook.mock.calls.map((hook: [string, unknown[]]) => ({
+				name: hook[0],
+				node: typeof hook[1][0] === 'string' ? hook[1][0] : undefined,
+			})),
+		).toEqual([
+			{ name: 'workflowExecuteBefore' },
+			{ name: 'nodeExecuteBefore', node: 'trigger' },
+			{ name: 'nodeExecuteAfter', node: 'trigger' },
+			{ name: 'nodeExecuteBefore', node: 'agent' },
+			{ name: 'nodeExecuteBefore', node: 'tool' },
+			{ name: 'nodeExecuteAfter', node: 'tool' },
+			{ name: 'nodeExecuteAfter', node: 'agent' },
+			{ name: 'workflowExecuteAfter' },
+		]);
+	});
+
 	describe('runExecutionData.waitTill', () => {
 		test('handles waiting state properly when waitTill is set', async () => {
 			// ARRANGE
@@ -130,21 +198,17 @@ describe('processRunExecutionData', () => {
 				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
 
 			const data: IDataObject = { foo: 1 };
-			const executionData: IRunExecutionData = {
+			const executionData = createRunExecutionData({
 				startData: { startNodes: [{ name: node.name, sourceData: null }] },
 				resultData: {
 					runData: { waitingNode: [toITaskData([{ data }], { executionStatus: 'waiting' })] },
 					lastNodeExecuted: 'waitingNode',
 				},
 				executionData: {
-					contextData: {},
 					nodeExecutionStack: [{ data: { main: [[{ json: data }]] }, node, source: null }],
-					metadata: {},
-					waitingExecution: {},
-					waitingExecutionSource: {},
 				},
 				waitTill: new Date('2024-01-01'),
-			};
+			});
 
 			const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
 
@@ -170,17 +234,12 @@ describe('processRunExecutionData', () => {
 				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
 
 			const taskDataConnection = { main: [[{ json: { foo: 1 } }]] };
-			const executionData: IRunExecutionData = {
+			const executionData = createRunExecutionData({
 				startData: { startNodes: [{ name: node.name, sourceData: null }] },
-				resultData: { runData: {} },
 				executionData: {
-					contextData: {},
 					nodeExecutionStack: [{ data: taskDataConnection, node, source: null }],
-					metadata: {},
-					waitingExecution: {},
-					waitingExecutionSource: {},
 				},
-			};
+			});
 
 			const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
 
@@ -204,20 +263,15 @@ describe('processRunExecutionData', () => {
 				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
 
 			const taskDataConnection = { main: [[{ json: { foo: 1 } }]] };
-			const executionData: IRunExecutionData = {
+			const executionData = createRunExecutionData({
 				startData: {
 					startNodes: [{ name: node1.name, sourceData: null }],
-					destinationNode: node1.name,
+					destinationNode: { nodeName: node1.name, mode: 'inclusive' },
 				},
-				resultData: { runData: {} },
 				executionData: {
-					contextData: {},
 					nodeExecutionStack: [{ data: taskDataConnection, node: node1, source: null }],
-					metadata: {},
-					waitingExecution: {},
-					waitingExecutionSource: {},
 				},
-			};
+			});
 
 			const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
 
@@ -229,6 +283,86 @@ describe('processRunExecutionData', () => {
 	});
 
 	describe('waiting tools', () => {
+		test('run() executes requested ai_tool actions when destination is an agent', async () => {
+			// ARRANGE
+			const triggerNode = createNodeData({ name: 'trigger', type: types.passThrough });
+			const toolNode = createNodeData({ name: 'tool', type: types.passThrough });
+			const toolInput = { query: 'test input' };
+
+			const agentNodeType = modifyNode(passThroughNode)
+				.return({
+					actions: [
+						{
+							actionType: 'ExecutionNodeAction',
+							nodeName: toolNode.name,
+							input: toolInput,
+							type: 'ai_tool',
+							id: 'action_1',
+							metadata: {},
+						},
+					],
+					metadata: { requestId: 'test_request' },
+				})
+				.return((response?: EngineResponse) => {
+					return [
+						[
+							{
+								json: {
+									result: 'agent completed',
+									actionResponsesCount: response?.actionResponses.length ?? 0,
+								},
+							},
+						],
+					];
+				})
+				.done();
+
+			const agentNode = createNodeData({ name: 'agent', type: 'agentNodeType' });
+			const customNodeTypes = NodeTypes({
+				...nodeTypeArguments,
+				agentNodeType: { type: agentNodeType, sourcePath: '' },
+			});
+
+			const workflow = new DirectedGraph()
+				.addNodes(triggerNode, agentNode, toolNode)
+				.addConnections(
+					{ from: triggerNode, to: agentNode, type: NodeConnectionTypes.Main },
+					{ from: toolNode, to: agentNode, type: NodeConnectionTypes.AiTool },
+				)
+				.toWorkflow({
+					name: '',
+					active: false,
+					nodeTypes: customNodeTypes,
+					settings: { executionOrder: 'v1' },
+				});
+
+			const workflowExecute = new WorkflowExecute(additionalData, executionMode);
+
+			// ACT
+			const result = await workflowExecute.run({
+				workflow,
+				startNode: triggerNode,
+				destinationNode: { nodeName: agentNode.name, mode: 'inclusive' },
+			});
+
+			// ASSERT
+			const runData = result.data.resultData.runData;
+			expect(result.data.resultData.error).toBeUndefined();
+
+			expect(Object.keys(runData)).toEqual(
+				expect.arrayContaining([triggerNode.name, agentNode.name, toolNode.name]),
+			);
+			expect(runData[toolNode.name]).toBeDefined();
+			expect(runData[toolNode.name]).toHaveLength(1);
+			expect(runData[toolNode.name][0].inputOverride?.ai_tool?.[0]?.[0]?.json).toMatchObject(
+				toolInput,
+			);
+
+			const agentRuns = runData[agentNode.name];
+			const agentFinalOutput = agentRuns[agentRuns.length - 1].data?.main?.[0]?.[0]?.json;
+			expect(agentFinalOutput?.actionResponsesCount).toBe(1);
+		});
+
 		test('handles Request objects with actions correctly', async () => {
 			// ARRANGE
 			let response: EngineResponse | undefined;
@@ -296,11 +430,9 @@ describe('processRunExecutionData', () => {
 				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
 
 			const taskDataConnection = { main: [[{ json: { prompt: 'test prompt' } }]] };
-			const executionData: IRunExecutionData = {
+			const executionData = createRunExecutionData({
 				startData: { startNodes: [{ name: nodeWithRequests.name, sourceData: null }] },
-				resultData: { runData: {} },
 				executionData: {
-					contextData: {},
 					nodeExecutionStack: [
 						{
 							data: taskDataConnection,
@@ -308,11 +440,8 @@ describe('processRunExecutionData', () => {
 							source: { main: [{ previousNode: 'Start' }] },
 						},
 					],
-					metadata: {},
-					waitingExecution: {},
-					waitingExecutionSource: {},
 				},
-			};
+			});
 
 			const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
 
@@ -352,13 +481,44 @@ describe('processRunExecutionData', () => {
 
 			// Tool nodes should have been added to runData with inputOverride
 			expect(runData[tool1Node.name]).toHaveLength(1);
+
 			expect(runData[tool1Node.name][0].inputOverride).toEqual({
-				ai_tool: [[{ json: { query: 'test input', toolCallId: 'action_1' } }]],
+				ai_tool: [
+					[
+						{
+							json: { query: 'test input' },
+							pairedItem: {
+								input: 0,
+								item: 0,
+								sourceOverwrite: {
+									previousNode: 'Start',
+									previousNodeOutput: 0,
+									previousNodeRun: 0,
+								},
+							},
+						},
+					],
+				],
 			});
 
 			expect(runData[tool2Node.name]).toHaveLength(1);
 			expect(runData[tool2Node.name][0].inputOverride).toEqual({
-				ai_tool: [[{ json: { data: 'another input', toolCallId: 'action_2' } }]],
+				ai_tool: [
+					[
+						{
+							json: { data: 'another input' },
+							pairedItem: {
+								input: 0,
+								item: 0,
+								sourceOverwrite: {
+									previousNode: 'Start',
+									previousNodeOutput: 0,
+									previousNodeRun: 0,
+								},
+							},
+						},
+					],
+				],
 			});
 
 			// Tools should have executed successfully
@@ -419,11 +579,9 @@ describe('processRunExecutionData', () => {
 				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
 
 			const taskDataConnection = { main: [[{ json: { prompt: 'test prompt' } }]] };
-			const executionData: IRunExecutionData = {
+			const executionData = createRunExecutionData({
 				startData: { startNodes: [{ name: nodeWithRequests.name, sourceData: null }] },
-				resultData: { runData: {} },
 				executionData: {
-					contextData: {},
 					nodeExecutionStack: [
 						{
 							data: taskDataConnection,
@@ -432,11 +590,8 @@ describe('processRunExecutionData', () => {
 							source: null,
 						},
 					],
-					metadata: {},
-					waitingExecution: {},
-					waitingExecutionSource: {},
 				},
-			};
+			});
 
 			const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
 
@@ -455,7 +610,22 @@ describe('processRunExecutionData', () => {
 			// 2. Tool nodes get added to runData with inputOverride but are never actually executed
 			expect(runData[tool1Node.name]).toHaveLength(1);
 			expect(runData[tool1Node.name][0].inputOverride).toEqual({
-				ai_tool: [[{ json: { query: 'test input', toolCallId: 'action_1' } }]],
+				ai_tool: [
+					[
+						{
+							json: { query: 'test input' },
+							pairedItem: {
+								input: 0,
+								item: 0,
+								sourceOverwrite: {
+									previousNode: 'nodeWithRequests',
+									previousNodeOutput: 0,
+									previousNodeRun: 0,
+								},
+							},
+						},
+					],
+				],
 			});
 			// The tool node should not have execution data since it was never run
 			expect(runData[tool1Node.name][0].data).toBeUndefined();
@@ -521,11 +691,9 @@ describe('processRunExecutionData', () => {
 				});
 
 			const taskDataConnection = { main: [[{ json: { input: 'start' } }]] };
-			const executionData: IRunExecutionData = {
+			const executionData = createRunExecutionData({
 				startData: { startNodes: [{ name: firstNode.name, sourceData: null }] },
-				resultData: { runData: {} },
 				executionData: {
-					contextData: {},
 					nodeExecutionStack: [
 						{
 							data: taskDataConnection,
@@ -533,11 +701,8 @@ describe('processRunExecutionData', () => {
 							source: { main: [{ previousNode: 'Start' }] },
 						},
 					],
-					metadata: {},
-					waitingExecution: {},
-					waitingExecutionSource: {},
 				},
-			};
+			});
 
 			const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
 
@@ -559,6 +724,102 @@ describe('processRunExecutionData', () => {
 			expect(runData[firstNode.name]).toHaveLength(1);
 			expect(runData[secondNode.name]).toHaveLength(1);
 		});
+
+		test('preserves inputOverride and sets error output when AI tool node fails', async () => {
+			// ARRANGE
+			// Create an error-throwing tool node
+			const errorMessage = 'Tool execution failed with validation error';
+			const errorThrowingNode: INodeType = {
+				...passThroughNode,
+				async execute(): Promise<INodeExecutionData[][]> {
+					throw new Error(errorMessage);
+				},
+			};
+
+			const toolNode = createNodeData({ name: 'errorTool', type: 'errorThrowingNode' });
+			const toolInput = { query: 'test input that will fail' };
+
+			const agentNodeType = modifyNode(passThroughNode)
+				.return({
+					actions: [
+						{
+							actionType: 'ExecutionNodeAction',
+							nodeName: toolNode.name,
+							input: toolInput,
+							type: 'ai_tool',
+							id: 'action_1',
+							metadata: {},
+						},
+					],
+					metadata: { requestId: 'test_request' },
+				})
+				.done();
+			const agentNode = createNodeData({ name: 'agentNode', type: 'agentNodeType' });
+
+			const customNodeTypes = NodeTypes({
+				...nodeTypeArguments,
+				agentNodeType: { type: agentNodeType, sourcePath: '' },
+				errorThrowingNode: { type: errorThrowingNode, sourcePath: '' },
+			});
+
+			const workflow = new DirectedGraph()
+				.addNodes(agentNode, toolNode)
+				.addConnections({ from: toolNode, to: agentNode, type: 'ai_tool' })
+				.toWorkflow({
+					name: '',
+					active: false,
+					nodeTypes: customNodeTypes,
+					settings: { executionOrder: 'v1' },
+				});
+
+			const taskDataConnection = { main: [[{ json: { prompt: 'test prompt' } }]] };
+			const executionData = createRunExecutionData({
+				startData: { startNodes: [{ name: agentNode.name, sourceData: null }] },
+				executionData: {
+					nodeExecutionStack: [
+						{
+							data: taskDataConnection,
+							node: agentNode,
+							source: { main: [{ previousNode: 'Start' }] },
+						},
+					],
+				},
+			});
+
+			const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
+
+			// ACT
+			const result = await workflowExecute.processRunExecutionData(workflow);
+
+			// ASSERT
+			const runData = result.data.resultData.runData;
+
+			// Tool node should have exactly one entry (not two separate entries)
+			expect(runData[toolNode.name]).toHaveLength(1);
+
+			const toolRunData = runData[toolNode.name][0];
+
+			// inputOverride should be preserved (set by requests-response.ts before execution)
+			expect(toolRunData.inputOverride).toBeDefined();
+			expect(toolRunData.inputOverride?.ai_tool).toBeDefined();
+			expect(toolRunData.inputOverride?.ai_tool?.[0]?.[0]?.json).toMatchObject({
+				query: 'test input that will fail',
+			});
+
+			// Error output should be set under the correct connection type (ai_tool)
+			expect(toolRunData.data).toBeDefined();
+			expect(toolRunData.data?.ai_tool).toBeDefined();
+			expect(toolRunData.data?.ai_tool?.[0]?.[0]?.json).toMatchObject({
+				error: errorMessage,
+			});
+
+			// Execution status should be error
+			expect(toolRunData.executionStatus).toBe('error');
+
+			// Error should be captured
+			expect(toolRunData.error).toBeDefined();
+			expect(toolRunData.error?.message).toContain(errorMessage);
+		});
 	});
 
 	describe('lastNodeExecuted tracking', () => {
@@ -570,17 +831,12 @@ describe('processRunExecutionData', () => {
 				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
 
 			const taskDataConnection = { main: [[{ json: { foo: 'bar' } }]] };
-			const executionData: IRunExecutionData = {
+			const executionData = createRunExecutionData({
 				startData: { startNodes: [{ name: node.name, sourceData: null }] },
-				resultData: { runData: {} },
 				executionData: {
-					contextData: {},
 					nodeExecutionStack: [{ data: taskDataConnection, node, source: null }],
-					metadata: {},
-					waitingExecution: {},
-					waitingExecutionSource: {},
 				},
-			};
+			});
 
 			const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
 
@@ -608,17 +864,12 @@ describe('processRunExecutionData', () => {
 				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
 
 			const taskDataConnection = { main: [[{ json: { foo: 'bar' } }]] };
-			const executionData: IRunExecutionData = {
+			const executionData = createRunExecutionData({
 				startData: { startNodes: [{ name: node.name, sourceData: null }] },
-				resultData: { runData: {} },
 				executionData: {
-					contextData: {},
 					nodeExecutionStack: [{ data: taskDataConnection, node, source: null }],
-					metadata: {},
-					waitingExecution: {},
-					waitingExecutionSource: {},
 				},
-			};
+			});
 
 			const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
 
@@ -632,141 +883,218 @@ describe('processRunExecutionData', () => {
 	});
 
 	describe('pairedItem sourceOverwrite handling', () => {
-		test('preserves sourceOverwrite from existing pairedItem object', async () => {
-			// ARRANGE
-			const node = createNodeData({ name: 'testNode', type: types.passThrough });
-			const workflow = new DirectedGraph()
-				.addNodes(node)
-				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
+		test('preserves sourceOverwrite for tools to enable expression resolution', async () => {
+			// Test: DataNode → AgentNode → ToolNode where ToolNode accesses DataNode via expressions
+			const dataNodeOutput = { field: 'testValue', nested: { value: 42 } };
+			const dataNode = createNodeData({ name: 'DataNode', type: types.passThrough });
 
-			// Create execution data with items that have pairedItem.sourceOverwrite
-			const sourceOverwriteData = {
-				previousNode: 'CustomPreviousNode',
-				previousNodeOutput: 2,
-				previousNodeRun: 1,
-			};
+			const toolNodeType = modifyNode(passThroughNode)
+				.return(function (this: IExecuteFunctions, response?: EngineResponse) {
+					try {
+						const proxy = this.getWorkflowDataProxy(0);
+						const connectionInputData =
+							(this as IExecuteFunctions & { connectionInputData: INodeExecutionData[] })
+								.connectionInputData || [];
+						const firstItem = connectionInputData[0];
+						const pairedItem = (firstItem?.pairedItem as IPairedItemData) ?? { item: 0 };
+						const sourceData = this.getExecuteData().source?.main?.[0] ?? null;
 
-			const taskDataConnection = {
-				main: [
-					[
+						const dataNodeItem = proxy.$getPairedItem('DataNode', sourceData, pairedItem);
+						const fieldValue = dataNodeItem?.json?.field;
+						const nestedValue = (dataNodeItem?.json?.nested as IDataObject)?.value;
+
+						return [
+							[
+								{
+									json: {
+										toolResult: 'Tool executed successfully',
+										dataNodeField: fieldValue,
+										dataNodeNested: nestedValue,
+										response,
+									},
+								},
+							],
+						];
+					} catch (error) {
+						return [
+							[
+								{
+									json: {
+										toolResult: 'Failed to access DataNode',
+										error: (error as Error).message,
+										response,
+									},
+								},
+							],
+						];
+					}
+				})
+				.done();
+			const toolNode = createNodeData({ name: 'ToolNode', type: 'toolNodeType' });
+
+			const agentNodeType = modifyNode(passThroughNode)
+				.return({
+					actions: [
 						{
-							json: { data: 'test1' },
-							pairedItem: {
-								item: 0,
-								input: 0,
-								sourceOverwrite: sourceOverwriteData,
-							},
-						},
-						{
-							json: { data: 'test2' },
-							pairedItem: {
-								item: 1,
-								input: 0,
-								// No sourceOverwrite - should be undefined
-							},
+							actionType: 'ExecutionNodeAction',
+							nodeName: toolNode.name,
+							input: { query: 'test query' },
+							type: 'ai_tool',
+							id: 'tool_action_1',
+							metadata: {},
 						},
 					],
-				],
-			};
+					metadata: { requestId: 'test_agent_request' },
+				})
+				.return((response?: EngineResponse) => {
+					return [[{ json: { agentResult: 'Agent completed', response } }]];
+				})
+				.done();
+			const agentNode = createNodeData({ name: 'AgentNode', type: 'agentNodeType' });
 
-			const executionData: IRunExecutionData = {
-				startData: { startNodes: [{ name: node.name, sourceData: null }] },
-				resultData: { runData: {} },
+			const customNodeTypes = NodeTypes({
+				...nodeTypeArguments,
+				agentNodeType: { type: agentNodeType, sourcePath: '' },
+				toolNodeType: { type: toolNodeType, sourcePath: '' },
+			});
+
+			const workflow = new DirectedGraph()
+				.addNodes(dataNode, agentNode, toolNode)
+				.addConnections({ from: dataNode, to: agentNode })
+				.addConnections({ from: toolNode, to: agentNode, type: 'ai_tool' })
+				.toWorkflow({
+					name: '',
+					active: false,
+					nodeTypes: customNodeTypes,
+					settings: { executionOrder: 'v1' },
+				});
+
+			const taskDataConnection = { main: [[{ json: dataNodeOutput }]] };
+			const executionData = createRunExecutionData({
+				startData: { startNodes: [{ name: dataNode.name, sourceData: null }] },
 				executionData: {
-					contextData: {},
-					nodeExecutionStack: [{ data: taskDataConnection, node, source: null }],
-					metadata: {},
-					waitingExecution: {},
-					waitingExecutionSource: {},
+					nodeExecutionStack: [{ data: taskDataConnection, node: dataNode, source: null }],
 				},
-			};
+			});
 
 			const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
 
-			// ACT
 			const result = await workflowExecute.processRunExecutionData(workflow);
-
-			// ASSERT
 			const runData = result.data.resultData.runData;
-			expect(runData[node.name]).toHaveLength(1);
 
-			const nodeExecutionData = runData[node.name][0].data?.main?.[0];
-			expect(nodeExecutionData).toHaveLength(2);
+			// Verify preserveSourceOverwrite metadata is set
+			expect(runData[toolNode.name][0].metadata?.preserveSourceOverwrite).toBeDefined();
 
-			// First item should preserve sourceOverwrite
-			expect(nodeExecutionData?.[0].pairedItem).toEqual({
-				item: 0,
-				input: undefined, // input index 0 becomes undefined
-				sourceOverwrite: sourceOverwriteData,
-			});
+			// Verify sourceOverwrite points to DataNode
+			const toolInput = runData[toolNode.name][0].inputOverride?.ai_tool?.[0]?.[0];
+			expect(toolInput?.pairedItem).toBeDefined();
+			if (typeof toolInput?.pairedItem === 'object' && !Array.isArray(toolInput.pairedItem)) {
+				expect(toolInput.pairedItem.sourceOverwrite?.previousNode).toBe(dataNode.name);
+			}
 
-			// Second item should have undefined sourceOverwrite
-			expect(nodeExecutionData?.[1].pairedItem).toEqual({
-				item: 1,
-				input: undefined,
-				sourceOverwrite: undefined,
-			});
+			// Verify tool successfully accessed DataNode data via sourceOverwrite
+			const toolOutput = runData[toolNode.name][0].data?.ai_tool?.[0]?.[0]?.json;
+			expect(toolOutput?.toolResult).toBe('Tool executed successfully');
+			expect(toolOutput?.dataNodeField).toBe('testValue');
+			expect(toolOutput?.dataNodeNested).toBe(42);
+			expect(toolOutput).not.toHaveProperty('error');
 		});
 
-		test('handles non-object pairedItem gracefully', async () => {
-			// ARRANGE
-			const node = createNodeData({ name: 'testNode', type: types.passThrough });
+		test('sourceOverwrite works correctly in loop scenarios', async () => {
+			// Test: TriggerNode → LoopNode → DataNode → IFNode
+			// IFNode evaluates $('DataNode').item.json.email
+			const triggerData = { email: 'test@example.com', name: 'Test User' };
+			const triggerNode = createNodeData({ name: 'TriggerNode', type: types.passThrough });
+
+			let loopIteration = 0;
+			const loopNodeType = modifyNode(passThroughNode)
+				.return(function (this: IExecuteFunctions) {
+					const items = this.getInputData();
+					loopIteration++;
+
+					return [
+						items.map((item, index) => ({
+							json: item.json,
+							pairedItem: {
+								item: index,
+								input: 0,
+								sourceOverwrite: {
+									previousNode: triggerNode.name,
+									previousNodeOutput: 0,
+									previousNodeRun: 0,
+								},
+							},
+						})),
+					];
+				})
+				.done();
+			const loopNode = createNodeData({ name: 'LoopNode', type: 'loopNodeType' });
+			const dataNode = createNodeData({ name: 'DataNode', type: types.passThrough });
+
+			let expressionError: Error | undefined;
+			const ifNodeType = modifyNode(passThroughNode)
+				.return(function (this: IExecuteFunctions) {
+					try {
+						const proxy = this.getWorkflowDataProxy(0);
+						const connectionInputData =
+							(this as IExecuteFunctions & { connectionInputData: INodeExecutionData[] })
+								.connectionInputData ?? [];
+						const firstItem = connectionInputData[0];
+						const pairedItem = (firstItem?.pairedItem as IPairedItemData) ?? { item: 0 };
+						const sourceData = this.getExecuteData().source?.main?.[0] ?? null;
+
+						const dataNodeItem = proxy.$getPairedItem('DataNode', sourceData, pairedItem);
+						const email = dataNodeItem?.json?.email;
+
+						return [
+							[
+								{
+									json: {
+										result: 'Expression resolved',
+										email,
+										iteration: loopIteration,
+									},
+								},
+							],
+						];
+					} catch (error) {
+						expressionError = error;
+						throw error;
+					}
+				})
+				.done();
+			const ifNode = createNodeData({ name: 'IFNode', type: 'ifNodeType' });
+
+			const customNodeTypes = NodeTypes({
+				...nodeTypeArguments,
+				loopNodeType: { type: loopNodeType, sourcePath: '' },
+				ifNodeType: { type: ifNodeType, sourcePath: '' },
+			});
+
 			const workflow = new DirectedGraph()
-				.addNodes(node)
-				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
+				.addNodes(triggerNode, loopNode, dataNode, ifNode)
+				.addConnections({ from: triggerNode, to: loopNode })
+				.addConnections({ from: loopNode, to: dataNode })
+				.addConnections({ from: dataNode, to: ifNode })
+				.toWorkflow({
+					name: '',
+					active: false,
+					nodeTypes: customNodeTypes,
+					settings: { executionOrder: 'v1' },
+				});
 
-			// Create execution data with items that have non-object pairedItem
-			const taskDataConnection = {
-				main: [
-					[
-						{
-							json: { data: 'test1' },
-							pairedItem: [], // This should result in undefined sourceOverwrite
-						},
-						{
-							json: { data: 'test2' },
-							// No pairedItem at all
-						},
-					],
-				],
-			};
-
-			const executionData: IRunExecutionData = {
-				startData: { startNodes: [{ name: node.name, sourceData: null }] },
-				resultData: { runData: {} },
+			const taskDataConnection = { main: [[{ json: triggerData }]] };
+			const executionData = createRunExecutionData({
+				startData: { startNodes: [{ name: triggerNode.name, sourceData: null }] },
 				executionData: {
-					contextData: {},
-					nodeExecutionStack: [{ data: taskDataConnection, node, source: null }],
-					metadata: {},
-					waitingExecution: {},
-					waitingExecutionSource: {},
+					nodeExecutionStack: [{ data: taskDataConnection, node: triggerNode, source: null }],
 				},
-			};
+			});
 
 			const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
 
-			// ACT
-			const result = await workflowExecute.processRunExecutionData(workflow);
-
-			// ASSERT
-			const runData = result.data.resultData.runData;
-			expect(runData[node.name]).toHaveLength(1);
-
-			const nodeExecutionData = runData[node.name][0].data?.main?.[0];
-			expect(nodeExecutionData).toHaveLength(2);
-
-			// Both items should have undefined sourceOverwrite since pairedItem wasn't an object
-			expect(nodeExecutionData?.[0].pairedItem).toEqual({
-				item: 0,
-				input: undefined,
-				sourceOverwrite: undefined,
-			});
-
-			expect(nodeExecutionData?.[1].pairedItem).toEqual({
-				item: 1,
-				input: undefined,
-				sourceOverwrite: undefined,
-			});
+			await expect(workflowExecute.processRunExecutionData(workflow)).resolves.toBeTruthy();
+			expect(expressionError).toBeUndefined();
 		});
 	});
 });

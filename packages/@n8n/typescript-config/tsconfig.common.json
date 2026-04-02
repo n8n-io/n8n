@@ -1,5 +1,7 @@
 {
 	"compilerOptions": {
+		"ignoreDeprecations": "6.0",
+		"noUncheckedSideEffectImports": false,
 		"strict": true,
 		"module": "commonjs",
 		"moduleResolution": "node",

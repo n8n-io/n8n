@@ -1,6 +1,7 @@
 import type { Locator } from '@playwright/test';
 
 import { RunDataPanel } from './RunDataPanel';
+import type { ClipboardHelper } from '../../helpers/ClipboardHelper';
 
 /**
  * Page object for the log view with configurable root element.
@@ -55,6 +56,14 @@ export class LogsPanel {
 		return this.getManualChatModal().locator('.chat-messages-list .chat-message');
 	}
 
+	getSessionIdButton(): Locator {
+		return this.getManualChatModal().getByTestId('chat-session-id');
+	}
+
+	getRefreshSessionButton(): Locator {
+		return this.getManualChatModal().getByTestId('refresh-session-button');
+	}
+
 	/**
 	 * Actions
 	 */
@@ -88,5 +97,23 @@ export class LogsPanel {
 	async sendManualChatMessage(message: string): Promise<void> {
 		await this.getManualChatInput().fill(message);
 		await this.getManualChatModal().locator('.chat-input-send-button').click();
+	}
+
+	/**
+	 * Clicks the session ID button to copy the session ID to clipboard and returns it.
+	 * @param clipboard - ClipboardHelper instance for reading clipboard
+	 * @returns The full session ID string
+	 */
+	async getSessionId(clipboard: ClipboardHelper): Promise<string> {
+		await clipboard.grant();
+		await this.getSessionIdButton().click();
+		return await clipboard.readText();
+	}
+
+	/**
+	 * Clicks the refresh session button to reset the chat session.
+	 */
+	async refreshSession(): Promise<void> {
+		await this.getRefreshSessionButton().click();
 	}
 }

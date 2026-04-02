@@ -1,0 +1,268 @@
+# yaml-language-server: $schema=https://cubic.dev/schema/cubic-repository-config.schema.json
+
+# cubic.yaml
+# This file configures AI review behavior, ignore patterns, PR descriptions, and custom rules.
+# Place this file in your repository root to version-control your AI review settings.
+# Settings defined here take precedence over UI-configured settings.
+# See https://docs.cubic.dev/configure/cubic-yaml for documentation.
+
+version: 1
+reviews:
+  enabled: true
+  sensitivity: medium
+  incremental_commits: true
+  show_ai_feedback_buttons: false
+  custom_instructions: |-
+    ## Step 1: Fetch Current Guidelines
+
+    1. Fetch the current [CONTRIBUTING.md](https://github.com/n8n-io/n8n/blob/master/CONTRIBUTING.md) from the repository's main branch
+    2. Navigate to the "Community PR Guidelines" section
+    3. Use ONLY this live version - ignore any cached/embedded rules
+
+    ## Step 2: Review Process
+
+    Evaluate the PR against the rules in the fetched Community PR Guidelines.
+
+    ## Step 3: Test Requirement Interpretation
+
+    BE REASONABLE when evaluating test coverage:
+
+    **PASS if:**
+
+    - Core functionality has tests
+    - Critical paths are tested
+    - Coverage is reasonable (not necessarily 100%)
+
+    **DO NOT require tests for:**
+
+    - Exports, types, configs
+    - Metadata files
+    - Version files
+
+    Approve if reasonably tested. Let humans handle edge cases.
+
+    ## Step 4: Design System Style Rules
+
+    Follow `.agents/design-system-style-rules.md` for all CSS/SCSS/Vue style
+    review guidance.
+
+    Enforcement level:
+    - Strong warning: hard-coded visual values, legacy token usage, deprecated
+      style/component surfaces
+    - Soft warning: token-to-token substitutions (ask for intent to avoid
+      accidental regressions)
+  custom_rules:
+    - name: Security Review
+      description: |-
+        Proactively review PRs and flag security vulnerabilities specific to n8n's architecture:
+
+        **Code Execution & Sandboxing:**
+        - Changes that weaken expression evaluation sandbox protections
+        - Modifications to Code node sandboxes (JavaScript/Python) that reduce isolation
+        - New access to Node.js builtins or external modules in sandboxed contexts
+        - Prototype pollution or constructor access bypasses
+        - Weakening of prototype sanitizers or function context validators
+        - Changes that expose `process.env` access in Code nodes
+
+        **Credential & Secret Handling:**
+        - Credentials being logged or exposed in error messages
+        - Hardcoded secrets, API keys, or tokens in code
+        - Changes to credential encryption/decryption that weaken security
+        - OAuth state/CSRF token handling that bypasses validation
+        - Webhook requests that don't sanitize auth cookies
+        - External secrets provider integrations with insecure configurations
+        - Credential access not respecting scope boundaries (instance/project/user)
+        - Data fetched via credentials being exposed to unauthorized user groups
+
+        **Authentication & Session Security:**
+        - JWT token handling that weakens validation or expiration
+        - Missing or disabled cookie security flags (HttpOnly, Secure, SameSite)
+        - Changes that bypass MFA enforcement
+        - SSO/SAML/OIDC authentication flows with validation gaps
+        - OAuth 2.0 implementations missing PKCE or with weak redirect URI validation
+
+        **Authorization & Access Control:**
+        - Missing or bypassed RBAC and scope-based permission checks
+        - Missing credential permission validation before workflow execution
+        - Subworkflow execution that bypasses caller policies or ownership validation
+        - Missing project-level or resource-level access controls
+
+        **License Enforcement:**
+        - Changes that weaken license enforcement
+        - Missing `FeatureNotLicensedError` for unlicensed feature access
+        - Bypassed license quota checks
+        - New licensed features without proper middleware or module-level enforcement
+        - New controller endpoints in `*.ee.ts` files that access licensed features without `@Licensed` decorator
+        - `@Licensed` decorator usage that doesn't match feature requirements (check `LICENSE_FEATURES` in `@n8n/constants`)
+        - Endpoints in `*.ee.ts` files with `@GlobalScope` or `@ProjectScope` but missing `@Licensed` (license check is separate from permission check)
+        - Preferred pattern: `@Licensed` decorator over custom licensing middleware
+        - Decorator order should be: route decorator → `@Licensed` → scope decorators
+        - Enterprise features not properly isolated in modules (newer features should use the module system)
+        - Enterprise code accessible outside of `*.ee.ts` files or licensed modules
+    - name: Use DTOs for Request Body Validation
+      description: |-
+        - Rule Statement:
+        Controller endpoints that accept request bodies must use the `@Body` decorator with a DTO class for runtime validation. TypeScript types alone provide no runtime validation - only `@Body` with a Zod-based DTO (extending `Z.class`) validates incoming data.
+
+        - Detection Criteria:
+        Only flag in `*.controller.ts` files when there is positive evidence the developer intended to accept a body but didn't use the pattern:
+
+          1. Parameter named `payload`, `body`, or `data` without `@Body` decorator
+          2. Direct `req.body` access in a controller method
+          3. `@Body` decorator with a type not ending in `Dto` (indicates unawareness of the DTO pattern)
+
+        Do NOT flag:
+          - `@Body` with a type ending in `Dto` (developer knows the pattern)
+          - POST/PUT/PATCH endpoints without body parameters (may legitimately have no body)
+          - Webhook controllers
+          - Existing unchanged code
+
+        - Example Violation:
+          ```typescript
+          @Post('/')
+          async create(req: AuthenticatedRequest, payload: CreateUser) {
+            // payload is undefined - missing @Body decorator
+          }
+
+          @Post('/')
+          async create(req: AuthenticatedRequest) {
+            const data = req.body; // No runtime validation
+          }
+
+          @Post('/')
+          async create(@Body payload: CreateUser) {
+            // Type doesn't end in Dto - likely missing Zod validation
+          }
+          ```
+
+        - Example Allowed:
+          ```typescript
+          @Post('/')
+          async create(@Body payload: CreateUserDto) { ... }
+
+          @Post('/activate')
+          async activate(req: AuthenticatedRequest) {
+            // Legitimately no body needed
+          }
+          ```
+
+        - Recommendation:
+        Use `@Body` decorator with a DTO class from `@n8n/api-types` or a local `dto/` directory. DTOs must extend `Z.class` from `zod-class` for runtime validation.
+
+        **Input Validation & Injection Prevention:**
+        - Unsanitized user input flowing to file paths
+        - SQL nodes with expressions in query fields without parameterization
+        - Command execution nodes with unsanitized shell arguments
+        - Path traversal risks in file operation nodes
+        - Community package names with suspicious patterns
+
+        **File System Access:**
+        - Changes that weaken file access restriction enforcement
+        - File operations that bypass allowlist/blocklist patterns
+        - Access to n8n internal directories
+
+        **Database Security & Performance:**
+        - Missing indexes on frequently queried columns in migrations
+        - Resource-intensive queries without pagination or limits
+        - Missing encryption for sensitive fields beyond credentials
+        - Raw SQL queries that bypass TypeORM protections
+
+        **HTTP, Webhooks & Network Security:**
+        - SSRF risks in user-controlled URLs
+        - CORS configuration that allows all origins
+        - CSP or iframe sandbox modifications that weaken protections
+        - Rate limiting configuration changes that reduce protection
+        - Disabled TLS certificate validation (`rejectUnauthorized: false`)
+
+        **Audit Logging & Event Bus:**
+        - Missing logging for security-relevant events
+        - Sensitive data appearing in logs or error messages
+        - Incomplete audit trails for authentication and authorization events
+
+        **Context-aware review:**
+        - Higher scrutiny for: expression engine, credential handling, code execution nodes, license enforcement, SSO integrations
+        - Consider n8n's security audit categories: credentials, database, nodes, instance, filesystem risks
+        - Community/custom nodes have higher risk profile than official nodes
+    - name: Quality & Performance Review
+      description: |-
+        You are a Staff Quality Engineer reviewing this PR for production
+        readiness. You think in terms of blast radius, resource cost, and
+        failure modes. You are pragmatic, not pedantic.
+
+        Below is a curated list of known issues from real incidents and
+        review standards the team enforces. Review the diff against each
+        item. If none match, say nothing. If one matches, explain the
+        concrete risk and suggest a fix. Never flag existing unchanged code.
+
+        ## Known Issues
+
+        ### 1. Eager imports of heavy or native modules
+        Top-level `import` of modules only used in a specific code path loads
+        them into every process at startup, increasing baseline memory.
+        Native modules (e.g. `isolated-vm`) can crash instances that lack the
+        binary. Large parsers (e.g. `jsdom` at ~16 MB heap) waste memory when
+        the code path is rarely hit.
+        **Fix:** Use `await import()` at point of use. For barrel files, use
+        `export type` instead of value re-exports when consumers only need
+        the type.
+
+        ### 2. Unreasonable test coverage expectations
+        Be pragmatic about test requirements. Pass if core functionality and
+        critical paths are tested at reasonable coverage. Do NOT require tests
+        for exports, types, configs, metadata files, or version files. Let
+        humans handle edge cases.
+    - name: Design System Tokens
+      description: |-
+        Follow `.agents/design-system-style-rules.md`.
+
+        Apply balanced enforcement:
+        - Strong warning: hard-coded visual values, legacy token usage, and
+          deprecated style/component surfaces.
+        - Soft warning: token-to-token substitutions (request intent/rationale).
+    - name: Use workflowDocumentStore for Migrated Workflow Fields
+      description: |-
+        We are actively migrating workflow state from `workflowsStore` (Pinia store defined in
+        `packages/frontend/editor-ui/src/app/stores/workflows.store.ts`) to `workflowDocumentStore`
+        (defined in `packages/frontend/editor-ui/src/app/stores/workflowDocument.store.ts`).
+
+        The `workflowDocumentStore` is the single source of truth for migrated fields.
+        When new frontend code reads or writes any of the fields listed below, it **must** use
+        `workflowDocumentStore` instead of `workflowsStore.workflow.*` or equivalent accessors.
+
+        **Already-migrated fields (do NOT access via workflowsStore):**
+        - `active`
+        - `activeVersion`
+        - `activeVersionId`
+        - `checksum`
+        - `createdAt`
+        - `homeProject`
+        - `meta`
+        - `pinData`
+        - `settings`
+        - `tags`
+        - `updatedAt`
+
+        **Detection criteria — flag when NEW code in `packages/frontend/` does any of:**
+        1. Reads a migrated field from `workflowsStore.workflow.<field>` (e.g. `workflowsStore.workflow.tags`)
+        2. Reads a migrated field from a destructured `workflow` ref originating from `workflowsStore`
+        3. Writes to a migrated field through `workflowsStore` (e.g. `workflowsStore.workflow.active = true`)
+        4. Calls a `workflowsStore` setter/action that only mutates a migrated field when
+           `workflowDocumentStore` already exposes an equivalent method
+
+        **Do NOT flag:**
+        - Existing unchanged code (only review new or modified lines)
+        - Access to non-migrated fields (e.g. `workflowsStore.workflow.nodes`, `workflowsStore.workflow.connections`)
+        - Backend code — this rule applies only to `packages/frontend/`
+        - Code inside `workflowDocument.store.ts` or its sub-modules (those *are* the source of truth)
+        - Code inside `workflows.store.ts` itself (the migration is still in progress there)
+
+        **Recommendation:**
+        Use `useWorkflowDocumentStore(createWorkflowDocumentId(workflowId))` from
+        `@/app/stores/workflowDocument.store.ts` to access migrated fields.
+
+        This is an active migration. The list of migrated fields will grow over time.
+pr_descriptions:
+  generate: false
+  instructions: Each PR is supposed to have a limited scope. In your review, focus on changes made in the PR and avoid pointing out problems you found in the code that already existed.
+issues:
+  fix_with_cubic_buttons: true

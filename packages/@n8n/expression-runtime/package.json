@@ -1,0 +1,58 @@
+{
+  "name": "@n8n/expression-runtime",
+  "version": "0.7.0",
+  "description": "Secure, isolated expression evaluation runtime for n8n",
+  "main": "dist/cjs/index.js",
+  "module": "dist/esm/index.js",
+  "types": "dist/esm/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/esm/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    },
+    "./*": "./*"
+  },
+  "scripts": {
+    "build": "tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json && pnpm build:runtime",
+    "build:runtime": "node esbuild.config.js",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:dev": "vitest --watch --silent false",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "n8n",
+    "expression",
+    "evaluation",
+    "isolated-vm",
+    "web-worker",
+    "security"
+  ],
+  "license": "SEE LICENSE IN LICENSE.md",
+  "dependencies": {
+    "@n8n/tournament": "1.0.6",
+    "isolated-vm": "^6.0.2",
+    "js-base64": "catalog:",
+    "jssha": "3.3.1",
+    "lodash": "catalog:",
+    "luxon": "catalog:",
+    "md5": "2.3.0",
+    "title-case": "3.0.3",
+    "transliteration": "2.3.5"
+  },
+  "devDependencies": {
+    "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
+    "@types/lodash": "catalog:",
+    "@types/luxon": "3.2.0",
+    "@types/md5": "^2.3.5",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "files": [
+    "dist",
+    "ARCHITECTURE.md",
+    "LICENSE.md"
+  ]
+}

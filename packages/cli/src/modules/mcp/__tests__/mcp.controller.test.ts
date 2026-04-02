@@ -1,7 +1,20 @@
 import { Logger } from '@n8n/backend-common';
-import type { AuthenticatedRequest } from '@n8n/db';
+import { type AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import type { Request } from 'express';
+import { mock, mockDeep } from 'jest-mock-extended';
+
+// eslint-disable-next-line import-x/order
+import { McpServerMiddlewareService } from '../mcp-server-middleware.service';
+
+const mockAuthMiddleware = jest.fn().mockImplementation(async (_req, _res, next) => {
+	next();
+});
+const mcpServerMiddlewareService = mockDeep<McpServerMiddlewareService>();
+mcpServerMiddlewareService.getAuthMiddleware.mockReturnValue(mockAuthMiddleware);
+
+// We need to mock the service before importing the controller as it's used in the middleware
+Container.set(McpServerMiddlewareService, mcpServerMiddlewareService);
 
 import { McpController, type FlushableResponse } from '../mcp.controller';
 import { McpService } from '../mcp.service';
@@ -33,9 +46,11 @@ describe('McpController', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+
 		Container.set(Logger, logger);
 		Container.set(McpService, mcpService);
 		Container.set(McpSettingsService, mcpSettingsService);
+
 		controller = Container.get(McpController);
 	});
 
@@ -57,5 +72,18 @@ describe('McpController', () => {
 		const res = createRes();
 		await controller.build(createReq(), res);
 		expect(mcpService.getServer as unknown as jest.Mock).toHaveBeenCalled();
+	});
+
+	test('HEAD /http returns 401 with WWW-Authenticate header for auth scheme discovery', async () => {
+		const req = {} as Request;
+		const res = createRes();
+		res.header = jest.fn().mockReturnThis();
+		res.end = jest.fn().mockReturnThis();
+
+		await controller.discoverAuthSchemeHead(req, res);
+
+		expect(res.header).toHaveBeenCalledWith('WWW-Authenticate', 'Bearer realm="n8n MCP Server"');
+		expect(res.status).toHaveBeenCalledWith(401);
+		expect(res.end).toHaveBeenCalled();
 	});
 });

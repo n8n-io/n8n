@@ -30,12 +30,12 @@ export const nodeConnectionSchema = z.object({
 	sourceNodeId: z
 		.string()
 		.describe(
-			'The UUID of the source node. For ai_* connections (ai_languageModel, ai_tool, etc.), this MUST be the sub-node (e.g., OpenAI Chat Model). For main connections, this is the node producing the output',
+			'The UUID of the source node. For ai_* connections (ai_languageModel, ai_tool, etc.), use the sub-node (e.g., OpenAI Chat Model). For main connections, this is the node producing the output',
 		),
 	targetNodeId: z
 		.string()
 		.describe(
-			'The UUID of the target node. For ai_* connections, this MUST be the main node that accepts the sub-node (e.g., AI Agent, Basic LLM Chain). For main connections, this is the node receiving the input',
+			'The UUID of the target node. For ai_* connections, use the main node that accepts the sub-node (e.g., AI Agent, Basic LLM Chain). For main connections, this is the node receiving the input',
 		),
 	sourceOutputIndex: z
 		.number()
@@ -326,7 +326,20 @@ CONNECTION EXAMPLES:
 - Simple Memory → Basic LLM Chain (detects ai_memory)
 - Embeddings OpenAI → Vector Store (detects ai_embedding)
 - Document Loader → Embeddings OpenAI (detects ai_document)
-- HTTP Request → Set (detects main)`,
+- HTTP Request → Set (detects main)
+
+MULTI-OUTPUT NODES (sourceOutputIndex):
+- IF node: output 0 = true branch, output 1 = false branch
+- Switch node: outputs 0 to N-1 based on configured rules, output N = default/fallback
+
+ERROR OUTPUT CONNECTIONS (onError: 'continueErrorOutput'):
+When a node has nodeSettings.onError = 'continueErrorOutput', it gains an ADDITIONAL error output appended as the LAST index:
+- Single-output node (HTTP Request): output 0 = success, output 1 = error
+- IF node (2 outputs) + error handling: output 0 = true, output 1 = false, output 2 = error
+- Switch node (N outputs) + error handling: outputs 0 to N-1 = branches, output N = error
+
+Example: HTTP Request with continueErrorOutput → success at index 0, error at index 1
+Example: IF with continueErrorOutput → true at 0, false at 1, error at 2`,
 			schema: nodeConnectionSchema,
 		},
 	);

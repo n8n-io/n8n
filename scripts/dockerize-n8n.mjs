@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * Build n8n Docker image locally
+ * Build n8n and runners Docker images locally
  *
  * This script simulates the CI build process for local testing.
- * Default output: 'n8nio/n8n:local'
+ * Default output: 'n8nio/n8n:local' and 'n8nio/runners:local'
  * Override with IMAGE_BASE_NAME and IMAGE_TAG environment variables.
  */
 
@@ -72,16 +72,44 @@ async function commandExists(command) {
 	}
 }
 
-const SupportedContainerEngines = /** @type {const} */(['docker', 'podman'])
+const SupportedContainerEngines = /** @type {const} */ (['docker', 'podman']);
+
+/**
+ * Detect if the local `docker` CLI is actually Podman via the docker shim.
+ * @returns {Promise<boolean>}
+ */
+async function isDockerPodmanShim() {
+	try {
+		const { stdout } = await $`docker version`;
+		return stdout.toLowerCase().includes('podman');
+	} catch {
+		return false;
+	}
+}
 /**
  * @returns {Promise<(typeof SupportedContainerEngines[number])>}
  */
 async function getContainerEngine() {
-	if (await commandExists('podman')) {
-		return 'podman';
+	// Allow explicit override via env var
+	const override = process.env.CONTAINER_ENGINE?.toLowerCase();
+	if (override && /** @type {readonly string[]} */ (SupportedContainerEngines).includes(override)) {
+		return /** @type {typeof SupportedContainerEngines[number]} */ (override);
 	}
-	// use docker by default
-	return 'docker';
+
+	const hasDocker = await commandExists('docker');
+	const hasPodman = await commandExists('podman');
+
+	if (hasDocker) {
+		// If docker is actually a Podman shim, use podman path to avoid unsupported flags like --load
+		if (hasPodman && (await isDockerPodmanShim())) {
+			return 'podman';
+		}
+		return 'docker';
+	}
+
+	if (hasPodman) return 'podman';
+
+	throw new Error('No supported container engine found. Please install Docker or Podman.');
 }
 
 // #endregion ===== Helper Functions =====
@@ -91,15 +119,39 @@ const __dirname = path.dirname(__filename);
 const isInScriptsDir = path.basename(__dirname) === 'scripts';
 const rootDir = isInScriptsDir ? path.join(__dirname, '..') : __dirname;
 
+const noCache = process.env.DOCKER_BUILD_NO_CACHE === 'true';
+const withBaseImage = process.env.DOCKER_BUILD_BASE_IMAGE === 'true';
+const nodeVersion = process.env.NODE_VERSION || '24.14.1';
+
 const config = {
-	dockerfilePath: path.join(rootDir, 'docker/images/n8n/Dockerfile'),
-	imageBaseName: process.env.IMAGE_BASE_NAME || 'n8nio/n8n',
-	imageTag: process.env.IMAGE_TAG || 'local',
+	base: {
+		dockerfilePath: path.join(rootDir, 'docker/images/n8n-base/Dockerfile'),
+		get fullImageName() {
+			return `n8nio/base:${nodeVersion}`;
+		},
+	},
+	n8n: {
+		dockerfilePath: path.join(rootDir, 'docker/images/n8n/Dockerfile'),
+		imageBaseName: process.env.IMAGE_BASE_NAME || 'n8nio/n8n',
+		imageTag: process.env.IMAGE_TAG || 'local',
+		get fullImageName() {
+			return `${this.imageBaseName}:${this.imageTag}`;
+		},
+	},
+	runners: {
+		dockerfilePath: path.join(rootDir, 'docker/images/runners/Dockerfile'),
+		imageBaseName: process.env.RUNNERS_IMAGE_BASE_NAME || 'n8nio/runners',
+		get imageTag() {
+			// Runners use the same tag as n8n for consistency
+			return config.n8n.imageTag;
+		},
+		get fullImageName() {
+			return `${this.imageBaseName}:${this.imageTag}`;
+		},
+	},
 	buildContext: rootDir,
 	compiledAppDir: path.join(rootDir, 'compiled'),
-	get fullImageName() {
-		return `${this.imageBaseName}:${this.imageTag}`;
-	},
+	compiledTaskRunnerDir: path.join(rootDir, 'dist', 'task-runner-javascript'),
 };
 
 // #region ===== Main Build Process =====
@@ -107,26 +159,76 @@ const config = {
 const platform = getDockerPlatform();
 
 async function main() {
-	echo(chalk.blue.bold('===== Docker Build for n8n ====='));
-	echo(`INFO: Image: ${config.fullImageName}`);
+	echo(chalk.blue.bold('===== Docker Build for n8n & Runners ====='));
+	echo(`INFO: n8n Image: ${config.n8n.fullImageName}`);
+	echo(`INFO: Runners Image: ${config.runners.fullImageName}`);
 	echo(`INFO: Platform: ${platform}`);
+	if (noCache) echo(chalk.yellow('INFO: Docker layer cache disabled (DOCKER_BUILD_NO_CACHE=true)'));
+	if (withBaseImage) echo(chalk.yellow('INFO: Building base image first (DOCKER_BUILD_BASE_IMAGE=true)'));
 	echo(chalk.gray('-'.repeat(47)));
 
 	await checkPrerequisites();
 
-	// Build Docker image
-	const buildTime = await buildDockerImage();
+	if (withBaseImage) {
+		await buildDockerImage({
+			name: 'base',
+			dockerfilePath: config.base.dockerfilePath,
+			fullImageName: config.base.fullImageName,
+			buildArgs: [`NODE_VERSION=${nodeVersion}`],
+		});
+	}
+
+	const nodeVersionArgs = withBaseImage ? [`NODE_VERSION=${nodeVersion}`] : [];
+
+	const n8nBuildTime = await buildDockerImage({
+		name: 'n8n',
+		dockerfilePath: config.n8n.dockerfilePath,
+		fullImageName: config.n8n.fullImageName,
+		buildArgs: nodeVersionArgs,
+	});
+
+	const runnersBuildTime = await buildDockerImage({
+		name: 'runners',
+		dockerfilePath: config.runners.dockerfilePath,
+		fullImageName: config.runners.fullImageName,
+		buildArgs: nodeVersionArgs,
+	});
 
 	// Get image details
-	const imageSize = await getImageSize(config.fullImageName);
+	const n8nImageSize = await getImageSize(config.n8n.fullImageName);
+	const runnersImageSize = await getImageSize(config.runners.fullImageName);
+
+	const imageStats = [
+		{
+			imageName: config.n8n.fullImageName,
+			platform,
+			size: n8nImageSize,
+			buildTime: n8nBuildTime,
+		},
+		{
+			imageName: config.runners.fullImageName,
+			platform,
+			size: runnersImageSize,
+			buildTime: runnersBuildTime,
+		},
+	];
+
+	// Write docker build manifest for telemetry collection
+	const dockerManifest = {
+		buildTime: new Date().toISOString(),
+		platform,
+		images: imageStats.map(({ imageName, size, buildTime }) => ({
+			imageName,
+			size,
+			buildTime,
+		})),
+	};
+	await fs.writeJson(path.join(config.buildContext, 'docker-build-manifest.json'), dockerManifest, {
+		spaces: 2,
+	});
 
 	// Display summary
-	displaySummary({
-		imageName: config.fullImageName,
-		platform,
-		size: imageSize,
-		buildTime,
-	});
+	displaySummary(imageStats);
 }
 
 async function checkPrerequisites() {
@@ -136,54 +238,83 @@ async function checkPrerequisites() {
 		process.exit(1);
 	}
 
-	if (!(await commandExists('docker'))) {
-		echo(chalk.red('Error: Docker is not installed or not in PATH'));
+	if (!(await fs.pathExists(config.compiledTaskRunnerDir))) {
+		echo(chalk.red(`Error: Task runner directory not found at ${config.compiledTaskRunnerDir}`));
+		echo(chalk.yellow('Please run build-n8n.mjs first!'));
+		process.exit(1);
+	}
+
+	// Ensure at least one supported container engine is available
+	if (!(await commandExists('docker')) && !(await commandExists('podman'))) {
+		echo(chalk.red('Error: Neither Docker nor Podman is installed or in PATH'));
 		process.exit(1);
 	}
 }
 
-async function buildDockerImage() {
+async function buildDockerImage({ name, dockerfilePath, fullImageName, buildArgs = [] }) {
 	const startTime = Date.now();
 	const containerEngine = await getContainerEngine();
-	echo(chalk.yellow(`INFO: Building Docker image using ${containerEngine}...`));
+	// Push directly if image name contains a registry (e.g., ghcr.io/...)
+	// This avoids the slow --load step (export/import tarball) when pushing to a registry
+	const shouldPush = fullImageName.includes('/') && fullImageName.split('/').length > 2;
+
+	const extraFlags = [
+		...buildArgs.flatMap((arg) => ['--build-arg', arg]),
+		...(noCache ? ['--no-cache'] : []),
+	];
+
+	echo(chalk.yellow(`INFO: Building ${name} Docker image using ${containerEngine}...`));
+	if (shouldPush) {
+		echo(chalk.yellow(`INFO: Registry detected - pushing directly to ${fullImageName}`));
+	}
 
 	try {
 		if (containerEngine === 'podman') {
 			const { stdout } = await $`podman build \
 				--platform ${platform} \
 				--build-arg TARGETPLATFORM=${platform} \
-				-t ${config.fullImageName} \
-				-f ${config.dockerfilePath} \
+				${extraFlags} \
+				-t ${fullImageName} \
+				-f ${dockerfilePath} \
 				${config.buildContext}`;
 			echo(stdout);
 		} else {
-			// use docker command by default since most other engines have compatibility layers for it.
-			const { stdout } = await $`docker build \
+			// Use docker buildx build to leverage Blacksmith's layer caching when running in CI.
+			// The setup-docker-builder action creates a buildx builder with sticky disk cache.
+			// In CI, push directly to registry to avoid slow --load (export/import tarball).
+			// Locally, use --load to make image available in local daemon.
+			const outputFlag = shouldPush ? '--push' : '--load';
+			const { stdout } = await $`docker buildx build \
 				--platform ${platform} \
 				--build-arg TARGETPLATFORM=${platform} \
-				-t ${config.fullImageName} \
-				-f ${config.dockerfilePath} \
-				--load \
+				${extraFlags} \
+				-t ${fullImageName} \
+				-f ${dockerfilePath} \
+				--provenance=false \
+				${outputFlag} \
 				${config.buildContext}`;
 			echo(stdout);
 		}
 
 		return formatDuration(Date.now() - startTime);
 	} catch (error) {
-		echo(chalk.red(`ERROR: Docker build failed: ${error.stderr || error.message}`));
+		echo(chalk.red(`ERROR: ${name} Docker build failed: ${error.stderr || error.message}`));
 		process.exit(1);
 	}
 }
 
-function displaySummary({ imageName, platform, size, buildTime }) {
+function displaySummary(images) {
 	echo('');
 	echo(chalk.green.bold('═'.repeat(54)));
 	echo(chalk.green.bold('           DOCKER BUILD COMPLETE'));
 	echo(chalk.green.bold('═'.repeat(54)));
-	echo(chalk.green(`✅ Image built: ${imageName}`));
-	echo(`   Platform: ${platform}`);
-	echo(`   Size: ${size}`);
-	echo(`   Build time: ${buildTime}`);
+	for (const { imageName, platform, size, buildTime } of images) {
+		echo(chalk.green(`✅ Image built: ${imageName}`));
+		echo(`   Platform: ${platform}`);
+		echo(`   Size: ${size}`);
+		echo(`   Build time: ${buildTime}`);
+		echo('');
+	}
 	echo(chalk.green.bold('═'.repeat(54)));
 }
 

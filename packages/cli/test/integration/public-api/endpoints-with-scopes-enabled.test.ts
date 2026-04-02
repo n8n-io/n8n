@@ -49,15 +49,10 @@ const credentialPayload = (): CredentialPayload => ({
 	},
 });
 
-describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
+describe('Public API endpoints with API key scopes', () => {
 	const testServer = setupTestServer({
 		endpointGroups: ['publicApi'],
-		enabledFeatures: [
-			'feat:advancedPermissions',
-			'feat:apiKeyScopes',
-			'feat:variables',
-			'feat:projectRole:admin',
-		],
+		enabledFeatures: ['feat:advancedPermissions', 'feat:variables', 'feat:projectRole:admin'],
 		quotas: {
 			'quota:users': -1,
 			'quota:maxTeamProjects': -1,
@@ -91,7 +86,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 		// globalConfig.tags.disabled = false;
 	});
 
-	describe('with "feat:apiKeyScopes" enabled', () => {
+	describe('API key scope enforcement', () => {
 		describe('users', () => {
 			describe('GET /user', () => {
 				test('should return the user when API key has "user:read" scope', async () => {
@@ -179,7 +174,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 				});
 			});
 
-			test('should fail when "feat:apiKeyScopes" is disabled and API key does not have "user:list" scope', async () => {
+			test('should fail when API key does not have "user:list" scope', async () => {
 				const member = await createMemberWithApiKey({ scopes: ['user:read'] });
 
 				await createUser();
@@ -322,6 +317,33 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 						expect(formerAdminApiKey.scopes).not.toContain(ownerScope);
 					}
 				});
+
+				it('should remove all API keys when user downgrading to chatUser', async () => {
+					/**
+					 * Arrange
+					 */
+					testServer.license.enable('feat:advancedPermissions');
+
+					const owner = await createOwnerWithApiKey({ scopes: ['user:changeRole'] });
+					const admin = await createAdminWithApiKey();
+					const payload = { newRoleName: 'global:chatUser' };
+
+					/**
+					 * Act
+					 */
+					const response = await testServer
+						.publicApiAgentFor(owner)
+						.patch(`/users/${admin.id}/role`)
+						.send(payload);
+
+					/**
+					 * Assert
+					 */
+					expect(response.status).toBe(204);
+
+					const formerAdminApiKey = await apiKeyRepository.findOneBy({ userId: admin.id });
+					expect(formerAdminApiKey).toBeNull();
+				});
 			});
 
 			describe('DELETE /users/:id', () => {
@@ -330,7 +352,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 					 * Arrange
 					 */
 					testServer.license.enable('feat:advancedPermissions');
-					testServer.license.enable('feat:apiKeyScopes');
+
 					const owner = await createOwnerWithApiKey({ scopes: ['user:delete'] });
 					const member = await createMember();
 
@@ -351,7 +373,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 					 * Arrange
 					 */
 					testServer.license.enable('feat:advancedPermissions');
-					testServer.license.enable('feat:apiKeyScopes');
+
 					const owner = await createOwnerWithApiKey({ scopes: ['credential:create'] });
 					const member = await createMember();
 
@@ -1069,6 +1091,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 						name: 'some-project',
 						icon: null,
 						type: 'team',
+						creatorId: owner.id,
 						description: null,
 						id: expect.any(String),
 						createdAt: expect.any(String),
@@ -1255,7 +1278,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 								id: 'uuid-1234',
 								parameters: {},
 								name: 'Start',
-								type: 'n8n-nodes-base.start',
+								type: 'n8n-nodes-base.manualTrigger',
 								typeVersion: 1,
 								position: [240, 300],
 							},
@@ -1270,6 +1293,8 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 							executionTimeout: 3600,
 							timezone: 'America/New_York',
 							executionOrder: 'v1',
+							callerPolicy: 'workflowsFromSameOwner',
+							availableInMCP: false,
 						},
 					};
 
@@ -1324,7 +1349,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 								id: 'uuid-1234',
 								parameters: {},
 								name: 'Start',
-								type: 'n8n-nodes-base.start',
+								type: 'n8n-nodes-base.manualTrigger',
 								typeVersion: 1,
 								position: [240, 300],
 							},
@@ -1529,7 +1554,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 								id: 'uuid-1234',
 								parameters: {},
 								name: 'Start',
-								type: 'n8n-nodes-base.start',
+								type: 'n8n-nodes-base.manualTrigger',
 								typeVersion: 1,
 								position: [240, 300],
 							},
@@ -1551,6 +1576,8 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 							saveDataSuccessExecution: 'all',
 							executionTimeout: 3600,
 							timezone: 'America/New_York',
+							callerPolicy: 'workflowsFromSameOwner',
+							availableInMCP: false,
 						},
 					};
 
@@ -1608,7 +1635,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 								id: 'uuid-1234',
 								parameters: {},
 								name: 'Start',
-								type: 'n8n-nodes-base.start',
+								type: 'n8n-nodes-base.manualTrigger',
 								typeVersion: 1,
 								position: [240, 300],
 							},
@@ -1773,6 +1800,85 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 
 					expect(response.statusCode).toBe(403);
 				});
+			});
+		});
+
+		describe('discover', () => {
+			test('should return only endpoints matching API key scopes', async () => {
+				const owner = await createOwnerWithApiKey({ scopes: ['tag:list', 'tag:create'] });
+				const agent = testServer.publicApiAgentFor(owner);
+
+				const response = await agent.get('/discover');
+				expect(response.statusCode).toBe(200);
+
+				const { resources, scopes } = response.body.data;
+				expect(scopes).toEqual(expect.arrayContaining(['tag:list', 'tag:create']));
+
+				// Should see tag endpoints
+				expect(resources.tags).toBeDefined();
+				expect(resources.tags.endpoints.some((e: any) => e.operationId === 'getTags')).toBe(true);
+				expect(resources.tags.endpoints.some((e: any) => e.operationId === 'createTag')).toBe(true);
+
+				// Should NOT see workflow-specific endpoints (no workflow scopes)
+				expect(
+					resources.workflow?.endpoints?.some((e: any) => e.operationId === 'createWorkflow') ??
+						false,
+				).toBe(false);
+			});
+
+			test('should return scoped endpoints plus null-scoped endpoints', async () => {
+				const owner = await createOwnerWithApiKey({
+					scopes: ['securityAudit:generate'],
+				});
+				const agent = testServer.publicApiAgentFor(owner);
+
+				const response = await agent.get('/discover');
+				expect(response.statusCode).toBe(200);
+
+				expect(response.body.data.scopes).toEqual(['securityAudit:generate']);
+
+				// Should see audit endpoint (matching scope)
+				expect(response.body.data.resources.audit).toBeDefined();
+
+				// Should still see null-scoped endpoints (like getCredentialType)
+				const allEndpoints = Object.values(response.body.data.resources).flatMap(
+					(r: any) => r.endpoints,
+				);
+				expect(allEndpoints.some((e: any) => e.operationId === 'getCredentialType')).toBe(true);
+
+				// Should NOT see tag endpoints (no tag scopes)
+				expect(allEndpoints.some((e: any) => e.operationId === 'createTag')).toBe(false);
+			});
+
+			test('should filter by operation with ?operation=list', async () => {
+				const owner = await createOwnerWithApiKey({ scopes: ['tag:list', 'tag:create'] });
+				const agent = testServer.publicApiAgentFor(owner);
+
+				const response = await agent.get('/discover?resource=tags&operation=list');
+				expect(response.statusCode).toBe(200);
+
+				const tags = response.body.data.resources.tags;
+				expect(tags).toBeDefined();
+				expect(tags.operations).toEqual(['list']);
+			});
+
+			test('should combine resource, operation, and include filters', async () => {
+				const owner = await createOwnerWithApiKey({
+					scopes: ['workflow:create', 'workflow:read'],
+				});
+				const agent = testServer.publicApiAgentFor(owner);
+
+				const response = await agent.get(
+					'/discover?resource=workflow&operation=create&include=schemas',
+				);
+				expect(response.statusCode).toBe(200);
+
+				const resourceKeys = Object.keys(response.body.data.resources);
+				expect(resourceKeys).toEqual(['workflow']);
+
+				const endpoints = response.body.data.resources.workflow.endpoints;
+				expect(endpoints.length).toBeGreaterThan(0);
+				expect(endpoints[0].requestSchema).toBeDefined();
 			});
 		});
 	});

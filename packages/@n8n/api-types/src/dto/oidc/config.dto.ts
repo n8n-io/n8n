@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { Z } from 'zod-class';
+
+import { Z } from '../../zod-class';
 
 export class OidcConfigDto extends Z.class({
 	clientId: z.string().min(1),
@@ -10,4 +11,5 @@ export class OidcConfigDto extends Z.class({
 		.enum(['none', 'login', 'consent', 'select_account', 'create'])
 		.optional()
 		.default('select_account'),
+	authenticationContextClassReference: z.array(z.string()).default([]),
 }) {}

@@ -1,0 +1,54 @@
+type: object
+additionalProperties: false
+required:
+  - versionId
+  - workflowId
+  - nodes
+  - connections
+  - authors
+properties:
+  versionId:
+    type: string
+    readOnly: true
+    description: The version ID of this workflow snapshot
+    example: abc123-def456
+  workflowId:
+    type: string
+    readOnly: true
+    description: The workflow ID this version belongs to
+    example: 2tUt1wbLX592XDdX
+  nodes:
+    type: array
+    items:
+      $ref: './node.yml'
+    description: Nodes as they were in this version
+    readOnly: true
+  connections:
+    type: object
+    example: { Jira: { main: [[{ node: 'Jira', type: 'main', index: 0 }]] } }
+    description: Connections as they were in this version
+    readOnly: true
+  authors:
+    type: string
+    readOnly: true
+    description: Authors who created this version
+    example: John Doe
+  name:
+    type: string
+    nullable: true
+    description: Workflow name at this version
+    example: Workflow 1
+  description:
+    type: string
+    nullable: true
+    description: Workflow description at this version
+  createdAt:
+    type: string
+    format: date-time
+    readOnly: true
+    description: When this version was created
+  updatedAt:
+    type: string
+    format: date-time
+    readOnly: true
+    description: When this version was last updated

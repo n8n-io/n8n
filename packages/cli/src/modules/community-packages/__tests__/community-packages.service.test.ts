@@ -6,16 +6,11 @@ import { mocked } from 'jest-mock';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings, PackageDirectoryLoader } from 'n8n-core';
 import type { PublicInstalledPackage } from 'n8n-workflow';
-import { exec } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { access, constants, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path, { join } from 'node:path';
 
-import {
-	NODE_PACKAGE_PREFIX,
-	NPM_COMMAND_TOKENS,
-	NPM_PACKAGE_STATUS_GOOD,
-	RESPONSE_ERROR_MESSAGES,
-} from '@/constants';
+import { NODE_PACKAGE_PREFIX, NPM_PACKAGE_STATUS_GOOD } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import type { License } from '@/license';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -23,6 +18,7 @@ import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import { COMMUNITY_NODE_VERSION, COMMUNITY_PACKAGE_VERSION } from '@test-integration/constants';
 import { mockPackageName, mockPackagePair } from '@test-integration/utils';
 
+import { getCommunityNodeTypes } from '../community-node-types-utils';
 import type { CommunityPackagesConfig } from '../community-packages.config';
 import { CommunityPackagesService } from '../community-packages.service';
 import type { CommunityPackages } from '../community-packages.types';
@@ -30,18 +26,27 @@ import { InstalledNodes } from '../installed-nodes.entity';
 import { InstalledNodesRepository } from '../installed-nodes.repository';
 import { InstalledPackages } from '../installed-packages.entity';
 import { InstalledPackagesRepository } from '../installed-packages.repository';
+import { executeNpmCommand } from '../npm-utils';
 
 jest.mock('node:fs/promises');
 jest.mock('node:child_process');
 jest.mock('axios');
+jest.mock('../community-node-types-utils', () => ({
+	getCommunityNodeTypes: jest.fn().mockResolvedValue([]),
+}));
+jest.mock('../npm-utils', () => ({
+	...jest.requireActual('../npm-utils'),
+	executeNpmCommand: jest.fn(),
+}));
 
-type ExecOptions = NonNullable<Parameters<typeof exec>[1]>;
-type ExecCallback = NonNullable<Parameters<typeof exec>[2]>;
+type ExecFileCallback = NonNullable<Parameters<typeof execFile>[3]>;
 
-const execMock = ((...args) => {
-	const cb = args[args.length - 1] as ExecCallback;
-	cb(null, 'Done', '');
-}) as typeof exec;
+const execMock: typeof execFile = ((...args) => {
+	const currentCallback = args[args.length - 1] as ExecFileCallback;
+	currentCallback(null, 'Done', '');
+}) as typeof execFile;
+
+mocked(execFile).mockImplementation(execMock);
 
 describe('CommunityPackagesService', () => {
 	const license = mock<License>();
@@ -101,6 +106,12 @@ describe('CommunityPackagesService', () => {
 			).toThrowError();
 		});
 
+		test.each(['invalid', '1.a.b'])('should fail with invalid version', (version) => {
+			expect(() =>
+				communityPackagesService.parseNpmPackageName(`n8n-nodes-test@${version}`),
+			).toThrow(`Invalid version: ${version}`);
+		});
+
 		test('should parse valid package name', () => {
 			const name = mockPackageName();
 			const parsed = communityPackagesService.parseNpmPackageName(name);
@@ -134,53 +145,6 @@ describe('CommunityPackagesService', () => {
 			expect(parsed.packageName).toBe(`${scope}/${name}`);
 			expect(parsed.scope).toBe(scope);
 			expect(parsed.version).toBe(version);
-		});
-	});
-
-	describe('executeCommand()', () => {
-		beforeEach(() => {
-			mocked(exec).mockImplementation(execMock);
-		});
-
-		test('should call command with valid options', async () => {
-			const execMock = ((...args) => {
-				const arg = args[1] as ExecOptions;
-				expect(arg.cwd).toBeDefined();
-				expect(arg.env).toBeDefined();
-				// PATH or NODE_PATH may be undefined depending on environment so we don't check for these keys.
-				const cb = args[args.length - 1] as ExecCallback;
-				cb(null, 'Done', '');
-			}) as typeof exec;
-
-			mocked(exec).mockImplementation(execMock);
-
-			await communityPackagesService.executeNpmCommand('ls');
-
-			expect(exec).toHaveBeenCalled();
-		});
-
-		test('should make sure folder exists', async () => {
-			mocked(exec).mockImplementation(execMock);
-
-			await communityPackagesService.executeNpmCommand('ls');
-
-			expect(exec).toHaveBeenCalled();
-		});
-
-		test('should throw especial error when package is not found', async () => {
-			const erroringExecMock = ((...args) => {
-				const cb = args[args.length - 1] as ExecCallback;
-				const msg = `Something went wrong - ${NPM_COMMAND_TOKENS.NPM_PACKAGE_NOT_FOUND_ERROR}. Aborting.`;
-				cb(new Error(msg), '', '');
-			}) as typeof exec;
-
-			mocked(exec).mockImplementation(erroringExecMock);
-
-			const call = async () => await communityPackagesService.executeNpmCommand('ls');
-
-			await expect(call).rejects.toThrowError(RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND);
-
-			expect(exec).toHaveBeenCalled();
 		});
 	});
 
@@ -390,19 +354,28 @@ describe('CommunityPackagesService', () => {
 			`--registry=${testBlockRegistry}`,
 		].join(' ');
 
-		const execMockForThisBlock = (command: string, optionsOrCallback: any, callback?: any) => {
-			const actualCallback = typeof optionsOrCallback === 'function' ? optionsOrCallback : callback;
-			if (command.startsWith('npm pack') && command.includes(PACKAGE_NAME)) {
-				actualCallback(null, { stdout: testBlockTarballName, stderr: '' });
+		const execMockForThisBlock = ((...args: Parameters<typeof execFile>) => {
+			const command = args[0];
+			const cmdArgs = args[1];
+			const actualCallback = args[args.length - 1] as ExecFileCallback;
+
+			if (command === 'npm' && cmdArgs?.[0] === 'pack') {
+				actualCallback(null, testBlockTarballName, '');
 			} else {
 				actualCallback(null, 'Done', '');
 			}
-		};
+		}) as typeof execFile;
 
 		beforeEach(() => {
 			jest.clearAllMocks();
 
-			mocked(exec).mockImplementation(execMockForThisBlock as typeof exec);
+			mocked(execFile).mockImplementation(execMockForThisBlock);
+			mocked(executeNpmCommand).mockImplementation(async (args: string[]) => {
+				if (args[0] === 'pack') {
+					return testBlockTarballName;
+				}
+				return 'Done';
+			});
 
 			mocked(readFile).mockResolvedValue(
 				JSON.stringify({
@@ -446,25 +419,26 @@ describe('CommunityPackagesService', () => {
 				path.join(nodesDownloadDir, 'n8n-nodes-test-latest.tgz'),
 			);
 
-			expect(exec).toHaveBeenCalledTimes(3);
-			expect(exec).toHaveBeenNthCalledWith(
+			// Check executeNpmCommand was called for npm commands
+			expect(executeNpmCommand).toHaveBeenCalledTimes(2);
+			expect(executeNpmCommand).toHaveBeenNthCalledWith(
 				1,
-				`npm pack ${PACKAGE_NAME}@latest --registry=${testBlockRegistry} --quiet`,
+				['pack', `${PACKAGE_NAME}@latest`, `--registry=${testBlockRegistry}`, '--quiet'],
 				{ cwd: testBlockDownloadDir },
-				expect.any(Function),
 			);
 
-			expect(exec).toHaveBeenNthCalledWith(
+			expect(executeNpmCommand).toHaveBeenNthCalledWith(
 				2,
-				`tar -xzf ${testBlockTarballName} -C ${testBlockPackageDir} --strip-components=1`,
-				{ cwd: testBlockDownloadDir },
-				expect.any(Function),
+				['install', ...testBlockNpmInstallArgs.split(' ')],
+				{ cwd: testBlockPackageDir },
 			);
 
-			expect(exec).toHaveBeenNthCalledWith(
-				3,
-				`npm install ${testBlockNpmInstallArgs}`,
-				{ cwd: testBlockPackageDir },
+			// Check execFile was called only for tar command
+			expect(execFile).toHaveBeenCalledTimes(1);
+			expect(execFile).toHaveBeenCalledWith(
+				'tar',
+				['-xzf', testBlockTarballName, '-C', testBlockPackageDir, '--strip-components=1'],
+				{ cwd: testBlockDownloadDir },
 				expect.any(Function),
 			);
 
@@ -577,6 +551,7 @@ describe('CommunityPackagesService', () => {
 			jest
 				.spyOn(communityPackagesService, 'installPackage')
 				.mockResolvedValue({} as InstalledPackages);
+			mocked(getCommunityNodeTypes).mockResolvedValue([]);
 		});
 
 		test('should set missingPackages to empty array when no packages are missing', async () => {
@@ -618,7 +593,11 @@ describe('CommunityPackagesService', () => {
 
 			await communityPackagesService.checkForMissingPackages();
 
-			expect(communityPackagesService.installPackage).toHaveBeenCalledWith('package-1', '1.0.0');
+			expect(communityPackagesService.installPackage).toHaveBeenCalledWith(
+				'package-1',
+				'1.0.0',
+				undefined,
+			);
 			expect(loadNodesAndCredentials.postProcessLoaders).toHaveBeenCalled();
 			expect(communityPackagesService.missingPackages).toEqual([]);
 			expect(logger.info).toHaveBeenCalledWith(
@@ -638,30 +617,234 @@ describe('CommunityPackagesService', () => {
 
 			await communityPackagesService.checkForMissingPackages();
 
-			expect(communityPackagesService.installPackage).toHaveBeenCalledWith('package-1', '1.0.0');
-			expect(logger.error).toHaveBeenCalledWith('n8n was unable to install the missing packages.');
+			expect(communityPackagesService.installPackage).toHaveBeenCalledWith(
+				'package-1',
+				'1.0.0',
+				undefined,
+			);
+			expect(logger.error).toHaveBeenCalledWith(
+				'Failed to reinstall community package package-1: Installation failed',
+			);
 			expect(communityPackagesService.missingPackages).toEqual(['package-1@1.0.0']);
 		});
 
-		test('should handle multiple missing packages and stop reinstalling after first failure', async () => {
+		test('should continue reinstalling remaining packages after one fails', async () => {
 			const installedPackages = [installedPackage1, installedPackage2];
 
 			installedPackageRepository.find.mockResolvedValue(installedPackages);
 			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
 			config.reinstallMissing = true;
 
-			// First installation succeeds, second fails
+			// First installation fails, second succeeds
 			communityPackagesService.installPackage = jest
 				.fn()
-				.mockResolvedValueOnce({} as InstalledPackages)
-				.mockRejectedValueOnce(new Error('Installation failed'));
+				.mockRejectedValueOnce(new Error('Installation failed'))
+				.mockResolvedValueOnce({} as InstalledPackages);
 
 			await communityPackagesService.checkForMissingPackages();
 
-			expect(communityPackagesService.installPackage).toHaveBeenCalledWith('package-1', '1.0.0');
-			expect(communityPackagesService.installPackage).toHaveBeenCalledWith('package-2', '2.0.0');
-			expect(logger.error).toHaveBeenCalledWith('n8n was unable to install the missing packages.');
-			expect(communityPackagesService.missingPackages).toEqual(['package-2@2.0.0']);
+			expect(communityPackagesService.installPackage).toHaveBeenCalledWith(
+				'package-1',
+				'1.0.0',
+				undefined,
+			);
+			expect(communityPackagesService.installPackage).toHaveBeenCalledWith(
+				'package-2',
+				'2.0.0',
+				undefined,
+			);
+			expect(logger.error).toHaveBeenCalledWith(
+				'Failed to reinstall community package package-1: Installation failed',
+			);
+			// Only package-1 should be in missingPackages since package-2 succeeded
+			expect(communityPackagesService.missingPackages).toEqual(['package-1@1.0.0']);
+			expect(loadNodesAndCredentials.postProcessLoaders).toHaveBeenCalled();
+		});
+
+		test('should pass checksum from vetted packages when reinstalling', async () => {
+			const installedPackages = [installedPackage1];
+
+			installedPackageRepository.find.mockResolvedValue(installedPackages);
+			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
+			config.reinstallMissing = true;
+
+			mocked(getCommunityNodeTypes).mockResolvedValue([
+				{
+					packageName: 'package-1',
+					checksum: 'sha512-abc123',
+					npmVersion: '1.0.0',
+				} as never,
+			]);
+
+			await communityPackagesService.checkForMissingPackages();
+
+			expect(communityPackagesService.installPackage).toHaveBeenCalledWith(
+				'package-1',
+				'1.0.0',
+				'sha512-abc123',
+			);
+		});
+
+		test('should use version-specific checksum from nodeVersions when installed version differs from latest', async () => {
+			const installedPackages = [installedPackage1]; // version 1.0.0
+
+			installedPackageRepository.find.mockResolvedValue(installedPackages);
+			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
+			config.reinstallMissing = true;
+
+			mocked(getCommunityNodeTypes).mockResolvedValue([
+				{
+					packageName: 'package-1',
+					checksum: 'sha512-latest',
+					npmVersion: '2.0.0',
+					nodeVersions: [
+						{ npmVersion: '1.0.0', checksum: 'sha512-version-specific' },
+						{ npmVersion: '2.0.0', checksum: 'sha512-latest' },
+					],
+				} as never,
+			]);
+
+			await communityPackagesService.checkForMissingPackages();
+
+			expect(communityPackagesService.installPackage).toHaveBeenCalledWith(
+				'package-1',
+				'1.0.0',
+				'sha512-version-specific',
+			);
+		});
+
+		test('should pass undefined checksum when installed version is not in vetted list', async () => {
+			const installedPackages = [installedPackage1]; // version 1.0.0
+
+			installedPackageRepository.find.mockResolvedValue(installedPackages);
+			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
+			config.reinstallMissing = true;
+
+			mocked(getCommunityNodeTypes).mockResolvedValue([
+				{
+					packageName: 'package-1',
+					checksum: 'sha512-latest',
+					npmVersion: '2.0.0',
+					nodeVersions: [{ npmVersion: '2.0.0', checksum: 'sha512-latest' }],
+				} as never,
+			]);
+
+			await communityPackagesService.checkForMissingPackages();
+
+			expect(communityPackagesService.installPackage).toHaveBeenCalledWith(
+				'package-1',
+				'1.0.0',
+				undefined,
+			);
+		});
+
+		test('should pass undefined checksum when package is not in vetted list at all', async () => {
+			const installedPackages = [installedPackage1]; // version 1.0.0
+
+			installedPackageRepository.find.mockResolvedValue(installedPackages);
+			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
+			config.reinstallMissing = true;
+
+			// getCommunityNodeTypes returns empty array (package not vetted)
+			mocked(getCommunityNodeTypes).mockResolvedValue([]);
+
+			await communityPackagesService.checkForMissingPackages();
+
+			expect(communityPackagesService.installPackage).toHaveBeenCalledWith(
+				'package-1',
+				'1.0.0',
+				undefined,
+			);
+		});
+
+		test('should handle multiple missing packages with mixed vetted status', async () => {
+			const installedPackages = [installedPackage1, installedPackage2];
+
+			installedPackageRepository.find.mockResolvedValue(installedPackages);
+			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
+			config.reinstallMissing = true;
+
+			// Mock getCommunityNodeTypes to return both packages in a single call
+			mocked(getCommunityNodeTypes).mockResolvedValueOnce([
+				{
+					packageName: 'package-1',
+					checksum: 'sha512-package1',
+					npmVersion: '1.0.0',
+				} as never,
+				{
+					packageName: 'package-2',
+					checksum: 'sha512-package2',
+					npmVersion: '2.0.0',
+				} as never,
+			]);
+
+			await communityPackagesService.checkForMissingPackages();
+
+			// Both packages should be installed with their respective checksums
+			expect(communityPackagesService.installPackage).toHaveBeenCalledWith(
+				'package-1',
+				'1.0.0',
+				'sha512-package1',
+			);
+			expect(communityPackagesService.installPackage).toHaveBeenCalledWith(
+				'package-2',
+				'2.0.0',
+				'sha512-package2',
+			);
+		});
+
+		test('should call getCommunityNodeTypes with correct filters for each package', async () => {
+			const installedPackages = [installedPackage1];
+
+			installedPackageRepository.find.mockResolvedValue(installedPackages);
+			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
+			config.reinstallMissing = true;
+
+			mocked(getCommunityNodeTypes).mockResolvedValue([]);
+
+			await communityPackagesService.checkForMissingPackages();
+
+			expect(getCommunityNodeTypes).toHaveBeenCalledWith(
+				'production',
+				{
+					filters: { packageName: { $in: ['package-1'] } },
+					fields: ['packageName', 'npmVersion', 'checksum', 'nodeVersions'],
+				},
+				config.aiNodeSdkVersion,
+			);
+		});
+
+		test('should use staging environment when ENVIRONMENT is set to staging', async () => {
+			const installedPackages = [installedPackage1];
+			const originalEnv = process.env.ENVIRONMENT;
+
+			installedPackageRepository.find.mockResolvedValue(installedPackages);
+			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
+			config.reinstallMissing = true;
+
+			mocked(getCommunityNodeTypes).mockResolvedValue([]);
+
+			process.env.ENVIRONMENT = 'staging';
+
+			try {
+				await communityPackagesService.checkForMissingPackages();
+
+				expect(getCommunityNodeTypes).toHaveBeenCalledWith(
+					'staging',
+					{
+						filters: { packageName: { $in: ['package-1'] } },
+						fields: ['packageName', 'npmVersion', 'checksum', 'nodeVersions'],
+					},
+					config.aiNodeSdkVersion,
+				);
+			} finally {
+				// Restore original environment
+				if (originalEnv === undefined) {
+					delete process.env.ENVIRONMENT;
+				} else {
+					process.env.ENVIRONMENT = originalEnv;
+				}
+			}
 		});
 	});
 
@@ -689,6 +872,28 @@ describe('CommunityPackagesService', () => {
 				JSON.stringify({ dependencies: { 'test-package': '1.0.0' } }, null, 2),
 				'utf-8',
 			);
+		});
+	});
+
+	describe('handleInstallEvent', () => {
+		test('should call unloadPackage before loadPackage to handle already-loaded packages', async () => {
+			const callOrder: string[] = [];
+			loadNodesAndCredentials.unloadPackage.mockImplementation(async () => {
+				callOrder.push('unloadPackage');
+			});
+			loadNodesAndCredentials.loadPackage.mockImplementation(async () => {
+				callOrder.push('loadPackage');
+				return mock<PackageDirectoryLoader>();
+			});
+
+			jest.spyOn(communityPackagesService as any, 'downloadPackage').mockResolvedValue(undefined);
+
+			await communityPackagesService.handleInstallEvent({
+				packageName: 'n8n-nodes-test',
+				packageVersion: '1.0.0',
+			});
+
+			expect(callOrder).toEqual(['unloadPackage', 'loadPackage']);
 		});
 	});
 });

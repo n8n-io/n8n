@@ -1,5 +1,5 @@
 import { Logger, safeJoinPath } from '@n8n/backend-common';
-import type { TagEntity, ICredentialsDb, IWorkflowDb } from '@n8n/db';
+import type { TagEntity, ICredentialsDb } from '@n8n/db';
 import {
 	Project,
 	WorkflowEntity,
@@ -7,9 +7,11 @@ import {
 	WorkflowTagMapping,
 	CredentialsRepository,
 	TagRepository,
+	WorkflowHistory,
+	WorkflowPublishHistory,
 } from '@n8n/db';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { DataSource, EntityManager } from '@n8n/typeorm';
+import { DataSource, EntityManager, In } from '@n8n/typeorm';
 import { Service } from '@n8n/di';
 import { type INode, type INodeCredentialsDetails, type IWorkflowBase } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -20,6 +22,9 @@ import { validateDbTypeForImportEntities } from '@/utils/validate-database-type'
 import { Cipher } from 'n8n-core';
 import { decompressFolder } from '@/utils/compression.util';
 import { z } from 'zod';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import type { IWorkflowWithVersionMetadata } from '@/interfaces';
+import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 
 @Service()
 export class ImportService {
@@ -39,8 +44,8 @@ export class ImportService {
 			sqlite: 'PRAGMA defer_foreign_keys = OFF;',
 			'sqlite-pooled': 'PRAGMA defer_foreign_keys = OFF;',
 			'sqlite-memory': 'PRAGMA defer_foreign_keys = OFF;',
-			postgres: 'SET session_replication_role = DEFAULT;',
-			postgresql: 'SET session_replication_role = DEFAULT;',
+			postgres: 'SET session_replication_role = ORIGIN;',
+			postgresql: 'SET session_replication_role = ORIGIN;',
 		},
 	};
 
@@ -50,6 +55,8 @@ export class ImportService {
 		private readonly tagRepository: TagRepository,
 		private readonly dataSource: DataSource,
 		private readonly cipher: Cipher,
+		private readonly activeWorkflowManager: ActiveWorkflowManager,
+		private readonly workflowIndexService: WorkflowIndexService,
 	) {}
 
 	async initRecords() {
@@ -57,8 +64,29 @@ export class ImportService {
 		this.dbTags = await this.tagRepository.find();
 	}
 
-	async importWorkflows(workflows: IWorkflowDb[], projectId: string) {
+	async importWorkflows(workflows: IWorkflowWithVersionMetadata[], projectId: string) {
 		await this.initRecords();
+
+		const { manager: dbManager } = this.credentialsRepository;
+
+		// Check existence and active status of all workflows
+		const workflowIds = workflows.map((w) => w.id).filter((id) => !!id);
+		const existingWorkflowIds = new Set<string>();
+		const activeVersionIdByWorkflow = new Map<string, string>();
+
+		if (workflowIds.length > 0) {
+			const existingWorkflows = await dbManager.find(WorkflowEntity, {
+				where: { id: In(workflowIds) },
+				select: ['id', 'activeVersionId'],
+			});
+
+			for (const { id, activeVersionId } of existingWorkflows) {
+				existingWorkflowIds.add(id);
+				if (activeVersionId !== null) {
+					activeVersionIdByWorkflow.set(id, activeVersionId);
+				}
+			}
+		}
 
 		for (const workflow of workflows) {
 			workflow.nodes.forEach((node) => {
@@ -69,28 +97,46 @@ export class ImportService {
 
 			const hasInvalidCreds = workflow.nodes.some((node) => !node.credentials?.id);
 
-			if (hasInvalidCreds) await this.replaceInvalidCreds(workflow);
+			if (hasInvalidCreds) await this.replaceInvalidCreds(workflow, projectId);
+
+			// Remove workflows from ActiveWorkflowManager BEFORE transaction to prevent orphaned trigger listeners
+			// Only remove if the workflow already exists in the database and is active
+			if (workflow.id && activeVersionIdByWorkflow.has(workflow.id)) {
+				await this.activeWorkflowManager.remove(workflow.id);
+			}
 		}
 
-		const { manager: dbManager } = this.credentialsRepository;
+		const insertedWorkflows: IWorkflowWithVersionMetadata[] = [];
 		await dbManager.transaction(async (tx) => {
-			for (const workflow of workflows) {
-				if (workflow.active) {
-					workflow.active = false;
+			const workflowsNeedingPublishHistory: Array<{ workflowId: string; versionId: string }> = [];
 
+			// Upsert all workflows
+			for (const workflow of workflows) {
+				// Always generate a new versionId on import to ensure proper history ordering
+				workflow.versionId = uuid();
+
+				// Always deactivate workflows on import - they need to be manually activated later
+				// Store the old activeVersionId to record the deactivation of the old version
+				const oldActiveVersionId = workflow.id ? activeVersionIdByWorkflow.get(workflow.id) : null;
+				if (oldActiveVersionId || workflow.activeVersionId || workflow.active) {
 					this.logger.info(`Deactivating workflow "${workflow.name}". Remember to activate later.`);
 				}
+				workflow.active = false;
+				workflow.activeVersionId = null;
 
-				const exists = workflow.id ? await tx.existsBy(WorkflowEntity, { id: workflow.id }) : false;
-
-				// @ts-ignore CAT-957
 				const upsertResult = await tx.upsert(WorkflowEntity, workflow, ['id']);
 				const workflowId = upsertResult.identifiers.at(0)?.id as string;
+				insertedWorkflows.push({ ...workflow, id: workflowId }); // Collect inserted workflow with correct ID, for indexing later.
+
+				// Only add publish history if workflow was previously active
+				if (oldActiveVersionId) {
+					workflowsNeedingPublishHistory.push({ workflowId, versionId: oldActiveVersionId });
+				}
 
 				const personalProject = await tx.findOneByOrFail(Project, { id: projectId });
 
 				// Create relationship if the workflow was inserted instead of updated.
-				if (!exists) {
+				if (!existingWorkflowIds.has(workflow.id)) {
 					await tx.upsert(
 						SharedWorkflow,
 						{ workflowId, projectId: personalProject.id, role: 'workflow:owner' },
@@ -109,12 +155,43 @@ export class ImportService {
 					]);
 				}
 			}
+
+			// Always create workflow history for the current version
+			// This is needed to be able to activate the workflow later
+			for (const workflow of insertedWorkflows) {
+				const versionMetadata = workflow.versionMetadata;
+				await tx.insert(WorkflowHistory, {
+					versionId: workflow.versionId,
+					workflowId: workflow.id,
+					nodes: workflow.nodes,
+					connections: workflow.connections,
+					authors: 'import',
+					name: versionMetadata?.name ?? null,
+					description: versionMetadata?.description ?? null,
+				});
+			}
+
+			// Add publish history records for workflows that were deactivated
+			for (const { workflowId, versionId } of workflowsNeedingPublishHistory) {
+				await tx.insert(WorkflowPublishHistory, {
+					workflowId,
+					versionId,
+					event: 'deactivated',
+					userId: null,
+				});
+			}
 		});
+
+		// Directly update the index for the important workflows, since they don't generate
+		// workflow-update events during import.
+		for (const workflow of insertedWorkflows) {
+			await this.workflowIndexService.updateIndexForDraft(workflow);
+		}
 	}
 
-	async replaceInvalidCreds(workflow: IWorkflowBase) {
+	async replaceInvalidCreds(workflow: IWorkflowBase, projectId: string) {
 		try {
-			await replaceInvalidCredentials(workflow);
+			await replaceInvalidCredentials(workflow, projectId);
 		} catch (e) {
 			this.logger.error('Failed to replace invalid credential', { error: e });
 		}
@@ -241,15 +318,19 @@ export class ImportService {
 	/**
 	 * Read and parse JSONL file content
 	 * @param filePath - Path to the JSONL file
+	 * @param customEncryptionKey - Optional custom encryption key
 	 * @returns Array of parsed entity objects
 	 */
-	async readEntityFile(filePath: string): Promise<Array<Record<string, unknown>>> {
+	async readEntityFile(
+		filePath: string,
+		customEncryptionKey?: string,
+	): Promise<Array<Record<string, unknown>>> {
 		const content = await readFile(filePath, 'utf8');
 		const entities: Record<string, unknown>[] = [];
 		const entitySchema = z.record(z.string(), z.unknown());
 
 		for (const block of content.split('\n')) {
-			const lines = this.cipher.decrypt(block).split(/\r?\n/);
+			const lines = this.cipher.decrypt(block, customEncryptionKey).split(/\r?\n/);
 
 			for (let i = 0; i < lines.length; i++) {
 				const line = lines[i].trim();
@@ -286,14 +367,40 @@ export class ImportService {
 		this.logger.info('✅ Successfully decompressed entities.zip');
 	}
 
-	async importEntities(inputDir: string, truncateTables: boolean) {
+	async importEntities(
+		inputDir: string,
+		truncateTables: boolean,
+		keyFilePath?: string,
+		skipMigrationChecks = false,
+		skipTogglingForeignKeyConstraints = false,
+	) {
 		validateDbTypeForImportEntities(this.dataSource.options.type);
 
+		// Read custom encryption key from file if provided
+		let customEncryptionKey: string | undefined;
+		if (keyFilePath) {
+			try {
+				const keyFileContent = await readFile(keyFilePath, 'utf8');
+				customEncryptionKey = keyFileContent.trim();
+				this.logger.info(`🔑 Using custom encryption key from: ${keyFilePath}`);
+			} catch (error) {
+				throw new Error(
+					`Failed to read encryption key file at ${keyFilePath}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+				);
+			}
+		}
+
 		await this.decompressEntitiesZip(inputDir);
-		await this.validateMigrations(inputDir);
+		if (!skipMigrationChecks) {
+			await this.validateMigrations(inputDir, customEncryptionKey);
+		} else {
+			this.logger.info('⏭️  Skipping migration validation checks');
+		}
 
 		await this.dataSource.transaction(async (transactionManager: EntityManager) => {
-			await this.disableForeignKeyConstraints(transactionManager);
+			if (!skipTogglingForeignKeyConstraints) {
+				await this.disableForeignKeyConstraints(transactionManager);
+			}
 
 			// Get import metadata after migration validation
 			const importMetadata = await this.getImportMetadata(inputDir);
@@ -322,9 +429,17 @@ export class ImportService {
 			}
 
 			// Import entities from the specified directory
-			await this.importEntitiesFromFiles(inputDir, transactionManager, entityNames, entityFiles);
+			await this.importEntitiesFromFiles(
+				inputDir,
+				transactionManager,
+				entityNames,
+				entityFiles,
+				customEncryptionKey,
+			);
 
-			await this.enableForeignKeyConstraints(transactionManager);
+			if (!skipTogglingForeignKeyConstraints) {
+				await this.enableForeignKeyConstraints(transactionManager);
+			}
 		});
 
 		// Cleanup decompressed files after import
@@ -345,6 +460,7 @@ export class ImportService {
 	 * @param transactionManager - TypeORM transaction manager
 	 * @param entityNames - Array of entity names to import
 	 * @param entityFiles - Record of entity names to their file paths
+	 * @param customEncryptionKey - Optional custom encryption key
 	 * @returns Promise that resolves when all entities are imported
 	 */
 	async importEntitiesFromFiles(
@@ -352,6 +468,7 @@ export class ImportService {
 		transactionManager: EntityManager,
 		entityNames: string[],
 		entityFiles: Record<string, string[]>,
+		customEncryptionKey?: string,
 	): Promise<void> {
 		this.logger.info(`\n🚀 Starting entity import from directory: ${inputDir}`);
 
@@ -387,7 +504,10 @@ export class ImportService {
 					files.map(async (filePath) => {
 						this.logger.info(`   📁 Reading file: ${filePath}`);
 
-						const entities: Array<Record<string, unknown>> = await this.readEntityFile(filePath);
+						const entities: Array<Record<string, unknown>> = await this.readEntityFile(
+							filePath,
+							customEncryptionKey,
+						);
 						this.logger.info(`      Found ${entities.length} entities`);
 
 						await Promise.all(
@@ -472,9 +592,10 @@ export class ImportService {
 	/**
 	 * Validates that the migrations in the import data match the target database
 	 * @param inputDir - Directory containing exported entity files
+	 * @param customEncryptionKey - Optional custom encryption key
 	 * @returns Promise that resolves if migrations match, throws error if they don't
 	 */
-	async validateMigrations(inputDir: string): Promise<void> {
+	async validateMigrations(inputDir: string, customEncryptionKey?: string): Promise<void> {
 		const migrationsFilePath = safeJoinPath(inputDir, 'migrations.jsonl');
 
 		try {
@@ -489,7 +610,7 @@ export class ImportService {
 		// Read and parse migrations from file
 		const migrationsFileContent = await readFile(migrationsFilePath, 'utf8');
 		const importMigrations = this.cipher
-			.decrypt(migrationsFileContent)
+			.decrypt(migrationsFileContent, customEncryptionKey)
 			.trim()
 			.split('\n')
 			.filter((line) => line.trim())
@@ -545,8 +666,6 @@ export class ImportService {
 		const dbTimestamp = parseInt(String(latestDbMigration.timestamp || '0'));
 		const importName = latestImportMigration.name;
 		const dbName = latestDbMigration.name;
-		const importId = latestImportMigration.id;
-		const dbId = latestDbMigration.id;
 
 		// Check timestamp match
 		if (importTimestamp !== dbTimestamp) {
@@ -559,13 +678,6 @@ export class ImportService {
 		if (importName !== dbName) {
 			throw new Error(
 				`Migration name mismatch. Import data: ${String(importName)} does not match target database ${String(dbName)}. Cannot import data from different migration states.`,
-			);
-		}
-
-		// Check ID match (if both have IDs)
-		if (importId && dbId && importId !== dbId) {
-			throw new Error(
-				`Migration ID mismatch. Import data: ${String(importName)} (id: ${String(importId)}) does not match target database ${String(dbName)} (id: ${String(dbId)}). Cannot import data from different migration states.`,
 			);
 		}
 

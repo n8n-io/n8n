@@ -20,7 +20,7 @@ const filterFactory = (data: DeepPartial<FilterValue> = {}): FilterValue =>
 			combinator: 'and',
 			conditions: [],
 			options: {
-				version: 1,
+				version: 3,
 				leftValue: '',
 				caseSensitive: false,
 				typeValidation: 'strict',
@@ -536,6 +536,10 @@ describe('FilterParameter', () => {
 					{ left: 'any string', right: '[a-z]', expected: true },
 					{ left: 'lowercase', right: '[A-Z]', expected: false },
 					{ left: 'foo', right: '/^fo{2}$/g', expected: true },
+					{ left: 'foo', right: 'foo|bar', expected: true },
+					{ left: 'bar', right: 'foo|bar', expected: true },
+					{ left: 'baz', right: 'foo|bar', expected: false },
+					{ left: 'FOO', right: 'foo|bar', expected: true },
 				])('string:regex("$left","$right") === $expected', ({ left, right, expected }) => {
 					const result = executeFilter(
 						filterFactory({
@@ -560,6 +564,8 @@ describe('FilterParameter', () => {
 					{ left: 'any string', right: '[a-z]', expected: false },
 					{ left: 'lowercase', right: '[A-Z]', expected: true },
 					{ left: 'foo', right: '/^fo{2}$/g', expected: false },
+					{ left: 'foo', right: 'foo|bar', expected: false },
+					{ left: 'baz', right: 'foo|bar', expected: true },
 				])('string:notRegex("$left","$right") === $expected', ({ left, right, expected }) => {
 					const result = executeFilter(
 						filterFactory({
@@ -578,6 +584,33 @@ describe('FilterParameter', () => {
 			});
 
 			describe('number', () => {
+				describe('loose validation', () => {
+					it.each([
+						{ left: 0, expected: false },
+						{ left: 15, expected: false },
+						{ left: -15.4, expected: false },
+						{ left: NaN, expected: true },
+						{ left: null, expected: true },
+						{ left: '', expected: true },
+						{ left: '  ', expected: true },
+						{ left: [], expected: true },
+					])('number:empty($left) === $expected', ({ left, expected }) => {
+						const result = executeFilter(
+							filterFactory({
+								conditions: [
+									{
+										id: '1',
+										leftValue: left,
+										operator: { operation: 'empty', type: 'number' },
+									},
+								],
+								options: { typeValidation: 'loose' },
+							}),
+						);
+						expect(result).toBe(expected);
+					});
+				});
+
 				it.each([
 					{ left: 0, expected: true },
 					{ left: 15, expected: true },

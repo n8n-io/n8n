@@ -1,3 +1,4 @@
+import { LicenseState } from '@n8n/backend-common';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Project, SharedCredentials, SharedCredentialsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -8,12 +9,15 @@ import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { TransferCredentialError } from '@/errors/response-errors/transfer-credential.error';
+import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
+import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 
 import { CredentialsFinderService } from './credentials-finder.service';
 import { CredentialsService } from './credentials.service';
+import { validateAccessToReferencedSecretProviders } from './validation';
 
 @Service()
 export class EnterpriseCredentialsService {
@@ -24,6 +28,9 @@ export class EnterpriseCredentialsService {
 		private readonly projectService: ProjectService,
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly roleService: RoleService,
+		private readonly externalSecretsConfig: ExternalSecretsConfig,
+		private readonly externalSecretsProviderAccessCheckService: SecretsProviderAccessCheckService,
+		private readonly licenseState: LicenseState,
 	) {}
 
 	async shareWithProjects(
@@ -77,7 +84,11 @@ export class EnterpriseCredentialsService {
 		return await em.save(newSharedCredentials);
 	}
 
-	async getOne(user: User, credentialId: string, includeDecryptedData: boolean) {
+	async getOne(credentialId: string) {
+		return await this.credentialsFinderService.findCredentialById(credentialId);
+	}
+
+	async getOneForUser(user: User, credentialId: string, includeDecryptedData: boolean) {
 		let credential: CredentialsEntity | null = null;
 		let decryptedData: ICredentialDataDecryptedObject | null = null;
 
@@ -167,8 +178,22 @@ export class EnterpriseCredentialsService {
 			);
 		}
 
+		// 6. validate that the destination project has access to all external secret providers
+		if (
+			this.licenseState.isExternalSecretsLicensed() &&
+			this.externalSecretsConfig.externalSecretsForProjects
+		) {
+			const decryptedData = this.credentialsService.decrypt(credential, true);
+			await validateAccessToReferencedSecretProviders(
+				destinationProject.id,
+				decryptedData,
+				this.externalSecretsProviderAccessCheckService,
+				'transfer',
+			);
+		}
+
 		await this.sharedCredentialsRepository.manager.transaction(async (trx) => {
-			// 6. transfer the credential
+			// 7. transfer the credential
 			// remove all sharings
 			await trx.remove(credential.shared);
 

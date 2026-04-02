@@ -1,16 +1,10 @@
 import { BasePage } from './BasePage';
 
 export class DemoPage extends BasePage {
-	async visitDemoPage(theme?: 'dark' | 'light') {
+	async goto(theme?: 'dark' | 'light') {
 		const query = theme ? `?theme=${theme}` : '';
 		await this.page.goto('/workflows/demo' + query);
-		await this.getBody().waitFor({ state: 'visible' });
-		// eslint-disable-next-line playwright/no-networkidle
-		await this.page.waitForLoadState('networkidle');
-		await this.page.evaluate(() => {
-			// @ts-expect-error - this is a custom property added by the demo page
-			window.preventNodeViewBeforeUnload = true;
-		});
+		await this.page.getByTestId('canvas-background').waitFor({ state: 'visible' });
 	}
 
 	/**
@@ -23,6 +17,27 @@ export class DemoPage extends BasePage {
 			console.log('Posting message:', JSON.stringify(message));
 			window.postMessage(JSON.stringify(message), '*');
 		}, OPEN_WORKFLOW);
+	}
+
+	/**
+	 * Dispatch a synthetic push event into the push connection store's handlers.
+	 * Requires the page to be authenticated (push connection established).
+	 */
+	async dispatchPushEvent(event: Record<string, unknown>) {
+		await this.page.evaluate((evt) => {
+			/* eslint-disable @typescript-eslint/naming-convention */
+			const app = document.querySelector('#app') as HTMLElement & {
+				__vue_app__?: { config: { globalProperties: { $pinia: { _s: Map<string, unknown> } } } };
+			};
+			const pinia = app?.__vue_app__?.config.globalProperties.$pinia;
+			if (!pinia) throw new Error('Pinia not found');
+			const pushStore = pinia._s.get('push') as {
+				onMessageReceivedHandlers: Array<(e: unknown) => void>;
+			};
+			if (!pushStore) throw new Error('Push store not found');
+			pushStore.onMessageReceivedHandlers.forEach((h) => h(evt));
+			/* eslint-enable @typescript-eslint/naming-convention */
+		}, event);
 	}
 
 	getBody() {

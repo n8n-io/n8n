@@ -100,6 +100,8 @@ describe('Test Supabase Node', () => {
 				and: '(created_at.gt.2025-01-02 08:03:43.952051+00,created_at.lt.2025-01-02 08:07:36.102231+00)',
 				offset: 0,
 			},
+			undefined,
+			{},
 		);
 
 		supabaseApiRequest.mockRestore();
@@ -162,6 +164,10 @@ describe('Test Supabase Node', () => {
 			useCustomSchema: true,
 			schema: 'custom_schema',
 			tableId: 'my_table',
+			dataToSend: 'defineBelow',
+			fieldsUi: {
+				fieldValues: [],
+			},
 		});
 
 		await node.execute.call(fakeExecuteFunction);
@@ -187,6 +193,10 @@ describe('Test Supabase Node', () => {
 			useCustomSchema: true,
 			schema: '',
 			tableId: 'my_table',
+			dataToSend: 'defineBelow',
+			fieldsUi: {
+				fieldValues: [],
+			},
 		});
 
 		fakeExecuteFunction.helpers.requestWithAuthentication = jest.fn().mockRejectedValue({
@@ -198,5 +208,128 @@ describe('Test Supabase Node', () => {
 			'message',
 			'error: Something when wrong',
 		);
+	});
+
+	describe('getSchemaHeader function', () => {
+		const mockExecuteContext = {
+			getNodeParameter: jest.fn(),
+		} as unknown as IExecuteFunctions;
+
+		const mockLoadOptionsContext = {
+			getNodeParameter: jest.fn(),
+		} as unknown as any;
+
+		beforeEach(() => {
+			jest.clearAllMocks();
+		});
+
+		it('should return empty object when useCustomSchema is false for execute context', () => {
+			(mockExecuteContext.getNodeParameter as jest.Mock).mockReturnValueOnce(false);
+
+			const result = utils.getSchemaHeader(mockExecuteContext, 'GET', 'execute');
+
+			expect(result).toEqual({});
+			expect(mockExecuteContext.getNodeParameter).toHaveBeenCalledWith('useCustomSchema', 0, false);
+		});
+
+		it('should return empty object when useCustomSchema is false for loadOptions context', () => {
+			(mockLoadOptionsContext.getNodeParameter as jest.Mock).mockReturnValueOnce(false);
+
+			const result = utils.getSchemaHeader(mockLoadOptionsContext, 'GET', 'loadOptions');
+
+			expect(result).toEqual({});
+			expect(mockLoadOptionsContext.getNodeParameter).toHaveBeenCalledWith(
+				'useCustomSchema',
+				false,
+			);
+		});
+
+		it('should return Accept-Profile header for GET method when useCustomSchema is true', () => {
+			(mockExecuteContext.getNodeParameter as jest.Mock)
+				.mockReturnValueOnce(true)
+				.mockReturnValueOnce('custom_schema');
+
+			const result = utils.getSchemaHeader(mockExecuteContext, 'GET', 'execute');
+
+			expect(result).toEqual({ 'Accept-Profile': 'custom_schema' });
+			expect(mockExecuteContext.getNodeParameter).toHaveBeenCalledWith('useCustomSchema', 0, false);
+			expect(mockExecuteContext.getNodeParameter).toHaveBeenCalledWith('schema', 0, 'public');
+		});
+
+		it('should return Accept-Profile header for HEAD method when useCustomSchema is true', () => {
+			(mockExecuteContext.getNodeParameter as jest.Mock)
+				.mockReturnValueOnce(true)
+				.mockReturnValueOnce('test_schema');
+
+			const result = utils.getSchemaHeader(mockExecuteContext, 'HEAD', 'execute');
+
+			expect(result).toEqual({ 'Accept-Profile': 'test_schema' });
+		});
+
+		it('should return Content-Profile header for POST method when useCustomSchema is true', () => {
+			(mockExecuteContext.getNodeParameter as jest.Mock)
+				.mockReturnValueOnce(true)
+				.mockReturnValueOnce('custom_schema');
+
+			const result = utils.getSchemaHeader(mockExecuteContext, 'POST', 'execute');
+
+			expect(result).toEqual({ 'Content-Profile': 'custom_schema' });
+		});
+
+		it('should return Content-Profile header for PATCH method when useCustomSchema is true', () => {
+			(mockExecuteContext.getNodeParameter as jest.Mock)
+				.mockReturnValueOnce(true)
+				.mockReturnValueOnce('custom_schema');
+
+			const result = utils.getSchemaHeader(mockExecuteContext, 'PATCH', 'execute');
+
+			expect(result).toEqual({ 'Content-Profile': 'custom_schema' });
+		});
+
+		it('should return Content-Profile header for PUT method when useCustomSchema is true', () => {
+			(mockExecuteContext.getNodeParameter as jest.Mock)
+				.mockReturnValueOnce(true)
+				.mockReturnValueOnce('custom_schema');
+
+			const result = utils.getSchemaHeader(mockExecuteContext, 'PUT', 'execute');
+
+			expect(result).toEqual({ 'Content-Profile': 'custom_schema' });
+		});
+
+		it('should return Content-Profile header for DELETE method when useCustomSchema is true', () => {
+			(mockExecuteContext.getNodeParameter as jest.Mock)
+				.mockReturnValueOnce(true)
+				.mockReturnValueOnce('custom_schema');
+
+			const result = utils.getSchemaHeader(mockExecuteContext, 'DELETE', 'execute');
+
+			expect(result).toEqual({ 'Content-Profile': 'custom_schema' });
+		});
+
+		it('should use different parameter calls for loadOptions context', () => {
+			(mockLoadOptionsContext.getNodeParameter as jest.Mock)
+				.mockReturnValueOnce(true)
+				.mockReturnValueOnce('load_options_schema');
+
+			const result = utils.getSchemaHeader(mockLoadOptionsContext, 'GET', 'loadOptions');
+
+			expect(result).toEqual({ 'Accept-Profile': 'load_options_schema' });
+			expect(mockLoadOptionsContext.getNodeParameter).toHaveBeenCalledWith(
+				'useCustomSchema',
+				false,
+			);
+			expect(mockLoadOptionsContext.getNodeParameter).toHaveBeenCalledWith('schema', 'public');
+		});
+
+		it('should default to public schema when schema parameter is not provided', () => {
+			(mockExecuteContext.getNodeParameter as jest.Mock)
+				.mockReturnValueOnce(true)
+				.mockReturnValueOnce('public');
+
+			const result = utils.getSchemaHeader(mockExecuteContext, 'GET', 'execute');
+
+			expect(result).toEqual({ 'Accept-Profile': 'public' });
+			expect(mockExecuteContext.getNodeParameter).toHaveBeenCalledWith('schema', 0, 'public');
+		});
 	});
 });

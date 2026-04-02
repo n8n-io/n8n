@@ -26,6 +26,19 @@ describe('ToolWikipedia', () => {
 
 			expect(supplyDataResult.response).toBeInstanceOf(WikipediaQueryRun);
 		});
+
+		it('should sanitize tool name to be LLM API compatible', async () => {
+			const node = new ToolWikipedia();
+
+			const supplyDataResult = await node.supplyData.call(
+				mock<ISupplyDataFunctions>({
+					getNode: jest.fn(() => mock<INode>({ name: 'Wikipedia (1)' })),
+				}),
+			);
+
+			const tool = supplyDataResult.response as WikipediaQueryRun;
+			expect(tool.name).toBe('Wikipedia_1_');
+		});
 	});
 
 	describe('execute', () => {

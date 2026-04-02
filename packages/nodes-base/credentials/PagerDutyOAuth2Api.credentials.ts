@@ -7,7 +7,7 @@ export class PagerDutyOAuth2Api implements ICredentialType {
 
 	displayName = 'PagerDuty OAuth2 API';
 
-	documentationUrl = 'pagerDuty';
+	documentationUrl = 'pagerduty';
 
 	properties: INodeProperties[] = [
 		{

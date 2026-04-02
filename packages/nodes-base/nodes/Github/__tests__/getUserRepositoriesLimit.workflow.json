@@ -1,0 +1,111 @@
+{
+	"name": "Github User getRepositories Limit Test Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-id",
+			"name": "When clicking 'Execute Workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "user",
+				"operation": "getRepositories",
+				"owner": {
+					"__rl": true,
+					"value": "testuser",
+					"mode": "name"
+				},
+				"returnAll": false,
+				"limit": 1
+			},
+			"type": "n8n-nodes-base.github",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"id": "github-node-id",
+			"name": "Get User Repositories Limited",
+			"credentials": {
+				"githubApi": {
+					"id": "credential-id",
+					"name": "Test Credentials"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [400, 0],
+			"id": "noop-id",
+			"name": "Repositories Response"
+		}
+	],
+	"pinData": {
+		"Repositories Response": [
+			{
+				"json": {
+					"id": 1296269,
+					"name": "hello-world",
+					"full_name": "testuser/hello-world",
+					"owner": {
+						"login": "testuser",
+						"id": 1,
+						"type": "User"
+					},
+					"private": false,
+					"html_url": "https://github.com/testuser/hello-world",
+					"description": "My first repository on GitHub!",
+					"fork": false,
+					"created_at": "2011-01-26T19:01:12Z",
+					"updated_at": "2011-01-26T19:14:43Z",
+					"pushed_at": "2011-01-26T19:06:43Z",
+					"clone_url": "https://github.com/testuser/hello-world.git",
+					"size": 108,
+					"stargazers_count": 80,
+					"watchers_count": 9,
+					"language": "C",
+					"forks_count": 9,
+					"archived": false,
+					"disabled": false,
+					"open_issues_count": 0,
+					"license": {
+						"key": "mit",
+						"name": "MIT License"
+					},
+					"visibility": "public",
+					"default_branch": "master"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "Get User Repositories Limited",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get User Repositories Limited": {
+			"main": [
+				[
+					{
+						"node": "Repositories Response",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

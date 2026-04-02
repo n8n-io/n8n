@@ -29,6 +29,9 @@
                 "checkItemsChecked": {
                     "type": "integer"
                 },
+                "checkItemsEarliestDue": {
+                    "type": "null"
+                },
                 "comments": {
                     "type": "integer"
                 },
@@ -37,9 +40,6 @@
                 },
                 "dueComplete": {
                     "type": "boolean"
-                },
-                "externalSource": {
-                    "type": "null"
                 },
                 "fogbugz": {
                     "type": "string"
@@ -90,9 +90,6 @@
                 "brightness": {
                     "type": "string"
                 },
-                "idPlugin": {
-                    "type": "null"
-                },
                 "idUploadedBackground": {
                     "type": "null"
                 },
@@ -135,6 +132,12 @@
             "type": "string"
         },
         "idMembers": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "idMembersVoted": {
             "type": "array",
             "items": {
                 "type": "string"
@@ -200,5 +203,5 @@
             "type": "string"
         }
     },
-    "version": 7
+    "version": 8
 }

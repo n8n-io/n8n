@@ -1,0 +1,15 @@
+{
+    "type": "object",
+    "properties": {
+        "error": {
+            "type": "string"
+        },
+        "isNew": {
+            "type": "boolean"
+        },
+        "vid": {
+            "type": "integer"
+        }
+    },
+    "version": 2
+}

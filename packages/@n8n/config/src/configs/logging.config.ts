@@ -7,11 +7,14 @@ import { Config, Env, Nested } from '../decorators';
 export const LOG_SCOPES = [
 	'concurrency',
 	'external-secrets',
+	'instance-registry',
 	'license',
+	'mcp',
 	'multi-main-setup',
 	'pruning',
 	'pubsub',
 	'push',
+	'quick-connect',
 	'redis',
 	'scaling',
 	'waiting-executions',
@@ -24,7 +27,17 @@ export const LOG_SCOPES = [
 	'data-table',
 	'cron',
 	'community-nodes',
-	'legacy-sqlite-execution-recovery',
+	'chat-hub',
+	'instance-ai',
+	'breaking-changes',
+	'circuit-breaker',
+	'source-control',
+	'dynamic-credentials',
+	'workflow-history-compaction',
+	'data-table-csv-import',
+	'ssrf-protection',
+	'token-exchange',
+	'instance-ai',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];
@@ -118,6 +131,7 @@ export class LoggingConfig {
 	 * - `task-runner-py`
 	 * - `workflow-activation`
 	 * - `insights`
+	 * - `chat-hub`
 	 *
 	 * @example
 	 * `N8N_LOG_SCOPES=license`

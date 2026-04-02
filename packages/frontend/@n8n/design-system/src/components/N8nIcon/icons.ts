@@ -1,9 +1,12 @@
+import Anthropic from './custom/anthropic.svg';
 import Binary from './custom/binary.svg';
 import BoltFilled from './custom/bolt-filled.svg';
 import Continue from './custom/continue.svg';
 import EmptyOutput from './custom/empty-output.svg';
 import FilledSquare from './custom/filled-square.svg';
+import Form from './custom/form.svg';
 import GripLinesVertical from './custom/grip-lines-vertical.svg';
+import Lovable from './custom/lovable.svg';
 import Mcp from './custom/mcp.svg';
 import NodeDirty from './custom/node-dirty.svg';
 import NodeEllipsis from './custom/node-ellipsis.svg';
@@ -15,6 +18,7 @@ import NodeSuccess from './custom/node-success.svg';
 import NodeTrash from './custom/node-trash.svg';
 import NodeValidationError from './custom/node-validation-error.svg';
 import PopOut from './custom/pop-out.svg';
+import Resolver from './custom/resolver.svg';
 import Retry from './custom/retry.svg';
 import RunOnce from './custom/run-once.svg';
 import Schema from './custom/schema.svg';
@@ -30,9 +34,11 @@ import Text from './custom/text.svg';
 import Toolbox from './custom/toolbox.svg';
 import Triangle from './custom/triangle.svg';
 import VectorSquare from './custom/vector-square.svg';
+import Webhook from './custom/webhook.svg';
 
 import IconLucideAlignRight from '~icons/lucide/align-right';
 import IconLucideArchive from '~icons/lucide/archive';
+import IconLucideArchiveRestore from '~icons/lucide/archive-restore';
 import IconLucideArrowDown from '~icons/lucide/arrow-down';
 import IconLucideArrowLeft from '~icons/lucide/arrow-left';
 import IconLucideArrowLeftRight from '~icons/lucide/arrow-left-right';
@@ -40,7 +46,9 @@ import IconLucideArrowRight from '~icons/lucide/arrow-right';
 import IconLucideArrowRightFromLine from '~icons/lucide/arrow-right-from-line';
 import IconLucideArrowRightToLine from '~icons/lucide/arrow-right-to-line';
 import IconLucideArrowUp from '~icons/lucide/arrow-up';
+import IconLucideArrowUpRight from '~icons/lucide/arrow-up-right';
 import IconLucideAtSign from '~icons/lucide/at-sign';
+import IconLucideBadgeCheck from '~icons/lucide/badge-check';
 import IconLucideBan from '~icons/lucide/ban';
 import IconLucideBell from '~icons/lucide/bell';
 import IconLucideBook from '~icons/lucide/book';
@@ -66,7 +74,9 @@ import IconLucideChevronsUpDown from '~icons/lucide/chevrons-up-down';
 import IconLucideCircle from '~icons/lucide/circle';
 import IconLucideCircleAlert from '~icons/lucide/circle-alert';
 import IconLucideCircleCheck from '~icons/lucide/circle-check';
+import IconLucideCircleDollarSign from '~icons/lucide/circle-dollar-sign';
 import IconLucideCircleDot from '~icons/lucide/circle-dot';
+import IconLucideCircleEllipsis from '~icons/lucide/circle-ellipsis';
 import IconLucideCircleHelp from '~icons/lucide/circle-help';
 import IconLucideCircleMinus from '~icons/lucide/circle-minus';
 import IconLucideCirclePause from '~icons/lucide/circle-pause';
@@ -74,16 +84,22 @@ import IconLucideCirclePlay from '~icons/lucide/circle-play';
 import IconLucideCirclePlus from '~icons/lucide/circle-plus';
 import IconLucideCircleUserRound from '~icons/lucide/circle-user-round';
 import IconLucideCircleX from '~icons/lucide/circle-x';
+import IconLucideClipboard from '~icons/lucide/clipboard';
+import IconLucideClipboardCheck from '~icons/lucide/clipboard-check';
 import IconLucideClipboardList from '~icons/lucide/clipboard-list';
 import IconLucideClock from '~icons/lucide/clock';
 import IconLucideCloud from '~icons/lucide/cloud';
 import IconLucideCloudDownload from '~icons/lucide/cloud-download';
 import IconLucideCode from '~icons/lucide/code';
 import IconLucideCog from '~icons/lucide/cog';
+import IconLucideColumns3Cog from '~icons/lucide/columns-3-cog';
 import IconLucideContrast from '~icons/lucide/contrast';
 import IconLucideCopy from '~icons/lucide/copy';
 import IconLucideCrosshair from '~icons/lucide/crosshair';
 import IconLucideDatabase from '~icons/lucide/database';
+import IconLucideDoorOpen from '~icons/lucide/door-open';
+import IconLucideDot from '~icons/lucide/dot';
+import IconLucideDownload from '~icons/lucide/download';
 import IconLucideEarth from '~icons/lucide/earth';
 import IconLucideEllipsis from '~icons/lucide/ellipsis';
 import IconLucideEllipsisVertical from '~icons/lucide/ellipsis-vertical';
@@ -102,6 +118,7 @@ import IconLucideFileOutput from '~icons/lucide/file-output';
 import IconLucideFileText from '~icons/lucide/file-text';
 import IconLucideFiles from '~icons/lucide/files';
 import IconLucideFingerprint from '~icons/lucide/fingerprint';
+import IconLucideFlame from '~icons/lucide/flame';
 import IconLucideFlaskConical from '~icons/lucide/flask-conical';
 import IconLucideFolder from '~icons/lucide/folder';
 import IconLucideFolderOpen from '~icons/lucide/folder-open';
@@ -128,10 +145,12 @@ import IconLucideInfo from '~icons/lucide/info';
 import IconLucideKeyRound from '~icons/lucide/key-round';
 import IconLucideLanguages from '~icons/lucide/languages';
 import IconLucideLayers from '~icons/lucide/layers';
+import IconLucideLayoutTemplate from '~icons/lucide/layout-template';
 import IconLucideLightbulb from '~icons/lucide/lightbulb';
 import IconLucideLink from '~icons/lucide/link';
 import IconLucideList from '~icons/lucide/list';
 import IconLucideListChecks from '~icons/lucide/list-checks';
+import IconLucideLoader2 from '~icons/lucide/loader2';
 import IconLucideLock from '~icons/lucide/lock';
 import IconLucideLogIn from '~icons/lucide/log-in';
 import IconLucideLogOut from '~icons/lucide/log-out';
@@ -140,17 +159,25 @@ import IconLucideMaximize from '~icons/lucide/maximize';
 import IconLucideMaximize2 from '~icons/lucide/maximize-2';
 import IconLucideMenu from '~icons/lucide/menu';
 import IconLucideMessageCircle from '~icons/lucide/message-circle';
+import IconLucideMessageSquare from '~icons/lucide/message-square';
+import IconLucideMessageSquarePlus from '~icons/lucide/message-square-plus';
 import IconLucideMessagesSquare from '~icons/lucide/messages-square';
+import IconLucideMic from '~icons/lucide/mic';
 import IconLucideMilestone from '~icons/lucide/milestone';
 import IconLucideMinimize2 from '~icons/lucide/minimize-2';
+import IconLucideMinus from '~icons/lucide/minus';
 import IconLucideMousePointer from '~icons/lucide/mouse-pointer';
 import IconLucideNetwork from '~icons/lucide/network';
+import IconLucideNotebookPen from '~icons/lucide/notebook-pen';
 import IconLucidePackageOpen from '~icons/lucide/package-open';
 import IconLucidePalette from '~icons/lucide/palette';
+import IconLucidePanelLeft from '~icons/lucide/panel-left';
 import IconLucidePanelRight from '~icons/lucide/panel-right';
+import IconLucidePaperclip from '~icons/lucide/paperclip';
 import IconLucidePause from '~icons/lucide/pause';
 import IconLucidePen from '~icons/lucide/pen';
 import IconLucidePencil from '~icons/lucide/pencil';
+import IconLucidePencilOff from '~icons/lucide/pencil-off';
 import IconLucidePin from '~icons/lucide/pin';
 import IconLucidePlay from '~icons/lucide/play';
 import IconLucidePlug from '~icons/lucide/plug';
@@ -165,16 +192,24 @@ import IconLucideSatelliteDish from '~icons/lucide/satellite-dish';
 import IconLucideSave from '~icons/lucide/save';
 import IconLucideScale from '~icons/lucide/scale';
 import IconLucideScissors from '~icons/lucide/scissors';
+import IconLucideScrollText from '~icons/lucide/scroll-text';
 import IconLucideSearch from '~icons/lucide/search';
 import IconLucideSend from '~icons/lucide/send';
 import IconLucideServer from '~icons/lucide/server';
 import IconLucideSettings from '~icons/lucide/settings';
+import IconLucideSettings2 from '~icons/lucide/settings-2';
 import IconLucideShare from '~icons/lucide/share';
+import IconLucideShield from '~icons/lucide/shield';
+import IconLucideShieldHalf from '~icons/lucide/shield-half';
+import IconLucideShieldUser from '~icons/lucide/shield-user';
+import IconLucideShredder from '~icons/lucide/shredder';
 import IconLucideSlidersHorizontal from '~icons/lucide/sliders-horizontal';
 import IconLucideSmile from '~icons/lucide/smile';
 import IconLucideSparkles from '~icons/lucide/sparkles';
+import IconLucideSplit from '~icons/lucide/split';
 import IconLucideSquare from '~icons/lucide/square';
 import IconLucideSquareCheck from '~icons/lucide/square-check';
+import IconLucideSquareMinus from '~icons/lucide/square-minus';
 import IconLucideSquarePen from '~icons/lucide/square-pen';
 import IconLucideSquarePlus from '~icons/lucide/square-plus';
 import IconLucideStickyNote from '~icons/lucide/sticky-note';
@@ -184,6 +219,7 @@ import IconLucideTags from '~icons/lucide/tags';
 import IconLucideTerminal from '~icons/lucide/terminal';
 import IconLucideThumbsDown from '~icons/lucide/thumbs-down';
 import IconLucideThumbsUp from '~icons/lucide/thumbs-up';
+import IconLucideTimer from '~icons/lucide/timer';
 import IconLucideToggleRight from '~icons/lucide/toggle-right';
 import IconLucideTrash2 from '~icons/lucide/trash-2';
 import IconLucideTreePine from '~icons/lucide/tree-pine';
@@ -191,17 +227,24 @@ import IconLucideTriangleAlert from '~icons/lucide/triangle-alert';
 import IconLucideType from '~icons/lucide/type';
 import IconLucideUndo2 from '~icons/lucide/undo-2';
 import IconLucideUnlink from '~icons/lucide/unlink';
+import IconLucideUpload from '~icons/lucide/upload';
 import IconLucideUser from '~icons/lucide/user';
 import IconLucideUserCheck from '~icons/lucide/user-check';
 import IconLucideUserLock from '~icons/lucide/user-lock';
+import IconLucideUserPen from '~icons/lucide/user-pen';
 import IconLucideUserRound from '~icons/lucide/user-round';
 import IconLucideUsers from '~icons/lucide/users';
 import IconLucideVariable from '~icons/lucide/variable';
 import IconLucideVault from '~icons/lucide/vault';
 import IconLucideVideo from '~icons/lucide/video';
+import IconLucideVolume2 from '~icons/lucide/volume-2';
+import IconLucideVolumeX from '~icons/lucide/volume-x';
+import IconLucideWandSparkles from '~icons/lucide/wand-sparkles';
 import IconLucideWaypoints from '~icons/lucide/waypoints';
+import IconLucideWorkflow from '~icons/lucide/workflow';
 import IconLucideWrench from '~icons/lucide/wrench';
 import IconLucideX from '~icons/lucide/x';
+import IconLucideYoutube from '~icons/lucide/youtube';
 import IconLucideZap from '~icons/lucide/zap';
 import IconLucideZoomIn from '~icons/lucide/zoom-in';
 import IconLucideZoomOut from '~icons/lucide/zoom-out';
@@ -283,8 +326,11 @@ export const deprecatedIconSet = {
 	'code-branch': IconLucideGitBranch,
 	cog: IconLucideCog,
 	cogs: IconLucideCog,
+	'columns-3-cog': IconLucideColumns3Cog,
 	comment: IconLucideMessageCircle,
 	comments: IconLucideMessagesSquare,
+	clipboard: IconLucideClipboard,
+	'clipboard-check': IconLucideClipboardCheck,
 	'clipboard-list': IconLucideClipboardList,
 	clock: IconLucideClock,
 	clone: IconLucideCopy,
@@ -389,6 +435,7 @@ export const deprecatedIconSet = {
 	tasks: IconLucideListChecks,
 	terminal: IconLucideTerminal,
 	'th-large': IconLucideGrid2x2,
+	timer: IconLucideTimer,
 	thumbtack: IconLucidePin,
 	'thumbs-down': IconLucideThumbsDown,
 	'thumbs-up': IconLucideThumbsUp,
@@ -415,6 +462,7 @@ export const deprecatedIconSet = {
 export const updatedIconSet = {
 	// custom icons
 	// NOTE: ensure to replace any colors with "currentColor" in SVG
+	anthropic: Anthropic,
 	'bolt-filled': BoltFilled,
 	'filled-square': FilledSquare,
 	'grip-lines-vertical': GripLinesVertical,
@@ -449,10 +497,15 @@ export const updatedIconSet = {
 	'node-success': NodeSuccess,
 	'node-trash': NodeTrash,
 	mcp: Mcp,
+	lovable: Lovable,
+	resolver: Resolver,
+	form: Form,
+	webhook: Webhook,
 
 	// lucide
 	'align-right': IconLucideAlignRight,
 	archive: IconLucideArchive,
+	'archive-restore': IconLucideArchiveRestore,
 	'arrow-down': IconLucideArrowDown,
 	'arrow-left': IconLucideArrowLeft,
 	'arrow-left-right': IconLucideArrowLeftRight,
@@ -460,8 +513,10 @@ export const updatedIconSet = {
 	'arrow-right-from-line': IconLucideArrowRightFromLine,
 	'arrow-right-to-line': IconLucideArrowRightToLine,
 	'arrow-up': IconLucideArrowUp,
+	'arrow-up-right': IconLucideArrowUpRight,
 	'at-sign': IconLucideAtSign,
 	ban: IconLucideBan,
+	'badge-check': IconLucideBadgeCheck,
 	bell: IconLucideBell,
 	book: IconLucideBook,
 	'book-open': IconLucideBookOpen,
@@ -485,7 +540,9 @@ export const updatedIconSet = {
 	circle: IconLucideCircle,
 	'circle-alert': IconLucideCircleAlert,
 	'circle-check': IconLucideCircleCheck,
+	'circle-dollar-sign': IconLucideCircleDollarSign,
 	'circle-dot': IconLucideCircleDot,
+	'circle-ellipsis': IconLucideCircleEllipsis,
 	'circle-help': IconLucideCircleHelp,
 	'circle-minus': IconLucideCircleMinus,
 	'circle-pause': IconLucideCirclePause,
@@ -493,6 +550,8 @@ export const updatedIconSet = {
 	'circle-plus': IconLucideCirclePlus,
 	'circle-user-round': IconLucideCircleUserRound,
 	'circle-x': IconLucideCircleX,
+	clipboard: IconLucideClipboard,
+	'clipboard-check': IconLucideClipboardCheck,
 	'clipboard-list': IconLucideClipboardList,
 	clock: IconLucideClock,
 	cloud: IconLucideCloud,
@@ -503,6 +562,9 @@ export const updatedIconSet = {
 	copy: IconLucideCopy,
 	crosshair: IconLucideCrosshair,
 	database: IconLucideDatabase,
+	'door-open': IconLucideDoorOpen,
+	dot: IconLucideDot,
+	download: IconLucideDownload,
 	earth: IconLucideEarth,
 	ellipsis: IconLucideEllipsis,
 	'ellipsis-vertical': IconLucideEllipsisVertical,
@@ -547,6 +609,7 @@ export const updatedIconSet = {
 	'key-round': IconLucideKeyRound,
 	languages: IconLucideLanguages,
 	layers: IconLucideLayers,
+	'layout-template': IconLucideLayoutTemplate,
 	lightbulb: IconLucideLightbulb,
 	link: IconLucideLink,
 	list: IconLucideList,
@@ -560,16 +623,24 @@ export const updatedIconSet = {
 	'maximize-2': IconLucideMaximize2,
 	menu: IconLucideMenu,
 	'message-circle': IconLucideMessageCircle,
+	'message-square': IconLucideMessageSquare,
+	'message-square-plus': IconLucideMessageSquarePlus,
 	'messages-square': IconLucideMessagesSquare,
+	mic: IconLucideMic,
 	milestone: IconLucideMilestone,
+	minus: IconLucideMinus,
 	'mouse-pointer': IconLucideMousePointer,
 	network: IconLucideNetwork,
+	'notebook-pen': IconLucideNotebookPen,
 	'package-open': IconLucidePackageOpen,
 	palette: IconLucidePalette,
+	'panel-left': IconLucidePanelLeft,
 	'panel-right': IconLucidePanelRight,
+	paperclip: IconLucidePaperclip,
 	pause: IconLucidePause,
 	pen: IconLucidePen,
 	pencil: IconLucidePencil,
+	'pencil-off': IconLucidePencilOff,
 	pin: IconLucidePin,
 	play: IconLucidePlay,
 	plug: IconLucidePlug,
@@ -585,16 +656,24 @@ export const updatedIconSet = {
 	save: IconLucideSave,
 	scale: IconLucideScale,
 	scissors: IconLucideScissors,
+	'scroll-text': IconLucideScrollText,
 	search: IconLucideSearch,
 	settings: IconLucideSettings,
+	settings2: IconLucideSettings2,
 	send: IconLucideSend,
 	server: IconLucideServer,
 	share: IconLucideShare,
+	shield: IconLucideShield,
+	'shield-half': IconLucideShieldHalf,
+	'shield-user': IconLucideShieldUser,
+	shredder: IconLucideShredder,
 	'sliders-horizontal': IconLucideSlidersHorizontal,
 	smile: IconLucideSmile,
 	sparkles: IconLucideSparkles,
+	split: IconLucideSplit,
 	square: IconLucideSquare,
 	'square-check': IconLucideSquareCheck,
+	'square-minus': IconLucideSquareMinus,
 	'square-pen': IconLucideSquarePen,
 	'square-plus': IconLucideSquarePlus,
 	'sticky-note': IconLucideStickyNote,
@@ -611,19 +690,28 @@ export const updatedIconSet = {
 	'toggle-right': IconLucideToggleRight,
 	'undo-2': IconLucideUndo2,
 	unlink: IconLucideUnlink,
+	upload: IconLucideUpload,
 	user: IconLucideUser,
 	'user-check': IconLucideUserCheck,
 	'user-lock': IconLucideUserLock,
+	'user-pen': IconLucideUserPen,
 	'user-round': IconLucideUserRound,
 	users: IconLucideUsers,
 	vault: IconLucideVault,
 	video: IconLucideVideo,
+	'volume-2': IconLucideVolume2,
+	'volume-x': IconLucideVolumeX,
+	'wand-sparkles': IconLucideWandSparkles,
 	waypoints: IconLucideWaypoints,
+	workflow: IconLucideWorkflow,
 	wrench: IconLucideWrench,
 	x: IconLucideX,
+	youtube: IconLucideYoutube,
 	zap: IconLucideZap,
 	'zoom-in': IconLucideZoomIn,
 	'zoom-out': IconLucideZoomOut,
+	loader: IconLucideLoader2,
+	'quick-connect': IconLucideFlame,
 } as const;
 
 export type IconName = keyof typeof updatedIconSet; // only new icon names should be used moving forward

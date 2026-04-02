@@ -1,5 +1,5 @@
 import { mock } from 'jest-mock-extended';
-import { VectorStoreQATool } from 'langchain/tools';
+import { VectorStoreQATool } from '@langchain/classic/tools';
 import {
 	NodeConnectionTypes,
 	type IExecuteFunctions,

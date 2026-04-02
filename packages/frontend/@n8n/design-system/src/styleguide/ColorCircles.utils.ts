@@ -15,25 +15,9 @@ export function hslToHex(h: number, s: number, l: number): string {
 }
 
 /**
- * Resolve calc() expressions in HSL strings
- */
-export function resolveHSLCalc(hslString: string): string {
-	const calcRegex = /calc\(([^)]+)\)/;
-	const matchCalc = hslString.match(calcRegex);
-	if (!matchCalc) {
-		return hslString;
-	}
-	const expression = matchCalc[1].replace(/%/g, '');
-	const evaluation: number = eval(expression);
-	const finalPercentage = `${evaluation}%`;
-	return hslString.replace(calcRegex, finalPercentage);
-}
-
-/**
  * Get the Hex color from an HSL color string
  */
 export function getHex(hsl: string): string {
-	hsl = resolveHSLCalc(hsl);
 	const colors = hsl
 		.replace('hsl(', '')
 		.replace(')', '')

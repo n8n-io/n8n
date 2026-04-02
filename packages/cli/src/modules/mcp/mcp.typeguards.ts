@@ -1,11 +1,9 @@
 // Inferred typing for CredentialsService.getOne() is a bit too broad, so we need custom type guards
 // to ensure that the decrypted data has the expected structure without changing the service code.
 
-type UnknownRecord = Record<string, unknown>;
+import type { JSONRPCRequest } from './mcp.types';
 
-function isRecord(value: unknown): value is UnknownRecord {
-	return typeof value === 'object' && value !== null;
-}
+type UnknownRecord = Record<string, unknown>;
 
 export type HttpHeaderAuthDecryptedData = {
 	name: string;
@@ -13,6 +11,10 @@ export type HttpHeaderAuthDecryptedData = {
 };
 
 export type WithDecryptedData<T> = UnknownRecord & { data: T };
+
+export function isRecord(value: unknown): value is UnknownRecord {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
 
 /**
  * Narrows down credentials to those that have decrypted data of type HttpHeaderAuthDecryptedData.
@@ -63,4 +65,30 @@ export function hasJwtPemKeyDecryptedData(
 	const data = dataCandidate;
 	if (typeof data.keyType === 'string' && data.keyType === 'pemKey') return true;
 	return typeof data.privateKey === 'string' || typeof data.publicKey === 'string';
+}
+
+// JSON-RPC request type guards for MCP
+/**
+ * Type guard to check if a value is a JSON-RPC request
+ * @param value - The value to check
+ * @returns True if the value matches the JSONRPCRequest structure
+ */
+export function isJSONRPCRequest(value: unknown): value is JSONRPCRequest {
+	if (!isRecord(value)) return false;
+
+	if ('jsonrpc' in value && typeof value.jsonrpc !== 'string') return false;
+
+	if ('method' in value && typeof value.method !== 'string') return false;
+
+	if ('params' in value && value.params !== undefined && !isRecord(value.params)) return false;
+
+	if (
+		'id' in value &&
+		value.id !== null &&
+		typeof value.id !== 'string' &&
+		typeof value.id !== 'number'
+	)
+		return false;
+
+	return true;
 }

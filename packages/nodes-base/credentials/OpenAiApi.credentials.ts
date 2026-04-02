@@ -9,9 +9,9 @@ import type {
 export class OpenAiApi implements ICredentialType {
 	name = 'openAiApi';
 
-	displayName = 'OpenAi';
+	displayName = 'OpenAI';
 
-	documentationUrl = 'openAi';
+	documentationUrl = 'openai';
 
 	properties: INodeProperties[] = [
 		{

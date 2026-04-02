@@ -4,8 +4,7 @@
 		"baseUrl": ".",
 		"rootDir": "src",
 		"outDir": "dist",
-		"types": ["vitest/globals"]
+		"types": ["vitest/globals", "node"]
 	},
-	"include": ["src/**/*.ts"],
-	"exclude": ["**/*.test.ts"]
+	"include": ["src/**/*.ts"]
 }

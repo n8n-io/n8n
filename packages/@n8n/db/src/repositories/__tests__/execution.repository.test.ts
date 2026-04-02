@@ -1,5 +1,10 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import { In, LessThan, And, Not } from '@n8n/typeorm';
+import { In, LessThan, And, Not, type SelectQueryBuilder } from '@n8n/typeorm';
+import { mock } from 'jest-mock-extended';
+
+import type { IExecutionResponse } from 'entities/types-db';
 
 import { ExecutionEntity } from '../../entities';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
@@ -9,7 +14,6 @@ const GREATER_THAN_MAX_UPDATE_THRESHOLD = 901;
 
 /**
  * TODO: add tests for all the other methods
- * TODO: getExecutionsForPublicApi -> add test cases for the `includeData` toggle
  */
 describe('ExecutionRepository', () => {
 	const entityManager = mockEntityManager(ExecutionEntity);
@@ -37,7 +41,6 @@ describe('ExecutionRepository', () => {
 			where: {},
 			order: { id: 'DESC' },
 			take: defaultLimit,
-			relations: ['executionData'],
 		};
 
 		test('should get executions matching all filter parameters', async () => {
@@ -164,6 +167,54 @@ describe('ExecutionRepository', () => {
 					expect(result[0].id).toEqual(mockEntities[0].id);
 				},
 			);
+		});
+
+		describe('with includeData parameter', () => {
+			test('should not fetch executionData and metadata relations when includeData is false', async () => {
+				const params = {
+					limit: defaultLimit,
+					includeData: false,
+				};
+				const mockEntities = [{ id: '1' }, { id: '2' }];
+
+				entityManager.find.mockResolvedValueOnce(mockEntities);
+				const result = await executionRepository.getExecutionsForPublicApi(params);
+
+				expect(entityManager.find).toHaveBeenCalledWith(ExecutionEntity, {
+					...defaultQuery,
+					where: {},
+				});
+				expect(result.length).toBe(mockEntities.length);
+			});
+
+			test('should fetch executionData and metadata relations when includeData is true', async () => {
+				const params = {
+					limit: defaultLimit,
+					includeData: true,
+				};
+				const mockEntities = [
+					{
+						id: '1',
+						executionData: { data: '[]' },
+						metadata: [],
+					},
+					{
+						id: '2',
+						executionData: { data: '[]' },
+						metadata: [],
+					},
+				];
+
+				entityManager.find.mockResolvedValueOnce(mockEntities);
+				const result = await executionRepository.getExecutionsForPublicApi(params);
+
+				expect(entityManager.find).toHaveBeenCalledWith(ExecutionEntity, {
+					...defaultQuery,
+					where: {},
+					relations: ['executionData', 'metadata'],
+				});
+				expect(result.length).toBe(mockEntities.length);
+			});
 		});
 	});
 
@@ -317,6 +368,143 @@ describe('ExecutionRepository', () => {
 				.map((_, i) => i.toString());
 			await executionRepository.markAsCrashed(manyExecutionsToMarkAsCrashed);
 			expect(entityManager.update).toBeCalledTimes(2);
+		});
+	});
+
+	describe('stopDuringRun', () => {
+		test('should update execution with ManualExecutionCancelledError', async () => {
+			const mockExecution = {
+				id: '123',
+				data: {
+					resultData: {
+						runData: {},
+					},
+				},
+			} as unknown;
+
+			const updateSpy = jest.spyOn(executionRepository, 'updateExistingExecution');
+
+			const result = await executionRepository.stopDuringRun(mockExecution as IExecutionResponse);
+
+			// Verify updateExistingExecution was called with the execution
+			expect(updateSpy).toHaveBeenCalledWith(
+				'123',
+				expect.objectContaining({
+					status: 'canceled',
+					stoppedAt: expect.any(Date),
+					waitTill: null,
+					data: expect.objectContaining({
+						resultData: expect.objectContaining({
+							error: expect.objectContaining({
+								message: 'The execution was cancelled manually',
+							}),
+						}),
+					}),
+				}),
+			);
+
+			// Verify the execution was marked as canceled
+			expect(result.status).toBe('canceled');
+			expect(result.data.resultData.error?.message).toBe('The execution was cancelled manually');
+		});
+	});
+
+	describe('getWaitingExecutions()', () => {
+		const globalConfig = Container.get(GlobalConfig);
+		const originalDbType = globalConfig.database.type;
+
+		let queryBuilder: jest.Mocked<SelectQueryBuilder<ExecutionEntity>>;
+
+		beforeEach(() => {
+			queryBuilder = mock<SelectQueryBuilder<ExecutionEntity>>();
+			queryBuilder.select.mockReturnThis();
+			queryBuilder.where.mockReturnThis();
+			queryBuilder.andWhere.mockReturnThis();
+			queryBuilder.orderBy.mockReturnThis();
+			queryBuilder.getMany.mockResolvedValue([]);
+			jest.spyOn(executionRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
+		});
+
+		afterEach(() => {
+			globalConfig.database.type = originalDbType;
+		});
+
+		it('should filter by status = waiting', async () => {
+			await executionRepository.getWaitingExecutions();
+
+			expect(queryBuilder.andWhere).toHaveBeenCalledWith('e.status = :status', {
+				status: 'waiting',
+			});
+		});
+
+		it('should use a DB-clock lookahead condition for PostgreSQL', async () => {
+			globalConfig.database.type = 'postgresdb';
+
+			await executionRepository.getWaitingExecutions();
+
+			expect(queryBuilder.where).toHaveBeenCalledWith(
+				expect.stringContaining("NOW() + INTERVAL '15 seconds'"),
+			);
+		});
+
+		it('should use a DB-clock lookahead condition for SQLite', async () => {
+			globalConfig.database.type = 'sqlite';
+
+			await executionRepository.getWaitingExecutions();
+
+			expect(queryBuilder.where).toHaveBeenCalledWith(
+				expect.stringContaining("datetime('now', '+15 seconds')"),
+			);
+		});
+
+		it('should order results by waitTill ASC', async () => {
+			await executionRepository.getWaitingExecutions();
+
+			expect(queryBuilder.orderBy).toHaveBeenCalledWith('e.waitTill', 'ASC');
+		});
+	});
+
+	describe('setRunning', () => {
+		beforeEach(() => {
+			entityManager.transaction.mockImplementation(async (fn: unknown) => {
+				return await (fn as (em: typeof entityManager) => Promise<unknown>)(entityManager);
+			});
+		});
+
+		test('should set startedAt when not already set', async () => {
+			const executionId = '123';
+
+			entityManager.findOneBy.mockResolvedValueOnce({ startedAt: null });
+
+			const result = await executionRepository.setRunning(executionId);
+
+			expect(entityManager.transaction).toHaveBeenCalled();
+			expect(entityManager.findOneBy).toHaveBeenCalledWith(ExecutionEntity, {
+				id: executionId,
+			});
+			expect(entityManager.update).toHaveBeenCalledWith(
+				ExecutionEntity,
+				{ id: executionId },
+				{ status: 'running', startedAt: expect.any(Date) },
+			);
+			expect(result).toBeInstanceOf(Date);
+		});
+
+		test('should preserve existing startedAt for resumed executions', async () => {
+			const executionId = '456';
+			const existingStartedAt = new Date('2025-12-02T09:04:47.150Z');
+
+			entityManager.findOneBy.mockResolvedValueOnce({ startedAt: existingStartedAt });
+
+			const result = await executionRepository.setRunning(executionId);
+
+			expect(entityManager.transaction).toHaveBeenCalled();
+			expect(entityManager.update).toHaveBeenCalledWith(
+				ExecutionEntity,
+				{ id: executionId },
+				{ status: 'running', startedAt: existingStartedAt },
+			);
+			expect(result).toBe(existingStartedAt);
 		});
 	});
 });

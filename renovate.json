@@ -57,24 +57,22 @@
 		},
 		{
 			"description": "Group testing packages",
-			"matchPackageNames": [
-				"*vitest*",
-				"*playwright*",
-				"*cypress*",
-				"@testing-library/**",
-				"*jest*"
-			],
+			"matchPackageNames": ["*vitest*", "*playwright*", "@testing-library/**", "*jest*"],
 			"groupName": "testing packages"
 		},
 		{
 			"description": "Group TypeScript packages",
 			"matchPackageNames": ["typescript", "*tsx*", "*tsup*"],
 			"groupName": "TypeScript"
+		},
+		{
+			"description": "Group Workflow script (.github/scripts) dependencies",
+			"matchFileNames": [".github/scripts/package.json"],
+			"groupName": "Workflow script dependencies"
 		}
 	],
 	"lockFileMaintenance": {
-		"enabled": true,
-		"schedule": ["before 6am on monday"]
+		"enabled": false
 	},
 	"vulnerabilityAlerts": {
 		"enabled": true,
@@ -91,5 +89,6 @@
 	"ignorePaths": ["**/node_modules/**", "**/dist/**", "**/build/**"],
 	"enabledManagers": ["npm", "dockerfile", "github-actions"],
 	"npmrc": "auto-detect",
-	"updateNotScheduled": false
+	"updateNotScheduled": false,
+	"rangeStrategy": "bump"
 }

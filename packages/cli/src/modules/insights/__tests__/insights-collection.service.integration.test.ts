@@ -53,6 +53,7 @@ describe('workflowExecuteAfterHandler', () => {
 		insightsCollectionService = Container.get(InsightsCollectionService);
 		insightsRawRepository = Container.get(InsightsRawRepository);
 		insightsMetadataRepository = Container.get(InsightsMetadataRepository);
+		insightsCollectionService.init();
 	});
 
 	let project: Project;
@@ -281,6 +282,7 @@ describe('workflowExecuteAfterHandler - cacheMetadata', () => {
 			Container.get(InsightsConfig),
 			mockLogger(),
 		);
+		insightsCollectionService.init();
 	});
 
 	let project: Project;
@@ -424,6 +426,7 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 			Container.get(InsightsConfig),
 			mockLogger(),
 		);
+		insightsCollectionService.init();
 	});
 
 	beforeEach(async () => {
@@ -477,7 +480,7 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 		// ARRANGE
 		jest.useFakeTimers();
 		repoMocks.insertInsightsRaw.mockClear();
-		insightsCollectionService.startFlushingTimer();
+		insightsCollectionService.init();
 		const ctx = mock<WorkflowExecuteAfterContext>({ workflow, runData });
 
 		try {
@@ -502,7 +505,7 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 		// ARRANGE
 		jest.useFakeTimers();
 		repoMocks.insertInsightsRaw.mockClear();
-		insightsCollectionService.startFlushingTimer();
+		insightsCollectionService.init();
 		const ctx = mock<WorkflowExecuteAfterContext>({ workflow });
 
 		try {
@@ -527,7 +530,7 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 		// ARRANGE
 		jest.useFakeTimers();
 		repoMocks.insertInsightsRaw.mockClear();
-		insightsCollectionService.startFlushingTimer();
+		insightsCollectionService.init();
 		const flushEventsSpy = jest.spyOn(insightsCollectionService, 'flushEvents');
 
 		try {
@@ -568,7 +571,7 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 	test('flushes events synchronously while shutting down', async () => {
 		// ARRANGE
 		// reset insights async flushing
-		insightsCollectionService.startFlushingTimer();
+		insightsCollectionService.init();
 		repoMocks.insertInsightsRaw.mockClear();
 		const ctx = mock<WorkflowExecuteAfterContext>({ workflow, runData });
 
@@ -601,7 +604,7 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 		jest.useFakeTimers();
 		repoMocks.insertInsightsRaw.mockClear();
 		repoMocks.insertInsightsRaw.mockRejectedValueOnce(new Error('Test error'));
-		insightsCollectionService.startFlushingTimer();
+		insightsCollectionService.init();
 		const ctx = mock<WorkflowExecuteAfterContext>({ workflow, runData });
 
 		try {
@@ -630,7 +633,7 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 		// ARRANGE
 		const config = Container.get(InsightsConfig);
 		config.flushBatchSize = 10;
-		insightsCollectionService.startFlushingTimer();
+		insightsCollectionService.init();
 		repoMocks.insertInsightsRaw.mockClear();
 
 		const ctx = mock<WorkflowExecuteAfterContext>({ workflow, runData });

@@ -1,4 +1,9 @@
-import { createPage, getSanitizedInitialMessages, getSanitizedI18nConfig } from '../templates';
+import {
+	createPage,
+	getSanitizedCustomCss,
+	getSanitizedInitialMessages,
+	getSanitizedI18nConfig,
+} from '../templates';
 
 describe('ChatTrigger Templates Security', () => {
 	const defaultParams = {
@@ -15,6 +20,7 @@ describe('ChatTrigger Templates Security', () => {
 		allowedFilesMimeTypes: '',
 		customCss: '',
 		enableStreaming: false,
+		initialMessages: '',
 	};
 
 	describe('XSS Prevention in initialMessages', () => {
@@ -116,6 +122,76 @@ describe('ChatTrigger Templates Security', () => {
 		});
 	});
 
+	describe('XSS Prevention in customCss', () => {
+		it('should strip </style to prevent breakout with onload', () => {
+			const result = createPage({
+				...defaultParams,
+				customCss: '</style><style onload=alert(origin)>',
+			});
+
+			// The </style sequence is stripped, so the payload stays trapped as CSS text
+			expect(result).not.toContain('</style><style');
+		});
+
+		it('should strip </style to prevent breakout with script injection', () => {
+			const result = createPage({
+				...defaultParams,
+				customCss: '</style><script>alert(1)</script>',
+			});
+
+			expect(result).not.toContain('</style><script');
+		});
+
+		it('should strip </style/> to prevent parser differential XSS', () => {
+			const result = createPage({
+				...defaultParams,
+				customCss: '</style/><script>alert(1)</script>',
+			});
+
+			// </style/> is recognized as a closing tag by browsers but not sanitize-html
+			expect(result).not.toContain('</style/>');
+			expect(result).not.toContain('</style/');
+		});
+
+		it('should strip </style//> variant', () => {
+			const result = createPage({
+				...defaultParams,
+				customCss: '</style//><img src=x onerror=alert(1)>',
+			});
+
+			expect(result).not.toContain('</style/');
+		});
+
+		it('should strip </style case-insensitively', () => {
+			const result = createPage({
+				...defaultParams,
+				customCss: '</STYLE><script>alert(1)</script>',
+			});
+
+			expect(result).not.toContain('</STYLE>');
+		});
+
+		it('should preserve legitimate CSS', () => {
+			const css = '.chat { color: red; font-size: 14px; }';
+			const result = createPage({
+				...defaultParams,
+				customCss: css,
+			});
+
+			expect(result).toContain(css);
+		});
+
+		it('should preserve CSS with special characters', () => {
+			const css = 'div > span + p ~ .class:hover { background: #fff; }';
+			const result = createPage({
+				...defaultParams,
+				customCss: css,
+			});
+
+			expect(result).toContain(css);
+		});
+	});
+
 	describe('General Security', () => {
 		it('should not expose raw user input in HTML comments or other locations', () => {
 			const maliciousInput = '</script><script>alert("XSS")</script>';
@@ -210,6 +286,91 @@ describe('ChatTrigger Templates Security', () => {
 			// Should still have i18n structure but no en property in the i18n config
 			expect(result).toContain('i18n: {');
 			expect(result).not.toContain('en: {');
+		});
+	});
+
+	describe('XSS Prevention in allowedFilesMimeTypes', () => {
+		it('should prevent script injection through allowedFilesMimeTypes', () => {
+			const maliciousInput = '</script><script>alert(document.cookie)</script>';
+
+			const result = createPage({
+				...defaultParams,
+				allowFileUploads: true,
+				allowedFilesMimeTypes: maliciousInput,
+			});
+
+			expect(result).not.toContain('<script>alert(document.cookie)</script>');
+			expect(result).not.toContain('</script><script>');
+			expect(result).not.toContain('alert(document.cookie)');
+		});
+
+		it('should sanitize common XSS payloads in allowedFilesMimeTypes', () => {
+			const xssPayloads = [
+				{ input: '<img src=x onerror=alert(1)>', dangerous: ['onerror=', '<img'] },
+				{ input: '<svg onload=alert(1)>', dangerous: ['onload=', '<svg'] },
+				{ input: 'javascript:alert(1)', dangerous: ['javascript:'] },
+			];
+
+			xssPayloads.forEach(({ input, dangerous }) => {
+				const result = createPage({
+					...defaultParams,
+					allowFileUploads: true,
+					allowedFilesMimeTypes: input,
+				});
+
+				dangerous.forEach((dangerousContent) => {
+					expect(result).not.toContain(dangerousContent);
+				});
+			});
+		});
+
+		it('should preserve legitimate MIME types', () => {
+			const legitimateMimeTypes = 'image/*,text/plain,application/pdf';
+
+			const result = createPage({
+				...defaultParams,
+				allowFileUploads: true,
+				allowedFilesMimeTypes: legitimateMimeTypes,
+			});
+
+			expect(result).toContain(legitimateMimeTypes);
+		});
+	});
+
+	describe('getSanitizedCustomCss function', () => {
+		it('should strip </style to prevent breakout', () => {
+			expect(getSanitizedCustomCss('</style><script>alert(1)</script>')).toBe(
+				'><script>alert(1)</script>',
+			);
+		});
+
+		it('should strip </style/> parser differential variant', () => {
+			expect(getSanitizedCustomCss('</style/><script>alert(1)</script>')).toBe(
+				'/><script>alert(1)</script>',
+			);
+		});
+
+		it('should strip </style case-insensitively', () => {
+			expect(getSanitizedCustomCss('</STYLE>')).toBe('>');
+			expect(getSanitizedCustomCss('</Style>')).toBe('>');
+			expect(getSanitizedCustomCss('</sTyLe>')).toBe('>');
+		});
+
+		it('should strip multiple </style occurrences', () => {
+			expect(getSanitizedCustomCss('</style>x</style>')).toBe('>x>');
+		});
+
+		it('should strip partial </style without closing >', () => {
+			expect(getSanitizedCustomCss('</style')).toBe('');
+		});
+
+		it('should handle empty string', () => {
+			expect(getSanitizedCustomCss('')).toBe('');
+		});
+
+		it('should preserve legitimate CSS', () => {
+			const css = '.chat { color: red; } div > span + p ~ .class:hover { background: #fff; }';
+			expect(getSanitizedCustomCss(css)).toBe(css);
 		});
 	});
 

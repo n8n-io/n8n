@@ -1,5 +1,5 @@
 import type { Tool } from '@langchain/core/tools';
-import { makeResolverFromLegacyOptions } from '@n8n/vm2';
+import { makeResolverFromLegacyOptions } from 'vm2';
 import { JavaScriptSandbox } from 'n8n-nodes-base/dist/nodes/Code/JavaScriptSandbox';
 import { getSandboxContext } from 'n8n-nodes-base/dist/nodes/Code/Sandbox';
 import { standardizeOutput } from 'n8n-nodes-base/dist/nodes/Code/utils';
@@ -16,7 +16,7 @@ import type {
 
 // TODO: Add support for execute function. Got already started but got commented out
 
-import { logWrapper } from '@utils/logWrapper';
+import { logWrapper } from '@n8n/ai-utilities';
 
 const { NODE_FUNCTION_ALLOW_BUILTIN: builtIn, NODE_FUNCTION_ALLOW_EXTERNAL: external } =
 	process.env;
@@ -48,10 +48,99 @@ const prompt = PromptTemplate.fromTemplate(query);
 const llm = await this.getInputConnectionData('ai_languageModel', 0);
 let chain = prompt.pipe(llm);
 const output = await chain.invoke();
-return [ {json: { output } } ];`;
+return [ {json: { output } } ];
+
+// NOTE: Old langchain imports (e.g., 'langchain/chains') are automatically
+// converted to '@langchain/classic' imports for backwards compatibility.`;
 
 const defaultCodeSupplyData = `const { WikipediaQueryRun } = require( '@langchain/community/tools/wikipedia_query_run');
 return new WikipediaQueryRun();`;
+
+/**
+ * Transforms old langchain import paths to @langchain/classic for backwards compatibility.
+ * Only transforms paths that actually moved to the classic package.
+ *
+ * @param moduleName - The original module name from the import statement
+ * @returns The transformed module name, or the original if no transformation is needed
+ */
+export function transformLegacyLangchainImport(moduleName: string): string {
+	// List of langchain submodules that moved to @langchain/classic
+	// Based on https://www.npmjs.com/package/@langchain/classic exports
+	const classicModules = [
+		'agents',
+		'callbacks',
+		'chains',
+		'chat_models/universal',
+		'document',
+		'document_loaders',
+		'document_transformers',
+		'embeddings/cache_backed',
+		'embeddings/fake',
+		'evaluation',
+		'experimental',
+		'hub',
+		'indexes',
+		'load',
+		'memory',
+		'output_parsers',
+		'retrievers',
+		'schema',
+		'smith',
+		'sql_db',
+		'storage',
+		'stores',
+		'text_splitter',
+		'tools',
+		'util',
+		'vectorstores',
+	];
+
+	// Check if this is a langchain/ import (old style)
+	if (moduleName.startsWith('langchain/')) {
+		const subpath = moduleName.substring('langchain/'.length);
+
+		// Check if this subpath or any parent path is in the classic modules list
+		for (const classicModule of classicModules) {
+			if (subpath === classicModule || subpath.startsWith(classicModule + '/')) {
+				// Transform to @langchain/classic
+				return `@langchain/classic/${subpath}`;
+			}
+		}
+	}
+
+	return moduleName;
+}
+
+/**
+ * Transforms user code to replace old langchain require/import statements
+ * with @langchain/classic equivalents.
+ *
+ * @param code - The user's code string
+ * @returns The transformed code with updated import paths
+ */
+function transformLegacyLangchainCode(code: string): string {
+	// Transform require statements: require('langchain/...')
+	let transformedCode = code.replace(
+		/require\s*\(\s*['"]langchain\/([\w/_]+)['"]\s*\)/g,
+		(match, subpath) => {
+			const oldPath = `langchain/${subpath}`;
+			const newPath = transformLegacyLangchainImport(oldPath);
+			return newPath === oldPath ? match : `require('${newPath}')`;
+		},
+	);
+
+	// Transform import statements: from 'langchain/...'
+	transformedCode = transformedCode.replace(
+		/from\s+['"]langchain\/([\w/_]+)['"]/g,
+		(match, subpath) => {
+			const oldPath = `langchain/${subpath}`;
+			const newPath = transformLegacyLangchainImport(oldPath);
+			return newPath === oldPath ? match : `from '${newPath}'`;
+		},
+	);
+
+	return transformedCode;
+}
 
 const langchainModules = ['langchain', '@langchain/*'];
 export const vmResolver = makeResolverFromLegacyOptions({
@@ -79,6 +168,9 @@ function getSandbox(
 	const node = this.getNode();
 	const workflowMode = this.getMode();
 
+	// Transform legacy langchain imports to @langchain/classic
+	const transformedCode = transformLegacyLangchainCode(code);
+
 	const context = getSandboxContext.call(this, itemIndex);
 	context.addInputData = this.addInputData.bind(this);
 	context.addOutputData = this.addOutputData.bind(this);
@@ -95,7 +187,7 @@ function getSandbox(
 		context.items = context.$input.all();
 	}
 
-	const sandbox = new JavaScriptSandbox(context, code, this.helpers, {
+	const sandbox = new JavaScriptSandbox(context, transformedCode, this.helpers, {
 		resolver: vmResolver,
 	});
 

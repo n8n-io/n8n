@@ -52,14 +52,12 @@ sudo systemctl disable cron.service
 curl -fsSL https://deb.nodesource.com/setup_20.x -o nodesource_setup.sh
 sudo -E bash nodesource_setup.sh
 
-# Install docker, docker compose, nodejs, python3, python3-pip
+# Install docker, docker compose, nodejs
 sudo DEBIAN_FRONTEND=noninteractive apt-get update -yq
-sudo DEBIAN_FRONTEND=noninteractive apt-get install -yq docker.io docker-compose nodejs python3 python3-pip
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -yq docker.io docker-compose nodejs
 
 # Add the current user to the docker group
 sudo usermod -aG docker "$CURRENT_USER"
 
-# Install zx and websockets
+# Install zx
 npm install zx
-pip3 install 'websockets==15.0.1'
-

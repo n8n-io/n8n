@@ -23,7 +23,7 @@ const svgFill = computed(() => {
 	if (props.theme === 'blank') {
 		return 'white';
 	} else if (props.theme === 'disabled') {
-		return 'var(--color-text-light)';
+		return 'var(--color--text--tint-1)';
 	}
 	return 'url(#paint0_linear_173_12825)';
 });
@@ -50,9 +50,9 @@ const svgFill = computed(() => {
 				y2="9.82667"
 				gradientUnits="userSpaceOnUse"
 			>
-				<stop stop-color="var(--color-assistant-highlight-1)" />
-				<stop offset="0.495" stop-color="var(--color-assistant-highlight-2)" />
-				<stop offset="1" stop-color="var(--color-assistant-highlight-3)" />
+				<stop stop-color="var(--assistant--color--highlight-1)" />
+				<stop offset="0.495" stop-color="var(--assistant--color--highlight-2)" />
+				<stop offset="1" stop-color="var(--assistant--color--highlight-3)" />
 			</linearGradient>
 		</defs>
 	</svg>

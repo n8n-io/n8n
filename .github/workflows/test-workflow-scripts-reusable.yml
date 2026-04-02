@@ -1,0 +1,37 @@
+name: 'Test: Workflow scripts'
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: GitHub ref to lint.
+        required: false
+        type: string
+        default: ''
+      nodeVersion:
+        description: Version of node to use.
+        required: false
+        type: string
+        default: 24.14.1
+
+env:
+  NODE_OPTIONS: --max-old-space-size=7168
+
+jobs:
+  workflow-script-tests:
+    name: Run tests for workflow scripts
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-slim' || 'blacksmith-4vcpu-ubuntu-2204' }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ''
+          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+
+      - name: Run tests
+        id: run-tests
+        run: npm test --prefix=.github/scripts

@@ -1,0 +1,77 @@
+{
+	"name": "Google Analytics UserActivity Search Test Workflow",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-id",
+			"name": "When clicking 'Execute Workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "userActivity",
+				"operation": "search",
+				"viewId": "123456789",
+				"userId": "user123",
+				"returnAll": false,
+				"limit": 100,
+				"additionalFields": {
+					"activityTypes": ["PAGEVIEW", "EVENT"]
+				}
+			},
+			"type": "n8n-nodes-base.googleAnalytics",
+			"typeVersion": 2,
+			"position": [200, 0],
+			"id": "useractivity-search-node",
+			"name": "UserActivity Search",
+			"credentials": {
+				"googleAnalyticsOAuth2": {
+					"id": "ga-oauth-cred-id",
+					"name": "Google Analytics OAuth2"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"UserActivity Search": [
+			{
+				"json": {
+					"sessionId": "session123",
+					"deviceCategory": "desktop",
+					"platform": "web",
+					"dataSource": "web",
+					"activities": [
+						{
+							"activityTime": "2024-01-01T10:00:00Z",
+							"source": "web",
+							"medium": "organic",
+							"channelGrouping": "Organic Search",
+							"campaign": "spring_sale",
+							"keyword": "analytics",
+							"hostname": "example.com"
+						}
+					]
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "UserActivity Search",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

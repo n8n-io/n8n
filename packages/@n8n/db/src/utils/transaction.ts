@@ -11,5 +11,6 @@ export async function withTransaction<T>(
 	run: (em: EntityManager) => Promise<T>,
 ): Promise<T> {
 	if (trx) return await run(trx);
+
 	return await manager.transaction(run);
 }

@@ -1,7 +1,8 @@
 import { mockInstance } from '@n8n/backend-test-utils';
+import { LicenseState } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { User, WorkflowEntity } from '@n8n/db';
-import { WorkflowRepository, DbConnection, AuthRolesService } from '@n8n/db';
+import { WorkflowRepository, DbConnection, AuthRolesService, BinaryDataRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { IRun } from 'n8n-workflow';
@@ -12,8 +13,10 @@ import { ActiveExecutions } from '@/active-executions';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
+import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
 import { ExternalHooks } from '@/external-hooks';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { License } from '@/license';
 import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
 import { PostHogClient } from '@/posthog';
 import { OwnershipService } from '@/services/ownership.service';
@@ -33,14 +36,18 @@ mockInstance(MessageEventBus);
 const posthogClient = mockInstance(PostHogClient);
 const telemetryEventRelay = mockInstance(TelemetryEventRelay);
 const externalHooks = mockInstance(ExternalHooks);
+mockInstance(License);
+mockInstance(LicenseState);
 mockInstance(CommunityPackagesService);
+mockInstance(WorkflowFailureNotificationEventRelay);
 
 const dbConnection = mockInstance(DbConnection);
 dbConnection.init.mockResolvedValue(undefined);
 dbConnection.migrate.mockResolvedValue(undefined);
 mockInstance(AuthRolesService);
+mockInstance(BinaryDataRepository);
 
-test('should start a task runner when task runners are enabled', async () => {
+test('should start a task runner', async () => {
 	// arrange
 
 	const workflow = mock<WorkflowEntity>({
@@ -65,7 +72,7 @@ test('should start a task runner when task runners are enabled', async () => {
 	Container.set(
 		GlobalConfig,
 		mock<GlobalConfig>({
-			taskRunners: { enabled: true },
+			taskRunners: {},
 			nodes: {},
 		}),
 	);

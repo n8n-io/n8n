@@ -56,7 +56,14 @@ export namespace PubSub {
 		export type DisplayWorkflowDeactivation = ToCommand<'display-workflow-deactivation'>;
 		export type DisplayWorkflowActivationError = ToCommand<'display-workflow-activation-error'>;
 		export type RelayExecutionLifecycleEvent = ToCommand<'relay-execution-lifecycle-event'>;
+		export type RelayChatStreamEvent = ToCommand<'relay-chat-stream-event'>;
+		export type RelayChatHumanMessage = ToCommand<'relay-chat-human-message'>;
+		export type RelayChatMessageEdit = ToCommand<'relay-chat-message-edit'>;
 		export type ClearTestWebhooks = ToCommand<'clear-test-webhooks'>;
+		export type ReloadSsoProvisioningConfiguration =
+			ToCommand<'reload-sso-provisioning-configuration'>;
+		export type ReloadSourceControlConfiguration = ToCommand<'reload-source-control-config'>;
+		export type CancelTestRun = ToCommand<'cancel-test-run'>;
 	}
 
 	/** Command sent via the `n8n.commands` pubsub channel. */
@@ -75,10 +82,16 @@ export namespace PubSub {
 		| Commands.DisplayWorkflowDeactivation
 		| Commands.DisplayWorkflowActivationError
 		| Commands.RelayExecutionLifecycleEvent
+		| Commands.RelayChatStreamEvent
+		| Commands.RelayChatHumanMessage
+		| Commands.RelayChatMessageEdit
 		| Commands.ClearTestWebhooks
 		| Commands.ReloadOIDCConfiguration
 		| Commands.ReloadSamlConfiguration
-		| Commands.ReloadCredentialsOverwrites;
+		| Commands.ReloadCredentialsOverwrites
+		| Commands.ReloadSsoProvisioningConfiguration
+		| Commands.ReloadSourceControlConfiguration
+		| Commands.CancelTestRun;
 
 	// ----------------------------------
 	//         worker responses

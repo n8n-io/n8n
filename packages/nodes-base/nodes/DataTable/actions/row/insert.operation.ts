@@ -1,5 +1,5 @@
 import type {
-	IDataStoreProjectService,
+	IDataTableProjectService,
 	IDisplayOptions,
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -45,7 +45,7 @@ export async function execute(
 	index: number,
 ): Promise<INodeExecutionData[]> {
 	const optimizeBulkEnabled = this.getNodeParameter('options.optimizeBulk', index, false);
-	const dataStoreProxy = await getDataTableProxyExecute(this, index);
+	const dataTableProxy = await getDataTableProxyExecute(this, index);
 
 	const row = getAddRow(this, index);
 
@@ -55,17 +55,17 @@ export async function execute(
 			message: 'Unable to optimize bulk insert due to expression in Data table ID ',
 			location: 'outputPane',
 		});
-		const json = await dataStoreProxy.insertRows([row], 'count');
+		const json = await dataTableProxy.insertRows([row], 'count');
 		return [{ json }];
 	} else {
-		const insertedRows = await dataStoreProxy.insertRows([row], 'all');
+		const insertedRows = await dataTableProxy.insertRows([row], 'all');
 		return insertedRows.map((json, item) => ({ json, pairedItem: { item } }));
 	}
 }
 
 export async function executeBulk(
 	this: IExecuteFunctions,
-	proxy: IDataStoreProjectService,
+	proxy: IDataTableProjectService,
 ): Promise<INodeExecutionData[]> {
 	const optimizeBulkEnabled = this.getNodeParameter('options.optimizeBulk', 0, false);
 	const rows = this.getInputData().flatMap((_, i) => [getAddRow(this, i)]);

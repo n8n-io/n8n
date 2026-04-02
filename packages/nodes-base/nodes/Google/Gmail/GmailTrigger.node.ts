@@ -109,6 +109,10 @@ export class GmailTrigger implements INodeType {
 				default: true,
 				description:
 					'Whether to return a simplified version of the response instead of the raw data',
+				builderHint: {
+					message:
+						'Set to false when the email body is needed for AI analysis, summarization, or content processing. When true, only returns snippet (preview text). When false, returns full email with {id, threadId, labelIds, headers, html, text, textAsHtml, subject, date, to, from, messageId, replyTo}.',
+				},
 			},
 			{
 				displayName: 'Filters',
@@ -148,6 +152,10 @@ export class GmailTrigger implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: 'has:attachment',
+						builderHint: {
+							message:
+								'Always set a search query to filter emails. Uses Gmail search syntax, e.g. "from:example@gmail.com", "subject:invoice", "has:attachment", "label:important", "newer_than:1d". Combine with spaces for AND: "from:shop@example.com subject:delivery". Without this filter, ALL incoming emails will trigger the workflow.',
+						},
 						hint: 'Use the same format as in the Gmail search box. <a href="https://support.google.com/mail/answer/7190?hl=en">More info</a>.',
 						description: 'Only return messages matching the specified query',
 					},
@@ -269,13 +277,17 @@ export class GmailTrigger implements INodeType {
 		}
 
 		const now = Math.floor(DateTime.now().toSeconds()).toString();
+
+		if (this.getMode() !== 'manual') {
+			nodeStaticData.lastTimeChecked ??= +now;
+		}
 		const startDate = nodeStaticData.lastTimeChecked ?? +now;
-		const endDate = +now;
 
 		const options = this.getNodeParameter('options', {}) as GmailTriggerOptions;
 		const filters = this.getNodeParameter('filters', {}) as GmailTriggerFilters;
 
 		let responseData: INodeExecutionData[] = [];
+		const allFetchedMessages: Message[] = [];
 
 		try {
 			const qs: IDataObject = {};
@@ -299,7 +311,6 @@ export class GmailTrigger implements INodeType {
 			const messages = messagesResponse.messages ?? [];
 
 			if (!messages.length) {
-				nodeStaticData.lastTimeChecked = endDate;
 				return null;
 			}
 
@@ -329,6 +340,8 @@ export class GmailTrigger implements INodeType {
 					{},
 					qs,
 				)) as Message;
+
+				allFetchedMessages.push(fullMessage);
 
 				if (!includeDrafts) {
 					if (fullMessage.labelIds?.includes('DRAFT')) {
@@ -376,8 +389,8 @@ export class GmailTrigger implements INodeType {
 				},
 			);
 		}
-		if (!responseData.length) {
-			nodeStaticData.lastTimeChecked = endDate;
+
+		if (!allFetchedMessages.length) {
 			return null;
 		}
 
@@ -402,17 +415,15 @@ export class GmailTrigger implements INodeType {
 			return date;
 		};
 
-		const lastEmailDate = responseData.reduce((lastDate, { json }) => {
-			const emailDate = getEmailDateAsSeconds(json as Message);
+		const lastEmailDate = allFetchedMessages.reduce((lastDate, message) => {
+			const emailDate = getEmailDateAsSeconds(message);
 			return emailDate > lastDate ? emailDate : lastDate;
 		}, 0);
 
-		const nextPollPossibleDuplicates = responseData
-			.filter((item) => item.json)
-			.reduce((duplicates, { json }) => {
-				const emailDate = getEmailDateAsSeconds(json as Message);
-				return emailDate <= lastEmailDate ? duplicates.concat((json as Message).id) : duplicates;
-			}, Array.from(emailsWithInvalidDate));
+		const nextPollPossibleDuplicates = allFetchedMessages.reduce((duplicates, message) => {
+			const emailDate = getEmailDateAsSeconds(message);
+			return emailDate <= lastEmailDate ? duplicates.concat(message.id) : duplicates;
+		}, Array.from(emailsWithInvalidDate));
 
 		const possibleDuplicates = new Set(nodeStaticData.possibleDuplicates ?? []);
 		if (possibleDuplicates.size > 0) {
@@ -423,7 +434,7 @@ export class GmailTrigger implements INodeType {
 		}
 
 		nodeStaticData.possibleDuplicates = nextPollPossibleDuplicates;
-		nodeStaticData.lastTimeChecked = lastEmailDate || endDate;
+		nodeStaticData.lastTimeChecked = lastEmailDate ?? +startDate;
 
 		if (Array.isArray(responseData) && responseData.length) {
 			return [responseData];

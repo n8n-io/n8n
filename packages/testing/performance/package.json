@@ -1,0 +1,19 @@
+{
+	"name": "@n8n/performance",
+	"version": "1.0.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"format": "biome format --write .",
+		"format:check": "biome ci .",
+		"bench": "vitest bench --run",
+		"bench:baseline": "node scripts/save-baseline.mjs",
+		"bench:compare": "vitest bench --run --outputJson ./profiles/benchmark-results.json && node scripts/check-regression.mjs"
+	},
+	"devDependencies": {
+		"@codspeed/vitest-plugin": "^5.2.0",
+    "@n8n/expression-runtime": "workspace:*",
+    "vitest": "catalog:",
+		"n8n-workflow": "workspace:*"
+	}
+}

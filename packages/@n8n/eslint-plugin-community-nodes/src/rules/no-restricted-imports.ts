@@ -1,8 +1,13 @@
-import { ESLintUtils } from '@typescript-eslint/utils';
-import { getModulePath, isDirectRequireCall, isRequireMemberCall } from '../utils/index.js';
+import {
+	getModulePath,
+	isDirectRequireCall,
+	isRequireMemberCall,
+	createRule,
+} from '../utils/index.js';
 
 const allowedModules = [
 	'n8n-workflow',
+	'ai-node-sdk',
 	'lodash',
 	'moment',
 	'p-limit',
@@ -10,6 +15,7 @@ const allowedModules = [
 	'zod',
 	'crypto',
 	'node:crypto',
+	'@n8n/ai-node-sdk',
 ];
 
 const isModuleAllowed = (modulePath: string): boolean => {
@@ -22,7 +28,8 @@ const isModuleAllowed = (modulePath: string): boolean => {
 	return allowedModules.includes(moduleName);
 };
 
-export const NoRestrictedImportsRule = ESLintUtils.RuleCreator.withoutDocs({
+export const NoRestrictedImportsRule = createRule({
+	name: 'no-restricted-imports',
 	meta: {
 		type: 'problem',
 		docs: {

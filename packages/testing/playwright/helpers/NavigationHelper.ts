@@ -1,5 +1,7 @@
 import type { Page } from '@playwright/test';
 
+import { SecretsProviderSettingsPage } from '../pages/SecretsProviderSettingsPage';
+
 /**
  * NavigationHelper provides centralized navigation methods for all n8n routes.
  * Handles both project-specific and global routes with proper URL construction.
@@ -13,7 +15,11 @@ import type { Page } from '@playwright/test';
  * - Executions: /home/executions or /projects/{projectId}/executions
  */
 export class NavigationHelper {
-	constructor(private page: Page) {}
+	private readonly secretsProviderSettings: SecretsProviderSettingsPage;
+
+	constructor(private page: Page) {
+		this.secretsProviderSettings = new SecretsProviderSettingsPage(page);
+	}
 
 	/**
 	 * Navigate to the home dashboard
@@ -45,14 +51,8 @@ export class NavigationHelper {
 		await this.page.goto(url);
 	}
 
-	/**
-	 * Navigate to executions page
-	 * URLs:
-	 * - Home executions: /home/executions
-	 * - Project executions: /projects/{projectId}/executions
-	 */
-	async toExecutions(projectId?: string): Promise<void> {
-		const url = projectId ? `/projects/${projectId}/executions` : '/home/executions';
+	async toDatatables(projectId?: string): Promise<void> {
+		const url = projectId ? `/projects/${projectId}/datatables` : '/home/datatables';
 		await this.page.goto(url);
 	}
 
@@ -66,27 +66,11 @@ export class NavigationHelper {
 	}
 
 	/**
-	 * Navigate to settings page (global only)
-	 * URL: /settings
-	 */
-	async toSettings(): Promise<void> {
-		await this.page.goto('/settings');
-	}
-
-	/**
 	 * Navigate to personal settings
 	 * URL: /settings/personal
 	 */
 	async toPersonalSettings(): Promise<void> {
 		await this.page.goto('/settings/personal');
-	}
-
-	/**
-	 * Navigate to projects page
-	 * URL: /projects
-	 */
-	async toProjects(): Promise<void> {
-		await this.page.goto('/projects');
 	}
 
 	/**
@@ -152,6 +136,38 @@ export class NavigationHelper {
 	}
 
 	/**
+	 * Navigate to template onboarding flow
+	 * URL: /workflows/onboarding/{templateId}
+	 */
+	async toOnboardingTemplate(templateId: string): Promise<void> {
+		await this.page.goto(`/workflows/onboarding/${templateId}`);
+	}
+
+	/**
+	 * Navigate to template import flow
+	 * URL: /workflows/templates/{templateId}
+	 */
+	async toTemplateImport(templateId: string): Promise<void> {
+		await this.page.goto(`/workflows/templates/${templateId}`);
+	}
+
+	/**
+	 * Navigate to a template collection page
+	 * URL: /collections/{collectionId}
+	 */
+	async toTemplateCollection(collectionId: number): Promise<void> {
+		await this.page.goto(`/collections/${collectionId}`);
+	}
+
+	/**
+	 * Navigate to template credential setup page
+	 * URL: /templates/{templateId}/setup
+	 */
+	async toTemplateCredentialSetup(templateId: number): Promise<void> {
+		await this.page.goto(`/templates/${templateId}/setup`);
+	}
+
+	/**
 	 * Navigate to community nodes
 	 * URL: /settings/community-nodes
 	 */
@@ -165,14 +181,6 @@ export class NavigationHelper {
 	 */
 	async toLogStreaming(): Promise<void> {
 		await this.page.goto('/settings/log-streaming');
-	}
-
-	/**
-	 * Navigate to worker view
-	 * URL: /settings/workers
-	 */
-	async toWorkerView(): Promise<void> {
-		await this.page.goto('/settings/workers');
 	}
 
 	/**
@@ -192,34 +200,50 @@ export class NavigationHelper {
 	}
 
 	/**
-	 * Navigate to LDAP settings
-	 * URL: /settings/ldap
+	 * Navigate to environments settings
+	 * URL: /settings/environments
 	 */
-	async toLdapSettings(): Promise<void> {
-		await this.page.goto('/settings/ldap');
+	async toEnvironments(): Promise<void> {
+		await this.page.goto('/settings/environments');
 	}
 
 	/**
-	 * Navigate to SSO settings
-	 * URL: /settings/sso
+	 * Navigate to settings page
+	 * URL: /settings/chat
 	 */
-	async toSsoSettings(): Promise<void> {
-		await this.page.goto('/settings/sso');
+	async toChatHubSettings(): Promise<void> {
+		await this.page.goto('/settings/chat');
 	}
 
 	/**
-	 * Navigate to source control settings
-	 * URL: /settings/source-control
+	 * Navigate to ChatHub chat page
+	 * URL: /home/chat
 	 */
-	async toSourceControl(): Promise<void> {
-		await this.page.goto('/settings/source-control');
+	async toChatHub() {
+		await this.page.goto('/home/chat');
 	}
 
 	/**
-	 * Navigate to external secrets settings
+	 * Navigate to ChatHub personal agent list
+	 * URL: /home/chat/personal-agents
+	 */
+	async toChatHubPersonalAgents() {
+		await this.page.goto('/home/chat/personal-agents');
+	}
+
+	/**
+	 * Navigate to ChatHub workflow agent list
+	 * URL: /home/chat/workflow-agents
+	 */
+	async toChatHubWorkflowAgents() {
+		await this.page.goto('/home/chat/workflow-agents');
+	}
+
+	/**
+	 * Navigate to external secrets settings page
 	 * URL: /settings/external-secrets
 	 */
 	async toExternalSecrets(): Promise<void> {
-		await this.page.goto('/settings/external-secrets');
+		await this.secretsProviderSettings.goto();
 	}
 }

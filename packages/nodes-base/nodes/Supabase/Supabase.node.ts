@@ -17,6 +17,7 @@ import {
 	buildGetQuery,
 	buildOrQuery,
 	buildQuery,
+	getSchemaHeader,
 	mapPairedItemsFrom,
 	supabaseApiRequest,
 	validateCredentials,
@@ -48,6 +49,16 @@ export class Supabase implements INodeType {
 				name: 'supabaseApi',
 				required: true,
 				testedBy: 'supabaseApiCredentialTest',
+			},
+		],
+		hints: [
+			{
+				type: 'info',
+				message:
+					'Note on using an expression for Schema: It will be evaluated only once, so all items will use the <em>same</em> document. It will be calculated by evaluating the expression for the <strong>first input item</strong>.',
+				displayCondition: '={{ $rawParameter.schema?.startsWith("=") && $input.all().length > 1 }}',
+				whenToDisplay: 'always',
+				location: 'outputPane',
 			},
 		],
 		properties: [
@@ -91,7 +102,16 @@ export class Supabase implements INodeType {
 		loadOptions: {
 			async getTables(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const { paths } = await supabaseApiRequest.call(this, 'GET', '/');
+				const header = getSchemaHeader(this, 'GET', 'loadOptions');
+				const { paths } = await supabaseApiRequest.call(
+					this,
+					'GET',
+					'/',
+					{},
+					{},
+					undefined,
+					header,
+				);
 				for (const path of Object.keys(paths as IDataObject)) {
 					//omit introspection path
 					if (path === '/') continue;
@@ -105,7 +125,16 @@ export class Supabase implements INodeType {
 			async getTableColumns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const tableName = this.getCurrentNodeParameter('tableId') as string;
-				const { definitions } = await supabaseApiRequest.call(this, 'GET', '/');
+				const header = getSchemaHeader(this, 'GET', 'loadOptions');
+				const { definitions } = await supabaseApiRequest.call(
+					this,
+					'GET',
+					'/',
+					{},
+					{},
+					undefined,
+					header,
+				);
 				for (const column of Object.keys(definitions[tableName].properties as IDataObject)) {
 					returnData.push({
 						name: `${column} - (${definitions[tableName].properties[column].type})`,
@@ -150,6 +179,7 @@ export class Supabase implements INodeType {
 
 			if (operation === 'create') {
 				const records: IDataObject[] = [];
+				const header = getSchemaHeader(this, 'POST', 'execute');
 
 				for (let i = 0; i < length; i++) {
 					const record: IDataObject = {};
@@ -182,6 +212,9 @@ export class Supabase implements INodeType {
 						'POST',
 						endpoint,
 						records,
+						{},
+						undefined,
+						header,
 					);
 					createdRows.forEach((row, i) => {
 						const executionData = this.helpers.constructExecutionMetaData(
@@ -205,6 +238,8 @@ export class Supabase implements INodeType {
 
 			if (operation === 'delete') {
 				const filterType = this.getNodeParameter('filterType', 0) as string;
+				const header = getSchemaHeader(this, 'DELETE', 'execute');
+
 				for (let i = 0; i < length; i++) {
 					let endpoint = `/${tableId}`;
 					if (filterType === 'manual') {
@@ -237,7 +272,15 @@ export class Supabase implements INodeType {
 					let rows;
 
 					try {
-						rows = await supabaseApiRequest.call(this, 'DELETE', endpoint, {}, qs);
+						rows = await supabaseApiRequest.call(
+							this,
+							'DELETE',
+							endpoint,
+							{},
+							qs,
+							undefined,
+							header,
+						);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							const executionData = this.helpers.constructExecutionMetaData(
@@ -260,6 +303,7 @@ export class Supabase implements INodeType {
 
 			if (operation === 'get') {
 				const endpoint = `/${tableId}`;
+				const header = getSchemaHeader(this, 'GET', 'execute');
 
 				for (let i = 0; i < length; i++) {
 					const keys = this.getNodeParameter('filters.conditions', i, []) as IDataObject[];
@@ -276,7 +320,7 @@ export class Supabase implements INodeType {
 					}
 
 					try {
-						rows = await supabaseApiRequest.call(this, 'GET', endpoint, {}, qs);
+						rows = await supabaseApiRequest.call(this, 'GET', endpoint, {}, qs, undefined, header);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							const executionData = this.helpers.constructExecutionMetaData(
@@ -300,6 +344,7 @@ export class Supabase implements INodeType {
 			if (operation === 'getAll') {
 				const returnAll = this.getNodeParameter('returnAll', 0);
 				const filterType = this.getNodeParameter('filterType', 0) as string;
+				const header = getSchemaHeader(this, 'GET', 'execute');
 
 				let endpoint = `/${tableId}`;
 				for (let i = 0; i < length; i++) {
@@ -335,7 +380,15 @@ export class Supabase implements INodeType {
 					try {
 						let responseLength = 0;
 						do {
-							const newRows = await supabaseApiRequest.call(this, 'GET', endpoint, {}, qs);
+							const newRows = await supabaseApiRequest.call(
+								this,
+								'GET',
+								endpoint,
+								{},
+								qs,
+								undefined,
+								header,
+							);
 							responseLength = newRows.length;
 							rows = rows.concat(newRows);
 							qs.offset = rows.length;
@@ -363,6 +416,8 @@ export class Supabase implements INodeType {
 			if (operation === 'update') {
 				const filterType = this.getNodeParameter('filterType', 0) as string;
 				let endpoint = `/${tableId}`;
+				const header = getSchemaHeader(this, 'PATCH', 'execute');
+
 				for (let i = 0; i < length; i++) {
 					if (filterType === 'manual') {
 						const matchType = this.getNodeParameter('matchType', 0) as string;
@@ -414,7 +469,15 @@ export class Supabase implements INodeType {
 					let updatedRow;
 
 					try {
-						updatedRow = await supabaseApiRequest.call(this, 'PATCH', endpoint, record, qs);
+						updatedRow = await supabaseApiRequest.call(
+							this,
+							'PATCH',
+							endpoint,
+							record,
+							qs,
+							undefined,
+							header,
+						);
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(updatedRow as IDataObject[]),
 							{ itemData: { item: i } },

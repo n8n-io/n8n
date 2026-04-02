@@ -2,6 +2,7 @@
 import { usePersonalizedTemplatesV3Store } from '../stores/personalizedTemplatesV3.store';
 import NodeRecommendationCard from './NodeRecommendationCard.vue';
 import { useI18n } from '@n8n/i18n';
+import { N8nHeading } from '@n8n/design-system';
 
 const personalizedTemplateStore = usePersonalizedTemplatesV3Store();
 const locale = useI18n();
@@ -26,7 +27,7 @@ const locale = useI18n();
 .nodeCardsContainer {
 	display: flex;
 	justify-content: center;
-	gap: var(--spacing-s);
-	margin-top: var(--spacing-xl);
+	gap: var(--spacing--sm);
+	margin-top: var(--spacing--xl);
 }
 </style>

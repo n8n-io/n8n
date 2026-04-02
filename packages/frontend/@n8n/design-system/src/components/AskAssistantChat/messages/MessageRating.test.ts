@@ -59,8 +59,9 @@ describe('MessageRating', () => {
 			expect(wrapper.emitted().feedback[0]).toEqual([{ rating: 'down' }]);
 		});
 
-		it('should hide rating buttons and show success after thumbs up', async () => {
+		it('should hide rating buttons and show success after thumbs up when showFeedback is false', async () => {
 			const wrapper = render(MessageRating, {
+				props: { showFeedback: false },
 				global: { stubs },
 			});
 
@@ -74,7 +75,7 @@ describe('MessageRating', () => {
 			expect(
 				wrapper.container.querySelector('[data-test-id="message-thumbs-down-button"]'),
 			).toBeFalsy();
-			expect(wrapper.getByText('assistantChat.builder.success')).toBeTruthy();
+			expect(wrapper.getByText('assistantChat.rating.success')).toBeTruthy();
 		});
 
 		it('should hide rating buttons and show feedback form after thumbs down when showFeedback is true', async () => {
@@ -118,7 +119,7 @@ describe('MessageRating', () => {
 			expect(
 				wrapper.container.querySelector('[data-test-id="message-feedback-input"]'),
 			).toBeFalsy();
-			expect(wrapper.getByText('assistantChat.builder.success')).toBeTruthy();
+			expect(wrapper.getByText('assistantChat.rating.success')).toBeTruthy();
 		});
 	});
 
@@ -155,7 +156,7 @@ describe('MessageRating', () => {
 			expect(
 				wrapper.container.querySelector('[data-test-id="message-feedback-input"]'),
 			).toBeFalsy();
-			expect(wrapper.getByText('assistantChat.builder.success')).toBeTruthy();
+			expect(wrapper.getByText('assistantChat.rating.success')).toBeTruthy();
 		});
 
 		it('should cancel feedback and return to rating buttons', async () => {
@@ -189,7 +190,7 @@ describe('MessageRating', () => {
 
 		it('should focus feedback input after thumbs down in regular mode', async () => {
 			const wrapper = render(MessageRating, {
-				props: { showFeedback: true, style: 'regular' },
+				props: { showFeedback: true },
 				global: { stubs },
 			});
 
@@ -234,44 +235,6 @@ describe('MessageRating', () => {
 				'[data-test-id="message-feedback-input"]',
 			);
 			expect(feedbackInputAfter?.getAttribute('modelvalue')).toBe('');
-		});
-	});
-
-	describe('textarea rows based on style', () => {
-		it('should have 5 rows for regular style', async () => {
-			const wrapper = render(MessageRating, {
-				props: { showFeedback: true, style: 'regular' },
-				global: { stubs },
-			});
-
-			const downButton = wrapper.container.querySelector(
-				'[data-test-id="message-thumbs-down-button"]',
-			);
-			await fireEvent.click(downButton!);
-			await nextTick();
-
-			const feedbackInput = wrapper.container.querySelector(
-				'[data-test-id="message-feedback-input"]',
-			);
-			expect(feedbackInput?.getAttribute('rows')).toBe('5');
-		});
-
-		it('should have 3 rows for minimal style', async () => {
-			const wrapper = render(MessageRating, {
-				props: { showFeedback: true, style: 'minimal' },
-				global: { stubs },
-			});
-
-			const downButton = wrapper.container.querySelector(
-				'[data-test-id="message-thumbs-down-button"]',
-			);
-			await fireEvent.click(downButton!);
-			await nextTick();
-
-			const feedbackInput = wrapper.container.querySelector(
-				'[data-test-id="message-feedback-input"]',
-			);
-			expect(feedbackInput?.getAttribute('rows')).toBe('3');
 		});
 	});
 });

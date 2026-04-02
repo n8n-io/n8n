@@ -2,7 +2,7 @@
 import { ElInputNumber } from 'element-plus';
 import { computed } from 'vue';
 
-import type { ElementPlusSizePropType, InputSize } from '@n8n/design-system/types';
+import type { ElementPlusSizePropType, InputSize } from '../../types';
 
 type InputNumberProps = {
 	size?: InputSize;
@@ -38,6 +38,13 @@ const resolvedSize = computed(() => (props.size ? sizeMap[props.size] : undefine
 		:max="max"
 		:step="step"
 		:precision="precision"
+		:class="$style.inputNumber"
 		v-bind="$attrs"
 	/>
 </template>
+
+<style lang="scss" module>
+.inputNumber {
+	--input--color--background: light-dark(var(--color--neutral-white), var(--color--neutral-950));
+}
+</style>

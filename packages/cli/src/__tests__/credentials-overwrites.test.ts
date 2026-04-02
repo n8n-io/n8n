@@ -1,8 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
-import type { GlobalConfig } from '@n8n/config';
+import type { CommaSeparatedStringArray, GlobalConfig } from '@n8n/config';
 import { SettingsRepository } from '@n8n/db';
-import type { NextFunction, Request, Response } from 'express';
 import { mock } from 'jest-mock-extended';
 import { Cipher, UnrecognizedCredentialTypeError } from 'n8n-core';
 import type { ICredentialType } from 'n8n-workflow';
@@ -10,6 +9,7 @@ import type { ICredentialType } from 'n8n-workflow';
 import type { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import type { ICredentialsOverwrite } from '@/interfaces';
+import { StaticAuthService } from '@/services/static-auth-service';
 
 describe('CredentialsOverwrites', () => {
 	const testCredentialType = mock<ICredentialType>({ name: 'test', extends: ['parent'] });
@@ -27,6 +27,8 @@ describe('CredentialsOverwrites', () => {
 			test: { username: 'user' },
 			parent: { password: 'pass' },
 		});
+		globalConfig.credentials.overwrite.skipTypes =
+			[] as unknown as CommaSeparatedStringArray<string>;
 		credentialTypes.recognizes.mockReturnValue(true);
 		credentialTypes.getByName.mockImplementation((credentialType) => {
 			if (credentialType === testCredentialType.name) return testCredentialType;
@@ -61,20 +63,8 @@ describe('CredentialsOverwrites', () => {
 	});
 
 	describe('getOverwriteEndpointMiddleware', () => {
-		it('should return null if endpointAuthToken is not provided', () => {
-			globalConfig.credentials.overwrite.endpointAuthToken = '';
-			const localCredentialsOverwrites = new CredentialsOverwrites(
-				globalConfig,
-				credentialTypes,
-				logger,
-				mock(),
-				mock(),
-			);
-			const middleware = localCredentialsOverwrites.getOverwriteEndpointMiddleware();
-			expect(middleware).toBeNull();
-		});
-
-		it('should return a middleware function, if endpointAuthToken is provided', () => {
+		it('should call the static auth middleware with the correct token', () => {
+			const getStaticAuthMiddlewareSpy = jest.spyOn(StaticAuthService, 'getStaticAuthMiddleware');
 			globalConfig.credentials.overwrite.endpointAuthToken = 'test-token';
 			const localCredentialsOverwrites = new CredentialsOverwrites(
 				globalConfig,
@@ -83,85 +73,9 @@ describe('CredentialsOverwrites', () => {
 				mock(),
 				mock(),
 			);
-			const middleware = localCredentialsOverwrites.getOverwriteEndpointMiddleware();
-			expect(typeof middleware).toBe('function');
-		});
-
-		describe('middleware', () => {
-			let next: () => void;
-			let send: () => void;
-			let status: () => {
-				send: () => void;
-			};
-			let middleware: null | ((req: Request, res: Response, next: NextFunction) => void);
-			beforeEach(() => {
-				globalConfig.credentials.overwrite.endpointAuthToken = 'test-token';
-				next = jest.fn();
-				send = jest.fn();
-				status = jest.fn().mockImplementation(() => {
-					return {
-						send,
-					};
-				});
-
-				const localCredentialsOverwrites = new CredentialsOverwrites(
-					globalConfig,
-					credentialTypes,
-					logger,
-					mock(),
-					mock(),
-				);
-				middleware = localCredentialsOverwrites.getOverwriteEndpointMiddleware();
-			});
-
-			it('should call next with correct credentials', () => {
-				middleware!(
-					{
-						headers: {
-							authorization: `Bearer ${globalConfig.credentials.overwrite.endpointAuthToken}`,
-						},
-					} as any as Request,
-					{
-						status,
-					} as any as Response,
-					next,
-				);
-				expect(next).toHaveBeenCalled();
-				expect(status).not.toHaveBeenCalled();
-				expect(send).not.toHaveBeenCalled();
-			});
-
-			it('should respond with 401 with invalid token', () => {
-				middleware!(
-					{
-						headers: {
-							authorization: 'Bearer invalid-token',
-						},
-					} as any as Request,
-					{
-						status,
-					} as any as Response,
-					next,
-				);
-				expect(next).not.toHaveBeenCalled();
-				expect(status).toHaveBeenCalledWith(401);
-				expect(send).toHaveBeenCalled();
-			});
-
-			it('should respond with 401 without token', () => {
-				middleware!(
-					{
-						headers: {},
-					} as any as Request,
-					{
-						status,
-					} as any as Response,
-					next,
-				);
-				expect(next).not.toHaveBeenCalled();
-				expect(status).toHaveBeenCalledWith(401);
-				expect(send).toHaveBeenCalled();
-			});
+			localCredentialsOverwrites.getOverwriteEndpointMiddleware();
+			expect(getStaticAuthMiddlewareSpy).toHaveBeenCalledWith('test-token');
+			getStaticAuthMiddlewareSpy.mockRestore();
 		});
 	});
 
@@ -197,6 +111,50 @@ describe('CredentialsOverwrites', () => {
 
 			const result = credentialsOverwrites.applyOverwrite('unknownCredential', data);
 			expect(result).toEqual(data);
+		});
+
+		describe('N8N_SKIP_CREDENTIAL_OVERWRITE', () => {
+			beforeEach(() => {
+				globalConfig.credentials.overwrite.skipTypes = [
+					'test',
+				] as unknown as CommaSeparatedStringArray<string>;
+			});
+
+			it('should apply overwrite when all overwrite fields are empty', () => {
+				const result = credentialsOverwrites.applyOverwrite('test', {
+					username: '',
+					password: '',
+				});
+
+				expect(result).toEqual({ username: 'user', password: 'pass' });
+			});
+
+			it('should apply overwrite when overwrite fields match the stored values', () => {
+				// stored values already equal the overwrite values — apply is a no-op but correct path
+				const result = credentialsOverwrites.applyOverwrite('test', {
+					username: 'user',
+					password: 'pass',
+				});
+
+				expect(result).toEqual({ username: 'user', password: 'pass' });
+			});
+
+			it('should skip overwrite when credential has a custom value for an overwrite field', () => {
+				const data = { username: 'custom-user', password: '' };
+
+				const result = credentialsOverwrites.applyOverwrite('test', data);
+
+				expect(result).toEqual(data);
+			});
+
+			it('should not affect types not in the skip list', () => {
+				// 'parent' is not in skipTypes, so its empty fields are still filled
+				credentialTypes.getParentTypes.calledWith('parent').mockReturnValue([]);
+
+				const result = credentialsOverwrites.applyOverwrite('parent', { password: '' });
+
+				expect(result).toEqual({ password: 'pass' });
+			});
 		});
 	});
 

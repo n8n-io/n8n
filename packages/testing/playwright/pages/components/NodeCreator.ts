@@ -27,20 +27,8 @@ export class NodeCreator {
 		return this.page.getByTestId('item-iterator-item');
 	}
 
-	getActionItems(): Locator {
-		return this.page.getByTestId('node-creator-action-item');
-	}
-
 	getCategoryItems(): Locator {
 		return this.page.getByTestId('node-creator-category-item');
-	}
-
-	getTabs(): Locator {
-		return this.page.getByTestId('node-creator-type-selector');
-	}
-
-	getSelectedTab(): Locator {
-		return this.getTabs().locator('.is-active');
 	}
 
 	getActiveSubcategory(): Locator {
@@ -49,6 +37,14 @@ export class NodeCreator {
 
 	getNoResults(): Locator {
 		return this.page.getByTestId('node-creator-no-results');
+	}
+
+	getNoTriggersCallout(): Locator {
+		return this.page.getByTestId('actions-panel-no-triggers-callout');
+	}
+
+	getActivationCallout(): Locator {
+		return this.page.getByTestId('actions-panel-activation-callout');
 	}
 
 	getTriggerText(): Locator {
@@ -68,13 +64,9 @@ export class NodeCreator {
 		return this.getCategoryItems().filter({ hasText: text });
 	}
 
-	getPanelIcon(nodeName: string): Locator {
-		return this.getItem(nodeName).locator('[class*="panelIcon"]');
-	}
-
 	// Actions
 	async open(): Promise<void> {
-		await this.page.getByTestId('canvas-plus-button').click();
+		await this.page.getByTestId('node-creator-plus-button').click();
 		await expect(this.getRoot()).toBeVisible();
 	}
 
@@ -105,10 +97,5 @@ export class NodeCreator {
 
 	async goBackFromSubcategory(): Promise<void> {
 		await this.getActiveSubcategory().locator('button').click();
-	}
-
-	async selectWithKeyboard(direction: 'up' | 'down' | 'right'): Promise<void> {
-		const key = direction === 'up' ? 'ArrowUp' : direction === 'down' ? 'ArrowDown' : 'ArrowRight';
-		await this.page.keyboard.press(key);
 	}
 }

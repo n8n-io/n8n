@@ -20,7 +20,6 @@ export class CredentialsComposer {
 			await this.n8n.navigate.toCredentials();
 		}
 
-		// Open the "new credential" chooser: open add resource -> credential
 		await this.n8n.credentials.addResource.credential();
 		await this.n8n.credentials.createCredentialFromCredentialPicker(credentialType, fields, {
 			name: options?.name,

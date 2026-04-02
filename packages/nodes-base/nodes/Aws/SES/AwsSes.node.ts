@@ -11,6 +11,7 @@ import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import qs from 'node:querystring';
 
 import { awsApiRequestSOAP, awsApiRequestSOAPAllItems } from './GenericFunctions';
+import { awsNodeAuthOptions, awsNodeCredentials } from '../utils';
 
 function setParameter(params: string[], base: string, values: string[]) {
 	for (let i = 0; i < values.length; i++) {
@@ -27,19 +28,16 @@ export class AwsSes implements INodeType {
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Sends data to AWS SES',
+		schemaPath: 'Aws/SES',
 		defaults: {
 			name: 'AWS SES',
 		},
 		usableAsTool: true,
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
-		credentials: [
-			{
-				name: 'aws',
-				required: true,
-			},
-		],
+		credentials: awsNodeCredentials,
 		properties: [
+			awsNodeAuthOptions,
 			{
 				displayName: 'Resource',
 				name: 'resource',

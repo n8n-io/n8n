@@ -1,12 +1,21 @@
 import { defineConfig, globalIgnores } from 'eslint/config';
 import { nodeConfig } from '@n8n/eslint-config/node';
 import nodesBasePlugin from 'eslint-plugin-n8n-nodes-base';
+import { n8nCommunityNodesPlugin } from '@n8n/eslint-plugin-community-nodes';
 
 export default defineConfig(
 	nodeConfig,
 	globalIgnores(['scenarios/**', 'scripts/**']),
 	{
+		plugins: {
+			'@n8n/community-nodes': n8nCommunityNodesPlugin,
+		},
+
 		rules: {
+			'@n8n/community-nodes/credential-documentation-url': ['error', { allowSlugs: true }],
+			'@n8n/community-nodes/node-class-description-icon-missing': 'warn',
+			'@n8n/community-nodes/cred-class-field-icon-missing': 'warn',
+
 			// TODO: remove all the following rules
 			eqeqeq: 'warn',
 			'id-denylist': 'warn',

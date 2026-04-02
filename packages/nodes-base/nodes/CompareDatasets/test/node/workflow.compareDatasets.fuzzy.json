@@ -11,21 +11,87 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "return [\n  {\n    id: '1',\n    data: [1,2,3],\n  },\n  {\n    id: 2,\n    data: 25,\n  },\n  {\n    id: 3,\n    data: true,\n  },\n  {\n    id: 4,\n    data: false,\n  },\n  {\n    id: '5',\n    data: true,\n  },\n  {\n    id: 6,\n    data: null,\n  },\n  {\n    id: 7,\n    data: '',\n  },\n  {\n    id: '8',\n    data: [],\n  },\n];"
+				"data": [
+					{
+						"id": "1",
+						"data": [1, 2, 3]
+					},
+					{
+						"id": 2,
+						"data": 25
+					},
+					{
+						"id": 3,
+						"data": true
+					},
+					{
+						"id": 4,
+						"data": false
+					},
+					{
+						"id": "5",
+						"data": true
+					},
+					{
+						"id": 6,
+						"data": null
+					},
+					{
+						"id": 7,
+						"data": ""
+					},
+					{
+						"id": "8",
+						"data": []
+					}
+				]
 			},
 			"id": "a9204c1d-11da-4f54-9a52-82992815e893",
 			"name": "Code",
-			"type": "n8n-nodes-base.code",
+			"type": "n8n-nodes-testing.testData",
 			"typeVersion": 1,
 			"position": [640, 300]
 		},
 		{
 			"parameters": {
-				"jsCode": "return [\n  {\n    id: 1,\n    data: \"[1,2,3]\",\n  },\n  {\n    id: 2,\n    data: '25',\n  },\n  {\n    id: 3,\n    data: 'tRuE',\n  },\n  {\n    id: 4,\n    data: 'FalsE',\n  },\n  {\n    id: 5,\n    data: 1,\n  },\n  {\n    id: 6,\n    data: [],\n  },\n  {\n    id: 7,\n    data: null,\n  },\n  {\n    id: 8,\n    data: '',\n  },\n];"
+				"data": [
+					{
+						"id": 1,
+						"data": "[1,2,3]"
+					},
+					{
+						"id": 2,
+						"data": "25"
+					},
+					{
+						"id": 3,
+						"data": "tRuE"
+					},
+					{
+						"id": 4,
+						"data": "FalsE"
+					},
+					{
+						"id": 5,
+						"data": 1
+					},
+					{
+						"id": 6,
+						"data": []
+					},
+					{
+						"id": 7,
+						"data": null
+					},
+					{
+						"id": 8,
+						"data": ""
+					}
+				]
 			},
 			"id": "839119da-4372-442d-8ba6-7d57b53b7825",
 			"name": "Code1",
-			"type": "n8n-nodes-base.code",
+			"type": "n8n-nodes-testing.testData",
 			"typeVersion": 1,
 			"position": [640, 500]
 		},
@@ -72,21 +138,47 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "return [\n  {\n    id: 1,\n    data: [1,2,3],\n  },\n  {\n    id: 2,\n    data: '[\"a\", \"b\", \"c\"]',\n  },\n  {\n    id: 3,\n    data: [],\n  },\n];"
+				"data": [
+					{
+						"id": 1,
+						"data": [1, 2, 3]
+					},
+					{
+						"id": 2,
+						"data": "[\"a\", \"b\", \"c\"]"
+					},
+					{
+						"id": 3,
+						"data": []
+					}
+				]
 			},
 			"id": "f0a7fbcf-226a-4b19-a946-5a0d8480bbb8",
 			"name": "Code2",
-			"type": "n8n-nodes-base.code",
+			"type": "n8n-nodes-testing.testData",
 			"typeVersion": 1,
 			"position": [640, 680]
 		},
 		{
 			"parameters": {
-				"jsCode": "return [\n  {\n    id: '1',\n    data: \"[1,2,3]\",\n  },\n  {\n    id: 2,\n    data: ['a', 'b', 'c'],\n  },\n  {\n    id: 3,\n    data: \"[]\",\n  },\n];"
+				"data": [
+					{
+						"id": "1",
+						"data": "[1,2,3]"
+					},
+					{
+						"id": 2,
+						"data": ["a", "b", "c"]
+					},
+					{
+						"id": 3,
+						"data": "[]"
+					}
+				]
 			},
 			"id": "9d510249-3eff-4264-8f93-1959480fd100",
 			"name": "Code3",
-			"type": "n8n-nodes-base.code",
+			"type": "n8n-nodes-testing.testData",
 			"typeVersion": 1,
 			"position": [640, 880]
 		},
@@ -112,21 +204,55 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "return [\n  {\n    id: 1,\n    data: 25.36,\n  },\n  {\n    id: 2,\n    data: 2500,\n  },\n  {\n    id: 3,\n    data: 0.894,\n  },\n  {\n    id: 4,\n    data: 42,\n  },\n];"
+				"data": [
+					{
+						"id": 1,
+						"data": 25.36
+					},
+					{
+						"id": 2,
+						"data": 2500
+					},
+					{
+						"id": 3,
+						"data": 0.894
+					},
+					{
+						"id": 4,
+						"data": 42
+					}
+				]
 			},
 			"id": "eb4e5ee5-5f9e-413e-bd80-11d75bff9f90",
 			"name": "Code4",
-			"type": "n8n-nodes-base.code",
+			"type": "n8n-nodes-testing.testData",
 			"typeVersion": 1,
 			"position": [620, 1100]
 		},
 		{
 			"parameters": {
-				"jsCode": "return [\n  {\n    id: 1,\n    data: '25.36',\n  },\n  {\n    id: 2,\n    data: '2500',\n  },\n  {\n    id: 3,\n    data: '0.894',\n  },\n  {\n    id: 4,\n    data: 'forty two',\n  },\n];"
+				"data": [
+					{
+						"id": 1,
+						"data": "25.36"
+					},
+					{
+						"id": 2,
+						"data": "2500"
+					},
+					{
+						"id": 3,
+						"data": "0.894"
+					},
+					{
+						"id": 4,
+						"data": "forty two"
+					}
+				]
 			},
 			"id": "28d3f7f4-abba-4523-9b5b-1bcf47d6dbec",
 			"name": "Code5",
-			"type": "n8n-nodes-base.code",
+			"type": "n8n-nodes-testing.testData",
 			"typeVersion": 1,
 			"position": [620, 1300]
 		},
@@ -153,21 +279,71 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "return [\n  {\n    id: 1,\n    data: \"TRUE\",\n  },\n  {\n    id: 2,\n    data: false,\n  },\n  {\n    id: 3,\n    data: 1,\n  },\n  {\n    id: 4,\n    data: false,\n  },\n  {\n    id: '5',\n    data: true,\n  },\n  {\n    id: 6,\n    data: '0',\n  },\n];"
+				"data": [
+					{
+						"id": 1,
+						"data": "TRUE"
+					},
+					{
+						"id": 2,
+						"data": false
+					},
+					{
+						"id": 3,
+						"data": 1
+					},
+					{
+						"id": 4,
+						"data": false
+					},
+					{
+						"id": "5",
+						"data": true
+					},
+					{
+						"id": 6,
+						"data": "0"
+					}
+				]
 			},
 			"id": "bf4f3286-db11-4075-a10a-6c19b60ef8cf",
 			"name": "Code6",
-			"type": "n8n-nodes-base.code",
+			"type": "n8n-nodes-testing.testData",
 			"typeVersion": 1,
 			"position": [620, 1480]
 		},
 		{
 			"parameters": {
-				"jsCode": "return [\n  {\n    id: 1,\n    data: true,\n  },\n  {\n    id: 2,\n    data: 'False',\n  },\n  {\n    id: 3,\n    data: true,\n  },\n  {\n    id: 4,\n    data: 0,\n  },\n  {\n    id: '5',\n    data: '1',\n  },\n  {\n    id: 6,\n    data: false,\n  },\n];"
+				"data": [
+					{
+						"id": 1,
+						"data": true
+					},
+					{
+						"id": 2,
+						"data": "False"
+					},
+					{
+						"id": 3,
+						"data": true
+					},
+					{
+						"id": 4,
+						"data": 0
+					},
+					{
+						"id": "5",
+						"data": "1"
+					},
+					{
+						"id": 6,
+						"data": false
+					}
+				]
 			},
 			"id": "731b6fc7-0a57-449e-b9c4-54f1feeec9be",
 			"name": "Code7",
-			"type": "n8n-nodes-base.code",
+			"type": "n8n-nodes-testing.testData",
 			"typeVersion": 1,
 			"position": [620, 1680]
 		},
@@ -193,21 +369,79 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "return [\n  {\n    id: '1',\n    data: null,\n  },\n  {\n    id: 2,\n    data: null,\n  },\n  {\n    id: 3,\n    data: null,\n  },\n  {\n    id: 4,\n    data: [],\n  },\n  {\n    id: '5',\n    data: '',\n  },\n  {\n    id: 6,\n    data: '',\n  },\n  {\n    id: 7,\n    data: [],\n  },\n];"
+				"data": [
+					{
+						"id": "1",
+						"data": null
+					},
+					{
+						"id": 2,
+						"data": null
+					},
+					{
+						"id": 3,
+						"data": null
+					},
+					{
+						"id": 4,
+						"data": []
+					},
+					{
+						"id": "5",
+						"data": ""
+					},
+					{
+						"id": 6,
+						"data": ""
+					},
+					{
+						"id": 7,
+						"data": []
+					}
+				]
 			},
 			"id": "f75820ed-4f8f-49b7-af25-3bbd0691eafd",
 			"name": "Code8",
-			"type": "n8n-nodes-base.code",
+			"type": "n8n-nodes-testing.testData",
 			"typeVersion": 1,
 			"position": [620, 1860]
 		},
 		{
 			"parameters": {
-				"jsCode": "return [\n  {\n    id: '1',\n    data: '',\n  },\n  {\n    id: 2,\n    data: [],\n  },\n  {\n    id: 3,\n    data: null,\n  },\n  {\n    id: 4,\n    data: '',\n  },\n  {\n    id: '5',\n    data: [],\n  },\n  {\n    id: 6,\n    data: '',\n  },\n  {\n    id: 7,\n    data: [],\n  },\n];"
+				"data": [
+					{
+						"id": "1",
+						"data": ""
+					},
+					{
+						"id": 2,
+						"data": []
+					},
+					{
+						"id": 3,
+						"data": null
+					},
+					{
+						"id": 4,
+						"data": ""
+					},
+					{
+						"id": "5",
+						"data": []
+					},
+					{
+						"id": 6,
+						"data": ""
+					},
+					{
+						"id": 7,
+						"data": []
+					}
+				]
 			},
 			"id": "abe98ef5-0b3a-4e06-8a5d-f0554e42cf33",
 			"name": "Code9",
-			"type": "n8n-nodes-base.code",
+			"type": "n8n-nodes-testing.testData",
 			"typeVersion": 1,
 			"position": [620, 2060]
 		},
@@ -233,21 +467,53 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "return [\n  {\n    id: 1,\n    data: {foo: 'foo', bar: 'bar'},\n  },\n  {\n    id: 2,\n    data: '{\"foo\": \"foo\", \"bar\": \"bar\"}',\n  },\n  {\n    id: 3,\n    data: {},\n  },\n];"
+				"data": [
+					{
+						"id": 1,
+						"data": {
+							"foo": "foo",
+							"bar": "bar"
+						}
+					},
+					{
+						"id": 2,
+						"data": "{\"foo\": \"foo\", \"bar\": \"bar\"}"
+					},
+					{
+						"id": 3,
+						"data": {}
+					}
+				]
 			},
 			"id": "c516813c-a5c7-464e-887b-447e5177c137",
 			"name": "Code10",
-			"type": "n8n-nodes-base.code",
+			"type": "n8n-nodes-testing.testData",
 			"typeVersion": 1,
 			"position": [640, 2440]
 		},
 		{
 			"parameters": {
-				"jsCode": "return [\n  {\n    id: 2,\n    data: {foo: 'foo', bar: 'bar'},\n  },\n  {\n    id: 1,\n    data: '{\"foo\": \"foo\", \"bar\": \"bar\"}',\n  },\n  {\n    id: 3,\n    data: \"{}\",\n  },\n];"
+				"data": [
+					{
+						"id": 2,
+						"data": {
+							"foo": "foo",
+							"bar": "bar"
+						}
+					},
+					{
+						"id": 1,
+						"data": "{\"foo\": \"foo\", \"bar\": \"bar\"}"
+					},
+					{
+						"id": 3,
+						"data": "{}"
+					}
+				]
 			},
 			"id": "a0986a04-da68-47e7-9a06-f7abf83604c8",
 			"name": "Code11",
-			"type": "n8n-nodes-base.code",
+			"type": "n8n-nodes-testing.testData",
 			"typeVersion": 1,
 			"position": [640, 2640]
 		},
@@ -274,21 +540,47 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "return [\n  {\n    id: 1,\n    data: \"2019-08-30T22:54:40.273Z\",\n  },\n  {\n    id: 2,\n    data: '{\"foo\": \"foo\", \"bar\": \"bar\"}',\n  },\n  {\n    id: 3,\n    data: {},\n  },\n];"
+				"data": [
+					{
+						"id": 1,
+						"data": "2019-08-30T22:54:40.273Z"
+					},
+					{
+						"id": 2,
+						"data": "{\"foo\": \"foo\", \"bar\": \"bar\"}"
+					},
+					{
+						"id": 3,
+						"data": {}
+					}
+				]
 			},
 			"id": "80c1f595-9d0e-4df9-b927-4b1459e217c1",
 			"name": "Code12",
-			"type": "n8n-nodes-base.code",
+			"type": "n8n-nodes-testing.testData",
 			"typeVersion": 1,
 			"position": [640, 2860]
 		},
 		{
 			"parameters": {
-				"jsCode": "return [\n  {\n    id: 1,\n    data: 'Sat Aug 31 2019 01:54:40 GMT+0300 (Eastern European Summer Time)',\n  },\n  {\n    id: 2,\n    data: '{\"foo\": \"foo\", \"bar\": \"bar\"}',\n  },\n  {\n    id: 3,\n    data: \"{}\",\n  },\n];"
+				"data": [
+					{
+						"id": 1,
+						"data": "Sat Aug 31 2019 01:54:40 GMT+0300 (Eastern European Summer Time)"
+					},
+					{
+						"id": 2,
+						"data": "{\"foo\": \"foo\", \"bar\": \"bar\"}"
+					},
+					{
+						"id": 3,
+						"data": "{}"
+					}
+				]
 			},
 			"id": "d9764a14-2b8b-4a12-ad06-8a4f09685e62",
 			"name": "Code13",
-			"type": "n8n-nodes-base.code",
+			"type": "n8n-nodes-testing.testData",
 			"typeVersion": 1,
 			"position": [640, 3060]
 		},

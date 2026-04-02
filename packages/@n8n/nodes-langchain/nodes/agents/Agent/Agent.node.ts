@@ -28,7 +28,29 @@ export class Agent extends VersionedNodeType {
 					],
 				},
 			},
-			defaultVersion: 3,
+			defaultVersion: 3.1,
+			builderHint: {
+				relatedNodes: [
+					{
+						nodeType: 'n8n-nodes-base.aggregate',
+						relationHint: 'Use to combine multiple items together before the agent',
+					},
+					{
+						nodeType: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						relationHint:
+							'Attach for structured output; reference fields as $json.output.fieldName for use in subsequent nodes (conditions, storing data)',
+					},
+					{
+						nodeType: '@n8n/n8n-nodes-langchain.agentTool',
+						relationHint: 'For multi-agent systems using orchestrator pattern',
+					},
+					{
+						nodeType: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						relationHint:
+							'Required for conversational workflows - connect memory to every agent that needs to recall previous messages in the conversation',
+					},
+				],
+			},
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
@@ -45,7 +67,9 @@ export class Agent extends VersionedNodeType {
 			2: new AgentV2(baseDescription),
 			2.1: new AgentV2(baseDescription),
 			2.2: new AgentV2(baseDescription),
+			2.3: new AgentV2(baseDescription),
 			3: new AgentV3(baseDescription),
+			3.1: new AgentV3(baseDescription),
 			// IMPORTANT Reminder to update AgentTool
 		};
 

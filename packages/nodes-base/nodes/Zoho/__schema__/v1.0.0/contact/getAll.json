@@ -82,15 +82,9 @@
         "$state": {
             "type": "string"
         },
-        "Asst_Phone": {
-            "type": "null"
-        },
-        "Created_By": {
+        "Account_Name": {
             "type": "object",
             "properties": {
-                "email": {
-                    "type": "string"
-                },
                 "id": {
                     "type": "string"
                 },
@@ -99,20 +93,11 @@
                 }
             }
         },
-        "Created_Time": {
-            "type": "string"
-        },
         "Email_Opt_Out": {
             "type": "boolean"
         },
-        "Fax": {
-            "type": "null"
-        },
         "Full_Name": {
             "type": "string"
-        },
-        "Home_Phone": {
-            "type": "null"
         },
         "id": {
             "type": "string"
@@ -122,26 +107,6 @@
         },
         "Locked__s": {
             "type": "boolean"
-        },
-        "Modified_By": {
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "Modified_Time": {
-            "type": "string"
-        },
-        "Other_Phone": {
-            "type": "null"
         },
         "Owner": {
             "type": "object",
@@ -156,9 +121,6 @@
                     "type": "string"
                 }
             }
-        },
-        "Reporting_To": {
-            "type": "null"
         },
         "Tag": {
             "type": "array",
@@ -181,5 +143,5 @@
             "type": "null"
         }
     },
-    "version": 7
+    "version": 8
 }

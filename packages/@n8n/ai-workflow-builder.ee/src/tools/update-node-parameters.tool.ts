@@ -1,6 +1,16 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { tool } from '@langchain/core/tools';
-import type { INode, INodeTypeDescription, INodeParameters, Logger } from 'n8n-workflow';
+import {
+	checkConditions,
+	type IDisplayOptions,
+	type INode,
+	type INodeTypeDescription,
+	type INodeParameters,
+	type INodeProperties,
+	type INodePropertyCollection,
+	type INodePropertyOptions,
+	type Logger,
+} from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor';
@@ -27,6 +37,8 @@ import {
 
 /**
  * Schema for update node parameters input
+ * Note: resource/operation are automatically detected from the node's existing parameters
+ * (set by Builder via initialParameters) for filtering purposes.
  */
 const updateNodeParametersSchema = z.object({
 	nodeId: z.string().describe('The ID of the node to update'),
@@ -39,11 +51,241 @@ const updateNodeParametersSchema = z.object({
 });
 
 /**
+ * Check if a property should be hidden based on a specific condition key.
+ * Returns true if the property should be hidden, false otherwise.
+ */
+function isHiddenByCondition(
+	displayOptions: INodeProperties['displayOptions'],
+	conditionKey: string,
+	value: string | number,
+): boolean {
+	// Check 'show' condition - if specified but doesn't match, hide it
+	const showCondition = displayOptions?.show?.[conditionKey];
+	if (showCondition && !checkConditions(showCondition, [value])) {
+		return true;
+	}
+
+	// Check 'hide' condition - if specified and matches, hide it
+	const hideCondition = displayOptions?.hide?.[conditionKey];
+	if (hideCondition && checkConditions(hideCondition, [value])) {
+		return true;
+	}
+
+	return false;
+}
+
+/**
+ * Type guard for INodePropertyOptions.
+ * INodePropertyOptions has `name` + `value` (primitive value).
+ */
+function isINodePropertyOptions(item: unknown): item is INodePropertyOptions {
+	return (
+		typeof item === 'object' &&
+		item !== null &&
+		'value' in item &&
+		'name' in item &&
+		!('values' in item) // Distinguish from INodePropertyCollection
+	);
+}
+
+/**
+ * Type guard for INodePropertyCollection.
+ * INodePropertyCollection has `name` + `displayName` + `values` (array of INodeProperties).
+ */
+function isINodePropertyCollection(item: unknown): item is INodePropertyCollection {
+	if (typeof item !== 'object' || item === null) return false;
+	if (!('values' in item) || !('name' in item)) return false;
+	// After 'values' in item, TypeScript narrows to object & Record<'values', unknown>
+	return Array.isArray(item.values);
+}
+
+/**
+ * Type guard for INodeProperties.
+ * INodeProperties has `name` + `type` + `default`.
+ */
+function isINodeProperties(item: unknown): item is INodeProperties {
+	return (
+		typeof item === 'object' &&
+		item !== null &&
+		'type' in item &&
+		'name' in item &&
+		'default' in item
+	);
+}
+
+/**
+ * Check if an item should be hidden based on @version, resource, operation conditions.
+ * Used for nested items (options, collection values) that have their own displayOptions.
+ */
+function isItemHiddenForContext(
+	displayOptions: IDisplayOptions | undefined,
+	nodeVersion: number,
+	currentValues: INodeParameters,
+): boolean {
+	if (!displayOptions) return false;
+
+	if (isHiddenByCondition(displayOptions, '@version', nodeVersion)) return true;
+
+	const resource = currentValues.resource;
+	if (typeof resource === 'string' && isHiddenByCondition(displayOptions, 'resource', resource)) {
+		return true;
+	}
+
+	const operation = currentValues.operation;
+	if (
+		typeof operation === 'string' &&
+		isHiddenByCondition(displayOptions, 'operation', operation)
+	) {
+		return true;
+	}
+
+	return false;
+}
+
+/**
+ * Recursively filter a property and all its nested structures.
+ * Uses for-loops with type guards for proper type narrowing without coercion.
+ */
+function filterPropertyRecursively(
+	property: INodeProperties,
+	nodeVersion: number,
+	currentValues: INodeParameters,
+): INodeProperties {
+	if (!property.options || property.options.length === 0) {
+		return property;
+	}
+
+	const { type, options } = property;
+
+	// For options/multiOptions: filter INodePropertyOptions items
+	if (type === 'options' || type === 'multiOptions') {
+		const filteredOptions: INodePropertyOptions[] = [];
+		for (const opt of options) {
+			// Type guard narrows `opt` to INodePropertyOptions inside this block
+			if (isINodePropertyOptions(opt)) {
+				if (!isItemHiddenForContext(opt.displayOptions, nodeVersion, currentValues)) {
+					filteredOptions.push(opt);
+				}
+			}
+		}
+		return { ...property, options: filteredOptions };
+	}
+
+	// For collection: filter and recurse INodeProperties items
+	if (type === 'collection') {
+		const filteredOptions: INodeProperties[] = [];
+		for (const prop of options) {
+			// Type guard narrows `prop` to INodeProperties inside this block
+			if (isINodeProperties(prop)) {
+				if (!isItemHiddenForContext(prop.displayOptions, nodeVersion, currentValues)) {
+					filteredOptions.push(filterPropertyRecursively(prop, nodeVersion, currentValues));
+				}
+			}
+		}
+		return { ...property, options: filteredOptions };
+	}
+
+	// For fixedCollection: process INodePropertyCollection items and recurse into values
+	if (type === 'fixedCollection') {
+		const filteredOptions: INodePropertyCollection[] = [];
+		for (const coll of options) {
+			// Type guard narrows `coll` to INodePropertyCollection inside this block
+			if (isINodePropertyCollection(coll)) {
+				const filteredValues: INodeProperties[] = [];
+				for (const prop of coll.values) {
+					if (!isItemHiddenForContext(prop.displayOptions, nodeVersion, currentValues)) {
+						filteredValues.push(filterPropertyRecursively(prop, nodeVersion, currentValues));
+					}
+				}
+				filteredOptions.push({ ...coll, values: filteredValues });
+			}
+		}
+		return { ...property, options: filteredOptions };
+	}
+
+	return property;
+}
+
+/**
+ * Check if a property is visible based on @version, resource, and operation conditions ONLY.
+ * Other displayOptions conditions (aggregate, mode, action, etc.) are intentionally ignored
+ * so the LLM sees all properties that could be configured for the current resource/operation.
+ *
+ * This prevents the LLM from hallucinating field structures when properties are hidden
+ * due to conditions like `displayOptions.show.aggregate: ['aggregateIndividualFields']`.
+ */
+function isPropertyVisibleForContext(
+	property: INodeProperties,
+	nodeVersion: number,
+	currentValues: INodeParameters,
+): boolean {
+	const displayOptions = property.displayOptions;
+
+	// No displayOptions = always visible
+	if (!displayOptions) {
+		return true;
+	}
+
+	// Check @version condition
+	if (isHiddenByCondition(displayOptions, '@version', nodeVersion)) {
+		return false;
+	}
+
+	// Resource/operation values in n8n are always strings
+	const resource = currentValues.resource;
+	const operation = currentValues.operation;
+
+	// Check resource condition
+	if (typeof resource === 'string' && isHiddenByCondition(displayOptions, 'resource', resource)) {
+		return false;
+	}
+
+	// Check operation condition
+	if (
+		typeof operation === 'string' &&
+		isHiddenByCondition(displayOptions, 'operation', operation)
+	) {
+		return false;
+	}
+
+	// All other displayOptions conditions are ignored
+	// (aggregate, mode, action, etc. - LLM should see these properties)
+	return true;
+}
+
+/**
+ * Filter node properties based on the node's current context (version, resource, operation).
+ * Only filters by @version, resource, and operation - other displayOptions conditions are
+ * intentionally ignored so the LLM sees all configurable properties for the current context.
+ *
+ * @param properties - The node's properties array
+ * @param node - The node instance (for typeVersion)
+ * @param _nodeType - The node type description (unused, kept for API compatibility)
+ * @param currentValues - Current parameter values (resource, operation, etc.)
+ * @returns Filtered array of properties visible in the current context
+ */
+function filterPropertiesForContext(
+	properties: INodeProperties[],
+	node: INode,
+	_nodeType: INodeTypeDescription,
+	currentValues: INodeParameters,
+): INodeProperties[] {
+	const nodeVersion = node.typeVersion;
+
+	return (
+		properties
+			// First filter root-level properties
+			.filter((property) => isPropertyVisibleForContext(property, nodeVersion, currentValues))
+			// Then recursively filter nested structures
+			.map((property) => filterPropertyRecursively(property, nodeVersion, currentValues))
+	);
+}
+
+/**
  * Build a success message for the parameter update
  */
-function buildSuccessMessage(node: INode, changes: string[]): string {
-	const changesList = changes.map((c) => `- ${c}`).join('\n');
-	return `Successfully updated parameters for node "${node.name}" (${node.type}):\n${changesList}`;
+function buildSuccessMessage(node: INode, _changes: string[]): string {
+	return `Updated "${node.name}" (${node.type})`;
 }
 
 /**
@@ -67,8 +309,25 @@ async function processParameterUpdates(
 	// Format inputs for the chain
 	const formattedChanges = formatChangesForPrompt(changes);
 
-	// Get the node's properties definition as JSON
-	const nodePropertiesJson = JSON.stringify(nodeType.properties || [], null, 2);
+	// Filter properties based on node's current context (version, resource, operation, etc.)
+	const currentValues = node.parameters ?? {};
+	const filteredProperties = filterPropertiesForContext(
+		nodeType.properties || [],
+		node,
+		nodeType,
+		currentValues,
+	);
+	const filteredPropertiesJson = JSON.stringify(filteredProperties, null, 2);
+
+	logger?.debug('Filtered node properties for LLM context', {
+		nodeId,
+		nodeType: node.type,
+		nodeVersion: node.typeVersion,
+		resource: currentValues.resource,
+		operation: currentValues.operation,
+		originalCount: nodeType.properties?.length ?? 0,
+		filteredCount: filteredProperties.length,
+	});
 
 	// Call the parameter updater chain with dynamic prompt building
 	const parametersChain = createParameterUpdaterChain(
@@ -89,7 +348,7 @@ async function processParameterUpdates(
 		node_name: node.name,
 		node_type: node.type,
 		current_parameters: JSON.stringify(currentParameters, null, 2),
-		node_definition: nodePropertiesJson,
+		node_definition: filteredPropertiesJson, // Use filtered properties for LLM context
 		changes: formattedChanges,
 		instanceUrl: instanceUrl ?? '',
 	})) as INodeParameters;
@@ -170,7 +429,7 @@ export function createUpdateNodeParametersTool(
 				}
 
 				// Find the node type
-				const nodeType = findNodeType(node.type, nodeTypes);
+				const nodeType = findNodeType(node.type, node.typeVersion, nodeTypes);
 				if (!nodeType) {
 					const error = createNodeTypeNotFoundError(node.type);
 					reporter.error(error);
@@ -184,6 +443,8 @@ export function createUpdateNodeParametersTool(
 				});
 
 				try {
+					// Resource/operation filtering happens automatically inside processParameterUpdates
+					// based on node.parameters (set by Builder via initialParameters)
 					const updatedParameters = await processParameterUpdates(
 						node,
 						nodeType,

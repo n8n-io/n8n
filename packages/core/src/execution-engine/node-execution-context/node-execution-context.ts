@@ -17,6 +17,7 @@ import type {
 	IRunExecutionData,
 	IWorkflowExecuteAdditionalData,
 	NodeConnectionType,
+	NodeFeatures,
 	NodeInputConnections,
 	NodeParameterValueType,
 	NodeTypeAndVersion,
@@ -40,13 +41,13 @@ import {
 	WAITING_TOKEN_QUERY_PARAM,
 } from '@/constants';
 import { InstanceSettings } from '@/instance-settings';
+import { generateUrlSignature, prepareUrlForSigning } from '@/utils/signature-helpers';
 
 import { cleanupParameterData } from './utils/cleanup-parameter-data';
 import { ensureType } from './utils/ensure-type';
 import { extractValue } from './utils/extract-value';
 import { getAdditionalKeys } from './utils/get-additional-keys';
 import { validateValueAgainstSchema } from './utils/validate-value-against-schema';
-import { generateUrlSignature, prepareUrlForSigning } from '../../utils/signature-helpers';
 
 export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCredentials'> {
 	protected readonly instanceSettings = Container.get(InstanceSettings);
@@ -65,6 +66,10 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 	@Memoized
 	get logger() {
 		return Container.get(Logger);
+	}
+
+	getExecutionContext() {
+		return this.runExecutionData?.executionData?.runtimeData;
 	}
 
 	getExecutionId() {
@@ -159,9 +164,38 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 	}
 
 	@Memoized
+	get workflowSettings() {
+		return Object.freeze(structuredClone(this.workflow.settings));
+	}
+
+	getWorkflowSettings() {
+		return this.workflowSettings;
+	}
+
+	@Memoized
 	get nodeType() {
 		const { type, typeVersion } = this.node;
 		return this.workflow.nodeTypes.getByNameAndVersion(type, typeVersion);
+	}
+
+	/**
+	 * Gets the feature flags for the current node version.
+	 * Uses declarative features from the node type description.
+	 * @private
+	 */
+	@Memoized
+	private get nodeFeatures(): NodeFeatures {
+		const description = this.nodeType.description;
+		return NodeHelpers.getNodeFeatures(description.features, this.node.typeVersion);
+	}
+
+	/**
+	 * Checks if a feature is enabled for the current node version.
+	 * @param featureName - The name of the feature to check
+	 * @returns true if the feature is enabled, false otherwise
+	 */
+	isNodeFeatureEnabled(featureName: string): boolean {
+		return this.nodeFeatures[featureName] ?? false;
 	}
 
 	@Memoized
@@ -214,10 +248,6 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		return this.instanceSettings.instanceId;
 	}
 
-	setSignatureValidationRequired() {
-		if (this.runExecutionData) this.runExecutionData.validateSignature = true;
-	}
-
 	getSignedResumeUrl(parameters: Record<string, string> = {}) {
 		const { webhookWaitingBaseUrl, executionId } = this.additionalData;
 
@@ -231,11 +261,14 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 			baseURL.searchParams.set(key, value);
 		}
 
+		// Sign the full URL (pathname + query params) using instance secret as HMAC key
+		// This ensures action parameters (like approved=true/false) cannot be tampered with
 		const urlForSigning = prepareUrlForSigning(baseURL);
-
-		const token = generateUrlSignature(urlForSigning, this.instanceSettings.hmacSignatureSecret);
-
-		baseURL.searchParams.set(WAITING_TOKEN_QUERY_PARAM, token);
+		const signature = generateUrlSignature(
+			urlForSigning,
+			this.instanceSettings.hmacSignatureSecret,
+		);
+		baseURL.searchParams.set(WAITING_TOKEN_QUERY_PARAM, signature);
 
 		return baseURL.toString();
 	}
@@ -368,6 +401,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		// 	) as string;
 		// }
 
+		additionalData.executionContext = this.getExecutionContext();
 		const decryptedDataObject = await additionalData.credentialsHelper.getDecrypted(
 			additionalData,
 			nodeCredentials,

@@ -56,7 +56,7 @@ const createDragEvent = (type: string, dataTransfer?: Partial<DataTransfer>) => 
 const defaultStubs = {
 	N8nButton: true,
 	N8nIcon: true,
-	N8nPopoverReka: {
+	N8nPopover: {
 		template:
 			'<div><trigger><slot name="trigger" /></trigger> <content><slot name="content" /></content></div>',
 		props: [],

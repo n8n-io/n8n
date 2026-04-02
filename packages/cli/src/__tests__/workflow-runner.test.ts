@@ -1,10 +1,13 @@
 import { testDb, createWorkflow, mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { type User, type ExecutionEntity, GLOBAL_OWNER_ROLE } from '@n8n/db';
+import {
+	type User,
+	type ExecutionEntity,
+	GLOBAL_OWNER_ROLE,
+	Project,
+	ExecutionRepository,
+} from '@n8n/db';
 import { Container, Service } from '@n8n/di';
-import { createExecution } from '@test-integration/db/executions';
-import { createUser } from '@test-integration/db/users';
-import { setupTestServer } from '@test-integration/utils';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 import { DirectedGraph, WorkflowExecute } from 'n8n-core';
@@ -22,24 +25,33 @@ import {
 	type IWorkflowExecuteAdditionalData,
 	Workflow,
 	ExecutionError,
+	TimeoutExecutionCancelledError,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 
 import { ActiveExecutions } from '@/active-executions';
-import config from '@/config';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import * as ExecutionLifecycleHooks from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { ManualExecutionService } from '@/manual-execution.service';
+import { OwnershipService } from '@/services/ownership.service';
 import { Telemetry } from '@/telemetry';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
+import { createExecution } from '@test-integration/db/executions';
+import { createUser } from '@test-integration/db/users';
+import { setupTestServer } from '@test-integration/utils';
 
 let owner: User;
 let runner: WorkflowRunner;
+const globalConfig = Container.get(GlobalConfig);
 setupTestServer({ endpointGroups: [] });
 
 mockInstance(Telemetry);
+
+mockInstance(OwnershipService, {
+	getWorkflowProjectCached: jest.fn().mockResolvedValue(mock<Project>({ id: 'project-id' })),
+});
 
 beforeAll(async () => {
 	owner = await createUser({ role: GLOBAL_OWNER_ROLE });
@@ -54,6 +66,7 @@ afterAll(() => {
 beforeEach(async () => {
 	await testDb.truncate(['WorkflowEntity', 'SharedWorkflow']);
 	jest.clearAllMocks();
+	jest.spyOn(Container.get(ExecutionRepository), 'setRunning').mockResolvedValue(new Date());
 });
 
 describe('processError', () => {
@@ -65,6 +78,7 @@ describe('processError', () => {
 
 	beforeEach(async () => {
 		jest.clearAllMocks();
+		globalConfig.executions.mode = 'regular';
 		workflow = await createWorkflow({}, owner);
 		execution = await createExecution({ status: 'success', finished: true }, workflow);
 		hooks = new core.ExecutionLifecycleHooks('webhook', execution.id, workflow);
@@ -80,7 +94,7 @@ describe('processError', () => {
 			},
 			workflow,
 		);
-		config.set('executions.mode', 'queue');
+		globalConfig.executions.mode = 'queue';
 		await runner.processError(
 			new Error('test') as ExecutionError,
 			new Date(),
@@ -108,8 +122,8 @@ describe('processError', () => {
 		const workflow = await createWorkflow({}, owner);
 		const execution = await createExecution(
 			{
-				status: 'success',
-				finished: true,
+				status: 'waiting',
+				finished: false,
 			},
 			workflow,
 		);
@@ -117,7 +131,7 @@ describe('processError', () => {
 			{ executionMode: 'webhook', workflowData: workflow },
 			execution.id,
 		);
-		config.set('executions.mode', 'regular');
+		globalConfig.executions.mode = 'regular';
 		await runner.processError(
 			new Error('test') as ExecutionError,
 			new Date(),
@@ -231,7 +245,7 @@ describe('run', () => {
 		const data = mock<IWorkflowExecutionDataProcess>({
 			triggerToStartFrom: { name: 'trigger', data: mock<ITaskData>() },
 
-			workflowData: { nodes: [] },
+			workflowData: { nodes: [], id: 'workflow-id', settings: undefined },
 			executionData: undefined,
 			startNodes: [mock<StartNodeData>()],
 			destinationNode: undefined,
@@ -246,11 +260,12 @@ describe('run', () => {
 		await runner.run(data);
 
 		// ASSERT
-		expect(WorkflowExecuteAdditionalData.getBase).toHaveBeenCalledWith(
-			data.userId,
-			undefined,
-			undefined,
-		);
+		expect(WorkflowExecuteAdditionalData.getBase).toHaveBeenCalledWith({
+			userId: data.userId,
+			workflowId: 'workflow-id',
+			executionTimeoutTimestamp: undefined,
+			workflowSettings: {},
+		});
 		expect(ManualExecutionService.prototype.runManually).toHaveBeenCalledWith(
 			data,
 			expect.any(Workflow),
@@ -300,6 +315,39 @@ describe('enqueueExecution', () => {
 		await expect(runner.enqueueExecution('1', 'workflow-xyz', data)).rejects.toThrowError(error);
 
 		expect(setupQueue).toHaveBeenCalledTimes(1);
+	});
+
+	it('should include restartExecutionId in job data when provided', async () => {
+		const activeExecutions = Container.get(ActiveExecutions);
+		jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
+		jest.spyOn(runner, 'processError').mockResolvedValue();
+		const data = mock<IWorkflowExecutionDataProcess>({
+			workflowData: { nodes: [] },
+			executionData: undefined,
+			pushRef: 'push-ref',
+			streamingEnabled: true,
+		});
+		const error = new Error('stop for test purposes');
+
+		// mock a rejection to stop execution flow before we create the PCancelable promise,
+		// so that Jest does not move on to tear down the suite until the PCancelable settles
+		addJob.mockRejectedValueOnce(error);
+
+		const restartExecutionId = 'restart-execution-id';
+
+		await expect(
+			// @ts-expect-error Private method
+			runner.enqueueExecution('1', 'workflow-xyz', data, false, false, restartExecutionId),
+		).rejects.toThrowError(error);
+
+		expect(addJob).toHaveBeenCalledWith(
+			expect.objectContaining({
+				workflowId: 'workflow-xyz',
+				executionId: '1',
+				restartExecutionId,
+			}),
+			expect.any(Object),
+		);
 	});
 });
 
@@ -424,7 +472,7 @@ describe('workflow timeout with startedAt', () => {
 
 		// ASSERT
 		// The execution should be stopped immediately because the timeout has already elapsed
-		expect(mockStopExecution).toHaveBeenCalledWith('1');
+		expect(mockStopExecution).toHaveBeenCalledWith('1', expect.any(TimeoutExecutionCancelledError));
 	});
 
 	it('should use original timeout logic when startedAt is not provided', async () => {
@@ -471,6 +519,114 @@ describe('workflow timeout with startedAt', () => {
 		// ASSERT
 		// The execution should not be stopped immediately (original timeout logic)
 		expect(mockStopExecution).not.toHaveBeenCalled();
+	});
+
+	it('should call stopExecution when the timeout callback is executed', async () => {
+		// ARRANGE
+		const activeExecutions = Container.get(ActiveExecutions);
+		jest.spyOn(activeExecutions, 'add').mockResolvedValue('1');
+		jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
+		const permissionChecker = Container.get(CredentialsPermissionChecker);
+		jest.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
+
+		const mockStopExecution = jest.spyOn(activeExecutions, 'stopExecution');
+
+		// Mock config to return a workflow timeout of 10 seconds
+		Container.get(GlobalConfig).executions.timeout = 10;
+
+		let timeoutCallback: (() => void) | undefined;
+		jest.spyOn(global, 'setTimeout').mockImplementation((fn) => {
+			if (typeof fn === 'function') {
+				timeoutCallback = fn;
+			}
+			return {} as NodeJS.Timeout;
+		});
+
+		const data = mock<IWorkflowExecutionDataProcess>({
+			workflowData: {
+				nodes: [],
+				settings: { executionTimeout: 10 }, // 10 seconds timeout
+			},
+			executionData: undefined,
+			executionMode: 'webhook',
+		});
+
+		const mockHooks = mock<core.ExecutionLifecycleHooks>();
+		jest
+			.spyOn(ExecutionLifecycleHooks, 'getLifecycleHooksForRegularMain')
+			.mockReturnValue(mockHooks);
+
+		const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
+		jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(mockAdditionalData);
+
+		const manualExecutionService = Container.get(ManualExecutionService);
+		jest.spyOn(manualExecutionService, 'runManually').mockReturnValue(
+			new PCancelable(() => {
+				return mock<IRun>();
+			}),
+		);
+
+		// ACT
+		await runner.run(data);
+
+		// Execute the timeout callback
+		expect(timeoutCallback).toBeDefined();
+		timeoutCallback!();
+
+		// ASSERT
+		// The execution should be stopped when the timeout callback is executed
+		expect(mockStopExecution).toHaveBeenCalledWith('1', expect.any(TimeoutExecutionCancelledError));
+	});
+});
+
+describe('needsFullExecutionData', () => {
+	const originalEnv = process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING;
+
+	afterEach(() => {
+		if (originalEnv === undefined) {
+			delete process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING;
+		} else {
+			process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING = originalEnv;
+		}
+	});
+
+	it('should return true when forceFullExecutionData is true even with N8N_MINIMIZE_EXECUTION_DATA_FETCHING set', () => {
+		process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING = 'true';
+
+		// @ts-expect-error Private method
+		const result = runner.needsFullExecutionData('evaluation', 'exec-id', true);
+
+		expect(result).toBe(true);
+	});
+
+	it('should return true when env var is not set and forceFullExecutionData is undefined', () => {
+		delete process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING;
+
+		// @ts-expect-error Private method
+		const result = runner.needsFullExecutionData('webhook', 'exec-id', undefined);
+
+		expect(result).toBe(true);
+	});
+
+	it('should return false when env var is set, forceFullExecutionData is undefined, and mode is not integrated', () => {
+		process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING = 'true';
+
+		const activeExecutions = Container.get(ActiveExecutions);
+		jest.spyOn(activeExecutions, 'getResponseMode').mockReturnValue('responseNode');
+
+		// @ts-expect-error Private method
+		const result = runner.needsFullExecutionData('webhook', 'exec-id', undefined);
+
+		expect(result).toBe(false);
+	});
+
+	it('should return true when env var is set and mode is integrated', () => {
+		process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING = 'true';
+
+		// @ts-expect-error Private method
+		const result = runner.needsFullExecutionData('integrated', 'exec-id', undefined);
+
+		expect(result).toBe(true);
 	});
 });
 

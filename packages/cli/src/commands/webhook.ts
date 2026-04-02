@@ -2,16 +2,16 @@ import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
 import { ActiveExecutions } from '@/active-executions';
-import config from '@/config';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { DeprecationService } from '@/deprecation/deprecation.service';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { WebhookServer } from '@/webhooks/webhook-server';
-import { DeprecationService } from '@/deprecation/deprecation.service';
 
 import { BaseCommand } from './base-command';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 
 @Command({
 	name: 'webhook',
@@ -42,7 +42,7 @@ export class Webhook extends BaseCommand {
 	}
 
 	async init() {
-		if (config.getEnv('executions.mode') !== 'queue') {
+		if (this.globalConfig.executions.mode !== 'queue') {
 			/**
 			 * It is technically possible to run without queues but
 			 * there are 2 known bugs when running in this mode:
@@ -69,6 +69,7 @@ export class Webhook extends BaseCommand {
 
 		await this.initLicense();
 		this.logger.debug('License init complete');
+		await this.initCommunityPackages();
 		await this.initOrchestration();
 		this.logger.debug('Orchestration init complete');
 		await this.initBinaryDataService();
@@ -83,14 +84,17 @@ export class Webhook extends BaseCommand {
 		});
 		Container.get(LogStreamingEventRelay).init();
 
-		await this.moduleRegistry.initModules();
+		await this.moduleRegistry.initModules(this.instanceSettings.instanceType);
 	}
 
 	async run() {
 		const { ScalingService } = await import('@/scaling/scaling.service');
 		await Container.get(ScalingService).setupQueue();
 		await this.server.start();
+		this.server.markAsReady();
 		this.logger.info('Webhook listener waiting for requests.');
+
+		Container.get(LoadNodesAndCredentials).releaseTypes();
 
 		// Make sure that the process does not close
 		await new Promise(() => {});
@@ -103,7 +107,9 @@ export class Webhook extends BaseCommand {
 	async initOrchestration() {
 		Container.get(Publisher);
 
+		const subscriber = Container.get(Subscriber);
+
 		Container.get(PubSubRegistry).init();
-		await Container.get(Subscriber).subscribe('n8n.commands');
+		await subscriber.subscribe(subscriber.getCommandChannel());
 	}
 }

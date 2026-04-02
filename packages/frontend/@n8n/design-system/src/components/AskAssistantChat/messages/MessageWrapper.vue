@@ -15,6 +15,8 @@ export interface Props {
 	};
 	streaming?: boolean;
 	isLastMessage?: boolean;
+	color?: string;
+	workflowId?: string;
 }
 
 const props = defineProps<Props>();
@@ -40,10 +42,16 @@ const messageComponent = computed<Component | null>(() => {
 			:user="user"
 			:streaming="streaming"
 			:is-last-message="isLastMessage"
+			:color="color"
+			:workflow-id="workflowId"
 			@code-replace="emit('codeReplace')"
 			@code-undo="emit('codeUndo')"
 			@feedback="(feedback: RatingFeedback) => emit('feedback', feedback)"
-		/>
+		>
+			<template v-if="$slots['focused-nodes-chips']" #focused-nodes-chips="slotProps">
+				<slot name="focused-nodes-chips" v-bind="slotProps" />
+			</template>
+		</component>
 		<slot
 			v-else-if="message.type === 'custom'"
 			name="custom-message"

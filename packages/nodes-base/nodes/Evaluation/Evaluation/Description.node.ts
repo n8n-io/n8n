@@ -338,7 +338,7 @@ const toolsUsedFields: INodeProperties[] = [
 		name: 'intermediateSteps',
 		type: 'string',
 		default: '',
-		hint: 'The output field of the agent containing the tools called. To see it, enable returning intermediate steps in the agent’s options',
+		hint: 'Map the <code>intermediateSteps</code> field here. To see it, enable returning intermediate steps in the agent’s options',
 		displayOptions: {
 			show: {
 				operation: ['setMetrics'],
