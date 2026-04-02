@@ -885,14 +885,14 @@ export class HttpRequestV3 implements INodeType {
 									responseContentType,
 									this.helpers,
 								);
-								if (!data) {
-									response.body = {};
-								} else {
+								if (data) {
 									response.body = jsonParse(data, {
 										...(neverError
 											? { fallbackValue: {} }
 											: { errorMessage: 'Invalid JSON in response body' }),
 									});
+								} else {
+									response.body = {};
 								}
 							}
 						} else if (binaryContentTypes.some((e) => responseContentType.includes(e))) {
