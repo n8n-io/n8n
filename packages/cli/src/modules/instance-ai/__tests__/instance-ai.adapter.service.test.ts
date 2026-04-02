@@ -755,7 +755,8 @@ function createDataTableAdapterForTests(overrides?: {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[12],
 		{
 			collectTypes: jest.fn().mockResolvedValue({ nodes: [], credentials: [] }),
-		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[13],
+		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[12],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[13],
 		mockDataTableService as unknown as DataTableService,
 		mockDataTableRepository as unknown as DataTableRepository,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[16],
