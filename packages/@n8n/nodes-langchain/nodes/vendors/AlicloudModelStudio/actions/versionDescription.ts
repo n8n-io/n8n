@@ -1,4 +1,4 @@
-import type { ExpressionString, INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 import * as text from './text';
@@ -41,7 +41,7 @@ export const versionDescription: INodeTypeDescription = {
 
 			return ['main'];
 		})()
-	}}` as ExpressionString,
+	}}`,
 	outputs: [NodeConnectionTypes.Main],
 	credentials: [
 		{

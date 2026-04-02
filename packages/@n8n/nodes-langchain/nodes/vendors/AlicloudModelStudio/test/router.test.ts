@@ -121,7 +121,7 @@ describe('AlicloudModelStudio Router', () => {
 			[
 				{
 					json: { error: 'API limit reached' },
-					pairedItem: 0,
+					pairedItem: { item: 0 },
 				},
 			],
 		]);

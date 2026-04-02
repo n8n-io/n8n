@@ -116,6 +116,35 @@ describe('AlicloudModelStudio Operations', () => {
 			);
 			expect(result.json).toEqual({ text: '4' });
 		});
+
+		it('should return full response object when simplifyOutput is false', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(param: string, _index: number, fallback?: unknown) => {
+					const params: Record<string, unknown> = {
+						model: 'some-text-only-model',
+						messages: { messageValues: [{ role: 'user', content: 'Hello' }] },
+						options: {},
+						simplifyOutput: false,
+					};
+					return params[param] ?? fallback;
+				},
+			);
+
+			const mockResponse = {
+				output: { text: 'Hi there!' },
+				usage: { input_tokens: 5, output_tokens: 3 },
+			};
+			mockApiRequest.mockResolvedValue(mockResponse);
+
+			const result = await textMessageExecute.call(mockExecuteFunctions, 0);
+
+			expect(result.json).toEqual({
+				model: 'some-text-only-model',
+				response: 'Hi there!',
+				usage: { input_tokens: 5, output_tokens: 3 },
+				fullResponse: mockResponse,
+			});
+		});
 	});
 
 	describe('Image: analyze', () => {

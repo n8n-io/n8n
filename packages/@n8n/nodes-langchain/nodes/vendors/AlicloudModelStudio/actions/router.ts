@@ -60,7 +60,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					json: {
 						error: error instanceof Error ? error.message : String(error),
 					},
-					pairedItem: itemIndex,
+					pairedItem: { item: itemIndex },
 				});
 				continue;
 			}

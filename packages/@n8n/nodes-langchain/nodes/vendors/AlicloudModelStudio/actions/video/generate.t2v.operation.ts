@@ -17,6 +17,7 @@ export const properties: INodeProperties[] = [
 			{
 				name: 'Wan 2.6 Text-to-Video',
 				value: 'wan2.6-t2v',
+				description: 'Text-to-video generation model',
 			},
 		],
 		default: 'wan2.6-t2v',

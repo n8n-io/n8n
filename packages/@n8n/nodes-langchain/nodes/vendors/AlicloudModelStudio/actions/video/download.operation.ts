@@ -38,11 +38,14 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData> {
-	const url = this.getNodeParameter('url', i, '') as string;
+export async function execute(
+	this: IExecuteFunctions,
+	itemIndex: number,
+): Promise<INodeExecutionData> {
+	const url = this.getNodeParameter('url', itemIndex, '') as string;
 	const binaryPropertyOutput = this.getNodeParameter(
 		'options.binaryPropertyOutput',
-		i,
+		itemIndex,
 		'data',
 	) as string;
 
@@ -57,12 +60,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const fileContent = Buffer.from(response.body as ArrayBuffer);
 	const binaryData = await this.helpers.prepareBinaryData(fileContent, 'video.mp4', contentType);
 
+	const { data: _data, ...binaryMeta } = binaryData;
 	return {
 		binary: { [binaryPropertyOutput]: binaryData },
-		json: {
-			...binaryData,
-			data: undefined,
-		},
-		pairedItem: i,
+		json: binaryMeta,
+		pairedItem: itemIndex,
 	};
 }
