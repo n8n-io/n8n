@@ -76,6 +76,20 @@ describe('OwnerInstanceSettingsLoader', () => {
 		await expect(loader.run()).rejects.toThrow('not a valid bcrypt hash');
 	});
 
+	it('should skip when owner already exists and override is false', async () => {
+		ownershipService.hasInstanceOwner.mockResolvedValue(true);
+
+		const loader = createLoader({
+			ownerEmail: 'admin@example.com',
+			ownerPasswordHash: validBcryptHash,
+		});
+
+		const result = await loader.run();
+
+		expect(result).toBe('skipped');
+		expect(ownershipService.setupOwner).not.toHaveBeenCalled();
+	});
+
 	it('should setup owner without overwrite when override is false', async () => {
 		const loader = createLoader({
 			ownerEmail: 'admin@example.com',
@@ -99,6 +113,31 @@ describe('OwnerInstanceSettingsLoader', () => {
 	});
 
 	it('should setup owner with overwrite when override is true', async () => {
+		const loader = createLoader({
+			ownerOverride: true,
+			ownerEmail: 'new@example.com',
+			ownerFirstName: 'New',
+			ownerLastName: 'Owner',
+			ownerPasswordHash: validBcryptHash,
+		});
+
+		const result = await loader.run();
+
+		expect(result).toBe('created');
+		expect(ownershipService.setupOwner).toHaveBeenCalledWith(
+			{
+				email: 'new@example.com',
+				firstName: 'New',
+				lastName: 'Owner',
+				password: validBcryptHash,
+			},
+			{ overwriteExisting: true, passwordIsHashed: true },
+		);
+	});
+
+	it('should overwrite existing owner when override is true', async () => {
+		ownershipService.hasInstanceOwner.mockResolvedValue(true);
+
 		const loader = createLoader({
 			ownerOverride: true,
 			ownerEmail: 'new@example.com',
