@@ -8,7 +8,6 @@ import type {
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 import type {
-	INodeMetadata,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 	IUpdateInformation,
@@ -29,8 +28,14 @@ import type { ChangeEvent } from './types';
 
 export type NodeAddedPayload = { node: INodeUi };
 export type NodeRemovedPayload = { name: string; id: string };
+export type NodeUpdatedPayload = { node: INodeUi };
+export type NodesSetPayload = { nodes: INodeUi[] };
 
-export type NodesChangeEvent = ChangeEvent<NodeAddedPayload> | ChangeEvent<NodeRemovedPayload>;
+export type NodesChangeEvent =
+	| ChangeEvent<NodeAddedPayload>
+	| ChangeEvent<NodeRemovedPayload>
+	| ChangeEvent<NodeUpdatedPayload>
+	| ChangeEvent<NodesSetPayload>;
 
 // --- Deps ---
 
@@ -70,6 +75,10 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 		if (changed) {
 			Object.assign(node, nodeData);
 			nodes.value[nodeIndex] = node;
+			void onNodesChange.trigger({
+				action: CHANGE_ACTION.UPDATE,
+				payload: { node },
+			});
 		}
 
 		return changed;
@@ -81,13 +90,17 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 
 	function applySetNodes(newNodes: INodeUi[]) {
 		nodes.value = newNodes;
+		void onNodesChange.trigger({
+			action: CHANGE_ACTION.UPDATE,
+			payload: { nodes: newNodes },
+		});
 	}
 
 	function applyAddNode(node: INodeUi) {
 		nodes.value = [...nodes.value, node];
 
 		if (!nodeMetadata.value[node.name]) {
-			nodeMetadata.value[node.name] = {} as INodeMetadata;
+			nodeMetadata.value[node.name] = { pristine: true };
 		}
 
 		void onNodesChange.trigger({
