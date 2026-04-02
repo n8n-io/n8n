@@ -19,6 +19,7 @@ import { N8nSandboxImageManager } from './n8n-sandbox-image-manager';
 import { N8nSandboxServiceSandbox } from './n8n-sandbox-sandbox';
 import { writeFileViaSandbox } from './sandbox-fs';
 import type { SnapshotManager } from './snapshot-manager';
+import type { Logger } from '../logger';
 import type { InstanceAiContext } from '../types';
 import { formatNodeCatalogLine, getWorkspaceRoot, setupSandboxWorkspace } from './sandbox-setup';
 
@@ -61,9 +62,14 @@ export class BuilderSandboxFactory {
 	constructor(
 		private readonly config: SandboxConfig,
 		private readonly imageManager?: SnapshotManager,
+		private readonly logger?: Logger,
 	) {}
 
 	async create(builderId: string, context: InstanceAiContext): Promise<BuilderWorkspace> {
+		this.logger?.debug('[builder-factory] create called', {
+			builderId,
+			provider: this.config.provider,
+		});
 		if (this.config.provider === 'local') {
 			return await this.createLocal(builderId, context);
 		}
@@ -77,12 +83,21 @@ export class BuilderSandboxFactory {
 		const config = this.assertIsDaytona();
 		if (config.getAuthToken) {
 			// Proxy mode: create a fresh client with a fresh JWT each time
+			this.logger?.debug('[builder-factory] getDaytona — proxy mode, fetching fresh auth token');
 			const apiKey = await config.getAuthToken();
+			this.logger?.debug('[builder-factory] getDaytona — creating fresh Daytona client', {
+				apiUrl: config.daytonaApiUrl,
+			});
 			return new Daytona({ apiKey, apiUrl: config.daytonaApiUrl });
 		}
 		// Direct mode: cache the client (Daytona API keys don't expire)
+		const isNew = !this.daytona;
 		this.daytona ??= new Daytona({
 			apiKey: config.daytonaApiKey,
+			apiUrl: config.daytonaApiUrl,
+		});
+		this.logger?.debug('[builder-factory] getDaytona — direct mode', {
+			cached: !isNew,
 			apiUrl: config.daytonaApiUrl,
 		});
 		return this.daytona;
@@ -110,13 +125,24 @@ export class BuilderSandboxFactory {
 		const config = this.assertIsDaytona();
 		assert(this.imageManager, 'Daytona snapshot manager required');
 
+		this.logger?.debug('[builder-factory] createDaytona started', {
+			builderId,
+			hasAuthToken: !!config.getAuthToken,
+			apiUrl: config.daytonaApiUrl,
+		});
+
 		// Get pre-warmed image (config + deps, no catalog — catalog is too large for API body)
 		const image = this.imageManager.ensureImage();
+		this.logger?.debug('[builder-factory] pre-warmed image ready', {
+			builderId,
+			dockerfileLength: image.dockerfile.length,
+		});
 
 		// Start sandbox creation AND catalog generation in parallel
 		const createSandboxFn = async () => {
+			this.logger?.debug('[builder-factory] creating Daytona sandbox via API', { builderId });
 			const daytona = await this.getDaytona();
-			return await daytona.create(
+			const created = await daytona.create(
 				{
 					image,
 					language: 'typescript',
@@ -125,16 +151,44 @@ export class BuilderSandboxFactory {
 				},
 				{ timeout: 300 },
 			);
+			this.logger?.debug('[builder-factory] Daytona sandbox created', {
+				builderId,
+				sandboxId: created.id,
+			});
+			return created;
 		};
 
+		this.logger?.debug(
+			'[builder-factory] starting parallel sandbox creation + catalog generation',
+			{
+				builderId,
+			},
+		);
 		const [sandbox, catalog] = await Promise.all([createSandboxFn(), this.getNodeCatalog(context)]);
+		this.logger?.debug('[builder-factory] parallel creation complete', {
+			builderId,
+			sandboxId: sandbox.id,
+			catalogLength: catalog.length,
+		});
 
 		const deleteSandbox = async () => {
 			try {
+				this.logger?.debug('[builder-factory] deleting sandbox (cleanup)', {
+					builderId,
+					sandboxId: sandbox.id,
+				});
 				const d = await this.getDaytona();
 				await d.delete(sandbox);
-			} catch {
-				// Best-effort cleanup
+				this.logger?.debug('[builder-factory] sandbox deleted', {
+					builderId,
+					sandboxId: sandbox.id,
+				});
+			} catch (error) {
+				this.logger?.debug('[builder-factory] sandbox delete failed (best-effort)', {
+					builderId,
+					sandboxId: sandbox.id,
+					error: error instanceof Error ? error.message : String(error),
+				});
 			}
 		};
 
@@ -142,6 +196,11 @@ export class BuilderSandboxFactory {
 			// Wrap raw Sandbox in DaytonaSandbox for Mastra Workspace compatibility.
 			// DaytonaSandbox.start() reconnects to the existing sandbox by ID.
 			// Use the same apiKey source as getDaytona() — fresh token in proxy mode, static key in direct mode.
+			this.logger?.debug('[builder-factory] wrapping in DaytonaSandbox for Mastra compatibility', {
+				builderId,
+				sandboxId: sandbox.id,
+				proxyMode: !!config.getAuthToken,
+			});
 			const apiKey = config.getAuthToken ? await config.getAuthToken() : config.daytonaApiKey;
 			const daytonaSandbox = new DaytonaSandbox({
 				id: sandbox.id,
@@ -151,29 +210,57 @@ export class BuilderSandboxFactory {
 				timeout: config.timeout ?? 300_000,
 			});
 
+			const filesystem = new DaytonaFilesystem(daytonaSandbox, this.logger);
 			const workspace = new Workspace({
 				sandbox: daytonaSandbox,
-				filesystem: new DaytonaFilesystem(daytonaSandbox),
+				filesystem,
 			});
 
+			this.logger?.debug('[builder-factory] initializing workspace', {
+				builderId,
+				sandboxId: sandbox.id,
+			});
 			await workspace.init();
 
 			// Write node-types catalog (too large for dockerfile, written post-creation via filesystem API)
 			const root = await getWorkspaceRoot(workspace);
+			this.logger?.debug('[builder-factory] writing node catalog to sandbox', {
+				builderId,
+				sandboxId: sandbox.id,
+				catalogPath: `${root}/node-types/index.txt`,
+				catalogSize: catalog.length,
+			});
 			if (workspace.filesystem) {
 				await workspace.filesystem.writeFile(`${root}/node-types/index.txt`, catalog);
 			} else {
 				await writeFileViaSandbox(workspace, `${root}/node-types/index.txt`, catalog);
 			}
+			this.logger?.debug('[builder-factory] Daytona builder workspace ready', {
+				builderId,
+				sandboxId: sandbox.id,
+			});
 
 			return {
 				workspace,
 				cleanup: async () => {
+					this.logger?.debug('[builder-factory] cleanup started', {
+						builderId,
+						sandboxId: sandbox.id,
+					});
 					await cleanupTrackedSandboxProcesses(workspace);
 					await deleteSandbox();
+					this.logger?.debug('[builder-factory] cleanup complete', {
+						builderId,
+						sandboxId: sandbox.id,
+					});
 				},
 			};
 		} catch (error) {
+			this.logger?.error('[builder-factory] createDaytona failed — cleaning up', {
+				builderId,
+				sandboxId: sandbox.id,
+				error: error instanceof Error ? error.message : String(error),
+			});
 			await deleteSandbox();
 			throw error;
 		}

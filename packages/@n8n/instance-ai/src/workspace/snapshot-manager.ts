@@ -29,9 +29,13 @@ export class SnapshotManager {
 
 	/** Get or prepare the image descriptor. Synchronous after first call. */
 	ensureImage(): Image {
-		if (this.cachedImage) return this.cachedImage;
+		if (this.cachedImage) {
+			this.logger.debug('[snapshot] ensureImage — returning cached image');
+			return this.cachedImage;
+		}
 
 		const base = this.baseImage ?? 'daytonaio/sandbox:0.5.0';
+		this.logger.debug('[snapshot] ensureImage — building new image descriptor', { base });
 
 		this.cachedImage = Image.base(base)
 			.runCommands(
@@ -44,7 +48,7 @@ export class SnapshotManager {
 			)
 			.runCommands('cd /home/daytona/workspace && npm install --ignore-scripts');
 
-		this.logger.info('Builder image descriptor prepared', {
+		this.logger.info('[snapshot] Builder image descriptor prepared', {
 			base,
 			dockerfileLength: this.cachedImage.dockerfile.length,
 		});
@@ -54,6 +58,7 @@ export class SnapshotManager {
 
 	/** Invalidate cached image (e.g., when base image changes). */
 	invalidate(): void {
+		this.logger.debug('[snapshot] image cache invalidated');
 		this.cachedImage = null;
 	}
 }

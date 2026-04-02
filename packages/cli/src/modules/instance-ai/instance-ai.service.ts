@@ -122,7 +122,10 @@ export class InstanceAiService {
 	/** Active sandboxes keyed by thread ID — persisted across messages within a conversation. */
 	private readonly sandboxes = new Map<
 		string,
-		{ sandbox: ReturnType<typeof createSandbox>; workspace: ReturnType<typeof createWorkspace> }
+		{
+			sandbox: Awaited<ReturnType<typeof createSandbox>>;
+			workspace: ReturnType<typeof createWorkspace>;
+		}
 	>();
 
 	/** Singleton local filesystem provider — created lazily when filesystem config is enabled. */
@@ -196,6 +199,7 @@ export class InstanceAiService {
 	}
 
 	private getSandboxConfigFromEnv(): SandboxConfig {
+		this.logger.debug('[sandbox] getSandboxConfigFromEnv called');
 		const {
 			sandboxEnabled,
 			sandboxProvider,
@@ -249,29 +253,58 @@ export class InstanceAiService {
 
 	private async resolveSandboxConfig(user: User): Promise<SandboxConfig> {
 		const base = this.getSandboxConfigFromEnv();
-		if (!base.enabled) return base;
+		this.logger.debug('[sandbox] resolveSandboxConfig called', {
+			userId: user.id,
+			provider: base.provider,
+			enabled: base.enabled,
+		});
+		if (!base.enabled) {
+			this.logger.debug('[sandbox] sandbox disabled, returning base config');
+			return base;
+		}
 		if (base.provider === 'daytona') {
 			// If AI assistant service is available, route Daytona calls through its sandbox proxy
 			if (this.aiService.isProxyEnabled()) {
+				this.logger.debug(
+					'[sandbox] proxy enabled — fetching sandbox proxy config from AI service',
+				);
 				const client = await this.aiService.getClient();
 				const proxyConfig = await client.getSandboxProxyConfig();
+				const proxyBaseUrl = client.getSandboxProxyBaseUrl();
+				this.logger.debug('[sandbox] proxy sandbox config resolved', {
+					proxyBaseUrl,
+					proxyImage: proxyConfig.image,
+				});
 				return {
 					...base,
-					daytonaApiUrl: client.getSandboxProxyBaseUrl(),
+					daytonaApiUrl: proxyBaseUrl,
 					image: proxyConfig.image,
 					getAuthToken: async () => {
+						const messageId = nanoid();
+						this.logger.debug('[sandbox] requesting proxy auth token for Daytona', {
+							userId: user.id,
+							userMessageId: messageId,
+						});
 						const token = await client.getBuilderApiProxyToken(
 							{ id: user.id },
-							{ userMessageId: nanoid() },
+							{ userMessageId: messageId },
 						);
-
+						this.logger.debug('[sandbox] proxy auth token obtained', {
+							tokenType: token.tokenType,
+							userId: user.id,
+						});
 						return token.accessToken;
 					},
 				};
 			}
 
 			// Direct mode: Daytona credentials from env vars or admin credential
+			this.logger.debug('[sandbox] proxy not enabled — using direct Daytona credentials');
 			const daytona = await this.settingsService.resolveDaytonaConfig(user);
+			this.logger.debug('[sandbox] direct Daytona config resolved', {
+				hasApiUrl: !!daytona.apiUrl,
+				hasApiKey: !!daytona.apiKey,
+			});
 			return {
 				...base,
 				daytonaApiUrl: daytona.apiUrl ?? base.daytonaApiUrl,
@@ -279,25 +312,43 @@ export class InstanceAiService {
 			};
 		}
 		if (base.provider === 'n8n-sandbox') {
+			this.logger.debug('[sandbox] resolving n8n-sandbox config');
 			const sandbox = await this.settingsService.resolveN8nSandboxConfig(user);
+			this.logger.debug('[sandbox] n8n-sandbox config resolved', {
+				hasServiceUrl: !!sandbox.serviceUrl,
+			});
 			return {
 				...base,
 				serviceUrl: sandbox.serviceUrl ?? base.serviceUrl,
 				apiKey: sandbox.apiKey ?? base.apiKey,
 			};
 		}
+		this.logger.debug('[sandbox] using local sandbox provider');
 		return base;
 	}
 
 	private async createBuilderFactory(user: User): Promise<BuilderSandboxFactory | undefined> {
+		this.logger.debug('[sandbox] createBuilderFactory called', { userId: user.id });
 		const config = await this.resolveSandboxConfig(user);
-		if (!config.enabled) return undefined;
-
-		if (config.provider === 'daytona') {
-			return new BuilderSandboxFactory(config, new SnapshotManager(config.image, this.logger));
+		if (!config.enabled) {
+			this.logger.debug('[sandbox] sandbox disabled — no builder factory created');
+			return undefined;
 		}
 
-		return new BuilderSandboxFactory(config);
+		if (config.provider === 'daytona') {
+			this.logger.debug('[sandbox] creating BuilderSandboxFactory with Daytona provider', {
+				hasImage: 'image' in config && !!config.image,
+				hasGetAuthToken: 'getAuthToken' in config && !!config.getAuthToken,
+			});
+			return new BuilderSandboxFactory(
+				config,
+				new SnapshotManager(config.image, this.logger),
+				this.logger,
+			);
+		}
+
+		this.logger.debug('[sandbox] creating BuilderSandboxFactory', { provider: config.provider });
+		return new BuilderSandboxFactory(config, undefined, this.logger);
 	}
 
 	/** Lazily create the local filesystem provider (singleton). */
@@ -312,15 +363,33 @@ export class InstanceAiService {
 	/** Get or create a sandbox + workspace for a thread. Returns undefined when sandbox is disabled. */
 	private async getOrCreateWorkspace(threadId: string, user: User) {
 		const existing = this.sandboxes.get(threadId);
-		if (existing) return existing;
+		if (existing) {
+			this.logger.debug('[sandbox] reusing existing workspace for thread', { threadId });
+			return existing;
+		}
 
+		this.logger.debug('[sandbox] no existing workspace — creating new one', { threadId });
 		const config = await this.resolveSandboxConfig(user);
-		if (!config.enabled) return undefined;
+		if (!config.enabled) {
+			this.logger.debug('[sandbox] sandbox disabled — no workspace created', { threadId });
+			return undefined;
+		}
 
-		const sandbox = createSandbox(config);
+		this.logger.debug('[sandbox] creating sandbox instance', {
+			threadId,
+			provider: config.provider,
+		});
+		const sandbox = await createSandbox(config);
 		const workspace = createWorkspace(sandbox);
-		if (!sandbox || !workspace) return undefined;
+		if (!sandbox || !workspace) {
+			this.logger.debug('[sandbox] sandbox or workspace creation returned undefined', { threadId });
+			return undefined;
+		}
 
+		this.logger.debug('[sandbox] workspace created and cached', {
+			threadId,
+			provider: config.provider,
+		});
 		const entry = { sandbox, workspace };
 		this.sandboxes.set(threadId, entry);
 		return entry;
@@ -329,12 +398,17 @@ export class InstanceAiService {
 	/** Destroy and remove the sandbox for a thread. */
 	private async destroySandbox(threadId: string): Promise<void> {
 		const entry = this.sandboxes.get(threadId);
-		if (!entry?.sandbox) return;
+		if (!entry?.sandbox) {
+			this.logger.debug('[sandbox] destroySandbox called but no sandbox found', { threadId });
+			return;
+		}
 
+		this.logger.debug('[sandbox] destroying sandbox for thread', { threadId });
 		this.sandboxes.delete(threadId);
 		try {
 			if ('destroy' in entry.sandbox && typeof entry.sandbox.destroy === 'function') {
 				await (entry.sandbox.destroy as () => Promise<void>)();
+				this.logger.debug('[sandbox] sandbox destroyed successfully', { threadId });
 			}
 		} catch (error) {
 			this.logger.warn('Failed to destroy sandbox', {
@@ -349,11 +423,20 @@ export class InstanceAiService {
 	 * Each caller gets a unique token (separate nanoid) for audit tracking.
 	 */
 	private async getProxyAuth(user: User) {
+		const messageId = nanoid();
+		this.logger.debug('[proxy] getProxyAuth — requesting fresh token', {
+			userId: user.id,
+			userMessageId: messageId,
+		});
 		const client = await this.aiService.getClient();
 		const token = await client.getBuilderApiProxyToken(
 			{ id: user.id },
-			{ userMessageId: nanoid() },
+			{ userMessageId: messageId },
 		);
+		this.logger.debug('[proxy] getProxyAuth — token obtained', {
+			userId: user.id,
+			tokenType: token.tokenType,
+		});
 		return {
 			client,
 			headers: { Authorization: `${token.tokenType} ${token.accessToken}` },
@@ -372,31 +455,50 @@ export class InstanceAiService {
 	 */
 	private async resolveModel(user: User): Promise<ModelConfig> {
 		if (this.aiService.isProxyEnabled()) {
+			this.logger.debug('[proxy] resolveModel — proxy enabled, configuring Anthropic provider');
 			const { client, headers } = await this.getProxyAuth(user);
 			const modelName = await this.settingsService.resolveModelName(user);
+			const baseURL = client.getApiProxyBaseUrl() + '/anthropic/v1';
+			this.logger.debug('[proxy] resolveModel — Anthropic provider configured', {
+				baseURL,
+				modelName,
+			});
 			const { createAnthropic } = await import('@ai-sdk/anthropic');
 			const provider = createAnthropic({
-				baseURL: client.getApiProxyBaseUrl() + '/anthropic/v1',
+				baseURL,
 				apiKey: 'proxy-managed',
 				headers,
 			});
 			return provider(modelName);
 		}
+		this.logger.debug('[proxy] resolveModel — proxy not enabled, using direct model config');
 		return await this.settingsService.resolveModelConfig(user);
 	}
 
 	/** Build search proxy config when proxy is enabled. */
 	private async resolveSearchProxyConfig(user: User): Promise<ServiceProxyConfig | undefined> {
-		if (!this.aiService.isProxyEnabled()) return undefined;
+		if (!this.aiService.isProxyEnabled()) {
+			this.logger.debug('[proxy] resolveSearchProxyConfig — proxy not enabled, skipping');
+			return undefined;
+		}
+		this.logger.debug('[proxy] resolveSearchProxyConfig — configuring Brave Search proxy');
 		const { client, headers } = await this.getProxyAuth(user);
-		return { apiUrl: client.getApiProxyBaseUrl() + '/brave-search', headers };
+		const apiUrl = client.getApiProxyBaseUrl() + '/brave-search';
+		this.logger.debug('[proxy] resolveSearchProxyConfig — configured', { apiUrl });
+		return { apiUrl, headers };
 	}
 
 	/** Build tracing proxy config when proxy is enabled. */
 	private async resolveTracingProxyConfig(user: User): Promise<ServiceProxyConfig | undefined> {
-		if (!this.aiService.isProxyEnabled()) return undefined;
+		if (!this.aiService.isProxyEnabled()) {
+			this.logger.debug('[proxy] resolveTracingProxyConfig — proxy not enabled, skipping');
+			return undefined;
+		}
+		this.logger.debug('[proxy] resolveTracingProxyConfig — configuring LangSmith proxy');
 		const { client, headers } = await this.getProxyAuth(user);
-		return { apiUrl: client.getApiProxyBaseUrl() + '/langsmith', headers };
+		const apiUrl = client.getApiProxyBaseUrl() + '/langsmith';
+		this.logger.debug('[proxy] resolveTracingProxyConfig — configured', { apiUrl });
+		return { apiUrl, headers };
 	}
 
 	/**
@@ -1059,6 +1161,13 @@ export class InstanceAiService {
 		messageGroupId?: string,
 		pushRef?: string,
 	) {
+		this.logger.debug('[env] createExecutionEnvironment started', {
+			userId: user.id,
+			threadId,
+			runId,
+			researchMode,
+			proxyEnabled: this.aiService.isProxyEnabled(),
+		});
 		const localGatewayDisabled = this.settingsService.isLocalGatewayDisabled();
 		const userGateway = this.gatewayRegistry.findGateway(user.id);
 		const localFilesystemService =
@@ -1066,6 +1175,7 @@ export class InstanceAiService {
 				? this.getLocalFsProvider()
 				: undefined;
 		// Each resolve*() call fetches a separate proxy token for audit tracking (see getProxyAuth)
+		this.logger.debug('[env] resolving proxy configs for search and tracing');
 		const searchProxyConfig = await this.resolveSearchProxyConfig(user);
 		const tracingProxyConfig = await this.resolveTracingProxyConfig(user);
 		const context = this.adapterService.createContext(user, {
@@ -1098,6 +1208,7 @@ export class InstanceAiService {
 			};
 		}
 
+		this.logger.debug('[env] resolving model config');
 		const modelId = await this.resolveModel(user); // separate proxy token — see getProxyAuth
 		const memory = createMemory(this.createMemoryConfig());
 		await this.ensureThreadExists(memory, threadId, user.id);
@@ -1116,7 +1227,9 @@ export class InstanceAiService {
 		}
 
 		const domainTools = createAllTools(context);
+		this.logger.debug('[env] resolving workspace / sandbox for thread', { threadId });
 		const sandboxEntry = await this.getOrCreateWorkspace(threadId, user);
+		this.logger.debug('[env] resolving builder sandbox factory');
 
 		const orchestrationContext: OrchestrationContext = {
 			threadId,
@@ -1164,6 +1277,15 @@ export class InstanceAiService {
 			domainContext: context,
 			tracingProxyConfig,
 		};
+
+		this.logger.debug('[env] createExecutionEnvironment completed', {
+			threadId,
+			runId,
+			hasWorkspace: !!sandboxEntry?.workspace,
+			hasBuilderFactory: !!orchestrationContext.builderSandboxFactory,
+			hasSearchProxy: !!searchProxyConfig,
+			hasTracingProxy: !!tracingProxyConfig,
+		});
 
 		return {
 			context,
