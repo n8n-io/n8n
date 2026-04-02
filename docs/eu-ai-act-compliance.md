@@ -70,16 +70,16 @@ graph LR
     N8N -->|embeddings| VectorStore[(Vector Store)]
     N8N -->|output| ACTION((Action))
 
-    classDef processor fill:#60a5fa,stroke:#1e40af,color:#000
+    classDef provider fill:#60a5fa,stroke:#1e40af,color:#000
     classDef controller fill:#4ade80,stroke:#166534,color:#000
     classDef app fill:#a78bfa,stroke:#5b21b6,color:#000
     classDef trigger fill:#f472b6,stroke:#be185d,color:#000
 
     class TRIGGER trigger
     class N8N app
-    class OpenAI processor
-    class Anthropic processor
-    class Google processor
+    class OpenAI provider
+    class Anthropic provider
+    class Google provider
     class VectorStore controller
     class ACTION trigger
 ```
