@@ -25,6 +25,99 @@
         "metadados": {
             "type": "object",
             "properties": {
+                "cbo_descricao": {
+                    "type": "string"
+                },
+                "cnae_descricao": {
+                    "type": "string"
+                },
+                "cnpj_empregador": {
+                    "type": "string"
+                },
+                "convenio_empregador": {
+                    "type": "string"
+                },
+                "customerAccountStatus": {
+                    "type": "string"
+                },
+                "customerAccountType": {
+                    "type": "string"
+                },
+                "customerAddress": {
+                    "type": "string"
+                },
+                "customerAddressComplement": {
+                    "type": "string"
+                },
+                "customerAddressNumber": {
+                    "type": "string"
+                },
+                "customerBankName": {
+                    "type": "string"
+                },
+                "customerBirthDate": {
+                    "type": "string"
+                },
+                "customerCity": {
+                    "type": "string"
+                },
+                "customerCivilState": {
+                    "type": "string"
+                },
+                "customerDocDateIssue": {
+                    "type": "string"
+                },
+                "customerDocNumber": {
+                    "type": "string"
+                },
+                "customerDocOrgExp": {
+                    "type": "string"
+                },
+                "customerDocState": {
+                    "type": "string"
+                },
+                "customerDocType": {
+                    "type": "string"
+                },
+                "customerDocument": {
+                    "type": "string"
+                },
+                "customerGender": {
+                    "type": "string"
+                },
+                "customerNacionality": {
+                    "type": "string"
+                },
+                "customerName": {
+                    "type": "string"
+                },
+                "customerNeighborhood": {
+                    "type": "string"
+                },
+                "customerPhone": {
+                    "type": "string"
+                },
+                "customerState": {
+                    "type": "string"
+                },
+                "customerZipCode": {
+                    "type": "string"
+                },
+                "data_admissao_cad": {
+                    "type": "string"
+                },
+                "data_prim_venc_simu": {
+                    "type": "string"
+                },
+                "data_ult_venc_simu": {
+                    "type": "string"
+                },
+                "data_validade_proposta": {
+                    "type": "string"
+                },
+                "desc_prod_simu": {
+                    "type": "string"
+                },
                 "Email": {
                     "type": "string"
                 },
@@ -37,10 +130,33 @@
                 "IdLead": {
                     "type": "string"
                 },
+                "matricula_vinculo": {
+                    "type": "string"
+                },
                 "MensagemTimestamp": {
                     "type": "string"
                 },
+                "Messages": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "content": {
+                                "type": "string"
+                            },
+                            "createdAt": {
+                                "type": "string"
+                            },
+                            "role": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
                 "Nome": {
+                    "type": "string"
+                },
+                "nome_empregador_cad": {
                     "type": "string"
                 },
                 "RespostaAgenteTimestamp": {
@@ -52,7 +168,50 @@
                 "Status": {
                     "type": "string"
                 },
+                "steps": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "next_step": {
+                                "type": "integer"
+                            },
+                            "stages": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "stage": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            },
+                            "step": {
+                                "type": "integer"
+                            },
+                            "step_name": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
                 "Telefone": {
+                    "type": "string"
+                },
+                "valor_emprestimo": {
+                    "type": "string"
+                },
+                "valor_liberado": {
+                    "type": "string"
+                },
+                "valor_parcela": {
+                    "type": "string"
+                },
+                "valor_taxa_mensal": {
+                    "type": "string"
+                },
+                "valorSolicitado": {
                     "type": "string"
                 }
             }
@@ -79,5 +238,5 @@
             "type": "integer"
         }
     },
-    "version": 3
+    "version": 4
 }
