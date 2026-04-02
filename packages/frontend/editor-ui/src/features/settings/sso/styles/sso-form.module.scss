@@ -102,44 +102,55 @@
 
 .copyInputGroup {
 	display: flex;
-	align-items: center;
+	align-items: stretch;
 	width: 100%;
-	height: 36px;
-	border: var(--border-width) var(--border-style) var(--color--foreground);
+	border: var(--border);
 	border-radius: var(--radius);
-	background: var(--color--background--shade-1);
-	cursor: pointer;
 	overflow: hidden;
+}
 
-	&:hover {
-		border-color: var(--color--foreground--shade-1);
+.copyInputField {
+	flex: 1;
+	min-width: 0;
+	display: flex;
+	align-items: center;
+
+	:global(.n8n-input__wrapper) {
+		--input--border--shadow: 0 0 0 0 transparent;
+		--input--border--shadow--hover: 0 0 0 0 transparent;
+		--input--border--shadow--focus: 0 0 0 0 transparent;
+	}
+
+	:global(.n8n-input) {
+		flex: 1;
+
+		input {
+			font-family: monospace;
+			font-size: var(--font-size--2xs);
+			border: none;
+			color: var(--color--text);
+		}
 	}
 }
 
-.copyInputValue {
-	flex: 1;
-	padding: 0 var(--spacing--xs);
-	font-size: var(--font-size--xs);
-	font-family: var(--font-family);
-	color: var(--color--text);
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-}
-
-.copyInputIcon {
+.copyButtonWrapper {
 	display: flex;
 	align-items: center;
-	justify-content: center;
-	width: 36px;
-	height: 100%;
-	border-left: var(--border-width) var(--border-style) var(--color--foreground);
-	color: var(--color--text--tint-1);
-	flex-shrink: 0;
+	border-left: var(--border);
 
-	&:hover {
-		color: var(--color--text);
-		background: var(--color--foreground--tint-2);
+	button {
+		border: none;
+		border-radius: 0;
+		box-shadow: none;
+
+		&:hover {
+			border-color: inherit;
+			box-shadow: none;
+		}
+
+		&:active {
+			box-shadow: none;
+		}
 	}
 }
 
