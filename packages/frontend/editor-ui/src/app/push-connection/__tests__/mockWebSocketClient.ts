@@ -1,8 +1,8 @@
-import { WebSocketState } from '@/app/push-connection/useWebSocketClient';
+import { WebSocketState, type WebSocketStateType } from '@/app/push-connection/useWebSocketClient';
 
 /** Mocked WebSocket class to help testing */
 export class MockWebSocket extends WebSocket {
-	readyState: number = WebSocketState.CONNECTING;
+	readyState: WebSocketStateType = WebSocketState.CONNECTING;
 
 	constructor(url: string) {
 		super(url);
