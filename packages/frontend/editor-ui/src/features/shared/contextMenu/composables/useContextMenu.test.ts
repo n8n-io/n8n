@@ -74,6 +74,12 @@ describe('useContextMenu', () => {
 
 		vi.spyOn(NodeHelpers, 'getNodeInputs').mockReturnValue([]);
 		vi.spyOn(NodeHelpers, 'isExecutable').mockReturnValue(true);
+
+		// Sync workflowDocumentStore.getNodeById with workflowsStore.getNodeById
+		// so that tests mocking workflowsStore.getNodeById also affect the document store
+		vi.spyOn(workflowDocumentStore, 'getNodeById').mockImplementation((id: string) =>
+			workflowsStore.getNodeById(id),
+		);
 	});
 
 	afterEach(() => {

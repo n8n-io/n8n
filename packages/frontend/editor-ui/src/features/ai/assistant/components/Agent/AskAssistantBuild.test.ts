@@ -44,6 +44,18 @@ vi.mock('@/features/ai/assistant/focusedNodes.store', () => ({
 	}),
 }));
 
+// Mock workflowDocumentStore - the component reads allNodes from this store
+const mockAllNodes = vi.hoisted(() => ({ value: [] as unknown[] }));
+vi.mock('@/app/stores/workflowDocument.store', () => ({
+	useWorkflowDocumentStore: vi.fn().mockReturnValue({
+		get allNodes() {
+			return mockAllNodes.value;
+		},
+		getNodeByName: vi.fn(),
+	}),
+	createWorkflowDocumentId: vi.fn().mockReturnValue('abc123@latest'),
+}));
+
 // Mock ExecuteMessage component
 vi.mock('./ExecuteMessage.vue', () => ({
 	default: defineComponent({
@@ -270,6 +282,7 @@ describe('AskAssistantBuild', () => {
 		vi.clearAllMocks();
 		onDocumentVisibleCallback = null;
 		mockCanPrompt.value = true;
+		mockAllNodes.value = [];
 
 		// Reset the updateWorkflow mock before each test
 		updateWorkflowMock.mockReset();
@@ -488,18 +501,18 @@ describe('AskAssistantBuild', () => {
 
 	describe('workflow suggestions visibility', () => {
 		it('should not show suggestions when workflow has existing nodes', () => {
+			const testNode = {
+				id: 'node1',
+				name: 'Start',
+				type: 'n8n-nodes-base.manualTrigger',
+				position: [0, 0],
+				typeVersion: 1,
+				parameters: {},
+			} as INodeUi;
+			mockAllNodes.value = [testNode];
 			workflowsStore.$patch({
 				workflow: {
-					nodes: [
-						{
-							id: 'node1',
-							name: 'Start',
-							type: 'n8n-nodes-base.manualTrigger',
-							position: [0, 0],
-							typeVersion: 1,
-							parameters: {},
-						} as INodeUi,
-					],
+					nodes: [testNode],
 					connections: {},
 				},
 			});
@@ -767,18 +780,18 @@ describe('AskAssistantBuild', () => {
 			await flushPromises();
 
 			// Simulate workflow update with nodes
+			const testNode = {
+				id: 'node1',
+				name: 'Start',
+				type: 'n8n-nodes-base.manualTrigger',
+				position: [0, 0],
+				typeVersion: 1,
+				parameters: {},
+			} as INodeUi;
+			mockAllNodes.value = [testNode];
 			workflowsStore.$patch({
 				workflow: {
-					nodes: [
-						{
-							id: 'node1',
-							name: 'Start',
-							type: 'n8n-nodes-base.manualTrigger',
-							position: [0, 0],
-							typeVersion: 1,
-							parameters: {},
-						} as INodeUi,
-					],
+					nodes: [testNode],
 					connections: {},
 				},
 			});
@@ -923,18 +936,18 @@ describe('AskAssistantBuild', () => {
 
 		it('should show ExecuteMessage component when there is NO error after workflow update', async () => {
 			// Setup: workflow with nodes
+			const testNode = {
+				id: 'node1',
+				name: 'Start',
+				type: 'n8n-nodes-base.manualTrigger',
+				position: [0, 0],
+				typeVersion: 1,
+				parameters: {},
+			} as INodeUi;
+			mockAllNodes.value = [testNode];
 			workflowsStore.$patch({
 				workflow: {
-					nodes: [
-						{
-							id: 'node1',
-							name: 'Start',
-							type: 'n8n-nodes-base.manualTrigger',
-							position: [0, 0],
-							typeVersion: 1,
-							parameters: {},
-						} as INodeUi,
-					],
+					nodes: [testNode],
 					connections: {},
 				},
 			});
@@ -964,18 +977,18 @@ describe('AskAssistantBuild', () => {
 
 		it('should show ExecuteMessage component when error occurs BEFORE workflow update', async () => {
 			// Setup: workflow with nodes
+			const testNode = {
+				id: 'node1',
+				name: 'Start',
+				type: 'n8n-nodes-base.manualTrigger',
+				position: [0, 0],
+				typeVersion: 1,
+				parameters: {},
+			} as INodeUi;
+			mockAllNodes.value = [testNode];
 			workflowsStore.$patch({
 				workflow: {
-					nodes: [
-						{
-							id: 'node1',
-							name: 'Start',
-							type: 'n8n-nodes-base.manualTrigger',
-							position: [0, 0],
-							typeVersion: 1,
-							parameters: {},
-						} as INodeUi,
-					],
+					nodes: [testNode],
 					connections: {},
 				},
 			});
