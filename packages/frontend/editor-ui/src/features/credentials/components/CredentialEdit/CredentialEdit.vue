@@ -143,14 +143,21 @@ const selectedCredentialType = computed(() => {
 	if (selectedCredential.value !== '') {
 		return credentialsStore.getCredentialTypeByName(selectedCredential.value) ?? null;
 	} else if (requiredCredentials.value) {
-		// Otherwise, use credential type that corresponds to the first auth option in the node definition
+		// Use the recommended auth option (managed OAuth sorts first) or the first available
 		const nodeAuthOptions = getNodeAuthOptions(activeNodeType.value);
-		// But only if there is zero or one auth options available
 		if (nodeAuthOptions.length > 0 && activeNodeType.value?.credentials) {
 			return getNodeCredentialForSelectedAuthType(activeNodeType.value, nodeAuthOptions[0].value);
-		} else {
-			return activeNodeType.value?.credentials ? activeNodeType.value.credentials[0] : null;
 		}
+		// No auth options — fall back to the explicitly requested type or the first credential
+		if (props.activeId) {
+			const nodeCredential = activeNodeType.value?.credentials?.find(
+				(c) => c.name === props.activeId,
+			);
+			if (nodeCredential) {
+				return nodeCredential;
+			}
+		}
+		return activeNodeType.value?.credentials?.[0] ?? null;
 	}
 
 	return null;
@@ -367,6 +374,12 @@ const showSaveButton = computed(() => {
 const showSharingContent = computed(() => activeTab.value === 'sharing' && !!credentialType.value);
 
 const homeProject = computed(() => {
+	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+	const overrideProjectId = isCredentialModalState(modalState) ? modalState.projectId : undefined;
+	if (overrideProjectId) {
+		const override = projectsStore.myProjects.find((p) => p.id === overrideProjectId);
+		if (override) return override;
+	}
 	const { currentProject, personalProject } = projectsStore;
 	return currentProject ?? personalProject;
 });
@@ -408,7 +421,9 @@ onMounted(async () => {
 
 	const forceManual = isCredentialModalState(modalState) && modalState.forceManualMode === true;
 
-	const projectId = projectsStore.currentProjectId ?? projectsStore.personalProject?.id;
+	const overrideProjectId = isCredentialModalState(modalState) ? modalState.projectId : undefined;
+	const projectId =
+		overrideProjectId ?? projectsStore.currentProjectId ?? projectsStore.personalProject?.id;
 	if (projectId) {
 		try {
 			await externalSecretsStore.fetchSecretsForProject(projectId);
@@ -418,9 +433,14 @@ onMounted(async () => {
 	}
 
 	if (props.mode === 'new' && credentialTypeName.value) {
-		credentialName.value = await credentialsStore.getNewCredentialName({
-			credentialTypeName: defaultCredentialTypeName.value,
-		});
+		const modalSuggestedName = isCredentialModalState(modalState)
+			? modalState.suggestedName
+			: undefined;
+		credentialName.value = modalSuggestedName
+			? modalSuggestedName
+			: await credentialsStore.getNewCredentialName({
+					credentialTypeName: defaultCredentialTypeName.value,
+				});
 
 		credentialData.value = {
 			...credentialData.value,
@@ -1312,14 +1332,19 @@ function resetCredentialData(): void {
 		}
 	}
 
+	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+	const overrideProjectId = isCredentialModalState(modalState) ? modalState.projectId : undefined;
+	const overrideProject = overrideProjectId
+		? projectsStore.myProjects.find((p) => p.id === overrideProjectId)
+		: undefined;
 	const { currentProject, personalProject } = projectsStore;
-	const scopes = currentProject?.scopes ?? personalProject?.scopes ?? [];
-	const homeProject = currentProject ?? personalProject ?? {};
+	const resolvedProject = overrideProject ?? currentProject ?? personalProject ?? {};
+	const scopes = ('scopes' in resolvedProject ? resolvedProject.scopes : undefined) ?? [];
 
 	credentialData.value = {
 		...credentialData.value,
 		scopes: scopes as unknown as CredentialInformation,
-		homeProject,
+		homeProject: resolvedProject,
 	};
 }
 

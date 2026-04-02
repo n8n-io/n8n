@@ -6,7 +6,9 @@ import type { WorkerInitOptions } from '../types';
 import { worker } from './typescript.worker';
 
 vi.mock('@typescript/vfs');
-vi.mock('typescript');
+vi.mock('typescript', async (importOriginal) => {
+	return await importOriginal();
+});
 
 async function createWorker({
 	doc,
