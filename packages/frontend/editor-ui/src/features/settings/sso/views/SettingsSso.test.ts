@@ -470,7 +470,7 @@ describe('SettingsSso View', () => {
 			});
 			ssoStore.saveOidcConfig.mockResolvedValue({ ...oidcConfig, loginEnabled: true });
 
-			const { getByTestId, getByRole, getAllByRole } = renderView();
+			const { getByTestId } = renderView();
 
 			// Wait for onMounted to initialize authProtocol to OIDC
 			const saveButton = await waitFor(() => getByTestId('sso-oidc-save'));
@@ -530,7 +530,7 @@ describe('SettingsSso View', () => {
 				discoveryEndpoint: '',
 			});
 
-			const { getByTestId, getByRole, getAllByRole } = renderView();
+			const { getByTestId } = renderView();
 			showError.mockClear();
 
 			// Wait for onMounted to initialize authProtocol to OIDC
@@ -665,7 +665,7 @@ describe('SettingsSso View', () => {
 			ssoStore.getSamlConfig.mockResolvedValue(samlConfig);
 			ssoStore.getOidcConfig.mockResolvedValue(oidcConfig);
 
-			const { getAllByRole, getByTestId } = renderView();
+			const { getByTestId } = renderView();
 
 			// Wait for component to mount and initialize
 			await waitFor(() => {
