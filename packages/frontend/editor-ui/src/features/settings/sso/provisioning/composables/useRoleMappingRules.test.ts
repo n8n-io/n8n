@@ -1,9 +1,21 @@
+import { createPinia, setActivePinia } from 'pinia';
 import { useRoleMappingRules } from './useRoleMappingRules';
+import * as roleMappingRuleApi from '@n8n/rest-api-client/api/roleMappingRule';
+
+vi.mock('@n8n/rest-api-client/api/roleMappingRule');
+vi.mock('@n8n/stores/useRootStore', () => ({
+	useRootStore: () => ({
+		restApiContext: {},
+	}),
+}));
 
 describe('useRoleMappingRules', () => {
 	let composable: ReturnType<typeof useRoleMappingRules>;
 
 	beforeEach(() => {
+		setActivePinia(createPinia());
+		vi.clearAllMocks();
+		vi.mocked(roleMappingRuleApi.listRoleMappingRules).mockResolvedValue([]);
 		composable = useRoleMappingRules();
 	});
 
@@ -63,13 +75,13 @@ describe('useRoleMappingRules', () => {
 	});
 
 	describe('reorder', () => {
-		it('should swap the order of two instance rules', () => {
+		it('should swap the order of two instance rules', async () => {
 			composable.addRule('instance');
 			composable.addRule('instance');
 			composable.instanceRules.value[0].expression = 'first';
 			composable.instanceRules.value[1].expression = 'second';
 
-			composable.reorder('instance', 0, 1);
+			await composable.reorder('instance', 0, 1);
 
 			expect(composable.instanceRules.value[0].expression).toBe('second');
 			expect(composable.instanceRules.value[1].expression).toBe('first');
@@ -84,7 +96,6 @@ describe('useRoleMappingRules', () => {
 
 			await composable.loadRules();
 
-			// After loading from empty mock API, local additions are replaced
 			expect(composable.instanceRules.value).toEqual([]);
 			expect(composable.isDirty.value).toBe(false);
 		});
