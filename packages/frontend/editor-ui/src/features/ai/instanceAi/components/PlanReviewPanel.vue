@@ -24,6 +24,7 @@ const props = defineProps<{
 	message?: string;
 	disabled?: boolean;
 	readOnly?: boolean;
+	loading?: boolean;
 }>();
 
 const i18n = useI18n();
@@ -91,7 +92,10 @@ function handleRequestChanges() {
 				{{ i18n.baseText('instanceAi.planReview.title') }}
 			</span>
 			<span :class="$style.taskCount">{{ plannedTasks.length }} tasks</span>
-			<span v-if="props.readOnly" :class="$style.badgeApproved">
+			<span v-if="props.loading" :class="$style.badgeLoading">
+				{{ i18n.baseText('instanceAi.planReview.building') }}
+			</span>
+			<span v-else-if="props.readOnly" :class="$style.badgeApproved">
 				{{ i18n.baseText('instanceAi.planReview.approved') }}
 			</span>
 			<span v-else-if="!isResolved" :class="$style.badge">
@@ -108,21 +112,28 @@ function handleRequestChanges() {
 				<button
 					:class="[$style.taskRow, expandedIds.has(task.id) && $style.taskRowExpanded]"
 					type="button"
+					:disabled="!task.spec"
 					@click="toggle(task.id)"
 				>
 					<span :class="$style.taskNumber">{{ idx + 1 }}</span>
-					<N8nIcon :icon="getKind(task.kind).icon" size="small" :class="$style.taskKindIcon" />
-					<span :class="$style.taskTitle">{{ task.title }}</span>
-					<span :class="$style.taskKindBadge">{{ getKind(task.kind).label }}</span>
 					<N8nIcon
+						v-if="task.kind"
+						:icon="getKind(task.kind).icon"
+						size="small"
+						:class="$style.taskKindIcon"
+					/>
+					<span :class="$style.taskTitle">{{ task.title }}</span>
+					<span v-if="task.kind" :class="$style.taskKindBadge">{{ getKind(task.kind).label }}</span>
+					<N8nIcon
+						v-if="task.spec"
 						:icon="expandedIds.has(task.id) ? 'chevron-up' : 'chevron-down'"
 						size="small"
 						:class="$style.chevron"
 					/>
 				</button>
 
-				<!-- Expanded detail -->
-				<div v-if="expandedIds.has(task.id)" :class="$style.taskDetail">
+				<!-- Expanded detail (only when spec available) -->
+				<div v-if="expandedIds.has(task.id) && task.spec" :class="$style.taskDetail">
 					<p :class="$style.taskSpec">{{ task.spec }}</p>
 					<div v-if="getDeps(task).length > 0" :class="$style.taskDeps">
 						<span :class="$style.depsLabel">Depends on:</span>
@@ -132,8 +143,8 @@ function handleRequestChanges() {
 			</div>
 		</div>
 
-		<!-- Approval footer -->
-		<div v-if="!isResolved && !props.readOnly" :class="$style.footer">
+		<!-- Approval footer (hidden during loading and after resolution) -->
+		<div v-if="!isResolved && !props.readOnly && !props.loading" :class="$style.footer">
 			<textarea
 				v-model="feedback"
 				:class="$style.feedbackTextarea"
@@ -206,6 +217,17 @@ function handleRequestChanges() {
 	color: var(--color--warning);
 	padding: var(--spacing--5xs) var(--spacing--2xs);
 	background: var(--color--warning--tint-2);
+	border-radius: var(--radius);
+	white-space: nowrap;
+}
+
+.badgeLoading {
+	margin-left: auto;
+	font-size: var(--font-size--3xs);
+	font-weight: var(--font-weight--bold);
+	color: var(--color--primary);
+	padding: var(--spacing--5xs) var(--spacing--2xs);
+	background: var(--color--primary--tint-3);
 	border-radius: var(--radius);
 	white-space: nowrap;
 }

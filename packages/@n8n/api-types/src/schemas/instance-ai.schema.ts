@@ -72,6 +72,7 @@ export const instanceAiAgentKindSchema = z.enum([
 	'researcher',
 	'delegate',
 	'browser-setup',
+	'planner',
 ]);
 export type InstanceAiAgentKind = z.infer<typeof instanceAiAgentKindSchema>;
 
@@ -258,6 +259,18 @@ export const taskListSchema = z.object({
 
 export type TaskList = z.infer<typeof taskListSchema>;
 
+export const plannedTaskArgSchema = z.object({
+	id: z.string(),
+	title: z.string(),
+	kind: z.string(),
+	spec: z.string(),
+	deps: z.array(z.string()),
+	tools: z.array(z.string()).optional(),
+	workflowId: z.string().optional(),
+});
+
+export type PlannedTaskArg = z.infer<typeof plannedTaskArgSchema>;
+
 export const confirmationRequestPayloadSchema = z.object({
 	requestId: z.string(),
 	toolCallId: z.string().describe('Correlates to the tool-call that needs approval'),
@@ -294,6 +307,10 @@ export const confirmationRequestPayloadSchema = z.object({
 	tasks: taskListSchema
 		.optional()
 		.describe('Task checklist for plan review (inputType=plan-review)'),
+	planItems: z
+		.array(plannedTaskArgSchema)
+		.optional()
+		.describe('Full planned task details for plan review (title, kind, spec, deps)'),
 	domainAccess: domainAccessMetaSchema
 		.optional()
 		.describe('When present, renders domain-access approval UI instead of generic confirm'),
@@ -411,6 +428,7 @@ export const instanceAiFilesystemResponseSchema = z.object({
 
 export const tasksUpdatePayloadSchema = z.object({
 	tasks: taskListSchema,
+	planItems: z.array(plannedTaskArgSchema).optional(),
 });
 
 export const threadTitleUpdatedPayloadSchema = z.object({
@@ -579,7 +597,14 @@ export interface InstanceAiToolCallState {
 	result?: unknown;
 	error?: string;
 	isLoading: boolean;
-	renderHint?: 'tasks' | 'delegate' | 'builder' | 'data-table' | 'researcher' | 'default';
+	renderHint?:
+		| 'tasks'
+		| 'delegate'
+		| 'builder'
+		| 'data-table'
+		| 'researcher'
+		| 'planner'
+		| 'default';
 	confirmation?: {
 		requestId: string;
 		severity: InstanceAiConfirmationSeverity;
@@ -591,6 +616,7 @@ export interface InstanceAiToolCallState {
 		credentialFlow?: InstanceAiCredentialFlow;
 		setupRequests?: InstanceAiWorkflowSetupNode[];
 		workflowId?: string;
+		planItems?: PlannedTaskArg[];
 		questions?: Array<{
 			id: string;
 			question: string;
@@ -637,6 +663,8 @@ export interface InstanceAiAgentNode {
 	timeline: InstanceAiTimelineEntry[];
 	/** Latest task list — updated by tasks-update events. */
 	tasks?: TaskList;
+	/** Full planned task details — updated progressively by plan-with-agent via tasks-update. */
+	planItems?: PlannedTaskArg[];
 	result?: string;
 	error?: string;
 	errorDetails?: {
@@ -869,6 +897,7 @@ const DATA_TABLE_RENDER_HINT_TOOLS = new Set([
 	'agent-data-table-manager',
 ]);
 const RESEARCH_RENDER_HINT_TOOLS = new Set(['research-with-agent']);
+const PLANNER_RENDER_HINT_TOOLS = new Set(['plan-with-agent']);
 
 export function getRenderHint(toolName: string): InstanceAiToolCallState['renderHint'] {
 	if (toolName === 'update-tasks') return 'tasks';
@@ -876,5 +905,6 @@ export function getRenderHint(toolName: string): InstanceAiToolCallState['render
 	if (BUILDER_RENDER_HINT_TOOLS.has(toolName)) return 'builder';
 	if (DATA_TABLE_RENDER_HINT_TOOLS.has(toolName)) return 'data-table';
 	if (RESEARCH_RENDER_HINT_TOOLS.has(toolName)) return 'researcher';
+	if (PLANNER_RENDER_HINT_TOOLS.has(toolName)) return 'planner';
 	return 'default';
 }

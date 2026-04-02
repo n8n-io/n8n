@@ -1176,6 +1176,14 @@ export class InstanceAiService {
 						userId: user.id,
 						createdAt: Date.now(),
 					});
+
+					// Inline HITL (planner questions / plan approval / sub-agent asks)
+					// keeps the orchestrator run active, so the normal suspended/completed
+					// snapshot paths do not execute. Queue a snapshot after the current
+					// confirmation-request event is published to preserve refresh recovery.
+					queueMicrotask(() => {
+						void this.saveAgentTreeSnapshot(threadId, runId, snapshotStorage);
+					});
 				});
 			},
 			cancelBackgroundTask: async (taskId) => this.cancelBackgroundTask(threadId, taskId),
@@ -1192,6 +1200,7 @@ export class InstanceAiService {
 			nodeDefinitionDirs: nodeDefDirs.length > 0 ? nodeDefDirs : undefined,
 			domainContext: context,
 			tracingProxyConfig,
+			memory,
 		};
 
 		return {
@@ -1431,6 +1440,9 @@ export class InstanceAiService {
 					messageGroupId,
 					executionPushRef,
 				);
+			// Make the current user message available to sub-agents (e.g. planner)
+			// since memory.recall() only returns previously-saved messages.
+			orchestrationContext.currentUserMessage = message;
 			const memoryConfig = this.createMemoryConfig();
 			const traceInput = {
 				message,
@@ -1606,6 +1618,30 @@ export class InstanceAiService {
 				}
 				throw error;
 			}
+
+			// Pre-save the user message so it survives page refresh during HITL.
+			// Mastra's workflow pipeline defers message persistence to stream
+			// completion, so memory.recall() returns nothing for the current turn
+			// while the stream is suspended.
+			await memory.saveMessages({
+				messages: [
+					{
+						id: `user-${messageId}`,
+						threadId,
+						resourceId: user.id,
+						role: 'user' as const,
+						type: 'text',
+						createdAt: new Date(),
+						content:
+							typeof streamInput === 'string'
+								? { format: 2, parts: [{ type: 'text' as const, text: message }] }
+								: {
+										format: 2,
+										parts: [{ type: 'text' as const, text: message }],
+									},
+					},
+				],
+			});
 
 			const result = tracing
 				? await tracing.withRunTree(tracing.actorRun, async () => {
@@ -1890,6 +1926,10 @@ export class InstanceAiService {
 				if (result.confirmationEvent) {
 					this.eventBus.publish(opts.threadId, result.confirmationEvent);
 				}
+
+				// Persist the refreshed agent tree so repeated HITL waits
+				// survive page refresh after a resume as well.
+				await this.saveAgentTreeSnapshot(opts.threadId, opts.runId, opts.snapshotStorage);
 
 				return;
 			}
