@@ -286,7 +286,7 @@ describe('WorkflowBuilderService', () => {
 
 			const result = await service.getSessions(undefined, mockUser);
 
-			expect(mockAiService.getSessions).toHaveBeenCalledWith(undefined, mockUser, undefined);
+			expect(mockAiService.getSessions).toHaveBeenCalledWith(undefined, mockUser);
 			expect(result).toEqual(mockSessions);
 		});
 	});
