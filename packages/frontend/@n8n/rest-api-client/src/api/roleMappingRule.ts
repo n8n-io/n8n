@@ -1,34 +1,36 @@
 import type { IRestApiContext } from '../types';
 import { makeRestApiRequest } from '../utils';
 
-export interface RoleMappingRuleResponse {
+export type RoleMappingRuleType = 'instance' | 'project';
+
+export type RoleMappingRuleResponse = {
 	id: string;
 	expression: string;
 	role: string;
-	type: 'instance' | 'project';
+	type: RoleMappingRuleType;
 	order: number;
 	projectIds: string[];
 	enabled: boolean;
 	description?: string;
 	createdAt: string;
 	updatedAt: string;
-}
+};
 
-export interface CreateRoleMappingRuleInput {
+export type CreateRoleMappingRuleInput = {
 	expression: string;
 	role: string;
-	type: 'instance' | 'project';
+	type: RoleMappingRuleType;
 	order: number;
 	projectIds?: string[];
-}
+};
 
-export interface PatchRoleMappingRuleInput {
+export type PatchRoleMappingRuleInput = {
 	expression?: string;
 	role?: string;
-	type?: 'instance' | 'project';
+	type?: RoleMappingRuleType;
 	order?: number;
 	projectIds?: string[];
-}
+};
 
 export const listRoleMappingRules = async (
 	context: IRestApiContext,
