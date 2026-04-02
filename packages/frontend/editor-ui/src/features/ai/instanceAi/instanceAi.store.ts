@@ -21,6 +21,7 @@ import {
 	getInstanceAiCredits,
 } from './instanceAi.api';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import {
 	fetchThreads as fetchThreadsApi,
@@ -156,7 +157,11 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	);
 
 	// Resource registry — maps known resource names to their types & IDs
-	const { registry: resourceRegistry } = useResourceRegistry(() => messages.value);
+	const workflowsListStore = useWorkflowsListStore();
+	const { registry: resourceRegistry } = useResourceRegistry(
+		() => messages.value,
+		(id) => workflowsListStore.getWorkflowById(id)?.name,
+	);
 
 	// Response feedback — rateability selector + submission
 	const { feedbackByResponseId, rateableResponseId, submitFeedback, resetFeedback } =
