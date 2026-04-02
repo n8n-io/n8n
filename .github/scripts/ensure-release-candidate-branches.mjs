@@ -2,13 +2,14 @@ import semver from 'semver';
 import {
 	getCommitForRef,
 	localRefExists,
+	RELEASE_CANDIDATE_BRANCH_PREFIX,
 	remoteBranchExists,
 	resolveReleaseTagForTrack,
 	sh,
+	tagVersionInfoToReleaseCandidateBranchName,
+	trySh,
 	writeGithubOutput,
 } from './github-helpers.mjs';
-
-const RELEASE_CANDIDATE_BRANCH_PREFIX = 'release-candidate/';
 
 /**
  * @typedef BranchChanges
@@ -52,20 +53,6 @@ export function determineBranchChanges() {
 }
 
 /**
- * Takes a TagVersionInfo object and returns a rc-branch name.
- *
- * e.g. release-candidate/2.8.x
- *
- * @param {import('./github-helpers.mjs').TagVersionInfo} tagVersionInfo
- *
- * @returns { `${RELEASE_CANDIDATE_BRANCH_PREFIX}${number}.${number}.x` }
- * */
-export function tagVersionInfoToReleaseCandidateBranchName(tagVersionInfo) {
-	const version = tagVersionInfo.version;
-	return `${RELEASE_CANDIDATE_BRANCH_PREFIX}${semver.major(version)}.${semver.minor(version)}.x`;
-}
-
-/**
  * @param {import("./github-helpers.mjs").TagVersionInfo} tagInfo
  */
 function ensureBranch(tagInfo) {
@@ -102,12 +89,12 @@ function removeBranch(branch) {
 
 	console.log(`Removing remote branch ${branch} from origin...`);
 	// Delete remote branch
-	sh('git', ['push', 'origin', '--delete', branch]);
+	trySh('git', ['push', 'origin', '--delete', branch]);
 
 	// Optional local cleanup (keeps reruns tidy)
 	if (localRefExists(`refs/heads/${branch}`)) {
 		console.log(`Removing local branch ${branch}...`);
-		sh('git', ['branch', '-D', branch]);
+		trySh('git', ['branch', '-D', branch]);
 	}
 
 	return branch;
