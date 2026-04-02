@@ -21,7 +21,9 @@ export const MODULE_NAMES = [
 	'workflow-builder',
 	'redaction',
 	'instance-registry',
+	'instance-ai',
 	'otel',
+	'token-exchange',
 	'instance-version-history',
 ] as const;
 

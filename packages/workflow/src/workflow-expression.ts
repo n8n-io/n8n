@@ -269,4 +269,12 @@ export class WorkflowExpression {
 	convertObjectValueToString(value: object): string {
 		return this.expression.convertObjectValueToString(value);
 	}
+
+	async acquireIsolate(): Promise<void> {
+		await this.expression.acquireIsolate();
+	}
+
+	async releaseIsolate(): Promise<void> {
+		await this.expression.releaseIsolate();
+	}
 }

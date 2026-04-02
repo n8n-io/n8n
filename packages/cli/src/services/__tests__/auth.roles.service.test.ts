@@ -108,6 +108,7 @@ describe('AuthRolesService', () => {
 
 	beforeEach(() => {
 		jest.restoreAllMocks();
+		jest.clearAllMocks();
 		// Re-setup the EntityManager mocks after restoreAllMocks
 		mockEntityManager.getRepository.mockImplementation((entity) => {
 			if (entity === Scope) return scopeRepository as never;

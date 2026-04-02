@@ -10,7 +10,7 @@
 			"../@n8n/chat/src",
 			"../@n8n/design-system/src"
 		],
-		"outDir": "dist",
+		"noEmit": true,
 		"types": [
 			"vitest/globals",
 			"unplugin-icons/types/vue",

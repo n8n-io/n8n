@@ -53,6 +53,7 @@
     "adm-zip": "^0.5.16"
   },
   "dependencies": {
+    "@dagrejs/dagre": "^1.1.4",
     "acorn": "8.14.0",
     "n8n-workflow": "workspace:*",
     "uuid": "catalog:",

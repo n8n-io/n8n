@@ -441,9 +441,11 @@ export class ScheduleTrigger implements INodeType {
 			}
 		}
 
-		const executeTrigger = (recurrence: IRecurrenceRule) => {
-			const shouldTrigger = recurrenceCheck(recurrence, staticData.recurrenceRules, timezone);
-			if (!shouldTrigger) return;
+		const executeTrigger = (recurrence: IRecurrenceRule, skipRecurrenceCheck = false) => {
+			if (!skipRecurrenceCheck) {
+				const shouldTrigger = recurrenceCheck(recurrence, staticData.recurrenceRules, timezone);
+				if (!shouldTrigger) return;
+			}
 
 			const momentTz = moment.tz(timezone);
 			const resultData = {
@@ -500,7 +502,7 @@ export class ScheduleTrigger implements INodeType {
 						});
 					}
 				}
-				executeTrigger(recurrence);
+				executeTrigger(recurrence, true);
 			};
 
 			return { manualTriggerFunction };
