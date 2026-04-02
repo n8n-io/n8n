@@ -18,7 +18,7 @@ export class DelegationAuthorizationService {
 		private readonly roleRepository: RoleRepository,
 		private readonly config: TokenExchangeConfig,
 	) {
-		this.logger = logger.scoped('delegation-authorization');
+		this.logger = logger.scoped('token-exchange');
 	}
 
 	/**
