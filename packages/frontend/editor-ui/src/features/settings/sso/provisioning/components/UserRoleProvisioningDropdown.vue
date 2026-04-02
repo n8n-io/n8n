@@ -105,7 +105,7 @@ const userRoleProvisioningDescriptions = computed<UserRoleProvisioningDescriptio
 .labelColumn {
 	display: flex;
 	flex-direction: column;
-	gap: 1px;
+	gap: var(--spacing--4xs);
 	flex-shrink: 0;
 	width: 320px;
 
