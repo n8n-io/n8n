@@ -72,7 +72,7 @@
 .settingsItemLabel {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--4xs);
+	gap: var(--spacing--3xs);
 	flex-shrink: 0;
 	width: 320px;
 
@@ -89,9 +89,15 @@
 }
 
 .settingsItemControl {
-	flex: 1;
+	width: 250px;
+	flex-shrink: 0;
 	display: flex;
 	justify-content: flex-end;
+
+	// Make all direct child form elements fill the width
+	> :deep(*) {
+		width: 100%;
+	}
 }
 
 .ipsBlock {
