@@ -29,6 +29,10 @@ export function useToast() {
 	const { APP_Z_INDEXES } = useStyles();
 
 	function showMessage(messageData: Partial<NotificationOptions>, track = true) {
+		if (uiStore.areNotificationsSuppressed) {
+			return { close: () => {} } as NotificationHandle;
+		}
+
 		const messageDefaults: Partial<Omit<NotificationOptions, 'message'>> = {
 			dangerouslyUseHTMLString: true,
 			position: 'bottom-right',
