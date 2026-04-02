@@ -121,7 +121,6 @@ export class McpService {
 		const executeWorkflowTool = createExecuteWorkflowTool(
 			user,
 			this.workflowFinderService,
-			this.activeExecutions,
 			this.workflowRunner,
 			this.telemetry,
 			this,
