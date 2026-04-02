@@ -1382,6 +1382,7 @@ describe('SamlService', () => {
 			jest
 				.spyOn(samlService as any, 'broadcastReloadSAMLConfigurationCommand')
 				.mockResolvedValue(undefined);
+			jest.spyOn(validator, 'validateMetadata').mockResolvedValue(true);
 		});
 
 		test('should broadcast reload by default', async () => {

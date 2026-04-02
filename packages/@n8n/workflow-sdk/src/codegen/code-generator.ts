@@ -35,7 +35,7 @@ import {
 	generateDefaultNodeName,
 } from './node-type-utils';
 import { escapeString, escapeRegexChars } from './string-utils';
-import { formatValue } from './subnode-generator';
+import { formatValue, formatCredentials } from './subnode-generator';
 import type { SemanticGraph, SemanticNode, AiConnectionType } from './types';
 import { getVarName, getUniqueVarName } from './variable-names';
 import type { WorkflowJSON } from '../types/base';
@@ -110,8 +110,8 @@ function generateSubnodeCall(
 		configParts.push(`parameters: ${formatValue(subnodeNode.json.parameters, ctx)}`);
 	}
 
-	if (subnodeNode.json.credentials) {
-		configParts.push(`credentials: ${formatValue(subnodeNode.json.credentials, ctx)}`);
+	if (subnodeNode.json.credentials && Object.keys(subnodeNode.json.credentials).length > 0) {
+		configParts.push(`credentials: ${formatCredentials(subnodeNode.json.credentials)}`);
 	}
 
 	const pos = subnodeNode.json.position;
@@ -263,8 +263,8 @@ function generateSubnodeCallWithVarRefs(
 		configParts.push(`parameters: ${formatValue(subnodeNode.json.parameters, ctx)}`);
 	}
 
-	if (subnodeNode.json.credentials) {
-		configParts.push(`credentials: ${formatValue(subnodeNode.json.credentials, ctx)}`);
+	if (subnodeNode.json.credentials && Object.keys(subnodeNode.json.credentials).length > 0) {
+		configParts.push(`credentials: ${formatCredentials(subnodeNode.json.credentials)}`);
 	}
 
 	const pos = subnodeNode.json.position;
@@ -389,8 +389,8 @@ function generateNodeConfig(node: SemanticNode, ctx: GenerationContext): string 
 		configParts.push(`parameters: ${formatValue(node.json.parameters, ctx)}`);
 	}
 
-	if (node.json.credentials) {
-		configParts.push(`credentials: ${formatValue(node.json.credentials, ctx)}`);
+	if (node.json.credentials && Object.keys(node.json.credentials).length > 0) {
+		configParts.push(`credentials: ${formatCredentials(node.json.credentials)}`);
 	}
 
 	// Include position if non-zero
@@ -588,8 +588,8 @@ function generateMergeCall(node: SemanticNode, ctx: GenerationContext): string {
 		configParts.push(`parameters: ${formatValue(node.json.parameters, ctx)}`);
 	}
 
-	if (node.json.credentials) {
-		configParts.push(`credentials: ${formatValue(node.json.credentials, ctx)}`);
+	if (node.json.credentials && Object.keys(node.json.credentials).length > 0) {
+		configParts.push(`credentials: ${formatCredentials(node.json.credentials)}`);
 	}
 
 	// Include position if non-zero
