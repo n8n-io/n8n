@@ -71,14 +71,14 @@ describe('InstanceAiSettingsService', () => {
 
 		it('should allow non-proxy-managed fields when proxy is enabled', async () => {
 			aiService.isProxyEnabled.mockReturnValue(true);
-			settingsRepository.saveSetting.mockResolvedValue(undefined as never);
+			settingsRepository.upsert.mockResolvedValue(undefined as never);
 
 			await expect(service.updateAdminSettings({ lastMessages: 50 })).resolves.toBeDefined();
 		});
 
 		it('should allow proxy-managed fields when proxy is disabled', async () => {
 			aiService.isProxyEnabled.mockReturnValue(false);
-			settingsRepository.saveSetting.mockResolvedValue(undefined as never);
+			settingsRepository.upsert.mockResolvedValue(undefined as never);
 
 			await expect(service.updateAdminSettings({ sandboxEnabled: true })).resolves.toBeDefined();
 		});
@@ -108,7 +108,7 @@ describe('InstanceAiSettingsService', () => {
 
 		it('should allow non-proxy-managed fields when proxy is enabled', async () => {
 			aiService.isProxyEnabled.mockReturnValue(true);
-			settingsRepository.saveSetting.mockResolvedValue(undefined as never);
+			settingsRepository.upsert.mockResolvedValue(undefined as never);
 
 			await expect(
 				service.updateUserPreferences(user, { localGatewayDisabled: true }),
