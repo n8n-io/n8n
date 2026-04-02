@@ -78,7 +78,7 @@ function getDisplayLabel(tc: InstanceAiToolCallState): string {
 .block {
 	max-width: 100%;
 	justify-content: flex-start;
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtler);
 	:global(.n8n-icon) {
 		flex-shrink: 0;
 	}
@@ -96,7 +96,7 @@ function getDisplayLabel(tc: InstanceAiToolCallState): string {
 
 .dataSection {
 	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtler);
 	background: var(--color--foreground--tint-2);
 	border-radius: var(--radius);
 	padding: var(--spacing--2xs);

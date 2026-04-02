@@ -89,7 +89,7 @@ function handleClick(e: MouseEvent) {
 .name {
 	font-size: var(--font-size--md);
 	font-weight: var(--font-weight--regular);
-	color: var(--color--text);
+	color: var(--text-color);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -98,7 +98,7 @@ function handleClick(e: MouseEvent) {
 .metadata {
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--lg);
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtler);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;

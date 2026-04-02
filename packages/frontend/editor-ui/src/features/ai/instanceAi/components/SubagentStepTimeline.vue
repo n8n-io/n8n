@@ -158,7 +158,7 @@ const steps = computed((): TimelineStep[] => {
 
 .dataSection {
 	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtler);
 	background: var(--color--foreground--tint-2);
 	border-radius: var(--radius);
 	padding: var(--spacing--2xs);
