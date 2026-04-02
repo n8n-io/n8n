@@ -1,5 +1,5 @@
 import vue from '@vitejs/plugin-vue';
-import { posix as pathPosix, resolve, sep as pathSep } from 'path';
+import { resolve } from 'path';
 import { defineConfig, mergeConfig, type UserConfig } from 'vite';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
@@ -92,7 +92,7 @@ const plugins: UserConfig['plugins'] = [
 	nodePopularityPlugin(),
 	icons({
 		compiler: 'vue3',
-		autoInstall: true,
+		autoInstall: NODE_ENV === 'development',
 	}),
 	// Add istanbul coverage plugin for E2E tests
 	...(process.env.BUILD_WITH_COVERAGE === 'true'
@@ -109,20 +109,20 @@ const plugins: UserConfig['plugins'] = [
 	viteStaticCopy({
 		targets: [
 			{
-				src: pathPosix.resolve('node_modules/web-tree-sitter/tree-sitter.wasm'),
-				dest: resolve(__dirname, 'dist'),
+				src: 'node_modules/web-tree-sitter/tree-sitter.wasm',
+				dest: 'dist',
 			},
 			{
-				src: pathPosix.resolve('node_modules/curlconverter/dist/tree-sitter-bash.wasm'),
-				dest: resolve(__dirname, 'dist'),
+				src: 'node_modules/curlconverter/dist/tree-sitter-bash.wasm',
+				dest: 'dist',
 			},
 			// wa-sqlite WASM files for OPFS database support (no cross-origin isolation needed)
 			{
-				src: pathPosix.resolve('node_modules/wa-sqlite/dist/wa-sqlite.wasm'),
+				src: 'node_modules/wa-sqlite/dist/wa-sqlite.wasm',
 				dest: 'assets',
 			},
 			{
-				src: pathPosix.resolve('node_modules/wa-sqlite/dist/wa-sqlite-async.wasm'),
+				src: 'node_modules/wa-sqlite/dist/wa-sqlite-async.wasm',
 				dest: 'assets',
 			},
 		],
@@ -231,6 +231,7 @@ export default mergeConfig(
 		base: publicPath,
 		envPrefix: ['VUE', 'N8N_ENV_FEAT'],
 		css: {
+			preprocessorMaxWorkers: true,
 			preprocessorOptions: {
 				scss: {
 					additionalData: [
@@ -248,9 +249,7 @@ export default mergeConfig(
 		},
 		optimizeDeps: {
 			exclude: ['wa-sqlite'],
-			esbuildOptions: {
-				target,
-			},
+			rolldownOptions: {},
 		},
 		worker: {
 			format: 'es',

@@ -1,6 +1,6 @@
 /**
  * Shared benchmark definitions for Tier 1 pattern benchmarks.
- * Used by both patterns-current.bench.ts and patterns-vm.bench.ts.
+ * Used by both patterns-legacy.bench.ts and patterns-vm.bench.ts.
  *
  * NOTE: CodSpeed ignores describe block names, so every bench() name must be
  * globally unique. Each name is prefixed with `{engine}: {group} -` to ensure

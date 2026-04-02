@@ -36,6 +36,14 @@ import {
 import { randomInt } from '../src/utils';
 import { DEFAULT_EVALUATION_METRIC } from '../src/evaluation-helpers';
 
+vi.mock('../src/node-helpers', async () => {
+	const actual = await vi.importActual<typeof import('../src/node-helpers')>('../src/node-helpers');
+	return {
+		...actual,
+		getNodeParameters: vi.fn().mockImplementation(actual.getNodeParameters),
+	};
+});
+
 describe('getDomainBase should return protocol plus domain', () => {
 	test('in valid URLs', () => {
 		for (const url of validUrls(numericId)) {
@@ -1345,9 +1353,9 @@ describe('generateNodesGraph', () => {
 	});
 
 	test('should not fail on error to resolve a node parameter for sticky node type', () => {
-		const workflow = mock<IWorkflowBase>({ nodes: [{ type: STICKY_NODE_TYPE }] });
+		const workflow = mock<IWorkflowBase>({ nodes: [{ type: STICKY_NODE_TYPE }], connections: {} });
 
-		vi.spyOn(nodeHelpers, 'getNodeParameters').mockImplementationOnce(() => {
+		vi.mocked(nodeHelpers.getNodeParameters).mockImplementationOnce(() => {
 			throw new ApplicationError('Could not find property option');
 		});
 
@@ -3306,7 +3314,7 @@ describe('extractLastExecutedNodeStructuredOutputErrorInfo', () => {
 			},
 		});
 		const runData = mockRunData('Agent', new Error('Some error'));
-		vi.spyOn(nodeHelpers, 'getNodeParameters').mockReturnValueOnce(
+		vi.mocked(nodeHelpers.getNodeParameters).mockReturnValueOnce(
 			mock<INodeParameters>({ model: { value: 'gpt-4-turbo' } }),
 		);
 
@@ -3360,7 +3368,7 @@ describe('extractLastExecutedNodeStructuredOutputErrorInfo', () => {
 			],
 		});
 
-		vi.spyOn(nodeHelpers, 'getNodeParameters').mockReturnValueOnce(
+		vi.mocked(nodeHelpers.getNodeParameters).mockReturnValueOnce(
 			mock<INodeParameters>({ model: { value: 'gpt-4.1-mini' } }),
 		);
 
@@ -3388,7 +3396,7 @@ describe('extractLastExecutedNodeStructuredOutputErrorInfo', () => {
 
 		const runData = mockRunData('Agent', new Error('Some error'));
 
-		vi.spyOn(nodeHelpers, 'getNodeParameters').mockReturnValueOnce(
+		vi.mocked(nodeHelpers.getNodeParameters).mockReturnValueOnce(
 			mock<INodeParameters>({ model: 'gpt-4' }),
 		);
 
@@ -3478,7 +3486,7 @@ describe('extractLastExecutedNodeStructuredOutputErrorInfo', () => {
 		});
 		const runData = mockRunData('Agent', new Error('Some error'));
 
-		vi.spyOn(nodeHelpers, 'getNodeParameters').mockReturnValueOnce(
+		vi.mocked(nodeHelpers.getNodeParameters).mockReturnValueOnce(
 			mock<INodeParameters>({ modelName: 'gemini-1.5-pro' }),
 		);
 

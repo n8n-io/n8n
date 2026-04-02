@@ -25,6 +25,26 @@ export async function consumeGenerator<T>(gen: AsyncGenerator<T>) {
 	}
 }
 
+/**
+ * Consume an async generator of StreamOutput, collecting AgentMessageChunk text.
+ * Returns the concatenated text from all message chunks.
+ */
+export async function collectAgentTextResponse<
+	T extends { messages?: Array<{ type: string; text?: string }> },
+>(gen: AsyncGenerator<T>): Promise<string> {
+	const textParts: string[] = [];
+	for await (const output of gen) {
+		if (output.messages) {
+			for (const chunk of output.messages) {
+				if (chunk.type === 'message' && chunk.text) {
+					textParts.push(chunk.text);
+				}
+			}
+		}
+	}
+	return textParts.join('');
+}
+
 export async function runWithOptionalLimiter<T>(
 	fn: () => Promise<T>,
 	limiter?: LlmCallLimiter,

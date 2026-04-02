@@ -1,7 +1,21 @@
 /** Mocked EventSource class to help testing */
 export class MockEventSource extends EventTarget {
-	constructor(public url: string) {
+	constructor(
+		public url: string = 'http://test.com',
+		...args: unknown[]
+	) {
 		super();
+
+		MockEventSource._instance = this;
+		MockEventSource.init(url, ...args);
+	}
+
+	static init = vi.fn();
+
+	static _instance: MockEventSource;
+
+	static getInstance() {
+		return MockEventSource._instance;
 	}
 
 	simulateConnectionOpen() {

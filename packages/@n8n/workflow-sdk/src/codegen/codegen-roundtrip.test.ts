@@ -1127,6 +1127,56 @@ export default workflow('test-id', 'AI Agent')
 			// newCredential serializes to undefined, which is omitted - not yet implemented
 			expect(openAiNode?.credentials).toEqual({});
 		});
+
+		it('should parse newCredential() with id to link existing credential', () => {
+			const code = `
+export default workflow('test-id', 'Test Workflow')
+  .add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} }))
+  .to(node({ type: 'n8n-nodes-base.slack', version: 2.2, config: {
+    name: 'Slack',
+    parameters: { channel: '#general' },
+    credentials: { slackApi: newCredential('My Slack', 'cred-123') }
+  } }))
+`;
+			const parsedJson = parseWorkflowCode(code);
+			const slackNode = parsedJson.nodes.find((n) => n.type === 'n8n-nodes-base.slack');
+			expect(slackNode).toBeDefined();
+			// newCredential with id serializes to { id, name }
+			expect(slackNode?.credentials).toEqual({
+				slackApi: { id: 'cred-123', name: 'My Slack' },
+			});
+		});
+
+		it('should roundtrip credentials via newCredential(name, id)', () => {
+			const originalJson: WorkflowJSON = {
+				id: 'cred-roundtrip',
+				name: 'Credential Roundtrip',
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'Slack',
+						type: 'n8n-nodes-base.slack',
+						typeVersion: 2.2,
+						position: [0, 0],
+						parameters: { channel: '#general' },
+						credentials: {
+							slackApi: { id: 'cred-abc', name: 'Slack Bot' },
+						},
+					},
+				],
+				connections: {},
+			};
+
+			const code = generateWorkflowCode(originalJson);
+			// Code should contain newCredential('Slack Bot', 'cred-abc')
+			expect(code).toContain("newCredential('Slack Bot', 'cred-abc')");
+
+			const parsedJson = parseWorkflowCode(code);
+			const slackNode = parsedJson.nodes.find((n) => n.name === 'Slack');
+			expect(slackNode?.credentials).toEqual({
+				slackApi: { id: 'cred-abc', name: 'Slack Bot' },
+			});
+		});
 	});
 
 	describe('parses Switch fluent API with pinData', () => {
