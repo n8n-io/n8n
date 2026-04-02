@@ -2,11 +2,13 @@
 import { onMounted } from 'vue';
 import { N8nButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useRolesStore } from '@/app/stores/roles.store';
 import { useRoleMappingRules } from '../composables/useRoleMappingRules';
 import RuleSectionHeader from './RuleSectionHeader.vue';
 import RuleList from './RuleList.vue';
 
 const i18n = useI18n();
+const rolesStore = useRolesStore();
 
 const {
 	instanceRules,
@@ -28,8 +30,8 @@ function duplicateRule(id: string) {
 	updateRule(newRule.id, { expression: source.expression, role: source.role });
 }
 
-onMounted(() => {
-	void loadRules();
+onMounted(async () => {
+	await Promise.all([loadRules(), rolesStore.fetchRoles()]);
 });
 
 defineExpose({ isDirty, save });
