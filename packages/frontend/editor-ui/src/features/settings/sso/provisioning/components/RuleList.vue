@@ -190,7 +190,7 @@ function onDragEnd(event: { oldIndex?: number; newIndex?: number }) {
 }
 
 .fallbackSelect {
-	width: 112px;
+	width: 130px;
 }
 
 .ghost {
